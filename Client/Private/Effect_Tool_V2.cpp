@@ -986,11 +986,9 @@ void Client::CEffect_Tool_V2::Render_CreatePanel()
 {
 	ImGui::TextUnformatted("World Preview");
 	const SLOT_BINDINGS& Bindings = Current_Bindings();
-	const bool_t bMeshType =
-		EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::PARTICLE == m_eType;
-	const bool_t bSupportedType =
-		EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::TEXTURE == m_eType;
-	const bool_t bHasBase =
+	const bool_t bMeshType = EFFECT_TYPE::MESH == m_eType;
+	const bool_t bSupportedType = true;
+	const bool_t bHasBase = EFFECT_TYPE::SCREEN_POST == m_eType ||
 		!Bindings[static_cast<size_t>(RESOURCE_SLOT::BASE)].empty();
 	const bool_t bHasMesh =
 		!Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)].empty();
@@ -1008,9 +1006,7 @@ void Client::CEffect_Tool_V2::Render_CreatePanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Attach..."))
 		m_bAttachWindowOpen = true;
-	if (!bSupportedType)
-		ImGui::TextDisabled("Only Mesh and Texture types can be previewed yet.");
-	else if (!bHasBase)
+	if (!bHasBase)
 		ImGui::TextDisabled("Bind a Base texture first.");
 	else if (bMeshType && !bHasMesh)
 		ImGui::TextDisabled("Bind a Mesh first.");
@@ -1022,8 +1018,7 @@ bool_t Client::CEffect_Tool_V2::Try_CreatePreview()
 {
 	const SLOT_BINDINGS& Bindings = Current_Bindings();
 	CEffectV2Object::DESC Desc{};
-	Desc.eShape = EFFECT_TYPE::MESH == m_eType ?
-		CEffectV2Object::SHAPE::MESH : CEffectV2Object::SHAPE::SPRITE;
+	Desc.eShape = CEffectV2Document::Shape_ForType(m_eType);
 	Desc.strMeshAssetId = Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)];
 	for (int32_t iSlot = static_cast<int32_t>(RESOURCE_SLOT::BASE);
 		iSlot < static_cast<int32_t>(RESOURCE_SLOT::END); ++iSlot)
@@ -1420,6 +1415,14 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 		else if (pPreview->Has_FollowTarget())
 			pPreview->Clear_FollowTarget();
 	}
+	if (m_bTestOrbit && nullptr != pPreview && PIVOT_MODE::WORLD == m_ePivotMode)
+	{
+		m_fTestOrbitAngle += fTimeDelta * m_fTestOrbitSpeed;
+		pPreview->PivotWorld()._41 = m_vTestOrbitCenter.x + std::cos(m_fTestOrbitAngle) * m_fTestOrbitRadius;
+		pPreview->PivotWorld()._42 = m_vTestOrbitCenter.y;
+		pPreview->PivotWorld()._43 = m_vTestOrbitCenter.z + std::sin(m_fTestOrbitAngle) * m_fTestOrbitRadius;
+	}
+	const bool_t bSnapOnRestart = PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode;
 	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
 		return;
 	const std::shared_ptr<Engine::CModel> pModel = pNpc->Get_Model();
@@ -1436,11 +1439,33 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 		m_fTargetLastClipSeconds >= 0.f && m_fTargetLastClipSeconds < fSpawnSeconds &&
 		fSeconds >= fSpawnSeconds)
 	{
+		if (bSnapOnRestart)
+			Snap_PivotToTarget();
 		pPreview->Restart();
 	}
 	if (fSeconds < m_fTargetLastClipSeconds && nullptr != pPreview && 0 == m_iSpawnFrame)
+	{
+		if (bSnapOnRestart)
+			Snap_PivotToTarget();
 		pPreview->Restart();
+	}
 	m_fTargetLastClipSeconds = fSeconds;
+}
+
+void Client::CEffect_Tool_V2::Snap_PivotToTarget()
+{
+	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
+	const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
+	if (nullptr == pNpc || nullptr == pPreview)
+		return;
+	float4x4_t Pivot;
+	if (!CEffectV2Object::Resolve_TargetPivot(*pNpc, m_strPivotBone, m_ePivotRotation, Pivot))
+	{
+		m_strAttachStatus = "Snap failed: bone not found " + m_strPivotBone;
+		return;
+	}
+	pPreview->Clear_FollowTarget();
+	pPreview->PivotWorld() = Pivot;
 }
 
 bool_t Client::CEffect_Tool_V2::Load_Bindings(const std::string& strArchetypeId)
@@ -1636,8 +1661,20 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 
 	ImGui::SeparatorText("Effect Pivot");
 	int32_t iMode = static_cast<int32_t>(m_ePivotMode);
-	if (ImGui::Combo("Pivot Mode", &iMode, "World\0Target Bone\0"))
+	if (ImGui::Combo("Pivot Mode", &iMode, "World\0Target Bone (follow)\0Target Bone (snap once)\0"))
+	{
 		m_ePivotMode = static_cast<PIVOT_MODE>(iMode);
+		if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
+			Snap_PivotToTarget();
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("follow: pivot tracks the bone every frame. snap once: pivot is captured from the bone at spawn/restart and then stays put (ground decals, summoning circles).");
+	if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
+	{
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Snap Now"))
+			Snap_PivotToTarget();
+	}
 	ImGui::BeginDisabled(m_TargetBoneNames.empty());
 	if (ImGui::BeginCombo("Pivot Bone", m_strPivotBone.empty() ? "(none)" : m_strPivotBone.c_str()))
 	{
@@ -1676,7 +1713,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		Binding.strClip = pClipForBinding;
 		Binding.iStartMs = static_cast<uint32_t>(
 			static_cast<f32_t>(m_iSpawnFrame) * 1000.f / BINDING_FRAME_RATE);
-		Binding.strBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode ? m_strPivotBone : std::string();
+		Binding.strBone = PIVOT_MODE::WORLD != m_ePivotMode ? m_strPivotBone : std::string();
 		Binding.bFollowBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode;
 		Binding.eRotation = m_ePivotRotation;
 		bool_t bReplaced = false;
@@ -1713,16 +1750,19 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		std::snprintf(szRow, sizeof(szRow), "%s @ %s +%ums %s%s",
 			Binding.strEffectId.c_str(), Binding.strClip.c_str(), Binding.iStartMs,
 			Binding.strBone.empty() ? "(world)" : Binding.strBone.c_str(),
-			Binding.bFollowBone ? "" : " [no follow]");
+			Binding.bFollowBone ? "" : " [snap once]");
 		if (ImGui::Selectable(szRow, false))
 		{
 			std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", Binding.strEffectId.c_str());
 			m_iSpawnFrame = static_cast<int32_t>(
 				static_cast<f32_t>(Binding.iStartMs) * BINDING_FRAME_RATE / 1000.f + 0.5f);
-			m_ePivotMode = Binding.strBone.empty() ? PIVOT_MODE::WORLD : PIVOT_MODE::TARGET_BONE;
+			m_ePivotMode = Binding.strBone.empty() ? PIVOT_MODE::WORLD :
+				(Binding.bFollowBone ? PIVOT_MODE::TARGET_BONE : PIVOT_MODE::TARGET_BONE_FIXED);
 			m_ePivotRotation = Binding.eRotation;
 			if (!Binding.strBone.empty())
 				m_strPivotBone = Binding.strBone;
+			if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
+				Snap_PivotToTarget();
 			if (nullptr != pNpc)
 				pNpc->Set_Animation(Binding.strClip.c_str(), m_bTargetClipLoop);
 		}
@@ -1767,6 +1807,54 @@ namespace
 	}
 }
 
+namespace
+{
+	void Draw_ColorTracks(Client::CEffectV2Object::PARAMS& P, const bool_t bShowOffset)
+	{
+		ImGui::Checkbox("##ColorMulLerp", &P.bColorMulLerp);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Lerp Color Mul from Start to End over the lifetime.");
+		ImGui::SameLine();
+		ImGui::ColorEdit4(P.bColorMulLerp ? "Color Mul Start" : "Color Mul",
+			&P.vColorMul.x, ImGuiColorEditFlags_Float);
+		if (P.bColorMulLerp)
+		{
+			ImGui::Indent(24.f);
+			ImGui::ColorEdit4("Color Mul End", &P.vColorMulEnd.x, ImGuiColorEditFlags_Float);
+			ImGui::Unindent(24.f);
+		}
+		if (bShowOffset)
+		{
+			ImGui::Checkbox("##ColorOffsetLerp", &P.bColorOffsetLerp);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Lerp Color Offset from Start to End over the lifetime.");
+			ImGui::SameLine();
+			ImGui::DragFloat4(P.bColorOffsetLerp ? "Color Offset Start" : "Color Offset",
+				&P.vColorOffset.x, 0.01f, -1.f, 1.f);
+			if (P.bColorOffsetLerp)
+			{
+				ImGui::Indent(24.f);
+				ImGui::DragFloat4("Color Offset End", &P.vColorOffsetEnd.x, 0.01f, -1.f, 1.f);
+				ImGui::Unindent(24.f);
+			}
+		}
+		if ((P.bColorMulLerp || (bShowOffset && P.bColorOffsetLerp)) && P.fLifetime <= 0.f)
+			ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f), "Lifetime is 0: color stays at Start.");
+	}
+
+	void Draw_PlaybackSection(Client::CEffectV2Object::PARAMS& P, const bool_t bFinished)
+	{
+		ImGui::SeparatorText("Playback");
+		ImGui::DragFloat("Lifetime (s, 0 = infinite)", &P.fLifetime, 0.05f, 0.f, 600.f);
+		ImGui::Checkbox("Loop", &P.bLoop);
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(120.f);
+		ImGui::DragFloat("Play Rate", &P.fPlayRate, 0.01f, 0.f, 16.f);
+		if (bFinished)
+			ImGui::TextDisabled("Finished (lifetime reached). Restart to replay.");
+	}
+}
+
 void Client::CEffect_Tool_V2::Render_TuningPanel()
 {
 	if (!m_bTuningWindowOpen)
@@ -1785,9 +1873,22 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		return;
 	}
 	CEffectV2Object::PARAMS& P = pPreview->Params();
+	const CEffectV2Object::SHAPE eShape = pPreview->Shape();
+	constexpr const char* SHAPE_LABELS[] = { "Mesh", "Sprite", "Particle", "Decal", "Trail", "Screen Post" };
+	static_assert(_countof(SHAPE_LABELS) == static_cast<size_t>(CEffectV2Object::SHAPE::END));
 	ImGui::Text("%s | %.2fs | life %.2f | %s",
-		CEffectV2Object::SHAPE::MESH == pPreview->Shape() ? "Mesh" : "Sprite",
+		SHAPE_LABELS[static_cast<size_t>(eShape)],
 		pPreview->Time(), pPreview->Life_Ratio(), pPreview->Status().c_str());
+	if (CEffectV2Object::SHAPE::PARTICLE == eShape)
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("| %u particles", pPreview->Particle_Count());
+	}
+	else if (CEffectV2Object::SHAPE::TRAIL == eShape)
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("| %u points", pPreview->Trail_PointCount());
+	}
 	if (ImGui::Button("Restart"))
 		pPreview->Restart();
 	ImGui::SameLine();
@@ -1808,6 +1909,57 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 				XMLoadFloat4(pCameraPosition) + Look * 3.f));
 		}
 	}
+	if (CEffectV2Object::SHAPE::SCREEN_POST == eShape)
+	{
+		CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
+		ImGui::SeparatorText("Screen Post (full-screen)");
+		int32_t iProfile = static_cast<int32_t>(S.eProfile);
+		if (ImGui::Combo("Profile", &iProfile, "Zoom Blur\0RGB Noise (chromatic)\0Film Noise\0"))
+			S.eProfile = static_cast<CEffectV2Object::SCREEN_POST_PROFILE>(iProfile);
+		const char* pIntensityLabel = "Intensity";
+		const char* pSecondaryLabel = "Secondary";
+		const char* pHint = "";
+		switch (S.eProfile)
+		{
+		case CEffectV2Object::SCREEN_POST_PROFILE::RGB_NOISE:
+			pIntensityLabel = "Chromatic Offset (0-8)";
+			pSecondaryLabel = "Grain Amount (0-8)";
+			pHint = "R/B channels shift by a per-pixel noise * Intensity; Secondary adds tinted grain. Frequency = noise refresh rate.";
+			break;
+		case CEffectV2Object::SCREEN_POST_PROFILE::FILM_NOISE:
+			pIntensityLabel = "Grain (0-8)";
+			pSecondaryLabel = "Scanline (0-8)";
+			pHint = "Tinted grain + horizontal scanlines. Frequency scales both.";
+			break;
+		default:
+			pIntensityLabel = "Blur Strength (0-8)";
+			pSecondaryLabel = "Mix (0-1, 0 = use strength)";
+			pHint = "8-tap radial blur from screen centre. Tint multiplies the blurred layer.";
+			break;
+		}
+		ImGui::Checkbox("Intensity Lerp over Lifetime", &S.bIntensityLerp);
+		ImGui::DragFloat(S.bIntensityLerp ? "Intensity Start" : pIntensityLabel,
+			&S.fIntensityStart, 0.01f, 0.f, 8.f);
+		if (S.bIntensityLerp)
+		{
+			ImGui::DragFloat("Intensity End", &S.fIntensityEnd, 0.01f, 0.f, 8.f);
+			if (P.fLifetime <= 0.f)
+				ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f),
+					"Lifetime is 0: intensity stays at Start.");
+		}
+		ImGui::DragFloat(pSecondaryLabel, &S.fSecondaryIntensity, 0.01f, 0.f, 8.f);
+		ImGui::DragFloat("Frequency", &S.fFrequency, 0.01f, 0.f, 64.f);
+		ImGui::ColorEdit4("Tint", &S.vTint.x, ImGuiColorEditFlags_Float);
+		int32_t iSeed = static_cast<int32_t>(S.iRandomSeed);
+		if (ImGui::InputInt("Random Seed", &iSeed))
+			S.iRandomSeed = static_cast<uint32_t>((std::max)(1, iSeed));
+		ImGui::TextDisabled("%s", pHint);
+		ImGui::TextDisabled("Now: intensity %.2f", pPreview->ScreenPost_Intensity());
+		Draw_PlaybackSection(P, pPreview->Is_Finished());
+		ImGui::End();
+		return;
+	}
+
 	const bool_t bLifetimeKnown = P.fLifetime > 0.f;
 	const bool_t bAnyLerp =
 		P.Position.bLerp || P.Rotation.bLerp || P.Scale.bLerp || P.Velocity.bLerp;
@@ -1827,8 +1979,14 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Parent pivot. Position/Rotation/Scale/Velocity below are relative to it.");
 	Draw_LerpTrack("Position", P.Position, 0.05f, -1000.f, 1000.f);
+	const bool_t bTrailCenterline = CEffectV2Object::SHAPE::TRAIL == eShape &&
+		CEffectV2Object::TRAIL_EDGE_MODE::LOCAL_OFFSET != P.Trail.eEdgeMode;
+	ImGui::BeginDisabled(bTrailCenterline);
 	Draw_LerpTrack("Rotation (deg)", P.Rotation, 1.f, -3600.f, 3600.f);
 	Draw_LerpTrack("Scale", P.Scale, 0.01f, 0.001f, 1000.f);
+	ImGui::EndDisabled();
+	if (bTrailCenterline)
+		ImGui::TextDisabled("Centerline trail samples the pivot position only: use Start/End Width for thickness, Point Lifetime for length.");
 	Draw_LerpTrack("Velocity (m/s)", P.Velocity, 0.05f, -1000.f, 1000.f);
 	if (CEffectV2Object::SHAPE::MESH == pPreview->Shape())
 	{
@@ -1844,6 +2002,150 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::SameLine();
 		if (ImGui::SmallButton("0.0001"))
 			P.fMeshPreScale = 0.0001f;
+	}
+
+	if (CEffectV2Object::SHAPE::PARTICLE == eShape)
+	{
+		CEffectV2Object::PARTICLE_PARAMS& E = P.Particle;
+		ImGui::SeparatorText("Particle Emitter");
+		int32_t iMax = static_cast<int32_t>(E.iMaxParticles);
+		if (ImGui::DragInt("Max Particles", &iMax, 1.f, 1, 2048))
+			E.iMaxParticles = static_cast<uint32_t>((std::max)(1, iMax));
+		ImGui::DragFloat("Spawn Rate (/s)", &E.fSpawnRate, 0.5f, 0.f, 2048.f);
+		int32_t iBurst = static_cast<int32_t>(E.iBurstCount);
+		if (ImGui::DragInt("Burst Count", &iBurst, 1.f, 0, 2048))
+			E.iBurstCount = static_cast<uint32_t>((std::max)(0, iBurst));
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Spawned at once on Restart and on every lifetime loop.");
+		ImGui::DragFloat2("Particle Lifetime (s min/max)", &E.vLifetime.x, 0.01f, 0.01f, 60.f);
+		if (E.vLifetime.y < E.vLifetime.x)
+			E.vLifetime.y = E.vLifetime.x;
+		int32_t iSeed = static_cast<int32_t>(E.iRandomSeed);
+		if (ImGui::InputInt("Random Seed", &iSeed))
+			E.iRandomSeed = static_cast<uint32_t>((std::max)(1, iSeed));
+		ImGui::Checkbox("Local Space", &E.bLocalSpace);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("On: particles move with the pivot/transform. Off: particles are left behind in the world.");
+
+		ImGui::SeparatorText("Spawn Shape");
+		int32_t iShape = static_cast<int32_t>(E.eSpawnShape);
+		if (ImGui::Combo("Shape", &iShape, "Point\0Sphere\0Ring\0Box\0"))
+			E.eSpawnShape = static_cast<CEffectV2Object::PARTICLE_SPAWN_SHAPE>(iShape);
+		if (CEffectV2Object::PARTICLE_SPAWN_SHAPE::SPHERE == E.eSpawnShape ||
+			CEffectV2Object::PARTICLE_SPAWN_SHAPE::RING == E.eSpawnShape)
+		{
+			ImGui::DragFloat("Radius", &E.fSpawnRadius, 0.01f, 0.f, 100.f);
+			ImGui::DragFloat("Inner Radius", &E.fSpawnInnerRadius, 0.01f, 0.f, 100.f);
+			if (E.fSpawnInnerRadius > E.fSpawnRadius)
+				E.fSpawnInnerRadius = E.fSpawnRadius;
+		}
+		if (CEffectV2Object::PARTICLE_SPAWN_SHAPE::RING == E.eSpawnShape)
+			ImGui::DragFloat("Arc (deg)", &E.fSpawnArcDegrees, 1.f, 0.f, 360.f);
+		if (CEffectV2Object::PARTICLE_SPAWN_SHAPE::BOX == E.eSpawnShape)
+			ImGui::DragFloat3("Half Extents", &E.vSpawnExtents.x, 0.01f, 0.f, 100.f);
+
+		ImGui::SeparatorText("Initial Velocity");
+		int32_t iVelocity = static_cast<int32_t>(E.eVelocityMode);
+		if (ImGui::Combo("Mode", &iVelocity, "Fixed (random box)\0Outward\0Cone (+Y)\0"))
+			E.eVelocityMode = static_cast<CEffectV2Object::PARTICLE_VELOCITY_MODE>(iVelocity);
+		if (CEffectV2Object::PARTICLE_VELOCITY_MODE::FIXED == E.eVelocityMode)
+		{
+			ImGui::DragFloat3("Velocity Min (m/s)", &E.vVelocityMin.x, 0.05f, -100.f, 100.f);
+			ImGui::DragFloat3("Velocity Max (m/s)", &E.vVelocityMax.x, 0.05f, -100.f, 100.f);
+		}
+		else
+		{
+			ImGui::DragFloat2("Speed (m/s min/max)", &E.vSpeedRange.x, 0.05f, 0.f, 100.f);
+			if (E.vSpeedRange.y < E.vSpeedRange.x)
+				E.vSpeedRange.y = E.vSpeedRange.x;
+		}
+		if (CEffectV2Object::PARTICLE_VELOCITY_MODE::CONE == E.eVelocityMode)
+			ImGui::DragFloat("Cone Half Angle (deg)", &E.fConeAngleDegrees, 0.5f, 0.f, 180.f);
+		ImGui::DragFloat3("Acceleration (m/s^2)", &E.vAcceleration.x, 0.05f, -100.f, 100.f);
+		ImGui::DragFloat("Drag", &E.fDrag, 0.01f, 0.f, 20.f);
+
+		ImGui::SeparatorText("Particle Size / Rotation");
+		ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
+		ImGui::DragFloat2("Size End (m)", &E.vSizeEnd.x, 0.005f, 0.f, 100.f);
+		ImGui::DragFloat2("Rotation (deg min/max)", &E.vRotationRange.x, 1.f, -360.f, 360.f);
+		ImGui::DragFloat2("Spin (deg/s min/max)", &E.vSpinRange.x, 1.f, -3600.f, 3600.f);
+		int32_t iAlignment = static_cast<int32_t>(E.eAlignment);
+		if (ImGui::Combo("Alignment", &iAlignment, "Camera\0Velocity\0Horizontal\0"))
+			E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
+
+		ImGui::SeparatorText("Particle Color / Sub-UV");
+		ImGui::ColorEdit4("Color Start", &E.vColorStart.x, ImGuiColorEditFlags_Float);
+		ImGui::ColorEdit4("Color End", &E.vColorEnd.x, ImGuiColorEditFlags_Float);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Multiplied with Color Mul below over each particle's life.");
+		int32_t iColumns = static_cast<int32_t>(E.iTileColumns);
+		int32_t iRows = static_cast<int32_t>(E.iTileRows);
+		ImGui::SetNextItemWidth(90.f);
+		if (ImGui::InputInt("##TileColumns", &iColumns))
+			E.iTileColumns = static_cast<uint32_t>((std::max)(1, iColumns));
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(90.f);
+		if (ImGui::InputInt("Atlas Columns x Rows", &iRows))
+			E.iTileRows = static_cast<uint32_t>((std::max)(1, iRows));
+		ImGui::Checkbox("Play Atlas Over Life", &E.bSubUVOverLife);
+	}
+	else if (CEffectV2Object::SHAPE::DECAL == eShape)
+	{
+		CEffectV2Object::DECAL_PARAMS& D = P.Decal;
+		ImGui::SeparatorText("Decal Projection");
+		ImGui::DragFloat2("Size X/Z (m)", &D.vSize.x, 0.01f, 0.01f, 100.f);
+		ImGui::DragFloat("Depth Y (m)", &D.fDepth, 0.01f, 0.01f, 100.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Projection thickness along the pivot's local Y. Surfaces outside +-Depth/2 are not painted.");
+		ImGui::SliderFloat("Edge Fade", &D.fEdgeFade, 0.f, 1.f);
+		ImGui::SliderFloat("Normal Cutoff (-1 = off)", &D.fNormalCutoff, -1.f, 1.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Skip surfaces whose normal deviates from the decal's up axis. 0.5 keeps ground/slopes and drops legs/walls; -1 paints everything inside the box.");
+		ImGui::TextDisabled("Projects onto the opaque scene depth. Rotation/Scale tracks tilt and scale the box.");
+	}
+	else if (CEffectV2Object::SHAPE::TRAIL == eShape)
+	{
+		CEffectV2Object::TRAIL_PARAMS& T = P.Trail;
+		ImGui::SeparatorText("Trail Ribbon");
+		int32_t iPoints = static_cast<int32_t>(T.iMaxPoints);
+		if (ImGui::DragInt("Max Points", &iPoints, 1.f, 2, 4096))
+			T.iMaxPoints = static_cast<uint32_t>((std::max)(2, iPoints));
+		ImGui::DragFloat("Point Lifetime (s)", &T.fPointLifetime, 0.01f, 0.01f, 30.f);
+		ImGui::DragFloat("Sample Interval (s)", &T.fSampleInterval, 0.001f, 0.f, 1.f, "%.3f");
+		ImGui::DragFloat("Min Distance (m)", &T.fMinDistance, 0.001f, 0.f, 10.f, "%.3f");
+		int32_t iEdge = static_cast<int32_t>(T.eEdgeMode);
+		if (ImGui::Combo("Edge Mode", &iEdge, "Centerline (face camera)\0Centerline (world up)\0Local Offset (pivot -> offset)\0"))
+			T.eEdgeMode = static_cast<CEffectV2Object::TRAIL_EDGE_MODE>(iEdge);
+		if (CEffectV2Object::TRAIL_EDGE_MODE::LOCAL_OFFSET == T.eEdgeMode)
+		{
+			ImGui::DragFloat3("Edge Offset (pivot local, m)", &T.vEdgeOffset.x, 0.01f, -100.f, 100.f);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Second ribbon edge = this offset in pivot space (e.g. blade tip). Width fields are ignored.");
+		}
+		else
+		{
+			ImGui::DragFloat("Start Width (m)", &T.fStartWidth, 0.01f, 0.f, 100.f);
+			ImGui::DragFloat("End Width (m)", &T.fEndWidth, 0.01f, 0.f, 100.f);
+		}
+		ImGui::DragFloat("Tiling Distance (m, 0 = per point)", &T.fTilingDistance, 0.01f, 0.f, 100.f);
+		ImGui::Checkbox("Fade With Age", &T.bFadeWithAge);
+		ImGui::TextDisabled("A trail only appears while the pivot moves: attach to a bone, give it a Velocity, or use Test Orbit.");
+		if (ImGui::Checkbox("Test Orbit (pivot circles in place)", &m_bTestOrbit) && m_bTestOrbit)
+		{
+			m_vTestOrbitCenter = float3_t(
+				pPreview->PivotWorld()._41, pPreview->PivotWorld()._42, pPreview->PivotWorld()._43);
+			m_fTestOrbitAngle = 0.f;
+			m_ePivotMode = PIVOT_MODE::WORLD;
+		}
+		if (m_bTestOrbit)
+		{
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(80.f);
+			ImGui::DragFloat("Radius", &m_fTestOrbitRadius, 0.05f, 0.1f, 20.f);
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(80.f);
+			ImGui::DragFloat("rad/s", &m_fTestOrbitSpeed, 0.05f, 0.1f, 20.f);
+		}
 	}
 
 	if (pPreview->Is_Skinned())
@@ -1887,8 +2189,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	}
 
 	ImGui::SeparatorText("Color");
-	ImGui::ColorEdit4("Color Mul", &P.vColorMul.x, ImGuiColorEditFlags_Float);
-	ImGui::DragFloat4("Color Offset", &P.vColorOffset.x, 0.01f, -1.f, 1.f);
+	Draw_ColorTracks(P, true);
 	int32_t iClipChannel = static_cast<int32_t>(P.eColorClipChannel);
 	ImGui::SetNextItemWidth(90.f);
 	if (ImGui::Combo("##ClipChannel", &iClipChannel, "RGB\0Alpha\0"))
@@ -1985,9 +2286,15 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	int32_t iBlend = static_cast<int32_t>(P.eBlend);
 	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0Opaque\0"))
 		P.eBlend = static_cast<CEffectV2Object::BLEND_MODE>(iBlend);
-	ImGui::BeginDisabled(CEffectV2Object::BLEND_MODE::SOLID == P.eBlend);
+	ImGui::BeginDisabled(CEffectV2Object::BLEND_MODE::SOLID == P.eBlend ||
+		CEffectV2Object::SHAPE::DECAL == eShape);
 	ImGui::Checkbox("Depth Test", &P.bDepthTest);
 	ImGui::EndDisabled();
+	if (CEffectV2Object::SHAPE::DECAL == eShape)
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("(decal: Alpha/Additive only, no depth test)");
+	}
 	if (CEffectV2Object::SHAPE::SPRITE == pPreview->Shape())
 	{
 		ImGui::SameLine();
@@ -2017,9 +2324,11 @@ std::string& Client::CEffect_Tool_V2::Current_SlotAssetId()
 
 bool_t Client::CEffect_Tool_V2::Slot_VisibleForType(const RESOURCE_SLOT eSlot) const
 {
+	if (EFFECT_TYPE::SCREEN_POST == m_eType)
+		return false;
 	if (RESOURCE_SLOT::MESH != eSlot)
 		return true;
-	return EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::PARTICLE == m_eType;
+	return EFFECT_TYPE::MESH == m_eType;
 }
 
 Client::CEffect_Tool_V2::RESOURCE_KIND Client::CEffect_Tool_V2::Slot_Kind(
@@ -2038,6 +2347,7 @@ const char* Client::CEffect_Tool_V2::Type_Label(const EFFECT_TYPE eType)
 	case EFFECT_TYPE::PARTICLE: return "Particle";
 	case EFFECT_TYPE::DECAL: return "Decal";
 	case EFFECT_TYPE::TRAIL: return "Trail";
+	case EFFECT_TYPE::SCREEN_POST: return "Screen Post";
 	default: return "Unknown";
 	}
 }

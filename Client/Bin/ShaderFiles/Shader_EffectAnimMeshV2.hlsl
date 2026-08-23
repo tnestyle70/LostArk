@@ -28,6 +28,7 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = normalize(mul(skinnedNormal, (float3x3)g_WorldMatrix));
 	output.vWorldPosition = worldPosition.xyz;
+	output.vInstanceColor = float4(1.f, 1.f, 1.f, 1.f);
 	return output;
 }
 

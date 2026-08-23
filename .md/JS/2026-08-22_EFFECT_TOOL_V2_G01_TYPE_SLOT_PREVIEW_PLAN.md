@@ -342,7 +342,88 @@ CNpc::Update 끝 → Tick_Npc(npc)
 
 ### 다음 단계(미구현)
 
-플레이어 캐릭터 타깃(`CAnimationTargetService` 경로·`CCharacter` 훅)은 G12.
+플레이어 캐릭터 타깃(`CAnimationTargetService` 경로·`CCharacter` 훅)은 별도 G.
+
+## G12 범위 — Particle / Decal / Trail shape (2026-08-23, 브랜치 `feature/effect-tool-v2-families`)
+
+결정(2026-08-23, 사용자): Particle은 **Sprite 파티클만**(Mesh 파티클은 후속), Trail은 **Centerline + Local Offset 둘 다**, Decal은 **깊이 프로젝터**(v1과 같은 방식).
+v1 조사 결과 Engine에는 `CVIBuffer_ParticleRect`(인스턴스 2048 cap, `VTXEFFECT_PARTICLE` = World 4행 + Color + Dynamic + UVTransform×2 + ParticleData,
+`Update_Instances(span)`, `Render()`가 `Bind_Resources` 포함)와 `CVIBuffer_DynamicTrail`(`VTXEFFECT_TRAIL` = pos/uv/color/dyn, `Update_Geometry(vertices, indices)`,
+Render 전 `Bind_Resources()` 필요)이 있고 시뮬레이션(스폰·속도·수명·트레일 점 추가)은 v1 `CEffectPlayback`에 있다. v2는 같은 Engine 버퍼를 쓰되 시뮬레이션은
+`CEffectV2Object` 안에 둔다(별도 Playback 클래스 없음). 깊이 복원은 `Target_Depth`(`x = z/w`, `y = viewZ/1000`)를 `Bind_RT_SRV`로 읽는 v1 방식 그대로다.
+
+### `CEffectV2Object` (`EffectV2_Object.h/.cpp`)
+
+- `SHAPE { MESH, SPRITE, PARTICLE, DECAL, TRAIL }`. `EFFECT_V2_TYPE → SHAPE` 매핑은 `CEffectV2Document::Shape_ForType`(Mesh→MESH, Texture→SPRITE, 나머지 동명)
+  한 곳만 소유하고 Parse/Try_CreatePreview가 함께 쓴다.
+- 새 enum: `PARTICLE_SPAWN_SHAPE {POINT, SPHERE, RING, BOX}`, `PARTICLE_VELOCITY_MODE {FIXED, OUTWARD, CONE}`, `PARTICLE_ALIGNMENT {CAMERA, VELOCITY, HORIZONTAL}`,
+  `TRAIL_EDGE_MODE {CENTERLINE_CAMERA, CENTERLINE_UP, LOCAL_OFFSET}`.
+- `PARAMS`에 `PARTICLE_PARAMS Particle / DECAL_PARAMS Decal / TRAIL_PARAMS Trail` 세 서브 struct 추가(모든 타입이 같은 PARAMS를 들고 자기 shape 것만 쓴다).
+  - `PARTICLE_PARAMS`: `iMaxParticles 256`, `fSpawnRate 20/s`, `iBurstCount 0`(Restart·loop wrap마다), `vLifetime {0.5,1}`, spawn shape + `fSpawnRadius/fSpawnInnerRadius/vSpawnExtents/fSpawnArcDegrees`,
+    velocity mode + `vVelocityMin/Max`(FIXED) 또는 `vSpeedRange`+`fConeAngleDegrees`(OUTWARD/CONE, CONE은 pivot 로컬 +Y 기준), `vAcceleration {0,-1,0}`, `fDrag`,
+    `vSizeStart/End`(m), `vRotationRange/vSpinRange`(deg, deg/s), `vColorStart/End`(인스턴스 색 → 셰이더 `vInstanceColor`로 `g_ColorMul`과 곱), alignment, `bLocalSpace true`,
+    `iTileColumns/iTileRows/bSubUVOverLife`(아틀라스 프레임 = life × cols×rows), `iRandomSeed`(xorshift32, Restart마다 재시드 → 결정적).
+  - `DECAL_PARAMS`: `vSize {1,1}`(pivot 로컬 XZ), `fDepth 0.5`(로컬 Y 두께), `fEdgeFade 0`(박스 경계 알파 페이드).
+  - `TRAIL_PARAMS`: `iMaxPoints 64`, `fPointLifetime 0.35`, `fSampleInterval 1/60`, `fMinDistance 0.01`, `fStartWidth/fEndWidth`(Centerline 폭, age로 lerp),
+    `fTilingDistance`(0이면 점 인덱스가 U), `eEdgeMode`, `vEdgeOffset {0,1,0}`(LOCAL_OFFSET: 두 번째 가장자리 = pivot 로컬 offset을 월드로 변환 — 칼날 끝),
+    `bFadeWithAge true`(정점 알파 = 1-age).
+- Initialize: shape별 버퍼 — SPRITE/DECAL은 `CVIBuffer_Rect`, PARTICLE은 `CVIBuffer_ParticleRect::Create(maxParticles clamp 1..2048)`, TRAIL은 `CVIBuffer_DynamicTrail::Create(maxPoints clamp 2..4096)`.
+  셰이더 선택은 `Acquire_ShapeShader(shape, skinned)` 하나로 모아 Initialize와 `Prewarm`이 같이 쓴다(런타임 `Prewarm_Archetype`는 수정 없음).
+- Update 순서: follow pivot → `fStep` → (emission 중이면) displacement/time/애니 진행 → `Apply_Transform` → shape별 `Update_Particles`/`Update_Trail`(월드 행렬 확정 후) →
+  `Advance_Lifetime`. lifetime 만료 시 loop면 wrap(+burst 재무장), 아니면 MESH/SPRITE/DECAL은 즉시 finish, **PARTICLE/TRAIL은 `m_bEmissionStopped`만 세우고 남은 파티클/점이 다 죽은 뒤 finish**.
+- 파티클 시뮬: age/kill → `v += a·dt`, drag, `p += v·dt`, spin → burst → `accumulator += rate·dt` 만큼 스폰(가득 차면 accumulator 1로 clamp). Local Space면 위치/속도를 pivot 로컬로 들고
+  렌더 때 현재 effect world로 변환(에미터가 따라 움직임), World Space면 스폰 시점 world로 변환해 저장(뒤에 남음).
+- 파티클 인스턴스 행렬(`Build_ParticleInstances`, Render 시): CAMERA = 카메라 right/up + roll, VELOCITY = 카메라 평면에 투영한 속도가 up, HORIZONTAL = X/Z 평면(+roll). 크기 m, rect 1×1.
+  `UVTransform = (1/cols, 1/rows, col/cols, row/rows)`. `Update_Instances` 후 `Render()`.
+- 트레일 샘플(`Update_Trail`): 점 age += dt/pointLifetime, 만료 제거 → `sampleInterval`마다 현재 world 위치(+LOCAL_OFFSET이면 edge)를 `minDistance` 이상일 때만 push, `maxPoints` 초과 시 앞에서 제거.
+  `Build_TrailGeometry`(Render 시): Centerline은 tangent(next-prev) × (camera-view | world up, 실패 시 X) 로 side, 폭 age-lerp; LOCAL_OFFSET은 center/edge 그대로. U = cumDist/tiling 또는 index,
+  V = 0/1. 인덱스 `{b, b+1, b+2, b+1, b+3, b+2}`. 정점은 월드 공간이라 셰이더는 `g_WorldMatrix`를 쓰지 않는다.
+- Decal(`Render_Decal`): `g_DecalWorldInverse`(effect world 역행렬, 특이행렬이면 skip), `g_ViewMatrixInverse/g_ProjMatrixInverse`, `g_DecalSize/Depth/EdgeFade`, `Bind_RT_SRV("Target_Depth")`.
+  풀스크린 rect, 패스 `Alpha(0)/Additive(1)`(`DSS_ZNone`, SOLID은 Alpha로). Position/Rotation/Scale 트랙이 박스를 옮기고 기울이고 키운다.
+- 기존 SPRITE 경로에 `m_pRect->Bind_Resources()`를 Render 전에 추가(이전엔 직전 드로우의 VB에 우연히 의존했다). Decal도 같은 rect를 바인드한다.
+
+### 셰이더
+
+- `Shader_EffectV2_Common.hlsli`: `PS_EFFECT_IN`에 `float4 vInstanceColor : COLOR0` 추가, PS가 `rgb *= vInstanceColor.rgb`, `a *= vInstanceColor.a`(둘 다 offset 전). Mesh/AnimMesh/Rect VS는 `(1,1,1,1)`.
+- 새 `Shader_EffectParticleV2.hlsl`(`VTXEFFECT_PARTICLE` 레이아웃, 인스턴스 4행 → world, `uv = uv*UVTransform.xy+zw`, `vInstanceColor = COLOR0`, 공용 5패스),
+  `Shader_EffectTrailV2.hlsl`(`VTXEFFECT_TRAIL`, 정점 월드, 공용 5패스), `Shader_EffectDecalV2.hlsl`(풀스크린 VS, PS: `Target_Depth` → 월드 복원 → 로컬 박스 clip → decalUV로 `PS_EFFECT_V2` 호출 → edge fade; 패스 Alpha/Additive `DSS_ZNone`).
+- `fxc /T fx_5_0`로 6개 전부 컴파일 확인(2026-08-23).
+
+### 문서 (`EffectV2_Document.cpp`)
+
+- `params.particle / params.decal / params.trail` optional 객체(누락 키는 기본값, `formatVersion` 1 유지 — 이전 문서 그대로 로드됨). enum 키: spawnShape `Point|Sphere|Ring|Box`, velocityMode `Fixed|Outward|Cone`,
+  alignment `Camera|Velocity|Horizontal`, edgeMode `CenterlineCamera|CenterlineUp|LocalOffset`. 범위 검증: maxParticles 1..2048, lifetime min>0 ≤ max, tile ≥1, decal size/depth > 0, trail maxPoints 2..4096, pointLifetime > 0.
+- `slots.mesh`는 Mesh 타입만 필수(Particle은 이제 Mesh 슬롯을 쓰지 않음).
+
+### 툴 (`Effect_Tool_V2.cpp`)
+
+- Create: 다섯 타입 모두 Create 가능(Base 필수, Mesh 타입만 Mesh 필수). `Slot_VisibleForType`의 Mesh 슬롯은 Mesh 타입만.
+- Tuning 헤더에 shape 이름과 `N particles` / `N points` 표시. Transform 바로 아래 shape별 섹션:
+  `Particle Emitter / Spawn Shape / Initial Velocity / Particle Size·Rotation / Particle Color·Sub-UV`, `Decal Projection`(Size X/Z, Depth Y, Edge Fade), `Trail Ribbon`(Max Points, Point Lifetime, Sample Interval, Min Distance, Edge Mode, Edge Offset 또는 Start/End Width, Tiling Distance, Fade With Age).
+  Decal은 Depth Test 비활성(안내 문구).
+
+### 검증 (2026-08-23)
+
+- 자동(실행): fxc 6 셰이더 OK, Client Debug x64 MSBuild exit 0(신규 파일 경고 0), `git diff --check` 통과. 새 C++ 파일 없음 → 프로젝트/필터 변경 없음. Engine 변경 없음.
+- 수동(사용자 미확인): Particle 타입 Base 바인드 → Create → 기본 Cone 분수, Spawn Shape/Velocity/Alignment/Color/Atlas 변경 반영, Local Space off 시 Bring To Camera로 자취 남김, Loop off + Lifetime에서 스폰 멈추고 잔여 소멸;
+  Trail 타입 → Create → Velocity 트랙이나 Attach 본 추종으로 리본, Edge Mode 3종, Fade; Decal 타입 → Create → 바닥 위 Pivot으로 내려 지형에 투영, Size/Depth/Edge Fade, Rotation 트랙으로 기울임, Additive.
+- 후속 후보: Mesh 파티클(Mesh 슬롯 + `Render_Mesh` 반복), 파티클별 dissolve(ParticleData.x), Trail 정점 색 텍스처 atlas.
+
+### G12 추가분 (2026-08-23, 사용자 관찰 반영)
+
+- **Decal Normal Cutoff**: 데칼 박스가 웨이 다리까지 칠하던 문제. `DECAL_PARAMS.fNormalCutoff`(기본 0.5, -1 = off) — 셰이더가 `Target_Normal`(xyz×2-1, 월드)을 읽어
+  `dot(N, decalUp) < cutoff`면 clip. `g_DecalUp`은 effect world UP 정규화, `Bind_RT_SRV("Target_Normal")`. 문서 `params.decal.normalCutoff`, Tuning 슬라이더.
+- **Pivot Mode `Target Bone (snap once)`**(`PIVOT_MODE::TARGET_BONE_FIXED`): 소환 마법진처럼 스폰 순간 본 위치만 캡처하고 고정. 모드 선택·`Snap Now`·Spawn Frame 재시작 때
+  `Snap_PivotToTarget()`(`Resolve_TargetPivot` → `PivotWorld`, follow 해제). 바인딩 저장은 `bone=<본>, followBone=false`, 행 표시 `[snap once]`, 행 클릭 시 모드 복원.
+  **런타임 변경**: `followBone=false`여도 스폰 pivot은 bone 위치(이전엔 bone을 무시하고 NPC 루트) — 기존 문서는 모두 followBone=true라 영향 없음.
+- **Screen Post shape**(`SHAPE::SCREEN_POST`, 타입 `Screen Post`/문서 키 `ScreenPost`): 지오메트리·셰이더 없이 `CEffectV2Object`가 `IPresentationProvider`가 되어
+  `Late_Update`에서 `CPresentation_Manager::Add_FrameProvider(self)`, `Submit_Presentation`에서 `Register_ProviderSubmissionExpectation(0,0,1,1)` + `Add_ScreenPost`
+  (실패 시 isolated, scope는 매니저 값). 엔진 기존 `Render_ScreenPosts`(Shader_Deferred ZOOM_BLUR/RGB_NOISE/FILM_NOISE 패스)를 그대로 사용.
+  `SCREEN_POST_PARAMS { eProfile ZoomBlur, fIntensityStart 2 / fIntensityEnd 0 / bIntensityLerp(life ratio), fSecondaryIntensity, fFrequency 1, vTint, iRandomSeed }`.
+  셰이더 의미: ZoomBlur = Intensity 강도(×0.025 uv, 8탭)·Secondary mix(0이면 Intensity)·Tint 블러층 색; RgbNoise = Intensity 색수차 오프셋·Secondary 그레인·Frequency 갱신율;
+  FilmNoise = Intensity 그레인·Secondary 스캔라인. 슬롯 카드 전부 숨김, Create에 Base 불필요, Tuning은 Screen Post + Playback만. 문서 `params.screenPost`.
+  바인딩/런타임은 다른 shape와 동일 경로(pivot 무시). `Render()`는 SCREEN_POST면 no-op.
+- 자동(실행): fxc Decal 재컴파일 OK, Client Debug x64 MSBuild exit 0 ×3, 신규 경고 0. 수동(사용자): 데칼 NPC 발밑 표시 확인됨(2026-08-23), Normal Cutoff·snap once·Screen Post는 미확인.
 
 ## G08 — 인버티드 헐 Outline (추가 후 제거, 2026-08-22)
 
@@ -358,7 +439,8 @@ pass 5 `Outline`(CullFront, 노말 방향 월드 m 밀어내기, 단색) + Tunin
 | `Client/Private/Effect_Tool_V2.cpp` (새) | 스캔/미리보기/썸네일/ImGui |
 | `Client/Bin/ShaderFiles/Shader_VtxAnimMeshPreview_V2.hlsl` (새) | 스킨 메시 썸네일 셰이더 |
 | `Client/Public/Effect_Preview_V2.h`, `Client/Private/Effect_Preview_V2.cpp` (새, G04에서 PARAMS/pivot/lerp/velocity 재구성) | 월드 preview GameObject |
-| `Client/Bin/ShaderFiles/Shader_EffectV2_Common.hlsli` (새, G04에서 상수·PS 출력·블렌드 교체), `Shader_EffectMeshV2.hlsl`, `Shader_EffectAnimMeshV2.hlsl`, `Shader_EffectRectV2.hlsl` (새) | preview 셰이더 |
+| `Client/Bin/ShaderFiles/Shader_EffectV2_Common.hlsli` (새, G04에서 상수·PS 출력·블렌드 교체, G12에서 `vInstanceColor`), `Shader_EffectMeshV2.hlsl`, `Shader_EffectAnimMeshV2.hlsl`, `Shader_EffectRectV2.hlsl` (새) | preview 셰이더 |
+| `Client/Bin/ShaderFiles/Shader_EffectParticleV2.hlsl`, `Shader_EffectTrailV2.hlsl`, `Shader_EffectDecalV2.hlsl` (새, G12) | Particle 인스턴싱 / Trail 리본 / Decal 깊이 프로젝터 셰이더 |
 | `Tools/EffectToolV2/build_texture_slot_usage.py` (새) | 슬롯 사용 사이드카 생성기 |
 | `Data/Effects/V2/TextureSlotUsage.v1.json` (생성물, Git 추적) | 텍스처→슬롯 사용 횟수 |
 | `Client/Public/MainApp.h`, `Client/Private/MainApp.cpp` | `DEBUG_TOOL::EFFECT_V2`, 멤버, 버튼/생성/Render/Free |
@@ -475,6 +557,7 @@ private:
 	{
 		WORLD,
 		TARGET_BONE,
+		TARGET_BONE_FIXED,
 		END
 	};
 
@@ -525,6 +608,7 @@ private:
 	void Despawn_Target();
 	void Move_Target(const float3_t& vPosition, f32_t fYawDegrees);
 	void Update_Attach(f32_t fTimeDelta);
+	void Snap_PivotToTarget();
 	bool_t Save_Bindings();
 	bool_t Load_Bindings(const std::string& strArchetypeId);
 	static bool_t Collect_BoneNames(
@@ -1591,11 +1675,9 @@ void Client::CEffect_Tool_V2::Render_CreatePanel()
 {
 	ImGui::TextUnformatted("World Preview");
 	const SLOT_BINDINGS& Bindings = Current_Bindings();
-	const bool_t bMeshType =
-		EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::PARTICLE == m_eType;
-	const bool_t bSupportedType =
-		EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::TEXTURE == m_eType;
-	const bool_t bHasBase =
+	const bool_t bMeshType = EFFECT_TYPE::MESH == m_eType;
+	const bool_t bSupportedType = true;
+	const bool_t bHasBase = EFFECT_TYPE::SCREEN_POST == m_eType ||
 		!Bindings[static_cast<size_t>(RESOURCE_SLOT::BASE)].empty();
 	const bool_t bHasMesh =
 		!Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)].empty();
@@ -1613,9 +1695,7 @@ void Client::CEffect_Tool_V2::Render_CreatePanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Attach..."))
 		m_bAttachWindowOpen = true;
-	if (!bSupportedType)
-		ImGui::TextDisabled("Only Mesh and Texture types can be previewed yet.");
-	else if (!bHasBase)
+	if (!bHasBase)
 		ImGui::TextDisabled("Bind a Base texture first.");
 	else if (bMeshType && !bHasMesh)
 		ImGui::TextDisabled("Bind a Mesh first.");
@@ -1627,8 +1707,7 @@ bool_t Client::CEffect_Tool_V2::Try_CreatePreview()
 {
 	const SLOT_BINDINGS& Bindings = Current_Bindings();
 	CEffectV2Object::DESC Desc{};
-	Desc.eShape = EFFECT_TYPE::MESH == m_eType ?
-		CEffectV2Object::SHAPE::MESH : CEffectV2Object::SHAPE::SPRITE;
+	Desc.eShape = CEffectV2Document::Shape_ForType(m_eType);
 	Desc.strMeshAssetId = Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)];
 	for (int32_t iSlot = static_cast<int32_t>(RESOURCE_SLOT::BASE);
 		iSlot < static_cast<int32_t>(RESOURCE_SLOT::END); ++iSlot)
@@ -2025,6 +2104,7 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 		else if (pPreview->Has_FollowTarget())
 			pPreview->Clear_FollowTarget();
 	}
+	const bool_t bSnapOnRestart = PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode;
 	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
 		return;
 	const std::shared_ptr<Engine::CModel> pModel = pNpc->Get_Model();
@@ -2041,11 +2121,33 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 		m_fTargetLastClipSeconds >= 0.f && m_fTargetLastClipSeconds < fSpawnSeconds &&
 		fSeconds >= fSpawnSeconds)
 	{
+		if (bSnapOnRestart)
+			Snap_PivotToTarget();
 		pPreview->Restart();
 	}
 	if (fSeconds < m_fTargetLastClipSeconds && nullptr != pPreview && 0 == m_iSpawnFrame)
+	{
+		if (bSnapOnRestart)
+			Snap_PivotToTarget();
 		pPreview->Restart();
+	}
 	m_fTargetLastClipSeconds = fSeconds;
+}
+
+void Client::CEffect_Tool_V2::Snap_PivotToTarget()
+{
+	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
+	const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
+	if (nullptr == pNpc || nullptr == pPreview)
+		return;
+	float4x4_t Pivot;
+	if (!CEffectV2Object::Resolve_TargetPivot(*pNpc, m_strPivotBone, m_ePivotRotation, Pivot))
+	{
+		m_strAttachStatus = "Snap failed: bone not found " + m_strPivotBone;
+		return;
+	}
+	pPreview->Clear_FollowTarget();
+	pPreview->PivotWorld() = Pivot;
 }
 
 bool_t Client::CEffect_Tool_V2::Load_Bindings(const std::string& strArchetypeId)
@@ -2241,8 +2343,20 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 
 	ImGui::SeparatorText("Effect Pivot");
 	int32_t iMode = static_cast<int32_t>(m_ePivotMode);
-	if (ImGui::Combo("Pivot Mode", &iMode, "World\0Target Bone\0"))
+	if (ImGui::Combo("Pivot Mode", &iMode, "World\0Target Bone (follow)\0Target Bone (snap once)\0"))
+	{
 		m_ePivotMode = static_cast<PIVOT_MODE>(iMode);
+		if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
+			Snap_PivotToTarget();
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("follow: pivot tracks the bone every frame. snap once: pivot is captured from the bone at spawn/restart and then stays put (ground decals, summoning circles).");
+	if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
+	{
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Snap Now"))
+			Snap_PivotToTarget();
+	}
 	ImGui::BeginDisabled(m_TargetBoneNames.empty());
 	if (ImGui::BeginCombo("Pivot Bone", m_strPivotBone.empty() ? "(none)" : m_strPivotBone.c_str()))
 	{
@@ -2281,7 +2395,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		Binding.strClip = pClipForBinding;
 		Binding.iStartMs = static_cast<uint32_t>(
 			static_cast<f32_t>(m_iSpawnFrame) * 1000.f / BINDING_FRAME_RATE);
-		Binding.strBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode ? m_strPivotBone : std::string();
+		Binding.strBone = PIVOT_MODE::WORLD != m_ePivotMode ? m_strPivotBone : std::string();
 		Binding.bFollowBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode;
 		Binding.eRotation = m_ePivotRotation;
 		bool_t bReplaced = false;
@@ -2318,16 +2432,19 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		std::snprintf(szRow, sizeof(szRow), "%s @ %s +%ums %s%s",
 			Binding.strEffectId.c_str(), Binding.strClip.c_str(), Binding.iStartMs,
 			Binding.strBone.empty() ? "(world)" : Binding.strBone.c_str(),
-			Binding.bFollowBone ? "" : " [no follow]");
+			Binding.bFollowBone ? "" : " [snap once]");
 		if (ImGui::Selectable(szRow, false))
 		{
 			std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", Binding.strEffectId.c_str());
 			m_iSpawnFrame = static_cast<int32_t>(
 				static_cast<f32_t>(Binding.iStartMs) * BINDING_FRAME_RATE / 1000.f + 0.5f);
-			m_ePivotMode = Binding.strBone.empty() ? PIVOT_MODE::WORLD : PIVOT_MODE::TARGET_BONE;
+			m_ePivotMode = Binding.strBone.empty() ? PIVOT_MODE::WORLD :
+				(Binding.bFollowBone ? PIVOT_MODE::TARGET_BONE : PIVOT_MODE::TARGET_BONE_FIXED);
 			m_ePivotRotation = Binding.eRotation;
 			if (!Binding.strBone.empty())
 				m_strPivotBone = Binding.strBone;
+			if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
+				Snap_PivotToTarget();
 			if (nullptr != pNpc)
 				pNpc->Set_Animation(Binding.strClip.c_str(), m_bTargetClipLoop);
 		}
@@ -2390,9 +2507,22 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		return;
 	}
 	CEffectV2Object::PARAMS& P = pPreview->Params();
+	const CEffectV2Object::SHAPE eShape = pPreview->Shape();
+	constexpr const char* SHAPE_LABELS[] = { "Mesh", "Sprite", "Particle", "Decal", "Trail", "Screen Post" };
+	static_assert(_countof(SHAPE_LABELS) == static_cast<size_t>(CEffectV2Object::SHAPE::END));
 	ImGui::Text("%s | %.2fs | life %.2f | %s",
-		CEffectV2Object::SHAPE::MESH == pPreview->Shape() ? "Mesh" : "Sprite",
+		SHAPE_LABELS[static_cast<size_t>(eShape)],
 		pPreview->Time(), pPreview->Life_Ratio(), pPreview->Status().c_str());
+	if (CEffectV2Object::SHAPE::PARTICLE == eShape)
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("| %u particles", pPreview->Particle_Count());
+	}
+	else if (CEffectV2Object::SHAPE::TRAIL == eShape)
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("| %u points", pPreview->Trail_PointCount());
+	}
 	if (ImGui::Button("Restart"))
 		pPreview->Restart();
 	ImGui::SameLine();
@@ -2413,6 +2543,65 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 				XMLoadFloat4(pCameraPosition) + Look * 3.f));
 		}
 	}
+	if (CEffectV2Object::SHAPE::SCREEN_POST == eShape)
+	{
+		CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
+		ImGui::SeparatorText("Screen Post (full-screen)");
+		int32_t iProfile = static_cast<int32_t>(S.eProfile);
+		if (ImGui::Combo("Profile", &iProfile, "Zoom Blur\0RGB Noise (chromatic)\0Film Noise\0"))
+			S.eProfile = static_cast<CEffectV2Object::SCREEN_POST_PROFILE>(iProfile);
+		const char* pIntensityLabel = "Intensity";
+		const char* pSecondaryLabel = "Secondary";
+		const char* pHint = "";
+		switch (S.eProfile)
+		{
+		case CEffectV2Object::SCREEN_POST_PROFILE::RGB_NOISE:
+			pIntensityLabel = "Chromatic Offset (0-8)";
+			pSecondaryLabel = "Grain Amount (0-8)";
+			pHint = "R/B channels shift by a per-pixel noise * Intensity; Secondary adds tinted grain. Frequency = noise refresh rate.";
+			break;
+		case CEffectV2Object::SCREEN_POST_PROFILE::FILM_NOISE:
+			pIntensityLabel = "Grain (0-8)";
+			pSecondaryLabel = "Scanline (0-8)";
+			pHint = "Tinted grain + horizontal scanlines. Frequency scales both.";
+			break;
+		default:
+			pIntensityLabel = "Blur Strength (0-8)";
+			pSecondaryLabel = "Mix (0-1, 0 = use strength)";
+			pHint = "8-tap radial blur from screen centre. Tint multiplies the blurred layer.";
+			break;
+		}
+		ImGui::Checkbox("Intensity Lerp over Lifetime", &S.bIntensityLerp);
+		ImGui::DragFloat(S.bIntensityLerp ? "Intensity Start" : pIntensityLabel,
+			&S.fIntensityStart, 0.01f, 0.f, 8.f);
+		if (S.bIntensityLerp)
+		{
+			ImGui::DragFloat("Intensity End", &S.fIntensityEnd, 0.01f, 0.f, 8.f);
+			if (P.fLifetime <= 0.f)
+				ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f),
+					"Lifetime is 0: intensity stays at Start.");
+		}
+		ImGui::DragFloat(pSecondaryLabel, &S.fSecondaryIntensity, 0.01f, 0.f, 8.f);
+		ImGui::DragFloat("Frequency", &S.fFrequency, 0.01f, 0.f, 64.f);
+		ImGui::ColorEdit4("Tint", &S.vTint.x, ImGuiColorEditFlags_Float);
+		int32_t iSeed = static_cast<int32_t>(S.iRandomSeed);
+		if (ImGui::InputInt("Random Seed", &iSeed))
+			S.iRandomSeed = static_cast<uint32_t>((std::max)(1, iSeed));
+		ImGui::TextDisabled("%s", pHint);
+		ImGui::TextDisabled("Now: intensity %.2f", pPreview->ScreenPost_Intensity());
+
+		ImGui::SeparatorText("Playback");
+		ImGui::DragFloat("Lifetime (s, 0 = infinite)", &P.fLifetime, 0.05f, 0.f, 600.f);
+		ImGui::Checkbox("Loop", &P.bLoop);
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(120.f);
+		ImGui::DragFloat("Play Rate", &P.fPlayRate, 0.01f, 0.f, 16.f);
+		if (pPreview->Is_Finished())
+			ImGui::TextDisabled("Finished (lifetime reached). Restart to replay.");
+		ImGui::End();
+		return;
+	}
+
 	const bool_t bLifetimeKnown = P.fLifetime > 0.f;
 	const bool_t bAnyLerp =
 		P.Position.bLerp || P.Rotation.bLerp || P.Scale.bLerp || P.Velocity.bLerp;
@@ -2449,6 +2638,134 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::SameLine();
 		if (ImGui::SmallButton("0.0001"))
 			P.fMeshPreScale = 0.0001f;
+	}
+
+	if (CEffectV2Object::SHAPE::PARTICLE == eShape)
+	{
+		CEffectV2Object::PARTICLE_PARAMS& E = P.Particle;
+		ImGui::SeparatorText("Particle Emitter");
+		int32_t iMax = static_cast<int32_t>(E.iMaxParticles);
+		if (ImGui::DragInt("Max Particles", &iMax, 1.f, 1, 2048))
+			E.iMaxParticles = static_cast<uint32_t>((std::max)(1, iMax));
+		ImGui::DragFloat("Spawn Rate (/s)", &E.fSpawnRate, 0.5f, 0.f, 2048.f);
+		int32_t iBurst = static_cast<int32_t>(E.iBurstCount);
+		if (ImGui::DragInt("Burst Count", &iBurst, 1.f, 0, 2048))
+			E.iBurstCount = static_cast<uint32_t>((std::max)(0, iBurst));
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Spawned at once on Restart and on every lifetime loop.");
+		ImGui::DragFloat2("Particle Lifetime (s min/max)", &E.vLifetime.x, 0.01f, 0.01f, 60.f);
+		if (E.vLifetime.y < E.vLifetime.x)
+			E.vLifetime.y = E.vLifetime.x;
+		int32_t iSeed = static_cast<int32_t>(E.iRandomSeed);
+		if (ImGui::InputInt("Random Seed", &iSeed))
+			E.iRandomSeed = static_cast<uint32_t>((std::max)(1, iSeed));
+		ImGui::Checkbox("Local Space", &E.bLocalSpace);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("On: particles move with the pivot/transform. Off: particles are left behind in the world.");
+
+		ImGui::SeparatorText("Spawn Shape");
+		int32_t iShape = static_cast<int32_t>(E.eSpawnShape);
+		if (ImGui::Combo("Shape", &iShape, "Point\0Sphere\0Ring\0Box\0"))
+			E.eSpawnShape = static_cast<CEffectV2Object::PARTICLE_SPAWN_SHAPE>(iShape);
+		if (CEffectV2Object::PARTICLE_SPAWN_SHAPE::SPHERE == E.eSpawnShape ||
+			CEffectV2Object::PARTICLE_SPAWN_SHAPE::RING == E.eSpawnShape)
+		{
+			ImGui::DragFloat("Radius", &E.fSpawnRadius, 0.01f, 0.f, 100.f);
+			ImGui::DragFloat("Inner Radius", &E.fSpawnInnerRadius, 0.01f, 0.f, 100.f);
+			if (E.fSpawnInnerRadius > E.fSpawnRadius)
+				E.fSpawnInnerRadius = E.fSpawnRadius;
+		}
+		if (CEffectV2Object::PARTICLE_SPAWN_SHAPE::RING == E.eSpawnShape)
+			ImGui::DragFloat("Arc (deg)", &E.fSpawnArcDegrees, 1.f, 0.f, 360.f);
+		if (CEffectV2Object::PARTICLE_SPAWN_SHAPE::BOX == E.eSpawnShape)
+			ImGui::DragFloat3("Half Extents", &E.vSpawnExtents.x, 0.01f, 0.f, 100.f);
+
+		ImGui::SeparatorText("Initial Velocity");
+		int32_t iVelocity = static_cast<int32_t>(E.eVelocityMode);
+		if (ImGui::Combo("Mode", &iVelocity, "Fixed (random box)\0Outward\0Cone (+Y)\0"))
+			E.eVelocityMode = static_cast<CEffectV2Object::PARTICLE_VELOCITY_MODE>(iVelocity);
+		if (CEffectV2Object::PARTICLE_VELOCITY_MODE::FIXED == E.eVelocityMode)
+		{
+			ImGui::DragFloat3("Velocity Min (m/s)", &E.vVelocityMin.x, 0.05f, -100.f, 100.f);
+			ImGui::DragFloat3("Velocity Max (m/s)", &E.vVelocityMax.x, 0.05f, -100.f, 100.f);
+		}
+		else
+		{
+			ImGui::DragFloat2("Speed (m/s min/max)", &E.vSpeedRange.x, 0.05f, 0.f, 100.f);
+			if (E.vSpeedRange.y < E.vSpeedRange.x)
+				E.vSpeedRange.y = E.vSpeedRange.x;
+		}
+		if (CEffectV2Object::PARTICLE_VELOCITY_MODE::CONE == E.eVelocityMode)
+			ImGui::DragFloat("Cone Half Angle (deg)", &E.fConeAngleDegrees, 0.5f, 0.f, 180.f);
+		ImGui::DragFloat3("Acceleration (m/s^2)", &E.vAcceleration.x, 0.05f, -100.f, 100.f);
+		ImGui::DragFloat("Drag", &E.fDrag, 0.01f, 0.f, 20.f);
+
+		ImGui::SeparatorText("Particle Size / Rotation");
+		ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
+		ImGui::DragFloat2("Size End (m)", &E.vSizeEnd.x, 0.005f, 0.f, 100.f);
+		ImGui::DragFloat2("Rotation (deg min/max)", &E.vRotationRange.x, 1.f, -360.f, 360.f);
+		ImGui::DragFloat2("Spin (deg/s min/max)", &E.vSpinRange.x, 1.f, -3600.f, 3600.f);
+		int32_t iAlignment = static_cast<int32_t>(E.eAlignment);
+		if (ImGui::Combo("Alignment", &iAlignment, "Camera\0Velocity\0Horizontal\0"))
+			E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
+
+		ImGui::SeparatorText("Particle Color / Sub-UV");
+		ImGui::ColorEdit4("Color Start", &E.vColorStart.x, ImGuiColorEditFlags_Float);
+		ImGui::ColorEdit4("Color End", &E.vColorEnd.x, ImGuiColorEditFlags_Float);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Multiplied with Color Mul below over each particle's life.");
+		int32_t iColumns = static_cast<int32_t>(E.iTileColumns);
+		int32_t iRows = static_cast<int32_t>(E.iTileRows);
+		ImGui::SetNextItemWidth(90.f);
+		if (ImGui::InputInt("##TileColumns", &iColumns))
+			E.iTileColumns = static_cast<uint32_t>((std::max)(1, iColumns));
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(90.f);
+		if (ImGui::InputInt("Atlas Columns x Rows", &iRows))
+			E.iTileRows = static_cast<uint32_t>((std::max)(1, iRows));
+		ImGui::Checkbox("Play Atlas Over Life", &E.bSubUVOverLife);
+	}
+	else if (CEffectV2Object::SHAPE::DECAL == eShape)
+	{
+		CEffectV2Object::DECAL_PARAMS& D = P.Decal;
+		ImGui::SeparatorText("Decal Projection");
+		ImGui::DragFloat2("Size X/Z (m)", &D.vSize.x, 0.01f, 0.01f, 100.f);
+		ImGui::DragFloat("Depth Y (m)", &D.fDepth, 0.01f, 0.01f, 100.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Projection thickness along the pivot's local Y. Surfaces outside +-Depth/2 are not painted.");
+		ImGui::SliderFloat("Edge Fade", &D.fEdgeFade, 0.f, 1.f);
+		ImGui::SliderFloat("Normal Cutoff (-1 = off)", &D.fNormalCutoff, -1.f, 1.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Skip surfaces whose normal deviates from the decal's up axis. 0.5 keeps ground/slopes and drops legs/walls; -1 paints everything inside the box.");
+		ImGui::TextDisabled("Projects onto the opaque scene depth. Rotation/Scale tracks tilt and scale the box.");
+	}
+	else if (CEffectV2Object::SHAPE::TRAIL == eShape)
+	{
+		CEffectV2Object::TRAIL_PARAMS& T = P.Trail;
+		ImGui::SeparatorText("Trail Ribbon");
+		int32_t iPoints = static_cast<int32_t>(T.iMaxPoints);
+		if (ImGui::DragInt("Max Points", &iPoints, 1.f, 2, 4096))
+			T.iMaxPoints = static_cast<uint32_t>((std::max)(2, iPoints));
+		ImGui::DragFloat("Point Lifetime (s)", &T.fPointLifetime, 0.01f, 0.01f, 30.f);
+		ImGui::DragFloat("Sample Interval (s)", &T.fSampleInterval, 0.001f, 0.f, 1.f, "%.3f");
+		ImGui::DragFloat("Min Distance (m)", &T.fMinDistance, 0.001f, 0.f, 10.f, "%.3f");
+		int32_t iEdge = static_cast<int32_t>(T.eEdgeMode);
+		if (ImGui::Combo("Edge Mode", &iEdge, "Centerline (face camera)\0Centerline (world up)\0Local Offset (pivot -> offset)\0"))
+			T.eEdgeMode = static_cast<CEffectV2Object::TRAIL_EDGE_MODE>(iEdge);
+		if (CEffectV2Object::TRAIL_EDGE_MODE::LOCAL_OFFSET == T.eEdgeMode)
+		{
+			ImGui::DragFloat3("Edge Offset (pivot local, m)", &T.vEdgeOffset.x, 0.01f, -100.f, 100.f);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Second ribbon edge = this offset in pivot space (e.g. blade tip). Width fields are ignored.");
+		}
+		else
+		{
+			ImGui::DragFloat("Start Width (m)", &T.fStartWidth, 0.01f, 0.f, 100.f);
+			ImGui::DragFloat("End Width (m)", &T.fEndWidth, 0.01f, 0.f, 100.f);
+		}
+		ImGui::DragFloat("Tiling Distance (m, 0 = per point)", &T.fTilingDistance, 0.01f, 0.f, 100.f);
+		ImGui::Checkbox("Fade With Age", &T.bFadeWithAge);
+		ImGui::TextDisabled("Move the pivot (Velocity track, Bring To Camera, or Attach to a bone) to leave a ribbon.");
 	}
 
 	if (pPreview->Is_Skinned())
@@ -2590,9 +2907,15 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	int32_t iBlend = static_cast<int32_t>(P.eBlend);
 	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0Opaque\0"))
 		P.eBlend = static_cast<CEffectV2Object::BLEND_MODE>(iBlend);
-	ImGui::BeginDisabled(CEffectV2Object::BLEND_MODE::SOLID == P.eBlend);
+	ImGui::BeginDisabled(CEffectV2Object::BLEND_MODE::SOLID == P.eBlend ||
+		CEffectV2Object::SHAPE::DECAL == eShape);
 	ImGui::Checkbox("Depth Test", &P.bDepthTest);
 	ImGui::EndDisabled();
+	if (CEffectV2Object::SHAPE::DECAL == eShape)
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("(decal: Alpha/Additive only, no depth test)");
+	}
 	if (CEffectV2Object::SHAPE::SPRITE == pPreview->Shape())
 	{
 		ImGui::SameLine();
@@ -2622,9 +2945,11 @@ std::string& Client::CEffect_Tool_V2::Current_SlotAssetId()
 
 bool_t Client::CEffect_Tool_V2::Slot_VisibleForType(const RESOURCE_SLOT eSlot) const
 {
+	if (EFFECT_TYPE::SCREEN_POST == m_eType)
+		return false;
 	if (RESOURCE_SLOT::MESH != eSlot)
 		return true;
-	return EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::PARTICLE == m_eType;
+	return EFFECT_TYPE::MESH == m_eType;
 }
 
 Client::CEffect_Tool_V2::RESOURCE_KIND Client::CEffect_Tool_V2::Slot_Kind(
@@ -2643,6 +2968,7 @@ const char* Client::CEffect_Tool_V2::Type_Label(const EFFECT_TYPE eType)
 	case EFFECT_TYPE::PARTICLE: return "Particle";
 	case EFFECT_TYPE::DECAL: return "Decal";
 	case EFFECT_TYPE::TRAIL: return "Trail";
+	case EFFECT_TYPE::SCREEN_POST: return "Screen Post";
 	default: return "Unknown";
 	}
 }
@@ -2683,6 +3009,9 @@ const char* Client::CEffect_Tool_V2::Slot_Description(const RESOURCE_SLOT eSlot)
 
 #include "Client_Defines.h"
 #include "GameObject.h"
+#include "Presentation_Manager.h"
+#include "VIBuffer_DynamicTrail.h"
+#include "VIBuffer_ParticleRect.h"
 
 #include <array>
 #include <cstdint>
@@ -2699,7 +3028,7 @@ NS_BEGIN(Client)
 
 class CNpc;
 
-class CEffectV2Object final : public CGameObject
+class CEffectV2Object final : public CGameObject, public Engine::IPresentationProvider
 {
 public:
 	enum class PIVOT_ROTATION : int32_t
@@ -2714,6 +3043,18 @@ public:
 	{
 		MESH,
 		SPRITE,
+		PARTICLE,
+		DECAL,
+		TRAIL,
+		SCREEN_POST,
+		END
+	};
+
+	enum class SCREEN_POST_PROFILE : int32_t
+	{
+		ZOOM_BLUR,
+		RGB_NOISE,
+		FILM_NOISE,
 		END
 	};
 
@@ -2742,12 +3083,111 @@ public:
 		END
 	};
 
+	enum class PARTICLE_SPAWN_SHAPE : int32_t
+	{
+		POINT,
+		SPHERE,
+		RING,
+		BOX,
+		END
+	};
+
+	enum class PARTICLE_VELOCITY_MODE : int32_t
+	{
+		FIXED,
+		OUTWARD,
+		CONE,
+		END
+	};
+
+	enum class PARTICLE_ALIGNMENT : int32_t
+	{
+		CAMERA,
+		VELOCITY,
+		HORIZONTAL,
+		END
+	};
+
+	enum class TRAIL_EDGE_MODE : int32_t
+	{
+		CENTERLINE_CAMERA,
+		CENTERLINE_UP,
+		LOCAL_OFFSET,
+		END
+	};
+
 	struct LERP_FLOAT3 final
 	{
 		float3_t vStart = { 0.f, 0.f, 0.f };
 		float3_t vEnd = { 0.f, 0.f, 0.f };
 		bool_t bLerp = false;
 		float3_t Evaluate(f32_t fLifeRatio) const;
+	};
+
+	struct PARTICLE_PARAMS final
+	{
+		uint32_t iMaxParticles = 256u;
+		f32_t fSpawnRate = 20.f;
+		uint32_t iBurstCount = 0u;
+		float2_t vLifetime = { 0.5f, 1.f };
+		PARTICLE_SPAWN_SHAPE eSpawnShape = PARTICLE_SPAWN_SHAPE::POINT;
+		f32_t fSpawnRadius = 0.5f;
+		f32_t fSpawnInnerRadius = 0.f;
+		float3_t vSpawnExtents = { 0.5f, 0.5f, 0.5f };
+		f32_t fSpawnArcDegrees = 360.f;
+		PARTICLE_VELOCITY_MODE eVelocityMode = PARTICLE_VELOCITY_MODE::CONE;
+		float3_t vVelocityMin = { -0.5f, 1.f, -0.5f };
+		float3_t vVelocityMax = { 0.5f, 2.f, 0.5f };
+		float2_t vSpeedRange = { 1.f, 2.f };
+		f32_t fConeAngleDegrees = 30.f;
+		float3_t vAcceleration = { 0.f, -1.f, 0.f };
+		f32_t fDrag = 0.f;
+		float2_t vSizeStart = { 0.2f, 0.2f };
+		float2_t vSizeEnd = { 0.f, 0.f };
+		float2_t vRotationRange = { 0.f, 0.f };
+		float2_t vSpinRange = { 0.f, 0.f };
+		float4_t vColorStart = { 1.f, 1.f, 1.f, 1.f };
+		float4_t vColorEnd = { 1.f, 1.f, 1.f, 0.f };
+		PARTICLE_ALIGNMENT eAlignment = PARTICLE_ALIGNMENT::CAMERA;
+		bool_t bLocalSpace = true;
+		uint32_t iTileColumns = 1u;
+		uint32_t iTileRows = 1u;
+		bool_t bSubUVOverLife = true;
+		uint32_t iRandomSeed = 1u;
+	};
+
+	struct DECAL_PARAMS final
+	{
+		float2_t vSize = { 1.f, 1.f };
+		f32_t fDepth = 0.5f;
+		f32_t fEdgeFade = 0.f;
+		f32_t fNormalCutoff = 0.5f;
+	};
+
+	struct TRAIL_PARAMS final
+	{
+		uint32_t iMaxPoints = 64u;
+		f32_t fPointLifetime = 0.35f;
+		f32_t fSampleInterval = 1.f / 60.f;
+		f32_t fMinDistance = 0.01f;
+		f32_t fStartWidth = 0.2f;
+		f32_t fEndWidth = 0.f;
+		f32_t fTilingDistance = 0.f;
+		TRAIL_EDGE_MODE eEdgeMode = TRAIL_EDGE_MODE::CENTERLINE_CAMERA;
+		float3_t vEdgeOffset = { 0.f, 1.f, 0.f };
+		bool_t bFadeWithAge = true;
+	};
+
+	struct SCREEN_POST_PARAMS final
+	{
+		SCREEN_POST_PROFILE eProfile = SCREEN_POST_PROFILE::ZOOM_BLUR;
+		f32_t fIntensityStart = 2.f;
+		f32_t fIntensityEnd = 0.f;
+		bool_t bIntensityLerp = true;
+		f32_t fSecondaryIntensity = 0.f;
+		f32_t fFrequency = 1.f;
+		float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
+		uint32_t iRandomSeed = 1u;
 	};
 
 	struct PARAMS final
@@ -2783,6 +3223,10 @@ public:
 		f32_t fMeshPreScale = 0.01f;
 		uint32_t iAnimationIndex = 0u;
 		bool_t bAnimationLoop = true;
+		PARTICLE_PARAMS Particle;
+		DECAL_PARAMS Decal;
+		TRAIL_PARAMS Trail;
+		SCREEN_POST_PARAMS ScreenPost;
 	};
 
 	struct PART final
@@ -2807,6 +3251,25 @@ public:
 	};
 
 private:
+	struct PARTICLE final
+	{
+		float3_t vPosition = { 0.f, 0.f, 0.f };
+		float3_t vVelocity = { 0.f, 0.f, 0.f };
+		f32_t fAge = 0.f;
+		f32_t fLifetime = 1.f;
+		f32_t fRotationDegrees = 0.f;
+		f32_t fSpinDegrees = 0.f;
+	};
+
+	struct TRAIL_POINT final
+	{
+		float3_t vCenter = { 0.f, 0.f, 0.f };
+		float3_t vEdge = { 0.f, 0.f, 0.f };
+		f32_t fAge = 0.f;
+		f32_t fCumulativeDistance = 0.f;
+	};
+
+private:
 	CEffectV2Object(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
@@ -2819,6 +3282,13 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Submit_Presentation() override;
+	virtual bool_t Is_PresentationFailureIsolated() const override { return true; }
+	virtual Engine::PRESENTATION_FAILURE_SCOPE Get_PresentationFailureScope() const override
+	{
+		return m_ePresentationFailureScope;
+	}
+	f32_t ScreenPost_Intensity() const;
 
 	PARAMS& Params() { return m_Params; }
 	const DESC& Creation_Desc() const { return m_CreationDesc; }
@@ -2845,6 +3315,8 @@ public:
 	const char_t* Animation_Name(uint32_t iIndex) const;
 	f32_t Animation_DurationSeconds(uint32_t iIndex) const;
 	bool_t Animation_Progress(f32_t& fOutSeconds, f32_t& fOutDurationSeconds) const;
+	uint32_t Particle_Count() const { return static_cast<uint32_t>(m_Particles.size()); }
+	uint32_t Trail_PointCount() const { return static_cast<uint32_t>(m_TrailPoints.size()); }
 	bool_t Is_Finished() const { return m_bFinished; }
 	void Finish() { m_bFinished = true; }
 	bool_t Is_Hidden() const { return m_bHidden; }
@@ -2886,6 +3358,13 @@ private:
 		const D3D11_INPUT_ELEMENT_DESC* pElements,
 		uint32_t iNumElements,
 		shared_ptr<Engine::CShader>& OutShader);
+	static HRESULT Acquire_ShapeShader(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		SHAPE eShape,
+		bool_t bSkinned,
+		shared_ptr<Engine::CShader>& OutShader,
+		std::string& strOutError);
 	static HRESULT Acquire_Texture(
 		const ComPtr<ID3D11Device>& pDevice,
 		const std::string& strAssetId,
@@ -2893,6 +3372,15 @@ private:
 	void Apply_Transform();
 	void Sync_Animation(bool_t bRestart);
 	HRESULT Bind_Common(const shared_ptr<Engine::CShader>& pShader);
+	void Advance_Lifetime(f32_t fStep);
+	f32_t Random_01();
+	f32_t Random_Range(f32_t fMinimum, f32_t fMaximum);
+	void Spawn_Particle();
+	void Update_Particles(f32_t fStep);
+	HRESULT Build_ParticleInstances();
+	void Update_Trail(f32_t fStep);
+	HRESULT Build_TrailGeometry();
+	HRESULT Render_Decal(uint32_t iPass);
 
 private:
 	SHAPE m_eShape = SHAPE::SPRITE;
@@ -2908,13 +3396,31 @@ private:
 	PIVOT_ROTATION m_eFollowRotation = PIVOT_ROTATION::TARGET_YAW;
 	f32_t m_fTime = 0.f;
 	bool_t m_bFinished = false;
+	bool_t m_bEmissionStopped = false;
 	bool_t m_bHidden = false;
 	bool_t m_bSkinned = false;
 	std::string m_strStatus;
+	Engine::PRESENTATION_FAILURE_SCOPE m_ePresentationFailureScope =
+		Engine::PRESENTATION_FAILURE_SCOPE::NONE;
+
+	std::vector<PARTICLE> m_Particles;
+	std::vector<Engine::VTXEFFECT_PARTICLE> m_ParticleInstances;
+	f32_t m_fSpawnAccumulator = 0.f;
+	bool_t m_bBurstPending = true;
+	uint32_t m_iRandomState = 1u;
+
+	std::vector<TRAIL_POINT> m_TrailPoints;
+	std::vector<Engine::VTXEFFECT_TRAIL> m_TrailVertices;
+	std::vector<uint32_t> m_TrailIndices;
+	f32_t m_fTrailSampleAccumulator = 0.f;
+	f32_t m_fTrailCumulativeDistance = 0.f;
+	uint32_t m_iTrailBufferPoints = 0u;
 
 	shared_ptr<Engine::CShader> m_pShader;
 	shared_ptr<Engine::CModel> m_pModel;
 	shared_ptr<Engine::CVIBuffer_Rect> m_pRect;
+	shared_ptr<Engine::CVIBuffer_ParticleRect> m_pParticleBuffer;
+	shared_ptr<Engine::CVIBuffer_DynamicTrail> m_pTrailBuffer;
 	std::array<ComPtr<ID3D11ShaderResourceView>,
 		static_cast<size_t>(TEXTURE_INPUT::END)> m_Textures;
 	static std::string s_strLastError;
@@ -2947,6 +3453,7 @@ NS_END
 #include <cmath>
 #include <filesystem>
 #include <map>
+#include <span>
 #include <unordered_map>
 
 namespace
@@ -2958,10 +3465,29 @@ namespace
 	constexpr const char* TEXTURE_FLAG_CONSTANTS[] = {
 		"g_HasBase", "g_HasNoise", "g_HasMask", "g_HasEmissive", "g_HasDissolve"
 	};
+	constexpr uint32_t MAX_PARTICLE_CAPACITY = 2048u;
+	constexpr uint32_t MAX_TRAIL_POINTS = 4096u;
+	constexpr f32_t PI_F = 3.14159265358979f;
 
 	f32_t Saturate(const f32_t fValue)
 	{
 		return (std::min)(1.f, (std::max)(0.f, fValue));
+	}
+
+	float3_t To_Float3(const vector_t Value)
+	{
+		float3_t vResult;
+		XMStoreFloat3(&vResult, Value);
+		return vResult;
+	}
+
+	bool_t Normalize_Safe(const vector_t Value, vector_t& OutNormalized)
+	{
+		const f32_t fLengthSq = XMVectorGetX(XMVector3LengthSq(Value));
+		if (fLengthSq <= 1e-12f || !std::isfinite(fLengthSq))
+			return false;
+		OutNormalized = XMVector3Normalize(Value);
+		return true;
 	}
 }
 
@@ -3011,41 +3537,60 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 	m_Params = Desc.Params;
 	m_PivotWorld = Desc.PivotWorld;
 
-	if (SHAPE::MESH == m_eShape)
+	std::string strError;
+	switch (m_eShape)
 	{
-		std::string strError;
+	case SHAPE::MESH:
 		if (FAILED(Acquire_Model(m_pDevice, m_pContext, Desc.strMeshAssetId,
 			m_pModel, m_bSkinned, strError)))
 			return Fail(strError);
 		m_Parts.assign(m_pModel->Get_NumMeshes(), PART{});
 		if (m_bSkinned && !Desc.bParamsAuthored)
 			m_Params.fMeshPreScale = 0.0001f;
-		const HRESULT hShader = m_bSkinned ?
-			Acquire_Shader(m_pDevice, m_pContext,
-				TEXT("../Bin/ShaderFiles/Shader_EffectAnimMeshV2.hlsl"),
-				VTXANIMMESH::Elements, VTXANIMMESH::iNumElements, m_pShader) :
-			Acquire_Shader(m_pDevice, m_pContext,
-				TEXT("../Bin/ShaderFiles/Shader_EffectMeshV2.hlsl"),
-				VTXMESH::Elements, VTXMESH::iNumElements, m_pShader);
-		if (FAILED(hShader))
-		{
-			return Fail(m_bSkinned ?
-				"Shader_EffectAnimMeshV2.hlsl compile failed." :
-				"Shader_EffectMeshV2.hlsl compile failed.");
-		}
-	}
-	else
+		break;
+	case SHAPE::SPRITE:
+	case SHAPE::DECAL:
 	{
 		unique_ptr<Engine::CVIBuffer_Rect> Rect =
 			Engine::CVIBuffer_Rect::Create(m_pDevice, m_pContext);
 		if (nullptr == Rect)
 			return Fail("Rect buffer creation failed.");
 		m_pRect = std::move(Rect);
-		if (FAILED(Acquire_Shader(m_pDevice, m_pContext,
-			TEXT("../Bin/ShaderFiles/Shader_EffectRectV2.hlsl"),
-			VTXTEX::Elements, VTXTEX::iNumElements, m_pShader)))
-			return Fail("Shader_EffectRectV2.hlsl compile failed.");
+		break;
 	}
+	case SHAPE::PARTICLE:
+	{
+		const uint32_t iCapacity = (std::min)(MAX_PARTICLE_CAPACITY,
+			(std::max)(1u, m_Params.Particle.iMaxParticles));
+		unique_ptr<Engine::CVIBuffer_ParticleRect> Buffer =
+			Engine::CVIBuffer_ParticleRect::Create(m_pDevice, m_pContext, iCapacity);
+		if (nullptr == Buffer)
+			return Fail("Particle buffer creation failed.");
+		m_pParticleBuffer = std::move(Buffer);
+		m_Particles.reserve(iCapacity);
+		m_ParticleInstances.reserve(iCapacity);
+		m_iRandomState = (std::max)(1u, m_Params.Particle.iRandomSeed);
+		break;
+	}
+	case SHAPE::TRAIL:
+	{
+		const uint32_t iMaxPoints = (std::min)(MAX_TRAIL_POINTS,
+			(std::max)(2u, m_Params.Trail.iMaxPoints));
+		unique_ptr<Engine::CVIBuffer_DynamicTrail> Buffer =
+			Engine::CVIBuffer_DynamicTrail::Create(m_pDevice, m_pContext, iMaxPoints);
+		if (nullptr == Buffer)
+			return Fail("Trail buffer creation failed.");
+		m_pTrailBuffer = std::move(Buffer);
+		m_iTrailBufferPoints = iMaxPoints;
+		break;
+	}
+	case SHAPE::SCREEN_POST:
+		break;
+	default:
+		return Fail("Unknown effect shape.");
+	}
+	if (FAILED(Acquire_ShapeShader(m_pDevice, m_pContext, m_eShape, m_bSkinned, m_pShader, strError)))
+		return Fail(strError);
 
 	for (size_t iInput = 0u; iInput < m_Textures.size(); ++iInput)
 	{
@@ -3151,6 +3696,62 @@ HRESULT Client::CEffectV2Object::Acquire_Shader(
 	return S_OK;
 }
 
+HRESULT Client::CEffectV2Object::Acquire_ShapeShader(
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext,
+	const SHAPE eShape,
+	const bool_t bSkinned,
+	shared_ptr<Engine::CShader>& OutShader,
+	std::string& strOutError)
+{
+	const wchar_t* pFile = nullptr;
+	const D3D11_INPUT_ELEMENT_DESC* pElements = nullptr;
+	uint32_t iNumElements = 0u;
+	switch (eShape)
+	{
+	case SHAPE::MESH:
+		pFile = bSkinned ?
+			TEXT("../Bin/ShaderFiles/Shader_EffectAnimMeshV2.hlsl") :
+			TEXT("../Bin/ShaderFiles/Shader_EffectMeshV2.hlsl");
+		pElements = bSkinned ? VTXANIMMESH::Elements : VTXMESH::Elements;
+		iNumElements = bSkinned ? VTXANIMMESH::iNumElements : VTXMESH::iNumElements;
+		break;
+	case SHAPE::SPRITE:
+		pFile = TEXT("../Bin/ShaderFiles/Shader_EffectRectV2.hlsl");
+		pElements = VTXTEX::Elements;
+		iNumElements = VTXTEX::iNumElements;
+		break;
+	case SHAPE::PARTICLE:
+		pFile = TEXT("../Bin/ShaderFiles/Shader_EffectParticleV2.hlsl");
+		pElements = Engine::VTXEFFECT_PARTICLE::Elements;
+		iNumElements = Engine::VTXEFFECT_PARTICLE::iNumElements;
+		break;
+	case SHAPE::DECAL:
+		pFile = TEXT("../Bin/ShaderFiles/Shader_EffectDecalV2.hlsl");
+		pElements = VTXTEX::Elements;
+		iNumElements = VTXTEX::iNumElements;
+		break;
+	case SHAPE::TRAIL:
+		pFile = TEXT("../Bin/ShaderFiles/Shader_EffectTrailV2.hlsl");
+		pElements = Engine::VTXEFFECT_TRAIL::Elements;
+		iNumElements = Engine::VTXEFFECT_TRAIL::iNumElements;
+		break;
+	case SHAPE::SCREEN_POST:
+		OutShader.reset();
+		return S_OK;
+	default:
+		strOutError = "Unknown effect shape.";
+		return E_FAIL;
+	}
+	if (FAILED(Acquire_Shader(pDevice, pContext, pFile, pElements, iNumElements, OutShader)))
+	{
+		strOutError = "Effect v2 shader compile failed: " +
+			std::filesystem::path(pFile).filename().string();
+		return E_FAIL;
+	}
+	return S_OK;
+}
+
 HRESULT Client::CEffectV2Object::Acquire_Texture(
 	const ComPtr<ID3D11Device>& pDevice,
 	const std::string& strAssetId,
@@ -3179,37 +3780,16 @@ HRESULT Client::CEffectV2Object::Prewarm(
 	const DESC& Desc,
 	std::string& strOutError)
 {
+	bool_t bSkinned = false;
 	if (SHAPE::MESH == Desc.eShape)
 	{
 		shared_ptr<Engine::CModel> pModel;
-		bool_t bSkinned = false;
 		if (FAILED(Acquire_Model(pDevice, pContext, Desc.strMeshAssetId, pModel, bSkinned, strOutError)))
 			return E_FAIL;
-		shared_ptr<Engine::CShader> pShader;
-		const HRESULT hShader = bSkinned ?
-			Acquire_Shader(pDevice, pContext,
-				TEXT("../Bin/ShaderFiles/Shader_EffectAnimMeshV2.hlsl"),
-				VTXANIMMESH::Elements, VTXANIMMESH::iNumElements, pShader) :
-			Acquire_Shader(pDevice, pContext,
-				TEXT("../Bin/ShaderFiles/Shader_EffectMeshV2.hlsl"),
-				VTXMESH::Elements, VTXMESH::iNumElements, pShader);
-		if (FAILED(hShader))
-		{
-			strOutError = "Effect mesh shader compile failed.";
-			return E_FAIL;
-		}
 	}
-	else
-	{
-		shared_ptr<Engine::CShader> pShader;
-		if (FAILED(Acquire_Shader(pDevice, pContext,
-			TEXT("../Bin/ShaderFiles/Shader_EffectRectV2.hlsl"),
-			VTXTEX::Elements, VTXTEX::iNumElements, pShader)))
-		{
-			strOutError = "Shader_EffectRectV2.hlsl compile failed.";
-			return E_FAIL;
-		}
-	}
+	shared_ptr<Engine::CShader> pShader;
+	if (FAILED(Acquire_ShapeShader(pDevice, pContext, Desc.eShape, bSkinned, pShader, strOutError)))
+		return E_FAIL;
 	for (const std::string& strAssetId : Desc.TextureAssetIds)
 	{
 		if (strAssetId.empty())
@@ -3264,6 +3844,14 @@ void Client::CEffectV2Object::Restart()
 	m_fTime = 0.f;
 	m_vDisplacement = { 0.f, 0.f, 0.f };
 	m_bFinished = false;
+	m_bEmissionStopped = false;
+	m_Particles.clear();
+	m_fSpawnAccumulator = 0.f;
+	m_bBurstPending = true;
+	m_iRandomState = (std::max)(1u, m_Params.Particle.iRandomSeed);
+	m_TrailPoints.clear();
+	m_fTrailSampleAccumulator = 0.f;
+	m_fTrailCumulativeDistance = 0.f;
 	Sync_Animation(true);
 }
 
@@ -3426,27 +4014,48 @@ void Client::CEffectV2Object::Update(const f32_t fTimeDelta)
 	if (!m_bFinished)
 	{
 		const f32_t fStep = fTimeDelta * m_Params.fPlayRate;
-		const float3_t vVelocity = m_Params.Velocity.Evaluate(Life_Ratio());
-		m_vDisplacement.x += vVelocity.x * fStep;
-		m_vDisplacement.y += vVelocity.y * fStep;
-		m_vDisplacement.z += vVelocity.z * fStep;
-		m_fTime += fStep;
-		Sync_Animation(false);
-		if (0u != Animation_Count())
-			m_pModel->Play_Animation(fStep);
-		if (m_Params.fLifetime > 0.f && m_fTime >= m_Params.fLifetime)
+		if (!m_bEmissionStopped)
 		{
-			if (m_Params.bLoop)
-			{
-				m_fTime = std::fmod(m_fTime, m_Params.fLifetime);
-				m_vDisplacement = { 0.f, 0.f, 0.f };
-				Sync_Animation(true);
-			}
-			else
-				m_bFinished = true;
+			const float3_t vVelocity = m_Params.Velocity.Evaluate(Life_Ratio());
+			m_vDisplacement.x += vVelocity.x * fStep;
+			m_vDisplacement.y += vVelocity.y * fStep;
+			m_vDisplacement.z += vVelocity.z * fStep;
+			m_fTime += fStep;
+			Sync_Animation(false);
+			if (0u != Animation_Count())
+				m_pModel->Play_Animation(fStep);
 		}
+		Apply_Transform();
+		if (SHAPE::PARTICLE == m_eShape)
+			Update_Particles(fStep);
+		else if (SHAPE::TRAIL == m_eShape)
+			Update_Trail(fStep);
+		if (!m_bEmissionStopped)
+			Advance_Lifetime(fStep);
+		else if ((SHAPE::PARTICLE == m_eShape && m_Particles.empty()) ||
+			(SHAPE::TRAIL == m_eShape && m_TrailPoints.empty()))
+			m_bFinished = true;
 	}
 	Apply_Transform();
+}
+
+void Client::CEffectV2Object::Advance_Lifetime(const f32_t fStep)
+{
+	UNREFERENCED_PARAMETER(fStep);
+	if (m_Params.fLifetime <= 0.f || m_fTime < m_Params.fLifetime)
+		return;
+	if (m_Params.bLoop)
+	{
+		m_fTime = std::fmod(m_fTime, m_Params.fLifetime);
+		m_vDisplacement = { 0.f, 0.f, 0.f };
+		m_bBurstPending = true;
+		Sync_Animation(true);
+		return;
+	}
+	if (SHAPE::PARTICLE == m_eShape || SHAPE::TRAIL == m_eShape)
+		m_bEmissionStopped = true;
+	else
+		m_bFinished = true;
 }
 
 void Client::CEffectV2Object::Apply_Transform()
@@ -3490,14 +4099,421 @@ void Client::CEffectV2Object::Apply_Transform()
 	m_pTransformCom->Set_State(STATE::POSITION, World.r[3]);
 }
 
+f32_t Client::CEffectV2Object::Random_01()
+{
+	uint32_t iState = m_iRandomState;
+	iState ^= iState << 13;
+	iState ^= iState >> 17;
+	iState ^= iState << 5;
+	m_iRandomState = 0u == iState ? 1u : iState;
+	return static_cast<f32_t>(m_iRandomState & 0x00FFFFFFu) / 16777216.f;
+}
+
+f32_t Client::CEffectV2Object::Random_Range(const f32_t fMinimum, const f32_t fMaximum)
+{
+	return fMinimum + (fMaximum - fMinimum) * Random_01();
+}
+
+void Client::CEffectV2Object::Spawn_Particle()
+{
+	const PARTICLE_PARAMS& P = m_Params.Particle;
+	const uint32_t iMax = (std::min)(MAX_PARTICLE_CAPACITY, (std::max)(1u, P.iMaxParticles));
+	if (m_Particles.size() >= iMax)
+		return;
+
+	vector_t Position = XMVectorZero();
+	switch (P.eSpawnShape)
+	{
+	case PARTICLE_SPAWN_SHAPE::SPHERE:
+	{
+		const f32_t fZ = Random_Range(-1.f, 1.f);
+		const f32_t fPhi = Random_Range(0.f, 2.f * PI_F);
+		const f32_t fRing = std::sqrt((std::max)(0.f, 1.f - fZ * fZ));
+		const f32_t fRadius = P.fSpawnInnerRadius +
+			(P.fSpawnRadius - P.fSpawnInnerRadius) * std::cbrt(Random_01());
+		Position = XMVectorSet(fRing * std::cos(fPhi), fZ, fRing * std::sin(fPhi), 0.f) * fRadius;
+		break;
+	}
+	case PARTICLE_SPAWN_SHAPE::RING:
+	{
+		const f32_t fAngle = XMConvertToRadians(Random_Range(0.f, P.fSpawnArcDegrees));
+		const f32_t fRadius = P.fSpawnInnerRadius +
+			(P.fSpawnRadius - P.fSpawnInnerRadius) * std::sqrt(Random_01());
+		Position = XMVectorSet(std::cos(fAngle) * fRadius, 0.f, std::sin(fAngle) * fRadius, 0.f);
+		break;
+	}
+	case PARTICLE_SPAWN_SHAPE::BOX:
+		Position = XMVectorSet(
+			Random_Range(-P.vSpawnExtents.x, P.vSpawnExtents.x),
+			Random_Range(-P.vSpawnExtents.y, P.vSpawnExtents.y),
+			Random_Range(-P.vSpawnExtents.z, P.vSpawnExtents.z), 0.f);
+		break;
+	default:
+		break;
+	}
+
+	vector_t Velocity = XMVectorZero();
+	switch (P.eVelocityMode)
+	{
+	case PARTICLE_VELOCITY_MODE::FIXED:
+		Velocity = XMVectorSet(
+			Random_Range(P.vVelocityMin.x, P.vVelocityMax.x),
+			Random_Range(P.vVelocityMin.y, P.vVelocityMax.y),
+			Random_Range(P.vVelocityMin.z, P.vVelocityMax.z), 0.f);
+		break;
+	case PARTICLE_VELOCITY_MODE::OUTWARD:
+	{
+		vector_t Direction;
+		if (!Normalize_Safe(Position, Direction))
+		{
+			const f32_t fZ = Random_Range(-1.f, 1.f);
+			const f32_t fPhi = Random_Range(0.f, 2.f * PI_F);
+			const f32_t fRing = std::sqrt((std::max)(0.f, 1.f - fZ * fZ));
+			Direction = XMVectorSet(fRing * std::cos(fPhi), fZ, fRing * std::sin(fPhi), 0.f);
+		}
+		Velocity = Direction * Random_Range(P.vSpeedRange.x, P.vSpeedRange.y);
+		break;
+	}
+	case PARTICLE_VELOCITY_MODE::CONE:
+	{
+		const f32_t fCosHalf = std::cos(XMConvertToRadians(
+			(std::min)(180.f, (std::max)(0.f, P.fConeAngleDegrees))));
+		const f32_t fCosTheta = 1.f + (fCosHalf - 1.f) * Random_01();
+		const f32_t fSinTheta = std::sqrt((std::max)(0.f, 1.f - fCosTheta * fCosTheta));
+		const f32_t fPhi = Random_Range(0.f, 2.f * PI_F);
+		Velocity = XMVectorSet(fSinTheta * std::cos(fPhi), fCosTheta, fSinTheta * std::sin(fPhi), 0.f) *
+			Random_Range(P.vSpeedRange.x, P.vSpeedRange.y);
+		break;
+	}
+	default:
+		break;
+	}
+
+	if (!P.bLocalSpace)
+	{
+		const matrix_t World = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+		Position = XMVector3TransformCoord(Position, World);
+		Velocity = XMVector3TransformNormal(Velocity, World);
+	}
+
+	PARTICLE Particle;
+	Particle.vPosition = To_Float3(Position);
+	Particle.vVelocity = To_Float3(Velocity);
+	Particle.fAge = 0.f;
+	Particle.fLifetime = (std::max)(0.001f, Random_Range(P.vLifetime.x, P.vLifetime.y));
+	Particle.fRotationDegrees = Random_Range(P.vRotationRange.x, P.vRotationRange.y);
+	Particle.fSpinDegrees = Random_Range(P.vSpinRange.x, P.vSpinRange.y);
+	m_Particles.push_back(Particle);
+}
+
+void Client::CEffectV2Object::Update_Particles(const f32_t fStep)
+{
+	const PARTICLE_PARAMS& P = m_Params.Particle;
+	if (fStep > 0.f)
+	{
+		for (PARTICLE& Particle : m_Particles)
+			Particle.fAge += fStep;
+		m_Particles.erase(std::remove_if(m_Particles.begin(), m_Particles.end(),
+			[](const PARTICLE& Particle) { return Particle.fAge >= Particle.fLifetime; }),
+			m_Particles.end());
+		const f32_t fDragFactor = (std::max)(0.f, 1.f - P.fDrag * fStep);
+		for (PARTICLE& Particle : m_Particles)
+		{
+			Particle.vVelocity.x = (Particle.vVelocity.x + P.vAcceleration.x * fStep) * fDragFactor;
+			Particle.vVelocity.y = (Particle.vVelocity.y + P.vAcceleration.y * fStep) * fDragFactor;
+			Particle.vVelocity.z = (Particle.vVelocity.z + P.vAcceleration.z * fStep) * fDragFactor;
+			Particle.vPosition.x += Particle.vVelocity.x * fStep;
+			Particle.vPosition.y += Particle.vVelocity.y * fStep;
+			Particle.vPosition.z += Particle.vVelocity.z * fStep;
+			Particle.fRotationDegrees += Particle.fSpinDegrees * fStep;
+		}
+	}
+	if (m_bEmissionStopped)
+		return;
+	if (m_bBurstPending)
+	{
+		for (uint32_t iIndex = 0u; iIndex < P.iBurstCount; ++iIndex)
+			Spawn_Particle();
+		m_bBurstPending = false;
+	}
+	m_fSpawnAccumulator += (std::max)(0.f, P.fSpawnRate) * fStep;
+	const uint32_t iMax = (std::min)(MAX_PARTICLE_CAPACITY, (std::max)(1u, P.iMaxParticles));
+	while (m_fSpawnAccumulator >= 1.f && m_Particles.size() < iMax)
+	{
+		Spawn_Particle();
+		m_fSpawnAccumulator -= 1.f;
+	}
+	m_fSpawnAccumulator = (std::min)(m_fSpawnAccumulator, 1.f);
+}
+
+HRESULT Client::CEffectV2Object::Build_ParticleInstances()
+{
+	const PARTICLE_PARAMS& P = m_Params.Particle;
+	const uint32_t iMax = (std::min)(MAX_PARTICLE_CAPACITY, (std::max)(1u, P.iMaxParticles));
+	if (nullptr == m_pParticleBuffer || m_pParticleBuffer->Get_Capacity() < iMax)
+	{
+		unique_ptr<Engine::CVIBuffer_ParticleRect> Buffer =
+			Engine::CVIBuffer_ParticleRect::Create(m_pDevice, m_pContext, iMax);
+		if (nullptr == Buffer)
+			return E_FAIL;
+		m_pParticleBuffer = std::move(Buffer);
+	}
+	const float4x4_t* pCameraWorld = CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW);
+	if (nullptr == pCameraWorld)
+		return E_FAIL;
+	const matrix_t CameraWorld = XMLoadFloat4x4(pCameraWorld);
+	const vector_t CameraRight = XMVector3Normalize(CameraWorld.r[0]);
+	const vector_t CameraUp = XMVector3Normalize(CameraWorld.r[1]);
+	const vector_t CameraLook = XMVector3Normalize(CameraWorld.r[2]);
+	const matrix_t World = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+	const uint32_t iColumns = (std::max)(1u, P.iTileColumns);
+	const uint32_t iRows = (std::max)(1u, P.iTileRows);
+	const uint32_t iFrames = iColumns * iRows;
+
+	m_ParticleInstances.clear();
+	for (const PARTICLE& Particle : m_Particles)
+	{
+		const f32_t fLife = Saturate(Particle.fAge / Particle.fLifetime);
+		vector_t Position = XMLoadFloat3(&Particle.vPosition);
+		vector_t Velocity = XMLoadFloat3(&Particle.vVelocity);
+		if (P.bLocalSpace)
+		{
+			Position = XMVector3TransformCoord(Position, World);
+			Velocity = XMVector3TransformNormal(Velocity, World);
+		}
+		vector_t Right = CameraRight;
+		vector_t Up = CameraUp;
+		vector_t Look = CameraLook;
+		if (PARTICLE_ALIGNMENT::VELOCITY == P.eAlignment)
+		{
+			const vector_t Planar = Velocity - CameraLook * XMVector3Dot(Velocity, CameraLook);
+			vector_t Axis;
+			if (Normalize_Safe(Planar, Axis))
+			{
+				Up = Axis;
+				Right = XMVector3Normalize(XMVector3Cross(Up, CameraLook));
+			}
+		}
+		else if (PARTICLE_ALIGNMENT::HORIZONTAL == P.eAlignment)
+		{
+			Right = XMVectorSet(1.f, 0.f, 0.f, 0.f);
+			Up = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+			Look = XMVectorSet(0.f, -1.f, 0.f, 0.f);
+		}
+		const f32_t fRoll = XMConvertToRadians(Particle.fRotationDegrees);
+		const f32_t fCos = std::cos(fRoll);
+		const f32_t fSin = std::sin(fRoll);
+		const vector_t RolledRight = Right * fCos + Up * fSin;
+		const vector_t RolledUp = Up * fCos - Right * fSin;
+		const f32_t fSizeX = P.vSizeStart.x + (P.vSizeEnd.x - P.vSizeStart.x) * fLife;
+		const f32_t fSizeY = P.vSizeStart.y + (P.vSizeEnd.y - P.vSizeStart.y) * fLife;
+
+		Engine::VTXEFFECT_PARTICLE Instance;
+		matrix_t InstanceWorld;
+		InstanceWorld.r[0] = XMVectorSetW(RolledRight * fSizeX, 0.f);
+		InstanceWorld.r[1] = XMVectorSetW(RolledUp * fSizeY, 0.f);
+		InstanceWorld.r[2] = XMVectorSetW(Look, 0.f);
+		InstanceWorld.r[3] = XMVectorSetW(Position, 1.f);
+		XMStoreFloat4x4(&Instance.World, InstanceWorld);
+		XMStoreFloat4(&Instance.Color, XMVectorLerp(
+			XMLoadFloat4(&P.vColorStart), XMLoadFloat4(&P.vColorEnd), fLife));
+		const uint32_t iFrame = P.bSubUVOverLife ?
+			(std::min)(iFrames - 1u, static_cast<uint32_t>(fLife * static_cast<f32_t>(iFrames))) : 0u;
+		Instance.UVTransform = float4_t(
+			1.f / static_cast<f32_t>(iColumns), 1.f / static_cast<f32_t>(iRows),
+			static_cast<f32_t>(iFrame % iColumns) / static_cast<f32_t>(iColumns),
+			static_cast<f32_t>(iFrame / iColumns) / static_cast<f32_t>(iRows));
+		Instance.UVTransformNext = Instance.UVTransform;
+		Instance.ParticleData = float2_t(fLife, 0.f);
+		m_ParticleInstances.push_back(Instance);
+	}
+	return m_pParticleBuffer->Update_Instances(
+		std::span<const Engine::VTXEFFECT_PARTICLE>(m_ParticleInstances));
+}
+
+void Client::CEffectV2Object::Update_Trail(const f32_t fStep)
+{
+	const TRAIL_PARAMS& T = m_Params.Trail;
+	if (fStep > 0.f)
+	{
+		const f32_t fAgeStep = fStep / (std::max)(0.001f, T.fPointLifetime);
+		for (TRAIL_POINT& Point : m_TrailPoints)
+			Point.fAge += fAgeStep;
+		m_TrailPoints.erase(std::remove_if(m_TrailPoints.begin(), m_TrailPoints.end(),
+			[](const TRAIL_POINT& Point) { return Point.fAge >= 1.f; }),
+			m_TrailPoints.end());
+	}
+	if (m_bEmissionStopped)
+		return;
+	m_fTrailSampleAccumulator += fStep;
+	if (m_fTrailSampleAccumulator < T.fSampleInterval && !m_TrailPoints.empty())
+		return;
+	m_fTrailSampleAccumulator = 0.f;
+	const matrix_t World = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+	const vector_t Center = XMVectorSetW(World.r[3], 1.f);
+	const vector_t Edge = TRAIL_EDGE_MODE::LOCAL_OFFSET == T.eEdgeMode ?
+		XMVector3TransformCoord(XMLoadFloat3(&T.vEdgeOffset), World) : Center;
+	f32_t fDistance = 0.f;
+	if (!m_TrailPoints.empty())
+	{
+		fDistance = XMVectorGetX(XMVector3Length(
+			Center - XMLoadFloat3(&m_TrailPoints.back().vCenter)));
+		if (fDistance < T.fMinDistance)
+			return;
+	}
+	m_fTrailCumulativeDistance += fDistance;
+	TRAIL_POINT Point;
+	Point.vCenter = To_Float3(Center);
+	Point.vEdge = To_Float3(Edge);
+	Point.fAge = 0.f;
+	Point.fCumulativeDistance = m_fTrailCumulativeDistance;
+	m_TrailPoints.push_back(Point);
+	const uint32_t iMaxPoints = (std::min)(MAX_TRAIL_POINTS, (std::max)(2u, T.iMaxPoints));
+	while (m_TrailPoints.size() > iMaxPoints)
+		m_TrailPoints.erase(m_TrailPoints.begin());
+}
+
+HRESULT Client::CEffectV2Object::Build_TrailGeometry()
+{
+	const TRAIL_PARAMS& T = m_Params.Trail;
+	const uint32_t iMaxPoints = (std::min)(MAX_TRAIL_POINTS, (std::max)(2u, T.iMaxPoints));
+	if (m_TrailPoints.size() < 2u)
+		return S_FALSE;
+	const float4_t* pCameraPosition = CGameInstance::Get().Get_CamPosition();
+	const vector_t CameraPosition = nullptr != pCameraPosition ?
+		XMLoadFloat4(pCameraPosition) : XMVectorZero();
+	const size_t iCount = m_TrailPoints.size();
+	m_TrailVertices.clear();
+	m_TrailIndices.clear();
+	for (size_t iPoint = 0u; iPoint < iCount; ++iPoint)
+	{
+		const TRAIL_POINT& Point = m_TrailPoints[iPoint];
+		const vector_t Center = XMLoadFloat3(&Point.vCenter);
+		vector_t First = Center;
+		vector_t Second = XMLoadFloat3(&Point.vEdge);
+		if (TRAIL_EDGE_MODE::LOCAL_OFFSET != T.eEdgeMode)
+		{
+			const vector_t Previous = XMLoadFloat3(
+				&m_TrailPoints[iPoint > 0u ? iPoint - 1u : iPoint].vCenter);
+			const vector_t Next = XMLoadFloat3(
+				&m_TrailPoints[iPoint + 1u < iCount ? iPoint + 1u : iPoint].vCenter);
+			vector_t Tangent;
+			if (!Normalize_Safe(Next - Previous, Tangent))
+				continue;
+			vector_t Side;
+			if (TRAIL_EDGE_MODE::CENTERLINE_CAMERA == T.eEdgeMode)
+			{
+				if (!Normalize_Safe(XMVector3Cross(CameraPosition - Center, Tangent), Side))
+					continue;
+			}
+			else if (!Normalize_Safe(XMVector3Cross(XMVectorSet(0.f, 1.f, 0.f, 0.f), Tangent), Side) &&
+				!Normalize_Safe(XMVector3Cross(XMVectorSet(1.f, 0.f, 0.f, 0.f), Tangent), Side))
+				continue;
+			const f32_t fWidth = T.fStartWidth + (T.fEndWidth - T.fStartWidth) * Saturate(Point.fAge);
+			First = Center - Side * (fWidth * 0.5f);
+			Second = Center + Side * (fWidth * 0.5f);
+		}
+		const f32_t fU = T.fTilingDistance > 0.f ?
+			Point.fCumulativeDistance / T.fTilingDistance : static_cast<f32_t>(iPoint);
+		const f32_t fAlpha = T.bFadeWithAge ? 1.f - Saturate(Point.fAge) : 1.f;
+		Engine::VTXEFFECT_TRAIL Vertex;
+		Vertex.vColor = float4_t(1.f, 1.f, 1.f, fAlpha);
+		Vertex.vPosition = To_Float3(First);
+		Vertex.vTexcoord = float2_t(fU, 0.f);
+		m_TrailVertices.push_back(Vertex);
+		Vertex.vPosition = To_Float3(Second);
+		Vertex.vTexcoord = float2_t(fU, 1.f);
+		m_TrailVertices.push_back(Vertex);
+	}
+	if (m_TrailVertices.size() < 4u)
+		return S_FALSE;
+	for (uint32_t iBase = 0u; iBase + 3u < m_TrailVertices.size(); iBase += 2u)
+	{
+		m_TrailIndices.push_back(iBase);
+		m_TrailIndices.push_back(iBase + 1u);
+		m_TrailIndices.push_back(iBase + 2u);
+		m_TrailIndices.push_back(iBase + 1u);
+		m_TrailIndices.push_back(iBase + 3u);
+		m_TrailIndices.push_back(iBase + 2u);
+	}
+	if (nullptr == m_pTrailBuffer || m_iTrailBufferPoints < iMaxPoints)
+	{
+		unique_ptr<Engine::CVIBuffer_DynamicTrail> Buffer =
+			Engine::CVIBuffer_DynamicTrail::Create(m_pDevice, m_pContext, iMaxPoints);
+		if (nullptr == Buffer)
+			return E_FAIL;
+		m_pTrailBuffer = std::move(Buffer);
+		m_iTrailBufferPoints = iMaxPoints;
+	}
+	return m_pTrailBuffer->Update_Geometry(
+		std::span<const Engine::VTXEFFECT_TRAIL>(m_TrailVertices),
+		std::span<const uint32_t>(m_TrailIndices));
+}
+
 void Client::CEffectV2Object::Late_Update(const f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
-	if (m_bHidden || m_bFinished || nullptr == m_pShader)
+	if (m_bHidden || m_bFinished)
+		return;
+	if (SHAPE::SCREEN_POST == m_eShape)
+	{
+		if (FAILED(Engine::CPresentation_Manager::Get().Add_FrameProvider(
+			static_pointer_cast<Engine::IPresentationProvider>(
+				static_pointer_cast<CEffectV2Object>(shared_from_this())))))
+		{
+			m_strStatus = "Presentation provider budget exceeded.";
+		}
+		return;
+	}
+	if (nullptr == m_pShader)
 		return;
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::BLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+}
+
+f32_t Client::CEffectV2Object::ScreenPost_Intensity() const
+{
+	const SCREEN_POST_PARAMS& S = m_Params.ScreenPost;
+	if (!S.bIntensityLerp)
+		return (std::max)(0.f, S.fIntensityStart);
+	return (std::max)(0.f,
+		S.fIntensityStart + (S.fIntensityEnd - S.fIntensityStart) * Life_Ratio());
+}
+
+HRESULT Client::CEffectV2Object::Submit_Presentation()
+{
+	m_ePresentationFailureScope = Engine::PRESENTATION_FAILURE_SCOPE::NONE;
+	Engine::CPresentation_Manager& Presentation = Engine::CPresentation_Manager::Get();
+	Presentation.Register_ProviderSubmissionExpectation(0u, 0u, 1u, 1u);
+	const SCREEN_POST_PARAMS& S = m_Params.ScreenPost;
+	Engine::PRESENTATION_SCREEN_POST_DESC Post;
+	switch (S.eProfile)
+	{
+	case SCREEN_POST_PROFILE::RGB_NOISE:
+		Post.eProfile = Engine::PRESENTATION_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED;
+		break;
+	case SCREEN_POST_PROFILE::FILM_NOISE:
+		Post.eProfile = Engine::PRESENTATION_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED;
+		break;
+	default:
+		Post.eProfile = Engine::PRESENTATION_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED;
+		break;
+	}
+	Post.iSourceOrder = 0u;
+	Post.iRandomSeed = (std::max)(1u, S.iRandomSeed);
+	Post.fSampleTimeSeconds = (std::max)(0.f, m_fTime);
+	Post.fIntensity = ScreenPost_Intensity();
+	Post.fSecondaryIntensity = (std::max)(0.f, S.fSecondaryIntensity);
+	Post.fFrequency = (std::max)(0.f, S.fFrequency);
+	Post.vTint = S.vTint;
+	const HRESULT hResult = Presentation.Add_ScreenPost(Post);
+	if (FAILED(hResult))
+	{
+		m_ePresentationFailureScope = Presentation.Get_LastFailureScope();
+		m_strStatus = "Screen post submission failed.";
+	}
+	return hResult;
 }
 
 HRESULT Client::CEffectV2Object::Bind_Common(
@@ -3552,8 +4568,46 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 	return S_OK;
 }
 
+HRESULT Client::CEffectV2Object::Render_Decal(const uint32_t iPass)
+{
+	CGameInstance& GameInstance = CGameInstance::Get();
+	const float4x4_t* pViewInverse = GameInstance.Get_InverseTransform(D3DTS::VIEW);
+	const float4x4_t* pProjInverse = GameInstance.Get_InverseTransform(D3DTS::PROJ);
+	if (nullptr == pViewInverse || nullptr == pProjInverse)
+		return E_FAIL;
+	const matrix_t World = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+	vector_t Determinant = XMMatrixDeterminant(World);
+	if (std::fabs(XMVectorGetX(Determinant)) <= 1e-12f)
+		return E_FAIL;
+	float4x4_t WorldInverse;
+	XMStoreFloat4x4(&WorldInverse, XMMatrixInverse(&Determinant, World));
+	const DECAL_PARAMS& D = m_Params.Decal;
+	float3_t vDecalUp;
+	XMStoreFloat3(&vDecalUp, XMVector3Normalize(World.r[1]));
+	if (FAILED(m_pShader->Bind_Matrix("g_DecalWorldInverse", &WorldInverse)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ViewMatrixInverse", pViewInverse)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ProjMatrixInverse", pProjInverse)) ||
+		FAILED(m_pShader->Bind_RawValue("g_DecalSize", &D.vSize, sizeof(D.vSize))) ||
+		FAILED(m_pShader->Bind_RawValue("g_DecalDepth", &D.fDepth, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_DecalEdgeFade", &D.fEdgeFade, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_DecalUp", &vDecalUp, sizeof(vDecalUp))) ||
+		FAILED(m_pShader->Bind_RawValue("g_DecalNormalCutoff", &D.fNormalCutoff, sizeof(f32_t))) ||
+		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
+		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")))
+		return E_FAIL;
+	const uint32_t iDecalPass = BLEND_MODE::ADDITIVE == m_Params.eBlend ? 1u : 0u;
+	UNREFERENCED_PARAMETER(iPass);
+	if (FAILED(m_pShader->Begin(iDecalPass)) ||
+		FAILED(m_pRect->Bind_Resources()) ||
+		FAILED(m_pRect->Render()))
+		return E_FAIL;
+	return S_OK;
+}
+
 HRESULT Client::CEffectV2Object::Render()
 {
+	if (SHAPE::SCREEN_POST == m_eShape || nullptr == m_pShader)
+		return S_OK;
 	if (FAILED(Bind_Common(m_pShader)))
 	{
 		m_strStatus = "Shader bind failed.";
@@ -3561,8 +4615,9 @@ HRESULT Client::CEffectV2Object::Render()
 	}
 	const uint32_t iPass = BLEND_MODE::SOLID == m_Params.eBlend ? 4u :
 		static_cast<uint32_t>(m_Params.eBlend) + (m_Params.bDepthTest ? 0u : 2u);
-	if (SHAPE::MESH == m_eShape)
+	switch (m_eShape)
 	{
+	case SHAPE::MESH:
 		for (uint32_t iMesh = 0u; iMesh < m_pModel->Get_NumMeshes(); ++iMesh)
 		{
 			if (iMesh < m_Parts.size() && !m_Parts[iMesh].bVisible)
@@ -3591,13 +4646,62 @@ HRESULT Client::CEffectV2Object::Render()
 			}
 		}
 		return S_OK;
-	}
-	if (FAILED(m_pShader->Begin(iPass)) || FAILED(m_pRect->Render()))
+	case SHAPE::SPRITE:
+		if (FAILED(m_pShader->Begin(iPass)) ||
+			FAILED(m_pRect->Bind_Resources()) ||
+			FAILED(m_pRect->Render()))
+		{
+			m_strStatus = "Sprite draw failed.";
+			return E_FAIL;
+		}
+		return S_OK;
+	case SHAPE::PARTICLE:
 	{
-		m_strStatus = "Sprite draw failed.";
+		if (FAILED(Build_ParticleInstances()))
+		{
+			m_strStatus = "Particle instance upload failed.";
+			return E_FAIL;
+		}
+		if (0u == m_pParticleBuffer->Get_InstanceCount())
+			return S_OK;
+		if (FAILED(m_pShader->Begin(iPass)) || FAILED(m_pParticleBuffer->Render()))
+		{
+			m_strStatus = "Particle draw failed.";
+			return E_FAIL;
+		}
+		return S_OK;
+	}
+	case SHAPE::TRAIL:
+	{
+		const HRESULT hGeometry = Build_TrailGeometry();
+		if (FAILED(hGeometry))
+		{
+			m_strStatus = "Trail geometry upload failed.";
+			return E_FAIL;
+		}
+		if (S_FALSE == hGeometry)
+			return S_OK;
+		if (FAILED(m_pShader->Begin(iPass)) ||
+			FAILED(m_pTrailBuffer->Bind_Resources()) ||
+			FAILED(m_pTrailBuffer->Render()))
+		{
+			m_strStatus = "Trail draw failed.";
+			return E_FAIL;
+		}
+		return S_OK;
+	}
+	case SHAPE::DECAL:
+		if (FAILED(Render_Decal(iPass)))
+		{
+			m_strStatus = "Decal draw failed.";
+			return E_FAIL;
+		}
+		return S_OK;
+	case SHAPE::SCREEN_POST:
+		return S_OK;
+	default:
 		return E_FAIL;
 	}
-	return S_OK;
 }
 
 unique_ptr<Client::CEffectV2Object> Client::CEffectV2Object::Create(
@@ -3725,6 +4829,7 @@ struct PS_EFFECT_IN
 	float2 vTexcoord : TEXCOORD0;
 	float3 vWorldNormal : NORMAL;
 	float3 vWorldPosition : TEXCOORD1;
+	float4 vInstanceColor : COLOR0;
 };
 
 struct PS_EFFECT_OUT
@@ -3775,8 +4880,10 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	}
 
 	float4 color;
-	color.rgb = max(base.rgb * g_ColorMul.rgb + g_ColorOffset.rgb, float3(0.f, 0.f, 0.f));
-	color.a = saturate(base.a * mask * dissolve * g_ColorMul.a + g_ColorOffset.a);
+	color.rgb = max(base.rgb * g_ColorMul.rgb * input.vInstanceColor.rgb + g_ColorOffset.rgb,
+		float3(0.f, 0.f, 0.f));
+	color.a = saturate(base.a * mask * dissolve * g_ColorMul.a * input.vInstanceColor.a +
+		g_ColorOffset.a);
 	color.a *= lerp(1.f, fresnel, saturate(g_GhostAlpha));
 	if (color.a <= 0.001f)
 		discard;
@@ -3867,6 +4974,7 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = normalize(mul(input.vNormal, (float3x3)g_WorldMatrix));
 	output.vWorldPosition = worldPosition.xyz;
+	output.vInstanceColor = float4(1.f, 1.f, 1.f, 1.f);
 	return output;
 }
 
@@ -3909,6 +5017,7 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = normalize(mul(skinnedNormal, (float3x3)g_WorldMatrix));
 	output.vWorldPosition = worldPosition.xyz;
+	output.vInstanceColor = float4(1.f, 1.f, 1.f, 1.f);
 	return output;
 }
 
@@ -3937,12 +5046,191 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = float3(0.f, 0.f, 0.f);
 	output.vWorldPosition = worldPosition.xyz;
+	output.vInstanceColor = float4(1.f, 1.f, 1.f, 1.f);
 	return output;
 }
 
 technique11 DefaultTechnique
 {
 	EFFECT_V2_PASSES(VS_MAIN)
+}
+```
+
+### Client/Bin/ShaderFiles/Shader_EffectParticleV2.hlsl
+
+```hlsl
+#include "Shader_EffectV2_Common.hlsli"
+
+struct VS_IN
+{
+	float3 vPosition : POSITION;
+	float2 vTexcoord : TEXCOORD0;
+	float4 vRight : WORLD0;
+	float4 vUp : WORLD1;
+	float4 vLook : WORLD2;
+	float4 vTranslation : WORLD3;
+	float4 vColor : COLOR0;
+	float4 vDynamicParameter : DYNAMIC0;
+	float4 vUVTransform : UVTRANSFORM0;
+	float4 vUVTransformNext : UVTRANSFORM1;
+	float2 vParticleData : PARTICLEDATA0;
+};
+
+PS_EFFECT_IN VS_MAIN(VS_IN input)
+{
+	PS_EFFECT_IN output;
+	const float4x4 instanceWorld = float4x4(
+		input.vRight, input.vUp, input.vLook, input.vTranslation);
+	const float4 worldPosition = mul(float4(input.vPosition, 1.f), instanceWorld);
+	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
+	output.vTexcoord = input.vTexcoord * input.vUVTransform.xy + input.vUVTransform.zw;
+	output.vWorldNormal = float3(0.f, 0.f, 0.f);
+	output.vWorldPosition = worldPosition.xyz;
+	output.vInstanceColor = input.vColor;
+	return output;
+}
+
+technique11 DefaultTechnique
+{
+	EFFECT_V2_PASSES(VS_MAIN)
+}
+```
+
+### Client/Bin/ShaderFiles/Shader_EffectTrailV2.hlsl
+
+```hlsl
+#include "Shader_EffectV2_Common.hlsli"
+
+struct VS_IN
+{
+	float3 vPosition : POSITION;
+	float2 vTexcoord : TEXCOORD0;
+	float4 vColor : COLOR0;
+	float4 vDynamicParameter : TEXCOORD1;
+};
+
+PS_EFFECT_IN VS_MAIN(VS_IN input)
+{
+	PS_EFFECT_IN output;
+	const float4 worldPosition = float4(input.vPosition, 1.f);
+	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
+	output.vTexcoord = input.vTexcoord;
+	output.vWorldNormal = float3(0.f, 0.f, 0.f);
+	output.vWorldPosition = worldPosition.xyz;
+	output.vInstanceColor = input.vColor;
+	return output;
+}
+
+technique11 DefaultTechnique
+{
+	EFFECT_V2_PASSES(VS_MAIN)
+}
+```
+
+### Client/Bin/ShaderFiles/Shader_EffectDecalV2.hlsl
+
+```hlsl
+#include "Shader_EffectV2_Common.hlsli"
+
+float4x4 g_ViewMatrixInverse;
+float4x4 g_ProjMatrixInverse;
+float4x4 g_DecalWorldInverse;
+Texture2D g_DepthTexture;
+Texture2D g_NormalTexture;
+float2 g_DecalSize = float2(1.f, 1.f);
+float g_DecalDepth = 1.f;
+float g_DecalEdgeFade = 0.f;
+float3 g_DecalUp = float3(0.f, 1.f, 0.f);
+float g_DecalNormalCutoff = -1.f;
+
+struct VS_IN
+{
+	float3 vPosition : POSITION;
+	float2 vTexcoord : TEXCOORD0;
+};
+
+struct VS_OUT
+{
+	float4 vPosition : SV_POSITION;
+	float2 vTexcoord : TEXCOORD0;
+};
+
+VS_OUT VS_MAIN(VS_IN input)
+{
+	VS_OUT output;
+	output.vPosition = float4(input.vPosition.x * 2.f, input.vPosition.y * 2.f, 0.f, 1.f);
+	output.vTexcoord = input.vTexcoord;
+	return output;
+}
+
+PS_EFFECT_OUT PS_MAIN(VS_OUT input)
+{
+	const float4 depth = g_DepthTexture.Sample(PointSampler, input.vTexcoord);
+	const float viewZ = depth.y * 1000.f;
+	float4 worldPosition;
+	worldPosition.x = input.vTexcoord.x * 2.f - 1.f;
+	worldPosition.y = input.vTexcoord.y * -2.f + 1.f;
+	worldPosition.z = depth.x;
+	worldPosition.w = 1.f;
+	worldPosition *= viewZ;
+	worldPosition = mul(worldPosition, g_ProjMatrixInverse);
+	worldPosition = mul(worldPosition, g_ViewMatrixInverse);
+
+	const float3 local = mul(worldPosition, g_DecalWorldInverse).xyz;
+	const float2 halfSize = max(g_DecalSize, float2(0.0001f, 0.0001f)) * 0.5f;
+	const float halfDepth = max(g_DecalDepth, 0.0001f) * 0.5f;
+	clip(halfSize.x - abs(local.x));
+	clip(halfSize.y - abs(local.z));
+	clip(halfDepth - abs(local.y));
+	if (g_DecalNormalCutoff > -1.f)
+	{
+		const float3 sceneNormal =
+			g_NormalTexture.Sample(PointSampler, input.vTexcoord).xyz * 2.f - 1.f;
+		clip(dot(normalize(sceneNormal), normalize(g_DecalUp)) - g_DecalNormalCutoff);
+	}
+
+	PS_EFFECT_IN effectInput;
+	effectInput.vPosition = input.vPosition;
+	effectInput.vTexcoord = float2(
+		local.x / (halfSize.x * 2.f) + 0.5f,
+		0.5f - local.z / (halfSize.y * 2.f));
+	effectInput.vWorldNormal = float3(0.f, 0.f, 0.f);
+	effectInput.vWorldPosition = worldPosition.xyz;
+	effectInput.vInstanceColor = float4(1.f, 1.f, 1.f, 1.f);
+	PS_EFFECT_OUT output = PS_EFFECT_V2(effectInput);
+
+	if (g_DecalEdgeFade > 0.f)
+	{
+		const float3 normalized = float3(
+			abs(local.x) / halfSize.x, abs(local.y) / halfDepth, abs(local.z) / halfSize.y);
+		const float edge = 1.f - max(normalized.x, max(normalized.y, normalized.z));
+		const float fade = saturate(edge / g_DecalEdgeFade);
+		output.vSceneColor.a *= fade;
+		output.vDistortion *= fade;
+	}
+	return output;
+}
+
+technique11 DefaultTechnique
+{
+	pass Alpha
+	{
+		SetRasterizerState(RS_EffectV2);
+		SetDepthStencilState(DSS_ZNone, 0);
+		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+		VertexShader = compile vs_5_0 VS_MAIN();
+		GeometryShader = NULL;
+		PixelShader = compile ps_5_0 PS_MAIN();
+	}
+	pass Additive
+	{
+		SetRasterizerState(RS_EffectV2);
+		SetDepthStencilState(DSS_ZNone, 0);
+		SetBlendState(BS_EffectV2Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+		VertexShader = compile vs_5_0 VS_MAIN();
+		GeometryShader = NULL;
+		PixelShader = compile ps_5_0 PS_MAIN();
+	}
 }
 ```
 
@@ -4177,6 +5465,7 @@ enum class EFFECT_V2_TYPE : int32_t
 	PARTICLE,
 	DECAL,
 	TRAIL,
+	SCREEN_POST,
 	END
 };
 
@@ -4244,6 +5533,7 @@ public:
 
 	static const char* Type_Key(EFFECT_V2_TYPE eType);
 	static const char* Rotation_Key(CEffectV2Object::PIVOT_ROTATION eRotation);
+	static CEffectV2Object::SHAPE Shape_ForType(EFFECT_V2_TYPE eType);
 };
 
 NS_END
@@ -4265,11 +5555,16 @@ NS_END
 
 namespace
 {
-	const char* EFFECT_TYPE_KEYS[] = { "Mesh", "Texture", "Particle", "Decal", "Trail" };
+	const char* EFFECT_TYPE_KEYS[] = { "Mesh", "Texture", "Particle", "Decal", "Trail", "ScreenPost" };
+	const char* SCREEN_POST_PROFILE_KEYS[] = { "ZoomBlur", "RgbNoise", "FilmNoise" };
 	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque" };
 	const char* CLIP_CHANNEL_KEYS[] = { "RGB", "Alpha" };
 	const char* PIVOT_ROTATION_KEYS[] = { "Bone", "TargetYaw", "World" };
 	const char* SLOT_KEYS[] = { "mesh", "base", "noise", "mask", "emissive", "dissolve" };
+	const char* SPAWN_SHAPE_KEYS[] = { "Point", "Sphere", "Ring", "Box" };
+	const char* VELOCITY_MODE_KEYS[] = { "Fixed", "Outward", "Cone" };
+	const char* ALIGNMENT_KEYS[] = { "Camera", "Velocity", "Horizontal" };
+	const char* TRAIL_EDGE_KEYS[] = { "CenterlineCamera", "CenterlineUp", "LocalOffset" };
 
 	std::string Json_String(const std::string& strValue)
 	{
@@ -4328,6 +5623,22 @@ namespace
 			return false;
 		}
 		fOut = static_cast<f32_t>(pValue->Get_Number());
+		return true;
+	}
+
+	bool_t Read_Uint(const Client::DATA_JSON_VALUE& Object,
+		const char* pKey, uint32_t& iOut, std::string& strError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue)
+			return true;
+		if (!pValue->Is_Number() || !std::isfinite(pValue->Get_Number()) ||
+			pValue->Get_Number() < 0.0 || pValue->Get_Number() > 4294967295.0)
+		{
+			strError = std::string("params.") + pKey + " must be a non-negative integer.";
+			return false;
+		}
+		iOut = static_cast<uint32_t>(pValue->Get_Number());
 		return true;
 	}
 
@@ -4471,6 +5782,19 @@ const char* Client::CEffectV2Document::Rotation_Key(const CEffectV2Object::PIVOT
 	return iIndex < _countof(PIVOT_ROTATION_KEYS) ? PIVOT_ROTATION_KEYS[iIndex] : "TargetYaw";
 }
 
+Client::CEffectV2Object::SHAPE Client::CEffectV2Document::Shape_ForType(const EFFECT_V2_TYPE eType)
+{
+	switch (eType)
+	{
+	case EFFECT_V2_TYPE::MESH: return CEffectV2Object::SHAPE::MESH;
+	case EFFECT_V2_TYPE::PARTICLE: return CEffectV2Object::SHAPE::PARTICLE;
+	case EFFECT_V2_TYPE::DECAL: return CEffectV2Object::SHAPE::DECAL;
+	case EFFECT_V2_TYPE::TRAIL: return CEffectV2Object::SHAPE::TRAIL;
+	case EFFECT_V2_TYPE::SCREEN_POST: return CEffectV2Object::SHAPE::SCREEN_POST;
+	default: return CEffectV2Object::SHAPE::SPRITE;
+	}
+}
+
 bool_t Client::CEffectV2Document::Parse_Document(
 	const std::string& strText,
 	EFFECT_V2_DOCUMENT& OutDocument,
@@ -4510,8 +5834,7 @@ bool_t Client::CEffectV2Document::Parse_Document(
 	EFFECT_V2_DOCUMENT Document{};
 	Document.strEffectId = pEffectId->Get_String();
 	Document.eType = static_cast<EFFECT_V2_TYPE>(iType);
-	Document.Desc.eShape = EFFECT_V2_TYPE::MESH == Document.eType ?
-		CEffectV2Object::SHAPE::MESH : CEffectV2Object::SHAPE::SPRITE;
+	Document.Desc.eShape = Shape_ForType(Document.eType);
 
 	const DATA_JSON_VALUE* pSlots = Root.Find("slots");
 	if (nullptr == pSlots || !pSlots->Is_Object())
@@ -4604,6 +5927,143 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			return false;
 		}
 		Document.strAnimationClip = pClip->Get_String();
+	}
+	if (const DATA_JSON_VALUE* pParticle = pParams->Find("particle"))
+	{
+		if (!pParticle->Is_Object())
+		{
+			strOutError = "params.particle must be an object.";
+			return false;
+		}
+		CEffectV2Object::PARTICLE_PARAMS& E = P.Particle;
+		int32_t iSpawnShape = static_cast<int32_t>(E.eSpawnShape);
+		int32_t iVelocityMode = static_cast<int32_t>(E.eVelocityMode);
+		int32_t iAlignment = static_cast<int32_t>(E.eAlignment);
+		if (!Read_Uint(*pParticle, "maxParticles", E.iMaxParticles, strOutError) ||
+			!Read_Number(*pParticle, "spawnRate", E.fSpawnRate, strOutError) ||
+			!Read_Uint(*pParticle, "burstCount", E.iBurstCount, strOutError) ||
+			!Read_FloatArray(*pParticle, "lifetime", &E.vLifetime.x, 2u, strOutError) ||
+			!Read_Enum(*pParticle, "spawnShape", SPAWN_SHAPE_KEYS,
+				_countof(SPAWN_SHAPE_KEYS), iSpawnShape, strOutError) ||
+			!Read_Number(*pParticle, "spawnRadius", E.fSpawnRadius, strOutError) ||
+			!Read_Number(*pParticle, "spawnInnerRadius", E.fSpawnInnerRadius, strOutError) ||
+			!Read_FloatArray(*pParticle, "spawnExtents", &E.vSpawnExtents.x, 3u, strOutError) ||
+			!Read_Number(*pParticle, "spawnArcDegrees", E.fSpawnArcDegrees, strOutError) ||
+			!Read_Enum(*pParticle, "velocityMode", VELOCITY_MODE_KEYS,
+				_countof(VELOCITY_MODE_KEYS), iVelocityMode, strOutError) ||
+			!Read_FloatArray(*pParticle, "velocityMin", &E.vVelocityMin.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "velocityMax", &E.vVelocityMax.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "speedRange", &E.vSpeedRange.x, 2u, strOutError) ||
+			!Read_Number(*pParticle, "coneAngleDegrees", E.fConeAngleDegrees, strOutError) ||
+			!Read_FloatArray(*pParticle, "acceleration", &E.vAcceleration.x, 3u, strOutError) ||
+			!Read_Number(*pParticle, "drag", E.fDrag, strOutError) ||
+			!Read_FloatArray(*pParticle, "sizeStart", &E.vSizeStart.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "sizeEnd", &E.vSizeEnd.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "rotationRange", &E.vRotationRange.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "spinRange", &E.vSpinRange.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "colorStart", &E.vColorStart.x, 4u, strOutError) ||
+			!Read_FloatArray(*pParticle, "colorEnd", &E.vColorEnd.x, 4u, strOutError) ||
+			!Read_Enum(*pParticle, "alignment", ALIGNMENT_KEYS,
+				_countof(ALIGNMENT_KEYS), iAlignment, strOutError) ||
+			!Read_Bool(*pParticle, "localSpace", E.bLocalSpace, strOutError) ||
+			!Read_Uint(*pParticle, "tileColumns", E.iTileColumns, strOutError) ||
+			!Read_Uint(*pParticle, "tileRows", E.iTileRows, strOutError) ||
+			!Read_Bool(*pParticle, "subUVOverLife", E.bSubUVOverLife, strOutError) ||
+			!Read_Uint(*pParticle, "randomSeed", E.iRandomSeed, strOutError))
+		{
+			return false;
+		}
+		E.eSpawnShape = static_cast<CEffectV2Object::PARTICLE_SPAWN_SHAPE>(iSpawnShape);
+		E.eVelocityMode = static_cast<CEffectV2Object::PARTICLE_VELOCITY_MODE>(iVelocityMode);
+		E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
+		if (0u == E.iMaxParticles || E.iMaxParticles > 2048u || E.fSpawnRate < 0.f ||
+			E.vLifetime.x <= 0.f || E.vLifetime.y < E.vLifetime.x ||
+			0u == E.iTileColumns || 0u == E.iTileRows)
+		{
+			strOutError = "params.particle maxParticles/spawnRate/lifetime/tile out of range.";
+			return false;
+		}
+	}
+	if (const DATA_JSON_VALUE* pDecal = pParams->Find("decal"))
+	{
+		if (!pDecal->Is_Object())
+		{
+			strOutError = "params.decal must be an object.";
+			return false;
+		}
+		CEffectV2Object::DECAL_PARAMS& D = P.Decal;
+		if (!Read_FloatArray(*pDecal, "size", &D.vSize.x, 2u, strOutError) ||
+			!Read_Number(*pDecal, "depth", D.fDepth, strOutError) ||
+			!Read_Number(*pDecal, "edgeFade", D.fEdgeFade, strOutError) ||
+			!Read_Number(*pDecal, "normalCutoff", D.fNormalCutoff, strOutError))
+		{
+			return false;
+		}
+		if (D.vSize.x <= 0.f || D.vSize.y <= 0.f || D.fDepth <= 0.f)
+		{
+			strOutError = "params.decal size/depth must be positive.";
+			return false;
+		}
+	}
+	if (const DATA_JSON_VALUE* pTrail = pParams->Find("trail"))
+	{
+		if (!pTrail->Is_Object())
+		{
+			strOutError = "params.trail must be an object.";
+			return false;
+		}
+		CEffectV2Object::TRAIL_PARAMS& T = P.Trail;
+		int32_t iEdgeMode = static_cast<int32_t>(T.eEdgeMode);
+		if (!Read_Uint(*pTrail, "maxPoints", T.iMaxPoints, strOutError) ||
+			!Read_Number(*pTrail, "pointLifetime", T.fPointLifetime, strOutError) ||
+			!Read_Number(*pTrail, "sampleInterval", T.fSampleInterval, strOutError) ||
+			!Read_Number(*pTrail, "minDistance", T.fMinDistance, strOutError) ||
+			!Read_Number(*pTrail, "startWidth", T.fStartWidth, strOutError) ||
+			!Read_Number(*pTrail, "endWidth", T.fEndWidth, strOutError) ||
+			!Read_Number(*pTrail, "tilingDistance", T.fTilingDistance, strOutError) ||
+			!Read_Enum(*pTrail, "edgeMode", TRAIL_EDGE_KEYS,
+				_countof(TRAIL_EDGE_KEYS), iEdgeMode, strOutError) ||
+			!Read_FloatArray(*pTrail, "edgeOffset", &T.vEdgeOffset.x, 3u, strOutError) ||
+			!Read_Bool(*pTrail, "fadeWithAge", T.bFadeWithAge, strOutError))
+		{
+			return false;
+		}
+		T.eEdgeMode = static_cast<CEffectV2Object::TRAIL_EDGE_MODE>(iEdgeMode);
+		if (T.iMaxPoints < 2u || T.iMaxPoints > 4096u || T.fPointLifetime <= 0.f ||
+			T.fSampleInterval < 0.f || T.fMinDistance < 0.f)
+		{
+			strOutError = "params.trail maxPoints/pointLifetime/sampleInterval/minDistance out of range.";
+			return false;
+		}
+	}
+	if (const DATA_JSON_VALUE* pScreenPost = pParams->Find("screenPost"))
+	{
+		if (!pScreenPost->Is_Object())
+		{
+			strOutError = "params.screenPost must be an object.";
+			return false;
+		}
+		CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
+		int32_t iProfile = static_cast<int32_t>(S.eProfile);
+		if (!Read_Enum(*pScreenPost, "profile", SCREEN_POST_PROFILE_KEYS,
+				_countof(SCREEN_POST_PROFILE_KEYS), iProfile, strOutError) ||
+			!Read_Number(*pScreenPost, "intensityStart", S.fIntensityStart, strOutError) ||
+			!Read_Number(*pScreenPost, "intensityEnd", S.fIntensityEnd, strOutError) ||
+			!Read_Bool(*pScreenPost, "intensityLerp", S.bIntensityLerp, strOutError) ||
+			!Read_Number(*pScreenPost, "secondaryIntensity", S.fSecondaryIntensity, strOutError) ||
+			!Read_Number(*pScreenPost, "frequency", S.fFrequency, strOutError) ||
+			!Read_FloatArray(*pScreenPost, "tint", &S.vTint.x, 4u, strOutError) ||
+			!Read_Uint(*pScreenPost, "randomSeed", S.iRandomSeed, strOutError))
+		{
+			return false;
+		}
+		S.eProfile = static_cast<CEffectV2Object::SCREEN_POST_PROFILE>(iProfile);
+		if (S.fIntensityStart < 0.f || S.fIntensityEnd < 0.f || S.fSecondaryIntensity < 0.f ||
+			S.fFrequency < 0.f || 0u == S.iRandomSeed)
+		{
+			strOutError = "params.screenPost intensities/frequency must be >= 0 and randomSeed >= 1.";
+			return false;
+		}
 	}
 	Document.Desc.bParamsAuthored = true;
 
@@ -4778,7 +6238,74 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"playRate\": " + Json_Number(P.fPlayRate) + ",\n";
 	Text += "    \"meshPreScale\": " + Json_Number(P.fMeshPreScale) + ",\n";
 	Text += "    \"animationClip\": " + Json_String(Document.strAnimationClip) + ",\n";
-	Text += std::string("    \"animationLoop\": ") + Json_Bool(P.bAnimationLoop) + "\n";
+	Text += std::string("    \"animationLoop\": ") + Json_Bool(P.bAnimationLoop) + ",\n";
+	const CEffectV2Object::PARTICLE_PARAMS& E = P.Particle;
+	Text += "    \"particle\": {\n";
+	Text += "      \"maxParticles\": " + std::to_string(E.iMaxParticles) + ",\n";
+	Text += "      \"spawnRate\": " + Json_Number(E.fSpawnRate) + ",\n";
+	Text += "      \"burstCount\": " + std::to_string(E.iBurstCount) + ",\n";
+	Text += "      \"lifetime\": " + Json_Float2(E.vLifetime) + ",\n";
+	Text += "      \"spawnShape\": " + Json_String(
+		SPAWN_SHAPE_KEYS[static_cast<size_t>(E.eSpawnShape)]) + ",\n";
+	Text += "      \"spawnRadius\": " + Json_Number(E.fSpawnRadius) + ",\n";
+	Text += "      \"spawnInnerRadius\": " + Json_Number(E.fSpawnInnerRadius) + ",\n";
+	Text += "      \"spawnExtents\": " + Json_Float3(E.vSpawnExtents) + ",\n";
+	Text += "      \"spawnArcDegrees\": " + Json_Number(E.fSpawnArcDegrees) + ",\n";
+	Text += "      \"velocityMode\": " + Json_String(
+		VELOCITY_MODE_KEYS[static_cast<size_t>(E.eVelocityMode)]) + ",\n";
+	Text += "      \"velocityMin\": " + Json_Float3(E.vVelocityMin) + ",\n";
+	Text += "      \"velocityMax\": " + Json_Float3(E.vVelocityMax) + ",\n";
+	Text += "      \"speedRange\": " + Json_Float2(E.vSpeedRange) + ",\n";
+	Text += "      \"coneAngleDegrees\": " + Json_Number(E.fConeAngleDegrees) + ",\n";
+	Text += "      \"acceleration\": " + Json_Float3(E.vAcceleration) + ",\n";
+	Text += "      \"drag\": " + Json_Number(E.fDrag) + ",\n";
+	Text += "      \"sizeStart\": " + Json_Float2(E.vSizeStart) + ",\n";
+	Text += "      \"sizeEnd\": " + Json_Float2(E.vSizeEnd) + ",\n";
+	Text += "      \"rotationRange\": " + Json_Float2(E.vRotationRange) + ",\n";
+	Text += "      \"spinRange\": " + Json_Float2(E.vSpinRange) + ",\n";
+	Text += "      \"colorStart\": " + Json_Float4(E.vColorStart) + ",\n";
+	Text += "      \"colorEnd\": " + Json_Float4(E.vColorEnd) + ",\n";
+	Text += "      \"alignment\": " + Json_String(
+		ALIGNMENT_KEYS[static_cast<size_t>(E.eAlignment)]) + ",\n";
+	Text += std::string("      \"localSpace\": ") + Json_Bool(E.bLocalSpace) + ",\n";
+	Text += "      \"tileColumns\": " + std::to_string(E.iTileColumns) + ",\n";
+	Text += "      \"tileRows\": " + std::to_string(E.iTileRows) + ",\n";
+	Text += std::string("      \"subUVOverLife\": ") + Json_Bool(E.bSubUVOverLife) + ",\n";
+	Text += "      \"randomSeed\": " + std::to_string(E.iRandomSeed) + "\n";
+	Text += "    },\n";
+	const CEffectV2Object::DECAL_PARAMS& D = P.Decal;
+	Text += "    \"decal\": {\n";
+	Text += "      \"size\": " + Json_Float2(D.vSize) + ",\n";
+	Text += "      \"depth\": " + Json_Number(D.fDepth) + ",\n";
+	Text += "      \"edgeFade\": " + Json_Number(D.fEdgeFade) + ",\n";
+	Text += "      \"normalCutoff\": " + Json_Number(D.fNormalCutoff) + "\n";
+	Text += "    },\n";
+	const CEffectV2Object::TRAIL_PARAMS& T = P.Trail;
+	Text += "    \"trail\": {\n";
+	Text += "      \"maxPoints\": " + std::to_string(T.iMaxPoints) + ",\n";
+	Text += "      \"pointLifetime\": " + Json_Number(T.fPointLifetime) + ",\n";
+	Text += "      \"sampleInterval\": " + Json_Number(T.fSampleInterval) + ",\n";
+	Text += "      \"minDistance\": " + Json_Number(T.fMinDistance) + ",\n";
+	Text += "      \"startWidth\": " + Json_Number(T.fStartWidth) + ",\n";
+	Text += "      \"endWidth\": " + Json_Number(T.fEndWidth) + ",\n";
+	Text += "      \"tilingDistance\": " + Json_Number(T.fTilingDistance) + ",\n";
+	Text += "      \"edgeMode\": " + Json_String(
+		TRAIL_EDGE_KEYS[static_cast<size_t>(T.eEdgeMode)]) + ",\n";
+	Text += "      \"edgeOffset\": " + Json_Float3(T.vEdgeOffset) + ",\n";
+	Text += std::string("      \"fadeWithAge\": ") + Json_Bool(T.bFadeWithAge) + "\n";
+	Text += "    },\n";
+	const CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
+	Text += "    \"screenPost\": {\n";
+	Text += "      \"profile\": " + Json_String(
+		SCREEN_POST_PROFILE_KEYS[static_cast<size_t>(S.eProfile)]) + ",\n";
+	Text += "      \"intensityStart\": " + Json_Number(S.fIntensityStart) + ",\n";
+	Text += "      \"intensityEnd\": " + Json_Number(S.fIntensityEnd) + ",\n";
+	Text += std::string("      \"intensityLerp\": ") + Json_Bool(S.bIntensityLerp) + ",\n";
+	Text += "      \"secondaryIntensity\": " + Json_Number(S.fSecondaryIntensity) + ",\n";
+	Text += "      \"frequency\": " + Json_Number(S.fFrequency) + ",\n";
+	Text += "      \"tint\": " + Json_Float4(S.vTint) + ",\n";
+	Text += "      \"randomSeed\": " + std::to_string(S.iRandomSeed) + "\n";
+	Text += "    }\n";
 	Text += "  },\n";
 	Text += "  \"parts\": [\n";
 	for (size_t iPart = 0u; iPart < Document.Parts.size(); ++iPart)
@@ -5100,7 +6627,7 @@ namespace
 		Client::CEffectV2Object::DESC Desc = Entry.Document.Desc;
 		if (!Client::CEffectV2Object::Resolve_TargetPivot(
 			*pNpc,
-			Pending.Binding.bFollowBone ? Pending.Binding.strBone : std::string(),
+			Pending.Binding.strBone,
 			Pending.Binding.eRotation,
 			Desc.PivotWorld))
 		{

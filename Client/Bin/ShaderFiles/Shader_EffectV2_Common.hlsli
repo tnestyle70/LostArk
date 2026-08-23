@@ -100,6 +100,7 @@ struct PS_EFFECT_IN
 	float2 vTexcoord : TEXCOORD0;
 	float3 vWorldNormal : NORMAL;
 	float3 vWorldPosition : TEXCOORD1;
+	float4 vInstanceColor : COLOR0;
 };
 
 struct PS_EFFECT_OUT
@@ -150,8 +151,10 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	}
 
 	float4 color;
-	color.rgb = max(base.rgb * g_ColorMul.rgb + g_ColorOffset.rgb, float3(0.f, 0.f, 0.f));
-	color.a = saturate(base.a * mask * dissolve * g_ColorMul.a + g_ColorOffset.a);
+	color.rgb = max(base.rgb * g_ColorMul.rgb * input.vInstanceColor.rgb + g_ColorOffset.rgb,
+		float3(0.f, 0.f, 0.f));
+	color.a = saturate(base.a * mask * dissolve * g_ColorMul.a * input.vInstanceColor.a +
+		g_ColorOffset.a);
 	color.a *= lerp(1.f, fresnel, saturate(g_GhostAlpha));
 	if (color.a <= 0.001f)
 		discard;

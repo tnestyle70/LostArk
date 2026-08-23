@@ -11,11 +11,16 @@
 
 namespace
 {
-	const char* EFFECT_TYPE_KEYS[] = { "Mesh", "Texture", "Particle", "Decal", "Trail" };
+	const char* EFFECT_TYPE_KEYS[] = { "Mesh", "Texture", "Particle", "Decal", "Trail", "ScreenPost" };
+	const char* SCREEN_POST_PROFILE_KEYS[] = { "ZoomBlur", "RgbNoise", "FilmNoise" };
 	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque" };
 	const char* CLIP_CHANNEL_KEYS[] = { "RGB", "Alpha" };
 	const char* PIVOT_ROTATION_KEYS[] = { "Bone", "TargetYaw", "World" };
 	const char* SLOT_KEYS[] = { "mesh", "base", "noise", "mask", "emissive", "dissolve" };
+	const char* SPAWN_SHAPE_KEYS[] = { "Point", "Sphere", "Ring", "Box" };
+	const char* VELOCITY_MODE_KEYS[] = { "Fixed", "Outward", "Cone" };
+	const char* ALIGNMENT_KEYS[] = { "Camera", "Velocity", "Horizontal" };
+	const char* TRAIL_EDGE_KEYS[] = { "CenterlineCamera", "CenterlineUp", "LocalOffset" };
 
 	std::string Json_String(const std::string& strValue)
 	{
@@ -74,6 +79,22 @@ namespace
 			return false;
 		}
 		fOut = static_cast<f32_t>(pValue->Get_Number());
+		return true;
+	}
+
+	bool_t Read_Uint(const Client::DATA_JSON_VALUE& Object,
+		const char* pKey, uint32_t& iOut, std::string& strError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue)
+			return true;
+		if (!pValue->Is_Number() || !std::isfinite(pValue->Get_Number()) ||
+			pValue->Get_Number() < 0.0 || pValue->Get_Number() > 4294967295.0)
+		{
+			strError = std::string("params.") + pKey + " must be a non-negative integer.";
+			return false;
+		}
+		iOut = static_cast<uint32_t>(pValue->Get_Number());
 		return true;
 	}
 
@@ -217,6 +238,19 @@ const char* Client::CEffectV2Document::Rotation_Key(const CEffectV2Object::PIVOT
 	return iIndex < _countof(PIVOT_ROTATION_KEYS) ? PIVOT_ROTATION_KEYS[iIndex] : "TargetYaw";
 }
 
+Client::CEffectV2Object::SHAPE Client::CEffectV2Document::Shape_ForType(const EFFECT_V2_TYPE eType)
+{
+	switch (eType)
+	{
+	case EFFECT_V2_TYPE::MESH: return CEffectV2Object::SHAPE::MESH;
+	case EFFECT_V2_TYPE::PARTICLE: return CEffectV2Object::SHAPE::PARTICLE;
+	case EFFECT_V2_TYPE::DECAL: return CEffectV2Object::SHAPE::DECAL;
+	case EFFECT_V2_TYPE::TRAIL: return CEffectV2Object::SHAPE::TRAIL;
+	case EFFECT_V2_TYPE::SCREEN_POST: return CEffectV2Object::SHAPE::SCREEN_POST;
+	default: return CEffectV2Object::SHAPE::SPRITE;
+	}
+}
+
 bool_t Client::CEffectV2Document::Parse_Document(
 	const std::string& strText,
 	EFFECT_V2_DOCUMENT& OutDocument,
@@ -256,8 +290,7 @@ bool_t Client::CEffectV2Document::Parse_Document(
 	EFFECT_V2_DOCUMENT Document{};
 	Document.strEffectId = pEffectId->Get_String();
 	Document.eType = static_cast<EFFECT_V2_TYPE>(iType);
-	Document.Desc.eShape = EFFECT_V2_TYPE::MESH == Document.eType ?
-		CEffectV2Object::SHAPE::MESH : CEffectV2Object::SHAPE::SPRITE;
+	Document.Desc.eShape = Shape_ForType(Document.eType);
 
 	const DATA_JSON_VALUE* pSlots = Root.Find("slots");
 	if (nullptr == pSlots || !pSlots->Is_Object())
@@ -306,7 +339,11 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		!Read_Lerp(*pParams, "scale", P.Scale, strOutError) ||
 		!Read_Lerp(*pParams, "velocity", P.Velocity, strOutError) ||
 		!Read_FloatArray(*pParams, "colorOffset", &P.vColorOffset.x, 4u, strOutError) ||
+		!Read_FloatArray(*pParams, "colorOffsetEnd", &P.vColorOffsetEnd.x, 4u, strOutError) ||
+		!Read_Bool(*pParams, "colorOffsetLerp", P.bColorOffsetLerp, strOutError) ||
 		!Read_FloatArray(*pParams, "colorMul", &P.vColorMul.x, 4u, strOutError) ||
+		!Read_FloatArray(*pParams, "colorMulEnd", &P.vColorMulEnd.x, 4u, strOutError) ||
+		!Read_Bool(*pParams, "colorMulLerp", P.bColorMulLerp, strOutError) ||
 		!Read_Enum(*pParams, "colorClipChannel", CLIP_CHANNEL_KEYS,
 			_countof(CLIP_CHANNEL_KEYS), iClipChannel, strOutError) ||
 		!Read_Number(*pParams, "colorClip", P.fColorClip, strOutError) ||
@@ -350,6 +387,143 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			return false;
 		}
 		Document.strAnimationClip = pClip->Get_String();
+	}
+	if (const DATA_JSON_VALUE* pParticle = pParams->Find("particle"))
+	{
+		if (!pParticle->Is_Object())
+		{
+			strOutError = "params.particle must be an object.";
+			return false;
+		}
+		CEffectV2Object::PARTICLE_PARAMS& E = P.Particle;
+		int32_t iSpawnShape = static_cast<int32_t>(E.eSpawnShape);
+		int32_t iVelocityMode = static_cast<int32_t>(E.eVelocityMode);
+		int32_t iAlignment = static_cast<int32_t>(E.eAlignment);
+		if (!Read_Uint(*pParticle, "maxParticles", E.iMaxParticles, strOutError) ||
+			!Read_Number(*pParticle, "spawnRate", E.fSpawnRate, strOutError) ||
+			!Read_Uint(*pParticle, "burstCount", E.iBurstCount, strOutError) ||
+			!Read_FloatArray(*pParticle, "lifetime", &E.vLifetime.x, 2u, strOutError) ||
+			!Read_Enum(*pParticle, "spawnShape", SPAWN_SHAPE_KEYS,
+				_countof(SPAWN_SHAPE_KEYS), iSpawnShape, strOutError) ||
+			!Read_Number(*pParticle, "spawnRadius", E.fSpawnRadius, strOutError) ||
+			!Read_Number(*pParticle, "spawnInnerRadius", E.fSpawnInnerRadius, strOutError) ||
+			!Read_FloatArray(*pParticle, "spawnExtents", &E.vSpawnExtents.x, 3u, strOutError) ||
+			!Read_Number(*pParticle, "spawnArcDegrees", E.fSpawnArcDegrees, strOutError) ||
+			!Read_Enum(*pParticle, "velocityMode", VELOCITY_MODE_KEYS,
+				_countof(VELOCITY_MODE_KEYS), iVelocityMode, strOutError) ||
+			!Read_FloatArray(*pParticle, "velocityMin", &E.vVelocityMin.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "velocityMax", &E.vVelocityMax.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "speedRange", &E.vSpeedRange.x, 2u, strOutError) ||
+			!Read_Number(*pParticle, "coneAngleDegrees", E.fConeAngleDegrees, strOutError) ||
+			!Read_FloatArray(*pParticle, "acceleration", &E.vAcceleration.x, 3u, strOutError) ||
+			!Read_Number(*pParticle, "drag", E.fDrag, strOutError) ||
+			!Read_FloatArray(*pParticle, "sizeStart", &E.vSizeStart.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "sizeEnd", &E.vSizeEnd.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "rotationRange", &E.vRotationRange.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "spinRange", &E.vSpinRange.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "colorStart", &E.vColorStart.x, 4u, strOutError) ||
+			!Read_FloatArray(*pParticle, "colorEnd", &E.vColorEnd.x, 4u, strOutError) ||
+			!Read_Enum(*pParticle, "alignment", ALIGNMENT_KEYS,
+				_countof(ALIGNMENT_KEYS), iAlignment, strOutError) ||
+			!Read_Bool(*pParticle, "localSpace", E.bLocalSpace, strOutError) ||
+			!Read_Uint(*pParticle, "tileColumns", E.iTileColumns, strOutError) ||
+			!Read_Uint(*pParticle, "tileRows", E.iTileRows, strOutError) ||
+			!Read_Bool(*pParticle, "subUVOverLife", E.bSubUVOverLife, strOutError) ||
+			!Read_Uint(*pParticle, "randomSeed", E.iRandomSeed, strOutError))
+		{
+			return false;
+		}
+		E.eSpawnShape = static_cast<CEffectV2Object::PARTICLE_SPAWN_SHAPE>(iSpawnShape);
+		E.eVelocityMode = static_cast<CEffectV2Object::PARTICLE_VELOCITY_MODE>(iVelocityMode);
+		E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
+		if (0u == E.iMaxParticles || E.iMaxParticles > 2048u || E.fSpawnRate < 0.f ||
+			E.vLifetime.x <= 0.f || E.vLifetime.y < E.vLifetime.x ||
+			0u == E.iTileColumns || 0u == E.iTileRows)
+		{
+			strOutError = "params.particle maxParticles/spawnRate/lifetime/tile out of range.";
+			return false;
+		}
+	}
+	if (const DATA_JSON_VALUE* pDecal = pParams->Find("decal"))
+	{
+		if (!pDecal->Is_Object())
+		{
+			strOutError = "params.decal must be an object.";
+			return false;
+		}
+		CEffectV2Object::DECAL_PARAMS& D = P.Decal;
+		if (!Read_FloatArray(*pDecal, "size", &D.vSize.x, 2u, strOutError) ||
+			!Read_Number(*pDecal, "depth", D.fDepth, strOutError) ||
+			!Read_Number(*pDecal, "edgeFade", D.fEdgeFade, strOutError) ||
+			!Read_Number(*pDecal, "normalCutoff", D.fNormalCutoff, strOutError))
+		{
+			return false;
+		}
+		if (D.vSize.x <= 0.f || D.vSize.y <= 0.f || D.fDepth <= 0.f)
+		{
+			strOutError = "params.decal size/depth must be positive.";
+			return false;
+		}
+	}
+	if (const DATA_JSON_VALUE* pTrail = pParams->Find("trail"))
+	{
+		if (!pTrail->Is_Object())
+		{
+			strOutError = "params.trail must be an object.";
+			return false;
+		}
+		CEffectV2Object::TRAIL_PARAMS& T = P.Trail;
+		int32_t iEdgeMode = static_cast<int32_t>(T.eEdgeMode);
+		if (!Read_Uint(*pTrail, "maxPoints", T.iMaxPoints, strOutError) ||
+			!Read_Number(*pTrail, "pointLifetime", T.fPointLifetime, strOutError) ||
+			!Read_Number(*pTrail, "sampleInterval", T.fSampleInterval, strOutError) ||
+			!Read_Number(*pTrail, "minDistance", T.fMinDistance, strOutError) ||
+			!Read_Number(*pTrail, "startWidth", T.fStartWidth, strOutError) ||
+			!Read_Number(*pTrail, "endWidth", T.fEndWidth, strOutError) ||
+			!Read_Number(*pTrail, "tilingDistance", T.fTilingDistance, strOutError) ||
+			!Read_Enum(*pTrail, "edgeMode", TRAIL_EDGE_KEYS,
+				_countof(TRAIL_EDGE_KEYS), iEdgeMode, strOutError) ||
+			!Read_FloatArray(*pTrail, "edgeOffset", &T.vEdgeOffset.x, 3u, strOutError) ||
+			!Read_Bool(*pTrail, "fadeWithAge", T.bFadeWithAge, strOutError))
+		{
+			return false;
+		}
+		T.eEdgeMode = static_cast<CEffectV2Object::TRAIL_EDGE_MODE>(iEdgeMode);
+		if (T.iMaxPoints < 2u || T.iMaxPoints > 4096u || T.fPointLifetime <= 0.f ||
+			T.fSampleInterval < 0.f || T.fMinDistance < 0.f)
+		{
+			strOutError = "params.trail maxPoints/pointLifetime/sampleInterval/minDistance out of range.";
+			return false;
+		}
+	}
+	if (const DATA_JSON_VALUE* pScreenPost = pParams->Find("screenPost"))
+	{
+		if (!pScreenPost->Is_Object())
+		{
+			strOutError = "params.screenPost must be an object.";
+			return false;
+		}
+		CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
+		int32_t iProfile = static_cast<int32_t>(S.eProfile);
+		if (!Read_Enum(*pScreenPost, "profile", SCREEN_POST_PROFILE_KEYS,
+				_countof(SCREEN_POST_PROFILE_KEYS), iProfile, strOutError) ||
+			!Read_Number(*pScreenPost, "intensityStart", S.fIntensityStart, strOutError) ||
+			!Read_Number(*pScreenPost, "intensityEnd", S.fIntensityEnd, strOutError) ||
+			!Read_Bool(*pScreenPost, "intensityLerp", S.bIntensityLerp, strOutError) ||
+			!Read_Number(*pScreenPost, "secondaryIntensity", S.fSecondaryIntensity, strOutError) ||
+			!Read_Number(*pScreenPost, "frequency", S.fFrequency, strOutError) ||
+			!Read_FloatArray(*pScreenPost, "tint", &S.vTint.x, 4u, strOutError) ||
+			!Read_Uint(*pScreenPost, "randomSeed", S.iRandomSeed, strOutError))
+		{
+			return false;
+		}
+		S.eProfile = static_cast<CEffectV2Object::SCREEN_POST_PROFILE>(iProfile);
+		if (S.fIntensityStart < 0.f || S.fIntensityEnd < 0.f || S.fSecondaryIntensity < 0.f ||
+			S.fFrequency < 0.f || 0u == S.iRandomSeed)
+		{
+			strOutError = "params.screenPost intensities/frequency must be >= 0 and randomSeed >= 1.";
+			return false;
+		}
 	}
 	Document.Desc.bParamsAuthored = true;
 
@@ -498,7 +672,11 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"scale\": " + Json_Lerp(P.Scale) + ",\n";
 	Text += "    \"velocity\": " + Json_Lerp(P.Velocity) + ",\n";
 	Text += "    \"colorOffset\": " + Json_Float4(P.vColorOffset) + ",\n";
+	Text += "    \"colorOffsetEnd\": " + Json_Float4(P.vColorOffsetEnd) + ",\n";
+	Text += std::string("    \"colorOffsetLerp\": ") + Json_Bool(P.bColorOffsetLerp) + ",\n";
 	Text += "    \"colorMul\": " + Json_Float4(P.vColorMul) + ",\n";
+	Text += "    \"colorMulEnd\": " + Json_Float4(P.vColorMulEnd) + ",\n";
+	Text += std::string("    \"colorMulLerp\": ") + Json_Bool(P.bColorMulLerp) + ",\n";
 	Text += "    \"colorClipChannel\": " + Json_String(
 		CLIP_CHANNEL_KEYS[static_cast<size_t>(P.eColorClipChannel)]) + ",\n";
 	Text += "    \"colorClip\": " + Json_Number(P.fColorClip) + ",\n";
@@ -524,7 +702,74 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"playRate\": " + Json_Number(P.fPlayRate) + ",\n";
 	Text += "    \"meshPreScale\": " + Json_Number(P.fMeshPreScale) + ",\n";
 	Text += "    \"animationClip\": " + Json_String(Document.strAnimationClip) + ",\n";
-	Text += std::string("    \"animationLoop\": ") + Json_Bool(P.bAnimationLoop) + "\n";
+	Text += std::string("    \"animationLoop\": ") + Json_Bool(P.bAnimationLoop) + ",\n";
+	const CEffectV2Object::PARTICLE_PARAMS& E = P.Particle;
+	Text += "    \"particle\": {\n";
+	Text += "      \"maxParticles\": " + std::to_string(E.iMaxParticles) + ",\n";
+	Text += "      \"spawnRate\": " + Json_Number(E.fSpawnRate) + ",\n";
+	Text += "      \"burstCount\": " + std::to_string(E.iBurstCount) + ",\n";
+	Text += "      \"lifetime\": " + Json_Float2(E.vLifetime) + ",\n";
+	Text += "      \"spawnShape\": " + Json_String(
+		SPAWN_SHAPE_KEYS[static_cast<size_t>(E.eSpawnShape)]) + ",\n";
+	Text += "      \"spawnRadius\": " + Json_Number(E.fSpawnRadius) + ",\n";
+	Text += "      \"spawnInnerRadius\": " + Json_Number(E.fSpawnInnerRadius) + ",\n";
+	Text += "      \"spawnExtents\": " + Json_Float3(E.vSpawnExtents) + ",\n";
+	Text += "      \"spawnArcDegrees\": " + Json_Number(E.fSpawnArcDegrees) + ",\n";
+	Text += "      \"velocityMode\": " + Json_String(
+		VELOCITY_MODE_KEYS[static_cast<size_t>(E.eVelocityMode)]) + ",\n";
+	Text += "      \"velocityMin\": " + Json_Float3(E.vVelocityMin) + ",\n";
+	Text += "      \"velocityMax\": " + Json_Float3(E.vVelocityMax) + ",\n";
+	Text += "      \"speedRange\": " + Json_Float2(E.vSpeedRange) + ",\n";
+	Text += "      \"coneAngleDegrees\": " + Json_Number(E.fConeAngleDegrees) + ",\n";
+	Text += "      \"acceleration\": " + Json_Float3(E.vAcceleration) + ",\n";
+	Text += "      \"drag\": " + Json_Number(E.fDrag) + ",\n";
+	Text += "      \"sizeStart\": " + Json_Float2(E.vSizeStart) + ",\n";
+	Text += "      \"sizeEnd\": " + Json_Float2(E.vSizeEnd) + ",\n";
+	Text += "      \"rotationRange\": " + Json_Float2(E.vRotationRange) + ",\n";
+	Text += "      \"spinRange\": " + Json_Float2(E.vSpinRange) + ",\n";
+	Text += "      \"colorStart\": " + Json_Float4(E.vColorStart) + ",\n";
+	Text += "      \"colorEnd\": " + Json_Float4(E.vColorEnd) + ",\n";
+	Text += "      \"alignment\": " + Json_String(
+		ALIGNMENT_KEYS[static_cast<size_t>(E.eAlignment)]) + ",\n";
+	Text += std::string("      \"localSpace\": ") + Json_Bool(E.bLocalSpace) + ",\n";
+	Text += "      \"tileColumns\": " + std::to_string(E.iTileColumns) + ",\n";
+	Text += "      \"tileRows\": " + std::to_string(E.iTileRows) + ",\n";
+	Text += std::string("      \"subUVOverLife\": ") + Json_Bool(E.bSubUVOverLife) + ",\n";
+	Text += "      \"randomSeed\": " + std::to_string(E.iRandomSeed) + "\n";
+	Text += "    },\n";
+	const CEffectV2Object::DECAL_PARAMS& D = P.Decal;
+	Text += "    \"decal\": {\n";
+	Text += "      \"size\": " + Json_Float2(D.vSize) + ",\n";
+	Text += "      \"depth\": " + Json_Number(D.fDepth) + ",\n";
+	Text += "      \"edgeFade\": " + Json_Number(D.fEdgeFade) + ",\n";
+	Text += "      \"normalCutoff\": " + Json_Number(D.fNormalCutoff) + "\n";
+	Text += "    },\n";
+	const CEffectV2Object::TRAIL_PARAMS& T = P.Trail;
+	Text += "    \"trail\": {\n";
+	Text += "      \"maxPoints\": " + std::to_string(T.iMaxPoints) + ",\n";
+	Text += "      \"pointLifetime\": " + Json_Number(T.fPointLifetime) + ",\n";
+	Text += "      \"sampleInterval\": " + Json_Number(T.fSampleInterval) + ",\n";
+	Text += "      \"minDistance\": " + Json_Number(T.fMinDistance) + ",\n";
+	Text += "      \"startWidth\": " + Json_Number(T.fStartWidth) + ",\n";
+	Text += "      \"endWidth\": " + Json_Number(T.fEndWidth) + ",\n";
+	Text += "      \"tilingDistance\": " + Json_Number(T.fTilingDistance) + ",\n";
+	Text += "      \"edgeMode\": " + Json_String(
+		TRAIL_EDGE_KEYS[static_cast<size_t>(T.eEdgeMode)]) + ",\n";
+	Text += "      \"edgeOffset\": " + Json_Float3(T.vEdgeOffset) + ",\n";
+	Text += std::string("      \"fadeWithAge\": ") + Json_Bool(T.bFadeWithAge) + "\n";
+	Text += "    },\n";
+	const CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
+	Text += "    \"screenPost\": {\n";
+	Text += "      \"profile\": " + Json_String(
+		SCREEN_POST_PROFILE_KEYS[static_cast<size_t>(S.eProfile)]) + ",\n";
+	Text += "      \"intensityStart\": " + Json_Number(S.fIntensityStart) + ",\n";
+	Text += "      \"intensityEnd\": " + Json_Number(S.fIntensityEnd) + ",\n";
+	Text += std::string("      \"intensityLerp\": ") + Json_Bool(S.bIntensityLerp) + ",\n";
+	Text += "      \"secondaryIntensity\": " + Json_Number(S.fSecondaryIntensity) + ",\n";
+	Text += "      \"frequency\": " + Json_Number(S.fFrequency) + ",\n";
+	Text += "      \"tint\": " + Json_Float4(S.vTint) + ",\n";
+	Text += "      \"randomSeed\": " + std::to_string(S.iRandomSeed) + "\n";
+	Text += "    }\n";
 	Text += "  },\n";
 	Text += "  \"parts\": [\n";
 	for (size_t iPart = 0u; iPart < Document.Parts.size(); ++iPart)

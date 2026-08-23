@@ -14,6 +14,7 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = float3(0.f, 0.f, 0.f);
 	output.vWorldPosition = worldPosition.xyz;
+	output.vInstanceColor = float4(1.f, 1.f, 1.f, 1.f);
 	return output;
 }
 

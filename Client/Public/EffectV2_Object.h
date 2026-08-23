@@ -2,6 +2,9 @@
 
 #include "Client_Defines.h"
 #include "GameObject.h"
+#include "Presentation_Manager.h"
+#include "VIBuffer_DynamicTrail.h"
+#include "VIBuffer_ParticleRect.h"
 
 #include <array>
 #include <cstdint>
@@ -18,7 +21,7 @@ NS_BEGIN(Client)
 
 class CNpc;
 
-class CEffectV2Object final : public CGameObject
+class CEffectV2Object final : public CGameObject, public Engine::IPresentationProvider
 {
 public:
 	enum class PIVOT_ROTATION : int32_t
@@ -33,6 +36,18 @@ public:
 	{
 		MESH,
 		SPRITE,
+		PARTICLE,
+		DECAL,
+		TRAIL,
+		SCREEN_POST,
+		END
+	};
+
+	enum class SCREEN_POST_PROFILE : int32_t
+	{
+		ZOOM_BLUR,
+		RGB_NOISE,
+		FILM_NOISE,
 		END
 	};
 
@@ -61,12 +76,111 @@ public:
 		END
 	};
 
+	enum class PARTICLE_SPAWN_SHAPE : int32_t
+	{
+		POINT,
+		SPHERE,
+		RING,
+		BOX,
+		END
+	};
+
+	enum class PARTICLE_VELOCITY_MODE : int32_t
+	{
+		FIXED,
+		OUTWARD,
+		CONE,
+		END
+	};
+
+	enum class PARTICLE_ALIGNMENT : int32_t
+	{
+		CAMERA,
+		VELOCITY,
+		HORIZONTAL,
+		END
+	};
+
+	enum class TRAIL_EDGE_MODE : int32_t
+	{
+		CENTERLINE_CAMERA,
+		CENTERLINE_UP,
+		LOCAL_OFFSET,
+		END
+	};
+
 	struct LERP_FLOAT3 final
 	{
 		float3_t vStart = { 0.f, 0.f, 0.f };
 		float3_t vEnd = { 0.f, 0.f, 0.f };
 		bool_t bLerp = false;
 		float3_t Evaluate(f32_t fLifeRatio) const;
+	};
+
+	struct PARTICLE_PARAMS final
+	{
+		uint32_t iMaxParticles = 256u;
+		f32_t fSpawnRate = 20.f;
+		uint32_t iBurstCount = 0u;
+		float2_t vLifetime = { 0.5f, 1.f };
+		PARTICLE_SPAWN_SHAPE eSpawnShape = PARTICLE_SPAWN_SHAPE::POINT;
+		f32_t fSpawnRadius = 0.5f;
+		f32_t fSpawnInnerRadius = 0.f;
+		float3_t vSpawnExtents = { 0.5f, 0.5f, 0.5f };
+		f32_t fSpawnArcDegrees = 360.f;
+		PARTICLE_VELOCITY_MODE eVelocityMode = PARTICLE_VELOCITY_MODE::CONE;
+		float3_t vVelocityMin = { -0.5f, 1.f, -0.5f };
+		float3_t vVelocityMax = { 0.5f, 2.f, 0.5f };
+		float2_t vSpeedRange = { 1.f, 2.f };
+		f32_t fConeAngleDegrees = 30.f;
+		float3_t vAcceleration = { 0.f, -1.f, 0.f };
+		f32_t fDrag = 0.f;
+		float2_t vSizeStart = { 0.2f, 0.2f };
+		float2_t vSizeEnd = { 0.f, 0.f };
+		float2_t vRotationRange = { 0.f, 0.f };
+		float2_t vSpinRange = { 0.f, 0.f };
+		float4_t vColorStart = { 1.f, 1.f, 1.f, 1.f };
+		float4_t vColorEnd = { 1.f, 1.f, 1.f, 0.f };
+		PARTICLE_ALIGNMENT eAlignment = PARTICLE_ALIGNMENT::CAMERA;
+		bool_t bLocalSpace = true;
+		uint32_t iTileColumns = 1u;
+		uint32_t iTileRows = 1u;
+		bool_t bSubUVOverLife = true;
+		uint32_t iRandomSeed = 1u;
+	};
+
+	struct DECAL_PARAMS final
+	{
+		float2_t vSize = { 1.f, 1.f };
+		f32_t fDepth = 0.5f;
+		f32_t fEdgeFade = 0.f;
+		f32_t fNormalCutoff = 0.5f;
+	};
+
+	struct TRAIL_PARAMS final
+	{
+		uint32_t iMaxPoints = 64u;
+		f32_t fPointLifetime = 0.35f;
+		f32_t fSampleInterval = 1.f / 60.f;
+		f32_t fMinDistance = 0.01f;
+		f32_t fStartWidth = 0.2f;
+		f32_t fEndWidth = 0.f;
+		f32_t fTilingDistance = 0.f;
+		TRAIL_EDGE_MODE eEdgeMode = TRAIL_EDGE_MODE::CENTERLINE_CAMERA;
+		float3_t vEdgeOffset = { 0.f, 1.f, 0.f };
+		bool_t bFadeWithAge = true;
+	};
+
+	struct SCREEN_POST_PARAMS final
+	{
+		SCREEN_POST_PROFILE eProfile = SCREEN_POST_PROFILE::ZOOM_BLUR;
+		f32_t fIntensityStart = 2.f;
+		f32_t fIntensityEnd = 0.f;
+		bool_t bIntensityLerp = true;
+		f32_t fSecondaryIntensity = 0.f;
+		f32_t fFrequency = 1.f;
+		float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
+		uint32_t iRandomSeed = 1u;
 	};
 
 	struct PARAMS final
@@ -76,7 +190,11 @@ public:
 		LERP_FLOAT3 Scale = { { 1.f, 1.f, 1.f }, { 1.f, 1.f, 1.f }, false };
 		LERP_FLOAT3 Velocity;
 		float4_t vColorOffset = { 0.f, 0.f, 0.f, 0.f };
+		float4_t vColorOffsetEnd = { 0.f, 0.f, 0.f, 0.f };
+		bool_t bColorOffsetLerp = false;
 		float4_t vColorMul = { 1.f, 1.f, 1.f, 1.f };
+		float4_t vColorMulEnd = { 1.f, 1.f, 1.f, 0.f };
+		bool_t bColorMulLerp = false;
 		COLOR_CLIP_CHANNEL eColorClipChannel = COLOR_CLIP_CHANNEL::ALPHA;
 		f32_t fColorClip = 0.f;
 		float4_t vRimColor = { 1.f, 1.f, 1.f, 1.f };
@@ -102,6 +220,10 @@ public:
 		f32_t fMeshPreScale = 0.01f;
 		uint32_t iAnimationIndex = 0u;
 		bool_t bAnimationLoop = true;
+		PARTICLE_PARAMS Particle;
+		DECAL_PARAMS Decal;
+		TRAIL_PARAMS Trail;
+		SCREEN_POST_PARAMS ScreenPost;
 	};
 
 	struct PART final
@@ -126,6 +248,25 @@ public:
 	};
 
 private:
+	struct PARTICLE final
+	{
+		float3_t vPosition = { 0.f, 0.f, 0.f };
+		float3_t vVelocity = { 0.f, 0.f, 0.f };
+		f32_t fAge = 0.f;
+		f32_t fLifetime = 1.f;
+		f32_t fRotationDegrees = 0.f;
+		f32_t fSpinDegrees = 0.f;
+	};
+
+	struct TRAIL_POINT final
+	{
+		float3_t vCenter = { 0.f, 0.f, 0.f };
+		float3_t vEdge = { 0.f, 0.f, 0.f };
+		f32_t fAge = 0.f;
+		f32_t fCumulativeDistance = 0.f;
+	};
+
+private:
 	CEffectV2Object(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
@@ -138,6 +279,13 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Submit_Presentation() override;
+	virtual bool_t Is_PresentationFailureIsolated() const override { return true; }
+	virtual Engine::PRESENTATION_FAILURE_SCOPE Get_PresentationFailureScope() const override
+	{
+		return m_ePresentationFailureScope;
+	}
+	f32_t ScreenPost_Intensity() const;
 
 	PARAMS& Params() { return m_Params; }
 	const DESC& Creation_Desc() const { return m_CreationDesc; }
@@ -164,6 +312,8 @@ public:
 	const char_t* Animation_Name(uint32_t iIndex) const;
 	f32_t Animation_DurationSeconds(uint32_t iIndex) const;
 	bool_t Animation_Progress(f32_t& fOutSeconds, f32_t& fOutDurationSeconds) const;
+	uint32_t Particle_Count() const { return static_cast<uint32_t>(m_Particles.size()); }
+	uint32_t Trail_PointCount() const { return static_cast<uint32_t>(m_TrailPoints.size()); }
 	bool_t Is_Finished() const { return m_bFinished; }
 	void Finish() { m_bFinished = true; }
 	bool_t Is_Hidden() const { return m_bHidden; }
@@ -205,6 +355,13 @@ private:
 		const D3D11_INPUT_ELEMENT_DESC* pElements,
 		uint32_t iNumElements,
 		shared_ptr<Engine::CShader>& OutShader);
+	static HRESULT Acquire_ShapeShader(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		SHAPE eShape,
+		bool_t bSkinned,
+		shared_ptr<Engine::CShader>& OutShader,
+		std::string& strOutError);
 	static HRESULT Acquire_Texture(
 		const ComPtr<ID3D11Device>& pDevice,
 		const std::string& strAssetId,
@@ -212,6 +369,15 @@ private:
 	void Apply_Transform();
 	void Sync_Animation(bool_t bRestart);
 	HRESULT Bind_Common(const shared_ptr<Engine::CShader>& pShader);
+	void Advance_Lifetime(f32_t fStep);
+	f32_t Random_01();
+	f32_t Random_Range(f32_t fMinimum, f32_t fMaximum);
+	void Spawn_Particle();
+	void Update_Particles(f32_t fStep);
+	HRESULT Build_ParticleInstances();
+	void Update_Trail(f32_t fStep);
+	HRESULT Build_TrailGeometry();
+	HRESULT Render_Decal(uint32_t iPass);
 
 private:
 	SHAPE m_eShape = SHAPE::SPRITE;
@@ -227,13 +393,31 @@ private:
 	PIVOT_ROTATION m_eFollowRotation = PIVOT_ROTATION::TARGET_YAW;
 	f32_t m_fTime = 0.f;
 	bool_t m_bFinished = false;
+	bool_t m_bEmissionStopped = false;
 	bool_t m_bHidden = false;
 	bool_t m_bSkinned = false;
 	std::string m_strStatus;
+	Engine::PRESENTATION_FAILURE_SCOPE m_ePresentationFailureScope =
+		Engine::PRESENTATION_FAILURE_SCOPE::NONE;
+
+	std::vector<PARTICLE> m_Particles;
+	std::vector<Engine::VTXEFFECT_PARTICLE> m_ParticleInstances;
+	f32_t m_fSpawnAccumulator = 0.f;
+	bool_t m_bBurstPending = true;
+	uint32_t m_iRandomState = 1u;
+
+	std::vector<TRAIL_POINT> m_TrailPoints;
+	std::vector<Engine::VTXEFFECT_TRAIL> m_TrailVertices;
+	std::vector<uint32_t> m_TrailIndices;
+	f32_t m_fTrailSampleAccumulator = 0.f;
+	f32_t m_fTrailCumulativeDistance = 0.f;
+	uint32_t m_iTrailBufferPoints = 0u;
 
 	shared_ptr<Engine::CShader> m_pShader;
 	shared_ptr<Engine::CModel> m_pModel;
 	shared_ptr<Engine::CVIBuffer_Rect> m_pRect;
+	shared_ptr<Engine::CVIBuffer_ParticleRect> m_pParticleBuffer;
+	shared_ptr<Engine::CVIBuffer_DynamicTrail> m_pTrailBuffer;
 	std::array<ComPtr<ID3D11ShaderResourceView>,
 		static_cast<size_t>(TEXTURE_INPUT::END)> m_Textures;
 	static std::string s_strLastError;
