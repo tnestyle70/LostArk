@@ -966,10 +966,13 @@ namespace
 			Label << " [SOURCE]";
 		else if (Element.strSourceNode.starts_with("project-authored:"))
 			Label << " [PROJECT]";
-		if (Client::Get_EffectAuthoringFidelity(
-				Element.Material.Execution) ==
-			Client::EFFECT_AUTHORING_FIDELITY::APPROXIMATE)
+		const Client::EFFECT_AUTHORING_FIDELITY eFidelity =
+			Client::Get_EffectAuthoringFidelity(Element.Material.Execution);
+		if (eFidelity == Client::EFFECT_AUTHORING_FIDELITY::APPROXIMATE)
 			Label << " [APPROXIMATE]";
+		else if (eFidelity ==
+			Client::EFFECT_AUTHORING_FIDELITY::PROJECT_TUNED_APPROX)
+			Label << " [PROJECT_TUNED_APPROX]";
 		return Label.str();
 	}
 
@@ -6423,6 +6426,17 @@ void Client::CEffect_Tool::Render_Detail(
 				"The typed runtime packet and Adapter are validated, but original Material arithmetic is not SOURCE_EXACT. Overrides never change this fidelity label.");
 		}
 	}
+	else if (eFidelity == EFFECT_AUTHORING_FIDELITY::PROJECT_TUNED_APPROX)
+	{
+		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
+		ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.55f, 1.f),
+			"PROJECT_TUNED_APPROX | Runtime enabled | editable and tunable");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"This admitted Program/Layout/Descriptor/Adapter packet is project-tuned, not a source-exact material replay.");
+		}
+	}
 	else if (!bAuthoringExecutionTarget)
 	{
 		bool_t bLockedVisible = false;
@@ -9033,11 +9047,16 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	std::unordered_map<std::string, size_t> StagedBossProductCueMappingCounts;
 	for (const VALTAN_PATTERN_EFFECT_CUE& Cue : BossCueDocument.Cues)
 	{
-		BossPatternOwners.emplace(Cue.strEffectAssetId,
-			EFFECT_DIRECT_AUTHORED_BOSS_OWNER{
-				BossCueDocument.strOwnerArchetypeId, Cue.strPatternId,
-					Cue.strStageId, Cue.strActionId });
+		const EFFECT_DIRECT_AUTHORED_BOSS_OWNER Owner{
+			BossCueDocument.strOwnerArchetypeId, Cue.strPatternId,
+				Cue.strStageId, Cue.strActionId };
+		BossPatternOwners.emplace(Cue.strEffectAssetId, Owner);
 		++StagedBossProductCueMappingCounts[Cue.strEffectAssetId];
+		if (!Cue.strV1EffectAssetId.empty())
+		{
+			BossPatternOwners.emplace(Cue.strV1EffectAssetId, Owner);
+			++StagedBossProductCueMappingCounts[Cue.strV1EffectAssetId];
+		}
 	}
 	const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
 		BossCueDocument.strOwnerArchetypeId);

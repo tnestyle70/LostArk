@@ -314,13 +314,41 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			std::vector<std::string> EffectAssetIds;
 			EffectAssetIds.reserve(CueDocument.Cues.size() +
 				pBossActor->combatObjectVisuals.size());
+#ifdef _DEBUG
+			std::vector<std::string> OptionalV1EffectAssetIds;
+			OptionalV1EffectAssetIds.reserve(CueDocument.Cues.size());
+#endif
 			for (const VALTAN_PATTERN_EFFECT_CUE& Cue : CueDocument.Cues)
+			{
 				EffectAssetIds.push_back(Cue.strEffectAssetId);
+			#ifdef _DEBUG
+				if (!Cue.strV1EffectAssetId.empty())
+					OptionalV1EffectAssetIds.push_back(Cue.strV1EffectAssetId);
+			#endif
+			}
 			for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
 				pBossActor->combatObjectVisuals)
 			{
 				EffectAssetIds.push_back(Visual.effectAssetId);
 			}
+#ifdef _DEBUG
+			/* V1 is an optional audition lane. Queue it before the required V0
+			   targets so the following priority enqueue restores V0 to the FIFO
+			   front. Its registration or later preparation failure never enters
+			   the Level activation probe. */
+			if (!OptionalV1EffectAssetIds.empty())
+			{
+				std::vector<std::string> IgnoredV1Targets;
+				std::string V1Status;
+				if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+						OptionalV1EffectAssetIds, IgnoredV1Targets, V1Status))
+				{
+					OutputDebugStringA((
+						"[Level_Loading] Optional Valtan Material V1 prewarm registration isolated: " +
+						V1Status + "\n").c_str());
+				}
+			}
+#endif
 			std::vector<std::string> BossEffectAssetIds;
 			if (!CEffectPresentationService::Queue_ProductTargets_Priority(
 					EffectAssetIds, BossEffectAssetIds, Status) ||

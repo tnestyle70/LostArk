@@ -360,6 +360,17 @@ struct EFFECT_MATERIAL_VECTOR_PARAMETER_DESC final
 	float4_t vValue{};
 };
 
+/* Fidelity of an executable material packet.  This is deliberately separate
+   from bAuthoringApproximate: the latter is a disabled, fail-closed editor
+   placeholder, while PROJECT_TUNED_APPROX is a real admitted runtime program
+   whose equation/ABI is project-authored rather than source-exact. */
+enum class EFFECT_MATERIAL_EXECUTION_FIDELITY : uint8_t
+{
+	SOURCE_EXACT,
+	PROJECT_TUNED_APPROX,
+	END,
+};
+
 struct EFFECT_MATERIAL_EXECUTION_DESC final
 {
 	bool_t bEnabled = false;
@@ -377,6 +388,8 @@ struct EFFECT_MATERIAL_EXECUTION_DESC final
 	   It never stands on its own: it is meaningless unless bFailClosed is also
 	   true. */
 	bool_t bAuthoringApproximate = false;
+	EFFECT_MATERIAL_EXECUTION_FIDELITY eFidelity =
+		EFFECT_MATERIAL_EXECUTION_FIDELITY::SOURCE_EXACT;
 	uint32_t iVersion = 1u;
 	EFFECT_MATERIAL_EXECUTION_BACKEND eBackend =
 		EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC;
@@ -1130,6 +1143,7 @@ enum class EFFECT_AUTHORING_FIDELITY : uint8_t
 	EXACT,
 	RECONSTRUCTED,
 	APPROXIMATE,
+	PROJECT_TUNED_APPROX,
 	INCOMPLETE,
 	END
 };
@@ -1427,7 +1441,14 @@ inline EFFECT_AUTHORING_FIDELITY Get_EffectAuthoringFidelity(
 		return EFFECT_AUTHORING_FIDELITY::APPROXIMATE;
 	}
 	if (Execution.bEnabled)
+	{
+		if (Execution.eFidelity ==
+			EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX)
+		{
+			return EFFECT_AUTHORING_FIDELITY::PROJECT_TUNED_APPROX;
+		}
 		return EFFECT_AUTHORING_FIDELITY::EXACT;
+	}
 	if (Execution.bAuthoringApproximate)
 		return EFFECT_AUTHORING_FIDELITY::APPROXIMATE;
 	if (Execution.bFailClosed)
@@ -1443,6 +1464,8 @@ inline const char_t* Get_EffectAuthoringFidelityLabel(
 	case EFFECT_AUTHORING_FIDELITY::EXACT: return "EXACT";
 	case EFFECT_AUTHORING_FIDELITY::RECONSTRUCTED: return "RECONSTRUCTED";
 	case EFFECT_AUTHORING_FIDELITY::APPROXIMATE: return "APPROXIMATE";
+	case EFFECT_AUTHORING_FIDELITY::PROJECT_TUNED_APPROX:
+		return "PROJECT_TUNED_APPROX";
 	case EFFECT_AUTHORING_FIDELITY::INCOMPLETE: return "INCOMPLETE";
 	default: return "UNKNOWN";
 	}

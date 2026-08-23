@@ -20,6 +20,7 @@
 #include "Transform.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <span>
 #include <tuple>
@@ -31,6 +32,9 @@ namespace
 	constexpr f32_t VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS = 1.f / 120.f;
 	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
 	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
+#ifdef _DEBUG
+	std::atomic_bool g_bPatternEffectV1AuditionEnabled = false;
+#endif
 
 	bool Is_ValidBossCombatState(
 		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state)
@@ -131,6 +135,20 @@ namespace
 		return true;
 	}
 }
+
+#ifdef _DEBUG
+void CValtan::Set_PatternEffectV1AuditionEnabled(const bool_t bEnabled)
+{
+	g_bPatternEffectV1AuditionEnabled.store(
+		bEnabled, std::memory_order_relaxed);
+}
+
+bool_t CValtan::Is_PatternEffectV1AuditionEnabled()
+{
+	return g_bPatternEffectV1AuditionEnabled.load(
+		std::memory_order_relaxed);
+}
+#endif
 
 wstring_t CValtan::Build_ArmorModelPrototypeTag(const uint32_t iStateMask)
 {
@@ -609,6 +627,14 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			Clip - Binding->second.begin());
 		if (iClipIndex >= Timings.size())
 			continue;
+		const std::string* pEffectAssetId = &Cue.strEffectAssetId;
+#ifdef _DEBUG
+		if (Is_PatternEffectV1AuditionEnabled() &&
+			!Cue.strV1EffectAssetId.empty())
+		{
+			pEffectAssetId = &Cue.strV1EffectAssetId;
+		}
+#endif
 
 		f32_t fFirstOccurrenceWallSeconds = 0.f;
 		f32_t fSourceDurationSeconds = 0.f;
@@ -646,11 +672,11 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		}
 		else if (!CEffectPresentationService::
 			Try_Get_PreparedProductDurationSeconds(
-				Cue.strEffectAssetId, fLiveSourceDurationSeconds))
+				*pEffectAssetId, fLiveSourceDurationSeconds))
 		{
 			OutputDebugStringA((
 				"[Client][Valtan] natural pattern Effect duration is not prepared: " +
-				Cue.strEffectAssetId + "\n").c_str());
+				*pEffectAssetId + "\n").c_str());
 			continue;
 		}
 
@@ -683,7 +709,7 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			m_AttemptedPatternEffectOccurrenceKeys.insert(AttemptKey);
 
 			EFFECT_SPAWN_DESC Desc;
-			Desc.strEffectAssetId = Cue.strEffectAssetId;
+			Desc.strEffectAssetId = *pEffectAssetId;
 			Desc.pBossOwner = Owner;
 			Desc.strAnchorSlotId = Cue.strAnchorSlotId;
 			Desc.LocalTransform = Cue.LocalTransform;

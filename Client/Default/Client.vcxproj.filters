@@ -1135,6 +1135,9 @@
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json">
       <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
     </None>
+	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json">
+	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
+	</None>
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json">
 	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
 	</None>
@@ -3264,10 +3267,19 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.effect.json">
@@ -3294,6 +3306,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3301,6 +3316,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.effect.json">
@@ -3544,6 +3562,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.pattern.420633.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.pattern.420633.active.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.finish.effect.json">
@@ -5871,6 +5892,12 @@
     <None Include="..\..\Data\Effects\Contracts\ue3-material-family-registry.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Contracts\valtan-effect-v1-horizontal-rt0-application.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\valtan-three-pattern-v1-materialization.receipt.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\CookedShaders\340169d8b9146fd280bbc1b509aa312e6afa71573dfe12cf4e89cb0136431ae3.dxbc">
       <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>
@@ -7972,6 +7999,9 @@
       <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
     </None>
     <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\representative-four-v1-standard-color.material-program-fragment.v1.json">
+      <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\valtan-three-pattern-v1.material-program-fragment.v1.json">
       <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
     </None>
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json">

@@ -70,6 +70,14 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==
+                RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_SRGB ||
+            g_RuntimeMaterialV2Opcode ==
+                RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_LINEAR)
+        {
+            return Shade_EffectProjectTunedBaseCoverage(
+                input.uv, input.uvNext, input.particleData.y, input.color);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
             RUNTIME_MATERIAL_V2_UE3_FLUID01_SPRITE_W_FD_01_3)
         {
             return Shade_EffectUe3Fluid01SpriteWFd013Particle(

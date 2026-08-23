@@ -257,6 +257,10 @@ public:
 		const LostArk::Shared::BOSS_COMBAT_EVENT& event);
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
+	/* Process-local visual A/B only.  Server pattern timing and the Product V0
+	   cue document remain authoritative in both modes. */
+	static void Set_PatternEffectV1AuditionEnabled(bool_t bEnabled);
+	static bool_t Is_PatternEffectV1AuditionEnabled();
 	void Set_NavigationDebugVisible(bool_t isVisible) { m_isNavigationDebugVisible = isVisible; }
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;

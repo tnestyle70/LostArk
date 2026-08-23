@@ -662,6 +662,8 @@ def _typed_material_axes(execution: dict[str, Any]) -> tuple[dict[str, Any], dic
         "renderConsumedMask", "renderSuppressedMask", "scalars", "vectors",
         "artistParameters", "colors",
     }
+    if "fidelity" in execution:
+        allowed_fields.add("fidelity")
     _require(set(execution) == allowed_fields, "enabled material.execution has missing or hidden fields")
     _require(execution.get("enabled") is True, "material.execution must be enabled")
     _require(execution.get("version") == 1, "material.execution.version is unsupported")
@@ -677,6 +679,16 @@ def _typed_material_axes(execution: dict[str, Any]) -> tuple[dict[str, Any], dic
     )
     opcode = _require_int(execution.get("opcode"), "material.execution.opcode")
     _require(opcode <= 65535, "material.execution.opcode exceeds uint16")
+    fidelity = execution.get("fidelity", "SOURCE_EXACT")
+    _require(
+        fidelity in ("SOURCE_EXACT", "PROJECT_TUNED_APPROX"),
+        "material.execution.fidelity is unsupported",
+    )
+    project_tuned_opcode = backend == "runtimeMaterialV2" and opcode in (1001, 1002)
+    _require(
+        project_tuned_opcode == (fidelity == "PROJECT_TUNED_APPROX"),
+        "material.execution fidelity/opcode contract changed",
+    )
     pass_index = _require_int(execution.get("passIndex"), "material.execution.passIndex")
     _require(pass_index <= 63, "material.execution.passIndex exceeds bounded pass range")
 

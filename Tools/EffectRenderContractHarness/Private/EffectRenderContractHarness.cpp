@@ -69,6 +69,10 @@ namespace
 		"authored.approx.s002.mesh01";
 	constexpr size_t REPRESENTATIVE_V1_BINDING_COUNT = 131u;
 	constexpr size_t REPRESENTATIVE_V1_TOTAL_BINDING_COUNT = 134u;
+	constexpr size_t REPRESENTATIVE_V1_REGISTRY_ADAPTER_COUNT = 7u;
+	constexpr size_t GOLDEN_AND_REPRESENTATIVE_COMPILED_ADAPTER_COUNT =
+		static_cast<size_t>(Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
+			PROJECT_TUNED_SPRITE_PARTICLE_ALPHA_TWO_SIDED_V1);
 	constexpr std::array<std::string_view, 5u> REPRESENTATIVE_V1_EFFECT_IDS = {{
 		"effect.artist.skill.31460.v1.unified",
 		"effect.dimensionmaster.skill.2050180.v1.unified",
@@ -1652,12 +1656,15 @@ namespace
 			strOutError = "representative V1 registry is unavailable";
 			return false;
 		}
-		constexpr size_t ADAPTER_COUNT = static_cast<size_t>(
-			Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID::END);
+		constexpr size_t ADAPTER_COUNT =
+			GOLDEN_AND_REPRESENTATIVE_COMPILED_ADAPTER_COUNT;
 		std::array<bool_t, ADAPTER_COUNT> CoveredAdapters{};
 		for (const Client::EFFECT_MATERIAL_PROGRAM_BINDING_TARGET& Target :
 			Registry->Get_BindingTargets())
 		{
+			if (!Is_RepresentativeV1EffectAssetId(Target.strEffectAssetId))
+				continue;
+
 			const auto Binding = Registry->Resolve(
 				Target.strEffectAssetId, Target.strElementId);
 			if (nullptr == Binding ||
@@ -1681,8 +1688,6 @@ namespace
 				return false;
 			}
 			CoveredAdapters[iAdapter] = true;
-			if (!Is_RepresentativeV1EffectAssetId(Target.strEffectAssetId))
-				continue;
 
 			const auto Document = Client::CEffectCatalog::Find(Target.strEffectAssetId);
 			if (nullptr == Document)
@@ -1749,7 +1754,7 @@ namespace
 				++iOutCoveredAdapterCount;
 		}
 		if (iOutRepresentativeBindingCount != REPRESENTATIVE_V1_BINDING_COUNT ||
-			iOutCoveredAdapterCount != CoveredAdapters.size())
+			iOutCoveredAdapterCount != REPRESENTATIVE_V1_REGISTRY_ADAPTER_COUNT)
 		{
 			strOutError = "representative V1 binding or compiled-adapter coverage count changed";
 			return false;
@@ -2036,8 +2041,7 @@ int wmain(const int argc, wchar_t** argv)
 
 	std::vector<FRAME_EVIDENCE> Frames;
 	size_t iRepresentativeV1ActualDrawCount = 0u;
-	std::array<bool_t, static_cast<size_t>(
-		Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID::END)>
+	std::array<bool_t, GOLDEN_AND_REPRESENTATIVE_COMPILED_ADAPTER_COUNT>
 		ActualCompiledAdapterDrawCoverage{};
 	size_t iActualCompiledAdapterDrawCount = 0u;
 
@@ -2370,7 +2374,7 @@ int wmain(const int argc, wchar_t** argv)
 				V1PrewarmProbe.iMaterialProgramBindingCount !=
 					ExpectedBindingCount ||
 				V1PrewarmProbe.iMaterialProgramResolvedElementCount !=
-					ExpectedBindingCount)
+					REPRESENTATIVE_V1_TOTAL_BINDING_COUNT)
 			{
 				std::cerr <<
 					"representative V1 prewarm did not close every registry binding\n";
@@ -2727,7 +2731,7 @@ int wmain(const int argc, wchar_t** argv)
 				Registry->Get_GenerationId() ||
 			PrewarmProbe.iMaterialProgramBindingCount != ExpectedBindingCount ||
 			PrewarmProbe.iMaterialProgramResolvedElementCount !=
-				(bExpectedRepresentativeV1 ? ExpectedBindingCount :
+				(bExpectedRepresentativeV1 ? REPRESENTATIVE_V1_TOTAL_BINDING_COUNT :
 				 (bExpectedCanaryBinding ? 3u : 0u)))
 		{
 			std::cerr << "prepared registry generation/count propagation mismatched\n";

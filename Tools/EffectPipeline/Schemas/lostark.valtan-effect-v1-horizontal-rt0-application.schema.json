@@ -1,0 +1,995 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-effect-v1-horizontal-rt0-application.schema.json",
+  "title": "Valtan Effect V1 Horizontal RT0 Application Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "identity",
+    "inputs",
+    "policy",
+    "summary",
+    "rows",
+    "transaction",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-effect-v1-horizontal-rt0-application"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "identity": {
+      "const": "APPLICATION_DECISIONS_ONLY_NO_RUNTIME_BINDING_AUTHORITY"
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/inputSeal"
+      }
+    },
+    "policy": {
+      "$ref": "#/$defs/policy"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 669,
+      "maxItems": 669,
+      "items": {
+        "$ref": "#/$defs/applicationRow"
+      }
+    },
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "partialCommitAllowed",
+        "runtimeMutation"
+      ],
+      "properties": {
+        "mode": {
+          "const": "BUILD_VALIDATE_ATOMIC_REPLACE"
+        },
+        "partialCommitAllowed": {
+          "const": false
+        },
+        "runtimeMutation": {
+          "const": false
+        }
+      }
+    },
+    "artifactSha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]{1,160}$"
+    },
+    "nullableStableId": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/stableId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableSha256": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableString": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "inputSeal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "roles",
+        "rawSha256",
+        "byteSize",
+        "artifactSha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\\\].*"
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z0-9_]+$"
+          }
+        },
+        "rawSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "byteSize": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimeBindingAuthority",
+        "registryBindingPublication",
+        "sourceRenderStatePrecedence",
+        "blockedParentRenderStateUse",
+        "unknownDistortionUse",
+        "descriptorPacketPolicy",
+        "manualProductReview"
+      ],
+      "properties": {
+        "runtimeBindingAuthority": {
+          "const": "NONE"
+        },
+        "registryBindingPublication": {
+          "const": "SEPARATE_VALTAN_REGISTRY_FRAGMENT_REQUIRED"
+        },
+        "sourceRenderStatePrecedence": {
+          "const": [
+            "SEALED_CHILD_PARENT_DECLARATION",
+            "PARENT_FAMILY_PROPS_FALLBACK",
+            "UNRESOLVED_FAIL_CLOSED"
+          ]
+        },
+        "blockedParentRenderStateUse": {
+          "const": "DIAGNOSTIC_ONLY"
+        },
+        "unknownDistortionUse": {
+          "const": "NOT_FALSE_FAIL_CLOSED"
+        },
+        "descriptorPacketPolicy": {
+          "const": "SOURCE_VALUES_REQUIRE_TYPED_PACKET_MATERIALIZATION"
+        },
+        "manualProductReview": {
+          "const": "REQUIRED_PER_OCCURRENCE"
+        }
+      }
+    },
+    "countMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "nestedCountMap": {
+      "type": "object",
+      "required": [
+        "DECAL",
+        "MESH",
+        "PRESENTATION",
+        "RIBBON",
+        "SPRITE"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "DECAL": {
+          "$ref": "#/$defs/countMap"
+        },
+        "MESH": {
+          "$ref": "#/$defs/countMap"
+        },
+        "PRESENTATION": {
+          "$ref": "#/$defs/countMap"
+        },
+        "RIBBON": {
+          "$ref": "#/$defs/countMap"
+        },
+        "SPRITE": {
+          "$ref": "#/$defs/countMap"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rowCount",
+        "carrierCounts",
+        "fineRendererCounts",
+        "productPatternCount",
+        "patternOccurrenceCounts",
+        "patternStageOccurrenceCounts",
+        "programFidelityCounts",
+        "programFidelityByCarrierCounts",
+        "layoutStatusCounts",
+        "descriptorEvidenceCounts",
+        "sourceRenderStateCounts",
+        "sourceRenderStateByCarrierCounts",
+        "sourceCurrentComparableCount",
+        "sourceCurrentMismatchCount",
+        "applicationStateCounts",
+        "applicationStateByCarrierCounts",
+        "bindingIdentityCount",
+        "unresolvedWithoutDiagnosisCount"
+      ],
+      "properties": {
+        "rowCount": {
+          "const": 669
+        },
+        "carrierCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "DECAL",
+            "MESH",
+            "PRESENTATION",
+            "RIBBON",
+            "SPRITE"
+          ],
+          "properties": {
+            "DECAL": {
+              "const": 33
+            },
+            "MESH": {
+              "const": 174
+            },
+            "PRESENTATION": {
+              "const": 1
+            },
+            "RIBBON": {
+              "const": 3
+            },
+            "SPRITE": {
+              "const": 458
+            }
+          }
+        },
+        "fineRendererCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ANIM_TRAIL",
+            "DECAL_PARTICLE",
+            "LIGHT_PRESENTATION",
+            "MESH_PARTICLE",
+            "SPRITE_PARTICLE",
+            "STANDALONE_MESH"
+          ],
+          "properties": {
+            "ANIM_TRAIL": {
+              "const": 3
+            },
+            "DECAL_PARTICLE": {
+              "const": 33
+            },
+            "LIGHT_PRESENTATION": {
+              "const": 1
+            },
+            "MESH_PARTICLE": {
+              "const": 173
+            },
+            "SPRITE_PARTICLE": {
+              "const": 458
+            },
+            "STANDALONE_MESH": {
+              "const": 1
+            }
+          }
+        },
+        "productPatternCount": {
+          "const": 24
+        },
+        "patternOccurrenceCounts": {
+          "$ref": "#/$defs/countMap"
+        },
+        "patternStageOccurrenceCounts": {
+          "$ref": "#/$defs/countMap"
+        },
+        "programFidelityCounts": {
+          "$ref": "#/$defs/countMap"
+        },
+        "programFidelityByCarrierCounts": {
+          "$ref": "#/$defs/nestedCountMap"
+        },
+        "layoutStatusCounts": {
+          "$ref": "#/$defs/countMap"
+        },
+        "descriptorEvidenceCounts": {
+          "$ref": "#/$defs/countMap"
+        },
+        "sourceRenderStateCounts": {
+          "$ref": "#/$defs/countMap"
+        },
+        "sourceRenderStateByCarrierCounts": {
+          "$ref": "#/$defs/nestedCountMap"
+        },
+        "sourceCurrentComparableCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 669
+        },
+        "sourceCurrentMismatchCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 669
+        },
+        "applicationStateCounts": {
+          "$ref": "#/$defs/countMap"
+        },
+        "applicationStateByCarrierCounts": {
+          "$ref": "#/$defs/nestedCountMap"
+        },
+        "bindingIdentityCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 669
+        },
+        "unresolvedWithoutDiagnosisCount": {
+          "const": 0
+        }
+      }
+    },
+    "occurrenceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "occurrenceId",
+        "effectAssetId",
+        "elementId",
+        "authoredPath",
+        "authoredElementSha256",
+        "sourceMaterialPath",
+        "sourceParentMaterialPath",
+        "sourceParentRowSha256",
+        "sourceParentBlocker"
+      ],
+      "properties": {
+        "occurrenceId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "effectAssetId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "elementId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "authoredPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authoredElementSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sourceMaterialPath": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "sourceParentMaterialPath": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "sourceParentRowSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "sourceParentBlocker": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "compositionIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compositionId",
+        "kind",
+        "bindingId",
+        "cueOccurrenceId",
+        "patternId",
+        "stageId",
+        "actionId",
+        "clientVisualId"
+      ],
+      "properties": {
+        "compositionId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "kind": {
+          "enum": [
+            "VALTAN_PATTERN_CUE",
+            "VALTAN_COMBAT_OBJECT_VISUAL"
+          ]
+        },
+        "bindingId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "cueOccurrenceId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "patternId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "stageId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "actionId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "clientVisualId": {
+          "$ref": "#/$defs/nullableStableId"
+        }
+      }
+    },
+    "carrierDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "carrierKind",
+        "fineRendererKind",
+        "sourceRendererShape",
+        "sourceVertexFactoryCandidates",
+        "carrierEvidenceId",
+        "topologyClass",
+        "topologyEvidence"
+      ],
+      "properties": {
+        "carrierKind": {
+          "enum": [
+            "SPRITE",
+            "MESH",
+            "DECAL",
+            "RIBBON",
+            "PRESENTATION"
+          ]
+        },
+        "fineRendererKind": {
+          "enum": [
+            "SPRITE_PARTICLE",
+            "MESH_PARTICLE",
+            "STANDALONE_MESH",
+            "DECAL_PARTICLE",
+            "ANIM_TRAIL",
+            "LIGHT_PRESENTATION"
+          ]
+        },
+        "sourceRendererShape": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "sourceVertexFactoryCandidates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "carrierEvidenceId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "topologyClass": {
+          "enum": [
+            "BILLBOARD_QUAD",
+            "PROJECTED_VOLUME",
+            "RIBBON_STRIP",
+            "PRESENTATION_ONLY",
+            "STANDALONE_MESH_UNKNOWN",
+            "THIN_SURFACE_PROXY",
+            "VOLUME_PROXY",
+            "UNKNOWN"
+          ]
+        },
+        "topologyEvidence": {
+          "enum": [
+            "CARRIER_KIND",
+            "CARRIER_KIND_ONLY",
+            "ASSET_NAME_PROXY_ONLY",
+            "UNRESOLVED"
+          ]
+        }
+      }
+    },
+    "programDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventoryStatus",
+        "fidelity",
+        "programCandidateId",
+        "programEvidenceId"
+      ],
+      "properties": {
+        "inventoryStatus": {
+          "enum": [
+            "DXBC_OCCURRENCE_EXACT",
+            "DXBC_OCCURRENCE_EXACT_UNTRANSLATED",
+            "DXBC_FAMILY_REPRESENTATIVE_ONLY",
+            "BOUNDED_SOURCE_PROFILE_ONLY",
+            "NO_PROGRAM_EVIDENCE",
+            "NOT_APPLICABLE_PRESENTATION"
+          ]
+        },
+        "fidelity": {
+          "enum": [
+            "SOURCE_EXACT",
+            "SOURCE_EXACT_UNTRANSLATED",
+            "FAMILY_REPRESENTATIVE",
+            "BOUNDED_TRANSLATED",
+            "PROJECT_RECONSTRUCTED",
+            "NOT_APPLICABLE_PRESENTATION"
+          ]
+        },
+        "programCandidateId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "programEvidenceId": {
+          "$ref": "#/$defs/nullableStableId"
+        }
+      }
+    },
+    "inputCounts": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "textureLaneCount",
+            "scalarLaneCount",
+            "vectorLaneCount"
+          ],
+          "properties": {
+            "textureLaneCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "scalarLaneCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "vectorLaneCount": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "layoutDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventoryStatus",
+        "layoutCandidateId",
+        "layoutEvidenceId",
+        "layoutSignature",
+        "requiredInputIds",
+        "requiredInputCounts",
+        "withinInitialPacketCaps"
+      ],
+      "properties": {
+        "inventoryStatus": {
+          "enum": [
+            "TYPED_PACKET_CLOSED",
+            "EXACT_VARIANT_NATIVE_WIRE_ONLY_REQUIRES_PACKET_TRANSLATION",
+            "NAMED_NATIVE_WIRE_ONLY_WITHIN_COUNT_CAPS",
+            "NAMED_NATIVE_WIRE_ONLY_REQUIRES_COUNT_EXTENSION",
+            "SOURCE_NAMES_ONLY",
+            "UNRESOLVED",
+            "NOT_APPLICABLE_PRESENTATION"
+          ]
+        },
+        "layoutCandidateId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "layoutEvidenceId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "layoutSignature": {
+          "$ref": "#/$defs/stableId"
+        },
+        "requiredInputIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "requiredInputCounts": {
+          "$ref": "#/$defs/inputCounts"
+        },
+        "withinInitialPacketCaps": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "parameterCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "childTextureCount",
+        "childScalarCount",
+        "childVectorCount",
+        "parentTextureCount",
+        "parentScalarCount",
+        "parentVectorCount"
+      ],
+      "properties": {
+        "childTextureCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "childScalarCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "childVectorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parentTextureCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parentScalarCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parentVectorCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "descriptorDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventoryStatus",
+        "descriptorVariantId",
+        "hasBaseResource",
+        "sourceMaterialEvidenceId",
+        "evidenceStatus",
+        "valueEvidenceIds",
+        "sourceParameterCounts",
+        "packetClosure"
+      ],
+      "properties": {
+        "inventoryStatus": {
+          "enum": [
+            "TYPED_VALUES_CLOSED",
+            "SOURCE_VALUES_PRESENT_UNPACKED",
+            "RESOURCE_ONLY_NO_MATERIAL_VALUES",
+            "MISSING",
+            "NOT_APPLICABLE_PRESENTATION"
+          ]
+        },
+        "descriptorVariantId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "hasBaseResource": {
+          "type": "boolean"
+        },
+        "sourceMaterialEvidenceId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "evidenceStatus": {
+          "enum": [
+            "SOURCE_CHILD_AND_PARENT_VALUES_AVAILABLE_UNPACKED",
+            "SOURCE_CHILD_VALUES_AVAILABLE_PARENT_DEFAULTS_MISSING",
+            "SOURCE_PARENT_DEFAULTS_AVAILABLE_UNPACKED",
+            "DIRECT_MATERIAL_NO_VALUE_PACKET",
+            "NO_SOURCE_MATERIAL_EVIDENCE",
+            "NOT_APPLICABLE_PRESENTATION"
+          ]
+        },
+        "valueEvidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "sourceParameterCounts": {
+          "$ref": "#/$defs/parameterCounts"
+        },
+        "packetClosure": {
+          "enum": [
+            "NOT_MATERIALIZED",
+            "NOT_APPLICABLE_PRESENTATION"
+          ]
+        }
+      }
+    },
+    "sourceRenderState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "provenance",
+        "renderStateId",
+        "blendMode",
+        "twoSided",
+        "disableDepthTest",
+        "usesDistortion",
+        "admissionUsable",
+        "evidenceId"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "RESOLVED_ADMISSION_USABLE",
+            "RESOLVED_DIAGNOSTIC_ONLY",
+            "UNRESOLVED"
+          ]
+        },
+        "provenance": {
+          "enum": [
+            "SEALED_CHILD_PARENT_DECLARATION",
+            "PARENT_FAMILY_MANIFEST_FALLBACK",
+            "PARENT_MISSING_FAMILY_PROPS_FALLBACK",
+            "UNRESOLVED"
+          ]
+        },
+        "renderStateId": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "blendMode": {
+          "oneOf": [
+            {
+              "enum": [
+                "TRANSLUCENT",
+                "ADDITIVE",
+                "MASKED",
+                "MODULATE"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "twoSided": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "disableDepthTest": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "usesDistortion": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "admissionUsable": {
+          "type": "boolean"
+        },
+        "evidenceId": {
+          "$ref": "#/$defs/nullableStableId"
+        }
+      }
+    },
+    "adapterDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventoryStatus",
+        "currentAdapterCandidateId",
+        "currentRenderProfile",
+        "sourceRenderState",
+        "sourceStateMatchesCurrent"
+      ],
+      "properties": {
+        "inventoryStatus": {
+          "enum": [
+            "TYPED_STATIC_DISPATCH_CANDIDATE",
+            "RENDER_PROFILE_STATIC_CANDIDATE",
+            "UNRESOLVED",
+            "PRESENTATION_SEPARATE"
+          ]
+        },
+        "currentAdapterCandidateId": {
+          "$ref": "#/$defs/nullableStableId"
+        },
+        "currentRenderProfile": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "sourceRenderState": {
+          "$ref": "#/$defs/sourceRenderState"
+        },
+        "sourceStateMatchesCurrent": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "bindingIdentity": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "bindingId"
+          ],
+          "properties": {
+            "status": {
+              "const": "CANDIDATE_NOT_PUBLISHED"
+            },
+            "bindingId": {
+              "$ref": "#/$defs/stableId"
+            }
+          }
+        }
+      ]
+    },
+    "applicationDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "requiredCapabilityId",
+        "blockers",
+        "bindingIdentity",
+        "vertexFidelity"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "RT0_APPLICATION_CANDIDATE",
+            "FEATURE_DEFERRED",
+            "EVIDENCE_BLOCKED",
+            "PRESENTATION_DEFERRED"
+          ]
+        },
+        "requiredCapabilityId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "blockers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "bindingIdentity": {
+          "$ref": "#/$defs/bindingIdentity"
+        },
+        "vertexFidelity": {
+          "enum": [
+            "VERTEX_PROGRAM_UNPROVEN",
+            "NO_VERTEX_PROGRAM_BLOCKER_RECORDED"
+          ]
+        }
+      }
+    },
+    "applicationRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "applicationRowId",
+        "occurrence",
+        "compositionIds",
+        "composition",
+        "carrier",
+        "program",
+        "layout",
+        "descriptor",
+        "adapter",
+        "application",
+        "manualProductReview"
+      ],
+      "properties": {
+        "applicationRowId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "occurrence": {
+          "$ref": "#/$defs/occurrenceIdentity"
+        },
+        "compositionIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "composition": {
+          "$ref": "#/$defs/compositionIdentity"
+        },
+        "carrier": {
+          "$ref": "#/$defs/carrierDecision"
+        },
+        "program": {
+          "$ref": "#/$defs/programDecision"
+        },
+        "layout": {
+          "$ref": "#/$defs/layoutDecision"
+        },
+        "descriptor": {
+          "$ref": "#/$defs/descriptorDecision"
+        },
+        "adapter": {
+          "$ref": "#/$defs/adapterDecision"
+        },
+        "application": {
+          "$ref": "#/$defs/applicationDecision"
+        },
+        "manualProductReview": {
+          "const": "PENDING_USER_PRODUCT_REVIEW"
+        }
+      }
+    }
+  }
+}

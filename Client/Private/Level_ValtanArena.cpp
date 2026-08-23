@@ -17,6 +17,7 @@ headers, which is the same order Level_CharacterSelect.cpp uses. */
 #include "NetworkPlayerCommandSink.h"
 #include "ProjectDataRoot.h"
 #include "Transform.h"
+#include "Valtan.h"
 
 #include "DataJson.h"
 
@@ -1596,15 +1597,64 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	ImGui::TextDisabled(
 		"A floor-collapse bar takes every wall down with it in the same request.");
 
-	/* The authored rotation script is what the boss is meant to run between
-	the scripted mechanics, and only nine patterns are owned by a health bar.
-	Replaying the script in order is therefore the only way to watch the whole
-	authored order without fighting for every weighted roll. */
-	ImGui::SeparatorText("New Pattern");
-	const std::vector<std::string> rotationOrder =
-		Collect_AuthoredRotationPatternIds();
 	const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& authoredPatterns =
 		m_ValtanEncounterReference.Get_Patterns();
+	ImGui::SeparatorText("Focused authored pattern");
+	bool_t useMaterialV1Aliases =
+		CValtan::Is_PatternEffectV1AuditionEnabled();
+	if (ImGui::Checkbox("Use V1 .effect.unified aliases",
+			&useMaterialV1Aliases))
+	{
+		CValtan::Set_PatternEffectV1AuditionEnabled(useMaterialV1Aliases);
+	}
+	ImGui::TextDisabled(useMaterialV1Aliases ?
+		"V1 A/B: source cue timing + parallel .v1.unified material assets." :
+		"V0 A/B: original Product effect assets.");
+	if (authoredPatterns.empty())
+	{
+		ImGui::TextDisabled("The encounter carries no authored pattern.");
+	}
+	else
+	{
+		m_iSelectedAuditionPatternIndex = (std::min)(
+			m_iSelectedAuditionPatternIndex, authoredPatterns.size() - 1u);
+		const char_t* selectedPatternId = authoredPatterns[
+			m_iSelectedAuditionPatternIndex].patternId.c_str();
+		if (ImGui::BeginCombo(
+			"Pattern##ValtanFocusedAudition", selectedPatternId))
+		{
+			for (size_t index = 0u; index < authoredPatterns.size(); ++index)
+			{
+				const bool_t selected =
+					index == m_iSelectedAuditionPatternIndex;
+				if (ImGui::Selectable(
+					authoredPatterns[index].patternId.c_str(), selected))
+				{
+					m_iSelectedAuditionPatternIndex = index;
+				}
+				if (selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::BeginDisabled(focusedControlsDisabled);
+		if (ImGui::Button(
+			"Reset + Play Selected Pattern", ImVec2(330.f, 0.f)))
+		{
+			Submit_Audition(
+				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN);
+		}
+		ImGui::EndDisabled();
+		ImGui::TextDisabled(
+			"Runs one selected pattern through the same Server-authoritative Brain path; no rotation wait is required.");
+	}
+
+	/* The authored rotation script is what the boss is meant to run between
+	the scripted mechanics. Replaying it in order remains the full sequence
+	check; the focused selector above is the single-pattern diagnosis path. */
+	ImGui::SeparatorText("Authored rotation");
+	const std::vector<std::string> rotationOrder =
+		Collect_AuthoredRotationPatternIds();
 	if (rotationOrder.empty() || authoredPatterns.empty())
 	{
 		ImGui::TextDisabled(

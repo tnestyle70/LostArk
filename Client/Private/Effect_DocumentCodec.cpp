@@ -1282,7 +1282,7 @@ namespace
 			return true;
 		}
 		if (!Validate_ExactFields(Value,
-			{ "enabled", "version", "backend", "opcode", "passIndex",
+			{ "enabled", "fidelity", "version", "backend", "opcode", "passIndex",
 				"renderState", "textureLaneCount", "textureMask",
 				"textureLanes", "dynamicConsumedMask",
 				"dynamicSuppressedMask", "particleColorPolicy",
@@ -1302,6 +1302,9 @@ namespace
 		}
 		const Client::DATA_JSON_VALUE* pBackend = Find_Field(
 			Value, "backend", Client::DATA_JSON_TYPE::STRING, strOutError);
+		Out.eFidelity =
+			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::SOURCE_EXACT;
+		const Client::DATA_JSON_VALUE* pFidelity = Value.Find("fidelity");
 		const Client::DATA_JSON_VALUE* pRenderState = Find_Field(
 			Value, "renderState", Client::DATA_JSON_TYPE::OBJECT, strOutError);
 		const Client::DATA_JSON_VALUE* pTextureLanes = Find_Field(
@@ -1317,6 +1320,18 @@ namespace
 			Value, "colors", Client::DATA_JSON_TYPE::ARRAY, strOutError);
 		const Client::DATA_JSON_VALUE* pStandardColor =
 			Value.Find("standardColor");
+		if (nullptr != pFidelity &&
+			(!pFidelity->Is_String() ||
+			 pFidelity->Get_String() != "PROJECT_TUNED_APPROX"))
+		{
+			strOutError = "Effect material execution fidelity is unsupported.";
+			return false;
+		}
+		if (nullptr != pFidelity)
+		{
+			Out.eFidelity = Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::
+				PROJECT_TUNED_APPROX;
+		}
 		if (nullptr == pBackend || nullptr == pRenderState ||
 			nullptr == pTextureLanes || nullptr == pScalars ||
 			nullptr == pVectors || nullptr == pArtistParameters ||
@@ -1377,6 +1392,17 @@ namespace
 			!Read_UInt(Value, "renderSuppressedMask", Out.iRenderSuppressedMask,
 				strOutError))
 		{
+			return false;
+		}
+		const bool_t bProjectTunedApprox = Out.eFidelity ==
+			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX;
+		const bool_t bProjectTunedOpcode = Out.eBackend ==
+			Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			(Out.iOpcode == 1001u || Out.iOpcode == 1002u);
+		if (bProjectTunedApprox != bProjectTunedOpcode)
+		{
+			strOutError =
+				"Effect material execution fidelity/opcode contract changed.";
 			return false;
 		}
 		if (nullptr != pStandardColor &&
@@ -1507,6 +1533,11 @@ namespace
 				Output << ", \"authoringApproximate\": true";
 			Output << " }";
 			return;
+		}
+		if (Execution.eFidelity ==
+			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX)
+		{
+			Output << ", \"fidelity\": \"PROJECT_TUNED_APPROX\"";
 		}
 		Output << ", \"version\": " << Execution.iVersion
 			<< ", \"backend\": \""
@@ -1859,7 +1890,9 @@ namespace
 					"Authoring-approximate authored Material must stay fail-closed.";
 				return false;
 			}
-			if (1u != Execution.iVersion ||
+			if (Execution.eFidelity !=
+					Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::SOURCE_EXACT ||
+				1u != Execution.iVersion ||
 				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC !=
 					Execution.eBackend ||
 				0u != Execution.iOpcode || 0u != Execution.iPassIndex ||
@@ -1907,6 +1940,17 @@ namespace
 		{
 			strOutError =
 				"Enabled authored Material execution cannot be authoring-approximate.";
+			return false;
+		}
+		const bool_t bProjectTunedApprox = Execution.eFidelity ==
+			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX;
+		const bool_t bProjectTunedOpcode = Execution.eBackend ==
+			Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			(Execution.iOpcode == 1001u || Execution.iOpcode == 1002u);
+		if (bProjectTunedApprox != bProjectTunedOpcode)
+		{
+			strOutError =
+				"Enabled material execution fidelity/opcode contract changed.";
 			return false;
 		}
 
