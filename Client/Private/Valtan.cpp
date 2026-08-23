@@ -32,6 +32,8 @@ namespace
 	constexpr f32_t VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS = 1.f / 120.f;
 	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
 	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
+	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
+	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
 #ifdef _DEBUG
 	std::atomic_bool g_bPatternEffectV1AuditionEnabled = false;
 #endif
@@ -916,6 +918,14 @@ HRESULT CValtan::Ready_PartObjects()
 	if (nullptr == m_pBodyModelCom ||
 		nullptr == m_pBodyVisualRootCom)
 		return E_FAIL;
+
+	/* The authored clips carry baked b_root travel, so drawing them unchanged
+	would slide the mesh away from the server transform that already moves this
+	boss. The body owns the skeleton every socketed part follows, so suppressing
+	the horizontal channel here is enough; local Z stays free because the pose
+	itself carries the leap. This mirrors the player contract in CCharacter. */
+	m_pBodyModelCom->Enable_RootMotionSuppression(
+		ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
 
 	CPart_Equipment::PART_EQUIPMENT_DESC weaponDesc{};
 

@@ -1443,26 +1443,40 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		return;
 	/* A fall kills the player over a hole. Reviving in place would drop them
 	again on the next tick, so a revive whose current cell is no longer walkable
-	returns to the spawn this player entered from. Every other death still
-	revives exactly where it happened. */
+	steps out to the nearest ground of the same deck that is still standing.
+	The arena progression triggers are room-wide triggerOnce, so returning the
+	body to the entry spawn would strand it outside a fight it can never
+	re-enter, and a plain XZ projection would drop it onto a lower deck. The
+	entry spawn stays as the last resort for a body with no reachable ground on
+	its own deck. Every other death still revives exactly where it happened. */
 	if (m_ServerNavigation.Is_Loaded() &&
 		!m_ServerNavigation.Is_PointWalkableExact(
 			player.fPositionX, player.fPositionZ))
 	{
-		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
-			Find_Placement(player.strSpawnPlacementId);
 		SERVER_NAV_POINT projected{};
-		if (nullptr == spawn || !spawn->isEnabled ||
-			WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != spawn->eKind ||
-			!m_ServerNavigation.Project_Point(
-				spawn->fPositionX, spawn->fPositionZ, projected))
+		if (m_ServerNavigation.Project_PointOnSameLevel(
+			player.fPositionX, player.fPositionZ, projected))
 		{
-			return;
+			player.fPositionX = projected.x;
+			player.fPositionY = projected.y;
+			player.fPositionZ = projected.z;
 		}
-		player.fPositionX = projected.x;
-		player.fPositionY = projected.y;
-		player.fPositionZ = projected.z;
-		player.fYawDegrees = spawn->fYawDegrees;
+		else
+		{
+			const WORLD_BOOTSTRAP_PLACEMENT* spawn =
+				Find_Placement(player.strSpawnPlacementId);
+			if (nullptr == spawn || !spawn->isEnabled ||
+				WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != spawn->eKind ||
+				!m_ServerNavigation.Project_Point(
+					spawn->fPositionX, spawn->fPositionZ, projected))
+			{
+				return;
+			}
+			player.fPositionX = projected.x;
+			player.fPositionY = projected.y;
+			player.fPositionZ = projected.z;
+			player.fYawDegrees = spawn->fYawDegrees;
+		}
 	}
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
@@ -5839,11 +5853,16 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 							targetX, targetZ,
 							entity.fPositionX, entity.fPositionZ);
 					};
+				/* Only a charge may end its stage on a wall. Ordinary stages now
+				carry the small travel their clip bakes, and sweeping those against
+				impact receivers would let a recovery shuffle smash a wall and then
+				fail the impact transition the stage never declared. */
 				SERVER_BOSS_RECEIVER_HIT hit{};
-				if (m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
-					entity.fPositionX, entity.fPositionY, entity.fPositionZ,
-					proposedX, entity.fPositionY, proposedZ,
-					entity.fCollisionRadius, hit))
+				if (entity.bPatternChargeImpact &&
+					m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
+						entity.fPositionX, entity.fPositionY, entity.fPositionZ,
+						proposedX, entity.fPositionY, proposedZ,
+						entity.fCollisionRadius, hit))
 				{
 					const float deltaX = proposedX - entity.fPositionX;
 					const float deltaZ = proposedZ - entity.fPositionZ;

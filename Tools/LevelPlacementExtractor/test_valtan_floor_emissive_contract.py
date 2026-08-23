@@ -192,7 +192,7 @@ class ValtanFloorEmissiveContractTests(unittest.TestCase):
             self.assertTrue(math.isfinite(intensity) and intensity >= 0.0)
             self.assertIn(overlay, (0, 1))
             if asset_id in FLOOR_ASSETS:
-                self.assertEqual(0.35, intensity, asset_id)
+                self.assertEqual(1.5, intensity, asset_id)
                 self.assertEqual(1, overlay, asset_id)
                 self.assertEqual("STATIC", tokens[1], asset_id)
             else:
@@ -218,7 +218,7 @@ class ValtanFloorEmissiveContractTests(unittest.TestCase):
         ordinary = shlex.split(migrated[0])
         floor_a = shlex.split(migrated[1])
         self.assertEqual(["1", "0"], ordinary[7:9])
-        self.assertEqual(["0.35", "1"], floor_a[7:9])
+        self.assertEqual(["1.5", "1"], floor_a[7:9])
         self.assertEqual("ordinary evidence", ordinary[9])
         self.assertEqual("floor evidence", floor_a[9])
 

@@ -112,35 +112,51 @@ namespace
 		return true;
 	}
 
+	/* Frames every enabled player spawn the Area declares. It used to take a
+	preferred placement id, but no authored document has ever carried the two
+	ids the caller asked for, so that lookup always fell through to whichever
+	spawn happened to come first and the named branches were dead weight. The
+	spawn set is the stable authoring focus: it is what the Area declares as
+	the playable entry, and it cannot be dragged away by backdrop meshes. */
 	bool_t TryBuildGameplaySpawnFrame(
 		const CWorldGameplayDocument& document,
-		const std::string& preferredPlacementId,
 		float3_t& outCenter,
 		f32_t& outRadius)
 	{
-		const WORLD_GAMEPLAY_PLACEMENT* spawn =
-			document.Find(preferredPlacementId);
-		if (nullptr == spawn ||
-			WORLD_PLACEMENT_KIND::PLAYER_SPAWN != spawn->eKind ||
-			!spawn->isEnabled || !IsFinite(spawn->position))
+		float3_t minimum{};
+		float3_t maximum{};
+		bool_t hasSpawn = false;
+		for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+			document.Get_Placements())
 		{
-			spawn = nullptr;
-			for (const WORLD_GAMEPLAY_PLACEMENT& placement :
-				document.Get_Placements())
+			if (WORLD_PLACEMENT_KIND::PLAYER_SPAWN != placement.eKind ||
+				!placement.isEnabled || !IsFinite(placement.position))
 			{
-				if (WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind &&
-					placement.isEnabled && IsFinite(placement.position))
-				{
-					spawn = &placement;
-					break;
-				}
+				continue;
 			}
+			if (!hasSpawn)
+			{
+				minimum = placement.position;
+				maximum = placement.position;
+				hasSpawn = true;
+				continue;
+			}
+			minimum.x = (std::min)(minimum.x, placement.position.x);
+			minimum.y = (std::min)(minimum.y, placement.position.y);
+			minimum.z = (std::min)(minimum.z, placement.position.z);
+			maximum.x = (std::max)(maximum.x, placement.position.x);
+			maximum.y = (std::max)(maximum.y, placement.position.y);
+			maximum.z = (std::max)(maximum.z, placement.position.z);
 		}
-		if (nullptr == spawn)
+		if (!hasSpawn)
 			return false;
 
-		outCenter = spawn->position;
-		outRadius = 35.f;
+		outCenter = float3_t(
+			(minimum.x + maximum.x) * 0.5f,
+			(minimum.y + maximum.y) * 0.5f,
+			(minimum.z + maximum.z) * 0.5f);
+		outRadius = (std::max)(35.f,
+			(std::max)(maximum.x - minimum.x, maximum.z - minimum.z) * 0.75f);
 		return true;
 	}
 
@@ -3617,23 +3633,13 @@ bool_t Client::CMapTool::Focus_ActiveEditorAreaCamera()
 	f32_t radius = 0.f;
 	bool_t hasFrame = false;
 	/* Product spawn data is the stable authoring focus. Distant backdrop
-	   meshes must not pull the editor camera away from the playable entry. */
-	if ("LV_BER_BERNCASTLE" == descriptor->areaId)
-	{
-		hasFrame = TryBuildGameplaySpawnFrame(
-			m_WorldGameplayDocument,
-			"player.spawn.bern.entry",
-			center,
-			radius);
-	}
-	else if ("LV_LUT_HEARTRB_ED" == descriptor->areaId)
-	{
-		hasFrame = TryBuildGameplaySpawnFrame(
-			m_WorldGameplayDocument,
-			"player.spawn.valtan.entry",
-			center,
-			radius);
-	}
+	   meshes must not pull the editor camera away from the playable entry.
+	   Any Area that declares player spawns uses them; one without a gameplay
+	   document falls through to the placement bounds below. */
+	hasFrame = TryBuildGameplaySpawnFrame(
+		m_WorldGameplayDocument,
+		center,
+		radius);
 
 	if (!hasFrame && !m_Placements.empty())
 	{
@@ -5443,29 +5449,39 @@ bool_t Client::CMapTool::Validate_DestructionExternalReferences(
 			}
 		}
 
-		const ENCOUNTER_PATTERN_REFERENCE* pattern =
-			encounter.Find_Pattern(binding.patternId);
-		if (nullptr == pattern)
+		/* A contact break names no pattern and no stage on purpose, so it has
+		no encounter tuple to resolve. Publish-ValtanWorldDestruction.ps1 skips
+		the same check for it, and demanding one here blocks the Area on data
+		the publisher accepts. */
+		if (DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT != binding.eTriggerKind)
 		{
-			outStatus = "Save blocked: binding " + binding.bindingId +
-				" references an unknown Valtan pattern " + binding.patternId;
-			return false;
-		}
-		const auto stage = std::find_if(pattern->stages.begin(),
-			pattern->stages.end(), [&binding](const ENCOUNTER_STAGE_REFERENCE& value)
+			const ENCOUNTER_PATTERN_REFERENCE* pattern =
+				encounter.Find_Pattern(binding.patternId);
+			if (nullptr == pattern)
 			{
-				return value.stageId == binding.stageId;
-			});
-		if (pattern->stages.end() == stage ||
-			(DESTRUCTION_TRIGGER_KIND::STAGE_TIME == binding.eTriggerKind &&
-				binding.iOffsetMs > stage->iDurationMs))
-		{
-			outStatus = "Save blocked: binding " + binding.bindingId +
-				" has an unknown stage or an out-of-range time";
-			return false;
+				outStatus = "Save blocked: binding " + binding.bindingId +
+					" references an unknown Valtan pattern " + binding.patternId;
+				return false;
+			}
+			const auto stage = std::find_if(pattern->stages.begin(),
+				pattern->stages.end(),
+				[&binding](const ENCOUNTER_STAGE_REFERENCE& value)
+				{
+					return value.stageId == binding.stageId;
+				});
+			if (pattern->stages.end() == stage ||
+				(DESTRUCTION_TRIGGER_KIND::STAGE_TIME == binding.eTriggerKind &&
+					binding.iOffsetMs > stage->iDurationMs))
+			{
+				outStatus = "Save blocked: binding " + binding.bindingId +
+					" has an unknown stage or an out-of-range time";
+				return false;
+			}
 		}
 		if (DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT ==
-			binding.eTriggerKind)
+				binding.eTriggerKind ||
+			DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT ==
+				binding.eTriggerKind)
 		{
 			const WORLD_GAMEPLAY_PLACEMENT* receiver =
 				worldGameplay.Find(binding.receiverCollisionId);
@@ -5690,10 +5706,15 @@ void Client::CMapTool::Load_DestructionDraftFromBinding(
 	m_bDestructionNewSettingArmed = false;
 	m_SelectedDestructionPatternId = binding.patternId;
 	m_SelectedDestructionStageId = binding.stageId;
+	/* A contact binding has no pattern and no stage, so the apply path below
+	already refuses to write it. Give it an index of its own anyway: showing it
+	as COLLISION_IMPACT would claim the wall breaks on a scheduled impact when
+	it actually breaks on collider contact. */
 	m_iDestructionTriggerKind =
 		DESTRUCTION_TRIGGER_KIND::STAGE_ENTER == binding.eTriggerKind ? 0 :
 		DESTRUCTION_TRIGGER_KIND::STAGE_TIME == binding.eTriggerKind ? 1 :
-		DESTRUCTION_TRIGGER_KIND::STAGE_EXIT == binding.eTriggerKind ? 2 : 3;
+		DESTRUCTION_TRIGGER_KIND::STAGE_EXIT == binding.eTriggerKind ? 2 :
+		DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT == binding.eTriggerKind ? 3 : 4;
 	m_iDestructionOffsetMs = static_cast<int32_t>(binding.iOffsetMs);
 	m_bDestructionBindingEnabled = binding.isEnabled;
 	strncpy_s(m_DestructionReceiverId, binding.receiverCollisionId.c_str(),

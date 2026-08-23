@@ -19,6 +19,68 @@ namespace
 		return std::fabs(left - right) <= 0.000001f;
 	}
 
+	/* A bake ray that slips through a floor crack leaves the cell it crossed
+	with no surface at all. WALKABLE paint declares such a cell ordinary floor,
+	so it also has to carry the level of the ground around it. This mirrors the
+	same rule in Publish-ServerNavigation.ps1 exactly: the Map Tool has to admit
+	every paint document the publisher admits, or an Area becomes uneditable the
+	moment a seam is healed. The level is the median of the baked ground in the
+	ring rather than a unanimous vote, because a seam runs as a line and its own
+	cells sit next to each other. At least five of the eight neighbours must
+	carry a baked surface and three quarters of those must land on the median,
+	so a cell standing in genuinely varied ground - a ramp, a ledge, a stair -
+	never qualifies. The caller passes the baked snapshot so the result cannot
+	depend on the order the paint rows happen to appear in. */
+	constexpr f32_t SEAM_HEIGHT_TOLERANCE = 0.5f;
+
+	bool_t Try_ResolveSeamHeight(
+		const std::vector<Client::NAV_SOURCE_CELL>& bakedCells,
+		const uint32_t width,
+		const uint32_t height,
+		const int32_t cellX,
+		const int32_t cellZ,
+		f32_t& outHeight)
+	{
+		if (cellX <= 0 || cellZ <= 0 ||
+			cellX >= static_cast<int32_t>(width) - 1 ||
+			cellZ >= static_cast<int32_t>(height) - 1)
+		{
+			return false;
+		}
+		std::vector<f32_t> ring;
+		ring.reserve(8);
+		for (int32_t offsetZ = -1; offsetZ <= 1; ++offsetZ)
+		{
+			for (int32_t offsetX = -1; offsetX <= 1; ++offsetX)
+			{
+				if (0 == offsetX && 0 == offsetZ)
+					continue;
+				const uint32_t ringIndex = static_cast<uint32_t>(
+					(cellZ + offsetZ) * static_cast<int32_t>(width) +
+					(cellX + offsetX));
+				if (bakedCells[ringIndex].surfaceResolved)
+					ring.push_back(bakedCells[ringIndex].height);
+			}
+		}
+		if (ring.size() < 5u)
+			return false;
+		std::sort(ring.begin(), ring.end());
+		const size_t ringCount = ring.size();
+		const f32_t median = 1u == ringCount % 2u ?
+			ring[ringCount / 2u] :
+			(ring[ringCount / 2u - 1u] + ring[ringCount / 2u]) * 0.5f;
+		size_t onMedian = 0;
+		for (const f32_t sample : ring)
+		{
+			if (std::fabs(sample - median) <= SEAM_HEIGHT_TOLERANCE)
+				++onMedian;
+		}
+		if (onMedian < (3u * ringCount + 3u) / 4u)
+			return false;
+		outHeight = median;
+		return true;
+	}
+
 	bool_t IsValidBakeDesc(const Client::NAVGRID_BAKE_DESC& desc)
 	{
 		return
@@ -353,6 +415,9 @@ bool_t Client::CNavGridPaintDocument::Load(
 	std::vector<NAVGRID_PAINT_OVERRIDE> stagedCellOverrides(
 		cellCount,
 		NAVGRID_PAINT_OVERRIDE::INHERIT);
+	/* Frozen before any override is applied so a seam heal always reads the
+	bake, never a value an earlier paint row already wrote. */
+	const std::vector<NAV_SOURCE_CELL> bakedSourceCells = stagedSourceCells;
 	std::error_code existsError;
 	const bool_t paintExists =
 		std::filesystem::exists(paintPath, existsError);
@@ -448,10 +513,32 @@ bool_t Client::CNavGridPaintDocument::Load(
 				}
 			}
 
+			f32_t seamHeight = {};
+			const bool_t hasSeamHeight =
+				NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE == overrideState &&
+				PAINT_VERSION == paintVersion &&
+				Try_ResolveSeamHeight(
+					bakedSourceCells,
+					stagedDesc.width,
+					stagedDesc.height,
+					cellX,
+					cellZ,
+					seamHeight);
 			if (!stagedSourceCells[index].surfaceResolved)
 			{
-				outStatus = "NavGrid paint targets an unresolved cell";
-				return false;
+				if (!hasSeamHeight)
+				{
+					outStatus = "NavGrid paint targets an unresolved cell";
+					return false;
+				}
+				stagedSourceCells[index].surfaceResolved = true;
+				stagedSourceCells[index].height = seamHeight;
+			}
+			else if (hasSeamHeight &&
+				seamHeight - bakedSourceCells[index].height >
+					SEAM_HEIGHT_TOLERANCE)
+			{
+				stagedSourceCells[index].height = seamHeight;
 			}
 			stagedCellOverrides[index] = overrideState;
 		}

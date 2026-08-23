@@ -20,10 +20,12 @@ headers, which is the same order Level_CharacterSelect.cpp uses. */
 #include "Valtan.h"
 
 #include "DataJson.h"
+#include "DeployPropObject.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <limits>
@@ -1882,6 +1884,61 @@ bool_t CLevel_ValtanArena::Apply_EncounterPropPresentation()
 	}
 	if (!m_DeployRuntime.Set_States(states))
 		return false;
+#ifdef _DEBUG
+	/* Every applied sync says what the Server actually sent. Without it a
+	mechanic that never fires is completely silent on both sides, which is what
+	made the missing stele so hard to place. The states only move on a raise or
+	a shatter, so this stays one line per edge rather than one per frame. */
+	{
+		size_t hiddenCount = 0u;
+		size_t intactCount = 0u;
+		size_t breakingCount = 0u;
+		for (const LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE& slot : props.Slots)
+		{
+			if (LostArk::Shared::ENCOUNTER_PROP_STATE::HIDDEN == slot.eState)
+				++hiddenCount;
+			else if (LostArk::Shared::ENCOUNTER_PROP_STATE::BREAKING ==
+				slot.eState)
+				++breakingCount;
+			else
+				++intactCount;
+		}
+		char_t summary[192]{};
+		(void)std::snprintf(summary, sizeof(summary),
+			"[Level_ValtanArena][EncounterProps] sync epoch %u tick %u: "
+			"%zu slots, HIDDEN %zu INTACT %zu BREAKING %zu\n",
+			props.iEncounterEpoch, props.iServerTick,
+			props.Slots.size(), hiddenCount, intactCount, breakingCount);
+		OutputDebugStringA(summary);
+	}
+	/* The stele is the one prop whose model arrives in a different unit and a
+	different up-axis from the map exports, so the raise reports the size it
+	actually drew at. A line here answers "is it there and is it the right
+	size" without anyone having to judge it by eye. */
+	for (size_t index = 0u; index < props.Slots.size(); ++index)
+	{
+		if (LostArk::Shared::ENCOUNTER_PROP_STATE::INTACT !=
+			props.Slots[index].eState)
+		{
+			continue;
+		}
+		const shared_ptr<CDeployPropObject> raised =
+			m_DeployRuntime.Find(VALTAN_PILLAR_SLOT_PLACEMENT_IDS[index]);
+		float3_t center{};
+		float3_t halfExtents{};
+		if (nullptr == raised || !raised->Get_WorldBounds(center, halfExtents))
+			continue;
+		char_t line[192]{};
+		(void)std::snprintf(line, sizeof(line),
+			"[Level_ValtanArena][EncounterProps] %s raised at "
+			"(%.2f, %.2f, %.2f) height %.2fm radius %.2fm\n",
+			props.Slots[index].strSlotId.c_str(),
+			center.x, center.y, center.z,
+			halfExtents.y * 2.f,
+			(std::max)(halfExtents.x, halfExtents.z));
+		OutputDebugStringA(line);
+	}
+#endif
 	for (const WORLD_DESTRUCTION_DEBRIS_CUE& burstCue : burstCues)
 	{
 		std::string cueStatus;

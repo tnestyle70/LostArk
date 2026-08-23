@@ -354,9 +354,19 @@ PS_OUT_DEFERRED_EMISSIVE_OVERLAY PS_MAIN_DEFERRED_EMISSIVE_OVERLAY(
         LinearSampler, input.vTexcoord).rgb;
     clip(max(emissive.r, max(emissive.g, emissive.b)) - (1.f / 255.f));
 
+    /* The crack layer shares one UV region between the plate tops and the
+       gap walls: 69% of the gap-interior texels are also covered by
+       up-facing triangles, so the mask cannot separate them. Geometry
+       decides instead, and only surfaces that face away from up belong
+       inside the gap. The band is soft because the shared vertex normal
+       turns over across that edge. */
+    const float upFacing = saturate(normalize(input.vNormal.xyz).y);
+    const float gapWeight = 1.f - smoothstep(0.35f, 0.70f, upFacing);
+    clip(gapWeight - (1.f / 255.f));
+
     PS_OUT_DEFERRED_EMISSIVE_OVERLAY output;
     output.vEmissive =
-        emissive * g_EmissiveColor.rgb * g_EmissiveIntensity;
+        emissive * g_EmissiveColor.rgb * g_EmissiveIntensity * gapWeight;
     return output;
 }
 

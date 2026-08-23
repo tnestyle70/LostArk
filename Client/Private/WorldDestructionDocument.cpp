@@ -194,6 +194,8 @@ const char_t* Client::CWorldDestructionDocument::TriggerKind_ToString(
 		return "STAGE_EXIT";
 	case DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT:
 		return "COLLISION_IMPACT";
+	case DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT:
+		return "COLLIDER_CONTACT";
 	default:
 		return "";
 	}
@@ -211,6 +213,8 @@ bool_t Client::CWorldDestructionDocument::Try_ParseTriggerKind(
 		outKind = DESTRUCTION_TRIGGER_KIND::STAGE_EXIT;
 	else if ("COLLISION_IMPACT" == value)
 		outKind = DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT;
+	else if ("COLLIDER_CONTACT" == value)
+		outKind = DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT;
 	else
 		return false;
 	return true;
@@ -408,10 +412,8 @@ bool_t Client::CWorldDestructionDocument::Load(
 			!Is_StableId(binding.bindingId) ||
 			!Read_String(entry, "mutationId", false, binding.mutationId) ||
 			!Is_StableId(binding.mutationId) ||
-			!Read_String(entry, "patternId", false, binding.patternId) ||
-			!Is_StableId(binding.patternId) ||
-			!Read_String(entry, "stageId", false, binding.stageId) ||
-			!Is_StableId(binding.stageId) ||
+			!Read_String(entry, "patternId", true, binding.patternId) ||
+			!Read_String(entry, "stageId", true, binding.stageId) ||
 			!Read_String(entry, "triggerKind", false, triggerKind) ||
 			!Try_ParseTriggerKind(triggerKind, binding.eTriggerKind) ||
 			!Read_Unsigned(entry, "offsetMs", MAX_DURATION_MS,
@@ -419,6 +421,26 @@ bool_t Client::CWorldDestructionDocument::Load(
 			!Read_String(entry, "receiverCollisionId", true,
 				binding.receiverCollisionId) ||
 			!Read_Bool(entry, "enabled", binding.isEnabled))
+		{
+			outStatus = "World destruction binding field is invalid";
+			return false;
+		}
+		/* Publish-ValtanWorldDestruction.ps1 states the same rule: a contact
+		binding carries no pattern and no stage and cannot delay, and every
+		other kind must name both. The Map Tool has to admit exactly what the
+		publisher admits or the Area cannot be opened to author it. */
+		if (DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT == binding.eTriggerKind)
+		{
+			if (!binding.patternId.empty() || !binding.stageId.empty() ||
+				0u != binding.iOffsetMs)
+			{
+				outStatus = "Contact binding must carry no pattern, stage "
+					"or delay: " + binding.bindingId;
+				return false;
+			}
+		}
+		else if (!Is_StableId(binding.patternId) ||
+			!Is_StableId(binding.stageId))
 		{
 			outStatus = "World destruction binding field is invalid";
 			return false;
@@ -681,13 +703,14 @@ bool_t Client::CWorldDestructionDocument::Validate_Graph(
 			return false;
 		}
 		const bool_t needsReceiver =
-			DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT == binding.eTriggerKind;
+			DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT == binding.eTriggerKind ||
+			DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT == binding.eTriggerKind;
 		if (needsReceiver == binding.receiverCollisionId.empty())
 		{
 			outStatus = needsReceiver ?
-				"COLLISION_IMPACT binding needs a receiver: " +
+				"Impact or contact binding needs a receiver: " +
 					binding.bindingId :
-				"Only COLLISION_IMPACT may set a receiver: " +
+				"Only an impact or contact binding may set a receiver: " +
 					binding.bindingId;
 			return false;
 		}
@@ -701,7 +724,8 @@ bool_t Client::CWorldDestructionDocument::Validate_Graph(
 		/* An enabled binding is a request the Server will have to honour, so a
 		   draft without its target resolved stays disabled instead of being
 		   silently accepted. */
-		if (binding.isEnabled && binding.patternId.empty())
+		if (binding.isEnabled && binding.patternId.empty() &&
+			DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT != binding.eTriggerKind)
 		{
 			outStatus = "Enabled binding needs a pattern: " +
 				binding.bindingId;

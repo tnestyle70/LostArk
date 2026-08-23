@@ -1161,6 +1161,9 @@ $serverMotionAnchorIds = [Collections.Generic.HashSet[string]]::new([StringCompa
 $serverMotionByPatternId = @{}
 $patternById = @{}
 $stageOwnerByKey = @{}
+# Baked b_root travel is addressed by pattern and stage index, so the loop
+# below records the gameplay duration each curve has to stay inside.
+$patternStageDurationByKey = @{}
 $spawnCombatObjectOwnerById = @{}
 foreach ($pattern in @($encounterDocument.patterns)) {
 	# serverMotion is optional. Only a pattern whose boss motion the Server has to
@@ -1498,6 +1501,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$pushMs,
 			$(if ($knockdown) { 1 } else { 0 }),
 			$downMs) -join "`t"))
+		$patternStageDurationByKey[
+			("{0}/{1}" -f $pattern.patternId, $stageIndex)] = [uint32]$stage.durationMs
 		for ($hitOffsetIndex = 0; $hitOffsetIndex -lt $hitOffsetsMs.Count; $hitOffsetIndex++) {
 			$patternRows.Add((@(
 				'PATTERNSTAGEHITOFFSET', $encounterDocument.encounterId,
@@ -2720,6 +2725,10 @@ $rootMotionSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::O
 foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\RootMotion') `
         -Filter '*.rootmotion.json' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
     $document = Read-JsonDocument ('Data/Animation/RootMotion/' + $path.Name)
+    # The boss curve lives beside the class curves but is addressed by pattern
+    # and stage instead of by skill, so it is emitted by the encounter block
+    # below and skipped here rather than failing this document check.
+    if ([string]$document.schema -ceq 'lostark.valtan-pattern-root-motion') { continue }
     Assert-ExactProperties $document @(
         'schema','formatVersion','animationAssetId','characterClass','skills') 'root motion document'
     if ($document.schema -ne 'lostark.animation-root-motion' -or
@@ -2783,6 +2792,53 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
         $rootMotionRows.Add((@(
             'SKILLROOTMOTION', $id, $samples.Count, $packed) -join "`t"))
     }
+}
+
+# The boss moves the way the player does: a curve the animator baked into the
+# clip wins over a constant slide.  Valtan.rootmotion.json is produced by
+# Tools/ValtanActionExtractor/build_valtan_rootmotion.py straight out of the
+# cooked animation set, so a stage that already declares its own
+# motion.distance is deliberately absent from it and keeps the authored slide.
+$patternRootMotionPath = Join-Path $repoRoot "Data\Animation\RootMotion\Valtan.rootmotion.json"
+if (Test-Path -LiteralPath $patternRootMotionPath) {
+	$patternRootMotion = Read-JsonDocument 'Data/Animation/RootMotion/Valtan.rootmotion.json'
+	Assert-ExactProperties $patternRootMotion @(
+		'schema','formatVersion','bossArchetypeId','animationAssetId','patterns') 'valtan root motion document'
+	if ($patternRootMotion.schema -ne 'lostark.valtan-pattern-root-motion' -or
+		[uint32]$patternRootMotion.formatVersion -ne 1 -or
+		[string]$patternRootMotion.bossArchetypeId -cne [string]$encounterDocument.bossArchetypeId) {
+		throw "Valtan root motion header is invalid"
+	}
+	$rootMotionStageSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	foreach ($entry in @($patternRootMotion.patterns)) {
+		Assert-ExactProperties $entry @('patternId','stages') 'valtan root motion pattern'
+		$patternId = [string]$entry.patternId
+		if (-not $patternIds.Contains($patternId)) {
+			throw "Valtan root motion targets an unknown pattern: $patternId"
+		}
+		foreach ($stage in @($entry.stages)) {
+			Assert-ExactProperties $stage @(
+				'stageIndex','stageId','clip','durationMs','samples') 'valtan root motion stage'
+			$stageIndex = [int]$stage.stageIndex
+			$key = "{0}/{1}" -f $patternId, $stageIndex
+			if (-not $patternStageDurationByKey.ContainsKey($key)) {
+				throw "Valtan root motion targets an unknown stage: $key"
+			}
+			if (-not $rootMotionStageSeen.Add($key)) {
+				throw "Duplicate Valtan root motion stage: $key"
+			}
+			Assert-JsonInteger $stage.durationMs "valtan root motion $key durationMs" 1 ([uint32]::MaxValue)
+			$authoredDurationMs = [uint32]$stage.durationMs
+			if ($authoredDurationMs -ne [uint32]$patternStageDurationByKey[$key]) {
+				throw "Valtan root motion duration disagrees with the stage: $key"
+			}
+			$samples = @($stage.samples)
+			$packed = Format-RootMotionSamples -Samples $samples -SkillId $key -LimitMs $authoredDurationMs
+			$patternRows.Add((@(
+				'PATTERNSTAGEROOTMOTION', $encounterDocument.encounterId,
+				$patternId, $stageIndex, $samples.Count, $packed) -join "`t"))
+		}
+	}
 }
 
 $skillDealsDamageById = @{}
