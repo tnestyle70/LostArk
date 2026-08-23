@@ -28,6 +28,8 @@
     "rimPower": 2.5,
     "rimIntensity": 2.5,
     "ghostAlpha": 0.0,
+    "outlineWidth": 0.04,
+    "outlineColor": [1.0, 1.0, 1.0, 0.6],
     "bloomIntensity": 1.0,
     "distortionIntensity": 0.0,
     "uvStart": [0.0, 0.0],
@@ -47,6 +49,7 @@
     "meshPreScale": 0.0001,
     "animationClip": "npc_sk_dochul_03",
     "animationLoop": false,
+    "colorTexturesSRGB": true,
     "particle": {
       "maxParticles": 256,
       "spawnRate": 20.0,

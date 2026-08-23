@@ -24,6 +24,8 @@ float g_NoiseScale = 1.f;
 float2 g_NoisePan = float2(0.f, 0.f);
 float g_DissolveAmount = 0.f;
 float g_DissolveSoftness = 0.1f;
+float g_OutlineWidth = 0.f;
+float4 g_OutlineColor = float4(1.f, 1.f, 1.f, 1.f);
 
 Texture2D g_BaseTexture;
 Texture2D g_NoiseTexture;
@@ -40,6 +42,88 @@ RasterizerState RS_EffectV2
 {
 	FillMode = Solid;
 	CullMode = None;
+	FrontCounterClockwise = false;
+};
+
+
+/* Body passes stamp stencil 1 so the inverted-hull outline (stencil != 1)
+   only survives outside the silhouette, even when the body itself does not
+   write depth (alpha/additive). The stencil buffer is cleared to 0 each frame. */
+DepthStencilState DSS_EffectV2_ReadOnlyStamp
+{
+	DepthEnable = true;
+	DepthWriteMask = zero;
+	DepthFunc = less_equal;
+	StencilEnable = true;
+	StencilReadMask = 0xff;
+	StencilWriteMask = 0xff;
+	FrontFaceStencilFunc = always;
+	FrontFaceStencilPass = replace;
+	FrontFaceStencilFail = keep;
+	FrontFaceStencilDepthFail = keep;
+	BackFaceStencilFunc = always;
+	BackFaceStencilPass = replace;
+	BackFaceStencilFail = keep;
+	BackFaceStencilDepthFail = keep;
+};
+
+DepthStencilState DSS_EffectV2_NoDepthStamp
+{
+	DepthEnable = false;
+	DepthWriteMask = zero;
+	StencilEnable = true;
+	StencilReadMask = 0xff;
+	StencilWriteMask = 0xff;
+	FrontFaceStencilFunc = always;
+	FrontFaceStencilPass = replace;
+	FrontFaceStencilFail = keep;
+	FrontFaceStencilDepthFail = keep;
+	BackFaceStencilFunc = always;
+	BackFaceStencilPass = replace;
+	BackFaceStencilFail = keep;
+	BackFaceStencilDepthFail = keep;
+};
+
+DepthStencilState DSS_EffectV2_DefaultStamp
+{
+	DepthEnable = true;
+	DepthWriteMask = all;
+	DepthFunc = less_equal;
+	StencilEnable = true;
+	StencilReadMask = 0xff;
+	StencilWriteMask = 0xff;
+	FrontFaceStencilFunc = always;
+	FrontFaceStencilPass = replace;
+	FrontFaceStencilFail = keep;
+	FrontFaceStencilDepthFail = keep;
+	BackFaceStencilFunc = always;
+	BackFaceStencilPass = replace;
+	BackFaceStencilFail = keep;
+	BackFaceStencilDepthFail = keep;
+};
+
+DepthStencilState DSS_EffectV2_OutlineTest
+{
+	DepthEnable = true;
+	DepthWriteMask = zero;
+	DepthFunc = less_equal;
+	StencilEnable = true;
+	StencilReadMask = 0xff;
+	StencilWriteMask = 0x00;
+	FrontFaceStencilFunc = not_equal;
+	FrontFaceStencilPass = keep;
+	FrontFaceStencilFail = keep;
+	FrontFaceStencilDepthFail = keep;
+	BackFaceStencilFunc = not_equal;
+	BackFaceStencilPass = keep;
+	BackFaceStencilFail = keep;
+	BackFaceStencilDepthFail = keep;
+};
+
+RasterizerState RS_EffectV2_Hull
+{
+	FillMode = Solid;
+	CullMode = Front;
 	FrontCounterClockwise = false;
 };
 
@@ -175,11 +259,37 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	return output;
 }
 
+
+/* Inverted-hull outline. Follows the body's dissolve so an eroding mesh
+   sheds its outline in the same places. */
+PS_EFFECT_OUT PS_OUTLINE_V2(PS_EFFECT_IN input)
+{
+	PS_EFFECT_OUT output;
+	if (0 != g_HasDissolve)
+	{
+		const float2 uv = input.vTexcoord * g_UVTileCount + g_UVStart + g_UVSpeed * g_Time;
+		const float threshold = g_DissolveTexture.Sample(LinearSampler, uv).r;
+		const float dissolve = smoothstep(
+			g_DissolveAmount - g_DissolveSoftness,
+			g_DissolveAmount + g_DissolveSoftness,
+			threshold);
+		if (dissolve <= 0.001f)
+			discard;
+	}
+	if (g_OutlineColor.a <= 0.001f)
+		discard;
+	output.vSceneColor = g_OutlineColor;
+	output.vDistortion = float4(0.f, 0.f, 0.f, 0.f);
+	return output;
+}
+
+#define EFFECT_V2_OUTLINE_PASS(VS_OUTLINE_FUNC) 	pass Outline 	{ 		SetRasterizerState(RS_EffectV2_Hull); 		SetDepthStencilState(DSS_EffectV2_OutlineTest, 1); 		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); 		VertexShader = compile vs_5_0 VS_OUTLINE_FUNC(); 		GeometryShader = NULL; 		PixelShader = compile ps_5_0 PS_OUTLINE_V2(); 	}
+
 #define EFFECT_V2_PASSES(VS_FUNC) \
 	pass AlphaDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
-		SetDepthStencilState(DSS_ReadOnly, 0); \
+		SetDepthStencilState(DSS_EffectV2_ReadOnlyStamp, 1); \
 		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
@@ -188,7 +298,7 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	pass AdditiveDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
-		SetDepthStencilState(DSS_ReadOnly, 0); \
+		SetDepthStencilState(DSS_EffectV2_ReadOnlyStamp, 1); \
 		SetBlendState(BS_EffectV2Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
@@ -197,7 +307,7 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	pass AlphaNoDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
-		SetDepthStencilState(DSS_ZNone, 0); \
+		SetDepthStencilState(DSS_EffectV2_NoDepthStamp, 1); \
 		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
@@ -206,7 +316,7 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	pass AdditiveNoDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
-		SetDepthStencilState(DSS_ZNone, 0); \
+		SetDepthStencilState(DSS_EffectV2_NoDepthStamp, 1); \
 		SetBlendState(BS_EffectV2Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
@@ -215,7 +325,7 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	pass Opaque \
 	{ \
 		SetRasterizerState(RS_Default); \
-		SetDepthStencilState(DSS_Default, 0); \
+		SetDepthStencilState(DSS_EffectV2_DefaultStamp, 1); \
 		SetBlendState(BS_EffectV2Opaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \

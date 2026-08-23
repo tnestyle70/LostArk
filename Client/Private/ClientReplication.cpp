@@ -762,6 +762,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			spawned.fPositionZ);
 		desc.fYawDegree = spawned.fYawDegrees;
 		desc.fCollisionRadius = spawned.fCollisionRadius;
+		if (actor->shaderProfile == "esther")
+			desc.fOutlineWidth = CNpc::ESTHER_OUTLINE_WIDTH;
 
 		std::shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
