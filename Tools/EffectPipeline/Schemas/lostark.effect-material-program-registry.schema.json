@@ -84,24 +84,50 @@
       "required": ["programId", "backend", "opcode"],
       "oneOf": [
         {
+          "required": ["fidelity"],
           "properties": {
             "backend": { "const": "runtimeMaterialV2" },
             "opcode": {
               "enum": [3, 6]
-            }
+            },
+            "fidelity": { "const": "SOURCE_EXACT" }
           }
         },
         {
+          "required": ["fidelity"],
+          "properties": {
+            "backend": { "const": "runtimeMaterialV2" },
+            "opcode": {
+              "enum": [1001, 1002]
+            },
+            "fidelity": { "const": "PROJECT_TUNED_APPROX" }
+          }
+        },
+        {
+          "required": ["fidelity"],
           "properties": {
             "backend": { "const": "localDecal" },
-            "opcode": { "const": 14 }
+            "opcode": { "const": 14 },
+            "fidelity": { "const": "SOURCE_EXACT" }
+          }
+        },
+        {
+          "not": { "required": ["fidelity"] },
+          "properties": {
+            "backend": { "const": "standardColorV1" },
+            "opcode": { "const": 1 }
           }
         }
       ],
       "properties": {
         "programId": { "$ref": "#/$defs/stableId" },
-        "backend": { "enum": ["runtimeMaterialV2", "localDecal"] },
-        "opcode": { "$ref": "#/$defs/uint32" }
+        "backend": {
+          "enum": ["runtimeMaterialV2", "localDecal", "standardColorV1"]
+        },
+        "opcode": { "$ref": "#/$defs/uint32" },
+        "fidelity": {
+          "enum": ["SOURCE_EXACT", "PROJECT_TUNED_APPROX"]
+        }
       }
     },
     "layoutTextureLane": {
@@ -120,7 +146,11 @@
         "role": { "$ref": "#/$defs/stableId" },
         "textureRegister": { "$ref": "#/$defs/uint32" },
         "samplerRegister": { "$ref": "#/$defs/uint32" },
-        "sourceChannel": { "type": "string", "maxLength": 32 },
+        "sourceChannel": {
+          "type": "string",
+          "maxLength": 4,
+          "pattern": "^[RGBA]{0,4}$"
+        },
         "colorSpace": { "enum": ["linear", "srgb"] }
       }
     },
@@ -340,7 +370,20 @@
           "enum": [
             "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
             "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
-            "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1"
+            "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.additive-two-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.additive-one-sided.v1",
+            "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1",
+            "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.project-tuned-alpha-two-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.project-tuned-additive-two-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.project-tuned-alpha-one-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.project-tuned-additive-one-sided.v1",
+            "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.project-tuned-alpha-two-sided.v1",
+            "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.project-tuned-additive-two-sided.v1",
+            "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.project-tuned-alpha-one-sided.v1",
+            "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.project-tuned-additive-one-sided.v1"
           ]
         }
       }

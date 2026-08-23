@@ -147,6 +147,16 @@ namespace
 		}
 		return CandidateIterator != Candidate.end();
 	}
+
+	bool_t Is_LowerHexSha256(const std::string_view Value)
+	{
+		return Value.size() == 64u && std::all_of(
+			Value.begin(), Value.end(), [](const char Character)
+			{
+				return (Character >= '0' && Character <= '9') ||
+					(Character >= 'a' && Character <= 'f');
+			});
+	}
 }
 
 bool Client::CEffectDirectAuthoredSourceIndex::Build(
@@ -208,6 +218,25 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 	Staged.Entries.reserve(pEffects->Get_Array().size());
 	std::unordered_set<std::string> DirectAssetIds;
 	DirectAssetIds.reserve(pEffects->Get_Array().size());
+	std::unordered_set<std::string> NonAuditionDirectAssetIds;
+	NonAuditionDirectAssetIds.reserve(pEffects->Get_Array().size());
+	for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())
+	{
+		if (!CatalogEntry.Is_Object())
+			continue;
+		const DATA_JSON_VALUE* pPayloadKind = CatalogEntry.Find("payloadKind");
+		const DATA_JSON_VALUE* pAssetId = CatalogEntry.Find("effectAssetId");
+		if (nullptr != pPayloadKind &&
+			pPayloadKind->Get_Type() == DATA_JSON_TYPE::STRING &&
+			pPayloadKind->Get_String() == "DIRECT_AUTHORED_DOCUMENT_V13" &&
+			nullptr != pAssetId &&
+			pAssetId->Get_Type() == DATA_JSON_TYPE::STRING &&
+			!pAssetId->Get_String().empty() &&
+			nullptr == CatalogEntry.Find("runtimeAdmission"))
+		{
+			NonAuditionDirectAssetIds.emplace(pAssetId->Get_String());
+		}
+	}
 	const auto RecordUnavailable = [&Staged](std::string Status)
 	{
 		++Staged.iUnavailableCount;
@@ -237,23 +266,50 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		const DATA_JSON_VALUE* pAuthoringPath = CatalogEntry.Find("authoringPath");
 		const DATA_JSON_VALUE* pScreenOverlayPresentationPath =
 			CatalogEntry.Find("screenOverlayPresentationPath");
+		const DATA_JSON_VALUE* pRuntimeAdmission =
+			CatalogEntry.Find("runtimeAdmission");
+		const DATA_JSON_VALUE* pFidelityClass =
+			CatalogEntry.Find("fidelityClass");
+		const DATA_JSON_VALUE* pSourceEffectAssetId =
+			CatalogEntry.Find("sourceEffectAssetId");
+		const DATA_JSON_VALUE* pSourceDocumentRawSha256 =
+			CatalogEntry.Find("sourceDocumentRawSha256");
 		const bool_t bOptionalScreenOverlayPathValid =
 			nullptr == pScreenOverlayPresentationPath ||
 			(pScreenOverlayPresentationPath->Get_Type() == DATA_JSON_TYPE::STRING &&
 			 !pScreenOverlayPresentationPath->Get_String().empty() &&
 			 pScreenOverlayPresentationPath->Get_String().starts_with(
-				"Effects/ScreenOverlays/") &&
+				 "Effects/ScreenOverlays/") &&
 			 pScreenOverlayPresentationPath->Get_String().ends_with(
-				".screen-overlay.json"));
-		if ((CatalogEntry.Get_Object().size() != 3u &&
-			 CatalogEntry.Get_Object().size() != 4u) || nullptr == pAssetId ||
+				 ".screen-overlay.json"));
+		const bool_t bOrdinaryShape =
+			(CatalogEntry.Get_Object().size() == 3u &&
+			 nullptr == pScreenOverlayPresentationPath) ||
+			(CatalogEntry.Get_Object().size() == 4u &&
+			 nullptr != pScreenOverlayPresentationPath);
+		const bool_t bAuditionShape =
+			((CatalogEntry.Get_Object().size() == 7u &&
+			  nullptr == pScreenOverlayPresentationPath) ||
+			 (CatalogEntry.Get_Object().size() == 8u &&
+			  nullptr != pScreenOverlayPresentationPath)) &&
+			nullptr != pRuntimeAdmission && nullptr != pFidelityClass &&
+			nullptr != pSourceEffectAssetId &&
+			nullptr != pSourceDocumentRawSha256;
+		const bool_t bAuditionIdentityValid = !bAuditionShape ||
+			(pRuntimeAdmission->Get_Type() == DATA_JSON_TYPE::STRING &&
+			 pRuntimeAdmission->Get_String() == "REGISTRY_BOUND_AUDITION_ONLY" &&
+			 pFidelityClass->Get_Type() == DATA_JSON_TYPE::STRING &&
+			 pFidelityClass->Get_String() == "PROJECT_TUNED_APPROX" &&
+			 pSourceEffectAssetId->Get_Type() == DATA_JSON_TYPE::STRING &&
+			 !pSourceEffectAssetId->Get_String().empty() &&
+			 pSourceDocumentRawSha256->Get_Type() == DATA_JSON_TYPE::STRING &&
+			 Is_LowerHexSha256(pSourceDocumentRawSha256->Get_String()));
+		if ((!bOrdinaryShape && !bAuditionShape) || nullptr == pAssetId ||
 			pAssetId->Get_Type() != DATA_JSON_TYPE::STRING ||
 			pAssetId->Get_String().empty() || nullptr == pAuthoringPath ||
 			pAuthoringPath->Get_Type() != DATA_JSON_TYPE::STRING ||
 			pAuthoringPath->Get_String().empty() ||
-			!bOptionalScreenOverlayPathValid ||
-			(CatalogEntry.Get_Object().size() == 4u &&
-			 nullptr == pScreenOverlayPresentationPath))
+			!bOptionalScreenOverlayPathValid || !bAuditionIdentityValid)
 		{
 			strOutStatus =
 				"EffectCatalog.json contains a malformed direct-authored row.";
@@ -329,6 +385,58 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 			{
 				RecordUnavailable(
 					"direct authored Effect ID has no stable player-skill, boss-pattern, or boss-combat-object owner: " +
+					strAssetId);
+				continue;
+			}
+		}
+		if (bAuditionShape)
+		{
+			const std::string& strSourceEffectAssetId =
+				pSourceEffectAssetId->Get_String();
+			bool_t bSameOwner = strSourceEffectAssetId != strAssetId &&
+				NonAuditionDirectAssetIds.contains(strSourceEffectAssetId);
+			if (bSameOwner && Entry.eOwnerKind ==
+					EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL)
+			{
+				LostArk::Shared::CHARACTER_CLASS_ID eSourceClass =
+					LostArk::Shared::CHARACTER_CLASS_ID::END;
+				LostArk::Shared::SKILL_ID iSourceSkillId =
+					LostArk::Shared::INVALID_SKILL_ID;
+				bSameOwner = Try_ParsePlayerOwner(strSourceEffectAssetId,
+					eSourceClass, iSourceSkillId) &&
+					eSourceClass == Entry.eCharacterClass &&
+					iSourceSkillId == Entry.iSkillId;
+			}
+			else if (bSameOwner && Entry.eOwnerKind ==
+					EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN)
+			{
+				const auto SourceOwner = ValidBossOwners.find(
+					strSourceEffectAssetId);
+				bSameOwner = SourceOwner != ValidBossOwners.end() &&
+					SourceOwner->second.strOwnerArchetypeId ==
+						Entry.strOwnerArchetypeId &&
+					SourceOwner->second.strPatternId == Entry.strPatternId &&
+					SourceOwner->second.strStageId == Entry.strStageId &&
+					SourceOwner->second.strActionId == Entry.strActionId;
+			}
+			else if (bSameOwner && Entry.eOwnerKind ==
+					EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_COMBAT_OBJECT)
+			{
+				const auto SourceOwner = ValidBossCombatObjectOwners.find(
+					strSourceEffectAssetId);
+				bSameOwner = SourceOwner !=
+						ValidBossCombatObjectOwners.end() &&
+					SourceOwner->second.strOwnerArchetypeId ==
+						Entry.strOwnerArchetypeId &&
+					SourceOwner->second.strCombatObjectArchetypeId ==
+						Entry.strCombatObjectArchetypeId &&
+					SourceOwner->second.strClientVisualId ==
+						Entry.strClientVisualId;
+			}
+			if (!bSameOwner)
+			{
+				RecordUnavailable(
+					"registry-bound audition source owner mismatch: " +
 					strAssetId);
 				continue;
 			}

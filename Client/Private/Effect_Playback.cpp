@@ -2374,7 +2374,11 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		f32_t fElementTail = 0.f;
 		if (Is_ParticleSimulationElement(
 			Element, bElementSourceVisualActive))
-			fElementTail = Element.Detail.Particle.vLifeTimeSeconds.y;
+		{
+			fElementTail = Element.Detail.Particle.vLifeTimeSeconds.y *
+				(Element.SourceRecipe.bEnabled ?
+					Element.Detail.Particle.SourceScale.fLifeTime : 1.f);
+		}
 		else if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
 			fElementTail = Element.Detail.Trail.fPointLifeTimeSeconds;
 		f32_t fElementDuration = Element.Detail.Timing.fLifeTimeSeconds;

@@ -14,6 +14,10 @@ namespace LostArk::Server
 {
 	struct SERVER_BOSS_PATTERN_COOLDOWN final
 	{
+		/* Source-derived patterns that share the same primary action share one
+		cooldown family. Synthetic patterns have source action 0 and fall back to
+		their stable pattern ID. */
+		std::uint32_t iSourcePrimaryActionId = 0;
 		std::string strPatternId;
 		std::uint32_t iReadyTick = 0;
 	};
@@ -100,6 +104,9 @@ namespace LostArk::Server
 		std::uint32_t iPatternSequence = 0;
 		std::uint32_t iPatternStageIndex = 0;
 		std::uint32_t iPatternStageDurationMs = 0;
+		/* First nonzero Server tick on which this stage is evaluated. Tick zero is
+		the process-wide reserved sentinel, so wrap advances UINT32_MAX -> 1. */
+		std::uint32_t iPatternStageFirstEvaluationTick = 0;
 		BOSS_PATTERN_STAGE_MOTION_KIND ePatternStageMotionKind =
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		BOSS_PATTERN_HIT_SHAPE ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;

@@ -391,7 +391,7 @@
       ]
     },
     {
-      "actionId": "valtan.attack.four-slash.active",
+      "actionId": "valtan.attack.triple-slash.active",
       "clips": [
         {
           "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
@@ -401,7 +401,12 @@
           "playMs": 0,
           "playRate": 1.0,
           "loop": false
-        },
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.attack.rotation-slash.active",
+      "clips": [
         {
           "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
           "clip": "mesh_att_battle_10_02",
@@ -409,7 +414,7 @@
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },

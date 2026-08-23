@@ -20,6 +20,7 @@
 #include "Transform.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <span>
 #include <tuple>
@@ -33,6 +34,9 @@ namespace
 	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
+#ifdef _DEBUG
+	std::atomic_bool g_bPatternEffectV1AuditionEnabled = false;
+#endif
 
 	bool Is_ValidBossCombatState(
 		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state)
@@ -133,6 +137,20 @@ namespace
 		return true;
 	}
 }
+
+#ifdef _DEBUG
+void CValtan::Set_PatternEffectV1AuditionEnabled(const bool_t bEnabled)
+{
+	g_bPatternEffectV1AuditionEnabled.store(
+		bEnabled, std::memory_order_relaxed);
+}
+
+bool_t CValtan::Is_PatternEffectV1AuditionEnabled()
+{
+	return g_bPatternEffectV1AuditionEnabled.load(
+		std::memory_order_relaxed);
+}
+#endif
 
 wstring_t CValtan::Build_ArmorModelPrototypeTag(const uint32_t iStateMask)
 {
@@ -250,6 +268,8 @@ void CValtan::Load_PatternHitAreaDebug()
 			area.fHalfWidth = stage.fHitHalfWidth;
 			area.iHitCount = stage.iHitCount;
 			area.iHitIntervalMs = stage.iHitIntervalMs;
+			area.iHitDelayMs = stage.iHitDelayMs;
+			area.HitOffsetsMs = stage.hitOffsetsMs;
 			m_PatternHitAreaByActionId.emplace(
 				stage.actionId, std::move(area));
 		}
@@ -270,17 +290,20 @@ void CValtan::Draw_PatternHitAreaDebug() const
 		return;
 	const PATTERN_HIT_AREA_DEBUG& area = iter->second;
 
-	/* The server applies hit k when the stage age crosses k * hitIntervalMs;
-	   mirror each of those instants with the same minimum visible window the
-	   player skill hit debug uses. */
+	/* Mirror the Server schedule exactly. Non-uniform source contacts own an
+	   ordered stage-relative offset vector; an empty vector retains the legacy
+	   delay + k * interval schedule. */
 	constexpr f32_t MIN_VISIBLE_HIT_WINDOW_MS = 300.f;
 	const f32_t fAgeMs = (isPreviewDriven ?
 		m_fPreviewHitAgeSeconds : m_fServerActionAgeSeconds) * 1000.f;
 	bool_t isHitWindow = false;
 	for (uint32_t iTick = 0u; iTick < area.iHitCount; ++iTick)
 	{
-		const f32_t fTickMs =
-			static_cast<f32_t>(iTick * area.iHitIntervalMs);
+		const uint64_t iTickMs = area.HitOffsetsMs.empty() ?
+			static_cast<uint64_t>(area.iHitDelayMs) +
+				static_cast<uint64_t>(iTick) * area.iHitIntervalMs :
+			area.HitOffsetsMs[iTick];
+		const f32_t fTickMs = static_cast<f32_t>(iTickMs);
 		if (fAgeMs >= fTickMs && fAgeMs <= fTickMs + MIN_VISIBLE_HIT_WINDOW_MS)
 		{
 			isHitWindow = true;
@@ -611,6 +634,14 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			Clip - Binding->second.begin());
 		if (iClipIndex >= Timings.size())
 			continue;
+		const std::string* pEffectAssetId = &Cue.strEffectAssetId;
+#ifdef _DEBUG
+		if (Is_PatternEffectV1AuditionEnabled() &&
+			!Cue.strV1EffectAssetId.empty())
+		{
+			pEffectAssetId = &Cue.strV1EffectAssetId;
+		}
+#endif
 
 		f32_t fFirstOccurrenceWallSeconds = 0.f;
 		f32_t fSourceDurationSeconds = 0.f;
@@ -648,11 +679,11 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		}
 		else if (!CEffectPresentationService::
 			Try_Get_PreparedProductDurationSeconds(
-				Cue.strEffectAssetId, fLiveSourceDurationSeconds))
+				*pEffectAssetId, fLiveSourceDurationSeconds))
 		{
 			OutputDebugStringA((
 				"[Client][Valtan] natural pattern Effect duration is not prepared: " +
-				Cue.strEffectAssetId + "\n").c_str());
+				*pEffectAssetId + "\n").c_str());
 			continue;
 		}
 
@@ -685,7 +716,7 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			m_AttemptedPatternEffectOccurrenceKeys.insert(AttemptKey);
 
 			EFFECT_SPAWN_DESC Desc;
-			Desc.strEffectAssetId = Cue.strEffectAssetId;
+			Desc.strEffectAssetId = *pEffectAssetId;
 			Desc.pBossOwner = Owner;
 			Desc.strAnchorSlotId = Cue.strAnchorSlotId;
 			Desc.LocalTransform = Cue.LocalTransform;

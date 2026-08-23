@@ -17,6 +17,8 @@ namespace
 	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
 	constexpr float DEGREES_TO_RADIANS = 0.0174532925f;
 	constexpr float MILLISECONDS_TO_SECONDS = 0.001f;
+	constexpr std::uint32_t SERVER_TICK_HZ = 30u;
+	constexpr std::uint64_t MILLISECONDS_PER_SECOND = 1000u;
 	constexpr float PATH_POINT_STOP_DISTANCE = 0.1f;
 	/* The converted Valtan model carries no jump clip, so the leap is a Server
 	transform arc instead of root motion. Both the apex and the landing point
@@ -35,6 +37,40 @@ namespace
 
 	constexpr std::uint32_t LEAP_TAKEOFF_STAGE_INDEX = 0u;
 	constexpr std::uint32_t LEAP_TRAVEL_STAGE_INDEX = 1u;
+
+	std::uint32_t NextServerTickSkippingReservedZero(
+		const std::uint32_t serverTick)
+	{
+		return (std::numeric_limits<std::uint32_t>::max)() == serverTick ?
+			1u : serverTick + 1u;
+	}
+
+	std::uint64_t StageElapsedTicks(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t serverTick)
+	{
+		const std::uint32_t firstTick =
+			boss.iPatternStageFirstEvaluationTick;
+		if (0u == firstTick || 0u == serverTick)
+			return 0u;
+		/* The Server reserves zero and wraps UINT32_MAX directly to one. Count
+		only that nonzero tick cardinality, then include the first evaluation. */
+		const std::uint64_t ageTicks = serverTick >= firstTick ?
+			static_cast<std::uint64_t>(serverTick - firstTick) :
+			static_cast<std::uint64_t>(
+				(std::numeric_limits<std::uint32_t>::max)() - firstTick) +
+				static_cast<std::uint64_t>(serverTick);
+		return ageTicks + 1u;
+	}
+
+	bool HasElapsedMilliseconds(
+		const std::uint64_t elapsedTicks,
+		const std::uint32_t milliseconds)
+	{
+		return static_cast<std::uint64_t>(elapsedTicks) *
+			MILLISECONDS_PER_SECOND >=
+			static_cast<std::uint64_t>(milliseconds) * SERVER_TICK_HZ;
+	}
 
 	bool Is_LeapArcStage(const SERVER_WORLD_ENTITY& boss)
 	{
@@ -101,15 +137,28 @@ namespace
 		return ids.end() != std::find(ids.begin(), ids.end(), patternId);
 	}
 
+	bool IsSamePatternCooldownFamily(
+		const SERVER_BOSS_PATTERN_COOLDOWN& cooldown,
+		const BOSS_PATTERN_DEFINITION& pattern)
+	{
+		if (0u != pattern.iSourcePrimaryActionId)
+		{
+			return cooldown.iSourcePrimaryActionId ==
+				pattern.iSourcePrimaryActionId;
+		}
+		return 0u == cooldown.iSourcePrimaryActionId &&
+			cooldown.strPatternId == pattern.strPatternId;
+	}
+
 	bool IsPatternCooldownReady(
 		const SERVER_WORLD_ENTITY& boss,
-		const std::string& patternId,
+		const BOSS_PATTERN_DEFINITION& pattern,
 		const std::uint32_t serverTick)
 	{
 		const auto found = std::find_if(
 			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
-			[&patternId](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
-			{ return cooldown.strPatternId == patternId; });
+			[&pattern](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
+			{ return IsSamePatternCooldownFamily(cooldown, pattern); });
 		return boss.PatternCooldowns.end() == found ||
 			static_cast<std::int32_t>(serverTick - found->iReadyTick) >= 0;
 	}
@@ -126,11 +175,15 @@ namespace
 		auto found = std::find_if(
 			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
 			[&pattern](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
-			{ return cooldown.strPatternId == pattern.strPatternId; });
+			{ return IsSamePatternCooldownFamily(cooldown, pattern); });
 		if (boss.PatternCooldowns.end() == found)
 		{
-			boss.PatternCooldowns.push_back(
-				SERVER_BOSS_PATTERN_COOLDOWN{ pattern.strPatternId, readyTick });
+			SERVER_BOSS_PATTERN_COOLDOWN cooldown{};
+			cooldown.iSourcePrimaryActionId = pattern.iSourcePrimaryActionId;
+			if (0u == pattern.iSourcePrimaryActionId)
+				cooldown.strPatternId = pattern.strPatternId;
+			cooldown.iReadyTick = readyTick;
+			boss.PatternCooldowns.push_back(std::move(cooldown));
 			return;
 		}
 		found->iReadyTick = readyTick;
@@ -361,8 +414,7 @@ namespace
 				currentHealthBar > pattern.iMaximumHealthBar ||
 				targetDistance < pattern.fMinimumRange ||
 				targetDistance > pattern.fMaximumRange ||
-				!IsPatternCooldownReady(
-					boss, pattern.strPatternId, serverTick))
+				!IsPatternCooldownReady(boss, pattern, serverTick))
 			{
 				continue;
 			}
@@ -528,7 +580,8 @@ namespace
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_STAGE_DEFINITION& stage,
 		const std::uint32_t stageIndex,
-		const std::uint32_t serverTick)
+		const std::uint32_t serverTick,
+		const bool evaluatesOnEntryTick = false)
 	{
 		const std::string previousActionId = boss.strActionId;
 		if (!previousActionId.empty())
@@ -537,6 +590,8 @@ namespace
 		boss.iPatternStageIndex = stageIndex;
 		boss.strPatternStageId = stage.strStageId;
 		boss.iPatternStageDurationMs = stage.iDurationMs;
+		boss.iPatternStageFirstEvaluationTick = evaluatesOnEntryTick ?
+			serverTick : NextServerTickSkippingReservedZero(serverTick);
 		boss.ePatternStageMotionKind = stage.Motion.eKind;
 		boss.strActionId = stage.strActionId;
 		boss.strDamageProfileId = stage.strDamageProfileId;
@@ -643,7 +698,11 @@ namespace
 			boss.fLeapLandingZ = boss.fSpawnPositionZ;
 			boss.fPatternLeapApexHeight = 0.f;
 		}
-		EnterPatternStage(boss, pattern.Stages.front(), 0u, serverTick);
+		/* BeginPattern continues through Update below, so the first stage consumes
+		this entry tick. Every other stage entry returns or happens at the end of
+		the current Update and starts evaluating on the following tick. */
+		EnterPatternStage(
+			boss, pattern.Stages.front(), 0u, serverTick, true);
 	}
 
 	/* Linear between the two samples that bracket the time, holding the ends.
@@ -703,6 +762,7 @@ namespace
 		boss.strDamageProfileId.clear();
 		boss.iPatternStageIndex = 0u;
 		boss.iPatternStageDurationMs = 0u;
+		boss.iPatternStageFirstEvaluationTick = 0u;
 		boss.fPatternForcedMotionSpeed = 0.f;
 		boss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		boss.PatternStageRootMotion.clear();
@@ -1168,22 +1228,33 @@ void LostArk::Server::CValtanBrain::Update(
 			return;
 		}
 	}
-	boss.fActionElapsedSeconds += fixedDeltaSeconds;
+	const std::uint64_t elapsedStageTicks =
+		StageElapsedTicks(boss, serverTick);
+	/* Keep the presentation/motion clock derived from the same integer stage
+	clock. It may still be represented as float, but no gameplay boundary ever
+	depends on accumulated floating-point deltas. */
+	boss.fActionElapsedSeconds =
+		static_cast<float>(elapsedStageTicks) /
+		static_cast<float>(SERVER_TICK_HZ);
 	Advance_ArenaBreakLeap(boss);
-	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount &&
-		boss.fActionElapsedSeconds * 1000.f >=
-			static_cast<float>(boss.iPatternHitDelayMs +
-				boss.iAppliedPatternHitCount *
-				boss.iPatternHitIntervalMs))
+	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount)
 	{
+		const std::uint32_t hitOffsetMs =
+			currentStage.HitOffsetsMs.empty() ?
+				boss.iPatternHitDelayMs + boss.iAppliedPatternHitCount *
+					boss.iPatternHitIntervalMs :
+				currentStage.HitOffsetsMs[boss.iAppliedPatternHitCount];
+		if (!HasElapsedMilliseconds(elapsedStageTicks, hitOffsetMs))
+		{
+			break;
+		}
 		ApplyPatternHit(
 			boss, players, catalog, serverTick, coverCircles,
 			outDamageEvents);
 		++boss.iAppliedPatternHitCount;
 	}
-	if (boss.fActionElapsedSeconds <
-		static_cast<float>(boss.iPatternStageDurationMs) *
-			MILLISECONDS_TO_SECONDS)
+	if (!HasElapsedMilliseconds(
+		elapsedStageTicks, boss.iPatternStageDurationMs))
 	{
 		return;
 	}

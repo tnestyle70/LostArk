@@ -14,6 +14,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <tuple>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace
@@ -22,6 +23,9 @@ namespace
 
 	constexpr std::string_view SCHEMA =
 		"lostark.valtan-pattern-effect-cues";
+	constexpr std::string_view V1_ALIAS_SCHEMA =
+		"lostark.valtan-pattern-effect-v1-aliases";
+	constexpr uint32_t V1_ALIAS_FORMAT_VERSION = 1u;
 	constexpr uint32_t FORMAT_VERSION = 2u;
 	constexpr std::string_view OWNER_ARCHETYPE_ID = "BOSS_VALTAN";
 	constexpr size_t MAX_CUE_COUNT = 512u;
@@ -208,6 +212,122 @@ namespace
 		return true;
 	}
 
+	bool_t Apply_OptionalV1Aliases(
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
+		std::string& strOutStatus)
+	{
+		const std::filesystem::path Path =
+			CValtanPatternEffectCueDocument::Resolve_V1AliasPath();
+		std::error_code FileSystemError;
+		const bool_t bExists = std::filesystem::exists(
+			Path, FileSystemError);
+		if (FileSystemError)
+		{
+			strOutStatus =
+				"Could not inspect the optional Valtan Material V1 alias document: " +
+				FileSystemError.message() + "; V0 cues remain authoritative.";
+			return true;
+		}
+		if (!bExists)
+		{
+			strOutStatus =
+				"Optional Valtan Material V1 alias document is absent; V0 cues remain authoritative.";
+			return true;
+		}
+
+		std::ifstream Input(Path, std::ios::binary);
+		if (Path.empty() || !Input)
+		{
+			strOutStatus =
+				"Could not open the Valtan Material V1 alias document: " +
+				Path.string() + "; V0 cues remain authoritative.";
+			return true;
+		}
+		const std::string Text{
+			std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>() };
+		DATA_JSON_VALUE Root;
+		std::string ParseError;
+		DATA_JSON_PARSE_LIMITS Limits{};
+		Limits.iMaximumBytes = 256u * 1024u;
+		Limits.iMaximumDepth = 8u;
+		Limits.iMaximumValues = 4096u;
+		if (!CDataJson::Parse(Text, Root, ParseError, Limits) ||
+			!Is_ExactObject(Root,
+				{ "schema", "formatVersion", "ownerArchetypeId", "aliases" }))
+		{
+			strOutStatus =
+				"Valtan Material V1 alias JSON is malformed and was omitted: " +
+				ParseError + "; V0 cues remain authoritative.";
+			return true;
+		}
+
+		const DATA_JSON_VALUE* pSchema = Root.Find("schema");
+		const DATA_JSON_VALUE* pOwner = Root.Find("ownerArchetypeId");
+		const DATA_JSON_VALUE* pAliases = Root.Find("aliases");
+		uint32_t iFormatVersion = 0u;
+		if (nullptr == pSchema || !pSchema->Is_String() ||
+			pSchema->Get_String() != V1_ALIAS_SCHEMA ||
+			!Read_Unsigned(Root, "formatVersion", V1_ALIAS_FORMAT_VERSION,
+				iFormatVersion) || iFormatVersion != V1_ALIAS_FORMAT_VERSION ||
+			nullptr == pOwner || !pOwner->Is_String() ||
+			pOwner->Get_String() != OWNER_ARCHETYPE_ID ||
+			pOwner->Get_String() != InOutDocument.strOwnerArchetypeId ||
+			nullptr == pAliases || !pAliases->Is_Array() ||
+			pAliases->Get_Array().empty() ||
+			pAliases->Get_Array().size() > MAX_CUE_COUNT)
+		{
+			strOutStatus =
+				"Valtan Material V1 alias header is invalid and was omitted; V0 cues remain authoritative.";
+			return true;
+		}
+
+		std::unordered_set<std::string> CueEffectAssetIds;
+		for (const VALTAN_PATTERN_EFFECT_CUE& Cue : InOutDocument.Cues)
+			CueEffectAssetIds.insert(Cue.strEffectAssetId);
+		std::unordered_map<std::string, std::string> Aliases;
+		std::unordered_set<std::string> V1EffectAssetIds;
+		size_t iOmittedAliasCount = 0u;
+		for (const DATA_JSON_VALUE& AliasValue : pAliases->Get_Array())
+		{
+			if (!Is_ExactObject(AliasValue,
+					{ "effectAssetId", "v1EffectAssetId" }))
+			{
+				++iOmittedAliasCount;
+				continue;
+			}
+			std::string EffectAssetId;
+			std::string V1EffectAssetId;
+			if (!Read_String(AliasValue, "effectAssetId", EffectAssetId) ||
+				!Read_String(AliasValue, "v1EffectAssetId", V1EffectAssetId) ||
+				EffectAssetId == V1EffectAssetId ||
+				!V1EffectAssetId.ends_with(".v1.unified") ||
+				!CueEffectAssetIds.contains(EffectAssetId) ||
+				Aliases.contains(EffectAssetId) ||
+				V1EffectAssetIds.contains(V1EffectAssetId))
+			{
+				++iOmittedAliasCount;
+				continue;
+			}
+			Aliases.emplace(EffectAssetId, V1EffectAssetId);
+			V1EffectAssetIds.insert(V1EffectAssetId);
+		}
+
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Staged = InOutDocument;
+		for (VALTAN_PATTERN_EFFECT_CUE& Cue : Staged.Cues)
+		{
+			const auto Found = Aliases.find(Cue.strEffectAssetId);
+			if (Aliases.end() != Found)
+				Cue.strV1EffectAssetId = Found->second;
+		}
+		InOutDocument = std::move(Staged);
+		strOutStatus = "Applied " + std::to_string(Aliases.size()) +
+			" optional Valtan Material V1 Effect alias(es); omitted " +
+			std::to_string(iOmittedAliasCount) +
+			" invalid alias row(s). V0 cues remain authoritative.";
+		return true;
+	}
+
 	bool_t Read_RepeatPolicy(const DATA_JSON_VALUE& Parent,
 		VALTAN_PATTERN_EFFECT_REPEAT_POLICY& eOutPolicy)
 	{
@@ -256,6 +376,14 @@ Client::CValtanPatternEffectCueDocument::Resolve_Path()
 	return CProjectDataRoot::Resolve(
 		std::filesystem::path(L"Animation") / L"Authored" / L"Valtan" /
 		L"Valtan.patterneffectcues.json");
+}
+
+std::filesystem::path
+Client::CValtanPatternEffectCueDocument::Resolve_V1AliasPath()
+{
+	return CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Animation") / L"Authored" / L"Valtan" /
+		L"Valtan.patterneffectv1aliases.json");
 }
 
 bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
@@ -569,8 +697,24 @@ bool_t Client::CValtanPatternEffectCueDocument::Load_Source(
 	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT AnimationBindings;
 	if (!Load_AnimationBindings(AnimationBindings, strOutStatus))
 		return false;
-	return Parse_Text(Text, Encounter, AnimationBindings,
-		InOutDocument, strOutStatus);
+	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Staged;
+	if (!Parse_Text(Text, Encounter, AnimationBindings,
+			Staged, strOutStatus))
+	{
+		return false;
+	}
+#ifdef _DEBUG
+	std::string V1AliasStatus;
+	Apply_OptionalV1Aliases(Staged, V1AliasStatus);
+	if (!V1AliasStatus.empty())
+	{
+		OutputDebugStringA((
+			"[Client][Valtan] optional Material V1 alias stage: " +
+			V1AliasStatus + "\n").c_str());
+	}
+#endif
+	InOutDocument = std::move(Staged);
+	return true;
 }
 
 bool_t Client::CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
@@ -580,7 +724,8 @@ bool_t Client::CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Staged;
 	if (!Load_Source(Staged, strOutStatus))
 		return false;
-	for (const VALTAN_PATTERN_EFFECT_CUE& Cue : Staged.Cues)
+	size_t iOmittedV1AliasCount = 0u;
+	for (VALTAN_PATTERN_EFFECT_CUE& Cue : Staged.Cues)
 	{
 		if (!CEffectCatalog::Contains(Cue.strEffectAssetId))
 		{
@@ -589,9 +734,27 @@ bool_t Client::CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 				Cue.strEffectAssetId;
 			return false;
 		}
+		if (!Cue.strV1EffectAssetId.empty() &&
+			!CEffectCatalog::Contains(Cue.strV1EffectAssetId))
+		{
+			OutputDebugStringA((
+				"[Client][Valtan] optional Material V1 alias omitted because its target is absent from the runtime catalog: " +
+				Cue.strV1EffectAssetId + "; V0 remains authoritative.\n").c_str());
+			Cue.strV1EffectAssetId.clear();
+			++iOmittedV1AliasCount;
+		}
 	}
 	InOutDocument = std::move(Staged);
+	const size_t iV1AliasCount = static_cast<size_t>(std::count_if(
+		InOutDocument.Cues.begin(), InOutDocument.Cues.end(),
+		[](const VALTAN_PATTERN_EFFECT_CUE& Cue)
+		{
+			return !Cue.strV1EffectAssetId.empty();
+		}));
 	strOutStatus = "Loaded " + std::to_string(InOutDocument.Cues.size()) +
-		" runtime-admitted Valtan pattern Effect cue(s).";
+		" runtime-admitted Valtan pattern Effect cue(s) with " +
+		std::to_string(iV1AliasCount) + " Material V1 alias(es); omitted " +
+		std::to_string(iOmittedV1AliasCount) +
+		" unavailable optional alias target(s).";
 	return true;
 }

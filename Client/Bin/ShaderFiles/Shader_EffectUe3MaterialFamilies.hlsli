@@ -20,6 +20,10 @@ static const uint
     RUNTIME_MATERIAL_V2_PROJECT_BASE_COVERAGE_EMISSIVE_DISSOLVE_RECT = 21u;
 static const uint
     RUNTIME_MATERIAL_V2_UE3_WPO_SINWAVE_ELECTRIC_RT0_MESH = 22u;
+static const uint
+    RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_SRGB = 1001u;
+static const uint
+    RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_LINEAR = 1002u;
 
 bool EffectUe3RibbonLiquid01ParentDefaultPacketIsValid()
 {
@@ -792,6 +796,92 @@ EFFECT_PS_OUT Shade_EffectUe3WpoSinWaveElectricRt0Mesh(
         return output;
     }
     output.SceneColor = float4(radiance, coverage);
+    output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    return output;
+}
+
+bool EffectProjectTunedBaseCoveragePacketIsValid()
+{
+    const bool supportedOpcode =
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_SRGB ||
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_LINEAR;
+    return g_RuntimeMaterialV2Enabled == 1u && supportedOpcode &&
+        g_RuntimeMaterialV2TextureLaneCount == 1u &&
+        g_RuntimeMaterialV2TextureMask == 0x01u &&
+        g_SourceTextureMask == 0x01u &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0u &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0x0fu &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 2u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0x0fu &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0u &&
+        g_RuntimeMaterialV2ScalarCount == 1u &&
+        g_RuntimeMaterialV2VectorCount == 0u &&
+        g_RuntimeMaterialV2InputCount == 1u &&
+        all(g_RuntimeMaterialV2InputConsumedMask == uint2(1u, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0u, 0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0u, 0u, 0u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 0u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0u &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0u &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 6u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0x2fu &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0x10u;
+}
+
+EFFECT_PS_OUT Shade_EffectProjectTunedBaseCoverage(
+    float2 carrierUV,
+    float2 carrierUVNext,
+    float subUVBlend,
+    float4 carrierColor)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    if (!EffectProjectTunedBaseCoveragePacketIsValid() ||
+        !all(isfinite(carrierUV)) || !all(isfinite(carrierUVNext)) ||
+        !isfinite(subUVBlend) || !all(isfinite(carrierColor)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    /* PROJECT_TUNED_APPROX is deliberately a small RT0 category, not a
+       source-exact UE3 equation.  The SRGB/LINEAR opcode split owns the SRV
+       interpretation while both variants share the same one-texture ABI. */
+    const float4 baseCoverageCurrent = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, carrierUV);
+    const float4 baseCoverageNext = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, carrierUVNext);
+    const float4 baseCoverage = lerp(
+        baseCoverageCurrent, baseCoverageNext, saturate(subUVBlend));
+    const float coverageSelector = g_RuntimeMaterialV2ScalarBlocks[0].x;
+    if (!isfinite(coverageSelector) || coverageSelector < 0.f ||
+        coverageSelector > 2.f ||
+        abs(coverageSelector - round(coverageSelector)) > 1.0e-5f)
+    {
+        clip(-1.f);
+        return output;
+    }
+    const float sampledCoverage = coverageSelector < 0.5f ? baseCoverage.a :
+        (coverageSelector < 1.5f ? baseCoverage.r :
+            dot(baseCoverage.rgb, float3(0.299f, 0.587f, 0.114f)));
+    const float4 combinedCarrier =
+        (g_ColorMultiply + g_ColorOffset) * carrierColor;
+    const float3 radiance = max(baseCoverage.rgb * combinedCarrier.rgb, 0.f) *
+        max(g_EmissiveIntensity, 0.f);
+    const float alpha = saturate(sampledCoverage * combinedCarrier.a);
+    if (!all(isfinite(baseCoverage)) ||
+        !all(isfinite(float4(radiance, alpha))))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    output.SceneColor = float4(radiance, alpha);
     output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
     return output;
 }

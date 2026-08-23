@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <set>
 
@@ -73,6 +74,77 @@ namespace
 		const DATA_JSON_VALUE* pValue = Object.Find(Key);
 		return nullptr == pValue || DATA_JSON_TYPE::NUMBER != pValue->Get_Type() ?
 			0.0 : pValue->Get_Number();
+	}
+
+	bool_t Read_RequiredUInt32(
+		const DATA_JSON_VALUE& Object,
+		const std::string_view Key,
+		uint32_t& OutValue)
+	{
+		const DATA_JSON_VALUE* pValue = Object.Find(Key);
+		if (nullptr == pValue || !pValue->Is_Number() ||
+			!std::isfinite(pValue->Get_Number()) ||
+			std::floor(pValue->Get_Number()) != pValue->Get_Number() ||
+			pValue->Get_Number() < 0.0 ||
+			pValue->Get_Number() > static_cast<double>(
+				(std::numeric_limits<uint32_t>::max)()))
+		{
+			return false;
+		}
+		OutValue = static_cast<uint32_t>(pValue->Get_Number());
+		return true;
+	}
+
+	bool_t Read_RequiredFiniteFloat(
+		const DATA_JSON_VALUE& Object,
+		const std::string_view Key,
+		f32_t& OutValue)
+	{
+		const DATA_JSON_VALUE* pValue = Object.Find(Key);
+		if (nullptr == pValue || !pValue->Is_Number() ||
+			!std::isfinite(pValue->Get_Number()) ||
+			std::abs(pValue->Get_Number()) > static_cast<double>(
+				(std::numeric_limits<f32_t>::max)()))
+		{
+			return false;
+		}
+		OutValue = static_cast<f32_t>(pValue->Get_Number());
+		return true;
+	}
+
+	bool_t Read_OptionalOrderedHitOffsets(
+		const DATA_JSON_VALUE& Object,
+		std::vector<uint32_t>& OutOffsets)
+	{
+		OutOffsets.clear();
+		const DATA_JSON_VALUE* pOffsets = Object.Find("hitOffsetsMs");
+		if (nullptr == pOffsets)
+			return true;
+		if (!pOffsets->Is_Array() || pOffsets->Get_Array().empty() ||
+			pOffsets->Get_Array().size() > 1000u)
+		{
+			return false;
+		}
+
+		uint32_t iPrevious = 0u;
+		for (size_t i = 0u; i < pOffsets->Get_Array().size(); ++i)
+		{
+			const DATA_JSON_VALUE& Value = pOffsets->Get_Array()[i];
+			if (!Value.Is_Number() || !std::isfinite(Value.Get_Number()) ||
+				std::floor(Value.Get_Number()) != Value.Get_Number() ||
+				Value.Get_Number() < 0.0 ||
+				Value.Get_Number() > static_cast<double>(
+					(std::numeric_limits<uint32_t>::max)()))
+			{
+				return false;
+			}
+			const uint32_t iCurrent = static_cast<uint32_t>(Value.Get_Number());
+			if (0u != i && iCurrent <= iPrevious)
+				return false;
+			OutOffsets.push_back(iCurrent);
+			iPrevious = iCurrent;
+		}
+		return true;
 	}
 
 	struct COMBAT_OBJECT_EFFECT_REFERENCE final
@@ -319,9 +391,6 @@ bool_t Client::CValtanPatternTree::Load(
 	const std::filesystem::path BindingRelative =
 		std::filesystem::path(L"Animation") / L"Authored" / L"Valtan" /
 		L"Valtan.patternbindings.json";
-	const std::filesystem::path CueRelative =
-		std::filesystem::path(L"Animation") / L"Authored" / L"Valtan" /
-		L"Valtan.patterneffectcues.json";
 	if (!Parse_Document(EncounterRelative, Encounter, Error))
 	{
 		strOutStatus = "Valtan encounter load failed: " + Error;
@@ -354,19 +423,8 @@ bool_t Client::CValtanPatternTree::Load(
 		return false;
 	}
 
-	CEncounterPatternReference EncounterReference;
-	if (!EncounterReference.Load(
-			CProjectDataRoot::Resolve(EncounterRelative), Error))
-	{
-		strOutStatus = "Valtan encounter contract load failed: " + Error;
-		return false;
-	}
-	std::string CueText;
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
-	if (!Read_TextDocument(CProjectDataRoot::Resolve(CueRelative),
-			CueText, Error) ||
-		!CValtanPatternEffectCueDocument::Parse_Text(CueText,
-			EncounterReference, BindingDocument, CueDocument, Error))
+	if (!CValtanPatternEffectCueDocument::Load_Source(CueDocument, Error))
 	{
 		strOutStatus = "Valtan Product Effect cue load failed: " + Error;
 		return false;
@@ -527,6 +585,7 @@ bool_t Client::CValtanPatternTree::Load(
 		Cue.strActionId = SourceCue.strActionId;
 		Cue.strClipOccurrenceId = SourceCue.strClipOccurrenceId;
 		Cue.strEffectAssetId = SourceCue.strEffectAssetId;
+		Cue.strV1EffectAssetId = SourceCue.strV1EffectAssetId;
 		Cue.strAnchorSlotId = SourceCue.strAnchorSlotId;
 		Cue.LocalTransform = SourceCue.LocalTransform;
 		Cue.eFollowPolicy = SourceCue.eFollowPolicy;
@@ -578,27 +637,86 @@ bool_t Client::CValtanPatternTree::Load(
 				Stage.strStageId = Read_String(StageValue, "stageId");
 				Stage.strActionId = Read_String(StageValue, "actionId");
 				Stage.strStageKind = Read_String(StageValue, "stageKind");
-				Stage.iDurationMs = static_cast<uint32_t>(
-					Read_Number(StageValue, "durationMs"));
 				Stage.strHitShape = Read_String(StageValue, "hitShape");
-				Stage.fHitOuterRadius = static_cast<f32_t>(
-					Read_Number(StageValue, "hitOuterRadius"));
-				Stage.fHitInnerRadius = static_cast<f32_t>(
-					Read_Number(StageValue, "hitInnerRadius"));
-				Stage.fHitAngleDegrees = static_cast<f32_t>(
-					Read_Number(StageValue, "hitAngleDegrees"));
-				Stage.fHitLength = static_cast<f32_t>(
-					Read_Number(StageValue, "hitLength"));
-				Stage.fHitHalfWidth = static_cast<f32_t>(
-					Read_Number(StageValue, "hitHalfWidth"));
-				Stage.iHitCount = static_cast<uint32_t>(
-					Read_Number(StageValue, "hitCount"));
-				Stage.iHitIntervalMs = static_cast<uint32_t>(
-					Read_Number(StageValue, "hitIntervalMs"));
+				const bool_t bValidStageKind =
+					"WINDUP" == Stage.strStageKind ||
+					"ACTIVE" == Stage.strStageKind ||
+					"RECOVERY" == Stage.strStageKind ||
+					"GROGGY" == Stage.strStageKind ||
+					"PART_BREAK" == Stage.strStageKind;
+				const bool_t bValidHitShape =
+					"NONE" == Stage.strHitShape ||
+					"CIRCLE" == Stage.strHitShape ||
+					"RING" == Stage.strHitShape ||
+					"CONE" == Stage.strHitShape ||
+					"BOX" == Stage.strHitShape ||
+					"CROSS" == Stage.strHitShape ||
+					"SIX_DIRECTIONS" == Stage.strHitShape;
+				if (Stage.strStageId.empty() || Stage.strActionId.empty() ||
+					!bValidStageKind || !bValidHitShape)
+				{
+					strOutStatus =
+						"Valtan encounter stage identity is missing or invalid";
+					return false;
+				}
+				if (!Read_RequiredUInt32(
+						StageValue, "durationMs", Stage.iDurationMs) ||
+					!Read_RequiredUInt32(
+						StageValue, "hitCount", Stage.iHitCount) ||
+					!Read_RequiredUInt32(
+						StageValue, "hitIntervalMs", Stage.iHitIntervalMs) ||
+					!Read_RequiredUInt32(
+						StageValue, "hitDelayMs", Stage.iHitDelayMs) ||
+					!Read_RequiredFiniteFloat(
+						StageValue, "hitOuterRadius", Stage.fHitOuterRadius) ||
+					!Read_RequiredFiniteFloat(
+						StageValue, "hitInnerRadius", Stage.fHitInnerRadius) ||
+					!Read_RequiredFiniteFloat(
+						StageValue, "hitAngleDegrees", Stage.fHitAngleDegrees) ||
+					!Read_RequiredFiniteFloat(
+						StageValue, "hitLength", Stage.fHitLength) ||
+					!Read_RequiredFiniteFloat(
+						StageValue, "hitHalfWidth", Stage.fHitHalfWidth))
+				{
+					strOutStatus =
+						"Valtan encounter stage numeric field is missing or invalid: " +
+						Stage.strActionId;
+					return false;
+				}
+				if (!Read_OptionalOrderedHitOffsets(
+						StageValue, Stage.HitOffsetsMs))
+				{
+					strOutStatus =
+						"Valtan encounter stage hitOffsetsMs is invalid: " +
+						Stage.strActionId;
+					return false;
+				}
 				Stage.strServerDamageProfileId = Read_String(
 					StageValue, "serverDamageProfileId");
-				if (Stage.strActionId.empty())
-					continue;
+
+				const bool_t bHasExplicitOffsets = !Stage.HitOffsetsMs.empty();
+				const bool_t bValidExplicitSchedule = bHasExplicitOffsets &&
+					Stage.HitOffsetsMs.size() == Stage.iHitCount &&
+					0u == Stage.iHitIntervalMs && 0u == Stage.iHitDelayMs &&
+					Stage.HitOffsetsMs.back() < Stage.iDurationMs;
+				const bool_t bValidLegacySchedule = !bHasExplicitOffsets &&
+					Stage.iHitCount > 0u &&
+					(1u == Stage.iHitCount ? 0u == Stage.iHitIntervalMs :
+						Stage.iHitIntervalMs > 0u) &&
+					static_cast<uint64_t>(Stage.iHitDelayMs) +
+						static_cast<uint64_t>(Stage.iHitCount - 1u) *
+							Stage.iHitIntervalMs < Stage.iDurationMs;
+				const bool_t bValidEmptySchedule = 0u == Stage.iHitCount &&
+					!bHasExplicitOffsets && 0u == Stage.iHitIntervalMs &&
+					0u == Stage.iHitDelayMs;
+				if (!bValidExplicitSchedule && !bValidLegacySchedule &&
+					!bValidEmptySchedule)
+				{
+					strOutStatus =
+						"Valtan encounter stage hit schedule is invalid: " +
+						Stage.strActionId;
+					return false;
+				}
 
 				const DATA_JSON_VALUE* pActions = StageValue.Find("actions");
 				if (nullptr != pActions && pActions->Is_Array())

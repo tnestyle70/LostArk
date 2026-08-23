@@ -37,21 +37,7 @@
 # the hash and fails Publish-GameplayBalance.ps1's staleness check.
 *.py text eol=lf
 
-# The Valtan FRONT_BACK_FRONT translated runtime canary receipt binds the raw
-# implementation bytes below. Keep the exact Tool adapter, integration seams,
-# and translated shaders LF-stable across core.autocrlf=true worktrees.
-/Client/Public/Effect_ValtanTranslatedCanaryRuntime.h text eol=lf
-/Client/Private/Effect_ValtanTranslatedCanaryRuntime.cpp text eol=lf
-/Client/Public/Effect_DocumentRenderer.h text eol=lf
-/Client/Private/Effect_DocumentRenderer.cpp text eol=lf
-/Client/Public/Effect_Tool.h text eol=lf
-/Client/Private/Effect_Tool.cpp text eol=lf
-/Client/Bin/ShaderFiles/Shader_Ue3ValtanCrack01.hlsli text eol=lf
-/Client/Bin/ShaderFiles/Shader_Ue3ValtanDissolve01.hlsli text eol=lf
-/Client/Bin/ShaderFiles/Shader_Ue3ValtanGround04.hlsli text eol=lf
-/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanCrack01.hlsl text eol=lf
-/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanDissolve01.hlsl text eol=lf
-/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanGround04.hlsl text eol=lf
+# Offline Valtan translated-shader evidence records raw source hashes.
 /Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/TranslatedShaders/*.hlsli text eol=lf
 
 # Material-family evidence records raw HLSL hashes. Keep both generated source
@@ -85,6 +71,23 @@
 # The material-program registry is a raw-byte source authority consumed by the
 # publisher. Keep it stable across fresh checkouts before publishing the catalog.
 /Data/Effects/MaterialPrograms/effect-material-program-registry.v1.json text eol=lf
+/Data/Effects/MaterialPrograms/Fragments/*.json text eol=lf
+
+# Representative-four V1 admission seals the raw V0 document bytes.  Preserve
+# the historical mixed line endings explicitly so a fresh checkout cannot
+# silently invalidate those five source identities.  The materializer emits
+# every V1 document and its receipt as canonical LF.
+/Data/Effects/Authored/effect.dimensionmaster.skill.2050180.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.artist.skill.31460.unified.effect.json text eol=crlf
+/Data/Effects/Authored/effect.lancemaster.skill.34110.unified.effect.json text eol=crlf
+/Data/Effects/Authored/effect.warlord.skill.17110.clip2.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.warlord.skill.17110.clip3.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.dimensionmaster.skill.2050180.v1.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.artist.skill.31460.v1.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.lancemaster.skill.34110.v1.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.warlord.skill.17110.clip2.v1.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.warlord.skill.17110.clip3.v1.unified.effect.json text eol=lf
+/Data/Effects/AuthoredCorrections/Generated/RepresentativeFour/representative-four-v1-standard-color.receipt.json text eol=lf
 
 # The generated Effect runtime Catalog is a raw-byte authority consumed by the
 # exact old10/new13 harness. Keep its one trailing newline byte-exact on every
@@ -136,7 +139,6 @@
 /Data/Effects/Contracts/ue3-exact-cooked-shader-variants.v1.json text eol=lf
 /Client/Bin/ShaderFiles/Shader_Ue3Glasshole02.hlsli text eol=lf
 /Client/Bin/ShaderFiles/Shader_Ue3Glasshole02Translation.hlsl text eol=lf
-/Client/Bin/ShaderFiles/Shader_VtxEffectGlasshole02.hlsl text eol=lf
 /Client/Private/Effect_DocumentRenderer.cpp text eol=lf
 /Client/Public/Effect_DocumentRenderer.h text eol=lf
 /Client/Private/Effect_Tool.cpp text eol=lf

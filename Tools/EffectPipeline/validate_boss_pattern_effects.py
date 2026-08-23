@@ -45,6 +45,7 @@ FORBIDDEN_GAMEPLAY_FIELDS = {
     "hitCount",
     "hitIntervalMs",
     "hitDelayMs",
+    "hitOffsetsMs",
     "serverDamageProfileId",
     "pushRangeM",
     "pushMs",

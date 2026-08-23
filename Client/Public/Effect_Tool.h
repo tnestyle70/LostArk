@@ -517,7 +517,7 @@ private:
         bool_t bHasEmissiveTexture);
     void Render_UVDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_UVKeyframes(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
-    void Render_TimingDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
+	void Render_TimingDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
 	void Render_SizeDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
 	void Render_AuthoringMaterialParameters(
 		EFFECT_ELEMENT_DESC& Element,
@@ -604,20 +604,6 @@ private:
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
-	bool_t Ensure_ExactCookedCanaryVariantsInstalled(std::string& strOutError);
-	bool_t Has_ExactCookedCanaryMaterial(
-		const EFFECT_DOCUMENT_DESC& Document) const;
-	bool_t Try_SetExactCookedCanaryEnabled(bool_t bEnabled);
-	void Reset_ExactCookedCanarySelection(std::string strReason);
-	void Invalidate_ExactCookedCanaryInstallation(std::string strReason);
-	bool_t Has_Glasshole02TranslatedCanaryOccurrence(
-		const EFFECT_DOCUMENT_DESC& Document) const;
-	bool_t Try_SetGlasshole02TranslatedCanaryEnabled(bool_t bEnabled);
-	void Reset_Glasshole02TranslatedCanarySelection(std::string strReason);
-	bool_t Has_ValtanTranslatedCanaryOccurrences(
-		const EFFECT_DOCUMENT_DESC& Document) const;
-	bool_t Try_SetValtanTranslatedCanaryEnabled(bool_t bEnabled);
-	void Reset_ValtanTranslatedCanarySelection(std::string strReason);
 	bool_t Try_StartArtist31470FullPreview();
 	bool_t Try_ResetArtist31470PreviewIsolation();
 	bool_t Try_SetArtist31470PreviewFamilyIsolation(
@@ -742,8 +728,7 @@ private:
 	bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document,
 		bool_t bAllowReadOnlySourceProjection);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
-		const EFFECT_DOCUMENT_DESC& Document,
-		bool_t bAllowValtanTranslatedCanaryProjection = false) const;
+		const EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Try_SelectProductCue(
         const EFFECT_SKILL_TREE_ENTRY& Entry,
         size_t iCueIndex);
@@ -929,7 +914,6 @@ private:
 	   means the single m_strSelectedElementId is the delete target, which is
 	   the behaviour every other command still assumes. */
 	std::set<string, std::less<>> m_MarkedElementIds;
-	std::set<string, std::less<>> m_ExactCookedCanarySourceMaterials;
     string m_strSelectedElementGroupId;
 	string m_strSelectedModelCueId;
 	string m_strPreviewIsolationElementId;
@@ -1009,10 +993,6 @@ private:
 	bool_t m_bValtanBossPatternTransformHistoryRequired = false;
 	bool_t m_bValtanBossPatternTransformHistoryActive = false;
 	bool_t m_bDocumentDirty = false;
-	bool_t m_bExactCookedCanaryEnabled = false;
-	bool_t m_bExactCookedCanaryVariantsInstalled = false;
-	bool_t m_bGlasshole02TranslatedCanaryEnabled = false;
-	bool_t m_bValtanTranslatedCanaryEnabled = false;
 	bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
@@ -1064,12 +1044,6 @@ private:
     string m_strDetailStatus;
     string m_strResourceStatus;
     string m_strPreviewStatus;
-	string m_strExactCookedCanaryStatus =
-		"OFF: family-lite authoring preview remains active.";
-	string m_strGlasshole02TranslatedCanaryStatus =
-		"OFF: translated Glasshole02 Tool canary is not staged.";
-	string m_strValtanTranslatedCanaryStatus =
-		"OFF: translated Valtan core-three Tool canary is not staged.";
     string m_strPreviewAnimationStatus;
     string m_strAnimationClipLabelStatus;
 };

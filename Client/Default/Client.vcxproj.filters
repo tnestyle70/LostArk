@@ -330,9 +330,6 @@
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
-	<ClCompile Include="..\Private\Effect_ValtanTranslatedCanaryRuntime.cpp">
-	  <Filter>03. Tools\02. Effect</Filter>
-	</ClCompile>
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
@@ -916,9 +913,6 @@
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClInclude>
-	<ClInclude Include="..\Public\Effect_ValtanTranslatedCanaryRuntime.h">
-	  <Filter>03. Tools\02. Effect</Filter>
-	</ClInclude>
 	<ClInclude Include="..\Public\Effect_Artist31470ShaderRegistry.h">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClInclude>
@@ -1135,6 +1129,9 @@
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json">
       <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
     </None>
+	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json">
+	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
+	</None>
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json">
 	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
 	</None>
@@ -1527,24 +1524,6 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactSpriteBridge.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectGlasshole02.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanCrack01.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanDissolve01.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanGround04.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -1573,15 +1552,6 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </None>
-    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanCrack01.hlsli">
-      <Filter>97.ShaderFiles</Filter>
-    </None>
-    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanDissolve01.hlsli">
-      <Filter>97.ShaderFiles</Filter>
-    </None>
-    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanGround04.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
   </ItemGroup>
@@ -1631,6 +1601,9 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster">
       <UniqueIdentifier>{e77ed5c4-d9dc-5814-8f72-54d2208a63ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\RepresentativeFour">
+      <UniqueIdentifier>{90ad3a9a-0276-58e4-9a36-7d4d3804c52e}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB">
       <UniqueIdentifier>{cc1a9767-7084-5b88-ab8a-f3ab5c339fee}</UniqueIdentifier>
@@ -2604,6 +2577,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31470.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -2731,6 +2707,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050190.effect.json">
@@ -2899,6 +2878,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34110.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34110.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.authored-baseline.clip1.effect.json">
@@ -3252,10 +3234,19 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.effect.json">
@@ -3282,6 +3273,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3289,6 +3283,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.effect.json">
@@ -3534,6 +3531,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.pattern.420633.active.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.pattern.420633.active.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.finish.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3687,7 +3687,13 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip2.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip2.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip3.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17140.authored-baseline.effect.json">
@@ -4061,6 +4067,9 @@
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34650.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\RepresentativeFour\representative-four-v1-standard-color.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\RepresentativeFour</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba1.candidate-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
@@ -5835,6 +5844,12 @@
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-material-program-conquest-ledger.v1.csv">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-material-program-conquest-ledger.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
@@ -5842,6 +5857,12 @@
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Contracts\ue3-material-family-registry.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\valtan-effect-v1-horizontal-rt0-application.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\valtan-three-pattern-v1-materialization.receipt.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\CookedShaders\340169d8b9146fd280bbc1b509aa312e6afa71573dfe12cf4e89cb0136431ae3.dxbc">
@@ -6633,9 +6654,6 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
     </None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-runtime-canary.contract.receipt.json">
-      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
-    </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.source-value-uniform-evaluation.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
     </None>
@@ -7329,12 +7347,6 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-pixel-equation-warp-replay.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
     </None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-runtime-canary-contract.receipt.v1.json">
-      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-runtime-canary-contract.targets.v1.json">
-      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
-    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-source-exact-family-receipt.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
     </None>
@@ -7942,6 +7954,12 @@
       <Filter>96.DataFiles\Effects\MaterialPrograms</Filter>
     </None>
     <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\artist-f-golden.material-program-fragment.v1.json">
+      <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\representative-four-v1-standard-color.material-program-fragment.v1.json">
+      <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\valtan-three-pattern-v1.material-program-fragment.v1.json">
       <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
     </None>
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json">

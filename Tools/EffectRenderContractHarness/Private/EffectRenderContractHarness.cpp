@@ -3,11 +3,13 @@
 #include "DataJson.h"
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_Catalog.h"
+#include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
 #include "Effect_MaterialProgramRegistry.h"
 #include "Effect_Object.h"
 #include "Effect_OccurrenceTuning.h"
+#include "Effect_Playback.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
@@ -15,7 +17,9 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cctype>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -41,31 +45,170 @@ namespace
 	constexpr std::string_view ARTIST_CANARY_ELEMENT_ID =
 		"sprite.2b3dc6842507e910";
 	constexpr std::string_view ARTIST_CANARY_PROGRAM_ID =
-		"effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1";
+		"effect.program.runtime-material-v2.opcode-6.v1";
 	constexpr std::string_view ARTIST_CANARY_LAYOUT_ID =
-		"effect.layout.runtime-material-v2.artist-f-sprite.v1";
+		"effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1";
 	constexpr std::string_view ARTIST_CANARY_DESCRIPTOR_ID =
 		"effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1";
 	constexpr std::string_view ARTIST_MESH_CANARY_ELEMENT_ID =
 		"mesh.062366ee9f9655d3";
 	constexpr std::string_view ARTIST_MESH_CANARY_PROGRAM_ID =
-		"effect.program.runtime-material-v2.opcode-3.artist-f-mesh.v1";
+		"effect.program.runtime-material-v2.opcode-3.v1";
 	constexpr std::string_view ARTIST_MESH_CANARY_LAYOUT_ID =
-		"effect.layout.runtime-material-v2.artist-f-mesh-opcode-3.v1";
+		"effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1";
 	constexpr std::string_view ARTIST_MESH_CANARY_DESCRIPTOR_ID =
 		"effect.descriptor.artist-f.mesh-062366ee9f9655d3.v1";
 	constexpr std::string_view ARTIST_DECAL_CANARY_ELEMENT_ID =
 		"decal.f3b5c3b63b4a7e34";
 	constexpr std::string_view ARTIST_DECAL_CANARY_PROGRAM_ID =
-		"effect.program.local-decal.opcode-14.artist-f-projector.v1";
+		"effect.program.local-decal.opcode-14.v1";
 	constexpr std::string_view ARTIST_DECAL_CANARY_LAYOUT_ID =
-		"effect.layout.local-decal.artist-f-projector-opcode-14.v1";
+		"effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1";
 	constexpr std::string_view ARTIST_DECAL_CANARY_DESCRIPTOR_ID =
 		"effect.descriptor.artist-f.decal-f3b5c3b63b4a7e34.v1";
 	constexpr std::string_view LANCE_EFFECT_ID =
 		"effect.lancemaster.skill.34010.ba1";
 	constexpr std::string_view LANCE_BA1_OCCURRENCE_ID =
 		"authored.approx.s002.mesh01";
+	constexpr size_t REPRESENTATIVE_V1_BINDING_COUNT = 131u;
+	constexpr size_t REPRESENTATIVE_V1_TOTAL_BINDING_COUNT = 134u;
+	constexpr size_t REPRESENTATIVE_V1_REGISTRY_ADAPTER_COUNT = 7u;
+	constexpr size_t GOLDEN_AND_REPRESENTATIVE_COMPILED_ADAPTER_COUNT =
+		static_cast<size_t>(Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
+			PROJECT_TUNED_SPRITE_PARTICLE_ALPHA_TWO_SIDED_V1);
+	constexpr std::array<std::string_view, 5u> REPRESENTATIVE_V1_EFFECT_IDS = {{
+		"effect.artist.skill.31460.v1.unified",
+		"effect.dimensionmaster.skill.2050180.v1.unified",
+		"effect.lancemaster.skill.34110.v1.unified",
+		"effect.warlord.skill.17110.clip2.v1.unified",
+		"effect.warlord.skill.17110.clip3.v1.unified"
+	}};
+
+	struct DIRECT_AUTHORED_INDEX_PROBE_DESC final
+	{
+		std::string_view strEffectAssetId;
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		LostArk::Shared::SKILL_ID iSkillId =
+			LostArk::Shared::INVALID_SKILL_ID;
+	};
+
+	constexpr std::array<DIRECT_AUTHORED_INDEX_PROBE_DESC, 10u>
+		DIRECT_AUTHORED_INDEX_PROBES = {{
+		{
+			"effect.artist.skill.31460.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+			31460u
+		},
+		{
+			"effect.artist.skill.31460.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+			31460u
+		},
+		{
+			"effect.dimensionmaster.skill.2050180.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+			2050180u
+		},
+		{
+			"effect.dimensionmaster.skill.2050180.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+			2050180u
+		},
+		{
+			"effect.lancemaster.skill.34110.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+			34110u
+		},
+		{
+			"effect.lancemaster.skill.34110.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+			34110u
+		},
+		{
+			"effect.warlord.skill.17110.clip2.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			17110u
+		},
+		{
+			"effect.warlord.skill.17110.clip2.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			17110u
+		},
+		{
+			"effect.warlord.skill.17110.clip3.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			17110u
+		},
+		{
+			"effect.warlord.skill.17110.clip3.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			17110u
+		}
+	}};
+
+	struct REPRESENTATIVE_V1_DRAW_PROBE_DESC final
+	{
+		std::string_view strScenarioStem;
+		std::string_view strEffectAssetId;
+		std::string_view strElementId;
+		f32_t fSampleTimeSeconds = 0.f;
+		Client::EFFECT_GPU_RENDER_CARRIER eCarrier =
+			Client::EFFECT_GPU_RENDER_CARRIER::END;
+		uint32_t iPassIndex = UINT32_MAX;
+	};
+
+	constexpr std::array<REPRESENTATIVE_V1_DRAW_PROBE_DESC, 6u>
+		REPRESENTATIVE_V1_DRAW_PROBES = {{
+		{
+			"representative-v1-sprite-alpha-one",
+			"effect.artist.skill.31460.v1.unified",
+			"authored.source-particle.cb346af47371feedccf9b652",
+			0.75f,
+			Client::EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE,
+			3u
+		},
+		{
+			"representative-v1-sprite-additive-two",
+			"effect.lancemaster.skill.34110.v1.unified",
+			"authored.source-particle.b790ac14ac613d42bdfb6a58",
+			0.05f,
+			Client::EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE,
+			2u
+		},
+		{
+			"representative-v1-sprite-additive-one",
+			"effect.dimensionmaster.skill.2050180.v1.unified",
+			"authored.source-particle.65691ec294c8f04b9f0cad89",
+			0.55f,
+			Client::EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE,
+			4u
+		},
+		{
+			"representative-v1-mesh-alpha-one",
+			"effect.dimensionmaster.skill.2050180.v1.unified",
+			"authored.source-particle.98639f5f2e65e0f0193c09fe",
+			0.55f,
+			Client::EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL,
+			3u
+		},
+		{
+			"representative-v1-mesh-subuv-alpha-two",
+			"effect.warlord.skill.17110.clip3.v1.unified",
+			"authored.source-particle.60c8e8ed9d5b0c41b7aa4e88",
+			0.55f,
+			Client::EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL,
+			1u
+		},
+		{
+			"representative-v1-decal-alpha-two",
+			"effect.artist.skill.31460.v1.unified",
+			"authored.source-decal.7139d7fc84cfc2aee0b40621",
+			0.75f,
+			Client::EFFECT_GPU_RENDER_CARRIER::DECAL_RECT,
+			1u
+		}
+	}};
 	constexpr uint32_t WINDOW_WIDTH = 320u;
 	constexpr uint32_t WINDOW_HEIGHT = 180u;
 	constexpr wchar_t WINDOW_CLASS_NAME[] =
@@ -127,6 +270,16 @@ namespace
 		AGGREGATE_STATS Aggregate;
 		std::optional<OCCURRENCE_EVIDENCE> Occurrence;
 		bool_t bBoundAdapterActualPipelineValidated = false;
+	};
+
+	struct REPRESENTATIVE_V1_PREPARED_TARGET final
+	{
+		std::string strEffectAssetId;
+		std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> pDocument;
+		std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection;
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			pPrepared;
 	};
 
 	struct FULL35_DISPOSITION_ROW final
@@ -735,6 +888,128 @@ namespace
 		return true;
 	}
 
+	bool_t Validate_DirectAuthoredAuditionSourceIndex(
+		const std::filesystem::path& RepositoryRoot,
+		std::string& strOutError)
+	{
+		const std::filesystem::path CatalogPath =
+			RepositoryRoot / L"Data" / L"Effects" / L"EffectCatalog.json";
+		const std::filesystem::path AuthoredRoot =
+			RepositoryRoot / L"Data" / L"Effects" / L"Authored";
+		std::vector<Client::EFFECT_DIRECT_AUTHORED_SCANNED_FILE> ScannedFiles;
+		Client::EFFECT_DIRECT_AUTHORED_OWNER_SET ValidOwners;
+		ScannedFiles.reserve(DIRECT_AUTHORED_INDEX_PROBES.size());
+		for (const DIRECT_AUTHORED_INDEX_PROBE_DESC& Probe :
+			DIRECT_AUTHORED_INDEX_PROBES)
+		{
+			const std::string AssetId(Probe.strEffectAssetId);
+			const std::filesystem::path Path =
+				AuthoredRoot / (AssetId + ".effect.json");
+			std::error_code FileError;
+			if (!std::filesystem::is_regular_file(Path, FileError) || FileError)
+			{
+				strOutError =
+					"direct-authored index probe file is unavailable: " + AssetId;
+				return false;
+			}
+			ScannedFiles.push_back({ AssetId, Path });
+			ValidOwners.emplace(Probe.eCharacterClass, Probe.iSkillId);
+		}
+
+		Client::EFFECT_DIRECT_AUTHORED_SOURCE_INDEX Index;
+		std::string Status;
+		if (!Client::CEffectDirectAuthoredSourceIndex::Build(
+				CatalogPath, AuthoredRoot, ScannedFiles, ValidOwners, {}, {},
+				Index, Status))
+		{
+			strOutError =
+				"direct-authored audition index rejected the source catalog: " +
+				Status;
+			return false;
+		}
+		if (Index.iCatalogDirectCount < DIRECT_AUTHORED_INDEX_PROBES.size() ||
+			Index.Entries.size() != DIRECT_AUTHORED_INDEX_PROBES.size())
+		{
+			strOutError =
+				"direct-authored audition index admitted an unexpected probe count";
+			return false;
+		}
+		for (const DIRECT_AUTHORED_INDEX_PROBE_DESC& Probe :
+			DIRECT_AUTHORED_INDEX_PROBES)
+		{
+			const auto Entry = std::find_if(Index.Entries.begin(),
+				Index.Entries.end(), [&Probe](
+					const Client::EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Candidate)
+				{
+					return Candidate.strEffectAssetId == Probe.strEffectAssetId;
+				});
+			if (Entry == Index.Entries.end() ||
+				Entry->eOwnerKind != Client::
+					EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL ||
+				Entry->eCharacterClass != Probe.eCharacterClass ||
+				Entry->iSkillId != Probe.iSkillId || Entry->Path.empty())
+			{
+				strOutError =
+					"direct-authored audition index lost or changed probe owner: " +
+					std::string(Probe.strEffectAssetId);
+				return false;
+			}
+		}
+
+		TEMP_RUNTIME_CATALOG_FIXTURE MalformedFixture;
+		std::error_code FileError;
+		MalformedFixture.Root = std::filesystem::temp_directory_path(FileError) /
+			("LostArkDirectAuthoredIndex-" +
+			 std::to_string(static_cast<uint64_t>(GetCurrentProcessId())) + "-" +
+			 std::to_string(static_cast<uint64_t>(GetTickCount64())));
+		MalformedFixture.CatalogPath =
+			MalformedFixture.Root / L"EffectCatalog.json";
+		if (FileError || !std::filesystem::create_directories(
+				MalformedFixture.Root, FileError) || FileError)
+		{
+			strOutError =
+				"direct-authored malformed-catalog fixture directory failed";
+			return false;
+		}
+		{
+			std::ofstream Output(MalformedFixture.CatalogPath,
+				std::ios::binary | std::ios::trunc);
+			Output << R"({"formatVersion":1,"effects":[{"effectAssetId":"effect.artist.skill.31460.v1.unified","payloadKind":"DIRECT_AUTHORED_DOCUMENT_V13","authoringPath":"Effects/Authored/effect.artist.skill.31460.v1.unified.effect.json","runtimeAdmission":"REGISTRY_BOUND_AUDITION_ONLY"}]})";
+			if (!Output)
+			{
+				strOutError =
+					"direct-authored malformed-catalog fixture write failed";
+				return false;
+			}
+		}
+
+		Client::EFFECT_DIRECT_AUTHORED_SOURCE_INDEX Preserved;
+		Preserved.iCatalogDirectCount = 41u;
+		Preserved.iUnavailableCount = 7u;
+		Preserved.strFirstUnavailable = "sentinel-unavailable";
+		Client::EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Sentinel;
+		Sentinel.strEffectAssetId = "sentinel.effect";
+		Preserved.Entries.push_back(std::move(Sentinel));
+		Status.clear();
+		if (Client::CEffectDirectAuthoredSourceIndex::Build(
+				MalformedFixture.CatalogPath, AuthoredRoot, ScannedFiles,
+				ValidOwners, {}, {}, Preserved, Status) ||
+			Status.find("malformed direct-authored row") == std::string::npos ||
+			Preserved.iCatalogDirectCount != 41u ||
+			Preserved.iUnavailableCount != 7u ||
+			Preserved.strFirstUnavailable != "sentinel-unavailable" ||
+			Preserved.Entries.size() != 1u ||
+			Preserved.Entries.front().strEffectAssetId != "sentinel.effect")
+		{
+			strOutError =
+				"partial audition metadata did not fail closed and preserve the index";
+			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
 	bool_t Validate_BindingCarrierProfileReloadRollback(
 		const std::filesystem::path& AuthoredDocumentPath,
 		std::string& strOutError)
@@ -845,6 +1120,121 @@ namespace
 		{
 			return false;
 		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_SourcePlaybackTuningContract(
+		const std::filesystem::path& RepositoryRoot,
+		std::string& strOutError)
+	{
+		const std::filesystem::path AuthoredRoot = RepositoryRoot / L"Data" /
+			L"Effects" / L"Authored";
+		Client::EFFECT_DOCUMENT_DESC BudgetDocument;
+		if (!Client::CEffectDocumentCodec::Load(
+				AuthoredRoot /
+					L"effect.lancemaster.skill.34580.ba1.unified.effect.json",
+				BudgetDocument, strOutError) || BudgetDocument.Elements.size() != 1u)
+		{
+			strOutError = "source playback tuning budget fixture failed to load: " +
+				strOutError;
+			return false;
+		}
+		Client::EFFECT_ELEMENT_DESC& BudgetElement =
+			BudgetDocument.Elements.front();
+		BudgetElement.Detail.Particle.iMaxParticles = 512u;
+		BudgetElement.Detail.Particle.SourceScale.fCount = 16.f;
+		std::string ValidationError;
+		if (!Client::CEffectDocumentCodec::Validate(
+				BudgetDocument, ValidationError))
+		{
+			strOutError =
+				"source playback tuning rejected the exact 8192-particle boundary: " +
+				ValidationError;
+			return false;
+		}
+		BudgetElement.Detail.Particle.iMaxParticles = 513u;
+		if (Client::CEffectDocumentCodec::Validate(
+				BudgetDocument, ValidationError) ||
+			ValidationError !=
+				"Effect Document exceeds the particle, trail, or after-image budget.")
+		{
+			strOutError =
+				"source playback Count x did not close the scaled document budget";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC EventDocument;
+		if (!Client::CEffectDocumentCodec::Load(
+				AuthoredRoot / L"effect.lancemaster.skill.34550.unified.effect.json",
+				EventDocument, strOutError))
+		{
+			strOutError = "source playback event fixture failed to load: " +
+				strOutError;
+			return false;
+		}
+		const auto Generator = std::find_if(EventDocument.Elements.begin(),
+			EventDocument.Elements.end(), [](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId ==
+					"authored.source-particle.54c1cad976d33db94d22d98a";
+			});
+		if (Generator == EventDocument.Elements.end())
+		{
+			strOutError = "source playback event generator fixture is missing";
+			return false;
+		}
+		Generator->Detail.Particle.SourceScale.fCount = 16.f;
+		Generator->Detail.Particle.iMaxParticles = 128u;
+		ValidationError.clear();
+		if (!Client::CEffectDocumentCodec::Validate(
+				EventDocument, ValidationError))
+		{
+			strOutError =
+				"source playback tuning rejected the exact 4096-event boundary: " +
+				ValidationError;
+			return false;
+		}
+		Generator->Detail.Particle.iMaxParticles = 129u;
+		if (Client::CEffectDocumentCodec::Validate(
+				EventDocument, ValidationError) ||
+			ValidationError !=
+				"Portable authored particle event queue has an unbounded per-step upper limit.")
+		{
+			strOutError =
+				"source playback Count x did not close the scaled event queue bound";
+			return false;
+		}
+
+		BudgetElement.Detail.Particle.iMaxParticles = 3u;
+		BudgetElement.Detail.Particle.SourceScale.fCount = 1.f;
+		BudgetElement.Detail.Timing.fStartDelaySeconds = 0.25f;
+		BudgetElement.Detail.Timing.fLifeTimeSeconds = 0.75f;
+		BudgetElement.Detail.Timing.fAfterImageSeconds = 0.f;
+		BudgetElement.Detail.Particle.vLifeTimeSeconds = { 0.5f, 0.5f };
+		BudgetElement.Detail.Particle.SourceScale.fLifeTime = 4.f;
+		BudgetElement.SourceRecipe.fEmitterDelaySeconds = 0.f;
+		BudgetElement.SourceRecipe.fEmitterDurationSeconds = 0.f;
+		BudgetElement.SourceRecipe.iEmitterLoopCount = 0u;
+		std::shared_ptr<const Client::CEffectPlayback::PREPARED_RESOURCES>
+			Prepared;
+		if (!Client::CEffectPlayback::Prepare_DocumentResources(
+				BudgetDocument, Prepared, strOutError))
+		{
+			strOutError = "source playback duration resources failed: " +
+				strOutError;
+			return false;
+		}
+		Client::CEffectPlayback Playback;
+		if (!Playback.Stage_PrevalidatedDocument(
+				BudgetDocument, Prepared, strOutError) ||
+			std::abs(Playback.Get_DurationSeconds() - 3.f) > 1.0e-4f)
+		{
+			strOutError =
+				"source playback Life x did not extend the declared preview tail";
+			return false;
+		}
+
 		strOutError.clear();
 		return true;
 	}
@@ -1373,7 +1763,9 @@ namespace
 			Unbound.iIssuedDrawCallCount == Bound.iIssuedDrawCallCount &&
 			Unbound.iDrawSelectionCount == Bound.iDrawSelectionCount &&
 			Unbound.iCompiledAdapterPipelineValidationCount == 0u &&
-			Bound.iCompiledAdapterPipelineValidationCount == 1u &&
+			Bound.iCompiledAdapterPipelineValidationCount > 0u &&
+			Bound.iCompiledAdapterPipelineValidationCount ==
+				Bound.iIssuedDrawCallCount &&
 			Unbound.eCarrier == Bound.eCarrier &&
 			Unbound.iSelectedPassIndex == Bound.iSelectedPassIndex &&
 			Unbound.bHasFirstSubmittedWorld && Bound.bHasFirstSubmittedWorld &&
@@ -1381,6 +1773,297 @@ namespace
 				Bound.iFirstSubmittedWorldHash &&
 			!Unbound.bDrawSelectionDiverged &&
 			!Bound.bDrawSelectionDiverged;
+	}
+
+	bool_t Is_RepresentativeV1EffectAssetId(
+		const std::string_view strEffectAssetId)
+	{
+		return std::find(REPRESENTATIVE_V1_EFFECT_IDS.begin(),
+			REPRESENTATIVE_V1_EFFECT_IDS.end(), strEffectAssetId) !=
+			REPRESENTATIVE_V1_EFFECT_IDS.end();
+	}
+
+	bool_t Validate_GenericCompiledAdapterMetadata(
+		const Client::EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING& Binding,
+		std::string& strOutError)
+	{
+		using ADAPTER_ID = Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID;
+		using CARRIER = Client::EFFECT_COMPILED_MATERIAL_CARRIER;
+		using PROFILE = Client::EFFECT_RENDER_PROFILE;
+		const Client::EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
+			Binding.Adapter;
+		std::string_view strExpectedAdapterId;
+		std::string_view strExpectedShaderId;
+		std::string_view strExpectedVertexLayoutId;
+		ADAPTER_ID eExpectedAdapterId = ADAPTER_ID::END;
+		switch (Adapter.eCarrier)
+		{
+		case CARRIER::SPRITE_PARTICLE:
+			strExpectedShaderId = "Shader_VtxEffectParticle.hlsl";
+			strExpectedVertexLayoutId = "VTXEFFECT_PARTICLE";
+			switch (Adapter.eRenderProfile)
+			{
+			case PROFILE::ALPHA_TWO_SIDED_DEPTH_READ:
+				eExpectedAdapterId = ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1;
+				strExpectedAdapterId =
+					Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID;
+				break;
+			case PROFILE::ALPHA_ONE_SIDED_DEPTH_READ:
+				eExpectedAdapterId = ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1;
+				strExpectedAdapterId =
+					Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID;
+				break;
+			case PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ:
+				eExpectedAdapterId = ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_TWO_SIDED_V1;
+				strExpectedAdapterId =
+					Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADDITIVE_TWO_SIDED_ADAPTER_ID;
+				break;
+			case PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ:
+				eExpectedAdapterId = ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_ONE_SIDED_V1;
+				strExpectedAdapterId =
+					Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADDITIVE_ONE_SIDED_ADAPTER_ID;
+				break;
+			case PROFILE::OPAQUE_BACK_DEPTH_WRITE:
+			case PROFILE::END:
+			default:
+				break;
+			}
+			break;
+		case CARRIER::MESH_PARTICLE_CMODEL:
+			strExpectedShaderId = "Shader_VtxEffectMeshPreview.hlsl";
+			strExpectedVertexLayoutId = "VTXMESH";
+			if (Adapter.eRenderProfile == PROFILE::ALPHA_TWO_SIDED_DEPTH_READ)
+			{
+				eExpectedAdapterId = ADAPTER_ID::
+					MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1;
+				strExpectedAdapterId = Client::
+					EFFECT_MESH_PARTICLE_SCENE_COLOR_ALPHA_TWO_SIDED_ADAPTER_ID;
+			}
+			else if (Adapter.eRenderProfile ==
+				PROFILE::ALPHA_ONE_SIDED_DEPTH_READ)
+			{
+				eExpectedAdapterId = ADAPTER_ID::
+					MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1;
+				strExpectedAdapterId = Client::
+					EFFECT_MESH_PARTICLE_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID;
+			}
+			break;
+		case CARRIER::LOCAL_DECAL_PROJECTOR:
+			strExpectedShaderId = "Shader_VtxEffectDecal.hlsl";
+			strExpectedVertexLayoutId = "VTXTEX";
+			if (Adapter.eRenderProfile == PROFILE::ALPHA_TWO_SIDED_DEPTH_READ)
+			{
+				eExpectedAdapterId = ADAPTER_ID::
+					LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1;
+				strExpectedAdapterId = Client::
+					EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_TWO_SIDED_ADAPTER_ID;
+			}
+			else if (Adapter.eRenderProfile ==
+				PROFILE::ALPHA_ONE_SIDED_DEPTH_READ)
+			{
+				eExpectedAdapterId = ADAPTER_ID::
+					LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1;
+				strExpectedAdapterId = Client::
+					EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID;
+			}
+			break;
+		case CARRIER::END:
+		default:
+			break;
+		}
+
+		uint32_t iExpectedPassIndex = UINT32_MAX;
+		std::string_view strExpectedRasterizer;
+		std::string_view strExpectedDepthStencil;
+		std::string_view strExpectedBlend;
+		switch (Adapter.eRenderProfile)
+		{
+		case PROFILE::ALPHA_TWO_SIDED_DEPTH_READ:
+			iExpectedPassIndex = 1u;
+			strExpectedRasterizer = "RS_Cull_None";
+			strExpectedDepthStencil = Adapter.eCarrier ==
+				CARRIER::LOCAL_DECAL_PROJECTOR ? "DSS_ZNone" : "DSS_ReadOnly";
+			strExpectedBlend = "BS_EffectAlpha";
+			break;
+		case PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ:
+			iExpectedPassIndex = 2u;
+			strExpectedRasterizer = "RS_Cull_None";
+			strExpectedDepthStencil = "DSS_ReadOnly";
+			strExpectedBlend = "BS_EffectAdditive";
+			break;
+		case PROFILE::ALPHA_ONE_SIDED_DEPTH_READ:
+			iExpectedPassIndex = 3u;
+			strExpectedRasterizer = "RS_Default";
+			strExpectedDepthStencil = "DSS_ReadOnly";
+			strExpectedBlend = "BS_EffectAlpha";
+			break;
+		case PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ:
+			iExpectedPassIndex = 4u;
+			strExpectedRasterizer = "RS_Default";
+			strExpectedDepthStencil = "DSS_ReadOnly";
+			strExpectedBlend = "BS_EffectAdditive";
+			break;
+		case PROFILE::OPAQUE_BACK_DEPTH_WRITE:
+		case PROFILE::END:
+		default:
+			break;
+		}
+
+		const bool_t bValid = eExpectedAdapterId != ADAPTER_ID::END &&
+			Adapter.eAdapterId == eExpectedAdapterId &&
+			Adapter.strAdapterId == strExpectedAdapterId &&
+			Binding.strAdapterId == strExpectedAdapterId &&
+			Adapter.strShaderId == strExpectedShaderId &&
+			Adapter.strVertexLayoutId == strExpectedVertexLayoutId &&
+			Adapter.iPassIndex == iExpectedPassIndex &&
+			Adapter.strMrtId == "MRT_SceneHDR" &&
+			Adapter.iSceneColorRenderTargetIndex == 0u &&
+			Adapter.strSceneColorSemantic == "SV_TARGET0" &&
+			Adapter.iDistortionRenderTargetIndex == 1u &&
+			Adapter.strDistortionSemantic == "SV_TARGET1" &&
+			Adapter.bDistortionDeterministicZero &&
+			Adapter.strRasterizerState == strExpectedRasterizer &&
+			Adapter.strDepthStencilState == strExpectedDepthStencil &&
+			Adapter.strBlendState == strExpectedBlend &&
+			Adapter.iStencilReference == 0u &&
+			Binding.Execution.iPassIndex == Adapter.iPassIndex &&
+			Binding.Execution.strRasterizerState == Adapter.strRasterizerState &&
+			Binding.Execution.strDepthStencilState ==
+				Adapter.strDepthStencilState &&
+			Binding.Execution.strBlendState == Adapter.strBlendState &&
+			Binding.Execution.iStencilReference == Adapter.iStencilReference;
+		if (!bValid)
+		{
+			strOutError = "generic compiled Program/Layout/Adapter metadata changed: " +
+				Binding.strEffectAssetId + "/" + Binding.strElementId;
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_RepresentativeV1RegistryReceipts(
+		const std::shared_ptr<const Client::CEffectMaterialProgramRegistry>& Registry,
+		const uint64_t iCatalogRevision,
+		size_t& iOutRepresentativeBindingCount,
+		size_t& iOutCoveredAdapterCount,
+		std::string& strOutError)
+	{
+		iOutRepresentativeBindingCount = 0u;
+		iOutCoveredAdapterCount = 0u;
+		if (nullptr == Registry)
+		{
+			strOutError = "representative V1 registry is unavailable";
+			return false;
+		}
+		constexpr size_t ADAPTER_COUNT =
+			GOLDEN_AND_REPRESENTATIVE_COMPILED_ADAPTER_COUNT;
+		std::array<bool_t, ADAPTER_COUNT> CoveredAdapters{};
+		for (const Client::EFFECT_MATERIAL_PROGRAM_BINDING_TARGET& Target :
+			Registry->Get_BindingTargets())
+		{
+			if (!Is_RepresentativeV1EffectAssetId(Target.strEffectAssetId))
+				continue;
+
+			const auto Binding = Registry->Resolve(
+				Target.strEffectAssetId, Target.strElementId);
+			if (nullptr == Binding ||
+				Binding->iCatalogRevision != iCatalogRevision ||
+				Binding->iRegistryGenerationId != Registry->Get_GenerationId() ||
+				Binding->strEffectAssetId != Target.strEffectAssetId ||
+				Binding->strElementId != Target.strElementId ||
+				Binding->eInlineMirrorPolicy != Client::
+					EFFECT_MATERIAL_INLINE_MIRROR_POLICY::INLINE_MIRROR_REQUIRED ||
+				!Validate_GenericCompiledAdapterMetadata(*Binding, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "material-program target failed generic adapter audit";
+				return false;
+			}
+			const size_t iAdapter =
+				static_cast<size_t>(Binding->Adapter.eAdapterId);
+			if (iAdapter >= CoveredAdapters.size())
+			{
+				strOutError = "material-program target selected an invalid adapter enum";
+				return false;
+			}
+			CoveredAdapters[iAdapter] = true;
+
+			const auto Document = Client::CEffectCatalog::Find(Target.strEffectAssetId);
+			if (nullptr == Document)
+			{
+				strOutError = "representative V1 document is unavailable: " +
+					Target.strEffectAssetId;
+				return false;
+			}
+			const auto Element = std::find_if(
+				Document->Elements.begin(), Document->Elements.end(),
+				[&Target](const Client::EFFECT_ELEMENT_DESC& Candidate)
+				{
+					return Candidate.strElementId == Target.strElementId;
+				});
+			const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+				Binding->Execution;
+			const Client::EFFECT_STANDARD_COLOR_V1_DESC& Packet =
+				Execution.StandardColorV1;
+			const bool_t bDissolve = Execution.iTextureLaneCount == 3u;
+			if (Element == Document->Elements.end() ||
+				!Client::CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
+					Execution, Element->Material.Execution) ||
+				Client::Get_EffectAuthoringFidelity(Execution) != Client::
+					EFFECT_AUTHORING_FIDELITY::APPROXIMATE ||
+				Client::Get_EffectAuthoringFidelity(
+					Element->Material.Execution) != Client::
+					EFFECT_AUTHORING_FIDELITY::APPROXIMATE ||
+				Execution.eBackend != Client::
+					EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 ||
+				Execution.iOpcode != 1u ||
+				(Execution.iTextureLaneCount != 2u && !bDissolve) ||
+				Packet.iPacketVersion != 1u ||
+				Packet.strBaseRadianceLaneId != "lane.0" ||
+				Packet.strCoverageLaneId != "lane.1" ||
+				Packet.eEmissiveMode != Client::
+					EFFECT_STANDARD_COLOR_EMISSIVE_MODE::BASE_RADIANCE ||
+				Packet.eLifetimeEnvelope != Client::
+					EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE::CARRIER_ALPHA ||
+				Packet.eMissingLanePolicy != Client::
+					EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY::FAIL_CLOSED ||
+				(bDissolve &&
+				 (Packet.eDissolveMode != Client::
+					EFFECT_STANDARD_COLOR_DISSOLVE_MODE::LANE_THRESHOLD ||
+				  Packet.strDissolveLaneId != "lane.2" ||
+				  std::bit_cast<uint32_t>(Packet.fDissolveSoftness) !=
+					std::bit_cast<uint32_t>(0.1f))) ||
+				(!bDissolve &&
+				 (Packet.eDissolveMode != Client::
+					EFFECT_STANDARD_COLOR_DISSOLVE_MODE::NONE ||
+				  !Packet.strDissolveLaneId.empty() ||
+				  Packet.eDissolveChannel != Client::
+					EFFECT_STANDARD_COLOR_CHANNEL::INVALID ||
+				  std::bit_cast<uint32_t>(Packet.fDissolveSoftness) != 0u)))
+			{
+				strOutError = "representative V1 exact dual-resolve changed: " +
+					Target.strEffectAssetId + "/" + Target.strElementId;
+				return false;
+			}
+			++iOutRepresentativeBindingCount;
+		}
+		for (const bool_t bCovered : CoveredAdapters)
+		{
+			if (bCovered)
+				++iOutCoveredAdapterCount;
+		}
+		if (iOutRepresentativeBindingCount != REPRESENTATIVE_V1_BINDING_COUNT ||
+			iOutCoveredAdapterCount != REPRESENTATIVE_V1_REGISTRY_ADAPTER_COUNT)
+		{
+			strOutError = "representative V1 binding or compiled-adapter coverage count changed";
+			return false;
+		}
+		strOutError.clear();
+		return true;
 	}
 
 	bool_t Is_ExactLanceFloor(const AGGREGATE_STATS& Stats)
@@ -1427,6 +2110,13 @@ int wmain(const int argc, wchar_t** argv)
 			"non-empty compiled adapter fixture requires the golden S/M/D set\n";
 		return 2;
 	}
+	if (ExpectedBindingCount > 3u &&
+		ExpectedBindingCount < REPRESENTATIVE_V1_TOTAL_BINDING_COUNT)
+	{
+		std::cerr <<
+			"representative V1 registry cannot be admitted as a partial binding set\n";
+		return 2;
+	}
 
 	std::error_code FileError;
 	const std::filesystem::path RepositoryRoot =
@@ -1454,6 +2144,14 @@ int wmain(const int argc, wchar_t** argv)
 	}
 
 	std::string Status;
+	Write_Progress("direct-authored-index.begin");
+	if (!Validate_DirectAuthoredAuditionSourceIndex(RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("direct-authored-index.complete");
+
 	TEMP_RUNTIME_CATALOG_FIXTURE RuntimeCatalogFixture;
 	if (!Stage_RuntimeCatalogTransactionFixture(
 			RuntimeCatalogPath, RuntimeCatalogFixture, Status))
@@ -1476,6 +2174,14 @@ int wmain(const int argc, wchar_t** argv)
 		std::cerr << "could not enter Client/Default\n";
 		return 2;
 	}
+
+	Write_Progress("source-playback-tuning.begin");
+	if (!Validate_SourcePlaybackTuningContract(RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("source-playback-tuning.complete");
 
 	Engine::Set_NonInteractiveErrorMode(true);
 	Client::CEffectDocumentRenderer::Clear_Prepared_Catalog();
@@ -1509,6 +2215,8 @@ int wmain(const int argc, wchar_t** argv)
 		DecalCanaryBinding = Registry->Resolve(
 			ARTIST_UNIFIED_EFFECT_ID, ARTIST_DECAL_CANARY_ELEMENT_ID);
 	const bool_t bExpectedCanaryBinding = ExpectedBindingCount > 0u;
+	const bool_t bExpectedRepresentativeV1 =
+		ExpectedBindingCount >= REPRESENTATIVE_V1_TOTAL_BINDING_COUNT;
 	const bool_t bCanaryBindingExact = bExpectedCanaryBinding ?
 		(nullptr != CanaryBinding &&
 		 CanaryBinding->iCatalogRevision == CatalogRevision &&
@@ -1523,6 +2231,8 @@ int wmain(const int argc, wchar_t** argv)
 		 CanaryBinding->eInlineMirrorPolicy ==
 			 Client::EFFECT_MATERIAL_INLINE_MIRROR_POLICY::
 				 INLINE_MIRROR_REQUIRED &&
+		 Client::Get_EffectAuthoringFidelity(CanaryBinding->Execution) ==
+			 Client::EFFECT_AUTHORING_FIDELITY::EXACT &&
 		 CanaryBinding->Adapter.eAdapterId ==
 			 Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
 			 SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1 &&
@@ -1562,6 +2272,8 @@ int wmain(const int argc, wchar_t** argv)
 				 INLINE_MIRROR_REQUIRED &&
 		 MeshCanaryBinding->Execution.eBackend ==
 			 Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		 Client::Get_EffectAuthoringFidelity(MeshCanaryBinding->Execution) ==
+			 Client::EFFECT_AUTHORING_FIDELITY::EXACT &&
 		 MeshCanaryBinding->Execution.iOpcode == 3u &&
 		 MeshCanaryBinding->Adapter.eCarrier ==
 			 Client::EFFECT_COMPILED_MATERIAL_CARRIER::MESH_PARTICLE_CMODEL &&
@@ -1585,6 +2297,8 @@ int wmain(const int argc, wchar_t** argv)
 				 INLINE_MIRROR_REQUIRED &&
 		 DecalCanaryBinding->Execution.eBackend ==
 			 Client::EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL &&
+		 Client::Get_EffectAuthoringFidelity(DecalCanaryBinding->Execution) ==
+			 Client::EFFECT_AUTHORING_FIDELITY::EXACT &&
 		 DecalCanaryBinding->Execution.iOpcode == 14u &&
 		 DecalCanaryBinding->Adapter.eCarrier ==
 			 Client::EFFECT_COMPILED_MATERIAL_CARRIER::LOCAL_DECAL_PROJECTOR &&
@@ -1596,6 +2310,17 @@ int wmain(const int argc, wchar_t** argv)
 		!bDecalCanaryBindingExact)
 	{
 		std::cerr << "compiled Sprite/Mesh/Decal Binding identity mismatched\n";
+		return 1;
+	}
+	size_t iRepresentativeV1BindingCount = 0u;
+	size_t iCoveredCompiledAdapterCount = 0u;
+	if (bExpectedRepresentativeV1 &&
+		!Validate_RepresentativeV1RegistryReceipts(
+			Registry, CatalogRevision, iRepresentativeV1BindingCount,
+			iCoveredCompiledAdapterCount, Status))
+	{
+		std::cerr << "representative V1 registry receipt failed: " <<
+			Status << '\n';
 		return 1;
 	}
 	bool_t bCatalogBindingRollbackValidated = false;
@@ -1634,6 +2359,10 @@ int wmain(const int argc, wchar_t** argv)
 	}
 
 	std::vector<FRAME_EVIDENCE> Frames;
+	size_t iRepresentativeV1ActualDrawCount = 0u;
+	std::array<bool_t, GOLDEN_AND_REPRESENTATIVE_COMPILED_ADAPTER_COUNT>
+		ActualCompiledAdapterDrawCoverage{};
+	size_t iActualCompiledAdapterDrawCount = 0u;
 
 	Client::EFFECT_RENDER_PREWARM_PROBE PrewarmProbe{};
 	{
@@ -1897,6 +2626,277 @@ int wmain(const int argc, wchar_t** argv)
 			DecalCanaryFrame.bBoundAdapterActualPipelineValidated = true;
 			Frames.emplace_back(std::move(UnboundDecalCanaryFrame));
 			Frames.emplace_back(std::move(DecalCanaryFrame));
+
+			for (const auto& Binding :
+				{ CanaryBinding, MeshCanaryBinding, DecalCanaryBinding })
+			{
+				const size_t iAdapter = static_cast<size_t>(
+					Binding->Adapter.eAdapterId);
+				if (iAdapter >= ActualCompiledAdapterDrawCoverage.size())
+				{
+					std::cerr <<
+						"Artist actual draw selected an invalid adapter enum\n";
+					return 1;
+				}
+				ActualCompiledAdapterDrawCoverage[iAdapter] = true;
+			}
+		}
+
+		if (bExpectedRepresentativeV1)
+		{
+			std::vector<REPRESENTATIVE_V1_PREPARED_TARGET> V1PreparedTargets;
+			V1PreparedTargets.reserve(REPRESENTATIVE_V1_EFFECT_IDS.size());
+			for (const std::string_view strEffectAssetId :
+				REPRESENTATIVE_V1_EFFECT_IDS)
+			{
+				REPRESENTATIVE_V1_PREPARED_TARGET PreparedTarget;
+				PreparedTarget.strEffectAssetId = strEffectAssetId;
+				PreparedTarget.pDocument = Client::CEffectCatalog::Find(
+					PreparedTarget.strEffectAssetId);
+				PreparedTarget.pProjection =
+					Client::CEffectCatalog::Find_VisualProjection(
+						PreparedTarget.strEffectAssetId);
+				Client::EFFECT_RENDER_PREWARM_TARGET Target;
+				Target.strEffectAssetId = PreparedTarget.strEffectAssetId;
+				Target.pDocument = PreparedTarget.pDocument;
+				Target.pVisualProgramProjection = PreparedTarget.pProjection;
+				Target.pMaterialProgramRegistry = Registry;
+				Write_Progress("representative-v1-prewarm.begin");
+				if (nullptr == PreparedTarget.pDocument ||
+					!Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+						Device, Context, CatalogRevision, Target, Status))
+				{
+					std::cerr << "representative V1 prewarm failed for " <<
+						PreparedTarget.strEffectAssetId << ": " << Status << '\n';
+					return 1;
+				}
+				PreparedTarget.pPrepared =
+					Client::CEffectDocumentRenderer::Find_Prepared(
+						CatalogRevision, PreparedTarget.strEffectAssetId,
+						*PreparedTarget.pDocument, PreparedTarget.pProjection,
+						Registry);
+				if (nullptr == PreparedTarget.pPrepared)
+				{
+					std::cerr << "representative V1 prepared identity lookup failed for " <<
+						PreparedTarget.strEffectAssetId << '\n';
+					return 1;
+				}
+				V1PreparedTargets.emplace_back(std::move(PreparedTarget));
+				Write_Progress("representative-v1-prewarm.complete");
+			}
+
+			const Client::EFFECT_RENDER_PREWARM_PROBE V1PrewarmProbe =
+				Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+			if (V1PrewarmProbe.iCatalogRevision != CatalogRevision ||
+				V1PrewarmProbe.iMaterialProgramRegistryGeneration !=
+					Registry->Get_GenerationId() ||
+				V1PrewarmProbe.iMaterialProgramBindingCount !=
+					ExpectedBindingCount ||
+				V1PrewarmProbe.iMaterialProgramResolvedElementCount !=
+					REPRESENTATIVE_V1_TOTAL_BINDING_COUNT)
+			{
+				std::cerr <<
+					"representative V1 prewarm did not close every registry binding\n";
+				return 1;
+			}
+
+			for (const REPRESENTATIVE_V1_DRAW_PROBE_DESC& Probe :
+				REPRESENTATIVE_V1_DRAW_PROBES)
+			{
+				const auto PreparedTarget = std::find_if(
+					V1PreparedTargets.begin(), V1PreparedTargets.end(),
+					[&Probe](const REPRESENTATIVE_V1_PREPARED_TARGET& Candidate)
+					{
+						return Candidate.strEffectAssetId == Probe.strEffectAssetId;
+					});
+				const auto Binding = Registry->Resolve(
+					Probe.strEffectAssetId, Probe.strElementId);
+				Client::EFFECT_COMPILED_MATERIAL_CARRIER eExpectedCompiledCarrier =
+					Client::EFFECT_COMPILED_MATERIAL_CARRIER::END;
+				switch (Probe.eCarrier)
+				{
+				case Client::EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE:
+					eExpectedCompiledCarrier = Client::
+						EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE;
+					break;
+				case Client::EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL:
+					eExpectedCompiledCarrier = Client::
+						EFFECT_COMPILED_MATERIAL_CARRIER::MESH_PARTICLE_CMODEL;
+					break;
+				case Client::EFFECT_GPU_RENDER_CARRIER::DECAL_RECT:
+					eExpectedCompiledCarrier = Client::
+						EFFECT_COMPILED_MATERIAL_CARRIER::LOCAL_DECAL_PROJECTOR;
+					break;
+				case Client::EFFECT_GPU_RENDER_CARRIER::SPRITE_RECT:
+				case Client::EFFECT_GPU_RENDER_CARRIER::RIBBON_DYNAMIC_TRAIL:
+				case Client::EFFECT_GPU_RENDER_CARRIER::END:
+				default:
+					break;
+				}
+				if (PreparedTarget == V1PreparedTargets.end() || nullptr == Binding ||
+					Binding->Execution.eBackend != Client::
+						EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 ||
+					Binding->Adapter.eCarrier != eExpectedCompiledCarrier ||
+					Binding->Adapter.iPassIndex != Probe.iPassIndex)
+				{
+					std::cerr << "representative V1 probe binding identity changed: " <<
+						Probe.strElementId << '\n';
+					return 1;
+				}
+
+				std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+					UnboundPrepared;
+				if (!Client::CEffectDocumentRenderer::
+						Prepare_UnboundMaterialProgramDocumentForTests(
+							Device, Context, PreparedTarget->pDocument,
+							PreparedTarget->pProjection, UnboundPrepared, Status) ||
+					!Client::CEffectDocumentRenderer::
+						Validate_MaterialProgramPreparedComparisonForTests(
+							Device, Context, UnboundPrepared,
+							PreparedTarget->pPrepared, Probe.strElementId, Status))
+				{
+					std::cerr << "representative V1 Binding0/Binding1 packet closure failed: " <<
+						Status << '\n';
+					return 1;
+				}
+
+				Client::CEffectObject::EFFECT_OBJECT_DESC BoundDesc{};
+				BoundDesc.pDocument = PreparedTarget->pDocument.get();
+				BoundDesc.pPreparedResources = PreparedTarget->pPrepared;
+				BoundDesc.pVisualProgramProjection = PreparedTarget->pProjection;
+				BoundDesc.RootWorld = Identity;
+				BoundDesc.bAutoPlay = false;
+				BoundDesc.bRequirePreparedResources = true;
+				if (nullptr != PreparedTarget->pProjection)
+					BoundDesc.pDocument = nullptr;
+				Client::CEffectObject::EFFECT_OBJECT_DESC UnboundDesc = BoundDesc;
+				UnboundDesc.pPreparedResources = UnboundPrepared;
+				const auto UnboundObject = Add_EffectObject(
+					PrototypeTag, LayerTag, UnboundDesc);
+				const auto BoundObject = Add_EffectObject(
+					PrototypeTag, LayerTag, BoundDesc);
+				if (nullptr == UnboundObject || nullptr == BoundObject ||
+					!UnboundObject->Set_TestPreviewElementIsolation(
+						{ std::string(Probe.strElementId) }, Status) ||
+					!BoundObject->Set_TestPreviewElementIsolation(
+						{ std::string(Probe.strElementId) }, Status))
+				{
+					std::cerr << "representative V1 draw object stage failed: " <<
+						Status << '\n';
+					return 1;
+				}
+
+				FRAME_EVIDENCE UnboundFrame;
+				UnboundFrame.strScenarioId = std::string(Probe.strScenarioStem) +
+					"-binding0-inline";
+				UnboundFrame.strContract = "GAMEINSTANCE_WARP_MRT_SCENE_HDR";
+				FRAME_EVIDENCE BoundFrame;
+				BoundFrame.strScenarioId = std::string(Probe.strScenarioStem) +
+					"-binding1-registry";
+				BoundFrame.strContract = "GAMEINSTANCE_WARP_MRT_SCENE_HDR";
+				Write_Progress("representative-v1-binding0-render.begin");
+				if (!EngineScope.Render_Frame(UnboundObject,
+						Probe.fSampleTimeSeconds, UnboundFrame, Status))
+				{
+					std::cerr << "representative V1 Binding0 draw failed: " <<
+						Status << '\n';
+					return 1;
+				}
+				Write_Progress("representative-v1-binding0-render.complete");
+				Write_Progress("representative-v1-binding1-render.begin");
+				if (!EngineScope.Render_Frame(BoundObject,
+						Probe.fSampleTimeSeconds, BoundFrame, Status))
+				{
+					std::cerr << "representative V1 Binding1 draw failed: " <<
+						Status << '\n';
+					return 1;
+				}
+				Write_Progress("representative-v1-binding1-render.complete");
+				UnboundFrame.Occurrence = Find_OccurrenceEvidence(
+					UnboundObject->Get_LastRenderSubmissionStats(), Probe.strElementId);
+				BoundFrame.Occurrence = Find_OccurrenceEvidence(
+					BoundObject->Get_LastRenderSubmissionStats(), Probe.strElementId);
+				const bool_t bUnboundReceipt =
+					UnboundFrame.Occurrence.has_value() &&
+					Is_UnboundAdapterCanaryOccurrence(
+						*UnboundFrame.Occurrence, Probe.strElementId,
+						Probe.eCarrier, Probe.iPassIndex);
+				const bool_t bBoundReceipt =
+					BoundFrame.Occurrence.has_value() &&
+					Is_BoundAdapterCanaryOccurrence(
+						*BoundFrame.Occurrence, Probe.strElementId,
+						Probe.eCarrier, Probe.iPassIndex);
+				const bool_t bDrawEquivalent =
+					UnboundFrame.Occurrence.has_value() &&
+					BoundFrame.Occurrence.has_value() &&
+					Is_Binding0Binding1DrawEquivalent(
+						*UnboundFrame.Occurrence, *BoundFrame.Occurrence);
+				if (!UnboundFrame.Occurrence.has_value() ||
+					!BoundFrame.Occurrence.has_value() ||
+					!bUnboundReceipt || !bBoundReceipt || !bDrawEquivalent)
+				{
+					std::cerr <<
+						"representative V1 actual carrier/pass/state/MRT receipt mismatched: " <<
+						Probe.strElementId << " [unbound=" << bUnboundReceipt <<
+						", bound=" << bBoundReceipt << ", equivalent=" <<
+						bDrawEquivalent << "]\n";
+					if (UnboundFrame.Occurrence.has_value() &&
+						BoundFrame.Occurrence.has_value())
+					{
+						const OCCURRENCE_EVIDENCE& U = *UnboundFrame.Occurrence;
+						const OCCURRENCE_EVIDENCE& B = *BoundFrame.Occurrence;
+						std::cerr << "unbound/bound counts: active=" << U.iActive <<
+							'/' << B.iActive << " candidate=" << U.iCandidate <<
+							'/' << B.iCandidate << " attempted=" << U.iAttempted <<
+							'/' << B.iAttempted << " submitted=" << U.iSubmitted <<
+							'/' << B.iSubmitted << " failed=" << U.iFailed << '/'
+							<< B.iFailed << " material=" << U.iMaterialBindCount << '/'
+							<< B.iMaterialBindCount << " srv=" <<
+							U.iTextureSrvBindCount << '/' << B.iTextureSrvBindCount <<
+							" sampler=" << U.iSamplerBindCount << '/' <<
+							B.iSamplerBindCount << " pass=" <<
+							U.iShaderPassApplyCount << '/' <<
+							B.iShaderPassApplyCount << " vi=" <<
+							U.iVIBufferDrawCount << '/' << B.iVIBufferDrawCount <<
+							" issued=" << U.iIssuedDrawCallCount << '/' <<
+							B.iIssuedDrawCallCount << " adapter=" <<
+							U.iCompiledAdapterPipelineValidationCount << '/' <<
+							B.iCompiledAdapterPipelineValidationCount << " carrier=" <<
+							static_cast<uint32_t>(U.eCarrier) << '/' <<
+							static_cast<uint32_t>(B.eCarrier) << " selectedPass=" <<
+							U.iSelectedPassIndex << '/' << B.iSelectedPassIndex <<
+							" world=" << U.iFirstSubmittedWorldHash << '/' <<
+							B.iFirstSubmittedWorldHash << '\n';
+					}
+					return 1;
+				}
+				BoundFrame.bBoundAdapterActualPipelineValidated = true;
+				const size_t iActualAdapter = static_cast<size_t>(
+					Binding->Adapter.eAdapterId);
+				if (iActualAdapter >= ActualCompiledAdapterDrawCoverage.size())
+				{
+					std::cerr <<
+						"representative V1 actual draw selected an invalid adapter enum\n";
+					return 1;
+				}
+				ActualCompiledAdapterDrawCoverage[iActualAdapter] = true;
+				Frames.emplace_back(std::move(UnboundFrame));
+				Frames.emplace_back(std::move(BoundFrame));
+				++iRepresentativeV1ActualDrawCount;
+			}
+
+			iActualCompiledAdapterDrawCount = static_cast<size_t>(std::count(
+				ActualCompiledAdapterDrawCoverage.begin(),
+				ActualCompiledAdapterDrawCoverage.end(), true));
+			if (iRepresentativeV1ActualDrawCount !=
+					REPRESENTATIVE_V1_DRAW_PROBES.size() ||
+				iActualCompiledAdapterDrawCount !=
+					ActualCompiledAdapterDrawCoverage.size())
+			{
+				std::cerr <<
+					"actual Binding0/Binding1 draw or compiled-adapter coverage changed\n";
+				return 1;
+			}
 		}
 
 		const std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_CORPUS>
@@ -2050,12 +3050,16 @@ int wmain(const int argc, wchar_t** argv)
 				Registry->Get_GenerationId() ||
 			PrewarmProbe.iMaterialProgramBindingCount != ExpectedBindingCount ||
 			PrewarmProbe.iMaterialProgramResolvedElementCount !=
-				(bExpectedCanaryBinding ? 3u : 0u))
+				(bExpectedRepresentativeV1 ? REPRESENTATIVE_V1_TOTAL_BINDING_COUNT :
+				 (bExpectedCanaryBinding ? 3u : 0u)))
 		{
 			std::cerr << "prepared registry generation/count propagation mismatched\n";
 			return 1;
 		}
 	}
+	iActualCompiledAdapterDrawCount = static_cast<size_t>(std::count(
+		ActualCompiledAdapterDrawCoverage.begin(),
+		ActualCompiledAdapterDrawCoverage.end(), true));
 
 	Client::CEffectDocumentRenderer::Clear_Prepared_Catalog();
 	Client::CEffectCatalog::Clear();
@@ -2070,6 +3074,14 @@ int wmain(const int argc, wchar_t** argv)
 		",\"actualBindingCount\":" << Registry->Get_BindingCount() <<
 		",\"catalogRevision\":" << CatalogRevision <<
 		",\"registryGeneration\":" << Registry->Get_GenerationId() <<
+		",\"representativeV1RegistryBindingCount\":" <<
+			iRepresentativeV1BindingCount <<
+		",\"coveredCompiledAdapterCount\":" <<
+			iCoveredCompiledAdapterCount <<
+		",\"actualCompiledAdapterDrawCount\":" <<
+			iActualCompiledAdapterDrawCount <<
+		",\"representativeV1ActualDrawCount\":" <<
+			iRepresentativeV1ActualDrawCount <<
 		",\"catalogBindingCarrierProfileRollbackValidated\":" <<
 			(bCatalogBindingRollbackValidated ? "true" : "false") <<
 		",\"prewarm\":{\"catalogRevision\":" <<

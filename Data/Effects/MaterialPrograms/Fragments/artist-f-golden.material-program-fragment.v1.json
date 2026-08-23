@@ -4,24 +4,27 @@
   "domainId": "effect-domain.artist-f-golden",
   "programs": [
     {
-      "programId": "effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1",
+      "programId": "effect.program.runtime-material-v2.opcode-6.v1",
       "backend": "runtimeMaterialV2",
-      "opcode": 6
+      "opcode": 6,
+      "fidelity": "SOURCE_EXACT"
     },
     {
-      "programId": "effect.program.runtime-material-v2.opcode-3.artist-f-mesh.v1",
+      "programId": "effect.program.runtime-material-v2.opcode-3.v1",
       "backend": "runtimeMaterialV2",
-      "opcode": 3
+      "opcode": 3,
+      "fidelity": "SOURCE_EXACT"
     },
     {
-      "programId": "effect.program.local-decal.opcode-14.artist-f-projector.v1",
+      "programId": "effect.program.local-decal.opcode-14.v1",
       "backend": "localDecal",
-      "opcode": 14
+      "opcode": 14,
+      "fidelity": "SOURCE_EXACT"
     }
   ],
   "layouts": [
     {
-      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "layoutId": "effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1",
       "executionVersion": 1,
       "textureLaneCount": 2,
       "textureMask": 3,
@@ -95,7 +98,7 @@
       "colorRows": []
     },
     {
-      "layoutId": "effect.layout.runtime-material-v2.artist-f-mesh-opcode-3.v1",
+      "layoutId": "effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1",
       "executionVersion": 1,
       "textureLaneCount": 2,
       "textureMask": 3,
@@ -278,7 +281,7 @@
       "colorRows": []
     },
     {
-      "layoutId": "effect.layout.local-decal.artist-f-projector-opcode-14.v1",
+      "layoutId": "effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1",
       "executionVersion": 1,
       "textureLaneCount": 6,
       "textureMask": 63,
@@ -476,7 +479,7 @@
   "descriptors": [
     {
       "descriptorId": "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1",
-      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "layoutId": "effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1",
       "textureLanes": [
         {
           "laneId": "lane.0",
@@ -541,7 +544,7 @@
     },
     {
       "descriptorId": "effect.descriptor.artist-f.mesh-062366ee9f9655d3.v1",
-      "layoutId": "effect.layout.runtime-material-v2.artist-f-mesh-opcode-3.v1",
+      "layoutId": "effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1",
       "textureLanes": [
         {
           "laneId": "lane.0",
@@ -720,7 +723,7 @@
     },
     {
       "descriptorId": "effect.descriptor.artist-f.decal-f3b5c3b63b4a7e34.v1",
-      "layoutId": "effect.layout.local-decal.artist-f-projector-opcode-14.v1",
+      "layoutId": "effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1",
       "textureLanes": [
         {
           "laneId": "lane.0",
@@ -976,8 +979,8 @@
     {
       "effectAssetId": "effect.artist.skill.31470.unified",
       "elementId": "sprite.2b3dc6842507e910",
-      "programId": "effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1",
-      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "programId": "effect.program.runtime-material-v2.opcode-6.v1",
+      "layoutId": "effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1",
       "descriptorId": "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1",
       "adapterId": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
       "inlineMirrorPolicy": "INLINE_MIRROR_REQUIRED"
@@ -985,8 +988,8 @@
     {
       "effectAssetId": "effect.artist.skill.31470.unified",
       "elementId": "mesh.062366ee9f9655d3",
-      "programId": "effect.program.runtime-material-v2.opcode-3.artist-f-mesh.v1",
-      "layoutId": "effect.layout.runtime-material-v2.artist-f-mesh-opcode-3.v1",
+      "programId": "effect.program.runtime-material-v2.opcode-3.v1",
+      "layoutId": "effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1",
       "descriptorId": "effect.descriptor.artist-f.mesh-062366ee9f9655d3.v1",
       "adapterId": "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
       "inlineMirrorPolicy": "INLINE_MIRROR_REQUIRED"
@@ -994,8 +997,8 @@
     {
       "effectAssetId": "effect.artist.skill.31470.unified",
       "elementId": "decal.f3b5c3b63b4a7e34",
-      "programId": "effect.program.local-decal.opcode-14.artist-f-projector.v1",
-      "layoutId": "effect.layout.local-decal.artist-f-projector-opcode-14.v1",
+      "programId": "effect.program.local-decal.opcode-14.v1",
+      "layoutId": "effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1",
       "descriptorId": "effect.descriptor.artist-f.decal-f3b5c3b63b4a7e34.v1",
       "adapterId": "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1",
       "inlineMirrorPolicy": "INLINE_MIRROR_REQUIRED"

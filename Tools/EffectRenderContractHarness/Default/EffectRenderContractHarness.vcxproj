@@ -99,6 +99,7 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp"><Link>Client\Effect_Catalog.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp"><Link>Client\Effect_CascadeCompiler.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp"><Link>Client\Effect_Distribution.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp"><Link>Client\Effect_DirectAuthoredSourceIndex.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp"><Link>Client\Effect_DocumentCodec.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp"><Link>Client\Effect_DocumentRenderer.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp"><Link>Client\Effect_LightPresentation.cpp</Link></ClCompile>
@@ -109,7 +110,6 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_ReconstructedExecution.cpp"><Link>Client\Effect_ReconstructedExecution.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp"><Link>Client\Effect_RuntimeAuthority.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_ScreenOverlayPresentation.cpp"><Link>Client\Effect_ScreenOverlayPresentation.cpp</Link></ClCompile>
-    <ClCompile Include="..\..\..\Client\Private\Effect_ValtanTranslatedCanaryRuntime.cpp"><Link>Client\Effect_ValtanTranslatedCanaryRuntime.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_VisualProgramCorpus.cpp"><Link>Client\Effect_VisualProgramCorpus.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp"><Link>Client\ProjectDataRoot.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\RuntimeAssetRoot.cpp"><Link>Client\RuntimeAssetRoot.cpp</Link></ClCompile>

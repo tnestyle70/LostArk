@@ -45,6 +45,7 @@ struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
 	std::string strActionId;
 	std::string strClipOccurrenceId;
 	std::string strEffectAssetId;
+	std::string strV1EffectAssetId;
 	std::string strAnchorSlotId;
 	EFFECT_TRANSFORM_DESC LocalTransform{};
 	EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
@@ -106,6 +107,10 @@ struct VALTAN_STAGE_VIEW final
 	f32_t fHitHalfWidth = 0.f;
 	uint32_t iHitCount = 0u;
 	uint32_t iHitIntervalMs = 0u;
+	uint32_t iHitDelayMs = 0u;
+	/* Ordered stage-relative contacts. Empty means the authored stage uses
+	   iHitDelayMs + k * iHitIntervalMs. */
+	std::vector<uint32_t> HitOffsetsMs;
 	std::string strServerDamageProfileId;
 
 	/* Product authoring uses stable ordered occurrences.  The legacy name

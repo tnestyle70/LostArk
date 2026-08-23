@@ -218,6 +218,82 @@ function Assert-ValidateRejected([string]$Name, [byte[]]$Committed) {
     }
 }
 
+function Assert-AdmissionValidateRejected(
+    [string]$Name,
+    [byte[]]$Committed,
+    [string]$ExpectedMessage) {
+    $failure = $null
+    try {
+        & $publisher -Mode Publish -DataRoot $dataRoot `
+            -ResourceRoot $resourceRoot -OutputPath $output
+    }
+    catch {
+        $failure = $_
+    }
+    if ($null -eq $failure) {
+        throw "$Name was accepted."
+    }
+    if ($failure.Exception.Message -cnotlike "*$ExpectedMessage*") {
+        throw ("$Name failed for the wrong reason: " +
+            $failure.Exception.Message)
+    }
+    if ([Convert]::ToBase64String($Committed) -ne
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
+        throw "$Name changed the committed runtime catalog."
+    }
+}
+
+function Copy-ReferencedFixtureResources(
+    [object]$Value,
+    [string]$SourceRoot,
+    [string]$DestinationRoot) {
+    if ($null -eq $Value) {
+        return
+    }
+    if ($Value -is [string]) {
+        $assetId = [string]$Value
+        if ($assetId -cnotmatch '^(Fonts|Character|Deploy|Effect|Map|UI)/' -or
+            [IO.Path]::IsPathRooted($assetId) -or
+            $assetId.Contains('\') -or $assetId.Contains(':')) {
+            return
+        }
+        foreach ($segment in $assetId.Split('/')) {
+            if ([string]::IsNullOrWhiteSpace($segment) -or
+                $segment -eq '.' -or $segment -eq '..') {
+                return
+            }
+        }
+        $relativePath = $assetId.Replace('/', '\')
+        $sourcePath = Join-Path $SourceRoot $relativePath
+        if (-not [IO.File]::Exists($sourcePath)) {
+            return
+        }
+        $destinationPath = Join-Path $DestinationRoot $relativePath
+        [IO.Directory]::CreateDirectory(
+            (Split-Path -Parent $destinationPath)) | Out-Null
+        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
+        return
+    }
+    if ($Value -is [Management.Automation.PSCustomObject]) {
+        foreach ($property in $Value.PSObject.Properties) {
+            Copy-ReferencedFixtureResources $property.Value `
+                $SourceRoot $DestinationRoot
+        }
+        return
+    }
+    if ($Value -is [Collections.IDictionary]) {
+        foreach ($item in $Value.Values) {
+            Copy-ReferencedFixtureResources $item $SourceRoot $DestinationRoot
+        }
+        return
+    }
+    if ($Value -is [Collections.IEnumerable]) {
+        foreach ($item in $Value) {
+            Copy-ReferencedFixtureResources $item $SourceRoot $DestinationRoot
+        }
+    }
+}
+
 function Assert-RuntimeResourceHashes(
     [string]$RuntimePath,
     [string]$ResourcesPath) {
@@ -271,7 +347,8 @@ try {
     Write-Utf8 $fixtureMaterialProgramFragment `
         ($fixtureMaterialProgramFragmentText + "`n")
     foreach ($animationAssetId in @(
-            'Artist', 'DimensionMaster', 'LanceMaster', 'Warlord')) {
+            'Artist', 'DimensionMaster', 'GunSlinger', 'LanceMaster',
+            'Slayer', 'Warlord')) {
         $eventPath = Join-Path $dataRoot (
             "Animation\Authored\$animationAssetId\$animationAssetId.animevents")
         $eventRows = if ($animationAssetId -ceq 'Artist') {
@@ -464,6 +541,255 @@ try {
         @($baselineRuntime.materialPrograms.bindings).Count -ne 0) {
         throw 'Legacy-only publish no longer preserves the format-4 Binding-0 catalog shape.'
     }
+
+    # Keep the audition admission negatives attached to a known-good, exact
+    # registry/document pair.  The real representative fragment is copied byte
+    # for byte so a failure cannot be attributed to a hand-written packet that
+    # never satisfied the registry mirror contract.
+    $admissionPairs = @(
+        [ordered]@{
+            source = 'effect.dimensionmaster.skill.2050180.unified'
+            target = 'effect.dimensionmaster.skill.2050180.v1.unified'
+        },
+        [ordered]@{
+            source = 'effect.artist.skill.31460.unified'
+            target = 'effect.artist.skill.31460.v1.unified'
+        },
+        [ordered]@{
+            source = 'effect.lancemaster.skill.34110.unified'
+            target = 'effect.lancemaster.skill.34110.v1.unified'
+        },
+        [ordered]@{
+            source = 'effect.warlord.skill.17110.clip2.unified'
+            target = 'effect.warlord.skill.17110.clip2.v1.unified'
+        },
+        [ordered]@{
+            source = 'effect.warlord.skill.17110.clip3.unified'
+            target = 'effect.warlord.skill.17110.clip3.v1.unified'
+        }
+    )
+    $admissionRepositoryRoot = [IO.Path]::GetFullPath((Join-Path `
+        $PSScriptRoot '..\..'))
+    $admissionSourceAuthoringRoot = Join-Path $admissionRepositoryRoot `
+        'Data\Effects\Authored'
+    $admissionSourceResourceRoot = Join-Path $admissionRepositoryRoot `
+        'Client\Bin\Resources'
+    $admissionSourceFragment = Join-Path $admissionRepositoryRoot `
+        'Data\Effects\MaterialPrograms\Fragments\representative-four-v1-standard-color.material-program-fragment.v1.json'
+    $admissionFixtureFragment = Join-Path $dataRoot `
+        'Effects\MaterialPrograms\Fragments\representative-four-v1-standard-color.material-program-fragment.v1.json'
+    [IO.File]::WriteAllBytes(
+        $admissionFixtureFragment,
+        [IO.File]::ReadAllBytes($admissionSourceFragment))
+    $validAdmissionFragmentBytes =
+        [IO.File]::ReadAllBytes($admissionFixtureFragment)
+
+    $admissionCatalogPath = Join-Path $dataRoot `
+        'Effects\EffectCatalog.json'
+    $admissionCatalog = Get-Content -LiteralPath $admissionCatalogPath `
+        -Raw -Encoding UTF8 | ConvertFrom-Json
+    $admissionSourceCueRows = [Collections.Generic.List[string]]::new()
+    $admissionCopiedAuthoringPaths =
+        [Collections.Generic.List[string]]::new()
+    $admissionCueIndex = 1
+    foreach ($pair in $admissionPairs) {
+        $sourceEffectId = [string]$pair.source
+        $targetEffectId = [string]$pair.target
+        $sourceName = "$sourceEffectId.effect.json"
+        $targetName = "$targetEffectId.effect.json"
+        $sourceCanonicalPath = Join-Path $admissionSourceAuthoringRoot `
+            $sourceName
+        $targetCanonicalPath = Join-Path $admissionSourceAuthoringRoot `
+            $targetName
+        $sourceFixturePath = Join-Path $authored $sourceName
+        $targetFixturePath = Join-Path $authored $targetName
+        [IO.File]::WriteAllBytes(
+            $sourceFixturePath, [IO.File]::ReadAllBytes($sourceCanonicalPath))
+        [IO.File]::WriteAllBytes(
+            $targetFixturePath, [IO.File]::ReadAllBytes($targetCanonicalPath))
+        $admissionCopiedAuthoringPaths.Add($sourceFixturePath)
+        $admissionCopiedAuthoringPaths.Add($targetFixturePath)
+
+        $sourceDocument = Get-Content -LiteralPath $sourceFixturePath `
+            -Raw -Encoding UTF8 | ConvertFrom-Json
+        $targetDocument = Get-Content -LiteralPath $targetFixturePath `
+            -Raw -Encoding UTF8 | ConvertFrom-Json
+        Copy-ReferencedFixtureResources $sourceDocument `
+            $admissionSourceResourceRoot $resourceRoot
+        Copy-ReferencedFixtureResources $targetDocument `
+            $admissionSourceResourceRoot $resourceRoot
+
+        $sourceRawSha256 = (Get-FileHash -LiteralPath $sourceFixturePath `
+            -Algorithm SHA256).Hash.ToLowerInvariant()
+        $admissionCatalog.effects = @($admissionCatalog.effects) + @(
+            [ordered]@{
+                effectAssetId = $sourceEffectId
+                payloadKind = 'DIRECT_AUTHORED_DOCUMENT_V13'
+                authoringPath = "Effects/Authored/$sourceName"
+            },
+            [ordered]@{
+                effectAssetId = $targetEffectId
+                payloadKind = 'DIRECT_AUTHORED_DOCUMENT_V13'
+                authoringPath = "Effects/Authored/$targetName"
+                runtimeAdmission = 'REGISTRY_BOUND_AUDITION_ONLY'
+                fidelityClass = 'PROJECT_TUNED_APPROX'
+                sourceEffectAssetId = $sourceEffectId
+                sourceDocumentRawSha256 = $sourceRawSha256
+            }
+        )
+        $admissionSourceCueRows.Add((
+            '"fixture_clip" EFFECT startms={0} effectref=asset payload="{1}" anchor="root" follow=follow orientation=action_facing' -f
+                $admissionCueIndex, $sourceEffectId))
+        ++$admissionCueIndex
+    }
+    $admissionCatalog.effects = @($admissionCatalog.effects | Sort-Object {
+        [string]$_.effectAssetId
+    })
+    $validAdmissionCatalogText =
+        ($admissionCatalog | ConvertTo-Json -Depth 30) + "`n"
+    $fixtureProductCue =
+        '"fixture_clip" EFFECT startms=0 effectref=asset payload="effect.valtan.pipeline-fixture" anchor="root" follow=follow orientation=action_facing'
+    $sourceOnlyAdmissionCueRows = @($fixtureProductCue) +
+        @($admissionSourceCueRows)
+    $validAdmissionArtistCueText =
+        "LOSTARK_ANIM_EVENTS 6 `"Artist`" $($sourceOnlyAdmissionCueRows.Count)`n" +
+        ($sourceOnlyAdmissionCueRows -join "`n") + "`n"
+    $admissionArtistCuePath = Join-Path $dataRoot `
+        'Animation\Authored\Artist\Artist.animevents'
+
+    Write-Utf8 $admissionCatalogPath $validAdmissionCatalogText
+    Write-Utf8 $admissionArtistCuePath $validAdmissionArtistCueText
+    & $publisher -Mode Validate -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) {
+        throw 'Valid registry-bound audition admission fixture was rejected.'
+    }
+
+    $admissionTargetId = [string]$admissionPairs[0].target
+    $invalidAdmissionCatalog = $validAdmissionCatalogText | ConvertFrom-Json
+    $invalidAdmissionEntry = $invalidAdmissionCatalog.effects | Where-Object {
+        [string]$_.effectAssetId -ceq $admissionTargetId
+    }
+    $invalidAdmissionEntry.PSObject.Properties.Remove(
+        'sourceDocumentRawSha256')
+    Write-Utf8 $admissionCatalogPath `
+        (($invalidAdmissionCatalog | ConvertTo-Json -Depth 30) + "`n")
+    Assert-AdmissionValidateRejected `
+        'Partial registry-bound audition metadata' $baseline `
+        'Direct authored audition metadata must be complete'
+
+    $invalidAdmissionCatalog = $validAdmissionCatalogText | ConvertFrom-Json
+    $invalidAdmissionEntry = $invalidAdmissionCatalog.effects | Where-Object {
+        [string]$_.effectAssetId -ceq $admissionTargetId
+    }
+    foreach ($propertyName in @(
+            'runtimeAdmission',
+            'fidelityClass',
+            'sourceEffectAssetId',
+            'sourceDocumentRawSha256')) {
+        $invalidAdmissionEntry.PSObject.Properties.Remove($propertyName)
+    }
+    Write-Utf8 $admissionCatalogPath `
+        (($invalidAdmissionCatalog | ConvertTo-Json -Depth 30) + "`n")
+    Assert-AdmissionValidateRejected `
+        'Material-program bound non-Product without audition marker' $baseline `
+        'Material-program bound non-Product Effects require REGISTRY_BOUND_AUDITION_ONLY admission'
+
+    Write-Utf8 $admissionCatalogPath $validAdmissionCatalogText
+    $productAdmissionCueRows = @($sourceOnlyAdmissionCueRows) + @(
+        ('"fixture_clip" EFFECT startms=10 effectref=asset payload="{0}" anchor="root" follow=follow orientation=action_facing' -f
+            $admissionTargetId))
+    $productAdmissionArtistCueText =
+        "LOSTARK_ANIM_EVENTS 6 `"Artist`" $($productAdmissionCueRows.Count)`n" +
+        ($productAdmissionCueRows -join "`n") + "`n"
+    Write-Utf8 $admissionArtistCuePath $productAdmissionArtistCueText
+    Assert-AdmissionValidateRejected `
+        'Registry-bound audition promoted to Product cue' $baseline `
+        'StandardColorV1 is PROJECT_TUNED audition-only and cannot be an active Product Effect'
+    Write-Utf8 $admissionArtistCuePath $validAdmissionArtistCueText
+
+    foreach ($animationAssetId in @('GunSlinger', 'Slayer')) {
+        $ownerCuePath = Join-Path $dataRoot (
+            "Animation\Authored\$animationAssetId\$animationAssetId.animevents")
+        $validOwnerCueText = [IO.File]::ReadAllText(
+            $ownerCuePath, $utf8NoBomStrict)
+        Write-Utf8 $ownerCuePath (
+            "LOSTARK_ANIM_EVENTS 5 `"$animationAssetId`" 1`n" +
+            ('"fixture_clip" EFFECT startms=10 effectref=asset payload="{0}" anchor="root" follow=follow' -f
+                $admissionTargetId) + "`n")
+        Assert-AdmissionValidateRejected `
+            "$animationAssetId Product owner inventory" $baseline `
+            'StandardColorV1 is PROJECT_TUNED audition-only and cannot be an active Product Effect'
+        Write-Utf8 $ownerCuePath $validOwnerCueText
+    }
+
+    # The Product boundary belongs to the StandardColor document itself, not
+    # merely to its current registry/catalog audition metadata.  Removing both
+    # must not turn the same PROJECT_TUNED packet into an inline Product path.
+    $invalidAdmissionCatalog = $validAdmissionCatalogText | ConvertFrom-Json
+    $invalidAdmissionEntry = $invalidAdmissionCatalog.effects | Where-Object {
+        [string]$_.effectAssetId -ceq $admissionTargetId
+    }
+    foreach ($propertyName in @(
+            'runtimeAdmission',
+            'fidelityClass',
+            'sourceEffectAssetId',
+            'sourceDocumentRawSha256')) {
+        $invalidAdmissionEntry.PSObject.Properties.Remove($propertyName)
+    }
+    Write-Utf8 $admissionCatalogPath `
+        (($invalidAdmissionCatalog | ConvertTo-Json -Depth 30) + "`n")
+    $invalidAdmissionFragment =
+        ([Text.Encoding]::UTF8.GetString($validAdmissionFragmentBytes) |
+            ConvertFrom-Json)
+    $invalidAdmissionFragment.bindings = @(
+        $invalidAdmissionFragment.bindings | Where-Object {
+            [string]$_.effectAssetId -cne $admissionTargetId
+        })
+    $invalidAdmissionFragmentText =
+        (($invalidAdmissionFragment | ConvertTo-Json -Depth 50) + "`n").
+            Replace("`r`n", "`n").Replace("`r", "`n")
+    Write-Utf8 $admissionFixtureFragment $invalidAdmissionFragmentText
+    Write-Utf8 $admissionArtistCuePath $productAdmissionArtistCueText
+    Assert-AdmissionValidateRejected `
+        'StandardColorV1 Product promotion after binding and marker removal' `
+        $baseline `
+        'StandardColorV1 is PROJECT_TUNED audition-only and cannot be an active Product Effect'
+    [IO.File]::WriteAllBytes(
+        $admissionFixtureFragment, $validAdmissionFragmentBytes)
+    Write-Utf8 $admissionCatalogPath $validAdmissionCatalogText
+    Write-Utf8 $admissionArtistCuePath $validAdmissionArtistCueText
+
+    $invalidAdmissionCatalog = $validAdmissionCatalogText | ConvertFrom-Json
+    $invalidAdmissionEntry = $invalidAdmissionCatalog.effects | Where-Object {
+        [string]$_.effectAssetId -ceq $admissionTargetId
+    }
+    $invalidAdmissionEntry.sourceDocumentRawSha256 = '0' * 64
+    Write-Utf8 $admissionCatalogPath `
+        (($invalidAdmissionCatalog | ConvertTo-Json -Depth 30) + "`n")
+    Assert-AdmissionValidateRejected `
+        'Registry-bound audition source raw SHA mismatch' $baseline `
+        'Registry-bound audition source document seal changed'
+
+    $invalidAdmissionCatalog = $validAdmissionCatalogText | ConvertFrom-Json
+    $invalidAdmissionEntry = $invalidAdmissionCatalog.effects | Where-Object {
+        [string]$_.effectAssetId -ceq $admissionTargetId
+    }
+    $invalidAdmissionEntry.fidelityClass = 'SOURCE_EXACT'
+    Write-Utf8 $admissionCatalogPath `
+        (($invalidAdmissionCatalog | ConvertTo-Json -Depth 30) + "`n")
+    Assert-AdmissionValidateRejected `
+        'Registry-bound audition false SOURCE_EXACT claim' $baseline `
+        'Direct authored registry-bound audition identity is invalid'
+
+    Remove-Item -LiteralPath $admissionFixtureFragment -Force
+    foreach ($copiedAuthoringPath in $admissionCopiedAuthoringPaths) {
+        Remove-Item -LiteralPath $copiedAuthoringPath -Force
+    }
+    Write-Fixture $document $catalog
+    Write-Utf8 $admissionArtistCuePath (
+        "LOSTARK_ANIM_EVENTS 6 `"Artist`" 1`n" +
+        $fixtureProductCue + "`n")
 
     $artistCueFixturePath = Join-Path $dataRoot `
         'Animation\Authored\Artist\Artist.animevents'
@@ -719,9 +1045,53 @@ try {
     $document.elements[0].detail.particle.sourceScale.spawnDelay = 16.01
     Write-Fixture $document $catalog
     Assert-PublishRejected 'Source Trim delay overflow' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.spawnDelay = 0.0
+	$document.elements[0].detail.particle.sourceScale.spawnDelay = 0.0
 
-    Write-Fixture $document $catalog
+	$originalKind = [string]$document.elements[0].kind
+	$originalMaximum = [int64]$document.elements[0].detail.particle.maxParticles
+	$document.elements[0].kind = 'particle'
+	$document.elements[0].detail.particle.maxParticles = 513
+	$document.elements[0]['sourceRecipe'] = [ordered]@{
+			enabled = $true
+			rendererShape = 'sprite'
+			emitterDelaySeconds = 0.0
+			emitterDurationSeconds = 1.0
+			emitterLoopCount = 1
+			bursts = @()
+			modules = @()
+		}
+	Write-Fixture $document $catalog
+	Assert-AdmissionValidateRejected `
+		'Source Playback scaled particle budget' $sourceScaleBaseline `
+		'Effect Document exceeds particle/trail/after-image budget'
+
+	$document.elements[0].detail.particle.maxParticles = 257
+	$document.elements[0].sourceRecipe.modules = @([ordered]@{
+		stableId = 'fixture.event-generator'
+		className = 'particlemoduleeventgenerator'
+		objectPath = 'Fixture.EventGenerator'
+		literals = @(
+			[ordered]@{
+				propertyPath = 'events[0].type'
+				kind = 'string'
+				value = 'epet_spawn'
+			},
+			[ordered]@{
+				propertyPath = 'events[0].customname'
+				kind = 'string'
+				value = 'fixture_spawn'
+			})
+		distributions = @()
+	})
+	Write-Fixture $document $catalog
+	Assert-AdmissionValidateRejected `
+		'Source Playback scaled event queue' $sourceScaleBaseline `
+		'Portable authored particle event queue has an unbounded per-step upper limit'
+	$document.elements[0].Remove('sourceRecipe')
+	$document.elements[0].kind = $originalKind
+	$document.elements[0].detail.particle.maxParticles = $originalMaximum
+
+	Write-Fixture $document $catalog
     foreach ($path in @($authoringPath, $componentPath)) {
         $text = [IO.File]::ReadAllText($path, $utf8NoBomStrict)
         $nonFinite = [regex]::Replace(
@@ -1096,6 +1466,8 @@ try {
     $groupedElement.material | Add-Member -NotePropertyName execution `
         -NotePropertyValue ([ordered]@{
             enabled = $true
+            backend = 'runtimeMaterialV2'
+            opcode = 8
             textureLanes = @()
             scalars = @([ordered]@{
                 name = 'opacity_strength'
@@ -1611,7 +1983,11 @@ $pythonContractTests = @(
     'Tools.EffectPipeline.test_materialize_valtan_watertrail_v1_reuse_canaries',
     'Tools.EffectPipeline.test_build_valtan_portal_rush_imported_canary',
     'Tools.EffectPipeline.test_build_valtan_source_timing_delta_proposals',
-    'Tools.EffectPipeline.test_migrate_valtan_pattern_occurrences_v2'
+    'Tools.EffectPipeline.test_migrate_valtan_pattern_occurrences_v2',
+    'Tools.EffectPipeline.test_materialize_valtan_four_slash_pattern_split_reseal',
+    'Tools.EffectPipeline.test_valtan_clip01_screen_post_contract',
+    'Tools.EffectPipeline.test_build_effect_material_program_registry',
+    'Tools.EffectPipeline.test_materialize_representative_four_v1_standard_color'
 )
 Push-Location $repositoryRoot
 try {

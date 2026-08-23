@@ -1,0 +1,31 @@
+{
+  "schema": "lostark.valtan-pattern-effect-v1-aliases",
+  "formatVersion": 1,
+  "ownerArchetypeId": "BOSS_VALTAN",
+  "aliases": [
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01",
+      "v1EffectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.v1.unified"
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01",
+      "v1EffectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.v1.unified"
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01",
+      "v1EffectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.v1.unified"
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+      "v1EffectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified"
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01",
+      "v1EffectAssetId": "effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified"
+    },
+    {
+      "effectAssetId": "effect.valtan.pattern.420633.active",
+      "v1EffectAssetId": "effect.valtan.pattern.420633.active.v1.unified"
+    }
+  ]
+}

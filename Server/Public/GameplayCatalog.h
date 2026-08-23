@@ -414,6 +414,10 @@ namespace LostArk::Server
 		/* Stage-relative time of the first hit, matching the authored clip's
 		contact frame; further hits step by iHitIntervalMs from here. */
 		std::uint32_t iHitDelayMs = 0;
+		/* Optional ordered stage-relative contacts for source clips whose hits
+		cannot be represented by one delay plus a uniform interval. Empty keeps
+		the legacy schedule above. */
+		std::vector<std::uint32_t> HitOffsetsMs;
 		/* Official player push of this stage's hit: metres over iPushMs, a
 		negative range pulls the player toward the boss. */
 		float fPushRangeM = 0.f;

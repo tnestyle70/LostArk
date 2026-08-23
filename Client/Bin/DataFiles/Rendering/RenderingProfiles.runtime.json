@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  8,
+    "revision":  9,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -74,7 +74,7 @@
                      {
                          "profileId":  "scene.character-select.warm-high-key.v1",
                          "exposureMultiplier":  0.870000005,
-                         "bloomIntensityMultiplier":  0,
+                         "bloomIntensityMultiplier":  0.85,
                          "light":  {
                                        "type":  "directional",
                                        "direction":  [

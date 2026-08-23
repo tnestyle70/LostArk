@@ -49,6 +49,17 @@ namespace
 	constexpr size_t MAX_AUTHORED_MATERIAL_SCALARS = 52u;
 	constexpr size_t MAX_AUTHORED_MATERIAL_VECTORS = 8u;
 	constexpr size_t MAX_AUTHORED_MATERIAL_COLORS = 2u;
+
+	uint64_t SourceScaledParticleCeiling(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		const uint64_t iMaximum = Element.Detail.Particle.iMaxParticles;
+		if (!Element.SourceRecipe.bEnabled)
+			return iMaximum;
+		const double fScaled = std::round(static_cast<double>(iMaximum) *
+			static_cast<double>(Element.Detail.Particle.SourceScale.fCount));
+		return static_cast<uint64_t>((std::max)(0.0, fScaled));
+	}
 	constexpr const char_t* EFFECT_SOURCE_PRESENTATION_SCHEMA =
 		"lostark.effect-source-presentation";
 	constexpr std::string_view WARLORD_17090_EFFECT_ASSET_ID =
@@ -1282,7 +1293,7 @@ namespace
 			return true;
 		}
 		if (!Validate_ExactFields(Value,
-			{ "enabled", "version", "backend", "opcode", "passIndex",
+			{ "enabled", "fidelity", "version", "backend", "opcode", "passIndex",
 				"renderState", "textureLaneCount", "textureMask",
 				"textureLanes", "dynamicConsumedMask",
 				"dynamicSuppressedMask", "particleColorPolicy",
@@ -1302,6 +1313,9 @@ namespace
 		}
 		const Client::DATA_JSON_VALUE* pBackend = Find_Field(
 			Value, "backend", Client::DATA_JSON_TYPE::STRING, strOutError);
+		Out.eFidelity =
+			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::SOURCE_EXACT;
+		const Client::DATA_JSON_VALUE* pFidelity = Value.Find("fidelity");
 		const Client::DATA_JSON_VALUE* pRenderState = Find_Field(
 			Value, "renderState", Client::DATA_JSON_TYPE::OBJECT, strOutError);
 		const Client::DATA_JSON_VALUE* pTextureLanes = Find_Field(
@@ -1317,6 +1331,18 @@ namespace
 			Value, "colors", Client::DATA_JSON_TYPE::ARRAY, strOutError);
 		const Client::DATA_JSON_VALUE* pStandardColor =
 			Value.Find("standardColor");
+		if (nullptr != pFidelity &&
+			(!pFidelity->Is_String() ||
+			 pFidelity->Get_String() != "PROJECT_TUNED_APPROX"))
+		{
+			strOutError = "Effect material execution fidelity is unsupported.";
+			return false;
+		}
+		if (nullptr != pFidelity)
+		{
+			Out.eFidelity = Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::
+				PROJECT_TUNED_APPROX;
+		}
 		if (nullptr == pBackend || nullptr == pRenderState ||
 			nullptr == pTextureLanes || nullptr == pScalars ||
 			nullptr == pVectors || nullptr == pArtistParameters ||
@@ -1377,6 +1403,17 @@ namespace
 			!Read_UInt(Value, "renderSuppressedMask", Out.iRenderSuppressedMask,
 				strOutError))
 		{
+			return false;
+		}
+		const bool_t bProjectTunedApprox = Out.eFidelity ==
+			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX;
+		const bool_t bProjectTunedOpcode = Out.eBackend ==
+			Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			(Out.iOpcode == 1001u || Out.iOpcode == 1002u);
+		if (bProjectTunedApprox != bProjectTunedOpcode)
+		{
+			strOutError =
+				"Effect material execution fidelity/opcode contract changed.";
 			return false;
 		}
 		if (nullptr != pStandardColor &&
@@ -1507,6 +1544,11 @@ namespace
 				Output << ", \"authoringApproximate\": true";
 			Output << " }";
 			return;
+		}
+		if (Execution.eFidelity ==
+			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX)
+		{
+			Output << ", \"fidelity\": \"PROJECT_TUNED_APPROX\"";
 		}
 		Output << ", \"version\": " << Execution.iVersion
 			<< ", \"backend\": \""
@@ -1859,7 +1901,9 @@ namespace
 					"Authoring-approximate authored Material must stay fail-closed.";
 				return false;
 			}
-			if (1u != Execution.iVersion ||
+			if (Execution.eFidelity !=
+					Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::SOURCE_EXACT ||
+				1u != Execution.iVersion ||
 				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC !=
 					Execution.eBackend ||
 				0u != Execution.iOpcode || 0u != Execution.iPassIndex ||
@@ -1907,6 +1951,17 @@ namespace
 		{
 			strOutError =
 				"Enabled authored Material execution cannot be authoring-approximate.";
+			return false;
+		}
+		const bool_t bProjectTunedApprox = Execution.eFidelity ==
+			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX;
+		const bool_t bProjectTunedOpcode = Execution.eBackend ==
+			Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			(Execution.iOpcode == 1001u || Execution.iOpcode == 1002u);
+		if (bProjectTunedApprox != bProjectTunedOpcode)
+		{
+			strOutError =
+				"Enabled material execution fidelity/opcode contract changed.";
 			return false;
 		}
 
@@ -5953,6 +6008,21 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
 		const bool_t bStandardColorTemplate =
 			Element.Material.strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID;
+		const bool_t bStandardColorMeshCarrier =
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "mesh" &&
+			Element.ResourceBindings.size() == 1u &&
+			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
+			!Element.ResourceBindings[0u].strAssetId.empty();
+		const bool_t bStandardColorResourceContract =
+			bStandardColorMeshCarrier ||
+			(Element.ResourceBindings.empty() &&
+			 ((Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			   Element.SourceRecipe.bEnabled &&
+			   Element.SourceRecipe.strRendererShape == "sprite") ||
+			  Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
+			  Element.eKind == EFFECT_ELEMENT_KIND::TRAIL));
 		if (bStandardColorBackend != bStandardColorTemplate ||
 			(bStandardColorBackend &&
 			 (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
@@ -5961,15 +6031,16 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			(bStandardColorBackend &&
 			 (Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
 			  Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END)) ||
-			(bStandardColorBackend && !Element.ResourceBindings.empty()) ||
+			(bStandardColorBackend && !bStandardColorResourceContract) ||
 			(bStandardColorBackend && Element.Material.SourceMaterial.bEnabled) ||
 			(bStandardColorBackend &&
 			 Element.Material.eRenderProfile ==
 				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE) ||
 			(bStandardColorBackend &&
 			 Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-			 Element.SourceRecipe.bEnabled &&
-			 Element.SourceRecipe.strRendererShape != "sprite") ||
+			 (!Element.SourceRecipe.bEnabled ||
+			  (Element.SourceRecipe.strRendererShape != "sprite" &&
+			   Element.SourceRecipe.strRendererShape != "mesh"))) ||
 			(bStandardColorBackend &&
 			 (0.f != Element.Detail.Color.fDistortionIntensity ||
 			  Element.Detail.Color.bDistortionOnBaseMaterial ||
@@ -6545,7 +6616,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			 Element.SourceRecipe.strRendererShape == "decal");
 		if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
 			bSourceRecipeParticleCarrier)
-			iTotalParticles += D.Particle.iMaxParticles;
+		{
+			iTotalParticles += SourceScaledParticleCeiling(Element);
+		}
 		if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
 			iTotalTrailPoints += D.Trail.iMaxPoints;
 		if (D.Timing.fAfterImageSeconds > 0.f &&
@@ -9783,8 +9856,7 @@ namespace
 						Element.strElementId);
 				}
 			}
-			iMaximumQueuedEvents +=
-				static_cast<uint64_t>(Element.Detail.Particle.iMaxParticles) *
+			iMaximumQueuedEvents += SourceScaledParticleCeiling(Element) *
 				static_cast<uint64_t>(iGeneratorCount);
 		}
 

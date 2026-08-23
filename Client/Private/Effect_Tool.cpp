@@ -944,7 +944,9 @@ namespace
 		return std::any_of(Document.Elements.begin(), Document.Elements.end(),
 			[](const Client::EFFECT_ELEMENT_DESC& Element)
 			{
-				return Element.Material.Execution.bAuthoringApproximate;
+				return Client::Get_EffectAuthoringFidelity(
+					Element.Material.Execution) ==
+					Client::EFFECT_AUTHORING_FIDELITY::APPROXIMATE;
 			});
 	}
 
@@ -964,8 +966,13 @@ namespace
 			Label << " [SOURCE]";
 		else if (Element.strSourceNode.starts_with("project-authored:"))
 			Label << " [PROJECT]";
-		if (Element.Material.Execution.bAuthoringApproximate)
+		const Client::EFFECT_AUTHORING_FIDELITY eFidelity =
+			Client::Get_EffectAuthoringFidelity(Element.Material.Execution);
+		if (eFidelity == Client::EFFECT_AUTHORING_FIDELITY::APPROXIMATE)
 			Label << " [APPROXIMATE]";
+		else if (eFidelity ==
+			Client::EFFECT_AUTHORING_FIDELITY::PROJECT_TUNED_APPROX)
+			Label << " [PROJECT_TUNED_APPROX]";
 		return Label.str();
 	}
 
@@ -1188,780 +1195,6 @@ namespace
         OutText = Buffer.str();
         return true;
     }
-
-	constexpr const char_t* EXACT_COOKED_CANARY_CONTRACT_PATH =
-		"Effects/Contracts/ue3-exact-cooked-shader-variants.v1.json";
-	constexpr std::string_view EXACT_COOKED_CANARY_CUSTOM_PARTICLE_MIC =
-		"fx_m_mi_j_00.fx_mi.fx_j_pa_customparticle_01_06_ad";
-	constexpr std::string_view EXACT_COOKED_CANARY_HELIX_MIC =
-		"fx_m_mi_k_00.fx_mi.fx_k_me_spritewave_01_45_ad";
-	constexpr size_t EXACT_COOKED_CANARY_MAX_CONTRACT_BYTES = 2u * 1024u * 1024u;
-	constexpr size_t EXACT_COOKED_CANARY_MAX_SHADER_BYTES = 2u * 1024u * 1024u;
-
-	struct EXACT_COOKED_CANARY_OWNED_VARIANT final
-	{
-		Client::EFFECT_EXACT_PREVIEW_VARIANT_DESC Desc;
-		std::vector<uint8_t> PixelShaderBytes;
-	};
-
-	const Client::DATA_JSON_VALUE* Require_ExactCanaryField(
-		const Client::DATA_JSON_VALUE& Object,
-		const char_t* pName,
-		const Client::DATA_JSON_TYPE eType,
-		const std::string_view Context,
-		std::string& OutError)
-	{
-		const Client::DATA_JSON_VALUE* pValue = Object.Find(pName);
-		if (!Object.Is_Object() || nullptr == pValue || pValue->Get_Type() != eType)
-		{
-			OutError = "Exact cooked canary contract requires " +
-				std::string(Context) + "." + pName + ".";
-			return nullptr;
-		}
-		return pValue;
-	}
-
-	bool_t Require_ExactCanaryBoolean(
-		const Client::DATA_JSON_VALUE& Object,
-		const char_t* pName,
-		const bool_t bExpected,
-		const std::string_view Context,
-		std::string& OutError)
-	{
-		const Client::DATA_JSON_VALUE* pValue = Require_ExactCanaryField(
-			Object, pName, Client::DATA_JSON_TYPE::BOOLEAN, Context, OutError);
-		if (nullptr == pValue)
-			return false;
-		if (pValue->Get_Boolean() != bExpected)
-		{
-			OutError = "Exact cooked canary admission changed at " +
-				std::string(Context) + "." + pName + ".";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Read_ExactCanaryU32(
-		const Client::DATA_JSON_VALUE& Value,
-		uint32_t& OutValue)
-	{
-		if (!Value.Is_Number() || Value.Was_FloatingPointToken())
-			return false;
-		const double Number = Value.Get_Number();
-		if (!std::isfinite(Number) || Number < 0.0 ||
-			Number > static_cast<double>(UINT32_MAX) ||
-			std::floor(Number) != Number)
-		{
-			return false;
-		}
-		OutValue = static_cast<uint32_t>(Number);
-		return true;
-	}
-
-	bool_t Read_ExactCanaryFloat4(
-		const Client::DATA_JSON_VALUE& Value,
-		float4_t& OutValue)
-	{
-		if (!Value.Is_Array() || 4u != Value.Get_Array().size())
-			return false;
-		std::array<f32_t, 4u> Components{};
-		for (size_t i = 0u; i < Components.size(); ++i)
-		{
-			const Client::DATA_JSON_VALUE& Component = Value.Get_Array()[i];
-			const double Number = Component.Is_Number() ?
-				Component.Get_Number() : std::numeric_limits<double>::quiet_NaN();
-			if (!std::isfinite(Number) ||
-				Number < -static_cast<double>((std::numeric_limits<f32_t>::max)()) ||
-				Number > static_cast<double>((std::numeric_limits<f32_t>::max)()))
-			{
-				return false;
-			}
-			Components[i] = static_cast<f32_t>(Number);
-		}
-		OutValue = { Components[0u], Components[1u],
-			Components[2u], Components[3u] };
-		return true;
-	}
-
-	bool_t Is_ExactCanarySha256(const std::string_view Value)
-	{
-		return 64u == Value.size() && std::all_of(Value.begin(), Value.end(),
-			[](const char_t Character)
-			{
-				return (Character >= '0' && Character <= '9') ||
-					(Character >= 'a' && Character <= 'f');
-			});
-	}
-
-	bool_t Parse_ExactCanaryRegister(
-		const std::string_view Value,
-		const char_t Prefix,
-		uint32_t& OutRegister)
-	{
-		if (Value.size() < 2u || Value.front() != Prefix)
-			return false;
-		uint64_t Register = 0u;
-		for (const char_t Character : Value.substr(1u))
-		{
-			if (Character < '0' || Character > '9')
-				return false;
-			Register = Register * 10u + static_cast<uint64_t>(Character - '0');
-			if (Register > UINT32_MAX)
-				return false;
-		}
-		OutRegister = static_cast<uint32_t>(Register);
-		return true;
-	}
-
-	bool_t Is_ExactCanaryRuntimeTextureAssetId(const std::string& AssetId)
-	{
-		if (!AssetId.starts_with("Effect/") ||
-			AssetId.ends_with('/') || AssetId.find('\\') != std::string::npos)
-		{
-			return false;
-		}
-		const std::filesystem::path Path(AssetId);
-		if (Path.is_absolute() || Path.has_root_name() || Path.extension() != ".dds")
-			return false;
-		return std::none_of(Path.begin(), Path.end(),
-			[](const std::filesystem::path& Part)
-			{ return Part == "." || Part == ".."; });
-	}
-
-	bool_t Read_ExactCanaryBinary(
-		const std::filesystem::path& Path,
-		const size_t iExpectedBytes,
-		std::vector<uint8_t>& OutBytes,
-		std::string& OutError)
-	{
-		OutBytes.clear();
-		std::error_code ErrorCode;
-		const uintmax_t iFileBytes = std::filesystem::file_size(Path, ErrorCode);
-		if (Path.empty() || ErrorCode || iFileBytes != iExpectedBytes ||
-			0u == iFileBytes || iFileBytes > EXACT_COOKED_CANARY_MAX_SHADER_BYTES)
-		{
-			OutError = "Exact cooked canary DXBC byte count changed: " +
-				Path.generic_string();
-			return false;
-		}
-		std::ifstream Input(Path, std::ios::binary);
-		if (!Input)
-		{
-			OutError = "Exact cooked canary DXBC could not be opened: " +
-				Path.generic_string();
-			return false;
-		}
-		OutBytes.resize(static_cast<size_t>(iFileBytes));
-		Input.read(reinterpret_cast<char_t*>(OutBytes.data()),
-			static_cast<std::streamsize>(OutBytes.size()));
-		if (!Input || Input.gcount() != static_cast<std::streamsize>(OutBytes.size()))
-		{
-			OutBytes.clear();
-			OutError = "Exact cooked canary DXBC read failed: " +
-				Path.generic_string();
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Load_ExactCookedCanaryVariants(
-		std::vector<EXACT_COOKED_CANARY_OWNED_VARIANT>& OutVariants,
-		std::set<std::string, std::less<>>& OutSourceMaterials,
-		std::string& OutError)
-	{
-		OutVariants.clear();
-		OutSourceMaterials.clear();
-		OutError.clear();
-		const std::filesystem::path ContractPath =
-			Client::CProjectDataRoot::Resolve(EXACT_COOKED_CANARY_CONTRACT_PATH);
-		std::error_code ErrorCode;
-		const uintmax_t iContractBytes =
-			std::filesystem::file_size(ContractPath, ErrorCode);
-		if (ContractPath.empty() || ErrorCode || 0u == iContractBytes ||
-			iContractBytes > EXACT_COOKED_CANARY_MAX_CONTRACT_BYTES)
-		{
-			OutError = "Exact cooked canary contract is missing or oversized.";
-			return false;
-		}
-		std::ifstream ContractInput(ContractPath, std::ios::binary);
-		std::string ContractText(static_cast<size_t>(iContractBytes), '\0');
-		ContractInput.read(ContractText.data(),
-			static_cast<std::streamsize>(ContractText.size()));
-		if (!ContractInput || ContractInput.gcount() !=
-				static_cast<std::streamsize>(ContractText.size()))
-		{
-			OutError = "Exact cooked canary contract read failed.";
-			return false;
-		}
-
-		Client::DATA_JSON_VALUE Root;
-		Client::DATA_JSON_PARSE_LIMITS Limits;
-		Limits.iMaximumBytes = EXACT_COOKED_CANARY_MAX_CONTRACT_BYTES;
-		Limits.iMaximumDepth = 64u;
-		Limits.iMaximumValues = 200'000u;
-		if (!Client::CDataJson::Parse(ContractText, Root, OutError, Limits) ||
-			!Root.Is_Object())
-		{
-			OutError = "Exact cooked canary contract parse failed: " + OutError;
-			return false;
-		}
-		const Client::DATA_JSON_VALUE* pSchema = Require_ExactCanaryField(
-			Root, "schema", Client::DATA_JSON_TYPE::STRING, "root", OutError);
-		const Client::DATA_JSON_VALUE* pVersion = Require_ExactCanaryField(
-			Root, "formatVersion", Client::DATA_JSON_TYPE::NUMBER,
-			"root", OutError);
-		const Client::DATA_JSON_VALUE* pPolicy = Require_ExactCanaryField(
-			Root, "policy", Client::DATA_JSON_TYPE::OBJECT, "root", OutError);
-		const Client::DATA_JSON_VALUE* pVariants = Require_ExactCanaryField(
-			Root, "variants", Client::DATA_JSON_TYPE::ARRAY, "root", OutError);
-		uint32_t iVersion = 0u;
-		if (nullptr == pSchema || nullptr == pVersion || nullptr == pPolicy ||
-			nullptr == pVariants ||
-			pSchema->Get_String() !=
-				"lostark.effect-ue3-exact-cooked-shader-variants" ||
-			!Read_ExactCanaryU32(*pVersion, iVersion) || 1u != iVersion ||
-			!Require_ExactCanaryBoolean(*pPolicy,
-				"authoringPreviewCandidateIsAdmission", false,
-				"root.policy", OutError) ||
-			!Require_ExactCanaryBoolean(*pPolicy,
-				"publishRuntimeDataFiles", false, "root.policy", OutError))
-		{
-			if (OutError.empty())
-				OutError = "Exact cooked canary contract schema/version changed.";
-			return false;
-		}
-
-		OutVariants.reserve(2u);
-		for (const Client::DATA_JSON_VALUE& Variant : pVariants->Get_Array())
-		{
-			if (!Variant.Is_Object())
-			{
-				OutError = "Exact cooked canary variant entry is not an object.";
-				return false;
-			}
-			const Client::DATA_JSON_VALUE* pAdmission = Require_ExactCanaryField(
-				Variant, "admission", Client::DATA_JSON_TYPE::OBJECT,
-				"variant", OutError);
-			const Client::DATA_JSON_VALUE* pCandidate = nullptr == pAdmission ?
-				nullptr : Require_ExactCanaryField(*pAdmission,
-					"authoringPreviewCandidate", Client::DATA_JSON_TYPE::BOOLEAN,
-					"variant.admission", OutError);
-			if (nullptr == pCandidate)
-				return false;
-			if (!pCandidate->Get_Boolean())
-				continue;
-			if (OutVariants.size() >= 2u)
-			{
-				OutError = "Exact cooked canary contract admitted more than two preview candidates.";
-				return false;
-			}
-
-			const std::pair<const char_t*, bool_t> AdmissionFlags[] = {
-				{ "exactPixelShaderBlob", true },
-				{ "exactNativeBindingWire", true },
-				{ "structuralFixedInputReplay", true },
-				{ "sourceValueUniformCb0Closure", true },
-				{ "sourceExactNativeScalarGroupPacking", false },
-				{ "sourceExactTextureBindings", true },
-				{ "sourceExactSampler", false },
-				{ "sourceValueReplay", false },
-				{ "actualVfPass", false },
-				{ "authoringPreviewCandidate", true },
-				{ "authoringPreviewAdmission", false },
-				{ "productRuntime", false },
-				{ "visual", false }
-			};
-			for (const auto& [pName, bExpected] : AdmissionFlags)
-			{
-				if (!Require_ExactCanaryBoolean(*pAdmission, pName, bExpected,
-						"variant.admission", OutError))
-				{
-					return false;
-				}
-			}
-
-			const Client::DATA_JSON_VALUE* pVariantKeySha =
-				Require_ExactCanaryField(Variant, "variantKeySha256",
-					Client::DATA_JSON_TYPE::STRING, "variant", OutError);
-			const Client::DATA_JSON_VALUE* pSourceMaterial =
-				Require_ExactCanaryField(Variant, "sourceMaterialPath",
-					Client::DATA_JSON_TYPE::STRING, "variant", OutError);
-			const Client::DATA_JSON_VALUE* pVariantKey = Require_ExactCanaryField(
-				Variant, "variantKey", Client::DATA_JSON_TYPE::OBJECT,
-				"variant", OutError);
-			const Client::DATA_JSON_VALUE* pRendererType = nullptr == pVariantKey ?
-				nullptr : Require_ExactCanaryField(*pVariantKey, "rendererType",
-					Client::DATA_JSON_TYPE::STRING, "variant.variantKey", OutError);
-			if (nullptr == pVariantKeySha || nullptr == pSourceMaterial ||
-				nullptr == pRendererType ||
-				!Is_ExactCanarySha256(pVariantKeySha->Get_String()))
-			{
-				return false;
-			}
-
-			EXACT_COOKED_CANARY_OWNED_VARIANT Owned;
-			Owned.Desc.strVariantKey = pVariantKeySha->Get_String();
-			Owned.Desc.strSourceMaterialPath = pSourceMaterial->Get_String();
-			if (Owned.Desc.strSourceMaterialPath ==
-					EXACT_COOKED_CANARY_CUSTOM_PARTICLE_MIC &&
-				pRendererType->Get_String() == "SpriteParticle")
-			{
-				Owned.Desc.eCarrier =
-					Client::EFFECT_EXACT_PREVIEW_CARRIER::SPRITE_PARTICLE;
-			}
-			else if (Owned.Desc.strSourceMaterialPath ==
-					EXACT_COOKED_CANARY_HELIX_MIC &&
-				pRendererType->Get_String() == "MeshParticle")
-			{
-				Owned.Desc.eCarrier =
-					Client::EFFECT_EXACT_PREVIEW_CARRIER::LOCAL_MESH;
-			}
-			else
-			{
-				OutError = "Exact cooked canary candidate is outside the sealed CustomParticle/Helix MIC scope: " +
-					Owned.Desc.strSourceMaterialPath;
-				return false;
-			}
-			if (!OutSourceMaterials.emplace(
-					Owned.Desc.strSourceMaterialPath).second)
-			{
-				OutError = "Exact cooked canary source material is duplicated.";
-				return false;
-			}
-			Owned.Desc.eOutputContract = Client::
-				EFFECT_EXACT_PREVIEW_OUTPUT_CONTRACT::
-					ADDITIVE_ONE_ONE_RT0_ZERO_ALPHA;
-
-			const Client::DATA_JSON_VALUE* pPixelShader = Require_ExactCanaryField(
-				Variant, "pixelShader", Client::DATA_JSON_TYPE::OBJECT,
-				"variant", OutError);
-			const Client::DATA_JSON_VALUE* pProfile = nullptr == pPixelShader ?
-				nullptr : Require_ExactCanaryField(*pPixelShader, "profile",
-					Client::DATA_JSON_TYPE::STRING, "variant.pixelShader", OutError);
-			const Client::DATA_JSON_VALUE* pByteCount = nullptr == pPixelShader ?
-				nullptr : Require_ExactCanaryField(*pPixelShader, "byteCount",
-					Client::DATA_JSON_TYPE::NUMBER, "variant.pixelShader", OutError);
-			const Client::DATA_JSON_VALUE* pShaderSha = nullptr == pPixelShader ?
-				nullptr : Require_ExactCanaryField(*pPixelShader, "sha256",
-					Client::DATA_JSON_TYPE::STRING, "variant.pixelShader", OutError);
-			const Client::DATA_JSON_VALUE* pBlobAssetId = nullptr == pPixelShader ?
-				nullptr : Require_ExactCanaryField(*pPixelShader, "blobAssetId",
-					Client::DATA_JSON_TYPE::STRING, "variant.pixelShader", OutError);
-			const Client::DATA_JSON_VALUE* pRepositoryPath = nullptr == pPixelShader ?
-				nullptr : Require_ExactCanaryField(*pPixelShader,
-					"repositoryRelativePath", Client::DATA_JSON_TYPE::STRING,
-					"variant.pixelShader", OutError);
-			uint32_t iShaderBytes = 0u;
-			if (nullptr == pProfile || nullptr == pByteCount || nullptr == pShaderSha ||
-				nullptr == pBlobAssetId || nullptr == pRepositoryPath ||
-				pProfile->Get_String() != "ps_5_0" ||
-				!Require_ExactCanaryBoolean(*pPixelShader, "exactDxbcContainer",
-					true, "variant.pixelShader", OutError) ||
-				!Read_ExactCanaryU32(*pByteCount, iShaderBytes) ||
-				0u == iShaderBytes ||
-				iShaderBytes > EXACT_COOKED_CANARY_MAX_SHADER_BYTES ||
-				!Is_ExactCanarySha256(pShaderSha->Get_String()))
-			{
-				if (OutError.empty())
-					OutError = "Exact cooked canary pixel shader contract changed.";
-				return false;
-			}
-			const std::string ExpectedBlob = "CookedShaders/" +
-				pShaderSha->Get_String() + ".dxbc";
-			if (pBlobAssetId->Get_String() != ExpectedBlob ||
-				pRepositoryPath->Get_String() != "Data/Effects/" + ExpectedBlob)
-			{
-				OutError = "Exact cooked canary content-addressed DXBC path changed.";
-				return false;
-			}
-			const std::filesystem::path ShaderPath = Client::CProjectDataRoot::Resolve(
-				std::filesystem::path("Effects") /
-				std::filesystem::path(pBlobAssetId->Get_String()));
-			if (!Read_ExactCanaryBinary(ShaderPath, iShaderBytes,
-					Owned.PixelShaderBytes, OutError))
-			{
-				return false;
-			}
-			Owned.Desc.iExpectedPixelShaderByteCount = iShaderBytes;
-			Owned.Desc.strExpectedPixelShaderSha256 = pShaderSha->Get_String();
-
-			const Client::DATA_JSON_VALUE* pNativeBinding =
-				Require_ExactCanaryField(Variant, "nativeBinding",
-					Client::DATA_JSON_TYPE::OBJECT, "variant", OutError);
-			const Client::DATA_JSON_VALUE* pBindingStatus =
-				nullptr == pNativeBinding ? nullptr : Require_ExactCanaryField(
-					*pNativeBinding, "status", Client::DATA_JSON_TYPE::STRING,
-					"variant.nativeBinding", OutError);
-			const Client::DATA_JSON_VALUE* pCBufferClosure =
-				nullptr == pNativeBinding ? nullptr : Require_ExactCanaryField(
-					*pNativeBinding, "constantBufferClosure",
-					Client::DATA_JSON_TYPE::OBJECT,
-					"variant.nativeBinding", OutError);
-			const Client::DATA_JSON_VALUE* pCBufferRows = nullptr == pCBufferClosure ?
-				nullptr : Require_ExactCanaryField(*pCBufferClosure,
-					"declaredConstantBuffer0Float4Count",
-					Client::DATA_JSON_TYPE::NUMBER,
-					"variant.nativeBinding.constantBufferClosure", OutError);
-			const Client::DATA_JSON_VALUE* pAuthoringInputs =
-				Require_ExactCanaryField(Variant, "authoringPreviewInputs",
-					Client::DATA_JSON_TYPE::OBJECT, "variant", OutError);
-			const Client::DATA_JSON_VALUE* pPacking = nullptr == pAuthoringInputs ?
-				nullptr : Require_ExactCanaryField(*pAuthoringInputs,
-					"packingFidelity", Client::DATA_JSON_TYPE::OBJECT,
-					"variant.authoringPreviewInputs", OutError);
-			const Client::DATA_JSON_VALUE* pPackingBlocker = nullptr == pPacking ?
-				nullptr : Require_ExactCanaryField(*pPacking, "blocker",
-					Client::DATA_JSON_TYPE::STRING,
-					"variant.authoringPreviewInputs.packingFidelity", OutError);
-			const Client::DATA_JSON_VALUE* pRows = nullptr == pAuthoringInputs ?
-				nullptr : Require_ExactCanaryField(*pAuthoringInputs,
-					"timeZeroCb0Rows", Client::DATA_JSON_TYPE::ARRAY,
-					"variant.authoringPreviewInputs", OutError);
-			uint32_t iCBufferRows = 0u;
-			if (nullptr == pBindingStatus || nullptr == pCBufferRows ||
-				nullptr == pPacking || nullptr == pPackingBlocker || nullptr == pRows ||
-				pBindingStatus->Get_String() != "EXACT_NATIVE_SHADER_OBJECT_BINDING" ||
-				!Read_ExactCanaryU32(*pCBufferRows, iCBufferRows) ||
-				0u == iCBufferRows || iCBufferRows > 4096u ||
-				pRows->Get_Array().size() != iCBufferRows ||
-				!Require_ExactCanaryBoolean(*pPacking, "sourceExactPackedCb0",
-					false, "variant.authoringPreviewInputs.packingFidelity", OutError) ||
-				!Require_ExactCanaryBoolean(*pPacking,
-					"nativeScalarGroupLaneOrderAndPaddingSourceAbiProven", false,
-					"variant.authoringPreviewInputs.packingFidelity", OutError) ||
-				pPackingBlocker->Get_String() !=
-					"NATIVE_SCALAR_GROUP_LANE_ORDER_AND_PADDING_SOURCE_ABI_NOT_PROVEN" ||
-				!Require_ExactCanaryBoolean(*pAuthoringInputs,
-					"sourceExactRuntimeReplay", false,
-					"variant.authoringPreviewInputs", OutError))
-			{
-				if (OutError.empty())
-					OutError = "Exact cooked canary mixed-fidelity CB0 contract changed.";
-				return false;
-			}
-			Owned.Desc.CBuffer0Rows.reserve(iCBufferRows);
-			for (uint32_t iRow = 0u; iRow < iCBufferRows; ++iRow)
-			{
-				const Client::DATA_JSON_VALUE& Row = pRows->Get_Array()[iRow];
-				const Client::DATA_JSON_VALUE* pSlot = Require_ExactCanaryField(
-					Row, "slot", Client::DATA_JSON_TYPE::NUMBER,
-					"variant.authoringPreviewInputs.timeZeroCb0Rows", OutError);
-				const Client::DATA_JSON_VALUE* pValue = Require_ExactCanaryField(
-					Row, "value", Client::DATA_JSON_TYPE::ARRAY,
-					"variant.authoringPreviewInputs.timeZeroCb0Rows", OutError);
-				const Client::DATA_JSON_VALUE* pFidelity = Require_ExactCanaryField(
-					Row, "fidelity", Client::DATA_JSON_TYPE::STRING,
-					"variant.authoringPreviewInputs.timeZeroCb0Rows", OutError);
-				uint32_t iSlot = UINT32_MAX;
-				float4_t Value{};
-				if (nullptr == pSlot || nullptr == pValue || nullptr == pFidelity ||
-					!Read_ExactCanaryU32(*pSlot, iSlot) || iSlot != iRow ||
-					!Read_ExactCanaryFloat4(*pValue, Value) ||
-					(pFidelity->Get_String() != "PROJECT_PREVIEW_APPROXIMATE" &&
-					 pFidelity->Get_String() !=
-						"PROJECT_PREVIEW_APPROXIMATE_SCALAR_GROUP_PACKING_UNPROVEN" &&
-					 pFidelity->Get_String() !=
-						"SOURCE_EXACT_VECTOR_MATERIAL_UNIFORM_EXPRESSION_AT_TIME_ZERO"))
-				{
-					if (OutError.empty())
-						OutError = "Exact cooked canary CB0 row order/value/fidelity changed.";
-					return false;
-				}
-				Owned.Desc.CBuffer0Rows.push_back(Value);
-			}
-
-			const Client::DATA_JSON_VALUE* pStructuralReplay =
-				Require_ExactCanaryField(Variant, "structuralReplay",
-					Client::DATA_JSON_TYPE::OBJECT, "variant", OutError);
-			const Client::DATA_JSON_VALUE* pCarrier = nullptr == pStructuralReplay ?
-				nullptr : Require_ExactCanaryField(*pStructuralReplay, "carrier",
-					Client::DATA_JSON_TYPE::OBJECT,
-					"variant.structuralReplay", OutError);
-			const Client::DATA_JSON_VALUE* pSignatureClosure = nullptr == pCarrier ?
-				nullptr : Require_ExactCanaryField(*pCarrier, "signatureClosure",
-					Client::DATA_JSON_TYPE::OBJECT,
-					"variant.structuralReplay.carrier", OutError);
-			const Client::DATA_JSON_VALUE* pOutputSignature =
-				nullptr == pStructuralReplay ? nullptr : Require_ExactCanaryField(
-					*pStructuralReplay, "pixelOutputSignature",
-					Client::DATA_JSON_TYPE::ARRAY,
-					"variant.structuralReplay", OutError);
-			const Client::DATA_JSON_VALUE* pRenderTargetCount =
-				nullptr == pStructuralReplay ? nullptr : Require_ExactCanaryField(
-					*pStructuralReplay, "renderTargetCount",
-					Client::DATA_JSON_TYPE::NUMBER,
-					"variant.structuralReplay", OutError);
-			const Client::DATA_JSON_VALUE* pMrt = nullptr == pStructuralReplay ?
-				nullptr : Require_ExactCanaryField(*pStructuralReplay, "mrtContract",
-					Client::DATA_JSON_TYPE::OBJECT,
-					"variant.structuralReplay", OutError);
-			const Client::DATA_JSON_VALUE* pExternal = nullptr == pStructuralReplay ?
-				nullptr : Require_ExactCanaryField(*pStructuralReplay,
-					"externalOpacitySensitivity", Client::DATA_JSON_TYPE::OBJECT,
-					"variant.structuralReplay", OutError);
-			const Client::DATA_JSON_VALUE* pMutation = nullptr == pExternal ?
-				nullptr : Require_ExactCanaryField(*pExternal, "mutation",
-					Client::DATA_JSON_TYPE::OBJECT,
-					"variant.structuralReplay.externalOpacitySensitivity", OutError);
-			uint32_t iRenderTargets = 0u;
-			if (nullptr == pSignatureClosure || nullptr == pOutputSignature ||
-				nullptr == pRenderTargetCount || nullptr == pMrt ||
-				nullptr == pMutation ||
-				!Require_ExactCanaryBoolean(*pSignatureClosure, "pass", true,
-					"variant.structuralReplay.carrier.signatureClosure", OutError) ||
-				!Read_ExactCanaryU32(*pRenderTargetCount, iRenderTargets) ||
-				1u != iRenderTargets || 1u != pOutputSignature->Get_Array().size() ||
-				!Require_ExactCanaryBoolean(*pMrt, "pass", true,
-					"variant.structuralReplay.mrtContract", OutError) ||
-				!Require_ExactCanaryBoolean(*pStructuralReplay,
-					"baselineRt0Nonzero", true,
-					"variant.structuralReplay", OutError))
-			{
-				if (OutError.empty())
-					OutError = "Exact cooked canary structural carrier/output contract changed.";
-				return false;
-			}
-			const Client::DATA_JSON_VALUE& Output =
-				pOutputSignature->Get_Array().front();
-			const Client::DATA_JSON_VALUE* pOutputSemantic =
-				Require_ExactCanaryField(Output, "semanticName",
-					Client::DATA_JSON_TYPE::STRING,
-					"variant.structuralReplay.pixelOutputSignature", OutError);
-			const Client::DATA_JSON_VALUE* pOutputRegister =
-				Require_ExactCanaryField(Output, "register",
-					Client::DATA_JSON_TYPE::NUMBER,
-					"variant.structuralReplay.pixelOutputSignature", OutError);
-			uint32_t iOutputRegister = UINT32_MAX;
-			const Client::DATA_JSON_VALUE* pMutationKind =
-				Require_ExactCanaryField(*pMutation, "kind",
-					Client::DATA_JSON_TYPE::STRING,
-					"variant.structuralReplay.externalOpacitySensitivity.mutation",
-					OutError);
-			const Client::DATA_JSON_VALUE* pMutationSemantic =
-				Require_ExactCanaryField(*pMutation, "semanticRole",
-					Client::DATA_JSON_TYPE::STRING,
-					"variant.structuralReplay.externalOpacitySensitivity.mutation",
-					OutError);
-			const Client::DATA_JSON_VALUE* pMutationRegister =
-				Require_ExactCanaryField(*pMutation, "register",
-					Client::DATA_JSON_TYPE::NUMBER,
-					"variant.structuralReplay.externalOpacitySensitivity.mutation",
-					OutError);
-			const Client::DATA_JSON_VALUE* pMutationRow =
-				Require_ExactCanaryField(*pMutation, "row",
-					Client::DATA_JSON_TYPE::NUMBER,
-					"variant.structuralReplay.externalOpacitySensitivity.mutation",
-					OutError);
-			const Client::DATA_JSON_VALUE* pMutationLane =
-				Require_ExactCanaryField(*pMutation, "lane",
-					Client::DATA_JSON_TYPE::NUMBER,
-					"variant.structuralReplay.externalOpacitySensitivity.mutation",
-					OutError);
-			const Client::DATA_JSON_VALUE* pBaselineRt0 =
-				Require_ExactCanaryField(*pMutation, "baselineRt0",
-					Client::DATA_JSON_TYPE::ARRAY,
-					"variant.structuralReplay.externalOpacitySensitivity.mutation",
-					OutError);
-			const Client::DATA_JSON_VALUE* pMutatedRt0 =
-				Require_ExactCanaryField(*pMutation, "mutatedRt0",
-					Client::DATA_JSON_TYPE::ARRAY,
-					"variant.structuralReplay.externalOpacitySensitivity.mutation",
-					OutError);
-			uint32_t iMutationRegister = UINT32_MAX;
-			uint32_t iMutationRow = UINT32_MAX;
-			uint32_t iMutationLane = UINT32_MAX;
-			float4_t BaselineRt0{};
-			float4_t MutatedRt0{};
-			if (nullptr == pOutputSemantic || nullptr == pOutputRegister ||
-				nullptr == pMutationKind || nullptr == pMutationSemantic ||
-				nullptr == pMutationRegister || nullptr == pMutationRow ||
-				nullptr == pMutationLane || nullptr == pBaselineRt0 ||
-				nullptr == pMutatedRt0 ||
-				pOutputSemantic->Get_String() != "SV_Target" ||
-				!Read_ExactCanaryU32(*pOutputRegister, iOutputRegister) ||
-				0u != iOutputRegister ||
-				pMutationKind->Get_String() != "CONSTANT_BUFFER" ||
-				pMutationSemantic->Get_String() != "UE3_EXTERNAL_OPACITY" ||
-				!Read_ExactCanaryU32(*pMutationRegister, iMutationRegister) ||
-				0u != iMutationRegister ||
-				!Read_ExactCanaryU32(*pMutationRow, iMutationRow) ||
-				!Read_ExactCanaryU32(*pMutationLane, iMutationLane) ||
-				iMutationRow >= Owned.Desc.CBuffer0Rows.size() ||
-				iMutationLane >= 4u ||
-				!Read_ExactCanaryFloat4(*pBaselineRt0, BaselineRt0) ||
-				!Read_ExactCanaryFloat4(*pMutatedRt0, MutatedRt0) ||
-				std::abs(BaselineRt0.w) > 1e-6f ||
-				std::abs(MutatedRt0.w) > 1e-6f ||
-				!Require_ExactCanaryBoolean(*pMutation, "outputAlphaChanged", false,
-					"variant.structuralReplay.externalOpacitySensitivity.mutation",
-					OutError))
-			{
-				if (OutError.empty())
-					OutError = "Exact cooked canary RT0/additive external-opacity contract changed.";
-				return false;
-			}
-			Owned.Desc.iExternalOpacityRow = iMutationRow;
-			Owned.Desc.iExternalOpacityComponent = iMutationLane;
-
-			const Client::DATA_JSON_VALUE* pTextures = Require_ExactCanaryField(
-				Variant, "textureBindings", Client::DATA_JSON_TYPE::OBJECT,
-				"variant", OutError);
-			const Client::DATA_JSON_VALUE* pBindings = nullptr == pTextures ?
-				nullptr : Require_ExactCanaryField(*pTextures, "bindings",
-					Client::DATA_JSON_TYPE::ARRAY,
-					"variant.textureBindings", OutError);
-			const Client::DATA_JSON_VALUE* pBindingCount = nullptr == pTextures ?
-				nullptr : Require_ExactCanaryField(*pTextures, "bindingCount",
-					Client::DATA_JSON_TYPE::NUMBER,
-					"variant.textureBindings", OutError);
-			uint32_t iBindingCount = 0u;
-			if (nullptr == pBindings || nullptr == pBindingCount ||
-				!Read_ExactCanaryU32(*pBindingCount, iBindingCount) ||
-				0u == iBindingCount || iBindingCount > 16u ||
-				pBindings->Get_Array().size() != iBindingCount ||
-				!Require_ExactCanaryBoolean(*pTextures,
-					"sourceExactTextureBindingAdmission", true,
-					"variant.textureBindings", OutError) ||
-				!Require_ExactCanaryBoolean(*pTextures,
-					"fixtureRuntimeDdsParityAdmission", true,
-					"variant.textureBindings", OutError) ||
-				!Require_ExactCanaryBoolean(*pTextures,
-					"sourceExactSamplerAdmission", false,
-					"variant.textureBindings", OutError) ||
-				!Require_ExactCanaryBoolean(*pTextures,
-					"sourceValueTextureSamplerAdmission", false,
-					"variant.textureBindings", OutError))
-			{
-				if (OutError.empty())
-					OutError = "Exact cooked canary texture/sampler fidelity contract changed.";
-				return false;
-			}
-			for (const Client::DATA_JSON_VALUE& Binding : pBindings->Get_Array())
-			{
-				const Client::DATA_JSON_VALUE* pTextureRegister =
-					Require_ExactCanaryField(Binding, "textureRegister",
-						Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings", OutError);
-				const Client::DATA_JSON_VALUE* pSamplerRegister =
-					Require_ExactCanaryField(Binding, "samplerRegister",
-						Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings", OutError);
-				const Client::DATA_JSON_VALUE* pBindingFidelity =
-					Require_ExactCanaryField(Binding, "bindingFidelity",
-						Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings", OutError);
-				const Client::DATA_JSON_VALUE* pFixture =
-					Require_ExactCanaryField(Binding, "fixtureRuntimeDdsEvidence",
-						Client::DATA_JSON_TYPE::OBJECT,
-						"variant.textureBindings.bindings", OutError);
-				const Client::DATA_JSON_VALUE* pAsset = nullptr == pFixture ? nullptr :
-					Require_ExactCanaryField(*pFixture, "resourceRelativePath",
-						Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings.fixtureRuntimeDdsEvidence",
-						OutError);
-				const Client::DATA_JSON_VALUE* pFixtureStatus =
-					nullptr == pFixture ? nullptr : Require_ExactCanaryField(*pFixture,
-						"status", Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings.fixtureRuntimeDdsEvidence",
-						OutError);
-				const Client::DATA_JSON_VALUE* pSampler =
-					Require_ExactCanaryField(Binding,
-						"authoringPreviewSamplerCandidate",
-						Client::DATA_JSON_TYPE::OBJECT,
-						"variant.textureBindings.bindings", OutError);
-				const Client::DATA_JSON_VALUE* pSamplerFidelity =
-					nullptr == pSampler ? nullptr : Require_ExactCanaryField(*pSampler,
-						"fidelity", Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings.authoringPreviewSamplerCandidate",
-						OutError);
-				const Client::DATA_JSON_VALUE* pAddressU = nullptr == pSampler ? nullptr :
-					Require_ExactCanaryField(*pSampler, "addressU",
-						Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings.authoringPreviewSamplerCandidate",
-						OutError);
-				const Client::DATA_JSON_VALUE* pAddressV = nullptr == pSampler ? nullptr :
-					Require_ExactCanaryField(*pSampler, "addressV",
-						Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings.authoringPreviewSamplerCandidate",
-						OutError);
-				const Client::DATA_JSON_VALUE* pFilter = nullptr == pSampler ? nullptr :
-					Require_ExactCanaryField(*pSampler, "filter",
-						Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings.authoringPreviewSamplerCandidate",
-						OutError);
-				const Client::DATA_JSON_VALUE* pColorSpace =
-					nullptr == pSampler ? nullptr : Require_ExactCanaryField(*pSampler,
-						"colorSpace", Client::DATA_JSON_TYPE::STRING,
-						"variant.textureBindings.bindings.authoringPreviewSamplerCandidate",
-						OutError);
-				Client::EFFECT_EXACT_PREVIEW_TEXTURE_BINDING_DESC Texture;
-				if (nullptr == pTextureRegister || nullptr == pSamplerRegister ||
-					nullptr == pBindingFidelity || nullptr == pAsset ||
-					nullptr == pFixtureStatus || nullptr == pSamplerFidelity ||
-					nullptr == pAddressU || nullptr == pAddressV ||
-					nullptr == pFilter || nullptr == pColorSpace ||
-					!Parse_ExactCanaryRegister(pTextureRegister->Get_String(), 't',
-						Texture.iTextureRegister) ||
-					!Parse_ExactCanaryRegister(pSamplerRegister->Get_String(), 's',
-						Texture.iSamplerRegister) ||
-					!pBindingFidelity->Get_String().starts_with(
-						"SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE") ||
-					pFixtureStatus->Get_String() != "PRESENT" ||
-					!Require_ExactCanaryBoolean(*pFixture, "sourceExactParity", true,
-						"variant.textureBindings.bindings.fixtureRuntimeDdsEvidence",
-						OutError) ||
-					!Is_ExactCanaryRuntimeTextureAssetId(pAsset->Get_String()) ||
-					pSamplerFidelity->Get_String() != "PROJECT_PREVIEW_APPROXIMATE" ||
-					!Require_ExactCanaryBoolean(*pSampler, "sourceExact", false,
-						"variant.textureBindings.bindings.authoringPreviewSamplerCandidate",
-						OutError) ||
-					pFilter->Get_String() != "linear" ||
-					(pAddressU->Get_String() != "wrap" &&
-					 pAddressU->Get_String() != "clamp") ||
-					(pAddressV->Get_String() != "wrap" &&
-					 pAddressV->Get_String() != "clamp") ||
-					(pColorSpace->Get_String() != "linear" &&
-					 pColorSpace->Get_String() != "srgb"))
-				{
-					if (OutError.empty())
-						OutError = "Exact cooked canary texture binding or approximate sampler changed.";
-					return false;
-				}
-				Texture.strAssetId = pAsset->Get_String();
-				Texture.eColorSpace = pColorSpace->Get_String() == "srgb" ?
-					Client::EFFECT_TEXTURE_COLOR_SPACE::SRGB :
-					Client::EFFECT_TEXTURE_COLOR_SPACE::LINEAR;
-				Texture.Sampler.eFilter =
-					Client::EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR;
-				Texture.Sampler.eAddressU = pAddressU->Get_String() == "wrap" ?
-					Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP :
-					Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP;
-				Texture.Sampler.eAddressV = pAddressV->Get_String() == "wrap" ?
-					Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP :
-					Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP;
-				Texture.Sampler.eAddressW =
-					Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP;
-				Owned.Desc.TextureBindings.push_back(std::move(Texture));
-			}
-			OutVariants.push_back(std::move(Owned));
-		}
-
-		const std::set<std::string, std::less<>> ExpectedMaterials = {
-			std::string(EXACT_COOKED_CANARY_CUSTOM_PARTICLE_MIC),
-			std::string(EXACT_COOKED_CANARY_HELIX_MIC)
-		};
-		if (2u != OutVariants.size() || OutSourceMaterials != ExpectedMaterials)
-		{
-			OutError = "Exact cooked canary contract must expose exactly CustomParticle and Helix/SpriteWave.";
-			return false;
-		}
-		for (EXACT_COOKED_CANARY_OWNED_VARIANT& Variant : OutVariants)
-		{
-			Variant.Desc.PixelShaderBytecode = std::span<const uint8_t>(
-				Variant.PixelShaderBytes.data(), Variant.PixelShaderBytes.size());
-		}
-		return true;
-	}
 
     std::vector<Client::ANIMATION_SKILL_CLIP> Flatten_BindingClips(
         const Client::ANIMATION_SKILL_BINDING& Binding)
@@ -2791,18 +2024,48 @@ namespace
         return Summary;
     }
 
-    f32_t Element_PreviewEndSeconds(
-        const Client::EFFECT_ELEMENT_DESC& Element)
-    {
-        const Client::EFFECT_TIMING_DESC& Timing = Element.Detail.Timing;
-        f32_t fTail = 0.f;
-        if (Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind)
-            fTail = Element.Detail.Particle.vLifeTimeSeconds.y;
+	bool_t Is_SourceParticleCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		if (!Element.SourceRecipe.bEnabled)
+			return false;
+		const std::string_view Shape = Element.SourceRecipe.strRendererShape;
+		return Shape == "mesh" || Shape == "sprite" || Shape == "decal";
+	}
+
+	bool_t Is_PreviewParticleSimulationElement(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
+			Is_SourceParticleCarrier(Element);
+	}
+
+	f32_t Element_PreviewEndSeconds(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		const Client::EFFECT_TIMING_DESC& Timing = Element.Detail.Timing;
+		f32_t fTail = 0.f;
+		if (Is_PreviewParticleSimulationElement(Element))
+		{
+			fTail = Element.Detail.Particle.vLifeTimeSeconds.y *
+				(Element.SourceRecipe.bEnabled ?
+					Element.Detail.Particle.SourceScale.fLifeTime : 1.f);
+		}
         else if (Client::EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
             fTail = Element.Detail.Trail.fPointLifeTimeSeconds;
-        return Timing.fStartDelaySeconds + Timing.fLifeTimeSeconds +
-            Timing.fAfterImageSeconds + fTail;
-    }
+		f32_t fEmissionDuration = Timing.fLifeTimeSeconds;
+		if (Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.fEmitterDurationSeconds > 0.f &&
+			0u != Element.SourceRecipe.iEmitterLoopCount)
+		{
+			fEmissionDuration = Element.SourceRecipe.fEmitterDurationSeconds *
+				static_cast<f32_t>(Element.SourceRecipe.iEmitterLoopCount);
+		}
+		return Timing.fStartDelaySeconds +
+			(Element.SourceRecipe.bEnabled ?
+				Element.SourceRecipe.fEmitterDelaySeconds : 0.f) +
+			fEmissionDuration + Timing.fAfterImageSeconds + fTail;
+	}
 
     bool Slot_Allowed(
         const Client::EFFECT_ELEMENT_DESC& Element,
@@ -3430,8 +2693,6 @@ void Client::CEffect_Tool::Render_MeshAuthoringWorkbench()
 	ImGui::SameLine();
 	if (ImGui::Button("Refresh Resources"))
 	{
-		Invalidate_ExactCookedCanaryInstallation(
-			"Resource index refresh requested.");
 		Refresh_ResourceCatalog();
 	}
 
@@ -3745,8 +3006,9 @@ void Client::CEffect_Tool::Render_ResourceSlots(
             ImGui::TextDisabled("Noise: RG surface distortion; R also modulates dissolve.");
         else if (m_strSelectedResourceSlotId == "mask")
             ImGui::TextDisabled("Mask: R channel multiplies opacity.");
-        else if (m_strSelectedResourceSlotId == "emissive")
-            ImGui::TextDisabled("Emissive: RGB adds HDR color using Bloom Intensity.");
+		else if (m_strSelectedResourceSlotId == "emissive")
+			ImGui::TextDisabled(
+				"Emissive: RGB adds local HDR color using Emissive Intensity. Scene Bloom is configured separately in F1 Rendering Workbench.");
         else if (m_strSelectedResourceSlotId == "dissolve")
             ImGui::TextDisabled("Dissolve: R channel is the lifetime threshold.");
         else if (m_strSelectedResourceSlotId == "base2")
@@ -5470,60 +4732,6 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	if (!Has_UnsavedWork() && !m_strSaveHotReloadStatus.empty())
 		ImGui::TextWrapped("Save Hot Reload: %s",
 			m_strSaveHotReloadStatus.c_str());
-	if (EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource)
-	{
-		ImGui::SeparatorText("Exact Cooked Canary");
-		bool_t bRequested = m_bExactCookedCanaryEnabled;
-		ImGui::BeginDisabled(Has_ProductCuePreview());
-		if (ImGui::Checkbox("Enable Exact Cooked Canary", &bRequested))
-			Try_SetExactCookedCanaryEnabled(bRequested);
-		ImGui::EndDisabled();
-		ImGui::TextWrapped("%s", m_strExactCookedCanaryStatus.c_str());
-		ImGui::TextDisabled(
-			"Scope: saved Authored preview only; Product Play, publish, runtime admission, and visual admission remain OFF.");
-		ImGui::TextDisabled(
-			"Fidelity: cooked PS exact; vector CB0 rows and texture register/DDS parity exact; scalar CB0 packing, sampler/color-space, and carrier bridge approximate.");
-		ImGui::TextDisabled(
-			"Selection key: sourceMaterialPath MIC only. Unmatched Elements and any failure stay on family-lite.");
-		ImGui::SeparatorText("Translated Glasshole02 Canary");
-		bool_t bTranslatedRequested =
-			m_bGlasshole02TranslatedCanaryEnabled;
-		ImGui::BeginDisabled(Has_ProductCuePreview() ||
-			m_bExactCookedCanaryEnabled ||
-			m_bValtanTranslatedCanaryEnabled);
-		if (ImGui::Checkbox("Enable Translated Glasshole02 Canary",
-			&bTranslatedRequested))
-		{
-			Try_SetGlasshole02TranslatedCanaryEnabled(
-				bTranslatedRequested);
-		}
-		ImGui::EndDisabled();
-		ImGui::TextWrapped("%s",
-			m_strGlasshole02TranslatedCanaryStatus.c_str());
-		ImGui::TextDisabled(
-			"Scope: one DimensionMaster W occurrence only; default OFF, Product/read-only OFF, and draw failure fail-closed.");
-		ImGui::TextDisabled(
-			"Carrier: translated RT0 HLSL with live exact CB0 assembly, 7 DDS SRVs plus Target_Depth t2, and 8 typed samplers.");
-		ImGui::SeparatorText("Translated Valtan Core-Three Canary");
-		bool_t bValtanTranslatedRequested =
-			m_bValtanTranslatedCanaryEnabled;
-		ImGui::BeginDisabled(Has_ProductCuePreview() ||
-			m_bExactCookedCanaryEnabled ||
-			m_bGlasshole02TranslatedCanaryEnabled);
-		if (ImGui::Checkbox("Enable Valtan Ground / Crack / Dissolve Canary",
-			&bValtanTranslatedRequested))
-		{
-			Try_SetValtanTranslatedCanaryEnabled(
-				bValtanTranslatedRequested);
-		}
-		ImGui::EndDisabled();
-		ImGui::TextWrapped("%s",
-			m_strValtanTranslatedCanaryStatus.c_str());
-		ImGui::TextDisabled(
-			"Scope: FRONT_BACK_FRONT windup only; nine exact occurrences, default OFF, Product/read-only OFF, draw failure fail-closed.");
-		ImGui::TextDisabled(
-			"Fidelity: exact translated PS equation + 19/19 source DDS + exact material CB0/time; RT0 bounded LocalMesh/LocalDecal carriers and neutral engine scene-CB lanes. Source VF/MRT, scene-CB parity, and full sampler parity remain OFF.");
-	}
 	if (!bEditableSource)
 	{
 		if (bMigrationReference)
@@ -6313,9 +5521,9 @@ void Client::CEffect_Tool::Render_Detail(
 	if (Element.SourceRecipe.bEnabled && !bTypedPresentationElement)
 	{
 		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
-			"Source modules own playback: the values below are ignored.");
+			"SourceRecipe drives native spawn, lifetime, motion, size, and dynamic values.");
 		ImGui::TextDisabled(
-			"%zu source modules. Deleting this Element judges it as the source plays it, not as it would tune.",
+			"%zu source modules. Only the explicitly labelled authored overlays below remain live.",
 			Element.SourceRecipe.Modules.size());
 	}
 	else if (bTypedPresentationElement)
@@ -6408,15 +5616,26 @@ void Client::CEffect_Tool::Render_Detail(
 		ImGui::TextWrapped(
 			"In Resources, select the empty Base input, choose one DDS, then click Bind Selected. A valid Base bind clears this exact material fail-closed marker and enables preview; Transform, rotation, scale, and color remain editable while locked.");
 	}
-	else if (Element.Material.Execution.bAuthoringApproximate)
+	else if (eFidelity == EFFECT_AUTHORING_FIDELITY::APPROXIMATE)
 	{
 		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
 		ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.55f, 1.f),
-			"APPROXIMATE | Product enabled | editable and tunable");
+			"PROJECT_TUNED APPROXIMATE | Preview enabled | editable and tunable");
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip(
-				"The exact source WModel/DDS remains attached, but original Material arithmetic is unproven. Overrides never change admission or exactness.");
+				"The typed runtime packet and Adapter are validated, but original Material arithmetic is not SOURCE_EXACT. Overrides never change this fidelity label.");
+		}
+	}
+	else if (eFidelity == EFFECT_AUTHORING_FIDELITY::PROJECT_TUNED_APPROX)
+	{
+		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
+		ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.55f, 1.f),
+			"PROJECT_TUNED_APPROX | Runtime enabled | editable and tunable");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"This admitted Program/Layout/Descriptor/Adapter packet is project-tuned, not a source-exact material replay.");
 		}
 	}
 	else if (!bAuthoringExecutionTarget)
@@ -6435,7 +5654,7 @@ void Client::CEffect_Tool::Render_Detail(
 		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
 	}
 	Render_TransformDetail(Element.Detail, bChanged);
-	Render_TimingDetail(Element.Detail, bChanged);
+	Render_TimingDetail(Element, bChanged);
 	Render_SizeDetail(Element, bChanged);
 	Render_ColorDetail(Element.Detail, bChanged,
 		nullptr != Find_Binding(Element, "emissive"));
@@ -6898,13 +6117,17 @@ void Client::CEffect_Tool::Render_ColorDetail(
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip(
             "Current v12 runtime clips pixels below this final alpha threshold.");
-    ImGui::BeginDisabled(!bHasEmissiveTexture);
-    bChanged |= ImGui::DragFloat("Bloom Intensity",
-        &Detail.Color.fEmissiveIntensity, 0.05f, 0.f, 100.f, "%.3f",
-        ImGuiSliderFlags_AlwaysClamp);
-    ImGui::EndDisabled();
-    if (!bHasEmissiveTexture)
-        ImGui::TextDisabled("Bloom Intensity is inactive until an Emissive texture is bound.");
+	ImGui::BeginDisabled(!bHasEmissiveTexture);
+	bChanged |= ImGui::DragFloat("Emissive Intensity (HDR)",
+		&Detail.Color.fEmissiveIntensity, 0.05f, 0.f, 100.f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+	ImGui::EndDisabled();
+	if (!bHasEmissiveTexture)
+		ImGui::TextDisabled(
+			"Emissive Intensity is inactive until an Emissive texture is bound.");
+	else
+		ImGui::TextDisabled(
+			"This scales the Emissive texture's own RGB. It is not the scene Bloom multiplier; grayscale Emissive can produce a white core at high values.");
     bChanged |= ImGui::DragFloat("Distortion Intensity",
         &Detail.Color.fDistortionIntensity, 0.01f, 0.f, 100.f, "%.3f",
         ImGuiSliderFlags_AlwaysClamp);
@@ -7035,36 +6258,117 @@ void Client::CEffect_Tool::Render_UVKeyframes(
 }
 
 void Client::CEffect_Tool::Render_TimingDetail(
-    EFFECT_DETAIL_DESC& Detail,
-    bool_t& bChanged)
+	EFFECT_ELEMENT_DESC& Element,
+	bool_t& bChanged)
 {
-    if (!ImGui::CollapsingHeader("Timing", ImGuiTreeNodeFlags_DefaultOpen))
-        return;
-    bChanged |= ImGui::DragFloat("Life Time",
-        &Detail.Timing.fLifeTimeSeconds, 0.01f, 0.001f, 60.f, "%.3f",
-        ImGuiSliderFlags_AlwaysClamp);
-    bChanged |= ImGui::DragFloat("Start Delay Timer",
-        &Detail.Timing.fStartDelaySeconds, 0.01f, 0.f, 60.f, "%.3f",
-        ImGuiSliderFlags_AlwaysClamp);
-    bChanged |= ImGui::DragFloat("After Image Timer",
-        &Detail.Timing.fAfterImageSeconds, 0.01f, 0.f, 60.f, "%.3f",
-        ImGuiSliderFlags_AlwaysClamp);
-    bChanged |= ImGui::SliderFloat("Dissolve Start",
-        &Detail.Timing.fDissolveStartNormalized, 0.f, 1.f);
+	if (!ImGui::CollapsingHeader("Timing", ImGuiTreeNodeFlags_DefaultOpen))
+		return;
+	EFFECT_DETAIL_DESC& Detail = Element.Detail;
+	bChanged |= ImGui::DragFloat("Life Time",
+		&Detail.Timing.fLifeTimeSeconds, 0.01f, 0.001f, 60.f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+	bChanged |= ImGui::DragFloat("Start Delay Timer",
+		&Detail.Timing.fStartDelaySeconds, 0.01f, 0.f, 60.f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+	if (Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+		Element.eKind == EFFECT_ELEMENT_KIND::SPRITE)
+	{
+		bChanged |= ImGui::DragFloat("After Image Timer",
+			&Detail.Timing.fAfterImageSeconds, 0.01f, 0.f, 60.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+	}
+	if (Is_SourceParticleCarrier(Element))
+	{
+		ImGui::TextDisabled(
+			"Start Delay positions this Element in the clip. The SourceRecipe owns its native emitter schedule; Life Time remains the authored emission-window fallback.");
+	}
+	bChanged |= ImGui::SliderFloat("Dissolve Start",
+		&Detail.Timing.fDissolveStartNormalized, 0.f, 1.f);
 }
 
 void Client::CEffect_Tool::Render_SizeDetail(
 	EFFECT_ELEMENT_DESC& Element,
 	bool_t& bChanged)
 {
+	const bool_t bSourceParticleCarrier =
+		Is_SourceParticleCarrier(Element);
 	const bool_t bHasSizeSurface =
 		Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
 		Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE ||
 		Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
-		Element.eKind == EFFECT_ELEMENT_KIND::TRAIL;
+		Element.eKind == EFFECT_ELEMENT_KIND::TRAIL ||
+		bSourceParticleCarrier;
 	if (!bHasSizeSurface ||
-		!ImGui::CollapsingHeader("Size", ImGuiTreeNodeFlags_DefaultOpen))
+		!ImGui::CollapsingHeader(bSourceParticleCarrier ?
+			"Source Playback Tuning###SizeDetail" : "Size###SizeDetail",
+			ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		return;
+	}
+	if (bSourceParticleCarrier)
+	{
+		if (Element.SourceRecipe.strRendererShape == "mesh")
+		{
+			ImGui::SeparatorText("Mesh Carrier Geometry");
+			bChanged |= ImGui::DragFloat("Model Import Scale",
+				&Element.Detail.Mesh.fModelPreScale, 0.001f, 0.0001f, 100.f,
+				"%.4f", ImGuiSliderFlags_AlwaysClamp);
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip(
+					"Applied once to the WModel carrier. It is independent from the source particle Size multiplier below.");
+			}
+		}
+		ImGui::SeparatorText("Evaluated Source Multipliers");
+		EFFECT_PARTICLE_SOURCE_SCALE_DESC& Tuning =
+			Element.Detail.Particle.SourceScale;
+		bChanged |= ImGui::DragFloat("Count x", &Tuning.fCount,
+			0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Scales source rate, fixed bursts, and the particle ceiling. SpawnPerUnit and event-receiver counts remain module-owned.");
+		}
+		bChanged |= ImGui::DragFloat("Size x", &Tuning.fSize,
+			0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		bChanged |= ImGui::DragFloat("Life x", &Tuning.fLifeTime,
+			0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		bChanged |= ImGui::DragFloat("Speed x", &Tuning.fSpeed,
+			0.01f, -16.f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Scales source spawn/base velocity. A later absolute VelocityOverLife or vector-field module may still own the final velocity.");
+		}
+		bChanged |= ImGui::DragFloat("Rotation x", &Tuning.fRotation,
+			0.01f, -16.f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		bChanged |= ImGui::DragFloat("Alpha x", &Tuning.fAlpha,
+			0.01f, 0.f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Scales source base alpha. A later absolute ColorOverLife module may still own the final alpha.");
+		}
+		ImGui::TextDisabled(
+			"These multipliers tune supported source carrier axes without replacing its modules. Use Timing > Start Delay to place the Element inside the clip; Start/End Size and raw spawn fields belong to a manual Element.");
+		if (Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
+		{
+			ImGui::SeparatorText("Decal Projection");
+			bChanged |= ImGui::DragFloat("Projection Depth",
+				&Element.Detail.Decal.fDepth, 0.01f, 0.001f, 1000.f, "%.3f",
+				ImGuiSliderFlags_AlwaysClamp);
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip(
+					"Projection depth is a working Decal overlay. Source Size x owns the projected width and height.");
+			}
+		}
+		if (!Tuning.Is_Default() &&
+			ImGui::Button("Reset Source Playback Tuning"))
+		{
+			Tuning = EFFECT_PARTICLE_SOURCE_SCALE_DESC{};
+			bChanged = true;
+		}
 		return;
 	}
 	if (Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
@@ -7075,6 +6379,11 @@ void Client::CEffect_Tool::Render_SizeDetail(
 		bChanged |= ImGui::DragFloat("Model Import Scale",
 			&Element.Detail.Mesh.fModelPreScale, 0.001f, 0.0001f, 100.f,
 			"%.4f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Applied once when the WModel is loaded. Valtan Effect WModels commonly use 0.01; particle size remains a separate authored or source-tuning axis.");
+		}
 	}
 	if (Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
 	{
@@ -7310,12 +6619,10 @@ void Client::CEffect_Tool::Render_KindDetail(
     EFFECT_DETAIL_DESC& Detail = Element.Detail;
     switch (Element.eKind)
     {
-    case EFFECT_ELEMENT_KIND::MESH:
-        bChanged |= ImGui::Checkbox("Use Model Material",
-            &Detail.Mesh.bUseModelMaterial);
-		bChanged |= ImGui::DragFloat("Model Import Scale",
-			&Detail.Mesh.fModelPreScale, 0.001f, 0.0001f, 100.f, "%.4f",
-			ImGuiSliderFlags_AlwaysClamp);
+	case EFFECT_ELEMENT_KIND::MESH:
+		bChanged |= ImGui::Checkbox("Use Model Material",
+			&Detail.Mesh.bUseModelMaterial);
+		ImGui::TextDisabled("Model Import Scale is edited once in Size above.");
         break;
     case EFFECT_ELEMENT_KIND::SPRITE:
         bChanged |= ImGui::Checkbox("Billboard",
@@ -7327,68 +6634,81 @@ void Client::CEffect_Tool::Render_KindDetail(
 			&Detail.Sprite.fBillboardRollDegreesPerSecond, 1.f, -3600.f,
 			3600.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
         break;
-    case EFFECT_ELEMENT_KIND::DECAL:
-        bChanged |= DragFloat2(
-            "Decal Size", Detail.Decal.vSize, 0.01f, 0.001f, 1000.f);
-        bChanged |= ImGui::DragFloat("Decal Projection Depth",
-            &Detail.Decal.fDepth, 0.01f, 0.001f, 1000.f, "%.3f",
-            ImGuiSliderFlags_AlwaysClamp);
-        break;
-    case EFFECT_ELEMENT_KIND::PARTICLE:
-    {
-		const bool_t bSourceParticleControlsReadOnly =
+	case EFFECT_ELEMENT_KIND::DECAL:
+		ImGui::TextDisabled(Is_SourceParticleCarrier(Element) ?
+			"Source Size and Projection Depth are edited once in Source Playback Tuning above." :
+			"Decal Size and Projection Depth are edited once in Size above.");
+		break;
+	case EFFECT_ELEMENT_KIND::PARTICLE:
+	{
+		const bool_t bSourcePlayback = Element.SourceRecipe.bEnabled;
+		const bool_t bCompilerOwnedSourceParticle =
 			m_bDetailDraftPortableRecipeReadOnly &&
-			Element.SourceRecipe.bEnabled;
-		if (bSourceParticleControlsReadOnly)
+			bSourcePlayback;
+		const bool_t bMeshParticle = Resolve_AuthoringFamily(Element) ==
+			EFFECT_AUTHORING_FAMILY::MESH_PARTICLE;
+		if (bCompilerOwnedSourceParticle)
 		{
 			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
 				"Runtime SourceRecipe owns spawn rate/bursts, particle lifetime, initial position/velocity/acceleration, size, and DynamicParameter values. Those Detail controls are read-only because changing them would not affect playback.");
 			ImGui::TextDisabled(
-				"Authored overlays that remain active include Max Particles, Random Seed, Local Space, Billboard, Element Transform/Color/Timing, and supported resource overrides.");
+				"Working overlays: Max Particles, Random Seed, Local Space, Target Attractor, sprite-family Billboard/Roll, Element Transform, Start Delay, Color/material, and supported resources.");
 		}
-		if (Resolve_AuthoringFamily(Element) ==
-			EFFECT_AUTHORING_FAMILY::MESH_PARTICLE)
+		if (bMeshParticle)
 		{
 			ImGui::SeparatorText("Mesh Carrier");
 			bChanged |= ImGui::Checkbox("Use Model Material",
 				&Detail.Mesh.bUseModelMaterial);
-			bChanged |= ImGui::DragFloat("Model Import Scale",
-				&Detail.Mesh.fModelPreScale, 0.001f, 0.0001f, 100.f,
-				"%.4f", ImGuiSliderFlags_AlwaysClamp);
-			if (ImGui::IsItemHovered())
-			{
-				ImGui::SetTooltip(
-					"Applied once when the WModel is loaded. Artist F Track A carriers use 0.01; Particle Start Size stays dimensionless.");
-			}
+			ImGui::TextDisabled(
+				"Model Import Scale is edited once in Size or Source Playback Tuning above.");
 		}
-		ImGui::SeparatorText("Particle Spawn");
-        bChanged |= ImGui::InputScalar("Max Particles",
-            ImGuiDataType_U32, &Detail.Particle.iMaxParticles);
-		ImGui::BeginDisabled(bSourceParticleControlsReadOnly);
-        bChanged |= ImGui::DragFloat("Spawn Rate / Second",
-            &Detail.Particle.fSpawnRatePerSecond, 1.f, 0.f, 2048.f, "%.3f",
-            ImGuiSliderFlags_AlwaysClamp);
-		bChanged |= ImGui::InputScalar("Fixed Burst at Element Start",
-            ImGuiDataType_U32, &Detail.Particle.iBurstCount);
+		ImGui::SeparatorText("Particle Runtime Overlays");
+		if (ImGui::InputScalar("Max Particles", ImGuiDataType_U32,
+			&Detail.Particle.iMaxParticles))
+		{
+			const uint32_t iMinimum = (std::min)(2048u,
+				(std::max)(1u, Detail.Particle.iBurstCount));
+			Detail.Particle.iMaxParticles = std::clamp(
+				Detail.Particle.iMaxParticles, iMinimum, 2048u);
+			bChanged = true;
+		}
+		if (ImGui::InputScalar("Random Seed", ImGuiDataType_U32,
+			&Detail.Particle.iRandomSeed))
+		{
+			Detail.Particle.iRandomSeed = (std::max)(
+				1u, Detail.Particle.iRandomSeed);
+			bChanged = true;
+		}
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip(
-				bSourceParticleControlsReadOnly ?
-				"Read-only: compiler-owned SourceRecipe Bursts drive runtime playback." :
-				"Emits this many particles once at the Element-local start.");
+				"Seeds the emitter stream. Source modules with their own explicit seed keep that module-local seed.");
 		}
-		ImGui::EndDisabled();
-        bChanged |= ImGui::InputScalar("Random Seed",
-            ImGuiDataType_U32, &Detail.Particle.iRandomSeed);
-		ImGui::TextDisabled(bSourceParticleControlsReadOnly ?
-			"SourceRecipe spawn modules and Bursts are compiler-owned; Random Seed remains the authored deterministic seed." :
-			"Start Delay controls the skill time; Spawn Rate and this fixed burst can be used together.");
+		if (bCompilerOwnedSourceParticle)
+		{
+			ImGui::TextDisabled(
+				"The compiler-owned SourceRecipe supplies spawn, lifetime, motion, size, and Dynamic Parameters. Tune its evaluated result in Source Playback Tuning above; Max Particles and Random Seed remain working overlays.");
+		}
+		else
+		{
+			ImGui::SeparatorText("Particle Spawn");
+			bChanged |= ImGui::DragFloat("Spawn Rate / Second",
+				&Detail.Particle.fSpawnRatePerSecond, 1.f, 0.f, 2048.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::InputScalar("Fixed Burst at Element Start",
+				ImGuiDataType_U32, &Detail.Particle.iBurstCount);
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip(
+					"Emits this many particles once at the Element-local start.");
+			}
+			ImGui::TextDisabled(
+				"Start Delay controls the skill time; Spawn Rate and this fixed burst can be used together.");
 
-		ImGui::SeparatorText("Particle Lifetime and Shape");
-		ImGui::BeginDisabled(bSourceParticleControlsReadOnly);
-		if (DragFloat2("Particle Life Min/Max",
-            Detail.Particle.vLifeTimeSeconds, 0.01f, 0.001f, 30.f))
-        {
+			ImGui::SeparatorText("Particle Lifetime and Shape");
+			if (DragFloat2("Particle Life Min/Max",
+			Detail.Particle.vLifeTimeSeconds, 0.01f, 0.001f, 30.f))
+		{
             Detail.Particle.vLifeTimeSeconds.y = (std::max)(
                 Detail.Particle.vLifeTimeSeconds.x,
                 Detail.Particle.vLifeTimeSeconds.y);
@@ -7430,12 +6750,8 @@ void Client::CEffect_Tool::Render_KindDetail(
                 Detail.Particle.vInitialVelocityMax.z);
             bChanged = true;
         }
-        bChanged |= DragFloat3("Acceleration",
-            Detail.Particle.vAcceleration, 0.01f, -1000.f, 1000.f);
-        bChanged |= DragFloat2(
-            "Start Size", Detail.Particle.vStartSize, 0.01f, 0.001f, 100.f);
-        bChanged |= DragFloat2(
-            "End Size", Detail.Particle.vEndSize, 0.01f, 0.f, 100.f);
+		bChanged |= DragFloat3("Acceleration",
+			Detail.Particle.vAcceleration, 0.01f, -1000.f, 1000.f);
 
 		/* Spawn volume and emission direction: the two axes the authored Detail
 		   could not express at all, so a ring that collapses inward or a mesh
@@ -7526,42 +6842,11 @@ void Client::CEffect_Tool::Render_KindDetail(
 			ImGui::TextDisabled(
 				"Outward and Inward are radial about the Element origin and replace the Initial Velocity box.");
 		}
-		ImGui::EndDisabled();
-		if (bSourceParticleControlsReadOnly)
+		}
+		if (bCompilerOwnedSourceParticle)
 		{
 			ImGui::TextDisabled(
-				"Read-only values above are evaluated from the compiler-owned SourceRecipe module stack.");
-
-			/* The trim is the authored answer to those read-only fields. It
-			   multiplies what the modules produce instead of replacing them, so
-			   the rotation, camera offset, sub-UV and DynamicParameter modules
-			   this Element also carries keep running. */
-			ImGui::SeparatorText("Source Trim");
-			EFFECT_PARTICLE_SOURCE_SCALE_DESC& Trim =
-				Detail.Particle.SourceScale;
-			bChanged |= ImGui::DragFloat("Count x", &Trim.fCount,
-				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-			bChanged |= ImGui::DragFloat("Size x", &Trim.fSize,
-				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-			bChanged |= ImGui::DragFloat("Life x", &Trim.fLifeTime,
-				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-			/* Speed and rotation take negatives so a burst can be pulled
-			   inward or spun the other way; zero stops that axis outright. */
-			bChanged |= ImGui::DragFloat("Speed x", &Trim.fSpeed,
-				0.01f, -16.f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-			bChanged |= ImGui::DragFloat("Rotation x", &Trim.fRotation,
-				0.01f, -16.f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-			bChanged |= ImGui::DragFloat("Alpha x", &Trim.fAlpha,
-				0.01f, 0.f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-			bChanged |= ImGui::DragFloat("Spawn Delay x", &Trim.fSpawnDelay,
-				0.01f, 0.f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::TextDisabled(
-				"Multiplies the source spawn rate, burst counts and particle ceiling, the source start size, the source lifetime, the spawn velocity, the rotation rate, the colour alpha, and the emitter start delay. 1.00 leaves that axis exactly as the source built it.");
-			if (!Trim.Is_Default() && ImGui::Button("Reset Source Trim"))
-			{
-				Trim = EFFECT_PARTICLE_SOURCE_SCALE_DESC{};
-				bChanged = true;
-			}
+				"Source-owned raw fields are hidden because editing them would not change this portable runtime recipe.");
 		}
 
 		ImGui::SeparatorText("Particle Target Attractor");
@@ -7637,60 +6922,70 @@ void Client::CEffect_Tool::Render_KindDetail(
 				"Local Space keeps spawned particles relative to this Element; "
 				"disabled particles continue in world/root space.");
 		}
-        bChanged |= ImGui::Checkbox("Particle Billboard",
-            &Detail.Particle.bBillboard);
-		if (Detail.Particle.bBillboard)
+		if (!bMeshParticle)
 		{
-			/* The renderer rebuilds a billboarded quad from the camera every
-			   frame, so the Transform rotation above never reaches it. Roll is
-			   the only rotation it has, and it was previously only reachable on
-			   a standalone Sprite Element. */
-			bChanged |= ImGui::DragFloat("Billboard Roll Degrees##particle",
-				&Detail.Sprite.fBillboardRollDegrees, 1.f, -3600.f, 3600.f,
-				"%.1f", ImGuiSliderFlags_AlwaysClamp);
-			bChanged |= ImGui::DragFloat(
-				"Billboard Roll Degrees Per Second##particle",
-				&Detail.Sprite.fBillboardRollDegreesPerSecond, 1.f, -3600.f,
-				3600.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::TextDisabled(
-				"Billboard faces the camera, so Transform rotation does not apply. Use the roll above; Source Trim Rotation x scales the source rotation modules on top of it.");
+			bChanged |= ImGui::Checkbox("Particle Billboard",
+				&Detail.Particle.bBillboard);
+			if (Detail.Particle.bBillboard)
+			{
+				/* The renderer rebuilds a billboarded quad from the camera every
+				   frame, so the Transform rotation above never reaches it. */
+				bChanged |= ImGui::DragFloat("Billboard Roll Degrees##particle",
+					&Detail.Sprite.fBillboardRollDegrees, 1.f, -3600.f, 3600.f,
+					"%.1f", ImGuiSliderFlags_AlwaysClamp);
+				bChanged |= ImGui::DragFloat(
+					"Billboard Roll Degrees Per Second##particle",
+					&Detail.Sprite.fBillboardRollDegreesPerSecond, 1.f, -3600.f,
+					3600.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+				ImGui::TextDisabled(
+					"Billboard faces the camera, so Transform rotation does not apply. Source Playback Tuning > Rotation x scales source rotation modules on top of this roll.");
+			}
 		}
-		ImGui::SeparatorText("Particle Dynamic Material Parameters");
-		ImGui::TextDisabled(bSourceParticleControlsReadOnly ?
-			"SourceRecipe ParameterDynamic modules own runtime values; the Detail fallback is read-only." :
-			"Enabled components interpolate Start -> End over particle life.");
-		ImGui::BeginDisabled(bSourceParticleControlsReadOnly);
-		bChanged |= ImGui::CheckboxFlags(
-			"X##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
-			1u << 0u);
-		ImGui::SameLine();
-		bChanged |= ImGui::CheckboxFlags(
-			"Y##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
-			1u << 1u);
-		ImGui::SameLine();
-		bChanged |= ImGui::CheckboxFlags(
-			"Z##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
-			1u << 2u);
-		ImGui::SameLine();
-		bChanged |= ImGui::CheckboxFlags(
-			"W##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
-			1u << 3u);
-		bChanged |= DragFloat4("Dynamic Start",
-			Detail.Particle.vDynamicParameterStart,
-			0.01f, -1000.f, 1000.f);
-		bChanged |= DragFloat4("Dynamic End",
-			Detail.Particle.vDynamicParameterEnd,
-			0.01f, -1000.f, 1000.f);
-		ImGui::EndDisabled();
-		const uint32_t iTrackAConsumedMask =
-			Element.Material.Execution.iDynamicConsumedMask & 0x0fu;
-		if (!bSourceParticleControlsReadOnly &&
-			Element.Material.Execution.bEnabled &&
-			0u != iTrackAConsumedMask)
+		else
 		{
-			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
-				"Track A consumed mask 0x%X: Dynamic Start/End is the editable bounded source carrier.",
-				iTrackAConsumedMask);
+			ImGui::TextDisabled(
+				"Mesh Particles use their model orientation; Billboard and sprite Roll are not consumed.");
+		}
+		if (bCompilerOwnedSourceParticle)
+		{
+			ImGui::TextDisabled(
+				"SourceRecipe ParameterDynamic modules own runtime material parameters; ignored Detail fallbacks are hidden.");
+		}
+		else
+		{
+			ImGui::SeparatorText("Particle Dynamic Material Parameters");
+			ImGui::TextDisabled(
+				"Enabled components interpolate Start -> End over particle life.");
+			bChanged |= ImGui::CheckboxFlags(
+				"X##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
+				1u << 0u);
+			ImGui::SameLine();
+			bChanged |= ImGui::CheckboxFlags(
+				"Y##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
+				1u << 1u);
+			ImGui::SameLine();
+			bChanged |= ImGui::CheckboxFlags(
+				"Z##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
+				1u << 2u);
+			ImGui::SameLine();
+			bChanged |= ImGui::CheckboxFlags(
+				"W##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
+				1u << 3u);
+			bChanged |= DragFloat4("Dynamic Start",
+				Detail.Particle.vDynamicParameterStart,
+				0.01f, -1000.f, 1000.f);
+			bChanged |= DragFloat4("Dynamic End",
+				Detail.Particle.vDynamicParameterEnd,
+				0.01f, -1000.f, 1000.f);
+			const uint32_t iTrackAConsumedMask =
+				Element.Material.Execution.iDynamicConsumedMask & 0x0fu;
+			if (Element.Material.Execution.bEnabled &&
+				0u != iTrackAConsumedMask)
+			{
+				ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+					"Track A consumed mask 0x%X: Dynamic Start/End is the editable bounded source carrier.",
+					iTrackAConsumedMask);
+			}
 		}
         break;
     }
@@ -7706,12 +7001,7 @@ void Client::CEffect_Tool::Render_KindDetail(
         bChanged |= ImGui::DragFloat("Trail Minimum Distance",
             &Detail.Trail.fMinimumDistance,
             0.001f, 0.f, 100.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-        bChanged |= ImGui::DragFloat("Trail Start Width",
-            &Detail.Trail.fStartWidth,
-            0.01f, 0.001f, 100.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-        bChanged |= ImGui::DragFloat("Trail End Width",
-            &Detail.Trail.fEndWidth,
-            0.01f, 0.f, 100.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::TextDisabled("Trail Start/End Width are edited once in Size above.");
         bChanged |= ImGui::Checkbox("Trail Faces Camera",
             &Detail.Trail.bFaceCamera);
         break;
@@ -8132,10 +7422,11 @@ void Client::CEffect_Tool::Render_LerpDetail(
     if (Lerp.bColorMultiply)
         bChanged |= DragFloat4("Color Multiply End",
             Lerp.vEndColorMultiply, 0.01f, 0.f, 10.f);
-    RenderLerpToggle("Lerp Bloom Intensity", Lerp.bEmissiveIntensity);
-    if (Lerp.bEmissiveIntensity)
-        bChanged |= ImGui::DragFloat("Bloom Intensity End",
-            &Lerp.fEndEmissiveIntensity, 0.05f, 0.f, 100.f, "%.3f",
+	RenderLerpToggle("Lerp Emissive Intensity (HDR)",
+		Lerp.bEmissiveIntensity);
+	if (Lerp.bEmissiveIntensity)
+		bChanged |= ImGui::DragFloat("Emissive Intensity End##lerp",
+			&Lerp.fEndEmissiveIntensity, 0.05f, 0.f, 100.f, "%.3f",
             ImGuiSliderFlags_AlwaysClamp);
 }
 
@@ -9029,11 +8320,16 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	std::unordered_map<std::string, size_t> StagedBossProductCueMappingCounts;
 	for (const VALTAN_PATTERN_EFFECT_CUE& Cue : BossCueDocument.Cues)
 	{
-		BossPatternOwners.emplace(Cue.strEffectAssetId,
-			EFFECT_DIRECT_AUTHORED_BOSS_OWNER{
-				BossCueDocument.strOwnerArchetypeId, Cue.strPatternId,
-					Cue.strStageId, Cue.strActionId });
+		const EFFECT_DIRECT_AUTHORED_BOSS_OWNER Owner{
+			BossCueDocument.strOwnerArchetypeId, Cue.strPatternId,
+				Cue.strStageId, Cue.strActionId };
+		BossPatternOwners.emplace(Cue.strEffectAssetId, Owner);
 		++StagedBossProductCueMappingCounts[Cue.strEffectAssetId];
+		if (!Cue.strV1EffectAssetId.empty())
+		{
+			BossPatternOwners.emplace(Cue.strV1EffectAssetId, Owner);
+			++StagedBossProductCueMappingCounts[Cue.strV1EffectAssetId];
+		}
 	}
 	const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
 		BossCueDocument.strOwnerArchetypeId);
@@ -10236,7 +9532,7 @@ bool_t Client::CEffect_Tool::Try_PlayValtanSavedUnifiedEffect(
 	UNIFIED_EFFECT_CACHE& Cache =
 		m_ValtanUnifiedEffectCaches[strEffectAssetId];
 	if (!Refresh_UnifiedEffectCache(Cache, Path, strEffectAssetId) ||
-		!Cache.bValid)
+		!Cache.bValid || !Cache.bDrawable)
 	{
 		m_strPreviewStatus = Cache.strStatus;
 		return false;
@@ -10254,6 +9550,16 @@ bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 	const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips,
 	const bool_t bQueuePlayCompleteAfterLoad)
 {
+	UNIFIED_EFFECT_CACHE& Cache =
+		m_ValtanUnifiedEffectCaches[strEffectAssetId];
+	if (!Refresh_UnifiedEffectCache(Cache, Path, strEffectAssetId) ||
+		!Cache.bValid || !Cache.bDrawable)
+	{
+		/* A retired evidence shell must not replace the Current Effect merely
+		   because its historical authored file still exists. */
+		m_strPreviewStatus = Cache.strStatus;
+		return false;
+	}
 	const bool_t bAlreadyActive = m_ActiveDocument.has_value() &&
 		m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 		m_ActiveDocument->strEffectAssetId == strEffectAssetId;
@@ -10298,6 +9604,14 @@ bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(
 	const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
 	const bool_t bQueuePlayCompleteAfterLoad)
 {
+	UNIFIED_EFFECT_CACHE& Cache =
+		m_ValtanUnifiedEffectCaches[strEffectAssetId];
+	if (!Refresh_UnifiedEffectCache(Cache, Path, strEffectAssetId) ||
+		!Cache.bValid || !Cache.bDrawable)
+	{
+		m_strPreviewStatus = Cache.strStatus;
+		return false;
+	}
 	if (!Try_LoadDocumentPath(
 			Path, EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId))
 	{
@@ -10334,6 +9648,9 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	m_ValtanPatternTree = std::move(Staged);
 	m_bValtanPatternTreeLoaded = true;
 	m_strValtanPatternTreeStatus = Status;
+	/* Explicit Refresh is also the retry boundary for a repaired authored
+	   document that was previously observed as invalid or non-drawable. */
+	m_ValtanUnifiedEffectCaches.clear();
 	return true;
 }
 
@@ -10371,7 +9688,8 @@ bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
 			{
 				if (Contains_NoCase(Cue.strBindingId, strSearch) ||
 					Contains_NoCase(Cue.strOccurrenceId, strSearch) ||
-					Contains_NoCase(Cue.strEffectAssetId, strSearch))
+					Contains_NoCase(Cue.strEffectAssetId, strSearch) ||
+					Contains_NoCase(Cue.strV1EffectAssetId, strSearch))
 				{
 					return true;
 				}
@@ -10420,10 +9738,24 @@ void Client::CEffect_Tool::Render_ValtanStageRow(
 		Shape += Detail;
 		if (Stage.iHitCount > 1u)
 		{
-			char_t Repeat[64]{};
-			sprintf_s(Repeat, " x%u @%ums",
-				Stage.iHitCount, Stage.iHitIntervalMs);
-			Shape += Repeat;
+			Shape += " x" + std::to_string(Stage.iHitCount) + " @";
+			if (!Stage.HitOffsetsMs.empty())
+			{
+				Shape += "[";
+				for (size_t iOffset = 0u;
+					iOffset < Stage.HitOffsetsMs.size(); ++iOffset)
+				{
+					if (iOffset > 0u)
+						Shape += ",";
+					Shape += std::to_string(Stage.HitOffsetsMs[iOffset]);
+				}
+				Shape += "]ms";
+			}
+			else
+			{
+				Shape += std::to_string(Stage.iHitDelayMs) + "+k*" +
+					std::to_string(Stage.iHitIntervalMs) + "ms";
+			}
 		}
 	}
 
@@ -10574,6 +9906,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		std::vector<SAVED_VALTAN_PRODUCT_SOURCE> ProductSources;
 		std::vector<const VALTAN_STAGE_VIEW*> ReferenceStages;
 		std::vector<const VALTAN_STAGE_VIEW*> CombatObjectStages;
+		bool_t bV1Alias = false;
 	};
 
 	std::vector<SAVED_VALTAN_EFFECT_ROW> SavedRows;
@@ -10607,6 +9940,13 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			{
 				SAVED_VALTAN_EFFECT_ROW& Row = ResolveRow(Cue.strEffectAssetId);
 				Row.ProductSources.push_back({ &Stage, &Clip, &Cue });
+				if (!Cue.strV1EffectAssetId.empty())
+				{
+					SAVED_VALTAN_EFFECT_ROW& V1Row =
+						ResolveRow(Cue.strV1EffectAssetId);
+					V1Row.ProductSources.push_back({ &Stage, &Clip, &Cue });
+					V1Row.bV1Alias = true;
+				}
 			}
 		}
 		for (const VALTAN_STAGE_EFFECT_VIEW& Effect : Stage.Effects)
@@ -10679,9 +10019,20 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			const bool_t bActive = m_ActiveDocument.has_value() &&
 				m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 				m_ActiveDocument->strEffectAssetId == Row.strEffectAssetId;
+			const auto ObservedCache = m_ValtanUnifiedEffectCaches.find(
+				Row.strEffectAssetId);
+			const bool_t bKnownNonDrawable =
+				ObservedCache != m_ValtanUnifiedEffectCaches.end() &&
+				ObservedCache->second.bObserved &&
+				(!ObservedCache->second.bValid ||
+					!ObservedCache->second.bDrawable);
+			const std::string SavedLabel =
+				(Row.bV1Alias ? "[V1] " :
+					(Row.ProductSources.empty() ? "[REFERENCE] " : "[V0] ")) +
+				Row.strEffectAssetId;
 			ImGui::PushID(Row.strEffectAssetId.c_str());
 			const bool_t bSavedOpen = ImGui::TreeNodeEx(
-				Row.strEffectAssetId.c_str(),
+				SavedLabel.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow |
 					(bActive ? ImGuiTreeNodeFlags_Selected : 0));
 			if (ImGui::IsItemHovered())
@@ -10692,6 +10043,11 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			}
 			if (bSavedOpen)
 			{
+				if (Row.bV1Alias)
+				{
+					ImGui::TextColored(ImVec4(0.67f, 0.86f, 1.f, 1.f),
+						"Optional V1 alias; Product clip, timing, transform, and attachment are shared with V0.");
+				}
 				if (!Row.ProductSources.empty())
 				{
 					if (1u == Row.ProductSources.size())
@@ -10741,14 +10097,18 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					"(unavailable)" : Row.Path.generic_string().c_str());
 
 				ImGui::BeginDisabled(bActive || Row.Path.empty() ||
-					!bHasExactPlaybackOwner || bAmbiguousOccurrence);
+					!bHasExactPlaybackOwner || bAmbiguousOccurrence ||
+					bKnownNonDrawable);
 				if (ImGui::SmallButton("Open Saved Effect"))
 				{
 					if (nullptr != pProductSource)
 					{
+						VALTAN_PRODUCT_EFFECT_CUE_VIEW PlaybackCue =
+							*pProductSource->pCue;
+						PlaybackCue.strEffectAssetId = Row.strEffectAssetId;
 						Try_OpenValtanAuthoredEffect(Row.Path,
 							Row.strEffectAssetId, *pProductSource->pClip,
-							*pProductSource->pCue);
+							PlaybackCue);
 					}
 					else
 					{
@@ -10760,14 +10120,18 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				ImGui::EndDisabled();
 				ImGui::SameLine();
 				ImGui::BeginDisabled(Row.Path.empty() ||
-					!bHasExactPlaybackOwner || bAmbiguousOccurrence);
+					!bHasExactPlaybackOwner || bAmbiguousOccurrence ||
+					bKnownNonDrawable);
 				if (ImGui::SmallButton("Play Saved Effect"))
 				{
 					if (nullptr != pProductSource)
 					{
+						VALTAN_PRODUCT_EFFECT_CUE_VIEW PlaybackCue =
+							*pProductSource->pCue;
+						PlaybackCue.strEffectAssetId = Row.strEffectAssetId;
 						Try_PlayValtanSavedUnifiedEffect(Row.Path,
 							Row.strEffectAssetId, *pProductSource->pClip,
-							*pProductSource->pCue);
+							PlaybackCue);
 					}
 					else
 					{
@@ -10777,13 +10141,16 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					}
 				}
 				ImGui::EndDisabled();
-				const auto Cache = m_ValtanUnifiedEffectCaches.find(
+				/* Open/Play may insert and rehash the unordered cache, so never
+				   retain its iterator across either button action. */
+				const auto RefreshedCache = m_ValtanUnifiedEffectCaches.find(
 					Row.strEffectAssetId);
-				if (Cache != m_ValtanUnifiedEffectCaches.end() &&
-					Cache->second.bObserved && !Cache->second.strStatus.empty())
+				if (RefreshedCache != m_ValtanUnifiedEffectCaches.end() &&
+					RefreshedCache->second.bObserved &&
+					!RefreshedCache->second.strStatus.empty())
 				{
 					ImGui::TextWrapped("Last explicit validation: %s",
-						Cache->second.strStatus.c_str());
+						RefreshedCache->second.strStatus.c_str());
 				}
 				ImGui::TreePop();
 			}
@@ -10893,8 +10260,6 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Refresh"))
 	{
-		Invalidate_ExactCookedCanaryInstallation(
-			"All Effects refresh requested.");
 		Refresh_AllEffects(true);
 		Refresh_DataFiles();
 		Refresh_ValtanPatternTree();
@@ -11410,8 +10775,6 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		m_AllEffectsSearch.size());
 	if (ImGui::SmallButton("Refresh Source Presets"))
 	{
-		Invalidate_ExactCookedCanaryInstallation(
-			"Source Presets refresh requested.");
 		Refresh_AllEffects(true);
 	}
 	ImGui::SameLine();
@@ -12743,8 +12106,6 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 	ImGui::SameLine();
 	if (ImGui::Button("Refresh Index"))
 	{
-		Invalidate_ExactCookedCanaryInstallation(
-			"Effect index refresh requested.");
 		Refresh_AllEffects(true);
 		Refresh_DataFiles();
 	}
@@ -12856,7 +12217,6 @@ bool_t Client::CEffect_Tool::Try_CreateDocument()
             "New refuses an existing Effect ID; load that file or choose another ID.";
 		return false;
 	}
-	Reset_ExactCookedCanarySelection("A new document was created.");
 	Release_WorldPreview(true);
     Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Document);
@@ -14758,9 +14118,8 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
         bDrawable =
             CEffectDocumentCodec::Validate_Drawable(Staged, PreviewStatus);
     }
-    Reset_RuntimeOccurrenceTuningSession();
+	Reset_RuntimeOccurrenceTuningSession();
 	m_pSelectedVisualSourceProjection = std::move(pStagedVisualProjection);
-	Reset_ExactCookedCanarySelection("The active document changed.");
     Release_WorldPreview(true);
     std::string CanonicalBaseline;
 	if (EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource)
@@ -15526,8 +14885,6 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
             "Play Full Effect rejected an Effect that is no longer available.";
         return false;
     }
-	Reset_ExactCookedCanarySelection(
-		"Product Play never executes the authoring canary.");
 	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		pProductVisualProjection = CEffectCatalog::Find_VisualProjection(
 			ProductCue.Cue.strEffectAssetId);
@@ -17014,427 +16371,6 @@ bool_t Client::CEffect_Tool::Ensure_WorldPreviewObject()
     m_pWorldPreviewObject = pEffect;
     m_iWorldPreviewLevel = iLevel;
     return true;
-}
-
-bool_t Client::CEffect_Tool::Ensure_ExactCookedCanaryVariantsInstalled(
-	std::string& strOutError)
-{
-	strOutError.clear();
-	if (m_bExactCookedCanaryVariantsInstalled)
-		return true;
-
-	std::vector<EXACT_COOKED_CANARY_OWNED_VARIANT> OwnedVariants;
-	std::set<std::string, std::less<>> SourceMaterials;
-	if (!Load_ExactCookedCanaryVariants(
-			OwnedVariants, SourceMaterials, strOutError))
-	{
-		m_strExactCookedCanaryStatus =
-			"FAILED: " + strOutError + " Family-lite preview was preserved.";
-		return false;
-	}
-	std::vector<EFFECT_EXACT_PREVIEW_VARIANT_DESC> InstallViews;
-	InstallViews.reserve(OwnedVariants.size());
-	for (const EXACT_COOKED_CANARY_OWNED_VARIANT& Variant : OwnedVariants)
-		InstallViews.push_back(Variant.Desc);
-	if (!CEffectDocumentRenderer::Install_AuthoringExactPreviewVariants(
-			m_pDevice, m_pContext, InstallViews, strOutError))
-	{
-		m_strExactCookedCanaryStatus =
-			"FAILED: " + strOutError + " Family-lite preview was preserved.";
-		return false;
-	}
-	m_ExactCookedCanarySourceMaterials = std::move(SourceMaterials);
-	m_bExactCookedCanaryVariantsInstalled = true;
-	m_strExactCookedCanaryStatus =
-		"INSTALLED but OFF: two MIC-keyed canaries are ready; family-lite remains active.";
-	return true;
-}
-
-bool_t Client::CEffect_Tool::Has_ExactCookedCanaryMaterial(
-	const EFFECT_DOCUMENT_DESC& Document) const
-{
-	return std::any_of(Document.Elements.begin(), Document.Elements.end(),
-		[this](const EFFECT_ELEMENT_DESC& Element)
-		{
-			return !Element.Material.strSourceMaterialPath.empty() &&
-				m_ExactCookedCanarySourceMaterials.contains(
-					Element.Material.strSourceMaterialPath);
-		});
-}
-
-bool_t Client::CEffect_Tool::Try_SetExactCookedCanaryEnabled(
-	const bool_t bEnabled)
-{
-	if (!bEnabled)
-	{
-		if (const shared_ptr<CEffectObject> pObject =
-				m_pWorldPreviewObject.lock();
-			nullptr != pObject &&
-			pObject->Is_AuthoringExactPreviewExecutionEnabled())
-		{
-			std::string DisableError;
-			if (!pObject->Set_AuthoringExactPreviewExecutionEnabled(
-					false, DisableError))
-			{
-				m_strExactCookedCanaryStatus =
-					"FAILED to disable exact canary: " + DisableError;
-				return false;
-			}
-		}
-		m_bExactCookedCanaryEnabled = false;
-		m_strExactCookedCanaryStatus =
-			"OFF: family-lite authoring preview is active; installed canaries remain inert.";
-		return true;
-	}
-
-	if (!m_ActiveDocument.has_value() ||
-		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
-		Has_ProductCuePreview() || m_bGlasshole02TranslatedCanaryEnabled ||
-		m_bValtanTranslatedCanaryEnabled)
-	{
-		m_strExactCookedCanaryStatus =
-			"REFUSED: enable requires saved Authored preview, Product OFF, and translated family canaries OFF.";
-		return false;
-	}
-	std::string InstallError;
-	if (!Ensure_ExactCookedCanaryVariantsInstalled(InstallError))
-		return false;
-	if (!Has_ExactCookedCanaryMaterial(*m_ActiveDocument))
-	{
-		m_strExactCookedCanaryStatus =
-			"REFUSED: this Authored document has no matching CustomParticle or Helix/SpriteWave MIC; family-lite remains active.";
-		return false;
-	}
-
-	const bool_t bHadWorldPreview =
-		nullptr != m_pWorldPreviewObject.lock();
-	m_bExactCookedCanaryEnabled = true;
-	if (!bHadWorldPreview)
-	{
-		m_strExactCookedCanaryStatus =
-			"ARMED: press an Authored preview control to stage exact cooked PS canaries.";
-		return true;
-	}
-
-	Release_WorldPreview(true);
-	if (!Stage_WorldPreview(*m_ActiveDocument) ||
-		!m_bExactCookedCanaryEnabled)
-	{
-		if (m_strExactCookedCanaryStatus.empty())
-		{
-			m_strExactCookedCanaryStatus =
-				"FAILED to stage exact canary; family-lite preview was preserved.";
-		}
-		return false;
-	}
-	m_strExactCookedCanaryStatus =
-		"ACTIVE for matching MICs in Authored preview only; unmatched Elements remain family-lite.";
-	return true;
-}
-
-void Client::CEffect_Tool::Reset_ExactCookedCanarySelection(
-	std::string strReason)
-{
-	Reset_Glasshole02TranslatedCanarySelection(strReason);
-	Reset_ValtanTranslatedCanarySelection(strReason);
-	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
-		nullptr != pObject &&
-		pObject->Is_AuthoringExactPreviewExecutionEnabled())
-	{
-		std::string Ignore;
-		pObject->Set_AuthoringExactPreviewExecutionEnabled(false, Ignore);
-	}
-	m_bExactCookedCanaryEnabled = false;
-	m_strExactCookedCanaryStatus = "OFF: " + std::move(strReason) +
-		" Family-lite authoring preview remains active.";
-}
-
-void Client::CEffect_Tool::Invalidate_ExactCookedCanaryInstallation(
-	std::string strReason)
-{
-	Reset_Glasshole02TranslatedCanarySelection(strReason);
-	Reset_ValtanTranslatedCanarySelection(strReason);
-	bool_t bHadInstalledSelection =
-		m_bExactCookedCanaryEnabled ||
-		m_bExactCookedCanaryVariantsInstalled ||
-		!m_ExactCookedCanarySourceMaterials.empty();
-	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
-		nullptr != pObject &&
-		pObject->Is_AuthoringExactPreviewExecutionEnabled())
-	{
-		bHadInstalledSelection = true;
-		std::string DisableError;
-		if (!pObject->Set_AuthoringExactPreviewExecutionEnabled(
-				false, DisableError))
-		{
-			/* An indexed refresh must not leave an old exact Core executing after
-			   its registry and MIC selection set are invalidated. */
-			Release_WorldPreview(true);
-		}
-	}
-	m_bExactCookedCanaryEnabled = false;
-	m_bExactCookedCanaryVariantsInstalled = false;
-	m_ExactCookedCanarySourceMaterials.clear();
-	if (!bHadInstalledSelection)
-	{
-		m_strExactCookedCanaryStatus = "OFF: " + std::move(strReason) +
-			" No exact canary was installed; family-lite remains active.";
-		return;
-	}
-
-	std::string ClearError;
-	if (!CEffectDocumentRenderer::Install_AuthoringExactPreviewVariants(
-			m_pDevice, m_pContext,
-			std::span<const EFFECT_EXACT_PREVIEW_VARIANT_DESC>{}, ClearError))
-	{
-		m_strExactCookedCanaryStatus = "OFF: " + std::move(strReason) +
-			" Local selection cache was cleared, but renderer registry clear failed: " +
-			ClearError + ". Family-lite remains active.";
-		return;
-	}
-	m_strExactCookedCanaryStatus = "OFF: " + std::move(strReason) +
-		" Exact registry and MIC selection cache were invalidated; the next explicit enable reloads the contract and blobs.";
-}
-
-bool_t Client::CEffect_Tool::Has_Glasshole02TranslatedCanaryOccurrence(
-	const EFFECT_DOCUMENT_DESC& Document) const
-{
-	if (Document.strEffectAssetId !=
-		CEffectDocumentRenderer::GLASSHOLE02_TRANSLATED_CANARY_EFFECT_ASSET_ID)
-	{
-		return false;
-	}
-	return 1u == static_cast<size_t>(std::count_if(
-		Document.Elements.begin(), Document.Elements.end(),
-		[](const EFFECT_ELEMENT_DESC& Element)
-		{
-			return Element.strElementId ==
-				CEffectDocumentRenderer::
-					GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID &&
-				Element.Material.SourceMaterial.strProfileId ==
-				CEffectDocumentRenderer::
-					GLASSHOLE02_TRANSLATED_CANARY_FAMILY_ID &&
-				Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
-				CEffectDocumentRenderer::
-					GLASSHOLE02_TRANSLATED_CANARY_PROFILE_ID;
-		}));
-}
-
-bool_t Client::CEffect_Tool::Try_SetGlasshole02TranslatedCanaryEnabled(
-	const bool_t bEnabled)
-{
-	if (!bEnabled)
-	{
-		if (const shared_ptr<CEffectObject> pObject =
-				m_pWorldPreviewObject.lock();
-			nullptr != pObject &&
-			pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
-		{
-			std::string Error;
-			if (!pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
-				false, Error))
-			{
-				m_strGlasshole02TranslatedCanaryStatus =
-					"FAILED to disable translated Glasshole02 canary: " + Error;
-				return false;
-			}
-		}
-		m_bGlasshole02TranslatedCanaryEnabled = false;
-		m_strGlasshole02TranslatedCanaryStatus =
-			"OFF: translated Glasshole02 Tool canary is not staged.";
-		if (m_ActiveDocument.has_value() &&
-			EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
-			!Has_ProductCuePreview())
-		{
-			Stage_WorldPreview(*m_ActiveDocument);
-		}
-		return true;
-	}
-
-	if (!m_ActiveDocument.has_value() ||
-		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
-		Has_ProductCuePreview() || m_bExactCookedCanaryEnabled ||
-		m_bValtanTranslatedCanaryEnabled ||
-		!Has_Glasshole02TranslatedCanaryOccurrence(*m_ActiveDocument))
-	{
-		m_strGlasshole02TranslatedCanaryStatus =
-			"REFUSED: open the exact DimensionMaster W Authored document with raw cooked canary and Product Play OFF.";
-		return false;
-	}
-
-	m_bGlasshole02TranslatedCanaryEnabled = true;
-	if (nullptr == m_pWorldPreviewObject.lock())
-	{
-		m_strGlasshole02TranslatedCanaryStatus =
-			"ARMED: stage the Authored preview to compile the translated Glasshole02 canary.";
-		return true;
-	}
-	Release_WorldPreview(true);
-	if (!Stage_WorldPreview(*m_ActiveDocument))
-	{
-		const std::string CanaryFailure = m_strPreviewStatus;
-		m_bGlasshole02TranslatedCanaryEnabled = false;
-		Release_WorldPreview(true);
-		const bool_t bOrdinaryPreviewRestored =
-			Stage_WorldPreview(*m_ActiveDocument);
-		m_strGlasshole02TranslatedCanaryStatus =
-			bOrdinaryPreviewRestored ?
-			"FAILED TO ARM: translated Glasshole02 staging rolled back and the previous ordinary preview contract was restored." :
-			"FAILED CLOSED: translated Glasshole02 staging and ordinary preview restoration both failed.";
-		m_strPreviewStatus = CanaryFailure +
-			(bOrdinaryPreviewRestored ?
-				" Ordinary preview was restored with the canary OFF." :
-				" Ordinary preview restoration also failed.");
-		return false;
-	}
-	m_strGlasshole02TranslatedCanaryStatus =
-		"ACTIVE: exact occurrence uses translated RT0 HLSL, live CB0 time, seven typed DDS lanes, and Target_Depth; Product remains OFF.";
-	return true;
-}
-
-void Client::CEffect_Tool::Reset_Glasshole02TranslatedCanarySelection(
-	std::string strReason)
-{
-	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
-		nullptr != pObject &&
-		pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
-	{
-		std::string Ignore;
-		pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(false, Ignore);
-	}
-	m_bGlasshole02TranslatedCanaryEnabled = false;
-	m_strGlasshole02TranslatedCanaryStatus =
-		"OFF: " + std::move(strReason) +
-		" Translated Glasshole02 canary must be enabled explicitly again.";
-}
-
-bool_t Client::CEffect_Tool::Has_ValtanTranslatedCanaryOccurrences(
-	const EFFECT_DOCUMENT_DESC& Document) const
-{
-	if (Document.strEffectAssetId !=
-		CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID)
-	{
-		return false;
-	}
-	for (const std::string_view strExpectedId :
-		CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS)
-	{
-		const EFFECT_ELEMENT_DESC* pFound = nullptr;
-		for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
-		{
-			if (Element.strElementId != strExpectedId)
-				continue;
-			if (nullptr != pFound)
-				return false;
-			pFound = &Element;
-		}
-		if (nullptr == pFound ||
-			EFFECT_ELEMENT_KIND::PARTICLE != pFound->eKind ||
-			!std::isfinite(pFound->Detail.Mesh.fModelPreScale) ||
-			std::abs(pFound->Detail.Mesh.fModelPreScale - 0.01f) > 1.e-6f)
-		{
-			return false;
-		}
-		const std::string_view strExpectedMaterial =
-			strExpectedId == "par_n_rpbf_atk_01_02.em07" ?
-				"fx_m_mi_n_00.fx_n_me_dissolve_04_011_ma" :
-			strExpectedId == "par_n_rpbf_atk_01_02.em14" ?
-				"fx_m_mi_n_00.fx_mi.fx_n_de_ground_04_30_tr" :
-				"fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr";
-		if (pFound->Material.strSourceMaterialPath != strExpectedMaterial ||
-			pFound->Material.SourceMaterial.bEnabled)
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-bool_t Client::CEffect_Tool::Try_SetValtanTranslatedCanaryEnabled(
-	const bool_t bEnabled)
-{
-	if (!bEnabled)
-	{
-		if (const shared_ptr<CEffectObject> pObject =
-				m_pWorldPreviewObject.lock();
-			nullptr != pObject &&
-			pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
-		{
-			std::string Error;
-			if (!pObject->Set_AuthoringValtanTranslatedCanaryEnabled(
-				false, Error))
-			{
-				m_strValtanTranslatedCanaryStatus =
-					"FAILED to disable translated Valtan canary: " + Error;
-				return false;
-			}
-		}
-		m_bValtanTranslatedCanaryEnabled = false;
-		m_strValtanTranslatedCanaryStatus =
-			"OFF: translated Valtan core-three Tool canary is not staged.";
-		if (m_ActiveDocument.has_value() &&
-			EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
-			!Has_ProductCuePreview())
-		{
-			Stage_WorldPreview(*m_ActiveDocument);
-		}
-		return true;
-	}
-
-	if (!m_ActiveDocument.has_value() ||
-		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
-		Has_ProductCuePreview() || m_bExactCookedCanaryEnabled ||
-		m_bGlasshole02TranslatedCanaryEnabled ||
-		!Has_ValtanTranslatedCanaryOccurrences(*m_ActiveDocument))
-	{
-		m_strValtanTranslatedCanaryStatus =
-			"REFUSED: open exact Valtan FRONT_BACK_FRONT windup Authored data with Product and other canaries OFF.";
-		return false;
-	}
-
-	m_bValtanTranslatedCanaryEnabled = true;
-	if (nullptr == m_pWorldPreviewObject.lock())
-	{
-		m_strValtanTranslatedCanaryStatus =
-			"ARMED: stage the Authored preview to compile the three translated family programs.";
-		return true;
-	}
-	Release_WorldPreview(true);
-	if (!Stage_WorldPreview(*m_ActiveDocument))
-	{
-		const std::string CanaryFailure = m_strPreviewStatus;
-		m_bValtanTranslatedCanaryEnabled = false;
-		Release_WorldPreview(true);
-		const bool_t bOrdinaryPreviewRestored =
-			Stage_WorldPreview(*m_ActiveDocument);
-		m_strValtanTranslatedCanaryStatus = bOrdinaryPreviewRestored ?
-			"FAILED TO ARM: Valtan translated staging rolled back and ordinary preview was restored." :
-			"FAILED CLOSED: Valtan translated staging and ordinary preview restoration both failed.";
-		m_strPreviewStatus = CanaryFailure +
-			(bOrdinaryPreviewRestored ?
-				" Ordinary preview was restored with the canary OFF." :
-				" Ordinary preview restoration also failed.");
-		return false;
-	}
-	m_strValtanTranslatedCanaryStatus =
-		"ACTIVE: the 9/9 Authored gate passed; the current exact preview subset uses translated RT0 HLSL, exact material CB0/time, bounded engine scene CBs, and 19/19 source DDS. Product remains OFF.";
-	return true;
-}
-
-void Client::CEffect_Tool::Reset_ValtanTranslatedCanarySelection(
-	std::string strReason)
-{
-	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
-		nullptr != pObject &&
-		pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
-	{
-		std::string Ignore;
-		pObject->Set_AuthoringValtanTranslatedCanaryEnabled(false, Ignore);
-	}
-	m_bValtanTranslatedCanaryEnabled = false;
-	m_strValtanTranslatedCanaryStatus =
-		"OFF: " + std::move(strReason) +
-		" Translated Valtan canary must be enabled explicitly again.";
 }
 
 bool_t Client::CEffect_Tool::Try_StartArtist31470FullPreview()
@@ -21423,158 +20359,12 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	const EFFECT_DOCUMENT_DESC& Document,
 	const bool_t bAllowReadOnlySourceProjection)
 {
-	const bool_t bValtanTranslatedCanaryStage =
-		m_bValtanTranslatedCanaryEnabled &&
-		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
-		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
-		m_ActiveDocument.has_value() &&
-		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
-		Has_ValtanTranslatedCanaryOccurrences(Document);
-	if (m_bValtanTranslatedCanaryEnabled &&
-		!bValtanTranslatedCanaryStage)
-	{
-		m_strValtanTranslatedCanaryStatus =
-			"FAILED CLOSED before stage: the exact 9/9 Valtan Authored identity changed. Toggle OFF explicitly to return to ordinary preview.";
-		m_strPreviewStatus =
-			"Translated Valtan canary staging was refused after its exact Authored identity changed; ordinary preview was not substituted.";
-		return false;
-	}
 	const EFFECT_DOCUMENT_DESC PreviewDocument =
-		Build_PreviewDocument(Document, bValtanTranslatedCanaryStage);
-	const bool_t bGlasshole02TranslatedCanaryStage =
-		m_bGlasshole02TranslatedCanaryEnabled &&
-		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
-		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
-		m_ActiveDocument.has_value() &&
-		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
-		Has_Glasshole02TranslatedCanaryOccurrence(PreviewDocument);
-	bool_t bExactCanaryStage = m_bExactCookedCanaryEnabled &&
-		!bGlasshole02TranslatedCanaryStage &&
-		!bValtanTranslatedCanaryStage &&
-		m_bExactCookedCanaryVariantsInstalled &&
-		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
-		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
-		m_ActiveDocument.has_value() &&
-		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
-		Has_ExactCookedCanaryMaterial(PreviewDocument);
-	if (const shared_ptr<CEffectObject> pExisting =
-			m_pWorldPreviewObject.lock();
-		nullptr != pExisting)
-	{
-		if (bValtanTranslatedCanaryStage &&
-			!pExisting->Is_AuthoringValtanTranslatedCanaryEnabled())
-		{
-			Release_WorldPreview(true);
-		}
-		else if (!bValtanTranslatedCanaryStage &&
-			pExisting->Is_AuthoringValtanTranslatedCanaryEnabled())
-		{
-			std::string DisableError;
-			pExisting->Set_AuthoringValtanTranslatedCanaryEnabled(
-				false, DisableError);
-			Release_WorldPreview(true);
-		}
-		else if (bGlasshole02TranslatedCanaryStage &&
-			!pExisting->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
-		{
-			/* The translated shader is compiled only by an explicit pre-stage
-			   gate. Recreate an already staged ordinary/Product preview. */
-			Release_WorldPreview(true);
-		}
-		else if (!bGlasshole02TranslatedCanaryStage &&
-			pExisting->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
-		{
-			std::string DisableError;
-			pExisting->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
-				false, DisableError);
-			Release_WorldPreview(true);
-		}
-	}
-	if (bExactCanaryStage)
-	{
-		const shared_ptr<CEffectObject> pExisting =
-			m_pWorldPreviewObject.lock();
-		if (nullptr != pExisting &&
-			!pExisting->Is_AuthoringExactPreviewExecutionEnabled())
-		{
-			/* Enabling is deliberately pre-stage only. Recreate a preview that may
-			   already own a family-lite or Product document instead of mutating it. */
-			Release_WorldPreview(true);
-		}
-	}
+		Build_PreviewDocument(Document);
     if (!Ensure_WorldPreviewObject())
         return false;
     shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
     std::string Error;
-	std::string ExactFallbackReason;
-	if (nullptr != pObject)
-	{
-		if (bValtanTranslatedCanaryStage &&
-			!pObject->Is_AuthoringValtanTranslatedCanaryEnabled() &&
-			!pObject->Set_AuthoringValtanTranslatedCanaryEnabled(
-				true, Error))
-		{
-			m_strValtanTranslatedCanaryStatus =
-				"FAILED CLOSED before stage: " + Error +
-				" Toggle OFF explicitly to return to ordinary preview.";
-			m_strPreviewStatus =
-				"Translated Valtan canary could not be armed: " + Error;
-			return false;
-		}
-		if (bGlasshole02TranslatedCanaryStage &&
-			!pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled() &&
-			!pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
-				true, Error))
-		{
-			m_strGlasshole02TranslatedCanaryStatus =
-				"FAILED CLOSED before stage: " + Error +
-				" Toggle OFF explicitly to return to ordinary preview.";
-			m_strPreviewStatus =
-				"Translated Glasshole02 canary could not be armed: " + Error;
-			return false;
-		}
-		if (bExactCanaryStage &&
-			!pObject->Is_AuthoringExactPreviewExecutionEnabled() &&
-			!pObject->Set_AuthoringExactPreviewExecutionEnabled(true, Error))
-		{
-			const std::string strInitialEnableError = Error;
-			/* Prepared-catalog release clears the per-device exact registry. The
-			   Tool's local install bit cannot observe that external lifetime, so
-			   rebuild the MIC selection set and retry exactly once before falling
-			   back to family-lite. */
-			m_bExactCookedCanaryVariantsInstalled = false;
-			m_ExactCookedCanarySourceMaterials.clear();
-			std::string ReinstallError;
-			const bool_t bReinstalled =
-				Ensure_ExactCookedCanaryVariantsInstalled(ReinstallError);
-			Error.clear();
-			if (!bReinstalled ||
-				!pObject->Set_AuthoringExactPreviewExecutionEnabled(true, Error))
-			{
-				ExactFallbackReason = "initial enable failed: " +
-					strInitialEnableError;
-				if (!bReinstalled)
-					ExactFallbackReason += "; reinstall failed: " + ReinstallError;
-				else
-					ExactFallbackReason += "; enable after reinstall failed: " + Error;
-				m_bExactCookedCanaryEnabled = false;
-				bExactCanaryStage = false;
-				std::string DisableError;
-				pObject->Set_AuthoringExactPreviewExecutionEnabled(
-					false, DisableError);
-			}
-		}
-		else if (!bExactCanaryStage &&
-			pObject->Is_AuthoringExactPreviewExecutionEnabled() &&
-			!pObject->Set_AuthoringExactPreviewExecutionEnabled(false, Error))
-		{
-			/* Product/read-only staging must never inherit an exact authoring flag. */
-			Release_WorldPreview(true);
-			if (!Ensure_WorldPreviewObject())
-				return false;
-			pObject = m_pWorldPreviewObject.lock();
-		}
-	}
 	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		pCatalogProjection = CEffectCatalog::Find_VisualProjection(
 			PreviewDocument.strEffectAssetId);
@@ -21607,40 +20397,9 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 			pObject->Stage_PrevalidatedVisualProgramDocument(
 				pCatalogProjection, pVisualPrepared, Error) :
 			pObject->Stage_Document(PreviewDocument, Error));
-	if (!bStaged && bExactCanaryStage)
-	{
-		ExactFallbackReason = Error;
-		m_bExactCookedCanaryEnabled = false;
-		Release_WorldPreview(true);
-		if (Ensure_WorldPreviewObject())
-		{
-			pObject = m_pWorldPreviewObject.lock();
-			Error.clear();
-			bStaged = nullptr != pObject &&
-				pObject->Stage_Document(PreviewDocument, Error);
-		}
-	}
 	if (!bStaged)
     {
         m_strPreviewStatus = "Document is editable but not drawable yet: " + Error;
-		if (bValtanTranslatedCanaryStage)
-		{
-			m_strValtanTranslatedCanaryStatus =
-				"FAILED CLOSED during stage: " + Error +
-				" Toggle OFF explicitly to return to ordinary preview.";
-		}
-		if (bGlasshole02TranslatedCanaryStage)
-		{
-			m_strGlasshole02TranslatedCanaryStatus =
-				"FAILED CLOSED during stage: " + Error +
-				" Toggle OFF explicitly to return to ordinary preview.";
-		}
-		if (!ExactFallbackReason.empty())
-		{
-			m_strExactCookedCanaryStatus =
-				"FAILED exact stage: " + ExactFallbackReason +
-				" Family-lite retry also failed: " + Error;
-		}
         return false;
     }
 	m_pVisualPreviewProjection = bExactVisualProjection ?
@@ -21703,106 +20462,14 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         m_strPreviewStatus = "Effect preview committed.";
         break;
     }
-	if (nullptr != pObject &&
-		pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
-	{
-		m_strPreviewStatus +=
-			" Translated Valtan core-three RT0 canary is active after the 9/9 Authored gate; the current exact preview subset is staged.";
-		m_strValtanTranslatedCanaryStatus =
-			"ACTIVE: exact material CB0/time, bounded neutral engine scene-CB lanes, 19/19 source DDS parity, bounded LocalMesh/LocalDecal adapters, Product OFF, draw fail-closed.";
-	}
-	else if (nullptr != pObject &&
-		pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
-	{
-		m_strPreviewStatus +=
-			" Translated Glasshole02 RT0 canary is active for its exact occurrence.";
-		m_strGlasshole02TranslatedCanaryStatus =
-			"ACTIVE: live exact CB0, 7/7 DDS parity, Target_Depth t2, 8 samplers, Product OFF, draw fail-closed.";
-	}
-	else if (nullptr != pObject &&
-		pObject->Is_AuthoringExactPreviewExecutionEnabled())
-	{
-		m_strPreviewStatus +=
-			" Exact cooked PS canary is active for matching MICs only.";
-		m_strExactCookedCanaryStatus =
-			"ACTIVE: exact PS plus exact texture register/DDS parity; mixed CB0 and approximate sampler/carrier remain under user audition.";
-	}
-	else if (!ExactFallbackReason.empty())
-	{
-		m_strPreviewStatus +=
-			" Exact canary failed; family-lite preview was committed.";
-		m_strExactCookedCanaryStatus =
-			"FAILED exact stage: " + ExactFallbackReason +
-			" Family-lite preview was preserved.";
-	}
     return true;
 }
 
 Client::EFFECT_DOCUMENT_DESC
 Client::CEffect_Tool::Build_PreviewDocument(
-	const EFFECT_DOCUMENT_DESC& Document,
-	const bool_t bAllowValtanTranslatedCanaryProjection) const
+	const EFFECT_DOCUMENT_DESC& Document) const
 {
     EFFECT_DOCUMENT_DESC Preview = Document;
-	if (bAllowValtanTranslatedCanaryProjection &&
-		m_bValtanTranslatedCanaryEnabled &&
-		Preview.strEffectAssetId ==
-			CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID)
-	{
-		/* This is a non-persistent Tool projection.  The authored document keeps
-		   the imported generic plane carriers so Save/Publish cannot silently
-		   Product-admit an unproven source VF.  The explicit canary gate swaps
-		   only the two bounded carrier adapters required for visual audition. */
-		for (EFFECT_ELEMENT_DESC& Element : Preview.Elements)
-		{
-			if (Element.strElementId == "par_n_rpbf_atk_01_02.em07")
-			{
-				const auto Model = std::find_if(
-					Element.ResourceBindings.begin(),
-					Element.ResourceBindings.end(),
-					[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
-					{
-						return Binding.strSlotId == "meshModel";
-					});
-				if (Model != Element.ResourceBindings.end())
-				{
-					Model->strAssetId =
-						"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel";
-				}
-				Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
-				Element.Renderer.eType = EFFECT_RENDERER_TYPE::MESH_PARTICLE;
-				Element.SourceRecipe.strRendererShape = "mesh";
-				Element.Detail.Mesh.bUseModelMaterial = false;
-				Element.Detail.Mesh.fModelPreScale = 0.01f;
-			}
-			else if (Element.strElementId == "par_n_rpbf_atk_01_02.em14")
-			{
-				std::erase_if(Element.ResourceBindings,
-					[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
-					{
-						return Binding.strSlotId == "meshModel";
-					});
-				Element.eKind = EFFECT_ELEMENT_KIND::DECAL;
-				Element.Renderer.eType = EFFECT_RENDERER_TYPE::DECAL_PARTICLE;
-				Element.SourceRecipe.strRendererShape = "decal";
-				Element.Detail.Decal.vSize =
-					Element.Detail.Particle.vStartSize;
-				Element.Detail.Decal.fDepth = 0.25f;
-			}
-			else if (std::find(
-				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.begin(),
-				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.end(),
-				std::string_view(Element.strElementId)) !=
-				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.end())
-			{
-				Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
-				Element.Renderer.eType = EFFECT_RENDERER_TYPE::MESH_PARTICLE;
-				Element.SourceRecipe.strRendererShape = "mesh";
-				Element.Detail.Mesh.bUseModelMaterial = false;
-				Element.Detail.Mesh.fModelPreScale = 0.01f;
-			}
-		}
-	}
 	if (!m_bPreviewScreenPostEnabled)
 	{
 		std::erase_if(Preview.Elements,
@@ -23482,7 +22149,6 @@ void Client::CEffect_Tool::Release_WorldPreview(
 
 void Client::CEffect_Tool::Discard_ActiveDocument()
 {
-	Reset_ExactCookedCanarySelection("The active document was discarded.");
 	Release_WorldPreview(true);
     Clear_ProductCuePreview();
 	Reset_RuntimeOccurrenceTuningSession();
@@ -23670,15 +22336,8 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
     {
         if (!Element.bVisible)
             continue;
-        const EFFECT_TIMING_DESC& Timing = Element.Detail.Timing;
-        f32_t fElementTail = 0.f;
-        if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind)
-            fElementTail = Element.Detail.Particle.vLifeTimeSeconds.y;
-        else if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
-            fElementTail = Element.Detail.Trail.fPointLifeTimeSeconds;
         fEffectDurationSeconds = (std::max)(fEffectDurationSeconds,
-            Timing.fStartDelaySeconds + Timing.fLifeTimeSeconds +
-            Timing.fAfterImageSeconds + fElementTail);
+			Element_PreviewEndSeconds(Element));
     }
     for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
     {
