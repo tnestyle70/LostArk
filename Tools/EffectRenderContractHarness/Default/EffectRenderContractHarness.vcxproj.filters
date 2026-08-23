@@ -22,6 +22,7 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp"><Filter>Production Sources</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp"><Filter>Production Sources</Filter></ClCompile>

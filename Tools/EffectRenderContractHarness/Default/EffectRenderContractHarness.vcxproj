@@ -99,6 +99,7 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp"><Link>Client\Effect_Catalog.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp"><Link>Client\Effect_CascadeCompiler.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp"><Link>Client\Effect_Distribution.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp"><Link>Client\Effect_DirectAuthoredSourceIndex.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp"><Link>Client\Effect_DocumentCodec.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp"><Link>Client\Effect_DocumentRenderer.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp"><Link>Client\Effect_LightPresentation.cpp</Link></ClCompile>
