@@ -285,6 +285,17 @@ bool_t Client::CAnimationEffectCueDocument::Try_ComposeRootTransform(
 	return true;
 }
 
+bool_t Client::CAnimationEffectCueDocument::Is_CueStartInClipWindow(
+	const ANIMATION_SKILL_CLIP& Clip,
+	const uint32_t iCueStartMs)
+{
+	const uint64_t iSourceEndMs =
+		static_cast<uint64_t>(Clip.iSourceStartMs) +
+		static_cast<uint64_t>(Clip.iPlayMs);
+	return iCueStartMs >= Clip.iSourceStartMs &&
+		(0u == Clip.iPlayMs || iCueStartMs < iSourceEndMs);
+}
+
 bool_t Client::CAnimationEffectCueDocument::Resolve_PreviewCandidates(
     const ANIMATION_SKILL_BINDING& Binding,
     const std::vector<ANIMATION_EFFECT_CUE>& ProductCues,
@@ -312,6 +323,7 @@ bool_t Client::CAnimationEffectCueDocument::Resolve_PreviewCandidates(
             for (const ANIMATION_EFFECT_CUE& Cue : ProductCues)
             {
                 if (Cue.strClipName != Clip.strClipName ||
+					!Is_CueStartInClipWindow(Clip, Cue.iStartMs) ||
                     !Is_ExactAuthoredEffectMapping(
                         Cue.strEffectAssetId, strAuthoredEffectAssetId))
                 {

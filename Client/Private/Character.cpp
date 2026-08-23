@@ -191,8 +191,17 @@ bool_t CCharacter::Load_ClipChains()
 					isHold && 1u == chain.stages.size() &&
 					3u == binding.Stages.size() &&
 					clipIndex + 1u == stage.Clips.size();
-				stagedStage.clips.push_back(
-					{ clip.strClipName, clip.iPlayMs, clip.fPlayRate, isHoldLoop });
+				CLIP_STEP stagedStep{
+					clip.strClipName, clip.iPlayMs, clip.fPlayRate, isHoldLoop,
+					clip.iSourceStartMs };
+				std::uint32_t iAnimation = UINT32_MAX;
+				f32_t fSourceDurationSeconds = 0.f;
+				if (!Resolve_ClipTiming(
+						stagedStep, iAnimation, fSourceDurationSeconds))
+				{
+					return false;
+				}
+				stagedStage.clips.push_back(std::move(stagedStep));
 			}
 			chain.stages.push_back(std::move(stagedStage));
 		}
@@ -312,7 +321,12 @@ void CCharacter::Spawn_FallbackEffect(
 					Clips.begin(), Clips.end(),
 					[&Cue](const CLIP_STEP& Clip)
 					{
-						return Cue.strClipName == Clip.clip;
+						const uint64_t iSourceEndMs =
+							static_cast<uint64_t>(Clip.sourceStartMs) +
+							static_cast<uint64_t>(Clip.playMs);
+						return Cue.strClipName == Clip.clip &&
+							Cue.iStartMs >= Clip.sourceStartMs &&
+							(0u == Clip.playMs || Cue.iStartMs < iSourceEndMs);
 					});
 			});
 		if (bHasAuthoredCue)
@@ -481,10 +495,22 @@ void CCharacter::Commit_PendingClipChains()
 
 bool_t CCharacter::Start_Clip(const CLIP_STEP& Step)
 {
-	if (!Set_Animation(Step.clip.c_str(), Step.loop))
+	std::uint32_t iAnimation = UINT32_MAX;
+	f32_t fSourceDurationSeconds = 0.f;
+	if (!Resolve_ClipTiming(
+			Step, iAnimation, fSourceDurationSeconds) ||
+		!Set_Animation(Step.clip.c_str(), Step.loop))
+	{
 		return false;
-
-	m_pBodyModel->Set_AnimTrackPosition(m_pBodyModel->Get_CurrentAnimIndex(), 0.f);
+	}
+	const f32_t fTicksPerSecond =
+		m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
+	const f32_t fSourceStartTicks =
+		static_cast<f32_t>(Step.sourceStartMs) * 0.001f * fTicksPerSecond;
+	if (!m_pBodyModel->Set_AnimTrackPosition(iAnimation, fSourceStartTicks))
+		return false;
+	if (0u != Step.sourceStartMs)
+		m_pBodyModel->Play_Animation(0.f);
 	m_pBodyModel->Set_AnimationSpeed(Step.playRate);
 	return true;
 }
@@ -526,8 +552,13 @@ bool_t CCharacter::Resolve_ClipTiming(
 		return false;
 	}
 	fOutSourceDurationSeconds = fDuration / fTicksPerSecond;
+	const f32_t fSourceStartSeconds =
+		static_cast<f32_t>(Step.sourceStartMs) * 0.001f;
 	return std::isfinite(fOutSourceDurationSeconds) &&
-		fOutSourceDurationSeconds > 0.f;
+		fOutSourceDurationSeconds > 0.f &&
+		std::isfinite(fSourceStartSeconds) &&
+		fSourceStartSeconds >= 0.f &&
+		fSourceStartSeconds < fOutSourceDurationSeconds;
 }
 
 bool_t CCharacter::Build_ActiveStageTimeline(
@@ -560,7 +591,8 @@ bool_t CCharacter::Build_ActiveStageTimeline(
 			return false;
 		}
 		OutTimings.push_back({ fModelSourceDurationSeconds,
-			Step.playMs, Step.playRate, Step.loop });
+			Step.playMs, Step.playRate, Step.loop,
+			static_cast<f32_t>(Step.sourceStartMs) * 0.001f });
 		if (nullptr != pOutAnimations)
 			pOutAnimations->push_back(iAnimation);
 	}
@@ -629,15 +661,16 @@ bool_t CCharacter::Is_ClipFinished() const
 		m_iChainStep < static_cast<int32_t>(
 			m_pChain->stages[m_iChainStage].clips.size()))
 	{
-		const uint32_t iPlayMs =
-			m_pChain->stages[m_iChainStage].clips[m_iChainStep].playMs;
+		const CLIP_STEP& Step =
+			m_pChain->stages[m_iChainStage].clips[m_iChainStep];
 		const f32_t fTicksPerSecond =
 			m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
-		if (0u != iPlayMs && std::isfinite(fTicksPerSecond) &&
+		if (0u != Step.playMs && std::isfinite(fTicksPerSecond) &&
 			fTicksPerSecond > 0.f)
 		{
 			fLimit = (std::min)(fDuration,
-				static_cast<f32_t>(iPlayMs) * 0.001f * fTicksPerSecond);
+				static_cast<f32_t>(Step.sourceStartMs + Step.playMs) *
+					0.001f * fTicksPerSecond);
 		}
 	}
 

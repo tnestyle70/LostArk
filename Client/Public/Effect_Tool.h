@@ -295,6 +295,7 @@ private:
         struct PRODUCT_CUE final
         {
             ANIMATION_EFFECT_CUE Cue;
+			ANIMATION_SKILL_CLIP Clip;
             size_t iBoundClipOrdinal = 0u;
 			size_t iStageIndex = 0u;
 			size_t iStageClipIndex = 0u;
@@ -390,7 +391,7 @@ private:
 		}
 		SYNCHRONIZED_ANIMATION_CLIP(const ANIMATION_SKILL_CLIP& Clip)
 			: strClipName(Clip.strClipName), iPlayMs(Clip.iPlayMs),
-			  fPlayRate(Clip.fPlayRate)
+			  fPlayRate(Clip.fPlayRate), iSourceStartMs(Clip.iSourceStartMs)
 		{
 		}
 	};
@@ -816,6 +817,8 @@ private:
 	void Reset_ModelCueDraft();
     void Recalculate_PreviewDuration();
     void Recalculate_PreviewDuration(const EFFECT_DOCUMENT_DESC& Document);
+	bool_t Try_ResolvePlayerProductClipWallDuration(
+		f32_t& fOutWallDurationSeconds) const;
     bool_t Has_UnsavedWork() const;
     bool_t Has_UnappliedDetailDraft() const;
     void Set_ActiveDocumentDrawableStatus(

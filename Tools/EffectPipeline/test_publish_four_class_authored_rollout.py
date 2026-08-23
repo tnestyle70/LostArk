@@ -58,76 +58,12 @@ def _stage(
 
 
 class FourClassAuthoredRolloutPublisherTests(unittest.TestCase):
-    def test_current_source_builds_exact_product_contract_without_writes(self) -> None:
-        desired, delete_paths, receipt = publisher._build_desired()
-
-        self.assertEqual(55, len(desired))
-        self.assertFalse(delete_paths)
-        self.assertIn(publisher.CATALOG_PATH, desired)
-        self.assertIn(publisher.ROLLOUT_RECEIPT_PATH, desired)
-        self.assertIn(publisher.PROTECTED_MATERIALIZATION_PATH, desired)
-        self.assertEqual(
-            48,
-            sum(
-                path.parent == publisher.AUTHORED_ROOT and ".clip" in path.name
-                for path in desired
-            ),
-        )
-        self.assertEqual(51, receipt["summary"]["skillCount"])
-        self.assertEqual(74, receipt["summary"]["stageCount"])
-        self.assertEqual(113, receipt["summary"]["clipOccurrenceCount"])
-        self.assertEqual(73, receipt["summary"]["effectBearingStageCount"])
-        self.assertEqual(1, receipt["summary"]["sourceIntentionallySilentStageCount"])
-        self.assertEqual(0, receipt["summary"]["blockedStageCount"])
-        self.assertEqual(102, receipt["summary"]["visualClipOccurrenceCount"])
-        self.assertEqual(11, receipt["summary"]["silentClipOccurrenceCount"])
-        self.assertEqual(48, receipt["summary"]["derivedClipTargetCount"])
-        self.assertEqual(53, receipt["summary"]["retainedStageTargetCount"])
-        self.assertEqual(0, receipt["summary"]["trimmedElementCount"])
-        self.assertEqual(0, receipt["summary"]["unmappedElementCount"])
-        self.assertEqual(101, receipt["summary"]["productTargetCount"])
-        self.assertEqual(101, receipt["summary"]["productCueCount"])
-        self.assertEqual(101, len(receipt["productTargets"]))
-        self.assertEqual(
-            48,
-            sum(row["derivedClipProjection"] for row in receipt["productTargets"]),
-        )
-        self.assertEqual(
-            "sharedEquivalentProductTarget",
-            receipt["repeatedClipEvidence"][0]["resolution"],
-        )
-        protected_gate = json.loads(
-            desired[publisher.PROTECTED_MATERIALIZATION_PATH]
-        )["stages"][0]["productGate"]
-        dimensionmaster_cue_path = (
-            publisher.DATA_ROOT
-            / "Animation/Authored/DimensionMaster/DimensionMaster.animevents"
-        )
-        self.assertEqual(
-            publisher._sha256_bytes(desired[publisher.CATALOG_PATH]),
-            protected_gate["catalog"]["sha256"],
-        )
-        self.assertEqual(
-            publisher._sha256_bytes(desired[dimensionmaster_cue_path]),
-            protected_gate["animationCue"]["sha256"],
-        )
-        delayed_visual_stage = next(
-            row
-            for row in receipt["stages"]
-            if row["characterClass"] == "LANCE_MASTER"
-            and row["productSkillId"] == 34140
-            and row["stageIndex"] == 1
-        )
-        self.assertEqual(
-            ["noSelectedCarrier", "visualBearing"],
-            [row["status"] for row in delayed_visual_stage["clipProducts"]],
-        )
-        self.assertEqual(
-            "effect.lancemaster.skill.34140.ba2.clip2",
-            delayed_visual_stage["clipProducts"][1][
-                "productTargetEffectAssetId"
-            ],
-        )
+    def test_current_source_refuses_the_historical_full_rollout(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            "Historical four-class rollout is frozen.*Publish-Effects.ps1",
+        ):
+            publisher._build_desired()
 
     def test_duplicate_canonical_product_target_is_rejected(self) -> None:
         first = _stage(
@@ -151,7 +87,10 @@ class FourClassAuthoredRolloutPublisherTests(unittest.TestCase):
     def test_source_event_owns_delayed_emitter_tail_without_trim_or_reassignment(
         self,
     ) -> None:
-        desired, _delete_paths, receipt = publisher._build_desired()
+        receipt = publisher._load_json(
+            publisher.ROLLOUT_RECEIPT_PATH,
+            "frozen four-class authored rollout receipt",
+        )
         stage = next(
             row
             for row in receipt["stages"]
@@ -176,7 +115,10 @@ class FourClassAuthoredRolloutPublisherTests(unittest.TestCase):
         derived_path = publisher.AUTHORED_ROOT / (
             "effect.lancemaster.skill.34120.authored-baseline.clip2.effect.json"
         )
-        derived = json.loads(desired[derived_path])
+        derived = publisher._load_json(
+            derived_path,
+            "frozen delayed-emitter clip projection",
+        )
         projected = next(row for row in derived["elements"] if row["id"] == element_id)
         projected_delay = projected["detail"]["timing"]["startDelaySeconds"]
         self.assertAlmostEqual(0.6314, projected_delay, places=4)

@@ -27,24 +27,87 @@ SPEC.loader.exec_module(materializer)
 class DimensionMaster2050210OccurrenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.target = materializer.load_json(materializer.TARGET_PATH)
+        cls.aggregate = materializer.load_json(materializer.TARGET_PATH)
         cls.source = materializer.load_json(materializer.IMPORTED_PATH)
         cls.receipt = materializer.load_json(materializer.RESTORATION_RECEIPT_PATH)
         cls.projected = materializer.build_source_rows(cls.source, cls.receipt)
 
     def baseline(self) -> dict:
-        value = copy.deepcopy(self.target)
-        value["elements"] = value["elements"][: len(materializer.EXPECTED_TUNED_ROWS)]
+        value = copy.deepcopy(self.aggregate)
+        value["elements"] = value["elements"][
+            : len(materializer.EXPECTED_TUNED_ROWS)
+        ]
         return value
 
-    def test_repository_has_exact_selective_projection_and_cue_contract(self) -> None:
-        result = materializer.build_document(
-            copy.deepcopy(self.target), self.source, self.receipt
+    @staticmethod
+    def final_animation_text() -> str:
+        source = materializer.ANIMATION_EVENTS_PATH.read_text(
+            encoding="utf-8-sig"
         )
-        self.assertEqual(result, self.target)
-        self.assertEqual(len(result["elements"]), 12)
-        materializer.validate_animation_event_text(
-            materializer.ANIMATION_EVENTS_PATH.read_text(encoding="utf-8-sig")
+        lines = source.splitlines()
+        old = [
+            line
+            for line in lines[1:]
+            if 'payload="effect.dimensionmaster.skill.2050210.unified"'
+            in line
+        ]
+        if len(old) == 1:
+            lines.remove(old[0])
+            lines.extend(materializer.EXPECTED_A_CUE_LINES)
+        header, _ = lines[0].rsplit(" ", 1)
+        lines[0] = f"{header} {len(lines) - 1}"
+        return "\n".join(lines) + "\n"
+
+    def test_repository_has_exact_four_document_partition_and_catalog(self) -> None:
+        result = materializer.build_document(
+            copy.deepcopy(self.aggregate), self.source, self.receipt
+        )
+        self.assertEqual(result, self.aggregate)
+        actual = tuple(
+            materializer.load_json(path)
+            for path in materializer.OCCURRENCE_PATHS
+        )
+        materializer.validate_occurrence_documents(actual, result)
+        materializer.validate_effect_catalog(
+            materializer.load_json(materializer.EFFECT_CATALOG_PATH)
+        )
+
+        self.assertEqual(
+            [9, 1, 1, 1], [len(document["elements"]) for document in actual]
+        )
+        union = [
+            element["id"]
+            for document in actual
+            for element in document["elements"]
+        ]
+        self.assertEqual(
+            [element["id"] for element in result["elements"]], union
+        )
+        self.assertEqual(len(union), len(set(union)))
+        self.assertTrue(
+            all(
+                element["detail"]["timing"]["startDelaySeconds"] == 0
+                for document in actual
+                for element in document["elements"]
+            )
+        )
+
+    def test_final_cues_are_four_exact_source_occurrences(self) -> None:
+        final = self.final_animation_text()
+        materializer.validate_animation_event_text(final)
+        for cue, effect_id, start in zip(
+            materializer.EXPECTED_A_CUE_LINES,
+            materializer.OCCURRENCE_EFFECT_IDS,
+            (250, 600, 900, 1300),
+        ):
+            self.assertIn(f"startms={start}", cue)
+            self.assertIn(f'payload="{effect_id}"', cue)
+            self.assertIn(
+                'anchor="root" follow=follow orientation=action_facing', cue
+            )
+        self.assertNotIn(
+            'payload="effect.dimensionmaster.skill.2050210.unified"',
+            "\n".join(materializer.EXPECTED_A_CUE_LINES),
         )
 
     def test_projection_preserves_nine_and_appends_only_three_missing_rows(self) -> None:
@@ -58,78 +121,27 @@ class DimensionMaster2050210OccurrenceTests(unittest.TestCase):
             [row["id"] for row in result["elements"]],
         )
 
-    def test_visible_cadence_is_exactly_four_with_inner_snapshot(self) -> None:
-        result = materializer.build_document(
-            self.baseline(), self.source, self.receipt
-        )
-        tuned = next(
-            row
-            for row in result["elements"]
-            if row["id"] == materializer.TUNED_REFERENCE_ID
-        )
-        visual_rows = [tuned, *result["elements"][9:]]
-        self.assertEqual(len(visual_rows), 4)
-        self.assertEqual(
-            tuple(
-                row["detail"]["timing"]["startDelaySeconds"]
-                for row in visual_rows
-            ),
-            materializer.SOURCE_START_SECONDS,
-        )
-        self.assertEqual(
-            tuple(
-                tuple(row["detail"]["transform"]["position"])
-                for row in result["elements"][9:]
-            ),
-            materializer.SOURCE_LOCAL_POSITIONS[1:],
-        )
-        for row in result["elements"][9:]:
-            self.assertTrue(row["actionCueAttachment"]["enabled"])
-            self.assertFalse(row["actionCueAttachment"]["follow"])
-            self.assertEqual(
-                row["transformInheritance"],
-                {"enabled": False, "masterElementId": ""},
-            )
-
-    def test_substitution_receipt_and_duplicate_source_node_are_explicit(self) -> None:
-        admission = materializer.SOURCE_OCCURRENCE_ADMISSION_RECEIPT
-        base = admission["rows"][0]
-        self.assertEqual(
-            base["disposition"], "SOURCE_EXACT_EVIDENCE_ONLY_NOT_ADMITTED"
-        )
-        self.assertEqual(
-            base["substitutedByCurrent"], materializer.TUNED_REFERENCE_ID
-        )
-        self.assertEqual(
-            [row["disposition"] for row in admission["rows"][1:]],
-            ["ADMITTED_SOURCE_EXACT"] * 3,
-        )
-        self.assertTrue(admission["duplicateSourceNodePolicy"]["allowed"])
-
-    def test_project_tuned_timing_is_not_relabelled_as_source_identity(self) -> None:
-        provenance = materializer.TUNED_FIELD_PROVENANCE
-        self.assertEqual(
-            provenance["sourceIdentity"]["sourceStartDelaySeconds"], 0.60
-        )
-        tuned = provenance["projectTunedFields"][
-            "detail.timing.startDelaySeconds"
-        ]
-        self.assertEqual(tuned, {"value": 0.25, "provenance": "PROJECT_TUNED"})
-
-    def test_unknown_current_drift_and_partial_projection_fail_closed(self) -> None:
-        drifted = self.baseline()
-        drifted["elements"][0]["detail"]["timing"]["startDelaySeconds"] = 9.0
+    def test_occurrence_partition_rejects_timing_or_identity_drift(self) -> None:
+        timing = copy.deepcopy(self.aggregate)
+        timing["elements"][9]["detail"]["timing"][
+            "startDelaySeconds"
+        ] = 0.61
         with self.assertRaisesRegex(
-            materializer.MaterializationError, "current tuned row drifted"
+            materializer.MaterializationError,
+            "aggregate occurrence start changed",
         ):
-            materializer.build_document(drifted, self.source, self.receipt)
+            materializer.build_occurrence_documents(timing)
 
-        partial = self.baseline()
-        partial["elements"].append(copy.deepcopy(self.projected[1]))
+        identity = copy.deepcopy(self.aggregate)
+        identity["elements"][0], identity["elements"][1] = (
+            identity["elements"][1],
+            identity["elements"][0],
+        )
         with self.assertRaisesRegex(
-            materializer.MaterializationError, "unknown/partial"
+            materializer.MaterializationError,
+            "row order/identity changed",
         ):
-            materializer.build_document(partial, self.source, self.receipt)
+            materializer.build_occurrence_documents(identity)
 
     def test_source_or_receipt_identity_drift_fails_closed(self) -> None:
         source = copy.deepcopy(self.source)
@@ -161,64 +173,97 @@ class DimensionMaster2050210OccurrenceTests(unittest.TestCase):
         ):
             materializer.build_source_rows(self.source, receipt)
 
-    def test_layout_append_and_atomic_roundtrip_are_byte_idempotent(self) -> None:
-        baseline = self.baseline()
-        baseline_text = json.dumps(baseline, ensure_ascii=False, indent=2) + "\n"
-        result = materializer.build_document(baseline, self.source, self.receipt)
-        rendered = materializer.render_materialized_text(
-            baseline_text, baseline, result
-        )
-        self.assertEqual(
-            materializer.parse_json_text(rendered, "test projection"), result
-        )
-
+    def test_write_is_idempotent_and_refuses_existing_split_drift(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            target_path = pathlib.Path(temporary) / "target.effect.json"
-            target_path.write_text(baseline_text, encoding="utf-8", newline="\n")
+            root = pathlib.Path(temporary)
+            target_path = root / "aggregate.effect.json"
+            target_path.write_text(
+                json.dumps(self.baseline(), ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            event_path = root / "DimensionMaster.animevents"
+            event_path.write_text(
+                self.final_animation_text(), encoding="utf-8", newline="\n"
+            )
+            occurrence_paths = tuple(
+                root / f"a{index}.effect.json" for index in range(1, 5)
+            )
+
             changed = materializer.run(
                 write=True,
                 target_path=target_path,
                 source_path=materializer.IMPORTED_PATH,
                 receipt_path=materializer.RESTORATION_RECEIPT_PATH,
-                animation_events_path=materializer.ANIMATION_EVENTS_PATH,
+                animation_events_path=event_path,
+                effect_catalog_path=materializer.EFFECT_CATALOG_PATH,
+                occurrence_paths=occurrence_paths,
             )
             self.assertTrue(changed)
-            first = target_path.read_bytes()
-            self.assertEqual(materializer.load_json(target_path), result)
-            changed_again = materializer.run(
-                write=True,
-                target_path=target_path,
-                source_path=materializer.IMPORTED_PATH,
-                receipt_path=materializer.RESTORATION_RECEIPT_PATH,
-                animation_events_path=materializer.ANIMATION_EVENTS_PATH,
+            first = [path.read_bytes() for path in occurrence_paths]
+            self.assertFalse(
+                materializer.run(
+                    write=True,
+                    target_path=target_path,
+                    source_path=materializer.IMPORTED_PATH,
+                    receipt_path=materializer.RESTORATION_RECEIPT_PATH,
+                    animation_events_path=event_path,
+                    effect_catalog_path=materializer.EFFECT_CATALOG_PATH,
+                    occurrence_paths=occurrence_paths,
+                )
             )
-            self.assertFalse(changed_again)
-            self.assertEqual(target_path.read_bytes(), first)
-            self.assertEqual(list(pathlib.Path(temporary).glob("*.tmp")), [])
+            self.assertEqual(
+                first, [path.read_bytes() for path in occurrence_paths]
+            )
 
-    def test_duplicate_json_and_old_snapshot_cue_are_rejected(self) -> None:
+            drifted = materializer.load_json(occurrence_paths[0])
+            drifted["elements"][0]["detail"]["timing"][
+                "startDelaySeconds"
+            ] = 1
+            occurrence_paths[0].write_text(
+                json.dumps(drifted), encoding="utf-8", newline="\n"
+            )
+            with self.assertRaisesRegex(
+                materializer.MaterializationError, "refusing overwrite"
+            ):
+                materializer.run(
+                    write=True,
+                    target_path=target_path,
+                    source_path=materializer.IMPORTED_PATH,
+                    receipt_path=materializer.RESTORATION_RECEIPT_PATH,
+                    animation_events_path=event_path,
+                    effect_catalog_path=materializer.EFFECT_CATALOG_PATH,
+                    occurrence_paths=occurrence_paths,
+                )
+
+    def test_duplicate_json_and_aggregate_or_snapshot_cue_are_rejected(self) -> None:
         with self.assertRaisesRegex(
             materializer.MaterializationError, "duplicate JSON key"
         ):
             materializer.parse_json_text('{"a": 1, "a": 2}', "duplicate")
-        cue = materializer.ANIMATION_EVENTS_PATH.read_text(encoding="utf-8-sig")
-        cue = cue.replace(
-            "follow=follow orientation=action_facing", "follow=snapshot"
+
+        cue = self.final_animation_text().replace(
+            materializer.EXPECTED_A_CUE_LINES[0],
+            materializer.EXPECTED_A_CUE_LINES[0].replace(
+                "follow=follow orientation=action_facing", "follow=snapshot"
+            ),
         )
         with self.assertRaisesRegex(
-            materializer.MaterializationError, "FOLLOW.*action_facing"
+            materializer.MaterializationError, "four exact source-timed"
         ):
             materializer.validate_animation_event_text(cue)
-        version_five = materializer.ANIMATION_EVENTS_PATH.read_text(
-            encoding="utf-8-sig"
-        ).replace(
-            'LOSTARK_ANIM_EVENTS 6 "DimensionMaster"',
-            'LOSTARK_ANIM_EVENTS 5 "DimensionMaster"',
+
+        aggregate = self.final_animation_text().replace(
+            materializer.EXPECTED_A_CUE_LINES[0],
+            materializer.EXPECTED_A_CUE_LINES[0].replace(
+                materializer.OCCURRENCE_EFFECT_IDS[0],
+                materializer.TARGET_EFFECT_ID,
+            ),
         )
         with self.assertRaisesRegex(
-            materializer.MaterializationError, "header/count changed"
+            materializer.MaterializationError, "no aggregate Product cue"
         ):
-            materializer.validate_animation_event_text(version_five)
+            materializer.validate_animation_event_text(aggregate)
 
 
 if __name__ == "__main__":

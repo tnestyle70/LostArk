@@ -19,6 +19,9 @@ namespace Client
 		std::string strClipName;
 		uint32_t iPlayMs = 0u;
 		f32_t fPlayRate = 1.f;
+		/* Absolute source-track offset.  It is last so existing aggregate
+		initializers keep their source-compatible zero offset. */
+		uint32_t iSourceStartMs = 0u;
 
 		bool operator==(const ANIMATION_SKILL_CLIP&) const = default;
 	};

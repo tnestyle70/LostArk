@@ -14431,6 +14431,7 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
 		{
 			LostArk::Shared::SKILL_ID iSkillId =
 				LostArk::Shared::INVALID_SKILL_ID;
+			ANIMATION_SKILL_CLIP Clip;
 			size_t iBoundClipOrdinal = 0u;
 			size_t iStageIndex = 0u;
 			size_t iStageClipIndex = 0u;
@@ -14470,7 +14471,7 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
 							strClipName);
 					}
 					Owners.push_back(BOUND_CLIP_OWNER{
-						Binding.iSkillId, iBoundClipOrdinal,
+						Binding.iSkillId, Stage.Clips[iStageClip], iBoundClipOrdinal,
 						iStage, iStageClip });
 				}
             }
@@ -14509,12 +14510,18 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
 				continue;
 			for (const BOUND_CLIP_OWNER& ClipOwner : Owner->second)
 			{
+				if (!CAnimationEffectCueDocument::Is_CueStartInClipWindow(
+						ClipOwner.Clip, Cue.iStartMs))
+				{
+					continue;
+				}
 				const auto EntryIndex = EntryIndices.find(ClipOwner.iSkillId);
 				if (EntryIndex == EntryIndices.end())
 					return FailRefresh(
 						"an admitted Effect cue has no skill row.");
 				EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE ProductCue;
 				ProductCue.Cue = Cue;
+				ProductCue.Clip = ClipOwner.Clip;
 				ProductCue.iBoundClipOrdinal =
 					ClipOwner.iBoundClipOrdinal;
 				ProductCue.iStageIndex = ClipOwner.iStageIndex;
@@ -20834,9 +20841,22 @@ f32_t Client::CEffect_Tool::Resolve_EffectSampleTime(
 {
 	if (m_ProductPreview.has_value())
 	{
-		const f32_t fCueStartSeconds = static_cast<f32_t>(
-			m_ProductPreview->ProductCue.Cue.iStartMs) * 0.001f;
-		return (std::max)(0.f, fTimelineSeconds - fCueStartSeconds);
+		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+			m_ProductPreview->ProductCue;
+		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
+		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
+			ProductCue.Clip.iSourceStartMs) * 0.001f;
+		Timing.fPlayRate = ProductCue.Clip.fPlayRate;
+		Timing.fCueSourceStartSeconds = static_cast<f32_t>(
+			ProductCue.Cue.iStartMs) * 0.001f;
+		Timing.fCueSourceEndSeconds = static_cast<f32_t>(
+			ProductCue.Cue.iEndMs) * 0.001f;
+		Timing.bHasCueSourceEnd = EFFECT_STOP_POLICY::CUE_END ==
+			ProductCue.Cue.eStopPolicy;
+		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
+		return CActionPresentationTimeline::Resolve_CuePreviewSample(
+			Timing, (std::max)(0.f, fTimelineSeconds), Sample) ?
+			Sample.fEffectSampleSeconds : 0.f;
 	}
 	if (!m_ValtanProductPreview.has_value())
         return (std::max)(0.f, fTimelineSeconds);
@@ -20864,9 +20884,26 @@ f32_t Client::CEffect_Tool::Resolve_EffectTimelineTime(
 		(std::max)(0.f, fEffectSampleSeconds);
 	if (m_ProductPreview.has_value())
 	{
-		return static_cast<f32_t>(
-			m_ProductPreview->ProductCue.Cue.iStartMs) * 0.001f +
-			fClampedEffectSample;
+		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+			m_ProductPreview->ProductCue;
+		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
+		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
+			ProductCue.Clip.iSourceStartMs) * 0.001f;
+		Timing.fPlayRate = ProductCue.Clip.fPlayRate;
+		Timing.fCueSourceStartSeconds = static_cast<f32_t>(
+			ProductCue.Cue.iStartMs) * 0.001f;
+		Timing.fCueSourceEndSeconds = static_cast<f32_t>(
+			ProductCue.Cue.iEndMs) * 0.001f;
+		Timing.bHasCueSourceEnd = EFFECT_STOP_POLICY::CUE_END ==
+			ProductCue.Cue.eStopPolicy;
+		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
+		if (!CActionPresentationTimeline::Resolve_CuePreviewSample(
+				Timing, 0.f, Sample))
+		{
+			return fClampedEffectSample;
+		}
+		return Sample.fCueWallStartSeconds +
+			fClampedEffectSample / Timing.fPlayRate;
 	}
 	if (!m_ValtanProductPreview.has_value())
 		return fClampedEffectSample;
@@ -20896,13 +20933,22 @@ bool_t Client::CEffect_Tool::Is_ProductCueVisible(
 {
 	if (m_ProductPreview.has_value())
 	{
-		const ANIMATION_EFFECT_CUE& Cue =
-			m_ProductPreview->ProductCue.Cue;
-		const f32_t fTimelineMs = fTimelineSeconds * 1000.f;
-		if (fTimelineMs + 0.5f < static_cast<f32_t>(Cue.iStartMs))
-			return false;
-		return EFFECT_STOP_POLICY::CUE_END != Cue.eStopPolicy ||
-			fTimelineMs < static_cast<f32_t>(Cue.iEndMs);
+		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+			m_ProductPreview->ProductCue;
+		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
+		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
+			ProductCue.Clip.iSourceStartMs) * 0.001f;
+		Timing.fPlayRate = ProductCue.Clip.fPlayRate;
+		Timing.fCueSourceStartSeconds = static_cast<f32_t>(
+			ProductCue.Cue.iStartMs) * 0.001f;
+		Timing.fCueSourceEndSeconds = static_cast<f32_t>(
+			ProductCue.Cue.iEndMs) * 0.001f;
+		Timing.bHasCueSourceEnd = EFFECT_STOP_POLICY::CUE_END ==
+			ProductCue.Cue.eStopPolicy;
+		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
+		return CActionPresentationTimeline::Resolve_CuePreviewSample(
+			Timing, (std::max)(0.f, fTimelineSeconds), Sample) &&
+			Sample.bVisible;
 	}
 	if (!m_ValtanProductPreview.has_value())
         return true;
@@ -21077,6 +21123,7 @@ void Client::CEffect_Tool::Select_PlayerPreviewCueCandidate(
 		m_PlayerPreviewCueCandidates[iCandidateIndex];
 	EFFECT_PRODUCT_PREVIEW Preview = *m_ProductPreview;
 	Preview.ProductCue.Cue = Candidate.Cue;
+	Preview.ProductCue.Clip = Candidate.Clip;
 	Preview.ProductCue.iBoundClipOrdinal = Candidate.iBoundClipOrdinal;
 	Preview.ProductCue.iStageIndex = Candidate.iStageIndex;
 	Preview.ProductCue.iStageClipIndex = Candidate.iStageClipIndex;
@@ -21625,6 +21672,7 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 		Preview.eCharacterClass = Skill->eCharacterClass;
 		Preview.iSkillId = Skill->iSkillId;
 		Preview.ProductCue.Cue = Candidate.Cue;
+		Preview.ProductCue.Clip = Candidate.Clip;
 		Preview.ProductCue.iBoundClipOrdinal = Candidate.iBoundClipOrdinal;
 		Preview.ProductCue.iStageIndex = Candidate.iStageIndex;
 		Preview.ProductCue.iStageClipIndex = Candidate.iStageClipIndex;
@@ -21635,22 +21683,25 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
     m_SynchronizedAnimationClips.clear();
     if (m_ProductPreview.has_value())
     {
-        const std::string& strCueClip =
-            m_ProductPreview->ProductCue.Cue.strClipName;
-        for (const ANIMATION_SKILL_STAGE& Stage : Binding->Stages)
-        {
-            const auto Clip = std::find_if(
-                Stage.Clips.begin(), Stage.Clips.end(),
-                [&strCueClip](const ANIMATION_SKILL_CLIP& Candidate)
-                {
-                    return Candidate.strClipName == strCueClip;
-                });
-            if (Clip != Stage.Clips.end())
-            {
-                m_SynchronizedAnimationClips.push_back(*Clip);
-                break;
-            }
-        }
+		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Selected =
+			m_ProductPreview->ProductCue;
+		if (Selected.iStageIndex < Binding->Stages.size())
+		{
+			const ANIMATION_SKILL_STAGE& Stage =
+				Binding->Stages[Selected.iStageIndex];
+			if (Selected.iStageClipIndex < Stage.Clips.size())
+			{
+				const ANIMATION_SKILL_CLIP& Clip =
+					Stage.Clips[Selected.iStageClipIndex];
+				if (Clip == Selected.Clip &&
+					Clip.strClipName == Selected.Cue.strClipName &&
+					CAnimationEffectCueDocument::Is_CueStartInClipWindow(
+						Clip, Selected.Cue.iStartMs))
+				{
+					m_SynchronizedAnimationClips.push_back(Clip);
+				}
+			}
+		}
     }
     else
     {
@@ -21673,19 +21724,15 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 	m_iSynchronizedAnimationLoopEpoch = 0u;
     m_iSynchronizedAnimationTargetGeneration =
         CAnimationTargetService::Resolve_TargetGeneration();
-    const bool_t bSingleClip = 1u == m_SynchronizedAnimationClips.size();
 	const SYNCHRONIZED_ANIMATION_CLIP& FirstClip =
         m_SynchronizedAnimationClips.front();
-    if (!pModel->Start_Animation(
-        FirstClip.strClipName.c_str(), bSingleClip && m_bPreviewLoop))
+	if (!Start_SynchronizedAnimationClip(0u, false))
     {
         Reset_SynchronizedAnimationSequence();
         m_strPreviewAnimationStatus =
             "Effect is playing; its first bound animation clip is unavailable.";
         return;
     }
-    pModel->Set_AnimationSpeed(FirstClip.fPlayRate);
-    pModel->Set_AnimPaused(false);
     m_strPreviewAnimationStatus = m_ProductPreview.has_value() ?
         "Product cue animation synced: " : "Skill animation synced: ";
     m_strPreviewAnimationStatus +=
@@ -21697,11 +21744,16 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
             m_ProductPreview->ProductCue.Cue.iStartMs) + " ms | anchor=" +
             m_ProductPreview->ProductCue.Cue.strAnchorSlotId;
     }
-    if (!bSingleClip)
+	if (1u != m_SynchronizedAnimationClips.size())
     {
         m_strPreviewAnimationStatus += " (sequence 1/" +
             std::to_string(m_SynchronizedAnimationClips.size()) + ")";
     }
+	/* Product authoring must retain the complete selected animation window even
+	   when this occurrence's Effect tail is shorter.  Recalculate only after
+	   the exact class model and clip window have been staged. */
+	if (m_ProductPreview.has_value())
+		Recalculate_PreviewDuration(*pPreviewDocument);
 }
 
 bool_t Client::CEffect_Tool::Start_SynchronizedAnimationClip(
@@ -21716,7 +21768,10 @@ bool_t Client::CEffect_Tool::Start_SynchronizedAnimationClip(
 		return false;
 	const SYNCHRONIZED_ANIMATION_CLIP& Clip =
 		m_SynchronizedAnimationClips[iClipIndex];
+	const bool_t bHasSourceWindow =
+		0u != Clip.iSourceStartMs || 0u != Clip.iPlayMs;
 	const bool_t bEngineLoop = !Clip.bHasExplicitLoopPolicy &&
+		!bHasSourceWindow &&
 		1u == m_SynchronizedAnimationClips.size() && m_bPreviewLoop;
 	if (!pModel->Start_Animation(Clip.strClipName.c_str(), bEngineLoop))
 		return false;
@@ -21975,9 +22030,12 @@ bool_t Client::CEffect_Tool::Try_ResolveSynchronizedAnimationTime(
 			(std::max)(0.f,
 				fPosition / fTicksPerSecond - fSourceStartSeconds),
 			fSourceDurationSeconds);
+		const bool_t bHasSourceWindow =
+			0u != Clip.iSourceStartMs || 0u != Clip.iPlayMs;
 		if (CActionPresentationTimeline::
 			Should_ReleaseCompletedAnimationClock(
-				Clip.bHasExplicitLoopPolicy, Clip.bLoop,
+				Clip.bHasExplicitLoopPolicy || bHasSourceWindow,
+				Clip.bHasExplicitLoopPolicy ? Clip.bLoop : m_bPreviewLoop,
 				iClip + 1u == m_SynchronizedAnimationClips.size(),
 				pModel->Is_AnimPaused(), fCurrentSourceSeconds,
 				fSourceDurationSeconds))
@@ -22002,7 +22060,9 @@ void Client::CEffect_Tool::Update_SynchronizedAnimationSequence()
         return;
     }
 	if (m_SynchronizedAnimationClips.size() <= 1u &&
-		!m_SynchronizedAnimationClips.front().bHasExplicitLoopPolicy)
+		!m_SynchronizedAnimationClips.front().bHasExplicitLoopPolicy &&
+		0u == m_SynchronizedAnimationClips.front().iSourceStartMs &&
+		0u == m_SynchronizedAnimationClips.front().iPlayMs)
 		return;
     const shared_ptr<Engine::CModel> pModel =
         CAnimationTargetService::Resolve_Model();
@@ -22351,18 +22411,38 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
     m_fPreviewDurationSeconds = fEffectDurationSeconds;
     if (m_ProductPreview.has_value())
     {
-        const ANIMATION_EFFECT_CUE& Cue =
-            m_ProductPreview->ProductCue.Cue;
-        const f32_t fCueStartSeconds =
-            static_cast<f32_t>(Cue.iStartMs) * 0.001f;
-        m_fPreviewDurationSeconds = fCueStartSeconds +
-            fEffectDurationSeconds;
-        if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy)
-        {
-            m_fPreviewDurationSeconds = (std::max)(
-                m_fPreviewDurationSeconds,
-                static_cast<f32_t>(Cue.iEndMs) * 0.001f);
-        }
+		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+			m_ProductPreview->ProductCue;
+		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
+		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
+			ProductCue.Clip.iSourceStartMs) * 0.001f;
+		Timing.fPlayRate = ProductCue.Clip.fPlayRate;
+		Timing.fCueSourceStartSeconds = static_cast<f32_t>(
+			ProductCue.Cue.iStartMs) * 0.001f;
+		Timing.fCueSourceEndSeconds = static_cast<f32_t>(
+			ProductCue.Cue.iEndMs) * 0.001f;
+		Timing.bHasCueSourceEnd = EFFECT_STOP_POLICY::CUE_END ==
+			ProductCue.Cue.eStopPolicy;
+		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
+		if (CActionPresentationTimeline::Resolve_CuePreviewSample(
+				Timing, 0.f, Sample))
+		{
+			m_fPreviewDurationSeconds = Sample.fCueWallStartSeconds +
+				fEffectDurationSeconds / Timing.fPlayRate;
+			if (Timing.bHasCueSourceEnd)
+			{
+				m_fPreviewDurationSeconds = (std::max)(
+					m_fPreviewDurationSeconds,
+					Sample.fCueWallEndSeconds);
+			}
+		}
+		f32_t fClipWallDurationSeconds = 0.f;
+		if (Try_ResolvePlayerProductClipWallDuration(
+				fClipWallDurationSeconds))
+		{
+			m_fPreviewDurationSeconds = (std::max)(
+				m_fPreviewDurationSeconds, fClipWallDurationSeconds);
+		}
     }
 	else if (m_ValtanProductPreview.has_value())
 	{
@@ -22392,6 +22472,81 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
 	}
     m_fPreviewTimeSeconds = std::clamp(
         m_fPreviewTimeSeconds, 0.f, m_fPreviewDurationSeconds);
+}
+
+bool_t Client::CEffect_Tool::Try_ResolvePlayerProductClipWallDuration(
+	f32_t& fOutWallDurationSeconds) const
+{
+	fOutWallDurationSeconds = 0.f;
+	if (!m_ProductPreview.has_value() ||
+		1u != m_SynchronizedAnimationClips.size() ||
+		0u == m_iSynchronizedAnimationTargetGeneration ||
+		m_iSynchronizedAnimationTargetGeneration !=
+			CAnimationTargetService::Resolve_TargetGeneration())
+	{
+		return false;
+	}
+
+	const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+		m_ProductPreview->ProductCue;
+	const ANIMATION_SKILL_CLIP& Clip = ProductCue.Clip;
+	const SYNCHRONIZED_ANIMATION_CLIP& Synchronized =
+		m_SynchronizedAnimationClips.front();
+	if (Synchronized.strClipName != Clip.strClipName ||
+		Synchronized.iSourceStartMs != Clip.iSourceStartMs ||
+		Synchronized.iPlayMs != Clip.iPlayMs ||
+		Synchronized.fPlayRate != Clip.fPlayRate)
+	{
+		return false;
+	}
+
+	const char_t* pExpectedAsset = Animation_AssetName(
+		m_ProductPreview->eCharacterClass);
+	const shared_ptr<Engine::CModel> pModel =
+		CAnimationTargetService::Resolve_Model();
+	if (nullptr == pExpectedAsset || nullptr == pModel ||
+		CAnimationTargetService::Resolve_AssetName() != pExpectedAsset)
+	{
+		return false;
+	}
+
+	uint32_t iAnimation = UINT32_MAX;
+	for (uint32_t iCandidate = 0u;
+		iCandidate < pModel->Get_NumAnimations(); ++iCandidate)
+	{
+		const char_t* pName = pModel->Get_AnimationName(iCandidate);
+		if (nullptr == pName || Clip.strClipName != pName)
+			continue;
+		/* Duplicate model clip names make the duration source ambiguous. */
+		if (UINT32_MAX != iAnimation)
+			return false;
+		iAnimation = iCandidate;
+	}
+	if (UINT32_MAX == iAnimation)
+		return false;
+
+	f32_t fPositionTicks = 0.f;
+	f32_t fDurationTicks = 0.f;
+	const f32_t fTicksPerSecond =
+		pModel->Get_AnimationTickPerSecond(iAnimation);
+	if (!pModel->Get_AnimationProgress(
+			iAnimation, fPositionTicks, fDurationTicks) ||
+		!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f ||
+		!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f)
+	{
+		return false;
+	}
+
+	ACTION_PRESENTATION_CLIP_TIMING Timing;
+	Timing.fModelSourceDurationSeconds =
+		fDurationTicks / fTicksPerSecond;
+	Timing.iPlayMs = Clip.iPlayMs;
+	Timing.fPlayRate = Clip.fPlayRate;
+	Timing.fSourceStartSeconds =
+		static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f;
+	f32_t fSourceDurationSeconds = 0.f;
+	return CActionPresentationTimeline::Resolve_ClipDuration(
+		Timing, fSourceDurationSeconds, fOutWallDurationSeconds);
 }
 
 bool_t Client::CEffect_Tool::Has_UnsavedWork() const

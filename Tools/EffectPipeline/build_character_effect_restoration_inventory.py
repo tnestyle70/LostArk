@@ -106,6 +106,8 @@ class TargetSpec:
     user_review: str
     restoration_state: str
     blockers: tuple[str, ...]
+    product_occurrence_effect_asset_ids: tuple[str, ...] | None = None
+    product_occurrence_authored_paths: tuple[str, ...] | None = None
 
 
 TARGET_SPECS = (
@@ -173,6 +175,15 @@ TARGET_SPECS = (
             "SOURCE_EVENT_030_TIMING_SUBSTITUTED_0_60_TO_0_25",
             "SOURCE_TEXTURE_REGISTER_SAMPLER_ABI_UNRESOLVED",
             "SOURCE_PARENT_EQUATION_NOT_PIXEL_EXACT",
+        ),
+        product_occurrence_effect_asset_ids=tuple(
+            f"effect.dimensionmaster.skill.2050210.a{index}.unified"
+            for index in range(1, 5)
+        ),
+        product_occurrence_authored_paths=tuple(
+            "Data/Effects/Authored/"
+            f"effect.dimensionmaster.skill.2050210.a{index}.unified.effect.json"
+            for index in range(1, 5)
         ),
     ),
     TargetSpec(
@@ -1110,7 +1121,6 @@ def build_inventory(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             f"skill binding clips changed for {spec.skill_id}: {binding.get('clips')}",
         )
         animevents = tracker.text(spec.animevents_path, f"{spec.target_id}:ANIMATION_CUE")
-        event = _animation_event(animevents, spec.clip_name, spec.effect_asset_id)
 
         catalog_row = _find_unique(
             effect_catalog.get("effects", []),
@@ -1150,39 +1160,117 @@ def build_inventory(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             if spec.imported_path
             else None
         )
-        runtime_row = _runtime_catalog_row(runtime_catalog, spec.effect_asset_id)
-        sealed_relative = (
-            "Client/Bin/DataFiles/Effect/" + _safe_relative_path(
-                runtime_row.get("authoredDocumentPath"),
-                f"runtime authored path {spec.effect_asset_id}",
-            )
+        product_effect_ids = (
+            spec.product_occurrence_effect_asset_ids
+            if spec.product_occurrence_effect_asset_ids is not None
+            else tuple(spec.effect_asset_id for _ in selected)
         )
-        sealed_document = tracker.json(
-            sealed_relative, f"{spec.target_id}:PUBLISHED_DIRECT_DOCUMENT"
+        product_authored_paths = (
+            spec.product_occurrence_authored_paths
+            if spec.product_occurrence_authored_paths is not None
+            else tuple(spec.authored_path for _ in selected)
         )
         _require(
-            sealed_document.get("effectAssetId") == spec.effect_asset_id,
-            f"published direct document identity changed: {spec.effect_asset_id}",
+            len(product_effect_ids) == len(selected)
+            and len(product_authored_paths) == len(selected),
+            f"Product occurrence mapping cardinality changed: {spec.target_id}",
         )
-        sealed_elements = sealed_document.get("elements")
-        _require(
-            isinstance(sealed_elements, list),
-            f"published direct document elements changed: {spec.effect_asset_id}",
-        )
+        product_bindings: list[dict[str, Any]] = []
+        product_cache: dict[tuple[str, str], dict[str, Any]] = {}
+        for product_effect_id, product_authored_path in zip(
+            product_effect_ids, product_authored_paths
+        ):
+            cache_key = (product_effect_id, product_authored_path)
+            product_binding = product_cache.get(cache_key)
+            if product_binding is None:
+                event = _animation_event(
+                    animevents, spec.clip_name, product_effect_id
+                )
+                product_catalog_row = _find_unique(
+                    effect_catalog.get("effects", []),
+                    lambda row, effect_id=product_effect_id: row.get(
+                        "effectAssetId"
+                    )
+                    == effect_id,
+                    f"authoring catalog {product_effect_id}",
+                )
+                expected_product_path = product_authored_path.removeprefix(
+                    "Data/"
+                )
+                _require(
+                    product_catalog_row.get("authoringPath")
+                    == expected_product_path,
+                    f"catalog authoringPath changed for {product_effect_id}",
+                )
+                product_document = tracker.json(
+                    product_authored_path,
+                    f"{spec.target_id}:PRODUCT_OCCURRENCE_AUTHORED",
+                )
+                _require(
+                    product_document.get("schema") == "lostark.effect-authoring"
+                    and product_document.get("version") == 13
+                    and product_document.get("effectAssetId")
+                    == product_effect_id,
+                    f"Product occurrence document changed: {product_effect_id}",
+                )
+                runtime_row = _runtime_catalog_row(
+                    runtime_catalog, product_effect_id
+                )
+                sealed_relative = (
+                    "Client/Bin/DataFiles/Effect/" + _safe_relative_path(
+                        runtime_row.get("authoredDocumentPath"),
+                        f"runtime authored path {product_effect_id}",
+                    )
+                )
+                sealed_document = tracker.json(
+                    sealed_relative,
+                    f"{spec.target_id}:PUBLISHED_PRODUCT_OCCURRENCE",
+                )
+                _require(
+                    sealed_document.get("effectAssetId") == product_effect_id,
+                    "published Product occurrence identity changed: "
+                    f"{product_effect_id}",
+                )
+                product_elements = product_document.get("elements")
+                sealed_elements = sealed_document.get("elements")
+                _require(
+                    isinstance(product_elements, list)
+                    and isinstance(sealed_elements, list),
+                    f"Product occurrence elements changed: {product_effect_id}",
+                )
+                product_binding = {
+                    "effectAssetId": product_effect_id,
+                    "authoredPath": product_authored_path,
+                    "event": event,
+                    "elements": product_elements,
+                    "sealedRelative": sealed_relative,
+                    "sealedDocument": sealed_document,
+                    "sealedElements": sealed_elements,
+                }
+                product_cache[cache_key] = product_binding
+            product_bindings.append(product_binding)
 
         cohort_id = f"cohort.{spec.target_id}"
         cohort_occurrences: list[str] = []
         target_source_rows: list[dict[str, Any]] = []
-        for element in selected:
+        for element, product_binding in zip(selected, product_bindings):
             element_id = _require_string(element.get("id"), "authored element id")
             authored_order = all_elements.index(element)
+            event = product_binding["event"]
+            product_elements = product_binding["elements"]
+            product_element = _find_unique(
+                product_elements,
+                lambda row: row.get("id") == element_id,
+                f"Product occurrence element {element_id}",
+            )
+            product_order = product_elements.index(product_element)
             source = _source_element(element, imported)
             occurrence_provenance, occurrence_evidence = (
                 _occurrence_provenance_and_evidence(spec, element, source)
             )
             published_matches = [
                 row
-                for row in sealed_elements
+                for row in product_binding["sealedElements"]
                 if isinstance(row, dict) and row.get("id") == element_id
             ]
             _require(
@@ -1192,7 +1280,8 @@ def build_inventory(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             published_element = published_matches[0] if published_matches else None
             if (
                 published_element is not None
-                and canonical_sha256(published_element) != canonical_sha256(element)
+                and canonical_sha256(published_element)
+                != canonical_sha256(product_element)
             ):
                 published_element = None
             runtime_admission = (
@@ -1212,7 +1301,7 @@ def build_inventory(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             )
             composition_id = compositions.add(
                 _composition_payload(
-                    spec, cohort_id, event, element, authored_order
+                    spec, cohort_id, event, product_element, product_order
                 )
             )
             family_tuple = {
@@ -1287,11 +1376,18 @@ def build_inventory(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
                 "runtimeAdmission": runtime_admission,
                 "productJoin": {
                     "status": product_join_status,
+                    "effectAssetId": product_binding["effectAssetId"],
+                    "authoringPath": product_binding["authoredPath"],
+                    "authoredElementSha256": canonical_sha256(
+                        product_element
+                    ),
                     "authoringCatalogPath": "Data/Effects/EffectCatalog.json",
                     "animationCuePath": spec.animevents_path,
                     "runtimeCatalogPath": runtime_catalog_path,
-                    "publishedDocumentPath": sealed_relative,
-                    "publishedDocumentSha256": canonical_sha256(sealed_document),
+                    "publishedDocumentPath": product_binding["sealedRelative"],
+                    "publishedDocumentSha256": canonical_sha256(
+                        product_binding["sealedDocument"]
+                    ),
                     "publishedElementSha256": (
                         canonical_sha256(published_element)
                         if published_element is not None
@@ -1331,6 +1427,14 @@ def build_inventory(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
                                 "startDelaySeconds", 0
                             ))
                         ),
+                        "productLocalStartSeconds": float(
+                            (((product_element.get("detail") or {}).get(
+                                "timing"
+                            ) or {}).get("startDelaySeconds", 0))
+                        ),
+                        "cueSourceStartMilliseconds": int(
+                            event["startMilliseconds"]
+                        ),
                     }
                 )
 
@@ -1368,6 +1472,12 @@ def build_inventory(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
                         "occurrenceId": row["occurrence"]["occurrenceId"],
                         "currentStableId": row["occurrence"]["authoredNode"]["stableId"],
                         "authoredStartSeconds": row["authoredStartSeconds"],
+                        "productLocalStartSeconds": row[
+                            "productLocalStartSeconds"
+                        ],
+                        "cueSourceStartMilliseconds": row[
+                            "cueSourceStartMilliseconds"
+                        ],
                         "timingProvenance": (
                             "PROJECT_TUNED" if substituted else "SOURCE_EXACT"
                         ),
@@ -1827,6 +1937,18 @@ def validate_inventory(inventory: dict[str, Any]) -> None:
         product_join = occurrence.get("productJoin")
         if not isinstance(product_join, dict):
             raise InventoryError("occurrence productJoin must be an object")
+        _require_string(
+            product_join.get("effectAssetId"),
+            "productJoin.effectAssetId",
+        )
+        _safe_relative_path(
+            product_join.get("authoringPath"),
+            "productJoin.authoringPath",
+        )
+        _require_sha256(
+            product_join.get("authoredElementSha256"),
+            "productJoin.authoredElementSha256",
+        )
         product_status = product_join.get("status")
         published_element_sha = product_join.get("publishedElementSha256")
         if product_status == "CLOSED":
@@ -1834,11 +1956,12 @@ def validate_inventory(inventory: dict[str, Any]) -> None:
                 published_element_sha,
                 "productJoin.publishedElementSha256",
             )
-            if published_element_sha != (occurrence.get("authoredNode") or {}).get(
+            if published_element_sha != product_join.get(
                 "authoredElementSha256"
             ):
                 raise InventoryError(
-                    "closed Product join does not publish the current authored closure"
+                    "closed Product join does not publish its occurrence-local "
+                    "authored closure"
                 )
         elif product_status == "AUTHORED_NOT_PUBLISHED":
             if (
@@ -1905,6 +2028,8 @@ def validate_inventory(inventory: dict[str, Any]) -> None:
             occurrence = occurrence_index[occurrence_id]
             authored_node = occurrence.get("authoredNode") or {}
             authored_start = decision.get("authoredStartSeconds")
+            product_local_start = decision.get("productLocalStartSeconds")
+            cue_source_start_ms = decision.get("cueSourceStartMilliseconds")
             timing_provenance = decision.get("timingProvenance")
             substituted = not math.isclose(
                 float(source_start),
@@ -1926,6 +2051,9 @@ def validate_inventory(inventory: dict[str, Any]) -> None:
             occurrence_start = (composition.get("timing") or {}).get(
                 "startDelaySeconds"
             )
+            animation_cue_start_ms = (composition.get("animationCue") or {}).get(
+                "startMilliseconds"
+            )
             if (
                 occurrence.get("substitutionDuplicationReceiptId") != receipt_id
                 or authored_node.get("stableId") != decision.get("currentStableId")
@@ -1937,11 +2065,21 @@ def validate_inventory(inventory: dict[str, Any]) -> None:
                 or decision.get("sourceOccurrenceDisposition")
                 != expected_disposition
                 or not isinstance(occurrence_start, (int, float))
+                or not isinstance(product_local_start, (int, float))
                 or not math.isclose(
                     float(occurrence_start),
-                    float(authored_start),
+                    float(product_local_start),
                     rel_tol=0,
                     abs_tol=1e-7,
+                )
+                or not isinstance(cue_source_start_ms, int)
+                or animation_cue_start_ms != cue_source_start_ms
+                or not isinstance(authored_start, (int, float))
+                or not math.isclose(
+                    float(authored_start) * 1000.0,
+                    float(cue_source_start_ms),
+                    rel_tol=0,
+                    abs_tol=1e-4,
                 )
             ):
                 raise InventoryError(

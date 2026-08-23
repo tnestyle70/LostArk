@@ -97,7 +97,27 @@ class CharacterEffectRestorationInventoryTests(unittest.TestCase):
             )
             for row in dimension_rows
         ]
-        self.assertEqual(dimension_starts, [0.25, 0.6, 0.9, 1.3])
+        self.assertEqual(dimension_starts, [0, 0, 0, 0])
+        dimension_cues = [
+            next(
+                composition["animationCue"]
+                for composition in self.inventory["compositionVariants"]
+                if composition["compositionVariantId"]
+                == row["familyTuple"]["compositionVariantId"]
+            )
+            for row in dimension_rows
+        ]
+        self.assertEqual(
+            [cue["startMilliseconds"] for cue in dimension_cues],
+            [250, 600, 900, 1300],
+        )
+        self.assertEqual(
+            [row["productJoin"]["effectAssetId"] for row in dimension_rows],
+            [
+                f"effect.dimensionmaster.skill.2050210.a{index}.unified"
+                for index in range(1, 5)
+            ],
+        )
 
     def test_artist_f_golden_kind_backend_and_source_recipe_identity(self) -> None:
         artist = MODULE.read_json(
@@ -321,7 +341,7 @@ class CharacterEffectRestorationInventoryTests(unittest.TestCase):
         closed["productJoin"]["publishedElementSha256"] = "f" * 64
         with self.assertRaisesRegex(
             MODULE.InventoryError,
-            "does not publish the current authored closure",
+            "does not publish its occurrence-local authored closure",
         ):
             MODULE.validate_inventory(changed)
 
