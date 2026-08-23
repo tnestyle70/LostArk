@@ -3,6 +3,7 @@
 #include "DataJson.h"
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_Catalog.h"
+#include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
 #include "Effect_MaterialProgramRegistry.h"
@@ -79,6 +80,69 @@ namespace
 		"effect.lancemaster.skill.34110.v1.unified",
 		"effect.warlord.skill.17110.clip2.v1.unified",
 		"effect.warlord.skill.17110.clip3.v1.unified"
+	}};
+
+	struct DIRECT_AUTHORED_INDEX_PROBE_DESC final
+	{
+		std::string_view strEffectAssetId;
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		LostArk::Shared::SKILL_ID iSkillId =
+			LostArk::Shared::INVALID_SKILL_ID;
+	};
+
+	constexpr std::array<DIRECT_AUTHORED_INDEX_PROBE_DESC, 10u>
+		DIRECT_AUTHORED_INDEX_PROBES = {{
+		{
+			"effect.artist.skill.31460.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+			31460u
+		},
+		{
+			"effect.artist.skill.31460.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+			31460u
+		},
+		{
+			"effect.dimensionmaster.skill.2050180.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+			2050180u
+		},
+		{
+			"effect.dimensionmaster.skill.2050180.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+			2050180u
+		},
+		{
+			"effect.lancemaster.skill.34110.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+			34110u
+		},
+		{
+			"effect.lancemaster.skill.34110.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+			34110u
+		},
+		{
+			"effect.warlord.skill.17110.clip2.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			17110u
+		},
+		{
+			"effect.warlord.skill.17110.clip2.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			17110u
+		},
+		{
+			"effect.warlord.skill.17110.clip3.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			17110u
+		},
+		{
+			"effect.warlord.skill.17110.clip3.v1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			17110u
+		}
 	}};
 
 	struct REPRESENTATIVE_V1_DRAW_PROBE_DESC final
@@ -818,6 +882,128 @@ namespace
 			return false;
 		}
 		OutFixture = std::move(Staged);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_DirectAuthoredAuditionSourceIndex(
+		const std::filesystem::path& RepositoryRoot,
+		std::string& strOutError)
+	{
+		const std::filesystem::path CatalogPath =
+			RepositoryRoot / L"Data" / L"Effects" / L"EffectCatalog.json";
+		const std::filesystem::path AuthoredRoot =
+			RepositoryRoot / L"Data" / L"Effects" / L"Authored";
+		std::vector<Client::EFFECT_DIRECT_AUTHORED_SCANNED_FILE> ScannedFiles;
+		Client::EFFECT_DIRECT_AUTHORED_OWNER_SET ValidOwners;
+		ScannedFiles.reserve(DIRECT_AUTHORED_INDEX_PROBES.size());
+		for (const DIRECT_AUTHORED_INDEX_PROBE_DESC& Probe :
+			DIRECT_AUTHORED_INDEX_PROBES)
+		{
+			const std::string AssetId(Probe.strEffectAssetId);
+			const std::filesystem::path Path =
+				AuthoredRoot / (AssetId + ".effect.json");
+			std::error_code FileError;
+			if (!std::filesystem::is_regular_file(Path, FileError) || FileError)
+			{
+				strOutError =
+					"direct-authored index probe file is unavailable: " + AssetId;
+				return false;
+			}
+			ScannedFiles.push_back({ AssetId, Path });
+			ValidOwners.emplace(Probe.eCharacterClass, Probe.iSkillId);
+		}
+
+		Client::EFFECT_DIRECT_AUTHORED_SOURCE_INDEX Index;
+		std::string Status;
+		if (!Client::CEffectDirectAuthoredSourceIndex::Build(
+				CatalogPath, AuthoredRoot, ScannedFiles, ValidOwners, {}, {},
+				Index, Status))
+		{
+			strOutError =
+				"direct-authored audition index rejected the source catalog: " +
+				Status;
+			return false;
+		}
+		if (Index.iCatalogDirectCount < DIRECT_AUTHORED_INDEX_PROBES.size() ||
+			Index.Entries.size() != DIRECT_AUTHORED_INDEX_PROBES.size())
+		{
+			strOutError =
+				"direct-authored audition index admitted an unexpected probe count";
+			return false;
+		}
+		for (const DIRECT_AUTHORED_INDEX_PROBE_DESC& Probe :
+			DIRECT_AUTHORED_INDEX_PROBES)
+		{
+			const auto Entry = std::find_if(Index.Entries.begin(),
+				Index.Entries.end(), [&Probe](
+					const Client::EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Candidate)
+				{
+					return Candidate.strEffectAssetId == Probe.strEffectAssetId;
+				});
+			if (Entry == Index.Entries.end() ||
+				Entry->eOwnerKind != Client::
+					EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL ||
+				Entry->eCharacterClass != Probe.eCharacterClass ||
+				Entry->iSkillId != Probe.iSkillId || Entry->Path.empty())
+			{
+				strOutError =
+					"direct-authored audition index lost or changed probe owner: " +
+					std::string(Probe.strEffectAssetId);
+				return false;
+			}
+		}
+
+		TEMP_RUNTIME_CATALOG_FIXTURE MalformedFixture;
+		std::error_code FileError;
+		MalformedFixture.Root = std::filesystem::temp_directory_path(FileError) /
+			("LostArkDirectAuthoredIndex-" +
+			 std::to_string(static_cast<uint64_t>(GetCurrentProcessId())) + "-" +
+			 std::to_string(static_cast<uint64_t>(GetTickCount64())));
+		MalformedFixture.CatalogPath =
+			MalformedFixture.Root / L"EffectCatalog.json";
+		if (FileError || !std::filesystem::create_directories(
+				MalformedFixture.Root, FileError) || FileError)
+		{
+			strOutError =
+				"direct-authored malformed-catalog fixture directory failed";
+			return false;
+		}
+		{
+			std::ofstream Output(MalformedFixture.CatalogPath,
+				std::ios::binary | std::ios::trunc);
+			Output << R"({"formatVersion":1,"effects":[{"effectAssetId":"effect.artist.skill.31460.v1.unified","payloadKind":"DIRECT_AUTHORED_DOCUMENT_V13","authoringPath":"Effects/Authored/effect.artist.skill.31460.v1.unified.effect.json","runtimeAdmission":"REGISTRY_BOUND_AUDITION_ONLY"}]})";
+			if (!Output)
+			{
+				strOutError =
+					"direct-authored malformed-catalog fixture write failed";
+				return false;
+			}
+		}
+
+		Client::EFFECT_DIRECT_AUTHORED_SOURCE_INDEX Preserved;
+		Preserved.iCatalogDirectCount = 41u;
+		Preserved.iUnavailableCount = 7u;
+		Preserved.strFirstUnavailable = "sentinel-unavailable";
+		Client::EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Sentinel;
+		Sentinel.strEffectAssetId = "sentinel.effect";
+		Preserved.Entries.push_back(std::move(Sentinel));
+		Status.clear();
+		if (Client::CEffectDirectAuthoredSourceIndex::Build(
+				MalformedFixture.CatalogPath, AuthoredRoot, ScannedFiles,
+				ValidOwners, {}, {}, Preserved, Status) ||
+			Status.find("malformed direct-authored row") == std::string::npos ||
+			Preserved.iCatalogDirectCount != 41u ||
+			Preserved.iUnavailableCount != 7u ||
+			Preserved.strFirstUnavailable != "sentinel-unavailable" ||
+			Preserved.Entries.size() != 1u ||
+			Preserved.Entries.front().strEffectAssetId != "sentinel.effect")
+		{
+			strOutError =
+				"partial audition metadata did not fail closed and preserve the index";
+			return false;
+		}
+
 		strOutError.clear();
 		return true;
 	}
@@ -1841,6 +2027,14 @@ int wmain(const int argc, wchar_t** argv)
 	}
 
 	std::string Status;
+	Write_Progress("direct-authored-index.begin");
+	if (!Validate_DirectAuthoredAuditionSourceIndex(RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("direct-authored-index.complete");
+
 	TEMP_RUNTIME_CATALOG_FIXTURE RuntimeCatalogFixture;
 	if (!Stage_RuntimeCatalogTransactionFixture(
 			RuntimeCatalogPath, RuntimeCatalogFixture, Status))
