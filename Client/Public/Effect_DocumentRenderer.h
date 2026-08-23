@@ -464,6 +464,28 @@ public:
 		Get_PlaybackResources(
 			const std::shared_ptr<const PREPARED_DOCUMENT>& pPrepared);
 	static EFFECT_RENDER_PREWARM_PROBE Get_PrewarmProbe();
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	/* Harness-only Binding0 half of the dual-resolve proof.  It prepares the
+	   same immutable authored/projection document without installing a material
+	   registry; Product preparation never calls this path. */
+	static bool_t Prepare_UnboundMaterialProgramDocumentForTests(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pVisualProgramProjection,
+		std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
+		std::string& strOutError);
+	/* Proves that Binding0 and Binding1 materialize the same execution packet
+	   and prepared snapshot for one stable occurrence. */
+	static bool_t Validate_MaterialProgramPreparedComparisonForTests(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<const PREPARED_DOCUMENT>& pUnboundPrepared,
+		const std::shared_ptr<const PREPARED_DOCUMENT>& pBoundPrepared,
+		std::string_view strElementId,
+		std::string& strOutError);
+#endif
 	static bool_t Resolve_ParticleSpriteScale(
 		const EFFECT_EVALUATED_PARTICLE& Particle,
 		const float3_t& vDecomposedMagnitude,

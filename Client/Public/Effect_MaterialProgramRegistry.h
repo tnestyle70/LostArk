@@ -19,16 +19,34 @@ inline constexpr std::string_view
 	EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID =
 		"effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1."
 		"alpha-two-sided.v1";
+inline constexpr std::string_view
+	EFFECT_MESH_PARTICLE_SCENE_COLOR_ALPHA_TWO_SIDED_ADAPTER_ID =
+		"effect.adapter.mesh-particle.cmodel.scene-color-rt0."
+		"zero-distortion-rt1.alpha-two-sided.v1";
+inline constexpr std::string_view
+	EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID =
+		"effect.adapter.local-decal.projector.scene-color-rt0."
+		"zero-distortion-rt1.alpha-one-sided.v1";
 
 enum class EFFECT_COMPILED_MATERIAL_ADAPTER_ID : uint8_t
 {
 	SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1,
+	MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1,
+	LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1,
 	END,
 };
 
 enum class EFFECT_COMPILED_MATERIAL_CARRIER : uint8_t
 {
 	SPRITE_PARTICLE,
+	MESH_PARTICLE_CMODEL,
+	LOCAL_DECAL_PROJECTOR,
+	END,
+};
+
+enum class EFFECT_MATERIAL_INLINE_MIRROR_POLICY : uint8_t
+{
+	INLINE_MIRROR_REQUIRED,
 	END,
 };
 
@@ -43,6 +61,7 @@ struct EFFECT_COMPILED_MATERIAL_ADAPTER_DESC final
 	std::string_view strAdapterId;
 	std::string_view strShaderId;
 	std::string_view strVertexLayoutId;
+	EFFECT_RENDER_PROFILE eRenderProfile = EFFECT_RENDER_PROFILE::END;
 	uint32_t iPassIndex = UINT32_MAX;
 	std::string_view strMrtId;
 	uint32_t iSceneColorRenderTargetIndex = UINT32_MAX;
@@ -66,6 +85,8 @@ struct EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING final
 	std::string strLayoutId;
 	std::string strDescriptorId;
 	std::string strAdapterId;
+	EFFECT_MATERIAL_INLINE_MIRROR_POLICY eInlineMirrorPolicy =
+		EFFECT_MATERIAL_INLINE_MIRROR_POLICY::END;
 	EFFECT_MATERIAL_EXECUTION_DESC Execution;
 	EFFECT_COMPILED_MATERIAL_ADAPTER_DESC Adapter;
 };

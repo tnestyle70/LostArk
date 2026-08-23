@@ -26,6 +26,10 @@ SOURCE_PATH = (
     / "MaterialPrograms"
     / "effect-material-program-registry.v1.json"
 )
+FRAGMENT_ROOT = SOURCE_PATH.parent / "Fragments"
+ARTIST_FRAGMENT_PATH = (
+    FRAGMENT_ROOT / "artist-f-golden.material-program-fragment.v1.json"
+)
 EFFECT_CATALOG_PATH = REPOSITORY_ROOT / "Data" / "Effects" / "EffectCatalog.json"
 DATA_ROOT = REPOSITORY_ROOT / "Data"
 AUTHORED_PATH = (
@@ -43,7 +47,9 @@ DESCRIPTOR_ID = "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1"
 
 
 def make_registry() -> dict[str, object]:
-    return copy.deepcopy(registry_tool.load_json(SOURCE_PATH))
+    return copy.deepcopy(
+        registry_tool.build_registry(SOURCE_PATH, EFFECT_CATALOG_PATH, DATA_ROOT)
+    )
 
 
 def make_binding(element_id: str = ELEMENT_ID) -> dict[str, object]:
@@ -54,6 +60,7 @@ def make_binding(element_id: str = ELEMENT_ID) -> dict[str, object]:
         "layoutId": LAYOUT_ID,
         "descriptorId": DESCRIPTOR_ID,
         "adapterId": registry_tool.CANONICAL_SPRITE_ADAPTER_ID,
+        "inlineMirrorPolicy": registry_tool.INLINE_MIRROR_REQUIRED,
     }
 
 
@@ -72,11 +79,36 @@ def make_authored_documents() -> dict[str, dict[str, object]]:
 
 
 class MaterialProgramRegistryTests(unittest.TestCase):
-    def test_source_contains_exact_artist_f_canary_binding(self) -> None:
+    def test_base_owns_only_compiled_adapters_and_fragment_owns_domain_rows(self) -> None:
+        base = registry_tool.load_json(SOURCE_PATH)
+        fragment = registry_tool.load_json(ARTIST_FRAGMENT_PATH)
+        self.assertEqual([], base["programs"])
+        self.assertEqual([], base["layouts"])
+        self.assertEqual([], base["descriptors"])
+        self.assertEqual([], base["bindings"])
+        self.assertEqual(
+            list(registry_tool.COMPILED_ADAPTERS),
+            [row["adapterId"] for row in base["adapters"]],
+        )
+        self.assertEqual(registry_tool.FRAGMENT_SCHEMA, fragment["schema"])
+        self.assertEqual("effect-domain.artist-f-golden", fragment["domainId"])
+        self.assertNotIn("adapters", fragment)
+
+    def test_source_contains_exact_artist_f_sprite_mesh_decal_bindings(self) -> None:
         registry = registry_tool.build_registry(
             SOURCE_PATH, EFFECT_CATALOG_PATH, DATA_ROOT
         )
-        self.assertEqual([make_binding()], registry["bindings"])
+        self.assertEqual(make_binding(), registry["bindings"][0])
+        self.assertEqual(
+            [ELEMENT_ID, "mesh.062366ee9f9655d3", "decal.f3b5c3b63b4a7e34"],
+            [row["elementId"] for row in registry["bindings"]],
+        )
+        self.assertTrue(
+            all(
+                row["inlineMirrorPolicy"] == registry_tool.INLINE_MIRROR_REQUIRED
+                for row in registry["bindings"]
+            )
+        )
         output = io.StringIO()
         with redirect_stdout(output):
             self.assertEqual(
@@ -135,6 +167,46 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         self.assertEqual(ELEMENT_ID, registry["bindings"][0]["elementId"])
         self.assertEqual(SHADOW_ELEMENT_ID, registry["bindings"][1]["elementId"])
 
+    def test_compiled_mesh_adapter_materializes_its_pass_and_render_state(self) -> None:
+        registry = make_bound_registry(ELEMENT_ID)
+        registry["programs"][0]["opcode"] = 3
+        registry["adapters"] = [
+            {"adapterId": registry_tool.MESH_ALPHA_TWO_SIDED_ADAPTER_ID}
+        ]
+        binding = registry["bindings"][0]
+        binding["adapterId"] = registry_tool.MESH_ALPHA_TWO_SIDED_ADAPTER_ID
+
+        packet = registry_tool.materialize_binding(
+            binding,
+            {row["programId"]: row for row in registry["programs"]},
+            {row["layoutId"]: row for row in registry["layouts"]},
+            {row["descriptorId"]: row for row in registry["descriptors"]},
+        )
+        self.assertEqual(1, packet["passIndex"])
+        self.assertEqual("RS_Cull_None", packet["renderState"]["rasterizer"])
+        self.assertEqual("BS_EffectAlpha", packet["renderState"]["blend"])
+
+    def test_binding_carrier_mismatch_fails_closed(self) -> None:
+        registry = make_bound_registry("mesh.062366ee9f9655d3")
+        with self.assertRaisesRegex(
+            registry_tool.ContractError, "carrier is incompatible"
+        ):
+            registry_tool.validate_registry(registry, make_authored_documents())
+
+        profile_drift = make_authored_documents()
+        target = next(
+            element
+            for element in profile_drift[EFFECT_ID]["elements"]
+            if element["id"] == ELEMENT_ID
+        )
+        target["material"]["renderProfile"] = "additive_one_sided_depth_read"
+        with self.assertRaisesRegex(
+            registry_tool.ContractError, "carrier is incompatible"
+        ):
+            registry_tool.validate_registry(
+                make_bound_registry(ELEMENT_ID), profile_drift
+            )
+
     def test_float_bit_drift_and_signed_zero_fail_closed(self) -> None:
         registry = make_bound_registry(ELEMENT_ID)
         authored = make_authored_documents()
@@ -185,6 +257,48 @@ class MaterialProgramRegistryTests(unittest.TestCase):
                 with self.assertRaises(registry_tool.ContractError):
                     registry_tool.validate_registry(mutation)
 
+    def test_adapter_program_opcode_mismatch_fails_closed(self) -> None:
+        registry = make_bound_registry(ELEMENT_ID)
+        registry["programs"][0]["opcode"] = 14
+        with self.assertRaisesRegex(
+            registry_tool.ContractError, "no compiled Program/Layout ABI receipt"
+        ):
+            registry_tool.validate_registry(registry, make_authored_documents())
+
+    def test_program_layout_abi_and_unbound_metadata_fail_closed(self) -> None:
+        registry = make_bound_registry(ELEMENT_ID)
+        registry["programs"][0]["opcode"] = 3
+        registry["bindings"][0]["adapterId"] = (
+            registry_tool.MESH_ALPHA_TWO_SIDED_ADAPTER_ID
+        )
+        with self.assertRaisesRegex(
+            registry_tool.ContractError, "Program/Layout ABI mismatch"
+        ):
+            registry_tool.validate_registry(registry, make_authored_documents())
+
+        drifted_role = make_bound_registry(ELEMENT_ID)
+        drifted_role["layouts"][0]["textureLanes"][0]["role"] = "wrong_role"
+        with self.assertRaisesRegex(
+            registry_tool.ContractError, "Program/Layout ABI mismatch at textureLanes"
+        ):
+            registry_tool.validate_registry(
+                drifted_role, make_authored_documents()
+            )
+
+        metadata_only = make_registry()
+        metadata_only["bindings"] = []
+        metadata_only["programs"].append(
+            {
+                "programId": "effect.program.runtime-material-v2.opcode-7.unbound.v1",
+                "backend": "runtimeMaterialV2",
+                "opcode": 7,
+            }
+        )
+        with self.assertRaisesRegex(
+            registry_tool.ContractError, "no compiled Program/Layout ABI receipt"
+        ):
+            registry_tool.validate_registry(metadata_only)
+
     def test_binding_reference_target_and_packet_mismatch_fail_closed(self) -> None:
         registry = make_bound_registry(ELEMENT_ID)
 
@@ -228,6 +342,20 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         bad_descriptor_lane["descriptors"][0]["textureLanes"][0]["laneId"] = "lane.wrong"
         mutations.append(bad_descriptor_lane)
 
+        long_source_channel = make_registry()
+        long_source_channel["layouts"][0]["textureLanes"][0]["sourceChannel"] = (
+            "R" * 33
+        )
+        mutations.append(long_source_channel)
+
+        bad_particle_policy = make_registry()
+        bad_particle_policy["layouts"][0]["particleColorPolicy"] = 4
+        mutations.append(bad_particle_policy)
+
+        bad_dynamic_mask = make_registry()
+        bad_dynamic_mask["layouts"][0]["dynamicConsumedMask"] = 0x10
+        mutations.append(bad_dynamic_mask)
+
         for index, mutation in enumerate(mutations):
             with self.subTest(index=index):
                 with self.assertRaises(registry_tool.ContractError):
@@ -235,6 +363,7 @@ class MaterialProgramRegistryTests(unittest.TestCase):
 
     def test_duplicate_property_bom_crlf_and_nonfinite_are_rejected(self) -> None:
         source = SOURCE_PATH.read_bytes()
+        fragment = ARTIST_FRAGMENT_PATH.read_bytes()
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "registry.json"
             cases = (
@@ -245,7 +374,7 @@ class MaterialProgramRegistryTests(unittest.TestCase):
                 ),
                 b"\xef\xbb\xbf" + source,
                 source.replace(b"\n", b"\r\n"),
-                source.replace(b"0.100000001", b"NaN", 1),
+                fragment.replace(b"0.100000001", b"NaN", 1),
             )
             for index, payload in enumerate(cases):
                 with self.subTest(index=index):
@@ -257,6 +386,72 @@ class MaterialProgramRegistryTests(unittest.TestCase):
             with redirect_stderr(io.StringIO()):
                 self.assertEqual(1, registry_tool.main(["--source", str(path)]))
 
+    def test_fragment_duplicate_domain_and_unowned_adapter_fail_closed(self) -> None:
+        fragment = registry_tool.load_json(ARTIST_FRAGMENT_PATH)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first = root / "a.material-program-fragment.v1.json"
+            second = root / "b.material-program-fragment.v1.json"
+            fragment_bytes = (
+                json.dumps(fragment, separators=(",", ":")) + "\n"
+            ).encode("utf-8")
+            first.write_bytes(fragment_bytes)
+            second.write_bytes(fragment_bytes)
+            with self.assertRaisesRegex(registry_tool.ContractError, "duplicate.*domainId"):
+                registry_tool.build_registry(
+                    SOURCE_PATH, EFFECT_CATALOG_PATH, DATA_ROOT, root
+                )
+
+            second.unlink()
+            fragment_with_adapter = copy.deepcopy(fragment)
+            fragment_with_adapter["adapters"] = []
+            first.write_bytes(
+                (
+                    json.dumps(fragment_with_adapter, separators=(",", ":"))
+                    + "\n"
+                ).encode("utf-8")
+            )
+            with self.assertRaisesRegex(registry_tool.ContractError, "fields or order"):
+                registry_tool.build_registry(
+                    SOURCE_PATH, EFFECT_CATALOG_PATH, DATA_ROOT, root
+                )
+
+    def test_base_domain_rows_and_compiled_adapter_drift_fail_closed(self) -> None:
+        base = registry_tool.load_json(SOURCE_PATH)
+        with tempfile.TemporaryDirectory() as temporary:
+            missing_fragment_root = Path(temporary) / "missing"
+
+            domain_row = copy.deepcopy(base)
+            domain_row["programs"] = [
+                {
+                    "programId": "effect.program.illegal-base-row.v1",
+                    "backend": "runtimeMaterialV2",
+                    "opcode": 6,
+                }
+            ]
+            with self.assertRaisesRegex(
+                registry_tool.ContractError, "base.programs must be empty"
+            ):
+                registry_tool.merge_registry_fragments(
+                    domain_row, missing_fragment_root
+                )
+
+            for mutation in (
+                list(reversed(base["adapters"])),
+                base["adapters"][:-1],
+                base["adapters"]
+                + [{"adapterId": "effect.adapter.uncompiled.v1"}],
+            ):
+                with self.subTest(adapter_count=len(mutation)):
+                    drifted = copy.deepcopy(base)
+                    drifted["adapters"] = mutation
+                    with self.assertRaisesRegex(
+                        registry_tool.ContractError,
+                        "must exactly match the compiled adapter table",
+                    ):
+                        registry_tool.merge_registry_fragments(
+                            drifted, missing_fragment_root
+                        )
 
 if __name__ == "__main__":
     unittest.main()

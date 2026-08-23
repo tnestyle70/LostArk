@@ -129,6 +129,16 @@ HRESULT CTarget_Manager::Bind_SRV(const wstring_t& strTargetTag, shared_ptr<clas
 	return pRenderTarget->Bind_SRV(pShader, pConstantName);
 }
 
+ComPtr<ID3D11ShaderResourceView> CTarget_Manager::Get_SRV(
+	const wstring_t& strTargetTag) const
+{
+	auto pRenderTarget = Find_RenderTarget(strTargetTag);
+	if (nullptr == pRenderTarget)
+		return {};
+
+	return pRenderTarget->Get_SRV();
+}
+
 HRESULT CTarget_Manager::Copy_Resource(const wstring_t& strTargetTag, ComPtr<ID3D11Texture2D> pTexture2D)
 {
 	auto		pRenderTarget = Find_RenderTarget(strTargetTag);
@@ -163,7 +173,8 @@ HRESULT CTarget_Manager::Render_MRT(const wstring_t& strMRTTag, shared_ptr<class
 
 #endif
 
-shared_ptr<class CRenderTarget> CTarget_Manager::Find_RenderTarget(const wstring_t& strTargetTag)
+shared_ptr<class CRenderTarget> CTarget_Manager::Find_RenderTarget(
+	const wstring_t& strTargetTag) const
 {
 	auto		iter = m_RenderTargets.find(strTargetTag);
 	if (iter == m_RenderTargets.end())

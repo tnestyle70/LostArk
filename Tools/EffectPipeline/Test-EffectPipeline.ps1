@@ -252,11 +252,24 @@ try {
         '..\..\Data\Effects\MaterialPrograms\effect-material-program-registry.v1.json'))
     $fixtureMaterialProgramSource = Join-Path $dataRoot `
         'Effects\MaterialPrograms\effect-material-program-registry.v1.json'
-    $fixtureMaterialPrograms = Get-Content -LiteralPath `
-        $materialProgramSource -Raw -Encoding UTF8 | ConvertFrom-Json
-    $fixtureMaterialPrograms.bindings = @()
-    Write-Utf8 $fixtureMaterialProgramSource `
-        (($fixtureMaterialPrograms | ConvertTo-Json -Depth 30) + "`n")
+    [IO.Directory]::CreateDirectory(
+        (Split-Path -Parent $fixtureMaterialProgramSource)) | Out-Null
+    [IO.File]::WriteAllBytes(
+        $fixtureMaterialProgramSource,
+        [IO.File]::ReadAllBytes($materialProgramSource))
+    $materialProgramFragmentSource = [IO.Path]::GetFullPath((Join-Path `
+        $PSScriptRoot '..\..\Data\Effects\MaterialPrograms\Fragments\artist-f-golden.material-program-fragment.v1.json'))
+    $fixtureMaterialProgramFragment = Join-Path $dataRoot `
+        'Effects\MaterialPrograms\Fragments\artist-f-golden.material-program-fragment.v1.json'
+    $fixtureMaterialProgramFragmentDocument = Get-Content -LiteralPath `
+        $materialProgramFragmentSource -Raw -Encoding UTF8 | ConvertFrom-Json
+    $fixtureMaterialProgramFragmentDocument.bindings = @()
+    $fixtureMaterialProgramFragmentText =
+        ($fixtureMaterialProgramFragmentDocument | ConvertTo-Json -Depth 30)
+    $fixtureMaterialProgramFragmentText =
+        $fixtureMaterialProgramFragmentText.Replace("`r`n", "`n").Replace("`r", "`n")
+    Write-Utf8 $fixtureMaterialProgramFragment `
+        ($fixtureMaterialProgramFragmentText + "`n")
     foreach ($animationAssetId in @(
             'Artist', 'DimensionMaster', 'LanceMaster', 'Warlord')) {
         $eventPath = Join-Path $dataRoot (

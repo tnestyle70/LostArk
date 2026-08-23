@@ -18,19 +18,16 @@
     "formatVersion": { "const": 1 },
     "programs": {
       "type": "array",
-      "minItems": 1,
       "maxItems": 4096,
       "items": { "$ref": "#/$defs/program" }
     },
     "layouts": {
       "type": "array",
-      "minItems": 1,
       "maxItems": 4096,
       "items": { "$ref": "#/$defs/layout" }
     },
     "descriptors": {
       "type": "array",
-      "minItems": 1,
       "maxItems": 4096,
       "items": { "$ref": "#/$defs/descriptor" }
     },
@@ -58,6 +55,11 @@
       "minimum": 0,
       "maximum": 4294967295
     },
+    "low4Mask": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 15
+    },
     "float4": {
       "type": "array",
       "minItems": 4,
@@ -80,9 +82,25 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["programId", "backend", "opcode"],
+      "oneOf": [
+        {
+          "properties": {
+            "backend": { "const": "runtimeMaterialV2" },
+            "opcode": {
+              "enum": [3, 6]
+            }
+          }
+        },
+        {
+          "properties": {
+            "backend": { "const": "localDecal" },
+            "opcode": { "const": 14 }
+          }
+        }
+      ],
       "properties": {
         "programId": { "$ref": "#/$defs/stableId" },
-        "backend": { "const": "runtimeMaterialV2" },
+        "backend": { "enum": ["runtimeMaterialV2", "localDecal"] },
         "opcode": { "$ref": "#/$defs/uint32" }
       }
     },
@@ -102,7 +120,7 @@
         "role": { "$ref": "#/$defs/stableId" },
         "textureRegister": { "$ref": "#/$defs/uint32" },
         "samplerRegister": { "$ref": "#/$defs/uint32" },
-        "sourceChannel": { "type": "string", "maxLength": 64 },
+        "sourceChannel": { "type": "string", "maxLength": 32 },
         "colorSpace": { "enum": ["linear", "srgb"] }
       }
     },
@@ -158,11 +176,11 @@
           "maxItems": 6,
           "items": { "$ref": "#/$defs/layoutTextureLane" }
         },
-        "dynamicConsumedMask": { "$ref": "#/$defs/uint32" },
-        "dynamicSuppressedMask": { "$ref": "#/$defs/uint32" },
-        "particleColorPolicy": { "$ref": "#/$defs/uint32" },
-        "particleColorConsumedMask": { "$ref": "#/$defs/uint32" },
-        "particleColorSuppressedMask": { "$ref": "#/$defs/uint32" },
+        "dynamicConsumedMask": { "$ref": "#/$defs/low4Mask" },
+        "dynamicSuppressedMask": { "$ref": "#/$defs/low4Mask" },
+        "particleColorPolicy": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "particleColorConsumedMask": { "$ref": "#/$defs/low4Mask" },
+        "particleColorSuppressedMask": { "$ref": "#/$defs/low4Mask" },
         "scalarCount": { "type": "integer", "minimum": 0, "maximum": 52 },
         "vectorCount": { "type": "integer", "minimum": 0, "maximum": 3 },
         "inputCount": { "$ref": "#/$defs/uint32" },
@@ -247,7 +265,7 @@
         "assetId": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 1024,
+          "maxLength": 512,
           "pattern": "^Effect/(?:[^/]+/)*[^/]+\\.dds$"
         },
         "sampler": { "$ref": "#/$defs/sampler" }
@@ -319,7 +337,11 @@
       "required": ["adapterId"],
       "properties": {
         "adapterId": {
-          "const": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1"
+          "enum": [
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
+            "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
+            "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1"
+          ]
         }
       }
     },
@@ -332,7 +354,8 @@
         "programId",
         "layoutId",
         "descriptorId",
-        "adapterId"
+        "adapterId",
+        "inlineMirrorPolicy"
       ],
       "properties": {
         "effectAssetId": { "$ref": "#/$defs/stableId" },
@@ -340,7 +363,10 @@
         "programId": { "$ref": "#/$defs/stableId" },
         "layoutId": { "$ref": "#/$defs/stableId" },
         "descriptorId": { "$ref": "#/$defs/stableId" },
-        "adapterId": { "$ref": "#/$defs/stableId" }
+        "adapterId": { "$ref": "#/$defs/stableId" },
+        "inlineMirrorPolicy": {
+          "const": "INLINE_MIRROR_REQUIRED"
+        }
       }
     }
   }

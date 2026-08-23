@@ -4093,7 +4093,54 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		const std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>
 			Resolved = StagedMaterialProgramRegistry->Resolve(
 				Target.strEffectAssetId, Target.strElementId);
-		if (Element == TargetDocument->Elements.end() || nullptr == Resolved ||
+		if (Element == TargetDocument->Elements.end() || nullptr == Resolved)
+		{
+			strOutStatus =
+				"Effect material-program Binding target is missing: " +
+				Target.strEffectAssetId + "/" + Target.strElementId;
+			g_strStatus = strOutStatus;
+			return false;
+		}
+		const bool_t bHasMeshModelSlot = std::any_of(
+			Element->ResourceBindings.begin(), Element->ResourceBindings.end(),
+			[](const EFFECT_RESOURCE_BINDING_DESC& Resource)
+			{
+				return Resource.strSlotId == "meshModel";
+			});
+		const std::string_view strRendererShape =
+			Element->SourceRecipe.bEnabled ?
+				std::string_view(Element->SourceRecipe.strRendererShape) :
+				std::string_view{};
+		const bool_t bCarrierMatches = [&]()
+		{
+			switch (Resolved->Adapter.eCarrier)
+			{
+			case EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE:
+				return Element->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+					strRendererShape == "sprite" && !bHasMeshModelSlot;
+			case EFFECT_COMPILED_MATERIAL_CARRIER::MESH_PARTICLE_CMODEL:
+				return Element->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+					strRendererShape == "mesh" && bHasMeshModelSlot;
+			case EFFECT_COMPILED_MATERIAL_CARRIER::LOCAL_DECAL_PROJECTOR:
+				return Element->eKind == EFFECT_ELEMENT_KIND::DECAL &&
+					!bHasMeshModelSlot;
+			case EFFECT_COMPILED_MATERIAL_CARRIER::END:
+			default:
+				return false;
+			}
+		}();
+		if (!bCarrierMatches || Element->Material.eRenderProfile !=
+			Resolved->Adapter.eRenderProfile)
+		{
+			strOutStatus =
+				"Effect material-program Binding carrier/profile mismatched: " +
+				Target.strEffectAssetId + "/" + Target.strElementId;
+			g_strStatus = strOutStatus;
+			return false;
+		}
+		if (
+			Resolved->eInlineMirrorPolicy !=
+				EFFECT_MATERIAL_INLINE_MIRROR_POLICY::INLINE_MIRROR_REQUIRED ||
 			!CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
 				Resolved->Execution, Element->Material.Execution))
 		{

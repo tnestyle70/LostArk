@@ -22,6 +22,8 @@ from typing import Any, Mapping
 
 REGISTRY_SCHEMA = "lostark.effect-material-program-registry"
 REGISTRY_VERSION = 1
+FRAGMENT_SCHEMA = "lostark.effect-material-program-registry-fragment"
+FRAGMENT_VERSION = 1
 DIRECT_PAYLOAD_KIND = "DIRECT_AUTHORED_DOCUMENT_V13"
 AUTHORING_SCHEMA = "lostark.effect-authoring"
 AUTHORING_VERSION = 13
@@ -29,6 +31,40 @@ CANONICAL_SPRITE_ADAPTER_ID = (
     "effect.adapter.sprite-particle.scene-color-rt0."
     "zero-distortion-rt1.alpha-two-sided.v1"
 )
+MESH_ALPHA_TWO_SIDED_ADAPTER_ID = (
+    "effect.adapter.mesh-particle.cmodel.scene-color-rt0."
+    "zero-distortion-rt1.alpha-two-sided.v1"
+)
+DECAL_ALPHA_ONE_SIDED_ADAPTER_ID = (
+    "effect.adapter.local-decal.projector.scene-color-rt0."
+    "zero-distortion-rt1.alpha-one-sided.v1"
+)
+
+INLINE_MIRROR_REQUIRED = "INLINE_MIRROR_REQUIRED"
+
+COMPILED_ADAPTERS: dict[str, dict[str, Any]] = {
+    CANONICAL_SPRITE_ADAPTER_ID: {
+        "carrier": "SPRITE_PARTICLE",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "passIndex": 1,
+        "renderState": ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset((("runtimeMaterialV2", 6),)),
+    },
+    MESH_ALPHA_TWO_SIDED_ADAPTER_ID: {
+        "carrier": "MESH_PARTICLE",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "passIndex": 1,
+        "renderState": ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset((("runtimeMaterialV2", 3),)),
+    },
+    DECAL_ALPHA_ONE_SIDED_ADAPTER_ID: {
+        "carrier": "LOCAL_DECAL",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "passIndex": 3,
+        "renderState": ("RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset((("localDecal", 14),)),
+    },
+}
 
 ROOT_KEYS = (
     "schema",
@@ -37,6 +73,15 @@ ROOT_KEYS = (
     "layouts",
     "descriptors",
     "adapters",
+    "bindings",
+)
+FRAGMENT_ROOT_KEYS = (
+    "schema",
+    "formatVersion",
+    "domainId",
+    "programs",
+    "layouts",
+    "descriptors",
     "bindings",
 )
 PROGRAM_KEYS = ("programId", "backend", "opcode")
@@ -111,6 +156,7 @@ BINDING_KEYS = (
     "layoutId",
     "descriptorId",
     "adapterId",
+    "inlineMirrorPolicy",
 )
 EXECUTION_KEYS = (
     "enabled",
@@ -146,6 +192,124 @@ EXECUTION_KEYS = (
     "artistParameters",
     "colors",
 )
+
+
+def _packed_abi_rows(prefix: str, count: int) -> list[dict[str, Any]]:
+    return [
+        {"name": f"{prefix}.{index}", "packedIndex": index}
+        for index in range(count)
+    ]
+
+
+def _texture_abi_rows(
+    roles: tuple[str, ...],
+    channels: tuple[str, ...],
+    color_spaces: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "laneId": f"lane.{index}",
+            "role": role,
+            "textureRegister": index,
+            "samplerRegister": 5 + index,
+            "sourceChannel": channels[index],
+            "colorSpace": color_spaces[index],
+        }
+        for index, role in enumerate(roles)
+    ]
+
+
+def _compiled_layout_abi(
+    *,
+    roles: tuple[str, ...],
+    channels: tuple[str, ...],
+    color_spaces: tuple[str, ...],
+    dynamic: tuple[int, int],
+    particle: tuple[int, int, int],
+    scalar_count: int,
+    vector_count: int,
+    input_count: int,
+    input_masks: tuple[tuple[int, int], tuple[int, int]],
+    vector_masks: tuple[tuple[int, int, int], tuple[int, int, int]],
+    static: tuple[int, int, int, int],
+    render: tuple[int, int, int],
+) -> dict[str, Any]:
+    lane_count = len(roles)
+    return {
+        "executionVersion": 1,
+        "textureLaneCount": lane_count,
+        "textureMask": (1 << lane_count) - 1 if lane_count else 0,
+        "textureLanes": _texture_abi_rows(roles, channels, color_spaces),
+        "dynamicConsumedMask": dynamic[0],
+        "dynamicSuppressedMask": dynamic[1],
+        "particleColorPolicy": particle[0],
+        "particleColorConsumedMask": particle[1],
+        "particleColorSuppressedMask": particle[2],
+        "scalarCount": scalar_count,
+        "vectorCount": vector_count,
+        "inputCount": input_count,
+        "inputConsumedMask": list(input_masks[0]),
+        "inputSuppressedMask": list(input_masks[1]),
+        "vectorComponentConsumedMask": list(vector_masks[0]),
+        "vectorComponentSuppressedMask": list(vector_masks[1]),
+        "staticInputCount": static[0],
+        "staticSelectedMask": static[1],
+        "staticConsumedMask": static[2],
+        "staticSuppressedMask": static[3],
+        "renderInputCount": render[0],
+        "renderConsumedMask": render[1],
+        "renderSuppressedMask": render[2],
+        "scalarRows": _packed_abi_rows("scalar", scalar_count),
+        "vectorRows": _packed_abi_rows("vector", vector_count),
+        "artistParameterRows": [],
+        "colorRows": [],
+    }
+
+
+COMPILED_PROGRAM_LAYOUT_ABIS: dict[tuple[str, int], dict[str, Any]] = {
+    ("runtimeMaterialV2", 6): _compiled_layout_abi(
+        roles=("sparkle_tex", "edgedeco.texture01"),
+        channels=("", ""),
+        color_spaces=("srgb", "srgb"),
+        dynamic=(0x0F, 0),
+        particle=(3, 0x0F, 0),
+        scalar_count=3,
+        vector_count=0,
+        input_count=6,
+        input_masks=((0x37, 0), (0x08, 0)),
+        vector_masks=((0, 0, 0), (0, 0, 0)),
+        static=(0, 0, 0, 0),
+        render=(6, 0x2F, 0x10),
+    ),
+    ("runtimeMaterialV2", 3): _compiled_layout_abi(
+        roles=("maintex", "uv_noise_tex"),
+        channels=("", ""),
+        color_spaces=("srgb", "srgb"),
+        dynamic=(0x0F, 0),
+        particle=(2, 0x0F, 0),
+        scalar_count=29,
+        vector_count=1,
+        input_count=32,
+        input_masks=((0xCFFFFFF7, 0), (0x30000008, 0)),
+        vector_masks=((0, 0, 0), (0x0F, 0, 0)),
+        static=(14, 0x33FF, 0x3FFF, 0),
+        render=(6, 0x2F, 0x10),
+    ),
+    ("localDecal", 14): _compiled_layout_abi(
+        roles=("height", "diffuse", "dissolve", "normal", "specular", "emissive"),
+        channels=("B", "RGBA", "G", "RG", "RGB", "R"),
+        color_spaces=("linear", "srgb", "linear", "linear", "srgb", "srgb"),
+        dynamic=(0, 0x0F),
+        particle=(0, 0, 0),
+        scalar_count=22,
+        vector_count=3,
+        input_count=33,
+        input_masks=((0x820EC1FF, 0x1), (0x7DF13E00, 0)),
+        vector_masks=((0x0F, 0x0F, 0), (0, 0, 0x0F)),
+        static=(18, 0x3FFFB, 0x3FFFF, 0),
+        render=(6, 0x03, 0x3C),
+    ),
+}
 RENDER_STATE_KEYS = (
     "rasterizer",
     "depthStencil",
@@ -324,7 +488,7 @@ def _validate_packed_rows(
 def _validate_asset_id(value: Any, label: str) -> str:
     if (
         not isinstance(value, str)
-        or len(value) > 1024
+        or len(value) > 512
         or not value.startswith("Effect/")
         or not value.endswith(".dds")
         or "\\" in value
@@ -376,9 +540,14 @@ def _validate_programs(value: Any) -> dict[str, dict[str, Any]]:
         row_id = _require_stable_id(row["programId"], f"programs[{index}].programId")
         if row_id in result:
             raise ContractError(f"duplicate programId: {row_id}")
-        if row["backend"] != "runtimeMaterialV2":
+        backend = row["backend"]
+        if backend not in ("runtimeMaterialV2", "localDecal"):
             raise ContractError(f"program {row_id} backend is unsupported")
-        _require_uint32(row["opcode"], f"program {row_id} opcode")
+        opcode = _require_uint32(row["opcode"], f"program {row_id} opcode")
+        if (backend, opcode) not in COMPILED_PROGRAM_LAYOUT_ABIS:
+            raise ContractError(
+                f"program {row_id} has no compiled Program/Layout ABI receipt"
+            )
         result[row_id] = row
     return result
 
@@ -419,7 +588,7 @@ def _validate_layouts(value: Any) -> dict[str, dict[str, Any]]:
                 raise ContractError(
                     f"layout {row_id} sampler registers must be contiguous from s5"
                 )
-            _require_text(lane["sourceChannel"], f"{label}.sourceChannel", 64)
+            _require_text(lane["sourceChannel"], f"{label}.sourceChannel", 32)
             if lane["colorSpace"] not in ("linear", "srgb"):
                 raise ContractError(f"{label}.colorSpace is unsupported")
 
@@ -454,6 +623,18 @@ def _validate_layouts(value: Any) -> dict[str, dict[str, Any]]:
                 raise ContractError(f"layout {row_id} vector component mask has no vector row")
         _validate_mask_pair(row["dynamicConsumedMask"], row["dynamicSuppressedMask"], f"layout {row_id} dynamic")
         _validate_mask_pair(row["particleColorConsumedMask"], row["particleColorSuppressedMask"], f"layout {row_id} particleColor")
+        _validate_mask_count(
+            row["dynamicConsumedMask"] | row["dynamicSuppressedMask"],
+            4,
+            f"layout {row_id} dynamic",
+        )
+        _validate_mask_count(
+            row["particleColorConsumedMask"] | row["particleColorSuppressedMask"],
+            4,
+            f"layout {row_id} particleColor",
+        )
+        if row["particleColorPolicy"] > 3:
+            raise ContractError(f"layout {row_id} particleColorPolicy is unsupported")
         _validate_mask_pair(row["staticConsumedMask"], row["staticSuppressedMask"], f"layout {row_id} static")
         _validate_mask_pair(row["renderConsumedMask"], row["renderSuppressedMask"], f"layout {row_id} render")
         input_count = row["inputCount"]
@@ -531,7 +712,7 @@ def _validate_adapters(value: Any) -> dict[str, dict[str, Any]]:
     for index, row in enumerate(adapters):
         _require_exact_order(row, ADAPTER_KEYS, f"adapters[{index}]")
         adapter_id = _require_stable_id(row["adapterId"], f"adapters[{index}].adapterId")
-        if adapter_id != CANONICAL_SPRITE_ADAPTER_ID:
+        if adapter_id not in COMPILED_ADAPTERS:
             raise ContractError(f"unsupported compiled adapterId: {adapter_id}")
         if adapter_id in result:
             raise ContractError(f"duplicate adapterId: {adapter_id}")
@@ -548,6 +729,7 @@ def materialize_binding(
     program = programs[binding["programId"]]
     layout = layouts[binding["layoutId"]]
     descriptor = descriptors[binding["descriptorId"]]
+    adapter = COMPILED_ADAPTERS[binding["adapterId"]]
     texture_lanes = []
     for layout_lane, descriptor_lane in zip(
         layout["textureLanes"], descriptor["textureLanes"]
@@ -582,11 +764,11 @@ def materialize_binding(
         "version": layout["executionVersion"],
         "backend": program["backend"],
         "opcode": program["opcode"],
-        "passIndex": 1,
+        "passIndex": adapter["passIndex"],
         "renderState": {
-            "rasterizer": "RS_Cull_None",
-            "depthStencil": "DSS_ReadOnly",
-            "blend": "BS_EffectAlpha",
+            "rasterizer": adapter["renderState"][0],
+            "depthStencil": adapter["renderState"][1],
+            "blend": adapter["renderState"][2],
             "stencilReference": 0,
         },
         "textureLaneCount": layout["textureLaneCount"],
@@ -621,6 +803,21 @@ def materialize_binding(
 def _require_same(actual: Any, expected: Any, label: str) -> None:
     if type(actual) is not type(expected) or actual != expected:
         raise ContractError(f"materialized execution mismatch at {label}")
+
+
+def _validate_compiled_program_layout_abi(
+    program: Mapping[str, Any], layout: Mapping[str, Any], label: str
+) -> None:
+    identity = (program["backend"], program["opcode"])
+    expected = COMPILED_PROGRAM_LAYOUT_ABIS.get(identity)
+    if expected is None:
+        raise ContractError(f"binding {label} has no compiled Program/Layout ABI receipt")
+    for field, expected_value in expected.items():
+        actual_value = layout.get(field)
+        if type(actual_value) is not type(expected_value) or actual_value != expected_value:
+            raise ContractError(
+                f"binding {label} Program/Layout ABI mismatch at {field}"
+            )
 
 
 def assert_execution_bit_exact(
@@ -708,11 +905,11 @@ def assert_execution_bit_exact(
                 raise ContractError(f"materialized execution float-bit mismatch at {row_label}.value")
 
 
-def _find_authored_execution(
+def _find_authored_element(
     authored_documents: Mapping[str, dict[str, Any]],
     effect_id: str,
     element_id: str,
-) -> Any:
+) -> dict[str, Any]:
     document = authored_documents.get(effect_id)
     if document is None:
         raise ContractError(f"binding target effect is not direct-authored: {effect_id}")
@@ -731,10 +928,63 @@ def _find_authored_execution(
     ]
     if len(matching) != 1:
         raise ContractError(f"binding target element is missing or duplicate: {effect_id}/{element_id}")
-    material = matching[0].get("material")
-    if not isinstance(material, dict) or "execution" not in material:
-        raise ContractError(f"binding target has no inline material execution: {effect_id}/{element_id}")
-    return material["execution"]
+    return matching[0]
+
+
+def _validate_binding_carrier(
+    element: Mapping[str, Any], adapter: Mapping[str, Any], label: str
+) -> None:
+    kind = element.get("kind")
+    source_recipe = element.get("sourceRecipe")
+    renderer_shape = (
+        source_recipe.get("rendererShape")
+        if isinstance(source_recipe, dict) and source_recipe.get("enabled") is True
+        else ""
+    )
+    resources = element.get("resources")
+    resource_slots = (
+        {row.get("slotId") for row in resources if isinstance(row, dict)}
+        if isinstance(resources, list)
+        else set()
+    )
+    carrier = adapter["carrier"]
+    material = element.get("material")
+    render_profile = material.get("renderProfile") if isinstance(material, dict) else None
+    matches = False
+    if carrier == "SPRITE_PARTICLE":
+        matches = (
+            kind == "particle"
+            and renderer_shape == "sprite"
+            and "meshModel" not in resource_slots
+        )
+    elif carrier == "MESH_PARTICLE":
+        matches = (
+            kind == "particle"
+            and renderer_shape == "mesh"
+            and "meshModel" in resource_slots
+        )
+    elif carrier == "LOCAL_DECAL":
+        matches = kind == "decal" and "meshModel" not in resource_slots
+    if not matches or render_profile != adapter["renderProfile"]:
+        raise ContractError(f"binding {label} carrier is incompatible with its adapter")
+
+
+def _find_authored_execution(
+    element: Mapping[str, Any],
+    effect_id: str,
+    element_id: str,
+    *,
+    require_enabled: bool,
+) -> Any | None:
+    material = element.get("material")
+    execution = material.get("execution") if isinstance(material, dict) else None
+    enabled = isinstance(execution, dict) and execution.get("enabled") is True
+    if require_enabled and not enabled:
+        raise ContractError(
+            f"binding target has no enabled inline material execution: "
+            f"{effect_id}/{element_id}"
+        )
+    return execution if enabled else None
 
 
 def validate_registry(
@@ -772,21 +1022,140 @@ def validate_registry(
         descriptor = descriptors[row["descriptorId"]]
         if descriptor["layoutId"] != row["layoutId"]:
             raise ContractError(f"binding {effect_id}/{element_id} descriptor/layout mismatch")
-        if (
-            row["adapterId"] == CANONICAL_SPRITE_ADAPTER_ID
-            and (
-                programs[row["programId"]]["backend"] != "runtimeMaterialV2"
-                or programs[row["programId"]]["opcode"] != 6
+        mirror_policy = row["inlineMirrorPolicy"]
+        if mirror_policy != INLINE_MIRROR_REQUIRED:
+            raise ContractError(
+                f"binding {effect_id}/{element_id} inlineMirrorPolicy is unsupported"
             )
+        adapter = COMPILED_ADAPTERS[row["adapterId"]]
+        program = programs[row["programId"]]
+        if (
+            (program["backend"], program["opcode"]) not in adapter["programs"]
         ):
             raise ContractError(f"binding {effect_id}/{element_id} program is unsupported by its adapter")
+        _validate_compiled_program_layout_abi(
+            program,
+            layouts[row["layoutId"]],
+            f"{effect_id}/{element_id}",
+        )
         if authored_documents is not None:
-            authored = _find_authored_execution(authored_documents, effect_id, element_id)
             materialized = materialize_binding(row, programs, layouts, descriptors)
-            assert_execution_bit_exact(materialized, authored, f"{effect_id}/{element_id}")
+            element = _find_authored_element(
+                authored_documents, effect_id, element_id
+            )
+            _validate_binding_carrier(
+                element, adapter, f"{effect_id}/{element_id}"
+            )
+            authored = _find_authored_execution(
+                element, effect_id, element_id,
+                require_enabled=True,
+            )
+            if authored is not None:
+                assert_execution_bit_exact(
+                    materialized, authored, f"{effect_id}/{element_id}"
+                )
     if bindings and authored_documents is None:
         raise ContractError("binding target validation requires authored documents")
     return value
+
+
+def merge_registry_fragments(
+    base: Any,
+    fragment_root: Path,
+) -> dict[str, Any]:
+    """Merge domain rows into the compiled-adapter base in stable filename order.
+
+    Adapter declarations remain integration-owned in the base document.  A domain
+    fragment can only contribute Program/Layout/Descriptor/Binding rows, so two
+    feature branches never need to edit the same monolithic authoring document.
+    Duplicate IDs and cross-fragment dangling references are rejected later by the
+    ordinary full-registry validator.
+    """
+
+    _require_exact_order(base, ROOT_KEYS, "material-program registry base root")
+    if base["schema"] != REGISTRY_SCHEMA:
+        raise ContractError("material-program registry base schema mismatch")
+    if type(base["formatVersion"]) is not int or base["formatVersion"] != REGISTRY_VERSION:
+        raise ContractError("material-program registry base formatVersion mismatch")
+
+    for key, maximum in (
+        ("programs", MAX_PROGRAM_ROWS),
+        ("layouts", MAX_LAYOUT_ROWS),
+        ("descriptors", MAX_DESCRIPTOR_ROWS),
+        ("bindings", MAX_BINDING_ROWS),
+    ):
+        rows = _require_array(base[key], f"base.{key}", 0, maximum)
+        if rows:
+            raise ContractError(
+                f"material-program registry base.{key} must be empty; "
+                "domain rows belong to Fragments"
+            )
+    base_adapters = list(
+        _require_array(base["adapters"], "base.adapters", 1, MAX_ADAPTER_ROWS)
+    )
+    expected_adapters = [
+        {"adapterId": adapter_id} for adapter_id in COMPILED_ADAPTERS
+    ]
+    if base_adapters != expected_adapters:
+        raise ContractError(
+            "material-program registry base.adapters must exactly match the "
+            "compiled adapter table and order"
+        )
+
+    merged: dict[str, Any] = {
+        "schema": base["schema"],
+        "formatVersion": base["formatVersion"],
+        "programs": [],
+        "layouts": [],
+        "descriptors": [],
+        "adapters": base_adapters,
+        "bindings": [],
+    }
+
+    if not fragment_root.exists():
+        return merged
+    if not fragment_root.is_dir() or fragment_root.is_symlink():
+        raise ContractError("material-program fragment root is not a regular directory")
+
+    fragment_paths = sorted(fragment_root.glob("*.json"), key=lambda path: path.name)
+    domain_ids: set[str] = set()
+    for path in fragment_paths:
+        if path.is_symlink() or not path.is_file():
+            raise ContractError(f"material-program fragment is not a regular file: {path.name}")
+        if not path.name.endswith(".material-program-fragment.v1.json"):
+            raise ContractError(f"material-program fragment filename is unsupported: {path.name}")
+        fragment = load_json(path, f"material-program fragment {path.name}")
+        _require_exact_order(fragment, FRAGMENT_ROOT_KEYS, f"fragment {path.name}")
+        if fragment["schema"] != FRAGMENT_SCHEMA:
+            raise ContractError(f"material-program fragment schema mismatch: {path.name}")
+        if (
+            type(fragment["formatVersion"]) is not int
+            or fragment["formatVersion"] != FRAGMENT_VERSION
+        ):
+            raise ContractError(
+                f"material-program fragment formatVersion mismatch: {path.name}"
+            )
+        domain_id = _require_stable_id(
+            fragment["domainId"], f"fragment {path.name}.domainId"
+        )
+        if domain_id in domain_ids:
+            raise ContractError(f"duplicate material-program fragment domainId: {domain_id}")
+        domain_ids.add(domain_id)
+        contributed = 0
+        for key, maximum in (
+            ("programs", MAX_PROGRAM_ROWS),
+            ("layouts", MAX_LAYOUT_ROWS),
+            ("descriptors", MAX_DESCRIPTOR_ROWS),
+            ("bindings", MAX_BINDING_ROWS),
+        ):
+            rows = _require_array(
+                fragment[key], f"fragment {path.name}.{key}", 0, maximum
+            )
+            merged[key].extend(rows)
+            contributed += len(rows)
+        if contributed == 0:
+            raise ContractError(f"material-program fragment is empty: {path.name}")
+    return merged
 
 
 def _safe_authoring_path(data_root: Path, value: Any, effect_id: str) -> Path:
@@ -855,8 +1224,13 @@ def build_registry(
     source_path: Path,
     effect_catalog_path: Path | None = None,
     data_root: Path | None = None,
+    fragment_root: Path | None = None,
 ) -> dict[str, Any]:
-    registry = load_json(source_path)
+    base = load_json(source_path)
+    registry = merge_registry_fragments(
+        base,
+        fragment_root if fragment_root is not None else source_path.parent / "Fragments",
+    )
     authored_documents: Mapping[str, dict[str, Any]] | None = None
     if registry.get("bindings"):
         if effect_catalog_path is None or data_root is None:
@@ -872,6 +1246,7 @@ def make_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--effect-catalog", type=Path)
     parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--fragment-root", type=Path)
     return parser
 
 
@@ -882,6 +1257,7 @@ def main(argv: list[str] | None = None) -> int:
             args.source.resolve(),
             args.effect_catalog.resolve() if args.effect_catalog else None,
             args.data_root.resolve() if args.data_root else None,
+            args.fragment_root.resolve() if args.fragment_root else None,
         )
         print(
             json.dumps(

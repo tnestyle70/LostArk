@@ -123,6 +123,8 @@ namespace
 		std::string strLayoutId;
 		std::string strDescriptorId;
 		std::string strAdapterId;
+		EFFECT_MATERIAL_INLINE_MIRROR_POLICY eInlineMirrorPolicy =
+			EFFECT_MATERIAL_INLINE_MIRROR_POLICY::END;
 	};
 
 	bool_t Validate_ExactOrderedObject(
@@ -397,13 +399,15 @@ namespace
 		std::string& strOutError)
 	{
 		if (!Validate_PlainText(strAssetId, MAX_ASSET_ID_BYTES, false,
-			strContext, strOutError) || strAssetId.front() == '/' ||
+			strContext, strOutError) ||
+			!strAssetId.starts_with("Effect/") ||
+			!strAssetId.ends_with(".dds") || strAssetId.front() == '/' ||
 			strAssetId.find('\\') != std::string_view::npos ||
 			strAssetId.find(':') != std::string_view::npos)
 		{
 			if (strOutError.empty())
 				strOutError = std::string(strContext) +
-					" must be a Resources-relative forward-slash asset ID.";
+					" must be a Resources-relative Effect/.../*.dds asset ID.";
 			return false;
 		}
 		size_t iStart = 0u;
@@ -604,14 +608,30 @@ namespace
 		{
 			return false;
 		}
-		if (strBackend != "runtimeMaterialV2" || 0u == OutProgram.iOpcode)
+		if (strBackend == "runtimeMaterialV2")
+		{
+			const bool_t bCompiledOpcode = OutProgram.iOpcode == 3u ||
+				OutProgram.iOpcode == 6u;
+			if (!bCompiledOpcode)
+			{
+				strOutError = strContext +
+					" names an opcode without a compiled ABI receipt.";
+				return false;
+			}
+			OutProgram.eBackend =
+				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2;
+		}
+		else if (strBackend == "localDecal" && OutProgram.iOpcode == 14u)
+		{
+			OutProgram.eBackend =
+				EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL;
+		}
+		else
 		{
 			strOutError = strContext +
-				" supports only nonzero runtimeMaterialV2 programs.";
+				" has an unsupported backend/opcode dispatch pair.";
 			return false;
 		}
-		OutProgram.eBackend =
-			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2;
 		return true;
 	}
 
@@ -1128,7 +1148,8 @@ namespace
 			std::to_string(iIndex);
 		if (!Validate_ExactOrderedObject(Value,
 			{ "effectAssetId", "elementId", "programId", "layoutId",
-				"descriptorId", "adapterId" }, strContext, strOutError) ||
+				"descriptorId", "adapterId", "inlineMirrorPolicy" }, strContext,
+			strOutError) ||
 			!Read_String(Value, "effectAssetId", OutBinding.strEffectAssetId,
 				strContext, strOutError) ||
 			!Validate_StableId(OutBinding.strEffectAssetId,
@@ -1156,30 +1177,352 @@ namespace
 		{
 			return false;
 		}
+		std::string strInlineMirrorPolicy;
+		if (!Read_String(Value, "inlineMirrorPolicy", strInlineMirrorPolicy,
+				strContext, strOutError))
+		{
+			return false;
+		}
+		if (strInlineMirrorPolicy == "INLINE_MIRROR_REQUIRED")
+		{
+			OutBinding.eInlineMirrorPolicy =
+				EFFECT_MATERIAL_INLINE_MIRROR_POLICY::INLINE_MIRROR_REQUIRED;
+		}
+		else
+		{
+			strOutError = strContext +
+				" requires INLINE_MIRROR_REQUIRED in registry format v1.";
+			return false;
+		}
 		return true;
 	}
 
-	EFFECT_COMPILED_MATERIAL_ADAPTER_DESC Compiled_SpriteAdapter() noexcept
+	EFFECT_COMPILED_MATERIAL_ADAPTER_DESC Make_CompiledAdapter(
+		const EFFECT_COMPILED_MATERIAL_ADAPTER_ID eAdapterId,
+		const EFFECT_COMPILED_MATERIAL_CARRIER eCarrier,
+		const std::string_view strAdapterId,
+		const std::string_view strShaderId,
+		const std::string_view strVertexLayoutId,
+		const EFFECT_RENDER_PROFILE eRenderProfile,
+		const uint32_t iPassIndex,
+		const std::string_view strRasterizerState,
+		const std::string_view strDepthStencilState,
+		const std::string_view strBlendState) noexcept
 	{
 		EFFECT_COMPILED_MATERIAL_ADAPTER_DESC Adapter;
-		Adapter.eAdapterId = EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
-			SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1;
-		Adapter.eCarrier = EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE;
-		Adapter.strAdapterId = EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID;
-		Adapter.strShaderId = "Shader_VtxEffectParticle.hlsl";
-		Adapter.strVertexLayoutId = "VTXEFFECT_PARTICLE";
-		Adapter.iPassIndex = 1u;
+		Adapter.eAdapterId = eAdapterId;
+		Adapter.eCarrier = eCarrier;
+		Adapter.strAdapterId = strAdapterId;
+		Adapter.strShaderId = strShaderId;
+		Adapter.strVertexLayoutId = strVertexLayoutId;
+		Adapter.eRenderProfile = eRenderProfile;
+		Adapter.iPassIndex = iPassIndex;
 		Adapter.strMrtId = "MRT_SceneHDR";
 		Adapter.iSceneColorRenderTargetIndex = 0u;
 		Adapter.strSceneColorSemantic = "SV_TARGET0";
 		Adapter.iDistortionRenderTargetIndex = 1u;
 		Adapter.strDistortionSemantic = "SV_TARGET1";
 		Adapter.bDistortionDeterministicZero = true;
-		Adapter.strRasterizerState = "RS_Cull_None";
-		Adapter.strDepthStencilState = "DSS_ReadOnly";
-		Adapter.strBlendState = "BS_EffectAlpha";
+		Adapter.strRasterizerState = strRasterizerState;
+		Adapter.strDepthStencilState = strDepthStencilState;
+		Adapter.strBlendState = strBlendState;
 		Adapter.iStencilReference = 0u;
 		return Adapter;
+	}
+
+	const std::array<EFFECT_COMPILED_MATERIAL_ADAPTER_DESC, 3u>&
+		Compiled_Adapters() noexcept
+	{
+		using ADAPTER_ID = EFFECT_COMPILED_MATERIAL_ADAPTER_ID;
+		using CARRIER = EFFECT_COMPILED_MATERIAL_CARRIER;
+		static const std::array<EFFECT_COMPILED_MATERIAL_ADAPTER_DESC, 3u>
+			ADAPTERS = {{
+			Make_CompiledAdapter(
+				ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1,
+				CARRIER::SPRITE_PARTICLE,
+				EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ, 1u,
+				"RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
+			Make_CompiledAdapter(
+				ADAPTER_ID::MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1,
+				CARRIER::MESH_PARTICLE_CMODEL,
+				EFFECT_MESH_PARTICLE_SCENE_COLOR_ALPHA_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectMeshPreview.hlsl", "VTXMESH",
+				EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ, 1u,
+				"RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
+			Make_CompiledAdapter(
+				ADAPTER_ID::LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1,
+				CARRIER::LOCAL_DECAL_PROJECTOR,
+				EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectDecal.hlsl", "VTXTEX",
+				EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ, 3u,
+				"RS_Default", "DSS_ReadOnly", "BS_EffectAlpha")
+		}};
+		return ADAPTERS;
+	}
+
+	const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC* Find_CompiledAdapter(
+		const std::string_view strAdapterId) noexcept
+	{
+		const auto& Adapters = Compiled_Adapters();
+		const auto Adapter = std::find_if(Adapters.begin(), Adapters.end(),
+			[strAdapterId](const auto& Candidate)
+			{
+				return Candidate.strAdapterId == strAdapterId;
+			});
+		return Adapter == Adapters.end() ? nullptr : &*Adapter;
+	}
+
+	struct COMPILED_LAYOUT_LANE_ABI_RECEIPT final
+	{
+		std::string_view strRole;
+		uint32_t iTextureRegister = 0u;
+		uint32_t iSamplerRegister = 0u;
+		std::string_view strSourceChannel;
+		EFFECT_TEXTURE_COLOR_SPACE eColorSpace =
+			EFFECT_TEXTURE_COLOR_SPACE::END;
+	};
+
+	struct COMPILED_LAYOUT_ABI_RECEIPT final
+	{
+		EFFECT_MATERIAL_EXECUTION_BACKEND eBackend =
+			EFFECT_MATERIAL_EXECUTION_BACKEND::END;
+		uint32_t iOpcode = 0u;
+		uint32_t iExecutionVersion = 0u;
+		uint32_t iTextureLaneCount = 0u;
+		uint32_t iTextureMask = 0u;
+		std::array<COMPILED_LAYOUT_LANE_ABI_RECEIPT, MAX_TEXTURE_LANES>
+			TextureLanes{};
+		uint32_t iDynamicConsumedMask = 0u;
+		uint32_t iDynamicSuppressedMask = 0u;
+		uint32_t iParticleColorPolicy = 0u;
+		uint32_t iParticleColorConsumedMask = 0u;
+		uint32_t iParticleColorSuppressedMask = 0u;
+		uint32_t iScalarCount = 0u;
+		uint32_t iVectorCount = 0u;
+		uint32_t iInputCount = 0u;
+		std::array<uint32_t, 2u> InputConsumedMask{};
+		std::array<uint32_t, 2u> InputSuppressedMask{};
+		std::array<uint32_t, 3u> VectorComponentConsumedMask{};
+		std::array<uint32_t, 3u> VectorComponentSuppressedMask{};
+		uint32_t iStaticInputCount = 0u;
+		uint32_t iStaticSelectedMask = 0u;
+		uint32_t iStaticConsumedMask = 0u;
+		uint32_t iStaticSuppressedMask = 0u;
+		uint32_t iRenderInputCount = 0u;
+		uint32_t iRenderConsumedMask = 0u;
+		uint32_t iRenderSuppressedMask = 0u;
+		uint32_t iArtistParameterRowCount = 0u;
+		uint32_t iColorRowCount = 0u;
+	};
+
+	const std::array<COMPILED_LAYOUT_ABI_RECEIPT, 3u>&
+		Compiled_LayoutAbiReceipts() noexcept
+	{
+		static const std::array<COMPILED_LAYOUT_ABI_RECEIPT, 3u> RECEIPTS = []
+		{
+			std::array<COMPILED_LAYOUT_ABI_RECEIPT, 3u> Result{};
+			COMPILED_LAYOUT_ABI_RECEIPT& Sprite = Result[0u];
+			Sprite.eBackend =
+				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2;
+			Sprite.iOpcode = 6u;
+			Sprite.iExecutionVersion = 1u;
+			Sprite.iTextureLaneCount = 2u;
+			Sprite.iTextureMask = 0x03u;
+			Sprite.TextureLanes[0u] = { "sparkle_tex", 0u, 5u, "",
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB };
+			Sprite.TextureLanes[1u] = { "edgedeco.texture01", 1u, 6u, "",
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB };
+			Sprite.iDynamicConsumedMask = 0x0fu;
+			Sprite.iParticleColorPolicy = 3u;
+			Sprite.iParticleColorConsumedMask = 0x0fu;
+			Sprite.iScalarCount = 3u;
+			Sprite.iInputCount = 6u;
+			Sprite.InputConsumedMask = { 55u, 0u };
+			Sprite.InputSuppressedMask = { 8u, 0u };
+			Sprite.iRenderInputCount = 6u;
+			Sprite.iRenderConsumedMask = 47u;
+			Sprite.iRenderSuppressedMask = 16u;
+
+			COMPILED_LAYOUT_ABI_RECEIPT& Mesh = Result[1u];
+			Mesh.eBackend =
+				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2;
+			Mesh.iOpcode = 3u;
+			Mesh.iExecutionVersion = 1u;
+			Mesh.iTextureLaneCount = 2u;
+			Mesh.iTextureMask = 0x03u;
+			Mesh.TextureLanes[0u] = { "maintex", 0u, 5u, "",
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB };
+			Mesh.TextureLanes[1u] = { "uv_noise_tex", 1u, 6u, "",
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB };
+			Mesh.iDynamicConsumedMask = 0x0fu;
+			Mesh.iParticleColorPolicy = 2u;
+			Mesh.iParticleColorConsumedMask = 0x0fu;
+			Mesh.iScalarCount = 29u;
+			Mesh.iVectorCount = 1u;
+			Mesh.iInputCount = 32u;
+			Mesh.InputConsumedMask = { 3489660919u, 0u };
+			Mesh.InputSuppressedMask = { 805306376u, 0u };
+			Mesh.VectorComponentSuppressedMask = { 15u, 0u, 0u };
+			Mesh.iStaticInputCount = 14u;
+			Mesh.iStaticSelectedMask = 13311u;
+			Mesh.iStaticConsumedMask = 16383u;
+			Mesh.iRenderInputCount = 6u;
+			Mesh.iRenderConsumedMask = 47u;
+			Mesh.iRenderSuppressedMask = 16u;
+
+			COMPILED_LAYOUT_ABI_RECEIPT& Decal = Result[2u];
+			Decal.eBackend = EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL;
+			Decal.iOpcode = 14u;
+			Decal.iExecutionVersion = 1u;
+			Decal.iTextureLaneCount = 6u;
+			Decal.iTextureMask = 0x3fu;
+			Decal.TextureLanes[0u] = { "height", 0u, 5u, "B",
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR };
+			Decal.TextureLanes[1u] = { "diffuse", 1u, 6u, "RGBA",
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB };
+			Decal.TextureLanes[2u] = { "dissolve", 2u, 7u, "G",
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR };
+			Decal.TextureLanes[3u] = { "normal", 3u, 8u, "RG",
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR };
+			Decal.TextureLanes[4u] = { "specular", 4u, 9u, "RGB",
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB };
+			Decal.TextureLanes[5u] = { "emissive", 5u, 10u, "R",
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB };
+			Decal.iDynamicSuppressedMask = 0x0fu;
+			Decal.iScalarCount = 22u;
+			Decal.iVectorCount = 3u;
+			Decal.iInputCount = 33u;
+			Decal.InputConsumedMask = { 2182005247u, 1u };
+			Decal.InputSuppressedMask = { 2112962048u, 0u };
+			Decal.VectorComponentConsumedMask = { 15u, 15u, 0u };
+			Decal.VectorComponentSuppressedMask = { 0u, 0u, 15u };
+			Decal.iStaticInputCount = 18u;
+			Decal.iStaticSelectedMask = 262139u;
+			Decal.iStaticConsumedMask = 262143u;
+			Decal.iRenderInputCount = 6u;
+			Decal.iRenderConsumedMask = 3u;
+			Decal.iRenderSuppressedMask = 60u;
+			return Result;
+		}();
+		return RECEIPTS;
+	}
+
+	bool_t Matches_CompiledPackedRows(
+		const std::vector<LAYOUT_PARAMETER_ROW>& Rows,
+		const std::string_view strPrefix,
+		const uint32_t iExpectedCount)
+	{
+		if (Rows.size() != iExpectedCount)
+			return false;
+		for (size_t iRow = 0u; iRow < Rows.size(); ++iRow)
+		{
+			if (Rows[iRow].iPackedIndex != iRow || Rows[iRow].strName !=
+				std::string(strPrefix) + "." + std::to_string(iRow))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Matches_CompiledLayoutAbiReceipt(
+		const PROGRAM_RECORD& Program,
+		const LAYOUT_RECORD& Layout)
+	{
+		const auto& Receipts = Compiled_LayoutAbiReceipts();
+		const auto Receipt = std::find_if(Receipts.begin(), Receipts.end(),
+			[&Program](const COMPILED_LAYOUT_ABI_RECEIPT& Candidate)
+			{
+				return Candidate.eBackend == Program.eBackend &&
+					Candidate.iOpcode == Program.iOpcode;
+			});
+		if (Receipt == Receipts.end() ||
+			Layout.iExecutionVersion != Receipt->iExecutionVersion ||
+			Layout.iTextureLaneCount != Receipt->iTextureLaneCount ||
+			Layout.iTextureMask != Receipt->iTextureMask ||
+			Layout.TextureLanes.size() != Receipt->iTextureLaneCount ||
+			Layout.iDynamicConsumedMask != Receipt->iDynamicConsumedMask ||
+			Layout.iDynamicSuppressedMask != Receipt->iDynamicSuppressedMask ||
+			Layout.iParticleColorPolicy != Receipt->iParticleColorPolicy ||
+			Layout.iParticleColorConsumedMask !=
+				Receipt->iParticleColorConsumedMask ||
+			Layout.iParticleColorSuppressedMask !=
+				Receipt->iParticleColorSuppressedMask ||
+			Layout.iScalarCount != Receipt->iScalarCount ||
+			Layout.iVectorCount != Receipt->iVectorCount ||
+			Layout.iInputCount != Receipt->iInputCount ||
+			Layout.InputConsumedMask != Receipt->InputConsumedMask ||
+			Layout.InputSuppressedMask != Receipt->InputSuppressedMask ||
+			Layout.VectorComponentConsumedMask !=
+				Receipt->VectorComponentConsumedMask ||
+			Layout.VectorComponentSuppressedMask !=
+				Receipt->VectorComponentSuppressedMask ||
+			Layout.iStaticInputCount != Receipt->iStaticInputCount ||
+			Layout.iStaticSelectedMask != Receipt->iStaticSelectedMask ||
+			Layout.iStaticConsumedMask != Receipt->iStaticConsumedMask ||
+			Layout.iStaticSuppressedMask != Receipt->iStaticSuppressedMask ||
+			Layout.iRenderInputCount != Receipt->iRenderInputCount ||
+			Layout.iRenderConsumedMask != Receipt->iRenderConsumedMask ||
+			Layout.iRenderSuppressedMask != Receipt->iRenderSuppressedMask ||
+			!Matches_CompiledPackedRows(
+				Layout.ScalarRows, "scalar", Receipt->iScalarCount) ||
+			!Matches_CompiledPackedRows(
+				Layout.VectorRows, "vector", Receipt->iVectorCount) ||
+			!Matches_CompiledPackedRows(Layout.ArtistParameterRows,
+				"artist-parameter", Receipt->iArtistParameterRowCount) ||
+			!Matches_CompiledPackedRows(
+				Layout.ColorRows, "color", Receipt->iColorRowCount))
+		{
+			return false;
+		}
+		for (size_t iLane = 0u; iLane < Layout.TextureLanes.size(); ++iLane)
+		{
+			const LAYOUT_TEXTURE_LANE& Actual = Layout.TextureLanes[iLane];
+			const COMPILED_LAYOUT_LANE_ABI_RECEIPT& Expected =
+				Receipt->TextureLanes[iLane];
+			if (Actual.strLaneId != "lane." + std::to_string(iLane) ||
+				Actual.strRole != Expected.strRole ||
+				Actual.iTextureRegister != Expected.iTextureRegister ||
+				Actual.iSamplerRegister != Expected.iSamplerRegister ||
+				Actual.strSourceChannel != Expected.strSourceChannel ||
+				Actual.eColorSpace != Expected.eColorSpace)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Is_CompiledProgramCompatible(
+		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter,
+		const PROGRAM_RECORD& Program) noexcept
+	{
+		switch (Adapter.eCarrier)
+		{
+		case EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE:
+			return Program.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Program.iOpcode == 6u && Adapter.eAdapterId ==
+					EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
+						SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1;
+		case EFFECT_COMPILED_MATERIAL_CARRIER::MESH_PARTICLE_CMODEL:
+			return Program.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Program.iOpcode == 3u && Adapter.eAdapterId ==
+				EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
+					MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1;
+		case EFFECT_COMPILED_MATERIAL_CARRIER::LOCAL_DECAL_PROJECTOR:
+			return Program.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL &&
+				Program.iOpcode == 14u && Adapter.eAdapterId ==
+					EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
+						LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1;
+		case EFFECT_COMPILED_MATERIAL_CARRIER::END:
+		default:
+			return false;
+		}
 	}
 
 	bool_t Materialize_Binding(
@@ -1193,16 +1536,25 @@ namespace
 			pOutResolved,
 		std::string& strOutError)
 	{
-		if (Binding.strAdapterId !=
-				EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID ||
-			Program.eBackend !=
-				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 ||
-			Program.iOpcode != 6u || Layout.iExecutionVersion != 1u ||
+		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC* pAdapter =
+			Find_CompiledAdapter(Binding.strAdapterId);
+		if (!Matches_CompiledLayoutAbiReceipt(Program, Layout))
+		{
+			strOutError = "Material binding '" + Binding.strEffectAssetId + "/" +
+				Binding.strElementId +
+				"' layout differs from its compiled backend/opcode ABI receipt.";
+			return false;
+		}
+		if (nullptr == pAdapter ||
+			!Is_CompiledProgramCompatible(*pAdapter, Program) ||
+			Binding.eInlineMirrorPolicy ==
+				EFFECT_MATERIAL_INLINE_MIRROR_POLICY::END ||
+			Layout.iExecutionVersion != 1u ||
 			Descriptor.strLayoutId != Layout.strLayoutId)
 		{
 			strOutError = "Material binding '" + Binding.strEffectAssetId + "/" +
 				Binding.strElementId +
-				"' is incompatible with the compiled SpriteParticle adapter.";
+				"' is incompatible with its compiled carrier/program adapter.";
 			return false;
 		}
 		auto pResolved =
@@ -1215,7 +1567,8 @@ namespace
 		pResolved->strLayoutId = Binding.strLayoutId;
 		pResolved->strDescriptorId = Binding.strDescriptorId;
 		pResolved->strAdapterId = Binding.strAdapterId;
-		pResolved->Adapter = Compiled_SpriteAdapter();
+		pResolved->eInlineMirrorPolicy = Binding.eInlineMirrorPolicy;
+		pResolved->Adapter = *pAdapter;
 
 		EFFECT_MATERIAL_EXECUTION_DESC& Execution = pResolved->Execution;
 		Execution.bEnabled = true;
@@ -1508,7 +1861,8 @@ Client::CEffectMaterialProgramRegistry::Create(
 		pLayouts->Get_Array().size() > MAX_LAYOUTS ||
 		pDescriptors->Get_Array().empty() ||
 		pDescriptors->Get_Array().size() > MAX_DESCRIPTORS ||
-		pAdapters->Get_Array().size() != 1u ||
+		pAdapters->Get_Array().empty() ||
+		pAdapters->Get_Array().size() > Compiled_Adapters().size() ||
 		pBindings->Get_Array().size() > MAX_BINDINGS)
 	{
 		strOutError =
@@ -1581,23 +1935,39 @@ Client::CEffectMaterialProgramRegistry::Create(
 			return nullptr;
 	}
 
-	const DATA_JSON_VALUE& AdapterValue = pAdapters->Get_Array().front();
-	if (!Validate_ExactOrderedObject(AdapterValue, { "adapterId" },
-			"Compiled material adapter row 0", strOutError))
+	std::set<std::string, std::less<>> DeclaredAdapters;
+	for (size_t iAdapter = 0u;
+		iAdapter < pAdapters->Get_Array().size(); ++iAdapter)
 	{
-		return nullptr;
-	}
-	std::string strAdapterId;
-	if (!Read_String(AdapterValue, "adapterId", strAdapterId,
-			"Compiled material adapter row 0", strOutError) ||
-		!Validate_StableId(strAdapterId, "Compiled material adapterId",
-			strOutError) ||
-		strAdapterId != EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID)
-	{
-		if (strOutError.empty())
+		const DATA_JSON_VALUE& AdapterValue =
+			pAdapters->Get_Array()[iAdapter];
+		const std::string strContext = "Compiled material adapter row " +
+			std::to_string(iAdapter);
+		if (!Validate_ExactOrderedObject(AdapterValue, { "adapterId" },
+				strContext, strOutError))
+		{
+			return nullptr;
+		}
+		std::string strAdapterId;
+		if (!Read_String(AdapterValue, "adapterId", strAdapterId,
+				strContext, strOutError) ||
+			!Validate_StableId(strAdapterId,
+				strContext + " adapterId", strOutError))
+		{
+			return nullptr;
+		}
+		if (nullptr == Find_CompiledAdapter(strAdapterId))
+		{
 			strOutError = "Unsupported compiled material adapterId: " +
 				strAdapterId;
-		return nullptr;
+			return nullptr;
+		}
+		if (!DeclaredAdapters.emplace(std::move(strAdapterId)).second)
+		{
+			strOutError = "Duplicate compiled material adapterId at row " +
+				std::to_string(iAdapter) + ".";
+			return nullptr;
+		}
 	}
 
 	auto pImplementation = std::make_shared<IMPLEMENTATION>();
@@ -1615,7 +1985,8 @@ Client::CEffectMaterialProgramRegistry::Create(
 		const auto Layout = Layouts.find(Binding.strLayoutId);
 		const auto Descriptor = Descriptors.find(Binding.strDescriptorId);
 		if (Program == Programs.end() || Layout == Layouts.end() ||
-			Descriptor == Descriptors.end() || Binding.strAdapterId != strAdapterId)
+			Descriptor == Descriptors.end() ||
+			!DeclaredAdapters.contains(Binding.strAdapterId))
 		{
 			strOutError = "Material binding '" + Binding.strEffectAssetId + "/" +
 				Binding.strElementId +

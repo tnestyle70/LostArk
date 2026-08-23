@@ -1,0 +1,1004 @@
+{
+  "schema": "lostark.effect-material-program-registry-fragment",
+  "formatVersion": 1,
+  "domainId": "effect-domain.artist-f-golden",
+  "programs": [
+    {
+      "programId": "effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1",
+      "backend": "runtimeMaterialV2",
+      "opcode": 6
+    },
+    {
+      "programId": "effect.program.runtime-material-v2.opcode-3.artist-f-mesh.v1",
+      "backend": "runtimeMaterialV2",
+      "opcode": 3
+    },
+    {
+      "programId": "effect.program.local-decal.opcode-14.artist-f-projector.v1",
+      "backend": "localDecal",
+      "opcode": 14
+    }
+  ],
+  "layouts": [
+    {
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "executionVersion": 1,
+      "textureLaneCount": 2,
+      "textureMask": 3,
+      "textureLanes": [
+        {
+          "laneId": "lane.0",
+          "role": "sparkle_tex",
+          "textureRegister": 0,
+          "samplerRegister": 5,
+          "sourceChannel": "",
+          "colorSpace": "srgb"
+        },
+        {
+          "laneId": "lane.1",
+          "role": "edgedeco.texture01",
+          "textureRegister": 1,
+          "samplerRegister": 6,
+          "sourceChannel": "",
+          "colorSpace": "srgb"
+        }
+      ],
+      "dynamicConsumedMask": 15,
+      "dynamicSuppressedMask": 0,
+      "particleColorPolicy": 3,
+      "particleColorConsumedMask": 15,
+      "particleColorSuppressedMask": 0,
+      "scalarCount": 3,
+      "vectorCount": 0,
+      "inputCount": 6,
+      "inputConsumedMask": [
+        55,
+        0
+      ],
+      "inputSuppressedMask": [
+        8,
+        0
+      ],
+      "vectorComponentConsumedMask": [
+        0,
+        0,
+        0
+      ],
+      "vectorComponentSuppressedMask": [
+        0,
+        0,
+        0
+      ],
+      "staticInputCount": 0,
+      "staticSelectedMask": 0,
+      "staticConsumedMask": 0,
+      "staticSuppressedMask": 0,
+      "renderInputCount": 6,
+      "renderConsumedMask": 47,
+      "renderSuppressedMask": 16,
+      "scalarRows": [
+        {
+          "name": "scalar.0",
+          "packedIndex": 0
+        },
+        {
+          "name": "scalar.1",
+          "packedIndex": 1
+        },
+        {
+          "name": "scalar.2",
+          "packedIndex": 2
+        }
+      ],
+      "vectorRows": [],
+      "artistParameterRows": [],
+      "colorRows": []
+    },
+    {
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-mesh-opcode-3.v1",
+      "executionVersion": 1,
+      "textureLaneCount": 2,
+      "textureMask": 3,
+      "textureLanes": [
+        {
+          "laneId": "lane.0",
+          "role": "maintex",
+          "textureRegister": 0,
+          "samplerRegister": 5,
+          "sourceChannel": "",
+          "colorSpace": "srgb"
+        },
+        {
+          "laneId": "lane.1",
+          "role": "uv_noise_tex",
+          "textureRegister": 1,
+          "samplerRegister": 6,
+          "sourceChannel": "",
+          "colorSpace": "srgb"
+        }
+      ],
+      "dynamicConsumedMask": 15,
+      "dynamicSuppressedMask": 0,
+      "particleColorPolicy": 2,
+      "particleColorConsumedMask": 15,
+      "particleColorSuppressedMask": 0,
+      "scalarCount": 29,
+      "vectorCount": 1,
+      "inputCount": 32,
+      "inputConsumedMask": [
+        3489660919,
+        0
+      ],
+      "inputSuppressedMask": [
+        805306376,
+        0
+      ],
+      "vectorComponentConsumedMask": [
+        0,
+        0,
+        0
+      ],
+      "vectorComponentSuppressedMask": [
+        15,
+        0,
+        0
+      ],
+      "staticInputCount": 14,
+      "staticSelectedMask": 13311,
+      "staticConsumedMask": 16383,
+      "staticSuppressedMask": 0,
+      "renderInputCount": 6,
+      "renderConsumedMask": 47,
+      "renderSuppressedMask": 16,
+      "scalarRows": [
+        {
+          "name": "scalar.0",
+          "packedIndex": 0
+        },
+        {
+          "name": "scalar.1",
+          "packedIndex": 1
+        },
+        {
+          "name": "scalar.2",
+          "packedIndex": 2
+        },
+        {
+          "name": "scalar.3",
+          "packedIndex": 3
+        },
+        {
+          "name": "scalar.4",
+          "packedIndex": 4
+        },
+        {
+          "name": "scalar.5",
+          "packedIndex": 5
+        },
+        {
+          "name": "scalar.6",
+          "packedIndex": 6
+        },
+        {
+          "name": "scalar.7",
+          "packedIndex": 7
+        },
+        {
+          "name": "scalar.8",
+          "packedIndex": 8
+        },
+        {
+          "name": "scalar.9",
+          "packedIndex": 9
+        },
+        {
+          "name": "scalar.10",
+          "packedIndex": 10
+        },
+        {
+          "name": "scalar.11",
+          "packedIndex": 11
+        },
+        {
+          "name": "scalar.12",
+          "packedIndex": 12
+        },
+        {
+          "name": "scalar.13",
+          "packedIndex": 13
+        },
+        {
+          "name": "scalar.14",
+          "packedIndex": 14
+        },
+        {
+          "name": "scalar.15",
+          "packedIndex": 15
+        },
+        {
+          "name": "scalar.16",
+          "packedIndex": 16
+        },
+        {
+          "name": "scalar.17",
+          "packedIndex": 17
+        },
+        {
+          "name": "scalar.18",
+          "packedIndex": 18
+        },
+        {
+          "name": "scalar.19",
+          "packedIndex": 19
+        },
+        {
+          "name": "scalar.20",
+          "packedIndex": 20
+        },
+        {
+          "name": "scalar.21",
+          "packedIndex": 21
+        },
+        {
+          "name": "scalar.22",
+          "packedIndex": 22
+        },
+        {
+          "name": "scalar.23",
+          "packedIndex": 23
+        },
+        {
+          "name": "scalar.24",
+          "packedIndex": 24
+        },
+        {
+          "name": "scalar.25",
+          "packedIndex": 25
+        },
+        {
+          "name": "scalar.26",
+          "packedIndex": 26
+        },
+        {
+          "name": "scalar.27",
+          "packedIndex": 27
+        },
+        {
+          "name": "scalar.28",
+          "packedIndex": 28
+        }
+      ],
+      "vectorRows": [
+        {
+          "name": "vector.0",
+          "packedIndex": 0
+        }
+      ],
+      "artistParameterRows": [],
+      "colorRows": []
+    },
+    {
+      "layoutId": "effect.layout.local-decal.artist-f-projector-opcode-14.v1",
+      "executionVersion": 1,
+      "textureLaneCount": 6,
+      "textureMask": 63,
+      "textureLanes": [
+        {
+          "laneId": "lane.0",
+          "role": "height",
+          "textureRegister": 0,
+          "samplerRegister": 5,
+          "sourceChannel": "B",
+          "colorSpace": "linear"
+        },
+        {
+          "laneId": "lane.1",
+          "role": "diffuse",
+          "textureRegister": 1,
+          "samplerRegister": 6,
+          "sourceChannel": "RGBA",
+          "colorSpace": "srgb"
+        },
+        {
+          "laneId": "lane.2",
+          "role": "dissolve",
+          "textureRegister": 2,
+          "samplerRegister": 7,
+          "sourceChannel": "G",
+          "colorSpace": "linear"
+        },
+        {
+          "laneId": "lane.3",
+          "role": "normal",
+          "textureRegister": 3,
+          "samplerRegister": 8,
+          "sourceChannel": "RG",
+          "colorSpace": "linear"
+        },
+        {
+          "laneId": "lane.4",
+          "role": "specular",
+          "textureRegister": 4,
+          "samplerRegister": 9,
+          "sourceChannel": "RGB",
+          "colorSpace": "srgb"
+        },
+        {
+          "laneId": "lane.5",
+          "role": "emissive",
+          "textureRegister": 5,
+          "samplerRegister": 10,
+          "sourceChannel": "R",
+          "colorSpace": "srgb"
+        }
+      ],
+      "dynamicConsumedMask": 0,
+      "dynamicSuppressedMask": 15,
+      "particleColorPolicy": 0,
+      "particleColorConsumedMask": 0,
+      "particleColorSuppressedMask": 0,
+      "scalarCount": 22,
+      "vectorCount": 3,
+      "inputCount": 33,
+      "inputConsumedMask": [
+        2182005247,
+        1
+      ],
+      "inputSuppressedMask": [
+        2112962048,
+        0
+      ],
+      "vectorComponentConsumedMask": [
+        15,
+        15,
+        0
+      ],
+      "vectorComponentSuppressedMask": [
+        0,
+        0,
+        15
+      ],
+      "staticInputCount": 18,
+      "staticSelectedMask": 262139,
+      "staticConsumedMask": 262143,
+      "staticSuppressedMask": 0,
+      "renderInputCount": 6,
+      "renderConsumedMask": 3,
+      "renderSuppressedMask": 60,
+      "scalarRows": [
+        {
+          "name": "scalar.0",
+          "packedIndex": 0
+        },
+        {
+          "name": "scalar.1",
+          "packedIndex": 1
+        },
+        {
+          "name": "scalar.2",
+          "packedIndex": 2
+        },
+        {
+          "name": "scalar.3",
+          "packedIndex": 3
+        },
+        {
+          "name": "scalar.4",
+          "packedIndex": 4
+        },
+        {
+          "name": "scalar.5",
+          "packedIndex": 5
+        },
+        {
+          "name": "scalar.6",
+          "packedIndex": 6
+        },
+        {
+          "name": "scalar.7",
+          "packedIndex": 7
+        },
+        {
+          "name": "scalar.8",
+          "packedIndex": 8
+        },
+        {
+          "name": "scalar.9",
+          "packedIndex": 9
+        },
+        {
+          "name": "scalar.10",
+          "packedIndex": 10
+        },
+        {
+          "name": "scalar.11",
+          "packedIndex": 11
+        },
+        {
+          "name": "scalar.12",
+          "packedIndex": 12
+        },
+        {
+          "name": "scalar.13",
+          "packedIndex": 13
+        },
+        {
+          "name": "scalar.14",
+          "packedIndex": 14
+        },
+        {
+          "name": "scalar.15",
+          "packedIndex": 15
+        },
+        {
+          "name": "scalar.16",
+          "packedIndex": 16
+        },
+        {
+          "name": "scalar.17",
+          "packedIndex": 17
+        },
+        {
+          "name": "scalar.18",
+          "packedIndex": 18
+        },
+        {
+          "name": "scalar.19",
+          "packedIndex": 19
+        },
+        {
+          "name": "scalar.20",
+          "packedIndex": 20
+        },
+        {
+          "name": "scalar.21",
+          "packedIndex": 21
+        }
+      ],
+      "vectorRows": [
+        {
+          "name": "vector.0",
+          "packedIndex": 0
+        },
+        {
+          "name": "vector.1",
+          "packedIndex": 1
+        },
+        {
+          "name": "vector.2",
+          "packedIndex": 2
+        }
+      ],
+      "artistParameterRows": [],
+      "colorRows": []
+    }
+  ],
+  "descriptors": [
+    {
+      "descriptorId": "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1",
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "textureLanes": [
+        {
+          "laneId": "lane.0",
+          "assetId": "Effect/Artist/Textures/fx_d_noise_003.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "wrap",
+            "addressV": "wrap",
+            "addressW": "wrap",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        },
+        {
+          "laneId": "lane.1",
+          "assetId": "Effect/Artist/Textures/fx_c_noise_002.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "wrap",
+            "addressV": "wrap",
+            "addressW": "wrap",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        }
+      ],
+      "scalars": [
+        {
+          "name": "scalar.0",
+          "value": 30
+        },
+        {
+          "name": "scalar.1",
+          "value": 1.5
+        },
+        {
+          "name": "scalar.2",
+          "value": 0.100000001
+        }
+      ],
+      "vectors": [],
+      "artistParameters": [],
+      "colors": []
+    },
+    {
+      "descriptorId": "effect.descriptor.artist-f.mesh-062366ee9f9655d3.v1",
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-mesh-opcode-3.v1",
+      "textureLanes": [
+        {
+          "laneId": "lane.0",
+          "assetId": "Effect/Artist/Textures/fx_h_wave_01.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "wrap",
+            "addressV": "wrap",
+            "addressW": "wrap",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        },
+        {
+          "laneId": "lane.1",
+          "assetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_noise_011.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "wrap",
+            "addressV": "wrap",
+            "addressW": "wrap",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        }
+      ],
+      "scalars": [
+        {
+          "name": "scalar.0",
+          "value": 1
+        },
+        {
+          "name": "scalar.1",
+          "value": 1
+        },
+        {
+          "name": "scalar.2",
+          "value": 0.100000001
+        },
+        {
+          "name": "scalar.3",
+          "value": 2
+        },
+        {
+          "name": "scalar.4",
+          "value": 1.20000005
+        },
+        {
+          "name": "scalar.5",
+          "value": 0
+        },
+        {
+          "name": "scalar.6",
+          "value": 0
+        },
+        {
+          "name": "scalar.7",
+          "value": 1
+        },
+        {
+          "name": "scalar.8",
+          "value": 2
+        },
+        {
+          "name": "scalar.9",
+          "value": 0.00999999978
+        },
+        {
+          "name": "scalar.10",
+          "value": 1
+        },
+        {
+          "name": "scalar.11",
+          "value": 0.100000001
+        },
+        {
+          "name": "scalar.12",
+          "value": 0
+        },
+        {
+          "name": "scalar.13",
+          "value": 1
+        },
+        {
+          "name": "scalar.14",
+          "value": 0
+        },
+        {
+          "name": "scalar.15",
+          "value": 0.400000006
+        },
+        {
+          "name": "scalar.16",
+          "value": 1
+        },
+        {
+          "name": "scalar.17",
+          "value": 0
+        },
+        {
+          "name": "scalar.18",
+          "value": 1
+        },
+        {
+          "name": "scalar.19",
+          "value": 0
+        },
+        {
+          "name": "scalar.20",
+          "value": 0
+        },
+        {
+          "name": "scalar.21",
+          "value": 1
+        },
+        {
+          "name": "scalar.22",
+          "value": 1
+        },
+        {
+          "name": "scalar.23",
+          "value": 0
+        },
+        {
+          "name": "scalar.24",
+          "value": 40
+        },
+        {
+          "name": "scalar.25",
+          "value": 2
+        },
+        {
+          "name": "scalar.26",
+          "value": 1
+        },
+        {
+          "name": "scalar.27",
+          "value": 0.200000003
+        },
+        {
+          "name": "scalar.28",
+          "value": 1
+        }
+      ],
+      "vectors": [
+        {
+          "name": "vector.0",
+          "value": [
+            4,
+            3,
+            2,
+            1
+          ]
+        }
+      ],
+      "artistParameters": [],
+      "colors": []
+    },
+    {
+      "descriptorId": "effect.descriptor.artist-f.decal-f3b5c3b63b4a7e34.v1",
+      "layoutId": "effect.layout.local-decal.artist-f-projector-opcode-14.v1",
+      "textureLanes": [
+        {
+          "laneId": "lane.0",
+          "assetId": "Effect/Artist/Textures/fx_c_decal_002_2.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "clamp",
+            "addressV": "clamp",
+            "addressW": "clamp",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        },
+        {
+          "laneId": "lane.1",
+          "assetId": "Effect/Artist/Textures/fx_b_fluid_007.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "clamp",
+            "addressV": "clamp",
+            "addressW": "clamp",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        },
+        {
+          "laneId": "lane.2",
+          "assetId": "Effect/Artist/Textures/fx_c_decal_002_1.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "clamp",
+            "addressV": "clamp",
+            "addressW": "clamp",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        },
+        {
+          "laneId": "lane.3",
+          "assetId": "Effect/Artist/Textures/fx_d_normal_078.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "clamp",
+            "addressV": "clamp",
+            "addressW": "clamp",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        },
+        {
+          "laneId": "lane.4",
+          "assetId": "Effect/Artist/Textures/fx_d_environ_018.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "clamp",
+            "addressV": "clamp",
+            "addressW": "clamp",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        },
+        {
+          "laneId": "lane.5",
+          "assetId": "Effect/Artist/Textures/fx_bg_dustpanner_01.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "clamp",
+            "addressV": "clamp",
+            "addressW": "clamp",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "minLod": 0,
+            "maxLod": 3.40282347E+38
+          }
+        }
+      ],
+      "scalars": [
+        {
+          "name": "scalar.0",
+          "value": 5
+        },
+        {
+          "name": "scalar.1",
+          "value": 1
+        },
+        {
+          "name": "scalar.2",
+          "value": 1
+        },
+        {
+          "name": "scalar.3",
+          "value": 1
+        },
+        {
+          "name": "scalar.4",
+          "value": 1
+        },
+        {
+          "name": "scalar.5",
+          "value": 1
+        },
+        {
+          "name": "scalar.6",
+          "value": 1
+        },
+        {
+          "name": "scalar.7",
+          "value": 0.800000012
+        },
+        {
+          "name": "scalar.8",
+          "value": 0.0199999996
+        },
+        {
+          "name": "scalar.9",
+          "value": 0
+        },
+        {
+          "name": "scalar.10",
+          "value": 1
+        },
+        {
+          "name": "scalar.11",
+          "value": 0.699999988
+        },
+        {
+          "name": "scalar.12",
+          "value": 0.899999976
+        },
+        {
+          "name": "scalar.13",
+          "value": 9
+        },
+        {
+          "name": "scalar.14",
+          "value": 1.5
+        },
+        {
+          "name": "scalar.15",
+          "value": 1
+        },
+        {
+          "name": "scalar.16",
+          "value": 1
+        },
+        {
+          "name": "scalar.17",
+          "value": 1
+        },
+        {
+          "name": "scalar.18",
+          "value": 2
+        },
+        {
+          "name": "scalar.19",
+          "value": 2
+        },
+        {
+          "name": "scalar.20",
+          "value": 1
+        },
+        {
+          "name": "scalar.21",
+          "value": 1
+        }
+      ],
+      "vectors": [
+        {
+          "name": "vector.0",
+          "value": [
+            0.200000003,
+            0.200000003,
+            0.200000003,
+            0.300000012
+          ]
+        },
+        {
+          "name": "vector.1",
+          "value": [
+            0.5,
+            0.5,
+            0.5,
+            1
+          ]
+        },
+        {
+          "name": "vector.2",
+          "value": [
+            1,
+            1,
+            1,
+            0.800000012
+          ]
+        }
+      ],
+      "artistParameters": [],
+      "colors": []
+    }
+  ],
+  "bindings": [
+    {
+      "effectAssetId": "effect.artist.skill.31470.unified",
+      "elementId": "sprite.2b3dc6842507e910",
+      "programId": "effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1",
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "descriptorId": "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1",
+      "adapterId": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
+      "inlineMirrorPolicy": "INLINE_MIRROR_REQUIRED"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31470.unified",
+      "elementId": "mesh.062366ee9f9655d3",
+      "programId": "effect.program.runtime-material-v2.opcode-3.artist-f-mesh.v1",
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-mesh-opcode-3.v1",
+      "descriptorId": "effect.descriptor.artist-f.mesh-062366ee9f9655d3.v1",
+      "adapterId": "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
+      "inlineMirrorPolicy": "INLINE_MIRROR_REQUIRED"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31470.unified",
+      "elementId": "decal.f3b5c3b63b4a7e34",
+      "programId": "effect.program.local-decal.opcode-14.artist-f-projector.v1",
+      "layoutId": "effect.layout.local-decal.artist-f-projector-opcode-14.v1",
+      "descriptorId": "effect.descriptor.artist-f.decal-f3b5c3b63b4a7e34.v1",
+      "adapterId": "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1",
+      "inlineMirrorPolicy": "INLINE_MIRROR_REQUIRED"
+    }
+  ]
+}
