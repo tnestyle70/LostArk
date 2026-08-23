@@ -18,6 +18,13 @@ namespace LostArk::Server
 	// NpcCatalog actionClips contract.
 	inline constexpr const char* ESTHER_ACTION_STRIKE = "esther.strike";
 
+	/* The gauge drains the moment the use is accepted, but the summon itself
+	lands after this delay, this far along the caster's aim. The landing spot
+	is sampled on the navigation grid; an unwalkable target falls back to the
+	caster's feet so a cliff edge never loses the summon. */
+	inline constexpr float ESTHER_SUMMON_DELAY_SECONDS = 1.f;
+	inline constexpr float ESTHER_SUMMON_FORWARD_METERS = 2.f;
+
 	/* Valtan roster order is Sillian, Wei, Bahuntur. Every summon's authored
 	clip carries its own entrance and exit (Sillian
 	npc_evt1_sk_swordofchampion_bk 157 frames at 30 fps, Wei npc_sk_dochul 213,
