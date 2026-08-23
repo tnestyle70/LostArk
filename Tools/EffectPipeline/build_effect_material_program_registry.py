@@ -310,6 +310,19 @@ COMPILED_PROGRAM_LAYOUT_ABIS: dict[tuple[str, int], dict[str, Any]] = {
         render=(6, 0x03, 0x3C),
     ),
 }
+COMPILED_PROGRAM_IDS: dict[tuple[str, int], str] = {
+    ("runtimeMaterialV2", 6): "effect.program.runtime-material-v2.opcode-6.v1",
+    ("runtimeMaterialV2", 3): "effect.program.runtime-material-v2.opcode-3.v1",
+    ("localDecal", 14): "effect.program.local-decal.opcode-14.v1",
+}
+COMPILED_LAYOUT_IDS: dict[tuple[str, int], str] = {
+    ("runtimeMaterialV2", 6):
+        "effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1",
+    ("runtimeMaterialV2", 3):
+        "effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1",
+    ("localDecal", 14):
+        "effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1",
+}
 RENDER_STATE_KEYS = (
     "rasterizer",
     "depthStencil",
@@ -548,6 +561,11 @@ def _validate_programs(value: Any) -> dict[str, dict[str, Any]]:
             raise ContractError(
                 f"program {row_id} has no compiled Program/Layout ABI receipt"
             )
+        expected_id = COMPILED_PROGRAM_IDS[(backend, opcode)]
+        if row_id != expected_id:
+            raise ContractError(
+                f"program {row_id} must use canonical compiled ID {expected_id}"
+            )
         result[row_id] = row
     return result
 
@@ -654,6 +672,20 @@ def _validate_layouts(value: Any) -> dict[str, dict[str, Any]]:
         _validate_packed_rows(row["colorRows"], f"layout {row_id} colorRows", MAX_NAMED_VECTOR_ROWS)
         if len(scalar_rows) != scalar_count or len(vector_rows) != vector_count:
             raise ContractError(f"layout {row_id} packed row count mismatch")
+        matching_receipts = [
+            identity
+            for identity, receipt in COMPILED_PROGRAM_LAYOUT_ABIS.items()
+            if all(row.get(field) == expected for field, expected in receipt.items())
+        ]
+        if len(matching_receipts) != 1:
+            raise ContractError(
+                f"layout {row_id} does not match exactly one compiled ABI receipt"
+            )
+        expected_id = COMPILED_LAYOUT_IDS[matching_receipts[0]]
+        if row_id != expected_id:
+            raise ContractError(
+                f"layout {row_id} must use canonical compiled ABI ID {expected_id}"
+            )
         result[row_id] = row
     return result
 

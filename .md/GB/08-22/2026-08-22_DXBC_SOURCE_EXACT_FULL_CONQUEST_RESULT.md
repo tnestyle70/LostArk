@@ -95,3 +95,76 @@ B. child-parent가 찾은 신규 parent 후보          78 family
 C. 복구됐지만 현재 extracted DXBC가 없는 행      746 element
 D. 현재 cooked extraction blocker                13 family
 ```
+
+---
+
+# 2026-08-23 Material Program 정본화 기반 결과
+
+## 1. 이번 변경에서 실제로 닫은 범위
+
+전체 occurrence를 다시 갈아엎지 않고 확장할 수 있도록 JSON 정본과 파생 CSV로 구성한
+Material Program conquest ledger를 추가했다. ledger는 tuple inventory와 public registry를
+같은 프로세스에서 다시 생성·검증하고, 모든 입력 hash와 projection hash를 봉인한다.
+
+```text
+전체 authored occurrence                         7,566
+Product occurrence                               2,554
+  4캐릭터 Product                                1,885
+  Valtan Product                                   669
+program row                                      1,325
+source program candidate                           171
+typed runtime program                               18
+literal DXBC program                               169
+Product distinct typed program                      17
+Product translated exact literal program           111
+Product untranslated exact program                   1 / 4 occurrence
+public Program allocation                            3
+```
+
+공개 S6/M3/D14 tuple은 캐릭터 이름을 ID에서 제거했다. Program ID는
+`backend + opcode`, Layout ID는 `backend + opcode + canonical ABI hash`로 고정했으며,
+generator와 Client registry가 별칭 Program ID와 가짜 ABI suffix Layout ID를 거부한다.
+
+```text
+S6  effect.program.runtime-material-v2.opcode-6.v1
+M3  effect.program.runtime-material-v2.opcode-3.v1
+D14 effect.program.local-decal.opcode-14.v1
+```
+
+ledger artifact SHA-256는
+`f96e2fbac871bec8b39b199ca405d0c98850aa873f56d246312cd94421c9f85c`, public registry
+SHA-256는 `2e96d1acc5faf5c3062f578e3813611bbc05352fe09202055666c82995db461f`다.
+
+## 2. 실행한 검증
+
+```text
+python -m unittest Tools.EffectPipeline.test_build_effect_material_program_registry
+  16 tests OK
+python -m unittest Tools.EffectPipeline.test_build_effect_material_program_conquest_ledger
+  17 tests OK
+python Tools/EffectPipeline/build_effect_tuple_cohort_inventory.py --check
+  PASS
+python Tools/EffectPipeline/build_effect_material_program_conquest_ledger.py --check
+  PASS
+Publish-Effects.ps1 -Mode Validate
+  145 catalog entries / 3 material bindings PASS
+Engine / Shared / Server / Client / EffectRenderContractHarness x64 Debug
+  build PASS
+Server.exe --contract-test
+  failures 0
+EffectRenderContractHarness Debug -ExpectedBindingCount 3
+  S6 / M3 / D14 draw와 rollback PASS
+```
+
+Release 전체 빌드는 사용자의 검증 종료 요청에 따라 진행 중 중단했다. Client는 실행하지 않았고
+화면 캡처, `manual first pixel`, 육안 PASS는 수행하거나 기록하지 않았다.
+
+## 3. 의도적으로 구현하지 않은 경계
+
+169개 material 계산식의 runtime backend, 확장 ABI packet, Adapter, Descriptor, occurrence Binding은
+이 변경에서 만들지 않았다. raw sealed DXBC만 SOURCE_EXACT이며, 번역 HLSLI를 재컴파일한 결과는
+동등성 검증 전까지 bounded reconstruction이다. 따라서 ledger의 `READY`는 equation evidence의
+준비 상태이지 Product draw admission이 아니다.
+
+다른 세션이 4캐릭터 기준 material 계산식과 ABI를 한 수직 슬라이스로 닫고 사용자가 실제 화면을
+판정할 때까지 이 브랜치는 위 정본화 기반에서 멈춘다.

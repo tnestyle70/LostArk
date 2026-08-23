@@ -313,10 +313,12 @@ descriptor가 있어도 program 식이 grouped approximation이면 source-exact�
 한 exact tuple로 닫혀야 한다.
 
 현재 Product runtime이 JSON에서 임의의 HLSL source나 shader graph bytecode를 받아 즉석 컴파일하는
-구조도 아니다. Element는 등록된 `backend + opcode + pass + texture lane + scalar/vector/mask`를
-선택하고, C++가 이를 검증된 packet으로 pack한다. 미리 컴파일된 Mesh/Sprite/Decal/Trail carrier
-shader가 opcode에 맞는 HLSL evaluator를 dispatch한다. 앞으로 registry를 data-driven으로
-일반화하더라도 Product가 소비하는 program과 layout은 빌드·검증된 ID여야 한다.
+구조도 아니다. bounded typed backend는 등록된 `backend + opcode + Layout`을 C++가 packet으로 pack하고
+기존 Mesh/Sprite/Decal/Trail carrier shader가 작은 evaluator 집합을 dispatch한다. SOURCE_EXACT 주경로는
+원본 bytes/hash가 봉인된 cooked pixel DXBC를 `CreatePixelShader`로 여는 방식이다. 169 번역 HLSLI를
+한 mega-switch에 넣지 않으며, HLSLI 하나를 include한 build-time 단일-program HLSL permutation은 원본
+DXBC와 output/ABI 동등성을 별도 봉인하기 전까지 `BOUNDED_TRANSLATED`다. 어느 경로든 Product가 소비하는
+Program/Layout은 build와 harness로 봉인된 ID여야 하며 JSON이 shader 경로나 macro를 저작하지 않는다.
 
 ## 9. 새 HLSL과 새 adapter를 만드는 기준
 
@@ -332,6 +334,20 @@ shader가 opcode에 맞는 HLSL evaluator를 dispatch한다. 앞으로 registry�
 Program identity에 skill ID, class 이름, 파일명 또는 occurrence ID를 넣지 않는다. Exact identity는
 material/static permutation과 실제 VF/pass/program·binding closure가 소유한다. Occurrence ID는
 어떤 verified descriptor를 소비하는지 선택할 뿐이다.
+
+현재 공용 golden의 class-neutral 예시는 다음과 같다. Descriptor와 Binding만 occurrence/domain을
+가질 수 있다.
+
+```text
+Program: effect.program.runtime-material-v2.opcode-6.v1
+Layout : effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1
+Descriptor: effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1
+```
+
+현재 compiled S6/M3/D14 allowlist는 `(backend, opcode)`마다 정확히 한 ABI receipt만 허용한다. 같은
+Program에 두 번째 호환 Layout fingerprint가 필요해지면 C++/publisher/harness의 versioned receipt 집합을
+먼저 확장한 뒤에만 public Layout을 추가한다. opcode는 backend 안에서 append-only로 배정하며 다른
+세션이 번호를 수동 예약하거나 기존 번호를 재사용·재정렬하지 않는다.
 
 ## 10. 도화가 F가 증명한 것
 

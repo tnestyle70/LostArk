@@ -1860,6 +1860,8 @@
     <None Include="..\..\Data\Effects\Contracts\character-effect-restoration-targets.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\effect-family-manifest.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json" />
+    <None Include="..\..\Data\Effects\Contracts\effect-material-program-conquest-ledger.v1.csv" />
+    <None Include="..\..\Data\Effects\Contracts\effect-material-program-conquest-ledger.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-exact-cooked-shader-variants.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-material-family-registry.v1.json" />
