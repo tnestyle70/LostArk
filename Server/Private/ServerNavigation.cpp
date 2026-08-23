@@ -348,8 +348,16 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	constexpr float LOS_HEIGHT_TOLERANCE = 1.f;
 	SERVER_NAV_POINT startPoint{};
 	SERVER_NAV_POINT endPoint{};
+	/* Sample_Position reads the baked floor and deliberately ignores runtime
+	blockers, because ground-target skills and root motion still need the floor
+	height under a wall that is standing. A move order must not: Find_Path
+	refuses a blocked cell, so a string pull that crosses one hands the player a
+	leg into a wall that has not fallen and the collision sweep then cancels the
+	whole order at the impact. Hold the smoother to the rule the search used. */
 	if (!Sample_Position(startX, startZ, startPoint) ||
-		!Sample_Position(endX, endZ, endPoint))
+		!Sample_Position(endX, endZ, endPoint) ||
+		!Is_PointWalkableExact(startX, startZ) ||
+		!Is_PointWalkableExact(endX, endZ))
 	{
 		return false;
 	}
@@ -362,11 +370,11 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	{
 		const float ratio =
 			static_cast<float>(step) / static_cast<float>(stepCount);
+		const float sampleX = startX + deltaX * ratio;
+		const float sampleZ = startZ + deltaZ * ratio;
 		SERVER_NAV_POINT samplePoint{};
-		if (!Sample_Position(
-			startX + deltaX * ratio,
-			startZ + deltaZ * ratio,
-			samplePoint))
+		if (!Sample_Position(sampleX, sampleZ, samplePoint) ||
+			!Is_PointWalkableExact(sampleX, sampleZ))
 		{
 			return false;
 		}

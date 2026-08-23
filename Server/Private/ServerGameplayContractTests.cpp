@@ -2787,6 +2787,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			160.25f, -130.75f, 162.25f, -135.75f,
 			wallPassagePath),
 		"Keep the intact Valtan wall footprint and its cross-wall path dynamically blocked");
+	/* Find_Path refuses that pair while the wall stands, and Smooth_MovePath
+	pulls its string across the very path Find_Path returned. A line of sight
+	that answered yes over the same footprint would hand the player a leg into
+	a wall that has not fallen. The short arena run is the positive control
+	that the stricter check still lets an open floor smooth. */
+	tests.Require(
+		!navigation.Has_LineOfSight(160.25f, -130.75f, 162.25f, -135.75f) &&
+		navigation.Has_LineOfSight(147.75f, -117.25f, 150.75f, -117.25f),
+		"Refuse line of sight across a Valtan wall that has not fallen");
 	const std::uint64_t navigationRevisionBeforeReject =
 		navigation.Get_Revision();
 	tests.Require(
