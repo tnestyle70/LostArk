@@ -10259,7 +10259,7 @@ bool_t Client::CEffect_Tool::Try_PlayValtanSavedUnifiedEffect(
 	UNIFIED_EFFECT_CACHE& Cache =
 		m_ValtanUnifiedEffectCaches[strEffectAssetId];
 	if (!Refresh_UnifiedEffectCache(Cache, Path, strEffectAssetId) ||
-		!Cache.bValid)
+		!Cache.bValid || !Cache.bDrawable)
 	{
 		m_strPreviewStatus = Cache.strStatus;
 		return false;
@@ -10277,6 +10277,16 @@ bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 	const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips,
 	const bool_t bQueuePlayCompleteAfterLoad)
 {
+	UNIFIED_EFFECT_CACHE& Cache =
+		m_ValtanUnifiedEffectCaches[strEffectAssetId];
+	if (!Refresh_UnifiedEffectCache(Cache, Path, strEffectAssetId) ||
+		!Cache.bValid || !Cache.bDrawable)
+	{
+		/* A retired evidence shell must not replace the Current Effect merely
+		   because its historical authored file still exists. */
+		m_strPreviewStatus = Cache.strStatus;
+		return false;
+	}
 	const bool_t bAlreadyActive = m_ActiveDocument.has_value() &&
 		m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 		m_ActiveDocument->strEffectAssetId == strEffectAssetId;
@@ -10321,6 +10331,14 @@ bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(
 	const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
 	const bool_t bQueuePlayCompleteAfterLoad)
 {
+	UNIFIED_EFFECT_CACHE& Cache =
+		m_ValtanUnifiedEffectCaches[strEffectAssetId];
+	if (!Refresh_UnifiedEffectCache(Cache, Path, strEffectAssetId) ||
+		!Cache.bValid || !Cache.bDrawable)
+	{
+		m_strPreviewStatus = Cache.strStatus;
+		return false;
+	}
 	if (!Try_LoadDocumentPath(
 			Path, EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId))
 	{
@@ -10357,6 +10375,9 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	m_ValtanPatternTree = std::move(Staged);
 	m_bValtanPatternTreeLoaded = true;
 	m_strValtanPatternTreeStatus = Status;
+	/* Explicit Refresh is also the retry boundary for a repaired authored
+	   document that was previously observed as invalid or non-drawable. */
+	m_ValtanUnifiedEffectCaches.clear();
 	return true;
 }
 
@@ -10394,7 +10415,8 @@ bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
 			{
 				if (Contains_NoCase(Cue.strBindingId, strSearch) ||
 					Contains_NoCase(Cue.strOccurrenceId, strSearch) ||
-					Contains_NoCase(Cue.strEffectAssetId, strSearch))
+					Contains_NoCase(Cue.strEffectAssetId, strSearch) ||
+					Contains_NoCase(Cue.strV1EffectAssetId, strSearch))
 				{
 					return true;
 				}
@@ -10597,6 +10619,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		std::vector<SAVED_VALTAN_PRODUCT_SOURCE> ProductSources;
 		std::vector<const VALTAN_STAGE_VIEW*> ReferenceStages;
 		std::vector<const VALTAN_STAGE_VIEW*> CombatObjectStages;
+		bool_t bV1Alias = false;
 	};
 
 	std::vector<SAVED_VALTAN_EFFECT_ROW> SavedRows;
@@ -10630,6 +10653,13 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			{
 				SAVED_VALTAN_EFFECT_ROW& Row = ResolveRow(Cue.strEffectAssetId);
 				Row.ProductSources.push_back({ &Stage, &Clip, &Cue });
+				if (!Cue.strV1EffectAssetId.empty())
+				{
+					SAVED_VALTAN_EFFECT_ROW& V1Row =
+						ResolveRow(Cue.strV1EffectAssetId);
+					V1Row.ProductSources.push_back({ &Stage, &Clip, &Cue });
+					V1Row.bV1Alias = true;
+				}
 			}
 		}
 		for (const VALTAN_STAGE_EFFECT_VIEW& Effect : Stage.Effects)
@@ -10702,9 +10732,20 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			const bool_t bActive = m_ActiveDocument.has_value() &&
 				m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 				m_ActiveDocument->strEffectAssetId == Row.strEffectAssetId;
+			const auto ObservedCache = m_ValtanUnifiedEffectCaches.find(
+				Row.strEffectAssetId);
+			const bool_t bKnownNonDrawable =
+				ObservedCache != m_ValtanUnifiedEffectCaches.end() &&
+				ObservedCache->second.bObserved &&
+				(!ObservedCache->second.bValid ||
+					!ObservedCache->second.bDrawable);
+			const std::string SavedLabel =
+				(Row.bV1Alias ? "[V1] " :
+					(Row.ProductSources.empty() ? "[REFERENCE] " : "[V0] ")) +
+				Row.strEffectAssetId;
 			ImGui::PushID(Row.strEffectAssetId.c_str());
 			const bool_t bSavedOpen = ImGui::TreeNodeEx(
-				Row.strEffectAssetId.c_str(),
+				SavedLabel.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow |
 					(bActive ? ImGuiTreeNodeFlags_Selected : 0));
 			if (ImGui::IsItemHovered())
@@ -10715,6 +10756,11 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			}
 			if (bSavedOpen)
 			{
+				if (Row.bV1Alias)
+				{
+					ImGui::TextColored(ImVec4(0.67f, 0.86f, 1.f, 1.f),
+						"Optional V1 alias; Product clip, timing, transform, and attachment are shared with V0.");
+				}
 				if (!Row.ProductSources.empty())
 				{
 					if (1u == Row.ProductSources.size())
@@ -10764,14 +10810,18 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					"(unavailable)" : Row.Path.generic_string().c_str());
 
 				ImGui::BeginDisabled(bActive || Row.Path.empty() ||
-					!bHasExactPlaybackOwner || bAmbiguousOccurrence);
+					!bHasExactPlaybackOwner || bAmbiguousOccurrence ||
+					bKnownNonDrawable);
 				if (ImGui::SmallButton("Open Saved Effect"))
 				{
 					if (nullptr != pProductSource)
 					{
+						VALTAN_PRODUCT_EFFECT_CUE_VIEW PlaybackCue =
+							*pProductSource->pCue;
+						PlaybackCue.strEffectAssetId = Row.strEffectAssetId;
 						Try_OpenValtanAuthoredEffect(Row.Path,
 							Row.strEffectAssetId, *pProductSource->pClip,
-							*pProductSource->pCue);
+							PlaybackCue);
 					}
 					else
 					{
@@ -10783,14 +10833,18 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				ImGui::EndDisabled();
 				ImGui::SameLine();
 				ImGui::BeginDisabled(Row.Path.empty() ||
-					!bHasExactPlaybackOwner || bAmbiguousOccurrence);
+					!bHasExactPlaybackOwner || bAmbiguousOccurrence ||
+					bKnownNonDrawable);
 				if (ImGui::SmallButton("Play Saved Effect"))
 				{
 					if (nullptr != pProductSource)
 					{
+						VALTAN_PRODUCT_EFFECT_CUE_VIEW PlaybackCue =
+							*pProductSource->pCue;
+						PlaybackCue.strEffectAssetId = Row.strEffectAssetId;
 						Try_PlayValtanSavedUnifiedEffect(Row.Path,
 							Row.strEffectAssetId, *pProductSource->pClip,
-							*pProductSource->pCue);
+							PlaybackCue);
 					}
 					else
 					{
@@ -10800,13 +10854,16 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					}
 				}
 				ImGui::EndDisabled();
-				const auto Cache = m_ValtanUnifiedEffectCaches.find(
+				/* Open/Play may insert and rehash the unordered cache, so never
+				   retain its iterator across either button action. */
+				const auto RefreshedCache = m_ValtanUnifiedEffectCaches.find(
 					Row.strEffectAssetId);
-				if (Cache != m_ValtanUnifiedEffectCaches.end() &&
-					Cache->second.bObserved && !Cache->second.strStatus.empty())
+				if (RefreshedCache != m_ValtanUnifiedEffectCaches.end() &&
+					RefreshedCache->second.bObserved &&
+					!RefreshedCache->second.strStatus.empty())
 				{
 					ImGui::TextWrapped("Last explicit validation: %s",
-						Cache->second.strStatus.c_str());
+						RefreshedCache->second.strStatus.c_str());
 				}
 				ImGui::TreePop();
 			}
