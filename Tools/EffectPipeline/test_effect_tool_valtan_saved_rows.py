@@ -21,6 +21,10 @@ CUE_PATH = (
     REPOSITORY_ROOT
     / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
 )
+PATTERN_BINDING_PATH = (
+    REPOSITORY_ROOT
+    / "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
+)
 REFERENCE_PATH = (
     REPOSITORY_ROOT
     / "Data/Animation/Authored/Valtan/Valtan.patterneffects.json"
@@ -813,11 +817,58 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         for path in RETIRED_CANARY_DEDICATED_PATHS:
             self.assertFalse(path.exists(), str(path))
 
+    def test_whirlwind_carrier_v1_plays_on_spin_clip(self) -> None:
+        cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
+        matches = [
+            row
+            for row in cues
+            if row["bindingId"]
+            == "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01"
+        ]
+        self.assertEqual(1, len(matches))
+        cue = matches[0]
+        self.assertEqual("VALTAN_WHIRLWIND", cue["patternId"])
+        self.assertEqual("SPIN", cue["stageId"])
+        self.assertEqual("valtan.attack.whirlwind.active", cue["actionId"])
+        self.assertEqual(
+            "valtan.attack.whirlwind.active.clip.01",
+            cue["clipOccurrenceId"],
+        )
+        self.assertEqual(
+            "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+            cue["effectAssetId"],
+        )
+
+        bindings = {
+            row["actionId"]: row["clips"]
+            for row in json.loads(
+                PATTERN_BINDING_PATH.read_text(encoding="utf-8")
+            )["bindings"]
+        }
+        self.assertEqual(
+            [
+                {
+                    "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+                    "clip": "mesh_att_battle_20_03",
+                    "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                    "sourceStartMs": 0,
+                    "playMs": 0,
+                    "playRate": 1.0,
+                    "loop": True,
+                }
+            ],
+            bindings["valtan.attack.whirlwind.active"],
+        )
+        self.assertEqual(
+            "mesh_att_battle_20_04",
+            bindings["valtan.attack.whirlwind.recovery"][0]["clip"],
+        )
+
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
         self.assertEqual(34, len(projected))
-        self.assertEqual(113, raw_links)
-        self.assertEqual(112, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(114, raw_links)
+        self.assertEqual(113, sum(len(rows) for rows in projected.values()))
         self.assertEqual(4, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(3, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertNotIn("VALTAN_FOUR_SLASH", projected)
@@ -831,7 +882,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
             projected["VALTAN_ROTATION_SLASH"][0],
         )
-        self.assertEqual(4, len(projected["VALTAN_WHIRLWIND"]))
+        self.assertEqual(5, len(projected["VALTAN_WHIRLWIND"]))
         self.assertEqual(
             len(projected["VALTAN_WHIRLWIND"]),
             len(set(projected["VALTAN_WHIRLWIND"])),
@@ -841,8 +892,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         # This is a named UI inventory snapshot, not the full authored corpus.
         # A legitimate Product-coverage migration updates these counts explicitly.
         projected, raw_links = project_saved_rows(include_v1_aliases=False)
-        self.assertEqual(107, raw_links)
-        self.assertEqual(106, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(108, raw_links)
+        self.assertEqual(107, sum(len(rows) for rows in projected.values()))
         catalog = {
             row["effectAssetId"]: row
             for row in json.loads(
@@ -865,7 +916,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 else:
                     empty_shells += 1
         self.assertEqual(49, nonempty_candidates)
-        self.assertEqual(57, empty_shells)
+        self.assertEqual(58, empty_shells)
 
     def test_all_declared_v0_product_cues_remain_published_and_nonempty(self) -> None:
         cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
