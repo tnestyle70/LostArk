@@ -501,7 +501,7 @@ bool LostArk::Server::CGameplayCatalog::Parse_RootMotionSamples(
 	const std::string_view packed,
 	const std::uint32_t sampleCount,
 	const std::uint32_t limitMs,
-	std::vector<PLAYER_ROOT_MOTION_SAMPLE>& outSamples)
+	std::vector<ROOT_MOTION_SAMPLE>& outSamples)
 {
 	outSamples.clear();
 	outSamples.reserve(sampleCount);
@@ -515,7 +515,7 @@ bool LostArk::Server::CGameplayCatalog::Parse_RootMotionSamples(
 		const std::size_t first = token.find(':');
 		const std::size_t second = std::string_view::npos == first ?
 			std::string_view::npos : token.find(':', first + 1);
-		PLAYER_ROOT_MOTION_SAMPLE sample{};
+		ROOT_MOTION_SAMPLE sample{};
 		if (std::string_view::npos == second ||
 			!ParseNumber(token.substr(0, first), sample.iTimeMs) ||
 			!ParseNumber(token.substr(first + 1, second - first - 1),
@@ -1089,13 +1089,54 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				m_strStatus = "Root motion does not follow its skill";
 				return false;
 			}
-			std::vector<PLAYER_ROOT_MOTION_SAMPLE> samples;
+			std::vector<ROOT_MOTION_SAMPLE> samples;
 			if (!Parse_RootMotionSamples(
 				fields[3], sampleCount, owner->second.iActionDurationMs, samples))
 			{
 				return false;
 			}
 			owner->second.RootMotion = std::move(samples);
+		}
+		else if (!fields.empty() && "PATTERNSTAGEROOTMOTION" == fields[0])
+		{
+			/* The row sorts after every PATTERNSTAGE of the same encounter, so the
+			stage it names must already exist. An index past the end or a second
+			curve for one stage is a corrupt bootstrap, not a tolerable gap. */
+			std::uint32_t stageIndex = 0;
+			std::uint32_t sampleCount = 0;
+			if (6u != fields.size() ||
+				!ParseNumber(fields[3], stageIndex) ||
+				!ParseNumber(fields[4], sampleCount) ||
+				sampleCount < 2u || sampleCount > 512u)
+			{
+				m_strStatus = "Pattern stage root motion row is invalid";
+				return false;
+			}
+			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
+			if (encounter == m_BossPatterns.end())
+			{
+				m_strStatus = "Pattern stage root motion names an unknown encounter";
+				return false;
+			}
+			const auto pattern = std::find_if(
+				encounter->second.begin(), encounter->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& candidate)
+				{ return candidate.strPatternId == fields[2]; });
+			if (encounter->second.end() == pattern ||
+				stageIndex >= pattern->Stages.size() ||
+				!pattern->Stages[stageIndex].Motion.RootMotion.empty())
+			{
+				m_strStatus = "Pattern stage root motion does not follow its stage";
+				return false;
+			}
+			std::vector<ROOT_MOTION_SAMPLE> samples;
+			if (!Parse_RootMotionSamples(
+				fields[5], sampleCount,
+				pattern->Stages[stageIndex].iDurationMs, samples))
+			{
+				return false;
+			}
+			pattern->Stages[stageIndex].Motion.RootMotion = std::move(samples);
 		}
 		else if (!fields.empty() && "SKILLSTAGEROOTMOTION" == fields[0])
 		{
@@ -1123,7 +1164,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				return false;
 			}
 			PLAYER_COMBO_STAGE& stage = owner->second.ComboStages[stageIndex];
-			std::vector<PLAYER_ROOT_MOTION_SAMPLE> samples;
+			std::vector<ROOT_MOTION_SAMPLE> samples;
 			if (!Parse_RootMotionSamples(
 				fields[4], sampleCount, stage.iActionDurationMs, samples))
 			{

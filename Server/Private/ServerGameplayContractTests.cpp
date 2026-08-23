@@ -4506,6 +4506,112 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
+		/* The stele set is raised by the RECOVERY stage of the 100-bar mechanic
+		and by nothing else, so the raid never sees a pillar unless that pattern
+		actually runs and actually reaches that stage. Cross the bar and walk the
+		pattern to the end so a break anywhere in that chain names itself. */
+		std::map<PLAYER_ID, SERVER_PLAYER> pillarPlayers;
+		SERVER_PLAYER pillarTarget{};
+		pillarTarget.iPlayerId = 91u;
+		pillarTarget.iNetEntityId = 191u;
+		pillarTarget.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		pillarTarget.iCurrentHp = 1000000u;
+		pillarTarget.iMaximumHp = 1000000u;
+		pillarTarget.fPositionX = 6.f;
+		pillarTarget.fPositionY = 22.97f;
+		pillarTarget.fPositionZ = 0.f;
+		pillarTarget.isCombatReady = true;
+		pillarPlayers.emplace(pillarTarget.iPlayerId, pillarTarget);
+
+		SERVER_WORLD_ENTITY pillarBoss{};
+		pillarBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		pillarBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		pillarBoss.strArchetypeId = "BOSS_VALTAN";
+		pillarBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		pillarBoss.iMaximumHp = 60000u;
+		pillarBoss.iMaximumHealthBars = 160u;
+		pillarBoss.iPhaseTwoHpPercent = 68u;
+		pillarBoss.fPositionY = 22.97f;
+		pillarBoss.fSpawnPositionY = 22.97f;
+		pillarBoss.fEngageDistance = 35.f;
+		pillarBoss.fMoveSpeed = 3.f;
+		pillarBoss.bIntroPatternConsumed = true;
+		/* Sit one bar above the trigger so the very next damage crosses it. */
+		pillarBoss.iCurrentHp = CValtanBrain::Resolve_HealthBarHp(pillarBoss, 101u);
+		pillarBoss.iLastEvaluatedHealthBar = 101u;
+
+		CValtanBrain pillarBrain;
+		std::vector<DAMAGE_EVENT> pillarEvents;
+		pillarBoss.iCurrentHp = CValtanBrain::Resolve_HealthBarHp(pillarBoss, 100u);
+		pillarBrain.Update(
+			pillarBoss, pillarPlayers, catalog, navigation, 1.f / 30.f, 2000u,
+			{}, pillarEvents);
+		const bool queuedOrRunning =
+			"VALTAN_FOUR_PILLARS_105" == pillarBoss.strPatternId ||
+			pillarBoss.PendingPatternIds.end() != std::find(
+				pillarBoss.PendingPatternIds.begin(),
+				pillarBoss.PendingPatternIds.end(),
+				std::string("VALTAN_FOUR_PILLARS_105"));
+		tests.Require(
+			queuedOrRunning,
+			"Queue the 100-bar stele mechanic when Valtan crosses its trigger bar");
+
+		bool reachedRecovery = false;
+		bool ranPillarPattern = false;
+		for (std::uint32_t tick = 2001u; tick < 2400u; ++tick)
+		{
+			pillarEvents.clear();
+			pillarBrain.Update(
+				pillarBoss, pillarPlayers, catalog, navigation, 1.f / 30.f, tick,
+				{}, pillarEvents);
+			if ("VALTAN_FOUR_PILLARS_105" != pillarBoss.strPatternId)
+				continue;
+			ranPillarPattern = true;
+			if ("RECOVERY" == pillarBoss.strPatternStageId)
+			{
+				reachedRecovery = true;
+				break;
+			}
+		}
+		tests.Require(
+			ranPillarPattern,
+			"Start the 100-bar stele mechanic from the queue");
+		tests.Require(
+			reachedRecovery && 0u != pillarBoss.iPatternSequence,
+			"Reach the stele RECOVERY stage that raises the four pillars");
+	}
+
+	{
+		/* The stage edge the Brain reaches still has to reach the prop runtime.
+		This is the room-side half of the raise: the same pattern and stage the
+		previous test proved reachable, handed to the entry the room tick calls. */
+		CGameRoom pillarRoom{ WORLD_ID::VALTAN_ARENA };
+		SERVER_WORLD_ENTITY stageBoss{};
+		stageBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		stageBoss.strArchetypeId = "BOSS_VALTAN";
+		stageBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		stageBoss.strPatternId = "VALTAN_FOUR_PILLARS_105";
+		stageBoss.strPatternStageId = "RECOVERY";
+		stageBoss.iPatternStageIndex = 3u;
+		stageBoss.iPatternSequence = 1u;
+		const bool roomReady = pillarRoom.Is_Ready() &&
+			pillarRoom.m_EncounterPropRuntime.Is_Initialized();
+		const bool entered =
+			pillarRoom.Apply_EncounterPropStageEntry(stageBoss, 500u);
+		const auto& raisedSlots =
+			pillarRoom.m_EncounterPropRuntime.Get_SlotStates();
+		const bool everySlotIntact = 4u == raisedSlots.size() &&
+			std::all_of(raisedSlots.begin(), raisedSlots.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+				{
+					return ENCOUNTER_PROP_STATE::INTACT == slot.eState;
+				});
+		tests.Require(
+			roomReady && entered && everySlotIntact,
+			"Raise the four stele from the room stage entry the tick loop calls");
+	}
+
+	{
 		/* The arena trigger that activates the encounter sits far from the boss,
 		so the entrance must wait for its own authored range instead of burning on
 		the activation tick. While it waits the boss holds its spawn, because the
@@ -6613,6 +6719,97 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
+		/* Valtan walks its own animation the way a player skill does. A stage
+		whose clip bakes travel carries that curve, and the stride is the
+		difference between the curve at two ticks, so the transform arrives with
+		the pose instead of sliding out from under it. A stage that authored its
+		own distance keeps the constant slide, because those two carry the boss
+		far past anything the bound clip animates. */
+		const auto* rootMotionPatterns =
+			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const BOSS_PATTERN_DEFINITION* rushPattern = nullptr;
+		const BOSS_PATTERN_DEFINITION* chargePattern = nullptr;
+		if (nullptr != rootMotionPatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *rootMotionPatterns)
+			{
+				if ("VALTAN_PORTAL_RUSH" == pattern.strPatternId)
+					rushPattern = &pattern;
+				else if ("VALTAN_DASH_CHARGE" == pattern.strPatternId)
+					chargePattern = &pattern;
+			}
+		}
+		constexpr std::size_t RUSH_STAGE_INDEX = 1u;
+		constexpr std::size_t CHARGE_STAGE_INDEX = 1u;
+		const bool hasRushCurve =
+			nullptr != rushPattern &&
+			RUSH_STAGE_INDEX < rushPattern->Stages.size() &&
+			!rushPattern->Stages[RUSH_STAGE_INDEX].Motion.RootMotion.empty();
+		/* The authored charge is deliberately absent from the curve document. */
+		const bool chargeKeepsAuthoredSlide =
+			nullptr != chargePattern &&
+			CHARGE_STAGE_INDEX < chargePattern->Stages.size() &&
+			chargePattern->Stages[CHARGE_STAGE_INDEX].Motion.RootMotion.empty() &&
+			BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD ==
+				chargePattern->Stages[CHARGE_STAGE_INDEX].Motion.eKind;
+
+		CValtanBrain rootMotionBrain;
+		constexpr float FIXED_DELTA_SECONDS = 1.f / 30.f;
+		SERVER_WORLD_ENTITY curveBoss{};
+		curveBoss.fYawDegrees = 0.f;
+		curveBoss.ePatternStageMotionKind =
+			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
+		if (hasRushCurve)
+		{
+			curveBoss.PatternStageRootMotion =
+				rushPattern->Stages[RUSH_STAGE_INDEX].Motion.RootMotion;
+		}
+		/* Walking the whole stage on the curve has to land on the travel the
+		clip baked, and never on a constant slide the stage never declared. */
+		float travelled = 0.f;
+		bool everyStepFinite = true;
+		for (std::uint32_t step = 0u; step < 60u; ++step)
+		{
+			curveBoss.fActionElapsedSeconds =
+				static_cast<float>(step + 1u) * FIXED_DELTA_SECONDS;
+			float proposedX = 0.f;
+			float proposedZ = 0.f;
+			if (!rootMotionBrain.Try_BuildStageMotion(
+				curveBoss, FIXED_DELTA_SECONDS, proposedX, proposedZ))
+			{
+				continue;
+			}
+			if (!std::isfinite(proposedX) || !std::isfinite(proposedZ))
+			{
+				everyStepFinite = false;
+				break;
+			}
+			travelled += proposedZ - curveBoss.fPositionZ;
+			curveBoss.fPositionX = proposedX;
+			curveBoss.fPositionZ = proposedZ;
+		}
+		const float bakedTravel = hasRushCurve ?
+			rushPattern->Stages[RUSH_STAGE_INDEX].Motion.RootMotion.back().fForward :
+			0.f;
+
+		/* A stage with neither a curve nor an authored distance never proposes a
+		step, so ordinary footwork cannot be mistaken for a charge. */
+		SERVER_WORLD_ENTITY stillBoss{};
+		stillBoss.fActionElapsedSeconds = 0.5f;
+		float stillX = 0.f;
+		float stillZ = 0.f;
+		const bool stillHolds = !rootMotionBrain.Try_BuildStageMotion(
+			stillBoss, FIXED_DELTA_SECONDS, stillX, stillZ);
+
+		tests.Require(
+			hasRushCurve && chargeKeepsAuthoredSlide && everyStepFinite &&
+			stillHolds && bakedTravel > 1.f &&
+			std::abs(travelled - bakedTravel) < 0.01f,
+			"Walk a Valtan stage along the travel its clip baked and leave the "
+			"authored charge on its own distance");
+	}
+
+	{
 		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7002u;
@@ -7583,6 +7780,149 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			firstRepeatFinished && repeatedImmediately && occurrencePaused,
 			"Ordered 1-67 repeats without an inner pause and pauses once after the occurrence");
 	}
+	{
+		/* Every link in the stele raise reads correct and still nothing reaches
+		the screen, so this drives the product path rather than the stage entry:
+		damage the boss across the authored 100-bar boundary and let the real
+		tick loop queue, select and run the mechanic. The raise only counts if
+		the four slots reach INTACT through that path. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr SESSION_ID SESSION = 4319u;
+		constexpr PLAYER_ID PLAYER = 97u;
+		constexpr std::uint32_t PILLAR_TRIGGER_BAR = 100u;
+		constexpr std::uint32_t MAX_PILLAR_TICKS = 3000u;
+		const bool activated = room.Activate_Encounter("boss.valtan.center");
+		SERVER_WORLD_ENTITY* const spawnedBoss = room.Find_AuditionBoss();
+
+		SERVER_PLAYER player{};
+		player.iSessionId = SESSION;
+		player.iPlayerId = PLAYER;
+		player.iNetEntityId = 915u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		/* The boss kills an ordinary body long before the 100-bar mechanic
+		comes round, and a dead player is filtered out of targeting, which
+		parks the boss and strands the queue. The fixture keeps one body
+		alive so the product selection path is what gets measured. */
+		player.iCurrentHp = 100000000u;
+		player.iMaximumHp = 100000000u;
+		player.iCurrentResource = 100u;
+		player.iMaximumResource = 100u;
+		player.isCombatReady = true;
+		player.strSpawnPlacementId = "player_1";
+		if (nullptr != spawnedBoss)
+		{
+			player.fPositionX = spawnedBoss->fPositionX + 2.f;
+			player.fPositionY = spawnedBoss->fPositionY;
+			player.fPositionZ = spawnedBoss->fPositionZ;
+		}
+		room.m_Players.emplace(PLAYER, player);
+		room.m_PlayerIdBySessionId.emplace(SESSION, PLAYER);
+
+		/* One hit puts the boss on the boundary the mechanic watches for. */
+		if (nullptr != spawnedBoss)
+		{
+			spawnedBoss->iCurrentHp = CValtanBrain::Resolve_HealthBarHp(
+				*spawnedBoss, PILLAR_TRIGGER_BAR);
+		}
+
+		bool sawPillarPattern = false;
+		bool sawRecoveryStage = false;
+		bool raised = false;
+		for (std::uint32_t tick = 0u;
+			tick < MAX_PILLAR_TICKS && !raised; ++tick)
+		{
+			room.Tick(1.f / 30.f);
+			/* Top the body back up so it never leaves the target set. */
+			SERVER_PLAYER& live = room.m_Players.at(PLAYER);
+			live.iCurrentHp = live.iMaximumHp;
+			const SERVER_WORLD_ENTITY* const boss = room.Find_AuditionBoss();
+			if (nullptr != boss &&
+				"VALTAN_FOUR_PILLARS_105" == boss->strPatternId)
+			{
+				sawPillarPattern = true;
+				sawRecoveryStage = sawRecoveryStage ||
+					"RECOVERY" == boss->strPatternStageId;
+			}
+			const auto& slots =
+				room.m_EncounterPropRuntime.Get_SlotStates();
+			raised = 4u == slots.size() &&
+				std::all_of(slots.begin(), slots.end(),
+					[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+					{
+						return ENCOUNTER_PROP_STATE::INTACT == slot.eState;
+					});
+		}
+		tests.Require(
+			activated && nullptr != spawnedBoss && sawPillarPattern &&
+			sawRecoveryStage && raised,
+			"Raise the four stele by damaging the boss across the authored 100-bar boundary and running the product tick loop");
+	}
+	{
+		/* The one button a map owner actually presses. PLAY_PILLAR_CYCLE puts the
+		boss on the authored 100-bar edge and queues the mechanic, but only the
+		real tick loop can show the four slots reaching INTACT from it. The body
+		is kept alive because a dead target parks the boss and strands the queue,
+		which is exactly how this mechanic goes missing in a live session. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr SESSION_ID SESSION = 4321u;
+		constexpr PLAYER_ID PLAYER = 98u;
+		constexpr std::uint32_t MAX_CYCLE_TICKS = 900u;
+		const bool activated = room.Activate_Encounter("boss.valtan.center");
+		SERVER_WORLD_ENTITY* const cycleBoss = room.Find_AuditionBoss();
+
+		SERVER_PLAYER player{};
+		player.iSessionId = SESSION;
+		player.iPlayerId = PLAYER;
+		player.iNetEntityId = 916u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = 100000000u;
+		player.iMaximumHp = 100000000u;
+		player.iCurrentResource = 100u;
+		player.iMaximumResource = 100u;
+		player.isCombatReady = true;
+		player.strSpawnPlacementId = "player_1";
+		if (nullptr != cycleBoss)
+		{
+			player.fPositionX = cycleBoss->fPositionX + 2.f;
+			player.fPositionY = cycleBoss->fPositionY;
+			player.fPositionZ = cycleBoss->fPositionZ;
+		}
+		room.m_Players.emplace(PLAYER, player);
+		room.m_PlayerIdBySessionId.emplace(SESSION, PLAYER);
+
+		/* The Debug button carries no bar: the Server has to read 100 off the
+		authored pattern itself. A zero here would resolve to zero HP. */
+		C2S_VALTAN_AUDITION_REQUEST cycle{};
+		cycle.iRequestSequence = 1u;
+		cycle.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE;
+		cycle.iTargetHealthBar = 0u;
+		std::uint32_t reportedBar = 0u;
+		const VALTAN_AUDITION_RESULT queued =
+			room.Evaluate_ValtanAudition(SESSION, cycle, reportedBar);
+		const bool survivedTheEdge = nullptr != cycleBoss &&
+			0u != cycleBoss->iCurrentHp &&
+			SERVER_ENTITY_ACTION::DEAD != cycleBoss->eAction;
+
+		bool raisedFromButton = false;
+		for (std::uint32_t tick = 0u;
+			tick < MAX_CYCLE_TICKS && !raisedFromButton; ++tick)
+		{
+			room.Tick(1.f / 30.f);
+			SERVER_PLAYER& live = room.m_Players.at(PLAYER);
+			live.iCurrentHp = live.iMaximumHp;
+			const auto& slots = room.m_EncounterPropRuntime.Get_SlotStates();
+			raisedFromButton = 4u == slots.size() &&
+				std::all_of(slots.begin(), slots.end(),
+					[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+					{
+						return ENCOUNTER_PROP_STATE::INTACT == slot.eState;
+					});
+		}
+		tests.Require(
+			activated && VALTAN_AUDITION_RESULT::QUEUED == queued &&
+			survivedTheEdge && raisedFromButton,
+			"Raise the four stele from the Debug pillar-cycle button through the real tick loop");
+	}
 
 	{
 		/* Run the authored ledger from a second fresh room all the way through.
@@ -8016,6 +8356,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		only thing that can open it. */
 		constexpr float FALL_RAIL_X = 155.25f;
 		constexpr float FALL_RAIL_Z = -107.25f;
+		/* The same-level projection reaches at most twenty cells of 0.5 m, so a
+		revive that steps out of the hole cannot land further than this away no
+		matter how the floor is repainted. The arena entry spawn is over a hundred
+		metres away, which is exactly the regression this bound is here to catch. */
+		constexpr float ARENA_REVIVE_MAX_METERS = 10.5f;
 		/* The arena core the audition bait stands on. It belongs to no collapse
 		region at all and has to stay solid through both stages. */
 		constexpr float ARENA_CORE_X = 154.296f;
@@ -8127,6 +8472,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			!room.m_ServerNavigation.Is_PointInVoidRegion(
 				revived.fPositionX, revived.fPositionZ),
 			"Revive a fall death on walkable ground instead of inside the hole");
+
+		/* The arena progression triggers are room-wide triggerOnce, so a revive
+		that returns to the entry spawn leaves the player outside a boss fight no
+		surviving trigger can let them back into. */
+		const float reviveDeltaX = revived.fPositionX - FALL_RAIL_X;
+		const float reviveDeltaZ = revived.fPositionZ - FALL_RAIL_Z;
+		tests.Require(
+			reviveDeltaX * reviveDeltaX + reviveDeltaZ * reviveDeltaZ <=
+				ARENA_REVIVE_MAX_METERS * ARENA_REVIVE_MAX_METERS,
+			"Revive a fall death beside the hole instead of at the arena entry spawn");
 
 		room.Tick(1.f / 30.f);
 		tests.Require(

@@ -12,7 +12,7 @@ namespace
 	constexpr std::uint32_t SERVER_TICK_HZ = 30;
 
 	void Sample_RootMotion(
-		const std::vector<LostArk::Server::PLAYER_ROOT_MOTION_SAMPLE>& samples,
+		const std::vector<LostArk::Server::ROOT_MOTION_SAMPLE>& samples,
 		const float elapsedSeconds,
 		float& outForward,
 		float& outLateral)
@@ -956,7 +956,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	float stepLateral = 0.f;
 	/* A stage advance resets the action clock, so a staged skill reads the
 	running stage's own curve on that same clock. */
-	const std::vector<PLAYER_ROOT_MOTION_SAMPLE>& rootMotion = hasStage ?
+	const std::vector<ROOT_MOTION_SAMPLE>& rootMotion = hasStage ?
 		skill->ComboStages[stageIndex].RootMotion : skill->RootMotion;
 	if (!rootMotion.empty())
 	{

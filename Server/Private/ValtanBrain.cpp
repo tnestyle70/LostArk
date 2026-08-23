@@ -565,6 +565,7 @@ namespace
 			BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD == stage.Motion.eKind &&
 			durationSeconds > 0.f ?
 			stage.Motion.fDistance / durationSeconds : 0.f;
+		boss.PatternStageRootMotion = stage.Motion.RootMotion;
 		boss.eAction = ToServerAction(stage.eStageKind);
 		boss.fActionElapsedSeconds = 0.f;
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
@@ -645,6 +646,44 @@ namespace
 		EnterPatternStage(boss, pattern.Stages.front(), 0u, serverTick);
 	}
 
+	/* Linear between the two samples that bracket the time, holding the ends.
+	The curve is authored in metres of forward travel from the stage start. */
+	void Sample_StageRootMotionForward(
+		const std::vector<ROOT_MOTION_SAMPLE>& samples,
+		const float elapsedSeconds,
+		float& outForward)
+	{
+		outForward = 0.f;
+		if (samples.empty() || !std::isfinite(elapsedSeconds))
+			return;
+		const float elapsedMs = (std::max)(0.f, elapsedSeconds) * 1000.f;
+		if (elapsedMs <= static_cast<float>(samples.front().iTimeMs))
+		{
+			outForward = samples.front().fForward;
+			return;
+		}
+		for (std::size_t index = 1u; index < samples.size(); ++index)
+		{
+			const ROOT_MOTION_SAMPLE& previous = samples[index - 1u];
+			const ROOT_MOTION_SAMPLE& current = samples[index];
+			if (elapsedMs > static_cast<float>(current.iTimeMs))
+				continue;
+			const float span = static_cast<float>(
+				current.iTimeMs - previous.iTimeMs);
+			if (span <= 0.f)
+			{
+				outForward = current.fForward;
+				return;
+			}
+			const float ratio =
+				(elapsedMs - static_cast<float>(previous.iTimeMs)) / span;
+			outForward = previous.fForward +
+				(current.fForward - previous.fForward) * ratio;
+			return;
+		}
+		outForward = samples.back().fForward;
+	}
+
 	void FinishPattern(
 		SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t serverTick)
@@ -666,6 +705,7 @@ namespace
 		boss.iPatternStageDurationMs = 0u;
 		boss.fPatternForcedMotionSpeed = 0.f;
 		boss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
+		boss.PatternStageRootMotion.clear();
 		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
 		boss.iPatternHitCount = 0u;
 		boss.iPatternHitDelayMs = 0u;
@@ -1225,16 +1265,45 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 	float& outProposedX,
 	float& outProposedZ) const
 {
-	if (BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD !=
-		boss.ePatternStageMotionKind ||
-		!std::isfinite(boss.fPatternForcedMotionSpeed) ||
-		boss.fPatternForcedMotionSpeed <= 0.f ||
-		!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
-	{
+	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
 		return false;
+
+	/* A stage whose clip already carries the travel steps along that curve,
+	the same contract a player skill uses: the difference between the curve at
+	the previous tick and at this one is the step, so the body and the mesh
+	arrive together instead of the transform sliding out from under the pose.
+	A stage that authored its own distance keeps the constant slide, because
+	those two carry Valtan far past anything the bound clip animates. */
+	float distance = 0.f;
+	if (!boss.PatternStageRootMotion.empty())
+	{
+		const float previousSeconds = (std::max)(
+			0.f, boss.fActionElapsedSeconds - fixedDeltaSeconds);
+		float previousForward = 0.f;
+		float currentForward = 0.f;
+		Sample_StageRootMotionForward(
+			boss.PatternStageRootMotion, previousSeconds, previousForward);
+		Sample_StageRootMotionForward(
+			boss.PatternStageRootMotion, boss.fActionElapsedSeconds,
+			currentForward);
+		distance = currentForward - previousForward;
+		if (0.f == distance)
+			return false;
 	}
+	else
+	{
+		if (BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD !=
+			boss.ePatternStageMotionKind ||
+			!std::isfinite(boss.fPatternForcedMotionSpeed) ||
+			boss.fPatternForcedMotionSpeed <= 0.f)
+		{
+			return false;
+		}
+		distance = boss.fPatternForcedMotionSpeed * fixedDeltaSeconds;
+	}
+	if (!std::isfinite(distance))
+		return false;
 	const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
-	const float distance = boss.fPatternForcedMotionSpeed * fixedDeltaSeconds;
 	outProposedX = boss.fPositionX + std::sin(yawRadians) * distance;
 	outProposedZ = boss.fPositionZ + std::cos(yawRadians) * distance;
 	return std::isfinite(outProposedX) && std::isfinite(outProposedZ);

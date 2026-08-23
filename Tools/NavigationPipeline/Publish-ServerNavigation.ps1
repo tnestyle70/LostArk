@@ -227,6 +227,14 @@ function Convert-NavigationAuthoringGrid {
 
     # 0 = inherit baked state, 1 = force blocked, 2 = force walkable.
     $overrides = [byte[]]::new([int]$cellCount)
+    # A pinhole close reads the baked surface, never a value an earlier
+    # paint row already healed, so the published grid does not depend on
+    # the order the override rows happen to appear in.
+    $bakedResolved = [byte[]]::new([int]$cellCount)
+    $bakedHeights = [single[]]::new([int]$cellCount)
+    [Array]::Copy($resolved, $bakedResolved, [int]$cellCount)
+    [Array]::Copy($heights, $bakedHeights, [int]$cellCount)
+    $seamHeightTolerance = [single]0.5
     $paintPath = [IO.Path]::GetFullPath((Join-Path $AuthoringRoot $RelativePaintPath))
     if ([IO.File]::Exists($paintPath)) {
         $paintLines = @([IO.File]::ReadAllLines($paintPath, [Text.Encoding]::UTF8))
@@ -265,10 +273,69 @@ function Convert-NavigationAuthoringGrid {
             if ($overrides[$index] -ne 0) {
                 throw "Navigation paint has duplicate cells: $paintPath"
             }
-            if ($resolved[$index] -eq 0) {
-                throw "Navigation paint targets an unresolved cell: $paintPath"
+            # A bake ray that slips through a floor crack leaves the cell it
+            # crossed either with no surface at all or with the height of
+            # whatever it finally hit far below. WALKABLE paint declares such
+            # a cell ordinary floor, so it also levels the cell with the
+            # ground around it instead of leaving a body to drop through the
+            # seam. The level comes from the median of the baked ground
+            # around it rather than from every neighbour agreeing, because a
+            # seam runs as a line and its own cells sit next to each other;
+            # requiring unanimity would let two neighbouring scars hold each
+            # other down forever. At least five of the eight neighbours must
+            # carry a baked surface and three quarters of those must land on
+            # the median, so a cell standing in genuinely varied ground - a
+            # ramp, a ledge, a stair - never qualifies and is published
+            # exactly as the bake found it. Reading the baked snapshot keeps
+            # the result independent of the order the override rows appear in.
+            $isWalkablePaint = $paintVersion -ne 1 -and $tokens[2] -eq 'WALKABLE'
+            $seamHeight = $null
+            if ($isWalkablePaint -and $cellX -gt 0 -and $cellZ -gt 0 -and
+                $cellX -lt $width - 1 -and $cellZ -lt $height - 1) {
+                $ringHeights = [Collections.Generic.List[single]]::new()
+                foreach ($offsetZ in -1, 0, 1) {
+                    foreach ($offsetX in -1, 0, 1) {
+                        if ($offsetX -eq 0 -and $offsetZ -eq 0) { continue }
+                        $ringIndex = $index + $offsetZ * $width + $offsetX
+                        if ($bakedResolved[$ringIndex] -ne 0) {
+                            $ringHeights.Add($bakedHeights[$ringIndex])
+                        }
+                    }
+                }
+                if ($ringHeights.Count -ge 5) {
+                    $ringHeights.Sort()
+                    $ringCount = $ringHeights.Count
+                    $ringMedian = if (1 -eq $ringCount % 2) {
+                        [double]$ringHeights[[int]($ringCount / 2)]
+                    }
+                    else {
+                        ([double]$ringHeights[$ringCount / 2 - 1] +
+                            [double]$ringHeights[$ringCount / 2]) / 2
+                    }
+                    $onMedian = 0
+                    foreach ($ringHeight in $ringHeights) {
+                        if ([Math]::Abs([double]$ringHeight - $ringMedian) -le
+                            [double]$seamHeightTolerance) {
+                            ++$onMedian
+                        }
+                    }
+                    if ($onMedian -ge [Math]::Ceiling(3 * $ringCount / 4)) {
+                        $seamHeight = [single]$ringMedian
+                    }
+                }
             }
-
+            if ($resolved[$index] -eq 0) {
+                if ($null -eq $seamHeight) {
+                    throw "Navigation paint targets an unresolved cell: $paintPath"
+                }
+                $resolved[$index] = 1
+                $heights[$index] = $seamHeight
+            }
+            elseif ($null -ne $seamHeight -and
+                ([double]$seamHeight - [double]$bakedHeights[$index]) -gt
+                [double]$seamHeightTolerance) {
+                $heights[$index] = $seamHeight
+            }
             if ($paintVersion -eq 1 -or $tokens[2] -eq 'BLOCKED') {
                 $overrides[$index] = 1
             }

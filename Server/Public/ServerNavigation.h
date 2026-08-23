@@ -49,6 +49,14 @@ namespace LostArk::Server
 			float x,
 			float z,
 			SERVER_NAV_POINT& outPoint) const;
+		/* Projects onto ground that belongs to the same deck as the cell under
+		(x, z). Project_Point searches in XZ only, so beside a collapsed arena
+		floor it can hand back walkable ground more than ten metres lower on
+		another deck. A fall revive has to come back on the floor that fell. */
+		bool Project_PointOnSameLevel(
+			float x,
+			float z,
+			SERVER_NAV_POINT& outPoint) const;
 		bool Prepare_ConditionChanges(
 			const std::vector<SERVER_NAVIGATION_CONDITION_CHANGE>& changes,
 			SERVER_NAVIGATION_CONDITION_STAGE& outStage,

@@ -12,9 +12,12 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 16u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 17u;
 
-	struct PLAYER_ROOT_MOTION_SAMPLE
+	/* One point on the displacement an animator baked into a clip. The player
+	reads it per skill and the boss per pattern stage, so it carries no owner in
+	its name. */
+	struct ROOT_MOTION_SAMPLE
 	{
 		std::uint32_t iTimeMs = 0;
 		float fForward = 0.f;
@@ -101,7 +104,7 @@ namespace LostArk::Server
 		std::uint32_t iInputCloseMs = 0;
 		/* A stage advance resets the action clock, so a staged skill owns its
 		movement per stage instead of on one action-long curve. */
-		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
+		std::vector<ROOT_MOTION_SAMPLE> RootMotion;
 		std::vector<PLAYER_SKILL_HIT> Hits;
 		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
 	};
@@ -141,7 +144,7 @@ namespace LostArk::Server
 		LostArk::Shared::PLAYER_STANCE_ID eSetsStance =
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		std::vector<PLAYER_COMBO_STAGE> ComboStages;
-		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
+		std::vector<ROOT_MOTION_SAMPLE> RootMotion;
 		std::vector<PLAYER_SKILL_HIT> Hits;
 		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
 	};
@@ -385,6 +388,10 @@ namespace LostArk::Server
 		BOSS_PATTERN_STAGE_MOTION_KIND eKind =
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		float fDistance = 0.f;
+		/* The travel the clip already carries. A stage that has one steps along
+		it exactly, the way a player skill does, instead of sliding at
+		fDistance / duration. Empty leaves the authored slide in place. */
+		std::vector<ROOT_MOTION_SAMPLE> RootMotion;
 	};
 
 	struct BOSS_PATTERN_STAGE_DEFINITION
@@ -652,7 +659,7 @@ namespace LostArk::Server
 			std::string_view packed,
 			std::uint32_t sampleCount,
 			std::uint32_t limitMs,
-			std::vector<PLAYER_ROOT_MOTION_SAMPLE>& outSamples);
+			std::vector<ROOT_MOTION_SAMPLE>& outSamples);
 		bool Parse_SkillHits(
 			std::string_view packed,
 			std::uint32_t hitCount,

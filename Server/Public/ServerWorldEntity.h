@@ -61,6 +61,10 @@ namespace LostArk::Server
 		float fPatternMinimumRange = 0.f;
 		float fPatternMaximumRange = 0.f;
 		float fPatternForcedMotionSpeed = 0.f;
+		/* The travel the running stage baked into its clip, copied on stage entry
+		so the step never reaches back into the catalog. A stage that has one is
+		stepped along it and ignores fPatternForcedMotionSpeed. */
+		std::vector<ROOT_MOTION_SAMPLE> PatternStageRootMotion;
 		/* The authored placement this entity spawned at. The 109 phase
 		transition lands Valtan back on it, so the landing point stays authored
 		data rather than a constant recomputed inside the brain. */

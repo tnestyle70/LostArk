@@ -33,6 +33,10 @@ enum class DESTRUCTION_TRIGGER_KIND
 	STAGE_TIME,
 	STAGE_EXIT,
 	COLLISION_IMPACT,
+	/* A contact break answers geometry, not a schedule: the wall falls to
+	   whichever animation actually reaches its receiver, so the binding names
+	   a receiver instead of a pattern and stage. */
+	COLLIDER_CONTACT,
 	END
 };
 

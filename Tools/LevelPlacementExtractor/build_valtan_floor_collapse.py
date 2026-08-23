@@ -141,7 +141,10 @@ def quote_field(value: str) -> str:
 
 
 def deploy_emissive_profile(asset_id: str) -> tuple[float, int]:
-    return (0.35, 1) if asset_id in DEFERRED_EMISSIVE_ASSETS else (1.0, 0)
+    # The mask's brightest authored texel is sRGB (12, 180, 105), linear
+    # green 0.451. The recording's glow sits at linear green 0.666, so 1.5
+    # puts the crack at the brightness the source material actually has.
+    return (1.5, 1) if asset_id in DEFERRED_EMISSIVE_ASSETS else (1.0, 0)
 
 
 def render_deploy_asset_v2(tokens: list[str], intensity: float, overlay: int) -> str:

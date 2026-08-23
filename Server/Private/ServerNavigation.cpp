@@ -316,6 +316,75 @@ bool LostArk::Server::CServerNavigation::Project_Point(
 	return true;
 }
 
+bool LostArk::Server::CServerNavigation::Project_PointOnSameLevel(
+	const float x,
+	const float z,
+	SERVER_NAV_POINT& outPoint) const
+{
+	/* A collapsed cell keeps the baked height of the floor that used to be
+	there, so the hole itself carries the deck to come back to. Measured against
+	the authored Valtan floor regions, one metre of tolerance inside twenty
+	cells reaches surviving ground for every cell of both collapse stages, and
+	fifteen cells is the widest any of them actually needs. */
+	constexpr float SAME_LEVEL_HEIGHT_TOLERANCE = 1.f;
+	constexpr int SAME_LEVEL_PROJECTION_RADIUS = 20;
+	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z))
+		return false;
+	const int centerX = static_cast<int>(std::floor((x - m_fOriginX) / m_fCellSize));
+	const int centerZ = static_cast<int>(std::floor((z - m_fOriginZ) / m_fCellSize));
+	if (centerX < 0 || centerZ < 0 ||
+		centerX >= static_cast<int>(m_iWidth) ||
+		centerZ >= static_cast<int>(m_iHeight))
+	{
+		return false;
+	}
+	const float referenceY = m_Heights[
+		static_cast<std::size_t>(centerZ) * m_iWidth + centerX];
+	float nearestDistanceSquared = (std::numeric_limits<float>::max)();
+	bool found = false;
+	for (int radius = 0; radius <= SAME_LEVEL_PROJECTION_RADIUS; ++radius)
+	{
+		for (int dz = -radius; dz <= radius; ++dz)
+		{
+			for (int dx = -radius; dx <= radius; ++dx)
+			{
+				if (radius != 0 && std::abs(dx) != radius && std::abs(dz) != radius)
+					continue;
+				const int cellX = centerX + dx;
+				const int cellZ = centerZ + dz;
+				if (cellX < 0 || cellZ < 0 ||
+					cellX >= static_cast<int>(m_iWidth) ||
+					cellZ >= static_cast<int>(m_iHeight))
+				{
+					continue;
+				}
+				const std::uint32_t index = static_cast<std::uint32_t>(
+					cellZ * static_cast<int>(m_iWidth) + cellX);
+				if (!Is_CellWalkable(index))
+					continue;
+				if (std::abs(m_Heights[index] - referenceY) >
+					SAME_LEVEL_HEIGHT_TOLERANCE)
+				{
+					continue;
+				}
+				const SERVER_NAV_POINT point = Cell_ToPoint(index);
+				const float deltaX = point.x - x;
+				const float deltaZ = point.z - z;
+				const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+				if (distanceSquared < nearestDistanceSquared)
+				{
+					nearestDistanceSquared = distanceSquared;
+					outPoint = point;
+					found = true;
+				}
+			}
+		}
+		if (found)
+			return true;
+	}
+	return false;
+}
+
 bool LostArk::Server::CServerNavigation::Sample_Position(
 	const float x,
 	const float z,

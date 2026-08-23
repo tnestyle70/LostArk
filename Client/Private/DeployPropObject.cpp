@@ -951,6 +951,12 @@ HRESULT CDeployPropObject::Render_Static(
 
 HRESULT CDeployPropObject::Render_DeferredEmissiveOverlay()
 {
+	/* The arena stone owns the joints between its slabs and the rubble layer
+	   owns the loose crack pieces lying on it. Both are drawn here against the
+	   one authored emissive mask the model carries, because pass 15 selects by
+	   surface direction rather than by texture: the slab tops stay dark and the
+	   joint walls light. Only the rubble material owns the mask itself. */
+	constexpr uint32_t EMISSIVE_MESH_INDICES[] = { 0u, 1u };
 	constexpr uint32_t EMISSIVE_MESH_INDEX = 1u;
 	constexpr uint32_t DEFERRED_EMISSIVE_OVERLAY_PASS = 15u;
 	if (nullptr == m_pIntactModelCom || nullptr == m_pShaderCom ||
@@ -978,11 +984,17 @@ HRESULT CDeployPropObject::Render_DeferredEmissiveOverlay()
 			sizeof(m_fEmissiveIntensity))) ||
 		FAILED(m_pIntactModelCom->Bind_Material(
 			m_pShaderCom, "g_EmissiveTexture", EMISSIVE_MESH_INDEX,
-			aiTextureType_EMISSIVE)) ||
-		FAILED(m_pShaderCom->Begin(DEFERRED_EMISSIVE_OVERLAY_PASS)) ||
-		FAILED(m_pIntactModelCom->Render(EMISSIVE_MESH_INDEX)))
+			aiTextureType_EMISSIVE)))
 	{
 		return E_FAIL;
+	}
+	for (const uint32_t meshIndex : EMISSIVE_MESH_INDICES)
+	{
+		if (FAILED(m_pShaderCom->Begin(DEFERRED_EMISSIVE_OVERLAY_PASS)) ||
+			FAILED(m_pIntactModelCom->Render(meshIndex)))
+		{
+			return E_FAIL;
+		}
 	}
 	return S_OK;
 }
