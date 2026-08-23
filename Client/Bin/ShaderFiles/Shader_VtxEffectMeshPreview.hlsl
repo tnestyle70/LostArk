@@ -1,5 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_Artist31470Diagnostic.hlsli"
 #include "Shader_Artist31470Active011OuterMaterial.hlsli"
 #include "Shader_EffectUe3MaterialFamilies.hlsli"
@@ -11,6 +12,10 @@ float4x4 g_ProjMatrix;
 float4 g_CameraPosition;
 uint g_UseBaseOverride = 0;
 float4 g_EffectDynamicParameter = float4(0.f, 0.f, 0.f, 0.f);
+uint g_StandardColorV1MeshSubUVEnabled = 0;
+float4 g_StandardColorV1MeshSubUVCurrent = float4(1.f, 1.f, 0.f, 0.f);
+float4 g_StandardColorV1MeshSubUVNext = float4(1.f, 1.f, 0.f, 0.f);
+float g_StandardColorV1MeshSubUVBlend = 0.f;
 
 struct VS_IN
 {
@@ -29,6 +34,7 @@ struct VS_OUT
     float3 worldPosition : TEXCOORD1;
     float3 tangent : TEXCOORD2;
     float3 binormal : TEXCOORD3;
+    float2 uvNext : TEXCOORD4;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -48,12 +54,33 @@ VS_OUT VS_MAIN(VS_IN input)
     const float handedness = dot(
         cross(input.normal, input.tangent), input.binormal) < 0.f ? -1.f : 1.f;
     output.binormal = normalize(cross(output.normal, output.tangent)) * handedness;
-    output.uv = input.uv * g_UVScale + g_UVOffset;
+    const float2 currentUV = 0u != g_StandardColorV1MeshSubUVEnabled ?
+        input.uv * g_StandardColorV1MeshSubUVCurrent.xy +
+            g_StandardColorV1MeshSubUVCurrent.zw :
+        input.uv;
+    const float2 nextUV = 0u != g_StandardColorV1MeshSubUVEnabled ?
+        input.uv * g_StandardColorV1MeshSubUVNext.xy +
+            g_StandardColorV1MeshSubUVNext.zw :
+        input.uv;
+    output.uv = currentUV * g_UVScale + g_UVOffset;
+    output.uvNext = nextUV * g_UVScale + g_UVOffset;
     return output;
 }
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
+    if (0u != g_StandardColorV1Enabled)
+    {
+        if (0u != g_StandardColorV1MeshSubUVEnabled)
+        {
+            return Shade_EffectStandardColorV1Particle(
+                input.uv, input.uvNext,
+                g_StandardColorV1MeshSubUVBlend,
+                float4(1.f, 1.f, 1.f, 1.f));
+        }
+        return Shade_EffectStandardColorV1(
+            input.uv, float4(1.f, 1.f, 1.f, 1.f));
+    }
     if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==

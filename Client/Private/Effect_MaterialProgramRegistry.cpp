@@ -626,6 +626,11 @@ namespace
 			OutProgram.eBackend =
 				EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL;
 		}
+		else if (strBackend == "standardColorV1" && OutProgram.iOpcode == 1u)
+		{
+			OutProgram.eBackend =
+				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+		}
 		else
 		{
 			strOutError = strContext +
@@ -639,8 +644,11 @@ namespace
 		else if (strBackend == "runtimeMaterialV2" && OutProgram.iOpcode == 3u)
 			strExpectedProgramId =
 				"effect.program.runtime-material-v2.opcode-3.v1";
-		else
+		else if (strBackend == "localDecal" && OutProgram.iOpcode == 14u)
 			strExpectedProgramId = "effect.program.local-decal.opcode-14.v1";
+		else
+			strExpectedProgramId =
+				"effect.program.standard-color-v1.opcode-1.v1";
 		if (OutProgram.strProgramId != strExpectedProgramId)
 		{
 			strOutError = strContext +
@@ -1245,12 +1253,12 @@ namespace
 		return Adapter;
 	}
 
-	const std::array<EFFECT_COMPILED_MATERIAL_ADAPTER_DESC, 3u>&
+	const std::array<EFFECT_COMPILED_MATERIAL_ADAPTER_DESC, 8u>&
 		Compiled_Adapters() noexcept
 	{
 		using ADAPTER_ID = EFFECT_COMPILED_MATERIAL_ADAPTER_ID;
 		using CARRIER = EFFECT_COMPILED_MATERIAL_CARRIER;
-		static const std::array<EFFECT_COMPILED_MATERIAL_ADAPTER_DESC, 3u>
+		static const std::array<EFFECT_COMPILED_MATERIAL_ADAPTER_DESC, 8u>
 			ADAPTERS = {{
 			Make_CompiledAdapter(
 				ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1,
@@ -1272,7 +1280,42 @@ namespace
 				EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID,
 				"Shader_VtxEffectDecal.hlsl", "VTXTEX",
 				EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ, 3u,
-				"RS_Default", "DSS_ReadOnly", "BS_EffectAlpha")
+				"RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+			Make_CompiledAdapter(
+				ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1,
+				CARRIER::SPRITE_PARTICLE,
+				EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ, 3u,
+				"RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+			Make_CompiledAdapter(
+				ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_TWO_SIDED_V1,
+				CARRIER::SPRITE_PARTICLE,
+				EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADDITIVE_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ, 2u,
+				"RS_Cull_None", "DSS_ReadOnly", "BS_EffectAdditive"),
+			Make_CompiledAdapter(
+				ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_ONE_SIDED_V1,
+				CARRIER::SPRITE_PARTICLE,
+				EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADDITIVE_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ, 4u,
+				"RS_Default", "DSS_ReadOnly", "BS_EffectAdditive"),
+			Make_CompiledAdapter(
+				ADAPTER_ID::MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1,
+				CARRIER::MESH_PARTICLE_CMODEL,
+				EFFECT_MESH_PARTICLE_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectMeshPreview.hlsl", "VTXMESH",
+				EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ, 3u,
+				"RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+			Make_CompiledAdapter(
+				ADAPTER_ID::LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1,
+				CARRIER::LOCAL_DECAL_PROJECTOR,
+				EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectDecal.hlsl", "VTXTEX",
+				EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ, 1u,
+				"RS_Cull_None", "DSS_ZNone", "BS_EffectAlpha")
 		}};
 		return ADAPTERS;
 	}
@@ -1446,6 +1489,78 @@ namespace
 		const PROGRAM_RECORD& Program,
 		const LAYOUT_RECORD& Layout)
 	{
+		if (Program.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			Program.iOpcode == 1u)
+		{
+			const auto AllZero = [](const auto& Values)
+			{
+				return std::all_of(Values.begin(), Values.end(),
+					[](const uint32_t iValue) { return 0u == iValue; });
+			};
+			const auto IsBaseChannel = [](const std::string_view strChannel)
+			{
+				return strChannel == "R" || strChannel == "G" ||
+					strChannel == "B" || strChannel == "RGB";
+			};
+			const auto IsCoverageChannel = [](const std::string_view strChannel)
+			{
+				return strChannel == "R" || strChannel == "G" ||
+					strChannel == "B" || strChannel == "A";
+			};
+			const bool_t bHasDissolve = Layout.iTextureLaneCount == 3u;
+			if (Layout.iExecutionVersion != 1u ||
+				(Layout.iTextureLaneCount != 2u && !bHasDissolve) ||
+				Layout.iTextureMask != Low_BitMask(Layout.iTextureLaneCount) ||
+				Layout.TextureLanes.size() != Layout.iTextureLaneCount ||
+				0u != Layout.iDynamicConsumedMask ||
+				0u != Layout.iDynamicSuppressedMask ||
+				0u != Layout.iParticleColorPolicy ||
+				0u != Layout.iParticleColorConsumedMask ||
+				0u != Layout.iParticleColorSuppressedMask ||
+				0u != Layout.iScalarCount || 0u != Layout.iVectorCount ||
+				0u != Layout.iInputCount ||
+				!AllZero(Layout.InputConsumedMask) ||
+				!AllZero(Layout.InputSuppressedMask) ||
+				!AllZero(Layout.VectorComponentConsumedMask) ||
+				!AllZero(Layout.VectorComponentSuppressedMask) ||
+				0u != Layout.iStaticInputCount ||
+				0u != Layout.iStaticSelectedMask ||
+				0u != Layout.iStaticConsumedMask ||
+				0u != Layout.iStaticSuppressedMask ||
+				0u != Layout.iRenderInputCount ||
+				0u != Layout.iRenderConsumedMask ||
+				0u != Layout.iRenderSuppressedMask ||
+				!Layout.ScalarRows.empty() || !Layout.VectorRows.empty() ||
+				!Layout.ArtistParameterRows.empty() || !Layout.ColorRows.empty())
+			{
+				return false;
+			}
+			for (size_t iLane = 0u; iLane < Layout.TextureLanes.size(); ++iLane)
+			{
+				const LAYOUT_TEXTURE_LANE& Lane = Layout.TextureLanes[iLane];
+				const std::string_view strExpectedRole = iLane == 0u ?
+					"base_radiance" : (iLane == 1u ? "coverage" : "dissolve");
+				const bool_t bChannelValid = iLane == 0u ?
+					IsBaseChannel(Lane.strSourceChannel) :
+					IsCoverageChannel(Lane.strSourceChannel);
+				const bool_t bLinearRequired = iLane != 0u &&
+					Lane.strSourceChannel != "A";
+				if (Lane.strLaneId != "lane." + std::to_string(iLane) ||
+					Lane.strRole != strExpectedRole ||
+					Lane.iTextureRegister != iLane ||
+					Lane.iSamplerRegister !=
+						MATERIAL_SAMPLER_REGISTER_BASE + iLane ||
+					!bChannelValid ||
+					(bLinearRequired && Lane.eColorSpace !=
+						EFFECT_TEXTURE_COLOR_SPACE::LINEAR))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
 		const auto& Receipts = Compiled_LayoutAbiReceipts();
 		const auto Receipt = std::find_if(Receipts.begin(), Receipts.end(),
 			[&Program](const COMPILED_LAYOUT_ABI_RECEIPT& Candidate)
@@ -1514,26 +1629,45 @@ namespace
 		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter,
 		const PROGRAM_RECORD& Program) noexcept
 	{
+		const bool_t bStandardColor = Program.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			Program.iOpcode == 1u;
+		using ADAPTER_ID = EFFECT_COMPILED_MATERIAL_ADAPTER_ID;
 		switch (Adapter.eCarrier)
 		{
 		case EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE:
-			return Program.eBackend ==
-				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
-				Program.iOpcode == 6u && Adapter.eAdapterId ==
-					EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
-						SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1;
+			return bStandardColor ?
+				(Adapter.eAdapterId == ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1 ||
+				 Adapter.eAdapterId == ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1 ||
+				 Adapter.eAdapterId == ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_TWO_SIDED_V1 ||
+				 Adapter.eAdapterId == ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_ONE_SIDED_V1) :
+				(Program.eBackend ==
+					EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				 Program.iOpcode == 6u && Adapter.eAdapterId == ADAPTER_ID::
+					SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1);
 		case EFFECT_COMPILED_MATERIAL_CARRIER::MESH_PARTICLE_CMODEL:
-			return Program.eBackend ==
-				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
-				Program.iOpcode == 3u && Adapter.eAdapterId ==
-				EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
-					MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1;
+			return bStandardColor ?
+				(Adapter.eAdapterId == ADAPTER_ID::
+					MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1 ||
+				 Adapter.eAdapterId == ADAPTER_ID::
+					MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1) :
+				(Program.eBackend ==
+					EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				 Program.iOpcode == 3u && Adapter.eAdapterId == ADAPTER_ID::
+					MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1);
 		case EFFECT_COMPILED_MATERIAL_CARRIER::LOCAL_DECAL_PROJECTOR:
-			return Program.eBackend ==
-				EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL &&
-				Program.iOpcode == 14u && Adapter.eAdapterId ==
-					EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
-						LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1;
+			return bStandardColor ?
+				(Adapter.eAdapterId == ADAPTER_ID::
+					LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1 ||
+				 Adapter.eAdapterId == ADAPTER_ID::
+					LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1) :
+				(Program.eBackend == EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL &&
+				 Program.iOpcode == 14u && Adapter.eAdapterId == ADAPTER_ID::
+					LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1);
 		case EFFECT_COMPILED_MATERIAL_CARRIER::END:
 		default:
 			return false;
@@ -1553,6 +1687,9 @@ namespace
 	{
 		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC* pAdapter =
 			Find_CompiledAdapter(Binding.strAdapterId);
+		const bool_t bVariableStandardColorLayout = Program.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			Program.iOpcode == 1u;
 		std::string_view strExpectedLayoutId;
 		if (Program.eBackend ==
 			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
@@ -1568,12 +1705,13 @@ namespace
 			strExpectedLayoutId =
 				"effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1";
 		}
-		else
+		else if (!bVariableStandardColorLayout)
 		{
 			strExpectedLayoutId =
 				"effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1";
 		}
-		if (Layout.strLayoutId != strExpectedLayoutId ||
+		if ((!bVariableStandardColorLayout &&
+			 Layout.strLayoutId != strExpectedLayoutId) ||
 			!Matches_CompiledLayoutAbiReceipt(Program, Layout))
 		{
 			strOutError = "Material binding '" + Binding.strEffectAssetId + "/" +
@@ -1684,6 +1822,47 @@ namespace
 			Descriptor.ArtistParameters, Execution.ArtistParameters);
 		MaterializeVectors(Layout.ColorRows, Descriptor.Colors,
 			Execution.Colors);
+		if (Program.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1)
+		{
+			const auto ChannelFromToken = [](const std::string_view strChannel)
+			{
+				if (strChannel == "R")
+					return EFFECT_STANDARD_COLOR_CHANNEL::R;
+				if (strChannel == "G")
+					return EFFECT_STANDARD_COLOR_CHANNEL::G;
+				if (strChannel == "B")
+					return EFFECT_STANDARD_COLOR_CHANNEL::B;
+				if (strChannel == "A")
+					return EFFECT_STANDARD_COLOR_CHANNEL::A;
+				if (strChannel == "RGB")
+					return EFFECT_STANDARD_COLOR_CHANNEL::RGB;
+				return EFFECT_STANDARD_COLOR_CHANNEL::INVALID;
+			};
+			EFFECT_STANDARD_COLOR_V1_DESC& Packet = Execution.StandardColorV1;
+			Packet.iPacketVersion = 1u;
+			Packet.strBaseRadianceLaneId = Layout.TextureLanes[0u].strLaneId;
+			Packet.eBaseRadianceChannel =
+				ChannelFromToken(Layout.TextureLanes[0u].strSourceChannel);
+			Packet.strCoverageLaneId = Layout.TextureLanes[1u].strLaneId;
+			Packet.eCoverageChannel =
+				ChannelFromToken(Layout.TextureLanes[1u].strSourceChannel);
+			Packet.eEmissiveMode =
+				EFFECT_STANDARD_COLOR_EMISSIVE_MODE::BASE_RADIANCE;
+			Packet.eLifetimeEnvelope =
+				EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE::CARRIER_ALPHA;
+			Packet.eMissingLanePolicy =
+				EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY::FAIL_CLOSED;
+			if (Layout.TextureLanes.size() == 3u)
+			{
+				Packet.eDissolveMode =
+					EFFECT_STANDARD_COLOR_DISSOLVE_MODE::LANE_THRESHOLD;
+				Packet.strDissolveLaneId = Layout.TextureLanes[2u].strLaneId;
+				Packet.eDissolveChannel =
+					ChannelFromToken(Layout.TextureLanes[2u].strSourceChannel);
+				Packet.fDissolveSoftness = 0.1f;
+			}
+		}
 
 		pOutResolved = std::move(pResolved);
 		return true;

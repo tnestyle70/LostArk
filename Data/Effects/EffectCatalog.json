@@ -102,6 +102,15 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31460.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31460.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31460.v1.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.artist.skill.31460.unified",
+      "sourceDocumentRawSha256": "b83515d3cb1705238d0e1c18b3bc18ad1458de31ecbdb951dce45ff7abcc333f"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31470",
       "payloadKind": "IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM",
       "reconstructedRuntimeProgramPath": "Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json",
@@ -257,6 +266,15 @@
       "effectAssetId": "effect.dimensionmaster.skill.2050180.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050180.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050180.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050180.v1.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.dimensionmaster.skill.2050180.unified",
+      "sourceDocumentRawSha256": "c1a6d50a386e292589863477d51bbbff82a674bd60ab563a6ee15d8775f82f46"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050210.authored-baseline",
@@ -425,6 +443,15 @@
       "effectAssetId": "effect.lancemaster.skill.34110.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34110.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34110.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34110.v1.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.lancemaster.skill.34110.unified",
+      "sourceDocumentRawSha256": "297067f83379d1eca5bcc23d933450bd0f7c32951e96a848688d255083b79a2f"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34120.authored-baseline.clip1",
@@ -1044,9 +1071,27 @@
       "authoringPath": "Effects/Authored/effect.warlord.skill.17110.clip2.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17110.clip2.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17110.clip2.v1.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.warlord.skill.17110.clip2.unified",
+      "sourceDocumentRawSha256": "d572b1957e5b10a068dc457b11f9ab53bef9e4124e08b60321a7a3854f832182"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17110.clip3.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17110.clip3.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17110.clip3.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17110.clip3.v1.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.warlord.skill.17110.clip3.unified",
+      "sourceDocumentRawSha256": "6697860fc17ef912ebb55245e2d45d7fba71286f6fdfc1d6dd0209bbdb3b256a"
     },
     {
       "effectAssetId": "effect.warlord.skill.17140.authored-baseline",

@@ -1416,6 +1416,16 @@ inline const char_t* Get_EffectGenericAuthoringFamilyLabel(
 inline EFFECT_AUTHORING_FIDELITY Get_EffectAuthoringFidelity(
 	const EFFECT_MATERIAL_EXECUTION_DESC& Execution)
 {
+	/* StandardColorV1 is the shared PROJECT_TUNED category: its typed packet,
+	   adapter and draw can be bit-exact internally while the source UE3
+	   material graph remains unevaluated.  A future SOURCE_EXACT use needs a
+	   separate, evidence-bearing fidelity field before this category can claim
+	   EXACT. */
+	if (Execution.bEnabled &&
+		Execution.eBackend == EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1)
+	{
+		return EFFECT_AUTHORING_FIDELITY::APPROXIMATE;
+	}
 	if (Execution.bEnabled)
 		return EFFECT_AUTHORING_FIDELITY::EXACT;
 	if (Execution.bAuthoringApproximate)

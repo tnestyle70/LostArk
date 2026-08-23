@@ -13,6 +13,21 @@
     },
     {
       "adapterId": "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1"
+    },
+    {
+      "adapterId": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1"
+    },
+    {
+      "adapterId": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.additive-two-sided.v1"
+    },
+    {
+      "adapterId": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.additive-one-sided.v1"
+    },
+    {
+      "adapterId": "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1"
+    },
+    {
+      "adapterId": "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1"
     }
   ],
   "bindings": []

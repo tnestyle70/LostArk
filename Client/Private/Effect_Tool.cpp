@@ -944,7 +944,9 @@ namespace
 		return std::any_of(Document.Elements.begin(), Document.Elements.end(),
 			[](const Client::EFFECT_ELEMENT_DESC& Element)
 			{
-				return Element.Material.Execution.bAuthoringApproximate;
+				return Client::Get_EffectAuthoringFidelity(
+					Element.Material.Execution) ==
+					Client::EFFECT_AUTHORING_FIDELITY::APPROXIMATE;
 			});
 	}
 
@@ -964,7 +966,9 @@ namespace
 			Label << " [SOURCE]";
 		else if (Element.strSourceNode.starts_with("project-authored:"))
 			Label << " [PROJECT]";
-		if (Element.Material.Execution.bAuthoringApproximate)
+		if (Client::Get_EffectAuthoringFidelity(
+				Element.Material.Execution) ==
+			Client::EFFECT_AUTHORING_FIDELITY::APPROXIMATE)
 			Label << " [APPROXIMATE]";
 		return Label.str();
 	}
@@ -6408,15 +6412,15 @@ void Client::CEffect_Tool::Render_Detail(
 		ImGui::TextWrapped(
 			"In Resources, select the empty Base input, choose one DDS, then click Bind Selected. A valid Base bind clears this exact material fail-closed marker and enables preview; Transform, rotation, scale, and color remain editable while locked.");
 	}
-	else if (Element.Material.Execution.bAuthoringApproximate)
+	else if (eFidelity == EFFECT_AUTHORING_FIDELITY::APPROXIMATE)
 	{
 		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
 		ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.55f, 1.f),
-			"APPROXIMATE | Product enabled | editable and tunable");
+			"PROJECT_TUNED APPROXIMATE | Preview enabled | editable and tunable");
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip(
-				"The exact source WModel/DDS remains attached, but original Material arithmetic is unproven. Overrides never change admission or exactness.");
+				"The typed runtime packet and Adapter are validated, but original Material arithmetic is not SOURCE_EXACT. Overrides never change this fidelity label.");
 		}
 	}
 	else if (!bAuthoringExecutionTarget)

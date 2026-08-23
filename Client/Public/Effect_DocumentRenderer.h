@@ -850,7 +850,8 @@ private:
 		const ELEMENT_RESOURCE& Resource,
 		f32_t fAlphaScale = 1.f,
 		const float4x4_t* pWorldOverride = nullptr,
-		const float4_t* pDynamicParameter = nullptr);
+		const float4_t* pDynamicParameter = nullptr,
+		const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride = nullptr);
 	HRESULT Render_AuthoringExactPreviewMesh(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,

@@ -106,6 +106,36 @@ namespace
 				"Shader_VtxEffectDecal.hlsl", "VTXTEX",
 				PROFILE::ALPHA_ONE_SIDED_DEPTH_READ);
 			break;
+		case ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::SPRITE_PARTICLE,
+				Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				PROFILE::ALPHA_ONE_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_TWO_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::SPRITE_PARTICLE,
+				Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADDITIVE_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_ONE_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::SPRITE_PARTICLE,
+				Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADDITIVE_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::MESH_PARTICLE_CMODEL,
+				Client::EFFECT_MESH_PARTICLE_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectMeshPreview.hlsl", "VTXMESH",
+				PROFILE::ALPHA_ONE_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::LOCAL_DECAL_PROJECTOR,
+				Client::EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectDecal.hlsl", "VTXTEX",
+				PROFILE::ALPHA_TWO_SIDED_DEPTH_READ);
+			break;
 		case ADAPTER_ID::END:
 		default:
 			return false;
@@ -125,16 +155,26 @@ namespace
 		case PROFILE::ALPHA_TWO_SIDED_DEPTH_READ:
 			return Adapter.iPassIndex == 1u &&
 				Adapter.strRasterizerState == "RS_Cull_None" &&
-				Adapter.strDepthStencilState == "DSS_ReadOnly" &&
+				Adapter.strDepthStencilState ==
+					(Adapter.eCarrier == CARRIER::LOCAL_DECAL_PROJECTOR ?
+						"DSS_ZNone" : "DSS_ReadOnly") &&
 				Adapter.strBlendState == "BS_EffectAlpha";
 		case PROFILE::ALPHA_ONE_SIDED_DEPTH_READ:
 			return Adapter.iPassIndex == 3u &&
 				Adapter.strRasterizerState == "RS_Default" &&
 				Adapter.strDepthStencilState == "DSS_ReadOnly" &&
 				Adapter.strBlendState == "BS_EffectAlpha";
-		case PROFILE::OPAQUE_BACK_DEPTH_WRITE:
 		case PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ:
+			return Adapter.iPassIndex == 2u &&
+				Adapter.strRasterizerState == "RS_Cull_None" &&
+				Adapter.strDepthStencilState == "DSS_ReadOnly" &&
+				Adapter.strBlendState == "BS_EffectAdditive";
 		case PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ:
+			return Adapter.iPassIndex == 4u &&
+				Adapter.strRasterizerState == "RS_Default" &&
+				Adapter.strDepthStencilState == "DSS_ReadOnly" &&
+				Adapter.strBlendState == "BS_EffectAdditive";
+		case PROFILE::OPAQUE_BACK_DEPTH_WRITE:
 		case PROFILE::END:
 		default:
 			return false;
@@ -144,6 +184,7 @@ namespace
 	enum class COMPILED_ADAPTER_ACTUAL_BLEND : uint8_t
 	{
 		ALPHA_BLEND,
+		ADDITIVE_BLEND,
 	};
 
 	bool_t Resolve_ActualMaterialAdapterPipelineReceipt(
@@ -160,13 +201,21 @@ namespace
 			switch (Adapter.eCarrier)
 			{
 			case CARRIER::SPRITE_PARTICLE:
-				return iActualPassIndex == Adapter.iPassIndex;
+				return iActualPassIndex == Adapter.iPassIndex &&
+					Adapter.eRenderProfile != PROFILE::OPAQUE_BACK_DEPTH_WRITE &&
+					Adapter.eRenderProfile != PROFILE::END;
 			case CARRIER::MESH_PARTICLE_CMODEL:
-				return Adapter.eRenderProfile ==
-					PROFILE::ALPHA_TWO_SIDED_DEPTH_READ &&
-					iActualPassIndex == 1u;
+				return (Adapter.eRenderProfile ==
+						PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
+					Adapter.eRenderProfile ==
+						PROFILE::ALPHA_ONE_SIDED_DEPTH_READ) &&
+					iActualPassIndex == Adapter.iPassIndex;
 			case CARRIER::LOCAL_DECAL_PROJECTOR:
-				return iActualPassIndex == 3u;
+				return (Adapter.eRenderProfile ==
+						PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
+					Adapter.eRenderProfile ==
+						PROFILE::ALPHA_ONE_SIDED_DEPTH_READ) &&
+					iActualPassIndex == Adapter.iPassIndex;
 			case CARRIER::END:
 			default:
 				return false;
@@ -181,10 +230,20 @@ namespace
 			bOutDepthWrite = false;
 			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ALPHA_BLEND;
 			return true;
+		case 2u:
+			eOutCullMode = D3D11_CULL_NONE;
+			bOutDepthWrite = false;
+			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ADDITIVE_BLEND;
+			return true;
 		case 3u:
 			eOutCullMode = D3D11_CULL_BACK;
 			bOutDepthWrite = false;
 			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ALPHA_BLEND;
+			return true;
+		case 4u:
+			eOutCullMode = D3D11_CULL_BACK;
+			bOutDepthWrite = false;
+			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ADDITIVE_BLEND;
 			return true;
 		default:
 			return false;
@@ -244,7 +303,19 @@ namespace
 		const D3D11_RENDER_TARGET_BLEND_DESC& Distortion = Blend.RenderTarget[1u];
 		const bool_t bSceneColorAlpha =
 			eExpectedBlend == COMPILED_ADAPTER_ACTUAL_BLEND::ALPHA_BLEND;
-		const bool_t bSceneColorBlendValid =
+		const bool_t bSceneColorAdditive =
+			eExpectedBlend == COMPILED_ADAPTER_ACTUAL_BLEND::ADDITIVE_BLEND;
+		const bool_t bDepthEnabled =
+			Adapter.strDepthStencilState != "DSS_ZNone";
+		// Effects11 normalizes the operationally ignored write mask to ALL for
+		// DSS_ZNone.  Keep the enabled-depth receipt strict while matching the
+		// actual disabled-depth state returned by D3D11/WARP.
+		const D3D11_DEPTH_WRITE_MASK eExpectedDepthWriteMask =
+			bDepthEnabled ?
+				(bDepthWrite ? D3D11_DEPTH_WRITE_MASK_ALL :
+					D3D11_DEPTH_WRITE_MASK_ZERO) :
+				D3D11_DEPTH_WRITE_MASK_ALL;
+		const bool_t bSceneColorAlphaValid =
 			SceneColor.BlendEnable &&
 			 SceneColor.SrcBlend == D3D11_BLEND_SRC_ALPHA &&
 			 SceneColor.DestBlend == D3D11_BLEND_INV_SRC_ALPHA &&
@@ -254,7 +325,18 @@ namespace
 			 SceneColor.BlendOpAlpha == D3D11_BLEND_OP_ADD &&
 			 SceneColor.RenderTargetWriteMask ==
 				D3D11_COLOR_WRITE_ENABLE_ALL;
-		return bSceneColorAlpha &&
+		const bool_t bSceneColorAdditiveValid =
+			SceneColor.BlendEnable &&
+			 SceneColor.SrcBlend == D3D11_BLEND_SRC_ALPHA &&
+			 SceneColor.DestBlend == D3D11_BLEND_ONE &&
+			 SceneColor.BlendOp == D3D11_BLEND_OP_ADD &&
+			 SceneColor.SrcBlendAlpha == D3D11_BLEND_ONE &&
+			 SceneColor.DestBlendAlpha == D3D11_BLEND_ONE &&
+			 SceneColor.BlendOpAlpha == D3D11_BLEND_OP_ADD &&
+			 SceneColor.RenderTargetWriteMask ==
+				D3D11_COLOR_WRITE_ENABLE_ALL;
+		return ((bSceneColorAlpha && bSceneColorAlphaValid) ||
+			(bSceneColorAdditive && bSceneColorAdditiveValid)) &&
 			Rasterizer.FillMode == D3D11_FILL_SOLID &&
 			Rasterizer.CullMode == eExpectedCull &&
 			!Rasterizer.FrontCounterClockwise && Rasterizer.DepthBias == 0 &&
@@ -262,17 +344,17 @@ namespace
 			Is_ZeroFloatBits(Rasterizer.SlopeScaledDepthBias) &&
 			Rasterizer.DepthClipEnable && !Rasterizer.ScissorEnable &&
 			!Rasterizer.MultisampleEnable &&
-			!Rasterizer.AntialiasedLineEnable && DepthStencil.DepthEnable &&
-			DepthStencil.DepthWriteMask == (bDepthWrite ?
-				D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO) &&
-			DepthStencil.DepthFunc == D3D11_COMPARISON_LESS_EQUAL &&
+			!Rasterizer.AntialiasedLineEnable &&
+			DepthStencil.DepthEnable == bDepthEnabled &&
+			DepthStencil.DepthWriteMask == eExpectedDepthWriteMask &&
+			(!bDepthEnabled ||
+			 DepthStencil.DepthFunc == D3D11_COMPARISON_LESS_EQUAL) &&
 			!DepthStencil.StencilEnable &&
 			DepthStencil.StencilReadMask == D3D11_DEFAULT_STENCIL_READ_MASK &&
 			DepthStencil.StencilWriteMask == D3D11_DEFAULT_STENCIL_WRITE_MASK &&
 			Is_DefaultStencilFace(DepthStencil.FrontFace) &&
 			Is_DefaultStencilFace(DepthStencil.BackFace) &&
 			!Blend.AlphaToCoverageEnable && Blend.IndependentBlendEnable &&
-			bSceneColorBlendValid &&
 			Distortion.BlendEnable && Distortion.SrcBlend == D3D11_BLEND_ONE &&
 			Distortion.DestBlend == D3D11_BLEND_ONE &&
 			Distortion.BlendOp == D3D11_BLEND_OP_ADD &&
@@ -2650,8 +2732,6 @@ namespace
 		case DXGI_FORMAT_B5G6R5_UNORM:
 		case DXGI_FORMAT_B8G8R8X8_UNORM:
 		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
-		case DXGI_FORMAT_BC1_UNORM:
-		case DXGI_FORMAT_BC1_UNORM_SRGB:
 		case DXGI_FORMAT_BC6H_UF16:
 		case DXGI_FORMAT_BC6H_SF16:
 			return 0x07u;
@@ -2674,6 +2754,11 @@ namespace
 		case DXGI_FORMAT_B5G5R5A1_UNORM:
 		case DXGI_FORMAT_B8G8R8A8_UNORM:
 		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		/* BC1 sampling exposes an alpha component.  DDS occupancy admission
+		   decides whether that component carries varying 1-bit coverage; the
+		   runtime format mask must not reject an admitted BC1 alpha lane. */
+		case DXGI_FORMAT_BC1_UNORM:
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
 		case DXGI_FORMAT_BC2_UNORM:
 		case DXGI_FORMAT_BC2_UNORM_SRGB:
 		case DXGI_FORMAT_BC3_UNORM:
@@ -7691,11 +7776,26 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	}
 	const bool_t bStandardColorV1 = Execution.eBackend ==
 		EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+	const bool_t bStandardColorMeshCarrier =
+		Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+		Element.SourceRecipe.bEnabled &&
+		Element.SourceRecipe.strRendererShape == "mesh" &&
+		Element.ResourceBindings.size() == 1u &&
+		Element.ResourceBindings[0u].strSlotId == "meshModel" &&
+		!Element.ResourceBindings[0u].strAssetId.empty();
+	const bool_t bStandardColorResourceContract =
+		bStandardColorMeshCarrier ||
+		(Element.ResourceBindings.empty() &&
+		 ((Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+		   Element.SourceRecipe.bEnabled &&
+		   Element.SourceRecipe.strRendererShape == "sprite") ||
+		  Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
+		  Element.eKind == EFFECT_ELEMENT_KIND::TRAIL));
 	if ((bStandardColorV1 &&
 		 (Element.Material.strTemplateId != EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID ||
 		  Execution.iOpcode != 1u ||
 		  Execution.StandardColorV1.iPacketVersion != 1u ||
-		  !Element.ResourceBindings.empty() ||
+		  !bStandardColorResourceContract ||
 		  Element.Material.SourceMaterial.bEnabled ||
 		  Element.Material.eRenderProfile ==
 			EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE)) ||
@@ -7726,7 +7826,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 		break;
 	case EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ:
 		strExpectedRasterizer = "RS_Cull_None";
-		strExpectedDepth = "DSS_ReadOnly";
+		strExpectedDepth = bStandardColorV1 &&
+			Element.eKind == EFFECT_ELEMENT_KIND::DECAL ?
+			"DSS_ZNone" : "DSS_ReadOnly";
 		strExpectedBlend = "BS_EffectAlpha";
 		break;
 	case EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ:
@@ -8161,7 +8263,9 @@ bool_t Client::CEffectDocumentRenderer::Build_MaterialExecutionSnapshot(
 		break;
 	case EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ:
 		Staged.strRasterizerState = "RS_Cull_None";
-		Staged.strDepthStencilState = "DSS_ReadOnly";
+		Staged.strDepthStencilState = bStandard &&
+			Element.eKind == EFFECT_ELEMENT_KIND::DECAL ?
+			"DSS_ZNone" : "DSS_ReadOnly";
 		Staged.strBlendState = "BS_EffectAlpha";
 		break;
 	case EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ:
@@ -15539,6 +15643,23 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 				nullptr == Find_Binding(
 					Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
 				nullptr == Resource.pModel;
+			const bool_t bStandardColorStaged = Execution.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+				Resource.iStandardColorV1Enabled == 1u &&
+				Resource.StandardColorV1Header[0u] == 1u &&
+				Resource.StandardColorV1Header[1u] == Execution.iOpcode &&
+				Resource.StandardColorV1Header[2u] ==
+					Execution.iTextureLaneCount &&
+				Resource.StandardColorV1Header[3u] == Execution.iTextureMask &&
+				0u == Resource.iRuntimeMaterialV2Enabled;
+			const bool_t bRuntimeMaterialStaged = Execution.eBackend !=
+				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+				0u != Resource.iRuntimeMaterialV2Enabled &&
+				Resource.iRuntimeMaterialV2Opcode == Execution.iOpcode &&
+				Resource.iRuntimeMaterialV2TextureLaneCount ==
+					Execution.iTextureLaneCount &&
+				Resource.iRuntimeMaterialV2TextureMask == Execution.iTextureMask &&
+				0u == Resource.iStandardColorV1Enabled;
 			if (!Is_CompiledMaterialAdapter(Adapter) ||
 				(!bSpriteCarrier && !bMeshCarrier && !bDecalCarrier) ||
 				Element.Material.eRenderProfile != Adapter.eRenderProfile ||
@@ -15549,11 +15670,7 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 				Execution.strDepthStencilState != Adapter.strDepthStencilState ||
 				Execution.strBlendState != Adapter.strBlendState ||
 				Execution.iStencilReference != 0u ||
-				0u == Resource.iRuntimeMaterialV2Enabled ||
-				Resource.iRuntimeMaterialV2Opcode != Execution.iOpcode ||
-				Resource.iRuntimeMaterialV2TextureLaneCount !=
-					Execution.iTextureLaneCount ||
-				Resource.iRuntimeMaterialV2TextureMask != Execution.iTextureMask)
+				(!bStandardColorStaged && !bRuntimeMaterialStaged))
 			{
 				strOutError =
 					"Bound material-program compiled adapter/carrier changed: " +
@@ -18400,7 +18517,8 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			"Material bind failed: RuntimeMaterialV2 vector block.",
 			hFirstBindFailure);
 	}
-	const bool_t bStandardColorV1Shader = pShader == m_pParticleShader ||
+	const bool_t bStandardColorV1Shader = pShader == m_pMeshShader ||
+		pShader == m_pParticleShader ||
 		pShader == m_pDecalShader || pShader == m_pTrailShader;
 	if (bStandardColorV1Shader &&
 		(BindFailed(pShader->Bind_RawValue("g_StandardColorV1Enabled",
@@ -18728,7 +18846,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	const ELEMENT_RESOURCE& Resource,
 	const f32_t fAlphaScale,
 	const float4x4_t* pWorldOverride,
-	const float4_t* pDynamicParameter)
+	const float4_t* pDynamicParameter,
+	const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride)
 {
 	if (nullptr == Resource.pModel || nullptr == Element.pElement ||
 		nullptr == m_pMeshShader)
@@ -18745,6 +18864,19 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	{
 		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
 			pMaterialProgramBinding->Adapter;
+		const EFFECT_MATERIAL_EXECUTION_DESC& BoundExecution =
+			pMaterialProgramBinding->Execution;
+		const bool_t bBoundStandardColor = BoundExecution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			Resource.iStandardColorV1Enabled == 1u &&
+			Resource.StandardColorV1Header[0u] == 1u &&
+			Resource.StandardColorV1Header[1u] == BoundExecution.iOpcode &&
+			Resource.StandardColorV1Header[2u] ==
+				BoundExecution.iTextureLaneCount;
+		const bool_t bBoundRuntimeMaterial = BoundExecution.eBackend !=
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			0u != Resource.iRuntimeMaterialV2Enabled &&
+			Resource.iRuntimeMaterialV2Opcode == BoundExecution.iOpcode;
 		if (nullptr == m_pPreparedDocument ||
 			nullptr == m_pPreparedDocument->pMaterialProgramRegistry ||
 			m_pPreparedDocument->pMaterialProgramRegistry->Get_CatalogRevision() !=
@@ -18766,9 +18898,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			nullptr == Find_Binding(
 				*Element.pElement, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
 			Element.pElement->Material.eRenderProfile != Adapter.eRenderProfile ||
-			0u == Resource.iRuntimeMaterialV2Enabled ||
-			Resource.iRuntimeMaterialV2Opcode !=
-				pMaterialProgramBinding->Execution.iOpcode ||
+			(!bBoundStandardColor && !bBoundRuntimeMaterial) ||
 			iPass != Adapter.iPassIndex ||
 			Engine::CRenderOutputContract::Get_Active() !=
 				Engine::RENDER_OUTPUT_CONTRACT::
@@ -18935,14 +19065,62 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Mesh shader bind failed: g_EffectDynamicParameter.", hResult);
+	const bool_t bStandardColorSubUV =
+		0u != Resource.iStandardColorV1Enabled && nullptr != pSubUVOverride;
+	const uint32_t iStandardColorSubUVEnabled =
+		bStandardColorSubUV ? 1u : 0u;
+	const EFFECT_SUBUV_FRAME_DESC IdentitySubUV{};
+	const EFFECT_SUBUV_FRAME_DESC& StandardColorSubUV =
+		bStandardColorSubUV ? *pSubUVOverride : IdentitySubUV;
+	const auto IsFiniteFloat4 = [](const float4_t& Value)
+	{
+		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
+			std::isfinite(Value.z) && std::isfinite(Value.w);
+	};
+	if (!IsFiniteFloat4(StandardColorSubUV.Current) ||
+		!IsFiniteFloat4(StandardColorSubUV.Next) ||
+		!std::isfinite(StandardColorSubUV.fBlend) ||
+		StandardColorSubUV.fBlend < 0.f ||
+		StandardColorSubUV.fBlend > 1.f)
+	{
+		return Fail_RenderOperation(
+			"Mesh StandardColorV1 SubUV carrier is invalid.",
+			E_INVALIDARG, true);
+	}
+	hResult = m_pMeshShader->Bind_RawValue(
+		"g_StandardColorV1MeshSubUVEnabled",
+		&iStandardColorSubUVEnabled,
+		sizeof(iStandardColorSubUVEnabled));
+	if (SUCCEEDED(hResult))
+		hResult = m_pMeshShader->Bind_RawValue(
+			"g_StandardColorV1MeshSubUVCurrent",
+			&StandardColorSubUV.Current,
+			sizeof(StandardColorSubUV.Current));
+	if (SUCCEEDED(hResult))
+		hResult = m_pMeshShader->Bind_RawValue(
+			"g_StandardColorV1MeshSubUVNext",
+			&StandardColorSubUV.Next,
+			sizeof(StandardColorSubUV.Next));
+	if (SUCCEEDED(hResult))
+		hResult = m_pMeshShader->Bind_RawValue(
+			"g_StandardColorV1MeshSubUVBlend",
+			&StandardColorSubUV.fBlend,
+			sizeof(StandardColorSubUV.fBlend));
+	if (FAILED(hResult))
+	{
+		return Fail_RenderOperation(
+			"Mesh shader bind failed: StandardColorV1 SubUV packet.",
+			hResult, true);
+	}
 	hResult = Bind_Common(m_pMeshShader, Element, Resource, fAlphaScale);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Mesh common/material shader bind failed.", hResult);
 
 	const ComPtr<ID3D11ShaderResourceView> BaseOverride =
-		Element.pElement->Detail.Mesh.bUseModelMaterial ? nullptr :
-		Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::BASE_TEXTURE);
+		0u != Resource.iStandardColorV1Enabled ? Resource.SourceTextures[0u] :
+		(Element.pElement->Detail.Mesh.bUseModelMaterial ? nullptr :
+		 Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::BASE_TEXTURE));
 	const uint32_t iUseBaseOverride = nullptr != BaseOverride ? 1u : 0u;
 	hResult = m_pMeshShader->Bind_RawValue(
 		"g_UseBaseOverride", &iUseBaseOverride, sizeof(iUseBaseOverride));
@@ -18989,12 +19167,15 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 #endif
 		PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
 		if (0u != Resource.iRuntimeMaterialV2Enabled ||
-			0u != Resource.iArtistVisualV4Opcode)
+			0u != Resource.iArtistVisualV4Opcode ||
+			0u != Resource.iStandardColorV1Enabled)
 		{
 			const size_t iSamplerCount = static_cast<size_t>(
-				0u != Resource.iRuntimeMaterialV2Enabled ?
+				0u != Resource.iStandardColorV1Enabled ?
+					Resource.StandardColorV1Header[2u] :
+				(0u != Resource.iRuntimeMaterialV2Enabled ?
 					Resource.iRuntimeMaterialV2TextureLaneCount :
-					std::popcount(Resource.iArtistVisualV4TextureMask));
+					std::popcount(Resource.iArtistVisualV4TextureMask)));
 			if (iSamplerCount == 0u ||
 				iSamplerCount > Resource.RuntimeMaterialV2Samplers.size() ||
 				!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(
@@ -19168,6 +19349,19 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	{
 		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
 			pMaterialProgramBinding->Adapter;
+		const EFFECT_MATERIAL_EXECUTION_DESC& BoundExecution =
+			pMaterialProgramBinding->Execution;
+		const bool_t bBoundStandardColor = BoundExecution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			Resource.iStandardColorV1Enabled == 1u &&
+			Resource.StandardColorV1Header[0u] == 1u &&
+			Resource.StandardColorV1Header[1u] == BoundExecution.iOpcode &&
+			Resource.StandardColorV1Header[2u] ==
+				BoundExecution.iTextureLaneCount;
+		const bool_t bBoundRuntimeMaterial = BoundExecution.eBackend !=
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			0u != Resource.iRuntimeMaterialV2Enabled &&
+			Resource.iRuntimeMaterialV2Opcode == BoundExecution.iOpcode;
 		if (nullptr == m_pPreparedDocument ||
 			nullptr == m_pPreparedDocument->pMaterialProgramRegistry ||
 			m_pPreparedDocument->pMaterialProgramRegistry->Get_CatalogRevision() !=
@@ -19188,9 +19382,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 				*Element.pElement, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
 			nullptr != Resource.pModel ||
 			Element.pElement->Material.eRenderProfile != Adapter.eRenderProfile ||
-			0u == Resource.iRuntimeMaterialV2Enabled ||
-			Resource.iRuntimeMaterialV2Opcode !=
-				pMaterialProgramBinding->Execution.iOpcode ||
+			(!bBoundStandardColor && !bBoundRuntimeMaterial) ||
 			iPass != Adapter.iPassIndex ||
 			Engine::CRenderOutputContract::Get_Active() !=
 				Engine::RENDER_OUTPUT_CONTRACT::
@@ -19272,6 +19464,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 			E_FAIL, true);
 	}
 	if (nullptr != pMaterialProgramBinding &&
+		pMaterialProgramBinding->Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL &&
 		!Validate_ActualLocalDecalDepthShaderResource(m_pContext.Get()))
 	{
 		return Fail_RenderOperation(
@@ -19644,8 +19838,18 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 				Frame.fSampleTimeSeconds -
 				Particle.pElement->Detail.Timing.fStartDelaySeconds);
 			MeshParticle.fNormalizedLife = Particle.fNormalizedLife;
+			const EFFECT_SUBUV_FRAME_DESC SourceSubUV =
+				Resolve_SubUVFrames(Particle);
+			EFFECT_SUBUV_FRAME_DESC SubUV;
+			if (!CEffectPlayback::Resolve_ParticleSpriteSubUV(
+					Particle, SourceSubUV, SubUV))
+			{
+				return Fail_RenderOperation(
+					"Mesh particle source SubUV contract is invalid.",
+					E_INVALIDARG, true);
+			}
 			const HRESULT Result = Render_Mesh(MeshParticle, *pResource,
-				1.f, nullptr, &Particle.vDynamicParameter);
+				1.f, nullptr, &Particle.vDynamicParameter, &SubUV);
 			if (FAILED(Result))
 				return Result;
 			bSubmitted = bSubmitted || S_OK == Result;
@@ -19760,6 +19964,19 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	{
 		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
 			pMaterialProgramBinding->Adapter;
+		const EFFECT_MATERIAL_EXECUTION_DESC& BoundExecution =
+			pMaterialProgramBinding->Execution;
+		const bool_t bBoundStandardColor = BoundExecution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			pResource->iStandardColorV1Enabled == 1u &&
+			pResource->StandardColorV1Header[0u] == 1u &&
+			pResource->StandardColorV1Header[1u] == BoundExecution.iOpcode &&
+			pResource->StandardColorV1Header[2u] ==
+				BoundExecution.iTextureLaneCount;
+		const bool_t bBoundRuntimeMaterial = BoundExecution.eBackend !=
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+			0u != pResource->iRuntimeMaterialV2Enabled &&
+			pResource->iRuntimeMaterialV2Opcode == BoundExecution.iOpcode;
 		if (nullptr == m_pPreparedDocument ||
 			nullptr == m_pPreparedDocument->pMaterialProgramRegistry ||
 			m_pPreparedDocument->pMaterialProgramRegistry->Get_CatalogRevision() !=
@@ -19781,9 +19998,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			nullptr != pResource->pModel || nullptr == m_pParticleShader ||
 			nullptr == m_pParticleBuffer ||
 			Source.Material.eRenderProfile != Adapter.eRenderProfile ||
-			0u == pResource->iRuntimeMaterialV2Enabled ||
-			pResource->iRuntimeMaterialV2Opcode !=
-				pMaterialProgramBinding->Execution.iOpcode ||
+			(!bBoundStandardColor && !bBoundRuntimeMaterial) ||
 			Select_Pass(Source.Material.eRenderProfile) != Adapter.iPassIndex ||
 			Engine::CRenderOutputContract::Get_Active() !=
 				Engine::RENDER_OUTPUT_CONTRACT::
