@@ -926,6 +926,21 @@
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.four-pillars-105.takeoff",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.four-pillars-105.takeoff.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.four-pillars-105.target-cone",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.four-pillars-105.target-cone.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-choice.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.windup.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.pattern.420633.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
@@ -934,6 +949,11 @@
       "effectAssetId": "effect.valtan.red-blade-wave.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.red-blade-wave.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.windup.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.sky-axe.active",

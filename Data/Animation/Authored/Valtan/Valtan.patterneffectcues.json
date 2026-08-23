@@ -1380,6 +1380,134 @@
       }
     },
     {
+      "bindingId": "cue.valtan.four-pillars-105.takeoff",
+      "occurrenceId": "cue.valtan.four-pillars-105.takeoff.occurrence.01",
+      "patternId": "VALTAN_FOUR_PILLARS_105",
+      "stageId": "TAKEOFF",
+      "actionId": "valtan.mechanic.four-pillars-105.takeoff",
+      "clipOccurrenceId": "valtan.mechanic.four-pillars-105.takeoff.clip.01",
+      "effectAssetId": "effect.valtan.four-pillars-105.takeoff",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": 1600,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.four-pillars-105.target-cone",
+      "occurrenceId": "cue.valtan.four-pillars-105.target-cone.occurrence.01",
+      "patternId": "VALTAN_FOUR_PILLARS_105",
+      "stageId": "TARGET_CONE",
+      "actionId": "valtan.mechanic.four-pillars-105.target-cone",
+      "clipOccurrenceId": "valtan.mechanic.four-pillars-105.target-cone.clip.01",
+      "effectAssetId": "effect.valtan.four-pillars-105.target-cone",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": 900,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.magic-choice.windup",
+      "occurrenceId": "cue.valtan.magic-choice.windup.occurrence.01",
+      "patternId": "VALTAN_MAGIC_CHOICE",
+      "stageId": "WINDUP",
+      "actionId": "valtan.attack.magic-choice.windup",
+      "clipOccurrenceId": "valtan.attack.magic-choice.windup.clip.01",
+      "effectAssetId": "effect.valtan.magic-choice.windup",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": 1400,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.red-blade-wave.windup",
+      "occurrenceId": "cue.valtan.red-blade-wave.windup.occurrence.01",
+      "patternId": "VALTAN_RED_BLADE_WAVE",
+      "stageId": "WINDUP",
+      "actionId": "valtan.attack.red-blade-wave.windup",
+      "clipOccurrenceId": "valtan.attack.red-blade-wave.windup.clip.01",
+      "effectAssetId": "effect.valtan.red-blade-wave.windup",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": 1700,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
       "bindingId": "cue.valtan.whirlwind.active",
       "occurrenceId": "cue.valtan.whirlwind.active.occurrence.01",
       "patternId": "VALTAN_WHIRLWIND",

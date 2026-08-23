@@ -8797,6 +8797,73 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
+		/* Every pillar contract above drives CEncounterPropRuntime directly, so
+		the wiring that carries a pattern stage edge into it has never run in a
+		test. Walk the product path the raid actually takes: the 100-bar mechanic
+		raises the set on its recovery edge, then the wave the next rotation opens
+		with shatters one diagonal and leaves the other standing as cover. */
+		CGameRoom pillarRoom{ WORLD_ID::VALTAN_ARENA };
+		const auto pillarSlotState =
+			[&pillarRoom](const char* slotId, ENCOUNTER_PROP_STATE expected)
+		{
+			const std::vector<ENCOUNTER_PROP_SLOT_STATE>& states =
+				pillarRoom.m_EncounterPropRuntime.Get_SlotStates();
+			const auto found = std::find_if(states.begin(), states.end(),
+				[slotId](const ENCOUNTER_PROP_SLOT_STATE& candidate)
+				{ return candidate.strSlotId == slotId; });
+			return states.end() != found && expected == found->eState;
+		};
+
+		SERVER_WORLD_ENTITY pillarBoss{};
+		pillarBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		pillarBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		pillarBoss.iPatternSequence = 11u;
+		pillarBoss.strPatternId = "VALTAN_FOUR_PILLARS_105";
+		pillarBoss.strPatternStageId = "RECOVERY";
+		pillarBoss.iPatternStageIndex = 3u;
+		pillarBoss.strActionId = "valtan.mechanic.four-pillars-105.recovery";
+		const bool raisedThroughTheStageEdge =
+			pillarRoom.Is_Ready() &&
+			pillarRoom.m_EncounterPropRuntime.Is_Initialized() &&
+			pillarRoom.Apply_EncounterPropStageEntry(pillarBoss, 400u);
+		tests.Require(
+			raisedThroughTheStageEdge &&
+			4u == pillarRoom.m_EncounterPropRuntime.Get_SlotStates().size() &&
+			pillarSlotState("pillar.valtan.slot00", ENCOUNTER_PROP_STATE::INTACT) &&
+			pillarSlotState("pillar.valtan.slot01", ENCOUNTER_PROP_STATE::INTACT) &&
+			pillarSlotState("pillar.valtan.slot02", ENCOUNTER_PROP_STATE::INTACT) &&
+			pillarSlotState("pillar.valtan.slot03", ENCOUNTER_PROP_STATE::INTACT),
+			"Raise the Valtan stele set from the mechanic stage edge the room runs");
+
+		SERVER_WORLD_ENTITY waveBoss = pillarBoss;
+		waveBoss.iPatternSequence = 12u;
+		waveBoss.strPatternId = "VALTAN_RED_BLADE_WAVE";
+		waveBoss.strPatternStageId = "PROJECTILE";
+		waveBoss.iPatternStageIndex = 1u;
+		waveBoss.strActionId = "valtan.attack.red-blade-wave.active";
+		const bool projectileEdgeRan =
+			pillarRoom.Apply_EncounterPropStageEntry(waveBoss, 460u);
+		tests.Require(
+			projectileEdgeRan &&
+			pillarSlotState("pillar.valtan.slot00", ENCOUNTER_PROP_STATE::BREAKING) &&
+			pillarSlotState("pillar.valtan.slot02", ENCOUNTER_PROP_STATE::BREAKING) &&
+			pillarSlotState("pillar.valtan.slot01", ENCOUNTER_PROP_STATE::INTACT) &&
+			pillarSlotState("pillar.valtan.slot03", ENCOUNTER_PROP_STATE::INTACT),
+			"Shatter one stele diagonal on the wave projectile edge and leave the other standing");
+
+		waveBoss.strPatternStageId = "RECOVERY";
+		waveBoss.iPatternStageIndex = 2u;
+		waveBoss.strActionId = "valtan.attack.red-blade-wave.recovery";
+		const bool recoveryEdgeRan =
+			pillarRoom.Apply_EncounterPropStageEntry(waveBoss, 470u);
+		tests.Require(
+			recoveryEdgeRan &&
+			pillarSlotState("pillar.valtan.slot01", ENCOUNTER_PROP_STATE::BREAKING) &&
+			pillarSlotState("pillar.valtan.slot03", ENCOUNTER_PROP_STATE::BREAKING),
+			"Shatter the opposite stele diagonal on the wave recovery edge");
+	}
+
+	{
 		CGameRoom valtanRoom{ WORLD_ID::VALTAN_ARENA };
 		CGameRoom bernRoom{ WORLD_ID::BERN };
 		tests.Require(
