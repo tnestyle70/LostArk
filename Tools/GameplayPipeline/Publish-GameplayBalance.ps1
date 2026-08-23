@@ -1385,9 +1385,11 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		$hasStageBranches = $null -ne $stage.PSObject.Properties['branches']
 		$hasStageActions = $null -ne $stage.PSObject.Properties['actions']
 		$hasStageMotion = $null -ne $stage.PSObject.Properties['motion']
+		$hasHitOffsets = $null -ne $stage.PSObject.Properties['hitOffsetsMs']
 		if ($hasStageBranches) { $stageProperties += 'branches' }
 		if ($hasStageActions) { $stageProperties += 'actions' }
 		if ($hasStageMotion) { $stageProperties += 'motion' }
+		if ($hasHitOffsets) { $stageProperties += 'hitOffsetsMs' }
 		Assert-ExactProperties $stage $stageProperties 'encounter pattern stage'
 		foreach ($field in @('stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
 			Assert-JsonString $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
@@ -1417,6 +1419,24 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		$hitCount = [uint32]$stage.hitCount
 		$hitIntervalMs = [uint32]$stage.hitIntervalMs
 		$hitDelayMs = [uint32]$stage.hitDelayMs
+		$hitOffsetsMs = @()
+		if ($hasHitOffsets) {
+			$hitOffsetsMs = @($stage.hitOffsetsMs)
+			if ($hitOffsetsMs.Count -eq 0) {
+				throw "Pattern stage explicit hitOffsetsMs is empty: $($pattern.patternId) stage $stageIndex"
+			}
+			$previousHitOffset = $null
+			for ($hitOffsetIndex = 0; $hitOffsetIndex -lt $hitOffsetsMs.Count; $hitOffsetIndex++) {
+				Assert-JsonInteger $hitOffsetsMs[$hitOffsetIndex] `
+					"pattern $($pattern.patternId) stage $stageIndex hitOffsetsMs[$hitOffsetIndex]" `
+					0 ([uint32]::MaxValue)
+				$currentHitOffset = [uint32]$hitOffsetsMs[$hitOffsetIndex]
+				if ($null -ne $previousHitOffset -and $currentHitOffset -le $previousHitOffset) {
+					throw "Pattern stage hitOffsetsMs must be strictly increasing: $($pattern.patternId) stage $stageIndex"
+				}
+				$previousHitOffset = $currentHitOffset
+			}
+		}
 		$damageProfile = [string]$stage.serverDamageProfileId
 		$zeroShape = $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 -and
 			$length -eq 0.0 -and $halfWidth -eq 0.0
@@ -1433,10 +1453,22 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		}
 		if ($shape -ne 'NONE') {
 			if ($damageProfile.Length -gt 0) { Assert-StableId $damageProfile 'pattern stage damage profile' }
+			$validExplicitHits = $hasHitOffsets -and
+				$hitOffsetsMs.Count -eq $hitCount -and
+				$hitIntervalMs -eq 0 -and $hitDelayMs -eq 0 -and
+				[uint32]$hitOffsetsMs[$hitOffsetsMs.Count - 1] -lt [uint32]$stage.durationMs
+			$validLegacyHits = -not $hasHitOffsets -and
+				(($hitCount -eq 1 -and $hitIntervalMs -eq 0) -or
+				 ($hitCount -gt 1 -and $hitIntervalMs -gt 0)) -and
+				([uint64]$hitDelayMs +
+				 [uint64]($hitCount - 1) * [uint64]$hitIntervalMs) -lt
+					[uint64][uint32]$stage.durationMs
 			$validShape = $validShape -and $hitCount -gt 0 -and
-				(($hitCount -eq 1 -and $hitIntervalMs -eq 0) -or ($hitCount -gt 1 -and $hitIntervalMs -gt 0)) -and
-				([uint64]($hitCount - 1) * [uint64]$hitIntervalMs) -lt [uint64][uint32]$stage.durationMs -and
+				($validExplicitHits -or $validLegacyHits) -and
 				$damageIds.Contains($damageProfile)
+		}
+		elseif ($hasHitOffsets) {
+			$validShape = $false
 		}
 		if (-not $validShape) { throw "Pattern stage hit contract is invalid: $($pattern.patternId) stage $stageIndex" }
 		$pushRangeM = [double]$stage.pushRangeM
@@ -1466,6 +1498,12 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$pushMs,
 			$(if ($knockdown) { 1 } else { 0 }),
 			$downMs) -join "`t"))
+		for ($hitOffsetIndex = 0; $hitOffsetIndex -lt $hitOffsetsMs.Count; $hitOffsetIndex++) {
+			$patternRows.Add((@(
+				'PATTERNSTAGEHITOFFSET', $encounterDocument.encounterId,
+				$pattern.patternId, $stage.actionId, [uint32]$hitOffsetIndex,
+				[uint32]$hitOffsetsMs[$hitOffsetIndex]) -join "`t"))
+		}
 
 		$stageMotionKind = 'NONE'
 		if ($hasStageMotion) {
@@ -1683,8 +1721,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		}
 	}
 }
-if (@($encounterDocument.patterns).Count -ne 33 -or
-	$authoredStageCount -ne 130 -or
+if (@($encounterDocument.patterns).Count -ne 34 -or
+	$authoredStageCount -ne 131 -or
 	$authoredStageActionCount -ne 22 -or
 	$authoredStageBranchCount -ne 18 -or
 	$authoredStageMotionCount -ne 2) {
@@ -1695,6 +1733,9 @@ if (@($encounterDocument.patterns).Count -ne 33 -or
 }
 
 $requiredReactiveRows = @(
+	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_SLASH`tvaltan.attack.triple-slash.active`t0`t1791",
+	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_SLASH`tvaltan.attack.triple-slash.active`t1`t2300",
+	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_SLASH`tvaltan.attack.triple-slash.active`t2`t3138",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t0`tENTER`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t30`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t1`tEXIT`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t0`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_HIGH_JUMP`tvaltan.attack.high-jump.airborne`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.high-jump.target-axe`t1`t0",
@@ -3075,7 +3116,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t16`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t17`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

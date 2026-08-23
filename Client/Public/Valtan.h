@@ -337,6 +337,8 @@ private:
 		f32_t fHalfWidth = 0.f;
 		uint32_t iHitCount = 0u;
 		uint32_t iHitIntervalMs = 0u;
+		uint32_t iHitDelayMs = 0u;
+		std::vector<uint32_t> HitOffsetsMs;
 	};
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };

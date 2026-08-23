@@ -11,7 +11,7 @@
       "patternIds": [
         "VALTAN_DASH_CHARGE",
         "VALTAN_JUMP_SPIN",
-        "VALTAN_FOUR_SLASH",
+        "VALTAN_TRIPLE_SLASH",
         "VALTAN_HIGH_JUMP",
         "VALTAN_DASH_CHARGE",
         "VALTAN_HIGH_JUMP",
@@ -19,7 +19,7 @@
         "VALTAN_WHIRLWIND",
         "VALTAN_EARTHQUAKE_SMASH",
         "VALTAN_SUPER_SMASH",
-        "VALTAN_FOUR_SLASH",
+        "VALTAN_ROTATION_SLASH",
         "VALTAN_DASH_CHARGE"
       ]
     },
@@ -28,7 +28,7 @@
       "fromHealthBar": 129,
       "toHealthBar": 109,
       "patternIds": [
-        "VALTAN_FOUR_SLASH",
+        "VALTAN_TRIPLE_SLASH",
         "VALTAN_WHIRLWIND",
         "VALTAN_DASH_CHARGE"
       ]
@@ -52,7 +52,7 @@
         "VALTAN_EARTHQUAKE_SMASH",
         "VALTAN_WHIRLWIND",
         "VALTAN_EARTHQUAKE_SMASH",
-        "VALTAN_FOUR_SLASH"
+        "VALTAN_ROTATION_SLASH"
       ]
     },
     {
@@ -69,7 +69,7 @@
       "fromHealthBar": 72,
       "toHealthBar": 62,
       "patternIds": [
-        "VALTAN_FOUR_SLASH",
+        "VALTAN_TRIPLE_SLASH",
         "VALTAN_FRONT_BACK_FRONT",
         "VALTAN_DOWN_SMASH",
         "VALTAN_DOWN_SMASH"
@@ -82,7 +82,7 @@
       "patternIds": [
         "VALTAN_DOWN_SMASH",
         "VALTAN_DOWN_SMASH",
-        "VALTAN_FOUR_SLASH",
+        "VALTAN_ROTATION_SLASH",
         "VALTAN_EARTHQUAKE_SMASH",
         "VALTAN_SUPER_SMASH",
         "VALTAN_GROUND_WAVE_SMASH"
@@ -94,7 +94,7 @@
       "toHealthBar": 14,
       "patternIds": [
         "VALTAN_WHIRLWIND",
-        "VALTAN_FOUR_SLASH",
+        "VALTAN_TRIPLE_SLASH",
         "VALTAN_FRONT_BACK_FRONT",
         "VALTAN_EARTHQUAKE_SMASH"
       ]

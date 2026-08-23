@@ -7,7 +7,7 @@ A character reaches its effects through
 Valtan has no input slot: the Server owns ``patternId`` and ``actionId``, so the
 same route is rebuilt from three documents that already exist:
 
-  ValtanEncounter.json          patternId -> gameplay actionId + sourceActionIds
+  ValtanEncounter.json          patternId -> stages[].actionId + sourceActionIds
   Valtan.patternbindings.json   gameplay actionId -> ordered clip occurrences
   <profile>.action-effects.json numeric actionId -> stages -> clips + notifies
 
@@ -285,16 +285,36 @@ def build_document() -> tuple[dict[str, Any], dict[str, Any]]:
         if not pattern_id or not gameplay_action:
             raise BindingError(f"encounter pattern is incomplete: {pattern}")
 
-        # Stages come only from the authored pattern bindings, never from a name
-        # guess: an actionId prefixed by this pattern's gameplay action.
+        # The encounter owns the exact stage action set. A root-name prefix is
+        # not an ownership contract: a source chain may preserve a stable
+        # windup/recovery action while its active clips are split into new
+        # independently selectable Server patterns.
         stages = []
         prefix = gameplay_action + "."
+        owned_stages: dict[str, str] = {}
+        for encounter_stage in pattern.get("stages", []) or []:
+            action_id = str(encounter_stage.get("actionId") or "")
+            semantic_stage_id = str(encounter_stage.get("stageId") or "")
+            if not action_id or not semantic_stage_id:
+                raise BindingError(
+                    f"{pattern_id} has an incomplete encounter stage"
+                )
+            if action_id in owned_stages:
+                raise BindingError(
+                    f"{pattern_id} repeats stage actionId {action_id}"
+                )
+            owned_stages[action_id] = semantic_stage_id
         for action_id, clips in sorted(clips_by_action.items()):
-            if not action_id.startswith(prefix):
+            if action_id not in owned_stages:
                 continue
+            semantic_stage_id = (
+                action_id[len(prefix):]
+                if action_id.startswith(prefix)
+                else action_id.rsplit(".", 1)[-1]
+            )
             for clip in clips:
                 stages.append({
-                    "semanticStageId": action_id[len(prefix):],
+                    "semanticStageId": semantic_stage_id,
                     "gameplayActionId": action_id,
                     **clip,
                 })
@@ -358,7 +378,7 @@ def build_document() -> tuple[dict[str, Any], dict[str, Any]]:
         "formatVersion": 2,
         "bossArchetypeId": "BOSS_VALTAN",
         "route": (
-            "encounter patternId -> gameplay actionId -> authored clip occurrence; "
+            "encounter patternId -> exact stage actionId -> authored clip occurrence; "
             "source numeric actionId -> stage -> effect notify. "
             "Gameplay authority stays with the Server encounter document."
         ),
@@ -403,6 +423,25 @@ def build_document() -> tuple[dict[str, Any], dict[str, Any]]:
     return document, receipt
 
 
+def assert_sealed_outputs_unchanged(
+    document: dict[str, Any], receipt: dict[str, Any]
+) -> None:
+    """Keep the checked v2 projection as immutable pre-split source evidence."""
+
+    for path, generated in ((OUTPUT_PATH, document), (RECEIPT_PATH, receipt)):
+        if not path.is_file():
+            raise BindingError(
+                f"sealed historical Valtan action binding is missing: {path}"
+            )
+        checked = load_json(path)
+        if checked != generated:
+            raise BindingError(
+                "sealed historical Valtan action bindings differ from the current "
+                "split projection; create a separately named successor instead of "
+                f"rewriting {path.relative_to(ROOT).as_posix()}"
+            )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -412,16 +451,8 @@ def main() -> int:
 
     document, receipt = build_document()
     if args.write:
-        OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        OUTPUT_PATH.write_text(
-            json.dumps(document, ensure_ascii=False, indent=1) + "\n",
-            encoding="utf-8",
-        )
-        RECEIPT_PATH.write_text(
-            json.dumps(receipt, ensure_ascii=False, indent=1) + "\n",
-            encoding="utf-8",
-        )
-    label = "written" if args.write else "dry-run"
+        assert_sealed_outputs_unchanged(document, receipt)
+    label = "sealed-noop" if args.write else "dry-run"
     print(f"Valtan action bindings {label}: "
           f"{json.dumps(receipt['summary'], ensure_ascii=False)}")
     return 0

@@ -27,6 +27,10 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	f32_t fHitHalfWidth = 0.f;
 	uint32_t iHitCount = 0;
 	uint32_t iHitIntervalMs = 0;
+	uint32_t iHitDelayMs = 0;
+	/* Optional stage-relative contacts for source clips whose hit cadence is
+	   not uniform. Empty preserves the legacy delay + interval schedule. */
+	std::vector<uint32_t> hitOffsetsMs;
 	std::string serverDamageProfileId;
 };
 

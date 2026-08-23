@@ -15,9 +15,12 @@ Reviewed source-driven changes use a separate SOURCE_REVIEWED_DELTA edit.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
+import math
 import re
+import struct
 from pathlib import Path
 from typing import Any
 
@@ -82,6 +85,193 @@ EXPECTED_CARRIER_V1_RETIRED_CUE_COUNT = 105
 EXPECTED_CARRIER_V1_REPLACEMENT_MAPPING_COUNT = 48
 EXPECTED_CARRIER_V1_BLOCKED_MAPPING_COUNT = 57
 EXPECTED_CARRIER_V1_CLIP_CUE_COUNT = 43
+FOUR_SLASH_OWNER_RESEAL_SCHEMA = (
+    "lostark.valtan-carrier-v1-four-slash-owner-reseal-proof"
+)
+FOUR_SLASH_SOURCE_ACTION_ID = 420609
+FOUR_SLASH_SOURCE_BRANCH_ID = (
+    "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010"
+)
+FOUR_SLASH_SOURCE_SEQUENCE_CANONICAL_SHA256 = (
+    "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220"
+)
+FOUR_SLASH_OLD_CUE_CANONICAL_SHA256 = (
+    "6b0ce162e27eab4f8839c1aaec1e88e202afb314addde04864fa18252fde9b83"
+)
+FOUR_SLASH_NEW_CUE_CANONICAL_SHA256 = (
+    "4ff3c88cffdbe84abb99aaee22aad86c92f1b1797dfd8706058ded489b738dc9"
+)
+FOUR_SLASH_CLIP01_SCREEN_POST_OVERLAY_SCHEMA = (
+    "lostark.valtan-carrier-v1-clip01-screen-post-successor-overlay"
+)
+FOUR_SLASH_CLIP01_EFFECT_ID = (
+    "effect.valtan.carrier-v1.attack.four-slash.active.clip-01"
+)
+FOUR_SLASH_CLIP01_DOCUMENT_REPOSITORY_PATH = (
+    "Data/Effects/Authored/"
+    "effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json"
+)
+FOUR_SLASH_CLIP01_DOCUMENT_PATH = (
+    REPOSITORY_ROOT / FOUR_SLASH_CLIP01_DOCUMENT_REPOSITORY_PATH
+)
+FOUR_SLASH_CLIP01_BASE_ELEMENT_COUNT = 12
+FOUR_SLASH_CLIP01_BASE_CANONICAL_SHA256 = (
+    "5fe8332a267686b77224bb8311de7a79af4da6ca032c8429775ea579aa4baf10"
+)
+FOUR_SLASH_CLIP01_SCREEN_POST_ELEMENT_COUNT = 2
+FOUR_SLASH_CLIP01_FINAL_ELEMENT_COUNT = 14
+FOUR_SLASH_CLIP01_FINAL_CANONICAL_SHA256 = (
+    "9ef084e2ef13cccbbde5febf5f9a5e4f4c4099e93dd066f026675dca7801ab6c"
+)
+FOUR_SLASH_CLIP02_SCREEN_POST_OCCURRENCE_ID = (
+    "occurrence.0b1f192b7838db7bbb5ca80a"
+)
+FOUR_SLASH_CLIP02_SCREEN_POST_FULL_KEY = (
+    "occurrence-key.0b1f192b7838db7bbb5ca80a"
+    "12913fd8a36f4475074c8bc6cf66172e1fb3333d"
+)
+FOUR_SLASH_CLIP01_SCREEN_POST_ELEMENTS = (
+    {
+        "elementId": "occurrence.c627ba06ba0a8d5d48086907",
+        "displayName": "FilmNoise [PROJECT_TUNED_APPROX]",
+        "profileId": "screen.film-noise.reconstructed.v1",
+        "fidelity": "PROJECT_TUNED_APPROX",
+        "sourceTimeSeconds": 3.144474983215332,
+        "lifeTimeSeconds": 0.35,
+    },
+    {
+        "elementId": "occurrence.14794cdb89c73ee33f1dead3",
+        "displayName": "ZoomBlur [BOUNDED_RECONSTRUCTED]",
+        "profileId": "screen.zoom-blur.reconstructed.v1",
+        "fidelity": "BOUNDED_RECONSTRUCTED",
+        "sourceTimeSeconds": 3.144474983215332,
+        "lifeTimeSeconds": 0.35,
+    },
+)
+FOUR_SLASH_CLIP01_SCREEN_POST_RUNTIME_CONTRACTS = (
+    {
+        "elementId": "occurrence.c627ba06ba0a8d5d48086907",
+        "groupId": "fx_post.fx_par.par_c_filmnoise_01",
+        "sourceNode": (
+            "fx_post.fx_par.par_c_filmnoise_01|"
+            "FX_POST.fx_par.par_c_filmnoise_01.particlespriteemitter_0|"
+            "occurrence.c627ba06ba0a8d5d48086907"
+        ),
+        "sourceMaterialPath": "fx_mi.fx_c_pa_filmnoise_01_tr",
+        "sourceObjectPath": (
+            "FX_POST.fx_par.par_c_filmnoise_01.particlespriteemitter_0"
+        ),
+        "sourceActionCueId": "action-420609/stage-008/notify-025",
+        "sourceOccurrenceFullKey": (
+            "occurrence-key.c627ba06ba0a8d5d48086907"
+            "319ea4861dfd4521c7f532dff8eeb8befdc17957"
+        ),
+        "sourceNotifyOrdinal": 15,
+        "intensity": 0.08,
+        "secondaryIntensity": 0.02,
+        "frequency": 1.0,
+        "tint": (1.0, 1.0, 1.0, 1.0),
+        "randomSeed": 42060925,
+    },
+    {
+        "elementId": "occurrence.14794cdb89c73ee33f1dead3",
+        "groupId": "fx_post.fx_par.par_c_zoomblur_03",
+        "sourceNode": (
+            "fx_post.fx_par.par_c_zoomblur_03|"
+            "FX_POST.fx_par.par_c_zoomblur_03.particlespriteemitter_0|"
+            "occurrence.14794cdb89c73ee33f1dead3"
+        ),
+        "sourceMaterialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+        "sourceObjectPath": (
+            "FX_POST.fx_par.par_c_zoomblur_03.particlespriteemitter_0"
+        ),
+        "sourceActionCueId": "action-420609/stage-008/notify-026",
+        "sourceOccurrenceFullKey": (
+            "occurrence-key.14794cdb89c73ee33f1dead3"
+            "a920092369cde4326f3d0b29a41c484ff99e6cb6"
+        ),
+        "sourceNotifyOrdinal": 16,
+        "intensity": 0.0,
+        "secondaryIntensity": 0.0,
+        "frequency": 0.0,
+        "tint": (1.0, 1.0, 1.0, 1.0),
+        "randomSeed": 42060926,
+    },
+)
+FOUR_SLASH_OWNER_TRANSFERS = (
+    {
+        "sourceStageOrdinal": 8,
+        "retiredBindingId": "cue.valtan.four-slash.active",
+        "replacementBindingId": (
+            "cue.valtan.carrier-v1.attack.four-slash.active.clip-01"
+        ),
+        "occurrenceId": (
+            "cue.valtan.carrier-v1.attack.four-slash.active.clip-01.occurrence.01"
+        ),
+        "effectAssetId": (
+            "effect.valtan.carrier-v1.attack.four-slash.active.clip-01"
+        ),
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+        "oldOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "stageId": "SLASHES",
+            "actionId": "valtan.attack.four-slash.active",
+        },
+        "newOwner": {
+            "patternId": "VALTAN_TRIPLE_SLASH",
+            "stageId": "SLASHES",
+            "actionId": "valtan.attack.triple-slash.active",
+        },
+    },
+    {
+        "sourceStageOrdinal": 9,
+        "retiredBindingId": "cue.valtan.four-slash.active.clip-02",
+        "replacementBindingId": (
+            "cue.valtan.carrier-v1.attack.four-slash.active.clip-02"
+        ),
+        "occurrenceId": (
+            "cue.valtan.carrier-v1.attack.four-slash.active.clip-02.occurrence.01"
+        ),
+        "effectAssetId": (
+            "effect.valtan.carrier-v1.attack.four-slash.active.clip-02"
+        ),
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+        "oldOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "stageId": "SLASHES",
+            "actionId": "valtan.attack.four-slash.active",
+        },
+        "newOwner": {
+            "patternId": "VALTAN_ROTATION_SLASH",
+            "stageId": "SPIN",
+            "actionId": "valtan.attack.rotation-slash.active",
+        },
+    },
+    {
+        "sourceStageOrdinal": 10,
+        "retiredBindingId": "cue.valtan.four-slash.recovery",
+        "replacementBindingId": (
+            "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01"
+        ),
+        "occurrenceId": (
+            "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01"
+        ),
+        "effectAssetId": (
+            "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01"
+        ),
+        "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
+        "oldOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "stageId": "RECOVERY",
+            "actionId": "valtan.attack.four-slash.recovery",
+        },
+        "newOwner": {
+            "patternId": "VALTAN_ROTATION_SLASH",
+            "stageId": "RECOVERY",
+            "actionId": "valtan.attack.four-slash.recovery",
+        },
+    },
+)
 RETIRED_BASELINE_CUES = (
     {
         "bindingId": "cue.valtan.front-back-front.windup",
@@ -158,6 +348,295 @@ def canonical_sha256(value: Any) -> str:
             + "\n"
         ).encode("utf-8")
     )
+
+
+def float32_bits(value: Any) -> str | None:
+    """Return the runtime ABI float bits, independent of JSON spelling."""
+
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        runtime_value = struct.unpack("<f", struct.pack("<f", float(value)))[0]
+    except (OverflowError, struct.error, ValueError):
+        return None
+    if not math.isfinite(runtime_value):
+        return None
+    return struct.pack("<f", runtime_value).hex()
+
+
+def same_float32(actual: Any, expected: Any) -> bool:
+    expected_bits = float32_bits(expected)
+    return expected_bits is not None and float32_bits(actual) == expected_bits
+
+
+def same_float32_sequence(actual: Any, expected: Any) -> bool:
+    return (
+        isinstance(actual, list)
+        and len(actual) == len(expected)
+        and all(
+            same_float32(actual_value, expected_value)
+            for actual_value, expected_value in zip(
+                actual, expected, strict=True
+            )
+        )
+    )
+
+
+def source_parameter(
+    source: dict[str, Any], name: str
+) -> dict[str, Any] | None:
+    parameters = source.get("parameters")
+    if not isinstance(parameters, list):
+        return None
+    matches = [
+        row
+        for row in parameters
+        if isinstance(row, dict) and row.get("name") == name
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def expected_four_slash_owner_reseal_proof() -> dict[str, Any]:
+    return {
+        "schema": FOUR_SLASH_OWNER_RESEAL_SCHEMA,
+        "formatVersion": 1,
+        "sourceActionId": FOUR_SLASH_SOURCE_ACTION_ID,
+        "sourceBranchId": FOUR_SLASH_SOURCE_BRANCH_ID,
+        "sourceSequenceCanonicalSha256": (
+            FOUR_SLASH_SOURCE_SEQUENCE_CANONICAL_SHA256
+        ),
+        "oldCueCanonicalSha256": FOUR_SLASH_OLD_CUE_CANONICAL_SHA256,
+        "newCueCanonicalSha256": FOUR_SLASH_NEW_CUE_CANONICAL_SHA256,
+        "ownerTransfers": copy.deepcopy(list(FOUR_SLASH_OWNER_TRANSFERS)),
+    }
+
+
+def expected_four_slash_clip01_screen_post_overlay() -> dict[str, Any]:
+    return {
+        "schema": FOUR_SLASH_CLIP01_SCREEN_POST_OVERLAY_SCHEMA,
+        "formatVersion": 1,
+        "effectAssetId": FOUR_SLASH_CLIP01_EFFECT_ID,
+        "path": FOUR_SLASH_CLIP01_DOCUMENT_REPOSITORY_PATH,
+        "policy": (
+            "APPEND_ONLY_TYPED_SCREEN_POST_SUCCESSOR; "
+            "MATERIALIZER_TARGET_REMAINS_HISTORICAL_PREIMAGE"
+        ),
+        "materializerPreimage": {
+            "elementCount": FOUR_SLASH_CLIP01_BASE_ELEMENT_COUNT,
+            "canonicalSha256": FOUR_SLASH_CLIP01_BASE_CANONICAL_SHA256,
+        },
+        "appendedElements": copy.deepcopy(
+            list(FOUR_SLASH_CLIP01_SCREEN_POST_ELEMENTS)
+        ),
+        "finalDocument": {
+            "elementCount": FOUR_SLASH_CLIP01_FINAL_ELEMENT_COUNT,
+            "canonicalSha256": FOUR_SLASH_CLIP01_FINAL_CANONICAL_SHA256,
+        },
+    }
+
+
+def validate_four_slash_clip01_screen_post_overlay(
+    carrier_receipt: dict[str, Any],
+    document: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    proof = carrier_receipt.get("clip01ScreenPostSuccessorOverlay")
+    if proof != expected_four_slash_clip01_screen_post_overlay():
+        raise MigrationError(
+            "Carrier V1 clip-01 ScreenPost successor proof drifted."
+        )
+
+    target_rows = (carrier_receipt.get("outputs") or {}).get(
+        "targetDocuments"
+    )
+    if not isinstance(target_rows, list):
+        raise MigrationError("Carrier V1 target document ledger is invalid.")
+    matching_targets = [
+        row
+        for row in target_rows
+        if isinstance(row, dict)
+        and row.get("effectAssetId") == FOUR_SLASH_CLIP01_EFFECT_ID
+    ]
+    expected_preimage = {
+        "effectAssetId": FOUR_SLASH_CLIP01_EFFECT_ID,
+        "path": FOUR_SLASH_CLIP01_DOCUMENT_REPOSITORY_PATH,
+        "elementCount": FOUR_SLASH_CLIP01_BASE_ELEMENT_COUNT,
+        "canonicalSha256": FOUR_SLASH_CLIP01_BASE_CANONICAL_SHA256,
+    }
+    if matching_targets != [expected_preimage]:
+        raise MigrationError(
+            "Carrier V1 clip-01 materializer preimage seal drifted."
+        )
+
+    if document is None:
+        document = read_json(FOUR_SLASH_CLIP01_DOCUMENT_PATH)
+    if (
+        document.get("effectAssetId") != FOUR_SLASH_CLIP01_EFFECT_ID
+        or not isinstance(document.get("elements"), list)
+    ):
+        raise MigrationError("Carrier V1 clip-01 authored document is invalid.")
+    # The receipt's finalDocument seal records the exact 12-row materializer
+    # preimage plus the two rows at the moment this successor was created.  It
+    # is historical provenance, not a lock on later Effect Tool authoring.
+    # Users may hide, delete, tune or add non-ScreenPost rows.  Seal only the
+    # two typed ScreenPost rows so those edits cannot silently remove or mutate
+    # the Valtan presentation contract.
+    elements = document["elements"]
+    protected_ids = {
+        row["elementId"] for row in FOUR_SLASH_CLIP01_SCREEN_POST_ELEMENTS
+    }
+    screen_post_projection = [
+        element
+        for element in elements
+        if isinstance(element, dict) and element.get("id") in protected_ids
+    ]
+    try:
+        serialized_elements = json.dumps(
+            elements, sort_keys=True, allow_nan=False
+        )
+    except (TypeError, ValueError) as error:
+        raise MigrationError(
+            "Carrier V1 clip-01 authored elements are not canonical JSON."
+        ) from error
+    if (
+        FOUR_SLASH_CLIP02_SCREEN_POST_OCCURRENCE_ID in serialized_elements
+        or FOUR_SLASH_CLIP02_SCREEN_POST_FULL_KEY in serialized_elements
+    ):
+        raise MigrationError(
+            "Carrier V1 clip-02 ScreenPost occurrence contaminated clip-01."
+        )
+    expected_ids = tuple(
+        row["elementId"] for row in FOUR_SLASH_CLIP01_SCREEN_POST_ELEMENTS
+    )
+    if tuple(row.get("id") for row in screen_post_projection) != expected_ids:
+        raise MigrationError(
+            "Carrier V1 clip-01 ScreenPost protected identity/order drifted."
+        )
+    for element, expected, runtime in zip(
+        screen_post_projection,
+        FOUR_SLASH_CLIP01_SCREEN_POST_ELEMENTS,
+        FOUR_SLASH_CLIP01_SCREEN_POST_RUNTIME_CONTRACTS,
+        strict=True,
+    ):
+        detail = element.get("detail") or {}
+        timing = detail.get("timing") or {}
+        screen_post = detail.get("screenPost") or {}
+        source = element.get("sourcePresentation") or {}
+        material = element.get("material") or {}
+        source_system = source_parameter(source, "sourceSystemId") or {}
+        source_occurrence = source_parameter(source, "sourceOccurrenceId") or {}
+        source_full_key = source_parameter(
+            source, "sourceOccurrenceFullKey"
+        ) or {}
+        source_clip = source_parameter(
+            source, "sourceClipOccurrenceId"
+        ) or {}
+        source_notify = source_parameter(source, "sourceNotifyOrdinal") or {}
+        if (
+            element.get("id") != expected["elementId"]
+            or element.get("id") != runtime["elementId"]
+            or element.get("displayName") != expected["displayName"]
+            or element.get("groupId") != runtime["groupId"]
+            or element.get("sourceNode") != runtime["sourceNode"]
+            or element.get("visible") is not True
+            or element.get("kind") != "screenPost"
+            or element.get("resources") != []
+            or material.get("templateId") != "effect.standard"
+            or material.get("sourceMaterialPath")
+            != runtime["sourceMaterialPath"]
+            or material.get("renderProfile")
+            != "alpha_two_sided_depth_read"
+            or source.get("enabled") is not True
+            or source.get("schema")
+            != "lostark.effect-source-presentation"
+            or source.get("version") != 1
+            or source.get("status") != "reconstructed"
+            or source.get("sourceEventId") != expected["elementId"]
+            or source.get("profileId") != expected["profileId"]
+            or source.get("sourceObjectPath")
+            != runtime["sourceObjectPath"]
+            or source.get("sourceActionCueId")
+            != runtime["sourceActionCueId"]
+            or source.get("sourceOccurrenceIndex") != 0
+            or not same_float32(
+                source.get("sourceTimeSeconds"),
+                expected["sourceTimeSeconds"],
+            )
+            or source_system.get("type") != "string"
+            or source_system.get("status") != "source_explicit"
+            or source_system.get("stringValue") != runtime["groupId"]
+            or source_occurrence.get("type") != "string"
+            or source_occurrence.get("status") != "source_explicit"
+            or source_occurrence.get("stringValue")
+            != expected["elementId"]
+            or source_full_key.get("type") != "string"
+            or source_full_key.get("status") != "source_explicit"
+            or source_full_key.get("stringValue")
+            != runtime["sourceOccurrenceFullKey"]
+            or source_clip.get("type") != "string"
+            or source_clip.get("status") != "source_explicit"
+            or source_clip.get("stringValue")
+            != "valtan.attack.four-slash.active.clip.01"
+            or source_notify.get("type") != "number"
+            or source_notify.get("status") != "source_explicit"
+            or not same_float32(
+                source_notify.get("numberValue"),
+                runtime["sourceNotifyOrdinal"],
+            )
+            or not same_float32(
+                timing.get("startDelaySeconds"),
+                expected["sourceTimeSeconds"],
+            )
+            or not same_float32(
+                timing.get("lifeTimeSeconds"),
+                expected["lifeTimeSeconds"],
+            )
+            or not same_float32(timing.get("afterImageSeconds"), 0.0)
+            or not same_float32(
+                timing.get("dissolveStartNormalized"), 1.0
+            )
+            or screen_post.get("enabled") is not True
+            or screen_post.get("profileId") != expected["profileId"]
+            or screen_post.get("status") != "reconstructed_profile"
+            or not same_float32(
+                screen_post.get("intensity"), runtime["intensity"]
+            )
+            or not same_float32(
+                screen_post.get("secondaryIntensity"),
+                runtime["secondaryIntensity"],
+            )
+            or not same_float32(
+                screen_post.get("frequency"), runtime["frequency"]
+            )
+            or not same_float32_sequence(
+                screen_post.get("tint"), runtime["tint"]
+            )
+            or type(screen_post.get("randomSeed")) is not int
+            or screen_post.get("randomSeed") != runtime["randomSeed"]
+        ):
+            raise MigrationError(
+                "Carrier V1 clip-01 ScreenPost runtime/identity drifted: "
+                f"{expected['elementId']}"
+            )
+    return proof
+
+
+def validate_four_slash_owner_reseal_proof(
+    carrier_receipt: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    proof = carrier_receipt.get("fourSlashPatternSplitOwnerReseal")
+    if proof != expected_four_slash_owner_reseal_proof():
+        raise MigrationError(
+            "Carrier V1 four-slash owner reseal proof drifted."
+        )
+    transfers = proof["ownerTransfers"]
+    by_replacement = {
+        row["replacementBindingId"]: row for row in transfers
+    }
+    if len(by_replacement) != len(FOUR_SLASH_OWNER_TRANSFERS):
+        raise MigrationError(
+            "Carrier V1 four-slash owner transfer identity is duplicated."
+        )
+    return by_replacement
 
 
 def require_token(value: Any, label: str) -> str:
@@ -498,6 +977,9 @@ def build_carrier_v1_successor_contract(
         or carrier_receipt.get("bossArchetypeId") != "BOSS_VALTAN"
     ):
         raise MigrationError("Carrier V1 materialization receipt is invalid.")
+    screen_post_overlay = validate_four_slash_clip01_screen_post_overlay(
+        carrier_receipt
+    )
     if (
         cues.get("schema") != "lostark.valtan-pattern-effect-cues"
         or cues.get("formatVersion") != 2
@@ -538,12 +1020,19 @@ def build_carrier_v1_successor_contract(
     outputs = carrier_receipt.get("outputs")
     cue_output = (outputs or {}).get("cues")
     current_cue_sha256 = canonical_sha256(cues)
+    transfers_by_replacement = validate_four_slash_owner_reseal_proof(
+        carrier_receipt
+    )
+    owner_reseal_proof = carrier_receipt[
+        "fourSlashPatternSplitOwnerReseal"
+    ]
     if (
         not isinstance(cue_output, dict)
         or cue_output.get("path")
         != "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
         or cue_output.get("cueCount") != EXPECTED_CARRIER_V1_CUE_COUNT
         or cue_output.get("canonicalSha256") != current_cue_sha256
+        or current_cue_sha256 != FOUR_SLASH_NEW_CUE_CANONICAL_SHA256
     ):
         raise MigrationError("Carrier V1 current cue canonical hash drifted.")
     if (
@@ -657,6 +1146,44 @@ def build_carrier_v1_successor_contract(
     ):
         raise MigrationError("Carrier V1 successor disposition counts drifted.")
 
+    transfers_by_retired = {
+        row["retiredBindingId"]: row
+        for row in transfers_by_replacement.values()
+    }
+    if len(transfers_by_retired) != len(FOUR_SLASH_OWNER_TRANSFERS):
+        raise MigrationError(
+            "Carrier V1 four-slash retired owner identity is duplicated."
+        )
+    owner_fields = ("patternId", "stageId", "actionId")
+    for replacement_id, transfer in transfers_by_replacement.items():
+        retired_id = transfer["retiredBindingId"]
+        mapping = mappings_by_retired.get(retired_id)
+        current = current_by_binding.get(replacement_id)
+        if (
+            not isinstance(mapping, dict)
+            or not isinstance(current, dict)
+            or mapping.get("disposition")
+            != "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER"
+            or mapping.get("replacementBindingId") != replacement_id
+            or mapping.get("replacementEffectAssetId")
+            != transfer["effectAssetId"]
+            or mapping.get("clipOccurrenceId")
+            != transfer["clipOccurrenceId"]
+            or current.get("occurrenceId") != transfer["occurrenceId"]
+            or current.get("effectAssetId") != transfer["effectAssetId"]
+            or current.get("clipOccurrenceId")
+            != transfer["clipOccurrenceId"]
+            or any(
+                mapping.get(field) != transfer["newOwner"][field]
+                or current.get(field) != transfer["newOwner"][field]
+                for field in owner_fields
+            )
+        ):
+            raise MigrationError(
+                "Carrier V1 four-slash successor proof is not joined: "
+                f"{replacement_id}"
+            )
+
     clip_groups = carrier_receipt.get("clipGroups")
     if not isinstance(clip_groups, list) or len(clip_groups) != 44:
         raise MigrationError("Carrier V1 clip owner denominator drifted.")
@@ -749,16 +1276,24 @@ def build_carrier_v1_successor_contract(
     for binding_id in carrier_retired_baseline_ids:
         baseline = baseline_by_binding[binding_id]
         mapping = mappings_by_retired[binding_id]
-        if any(
-            mapping.get(mapping_field) != baseline.get(baseline_field)
-            for mapping_field, baseline_field in (
-                ("patternId", "patternId"),
-                ("stageId", "stageId"),
-                ("actionId", "actionId"),
-                ("clipOccurrenceId", "clipOccurrenceId"),
-                ("retiredEffectAssetId", "effectAssetId"),
+        transfer = transfers_by_retired.get(binding_id)
+        retired_owner = transfer["oldOwner"] if transfer else mapping
+        if (
+            any(
+                retired_owner.get(field) != baseline.get(field)
+                for field in owner_fields
             )
-        ) or mapping.get("retiredBindingId") != binding_id:
+            or mapping.get("clipOccurrenceId")
+            != baseline.get("clipOccurrenceId")
+            or mapping.get("retiredEffectAssetId")
+            != baseline.get("effectAssetId")
+            or mapping.get("retiredBindingId") != binding_id
+            or (
+                transfer is not None
+                and transfer.get("clipOccurrenceId")
+                != baseline.get("clipOccurrenceId")
+            )
+        ):
             raise MigrationError(
                 f"Carrier V1 retired baseline cue is rebound: {binding_id}"
             )
@@ -825,7 +1360,27 @@ def build_carrier_v1_successor_contract(
     return {
         "carrierReceiptPath": CARRIER_V1_RECEIPT_REPOSITORY_PATH,
         "carrierReceiptCanonicalSha256": canonical_sha256(carrier_receipt),
+        "clip01ScreenPostOverlayProofCanonicalSha256": canonical_sha256(
+            screen_post_overlay
+        ),
+        "clip01ScreenPostFinalDocumentCanonicalSha256": (
+            FOUR_SLASH_CLIP01_FINAL_CANONICAL_SHA256
+        ),
         "currentCueCanonicalSha256": current_cue_sha256,
+        "fourSlashOwnerResealProofCanonicalSha256": canonical_sha256(
+            owner_reseal_proof
+        ),
+        "fourSlashOwnerTransferCount": len(transfers_by_replacement),
+        "fourSlashSourceBranchId": FOUR_SLASH_SOURCE_BRANCH_ID,
+        "fourSlashSourceSequenceCanonicalSha256": (
+            FOUR_SLASH_SOURCE_SEQUENCE_CANONICAL_SHA256
+        ),
+        "fourSlashOldCueCanonicalSha256": (
+            FOUR_SLASH_OLD_CUE_CANONICAL_SHA256
+        ),
+        "fourSlashNewCueCanonicalSha256": (
+            FOUR_SLASH_NEW_CUE_CANONICAL_SHA256
+        ),
         "currentCueCount": len(cue_rows),
         "retiredCueCount": len(mappings),
         "replacementMappingCount": len(replacement_mappings),
@@ -885,6 +1440,19 @@ def check_receipt(
         for row in bindings.get("bindings", [])
         if isinstance(row, dict)
     }
+    moved_active_transfers = sorted(
+        (
+            row
+            for row in FOUR_SLASH_OWNER_TRANSFERS
+            if row["oldOwner"]["actionId"]
+            == "valtan.attack.four-slash.active"
+            and row["newOwner"]["actionId"]
+            != row["oldOwner"]["actionId"]
+        ),
+        key=lambda row: row["sourceStageOrdinal"],
+    )
+    if len(moved_active_transfers) != 2:
+        raise MigrationError("Four-slash active split proof denominator drifted.")
     baseline_clip_count = 0
     for baseline in baseline_bindings:
         if not isinstance(baseline, dict):
@@ -892,7 +1460,47 @@ def check_receipt(
         action_id = baseline.get("actionId")
         current = current_bindings.get(action_id)
         baseline_clips = baseline.get("clips")
-        if not isinstance(current, dict) or not isinstance(baseline_clips, list):
+        if not isinstance(baseline_clips, list):
+            raise MigrationError(
+                f"Migrated binding identity was removed: {action_id}"
+            )
+        if action_id == "valtan.attack.four-slash.active":
+            expected_occurrences = [
+                row["clipOccurrenceId"] for row in moved_active_transfers
+            ]
+            if current is not None or [
+                row.get("clipOccurrenceId")
+                for row in baseline_clips
+                if isinstance(row, dict)
+            ] != expected_occurrences:
+                raise MigrationError(
+                    "Four-slash active baseline did not split by exact proof."
+                )
+            for baseline_clip, transfer in zip(
+                baseline_clips, moved_active_transfers, strict=True
+            ):
+                target_action = transfer["newOwner"]["actionId"]
+                target = current_bindings.get(target_action)
+                target_clips = (
+                    target.get("clips") if isinstance(target, dict) else None
+                )
+                if (
+                    not isinstance(baseline_clip, dict)
+                    or not isinstance(target_clips, list)
+                    or len(target_clips) != 1
+                    or target_clips[0].get("clipOccurrenceId")
+                    != transfer["clipOccurrenceId"]
+                    or target_clips[0].get("clip")
+                    != baseline_clip.get("clip")
+                    or target_clips[0].get("loop") is not False
+                ):
+                    raise MigrationError(
+                        "Four-slash active clip split is missing or rebound: "
+                        f"{transfer['clipOccurrenceId']}"
+                    )
+                baseline_clip_count += 1
+            continue
+        if not isinstance(current, dict):
             raise MigrationError(
                 f"Migrated binding identity was removed: {action_id}"
             )

@@ -266,6 +266,8 @@ void CValtan::Load_PatternHitAreaDebug()
 			area.fHalfWidth = stage.fHitHalfWidth;
 			area.iHitCount = stage.iHitCount;
 			area.iHitIntervalMs = stage.iHitIntervalMs;
+			area.iHitDelayMs = stage.iHitDelayMs;
+			area.HitOffsetsMs = stage.hitOffsetsMs;
 			m_PatternHitAreaByActionId.emplace(
 				stage.actionId, std::move(area));
 		}
@@ -286,17 +288,20 @@ void CValtan::Draw_PatternHitAreaDebug() const
 		return;
 	const PATTERN_HIT_AREA_DEBUG& area = iter->second;
 
-	/* The server applies hit k when the stage age crosses k * hitIntervalMs;
-	   mirror each of those instants with the same minimum visible window the
-	   player skill hit debug uses. */
+	/* Mirror the Server schedule exactly. Non-uniform source contacts own an
+	   ordered stage-relative offset vector; an empty vector retains the legacy
+	   delay + k * interval schedule. */
 	constexpr f32_t MIN_VISIBLE_HIT_WINDOW_MS = 300.f;
 	const f32_t fAgeMs = (isPreviewDriven ?
 		m_fPreviewHitAgeSeconds : m_fServerActionAgeSeconds) * 1000.f;
 	bool_t isHitWindow = false;
 	for (uint32_t iTick = 0u; iTick < area.iHitCount; ++iTick)
 	{
-		const f32_t fTickMs =
-			static_cast<f32_t>(iTick * area.iHitIntervalMs);
+		const uint64_t iTickMs = area.HitOffsetsMs.empty() ?
+			static_cast<uint64_t>(area.iHitDelayMs) +
+				static_cast<uint64_t>(iTick) * area.iHitIntervalMs :
+			area.HitOffsetsMs[iTick];
+		const f32_t fTickMs = static_cast<f32_t>(iTickMs);
 		if (fAgeMs >= fTickMs && fAgeMs <= fTickMs + MIN_VISIBLE_HIT_WINDOW_MS)
 		{
 			isHitWindow = true;

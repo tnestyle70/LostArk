@@ -46,6 +46,36 @@ class ValtanActionBindingBuilderTests(unittest.TestCase):
         self.assertEqual(len(occurrence_ids), len(set(occurrence_ids)))
         self.assertIn("valtan.attack.swing.active.clip.02", occurrence_ids)
         self.assertEqual(receipt["summary"]["authoredStageCount"], 137)
+        patterns = {row["patternId"]: row for row in document["patterns"]}
+        self.assertNotIn("VALTAN_FOUR_SLASH", patterns)
+        self.assertEqual(
+            {
+                "valtan.attack.four-slash.windup.clip.01",
+                "valtan.attack.four-slash.active.clip.01",
+            },
+            {
+                row["clipOccurrenceId"]
+                for row in patterns["VALTAN_TRIPLE_SLASH"]["stages"]
+            },
+        )
+        self.assertEqual(
+            {
+                "valtan.attack.four-slash.active.clip.02",
+                "valtan.attack.four-slash.recovery.clip.01",
+            },
+            {
+                row["clipOccurrenceId"]
+                for row in patterns["VALTAN_ROTATION_SLASH"]["stages"]
+            },
+        )
+
+    def test_split_projection_cannot_overwrite_historical_sealed_output(self) -> None:
+        document, receipt = bindings.build_document()
+        with self.assertRaisesRegex(
+            bindings.BindingError,
+            "sealed historical Valtan action bindings differ",
+        ):
+            bindings.assert_sealed_outputs_unchanged(document, receipt)
 
     def test_v2_rejects_non_final_loop_bad_rate_and_bad_basis(self) -> None:
         base = {

@@ -33,7 +33,7 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
                 self.cues,
                 require_migration_denominator=False,
             ),
-            (130, 137, 44),
+            (131, 137, 44),
         )
         self.assertEqual(99, self.receipt["outputs"]["cueOccurrenceCount"])
         self.assertEqual(
@@ -72,7 +72,7 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
                 self.cues,
                 require_migration_denominator=False,
             ),
-            (131, 138, 44),
+            (132, 138, 44),
         )
         MIGRATION.check_receipt(
             self.receipt,
@@ -251,6 +251,75 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
         self.assertEqual(57, contract["retiredWithoutSuccessorCount"])
         self.assertEqual(96, contract["carrierRetiredBaselineCueCount"])
         self.assertEqual(1, contract["survivingBaselineCueCount"])
+        self.assertEqual(3, contract["fourSlashOwnerTransferCount"])
+        self.assertEqual(
+            MIGRATION.FOUR_SLASH_SOURCE_BRANCH_ID,
+            contract["fourSlashSourceBranchId"],
+        )
+        self.assertEqual(
+            MIGRATION.FOUR_SLASH_OLD_CUE_CANONICAL_SHA256,
+            contract["fourSlashOldCueCanonicalSha256"],
+        )
+        self.assertEqual(
+            MIGRATION.FOUR_SLASH_NEW_CUE_CANONICAL_SHA256,
+            contract["fourSlashNewCueCanonicalSha256"],
+        )
+
+    def test_only_the_three_exact_owner_transfers_are_admitted(self) -> None:
+        carrier_receipt = copy.deepcopy(self.carrier_receipt)
+        carrier_receipt["fourSlashPatternSplitOwnerReseal"][
+            "sourceSequenceCanonicalSha256"
+        ] = "0" * 64
+        with self.assertRaisesRegex(
+            MIGRATION.MigrationError,
+            "owner reseal proof drifted",
+        ):
+            MIGRATION.build_carrier_v1_successor_contract(
+                carrier_receipt,
+                self.cues,
+                self.receipt["baselineIdentity"]["cues"],
+            )
+
+        carrier_receipt = copy.deepcopy(self.carrier_receipt)
+        unapproved = next(
+            row
+            for row in carrier_receipt["retiredOwnerSuccessorMappings"]
+            if row["replacementBindingId"] is not None
+            and row["replacementBindingId"]
+            not in {
+                transfer["replacementBindingId"]
+                for transfer in MIGRATION.FOUR_SLASH_OWNER_TRANSFERS
+            }
+        )
+        unapproved["patternId"] = "VALTAN_ROTATION_SLASH"
+        with self.assertRaisesRegex(
+            MIGRATION.MigrationError,
+            "successor cue is missing or rebound",
+        ):
+            MIGRATION.build_carrier_v1_successor_contract(
+                carrier_receipt,
+                self.cues,
+                self.receipt["baselineIdentity"]["cues"],
+            )
+
+    def test_split_binding_owner_and_loop_are_exact(self) -> None:
+        bindings = copy.deepcopy(self.bindings)
+        triple = next(
+            row
+            for row in bindings["bindings"]
+            if row["actionId"] == "valtan.attack.triple-slash.active"
+        )
+        triple["clips"][0]["loop"] = True
+        with self.assertRaisesRegex(
+            MIGRATION.MigrationError,
+            "clip split is missing or rebound",
+        ):
+            MIGRATION.check_receipt(
+                self.receipt,
+                bindings,
+                self.cues,
+                self.carrier_receipt,
+            )
 
 
 if __name__ == "__main__":

@@ -107,6 +107,10 @@ struct VALTAN_STAGE_VIEW final
 	f32_t fHitHalfWidth = 0.f;
 	uint32_t iHitCount = 0u;
 	uint32_t iHitIntervalMs = 0u;
+	uint32_t iHitDelayMs = 0u;
+	/* Ordered stage-relative contacts. Empty means the authored stage uses
+	   iHitDelayMs + k * iHitIntervalMs. */
+	std::vector<uint32_t> HitOffsetsMs;
 	std::string strServerDamageProfileId;
 
 	/* Product authoring uses stable ordered occurrences.  The legacy name
