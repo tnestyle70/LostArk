@@ -6,17 +6,20 @@
     {
       "programId": "effect.program.runtime-material-v2.opcode-6.v1",
       "backend": "runtimeMaterialV2",
-      "opcode": 6
+      "opcode": 6,
+      "fidelity": "SOURCE_EXACT"
     },
     {
       "programId": "effect.program.runtime-material-v2.opcode-3.v1",
       "backend": "runtimeMaterialV2",
-      "opcode": 3
+      "opcode": 3,
+      "fidelity": "SOURCE_EXACT"
     },
     {
       "programId": "effect.program.local-decal.opcode-14.v1",
       "backend": "localDecal",
-      "opcode": 14
+      "opcode": 14,
+      "fidelity": "SOURCE_EXACT"
     }
   ],
   "layouts": [

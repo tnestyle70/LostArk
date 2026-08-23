@@ -858,14 +858,29 @@
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.v1.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.v1.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.v1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01",
@@ -908,6 +923,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.effect.json"
@@ -921,6 +941,11 @@
       "effectAssetId": "effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
@@ -956,6 +981,11 @@
       "effectAssetId": "effect.valtan.pattern.420633.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.pattern.420633.active.v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.pattern.420633.active.v1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.red-blade-wave.active",

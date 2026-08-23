@@ -30,6 +30,10 @@ struct VALTAN_PATTERN_EFFECT_CUE final
 	std::string strActionId;
 	std::string strClipOccurrenceId;
 	std::string strEffectAssetId;
+	/* Optional parallel Material V1 audition target.  Product timing and
+	   attachment continue to come from this cue; only the Effect asset selected
+	   by the Debug audition switch changes. */
+	std::string strV1EffectAssetId;
 	std::string strAnchorSlotId = "root";
 	EFFECT_TRANSFORM_DESC LocalTransform{};
 	EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
@@ -63,6 +67,7 @@ class CValtanPatternEffectCueDocument final
 {
 public:
 	static std::filesystem::path Resolve_Path();
+	static std::filesystem::path Resolve_V1AliasPath();
 	static bool_t Parse_Text(
 		std::string_view Text,
 		const CEncounterPatternReference& Encounter,

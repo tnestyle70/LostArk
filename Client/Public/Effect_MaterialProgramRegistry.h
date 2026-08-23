@@ -47,6 +47,38 @@ inline constexpr std::string_view
 	EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_TWO_SIDED_ADAPTER_ID =
 		"effect.adapter.local-decal.projector.scene-color-rt0."
 		"zero-distortion-rt1.alpha-two-sided.v1";
+inline constexpr std::string_view
+	EFFECT_PROJECT_TUNED_SPRITE_ALPHA_TWO_SIDED_ADAPTER_ID =
+		"effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1."
+		"project-tuned-alpha-two-sided.v1";
+inline constexpr std::string_view
+	EFFECT_PROJECT_TUNED_SPRITE_ADDITIVE_TWO_SIDED_ADAPTER_ID =
+		"effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1."
+		"project-tuned-additive-two-sided.v1";
+inline constexpr std::string_view
+	EFFECT_PROJECT_TUNED_SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID =
+		"effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1."
+		"project-tuned-alpha-one-sided.v1";
+inline constexpr std::string_view
+	EFFECT_PROJECT_TUNED_SPRITE_ADDITIVE_ONE_SIDED_ADAPTER_ID =
+		"effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1."
+		"project-tuned-additive-one-sided.v1";
+inline constexpr std::string_view
+	EFFECT_PROJECT_TUNED_MESH_ALPHA_TWO_SIDED_ADAPTER_ID =
+		"effect.adapter.mesh-particle.cmodel.scene-color-rt0."
+		"zero-distortion-rt1.project-tuned-alpha-two-sided.v1";
+inline constexpr std::string_view
+	EFFECT_PROJECT_TUNED_MESH_ADDITIVE_TWO_SIDED_ADAPTER_ID =
+		"effect.adapter.mesh-particle.cmodel.scene-color-rt0."
+		"zero-distortion-rt1.project-tuned-additive-two-sided.v1";
+inline constexpr std::string_view
+	EFFECT_PROJECT_TUNED_MESH_ALPHA_ONE_SIDED_ADAPTER_ID =
+		"effect.adapter.mesh-particle.cmodel.scene-color-rt0."
+		"zero-distortion-rt1.project-tuned-alpha-one-sided.v1";
+inline constexpr std::string_view
+	EFFECT_PROJECT_TUNED_MESH_ADDITIVE_ONE_SIDED_ADAPTER_ID =
+		"effect.adapter.mesh-particle.cmodel.scene-color-rt0."
+		"zero-distortion-rt1.project-tuned-additive-one-sided.v1";
 
 enum class EFFECT_COMPILED_MATERIAL_ADAPTER_ID : uint8_t
 {
@@ -58,6 +90,14 @@ enum class EFFECT_COMPILED_MATERIAL_ADAPTER_ID : uint8_t
 	SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ADDITIVE_ONE_SIDED_V1,
 	MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1,
 	LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1,
+	PROJECT_TUNED_SPRITE_PARTICLE_ALPHA_TWO_SIDED_V1,
+	PROJECT_TUNED_SPRITE_PARTICLE_ADDITIVE_TWO_SIDED_V1,
+	PROJECT_TUNED_SPRITE_PARTICLE_ALPHA_ONE_SIDED_V1,
+	PROJECT_TUNED_SPRITE_PARTICLE_ADDITIVE_ONE_SIDED_V1,
+	PROJECT_TUNED_MESH_PARTICLE_ALPHA_TWO_SIDED_V1,
+	PROJECT_TUNED_MESH_PARTICLE_ADDITIVE_TWO_SIDED_V1,
+	PROJECT_TUNED_MESH_PARTICLE_ALPHA_ONE_SIDED_V1,
+	PROJECT_TUNED_MESH_PARTICLE_ADDITIVE_ONE_SIDED_V1,
 	END,
 };
 

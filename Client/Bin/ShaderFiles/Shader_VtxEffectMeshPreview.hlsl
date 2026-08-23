@@ -84,6 +84,15 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==
+                RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_SRGB ||
+            g_RuntimeMaterialV2Opcode ==
+                RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_LINEAR)
+        {
+            return Shade_EffectProjectTunedBaseCoverage(
+                input.uv, input.uv, 0.f,
+                float4(1.f, 1.f, 1.f, 1.f));
+        }
+        if (g_RuntimeMaterialV2Opcode ==
             RUNTIME_MATERIAL_V2_ACTIVE011_OUTER_MESH)
         {
             return Shade_Artist31470Active011OuterMaterial(

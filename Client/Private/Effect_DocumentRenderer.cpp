@@ -136,6 +136,54 @@ namespace
 				"Shader_VtxEffectDecal.hlsl", "VTXTEX",
 				PROFILE::ALPHA_TWO_SIDED_DEPTH_READ);
 			break;
+		case ADAPTER_ID::PROJECT_TUNED_SPRITE_PARTICLE_ALPHA_TWO_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::SPRITE_PARTICLE,
+				Client::EFFECT_PROJECT_TUNED_SPRITE_ALPHA_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				PROFILE::ALPHA_TWO_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::PROJECT_TUNED_SPRITE_PARTICLE_ADDITIVE_TWO_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::SPRITE_PARTICLE,
+				Client::EFFECT_PROJECT_TUNED_SPRITE_ADDITIVE_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::PROJECT_TUNED_SPRITE_PARTICLE_ALPHA_ONE_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::SPRITE_PARTICLE,
+				Client::EFFECT_PROJECT_TUNED_SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				PROFILE::ALPHA_ONE_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::PROJECT_TUNED_SPRITE_PARTICLE_ADDITIVE_ONE_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::SPRITE_PARTICLE,
+				Client::EFFECT_PROJECT_TUNED_SPRITE_ADDITIVE_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::PROJECT_TUNED_MESH_PARTICLE_ALPHA_TWO_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::MESH_PARTICLE_CMODEL,
+				Client::EFFECT_PROJECT_TUNED_MESH_ALPHA_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectMeshPreview.hlsl", "VTXMESH",
+				PROFILE::ALPHA_TWO_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::PROJECT_TUNED_MESH_PARTICLE_ADDITIVE_TWO_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::MESH_PARTICLE_CMODEL,
+				Client::EFFECT_PROJECT_TUNED_MESH_ADDITIVE_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectMeshPreview.hlsl", "VTXMESH",
+				PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::PROJECT_TUNED_MESH_PARTICLE_ALPHA_ONE_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::MESH_PARTICLE_CMODEL,
+				Client::EFFECT_PROJECT_TUNED_MESH_ALPHA_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectMeshPreview.hlsl", "VTXMESH",
+				PROFILE::ALPHA_ONE_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::PROJECT_TUNED_MESH_PARTICLE_ADDITIVE_ONE_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::MESH_PARTICLE_CMODEL,
+				Client::EFFECT_PROJECT_TUNED_MESH_ADDITIVE_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectMeshPreview.hlsl", "VTXMESH",
+				PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ);
+			break;
 		case ADAPTER_ID::END:
 		default:
 			return false;
@@ -205,11 +253,12 @@ namespace
 					Adapter.eRenderProfile != PROFILE::OPAQUE_BACK_DEPTH_WRITE &&
 					Adapter.eRenderProfile != PROFILE::END;
 			case CARRIER::MESH_PARTICLE_CMODEL:
-				return (Adapter.eRenderProfile ==
-						PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
-					Adapter.eRenderProfile ==
-						PROFILE::ALPHA_ONE_SIDED_DEPTH_READ) &&
-					iActualPassIndex == Adapter.iPassIndex;
+				return (Adapter.eRenderProfile !=
+						PROFILE::OPAQUE_BACK_DEPTH_WRITE &&
+					Adapter.eRenderProfile != PROFILE::END) &&
+					(iActualPassIndex == Adapter.iPassIndex ||
+					 (Adapter.iPassIndex == 3u && iActualPassIndex == 5u) ||
+					 (Adapter.iPassIndex == 4u && iActualPassIndex == 6u));
 			case CARRIER::LOCAL_DECAL_PROJECTOR:
 				return (Adapter.eRenderProfile ==
 						PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
@@ -242,6 +291,16 @@ namespace
 			return true;
 		case 4u:
 			eOutCullMode = D3D11_CULL_BACK;
+			bOutDepthWrite = false;
+			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ADDITIVE_BLEND;
+			return true;
+		case 5u:
+			eOutCullMode = D3D11_CULL_FRONT;
+			bOutDepthWrite = false;
+			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ALPHA_BLEND;
+			return true;
+		case 6u:
+			eOutCullMode = D3D11_CULL_FRONT;
 			bOutDepthWrite = false;
 			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ADDITIVE_BLEND;
 			return true;
@@ -2790,6 +2849,7 @@ namespace
 		return Left.bEnabled == Right.bEnabled &&
 			Left.bFailClosed == Right.bFailClosed &&
 			Left.bAuthoringApproximate == Right.bAuthoringApproximate &&
+			Left.eFidelity == Right.eFidelity &&
 			Left.iVersion == Right.iVersion &&
 			Left.eBackend == Right.eBackend &&
 			Left.iOpcode == Right.iOpcode &&
@@ -19024,6 +19084,16 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	// occurrence boundary.  It must not abort the whole effect frame.
 	if (std::abs(fDeterminant) <= std::numeric_limits<f32_t>::epsilon())
 		return S_FALSE;
+	if (nullptr != pMaterialProgramBinding && fDeterminant < 0.f)
+	{
+		/* Registry pass 3/4 is the nominal one-sided policy. A negative world
+		   determinant reverses winding, so the actual CModel draw must use the
+		   shader's matching front-cull receipt. Two-sided pass 1/2 is invariant. */
+		if (iPass == 3u)
+			iPass = 5u;
+		else if (iPass == 4u)
+			iPass = 6u;
+	}
 	XMStoreFloat4x4(&NormalMatrix,
 		XMMatrixTranspose(XMMatrixInverse(nullptr, LoadedWorld)));
 	if (m_bAuthoringValtanTranslatedCanaryEnabled &&

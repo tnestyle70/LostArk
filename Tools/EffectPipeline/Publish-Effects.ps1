@@ -1039,6 +1039,63 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
         [void]$effectIds.Add($effectAssetId)
     }
 
+    # Material V1 auditions preserve the Product cue document byte-for-byte.
+    # This optional sidecar gives the parallel authored documents an exact
+    # Product owner without changing timing, attachment, or the default V0
+    # target selected by the runtime.
+    $valtanV1AliasPath = [IO.Path]::GetFullPath((Join-Path $RootPath `
+        'Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json'))
+    if ([IO.File]::Exists($valtanV1AliasPath)) {
+        $valtanV1AliasDocument = Read-JsonDocument $valtanV1AliasPath
+        Assert-ExactPropertyOrder $valtanV1AliasDocument @(
+            'schema','formatVersion','ownerArchetypeId','aliases') `
+            'Valtan Material V1 alias document'
+        $valtanV1Aliases = @((Get-RequiredProperty `
+            $valtanV1AliasDocument 'aliases' Array))
+        if ((Get-RequiredProperty $valtanV1AliasDocument 'schema' String) -cne
+                'lostark.valtan-pattern-effect-v1-aliases' -or
+            [uint32](Get-RequiredProperty $valtanV1AliasDocument `
+                'formatVersion' Number) -ne 1 -or
+            (Get-RequiredProperty $valtanV1AliasDocument `
+                'ownerArchetypeId' String) -cne 'BOSS_VALTAN' -or
+            $valtanV1Aliases.Count -eq 0 -or
+            $valtanV1Aliases.Count -gt 512) {
+            throw 'Valtan Material V1 alias document header is invalid.'
+        }
+        $valtanV1AliasSources =
+            [Collections.Generic.HashSet[string]]::new(
+                [StringComparer]::Ordinal)
+        $valtanV1AliasTargets =
+            [Collections.Generic.HashSet[string]]::new(
+                [StringComparer]::Ordinal)
+        foreach ($alias in $valtanV1Aliases) {
+            Assert-ExactPropertyOrder $alias @(
+                'effectAssetId','v1EffectAssetId') `
+                'Valtan Material V1 alias'
+            $sourceEffectAssetId = Get-RequiredProperty `
+                $alias 'effectAssetId' String
+            $v1EffectAssetId = Get-RequiredProperty `
+                $alias 'v1EffectAssetId' String
+            Assert-StableId $sourceEffectAssetId `
+                'Valtan Material V1 alias source EffectAssetId'
+            Assert-StableId $v1EffectAssetId `
+                'Valtan Material V1 alias target EffectAssetId'
+            if ($sourceEffectAssetId -ceq $v1EffectAssetId -or
+                -not $valtanEffectIds.Contains($sourceEffectAssetId) -or
+                -not $v1EffectAssetId.StartsWith(
+                    'effect.valtan.', [StringComparison]::Ordinal) -or
+                -not $v1EffectAssetId.EndsWith(
+                    '.v1.unified', [StringComparison]::Ordinal) -or
+                -not $valtanV1AliasSources.Add($sourceEffectAssetId) -or
+                -not $valtanV1AliasTargets.Add($v1EffectAssetId)) {
+                throw ('Valtan Material V1 alias identity or cue join is ' +
+                    "invalid: $sourceEffectAssetId -> $v1EffectAssetId")
+            }
+            [void]$valtanEffectIds.Add($v1EffectAssetId)
+            [void]$effectIds.Add($v1EffectAssetId)
+        }
+    }
+
     $bossCatalogPath = [IO.Path]::GetFullPath((Join-Path $RootPath `
         'Actors\BossCatalog.json'))
     $bossCatalog = Read-JsonDocument $bossCatalogPath
@@ -1271,8 +1328,11 @@ function Invoke-EffectRuntimeCatalogValidationBundle(
     [string]$CatalogJson,
     [object]$DirectAuthoredFilesByPath) {
     $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+    # Runtime payload filenames preserve the stable asset ID plus content hash.
+    # Keep the temporary prefix compact so a valid long stable ID does not hit
+    # the legacy Win32 MAX_PATH boundary only during validation.
     $validationRoot = Join-Path $temporaryRoot `
-        ('LostArkEffectRuntimeValidation-' + [Guid]::NewGuid().ToString('N'))
+        ('LARV-' + [Guid]::NewGuid().ToString('N'))
     $validationRoot = [IO.Path]::GetFullPath($validationRoot)
     if (-not (Test-PathIsSameOrDescendant $validationRoot $temporaryRoot)) {
         throw "Effect runtime validation root escaped the temporary directory."
@@ -2973,6 +3033,7 @@ try {
                 $executionEnabled = $false
                 $executionFailClosed = $false
                 $executionAuthoringApproximate = $false
+                $executionFidelity = 'SOURCE_EXACT'
                 $executionAssetsByLane =
                     [Collections.Generic.Dictionary[string,string]]::new(
                         [StringComparer]::Ordinal)
@@ -3000,6 +3061,15 @@ try {
                     if ($null -ne $execution) {
                         $executionEnabled = [bool](Get-RequiredProperty `
                             $execution 'enabled' Boolean)
+                        $executionFidelityProperty =
+                            $execution.PSObject.Properties['fidelity']
+                        if ($null -ne $executionFidelityProperty) {
+                            $executionFidelity = Get-RequiredProperty `
+                                $execution 'fidelity' String
+                            if ($executionFidelity -cne 'PROJECT_TUNED_APPROX') {
+                                throw "Authored material execution fidelity is unsupported in ${effectAssetId}: $elementId"
+                            }
+                        }
                         $failClosedProperty =
                             $execution.PSObject.Properties['failClosed']
                         if ($null -ne $failClosedProperty) {
@@ -3051,6 +3121,19 @@ try {
                         throw "Fail-closed material execution cannot be enabled in ${effectAssetId}: $elementId"
                     }
                     if ($executionEnabled) {
+                        $executionBackend = Get-RequiredProperty `
+                            $execution 'backend' String
+                        [int64]$executionOpcode = Get-RequiredProperty `
+                            $execution 'opcode' Number
+                        $projectTunedOpcode =
+                            $executionBackend -ceq 'runtimeMaterialV2' -and
+                            $executionOpcode -in @(1001, 1002)
+                        if ($executionFidelity -notin @(
+                                'SOURCE_EXACT', 'PROJECT_TUNED_APPROX') -or
+                            ($executionFidelity -ceq 'PROJECT_TUNED_APPROX') `
+                                -ne $projectTunedOpcode) {
+                            throw "Material execution fidelity/opcode contract changed in ${effectAssetId}: $elementId"
+                        }
                         foreach ($parameter in @(Get-RequiredProperty `
                                 $execution 'scalars' Array)) {
                             $parameterName = Get-RequiredProperty `

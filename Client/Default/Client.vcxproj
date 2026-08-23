@@ -342,6 +342,7 @@
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json" />
+	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
@@ -1002,8 +1003,11 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.ledge-roar.recovery.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.ledge-roar.windup.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.effect.json" />
@@ -1012,9 +1016,11 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.swing.active.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.swing.active.clip-02.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01.effect.json" />
@@ -1096,6 +1102,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.parry.slash.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.parry.stance.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.pattern.420633.active.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.pattern.420633.active.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.finish.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.portal.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.recovery.effect.json" />
@@ -1871,6 +1878,8 @@
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-exact-cooked-shader-variants.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-material-family-registry.v1.json" />
+    <None Include="..\..\Data\Effects\Contracts\valtan-effect-v1-horizontal-rt0-application.v1.json" />
+    <None Include="..\..\Data\Effects\Contracts\valtan-three-pattern-v1-materialization.receipt.json" />
     <None Include="..\..\Data\Effects\CookedShaders\340169d8b9146fd280bbc1b509aa312e6afa71573dfe12cf4e89cb0136431ae3.dxbc" />
     <None Include="..\..\Data\Effects\CookedShaders\7917664ff360df0f6305bf8d6c41a8c506872a62e09d26beb2b8fd8d7164d76c.dxbc" />
     <None Include="..\..\Data\Effects\CookedShaders\9c4706c3b6a36cb5a5eac40d8e871f2b67351265cf211f624614c842f0334b8e.dxbc" />
@@ -2572,6 +2581,7 @@
     <None Include="..\..\Data\Effects\MaterialPrograms\effect-material-program-registry.v1.json" />
     <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\artist-f-golden.material-program-fragment.v1.json" />
     <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\representative-four-v1-standard-color.material-program-fragment.v1.json" />
+    <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\valtan-three-pattern-v1.material-program-fragment.v1.json" />
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json" />
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy.receipt.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\A\DimensionMaster.A.effect-resources.json" />

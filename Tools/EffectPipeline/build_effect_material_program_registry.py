@@ -60,6 +60,62 @@ DECAL_ALPHA_TWO_SIDED_ADAPTER_ID = (
     "effect.adapter.local-decal.projector.scene-color-rt0."
     "zero-distortion-rt1.alpha-two-sided.v1"
 )
+PROJECT_TUNED_APPROX_PROGRAM_SRGB_ID = (
+    "effect.program.runtime-material-v2.opcode-1001."
+    "project-tuned-base-coverage-srgb.v1"
+)
+PROJECT_TUNED_APPROX_PROGRAM_LINEAR_ID = (
+    "effect.program.runtime-material-v2.opcode-1002."
+    "project-tuned-base-coverage-linear.v1"
+)
+PROJECT_TUNED_APPROX_LAYOUT_SRGB_ID = (
+    "effect.layout.runtime-material-v2.opcode-1001."
+    "project-tuned-base-coverage-srgb.v1"
+)
+PROJECT_TUNED_APPROX_LAYOUT_LINEAR_ID = (
+    "effect.layout.runtime-material-v2.opcode-1002."
+    "project-tuned-base-coverage-linear.v1"
+)
+
+
+def _project_tuned_adapter_id(
+    carrier: str, blend: str, sidedness: str
+) -> str:
+    carrier_path = (
+        "sprite-particle"
+        if carrier == "SPRITE_PARTICLE"
+        else "mesh-particle.cmodel"
+    )
+    return (
+        f"effect.adapter.{carrier_path}.scene-color-rt0."
+        f"zero-distortion-rt1.project-tuned-{blend}-{sidedness}-sided.v1"
+    )
+
+
+PROJECT_TUNED_SPRITE_ALPHA_TWO_SIDED_ADAPTER_ID = (
+    _project_tuned_adapter_id("SPRITE_PARTICLE", "alpha", "two")
+)
+PROJECT_TUNED_SPRITE_ADDITIVE_TWO_SIDED_ADAPTER_ID = (
+    _project_tuned_adapter_id("SPRITE_PARTICLE", "additive", "two")
+)
+PROJECT_TUNED_SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID = (
+    _project_tuned_adapter_id("SPRITE_PARTICLE", "alpha", "one")
+)
+PROJECT_TUNED_SPRITE_ADDITIVE_ONE_SIDED_ADAPTER_ID = (
+    _project_tuned_adapter_id("SPRITE_PARTICLE", "additive", "one")
+)
+PROJECT_TUNED_MESH_ALPHA_TWO_SIDED_ADAPTER_ID = (
+    _project_tuned_adapter_id("MESH_PARTICLE", "alpha", "two")
+)
+PROJECT_TUNED_MESH_ADDITIVE_TWO_SIDED_ADAPTER_ID = (
+    _project_tuned_adapter_id("MESH_PARTICLE", "additive", "two")
+)
+PROJECT_TUNED_MESH_ALPHA_ONE_SIDED_ADAPTER_ID = (
+    _project_tuned_adapter_id("MESH_PARTICLE", "alpha", "one")
+)
+PROJECT_TUNED_MESH_ADDITIVE_ONE_SIDED_ADAPTER_ID = (
+    _project_tuned_adapter_id("MESH_PARTICLE", "additive", "one")
+)
 
 INLINE_MIRROR_REQUIRED = "INLINE_MIRROR_REQUIRED"
 
@@ -134,6 +190,94 @@ COMPILED_ADAPTERS: dict[str, dict[str, Any]] = {
         ),
         "programs": frozenset((("standardColorV1", 1),)),
     },
+    PROJECT_TUNED_SPRITE_ALPHA_TWO_SIDED_ADAPTER_ID: {
+        "carrier": "SPRITE_PARTICLE",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "passIndex": 1,
+        "renderState": ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 1001), ("runtimeMaterialV2", 1002))
+        ),
+    },
+    PROJECT_TUNED_SPRITE_ADDITIVE_TWO_SIDED_ADAPTER_ID: {
+        "carrier": "SPRITE_PARTICLE",
+        "renderProfile": "additive_two_sided_depth_read",
+        "passIndex": 2,
+        "renderState": (
+            "RS_Cull_None",
+            "DSS_ReadOnly",
+            "BS_EffectAdditive",
+        ),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 1001), ("runtimeMaterialV2", 1002))
+        ),
+    },
+    PROJECT_TUNED_SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID: {
+        "carrier": "SPRITE_PARTICLE",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "passIndex": 3,
+        "renderState": ("RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 1001), ("runtimeMaterialV2", 1002))
+        ),
+    },
+    PROJECT_TUNED_SPRITE_ADDITIVE_ONE_SIDED_ADAPTER_ID: {
+        "carrier": "SPRITE_PARTICLE",
+        "renderProfile": "additive_one_sided_depth_read",
+        "passIndex": 4,
+        "renderState": (
+            "RS_Default",
+            "DSS_ReadOnly",
+            "BS_EffectAdditive",
+        ),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 1001), ("runtimeMaterialV2", 1002))
+        ),
+    },
+    PROJECT_TUNED_MESH_ALPHA_TWO_SIDED_ADAPTER_ID: {
+        "carrier": "MESH_PARTICLE",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "passIndex": 1,
+        "renderState": ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 1001), ("runtimeMaterialV2", 1002))
+        ),
+    },
+    PROJECT_TUNED_MESH_ADDITIVE_TWO_SIDED_ADAPTER_ID: {
+        "carrier": "MESH_PARTICLE",
+        "renderProfile": "additive_two_sided_depth_read",
+        "passIndex": 2,
+        "renderState": (
+            "RS_Cull_None",
+            "DSS_ReadOnly",
+            "BS_EffectAdditive",
+        ),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 1001), ("runtimeMaterialV2", 1002))
+        ),
+    },
+    PROJECT_TUNED_MESH_ALPHA_ONE_SIDED_ADAPTER_ID: {
+        "carrier": "MESH_PARTICLE",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "passIndex": 3,
+        "renderState": ("RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 1001), ("runtimeMaterialV2", 1002))
+        ),
+    },
+    PROJECT_TUNED_MESH_ADDITIVE_ONE_SIDED_ADAPTER_ID: {
+        "carrier": "MESH_PARTICLE",
+        "renderProfile": "additive_one_sided_depth_read",
+        "passIndex": 4,
+        "renderState": (
+            "RS_Default",
+            "DSS_ReadOnly",
+            "BS_EffectAdditive",
+        ),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 1001), ("runtimeMaterialV2", 1002))
+        ),
+    },
 }
 
 ROOT_KEYS = (
@@ -154,7 +298,8 @@ FRAGMENT_ROOT_KEYS = (
     "descriptors",
     "bindings",
 )
-PROGRAM_KEYS = ("programId", "backend", "opcode")
+PROGRAM_KEYS = ("programId", "backend", "opcode", "fidelity")
+STANDARD_COLOR_PROGRAM_KEYS = ("programId", "backend", "opcode")
 LAYOUT_KEYS = (
     "layoutId",
     "executionVersion",
@@ -230,6 +375,7 @@ BINDING_KEYS = (
 )
 EXECUTION_KEYS = (
     "enabled",
+    "fidelity",
     "version",
     "backend",
     "opcode",
@@ -262,10 +408,13 @@ EXECUTION_KEYS = (
     "artistParameters",
     "colors",
 )
+EXACT_EXECUTION_KEYS = tuple(
+    key for key in EXECUTION_KEYS if key != "fidelity"
+)
 STANDARD_COLOR_EXECUTION_KEYS = (
-    *EXECUTION_KEYS[:9],
+    *EXACT_EXECUTION_KEYS[:9],
     "standardColor",
-    *EXECUTION_KEYS[9:],
+    *EXACT_EXECUTION_KEYS[9:],
 )
 STANDARD_COLOR_KEYS = (
     "packetVersion",
@@ -322,6 +471,7 @@ def _compiled_layout_abi(
     vector_masks: tuple[tuple[int, int, int], tuple[int, int, int]],
     static: tuple[int, int, int, int],
     render: tuple[int, int, int],
+    scalar_prefix: str = "scalar",
 ) -> dict[str, Any]:
     lane_count = len(roles)
     return {
@@ -348,7 +498,7 @@ def _compiled_layout_abi(
         "renderInputCount": render[0],
         "renderConsumedMask": render[1],
         "renderSuppressedMask": render[2],
-        "scalarRows": _packed_abi_rows("scalar", scalar_count),
+        "scalarRows": _packed_abi_rows(scalar_prefix, scalar_count),
         "vectorRows": _packed_abi_rows("vector", vector_count),
         "artistParameterRows": [],
         "colorRows": [],
@@ -398,12 +548,44 @@ COMPILED_PROGRAM_LAYOUT_ABIS: dict[tuple[str, int], dict[str, Any]] = {
         static=(18, 0x3FFFB, 0x3FFFF, 0),
         render=(6, 0x03, 0x3C),
     ),
+    ("runtimeMaterialV2", 1001): _compiled_layout_abi(
+        roles=("base_coverage",),
+        channels=("RGBA",),
+        color_spaces=("srgb",),
+        dynamic=(0, 0x0F),
+        particle=(2, 0x0F, 0),
+        scalar_count=1,
+        vector_count=0,
+        input_count=1,
+        input_masks=((1, 0), (0, 0)),
+        vector_masks=((0, 0, 0), (0, 0, 0)),
+        static=(0, 0, 0, 0),
+        render=(6, 0x2F, 0x10),
+        scalar_prefix="coverage-channel-selector",
+    ),
+    ("runtimeMaterialV2", 1002): _compiled_layout_abi(
+        roles=("base_coverage",),
+        channels=("RGBA",),
+        color_spaces=("linear",),
+        dynamic=(0, 0x0F),
+        particle=(2, 0x0F, 0),
+        scalar_count=1,
+        vector_count=0,
+        input_count=1,
+        input_masks=((1, 0), (0, 0)),
+        vector_masks=((0, 0, 0), (0, 0, 0)),
+        static=(0, 0, 0, 0),
+        render=(6, 0x2F, 0x10),
+        scalar_prefix="coverage-channel-selector",
+    ),
 }
 COMPILED_PROGRAM_IDS: dict[tuple[str, int], str] = {
     ("runtimeMaterialV2", 6): "effect.program.runtime-material-v2.opcode-6.v1",
     ("runtimeMaterialV2", 3): "effect.program.runtime-material-v2.opcode-3.v1",
     ("localDecal", 14): "effect.program.local-decal.opcode-14.v1",
     ("standardColorV1", 1): "effect.program.standard-color-v1.opcode-1.v1",
+    ("runtimeMaterialV2", 1001): PROJECT_TUNED_APPROX_PROGRAM_SRGB_ID,
+    ("runtimeMaterialV2", 1002): PROJECT_TUNED_APPROX_PROGRAM_LINEAR_ID,
 }
 COMPILED_LAYOUT_IDS: dict[tuple[str, int], str] = {
     ("runtimeMaterialV2", 6):
@@ -412,6 +594,8 @@ COMPILED_LAYOUT_IDS: dict[tuple[str, int], str] = {
         "effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1",
     ("localDecal", 14):
         "effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1",
+    ("runtimeMaterialV2", 1001): PROJECT_TUNED_APPROX_LAYOUT_SRGB_ID,
+    ("runtimeMaterialV2", 1002): PROJECT_TUNED_APPROX_LAYOUT_LINEAR_ID,
 }
 RENDER_STATE_KEYS = (
     "rasterizer",
@@ -639,7 +823,12 @@ def _validate_programs(value: Any) -> dict[str, dict[str, Any]]:
     programs = _require_array(value, "programs", 1, MAX_PROGRAM_ROWS)
     result: dict[str, dict[str, Any]] = {}
     for index, row in enumerate(programs):
-        _require_exact_order(row, PROGRAM_KEYS, f"programs[{index}]")
+        program_keys = (
+            STANDARD_COLOR_PROGRAM_KEYS
+            if isinstance(row, dict) and row.get("backend") == "standardColorV1"
+            else PROGRAM_KEYS
+        )
+        _require_exact_order(row, program_keys, f"programs[{index}]")
         row_id = _require_stable_id(row["programId"], f"programs[{index}].programId")
         if row_id in result:
             raise ContractError(f"duplicate programId: {row_id}")
@@ -663,6 +852,17 @@ def _validate_programs(value: Any) -> dict[str, dict[str, Any]]:
             raise ContractError(
                 f"program {row_id} must use canonical compiled ID {expected_id}"
             )
+        if backend != "standardColorV1":
+            fidelity = row["fidelity"]
+            if fidelity not in ("SOURCE_EXACT", "PROJECT_TUNED_APPROX"):
+                raise ContractError(f"program {row_id} fidelity is unsupported")
+            project_tuned_opcode = (
+                backend == "runtimeMaterialV2" and opcode in (1001, 1002)
+            )
+            if project_tuned_opcode != (fidelity == "PROJECT_TUNED_APPROX"):
+                raise ContractError(
+                    f"program {row_id} fidelity/opcode contract changed"
+                )
         result[row_id] = row
     return result
 
@@ -703,7 +903,11 @@ def _validate_layouts(value: Any) -> dict[str, dict[str, Any]]:
                 raise ContractError(
                     f"layout {row_id} sampler registers must be contiguous from s5"
                 )
-            _require_text(lane["sourceChannel"], f"{label}.sourceChannel", 32)
+            source_channel = _require_text(
+                lane["sourceChannel"], f"{label}.sourceChannel", 4
+            )
+            if re.fullmatch(r"[RGBA]{0,4}", source_channel) is None:
+                raise ContractError(f"{label}.sourceChannel is unsupported")
             if lane["colorSpace"] not in ("linear", "srgb"):
                 raise ContractError(f"{label}.colorSpace is unsupported")
 
@@ -976,6 +1180,16 @@ def materialize_binding(
         "artistParameters": merge_rows("artistParameterRows", "artistParameters"),
         "colors": merge_rows("colorRows", "colors"),
     })
+    if program.get("fidelity") == "PROJECT_TUNED_APPROX":
+        materialized = {
+            "enabled": True,
+            "fidelity": program["fidelity"],
+            **{
+                key: value
+                for key, value in materialized.items()
+                if key != "enabled"
+            },
+        }
     return materialized
 
 
@@ -1068,16 +1282,20 @@ def _validate_compiled_program_layout_abi(
 def assert_execution_bit_exact(
     materialized: Mapping[str, Any], authored: Any, label: str
 ) -> None:
-    execution_keys = (
+    expected_keys = (
         STANDARD_COLOR_EXECUTION_KEYS
         if materialized.get("backend") == "standardColorV1"
-        else EXECUTION_KEYS
+        else (
+            EXECUTION_KEYS
+            if "fidelity" in materialized
+            else EXACT_EXECUTION_KEYS
+        )
     )
     _require_exact_order(
-        materialized, execution_keys, f"{label} materialized execution"
+        materialized, expected_keys, f"{label} materialized execution"
     )
-    _require_exact_order(authored, execution_keys, f"{label} authored execution")
-    simple_fields = (
+    _require_exact_order(authored, expected_keys, f"{label} authored execution")
+    simple_fields = (("fidelity",) if "fidelity" in materialized else ()) + (
         "enabled",
         "version",
         "backend",

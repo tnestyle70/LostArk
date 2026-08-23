@@ -106,10 +106,10 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         registry = registry_tool.build_registry(
             SOURCE_PATH, EFFECT_CATALOG_PATH, DATA_ROOT
         )
-        self.assertEqual(make_binding(), registry["bindings"][0])
         artist_f_bindings = [
             row for row in registry["bindings"] if row["effectAssetId"] == EFFECT_ID
         ]
+        self.assertEqual(make_binding(), artist_f_bindings[0])
         self.assertEqual(
             [ELEMENT_ID, "mesh.062366ee9f9655d3", "decal.f3b5c3b63b4a7e34"],
             [row["elementId"] for row in artist_f_bindings],
@@ -119,7 +119,7 @@ class MaterialProgramRegistryTests(unittest.TestCase):
             for row in registry["bindings"]
             if row["effectAssetId"] in REPRESENTATIVE_V1_EFFECT_IDS
         ]
-        self.assertEqual(134, len(registry["bindings"]))
+        self.assertEqual(171, len(registry["bindings"]))
         self.assertEqual(131, len(representative_bindings))
         self.assertEqual(
             {
@@ -136,7 +136,7 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         self.assertTrue(
             all(
                 row["inlineMirrorPolicy"] == registry_tool.INLINE_MIRROR_REQUIRED
-                for row in registry["bindings"]
+                for row in artist_f_bindings
             )
         )
         output = io.StringIO()
@@ -307,6 +307,7 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         packet = registry_tool.materialize_binding(
             registry["bindings"][0], *lookups
         )
+        self.assertNotIn("fidelity", packet)
         self.assertEqual(1, packet["passIndex"])
         self.assertEqual("RS_Cull_None", packet["renderState"]["rasterizer"])
         self.assertEqual(["lane.0", "lane.1"], [row["laneId"] for row in packet["textureLanes"]])
@@ -352,6 +353,179 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         self.assertEqual(1, packet["passIndex"])
         self.assertEqual("RS_Cull_None", packet["renderState"]["rasterizer"])
         self.assertEqual("BS_EffectAlpha", packet["renderState"]["blend"])
+
+    def test_project_tuned_base_coverage_abis_and_eight_adapters_are_compiled(self) -> None:
+        sampler = copy.deepcopy(
+            make_registry()["descriptors"][0]["textureLanes"][0]["sampler"]
+        )
+        adapter_expectations = (
+            (
+                registry_tool.PROJECT_TUNED_SPRITE_ALPHA_TWO_SIDED_ADAPTER_ID,
+                "SPRITE_PARTICLE",
+                1,
+                ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
+            ),
+            (
+                registry_tool.PROJECT_TUNED_SPRITE_ADDITIVE_TWO_SIDED_ADAPTER_ID,
+                "SPRITE_PARTICLE",
+                2,
+                ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAdditive"),
+            ),
+            (
+                registry_tool.PROJECT_TUNED_SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID,
+                "SPRITE_PARTICLE",
+                3,
+                ("RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+            ),
+            (
+                registry_tool.PROJECT_TUNED_SPRITE_ADDITIVE_ONE_SIDED_ADAPTER_ID,
+                "SPRITE_PARTICLE",
+                4,
+                ("RS_Default", "DSS_ReadOnly", "BS_EffectAdditive"),
+            ),
+            (
+                registry_tool.PROJECT_TUNED_MESH_ALPHA_TWO_SIDED_ADAPTER_ID,
+                "MESH_PARTICLE",
+                1,
+                ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
+            ),
+            (
+                registry_tool.PROJECT_TUNED_MESH_ADDITIVE_TWO_SIDED_ADAPTER_ID,
+                "MESH_PARTICLE",
+                2,
+                ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAdditive"),
+            ),
+            (
+                registry_tool.PROJECT_TUNED_MESH_ALPHA_ONE_SIDED_ADAPTER_ID,
+                "MESH_PARTICLE",
+                3,
+                ("RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+            ),
+            (
+                registry_tool.PROJECT_TUNED_MESH_ADDITIVE_ONE_SIDED_ADAPTER_ID,
+                "MESH_PARTICLE",
+                4,
+                ("RS_Default", "DSS_ReadOnly", "BS_EffectAdditive"),
+            ),
+        )
+        for opcode, color_space, program_id, layout_id in (
+            (
+                1001,
+                "srgb",
+                registry_tool.PROJECT_TUNED_APPROX_PROGRAM_SRGB_ID,
+                registry_tool.PROJECT_TUNED_APPROX_LAYOUT_SRGB_ID,
+            ),
+            (
+                1002,
+                "linear",
+                registry_tool.PROJECT_TUNED_APPROX_PROGRAM_LINEAR_ID,
+                registry_tool.PROJECT_TUNED_APPROX_LAYOUT_LINEAR_ID,
+            ),
+        ):
+            with self.subTest(opcode=opcode):
+                program = {
+                    "programId": program_id,
+                    "backend": "runtimeMaterialV2",
+                    "opcode": opcode,
+                    "fidelity": "PROJECT_TUNED_APPROX",
+                }
+                layout = {
+                    "layoutId": layout_id,
+                    **copy.deepcopy(
+                        registry_tool.COMPILED_PROGRAM_LAYOUT_ABIS[
+                            ("runtimeMaterialV2", opcode)
+                        ]
+                    ),
+                }
+                descriptor = {
+                    "descriptorId": f"effect.descriptor.project-tuned-approx.{opcode}.v1",
+                    "layoutId": layout_id,
+                    "textureLanes": [
+                        {
+                            "laneId": "lane.0",
+                            "assetId": "Effect/Artist/Textures/fx_d_noise_003.dds",
+                            "sampler": sampler,
+                        }
+                    ],
+                    "scalars": [{
+                        "name": "coverage-channel-selector.0",
+                        "value": 2.0,
+                    }],
+                    "vectors": [],
+                    "artistParameters": [],
+                    "colors": [],
+                }
+                registry_tool._validate_compiled_program_layout_abi(
+                    program, layout, f"project-tuned-{opcode}"
+                )
+                self.assertEqual("base_coverage", layout["textureLanes"][0]["role"])
+                self.assertEqual("RGBA", layout["textureLanes"][0]["sourceChannel"])
+                self.assertEqual(color_space, layout["textureLanes"][0]["colorSpace"])
+                self.assertEqual(0x0F, layout["dynamicSuppressedMask"])
+                self.assertEqual(0x0F, layout["particleColorConsumedMask"])
+                self.assertEqual(1, layout["scalarCount"])
+                self.assertEqual(1, layout["inputCount"])
+                self.assertEqual([1, 0], layout["inputConsumedMask"])
+                self.assertEqual(0x2F, layout["renderConsumedMask"])
+                self.assertEqual(0x10, layout["renderSuppressedMask"])
+
+                for adapter_id, carrier, pass_index, render_state in adapter_expectations:
+                    adapter = registry_tool.COMPILED_ADAPTERS[adapter_id]
+                    self.assertEqual(carrier, adapter["carrier"])
+                    self.assertIn(("runtimeMaterialV2", opcode), adapter["programs"])
+                    binding = {
+                        "effectAssetId": "effect.project-tuned-approx.test",
+                        "elementId": "sprite.synthetic",
+                        "programId": program_id,
+                        "layoutId": layout_id,
+                        "descriptorId": descriptor["descriptorId"],
+                        "adapterId": adapter_id,
+                        "inlineMirrorPolicy": registry_tool.INLINE_MIRROR_REQUIRED,
+                    }
+                    packet = registry_tool.materialize_binding(
+                        binding,
+                        {program_id: program},
+                        {layout_id: layout},
+                        {descriptor["descriptorId"]: descriptor},
+                    )
+                    self.assertEqual(pass_index, packet["passIndex"])
+                    self.assertEqual("PROJECT_TUNED_APPROX", packet["fidelity"])
+                    self.assertEqual(render_state[0], packet["renderState"]["rasterizer"])
+                    self.assertEqual(render_state[1], packet["renderState"]["depthStencil"])
+                    self.assertEqual(render_state[2], packet["renderState"]["blend"])
+                    self.assertEqual(1, packet["textureLaneCount"])
+                    self.assertEqual(
+                        [{
+                            "name": "coverage-channel-selector.0",
+                            "packedIndex": 0,
+                            "value": 2.0,
+                        }],
+                        packet["scalars"],
+                    )
+                    self.assertEqual([], packet["vectors"])
+
+        drifted = {
+            "layoutId": registry_tool.PROJECT_TUNED_APPROX_LAYOUT_SRGB_ID,
+            **copy.deepcopy(
+                registry_tool.COMPILED_PROGRAM_LAYOUT_ABIS[
+                    ("runtimeMaterialV2", 1001)
+                ]
+            ),
+        }
+        drifted["textureLanes"][0]["colorSpace"] = "linear"
+        with self.assertRaisesRegex(
+            registry_tool.ContractError, "Program/Layout ABI mismatch at textureLanes"
+        ):
+            registry_tool._validate_compiled_program_layout_abi(
+                {
+                    "programId": registry_tool.PROJECT_TUNED_APPROX_PROGRAM_SRGB_ID,
+                    "backend": "runtimeMaterialV2",
+                    "opcode": 1001,
+                    "fidelity": "PROJECT_TUNED_APPROX",
+                },
+                drifted,
+                "project-tuned-color-space-drift",
+            )
 
     def test_binding_carrier_mismatch_fails_closed(self) -> None:
         registry = make_bound_registry("mesh.062366ee9f9655d3")
@@ -416,6 +590,7 @@ class MaterialProgramRegistryTests(unittest.TestCase):
             "backend": program["backend"],
             "programId": program["programId"],
             "opcode": program["opcode"],
+            "fidelity": program["fidelity"],
         }
         mutations.append(reordered)
 
@@ -431,6 +606,14 @@ class MaterialProgramRegistryTests(unittest.TestCase):
             registry_tool.ContractError, "no compiled Program/Layout ABI receipt"
         ):
             registry_tool.validate_registry(registry, make_authored_documents())
+
+    def test_program_fidelity_opcode_mismatch_fails_closed(self) -> None:
+        registry = make_registry()
+        registry["programs"][0]["fidelity"] = "PROJECT_TUNED_APPROX"
+        with self.assertRaisesRegex(
+            registry_tool.ContractError, "fidelity/opcode contract changed"
+        ):
+            registry_tool.validate_registry(registry)
 
     def test_program_layout_abi_and_unbound_metadata_fail_closed(self) -> None:
         registry = make_bound_registry(ELEMENT_ID)
@@ -459,6 +642,7 @@ class MaterialProgramRegistryTests(unittest.TestCase):
                 "programId": "effect.program.runtime-material-v2.opcode-7.unbound.v1",
                 "backend": "runtimeMaterialV2",
                 "opcode": 7,
+                "fidelity": "SOURCE_EXACT",
             }
         )
         with self.assertRaisesRegex(
@@ -594,6 +778,7 @@ class MaterialProgramRegistryTests(unittest.TestCase):
                     "programId": "effect.program.illegal-base-row.v1",
                     "backend": "runtimeMaterialV2",
                     "opcode": 6,
+                    "fidelity": "SOURCE_EXACT",
                 }
             ]
             with self.assertRaisesRegex(
