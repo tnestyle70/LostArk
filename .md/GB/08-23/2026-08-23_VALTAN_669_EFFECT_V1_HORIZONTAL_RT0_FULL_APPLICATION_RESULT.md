@@ -129,10 +129,10 @@ variant는 Sprite additive one-sided, Sprite alpha one/two-sided, Mesh alpha one
 | `Publish-Effects.ps1 -Mode Validate` | Data | `PASS` | 156 entries / 171 bindings |
 | `Publish-Effects.ps1 -Mode Publish` | Data | `PASS` | 156 effects와 runtime visual sidecar publish |
 | Particle/Mesh direct FXC | Shader | `PASS_WITH_EXISTING_WARNINGS` | 두 HLSL compile 성공; 기존 warning만 존재 |
-| Client x64 Debug build/link | Debug | `PASS` | worktree `Client\Bin\Debug\Client.exe` 생성 |
+| Client x64 Debug build/link | Debug | `PASS` | 정본 `C:\Users\user\Desktop\LostArk\Client\Bin\Debug\Client.exe` 생성 |
 | Effect render focused harness | Debug | `PASS` | exit code 0, `ExpectedBindingCount=171`, `actualBindingCount=171`, 대표 131 registry receipt와 golden+대표 actual Adapter draw 8종; Valtan 화면 fidelity 판정은 아님 |
-| Effect render focused harness | Release | `NEEDS_REVALIDATION` | 최신 ABI 전 `ExpectedBindingCount=40` pass는 stale; Release 재빌드 뒤 다시 실행해야 함 |
-| Client x64 Release | Release | `NEEDS_REVALIDATION` | 최신 ABI 전 build 결과는 stale; 최종 Release link 재실행 필요 |
+| Effect render focused harness | Release | `PASS` | 정본 Release WARP 실행 exit code 0, `ExpectedBindingCount=171`, `actualBindingCount=171`, Debug와 같은 receipt/draw count |
+| Client x64 Release | Release | `PASS` | 정본 `Client\Bin\Release\Client.exe` build/link 성공 |
 | full `Invoke-BuildAndRegression.ps1` | Debug/Release | `NOT_RUN_AS_FULL_GATE` | focused Client/shader/harness만 기록 |
 | dedicated JSON/XML sweep | Data/Project | `PASS` | 변경·신규 JSON 21개 parse, `Client.vcxproj/.filters` XML parse 통과 |
 | `git diff --check` | Git | `PASS_WITH_LINE_ENDING_WARNINGS` | whitespace error 0; 기존 LF→CRLF warning 존재 |
@@ -158,16 +158,17 @@ determinant다. 따라서 negative-scale CModel occurrence를 이용한 **bound 
 
 | 항목 | 상태 | 다음 조치 |
 |---|---|---|
-| Debug render harness | `PASS` | 최신 main과 통합 171 Binding 기준 exit code 0 |
-| Release Client/harness | `NEEDS_REVALIDATION` | Debug 완료 뒤 최신 ABI로 Release build/link와 171 Binding harness 재실행 |
+| Debug Client/Server와 render harness | `PASS` | 정본 main에서 Debug Client/Server link, 통합 171 Binding harness exit code 0 |
+| Release Client/harness | `PASS` | 정본 main에서 Release Client link와 171 Binding harness exit code 0 |
 | 4캐릭터 공용 diff 통합 | `PASS` | `PR #178` main 병합 상태를 rebase-consume |
-| Valtan branch rebase | `PASS` | `24cce2e0` 기준 공용 registry/HLSL/C++ 충돌 해소와 전 focused gate 재실행 |
-| Valtan PR | `PENDING` | 공용 파일과 Valtan data를 검증 단위로 commit/push 후 생성 |
-| canonical `git pull --ff-only` | `PENDING` | 두 PR 병합 후 `C:\Users\user\Desktop\LostArk`에서 수행 |
-| canonical publish/build | `PENDING` | 정본 main에서 Effect publish와 Debug Client build |
+| Valtan branch rebase | `PASS` | `PR #179`를 포함한 최신 main 기준 공용 registry/HLSL/C++ 충돌 해소와 focused gate 재실행 |
+| Valtan PR | `MERGED` | `PR #180`, merge commit `c196727a864f7ebc6fbf6ea6e8dfc07f8eba4a46` |
+| canonical `git pull --ff-only` | `PASS` | `C:\Users\user\Desktop\LostArk`의 main과 `origin/main` 일치 |
+| canonical publish/build | `PASS` | Effect publish 156 effects/171 bindings, Debug·Release Client와 Debug Server 생성 |
 
-현재 worktree의 Debug EXE는 구조 검증 산출물이며 최종 사용자 실행 정본이 아니다. 다른 세션의 dirty 변경을
-덮거나 정본 folder를 강제로 branch switch/reset하지 않는다.
+정본 Debug EXE는 실행 가능한 구조 검증 산출물이다. Valtan 37행은 `PROJECT_TUNED_APPROX`이므로 화면 품질과
+Product 승격은 아래 사용자 V0/V1 A/B 전까지 완료로 기록하지 않는다. 정본 folder의 다른 세션 dirty 문서는
+보존했으며 branch switch/reset하지 않았다.
 
 ## 6. 사용자 수동 A/B
 
