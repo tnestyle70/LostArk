@@ -632,6 +632,21 @@ namespace
 				" has an unsupported backend/opcode dispatch pair.";
 			return false;
 		}
+		std::string_view strExpectedProgramId;
+		if (strBackend == "runtimeMaterialV2" && OutProgram.iOpcode == 6u)
+			strExpectedProgramId =
+				"effect.program.runtime-material-v2.opcode-6.v1";
+		else if (strBackend == "runtimeMaterialV2" && OutProgram.iOpcode == 3u)
+			strExpectedProgramId =
+				"effect.program.runtime-material-v2.opcode-3.v1";
+		else
+			strExpectedProgramId = "effect.program.local-decal.opcode-14.v1";
+		if (OutProgram.strProgramId != strExpectedProgramId)
+		{
+			strOutError = strContext +
+				" does not use its canonical compiled Program ID.";
+			return false;
+		}
 		return true;
 	}
 
@@ -1538,7 +1553,28 @@ namespace
 	{
 		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC* pAdapter =
 			Find_CompiledAdapter(Binding.strAdapterId);
-		if (!Matches_CompiledLayoutAbiReceipt(Program, Layout))
+		std::string_view strExpectedLayoutId;
+		if (Program.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Program.iOpcode == 6u)
+		{
+			strExpectedLayoutId =
+				"effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1";
+		}
+		else if (Program.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Program.iOpcode == 3u)
+		{
+			strExpectedLayoutId =
+				"effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1";
+		}
+		else
+		{
+			strExpectedLayoutId =
+				"effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1";
+		}
+		if (Layout.strLayoutId != strExpectedLayoutId ||
+			!Matches_CompiledLayoutAbiReceipt(Program, Layout))
 		{
 			strOutError = "Material binding '" + Binding.strEffectAssetId + "/" +
 				Binding.strElementId +

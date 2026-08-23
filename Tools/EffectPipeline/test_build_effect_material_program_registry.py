@@ -41,8 +41,8 @@ AUTHORED_PATH = (
 EFFECT_ID = "effect.artist.skill.31470.unified"
 ELEMENT_ID = "sprite.2b3dc6842507e910"
 SHADOW_ELEMENT_ID = "sprite.c65181324417a1a8"
-PROGRAM_ID = "effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1"
-LAYOUT_ID = "effect.layout.runtime-material-v2.artist-f-sprite.v1"
+PROGRAM_ID = "effect.program.runtime-material-v2.opcode-6.v1"
+LAYOUT_ID = "effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1"
 DESCRIPTOR_ID = "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1"
 
 
@@ -127,6 +127,41 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         emitted = json.loads(output.getvalue())
         self.assertEqual(tuple(registry.keys()), tuple(emitted.keys()))
         self.assertEqual(registry, emitted)
+
+    def test_program_and_layout_ids_are_domain_neutral(self) -> None:
+        registry = make_registry()
+        self.assertEqual(
+            set(registry_tool.COMPILED_PROGRAM_IDS.values()),
+            {row["programId"] for row in registry["programs"]},
+        )
+        self.assertEqual(
+            set(registry_tool.COMPILED_LAYOUT_IDS.values()),
+            {row["layoutId"] for row in registry["layouts"]},
+        )
+
+        domain_program = make_registry()
+        domain_program["programs"][0]["programId"] = "effect.program.artist.opcode-6.v1"
+        with self.assertRaisesRegex(registry_tool.ContractError, "canonical compiled ID"):
+            registry_tool.validate_registry(domain_program)
+
+        domain_layout = make_registry()
+        domain_layout["layouts"][0]["layoutId"] = "effect.layout.valtan.opcode-6.v1"
+        with self.assertRaisesRegex(registry_tool.ContractError, "canonical compiled ABI ID"):
+            registry_tool.validate_registry(domain_layout)
+
+        duplicate_program_alias = make_registry()
+        alias = copy.deepcopy(duplicate_program_alias["programs"][0])
+        alias["programId"] = "effect.program.runtime-material-v2.opcode-6.alias.v1"
+        duplicate_program_alias["programs"].append(alias)
+        with self.assertRaisesRegex(registry_tool.ContractError, "canonical compiled ID"):
+            registry_tool.validate_registry(duplicate_program_alias)
+
+        duplicate_layout_alias = make_registry()
+        alias = copy.deepcopy(duplicate_layout_alias["layouts"][0])
+        alias["layoutId"] = "effect.layout.runtime-material-v2.opcode-6.abi-deadbeef.v1"
+        duplicate_layout_alias["layouts"].append(alias)
+        with self.assertRaisesRegex(registry_tool.ContractError, "canonical compiled ABI ID"):
+            registry_tool.validate_registry(duplicate_layout_alias)
 
     def test_artist_f_canary_binding_materializes_bit_exact_inline_packet(self) -> None:
         registry = make_bound_registry(ELEMENT_ID)
@@ -272,14 +307,14 @@ class MaterialProgramRegistryTests(unittest.TestCase):
             registry_tool.MESH_ALPHA_TWO_SIDED_ADAPTER_ID
         )
         with self.assertRaisesRegex(
-            registry_tool.ContractError, "Program/Layout ABI mismatch"
+            registry_tool.ContractError, "canonical compiled ID"
         ):
             registry_tool.validate_registry(registry, make_authored_documents())
 
         drifted_role = make_bound_registry(ELEMENT_ID)
         drifted_role["layouts"][0]["textureLanes"][0]["role"] = "wrong_role"
         with self.assertRaisesRegex(
-            registry_tool.ContractError, "Program/Layout ABI mismatch at textureLanes"
+            registry_tool.ContractError, "does not match exactly one compiled ABI receipt"
         ):
             registry_tool.validate_registry(
                 drifted_role, make_authored_documents()

@@ -41,25 +41,25 @@ namespace
 	constexpr std::string_view ARTIST_CANARY_ELEMENT_ID =
 		"sprite.2b3dc6842507e910";
 	constexpr std::string_view ARTIST_CANARY_PROGRAM_ID =
-		"effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1";
+		"effect.program.runtime-material-v2.opcode-6.v1";
 	constexpr std::string_view ARTIST_CANARY_LAYOUT_ID =
-		"effect.layout.runtime-material-v2.artist-f-sprite.v1";
+		"effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1";
 	constexpr std::string_view ARTIST_CANARY_DESCRIPTOR_ID =
 		"effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1";
 	constexpr std::string_view ARTIST_MESH_CANARY_ELEMENT_ID =
 		"mesh.062366ee9f9655d3";
 	constexpr std::string_view ARTIST_MESH_CANARY_PROGRAM_ID =
-		"effect.program.runtime-material-v2.opcode-3.artist-f-mesh.v1";
+		"effect.program.runtime-material-v2.opcode-3.v1";
 	constexpr std::string_view ARTIST_MESH_CANARY_LAYOUT_ID =
-		"effect.layout.runtime-material-v2.artist-f-mesh-opcode-3.v1";
+		"effect.layout.runtime-material-v2.opcode-3.abi-85c02e5f1f646d22.v1";
 	constexpr std::string_view ARTIST_MESH_CANARY_DESCRIPTOR_ID =
 		"effect.descriptor.artist-f.mesh-062366ee9f9655d3.v1";
 	constexpr std::string_view ARTIST_DECAL_CANARY_ELEMENT_ID =
 		"decal.f3b5c3b63b4a7e34";
 	constexpr std::string_view ARTIST_DECAL_CANARY_PROGRAM_ID =
-		"effect.program.local-decal.opcode-14.artist-f-projector.v1";
+		"effect.program.local-decal.opcode-14.v1";
 	constexpr std::string_view ARTIST_DECAL_CANARY_LAYOUT_ID =
-		"effect.layout.local-decal.artist-f-projector-opcode-14.v1";
+		"effect.layout.local-decal.opcode-14.abi-c6b52a791b98f0c5.v1";
 	constexpr std::string_view ARTIST_DECAL_CANARY_DESCRIPTOR_ID =
 		"effect.descriptor.artist-f.decal-f3b5c3b63b4a7e34.v1";
 	constexpr std::string_view LANCE_EFFECT_ID =
