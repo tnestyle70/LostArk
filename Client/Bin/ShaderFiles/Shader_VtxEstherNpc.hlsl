@@ -6,7 +6,7 @@
    screen cutin bind THIS file so their look and pass order stay stable.
 
    Pass indices are a public contract:
-     0 Default (deferred)   1 Shadow   2 ScreenCutin
+     0 Default (deferred)   1 Shadow   2 ScreenCutin   3 Outline
    Do not insert passes in the middle; append only. Uniform names below are
    the Bind_DeferredMaterialInputs contract and must not be renamed. */
 #include "Engine_Shader_Defines.hlsli"
@@ -28,6 +28,12 @@ float4 g_FullSurfaceEmissiveColor = 1.f;
 float g_FullSurfaceEmissiveIntensity = 0.f;
 uint g_FullSurfaceEmissiveMaskMode = 0;
 matrix g_BoneMatrices[512];
+/* Inverted-hull outline (pass 3). Width is world metres along the skinned
+   normal; the body pass stamps stencil 1 so the hull only survives outside
+   the silhouette. */
+float g_OutlineWidth = 0.f;
+float4 g_OutlineColor = float4(1.f, 1.f, 1.f, 1.f);
+float g_OutlineEmissive = 0.5f;
 
 struct VS_IN
 {
@@ -225,12 +231,98 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     return float4(color, 1.f);
 }
 
+DepthStencilState DSS_EstherBodyStamp
+{
+    DepthEnable = true;
+    DepthWriteMask = all;
+    DepthFunc = less_equal;
+    StencilEnable = true;
+    StencilReadMask = 0xff;
+    StencilWriteMask = 0xff;
+    FrontFaceStencilFunc = always;
+    FrontFaceStencilPass = replace;
+    FrontFaceStencilFail = keep;
+    FrontFaceStencilDepthFail = keep;
+    BackFaceStencilFunc = always;
+    BackFaceStencilPass = replace;
+    BackFaceStencilFail = keep;
+    BackFaceStencilDepthFail = keep;
+};
+
+DepthStencilState DSS_EstherOutlineTest
+{
+    DepthEnable = true;
+    DepthWriteMask = all;
+    DepthFunc = less_equal;
+    StencilEnable = true;
+    StencilReadMask = 0xff;
+    StencilWriteMask = 0x00;
+    FrontFaceStencilFunc = not_equal;
+    FrontFaceStencilPass = keep;
+    FrontFaceStencilFail = keep;
+    FrontFaceStencilDepthFail = keep;
+    BackFaceStencilFunc = not_equal;
+    BackFaceStencilPass = keep;
+    BackFaceStencilFail = keep;
+    BackFaceStencilDepthFail = keep;
+};
+
+RasterizerState RS_EstherHull
+{
+    FillMode = Solid;
+    CullMode = Front;
+    FrontCounterClockwise = false;
+};
+
+VS_OUT VS_OUTLINE(VS_IN input)
+{
+    VS_OUT output;
+    matrix boneMatrix =
+        g_BoneMatrices[input.vBlendIndices.x] * input.vBlendWeights.x +
+        g_BoneMatrices[input.vBlendIndices.y] * input.vBlendWeights.y +
+        g_BoneMatrices[input.vBlendIndices.z] * input.vBlendWeights.z +
+        g_BoneMatrices[input.vBlendIndices.w] * input.vBlendWeights.w;
+    float4 position = mul(float4(input.vPosition, 1.f), boneMatrix);
+    float4 normal = mul(float4(input.vNormal, 0.f), boneMatrix);
+    float4 worldPos = mul(position, g_WorldMatrix);
+    float3 worldNormal = normalize(mul(normal, g_WorldMatrix).xyz);
+    worldPos.xyz += worldNormal * g_OutlineWidth;
+    output.vPosition = mul(mul(worldPos, g_ViewMatrix), g_ProjMatrix);
+    output.vNormal = float4(worldNormal, 0.f);
+    output.vTangent = normalize(mul(mul(float4(input.vTangent, 0.f), boneMatrix), g_WorldMatrix));
+    output.vBinormal = normalize(mul(mul(float4(input.vBinormal, 0.f), boneMatrix), g_WorldMatrix));
+    output.vTexcoord = input.vTexcoord;
+    output.vWorldPos = worldPos;
+    output.vProjPos = output.vPosition;
+    return output;
+}
+
+/* The hull is a flat unlit rim: diffuse carries the colour for the combine,
+   emissive lifts it so lighting never darkens the line. */
+PS_OUT PS_OUTLINE(VS_OUT input)
+{
+    PS_OUT output;
+    float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    if (diffuse.a < 0.3f)
+        discard;
+    output.vDiffuse = float4(g_OutlineColor.rgb, 1.f);
+    output.vNormal = float4(normalize(input.vNormal.xyz) * 0.5f + 0.5f, 0.f);
+    output.vDepth = float4(
+        input.vProjPos.z / input.vProjPos.w,
+        input.vProjPos.w / 1000.f,
+        1.f,
+        0.f);
+    output.vPickPos = input.vWorldPos;
+    output.vEmissive = float4(g_OutlineColor.rgb * g_OutlineEmissive, 0.f);
+    return output;
+}
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
     {
         SetRasterizerState(RS_Default);
-        SetDepthStencilState(DSS_Default, 0);
+        SetDepthStencilState(DSS_EstherBodyStamp, 1);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
@@ -255,5 +347,15 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
+    }
+
+    pass Outline
+    {
+        SetRasterizerState(RS_EstherHull);
+        SetDepthStencilState(DSS_EstherOutlineTest, 1);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_OUTLINE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_OUTLINE();
     }
 }

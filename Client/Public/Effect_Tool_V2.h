@@ -81,6 +81,7 @@ private:
 	{
 		WORLD,
 		TARGET_BONE,
+		TARGET_BONE_FIXED,
 		END
 	};
 
@@ -131,6 +132,7 @@ private:
 	void Despawn_Target();
 	void Move_Target(const float3_t& vPosition, f32_t fYawDegrees);
 	void Update_Attach(f32_t fTimeDelta);
+	void Snap_PivotToTarget();
 	bool_t Save_Bindings();
 	bool_t Load_Bindings(const std::string& strArchetypeId);
 	static bool_t Collect_BoneNames(
@@ -199,6 +201,12 @@ private:
 	int32_t m_iSpawnFrame = 0;
 	std::vector<EFFECT_BINDING> m_Bindings;
 	std::string m_strAttachStatus;
+
+	bool_t m_bTestOrbit = false;
+	float3_t m_vTestOrbitCenter = { 0.f, 0.f, 0.f };
+	f32_t m_fTestOrbitRadius = 1.f;
+	f32_t m_fTestOrbitSpeed = 2.f;
+	f32_t m_fTestOrbitAngle = 0.f;
 
 	std::string m_strStatus;
 };

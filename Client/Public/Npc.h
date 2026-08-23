@@ -42,7 +42,15 @@ public:
 		f32_t fYawDegree = {};
 		/* Zero for non-combat NPCs; Server-replicated radius for monsters. */
 		f32_t fCollisionRadius = {};
+		/* Inverted-hull outline in world metres; 0 disables. Only shaders that
+		expose an Outline pass (esther) honour it. */
+		f32_t fOutlineWidth = {};
+		float4_t vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
 	} NPC_DESC;
+
+	/* Esther summons (Sillian / Wei / Bahuntur) draw with a white silhouette
+	like the original. Width is world metres along the skinned normal. */
+	static constexpr f32_t ESTHER_OUTLINE_WIDTH = 0.04f;
 
 private:
 	CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
@@ -85,6 +93,8 @@ private:
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
+	f32_t m_fOutlineWidth = { 0.f };
+	float4_t m_vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = { false };
 #endif

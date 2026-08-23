@@ -155,7 +155,7 @@ namespace
 		Client::CEffectV2Object::DESC Desc = Entry.Document.Desc;
 		if (!Client::CEffectV2Object::Resolve_TargetPivot(
 			*pNpc,
-			Pending.Binding.bFollowBone ? Pending.Binding.strBone : std::string(),
+			Pending.Binding.strBone,
 			Pending.Binding.eRotation,
 			Desc.PivotWorld))
 		{

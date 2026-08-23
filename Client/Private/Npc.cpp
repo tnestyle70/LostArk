@@ -58,6 +58,9 @@ HRESULT CNpc::Initialize(void* pArg)
 			m_pTransformCom->Get_State(STATE::POSITION)));
 	}
 
+	m_fOutlineWidth = pDesc->fOutlineWidth;
+	m_vOutlineColor = pDesc->vOutlineColor;
+
 	/* With no animation set the bone palette is never filled, so every vertex
 	collapses onto the origin and the NPC simply vanishes -- a wrong clip name
 	looks exactly like a failed load. Fall back to the model's first clip so a
@@ -168,6 +171,26 @@ HRESULT CNpc::Render()
 			FAILED(m_pShaderCom->Begin(0)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
+	}
+	if (m_fOutlineWidth > 0.f)
+	{
+		/* Pass 3 of the esther shader: front-culled hull pushed along the
+		skinned normal, stencil-tested against the body drawn just above. */
+		if (FAILED(m_pShaderCom->Bind_RawValue(
+				"g_OutlineWidth", &m_fOutlineWidth, sizeof(m_fOutlineWidth))) ||
+			FAILED(m_pShaderCom->Bind_RawValue(
+				"g_OutlineColor", &m_vOutlineColor, sizeof(m_vOutlineColor))))
+			return E_FAIL;
+		for (uint32_t i = 0; i < iNumMeshes; ++i)
+		{
+			if (FAILED(Bind_DeferredMaterialInputs(
+					*m_pModelCom, m_pShaderCom, i, {}, &m_HitFlash)) ||
+				FAILED(m_pModelCom->Bind_BoneMatrices(
+					m_pShaderCom, "g_BoneMatrices", i)) ||
+				FAILED(m_pShaderCom->Begin(3)) ||
+				FAILED(m_pModelCom->Render(i)))
+				return E_FAIL;
+		}
 	}
 	return S_OK;
 }

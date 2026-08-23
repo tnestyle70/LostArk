@@ -17,6 +17,7 @@ enum class EFFECT_V2_TYPE : int32_t
 	PARTICLE,
 	DECAL,
 	TRAIL,
+	SCREEN_POST,
 	END
 };
 
@@ -84,6 +85,7 @@ public:
 
 	static const char* Type_Key(EFFECT_V2_TYPE eType);
 	static const char* Rotation_Key(CEffectV2Object::PIVOT_ROTATION eRotation);
+	static CEffectV2Object::SHAPE Shape_ForType(EFFECT_V2_TYPE eType);
 };
 
 NS_END

@@ -9461,19 +9461,40 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 			return nullptr;
 		};
+		tests.Require(
+			nullptr == findSummon() &&
+			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge() &&
+			1u == valtanRoom.m_PendingEstherSummons.size(),
+			"Drain the Esther gauge at once but hold the summon for the landing delay");
+
+		/* The landing spot is two metres along the aim (east here), sampled on
+		the navigation grid; an unwalkable sample falls back to the caster. */
+		SERVER_NAV_POINT expectedLanding{
+			caster.fPositionX, caster.fPositionY, caster.fPositionZ };
+		(void)valtanRoom.m_ServerNavigation.Sample_Position(
+			caster.fPositionX + ESTHER_SUMMON_FORWARD_METERS,
+			caster.fPositionZ,
+			expectedLanding);
+		for (int tick = 0; tick < 29; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		tests.Require(
+			nullptr == findSummon(),
+			"Keep the Esther summon pending until the full landing delay has elapsed");
+		valtanRoom.Update_WorldEntities(1.f / 30.f);
 		SERVER_WORLD_ENTITY* summon = findSummon();
 		tests.Require(
 			nullptr != summon &&
-			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge() &&
+			valtanRoom.m_PendingEstherSummons.empty() &&
 			"NPC_59030" == summon->strArchetypeId &&
 			5300u == summon->iEstherStrikeMs &&
 			WORLD_BOOTSTRAP_KIND::NPC == summon->eKind &&
 			std::string(ESTHER_ACTION_STRIKE) == summon->strActionId &&
 			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == summon->eAction &&
-			std::abs(summon->fPositionX - caster.fPositionX) < 0.001f &&
-			std::abs(summon->fPositionZ - caster.fPositionZ) < 0.001f &&
+			std::abs(summon->fPositionX - expectedLanding.x) < 0.001f &&
+			std::abs(summon->fPositionY - expectedLanding.y) < 0.001f &&
+			std::abs(summon->fPositionZ - expectedLanding.z) < 0.001f &&
 			std::abs(summon->fYawDegrees - 90.f) < 0.01f,
-			"Summon Sillian straight into its all-in-one strike and drain the gauge");
+			"Land Sillian two metres along the aim straight into its all-in-one strike");
 
 		valtanRoom.Handle_UseEstherSkill(casterSessionId, notFullUse);
 		std::size_t summonCount = 0u;
@@ -9483,7 +9504,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				++summonCount;
 		}
 		tests.Require(
-			1u == summonCount,
+			1u == summonCount && valtanRoom.m_PendingEstherSummons.empty(),
 			"Reject a second Esther use on the emptied gauge");
 
 		for (int tick = 0; tick < 162; ++tick)
@@ -9500,6 +9521,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		bahunturUse.fAimX = 160.f;
 		bahunturUse.fAimZ = -120.f;
 		valtanRoom.Handle_UseEstherSkill(casterSessionId, bahunturUse);
+		for (int tick = 0; tick < 30; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
 		SERVER_WORLD_ENTITY* bahunturSummon = findSummon();
 		tests.Require(
 			nullptr != bahunturSummon &&
@@ -9523,6 +9546,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		weiUse.fAimX = 160.f;
 		weiUse.fAimZ = -120.f;
 		valtanRoom.Handle_UseEstherSkill(casterSessionId, weiUse);
+		for (int tick = 0; tick < 30; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
 		SERVER_WORLD_ENTITY* weiSummon = findSummon();
 		tests.Require(
 			nullptr != weiSummon &&

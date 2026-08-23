@@ -1587,18 +1587,73 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 	{
 		return;
 	}
-	Spawn_EstherSummon(
-		*pRosterEntry,
-		playerIter->second,
-		useEstherSkill.fAimX,
-		useEstherSkill.fAimZ);
+
+	/* The gauge is gone now; the summon lands after the delay, forward along
+	the aim. Position, height and facing are frozen here so a caster who moves
+	during the delay does not drag the landing spot with them. A degenerate
+	aim (cursor on the caster) keeps the caster's yaw and lands at their feet. */
+	const SERVER_PLAYER& caster = playerIter->second;
+	PENDING_ESTHER_SUMMON pending{};
+	pending.pRosterEntry = pRosterEntry;
+	pending.fPositionX = caster.fPositionX;
+	pending.fPositionY = caster.fPositionY;
+	pending.fPositionZ = caster.fPositionZ;
+	pending.fYawDegrees = caster.fYawDegrees;
+	pending.fRemainingSeconds = ESTHER_SUMMON_DELAY_SECONDS;
+	const float directionX = useEstherSkill.fAimX - caster.fPositionX;
+	const float directionZ = useEstherSkill.fAimZ - caster.fPositionZ;
+	const float directionLengthSq = directionX * directionX + directionZ * directionZ;
+	if (std::isfinite(directionX) && std::isfinite(directionZ) &&
+		directionLengthSq > 0.0001f)
+	{
+		pending.fYawDegrees = std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
+		const float directionLength = std::sqrt(directionLengthSq);
+		const float targetX = caster.fPositionX +
+			directionX / directionLength * ESTHER_SUMMON_FORWARD_METERS;
+		const float targetZ = caster.fPositionZ +
+			directionZ / directionLength * ESTHER_SUMMON_FORWARD_METERS;
+		SERVER_NAV_POINT landing{};
+		if (m_ServerNavigation.Sample_Position(targetX, targetZ, landing))
+		{
+			pending.fPositionX = landing.x;
+			pending.fPositionY = landing.y;
+			pending.fPositionZ = landing.z;
+		}
+	}
+	m_PendingEstherSummons.push_back(pending);
+}
+
+void LostArk::Server::CGameRoom::Update_PendingEstherSummons(
+	const float fixedDeltaSeconds)
+{
+	for (auto iter = m_PendingEstherSummons.begin();
+		iter != m_PendingEstherSummons.end();)
+	{
+		iter->fRemainingSeconds -= fixedDeltaSeconds;
+		if (iter->fRemainingSeconds > 0.f)
+		{
+			++iter;
+			continue;
+		}
+		if (nullptr != iter->pRosterEntry)
+		{
+			Spawn_EstherSummon(
+				*iter->pRosterEntry,
+				iter->fPositionX,
+				iter->fPositionY,
+				iter->fPositionZ,
+				iter->fYawDegrees);
+		}
+		iter = m_PendingEstherSummons.erase(iter);
+	}
 }
 
 bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
 	const ESTHER_ROSTER_ENTRY& rosterEntry,
-	const SERVER_PLAYER& caster,
-	const float aimX,
-	const float aimZ)
+	const float positionX,
+	const float positionY,
+	const float positionZ,
+	const float yawDegrees)
 {
 	if (nullptr == rosterEntry.pArchetypeId ||
 		'\0' == rosterEntry.pArchetypeId[0] ||
@@ -1606,17 +1661,6 @@ bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
 		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iNextNetEntityId)
 	{
 		return false;
-	}
-
-	// The summon stands where the caster stands and looks where the caster
-	// aimed. A degenerate aim (cursor on the caster) keeps the caster's yaw.
-	float yawDegrees = caster.fYawDegrees;
-	const float directionX = aimX - caster.fPositionX;
-	const float directionZ = aimZ - caster.fPositionZ;
-	if (std::isfinite(directionX) && std::isfinite(directionZ) &&
-		(directionX * directionX + directionZ * directionZ) > 0.0001f)
-	{
-		yawDegrees = std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
 	}
 
 	const std::uint32_t startTick =
@@ -1634,9 +1678,9 @@ bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
 	staged.strActionId = ESTHER_ACTION_STRIKE;
 	staged.isEstherSummon = true;
 	staged.iEstherStrikeMs = rosterEntry.iStrikeMs;
-	staged.fPositionX = caster.fPositionX;
-	staged.fPositionY = caster.fPositionY;
-	staged.fPositionZ = caster.fPositionZ;
+	staged.fPositionX = positionX;
+	staged.fPositionY = positionY;
+	staged.fPositionZ = positionZ;
 	staged.fYawDegrees = yawDegrees;
 	staged.iActionStartTick = startTick;
 	staged.iCurrentHp = 1u;
@@ -4236,7 +4280,9 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	longer describes any live boss. Leave already dropped their sequences. */
 	m_iValtanAuditionArmedHealthBar = 0u;
 	// The next party charges its Esther gauge from zero; any live summon was
-	// already discarded with the entity rebuild above.
+	// already discarded with the entity rebuild above, and a summon still in
+	// its landing delay has no party left to land for.
+	m_PendingEstherSummons.clear();
 	m_EstherSkillSystem.Reset();
 	m_strStatus = "Valtan arena reset after the room became empty";
 	return true;
@@ -5727,6 +5773,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
+	Update_PendingEstherSummons(fixedDeltaSeconds);
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
 		if (entity.isEstherSummon)

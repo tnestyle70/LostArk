@@ -123,9 +123,11 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill);
 		bool Spawn_EstherSummon(
 			const ESTHER_ROSTER_ENTRY& rosterEntry,
-			const SERVER_PLAYER& caster,
-			float aimX,
-			float aimZ);
+			float positionX,
+			float positionY,
+			float positionZ,
+			float yawDegrees);
+		void Update_PendingEstherSummons(float fixedDeltaSeconds);
 		void Handle_RevivePlayer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer);
@@ -456,6 +458,16 @@ namespace LostArk::Server
 		std::size_t m_iLastRoomPerfOutboundHighWatermark = 0u;
 		bool m_acceptsCommands = true;
 		std::deque<SERVER_WORLD_TRANSFER_REQUEST> m_PendingWorldTransfers;
+		struct PENDING_ESTHER_SUMMON final
+		{
+			const ESTHER_ROSTER_ENTRY* pRosterEntry = nullptr;
+			float fPositionX = 0.f;
+			float fPositionY = 0.f;
+			float fPositionZ = 0.f;
+			float fYawDegrees = 0.f;
+			float fRemainingSeconds = 0.f;
+		};
+		std::vector<PENDING_ESTHER_SUMMON> m_PendingEstherSummons;
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER> m_Players;
