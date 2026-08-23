@@ -186,6 +186,17 @@ namespace
 		uint32_t iVisibleElementCount = 0u;
 	};
 
+	constexpr bool Should_StopBossActionActiveEffect(
+		const Client::EFFECT_STOP_POLICY eStopPolicy)
+	{
+		return Client::EFFECT_STOP_POLICY::NATURAL != eStopPolicy;
+	}
+
+	static_assert(!Should_StopBossActionActiveEffect(
+		Client::EFFECT_STOP_POLICY::NATURAL));
+	static_assert(Should_StopBossActionActiveEffect(
+		Client::EFFECT_STOP_POLICY::CUE_END));
+
 	struct RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW final
 	{
 		std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
@@ -3779,6 +3790,11 @@ Client::CEffectPresentationService::Stop_BossAction(
 			Effect.pBossOwner.lock() != pOwner ||
 			Effect.iActionStartTick != iActionStartTick)
 		{
+			continue;
+		}
+		if (!Should_StopBossActionActiveEffect(Effect.eStopPolicy))
+		{
+			++Result.iActiveRetainedNatural;
 			continue;
 		}
 		Remove_At(iEffect);

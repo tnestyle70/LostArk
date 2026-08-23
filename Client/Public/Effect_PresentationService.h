@@ -100,6 +100,7 @@ struct EFFECT_BOSS_ACTION_STOP_RESULT final
 {
 	uint64_t iPendingStopped = 0u;
 	uint64_t iActiveStopped = 0u;
+	uint64_t iActiveRetainedNatural = 0u;
 
 	bool operator==(const EFFECT_BOSS_ACTION_STOP_RESULT&) const = default;
 };
@@ -400,9 +401,11 @@ public:
     static void Update(f32_t fTimeDelta);
     static void Synchronize_FollowAnchors();
     static void Stop_Owner(const std::shared_ptr<CCharacter>& pOwner);
-	/* A replicated boss stage owns every queued and active cue created from its
-	   non-zero actionStartTick.  Stage replacement/abort uses this exact scope;
-	   Stop_BossOwner remains reserved for death, despawn and level teardown. */
+	/* A replicated boss stage owns every queued cue and every active cue created
+	   from its non-zero actionStartTick.  Stage replacement cancels queued work
+	   and active CUE_END work; an already-active NATURAL cue keeps updating until
+	   its document finishes.  Stop_BossOwner remains the unconditional death,
+	   despawn and level-teardown boundary. */
 	static EFFECT_BOSS_ACTION_STOP_RESULT Stop_BossAction(
 		const std::shared_ptr<CValtan>& pOwner,
 		uint32_t iActionStartTick);

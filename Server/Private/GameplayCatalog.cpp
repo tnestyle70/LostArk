@@ -1805,6 +1805,50 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				"-" == fields[17] ? "" : std::string(fields[17]);
 			owner->Stages.push_back(std::move(stage));
 		}
+		else if (!fields.empty() && "PATTERNSTAGEHITOFFSET" == fields[0])
+		{
+			std::uint32_t hitIndex = 0u;
+			std::uint32_t hitOffsetMs = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], hitIndex) ||
+				!ParseNumber(fields[5], hitOffsetMs))
+			{
+				m_strStatus = "Boss pattern stage hit offset row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern stage hit offset has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner)
+			{
+				m_strStatus = "Boss pattern stage hit offset has no pattern owner";
+				return false;
+			}
+			const auto stage = std::find_if(
+				owner->Stages.begin(), owner->Stages.end(),
+				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+				{ return candidate.strActionId == fields[3]; });
+			if (owner->Stages.end() == stage ||
+				hitIndex != stage->HitOffsetsMs.size() ||
+				hitIndex >= stage->iHitCount ||
+				hitOffsetMs >= stage->iDurationMs ||
+				(!stage->HitOffsetsMs.empty() &&
+				 hitOffsetMs <= stage->HitOffsetsMs.back()))
+			{
+				m_strStatus =
+					"Boss pattern stage hit offsets are not ordered or owned";
+				return false;
+			}
+			stage->HitOffsetsMs.push_back(hitOffsetMs);
+		}
 		/* Sorted after PATTERN and ahead of its own steps, so the span opens an
 		empty list the step rows then fill in order. */
 		else if (!fields.empty() && "PATTERNROTATION" == fields[0])
@@ -2505,6 +2549,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				case BOSS_PATTERN_HIT_SHAPE::NONE:
 					validShape = zeroShapeValues && 0u == stage.iHitCount &&
 						0u == stage.iHitIntervalMs &&
+						stage.HitOffsetsMs.empty() &&
 						stage.strDamageProfileId.empty();
 					break;
 				case BOSS_PATTERN_HIT_SHAPE::CIRCLE:
@@ -2536,11 +2581,26 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				}
 				if (BOSS_PATTERN_HIT_SHAPE::NONE != stage.eHitShape)
 				{
-					validShape = validShape && stage.iHitCount > 0u &&
+					const bool hasExplicitHitOffsets =
+						!stage.HitOffsetsMs.empty();
+					const bool validExplicitHitOffsets =
+						hasExplicitHitOffsets &&
+						stage.HitOffsetsMs.size() == stage.iHitCount &&
+						0u == stage.iHitIntervalMs && 0u == stage.iHitDelayMs &&
+						stage.HitOffsetsMs.back() < stage.iDurationMs &&
+						std::adjacent_find(
+							stage.HitOffsetsMs.begin(), stage.HitOffsetsMs.end(),
+							std::greater_equal<std::uint32_t>()) ==
+							stage.HitOffsetsMs.end();
+					const bool validLegacyHitSchedule =
+						!hasExplicitHitOffsets &&
 						(1u == stage.iHitCount ? 0u == stage.iHitIntervalMs :
 							stage.iHitIntervalMs > 0u) &&
-						static_cast<std::uint64_t>(stage.iHitCount - 1u) *
-							stage.iHitIntervalMs < stage.iDurationMs &&
+						static_cast<std::uint64_t>(stage.iHitDelayMs) +
+							static_cast<std::uint64_t>(stage.iHitCount - 1u) *
+							stage.iHitIntervalMs < stage.iDurationMs;
+					validShape = validShape && stage.iHitCount > 0u &&
+						(validExplicitHitOffsets || validLegacyHitSchedule) &&
 						0u != Find_DamageRatePercent(stage.strDamageProfileId);
 				}
 				if (!validShape ||

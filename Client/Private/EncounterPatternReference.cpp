@@ -108,6 +108,44 @@ namespace
 		return true;
 	}
 
+	bool_t Read_OptionalOrderedUnsignedArray(
+		const DATA_JSON_VALUE& parent,
+		const char_t* key,
+		const size_t maximumCount,
+		const uint32_t maximumValue,
+		std::vector<uint32_t>& outValues)
+	{
+		outValues.clear();
+		const DATA_JSON_VALUE* values = parent.Find(key);
+		if (nullptr == values)
+			return true;
+		if (!values->Is_Array() || values->Get_Array().empty() ||
+			values->Get_Array().size() > maximumCount)
+		{
+			return false;
+		}
+
+		uint32_t previous = 0u;
+		for (size_t index = 0u; index < values->Get_Array().size(); ++index)
+		{
+			const DATA_JSON_VALUE& value = values->Get_Array()[index];
+			if (!value.Is_Number())
+				return false;
+			const double number = value.Get_Number();
+			if (!std::isfinite(number) || std::floor(number) != number ||
+				number < 0.0 || number > static_cast<double>(maximumValue))
+			{
+				return false;
+			}
+			const uint32_t current = static_cast<uint32_t>(number);
+			if (0u != index && current <= previous)
+				return false;
+			outValues.push_back(current);
+			previous = current;
+		}
+		return true;
+	}
+
 	bool_t Is_FiniteNumber(
 		const DATA_JSON_VALUE& parent,
 		const char_t* key)
@@ -516,7 +554,7 @@ bool_t Client::CEncounterPatternReference::Load(
 					"hitCount", "hitIntervalMs", "hitDelayMs",
 					"serverDamageProfileId",
 					"pushRangeM", "pushMs", "knockdown", "downMs" },
-					{ "motion", "actions", "branches" }))
+					{ "hitOffsetsMs", "motion", "actions", "branches" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
 					pattern.patternId;
@@ -535,6 +573,10 @@ bool_t Client::CEncounterPatternReference::Load(
 					stage.iHitCount) ||
 				!Read_Unsigned(stageEntry, "hitIntervalMs",
 					MAX_STAGE_DURATION_MS, stage.iHitIntervalMs) ||
+				!Read_Unsigned(stageEntry, "hitDelayMs",
+					MAX_STAGE_DURATION_MS, stage.iHitDelayMs) ||
+				!Read_OptionalOrderedUnsignedArray(stageEntry, "hitOffsetsMs",
+					1000u, MAX_STAGE_DURATION_MS, stage.hitOffsetsMs) ||
 				!Read_String(stageEntry, "serverDamageProfileId", true,
 					stage.serverDamageProfileId) ||
 				!Read_Float(stageEntry, "hitOuterRadius",
@@ -548,6 +590,29 @@ bool_t Client::CEncounterPatternReference::Load(
 			{
 				outStatus = "Encounter stage field is invalid: " +
 					pattern.patternId;
+				return false;
+			}
+			const bool_t hasExplicitHitOffsets = !stage.hitOffsetsMs.empty();
+			const bool_t validExplicitHitSchedule =
+				hasExplicitHitOffsets &&
+				stage.hitOffsetsMs.size() == stage.iHitCount &&
+				0u == stage.iHitIntervalMs && 0u == stage.iHitDelayMs &&
+				stage.hitOffsetsMs.back() < stage.iDurationMs;
+			const bool_t validLegacyHitSchedule =
+				!hasExplicitHitOffsets && stage.iHitCount > 0u &&
+				(1u == stage.iHitCount ? 0u == stage.iHitIntervalMs :
+					stage.iHitIntervalMs > 0u) &&
+				static_cast<uint64_t>(stage.iHitDelayMs) +
+					static_cast<uint64_t>(stage.iHitCount - 1u) *
+						stage.iHitIntervalMs < stage.iDurationMs;
+			const bool_t validEmptyHitSchedule = 0u == stage.iHitCount &&
+				!hasExplicitHitOffsets && 0u == stage.iHitIntervalMs &&
+				0u == stage.iHitDelayMs;
+			if (!validExplicitHitSchedule && !validLegacyHitSchedule &&
+				!validEmptyHitSchedule)
+			{
+				outStatus = "Encounter stage hit schedule is invalid: " +
+					pattern.patternId + "/" + stage.stageId;
 				return false;
 			}
 			if (!stageIds.insert(stage.stageId).second)

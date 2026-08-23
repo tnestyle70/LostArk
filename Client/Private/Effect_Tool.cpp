@@ -10465,10 +10465,24 @@ void Client::CEffect_Tool::Render_ValtanStageRow(
 		Shape += Detail;
 		if (Stage.iHitCount > 1u)
 		{
-			char_t Repeat[64]{};
-			sprintf_s(Repeat, " x%u @%ums",
-				Stage.iHitCount, Stage.iHitIntervalMs);
-			Shape += Repeat;
+			Shape += " x" + std::to_string(Stage.iHitCount) + " @";
+			if (!Stage.HitOffsetsMs.empty())
+			{
+				Shape += "[";
+				for (size_t iOffset = 0u;
+					iOffset < Stage.HitOffsetsMs.size(); ++iOffset)
+				{
+					if (iOffset > 0u)
+						Shape += ",";
+					Shape += std::to_string(Stage.HitOffsetsMs[iOffset]);
+				}
+				Shape += "]ms";
+			}
+			else
+			{
+				Shape += std::to_string(Stage.iHitDelayMs) + "+k*" +
+					std::to_string(Stage.iHitIntervalMs) + "ms";
+			}
 		}
 	}
 

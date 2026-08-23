@@ -82171,9 +82171,9 @@
       }
     },
     {
-      "patternId": "VALTAN_FOUR_SLASH",
+      "patternId": "VALTAN_TRIPLE_SLASH",
       "semanticStageId": "SLASHES",
-      "gameplayActionId": "valtan.attack.four-slash.active",
+      "gameplayActionId": "valtan.attack.triple-slash.active",
       "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
       "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
       "cueBindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
@@ -82186,9 +82186,9 @@
       }
     },
     {
-      "patternId": "VALTAN_FOUR_SLASH",
-      "semanticStageId": "SLASHES",
-      "gameplayActionId": "valtan.attack.four-slash.active",
+      "patternId": "VALTAN_ROTATION_SLASH",
+      "semanticStageId": "SPIN",
+      "gameplayActionId": "valtan.attack.rotation-slash.active",
       "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
       "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
       "cueBindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02",
@@ -82200,7 +82200,7 @@
       }
     },
     {
-      "patternId": "VALTAN_FOUR_SLASH",
+      "patternId": "VALTAN_ROTATION_SLASH",
       "semanticStageId": "RECOVERY",
       "gameplayActionId": "valtan.attack.four-slash.recovery",
       "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
@@ -100504,7 +100504,7 @@
     "cues": {
       "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
       "cueCount": 44,
-      "canonicalSha256": "6b0ce162e27eab4f8839c1aaec1e88e202afb314addde04864fa18252fde9b83"
+      "canonicalSha256": "4ff3c88cffdbe84abb99aaee22aad86c92f1b1797dfd8706058ded489b738dc9"
     },
     "targetDocuments": [
       {
@@ -101293,9 +101293,9 @@
     {
       "retiredBindingId": "cue.valtan.four-slash.active",
       "retiredEffectAssetId": "effect.valtan.four-slash.active",
-      "patternId": "VALTAN_FOUR_SLASH",
+      "patternId": "VALTAN_TRIPLE_SLASH",
       "stageId": "SLASHES",
-      "actionId": "valtan.attack.four-slash.active",
+      "actionId": "valtan.attack.triple-slash.active",
       "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
       "disposition": "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER",
       "replacementBindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
@@ -101304,9 +101304,9 @@
     {
       "retiredBindingId": "cue.valtan.four-slash.active.clip-02",
       "retiredEffectAssetId": "effect.valtan.four-slash.active.clip-02",
-      "patternId": "VALTAN_FOUR_SLASH",
-      "stageId": "SLASHES",
-      "actionId": "valtan.attack.four-slash.active",
+      "patternId": "VALTAN_ROTATION_SLASH",
+      "stageId": "SPIN",
+      "actionId": "valtan.attack.rotation-slash.active",
       "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
       "disposition": "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER",
       "replacementBindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02",
@@ -101315,7 +101315,7 @@
     {
       "retiredBindingId": "cue.valtan.four-slash.recovery",
       "retiredEffectAssetId": "effect.valtan.four-slash.recovery",
-      "patternId": "VALTAN_FOUR_SLASH",
+      "patternId": "VALTAN_ROTATION_SLASH",
       "stageId": "RECOVERY",
       "actionId": "valtan.attack.four-slash.recovery",
       "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
@@ -102010,5 +102010,103 @@
         "policy": "EXACT_REVIEWED_CLIP_OWNER_ONLY"
       }
     ]
+  },
+  "fourSlashPatternSplitOwnerReseal": {
+    "schema": "lostark.valtan-carrier-v1-four-slash-owner-reseal-proof",
+    "formatVersion": 1,
+    "sourceActionId": 420609,
+    "sourceBranchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+    "sourceSequenceCanonicalSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220",
+    "oldCueCanonicalSha256": "6b0ce162e27eab4f8839c1aaec1e88e202afb314addde04864fa18252fde9b83",
+    "newCueCanonicalSha256": "4ff3c88cffdbe84abb99aaee22aad86c92f1b1797dfd8706058ded489b738dc9",
+    "ownerTransfers": [
+      {
+        "sourceStageOrdinal": 8,
+        "retiredBindingId": "cue.valtan.four-slash.active",
+        "replacementBindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
+        "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01.occurrence.01",
+        "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+        "oldOwner": {
+          "patternId": "VALTAN_FOUR_SLASH",
+          "stageId": "SLASHES",
+          "actionId": "valtan.attack.four-slash.active"
+        },
+        "newOwner": {
+          "patternId": "VALTAN_TRIPLE_SLASH",
+          "stageId": "SLASHES",
+          "actionId": "valtan.attack.triple-slash.active"
+        }
+      },
+      {
+        "sourceStageOrdinal": 9,
+        "retiredBindingId": "cue.valtan.four-slash.active.clip-02",
+        "replacementBindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02",
+        "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02.occurrence.01",
+        "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+        "oldOwner": {
+          "patternId": "VALTAN_FOUR_SLASH",
+          "stageId": "SLASHES",
+          "actionId": "valtan.attack.four-slash.active"
+        },
+        "newOwner": {
+          "patternId": "VALTAN_ROTATION_SLASH",
+          "stageId": "SPIN",
+          "actionId": "valtan.attack.rotation-slash.active"
+        }
+      },
+      {
+        "sourceStageOrdinal": 10,
+        "retiredBindingId": "cue.valtan.four-slash.recovery",
+        "replacementBindingId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+        "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01",
+        "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+        "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
+        "oldOwner": {
+          "patternId": "VALTAN_FOUR_SLASH",
+          "stageId": "RECOVERY",
+          "actionId": "valtan.attack.four-slash.recovery"
+        },
+        "newOwner": {
+          "patternId": "VALTAN_ROTATION_SLASH",
+          "stageId": "RECOVERY",
+          "actionId": "valtan.attack.four-slash.recovery"
+        }
+      }
+    ]
+  },
+  "clip01ScreenPostSuccessorOverlay": {
+    "schema": "lostark.valtan-carrier-v1-clip01-screen-post-successor-overlay",
+    "formatVersion": 1,
+    "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+    "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json",
+    "policy": "APPEND_ONLY_TYPED_SCREEN_POST_SUCCESSOR; MATERIALIZER_TARGET_REMAINS_HISTORICAL_PREIMAGE",
+    "materializerPreimage": {
+      "elementCount": 12,
+      "canonicalSha256": "5fe8332a267686b77224bb8311de7a79af4da6ca032c8429775ea579aa4baf10"
+    },
+    "appendedElements": [
+      {
+        "elementId": "occurrence.c627ba06ba0a8d5d48086907",
+        "displayName": "FilmNoise [PROJECT_TUNED_APPROX]",
+        "profileId": "screen.film-noise.reconstructed.v1",
+        "fidelity": "PROJECT_TUNED_APPROX",
+        "sourceTimeSeconds": 3.144474983215332,
+        "lifeTimeSeconds": 0.35
+      },
+      {
+        "elementId": "occurrence.14794cdb89c73ee33f1dead3",
+        "displayName": "ZoomBlur [BOUNDED_RECONSTRUCTED]",
+        "profileId": "screen.zoom-blur.reconstructed.v1",
+        "fidelity": "BOUNDED_RECONSTRUCTED",
+        "sourceTimeSeconds": 3.144474983215332,
+        "lifeTimeSeconds": 0.35
+      }
+    ],
+    "finalDocument": {
+      "elementCount": 14,
+      "canonicalSha256": "9ef084e2ef13cccbbde5febf5f9a5e4f4c4099e93dd066f026675dca7801ab6c"
+    }
   }
 }

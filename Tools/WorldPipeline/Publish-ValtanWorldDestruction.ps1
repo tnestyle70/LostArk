@@ -602,6 +602,9 @@ function Compile-ValtanWorldDestruction {
 			if ($null -ne $stage.PSObject.Properties['motion']) {
 				$expectedStageProperties += 'motion'
 			}
+			if ($null -ne $stage.PSObject.Properties['hitOffsetsMs']) {
+				$expectedStageProperties += 'hitOffsetsMs'
+			}
             Assert-ExactProperties -Value $stage -Expected $expectedStageProperties -Context "$($pattern.patternId) stage"
             Assert-StableId $stage.stageId "$($pattern.patternId) stageId"
             Assert-StableId $stage.actionId "$($pattern.patternId) actionId"

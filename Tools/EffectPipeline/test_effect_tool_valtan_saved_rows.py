@@ -150,6 +150,67 @@ def validate_v1_alias_projection_contract(
         raise AssertionError("V1 Saved rows must consume the typed alias, not infer a suffix")
 
 
+def validate_hit_schedule_parse_contract(tree_cpp_text: str) -> None:
+    fields = {
+        "durationMs": "Stage.iDurationMs",
+        "hitCount": "Stage.iHitCount",
+        "hitIntervalMs": "Stage.iHitIntervalMs",
+        "hitDelayMs": "Stage.iHitDelayMs",
+    }
+    for field, target in fields.items():
+        required = re.compile(
+            rf'Read_RequiredUInt32\(\s*StageValue,\s*"{field}",\s*'
+            rf'{re.escape(target)}\s*\)'
+        )
+        if required.search(tree_cpp_text) is None:
+            raise AssertionError(
+                f"Valtan pattern tree lost required uint32 parsing for {field}"
+            )
+        if re.search(rf'Read_Number\(\s*StageValue,\s*"{field}"\s*\)', tree_cpp_text):
+            raise AssertionError(
+                f"Valtan pattern tree silently defaults required timing field {field}"
+            )
+    if "Valtan encounter stage numeric field is missing or invalid" not in tree_cpp_text:
+        raise AssertionError("Valtan pattern tree lost the required numeric failure status")
+    float_fields = {
+        "hitOuterRadius": "Stage.fHitOuterRadius",
+        "hitInnerRadius": "Stage.fHitInnerRadius",
+        "hitAngleDegrees": "Stage.fHitAngleDegrees",
+        "hitLength": "Stage.fHitLength",
+        "hitHalfWidth": "Stage.fHitHalfWidth",
+    }
+    for field, target in float_fields.items():
+        required = re.compile(
+            rf'Read_RequiredFiniteFloat\(\s*StageValue,\s*"{field}",\s*'
+            rf'{re.escape(target)}\s*\)'
+        )
+        if required.search(tree_cpp_text) is None:
+            raise AssertionError(
+                f"Valtan pattern tree lost required finite parsing for {field}"
+            )
+        if re.search(rf'Read_Number\(\s*StageValue,\s*"{field}"\s*\)', tree_cpp_text):
+            raise AssertionError(
+                f"Valtan pattern tree silently defaults required hit-shape field {field}"
+            )
+    required_identity_tokens = (
+        "Stage.strStageId.empty()",
+        "Stage.strActionId.empty()",
+        "!bValidStageKind",
+        "!bValidHitShape",
+        "Valtan encounter stage identity is missing or invalid",
+    )
+    for token in required_identity_tokens:
+        if token not in tree_cpp_text:
+            raise AssertionError(
+                f"Valtan pattern tree lost required stage identity validation: {token}"
+            )
+    if re.search(
+        r"if\s*\(Stage\.strActionId\.empty\(\)\)\s*continue\s*;",
+        tree_cpp_text,
+    ):
+        raise AssertionError("Valtan pattern tree silently drops an invalid stage action")
+
+
 def validate_drawable_preflight_contract(cpp_text: str) -> None:
     play_helper = function_slice(
         cpp_text,
@@ -529,6 +590,11 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8"),
         )
 
+    def test_pattern_tree_requires_all_hit_schedule_timing_fields(self) -> None:
+        validate_hit_schedule_parse_contract(
+            VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8")
+        )
+
     def test_saved_open_and_play_fail_closed_before_preview_mutation(self) -> None:
         validate_drawable_preflight_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
@@ -561,12 +627,22 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
 
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
-        self.assertEqual(33, len(projected))
+        self.assertEqual(34, len(projected))
         self.assertEqual(113, raw_links)
         self.assertEqual(112, sum(len(rows) for rows in projected.values()))
         self.assertEqual(4, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(3, len(projected["VALTAN_FRONT_BACK_FRONT"]))
-        self.assertEqual(4, len(projected["VALTAN_FOUR_SLASH"]))
+        self.assertNotIn("VALTAN_FOUR_SLASH", projected)
+        self.assertEqual(2, len(projected["VALTAN_TRIPLE_SLASH"]))
+        self.assertEqual(2, len(projected["VALTAN_ROTATION_SLASH"]))
+        self.assertEqual(
+            "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+            projected["VALTAN_TRIPLE_SLASH"][1],
+        )
+        self.assertEqual(
+            "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+            projected["VALTAN_ROTATION_SLASH"][0],
+        )
         self.assertEqual(4, len(projected["VALTAN_WHIRLWIND"]))
         self.assertEqual(
             len(projected["VALTAN_WHIRLWIND"]),
@@ -667,7 +743,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             )
             runtime_document = json.loads(runtime_bytes.decode("utf-8"))
             self.assertEqual(source_document, runtime_document, effect_id)
-        self.assertEqual(657, visible_elements)
+        # clip-01 intentionally preserves the latest Effect Tool authoring
+        # snapshot (six user-visible rows) instead of restoring the retired
+        # twelve-row materializer preimage.
+        self.assertEqual(653, visible_elements)
         self.assertEqual(4, hidden_elements)
         self.assertEqual(0, model_cues)
 
