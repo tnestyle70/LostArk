@@ -209,6 +209,7 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMaximumIdentity = snapshot.iMaximumIdentity;
 	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.eAction = snapshot.eAction;
+	m_Player.iCurrentSkillId = snapshot.iSkillId;
 	m_Player.eStance = snapshot.eStance;
 	Build_PlayerSkills(characterClass, serverTick, &snapshot.Cooldowns);
 }

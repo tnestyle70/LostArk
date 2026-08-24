@@ -1113,14 +1113,20 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 		for (std::size_t index = 0; index < skill.comboStages.size(); ++index)
 		{
 			const COMBO_STAGE_EDIT& stage = skill.comboStages[index];
+			const bool isFinalStage =
+				index + 1u == skill.comboStages.size();
+			const bool isAutomaticComboStage = isCombo && !isFinalStage &&
+				0u == stage.inputOpenMs && 0u == stage.inputCloseMs;
 			const bool basicTimingInvalid = 0u == stage.actionDurationMs ||
 				stage.hitTimeMs > stage.comboAdvanceMs ||
 				stage.comboAdvanceMs > stage.actionDurationMs;
 			const bool comboWindowInvalid = isCombo &&
-				((index + 1u < skill.comboStages.size() &&
+				((isAutomaticComboStage &&
+					stage.comboAdvanceMs != stage.actionDurationMs) ||
+				 (!isFinalStage && !isAutomaticComboStage &&
 					(stage.inputOpenMs >= stage.inputCloseMs ||
 						stage.inputCloseMs > stage.actionDurationMs)) ||
-				(index + 1u == skill.comboStages.size() &&
+				(isFinalStage &&
 					(stage.comboAdvanceMs != stage.actionDurationMs ||
 					 0u != stage.inputOpenMs || 0u != stage.inputCloseMs)));
 			const bool holdStageInvalid = isHold &&
@@ -2086,11 +2092,12 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 		status = "DimensionMaster BA was absent from the Balance Tool draft.";
 		return false;
 	}
+	dimensionMaster->comboStages.front().actionDurationMs = 1300u;
 	dimensionMaster->comboStages.front().comboAdvanceMs = 1300u;
 	SERIALIZED_DRAFT_DOCUMENTS edited;
 	if (!tool.Save(&edited))
 	{
-		status = "A valid comboAdvanceMs edit was rejected.";
+		status = "A valid automatic combo timing edit was rejected.";
 		return false;
 	}
 	DATA_JSON_VALUE editedSkillRoot;
@@ -2108,16 +2115,18 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 				continue;
 			const DATA_JSON_VALUE* stages =
 				Field(value, "comboStages", DATA_JSON_TYPE::ARRAY);
+			std::uint32_t duration = 0u;
 			std::uint32_t advance = 0u;
 			foundEditedAdvance = nullptr != stages && !stages->Get_Array().empty() &&
+				ReadU32(stages->Get_Array().front(), "actionDurationMs", duration) &&
 				ReadU32(stages->Get_Array().front(), "comboAdvanceMs", advance) &&
-				1300u == advance;
+				1300u == duration && 1300u == advance;
 			break;
 		}
 	}
 	if (!foundEditedAdvance)
 	{
-		status = "A valid comboAdvanceMs edit was not serialized.";
+		status = "A valid automatic combo timing edit was not serialized.";
 		return false;
 	}
 	dimensionMaster->comboStages.front().comboAdvanceMs =

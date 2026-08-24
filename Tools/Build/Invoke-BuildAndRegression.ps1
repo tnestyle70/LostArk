@@ -114,6 +114,24 @@ try {
 
     Assert-RuntimeLayout
 
+	$LASTEXITCODE = 0
+	& '.\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1' `
+		-Mode Validate
+	if ($LASTEXITCODE -ne 0) {
+		throw 'Valtan pattern master validation failed.'
+	}
+	$LASTEXITCODE = 0
+	& '.\Tools\ValtanPipeline\Test-ValtanPatternMaster.ps1'
+	if ($LASTEXITCODE -ne 0) {
+		throw 'Valtan pattern master focused harness failed.'
+	}
+	Invoke-PythonGate `
+		'Valtan Animation Tool master timeline gate' `
+		@('Tools/ValtanPipeline/test_animation_tool_valtan_pattern_master.py')
+	Invoke-PythonGate `
+		'Valtan Effect Tool master tree gate' `
+		@('Tools/EffectPipeline/test_effect_tool_valtan_saved_rows.py')
+
     $LASTEXITCODE = 0
     & '.\Tools\GameplayPipeline\Publish-BalanceRuntimeSet.ps1' `
         -Mode Validate

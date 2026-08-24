@@ -133,7 +133,7 @@ class ValtanReviewedSourceFamilyHistoricalTests(unittest.TestCase):
             .issubset(mappings)
         )
 
-    def test_restoring_a_historical_owner_fails_closed(self) -> None:
+    def test_unrelated_live_successor_does_not_reseal_history(self) -> None:
         catalog = copy.deepcopy(self.catalog)
         catalog["effects"].append(
             {
@@ -145,7 +145,26 @@ class ValtanReviewedSourceFamilyHistoricalTests(unittest.TestCase):
                 ),
             }
         )
-        with self.assertRaisesRegex(subject.CandidateError, "outputs drifted"):
+        subject.validate_carrier_v1_successor(
+            self.receipt,
+            cue_document=self.cues,
+            catalog_document=catalog,
+        )
+
+    def test_restoring_an_exact_historical_owner_fails_closed(self) -> None:
+        catalog = copy.deepcopy(self.catalog)
+        catalog["effects"].append(
+            {
+                "effectAssetId": "effect.valtan.four-slash.active",
+                "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+                "authoringPath": (
+                    "Effects/Authored/effect.valtan.four-slash.active.effect.json"
+                ),
+            }
+        )
+        with self.assertRaisesRegex(
+            subject.CandidateError, "historical reviewed owner was restored"
+        ):
             subject.validate_carrier_v1_successor(
                 self.receipt,
                 cue_document=self.cues,

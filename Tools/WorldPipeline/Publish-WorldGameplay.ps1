@@ -198,12 +198,13 @@ function Get-MonsterProfiles {
     }
     $profiles = @{}
     foreach ($profile in @($document.profiles)) {
-        Assert-ExactProperties $profile @(
+        $profileProperties = @(
             'archetypeId','maxHp','attackPower','defense','collisionRadius',
             'engageRange','moveSpeed','attackRange','attackWindupMs',
             'attackActiveMs','attackRecoveryMs','deadDespawnMs',
             'hitKnockbackScale','attackPushRangeM','attackPushMs',
-            'attackKnockdown','attackDownMs') 'monster profile'
+            'attackKnockdown','attackDownMs')
+        Assert-ExactProperties $profile $profileProperties 'monster profile'
         Assert-StableId $profile.archetypeId 'monster profile archetypeId'
         Assert-JsonInteger $profile.maxHp "$($profile.archetypeId) maxHp" 1 2000000000
         Assert-JsonInteger $profile.attackPower "$($profile.archetypeId) attackPower" 1 2000000000
@@ -304,7 +305,7 @@ function Convert-SpawnGroupsDocument {
     foreach ($group in @($document.spawnGroups)) {
         Assert-ExactProperties $group @(
             'spawnGroupId','requiredCompletedGroupId','maxAlive','repeatPolicy',
-            'completionPolicy','waves') "$relativePath group"
+            'repeatDelayMs','completionPolicy','waves') "$relativePath group"
         Assert-JsonString $group.requiredCompletedGroupId "$relativePath prerequisite" -AllowNull
         if ($null -ne $group.requiredCompletedGroupId) {
             Assert-StableId $group.requiredCompletedGroupId "$relativePath prerequisite"
@@ -313,26 +314,44 @@ function Convert-SpawnGroupsDocument {
             }
         }
         Assert-JsonInteger $group.maxAlive "$relativePath maxAlive" 1 64
-        if ($group.repeatPolicy -ne 'ONCE' -or $group.completionPolicy -ne 'ALL_WAVES_CLEARED') {
-            throw "Unsupported spawn group policy: $($group.spawnGroupId)"
+        if ($group.completionPolicy -ne 'ALL_WAVES_CLEARED') {
+            throw "Unsupported spawn group completion policy: $($group.spawnGroupId)"
+        }
+        if ($group.repeatPolicy -ne 'ONCE' -and $group.repeatPolicy -ne 'REPEAT') {
+            throw "Unsupported spawn group repeat policy: $($group.spawnGroupId)"
+        }
+        Assert-JsonInteger $group.repeatDelayMs "$relativePath repeatDelayMs" 0 600000
+        # The delay only means something to REPEAT, so a ONCE group carrying one
+        # is an authoring mistake rather than a value the runtime should ignore.
+        if (($group.repeatPolicy -eq 'REPEAT') -ne ([uint32]$group.repeatDelayMs -ne 0)) {
+            throw "Spawn group repeat delay contradicts its policy: $($group.spawnGroupId)"
         }
         $waves = @($group.waves)
         if ($waves.Count -lt 1 -or $waves.Count -gt 16) { throw "Spawn group wave count is invalid: $($group.spawnGroupId)" }
         $prerequisite = if ($null -eq $group.requiredCompletedGroupId) { '-' } else { [string]$group.requiredCompletedGroupId }
-        $groupRows.Add((@('GROUP',[string]$group.spawnGroupId,$prerequisite,[string][uint32]$group.maxAlive,[string]$waves.Count) -join "`t"))
+        $groupRows.Add((@('GROUP',[string]$group.spawnGroupId,$prerequisite,
+            [string][uint32]$group.maxAlive,[string]$waves.Count,
+            [string]$group.repeatPolicy,[string][uint32]$group.repeatDelayMs) -join "`t"))
         $waveIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $totalCount = 0
         for ($waveIndex = 0; $waveIndex -lt $waves.Count; $waveIndex++) {
             $wave = $waves[$waveIndex]
-            Assert-ExactProperties $wave @('waveId','startDelayMs','nextWavePolicy','entries') "$relativePath wave"
+            Assert-ExactProperties $wave @('waveId','startDelayMs','nextWavePolicy','nextWaveDelayMs','entries') "$relativePath wave"
             Assert-StableId $wave.waveId "$relativePath waveId"
             if (-not $waveIds.Add([string]$wave.waveId)) { throw "Duplicate wave ID in group $($group.spawnGroupId): $($wave.waveId)" }
             Assert-JsonInteger $wave.startDelayMs "$relativePath startDelayMs" 0 600000
-            if ($wave.nextWavePolicy -ne 'ALL_DEAD') { throw "Unsupported next wave policy: $($wave.waveId)" }
+            if ($wave.nextWavePolicy -ne 'ALL_DEAD' -and $wave.nextWavePolicy -ne 'TIMER') {
+                throw "Unsupported next wave policy: $($wave.waveId)"
+            }
+            Assert-JsonInteger $wave.nextWaveDelayMs "$relativePath nextWaveDelayMs" 0 600000
+            if (($wave.nextWavePolicy -eq 'TIMER') -ne ([uint32]$wave.nextWaveDelayMs -ne 0)) {
+                throw "Spawn wave delay contradicts its policy: $($wave.waveId)"
+            }
             $entries = @($wave.entries)
             if ($entries.Count -lt 1 -or $entries.Count -gt 16) { throw "Spawn wave entry count is invalid: $($wave.waveId)" }
             $groupRows.Add((@('WAVE',[string]$group.spawnGroupId,[string]$wave.waveId,
-                [string]$waveIndex,[string][uint32]$wave.startDelayMs,[string]$entries.Count) -join "`t"))
+                [string]$waveIndex,[string][uint32]$wave.startDelayMs,[string]$entries.Count,
+                [string]$wave.nextWavePolicy,[string][uint32]$wave.nextWaveDelayMs) -join "`t"))
             for ($entryIndex = 0; $entryIndex -lt $entries.Count; $entryIndex++) {
                 $entry = $entries[$entryIndex]
                 Assert-ExactProperties $entry @('archetypeId','count','anchorId','initialDelayMs','spawnIntervalMs') "$relativePath entry"
@@ -367,6 +386,9 @@ function Convert-SpawnGroupsDocument {
     }
 
     $profileRows = [Collections.Generic.List[string]]::new()
+    # Kept apart from $profileRows because the header publishes that list's
+    # count as the profile count, and the Server rejects a bootstrap whose
+    # PROFILE rows do not match it.
     foreach ($archetypeId in @($usedArchetypes | Sort-Object)) {
         $profile = $MonsterProfiles[$archetypeId]
         $profileRows.Add((@('PROFILE',$archetypeId,[string][uint32]$profile.maxHp,

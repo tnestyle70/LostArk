@@ -7,6 +7,7 @@
 #include "CharacterPreviewPanel.h"
 #include "EncounterPatternReference.h"
 #include "ValtanPatternPreviewDocument.h"
+#include "ValtanPatternTree.h"
 
 #include <filesystem>
 #include <unordered_set>
@@ -22,6 +23,29 @@ class CCharacter;
 class CAnimation_Tool final
 {
 private:
+	/* One exact occurrence on the admitted Valtan.pattern.json wall-clock.
+	   Source time remains independent: sourceStart/playMs/playRate select the
+	   pose, while authoringWallMs decides when the Server stage advances. */
+	struct VALTAN_PATTERN_MASTER_PLAY_ITEM final
+	{
+		std::string strPatternId;
+		std::string strPatternDisplayName;
+		std::string strStageId;
+		std::string strSequenceRole;
+		std::string strActionId;
+		std::string strClipOccurrenceId;
+		std::string strClipName;
+		uint32_t iSourceStartMs = 0u;
+		uint32_t iPlayMs = 0u;
+		uint32_t iAuthoringWallMs = 0u;
+		uint32_t iTimelineStartMs = 0u;
+		uint32_t iStageTimelineStartMs = 0u;
+		uint32_t iOccurrenceNumber = 0u;
+		uint32_t iOccurrenceCount = 0u;
+		f32_t fPlayRate = 1.f;
+		bool_t bRepeatUntilStageEnd = false;
+	};
+
 	/* Window kinds own a start..end span; point kinds fire on one instant and
 	carry a payload naming the cue or particle. Everything before SOUND is a
 	window (see Is_Window). Keeping SOUND and EFFECT apart rather than folding
@@ -192,8 +216,45 @@ private:
 	void Render_TargetConflict();
 	void Render_Playback(const shared_ptr<Engine::CModel>& pModel);
 	void Render_ValtanPatternPreview(const shared_ptr<Engine::CModel>& pModel);
+	void Render_ValtanPatternMaster(
+		const shared_ptr<Engine::CModel>& pModel);
 	void Render_ValtanPatternReferenceWindow(
 		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Reload_ValtanPatternMaster();
+	std::vector<const VALTAN_PATTERN_VIEW*>
+		Collect_ValtanPatternMasterPatterns() const;
+	bool_t Build_ValtanPatternMasterTimeline(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		VALTAN_PATTERN_PREVIEW_PATH ePath,
+		const shared_ptr<Engine::CModel>& pModel,
+		std::vector<VALTAN_PATTERN_MASTER_PLAY_ITEM>& OutPlaylist,
+		uint32_t& iOutDurationMs,
+		std::string& strOutStatus) const;
+	bool_t Start_ValtanPatternMasterPreview(
+		const shared_ptr<Engine::CModel>& pModel,
+		const VALTAN_PATTERN_VIEW& Pattern,
+		VALTAN_PATTERN_PREVIEW_PATH ePath);
+	bool_t Activate_ValtanPatternMasterItem(
+		const shared_ptr<Engine::CModel>& pModel,
+		std::size_t iItem,
+		f32_t fLocalWallSeconds);
+	bool_t Apply_ValtanPatternMasterPose(
+		const shared_ptr<Engine::CModel>& pModel,
+		const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item,
+		f32_t fLocalWallSeconds) const;
+	bool_t Seek_ValtanPatternMasterPreview(
+		const shared_ptr<Engine::CModel>& pModel,
+		f32_t fTimelineSeconds,
+		bool_t bPause);
+	void Advance_ValtanPatternMasterPreview(
+		const shared_ptr<Engine::CModel>& pModel);
+	void Stop_ValtanPatternMasterPreview(
+		const shared_ptr<Engine::CModel>& pModel,
+		const std::string& status);
+	void Reset_ValtanPatternMasterPreviewState(const std::string& status);
+	void Update_ValtanPatternMasterHitAreaPreview();
+	static const char_t* ValtanPatternMasterPathName(
+		VALTAN_PATTERN_PREVIEW_PATH ePath);
 	bool_t Start_ValtanSequencePreview(
 		const shared_ptr<Engine::CModel>& pModel,
 		std::size_t iSequenceIndex);
@@ -314,6 +375,22 @@ private:
 	char m_Filter[128]{};
 	bool_t m_bLoop = true;
 	bool_t m_bShowHitAreas = true;
+	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternMasterView;
+	std::vector<VALTAN_PATTERN_MASTER_PLAY_ITEM>
+		m_ValtanPatternMasterPlaylist;
+	bool_t m_bValtanPatternMasterLoadAttempted = false;
+	bool_t m_bValtanPatternMasterPlaying = false;
+	bool_t m_bValtanPatternMasterPaused = false;
+	bool_t m_bShowValtanSourceReferenceWindow = false;
+	int32_t m_iValtanPatternMasterSelected = 0;
+	std::size_t m_iValtanPatternMasterItem = 0u;
+	f32_t m_fValtanPatternMasterItemElapsedSeconds = 0.f;
+	uint32_t m_iValtanPatternMasterDurationMs = 0u;
+	VALTAN_PATTERN_PREVIEW_PATH m_eValtanPatternMasterPath =
+		VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
+	std::string m_strValtanPatternMasterStatus;
+	std::weak_ptr<Engine::CModel> m_ValtanPatternMasterModel;
+	uint64_t m_iValtanPatternMasterTargetGeneration = 0u;
 	VALTAN_PATTERN_PREVIEW_DOCUMENT m_ValtanPatternPreviewDocument;
 	std::vector<VALTAN_PATTERN_PREVIEW_PLAY_ITEM> m_ValtanPatternPreviewPlaylist;
 	bool_t m_bValtanPatternPreviewLoadAttempted = false;

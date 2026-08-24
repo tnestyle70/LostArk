@@ -273,6 +273,16 @@ namespace
 		return (milliseconds * SERVER_TICK_HZ + 999u) / 1000u;
 	}
 
+	bool IsAutomaticComboStage(
+		const LostArk::Server::PLAYER_COMBO_STAGE& stage)
+	{
+		/* A non-final COMBO stage with no input window is authored to advance on
+		its own full-motion boundary. The catalog validators require advance ==
+		duration for this shape, so automatic presentation is never truncated. */
+		return 0u == stage.iInputOpenMs && 0u == stage.iInputCloseMs &&
+			stage.iComboAdvanceMs == stage.iActionDurationMs;
+	}
+
 	bool IsInsideComboWindow(
 		const LostArk::Server::PLAYER_SKILL_DEFINITION& skill,
 		const LostArk::Server::SERVER_PLAYER& player)
@@ -1238,30 +1248,43 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 
 	/* A counter never advances on its own clock: only a hit taken inside the
 	guard window promotes it, which Try_Counter does. */
+	const bool isCombo = PLAYER_SKILL_KIND::COMBO == skill->eSkillKind;
+	const bool hasFollowingStage = hasStage &&
+		static_cast<std::size_t>(player.iComboStage) <
+			skill->ComboStages.size();
+	const bool automaticComboStage = isCombo && hasFollowingStage &&
+		IsAutomaticComboStage(skill->ComboStages[stageIndex]);
 	const bool hasNextStage = hasStage && !isCounter &&
 		(isHold ? static_cast<std::size_t>(player.iComboStage) <
 				skill->ComboStages.size()
-			: player.hasBufferedComboInput &&
-				static_cast<std::size_t>(player.iComboStage) <
-					skill->ComboStages.size());
-	const bool isCombo = PLAYER_SKILL_KIND::COMBO == skill->eSkillKind;
+			: hasFollowingStage &&
+				(automaticComboStage || player.hasBufferedComboInput));
 	const bool reachedComboBoundary = isCombo &&
 		player.fActionElapsedSeconds >=
 			static_cast<float>(comboAdvanceMs) * MILLISECONDS_TO_SECONDS;
 	const bool stageDamageComplete = !dealsDamage || player.hasAppliedSkillDamage;
 	const bool hasPendingExplicit =
 		PLAYER_PENDING_COMMAND_KIND::NONE != player.PendingCommand.eKind;
-	/* comboAdvanceMs is only the buffered BA continuation boundary. MOVE/SKILL
-	keeps the current animation locked through its full authored duration. */
-	const bool commitsPendingExplicit = hasPendingExplicit && stageDamageComplete &&
+	/* comboAdvanceMs is the COMBO continuation boundary. A manual stage needs a
+	buffered press; an automatic stage owns a full-duration boundary. MOVE/SKILL
+	still keeps the current animation locked through its authored duration. */
+	/* A pending explicit command may replace a manual COMBO at its current full
+	stage boundary.  An automatic COMBO is one authored action, however, so keep
+	the pending intent across every automatic stage and commit it only after the
+	last motion completes. */
+	const bool defersPendingThroughAutomaticChain = hasPendingExplicit &&
+		automaticComboStage && hasNextStage;
+	const bool commitsPendingExplicit = hasPendingExplicit &&
+		!defersPendingThroughAutomaticChain && stageDamageComplete &&
 		player.fActionElapsedSeconds >= durationSeconds;
-	/* hitTimeMs only owns damage. A buffered continuation waits for the authored
-	combo boundary, keeping the current stage's presentation/root motion intact. */
-	const bool advancesBufferedCombo =
+	/* hitTimeMs only owns damage. Continuation waits for the authored combo
+	boundary, keeping the current stage's presentation/root motion intact. */
+	const bool advancesComboStage =
 		reachedComboBoundary && stageDamageComplete &&
-		hasNextStage && !hasPendingExplicit;
+		hasNextStage &&
+		(!hasPendingExplicit || defersPendingThroughAutomaticChain);
 
-	if (advancesBufferedCombo || commitsPendingExplicit || holdLeavesLoop ||
+	if (advancesComboStage || commitsPendingExplicit || holdLeavesLoop ||
 		player.fActionElapsedSeconds >= durationSeconds)
 	{
 		if (!commitsPendingExplicit && hasNextStage)

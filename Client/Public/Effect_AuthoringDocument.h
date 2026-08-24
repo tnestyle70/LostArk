@@ -522,12 +522,39 @@ struct EFFECT_TIMING_DESC final
 {
 	f32_t fStartDelaySeconds = 0.f;
 	f32_t fLifeTimeSeconds = 1.f;
-	/* Optional root-transform clock. Zero preserves the legacy contract where
-	   Element Life drives both motion and visibility. A positive value freezes
-	   the Element root transform at that time while the Life clock continues. */
+	/* Optional root-transform hold clock. Zero preserves the legacy contract:
+	   Life normalizes authored lerps/visibility while velocity and Revolution
+	   keep accumulating with local time. A positive value freezes the Element
+	   root transform at that time while the Life clock continues. */
 	f32_t fTransformMotionDurationSeconds = 0.f;
 	f32_t fAfterImageSeconds = 0.f;
 	f32_t fDissolveStartNormalized = 1.f;
+};
+
+enum class EFFECT_RING_FILL_DIRECTION : uint8_t
+{
+	INNER_TO_OUTER,
+	OUTER_TO_INNER,
+	END
+};
+
+struct EFFECT_MESH_RING_FILL_DESC final
+{
+	bool_t bEnabled = false;
+	f32_t fProgress = 1.f;
+	EFFECT_RING_FILL_DIRECTION eDirection =
+		EFFECT_RING_FILL_DIRECTION::INNER_TO_OUTER;
+	f32_t fFeather = 0.05f;
+	/* Corrects carrier models whose raw radial V axis is authored backwards.
+	   This is applied before the conceptual fill direction. */
+	bool_t bInvert = false;
+
+	bool_t Is_Default() const
+	{
+		return !bEnabled && fProgress == 1.f &&
+			eDirection == EFFECT_RING_FILL_DIRECTION::INNER_TO_OUTER &&
+			fFeather == 0.05f && !bInvert;
+	}
 };
 
 struct EFFECT_MESH_DETAIL_DESC final
@@ -538,6 +565,7 @@ struct EFFECT_MESH_DETAIL_DESC final
 	f32_t fModelPreScale = 1.f;
 	// UE source order: roll(X), pitch(Y), yaw(Z), in degrees.
 	float3_t vSourceTypeDataRotationDegrees = { 0.f, 0.f, 0.f };
+	EFFECT_MESH_RING_FILL_DESC RingFill;
 };
 
 struct EFFECT_SPRITE_DETAIL_DESC final
@@ -575,6 +603,8 @@ struct EFFECT_LINEAR_LERP_DESC final
 	float4_t vEndColorMultiply = { 1.f, 1.f, 1.f, 1.f };
 	bool_t bEmissiveIntensity = false;
 	f32_t fEndEmissiveIntensity = 1.f;
+	bool_t bRingFillProgress = false;
+	f32_t fEndRingFillProgress = 1.f;
 };
 
 /* Cascade owns the spawn volume in particlemodulelocation*; the authored Detail
@@ -587,6 +617,13 @@ enum class EFFECT_PARTICLE_SPAWN_SHAPE : uint8_t
 	SPHERE,
 	RING,
 	BOX,
+	END
+};
+
+enum class EFFECT_PARTICLE_SPAWN_DISTRIBUTION : uint8_t
+{
+	RANDOM,
+	EVEN,
 	END
 };
 
@@ -616,6 +653,8 @@ enum class EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE : uint8_t
 struct EFFECT_PARTICLE_SPAWN_SHAPE_DESC final
 {
 	EFFECT_PARTICLE_SPAWN_SHAPE eKind = EFFECT_PARTICLE_SPAWN_SHAPE::POINT;
+	EFFECT_PARTICLE_SPAWN_DISTRIBUTION eDistribution =
+		EFFECT_PARTICLE_SPAWN_DISTRIBUTION::RANDOM;
 	/* Outer radius in Client metres for SPHERE and RING. */
 	f32_t fRadius = 0.f;
 	/* Inner radius in Client metres.  RING uses it as the hole, SPHERE as the
@@ -626,6 +665,29 @@ struct EFFECT_PARTICLE_SPAWN_SHAPE_DESC final
 	/* Angular span the shape is allowed to occupy, centred on +X of the Element.
 	   360 is the whole circle or sphere. */
 	f32_t fArcDegrees = 360.f;
+};
+
+enum class EFFECT_PARTICLE_ORIENTATION_MODE : uint8_t
+{
+	FIXED,
+	GROUND_RADIAL_OUTWARD,
+	GROUND_RADIAL_INWARD,
+	GROUND_TANGENT_CLOCKWISE,
+	GROUND_TANGENT_COUNTER_CLOCKWISE,
+	END
+};
+
+struct EFFECT_PARTICLE_INITIAL_ORIENTATION_DESC final
+{
+	EFFECT_PARTICLE_ORIENTATION_MODE eMode =
+		EFFECT_PARTICLE_ORIENTATION_MODE::FIXED;
+	f32_t fOffsetDegrees = 0.f;
+
+	bool_t Is_Default() const
+	{
+		return eMode == EFFECT_PARTICLE_ORIENTATION_MODE::FIXED &&
+			fOffsetDegrees == 0.f;
+	}
 };
 
 struct EFFECT_PARTICLE_INITIAL_VELOCITY_DESC final
@@ -728,9 +790,11 @@ struct EFFECT_PARTICLE_DESC final
 	uint32_t iDynamicParameterComponentMask = 0u;
 	float4_t vDynamicParameterStart{};
 	float4_t vDynamicParameterEnd{};
-	/* Both default to the historical POINT/FIXED behaviour, so a document that
-	   omits them spawns exactly as it did before the fields existed. */
+	/* These descriptors default to the historical POINT/random/FIXED behaviour,
+	   so a document that omits them spawns exactly as it did before the fields
+	   existed. */
 	EFFECT_PARTICLE_SPAWN_SHAPE_DESC SpawnShape;
+	EFFECT_PARTICLE_INITIAL_ORIENTATION_DESC InitialOrientation;
 	EFFECT_PARTICLE_INITIAL_VELOCITY_DESC InitialVelocity;
 	EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC TargetAttractor;
 	/* Read only while SourceRecipe.bEnabled; all ones means untouched. */

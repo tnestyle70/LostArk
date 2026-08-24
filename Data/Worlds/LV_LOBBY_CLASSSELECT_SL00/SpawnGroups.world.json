@@ -6,12 +6,20 @@
   "anchors": [
     {
       "anchorId": "anchor.character-select.monster",
-      "position": [-767.0, -142.71846, 204.0],
+      "position": [
+        -767.0,
+        -142.71846,
+        204.0
+      ],
       "yawDegrees": 180.0
     },
     {
       "anchorId": "anchor.character-select.miniboss",
-      "position": [-777.0, -142.71846, 204.0],
+      "position": [
+        -777.0,
+        -142.71846,
+        204.0
+      ],
       "yawDegrees": 180.0
     }
   ],
@@ -21,12 +29,14 @@
       "requiredCompletedGroupId": null,
       "maxAlive": 1,
       "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
       "completionPolicy": "ALL_WAVES_CLEARED",
       "waves": [
         {
           "waveId": "wave.character-select.monster.immediate",
           "startDelayMs": 0,
           "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
           "entries": [
             {
               "archetypeId": "MONSTER_VALTAN_PADD_01",
@@ -44,17 +54,44 @@
       "requiredCompletedGroupId": null,
       "maxAlive": 1,
       "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
       "completionPolicy": "ALL_WAVES_CLEARED",
       "waves": [
         {
           "waveId": "wave.character-select.miniboss.immediate",
           "startDelayMs": 0,
           "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
           "entries": [
             {
               "archetypeId": "MINIBOSS_LUGARU",
               "count": 1,
               "anchorId": "anchor.character-select.miniboss",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.character-select.elite",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 1,
+      "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.character-select.elite.immediate",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_VALTAN_SJFC_ELITE",
+              "count": 1,
+              "anchorId": "anchor.character-select.monster",
               "initialDelayMs": 0,
               "spawnIntervalMs": 0
             }

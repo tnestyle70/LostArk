@@ -262,7 +262,7 @@
     {
       "bindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
       "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01.occurrence.01",
-      "patternId": "VALTAN_TRIPLE_SLASH",
+      "patternId": "VALTAN_FOUR_SLASH",
       "stageId": "SLASHES",
       "actionId": "valtan.attack.triple-slash.active",
       "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
@@ -294,7 +294,7 @@
     {
       "bindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02",
       "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02.occurrence.01",
-      "patternId": "VALTAN_ROTATION_SLASH",
+      "patternId": "VALTAN_FOUR_SLASH",
       "stageId": "SPIN",
       "actionId": "valtan.attack.rotation-slash.active",
       "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
@@ -326,7 +326,7 @@
     {
       "bindingId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
       "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01",
-      "patternId": "VALTAN_ROTATION_SLASH",
+      "patternId": "VALTAN_FOUR_SLASH",
       "stageId": "RECOVERY",
       "actionId": "valtan.attack.four-slash.recovery",
       "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
@@ -1103,7 +1103,7 @@
       "followPolicy": "follow",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
-      "sourceStartMs": 0,
+      "sourceStartMs": 400,
       "sourceEndMs": null,
       "localTransform": {
         "position": [
@@ -1131,6 +1131,38 @@
       "actionId": "valtan.mechanic.arena-break-109.takeoff",
       "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
       "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01",
+      "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01.occurrence.01",
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "RECOVERY",
+      "actionId": "valtan.mechanic.arena-break-109.recovery",
+      "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.ledge-roar.recovery.clip-01",
       "anchorSlotId": "root",
       "followPolicy": "follow",
       "stopPolicy": "natural",
@@ -1227,6 +1259,70 @@
       "actionId": "valtan.mechanic.floor-wipe-130.windup",
       "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
       "effectAssetId": "effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+      "occurrenceId": "cue.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01.occurrence.01",
+      "patternId": "VALTAN_FOUR_PILLARS_105",
+      "stageId": "TAKEOFF",
+      "actionId": "valtan.mechanic.four-pillars-105.takeoff",
+      "clipOccurrenceId": "valtan.mechanic.four-pillars-105.takeoff.clip.01",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+      "occurrenceId": "cue.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01.occurrence.01",
+      "patternId": "VALTAN_FOUR_PILLARS_105",
+      "stageId": "TARGET_CONE",
+      "actionId": "valtan.mechanic.four-pillars-105.target-cone",
+      "clipOccurrenceId": "valtan.mechanic.four-pillars-105.target-cone.clip.01",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
       "anchorSlotId": "root",
       "followPolicy": "follow",
       "stopPolicy": "natural",

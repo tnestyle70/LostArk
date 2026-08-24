@@ -95,7 +95,7 @@ class ExplicitClipSegmentTests(unittest.TestCase):
         self.assertIsNone(
             rootmotion.build_explicit_clip_segments(clips, self.curves))
 
-    def test_current_explicit_multi_clip_migration_is_dash_windup_only(self) -> None:
+    def test_current_explicit_multi_clip_migrations_are_allowlisted(self) -> None:
         repo_root = Path(__file__).resolve().parents[2]
         document = json.loads((
             repo_root /
@@ -110,8 +110,11 @@ class ExplicitClipSegmentTests(unittest.TestCase):
                 for clip in binding["clips"])
         ]
 
-        self.assertEqual(
-            ["valtan.attack.dash-charge.windup"], explicit_multi_actions)
+        self.assertEqual([
+            "valtan.attack.dash-charge.windup",
+            "valtan.mechanic.arena-break-109.drop",
+            "valtan.mechanic.arena-break-109.impact-hold",
+        ], explicit_multi_actions)
 
 
 if __name__ == "__main__":

@@ -3180,7 +3180,8 @@ bool_t Client::CEffectPlayback::Step(
 				if (!State.bBurstSpawned)
 				{
 					Spawn_Particles(Element, State,
-						Element.Detail.Particle.iBurstCount, RootWorld);
+						Element.Detail.Particle.iBurstCount, RootWorld,
+						nullptr, true);
 					State.bBurstSpawned = true;
 				}
 				State.fSpawnAccumulator +=
@@ -3329,7 +3330,8 @@ void Client::CEffectPlayback::Spawn_Particles(
 	ELEMENT_STATE& State,
 	const uint32_t iCount,
 	const float4x4_t& RootWorld,
-	const SOURCE_PARTICLE_EVENT* pSourceEvent)
+	const SOURCE_PARTICLE_EVENT* pSourceEvent,
+	const bool_t bAuthoredFixedBurst)
 {
 	const EFFECT_PARTICLE_DESC& Desc = Element.Detail.Particle;
 	if (!Can_EvaluateElementWorld(Element))
@@ -3410,7 +3412,50 @@ void Client::CEffectPlayback::Spawn_Particles(
 		}
 		else
 		{
-			Particle.vPosition = Sample_AuthoredSpawnPosition(Desc, State);
+			const AUTHORED_PARTICLE_SPAWN_SAMPLE SpawnSample =
+				Sample_AuthoredSpawnPosition(
+					Desc, State, iParticle, iSpawnCount,
+					bAuthoredFixedBurst);
+			Particle.vPosition = SpawnSample.vPosition;
+			if (SpawnSample.bHasRingAzimuth &&
+				Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				!Is_MeshParticle(Element) &&
+				Desc.bLocalSpace && !Desc.bBillboard &&
+				EFFECT_PARTICLE_ORIENTATION_MODE::FIXED !=
+					Desc.InitialOrientation.eMode)
+			{
+				f32_t fYawDegrees = -XMConvertToDegrees(
+					SpawnSample.fRingAzimuthRadians);
+				bool_t bApplyOrientation = true;
+				switch (Desc.InitialOrientation.eMode)
+				{
+				case EFFECT_PARTICLE_ORIENTATION_MODE::GROUND_RADIAL_INWARD:
+					fYawDegrees += 180.f;
+					break;
+				case EFFECT_PARTICLE_ORIENTATION_MODE::GROUND_TANGENT_CLOCKWISE:
+					fYawDegrees -= 90.f;
+					break;
+				case EFFECT_PARTICLE_ORIENTATION_MODE::GROUND_TANGENT_COUNTER_CLOCKWISE:
+					fYawDegrees += 90.f;
+					break;
+				case EFFECT_PARTICLE_ORIENTATION_MODE::GROUND_RADIAL_OUTWARD:
+					break;
+				case EFFECT_PARTICLE_ORIENTATION_MODE::FIXED:
+				case EFFECT_PARTICLE_ORIENTATION_MODE::END:
+				default:
+					bApplyOrientation = false;
+					break;
+				}
+				if (bApplyOrientation)
+				{
+					Particle.vRotationDegrees = {
+						-90.f,
+						fYawDegrees +
+							Desc.InitialOrientation.fOffsetDegrees,
+						0.f
+					};
+				}
+			}
 			Particle.vVelocity = Sample_AuthoredInitialVelocity(
 				Desc, State, Particle.vPosition);
 			Particle.vBaseSize = float3_t(
@@ -5459,11 +5504,16 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 	const EFFECT_DETAIL_DESC& Detail = Element.Detail;
 	const f32_t fLocalTime = (std::max)(0.f,
 		fSampleTimeSeconds - Detail.Timing.fStartDelaySeconds);
-	const f32_t fMotionDuration =
-		Detail.Timing.fTransformMotionDurationSeconds > 0.f ?
+	const bool_t bHasExplicitMotionDuration =
+		Detail.Timing.fTransformMotionDurationSeconds > 0.f;
+	const f32_t fMotionDuration = bHasExplicitMotionDuration ?
 		Detail.Timing.fTransformMotionDurationSeconds :
 		Detail.Timing.fLifeTimeSeconds;
-	const f32_t fMotionTime = (std::min)(fLocalTime, fMotionDuration);
+	/* Before Motion/Hold existed, Life normalized authored lerps but never
+	   clamped velocity or Revolution accumulation.  Only an explicit Motion
+	   Duration opts an Element into the new frozen-root contract. */
+	const f32_t fMotionTime = bHasExplicitMotionDuration ?
+		(std::min)(fLocalTime, fMotionDuration) : fLocalTime;
 	const f32_t T = Clamp01(fMotionTime / fMotionDuration);
 	const EFFECT_LINEAR_LERP_DESC& Lerp = Detail.LinearLerp;
 
@@ -5936,7 +5986,10 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			else
 			{
 				Evaluated.Color = ElementColor;
-				Evaluated.Color.w *= 1.f - ParticleT;
+				/* Ring Fill alpha is explicitly authored. The legacy implicit
+				   particle fade would hide the completed ring at its wave boundary. */
+				if (!Element.Detail.Mesh.RingFill.bEnabled)
+					Evaluated.Color.w *= 1.f - ParticleT;
 			}
 			Evaluated.vDynamicParameter = Particle.vDynamicParameter;
 			if (!Element.SourceRecipe.bEnabled)
@@ -6187,10 +6240,15 @@ f32_t Client::CEffectPlayback::Random_Range(
 	return fMin + (fMax - fMin) * T;
 }
 
-float3_t Client::CEffectPlayback::Sample_AuthoredSpawnPosition(
+Client::CEffectPlayback::AUTHORED_PARTICLE_SPAWN_SAMPLE
+Client::CEffectPlayback::Sample_AuthoredSpawnPosition(
 	const EFFECT_PARTICLE_DESC& Desc,
-	ELEMENT_STATE& State) const
+	ELEMENT_STATE& State,
+	const uint32_t iParticleIndex,
+	const uint32_t iParticleCount,
+	const bool_t bAuthoredFixedBurst) const
 {
+	AUTHORED_PARTICLE_SPAWN_SAMPLE Sample;
 	/* The min/max box is the only spawn volume the authored Detail had before
 	   spawnShape existed, so POINT has to keep drawing exactly the same three
 	   randoms in the same order.  The other kinds add the volume Cascade
@@ -6205,11 +6263,34 @@ float3_t Client::CEffectPlayback::Sample_AuthoredSpawnPosition(
 			Desc.vInitialPositionMax.z));
 	const EFFECT_PARTICLE_SPAWN_SHAPE_DESC& Shape = Desc.SpawnShape;
 	if (EFFECT_PARTICLE_SPAWN_SHAPE::POINT == Shape.eKind)
-		return vBoxOffset;
+	{
+		Sample.vPosition = vBoxOffset;
+		return Sample;
+	}
 
-	const f32_t fArc = XMConvertToRadians(
-		std::clamp(Shape.fArcDegrees, 0.f, 360.f));
-	const f32_t fAngle = Random_Range(State, -0.5f * fArc, 0.5f * fArc);
+	const f32_t fArcDegrees = std::clamp(
+		Shape.fArcDegrees, 0.f, 360.f);
+	const f32_t fArc = XMConvertToRadians(fArcDegrees);
+	const f32_t fRandomAngle = Random_Range(
+		State, -0.5f * fArc, 0.5f * fArc);
+	f32_t fAngle = fRandomAngle;
+	if (bAuthoredFixedBurst &&
+		EFFECT_PARTICLE_SPAWN_SHAPE::RING == Shape.eKind &&
+		EFFECT_PARTICLE_SPAWN_DISTRIBUTION::EVEN == Shape.eDistribution)
+	{
+		if (iParticleCount <= 1u)
+		{
+			fAngle = 0.f;
+		}
+		else
+		{
+			const bool_t bFullCircle = fArcDegrees >= 360.f;
+			const f32_t fCohortT = static_cast<f32_t>(iParticleIndex) /
+				static_cast<f32_t>(bFullCircle ?
+					iParticleCount : iParticleCount - 1u);
+			fAngle = -0.5f * fArc + fArc * fCohortT;
+		}
+	}
 	switch (Shape.eKind)
 	{
 	case EFFECT_PARTICLE_SPAWN_SHAPE::SPHERE:
@@ -6225,10 +6306,11 @@ float3_t Client::CEffectPlayback::Sample_AuthoredSpawnPosition(
 		const f32_t fCosPolar = Random_Range(State, -1.f, 1.f);
 		const f32_t fSinPolar = std::sqrt(
 			(std::max)(0.f, 1.f - fCosPolar * fCosPolar));
-		return Add3(vBoxOffset, float3_t(
+		Sample.vPosition = Add3(vBoxOffset, float3_t(
 			fRadius * fSinPolar * std::cos(fAngle),
 			fRadius * fCosPolar,
 			fRadius * fSinPolar * std::sin(fAngle)));
+		return Sample;
 	}
 	case EFFECT_PARTICLE_SPAWN_SHAPE::RING:
 	{
@@ -6239,18 +6321,23 @@ float3_t Client::CEffectPlayback::Sample_AuthoredSpawnPosition(
 		const f32_t fOuterSquare = Shape.fRadius * Shape.fRadius;
 		const f32_t fRadius = std::sqrt(
 			fInnerSquare + (fOuterSquare - fInnerSquare) * fUnit);
-		return Add3(vBoxOffset, float3_t(
+		Sample.vPosition = Add3(vBoxOffset, float3_t(
 			fRadius * std::cos(fAngle), 0.f, fRadius * std::sin(fAngle)));
+		Sample.fRingAzimuthRadians = fAngle;
+		Sample.bHasRingAzimuth = true;
+		return Sample;
 	}
 	case EFFECT_PARTICLE_SPAWN_SHAPE::BOX:
-		return Add3(vBoxOffset, float3_t(
+		Sample.vPosition = Add3(vBoxOffset, float3_t(
 			Random_Range(State, -Shape.vExtents.x, Shape.vExtents.x),
 			Random_Range(State, -Shape.vExtents.y, Shape.vExtents.y),
 			Random_Range(State, -Shape.vExtents.z, Shape.vExtents.z)));
+		return Sample;
 	case EFFECT_PARTICLE_SPAWN_SHAPE::POINT:
 	case EFFECT_PARTICLE_SPAWN_SHAPE::END:
 	default:
-		return vBoxOffset;
+		Sample.vPosition = vBoxOffset;
+		return Sample;
 	}
 }
 

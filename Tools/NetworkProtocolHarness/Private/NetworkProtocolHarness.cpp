@@ -2370,12 +2370,11 @@ namespace
 		case here compares against NETWORK_PROTOCOL_VERSION itself, and pinning a
 		literal only made an unrelated bump fail this row. */
 		testRunner.Require(
-			33u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Packet Types At Protocol V33");
+			"World Destruction Packet Types At Current Protocol");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
@@ -2856,12 +2855,10 @@ namespace
 		{
 			/* Named Debug operations are not health-bar crossings. Each must
 			round-trip with an empty bar and reject any accidental bar payload. */
-			const std::array<VALTAN_AUDITION_OPERATION, 5u> barlessOperations{
+			const std::array<VALTAN_AUDITION_OPERATION, 3u> barlessOperations{
 				VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK,
 				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA,
-				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL,
-				VALTAN_AUDITION_OPERATION::PLAY_ORDERED_1_67,
-				VALTAN_AUDITION_OPERATION::STOP_ORDERED_1_67 };
+				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL };
 			for (std::size_t index = 0u; index < barlessOperations.size(); ++index)
 			{
 				C2S_VALTAN_AUDITION_REQUEST barless{};
@@ -2886,6 +2883,94 @@ namespace
 					!Write_Message(barredWriter, barless),
 					"Reject Valtan Named Debug Auditions That Carry A Bar");
 			}
+		}
+
+		{
+			/* Timeline PLAY addresses one authored chronological row by a stable
+			non-zero command ID. STOP names the active playback itself, not a row. */
+			testRunner.Require(
+				8u == static_cast<std::uint8_t>(
+					VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW) &&
+				9u == static_cast<std::uint8_t>(
+					VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW) &&
+				10u == static_cast<std::uint8_t>(
+					VALTAN_AUDITION_OPERATION::PLAY_PATTERN),
+				"Valtan Timeline Operations Preserve Existing Wire Ordinals");
+
+			C2S_VALTAN_AUDITION_REQUEST timelinePlay{};
+			timelinePlay.iRequestSequence = 25u;
+			timelinePlay.eOperation =
+				VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW;
+			constexpr std::uint32_t TIMELINE_COMMAND_ID = 0x5A17B33Fu;
+			timelinePlay.iTargetHealthBar = TIMELINE_COMMAND_ID;
+			CPacketWriter timelineWriter;
+			C2S_VALTAN_AUDITION_REQUEST decodedTimeline{};
+			const bool wroteTimeline = Write_Message(timelineWriter, timelinePlay);
+			CPacketReader timelineReader{ timelineWriter.Get_Buffer() };
+			testRunner.Require(
+				wroteTimeline && Read_Message(timelineReader, decodedTimeline) &&
+				0u == timelineReader.Get_RemainingSize() &&
+				VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW ==
+					decodedTimeline.eOperation &&
+				TIMELINE_COMMAND_ID == decodedTimeline.iTargetHealthBar,
+				"Valtan Timeline Row Round Trips Its Stable Command Id");
+
+			C2S_VALTAN_AUDITION_REQUEST zeroTimeline = timelinePlay;
+			zeroTimeline.iTargetHealthBar = 0u;
+			CPacketWriter zeroTimelineWriter;
+			testRunner.Require(
+				!Write_Message(zeroTimelineWriter, zeroTimeline),
+				"Reject A Valtan Timeline Play Without A Command Id");
+
+			C2S_VALTAN_AUDITION_REQUEST timelineStop{};
+			timelineStop.iRequestSequence = 26u;
+			timelineStop.eOperation =
+				VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW;
+			timelineStop.iTargetHealthBar = 0u;
+			CPacketWriter stopWriter;
+			C2S_VALTAN_AUDITION_REQUEST decodedStop{};
+			const bool wroteStop = Write_Message(stopWriter, timelineStop);
+			CPacketReader stopReader{ stopWriter.Get_Buffer() };
+			testRunner.Require(
+				wroteStop && Read_Message(stopReader, decodedStop) &&
+				0u == stopReader.Get_RemainingSize() &&
+				VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW ==
+					decodedStop.eOperation &&
+				0u == decodedStop.iTargetHealthBar,
+				"Valtan Timeline Stop Round Trips Without A Command Id");
+
+			C2S_VALTAN_AUDITION_REQUEST numberedStop = timelineStop;
+			numberedStop.iTargetHealthBar = TIMELINE_COMMAND_ID;
+			CPacketWriter numberedStopWriter;
+			testRunner.Require(
+				!Write_Message(numberedStopWriter, numberedStop),
+				"Reject A Valtan Timeline Stop That Carries A Command Id");
+
+			S2C_VALTAN_AUDITION_RESULT timelineResult{};
+			timelineResult.iRequestSequence = timelinePlay.iRequestSequence;
+			timelineResult.eOperation = timelinePlay.eOperation;
+			timelineResult.iTargetHealthBar = timelinePlay.iTargetHealthBar;
+			timelineResult.eResult = VALTAN_AUDITION_RESULT::QUEUED;
+			timelineResult.iCurrentHealthBar = 109u;
+			CPacketWriter timelineResultWriter;
+			S2C_VALTAN_AUDITION_RESULT decodedTimelineResult{};
+			const bool wroteTimelineResult =
+				Write_Message(timelineResultWriter, timelineResult);
+			CPacketReader timelineResultReader{
+				timelineResultWriter.Get_Buffer() };
+			testRunner.Require(
+				wroteTimelineResult &&
+				Read_Message(timelineResultReader, decodedTimelineResult) &&
+				0u == timelineResultReader.Get_RemainingSize() &&
+				decodedTimelineResult.iRequestSequence ==
+					timelineResult.iRequestSequence &&
+				VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW ==
+					decodedTimelineResult.eOperation &&
+				TIMELINE_COMMAND_ID == decodedTimelineResult.iTargetHealthBar &&
+				VALTAN_AUDITION_RESULT::QUEUED ==
+					decodedTimelineResult.eResult &&
+				109u == decodedTimelineResult.iCurrentHealthBar,
+				"Valtan Timeline Result Echoes The Selected Command Id");
 		}
 
 		{

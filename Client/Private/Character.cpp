@@ -10,10 +10,13 @@
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 #include "PlayerSkillCatalog.h"
+#include "RuntimeAssetRoot.h"
+#include "SoundCueCatalog.h"
 #include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 
 namespace
@@ -276,6 +279,7 @@ void CCharacter::Reset_EffectCueCursor(
 	const f32_t fActionFacingYawDegrees)
 {
 	m_fPreviousEffectCueStageWallSeconds = -1.f;
+	m_fPreviousSoundCueStageWallSeconds = -1.f;
 	m_iEffectActionStartTick = iActionStartTick;
 	m_fEffectActionFacingYawDegrees = fActionFacingYawDegrees;
 	m_bHasEffectActionFacingYaw = true;
@@ -484,6 +488,115 @@ void CCharacter::Update_EffectCues()
 		}
 	}
 	m_fPreviousEffectCueStageWallSeconds = fCurrentStageWallSeconds;
+}
+
+void CCharacter::Update_SoundCues()
+{
+	if (nullptr == m_pBodyModel || nullptr == m_pChain ||
+		0u == m_iEffectActionStartTick || m_iChainStage < 0 ||
+		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
+		return;
+	if (nullptr == m_pSpec || nullptr == m_pSpec->pAssetName ||
+		m_EffectCueDocument.Sounds.empty())
+		return;
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
+	if (!Build_ActiveStageTimeline(Timings))
+		return;
+	const std::vector<CLIP_STEP>& Clips =
+		m_pChain->stages[m_iChainStage].clips;
+	const f32_t fCurrentStageWallSeconds = (std::max)(
+		0.f, m_fActionPresentationSeconds);
+	const f32_t fPreviousStageWallSeconds =
+		m_fPreviousSoundCueStageWallSeconds;
+	const std::string strClassName = m_pSpec->pAssetName;
+
+	for (std::size_t iCue = 0u;
+		iCue < m_EffectCueDocument.Sounds.size(); ++iCue)
+	{
+		const ANIMATION_SOUND_CUE& Cue = m_EffectCueDocument.Sounds[iCue];
+		const std::vector<std::string>& Variants =
+			CSoundCueCatalog::Find_Variants(strClassName, Cue.strEventName);
+		if (Variants.empty())
+			continue;
+
+		for (std::size_t iClip = 0u; iClip < Clips.size(); ++iClip)
+		{
+			if (Cue.strClipName != Clips[iClip].clip)
+				continue;
+			f32_t fSourceDurationSeconds = 0.f;
+			f32_t fWallDurationSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_ClipDuration(
+				Timings[iClip], fSourceDurationSeconds, fWallDurationSeconds))
+			{
+				continue;
+			}
+			const f32_t fCueSourceSeconds =
+				static_cast<f32_t>(Cue.iStartMs) * 0.001f;
+			f32_t fFirstOccurrenceWallSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_CueWallOffset(
+				Timings, iClip, fCueSourceSeconds, 0u,
+				fFirstOccurrenceWallSeconds))
+			{
+				continue;
+			}
+
+			uint64_t iFirstEpoch = 0u;
+			uint64_t iLastEpoch = 0u;
+			if (Timings[iClip].bLoop)
+			{
+				if (fCurrentStageWallSeconds <
+					fFirstOccurrenceWallSeconds)
+				{
+					continue;
+				}
+				if (fPreviousStageWallSeconds >=
+					fFirstOccurrenceWallSeconds)
+				{
+					iFirstEpoch = static_cast<uint64_t>(std::floor(
+						(fPreviousStageWallSeconds -
+							fFirstOccurrenceWallSeconds) /
+						fWallDurationSeconds)) + 1u;
+				}
+				iLastEpoch = static_cast<uint64_t>(std::floor((std::max)(
+					0.f, fCurrentStageWallSeconds -
+						fFirstOccurrenceWallSeconds) /
+					fWallDurationSeconds));
+				if (iFirstEpoch > iLastEpoch)
+					continue;
+				if (iLastEpoch - iFirstEpoch + 1u >
+					MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE)
+				{
+					iFirstEpoch = iLastEpoch -
+						MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE + 1u;
+				}
+			}
+
+			for (uint64_t iEpoch = iFirstEpoch;
+				iEpoch <= iLastEpoch; ++iEpoch)
+			{
+				f32_t fOccurrenceWallSeconds = 0.f;
+				if (!CActionPresentationTimeline::Resolve_CueWallOffset(
+					Timings, iClip, fCueSourceSeconds, iEpoch,
+					fOccurrenceWallSeconds) ||
+					fOccurrenceWallSeconds <=
+						fPreviousStageWallSeconds ||
+					fOccurrenceWallSeconds > fCurrentStageWallSeconds)
+				{
+					continue;
+				}
+
+				const std::size_t iVariant = Variants.size() == 1u ? 0u :
+					(static_cast<std::size_t>(std::rand()) % Variants.size());
+				const filesystem::path SoundPath =
+					CRuntimeAssetRoot::Resolve(Variants[iVariant]);
+				CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f);
+
+				if (iEpoch == (std::numeric_limits<uint64_t>::max)())
+					break;
+			}
+		}
+	}
+	m_fPreviousSoundCueStageWallSeconds = fCurrentStageWallSeconds;
 }
 
 void CCharacter::Commit_PendingClipChains()
@@ -1432,6 +1545,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 		m_pColliderCom->Update(XMLoadFloat4x4(
 			m_pTransformCom->Get_WorldMatrixPtr()));
 	Update_EffectCues();
+	Update_SoundCues();
 }
 
 void CCharacter::Late_Update(f32_t fTimeDelta)

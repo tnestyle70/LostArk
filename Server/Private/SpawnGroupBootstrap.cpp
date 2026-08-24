@@ -200,11 +200,30 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 		{
 			SPAWN_GROUP_DEFINITION group;
 			std::uint32_t waveCount = 0;
-			if (5u != fields.size() || !ParseNumber(fields[3], group.iMaxAlive) ||
+			if (7u != fields.size() || !ParseNumber(fields[3], group.iMaxAlive) ||
 				0u == group.iMaxAlive || group.iMaxAlive > 64u ||
-				!ParseNumber(fields[4], waveCount) || 0u == waveCount || waveCount > 16u)
+				!ParseNumber(fields[4], waveCount) || 0u == waveCount || waveCount > 16u ||
+				!ParseNumber(fields[6], group.iRepeatDelayMs) ||
+				group.iRepeatDelayMs > 600000u)
 			{
 				m_strStatus = "Spawn group definition row is invalid";
+				return false;
+			}
+			if ("ONCE" == fields[5])
+				group.eRepeatPolicy = SPAWN_GROUP_REPEAT_POLICY::ONCE;
+			else if ("REPEAT" == fields[5])
+				group.eRepeatPolicy = SPAWN_GROUP_REPEAT_POLICY::REPEAT;
+			else
+			{
+				m_strStatus = "Spawn group repeat policy is unknown";
+				return false;
+			}
+			/* The delay only means something to REPEAT, so a ONCE group that
+			publishes one is a publisher bug rather than a value to ignore. */
+			if ((SPAWN_GROUP_REPEAT_POLICY::REPEAT == group.eRepeatPolicy) !=
+				(0u != group.iRepeatDelayMs))
+			{
+				m_strStatus = "Spawn group repeat delay contradicts its policy";
 				return false;
 			}
 			group.strSpawnGroupId = fields[1];
@@ -223,13 +242,30 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 			std::uint32_t entryCount = 0;
 			SPAWN_GROUP_WAVE wave;
 			const auto group = 3u <= fields.size() ? groupIndices.find(std::string(fields[1])) : groupIndices.end();
-			if (6u != fields.size() || groupIndices.end() == group ||
+			if (8u != fields.size() || groupIndices.end() == group ||
 				!ParseNumber(fields[3], waveIndex) ||
 				waveIndex != stagedGroups[group->second].Waves.size() ||
 				!ParseNumber(fields[4], wave.iStartDelayMs) ||
-				!ParseNumber(fields[5], entryCount) || 0u == entryCount || entryCount > 16u)
+				!ParseNumber(fields[5], entryCount) || 0u == entryCount || entryCount > 16u ||
+				!ParseNumber(fields[7], wave.iNextWaveDelayMs) ||
+				wave.iNextWaveDelayMs > 600000u)
 			{
 				m_strStatus = "Spawn group wave row is invalid";
+				return false;
+			}
+			if ("ALL_DEAD" == fields[6])
+				wave.eNextWavePolicy = SPAWN_NEXT_WAVE_POLICY::ALL_DEAD;
+			else if ("TIMER" == fields[6])
+				wave.eNextWavePolicy = SPAWN_NEXT_WAVE_POLICY::TIMER;
+			else
+			{
+				m_strStatus = "Spawn group next wave policy is unknown";
+				return false;
+			}
+			if ((SPAWN_NEXT_WAVE_POLICY::TIMER == wave.eNextWavePolicy) !=
+				(0u != wave.iNextWaveDelayMs))
+			{
+				m_strStatus = "Spawn group wave delay contradicts its policy";
 				return false;
 			}
 			wave.strWaveId = fields[2];

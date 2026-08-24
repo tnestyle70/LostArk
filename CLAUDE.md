@@ -262,13 +262,28 @@ snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encou
 field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
 재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
 
+`Data/Valtan/Valtan.pattern.json`은 admission된 발탄 1페이즈 pattern의 Server stage, ordered body-animation
+occurrence, Product/independent Effect 사용 위치를 함께 저작하는 정본이다. 전용 publisher가 이를 기존
+Encounter, patternbindings, patterneffectcues와 combat-object typed 제품 문서로 투영하며 Server/Arena는
+master를 두 번째 런타임으로 직접 읽지 않는다. Animation Tool의 `Valtan Pattern Master`는 이 정본의 7개
+pattern 전체 body timeline을 재생·seek한다. 각 stage는 `EXACT`, `HOLD_LAST_POSE`,
+`LOOP_TO_STAGE_END` 중 하나의 명시적 animation 종료 정책을 가지며, Tool은 master branch graph와
+presentation source를 그대로 소비한다. 160~109 normal 선택은 master가 소유하는 정확한 5-pattern
+`WEIGHTED_POOL`을 gameplay rotation product로 투영하며 health-bar mechanic queue가 우선한다.
+`counterReactionLayers`는 기존 Product의 counterable stage와 animation action을 reference-only로 join해
+Animation/Effect Tool에 노출하되 7-pattern admission에는 추가하지 않는다. 기존 1~67
+patternpreview/clipseq 화면은 source reference다.
+
 Debug F1의 `Effect Tool`과 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를
 같은 unified Effect 저작 tree로 연다. Player의 skill과 Valtan의 pattern은 같은 최상위 저작 단위다.
-Valtan pattern을 열면 Product cue, stage-authored reference와 combat-object visual의 saved unified
-Effect를 먼저 중복 없이 나열하고 `Open Saved Effect`/`Play Saved Effect`를 제공한 뒤, 그 아래에
+Valtan pattern을 열면 master가 가리키는 Product cue와 stage-authored reference를 중복 없이 나열하고,
+combat-object/도넛 같은 재사용 asset은 최상위 `INDEPENDENT EFFECT` tree에 한 번만 노출한다. 그 아래에는
 semantic stage와 ordered clip occurrence를 표시한다. Open은 Valtan 모델과 해당 animation을 함께
-stage하고, Play는 Product의 exact clip occurrence 또는 reference/world-root owner stage의 ordered clip
-sequence 전체와 Effect clock을 같은 시작점에서 재생한다. saved 문서 decode는 Open/Play 전까지 지연한다.
+stage하고, `Play Authoring Timeline`은 선택한 pattern 경로의 모든 stage body animation과 Effect clock을
+같은 시작점에서 재생한다. 이때 선택 Effect의 Product cue가 가진 global stage offset, anchor/follow/local
+transform과 stop window를 보존한다. `SERVER_PATTERN_STAGE` 독립 Effect는 이 cue 경로를,
+`SERVER_COMBAT_OBJECT` 독립 Effect는 replicated world root 경로를 사용한다. saved 문서 decode는
+Open/Play 전까지 지연한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
 않는다. 두 owner는 같은 Mesh, Sprite, Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family를
 사용한다.

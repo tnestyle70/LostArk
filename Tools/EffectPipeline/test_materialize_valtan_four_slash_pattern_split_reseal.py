@@ -388,5 +388,18 @@ class ValtanFourSlashPatternSplitResealTests(unittest.TestCase):
             self.assertFalse(second.exists())
 
 
+class ValtanRejoinedFourSlashResealTests(unittest.TestCase):
+    """The retired writer must validate, and never rewrite, its successor."""
+
+    def test_check_accepts_current_rejoined_successor(self) -> None:
+        self.assertEqual(0, RESEAL.main(["--check"]))
+
+    def test_write_mode_is_an_identity_operation_for_the_successor(self) -> None:
+        paths = (RESEAL.BINDINGS_PATH, RESEAL.CUES_PATH)
+        before = {path: path.read_bytes() for path in paths}
+        self.assertEqual(0, RESEAL.main(["--write"]))
+        self.assertEqual(before, {path: path.read_bytes() for path in paths})
+
+
 if __name__ == "__main__":
     unittest.main()

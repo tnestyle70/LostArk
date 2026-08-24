@@ -106,11 +106,39 @@ void LostArk::Server::CSpawnGroupRuntime::Update(
 		(std::max)(1.0, std::round(static_cast<double>(fixedDeltaSeconds) * 1000.0)));
 	for (RUNTIME_GROUP& group : m_Groups)
 	{
-		if (GROUP_STATE::RUNNING != group.eState || nullptr == group.pDefinition)
+		if (nullptr == group.pDefinition)
+			continue;
+		if (GROUP_STATE::COMPLETED == group.eState)
+		{
+			if (SPAWN_GROUP_REPEAT_POLICY::REPEAT !=
+				group.pDefinition->eRepeatPolicy)
+			{
+				continue;
+			}
+			/* A repeat waits for the field to clear before it starts again, so a
+			second run never stacks on top of the one still being fought. The
+			delay is then measured from that quiet moment. */
+			if (0u != activeCount(group.pDefinition->strSpawnGroupId))
+			{
+				group.iElapsedMs = 0;
+				continue;
+			}
+			group.iElapsedMs = (std::min)(
+				(std::numeric_limits<std::uint64_t>::max)() - deltaMs,
+				group.iElapsedMs) + deltaMs;
+			if (group.iElapsedMs < group.pDefinition->iRepeatDelayMs)
+				continue;
+			group.eState = GROUP_STATE::RUNNING;
+			group.iWaveIndex = 0;
+			Begin_Wave(group);
+			continue;
+		}
+		if (GROUP_STATE::RUNNING != group.eState)
 			continue;
 		if (group.iWaveIndex >= group.pDefinition->Waves.size())
 		{
 			group.eState = GROUP_STATE::COMPLETED;
+			group.iElapsedMs = 0;
 			continue;
 		}
 		const SPAWN_GROUP_WAVE& wave = group.pDefinition->Waves[group.iWaveIndex];
@@ -119,12 +147,21 @@ void LostArk::Server::CSpawnGroupRuntime::Update(
 				wave.Entries.begin(), [](const std::uint32_t spawned,
 					const SPAWN_GROUP_ENTRY& entry) { return spawned >= entry.iCount; });
 		std::uint32_t aliveCount = activeCount(group.pDefinition->strSpawnGroupId);
-		if (allScheduled && 0u == aliveCount)
+		/* ALL_DEAD waits the group out; TIMER runs on its own clock so the next
+		wave can open while this one is still standing. maxAlive still caps the
+		group either way, so TIMER cannot outrun the spawn budget. */
+		const bool waveFinished =
+			SPAWN_NEXT_WAVE_POLICY::TIMER == wave.eNextWavePolicy ?
+				group.iElapsedMs >= static_cast<std::uint64_t>(wave.iStartDelayMs) +
+					wave.iNextWaveDelayMs :
+				allScheduled && 0u == aliveCount;
+		if (waveFinished)
 		{
 			++group.iWaveIndex;
 			if (group.iWaveIndex >= group.pDefinition->Waves.size())
 			{
 				group.eState = GROUP_STATE::COMPLETED;
+				group.iElapsedMs = 0;
 				continue;
 			}
 			Begin_Wave(group);

@@ -88,6 +88,11 @@ namespace Client
 			ComPtr<ID3D11DeviceContext> pContext;
 			std::uint32_t iPrototypeLevelIndex = 0;
 			std::uint32_t iLayerLevelIndex = 0;
+			/* Stable LevelRegistry area ID. Replication resolves the navigation
+			   prototype that the Loader registered for this exact area and gives it
+			   only to the locally controlled Character. Ground-target preview may
+			   reject an invalid cell, while the Server still owns final admission. */
+			std::string strMapAreaId;
 			std::wstring strPlayerLayerTag;
 			std::wstring strWorldEntityLayerTag;
 			CDeployPropRuntime* pDeployPropRuntime = nullptr;
@@ -247,6 +252,7 @@ namespace Client
 	private:
 		//?대뼡 layer怨?prototype???앹꽦?섏뼱???섎뒗吏
 		DESC m_Desc;
+		std::wstring m_strLocalPlayerNavigationPrototypeTag;
 		// Stable net objects: slot table, free-slot index and the
 		// handle-by-entity-id lookup, kept across frames.
 		CNetObjectRegistry m_Registry;

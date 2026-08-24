@@ -1,215 +1,285 @@
-# 차원술사 BA·A occurrence 동기화 구현 결과
+# 차원술사 BA 3동작 자동 연계와 LMB/T 확정 입력 수정 구현 결과
 
-## 1. 결론과 현재 상태
+## 1. 결론과 현재 판정
 
-차원술사 기본 공격 `2050010`의 BA1/BA2 동시 재생 원인을 playable animation
-source window로 분리했고, BA1~BA4의 Server stage, animation, root motion과 Product
-Effect를 같은 4단 cadence로 맞췄다. 차원술사 A `2050210`은 기존 aggregate 12개
-Element를 A1~A4의 `9/1/1/1` occurrence 문서로 무손실 분리했다.
+기준선은 `origin/main@1eb50f0bf9e33bd38267df41c336c50463b9e940`이다. 원본 read-only
+reference에는 `_01/_02/_03/_04` 네 physical clip이 존재한다. 이번 제품 계약은 원본 파일 수를
+세 개라고 바꾼 것이 아니라, `_01` 안에 이미 함께 들어 있는 두 번의 찌르기를 하나의 motion으로
+유지하고 사용자가 확인한 동작 순서에 맞춰 다음 세 Server stage로 project-tune한 결과다.
 
-현재 구현은 `codex/artist-ba-dm-a-stage-sync` 분리 worktree에 있으며 시작 HEAD와
-`origin/main`은 모두 `111e06debd17bee48ee26308b3ebc90644280cae`다. 이 RESULT를
-작성하는 시점에는 변경이 아직 commit되지 않았다. focused 자동 검증은 아래 범위까지
-통과했지만 전체 Engine/Shared/Server/Client Debug·Release 정본 build와 새 통합 PR은 아직
-결과를 기록하지 않는다. Client 화면과 조작에 대한 최종 visual 판정도 사용자가 직접 해야 한다.
+```text
+_01 source 0..3000ms / playRate 2.0 = 1500ms
+-> _03 natural = 1067ms
+-> _04 natural = 1700ms
+```
+
+LMB 한 번은 이 세 motion을 Server 권위로 자동 연계한다. Product Effect cue는
+`ba2 -> ba3 -> ba1` 순서로 stable ID만 연결했고 authored Effect payload는 수정하지 않았다.
+LMB 입력은 command 제출 성공 뒤에만 press를 소비하는 transactional edge gate로 바꿨다. T는 최신
+snapshot에서 즉시 시작 가능하거나 실행 중 COMBO 뒤에 예약 가능한 경우 preview를 시작·유지하고,
+성공한 confirm LMB가 BA로 새지 않도록 release까지 suppression한다.
 
 | 구분 | 현재 판정 |
 |---|---|
-| 구현 | BA source split, A occurrence split, runtime/tool clock 연결 완료 |
-| focused 자동 검증 | PASS, 아래 실행 증거에 한정 |
-| 전체 Debug 정본 build | Engine/Shared/Server/Client compile·link PASS; 기존 Effect project 361-file stale gate에서 회귀 스크립트 exit 1 |
-| 전체 Release 정본 build | Engine/Shared/Server compile·link PASS; 긴 Client build는 긴급 merge 요청에 따라 완료 전 중단 |
-| 사용자 visual fidelity | `PENDING_USER_VISUAL_GATE` |
-| 새 통합 PR 번호와 merge | 아직 기록하지 않음, 후속 검증 대상 |
+| BA 3-motion animation·Server timing·root motion | 구현 완료 |
+| Product Effect cue `ba2 -> ba3 -> ba1` | 구현 완료 |
+| LMB transactional press edge | 구현 완료 |
+| T availability preflight·confirm suppression | 구현 완료 |
+| focused Python 26 tests | PASS |
+| gameplay balance Validate/Publish | PASS |
+| balance runtime set Validate/Publish | PASS |
+| Effect Validate, canonical ResourceRoot | PASS, `162/171/5` |
+| `Framework.sln` x64 Debug/Release build | PASS |
+| Server x64 Debug/Release build | PASS |
+| Server contract | `BASELINE_BLOCKED`, origin/main과 동일한 Valtan 3 failures |
+| canonical regression | `BASELINE_BLOCKED`, origin/main과 동일한 Effect project-registration stale |
+| 사용자 BA/T visual fidelity | `PENDING_USER_VISUAL_GATE` |
 
-## 2. BA1~BA4 구현 결과
+## 2. 원본 4 clips와 제품 3 motions
 
-### 2.1 같은 source clip을 두 Server stage로 분리
-
-`ANIMATION_SKILL_CLIP`에 optional `sourceStartMs`를 추가했다. 문자열 clip과 기존
-`playMs/playRate` 문서는 source start 0으로 그대로 읽히며, object clip은 strict known-field
-검사 뒤 source offset을 보존해 다시 직렬화한다.
-
-차원술사 `2050010`의 binding은 다음 source window를 사용한다.
-
-| BA stage | clip | source window | playRate | wall duration |
-|---|---|---:|---:|---:|
-| BA1 | `pc_sp_m_00_sk_att_battle_1_01` | `[0, 300)ms` | `1.08695652` | `276ms` |
-| BA2 | `pc_sp_m_00_sk_att_battle_1_01` | `[300, 600)ms` | `1.11524164` | `269ms` |
-| BA3 | `pc_sp_m_00_sk_att_battle_1_03` | `[0, 1067)ms` | `2.15991903` | `494ms` |
-| BA4 | `pc_sp_m_00_sk_att_battle_1_04` | `[0, 1700)ms` | `1.34175217` | `1267ms` |
-
-Character는 binding의 `sourceStartMs`를 `CLIP_STEP`과
-`ACTION_PRESENTATION_CLIP_TIMING`에 전달한다. clip 시작과 forward seek는 해당 source
-position을 즉시 sample하고, explicit clip의 종료는 `sourceStartMs + playMs`에서 판정한다.
-문서 load 때 model duration 밖 source start는 staged chain을 commit하지 않고 거부한다.
-
-explicit trim의 cue 범위는 `[start,end)`다. 따라서 source `300ms` cue는 BA1 끝에는
-포함되지 않고 BA2 시작에만 포함된다. `playMs=0`인 기존 natural clip은 model 끝에 정확히
-놓인 legacy cue를 계속 허용해 기존 문서를 회귀시키지 않는다.
-
-### 2.2 Server cadence와 root motion
-
-`PlayerSkills.json`의 네 combo stage는 도화가의 빠른 4단 cadence에 맞춘
-`276/269/494/1267ms`를 사용한다. hit time은 `92/90/13/250ms`, input open은
-`92/179/93/0ms`, input close는 `276/269/494/0ms`다. Server contract test의 기대값과
-BA1 tap boundary도 같은 값으로 교체했다.
-
-`DimensionMaster.rootmotion.json`은 같은 네 wall duration으로 다시 slice했다. 각 stage는
-time 0에서 시작하고 마지막 sample time이 각각 `276/269/494/1267ms`다. 마지막 forward
-값은 focused test에서 `0.1055/0.3031/0.2802/1.0404`로 고정했다.
-
-### 2.3 BA Product Effect
-
-Product cue는 다음처럼 정리했다.
-
-- BA1: clip01 source `0ms` → `effect.dimensionmaster.skill.2050010.ba1.unified`
-- BA2: clip01 source `300ms` → `effect.dimensionmaster.skill.2050010.ba2.unified`
-- BA3: clip03 source `0ms` → `effect.dimensionmaster.skill.2050010.ba3.unified`
-- BA4: clip04 source `0ms` → `effect.dimensionmaster.skill.2050010.ba4.unified`
-
-네 cue는 모두 `root / follow / action_facing / natural`이다. BA1 문서는 source 200ms의
-검격 한 Element만 남겼고, BA2는 다음 stage 신호 tail을 제외한 8개 Element를 100ms
-local delay에 둔다. BA3/BA4는 각각 자기 Product 문서를 사용한다. 첫 LMB 입력에서 BA2
-Effect를 같이 고르는 기존 clip-name-only join은 제거됐다.
-
-## 3. A1~A4 Product occurrence 구현 결과
-
-기존 `effect.dimensionmaster.skill.2050210.unified`는 12개 Element를 보존하는 aggregate
-evidence다. Product playback은 이를 직접 cue하지 않고 다음 네 direct-authored 문서를 사용한다.
-
-| occurrence | Product Effect | source cue | Element 수 | 문서 내부 delay |
-|---|---|---:|---:|---:|
-| A1 | `effect.dimensionmaster.skill.2050210.a1.unified` | `250ms` | 9 | 전부 `0s` |
-| A2 | `effect.dimensionmaster.skill.2050210.a2.unified` | `600ms` | 1 | `0s` |
-| A3 | `effect.dimensionmaster.skill.2050210.a3.unified` | `900ms` | 1 | `0s` |
-| A4 | `effect.dimensionmaster.skill.2050210.a4.unified` | `1300ms` | 1 | `0s` |
-
-네 문서의 ordered Element ID union은 aggregate 12개와 정확히 같고 중복이 없다. 각
-문서는 occurrence source time만 animevents에 남기고 내부 start delay를 0으로 rebase했다.
-네 cue는 모두 `pc_sp_m_00_sk_sk_willowrend`의 `root / follow / action_facing / natural`을
-사용한다. 기존 aggregate Product cue는 제거했으므로 aggregate와 split 문서가 이중 draw되지
-않는다.
-
-네 문서는 `Data/Effects/EffectCatalog.json`과 Client project/filter의 `96.DataFiles`에
-등록했다. materializer는 기존 12행 aggregate identity와 순서를 먼저 검증하고 A1~A4를
-atomic하게 생성한다. 이미 존재하는 split 문서가 예상값과 다르면 덮어쓰지 않고 실패하며,
-두 번째 실행은 byte-idempotent다. restoration inventory와 four-class authored rollout도
-네 Product target을 현재 정본으로 소비하도록 갱신했다.
-
-## 4. Character와 Effect Tool 공통 clock
-
-All Effects와 saved direct Effect preview는 더 이상 같은 이름의 첫 clip을 고르지 않는다.
-Product candidate가 ordered stage index, stage clip index, exact `ANIMATION_SKILL_CLIP`과 cue를
-함께 보존하고 cue source time이 그 clip의 half-open window 안에 있을 때만 admission한다.
-
-Product preview의 cue start/end, Effect sample time과 timeline seek는 다음 관계를 사용한다.
+원본 `DimensionMaster.clipseq/.clipmap/.animnotify`에는 네 clip이 존재하므로 원본을 세 clip
+구조라고 기록하지 않는다. 다만 `pc_sp_m_00_sk_att_battle_1_01` 하나에는 다음 두 attack
+occurrence가 함께 존재한다.
 
 ```text
-cue wall start = (cue source start - clip source start) / playRate
-effect sample  = max(0, timeline wall - cue wall start) * playRate
+SOUND  29ms / 303ms
+EFFECT 200ms / 400ms
+HIT    100..602ms
 ```
 
-source-trim clip은 Engine의 전체 clip loop에 맡기지 않고 Effect Tool sequence가 source
-start, trim end, pause/restart를 소유한다. explicit non-loop clip이 끝 pose에서 멈춘 뒤에는
-animation clock을 놓아 natural Effect tail이 wall clock으로 끝까지 진행하게 한다.
+따라서 `_01`을 중간에서 두 Server stage로 잘라 처음부터 다시 재생하면 두 찌르기가 잘리거나
+반복된다. 이번 제품 구조는 현재 BA2-linked motion이었던 `_01 source 0..3000ms` 전체를 첫
+motion으로 사용하고, 휘두르기 `_03`과 마무리 베기 `_04`를 뒤에 연결한다. 원본 `_02` 파일을
+삭제하거나 원본 자료를 변조하지 않고 제품 binding에서만 사용하지 않는다.
 
-A1~A4처럼 짧은 occurrence Effect를 전체 A animation 안에서 손튜닝해야 하는 경우도 닫았다.
-Product preview duration은 cue와 Effect tail만으로 끝내지 않고, 정확히 staged된 class model의
-선택 clip source-window wall duration과 비교해 더 긴 값을 사용한다. model generation, exact
-clip identity, source window, 중복 clip name 또는 model duration 검증이 실패하면 duration을
-추정하지 않는다. 따라서 네 A 문서 각각을 열어도 약 `2.767s` Willowrend animation 전체를
-보면서 occurrence를 조정할 수 있다.
+| 제품 stage | 의미 | binding | wall duration | Server hit | combo advance | input window |
+|---|---|---|---:|---:|---:|---|
+| 1 | 두 번 찌르기 | `_01`, `playMs=3000`, `playRate=2.0` | `1500ms` | `50ms` | `1500ms` | automatic `0/0` |
+| 2 | 휘두르기 | `_03`, natural | `1067ms` | `28ms` | `1067ms` | automatic `0/0` |
+| 3 | 마무리 베기 | `_04`, natural | `1700ms` | `335ms` | `1700ms` | terminal `0/0` |
 
-이 clock 계약은 새 `Tools/ActionPresentationTimelineHarness`의 C++ source와
-`Default/*.vcxproj/.filters`로 독립 실행 가능하게 만들고 `Framework.sln`에 등록했다.
+총 presentation wall time은 `4267ms`다. `PlayerSkills.json`의 top-level
+`actionDurationMs/hitTimeMs` mirror는 첫 stage와 같은 `1500/50ms`다. non-final COMBO의
+`inputOpenMs/inputCloseMs == 0/0`과
+`comboAdvanceMs == actionDurationMs` 조합만 automatic stage로 인정한다. non-zero input
+window를 가진 다른 직업 COMBO는 계속 추가 입력을 요구한다.
 
-## 5. 자동 검증 결과
+Server의 단순 fallback damage 경로는 stage마다 한 번의 damage event를 만들기 때문에 stage 수가
+4에서 3으로 줄면서 fallback event 수도 4에서 3으로 줄어든다. 이번 범위는 animation, input,
+Effect occurrence 연결이며 damage profile 증폭, hit-shape 추가 또는 별도 damage rebalance는
+포함하지 않았다.
 
-아래 항목만 현재 PASS로 기록한다.
+## 3. Product Effect cue와 authored payload 보호
 
-| 검증 | 관찰 결과 |
+`DimensionMaster.animevents`에는 다음 세 Product cue를 둔다.
+
+| motion clip | Product Effect stable ID |
 |---|---|
-| `ActionPresentationTimelineHarness` Debug | PASS |
-| `ActionPresentationTimelineHarness` Release | PASS |
-| explicit `[0,300)/[300,600)` 경계와 natural-end 호환 | PASS |
-| Product source/playRate clock과 2.767s animation duration floor | PASS |
-| `test_dimensionmaster_2050010_stage_split.py` | 2 tests PASS |
-| `test_materialize_dimensionmaster_2050210_occurrences.py` | 7 tests PASS |
-| `test_build_character_effect_restoration_inventory.py` | 23 tests PASS |
-| `test_publish_four_class_authored_rollout.py` | 14 tests PASS |
-| Gameplay balance publisher `-Mode Validate` | PASS |
-| Effect publisher `-Mode Validate` | 161 entries PASS |
-| 변경·추가 JSON 21개 parse | PASS |
-| 변경·추가 XML 4개 parse | PASS |
-| `git diff --check` | PASS |
+| `_01 @ 0ms` | `effect.dimensionmaster.skill.2050010.ba2.unified` |
+| `_03 @ 0ms` | `effect.dimensionmaster.skill.2050010.ba3.unified` |
+| `_04 @ 0ms` | `effect.dimensionmaster.skill.2050010.ba1.unified` |
 
-Effect publisher는 분리 worktree에 Git 비관리 `Client/Bin/Resources`가 없으므로 기본
-`ResourceRoot`로 실행하면 resource lookup에서 실패한다. 정본 폴더
-`C:/Users/user/Desktop/LostArk/Client/Bin/Resources`를 명시한 Validate가 161 entries PASS한
-결과를 위 표에 기록했다. 이것은 구현이 resource fallback을 추가했다는 뜻이 아니다.
+세 cue는 `root / follow / action_facing / natural`을 유지한다. 사용자가 Effect Tool에서
+손튜닝하는 stable authored 문서를 그대로 소비하도록 연결만 바꿨다. 다음 항목은 수정하거나
+삭제하지 않았다.
 
-## 6. 기존 frozen/stale 실패와 이번 판정에서 제외한 항목
+- `effect.dimensionmaster.skill.2050010.ba1~ba4.unified.effect.json`의 Element와 resource binding
+- delay, lifetime, mesh, DDS, material, source recipe와 runtime payload
+- 현재 제품 sequence에서 사용하지 않는 `ba4` authored 문서
+- V0 또는 과거 Effect payload
 
-다음 실패를 이번 변경의 성공으로 바꾸거나 숨기지 않았다.
+작업 시작 시 존재하던 다른 작성자와 사용자의 dirty worktree는 그대로 보호했다. 범위 밖 파일을
+reset, checkout, clean하거나 기존 변경을 되돌리지 않았고, Effect authored payload를 정리한다는
+이유로 덮어쓰지 않았다.
 
-- `test_build_four_class_combat_source_intake.py`는 Warlord stage-count 불일치와
-  LanceMaster source artifact hash 불일치를 계속 보고한다. 두 실패는 이번 diff가 수정하지
-  않은 파일과 `origin/main`의 기존 frozen 상태에서도 재현되므로 BA/A PASS 분모에 넣지 않았다.
-- `Sync-EffectDataProject.ps1 -Check`는 현재 `Data/Effects` Git 관리 파일 2,301개 중 project와
-  filters에 각각 361개가 누락돼 실패한다. 분류는 Contracts 9, CookedShaders 165,
-  TranslatedShaders 169, V2 18이다. 새 A1~A4 네 문서는 project와 filters에 각각 정확히 한 번
-  등록돼 있고 추가·중복 등록은 없다. 이 광역 stale index를 이번 수직 슬라이스에서 일괄
-  재배치하지 않았다.
-- 분리 worktree status에 진행 중인 광역 regression이 만든 WorldDestruction runtime 출력이
-  보일 수 있으나 BA/A 구현 범위나 완료 증거로 사용하지 않는다. 최종 commit은 대응 PLAN에
-  적힌 수직 슬라이스 파일만 exact stage해야 한다.
+## 4. Root Motion 결과
 
-## 7. 기존 PR #173, #174 처리 판단
+`DimensionMaster.rootmotion.json`의 `2050010`은 세 제품 stage와 같은 wall clock을 사용한다.
 
-두 PR은 현재 GitHub에서 모두 `CLOSED`, `mergedAt=null`이며 이번 branch에 merge 또는
-cherry-pick하지 않았다.
+| stage | source | duration | samples | 마지막 forward |
+|---|---|---:|---:|---:|
+| 0 | 기존 `_01` source `0..3000ms`를 2배속 재타이밍 | `1500ms` | 91 | `0.9491` |
+| 1 | 기존 `_03` curve, old stage 2에서 재번호화 | `1067ms` | 33 | `0.2802` |
+| 2 | 기존 `_04` curve, old stage 3에서 재번호화 | `1700ms` | 52 | `1.0404` |
 
-| PR | 판정 | 근거 |
-|---|---|---|
-| #173 `Effect V1: add four-character horizontal application ledgers` | 폐기 유지 | 16만 행 규모 horizontal ledger·packet 조사 PR로 현재 main과 merge state가 `DIRTY`이며 BA/A source-window, Server timing/root motion, stage별 Product split을 구현하지 않는다. 오래된 Effect catalog/authoring 계약의 생성물이 현재 `Client.vcxproj(.filters)`, Effect contracts/tooling과 넓게 겹쳐 merge/cherry-pick하면 stale 산출물을 되살린다. 필요하면 최신 main에서 다시 생성한다. |
-| #174 `docs: inventory effect shaders and data folders` | 폐기 유지 | 당시 shader/Data 폴더를 기록한 documentation-only snapshot이고 BA/A runtime/data consumer가 아니다. catalog/profile/translated-shader 수치와 ownership 설명이 현재 Effect Tool V2와 161-entry catalog보다 오래됐고 `.md/TEAM/README.md` 정본과도 겹치므로 cherry-pick하지 않는다. 필요하면 최신 main 실측으로 새 inventory를 작성한다. |
+stage 0은 source sample의 `0..3000ms` timestamp만 정확히 절반 wall time으로 변환하고
+forward/lateral/up 값은 보존했다. 기존 `_02`용 old stage 1 curve는 제품 sequence에서 제거했다.
 
-#173은 commit `b8ef813a10cb51359d1857c3046a1e16f0e4c270`, #174는
-`25dfc9c1be89aab178cf8faae811a254eaea0396`에서 닫혔다. 두 remote head branch는 복구 가능한
-상태로 남아 있으며 destructive branch 삭제는 수행하지 않았다. 즉 폐기는 기존 PR을 main에
-반영하지 않는 결정이다.
+## 5. LMB와 T 입력 수정
 
-## 8. 수동 visual 검증과 후속 기록 대상
+### 5.1 LMB transactional edge gate
 
-에이전트는 Client/UI를 실행하거나 화면을 대신 판정하지 않았다. 전체 build와 최종 publish가
-끝난 뒤 사용자가 다음을 직접 확인해야 한다.
+기존 gate는 command sink가 command를 수락하기 전에 현재 물리 press를 제출 완료로 표시했다.
+aim, transform 또는 send가 일시 실패하면 같은 LMB press가 영구히 소비됐고, 반대로 입력 차단 중
+시작된 press가 차단 해제 뒤 늦은 BA로 나갈 수 있었다.
 
-1. Character Select에서 DimensionMaster를 선택하고 LMB를 한 번 눌렀을 때 BA1 검격만
-   보이는지 확인한다. 다음 입력에서 BA2, 이후 BA3/BA4가 빠른 4단 cadence로 이어져야 한다.
-2. 이동·회전 중 네 BA Effect가 캐릭터 `root`를 follow하고 action facing을 유지하는지 확인한다.
-3. `F1 > Effect Tool > All Effects > DimensionMaster > 2050010`에서 BA1과 BA2가 같은
-   clip01을 쓰더라도 각 Product Play가 자기 source window와 자기 Effect만 재생하는지 확인한다.
-4. `2050210`의 A1~A4 Product 문서를 각각 열어 occurrence가 하나씩 선택되고, 짧은 Effect가
-   끝난 뒤에도 Willowrend animation 전체 약 2.767초를 scrub/loop하며 손튜닝할 수 있는지 확인한다.
-5. A1~A4를 실제 Server 승인 A action으로 재생했을 때 검격 네 번의 위치, 방향, 색, coverage,
-   lifetime과 잔상을 최종 판정한다.
+수정된 `CBASIC_ATTACK_PRESS_EDGE_GATE` 계약은 다음과 같다.
 
-추가로 실행한 광역 build 결과는 다음처럼 제한해 기록한다.
+1. raw physical up만 다음 press를 rearm한다.
+2. gameplay input이 차단된 상태에서 시작된 press는 그 release까지 blocker가 소비한다.
+3. eligible down은 command candidate만 만들고 아직 소비하지 않는다.
+4. `Request_UseSkill` 성공 뒤에만 `Commit_Submission()`으로 press를 소비한다.
+5. local command sink의 일시 실패는 commit하지 않아 같은 held press가 다음 frame 재시도된다.
+6. 성공 뒤 held 상태에서는 같은 press의 두 번째 BA command를 제출하지 않는다.
 
-- Debug는 Engine → UpdateLib → Shared/NetworkProtocolHarness → Server → Client가 모두
-  compile·link됐다. 이어진 Balance, Navigation, Effect 161-entry Validate도 통과했지만,
-  이후 기존 `Sync-EffectDataProject.ps1 -Check`의 361-file stale 상태에서 표준 회귀
-  스크립트가 exit 1로 끝났다.
-- Release는 Engine → UpdateLib → Shared/NetworkProtocolHarness → Server까지 compile·link됐고
-  Client를 빌드하던 중 사용자의 긴급 merge 요청에 따라 중단했다. 따라서 전체 Release PASS로
-  기록하지 않는다.
+두 production gate와 ground-target confirm transaction은 `constexpr` state machine으로 유지하고 같은
+구현을 `static_assert` 계약에서 직접 실행한다. 이 compile-time harness는 capture 중 시작된 press,
+sink reject 재시도, sink accept 뒤 held 억제, raw release 재무장과 T confirm reject/accept를 fake
+request callback으로 검증한다. 따라서 소스 문자열 위치만 확인하는 테스트에 의존하지 않는다.
 
-아래 항목은 이 문서 작성 시점에 아직 완료로 기록하지 않는다.
+Client가 animation을 local 선행 재생하지는 않는다. 첫 animation은 계속 Server 승인 snapshot의
+action edge에서 시작하므로 정상 network tick 지연을 입력 유실로 숨기지 않는다.
 
-- Debug/Release 표준 회귀의 기존 361-file stale gate 이후 단계
-- Server+Client 실제 실행과 DimensionMaster BA/A 사용자 visual 승인
-- 새 통합 PR 생성, 번호 기록, review/merge
-- merge 뒤 정본 `C:/Users/user/Desktop/LostArk`의 `main` pull 및 실행 산출물 동기화
+### 5.2 Server automatic combo
 
-이 후속 증거가 실제로 끝난 뒤에만 해당 결과를 이 RESULT에 추가한다.
+Server catalog와 publisher는 non-final `0/0` window를 automatic stage로 읽되 advance와 duration이
+같지 않으면 거부한다. `CPlayerSkillSystem`은 automatic stage의 full-motion boundary에서 buffered
+LMB 없이 다음 stage로 전환한다. 명시적인 MOVE/SKILL pending command도 automatic chain을 끊지 않고
+마지막 motion 종료 뒤 commit한다. manual window를 가진 다른 COMBO는 현재 full-motion 경계에서
+pending을 commit하는 기존 buffered-input 계약을 유지한다.
+
+### 5.3 T availability와 confirm suppression
+
+`CPlayerSkillCatalog`은 기존 resource cost와 함께 `identityCost`를 exact `uint32`로 검증·보존한다.
+`CCombatHUDViewModel`은 snapshot의 현재 skill ID도 보존해 Server pending 가능 여부를 판단한다. T
+preview 시작과 유지는 다음 두 admission을 구분한다.
+
+- action이 `NONE`인 즉시 cast는 alive local player, class, `ACTIVE/GROUND_POINT`, cooldown,
+  resource, identity와 required stance를 모두 검사한다.
+- 다른 COMBO가 실행 중인 pending cast도 현재 snapshot의 cooldown, resource, identity와 stance를
+  만족해야 preview와 confirm을 허용한다. automatic BA에서는 3동작 전체 종료 뒤 Server가 다시
+  검증한다.
+- Valtan 입장 직후 `isCombatReady=false`는 첫 유효 이동/스킬이 true로 전환하는 상태이므로 T를
+  선제 차단하지 않는다.
+
+조건이 사라지면 active preview를 취소한다. valid ground에서
+`Request_UseGroundTargetSkill`이 성공한 뒤에는 `Suppress_UntilRelease()`를 먼저 적용하고
+preview를 닫는다. 따라서 confirm에 사용한 같은 LMB가 다음 input pass에서 BA로 재해석되지 않는다.
+invalid ground와 RMB cancel은 T action 또는 BA를 시작하지 않는다.
+
+## 6. 변경 범위
+
+실제 수정 범위는 다음 vertical slice다.
+
+- animation/balance data: `DimensionMaster.skillbindings.json`,
+  `DimensionMaster.animevents`, `DimensionMaster.rootmotion.json`, `PlayerSkills.json`,
+  balance provenance receipt
+- Client input/catalog: `PlayerController.h/.cpp`, `PlayerSkillCatalog.h/.cpp`,
+  `CombatHUDViewModel.h/.cpp`
+- Server validation/runtime: `GameplayCatalog.cpp`, `PlayerSkillSystem.cpp`,
+  `PlayerSkillSystem.h`, `ServerGameplayContractTests.cpp`
+- authoring/validation: `BalanceTool.cpp`, `Publish-GameplayBalance.ps1`
+- focused tests: BA stage split, catalog combo timing, Effect Tool automatic audition,
+  ground-target availability·LMB gate
+- public handoff/known issue: Animation Tool·Balance Tool owner handoff, gameplay interface handbook,
+  GB gotchas와 대응 PLAN/RESULT
+
+Effect authored 문서, Effect runtime payload, T animation binding과 T Effect payload는 이 변경
+범위에 포함하지 않았다.
+
+## 7. 자동 검증 결과
+
+### 7.1 Focused Python
+
+다음 네 실행형 focused test의 합계 26 tests가 PASS했다.
+
+| test | 결과 |
+|---|---:|
+| `test_dimensionmaster_2050010_stage_split.py` | 5 PASS |
+| `test_player_skill_catalog_combo_timings.py` | 4 PASS |
+| `test_effect_tool_buffered_combo_audition.py` | 11 PASS |
+| `test_ground_target_preview_prototype_scope.py` | 6 PASS |
+| 합계 | **26 PASS** |
+
+검증 범위는 세 clip group, 3-stage timing과 root motion, `ba2/ba3/ba1` stable cue,
+automatic parse/rollback, 다른 직업 manual COMBO 보존, Animation/Effect Tool 누적 timeline,
+production `static_assert`에서 실행되는 blocked/retry/commit/release LMB gate와 fake-confirm
+transaction, T availability와 confirm suppression이다.
+
+### 7.2 Publisher
+
+| 명령 영역 | 결과 |
+|---|---|
+| `Publish-GameplayBalance.ps1 -Mode Validate` | PASS |
+| `Publish-GameplayBalance.ps1 -Mode Publish` | PASS |
+| `Publish-BalanceRuntimeSet.ps1 -Mode Validate` | PASS |
+| `Publish-BalanceRuntimeSet.ps1 -Mode Publish` | PASS |
+| `Publish-Effects.ps1 -Mode Validate` | PASS |
+
+Effect Validate는 임시 또는 추측 경로가 아니라 저장소의 canonical
+`Client/Bin/Resources`를 `-ResourceRoot`로 사용했다. 결과 수치는
+`162 Effect catalog entries / 171 material-program bindings / 5 registry-bound audition effects`다.
+이는 stable cue와 runtime admission 검증이며 Effect authored payload를 publish하거나 시각 모양을
+변경했다는 증거가 아니다.
+
+### 7.3 Build와 contract
+
+| 검증 | 결과 |
+|---|---|
+| `Framework.sln` x64 Debug compile/link | PASS |
+| `Framework.sln` x64 Release compile/link | PASS |
+| Server x64 Debug/Release compile/link | PASS |
+| Debug `Server.exe --contract-test` | `BASELINE_BLOCKED` |
+| Release `Server.exe --contract-test` | `BASELINE_BLOCKED` |
+| canonical Debug regression `-SkipBuild` | `BASELINE_BLOCKED` |
+
+Server contract는 BA automatic sequence 관련 변경 여부와 별개로 Valtan baseline 3 failures를
+반환했다. 같은 기준선의 깨끗한 `origin/main` contract도 동일한 Valtan 3 failures를 반환하므로
+이번 변경의 신규 failure로 분류하지 않는다. 그러나 전체 contract command가 failures 0이 아니므로
+PASS로 기록하지 않고 `BASELINE_BLOCKED`로 유지한다.
+
+canonical regression은 focused test, gameplay/balance/nav/Effect validation을 통과한 뒤
+`Sync-EffectDataProject.ps1 -Check`에서 `Client.vcxproj/.filters` 등록 불일치로 중단됐다. 같은
+`origin/main@1eb50f0b`의 깨끗한 worktree에서도 동일 명령이 동일하게 실패하므로 이번 변경의 신규
+failure가 아니다. 자동 수정은 이번 BA/T 수직 슬라이스와 무관한 Effect catalog 프로젝트 등록을
+대량 변경하므로 범위에 섞지 않고 `BASELINE_BLOCKED`로 기록한다.
+
+### 7.4 깨끗한 origin/main compile 진단
+
+`origin/main@1eb50f0b` detached clean worktree에는 Git 제외 대상인 `EngineSDK`가 없었다. 이 상태에서
+`Framework.sln /m`을 바로 실행하면 `EffectRenderContractHarness`가 첫 오류로
+`C1083: Engine_Defines.h`를 찾지 못한다. 이는 repository C++ source 오류가 아니라 clean
+clone/pull 뒤 초기 SDK publish 순서를 생략한 재현 가능한 로컬 세팅 오류다.
+
+같은 worktree에서 정본 순서를 적용한 결과는 다음과 같다.
+
+| clean main 단계 | 결과 |
+|---|---|
+| Engine x64 Debug | PASS |
+| `UpdateLib.bat Debug` | PASS |
+| `Framework.sln` x64 Debug `/nodeReuse:false` | PASS |
+| `EffectRenderContractHarness.exe`, `Client.exe` link | PASS |
+
+따라서 현재 기준선 source에는 확인된 compiler/linker regression이 없다. 다른 PC는 `git lfs pull`을
+완료하고 구성별로 `Engine -> UpdateLib.bat <Debug|Release> -> Framework.sln` 순서를 지켜야 한다.
+특히 clean clone에서 Client부터 빌드하거나 `/m` solution build로 SDK 생성까지 대신하려 하면 같은
+missing-header/link 오류가 날 수 있다.
+
+## 8. 사용자 수동 visual 검증
+
+에이전트는 Client/UI를 자율 실행·조작하거나 화면 fidelity를 대신 판정하지 않았다. 사용자는
+`Framework.sln` 빌드가 완료된 실행 파일로 다음을 직접 확인한다.
+
+1. LMB 한 번으로 `_01(약 1.5초) -> _03(약 1.067초) -> _04(약 1.7초)`가 추가 클릭 없이 이어지는지 확인한다.
+2. 첫 `_01`에서 현재 손튜닝한 `ba2`, `_03`에서 `ba3`, 마지막 `_04`에서 `ba1`이 각각 한 번 시작하는지 확인한다.
+3. LMB를 누르고 있어도 두 번째 BA command가 제출되지 않고 Server automatic stage만 진행하는지 확인한다.
+4. F1/ImGui가 잡은 상태에서 시작한 LMB가 capture 해제 뒤 늦게 BA로 발사되지 않는지 확인한다.
+5. 평시 또는 BA 진행 중 T preview 뒤 valid 위치 confirm LMB가 T animation을 즉시 또는 BA 종료 뒤 시작하고 같은 click이 BA로 새지 않는지 확인한다.
+6. T 사용 불가 상태, invalid ground와 RMB cancel에서 T와 BA가 시작되지 않는지 확인한다.
+
+사용자의 서면 관찰 전 최종 시각 상태는 다음과 같다.
+
+```text
+PENDING_USER_VISUAL_GATE
+```
+
+## 9. 완료 경계
+
+BA 3-motion data, Server automatic stage, LMB transactional input, T availability/confirm suppression과
+focused publisher/test 범위는 구현 완료다. 다음 항목은 완료로 승격하지 않는다.
+
+- origin/main에도 동일하게 존재하는 Valtan contract 3 failures: `BASELINE_BLOCKED`
+- origin/main에도 동일하게 존재하는 Effect data project-registration stale: `BASELINE_BLOCKED`
+- 사용자의 BA/T animation·Effect visual 판정
+- 4→3 stage에 따른 별도 damage rebalance
+- V0 또는 Effect authored payload 복원

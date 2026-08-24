@@ -90,6 +90,9 @@ namespace LostArk::Server
 		float fLeapLandingZ = 0.f;
 		/* Apex the current pattern authored, zero when it owns no leap. */
 		float fPatternLeapApexHeight = 0.f;
+		/* Compiled serverMotion travel stage. A leap may hold at its apex in
+		   authored stages between TAKEOFF and this descent stage. */
+		std::uint32_t iPatternLeapTravelStageIndex = 1u;
 		/* The encounter's intro pattern runs once per encounter epoch, on the
 		first engage. A late joiner never replays it, and only a room-empty or
 		Debug reset clears the ledger. */
@@ -186,9 +189,9 @@ namespace LostArk::Server
 		std::vector<SERVER_BOSS_ARMOR_PLATE_STATE> ArmorPlates;
 		bool hasAppliedPatternDamage = false;
 		std::string strLastPatternId;
-		/* Cursor into the authored rotation of the span the boss is in. It is
-		kept per span so a scripted mechanic that interrupts the stretch does
-		not restart the list, and it resets when the boss enters a new span. */
+		/* Active normal-selection span plus its one-shot ordered-introduction
+		cursor. WEIGHTED_POOL spans keep the cursor at zero and use only the id
+		for diagnostics; ordered legacy spans reset the cursor on entry. */
 		std::string strRotationId;
 		std::uint32_t iRotationStepIndex = 0;
 		std::uint32_t iConsecutivePatternUses = 0;

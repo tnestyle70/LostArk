@@ -145,7 +145,7 @@ bool_t Client::CSpawnGroupDocument::Load(const std::filesystem::path& path,
 	for (const DATA_JSON_VALUE& value : groups->Get_Array())
 	{
 		if (!Is_ExactObject(value, { "spawnGroupId", "requiredCompletedGroupId",
-			"maxAlive", "repeatPolicy", "completionPolicy", "waves" }))
+			"maxAlive", "repeatPolicy", "repeatDelayMs", "completionPolicy", "waves" }))
 		{
 			outStatus = "Spawn group has missing or unknown fields";
 			return false;
@@ -154,12 +154,16 @@ bool_t Client::CSpawnGroupDocument::Load(const std::filesystem::path& path,
 		const auto* prerequisite = value.Find("requiredCompletedGroupId");
 		const auto* maxAlive = value.Find("maxAlive");
 		const auto* repeat = value.Find("repeatPolicy");
+		const auto* repeatDelay = value.Find("repeatDelayMs");
 		const auto* completion = value.Find("completionPolicy");
 		const auto* waves = value.Find("waves");
+		const bool_t repeats = nullptr != repeat && repeat->Is_String() &&
+			repeat->Get_String() == "REPEAT";
 		if (nullptr == groupId || !groupId->Is_String() || nullptr == prerequisite ||
 			(!prerequisite->Is_Null() && !prerequisite->Is_String()) ||
 			!Is_Integer(maxAlive, 1, 64) || nullptr == repeat || !repeat->Is_String() ||
-			repeat->Get_String() != "ONCE" || nullptr == completion ||
+			(repeat->Get_String() != "ONCE" && !repeats) ||
+			!Is_Integer(repeatDelay, 0, MAX_DELAY_MS) || nullptr == completion ||
 			!completion->Is_String() || completion->Get_String() != "ALL_WAVES_CLEARED" ||
 			nullptr == waves || !waves->Is_Array() || waves->Get_Array().empty() ||
 			waves->Get_Array().size() > MAX_WAVE_COUNT)
@@ -167,15 +171,24 @@ bool_t Client::CSpawnGroupDocument::Load(const std::filesystem::path& path,
 			outStatus = "Spawn group header is invalid";
 			return false;
 		}
+		/* The delay belongs to REPEAT alone, so the two have to agree or the
+		document means two things at once. */
+		if (repeats != (0 != static_cast<uint32_t>(repeatDelay->Get_Number())))
+		{
+			outStatus = "Spawn group repeat delay contradicts its policy";
+			return false;
+		}
 		SPAWN_GROUP_RECORD group;
 		group.spawnGroupId = groupId->Get_String();
 		group.requiredCompletedGroupId = prerequisite->Is_String() ?
 			prerequisite->Get_String() : std::string{};
 		group.maxAlive = static_cast<uint32_t>(maxAlive->Get_Number());
+		group.repeats = repeats;
+		group.repeatDelayMs = static_cast<uint32_t>(repeatDelay->Get_Number());
 		for (const DATA_JSON_VALUE& waveValue : waves->Get_Array())
 		{
 			if (!Is_ExactObject(waveValue,
-				{ "waveId", "startDelayMs", "nextWavePolicy", "entries" }))
+				{ "waveId", "startDelayMs", "nextWavePolicy", "nextWaveDelayMs", "entries" }))
 			{
 				outStatus = "Spawn wave has missing or unknown fields";
 				return false;
@@ -183,19 +196,31 @@ bool_t Client::CSpawnGroupDocument::Load(const std::filesystem::path& path,
 			const auto* waveId = waveValue.Find("waveId");
 			const auto* startDelay = waveValue.Find("startDelayMs");
 			const auto* nextPolicy = waveValue.Find("nextWavePolicy");
+			const auto* nextDelay = waveValue.Find("nextWaveDelayMs");
 			const auto* entries = waveValue.Find("entries");
+			const bool_t usesTimer = nullptr != nextPolicy && nextPolicy->Is_String() &&
+				nextPolicy->Get_String() == "TIMER";
 			if (nullptr == waveId || !waveId->Is_String() ||
 				!Is_Integer(startDelay, 0, MAX_DELAY_MS) || nullptr == nextPolicy ||
-				!nextPolicy->Is_String() || nextPolicy->Get_String() != "ALL_DEAD" ||
+				!nextPolicy->Is_String() ||
+				(nextPolicy->Get_String() != "ALL_DEAD" && !usesTimer) ||
+				!Is_Integer(nextDelay, 0, MAX_DELAY_MS) ||
 				nullptr == entries || !entries->Is_Array() || entries->Get_Array().empty() ||
 				entries->Get_Array().size() > MAX_ENTRY_COUNT)
 			{
 				outStatus = "Spawn wave header is invalid";
 				return false;
 			}
+			if (usesTimer != (0 != static_cast<uint32_t>(nextDelay->Get_Number())))
+			{
+				outStatus = "Spawn wave delay contradicts its policy";
+				return false;
+			}
 			SPAWN_WAVE_RECORD wave;
 			wave.waveId = waveId->Get_String();
 			wave.startDelayMs = static_cast<uint32_t>(startDelay->Get_Number());
+			wave.usesTimerNextWave = usesTimer;
+			wave.nextWaveDelayMs = static_cast<uint32_t>(nextDelay->Get_Number());
 			for (const DATA_JSON_VALUE& entryValue : entries->Get_Array())
 			{
 				if (!Is_ExactObject(entryValue, { "archetypeId", "count", "anchorId",
@@ -294,8 +319,10 @@ bool_t Client::CSpawnGroupDocument::Save(const std::filesystem::path& path,
 		if (group.requiredCompletedGroupId.empty()) output << "null";
 		else output << '"' << CDataJson::Escape(group.requiredCompletedGroupId) << '"';
 		output << ",\n      \"maxAlive\": " << group.maxAlive
-			<< ",\n      \"repeatPolicy\": \"ONCE\",\n"
-			<< "      \"completionPolicy\": \"ALL_WAVES_CLEARED\",\n"
+			<< ",\n      \"repeatPolicy\": \""
+			<< (group.repeats ? "REPEAT" : "ONCE")
+			<< "\",\n      \"repeatDelayMs\": " << group.repeatDelayMs
+			<< ",\n      \"completionPolicy\": \"ALL_WAVES_CLEARED\",\n"
 			<< "      \"waves\": [";
 		for (size_t waveIndex = 0; waveIndex < group.waves.size(); ++waveIndex)
 		{
@@ -304,8 +331,10 @@ bool_t Client::CSpawnGroupDocument::Save(const std::filesystem::path& path,
 				<< "        {\n          \"waveId\": \""
 				<< CDataJson::Escape(wave.waveId)
 				<< "\",\n          \"startDelayMs\": " << wave.startDelayMs
-				<< ",\n          \"nextWavePolicy\": \"ALL_DEAD\",\n"
-				<< "          \"entries\": [";
+				<< ",\n          \"nextWavePolicy\": \""
+				<< (wave.usesTimerNextWave ? "TIMER" : "ALL_DEAD")
+				<< "\",\n          \"nextWaveDelayMs\": " << wave.nextWaveDelayMs
+				<< ",\n          \"entries\": [";
 			for (size_t entryIndex = 0; entryIndex < wave.entries.size(); ++entryIndex)
 			{
 				const auto& entry = wave.entries[entryIndex];

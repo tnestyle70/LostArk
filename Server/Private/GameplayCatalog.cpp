@@ -158,6 +158,21 @@ namespace
 		return true;
 	}
 
+	bool ParseBossPatternRotationSelectionMode(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_ROTATION_SELECTION_MODE& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_ROTATION_SELECTION_MODE;
+		if ("WEIGHTED_POOL" == value)
+			output = BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL;
+		else if ("ORDERED_INTRO_THEN_WEIGHTED" == value)
+			output = BOSS_PATTERN_ROTATION_SELECTION_MODE::
+				ORDERED_INTRO_THEN_WEIGHTED;
+		else
+			return false;
+		return true;
+	}
+
 	bool ParseBossPatternArmorRequirement(
 		const std::string_view value,
 		LostArk::Server::BOSS_PATTERN_ARMOR_REQUIREMENT& output)
@@ -465,35 +480,64 @@ namespace
 		return true;
 	}
 
-	bool ParseValtanDebugAuditionMapping(
+	bool ParseValtanTimelineArenaState(
 		const std::string_view value,
-		LostArk::Server::VALTAN_DEBUG_AUDITION_MAPPING& output)
+		LostArk::Server::VALTAN_TIMELINE_ARENA_STATE& output)
 	{
-		using LostArk::Server::VALTAN_DEBUG_AUDITION_MAPPING;
-		if ("PRODUCT_DIRECT" == value)
-			output = VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_DIRECT;
-		else if ("PRODUCT_CANDIDATE" == value)
-			output = VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_CANDIDATE;
-		else if ("PRODUCT_PARTIAL" == value)
-			output = VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_PARTIAL;
-		else if ("MARKER" == value)
-			output = VALTAN_DEBUG_AUDITION_MAPPING::MARKER;
-		else if ("UNRESOLVED" == value)
-			output = VALTAN_DEBUG_AUDITION_MAPPING::UNRESOLVED;
+		using LostArk::Server::VALTAN_TIMELINE_ARENA_STATE;
+		if ("FRESH" == value)
+			output = VALTAN_TIMELINE_ARENA_STATE::FRESH;
+		else if ("ORDINARY_WALLS_GONE" == value)
+			output = VALTAN_TIMELINE_ARENA_STATE::ORDINARY_WALLS_GONE;
+		else if ("ALL_WALLS_GONE" == value)
+			output = VALTAN_TIMELINE_ARENA_STATE::ALL_WALLS_GONE;
+		else if ("FLOOR84_GONE" == value)
+			output = VALTAN_TIMELINE_ARENA_STATE::FLOOR84_GONE;
+		else if ("FLOOR84_AND_30_GONE" == value)
+			output = VALTAN_TIMELINE_ARENA_STATE::FLOOR84_AND_30_GONE;
 		else
 			return false;
 		return true;
 	}
 
-	std::string BuildValtanDebugOccurrenceId(const std::uint32_t ordinal)
+	std::uint32_t Calculate_ValtanTimelineCommandId(
+		const std::string_view rowId)
 	{
-		std::string result = "valtan.video.";
-		if (ordinal < 100u)
-			result.push_back('0');
-		if (ordinal < 10u)
-			result.push_back('0');
-		result += std::to_string(ordinal);
-		return result;
+		std::uint32_t hash = 2166136261u;
+		for (const unsigned char character : rowId)
+		{
+			hash ^= character;
+			hash *= 16777619u;
+		}
+		return hash;
+	}
+
+	bool ParseValtanTimelinePropState(
+		const std::string_view value,
+		LostArk::Server::VALTAN_TIMELINE_PROP_STATE& output)
+	{
+		using LostArk::Server::VALTAN_TIMELINE_PROP_STATE;
+		if ("HIDDEN" == value)
+			output = VALTAN_TIMELINE_PROP_STATE::HIDDEN;
+		else if ("FOUR_PILLARS_INTACT" == value)
+			output = VALTAN_TIMELINE_PROP_STATE::FOUR_PILLARS_INTACT;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseValtanTimelineEntryType(
+		const std::string_view value,
+		LostArk::Server::VALTAN_TIMELINE_ENTRY_TYPE& output)
+	{
+		using LostArk::Server::VALTAN_TIMELINE_ENTRY_TYPE;
+		if ("MECHANIC" == value)
+			output = VALTAN_TIMELINE_ENTRY_TYPE::MECHANIC;
+		else if ("NORMAL" == value)
+			output = VALTAN_TIMELINE_ENTRY_TYPE::NORMAL;
+		else
+			return false;
+		return true;
 	}
 }
 
@@ -770,7 +814,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	using BOSS_COMBAT_OBJECT_MAP = decltype(m_BossCombatObjects);
 	using INTRO_MAP = decltype(m_IntroPatternIdByEncounter);
 	using ROTATION_MAP = decltype(m_BossPatternRotations);
-	using AUDITION_MAP = decltype(m_ValtanDebugAuditions);
+	using TIMELINE_MAP = decltype(m_ValtanTimelines);
 	using PLAYER_MAP = decltype(m_Players);
 	using DAMAGE_MAP = decltype(m_DamageRatePercentByProfileId);
 	struct LOAD_ROLLBACK final
@@ -782,7 +826,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		BOSS_COMBAT_OBJECT_MAP& bossCombatObjects;
 		INTRO_MAP& intros;
 		ROTATION_MAP& rotations;
-		AUDITION_MAP& auditions;
+		TIMELINE_MAP& timelines;
 		PLAYER_MAP& players;
 		DAMAGE_MAP& damages;
 		SKILL_MAP previousSkills;
@@ -792,7 +836,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		BOSS_COMBAT_OBJECT_MAP previousBossCombatObjects;
 		INTRO_MAP previousIntros;
 		ROTATION_MAP previousRotations;
-		AUDITION_MAP previousAuditions;
+		TIMELINE_MAP previousTimelines;
 		PLAYER_MAP previousPlayers;
 		DAMAGE_MAP previousDamages;
 		bool committed = false;
@@ -805,7 +849,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			BOSS_COMBAT_OBJECT_MAP& bossCombatObjectTarget,
 			INTRO_MAP& introTarget,
 			ROTATION_MAP& rotationTarget,
-			AUDITION_MAP& auditionTarget,
+			TIMELINE_MAP& timelineTarget,
 			PLAYER_MAP& playerTarget,
 			DAMAGE_MAP& damageTarget)
 			: skills(skillTarget)
@@ -815,7 +859,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			, bossCombatObjects(bossCombatObjectTarget)
 			, intros(introTarget)
 			, rotations(rotationTarget)
-			, auditions(auditionTarget)
+			, timelines(timelineTarget)
 			, players(playerTarget)
 			, damages(damageTarget)
 			, previousSkills(std::move(skillTarget))
@@ -825,7 +869,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			, previousBossCombatObjects(std::move(bossCombatObjectTarget))
 			, previousIntros(std::move(introTarget))
 			, previousRotations(std::move(rotationTarget))
-			, previousAuditions(std::move(auditionTarget))
+			, previousTimelines(std::move(timelineTarget))
 			, previousPlayers(std::move(playerTarget))
 			, previousDamages(std::move(damageTarget))
 		{
@@ -842,7 +886,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			bossCombatObjects = std::move(previousBossCombatObjects);
 			intros = std::move(previousIntros);
 			rotations = std::move(previousRotations);
-			auditions = std::move(previousAuditions);
+			timelines = std::move(previousTimelines);
 			players = std::move(previousPlayers);
 			damages = std::move(previousDamages);
 		}
@@ -850,7 +894,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	LOAD_ROLLBACK rollback{
 		m_Skills, m_Bosses, m_BossParts, m_BossPatterns, m_BossCombatObjects,
 		m_IntroPatternIdByEncounter, m_BossPatternRotations,
-		m_ValtanDebugAuditions, m_Players,
+		m_ValtanTimelines, m_Players,
 		m_DamageRatePercentByProfileId };
 	m_Skills.clear();
 	m_Bosses.clear();
@@ -859,7 +903,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	m_BossCombatObjects.clear();
 	m_IntroPatternIdByEncounter.clear();
 	m_BossPatternRotations.clear();
-	m_ValtanDebugAuditions.clear();
+	m_ValtanTimelines.clear();
 	m_Players.clear();
 	m_DamageRatePercentByProfileId.clear();
 
@@ -1739,7 +1783,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		{
 			BOSS_PATTERN_MOTION motion{};
 			const bool leapsToTarget = "LEAP_TO_TARGET" == fields[3];
-			if (9u != fields.size() || !IsStableId(fields[1]) ||
+			if (10u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				("LEAP_TO_ANCHOR" != fields[3] && !leapsToTarget) ||
 				!IsStableId(fields[4]) ||
@@ -1747,11 +1791,13 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[6], motion.fLandingY) ||
 				!ParseNumber(fields[7], motion.fLandingZ) ||
 				!ParseNumber(fields[8], motion.fApexHeight) ||
+				!ParseNumber(fields[9], motion.iTravelStageIndex) ||
 				!std::isfinite(motion.fLandingX) ||
 				!std::isfinite(motion.fLandingY) ||
 				!std::isfinite(motion.fLandingZ) ||
 				!std::isfinite(motion.fApexHeight) ||
-				motion.fApexHeight <= 0.f || motion.fApexHeight > 200.f)
+				motion.fApexHeight <= 0.f || motion.fApexHeight > 200.f ||
+				0u == motion.iTravelStageIndex)
 			{
 				m_strStatus = "Boss pattern motion row is invalid";
 				return false;
@@ -1897,10 +1943,15 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			std::uint32_t fromBar = 0u;
 			std::uint32_t toBar = 0u;
 			std::uint32_t stepCount = 0u;
-			if (6u != fields.size() || !IsStableId(fields[1]) ||
+			BOSS_PATTERN_ROTATION_SELECTION_MODE selectionMode =
+				BOSS_PATTERN_ROTATION_SELECTION_MODE::
+					ORDERED_INTRO_THEN_WEIGHTED;
+			if (7u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !ParseNumber(fields[3], fromBar) ||
 				!ParseNumber(fields[4], toBar) ||
-				!ParseNumber(fields[5], stepCount) ||
+				!ParseBossPatternRotationSelectionMode(
+					fields[5], selectionMode) ||
+				!ParseNumber(fields[6], stepCount) ||
 				0u == stepCount || stepCount > 32u || fromBar <= toBar)
 			{
 				m_strStatus = "Boss pattern rotation row is invalid";
@@ -1923,6 +1974,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			BOSS_PATTERN_ROTATION_DEFINITION staged{};
 			staged.strEncounterId = fields[1];
 			staged.strRotationId = fields[2];
+			staged.eSelectionMode = selectionMode;
 			staged.iFromHealthBar = fromBar;
 			staged.iToHealthBar = toBar;
 			staged.iExpectedStepCount = stepCount;
@@ -2278,76 +2330,124 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			}
 			stage.bChargeImpact = true;
 		}
-		else if (!fields.empty() && "VALTANDEBUGSEQUENCE" == fields[0])
+		else if (!fields.empty() && "VALTANTIMELINE" == fields[0])
 		{
-			std::uint32_t stepCount = 0u;
+			std::uint32_t rowCount = 0u;
 			if (4u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
-				!ParseNumber(fields[3], stepCount) || 67u != stepCount)
+				!ParseNumber(fields[3], rowCount) || 0u == rowCount ||
+				rowCount > 256u)
 			{
-				m_strStatus = "Valtan Debug audition sequence row is invalid";
+				m_strStatus = "Valtan timeline row is invalid";
 				return false;
 			}
-			VALTAN_DEBUG_AUDITION_DEFINITION definition{};
+			VALTAN_TIMELINE_DEFINITION definition{};
 			definition.strEncounterId = fields[1];
-			definition.strSequenceId = fields[2];
-			definition.Steps.resize(stepCount);
-			if (!m_ValtanDebugAuditions.emplace(
+			definition.strTimelineId = fields[2];
+			definition.Rows.resize(rowCount);
+			if (!m_ValtanTimelines.emplace(
 				definition.strEncounterId, std::move(definition)).second)
 			{
-				m_strStatus = "Duplicate Valtan Debug audition sequence row";
+				m_strStatus = "Duplicate Valtan timeline row";
 				return false;
 			}
 		}
-		else if (!fields.empty() && "VALTANDEBUGSTEP" == fields[0])
+		else if (!fields.empty() && "VALTANTIMELINEROW" == fields[0])
 		{
-			VALTAN_DEBUG_AUDITION_STEP step{};
-			if (10u != fields.size() || !IsStableId(fields[1]) ||
+			VALTAN_TIMELINE_ROW timelineRow{};
+			std::uint32_t actionCount = 0u;
+			if (11u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
-				!ParseNumber(fields[3], step.iOrdinal) ||
-				!IsStableId(fields[4]) ||
-				!ParseValtanDebugAuditionMapping(fields[5], step.eMapping) ||
-				("-" != fields[6] && !IsStableId(fields[6])) ||
-				!ParseNumber(fields[7], step.iRepeat) ||
-				!ParseNumber(fields[8], step.iTargetHealthBar) ||
-				!ParseNumber(fields[9], step.iPauseAfterMs) ||
-				0u == step.iOrdinal || step.iOrdinal > 67u ||
-				step.iRepeat > 4u || step.iTargetHealthBar > 1000u ||
-				step.iPauseAfterMs > 5000u)
+				!ParseNumber(fields[3], timelineRow.iCommandId) ||
+				!ParseNumber(fields[4], timelineRow.iOrdinal) ||
+				!IsStableId(fields[5]) ||
+				!ParseNumber(fields[6], timelineRow.iSectionHealthBar) ||
+				!ParseValtanTimelineEntryType(fields[7], timelineRow.eEntryType) ||
+				!ParseValtanTimelineArenaState(fields[8], timelineRow.eArenaState) ||
+				!ParseValtanTimelinePropState(fields[9], timelineRow.ePropState) ||
+				!ParseNumber(fields[10], actionCount) ||
+				0u == timelineRow.iOrdinal ||
+				0u == timelineRow.iCommandId ||
+				timelineRow.iCommandId !=
+					Calculate_ValtanTimelineCommandId(fields[5]) ||
+				0u == timelineRow.iSectionHealthBar ||
+				timelineRow.iSectionHealthBar > 1000u ||
+				0u == actionCount || actionCount > 8u)
 			{
-				m_strStatus = "Valtan Debug audition step row is invalid";
+				m_strStatus = "Valtan timeline occurrence row is invalid";
 				return false;
 			}
 			const auto owner =
-				m_ValtanDebugAuditions.find(std::string(fields[1]));
-			if (m_ValtanDebugAuditions.end() == owner ||
-				owner->second.strSequenceId != fields[2] ||
-				owner->second.Steps.size() != 67u)
+				m_ValtanTimelines.find(std::string(fields[1]));
+			if (m_ValtanTimelines.end() == owner ||
+				owner->second.strTimelineId != fields[2] ||
+				timelineRow.iOrdinal > owner->second.Rows.size())
 			{
-				m_strStatus = "Valtan Debug audition step has no sequence owner";
+				m_strStatus = "Valtan timeline occurrence has no owner";
 				return false;
 			}
-			const bool executable =
-				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_DIRECT == step.eMapping ||
-				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_CANDIDATE == step.eMapping ||
-				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_PARTIAL == step.eMapping;
-			if ((executable && ("-" == fields[6] || 0u == step.iRepeat)) ||
-				(!executable && ("-" != fields[6] || 0u != step.iRepeat ||
-					0u == step.iPauseAfterMs)))
-			{
-				m_strStatus = "Valtan Debug audition step mapping is invalid";
-				return false;
-			}
-			step.strOccurrenceId = fields[4];
-			step.strPatternId = "-" == fields[6] ? "" : std::string(fields[6]);
-			VALTAN_DEBUG_AUDITION_STEP& slot =
-				owner->second.Steps[step.iOrdinal - 1u];
+			VALTAN_TIMELINE_ROW& slot =
+				owner->second.Rows[timelineRow.iOrdinal - 1u];
 			if (0u != slot.iOrdinal)
 			{
-				m_strStatus = "Duplicate Valtan Debug audition step ordinal";
+				m_strStatus = "Duplicate Valtan timeline occurrence ordinal";
 				return false;
 			}
-			slot = std::move(step);
+			if (slot.PatternActions.size() > actionCount)
+			{
+				m_strStatus =
+					"Valtan timeline occurrence action count is invalid";
+				return false;
+			}
+			timelineRow.strRowId = fields[5];
+			timelineRow.PatternActions = std::move(slot.PatternActions);
+			timelineRow.PatternActions.resize(actionCount);
+			slot = std::move(timelineRow);
+		}
+		else if (!fields.empty() && "VALTANTIMELINEPATTERN" == fields[0])
+		{
+			std::uint32_t ordinal = 0u;
+			std::uint32_t actionIndex = 0u;
+			VALTAN_TIMELINE_PATTERN_ACTION action{};
+			if (7u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], ordinal) ||
+				!ParseNumber(fields[4], actionIndex) ||
+				!IsStableId(fields[5]) ||
+				!ParseNumber(fields[6], action.iRepeat) ||
+				0u == ordinal || 0u == actionIndex || actionIndex > 8u ||
+				0u == action.iRepeat || action.iRepeat > 4u)
+			{
+				m_strStatus = "Valtan timeline pattern action row is invalid";
+				return false;
+			}
+			const auto owner = m_ValtanTimelines.find(std::string(fields[1]));
+			if (m_ValtanTimelines.end() == owner ||
+				owner->second.strTimelineId != fields[2] ||
+				ordinal > owner->second.Rows.size())
+			{
+				m_strStatus = "Valtan timeline pattern action has no owner";
+				return false;
+			}
+			VALTAN_TIMELINE_ROW& timelineRow = owner->second.Rows[ordinal - 1u];
+			if ((0u != timelineRow.iOrdinal &&
+				timelineRow.iOrdinal != ordinal) ||
+				(0u != timelineRow.iOrdinal &&
+				 actionIndex > timelineRow.PatternActions.size()))
+			{
+				m_strStatus = "Valtan timeline pattern action has no occurrence owner";
+				return false;
+			}
+			if (timelineRow.PatternActions.size() < actionIndex)
+				timelineRow.PatternActions.resize(actionIndex);
+			VALTAN_TIMELINE_PATTERN_ACTION& slot =
+				timelineRow.PatternActions[actionIndex - 1u];
+			if (!slot.strPatternId.empty() || 0u != slot.iRepeat)
+			{
+				m_strStatus = "Duplicate Valtan timeline pattern action index";
+				return false;
+			}
+			action.strPatternId = fields[5];
+			slot = std::move(action);
 		}
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
@@ -2409,7 +2509,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	if (std::getline(input, line) || m_Skills.empty() || m_Players.empty() ||
 		m_Bosses.empty() || m_BossParts.empty() || m_BossPatterns.empty() ||
 		m_BossCombatObjects.empty() ||
-		m_ValtanDebugAuditions.empty() ||
+		m_ValtanTimelines.empty() ||
 		m_DamageRatePercentByProfileId.empty())
 	{
 		m_strStatus = "Gameplay bootstrap has trailing rows or missing definitions";
@@ -2456,8 +2556,23 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		}
 		if (isCombo)
 		{
-			for (const PLAYER_COMBO_STAGE& stage : skill.ComboStages)
+			for (std::size_t stageIndex = 0u;
+				stageIndex < skill.ComboStages.size(); ++stageIndex)
 			{
+				const PLAYER_COMBO_STAGE& stage = skill.ComboStages[stageIndex];
+				const bool isFinalStage =
+					stageIndex + 1u == skill.ComboStages.size();
+				const bool isAutomaticStage = !isFinalStage &&
+					0u == stage.iInputOpenMs && 0u == stage.iInputCloseMs;
+				if ((isAutomaticStage &&
+						stage.iComboAdvanceMs != stage.iActionDurationMs) ||
+					(!isFinalStage && !isAutomaticStage &&
+						(stage.iInputOpenMs >= stage.iInputCloseMs ||
+							stage.iInputCloseMs > stage.iActionDurationMs)))
+				{
+					m_strStatus = "Player combo stage input contract is invalid";
+					return false;
+				}
 				std::uint64_t latestRequiredFireMs = 0u;
 				for (const PLAYER_SKILL_HIT& hit : stage.Hits)
 				{
@@ -2566,6 +2681,9 @@ bool LostArk::Server::CGameplayCatalog::Load()
 					pattern.eAimPolicy &&
 				 BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR !=
 					pattern.Motion.eKind) ||
+				(BOSS_PATTERN_MOTION_KIND::NONE != pattern.Motion.eKind &&
+				 (0u == pattern.Motion.iTravelStageIndex ||
+				  pattern.Motion.iTravelStageIndex >= pattern.Stages.size())) ||
 				0u == pattern.iSourcePrimaryActionId ||
 				pattern.Stages.size() != pattern.iExpectedStageCount)
 			{
@@ -2835,7 +2953,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		m_strStatus = "Boss pattern policies are incomplete";
 		return false;
 	}
-	for (const auto& [encounterId, audition] : m_ValtanDebugAuditions)
+	for (const auto& [encounterId, timeline] : m_ValtanTimelines)
 	{
 		const BOSS_RUNTIME_PROFILE* ownerBoss = nullptr;
 		std::size_t ownerBossCount = 0u;
@@ -2850,69 +2968,59 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		const auto patterns = m_BossPatterns.find(encounterId);
 		if (1u != ownerBossCount || nullptr == ownerBoss ||
 			m_BossPatterns.end() == patterns ||
-			audition.strEncounterId != encounterId ||
-			audition.strSequenceId.empty() || audition.Steps.size() != 67u)
+			timeline.strEncounterId != encounterId ||
+			timeline.strTimelineId.empty() || timeline.Rows.empty())
 		{
-			m_strStatus = "Valtan Debug audition owner contract is invalid";
+			m_strStatus = "Valtan timeline owner contract is invalid";
 			return false;
 		}
-		std::unordered_set<std::string> occurrenceIds;
-		std::uint32_t previousExplicitHealthBar = 0u;
-		for (std::size_t index = 0u; index < audition.Steps.size(); ++index)
+		std::unordered_set<std::string> rowIds;
+		std::unordered_set<std::uint32_t> commandIds;
+		VALTAN_TIMELINE_ARENA_STATE previousArenaState =
+			VALTAN_TIMELINE_ARENA_STATE::FRESH;
+		std::uint32_t previousSectionHealthBar = ownerBoss->iMaximumHealthBars;
+		for (std::size_t index = 0u; index < timeline.Rows.size(); ++index)
 		{
-			const VALTAN_DEBUG_AUDITION_STEP& step = audition.Steps[index];
-			const bool executable =
-				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_DIRECT == step.eMapping ||
-				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_CANDIDATE == step.eMapping ||
-				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_PARTIAL == step.eMapping;
-			if (step.iOrdinal != index + 1u ||
-				step.strOccurrenceId != BuildValtanDebugOccurrenceId(step.iOrdinal) ||
-				!occurrenceIds.insert(step.strOccurrenceId).second ||
-				step.iTargetHealthBar > ownerBoss->iMaximumHealthBars ||
-				(executable &&
-					(step.strPatternId.empty() || 0u == step.iRepeat)) ||
-				(!executable &&
-					(!step.strPatternId.empty() || 0u != step.iRepeat ||
-					 0u == step.iPauseAfterMs)))
+			const VALTAN_TIMELINE_ROW& row = timeline.Rows[index];
+			const std::uint8_t arenaRank =
+				static_cast<std::uint8_t>(row.eArenaState);
+			const std::uint8_t previousArenaRank =
+				static_cast<std::uint8_t>(previousArenaState);
+			if (row.iOrdinal != index + 1u || !IsStableId(row.strRowId) ||
+				!rowIds.insert(row.strRowId).second ||
+				0u == row.iCommandId ||
+				row.iCommandId !=
+					Calculate_ValtanTimelineCommandId(row.strRowId) ||
+				!commandIds.insert(row.iCommandId).second ||
+				0u == row.iSectionHealthBar ||
+				row.iSectionHealthBar > ownerBoss->iMaximumHealthBars ||
+				row.iSectionHealthBar > previousSectionHealthBar ||
+				row.PatternActions.empty() || row.PatternActions.size() > 8u ||
+				arenaRank < previousArenaRank ||
+				arenaRank > previousArenaRank + 1u ||
+				(0u == index &&
+				 (row.iSectionHealthBar != ownerBoss->iMaximumHealthBars ||
+				  VALTAN_TIMELINE_ARENA_STATE::FRESH != row.eArenaState)))
 			{
-				m_strStatus = "Valtan Debug audition occurrence contract is invalid";
+				m_strStatus = "Valtan timeline occurrence contract is invalid";
 				return false;
 			}
-			if (0u != step.iTargetHealthBar)
+			previousArenaState = row.eArenaState;
+			previousSectionHealthBar = row.iSectionHealthBar;
+			for (const VALTAN_TIMELINE_PATTERN_ACTION& action : row.PatternActions)
 			{
-				const bool isFirstRecordedBar =
-					0u == previousExplicitHealthBar &&
-					160u == step.iTargetHealthBar;
-				const bool isRecordedGhostRecovery =
-					56u == step.iOrdinal &&
-					14u == previousExplicitHealthBar &&
-					40u == step.iTargetHealthBar;
-				if ((0u == previousExplicitHealthBar && !isFirstRecordedBar) ||
-					(0u != previousExplicitHealthBar &&
-					 step.iTargetHealthBar > previousExplicitHealthBar &&
-					 !isRecordedGhostRecovery))
+				if (!IsStableId(action.strPatternId) || 0u == action.iRepeat ||
+					action.iRepeat > 4u ||
+					patterns->second.end() == std::find_if(
+						patterns->second.begin(), patterns->second.end(),
+						[&action](const BOSS_PATTERN_DEFINITION& candidate)
+						{
+							return candidate.strPatternId == action.strPatternId;
+						}))
 				{
-					m_strStatus =
-						"Valtan Debug audition health trajectory is invalid";
+					m_strStatus = "Valtan timeline pattern join is invalid";
 					return false;
 				}
-				previousExplicitHealthBar = step.iTargetHealthBar;
-			}
-			if (!executable)
-				continue;
-			const auto pattern = std::find_if(
-				patterns->second.begin(), patterns->second.end(),
-				[&step](const BOSS_PATTERN_DEFINITION& candidate)
-				{
-					return candidate.strPatternId == step.strPatternId;
-				});
-			if (patterns->second.end() == pattern ||
-				(BOSS_PATTERN_SELECTION::HEALTH_BAR == pattern->eSelection &&
-				 VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_PARTIAL != step.eMapping &&
-				 step.iTargetHealthBar != pattern->iTriggerHealthBar))
-			{
-				m_strStatus = "Valtan Debug audition pattern join is invalid";
-				return false;
 			}
 		}
 	}
@@ -2928,6 +3036,20 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			{
 				m_strStatus = "Boss pattern rotation step count is incomplete";
 				return false;
+			}
+			if (BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
+				rotation.eSelectionMode)
+			{
+				std::unordered_set<std::string> uniquePoolIds;
+				for (const std::string& patternId : rotation.PatternIds)
+				{
+					if (!uniquePoolIds.insert(patternId).second)
+					{
+						m_strStatus =
+							"Boss weighted pattern pool contains a duplicate";
+						return false;
+					}
+				}
 			}
 		}
 	}
@@ -2985,12 +3107,32 @@ LostArk::Server::CGameplayCatalog::Find_BossCombatObject(
 	return m_BossCombatObjects.end() == iter ? nullptr : &iter->second;
 }
 
-const LostArk::Server::VALTAN_DEBUG_AUDITION_DEFINITION*
-LostArk::Server::CGameplayCatalog::Find_ValtanDebugAudition(
+const LostArk::Server::VALTAN_TIMELINE_DEFINITION*
+LostArk::Server::CGameplayCatalog::Find_ValtanTimeline(
 	const std::string& encounterId) const
 {
-	const auto iter = m_ValtanDebugAuditions.find(encounterId);
-	return m_ValtanDebugAuditions.end() == iter ? nullptr : &iter->second;
+	const auto iter = m_ValtanTimelines.find(encounterId);
+	return m_ValtanTimelines.end() == iter ? nullptr : &iter->second;
+}
+
+const LostArk::Server::VALTAN_TIMELINE_ROW*
+LostArk::Server::CGameplayCatalog::Find_ValtanTimelineRow(
+	const std::string& encounterId,
+	const std::uint32_t commandId) const
+{
+	if (0u == commandId)
+		return nullptr;
+	const VALTAN_TIMELINE_DEFINITION* timeline =
+		Find_ValtanTimeline(encounterId);
+	if (nullptr == timeline)
+		return nullptr;
+	const auto row = std::find_if(
+		timeline->Rows.begin(), timeline->Rows.end(),
+		[commandId](const VALTAN_TIMELINE_ROW& candidate)
+		{
+			return candidate.iCommandId == commandId;
+		});
+	return timeline->Rows.end() == row ? nullptr : &*row;
 }
 
 const LostArk::Server::BOSS_PATTERN_ROTATION_DEFINITION*

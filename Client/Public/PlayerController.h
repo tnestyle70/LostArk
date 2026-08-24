@@ -27,9 +27,9 @@ namespace Client
 	class CBASIC_ATTACK_RESEND_GATE final
 	{
 	public:
-		void Reset() { m_suppressUntilRelease = false; }
-		void Suppress_UntilRelease() { m_suppressUntilRelease = true; }
-		bool_t Observe_Button(const bool_t isDown)
+		constexpr void Reset() { m_suppressUntilRelease = false; }
+		constexpr void Suppress_UntilRelease() { m_suppressUntilRelease = true; }
+		constexpr bool_t Observe_Button(const bool_t isDown)
 		{
 			if (!isDown)
 				m_suppressUntilRelease = false;
@@ -40,19 +40,21 @@ namespace Client
 		bool_t m_suppressUntilRelease = false;
 	};
 
-	/* One physical LMB press submits exactly one basic-attack command. Combo
-	continuation is another deliberate up -> down edge; a held button must never
-	auto-buffer the next Server-owned stage. Input/UI blocking does not invent a
-	release, so only the raw physical up edge rearms this gate. */
+	/* One physical LMB press submits at most one successful basic-attack command.
+	A press that begins while gameplay input is blocked belongs to the blocker and
+	must not turn into a delayed attack when capture clears. An eligible press is
+	only consumed after the command sink accepts it, so a transient send failure
+	can retry while the same physical press remains held. */
 	class CBASIC_ATTACK_PRESS_EDGE_GATE final
 	{
 	public:
-		void Reset()
+		constexpr void Reset()
 		{
-			m_hasSubmittedCurrentPress = false;
+			m_isCurrentPressActive = false;
+			m_isCurrentPressConsumed = false;
 		}
 
-		bool_t Should_Submit(
+		constexpr bool_t Should_Submit(
 			const bool_t isPhysicallyDown,
 			const bool_t isCommandEligible)
 		{
@@ -61,20 +63,109 @@ namespace Client
 				Reset();
 				return false;
 			}
-			if (!isCommandEligible)
-				return false;
 
-			if (!m_hasSubmittedCurrentPress)
+			if (!m_isCurrentPressActive)
 			{
-				m_hasSubmittedCurrentPress = true;
-				return true;
+				m_isCurrentPressActive = true;
+				m_isCurrentPressConsumed = !isCommandEligible;
 			}
-			return false;
+			else if (!isCommandEligible)
+			{
+				m_isCurrentPressConsumed = true;
+			}
+
+			return isCommandEligible && !m_isCurrentPressConsumed;
+		}
+
+		constexpr void Commit_Submission()
+		{
+			if (m_isCurrentPressActive)
+				m_isCurrentPressConsumed = true;
 		}
 
 	private:
-		bool_t m_hasSubmittedCurrentPress = false;
+		bool_t m_isCurrentPressActive = false;
+		bool_t m_isCurrentPressConsumed = false;
 	};
+
+	/* The request callback is the narrow fake-sink boundary used by the compile-time
+	contract below and by CPlayerController at runtime. Suppression is therefore
+	impossible unless the actual command sink accepted the ground-target cast. */
+	template <typename TRequest>
+	constexpr bool_t Try_Commit_GroundTargetConfirmation(
+		CBASIC_ATTACK_RESEND_GATE& basicAttackGate,
+		const TRequest& request)
+	{
+		if (!request())
+			return false;
+		basicAttackGate.Suppress_UntilRelease();
+		return true;
+	}
+
+	namespace PlayerInputGateContract
+	{
+		struct CONFIRM_REQUEST_STUB final
+		{
+			bool_t accepted = false;
+
+			constexpr bool_t operator()() const { return accepted; }
+		};
+
+		constexpr bool_t Validate_BasicAttackPressTransitions()
+		{
+			CBASIC_ATTACK_PRESS_EDGE_GATE gate{};
+
+			/* A press owned by UI/capture remains consumed until raw release. */
+			if (gate.Should_Submit(true, false) || gate.Should_Submit(true, true))
+				return false;
+			if (gate.Should_Submit(false, false))
+				return false;
+
+			/* A failed sink call does not commit, so the same held press retries. */
+			if (!gate.Should_Submit(true, true) ||
+				!gate.Should_Submit(true, true))
+			{
+				return false;
+			}
+
+			/* Acceptance consumes the press; release alone rearms the next one. */
+			gate.Commit_Submission();
+			if (gate.Should_Submit(true, true) ||
+				gate.Should_Submit(false, false) ||
+				!gate.Should_Submit(true, true))
+			{
+				return false;
+			}
+			return true;
+		}
+
+		constexpr bool_t Validate_GroundTargetConfirmTransaction()
+		{
+			CBASIC_ATTACK_RESEND_GATE gate{};
+			if (gate.Observe_Button(true))
+				return false;
+
+			/* Rejection keeps BA available; acceptance owns LMB through release. */
+			if (Try_Commit_GroundTargetConfirmation(
+					gate, CONFIRM_REQUEST_STUB{ false }) ||
+				gate.Observe_Button(true))
+			{
+				return false;
+			}
+			if (!Try_Commit_GroundTargetConfirmation(
+					gate, CONFIRM_REQUEST_STUB{ true }) ||
+				!gate.Observe_Button(true))
+			{
+				return false;
+			}
+			return !gate.Observe_Button(false) && !gate.Observe_Button(true);
+		}
+
+		static_assert(Validate_BasicAttackPressTransitions(),
+			"basic-attack press edge transaction regressed");
+		static_assert(Validate_GroundTargetConfirmTransaction(),
+			"ground-target confirm LMB ownership regressed");
+	}
 
 	/* Pure state contract for a two-step ground-target skill. DirectInput,
 	 networking, navigation and rendering remain outside, which lets the focused

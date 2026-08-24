@@ -228,7 +228,6 @@ MISSING_ACTION_BINDING_POLICIES = {
     "VALTAN_ENTRANCE_WHIRLWIND": (
         "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW"
     ),
-    "VALTAN_ARENA_BREAK_84": "MISSING_ACTION_BINDING_NO_SOURCE_ACTION",
 }
 ARENA84_BINDING_GAP_PROPOSALS = [
     {
@@ -387,8 +386,9 @@ UNRESOLVED_ADDITIONAL_SOURCE_SELECTION_REASONS = {
         "Whirlwind family remains review-only"
     ),
     "VALTAN_ARENA_BREAK_84": (
-        "all three encounter actions lack canonical animation bindings; the "
-        "420629 mappings remain unaccepted source-reviewed proposals"
+        "all three encounter actions now have current-product baseline "
+        "bindings, while the 420629 source-timing deltas remain unaccepted "
+        "until exact-equivalence review"
     ),
     "VALTAN_MAGIC_ORB_STAGGER_76": (
         "420618 seq=0 matches the three PR #127 groggy clips but its source "
@@ -2643,7 +2643,7 @@ def build_inventory(
         MISSING_ACTION_BINDING_POLICIES
     ):
         raise InventoryError(
-            "first inventory must explicitly retain Entrance/Arena84 gaps"
+            "first inventory must explicitly retain the Entrance binding gap"
         )
 
     product_clips = product_clip_occurrences(encounter, pattern_bindings)
@@ -3014,10 +3014,10 @@ def validate_inventory(document: dict[str, Any]) -> None:
     summary = document.get("summary") or {}
     if summary.get("encounterPatternCount") != EXPECTED_PATTERN_COUNT:
         raise InventoryError("inventory does not cover 33 patterns")
-    if summary.get("actionBindingPatternCount") != 31:
-        raise InventoryError("first inventory must expose 31/33 actionbindings")
-    if summary.get("missingActionBindingPatternCount") != 2:
-        raise InventoryError("first inventory must expose two actionbinding gaps")
+    if summary.get("actionBindingPatternCount") != 32:
+        raise InventoryError("first inventory must expose 32/33 actionbindings")
+    if summary.get("missingActionBindingPatternCount") != 1:
+        raise InventoryError("first inventory must expose one actionbinding gap")
     if summary.get("sourceActionEvidenceProposalCount") != 1:
         raise InventoryError("Dash 400424 evidence-only proposal is missing")
     if summary.get("sourceVisualSignatureEquivalentReviewCount") != 4:
@@ -3051,7 +3051,7 @@ def validate_inventory(document: dict[str, Any]) -> None:
         for row in document["coverage"]["missingActionBindingPatterns"]
     }
     if missing != MISSING_ACTION_BINDING_POLICIES:
-        raise InventoryError("Entrance/Arena84 missing policies changed")
+        raise InventoryError("Entrance missing policy changed")
     dash_proposals = document.get("sourceActionEvidenceProposals", [])
     if (
         len(dash_proposals) != 1

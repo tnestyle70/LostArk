@@ -1,6 +1,6 @@
 {
     "schema":  "lostark.encounter-cinematic-camera",
-    "formatVersion":  3,
+    "formatVersion":  4,
     "encounterId":  "ENCOUNTER_VALTAN",
     "provenance":  "PROJECT_AUTHORED",
     "cues":  [
@@ -253,6 +253,124 @@
                                    ]
                  },
                  {
+                     "cueId":  "camera.valtan.four-pillars-105.takeoff",
+                     "patternId":  "VALTAN_FOUR_PILLARS_105",
+                     "stageId":  "TAKEOFF",
+                     "trackingMode":  "BOSS_XZ",
+                     "trackingOrigin":  [
+                                             156.03,
+                                             22.99751,
+                                             -122.06
+                                         ],
+                     "durationMs":  1933,
+                     "easing":  "SMOOTHSTEP",
+                     "shakeAmplitude":  0,
+                     "shakeDurationMs":  0,
+                     "keyframes":  [
+                                       {
+                                           "timeMs":  0,
+                                           "eye":  [
+                                                       149.53,
+                                                       26,
+                                                       -116.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          27.5,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  42
+                                       },
+                                       {
+                                           "timeMs":  850,
+                                           "eye":  [
+                                                       156.03,
+                                                       52,
+                                                       -91.56
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          43,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  56
+                                       },
+                                       {
+                                           "timeMs":  1933,
+                                           "eye":  [
+                                                       151.03,
+                                                       32.5,
+                                                       -117.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          70.5,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  38
+                                       }
+                                   ]
+                 },
+                 {
+                     "cueId":  "camera.valtan.four-pillars-105.yellow-zone",
+                     "patternId":  "VALTAN_FOUR_PILLARS_105",
+                     "stageId":  "YELLOW_ZONE",
+                     "trackingMode":  "BOSS_XZ",
+                     "trackingOrigin":  [
+                                             156.03,
+                                             22.99751,
+                                             -122.06
+                                         ],
+                     "durationMs":  5200,
+                     "easing":  "SMOOTHSTEP",
+                     "shakeAmplitude":  0,
+                     "shakeDurationMs":  0,
+                     "keyframes":  [
+                                       {
+                                           "timeMs":  0,
+                                           "eye":  [
+                                                       151.03,
+                                                       32.5,
+                                                       -117.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          70.5,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  38
+                                       },
+                                       {
+                                           "timeMs":  3800,
+                                           "eye":  [
+                                                       154.03,
+                                                       35,
+                                                       -120.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          74,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  32
+                                       },
+                                       {
+                                           "timeMs":  5200,
+                                           "eye":  [
+                                                       151.03,
+                                                       32.5,
+                                                       -117.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          70.5,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  42
+                                       }
+                                   ]
+                 },
+                 {
                      "cueId":  "camera.valtan.arena-break-33.cutscene",
                      "patternId":  "VALTAN_ARENA_BREAK_33",
                      "stageId":  "CUTSCENE",
@@ -311,8 +429,14 @@
                         "cueId":  "sky.valtan.four-pillars-105.takeoff",
                         "patternId":  "VALTAN_FOUR_PILLARS_105",
                         "stageId":  "TAKEOFF",
+                        "trackingMode":  "BOSS_XZ",
+                        "trackingOrigin":  [
+                                                156.03,
+                                                22.99751,
+                                                -122.06
+                                            ],
                         "stageLocalStartMs":  0,
-                        "stageLocalEndMs":  1600,
+                        "stageLocalEndMs":  1933,
                         "redCloudAssetId":  "VALTAN_PHASE_CHAOS_CLOUD",
                         "blackApertureAssetId":  "VALTAN_PHASE_SPACEHOLE_CORE",
                         "cloudOpacityStart":  0,
@@ -325,8 +449,14 @@
                         "cueId":  "sky.valtan.four-pillars-105.yellow-zone",
                         "patternId":  "VALTAN_FOUR_PILLARS_105",
                         "stageId":  "YELLOW_ZONE",
+                        "trackingMode":  "BOSS_XZ",
+                        "trackingOrigin":  [
+                                                156.03,
+                                                22.99751,
+                                                -122.06
+                                            ],
                         "stageLocalStartMs":  0,
-                        "stageLocalEndMs":  900,
+                        "stageLocalEndMs":  5500,
                         "redCloudAssetId":  "VALTAN_PHASE_CHAOS_CLOUD",
                         "blackApertureAssetId":  "VALTAN_PHASE_SPACEHOLE_CORE",
                         "cloudOpacityStart":  0.72,
@@ -339,8 +469,14 @@
                         "cueId":  "sky.valtan.four-pillars-105.target-cone",
                         "patternId":  "VALTAN_FOUR_PILLARS_105",
                         "stageId":  "TARGET_CONE",
+                        "trackingMode":  "BOSS_XZ",
+                        "trackingOrigin":  [
+                                                156.03,
+                                                22.99751,
+                                                -122.06
+                                            ],
                         "stageLocalStartMs":  0,
-                        "stageLocalEndMs":  900,
+                        "stageLocalEndMs":  3200,
                         "redCloudAssetId":  "VALTAN_PHASE_CHAOS_CLOUD",
                         "blackApertureAssetId":  "VALTAN_PHASE_SPACEHOLE_CORE",
                         "cloudOpacityStart":  1,
@@ -353,6 +489,12 @@
                         "cueId":  "sky.valtan.four-pillars-105.recovery",
                         "patternId":  "VALTAN_FOUR_PILLARS_105",
                         "stageId":  "RECOVERY",
+                        "trackingMode":  "BOSS_XZ",
+                        "trackingOrigin":  [
+                                                156.03,
+                                                22.99751,
+                                                -122.06
+                                            ],
                         "stageLocalStartMs":  0,
                         "stageLocalEndMs":  1300,
                         "redCloudAssetId":  "VALTAN_PHASE_CHAOS_CLOUD",

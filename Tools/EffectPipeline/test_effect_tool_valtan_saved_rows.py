@@ -33,11 +33,79 @@ REFERENCE_PATH = (
     / "Data/Animation/Authored/Valtan/Valtan.patterneffects.json"
 )
 BOSS_CATALOG_PATH = REPOSITORY_ROOT / "Data/Actors/BossCatalog.json"
+VALTAN_MASTER_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.pattern.json"
 AUTHORED_ROOT = REPOSITORY_ROOT / "Data/Effects/Authored"
 SOURCE_CATALOG_PATH = REPOSITORY_ROOT / "Data/Effects/EffectCatalog.json"
 RUNTIME_CATALOG_PATH = (
     REPOSITORY_ROOT / "Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json"
 )
+RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
+    "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01": frozenset({
+        "source.09837531929147b2c735",
+        "source.0a0fd45f5f5a43cac37a",
+        "source.0e2c496db903785e468f",
+        "source.0f94c3c2e7360f64a4b4",
+        "source.1afcf717a3747d3474db",
+        "source.203f133964614442de86",
+        "source.2f5b3010a12a98b8125f",
+        "source.30e485d1767abb573cce",
+        "source.4787e8102516f8a272fc",
+        "source.4ae99780674e12131241",
+        "source.4fc3b75bf5e197a27979",
+        "source.816ecdd06b33943dd185",
+        "source.83a55bcbd440d7e3d11a",
+        "source.8d431d8c3bf38ece65f9",
+        "source.9d63f5607fdf51f557c3",
+        "source.b819383a3f79ab87ec1d",
+        "source.b8fdc5c0154c0eb5ddb7",
+        "source.cd6f972fe48bd7074be3",
+        "source.d290be8444262f5c42c0",
+        "source.fa8711bdd5ec2cb977a4",
+        "donut.telegraph.outer.red",
+        "sprite_particle_6",
+        "donut.telegraph.inner.grow",
+        "donut.impact.wave.black",
+    }),
+    "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01": frozenset({
+        "source.d380f17792f1c67e9dc2",
+        "source.ece7ae1d1376d407ef1d",
+        "source.f4617c98d44349eec51d",
+    }),
+    "effect.valtan.carrier-v1.attack.high-jump.land.clip-01": frozenset({
+        "source.02a08172b8b42f2e7447",
+        "source.152f0042214bbc7d7798",
+        "source.211f476bb3c8adb60930",
+        "source.376ac01b5ea8ae7ddfd6",
+        "source.427dc449c6069d654a73",
+        "source.4589aa1922ad69610e9d",
+        "source.624a586d9edd1b2ef416",
+        "source.6adb32347d26a9d79a66",
+        "source.6bd1741668d9309740e0",
+        "source.6df0e58123e693f50f14",
+        "source.7660fb560f05124e17c2",
+        "source.78f866e4629cf9cf9860",
+        "source.7b7b7c81b12e9dd59483",
+        "source.7be05e8b261aa56368b0",
+        "source.7c6a67389e1e698ef5a6",
+        "source.a520ae0f9019b499ab0c",
+        "source.a5da306351c5373b7e38",
+        "source.a6504522856bc7469dca",
+        "source.b1cef03c33fe3619f560",
+        "source.b62b3f3edbee532cd8cb",
+        "source.bad75466d9a006ff462f",
+        "source.be3ff3cc7c557a9d51bf",
+        "source.e3ef118ecfa0fabe9406",
+        "high-jump-landing-wave",
+    }),
+    "effect.valtan.sky-axe.active": frozenset({
+        "mesh.valtan.sky-axe.descent",
+        "decal.valtan.sky-axe.target",
+        "particle.valtan.sky-axe.impact",
+        "sky-axe-target-inner-fill",
+        "authored.copy.sky-axe-target-inner-fill.1",
+        "sky-axe-flight-line",
+    }),
+}
 V1_ALIAS_PATH = (
     REPOSITORY_ROOT
     / "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
@@ -104,7 +172,7 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
     pattern = function_slice(
         cpp_text,
         "void Client::CEffect_Tool::Render_ValtanPatternNode(",
-        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
     )
 
     forbidden = (
@@ -126,6 +194,8 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
         "m_ValtanPatternTree.iIntroRotationIndex",
         "m_ValtanPatternTree.Gimmicks",
         "m_ValtanPatternTree.Rotation",
+        "m_ValtanPatternTree.IndependentEffects",
+        "Render_ValtanIndependentEffectNode(Effect, strSearch)",
         'Render_ValtanPatternNode(Pattern, "Gimmick", strSearch)',
     )
     for token in required_tree:
@@ -139,6 +209,7 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
         "Stage.Effects",
         "Stage.CombatObjectEffects",
         'ImGui::SeparatorText("Saved Unified Effects")',
+        'ImGui::SeparatorText("Independent Effect References")',
         'ImGui::SeparatorText("Animations / Semantic Stages")',
         "Render_ValtanStageRow(Stage)",
     )
@@ -163,12 +234,13 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
         "Try_PlayValtanSavedUnifiedEffect",
         "Try_OpenValtanSavedReferenceEffect",
         "pNonProductStage->ClipOccurrences",
+        "Effect.strOwnerPatternId == Pattern.strPatternId",
+        "Effect.strEffectAssetId == Row.strEffectAssetId",
+        '"[REFERENCE] %s | stages %s | %s"',
     )
     for token in required_pattern:
         if token not in pattern:
             raise AssertionError(f"Valtan Saved row contract lost: {token}")
-    if '"[REFERENCE] "' in pattern:
-        raise AssertionError("reference-only rows must stay out of Saved Unified Effects")
     if "Try_PlaySavedUnifiedEffect(" in pattern:
         raise AssertionError("Valtan must not use the Player-only saved play path")
 
@@ -179,7 +251,7 @@ def validate_v1_alias_projection_contract(
     pattern = function_slice(
         cpp_text,
         "void Client::CEffect_Tool::Render_ValtanPatternNode(",
-        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
     )
     required_tree = (
         "std::string strV1EffectAssetId;",
@@ -321,7 +393,7 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     pattern = function_slice(
         cpp_text,
         "void Client::CEffect_Tool::Render_ValtanPatternNode(",
-        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
     )
     open_button = pattern.find('ImGui::SmallButton("Open Saved Effect")')
     play_button = pattern.find('ImGui::SmallButton("Play Saved Effect")')
@@ -410,7 +482,7 @@ def validate_stage_reference_sequence_contract(cpp_text: str) -> None:
     pattern = function_slice(
         cpp_text,
         "void Client::CEffect_Tool::Render_ValtanPatternNode(",
-        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
     )
     reference_helper = function_slice(
         cpp_text,
@@ -473,7 +545,7 @@ def validate_saved_row_aggregation_contract(cpp_text: str) -> None:
     pattern = function_slice(
         cpp_text,
         "void Client::CEffect_Tool::Render_ValtanPatternNode(",
-        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
     )
     if "SeenEffectAssetIds" in pattern:
         raise AssertionError(
@@ -582,6 +654,163 @@ def validate_pending_reference_preview_contract(cpp_text: str) -> None:
             raise AssertionError(
                 f"pending saved-reference preview contract lost: {token}"
             )
+
+
+def validate_full_valtan_product_timeline_contract(
+    cpp_text: str, header_text: str
+) -> None:
+    for token in (
+        "TimelineClips",
+        "iTimelineDurationMs",
+        "iOwningStageTimelineOffsetMs",
+        "iOwningClipTimelineOffsetMs",
+        "ValtanProductPreview",
+    ):
+        if token not in header_text:
+            raise AssertionError(f"full Valtan Product preview state lost: {token}")
+
+    play = function_slice(
+        cpp_text,
+        "bool_t Client::CEffect_Tool::Play_ValtanProductCue(",
+        "bool_t Client::CEffect_Tool::Play_ValtanStageSequence(",
+    )
+    for token in (
+        "Play_ValtanStageSequence(SourcePreview.TimelineClips)",
+        "SourcePreview.iOwningStageTimelineOffsetMs",
+        "SourcePreview.iOwningClipTimelineOffsetMs",
+        "SourcePreview.iTimelineDurationMs",
+        "non-unique or incomplete owner timeline",
+    ):
+        if token not in play:
+            raise AssertionError(f"full Valtan Product playback lost: {token}")
+    if "Play_ValtanClipOccurrence(Clip)" in play:
+        raise AssertionError("managed Product playback regressed to its owner clip only")
+
+    sample = function_slice(
+        cpp_text,
+        "f32_t Client::CEffect_Tool::Resolve_EffectSampleTime(",
+        "f32_t Client::CEffect_Tool::Resolve_EffectTimelineTime(",
+    )
+    inverse = function_slice(
+        cpp_text,
+        "f32_t Client::CEffect_Tool::Resolve_EffectTimelineTime(",
+        "bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(",
+    )
+    visible = function_slice(
+        cpp_text,
+        "bool_t Client::CEffect_Tool::Is_ProductCueVisible(",
+        "bool_t Client::CEffect_Tool::Restore_ValtanProductPreviewPlayback(",
+    )
+    if "fTimelineSeconds - fClipTimelineOffsetSeconds" not in sample:
+        raise AssertionError("Valtan cue sample clock lost its global clip offset")
+    if "fClipTimelineOffsetSeconds + Sample.fCueWallStartSeconds" not in inverse:
+        raise AssertionError("Valtan effect-to-timeline inverse lost its global offset")
+    for token in (
+        "iOwningStageTimelineOffsetMs",
+        "iOwningClipTimelineOffsetMs",
+        "fTimelineSeconds - fClipStartMs * 0.001f",
+    ):
+        if token not in visible:
+            raise AssertionError(f"global cue visibility window lost: {token}")
+
+    authoring = function_slice(
+        cpp_text,
+        "bool_t Client::CEffect_Tool::Play_ValtanAuthoringTimeline(",
+        "void Client::CEffect_Tool::Render_ValtanStageRow(",
+    )
+    active_branch = authoring.index("if (1u == ActiveCueOwners.size())")
+    explicit_clear = authoring.index("Clear_ProductCuePreview();")
+    if explicit_clear < active_branch:
+        raise AssertionError(
+            "Play Authoring Timeline must try the active exact cue before clearing it"
+        )
+    for token in (
+        "Build_ValtanProductPreview",
+        "Try_PlayActiveUnifiedEffect()",
+        "no exact cue for the current authored Effect",
+        "maps to multiple cues; select one saved occurrence",
+    ):
+        if token not in authoring:
+            raise AssertionError(f"active authoring cue contract lost: {token}")
+
+    pattern_node = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_ValtanPatternNode(",
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
+    )
+    ambiguity_contract = re.compile(
+        r"const bool_t bAmbiguousOccurrence\s*=\s*"
+        r"1u < Row\.ProductSources\.size\(\)\s*\|\|\s*"
+        r"\(!Row\.ProductSources\.empty\(\)\s*&&\s*"
+        r"!NonProductStages\.empty\(\)\)\s*\|\|\s*"
+        r"\(Row\.ProductSources\.empty\(\)\s*&&\s*"
+        r"1u < NonProductStages\.size\(\)\)\s*;",
+        flags=re.DOTALL,
+    )
+    if ambiguity_contract.search(pattern_node) is None:
+        raise AssertionError(
+            "saved Valtan owner ambiguity must cover Product duplicates, "
+            "mixed Product/non-Product provenance, and non-Product duplicates"
+        )
+    if pattern_node.count("bAmbiguousOccurrence ||") < 2:
+        raise AssertionError(
+            "both saved Effect Open and Play guards must reject ambiguous owners"
+        )
+
+    legacy_start = pattern_node.index(
+        "if (nullptr != pProductSource)"
+    )
+    legacy_end = pattern_node.index(
+        "const VALTAN_STAGE_VIEW* pNonProductStage", legacy_start
+    )
+    legacy_product = pattern_node[legacy_start:legacy_end]
+    for token in (
+        "VALTAN_PRODUCT_EFFECT_CUE_VIEW PlaybackCue =",
+        "*pProductSource->pCue",
+        "if (Pattern.bAuthoringMasterManaged &&",
+        "Build_ValtanProductPreview(Pattern, eProductPath",
+        "else if (!Pattern.bAuthoringMasterManaged)",
+        "SourceCue.strEffectAssetId == Row.strEffectAssetId",
+        "SourceCue.strV1EffectAssetId == Row.strEffectAssetId",
+        "OwnerStage.iDurationMs != SourceCue.iStageDurationMs",
+        "Preview.Cue = std::move(PlaybackCue)",
+        "TimelineClip.iAuthoringWallMs =",
+        "Preview.Cue.iStageDurationMs",
+        "Preview.iTimelineDurationMs =",
+        "ProductPlaybackPreview = std::move(Preview)",
+    ):
+        if token not in legacy_product:
+            raise AssertionError(
+                f"legacy exact stage-local Product preview lost: {token}"
+            )
+    mismatch = legacy_product.index("if (!bExactEffectIdentity")
+    fallback_commit = legacy_product.index(
+        "ProductPlaybackPreview = std::move(Preview)", mismatch
+    )
+    success_else = legacy_product.index("else", mismatch)
+    if fallback_commit < success_else:
+        raise AssertionError(
+            "legacy Product mismatch must leave the optional preview unset"
+        )
+
+    independent = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
+        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+    )
+    for token in (
+        '"SERVER_PATTERN_STAGE" == Effect.strOwnership',
+        '"SERVER_COMBAT_OBJECT" == Effect.strOwnership',
+        "Effect.bHasCueProjection",
+        "Effect.strEffectCueBindingId",
+        "Effect.strCueClipOccurrenceId",
+        "Effect.strCueMappingBasis",
+        "PatternStagePreview",
+        "Try_PlayValtanSavedUnifiedEffect",
+        "Try_OpenValtanSavedReferenceEffect",
+    ):
+        if token not in independent:
+            raise AssertionError(f"independent owner playback split lost: {token}")
 
 
 def validate_manual_authoring_detail_contract(cpp_text: str) -> None:
@@ -799,6 +1028,220 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             EFFECT_TOOL_HEADER.read_text(encoding="utf-8"),
         )
 
+    def test_failed_valtan_tree_cold_load_retries_only_on_explicit_refresh(self) -> None:
+        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
+        refresh = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree(",
+            "bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(",
+        )
+        render = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+            "void Client::CEffect_Tool::Render_AllEffectsWindow(",
+        )
+
+        self.assertIn(
+            "bool_t m_bValtanPatternTreeLoadAttempted = false;",
+            header_text,
+        )
+        self.assertIn("m_bValtanPatternTreeLoadAttempted = true;", refresh)
+        self.assertIn(
+            "if (!m_bValtanPatternTreeLoaded && "
+            "!m_bValtanPatternTreeLoadAttempted)",
+            render,
+        )
+
+    def test_pattern_master_joins_two_independent_effects_once_at_root(self) -> None:
+        master = json.loads(VALTAN_MASTER_PATH.read_text(encoding="utf-8"))
+        self.assertEqual("lostark.valtan-pattern-master", master["schema"])
+        self.assertEqual(1, master["formatVersion"])
+        independent = master["independentEffects"]
+        self.assertEqual(
+            {
+                "valtan.independent-effect.target-axe":
+                    "effect.valtan.sky-axe.active",
+                "valtan.independent-effect.donut-in-out":
+                    "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+            },
+            {
+                row["independentEffectId"]: row["effectAssetId"]
+                for row in independent
+            },
+        )
+        patterns = {row["patternId"]: row for row in master["patterns"]}
+        self.assertEqual(7, len(patterns))
+        for row in independent:
+            if row["ownership"] == "SERVER_COMBAT_OBJECT":
+                self.assertIsNone(row["cueProjection"])
+            else:
+                self.assertEqual(
+                    {
+                        "clipOccurrenceId",
+                        "sourceStartMs",
+                        "sourceEndMs",
+                        "mappingBasis",
+                    },
+                    set(row["cueProjection"]),
+                )
+            owner = patterns[row["ownerPatternId"]]
+            self.assertIn(
+                row["ownerStageId"],
+                {stage["stageId"] for stage in owner["stages"]},
+            )
+            references = [
+                (owner["patternId"], stage["stageId"])
+                for stage in owner["stages"]
+                for ref in stage["effectRefs"]
+                if ref == {
+                    "refType": "INDEPENDENT_EFFECT",
+                    "refId": row["independentEffectId"],
+                }
+            ]
+            self.assertEqual(
+                [(row["ownerPatternId"], row["ownerStageId"])],
+                references,
+                row["independentEffectId"],
+            )
+
+        tree_cpp = VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8")
+        tree_header = VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8")
+        tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        for token in (
+            "Parse_MasterDocument",
+            "Apply_MasterDocument",
+            '"lostark.valtan-pattern-master"',
+            "View.IndependentEffects = Master.IndependentEffects",
+            "IndependentEffectIds.push_back",
+            '"effectCueBindingId", "cueProjection"',
+            "Independent.bHasCueProjection",
+        ):
+            self.assertIn(token, tree_cpp)
+        self.assertIn(
+            "std::vector<VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;",
+            tree_header,
+        )
+        for token in (
+            '"INDEPENDENT EFFECT", ImGuiTreeNodeFlags_OpenOnArrow',
+            'ImGui::SmallButton("Open Independent Effect")',
+            'ImGui::SmallButton("Play Independent Effect")',
+            'ImGui::SeparatorText("Independent Effect References")',
+            "return bIndependent ||",
+        ):
+            self.assertIn(token, tool_cpp)
+
+    def test_master_animation_occurrences_project_and_dash_paths_are_explicit(self) -> None:
+        master = json.loads(VALTAN_MASTER_PATH.read_text(encoding="utf-8"))
+        bindings = {
+            row["actionId"]: row["clips"]
+            for row in json.loads(
+                PATTERN_BINDING_PATH.read_text(encoding="utf-8")
+            )["bindings"]
+        }
+        for pattern in master["patterns"]:
+            for stage in pattern["stages"]:
+                expected = [
+                    {
+                        "clipOccurrenceId": row["clipOccurrenceId"],
+                        "clip": row["clip"],
+                        "mappingBasis": row["mappingBasis"],
+                        "sourceStartMs": row["sourceStartMs"],
+                        "playMs": row["playMs"],
+                        "playRate": row["playRate"],
+                        "loop": row["repeatUntilStageEnd"],
+                    }
+                    for row in stage["animation"]["occurrences"]
+                ]
+                self.assertEqual(expected, bindings[stage["actionId"]])
+
+        dash = next(
+            row for row in master["patterns"]
+            if row["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        windup = next(
+            row for row in dash["stages"] if row["stageId"] == "WINDUP"
+        )
+        self.assertEqual(3, windup["animation"]["repeatCount"])
+        self.assertEqual(3, len(windup["animation"]["occurrences"]))
+        tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        for token in (
+            "CValtanPatternTree::Build_PreviewStagePath(",
+            "VALTAN_PATTERN_PREVIEW_PATH::NORMAL",
+            "VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY",
+            "VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK",
+            'ImGui::SmallButton("Play Authoring Timeline")',
+            "pStage->iAuthoringRepeatCount",
+            "iPlayableOccurrenceCount",
+            "Pattern.PresentationSources",
+            "Source.iSourceActionId",
+            "Source.iSequenceIndex",
+            "StagedClips.push_back(Clip)",
+        ):
+            self.assertIn(token, tool_cpp)
+
+    def test_full_product_cue_uses_the_complete_pattern_timeline(self) -> None:
+        validate_full_valtan_product_timeline_contract(
+            EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
+            EFFECT_TOOL_HEADER.read_text(encoding="utf-8"),
+        )
+
+        master = json.loads(VALTAN_MASTER_PATH.read_text(encoding="utf-8"))
+        patterns = {row["patternId"]: row for row in master["patterns"]}
+        # The donut cue belongs to INNER, which begins after WINDUP. This is
+        # the concrete regression case: its effect must not start at pattern 0.
+        donut = next(
+            row
+            for row in master["independentEffects"]
+            if row["independentEffectId"]
+            == "valtan.independent-effect.donut-in-out"
+        )
+        owner = patterns[donut["ownerPatternId"]]
+        owner_stage_index = next(
+            index
+            for index, stage in enumerate(owner["stages"])
+            if stage["stageId"] == donut["ownerStageId"]
+        )
+        self.assertEqual(
+            1500,
+            sum(
+                stage["durationMs"]
+                for stage in owner["stages"][:owner_stage_index]
+            ),
+        )
+        self.assertEqual("SERVER_PATTERN_STAGE", donut["ownership"])
+        self.assertIsNotNone(donut["cueProjection"])
+        axe = next(
+            row
+            for row in master["independentEffects"]
+            if row["independentEffectId"]
+            == "valtan.independent-effect.target-axe"
+        )
+        self.assertEqual("SERVER_COMBAT_OBJECT", axe["ownership"])
+        self.assertIsNone(axe["cueProjection"])
+
+    def test_master_wall_budget_caps_loop_and_keeps_full_timeline_seekable(self) -> None:
+        tree_header = VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8")
+        tool_header = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
+        tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        self.assertIn("uint32_t iAuthoringWallMs = 0u;", tree_header)
+        self.assertIn("uint32_t iAuthoringWallMs = 0u;", tool_header)
+        for token in (
+            "Assign_MasterWallBudgets",
+            "Clip.iAuthoringWallMs = Source.iAuthoringWallMs",
+            "fTimelineClipWallDurationSeconds",
+            "fTimelineClipWallSeconds",
+            "m_iSynchronizedAnimationLoopEpoch",
+            "Seek_SynchronizedAnimationSequence",
+            "m_iValtanReferenceEffectStartMs",
+            "iEffectStartMs += Stage.iDurationMs",
+            "Preserve the final source pose",
+        ):
+            self.assertIn(
+                token,
+                VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8") + tool_cpp,
+            )
+
     def test_typed_v1_aliases_project_as_paired_saved_rows(self) -> None:
         validate_v1_alias_projection_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
@@ -850,9 +1293,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         stages = {stage["stageId"]: stage for stage in high_jump["stages"]}
         self.assertEqual(1933, stages["TAKEOFF"]["durationMs"])
-        self.assertEqual(8000, stages["AIRBORNE"]["durationMs"])
+        self.assertEqual(6000, stages["AIRBORNE"]["durationMs"])
         self.assertEqual(3200, stages["LAND"]["durationMs"])
         self.assertEqual(400, stages["RECOVERY"]["durationMs"])
+        self.assertEqual("LAND", high_jump["serverMotion"]["travelStageId"])
         self.assertEqual(
             [
                 {
@@ -875,7 +1319,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             if row["combatObjectArchetypeId"]
             == "combatobject.valtan.high-jump.target-axe"
         )
-        self.assertEqual(8000, target_axe["lifeMs"])
+        self.assertEqual(6000, target_axe["lifeMs"])
         self.assertEqual(1, len(target_axe["hits"]))
         self.assertEqual(1200, target_axe["hits"][0]["atMs"])
         self.assertEqual(1, target_axe["hits"][0]["repeatCount"])
@@ -885,7 +1329,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         pattern = function_slice(
             cpp_text,
             "void Client::CEffect_Tool::Render_ValtanPatternNode(",
-            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+            "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
         )
         reference_open = function_slice(
             cpp_text,
@@ -910,6 +1354,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertIn("pNonProductStage->iDurationMs", pattern)
         self.assertIn("iWorldOwnerStageDurationMs", reference_open)
         self.assertIn("Recalculate_PreviewDuration();", reference_open)
+        self.assertIn(
+            "m_ePreviewPivotKind = EFFECT_PREVIEW_PIVOT_KIND::WORLD;",
+            reference_open,
+        )
         self.assertIn("m_iValtanWorldOwnerStageDurationMs", duration)
         self.assertIn("(std::max)(", duration)
         self.assertIn(
@@ -960,7 +1408,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         stages = {row["stageId"]: row for row in pattern["stages"]}
         self.assertEqual(1333, stages["WINDUP"]["durationMs"])
-        self.assertEqual(1400, stages["SPIN"]["durationMs"])
+        self.assertEqual(1200, stages["SPIN"]["durationMs"])
         self.assertEqual(4, stages["SPIN"]["hitCount"])
         self.assertEqual(350, stages["SPIN"]["hitIntervalMs"])
         self.assertEqual(1467, stages["RECOVERY"]["durationMs"])
@@ -1003,9 +1451,9 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     "clip": "mesh_att_battle_20_03",
                     "mappingBasis": "PROJECT_AUTHORED",
                     "sourceStartMs": 0,
-                    "playMs": 0,
-                    "playRate": 0.761904762,
-                    "loop": True,
+                    "playMs": 533,
+                    "playRate": 0.4441666667,
+                    "loop": False,
                 }
             ],
             bindings["valtan.attack.whirlwind.active"],
@@ -1030,7 +1478,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "VALTAN_WHIRLWIND / SPIN / carrier V1",
             source_document["displayName"],
         )
-        source_duration = 1.4 * 0.761904762
+        source_duration = 1.2 * 0.888888889
         for element in source_document["elements"]:
             if element["kind"] == "trail":
                 preview_end = (
@@ -1105,6 +1553,12 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         self.assertIn(
             "m_ValtanProductPreview->Cue.iStageDurationMs", visible
+        )
+        self.assertNotIn("fStageEndMs", visible)
+        self.assertIn(
+            "CUE_END source window remains bounded by "
+            "Resolve_CuePreviewSample",
+            visible,
         )
         duration = function_slice(
             cpp_text,
@@ -1544,21 +1998,28 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
 
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
-        self.assertEqual(34, len(projected))
-        self.assertEqual(54, raw_links)
-        self.assertEqual(54, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(33, len(projected))
+        self.assertEqual(57, raw_links)
+        self.assertEqual(57, sum(len(rows) for rows in projected.values()))
         self.assertEqual(2, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(1, len(projected["VALTAN_FRONT_BACK_FRONT"]))
-        self.assertNotIn("VALTAN_FOUR_SLASH", projected)
-        self.assertEqual(1, len(projected["VALTAN_TRIPLE_SLASH"]))
-        self.assertEqual(2, len(projected["VALTAN_ROTATION_SLASH"]))
+        self.assertNotIn("VALTAN_TRIPLE_SLASH", projected)
+        self.assertNotIn("VALTAN_ROTATION_SLASH", projected)
+        self.assertEqual(3, len(projected["VALTAN_FOUR_SLASH"]))
+        self.assertEqual(
+            [
+                "effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+                "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+            ],
+            projected["VALTAN_FOUR_PILLARS_105"],
+        )
         self.assertEqual(
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
-            projected["VALTAN_TRIPLE_SLASH"][0],
+            projected["VALTAN_FOUR_SLASH"][0],
         )
         self.assertEqual(
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
-            projected["VALTAN_ROTATION_SLASH"][0],
+            projected["VALTAN_FOUR_SLASH"][1],
         )
         self.assertEqual(4, len(projected["VALTAN_WHIRLWIND"]))
         self.assertEqual(
@@ -1596,8 +2057,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     nonempty_candidates += 1
                 else:
                     empty_shells += 1
-        self.assertEqual(51, nonempty_candidates)
-        self.assertEqual(56, empty_shells)
+        self.assertEqual(54, nonempty_candidates)
+        self.assertEqual(53, empty_shells)
 
     def test_all_declared_v0_product_cues_remain_published_and_nonempty(self) -> None:
         cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
@@ -1623,8 +2084,11 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             cue for cue in cues if cue["effectAssetId"] not in project_tuned_ids
         ]
         effect_ids = [cue["effectAssetId"] for cue in sealed_cues]
-        self.assertEqual(44, len(effect_ids))
-        self.assertEqual(44, len(set(effect_ids)))
+        self.assertEqual(47, len(effect_ids))
+        # Arena-break recovery intentionally reuses the reviewed ledge-roar
+        # recovery asset. The separate FOUR_PILLARS additive layer contributes
+        # two exact owners, so 47 links resolve to 46 documents.
+        self.assertEqual(46, len(set(effect_ids)))
         visible_elements = 0
         hidden_elements = 0
         model_cues = 0
@@ -1678,12 +2142,45 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             )
             runtime_document = json.loads(runtime_bytes.decode("utf-8"))
             self.assertEqual(source_document, runtime_document, effect_id)
-        # clip-01 intentionally preserves the latest Effect Tool authoring
-        # snapshot (six user-visible rows) instead of restoring the retired
-        # twelve-row materializer preimage.
-        self.assertEqual(634, visible_elements)
+        # The recovered stable-ID union adds four donut rows and one landing
+        # row. The separate FOUR_PILLARS layer adds 26 visible exact carriers.
+        # Sky Axe is combat-object owned, so its added rows are covered below.
+        self.assertEqual(679, visible_elements)
         self.assertEqual(5, hidden_elements)
         self.assertEqual(0, model_cues)
+
+    def test_recovered_valtan_effects_have_exact_stable_id_union(self) -> None:
+        source_catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        runtime_catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+
+        for effect_id, expected_ids in RECOVERED_VALTAN_EFFECT_ELEMENT_IDS.items():
+            with self.subTest(effect_id=effect_id):
+                source_entry = source_catalog[effect_id]
+                source_path = REPOSITORY_ROOT / "Data" / source_entry["authoringPath"]
+                source_document = json.loads(source_path.read_text(encoding="utf-8"))
+                element_ids = [row["id"] for row in source_document["elements"]]
+                self.assertEqual(len(expected_ids), len(element_ids))
+                self.assertEqual(len(element_ids), len(set(element_ids)))
+                self.assertEqual(expected_ids, frozenset(element_ids))
+
+                runtime_entry = runtime_catalog[effect_id]
+                runtime_path = (
+                    REPOSITORY_ROOT
+                    / "Client/Bin/DataFiles/Effect"
+                    / runtime_entry["authoredDocumentPath"]
+                )
+                runtime_document = json.loads(runtime_path.read_text(encoding="utf-8"))
+                self.assertEqual(source_document, runtime_document)
 
     def test_v1_alias_sidecar_is_exactly_six_valid_pairs(self) -> None:
         aliases = json.loads(V1_ALIAS_PATH.read_text(encoding="utf-8"))["aliases"]

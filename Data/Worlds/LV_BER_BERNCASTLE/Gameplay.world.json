@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 5,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 131,
+  "revision": 132,
   "placements": [
     {
       "placementId": "collision.bern.editor-proof",
@@ -71,7 +71,7 @@
     {
       "placementId": "trigger.bern.to-valtan",
       "kind": "triggerBox",
-      "position": [144.800003, 42.7000008, -60.2999992],
+      "position": [140.800003, 42.7000008, -60.2999992],
       "yawDegrees": 0,
       "enabled": true,
       "halfExtents": [2, 2, 2],

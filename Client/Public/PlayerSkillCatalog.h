@@ -23,6 +23,17 @@ namespace Client
 		std::string strUsageBasis;
 		std::string strSourceEvidence;
 	};
+	/* Read-only timing for one Server-owned comboStages row. The Client never
+		advances a combo from these values; authoring tools use them to reproduce
+		the same stage boundaries that the Server admits. */
+	struct PLAYER_COMBO_STAGE_TIMING
+	{
+		std::uint32_t iActionDurationMs = 0;
+		std::uint32_t iHitTimeMs = 0;
+		std::uint32_t iComboAdvanceMs = 0;
+		std::uint32_t iInputOpenMs = 0;
+		std::uint32_t iInputCloseMs = 0;
+	};
 	/* One row of Data/Balance/PlayerSkills.json with its damage rate already
 	resolved through Data/Balance/DamageProfiles.json.
 
@@ -53,6 +64,9 @@ namespace Client
 		/* Official CostMp so the HUD can show a skill the server would refuse
 		to pay for. The server keeps its own copy from the bootstrap. */
 		std::uint32_t iResourceCost = 0;
+		/* Server-owned identity payment mirrored read-only so a two-step target
+		preview does not open for a cast the latest snapshot cannot afford. */
+		std::uint32_t iIdentityCost = 0;
 		float fMaximumRange = 0.f;
 		LostArk::Shared::SKILL_TARGET_INTENT_KIND eTargetIntent =
 			LostArk::Shared::SKILL_TARGET_INTENT_KIND::AIM_POINT;
@@ -69,6 +83,7 @@ namespace Client
 		/* Presentation authoring maps one COMBO clip to each Server-owned stage.
 		ACTIVE skills therefore carry zero and COMBO skills carry 2..8. */
 		std::size_t iComboStageCount = 0;
+		std::vector<PLAYER_COMBO_STAGE_TIMING> ComboStages;
 	};
 
 	class CPlayerSkillCatalog final

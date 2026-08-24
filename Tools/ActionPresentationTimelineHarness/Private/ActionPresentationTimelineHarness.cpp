@@ -1,10 +1,18 @@
 #include "ActionPresentationTimeline.h"
+#include "EncounterPatternReference.h"
+#include "ValtanCinematicCameraController.h"
+#include "ValtanCinematicCameraDocument.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <set>
+#include <sstream>
 #include <span>
+#include <string>
 
 using Client::ACTION_PRESENTATION_CLIP_TIMING;
 using Client::ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE;
@@ -171,6 +179,216 @@ namespace
 		return Require(NearlyEqual(fPreviewDuration, 2.767f),
 			"short Product occurrence truncated the full animation preview");
 	}
+
+	bool NearlyEqualPosition(
+		const float3_t& Left,
+		const float3_t& Right)
+	{
+		return NearlyEqual(Left.x, Right.x) &&
+			NearlyEqual(Left.y, Right.y) &&
+			NearlyEqual(Left.z, Right.z);
+	}
+
+	const Client::VALTAN_CINEMATIC_CAMERA_CUE* FindCueById(
+		const Client::CValtanCinematicCameraDocument& Document,
+		const std::string_view CueId)
+	{
+		const auto& Cues = Document.Get_Cues();
+		const auto Found = std::find_if(
+			Cues.begin(), Cues.end(),
+			[CueId](const Client::VALTAN_CINEMATIC_CAMERA_CUE& Cue)
+			{ return Cue.strCueId == CueId; });
+		return Cues.end() == Found ? nullptr : &*Found;
+	}
+
+	bool VerifyValtanCinematicTracking(
+		const std::filesystem::path& RepositoryRoot)
+	{
+		const std::filesystem::path EncounterPath = RepositoryRoot / L"Data" /
+			L"Encounters" / L"Valtan" / L"ValtanEncounter.json";
+		const std::filesystem::path CameraPath = RepositoryRoot / L"Data" /
+			L"Encounters" / L"Valtan" / L"ValtanCinematicCamera.json";
+		Client::CEncounterPatternReference Encounter;
+		Client::CValtanCinematicCameraDocument Document;
+		std::string Status;
+		if (!Require(Encounter.Load(EncounterPath, Status),
+				"Valtan encounter reference did not load") ||
+			!Require(Document.Load(CameraPath, Encounter, Status),
+				"Valtan cinematic camera document did not load"))
+		{
+			return false;
+		}
+
+		const std::set<std::string> ExpectedCameraStages = {
+			"TAKEOFF", "YELLOW_ZONE"
+		};
+		const std::set<std::string> ExpectedSkyStages = {
+			"TAKEOFF", "YELLOW_ZONE", "TARGET_CONE", "RECOVERY"
+		};
+		std::set<std::string> CameraStages;
+		bool AllCameraCuesTrackBossXZ = true;
+		for (const Client::VALTAN_CINEMATIC_CAMERA_CUE& Cue :
+			Document.Get_Cues())
+		{
+			if ("VALTAN_FOUR_PILLARS_105" != Cue.strPatternId)
+				continue;
+			CameraStages.insert(Cue.strStageId);
+			AllCameraCuesTrackBossXZ = AllCameraCuesTrackBossXZ &&
+				Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ ==
+				Cue.eTrackingMode;
+		}
+		std::set<std::string> SkyStages;
+		bool AllSkyCuesTrackBossXZ = true;
+		for (const Client::VALTAN_CINEMATIC_SKY_CUE& Cue :
+			Document.Get_SkyCues())
+		{
+			if ("VALTAN_FOUR_PILLARS_105" != Cue.strPatternId)
+				continue;
+			SkyStages.insert(Cue.strStageId);
+			AllSkyCuesTrackBossXZ = AllSkyCuesTrackBossXZ &&
+				Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ ==
+				Cue.eTrackingMode;
+		}
+		if (!Require(ExpectedCameraStages == CameraStages,
+				"100-bar camera stages are not exactly TAKEOFF,YELLOW_ZONE") ||
+			!Require(AllCameraCuesTrackBossXZ,
+				"a 100-bar camera stage is not boss-XZ tracked") ||
+			!Require(ExpectedSkyStages == SkyStages,
+				"100-bar sky stages are not exactly TAKEOFF,YELLOW_ZONE,TARGET_CONE,RECOVERY") ||
+			!Require(AllSkyCuesTrackBossXZ,
+				"a 100-bar sky stage is not boss-XZ tracked"))
+		{
+			return false;
+		}
+
+		const Client::VALTAN_CINEMATIC_CAMERA_CUE* TrackingCue = FindCueById(
+			Document, "camera.valtan.four-pillars-105.takeoff");
+		const Client::VALTAN_CINEMATIC_CAMERA_CUE* WorldCue = FindCueById(
+			Document, "camera.valtan.arena-break-109.takeoff");
+		if (!Require(nullptr != TrackingCue && nullptr != WorldCue,
+				"required Valtan camera cues are missing") ||
+			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ ==
+					TrackingCue->eTrackingMode,
+				"100-bar camera cue is not boss-XZ tracked") ||
+			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::WORLD ==
+					WorldCue->eTrackingMode,
+				"legacy 109 camera cue stopped being world-space"))
+		{
+			return false;
+		}
+
+		const auto BuildInput = [](
+			const Client::VALTAN_CINEMATIC_CAMERA_CUE& Cue,
+			const float3_t& BossPosition,
+			const uint32_t ServerTick)
+		{
+			Client::VALTAN_CINEMATIC_CAMERA_INPUT Input{};
+			Input.isValid = true;
+			Input.iNetEntityId = 91u;
+			Input.iServerTick = ServerTick;
+			Input.strPatternId = Cue.strPatternId;
+			Input.strStageId = Cue.strStageId;
+			Input.strStageActionId = Cue.strStageActionId;
+			Input.iPatternSequence = 7u;
+			Input.iStageIndex = Cue.iStageIndex;
+			Input.iActionStartTick = ServerTick;
+			Input.vBossPosition = BossPosition;
+			return Input;
+		};
+		const float3_t Origin = TrackingCue->vTrackingOrigin;
+		const float3_t ShiftedBoss(
+			Origin.x + 10.f, Origin.y + 46.f, Origin.z - 7.f);
+		Client::CValtanCinematicCameraController BaseController;
+		Client::CValtanCinematicCameraController ShiftedController;
+		Client::VALTAN_CINEMATIC_CAMERA_POSE BasePose{};
+		Client::VALTAN_CINEMATIC_CAMERA_POSE ShiftedPose{};
+		const Client::VALTAN_CINEMATIC_CAMERA_INPUT BaseInput =
+			BuildInput(*TrackingCue, Origin, 300u);
+		const Client::VALTAN_CINEMATIC_CAMERA_INPUT ShiftedInput =
+			BuildInput(*TrackingCue, ShiftedBoss, 300u);
+		if (!Require(BaseController.Initialize(
+				&Document, Encounter.Get_FixedTickHz()) &&
+			ShiftedController.Initialize(&Document, Encounter.Get_FixedTickHz()),
+				"camera tracking controllers did not initialize") ||
+			!Require(BaseController.Update(BaseInput, 0.f, BasePose) &&
+				ShiftedController.Update(ShiftedInput, 0.f, ShiftedPose),
+				"100-bar tracked camera pose did not resolve") ||
+			!Require(NearlyEqual(ShiftedPose.vEye.x - BasePose.vEye.x, 10.f) &&
+				NearlyEqual(ShiftedPose.vEye.y, BasePose.vEye.y) &&
+				NearlyEqual(ShiftedPose.vEye.z - BasePose.vEye.z, -7.f) &&
+				NearlyEqual(ShiftedPose.vLookAt.x - BasePose.vLookAt.x, 10.f) &&
+				NearlyEqual(ShiftedPose.vLookAt.y, BasePose.vLookAt.y) &&
+				NearlyEqual(ShiftedPose.vLookAt.z - BasePose.vLookAt.z, -7.f),
+				"boss-XZ camera tracking changed Y or lost horizontal displacement"))
+		{
+			return false;
+		}
+
+		const Client::VALTAN_CINEMATIC_SKY_STATE BaseSky =
+			BaseController.Resolve_SkyState(BaseInput, 0.f);
+		const Client::VALTAN_CINEMATIC_SKY_STATE ShiftedSky =
+			ShiftedController.Resolve_SkyState(ShiftedInput, 0.f);
+		if (!Require(BaseSky.isActive && ShiftedSky.isActive,
+				"100-bar tracked sky state did not resolve") ||
+			!Require(NearlyEqual(ShiftedSky.vAnchor.x - BaseSky.vAnchor.x, 10.f) &&
+				NearlyEqual(ShiftedSky.vAnchor.y, BaseSky.vAnchor.y) &&
+				NearlyEqual(ShiftedSky.vAnchor.z - BaseSky.vAnchor.z, -7.f),
+				"boss-XZ sky anchor changed Y or lost horizontal displacement"))
+		{
+			return false;
+		}
+
+		Client::CValtanCinematicCameraController WorldBaseController;
+		Client::CValtanCinematicCameraController WorldShiftedController;
+		Client::VALTAN_CINEMATIC_CAMERA_POSE WorldBasePose{};
+		Client::VALTAN_CINEMATIC_CAMERA_POSE WorldShiftedPose{};
+		Client::VALTAN_CINEMATIC_CAMERA_INPUT WorldBaseInput =
+			BuildInput(*WorldCue, Origin, 400u);
+		Client::VALTAN_CINEMATIC_CAMERA_INPUT WorldShiftedInput =
+			BuildInput(*WorldCue, ShiftedBoss, 400u);
+		if (!Require(WorldBaseController.Initialize(
+				&Document, Encounter.Get_FixedTickHz()) &&
+			WorldShiftedController.Initialize(&Document, Encounter.Get_FixedTickHz()) &&
+			WorldBaseController.Update(WorldBaseInput, 0.f, WorldBasePose) &&
+			WorldShiftedController.Update(WorldShiftedInput, 0.f, WorldShiftedPose),
+				"legacy world-space camera poses did not resolve") ||
+			!Require(NearlyEqualPosition(WorldBasePose.vEye, WorldShiftedPose.vEye) &&
+				NearlyEqualPosition(WorldBasePose.vLookAt, WorldShiftedPose.vLookAt),
+				"legacy world-space camera moved with the boss"))
+		{
+			return false;
+		}
+
+		std::ifstream Input(CameraPath, std::ios::binary);
+		std::ostringstream Buffer;
+		Buffer << Input.rdbuf();
+		std::string InvalidText = Buffer.str();
+		const std::string ValidMode = "\"trackingMode\":  \"BOSS_XZ\"";
+		const size_t ModeAt = InvalidText.find(ValidMode);
+		if (!Require(Input.good() || Input.eof(),
+				"camera document text could not be read for rollback test") ||
+			!Require(std::string::npos != ModeAt,
+				"camera tracking field was not found for rollback test"))
+		{
+			return false;
+		}
+		InvalidText.replace(ModeAt, ValidMode.size(),
+			"\"trackingMode\":  \"BOSS_Y\"");
+		const size_t CueCountBeforeFailure = Document.Get_Cues().size();
+		if (!Require(!Client::CValtanCinematicCameraDocument::Parse_Text(
+				InvalidText, Encounter, Document, Status),
+				"unknown cinematic tracking mode was accepted") ||
+			!Require(Document.Is_Ready() &&
+				CueCountBeforeFailure == Document.Get_Cues().size() &&
+				nullptr != FindCueById(
+					Document, "camera.valtan.four-pillars-105.takeoff"),
+				"failed tracking parse replaced the committed camera document"))
+		{
+			return false;
+		}
+
+		return true;
+	}
 }
 
 int main()
@@ -178,7 +396,8 @@ int main()
 	if (!VerifyAdjacentExplicitSourceWindows() ||
 		!VerifyLegacyNaturalEndCompatibility() ||
 		!VerifyProductPreviewClock() ||
-		!VerifyNaturalProductPreviewDurationFloor())
+		!VerifyNaturalProductPreviewDurationFloor() ||
+		!VerifyValtanCinematicTracking(std::filesystem::current_path()))
 	{
 		return 1;
 	}
