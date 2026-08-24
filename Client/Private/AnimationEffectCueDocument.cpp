@@ -740,6 +740,40 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
             Staged.Hits.push_back(std::move(Hit));
             continue;
         }
+        if ("SOUND" == Tokens[1])
+        {
+            /* SOUND is pure Client presentation (no damage/gameplay authority depends on
+            it) and its raw authored data is looser than HIT's: many rows reference clips
+            outside this model's AvailableClips (voice/vfx-only variants never wired into
+            every model), and many rows are authored with an intentionally empty
+            payload="" (a timing marker with no sound assigned yet) or without the trailing
+            src=orig field other rows have. None of that is a data error worth failing the
+            whole document (and taking EFFECT/HIT cues down with it) over -- skip just the
+            one malformed/unresolvable row and keep parsing. */
+            if (!Is_AvailableClip(Tokens[0]))
+                continue;
+            bool SoundFieldsValid = false;
+            const auto SoundFields = Make_Fields(Tokens, 2u, SoundFieldsValid);
+            if (!SoundFieldsValid)
+                continue;
+            const auto StartField = SoundFields.find("startms");
+            const auto PayloadField = SoundFields.find("payload");
+            ANIMATION_SOUND_CUE Sound;
+            if (SoundFields.end() == StartField ||
+                !Parse_UInt(StartField->second, Sound.iStartMs) ||
+                SoundFields.end() == PayloadField ||
+                PayloadField->second.empty())
+            {
+                continue;
+            }
+            Sound.strClipName = Tokens[0];
+            const std::string& Payload = PayloadField->second;
+            const auto DotPos = Payload.find('.');
+            Sound.strEventName = (std::string::npos == DotPos) ?
+                Payload : Payload.substr(DotPos + 1u);
+            Staged.Sounds.push_back(std::move(Sound));
+            continue;
+        }
         if ("EFFECT" != Tokens[1])
             continue;
         bool FieldsValid = false;

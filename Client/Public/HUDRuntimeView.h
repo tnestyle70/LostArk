@@ -79,17 +79,37 @@ public:
 	the slot doesn't exist or has no AnimationFrames. */
 	bool_t Restart_Animation(const string& strSlotId);
 
+	/* Pins a slot's "animation.frames" flipbook to an exact frame index right now, for a caller
+	driving it from a real data value (e.g. a gauge percent) instead of letting it free-run off
+	its own clock -- AnimationFrames otherwise starts on this slot's first Render() call and has
+	no relation to any other slot/value's timing, so two flipbooks meant to read as "the same
+	percent" (a fill bar and its number) can drift out of phase. No-op if the slot doesn't exist
+	or has no AnimationFrames. iFrameIndex is clamped to the slot's real frame count. */
+	bool_t Set_Animation_Frame(const string& strSlotId, int32_t iFrameIndex);
+
 	/* Overrides a slot's authored "rotation" (degrees, clockwise, about its own rect centre) at
 	runtime -- for continuous data-driven rotation (DimensionMaster's minute hand tracks its real
 	cyclic identity gauge value directly via MovieClip.rotation in the source, not a frame-based
 	clip) that a fixed JSON value or the frame-indexed keyframe system can't express. No-op if the
 	slot doesn't exist. */
 	bool_t Set_SlotRotation(const string& strSlotId, f32_t fDegrees);
+	/* Overrides a slot's first (base) layer alpha (0..1, clamped) at runtime -- for a fade-in
+	reveal (the Item Upgrade completion ring/motion art appearing gradually instead of an instant
+	pop) that a fixed JSON tint or Set_SlotVisible's hard on/off can't express. No-op if the slot
+	doesn't exist or has no layers. */
+	bool_t Set_SlotAlpha(const string& strSlotId, f32_t fAlpha);
 	bool_t Set_SlotVisible(const string& strSlotId, bool_t bVisible);
 	/* Overrides a slot's authored top-left position at runtime -- for a window whose whole
 	panel the player can drag (the inventory's title-bar drag), where every one of its slots
 	needs to move together by the same delta each frame. No-op if the slot doesn't exist. */
 	bool_t Set_SlotPosition(const string& strSlotId, f32_t fX, f32_t fY);
+
+	/* Overrides a slot's first (base) layer image path at runtime -- for a slot whose picture
+	depends on a live selection (the Item Upgrade preview's big "selected item" icon swapping to
+	whichever of the left-list rows the player clicked), not a fixed JSON asset. Leaves tint/
+	additive/flip alone; only the path (and so which texture Get_Or_Load_Texture resolves) changes.
+	No-op if the slot doesn't exist or has no layers. */
+	bool_t Set_SlotTexture(const string& strSlotId, const string& strAssetPath);
 
 private:
 	struct TEXTURE_LAYER

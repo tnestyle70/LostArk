@@ -60,6 +60,19 @@ struct ANIMATION_HIT_CUE final
     HIT_AREA_SHAPE Shape{};
 };
 
+/* A wav playback trigger, parsed from a "SOUND" .animevents row. strEventName
+   is the payload's event name (bank prefix stripped, e.g. "PC_LanceMaster_F_
+   Att_Battle1_1") -- the actual wav path(s) are resolved later at Character
+   load time via CSoundCueCatalog, not stored here, so this struct stays a
+   pure parse result independent of which variant file gets picked at
+   playback. */
+struct ANIMATION_SOUND_CUE final
+{
+    std::string strClipName;
+    uint32_t iStartMs = 0u;
+    std::string strEventName;
+};
+
 /* An object the clip spawns (from <Asset>.projectiles.json): where the Server
    really judges the hits. The client only predicts it for the Debug wire; the
    authoritative judgement, timing and damage stay on the Server. */
@@ -93,6 +106,7 @@ struct ANIMATION_EFFECT_CUE_DOCUMENT final
 	std::vector<std::string> UnavailableEffectAssetIds;
     std::vector<ANIMATION_HIT_CUE> Hits;
     std::vector<ANIMATION_PROJECTILE_CUE> Projectiles;
+    std::vector<ANIMATION_SOUND_CUE> Sounds;
 };
 
 /* A Tool preview candidate is an exact join between one Product animevents
