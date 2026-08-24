@@ -257,6 +257,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 		ETOUI(LEVEL::VALTAN_ARENA);
 	replicationDesc.iLayerLevelIndex =
 		ETOUI(LEVEL::VALTAN_ARENA);
+	replicationDesc.strMapAreaId = pEntry->pMapAreaId;
 	replicationDesc.strPlayerLayerTag =
 		TEXT("Layer_Player");
 	replicationDesc.strWorldEntityLayerTag =

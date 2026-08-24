@@ -2134,8 +2134,8 @@
       "requiredStance": "NONE",
       "setsStance": "NONE",
       "cooldownMs": 0,
-      "actionDurationMs": 276,
-      "hitTimeMs": 92,
+      "actionDurationMs": 700,
+      "hitTimeMs": 50,
       "resourceCost": 0,
       "identityCost": 0,
       "movementDistance": 0.0,
@@ -2144,30 +2144,30 @@
       "effectId": "effect.dimensionmaster.skill.2050010",
       "comboStages": [
         {
-          "actionDurationMs": 276,
-          "hitTimeMs": 92,
+          "actionDurationMs": 700,
+          "hitTimeMs": 50,
           "comboAdvanceMs": 276,
           "inputOpenMs": 92,
           "inputCloseMs": 276
         },
         {
-          "actionDurationMs": 269,
-          "hitTimeMs": 90,
+          "actionDurationMs": 1500,
+          "hitTimeMs": 43,
           "comboAdvanceMs": 269,
           "inputOpenMs": 179,
           "inputCloseMs": 269
         },
         {
-          "actionDurationMs": 494,
-          "hitTimeMs": 13,
+          "actionDurationMs": 1067,
+          "hitTimeMs": 28,
           "comboAdvanceMs": 494,
           "inputOpenMs": 93,
           "inputCloseMs": 494
         },
         {
-          "actionDurationMs": 1267,
-          "hitTimeMs": 250,
-          "comboAdvanceMs": 1267,
+          "actionDurationMs": 1700,
+          "hitTimeMs": 335,
+          "comboAdvanceMs": 1700,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }

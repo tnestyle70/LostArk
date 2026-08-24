@@ -2309,17 +2309,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const PLAYER_SKILL_DEFINITION* dimensionMasterBasicAttack =
 			catalog.Find_Skill(2050010u);
 		constexpr std::array<std::uint32_t, 4u> expectedDurationMs =
-			{ 276u, 269u, 494u, 1267u };
+			{ 700u, 1500u, 1067u, 1700u };
 		constexpr std::array<std::uint32_t, 4u> expectedHitMs =
-			{ 92u, 90u, 13u, 250u };
+			{ 50u, 43u, 28u, 335u };
+		constexpr std::array<std::uint32_t, 4u> expectedComboAdvanceMs =
+			{ 276u, 269u, 494u, 1700u };
 		constexpr std::array<std::uint32_t, 4u> expectedOpenMs =
 			{ 92u, 179u, 93u, 0u };
 		constexpr std::array<std::uint32_t, 4u> expectedCloseMs =
 			{ 276u, 269u, 494u, 0u };
 		bool exactDimensionMasterTiming =
 			nullptr != dimensionMasterBasicAttack &&
-			276u == dimensionMasterBasicAttack->iActionDurationMs &&
-			92u == dimensionMasterBasicAttack->iHitTimeMs &&
+			700u == dimensionMasterBasicAttack->iActionDurationMs &&
+			50u == dimensionMasterBasicAttack->iHitTimeMs &&
 			dimensionMasterBasicAttack->ComboStages.size() ==
 				expectedDurationMs.size();
 		if (exactDimensionMasterTiming)
@@ -2331,17 +2333,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				exactDimensionMasterTiming = exactDimensionMasterTiming &&
 					stage.iActionDurationMs == expectedDurationMs[index] &&
 					stage.iHitTimeMs == expectedHitMs[index] &&
-					stage.iComboAdvanceMs == expectedDurationMs[index] &&
+					stage.iComboAdvanceMs == expectedComboAdvanceMs[index] &&
 					stage.iInputOpenMs == expectedOpenMs[index] &&
-					stage.iInputCloseMs == expectedCloseMs[index];
+					stage.iInputCloseMs == expectedCloseMs[index] &&
+					!stage.RootMotion.empty() &&
+					stage.RootMotion.back().iTimeMs == expectedDurationMs[index];
 			}
-			exactDimensionMasterTiming = exactDimensionMasterTiming &&
-				!dimensionMasterBasicAttack->ComboStages.front().RootMotion.empty() &&
-				276u == dimensionMasterBasicAttack->ComboStages.front().
-					RootMotion.back().iTimeMs;
 		}
 		tests.Require(exactDimensionMasterTiming,
-			"Resolve Artist-cadence DimensionMaster BA timing, split input windows and stage-aligned root motion");
+			"Resolve full DimensionMaster BA motions, early combo boundaries and stage-aligned root motion");
 
 		if (nullptr != dimensionMasterBasicAttack)
 		{
@@ -2367,7 +2367,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			SERVER_PLAYER tapped = makePlayer();
 			const bool tappedStarted =
 				skills.Try_Start(tapped, basicAttack, catalog, 100u);
-			tapped.fActionElapsedSeconds = 0.275f;
+			tapped.fActionElapsedSeconds = 0.699f;
 			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
 				0.f, 101u, noDamageEvents);
 			const bool tappedStayedInBa1 =
@@ -2379,7 +2379,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				tappedStarted && tappedStayedInBa1 &&
 				PLAYER_ACTION_STATE::NONE == tapped.eAction &&
 				0u == tapped.iComboStage,
-				"Keep a tapped DimensionMaster BA in BA1 until 276 ms then end it");
+				"Keep a tapped DimensionMaster BA in BA1 for its full 700 ms motion");
 
 			SERVER_PLAYER held = makePlayer();
 			basicAttack.iClientSequence = 1u;
@@ -2418,7 +2418,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 			tests.Require(
 				heldChainedEveryStage && 4u == held.iComboStage,
-				"Advance held DimensionMaster BA through BA2 BA3 BA4 at each full boundary");
+				"Advance held DimensionMaster BA through BA2 BA3 BA4 at each buffered combo boundary");
 		}
 	}
 	{
@@ -2469,22 +2469,22 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 		std::vector<SERVER_WORLD_ENTITY> noTargets;
 		std::vector<DAMAGE_EVENT> noDamageEvents;
-		player.fActionElapsedSeconds = 0.275f;
+		player.fActionElapsedSeconds = 0.699f;
 		skills.Update(player, noTargets, catalog, nullptr, nullptr,
 			0.f, 202u, noDamageEvents);
-		const bool explicitWaitedForBoundary =
+		const bool explicitWaitedForFullMotion =
 			PLAYER_ACTION_STATE::SKILL == player.eAction &&
 			1u == player.iComboStage && player.hasBufferedComboInput;
 		skills.Update(player, noTargets, catalog, nullptr, nullptr,
 			0.002f, 203u, noDamageEvents);
-		const bool explicitWonAtBoundary =
+		const bool explicitWonAfterFullMotion =
 			PLAYER_ACTION_STATE::NONE == player.eAction &&
 			0u == player.iComboStage && !player.hasBufferedComboInput &&
 			PLAYER_PENDING_COMMAND_KIND::SKILL == player.PendingCommand.eKind;
 		const bool pendingStarted =
 			skills.Try_StartPending(player, latestExplicit, catalog, 204u);
 		tests.Require(
-			explicitWaitedForBoundary && explicitWonAtBoundary && pendingStarted &&
+			explicitWaitedForFullMotion && explicitWonAfterFullMotion && pendingStarted &&
 			PLAYER_ACTION_STATE::SKILL == player.eAction &&
 			2050120u == player.iCurrentSkillId &&
 			PLAYER_PENDING_COMMAND_KIND::NONE == player.PendingCommand.eKind &&
@@ -2492,7 +2492,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			resourceBeforePending - pendingSkillDefinition->iResourceCost ==
 				player.iCurrentResource &&
 			player.CooldownEndTickBySkillId.contains(2050120u),
-			"Commit the latest explicit skill before buffered BA and spend costs once");
+			"Commit the latest explicit skill after the full BA1 motion and spend costs once");
 
 		C2S_MOVE pendingMove{};
 		pendingMove.iClientSequence = 1u;
@@ -2564,7 +2564,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				cooldownCountBeforePending ==
 					live.CooldownEndTickBySkillId.size() &&
 				!live.CooldownEndTickBySkillId.contains(2050100u);
-			live.fActionElapsedSeconds = 0.275f;
+			live.fActionElapsedSeconds = 0.699f;
 			std::vector<SERVER_WORLD_ENTITY> noTargets;
 			std::vector<DAMAGE_EVENT> noDamageEvents;
 			room.m_PlayerSkillSystem.Update(
