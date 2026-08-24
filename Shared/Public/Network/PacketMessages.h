@@ -464,6 +464,10 @@ namespace LostArk::Shared
 		Appended last so it takes the newest wire value instead of renumbering
 		an existing one. */
 		FALLING,
+		/* The caster raises a hand to call an Esther. The room owns the fixed
+		duration; the state carries no skill id because the summon is a roster
+		slot, not a balance skill. Appended last, same wire rule as FALLING. */
+		ESTHER_CAST,
 		END
 	};
 

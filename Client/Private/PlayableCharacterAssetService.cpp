@@ -242,13 +242,44 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 		return true;
 	};
 
-	if (!StageModel(
-		pTags->pBody,
-		pActor->bodyModel,
-		MODEL::ANIM,
-		characterTransform))
 	{
-		return E_FAIL;
+		if (progress)
+			progress(staged.size(), totalModelCount, pActor->bodyModel);
+		const std::filesystem::path bodyPath =
+			CRuntimeAssetRoot::Resolve(pActor->bodyModel);
+		if (nullptr == pTags->pBody || bodyPath.empty())
+			return E_FAIL;
+		unique_ptr<CModel> pBodyModel = CModel::Create(
+			pDevice,
+			pContext,
+			MODEL::ANIM,
+			bodyPath.string().c_str(),
+			characterTransform);
+		if (nullptr == pBodyModel)
+			return E_FAIL;
+		/* Shared clips (the Esther summon cast) ship as a meshless animation
+		set; attaching is fail-closed on skeleton hash and clip collisions. */
+		if (!pActor->animationSetModel.empty())
+		{
+			const std::filesystem::path animSetPath =
+				CRuntimeAssetRoot::Resolve(pActor->animationSetModel);
+			if (animSetPath.empty())
+				return E_FAIL;
+			const unique_ptr<CModel> pAnimSet = CModel::Create(
+				pDevice,
+				pContext,
+				MODEL::ANIM,
+				animSetPath.string().c_str(),
+				characterTransform);
+			if (nullptr == pAnimSet ||
+				FAILED(pBodyModel->Attach_AnimationSet(*pAnimSet)))
+			{
+				return E_FAIL;
+			}
+		}
+		staged.emplace_back(pTags->pBody, std::move(pBodyModel));
+		if (progress)
+			progress(staged.size(), totalModelCount, pActor->bodyModel);
 	}
 
 	for (size_t index = 0; index < pTags->iEquipmentCount; ++index)

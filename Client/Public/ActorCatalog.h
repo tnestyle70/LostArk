@@ -25,6 +25,9 @@ struct CHARACTER_ACTOR_ENTRY final
 	std::string bodyModel;
 	std::vector<std::string> equipmentModels;
 	std::vector<std::string> weaponModels;
+	/* Optional shared-clip animation set (.wmodel, meshless carrier) attached
+	onto the body model at admission; empty when the class ships none. */
+	std::string animationSetModel;
 	std::string animationSetId;
 	std::string runtimeStatus;
 };

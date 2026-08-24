@@ -2206,6 +2206,46 @@ namespace
 				!Write_Message(knockdownWithSkillWriter, knockdownWithSkill),
 				"Reject Knockdown That Carries A Skill");
 
+			/* The Esther call carries no skill id (the summon is a roster slot)
+			but must carry its start tick, same shape as FALLING/KNOCKDOWN. */
+			S2C_WORLD_SNAPSHOT estherCast = source;
+			estherCast.Players[1].eAction = PLAYER_ACTION_STATE::ESTHER_CAST;
+			estherCast.Players[1].iSkillId = INVALID_SKILL_ID;
+			estherCast.Players[1].iActionStartTick = 45;
+			std::vector<std::uint8_t> estherCastPayload;
+			S2C_WORLD_SNAPSHOT decodedEstherCast{};
+			bool estherCastRoundTrip =
+				Build_WorldSnapshotPayload(estherCast, estherCastPayload);
+			if (estherCastRoundTrip)
+			{
+				CPacketReader estherCastReader{ estherCastPayload };
+				estherCastRoundTrip =
+					Read_Message(estherCastReader, decodedEstherCast);
+			}
+			testRunner.Require(
+				estherCastRoundTrip &&
+				2u == decodedEstherCast.Players.size() &&
+				decodedEstherCast.Players[1].eAction ==
+					PLAYER_ACTION_STATE::ESTHER_CAST &&
+				decodedEstherCast.Players[1].iSkillId == INVALID_SKILL_ID &&
+				decodedEstherCast.Players[1].iActionStartTick == 45,
+				"Esther Cast Player Snapshot Round Trip");
+
+			S2C_WORLD_SNAPSHOT estherCastWithSkill = estherCast;
+			estherCastWithSkill.Players[1].iSkillId = 34010;
+			CPacketWriter estherCastWithSkillWriter;
+			testRunner.Require(
+				!Write_Message(estherCastWithSkillWriter, estherCastWithSkill),
+				"Reject An Esther Cast That Carries A Skill");
+
+			S2C_WORLD_SNAPSHOT estherCastWithoutTick = estherCast;
+			estherCastWithoutTick.Players[1].iActionStartTick = 0;
+			CPacketWriter estherCastWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(
+					estherCastWithoutTickWriter, estherCastWithoutTick),
+				"Reject An Esther Cast Without A Start Tick");
+
 			S2C_WORLD_SNAPSHOT phaseMismatch = source;
 			phaseMismatch.Entities[0].BossCombat.iGameplayPhase = 2u;
 			CPacketWriter phaseMismatchWriter;

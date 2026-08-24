@@ -140,7 +140,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.character-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 2.0 ||
+			pVersion->Get_Number() != 3.0 ||
 			nullptr == pEntries || !pEntries->Is_Array())
 		{
 			return false;
@@ -167,8 +167,12 @@ namespace
 			entry.networkClassId = ParseClass(networkClassId);
 			const DATA_JSON_VALUE* pEquipment = value.Find("equipmentModels");
 			const DATA_JSON_VALUE* pWeapons = value.Find("weaponModels");
+			const DATA_JSON_VALUE* pAnimSetModel =
+				value.Find("animationSetModel");
 			if (LostArk::Shared::CHARACTER_CLASS_ID::END == entry.networkClassId ||
 				!IsResourceId(entry.bodyModel) ||
+				nullptr == pAnimSetModel ||
+				(!pAnimSetModel->Is_Null() && !pAnimSetModel->Is_String()) ||
 				nullptr == pEquipment || !pEquipment->Is_Array() ||
 				nullptr == pWeapons || !pWeapons->Is_Array() ||
 				pWeapons->Get_Array().size() > 4u ||
@@ -178,6 +182,12 @@ namespace
 				!classes.insert(entry.networkClassId).second)
 			{
 				return false;
+			}
+			if (pAnimSetModel->Is_String())
+			{
+				entry.animationSetModel = pAnimSetModel->Get_String();
+				if (!IsResourceId(entry.animationSetModel))
+					return false;
 			}
 			for (const DATA_JSON_VALUE& equipment : pEquipment->Get_Array())
 			{

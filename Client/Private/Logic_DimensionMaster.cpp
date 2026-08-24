@@ -71,6 +71,7 @@ const CHARACTER_SPEC Spec_DimensionMaster =
 		"pc_sp_m_00_sk_knockdown_land",
 		nullptr,
 		"pc_sp_m_00_sk_standup_1",
+		"pc_sp_m_00_sk_act_estherskill_1",
 	},
 
 	&Create_Logic,

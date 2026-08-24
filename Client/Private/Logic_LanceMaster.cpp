@@ -136,8 +136,9 @@ const CHARACTER_SPEC Spec_LanceMaster =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP --
-	FBX takes are "<armature>_<action>", so the clips carry the "flm_" prefix. */
+	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
+	ESTHER_CAST -- FBX takes are "<armature>_<action>", so the clips carry the
+	"flm_" prefix. The cast clip comes from the attached Esther animation set. */
 	{
 		"flm_idle_battle_1",
 		"flm_run_battle_1",
@@ -147,6 +148,7 @@ const CHARACTER_SPEC Spec_LanceMaster =
 		"flm_knockdown_land",
 		"flm_down",
 		"flm_standup_1",
+		"flm_act_estherskill_1",
 	},
 
 	&Create_Logic,

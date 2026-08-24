@@ -1,6 +1,6 @@
 {
   "schema": "lostark.character-catalog",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "characters": [
     {
       "archetypeId": "PLAYER_LANCE_MASTER",
@@ -20,6 +20,7 @@
         "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
         "Character/WP_WFLM_00S/WP_WFLM_00S.wmodel"
       ],
+      "animationSetModel": "Character/LanceMaster/AnimSets/LanceMaster_EstherAnimSet.wmodel",
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported"
     },
@@ -38,6 +39,7 @@
       "weaponModels": [
         "Character/WP_WGDH_02H/WP_WGDH_02H.wmodel"
       ],
+      "animationSetModel": null,
       "animationSetId": "ANIM_GUNSLINGER",
       "runtimeStatus": "supported"
     },
@@ -56,6 +58,7 @@
       "weaponModels": [
         "Character/WP_WWBK_03/WP_WWBK_03.wmodel"
       ],
+      "animationSetModel": null,
       "animationSetId": "ANIM_SLAYER",
       "runtimeStatus": "supported"
     },
@@ -74,6 +77,7 @@
       "weaponModels": [
         "Character/WP_WSDM_09/WP_WSDM_09.wmodel"
       ],
+      "animationSetModel": "Character/Artist/AnimSets/Artist_EstherAnimSet.wmodel",
       "animationSetId": "ANIM_ARTIST",
       "runtimeStatus": "supported"
     },
@@ -89,6 +93,7 @@
         "Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel",
         "Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel"
       ],
+      "animationSetModel": "Character/DimensionMaster/AnimSets/DimensionMaster_EstherAnimSet.wmodel",
       "animationSetId": "ANIM_DIMENSIONMASTER",
       "runtimeStatus": "supported"
     },
@@ -109,6 +114,7 @@
         "Character/WP_WWGL_04/WP_WWGL_04.wmodel",
         "Character/WP_WWGL_SD_04/WP_WWGL_SD_04.wmodel"
       ],
+      "animationSetModel": "Character/Warlord/AnimSets/Warlord_EstherAnimSet.wmodel",
       "animationSetId": "ANIM_WARLORD",
       "runtimeStatus": "supported"
     }

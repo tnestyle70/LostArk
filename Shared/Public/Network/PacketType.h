@@ -5,7 +5,10 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 33;
+	/* 34 unites two independent v33 contracts merged together: main's
+	S2C_WORLD_ENTITY_SPAWNED strActionId and this branch's
+	PLAYER_ACTION_STATE::ESTHER_CAST. Either v33 build lacks one of them. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 34;
 
 	enum class WORLD_ID : std::uint16_t
 	{

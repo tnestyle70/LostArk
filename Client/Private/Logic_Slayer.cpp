@@ -86,6 +86,8 @@ const CHARACTER_SPEC Spec_Slayer =
 		"wbk_knockdown_land",
 		"wbk_down",
 		"wbk_standup_1",
+		/* No Esther animation set is attached for this class yet. */
+		nullptr,
 	},
 
 	&Create_Logic,
