@@ -1,0 +1,4230 @@
+{
+  "schema": "lostark.valtan-carrier-v1-successor-lineage-receipt",
+  "formatVersion": 1,
+  "policy": "IMMUTABLE_CARRIER_V1_PREIMAGE; EXPLICIT_LIVE_OWNER_PROJECTION; PRODUCT_SUCCESSOR_DOCUMENTS_ARE_VALIDATE_ONLY",
+  "historicalCarrierReceipt": {
+    "path": "Data/Effects/Imported/Valtan/CarrierV1/Valtan.carrier-v1-materialization-receipt.v1.json",
+    "canonicalSha256": "92a102cb0b25d0d669014fdce0c4a4e08912b68530960b533769d7d10442cc99"
+  },
+  "historicalInputProjection": {
+    "encounter": {
+      "path": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "patternCount": 33,
+      "canonicalSha256": "9f3b6ec4525cbbbd468b222747d283f5aceb64bbece23d99366e4b76c7715c66",
+      "ownerTransfers": [
+        {
+          "transferId": "encounter-successor.VALTAN_ARENA_BREAK_109",
+          "liveRows": [
+            {
+              "patternId": "VALTAN_ARENA_BREAK_109",
+              "category": "MECHANIC",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "NONE",
+              "aimPolicy": "FACE_MOTION_ANCHOR",
+              "displayName": "\uc911\uc559 \uc774\ub3d9 \ud6c4 2\ud398\uc774\uc988 \ucef7\uc52c",
+              "actionId": "valtan.mechanic.arena-break-109",
+              "sourceActionIds": [
+                420629
+              ],
+              "selectionMode": "HEALTH_BAR",
+              "minimumHealthBar": 0,
+              "maximumHealthBar": 0,
+              "triggerHealthBar": 109,
+              "triggerOrder": 1,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 0,
+              "maximumConsecutiveUses": 0,
+              "minimumRange": 0,
+              "maximumRange": 100,
+              "serverMotion": {
+                "kind": "LEAP_TO_ANCHOR",
+                "anchorId": "anchor.valtan.arena-break-109.landing",
+                "landingPosition": [
+                  156.03,
+                  22.99751,
+                  -122.06
+                ],
+                "apexHeight": 12.0,
+                "travelStageId": "DROP"
+              },
+              "stages": [
+                {
+                  "stageId": "TAKEOFF",
+                  "actionId": "valtan.mechanic.arena-break-109.takeoff",
+                  "stageKind": "WINDUP",
+                  "durationMs": 900,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "DROP",
+                  "actionId": "valtan.mechanic.arena-break-109.drop",
+                  "stageKind": "WINDUP",
+                  "durationMs": 700,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "IMPACT",
+                  "actionId": "valtan.mechanic.arena-break-109.impact",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 400,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 12,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.arena-destroy-109",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": true,
+                  "downMs": 1000
+                },
+                {
+                  "stageId": "IMPACT_HOLD",
+                  "actionId": "valtan.mechanic.arena-break-109.impact-hold",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 1100,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "WIDE_REVEAL",
+                  "actionId": "valtan.mechanic.arena-break-109.wide-reveal",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 2300,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.mechanic.arena-break-109.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 870,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "patternId": "VALTAN_ARENA_BREAK_109",
+              "category": "MECHANIC",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "NONE",
+              "aimPolicy": "FACE_MOTION_ANCHOR",
+              "displayName": "109\uc904 \uc544\ub808\ub098 \ubd95\uad34",
+              "actionId": "valtan.mechanic.arena-break-109",
+              "sourceActionIds": [
+                420629
+              ],
+              "selectionMode": "HEALTH_BAR",
+              "minimumHealthBar": 0,
+              "maximumHealthBar": 0,
+              "triggerHealthBar": 109,
+              "triggerOrder": 1,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 0,
+              "maximumConsecutiveUses": 0,
+              "minimumRange": 0.0,
+              "maximumRange": 100.0,
+              "serverMotion": {
+                "kind": "LEAP_TO_ANCHOR",
+                "anchorId": "anchor.valtan.arena-break-109.landing",
+                "landingPosition": [
+                  156.03,
+                  22.99751,
+                  -122.06
+                ],
+                "apexHeight": 12.0
+              },
+              "stages": [
+                {
+                  "stageId": "TAKEOFF",
+                  "actionId": "valtan.mechanic.arena-break-109.takeoff",
+                  "stageKind": "WINDUP",
+                  "durationMs": 900,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "DROP",
+                  "actionId": "valtan.mechanic.arena-break-109.drop",
+                  "stageKind": "WINDUP",
+                  "durationMs": 700,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "IMPACT",
+                  "actionId": "valtan.mechanic.arena-break-109.impact",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 400,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 12.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.arena-destroy-109",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": true,
+                  "downMs": 1000
+                },
+                {
+                  "stageId": "IMPACT_HOLD",
+                  "actionId": "valtan.mechanic.arena-break-109.impact-hold",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 1100,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "WIDE_REVEAL",
+                  "actionId": "valtan.mechanic.arena-break-109.wide-reveal",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 2300,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.mechanic.arena-break-109.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 870,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "encounter-successor.VALTAN_DASH_CHARGE",
+          "liveRows": [
+            {
+              "patternId": "VALTAN_DASH_CHARGE",
+              "category": "NORMAL",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "LOCK_NEAREST_ON_START",
+              "aimPolicy": "LOCK_FACING_ON_START",
+              "displayName": "3\ud68c \ub545 \uce58\uae30 \ud6c4 \ub3cc\uc9c4",
+              "actionId": "valtan.attack.dash-charge",
+              "sourceActionIds": [
+                420604
+              ],
+              "selectionMode": "NORMAL",
+              "minimumHealthBar": 1,
+              "maximumHealthBar": 160,
+              "triggerHealthBar": 0,
+              "triggerOrder": 0,
+              "armorRequirement": "ARMORED",
+              "phaseRequirement": "PHASE_ONE",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 30,
+              "maximumConsecutiveUses": 2,
+              "minimumRange": 5,
+              "maximumRange": 20,
+              "stages": [
+                {
+                  "stageId": "WINDUP",
+                  "actionId": "valtan.attack.dash-charge.windup",
+                  "stageKind": "WINDUP",
+                  "durationMs": 3650,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "CHARGE",
+                  "actionId": "valtan.attack.dash-charge.active",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 500,
+                  "hitShape": "BOX",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 10,
+                  "hitHalfWidth": 2.5,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.dash-charge",
+                  "pushRangeM": 2,
+                  "pushMs": 150,
+                  "knockdown": true,
+                  "downMs": 1000,
+                  "motion": {
+                    "kind": "FORWARD",
+                    "distance": 20.0
+                  },
+                  "branches": [
+                    {
+                      "outcome": "WALL_CONTACT",
+                      "nextActionId": "valtan.attack.dash-charge.groggy"
+                    },
+                    {
+                      "outcome": "TIMEOUT",
+                      "nextActionId": "valtan.attack.dash-charge.recovery"
+                    }
+                  ]
+                },
+                {
+                  "stageId": "GROGGY",
+                  "actionId": "valtan.attack.dash-charge.groggy",
+                  "stageKind": "GROGGY",
+                  "durationMs": 5000,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0,
+                  "actions": [
+                    {
+                      "trigger": "ENTER",
+                      "kind": "SET_BOSS_FLAG",
+                      "targetId": "boss.flag.groggy",
+                      "value": 1,
+                      "durationMs": 0
+                    },
+                    {
+                      "trigger": "EXIT",
+                      "kind": "SET_BOSS_FLAG",
+                      "targetId": "boss.flag.groggy",
+                      "value": 0,
+                      "durationMs": 0
+                    }
+                  ],
+                  "branches": [
+                    {
+                      "outcome": "PART_DESTROYED",
+                      "nextActionId": "valtan.attack.dash-charge.part-break"
+                    },
+                    {
+                      "outcome": "TIMEOUT",
+                      "nextActionId": "valtan.attack.dash-charge.recovery"
+                    }
+                  ]
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.attack.dash-charge.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 900,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0,
+                  "branches": [
+                    {
+                      "outcome": "TIMEOUT",
+                      "nextActionId": null
+                    }
+                  ]
+                },
+                {
+                  "stageId": "PART_BREAK",
+                  "actionId": "valtan.attack.dash-charge.part-break",
+                  "stageKind": "PART_BREAK",
+                  "durationMs": 1400,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0,
+                  "branches": [
+                    {
+                      "outcome": "TIMEOUT",
+                      "nextActionId": null
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "patternId": "VALTAN_DASH_CHARGE",
+              "category": "NORMAL",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "LOCK_NEAREST_ON_START",
+              "aimPolicy": "LOCK_FACING_ON_START",
+              "displayName": "\ub300\uc26c \ub3cc\uc9c4",
+              "actionId": "valtan.attack.dash-charge",
+              "sourceActionIds": [
+                420604
+              ],
+              "selectionMode": "NORMAL",
+              "minimumHealthBar": 1,
+              "maximumHealthBar": 160,
+              "triggerHealthBar": 0,
+              "triggerOrder": 0,
+              "armorRequirement": "ARMORED",
+              "phaseRequirement": "PHASE_ONE",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 30,
+              "maximumConsecutiveUses": 2,
+              "minimumRange": 5.0,
+              "maximumRange": 20.0,
+              "stages": [
+                {
+                  "stageId": "WINDUP",
+                  "actionId": "valtan.attack.dash-charge.windup",
+                  "stageKind": "WINDUP",
+                  "durationMs": 600,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "CHARGE",
+                  "actionId": "valtan.attack.dash-charge.active",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 500,
+                  "hitShape": "BOX",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 10.0,
+                  "hitHalfWidth": 2.5,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.dash-charge",
+                  "pushRangeM": 2.0,
+                  "pushMs": 150,
+                  "knockdown": true,
+                  "downMs": 1000,
+                  "motion": {
+                    "kind": "FORWARD",
+                    "distance": 20.0
+                  }
+                },
+                {
+                  "stageId": "GROGGY",
+                  "actionId": "valtan.attack.dash-charge.groggy",
+                  "stageKind": "GROGGY",
+                  "durationMs": 5000,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.attack.dash-charge.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 900,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "PART_BREAK",
+                  "actionId": "valtan.attack.dash-charge.part-break",
+                  "stageKind": "PART_BREAK",
+                  "durationMs": 1400,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "encounter-successor.VALTAN_FIST_IN_OUT",
+          "liveRows": [
+            {
+              "patternId": "VALTAN_FIST_IN_OUT",
+              "category": "NORMAL",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "NEAREST_EACH_TICK",
+              "aimPolicy": "TRACK_TARGET_EACH_TICK",
+              "displayName": "\ub3c4\ub11b \uacf5\uaca9",
+              "actionId": "valtan.attack.fist-in-out",
+              "sourceActionIds": [
+                420638
+              ],
+              "selectionMode": "NORMAL",
+              "minimumHealthBar": 1,
+              "maximumHealthBar": 130,
+              "triggerHealthBar": 0,
+              "triggerOrder": 0,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 14,
+              "maximumConsecutiveUses": 1,
+              "minimumRange": 0,
+              "maximumRange": 16,
+              "stages": [
+                {
+                  "stageId": "WINDUP",
+                  "actionId": "valtan.attack.fist-in-out.windup",
+                  "stageKind": "WINDUP",
+                  "durationMs": 1500,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "INNER",
+                  "actionId": "valtan.attack.fist-in-out.inner",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 2600,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 7,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 1000,
+                  "serverDamageProfileId": "damage.valtan.fist-in-out",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "OUTER",
+                  "actionId": "valtan.attack.fist-in-out.outer",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 800,
+                  "hitShape": "RING",
+                  "hitOuterRadius": 16,
+                  "hitInnerRadius": 7,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.fist-in-out",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.attack.fist-in-out.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 800,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "patternId": "VALTAN_FIST_IN_OUT",
+              "category": "NORMAL",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "NEAREST_EACH_TICK",
+              "aimPolicy": "TRACK_TARGET_EACH_TICK",
+              "displayName": "\ub450 \uc190 \ub0b4\ub824\ucc0d\uae30 \uc548\ubc16 \ud3ed\ubc1c",
+              "actionId": "valtan.attack.fist-in-out",
+              "sourceActionIds": [
+                420638
+              ],
+              "selectionMode": "NORMAL",
+              "minimumHealthBar": 1,
+              "maximumHealthBar": 130,
+              "triggerHealthBar": 0,
+              "triggerOrder": 0,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 14,
+              "maximumConsecutiveUses": 1,
+              "minimumRange": 0.0,
+              "maximumRange": 16.0,
+              "stages": [
+                {
+                  "stageId": "WINDUP",
+                  "actionId": "valtan.attack.fist-in-out.windup",
+                  "stageKind": "WINDUP",
+                  "durationMs": 1500,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "INNER",
+                  "actionId": "valtan.attack.fist-in-out.inner",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 2600,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 7.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 1000,
+                  "serverDamageProfileId": "damage.valtan.fist-in-out",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "OUTER",
+                  "actionId": "valtan.attack.fist-in-out.outer",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 800,
+                  "hitShape": "RING",
+                  "hitOuterRadius": 16.0,
+                  "hitInnerRadius": 7.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.fist-in-out",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.attack.fist-in-out.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 800,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "encounter-successor.VALTAN_FLOOR_WIPE_130",
+          "liveRows": [
+            {
+              "patternId": "VALTAN_FLOOR_WIPE_130",
+              "category": "MECHANIC",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "NEAREST_EACH_TICK",
+              "aimPolicy": "TRACK_TARGET_EACH_TICK",
+              "displayName": "6\ubc29\ud5a5 \ud6c4 \uc804\uba78 \ud328\ud134",
+              "actionId": "valtan.mechanic.floor-wipe-130",
+              "sourceActionIds": [
+                420630
+              ],
+              "selectionMode": "HEALTH_BAR",
+              "minimumHealthBar": 0,
+              "maximumHealthBar": 0,
+              "triggerHealthBar": 130,
+              "triggerOrder": 1,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": true,
+              "selectionWeight": 0,
+              "maximumConsecutiveUses": 0,
+              "minimumRange": 0,
+              "maximumRange": 100,
+              "stages": [
+                {
+                  "stageId": "WINDUP",
+                  "actionId": "valtan.mechanic.floor-wipe-130.windup",
+                  "stageKind": "WINDUP",
+                  "durationMs": 1800,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "FIRST_SMASH",
+                  "actionId": "valtan.mechanic.floor-wipe-130.first-smash",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 800,
+                  "hitShape": "SIX_DIRECTIONS",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 14,
+                  "hitHalfWidth": 2.2,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.six-direction-130",
+                  "pushRangeM": 2,
+                  "pushMs": 242,
+                  "knockdown": true,
+                  "downMs": 2000
+                },
+                {
+                  "stageId": "INTERVAL",
+                  "actionId": "valtan.mechanic.floor-wipe-130.interval",
+                  "stageKind": "WINDUP",
+                  "durationMs": 2000,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "SECOND_SMASH",
+                  "actionId": "valtan.mechanic.floor-wipe-130.second-smash",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 500,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 100,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130",
+                  "pushRangeM": 2,
+                  "pushMs": 242,
+                  "knockdown": true,
+                  "downMs": 2000
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.mechanic.floor-wipe-130.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 1500,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "patternId": "VALTAN_FLOOR_WIPE_130",
+              "category": "MECHANIC",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "NEAREST_EACH_TICK",
+              "aimPolicy": "TRACK_TARGET_EACH_TICK",
+              "displayName": "115\uc904 6\ubc29\ud5a5 \ucda9\uaca9\ud30c \ud6c4 \uc804\ubc29\ud5a5 \ucda9\uaca9\ud30c",
+              "actionId": "valtan.mechanic.floor-wipe-130",
+              "sourceActionIds": [
+                420630
+              ],
+              "selectionMode": "HEALTH_BAR",
+              "minimumHealthBar": 0,
+              "maximumHealthBar": 0,
+              "triggerHealthBar": 130,
+              "triggerOrder": 1,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": true,
+              "selectionWeight": 0,
+              "maximumConsecutiveUses": 0,
+              "minimumRange": 0.0,
+              "maximumRange": 100.0,
+              "stages": [
+                {
+                  "stageId": "WINDUP",
+                  "actionId": "valtan.mechanic.floor-wipe-130.windup",
+                  "stageKind": "WINDUP",
+                  "durationMs": 1800,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "FIRST_SMASH",
+                  "actionId": "valtan.mechanic.floor-wipe-130.first-smash",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 800,
+                  "hitShape": "SIX_DIRECTIONS",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 14.0,
+                  "hitHalfWidth": 2.2,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.six-direction-130",
+                  "pushRangeM": 2.0,
+                  "pushMs": 242,
+                  "knockdown": true,
+                  "downMs": 2000
+                },
+                {
+                  "stageId": "INTERVAL",
+                  "actionId": "valtan.mechanic.floor-wipe-130.interval",
+                  "stageKind": "WINDUP",
+                  "durationMs": 2000,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "SECOND_SMASH",
+                  "actionId": "valtan.mechanic.floor-wipe-130.second-smash",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 500,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 100.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130",
+                  "pushRangeM": 2.0,
+                  "pushMs": 242,
+                  "knockdown": true,
+                  "downMs": 2000
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.mechanic.floor-wipe-130.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 1500,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "encounter-successor.VALTAN_HIGH_JUMP",
+          "liveRows": [
+            {
+              "patternId": "VALTAN_HIGH_JUMP",
+              "category": "NORMAL",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "LOCK_NEAREST_ON_START",
+              "aimPolicy": "LOCK_FACING_ON_START",
+              "displayName": "\uc810\ud504 \ud6c4 \ud50c\ub808\uc774\uc5b4 \ucd94\uc801 \ub3c4\ub07c",
+              "actionId": "valtan.attack.high-jump",
+              "sourceActionIds": [
+                420610
+              ],
+              "selectionMode": "NORMAL",
+              "minimumHealthBar": 1,
+              "maximumHealthBar": 160,
+              "triggerHealthBar": 0,
+              "triggerOrder": 0,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 14,
+              "maximumConsecutiveUses": 1,
+              "minimumRange": 2,
+              "maximumRange": 18,
+              "serverMotion": {
+                "kind": "LEAP_TO_TARGET",
+                "anchorId": "anchor.valtan.high-jump.landing",
+                "landingPosition": [
+                  156.03,
+                  22.99751,
+                  -122.06
+                ],
+                "apexHeight": 9.0,
+                "travelStageId": "LAND"
+              },
+              "stages": [
+                {
+                  "stageId": "TAKEOFF",
+                  "actionId": "valtan.attack.high-jump.takeoff",
+                  "stageKind": "WINDUP",
+                  "durationMs": 1933,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "AIRBORNE",
+                  "actionId": "valtan.attack.high-jump.airborne",
+                  "stageKind": "WINDUP",
+                  "durationMs": 6000,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0,
+                  "actions": [
+                    {
+                      "trigger": "ENTER",
+                      "kind": "SPAWN_COMBAT_OBJECT",
+                      "targetId": "combatobject.valtan.high-jump.target-axe",
+                      "value": 1,
+                      "durationMs": 0
+                    }
+                  ]
+                },
+                {
+                  "stageId": "LAND",
+                  "actionId": "valtan.attack.high-jump.land",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 3200,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 10,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 900,
+                  "serverDamageProfileId": "damage.valtan.high-jump",
+                  "pushRangeM": 1,
+                  "pushMs": 150,
+                  "knockdown": true,
+                  "downMs": 1000
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.attack.high-jump.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 400,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "patternId": "VALTAN_HIGH_JUMP",
+              "category": "NORMAL",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "LOCK_NEAREST_ON_START",
+              "aimPolicy": "LOCK_FACING_ON_START",
+              "displayName": "\uace0\uacf5 \uc810\ud504 \ucc0d\uae30",
+              "actionId": "valtan.attack.high-jump",
+              "sourceActionIds": [
+                420610
+              ],
+              "selectionMode": "NORMAL",
+              "minimumHealthBar": 1,
+              "maximumHealthBar": 160,
+              "triggerHealthBar": 0,
+              "triggerOrder": 0,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 14,
+              "maximumConsecutiveUses": 1,
+              "minimumRange": 2.0,
+              "maximumRange": 18.0,
+              "serverMotion": {
+                "kind": "LEAP_TO_TARGET",
+                "anchorId": "anchor.valtan.high-jump.landing",
+                "landingPosition": [
+                  156.03,
+                  22.99751,
+                  -122.06
+                ],
+                "apexHeight": 9.0
+              },
+              "stages": [
+                {
+                  "stageId": "TAKEOFF",
+                  "actionId": "valtan.attack.high-jump.takeoff",
+                  "stageKind": "WINDUP",
+                  "durationMs": 1933,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "AIRBORNE",
+                  "actionId": "valtan.attack.high-jump.airborne",
+                  "stageKind": "WINDUP",
+                  "durationMs": 2400,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0,
+                  "actions": [
+                    {
+                      "trigger": "ENTER",
+                      "kind": "SPAWN_COMBAT_OBJECT",
+                      "targetId": "combatobject.valtan.high-jump.target-axe",
+                      "value": 1,
+                      "durationMs": 0
+                    }
+                  ]
+                },
+                {
+                  "stageId": "LAND",
+                  "actionId": "valtan.attack.high-jump.land",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 3200,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 10.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 1,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 900,
+                  "serverDamageProfileId": "damage.valtan.high-jump",
+                  "pushRangeM": 1.0,
+                  "pushMs": 150,
+                  "knockdown": true,
+                  "downMs": 1000
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.attack.high-jump.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 400,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "encounter-successor.VALTAN_WHIRLWIND",
+          "liveRows": [
+            {
+              "patternId": "VALTAN_WHIRLWIND",
+              "category": "NORMAL",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "NEAREST_EACH_TICK",
+              "aimPolicy": "TRACK_TARGET_EACH_TICK",
+              "displayName": "\ud720\uc708\ub4dc 1.2\ucd08",
+              "actionId": "valtan.attack.whirlwind",
+              "sourceActionIds": [
+                420633
+              ],
+              "selectionMode": "NORMAL",
+              "minimumHealthBar": 1,
+              "maximumHealthBar": 160,
+              "triggerHealthBar": 0,
+              "triggerOrder": 0,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 20,
+              "maximumConsecutiveUses": 2,
+              "minimumRange": 0,
+              "maximumRange": 12,
+              "stages": [
+                {
+                  "stageId": "WINDUP",
+                  "actionId": "valtan.attack.whirlwind.windup",
+                  "stageKind": "WINDUP",
+                  "durationMs": 1333,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "SPIN",
+                  "actionId": "valtan.attack.whirlwind.active",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 1200,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 10,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 4,
+                  "hitIntervalMs": 350,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.circular-spin",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.attack.whirlwind.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 1467,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0,
+                  "hitInnerRadius": 0,
+                  "hitAngleDegrees": 0,
+                  "hitLength": 0,
+                  "hitHalfWidth": 0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "patternId": "VALTAN_WHIRLWIND",
+              "category": "NORMAL",
+              "minimumPhase": 1,
+              "maximumPhase": 3,
+              "targetPolicy": "NEAREST_EACH_TICK",
+              "aimPolicy": "TRACK_TARGET_EACH_TICK",
+              "displayName": "\ud720\uc708\ub4dc",
+              "actionId": "valtan.attack.whirlwind",
+              "sourceActionIds": [
+                420633
+              ],
+              "selectionMode": "NORMAL",
+              "minimumHealthBar": 1,
+              "maximumHealthBar": 160,
+              "triggerHealthBar": 0,
+              "triggerOrder": 0,
+              "armorRequirement": "ANY",
+              "phaseRequirement": "ANY",
+              "invulnerableWhileRunning": false,
+              "selectionWeight": 20,
+              "maximumConsecutiveUses": 2,
+              "minimumRange": 0.0,
+              "maximumRange": 12.0,
+              "stages": [
+                {
+                  "stageId": "WINDUP",
+                  "actionId": "valtan.attack.whirlwind.windup",
+                  "stageKind": "WINDUP",
+                  "durationMs": 1333,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "SPIN",
+                  "actionId": "valtan.attack.whirlwind.active",
+                  "stageKind": "ACTIVE",
+                  "durationMs": 2133,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 10.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 4,
+                  "hitIntervalMs": 533,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "damage.valtan.circular-spin",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                },
+                {
+                  "stageId": "RECOVERY",
+                  "actionId": "valtan.attack.whirlwind.recovery",
+                  "stageKind": "RECOVERY",
+                  "durationMs": 1467,
+                  "hitShape": "NONE",
+                  "hitOuterRadius": 0.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "hitCount": 0,
+                  "hitIntervalMs": 0,
+                  "hitDelayMs": 0,
+                  "serverDamageProfileId": "",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "historicalInsertions": []
+    },
+    "patternBindings": {
+      "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
+      "bindingCount": 131,
+      "clipOccurrenceCount": 137,
+      "canonicalSha256": "692c7a936ae03921939f5a62983c796a05ffb8cdbad96b06a38795aceda9409c",
+      "ownerTransfers": [
+        {
+          "transferId": "binding-successor.valtan.attack.dash-charge.active",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.active",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
+                  "clip": "mesh_att_battle_4_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 2450,
+                  "playMs": 900,
+                  "playRate": 1.8,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.active",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
+                  "clip": "mesh_att_battle_4_01",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.dash-charge.groggy",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.groggy",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
+                  "clip": "mesh_dmg_parts_loop_1",
+                  "mappingBasis": "PATTERN_PR_REFERENCE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.groggy",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
+                  "clip": "mesh_dmg_parts_loop_1",
+                  "mappingBasis": "PATTERN_PR_REFERENCE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.dash-charge.part-break",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.part-break",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.part-break.clip.01",
+                  "clip": "mesh_dmg_parts_end_1",
+                  "mappingBasis": "PATTERN_PR_REFERENCE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.part-break",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.part-break.clip.01",
+                  "clip": "mesh_dmg_parts_end_1",
+                  "mappingBasis": "PATTERN_PR_REFERENCE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.dash-charge.recovery",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
+                  "clip": "mesh_att_battle_4_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 3350,
+                  "playMs": 1383,
+                  "playRate": 1.5366667,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.recovery.clip.01",
+                  "clip": "mesh_att_battle_4_02",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.dash-charge.windup",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.windup.project-tuned.prep-repeat.clip.01",
+                  "clip": "mesh_att_battle_4_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 600,
+                  "playRate": 1,
+                  "loop": false
+                },
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.windup.project-tuned.prep-repeat.clip.02",
+                  "clip": "mesh_att_battle_4_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 600,
+                  "playRate": 1,
+                  "loop": false
+                },
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
+                  "clip": "mesh_att_battle_4_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 2450,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.dash-charge.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
+                  "clip": "mesh_att_battle_4_01",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.fist-in-out.inner",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.fist-in-out.inner",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.fist-in-out.inner.clip.01",
+                  "clip": "mesh_att_battle_19_04",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.fist-in-out.inner",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.fist-in-out.inner.clip.01",
+                  "clip": "mesh_att_battle_19_04",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.fist-in-out.outer",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.fist-in-out.outer",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.fist-in-out.outer.clip.01",
+                  "clip": "mesh_att_battle_1_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 800,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.fist-in-out.outer",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.fist-in-out.outer.clip.01",
+                  "clip": "mesh_idle_battle_1",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.fist-in-out.recovery",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.fist-in-out.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.fist-in-out.recovery.clip.01",
+                  "clip": "mesh_att_battle_1_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 800,
+                  "playMs": 800,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.fist-in-out.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.fist-in-out.recovery.clip.01",
+                  "clip": "mesh_idle_battle_1",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.fist-in-out.windup",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.fist-in-out.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.fist-in-out.windup.clip.01",
+                  "clip": "mesh_att_battle_19_02",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.fist-in-out.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.fist-in-out.windup.clip.01",
+                  "clip": "mesh_att_battle_19_02",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.four-slash.recovery",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.four-slash.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
+                  "clip": "mesh_idle_battle_1",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.four-slash.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
+                  "clip": "mesh_idle_battle_1",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.four-slash.windup",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.four-slash.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.four-slash.windup.clip.01",
+                  "clip": "mesh_idle_battle_1",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.four-slash.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.four-slash.windup.clip.01",
+                  "clip": "mesh_idle_battle_1",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.high-jump.airborne",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.high-jump.airborne",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
+                  "clip": "mesh_att_battle_8_01_loop",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.high-jump.airborne",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
+                  "clip": "mesh_att_battle_8_01_loop",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.high-jump.land",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.high-jump.land",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.high-jump.land.clip.01",
+                  "clip": "mesh_att_battle_8_01_end",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.high-jump.land",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.high-jump.land.clip.01",
+                  "clip": "mesh_att_battle_8_01_end",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.high-jump.recovery",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.high-jump.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.high-jump.recovery.clip.01",
+                  "clip": "mesh_att_battle_8_01_loop",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.high-jump.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.high-jump.recovery.clip.01",
+                  "clip": "mesh_idle_battle_1",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.high-jump.takeoff",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.high-jump.takeoff",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.high-jump.takeoff.clip.01",
+                  "clip": "mesh_att_battle_8_01_start",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.high-jump.takeoff",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.high-jump.takeoff.clip.01",
+                  "clip": "mesh_att_battle_8_01_start",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.rotation-slash.active",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.rotation-slash.active",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+                  "clip": "mesh_att_battle_10_02",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.rotation-slash.active",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+                  "clip": "mesh_att_battle_10_02",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.triple-slash.active",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.triple-slash.active",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+                  "clip": "mesh_att_battle_10_01",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.triple-slash.active",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+                  "clip": "mesh_att_battle_10_01",
+                  "mappingBasis": "ANIMATION_PR_127",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.whirlwind.active",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.whirlwind.active",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+                  "clip": "mesh_att_battle_20_03",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 0.888888889,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.whirlwind.active",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+                  "clip": "mesh_att_battle_20_03",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.whirlwind.recovery",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.whirlwind.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.whirlwind.recovery.clip.01",
+                  "clip": "mesh_att_battle_20_04",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.whirlwind.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.whirlwind.recovery.clip.01",
+                  "clip": "mesh_att_battle_20_04",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.attack.whirlwind.windup",
+          "liveRows": [
+            {
+              "actionId": "valtan.attack.whirlwind.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.whirlwind.windup.clip.01",
+                  "clip": "mesh_att_battle_20_02",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.attack.whirlwind.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.attack.whirlwind.windup.clip.01",
+                  "clip": "mesh_att_battle_20_02",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.arena-break-109.drop",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.drop",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.drop.takeoff-continuation.clip.01",
+                  "clip": "mesh_att_battle_12_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 900,
+                  "playMs": 300,
+                  "playRate": 1,
+                  "loop": false
+                },
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.drop.clip.01",
+                  "clip": "mesh_att_battle_12_02",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 400,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.drop",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.drop.clip.01",
+                  "clip": "mesh_att_battle_12_02",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.arena-break-109.impact",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.impact",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+                  "clip": "mesh_att_battle_12_02",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 400,
+                  "playMs": 400,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.impact",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+                  "clip": "mesh_att_battle_12_03",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.arena-break-109.impact-hold",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.impact-hold",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.drop-continuation.clip.01",
+                  "clip": "mesh_att_battle_12_02",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 800,
+                  "playMs": 200,
+                  "playRate": 1,
+                  "loop": false
+                },
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
+                  "clip": "mesh_att_battle_12_03",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 900,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.impact-hold",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
+                  "clip": "mesh_att_battle_12_03",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.arena-break-109.recovery",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",
+                  "clip": "mesh_evt1_att_battle_5_01_end",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",
+                  "clip": "mesh_att_battle_12_03",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.arena-break-109.takeoff",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.takeoff",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
+                  "clip": "mesh_att_battle_12_01",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 0,
+                  "playMs": 900,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.takeoff",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
+                  "clip": "mesh_att_battle_12_01",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.arena-break-109.wide-reveal",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.wide-reveal",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.clip.01",
+                  "clip": "mesh_att_battle_12_03",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceStartMs": 900,
+                  "playMs": 300,
+                  "playRate": 1,
+                  "loop": false
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.arena-break-109.wide-reveal",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.clip.01",
+                  "clip": "mesh_att_battle_12_03",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.floor-wipe-130.first-smash",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.first-smash",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.first-smash.clip.01",
+                  "clip": "mesh_att_battle_1_02",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.first-smash",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.first-smash.clip.01",
+                  "clip": "mesh_att_battle_1_02",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.floor-wipe-130.interval",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.interval",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.interval.clip.01",
+                  "clip": "mesh_att_battle_5_02_loop",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.interval",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.interval.clip.01",
+                  "clip": "mesh_att_battle_5_02_loop",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.floor-wipe-130.recovery",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.recovery.clip.01",
+                  "clip": "mesh_att_battle_15_04",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.recovery",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.recovery.clip.01",
+                  "clip": "mesh_att_battle_15_04",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.floor-wipe-130.second-smash",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.second-smash",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
+                  "clip": "mesh_att_battle_5_02_end",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.second-smash",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
+                  "clip": "mesh_att_battle_5_02_end",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "transferId": "binding-successor.valtan.mechanic.floor-wipe-130.windup",
+          "liveRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
+                  "clip": "mesh_att_battle_1_01",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1,
+                  "loop": true
+                }
+              ]
+            }
+          ],
+          "historicalRows": [
+            {
+              "actionId": "valtan.mechanic.floor-wipe-130.windup",
+              "clips": [
+                {
+                  "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
+                  "clip": "mesh_att_battle_1_01",
+                  "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                  "sourceStartMs": 0,
+                  "playMs": 0,
+                  "playRate": 1.0,
+                  "loop": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "selectionManifest": {
+      "path": "Data/Effects/Imported/Valtan/Valtan.priority-source-sequence-selections.v1.json",
+      "selectionCount": 24,
+      "canonicalSha256": "cdcd42c166d1dce11762f1ef311a490bd4b8d460abd577936787cf83ecdeaba2",
+      "ownerTransfers": [
+        {
+          "transferId": "selection-successor.VALTAN_ARENA_BREAK_109.420629",
+          "liveRow": {
+            "patternId": "VALTAN_ARENA_BREAK_109",
+            "sourceActionId": 420629,
+            "profileId": "MN_RPBF_00",
+            "sequenceIndex": 3,
+            "sourceSequencePathSha256": "fe993599c9b184e212c8496ce40ea45d4bf55a996c5af3868ccde8fd8a8ed450",
+            "branchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-003.stages-006-008",
+            "status": "REVIEWED_SELECTED",
+            "reviewBasis": "Valtan master selects 420629 sequence 3 and continuously windows 12_01/12_02/12_03 through WIDE_REVEAL",
+            "stageMappings": [
+              {
+                "sourceStageIndex": 6,
+                "sourceClipOrdinal": 0,
+                "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
+                "timingDisposition": "REACHABLE"
+              },
+              {
+                "sourceStageIndex": 7,
+                "sourceClipOrdinal": 0,
+                "clipOccurrenceId": "valtan.mechanic.arena-break-109.drop.clip.01",
+                "timingDisposition": "REACHABLE"
+              },
+              {
+                "sourceStageIndex": 8,
+                "sourceClipOrdinal": 0,
+                "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
+                "timingDisposition": "REACHABLE"
+              }
+            ]
+          },
+          "historicalRow": {
+            "patternId": "VALTAN_ARENA_BREAK_109",
+            "sourceActionId": 420629,
+            "profileId": "MN_RPBF_00",
+            "sequenceIndex": 1,
+            "sourceSequencePathSha256": "d6a6b80456d1716dd633ae0a3b4deba95125e51e1685e6753b17883f49b33ba5",
+            "branchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-001.stages-000-002",
+            "status": "REVIEWED_SELECTED",
+            "reviewBasis": "B4 reviewed safe 420629 seq=1 takeoff/drop/impact source path",
+            "stageMappings": [
+              {
+                "sourceStageIndex": 0,
+                "sourceClipOrdinal": 0,
+                "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
+                "timingDisposition": "REACHABLE"
+              },
+              {
+                "sourceStageIndex": 1,
+                "sourceClipOrdinal": 0,
+                "clipOccurrenceId": "valtan.mechanic.arena-break-109.drop.clip.01",
+                "timingDisposition": "REACHABLE"
+              },
+              {
+                "sourceStageIndex": 2,
+                "sourceClipOrdinal": 0,
+                "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+                "timingDisposition": "REACHABLE"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "catalog": {
+      "path": "Data/Effects/EffectCatalog.json",
+      "effectCount": 46,
+      "canonicalSha256": "123c070157e743ef467294607f104a9e5f1d90c3c99f73b6cf9c48033da093da",
+      "excludedLiveRows": [
+        {
+          "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.v1.unified",
+          "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+          "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.v1.unified.effect.json"
+        },
+        {
+          "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.v1.unified",
+          "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+          "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.v1.unified.effect.json"
+        },
+        {
+          "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.v1.unified",
+          "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+          "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.v1.unified.effect.json"
+        },
+        {
+          "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified",
+          "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+          "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified.effect.json"
+        },
+        {
+          "effectAssetId": "effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified",
+          "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+          "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified.effect.json"
+        },
+        {
+          "effectAssetId": "effect.valtan.pattern.420633.active.v1.unified",
+          "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+          "authoringPath": "Effects/Authored/effect.valtan.pattern.420633.active.v1.unified.effect.json"
+        },
+        {
+          "effectAssetId": "effect.valtan.project-tuned.dash-charge.active-shield",
+          "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+          "authoringPath": "Effects/Authored/effect.valtan.project-tuned.dash-charge.active-shield.effect.json"
+        },
+        {
+          "effectAssetId": "effect.valtan.project-tuned.dash-charge.windup-telegraph",
+          "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+          "authoringPath": "Effects/Authored/effect.valtan.project-tuned.dash-charge.windup-telegraph.effect.json"
+        }
+      ]
+    },
+    "cues": {
+      "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+      "cueCount": 44,
+      "canonicalSha256": "4ff3c88cffdbe84abb99aaee22aad86c92f1b1797dfd8706058ded489b738dc9",
+      "excludedLiveRows": [
+        {
+          "bindingId": "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01",
+          "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01.occurrence.01",
+          "patternId": "VALTAN_ARENA_BREAK_109",
+          "stageId": "RECOVERY",
+          "actionId": "valtan.mechanic.arena-break-109.recovery",
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",
+          "effectAssetId": "effect.valtan.carrier-v1.attack.ledge-roar.recovery.clip-01",
+          "anchorSlotId": "root",
+          "followPolicy": "follow",
+          "stopPolicy": "natural",
+          "repeatPolicy": "once",
+          "sourceStartMs": 0,
+          "sourceEndMs": null,
+          "localTransform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "bindingId": "cue.valtan.project-tuned.attack.dash-charge.active-shield",
+          "occurrenceId": "cue.valtan.project-tuned.attack.dash-charge.active-shield.occurrence.01",
+          "patternId": "VALTAN_DASH_CHARGE",
+          "stageId": "CHARGE",
+          "actionId": "valtan.attack.dash-charge.active",
+          "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
+          "effectAssetId": "effect.valtan.project-tuned.dash-charge.active-shield",
+          "anchorSlotId": "root",
+          "followPolicy": "follow",
+          "stopPolicy": "cue_end",
+          "repeatPolicy": "once",
+          "sourceStartMs": 2450,
+          "sourceEndMs": 3350,
+          "localTransform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "bindingId": "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph",
+          "occurrenceId": "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph.occurrence.01",
+          "patternId": "VALTAN_DASH_CHARGE",
+          "stageId": "WINDUP",
+          "actionId": "valtan.attack.dash-charge.windup",
+          "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
+          "effectAssetId": "effect.valtan.project-tuned.dash-charge.windup-telegraph",
+          "anchorSlotId": "root",
+          "followPolicy": "snapshot",
+          "stopPolicy": "cue_end",
+          "repeatPolicy": "once",
+          "sourceStartMs": 559,
+          "sourceEndMs": 2364,
+          "localTransform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ],
+      "rowRebounds": [
+        {
+          "liveRow": {
+            "bindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
+            "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01.occurrence.01",
+            "patternId": "VALTAN_FOUR_SLASH",
+            "stageId": "SLASHES",
+            "actionId": "valtan.attack.triple-slash.active",
+            "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "historicalRow": {
+            "bindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
+            "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01.occurrence.01",
+            "patternId": "VALTAN_TRIPLE_SLASH",
+            "stageId": "SLASHES",
+            "actionId": "valtan.attack.triple-slash.active",
+            "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        },
+        {
+          "liveRow": {
+            "bindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02",
+            "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02.occurrence.01",
+            "patternId": "VALTAN_FOUR_SLASH",
+            "stageId": "SPIN",
+            "actionId": "valtan.attack.rotation-slash.active",
+            "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "historicalRow": {
+            "bindingId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02",
+            "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02.occurrence.01",
+            "patternId": "VALTAN_ROTATION_SLASH",
+            "stageId": "SPIN",
+            "actionId": "valtan.attack.rotation-slash.active",
+            "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        },
+        {
+          "liveRow": {
+            "bindingId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+            "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01",
+            "patternId": "VALTAN_FOUR_SLASH",
+            "stageId": "RECOVERY",
+            "actionId": "valtan.attack.four-slash.recovery",
+            "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "historicalRow": {
+            "bindingId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+            "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01",
+            "patternId": "VALTAN_ROTATION_SLASH",
+            "stageId": "RECOVERY",
+            "actionId": "valtan.attack.four-slash.recovery",
+            "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        },
+        {
+          "liveRow": {
+            "bindingId": "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+            "occurrenceId": "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.occurrence.01",
+            "patternId": "VALTAN_WHIRLWIND",
+            "stageId": "SPIN",
+            "actionId": "valtan.attack.whirlwind.active",
+            "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "historicalRow": {
+            "bindingId": "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+            "occurrenceId": "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.occurrence.01",
+            "patternId": "VALTAN_WHIRLWIND",
+            "stageId": "RECOVERY",
+            "actionId": "valtan.attack.whirlwind.recovery",
+            "clipOccurrenceId": "valtan.attack.whirlwind.recovery.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        },
+        {
+          "liveRow": {
+            "bindingId": "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
+            "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.occurrence.01",
+            "patternId": "VALTAN_ARENA_BREAK_109",
+            "stageId": "IMPACT",
+            "actionId": "valtan.mechanic.arena-break-109.impact",
+            "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 400,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "historicalRow": {
+            "bindingId": "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
+            "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.occurrence.01",
+            "patternId": "VALTAN_ARENA_BREAK_109",
+            "stageId": "IMPACT",
+            "actionId": "valtan.mechanic.arena-break-109.impact",
+            "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "successorDocuments": [
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+      "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01.effect.json",
+      "ownership": "PRODUCT_AUTHORED_SUCCESSOR",
+      "historicalBaseline": {
+        "elementCount": 20,
+        "canonicalSha256": "4b89758416063cae283f298353da3f4a3b9150b3f9b5ba3ec27a7400e2e7eb4d"
+      },
+      "lineage": [
+        {
+          "baselineIdentity": "valtan.source.09837531929147b2c73559bd6eb7686543c56f58b1345e62f9ea45e1eeb59ed9",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.09837531929147b2c735"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.0a0fd45f5f5a43cac37a2b8e603820166538b42bbaa22b2f71d615216de80479",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.0a0fd45f5f5a43cac37a"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.0e2c496db903785e468f8da30b892e947530c2b70f8ed5374e48849599cf97e5",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.0e2c496db903785e468f"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.0f94c3c2e7360f64a4b499d7c0f11ede6a8d9cddb3d98556de8915296880e6b5",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.0f94c3c2e7360f64a4b4"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.1afcf717a3747d3474dbfa115fe9f3b1ab5b654ae1e2ffa053788ef161ab32b1",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.1afcf717a3747d3474db"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.203f133964614442de86d8c93c4a143f2dd6ac2902c94a6e2461758dc3016d39",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.203f133964614442de86"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.2f5b3010a12a98b8125fac7e2ed3143985065101afd01b96ec6460539446928b",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.2f5b3010a12a98b8125f"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.30e485d1767abb573cce946c2c0616c802613edd489f1f85b58050d0a101ff20",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.30e485d1767abb573cce"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.4787e8102516f8a272fc3d62afefeb61aa2aa42d26af4a9c9aaec51678e28350",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.4787e8102516f8a272fc"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.4ae99780674e1213124125a5d312491b2b5a83602a85cc328e0d941d0c312f56",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.4ae99780674e12131241"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.4fc3b75bf5e197a2797909766c53802ccbe38b9ec4a36d823492ecdfc1d86c4d",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.4fc3b75bf5e197a27979"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.816ecdd06b33943dd18559ceb48fb8a530df16ee08e75544cf7db786be30d709",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.816ecdd06b33943dd185"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.83a55bcbd440d7e3d11ae82e62b48c5874bc1faed61b36af2a6ba4a8e56c7b91",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.83a55bcbd440d7e3d11a"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.8d431d8c3bf38ece65f91f051e9e36822dcbaab3e299e04f2968a0a800291ab3",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.8d431d8c3bf38ece65f9"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.9d63f5607fdf51f557c34a7712440ee2b8f0ba1cba9ed5431ba6459fb5508d5d",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.9d63f5607fdf51f557c3"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.b819383a3f79ab87ec1d21e2bb46404f987da60dcf690169fcd7677d7e393605",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.b819383a3f79ab87ec1d"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.b8fdc5c0154c0eb5ddb7e63757ecac9ec9966ba3351f60bd5581755c2d889f54",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.b8fdc5c0154c0eb5ddb7"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.cd6f972fe48bd7074be37f89c41a4e6b61616ecdd280f54b87bd9aa352a8a8fd",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.cd6f972fe48bd7074be3"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.d290be8444262f5c42c070f8480eb0416be6c5d478c676ccbab8eaf328b99561",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.d290be8444262f5c42c0"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.fa8711bdd5ec2cb977a4f1b20e0d9befeef2c6e29af8a61350a504789dde58c0",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.fa8711bdd5ec2cb977a4"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        }
+      ],
+      "introducedElements": [
+        {
+          "successorElementId": "donut.telegraph.outer.red",
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_ELEMENT_WITH_NO_CARRIER_V1_PREDECESSOR"
+        },
+        {
+          "successorElementId": "sprite_particle_6",
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_ELEMENT_WITH_NO_CARRIER_V1_PREDECESSOR"
+        },
+        {
+          "successorElementId": "donut.telegraph.inner.grow",
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_ELEMENT_WITH_NO_CARRIER_V1_PREDECESSOR"
+        },
+        {
+          "successorElementId": "donut.impact.wave.black",
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_ELEMENT_WITH_NO_CARRIER_V1_PREDECESSOR"
+        }
+      ],
+      "finalDocument": {
+        "elementCount": 24,
+        "canonicalSha256": "2cc96999b897e8d5db7db61f461ef96bee62c5990e2bfdb0bac33401ebd2d102"
+      }
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+      "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json",
+      "ownership": "PRODUCT_AUTHORED_SUCCESSOR",
+      "historicalBaseline": {
+        "elementCount": 12,
+        "canonicalSha256": "5fe8332a267686b77224bb8311de7a79af4da6ca032c8429775ea579aa4baf10"
+      },
+      "lineage": [
+        {
+          "baselineIdentity": "valtan.source.31b6cff2796ed160b56dc92df461026e6ed311b82269824c17aa8201595f850f",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.3e223a8495cabea41078001f81d2b9612963999bbb408802dfeb33004d31f603",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.4dbba0aca7d63207c7ee420c71d1ad1c303bdfb649f0e695e0eee51196b8c911",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.507d67cb6f7de7300a0c2f15c8a34becd7855ed710a3e8b83c75bf9aa7a484f7",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.609c0ac917dad55be03ce7a8dd7aeea5aabb40176f545be596b56e8780ec4ee9",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.8ed2fdfe6bda6c2b578f729509f07a57ec7b0a564db45dd5fcc665ac24585691",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.c0c2166477a49f8aa1d145ad81ca4b9800c367db80dc0894817e8ff6601aec5c",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.e3fb086a8f9491fed6c13576438d86ef43be6aa615b67ce6ba928bdeae1720ed",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.e7e8088d27201e028d8f4116e86774b486ab21ef950c4c17a98b0ae36c097162",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.e895cb74021ee21b828a70e72c14c85dda1f333d474c2e879c626a8af4f3bdf3",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.ee6f882fae155bcca58b17848381495b8c3c5645e743b6d81e321d017ce2826a",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.f044ef8a6d3f9dcf4ea0dc85f1c6546021d36dd8e0d5663be2fb0080df90c3f9",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        }
+      ],
+      "introducedElements": [
+        {
+          "successorElementId": "occurrence.c627ba06ba0a8d5d48086907",
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_ELEMENT_WITH_NO_CARRIER_V1_PREDECESSOR"
+        },
+        {
+          "successorElementId": "occurrence.14794cdb89c73ee33f1dead3",
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_ELEMENT_WITH_NO_CARRIER_V1_PREDECESSOR"
+        }
+      ],
+      "finalDocument": {
+        "elementCount": 7,
+        "canonicalSha256": "bef6f343f32b1b633923a4064c5901238773d080f431512fb90d3d006e39ee7e"
+      }
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+      "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-02.effect.json",
+      "ownership": "PRODUCT_AUTHORED_SUCCESSOR",
+      "historicalBaseline": {
+        "elementCount": 19,
+        "canonicalSha256": "ee7e6ba3b7e39fecd8aa1667df4d2c13d30da26c21df259a6bb685575f3049ee"
+      },
+      "lineage": [
+        {
+          "baselineIdentity": "valtan.source.04edcf16319413095ac92677bc14a287cf9b5e2369d263f4e91d8a4bf75699ca",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.04edcf16319413095ac9"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.138c3066c35bd35ced3b921ce28c765aab40f69b9e3901bdcb114e4cf8e39fe5",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.19cdd9609c40c481fd61c5c280355c82112c7028935c3095b19122f238c0fa8f",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.1d919e07eba8f62459a0ed166ce54a95af81b505311853857cdeeb9a89eeb403",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.26fee880d7cf9501068559e42c6d354962cf9bf6f409a36e752bcc1c91d45ea1",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.302fa0353d1a5b91fa4a1beb61500a4722385841d0847c246e83c1f1f8b63f50",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.463b9fd15c6d4bf109a3fad91064886af9c4b390acc0ed538de28ac7e6836449",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.549e2b77c370b8cce0e2ae4257f071cfff8583568b6ad0d4ed33239be897f6a4",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.54a6d77c6e05d00a5a282118872b21a3164977d023e9dfb18c1ef965a35eafec",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.55f794c460a502afd258daa8619b0f34b54f061d206d1fa57346715bcd2f2b05",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.60142aaf325769ce65524c93801da1c5026e588e7e4b3bd3fb6c5dd9e9e9c73f",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.627ba18f9402253dccdfcafbbcde6d724ff3c6182fa262d1ab0fde3e47d2afb5",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.70fc470be6dc7ab31792073b3af9f31e486bba2274471a7ddde5e31876f6e7b8",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.7e08a4a792dbc4be1e1f530250fe868f63c77a8f139d6b0615af58e95e73a494",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.a3d2393e329511734e5933079d8fe0d02f7ef3af7368269d594ef3e8a4230ff6",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.a503b4e0fc53baf20adf0669264f7da0d0a619246d43d43939d6fa29710b8200",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.dfdee1e390b79e0d9dd85aae23af58cbc162ed8372723934c4c1b12095158f3b",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.ec9e158d491edbba5dc0f595a3bf7384e7438faa11c3115397d7a0f7b046b292",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.fc5e1f880cbd6e53a42a2a524a07fb9858ab7e8e3976e901e94ad627ba301b38",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "fm_m_trail_002.wmodel"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        }
+      ],
+      "introducedElements": [],
+      "finalDocument": {
+        "elementCount": 2,
+        "canonicalSha256": "34c5298d1e615d900c7d46631b245158891402e2c7c3aa107def1dc87c022c91"
+      }
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.high-jump.land.clip-01",
+      "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.high-jump.land.clip-01.effect.json",
+      "ownership": "PRODUCT_AUTHORED_SUCCESSOR",
+      "historicalBaseline": {
+        "elementCount": 23,
+        "canonicalSha256": "28d1c06265890e6f1dd524b106ad5f57f043681401f06a81719d69b85636493e"
+      },
+      "lineage": [
+        {
+          "baselineIdentity": "valtan.source.02a08172b8b42f2e7447c742eccb4805cfdb20a3262b13930801d5af0a4e149b",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.02a08172b8b42f2e7447"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.152f0042214bbc7d77989b87dfd4e404abebc800c2983c3720d057008377e245",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.152f0042214bbc7d7798"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.211f476bb3c8adb6093016038ddbe4d0c14005ad4ab63af0869c5c5939d676d4",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.211f476bb3c8adb60930"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.376ac01b5ea8ae7ddfd6518c5fc9fce0b772e0cecdd7529577a9a81ff865e930",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.376ac01b5ea8ae7ddfd6"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.427dc449c6069d654a73fcbaad587c4dcfe709167d8768a86abb00a11ce718ec",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.427dc449c6069d654a73"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.4589aa1922ad69610e9d007b46d4aa68dd6a24d4e0dcc53e4a43d05fc763caa6",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.4589aa1922ad69610e9d"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.624a586d9edd1b2ef416197dcefc649683de450034d6d3f77e6ba7836a580337",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.624a586d9edd1b2ef416"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.6adb32347d26a9d79a66d274b79f2cc0da66f246d54ad045f72dd40d2416931e",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.6adb32347d26a9d79a66"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.6bd1741668d9309740e07db8bade450ed09ef567ea087fbe7ab6b7bc895ba9b5",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.6bd1741668d9309740e0"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.6df0e58123e693f50f14d2c089d5f3b48afc81a9ac211f8abf6572d5673d2713",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.6df0e58123e693f50f14"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.7660fb560f05124e17c2e5f043eac9e561fdef29eba59e9d4853ce73d375e36b",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.7660fb560f05124e17c2"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.78f866e4629cf9cf98603c54ad7ee65e9ea3d38d2d5bc29bbfd1241529c692cd",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.78f866e4629cf9cf9860"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.7b7b7c81b12e9dd59483b2338eee3f3f3816de3d4af41dd6a9c400b7fbc0f80c",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.7b7b7c81b12e9dd59483"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.7be05e8b261aa56368b0443742b1cb4473fcaa693ce8f7c6f2862c8289fe4484",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.7be05e8b261aa56368b0"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.7c6a67389e1e698ef5a67d1950b7e3b55b61d7ba7604203c80fe4cf73454d1db",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.7c6a67389e1e698ef5a6"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.a520ae0f9019b499ab0c8f48e4b09fc80c26e52c292e5ca94d0a0b39260ded70",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.a520ae0f9019b499ab0c"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.a5da306351c5373b7e38fcdba3fa8ce300cf69ffad6486c7347bb062dc0332ef",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.a5da306351c5373b7e38"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.a6504522856bc7469dcad0fb61e83d65e252f8e01f085ccb97a01c1fa6dac868",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.a6504522856bc7469dca"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.b1cef03c33fe3619f560a08023c18ee918728a6187496734253725641e0bd548",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.b1cef03c33fe3619f560"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.b62b3f3edbee532cd8cb76eaaa3d2ea5c5116baf33ea630f6c68c2363025113b",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.b62b3f3edbee532cd8cb"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.bad75466d9a006ff462fa44bf61c4d741230591185b82ef8a955d372bd87379a",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.bad75466d9a006ff462f"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.be3ff3cc7c557a9d51bf3cf645f2adfb2dac9317abddcf8ac5084cb455cc4f27",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.be3ff3cc7c557a9d51bf"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.e3ef118ecfa0fabe94064d01256c739dcaf1c7fcdc7218bad1a538f972d94df9",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.e3ef118ecfa0fabe9406"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        }
+      ],
+      "introducedElements": [
+        {
+          "successorElementId": "high-jump-landing-wave",
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_ELEMENT_WITH_NO_CARRIER_V1_PREDECESSOR"
+        }
+      ],
+      "finalDocument": {
+        "elementCount": 24,
+        "canonicalSha256": "d432a0dd79c3f61a57619c0e82fde08c47cdefccc38c0cd43be25635aa20cd0a"
+      }
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
+      "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01.effect.json",
+      "ownership": "PRODUCT_AUTHORED_SUCCESSOR",
+      "historicalBaseline": {
+        "elementCount": 3,
+        "canonicalSha256": "a075f61a05b370cc2fcec83e9252500c898b4cacf9e2653926958ea39008fd01"
+      },
+      "lineage": [
+        {
+          "baselineIdentity": "valtan.source.d380f17792f1c67e9dc255274a1a75ad0988649ae8f3d522f8df169d38d81ec5",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.d380f17792f1c67e9dc2"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.ece7ae1d1376d407ef1d76a1c236bcfbe9dd60afa78973915ffec7cbe4fd8627",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.ece7ae1d1376d407ef1d"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "valtan.source.f4617c98d44349eec51d27cc338ba47fe5621aeaef7062b5cf332a11727c9ff4",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "source.f4617c98d44349eec51d"
+          ],
+          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+        }
+      ],
+      "introducedElements": [],
+      "finalDocument": {
+        "elementCount": 3,
+        "canonicalSha256": "669c2a5243c35c68bf176cfa93ac5375c5b6867085e2ce9dfe9316d2ecb1fbff"
+      }
+    },
+    {
+      "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+      "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.effect.json",
+      "ownership": "PRODUCT_AUTHORED_SUCCESSOR",
+      "historicalBaseline": {
+        "elementCount": 3,
+        "canonicalSha256": "796d0888a7dfe7c7e7e356bdea5b9bf0cd66f6e69ad51e14ef5aafaecd208cf1"
+      },
+      "lineage": [
+        {
+          "baselineIdentity": "valtan.source.7049e02f84728c638674377915cb0204927ad853aedc962112534f2b9db69506",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "whirlwind.mesh.10.cyan.phase000",
+            "authored.copy.whirlwind.mesh.10.cyan.phase000.2",
+            "whirlwind.trail.20.axe.main"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.beb992498184e79af182517188f8f0833f0d3e571ac78065b94e74d15c97978e",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "whirlwind.mesh.10.cyan.phase000",
+            "authored.copy.whirlwind.mesh.10.cyan.phase000.2",
+            "whirlwind.trail.20.axe.main"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        },
+        {
+          "baselineIdentity": "valtan.source.e8a5de96d95b1448332c3afbe13f4f00e675d54dad12a69ec086ef91a37a3e69",
+          "disposition": "REPLACED_BY",
+          "successorElementIds": [
+            "whirlwind.mesh.10.cyan.phase000",
+            "authored.copy.whirlwind.mesh.10.cyan.phase000.2",
+            "whirlwind.trail.20.axe.main"
+          ],
+          "reason": "PRODUCT_AUTHORED_SUCCESSOR_REPLACES_THE_HISTORICAL_CARRIER_COMPOSITION"
+        }
+      ],
+      "introducedElements": [],
+      "finalDocument": {
+        "elementCount": 3,
+        "canonicalSha256": "2dd994a61d2fbd203cd3a8e7efb89ab9cd40fc368c71f97f5def09d6b4868d6a"
+      }
+    },
+    {
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "path": "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json",
+      "ownership": "EXTERNAL_OWNER_SUCCESSOR",
+      "historicalBaseline": {
+        "elementCount": 3,
+        "canonicalSha256": "7983402521eef142d26c3bab8cb45a080c9077b4605dd6693d8018437c282916",
+        "baselineElementIds": [
+          "mesh.valtan.sky-axe.descent",
+          "decal.valtan.sky-axe.target",
+          "particle.valtan.sky-axe.impact"
+        ]
+      },
+      "lineage": [
+        {
+          "baselineIdentity": "mesh.valtan.sky-axe.descent",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "mesh.valtan.sky-axe.descent"
+          ],
+          "reason": "EXTERNAL_OWNER_ELEMENT_ID_RETAINED_IN_UNION_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "decal.valtan.sky-axe.target",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "decal.valtan.sky-axe.target"
+          ],
+          "reason": "EXTERNAL_OWNER_ELEMENT_ID_RETAINED_IN_UNION_SUCCESSOR"
+        },
+        {
+          "baselineIdentity": "particle.valtan.sky-axe.impact",
+          "disposition": "RETAIN",
+          "successorElementIds": [
+            "particle.valtan.sky-axe.impact"
+          ],
+          "reason": "EXTERNAL_OWNER_ELEMENT_ID_RETAINED_IN_UNION_SUCCESSOR"
+        }
+      ],
+      "introducedElements": [
+        {
+          "successorElementId": "sky-axe-target-inner-fill",
+          "reason": "EXTERNAL_OWNER_AUTHORED_ELEMENT_ADDED_AFTER_CARRIER_V1"
+        },
+        {
+          "successorElementId": "authored.copy.sky-axe-target-inner-fill.1",
+          "reason": "EXTERNAL_OWNER_AUTHORED_ELEMENT_ADDED_AFTER_CARRIER_V1"
+        },
+        {
+          "successorElementId": "sky-axe-flight-line",
+          "reason": "EXTERNAL_OWNER_AUTHORED_ELEMENT_ADDED_AFTER_CARRIER_V1"
+        }
+      ],
+      "finalDocument": {
+        "elementCount": 6,
+        "canonicalSha256": "28d98a17f5c9b22b3e43fbc858483db0da281017f5e85fc0b276df3db2cf21b8"
+      }
+    }
+  ],
+  "liveProductProjection": {
+    "catalog": {
+      "effectCount": 54,
+      "canonicalSha256": "9aca2d1beb8d142ca68f51b613a3a0a0b629f65850476a235fc886effb3c061f"
+    },
+    "cues": {
+      "cueCount": 47,
+      "canonicalSha256": "da461e7c14a3e438169a5c1b1c15faa5391622f853d9028f027bc92a2e9b5712"
+    }
+  },
+  "summary": {
+    "successorDocumentCount": 7,
+    "historicalTargetSuccessorCount": 6,
+    "historicalBaselineElementCount": 83,
+    "finalSuccessorElementCount": 69,
+    "historicalOwnerFinalElementCount": 655
+  },
+  "historicalOutputProjection": {
+    "reviewedProjectionLedger": {
+      "rowCount": 1577,
+      "canonicalSha256": "ba178c9657cabf38a381321e66784824a2dc0bf007d89940993c93772439740b",
+      "ownerTransfers": [
+        {
+          "transferId": "reviewed-ledger-owner.01",
+          "liveOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "semanticStageId": "SLASHES",
+            "gameplayActionId": "valtan.attack.triple-slash.active"
+          },
+          "historicalOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "semanticStageId": "SLASHES",
+            "gameplayActionId": "valtan.attack.four-slash.active"
+          },
+          "rowCount": 32
+        },
+        {
+          "transferId": "reviewed-ledger-owner.02",
+          "liveOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "semanticStageId": "SPIN",
+            "gameplayActionId": "valtan.attack.rotation-slash.active"
+          },
+          "historicalOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "semanticStageId": "SLASHES",
+            "gameplayActionId": "valtan.attack.four-slash.active"
+          },
+          "rowCount": 40
+        }
+      ]
+    },
+    "reviewedSourceOnlyOccurrences": {
+      "rowCount": 197,
+      "canonicalSha256": "62fd2fdf2e8df805b9022bc7cf05536416bbc2bd7e41b77b689d1c3106a59d6d",
+      "ownerTransfers": [
+        {
+          "transferId": "reviewed-source-only-owner.01",
+          "liveOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "semanticStageId": "SLASHES",
+            "gameplayActionId": "valtan.attack.triple-slash.active"
+          },
+          "historicalOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "semanticStageId": "SLASHES",
+            "gameplayActionId": "valtan.attack.four-slash.active"
+          },
+          "rowCount": 10
+        },
+        {
+          "transferId": "reviewed-source-only-owner.02",
+          "liveOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "semanticStageId": "SPIN",
+            "gameplayActionId": "valtan.attack.rotation-slash.active"
+          },
+          "historicalOwner": {
+            "patternId": "VALTAN_FOUR_SLASH",
+            "semanticStageId": "SLASHES",
+            "gameplayActionId": "valtan.attack.four-slash.active"
+          },
+          "rowCount": 8
+        }
+      ]
+    }
+  }
+}
