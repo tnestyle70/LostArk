@@ -48,7 +48,7 @@
                      "damageProfileCount":  109,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  33,
-                     "fieldEntryCount":  3292,
+                     "fieldEntryCount":  3293,
                      "bossPartCount":  2,
                      "bossCombatObjectCount":  2
                  },
@@ -43279,7 +43279,8 @@
                                                                     22.99751,
                                                                     -122.06
                                                                 ],
-                                            "apexHeight":  46.0
+                                            "apexHeight":  46.0,
+                                            "travelStageId":  "YELLOW_ZONE"
                                         },
                         "transform":  "Balance Tool authored override",
                         "resultValue":  {
@@ -43290,7 +43291,8 @@
                                                                     22.99751,
                                                                     -122.06
                                                                 ],
-                                            "apexHeight":  46.0
+                                            "apexHeight":  46.0,
+                                            "travelStageId":  "YELLOW_ZONE"
                                         },
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
                     },

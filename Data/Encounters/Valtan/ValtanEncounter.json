@@ -1244,7 +1244,7 @@
       "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
-      "serverMotion": { "kind": "LEAP_TO_TARGET", "anchorId": "anchor.valtan.four-pillars-105.landing", "landingPosition": [156.03, 22.99751, -122.06], "apexHeight": 46.0 },
+      "serverMotion": { "kind": "LEAP_TO_TARGET", "anchorId": "anchor.valtan.four-pillars-105.landing", "landingPosition": [156.03, 22.99751, -122.06], "apexHeight": 46.0, "travelStageId": "YELLOW_ZONE" },
       "stages": [
         { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.four-pillars-105.takeoff", "stageKind": "WINDUP", "durationMs": 1933, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
         { "stageId": "YELLOW_ZONE", "actionId": "valtan.mechanic.four-pillars-105.yellow-zone", "stageKind": "ACTIVE", "durationMs": 5500, "hitShape": "RING", "hitOuterRadius": 100.0, "hitInnerRadius": 4.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105", "pushRangeM": 1.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
