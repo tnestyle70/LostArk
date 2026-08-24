@@ -1252,6 +1252,70 @@
       }
     },
     {
+      "bindingId": "cue.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+      "occurrenceId": "cue.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01.occurrence.01",
+      "patternId": "VALTAN_FOUR_PILLARS_105",
+      "stageId": "TAKEOFF",
+      "actionId": "valtan.mechanic.four-pillars-105.takeoff",
+      "clipOccurrenceId": "valtan.mechanic.four-pillars-105.takeoff.clip.01",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+      "occurrenceId": "cue.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01.occurrence.01",
+      "patternId": "VALTAN_FOUR_PILLARS_105",
+      "stageId": "TARGET_CONE",
+      "actionId": "valtan.mechanic.four-pillars-105.target-cone",
+      "clipOccurrenceId": "valtan.mechanic.four-pillars-105.target-cone.clip.01",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
       "bindingId": "cue.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01",
       "occurrenceId": "cue.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01.occurrence.01",
       "patternId": "VALTAN_GHOST_TRANSITION_15",

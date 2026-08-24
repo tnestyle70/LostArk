@@ -1338,6 +1338,13 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 {
 	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
 		return false;
+	/* The leap timeline already writes the authoritative X/Z transform for its
+	first two stages. Applying the clip's small baked root curve afterwards in
+	GameRoom would turn a vertical TAKEOFF into a drift and move a target landing
+	off the position captured at pattern start. IMPACT and later stages clear the
+	leap apex and may consume their own root motion normally. */
+	if (boss.fLeapApexHeight > 0.f)
+		return false;
 
 	/* A stage whose clip already carries the travel steps along that curve,
 	the same contract a player skill uses: the difference between the curve at

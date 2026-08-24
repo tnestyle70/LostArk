@@ -110,6 +110,10 @@ struct MONSTER_ACTOR_ENTRY final
 		std::string chase;
 		std::string attack;
 		std::string dead;
+		/* Walk gait for the disengaged PATROL action: the trip home to the spawn
+		anchor and the wander around it. Distinct from chase, which is the battle
+		run this monster uses while it has a target. */
+		std::string patrol;
 	};
 
 	std::string archetypeId;
@@ -117,6 +121,9 @@ struct MONSTER_ACTOR_ENTRY final
 	std::string modelAssetId;
 	f32_t modelScale = 1.f;
 	f32_t modelYawDegrees = 0.f;
+	/* Effect V2 document id played once where a player hit lands on this
+	monster. Empty means this archetype shows only the hit flash. */
+	std::string hitEffectId;
 	PRESENTATION_CLIPS presentationClips;
 	std::string runtimeStatus;
 };

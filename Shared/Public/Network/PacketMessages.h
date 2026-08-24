@@ -159,6 +159,11 @@ namespace LostArk::Shared
 		PATTERN_ACTIVE,
 		PATTERN_RECOVERY,
 		DEAD,
+		/* Walking while disengaged: the trip home to the spawn anchor and the
+		wander around it are the same calm gait, so they share one action. Only
+		monsters send it; the boss never leaves its encounter. Appended before
+		END so every value already on the wire keeps its number. */
+		PATROL,
 		END
 	};
 
@@ -826,11 +831,11 @@ namespace LostArk::Shared
 		// whole, so the 84 and 30 collapses can then be auditioned with nothing
 		// standing above them.
 		BREAK_EVERY_WALL,
-		// Starts/stops the Server-authored 1..67 Debug occurrence ledger. The
-		// command carries no clip name or health bar; each executable occurrence
-		// resolves to one stable product pattern inside the Server catalog.
-		PLAY_ORDERED_1_67,
-		STOP_ORDERED_1_67,
+		// Starts one selected chronological timeline row, or stops the row that
+		// currently owns Debug playback. PLAY uses iTargetHealthBar as the
+		// row's stable non-zero command ID; STOP carries exactly zero.
+		PLAY_TIMELINE_ROW,
+		STOP_TIMELINE_ROW,
 		// Debug pattern browser. A NORMAL pattern that no health bar owns can
 		// otherwise only be seen by fighting until it is rolled, so this plays
 		// one authored pattern chosen by its position in the encounter
@@ -871,6 +876,9 @@ namespace LostArk::Shared
 		std::uint32_t iRequestSequence = 0;
 		VALTAN_AUDITION_OPERATION eOperation =
 			VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
+		// Usually an authored health bar. PLAY_PATTERN reuses it as a one-based
+		// encounter-pattern index, while PLAY_TIMELINE_ROW reuses it as the
+		// selected row's stable command ID. STOP_TIMELINE_ROW carries 0.
 		std::uint32_t iTargetHealthBar = 0;
 	};
 

@@ -354,6 +354,42 @@
       ]
     },
     {
+      "patternId": "VALTAN_FOUR_PILLARS_105",
+      "sourceActionId": 420610,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "2874bacc9e568cb106e392490395fe9b1f8ed318344b5942c17cb597b03998ad",
+      "branchId": "valtan_four_pillars_105.source-420610.mn_rpbf_00.sequence-002.stages-019-022",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "YouTube tSpXa0v9TXw 19:32-19:43 reviewed against the source 420610 sequence 2 Att_Battle_8_01 start/loop/end phase-transition presentation",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 19,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.four-pillars-105.takeoff.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 20,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.four-pillars-105.yellow-zone.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 21,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.four-pillars-105.target-cone.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 22,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.four-pillars-105.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
       "patternId": "VALTAN_MAGIC_CHOICE",
       "sourceActionId": 420608,
       "profileId": "MN_RPBF_00",

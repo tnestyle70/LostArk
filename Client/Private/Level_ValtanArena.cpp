@@ -28,9 +28,11 @@ headers, which is the same order Level_CharacterSelect.cpp uses. */
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <limits>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
 namespace
 {
@@ -457,6 +459,74 @@ namespace
 			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED == result;
 	}
 
+	bool_t Is_ExactTimelineObject(
+		const Client::DATA_JSON_VALUE& value,
+		const std::initializer_list<const char_t*> keys)
+	{
+		if (!value.Is_Object() || value.Get_Object().size() != keys.size())
+			return false;
+		return std::all_of(keys.begin(), keys.end(),
+			[&value](const char_t* key)
+			{
+				return nullptr != value.Find(key);
+			});
+	}
+
+	bool_t Try_ReadTimelineU32(
+		const Client::DATA_JSON_VALUE& object,
+		const char_t* field,
+		uint32_t& outValue)
+	{
+		const Client::DATA_JSON_VALUE* value = object.Find(field);
+		if (nullptr == value || !value->Is_Number() ||
+			!std::isfinite(value->Get_Number()) ||
+			std::floor(value->Get_Number()) != value->Get_Number() ||
+			value->Get_Number() < 0.0 ||
+			value->Get_Number() > static_cast<double>(
+				(std::numeric_limits<uint32_t>::max)()))
+		{
+			return false;
+		}
+		outValue = static_cast<uint32_t>(value->Get_Number());
+		return true;
+	}
+
+	bool_t Try_ReadTimelineString(
+		const Client::DATA_JSON_VALUE& object,
+		const char_t* field,
+		std::string& outValue)
+	{
+		const Client::DATA_JSON_VALUE* value = object.Find(field);
+		if (nullptr == value || !value->Is_String())
+			return false;
+		outValue = value->Get_String();
+		return true;
+	}
+
+	bool_t Is_StableTimelineToken(const std::string_view value)
+	{
+		if (value.empty() || value.size() > 128u)
+			return false;
+		return std::all_of(value.begin(), value.end(), [](const char_t ch)
+			{
+				return (ch >= 'a' && ch <= 'z') ||
+					(ch >= 'A' && ch <= 'Z') ||
+					(ch >= '0' && ch <= '9') ||
+					'.' == ch || '_' == ch || '-' == ch;
+			});
+	}
+
+	uint32_t Calculate_TimelineCommandId(const std::string_view rowId)
+	{
+		uint32_t hash = 2166136261u;
+		for (const char_t character : rowId)
+		{
+			hash ^= static_cast<uint8_t>(character);
+			hash *= 16777619u;
+		}
+		return hash;
+	}
+
 	/* The bars this build can audition are exactly the encounter's authored
 	HEALTH_BAR thresholds, read from the same document the Server publishes
 	from. Nothing here is a second list to keep in step. */
@@ -705,8 +775,6 @@ const char_t* CLevel_ValtanArena::Get_ReferenceCameraViewName() const
 
 void CLevel_ValtanArena::Update_AuditionTransaction()
 {
-	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
-
 	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT result{};
 	while (CNetworkManager::Get().Try_Consume_ValtanAuditionResult(result))
 	{
@@ -726,8 +794,6 @@ void CLevel_ValtanArena::Update_AuditionTransaction()
 			continue;
 		}
 
-		const AUDITION_PENDING_REQUEST completed =
-			m_PendingAuditionRequest;
 		m_PendingAuditionRequest = {};
 		const bool_t accepted = Is_AuditionAccepted(result.eResult);
 		m_strAuditionStatus = Describe_AuditionResult(result.eResult);
@@ -742,41 +808,6 @@ void CLevel_ValtanArena::Update_AuditionTransaction()
 			m_bEnvironmentTimelinePatternStarted = false;
 			m_strAuditionStatus += " Full environment timeline stopped.";
 		}
-
-		if (accepted && OPERATION::PLAY_ORDERED_1_67 == completed.eOperation)
-			m_bOrderedAuditionActive = true;
-		if (accepted && OPERATION::STOP_ORDERED_1_67 == completed.eOperation)
-			m_bOrderedAuditionActive = false;
-
-		if (OPERATION::STOP_ORDERED_1_67 == completed.eOperation)
-		{
-			const bool_t restart = m_bRestartOrderedAfterStop;
-			m_bStopAuditionQueued = false;
-			m_bRestartOrderedAfterStop = false;
-			if (accepted && restart &&
-				!Submit_Audition(OPERATION::PLAY_ORDERED_1_67))
-			{
-				m_strAuditionStatus =
-					"The ordered audition stopped, but its restart request could not be sent.";
-			}
-			else if (!accepted && restart)
-			{
-				m_strAuditionStatus +=
-					" Restart was cancelled because STOP was rejected.";
-			}
-			continue;
-		}
-
-		if (m_bStopAuditionQueued)
-		{
-			m_bStopAuditionQueued = false;
-			if (!Submit_Audition(OPERATION::STOP_ORDERED_1_67))
-			{
-				m_bRestartOrderedAfterStop = false;
-				m_strAuditionStatus =
-					"The queued STOP request could not be sent.";
-			}
-		}
 	}
 
 	if (!m_PendingAuditionRequest.Is_Active())
@@ -790,7 +821,6 @@ void CLevel_ValtanArena::Update_AuditionTransaction()
 
 	if (m_PendingAuditionRequest.iRetryCount >= AUDITION_MAX_RETRY_COUNT)
 	{
-		const AUDITION_PENDING_REQUEST timedOut = m_PendingAuditionRequest;
 		m_PendingAuditionRequest = {};
 		m_strAuditionStatus =
 			"Server verdict timed out after three bounded retries.";
@@ -801,29 +831,6 @@ void CLevel_ValtanArena::Update_AuditionTransaction()
 			m_bEnvironmentTimelineWaiting = false;
 			m_bEnvironmentTimelinePatternStarted = false;
 			m_strAuditionStatus += " Full environment timeline stopped.";
-		}
-		if (OPERATION::PLAY_ORDERED_1_67 == timedOut.eOperation)
-		{
-			/* The Server may have started it even though every verdict was lost.
-			Keep focused reset controls disabled until an explicit STOP is acked. */
-			m_bOrderedAuditionActive = true;
-		}
-		if (OPERATION::STOP_ORDERED_1_67 == timedOut.eOperation)
-		{
-			m_bStopAuditionQueued = false;
-			m_bRestartOrderedAfterStop = false;
-			m_strAuditionStatus +=
-				" Ordered state is uncertain; send STOP again before restarting.";
-			return;
-		}
-		if (m_bStopAuditionQueued)
-		{
-			m_bStopAuditionQueued = false;
-			if (!Submit_Audition(OPERATION::STOP_ORDERED_1_67))
-			{
-				m_bRestartOrderedAfterStop = false;
-				m_strAuditionStatus += " The queued STOP could not be sent.";
-			}
 		}
 		return;
 	}
@@ -839,6 +846,174 @@ void CLevel_ValtanArena::Update_AuditionTransaction()
 		"The bounded retry could not be sent; it will not retry immediately.";
 }
 
+bool_t CLevel_ValtanArena::Load_AuditionTimeline()
+{
+	m_bAuditionTimelineLoadAttempted = true;
+	const std::filesystem::path path = CProjectDataRoot::Resolve(
+		L"Encounters/Valtan/ValtanDebugAudition.json");
+	std::ifstream input(path, std::ios::binary);
+	if (path.empty() || !input)
+	{
+		m_strAuditionTimelineStatus =
+			"Chronological audition data is missing: " + path.string();
+		return false;
+	}
+	const std::string text(
+		(std::istreambuf_iterator<char_t>(input)),
+		std::istreambuf_iterator<char_t>());
+	Client::DATA_JSON_VALUE root;
+	std::string parseError;
+	if (!Client::CDataJson::Parse(text, root, parseError) ||
+		!Is_ExactTimelineObject(root, {
+			"schema", "formatVersion", "authority", "encounterId",
+			"timelineId", "rows" }))
+	{
+		m_strAuditionTimelineStatus =
+			"Chronological audition data is invalid: " + parseError;
+		return false;
+	}
+
+	std::string schema;
+	std::string authority;
+	std::string encounterId;
+	std::string timelineId;
+	uint32_t formatVersion = 0u;
+	const Client::DATA_JSON_VALUE* rows = root.Find("rows");
+	if (!Try_ReadTimelineString(root, "schema", schema) ||
+		"lostark.valtan-pattern-timeline" != schema ||
+		!Try_ReadTimelineU32(root, "formatVersion", formatVersion) ||
+		1u != formatVersion ||
+		!Try_ReadTimelineString(root, "authority", authority) ||
+		"server" != authority ||
+		!Try_ReadTimelineString(root, "encounterId", encounterId) ||
+		"ENCOUNTER_VALTAN" != encounterId ||
+		!Try_ReadTimelineString(root, "timelineId", timelineId) ||
+		"VALTAN_AUDITION_TIMELINE" != timelineId ||
+		nullptr == rows || !rows->Is_Array() ||
+		52u != rows->Get_Array().size())
+	{
+		m_strAuditionTimelineStatus =
+			"Chronological audition header or row count is invalid.";
+		return false;
+	}
+
+	auto arenaRank = [](const std::string_view state) -> uint32_t
+		{
+			if ("FRESH" == state)
+				return 0u;
+			if ("ORDINARY_WALLS_GONE" == state)
+				return 1u;
+			if ("ALL_WALLS_GONE" == state)
+				return 2u;
+			if ("FLOOR84_GONE" == state)
+				return 3u;
+			if ("FLOOR84_AND_30_GONE" == state)
+				return 4u;
+			return (std::numeric_limits<uint32_t>::max)();
+		};
+	std::vector<AUDITION_TIMELINE_ROW> staged;
+	staged.reserve(rows->Get_Array().size());
+	std::unordered_set<std::string> rowIds;
+	std::unordered_set<uint32_t> commandIds;
+	uint32_t previousHealthBar = (std::numeric_limits<uint32_t>::max)();
+	uint32_t previousArenaRank = 0u;
+	for (size_t index = 0u; index < rows->Get_Array().size(); ++index)
+	{
+		const Client::DATA_JSON_VALUE& value = rows->Get_Array()[index];
+		if (!Is_ExactTimelineObject(value, {
+			"rowId", "commandId", "ordinal", "sectionHealthBar", "entryType",
+			"patterns", "arenaState", "propState", "displayLabel" }))
+		{
+			m_strAuditionTimelineStatus =
+				"Timeline row " + std::to_string(index + 1u) +
+				" has missing or unknown fields.";
+			return false;
+		}
+
+		AUDITION_TIMELINE_ROW row{};
+		const Client::DATA_JSON_VALUE* patterns = value.Find("patterns");
+		if (!Try_ReadTimelineString(value, "rowId", row.strRowId) ||
+			!Try_ReadTimelineU32(value, "commandId", row.iCommandId) ||
+			0u == row.iCommandId ||
+			row.iCommandId != Calculate_TimelineCommandId(row.strRowId) ||
+			!Try_ReadTimelineU32(value, "ordinal", row.iOrdinal) ||
+			!Is_StableTimelineToken(row.strRowId) ||
+			!rowIds.insert(row.strRowId).second ||
+			!commandIds.insert(row.iCommandId).second ||
+			row.iOrdinal != index + 1u ||
+			!Try_ReadTimelineU32(
+				value, "sectionHealthBar", row.iSectionHealthBar) ||
+			0u == row.iSectionHealthBar ||
+			row.iSectionHealthBar > previousHealthBar ||
+			!Try_ReadTimelineString(value, "entryType", row.strEntryType) ||
+			("MECHANIC" != row.strEntryType &&
+				"NORMAL" != row.strEntryType) ||
+			!Try_ReadTimelineString(value, "arenaState", row.strArenaState) ||
+			arenaRank(row.strArenaState) ==
+				(std::numeric_limits<uint32_t>::max)() ||
+			arenaRank(row.strArenaState) < previousArenaRank ||
+			arenaRank(row.strArenaState) > previousArenaRank + 1u ||
+			!Try_ReadTimelineString(value, "propState", row.strPropState) ||
+			("HIDDEN" != row.strPropState &&
+				"FOUR_PILLARS_INTACT" != row.strPropState) ||
+			!Try_ReadTimelineString(
+				value, "displayLabel", row.strDisplayLabel) ||
+			row.strDisplayLabel.empty() || row.strDisplayLabel.size() > 256u ||
+			nullptr == patterns || !patterns->Is_Array() ||
+			patterns->Get_Array().empty() || patterns->Get_Array().size() > 8u)
+		{
+			m_strAuditionTimelineStatus =
+				"Timeline row " + std::to_string(index + 1u) +
+				" violates the chronological row contract.";
+			return false;
+		}
+
+		row.PatternActions.reserve(patterns->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& actionValue :
+			patterns->Get_Array())
+		{
+			AUDITION_TIMELINE_ACTION action{};
+			if (!Is_ExactTimelineObject(
+				actionValue, { "patternId", "repeat" }) ||
+				!Try_ReadTimelineString(
+					actionValue, "patternId", action.strPatternId) ||
+				!Is_StableTimelineToken(action.strPatternId) ||
+				nullptr == m_ValtanEncounterReference.Find_Pattern(
+					action.strPatternId) ||
+				!Try_ReadTimelineU32(
+					actionValue, "repeat", action.iRepeat) ||
+				0u == action.iRepeat || action.iRepeat > 4u)
+			{
+				m_strAuditionTimelineStatus =
+					"Timeline row " + std::to_string(index + 1u) +
+					" references an invalid pattern action.";
+				return false;
+			}
+			row.PatternActions.push_back(std::move(action));
+		}
+		previousHealthBar = row.iSectionHealthBar;
+		previousArenaRank = arenaRank(row.strArenaState);
+		staged.push_back(std::move(row));
+	}
+	if (160u != staged.front().iSectionHealthBar ||
+		"FRESH" != staged.front().strArenaState ||
+		14u != staged.back().iSectionHealthBar ||
+		"FLOOR84_AND_30_GONE" != staged.back().strArenaState)
+	{
+		m_strAuditionTimelineStatus =
+			"Chronological audition endpoints are invalid.";
+		return false;
+	}
+
+	m_AuditionTimelineRows = std::move(staged);
+	if (m_iSelectedAuditionTimelineRowIndex >= m_AuditionTimelineRows.size())
+		m_iSelectedAuditionTimelineRowIndex = 0u;
+	m_strAuditionTimelineStatus =
+		"Loaded " + std::to_string(m_AuditionTimelineRows.size()) +
+		" chronological fight rows.";
+	return true;
+}
+
 bool_t CLevel_ValtanArena::Submit_Audition(
 	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation)
 {
@@ -848,7 +1023,7 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 			"Wait for the local character snapshot before sending an audition.";
 		return false;
 	}
-	if (m_PendingAuditionRequest.Is_Active() || m_bStopAuditionQueued)
+	if (m_PendingAuditionRequest.Is_Active())
 	{
 		m_strAuditionStatus =
 			"Another audition transaction must finish before this request.";
@@ -867,9 +1042,10 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 			operation ||
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL ==
 			operation ||
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_ORDERED_1_67 ==
-			operation ||
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::STOP_ORDERED_1_67 ==
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW ==
+			operation;
+	const bool_t isTimelinePlay =
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW ==
 			operation;
 	/* The pattern browser addresses the authored pattern order instead, and
 	sends a one-based index so the wire never carries the zero that means
@@ -883,9 +1059,15 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 		m_strAuditionStatus = "No authored pattern is selected.";
 		return false;
 	}
+	if (isTimelinePlay &&
+		m_iSelectedAuditionTimelineRowIndex >= m_AuditionTimelineRows.size())
+	{
+		m_strAuditionStatus = "No chronological fight row is selected.";
+		return false;
+	}
 	const std::vector<uint32_t> bars =
 		Collect_AuditionHealthBars(m_ValtanEncounterReference);
-	if (!isBarless && !isPatternPlay &&
+	if (!isBarless && !isPatternPlay && !isTimelinePlay &&
 		m_iSelectedAuditionBarIndex >= bars.size())
 	{
 		m_strAuditionStatus = "No authored health-bar pattern is selected.";
@@ -894,11 +1076,14 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 
 	const uint32_t sequence = 0u == m_iNextAuditionRequestSequence ?
 		1u : m_iNextAuditionRequestSequence;
-	const uint32_t targetHealthBar = isPatternPlay ?
+	const uint32_t commandPayload = isPatternPlay ?
 		static_cast<uint32_t>(m_iSelectedAuditionPatternIndex + 1u) :
-		(isBarless ? 0u : bars[m_iSelectedAuditionBarIndex]);
+		(isTimelinePlay ?
+			m_AuditionTimelineRows[
+				m_iSelectedAuditionTimelineRowIndex].iCommandId :
+			(isBarless ? 0u : bars[m_iSelectedAuditionBarIndex]));
 	if (!CNetworkManager::Get().Send_ValtanAudition(
-		sequence, operation, targetHealthBar))
+		sequence, operation, commandPayload))
 	{
 		m_strAuditionStatus = "Could not send the audition request.";
 		return false;
@@ -908,44 +1093,12 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 		1u : sequence + 1u;
 	m_PendingAuditionRequest.iSequence = sequence;
 	m_PendingAuditionRequest.eOperation = operation;
-	m_PendingAuditionRequest.iTargetHealthBar = targetHealthBar;
+	m_PendingAuditionRequest.iTargetHealthBar = commandPayload;
 	m_PendingAuditionRequest.iLastSentAtMilliseconds =
 		Get_AuditionMonotonicMilliseconds();
 	m_PendingAuditionRequest.iRetryCount = 0u;
 	m_strAuditionStatus = "Waiting for the Server verdict...";
 	return true;
-}
-
-void CLevel_ValtanArena::Request_OrderedAuditionStop(
-	const bool_t restartAfterStop)
-{
-	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
-	m_EnvironmentTimeline.clear();
-	m_iEnvironmentTimelineStep = 0u;
-	m_bEnvironmentTimelineWaiting = false;
-	m_bEnvironmentTimelinePatternStarted = false;
-	m_bRestartOrderedAfterStop = restartAfterStop;
-
-	if (m_PendingAuditionRequest.Is_Active())
-	{
-		if (OPERATION::STOP_ORDERED_1_67 ==
-			m_PendingAuditionRequest.eOperation)
-		{
-			m_strAuditionStatus = restartAfterStop ?
-				"Waiting for STOP before restarting the ordered audition..." :
-				"Waiting for the ordered STOP verdict...";
-			return;
-		}
-		m_bStopAuditionQueued = true;
-		m_strAuditionStatus = restartAfterStop ?
-			"STOP is queued; PLAY will follow only after its verdict." :
-			"STOP is queued behind the current audition transaction.";
-		return;
-	}
-
-	m_bStopAuditionQueued = false;
-	if (!Submit_Audition(OPERATION::STOP_ORDERED_1_67))
-		m_bRestartOrderedAfterStop = false;
 }
 
 void CLevel_ValtanArena::Start_AuthoredRotationPlayback(
@@ -1018,8 +1171,7 @@ void CLevel_ValtanArena::Advance_EnvironmentTimeline(
 	const bool_t isBossPatternRunning)
 {
 	if (m_EnvironmentTimeline.empty() ||
-		m_PendingAuditionRequest.Is_Active() || m_bStopAuditionQueued ||
-		m_bOrderedAuditionActive)
+		m_PendingAuditionRequest.Is_Active())
 	{
 		return;
 	}
@@ -1108,6 +1260,8 @@ void CLevel_ValtanArena::Advance_EnvironmentTimeline(
 
 void CLevel_ValtanArena::Render_AuditionPanel()
 {
+	if (!m_bAuditionTimelineLoadAttempted)
+		(void)Load_AuditionTimeline();
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	if (nullptr != viewport)
 	{
@@ -1135,6 +1289,12 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	}
 	else if (m_iSelectedAuditionBarIndex >= bars.size())
 		m_iSelectedAuditionBarIndex = 0u;
+	const bool_t hasLocalCharacter =
+		nullptr != m_Replication.Get_LocalCharacter();
+	const bool_t isTransactionBusy =
+		m_PendingAuditionRequest.Is_Active();
+	const bool_t focusedControlsDisabled = !hasLocalCharacter ||
+		isTransactionBusy || !m_EnvironmentTimeline.empty();
 
 	ImGui::TextUnformatted(
 		"Server-authoritative repeatable audition.");
@@ -1160,6 +1320,97 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		"109 outer ring is pattern-only: attack and charge must leave all 30 intact.");
 	ImGui::TextDisabled(
 		"No jump clip exists in this model, so the Server owns the 109 leap as an authored arc.");
+
+	ImGui::SeparatorText("Chronological fight pattern selection");
+	if (m_AuditionTimelineRows.empty())
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.35f, 0.35f, 1.f),
+			"%s", m_strAuditionTimelineStatus.c_str());
+	}
+	else
+	{
+		m_iSelectedAuditionTimelineRowIndex = (std::min)(
+			m_iSelectedAuditionTimelineRowIndex,
+			m_AuditionTimelineRows.size() - 1u);
+		ImGui::TextDisabled(
+			"HP mechanics and the normal patterns between them are listed in actual fight order.");
+		ImGui::BeginChild(
+			"##ValtanChronologicalFightRows", ImVec2(0.f, 360.f),
+			ImGuiChildFlags_Borders);
+		uint32_t displayedSection = 0u;
+		for (size_t index = 0u; index < m_AuditionTimelineRows.size(); ++index)
+		{
+			const AUDITION_TIMELINE_ROW& row =
+				m_AuditionTimelineRows[index];
+			if (displayedSection != row.iSectionHealthBar)
+			{
+				displayedSection = row.iSectionHealthBar;
+				ImGui::SeparatorText((
+					std::to_string(displayedSection) + " bars").c_str());
+			}
+			char_t label[768]{};
+			(void)std::snprintf(
+				label, sizeof(label), "%02u  [%s]  %s",
+				row.iOrdinal,
+				"MECHANIC" == row.strEntryType ? "MECHANIC" : "NORMAL",
+				row.strDisplayLabel.c_str());
+			ImGui::PushID(row.strRowId.c_str());
+			const bool_t isMechanic = "MECHANIC" == row.strEntryType;
+			if (isMechanic)
+				ImGui::PushStyleColor(
+					ImGuiCol_Text, ImVec4(1.f, 0.78f, 0.25f, 1.f));
+			const ImGuiStyle& style = ImGui::GetStyle();
+			const f32_t rowWidth = (std::max)(
+				1.f, ImGui::GetContentRegionAvail().x);
+			const f32_t wrapWidth = (std::max)(
+				1.f, rowWidth - style.FramePadding.x * 2.f);
+			const f32_t rowHeight = (std::max)(
+				ImGui::GetFrameHeight(),
+				ImGui::CalcTextSize(label, nullptr, false, wrapWidth).y +
+					style.FramePadding.y * 2.f);
+			const ImVec2 rowStart = ImGui::GetCursorScreenPos();
+			if (ImGui::Selectable(
+				"##select", m_iSelectedAuditionTimelineRowIndex == index,
+				ImGuiSelectableFlags_None, ImVec2(rowWidth, rowHeight)))
+			{
+				m_iSelectedAuditionTimelineRowIndex = index;
+			}
+			const ImVec2 nextRow = ImGui::GetCursorScreenPos();
+			ImGui::SetCursorScreenPos(ImVec2(
+				rowStart.x + style.FramePadding.x,
+				rowStart.y + style.FramePadding.y));
+			ImGui::PushTextWrapPos(rowStart.x + rowWidth - style.FramePadding.x);
+			ImGui::TextUnformatted(label);
+			ImGui::PopTextWrapPos();
+			ImGui::SetCursorScreenPos(nextRow);
+			if (isMechanic)
+				ImGui::PopStyleColor();
+			ImGui::PopID();
+		}
+		ImGui::EndChild();
+
+		const AUDITION_TIMELINE_ROW& selectedRow =
+			m_AuditionTimelineRows[m_iSelectedAuditionTimelineRowIndex];
+		ImGui::TextWrapped("Selected %02u: %s",
+			selectedRow.iOrdinal, selectedRow.strDisplayLabel.c_str());
+		ImGui::BeginDisabled(focusedControlsDisabled);
+		if (ImGui::Button(
+			"Play Selected Fight Row", ImVec2(300.f, 0.f)))
+		{
+			Submit_Audition(
+				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Stop Fight Row", ImVec2(180.f, 0.f)))
+		{
+			Submit_Audition(
+				LostArk::Shared::VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW);
+		}
+		ImGui::EndDisabled();
+		ImGui::TextDisabled(
+			"Play resets and prepares that row's walls, floor and pillars, then runs only its authored pattern sequence.");
+	}
 
 	ImGui::SeparatorText("Reference Views (Debug presentation only)");
 	const bool_t serverCameraOwnsPresentation =
@@ -1421,27 +1672,6 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		ImGui::Text("  occurrence %u   epoch %u   set %s",
 			occurrence, props.iEncounterEpoch, props.strPropSetId.c_str());
 	}
-	const bool_t hasLocalCharacter =
-		nullptr != m_Replication.Get_LocalCharacter();
-	const bool_t isTransactionBusy =
-		m_PendingAuditionRequest.Is_Active() || m_bStopAuditionQueued;
-	const bool_t focusedControlsDisabled = !hasLocalCharacter ||
-		isTransactionBusy || m_bOrderedAuditionActive ||
-		!m_EnvironmentTimeline.empty();
-	ImGui::SeparatorText("Ordered 1-67 audition");
-	ImGui::BeginDisabled(!hasLocalCharacter);
-	if (ImGui::Button(
-		"Restart 1-67 Ordered Audition", ImVec2(300.f, 0.f)))
-	{
-		Request_OrderedAuditionStop(true);
-	}
-	if (ImGui::Button("Stop Ordered Audition", ImVec2(300.f, 0.f)))
-	{
-		Request_OrderedAuditionStop(false);
-	}
-	ImGui::EndDisabled();
-	ImGui::TextDisabled(
-		"Use Restart only for the full 1-67 run; focused buttons below can be used directly.");
 	ImGui::SeparatorText("Focused audition controls");
 	ImGui::BeginDisabled(focusedControlsDisabled);
 	if (ImGui::Button(
@@ -2262,6 +2492,7 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	input.iPatternSequence = boss.iPatternSequence;
 	input.iStageIndex = boss.iPatternStageIndex;
 	input.iActionStartTick = boss.iActionStartTick;
+	input.vBossPosition = boss.vPosition;
 
 	/* One authoritative tuple drives both layers, so the sky can never run on a
 	   clock of its own. It is resolved before the camera early-outs because the
@@ -2339,7 +2570,10 @@ void CLevel_ValtanArena::Apply_ValtanSkyPresentation(
 			m_strValtanBlackApertureSeedAssetId ||
 		!std::isfinite(state.fCloudOpacity) ||
 		!std::isfinite(state.fApertureScale) ||
-		!std::isfinite(state.fCloudRotationDegrees))
+		!std::isfinite(state.fCloudRotationDegrees) ||
+		!std::isfinite(state.vAnchor.x) ||
+		!std::isfinite(state.vAnchor.y) ||
+		!std::isfinite(state.vAnchor.z))
 	{
 		Reset_ValtanSkyPresentation();
 		return;
@@ -2372,7 +2606,7 @@ void CLevel_ValtanArena::Apply_ValtanSkyPresentation(
 	};
 
 	auto applyGroup = [
-		&frame, &toMapProfile,
+		&frame, &toMapProfile, anchor = state.vAnchor,
 		cloudOpacity, apertureOpacity, apertureScale,
 		visibleEpsilon = VISIBLE_EPSILON,
 		rotationDegrees = state.fCloudRotationDegrees](auto& layers)
@@ -2436,9 +2670,9 @@ void CLevel_ValtanArena::Apply_ValtanSkyPresentation(
 			const float3_t presentationScale(
 				uniformScale, uniformScale, uniformScale);
 			const float3_t presentationPosition(
-				frame.vAnchor.x,
-				frame.vAnchor.y,
-				frame.vAnchor.z);
+				anchor.x,
+				anchor.y,
+				anchor.z);
 			layer.pObject->Set_PresentationVortexProfile(mapProfile, 1.f);
 			layer.pObject->Set_PlacementTransform(
 				presentationPosition,

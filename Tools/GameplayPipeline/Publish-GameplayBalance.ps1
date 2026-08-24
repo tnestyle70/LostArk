@@ -29,6 +29,16 @@ function Assert-StableId([string]$Value, [string]$Context) {
     if ($Value -notmatch $stableIdPattern) { throw "$Context is not a stable ID: '$Value'" }
 }
 
+function Get-Fnv1a32([string]$Text) {
+	[uint32]$hash = 2166136261
+	foreach ($byte in [Text.Encoding]::UTF8.GetBytes($Text)) {
+		$hash = [uint32]($hash -bxor [uint32]$byte)
+		$hash = [uint32](([uint64]$hash * [uint64]16777619) -band
+			[uint64]4294967295)
+	}
+	return $hash
+}
+
 function Assert-EffectTextureAssetId([string]$Value, [string]$Context) {
 	if ([string]::IsNullOrWhiteSpace($Value) -or $Value.Length -gt 260 -or
 		-not $Value.StartsWith('Effect/', [StringComparison]::Ordinal) -or
@@ -1349,6 +1359,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			throw "Duplicate serverMotion anchorId: $($motion.anchorId)"
 		}
 		$serverMotionByPatternId[[string]$pattern.patternId] = [pscustomobject]@{
+			Kind = [string]$motion.kind
 			AnchorId = [string]$motion.anchorId
 			X = [double]$motion.landingPosition[0]
 			Y = [double]$motion.landingPosition[1]
@@ -2025,206 +2036,154 @@ if ($spawnCombatObjectOwnerById.Count -ne $combatObjectIds.Count -or
 	throw 'Valtan combat object definitions, spawn actions, and visuals must exact join.'
 }
 
-# The Debug ordered audition is a Server occurrence ledger, not an animation
-# playlist. It may only name stable product pattern IDs. The Animation Tool
-# preview is joined by ordinal solely to prove that both review surfaces still
-# describe exactly the same 1..67 slots; none of its clip/source selectors are
-# published to the Server.
-$auditionDocument = Read-JsonDocument `
+# The selectable Valtan timeline is a product-pattern schedule. It owns the
+# chronological health-bar sections and the persistent arena/prop state that a
+# standalone row must stage before running. Animation preview clips are review
+# evidence only and are deliberately not joined to this Server contract.
+$timelineDocument = Read-JsonDocument `
 	'Data/Encounters/Valtan/ValtanDebugAudition.json'
-Assert-ExactProperties $auditionDocument @(
-	'schema','formatVersion','authority','encounterId','sequenceId',
-	'sourcePreview','steps') 'Valtan Debug audition document'
-foreach ($field in @('schema','authority','encounterId','sequenceId','sourcePreview')) {
-	Assert-JsonString $auditionDocument.$field "Valtan Debug audition $field"
+Assert-ExactProperties $timelineDocument @(
+	'schema','formatVersion','authority','encounterId','timelineId','rows') `
+	'Valtan pattern timeline document'
+foreach ($field in @('schema','authority','encounterId','timelineId')) {
+	Assert-JsonString $timelineDocument.$field "Valtan pattern timeline $field"
 }
-Assert-JsonInteger $auditionDocument.formatVersion `
-	'Valtan Debug audition formatVersion' 1 1
-Assert-StableId $auditionDocument.sequenceId `
-	'Valtan Debug audition sequenceId'
-if ([string]$auditionDocument.schema -cne `
-	'lostark.valtan-debug-audition' -or
-	[uint32]$auditionDocument.formatVersion -ne 1 -or
-	[string]$auditionDocument.authority -cne 'server' -or
-	[string]$auditionDocument.encounterId -cne `
+Assert-JsonInteger $timelineDocument.formatVersion `
+	'Valtan pattern timeline formatVersion' 1 1
+Assert-StableId $timelineDocument.timelineId 'Valtan pattern timeline timelineId'
+$timelineRowCount = 52
+if ([string]$timelineDocument.schema -cne `
+	'lostark.valtan-pattern-timeline' -or
+	[uint32]$timelineDocument.formatVersion -ne 1 -or
+	[string]$timelineDocument.authority -cne 'server' -or
+	[string]$timelineDocument.encounterId -cne `
 		[string]$encounterDocument.encounterId -or
-	[string]$auditionDocument.sourcePreview -cne `
-		'Data/Animation/Authored/Valtan/Valtan.patternpreview.json' -or
-	$auditionDocument.steps -isnot [Array] -or
-	@($auditionDocument.steps).Count -ne 67) {
-	throw 'Valtan Debug audition header is invalid.'
+	[string]$timelineDocument.timelineId -cne 'VALTAN_AUDITION_TIMELINE' -or
+	$timelineDocument.rows -isnot [Array] -or
+	@($timelineDocument.rows).Count -ne $timelineRowCount) {
+	throw 'Valtan pattern timeline header is invalid.'
 }
 
-$previewDocument = Read-JsonDocument ([string]$auditionDocument.sourcePreview)
-Assert-ExactProperties $previewDocument @(
-	'schema','formatVersion','animationAssetId','patterns') `
-	'Valtan pattern preview joined by Debug audition'
-Assert-JsonString $previewDocument.schema 'Valtan pattern preview schema'
-Assert-JsonInteger $previewDocument.formatVersion `
-	'Valtan pattern preview formatVersion' 2 2
-Assert-JsonString $previewDocument.animationAssetId `
-	'Valtan pattern preview animationAssetId'
-if ([string]$previewDocument.schema -cne `
-	'lostark.valtan-pattern-preview' -or
-	[uint32]$previewDocument.formatVersion -ne 2 -or
-	[string]$previewDocument.animationAssetId -cne 'Valtan' -or
-	$previewDocument.patterns -isnot [Array] -or
-	@($previewDocument.patterns).Count -ne 67) {
-	throw 'Valtan pattern preview cannot be joined to the Debug audition.'
-}
-
-$auditionMappings =
+$timelineEntryTypes =
 	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-$executableAuditionMappings =
-	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-foreach ($mapping in @(
-		'PRODUCT_DIRECT','PRODUCT_CANDIDATE','PRODUCT_PARTIAL',
-		'MARKER','UNRESOLVED')) {
-	[void]$auditionMappings.Add($mapping)
+foreach ($entryType in @('MECHANIC','NORMAL')) {
+	[void]$timelineEntryTypes.Add($entryType)
 }
-foreach ($mapping in @(
-		'PRODUCT_DIRECT','PRODUCT_CANDIDATE','PRODUCT_PARTIAL')) {
-	[void]$executableAuditionMappings.Add($mapping)
-}
-$previewConfidences =
+$timelineArenaRanks =
+	[Collections.Generic.Dictionary[string,uint32]]::new(
+		[StringComparer]::Ordinal)
+$timelineArenaRanks.Add('FRESH', [uint32]0)
+$timelineArenaRanks.Add('ORDINARY_WALLS_GONE', [uint32]1)
+$timelineArenaRanks.Add('ALL_WALLS_GONE', [uint32]2)
+$timelineArenaRanks.Add('FLOOR84_GONE', [uint32]3)
+$timelineArenaRanks.Add('FLOOR84_AND_30_GONE', [uint32]4)
+$timelinePropStates =
 	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-foreach ($confidence in @(
-		'SOURCE_FAMILY_DIRECT','USER_CONFIRMED_FAMILY','CANDIDATE',
-		'COMPOSITE','UNRESOLVED','NO_ANIMATION')) {
-	[void]$previewConfidences.Add($confidence)
+foreach ($propState in @('HIDDEN','FOUR_PILLARS_INTACT')) {
+	[void]$timelinePropStates.Add($propState)
 }
-$auditionOccurrenceIds =
-	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-$patternById =
+$timelinePatternById =
 	[Collections.Generic.Dictionary[string,object]]::new(
 		[StringComparer]::Ordinal)
 foreach ($pattern in @($encounterDocument.patterns)) {
-	$patternById.Add([string]$pattern.patternId, $pattern)
+	$timelinePatternById.Add([string]$pattern.patternId, $pattern)
 }
-$auditionRows = [Collections.Generic.List[string]]::new()
-$auditionRows.Add((@(
-	'VALTANDEBUGSEQUENCE', $auditionDocument.encounterId,
-	$auditionDocument.sequenceId, 67) -join "`t"))
-$previousExplicitHealthBar = [uint32]0
-for ($index = 0; $index -lt 67; ++$index) {
-	$step = $auditionDocument.steps[$index]
-	$preview = $previewDocument.patterns[$index]
-	Assert-ExactProperties $step @(
-		'occurrenceId','ordinal','mapping','patternId','repeat',
-		'targetHealthBar','pauseAfterMs') 'Valtan Debug audition step'
-	foreach ($field in @('occurrenceId','mapping','patternId')) {
-		Assert-JsonString $step.$field "Valtan Debug audition step $field"
-	}
-	Assert-JsonInteger $step.ordinal 'Valtan Debug audition ordinal' 1 67
-	Assert-JsonInteger $step.repeat 'Valtan Debug audition repeat' 0 4
-	Assert-JsonInteger $step.targetHealthBar `
-		'Valtan Debug audition targetHealthBar' 0 $maximumHealthBars
-	Assert-JsonInteger $step.pauseAfterMs `
-		'Valtan Debug audition pauseAfterMs' 0 5000
-	Assert-ExactProperties $preview @(
-		'number','label','confidence','note','sequences') `
-		'Valtan pattern preview occurrence joined by Debug audition'
-	Assert-JsonInteger $preview.number 'Valtan pattern preview number' 1 67
-	Assert-DisplayText $preview.label 256 `
-		'Valtan pattern preview occurrence label'
-	Assert-JsonString $preview.confidence `
-		'Valtan pattern preview occurrence confidence'
-	Assert-DisplayText $preview.note 512 `
-		'Valtan pattern preview occurrence note'
-	if (-not $previewConfidences.Contains([string]$preview.confidence) -or
-		@($preview.sequences).Count -gt 16 -or
-		$preview.sequences -isnot [Array]) {
-		throw "Valtan pattern preview occurrence evidence is invalid: $($index + 1)"
-	}
-	$isPreviewMarker = [string]$preview.confidence -ceq 'UNRESOLVED' -or
-		[string]$preview.confidence -ceq 'NO_ANIMATION'
-	if ($isPreviewMarker -ne (@($preview.sequences).Count -eq 0)) {
-		throw "Valtan pattern preview marker evidence is invalid: $($index + 1)"
-	}
-	foreach ($selector in @($preview.sequences)) {
-		Assert-ExactProperties $selector @(
-			'sourceActionId','sequenceIndex','repeat') `
-			'Valtan pattern preview source selector joined by Debug audition'
-		Assert-JsonInteger $selector.sourceActionId `
-			'Valtan pattern preview sourceActionId' 1 ([uint32]::MaxValue)
-		Assert-JsonInteger $selector.sequenceIndex `
-			'Valtan pattern preview sequenceIndex' 0 ([int32]::MaxValue)
-		Assert-JsonInteger $selector.repeat `
-			'Valtan pattern preview repeat' 1 8
-	}
-
+$timelineRowIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$timelineCommandIds = [Collections.Generic.HashSet[uint32]]::new()
+$timelineRows = [Collections.Generic.List[string]]::new()
+$timelineRows.Add((@(
+	'VALTANTIMELINE', $timelineDocument.encounterId,
+	$timelineDocument.timelineId, $timelineRowCount) -join "`t"))
+$previousSectionHealthBar = [uint32]$maximumHealthBars
+$previousArenaRank = [uint32]0
+for ($index = 0; $index -lt $timelineRowCount; ++$index) {
+	$row = $timelineDocument.rows[$index]
 	$expectedOrdinal = [uint32]($index + 1)
-	$expectedOccurrenceId = 'valtan.video.{0:D3}' -f $expectedOrdinal
-	$mapping = [string]$step.mapping
-	$patternId = [string]$step.patternId
-	if ([uint32]$step.ordinal -ne $expectedOrdinal -or
-		[uint32]$preview.number -ne $expectedOrdinal -or
-		[string]$step.occurrenceId -cne $expectedOccurrenceId -or
-		-not $auditionOccurrenceIds.Add([string]$step.occurrenceId) -or
-		-not $auditionMappings.Contains($mapping)) {
-		throw "Valtan Debug audition occurrence identity is invalid: $expectedOrdinal"
+	Assert-ExactProperties $row @(
+		'rowId','commandId','ordinal','sectionHealthBar','entryType','patterns',
+		'arenaState','propState','displayLabel') 'Valtan pattern timeline row'
+	foreach ($field in @('rowId','entryType','arenaState','propState')) {
+		Assert-JsonString $row.$field "Valtan pattern timeline row $field"
+	}
+	Assert-StableId $row.rowId "Valtan pattern timeline rowId $expectedOrdinal"
+	Assert-JsonInteger $row.commandId `
+		'Valtan pattern timeline commandId' 1 4294967295
+	Assert-JsonInteger $row.ordinal `
+		'Valtan pattern timeline ordinal' 1 $timelineRowCount
+	Assert-JsonInteger $row.sectionHealthBar `
+		'Valtan pattern timeline sectionHealthBar' 1 $maximumHealthBars
+	Assert-DisplayText $row.displayLabel 256 `
+		'Valtan pattern timeline displayLabel'
+	$rowId = [string]$row.rowId
+	$commandId = [uint32]$row.commandId
+	$expectedCommandId = Get-Fnv1a32 $rowId
+	$entryType = [string]$row.entryType
+	$arenaState = [string]$row.arenaState
+	$propState = [string]$row.propState
+	if ([uint32]$row.ordinal -ne $expectedOrdinal -or
+		$rowId -cnotmatch '^[a-z0-9]+(?:[.-][a-z0-9]+)*$' -or
+		[Text.Encoding]::UTF8.GetByteCount($rowId) -gt 64 -or
+		$commandId -ne $expectedCommandId -or
+		-not $timelineRowIds.Add($rowId) -or
+		-not $timelineCommandIds.Add($commandId) -or
+		-not $timelineEntryTypes.Contains($entryType) -or
+		-not $timelineArenaRanks.ContainsKey($arenaState) -or
+		-not $timelinePropStates.Contains($propState) -or
+		$row.patterns -isnot [Array] -or
+		@($row.patterns).Count -lt 1 -or
+		@($row.patterns).Count -gt 8) {
+		throw "Valtan pattern timeline row identity is invalid: $expectedOrdinal"
 	}
 
-	$isExecutable = $executableAuditionMappings.Contains($mapping)
-	if (($isExecutable -and @($preview.sequences).Count -eq 0) -or
-		(-not $isExecutable -and @($preview.sequences).Count -ne 0)) {
-		throw "Valtan Debug audition execution evidence is invalid: $expectedOrdinal"
+	$sectionHealthBar = [uint32]$row.sectionHealthBar
+	$arenaRank = [uint32]$timelineArenaRanks[$arenaState]
+	if (0 -eq $index -and
+		($sectionHealthBar -ne $maximumHealthBars -or 0 -ne $arenaRank)) {
+		throw 'Valtan pattern timeline must begin at the fresh maximum-health state.'
 	}
-	$explicitHealthBar = [uint32]$step.targetHealthBar
-	if (0 -ne $explicitHealthBar) {
-		if (0 -eq $previousExplicitHealthBar -and 160 -ne $explicitHealthBar) {
-			throw 'Valtan Debug audition must begin from the recorded 160-bar state.'
-		}
-		$isRecordedGhostRecovery = 56 -eq $expectedOrdinal -and 14 -eq $previousExplicitHealthBar -and 40 -eq $explicitHealthBar
-		if (0 -ne $previousExplicitHealthBar -and $explicitHealthBar -gt $previousExplicitHealthBar -and -not $isRecordedGhostRecovery) {
-			throw "Valtan Debug audition health bars increase outside the 14-to-40 recovery: $expectedOrdinal"
-		}
-		$previousExplicitHealthBar = $explicitHealthBar
+	if ($sectionHealthBar -gt $previousSectionHealthBar) {
+		throw "Valtan pattern timeline health bars must not increase: $expectedOrdinal"
 	}
-	if ($isExecutable) {
-		Assert-StableId $patternId `
-			"Valtan Debug audition patternId $expectedOrdinal"
-		if ($patternId -ceq '-' -or
-			-not $patternById.ContainsKey($patternId) -or
-			[uint32]$step.repeat -lt 1 -or
-			[uint32]$step.pauseAfterMs -gt 5000) {
-			throw "Valtan Debug audition executable step is invalid: $expectedOrdinal"
-		}
-		if ($mapping -ceq 'PRODUCT_DIRECT' -and
-			[string]$preview.confidence -cnotin @(
-				'SOURCE_FAMILY_DIRECT','USER_CONFIRMED_FAMILY')) {
-			throw "Valtan Debug audition direct mapping exceeds preview confidence: $expectedOrdinal"
-		}
-		$ownerPattern = $patternById[$patternId]
-		if ([string]$ownerPattern.selectionMode -ceq 'HEALTH_BAR' -and
-			$mapping -cne 'PRODUCT_PARTIAL' -and
-			[uint32]$step.targetHealthBar -ne
-				[uint32]$ownerPattern.triggerHealthBar) {
-			throw "Valtan Debug audition health pattern bar is invalid: $expectedOrdinal"
-		}
+	if ($arenaRank -lt $previousArenaRank -or
+		$arenaRank -gt ($previousArenaRank + 1)) {
+		throw "Valtan pattern timeline arena state is not monotonic: $expectedOrdinal"
 	}
-	else {
-		$expectedConfidence = if ($mapping -ceq 'MARKER') {
-			'NO_ANIMATION'
-		} else {
-			'UNRESOLVED'
-		}
-		if ($patternId.Length -ne 0 -or [uint32]$step.repeat -ne 0 -or
-			[uint32]$step.pauseAfterMs -lt 1 -or
-			[string]$preview.confidence -cne $expectedConfidence) {
-			throw "Valtan Debug audition non-executable step is invalid: $expectedOrdinal"
-		}
-	}
+	$previousSectionHealthBar = $sectionHealthBar
+	$previousArenaRank = $arenaRank
 
-	$auditionRows.Add((@(
-		'VALTANDEBUGSTEP', $auditionDocument.encounterId,
-		$auditionDocument.sequenceId, [uint32]$step.ordinal,
-		$step.occurrenceId, $mapping,
-		$(if ($patternId.Length -eq 0) { '-' } else { $patternId }),
-		[uint32]$step.repeat, [uint32]$step.targetHealthBar,
-		[uint32]$step.pauseAfterMs) -join "`t"))
+	$patternActions = @($row.patterns)
+	$timelineRows.Add((@(
+		'VALTANTIMELINEROW', $timelineDocument.encounterId,
+		$timelineDocument.timelineId, $commandId, $expectedOrdinal, $rowId,
+		$sectionHealthBar, $entryType, $arenaState, $propState,
+		$patternActions.Count) -join "`t"))
+	for ($actionIndex = 0; $actionIndex -lt $patternActions.Count;
+		++$actionIndex) {
+		$action = $patternActions[$actionIndex]
+		Assert-ExactProperties $action @('patternId','repeat') `
+			'Valtan pattern timeline action'
+		Assert-JsonString $action.patternId `
+			'Valtan pattern timeline action patternId'
+		Assert-StableId $action.patternId `
+			"Valtan pattern timeline patternId $expectedOrdinal"
+		Assert-JsonInteger $action.repeat `
+			'Valtan pattern timeline action repeat' 1 4
+		$patternId = [string]$action.patternId
+		if (-not $timelinePatternById.ContainsKey($patternId)) {
+			throw "Valtan pattern timeline action has no product pattern: $expectedOrdinal/$($actionIndex + 1)"
+		}
+		$timelineRows.Add((@(
+			'VALTANTIMELINEPATTERN', $timelineDocument.encounterId,
+			$timelineDocument.timelineId, $expectedOrdinal,
+			[uint32]($actionIndex + 1), $patternId,
+			[uint32]$action.repeat) -join "`t"))
+	}
 }
-$patternRows.AddRange($auditionRows)
+if ($previousSectionHealthBar -ne 14 -or $previousArenaRank -ne 4) {
+	throw 'Valtan pattern timeline does not reach the authored final state.'
+}
+$patternRows.AddRange($timelineRows)
 
 # Only an explicitly authored physical axe action may project its Server hit
 # volume onto breakable walls. Player damage shapes also describe roars, magic,
@@ -2643,17 +2602,91 @@ $patternRows.Add((@(
 	'ENCOUNTERINTRO', $encounterDocument.encounterId,
 	$encounterDocument.introPatternId) -join "`t"))
 
-# A pattern that owns a landing anchor also owns every cinematic camera cue bound
-# to it, so the shot cannot frame a different point than the one the boss lands
-# on. Only the horizontal position is joined: the cues deliberately raise their
-# lookAt height to follow the boss while it is still in the air.
+# Missing tracking fields preserve the legacy absolute WORLD shot. BOSS_XZ is
+# opt-in and carries its authored origin as a pair, so a typo cannot silently
+# turn a moving shot back into an absolute one.
+function Read-CinematicTracking(
+	[object]$Value,
+	[string[]]$BaseProperties,
+	[string]$Context) {
+	$hasMode = $null -ne $Value.PSObject.Properties['trackingMode']
+	$hasOrigin = $null -ne $Value.PSObject.Properties['trackingOrigin']
+	if ($hasMode -ne $hasOrigin) {
+		throw "$Context must author trackingMode and trackingOrigin together."
+	}
+	$expectedProperties = @($BaseProperties)
+	if ($hasMode) { $expectedProperties += @('trackingMode','trackingOrigin') }
+	Assert-ExactProperties $Value $expectedProperties $Context
+	if (-not $hasMode) {
+		return [pscustomobject]@{ Mode = 'WORLD'; Origin = $null }
+	}
+	Assert-JsonString $Value.trackingMode "$Context trackingMode"
+	if ([string]$Value.trackingMode -cne 'BOSS_XZ' -or
+		$Value.trackingOrigin -isnot [Array] -or
+		@($Value.trackingOrigin).Count -ne 3) {
+		throw "$Context tracking contract is invalid."
+	}
+	foreach ($component in @($Value.trackingOrigin)) {
+		Assert-JsonNumber $component "$Context trackingOrigin"
+		if ([double]::IsNaN([double]$component) -or
+			[double]::IsInfinity([double]$component) -or
+			[Math]::Abs([double]$component) -gt 100000.0) {
+			throw "$Context trackingOrigin is out of range."
+		}
+	}
+	return [pscustomobject]@{
+		Mode = 'BOSS_XZ'
+		Origin = @($Value.trackingOrigin)
+	}
+}
+
+# A pattern that owns a landing anchor also owns every cinematic camera cue
+# bound to it. WORLD cues frame the anchor directly. A BOSS_XZ cue starts from
+# that same anchor and follows the replicated boss horizontally, which is valid
+# only for a leap whose landing was locked from a target.
 if ($serverMotionByPatternId.Count -ne 0) {
 	$cameraDocument = Read-JsonDocument 'Data/Encounters/Valtan/ValtanCinematicCamera.json'
-	$anchoredCueCount = 0
+	Assert-ExactProperties $cameraDocument @(
+		'schema','formatVersion','encounterId','provenance','cues','skyCues','deathCue') `
+		'Valtan cinematic camera document'
+	if ([string]$cameraDocument.schema -cne 'lostark.encounter-cinematic-camera' -or
+		[uint32]$cameraDocument.formatVersion -ne 4 -or
+		[string]$cameraDocument.encounterId -cne [string]$encounterDocument.encounterId -or
+		[string]$cameraDocument.provenance -cne 'PROJECT_AUTHORED' -or
+		$cameraDocument.cues -isnot [Array] -or
+		@($cameraDocument.cues).Count -eq 0 -or
+		$cameraDocument.skyCues -isnot [Array]) {
+		throw 'Valtan cinematic camera document header is invalid.'
+	}
+	$fourPillarsCameraStages =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	foreach ($cue in @($cameraDocument.cues)) {
+		$tracking = Read-CinematicTracking $cue @(
+			'cueId','patternId','stageId','durationMs','easing',
+			'shakeAmplitude','shakeDurationMs','keyframes') `
+			"cinematic camera cue $($cue.cueId)"
 		$cuePatternId = [string]$cue.patternId
-		if (-not $serverMotionByPatternId.ContainsKey($cuePatternId)) { continue }
+		$ownsMotion = $serverMotionByPatternId.ContainsKey($cuePatternId)
+		if ($tracking.Mode -ceq 'BOSS_XZ' -and -not $ownsMotion) {
+			throw "BOSS_XZ cinematic cue has no pattern motion: $($cue.cueId)"
+		}
+		if ($cuePatternId -ceq 'VALTAN_FOUR_PILLARS_105') {
+			if ($tracking.Mode -cne 'BOSS_XZ') {
+				throw "The 100-bar target-leap camera cue must use BOSS_XZ tracking: $($cue.cueId)"
+			}
+			if (-not $fourPillarsCameraStages.Add([string]$cue.stageId)) {
+				throw "Duplicate 100-bar cinematic camera stage: $($cue.stageId)"
+			}
+		}
+		if (-not $ownsMotion) { continue }
 		$anchor = $serverMotionByPatternId[$cuePatternId]
+		if ($tracking.Mode -ceq 'BOSS_XZ') {
+			if ($anchor.Kind -cne 'LEAP_TO_TARGET' -or
+				[Math]::Abs([double]$tracking.Origin[0] - $anchor.X) -gt 0.05 -or
+				[Math]::Abs([double]$tracking.Origin[2] - $anchor.Z) -gt 0.05) {
+				throw "BOSS_XZ cinematic origin disagrees with target-leap anchor $($anchor.AnchorId): $($cue.cueId)"
+			}
+		}
 		foreach ($keyframe in @($cue.keyframes)) {
 			if (@($keyframe.lookAt).Count -ne 3) {
 				throw "Cinematic keyframe lookAt is malformed: $($cue.cueId)"
@@ -2663,10 +2696,48 @@ if ($serverMotionByPatternId.Count -ne 0) {
 				throw "Cinematic cue does not look at its pattern landing anchor $($anchor.AnchorId): $($cue.cueId)"
 			}
 		}
-		$anchoredCueCount++
 	}
-	if ($anchoredCueCount -eq 0) {
-		throw 'A pattern declares a landing anchor but owns no cinematic camera cue.'
+	$expectedFourPillarsCameraStages = @('TAKEOFF','YELLOW_ZONE')
+	if ($fourPillarsCameraStages.Count -ne $expectedFourPillarsCameraStages.Count -or
+		@($expectedFourPillarsCameraStages | Where-Object {
+			-not $fourPillarsCameraStages.Contains($_) }).Count -ne 0) {
+		throw 'The 100-bar target leap camera stages must be exactly TAKEOFF,YELLOW_ZONE.'
+	}
+
+	$fourPillarsSkyStages =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	foreach ($skyCue in @($cameraDocument.skyCues)) {
+		$tracking = Read-CinematicTracking $skyCue @(
+			'cueId','patternId','stageId','stageLocalStartMs','stageLocalEndMs',
+			'redCloudAssetId','blackApertureAssetId','cloudOpacityStart',
+			'cloudOpacityEnd','apertureScaleStart','apertureScaleEnd',
+			'cloudRotationDegreesPerSecond') "cinematic sky cue $($skyCue.cueId)"
+		$skyPatternId = [string]$skyCue.patternId
+		if ($skyPatternId -ceq 'VALTAN_FOUR_PILLARS_105') {
+			if ($tracking.Mode -cne 'BOSS_XZ') {
+				throw "The 100-bar sky cue must use BOSS_XZ tracking: $($skyCue.cueId)"
+			}
+			if (-not $fourPillarsSkyStages.Add([string]$skyCue.stageId)) {
+				throw "Duplicate 100-bar cinematic sky stage: $($skyCue.stageId)"
+			}
+		}
+		if ($tracking.Mode -cne 'BOSS_XZ') { continue }
+		if (-not $serverMotionByPatternId.ContainsKey($skyPatternId)) {
+			throw "BOSS_XZ cinematic sky cue has no pattern motion: $($skyCue.cueId)"
+		}
+		$anchor = $serverMotionByPatternId[$skyPatternId]
+		if ($anchor.Kind -cne 'LEAP_TO_TARGET' -or
+			[Math]::Abs([double]$tracking.Origin[0] - $anchor.X) -gt 0.05 -or
+			[Math]::Abs([double]$tracking.Origin[2] - $anchor.Z) -gt 0.05) {
+			throw "BOSS_XZ cinematic sky origin disagrees with target-leap anchor $($anchor.AnchorId): $($skyCue.cueId)"
+		}
+	}
+	$expectedFourPillarsSkyStages = @(
+		'TAKEOFF','YELLOW_ZONE','TARGET_CONE','RECOVERY')
+	if ($fourPillarsSkyStages.Count -ne $expectedFourPillarsSkyStages.Count -or
+		@($expectedFourPillarsSkyStages | Where-Object {
+			-not $fourPillarsSkyStages.Contains($_) }).Count -ne 0) {
+		throw 'The 100-bar target leap sky stages must be exactly TAKEOFF,YELLOW_ZONE,TARGET_CONE,RECOVERY.'
 	}
 }
 
@@ -3197,5 +3268,5 @@ if ($Mode -eq 'Publish') {
 $patternCount = @($encounterDocument.patterns).Count
 $stageCount = @($encounterDocument.patterns | ForEach-Object { @($_.stages).Count } |
 	Measure-Object -Sum).Sum
-Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossIds.Count) bosses, $($bossRows.Count - $bossIds.Count) boss armour plates, $patternCount boss patterns, $stageCount pattern stages, $($auditionDocument.steps.Count) Valtan Debug audition occurrences."
-Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skill rows, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses, $($bossPartRows.Count) boss parts, $($combatObjectIds.Count) boss combat objects, $patternCount boss patterns, $stageCount pattern stages, $($auditionDocument.steps.Count) Valtan Debug audition occurrences."
+Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossIds.Count) bosses, $($bossRows.Count - $bossIds.Count) boss armour plates, $patternCount boss patterns, $stageCount pattern stages, $($timelineDocument.rows.Count) Valtan audition timeline rows."
+Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skill rows, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses, $($bossPartRows.Count) boss parts, $($combatObjectIds.Count) boss combat objects, $patternCount boss patterns, $stageCount pattern stages, $($timelineDocument.rows.Count) Valtan audition timeline rows."

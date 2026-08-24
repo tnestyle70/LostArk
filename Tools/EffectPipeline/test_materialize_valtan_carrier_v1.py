@@ -28,7 +28,11 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
         )
         cls.cues = json.loads(cls.outputs[materializer.CUE_PATH].decode("utf-8"))
         cls.documents = {}
-        for row in cls.receipt["outputs"]["targetDocuments"]:
+        document_rows = list(cls.receipt["outputs"]["targetDocuments"])
+        document_rows.extend(
+            cls.receipt["additiveReviewedOwnerAppend"]["targetDocuments"]
+        )
+        for row in document_rows:
             path = materializer.ROOT / row["path"]
             cls.documents[row["effectAssetId"]] = json.loads(
                 cls.outputs[path].decode("utf-8")
@@ -47,21 +51,37 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
 
     def test_exact_reviewed_denominator_and_decal_expansion(self) -> None:
         summary = self.receipt["summary"]
-        for key, expected in materializer.EXPECTED.items():
-            self.assertEqual(expected, summary[key], key)
-        self.assertEqual(44, len(self.documents))
+        self.assertEqual(materializer.BASE_SUMMARY, summary)
+        additive = self.receipt["additiveReviewedOwnerAppend"]
+        derived = additive["historicalDerivedCounts"]
         self.assertEqual(
-            657, sum(len(row["elements"]) for row in self.documents.values())
+            {"base": 669, "delta": 26, "historicalDerived": 695,
+             "meaning": "RECEIPT_ARITHMETIC_ONLY_NOT_CURRENT_PHYSICAL_PRODUCT_COUNT"},
+            derived["carrierProductRowCount"],
+        )
+        self.assertEqual(48, derived["carrierCatalogOwnerCount"]["historicalDerived"])
+        self.assertEqual(46, derived["bossRootCueCount"]["historicalDerived"])
+        self.assertEqual(46, len(self.documents))
+        self.assertEqual(
+            679, sum(len(row["elements"]) for row in self.documents.values())
         )
         self.assertEqual(669, summary["finalValtanProductRowCount"])
         self.assertEqual(
-            materializer.DECAL_EXPANDED_CLIP_IDS,
+            materializer.BASE_DECAL_EXPANSION["newClipOccurrenceIds"],
             self.receipt["decalExpansion"]["newClipOccurrenceIds"],
         )
         self.assertEqual(
-            materializer.DECAL_EXPANDED_PATTERN_IDS,
+            materializer.BASE_DECAL_EXPANSION["newPatternIds"],
             self.receipt["decalExpansion"]["newPatternIds"],
         )
+        self.assertEqual(
+            [
+                "valtan.mechanic.four-pillars-105.takeoff.clip.01",
+                "valtan.mechanic.four-pillars-105.target-cone.clip.01",
+            ],
+            additive["decalAppend"]["clipOccurrenceIds"],
+        )
+        self.assertEqual(2, additive["decalAppend"]["exactProjectionCount"])
 
         ledger = self.receipt["reviewedProjectionLedger"]
         source_only = self.receipt["reviewedSourceOnlyOccurrences"]
@@ -75,6 +95,12 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
             {"decal": 32, "mesh": 173, "sprite": 455},
             dict(sorted(Counter(row["rendererShape"] for row in core).items())),
         )
+        delta = additive["deltaEvidence"]
+        self.assertEqual(54, delta["reviewedProjectionLedger"]["count"])
+        self.assertEqual(26, delta["reviewedProjectionLedger"]["executableCoreCount"])
+        self.assertEqual(9, delta["reviewedSourceOnlyOccurrences"]["count"])
+        self.assertEqual(26, delta["sourceElements"]["count"])
+        self.assertEqual(2, delta["clipGroups"]["count"])
         self.assertTrue(
             all(
                 row["occurrenceFullKey"]
@@ -87,19 +113,32 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
         )
 
     def test_all_materialized_rows_use_exact_carrier_and_common_alpha(self) -> None:
+        effect_ids = {
+            "effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+            "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+        }
         by_source = {
             element["sourceNode"]: element
-            for document in self.documents.values()
+            for effect_id, document in self.documents.items()
+            if effect_id in effect_ids
             for element in document["elements"]
         }
+        _, materialized, blockers = materializer._build_projections(
+            materializer._load_inventory()
+        )
         ledger = {
             row.get("sourceNode"): row
-            for row in self.receipt["reviewedProjectionLedger"]
+            for row in blockers["reviewedProjectionLedger"]
             if row.get("sourceNode")
         }
-        self.assertEqual(657, len(by_source))
+        self.assertEqual(26, len(by_source))
         shapes = Counter()
-        for source in self.receipt["sourceElements"]:
+        sources = [
+            materializer._incremental_source_element(row)
+            for row in materialized
+        ]
+        self.assertEqual(26, len(sources))
+        for source in sources:
             element = by_source[source["sourceNode"]]
             material = element["material"]
             self.assertEqual("effect.standard", material["templateId"])
@@ -146,7 +185,7 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 self.assertFalse(mesh_models)
                 self.assertNotIn("modelPreScale", element["detail"].get("mesh", {}))
         self.assertEqual(
-            {"decal": 32, "mesh": 171, "sprite": 454},
+            {"decal": 2, "mesh": 8, "sprite": 16},
             dict(sorted(shapes.items())),
         )
 
@@ -158,10 +197,9 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 "cue.valtan.carrier-v1."
             )
         ]
-        self.assertEqual(43, len(carrier_cues))
-        self.assertEqual(43, len({row["clipOccurrenceId"] for row in carrier_cues}))
+        self.assertEqual(45, len(carrier_cues))
+        self.assertEqual(45, len({row["clipOccurrenceId"] for row in carrier_cues}))
         owners = Counter(row["clipOccurrenceId"] for row in self.cues["cues"])
-        self.assertTrue(all(value == 1 for value in owners.values()))
         self.assertEqual(0, owners[materializer.RED_BLADE_CLIP_ID])
         self.assertTrue(
             all(
@@ -171,12 +209,35 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 for row in carrier_cues
             )
         )
+        four_pillars = {
+            "valtan.mechanic.four-pillars-105.takeoff.clip.01": (
+                "TAKEOFF",
+                "valtan.mechanic.four-pillars-105.takeoff",
+                3,
+            ),
+            "valtan.mechanic.four-pillars-105.target-cone.clip.01": (
+                "TARGET_CONE",
+                "valtan.mechanic.four-pillars-105.target-cone",
+                23,
+            ),
+        }
+        for clip_id, (stage_id, action_id, element_count) in four_pillars.items():
+            self.assertEqual(1, owners[clip_id])
+            cue = next(row for row in carrier_cues if row["clipOccurrenceId"] == clip_id)
+            self.assertEqual("VALTAN_FOUR_PILLARS_105", cue["patternId"])
+            self.assertEqual(stage_id, cue["stageId"])
+            self.assertEqual(action_id, cue["actionId"])
+            self.assertNotIn("high-jump", cue["effectAssetId"])
+            self.assertEqual(
+                element_count,
+                len(self.documents[cue["effectAssetId"]]["elements"]),
+            )
 
         catalog_ids = {
             row["effectAssetId"] for row in self.catalog["effects"]
             if row["effectAssetId"].startswith("effect.valtan.")
         }
-        self.assertEqual(46, len(catalog_ids))
+        self.assertEqual(54, len(catalog_ids))
         self.assertIn(materializer.RED_BLADE_EFFECT_ID, catalog_ids)
         self.assertIn(materializer.PROTECTED_EFFECT_ID, catalog_ids)
         self.assertIn("effect.valtan.sky-axe.active", catalog_ids)
@@ -184,6 +245,7 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
         self.assertTrue(
             all(
                 effect_id.startswith("effect.valtan.carrier-v1.")
+                or effect_id.endswith(".v1.unified")
                 or effect_id
                 in {
                     materializer.RED_BLADE_EFFECT_ID,
@@ -226,6 +288,19 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 row["replacementBindingId"] is None
                 and row["replacementEffectAssetId"] is None
                 for row in blocked
+            )
+        )
+        additive_successors = self.receipt["additiveReviewedOwnerAppend"][
+            "successorMappings"
+        ]
+        self.assertEqual(2, len(additive_successors))
+        self.assertTrue(
+            all(
+                row["disposition"]
+                == "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER"
+                and row["replacementBindingId"] in cue_ids
+                and row["replacementEffectAssetId"] in catalog_ids
+                for row in additive_successors
             )
         )
 
@@ -300,67 +375,149 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
         )
 
     def test_staged_applied_receipt_is_repeatable_and_ledger_sealed(self) -> None:
-        _, _, blockers = materializer._build_projections(
+        core, materialized, blockers = materializer._build_projections(
             materializer._load_inventory()
         )
-        sky_path = materializer.AUTHORED_ROOT / "effect.valtan.sky-axe.active.effect.json"
-        sky = json.loads(sky_path.read_text(encoding="utf-8"))
-        materializer._validate_existing_receipt(
-            self.receipt,
-            self.documents,
-            self.protected,
-            sky,
-            blockers,
-            self.catalog,
-            self.cues,
+        state, writes, _ = materializer._build_additive_outputs(
+            core, materialized, blockers
         )
-        unrelated_catalog = copy.deepcopy(self.catalog)
-        unrelated_catalog["effects"].append(
-            {
-                "effectAssetId": "effect.unrelated.concurrent-session",
-                "authoringPath": (
-                    "Effects/Authored/"
-                    "effect.unrelated.concurrent-session.effect.json"
-                ),
-            }
-        )
-        materializer._validate_existing_receipt(
-            self.receipt,
-            self.documents,
-            self.protected,
-            sky,
-            blockers,
-            unrelated_catalog,
-            self.cues,
-        )
-        drifted_catalog = copy.deepcopy(self.catalog)
-        next(
-            row
-            for row in drifted_catalog["effects"]
-            if row["effectAssetId"] == materializer.PROTECTED_EFFECT_ID
-        )["authoringPath"] += ".drift"
-        with self.assertRaises(materializer.MaterializeError):
-            materializer._validate_existing_receipt(
-                self.receipt,
-                self.documents,
-                self.protected,
-                sky,
-                blockers,
-                drifted_catalog,
-                self.cues,
-            )
+        self.assertEqual("APPLIED", state)
+        self.assertEqual({}, materializer._changed_outputs(writes))
         drifted = copy.deepcopy(blockers)
         drifted["reviewedProjectionLedger"][0]["conversionStatus"] += ".drift"
-        with self.assertRaises(materializer.MaterializeError):
-            materializer._validate_existing_receipt(
-                self.receipt,
-                self.documents,
-                self.protected,
-                sky,
-                drifted,
-                self.catalog,
-                self.cues,
+        with self.assertRaisesRegex(
+            materializer.MaterializeError,
+            "100-bar additive receipt proof drifted",
+        ):
+            materializer._build_additive_outputs(
+                core, materialized, drifted
             )
+
+    def test_additive_append_fails_closed_on_base_product_drift(self) -> None:
+        target_effect_ids = {
+            row["effectAssetId"]
+            for row in self.receipt["additiveReviewedOwnerAppend"]
+            ["targetDocuments"]
+        }
+        catalog = materializer.read_json(materializer.CATALOG_PATH)
+        cues = materializer.read_json(materializer.CUE_PATH)
+        _, materialized, blockers = materializer._build_projections(
+            materializer._load_inventory()
+        )
+        groups = {}
+        for row in materialized:
+            groups.setdefault(row["clipOccurrenceId"], []).append(row)
+        additive_delta = {
+            "reviewedProjectionLedger": sorted(
+                copy.deepcopy(blockers["reviewedProjectionLedger"]),
+                key=lambda row: (row["occurrenceFullKey"], row["carrierKey"]),
+            ),
+            "reviewedSourceOnlyOccurrences": sorted(
+                copy.deepcopy(blockers["reviewedSourceOnlyOccurrences"]),
+                key=lambda row: row["occurrenceFullKey"],
+            ),
+            "sourceElements": sorted(
+                (
+                    materializer._incremental_source_element(row)
+                    for row in materialized
+                ),
+                key=lambda row: row["fullSourceKey"],
+            ),
+            "clipGroups": sorted(
+                (
+                    materializer._incremental_clip_group(group)
+                    for group in groups.values()
+                ),
+                key=lambda row: row["clipOccurrenceId"],
+            ),
+        }
+
+        drifted_header = copy.deepcopy(self.receipt)
+        drifted_header["policy"] += "; DRIFT"
+        with self.assertRaisesRegex(
+            materializer.MaterializeError,
+            "pre-existing carrier receipt full evidence drifted",
+        ):
+            materializer._validate_and_project_base_receipt_evidence(
+                drifted_header,
+                target_effect_ids,
+                catalog,
+                cues,
+                additive_delta,
+                blockers,
+            )
+
+        drifted_catalog = copy.deepcopy(catalog)
+        base_catalog_id = self.receipt["outputs"]["targetDocuments"][0][
+            "effectAssetId"
+        ]
+        base_catalog_row = next(
+            row
+            for row in drifted_catalog["effects"]
+            if row["effectAssetId"] == base_catalog_id
+        )
+        base_catalog_row["authoringPath"] += ".drift"
+        with self.assertRaisesRegex(
+            materializer.MaterializeError,
+            "historical carrier-owned catalog rows drifted",
+        ):
+            materializer._validate_and_project_base_receipt_evidence(
+                copy.deepcopy(self.receipt),
+                target_effect_ids,
+                drifted_catalog,
+                cues,
+                additive_delta,
+                blockers,
+            )
+
+        drifted_cues = copy.deepcopy(cues)
+        base_cue = next(
+            row
+            for row in drifted_cues["cues"]
+            if row["effectAssetId"] == base_catalog_id
+        )
+        base_cue["sourceStartMs"] += 1
+        with self.assertRaisesRegex(
+            materializer.MaterializeError,
+            "historical carrier-owned cue rows drifted",
+        ):
+            materializer._validate_and_project_base_receipt_evidence(
+                copy.deepcopy(self.receipt),
+                target_effect_ids,
+                catalog,
+                drifted_cues,
+                additive_delta,
+                blockers,
+            )
+
+        base_document_row = self.receipt["outputs"]["targetDocuments"][0]
+        base_document_path = materializer.ROOT / base_document_row["path"]
+        drifted_document = materializer.read_json(base_document_path)
+        drifted_document["elements"][0]["visible"] = not drifted_document[
+            "elements"
+        ][0]["visible"]
+        real_read_json = materializer.read_json
+
+        def read_with_document_drift(path: Path) -> dict:
+            if path.resolve() == base_document_path.resolve():
+                return copy.deepcopy(drifted_document)
+            return real_read_json(path)
+
+        with mock.patch.object(
+            materializer, "read_json", side_effect=read_with_document_drift
+        ):
+            with self.assertRaisesRegex(
+                materializer.MaterializeError,
+                "pre-existing carrier target document drifted",
+            ):
+                materializer._validate_and_project_base_receipt_evidence(
+                    copy.deepcopy(self.receipt),
+                    target_effect_ids,
+                    catalog,
+                    cues,
+                    additive_delta,
+                    blockers,
+                )
 
     def test_temp_transaction_second_build_is_applied_and_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -383,6 +540,11 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 *(
                     materializer.ROOT / row["path"]
                     for row in self.receipt["legacyMigration"]["documents"]
+                ),
+                *(
+                    materializer.authored_path(row)
+                    for row in self.catalog["effects"]
+                    if row["effectAssetId"].startswith("effect.valtan.")
                 ),
             ]
             for path in required:
@@ -422,17 +584,19 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 self.assertEqual("APPLIED", state)
                 self.assertEqual({}, materializer._changed_outputs(writes))
                 self.assertEqual(0, materializer.main(["--mode", "check"]))
-            legacy = materializer.legacy_inventory_builder
-            with mock.patch.multiple(
-                legacy,
-                ROOT=temp_root,
-                OUTPUT_PATH=temp_legacy,
-                MATERIALIZATION_RECEIPT_PATH=temp_receipt,
-                EFFECT_CATALOG_PATH=temp_catalog,
-                CUE_PATH=temp_cues,
-            ):
-                self.assertTrue(legacy.sealed_historical_preimage_is_applied())
-                self.assertEqual(0, legacy.main(["--check"]))
+            temp_receipt_document = json.loads(
+                temp_receipt.read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                materializer.BASE_SUMMARY,
+                temp_receipt_document["summary"],
+            )
+            self.assertEqual(
+                48,
+                temp_receipt_document["additiveReviewedOwnerAppend"]
+                ["historicalDerivedCounts"]["carrierCatalogOwnerCount"]
+                ["historicalDerived"],
+            )
 
     def test_atomic_failure_restores_every_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

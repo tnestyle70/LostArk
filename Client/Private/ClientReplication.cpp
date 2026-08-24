@@ -5,6 +5,7 @@
 #include "Character.h"
 #include "CharacterCatalog.h"
 #include "CombatHUDViewModel.h"
+#include "EffectV2_Runtime.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "Model.h"
@@ -1388,6 +1389,15 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			{
 				clip = &actor->presentationClips.chase;
 			}
+			else if (WORLD_ENTITY_ACTION::PATROL == entity.eAction)
+			{
+				/* Walking home or wandering near the anchor. Falls back to the
+				battle run only when an archetype authors no walk gait, so a
+				missing clip never freezes a monster mid-stride. */
+				clip = actor->presentationClips.patrol.empty() ?
+					&actor->presentationClips.chase :
+					&actor->presentationClips.patrol;
+			}
 			else if (WORLD_ENTITY_ACTION::PATTERN_WINDUP == entity.eAction ||
 				WORLD_ENTITY_ACTION::PATTERN_ACTIVE == entity.eAction ||
 				WORLD_ENTITY_ACTION::PATTERN_RECOVERY == entity.eAction)
@@ -1495,6 +1505,20 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				hitEntity->second.pNpc.lock())
 			{
 				monster->Trigger_HitFlash();
+				/* The impact burst is catalog presentation, so an archetype that
+				authors no hitEffectId keeps the flash alone. A refused document
+				never blocks the hit it belongs to. */
+				const MONSTER_ACTOR_ENTRY* hitActor =
+					CActorCatalog::Find_Monster(
+						hitEntity->second.strArchetypeId);
+				if (nullptr != hitActor && !hitActor->hitEffectId.empty())
+				{
+					CEffectV2Runtime::Spawn_OneShot(
+						monster,
+						hitActor->hitEffectId,
+						m_Desc.pDevice,
+						m_Desc.pContext);
+				}
 			}
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == hitEntity->second.eKind)
@@ -1505,6 +1529,35 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				boss->Trigger_HitFlash();
 			}
 		}
+	}
+	/* The HUD floats a small bar over every living monster. Building it here
+	keeps the level-agnostic HUD off the world entity map, exactly like the boss
+	state and damage events already pushed below. A dead or despawning monster is
+	left out so no bar hangs over a corpse. */
+	{
+		std::vector<HUD_MONSTER_STATE> monsters;
+		monsters.reserve(snapshot.Entities.size());
+		for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
+		{
+			const auto presentation = m_WorldEntities.find(entity.iNetEntityId);
+			if (presentation == m_WorldEntities.end() ||
+				WORLD_ENTITY_KIND::MONSTER != presentation->second.eKind ||
+				WORLD_ENTITY_ACTION::DEAD == entity.eAction ||
+				0u == entity.iCurrentHp || 0u == entity.iMaximumHp)
+			{
+				continue;
+			}
+			HUD_MONSTER_STATE state{};
+			state.iNetEntityId = entity.iNetEntityId;
+			state.iCurrentHp = entity.iCurrentHp;
+			state.iMaximumHp = entity.iMaximumHp;
+			state.fPositionX = entity.fPositionX;
+			state.fPositionY = entity.fPositionY;
+			state.fPositionZ = entity.fPositionZ;
+			state.fCollisionRadius = presentation->second.fCollisionRadius;
+			monsters.push_back(state);
+		}
+		CCombatHUDViewModel::Get().Apply_Monsters(std::move(monsters));
 	}
 	CCombatHUDViewModel::Get().Apply_DamageEvents(
 		snapshot.iServerTick,

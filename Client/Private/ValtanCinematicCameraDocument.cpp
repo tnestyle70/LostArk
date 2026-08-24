@@ -15,7 +15,7 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.encounter-cinematic-camera";
-	constexpr uint32_t FORMAT_VERSION = 3u;
+	constexpr uint32_t FORMAT_VERSION = 4u;
 	constexpr f32_t MAX_SHAKE_AMPLITUDE = 2.f;
 	constexpr uint32_t MAX_SHAKE_DURATION_MS = 1000u;
 	constexpr uint32_t MAX_CUE_COUNT = 32u;
@@ -41,6 +41,23 @@ namespace
 	{
 		if (!value.Is_Object() || value.Get_Object().size() != keys.size())
 			return false;
+		return std::all_of(keys.begin(), keys.end(),
+			[&value](const char_t* key) { return nullptr != value.Find(key); });
+	}
+
+	bool_t Is_ExactObjectWithOptionalTracking(
+		const DATA_JSON_VALUE& value,
+		const std::initializer_list<const char_t*> keys)
+	{
+		if (!value.Is_Object())
+			return false;
+		const bool_t hasMode = nullptr != value.Find("trackingMode");
+		const bool_t hasOrigin = nullptr != value.Find("trackingOrigin");
+		if (hasMode != hasOrigin ||
+			value.Get_Object().size() != keys.size() + (hasMode ? 2u : 0u))
+		{
+			return false;
+		}
 		return std::all_of(keys.begin(), keys.end(),
 			[&value](const char_t* key) { return nullptr != value.Find(key); });
 	}
@@ -147,6 +164,31 @@ namespace
 		return true;
 	}
 
+	bool_t Read_Tracking(
+		const DATA_JSON_VALUE& parent,
+		VALTAN_CINEMATIC_TRACKING_MODE& outMode,
+		float3_t& outOrigin)
+	{
+		const DATA_JSON_VALUE* mode = parent.Find("trackingMode");
+		const DATA_JSON_VALUE* origin = parent.Find("trackingOrigin");
+		if (nullptr == mode && nullptr == origin)
+		{
+			outMode = VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
+			outOrigin = {};
+			return true;
+		}
+		std::string text;
+		if (nullptr == mode || nullptr == origin ||
+			!Read_String(parent, "trackingMode", text) ||
+			"BOSS_XZ" != text ||
+			!Read_Float3(parent, "trackingOrigin", outOrigin))
+		{
+			return false;
+		}
+		outMode = VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ;
+		return true;
+	}
+
 	bool_t Read_Fov(
 		const DATA_JSON_VALUE& parent,
 		f32_t& outValue)
@@ -243,7 +285,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 	std::unordered_set<std::string> tuples;
 	for (const DATA_JSON_VALUE& cueValue : cues->Get_Array())
 	{
-		if (!Is_ExactObject(cueValue,
+		if (!Is_ExactObjectWithOptionalTracking(cueValue,
 			{ "cueId", "patternId", "stageId", "durationMs", "easing",
 				"shakeAmplitude", "shakeDurationMs", "keyframes" }))
 		{
@@ -258,7 +300,8 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 				CEncounterPatternReference::MAX_STAGE_DURATION_MS, cue.iDurationMs) ||
 			0u == cue.iDurationMs || !cueIds.insert(cue.strCueId).second ||
 			!Read_Easing(cueValue, cue.eEasing) ||
-			!Read_Shake(cueValue, cue))
+			!Read_Shake(cueValue, cue) ||
+			!Read_Tracking(cueValue, cue.eTrackingMode, cue.vTrackingOrigin))
 		{
 			outStatus = "Cinematic camera cue identity is invalid";
 			return false;
@@ -349,7 +392,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 	std::unordered_set<std::string> skyTuples;
 	for (const DATA_JSON_VALUE& cueValue : skyCues->Get_Array())
 	{
-		if (!Is_ExactObject(cueValue,
+		if (!Is_ExactObjectWithOptionalTracking(cueValue,
 			{ "cueId", "patternId", "stageId", "stageLocalStartMs",
 				"stageLocalEndMs", "redCloudAssetId", "blackApertureAssetId",
 				"cloudOpacityStart", "cloudOpacityEnd", "apertureScaleStart",
@@ -441,6 +484,11 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 		}
 		cue.fCloudRotationDegreesPerSecond =
 			static_cast<f32_t>(rotation->Get_Number());
+		if (!Read_Tracking(cueValue, cue.eTrackingMode, cue.vTrackingOrigin))
+		{
+			outStatus = "Cinematic sky tracking is invalid: " + cue.strCueId;
+			return false;
+		}
 		stagedSky.push_back(std::move(cue));
 	}
 

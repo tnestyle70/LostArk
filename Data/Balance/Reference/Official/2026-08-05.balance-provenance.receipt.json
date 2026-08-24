@@ -48,7 +48,7 @@
                      "damageProfileCount":  109,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  34,
-                     "fieldEntryCount":  3314,
+                     "fieldEntryCount":  3315,
                      "bossPartCount":  2,
                      "bossCombatObjectCount":  2
                  },
@@ -42991,9 +42991,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "100줄 중앙 착지와 4기둥 추적 원뿔",
+                        "sourceValue":  "100줄 지목 착지와 4기둥 추적 원뿔",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "100줄 중앙 착지와 4기둥 추적 원뿔",
+                        "resultValue":  "100줄 지목 착지와 4기둥 추적 원뿔",
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -43167,6 +43167,38 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_FOUR_PILLARS_105",
+                        "targetField":  "patterns[25].serverMotion",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  {
+                                            "kind":  "LEAP_TO_TARGET",
+                                            "anchorId":  "anchor.valtan.four-pillars-105.landing",
+                                            "landingPosition":  [
+                                                                    156.03,
+                                                                    22.99751,
+                                                                    -122.06
+                                                                ],
+                                            "apexHeight":  46.0
+                                        },
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  {
+                                            "kind":  "LEAP_TO_TARGET",
+                                            "anchorId":  "anchor.valtan.four-pillars-105.landing",
+                                            "landingPosition":  [
+                                                                    156.03,
+                                                                    22.99751,
+                                                                    -122.06
+                                                                ],
+                                            "apexHeight":  46.0
+                                        },
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_PILLARS_105",
                         "targetField":  "patterns[25].sourceActionIds",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -43196,7 +43228,7 @@
                                                 "stageId":  "TAKEOFF",
                                                 "actionId":  "valtan.mechanic.four-pillars-105.takeoff",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  1600,
+                                                "durationMs":  1933,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -43216,7 +43248,7 @@
                                                 "stageId":  "YELLOW_ZONE",
                                                 "actionId":  "valtan.mechanic.four-pillars-105.yellow-zone",
                                                 "stageKind":  "ACTIVE",
-                                                "durationMs":  900,
+                                                "durationMs":  5500,
                                                 "hitShape":  "RING",
                                                 "hitOuterRadius":  100.0,
                                                 "hitInnerRadius":  4.0,
@@ -43236,7 +43268,7 @@
                                                 "stageId":  "TARGET_CONE",
                                                 "actionId":  "valtan.mechanic.four-pillars-105.target-cone",
                                                 "stageKind":  "ACTIVE",
-                                                "durationMs":  900,
+                                                "durationMs":  3200,
                                                 "hitShape":  "CONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -43245,7 +43277,7 @@
                                                 "hitHalfWidth":  0.0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
-                                                "hitDelayMs":  0,
+                                                "hitDelayMs":  230,
                                                 "serverDamageProfileId":  "damage.valtan.four-pillars-105-pierce",
                                                 "pushRangeM":  1.0,
                                                 "pushMs":  150,
@@ -43279,7 +43311,7 @@
                                                 "stageId":  "TAKEOFF",
                                                 "actionId":  "valtan.mechanic.four-pillars-105.takeoff",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  1600,
+                                                "durationMs":  1933,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -43299,7 +43331,7 @@
                                                 "stageId":  "YELLOW_ZONE",
                                                 "actionId":  "valtan.mechanic.four-pillars-105.yellow-zone",
                                                 "stageKind":  "ACTIVE",
-                                                "durationMs":  900,
+                                                "durationMs":  5500,
                                                 "hitShape":  "RING",
                                                 "hitOuterRadius":  100.0,
                                                 "hitInnerRadius":  4.0,
@@ -43319,7 +43351,7 @@
                                                 "stageId":  "TARGET_CONE",
                                                 "actionId":  "valtan.mechanic.four-pillars-105.target-cone",
                                                 "stageKind":  "ACTIVE",
-                                                "durationMs":  900,
+                                                "durationMs":  3200,
                                                 "hitShape":  "CONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -43328,7 +43360,7 @@
                                                 "hitHalfWidth":  0.0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
-                                                "hitDelayMs":  0,
+                                                "hitDelayMs":  230,
                                                 "serverDamageProfileId":  "damage.valtan.four-pillars-105-pierce",
                                                 "pushRangeM":  1.0,
                                                 "pushMs":  150,

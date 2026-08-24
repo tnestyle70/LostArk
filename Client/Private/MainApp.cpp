@@ -482,6 +482,7 @@ HRESULT CMainApp::Render()
 	#endif
 		RenderCombatHUD();
 		RenderBossHealthBar();
+		RenderMonsterHealthBars();
 		RenderEstherGauge();
 		/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
 		not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
@@ -2329,6 +2330,91 @@ void CMainApp::RenderCombatHUDText()
 	/* Boss HP number/name/grade text moved into RenderBossHealthBar() -- the decompiled
 	targetstatus_loc_int.gfx places them relative to the bar's own real position (see that
 	function), not this hardcoded (640, 58). */
+}
+
+void CMainApp::RenderMonsterHealthBars()
+{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		return;
+	}
+	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
+		return;
+
+	const std::vector<HUD_MONSTER_STATE>& monsters =
+		CCombatHUDViewModel::Get().Get_Monsters();
+	if (monsters.empty())
+		return;
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	ImDrawList* pDrawList = nullptr == pViewport ?
+		nullptr : ImGui::GetForegroundDrawList(pViewport);
+	if (nullptr == pDrawList)
+		return;
+	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
+	if (viewportSize.x <= 0.f || viewportSize.y <= 0.f)
+		return;
+	const matrix_t view =
+		XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW));
+	const matrix_t projection =
+		XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
+	const f32_t uiScale =
+		(std::min)(viewportSize.x / 1280.f, viewportSize.y / 720.f);
+
+	/* Reference pixels at the layout's own 1280x720, scaled like every other HUD
+	piece. Deliberately small: a trash pack fills the screen with these, and the
+	damage numbers already carry the "am I hitting it" signal. */
+	constexpr f32_t BAR_WIDTH = 34.f;
+	constexpr f32_t BAR_HEIGHT = 4.f;
+	constexpr f32_t BAR_BORDER = 1.f;
+	/* No snapshot field carries a monster's height, so the bar rides a fixed
+	clearance plus a share of the replicated body radius -- one constant would
+	sit inside Lugaru (1.35 m) and float over a jab (0.55 m). */
+	constexpr f32_t HEAD_CLEARANCE = 1.15f;
+	constexpr f32_t HEAD_CLEARANCE_PER_RADIUS = 1.6f;
+
+	for (const HUD_MONSTER_STATE& monster : monsters)
+	{
+		if (0u == monster.iMaximumHp)
+			continue;
+		const vector_t vProjected = XMVector3Project(
+			XMVectorSet(
+				monster.fPositionX,
+				monster.fPositionY + HEAD_CLEARANCE +
+					HEAD_CLEARANCE_PER_RADIUS * monster.fCollisionRadius,
+				monster.fPositionZ,
+				1.f),
+			0.f, 0.f, viewportSize.x, viewportSize.y, 0.f, 1.f,
+			projection, view, XMMatrixIdentity());
+		if (XMVectorGetZ(vProjected) < 0.f || XMVectorGetZ(vProjected) > 1.f)
+			continue;
+		const f32_t fRatio = (std::clamp)(
+			static_cast<f32_t>(monster.iCurrentHp) /
+				static_cast<f32_t>(monster.iMaximumHp), 0.f, 1.f);
+		const f32_t fWidth = BAR_WIDTH * uiScale;
+		const f32_t fHeight = BAR_HEIGHT * uiScale;
+		const f32_t fBorder = (std::max)(1.f, BAR_BORDER * uiScale);
+		const f32_t fLeft = XMVectorGetX(vProjected) - fWidth * 0.5f;
+		const f32_t fTop = XMVectorGetY(vProjected) - fHeight * 0.5f;
+		pDrawList->AddRectFilled(
+			ImVec2(fLeft - fBorder, fTop - fBorder),
+			ImVec2(fLeft + fWidth + fBorder, fTop + fHeight + fBorder),
+			IM_COL32(0, 0, 0, 190));
+		pDrawList->AddRectFilled(
+			ImVec2(fLeft, fTop),
+			ImVec2(fLeft + fWidth, fTop + fHeight),
+			IM_COL32(46, 14, 14, 220));
+		if (fRatio > 0.f)
+		{
+			pDrawList->AddRectFilled(
+				ImVec2(fLeft, fTop),
+				ImVec2(fLeft + fWidth * fRatio, fTop + fHeight),
+				IM_COL32(206, 58, 46, 255));
+		}
+	}
 }
 
 void CMainApp::RenderDamageNumbers()

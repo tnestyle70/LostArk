@@ -492,7 +492,7 @@ namespace
 		std::vector<MONSTER_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 7u != value.Get_Object().size())
+			if (!value.Is_Object() || 8u != value.Get_Object().size())
 				return false;
 			MONSTER_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
@@ -503,8 +503,9 @@ namespace
 				!ReadRequiredNumber(value, "modelScale", entry.modelScale) ||
 				!ReadRequiredNumber(value, "modelYawDegrees",
 					entry.modelYawDegrees) ||
+				!ReadRequiredString(value, "hitEffectId", entry.hitEffectId) ||
 				nullptr == pClips || !pClips->Is_Object() ||
-				4u != pClips->Get_Object().size() ||
+				5u != pClips->Get_Object().size() ||
 				!ReadRequiredString(*pClips, "idle",
 					entry.presentationClips.idle) ||
 				!ReadRequiredString(*pClips, "chase",
@@ -513,6 +514,8 @@ namespace
 					entry.presentationClips.attack) ||
 				!ReadRequiredString(*pClips, "dead",
 					entry.presentationClips.dead) ||
+				!ReadRequiredString(*pClips, "patrol",
+					entry.presentationClips.patrol) ||
 				!ReadRequiredString(value, "runtimeStatus", entry.runtimeStatus) ||
 				!IsResourceId(entry.modelAssetId) ||
 				entry.modelScale <= 0.f || entry.modelScale > 100.f ||

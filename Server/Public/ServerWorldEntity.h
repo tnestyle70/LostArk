@@ -40,7 +40,10 @@ namespace LostArk::Server
 		PATTERN_WINDUP,
 		PATTERN_ACTIVE,
 		PATTERN_RECOVERY,
-		DEAD
+		DEAD,
+		/* Disengaged walking, both the trip back to the spawn anchor and the
+		wander around it. The goal it walks to lives in fPatrolGoalX/Z. */
+		PATROL
 	};
 
 	struct SERVER_WORLD_ENTITY
@@ -210,6 +213,13 @@ namespace LostArk::Server
 		float fPatternTargetLastPositionZ = 0.f;
 		float fLastPathGoalX = 0.f;
 		float fLastPathGoalZ = 0.f;
+		/* Where a disengaged monster is walking: its spawn anchor on the trip
+		home, then a point near the anchor once it is home. The step counter only
+		advances the deterministic angle the next point is chosen at, so a replay
+		of the same room walks the same beat. */
+		float fPatrolGoalX = 0.f;
+		float fPatrolGoalZ = 0.f;
+		std::uint32_t iPatrolStep = 0;
 		std::vector<SERVER_NAV_POINT> MovePath;
 		std::size_t iMovePathIndex = 0;
 	};

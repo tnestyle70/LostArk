@@ -73,6 +73,25 @@ namespace Client
 		std::uint32_t iPatternStageIndex = 0;
 	};
 
+	/* One living MONSTER-kind world entity, for the small world-anchored bar the
+	HUD floats over its head. The boss keeps its own segmented HUD_BOSS_STATE; a
+	monster has no health-bar segments, so this is the raw server level and the
+	position to project it at, nothing else. */
+	struct HUD_MONSTER_STATE
+	{
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t iCurrentHp = 0;
+		std::uint32_t iMaximumHp = 0;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+		/* Server body radius, replicated at spawn. No snapshot field carries a
+		monster's height, so the bar floats at a proportion of this instead of a
+		single constant that would sit inside Lugaru and above a jab. */
+		float fCollisionRadius = 0.f;
+	};
+
 	struct HUD_DAMAGE_EVENT
 	{
 		std::uint32_t iServerTick = 0;
@@ -110,6 +129,13 @@ namespace Client
 		void Apply_DamageEvents(
 			std::uint32_t serverTick,
 			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events);
+		/* Replace-in-full every snapshot, like the world entity list it mirrors.
+		A monster that despawned simply stops being pushed, so no separate clear
+		is needed and a dropped snapshot can never leave a stale bar behind. */
+		void Apply_Monsters(std::vector<HUD_MONSTER_STATE> monsters)
+		{
+			m_Monsters = std::move(monsters);
+		}
 		/* Room-shared raid Esther gauge straight from the world snapshot. A
 		maximum of 0 means this world has no Esther and the HUD draws nothing. */
 		void Apply_EstherGauge(
@@ -171,6 +197,10 @@ namespace Client
 		{
 			return m_DamageEvents;
 		}
+		const std::vector<HUD_MONSTER_STATE>& Get_Monsters() const
+		{
+			return m_Monsters;
+		}
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
@@ -203,6 +233,7 @@ namespace Client
 		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;
+		std::vector<HUD_MONSTER_STATE> m_Monsters;
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;
 		std::uint32_t m_iEstherGauge = 0;
 		std::uint32_t m_iEstherGaugeMaximum = 0;

@@ -1383,7 +1383,7 @@
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
@@ -1411,7 +1411,7 @@
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },

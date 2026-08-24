@@ -22,6 +22,9 @@ struct VALTAN_CINEMATIC_CAMERA_INPUT final
 	uint32_t iPatternSequence = 0u;
 	uint32_t iStageIndex = 0u;
 	uint32_t iActionStartTick = 0u;
+	/* Last committed Server snapshot pose. A tracking cue translates only from
+	   this replicated value and never reads a Client GameObject transform. */
+	float3_t vBossPosition = {};
 	/* Death has no pattern to key on, so the clear shot is selected by this flag
 	   and still runs off the authoritative action start tick. */
 	bool_t isBossDead = false;
@@ -46,6 +49,7 @@ struct VALTAN_CINEMATIC_SKY_STATE final
 	f32_t fCloudOpacity = 0.f;
 	f32_t fApertureScale = 0.f;
 	f32_t fCloudRotationDegrees = 0.f;
+	float3_t vAnchor = {};
 };
 
 /* A renderer-independent policy for the six authored Valtan proxy planes.
@@ -117,6 +121,9 @@ public:
 private:
 	bool_t Sample_ActiveCue(
 		f32_t elapsedSeconds,
+		VALTAN_CINEMATIC_CAMERA_POSE& outPose) const;
+	bool_t Apply_Tracking(
+		const VALTAN_CINEMATIC_CAMERA_INPUT& input,
 		VALTAN_CINEMATIC_CAMERA_POSE& outPose) const;
 	void Apply_ImpactShake(
 		f32_t elapsedSeconds,

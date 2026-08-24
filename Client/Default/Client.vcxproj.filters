@@ -2199,6 +2199,18 @@
     <Filter Include="96.DataFiles\Effects\ScreenOverlays">
       <UniqueIdentifier>{4f141e2f-5ff8-5970-98bc-3f54ae4a62ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\TranslatedShaders">
+      <UniqueIdentifier>{f9c8c989-2ddf-5a3a-92d9-bc66dc88e387}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\V2">
+      <UniqueIdentifier>{6ca6e6f6-1726-5ad3-923c-a29744105916}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\V2\Authored">
+      <UniqueIdentifier>{21b2c326-a4e2-59a4-83be-a3bde770831d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\V2\Bindings">
+      <UniqueIdentifier>{15cc19aa-ae8d-5574-868f-c9b057eca9c3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\VisualPrograms">
       <UniqueIdentifier>{c2bc4dbc-1555-520c-9463-fbb1a5524249}</UniqueIdentifier>
     </Filter>
@@ -5850,7 +5862,28 @@
     <None Include="..\..\Data\Effects\Contracts\character-effect-restoration-targets.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-child-parent-resolution.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-family-cooked-pixel-shaders.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-family-hlsl-translations.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Contracts\effect-family-manifest.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-family-named-abi.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-family-shader-inventory.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-family-shader-map-index.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-family-time-varying-parity.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json">
@@ -5860,6 +5893,12 @@
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Contracts\effect-material-program-conquest-ledger.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-missing-family-inventory.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-tuple-cohort-inventory.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json">
@@ -5877,10 +5916,310 @@
     <None Include="..\..\Data\Effects\Contracts\valtan-three-pattern-v1-materialization.receipt.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\CookedShaders\01641874a827cc6a2564d51190f4b8c193a1ee849abc9e86142b63e6faa39925.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\024e3e15b82350687c5037d2d34eed7b59cabc9656112e3bdea84996f5c650a8.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\036ebaa071eb35d6a4ef831794c77c844e708c55b7960782db0d5fffa220eb68.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\07e65cb7c07a0a38c9f374d05aaa699dabc897ceecec8528d93d341634c23554.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\0a81147acb1c8ed09ee4ab31a5a9a87ae193eb5c8fe14199706a799841d1584f.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\0b180dba851c2c74b938133de35576fe9224274164ca8db9f1857534db3096ab.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\0cc58d468237ed97607c14700f4e52f92df179f7ee7c77fb25ae2096516e0fa8.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\0e4149a5f2bc83cc0f74343d61ac6425758027f1e9fa6bc355c6ebf4c9fc1f72.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\0fc189215bb15672bb6d128fcef11b2258c57c32b6cabfd4aa6d8951325abf25.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\136d19f567a14d5da43aa17663e9da5509baa34ebd61ce224735b7db3ffb8c2d.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\14e0de586ee994e67f3e4e55abd91a913b0dc82fe4f197033f3bd797d8718fcf.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\165b566573d1ae678a5366a5d13d8b5addb744fe94a03a5d9ac83d7ff3ebcadd.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\19272bc66c9fe0f54f5629206cbfb423ca89f92260be7951dd6e32ac99f95a59.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\1adaae261fff75f2264410189447127c868d7b6083b93a13e3a1ca953b219ee9.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\1bdc5e0f9c62bf795acba94e77ca69e430c8cdec39461e6828dcc7384392f7c6.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\1d3fd946709ebd8eddd8da166a973db10b5bf5715632f918fb463bf96dc69027.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\1d9149f2d15005a699124658630a1fd58d9eba197c2f935204bf2f1701cc9b4e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\1ea7edba8dbaeb9ab7197c7479f11e6b43b099e3f752a09bff89f9be4df9ea86.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\20f9cc9952b61f4b168d46acbf4cb81560015aa052200ebafbc4c2aab968b4fc.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\2140ebd4f4e0790a48700574f30a63c485e0a2782d08d09d3fd438dcedfc68f9.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\227b3a7cf559bcdfed79daa4d4ca18d282c2f380a7a12b123dd7b06e9e068a34.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\23075068f3f532aa89921062a9ada2e4033f5d8d7f3832e3cc6adcc17e9aa068.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\241991cad2e5be4694814ed3e1beafc7d05a8ebe515d16416731902399c2cba7.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\24256b1d1f5f06e9d95c8605d8aff373b1e127a509aab2e0eb76a848ed9383b6.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\256655e839615567402590049077ee695fb358f1c64ada4082555cb5a6ae077f.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\25fc5d01a8960f5458ef11995a1a5bc2fa4ef6162340759fef02e1c758190ca7.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\267242ddb673c8874311bd5baf44ce28619b2fa350d9edd181a7dbda534bf7d7.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\27d6ba88ae2c9a2bd57cefdda4506137d65efb8b33d0236c2d8560a2f822f3be.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\285e089bd277620924a4b8fa7022af760cc39bc41c46b855859f91638e108a5e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\2ae2d05f8afad5b833be66a499bdd5b6e74f48a9f6b413682eeb2c5e924c5e70.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\2b34e80231e9149bb9ded6b224148813709c265fbeb6b9f0855e73faed504c03.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\2b6ca8bcf6507bdcd65c1c6fb492d56c588ce9b699e4018068b7fd2edcf4b245.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\2e6ba1f59f0650c11ac0c6a89e136a5ee7808f5843c92b65513a82d1a1ec08c7.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3003371cc82becdedc0187b90ce1000a693b6c01e44f522df97ad584c1997908.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\301705879780827845c051fd0cd8c6eed36c57a30692c9071568db7c02982f67.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3281da9c74ca96a7592441a6df2a8235210a228fb76d6eb613ae8683b60e2712.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\338f71c96717695f034bc27872f22381338c161281044ca71cd0e585d55e55fb.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
     <None Include="..\..\Data\Effects\CookedShaders\340169d8b9146fd280bbc1b509aa312e6afa71573dfe12cf4e89cb0136431ae3.dxbc">
       <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>
+    <None Include="..\..\Data\Effects\CookedShaders\361f9039f183b865d6dc4646631503947ed1676bbd81cb398866516b930fddcd.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3686353629fada4fe68436756d1ac767e7ac13ea9d8b28b75f699446730c1cfe.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3aa8222af79fe347ab20bfd1dd5ffacd6e1823bde1a7a13aad93316f2e180634.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3b132384e80ca4bba396b33c299f839370549d411fda910f802dea92b4f53bce.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3bde8ee8c6a0f0b82c8d6399ba88e8c0c641c19529b161cbdce0060bf4ae53ae.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3c950cc255b5daca966c43cde7ab8448e105673fe5eccb19a4bde69cd2fa9b54.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3e9f1d8b762d994fff7d7626d51f91a8ea2c5674ccdfc0343c94c54594d1d71c.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\3f82c52dbacda12e369db610e25888f93e6080a99b29958995d4faff8d714aad.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4041fe321f5348149c13e10b0b95d88e07062390cd38c4a355af9f7406b210f8.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4086fa677f250cb86752fef7f31cac9cd9c156df41b7d9b1dab6a2563b903c5a.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4181e26cdef6e7b9a6839e13d393305bec43460a91c9d5878a5ba975885a1700.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\41f515f0c16df3de9f547e17cd79e62e487916945f8ad24d06655e1d8316c1eb.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4238a10fa447159a0c455ec3a2c407abef1b3ab4e4bdbec0427555b0aebadf0e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4616d0d8bcc27deb1a17a0b4d27ad70f2e5f5baf07417d4f892b1359a201cddb.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\477086f17abc547d7e6858e3d256f3558d067d19279de5c2136770761ff1bd73.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4928b5b6fa290477797cf1dc9cd7c54257942a9c2a52bc969757187bfcce5fff.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4adf706f0819276f6a8577968a46605435bbd60c95c481fa80b3c0075481d9e8.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4b769511cfa78972de78042fad3c172c649743f5146fa52694b5b819bf66651a.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4c0b62a7ca51602584d718c7a35b77286f8b836e594c6eb35741718b416eb28a.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4c29f6b4caa2061734d9f1eb01785230595c40c7ee0aa40f3fa94759a77946fe.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4dab0bcbc54f0c934e7eee0574289a12a091b53503bd8040eaafd35e57904fe3.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\4f8d149d2e497bb481cb642e0d486d9560e14dca23359f568c4e6c5f272c3c5e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\50cf73c1105a8387c39b6963d84a473eb1b69dc722cb8beb14cc371c77fb2708.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\537427d0e08decb3c83bc475d150f1e171433a20d3751d05fbc0f5b124ff0391.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\54789bd1702606054355e585c4c1c8ec82b15d8f4e1190b6b483dff7d8ae80f6.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\55a2b497b5ee0334dd24e87dfbf251aabd0162d41a1aa1252b53d4dbb8178125.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\5627be27670a400bfff1399bdf4d445cca915759f6ab2362a722b1c685974d2d.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\57773aaeea567ec626c7f2a4a3bc0acc329ee3bf54bc754a3e848753fff9296e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\58a3e695f96918783ffc319cc96edf74061ace4509fc3bde06d3d6cc94c2f70e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\593b97a1bb04e8650865beefe7130c712d6fe0553e005799cee70c7ce17ee39e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\5e2ecc06339b3d0da63db6d693cd43cff55f8c6981a5db4dc9125463d3dfdc08.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\5ee339d674b9b5a3d081fa1ca17b4887c6d0d99bf2590d7c74bba88d574ab0e0.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\60864d137e2179401e04a9861d51ae3e10fe2dbbf92807dd652b729c6d0e9bca.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\6c47c63a9d0e3ce469b2b9d61f7ed59fafa90172d31decc26ea3f481212b144d.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\6cdab81525659e622a4a889aa17eae8632aeea4ac82abcb16d8cc278a87453db.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\6e373436c7f37eaee7ee3af0444c9195294b32583cea0d8fef8936a3ebdc25de.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\6f8e88e9db31667ac1e87a7d85620250d50cbe047b81ce5179f2443e80ca72fb.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\704b47e5cd9b33def69b223bbb192f16884aa8a0107729e25782c6cf14f7b508.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\713e1b92374e8c2eee0e7afa518e7ac55681352464dbc15cceb988cd578464ea.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\73d48001e538ba949c6769213a4355834235681b251c156f036e50e47fff0757.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\7416554f16b4cc3c196df6d86e73cd2d625f97d58a2b4597f1592be8b7e02ba7.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\7452e1efe2b61d6d4f8078533a00f807187413f2e95359645c0379acbdd0d7ab.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\76da1d7c684ef27a8d1869233157de9a2812d826ca60593cc763f41356eb92cf.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
     <None Include="..\..\Data\Effects\CookedShaders\7917664ff360df0f6305bf8d6c41a8c506872a62e09d26beb2b8fd8d7164d76c.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\7a594a70be8f947668dd4e114f40f5c0924e72972e8469b367a254632108f602.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\7ad9a89eb67809cae6018ea88b1e104c1d51da8dc613d47dfe63974f95f4a585.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\7e7f74e659c63d8a50a4d56524003ab606c8e9b6d2f91bd340ea9ffa28b3bc2a.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\81f549939224025f301b1e94600a08307db84befceb36a59f7ae61071c66a978.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\820039255be6e4d28c35d5f3868300725633f32b3d25cdd2d73d58dd7be5cbfb.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\82f742de2129667e35e972252e7c62db81f21b3105345a92d81ca77fdb4ab787.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\830a1374733bd995a756fe0a3606dbeda157543a0a5c5c658978b09f420c1788.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\83287bbdb361e58f1aec76d914efc0338e49ce1496b28210604f181189e092ee.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\845070aa50172c3300ddbf29443f2fcee6ed360dea882a7d75648fd85debb06e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\84897c4ac2954d96fb0073a89437e24a3d0b1701cf1d643f2068d35f4c431ac2.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\854917772f07d7a54887f933c1fd16a5272eb33b6b0e77c5bb1a3df075c3e650.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\888333f8a107a8cb65ab5490ba699be59f8a5383338f4826340198fa15a277c1.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\8af3bfa902313b29094293091dcb365223b12630a4e3c6fd382853c2f6f59614.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\8c68e9b2ef83766e9f62e3a5d7562d713abca31d37e4cc41afbb577d35b31652.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\8ea3857fdb2e590dd19d052c3787e6a40c8a4544b60db3a209e0095ef64bc7f5.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\9061617e9ce23c1633af2f4c32de74e70cada9f9ad03d1352cf050a47b510453.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\92edc85030a782ebfdd6f5ac5003ba03837dbd12f4a5609e2ab9ebe73bb64e76.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\96d85fc38c4526277f8bf82540265b3c52e17a79921e8da61467cbf9e9a6de56.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\975d80b6e0a4172b1286de8529202dcf936fd2d266cf8b1be5063a805bc0793d.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\9ac7435fb4ae31850cb7880fe3c8a4fb617c48be1f9f9975b8472cf399a93aad.dxbc">
       <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>
     <None Include="..\..\Data\Effects\CookedShaders\9c4706c3b6a36cb5a5eac40d8e871f2b67351265cf211f624614c842f0334b8e.dxbc">
@@ -5889,10 +6228,205 @@
     <None Include="..\..\Data\Effects\CookedShaders\a04dc3d21a95d5f2299d6bc8d07f65bd7cde640be52ed0df362b4a71b0c680e6.dxbc">
       <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>
+    <None Include="..\..\Data\Effects\CookedShaders\a257b9a2a4904662119e5185dab5781664739a9fa063ff91114cf76b3c288653.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\a32da64665619471a3cea13ea06752e14c30356bfe9eff63499c9cf681836f95.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\a42dbf53fa519f1911052f18290b97213d60735eda76ddea12708bd23fe209f5.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\a58ab78fe7d57bccd98a31c4d03092e5320c146b1deb4a5b994e8de5b2b8d58c.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\aa1f3e748b82105da8afa77954466811005d87969d2501ac426f75e522f050b3.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\aee74609054703162dcfa4ce999ab735e9e32809e8bc5cc4a46de3f8e2940447.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\af9346e86429543e69f0190fd1efd53855cb08e88eaac89aa30daad7639f6d3b.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b0cc6c600c41a442b78cb59653ff7fa9d5795bc24595098cc512374cf73ccbaf.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b104bf203fe99412b07d7e2db59021527c4b76d73977359341eef8cbbb4c2dc6.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b158d5528a748b6a939602beae2829e48285aa321894fd124a74e1e24afbf20b.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b16e274cfad5ba27b3be0f8c8bb4c1e663768ded79d4ddf119204fb8a1e9c6bb.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b304b5f977b20b7563c46dbf429a7a816c9684327cf16c47f16159ad90701d63.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b3dafb298b246f0391bbf8371a8c4261d38b5d81744d2285ecd4b4094a5f98b1.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b555abaef0e2477b97b333ae27fd781905ed1876db74d23aad42e3d63525e8b6.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b679b00a5f0cfcbba234d0787cc82b020686db2161e74d373d8252ea710cac42.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b737a45fe38f5a4aec6fdb1009eb246e0728a0ddcd0cf71b5100e14b980fcf56.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\b92bc6c07827460b921817ace4671512b10988280bd53779e4bdf508f7a2b86f.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\bacad3a54a8aa3379600147f46d188a7e640638cd19f0c9ab65b3ff235caedbc.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\bb09c01fab21a5c24ce2fa630cc94cad0832eda958779b0bc8ee2ae95f8ecc84.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\bd507caa88f09f4d21ce821d02f0974739c330433be11278264e7c126057d6a2.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\be3139a38a1afb13b3e7f3883fe0d4fa0dcc1339a62f7343131d868826e5bef1.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\c1df2aee7879a275c573238ec4600c20047547e406ed67ea5d195c598a1f0858.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\c35c1cfe9f2f1aeae3ffc577e2586926aff612027a8d2680be4706fd5f7b4fd1.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\c454ae265ce2b31fb2507333b53291e2cc472c1b876ef80f61f6a40f6a0053cd.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\c8ee8b2f57b0dab7bd1398e2194555032fe3f011d854a9e25f372b7c963ddb23.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\c8fa9f3855aa6f73acc3154a5f07d7b155068bd69e66c974f00730c81a5cc5c0.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\caf233bd816015952fb9ce4a118cf321066f5036397cad34044120ec00771077.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\cc34f9d8a709db91c6ccc986d980e8ae81b1bec6a3c536189b97057e46844b99.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\cdca7090533a3072ad56ecdd8abcd5cb3eada89037596b1367612d0a5c31d7a4.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\cf472abfaf224bce855d7dbd4ca93336506ee75517b9e44ca318afbfa8f473c8.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\cf58600043fb1482ed3053bf45b2de52f0da3915ca5169b79b44fa959b5a758c.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d17a2c1b6c1c63cc729efefffe8c28259c91d427d9a3303e89fbedfdcf2eaf32.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d2a521a7fec0a6730eaca125dfd97488e9f49cf98893a7c34a21e25f9a629b9e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d43f4cbbde143d10cbc40cb2f9c817a256bf64677a7779ffd52df89e884f5c43.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d48b809320b7bf99ada8a5c2158d5b8f419f37e50a9d24eba3d508c5e125714d.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d602dd6985b18b213ca9ce2aca4fd6f48ef76a74e2de90e99319e78afbed4935.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d73bb02a896faaaaf9b42c4bc32603a6879dbcdf9a644b1b2327d336d46739fb.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d7ab45124910aab85e9e75409e71be69f2685fb90d91eae1a8f0e450bbb9f82b.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d7bcc72a7e1d8a0db3215f5c9a2cffd6b33ff7740d8de79199f562888381a7ea.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d965781c57ef72c1d10218cfd87683945ea7ef402a98d43681e47becdca4a3c4.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\d9e5d9c8120b5909b513dca2a645c392b8da8c7685bb936ecc7f02ae8a18afaa.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\da049adc10cafe5598a84201493efac11cbe402a55873f784d189fd77013cd2c.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
     <None Include="..\..\Data\Effects\CookedShaders\defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b.dxbc">
       <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e0abff8b64ab0d5d4a3042a533256ebb8227be91bc799763b1b91f56fe91e19c.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e1eb2cd1402c8d73457cae6ddb3c0e146263ca07fd1ae9975d50349081021303.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
     <None Include="..\..\Data\Effects\CookedShaders\e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e519d2c25cfd83fcb6f51851fb2a770b140888351a4194e19846b499fb7f58bf.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e625480566eb6fc695b0fd13ce9ac0c3ade36776c4d2a8a75788c162c3570091.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e7ad15135c47af4d78ffceae8617c2561fdbe443dc2065ad782e1cbefa039b86.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e7badda5c7e5cd853411c315b4c440dd43228b1949eb78af5d162d68661e43c2.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e7e5b49416bea61054eba5b28c1981d51d46ee37c5d0357d06bc7e3084f28228.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e801893cbab3e5cc8603c12509344b010c405bed07b8701eb9cea9d530da2b9e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e81fea79cf0542af21fe84d93a85e30768d8e20b5561b6f3e55cb9d973297ea3.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\eae3382bb29cd45272b0e922a6ec039d05c75be6e454943a1c56c13178427251.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\eb2f39341e5efc6062902aa735e563e6f988d39d5f722308b1b99050893213bb.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\ec626c2ecbe9b119f097600de55dd47033e048afbc6f4289e50daced72f658db.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\ed37d9f4ce3aac798dca22325f175fb490ce513dd25f1af652f646e7885bfc88.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\ee74fa4ebbb6b8471666141cdaea6d7c50e2681c8e30fe87b4ee794831a6ae05.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\ef9b7ca3de8d688886ddaa15f42864e73a01ad10c3b886cbdbd093f4dc377b70.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\f148f44d2da45357c59a7be6b6dfe732913e629e32cb88a7df378edd343128b9.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\f2ae81db759e566161b2e0f4514fe286fcdefe6b70d2e365a9a470a56d43f408.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\f68b6d53c31053f8af2c18a367142c0cd480ac1fee09637c8a36884522256790.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\f6e440c865424290e07c3dbe735ede2ca6470644647b3391ae21feafa075d970.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\f91225cb99b97e22676006ea86494090fd0acdeb066c9a6a3b58a0e32bf72025.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\fac920daa87b54dbe53cb47379335ac492e4b95187003145455290ba9155f62a.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\fe59bf1b62a776e0c4b54c696b3cdeac90a82cfffef1d8dd8858582c78c39c19.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\ffa2f8a8fca4c73619660a6f731803f92f76262b9cf2fbb664bdb7bd1342e1ff.dxbc">
       <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>
     <None Include="..\..\Data\Effects\EffectCatalog.json">
@@ -7962,9 +8496,6 @@
     <None Include="..\..\Data\Effects\Imported\Warlord\skill.17000.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Warlord</Filter>
     </None>
-    <None Include="..\..\Data\Effects\MaterialPrograms\effect-material-program-registry.v1.json">
-      <Filter>96.DataFiles\Effects\MaterialPrograms</Filter>
-    </None>
     <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\artist-f-golden.material-program-fragment.v1.json">
       <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
     </None>
@@ -7973,6 +8504,9 @@
     </None>
     <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\valtan-three-pattern-v1.material-program-fragment.v1.json">
       <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\MaterialPrograms\effect-material-program-registry.v1.json">
+      <Filter>96.DataFiles\Effects\MaterialPrograms</Filter>
     </None>
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json">
       <Filter>96.DataFiles\Effects\Policies\Artist</Filter>
@@ -8018,6 +8552,570 @@
     </None>
     <None Include="..\..\Data\Effects\ScreenOverlays\effect.dimensionmaster.skill.2050230.unified.screen-overlay.json">
       <Filter>96.DataFiles\Effects\ScreenOverlays</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_c_pa_lightflare_01_ddt_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_d_pa_circ_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_d_pa_circ_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_d_pa_shine_01_ad_23075068f3f532aa89921062a9ada2e4033f5d8d7f3832e3cc6adcc17e9aa068.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_d_pa_shine_01_ad_8af3bfa902313b29094293091dcb365223b12630a4e3c6fd382853c2f6f59614.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_d_pa_smokethin_unlit_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_d_pa_spla_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_d_pa_spla_05_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_i_pa_aura_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_i_pa_glow_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_bfx_i_pa_wave_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_a_me_panning_01_ts_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_a_me_panning_02_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_b_pa_cd_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_c_pa_glitter_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_c_pa_lensflare_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_c_pa_ring_04_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_c_pa_symbol_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_markring_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_chain_01_ma.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_flow_02_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_flow_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_kazerosmark_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_master_01_ma.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_master_01_ph_msk.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_superactionspace_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_ui_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_me_worldpositionoffset_sinwave_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_afterburn_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_capturergbsplit_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_dark_05_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_decmaster_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_electric_03_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_field_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_flare_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_flare_02_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_flare_03_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_glow_02_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_helix_03_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_hole_07_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_master_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_master_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_ring_07_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_ring_07_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_ring_11_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_ring_11_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_ringmaster_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_ringmaster_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_shine_02_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_shockwave_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_shockwave_02_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_sinewave_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_trail_07_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_turbulence_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_turbulence_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_d_pa_twirl_05_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_e_me_rock_01_ma.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_e_pa_auradissolve_01.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_e_pa_electric_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_e_pa_twinkle_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_f_pa_ri_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_f_pa_ring_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_f_pa_shine_01_0_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_h_me_swing_01_1_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_h_pa_spritewave_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_i_pa_darkaurapan_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_i_pa_portal_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_me_cubesample_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_me_flamesurface_01_ma.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_me_gaurdmode_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_me_hologram_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_me_localcrack_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_me_splitline_01_1_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_blacklineaura_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_blackvoid_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_circledisort_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_crackbase_02.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_customparticle_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_dot_ad_01.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_edgehit_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_glasshole_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_highpixelring_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_linearflow_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_linearwave_01_tr_c35c1cfe9f2f1aeae3ffc577e2586926aff612027a8d2680be4706fd5f7b4fd1.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_linearwave_01_tr_fac920daa87b54dbe53cb47379335ac492e4b95187003145455290ba9155f62a.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_linearwave_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_movedissolve_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_rampshape_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_rotturbulance_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_spriteinvert_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_utillight_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_pa_uvcoreoffset_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_rgbsplit_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_j_ribbonwave_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_crackholev2_01.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_flowrib_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_me_flowtrail_01_ts_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_me_flowtrail_01_ts_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_me_makeflow_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_me_makeflow_02_tr_024e3e15b82350687c5037d2d34eed7b59cabc9656112e3bdea84996f5c650a8.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_me_makeflow_02_tr_b0cc6c600c41a442b78cb59653ff7fa9d5795bc24595098cc512374cf73ccbaf.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_me_makeflow_03_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_distort_multi_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_flowmask_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_fluidninja_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_hitmove_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_makeflow_01_tr_b737a45fe38f5a4aec6fdb1009eb246e0728a0ddcd0cf71b5100e14b980fcf56.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_makeflow_01_tr_e1eb2cd1402c8d73457cae6ddb3c0e146263ca07fd1ae9975d50349081021303.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_makeflow_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_makeflow_03_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_ninjaflow_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_turbpa_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_pa_waterflow_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_k_swipemirr_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_l_me_icesurfacee_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_l_me_itr_symbol_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_basemaster_01_ad_meshinst.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_basemaster_01_tr_256655e839615567402590049077ee695fb358f1c64ada4082555cb5a6ae077f.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_basemaster_01_tr_5ee339d674b9b5a3d081fa1ca17b4887c6d0d99bf2590d7c74bba88d574ab0e0.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_baseringmaster_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_baseringmaster_01_tr_3281da9c74ca96a7592441a6df2a8235210a228fb76d6eb613ae8683b60e2712.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_baseringmaster_01_tr_f2ae81db759e566161b2e0f4514fe286fcdefe6b70d2e365a9a470a56d43f408.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_flowergarden_ringmaster_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_me_boxlinelight_colortex_01_01_ts_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_me_movepanlerp_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_me_splitline_99_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_me_trail_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_me_watertrail_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_highpixelring_squareoutline_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_missiletrail_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_noise_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_ribbonmaster_03_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_shine_randomoffset_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_skull_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_skull_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_spritewave_01_ad_cc34f9d8a709db91c6ccc986d980e8ae81b1bec6a3c536189b97057e46844b99.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_spritewave_01_ad_d7ab45124910aab85e9e75409e71be69f2685fb90d91eae1a8f0e450bbb9f82b.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_spritewave_01_tr_e7ad15135c47af4d78ffceae8617c2561fdbe443dc2065ad782e1cbefa039b86.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_spritewave_01_tr_ffa2f8a8fca4c73619660a6f731803f92f76262b9cf2fbb664bdb7bd1342e1ff.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_trail_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_worldoffset_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_m_pa_worldoffset_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_basic_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_basic_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_dissolve_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_dissolve_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_distortion_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_extraalpha_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_extraalpha_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_fluid_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_hole_06_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_light_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_light_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_maskcontrol_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_simple_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_simple_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_mm_twirl_05_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_n_pa_db_01_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_n_pa_ring_05_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_n_pa_ring_07_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_n_pa_sprite_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_o_me_horn_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_o_pa_circledisort_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_o_pa_splitline_02_ad.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_s_me_fswing_01_1_ts_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_s_pa_glasshole_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_s_pa_glasshole_02_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_w_pa_area_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_realpbr_wp_dead_msk.hlsli">
+      <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.appear_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.blur_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.blur_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.blur_3.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.blur_4.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.dochul_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.dochul_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.dochul_3.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.dochul_sw_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.dochul_sw_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.dochul_sw_3.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_3.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\monster.hit.impact_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Bindings\NPC_58700.effectv2bindings.json">
+      <Filter>96.DataFiles\Effects\V2\Bindings</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\TextureSlotUsage.v1.json">
+      <Filter>96.DataFiles\Effects\V2</Filter>
     </None>
     <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-corpus.v1.json">
       <Filter>96.DataFiles\Effects\VisualPrograms</Filter>

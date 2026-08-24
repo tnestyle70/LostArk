@@ -2379,6 +2379,19 @@ namespace
 		{
 			return false;
 		}
+		// A selected timeline row is addressed by its stable non-zero command ID;
+		// STOP names no row and therefore carries exactly zero.
+		if (static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW) == rawOperation)
+		{
+			return 0u != targetHealthBar;
+		}
+		if (static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW) == rawOperation)
+		{
+			return 0u == targetHealthBar;
+		}
+
 		// These operations name an authored mechanic or a Debug view directly,
 		// rather than a health-bar crossing, so they carry exactly zero.
 		if (static_cast<std::uint8_t>(VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE) ==
@@ -2390,11 +2403,7 @@ namespace
 			static_cast<std::uint8_t>(
 				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA) == rawOperation ||
 			static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL) == rawOperation ||
-			static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::PLAY_ORDERED_1_67) == rawOperation ||
-			static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::STOP_ORDERED_1_67) == rawOperation)
+				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL) == rawOperation)
 		{
 			return 0u == targetHealthBar;
 		}

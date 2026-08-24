@@ -11,7 +11,12 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "ActionPresentationTimelineHarness was not built: $executable"
 }
 
-& $executable
-if ($LASTEXITCODE -ne 0) {
-    throw "ActionPresentationTimelineHarness failed with exit code $LASTEXITCODE"
+Push-Location ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')))
+try {
+    & $executable
+    if ($LASTEXITCODE -ne 0) {
+        throw "ActionPresentationTimelineHarness failed with exit code $LASTEXITCODE"
+    }
+} finally {
+    Pop-Location
 }
