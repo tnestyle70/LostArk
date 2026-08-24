@@ -885,6 +885,108 @@ def validate_v2(
     return counts
 
 
+def validate_rejoined_four_slash_successor(
+    bindings: dict[str, Any],
+    cues: dict[str, Any],
+) -> tuple[int, int, int]:
+    """Validate the exact live successor after the historical split retired.
+
+    The v1->v2 receipt and split-owner receipt remain immutable evidence.  They
+    are not current-product writers after the pattern was deliberately rejoined,
+    so ``--check`` verifies the successor identities without replaying either
+    historical mutation over live authoring data.
+    """
+
+    if bindings.get("formatVersion") != 2 or cues.get("formatVersion") != 2:
+        raise MigrationError("Expected v2 Valtan successor documents.")
+    binding_rows = bindings.get("bindings")
+    cue_rows = cues.get("cues")
+    if not isinstance(binding_rows, list) or not isinstance(cue_rows, list):
+        raise MigrationError("Expected Valtan successor row arrays.")
+    by_action = {
+        row.get("actionId"): row
+        for row in binding_rows
+        if isinstance(row, dict)
+    }
+    expected_occurrences = {
+        "valtan.attack.four-slash.windup": (
+            "valtan.attack.four-slash.windup.clip.01",
+        ),
+        "valtan.attack.triple-slash.active": (
+            "valtan.attack.four-slash.active.clip.01",
+        ),
+        "valtan.attack.rotation-slash.active": (
+            "valtan.attack.four-slash.active.clip.02",
+        ),
+        "valtan.attack.four-slash.recovery": (
+            "valtan.attack.four-slash.recovery.clip.01",
+        ),
+    }
+    for action_id, occurrence_ids in expected_occurrences.items():
+        row = by_action.get(action_id)
+        clips = row.get("clips") if isinstance(row, dict) else None
+        if not isinstance(clips, list) or tuple(
+            clip.get("clipOccurrenceId")
+            for clip in clips
+            if isinstance(clip, dict)
+        ) != occurrence_ids:
+            raise MigrationError(
+                f"Rejoined four-slash binding is missing or rebound: {action_id}"
+            )
+
+    by_binding = {
+        row.get("bindingId"): row
+        for row in cue_rows
+        if isinstance(row, dict)
+    }
+    expected_cue_owners = {
+        "cue.valtan.carrier-v1.attack.four-slash.active.clip-01": (
+            "SLASHES",
+            "valtan.attack.triple-slash.active",
+            "valtan.attack.four-slash.active.clip.01",
+        ),
+        "cue.valtan.carrier-v1.attack.four-slash.active.clip-02": (
+            "SPIN",
+            "valtan.attack.rotation-slash.active",
+            "valtan.attack.four-slash.active.clip.02",
+        ),
+        "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01": (
+            "RECOVERY",
+            "valtan.attack.four-slash.recovery",
+            "valtan.attack.four-slash.recovery.clip.01",
+        ),
+    }
+    for binding_id, (stage_id, action_id, occurrence_id) in (
+        expected_cue_owners.items()
+    ):
+        row = by_binding.get(binding_id)
+        if (
+            not isinstance(row, dict)
+            or row.get("patternId") != "VALTAN_FOUR_SLASH"
+            or row.get("stageId") != stage_id
+            or row.get("actionId") != action_id
+            or row.get("clipOccurrenceId") != occurrence_id
+        ):
+            raise MigrationError(
+                f"Rejoined four-slash cue is missing or rebound: {binding_id}"
+            )
+    if any(
+        row.get("patternId") in {
+            "VALTAN_TRIPLE_SLASH",
+            "VALTAN_ROTATION_SLASH",
+        }
+        for row in cue_rows
+        if isinstance(row, dict)
+    ):
+        raise MigrationError("Retired split four-slash cue owner was restored.")
+    occurrence_count = sum(
+        len(row.get("clips", []))
+        for row in binding_rows
+        if isinstance(row, dict)
+    )
+    return len(binding_rows), occurrence_count, len(cue_rows)
+
+
 def write_atomic(path: Path, payload: bytes) -> None:
     staging = path.with_suffix(path.suffix + ".staging")
     staging.write_bytes(payload)
@@ -1692,6 +1794,22 @@ def main() -> int:
         print(
             "Refreshed Valtan occurrence migration receipt to identity-subset "
             "format v2."
+        )
+        return 0
+
+    rejoined_cue_present = any(
+        isinstance(row, dict)
+        and row.get("bindingId")
+        == "cue.valtan.carrier-v1.attack.four-slash.active.clip-01"
+        and row.get("patternId") == "VALTAN_FOUR_SLASH"
+        for row in cues.get("cues", [])
+    )
+    if rejoined_cue_present:
+        counts = validate_rejoined_four_slash_successor(bindings, cues)
+        print(
+            "Valtan occurrence v2 historical migration retired; rejoined "
+            "successor check passed: "
+            f"{counts[0]} bindings / {counts[1]} clips / {counts[2]} cues."
         )
         return 0
 

@@ -1266,21 +1266,25 @@ def validate_carrier_v1_successor(
     outputs = successor.get("outputs") or {}
     cue_output = outputs.get("cues") or {}
     catalog_output = outputs.get("catalog") or {}
-    catalog_projection = source_inventory.effect_catalog_prefix_projection(
-        catalog_document, "effect.valtan."
-    )
+    # These hashes seal the one-shot Carrier V1 Product preimage.  Later
+    # pattern-master cues and admitted Valtan catalog rows are valid successors
+    # and are checked by their active publishers.  Historical consumers retain
+    # the exact preimage seal and exact live owner joins below instead of
+    # treating the receipt as a mutable whole-Product hash.
     if (
-        cue_output.get("cueCount") != len(cue_document.get("cues") or [])
+        cue_output.get("path") != CUE_PATH.relative_to(ROOT).as_posix()
+        or cue_output.get("cueCount") != 44
         or cue_output.get("canonicalSha256")
-        != source_inventory.canonical_sha256(cue_document)
+        != "4ff3c88cffdbe84abb99aaee22aad86c92f1b1797dfd8706058ded489b738dc9"
+        or catalog_output.get("path")
+        != CATALOG_PATH.relative_to(ROOT).as_posix()
         or catalog_output.get("scope") != "EFFECT_ASSET_ID_PREFIX"
         or catalog_output.get("effectAssetIdPrefix") != "effect.valtan."
-        or catalog_output.get("effectCount")
-        != len(catalog_projection["effects"])
+        or catalog_output.get("effectCount") != 46
         or catalog_output.get("canonicalSha256")
-        != source_inventory.canonical_sha256(catalog_projection)
+        != "123c070157e743ef467294607f104a9e5f1d90c3c99f73b6cf9c48033da093da"
     ):
-        raise CandidateError("Carrier V1 current Product outputs drifted")
+        raise CandidateError("Carrier V1 historical Product output seal drifted")
 
     historical_effect_ids = {
         str(row.get("effectAssetId") or "")

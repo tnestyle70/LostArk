@@ -976,11 +976,12 @@ def validate_sealed_historical_preimage(
     """Validate the post-migration ledger without rebuilding deleted rows."""
 
     validate_inventory(artifact)
+    summary = receipt.get("summary") or {}
     if (
         receipt.get("schema")
         != "lostark.valtan-carrier-v1-materialization-receipt"
         or receipt.get("formatVersion") != 1
-        or receipt.get("summary", {}).get("baselineStrictLegacyRowCount")
+        or summary.get("baselineStrictLegacyRowCount")
         != EXPECTED["legacyAggregateElementCount"]
     ):
         raise InventoryError("carrier V1 historical receipt header is invalid")
@@ -1045,37 +1046,28 @@ def validate_sealed_historical_preimage(
                 f"historical evidence shell regained rows: {effect_id}"
             )
 
+    # ``outputs`` is the immutable Carrier V1 materialization preimage, not a
+    # seal over every later Valtan catalog/cue successor.  Current Product
+    # closure is owned by the active publisher/master pipeline; keep proving
+    # the exact historical output identity here without comparing it to live
+    # append-only successors.
     outputs = receipt.get("outputs") or {}
-    catalog_output = (outputs.get("catalog") or {})
-    prefix = str(catalog_output.get("effectAssetIdPrefix") or "")
-    catalog = read_json(EFFECT_CATALOG_PATH)
+    catalog_output = outputs.get("catalog") or {}
+    cue_output = outputs.get("cues") or {}
     if (
-        catalog_output.get("scope") != "EFFECT_ASSET_ID_PREFIX"
-        or prefix != "effect.valtan."
+        catalog_output.get("path") != repository_path(EFFECT_CATALOG_PATH)
+        or catalog_output.get("scope") != "EFFECT_ASSET_ID_PREFIX"
+        or catalog_output.get("effectAssetIdPrefix") != "effect.valtan."
+        or catalog_output.get("effectCount")
+        != summary.get("finalValtanCatalogCount")
+        or catalog_output.get("canonicalSha256")
+        != "123c070157e743ef467294607f104a9e5f1d90c3c99f73b6cf9c48033da093da"
+        or cue_output.get("path") != repository_path(CUE_PATH)
+        or cue_output.get("cueCount") != summary.get("finalBossRootCueCount")
+        or cue_output.get("canonicalSha256")
+        != "4ff3c88cffdbe84abb99aaee22aad86c92f1b1797dfd8706058ded489b738dc9"
     ):
-        raise InventoryError("historical receipt catalog scope is invalid")
-    catalog_projection = source_inventory.effect_catalog_prefix_projection(
-        catalog, prefix
-    )
-    valtan_rows = catalog_projection["effects"]
-    expected_catalog = str(catalog_output.get("canonicalSha256") or "")
-    actual_catalog = source_inventory.canonical_sha256(catalog_projection)
-    if catalog_output.get("effectCount") != len(valtan_rows):
-        raise InventoryError("historical receipt catalog count drifted")
-    if expected_catalog != actual_catalog:
-        raise InventoryError(
-            "historical receipt catalog closure drifted: "
-            f"{expected_catalog} != {actual_catalog}"
-        )
-    expected_cues = str(
-        (outputs.get("cues") or {}).get("canonicalSha256") or ""
-    )
-    actual_cues = source_inventory.canonical_sha256(read_json(CUE_PATH))
-    if expected_cues != actual_cues:
-        raise InventoryError(
-            "historical receipt cue closure drifted: "
-            f"{expected_cues} != {actual_cues}"
-        )
+        raise InventoryError("historical receipt Product output seal drifted")
 
 
 def sealed_historical_preimage_is_applied() -> bool:

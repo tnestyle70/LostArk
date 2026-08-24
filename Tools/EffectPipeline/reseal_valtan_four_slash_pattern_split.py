@@ -491,6 +491,24 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--write", action="store_true")
     args = parser.parse_args(argv)
 
+    live_bindings = migration.read_json(BINDINGS_PATH)
+    live_cues = migration.read_json(CUES_PATH)
+    if any(
+        isinstance(row, dict)
+        and row.get("bindingId")
+        == "cue.valtan.carrier-v1.attack.four-slash.active.clip-01"
+        and row.get("patternId") == "VALTAN_FOUR_SLASH"
+        for row in live_cues.get("cues", [])
+    ):
+        migration.validate_rejoined_four_slash_successor(
+            live_bindings, live_cues
+        )
+        print(
+            "Valtan four-slash split-owner reseal retired: current product "
+            "is the validated VALTAN_FOUR_SLASH successor; changed=0"
+        )
+        return 0
+
     state, writes = build_outputs()
     changed = _changed_outputs(writes)
     if args.check:

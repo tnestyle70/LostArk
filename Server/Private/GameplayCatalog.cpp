@@ -158,6 +158,21 @@ namespace
 		return true;
 	}
 
+	bool ParseBossPatternRotationSelectionMode(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_ROTATION_SELECTION_MODE& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_ROTATION_SELECTION_MODE;
+		if ("WEIGHTED_POOL" == value)
+			output = BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL;
+		else if ("ORDERED_INTRO_THEN_WEIGHTED" == value)
+			output = BOSS_PATTERN_ROTATION_SELECTION_MODE::
+				ORDERED_INTRO_THEN_WEIGHTED;
+		else
+			return false;
+		return true;
+	}
+
 	bool ParseBossPatternArmorRequirement(
 		const std::string_view value,
 		LostArk::Server::BOSS_PATTERN_ARMOR_REQUIREMENT& output)
@@ -1739,7 +1754,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		{
 			BOSS_PATTERN_MOTION motion{};
 			const bool leapsToTarget = "LEAP_TO_TARGET" == fields[3];
-			if (9u != fields.size() || !IsStableId(fields[1]) ||
+			if (10u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				("LEAP_TO_ANCHOR" != fields[3] && !leapsToTarget) ||
 				!IsStableId(fields[4]) ||
@@ -1747,11 +1762,13 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[6], motion.fLandingY) ||
 				!ParseNumber(fields[7], motion.fLandingZ) ||
 				!ParseNumber(fields[8], motion.fApexHeight) ||
+				!ParseNumber(fields[9], motion.iTravelStageIndex) ||
 				!std::isfinite(motion.fLandingX) ||
 				!std::isfinite(motion.fLandingY) ||
 				!std::isfinite(motion.fLandingZ) ||
 				!std::isfinite(motion.fApexHeight) ||
-				motion.fApexHeight <= 0.f || motion.fApexHeight > 200.f)
+				motion.fApexHeight <= 0.f || motion.fApexHeight > 200.f ||
+				0u == motion.iTravelStageIndex)
 			{
 				m_strStatus = "Boss pattern motion row is invalid";
 				return false;
@@ -1897,10 +1914,15 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			std::uint32_t fromBar = 0u;
 			std::uint32_t toBar = 0u;
 			std::uint32_t stepCount = 0u;
-			if (6u != fields.size() || !IsStableId(fields[1]) ||
+			BOSS_PATTERN_ROTATION_SELECTION_MODE selectionMode =
+				BOSS_PATTERN_ROTATION_SELECTION_MODE::
+					ORDERED_INTRO_THEN_WEIGHTED;
+			if (7u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !ParseNumber(fields[3], fromBar) ||
 				!ParseNumber(fields[4], toBar) ||
-				!ParseNumber(fields[5], stepCount) ||
+				!ParseBossPatternRotationSelectionMode(
+					fields[5], selectionMode) ||
+				!ParseNumber(fields[6], stepCount) ||
 				0u == stepCount || stepCount > 32u || fromBar <= toBar)
 			{
 				m_strStatus = "Boss pattern rotation row is invalid";
@@ -1923,6 +1945,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			BOSS_PATTERN_ROTATION_DEFINITION staged{};
 			staged.strEncounterId = fields[1];
 			staged.strRotationId = fields[2];
+			staged.eSelectionMode = selectionMode;
 			staged.iFromHealthBar = fromBar;
 			staged.iToHealthBar = toBar;
 			staged.iExpectedStepCount = stepCount;
@@ -2566,6 +2589,9 @@ bool LostArk::Server::CGameplayCatalog::Load()
 					pattern.eAimPolicy &&
 				 BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR !=
 					pattern.Motion.eKind) ||
+				(BOSS_PATTERN_MOTION_KIND::NONE != pattern.Motion.eKind &&
+				 (0u == pattern.Motion.iTravelStageIndex ||
+				  pattern.Motion.iTravelStageIndex >= pattern.Stages.size())) ||
 				0u == pattern.iSourcePrimaryActionId ||
 				pattern.Stages.size() != pattern.iExpectedStageCount)
 			{
@@ -2928,6 +2954,20 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			{
 				m_strStatus = "Boss pattern rotation step count is incomplete";
 				return false;
+			}
+			if (BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
+				rotation.eSelectionMode)
+			{
+				std::unordered_set<std::string> uniquePoolIds;
+				for (const std::string& patternId : rotation.PatternIds)
+				{
+					if (!uniquePoolIds.insert(patternId).second)
+					{
+						m_strStatus =
+							"Boss weighted pattern pool contains a duplicate";
+						return false;
+					}
+				}
 			}
 		}
 	}
