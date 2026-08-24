@@ -35,6 +35,7 @@ struct VS_OUT
     float3 tangent : TEXCOORD2;
     float3 binormal : TEXCOORD3;
     float2 uvNext : TEXCOORD4;
+    float2 carrierUV : TEXCOORD5;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -64,6 +65,7 @@ VS_OUT VS_MAIN(VS_IN input)
         input.uv;
     output.uv = currentUV * g_UVScale + g_UVOffset;
     output.uvNext = nextUV * g_UVScale + g_UVOffset;
+    output.carrierUV = input.uv;
     return output;
 }
 
@@ -139,11 +141,14 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
             float4(1.f, 1.f, 1.f, 1.f),
             g_EffectDynamicParameter);
     }
-    return Shade_EffectParticle(
+    EFFECT_PS_OUT output = Shade_EffectParticle(
         input.uv,
         float3(1.f, 1.f, 1.f),
         float4(1.f, 1.f, 1.f, 1.f),
         g_EffectDynamicParameter);
+    if (0u == g_SourceMaterialProfile)
+        output = Apply_GenericMeshRingFill(output, input.carrierUV);
+    return output;
 }
 
 technique11 DefaultTechnique
