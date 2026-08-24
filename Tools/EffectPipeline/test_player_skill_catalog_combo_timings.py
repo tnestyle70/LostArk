@@ -43,10 +43,21 @@ class PlayerSkillCatalogComboTimingTests(unittest.TestCase):
                 self.assertGreaterEqual(len(stages), 2)
                 self.assertLessEqual(len(stages), 8)
                 for stage in stages[:-1]:
-                    self.assertLess(stage["inputOpenMs"], stage["inputCloseMs"])
-                    self.assertLessEqual(
-                        stage["inputCloseMs"], stage["actionDurationMs"]
+                    automatic = (
+                        stage["inputOpenMs"] == 0
+                        and stage["inputCloseMs"] == 0
                     )
+                    if automatic:
+                        self.assertEqual(
+                            stage["comboAdvanceMs"], stage["actionDurationMs"]
+                        )
+                    else:
+                        self.assertLess(
+                            stage["inputOpenMs"], stage["inputCloseMs"]
+                        )
+                        self.assertLessEqual(
+                            stage["inputCloseMs"], stage["actionDurationMs"]
+                        )
                 self.assertEqual(
                     stages[-1]["comboAdvanceMs"], stages[-1]["actionDurationMs"]
                 )
@@ -71,6 +82,20 @@ class PlayerSkillCatalogComboTimingTests(unittest.TestCase):
                 self.assertGreater(stages[-1]["hitTimeMs"], 0)
             else:
                 self.assertEqual(stages, [], skill["skillId"])
+
+    def test_only_dimensionmaster_basic_attack_uses_automatic_combo_stages(self) -> None:
+        automatic_stages = []
+        for skill in self.skills:
+            if skill["skillKind"] != "COMBO":
+                continue
+            for stage_index, stage in enumerate(skill["comboStages"][:-1]):
+                if stage["inputOpenMs"] == 0 and stage["inputCloseMs"] == 0:
+                    automatic_stages.append((skill["skillId"], stage_index))
+
+        self.assertEqual(
+            automatic_stages,
+            [(2050010, 0), (2050010, 1)],
+        )
 
     def test_client_catalog_preserves_each_stage_before_atomic_commit(self) -> None:
         header = (
@@ -98,6 +123,28 @@ class PlayerSkillCatalogComboTimingTests(unittest.TestCase):
         commit_at = source.index("g_Skills = std::move(skills);")
         self.assertLess(parse_at, stage_at)
         self.assertLess(stage_at, commit_at)
+
+    def test_balance_tool_round_trip_keeps_automatic_duration_and_advance_paired(
+        self,
+    ) -> None:
+        source = (
+            self.repository_root / "Client/Private/BalanceTool.cpp"
+        ).read_text(encoding="utf-8")
+
+        duration_edit = (
+            "dimensionMaster->comboStages.front().actionDurationMs = 1300u;"
+        )
+        advance_edit = (
+            "dimensionMaster->comboStages.front().comboAdvanceMs = 1300u;"
+        )
+        self.assertIn(duration_edit, source)
+        self.assertIn(advance_edit, source)
+        self.assertLess(source.index(duration_edit), source.index(advance_edit))
+        self.assertIn(
+            'ReadU32(stages->Get_Array().front(), "actionDurationMs", duration)',
+            source,
+        )
+        self.assertIn("1300u == duration && 1300u == advance", source)
 
 
 if __name__ == "__main__":

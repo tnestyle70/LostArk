@@ -283,6 +283,8 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		const DATA_JSON_VALUE* cooldown = Required(value, "cooldownMs", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* resourceCost = Required(
 			value, "resourceCost", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* identityCost = Required(
+			value, "identityCost", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* maximumRange = Required(
 			value, "maximumRange", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* damageId = Required(
@@ -296,7 +298,7 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			value, "comboStages", DATA_JSON_TYPE::ARRAY);
 		if (nullptr == id || nullptr == characterClass || nullptr == slot ||
 			nullptr == name || nullptr == action ||
-			nullptr == cooldown || nullptr == resourceCost ||
+			nullptr == cooldown || nullptr == resourceCost || nullptr == identityCost ||
 			nullptr == maximumRange ||
 			resourceCost->Get_Number() < 0.0 ||
 			nullptr == damageId || nullptr == kind ||
@@ -334,6 +336,11 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		definition.iCooldownMs = static_cast<std::uint32_t>(cooldown->Get_Number());
 		definition.iResourceCost =
 			static_cast<std::uint32_t>(resourceCost->Get_Number());
+		if (!ReadU32(identityCost, definition.iIdentityCost))
+		{
+			outStatus = "PlayerSkills.json has an invalid identityCost";
+			return false;
+		}
 		if (!ReadFiniteFloat(maximumRange, definition.fMaximumRange) ||
 			definition.fMaximumRange < 0.f)
 		{
@@ -423,10 +430,14 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 					definition.ComboStages[stageIndex];
 				const bool isFinalStage =
 					stageIndex + 1u == definition.ComboStages.size();
+				const bool isAutomaticStage = !isFinalStage &&
+					0u == stage.iInputOpenMs && 0u == stage.iInputCloseMs;
 				if ((isFinalStage &&
 						(stage.iComboAdvanceMs != stage.iActionDurationMs ||
 							0u != stage.iInputOpenMs || 0u != stage.iInputCloseMs)) ||
-					(!isFinalStage &&
+					(isAutomaticStage &&
+						stage.iComboAdvanceMs != stage.iActionDurationMs) ||
+					(!isFinalStage && !isAutomaticStage &&
 						(stage.iInputOpenMs >= stage.iInputCloseMs ||
 							stage.iInputCloseMs > stage.iActionDurationMs)))
 				{
