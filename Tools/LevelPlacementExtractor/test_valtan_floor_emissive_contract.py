@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import argparse
 import math
+import os
 import re
 import shlex
 import struct
+import sys
 import unittest
 from pathlib import Path
 
 import build_valtan_floor_collapse as floor_builder
+import build_valtan_floor_emissive_fill as emissive_fill_builder
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -20,7 +24,23 @@ DEPLOY_CATALOG = (
     / AREA_ID
     / f"{AREA_ID}.deployassets"
 )
-RESOURCE_ROOT = REPO_ROOT / "Client" / "Bin" / "Resources"
+DEFAULT_RESOURCE_ROOT = REPO_ROOT / "Client" / "Bin" / "Resources"
+RESOURCE_ROOT_ENV = "LOSTARK_RESOURCE_ROOT"
+
+
+def resolve_resource_root(explicit: Path | None = None) -> Path:
+    candidate = explicit
+    if candidate is None:
+        environment_value = os.environ.get(RESOURCE_ROOT_ENV, "").strip()
+        candidate = (
+            Path(environment_value) if environment_value else DEFAULT_RESOURCE_ROOT
+        )
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    return candidate.resolve()
+
+
+RESOURCE_ROOT = resolve_resource_root()
 
 FLOOR_ASSETS = {
     "VALTAN_FLOOR_BRICK_A": "BG_RAD_VALTAN_FLOOR01A_SM",
@@ -237,7 +257,13 @@ class ValtanFloorEmissiveContractTests(unittest.TestCase):
                 model_relative = Path(
                     "Map/BG_RAD_VALTAN_A"
                 ) / model_name / f"{model_name}.WModel"
-                materials = parse_wmodel_materials(RESOURCE_ROOT / model_relative)
+                model_path = RESOURCE_ROOT / model_relative
+                self.assertTrue(
+                    model_path.is_file(),
+                    f"runtime WModel is missing under {RESOURCE_ROOT}; pass "
+                    f"--resource-root or set {RESOURCE_ROOT_ENV}: {model_path}",
+                )
+                materials = parse_wmodel_materials(model_path)
                 self.assertIn(1, materials)
 
                 prefix = (
@@ -402,12 +428,50 @@ class ValtanFloorEmissiveContractTests(unittest.TestCase):
         overlay_render = braced_block(
             deploy, "HRESULT CDeployPropObject::Render_DeferredEmissiveOverlay()"
         )
+        mesh_indices_match = re.search(
+            r"EMISSIVE_MESH_INDICES\[\]\s*=\s*\{(?P<body>[^}]*)\}",
+            overlay_render,
+        )
+        self.assertIsNotNone(mesh_indices_match)
+        mesh_indices = [
+            int(value)
+            for value in re.findall(
+                r"(?<![A-Za-z0-9_])(\d+)u", mesh_indices_match.group("body")
+            )
+        ]
+        self.assertEqual(0, emissive_fill_builder.FILL_SUBMESH_INDEX)
+        self.assertEqual(1, emissive_fill_builder.CRACK_RUBBLE_SUBMESH_INDEX)
+        self.assertEqual(
+            [
+                emissive_fill_builder.FILL_SUBMESH_INDEX,
+                emissive_fill_builder.CRACK_RUBBLE_SUBMESH_INDEX,
+            ],
+            mesh_indices,
+        )
         self.assertIn("EMISSIVE_MESH_INDEX = 1u", overlay_render)
         self.assertIn("DEFERRED_EMISSIVE_OVERLAY_PASS = 15u", overlay_render)
+        self.assertRegex(
+            overlay_render,
+            r"Get_NumMeshes\(\)\s*<=\s*EMISSIVE_MESH_INDEX",
+        )
         self.assertIn("aiTextureType_EMISSIVE", overlay_render)
         self.assertIn('"g_EmissiveIntensity", &m_fEmissiveIntensity', overlay_render)
-        self.assertIn("Render(EMISSIVE_MESH_INDEX)", overlay_render)
+        self.assertIn(
+            "for (const uint32_t meshIndex : EMISSIVE_MESH_INDICES)",
+            overlay_render,
+        )
+        self.assertRegex(
+            overlay_render,
+            r"FAILED\(m_pShaderCom->Begin\(DEFERRED_EMISSIVE_OVERLAY_PASS\)\)\s*\|\|\s*"
+            r"FAILED\(m_pIntactModelCom->Render\(meshIndex\)\)",
+        )
+        self.assertNotIn("Render(EMISSIVE_MESH_INDEX)", overlay_render)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    argument_parser = argparse.ArgumentParser(add_help=False)
+    argument_parser.add_argument("--resource-root", type=Path)
+    arguments, unittest_arguments = argument_parser.parse_known_args()
+    if arguments.resource_root is not None:
+        RESOURCE_ROOT = resolve_resource_root(arguments.resource_root)
+    unittest.main(argv=[sys.argv[0], *unittest_arguments])

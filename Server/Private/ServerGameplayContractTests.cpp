@@ -6151,7 +6151,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					std::ios::binary);
 				bootstrap <<
 					"LOSTARK_GAMEPLAY_BOOTSTRAP\t" << GAMEPLAY_BOOTSTRAP_VERSION <<
-					"\t87\n"
+					'\t' << (19u + VALID_VALTAN_TIMELINE_ROW_COUNT) << "\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"BOSSPART\tBOSS_VALTAN\tboss.part.valtan.arm-armor\t2\t1000\t15\tGROGGY_ONLY\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
