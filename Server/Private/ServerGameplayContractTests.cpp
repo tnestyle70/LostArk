@@ -835,11 +835,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			std::vector<std::uint32_t>{ 1790u, 2560u, 3330u } ==
 				fourSlashes->HitOffsetsMs &&
 			nullptr != fourSlashSpin && 1u == fourSlashSpin->iHitCount &&
-			600u == fourSlashSpin->iHitDelayMs &&
+			0u == fourSlashSpin->iHitDelayMs &&
 			0u == fourSlashSpin->iHitIntervalMs &&
-			fourSlashSpin->HitOffsetsMs.empty() &&
+			std::vector<std::uint32_t>{ 600u } ==
+				fourSlashSpin->HitOffsetsMs &&
 			fourSlashes->bWallContact && fourSlashSpin->bWallContact,
-			"Compile the rejoined four-slash Server hit schedule exactly");
+			"Compile the rejoined four-slash explicit Server hit schedule exactly");
 		tests.Require(
 			nullptr != highJumpTakeoff &&
 			1933u == highJumpTakeoff->iDurationMs &&
@@ -939,14 +940,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 		tests.Require(
 			everyDamagingStageResolves && 48u == damagingStageCount &&
-			75u == authoredHitPulseCount &&
+			73u == authoredHitPulseCount &&
 			700u == catalog.Find_DamageRatePercent(
 				"damage.valtan.arena-destroy-109") &&
 			450u == catalog.Find_DamageRatePercent(
 				"damage.valtan.six-direction-130") &&
 			900u == catalog.Find_DamageRatePercent(
 				"damage.valtan.ghost-transition-15"),
-			"Resolve all 48 Valtan hit stages and 75 pulses through project-tuned damage profiles");
+			"Resolve all 48 Valtan hit stages and 73 pulses through project-tuned damage profiles");
 	}
 	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
@@ -4941,9 +4942,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			if (17u == activeTick)
 				spinCrossingStateExact = spinCrossingStateExact &&
 					0u == slashBoss.iAppliedPatternHitCount;
-			else if (18u <= activeTick)
+			else if (18u <= activeTick &&
+				"SPIN" == slashBoss.strPatternStageId)
 				spinCrossingStateExact = spinCrossingStateExact &&
 					1u == slashBoss.iAppliedPatternHitCount;
+			else if ("RECOVERY" == slashBoss.strPatternStageId)
+				spinCrossingStateExact = spinCrossingStateExact &&
+					0u == slashBoss.iAppliedPatternHitCount;
 
 			if ("RECOVERY" == slashBoss.strPatternStageId)
 			{

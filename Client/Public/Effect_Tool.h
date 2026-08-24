@@ -982,6 +982,7 @@ private:
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
 	std::string m_strValtanPatternTreeStatus;
 	bool_t m_bValtanPatternTreeLoaded = false;
+	bool_t m_bValtanPatternTreeLoadAttempted = false;
 	VALTAN_SERVER_PATTERN_REQUEST m_PendingValtanServerPatternRequest;
 	uint32_t m_iNextValtanServerPatternRequestSequence = 1u;
 	std::string m_strValtanServerPatternStatusPatternId;

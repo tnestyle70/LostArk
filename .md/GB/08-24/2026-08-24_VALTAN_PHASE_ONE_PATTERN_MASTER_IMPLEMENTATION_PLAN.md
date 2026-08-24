@@ -52,7 +52,7 @@ Effect 사용 위치의 공동 authoring 정본으로 만든다. 기존 Server/C
 
 ### G3. Animation/Effect projection
 
-- WHIRLWIND SPIN 1200ms와 두 회전 play rate 정렬
+- WHIRLWIND SPIN 1200ms와 533ms 원본 window의 단일 패스 EXACT play rate 정렬
 - FOUR_SLASH의 두 body clip과 세 Effect cue를 한 pattern으로 결합
 - HIGH_JUMP AIRBORNE/axe life 6000ms 정렬
 - ARENA_BREAK RECOVERY에 ledge-roar end clip과 recovery Effect cue 연결
@@ -114,3 +114,22 @@ JSON/XML parse
 사용자가 Effect Tool `All Effects -> Valtan`에서 independent axe/donut의 단일 노출, 일곱 pattern 전체
 animation timeline, Revolution 회전, anchor 이동과 실제 Server Pattern을 확인한다. 에이전트는 화면 결과를 대신
 PASS 처리하지 않는다.
+
+## 2026-08-24 긴급 회귀 수정 추가 범위
+
+- `SERVER_PATTERN_STAGE` independent Effect는 선언된 `ownerPatternId/ownerStageId`에서만 정확히 한 번
+  참조되도록 projector와 Client join의 불변식을 일치시킨다. 도넛은 `INNER` cue에서 한 번 시작하고
+  Effect 내부 타임라인으로 `INNER -> OUTER`를 표현한다.
+- Effect Tool cold start admission 실패는 매 frame JSON을 다시 읽지 않고 최초 1회만 실패 상태를 보존하며,
+  사용자의 명시적 `Refresh`에서만 재시도한다.
+- Effect Tool의 Valtan Product preview는 실제 Arena와 같이 `NATURAL` cue를 owner stage 전환 뒤에도
+  Effect 문서 수명 동안 유지한다. `CUE_END`만 source end window로 종료하며, 도넛은 INNER에서 한 번
+  시작한 같은 instance가 OUTER 구간까지 이어진다.
+- main의 carrier-v1 이후 의도적으로 교체된 four-slash/whirlwind authored 문서는 역사 receipt를 덮어쓰지
+  않는다. 별도 successor receipt가 baseline -> successor element closure를 봉인하고 materializer는 해당
+  문서를 보존·검증하면서 나머지 carrier 출력을 재생성한다.
+- 로컬 Effect Tool 저장으로 일부 Element만 남은 도넛/점프/도끼 문서는 main 원본 Element와 현재 저작
+  Element의 stable-ID 합집합으로 복구한다. 현재 저작 Element와 같은 ID는 현재 값을 우선한다.
+- 완료 조건은 Valtan master validator가 잘못된 cross-stage independent reference를 실제로 거부하고,
+  carrier materializer check가 successor 문서를 변경하지 않은 채 PASS하며, Effect publisher가 복구된
+  authored/runtime payload를 같은 변경 단위로 봉인하는 것이다.

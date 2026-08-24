@@ -1100,12 +1100,24 @@ foreach ($independentEffect in @($master.independentEffects)) {
     if ($ownerStages.Count -ne 1) {
         throw "Independent effect owner stage is invalid: $independentEffectId"
     }
-    $stageReferences = @($ownerPatterns[0].stages.effectRefs | Where-Object {
+    $stageReferences = @(
+        foreach ($candidatePattern in @($master.patterns)) {
+            foreach ($candidateStage in @($candidatePattern.stages)) {
+                foreach ($candidateRef in @($candidateStage.effectRefs)) {
+                    if ([string]$candidateRef.refType -ceq 'INDEPENDENT_EFFECT' -and
+                        [string]$candidateRef.refId -ceq $independentEffectId) {
+                        $candidateRef
+                    }
+                }
+            }
+        }
+    )
+    $ownerStageReferences = @($ownerStages[0].effectRefs | Where-Object {
         [string]$_.refType -ceq 'INDEPENDENT_EFFECT' -and
         [string]$_.refId -ceq $independentEffectId
     })
-    if ($stageReferences.Count -eq 0) {
-        throw "Independent effect has no owner timeline reference: $independentEffectId"
+    if ($stageReferences.Count -ne 1 -or $ownerStageReferences.Count -ne 1) {
+        throw "Independent effect must have exactly one reference on its declared owner stage: $independentEffectId"
     }
     if ([string]$independentEffect.ownership -ceq 'SERVER_COMBAT_OBJECT') {
         Assert-StableId $independentEffect.combatObjectArchetypeId `

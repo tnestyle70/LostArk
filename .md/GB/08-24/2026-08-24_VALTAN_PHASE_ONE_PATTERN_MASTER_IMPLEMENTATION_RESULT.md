@@ -66,15 +66,17 @@ counter reaction action 중 하나라도 어긋나면 기존 view를 유지하�
 
 ## 3. Admission된 일곱 패턴과 시간
 
-| Pattern | Stage 시간 | 구현된 핵심 계약 |
-|---|---|---|
-| `VALTAN_WHIRLWIND` | WINDUP 1333 / SPIN 1200 / RECOVERY 1467ms | 전체 4000ms다. 원작 단발 휠윈드 선택을 기준으로 SPIN을 1.2초로 고정했고 0/350/700/1050ms 네 번의 Server 판정을 유지한다. |
-| `VALTAN_DASH_CHARGE` | WINDUP 3650 / CHARGE 500 / GROGGY 5000 / RECOVERY 900 / PART_BREAK 1400ms | WINDUP은 `repeatCount: 3`과 현행 세 source cut 600+600+2450ms를 함께 명시한다. wall contact, timeout, part destroyed를 branch graph로 선택한다. |
-| `VALTAN_FOUR_SLASH` | WINDUP 400 / SLASHES 3500 / SPIN 3167 / RECOVERY 800ms | 분리됐던 TRIPLE/ROTATION을 한 pattern으로 재결합했다. Server contact는 SLASHES 세 번과 SPIN 한 번, 총 네 번이다. |
-| `VALTAN_FIST_IN_OUT` | WINDUP 1500 / INNER 2600 / OUTER 800 / RECOVERY 800ms | Server 판정은 INNER circle 0~7m와 OUTER ring 7~16m로 분리하고, 합성 도넛 visual은 independent library entry로 연다. |
-| `VALTAN_HIGH_JUMP` | TAKEOFF 1933 / AIRBORNE 6000 / LAND 3200 / RECOVERY 400ms | TAKEOFF로 상승하고 AIRBORNE에서 정점 pose를 6초 유지한 뒤 LAND에서 잠근 target으로 하강한다. AIRBORNE 진입이 플레이어별 도끼 combat object를 만든다. |
-| `VALTAN_FLOOR_WIPE_130` | WINDUP 1800 / FIRST_SMASH 800 / INTERVAL 2000 / SECOND_SMASH 500 / RECOVERY 1500ms | stable ID와 130줄 trigger를 보존했다. animation role은 WINDUP -> SECOND_SMASH -> WINDUP -> SECOND_SMASH 흐름으로 연결하되 gameplay stage ID는 고유하게 유지한다. |
-| `VALTAN_ARENA_BREAK_109` | TAKEOFF 900 / DROP 700 / IMPACT 400 / IMPACT_HOLD 1100 / WIDE_REVEAL 2300 / RECOVERY 870ms | 표시명은 `중앙 이동 후 2페이즈 컷씬`이다. 기존 camera/world trigger를 stable ID로 참조하고 RECOVERY를 낙사 사자후 end clip에 연결한다. |
+| Pattern | Stage 시간 | endPolicy / repeat | 구현된 핵심 계약 |
+|---|---|---|---|
+| `VALTAN_WHIRLWIND` | WINDUP 1333 / SPIN 1200 / RECOVERY 1467ms | LOOP / EXACT / LOOP, 모두 x1 | 전체 4000ms다. SPIN은 533ms 원본 window를 `playRate=0.4441666667`, 비반복 단일 패스로 정확히 1.2초 재생하고 0/350/700/1050ms 네 번의 Server 판정을 유지한다. |
+| `VALTAN_DASH_CHARGE` | WINDUP 3650 / CHARGE 500 / GROGGY 5000 / RECOVERY 900 / PART_BREAK 1400ms | EXACT x3 / EXACT / LOOP / EXACT / LOOP | WINDUP은 `repeatCount: 3`과 현행 세 source cut 600+600+2450ms를 함께 명시한다. wall contact, timeout, part destroyed를 branch graph로 선택한다. |
+| `VALTAN_FOUR_SLASH` | WINDUP 400 / SLASHES 3500 / SPIN 3167 / RECOVERY 800ms | LOOP / HOLD / HOLD / LOOP, 모두 x1 | 분리됐던 TRIPLE/ROTATION을 한 pattern으로 재결합했다. Server contact는 SLASHES 세 번과 SPIN 한 번, 총 네 번이다. |
+| `VALTAN_FIST_IN_OUT` | WINDUP 1500 / INNER 2600 / OUTER 800 / RECOVERY 800ms | LOOP / LOOP / EXACT / EXACT, 모두 x1 | Server 판정은 INNER circle 0~7m와 OUTER ring 7~16m로 분리하고, 합성 도넛 visual은 independent library entry로 연다. |
+| `VALTAN_HIGH_JUMP` | TAKEOFF 1933 / AIRBORNE 6000 / LAND 3200 / RECOVERY 400ms | 모두 LOOP x1 | TAKEOFF로 상승하고 AIRBORNE에서 정점 pose를 6초 유지한 뒤 LAND에서 잠근 target으로 하강한다. AIRBORNE 진입이 플레이어별 도끼 combat object를 만든다. |
+| `VALTAN_FLOOR_WIPE_130` | WINDUP 1800 / FIRST_SMASH 800 / INTERVAL 2000 / SECOND_SMASH 500 / RECOVERY 1500ms | 모두 LOOP x1 | stable ID와 130줄 trigger를 보존했다. animation role은 WINDUP -> SECOND_SMASH -> WINDUP -> SECOND_SMASH 흐름으로 연결하되 gameplay stage ID는 고유하게 유지한다. |
+| `VALTAN_ARENA_BREAK_109` | TAKEOFF 900 / DROP 700 / IMPACT 400 / IMPACT_HOLD 1100 / WIDE_REVEAL 2300 / RECOVERY 870ms | EXACT / EXACT / EXACT / EXACT / HOLD / LOOP, 모두 x1 | 표시명은 `중앙 이동 후 2페이즈 컷씬`이다. 기존 camera/world trigger를 stable ID로 참조하고 RECOVERY를 낙사 사자후 end clip에 연결한다. |
+
+표의 LOOP는 JSON `LOOP_TO_STAGE_END`, HOLD는 `HOLD_LAST_POSE`의 축약이다.
 
 각 animation stage는 `EXACT`, `HOLD_LAST_POSE`, `LOOP_TO_STAGE_END` 중 하나의 `endPolicy`를
 명시한다. `repeatCount`는 유한한 occurrence 반복이고 `repeatUntilStageEnd`는 남은 stage wall을 채우는
@@ -159,10 +161,22 @@ stage가 늘거나 줄었는데 master layer 집합을 같은 변경에서 갱�
 life, damage와 복제를 소유하고 Client는 BossCatalog가 연결한 visual Effect만 그린다. 도넛은 INNER clip
 occurrence의 Product cue offset, anchor/follow/local transform과 stop window를 그대로 사용한다.
 
+두 independent ID는 선언한 owner stage에 각각 정확히 한 번만 참조된다. 도넛의 owner는
+`VALTAN_FIST_IN_OUT/INNER`이고 `OUTER.effectRefs`는 비어 있다. INNER가 unified Effect를 한 번 시작하며
+OUTER stage는 같은 independent ID를 다시 시작하지 않는다. projector focused harness와 Effect Tool contract
+test는 다른 stage의 두 번째 참조를 실패시키며, Client exact join도 owner stage가 다르면
+`master independent Effect reference is stale`로 admission을 거부한다. 실제 Arena와 Effect Tool authoring
+preview는 모두 `stopPolicy: natural`인 Effect의 문서 lifetime을 다음 stage까지 유지한다. 따라서 INNER에서
+한 번 spawn한 unified Effect가 OUTER까지 이어지고, 명시적 `CUE_END`만 source end window에서 종료된다.
+
 ### 현재 도끼 범위와 후속 경계
 
-현재 구현된 도끼 origin policy는 **`LOCKED_TARGET_PER_ALIVE_PLAYER`**다. AIRBORNE 진입 시 살아 있는
-플레이어마다 target 위치를 잠그고 그 위치에 도끼 combat object를 한 번 생성한다.
+현재 구현된 도끼 origin policy는 **`LOCKED_TARGET_PER_ALIVE_PLAYER`**다. AIRBORNE 진입 시 살아 있고 낙하
+중이 아닌 플레이어마다 target을 하나씩 잠그고 도끼 combat object를 한 번 생성한다. 각 object의 life는
+AIRBORNE과 같은 6000ms이고, Server fixed tick은 그 target의 유효 위치를 첫 timed pulse인 1200ms까지
+추적한다. 첫 pulse를 발사하면 follow flag를 끄고 마지막 위치에 고정한다. 판정은 1200ms에 한 번,
+CIRCLE 3.5m, `damage.valtan.high-jump`이며 visual은 BossCatalog의
+`combatobject.visual.valtan.high-jump.target-axe.v1 -> effect.valtan.sky-axe.active` mapping을 쓴다.
 
 **랜덤 아레나 위치 도끼 생성은 이번 구현에 포함되지 않았다.** 이를 추가할 때는 Effect를 복제하거나
 Client 좌표를 정답으로 사용하지 않고, 다음 항목을 하나의 별도 Server vertical slice로 닫아야 한다.
@@ -195,6 +209,9 @@ Client 좌표를 정답으로 사용하지 않고, 다음 항목을 하나의 �
 - `Play Authoring Timeline`은 선택한 branch의 모든 stage body occurrence를 순서대로 재생한다.
 - pattern Effect를 선택한 상태로 전체 timeline을 재생하면 stage-global cue offset, anchor/follow/local
   transform, stop window와 Effect clock을 유지한다.
+- 현재 authored Effect가 valid하지만 drawable element가 없으면 Effect 시작 실패만 상태로 표시하고 body
+  animation 전체 timeline은 animation-only로 계속 재생한다. `Play Saved Effect`가 drawable 전까지 막히는
+  것과 `Play Authoring Timeline`이 animation 검증을 계속 허용하는 것은 서로 다른 계약이다.
 - 도넛 `SERVER_PATTERN_STAGE`는 Product cue 경로로, 도끼 `SERVER_COMBAT_OBJECT`는 replicated world-root
   경로로 preview ownership을 구분한다.
 - saved Effect 문서의 element decode는 Open/Play 전까지 지연해 All Effects tree refresh가 모든 Effect를
@@ -245,6 +262,12 @@ damage font는 master나 DamageProfiles에서 예상 수치를 다시 계산하�
 - 기존 migration/reseal 도구는 rejoined successor가 존재하면 현재 binding/cue의 exact successor identity만
   검증한다. historical mutation을 live authoring에 재적용하지 않으며, valid successor에 대한 write mode는
   identity operation이다.
+- live Product가 historical Carrier 문서와 달라진 일곱 Effect는
+  `Valtan.carrier-v1-successor-lineage-receipt.v1.json`이 `RETAIN`, `REPLACED_BY`, `INTENTIONALLY_REMOVED`와
+  새 element ID를 명시한다. 기존 5MB historical receipt는 한 바이트도 다시 봉인하지 않는다.
+- materializer는 current master의 109 컷씬 selection `420629 sequence 3`을 historical `sequence 1`로
+  투영한 뒤 기존 분모 `exact 660 / materialized 657`을 그대로 재현하고, successor가 소유한 문서는
+  validate-only로 취급한다. 따라서 팀원의 Product Effect를 historical writer가 다시 덮어쓰지 않는다.
 - EffectPipeline은 imported source inventory, carrier evidence와 historical receipt의 보존/검증을 계속
   소유한다. pattern master projector는 현재 pattern/stage/action/cue join만 소유한다.
 
@@ -260,6 +283,8 @@ migration의 historical 증거를 덮어쓰지도 않는다.
 | `Project-ValtanPatternMaster.ps1 -Mode Validate` | PASS |
 | `Test-ValtanPatternMaster.ps1` | PASS |
 | `test_animation_tool_valtan_pattern_master.py` + `test_valtan_pattern_tree_contract.py` | 15 tests PASS |
+| `test_effect_tool_valtan_saved_rows.py` | 28 tests PASS |
+| Carrier materializer + successor lineage suites | 10 + 9 tests PASS |
 | `Publish-GameplayBalance.ps1 -Mode Validate` | PASS |
 
 focused harness는 정상 publish/validate뿐 아니라 잘못된 property/ID, duplicate, Product drift, branch drift,
@@ -274,16 +299,19 @@ Product join을 검사한다.
 |---|---|
 | `Invoke-BuildAndRegression.ps1 -Configuration Debug` Engine/UpdateLib/Shared/Server/Client build | PASS, `Client/Bin/Debug/Client.exe` link 완료 |
 | Debug wrapper 내 Valtan master publish/validate/focused harness | PASS, 7 patterns / 31 stages / 2 independent effects / 4 counter reactions / 15 cue refs |
-| Debug wrapper 내 Valtan Python + Effect Tool tests | 7 + 26 tests PASS |
+| Debug wrapper 내 Valtan Python + Effect Tool tests | 7 + 28 tests PASS |
 | Debug wrapper 내 Gameplay balance/world/items/navigation/Effect catalog validation | PASS |
-| Debug wrapper 최종 exit | FAIL: `Sync-EffectDataProject.ps1 -Check`가 기존 `Data/Effects` 전체와 `Client.vcxproj/.filters` generated group의 stale 등록을 검출 |
+| `Sync-EffectDataProject.ps1 -Check` | PASS: 2304 files / 219 filters |
+| `materialize_valtan_carrier_v1.py --mode check` | PASS: APPLIED / exact 660 / materialized 657 / changed 0 |
+| Server x64 Debug + `Server.exe --contract-test` | PASS: failures 0 |
+| Debug wrapper 최종 exit | Valtan gates 이후 기존 floor-emissive source assertion 1건에서 FAIL |
 | `Invoke-BuildAndRegression.ps1 -Configuration Release` | 긴급 merge 전 미실행 |
 
-Debug wrapper의 마지막 실패는 이 변경에서 추가한 `Data/Valtan/Valtan.pattern.json` 등록 누락이 아니다.
-해당 파일과 `96.DataFiles\\Valtan` filter는 이번 변경에 함께 등록되어 있다. 동기화 도구를 write mode로
-실측하면 현재 main 계열의 Effect generated group 전체에 `files=2303, filters=219` 재생성이 필요해 두 project
-파일에 1,618줄의 광범위한 무관 변경이 발생한다. 이를 발탄 PR에 섞지 않고 원상복구했으며, Effect project
-generated group 정리는 별도 저장소 유지보수 변경으로 남긴다.
+사용자가 요청한 SLN pull/build 계약을 닫기 위해 stale였던 Effect generated group을 동기화했고,
+`Client.vcxproj/.filters`는 현재 2304개 DataFiles와 219개 filter의 generator 출력이다. Debug wrapper의 남은
+실패는 이 변경과 무관하게 main에도 존재하던 floor-emissive test가 현재 두 mesh loop 구현에서 과거
+`Render(EMISSIVE_MESH_INDEX)` 문자열만 기대하는 source assertion이다. 실제 resource root를 연결한 재검사에서
+나머지 다섯 floor-emissive 검사는 통과했고 이 한 건만 실패했다. 발탄 Server contract는 별도로 전체 PASS했다.
 
 이번 긴급 merge는 위 Debug 전체 compile/link, 발탄 projector/harness, typed Tool regression과 domain
 publisher PASS를 근거로 한다. Release와 사용자 Client visual gate는 실행하지 않았다는 사실을 그대로
@@ -295,7 +323,7 @@ publisher PASS를 근거로 한다. Release와 사용자 Client visual gate는 �
 Server 재시작 뒤 사용자가 다음을 직접 확인해야 한다.
 
 1. Animation Tool의 `Valtan Pattern Master (Authoritative)`에서 일곱 pattern과 위 stage 시간이 같은지 확인한다.
-2. 휠윈드 전체 timeline에서 SPIN이 1.2초이고 두 body occurrence와 Effect Revolution이 실제로 회전하는지
+2. 휠윈드 전체 timeline에서 SPIN이 1.2초이고 단일 body occurrence와 Effect Revolution이 실제로 회전하는지
    확인한다.
 3. 돌진 normal / wall-groggy / part-break path에서 WINDUP 세 occurrence, 실제 전진 이동, 그로기와 회복
    animation 순서가 맞는지 확인한다.
@@ -315,6 +343,12 @@ camera와 wall destruction의 최종 시각 품질은 사용자 서면 확인 �
 ## 12. 명시적으로 남은 범위
 
 - 랜덤 아레나 위치 도끼 생성은 미구현이다. 현재 정답은 `LOCKED_TARGET_PER_ALIVE_PLAYER`다.
+- 현재 추적은 도끼의 6000ms life 전체가 아니라 첫 1200ms timed pulse까지다. 첫 pulse 뒤에는 마지막 위치에
+  고정되며 지속 추적·다중 pulse도 미구현이다.
+- 도넛 independent reference는 INNER 한 곳에만 존재한다. OUTER의 Server ring 판정은 유지하지만 같은
+  visual reference를 OUTER에 중복하지 않는다.
+- 도넛은 INNER natural cue 한 번으로 OUTER까지 문서 lifetime을 유지한다. OUTER에서 같은 independent ref를
+  다시 spawn하지 않으며 실제 visual fidelity는 사용자 timeline/Arena 판정으로 남는다.
 - `휠윈드 1.2초`는 전체 pattern이 아니라 SPIN stage 1.2초다.
 - 돌진 WINDUP은 의미상 세 occurrence지만 현행 source wall은 동일 600ms 세 번이 아니라
   600+600+2450ms다. 정확히 600ms x3으로 바꾸려면 stage/cue/pose를 함께 다시 승인해야 한다.
@@ -322,3 +356,38 @@ camera와 wall destruction의 최종 시각 품질은 사용자 서면 확인 �
   health mechanic을 함께 변경하는 별도 승인 범위다.
 - 109줄 이하 legacy pattern 전체를 이번 master에 admission하지 않았다. 범위를 늘릴 때는 master,
   projector, typed Tool join, Server rotation과 harness를 같은 변경 단위로 확장해야 한다.
+
+## 13. 2026-08-24 긴급 회귀 재감사
+
+최신 정본/투영/Tool 변경을 다시 감사해 다음 회귀를 닫았다.
+
+- 도넛 independent ID는 `FIST_IN_OUT/INNER`에만 한 번 존재한다. projector가 전체 managed pattern에서 같은
+  ID의 참조 수를 세고 선언 owner stage의 정확히 한 행이 아니면 실패한다. `OUTER` 중복 참조 fixture도 focused
+  harness에서 거부한다.
+- Effect Tool의 Valtan tree 최초 load가 실패하면 매 frame JSON을 다시 읽지 않고 명시적 Refresh에서만 재시도한다.
+- Valtan natural Product cue preview의 무조건적인 owner-stage end clamp를 제거했다. Arena와 Tool 모두 unified
+  donut을 INNER에서 한 번 시작해 문서 lifetime으로 OUTER까지 유지하며, `CUE_END`는 source window로 계속
+  제한한다.
+- 복구된 도넛/점프/도끼 authored 문서와 runtime sealed 문서의 JSON/sha identity가 다시 일치한다. Effect Tool
+  전체 suite가 모든 published V0 cue의 authored/runtime equality와 non-empty drawable inventory를 함께 검사한다.
+  stable-ID ordered union 결과는 도넛 24, TAKEOFF 3, LAND 24, sky axe 6 elements이고 누락/중복은 0이다.
+
+최종 read-only 재감사 결과는 다음과 같다.
+
+| 검증 | 최신 결과 |
+|---|---|
+| 7-pattern exact static audit | PASS: 7 patterns / 31 stages / 5 weighted normals / 2 mechanics / dash repeat 3 / 2 independent effects / 4 counter layers |
+| selection/damage reference audit | PASS: weights `20,30,12,14,14`, managed damage profile 8개 exact join |
+| `Project-ValtanPatternMaster.ps1 -Mode Validate` | PASS: 7 / 31 / 2 / 4 / 15, product drift check true |
+| `Test-ValtanPatternMaster.ps1` | PASS: invalid owner-stage duplicate와 transactional fixture 포함 |
+| `test_valtan_pattern_tree_contract.py` | 8 tests PASS |
+| `test_animation_tool_valtan_pattern_master.py` | 7 tests PASS |
+| `test_effect_tool_valtan_saved_rows.py` | 28 tests PASS |
+| `Publish-GameplayBalance.ps1 -Mode Validate` | PASS: 33 boss patterns / 131 stages / 2 combat objects |
+| `Publish-Effects.ps1` explicit team ResourceRoot pre-Validate / Publish / post-Validate | 모두 PASS: Validate 162 Effects / 171 bindings, Publish 162 Effects / 0 Components |
+
+Effect publisher는 팀이 관리하는 실제 resource root
+`C:/Users/user/Desktop/LostArk/Client/Bin/Resources`를 `-ResourceRoot`로 명시해 pre-Validate, Publish,
+post-Validate를 실행했다. 위 28-test focused suite도 이번 네 authored Effect와 runtime sealed 문서를 포함한 모든
+published Valtan V0 cue의 exact equality를 통과했다. 최신 C++ 변경 뒤 Client Debug link와 Server Debug 전체
+contract test도 다시 통과했다. 사용자 visual gate만 에이전트가 대신 실행하지 않았으며 merge 뒤 수동 확인해야 한다.

@@ -1,8 +1,8 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 13,
-  "effectAssetId": "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
-  "displayName": "VALTAN_HIGH_JUMP / TAKEOFF / carrier V1",
+  "effectAssetId": "effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+  "displayName": "VALTAN_FOUR_PILLARS_105 / TAKEOFF / carrier V1",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,
@@ -12,10 +12,841 @@
   "modelCues": [],
   "elements": [
     {
-      "id": "source.d380f17792f1c67e9dc2",
+      "id": "source.5ceb6ce963959d05fe8a",
+      "displayName": "particlespriteemitter_0",
+      "groupId": "fx_mn_rpbf_00_o.par_o_rpbf_atk_06_03",
+      "sourceNode": "valtan.source.5ceb6ce963959d05fe8a5abfde0ca9df98471fc8ab6d62aa6bcebd1d0b55395c",
+      "visible": true,
+      "kind": "decal",
+      "resources": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_HIGH_00/fx_b_decal_006.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "fx_m_mi_04.fx_mi.fx_b_de_dc_06_1_tr",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 2.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 1.125,
+          "lifeTimeSeconds": 0.1,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": true
+        },
+        "sprite": {
+          "billboard": true
+        },
+        "decal": {
+          "size": [
+            4.0,
+            4.0
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 44,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            3.0,
+            3.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            4.0,
+            4.0
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": true
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "decal",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 1,
+        "bursts": [
+          {
+            "timeSeconds": 0.0,
+            "countMinimum": 1,
+            "countMaximum": 1
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:6014@ref:0",
+            "className": "particlemodulerequired",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulerequired_0",
+            "literals": [
+              {
+                "propertyPath": "ballowimageflipping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "buselegacyemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "material",
+                "kind": "number",
+                "value": -167.0
+              },
+              {
+                "propertyPath": "randomimagetime",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "screenalignment",
+                "kind": "string",
+                "value": "psa_rectangle"
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:4279@ref:1",
+            "className": "particlemodulelifetime",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulelifetime_0",
+            "literals": [
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  3.0,
+                  3.0,
+                  3.0,
+                  3.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:7151@ref:2",
+            "className": "particlemodulesize",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulesize_0",
+            "literals": [
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  400.0,
+                  400.0,
+                  400.0,
+                  0.0,
+                  400.0,
+                  400.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:2824@ref:3",
+            "className": "particlemodulecolor",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulecolor_0",
+            "literals": [
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startalpha",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "startcolor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:3665@ref:4",
+            "className": "particlemodulecolorscaleoverlife",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulecolorscaleoverlife_0",
+            "literals": [
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "alphascaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 2.0,
+                "lookupTableStartTime": 0.5,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  1.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "colorscaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:6637@ref:5",
+            "className": "particlemodulerotation",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulerotation_0",
+            "literals": [
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startrotation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.5,
+                  0.5,
+                  0.5,
+                  0.5
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:4740@ref:6",
+            "className": "particlemodulelocation",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulelocation_0",
+            "literals": [
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startlocation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:432@ref:7",
+            "className": "efparticlemoduletypedatadecal",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.efparticlemoduletypedatadecal_0",
+            "literals": [
+              {
+                "propertyPath": "farplane",
+                "kind": "number",
+                "value": 500.0
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "nearplane",
+                "kind": "number",
+                "value": -200.0
+              }
+            ],
+            "distributions": []
+          },
+          {
+            "stableId": "FX_MN_RPBF_00_O:export:8610@ref:8",
+            "className": "particlemodulespawn",
+            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulespawn_0",
+            "literals": [
+              {
+                "propertyPath": "burstlist[0].count",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "burstlist[0].countlow",
+                "kind": "number",
+                "value": -1.0
+              },
+              {
+                "propertyPath": "burstlist[0].time",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      },
+      "inventoryRendererShape": "decal",
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "",
+        "runtimeAnchorSlotId": "",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      }
+    },
+    {
+      "id": "source.60d26af6beaa94af4b92",
       "displayName": "particlespriteemitter_46",
       "groupId": "fx_mn_rpbf_00_o.par_o_rpbf_atk_06_03",
-      "sourceNode": "valtan.source.d380f17792f1c67e9dc255274a1a75ad0988649ae8f3d522f8df169d38d81ec5",
+      "sourceNode": "valtan.source.60d26af6beaa94af4b92fc0b087a79af24b3ae422822f543ff7e691347a042b8",
       "visible": true,
       "kind": "particle",
       "resources": [
@@ -1249,841 +2080,10 @@
       }
     },
     {
-      "id": "source.ece7ae1d1376d407ef1d",
-      "displayName": "particlespriteemitter_0",
-      "groupId": "fx_mn_rpbf_00_o.par_o_rpbf_atk_06_03",
-      "sourceNode": "valtan.source.ece7ae1d1376d407ef1d76a1c236bcfbe9dd60afa78973915ffec7cbe4fd8627",
-      "visible": true,
-      "kind": "decal",
-      "resources": [
-        {
-          "slotId": "base",
-          "assetId": "Effect/Valtan/Textures/FX_TEX_HIGH_00/fx_b_decal_006.dds"
-        }
-      ],
-      "material": {
-        "templateId": "effect.standard",
-        "sourceMaterialPath": "fx_m_mi_04.fx_mi.fx_b_de_dc_06_1_tr",
-        "renderProfile": "alpha_two_sided_depth_read",
-        "sourceProfile": {
-          "enabled": false
-        }
-      },
-      "detail": {
-        "transform": {
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "color": {
-          "offset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "clip": 0.0,
-          "emissiveIntensity": 2.0,
-          "distortionIntensity": 0.0,
-          "distortionOnBaseMaterial": false,
-          "radialTime": 0.0,
-          "radialIntensity": 0.0
-        },
-        "uv": {
-          "start": [
-            0.0,
-            0.0
-          ],
-          "speed": [
-            0.0,
-            0.0
-          ],
-          "wave": false,
-          "waveAmplitude": [
-            0.0,
-            0.0
-          ],
-          "waveFrequency": 1.0,
-          "sequence": false,
-          "loop": true,
-          "sequenceTerm": 0.1,
-          "tileColumns": 1,
-          "tileRows": 1,
-          "tileIndex": 0
-        },
-        "timing": {
-          "startDelaySeconds": 1.125,
-          "lifeTimeSeconds": 0.1,
-          "afterImageSeconds": 0.0,
-          "dissolveStartNormalized": 1.0
-        },
-        "mesh": {
-          "useModelMaterial": true
-        },
-        "sprite": {
-          "billboard": true
-        },
-        "decal": {
-          "size": [
-            4.0,
-            4.0
-          ],
-          "depth": 0.25
-        },
-        "linearLerp": {
-          "position": false,
-          "endPosition": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": false,
-          "endRotationDegrees": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "revolution": false,
-          "endRevolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scale": false,
-          "endScale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "velocity": false,
-          "endVelocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "colorOffset": false,
-          "endColorOffset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "colorMultiply": false,
-          "endColorMultiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "emissiveIntensity": false,
-          "endEmissiveIntensity": 1.0
-        },
-        "particle": {
-          "maxParticles": 44,
-          "spawnRatePerSecond": 0.0,
-          "burstCount": 0,
-          "randomSeed": 1,
-          "lifeTimeSeconds": [
-            3.0,
-            3.0
-          ],
-          "initialPositionMin": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "initialPositionMax": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "initialVelocityMin": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "initialVelocityMax": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "acceleration": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "startSize": [
-            4.0,
-            4.0
-          ],
-          "endSize": [
-            0.0,
-            0.0
-          ],
-          "localSpace": true,
-          "billboard": true
-        },
-        "trail": {
-          "maxPoints": 64,
-          "pointLifeTimeSeconds": 0.35,
-          "sampleIntervalSeconds": 0.0166667,
-          "minimumDistance": 0.01,
-          "startWidth": 0.2,
-          "endWidth": 0.0,
-          "faceCamera": true
-        },
-        "afterImage": {
-          "sampleIntervalSeconds": 0.05,
-          "maxCopies": 16,
-          "alphaExponent": 1.0
-        },
-        "light": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "range": 0.0,
-          "intensity": 0.0,
-          "color": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "ambient": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "falloffExponent": 0.0
-        },
-        "screenPost": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "intensity": 0.0,
-          "secondaryIntensity": 0.0,
-          "frequency": 0.0,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "randomSeed": 1
-        }
-      },
-      "sourceRecipe": {
-        "enabled": true,
-        "rendererShape": "decal",
-        "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 0.0,
-        "emitterLoopCount": 1,
-        "bursts": [
-          {
-            "timeSeconds": 0.0,
-            "countMinimum": 1,
-            "countMaximum": 1
-          }
-        ],
-        "modules": [
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:6014@ref:0",
-            "className": "particlemodulerequired",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulerequired_0",
-            "literals": [
-              {
-                "propertyPath": "ballowimageflipping",
-                "kind": "boolean",
-                "value": true
-              },
-              {
-                "propertyPath": "buselegacyemittertime",
-                "kind": "boolean",
-                "value": false
-              },
-              {
-                "propertyPath": "buselocalspace",
-                "kind": "boolean",
-                "value": true
-              },
-              {
-                "propertyPath": "emitterloops",
-                "kind": "number",
-                "value": 1.0
-              },
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              },
-              {
-                "propertyPath": "material",
-                "kind": "number",
-                "value": -167.0
-              },
-              {
-                "propertyPath": "randomimagetime",
-                "kind": "number",
-                "value": 1.0
-              },
-              {
-                "propertyPath": "screenalignment",
-                "kind": "string",
-                "value": "psa_rectangle"
-              }
-            ],
-            "distributions": [
-              {
-                "propertyPath": "spawnrate",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 1,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [],
-                "keys": []
-              }
-            ]
-          },
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:4279@ref:1",
-            "className": "particlemodulelifetime",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulelifetime_0",
-            "literals": [
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              }
-            ],
-            "distributions": [
-              {
-                "propertyPath": "lifetime",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 1,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 1,
-                "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [
-                  3.0,
-                  3.0,
-                  3.0,
-                  3.0
-                ],
-                "keys": []
-              }
-            ]
-          },
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:7151@ref:2",
-            "className": "particlemodulesize",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulesize_0",
-            "literals": [
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              }
-            ],
-            "distributions": [
-              {
-                "propertyPath": "startsize",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 3,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 3,
-                "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [
-                  0.0,
-                  400.0,
-                  400.0,
-                  400.0,
-                  0.0,
-                  400.0,
-                  400.0,
-                  0.0
-                ],
-                "keys": []
-              }
-            ]
-          },
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:2824@ref:3",
-            "className": "particlemodulecolor",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulecolor_0",
-            "literals": [
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              }
-            ],
-            "distributions": [
-              {
-                "propertyPath": "startalpha",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 1,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [],
-                "keys": []
-              },
-              {
-                "propertyPath": "startcolor",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 3,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 3,
-                "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
-                ],
-                "keys": []
-              }
-            ]
-          },
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:3665@ref:4",
-            "className": "particlemodulecolorscaleoverlife",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulecolorscaleoverlife_0",
-            "literals": [
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              }
-            ],
-            "distributions": [
-              {
-                "propertyPath": "alphascaleoverlife",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 1,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 1,
-                "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 2.0,
-                "lookupTableStartTime": 0.5,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [
-                  0.0,
-                  1.0,
-                  1.0,
-                  0.0
-                ],
-                "keys": []
-              },
-              {
-                "propertyPath": "colorscaleoverlife",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 3,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 3,
-                "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
-                ],
-                "keys": []
-              }
-            ]
-          },
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:6637@ref:5",
-            "className": "particlemodulerotation",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulerotation_0",
-            "literals": [
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              }
-            ],
-            "distributions": [
-              {
-                "propertyPath": "startrotation",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 1,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 1,
-                "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [
-                  0.5,
-                  0.5,
-                  0.5,
-                  0.5
-                ],
-                "keys": []
-              }
-            ]
-          },
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:4740@ref:6",
-            "className": "particlemodulelocation",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulelocation_0",
-            "literals": [
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              }
-            ],
-            "distributions": [
-              {
-                "propertyPath": "startlocation",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 3,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [],
-                "keys": []
-              }
-            ]
-          },
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:432@ref:7",
-            "className": "efparticlemoduletypedatadecal",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.efparticlemoduletypedatadecal_0",
-            "literals": [
-              {
-                "propertyPath": "farplane",
-                "kind": "number",
-                "value": 500.0
-              },
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              },
-              {
-                "propertyPath": "nearplane",
-                "kind": "number",
-                "value": -200.0
-              }
-            ],
-            "distributions": []
-          },
-          {
-            "stableId": "FX_MN_RPBF_00_O:export:8610@ref:8",
-            "className": "particlemodulespawn",
-            "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_atk_06_03.particlemodulespawn_0",
-            "literals": [
-              {
-                "propertyPath": "burstlist[0].count",
-                "kind": "number",
-                "value": 1.0
-              },
-              {
-                "propertyPath": "burstlist[0].countlow",
-                "kind": "number",
-                "value": -1.0
-              },
-              {
-                "propertyPath": "burstlist[0].time",
-                "kind": "number",
-                "value": 0.0
-              },
-              {
-                "propertyPath": "lodvalidity",
-                "kind": "number",
-                "value": 3.0
-              }
-            ],
-            "distributions": [
-              {
-                "propertyPath": "rate",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 1,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 1,
-                "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "keys": []
-              },
-              {
-                "propertyPath": "ratescale",
-                "sourceClass": "",
-                "sourceObjectPath": "",
-                "componentCount": 1,
-                "operation": 1,
-                "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
-                "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "lookupTable": [],
-                "keys": []
-              }
-            ]
-          }
-        ]
-      },
-      "sourcePresentation": {
-        "enabled": false,
-        "schema": "lostark.effect-source-presentation",
-        "version": 1,
-        "profileId": "",
-        "status": "unresolved",
-        "sourceObjectPath": "",
-        "sourceActionCueId": "",
-        "sourceEventId": "",
-        "sourceOccurrenceIndex": 0,
-        "sourceTimeSeconds": 0.0,
-        "parameters": []
-      },
-      "inventoryRendererShape": "decal",
-      "actionCueAttachment": {
-        "enabled": false,
-        "follow": false,
-        "sourceAnchorSlotId": "",
-        "runtimeAnchorSlotId": "",
-        "runtimeBoneName": "",
-        "snapshotRootSourceBasisYawDegrees": 0,
-        "socketLocalTransform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
-        }
-      },
-      "transformInheritance": {
-        "enabled": false,
-        "masterElementId": ""
-      }
-    },
-    {
-      "id": "source.f4617c98d44349eec51d",
+      "id": "source.d1a5739e73c2afd81173",
       "displayName": "particlespriteemitter_47",
       "groupId": "fx_mn_rpbf_00_o.par_o_rpbf_atk_06_03",
-      "sourceNode": "valtan.source.f4617c98d44349eec51d27cc338ba47fe5621aeaef7062b5cf332a11727c9ff4",
+      "sourceNode": "valtan.source.d1a5739e73c2afd81173ecc4dac404b67bd00751c1d6f3e92863546f621cb63e",
       "visible": true,
       "kind": "particle",
       "resources": [
@@ -3236,7 +3236,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "inventoryRendererShape": "sprite"
     }
   ]
 }

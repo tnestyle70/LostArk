@@ -2330,12 +2330,11 @@ namespace
 		case here compares against NETWORK_PROTOCOL_VERSION itself, and pinning a
 		literal only made an unrelated bump fail this row. */
 		testRunner.Require(
-			32u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Packet Types At Protocol V32");
+			"World Destruction Packet Types At Current Protocol");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();

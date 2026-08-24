@@ -273,11 +273,18 @@ try {
         $whirlwindContacts += [int]$whirlwindSpin.hitDelayMs +
             ($contactIndex * [int]$whirlwindSpin.hitIntervalMs)
     }
-    if ([math]::Abs([double]$whirlwindSpin.animation.occurrences[0].playRate -
-            0.888888889) -gt 0.000000001 -or
-        [string]$whirlwindSpin.animation.endPolicy -cne 'LOOP_TO_STAGE_END' -or
+    $whirlwindOccurrence = @($whirlwindSpin.animation.occurrences)[0]
+    $whirlwindPresentationMs =
+        [double]$whirlwindOccurrence.playMs / [double]$whirlwindOccurrence.playRate
+    if ([int]$whirlwindSpin.durationMs -ne 1200 -or
+        [int]$whirlwindOccurrence.playMs -ne 533 -or
+        [math]::Abs([double]$whirlwindOccurrence.playRate -
+            0.4441666667) -gt 0.0000000001 -or
+        [math]::Abs($whirlwindPresentationMs - 1200.0) -gt 0.001 -or
+        [bool]$whirlwindOccurrence.repeatUntilStageEnd -or
+        [string]$whirlwindSpin.animation.endPolicy -cne 'EXACT' -or
         ($whirlwindContacts -join ',') -cne '0,350,700,1050') {
-        throw 'Whirlwind two-cycle presentation rate is invalid.'
+        throw 'Whirlwind 1200ms single-pass presentation contract is invalid.'
     }
     $floorWipe = @($master.patterns | Where-Object {
         $_.patternId -eq 'VALTAN_FLOOR_WIPE_130'
@@ -366,9 +373,27 @@ try {
     $donutIndependent = @($master.independentEffects | Where-Object {
         $_.independentEffectId -eq 'valtan.independent-effect.donut-in-out'
     })[0]
+    $donutReferences = @(
+        foreach ($pattern in @($master.patterns)) {
+            foreach ($stage in @($pattern.stages)) {
+                foreach ($effectRef in @($stage.effectRefs)) {
+                    if ($effectRef.refType -eq 'INDEPENDENT_EFFECT' -and
+                        $effectRef.refId -eq $donutIndependent.independentEffectId) {
+                        [pscustomobject]@{
+                            patternId = [string]$pattern.patternId
+                            stageId = [string]$stage.stageId
+                        }
+                    }
+                }
+            }
+        }
+    )
     if ($managedStageCueRefs.Count -ne 14 -or
         @($managedStageCueRefs | Where-Object { $null -eq $_.cueProjection }).Count -ne 0 -or
-        $null -eq $donutIndependent.cueProjection) {
+        $null -eq $donutIndependent.cueProjection -or
+        $donutReferences.Count -ne 1 -or
+        [string]$donutReferences[0].patternId -cne [string]$donutIndependent.ownerPatternId -or
+        [string]$donutReferences[0].stageId -cne [string]$donutIndependent.ownerStageId) {
         throw 'Managed effect cue timing is not fully owned by the master.'
     }
     $axeObject = @($combatObjects.objects | Where-Object {
@@ -393,6 +418,45 @@ try {
     } 'finite repeatCount must equal the number of explicit same-clip occurrences'
 
     [IO.File]::WriteAllText($masterPath, $baselineMasterText, $utf8NoBom)
+    $invalidIndependentOwner = $baselineMasterText | ConvertFrom-Json
+    $invalidDonut = @($invalidIndependentOwner.independentEffects | Where-Object {
+        $_.independentEffectId -eq 'valtan.independent-effect.donut-in-out'
+    })[0]
+    $invalidDonutPattern = @($invalidIndependentOwner.patterns | Where-Object {
+        $_.patternId -eq $invalidDonut.ownerPatternId
+    })[0]
+    $invalidOuter = @($invalidDonutPattern.stages | Where-Object {
+        $_.stageId -eq 'OUTER'
+    })[0]
+    $invalidOuter.effectRefs = @($invalidOuter.effectRefs) + [pscustomobject]@{
+        refType = 'INDEPENDENT_EFFECT'
+        refId = [string]$invalidDonut.independentEffectId
+    }
+    Write-Json $masterPath $invalidIndependentOwner
+    Invoke-ExpectedFailure {
+        & $projector -Mode Validate -RepositoryRoot $fixtureRoot `
+            -MasterPath $masterPath -SkipProductDriftCheck
+    } 'must have exactly one reference on its declared owner stage'
+
+    [IO.File]::WriteAllText($masterPath, $baselineMasterText, $utf8NoBom)
+    $invalidCrossPatternOwner = $baselineMasterText | ConvertFrom-Json
+    $crossPatternDonut = @($invalidCrossPatternOwner.independentEffects | Where-Object {
+        $_.independentEffectId -eq 'valtan.independent-effect.donut-in-out'
+    })[0]
+    $crossPatternWindup = @(@($invalidCrossPatternOwner.patterns | Where-Object {
+        $_.patternId -eq 'VALTAN_WHIRLWIND'
+    })[0].stages | Where-Object { $_.stageId -eq 'WINDUP' })[0]
+    $crossPatternWindup.effectRefs = @($crossPatternWindup.effectRefs) + [pscustomobject]@{
+        refType = 'INDEPENDENT_EFFECT'
+        refId = [string]$crossPatternDonut.independentEffectId
+    }
+    Write-Json $masterPath $invalidCrossPatternOwner
+    Invoke-ExpectedFailure {
+        & $projector -Mode Validate -RepositoryRoot $fixtureRoot `
+            -MasterPath $masterPath -SkipProductDriftCheck
+    } 'must have exactly one reference on its declared owner stage'
+
+    [IO.File]::WriteAllText($masterPath, $baselineMasterText, $utf8NoBom)
     $invalidExactBudget = $baselineMasterText | ConvertFrom-Json
     (@($invalidExactBudget.patterns | Where-Object {
         $_.patternId -eq 'VALTAN_DASH_CHARGE'
@@ -404,11 +468,11 @@ try {
     } 'EXACT animation must fill its Server stage within 2ms'
 
     [IO.File]::WriteAllText($masterPath, $baselineMasterText, $utf8NoBom)
-    $invalidLoopPolicy = $baselineMasterText | ConvertFrom-Json
-    (@($invalidLoopPolicy.patterns | Where-Object {
+    $invalidWhirlwindBudget = $baselineMasterText | ConvertFrom-Json
+    (@($invalidWhirlwindBudget.patterns | Where-Object {
         $_.patternId -eq 'VALTAN_WHIRLWIND'
-    })[0].stages | Where-Object stageId -eq 'SPIN')[0].animation.endPolicy = 'EXACT'
-    Write-Json $masterPath $invalidLoopPolicy
+    })[0].stages | Where-Object stageId -eq 'SPIN')[0].animation.occurrences[0].playMs = 532
+    Write-Json $masterPath $invalidWhirlwindBudget
     Invoke-ExpectedFailure {
         & $projector -Mode Validate -RepositoryRoot $fixtureRoot `
             -MasterPath $masterPath -SkipProductDriftCheck

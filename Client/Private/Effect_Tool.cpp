@@ -10004,6 +10004,7 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 {
 	/* parse -> validate -> stage -> commit. A failed reload keeps whatever the
 	   window is already showing so a transient read error never empties it. */
+	m_bValtanPatternTreeLoadAttempted = true;
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	std::string Status;
 	if (!CValtanPatternTree::Load(Staged, Status))
@@ -10982,11 +10983,54 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					"VALTAN_DASH_CHARGE" == Pattern.strPatternId ?
 						m_eValtanDashAuthoringTimelinePath :
 						VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
-				if (Build_ValtanProductPreview(Pattern, eProductPath,
+				if (Pattern.bAuthoringMasterManaged &&
+					Build_ValtanProductPreview(Pattern, eProductPath,
 						*pProductSource->pClip, PlaybackCue, Preview,
 						ProductPlaybackError))
 				{
 					ProductPlaybackPreview = std::move(Preview);
+				}
+				else if (!Pattern.bAuthoringMasterManaged)
+				{
+					const VALTAN_STAGE_VIEW& OwnerStage =
+						*pProductSource->pStage;
+					const VALTAN_CLIP_OCCURRENCE_VIEW& OwnerClip =
+						*pProductSource->pClip;
+					const VALTAN_PRODUCT_EFFECT_CUE_VIEW& SourceCue =
+						*pProductSource->pCue;
+					const bool_t bExactEffectIdentity =
+						SourceCue.strEffectAssetId == Row.strEffectAssetId ||
+						SourceCue.strV1EffectAssetId == Row.strEffectAssetId;
+					if (!bExactEffectIdentity ||
+						SourceCue.strPatternId != Pattern.strPatternId ||
+						SourceCue.strStageId != OwnerStage.strStageId ||
+						SourceCue.strActionId != OwnerStage.strActionId ||
+						SourceCue.strClipOccurrenceId !=
+							OwnerClip.strClipOccurrenceId ||
+						OwnerStage.iDurationMs != SourceCue.iStageDurationMs ||
+						OwnerClip.strClipOccurrenceId.empty() ||
+						OwnerClip.strClipName.empty() ||
+						0u == SourceCue.iStageDurationMs)
+					{
+						ProductPlaybackError =
+							"Legacy Product cue no longer owns one exact stage-local occurrence.";
+					}
+					else
+					{
+						/* Legacy Product data has no master branch wall budgets. Keep
+						   the established compatibility contract: one exact owner clip
+						   fills its Server stage while the complete cue descriptor keeps
+						   source trim, local transform, follow, and stop policy intact. */
+						Preview.Clip = OwnerClip;
+						Preview.Cue = std::move(PlaybackCue);
+						VALTAN_CLIP_OCCURRENCE_VIEW TimelineClip = OwnerClip;
+						TimelineClip.iAuthoringWallMs =
+							Preview.Cue.iStageDurationMs;
+						Preview.TimelineClips = { std::move(TimelineClip) };
+						Preview.iTimelineDurationMs =
+							Preview.Cue.iStageDurationMs;
+						ProductPlaybackPreview = std::move(Preview);
+					}
 				}
 			}
 			const VALTAN_STAGE_VIEW* pNonProductStage =
@@ -11000,6 +11044,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					pNonProductStage->iDurationMs : 0u;
 			const bool_t bAmbiguousOccurrence =
 				1u < Row.ProductSources.size() ||
+				(!Row.ProductSources.empty() && !NonProductStages.empty()) ||
 				(Row.ProductSources.empty() && 1u < NonProductStages.size());
 			const bool_t bHasExactPlaybackOwner =
 				ProductPlaybackPreview.has_value() || nullptr != pNonProductStage;
@@ -11447,7 +11492,7 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	const std::string& strSearch)
 {
-	if (!m_bValtanPatternTreeLoaded)
+	if (!m_bValtanPatternTreeLoaded && !m_bValtanPatternTreeLoadAttempted)
 		Refresh_ValtanPatternTree();
 	if (!m_strValtanPatternTreeStatus.empty())
 		ImGui::TextDisabled("%s", m_strValtanPatternTreeStatus.c_str());
@@ -23852,17 +23897,19 @@ bool_t Client::CEffect_Tool::Is_ProductCueVisible(
 	const f32_t fTimelineMs = fTimelineSeconds * 1000.f;
 	const f32_t fStageStartMs = static_cast<f32_t>(
 		m_ValtanProductPreview->iOwningStageTimelineOffsetMs);
-	const f32_t fStageEndMs = fStageStartMs + static_cast<f32_t>(
-		m_ValtanProductPreview->Cue.iStageDurationMs);
 	const f32_t fClipStartMs = static_cast<f32_t>(
 		m_ValtanProductPreview->iOwningClipTimelineOffsetMs);
 	if (0u == m_ValtanProductPreview->Cue.iStageDurationMs ||
 		fTimelineMs + 0.5f < fStageStartMs ||
-		fTimelineMs + 0.5f < fClipStartMs ||
-		fTimelineMs + 0.5f >= fStageEndMs)
+		fTimelineMs + 0.5f < fClipStartMs)
 	{
 		return false;
 	}
+	/* Product runtime retains NATURAL boss-action Effects when the Server
+	   advances to the next stage.  Do not clamp those previews to their owner
+	   stage: the Effect document's own lifetime may intentionally cover a
+	   following semantic stage (the unified INNER -> OUTER donut does).  A
+	   CUE_END source window remains bounded by Resolve_CuePreviewSample below. */
 
 	ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
 	Timing.fClipSourceStartSeconds = static_cast<f32_t>(
@@ -25575,8 +25622,9 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
 	else if (m_ValtanProductPreview.has_value())
 	{
 		/* Valtan Product Play now owns the complete chosen pattern branch.
-		   Cue visibility is still capped by the owning stage and stop policy,
-		   but the scrubber must continue through all later animation stages. */
+		   CUE_END visibility is bounded by its source window while NATURAL
+		   Effects retain their document lifetime across later stages, matching
+		   the Server-authoritative boss presentation path. */
 		const uint32_t iProductTimelineDurationMs =
 			0u != m_ValtanProductPreview->iTimelineDurationMs ?
 				m_ValtanProductPreview->iTimelineDurationMs :
