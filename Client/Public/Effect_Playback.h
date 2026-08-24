@@ -203,6 +203,13 @@ public:
 	struct PREPARED_RESOURCES;
 
 private:
+	struct AUTHORED_PARTICLE_SPAWN_SAMPLE final
+	{
+		float3_t vPosition{};
+		f32_t fRingAzimuthRadians = 0.f;
+		bool_t bHasRingAzimuth = false;
+	};
+
 	struct PARTICLE_STATE final
 	{
 		float3_t vPosition{};
@@ -433,7 +440,8 @@ private:
 		ELEMENT_STATE& State,
 		uint32_t iCount,
 		const float4x4_t& RootWorld,
-		const SOURCE_PARTICLE_EVENT* pSourceEvent = nullptr);
+		const SOURCE_PARTICLE_EVENT* pSourceEvent = nullptr,
+		bool_t bAuthoredFixedBurst = false);
 	uint32_t Consume_SourceSpawnPerUnit(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
@@ -540,9 +548,12 @@ private:
 	/* Authored spawn geometry.  Both keep the historical min/max box when the
 	   Element still declares POINT and FIXED, so documents written before the
 	   spawnShape/initialVelocity blocks existed spawn exactly as they did. */
-	float3_t Sample_AuthoredSpawnPosition(
+	AUTHORED_PARTICLE_SPAWN_SAMPLE Sample_AuthoredSpawnPosition(
 		const EFFECT_PARTICLE_DESC& Desc,
-		ELEMENT_STATE& State) const;
+		ELEMENT_STATE& State,
+		uint32_t iParticleIndex,
+		uint32_t iParticleCount,
+		bool_t bAuthoredFixedBurst) const;
 	float3_t Sample_AuthoredInitialVelocity(
 		const EFFECT_PARTICLE_DESC& Desc,
 		ELEMENT_STATE& State,
