@@ -321,6 +321,14 @@ private:
 	{
 		VALTAN_CLIP_OCCURRENCE_VIEW Clip;
 		VALTAN_PRODUCT_EFFECT_CUE_VIEW Cue;
+		/* Product cue timing is source-local, but Valtan.pattern.json owns the
+		   complete pattern wall clock.  Keep the exact flattened branch and the
+		   owning stage/clip offsets together so seek, pause, source-anchor
+		   history, and cue visibility all use one global timeline. */
+		std::vector<VALTAN_CLIP_OCCURRENCE_VIEW> TimelineClips;
+		uint32_t iTimelineDurationMs = 0u;
+		uint32_t iOwningStageTimelineOffsetMs = 0u;
+		uint32_t iOwningClipTimelineOffsetMs = 0u;
 	};
 
 	/* Effect Tool owns only its stable-ID Server audition transaction.  The
@@ -366,9 +374,11 @@ private:
 		bool_t bPlayCompleteAfterLoad = false;
 		optional<VALTAN_CLIP_OCCURRENCE_VIEW> ValtanClip;
 		optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ValtanCue;
+		optional<VALTAN_PRODUCT_PREVIEW> ValtanProductPreview;
 		optional<std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>>
 			ValtanReferenceClips;
 		uint32_t iValtanWorldOwnerStageDurationMs = 0u;
+		uint32_t iValtanReferenceEffectStartMs = 0u;
     };
 
 	struct UNIFIED_EFFECT_CACHE final
@@ -395,6 +405,7 @@ private:
 		uint32_t iPlayMs = 0u;
 		f32_t fPlayRate = 1.f;
 		uint32_t iSourceStartMs = 0u;
+		uint32_t iAuthoringWallMs = 0u;
 		bool_t bLoop = false;
 		bool_t bHasExplicitLoopPolicy = false;
 		/* Authoring-only wall hold after this clip reaches its end pose. Combo
@@ -491,6 +502,9 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const char_t* pGroupLabel,
 		const std::string& strSearch);
+	void Render_ValtanIndependentEffectNode(
+		const VALTAN_INDEPENDENT_EFFECT_VIEW& Effect,
+		const std::string& strSearch);
 	void Render_ValtanStageRow(
 		const VALTAN_STAGE_VIEW& Stage);
 	void Render_ValtanClipOccurrence(
@@ -510,13 +524,35 @@ private:
 	bool_t Matches_ValtanPatternSearch(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const std::string& strSearch) const;
-	/* Product rows replay their exact cue occurrence. Reference and world-root
-	   rows replay the complete ordered clip sequence of their owner stage. */
+	bool_t Matches_ValtanIndependentEffectSearch(
+		const VALTAN_INDEPENDENT_EFFECT_VIEW& Effect,
+		const std::string& strSearch) const;
+	bool_t Build_ValtanAuthoringTimeline(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		VALTAN_PATTERN_PREVIEW_PATH ePath,
+		std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& OutClips,
+		uint32_t& iOutDurationMs,
+		std::string& strOutError) const;
+	bool_t Build_ValtanProductPreview(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		VALTAN_PATTERN_PREVIEW_PATH ePath,
+		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
+		VALTAN_PRODUCT_PREVIEW& OutPreview,
+		std::string& strOutError) const;
+	bool_t Play_ValtanAuthoringTimeline(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		VALTAN_PATTERN_PREVIEW_PATH ePath);
+	/* Managed Product rows replay the complete chosen pattern branch while one
+	   exact cue occurrence owns the Effect clock. Reference/world-root rows
+	   retain their ordered owner timeline without claiming a boss-root cue. */
 	bool_t Play_ValtanClipOccurrence(
 		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip);
 	bool_t Play_ValtanProductCue(
 		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue);
+	bool_t Play_ValtanProductCue(
+		const VALTAN_PRODUCT_PREVIEW& Preview);
 	bool_t Play_ValtanStageSequence(
 		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips);
 	bool_t Try_PlayValtanSavedUnifiedEffect(
@@ -524,17 +560,27 @@ private:
 		const std::string& strEffectAssetId,
 		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue);
+	bool_t Try_PlayValtanSavedUnifiedEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId,
+		const VALTAN_PRODUCT_PREVIEW& Preview);
 	bool_t Try_OpenValtanSavedReferenceEffect(
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId,
 		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips,
 		uint32_t iWorldOwnerStageDurationMs = 0u,
-		bool_t bQueuePlayCompleteAfterLoad = false);
+		bool_t bQueuePlayCompleteAfterLoad = false,
+		uint32_t iReferenceEffectStartMs = 0u);
 	bool_t Try_OpenValtanAuthoredEffect(
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId,
 		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
+		bool_t bQueuePlayCompleteAfterLoad = false);
+	bool_t Try_OpenValtanAuthoredEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId,
+		const VALTAN_PRODUCT_PREVIEW& Preview,
 		bool_t bQueuePlayCompleteAfterLoad = false);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
@@ -940,6 +986,8 @@ private:
 	uint32_t m_iNextValtanServerPatternRequestSequence = 1u;
 	std::string m_strValtanServerPatternStatusPatternId;
 	std::string m_strValtanServerPatternStatus;
+	VALTAN_PATTERN_PREVIEW_PATH m_eValtanDashAuthoringTimelinePath =
+		VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
     vector<SYNCHRONIZED_ANIMATION_CLIP> m_SynchronizedAnimationClips;
@@ -1030,6 +1078,7 @@ private:
     f32_t m_fPreviewTimeSeconds = 0.f;
     f32_t m_fPreviewDurationSeconds = 1.f;
 	uint32_t m_iValtanWorldOwnerStageDurationMs = 0u;
+	uint32_t m_iValtanReferenceEffectStartMs = 0u;
 	double m_fDetailDraftPreviewDueSeconds = 0.0;
     bool_t m_bPreviewPlaying = false;
     bool_t m_bPreviewLoop = true;

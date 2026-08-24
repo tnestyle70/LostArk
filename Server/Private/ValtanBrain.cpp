@@ -27,8 +27,8 @@ namespace
 
 	/* A leap is declared by the pattern's compiled motion rather than by its
 	name, so any pattern that authors one gets the same arc. The rise is always
-	the first stage and the travel the second, which is what every authored leap
-	is shaped like; the stages after them are played from the landing. */
+	the first stage; the authored travel stage owns descent, and any stages in
+	between hold the boss at the apex. */
 	bool Is_LeapPattern(const BOSS_PATTERN_DEFINITION& pattern)
 	{
 		return BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == pattern.Motion.eKind ||
@@ -36,7 +36,6 @@ namespace
 	}
 
 	constexpr std::uint32_t LEAP_TAKEOFF_STAGE_INDEX = 0u;
-	constexpr std::uint32_t LEAP_TRAVEL_STAGE_INDEX = 1u;
 
 	std::uint32_t NextServerTickSkippingReservedZero(
 		const std::uint32_t serverTick)
@@ -76,7 +75,7 @@ namespace
 	{
 		return boss.fPatternLeapApexHeight > 0.f &&
 			(LEAP_TAKEOFF_STAGE_INDEX == boss.iPatternStageIndex ||
-				LEAP_TRAVEL_STAGE_INDEX == boss.iPatternStageIndex);
+				boss.iPatternLeapTravelStageIndex == boss.iPatternStageIndex);
 	}
 
 	/* Stage progress in [0,1]. A zero-length stage reads as finished so the
@@ -396,7 +395,8 @@ namespace
 		const std::string& introPatternId,
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
-		const std::uint32_t serverTick)
+		const std::uint32_t serverTick,
+		const std::vector<std::string>* eligiblePatternIds = nullptr)
 	{
 		std::vector<const BOSS_PATTERN_DEFINITION*> eligible;
 		std::vector<const BOSS_PATTERN_DEFINITION*> repeatAllowed;
@@ -404,6 +404,10 @@ namespace
 		{
 			if (BOSS_PATTERN_SELECTION::NORMAL != pattern.eSelection ||
 				pattern.strPatternId == introPatternId ||
+				(nullptr != eligiblePatternIds &&
+					eligiblePatternIds->end() == std::find(
+						eligiblePatternIds->begin(), eligiblePatternIds->end(),
+						pattern.strPatternId)) ||
 				!CValtanBrain::Is_ArmorRequirementMet(
 					boss, pattern.eArmorRequirement) ||
 				!CValtanBrain::Is_PhaseRequirementMet(
@@ -503,6 +507,20 @@ namespace
 				return pattern;
 			}
 		}
+		/* Phase-one master ranges are weighted from their first normal choice.
+		PatternIds is a whitelist, while each pattern continues to own its weight,
+		range, phase, armour, cooldown, and consecutive-use conditions. Scripted
+		health-bar mechanics already returned from the queue above. */
+		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
+				rotation->eSelectionMode)
+		{
+			boss.strRotationId = rotation->strRotationId;
+			boss.iRotationStepIndex = 0u;
+			return SelectNormalPattern(
+				boss, patterns, introPatternId, currentHealthBar,
+				targetDistance, serverTick, &rotation->PatternIds);
+		}
 		/* The authored list introduces the band rather than looping it. Every
 		pattern the band brings is shown once, in order, so nothing the encounter
 		adds can be missed; the stretch then hands over to the weighted roll, which
@@ -510,6 +528,8 @@ namespace
 		that interrupts the introduction resumes where it left off because the
 		cursor lives on the boss, and a new band restarts it. */
 		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::
+				ORDERED_INTRO_THEN_WEIGHTED == rotation->eSelectionMode &&
 			!rotation->PatternIds.empty())
 		{
 			if (boss.strRotationId != rotation->strRotationId)
@@ -634,7 +654,16 @@ namespace
 			boss.MovePath.clear();
 		}
 		else if (boss.fPatternLeapApexHeight > 0.f &&
-			LEAP_TRAVEL_STAGE_INDEX != stageIndex)
+			stageIndex < boss.iPatternLeapTravelStageIndex)
+		{
+			/* An authored airborne hold keeps the same apex and horizontal origin
+			   until the descent stage begins. */
+			boss.fPositionX = boss.fLeapOriginX;
+			boss.fPositionY = boss.fLeapOriginY + boss.fLeapApexHeight;
+			boss.fPositionZ = boss.fLeapOriginZ;
+		}
+		else if (boss.fPatternLeapApexHeight > 0.f &&
+			stageIndex > boss.iPatternLeapTravelStageIndex)
 		{
 			/* Everything from IMPACT onward is played from the compiled landing
 			anchor, so the landing is exact rather than wherever the last
@@ -683,6 +712,8 @@ namespace
 			boss.fLeapLandingY = boss.fPatternTargetLastPositionY;
 			boss.fLeapLandingZ = boss.fPatternTargetLastPositionZ;
 			boss.fPatternLeapApexHeight = pattern.Motion.fApexHeight;
+			boss.iPatternLeapTravelStageIndex =
+				pattern.Motion.iTravelStageIndex;
 		}
 		else if (Is_LeapPattern(pattern))
 		{
@@ -690,6 +721,8 @@ namespace
 			boss.fLeapLandingY = pattern.Motion.fLandingY;
 			boss.fLeapLandingZ = pattern.Motion.fLandingZ;
 			boss.fPatternLeapApexHeight = pattern.Motion.fApexHeight;
+			boss.iPatternLeapTravelStageIndex =
+				pattern.Motion.iTravelStageIndex;
 		}
 		else
 		{
@@ -697,6 +730,7 @@ namespace
 			boss.fLeapLandingY = boss.fSpawnPositionY;
 			boss.fLeapLandingZ = boss.fSpawnPositionZ;
 			boss.fPatternLeapApexHeight = 0.f;
+			boss.iPatternLeapTravelStageIndex = 1u;
 		}
 		/* BeginPattern continues through Update below, so the first stage consumes
 		this entry tick. Every other stage entry returns or happens at the end of
@@ -764,6 +798,7 @@ namespace
 		boss.iPatternStageDurationMs = 0u;
 		boss.iPatternStageFirstEvaluationTick = 0u;
 		boss.fPatternForcedMotionSpeed = 0.f;
+		boss.iPatternLeapTravelStageIndex = 1u;
 		boss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		boss.PatternStageRootMotion.clear();
 		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
@@ -827,6 +862,14 @@ namespace
 					boss, stage.strActionId, branch.eOutcome))
 			{
 				continue;
+			}
+			if (BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED ==
+				branch.eOutcome)
+			{
+				/* PlayerSkillSystem keeps this legacy edge for patterns that do not
+				   yet publish a PART_DESTROYED branch. A typed branch consumed the
+				   same outcome, so it also consumes the fallback latch. */
+				boss.bPendingArmorBreakReaction = false;
 			}
 			return ApplyStageBranch(boss, pattern, branch, serverTick);
 		}
@@ -1391,11 +1434,23 @@ bool LostArk::Server::CValtanBrain::Complete_ImpactStage(
 	const BOSS_PATTERN_DEFINITION* pattern = nullptr;
 	if (nullptr != patterns)
 		pattern = FindPattern(*patterns, boss.strPatternId);
-	const std::uint32_t nextStageIndex = boss.iPatternStageIndex + 1u;
-	if (nullptr == pattern || nextStageIndex >= pattern->Stages.size())
+	if (nullptr == pattern ||
+		boss.iPatternStageIndex >= pattern->Stages.size())
 		return false;
-	EnterPatternStage(
-		boss, pattern->Stages[nextStageIndex], nextStageIndex, serverTick);
+	const BOSS_PATTERN_STAGE_DEFINITION& stage =
+		pattern->Stages[boss.iPatternStageIndex];
+	const auto branch = std::find_if(
+		stage.Branches.begin(), stage.Branches.end(),
+		[](const BOSS_PATTERN_STAGE_BRANCH& candidate)
+		{
+			return BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT ==
+				candidate.eOutcome;
+		});
+	if (stage.Branches.end() == branch ||
+		!ApplyStageBranch(boss, *pattern, *branch, serverTick))
+	{
+		return false;
+	}
 	boss.fPatternForcedMotionSpeed = 0.f;
 	return true;
 }

@@ -322,5 +322,59 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
             )
 
 
+class ValtanRejoinedFourSlashSuccessorTests(unittest.TestCase):
+    """Current-product admission after the historical split was retired."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.bindings = MIGRATION.read_json(MIGRATION.BINDINGS_PATH)
+        cls.cues = MIGRATION.read_json(MIGRATION.CUES_PATH)
+
+    def test_checked_in_rejoined_successor_is_exact(self) -> None:
+        self.assertEqual(
+            (131, 141, 47),
+            MIGRATION.validate_rejoined_four_slash_successor(
+                self.bindings,
+                self.cues,
+            ),
+        )
+
+    def test_rejoined_cue_owner_drift_fails_closed(self) -> None:
+        cues = copy.deepcopy(self.cues)
+        row = next(
+            cue
+            for cue in cues["cues"]
+            if cue.get("bindingId")
+            == "cue.valtan.carrier-v1.attack.four-slash.active.clip-02"
+        )
+        row["stageId"] = "SLASHES"
+        with self.assertRaisesRegex(
+            MIGRATION.MigrationError,
+            "Rejoined four-slash cue is missing or rebound",
+        ):
+            MIGRATION.validate_rejoined_four_slash_successor(
+                self.bindings,
+                cues,
+            )
+
+    def test_retired_split_owner_cannot_return(self) -> None:
+        cues = copy.deepcopy(self.cues)
+        row = next(
+            cue
+            for cue in cues["cues"]
+            if cue.get("bindingId")
+            == "cue.valtan.carrier-v1.attack.four-slash.active.clip-01"
+        )
+        row["patternId"] = "VALTAN_TRIPLE_SLASH"
+        with self.assertRaisesRegex(
+            MIGRATION.MigrationError,
+            "Rejoined four-slash cue is missing or rebound|Retired split",
+        ):
+            MIGRATION.validate_rejoined_four_slash_successor(
+                self.bindings,
+                cues,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

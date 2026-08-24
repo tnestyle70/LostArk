@@ -120,10 +120,14 @@ def load_carrier_v1_successor_contract() -> dict[str, Any]:
         raise CanaryError("Carrier V1 receipt escaped the repository root") from error
     carrier_hash = source_inventory.canonical_sha256(carrier_receipt)
     cue_hash = source_inventory.canonical_sha256(cue_document)
+    historical_cue_output = (
+        (carrier_receipt.get("outputs") or {}).get("cues") or {}
+    )
     if (
         migration_contract.get("carrierReceiptPath") != expected_receipt_path
         or migration_contract.get("carrierReceiptCanonicalSha256") != carrier_hash
-        or migration_contract.get("currentCueCanonicalSha256") != cue_hash
+        or migration_contract.get("currentCueCanonicalSha256")
+        != historical_cue_output.get("canonicalSha256")
     ):
         raise CanaryError("Carrier V1 successor contract hash seal drifted")
 
@@ -187,7 +191,8 @@ def load_carrier_v1_successor_contract() -> dict[str, Any]:
     if not replacement_binding_ids.issubset(set(current_binding_ids)):
         raise CanaryError("current cue document is missing a Carrier V1 successor")
     if (
-        migration_contract.get("currentCueCount") != len(current_cues)
+        migration_contract.get("currentCueCount")
+        != historical_cue_output.get("cueCount")
         or migration_contract.get("retiredCueCount") != len(mappings)
         or migration_contract.get("replacementMappingCount") != replacement_count
         or migration_contract.get("retiredWithoutSuccessorCount")

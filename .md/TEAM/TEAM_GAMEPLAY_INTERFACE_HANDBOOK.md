@@ -393,7 +393,7 @@ CGameRoom::Tick
 -> CValtan presentation + world-root Effect + CCombatHUDViewModel
 ```
 
-`BossProfiles.json`은 boss 기본 수치, `ValtanEncounter.json`은 pattern timeline, `ValtanCombatObjects.json`은 stage 밖에서도 살아 있는 이동/지연 공격, `DamageProfiles.json`은 피해량을 소유한다. `BossCatalog.json`의 `combatObjectVisuals`는 gameplay stable ID를 Client Product Effect에만 연결하며 asset path가 Server bootstrap으로 넘어가지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이 아니다.
+`Data/Valtan/Valtan.pattern.json`은 admission된 발탄 1페이즈 pattern의 공동 authoring 정본이다. 전용 publisher가 이를 기존 typed 제품 경계로 투영하며 Server와 Arena는 master를 두 번째 런타임으로 직접 읽지 않는다. `BossProfiles.json`은 boss 기본 수치, `ValtanEncounter.json`은 Server pattern timeline projection, `ValtanCombatObjects.json`은 stage 밖에서도 살아 있는 이동/지연 공격, `DamageProfiles.json`은 피해량을 소유한다. 각 animation stage는 `EXACT`, `HOLD_LAST_POSE`, `LOOP_TO_STAGE_END` 종료 정책을 명시하며 Tool은 같은 branch graph와 ordered presentation source를 소비한다. Phase-1 normal 선택은 master의 정확한 5-pattern `WEIGHTED_POOL`을 사용하고 health-bar mechanic queue가 먼저 실행된다. `counterReactionLayers`는 기존 Product의 네 counterable stage와 animation action을 reference-only로 join하며 7-pattern admission을 늘리지 않는다. `BossCatalog.json`의 `combatObjectVisuals`는 gameplay stable ID를 Client Product Effect에만 연결하며 asset path가 Server bootstrap으로 넘어가지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이 아니다. 담당별 필드와 publish 절차는 `발탄인수인계서.md`를 따른다.
 
 플레이어 profile의 defense는 발탄 incoming damage에 실제로 사용된다. 원작 Server 공식이 client
 payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 계약이며

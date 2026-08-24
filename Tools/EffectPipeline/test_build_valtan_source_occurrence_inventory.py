@@ -37,13 +37,13 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
             }
         )
 
-    def test_first_inventory_is_31_of_33_and_never_counts_branch_upper_bound(self) -> None:
+    def test_first_inventory_is_32_of_33_and_never_counts_branch_upper_bound(self) -> None:
         summary = self.document["summary"]
         self.assertEqual(summary["encounterPatternCount"], 33)
-        self.assertEqual(summary["actionBindingPatternCount"], 31)
-        self.assertEqual(summary["missingActionBindingPatternCount"], 2)
+        self.assertEqual(summary["actionBindingPatternCount"], 32)
+        self.assertEqual(summary["missingActionBindingPatternCount"], 1)
         self.assertGreater(summary["branchCandidateCount"], 0)
-        self.assertEqual(summary["sourceSequenceCandidateCount"], 227)
+        self.assertEqual(summary["sourceSequenceCandidateCount"], 230)
         self.assertEqual(
             summary["branchCandidateCount"],
             summary["sourceSequenceCandidateCount"],
@@ -52,8 +52,8 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         self.assertEqual(summary["reviewedSelectedBranchCount"], 0)
         self.assertEqual(summary["reviewedSelectedSequenceCount"], 0)
         self.assertEqual(summary["completionCarrierDenominator"], 0)
-        self.assertEqual(summary["encounterStageActionCount"], 130)
-        self.assertEqual(summary["patternBindingActionCount"], 130)
+        self.assertEqual(summary["encounterStageActionCount"], 131)
+        self.assertEqual(summary["patternBindingActionCount"], 131)
         self.assertEqual(summary["patternBindingGapCount"], 0)
         self.assertEqual(summary["patternBindingGapProposalCount"], 3)
         self.assertEqual(summary["droppedOccurrenceCount"], 0)
@@ -455,14 +455,14 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
     def test_animation_trail_and_ribbon_are_not_admitted_as_core(self) -> None:
         summary = self.document["summary"]
         self.assertEqual(summary["animationTrailOccurrenceCount"], 259)
-        self.assertEqual(summary["trailGhostOccurrenceCount"], 100)
+        self.assertEqual(summary["trailGhostOccurrenceCount"], 106)
         self.assertEqual(summary["ribbonCarrierCount"], 6)
         self.assertEqual(summary["ribbonSourceSystemCount"], 6)
         self.assertEqual(summary["ribbonReferencedOccurrenceCount"], 109)
         self.assertEqual(summary["ribbonBlockedOccurrenceCount"], 27)
         self.assertEqual(summary["unresolvedRuntimeAdapterCarrierCount"], 100)
         self.assertEqual(
-            summary["unresolvedRuntimeAdapterOccurrenceCount"], 1729
+            summary["unresolvedRuntimeAdapterOccurrenceCount"], 1747
         )
         for system in self.document["sourceSystems"]:
             for carrier in system["carriers"]:

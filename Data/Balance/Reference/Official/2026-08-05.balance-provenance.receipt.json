@@ -47,8 +47,8 @@
                      "skillDefinitionCount":  94,
                      "damageProfileCount":  109,
                      "bossProfileCount":  1,
-                     "encounterPatternCount":  34,
-                     "fieldEntryCount":  3314,
+                     "encounterPatternCount":  33,
+                     "fieldEntryCount":  3292,
                      "bossPartCount":  2,
                      "bossCombatObjectCount":  2
                  },
@@ -35355,9 +35355,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  8000,
+                        "sourceValue":  6000,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  8000,
+                        "resultValue":  6000,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -35765,9 +35765,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  34,
+                        "sourceValue":  33,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  34,
+                        "resultValue":  33,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -36121,10 +36121,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "109줄 아레나 붕괴",
+                        "sourceValue":  "중앙 이동 후 2페이즈 컷씬",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "109줄 아레나 붕괴",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "중앙 이동 후 2페이즈 컷씬",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -36191,10 +36191,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  100.0,
+                        "sourceValue":  100,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  100.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  100,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -36233,10 +36233,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  0.0,
+                        "sourceValue":  0,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  0.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  0,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -36311,7 +36311,8 @@
                                                                     22.99751,
                                                                     -122.06
                                                                 ],
-                                            "apexHeight":  12.0
+                                            "apexHeight":  12.0,
+                                            "travelStageId":  "DROP"
                                         },
                         "transform":  "Balance Tool authored override",
                         "resultValue":  {
@@ -36322,9 +36323,10 @@
                                                                     22.99751,
                                                                     -122.06
                                                                 ],
-                                            "apexHeight":  12.0
+                                            "apexHeight":  12.0,
+                                            "travelStageId":  "DROP"
                                         },
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -36360,16 +36362,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  900,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36380,16 +36382,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  700,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36400,16 +36402,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  400,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  12.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  12,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.arena-destroy-109",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  true,
                                                 "downMs":  1000
@@ -36420,16 +36422,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  1100,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36440,16 +36442,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  2300,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36460,16 +36462,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  870,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36483,16 +36485,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  900,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36503,16 +36505,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  700,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36523,16 +36525,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  400,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  12.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  12,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.arena-destroy-109",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  true,
                                                 "downMs":  1000
@@ -36543,16 +36545,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  1100,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36563,16 +36565,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  2300,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -36583,16 +36585,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  870,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -40135,10 +40137,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "대쉬 돌진",
+                        "sourceValue":  "3회 땅 치기 후 돌진",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "대쉬 돌진",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "3회 땅 치기 후 돌진",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -40205,10 +40207,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  20.0,
+                        "sourceValue":  20,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  20.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  20,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -40247,10 +40249,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  5.0,
+                        "sourceValue":  5,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  5.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  5,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -40342,16 +40344,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  3650,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -40362,23 +40364,33 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  500,
                                                 "hitShape":  "BOX",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  10.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  10,
                                                 "hitHalfWidth":  2.5,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.dash-charge",
-                                                "pushRangeM":  2.0,
+                                                "pushRangeM":  2,
                                                 "pushMs":  150,
                                                 "knockdown":  true,
                                                 "downMs":  1000,
                                                 "motion":  {
                                                                "kind":  "FORWARD",
                                                                "distance":  20.0
-                                                           }
+                                                           },
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "WALL_CONTACT",
+                                                                     "nextActionId":  "valtan.attack.dash-charge.groggy"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.attack.dash-charge.recovery"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "GROGGY",
@@ -40386,19 +40398,45 @@
                                                 "stageKind":  "GROGGY",
                                                 "durationMs":  5000,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "PART_DESTROYED",
+                                                                     "nextActionId":  "valtan.attack.dash-charge.part-break"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.attack.dash-charge.recovery"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "RECOVERY",
@@ -40406,19 +40444,25 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  900,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  null
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "PART_BREAK",
@@ -40426,19 +40470,25 @@
                                                 "stageKind":  "PART_BREAK",
                                                 "durationMs":  1400,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  null
+                                                                 }
+                                                             ]
                                             }
                                         ],
                         "transform":  "Balance Tool authored override",
@@ -40449,16 +40499,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  3650,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -40469,23 +40519,33 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  500,
                                                 "hitShape":  "BOX",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  10.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  10,
                                                 "hitHalfWidth":  2.5,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.dash-charge",
-                                                "pushRangeM":  2.0,
+                                                "pushRangeM":  2,
                                                 "pushMs":  150,
                                                 "knockdown":  true,
                                                 "downMs":  1000,
                                                 "motion":  {
                                                                "kind":  "FORWARD",
                                                                "distance":  20.0
-                                                           }
+                                                           },
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "WALL_CONTACT",
+                                                                     "nextActionId":  "valtan.attack.dash-charge.groggy"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.attack.dash-charge.recovery"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "GROGGY",
@@ -40493,19 +40553,45 @@
                                                 "stageKind":  "GROGGY",
                                                 "durationMs":  5000,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "PART_DESTROYED",
+                                                                     "nextActionId":  "valtan.attack.dash-charge.part-break"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.attack.dash-charge.recovery"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "RECOVERY",
@@ -40513,19 +40599,25 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  900,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  null
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "PART_BREAK",
@@ -40533,19 +40625,25 @@
                                                 "stageKind":  "PART_BREAK",
                                                 "durationMs":  1400,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  null
+                                                                 }
+                                                             ]
                                             }
                                         ],
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
@@ -42003,10 +42101,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "두 손 내려찍기 안밖 폭발",
+                        "sourceValue":  "도넛 공격",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "두 손 내려찍기 안밖 폭발",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "도넛 공격",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -42073,10 +42171,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  16.0,
+                        "sourceValue":  16,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  16.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  16,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -42115,10 +42213,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  0.0,
+                        "sourceValue":  0,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  0.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  0,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -42210,16 +42308,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  1500,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42230,16 +42328,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  2600,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  7.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  7,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  1000,
                                                 "serverDamageProfileId":  "damage.valtan.fist-in-out",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42250,16 +42348,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  800,
                                                 "hitShape":  "RING",
-                                                "hitOuterRadius":  16.0,
-                                                "hitInnerRadius":  7.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  16,
+                                                "hitInnerRadius":  7,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.fist-in-out",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42270,16 +42368,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  800,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42293,16 +42391,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  1500,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42313,16 +42411,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  2600,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  7.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  7,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  1000,
                                                 "serverDamageProfileId":  "damage.valtan.fist-in-out",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42333,16 +42431,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  800,
                                                 "hitShape":  "RING",
-                                                "hitOuterRadius":  16.0,
-                                                "hitInnerRadius":  7.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  16,
+                                                "hitInnerRadius":  7,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.fist-in-out",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42353,16 +42451,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  800,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42477,9 +42575,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "115줄 6방향 충격파 후 전방향 충격파",
+                        "sourceValue":  "6방향 후 전멸 패턴",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "115줄 6방향 충격파 후 전방향 충격파",
+                        "resultValue":  "6방향 후 전멸 패턴",
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -42547,10 +42645,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  100.0,
+                        "sourceValue":  100,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  100.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  100,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -42589,10 +42687,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  0.0,
+                        "sourceValue":  0,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  0.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  0,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -42684,16 +42782,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  1800,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42704,16 +42802,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  800,
                                                 "hitShape":  "SIX_DIRECTIONS",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  14.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  14,
                                                 "hitHalfWidth":  2.2,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.six-direction-130",
-                                                "pushRangeM":  2.0,
+                                                "pushRangeM":  2,
                                                 "pushMs":  242,
                                                 "knockdown":  true,
                                                 "downMs":  2000
@@ -42724,16 +42822,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  2000,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42744,16 +42842,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  500,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  100.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  100,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.omnidirectional-wipe-130",
-                                                "pushRangeM":  2.0,
+                                                "pushRangeM":  2,
                                                 "pushMs":  242,
                                                 "knockdown":  true,
                                                 "downMs":  2000
@@ -42764,16 +42862,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  1500,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42787,16 +42885,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  1800,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42807,16 +42905,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  800,
                                                 "hitShape":  "SIX_DIRECTIONS",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  14.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  14,
                                                 "hitHalfWidth":  2.2,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.six-direction-130",
-                                                "pushRangeM":  2.0,
+                                                "pushRangeM":  2,
                                                 "pushMs":  242,
                                                 "knockdown":  true,
                                                 "downMs":  2000
@@ -42827,16 +42925,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  2000,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -42847,16 +42945,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  500,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  100.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  100,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.omnidirectional-wipe-130",
-                                                "pushRangeM":  2.0,
+                                                "pushRangeM":  2,
                                                 "pushMs":  242,
                                                 "knockdown":  true,
                                                 "downMs":  2000
@@ -42867,16 +42965,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  1500,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -43398,6 +43496,496 @@
                         "sourceValue":  1,
                         "transform":  "Balance Tool authored override",
                         "resultValue":  1,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].actionId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "valtan.attack.four-slash",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "valtan.attack.four-slash",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].aimPolicy",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "TRACK_TARGET_EACH_TICK",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "TRACK_TARGET_EACH_TICK",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "ANY",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].category",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NORMAL",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NORMAL",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].displayName",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "4연속 공격",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "4연속 공격",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  false,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].maximumConsecutiveUses",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].maximumHealthBar",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  160,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  160,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].maximumPhase",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  3,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  3,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].maximumRange",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  10,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  10,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].minimumHealthBar",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].minimumPhase",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].minimumRange",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].patternId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "VALTAN_FOUR_SLASH",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "VALTAN_FOUR_SLASH",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "ANY",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].selectionMode",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NORMAL",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NORMAL",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].selectionWeight",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  12,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  12,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].sourceActionIds",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  [
+                                            420609
+                                        ],
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  [
+                                            420609
+                                        ],
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].stages",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  [
+                                            {
+                                                "stageId":  "WINDUP",
+                                                "actionId":  "valtan.attack.four-slash.windup",
+                                                "stageKind":  "WINDUP",
+                                                "durationMs":  400,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            },
+                                            {
+                                                "stageId":  "SLASHES",
+                                                "actionId":  "valtan.attack.triple-slash.active",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  3500,
+                                                "hitShape":  "CONE",
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  110,
+                                                "hitLength":  9,
+                                                "hitHalfWidth":  0,
+                                                "hitCount":  3,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "hitOffsetsMs":  [
+                                                                     1790,
+                                                                     2560,
+                                                                     3330
+                                                                 ],
+                                                "serverDamageProfileId":  "damage.valtan.four-slash",
+                                                "pushRangeM":  2,
+                                                "pushMs":  150,
+                                                "knockdown":  true,
+                                                "downMs":  1000
+                                            },
+                                            {
+                                                "stageId":  "SPIN",
+                                                "actionId":  "valtan.attack.rotation-slash.active",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  3167,
+                                                "hitShape":  "CONE",
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  110,
+                                                "hitLength":  9,
+                                                "hitHalfWidth":  0,
+                                                "hitCount":  1,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "hitOffsetsMs":  [
+                                                                     600
+                                                                 ],
+                                                "serverDamageProfileId":  "damage.valtan.four-slash",
+                                                "pushRangeM":  2,
+                                                "pushMs":  150,
+                                                "knockdown":  true,
+                                                "downMs":  1000
+                                            },
+                                            {
+                                                "stageId":  "RECOVERY",
+                                                "actionId":  "valtan.attack.four-slash.recovery",
+                                                "stageKind":  "RECOVERY",
+                                                "durationMs":  800,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            }
+                                        ],
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  [
+                                            {
+                                                "stageId":  "WINDUP",
+                                                "actionId":  "valtan.attack.four-slash.windup",
+                                                "stageKind":  "WINDUP",
+                                                "durationMs":  400,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            },
+                                            {
+                                                "stageId":  "SLASHES",
+                                                "actionId":  "valtan.attack.triple-slash.active",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  3500,
+                                                "hitShape":  "CONE",
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  110,
+                                                "hitLength":  9,
+                                                "hitHalfWidth":  0,
+                                                "hitCount":  3,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "hitOffsetsMs":  [
+                                                                     1790,
+                                                                     2560,
+                                                                     3330
+                                                                 ],
+                                                "serverDamageProfileId":  "damage.valtan.four-slash",
+                                                "pushRangeM":  2,
+                                                "pushMs":  150,
+                                                "knockdown":  true,
+                                                "downMs":  1000
+                                            },
+                                            {
+                                                "stageId":  "SPIN",
+                                                "actionId":  "valtan.attack.rotation-slash.active",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  3167,
+                                                "hitShape":  "CONE",
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  110,
+                                                "hitLength":  9,
+                                                "hitHalfWidth":  0,
+                                                "hitCount":  1,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "hitOffsetsMs":  [
+                                                                     600
+                                                                 ],
+                                                "serverDamageProfileId":  "damage.valtan.four-slash",
+                                                "pushRangeM":  2,
+                                                "pushMs":  150,
+                                                "knockdown":  true,
+                                                "downMs":  1000
+                                            },
+                                            {
+                                                "stageId":  "RECOVERY",
+                                                "actionId":  "valtan.attack.four-slash.recovery",
+                                                "stageKind":  "RECOVERY",
+                                                "durationMs":  800,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            }
+                                        ],
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].targetPolicy",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NEAREST_EACH_TICK",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NEAREST_EACH_TICK",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].triggerHealthBar",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].triggerOrder",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
                     },
                     {
@@ -44949,10 +45537,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "고공 점프 찍기",
+                        "sourceValue":  "점프 후 플레이어 추적 도끼",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "고공 점프 찍기",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "점프 후 플레이어 추적 도끼",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -45019,10 +45607,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  18.0,
+                        "sourceValue":  18,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  18.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  18,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -45061,10 +45649,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  2.0,
+                        "sourceValue":  2,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  2.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  2,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -45139,7 +45727,8 @@
                                                                     22.99751,
                                                                     -122.06
                                                                 ],
-                                            "apexHeight":  9.0
+                                            "apexHeight":  9.0,
+                                            "travelStageId":  "LAND"
                                         },
                         "transform":  "Balance Tool authored override",
                         "resultValue":  {
@@ -45150,9 +45739,10 @@
                                                                     22.99751,
                                                                     -122.06
                                                                 ],
-                                            "apexHeight":  9.0
+                                            "apexHeight":  9.0,
+                                            "travelStageId":  "LAND"
                                         },
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -45188,16 +45778,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  1933,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -45206,18 +45796,18 @@
                                                 "stageId":  "AIRBORNE",
                                                 "actionId":  "valtan.attack.high-jump.airborne",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  8000,
+                                                "durationMs":  6000,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0,
@@ -45237,16 +45827,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  3200,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  10.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  10,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  900,
                                                 "serverDamageProfileId":  "damage.valtan.high-jump",
-                                                "pushRangeM":  1.0,
+                                                "pushRangeM":  1,
                                                 "pushMs":  150,
                                                 "knockdown":  true,
                                                 "downMs":  1000
@@ -45257,16 +45847,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  400,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -45280,16 +45870,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  1933,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -45298,18 +45888,18 @@
                                                 "stageId":  "AIRBORNE",
                                                 "actionId":  "valtan.attack.high-jump.airborne",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  8000,
+                                                "durationMs":  6000,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0,
@@ -45329,16 +45919,16 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  3200,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  10.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  10,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  900,
                                                 "serverDamageProfileId":  "damage.valtan.high-jump",
-                                                "pushRangeM":  1.0,
+                                                "pushRangeM":  1,
                                                 "pushMs":  150,
                                                 "knockdown":  true,
                                                 "downMs":  1000
@@ -45349,16 +45939,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  400,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -49366,400 +49956,6 @@
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].actionId",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "valtan.attack.rotation-slash",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "valtan.attack.rotation-slash",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].aimPolicy",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "TRACK_TARGET_EACH_TICK",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "TRACK_TARGET_EACH_TICK",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].armorRequirement",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "ANY",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "ANY",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].category",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "NORMAL",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "NORMAL",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].displayName",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "회전공격",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "회전공격",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].invulnerableWhileRunning",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  false,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  false,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].maximumConsecutiveUses",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  1,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  1,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].maximumHealthBar",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  160,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].maximumPhase",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  3,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  3,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].maximumRange",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  10.0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  10.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].minimumHealthBar",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  1,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  1,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].minimumPhase",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  1,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  1,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].minimumRange",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  0.0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  0.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].patternId",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "VALTAN_ROTATION_SLASH",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "VALTAN_ROTATION_SLASH",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].phaseRequirement",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "ANY",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "ANY",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].selectionMode",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "NORMAL",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "NORMAL",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].selectionWeight",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  6,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  6,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].sourceActionIds",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  [
-                                            420609
-                                        ],
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  [
-                                            420609
-                                        ],
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].stages",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  [
-                                            {
-                                                "stageId":  "SPIN",
-                                                "actionId":  "valtan.attack.rotation-slash.active",
-                                                "stageKind":  "ACTIVE",
-                                                "durationMs":  3167,
-                                                "hitShape":  "CONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  110.0,
-                                                "hitLength":  9.0,
-                                                "hitHalfWidth":  0.0,
-                                                "hitCount":  3,
-                                                "hitIntervalMs":  1200,
-                                                "hitDelayMs":  600,
-                                                "serverDamageProfileId":  "damage.valtan.four-slash",
-                                                "pushRangeM":  2.0,
-                                                "pushMs":  150,
-                                                "knockdown":  true,
-                                                "downMs":  1000
-                                            },
-                                            {
-                                                "stageId":  "RECOVERY",
-                                                "actionId":  "valtan.attack.four-slash.recovery",
-                                                "stageKind":  "RECOVERY",
-                                                "durationMs":  800,
-                                                "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
-                                                "hitCount":  0,
-                                                "hitIntervalMs":  0,
-                                                "hitDelayMs":  0,
-                                                "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
-                                                "pushMs":  0,
-                                                "knockdown":  false,
-                                                "downMs":  0
-                                            }
-                                        ],
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  [
-                                            {
-                                                "stageId":  "SPIN",
-                                                "actionId":  "valtan.attack.rotation-slash.active",
-                                                "stageKind":  "ACTIVE",
-                                                "durationMs":  3167,
-                                                "hitShape":  "CONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  110.0,
-                                                "hitLength":  9.0,
-                                                "hitHalfWidth":  0.0,
-                                                "hitCount":  3,
-                                                "hitIntervalMs":  1200,
-                                                "hitDelayMs":  600,
-                                                "serverDamageProfileId":  "damage.valtan.four-slash",
-                                                "pushRangeM":  2.0,
-                                                "pushMs":  150,
-                                                "knockdown":  true,
-                                                "downMs":  1000
-                                            },
-                                            {
-                                                "stageId":  "RECOVERY",
-                                                "actionId":  "valtan.attack.four-slash.recovery",
-                                                "stageKind":  "RECOVERY",
-                                                "durationMs":  800,
-                                                "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
-                                                "hitCount":  0,
-                                                "hitIntervalMs":  0,
-                                                "hitDelayMs":  0,
-                                                "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
-                                                "pushMs":  0,
-                                                "knockdown":  false,
-                                                "downMs":  0
-                                            }
-                                        ],
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].targetPolicy",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "NEAREST_EACH_TICK",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "NEAREST_EACH_TICK",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].triggerHealthBar",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_ROTATION_SLASH",
-                        "targetField":  "patterns[33].triggerOrder",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_STOMP",
                         "targetField":  "patterns[9].actionId",
                         "basis":  "PROJECT_TUNED",
@@ -51834,410 +52030,6 @@
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].actionId",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "valtan.attack.four-slash",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "valtan.attack.four-slash",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].aimPolicy",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "TRACK_TARGET_EACH_TICK",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "TRACK_TARGET_EACH_TICK",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].armorRequirement",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "ANY",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "ANY",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].category",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "NORMAL",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "NORMAL",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].displayName",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "3연공격",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "3연공격",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].invulnerableWhileRunning",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  false,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  false,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].maximumConsecutiveUses",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  1,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  1,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].maximumHealthBar",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  160,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].maximumPhase",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  3,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  3,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].maximumRange",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  10.0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  10.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].minimumHealthBar",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  1,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  1,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].minimumPhase",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  1,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  1,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].minimumRange",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  0.0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  0.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].patternId",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "VALTAN_TRIPLE_SLASH",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "VALTAN_TRIPLE_SLASH",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].phaseRequirement",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "ANY",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "ANY",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].selectionMode",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "NORMAL",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "NORMAL",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].selectionWeight",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  6,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  6,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].sourceActionIds",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  [
-                                            420609
-                                        ],
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  [
-                                            420609
-                                        ],
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].stages",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  [
-                                            {
-                                                "stageId":  "WINDUP",
-                                                "actionId":  "valtan.attack.four-slash.windup",
-                                                "stageKind":  "WINDUP",
-                                                "durationMs":  400,
-                                                "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
-                                                "hitCount":  0,
-                                                "hitIntervalMs":  0,
-                                                "hitDelayMs":  0,
-                                                "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
-                                                "pushMs":  0,
-                                                "knockdown":  false,
-                                                "downMs":  0
-                                            },
-                                            {
-                                                "stageId":  "SLASHES",
-                                                "actionId":  "valtan.attack.triple-slash.active",
-                                                "stageKind":  "ACTIVE",
-                                                "durationMs":  3500,
-                                                "hitShape":  "CONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  110.0,
-                                                "hitLength":  9.0,
-                                                "hitHalfWidth":  0.0,
-                                                "hitCount":  3,
-                                                "hitIntervalMs":  0,
-                                                "hitDelayMs":  0,
-                                                "hitOffsetsMs":  [
-                                                                     1791,
-                                                                     2300,
-                                                                     3138
-                                                                 ],
-                                                "serverDamageProfileId":  "damage.valtan.four-slash",
-                                                "pushRangeM":  2.0,
-                                                "pushMs":  150,
-                                                "knockdown":  true,
-                                                "downMs":  1000
-                                            }
-                                        ],
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  [
-                                            {
-                                                "stageId":  "WINDUP",
-                                                "actionId":  "valtan.attack.four-slash.windup",
-                                                "stageKind":  "WINDUP",
-                                                "durationMs":  400,
-                                                "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
-                                                "hitCount":  0,
-                                                "hitIntervalMs":  0,
-                                                "hitDelayMs":  0,
-                                                "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
-                                                "pushMs":  0,
-                                                "knockdown":  false,
-                                                "downMs":  0
-                                            },
-                                            {
-                                                "stageId":  "SLASHES",
-                                                "actionId":  "valtan.attack.triple-slash.active",
-                                                "stageKind":  "ACTIVE",
-                                                "durationMs":  3500,
-                                                "hitShape":  "CONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  110.0,
-                                                "hitLength":  9.0,
-                                                "hitHalfWidth":  0.0,
-                                                "hitCount":  3,
-                                                "hitIntervalMs":  0,
-                                                "hitDelayMs":  0,
-                                                "hitOffsetsMs":  [
-                                                                     1791,
-                                                                     2300,
-                                                                     3138
-                                                                 ],
-                                                "serverDamageProfileId":  "damage.valtan.four-slash",
-                                                "pushRangeM":  2.0,
-                                                "pushMs":  150,
-                                                "knockdown":  true,
-                                                "downMs":  1000
-                                            }
-                                        ],
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].targetPolicy",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  "NEAREST_EACH_TICK",
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  "NEAREST_EACH_TICK",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].triggerHealthBar",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
-                        "targetId":  "pattern:VALTAN_TRIPLE_SLASH",
-                        "targetField":  "patterns[7].triggerOrder",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-                    },
-                    {
-                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_WHIRLWIND",
                         "targetField":  "patterns[16].actionId",
                         "basis":  "PROJECT_TUNED",
@@ -52301,10 +52093,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "휠윈드",
+                        "sourceValue":  "휠윈드 1.2초",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "휠윈드",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "휠윈드 1.2초",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -52371,10 +52163,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  12.0,
+                        "sourceValue":  12,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  12.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  12,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -52413,10 +52205,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  0.0,
+                        "sourceValue":  0,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  0.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  0,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -52508,16 +52300,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  1333,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -52526,18 +52318,18 @@
                                                 "stageId":  "SPIN",
                                                 "actionId":  "valtan.attack.whirlwind.active",
                                                 "stageKind":  "ACTIVE",
-                                                "durationMs":  1400,
+                                                "durationMs":  1200,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  10.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  10,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  4,
                                                 "hitIntervalMs":  350,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.circular-spin",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -52548,16 +52340,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  1467,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -52571,16 +52363,16 @@
                                                 "stageKind":  "WINDUP",
                                                 "durationMs":  1333,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -52589,18 +52381,18 @@
                                                 "stageId":  "SPIN",
                                                 "actionId":  "valtan.attack.whirlwind.active",
                                                 "stageKind":  "ACTIVE",
-                                                "durationMs":  1400,
+                                                "durationMs":  1200,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  10.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  10,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  4,
                                                 "hitIntervalMs":  350,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "damage.valtan.circular-spin",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0
@@ -52611,16 +52403,16 @@
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  1467,
                                                 "hitShape":  "NONE",
-                                                "hitOuterRadius":  0.0,
-                                                "hitInnerRadius":  0.0,
-                                                "hitAngleDegrees":  0.0,
-                                                "hitLength":  0.0,
-                                                "hitHalfWidth":  0.0,
+                                                "hitOuterRadius":  0,
+                                                "hitInnerRadius":  0,
+                                                "hitAngleDegrees":  0,
+                                                "hitLength":  0,
+                                                "hitHalfWidth":  0,
                                                 "hitCount":  0,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
                                                 "serverDamageProfileId":  "",
-                                                "pushRangeM":  0.0,
+                                                "pushRangeM":  0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
                                                 "downMs":  0

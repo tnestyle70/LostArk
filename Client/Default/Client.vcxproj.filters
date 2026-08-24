@@ -115,6 +115,9 @@
     <Filter Include="96.DataFiles\Items">
       <UniqueIdentifier>{f3a5b6c7-2d4e-4f1a-9b8c-6a1e2d3c4b5a}</UniqueIdentifier>
     </Filter>
+	<Filter Include="96.DataFiles\Valtan">
+	  <UniqueIdentifier>{83fe2f0e-1466-4ac1-87ca-ae319536eb14}</UniqueIdentifier>
+	</Filter>
 	<Filter Include="96.DataFiles\Rendering">
 	  <UniqueIdentifier>{490c736d-b660-457d-8e4d-72355fd23f2d}</UniqueIdentifier>
 	</Filter>
@@ -1222,6 +1225,9 @@
     <None Include="..\..\Data\Items\ItemCatalog.json">
       <Filter>96.DataFiles\Items</Filter>
     </None>
+	<None Include="..\..\Data\Valtan\Valtan.pattern.json">
+	  <Filter>96.DataFiles\Valtan</Filter>
+	</None>
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json">
 	  <Filter>96.DataFiles\Encounters</Filter>
 	</None>

@@ -1,40 +1,38 @@
 {
   "schema": "lostark.valtan-pattern-rotations",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "encounterId": "ENCOUNTER_VALTAN",
   "bossArchetypeId": "BOSS_VALTAN",
   "rotations": [
     {
       "rotationId": "rotation.valtan.160.130",
+      "selectionMode": "WEIGHTED_POOL",
       "fromHealthBar": 160,
       "toHealthBar": 130,
       "patternIds": [
-        "VALTAN_DASH_CHARGE",
-        "VALTAN_JUMP_SPIN",
-        "VALTAN_TRIPLE_SLASH",
-        "VALTAN_HIGH_JUMP",
-        "VALTAN_DASH_CHARGE",
-        "VALTAN_HIGH_JUMP",
-        "VALTAN_EARTHQUAKE_SMASH",
         "VALTAN_WHIRLWIND",
-        "VALTAN_EARTHQUAKE_SMASH",
-        "VALTAN_SUPER_SMASH",
-        "VALTAN_ROTATION_SLASH",
-        "VALTAN_DASH_CHARGE"
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_FIST_IN_OUT",
+        "VALTAN_HIGH_JUMP"
       ]
     },
     {
       "rotationId": "rotation.valtan.130.109",
-      "fromHealthBar": 129,
+      "selectionMode": "WEIGHTED_POOL",
+      "fromHealthBar": 130,
       "toHealthBar": 109,
       "patternIds": [
-        "VALTAN_TRIPLE_SLASH",
         "VALTAN_WHIRLWIND",
-        "VALTAN_DASH_CHARGE"
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_FIST_IN_OUT",
+        "VALTAN_HIGH_JUMP"
       ]
     },
     {
       "rotationId": "rotation.valtan.109.100",
+      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
       "fromHealthBar": 108,
       "toHealthBar": 100,
       "patternIds": [
@@ -45,6 +43,7 @@
     },
     {
       "rotationId": "rotation.valtan.100.84",
+      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
       "fromHealthBar": 99,
       "toHealthBar": 84,
       "patternIds": [
@@ -52,11 +51,12 @@
         "VALTAN_EARTHQUAKE_SMASH",
         "VALTAN_WHIRLWIND",
         "VALTAN_EARTHQUAKE_SMASH",
-        "VALTAN_ROTATION_SLASH"
+        "VALTAN_FOUR_SLASH"
       ]
     },
     {
       "rotationId": "rotation.valtan.84.73",
+      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
       "fromHealthBar": 83,
       "toHealthBar": 73,
       "patternIds": [
@@ -66,10 +66,11 @@
     },
     {
       "rotationId": "rotation.valtan.73.62",
+      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
       "fromHealthBar": 72,
       "toHealthBar": 62,
       "patternIds": [
-        "VALTAN_TRIPLE_SLASH",
+        "VALTAN_FOUR_SLASH",
         "VALTAN_FRONT_BACK_FRONT",
         "VALTAN_DOWN_SMASH",
         "VALTAN_DOWN_SMASH"
@@ -77,12 +78,13 @@
     },
     {
       "rotationId": "rotation.valtan.62.30",
+      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
       "fromHealthBar": 61,
       "toHealthBar": 30,
       "patternIds": [
         "VALTAN_DOWN_SMASH",
         "VALTAN_DOWN_SMASH",
-        "VALTAN_ROTATION_SLASH",
+        "VALTAN_FOUR_SLASH",
         "VALTAN_EARTHQUAKE_SMASH",
         "VALTAN_SUPER_SMASH",
         "VALTAN_GROUND_WAVE_SMASH"
@@ -90,11 +92,12 @@
     },
     {
       "rotationId": "rotation.valtan.28.14",
+      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
       "fromHealthBar": 29,
       "toHealthBar": 14,
       "patternIds": [
         "VALTAN_WHIRLWIND",
-        "VALTAN_TRIPLE_SLASH",
+        "VALTAN_FOUR_SLASH",
         "VALTAN_FRONT_BACK_FRONT",
         "VALTAN_EARTHQUAKE_SMASH"
       ]

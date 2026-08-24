@@ -1060,25 +1060,22 @@ def validate_carrier_v1_successor() -> dict[str, Any]:
     outputs = successor.get("outputs") or {}
     cue_output = outputs.get("cues") or {}
     catalog_output = outputs.get("catalog") or {}
-    catalog_projection = (
-        candidates.source_inventory.effect_catalog_prefix_projection(
-            catalog, "effect.valtan."
-        )
-    )
+    # The receipt output hashes are immutable Carrier V1 preimage evidence.
+    # Current Product may contain later master-managed cues/catalog rows; exact
+    # live successor ownership is validated below by stable IDs.
     if (
         cue_output.get("path") != relative(candidates.CUES_PATH)
-        or cue_output.get("cueCount") != len(cues.get("cues") or [])
+        or cue_output.get("cueCount") != 44
         or cue_output.get("canonicalSha256")
-        != candidates.source_inventory.canonical_sha256(cues)
+        != "4ff3c88cffdbe84abb99aaee22aad86c92f1b1797dfd8706058ded489b738dc9"
         or catalog_output.get("path") != relative(candidates.CATALOG_PATH)
         or catalog_output.get("scope") != "EFFECT_ASSET_ID_PREFIX"
         or catalog_output.get("effectAssetIdPrefix") != "effect.valtan."
-        or catalog_output.get("effectCount")
-        != len(catalog_projection["effects"])
+        or catalog_output.get("effectCount") != 46
         or catalog_output.get("canonicalSha256")
-        != candidates.source_inventory.canonical_sha256(catalog_projection)
+        != "123c070157e743ef467294607f104a9e5f1d90c3c99f73b6cf9c48033da093da"
     ):
-        raise ApplyError("Carrier V1 current Product outputs drifted")
+        raise ApplyError("Carrier V1 historical Product output seal drifted")
 
     cue_ids = {str(row.get("bindingId") or "") for row in cues.get("cues") or []}
     effect_ids = {

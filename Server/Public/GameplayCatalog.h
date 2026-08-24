@@ -467,16 +467,30 @@ namespace LostArk::Server
 		float fLandingY = 0.f;
 		float fLandingZ = 0.f;
 		float fApexHeight = 0.f;
+		/* The authored stage that owns the descent. Stages between TAKEOFF and
+		   this index hold the boss at the apex. */
+		std::uint32_t iTravelStageIndex = 1u;
 	};
 
-	/* One authored stretch between two scripted health-bar mechanics. While the
-	boss sits inside the span it runs these patterns in order and repeats the
-	list, so being hit never reshuffles the script. Bars count down, so the
-	span runs from the higher bar to the lower one. */
+	enum class BOSS_PATTERN_ROTATION_SELECTION_MODE : std::uint8_t
+	{
+		/* PatternIds is the complete weighted candidate pool. The individual
+		   pattern definitions still own weight, range, phase, armour, cooldown,
+		   and maximum-consecutive-use tuning. */
+		WEIGHTED_POOL,
+		/* Legacy authored lists introduce each step once, then hand back to the
+		   encounter-wide weighted selector. */
+		ORDERED_INTRO_THEN_WEIGHTED
+	};
+
+	/* One normal-selection stretch between two scripted health-bar mechanics.
+	Bars count down, so the span runs from the higher bar to the lower one. */
 	struct BOSS_PATTERN_ROTATION_DEFINITION
 	{
 		std::string strEncounterId;
 		std::string strRotationId;
+		BOSS_PATTERN_ROTATION_SELECTION_MODE eSelectionMode =
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_INTRO_THEN_WEIGHTED;
 		std::uint32_t iFromHealthBar = 0;
 		std::uint32_t iToHealthBar = 0;
 		std::uint32_t iExpectedStepCount = 0;

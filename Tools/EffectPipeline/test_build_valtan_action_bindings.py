@@ -32,7 +32,7 @@ class ValtanActionBindingBuilderTests(unittest.TestCase):
         )
         self.assertEqual(rows, [expected])
 
-    def test_canonical_v2_build_preserves_all_137_occurrences(self) -> None:
+    def test_canonical_v2_build_preserves_all_141_occurrences(self) -> None:
         document, receipt = bindings.build_document()
         stages = [
             stage
@@ -41,35 +41,28 @@ class ValtanActionBindingBuilderTests(unittest.TestCase):
         ]
         self.assertEqual(document["formatVersion"], 2)
         self.assertEqual(receipt["formatVersion"], 2)
-        self.assertEqual(len(stages), 137)
+        self.assertEqual(len(stages), 141)
         occurrence_ids = [stage["clipOccurrenceId"] for stage in stages]
         self.assertEqual(len(occurrence_ids), len(set(occurrence_ids)))
         self.assertIn("valtan.attack.swing.active.clip.02", occurrence_ids)
-        self.assertEqual(receipt["summary"]["authoredStageCount"], 137)
+        self.assertEqual(receipt["summary"]["authoredStageCount"], 141)
         patterns = {row["patternId"]: row for row in document["patterns"]}
-        self.assertNotIn("VALTAN_FOUR_SLASH", patterns)
+        self.assertNotIn("VALTAN_TRIPLE_SLASH", patterns)
+        self.assertNotIn("VALTAN_ROTATION_SLASH", patterns)
         self.assertEqual(
             {
                 "valtan.attack.four-slash.windup.clip.01",
                 "valtan.attack.four-slash.active.clip.01",
-            },
-            {
-                row["clipOccurrenceId"]
-                for row in patterns["VALTAN_TRIPLE_SLASH"]["stages"]
-            },
-        )
-        self.assertEqual(
-            {
                 "valtan.attack.four-slash.active.clip.02",
                 "valtan.attack.four-slash.recovery.clip.01",
             },
             {
                 row["clipOccurrenceId"]
-                for row in patterns["VALTAN_ROTATION_SLASH"]["stages"]
+                for row in patterns["VALTAN_FOUR_SLASH"]["stages"]
             },
         )
 
-    def test_split_projection_cannot_overwrite_historical_sealed_output(self) -> None:
+    def test_rejoined_projection_cannot_overwrite_historical_sealed_output(self) -> None:
         document, receipt = bindings.build_document()
         with self.assertRaisesRegex(
             bindings.BindingError,

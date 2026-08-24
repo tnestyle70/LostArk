@@ -48,6 +48,18 @@ class ValtanLegacyV0CarrierMigrationInventoryTests(unittest.TestCase):
             builder.serialized(self.document), builder.OUTPUT_PATH.read_bytes()
         )
 
+    def test_historical_product_output_seal_still_fails_closed(self) -> None:
+        if not self.historical:
+            self.skipTest("Carrier V1 historical receipt is not present")
+        receipt = copy.deepcopy(self.receipt)
+        receipt["outputs"]["catalog"]["effectCount"] += 1
+        with self.assertRaisesRegex(
+            builder.InventoryError, "historical receipt Product output seal drifted"
+        ):
+            builder.validate_sealed_historical_preimage(
+                self.checked_in, receipt
+            )
+
     def test_product_legacy_and_preserved_denominators_are_sealed(self) -> None:
         summary = self.document["summary"]
         self.assertEqual(97, summary["productOwnerDocumentCount"])
