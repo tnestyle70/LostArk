@@ -1643,6 +1643,593 @@ namespace
 		return true;
 	}
 
+	Client::EFFECT_DOCUMENT_DESC Build_ManualParticleContractDocument(
+		const std::string_view strEffectAssetId,
+		const std::string_view strElementId,
+		const bool_t bMeshParticle)
+	{
+		Client::EFFECT_DOCUMENT_DESC Document;
+		Document.strEffectAssetId = std::string(strEffectAssetId);
+		Document.strDisplayName = std::string(strEffectAssetId);
+
+		Client::EFFECT_ELEMENT_DESC Element;
+		Element.strElementId = std::string(strElementId);
+		Element.strDisplayName = std::string(strElementId);
+		Element.strGroupId = "contract.fixture";
+		Element.eKind = Client::EFFECT_ELEMENT_KIND::PARTICLE;
+		Element.Material = {};
+		Element.Material.eRenderProfile =
+			Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
+		Element.ResourceBindings.push_back({
+			"base",
+			"Effect/Warlord/Textures/FX_TEX_04/fx_h_wave_01.dds"
+		});
+		if (bMeshParticle)
+		{
+			Element.ResourceBindings.push_back({
+				"meshModel",
+				"Effect/Warlord/Meshes/FX_SM_00/fm_d_ring_008.wmodel"
+			});
+		}
+
+		Element.Detail.Timing.fStartDelaySeconds = 0.f;
+		Element.Detail.Timing.fLifeTimeSeconds = 2.f;
+		Element.Detail.Transform.vPosition = bMeshParticle ?
+			float3_t(0.f, 1.f, 0.f) : float3_t{};
+		Element.Detail.Mesh.bUseModelMaterial = false;
+		Element.Detail.Mesh.fModelPreScale = bMeshParticle ? 0.01f : 1.f;
+		Element.Detail.Sprite.bBillboard = false;
+		Element.Detail.Particle.iMaxParticles = bMeshParticle ? 1u : 16u;
+		Element.Detail.Particle.iBurstCount = bMeshParticle ? 1u : 16u;
+		Element.Detail.Particle.fSpawnRatePerSecond = 0.f;
+		Element.Detail.Particle.iRandomSeed = 17u;
+		Element.Detail.Particle.vLifeTimeSeconds = { 2.f, 2.f };
+		Element.Detail.Particle.vInitialPositionMin = {};
+		Element.Detail.Particle.vInitialPositionMax = {};
+		Element.Detail.Particle.vInitialVelocityMin = {};
+		Element.Detail.Particle.vInitialVelocityMax = {};
+		Element.Detail.Particle.vAcceleration = {};
+		Element.Detail.Particle.vStartSize = { 1.f, 1.f };
+		Element.Detail.Particle.vEndSize = { 1.f, 1.f };
+		Element.Detail.Particle.bLocalSpace = true;
+		Element.Detail.Particle.bBillboard = false;
+		Document.Elements.emplace_back(std::move(Element));
+		return Document;
+	}
+
+	bool_t Evaluate_ManualParticleContractDocument(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const f32_t fSampleTimeSeconds,
+		std::vector<Client::EFFECT_EVALUATED_PARTICLE>& OutParticles,
+		std::string& strOutError)
+	{
+		std::string ValidationError;
+		if (!Client::CEffectDocumentCodec::Validate(Document, ValidationError))
+		{
+			strOutError = "manual Particle contract fixture was invalid: " +
+				ValidationError;
+			return false;
+		}
+		std::shared_ptr<const Client::CEffectPlayback::PREPARED_RESOURCES>
+			Prepared;
+		if (!Client::CEffectPlayback::Prepare_DocumentResources(
+				Document, Prepared, strOutError))
+		{
+			strOutError = "manual Particle contract resources failed: " +
+				strOutError;
+			return false;
+		}
+		Client::CEffectPlayback Playback;
+		if (!Playback.Stage_PrevalidatedDocument(
+				Document, Prepared, strOutError))
+		{
+			strOutError = "manual Particle contract staging failed: " +
+				strOutError;
+			return false;
+		}
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		Playback.Seek(fSampleTimeSeconds, Identity);
+		OutParticles = Playback.Get_Frame().Particles;
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_ManualMeshParticleScaleComposition(
+		std::string& strOutError)
+	{
+		constexpr f32_t EPSILON = 1.0e-4f;
+		Client::EFFECT_DOCUMENT_DESC Document =
+			Build_ManualParticleContractDocument(
+				"effect.contract.manual-mesh-particle-scale",
+				"manual.mesh-particle.scale", true);
+		Client::EFFECT_ELEMENT_DESC& Element = Document.Elements.front();
+		Element.Detail.Transform.vScale = { 2.f, 3.f, 4.f };
+		Element.Detail.Particle.vStartSize = { 1.5f, 2.5f };
+		Element.Detail.Particle.vEndSize = { 3.5f, 6.5f };
+
+		std::vector<Client::EFFECT_EVALUATED_PARTICLE> Particles;
+		if (!Evaluate_ManualParticleContractDocument(
+				Document, 0.5f, Particles, strOutError) ||
+			Particles.size() != 1u)
+		{
+			strOutError = "manual Mesh Particle scale sample failed: " +
+				strOutError;
+			return false;
+		}
+
+		const Client::EFFECT_EVALUATED_PARTICLE& Particle = Particles.front();
+		vector_t Scale{};
+		vector_t Rotation{};
+		vector_t Translation{};
+		if (!XMMatrixDecompose(&Scale, &Rotation, &Translation,
+				XMLoadFloat4x4(&Particle.World)))
+		{
+			strOutError = "manual Mesh Particle world matrix did not decompose";
+			return false;
+		}
+		float3_t ActualScale{};
+		XMStoreFloat3(&ActualScale, Scale);
+		const f32_t T = Particle.fNormalizedLife;
+		const f32_t fParticleX =
+			Element.Detail.Particle.vStartSize.x +
+			(Element.Detail.Particle.vEndSize.x -
+				Element.Detail.Particle.vStartSize.x) * T;
+		const f32_t fParticleY =
+			Element.Detail.Particle.vStartSize.y +
+			(Element.Detail.Particle.vEndSize.y -
+				Element.Detail.Particle.vStartSize.y) * T;
+		const float3_t ExpectedScale{
+			fParticleX * Element.Detail.Transform.vScale.x,
+			fParticleY * Element.Detail.Transform.vScale.y,
+			0.5f * (fParticleX + fParticleY) *
+				Element.Detail.Transform.vScale.z
+		};
+		if (std::abs(ActualScale.x - ExpectedScale.x) > EPSILON ||
+			std::abs(ActualScale.y - ExpectedScale.y) > EPSILON ||
+			std::abs(ActualScale.z - ExpectedScale.z) > EPSILON)
+		{
+			strOutError =
+				"manual Mesh Particle did not compose Transform Scale and Start/End Size";
+			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_EvenRingOrientationAndMeshRingFillContract(
+		std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>&
+			OutRingFillDocument,
+		std::string& strOutError)
+	{
+		constexpr f32_t RING_RADIUS = 2.f;
+		constexpr size_t RING_PARTICLE_COUNT = 16u;
+		constexpr f32_t EPSILON = 1.0e-4f;
+		const auto Reject = [&strOutError](
+			const Client::EFFECT_DOCUMENT_DESC& Candidate,
+			const std::string_view strLabel)
+		{
+			std::string ValidationError;
+			if (Client::CEffectDocumentCodec::Validate(
+					Candidate, ValidationError))
+			{
+				strOutError = std::string(strLabel) + " was accepted";
+				return false;
+			}
+			return true;
+		};
+
+		Client::EFFECT_DOCUMENT_DESC DefaultSprite =
+			Build_ManualParticleContractDocument(
+				"effect.contract.even-ring.default",
+				"particle.even-ring.default", false);
+		Client::EFFECT_PARTICLE_DESC& DefaultParticle =
+			DefaultSprite.Elements.front().Detail.Particle;
+		DefaultParticle.SpawnShape.eKind =
+			Client::EFFECT_PARTICLE_SPAWN_SHAPE::RING;
+		DefaultParticle.SpawnShape.fRadius = RING_RADIUS;
+		DefaultParticle.SpawnShape.fInnerRadius = RING_RADIUS;
+		DefaultParticle.SpawnShape.fArcDegrees = 360.f;
+		const std::string DefaultSpriteJson =
+			Client::CEffectDocumentCodec::Serialize(DefaultSprite);
+		Client::EFFECT_DOCUMENT_DESC DefaultSpriteRoundTrip;
+		if (DefaultSpriteJson.find("\"distribution\"") != std::string::npos ||
+			DefaultSpriteJson.find("\"initialOrientation\"") !=
+				std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				DefaultSpriteJson, DefaultSpriteRoundTrip, strOutError) ||
+			DefaultSpriteRoundTrip.Elements.size() != 1u ||
+			DefaultSpriteRoundTrip.Elements.front().Detail.Particle.SpawnShape.
+				eDistribution !=
+				Client::EFFECT_PARTICLE_SPAWN_DISTRIBUTION::RANDOM ||
+			!DefaultSpriteRoundTrip.Elements.front().Detail.Particle.
+				InitialOrientation.Is_Default())
+		{
+			strOutError =
+				"legacy Particle distribution/orientation omission did not round-trip";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC EvenRing = DefaultSprite;
+		EvenRing.strEffectAssetId = "effect.contract.even-ring.explicit";
+		EvenRing.strDisplayName = EvenRing.strEffectAssetId;
+		Client::EFFECT_PARTICLE_DESC& EvenParticle =
+			EvenRing.Elements.front().Detail.Particle;
+		EvenParticle.SpawnShape.eDistribution =
+			Client::EFFECT_PARTICLE_SPAWN_DISTRIBUTION::EVEN;
+		EvenParticle.InitialOrientation.eMode = Client::
+			EFFECT_PARTICLE_ORIENTATION_MODE::GROUND_RADIAL_OUTWARD;
+		EvenParticle.InitialOrientation.fOffsetDegrees = 0.f;
+		const std::string EvenRingJson =
+			Client::CEffectDocumentCodec::Serialize(EvenRing);
+		Client::EFFECT_DOCUMENT_DESC EvenRingRoundTrip;
+		if (EvenRingJson.find("\"distribution\"") == std::string::npos ||
+			EvenRingJson.find("\"initialOrientation\"") ==
+				std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				EvenRingJson, EvenRingRoundTrip, strOutError) ||
+			EvenRingRoundTrip.Elements.size() != 1u ||
+			EvenRingRoundTrip.Elements.front().Detail.Particle.SpawnShape.
+				eDistribution !=
+				Client::EFFECT_PARTICLE_SPAWN_DISTRIBUTION::EVEN ||
+			EvenRingRoundTrip.Elements.front().Detail.Particle.InitialOrientation.
+				eMode != Client::EFFECT_PARTICLE_ORIENTATION_MODE::
+					GROUND_RADIAL_OUTWARD)
+		{
+			strOutError =
+				"explicit Even Ring orientation did not survive codec round-trip";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC InvalidEven = EvenRingRoundTrip;
+		InvalidEven.Elements.front().Detail.Particle.fSpawnRatePerSecond = 1.f;
+		if (!Reject(InvalidEven, "continuous Even Ring distribution"))
+			return false;
+		InvalidEven = EvenRingRoundTrip;
+		InvalidEven.Elements.front().Detail.Particle.SpawnShape.eKind =
+			Client::EFFECT_PARTICLE_SPAWN_SHAPE::BOX;
+		InvalidEven.Elements.front().Detail.Particle.SpawnShape.vExtents =
+			{ 1.f, 1.f, 1.f };
+		if (!Reject(InvalidEven, "non-Ring Even distribution"))
+			return false;
+		InvalidEven = EvenRingRoundTrip;
+		InvalidEven.Elements.front().Detail.Particle.iBurstCount = 1u;
+		if (!Reject(InvalidEven, "single-particle Even Ring distribution"))
+			return false;
+		Client::EFFECT_DOCUMENT_DESC InvalidOrientation = EvenRingRoundTrip;
+		InvalidOrientation.Elements.front().Detail.Particle.bBillboard = true;
+		if (!Reject(InvalidOrientation, "billboard radial orientation"))
+			return false;
+
+		std::vector<Client::EFFECT_EVALUATED_PARTICLE> FirstRing;
+		std::vector<Client::EFFECT_EVALUATED_PARTICLE> SecondRing;
+		if (!Evaluate_ManualParticleContractDocument(
+				EvenRingRoundTrip, 0.25f, FirstRing, strOutError) ||
+			!Evaluate_ManualParticleContractDocument(
+				EvenRingRoundTrip, 0.25f, SecondRing, strOutError) ||
+			FirstRing.size() != RING_PARTICLE_COUNT ||
+			SecondRing.size() != RING_PARTICLE_COUNT)
+		{
+			strOutError = "Even Ring fixed burst did not produce exactly 16 particles: " +
+				strOutError;
+			return false;
+		}
+
+		float3_t Centroid{};
+		std::array<float3_t, RING_PARTICLE_COUNT> RingPositions{};
+		for (size_t iParticle = 0u; iParticle < RING_PARTICLE_COUNT; ++iParticle)
+		{
+			const float4x4_t& World = FirstRing[iParticle].World;
+			const float4x4_t& RepeatedWorld = SecondRing[iParticle].World;
+			const float3_t Position(
+				World.m[3][0], World.m[3][1], World.m[3][2]);
+			RingPositions[iParticle] = Position;
+			Centroid.x += Position.x;
+			Centroid.y += Position.y;
+			Centroid.z += Position.z;
+			const f32_t fRadius = std::sqrt(
+				Position.x * Position.x + Position.z * Position.z);
+			if (std::abs(fRadius - RING_RADIUS) > EPSILON ||
+				std::abs(Position.y) > EPSILON)
+			{
+				strOutError = "Even Ring particle escaped its authored XZ radius";
+				return false;
+			}
+			for (size_t iRow = 0u; iRow < 4u; ++iRow)
+			{
+				for (size_t iColumn = 0u; iColumn < 4u; ++iColumn)
+				{
+					if (std::bit_cast<uint32_t>(World.m[iRow][iColumn]) !=
+						std::bit_cast<uint32_t>(
+							RepeatedWorld.m[iRow][iColumn]))
+					{
+						strOutError =
+							"Even Ring seek/reset did not reproduce the same matrices";
+						return false;
+					}
+				}
+			}
+		}
+		Centroid.x /= static_cast<f32_t>(RING_PARTICLE_COUNT);
+		Centroid.y /= static_cast<f32_t>(RING_PARTICLE_COUNT);
+		Centroid.z /= static_cast<f32_t>(RING_PARTICLE_COUNT);
+		if (std::abs(Centroid.x) > EPSILON ||
+			std::abs(Centroid.y) > EPSILON ||
+			std::abs(Centroid.z) > EPSILON)
+		{
+			strOutError = "Even Ring centroid moved away from the Element origin";
+			return false;
+		}
+		const f32_t fExpectedAdjacentDot = std::cos(
+			2.f * XM_PI / static_cast<f32_t>(RING_PARTICLE_COUNT));
+		for (size_t iParticle = 0u; iParticle < RING_PARTICLE_COUNT; ++iParticle)
+		{
+			for (size_t iOther = iParticle + 1u;
+				iOther < RING_PARTICLE_COUNT; ++iOther)
+			{
+				const f32_t fDx = RingPositions[iParticle].x -
+					RingPositions[iOther].x;
+				const f32_t fDz = RingPositions[iParticle].z -
+					RingPositions[iOther].z;
+				if (fDx * fDx + fDz * fDz < 1.0e-4f)
+				{
+					strOutError = "Even Ring emitted a duplicate endpoint";
+					return false;
+				}
+			}
+			const float3_t& Current = RingPositions[iParticle];
+			const float3_t& Next = RingPositions[
+				(iParticle + 1u) % RING_PARTICLE_COUNT];
+			const f32_t fAdjacentDot =
+				(Current.x * Next.x + Current.z * Next.z) /
+				(RING_RADIUS * RING_RADIUS);
+			if (std::abs(fAdjacentDot - fExpectedAdjacentDot) > 1.0e-4f)
+			{
+				strOutError = "Even Ring adjacent angular spacing changed";
+				return false;
+			}
+		}
+
+		const std::array<Client::EFFECT_PARTICLE_ORIENTATION_MODE, 4u>
+			OrientationModes = {{
+				Client::EFFECT_PARTICLE_ORIENTATION_MODE::GROUND_RADIAL_OUTWARD,
+				Client::EFFECT_PARTICLE_ORIENTATION_MODE::GROUND_RADIAL_INWARD,
+				Client::EFFECT_PARTICLE_ORIENTATION_MODE::GROUND_TANGENT_CLOCKWISE,
+				Client::EFFECT_PARTICLE_ORIENTATION_MODE::
+					GROUND_TANGENT_COUNTER_CLOCKWISE
+			}};
+		for (const Client::EFFECT_PARTICLE_ORIENTATION_MODE eMode :
+			OrientationModes)
+		{
+			Client::EFFECT_DOCUMENT_DESC Oriented = EvenRingRoundTrip;
+			Oriented.Elements.front().Detail.Particle.InitialOrientation.eMode = eMode;
+			std::vector<Client::EFFECT_EVALUATED_PARTICLE> OrientedParticles;
+			if (!Evaluate_ManualParticleContractDocument(
+					Oriented, 0.25f, OrientedParticles, strOutError) ||
+				OrientedParticles.size() != RING_PARTICLE_COUNT)
+			{
+				strOutError = "oriented Even Ring evaluation failed: " + strOutError;
+				return false;
+			}
+			for (size_t iParticle = 0u;
+				iParticle < RING_PARTICLE_COUNT; ++iParticle)
+			{
+				const float4x4_t& World = OrientedParticles[iParticle].World;
+				const float3_t Position(
+					World.m[3][0], World.m[3][1], World.m[3][2]);
+				if (std::abs(Position.x - RingPositions[iParticle].x) > EPSILON ||
+					std::abs(Position.y - RingPositions[iParticle].y) > EPSILON ||
+					std::abs(Position.z - RingPositions[iParticle].z) > EPSILON)
+				{
+					strOutError =
+						"individual Sprite orientation moved its Ring position";
+					return false;
+				}
+				const f32_t fBasisLength = std::sqrt(
+					World.m[0][0] * World.m[0][0] +
+					World.m[0][2] * World.m[0][2]);
+				if (!(fBasisLength > EPSILON) || std::abs(World.m[0][1]) > EPSILON)
+				{
+					strOutError = "oriented Sprite local +X basis is invalid";
+					return false;
+				}
+				const f32_t fRadialX = Position.x / RING_RADIUS;
+				const f32_t fRadialZ = Position.z / RING_RADIUS;
+				f32_t fExpectedX = fRadialX;
+				f32_t fExpectedZ = fRadialZ;
+				switch (eMode)
+				{
+				case Client::EFFECT_PARTICLE_ORIENTATION_MODE::
+					GROUND_RADIAL_INWARD:
+					fExpectedX = -fRadialX;
+					fExpectedZ = -fRadialZ;
+					break;
+				case Client::EFFECT_PARTICLE_ORIENTATION_MODE::
+					GROUND_TANGENT_CLOCKWISE:
+					fExpectedX = -fRadialZ;
+					fExpectedZ = fRadialX;
+					break;
+				case Client::EFFECT_PARTICLE_ORIENTATION_MODE::
+					GROUND_TANGENT_COUNTER_CLOCKWISE:
+					fExpectedX = fRadialZ;
+					fExpectedZ = -fRadialX;
+					break;
+				case Client::EFFECT_PARTICLE_ORIENTATION_MODE::
+					GROUND_RADIAL_OUTWARD:
+				case Client::EFFECT_PARTICLE_ORIENTATION_MODE::FIXED:
+				case Client::EFFECT_PARTICLE_ORIENTATION_MODE::END:
+				default:
+					break;
+				}
+				const f32_t fBasisDot =
+					(World.m[0][0] / fBasisLength) * fExpectedX +
+					(World.m[0][2] / fBasisLength) * fExpectedZ;
+				if (fBasisDot < 0.9999f)
+				{
+					strOutError =
+						"Sprite local +X did not follow its radial/tangent mode";
+					return false;
+				}
+			}
+		}
+
+		Client::EFFECT_DOCUMENT_DESC OffsetOrientation = EvenRingRoundTrip;
+		constexpr f32_t OFFSET_DEGREES = 37.f;
+		OffsetOrientation.Elements.front().Detail.Particle.InitialOrientation.
+			fOffsetDegrees = OFFSET_DEGREES;
+		std::vector<Client::EFFECT_EVALUATED_PARTICLE> OffsetParticles;
+		if (!Evaluate_ManualParticleContractDocument(
+				OffsetOrientation, 0.25f, OffsetParticles, strOutError) ||
+			OffsetParticles.size() != RING_PARTICLE_COUNT)
+		{
+			strOutError = "Sprite orientation offset evaluation failed: " +
+				strOutError;
+			return false;
+		}
+		const f32_t fOffsetRadians = XMConvertToRadians(OFFSET_DEGREES);
+		const f32_t fOffsetCos = std::cos(fOffsetRadians);
+		const f32_t fOffsetSin = std::sin(fOffsetRadians);
+		for (size_t iParticle = 0u; iParticle < RING_PARTICLE_COUNT; ++iParticle)
+		{
+			const float4x4_t& World = OffsetParticles[iParticle].World;
+			const f32_t fBasisLength = std::sqrt(
+				World.m[0][0] * World.m[0][0] +
+				World.m[0][2] * World.m[0][2]);
+			const f32_t fRadialX = RingPositions[iParticle].x / RING_RADIUS;
+			const f32_t fRadialZ = RingPositions[iParticle].z / RING_RADIUS;
+			const f32_t fExpectedX =
+				fRadialX * fOffsetCos + fRadialZ * fOffsetSin;
+			const f32_t fExpectedZ =
+				fRadialZ * fOffsetCos - fRadialX * fOffsetSin;
+			const f32_t fBasisDot =
+				(World.m[0][0] / fBasisLength) * fExpectedX +
+				(World.m[0][2] / fBasisLength) * fExpectedZ;
+			if (fBasisDot < 0.9999f)
+			{
+				strOutError = "Sprite orientation offset was not composed per particle";
+				return false;
+			}
+		}
+
+		Client::EFFECT_DOCUMENT_DESC DefaultMesh =
+			Build_ManualParticleContractDocument(
+				"effect.contract.mesh-ring-fill.default",
+				"particle.mesh-ring-fill.default", true);
+		const std::string DefaultMeshJson =
+			Client::CEffectDocumentCodec::Serialize(DefaultMesh);
+		Client::EFFECT_DOCUMENT_DESC DefaultMeshRoundTrip;
+		if (DefaultMeshJson.find("\"ringFill\"") != std::string::npos ||
+			DefaultMeshJson.find("\"ringFillProgress\"") != std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				DefaultMeshJson, DefaultMeshRoundTrip, strOutError) ||
+			DefaultMeshRoundTrip.Elements.size() != 1u ||
+			!DefaultMeshRoundTrip.Elements.front().Detail.Mesh.RingFill.Is_Default() ||
+			DefaultMeshRoundTrip.Elements.front().Detail.LinearLerp.
+				bRingFillProgress)
+		{
+			strOutError = "legacy Mesh Ring Fill omission did not round-trip";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC RingFill = DefaultMesh;
+		RingFill.strEffectAssetId = "effect.contract.mesh-ring-fill.explicit";
+		RingFill.strDisplayName = RingFill.strEffectAssetId;
+		Client::EFFECT_ELEMENT_DESC& RingFillElement = RingFill.Elements.front();
+		RingFillElement.Detail.Mesh.RingFill.bEnabled = true;
+		RingFillElement.Detail.Mesh.RingFill.fProgress = 0.f;
+		RingFillElement.Detail.Mesh.RingFill.eDirection =
+			Client::EFFECT_RING_FILL_DIRECTION::OUTER_TO_INNER;
+		RingFillElement.Detail.Mesh.RingFill.fFeather = 0.1f;
+		RingFillElement.Detail.Mesh.RingFill.bInvert = true;
+		RingFillElement.Detail.LinearLerp.bRingFillProgress = true;
+		RingFillElement.Detail.LinearLerp.fEndRingFillProgress = 1.f;
+		RingFillElement.Detail.Particle.vLifeTimeSeconds = { 2.25f, 2.25f };
+		const std::string RingFillJson =
+			Client::CEffectDocumentCodec::Serialize(RingFill);
+		Client::EFFECT_DOCUMENT_DESC RingFillRoundTrip;
+		if (RingFillJson.find("\"ringFill\"") == std::string::npos ||
+			RingFillJson.find("\"ringFillProgress\"") == std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				RingFillJson, RingFillRoundTrip, strOutError) ||
+			RingFillRoundTrip.Elements.size() != 1u)
+		{
+			strOutError = "explicit Mesh Ring Fill did not survive codec round-trip";
+			return false;
+		}
+		const Client::EFFECT_ELEMENT_DESC& ParsedRingFill =
+			RingFillRoundTrip.Elements.front();
+		if (!ParsedRingFill.Detail.Mesh.RingFill.bEnabled ||
+			ParsedRingFill.Detail.Mesh.RingFill.fProgress != 0.f ||
+			ParsedRingFill.Detail.Mesh.RingFill.eDirection !=
+				Client::EFFECT_RING_FILL_DIRECTION::OUTER_TO_INNER ||
+			ParsedRingFill.Detail.Mesh.RingFill.fFeather != 0.1f ||
+			!ParsedRingFill.Detail.Mesh.RingFill.bInvert ||
+			!ParsedRingFill.Detail.LinearLerp.bRingFillProgress ||
+			ParsedRingFill.Detail.LinearLerp.fEndRingFillProgress != 1.f)
+		{
+			strOutError = "Mesh Ring Fill codec changed an explicit field";
+			return false;
+		}
+		std::string ValidationError;
+		if (!Client::CEffectDocumentCodec::Validate(
+				RingFillRoundTrip, ValidationError))
+		{
+			strOutError = "valid Mesh Ring Fill was rejected: " + ValidationError;
+			return false;
+		}
+		std::vector<Client::EFFECT_EVALUATED_PARTICLE> CompletedRingParticles;
+		if (!Evaluate_ManualParticleContractDocument(
+				RingFillRoundTrip, 2.f, CompletedRingParticles, strOutError) ||
+			CompletedRingParticles.size() != 1u ||
+			CompletedRingParticles.front().Color.w < 0.999f)
+		{
+			strOutError =
+				"completed Mesh Ring Fill did not retain authored alpha: " +
+				strOutError;
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC InvalidRingFill = RingFillRoundTrip;
+		InvalidRingFill.Elements.front().Detail.Mesh.RingFill.fProgress = -0.001f;
+		if (!Reject(InvalidRingFill, "negative Mesh Ring Fill progress"))
+			return false;
+		InvalidRingFill = RingFillRoundTrip;
+		InvalidRingFill.Elements.front().Detail.Mesh.RingFill.fFeather = 0.501f;
+		if (!Reject(InvalidRingFill, "overflow Mesh Ring Fill feather"))
+			return false;
+		InvalidRingFill = RingFillRoundTrip;
+		InvalidRingFill.Elements.front().Detail.LinearLerp.
+			fEndRingFillProgress = 1.001f;
+		if (!Reject(InvalidRingFill, "overflow Mesh Ring Fill lerp end"))
+			return false;
+		InvalidRingFill = RingFillRoundTrip;
+		InvalidRingFill.Elements.front().Detail.Mesh.RingFill.bEnabled = false;
+		if (!Reject(InvalidRingFill, "disabled Mesh Ring Fill lerp"))
+			return false;
+		InvalidRingFill = RingFillRoundTrip;
+		InvalidRingFill.Elements.front().Material.eRenderProfile =
+			Client::EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
+		if (!Reject(InvalidRingFill, "Opaque Mesh Ring Fill"))
+			return false;
+		InvalidRingFill = RingFillRoundTrip;
+		InvalidRingFill.Elements.front().eKind =
+			Client::EFFECT_ELEMENT_KIND::MESH;
+		if (!Reject(InvalidRingFill, "standalone Mesh Ring Fill"))
+			return false;
+		InvalidRingFill = DefaultSprite;
+		InvalidRingFill.Elements.front().Detail.Mesh.RingFill =
+			RingFillRoundTrip.Elements.front().Detail.Mesh.RingFill;
+		if (!Reject(InvalidRingFill, "Sprite Particle Mesh Ring Fill"))
+			return false;
+
+		OutRingFillDocument =
+			std::make_shared<Client::EFFECT_DOCUMENT_DESC>(
+				std::move(RingFillRoundTrip));
+		strOutError.clear();
+		return true;
+	}
+
 	std::shared_ptr<Client::CEffectObject> Add_EffectObject(
 		const wchar_t* pPrototypeTag, const wchar_t* pLayerTag,
 		Client::CEffectObject::EFFECT_OBJECT_DESC& Desc)
@@ -2593,6 +3180,22 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("transform-motion-hold.complete");
+	Write_Progress("manual-mesh-particle-scale.begin");
+	if (!Validate_ManualMeshParticleScaleComposition(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("manual-mesh-particle-scale.complete");
+	std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> RingFillContractDocument;
+	Write_Progress("even-ring-orientation-ring-fill.begin");
+	if (!Validate_EvenRingOrientationAndMeshRingFillContract(
+			RingFillContractDocument, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("even-ring-orientation-ring-fill.complete");
 
 	Engine::Set_NonInteractiveErrorMode(true);
 	Client::CEffectDocumentRenderer::Clear_Prepared_Catalog();
@@ -2799,6 +3402,173 @@ int wmain(const int argc, wchar_t** argv)
 		}
 		float4x4_t Identity{};
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			RingFillPrepared;
+		Write_Progress("mesh-ring-fill-warp-prewarm.begin");
+		if (nullptr == RingFillContractDocument ||
+			!Client::CEffectDocumentRenderer::
+				Prepare_UnboundMaterialProgramDocumentForTests(
+					Device, Context, RingFillContractDocument, nullptr,
+					RingFillPrepared, Status))
+		{
+			std::cerr << "Mesh Ring Fill WARP prewarm failed: " << Status << '\n';
+			return 1;
+		}
+		Write_Progress("mesh-ring-fill-warp-prewarm.complete");
+		Client::CEffectObject::EFFECT_OBJECT_DESC RingFillDesc{};
+		RingFillDesc.pDocument = RingFillContractDocument.get();
+		RingFillDesc.pPreparedResources = RingFillPrepared;
+		RingFillDesc.RootWorld = Identity;
+		RingFillDesc.bAutoPlay = false;
+		RingFillDesc.bRequirePreparedResources = true;
+		const std::shared_ptr<Client::CEffectObject> RingFillObject =
+			Add_EffectObject(PrototypeTag, LayerTag, RingFillDesc);
+		if (nullptr == RingFillObject)
+		{
+			std::cerr << "Mesh Ring Fill WARP object staging failed\n";
+			return 1;
+		}
+		FRAME_EVIDENCE RingFillFrame;
+		RingFillFrame.strScenarioId = "generic-mesh-particle-ring-fill-0.5s";
+		RingFillFrame.strContract = "GAMEINSTANCE_WARP_MRT_SCENE_HDR";
+		Write_Progress("mesh-ring-fill-warp-render.begin");
+		if (!EngineScope.Render_Frame(
+				RingFillObject, 0.5f, RingFillFrame, Status))
+		{
+			std::cerr << "Mesh Ring Fill WARP render failed: " << Status << '\n';
+			return 1;
+		}
+		Write_Progress("mesh-ring-fill-warp-render.complete");
+		RingFillFrame.Occurrence = Find_OccurrenceEvidence(
+			RingFillObject->Get_LastRenderSubmissionStats(),
+			RingFillContractDocument->Elements.front().strElementId);
+		const bool_t bRingFillActualDraw =
+			RingFillFrame.Occurrence.has_value() &&
+			RingFillFrame.Occurrence->iActive == 1u &&
+			RingFillFrame.Occurrence->iCandidate == 1u &&
+			RingFillFrame.Occurrence->iAttempted == 1u &&
+			RingFillFrame.Occurrence->iSubmitted == 1u &&
+			RingFillFrame.Occurrence->iSuppressed == 0u &&
+			RingFillFrame.Occurrence->iFailed == 0u &&
+			RingFillFrame.Occurrence->iMaterialBindCount >= 1u &&
+			RingFillFrame.Occurrence->iShaderPassApplyCount >= 1u &&
+			RingFillFrame.Occurrence->iVIBufferBindCount >= 1u &&
+			RingFillFrame.Occurrence->iVIBufferDrawCount >= 1u &&
+			RingFillFrame.Occurrence->iIssuedDrawCallCount >= 1u &&
+			RingFillFrame.Occurrence->eCarrier ==
+				Client::EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL &&
+			!RingFillFrame.Occurrence->bDrawSelectionDiverged;
+		if (!bRingFillActualDraw)
+		{
+			std::cerr <<
+				"Mesh Ring Fill did not complete an actual WARP shader-bound draw\n";
+			return 1;
+		}
+		if (!RingFillFrame.Occurrence->bHasFirstSubmittedWorld)
+		{
+			std::cerr <<
+				"Mesh Ring Fill did not expose its submitted world matrix\n";
+			return 1;
+		}
+		const uint64_t iBaselineScaleWorldHash =
+			RingFillFrame.Occurrence->iFirstSubmittedWorldHash;
+
+		Client::EFFECT_DOCUMENT_DESC ValueTunedScaleDocument =
+			*RingFillContractDocument;
+		Client::EFFECT_ELEMENT_DESC& ValueTunedScaleElement =
+			ValueTunedScaleDocument.Elements.front();
+		ValueTunedScaleElement.Detail.Transform.vScale = { 2.f, 3.f, 4.f };
+		ValueTunedScaleElement.Detail.Particle.vStartSize = { 1.25f, 1.5f };
+		ValueTunedScaleElement.Detail.Particle.vEndSize = { 1.75f, 2.f };
+		const Client::EFFECT_RENDER_PREWARM_PROBE BeforeValueTuning =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+		if (!RingFillObject->Stage_Document(ValueTunedScaleDocument, Status))
+		{
+			std::cerr << "Mesh Particle value-scale restage failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		const Client::EFFECT_RENDER_PREWARM_PROBE AfterValueTuning =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+		if (AfterValueTuning.iPreparedDocumentBuildCount !=
+				BeforeValueTuning.iPreparedDocumentBuildCount ||
+			AfterValueTuning.iModelDiskLoadCount !=
+				BeforeValueTuning.iModelDiskLoadCount)
+		{
+			std::cerr <<
+				"Transform/Particle Size tuning rebuilt the WModel resource\n";
+			return 1;
+		}
+		FRAME_EVIDENCE ValueTunedScaleFrame;
+		if (!EngineScope.Render_Frame(
+				RingFillObject, 0.5f, ValueTunedScaleFrame, Status))
+		{
+			std::cerr << "Mesh Particle value-scale render failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		const std::optional<OCCURRENCE_EVIDENCE> ValueTunedScaleOccurrence =
+			Find_OccurrenceEvidence(
+				RingFillObject->Get_LastRenderSubmissionStats(),
+				ValueTunedScaleElement.strElementId);
+		if (!ValueTunedScaleOccurrence.has_value() ||
+			!ValueTunedScaleOccurrence->bHasFirstSubmittedWorld ||
+			ValueTunedScaleOccurrence->iFirstSubmittedWorldHash ==
+				iBaselineScaleWorldHash)
+		{
+			std::cerr <<
+				"Transform/Particle Size tuning did not change the submitted world\n";
+			return 1;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC ImportTunedScaleDocument =
+			ValueTunedScaleDocument;
+		ImportTunedScaleDocument.Elements.front().Detail.Mesh.fModelPreScale =
+			0.02f;
+		const Client::EFFECT_RENDER_PREWARM_PROBE BeforeImportTuning =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+		if (!RingFillObject->Stage_Document(ImportTunedScaleDocument, Status))
+		{
+			std::cerr << "Mesh Particle import-scale restage failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		const Client::EFFECT_RENDER_PREWARM_PROBE AfterImportTuning =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+		if (AfterImportTuning.iPreparedDocumentBuildCount !=
+				BeforeImportTuning.iPreparedDocumentBuildCount + 1u ||
+			AfterImportTuning.iModelDiskLoadCount !=
+				BeforeImportTuning.iModelDiskLoadCount + 1u)
+		{
+			std::cerr <<
+				"Model Import Scale tuning did not rebuild exactly one WModel resource\n";
+			return 1;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC RetunedScaleDocument =
+			ImportTunedScaleDocument;
+		RetunedScaleDocument.Elements.front().Detail.Transform.vScale =
+			{ 4.f, 5.f, 6.f };
+		const Client::EFFECT_RENDER_PREWARM_PROBE BeforeValueRetuning =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+		if (!RingFillObject->Stage_Document(RetunedScaleDocument, Status))
+		{
+			std::cerr << "Mesh Particle scale retune failed: " << Status << '\n';
+			return 1;
+		}
+		const Client::EFFECT_RENDER_PREWARM_PROBE AfterValueRetuning =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+		if (AfterValueRetuning.iPreparedDocumentBuildCount !=
+				BeforeValueRetuning.iPreparedDocumentBuildCount ||
+			AfterValueRetuning.iModelDiskLoadCount !=
+				BeforeValueRetuning.iModelDiskLoadCount)
+		{
+			std::cerr <<
+				"Transform scale retune stopped reusing the corrected WModel resource\n";
+			return 1;
+		}
+		Frames.emplace_back(std::move(RingFillFrame));
 
 		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> CanaryDocument =
 			Client::CEffectCatalog::Find(std::string(ARTIST_UNIFIED_EFFECT_ID));

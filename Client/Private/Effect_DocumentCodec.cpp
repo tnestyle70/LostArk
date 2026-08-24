@@ -123,9 +123,22 @@ namespace
 	{
 		"point", "sphere", "ring", "box"
 	};
+	constexpr const char_t* PARTICLE_SPAWN_DISTRIBUTION_TOKENS[] =
+	{
+		"random", "even"
+	};
+	constexpr const char_t* PARTICLE_ORIENTATION_MODE_TOKENS[] =
+	{
+		"fixed", "groundRadialOutward", "groundRadialInward",
+		"groundTangentClockwise", "groundTangentCounterClockwise"
+	};
 	constexpr const char_t* PARTICLE_VELOCITY_MODE_TOKENS[] =
 	{
 		"fixed", "outward", "inward", "cone"
+	};
+	constexpr const char_t* RING_FILL_DIRECTION_TOKENS[] =
+	{
+		"innerToOuter", "outerToInner"
 	};
 	constexpr const char_t* PARTICLE_ATTRACTOR_TARGET_SPACE_TOKENS[] =
 	{
@@ -4498,6 +4511,30 @@ namespace
 			std::filesystem::is_regular_file(Resolved, Error) && !Error;
 	}
 
+	bool_t Read_MeshRingFill(
+		const Client::DATA_JSON_VALUE& Mesh,
+		Client::EFFECT_MESH_RING_FILL_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pRingFill = Mesh.Find("ringFill");
+		if (nullptr == pRingFill)
+			return true;
+		const Client::DATA_JSON_VALUE* pDirection = nullptr;
+		if (!pRingFill->Is_Object() ||
+			nullptr == (pDirection = pRingFill->Find("direction")) ||
+			!pDirection->Is_String() ||
+			!Parse_Token(pDirection->Get_String(), RING_FILL_DIRECTION_TOKENS,
+				std::size(RING_FILL_DIRECTION_TOKENS), Out.eDirection))
+		{
+			strOutError = "Effect mesh ringFill direction is invalid.";
+			return false;
+		}
+		return Read_Bool(*pRingFill, "enabled", Out.bEnabled, strOutError) &&
+			Read_Float(*pRingFill, "progress", Out.fProgress, strOutError) &&
+			Read_Float(*pRingFill, "feather", Out.fFeather, strOutError) &&
+			Read_Bool(*pRingFill, "invert", Out.bInvert, strOutError);
+	}
+
 	bool_t Read_CommonDetail(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_DETAIL_DESC& Out,
@@ -4558,6 +4595,7 @@ namespace
 				Out.Mesh.fModelPreScale, strOutError) &&
 			Read_OptionalArray(*pMesh, "sourceTypeDataRotationDegrees",
 				&Out.Mesh.vSourceTypeDataRotationDegrees.x, 3u, strOutError) &&
+			Read_MeshRingFill(*pMesh, Out.Mesh.RingFill, strOutError) &&
 			Read_Bool(*pSprite, "billboard", Out.Sprite.bBillboard, strOutError) &&
 			Read_OptionalFloat(*pSprite, "billboardRollDegrees",
 				Out.Sprite.fBillboardRollDegrees, strOutError) &&
@@ -4567,8 +4605,8 @@ namespace
 			Read_Float(*pDecal, "depth", Out.Decal.fDepth, strOutError);
 	}
 
-	/* Both blocks are absent from every document written before they existed, and
-	   absent has to keep meaning POINT/FIXED.  So they are read exactly like
+	/* These optional blocks are absent from documents written before they existed,
+	   and absent has to keep meaning POINT/random/FIXED. They are read like
 	   modelPreScale and the DynamicParameter triple: optional on the way in,
 	   emitted on the way out only when they carry something other than the
 	   historical default. */
@@ -4589,6 +4627,20 @@ namespace
 			strOutError = "Effect particle spawnShape kind is invalid.";
 			return false;
 		}
+		if (const Client::DATA_JSON_VALUE* pDistribution =
+			pShape->Find("distribution"))
+		{
+			if (!pDistribution->Is_String() ||
+				!Parse_Token(pDistribution->Get_String(),
+					PARTICLE_SPAWN_DISTRIBUTION_TOKENS,
+					std::size(PARTICLE_SPAWN_DISTRIBUTION_TOKENS),
+					Out.eDistribution))
+			{
+				strOutError =
+					"Effect particle spawnShape distribution is invalid.";
+				return false;
+			}
+		}
 		return Read_OptionalFloat(*pShape, "radius", Out.fRadius, strOutError) &&
 			Read_OptionalFloat(*pShape, "innerRadius", Out.fInnerRadius,
 				strOutError) &&
@@ -4596,6 +4648,29 @@ namespace
 				strOutError) &&
 			Read_OptionalFloat(*pShape, "arcDegrees", Out.fArcDegrees,
 				strOutError);
+	}
+
+	bool_t Read_ParticleInitialOrientation(
+		const Client::DATA_JSON_VALUE& Particle,
+		Client::EFFECT_PARTICLE_INITIAL_ORIENTATION_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pOrientation =
+			Particle.Find("initialOrientation");
+		if (nullptr == pOrientation)
+			return true;
+		const Client::DATA_JSON_VALUE* pMode = nullptr;
+		if (!pOrientation->Is_Object() ||
+			nullptr == (pMode = pOrientation->Find("mode")) ||
+			!pMode->Is_String() ||
+			!Parse_Token(pMode->Get_String(), PARTICLE_ORIENTATION_MODE_TOKENS,
+				std::size(PARTICLE_ORIENTATION_MODE_TOKENS), Out.eMode))
+		{
+			strOutError = "Effect particle initialOrientation mode is invalid.";
+			return false;
+		}
+		return Read_Float(*pOrientation, "offsetDegrees", Out.fOffsetDegrees,
+			strOutError);
 	}
 
 	bool_t Read_ParticleInitialVelocity(
@@ -4723,6 +4798,10 @@ namespace
 			Read_Array(*pLerp, "endColorMultiply", &Out.LinearLerp.vEndColorMultiply.x, 4u, strOutError) &&
 			Read_Bool(*pLerp, "emissiveIntensity", Out.LinearLerp.bEmissiveIntensity, strOutError) &&
 			Read_Float(*pLerp, "endEmissiveIntensity", Out.LinearLerp.fEndEmissiveIntensity, strOutError) &&
+			Read_OptionalBool(*pLerp, "ringFillProgress",
+				Out.LinearLerp.bRingFillProgress, strOutError) &&
+			Read_OptionalFloat(*pLerp, "endRingFillProgress",
+				Out.LinearLerp.fEndRingFillProgress, strOutError) &&
 			Read_UInt(*pParticle, "maxParticles", Out.Particle.iMaxParticles, strOutError) &&
 			Read_Float(*pParticle, "spawnRatePerSecond", Out.Particle.fSpawnRatePerSecond, strOutError) &&
 			Read_UInt(*pParticle, "burstCount", Out.Particle.iBurstCount, strOutError) &&
@@ -4745,6 +4824,8 @@ namespace
 				&Out.Particle.vDynamicParameterEnd.x, 4u, strOutError) &&
 			Read_ParticleSpawnShape(*pParticle, Out.Particle.SpawnShape,
 				strOutError) &&
+			Read_ParticleInitialOrientation(*pParticle,
+				Out.Particle.InitialOrientation, strOutError) &&
 			Read_ParticleInitialVelocity(*pParticle,
 				Out.Particle.InitialVelocity, strOutError) &&
 			Read_ParticleTargetAttractor(*pParticle,
@@ -4825,6 +4906,18 @@ namespace
 			Output << ", \"modelPreScale\": " << Detail.Mesh.fModelPreScale;
 		Output << ", \"sourceTypeDataRotationDegrees\": ";
 		Write_Float3(Output, Detail.Mesh.vSourceTypeDataRotationDegrees);
+		if (Detail.Mesh.RingFill.bEnabled)
+		{
+			Output << ", \"ringFill\": { \"enabled\": true, \"progress\": "
+				<< Detail.Mesh.RingFill.fProgress
+				<< ", \"direction\": \""
+				<< RING_FILL_DIRECTION_TOKENS[static_cast<size_t>(
+					Detail.Mesh.RingFill.eDirection)]
+				<< "\", \"feather\": " << Detail.Mesh.RingFill.fFeather
+				<< ", \"invert\": "
+				<< (Detail.Mesh.RingFill.bInvert ? "true" : "false")
+				<< " }";
+		}
 		Output << " },\n        \"sprite\": { \"billboard\": " << (Detail.Sprite.bBillboard ? "true" : "false")
 			<< ", \"billboardRollDegrees\": " << Detail.Sprite.fBillboardRollDegrees
 			<< ", \"billboardRollDegreesPerSecond\": "
@@ -4848,7 +4941,13 @@ namespace
 		Output << ", \"colorMultiply\": " << (Detail.LinearLerp.bColorMultiply ? "true" : "false") << ", \"endColorMultiply\": ";
 		Write_Float4(Output, Detail.LinearLerp.vEndColorMultiply);
 		Output << ", \"emissiveIntensity\": " << (Detail.LinearLerp.bEmissiveIntensity ? "true" : "false")
-			<< ", \"endEmissiveIntensity\": " << Detail.LinearLerp.fEndEmissiveIntensity << " },\n"
+			<< ", \"endEmissiveIntensity\": " << Detail.LinearLerp.fEndEmissiveIntensity;
+		if (Detail.LinearLerp.bRingFillProgress)
+		{
+			Output << ", \"ringFillProgress\": true, \"endRingFillProgress\": "
+				<< Detail.LinearLerp.fEndRingFillProgress;
+		}
+		Output << " },\n"
 			<< "        \"particle\": { \"maxParticles\": " << Detail.Particle.iMaxParticles
 			<< ", \"spawnRatePerSecond\": " << Detail.Particle.fSpawnRatePerSecond
 			<< ", \"burstCount\": " << Detail.Particle.iBurstCount
@@ -4885,8 +4984,8 @@ namespace
 			Write_Float4(Output, Detail.Particle.vDynamicParameterEnd);
 		}
 		/* Same reason as modelPreScale above: a document that still spawns from a
-		   point with a fixed velocity box must serialize byte-identically to the
-		   way it was written before these two blocks existed. */
+		   point with random distribution and a fixed velocity/orientation must
+		   serialize byte-identically to the legacy writer. */
 		if (EFFECT_PARTICLE_SPAWN_SHAPE::POINT != Detail.Particle.SpawnShape.eKind)
 		{
 			Output << ", \"spawnShape\": { \"kind\": \""
@@ -4898,7 +4997,23 @@ namespace
 				<< ", \"extents\": ";
 			Write_Float3(Output, Detail.Particle.SpawnShape.vExtents);
 			Output << ", \"arcDegrees\": "
-				<< Detail.Particle.SpawnShape.fArcDegrees << " }";
+				<< Detail.Particle.SpawnShape.fArcDegrees;
+			if (EFFECT_PARTICLE_SPAWN_DISTRIBUTION::RANDOM !=
+				Detail.Particle.SpawnShape.eDistribution)
+			{
+				Output << ", \"distribution\": \""
+					<< PARTICLE_SPAWN_DISTRIBUTION_TOKENS[static_cast<size_t>(
+						Detail.Particle.SpawnShape.eDistribution)] << "\"";
+			}
+			Output << " }";
+		}
+		if (!Detail.Particle.InitialOrientation.Is_Default())
+		{
+			Output << ", \"initialOrientation\": { \"mode\": \""
+				<< PARTICLE_ORIENTATION_MODE_TOKENS[static_cast<size_t>(
+					Detail.Particle.InitialOrientation.eMode)]
+				<< "\", \"offsetDegrees\": "
+				<< Detail.Particle.InitialOrientation.fOffsetDegrees << " }";
 		}
 		if (EFFECT_PARTICLE_VELOCITY_MODE::FIXED !=
 			Detail.Particle.InitialVelocity.eMode)
@@ -6407,15 +6522,34 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			}
 		}
 		const EFFECT_DETAIL_DESC& D = Element.Detail;
-		const bool_t bMeshTransformMotionCarrier =
-			Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
-			(Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-			 std::any_of(Element.ResourceBindings.begin(),
+		const bool_t bMeshParticle =
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			std::any_of(Element.ResourceBindings.begin(),
 				Element.ResourceBindings.end(),
 				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
 				{
-					return Binding.strSlotId == "meshModel";
-				}));
+					return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
+				});
+		const bool_t bDirectHandAuthored = Element.strSourceNode.empty() ||
+			Element.strSourceNode.starts_with("authored-copy:");
+		const bool_t bManualParticle =
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			bDirectHandAuthored && !Element.SourceRecipe.bEnabled &&
+			!Element.SourcePresentation.bEnabled &&
+			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END;
+		const bool_t bGenericMeshRingFillCarrier =
+			bManualParticle && bMeshParticle &&
+			Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			Element.Material.strSourceMaterialPath.empty() &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			!Element.Material.Execution.bEnabled &&
+			!Element.Material.Execution.bFailClosed &&
+			!Element.Material.Execution.bAuthoringApproximate &&
+			Element.Material.eRenderProfile !=
+				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
+		const bool_t bMeshTransformMotionCarrier =
+			Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+			bMeshParticle;
 		const int64_t iTileCount = static_cast<int64_t>(D.UV.iTileColumns) * D.UV.iTileRows;
 		const bool_t bCommonValid =
 			Is_Finite(D.Transform.vPosition) && Is_Finite(D.Transform.vRotationDegrees) &&
@@ -6468,7 +6602,14 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.LinearLerp.vEndScale.x > 0.f && D.LinearLerp.vEndScale.y > 0.f && D.LinearLerp.vEndScale.z > 0.f &&
 			Is_Finite(D.LinearLerp.vEndVelocityPerSecond) && Is_Finite(D.LinearLerp.vEndColorOffset) &&
 			Is_Finite(D.LinearLerp.vEndColorMultiply) &&
-			std::isfinite(D.LinearLerp.fEndEmissiveIntensity) && D.LinearLerp.fEndEmissiveIntensity >= 0.f;
+			std::isfinite(D.LinearLerp.fEndEmissiveIntensity) &&
+			D.LinearLerp.fEndEmissiveIntensity >= 0.f &&
+			std::isfinite(D.LinearLerp.fEndRingFillProgress) &&
+			D.LinearLerp.fEndRingFillProgress >= 0.f &&
+			D.LinearLerp.fEndRingFillProgress <= 1.f &&
+			(D.LinearLerp.bRingFillProgress ||
+			 D.LinearLerp.fEndRingFillProgress == 1.f) &&
+			(!D.LinearLerp.bRingFillProgress || D.Mesh.RingFill.bEnabled);
 		const bool_t bParticleValid =
 			D.Particle.iMaxParticles >= 1u && D.Particle.iMaxParticles <= 2048u &&
 			D.Particle.iBurstCount <= D.Particle.iMaxParticles && D.Particle.iRandomSeed != 0u &&
@@ -6493,10 +6634,13 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		   arc, a zero-extent box - would silently collapse every particle onto the
 		   origin instead of failing, so it is rejected at load. */
 		const EFFECT_PARTICLE_SPAWN_SHAPE_DESC& Shape = D.Particle.SpawnShape;
+		const EFFECT_PARTICLE_INITIAL_ORIENTATION_DESC& Orientation =
+			D.Particle.InitialOrientation;
 		const EFFECT_PARTICLE_INITIAL_VELOCITY_DESC& Emission =
 			D.Particle.InitialVelocity;
 		const bool_t bSpawnShapeValid =
 			Shape.eKind < EFFECT_PARTICLE_SPAWN_SHAPE::END &&
+			Shape.eDistribution < EFFECT_PARTICLE_SPAWN_DISTRIBUTION::END &&
 			std::isfinite(Shape.fRadius) && std::isfinite(Shape.fInnerRadius) &&
 			Is_Finite(Shape.vExtents) && std::isfinite(Shape.fArcDegrees) &&
 			Shape.fRadius >= 0.f && Shape.fInnerRadius >= 0.f &&
@@ -6510,7 +6654,23 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			(EFFECT_PARTICLE_SPAWN_SHAPE::RING != Shape.eKind || Shape.fRadius > 0.f) &&
 			(EFFECT_PARTICLE_SPAWN_SHAPE::BOX != Shape.eKind ||
 				Shape.vExtents.x > 0.f || Shape.vExtents.y > 0.f ||
-				Shape.vExtents.z > 0.f);
+				Shape.vExtents.z > 0.f) &&
+			(EFFECT_PARTICLE_SPAWN_DISTRIBUTION::RANDOM ==
+				Shape.eDistribution ||
+			 (bManualParticle &&
+			  EFFECT_PARTICLE_SPAWN_SHAPE::RING == Shape.eKind &&
+			  D.Particle.fSpawnRatePerSecond == 0.f &&
+			  D.Particle.iBurstCount >= 2u));
+		const bool_t bInitialOrientationValid =
+			Orientation.eMode < EFFECT_PARTICLE_ORIENTATION_MODE::END &&
+			std::isfinite(Orientation.fOffsetDegrees) &&
+			std::abs(Orientation.fOffsetDegrees) <= 3600.f &&
+			(EFFECT_PARTICLE_ORIENTATION_MODE::FIXED != Orientation.eMode ||
+			 Orientation.fOffsetDegrees == 0.f) &&
+			(EFFECT_PARTICLE_ORIENTATION_MODE::FIXED == Orientation.eMode ||
+			 (bManualParticle && !bMeshParticle &&
+			  EFFECT_PARTICLE_SPAWN_SHAPE::RING == Shape.eKind &&
+			  D.Particle.bLocalSpace && !D.Particle.bBillboard));
 		const bool_t bInitialVelocityValid =
 			Emission.eMode < EFFECT_PARTICLE_VELOCITY_MODE::END &&
 			Is_Finite(Emission.vSpeedRange) &&
@@ -6618,8 +6778,18 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					D.ScreenPost.fFrequency >= 0.f &&
 					Is_Finite(D.ScreenPost.vTint) &&
 					0u != D.ScreenPost.iRandomSeed));
+		const EFFECT_MESH_RING_FILL_DESC& RingFill = D.Mesh.RingFill;
+		const bool_t bRingFillValid =
+			RingFill.eDirection < EFFECT_RING_FILL_DIRECTION::END &&
+			std::isfinite(RingFill.fProgress) &&
+			RingFill.fProgress >= 0.f && RingFill.fProgress <= 1.f &&
+			std::isfinite(RingFill.fFeather) && RingFill.fFeather >= 0.f &&
+			RingFill.fFeather <= 0.5f &&
+			(RingFill.bEnabled || RingFill.Is_Default()) &&
+			(!RingFill.bEnabled || bGenericMeshRingFillCarrier);
 		if (!bCommonValid || !bLerpValid || !bParticleValid ||
-			!bSpawnShapeValid || !bInitialVelocityValid ||
+			!bSpawnShapeValid || !bInitialOrientationValid ||
+			!bInitialVelocityValid || !bRingFillValid ||
 			!bTargetAttractorValid ||
 			!bSourceScaleValid ||
 			!bTrailValid || !bAfterImageValid || !bLightValid ||

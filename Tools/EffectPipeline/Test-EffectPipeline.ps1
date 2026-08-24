@@ -1813,6 +1813,147 @@ try {
     if ($LASTEXITCODE) { throw 'Mesh-backed Particle publish failed.' }
     $meshParticleBaseline = [IO.File]::ReadAllBytes($output)
 
+    $evenRingParticle = ($originalElement | ConvertTo-Json -Depth 30) |
+        ConvertFrom-Json
+    $evenRingParticle.kind = 'particle'
+    $evenRingParticle.sourceNode = ''
+    $evenRingParticle.resources = @([ordered]@{
+        slotId = 'base'
+        assetId = 'Effect/Test/base.dds'
+    })
+    $evenRingParticle.detail.particle.maxParticles = 16
+    $evenRingParticle.detail.particle.spawnRatePerSecond = 0.0
+    $evenRingParticle.detail.particle.burstCount = 16
+    $evenRingParticle.detail.particle.localSpace = $true
+    $evenRingParticle.detail.particle.billboard = $false
+    $evenRingParticle.detail.particle | Add-Member `
+        -NotePropertyName spawnShape -Force -NotePropertyValue ([ordered]@{
+            kind = 'ring'
+            radius = 2.0
+            innerRadius = 2.0
+            extents = @(0.0, 0.0, 0.0)
+            arcDegrees = 360.0
+            distribution = 'even'
+        })
+    $evenRingParticle.detail.particle | Add-Member `
+        -NotePropertyName initialOrientation -Force -NotePropertyValue `
+        ([ordered]@{
+            mode = 'groundRadialOutward'
+            offsetDegrees = 15.0
+        })
+    $document.elements = @($evenRingParticle)
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) {
+        throw 'Even Ring Sprite Particle publish failed.'
+    }
+    $evenRingBaseline = [IO.File]::ReadAllBytes($output)
+
+    $evenRingParticle.detail.particle.spawnRatePerSecond = 1.0
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Even Ring continuous spawn' $evenRingBaseline
+    $evenRingParticle.detail.particle.spawnRatePerSecond = 0.0
+
+    $evenRingParticle.detail.particle.burstCount = 1
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Even Ring single-particle burst' $evenRingBaseline
+    $evenRingParticle.detail.particle.burstCount = 16
+
+    $evenRingParticle.detail.particle.spawnShape.kind = 'box'
+    $evenRingParticle.detail.particle.spawnShape.extents = @(1.0, 1.0, 1.0)
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Even distribution on non-Ring shape' $evenRingBaseline
+    $evenRingParticle.detail.particle.spawnShape.kind = 'ring'
+    $evenRingParticle.detail.particle.spawnShape.extents = @(0.0, 0.0, 0.0)
+
+    $evenRingParticle.detail.particle.billboard = $true
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Billboard radial Sprite orientation' $evenRingBaseline
+    $evenRingParticle.detail.particle.billboard = $false
+
+    $evenRingParticle.detail.particle.initialOrientation.mode = 'unknown'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Unknown Sprite initial orientation' $evenRingBaseline
+    $evenRingParticle.detail.particle.initialOrientation.mode =
+        'groundRadialOutward'
+
+    $ringFillParticle = ($meshParticle | ConvertTo-Json -Depth 30) |
+        ConvertFrom-Json
+    $ringFillParticle.sourceNode = ''
+    $ringFillParticle.resources = @(
+        [ordered]@{
+            slotId = 'meshModel'
+            assetId = 'Effect/Test/mesh.wmodel'
+        },
+        [ordered]@{
+            slotId = 'base'
+            assetId = 'Effect/Test/base.dds'
+        })
+    $ringFillParticle.detail.mesh.useModelMaterial = $false
+    $ringFillParticle.detail.mesh | Add-Member `
+        -NotePropertyName ringFill -Force -NotePropertyValue ([ordered]@{
+            enabled = $true
+            progress = 0.25
+            direction = 'outerToInner'
+            feather = 0.1
+            invert = $true
+        })
+    $ringFillParticle.detail.linearLerp | Add-Member `
+        -NotePropertyName ringFillProgress -Force -NotePropertyValue $true
+    $ringFillParticle.detail.linearLerp | Add-Member `
+        -NotePropertyName endRingFillProgress -Force -NotePropertyValue 0.75
+    $document.elements = @($ringFillParticle)
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Mesh Particle Ring Fill publish failed.' }
+    $ringFillBaseline = [IO.File]::ReadAllBytes($output)
+
+    $ringFillParticle.detail.mesh.ringFill.progress = -0.01
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Negative Mesh Ring Fill progress' $ringFillBaseline
+    $ringFillParticle.detail.mesh.ringFill.progress = 0.25
+
+    $ringFillParticle.detail.mesh.ringFill.direction = 'unknown'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Unknown Mesh Ring Fill direction' $ringFillBaseline
+    $ringFillParticle.detail.mesh.ringFill.direction = 'outerToInner'
+
+    $ringFillParticle.detail.mesh.ringFill.feather = 0.51
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Overflow Mesh Ring Fill feather' $ringFillBaseline
+    $ringFillParticle.detail.mesh.ringFill.feather = 0.1
+
+    $ringFillParticle.detail.linearLerp.endRingFillProgress = 1.01
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Overflow Mesh Ring Fill lerp end' $ringFillBaseline
+    $ringFillParticle.detail.linearLerp.endRingFillProgress = 0.75
+
+    $ringFillParticle.detail.mesh.ringFill.enabled = $false
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Disabled Mesh Ring Fill lerp' $ringFillBaseline
+    $ringFillParticle.detail.mesh.ringFill.enabled = $true
+
+    $ringFillParticle.material.renderProfile = 'opaque_back_depth_write'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Opaque Mesh Particle Ring Fill' $ringFillBaseline
+    $ringFillParticle.material.renderProfile = 'alpha_two_sided_depth_read'
+
+    $ringFillParticle.kind = 'mesh'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Standalone Mesh Ring Fill' $ringFillBaseline
+    $ringFillParticle.kind = 'particle'
+
+    $document.elements = @($meshParticle)
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) {
+        throw 'Mesh-backed Particle baseline restore failed.'
+    }
+    $meshParticleBaseline = [IO.File]::ReadAllBytes($output)
+
     $meshParticle.detail.mesh.useModelMaterial = $false
     Write-Fixture $document $catalog
     Assert-PublishRejected 'Mesh particle without Base override' `
