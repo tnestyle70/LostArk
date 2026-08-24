@@ -1018,6 +1018,16 @@
       "authoringPath": "Effects/Authored/effect.valtan.pattern.420633.active.v1.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.project-tuned.dash-charge.active-shield",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.dash-charge.active-shield.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.dash-charge.windup-telegraph",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.dash-charge.windup-telegraph.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.red-blade-wave.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.active.effect.json"

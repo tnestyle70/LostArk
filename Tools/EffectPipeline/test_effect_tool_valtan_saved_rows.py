@@ -17,6 +17,9 @@ VALTAN_PATTERN_TREE_HEADER = REPOSITORY_ROOT / "Client/Public/ValtanPatternTree.
 ENCOUNTER_PATH = (
     REPOSITORY_ROOT / "Data/Encounters/Valtan/ValtanEncounter.json"
 )
+COMBAT_OBJECT_PATH = (
+    REPOSITORY_ROOT / "Data/Encounters/Valtan/ValtanCombatObjects.json"
+)
 CUE_PATH = (
     REPOSITORY_ROOT
     / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
@@ -152,6 +155,8 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
         "ProductSources",
         "ReferenceStages",
         "CombatObjectStages",
+        "std::erase_if(SavedRows",
+        '"[PRODUCT] "',
         'ImGui::SmallButton("Open Saved Effect")',
         'ImGui::SmallButton("Play Saved Effect")',
         "Try_OpenValtanAuthoredEffect",
@@ -162,6 +167,8 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
     for token in required_pattern:
         if token not in pattern:
             raise AssertionError(f"Valtan Saved row contract lost: {token}")
+    if '"[REFERENCE] "' in pattern:
+        raise AssertionError("reference-only rows must stay out of Saved Unified Effects")
     if "Try_PlaySavedUnifiedEffect(" in pattern:
         raise AssertionError("Valtan must not use the Player-only saved play path")
 
@@ -188,7 +195,7 @@ def validate_v1_alias_projection_contract(
         "Cue.strV1EffectAssetId",
         "ResolveRow(Cue.strV1EffectAssetId)",
         "V1Row.bV1Alias = true",
-        '"[V0] "',
+        '"[PRODUCT] "',
         '"[V1] "',
         "PlaybackCue.strEffectAssetId = Row.strEffectAssetId",
     )
@@ -280,7 +287,6 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     for name, helper, commit_token in (
         ("play", play_helper, "Is_UnifiedEffectActive(Cache)"),
         ("reference", reference_helper, "Try_LoadDocumentPath("),
-        ("product", product_helper, "Try_LoadDocumentPath("),
     ):
         refresh = helper.find("Refresh_UnifiedEffectCache(")
         valid = helper.find("!Cache.bValid")
@@ -292,6 +298,17 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
             raise AssertionError(
                 f"{name} helper must reject invalid/non-drawable data before preview mutation"
             )
+
+    refresh = product_helper.find("Refresh_UnifiedEffectCache(")
+    valid = product_helper.find("!Cache.bValid")
+    commit = product_helper.find("Try_LoadDocumentPath(")
+    drawable = product_helper.find("!Cache.bDrawable")
+    if min(refresh, valid, commit) < 0 or not (refresh < valid < commit):
+        raise AssertionError("Product Open lost structural validation before load")
+    if 0 <= drawable < commit:
+        raise AssertionError(
+            "Product Open must admit a structurally valid empty authoring document"
+        )
 
     refresh_tree = function_slice(
         cpp_text,
@@ -318,6 +335,34 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     if "ObservedCache->" in pattern[open_button:]:
         raise AssertionError(
             "Saved row retained a possibly invalidated cache iterator across Open/Play"
+        )
+    open_guard = pattern[pattern.rfind("ImGui::BeginDisabled(", 0, open_button):open_button]
+    play_guard = pattern[pattern.rfind("ImGui::BeginDisabled(", 0, play_button):play_button]
+    if "bKnownNonDrawable" in open_guard:
+        raise AssertionError("empty Product drafts must remain openable for authoring")
+    if "bKnownInvalid" not in open_guard:
+        raise AssertionError("known-invalid Product documents must remain open-locked")
+    if not all(
+        token in play_guard for token in ("bKnownInvalid", "bKnownNonDrawable")
+    ):
+        raise AssertionError(
+            "invalid and non-drawable Product documents must remain play-locked"
+        )
+
+    save_helper = function_slice(
+        cpp_text,
+        "bool_t Client::CEffect_Tool::Try_SaveDocument()",
+        "bool_t Client::CEffect_Tool::Try_SaveDocumentAs(",
+    )
+    cache_lookup = save_helper.find("m_ValtanUnifiedEffectCaches.find(")
+    cache_reset = save_helper.find("ValtanCache->second = {};", cache_lookup)
+    cache_refresh = save_helper.find("Refresh_UnifiedEffectCache(", cache_lookup)
+    hot_reload = save_helper.find("Try_HotReloadSavedProduct()", cache_refresh)
+    if min(cache_lookup, cache_reset, cache_refresh, hot_reload) < 0 or not (
+        cache_lookup < cache_reset < cache_refresh < hot_reload
+    ):
+        raise AssertionError(
+            "Authored save must refresh an observed Valtan Product cache before hot reload"
         )
 
 
@@ -671,7 +716,10 @@ def stage_effect_asset_id(pattern: dict[str, object], stage: dict[str, object]) 
     return f"effect.valtan.{pattern_slug}.{stage_slug}"
 
 
-def project_saved_rows(include_v1_aliases: bool = True) -> tuple[dict[str, list[str]], int]:
+def project_saved_rows(
+    include_v1_aliases: bool = True,
+    include_reference_only: bool = False,
+) -> tuple[dict[str, list[str]], int]:
     encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
     cue_document = json.loads(CUE_PATH.read_text(encoding="utf-8"))
     reference_document = json.loads(REFERENCE_PATH.read_text(encoding="utf-8"))
@@ -722,7 +770,7 @@ def project_saved_rows(include_v1_aliases: bool = True) -> tuple[dict[str, list[
                     add(v1_aliases[effect_id])
 
             explicit = references_by_action.get(stage["actionId"])
-            if explicit:
+            if include_reference_only and explicit:
                 add(explicit)
 
             combat_ids: list[str] = []
@@ -733,7 +781,7 @@ def project_saved_rows(include_v1_aliases: bool = True) -> tuple[dict[str, list[
                 if effect_id:
                     combat_ids.append(effect_id)
 
-            if not product_ids and not combat_ids:
+            if include_reference_only and not product_ids and not combat_ids:
                 candidate = stage_effect_asset_id(pattern, stage)
                 if (AUTHORED_ROOT / f"{candidate}.effect.json").is_file():
                     add(candidate)
@@ -793,6 +841,88 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         )
 
+    def test_high_jump_world_owner_and_target_axe_timing_are_exact(self) -> None:
+        encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
+        high_jump = next(
+            pattern
+            for pattern in encounter["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        stages = {stage["stageId"]: stage for stage in high_jump["stages"]}
+        self.assertEqual(1933, stages["TAKEOFF"]["durationMs"])
+        self.assertEqual(8000, stages["AIRBORNE"]["durationMs"])
+        self.assertEqual(3200, stages["LAND"]["durationMs"])
+        self.assertEqual(400, stages["RECOVERY"]["durationMs"])
+        self.assertEqual(
+            [
+                {
+                    "trigger": "ENTER",
+                    "kind": "SPAWN_COMBAT_OBJECT",
+                    "targetId": "combatobject.valtan.high-jump.target-axe",
+                    "value": 1,
+                    "durationMs": 0,
+                }
+            ],
+            stages["AIRBORNE"]["actions"],
+        )
+
+        combat_objects = json.loads(
+            COMBAT_OBJECT_PATH.read_text(encoding="utf-8")
+        )
+        target_axe = next(
+            row
+            for row in combat_objects["objects"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.high-jump.target-axe"
+        )
+        self.assertEqual(8000, target_axe["lifeMs"])
+        self.assertEqual(1, len(target_axe["hits"]))
+        self.assertEqual(1200, target_axe["hits"][0]["atMs"])
+        self.assertEqual(1, target_axe["hits"][0]["repeatCount"])
+
+        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
+        pattern = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Render_ValtanPatternNode(",
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        )
+        reference_open = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(",
+            "bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(",
+        )
+        duration = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Recalculate_PreviewDuration(",
+            "bool_t Client::CEffect_Tool::Has_UnsavedWork() const",
+        )
+        create_element = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Try_CreateMeshEffect(",
+            "bool_t Client::CEffect_Tool::Try_UseSelectedElementAsAuthoringPreset()",
+        )
+        for token in (
+            "iValtanWorldOwnerStageDurationMs",
+            "m_iValtanWorldOwnerStageDurationMs",
+        ):
+            self.assertIn(token, header_text)
+        self.assertIn("pNonProductStage->iDurationMs", pattern)
+        self.assertIn("iWorldOwnerStageDurationMs", reference_open)
+        self.assertIn("Recalculate_PreviewDuration();", reference_open)
+        self.assertIn("m_iValtanWorldOwnerStageDurationMs", duration)
+        self.assertIn("(std::max)(", duration)
+        self.assertIn(
+            "iPreviousValtanWorldOwnerStageDurationMs",
+            create_element,
+        )
+        self.assertGreaterEqual(
+            create_element.count(
+                "m_iValtanWorldOwnerStageDurationMs ="
+            ),
+            2,
+        )
+
     def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:
         validate_manual_authoring_detail_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
@@ -818,6 +948,23 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             self.assertFalse(path.exists(), str(path))
 
     def test_whirlwind_carrier_v1_plays_on_spin_clip(self) -> None:
+        encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
+        pattern = next(
+            row
+            for row in encounter["patterns"]
+            if row["patternId"] == "VALTAN_WHIRLWIND"
+        )
+        self.assertEqual(
+            ["WINDUP", "SPIN", "RECOVERY"],
+            [row["stageId"] for row in pattern["stages"]],
+        )
+        stages = {row["stageId"]: row for row in pattern["stages"]}
+        self.assertEqual(1333, stages["WINDUP"]["durationMs"])
+        self.assertEqual(1400, stages["SPIN"]["durationMs"])
+        self.assertEqual(4, stages["SPIN"]["hitCount"])
+        self.assertEqual(350, stages["SPIN"]["hitIntervalMs"])
+        self.assertEqual(1467, stages["RECOVERY"]["durationMs"])
+
         cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
         matches = [
             row
@@ -838,6 +985,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
             cue["effectAssetId"],
         )
+        self.assertEqual("natural", cue["stopPolicy"])
+        self.assertEqual("once", cue["repeatPolicy"])
+        self.assertEqual(0, cue["sourceStartMs"])
+        self.assertIsNone(cue["sourceEndMs"])
 
         bindings = {
             row["actionId"]: row["clips"]
@@ -850,10 +1001,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 {
                     "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
                     "clip": "mesh_att_battle_20_03",
-                    "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                    "mappingBasis": "PROJECT_AUTHORED",
                     "sourceStartMs": 0,
                     "playMs": 0,
-                    "playRate": 1.0,
+                    "playRate": 0.761904762,
                     "loop": True,
                 }
             ],
@@ -864,34 +1015,564 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             bindings["valtan.attack.whirlwind.recovery"][0]["clip"],
         )
 
+        effect_id = cue["effectAssetId"]
+        source_catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        source_path = REPOSITORY_ROOT / "Data" / source_catalog[effect_id][
+            "authoringPath"
+        ]
+        source_document = json.loads(source_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            "VALTAN_WHIRLWIND / SPIN / carrier V1",
+            source_document["displayName"],
+        )
+        source_duration = 1.4 * 0.761904762
+        for element in source_document["elements"]:
+            if element["kind"] == "trail":
+                preview_end = (
+                    element["detail"]["timing"]["lifeTimeSeconds"]
+                    + element["detail"]["trail"]["pointLifeTimeSeconds"]
+                )
+            else:
+                preview_end = (
+                    element["detail"]["timing"]["lifeTimeSeconds"]
+                    + element["detail"]["particle"]["lifeTimeSeconds"][1]
+                )
+            self.assertLessEqual(preview_end, source_duration + 0.000001)
+            self.assertAlmostEqual(1.4, preview_end / 0.761904762, places=5)
+
+        v1_document = json.loads(
+            (
+                AUTHORED_ROOT
+                / "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified.effect.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            "VALTAN_WHIRLWIND / SPIN / carrier V1 [V1]",
+            v1_document["displayName"],
+        )
+        for element in v1_document["elements"]:
+            timing = element["detail"]["timing"]
+            preview_end = (
+                timing["startDelaySeconds"]
+                + timing["lifeTimeSeconds"]
+                + element["detail"]["particle"]["lifeTimeSeconds"][1]
+            )
+            self.assertLessEqual(preview_end, source_duration + 0.000001)
+
+        trail = next(
+            row
+            for row in source_document["elements"]
+            if row["id"] == "whirlwind.trail.20.axe.main"
+        )
+        self.assertEqual(256, trail["detail"]["trail"]["maxPoints"])
+        self.assertAlmostEqual(
+            1.0 / 120.0,
+            trail["detail"]["trail"]["sampleIntervalSeconds"],
+            places=7,
+        )
+        self.assertGreater(
+            trail["detail"]["trail"]["tilingDistanceWorldUnits"], 0
+        )
+        self.assertGreater(
+            trail["detail"]["trail"]["distanceTessellationStepWorldUnits"],
+            0,
+        )
+
+        header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
+        tree_header_text = VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8")
+        tree_cpp_text = VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8")
+        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        self.assertIn("uint32_t iStageDurationMs = 0u;", tree_header_text)
+        self.assertIn(
+            "Cue.iStageDurationMs = SourceCue.iStageDurationMs;", tree_cpp_text
+        )
+        self.assertIn("VALTAN_PRODUCT_PREVIEW", header_text)
+        play_cue = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Play_ValtanProductCue(",
+            "bool_t Client::CEffect_Tool::Play_ValtanStageSequence(",
+        )
+        self.assertIn("0u == Cue.iStageDurationMs", play_cue)
+        visible = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Is_ProductCueVisible(",
+            "bool_t Client::CEffect_Tool::Restore_ValtanProductPreviewPlayback(",
+        )
+        self.assertIn(
+            "m_ValtanProductPreview->Cue.iStageDurationMs", visible
+        )
+        duration = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Recalculate_PreviewDuration(",
+            "bool_t Client::CEffect_Tool::Has_UnsavedWork() const",
+        )
+        self.assertIn(
+            "m_ValtanProductPreview->Cue.iStageDurationMs", duration
+        )
+
+    def test_optional_authored_slot_delete_and_hit_base_only_contract(self) -> None:
+        hit_path = (
+            AUTHORED_ROOT
+            / "effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json"
+        )
+        document = json.loads(hit_path.read_text(encoding="utf-8"))
+        elements = {row["id"]: row for row in document["elements"]}
+        self.assertEqual(
+            {
+                "base": "Effect/Valtan/Textures/FX_TEX_04/fx_h_hit_01.dds",
+            },
+            {
+                row["slotId"]: row["assetId"]
+                for row in elements["valtan.clip01.hit-spark.01"]["resources"]
+            },
+        )
+        self.assertEqual(
+            {
+                "base": "Effect/Valtan/Textures/FX_TEX_00/fx_a_hit_007.dds",
+            },
+            {
+                row["slotId"]: row["assetId"]
+                for row in elements["impact.fragments.hit_007"]["resources"]
+            },
+        )
+
+        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        for token in (
+            "bool Is_DirectHandAuthoredElement(",
+            "bool Is_OptionalHandAuthoredResourceSlot(",
+            "Element.strSourceNode.empty()",
+            'Element.strSourceNode.starts_with("authored-copy:")',
+            'strSlotId == "base"',
+            "Element.SourceRecipe.bEnabled",
+            "Element.SourcePresentation.bEnabled",
+            "Element.Material.SourceMaterial.bEnabled",
+            "Element.Material.strSourceMaterialPath.empty()",
+            "Element.Material.Execution.bEnabled",
+            '"Delete Selected Slot"',
+        ):
+            self.assertIn(token, cpp_text)
+        bind_slot = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Try_BindResource(",
+            "bool_t Client::CEffect_Tool::Try_ClearSelectedSlot()",
+        )
+        authored_template = bind_slot[
+            bind_slot.index("const bool_t bAuthoredTemplateSlot =") :
+            bind_slot.index("if (bUnlockMissingBaseSourceDecal")
+        ]
+        self.assertIn(
+            "Is_DirectHandAuthoredElement(*pElement)", authored_template
+        )
+        self.assertLess(
+            authored_template.index("Is_DirectHandAuthoredElement(*pElement)"),
+            authored_template.index("nullptr == pMaterialLane"),
+        )
+        clear_slot = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Try_ClearSelectedSlot()",
+            "bool_t Client::CEffect_Tool::Try_SetSelectedTrailFollowAnchor(",
+        )
+        ordered_tokens = (
+            "!bHasAuthoringOverride",
+            "nullptr == Find_MaterialExecutionLane(",
+            "nullptr == Find_SourceMaterialTexture(",
+            "Is_OptionalHandAuthoredResourceSlot(",
+            "Element.ResourceBindings.erase(Binding);",
+            "Try_CommitDocument(std::move(Staged))",
+            "m_strSelectedResourceAssetId.clear();",
+            "Save Changes to persist it.",
+        )
+        for token in ordered_tokens:
+            self.assertIn(token, clear_slot)
+        self.assertEqual(
+            sorted(clear_slot.index(token) for token in ordered_tokens),
+            [clear_slot.index(token) for token in ordered_tokens],
+        )
+
+    def test_whirlwind_trail_uses_element_local_axe_follow(self) -> None:
+        effect_id = "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01"
+        source_catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        source_path = (
+            REPOSITORY_ROOT / "Data" / source_catalog[effect_id]["authoringPath"]
+        )
+        source_document = json.loads(source_path.read_text(encoding="utf-8"))
+        trail = next(
+            row
+            for row in source_document["elements"]
+            if row["id"] == "whirlwind.trail.20.axe.main"
+        )
+        self.assertEqual("trail", trail["kind"])
+        self.assertEqual([0, 0, 0], trail["detail"]["transform"]["velocityPerSecond"])
+        self.assertGreaterEqual(trail["detail"]["trail"]["minimumDistance"], 0)
+        self.assertEqual(
+            {
+                "enabled": True,
+                "follow": True,
+                "sourceAnchorSlotId": "b_wp_r_01",
+                "runtimeAnchorSlotId": "whirlwind.trail.20.axe.main",
+                "runtimeBoneName": "b_wp_r_01",
+                "snapshotRootSourceBasisYawDegrees": 0,
+                "socketLocalTransform": {
+                    "position": [0, 0, 0],
+                    "rotationDegrees": [0, 0, 0],
+                    "scale": [1, 1, 1],
+                },
+            },
+            trail["actionCueAttachment"],
+        )
+
+        runtime_catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        runtime_path = (
+            REPOSITORY_ROOT
+            / "Client/Bin/DataFiles/Effect"
+            / runtime_catalog[effect_id]["authoredDocumentPath"]
+        )
+        runtime_bytes = runtime_path.read_bytes()
+        hash_match = re.search(
+            r"\.([0-9a-f]{64})\.effect\.json$", runtime_path.name
+        )
+        self.assertIsNotNone(hash_match)
+        self.assertEqual(hash_match.group(1), hashlib.sha256(runtime_bytes).hexdigest())
+        self.assertEqual(source_document, json.loads(runtime_bytes.decode("utf-8")))
+
+        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        model_view = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Render_ModelViewWindow()",
+            "void Client::CEffect_Tool::Render_AnimationControls(",
+        )
+        self.assertLess(
+            model_view.index('ImGui::InputText("Socket / Bone"'),
+            model_view.index("ImGui::BeginDisabled(Has_ProductCuePreview());"),
+        )
+        for token in (
+            'ImGui::SeparatorText("Selected Trail Follow")',
+            'ImGui::Button("Attach Selected Trail to Bone")',
+            'ImGui::Button("Clear Selected Trail Follow")',
+            "EFFECT_ELEMENT_KIND::TRAIL == pSelectedTrail->eKind",
+        ):
+            self.assertIn(token, model_view)
+
+        setter = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Try_SetSelectedTrailFollowAnchor(",
+            "bool_t Client::CEffect_Tool::Try_ClearSelectedTrailFollowAnchor()",
+        )
+        ordered_tokens = (
+            "Has_UnappliedDetailDraft()",
+            "EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource",
+            "CAnimationTargetService::Resolve_AnchorTransform(",
+            "EFFECT_ELEMENT_KIND::TRAIL != Selected->eKind",
+            "Attachment.bEnabled = true;",
+            "Attachment.bFollow = true;",
+            "Attachment.strRuntimeAnchorSlotId = Selected->strElementId;",
+            "Try_CommitDocument(std::move(Staged))",
+            "Start_WorldPreviewFromBeginning();",
+        )
+        for token in ordered_tokens:
+            self.assertIn(token, setter)
+        self.assertEqual(
+            sorted(setter.index(token) for token in ordered_tokens),
+            [setter.index(token) for token in ordered_tokens],
+        )
+
+        history_seek = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(",
+            "bool_t Client::CEffect_Tool::Is_ProductCueVisible(",
+        )
+        for token in (
+            "Collect_ToolSourceAnchorRequests(Document)",
+            "CAnimationTargetService::Prepare_HistoricalPoseBinding(",
+            "Resolve_EffectTimelineTime(fHistoryEffectSeconds)",
+            "CAnimationTargetService::Sample_HistoricalPose(",
+            "pObject->Set_SampleTimeWithTransformHistory(",
+        ):
+            self.assertIn(token, history_seek)
+        self.assertGreaterEqual(
+            cpp_text.count("Seek_WorldPreviewWithSourceAnchorHistory("), 3
+        )
+
+        renderer_text = (
+            REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "const bool_t bDistanceTessellated = bTypedSourceRibbon ||",
+            renderer_text,
+        )
+        self.assertIn(
+            "const f32_t U = fTilingDistance > 0.f ?",
+            renderer_text,
+        )
+        kind_detail = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Render_KindDetail(",
+            "void Client::CEffect_Tool::Render_SourceRecipeDetail(",
+        )
+        self.assertIn('"Trail UV Repeat Distance"', kind_detail)
+        self.assertIn('"Trail Curve Step"', kind_detail)
+
+    def test_dash_charge_project_tuned_segments_and_cues_are_exact(self) -> None:
+        encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
+        pattern = next(
+            row
+            for row in encounter["patterns"]
+            if row["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        self.assertEqual([420604], pattern["sourceActionIds"])
+        stages = {row["stageId"]: row for row in pattern["stages"]}
+        self.assertEqual(3650, stages["WINDUP"]["durationMs"])
+        self.assertEqual("NONE", stages["WINDUP"]["hitShape"])
+        self.assertEqual(0, stages["WINDUP"]["hitCount"])
+        self.assertEqual(500, stages["CHARGE"]["durationMs"])
+        self.assertEqual("BOX", stages["CHARGE"]["hitShape"])
+        self.assertEqual(1, stages["CHARGE"]["hitCount"])
+        self.assertEqual(
+            {"kind": "FORWARD", "distance": 20.0},
+            stages["CHARGE"]["motion"],
+        )
+        self.assertEqual(900, stages["RECOVERY"]["durationMs"])
+        self.assertEqual("NONE", stages["RECOVERY"]["hitShape"])
+
+        bindings = {
+            row["actionId"]: row["clips"]
+            for row in json.loads(
+                PATTERN_BINDING_PATH.read_text(encoding="utf-8")
+            )["bindings"]
+        }
+        expected_clips = {
+            "valtan.attack.dash-charge.windup": [
+                {
+                    "clipOccurrenceId": (
+                        "valtan.attack.dash-charge.windup.project-tuned."
+                        "prep-repeat.clip.01"
+                    ),
+                    "clip": "mesh_att_battle_4_01",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 600,
+                    "playRate": 1.0,
+                    "loop": False,
+                },
+                {
+                    "clipOccurrenceId": (
+                        "valtan.attack.dash-charge.windup.project-tuned."
+                        "prep-repeat.clip.02"
+                    ),
+                    "clip": "mesh_att_battle_4_01",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 600,
+                    "playRate": 1.0,
+                    "loop": False,
+                },
+                {
+                    "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
+                    "clip": "mesh_att_battle_4_01",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 2450,
+                    "playRate": 1.0,
+                    "loop": False,
+                },
+            ],
+            "valtan.attack.dash-charge.active": [
+                {
+                    "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
+                    "clip": "mesh_att_battle_4_01",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 2450,
+                    "playMs": 900,
+                    "playRate": 1.8,
+                    "loop": False,
+                }
+            ],
+            "valtan.attack.dash-charge.recovery": [
+                {
+                    "clipOccurrenceId": (
+                        "valtan.attack.dash-charge.recovery.project-tuned.clip.01"
+                    ),
+                    "clip": "mesh_att_battle_4_01",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 3350,
+                    "playMs": 1383,
+                    "playRate": 1.5366667,
+                    "loop": False,
+                }
+            ],
+        }
+        for action_id, expected in expected_clips.items():
+            self.assertEqual(expected, bindings[action_id])
+
+        cues = {
+            row["bindingId"]: row
+            for row in json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
+        }
+        cue_contracts = {
+            "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph": {
+                "stageId": "WINDUP",
+                "actionId": "valtan.attack.dash-charge.windup",
+                "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
+                "effectAssetId": (
+                    "effect.valtan.project-tuned.dash-charge.windup-telegraph"
+                ),
+                "followPolicy": "snapshot",
+                "sourceStartMs": 559,
+                "sourceEndMs": 2364,
+            },
+            "cue.valtan.project-tuned.attack.dash-charge.active-shield": {
+                "stageId": "CHARGE",
+                "actionId": "valtan.attack.dash-charge.active",
+                "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
+                "effectAssetId": (
+                    "effect.valtan.project-tuned.dash-charge.active-shield"
+                ),
+                "followPolicy": "follow",
+                "sourceStartMs": 2450,
+                "sourceEndMs": 3350,
+            },
+        }
+        for binding_id, expected in cue_contracts.items():
+            cue = cues[binding_id]
+            self.assertEqual("VALTAN_DASH_CHARGE", cue["patternId"])
+            for field, value in expected.items():
+                self.assertEqual(value, cue[field], (binding_id, field))
+            self.assertEqual("root", cue["anchorSlotId"])
+            self.assertEqual("cue_end", cue["stopPolicy"])
+            self.assertEqual("once", cue["repeatPolicy"])
+
+        catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        runtime_catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        windup_id = "effect.valtan.project-tuned.dash-charge.windup-telegraph"
+        active_id = "effect.valtan.project-tuned.dash-charge.active-shield"
+        windup = json.loads(
+            (REPOSITORY_ROOT / "Data" / catalog[windup_id]["authoringPath"])
+            .read_text(encoding="utf-8")
+        )
+        active = json.loads(
+            (REPOSITORY_ROOT / "Data" / catalog[active_id]["authoringPath"])
+            .read_text(encoding="utf-8")
+        )
+        self.assertEqual(windup_id, windup["effectAssetId"])
+        self.assertEqual([], windup["modelCues"])
+        self.assertEqual(1, len(windup["elements"]))
+        self.assertEqual("dash-charge-red-floor", windup["elements"][0]["id"])
+        self.assertEqual("particle", windup["elements"][0]["kind"])
+        self.assertEqual(
+            "Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/diffuse.dds",
+            next(
+                row["assetId"]
+                for row in windup["elements"][0]["resources"]
+                if row["slotId"] == "base"
+            ),
+        )
+        self.assertEqual(
+            "VALTAN_DASH_CHARGE / WINDUP / Red Telegraph",
+            windup["displayName"],
+        )
+
+        self.assertEqual(active_id, active["effectAssetId"])
+        self.assertEqual([], active["modelCues"])
+        self.assertEqual(1, len(active["elements"]))
+        self.assertEqual("dash-charge-front-aura", active["elements"][0]["id"])
+        self.assertEqual("particle", active["elements"][0]["kind"])
+        self.assertEqual(
+            "Effect/Valtan/Textures/FX_TEX_05/fx_m_trail_001_cl.dds",
+            next(
+                row["assetId"]
+                for row in active["elements"][0]["resources"]
+                if row["slotId"] == "base"
+            ),
+        )
+        self.assertEqual(
+            "VALTAN_DASH_CHARGE / CHARGE / Front Shield",
+            active["displayName"],
+        )
+
+        for effect_id, source_document in (
+            (windup_id, windup),
+            (active_id, active),
+        ):
+            runtime_entry = runtime_catalog[effect_id]
+            self.assertEqual(
+                "DIRECT_AUTHORED_DOCUMENT_V13",
+                runtime_entry["payloadKind"],
+            )
+            runtime_path = (
+                REPOSITORY_ROOT
+                / "Client/Bin/DataFiles/Effect"
+                / runtime_entry["authoredDocumentPath"]
+            )
+            runtime_bytes = runtime_path.read_bytes()
+            hash_match = re.search(
+                r"\.([0-9a-f]{64})\.effect\.json$", runtime_path.name
+            )
+            self.assertIsNotNone(hash_match, effect_id)
+            self.assertEqual(
+                hash_match.group(1), hashlib.sha256(runtime_bytes).hexdigest()
+            )
+            self.assertEqual(
+                source_document,
+                json.loads(runtime_bytes.decode("utf-8")),
+                effect_id,
+            )
+
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
         self.assertEqual(34, len(projected))
-        self.assertEqual(114, raw_links)
-        self.assertEqual(113, sum(len(rows) for rows in projected.values()))
-        self.assertEqual(4, len(projected["VALTAN_DASH_CHARGE"]))
-        self.assertEqual(3, len(projected["VALTAN_FRONT_BACK_FRONT"]))
+        self.assertEqual(54, raw_links)
+        self.assertEqual(54, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(2, len(projected["VALTAN_DASH_CHARGE"]))
+        self.assertEqual(1, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertNotIn("VALTAN_FOUR_SLASH", projected)
-        self.assertEqual(2, len(projected["VALTAN_TRIPLE_SLASH"]))
+        self.assertEqual(1, len(projected["VALTAN_TRIPLE_SLASH"]))
         self.assertEqual(2, len(projected["VALTAN_ROTATION_SLASH"]))
         self.assertEqual(
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
-            projected["VALTAN_TRIPLE_SLASH"][1],
+            projected["VALTAN_TRIPLE_SLASH"][0],
         )
         self.assertEqual(
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
             projected["VALTAN_ROTATION_SLASH"][0],
         )
-        self.assertEqual(5, len(projected["VALTAN_WHIRLWIND"]))
+        self.assertEqual(4, len(projected["VALTAN_WHIRLWIND"]))
         self.assertEqual(
             len(projected["VALTAN_WHIRLWIND"]),
             len(set(projected["VALTAN_WHIRLWIND"])),
         )
 
     def test_base_saved_projection_inventory_requires_explicit_migration(self) -> None:
-        # This is a named UI inventory snapshot, not the full authored corpus.
-        # A legitimate Product-coverage migration updates these counts explicitly.
-        projected, raw_links = project_saved_rows(include_v1_aliases=False)
+        # Reference-only shells remain a source inventory even though the active
+        # Saved Unified Effects surface intentionally hides them.
+        projected, raw_links = project_saved_rows(
+            include_v1_aliases=False,
+            include_reference_only=True,
+        )
         self.assertEqual(108, raw_links)
         self.assertEqual(107, sum(len(rows) for rows in projected.values()))
         catalog = {
@@ -915,8 +1596,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     nonempty_candidates += 1
                 else:
                     empty_shells += 1
-        self.assertEqual(49, nonempty_candidates)
-        self.assertEqual(58, empty_shells)
+        self.assertEqual(51, nonempty_candidates)
+        self.assertEqual(56, empty_shells)
 
     def test_all_declared_v0_product_cues_remain_published_and_nonempty(self) -> None:
         cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
@@ -926,7 +1607,22 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         runtime_catalog = json.loads(
             RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
         )["effects"]
-        effect_ids = [cue["effectAssetId"] for cue in cues]
+        project_tuned_ids = {
+            "effect.valtan.project-tuned.dash-charge.active-shield",
+            "effect.valtan.project-tuned.dash-charge.windup-telegraph",
+        }
+        self.assertEqual(
+            project_tuned_ids,
+            {
+                cue["effectAssetId"]
+                for cue in cues
+                if cue["effectAssetId"].startswith("effect.valtan.project-tuned.")
+            },
+        )
+        sealed_cues = [
+            cue for cue in cues if cue["effectAssetId"] not in project_tuned_ids
+        ]
+        effect_ids = [cue["effectAssetId"] for cue in sealed_cues]
         self.assertEqual(44, len(effect_ids))
         self.assertEqual(44, len(set(effect_ids)))
         visible_elements = 0
@@ -985,8 +1681,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         # clip-01 intentionally preserves the latest Effect Tool authoring
         # snapshot (six user-visible rows) instead of restoring the retired
         # twelve-row materializer preimage.
-        self.assertEqual(653, visible_elements)
-        self.assertEqual(4, hidden_elements)
+        self.assertEqual(634, visible_elements)
+        self.assertEqual(5, hidden_elements)
         self.assertEqual(0, model_cues)
 
     def test_v1_alias_sidecar_is_exactly_six_valid_pairs(self) -> None:

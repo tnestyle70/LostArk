@@ -153,12 +153,44 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request);
 		SERVER_WORLD_ENTITY* Find_AuditionBoss();
+		SERVER_WORLD_ENTITY* Find_AuditionBoss(
+			const std::string& placementId);
 		bool Has_EngagedAuditionPlayer(const SERVER_WORLD_ENTITY& boss) const;
+		bool Build_ValtanBossOnlyAuditionReset(
+			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t resetTick,
+			SERVER_WORLD_ENTITY& outBoss,
+			std::string& status);
+		bool Reset_ValtanBossOnlyAuditionState(
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t resetTick,
+			std::string& status);
 		bool Reset_ValtanAuditionState(
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t resetTick,
 			std::string& status);
 #ifdef _DEBUG
+		enum class VALTAN_PATTERN_ID_AUDITION_PHASE : std::uint8_t
+		{
+			INACTIVE,
+			PENDING,
+			ACTIVE
+		};
+
+		struct VALTAN_PATTERN_ID_AUDITION_STATE final
+		{
+			VALTAN_PATTERN_ID_AUDITION_PHASE ePhase =
+				VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE;
+			SESSION_ID iOwnerSessionId = 0u;
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iExpectedPatternSequence = 0u;
+			std::string strBossPlacementId;
+			std::string strPatternId;
+		};
+
+		bool Refresh_ValtanPatternIdAuditionState();
+
 		enum class VALTAN_TIMELINE_AUDITION_PHASE : std::uint8_t
 		{
 			INACTIVE,
@@ -532,11 +564,15 @@ namespace LostArk::Server
 		above; a CROSS is only honoured for that same bar, so a crossing can
 		never span an unknown number of authored thresholds. Both reset with the
 		encounter, and the handled sequences reject a resent request instead of
-		replaying it. */
+		replaying it. Stable-ID pattern requests have an independent ledger because
+		the Effect Tool and the Valtan level own independent sequence counters. */
 		std::uint32_t m_iValtanAuditionArmedHealthBar = 0;
 		std::unordered_map<SESSION_ID, std::uint32_t>
 			m_ValtanAuditionSequenceBySessionId;
+		std::unordered_map<SESSION_ID, std::uint32_t>
+			m_ValtanPatternIdAuditionSequenceBySessionId;
 #ifdef _DEBUG
+		VALTAN_PATTERN_ID_AUDITION_STATE m_ValtanPatternIdAudition;
 		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
 #endif
 	};

@@ -1444,6 +1444,70 @@
       }
     },
     {
+      "bindingId": "cue.valtan.project-tuned.attack.dash-charge.active-shield",
+      "occurrenceId": "cue.valtan.project-tuned.attack.dash-charge.active-shield.occurrence.01",
+      "patternId": "VALTAN_DASH_CHARGE",
+      "stageId": "CHARGE",
+      "actionId": "valtan.attack.dash-charge.active",
+      "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
+      "effectAssetId": "effect.valtan.project-tuned.dash-charge.active-shield",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "sourceStartMs": 2450,
+      "sourceEndMs": 3350,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph",
+      "occurrenceId": "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph.occurrence.01",
+      "patternId": "VALTAN_DASH_CHARGE",
+      "stageId": "WINDUP",
+      "actionId": "valtan.attack.dash-charge.windup",
+      "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
+      "effectAssetId": "effect.valtan.project-tuned.dash-charge.windup-telegraph",
+      "anchorSlotId": "root",
+      "followPolicy": "snapshot",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "sourceStartMs": 559,
+      "sourceEndMs": 2364,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
       "bindingId": "cue.valtan.whirlwind.active",
       "occurrenceId": "cue.valtan.whirlwind.active.occurrence.01",
       "patternId": "VALTAN_WHIRLWIND",

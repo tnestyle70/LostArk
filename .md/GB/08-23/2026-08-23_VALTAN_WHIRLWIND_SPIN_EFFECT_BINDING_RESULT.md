@@ -2,6 +2,16 @@
 
 ## 완료 상태
 
+### 2026-08-24 후속 튜닝
+
+- SPIN 서버 stage를 `1400 ms`, 4 hit를 `350 ms` 간격으로 맞췄다.
+- `mesh_att_battle_20_03`의 Product playRate를 `0.761904762`로 맞춰 SPIN 동안 두 회전을 재생한다.
+- carrier V1 axe Trail을 `b_wp_r_01` element-local follow로 연결하고 distance UV/tessellation을
+  authoring 가능하게 했다.
+- Trail의 transform tail을 source window 안에 고정하기 위해 Element life를 `0.916666687 s`,
+  point life를 `0.150000006 s`로 두어 합계가 약 `1.066667 s`가 되게 했다.
+- Effect Tool Product preview는 Server stage duration을 timeline 상한으로 사용한다.
+
 - `effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01`의 stable ID와 authored Effect 문서는 유지했다.
 - Product cue owner만 `VALTAN_WHIRLWIND / RECOVERY`에서 `VALTAN_WHIRLWIND / SPIN`으로 옮겼다.
 - 실제 재생 animation occurrence는 `valtan.attack.whirlwind.active.clip.01`, clip은
@@ -15,18 +25,19 @@
 ## 물리 정본 동기화
 
 `C:\Users\user\Desktop\LostArk`는 `origin/main`의 발탄 3연격/회전공격 분리 변경으로 동기화했다.
-동기화 뒤 clip-01 authored/runtime 문서가 모두 8 elements이고,
+동기화 뒤 3연격 clip-01 authored/runtime 문서가 모두 7 elements이고,
 `VALTAN_TRIPLE_SLASH`와 `VALTAN_ROTATION_SLASH`가 존재하며 이전 `VALTAN_FOUR_SLASH`는 없는 것을 확인했다.
 동기화 전 사용자/동시 작업은 named safety stash로 보존했고, 사용자의 Whirlwind authored 문서는 다시 적용했다.
 
 ## 자동 검증
 
 - JSON parse: PASS
-- `python -B -m unittest Tools.EffectPipeline.test_effect_tool_valtan_saved_rows`: PASS, 18 tests
-- `Publish-Effects.ps1 -Mode Validate`: PASS, 156 Effect catalog entries / 171 material-program bindings
-- Client x64 Debug compile: PASS. 실행 중인 물리 `Client.exe` 잠금 때문에 기본 출력 링크만 `LNK1104`였고,
-  같은 정본 오브젝트를 별도 `OutDir`로 링크해 `Client.exe` 생성까지 PASS했다.
-- `git diff --check`: PASS
+- `python -B -m unittest Tools.EffectPipeline.test_effect_tool_valtan_saved_rows`: PASS, 21 tests
+- `Publish-Effects.ps1 -Mode Validate`: PASS, 163 Effect catalog entries / 171 material-program bindings
+- `Publish-GameplayBalance.ps1 -Mode Validate`: PASS, 34 boss patterns / 131 stages
+- Server x64 Debug build와 `Server.exe --contract-test`: PASS, failures 0
+- Client x64 Debug build: PASS, `Client/Bin/Debug/Client.exe` link 완료
+- `git diff --check`: PASS; 기존 LF→CRLF 경고만 출력
 
 ## 수동 검증
 

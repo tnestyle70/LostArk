@@ -1581,7 +1581,8 @@ function Get-NumberVector(
 }
 
 function Assert-EffectDetail(
-    [object]$Detail, [string]$Kind, [string]$Label) {
+    [object]$Detail, [string]$Kind, [bool]$IsMeshParticle,
+    [string]$Label) {
     $transform = Get-RequiredProperty $Detail 'transform' Object
     $color = Get-RequiredProperty $Detail 'color' Object
     $uv = Get-RequiredProperty $Detail 'uv' Object
@@ -1635,9 +1636,19 @@ function Assert-EffectDetail(
 
     $startDelay = Get-NumberValue $timing 'startDelaySeconds' $Label
     $lifeTime = Get-NumberValue $timing 'lifeTimeSeconds' $Label
+	$transformMotionDuration = 0.0
+	if ($null -ne $timing.PSObject.Properties[
+			'transformMotionDurationSeconds']) {
+		$transformMotionDuration = Get-NumberValue $timing `
+			'transformMotionDurationSeconds' $Label
+	}
     $afterImageSeconds = Get-NumberValue $timing 'afterImageSeconds' $Label
     $dissolveStart = Get-NumberValue $timing 'dissolveStartNormalized' $Label
     if ($startDelay -lt 0 -or $lifeTime -le 0 -or $afterImageSeconds -lt 0 -or
+		$transformMotionDuration -lt 0 -or
+		$transformMotionDuration -gt $lifeTime -or
+		($transformMotionDuration -gt 0 -and
+			$Kind -cne 'mesh' -and -not $IsMeshParticle) -or
         $dissolveStart -lt 0 -or $dissolveStart -gt 1) {
         throw "$Label timing range is invalid."
     }
@@ -3425,7 +3436,8 @@ try {
 					-not ($hasSafeGroupedBase -or $hasGroupedEmissive)) {
 					throw "Grouped emissive profile has no runtime emission carrier in ${effectAssetId}: $elementId"
 				}
-                Assert-EffectDetail $detail $kind "${effectAssetId}/$elementId"
+                Assert-EffectDetail $detail $kind $isMeshParticle `
+					"${effectAssetId}/$elementId"
                 if ($isProductExecutionTarget -and
                     ($kind -eq 'mesh' -or $isMeshParticle) -and
                     -not [bool]$detail.mesh.useModelMaterial -and

@@ -3570,6 +3570,12 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.rushes.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.dash-charge.active-shield.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.dash-charge.windup-telegraph.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.active.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>

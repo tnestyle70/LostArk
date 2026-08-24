@@ -323,12 +323,27 @@ private:
 		VALTAN_PRODUCT_EFFECT_CUE_VIEW Cue;
 	};
 
+	/* Effect Tool owns only its stable-ID Server audition transaction.  The
+	   legacy health-bar audition keeps its separate Level-owned result queue. */
+	struct VALTAN_SERVER_PATTERN_REQUEST final
+	{
+		uint32_t iSequence = 0u;
+		uint64_t iWorldInboundGeneration = 0u;
+		std::string strBossPlacementId;
+		std::string strPatternId;
+
+		bool_t Is_Active() const { return 0u != iSequence; }
+	};
+
     struct EFFECT_DATA_FILE_ENTRY final
     {
         std::string strAssetId;
         std::string strDomainId;
         std::filesystem::path Path;
         EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pParsedDocument;
+		bool_t bDocumentParseAttempted = false;
+		std::string strDocumentParseStatus;
     };
 
 	struct DIRECT_AUTHORED_EDITABLE_ENTRY final
@@ -353,6 +368,7 @@ private:
 		optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ValtanCue;
 		optional<std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>>
 			ValtanReferenceClips;
+		uint32_t iValtanWorldOwnerStageDurationMs = 0u;
     };
 
 	struct UNIFIED_EFFECT_CACHE final
@@ -482,6 +498,12 @@ private:
 		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
 		size_t iCueOrdinal);
+	bool_t Can_PlayValtanServerPattern(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		std::string& strOutReason) const;
+	bool_t Try_PlayValtanServerPattern(
+		const VALTAN_PATTERN_VIEW& Pattern);
+	void Update_ValtanServerPatternAudition();
 	bool_t Matches_ValtanPatternSearch(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const std::string& strSearch) const;
@@ -503,6 +525,7 @@ private:
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId,
 		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips,
+		uint32_t iWorldOwnerStageDurationMs = 0u,
 		bool_t bQueuePlayCompleteAfterLoad = false);
 	bool_t Try_OpenValtanAuthoredEffect(
 		const std::filesystem::path& Path,
@@ -594,6 +617,10 @@ private:
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanPatternTree();
     bool_t Refresh_DataFiles();
+	bool_t Try_AppendSavedElementToActiveDocument(
+		const std::filesystem::path& Path,
+		const std::string& strExpectedEffectAssetId,
+		const std::string& strElementId);
     bool_t Refresh_ResourceCatalog();
     void Select_AuthoringDomain(const std::string& strDomainId);
     bool_t Select_AuthoringDomainForClass(
@@ -602,6 +629,8 @@ private:
 	bool_t Try_ResetAuthoringResourceOverride(const std::string& strSlotId);
 	bool_t Try_ClearAuthoringOverrides();
     bool_t Try_ClearSelectedSlot();
+	bool_t Try_SetSelectedTrailFollowAnchor(const std::string& strBoneName);
+	bool_t Try_ClearSelectedTrailFollowAnchor();
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
@@ -784,6 +813,11 @@ private:
 	bool_t Has_ProductCuePreview() const;
     f32_t Resolve_EffectSampleTime(f32_t fTimelineSeconds) const;
 	f32_t Resolve_EffectTimelineTime(f32_t fEffectSampleSeconds) const;
+	bool_t Seek_WorldPreviewWithSourceAnchorHistory(
+		const std::shared_ptr<CEffectObject>& pObject,
+		const EFFECT_DOCUMENT_DESC& Document,
+		f32_t fEffectSampleSeconds,
+		std::string& strOutError);
     bool_t Is_ProductCueVisible(f32_t fTimelineSeconds) const;
 	bool_t Restore_ValtanProductPreviewPlayback(
 		const optional<VALTAN_PRODUCT_PREVIEW>& Preview,
@@ -889,6 +923,10 @@ private:
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
 	std::string m_strValtanPatternTreeStatus;
 	bool_t m_bValtanPatternTreeLoaded = false;
+	VALTAN_SERVER_PATTERN_REQUEST m_PendingValtanServerPatternRequest;
+	uint32_t m_iNextValtanServerPatternRequestSequence = 1u;
+	std::string m_strValtanServerPatternStatusPatternId;
+	std::string m_strValtanServerPatternStatus;
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
     vector<SYNCHRONIZED_ANIMATION_CLIP> m_SynchronizedAnimationClips;
@@ -940,6 +978,7 @@ private:
 	EFFECT_OCCURRENCE_LOCAL_TRANSFORM m_SelectedOccurrenceSourceTransform;
     string m_strSelectedResourceAssetId;
     string m_strSelectedDataFileAssetId;
+	string m_strSelectedDataFileElementId;
     string m_strSelectedAuthoringDomainId = "DimensionMaster";
     string m_strPreviewAnchorSlotId = "root";
 	string m_strDetailDraftElementId;
@@ -977,6 +1016,7 @@ private:
     float3_t m_vPickedWorldPosition{};
     f32_t m_fPreviewTimeSeconds = 0.f;
     f32_t m_fPreviewDurationSeconds = 1.f;
+	uint32_t m_iValtanWorldOwnerStageDurationMs = 0u;
 	double m_fDetailDraftPreviewDueSeconds = 0.0;
     bool_t m_bPreviewPlaying = false;
     bool_t m_bPreviewLoop = true;

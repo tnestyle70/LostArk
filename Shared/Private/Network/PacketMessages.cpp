@@ -2371,7 +2371,9 @@ namespace
 	bool Is_Valid_AuditionRequest(
 		const std::uint32_t requestSequence,
 		const std::uint8_t rawOperation,
-		const std::uint32_t targetHealthBar)
+		const std::uint32_t targetHealthBar,
+		const std::string& bossPlacementId,
+		const std::string& patternId)
 	{
 		if (0u == requestSequence ||
 			rawOperation >= static_cast<std::uint8_t>(
@@ -2379,6 +2381,18 @@ namespace
 		{
 			return false;
 		}
+		if (static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation)
+		{
+			return 0u == targetHealthBar &&
+				Is_Valid_StableId(bossPlacementId, false) &&
+				Is_Valid_StableId(patternId, false);
+		}
+		/* Legacy operations retain their exact wire shape. Rejecting hidden
+		   stable-ID data here prevents a caller from believing those IDs were
+		   transported when their operation intentionally does not encode them. */
+		if (!bossPlacementId.empty() || !patternId.empty())
+			return false;
 		// A selected timeline row is addressed by its stable non-zero command ID;
 		// STOP names no row and therefore carries exactly zero.
 		if (static_cast<std::uint8_t>(
@@ -2418,13 +2432,21 @@ bool LostArk::Shared::Write_Message(
 	const std::uint8_t rawOperation =
 		static_cast<std::uint8_t>(message.eOperation);
 	if (!Is_Valid_AuditionRequest(
-		message.iRequestSequence, rawOperation, message.iTargetHealthBar))
+		message.iRequestSequence, rawOperation, message.iTargetHealthBar,
+		message.strBossPlacementId, message.strPatternId))
 	{
 		return false;
 	}
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U8(rawOperation);
 	writer.Write_U32(message.iTargetHealthBar);
+	if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == message.eOperation)
+	{
+		return writer.Write_String(
+			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) &&
+			writer.Write_String(
+				message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES);
+	}
 	return true;
 }
 
@@ -2440,14 +2462,24 @@ bool LostArk::Shared::Read_Message(
 	{
 		return false;
 	}
+	if (static_cast<std::uint8_t>(
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation &&
+		(!reader.Read_String(
+			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		 !reader.Read_String(
+			decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES)))
+	{
+		return false;
+	}
 	if (!Is_Valid_AuditionRequest(
-		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar))
+		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar,
+		decoded.strBossPlacementId, decoded.strPatternId))
 	{
 		return false;
 	}
 	decoded.eOperation =
 		static_cast<VALTAN_AUDITION_OPERATION>(rawOperation);
-	message = decoded;
+	message = std::move(decoded);
 	return true;
 }
 
@@ -2460,7 +2492,8 @@ bool LostArk::Shared::Write_Message(
 	const std::uint8_t rawResult =
 		static_cast<std::uint8_t>(message.eResult);
 	if (!Is_Valid_AuditionRequest(
-		message.iRequestSequence, rawOperation, message.iTargetHealthBar) ||
+		message.iRequestSequence, rawOperation, message.iTargetHealthBar,
+		message.strBossPlacementId, message.strPatternId) ||
 		rawResult >= static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::END))
 	{
 		return false;
@@ -2470,6 +2503,13 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_U32(message.iTargetHealthBar);
 	writer.Write_U8(rawResult);
 	writer.Write_U32(message.iCurrentHealthBar);
+	if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == message.eOperation)
+	{
+		return writer.Write_String(
+			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) &&
+			writer.Write_String(
+				message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES);
+	}
 	return true;
 }
 
@@ -2488,8 +2528,18 @@ bool LostArk::Shared::Read_Message(
 	{
 		return false;
 	}
+	if (static_cast<std::uint8_t>(
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation &&
+		(!reader.Read_String(
+			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		 !reader.Read_String(
+			decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES)))
+	{
+		return false;
+	}
 	if (!Is_Valid_AuditionRequest(
-		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar) ||
+		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar,
+		decoded.strBossPlacementId, decoded.strPatternId) ||
 		rawResult >= static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::END))
 	{
 		return false;
@@ -2497,7 +2547,7 @@ bool LostArk::Shared::Read_Message(
 	decoded.eOperation =
 		static_cast<VALTAN_AUDITION_OPERATION>(rawOperation);
 	decoded.eResult = static_cast<VALTAN_AUDITION_RESULT>(rawResult);
-	message = decoded;
+	message = std::move(decoded);
 	return true;
 }
 

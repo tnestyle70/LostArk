@@ -1100,6 +1100,8 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.portal.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.rushes.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.dash-charge.active-shield.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.dash-charge.windup-telegraph.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.windup.effect.json" />
