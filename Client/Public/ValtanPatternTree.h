@@ -55,6 +55,7 @@ struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
 	std::string strRepeatPolicy;
 	uint32_t iSourceStartMs = 0u;
 	uint32_t iSourceEndMs = 0u;
+	uint32_t iStageDurationMs = 0u;
 	bool_t bHasSourceEnd = false;
 };
 

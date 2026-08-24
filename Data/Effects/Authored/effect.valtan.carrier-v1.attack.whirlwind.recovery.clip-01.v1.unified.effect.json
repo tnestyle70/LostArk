@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.v1.unified",
-  "displayName": "VALTAN_WHIRLWIND / RECOVERY / carrier V1 [V1]",
+  "displayName": "VALTAN_WHIRLWIND / SPIN / carrier V1 [V1]",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,
@@ -1528,7 +1528,7 @@
           "randomSeed": 5,
           "lifeTimeSeconds": [
             0.699999988079071,
-            0.8999999761581421
+            0.876329666
           ],
           "initialPositionMin": [
             0.0,
@@ -2934,8 +2934,8 @@
           "burstCount": 0,
           "randomSeed": 4,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            0.876329666,
+            0.876329666
           ],
           "initialPositionMin": [
             0.0,

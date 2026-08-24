@@ -18283,7 +18283,13 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			if (!std::all_of(Trail.Points.begin(), Trail.Points.end(), ValidatePoint))
 				return Fail_RenderOperation(
 					"Trail typed point payload is invalid.", E_INVALIDARG, true);
+		}
 
+		const bool_t bDistanceTessellated = bTypedSourceRibbon ||
+			(std::isfinite(fTilingDistance) && fTilingDistance > 0.f &&
+			 std::isfinite(fTessellationStep) && fTessellationStep > 0.f);
+		if (bDistanceTessellated)
+		{
 			TessellatedPoints.reserve(1u +
 				(Trail.Points.size() - 1u) * ARTIST_RIBBON_MAX_SUBDIVISIONS);
 			TessellatedPoints.push_back(Trail.Points.front());
@@ -18483,7 +18489,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				(Trail.pElement->Detail.Trail.fEndWidth -
 					Trail.pElement->Detail.Trail.fStartWidth) * Age;
 			const vector_t HalfSide = Side * (Width * 0.5f);
-			const f32_t U = bTypedSourceRibbon ?
+			const f32_t U = fTilingDistance > 0.f ?
 				Point.fCumulativeDistance / fTilingDistance :
 				static_cast<f32_t>(iPoint);
 			const float4_t Color = bFlowRibbon01 ?
