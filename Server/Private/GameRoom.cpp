@@ -5919,13 +5919,10 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.fPositionY = projected.y;
 	staged.fPositionZ = projected.z;
 	/* The projected anchor, not the raw authored one, so the post is a point the
-	monster can actually stand on. It is the goal the brain walks back to once it
-	loses its target, and the centre of the patrol it keeps afterwards. */
+	monster can actually stand on. */
 	staged.fSpawnPositionX = projected.x;
 	staged.fSpawnPositionY = projected.y;
 	staged.fSpawnPositionZ = projected.z;
-	staged.fPatrolGoalX = projected.x;
-	staged.fPatrolGoalZ = projected.z;
 	staged.fYawDegrees = anchor.fYawDegrees;
 	staged.iCurrentHp = profile.iMaxHp;
 	staged.iMaximumHp = profile.iMaxHp;

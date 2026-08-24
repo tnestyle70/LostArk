@@ -1761,29 +1761,17 @@ void Client::CMapTool::Render_SpawnGroupsPanel()
 		return;
 	SPAWN_WAVE_RECORD& selectedWave = *waveIter;
 
-	/* The list comes from the catalog the publisher and the runtime already read,
-	so a new archetype needs a catalog row and nothing here. The tool used to
-	carry its own copy of these four ids, which meant every addition had to be
-	made twice and could silently disagree. */
-	const std::vector<MONSTER_ACTOR_ENTRY>& archetypes =
-		CActorCatalog::Get_Monsters();
-	if (archetypes.empty())
+	static constexpr const char_t* ARCHETYPES[] =
 	{
-		ImGui::TextUnformatted("Entry Archetype: monster catalog is empty.");
-		return;
-	}
-	if (m_iSpawnArchetypeOption >= archetypes.size())
-		m_iSpawnArchetypeOption = 0u;
-	const char_t* archetypePreview =
-		archetypes[m_iSpawnArchetypeOption].archetypeId.c_str();
-	if (ImGui::BeginCombo("Entry Archetype", archetypePreview))
-	{
-		for (uint32_t iArchetype = 0u; iArchetype < archetypes.size(); ++iArchetype)
-			if (ImGui::Selectable(archetypes[iArchetype].archetypeId.c_str(),
-				m_iSpawnArchetypeOption == iArchetype))
-				m_iSpawnArchetypeOption = iArchetype;
-		ImGui::EndCombo();
-	}
+		"MONSTER_VALTAN_PADD_01",
+		"MONSTER_VALTAN_SJFC_00_4",
+		"MONSTER_VALTAN_0019_05",
+		"MINIBOSS_LUGARU"
+	};
+	int archetypeOption = static_cast<int>(m_iSpawnArchetypeOption);
+	if (ImGui::Combo("Entry Archetype", &archetypeOption, ARCHETYPES,
+		static_cast<int>(std::size(ARCHETYPES))))
+		m_iSpawnArchetypeOption = static_cast<uint32_t>(archetypeOption);
 	const char_t* anchorPreview = m_SelectedSpawnAnchorId.empty() ?
 		"<select anchor>" : m_SelectedSpawnAnchorId.c_str();
 	if (ImGui::BeginCombo("Entry Anchor", anchorPreview))
@@ -1809,7 +1797,7 @@ void Client::CMapTool::Render_SpawnGroupsPanel()
 			nullptr != m_SpawnGroupDocument.Find_Anchor(m_SelectedSpawnAnchorId))
 		{
 			SPAWN_WAVE_ENTRY_RECORD entry;
-			entry.archetypeId = archetypes[m_iSpawnArchetypeOption].archetypeId;
+			entry.archetypeId = ARCHETYPES[m_iSpawnArchetypeOption];
 			entry.count = m_iSpawnEntryCount;
 			entry.anchorId = m_SelectedSpawnAnchorId;
 			entry.initialDelayMs = m_iSpawnInitialDelayMs;
