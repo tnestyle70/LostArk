@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 
-class DimensionMaster2050010FullStageRestorationTests(unittest.TestCase):
+class DimensionMaster2050010RepeatedAnimationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.repository_root = Path(__file__).resolve().parents[2]
@@ -20,7 +20,7 @@ class DimensionMaster2050010FullStageRestorationTests(unittest.TestCase):
             f"effect.dimensionmaster.skill.2050010.ba{stage}.unified.effect.json"
         )
 
-    def test_binding_uses_one_complete_stage_clip_per_ba(self) -> None:
+    def test_ba1_ba2_and_ba4_reuse_battle_1_01(self) -> None:
         document = self.load_json(
             "Data/Animation/Authored/DimensionMaster/"
             "DimensionMaster.skillbindings.json"
@@ -39,15 +39,30 @@ class DimensionMaster2050010FullStageRestorationTests(unittest.TestCase):
                         "playRate": 2.0,
                     }
                 ],
-                ["pc_sp_m_00_sk_att_battle_1_02"],
+                [
+                    {
+                        "clip": "pc_sp_m_00_sk_att_battle_1_01",
+                        "playMs": 3000,
+                        "playRate": 2.0,
+                    }
+                ],
                 ["pc_sp_m_00_sk_att_battle_1_03"],
-                ["pc_sp_m_00_sk_att_battle_1_04"],
+                [
+                    {
+                        "clip": "pc_sp_m_00_sk_att_battle_1_01",
+                        "playMs": 3400,
+                        "playRate": 2.0,
+                    }
+                ],
             ],
         )
-        self.assertAlmostEqual(
-            binding["clips"][0][0]["playMs"]
-            / binding["clips"][0][0]["playRate"],
-            700.0,
+        self.assertEqual(
+            [
+                binding["clips"][index][0]["playMs"]
+                / binding["clips"][index][0]["playRate"]
+                for index in (0, 1, 3)
+            ],
+            [700.0, 1500.0, 1700.0],
         )
 
     def test_server_duration_and_combo_advance_are_distinct(self) -> None:
@@ -83,7 +98,7 @@ class DimensionMaster2050010FullStageRestorationTests(unittest.TestCase):
             stages[-1]["comboAdvanceMs"], stages[-1]["actionDurationMs"]
         )
 
-    def test_product_cues_follow_ba1_ba2_ba3_ba4_stage_clips(self) -> None:
+    def test_ba2_effect_follows_01_and_ba3_effect_follows_03(self) -> None:
         event_path = (
             self.repository_root
             / "Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents"
@@ -108,22 +123,12 @@ class DimensionMaster2050010FullStageRestorationTests(unittest.TestCase):
                 (
                     "pc_sp_m_00_sk_att_battle_1_01",
                     0,
-                    "effect.dimensionmaster.skill.2050010.ba1.unified",
-                ),
-                (
-                    "pc_sp_m_00_sk_att_battle_1_02",
-                    0,
                     "effect.dimensionmaster.skill.2050010.ba2.unified",
                 ),
                 (
                     "pc_sp_m_00_sk_att_battle_1_03",
                     0,
                     "effect.dimensionmaster.skill.2050010.ba3.unified",
-                ),
-                (
-                    "pc_sp_m_00_sk_att_battle_1_04",
-                    0,
-                    "effect.dimensionmaster.skill.2050010.ba4.unified",
                 ),
             ],
         )
