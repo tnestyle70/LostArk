@@ -397,6 +397,9 @@ private:
 		uint32_t iSourceStartMs = 0u;
 		bool_t bLoop = false;
 		bool_t bHasExplicitLoopPolicy = false;
+		/* Authoring-only wall hold after this clip reaches its end pose. Combo
+		   audition uses it when Server stage timing outlives the authored clip. */
+		f32_t fHoldAfterSeconds = 0.f;
 
 		SYNCHRONIZED_ANIMATION_CLIP() = default;
 		SYNCHRONIZED_ANIMATION_CLIP(
@@ -762,6 +765,16 @@ private:
     bool_t Try_SelectProductCue(
         const EFFECT_SKILL_TREE_ENTRY& Entry,
         size_t iCueIndex);
+	bool_t Try_PlayBufferedComboAudition(
+		const EFFECT_SKILL_TREE_ENTRY& Entry);
+	bool_t Try_BuildBufferedComboAnimationClips(
+		const PLAYER_SKILL_DEFINITION& Skill,
+		const std::vector<PLAYER_SKILL_DEFINITION>& Skills,
+		std::vector<SYNCHRONIZED_ANIMATION_CLIP>& OutClips,
+		std::vector<std::vector<f32_t>>& OutStageClipOffsetsSeconds,
+		f32_t& fOutDurationSeconds,
+		std::string& strOutError);
+	void Reset_BufferedComboAudition();
 	bool_t Try_PlayVisualProgramFamily(
 		const EFFECT_SKILL_TREE_ENTRY& Entry,
 		size_t iCueIndex,
@@ -1056,6 +1069,15 @@ private:
     bool_t m_bPromoteConfirmationRequested = false;
     bool_t m_bPendingDocumentLoadModalRequested = false;
     bool_t m_bProductCueSnapshotCaptured = false;
+	/* Explicit authoring-only mode. Product Play remains one exact cue/clip;
+	   only the Skill-root audition opts into Server-buffered combo boundaries. */
+	bool_t m_bBufferedComboAuditionActive = false;
+	LostArk::Shared::CHARACTER_CLASS_ID m_eBufferedComboAuditionClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	LostArk::Shared::SKILL_ID m_iBufferedComboAuditionSkillId =
+		LostArk::Shared::INVALID_SKILL_ID;
+	f32_t m_fBufferedComboAuditionDurationSeconds = 0.f;
+	f32_t m_fBufferedComboAuditionOccurrenceOffsetSeconds = 0.f;
 	f32_t m_fProductCueActionFacingYawDegrees = 0.f;
 	bool_t m_bProductCueActionFacingCaptured = false;
     uint64_t m_iFrameNumber = 0u;

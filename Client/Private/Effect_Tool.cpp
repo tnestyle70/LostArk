@@ -4318,6 +4318,7 @@ void Client::CEffect_Tool::Render_AnimationControls(
             if (nullptr != pName && nullptr != pLabel && ImGui::Selectable(
                 pLabel, iAnimation == iCurrent))
             {
+				Reset_BufferedComboAudition();
                 Reset_SynchronizedAnimationSequence();
                 pModel->Start_Animation(iAnimation, true);
                 pModel->Set_AnimPaused(false);
@@ -4436,6 +4437,16 @@ void Client::CEffect_Tool::Render_SelectionPath() const
 				"Apply / Save replaces only this Product target at the current "
 				"catalog revision. An active occurrence stays immutable; Restart "
 				"or the next cast consumes it.");
+			if (m_bBufferedComboAuditionActive &&
+				m_eBufferedComboAuditionClass == pSkill->eCharacterClass &&
+				m_iBufferedComboAuditionSkillId == pSkill->iSkillId)
+			{
+				ImGui::TextColored(ImVec4(0.36f, 0.72f, 1.f, 1.f),
+					"Animation Mode: Buffered Combo Audition | %.3f s",
+					m_fBufferedComboAuditionDurationSeconds);
+				ImGui::TextDisabled(
+					"The selected Product Effect stays occurrence-local; Play Full Effect returns to exact stage playback.");
+			}
 		}
 	}
 	if (!m_strSelectedComponentId.empty())
@@ -10903,6 +10914,18 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 					ImGui::TextDisabled(
 						"One HOLD family: Start / Charge / Release. Product documents remain phase-local because the Server owns release timing.");
 				}
+				if (Skill.eSkillKind ==
+					LostArk::Shared::PLAYER_SKILL_KIND::COMBO)
+				{
+					ImGui::BeginDisabled(nullptr == pProductEntry ||
+						ProductCues.empty());
+					if (ImGui::Button("Play Buffered Combo Audition"))
+						Try_PlayBufferedComboAudition(*pProductEntry);
+					ImGui::EndDisabled();
+					ImGui::SameLine();
+					ImGui::TextDisabled(
+						"Authoring only: non-final stages cut at Server comboAdvanceMs; the final stage uses actionDurationMs.");
+				}
 				if (!SavedBindings.empty())
 				{
 					ImGui::SeparatorText(bHoldPhaseFamily ?
@@ -15708,6 +15731,670 @@ bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(
 	return true;
 }
 
+void Client::CEffect_Tool::Reset_BufferedComboAudition()
+{
+	m_bBufferedComboAuditionActive = false;
+	m_eBufferedComboAuditionClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_iBufferedComboAuditionSkillId =
+		LostArk::Shared::INVALID_SKILL_ID;
+	m_fBufferedComboAuditionDurationSeconds = 0.f;
+	m_fBufferedComboAuditionOccurrenceOffsetSeconds = 0.f;
+}
+
+bool_t Client::CEffect_Tool::Try_BuildBufferedComboAnimationClips(
+	const PLAYER_SKILL_DEFINITION& Skill,
+	const std::vector<PLAYER_SKILL_DEFINITION>& Skills,
+	std::vector<SYNCHRONIZED_ANIMATION_CLIP>& OutClips,
+	std::vector<std::vector<f32_t>>& OutStageClipOffsetsSeconds,
+	f32_t& fOutDurationSeconds,
+	std::string& strOutError)
+{
+	OutClips.clear();
+	OutStageClipOffsetsSeconds.clear();
+	fOutDurationSeconds = 0.f;
+	strOutError.clear();
+	if (Skill.eSkillKind != LostArk::Shared::PLAYER_SKILL_KIND::COMBO ||
+		Skill.ComboStages.size() < 2u ||
+		Skill.ComboStages.size() != Skill.iComboStageCount)
+	{
+		strOutError =
+			"the selected skill has no complete Server combo timing contract.";
+		return false;
+	}
+
+	const char_t* pAnimationAsset = Animation_AssetName(Skill.eCharacterClass);
+	if (nullptr == pAnimationAsset)
+	{
+		strOutError = "the combo class has no admitted animation asset.";
+		return false;
+	}
+	if (CAnimationTargetService::Resolve_AssetName() != pAnimationAsset &&
+		!m_pCharacterPreviewPanel->Select_TargetAsset(pAnimationAsset))
+	{
+		strOutError = "the combo class model could not be staged.";
+		return false;
+	}
+	const shared_ptr<Engine::CModel> pModel =
+		CAnimationTargetService::Resolve_Model();
+	if (nullptr == pModel)
+	{
+		strOutError = "the combo class model is unavailable.";
+		return false;
+	}
+
+	ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+	std::string BindingStatus;
+	if (!CAnimationSkillBindingDocument::Load(
+			pAnimationAsset, Skill.eCharacterClass, Skills,
+			Collect_AnimationClipNames(pModel), Bindings, BindingStatus))
+	{
+		strOutError = "the skill binding could not be loaded: " + BindingStatus;
+		return false;
+	}
+	const auto Binding = std::find_if(
+		Bindings.Bindings.begin(), Bindings.Bindings.end(),
+		[&Skill](const ANIMATION_SKILL_BINDING& Candidate)
+		{
+			return Candidate.iSkillId == Skill.iSkillId;
+		});
+	if (Binding == Bindings.Bindings.end() ||
+		Binding->Stages.size() != Skill.ComboStages.size())
+	{
+		strOutError =
+			"the skill binding stage count does not match Server comboStages.";
+		return false;
+	}
+
+	std::vector<SYNCHRONIZED_ANIMATION_CLIP> StagedClips;
+	std::vector<std::vector<f32_t>> StagedStageClipOffsetsSeconds;
+	double fStagedDurationSeconds = 0.0;
+	for (size_t iStage = 0u; iStage < Binding->Stages.size(); ++iStage)
+	{
+		const ANIMATION_SKILL_STAGE& Stage = Binding->Stages[iStage];
+		const PLAYER_COMBO_STAGE_TIMING& ServerTiming =
+			Skill.ComboStages[iStage];
+		const bool_t bFinalStage = iStage + 1u == Binding->Stages.size();
+		const uint32_t iBoundaryMs = bFinalStage ?
+			ServerTiming.iActionDurationMs : ServerTiming.iComboAdvanceMs;
+		if (Stage.Clips.empty() || 0u == iBoundaryMs ||
+			iBoundaryMs > ServerTiming.iActionDurationMs)
+		{
+			strOutError = "combo stage " + std::to_string(iStage + 1u) +
+				" has an invalid buffered boundary or no clips.";
+			return false;
+		}
+
+		f32_t fRemainingWallSeconds =
+			static_cast<f32_t>(iBoundaryMs) * 0.001f;
+		bool_t bReachedBoundary = false;
+		const size_t iFirstStagedClip = StagedClips.size();
+		std::vector<f32_t> StageClipOffsetsSeconds;
+		f32_t fStageElapsedSeconds = 0.f;
+		constexpr f32_t BOUNDARY_EPSILON_SECONDS = 0.0005f;
+		for (const ANIMATION_SKILL_CLIP& Clip : Stage.Clips)
+		{
+			uint32_t iAnimation = UINT32_MAX;
+			for (uint32_t iCandidate = 0u;
+				iCandidate < pModel->Get_NumAnimations(); ++iCandidate)
+			{
+				const char_t* pName = pModel->Get_AnimationName(iCandidate);
+				if (nullptr == pName || Clip.strClipName != pName)
+					continue;
+				if (UINT32_MAX != iAnimation)
+				{
+					strOutError = "combo stage " +
+						std::to_string(iStage + 1u) +
+						" resolves an ambiguous duplicate model clip: " +
+						Clip.strClipName;
+					return false;
+				}
+				iAnimation = iCandidate;
+			}
+			if (UINT32_MAX == iAnimation)
+			{
+				strOutError = "combo stage " + std::to_string(iStage + 1u) +
+					" is missing model clip: " + Clip.strClipName;
+				return false;
+			}
+
+			f32_t fPositionTicks = 0.f;
+			f32_t fDurationTicks = 0.f;
+			const f32_t fTicksPerSecond =
+				pModel->Get_AnimationTickPerSecond(iAnimation);
+			if (!pModel->Get_AnimationProgress(
+					iAnimation, fPositionTicks, fDurationTicks) ||
+				!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f ||
+				!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f)
+			{
+				strOutError = "combo stage " + std::to_string(iStage + 1u) +
+					" has no valid duration for model clip: " + Clip.strClipName;
+				return false;
+			}
+
+			ACTION_PRESENTATION_CLIP_TIMING ClipTiming;
+			ClipTiming.fModelSourceDurationSeconds =
+				fDurationTicks / fTicksPerSecond;
+			ClipTiming.iPlayMs = Clip.iPlayMs;
+			ClipTiming.fPlayRate = Clip.fPlayRate;
+			ClipTiming.fSourceStartSeconds =
+				static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f;
+			f32_t fSourceDurationSeconds = 0.f;
+			f32_t fClipWallDurationSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_ClipDuration(
+					ClipTiming, fSourceDurationSeconds,
+					fClipWallDurationSeconds))
+			{
+				strOutError = "combo stage " + std::to_string(iStage + 1u) +
+					" has an invalid source window: " + Clip.strClipName;
+				return false;
+			}
+
+			if (fRemainingWallSeconds + BOUNDARY_EPSILON_SECONDS >=
+				fClipWallDurationSeconds)
+			{
+				StageClipOffsetsSeconds.push_back(static_cast<f32_t>(
+					fStagedDurationSeconds) + fStageElapsedSeconds);
+				StagedClips.emplace_back(Clip);
+				fStageElapsedSeconds += fClipWallDurationSeconds;
+				fRemainingWallSeconds = (std::max)(
+					0.f, fRemainingWallSeconds - fClipWallDurationSeconds);
+				if (fRemainingWallSeconds <= BOUNDARY_EPSILON_SECONDS)
+				{
+					bReachedBoundary = true;
+					break;
+				}
+				continue;
+			}
+
+			const double fTrimSourceMilliseconds =
+				static_cast<double>(fRemainingWallSeconds) * 1000.0 *
+				static_cast<double>(Clip.fPlayRate);
+			if (!std::isfinite(fTrimSourceMilliseconds) ||
+				fTrimSourceMilliseconds <= 0.0 ||
+				fTrimSourceMilliseconds >
+					static_cast<double>((std::numeric_limits<uint32_t>::max)()))
+			{
+				strOutError = "combo stage " + std::to_string(iStage + 1u) +
+					" cannot represent its buffered source cutoff.";
+				return false;
+			}
+			SYNCHRONIZED_ANIMATION_CLIP Trimmed(Clip);
+			Trimmed.iPlayMs = (std::max)(1u, static_cast<uint32_t>(
+				std::llround(fTrimSourceMilliseconds)));
+			if (0u != Clip.iPlayMs)
+				Trimmed.iPlayMs = (std::min)(Trimmed.iPlayMs, Clip.iPlayMs);
+			StageClipOffsetsSeconds.push_back(static_cast<f32_t>(
+				fStagedDurationSeconds) + fStageElapsedSeconds);
+			StagedClips.push_back(std::move(Trimmed));
+			fRemainingWallSeconds = 0.f;
+			bReachedBoundary = true;
+			break;
+		}
+		if (!bReachedBoundary &&
+			StagedClips.size() > iFirstStagedClip &&
+			fRemainingWallSeconds > BOUNDARY_EPSILON_SECONDS)
+		{
+			/* The Server can keep a combo stage alive after its authored clip has
+			   ended. Preserve that wall time as an end-pose hold before the next
+			   input stage begins; do not stretch the clip or alter playRate. */
+			StagedClips.back().fHoldAfterSeconds += fRemainingWallSeconds;
+			fRemainingWallSeconds = 0.f;
+			bReachedBoundary = true;
+		}
+		if (!bReachedBoundary)
+		{
+			strOutError = "combo stage " + std::to_string(iStage + 1u) +
+				" could not stage its buffered Server boundary.";
+			return false;
+		}
+		StagedStageClipOffsetsSeconds.push_back(
+			std::move(StageClipOffsetsSeconds));
+		fStagedDurationSeconds +=
+			static_cast<double>(iBoundaryMs) * 0.001;
+	}
+
+	if (StagedClips.empty() || !std::isfinite(fStagedDurationSeconds) ||
+		fStagedDurationSeconds <= 0.0 ||
+		fStagedDurationSeconds >
+			static_cast<double>((std::numeric_limits<f32_t>::max)()))
+	{
+		strOutError = "the buffered combo timeline has no valid duration.";
+		return false;
+	}
+	OutClips = std::move(StagedClips);
+	OutStageClipOffsetsSeconds =
+		std::move(StagedStageClipOffsetsSeconds);
+	fOutDurationSeconds = static_cast<f32_t>(fStagedDurationSeconds);
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Try_PlayBufferedComboAudition(
+	const EFFECT_SKILL_TREE_ENTRY& Entry)
+{
+	if (Entry.Skill.eSkillKind !=
+			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ||
+		Entry.ProductCues.empty())
+	{
+		m_strElementStatus =
+			"Buffered combo audition requires a COMBO skill with Product cues.";
+		return false;
+	}
+
+	std::string CatalogStatus;
+	if (!Ensure_PlayerSkillCatalog(CatalogStatus))
+	{
+		m_strElementStatus =
+			"Buffered combo audition could not refresh PlayerSkills: " +
+			CatalogStatus;
+		return false;
+	}
+	const std::vector<PLAYER_SKILL_DEFINITION>& Skills =
+		CPlayerSkillCatalog::Get_Skills();
+	const auto Skill = std::find_if(Skills.begin(), Skills.end(),
+		[&Entry](const PLAYER_SKILL_DEFINITION& Candidate)
+		{
+			return Candidate.eCharacterClass == Entry.Skill.eCharacterClass &&
+				Candidate.iSkillId == Entry.Skill.iSkillId;
+		});
+	if (Skill == Skills.end())
+	{
+		m_strElementStatus =
+			"Buffered combo audition rejected a stale All Effects skill row.";
+		return false;
+	}
+
+	/* Clip-duration validation may stage the combo class model. Keep the exact
+	   Product preview transactional across builder, Product selection and first
+	   clip start failures. Authoritative data reconstructs the prior sequence. */
+	const std::string strPreviousTargetAsset =
+		CAnimationTargetService::Resolve_AssetName();
+	const optional<EFFECT_PRODUCT_PREVIEW> PreviousProductPreview =
+		m_ProductPreview;
+	const optional<VALTAN_PRODUCT_PREVIEW> PreviousValtanProductPreview =
+		m_ValtanProductPreview;
+	const optional<EFFECT_DOCUMENT_DESC> PreviousSourcePreviewDocument =
+		m_SourcePreviewDocument;
+	const bool_t bPreviousReconstructedSourceRuntimeActive =
+		m_bReconstructedSourceRuntimeActive;
+	const LostArk::Shared::CHARACTER_CLASS_ID ePreviousAllEffectsClass =
+		m_eAllEffectsClass;
+	const std::string strPreviousAuthoringDomainId =
+		m_strSelectedAuthoringDomainId;
+	const EFFECT_PREVIEW_FILTER ePreviousPreviewFilter = m_ePreviewFilter;
+	const std::string strPreviousIsolationElement =
+		m_strPreviewIsolationElementId;
+	const std::string strPreviousIsolationGroup =
+		m_strPreviewIsolationGroupId;
+	const shared_ptr<CEffectObject> pPreviousPreviewObject =
+		m_pWorldPreviewObject.lock();
+	const bool_t bPreviousPreviewObjectAvailable =
+		nullptr != pPreviousPreviewObject;
+	const EFFECT_PREVIEW_SUBMISSION_ISOLATION
+		PreviousPreviewSubmissionIsolation =
+			bPreviousPreviewObjectAvailable ?
+				pPreviousPreviewObject->Get_PreviewSubmissionIsolation() :
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION{};
+	const bool_t bPreviousScreenPostEnabled = m_bPreviewScreenPostEnabled;
+	const f32_t fPreviousPreviewTimeSeconds = m_fPreviewTimeSeconds;
+	const f32_t fPreviousPreviewDurationSeconds =
+		m_fPreviewDurationSeconds;
+	const uint32_t iPreviousValtanWorldOwnerStageDurationMs =
+		m_iValtanWorldOwnerStageDurationMs;
+	const bool_t bPreviousPreviewPlaying = m_bPreviewPlaying;
+	const bool_t bPreviousPreviewVisibleRequested =
+		m_bPreviewVisibleRequested;
+	const float4x4_t PreviousProductCueSnapshotRoot =
+		m_ProductCueSnapshotRoot;
+	const bool_t bPreviousProductCueSnapshotCaptured =
+		m_bProductCueSnapshotCaptured;
+	const f32_t fPreviousProductCueActionFacingYawDegrees =
+		m_fProductCueActionFacingYawDegrees;
+	const bool_t bPreviousProductCueActionFacingCaptured =
+		m_bProductCueActionFacingCaptured;
+	const bool_t bPreviousBufferedComboAuditionActive =
+		m_bBufferedComboAuditionActive;
+	const LostArk::Shared::CHARACTER_CLASS_ID
+		ePreviousBufferedComboAuditionClass =
+			m_eBufferedComboAuditionClass;
+	const LostArk::Shared::SKILL_ID iPreviousBufferedComboAuditionSkillId =
+		m_iBufferedComboAuditionSkillId;
+	const f32_t fPreviousBufferedComboAuditionDurationSeconds =
+		m_fBufferedComboAuditionDurationSeconds;
+	const f32_t fPreviousBufferedComboAuditionOccurrenceOffsetSeconds =
+		m_fBufferedComboAuditionOccurrenceOffsetSeconds;
+
+	const auto RestoreBufferedComboRollback =
+		[this, &strPreviousTargetAsset, &PreviousProductPreview,
+		 &PreviousValtanProductPreview, &PreviousSourcePreviewDocument,
+		 bPreviousReconstructedSourceRuntimeActive,
+		 ePreviousAllEffectsClass,
+		 &strPreviousAuthoringDomainId,
+		 ePreviousPreviewFilter, bPreviousScreenPostEnabled,
+		 &strPreviousIsolationElement, &strPreviousIsolationGroup,
+		 bPreviousPreviewObjectAvailable,
+		 &PreviousPreviewSubmissionIsolation,
+		 fPreviousPreviewTimeSeconds, fPreviousPreviewDurationSeconds,
+		 iPreviousValtanWorldOwnerStageDurationMs,
+		 bPreviousPreviewPlaying, bPreviousPreviewVisibleRequested,
+		 &PreviousProductCueSnapshotRoot,
+		 bPreviousProductCueSnapshotCaptured,
+		 fPreviousProductCueActionFacingYawDegrees,
+		 bPreviousProductCueActionFacingCaptured,
+		 bPreviousBufferedComboAuditionActive,
+		 ePreviousBufferedComboAuditionClass,
+		 iPreviousBufferedComboAuditionSkillId,
+		 fPreviousBufferedComboAuditionDurationSeconds,
+		 fPreviousBufferedComboAuditionOccurrenceOffsetSeconds](
+			const bool_t bAuditionStateMutated,
+			std::string& strOutError)
+	{
+		strOutError.clear();
+		const std::string strCurrentTargetAsset =
+			CAnimationTargetService::Resolve_AssetName();
+		if (!bAuditionStateMutated &&
+			strCurrentTargetAsset == strPreviousTargetAsset)
+		{
+			return true;
+		}
+		Reset_SynchronizedAnimationSequence();
+		if (strCurrentTargetAsset != strPreviousTargetAsset)
+		{
+			if (strPreviousTargetAsset.empty())
+				m_pCharacterPreviewPanel->Release(true);
+			else if (!m_pCharacterPreviewPanel->Select_TargetAsset(
+					strPreviousTargetAsset))
+			{
+				strOutError = "the previous target model could not be restored";
+				return false;
+			}
+		}
+
+		m_ProductPreview = PreviousProductPreview;
+		m_ValtanProductPreview = PreviousValtanProductPreview;
+		m_SourcePreviewDocument = PreviousSourcePreviewDocument;
+		m_ePreviewFilter = ePreviousPreviewFilter;
+		m_bPreviewScreenPostEnabled = bPreviousScreenPostEnabled;
+		m_bBufferedComboAuditionActive =
+			bPreviousBufferedComboAuditionActive;
+		m_eBufferedComboAuditionClass =
+			ePreviousBufferedComboAuditionClass;
+		m_iBufferedComboAuditionSkillId =
+			iPreviousBufferedComboAuditionSkillId;
+		m_fBufferedComboAuditionDurationSeconds =
+			fPreviousBufferedComboAuditionDurationSeconds;
+		m_fBufferedComboAuditionOccurrenceOffsetSeconds =
+			fPreviousBufferedComboAuditionOccurrenceOffsetSeconds;
+		m_iValtanWorldOwnerStageDurationMs =
+			iPreviousValtanWorldOwnerStageDurationMs;
+		m_strPreviewIsolationElementId = strPreviousIsolationElement;
+		m_strPreviewIsolationGroupId = strPreviousIsolationGroup;
+		m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+		m_bProductCueSnapshotCaptured =
+			bPreviousProductCueSnapshotCaptured;
+		m_fProductCueActionFacingYawDegrees =
+			fPreviousProductCueActionFacingYawDegrees;
+		m_bProductCueActionFacingCaptured =
+			bPreviousProductCueActionFacingCaptured;
+		m_fPreviewTimeSeconds = fPreviousPreviewTimeSeconds;
+		m_fPreviewDurationSeconds = fPreviousPreviewDurationSeconds;
+		m_bPreviewPlaying = bPreviousPreviewPlaying;
+		m_bPreviewVisibleRequested = bPreviousPreviewVisibleRequested;
+		const auto RestoreSubmissionIsolation =
+			[this, bPreviousPreviewObjectAvailable,
+			 &PreviousPreviewSubmissionIsolation](std::string& strError)
+		{
+			if (!bPreviousPreviewObjectAvailable)
+				return true;
+			const shared_ptr<CEffectObject> pObject =
+				m_pWorldPreviewObject.lock();
+			if (nullptr == pObject)
+			{
+				strError =
+					"the previous preview isolation has no restored EffectObject";
+				return false;
+			}
+			std::string IsolationError;
+			if (!pObject->Set_PreviewSubmissionIsolation(
+					PreviousPreviewSubmissionIsolation, IsolationError))
+			{
+				strError = "the previous preview isolation could not be restored: " +
+					IsolationError;
+				return false;
+			}
+			return true;
+		};
+		const auto RestoreCommonPreviewFields = [this,
+			ePreviousAllEffectsClass, ePreviousPreviewFilter,
+			&strPreviousAuthoringDomainId,
+			bPreviousScreenPostEnabled, &strPreviousIsolationElement,
+			&strPreviousIsolationGroup, &PreviousProductCueSnapshotRoot,
+			bPreviousProductCueSnapshotCaptured,
+			fPreviousProductCueActionFacingYawDegrees,
+			bPreviousProductCueActionFacingCaptured]()
+		{
+			m_eAllEffectsClass = ePreviousAllEffectsClass;
+			m_strSelectedAuthoringDomainId = strPreviousAuthoringDomainId;
+			m_ePreviewFilter = ePreviousPreviewFilter;
+			m_bPreviewScreenPostEnabled = bPreviousScreenPostEnabled;
+			m_strPreviewIsolationElementId = strPreviousIsolationElement;
+			m_strPreviewIsolationGroupId = strPreviousIsolationGroup;
+			m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+			m_bProductCueSnapshotCaptured =
+				bPreviousProductCueSnapshotCaptured;
+			m_fProductCueActionFacingYawDegrees =
+				fPreviousProductCueActionFacingYawDegrees;
+			m_bProductCueActionFacingCaptured =
+				bPreviousProductCueActionFacingCaptured;
+		};
+
+		if (bPreviousReconstructedSourceRuntimeActive)
+		{
+			if (!Try_StartArtist31470FullPreview())
+			{
+				strOutError =
+					"the previous Artist F reconstructed preview could not restart: " +
+					m_strPreviewStatus;
+				return false;
+			}
+			if (!Seek_ReconstructedSourceRuntimeTimeline(
+					fPreviousPreviewTimeSeconds))
+			{
+				strOutError =
+					"the previous Artist F reconstructed preview time could not be restored: " +
+					m_strPreviewStatus;
+				return false;
+			}
+			m_fPreviewDurationSeconds = fPreviousPreviewDurationSeconds;
+			m_bPreviewPlaying = bPreviousPreviewPlaying;
+			m_bPreviewVisibleRequested = bPreviousPreviewVisibleRequested;
+			Set_SynchronizedAnimationPaused(!m_bPreviewPlaying);
+			if (const shared_ptr<CEffectObject> pObject =
+					m_pWorldPreviewObject.lock())
+			{
+				pObject->Set_Playing(false);
+				pObject->Set_Visible(m_bPreviewVisibleRequested);
+			}
+			RestoreCommonPreviewFields();
+			return RestoreSubmissionIsolation(strOutError);
+		}
+
+		if (m_ValtanProductPreview.has_value())
+		{
+			const bool_t bRestored = Restore_ValtanProductPreviewPlayback(
+				m_ValtanProductPreview,
+				fPreviousPreviewTimeSeconds,
+				fPreviousPreviewDurationSeconds,
+				bPreviousPreviewPlaying,
+				bPreviousPreviewVisibleRequested,
+				PreviousProductCueSnapshotRoot,
+				bPreviousProductCueSnapshotCaptured,
+				strOutError);
+			if (!bRestored)
+				return false;
+			RestoreCommonPreviewFields();
+			return RestoreSubmissionIsolation(strOutError);
+		}
+
+		Synchronize_LoadedSkillPreview();
+		const EFFECT_DOCUMENT_DESC* pRestoreDocument =
+			m_ProductPreview.has_value() &&
+			m_SourcePreviewDocument.has_value() ?
+				&*m_SourcePreviewDocument :
+				(m_ActiveDocument.has_value() ? &*m_ActiveDocument : nullptr);
+		if (nullptr == pRestoreDocument)
+		{
+			Release_WorldPreview(true);
+			RestoreCommonPreviewFields();
+			return true;
+		}
+		if (!Stage_WorldPreview(
+				*pRestoreDocument,
+				m_ProductPreview.has_value() &&
+					m_SourcePreviewDocument.has_value()))
+		{
+			strOutError = "the previous Effect preview could not be restored: " +
+				m_strPreviewStatus;
+			return false;
+		}
+		m_fPreviewTimeSeconds = fPreviousPreviewTimeSeconds;
+		m_fPreviewDurationSeconds = fPreviousPreviewDurationSeconds;
+		m_bPreviewPlaying = bPreviousPreviewPlaying;
+		m_bPreviewVisibleRequested = bPreviousPreviewVisibleRequested;
+		Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+		Set_SynchronizedAnimationPaused(!m_bPreviewPlaying);
+		if (const shared_ptr<CEffectObject> pObject =
+				m_pWorldPreviewObject.lock())
+		{
+			pObject->Set_Playing(false);
+			pObject->Set_Visible(m_bPreviewVisibleRequested &&
+				Is_ProductCueVisible(m_fPreviewTimeSeconds));
+		}
+		RestoreCommonPreviewFields();
+		return RestoreSubmissionIsolation(strOutError);
+	};
+	std::vector<SYNCHRONIZED_ANIMATION_CLIP> StagedClips;
+	std::vector<std::vector<f32_t>> StagedStageClipOffsetsSeconds;
+	f32_t fStagedDurationSeconds = 0.f;
+	std::string BuildError;
+	if (!Try_BuildBufferedComboAnimationClips(
+			*Skill, Skills, StagedClips, StagedStageClipOffsetsSeconds,
+			fStagedDurationSeconds, BuildError))
+	{
+		std::string RollbackError;
+		const bool_t bRestored =
+			RestoreBufferedComboRollback(false, RollbackError);
+		m_strElementStatus =
+			"Buffered combo audition failed closed: " + BuildError +
+			(bRestored ? std::string{} :
+				" Rollback failed: " + RollbackError);
+		return false;
+	}
+
+	const bool_t bCurrentProductMatches = m_ProductPreview.has_value() &&
+		m_ProductPreview->eCharacterClass == Skill->eCharacterClass &&
+		m_ProductPreview->iSkillId == Skill->iSkillId;
+	if (!bCurrentProductMatches)
+	{
+		const auto FirstCue = std::min_element(
+			Entry.ProductCues.begin(), Entry.ProductCues.end(),
+			[](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Left,
+				const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Right)
+			{
+				return std::tie(Left.iStageIndex, Left.iStageClipIndex,
+					Left.iBoundClipOrdinal, Left.Cue.iStartMs) <
+					std::tie(Right.iStageIndex, Right.iStageClipIndex,
+						Right.iBoundClipOrdinal, Right.Cue.iStartMs);
+			});
+		const size_t iFirstCueIndex = static_cast<size_t>(
+			std::distance(Entry.ProductCues.begin(), FirstCue));
+		if (!Try_SelectProductCue(Entry, iFirstCueIndex))
+		{
+			const std::string SelectError = m_strElementStatus;
+			std::string RollbackError;
+			const bool_t bRestored =
+				RestoreBufferedComboRollback(true, RollbackError);
+			m_strElementStatus = SelectError +
+				(bRestored ?
+					" Previous Product preview was restored." :
+					" Rollback failed: " + RollbackError);
+			return false;
+		}
+	}
+	const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& SelectedOccurrence =
+		m_ProductPreview->ProductCue;
+	if (SelectedOccurrence.iStageIndex >=
+			StagedStageClipOffsetsSeconds.size() ||
+		SelectedOccurrence.iStageClipIndex >=
+			StagedStageClipOffsetsSeconds[
+				SelectedOccurrence.iStageIndex].size())
+	{
+		std::string RollbackError;
+		const bool_t bRestored =
+			RestoreBufferedComboRollback(true, RollbackError);
+		m_strElementStatus =
+			"Buffered combo audition rejected a Product occurrence outside its Server stage boundary." +
+			(bRestored ?
+				" Previous Product preview was restored." :
+				" Rollback failed: " + RollbackError);
+		return false;
+	}
+	const f32_t fOccurrenceOffsetSeconds =
+		StagedStageClipOffsetsSeconds[SelectedOccurrence.iStageIndex]
+			[SelectedOccurrence.iStageClipIndex];
+	if (!std::isfinite(fOccurrenceOffsetSeconds) ||
+		fOccurrenceOffsetSeconds < 0.f ||
+		fOccurrenceOffsetSeconds > fStagedDurationSeconds)
+	{
+		std::string RollbackError;
+		const bool_t bRestored =
+			RestoreBufferedComboRollback(true, RollbackError);
+		m_strElementStatus =
+			"Buffered combo audition resolved an invalid Product occurrence offset." +
+			(bRestored ?
+				" Previous Product preview was restored." :
+				" Rollback failed: " + RollbackError);
+		return false;
+	}
+
+	m_bBufferedComboAuditionActive = true;
+	m_eBufferedComboAuditionClass = Skill->eCharacterClass;
+	m_iBufferedComboAuditionSkillId = Skill->iSkillId;
+	m_fBufferedComboAuditionDurationSeconds = fStagedDurationSeconds;
+	m_fBufferedComboAuditionOccurrenceOffsetSeconds =
+		fOccurrenceOffsetSeconds;
+	m_SynchronizedAnimationClips = std::move(StagedClips);
+	m_iSynchronizedAnimationClipIndex = 0u;
+	m_iSynchronizedAnimationLoopEpoch = 0u;
+	m_iSynchronizedAnimationTargetGeneration =
+		CAnimationTargetService::Resolve_TargetGeneration();
+	if (!Start_SynchronizedAnimationClip(0u, false))
+	{
+		std::string RollbackError;
+		const bool_t bRestored =
+			RestoreBufferedComboRollback(true, RollbackError);
+		m_strElementStatus = bRestored ?
+			"Buffered combo audition failed to start; exact Product cue playback was restored." :
+			"Buffered combo audition failed to start and rollback failed: " +
+				RollbackError;
+		return false;
+	}
+
+	Recalculate_PreviewDuration();
+	Start_WorldPreviewFromBeginning();
+	m_strPreviewAnimationStatus = "Buffered combo audition: " +
+		Skill->strInputSlot + " | " + Skill->strDisplayName + " | " +
+		std::to_string(Skill->ComboStages.size()) + " Server input stages | " +
+		std::to_string(static_cast<uint64_t>(
+			std::llround(static_cast<double>(
+				fStagedDurationSeconds) * 1000.0))) + " ms";
+	m_strElementStatus =
+		"Playing buffered combo animation audition | " +
+		Skill->strDisplayName +
+		" | selected Product Effect remains occurrence-local.";
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Try_SelectProductCue(
     const EFFECT_SKILL_TREE_ENTRY& Entry,
     const size_t iCueIndex)
@@ -15770,6 +16457,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 				m_fProductCueActionFacingYawDegrees;
 			const bool_t bPreviousProductCueActionFacingCaptured =
 				m_bProductCueActionFacingCaptured;
+			const bool_t bPreviousBufferedComboAuditionActive =
+				m_bBufferedComboAuditionActive;
+			const LostArk::Shared::CHARACTER_CLASS_ID
+				ePreviousBufferedComboAuditionClass =
+					m_eBufferedComboAuditionClass;
+			const LostArk::Shared::SKILL_ID
+				iPreviousBufferedComboAuditionSkillId =
+					m_iBufferedComboAuditionSkillId;
+			const f32_t fPreviousBufferedComboAuditionDurationSeconds =
+				m_fBufferedComboAuditionDurationSeconds;
 			Clear_ProductCuePreview();
 			if (!Try_StartArtist31470FullPreview())
 			{
@@ -15802,6 +16499,14 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 						fPreviousProductCueActionFacingYawDegrees;
 					m_bProductCueActionFacingCaptured =
 						bPreviousProductCueActionFacingCaptured;
+					m_bBufferedComboAuditionActive =
+						bPreviousBufferedComboAuditionActive;
+					m_eBufferedComboAuditionClass =
+						ePreviousBufferedComboAuditionClass;
+					m_iBufferedComboAuditionSkillId =
+						iPreviousBufferedComboAuditionSkillId;
+					m_fBufferedComboAuditionDurationSeconds =
+						fPreviousBufferedComboAuditionDurationSeconds;
 					Synchronize_LoadedSkillPreview();
 				}
 				m_strElementStatus = bRestored ?
@@ -15847,6 +16552,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 		m_fProductCueActionFacingYawDegrees;
 	const bool_t bPreviousProductCueActionFacingCaptured =
 		m_bProductCueActionFacingCaptured;
+	const bool_t bPreviousBufferedComboAuditionActive =
+		m_bBufferedComboAuditionActive;
+	const LostArk::Shared::CHARACTER_CLASS_ID
+		ePreviousBufferedComboAuditionClass =
+			m_eBufferedComboAuditionClass;
+	const LostArk::Shared::SKILL_ID iPreviousBufferedComboAuditionSkillId =
+		m_iBufferedComboAuditionSkillId;
+	const f32_t fPreviousBufferedComboAuditionDurationSeconds =
+		m_fBufferedComboAuditionDurationSeconds;
+	Reset_BufferedComboAudition();
     EFFECT_PRODUCT_PREVIEW Preview;
     Preview.eCharacterClass = Entry.Skill.eCharacterClass;
     Preview.iSkillId = Entry.Skill.iSkillId;
@@ -15875,6 +16590,14 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 		m_fPreviewTimeSeconds = fPreviousPreviewTimeSeconds;
 		m_fPreviewDurationSeconds = fPreviousPreviewDurationSeconds;
 		m_bPreviewScreenPostEnabled = bPreviousScreenPostEnabled;
+		m_bBufferedComboAuditionActive =
+			bPreviousBufferedComboAuditionActive;
+		m_eBufferedComboAuditionClass =
+			ePreviousBufferedComboAuditionClass;
+		m_iBufferedComboAuditionSkillId =
+			iPreviousBufferedComboAuditionSkillId;
+		m_fBufferedComboAuditionDurationSeconds =
+			fPreviousBufferedComboAuditionDurationSeconds;
 		Reset_ProductCueSnapshot();
 		std::string ValtanRestoreError;
 		bool_t bRestored = true;
@@ -21813,20 +22536,31 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 	{
 		const ANIMATION_EFFECT_CUE& Cue =
 			m_ProductPreview->ProductCue.Cue;
+		const bool_t bCueVisible =
+			Is_ProductCueVisible(m_fPreviewTimeSeconds);
 		if (bPlayerActionFacing && "root" != Cue.strAnchorSlotId)
 			return false;
+		f32_t fActionFacingYawDegrees =
+			m_fProductCueActionFacingYawDegrees;
 		if (bPlayerActionFacing && !m_bProductCueActionFacingCaptured)
 		{
 			if (!Try_ExtractPlanarYawDegrees(
-				Anchor, m_fProductCueActionFacingYawDegrees))
+				Anchor, fActionFacingYawDegrees))
 			{
 				return false;
 			}
-			m_bProductCueActionFacingCaptured = true;
+			/* A later combo occurrence must lock its action-facing yaw from the
+			   pose at that occurrence, not from the hidden stage-one frame. */
+			if (bCueVisible)
+			{
+				m_fProductCueActionFacingYawDegrees =
+					fActionFacingYawDegrees;
+				m_bProductCueActionFacingCaptured = true;
+			}
 		}
 		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
 			Cue.LocalTransform, Anchor, Cue.eOrientationPolicy,
-			m_fProductCueActionFacingYawDegrees, OutRoot))
+			fActionFacingYawDegrees, OutRoot))
 		{
 			return false;
 		}
@@ -21858,6 +22592,16 @@ f32_t Client::CEffect_Tool::Resolve_EffectSampleTime(
 	{
 		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
 			m_ProductPreview->ProductCue;
+		f32_t fProductTimelineSeconds = (std::max)(0.f, fTimelineSeconds);
+		if (m_bBufferedComboAuditionActive &&
+			m_eBufferedComboAuditionClass ==
+				m_ProductPreview->eCharacterClass &&
+			m_iBufferedComboAuditionSkillId == m_ProductPreview->iSkillId)
+		{
+			fProductTimelineSeconds = (std::max)(0.f,
+				fProductTimelineSeconds -
+					m_fBufferedComboAuditionOccurrenceOffsetSeconds);
+		}
 		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
 		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
 			ProductCue.Clip.iSourceStartMs) * 0.001f;
@@ -21870,7 +22614,7 @@ f32_t Client::CEffect_Tool::Resolve_EffectSampleTime(
 			ProductCue.Cue.eStopPolicy;
 		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
 		return CActionPresentationTimeline::Resolve_CuePreviewSample(
-			Timing, (std::max)(0.f, fTimelineSeconds), Sample) ?
+			Timing, fProductTimelineSeconds, Sample) ?
 			Sample.fEffectSampleSeconds : 0.f;
 	}
 	if (!m_ValtanProductPreview.has_value())
@@ -21901,6 +22645,13 @@ f32_t Client::CEffect_Tool::Resolve_EffectTimelineTime(
 	{
 		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
 			m_ProductPreview->ProductCue;
+		const bool_t bBufferedOccurrence =
+			m_bBufferedComboAuditionActive &&
+			m_eBufferedComboAuditionClass ==
+				m_ProductPreview->eCharacterClass &&
+			m_iBufferedComboAuditionSkillId == m_ProductPreview->iSkillId;
+		const f32_t fOccurrenceOffsetSeconds = bBufferedOccurrence ?
+			m_fBufferedComboAuditionOccurrenceOffsetSeconds : 0.f;
 		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
 		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
 			ProductCue.Clip.iSourceStartMs) * 0.001f;
@@ -21917,7 +22668,7 @@ f32_t Client::CEffect_Tool::Resolve_EffectTimelineTime(
 		{
 			return fClampedEffectSample;
 		}
-		return Sample.fCueWallStartSeconds +
+		return fOccurrenceOffsetSeconds + Sample.fCueWallStartSeconds +
 			fClampedEffectSample / Timing.fPlayRate;
 	}
 	if (!m_ValtanProductPreview.has_value())
@@ -22133,6 +22884,21 @@ bool_t Client::CEffect_Tool::Is_ProductCueVisible(
 	{
 		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
 			m_ProductPreview->ProductCue;
+		f32_t fProductTimelineSeconds = (std::max)(0.f, fTimelineSeconds);
+		if (m_bBufferedComboAuditionActive &&
+			m_eBufferedComboAuditionClass ==
+				m_ProductPreview->eCharacterClass &&
+			m_iBufferedComboAuditionSkillId == m_ProductPreview->iSkillId)
+		{
+			if (fProductTimelineSeconds + 0.0001f <
+				m_fBufferedComboAuditionOccurrenceOffsetSeconds)
+			{
+				return false;
+			}
+			fProductTimelineSeconds = (std::max)(0.f,
+				fProductTimelineSeconds -
+					m_fBufferedComboAuditionOccurrenceOffsetSeconds);
+		}
 		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
 		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
 			ProductCue.Clip.iSourceStartMs) * 0.001f;
@@ -22145,7 +22911,7 @@ bool_t Client::CEffect_Tool::Is_ProductCueVisible(
 			ProductCue.Cue.eStopPolicy;
 		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
 		return CActionPresentationTimeline::Resolve_CuePreviewSample(
-			Timing, (std::max)(0.f, fTimelineSeconds), Sample) &&
+			Timing, fProductTimelineSeconds, Sample) &&
 			Sample.bVisible;
 	}
 	if (!m_ValtanProductPreview.has_value())
@@ -22308,6 +23074,7 @@ bool_t Client::CEffect_Tool::Restore_ValtanProductPreviewPlayback(
 
 void Client::CEffect_Tool::Clear_ProductCuePreview()
 {
+	Reset_BufferedComboAudition();
     m_ProductPreview.reset();
 	m_ValtanProductPreview.reset();
 	m_iValtanWorldOwnerStageDurationMs = 0u;
@@ -22330,6 +23097,7 @@ void Client::CEffect_Tool::Select_PlayerPreviewCueCandidate(
 
 	const ANIMATION_EFFECT_PREVIEW_CANDIDATE Candidate =
 		m_PlayerPreviewCueCandidates[iCandidateIndex];
+	Reset_BufferedComboAudition();
 	EFFECT_PRODUCT_PREVIEW Preview = *m_ProductPreview;
 	Preview.ProductCue.Cue = Candidate.Cue;
 	Preview.ProductCue.Clip = Candidate.Clip;
@@ -22889,8 +23657,53 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 		m_SourcePreviewDocument.reset();
 		Recalculate_PreviewDuration(*m_ActiveDocument);
 	}
-    m_SynchronizedAnimationClips.clear();
-    if (m_ProductPreview.has_value())
+	m_SynchronizedAnimationClips.clear();
+	if (m_bBufferedComboAuditionActive)
+	{
+		if (!m_ProductPreview.has_value() ||
+			m_eBufferedComboAuditionClass != Skill->eCharacterClass ||
+			m_iBufferedComboAuditionSkillId != Skill->iSkillId)
+		{
+			Reset_BufferedComboAudition();
+			m_strPreviewAnimationStatus =
+				"Buffered combo audition rejected stale Product preview ownership.";
+			return;
+		}
+		f32_t fBufferedDurationSeconds = 0.f;
+		std::vector<std::vector<f32_t>> BufferedStageClipOffsetsSeconds;
+		std::string BufferedError;
+		if (!Try_BuildBufferedComboAnimationClips(
+				*Skill, Skills, m_SynchronizedAnimationClips,
+				BufferedStageClipOffsetsSeconds,
+				fBufferedDurationSeconds, BufferedError))
+		{
+			Reset_BufferedComboAudition();
+			m_SynchronizedAnimationClips.clear();
+			m_strPreviewAnimationStatus =
+				"Buffered combo audition failed closed: " + BufferedError;
+			return;
+		}
+		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& SelectedOccurrence =
+			m_ProductPreview->ProductCue;
+		if (SelectedOccurrence.iStageIndex >=
+				BufferedStageClipOffsetsSeconds.size() ||
+			SelectedOccurrence.iStageClipIndex >=
+				BufferedStageClipOffsetsSeconds[
+					SelectedOccurrence.iStageIndex].size())
+		{
+			Reset_BufferedComboAudition();
+			m_SynchronizedAnimationClips.clear();
+			m_strPreviewAnimationStatus =
+				"Buffered combo audition rejected a Product occurrence outside its Server stage boundary.";
+			return;
+		}
+		m_fBufferedComboAuditionDurationSeconds =
+			fBufferedDurationSeconds;
+		m_fBufferedComboAuditionOccurrenceOffsetSeconds =
+			BufferedStageClipOffsetsSeconds[SelectedOccurrence.iStageIndex]
+				[SelectedOccurrence.iStageClipIndex];
+	}
+    else if (m_ProductPreview.has_value())
     {
 		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Selected =
 			m_ProductPreview->ProductCue;
@@ -22937,17 +23750,27 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
         m_SynchronizedAnimationClips.front();
 	if (!Start_SynchronizedAnimationClip(0u, false))
     {
+		if (m_bBufferedComboAuditionActive)
+			Reset_BufferedComboAudition();
         Reset_SynchronizedAnimationSequence();
         m_strPreviewAnimationStatus =
             "Effect is playing; its first bound animation clip is unavailable.";
         return;
     }
-    m_strPreviewAnimationStatus = m_ProductPreview.has_value() ?
-        "Product cue animation synced: " : "Skill animation synced: ";
+	m_strPreviewAnimationStatus = m_bBufferedComboAuditionActive ?
+		"Buffered combo audition synced: " :
+		(m_ProductPreview.has_value() ?
+			"Product cue animation synced: " : "Skill animation synced: ");
     m_strPreviewAnimationStatus +=
         Skill->strInputSlot + " | " + Skill->strDisplayName + " -> " +
         FirstClip.strClipName;
-    if (m_ProductPreview.has_value())
+	if (m_bBufferedComboAuditionActive)
+	{
+		m_strPreviewAnimationStatus += " | " +
+			std::to_string(Skill->ComboStages.size()) +
+			" Server input stages";
+	}
+    else if (m_ProductPreview.has_value())
     {
         m_strPreviewAnimationStatus += " @ " + std::to_string(
             m_ProductPreview->ProductCue.Cue.iStartMs) + " ms | anchor=" +
@@ -23098,14 +23921,28 @@ void Client::CEffect_Tool::Seek_SynchronizedAnimationSequence(
         }
 		const f32_t fWallDurationSeconds =
 			fSourceDurationSeconds / Clip.fPlayRate;
+		if (!std::isfinite(Clip.fHoldAfterSeconds) ||
+			Clip.fHoldAfterSeconds < 0.f)
+		{
+			m_strPreviewAnimationStatus =
+				"Skill animation seek has an invalid end-pose hold: " +
+				Clip.strClipName;
+			return;
+		}
+		const f32_t fSegmentWallDurationSeconds =
+			fWallDurationSeconds + Clip.fHoldAfterSeconds;
 		const bool_t bLastClip =
 			iClip + 1u == m_SynchronizedAnimationClips.size();
-		if (!bLastClip && fRemainingSeconds >= fWallDurationSeconds)
+		if (!bLastClip &&
+			fRemainingSeconds >= fSegmentWallDurationSeconds)
 		{
-			fRemainingSeconds -= fWallDurationSeconds;
+			fRemainingSeconds -= fSegmentWallDurationSeconds;
 			continue;
 		}
 
+		const bool_t bHoldingEndPose =
+			!(Clip.bHasExplicitLoopPolicy && Clip.bLoop) &&
+			fRemainingSeconds >= fWallDurationSeconds;
 		f32_t fLocalWallSeconds = (std::min)(
 			fRemainingSeconds, fWallDurationSeconds);
 		m_iSynchronizedAnimationLoopEpoch = 0u;
@@ -23121,7 +23958,8 @@ void Client::CEffect_Tool::Seek_SynchronizedAnimationSequence(
 				fRemainingSeconds, fWallDurationSeconds);
 		}
 		m_iSynchronizedAnimationClipIndex = iClip;
-		if (!Start_SynchronizedAnimationClip(iClip, !m_bPreviewPlaying))
+		if (!Start_SynchronizedAnimationClip(
+				iClip, bHoldingEndPose || !m_bPreviewPlaying))
 		{
 			m_strPreviewAnimationStatus =
 				"Skill animation seek failed: " + Clip.strClipName;
@@ -23133,7 +23971,7 @@ void Client::CEffect_Tool::Seek_SynchronizedAnimationSequence(
 				fSourceDurationSeconds)) * fTicksPerSecond;
 		pModel->Set_AnimTrackPosition(iAnimation, fTrackPosition);
 		pModel->Play_Animation(0.f);
-		pModel->Set_AnimPaused(!m_bPreviewPlaying);
+		pModel->Set_AnimPaused(bHoldingEndPose || !m_bPreviewPlaying);
 		return;
     }
 }
@@ -23219,8 +24057,14 @@ bool_t Client::CEffect_Tool::Try_ResolveSynchronizedAnimationTime(
         }
 		if (iClip < m_iSynchronizedAnimationClipIndex)
 		{
+			if (!std::isfinite(Clip.fHoldAfterSeconds) ||
+				Clip.fHoldAfterSeconds < 0.f)
+			{
+				return false;
+			}
 			fOutTimeSeconds +=
-				fSourceDurationSeconds / Clip.fPlayRate;
+				fSourceDurationSeconds / Clip.fPlayRate +
+				Clip.fHoldAfterSeconds;
 			continue;
         }
 
@@ -23239,6 +24083,18 @@ bool_t Client::CEffect_Tool::Try_ResolveSynchronizedAnimationTime(
 			(std::max)(0.f,
 				fPosition / fTicksPerSecond - fSourceStartSeconds),
 			fSourceDurationSeconds);
+		const bool_t bBufferedFinalClip =
+			m_bBufferedComboAuditionActive &&
+			iClip + 1u == m_SynchronizedAnimationClips.size();
+		if (m_bBufferedComboAuditionActive &&
+			pModel->Is_AnimPaused() &&
+			(Clip.fHoldAfterSeconds > 0.f || bBufferedFinalClip) &&
+			fCurrentSourceSeconds + 0.0001f >= fSourceDurationSeconds)
+		{
+			/* A Server-owned stage hold has no advancing animation clock. The
+			   Effect Tool wall clock advances it until Seek selects the next row. */
+			return false;
+		}
 		const bool_t bHasSourceWindow =
 			0u != Clip.iSourceStartMs || 0u != Clip.iPlayMs;
 		if (CActionPresentationTimeline::
@@ -23291,8 +24147,17 @@ void Client::CEffect_Tool::Update_SynchronizedAnimationSequence()
         Reset_SynchronizedAnimationSequence();
         return;
     }
-    if (pModel->Is_AnimPaused())
-        return;
+	if (pModel->Is_AnimPaused())
+	{
+		if (m_bBufferedComboAuditionActive && m_bPreviewPlaying)
+		{
+			/* During an authored end-pose hold the animation clock is paused, so
+			   the Effect Tool wall clock owns the transition to the next input
+			   stage. Seek only while paused; active clips keep natural playback. */
+			Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+		}
+		return;
+	}
 
     f32_t fPosition = 0.f;
     f32_t fDuration = 0.f;
@@ -23332,6 +24197,20 @@ void Client::CEffect_Tool::Update_SynchronizedAnimationSequence()
 	const bool_t bLastClip =
 		m_iSynchronizedAnimationClipIndex + 1u ==
 			m_SynchronizedAnimationClips.size();
+	if (m_bBufferedComboAuditionActive &&
+		CurrentClip.fHoldAfterSeconds > 0.f)
+	{
+		pModel->Set_AnimPaused(true);
+		return;
+	}
+	if (m_bBufferedComboAuditionActive && bLastClip)
+	{
+		/* A buffered audition runs one finite Server input chain. The global
+		   Tool Loop applies to the complete Effect timeline, never to its final
+		   animation clip while an occurrence-local Effect tail is still alive. */
+		pModel->Set_AnimPaused(true);
+		return;
+	}
 	if (CurrentClip.bHasExplicitLoopPolicy && CurrentClip.bLoop)
 	{
 		++m_iSynchronizedAnimationLoopEpoch;
@@ -23622,6 +24501,13 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
     {
 		const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
 			m_ProductPreview->ProductCue;
+		const bool_t bBufferedOccurrence =
+			m_bBufferedComboAuditionActive &&
+			m_eBufferedComboAuditionClass ==
+				m_ProductPreview->eCharacterClass &&
+			m_iBufferedComboAuditionSkillId == m_ProductPreview->iSkillId;
+		const f32_t fOccurrenceOffsetSeconds = bBufferedOccurrence ?
+			m_fBufferedComboAuditionOccurrenceOffsetSeconds : 0.f;
 		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
 		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
 			ProductCue.Clip.iSourceStartMs) * 0.001f;
@@ -23636,14 +24522,21 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
 		if (CActionPresentationTimeline::Resolve_CuePreviewSample(
 				Timing, 0.f, Sample))
 		{
-			m_fPreviewDurationSeconds = Sample.fCueWallStartSeconds +
+			m_fPreviewDurationSeconds = fOccurrenceOffsetSeconds +
+				Sample.fCueWallStartSeconds +
 				fEffectDurationSeconds / Timing.fPlayRate;
 			if (Timing.bHasCueSourceEnd)
 			{
 				m_fPreviewDurationSeconds = (std::max)(
 					m_fPreviewDurationSeconds,
-					Sample.fCueWallEndSeconds);
+					fOccurrenceOffsetSeconds + Sample.fCueWallEndSeconds);
 			}
+		}
+		else if (bBufferedOccurrence)
+		{
+			m_fPreviewDurationSeconds = (std::max)(
+				m_fPreviewDurationSeconds,
+				fOccurrenceOffsetSeconds + fEffectDurationSeconds);
 		}
 		f32_t fClipWallDurationSeconds = 0.f;
 		if (Try_ResolvePlayerProductClipWallDuration(
@@ -23651,6 +24544,12 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
 		{
 			m_fPreviewDurationSeconds = (std::max)(
 				m_fPreviewDurationSeconds, fClipWallDurationSeconds);
+		}
+		if (bBufferedOccurrence)
+		{
+			m_fPreviewDurationSeconds = (std::max)(
+				m_fPreviewDurationSeconds,
+				m_fBufferedComboAuditionDurationSeconds);
 		}
     }
 	else if (m_ValtanProductPreview.has_value())

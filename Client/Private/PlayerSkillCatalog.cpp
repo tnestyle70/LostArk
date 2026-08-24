@@ -182,6 +182,32 @@ namespace
 		output = static_cast<std::uint32_t>(number);
 		return true;
 	}
+
+	bool ReadComboStage(
+		const DATA_JSON_VALUE& value,
+		Client::PLAYER_COMBO_STAGE_TIMING& output)
+	{
+		if (!HasExactProperties(value,
+			{ "actionDurationMs", "hitTimeMs", "comboAdvanceMs",
+				"inputOpenMs", "inputCloseMs" }))
+		{
+			return false;
+		}
+
+		return ReadU32(value.Find("actionDurationMs"), output.iActionDurationMs) &&
+			ReadU32(value.Find("hitTimeMs"), output.iHitTimeMs) &&
+			ReadU32(value.Find("comboAdvanceMs"), output.iComboAdvanceMs) &&
+			ReadU32(value.Find("inputOpenMs"), output.iInputOpenMs) &&
+			ReadU32(value.Find("inputCloseMs"), output.iInputCloseMs);
+	}
+
+	bool HasValidStageBounds(
+		const Client::PLAYER_COMBO_STAGE_TIMING& stage)
+	{
+		return 0u != stage.iActionDurationMs &&
+			stage.iHitTimeMs <= stage.iComboAdvanceMs &&
+			stage.iComboAdvanceMs <= stage.iActionDurationMs;
+	}
 }
 
 bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
@@ -347,7 +373,18 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			outStatus = "PlayerSkills.json has an unknown stance";
 			return false;
 		}
-		definition.iComboStageCount = comboStages->Get_Array().size();
+		definition.ComboStages.reserve(comboStages->Get_Array().size());
+		for (const DATA_JSON_VALUE& stageValue : comboStages->Get_Array())
+		{
+			PLAYER_COMBO_STAGE_TIMING stage{};
+			if (!ReadComboStage(stageValue, stage))
+			{
+				outStatus = "PlayerSkills.json has an invalid combo stage field";
+				return false;
+			}
+			definition.ComboStages.push_back(stage);
+		}
+		definition.iComboStageCount = definition.ComboStages.size();
 
 		/* A combo runs off its stages and carries no cooldown, so only an ACTIVE
 		skill has to declare one. */
@@ -367,6 +404,73 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		{
 			outStatus = "PlayerSkills.json has an invalid skill id, class, cooldown or slot";
 			return false;
+		}
+
+		if (!std::all_of(
+			definition.ComboStages.begin(), definition.ComboStages.end(),
+			HasValidStageBounds))
+		{
+			outStatus = "PlayerSkills.json has invalid combo stage timing bounds";
+			return false;
+		}
+
+		if (LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition.eSkillKind)
+		{
+			for (std::size_t stageIndex = 0u;
+				stageIndex < definition.ComboStages.size(); ++stageIndex)
+			{
+				const PLAYER_COMBO_STAGE_TIMING& stage =
+					definition.ComboStages[stageIndex];
+				const bool isFinalStage =
+					stageIndex + 1u == definition.ComboStages.size();
+				if ((isFinalStage &&
+						(stage.iComboAdvanceMs != stage.iActionDurationMs ||
+							0u != stage.iInputOpenMs || 0u != stage.iInputCloseMs)) ||
+					(!isFinalStage &&
+						(stage.iInputOpenMs >= stage.iInputCloseMs ||
+							stage.iInputCloseMs > stage.iActionDurationMs)))
+				{
+					outStatus = "PlayerSkills.json has an invalid combo input window";
+					return false;
+				}
+			}
+		}
+		else if (LostArk::Shared::PLAYER_SKILL_KIND::COUNTER ==
+			definition.eSkillKind)
+		{
+			if (2u != definition.ComboStages.size() || 0u == definition.iCooldownMs)
+			{
+				outStatus = "PlayerSkills.json has an invalid counter stage count";
+				return false;
+			}
+			const PLAYER_COMBO_STAGE_TIMING& guard = definition.ComboStages[0u];
+			const PLAYER_COMBO_STAGE_TIMING& counter = definition.ComboStages[1u];
+			if (0u != guard.iHitTimeMs ||
+				guard.iInputOpenMs >= guard.iInputCloseMs ||
+				guard.iInputCloseMs > guard.iActionDurationMs ||
+				0u == counter.iHitTimeMs || 0u != counter.iInputOpenMs ||
+				0u != counter.iInputCloseMs)
+			{
+				outStatus = "PlayerSkills.json has an invalid counter stage timing";
+				return false;
+			}
+		}
+		else if (LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition.eSkillKind)
+		{
+			for (std::size_t stageIndex = 0u;
+				stageIndex < definition.ComboStages.size(); ++stageIndex)
+			{
+				const PLAYER_COMBO_STAGE_TIMING& stage =
+					definition.ComboStages[stageIndex];
+				const bool isFinalStage =
+					stageIndex + 1u == definition.ComboStages.size();
+				if (0u != stage.iInputOpenMs || 0u != stage.iInputCloseMs ||
+					(isFinalStage != (0u != stage.iHitTimeMs)))
+				{
+					outStatus = "PlayerSkills.json has an invalid hold stage timing";
+					return false;
+				}
+			}
 		}
 
 		/* One class cannot bind two skills to the same slot in the same stance:
