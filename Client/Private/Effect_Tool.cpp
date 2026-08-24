@@ -31,6 +31,7 @@
 #include "Logic_Slayer.h"
 #include "Logic_Warlord.h"
 #include "Model.h"
+#include "NetworkManager.h"
 #include "Profiler.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -77,6 +78,40 @@ namespace
 		"valtan.whirlwind.420633.active";
 	constexpr const char_t* VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID =
 		"effect.valtan.pattern.420633.active";
+	constexpr const char_t* VALTAN_CHARACTER_SELECT_BOSS_PLACEMENT_ID =
+		"boss.valtan.character-select.lazy";
+	constexpr const char_t* VALTAN_ARENA_BOSS_PLACEMENT_ID =
+		"boss.valtan.center";
+	constexpr std::array<std::string_view, 6u>
+		VALTAN_CHARACTER_SELECT_ENVIRONMENT_PATTERN_IDS =
+	{
+		"VALTAN_ARMOR_BREAK_OPENING",
+		"VALTAN_ENTRANCE_WHIRLWIND",
+		"VALTAN_ARENA_BREAK_109",
+		"VALTAN_ARENA_BREAK_84",
+		"VALTAN_ARENA_BREAK_33",
+		"VALTAN_FOUR_PILLARS_105"
+	};
+
+	const char_t* Resolve_ValtanServerPatternBossPlacement(
+		const uint32_t iLevel)
+	{
+		if (ETOUI(Client::LEVEL::CHARACTER_SELECT) == iLevel)
+			return VALTAN_CHARACTER_SELECT_BOSS_PLACEMENT_ID;
+		if (ETOUI(Client::LEVEL::VALTAN_ARENA) == iLevel)
+			return VALTAN_ARENA_BOSS_PLACEMENT_ID;
+		return nullptr;
+	}
+
+	bool_t Is_ValtanCharacterSelectEnvironmentPattern(
+		const std::string_view strPatternId)
+	{
+		return std::find(
+			VALTAN_CHARACTER_SELECT_ENVIRONMENT_PATTERN_IDS.begin(),
+			VALTAN_CHARACTER_SELECT_ENVIRONMENT_PATTERN_IDS.end(),
+			strPatternId) !=
+			VALTAN_CHARACTER_SELECT_ENVIRONMENT_PATTERN_IDS.end();
+	}
 
 	const char_t* Tool_PlayerStanceLabel(
 		const LostArk::Shared::PLAYER_STANCE_ID eStance)
@@ -2262,6 +2297,7 @@ Client::CEffect_Tool::~CEffect_Tool()
 void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 {
     ++m_iFrameNumber;
+	Update_ValtanServerPatternAudition();
     m_pThumbnailCache->Begin_Frame(m_iFrameNumber);
     m_pCharacterPreviewPanel->Set_SessionLock(
         CHARACTER_PREVIEW_LOCK_OWNER::EFFECT_TOOL,
@@ -9885,6 +9921,188 @@ void Client::CEffect_Tool::Render_ValtanProductCue(
 	ImGui::PopID();
 }
 
+bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	std::string& strOutReason) const
+{
+	strOutReason.clear();
+	const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (nullptr == Resolve_ValtanServerPatternBossPlacement(iCurrentLevel))
+	{
+		strOutReason =
+			"Server Pattern Play is available only in Character Select or Valtan Arena.";
+		return false;
+	}
+	if (!CNetworkManager::Get().Is_Connected())
+	{
+		strOutReason = "Start and connect the Debug Server first.";
+		return false;
+	}
+	if (m_PendingValtanServerPatternRequest.Is_Active())
+	{
+		strOutReason = "Waiting for the Server verdict for " +
+			m_PendingValtanServerPatternRequest.strPatternId + ".";
+		return false;
+	}
+	if (ETOUI(LEVEL::CHARACTER_SELECT) == iCurrentLevel &&
+		Is_ValtanCharacterSelectEnvironmentPattern(Pattern.strPatternId))
+	{
+		strOutReason =
+			"This pattern owns Valtan Arena walls, floor, pillars, or opening state; play it in Valtan Arena.";
+		return false;
+	}
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Try_PlayValtanServerPattern(
+	const VALTAN_PATTERN_VIEW& Pattern)
+{
+	std::string strReason;
+	if (!Can_PlayValtanServerPattern(Pattern, strReason))
+	{
+		m_strValtanServerPatternStatusPatternId = Pattern.strPatternId;
+		m_strValtanServerPatternStatus = std::move(strReason);
+		return false;
+	}
+
+	const char_t* pBossPlacementId = Resolve_ValtanServerPatternBossPlacement(
+		CGameInstance::Get().Get_CurrentLevelID());
+	if (nullptr == pBossPlacementId)
+		return false;
+	const uint32_t iSequence =
+		0u == m_iNextValtanServerPatternRequestSequence ?
+			1u : m_iNextValtanServerPatternRequestSequence;
+	if (!CNetworkManager::Get().Send_ValtanPatternAuditionById(
+			iSequence, pBossPlacementId, Pattern.strPatternId))
+	{
+		m_strValtanServerPatternStatusPatternId = Pattern.strPatternId;
+		m_strValtanServerPatternStatus =
+			"Could not send Server Pattern Play; check the Server connection.";
+		return false;
+	}
+
+	m_iNextValtanServerPatternRequestSequence =
+		(std::numeric_limits<uint32_t>::max)() == iSequence ?
+			1u : iSequence + 1u;
+	m_PendingValtanServerPatternRequest.iSequence = iSequence;
+	m_PendingValtanServerPatternRequest.iWorldInboundGeneration =
+		CNetworkManager::Get().Get_WorldInboundGeneration();
+	m_PendingValtanServerPatternRequest.strBossPlacementId = pBossPlacementId;
+	m_PendingValtanServerPatternRequest.strPatternId = Pattern.strPatternId;
+	m_strValtanServerPatternStatusPatternId = Pattern.strPatternId;
+	m_strValtanServerPatternStatus =
+		"Waiting for the Server to reset the replicated Valtan and queue this pattern...";
+	return true;
+}
+
+void Client::CEffect_Tool::Update_ValtanServerPatternAudition()
+{
+	using namespace LostArk::Shared;
+	/* A world reset clears the NetworkManager verdict queue.  Reject the old
+	   transaction before draining so a late verdict that arrives in the new
+	   generation cannot be mistaken for the old world's exact request. */
+	if (m_PendingValtanServerPatternRequest.Is_Active() &&
+		m_PendingValtanServerPatternRequest.iWorldInboundGeneration !=
+			CNetworkManager::Get().Get_WorldInboundGeneration())
+	{
+		m_strValtanServerPatternStatusPatternId =
+			m_PendingValtanServerPatternRequest.strPatternId;
+		m_strValtanServerPatternStatus =
+			"Pattern Play was cancelled because the Server world session changed.";
+		m_PendingValtanServerPatternRequest = {};
+	}
+
+	S2C_VALTAN_AUDITION_RESULT Result{};
+	while (CNetworkManager::Get().Try_Consume_ValtanPatternAuditionByIdResult(
+			Result))
+	{
+		if (!m_PendingValtanServerPatternRequest.Is_Active())
+			continue;
+		if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID != Result.eOperation ||
+			Result.iRequestSequence !=
+				m_PendingValtanServerPatternRequest.iSequence ||
+			Result.strBossPlacementId !=
+				m_PendingValtanServerPatternRequest.strBossPlacementId ||
+			Result.strPatternId !=
+				m_PendingValtanServerPatternRequest.strPatternId)
+		{
+			m_strValtanServerPatternStatusPatternId =
+				m_PendingValtanServerPatternRequest.strPatternId;
+			m_strValtanServerPatternStatus =
+				"Ignored a mismatched Server verdict; waiting for the exact request identity.";
+			continue;
+		}
+
+		const VALTAN_SERVER_PATTERN_REQUEST Completed =
+			m_PendingValtanServerPatternRequest;
+		m_PendingValtanServerPatternRequest = {};
+		m_strValtanServerPatternStatusPatternId = Completed.strPatternId;
+		switch (Result.eResult)
+		{
+		case VALTAN_AUDITION_RESULT::QUEUED:
+			m_strValtanServerPatternStatus =
+				"Server queued the full fixed-tick pattern. Watch the replicated Valtan animation, motion, cues, and Effects.";
+			break;
+		case VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED:
+			m_strValtanServerPatternStatus =
+				"The Server already handled this request sequence; no duplicate pattern was queued.";
+			break;
+		case VALTAN_AUDITION_RESULT::REJECTED_NO_BOSS:
+			m_strValtanServerPatternStatus =
+				"No replicated Valtan exists at " + Completed.strBossPlacementId +
+				". Spawn Valtan first, then press Play Server Pattern again.";
+			break;
+		case VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED:
+			m_strValtanServerPatternStatus =
+				"The Server needs a living combat-ready player near Valtan; move into engage range and retry.";
+			break;
+		case VALTAN_AUDITION_RESULT::REJECTED_BOSS_DEAD:
+			m_strValtanServerPatternStatus =
+				"The replicated Valtan is dead; respawn or re-enter before replaying a pattern.";
+			break;
+		case VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE:
+			m_strValtanServerPatternStatus =
+				"The Server rejected this pattern for the current world or boss state.";
+			break;
+		case VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR:
+			m_strValtanServerPatternStatus =
+				"The Server encounter does not own this stable pattern ID.";
+			break;
+		case VALTAN_AUDITION_RESULT::REJECTED_WRONG_WORLD:
+			m_strValtanServerPatternStatus =
+				"The active Server room does not match this Effect Tool pattern request.";
+			break;
+		case VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD:
+			m_strValtanServerPatternStatus =
+				"Server Pattern Play is Debug-only; start the Debug Server.";
+			break;
+		case VALTAN_AUDITION_RESULT::REJECTED_NOT_ARMED:
+			m_strValtanServerPatternStatus =
+				"The Server returned an unexpected health-bar audition state for this stable-ID request.";
+			break;
+		case VALTAN_AUDITION_RESULT::ARMED:
+			m_strValtanServerPatternStatus =
+				"The Server armed the request but did not queue the selected pattern.";
+			break;
+		case VALTAN_AUDITION_RESULT::END:
+		default:
+			m_strValtanServerPatternStatus =
+				"The Server returned an unknown Pattern Play verdict.";
+			break;
+		}
+	}
+
+	if (m_PendingValtanServerPatternRequest.Is_Active() &&
+		!CNetworkManager::Get().Is_Connected())
+	{
+		m_strValtanServerPatternStatusPatternId =
+			m_PendingValtanServerPatternRequest.strPatternId;
+		m_strValtanServerPatternStatus =
+			"The Server disconnected before answering Pattern Play.";
+		m_PendingValtanServerPatternRequest = {};
+	}
+}
+
 void Client::CEffect_Tool::Render_ValtanPatternNode(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const char_t* pGroupLabel,
@@ -9985,7 +10203,31 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 	   person expand every node by hand. */
 	if (!strSearch.empty())
 		ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-	if (ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+	const bool_t bPatternOpen =
+		ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow);
+	ImGui::SameLine();
+	std::string strServerPlayReason;
+	const bool_t bCanPlayServerPattern =
+		Can_PlayValtanServerPattern(Pattern, strServerPlayReason);
+	ImGui::BeginDisabled(!bCanPlayServerPattern);
+	if (ImGui::SmallButton("Play Server Pattern"))
+		Try_PlayValtanServerPattern(Pattern);
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		ImGui::SetTooltip("%s", bCanPlayServerPattern ?
+			"Reset and run this complete pattern on the replicated Valtan through the Server fixed-tick path." :
+			strServerPlayReason.c_str());
+	}
+	if (m_strValtanServerPatternStatusPatternId == Pattern.strPatternId &&
+		!m_strValtanServerPatternStatus.empty())
+	{
+		ImGui::Indent();
+		ImGui::TextWrapped("Server Pattern: %s",
+			m_strValtanServerPatternStatus.c_str());
+		ImGui::Unindent();
+	}
+	if (bPatternOpen)
 	{
 		ImGui::SeparatorText("Saved Unified Effects");
 		if (SavedRows.empty())
@@ -10215,8 +10457,10 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	{
 	if (m_bAllEffectsValtanBossSelected)
 	{
+		ImGui::TextWrapped(
+			"Top Pattern: Play Server Pattern resets and runs the complete pattern on the replicated Valtan through the Server fixed-tick path.");
 		ImGui::TextDisabled(
-			"Pattern -> Saved Unified Effects -> Animations / Semantic Stages. Open stages Valtan with the mapped animation; Play starts animation and Effect clocks together.");
+			"Saved Effect, Stage Replay Sequence, and Product Play buttons below remain local Model View authoring previews.");
 	}
 	else
 	{

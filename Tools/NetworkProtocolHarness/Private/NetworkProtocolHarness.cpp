@@ -2330,12 +2330,12 @@ namespace
 		case here compares against NETWORK_PROTOCOL_VERSION itself, and pinning a
 		literal only made an unrelated bump fail this row. */
 		testRunner.Require(
-			31u == NETWORK_PROTOCOL_VERSION &&
+			32u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Packet Types At Protocol V31");
+			"World Destruction Packet Types At Protocol V32");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
@@ -2740,6 +2740,13 @@ namespace
 		testRunner.Require(
 			Write_Message(requestWriter, request),
 			"Writer Valtan Audition Request");
+		const std::vector<std::uint8_t> legacyRequestGolden{
+			0x09u, 0x00u, 0x00u, 0x00u,
+			0x02u,
+			0x50u, 0x00u, 0x00u, 0x00u };
+		testRunner.Require(
+			requestWriter.Get_Buffer() == legacyRequestGolden,
+			"Preserve Legacy Valtan Audition Request Golden Payload");
 		CPacketReader requestReader{ requestWriter.Get_Buffer() };
 		C2S_VALTAN_AUDITION_REQUEST decodedRequest{};
 		testRunner.Require(
@@ -2869,6 +2876,126 @@ namespace
 		}
 
 		{
+			/* Effect Tool rows already own the authored stable pattern ID. This
+			shape also names the stable boss placement, so no reordered Client
+			vector position can select a different Server pattern. */
+			C2S_VALTAN_AUDITION_REQUEST stablePlay{};
+			stablePlay.iRequestSequence = 32u;
+			stablePlay.eOperation =
+				VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+			stablePlay.iTargetHealthBar = 0u;
+			stablePlay.strBossPlacementId =
+				"boss.valtan.character-select.lazy";
+			stablePlay.strPatternId = "VALTAN_DASH_CHARGE";
+			CPacketWriter stableWriter;
+			C2S_VALTAN_AUDITION_REQUEST decodedStable{};
+			const bool wroteStable = Write_Message(stableWriter, stablePlay);
+			CPacketReader stableReader{ stableWriter.Get_Buffer() };
+			testRunner.Require(
+				wroteStable && Read_Message(stableReader, decodedStable) &&
+				0u == stableReader.Get_RemainingSize() &&
+				decodedStable.iRequestSequence == stablePlay.iRequestSequence &&
+				decodedStable.eOperation == stablePlay.eOperation &&
+				0u == decodedStable.iTargetHealthBar &&
+				decodedStable.strBossPlacementId ==
+					stablePlay.strBossPlacementId &&
+				decodedStable.strPatternId == stablePlay.strPatternId,
+				"Valtan Stable-ID Pattern Audition Request Round Trip");
+
+			const auto requestDestinationUnchanged = [](
+				const C2S_VALTAN_AUDITION_REQUEST& value)
+				{
+					return 777u == value.iRequestSequence &&
+						VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE ==
+							value.eOperation &&
+						159u == value.iTargetHealthBar &&
+						"keep-boss" == value.strBossPlacementId &&
+						"KEEP_PATTERN" == value.strPatternId;
+				};
+			const auto makeUnchangedRequest = []()
+				{
+					C2S_VALTAN_AUDITION_REQUEST unchanged{};
+					unchanged.iRequestSequence = 777u;
+					unchanged.eOperation =
+						VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE;
+					unchanged.iTargetHealthBar = 159u;
+					unchanged.strBossPlacementId = "keep-boss";
+					unchanged.strPatternId = "KEEP_PATTERN";
+					return unchanged;
+				};
+			constexpr std::size_t requestFixedBytes = 9u;
+			std::vector<std::uint8_t> truncatedFirst =
+				stableWriter.Get_Buffer();
+			truncatedFirst.resize(
+				requestFixedBytes + sizeof(std::uint16_t) +
+				stablePlay.strBossPlacementId.size() - 1u);
+			CPacketReader truncatedFirstReader{ truncatedFirst };
+			C2S_VALTAN_AUDITION_REQUEST unchangedFirst =
+				makeUnchangedRequest();
+			testRunner.Require(
+				!Read_Message(truncatedFirstReader, unchangedFirst) &&
+				requestDestinationUnchanged(unchangedFirst),
+				"Reject Truncated First Stable ID Without Mutating Valtan Request");
+
+			std::vector<std::uint8_t> truncatedSecond =
+				stableWriter.Get_Buffer();
+			truncatedSecond.pop_back();
+			CPacketReader truncatedSecondReader{ truncatedSecond };
+			C2S_VALTAN_AUDITION_REQUEST unchangedSecond =
+				makeUnchangedRequest();
+			testRunner.Require(
+				!Read_Message(truncatedSecondReader, unchangedSecond) &&
+				requestDestinationUnchanged(unchangedSecond),
+				"Reject Truncated Second Stable ID Without Mutating Valtan Request");
+
+			C2S_VALTAN_AUDITION_REQUEST barredStable = stablePlay;
+			barredStable.iTargetHealthBar = 1u;
+			CPacketWriter barredStableWriter;
+			testRunner.Require(
+				!Write_Message(barredStableWriter, barredStable),
+				"Reject Stable-ID Pattern Audition With A Legacy Index");
+
+			C2S_VALTAN_AUDITION_REQUEST missingPattern = stablePlay;
+			missingPattern.strPatternId.clear();
+			CPacketWriter missingPatternWriter;
+			testRunner.Require(
+				!Write_Message(missingPatternWriter, missingPattern),
+				"Reject Stable-ID Pattern Audition Without A Pattern ID");
+
+			C2S_VALTAN_AUDITION_REQUEST oversizeBoss = stablePlay;
+			oversizeBoss.strBossPlacementId.assign(
+				MAX_STABLE_NETWORK_ID_BYTES + 1u, 'a');
+			C2S_VALTAN_AUDITION_REQUEST oversizePattern = stablePlay;
+			oversizePattern.strPatternId.assign(
+				MAX_STABLE_NETWORK_ID_BYTES + 1u, 'A');
+			CPacketWriter oversizeBossWriter;
+			CPacketWriter oversizePatternWriter;
+			testRunner.Require(
+				!Write_Message(oversizeBossWriter, oversizeBoss) &&
+				!Write_Message(oversizePatternWriter, oversizePattern),
+				"Reject Oversize Stable IDs On Valtan Pattern Audition");
+
+			C2S_VALTAN_AUDITION_REQUEST noncanonicalBoss = stablePlay;
+			noncanonicalBoss.strBossPlacementId = "boss/valtan";
+			C2S_VALTAN_AUDITION_REQUEST noncanonicalPattern = stablePlay;
+			noncanonicalPattern.strPatternId = "VALTAN:DASH_CHARGE";
+			CPacketWriter noncanonicalBossWriter;
+			CPacketWriter noncanonicalPatternWriter;
+			testRunner.Require(
+				!Write_Message(noncanonicalBossWriter, noncanonicalBoss) &&
+				!Write_Message(noncanonicalPatternWriter, noncanonicalPattern),
+				"Reject Noncanonical Stable IDs On Valtan Pattern Audition");
+
+			C2S_VALTAN_AUDITION_REQUEST hiddenIds = request;
+			hiddenIds.strBossPlacementId = stablePlay.strBossPlacementId;
+			hiddenIds.strPatternId = stablePlay.strPatternId;
+			CPacketWriter hiddenIdsWriter;
+			testRunner.Require(
+				!Write_Message(hiddenIdsWriter, hiddenIds),
+				"Reject Stable IDs On A Legacy Valtan Audition Shape");
+		}
+
+		{
 			C2S_VALTAN_AUDITION_REQUEST invalid = request;
 			invalid.iRequestSequence = 0u;
 			CPacketWriter writer;
@@ -2910,6 +3037,15 @@ namespace
 		testRunner.Require(
 			Write_Message(resultWriter, result),
 			"Writer Valtan Audition Result");
+		const std::vector<std::uint8_t> legacyResultGolden{
+			0x09u, 0x00u, 0x00u, 0x00u,
+			0x02u,
+			0x50u, 0x00u, 0x00u, 0x00u,
+			0x01u,
+			0x50u, 0x00u, 0x00u, 0x00u };
+		testRunner.Require(
+			resultWriter.Get_Buffer() == legacyResultGolden,
+			"Preserve Legacy Valtan Audition Result Golden Payload");
 		CPacketReader resultReader{ resultWriter.Get_Buffer() };
 		S2C_VALTAN_AUDITION_RESULT decodedResult{};
 		testRunner.Require(
@@ -2921,6 +3057,91 @@ namespace
 			decodedResult.eResult == result.eResult &&
 			decodedResult.iCurrentHealthBar == result.iCurrentHealthBar,
 			"Valtan Audition Result Round Trip");
+
+		{
+			S2C_VALTAN_AUDITION_RESULT stableResult{};
+			stableResult.iRequestSequence = 32u;
+			stableResult.eOperation =
+				VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+			stableResult.iTargetHealthBar = 0u;
+			stableResult.eResult = VALTAN_AUDITION_RESULT::QUEUED;
+			stableResult.iCurrentHealthBar = 160u;
+			stableResult.strBossPlacementId =
+				"boss.valtan.character-select.lazy";
+			stableResult.strPatternId = "VALTAN_DASH_CHARGE";
+			CPacketWriter stableResultWriter;
+			S2C_VALTAN_AUDITION_RESULT decodedStableResult{};
+			const bool wroteStableResult =
+				Write_Message(stableResultWriter, stableResult);
+			CPacketReader stableResultReader{
+				stableResultWriter.Get_Buffer() };
+			testRunner.Require(
+				wroteStableResult &&
+				Read_Message(stableResultReader, decodedStableResult) &&
+				0u == stableResultReader.Get_RemainingSize() &&
+				decodedStableResult.iRequestSequence ==
+					stableResult.iRequestSequence &&
+				decodedStableResult.eOperation == stableResult.eOperation &&
+				decodedStableResult.eResult == stableResult.eResult &&
+				decodedStableResult.iCurrentHealthBar ==
+					stableResult.iCurrentHealthBar &&
+				decodedStableResult.strBossPlacementId ==
+					stableResult.strBossPlacementId &&
+				decodedStableResult.strPatternId == stableResult.strPatternId,
+				"Valtan Stable-ID Pattern Audition Result Round Trip");
+
+			const auto resultDestinationUnchanged = [](
+				const S2C_VALTAN_AUDITION_RESULT& value)
+				{
+					return 888u == value.iRequestSequence &&
+						VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE ==
+							value.eOperation &&
+						159u == value.iTargetHealthBar &&
+						VALTAN_AUDITION_RESULT::REJECTED_NO_BOSS ==
+							value.eResult &&
+						77u == value.iCurrentHealthBar &&
+						"keep-result-boss" == value.strBossPlacementId &&
+						"KEEP_RESULT_PATTERN" == value.strPatternId;
+				};
+			const auto makeUnchangedResult = []()
+				{
+					S2C_VALTAN_AUDITION_RESULT unchanged{};
+					unchanged.iRequestSequence = 888u;
+					unchanged.eOperation =
+						VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE;
+					unchanged.iTargetHealthBar = 159u;
+					unchanged.eResult =
+						VALTAN_AUDITION_RESULT::REJECTED_NO_BOSS;
+					unchanged.iCurrentHealthBar = 77u;
+					unchanged.strBossPlacementId = "keep-result-boss";
+					unchanged.strPatternId = "KEEP_RESULT_PATTERN";
+					return unchanged;
+				};
+			constexpr std::size_t resultFixedBytes = 14u;
+			std::vector<std::uint8_t> truncatedFirst =
+				stableResultWriter.Get_Buffer();
+			truncatedFirst.resize(
+				resultFixedBytes + sizeof(std::uint16_t) +
+				stableResult.strBossPlacementId.size() - 1u);
+			CPacketReader truncatedFirstReader{ truncatedFirst };
+			S2C_VALTAN_AUDITION_RESULT unchangedFirst =
+				makeUnchangedResult();
+			testRunner.Require(
+				!Read_Message(truncatedFirstReader, unchangedFirst) &&
+				resultDestinationUnchanged(unchangedFirst),
+				"Reject Truncated First Stable ID Without Mutating Valtan Result");
+
+			std::vector<std::uint8_t> truncatedSecond =
+				stableResultWriter.Get_Buffer();
+			truncatedSecond.pop_back();
+			CPacketReader truncatedSecondReader{ truncatedSecond };
+			S2C_VALTAN_AUDITION_RESULT unchangedSecond =
+				makeUnchangedResult();
+			testRunner.Require(
+				!Read_Message(truncatedSecondReader, unchangedSecond) &&
+				resultDestinationUnchanged(unchangedSecond),
+				"Reject Truncated Second Stable ID Without Mutating Valtan Result");
+		}
 
 		{
 			S2C_VALTAN_AUDITION_RESULT rejection = result;

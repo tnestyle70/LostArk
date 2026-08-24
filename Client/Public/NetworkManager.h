@@ -118,6 +118,13 @@ public:
 		std::uint32_t requestSequence,
 		LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
 		std::uint32_t targetHealthBar);
+	/* Stable-ID Server pattern audition. Results use a dedicated queue so the
+	Valtan Arena's legacy transaction consumer cannot drain an Effect Tool
+	request (or vice versa). */
+	bool Send_ValtanPatternAuditionById(
+		std::uint32_t requestSequence,
+		std::string_view bossPlacementId,
+		std::string_view patternId);
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
@@ -129,6 +136,8 @@ public:
 		LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT& message);
 	bool Try_Consume_ValtanAuditionResult(
 		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message);
+	bool Try_Consume_ValtanPatternAuditionByIdResult(
+		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message);
 
 	bool Try_Consume_ReplicationEvent(
 		Client::CLIENT_REPLICATION_EVENT& event);
@@ -136,6 +145,10 @@ public:
 	void Close_ServerConnection();
 
 	[[nodiscard]] bool Is_Connected() const;
+	[[nodiscard]] std::uint64_t Get_WorldInboundGeneration() const
+	{
+		return m_iWorldInboundGeneration;
+	}
 	[[nodiscard]] int Get_LastErrorCode() const;
 	[[nodiscard]] LostArk::Shared::PLAYER_ID Get_LocalPlayerId() const;
 	[[nodiscard]] LostArk::Shared::NET_ENTITY_ID Get_LocalEntityId() const;
@@ -212,6 +225,9 @@ private:
 		m_CharacterClassChangeResults;
 	std::deque<LostArk::Shared::S2C_VALTAN_AUDITION_RESULT>
 		m_ValtanAuditionResults;
+	std::deque<LostArk::Shared::S2C_VALTAN_AUDITION_RESULT>
+		m_ValtanPatternAuditionByIdResults;
+	std::uint64_t m_iWorldInboundGeneration = 1u;
 
 	bool m_hasPendingEnterAccepted = false;
 
