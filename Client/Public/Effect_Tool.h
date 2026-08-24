@@ -323,6 +323,18 @@ private:
 		VALTAN_PRODUCT_EFFECT_CUE_VIEW Cue;
 	};
 
+	/* Effect Tool owns only its stable-ID Server audition transaction.  The
+	   legacy health-bar audition keeps its separate Level-owned result queue. */
+	struct VALTAN_SERVER_PATTERN_REQUEST final
+	{
+		uint32_t iSequence = 0u;
+		uint64_t iWorldInboundGeneration = 0u;
+		std::string strBossPlacementId;
+		std::string strPatternId;
+
+		bool_t Is_Active() const { return 0u != iSequence; }
+	};
+
     struct EFFECT_DATA_FILE_ENTRY final
     {
         std::string strAssetId;
@@ -482,6 +494,12 @@ private:
 		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
 		size_t iCueOrdinal);
+	bool_t Can_PlayValtanServerPattern(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		std::string& strOutReason) const;
+	bool_t Try_PlayValtanServerPattern(
+		const VALTAN_PATTERN_VIEW& Pattern);
+	void Update_ValtanServerPatternAudition();
 	bool_t Matches_ValtanPatternSearch(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const std::string& strSearch) const;
@@ -889,6 +907,10 @@ private:
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
 	std::string m_strValtanPatternTreeStatus;
 	bool_t m_bValtanPatternTreeLoaded = false;
+	VALTAN_SERVER_PATTERN_REQUEST m_PendingValtanServerPatternRequest;
+	uint32_t m_iNextValtanServerPatternRequestSequence = 1u;
+	std::string m_strValtanServerPatternStatusPatternId;
+	std::string m_strValtanServerPatternStatus;
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
     vector<SYNCHRONIZED_ANIMATION_CLIP> m_SynchronizedAnimationClips;

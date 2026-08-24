@@ -839,6 +839,11 @@ namespace LostArk::Shared
 		// ValtanEncounter.json and the Server from the PATTERN rows the
 		// publisher writes in that same document order.
 		PLAY_PATTERN,
+		// Stable-ID pattern audition used by cross-tool Server previews. Unlike
+		// PLAY_PATTERN, this never relies on the Client and Server sharing an
+		// authored vector position: the request names both the already-spawned
+		// boss placement and the pattern owned by its encounter.
+		PLAY_PATTERN_ID,
 		END
 	};
 
@@ -872,6 +877,10 @@ namespace LostArk::Shared
 		VALTAN_AUDITION_OPERATION eOperation =
 			VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
 		std::uint32_t iTargetHealthBar = 0;
+		// Present only on the PLAY_PATTERN_ID wire shape. Every older operation
+		// requires both fields to stay empty and therefore keeps its byte layout.
+		std::string strBossPlacementId;
+		std::string strPatternId;
 	};
 
 	bool Write_Message(
@@ -892,6 +901,10 @@ namespace LostArk::Shared
 		// The bar the boss actually sits on after the Server handled the
 		// request, so a rejected audition still reports the live state.
 		std::uint32_t iCurrentHealthBar = 0;
+		// Exact request echo for the stable-ID result consumer. These strings are
+		// encoded only for PLAY_PATTERN_ID; legacy result frames are unchanged.
+		std::string strBossPlacementId;
+		std::string strPatternId;
 	};
 
 	bool Write_Message(

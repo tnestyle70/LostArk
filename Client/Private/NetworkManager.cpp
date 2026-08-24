@@ -677,6 +677,32 @@ bool CNetworkManager::Send_ValtanAudition(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_ValtanPatternAuditionById(
+	const std::uint32_t requestSequence,
+	const std::string_view bossPlacementId,
+	const std::string_view patternId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_VALTAN_AUDITION_REQUEST message{};
+	message.iRequestSequence = requestSequence;
+	message.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+	message.iTargetHealthBar = 0u;
+	message.strBossPlacementId = std::string{ bossPlacementId };
+	message.strPatternId = std::string{ patternId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEPTED& message)
 {
 	// ���� �ϳ��� �� ���� �Һ��Ͽ� Lobby�� ���� �������� Level�� �ߺ� ��ȯ���� �ʰ� �Ѵ�.
@@ -728,6 +754,16 @@ bool CNetworkManager::Try_Consume_ValtanAuditionResult(
 		return false;
 	message = m_ValtanAuditionResults.front();
 	m_ValtanAuditionResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ValtanPatternAuditionByIdResult(
+	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message)
+{
+	if (m_ValtanPatternAuditionByIdResults.empty())
+		return false;
+	message = std::move(m_ValtanPatternAuditionByIdResults.front());
+	m_ValtanPatternAuditionByIdResults.pop_front();
 	return true;
 }
 
@@ -789,10 +825,14 @@ void CNetworkManager::Fail_Protocol(const int errorCode)
 
 void CNetworkManager::Reset_WorldInboundState()
 {
+	m_iWorldInboundGeneration =
+		(std::numeric_limits<std::uint64_t>::max)() == m_iWorldInboundGeneration ?
+			1u : m_iWorldInboundGeneration + 1u;
 	m_ReplicationEvents.clear();
 	m_WorldEntitySpawnResults.clear();
 	m_CharacterClassChangeResults.clear();
 	m_ValtanAuditionResults.clear();
+	m_ValtanPatternAuditionByIdResults.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
 	m_hasPendingEnterRejected = false;
@@ -1140,7 +1180,10 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			m_iLastErrorCode.store(WSAEINVAL);
 			return;
 		}
-		m_ValtanAuditionResults.push_back(result);
+		if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == result.eOperation)
+			m_ValtanPatternAuditionByIdResults.push_back(std::move(result));
+		else
+			m_ValtanAuditionResults.push_back(std::move(result));
 		break;
 	}
 	case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:

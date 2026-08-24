@@ -7652,6 +7652,192 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 #ifdef _DEBUG
 	{
+		/* Effect Tool names the already-spawned private-room boss and pattern by
+		stable ID. The request resets only that boss, then CValtanBrain starts the
+		exact product pattern on the following fixed tick. */
+		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		constexpr SESSION_ID TOOL_SESSION = 4343u;
+		constexpr PLAYER_ID TOOL_PLAYER = 79u;
+		constexpr NET_ENTITY_ID TOOL_PLAYER_ENTITY = 902u;
+		constexpr NET_ENTITY_ID TOOL_BOSS_ENTITY = 904u;
+		const std::string bossPlacementId =
+			"boss.valtan.character-select.lazy";
+		const WORLD_BOOTSTRAP_PLACEMENT* placement =
+			room.Find_Placement(bossPlacementId);
+		SERVER_WORLD_ENTITY stagedBoss{};
+		const bool builtBoss = room.Is_Ready() && nullptr != placement &&
+			!placement->isEnabled &&
+			room.Build_WorldEntity(
+				*placement, TOOL_BOSS_ENTITY, stagedBoss);
+		if (builtBoss)
+			room.m_WorldEntities.push_back(std::move(stagedBoss));
+		SERVER_WORLD_ENTITY* boss =
+			room.Find_AuditionBoss(bossPlacementId);
+
+		SERVER_PLAYER player{};
+		player.iSessionId = TOOL_SESSION;
+		player.iPlayerId = TOOL_PLAYER;
+		player.iNetEntityId = TOOL_PLAYER_ENTITY;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = 1000u;
+		player.iMaximumHp = 1000u;
+		player.isCombatReady = true;
+		if (nullptr != boss)
+		{
+			player.fPositionX = boss->fPositionX + 2.f;
+			player.fPositionY = boss->fPositionY;
+			player.fPositionZ = boss->fPositionZ;
+			boss->iPatternSequence = 9u;
+			boss->BossCombat.iStateRevision = 15u;
+			boss->iCurrentHp = 1u;
+			boss->eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+			boss->strPatternId = "previous.pattern";
+		}
+		room.m_Players.emplace(TOOL_PLAYER, player);
+		room.m_PlayerIdBySessionId.emplace(TOOL_SESSION, TOOL_PLAYER);
+		room.m_PlayerIdByEntityId.emplace(
+			TOOL_PLAYER_ENTITY, TOOL_PLAYER);
+		/* The legacy Level panel and Effect Tool own independent sequence
+		counters. A high legacy sequence must not make the Tool's first request
+		look stale. */
+		room.m_ValtanAuditionSequenceBySessionId.emplace(TOOL_SESSION, 100u);
+
+		C2S_VALTAN_AUDITION_REQUEST blocked{};
+		blocked.iRequestSequence = 1u;
+		blocked.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+		blocked.strBossPlacementId = bossPlacementId;
+		blocked.strPatternId = "VALTAN_ARENA_BREAK_109";
+		std::uint32_t reportedBar = 0u;
+		const VALTAN_AUDITION_RESULT blockedResult =
+			room.Evaluate_ValtanAudition(
+				TOOL_SESSION, blocked, reportedBar);
+		const bool blockedWithoutMutation = nullptr != boss &&
+			VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE ==
+				blockedResult &&
+			1u == boss->iCurrentHp && 9u == boss->iPatternSequence &&
+			"previous.pattern" == boss->strPatternId &&
+			boss->PendingPatternIds.empty();
+
+		C2S_VALTAN_AUDITION_REQUEST dash = blocked;
+		dash.iRequestSequence = 2u;
+		dash.strPatternId = "VALTAN_DASH_CHARGE";
+		const VALTAN_AUDITION_RESULT queued =
+			room.Evaluate_ValtanAudition(
+				TOOL_SESSION, dash, reportedBar);
+		boss = room.Find_AuditionBoss(bossPlacementId);
+		const bool resetAndQueued = nullptr != boss &&
+			VALTAN_AUDITION_RESULT::QUEUED == queued &&
+			TOOL_BOSS_ENTITY == boss->iNetEntityId &&
+			9u == boss->iPatternSequence &&
+			boss->BossCombat.iStateRevision > 15u &&
+			boss->iCurrentHp == boss->iMaximumHp &&
+			SERVER_ENTITY_ACTION::IDLE == boss->eAction &&
+			boss->strPatternId.empty() &&
+			1u == boss->PendingPatternIds.size() &&
+			"VALTAN_DASH_CHARGE" == boss->PendingPatternIds.front();
+		const VALTAN_AUDITION_RESULT duplicate =
+			room.Evaluate_ValtanAudition(
+				TOOL_SESSION, dash, reportedBar);
+		const bool duplicateDidNotQueueAgain = nullptr != boss &&
+			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED == duplicate &&
+			1u == boss->PendingPatternIds.size();
+
+		room.Tick(1.f / 30.f);
+		boss = room.Find_AuditionBoss(bossPlacementId);
+		tests.Require(
+			builtBoss && blockedWithoutMutation && resetAndQueued &&
+			duplicateDidNotQueueAgain && nullptr != boss &&
+			boss->PendingPatternIds.empty() &&
+			"VALTAN_DASH_CHARGE" == boss->strPatternId &&
+			10u == boss->iPatternSequence &&
+			SERVER_ENTITY_ACTION::PATTERN_WINDUP == boss->eAction,
+			"Play the stable-ID Dash Charge through the Character Select Server boss while blocking arena-only patterns");
+	}
+
+	{
+		/* A shared Valtan room can receive commands from two sessions in one
+		   command-drain tick. The first stable-ID request owns its pending/active
+		   occurrence; the second verdict is consumed but cannot reset it away. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr SESSION_ID FIRST_SESSION = 4344u;
+		constexpr SESSION_ID SECOND_SESSION = 4345u;
+		constexpr PLAYER_ID FIRST_PLAYER = 81u;
+		constexpr PLAYER_ID SECOND_PLAYER = 82u;
+		const bool activated = room.Is_Ready() &&
+			room.Activate_Encounter("boss.valtan.center");
+		SERVER_WORLD_ENTITY* boss = room.Find_AuditionBoss();
+
+		SERVER_PLAYER first{};
+		first.iSessionId = FIRST_SESSION;
+		first.iPlayerId = FIRST_PLAYER;
+		first.iNetEntityId = 905u;
+		first.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		first.iCurrentHp = 5500u;
+		first.iMaximumHp = 5500u;
+		first.isCombatReady = true;
+		if (nullptr != boss)
+		{
+			first.fPositionX = boss->fPositionX + 2.f;
+			first.fPositionY = boss->fPositionY;
+			first.fPositionZ = boss->fPositionZ;
+		}
+		SERVER_PLAYER second = first;
+		second.iSessionId = SECOND_SESSION;
+		second.iPlayerId = SECOND_PLAYER;
+		second.iNetEntityId = 906u;
+		if (nullptr != boss)
+			second.fPositionX = boss->fPositionX + 3.f;
+		room.m_Players.emplace(FIRST_PLAYER, first);
+		room.m_Players.emplace(SECOND_PLAYER, second);
+		room.m_PlayerIdBySessionId.emplace(FIRST_SESSION, FIRST_PLAYER);
+		room.m_PlayerIdBySessionId.emplace(SECOND_SESSION, SECOND_PLAYER);
+		room.m_PlayerIdByEntityId.emplace(first.iNetEntityId, FIRST_PLAYER);
+		room.m_PlayerIdByEntityId.emplace(second.iNetEntityId, SECOND_PLAYER);
+
+		C2S_VALTAN_AUDITION_REQUEST firstRequest{};
+		firstRequest.iRequestSequence = 1u;
+		firstRequest.eOperation =
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+		firstRequest.strBossPlacementId = "boss.valtan.center";
+		firstRequest.strPatternId = "VALTAN_DASH_CHARGE";
+		C2S_VALTAN_AUDITION_REQUEST secondRequest = firstRequest;
+		secondRequest.strPatternId = "VALTAN_WHIRLWIND";
+		std::uint32_t reportedBar = 0u;
+		const VALTAN_AUDITION_RESULT firstResult =
+			room.Evaluate_ValtanAudition(
+				FIRST_SESSION, firstRequest, reportedBar);
+		const VALTAN_AUDITION_RESULT secondResult =
+			room.Evaluate_ValtanAudition(
+				SECOND_SESSION, secondRequest, reportedBar);
+		boss = room.Find_AuditionBoss();
+		const bool firstStillOwnsPending = nullptr != boss &&
+			VALTAN_AUDITION_RESULT::QUEUED == firstResult &&
+			VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE ==
+				secondResult &&
+			1u == boss->PendingPatternIds.size() &&
+			"VALTAN_DASH_CHARGE" == boss->PendingPatternIds.front() &&
+			CGameRoom::VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING ==
+				room.m_ValtanPatternIdAudition.ePhase &&
+			FIRST_SESSION ==
+				room.m_ValtanPatternIdAudition.iOwnerSessionId &&
+			1u == room.m_ValtanPatternIdAuditionSequenceBySessionId.at(
+				SECOND_SESSION);
+
+		room.Tick(1.f / 30.f);
+		boss = room.Find_AuditionBoss();
+		tests.Require(
+			activated && firstStillOwnsPending && nullptr != boss &&
+			boss->PendingPatternIds.empty() &&
+			"VALTAN_DASH_CHARGE" == boss->strPatternId &&
+			SERVER_ENTITY_ACTION::PATTERN_WINDUP == boss->eAction &&
+			CGameRoom::VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
+				room.m_ValtanPatternIdAudition.ePhase &&
+			FIRST_SESSION ==
+				room.m_ValtanPatternIdAudition.iOwnerSessionId,
+			"Keep the first shared-room stable-ID pattern when two sessions request different patterns before the fixed tick");
+	}
+
+	{
 		/* The ordered driver owns a fresh arena from its first request. Keep the
 		fixture on the room tick boundary: the test observes the stable patterns
 		the brain actually starts instead of advancing the private driver by hand. */

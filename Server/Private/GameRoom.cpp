@@ -154,6 +154,31 @@ namespace
 	}
 #ifdef _DEBUG
 	constexpr std::uint32_t CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS = 90u;
+	constexpr const char* VALTAN_ARENA_AUDITION_PLACEMENT_ID =
+		"boss.valtan.center";
+	constexpr const char* CHARACTER_SELECT_AUDITION_PLACEMENT_ID =
+		"boss.valtan.character-select.lazy";
+	constexpr std::array<const char*, 6u>
+		CHARACTER_SELECT_ENVIRONMENT_DEPENDENT_PATTERNS{
+			"VALTAN_ARMOR_BREAK_OPENING",
+			"VALTAN_ENTRANCE_WHIRLWIND",
+			"VALTAN_ARENA_BREAK_109",
+			"VALTAN_ARENA_BREAK_84",
+			"VALTAN_ARENA_BREAK_33",
+			"VALTAN_FOUR_PILLARS_105" };
+
+	bool Is_CharacterSelectEnvironmentDependentPattern(
+		const std::string& patternId)
+	{
+		return std::any_of(
+			CHARACTER_SELECT_ENVIRONMENT_DEPENDENT_PATTERNS.begin(),
+			CHARACTER_SELECT_ENVIRONMENT_DEPENDENT_PATTERNS.end(),
+			[&patternId](const char* blockedPatternId)
+			{
+				return patternId == blockedPatternId;
+			});
+	}
+
 	constexpr const char* WALL_ATTACK_PATTERN_ID = "VALTAN_DOWN_SMASH";
 	constexpr const char* FINAL_ARENA_PATTERN_ID = "VALTAN_ARENA_BREAK_109";
 	constexpr const char* FINAL_ARENA_STAGE_ID = "IMPACT";
@@ -1156,6 +1181,7 @@ void LostArk::Server::CGameRoom::Leave(
 	}
 #endif
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
+	m_ValtanPatternIdAuditionSequenceBySessionId.erase(sessionId);
 	const auto sessionPlayerIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionPlayerIter == m_PlayerIdBySessionId.end())
 	{
@@ -2179,14 +2205,24 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 LostArk::Server::SERVER_WORLD_ENTITY*
 LostArk::Server::CGameRoom::Find_AuditionBoss()
 {
+	return Find_AuditionBoss("boss.valtan.center");
+}
+
+LostArk::Server::SERVER_WORLD_ENTITY*
+LostArk::Server::CGameRoom::Find_AuditionBoss(
+	const std::string& placementId)
+{
+	if (placementId.empty())
+		return nullptr;
 	const auto found = std::find_if(
 		m_WorldEntities.begin(),
 		m_WorldEntities.end(),
-		[](const SERVER_WORLD_ENTITY& entity)
+		[&placementId](const SERVER_WORLD_ENTITY& entity)
 		{
 			return WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind &&
-				"boss.valtan.center" == entity.strPlacementId &&
-				"BOSS_VALTAN" == entity.strArchetypeId;
+				placementId == entity.strPlacementId &&
+				"BOSS_VALTAN" == entity.strArchetypeId &&
+				"ENCOUNTER_VALTAN" == entity.strEncounterId;
 		});
 	return m_WorldEntities.end() == found ? nullptr : &*found;
 }
@@ -2219,21 +2255,81 @@ bool LostArk::Server::CGameRoom::Has_EngagedAuditionPlayer(
 	return false;
 }
 
-bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
-	SERVER_WORLD_ENTITY& boss,
+#ifdef _DEBUG
+bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
+{
+	if (VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE ==
+		m_ValtanPatternIdAudition.ePhase)
+	{
+		return false;
+	}
+
+	const auto boss = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[this](const SERVER_WORLD_ENTITY& entity)
+		{
+			return entity.iNetEntityId ==
+					m_ValtanPatternIdAudition.iBossEntityId &&
+				entity.strPlacementId ==
+					m_ValtanPatternIdAudition.strBossPlacementId &&
+				WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind &&
+				"BOSS_VALTAN" == entity.strArchetypeId &&
+				"ENCOUNTER_VALTAN" == entity.strEncounterId;
+		});
+	if (m_WorldEntities.end() == boss || 0u == boss->iCurrentHp ||
+		SERVER_ENTITY_ACTION::DEAD == boss->eAction)
+	{
+		m_ValtanPatternIdAudition = {};
+		return false;
+	}
+
+	if (boss->iPatternSequence ==
+			m_ValtanPatternIdAudition.iExpectedPatternSequence &&
+		boss->strPatternId == m_ValtanPatternIdAudition.strPatternId)
+	{
+		m_ValtanPatternIdAudition.ePhase =
+			VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE;
+		return true;
+	}
+	if (boss->PendingPatternIds.end() != std::find(
+			boss->PendingPatternIds.begin(), boss->PendingPatternIds.end(),
+			m_ValtanPatternIdAudition.strPatternId))
+	{
+		m_ValtanPatternIdAudition.ePhase =
+			VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING;
+		return true;
+	}
+
+	/* The selected occurrence finished, was removed by another authoritative
+	   reset, or no longer owns the expected sequence. A naturally running boss
+	   pattern was never registered here, so it cannot block the first request. */
+	m_ValtanPatternIdAudition = {};
+	return false;
+}
+#endif
+
+bool LostArk::Server::CGameRoom::Build_ValtanBossOnlyAuditionReset(
+	const SERVER_WORLD_ENTITY& boss,
 	const std::uint32_t resetTick,
+	SERVER_WORLD_ENTITY& outBoss,
 	std::string& status)
 {
-	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA != m_eWorldId ||
-		0u == resetTick || !m_WorldDestructionRuntime.Is_Initialized())
+	using LostArk::Shared::WORLD_ID;
+	if ((WORLD_ID::VALTAN_ARENA != m_eWorldId &&
+		 WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId) ||
+		0u == resetTick || WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind ||
+		"BOSS_VALTAN" != boss.strArchetypeId ||
+		"ENCOUNTER_VALTAN" != boss.strEncounterId)
 	{
-		status = "Valtan audition reset is unavailable";
+		status = "Valtan boss-only audition reset is unavailable";
 		return false;
 	}
 	const WORLD_BOOTSTRAP_PLACEMENT* placement =
 		Find_Placement(boss.strPlacementId);
-	if (nullptr == placement ||
-		WORLD_BOOTSTRAP_KIND::BOSS != placement->eKind)
+	if (nullptr == placement || placement->isEnabled ||
+		WORLD_BOOTSTRAP_KIND::BOSS != placement->eKind ||
+		placement->strArchetypeId != boss.strArchetypeId ||
+		placement->strEncounterId != boss.strEncounterId)
 	{
 		status = "Valtan audition boss placement is unavailable";
 		return false;
@@ -2245,13 +2341,10 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 		status = m_strStatus;
 		return false;
 	}
-	/* Pattern sequence is an edge identity on the Client. Preserve the live
-	   monotonic base so Reset + Play can never reuse a completed camera key. */
+	/* Both fields are Client edge identities. A reset creates fresh state but
+	   does not rewind either stream, so the pattern queued after this reset and
+	   the reset combat frame remain observable after any earlier audition. */
 	stagedBoss.iPatternSequence = boss.iPatternSequence;
-	/* The boss combat revision is the same kind of monotonic edge identity. A
-	   Client drops any boss combat frame whose revision moved backwards, and the
-	   HP that frame carries goes down with it, so a reset continues the live
-	   sequence instead of restarting it at one. */
 	if (stagedBoss.BossCombat.iStateRevision <=
 		boss.BossCombat.iStateRevision)
 	{
@@ -2260,10 +2353,56 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 				boss.BossCombat.iStateRevision ?
 			1u : boss.BossCombat.iStateRevision + 1u;
 	}
-	/* A Debug audition asks for one exact pattern, so the encounter intro is
-	   staged as already consumed and the requested pattern is the first sequence
-	   the user sees. Only the Entrance operation puts the ledger back. */
 	stagedBoss.bIntroPatternConsumed = true;
+	outBoss = std::move(stagedBoss);
+	status = "Valtan boss-only audition reset staged";
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Reset_ValtanBossOnlyAuditionState(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t resetTick,
+	std::string& status)
+{
+	SERVER_WORLD_ENTITY stagedBoss{};
+	if (!Build_ValtanBossOnlyAuditionReset(
+			boss, resetTick, stagedBoss, status))
+	{
+		return false;
+	}
+
+	boss = std::move(stagedBoss);
+	/* Character Select has no Valtan wall, floor or prop runtime. Cancel only
+	   objects emitted by this boss; the private player's active combat objects
+	   belong to a different source and survive the audition reset. */
+	m_CombatObjectRuntime.Cancel_Source(boss.iNetEntityId);
+	m_TickBossCombatEvents.clear();
+	m_iValtanAuditionArmedHealthBar = 0u;
+#ifdef _DEBUG
+	m_ValtanPatternIdAudition = {};
+	m_ValtanOrderedAudition = {};
+#endif
+	status = "Valtan boss-only audition reset completed";
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t resetTick,
+	std::string& status)
+{
+	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		0u == resetTick || !m_WorldDestructionRuntime.Is_Initialized())
+	{
+		status = "Valtan audition reset is unavailable";
+		return false;
+	}
+	SERVER_WORLD_ENTITY stagedBoss{};
+	if (!Build_ValtanBossOnlyAuditionReset(
+			boss, resetTick, stagedBoss, status))
+	{
+		return false;
+	}
 
 	CWorldDestructionRuntime stagedDestruction = m_WorldDestructionRuntime;
 	if (!stagedDestruction.Reset(status, resetTick))
@@ -2291,6 +2430,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	m_CombatObjectRuntime.Reset();
 	m_iValtanAuditionArmedHealthBar = 0u;
 #ifdef _DEBUG
+	m_ValtanPatternIdAudition = {};
 	m_ValtanOrderedAudition = {};
 #endif
 	/* The reset put every floor sector back, so a body that was still falling
@@ -2827,15 +2967,23 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 	std::uint32_t& currentHealthBar = outCurrentHealthBar;
 	const auto evaluate = [&]() -> VALTAN_AUDITION_RESULT
 	{
-		if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		const bool isPatternIdPlay =
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == request.eOperation;
+		const bool isValtanArena = WORLD_ID::VALTAN_ARENA == m_eWorldId;
+		const bool isCharacterSelectArena =
+			WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId;
+		if ((!isPatternIdPlay && !isValtanArena) ||
+			(isPatternIdPlay && !isValtanArena && !isCharacterSelectArena) ||
 			!m_PlayerIdBySessionId.contains(sessionId))
 		{
 			return VALTAN_AUDITION_RESULT::REJECTED_WRONG_WORLD;
 		}
-		const auto handled =
-			m_ValtanAuditionSequenceBySessionId.find(sessionId);
+		auto& handledSequences = isPatternIdPlay ?
+			m_ValtanPatternIdAuditionSequenceBySessionId :
+			m_ValtanAuditionSequenceBySessionId;
+		const auto handled = handledSequences.find(sessionId);
 		if (0u == request.iRequestSequence ||
-			(m_ValtanAuditionSequenceBySessionId.end() != handled &&
+			(handledSequences.end() != handled &&
 			 !Is_NewerSequence(request.iRequestSequence, handled->second)))
 		{
 			return VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED;
@@ -2843,8 +2991,137 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		/* A verdict finishes this request identity, including a rejection. The
 		Client may retry the same sequence while its response is in flight; it
 		must never become executable later merely because room state changed. */
-		m_ValtanAuditionSequenceBySessionId.insert_or_assign(
+		handledSequences.insert_or_assign(
 			sessionId, request.iRequestSequence);
+		if (Refresh_ValtanPatternIdAuditionState())
+		{
+			m_strStatus = "Valtan stable-ID pattern audition is already "
+				"pending or active: " +
+				m_ValtanPatternIdAudition.strPatternId;
+			return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+		}
+		if (isPatternIdPlay)
+		{
+			if (0u != request.iTargetHealthBar ||
+				request.strBossPlacementId.empty() || request.strPatternId.empty())
+			{
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			const char* expectedPlacementId = isValtanArena ?
+				VALTAN_ARENA_AUDITION_PLACEMENT_ID :
+				CHARACTER_SELECT_AUDITION_PLACEMENT_ID;
+			if (request.strBossPlacementId != expectedPlacementId)
+				return VALTAN_AUDITION_RESULT::REJECTED_NO_BOSS;
+
+			SERVER_WORLD_ENTITY* boss =
+				Find_AuditionBoss(request.strBossPlacementId);
+			if (nullptr == boss)
+				return VALTAN_AUDITION_RESULT::REJECTED_NO_BOSS;
+			currentHealthBar = CValtanBrain::Calculate_HealthBar(*boss);
+			if (0u == boss->iCurrentHp ||
+				SERVER_ENTITY_ACTION::DEAD == boss->eAction)
+			{
+				return VALTAN_AUDITION_RESULT::REJECTED_BOSS_DEAD;
+			}
+			const std::vector<BOSS_PATTERN_DEFINITION>* patterns =
+				m_GameplayCatalog.Find_BossPatterns(boss->strEncounterId);
+			if (nullptr == patterns || patterns->end() == std::find_if(
+					patterns->begin(), patterns->end(),
+					[&request](const BOSS_PATTERN_DEFINITION& pattern)
+					{
+						return pattern.strPatternId == request.strPatternId;
+					}))
+			{
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			if (isCharacterSelectArena &&
+				Is_CharacterSelectEnvironmentDependentPattern(
+					request.strPatternId))
+			{
+				m_strStatus =
+					"Character Select cannot audition an arena-environment pattern";
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			if (VALTAN_ORDERED_AUDITION_PHASE::INACTIVE !=
+				m_ValtanOrderedAudition.ePhase)
+			{
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+
+			/* Valtan Arena keeps its existing one-click bait placement. Character
+			   Select has no raid trigger/bait contract and therefore requires its
+			   private-room player to already be engaged with the spawned boss. */
+			if (isValtanArena)
+			{
+				const auto playerId = m_PlayerIdBySessionId.find(sessionId);
+				if (m_PlayerIdBySessionId.end() == playerId)
+					return VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+				const auto player = m_Players.find(playerId->second);
+				if (m_Players.end() == player || 0u == player->second.iCurrentHp)
+					return VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+				player->second.isCombatReady = true;
+				if (!m_ServerTriggerSystem.Place_PlayerAtValtanAuditionBait(
+						player->second,
+						0u == m_iServerTick ? 1u : m_iServerTick))
+				{
+					return VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+				}
+			}
+			if (!Has_EngagedAuditionPlayer(*boss))
+				return VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+
+			const std::uint32_t resetTick =
+				0u == m_iServerTick ? 1u : m_iServerTick;
+			std::string resetStatus;
+			if (isCharacterSelectArena)
+			{
+				/* Preflight the spawn reset before mutating the live boss. This also
+				   proves the private-room player remains engaged at the canonical
+				   placement after a previous moving pattern displaced the boss. */
+				SERVER_WORLD_ENTITY resetProbe{};
+				if (!Build_ValtanBossOnlyAuditionReset(
+						*boss, resetTick, resetProbe, resetStatus))
+				{
+					m_strStatus = std::move(resetStatus);
+					return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+				}
+				if (!Has_EngagedAuditionPlayer(resetProbe))
+					return VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+				if (!Reset_ValtanBossOnlyAuditionState(
+						*boss, resetTick, resetStatus))
+				{
+					m_strStatus = std::move(resetStatus);
+					return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+				}
+			}
+			else if (!Reset_ValtanAuditionState(
+					*boss, resetTick, resetStatus))
+			{
+				m_strStatus = std::move(resetStatus);
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			if (!Has_EngagedAuditionPlayer(*boss))
+				return VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+
+			boss->bIntroPatternConsumed = true;
+			boss->PendingPatternIds.push_back(request.strPatternId);
+			m_ValtanPatternIdAudition.ePhase =
+				VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING;
+			m_ValtanPatternIdAudition.iOwnerSessionId = sessionId;
+			m_ValtanPatternIdAudition.iBossEntityId = boss->iNetEntityId;
+			m_ValtanPatternIdAudition.iExpectedPatternSequence =
+				(std::numeric_limits<std::uint32_t>::max)() ==
+					boss->iPatternSequence ?
+				1u : boss->iPatternSequence + 1u;
+			m_ValtanPatternIdAudition.strBossPlacementId =
+				boss->strPlacementId;
+			m_ValtanPatternIdAudition.strPatternId = request.strPatternId;
+			m_iValtanAuditionArmedHealthBar = 0u;
+			currentHealthBar = CValtanBrain::Calculate_HealthBar(*boss);
+			m_strStatus = "Valtan pattern ID audition queued: " +
+				request.strPatternId;
+			return VALTAN_AUDITION_RESULT::QUEUED;
+		}
 		const bool isPillarCyclePlay =
 			VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE == request.eOperation;
 		const bool isWallAttackPlay =
@@ -3677,6 +3954,8 @@ bool LostArk::Server::CGameRoom::Send_ValtanAuditionResult(
 	message.iTargetHealthBar = request.iTargetHealthBar;
 	message.eResult = result;
 	message.iCurrentHealthBar = currentHealthBar;
+	message.strBossPlacementId = request.strBossPlacementId;
+	message.strPatternId = request.strPatternId;
 	CPacketWriter writer;
 	return nullptr != session && Write_Message(writer, message) &&
 		session->Send_Frame(
@@ -4229,6 +4508,10 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	m_TickDamageEvents.clear();
 	m_TickBossCombatEvents.clear();
 	m_iNextBossCombatEventSequence = 1u;
+	m_ValtanPatternIdAuditionSequenceBySessionId.clear();
+#ifdef _DEBUG
+	m_ValtanPatternIdAudition = {};
+#endif
 	m_strStatus = "Replayable arena reset after the room became empty";
 	return true;
 }
@@ -5993,4 +6276,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		Broadcast_WorldEntityDespawned(iter->iNetEntityId);
 		iter = m_WorldEntities.erase(iter);
 	}
+#ifdef _DEBUG
+	(void)Refresh_ValtanPatternIdAuditionState();
+#endif
 }
