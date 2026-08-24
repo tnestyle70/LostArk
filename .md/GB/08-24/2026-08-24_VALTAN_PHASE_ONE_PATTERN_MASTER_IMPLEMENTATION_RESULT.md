@@ -68,7 +68,7 @@ counter reaction action 중 하나라도 어긋나면 기존 view를 유지하�
 
 | Pattern | Stage 시간 | endPolicy / repeat | 구현된 핵심 계약 |
 |---|---|---|---|
-| `VALTAN_WHIRLWIND` | WINDUP 1333 / SPIN 1200 / RECOVERY 1467ms | LOOP / LOOP / LOOP, 모두 x1 | 전체 4000ms다. 원작 단발 휠윈드 선택을 기준으로 SPIN을 1.2초로 고정했고 0/350/700/1050ms 네 번의 Server 판정을 유지한다. |
+| `VALTAN_WHIRLWIND` | WINDUP 1333 / SPIN 1200 / RECOVERY 1467ms | LOOP / EXACT / LOOP, 모두 x1 | 전체 4000ms다. SPIN은 533ms 원본 window를 `playRate=0.4441666667`, 비반복 단일 패스로 정확히 1.2초 재생하고 0/350/700/1050ms 네 번의 Server 판정을 유지한다. |
 | `VALTAN_DASH_CHARGE` | WINDUP 3650 / CHARGE 500 / GROGGY 5000 / RECOVERY 900 / PART_BREAK 1400ms | EXACT x3 / EXACT / LOOP / EXACT / LOOP | WINDUP은 `repeatCount: 3`과 현행 세 source cut 600+600+2450ms를 함께 명시한다. wall contact, timeout, part destroyed를 branch graph로 선택한다. |
 | `VALTAN_FOUR_SLASH` | WINDUP 400 / SLASHES 3500 / SPIN 3167 / RECOVERY 800ms | LOOP / HOLD / HOLD / LOOP, 모두 x1 | 분리됐던 TRIPLE/ROTATION을 한 pattern으로 재결합했다. Server contact는 SLASHES 세 번과 SPIN 한 번, 총 네 번이다. |
 | `VALTAN_FIST_IN_OUT` | WINDUP 1500 / INNER 2600 / OUTER 800 / RECOVERY 800ms | LOOP / LOOP / EXACT / EXACT, 모두 x1 | Server 판정은 INNER circle 0~7m와 OUTER ring 7~16m로 분리하고, 합성 도넛 visual은 independent library entry로 연다. |
@@ -323,7 +323,7 @@ publisher PASS를 근거로 한다. Release와 사용자 Client visual gate는 �
 Server 재시작 뒤 사용자가 다음을 직접 확인해야 한다.
 
 1. Animation Tool의 `Valtan Pattern Master (Authoritative)`에서 일곱 pattern과 위 stage 시간이 같은지 확인한다.
-2. 휠윈드 전체 timeline에서 SPIN이 1.2초이고 두 body occurrence와 Effect Revolution이 실제로 회전하는지
+2. 휠윈드 전체 timeline에서 SPIN이 1.2초이고 단일 body occurrence와 Effect Revolution이 실제로 회전하는지
    확인한다.
 3. 돌진 normal / wall-groggy / part-break path에서 WINDUP 세 occurrence, 실제 전진 이동, 그로기와 회복
    animation 순서가 맞는지 확인한다.

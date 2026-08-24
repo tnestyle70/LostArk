@@ -52,7 +52,7 @@ Effect 사용 위치의 공동 authoring 정본으로 만든다. 기존 Server/C
 
 ### G3. Animation/Effect projection
 
-- WHIRLWIND SPIN 1200ms와 두 회전 play rate 정렬
+- WHIRLWIND SPIN 1200ms와 533ms 원본 window의 단일 패스 EXACT play rate 정렬
 - FOUR_SLASH의 두 body clip과 세 Effect cue를 한 pattern으로 결합
 - HIGH_JUMP AIRBORNE/axe life 6000ms 정렬
 - ARENA_BREAK RECOVERY에 ledge-roar end clip과 recovery Effect cue 연결

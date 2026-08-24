@@ -76,7 +76,7 @@ private:
 	void Update_AuditionTransaction();
 	bool_t Submit_Audition(
 		LostArk::Shared::VALTAN_AUDITION_OPERATION operation);
-	void Request_OrderedAuditionStop(bool_t restartAfterStop);
+	bool_t Load_AuditionTimeline();
 	struct AUDITION_PENDING_REQUEST final
 	{
 		uint32_t iSequence = 0u;
@@ -91,9 +91,26 @@ private:
 			return 0u != iSequence;
 		}
 	};
-	/* One ordered chapter run over the existing audition operations. It resets
-	once at the entrance and then only crosses the authored bars, so the
-	environment stays cumulative the way the recording shows it. */
+	struct AUDITION_TIMELINE_ACTION final
+	{
+		std::string strPatternId;
+		uint32_t iRepeat = 0u;
+	};
+	struct AUDITION_TIMELINE_ROW final
+	{
+		std::string strRowId;
+		uint32_t iCommandId = 0u;
+		uint32_t iOrdinal = 0u;
+		uint32_t iSectionHealthBar = 0u;
+		std::string strEntryType;
+		std::vector<AUDITION_TIMELINE_ACTION> PatternActions;
+		std::string strArenaState;
+		std::string strPropState;
+		std::string strDisplayLabel;
+	};
+	/* A separate developer helper can still cross several authored health bars
+	without resetting between them. The selectable fight timeline above it is a
+	Server-owned one-row audition and never uses this Client-side queue. */
 	struct ENVIRONMENT_TIMELINE_STEP final
 	{
 		LostArk::Shared::VALTAN_AUDITION_OPERATION eOperation =
@@ -176,11 +193,12 @@ private:
 	document order, so the Debug browser can play a NORMAL pattern no health
 	bar owns. */
 	size_t m_iSelectedAuditionPatternIndex = 0u;
+	std::vector<AUDITION_TIMELINE_ROW> m_AuditionTimelineRows;
+	size_t m_iSelectedAuditionTimelineRowIndex = 0u;
+	bool_t m_bAuditionTimelineLoadAttempted = false;
+	std::string m_strAuditionTimelineStatus;
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;
-	bool_t m_bOrderedAuditionActive = false;
-	bool_t m_bStopAuditionQueued = false;
-	bool_t m_bRestartOrderedAfterStop = false;
 	std::string m_strAuditionStatus;
 	std::vector<ENVIRONMENT_TIMELINE_STEP> m_EnvironmentTimeline;
 	size_t m_iEnvironmentTimelineStep = 0u;

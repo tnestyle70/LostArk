@@ -1019,6 +1019,8 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.reactive.parry.slash.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.reactive.parry.stance.clip-01.effect.json" />
@@ -2529,6 +2531,7 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34640.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-denominator.checkpoint.json" />
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-four-pillars-additive-receipt.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-materialization-receipt.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-successor-lineage-receipt.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.legacy-v0-carrier-migration-inventory.v1.json" />

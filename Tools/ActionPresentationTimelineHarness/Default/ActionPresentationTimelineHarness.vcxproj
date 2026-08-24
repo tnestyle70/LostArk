@@ -55,7 +55,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\Engine\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -72,7 +72,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\Engine\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -87,6 +87,18 @@
     <ClCompile Include="..\Private\ActionPresentationTimelineHarness.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp">
       <Link>Client\ActionPresentationTimeline.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
+      <Link>Client\DataJson.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\EncounterPatternReference.cpp">
+      <Link>Client\EncounterPatternReference.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraController.cpp">
+      <Link>Client\ValtanCinematicCameraController.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraDocument.cpp">
+      <Link>Client\ValtanCinematicCameraDocument.cpp</Link>
     </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

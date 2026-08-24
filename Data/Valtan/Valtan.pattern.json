@@ -216,7 +216,7 @@
           "actions": [],
           "branches": [],
           "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
+            "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
@@ -224,9 +224,9 @@
                 "clip": "mesh_att_battle_20_03",
                 "mappingBasis": "PROJECT_AUTHORED",
                 "sourceStartMs": 0,
-                "playMs": 0,
-                "playRate": 0.888888889,
-                "repeatUntilStageEnd": true
+                "playMs": 533,
+                "playRate": 0.4441666667,
+                "repeatUntilStageEnd": false
               }
             ]
           },

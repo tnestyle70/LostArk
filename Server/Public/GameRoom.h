@@ -191,51 +191,64 @@ namespace LostArk::Server
 
 		bool Refresh_ValtanPatternIdAuditionState();
 
-		enum class VALTAN_ORDERED_AUDITION_PHASE : std::uint8_t
+		enum class VALTAN_TIMELINE_AUDITION_PHASE : std::uint8_t
 		{
 			INACTIVE,
+			WAITING_ENVIRONMENT,
 			READY,
 			WAITING_PATTERN_START,
 			WAITING_PATTERN_FINISH,
-			PAUSE,
 			COMPLETED_HOLD,
 			FAILED_HOLD
 		};
 
-		struct VALTAN_ORDERED_AUDITION_STATE final
+		struct VALTAN_TIMELINE_AUDITION_STATE final
 		{
-			VALTAN_ORDERED_AUDITION_PHASE ePhase =
-				VALTAN_ORDERED_AUDITION_PHASE::INACTIVE;
+			VALTAN_TIMELINE_AUDITION_PHASE ePhase =
+				VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE;
 			SESSION_ID iOwnerSessionId = 0;
 			LostArk::Shared::PLAYER_ID iOwnerPlayerId =
 				LostArk::Shared::INVALID_PLAYER_ID;
 			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
 				LostArk::Shared::INVALID_NET_ENTITY_ID;
-			std::size_t iStepIndex = 0u;
+			std::size_t iRowIndex = 0u;
+			std::size_t iActionIndex = 0u;
 			std::uint32_t iRepeatIndex = 0u;
 			std::uint32_t iExpectedPatternSequence = 0u;
-			std::uint32_t iPauseUntilTick = 0u;
+			std::uint32_t iEnvironmentDeadlineTick = 0u;
 			std::uint32_t iHeldBossHp = 0u;
 			std::uint32_t iHeldBossHealthBar = 0u;
+			bool bAllowProductPropBreak = false;
 			std::string strExpectedPatternId;
+			std::vector<std::string> ExpectedGoneGroupIds;
 		};
 
-		bool Stage_ValtanOrderedAuditionStart(
+		bool Prepare_ValtanTimelineArenaState(
+			const CWorldDestructionRuntime& runtime,
+			const SERVER_WORLD_ENTITY& boss,
+			VALTAN_TIMELINE_ARENA_STATE arenaState,
+			std::uint32_t requestTick,
+			WORLD_DESTRUCTION_TRANSACTION& outTransaction,
+			std::vector<std::string>& outExpectedGoneGroupIds,
+			std::string& status) const;
+		bool Stage_ValtanTimelineRowStart(
 			SESSION_ID sessionId,
 			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t commandId,
 			std::uint32_t startTick,
 			SERVER_PLAYER& outOwner,
 			std::string& status) const;
-		bool Start_ValtanOrderedAudition(
+		bool Start_ValtanTimelineRow(
 			SESSION_ID sessionId,
 			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t commandId,
 			std::uint32_t startTick,
 			std::string& status);
-		void Stop_ValtanOrderedAudition();
-		bool Prepare_ValtanOrderedAuditionBeforeBrain(
+		bool Stop_ValtanTimelineRow(bool resetEncounter = false);
+		bool Prepare_ValtanTimelineRowBeforeBrain(
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t updateTick);
-		void Restore_ValtanOrderedAuditionAfterBrain(
+		void Restore_ValtanTimelineRowAfterBrain(
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t updateTick);
 #endif
@@ -560,7 +573,7 @@ namespace LostArk::Server
 			m_ValtanPatternIdAuditionSequenceBySessionId;
 #ifdef _DEBUG
 		VALTAN_PATTERN_ID_AUDITION_STATE m_ValtanPatternIdAudition;
-		VALTAN_ORDERED_AUDITION_STATE m_ValtanOrderedAudition;
+		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
 #endif
 	};
 }

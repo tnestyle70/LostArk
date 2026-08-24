@@ -273,11 +273,18 @@ try {
         $whirlwindContacts += [int]$whirlwindSpin.hitDelayMs +
             ($contactIndex * [int]$whirlwindSpin.hitIntervalMs)
     }
-    if ([math]::Abs([double]$whirlwindSpin.animation.occurrences[0].playRate -
-            0.888888889) -gt 0.000000001 -or
-        [string]$whirlwindSpin.animation.endPolicy -cne 'LOOP_TO_STAGE_END' -or
+    $whirlwindOccurrence = @($whirlwindSpin.animation.occurrences)[0]
+    $whirlwindPresentationMs =
+        [double]$whirlwindOccurrence.playMs / [double]$whirlwindOccurrence.playRate
+    if ([int]$whirlwindSpin.durationMs -ne 1200 -or
+        [int]$whirlwindOccurrence.playMs -ne 533 -or
+        [math]::Abs([double]$whirlwindOccurrence.playRate -
+            0.4441666667) -gt 0.0000000001 -or
+        [math]::Abs($whirlwindPresentationMs - 1200.0) -gt 0.001 -or
+        [bool]$whirlwindOccurrence.repeatUntilStageEnd -or
+        [string]$whirlwindSpin.animation.endPolicy -cne 'EXACT' -or
         ($whirlwindContacts -join ',') -cne '0,350,700,1050') {
-        throw 'Whirlwind two-cycle presentation rate is invalid.'
+        throw 'Whirlwind 1200ms single-pass presentation contract is invalid.'
     }
     $floorWipe = @($master.patterns | Where-Object {
         $_.patternId -eq 'VALTAN_FLOOR_WIPE_130'
@@ -461,11 +468,11 @@ try {
     } 'EXACT animation must fill its Server stage within 2ms'
 
     [IO.File]::WriteAllText($masterPath, $baselineMasterText, $utf8NoBom)
-    $invalidLoopPolicy = $baselineMasterText | ConvertFrom-Json
-    (@($invalidLoopPolicy.patterns | Where-Object {
+    $invalidWhirlwindBudget = $baselineMasterText | ConvertFrom-Json
+    (@($invalidWhirlwindBudget.patterns | Where-Object {
         $_.patternId -eq 'VALTAN_WHIRLWIND'
-    })[0].stages | Where-Object stageId -eq 'SPIN')[0].animation.endPolicy = 'EXACT'
-    Write-Json $masterPath $invalidLoopPolicy
+    })[0].stages | Where-Object stageId -eq 'SPIN')[0].animation.occurrences[0].playMs = 532
+    Write-Json $masterPath $invalidWhirlwindBudget
     Invoke-ExpectedFailure {
         & $projector -Mode Validate -RepositoryRoot $fixtureRoot `
             -MasterPath $masterPath -SkipProductDriftCheck

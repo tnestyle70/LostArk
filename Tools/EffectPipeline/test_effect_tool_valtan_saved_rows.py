@@ -733,6 +733,66 @@ def validate_full_valtan_product_timeline_contract(
         if token not in authoring:
             raise AssertionError(f"active authoring cue contract lost: {token}")
 
+    pattern_node = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_ValtanPatternNode(",
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
+    )
+    ambiguity_contract = re.compile(
+        r"const bool_t bAmbiguousOccurrence\s*=\s*"
+        r"1u < Row\.ProductSources\.size\(\)\s*\|\|\s*"
+        r"\(!Row\.ProductSources\.empty\(\)\s*&&\s*"
+        r"!NonProductStages\.empty\(\)\)\s*\|\|\s*"
+        r"\(Row\.ProductSources\.empty\(\)\s*&&\s*"
+        r"1u < NonProductStages\.size\(\)\)\s*;",
+        flags=re.DOTALL,
+    )
+    if ambiguity_contract.search(pattern_node) is None:
+        raise AssertionError(
+            "saved Valtan owner ambiguity must cover Product duplicates, "
+            "mixed Product/non-Product provenance, and non-Product duplicates"
+        )
+    if pattern_node.count("bAmbiguousOccurrence ||") < 2:
+        raise AssertionError(
+            "both saved Effect Open and Play guards must reject ambiguous owners"
+        )
+
+    legacy_start = pattern_node.index(
+        "if (nullptr != pProductSource)"
+    )
+    legacy_end = pattern_node.index(
+        "const VALTAN_STAGE_VIEW* pNonProductStage", legacy_start
+    )
+    legacy_product = pattern_node[legacy_start:legacy_end]
+    for token in (
+        "VALTAN_PRODUCT_EFFECT_CUE_VIEW PlaybackCue =",
+        "*pProductSource->pCue",
+        "if (Pattern.bAuthoringMasterManaged &&",
+        "Build_ValtanProductPreview(Pattern, eProductPath",
+        "else if (!Pattern.bAuthoringMasterManaged)",
+        "SourceCue.strEffectAssetId == Row.strEffectAssetId",
+        "SourceCue.strV1EffectAssetId == Row.strEffectAssetId",
+        "OwnerStage.iDurationMs != SourceCue.iStageDurationMs",
+        "Preview.Cue = std::move(PlaybackCue)",
+        "TimelineClip.iAuthoringWallMs =",
+        "Preview.Cue.iStageDurationMs",
+        "Preview.iTimelineDurationMs =",
+        "ProductPlaybackPreview = std::move(Preview)",
+    ):
+        if token not in legacy_product:
+            raise AssertionError(
+                f"legacy exact stage-local Product preview lost: {token}"
+            )
+    mismatch = legacy_product.index("if (!bExactEffectIdentity")
+    fallback_commit = legacy_product.index(
+        "ProductPlaybackPreview = std::move(Preview)", mismatch
+    )
+    success_else = legacy_product.index("else", mismatch)
+    if fallback_commit < success_else:
+        raise AssertionError(
+            "legacy Product mismatch must leave the optional preview unset"
+        )
+
     independent = function_slice(
         cpp_text,
         "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
@@ -1391,9 +1451,9 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     "clip": "mesh_att_battle_20_03",
                     "mappingBasis": "PROJECT_AUTHORED",
                     "sourceStartMs": 0,
-                    "playMs": 0,
-                    "playRate": 0.888888889,
-                    "loop": True,
+                    "playMs": 533,
+                    "playRate": 0.4441666667,
+                    "loop": False,
                 }
             ],
             bindings["valtan.attack.whirlwind.active"],
@@ -1939,13 +1999,20 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
         self.assertEqual(33, len(projected))
-        self.assertEqual(55, raw_links)
-        self.assertEqual(55, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(57, raw_links)
+        self.assertEqual(57, sum(len(rows) for rows in projected.values()))
         self.assertEqual(2, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(1, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertNotIn("VALTAN_TRIPLE_SLASH", projected)
         self.assertNotIn("VALTAN_ROTATION_SLASH", projected)
         self.assertEqual(3, len(projected["VALTAN_FOUR_SLASH"]))
+        self.assertEqual(
+            [
+                "effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+                "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+            ],
+            projected["VALTAN_FOUR_PILLARS_105"],
+        )
         self.assertEqual(
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
             projected["VALTAN_FOUR_SLASH"][0],
@@ -1990,8 +2057,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     nonempty_candidates += 1
                 else:
                     empty_shells += 1
-        self.assertEqual(52, nonempty_candidates)
-        self.assertEqual(55, empty_shells)
+        self.assertEqual(54, nonempty_candidates)
+        self.assertEqual(53, empty_shells)
 
     def test_all_declared_v0_product_cues_remain_published_and_nonempty(self) -> None:
         cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
@@ -2017,10 +2084,11 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             cue for cue in cues if cue["effectAssetId"] not in project_tuned_ids
         ]
         effect_ids = [cue["effectAssetId"] for cue in sealed_cues]
-        self.assertEqual(45, len(effect_ids))
+        self.assertEqual(47, len(effect_ids))
         # Arena-break recovery intentionally reuses the reviewed ledge-roar
-        # recovery asset, so 45 owner links resolve to 44 immutable documents.
-        self.assertEqual(44, len(set(effect_ids)))
+        # recovery asset. The separate FOUR_PILLARS additive layer contributes
+        # two exact owners, so 47 links resolve to 46 documents.
+        self.assertEqual(46, len(set(effect_ids)))
         visible_elements = 0
         hidden_elements = 0
         model_cues = 0
@@ -2075,9 +2143,9 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             runtime_document = json.loads(runtime_bytes.decode("utf-8"))
             self.assertEqual(source_document, runtime_document, effect_id)
         # The recovered stable-ID union adds four donut rows and one landing
-        # row to the cue-owned inventory. Sky Axe is combat-object owned, so
-        # its three added rows are covered by the exact union test below.
-        self.assertEqual(653, visible_elements)
+        # row. The separate FOUR_PILLARS layer adds 26 visible exact carriers.
+        # Sky Axe is combat-object owned, so its added rows are covered below.
+        self.assertEqual(679, visible_elements)
         self.assertEqual(5, hidden_elements)
         self.assertEqual(0, model_cues)
 

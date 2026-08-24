@@ -557,35 +557,57 @@ namespace LostArk::Server
 			BOSS_PART_DAMAGE_CONDITION::ALWAYS;
 	};
 
-	enum class VALTAN_DEBUG_AUDITION_MAPPING : std::uint8_t
+	enum class VALTAN_TIMELINE_ARENA_STATE : std::uint8_t
 	{
-		PRODUCT_DIRECT,
-		PRODUCT_CANDIDATE,
-		PRODUCT_PARTIAL,
-		MARKER,
-		UNRESOLVED
+		FRESH,
+		ORDINARY_WALLS_GONE,
+		ALL_WALLS_GONE,
+		FLOOR84_GONE,
+		FLOOR84_AND_30_GONE
 	};
 
-	/* One preserved recording occurrence. Executable rows name a stable product
-	pattern and are still labelled by evidence strength; marker/unresolved rows
-	own only a bounded idle pause and never substitute an unrelated attack. */
-	struct VALTAN_DEBUG_AUDITION_STEP final
+	enum class VALTAN_TIMELINE_PROP_STATE : std::uint8_t
 	{
-		std::string strOccurrenceId;
+		HIDDEN,
+		FOUR_PILLARS_INTACT
+	};
+
+	enum class VALTAN_TIMELINE_ENTRY_TYPE : std::uint8_t
+	{
+		MECHANIC,
+		NORMAL
+	};
+
+	struct VALTAN_TIMELINE_PATTERN_ACTION final
+	{
 		std::string strPatternId;
-		VALTAN_DEBUG_AUDITION_MAPPING eMapping =
-			VALTAN_DEBUG_AUDITION_MAPPING::UNRESOLVED;
-		std::uint32_t iOrdinal = 0;
 		std::uint32_t iRepeat = 0;
-		std::uint32_t iTargetHealthBar = 0;
-		std::uint32_t iPauseAfterMs = 0;
 	};
 
-	struct VALTAN_DEBUG_AUDITION_DEFINITION final
+	/* One selectable chronological occurrence. A row may compose multiple
+	product patterns, but each action still runs through CValtanBrain. */
+	struct VALTAN_TIMELINE_ROW final
+	{
+		std::string strRowId;
+		/* Stable wire key derived from strRowId with FNV-1a32. Unlike the
+		chronological ordinal, this survives authoring row reordering. */
+		std::uint32_t iCommandId = 0;
+		std::uint32_t iOrdinal = 0;
+		std::uint32_t iSectionHealthBar = 0;
+		VALTAN_TIMELINE_ENTRY_TYPE eEntryType =
+			VALTAN_TIMELINE_ENTRY_TYPE::NORMAL;
+		VALTAN_TIMELINE_ARENA_STATE eArenaState =
+			VALTAN_TIMELINE_ARENA_STATE::FRESH;
+		VALTAN_TIMELINE_PROP_STATE ePropState =
+			VALTAN_TIMELINE_PROP_STATE::HIDDEN;
+		std::vector<VALTAN_TIMELINE_PATTERN_ACTION> PatternActions;
+	};
+
+	struct VALTAN_TIMELINE_DEFINITION final
 	{
 		std::string strEncounterId;
-		std::string strSequenceId;
-		std::vector<VALTAN_DEBUG_AUDITION_STEP> Steps;
+		std::string strTimelineId;
+		std::vector<VALTAN_TIMELINE_ROW> Rows;
 	};
 
 	struct PLAYER_RUNTIME_PROFILE
@@ -639,8 +661,11 @@ namespace LostArk::Server
 			const std::string& encounterId) const;
 		const BOSS_COMBAT_OBJECT_DEFINITION* Find_BossCombatObject(
 			const std::string& combatObjectArchetypeId) const;
-		const VALTAN_DEBUG_AUDITION_DEFINITION* Find_ValtanDebugAudition(
+		const VALTAN_TIMELINE_DEFINITION* Find_ValtanTimeline(
 			const std::string& encounterId) const;
+		const VALTAN_TIMELINE_ROW* Find_ValtanTimelineRow(
+			const std::string& encounterId,
+			std::uint32_t commandId) const;
 		/* Pattern the encounter plays exactly once when the boss first engages,
 		before any health-bar or weighted selection runs. Empty when unknown. */
 		/* The rotation whose span contains this bar, or nullptr when the stretch
@@ -706,8 +731,8 @@ namespace LostArk::Server
 			m_BossPatterns;
 		std::unordered_map<std::string, BOSS_COMBAT_OBJECT_DEFINITION>
 			m_BossCombatObjects;
-		std::unordered_map<std::string, VALTAN_DEBUG_AUDITION_DEFINITION>
-			m_ValtanDebugAuditions;
+		std::unordered_map<std::string, VALTAN_TIMELINE_DEFINITION>
+			m_ValtanTimelines;
 		std::unordered_map<std::string, std::string> m_IntroPatternIdByEncounter;
 		std::unordered_map<std::string,
 			std::vector<BOSS_PATTERN_ROTATION_DEFINITION>>

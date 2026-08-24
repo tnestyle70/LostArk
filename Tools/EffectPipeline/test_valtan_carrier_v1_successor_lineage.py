@@ -17,6 +17,54 @@ import materialize_valtan_carrier_v1 as materializer
 import valtan_carrier_v1_successor_lineage as lineage
 
 
+def _successor_live_owner_rows(
+    historical_rows: list[dict],
+    receipt: dict,
+    projection_name: str,
+) -> list[dict]:
+    """Reverse only the sealed owner transfers for successor-layer testing."""
+
+    rows = copy.deepcopy(historical_rows)
+    projection = receipt["historicalOutputProjection"][projection_name]
+    owner_fields = ("patternId", "semanticStageId", "gameplayActionId")
+    for transfer in projection["ownerTransfers"]:
+        historical_owner = tuple(
+            transfer["historicalOwner"][field] for field in owner_fields
+        )
+        live_owner = tuple(
+            transfer["liveOwner"][field] for field in owner_fields
+        )
+        matches = [
+            row
+            for row in rows
+            if tuple(row[field] for field in owner_fields)
+            == historical_owner
+        ]
+        live_action = transfer["liveOwner"]["gameplayActionId"]
+        split_clip = {
+            "valtan.attack.triple-slash.active": (
+                "valtan.attack.four-slash.active.clip.01"
+            ),
+            "valtan.attack.rotation-slash.active": (
+                "valtan.attack.four-slash.active.clip.02"
+            ),
+        }.get(live_action)
+        if split_clip is not None:
+            matches = [
+                row for row in matches
+                if row.get("clipOccurrenceId") == split_clip
+            ]
+        if len(matches) != transfer["rowCount"]:
+            raise AssertionError(
+                "successor owner transfer denominator drifted: "
+                + transfer["transferId"]
+            )
+        for row in matches:
+            for field, value in zip(owner_fields, live_owner, strict=True):
+                row[field] = value
+    return rows
+
+
 class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -33,8 +81,34 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
         cls.selection = lineage.read_json(
             materializer.reviewed_candidates.SELECTION_PATH
         )
-        cls.inventory = materializer._load_inventory(cls.successor)
-        _, _, cls.blockers = materializer._build_projections(cls.inventory)
+        (
+            cls.base_bindings,
+            cls.base_encounter,
+            cls.base_selection,
+            cls.additive_input_evidence,
+        ) = materializer.project_successor_base_inputs(
+            cls.successor,
+            cls.bindings,
+            cls.encounter,
+            cls.selection,
+        )
+        cls.base_catalog, cls.base_cues = (
+            materializer._validate_successor_base_product(
+                cls.successor, cls.catalog, cls.cues
+            )
+        )
+        cls.blockers = {
+            "reviewedProjectionLedger": _successor_live_owner_rows(
+                cls.historical["reviewedProjectionLedger"],
+                cls.successor,
+                "reviewedProjectionLedger",
+            ),
+            "reviewedSourceOnlyOccurrences": _successor_live_owner_rows(
+                cls.historical["reviewedSourceOnlyOccurrences"],
+                cls.successor,
+                "reviewedSourceOnlyOccurrences",
+            ),
+        }
         cls.state, cls.writes, _ = materializer.build_outputs()
 
     def test_historical_receipt_is_immutable_and_live_successors_validate(self) -> None:
@@ -46,8 +120,8 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
             root=materializer.ROOT,
             receipt=self.successor,
             historical_receipt=self.historical,
-            catalog=self.catalog,
-            cues=self.cues,
+            catalog=self.base_catalog,
+            cues=self.base_cues,
         )
         expected_counts = {
             "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01": 24,
@@ -67,19 +141,19 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
 
     def test_historical_input_and_output_projections_are_exact(self) -> None:
         projected_bindings = lineage.project_historical_pattern_bindings(
-            self.bindings, self.successor
+            self.base_bindings, self.successor
         )
         projected_encounter = lineage.project_historical_encounter(
-            self.encounter, self.successor
+            self.base_encounter, self.successor
         )
         projected_selection = lineage.project_historical_selection_manifest(
-            self.selection, self.successor
+            self.base_selection, self.successor
         )
         projected_catalog = lineage.project_historical_catalog(
-            self.catalog, self.successor
+            self.base_catalog, self.successor
         )
         projected_cues = lineage.project_historical_cues(
-            self.cues, self.successor
+            self.base_cues, self.successor
         )
         self.assertEqual(131, len(projected_bindings["bindings"]))
         self.assertEqual(137, sum(
@@ -128,8 +202,8 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
                 root=materializer.ROOT,
                 receipt=self.successor,
                 historical_receipt=drifted,
-                catalog=self.catalog,
-                cues=self.cues,
+                catalog=self.base_catalog,
+                cues=self.base_cues,
             )
 
         summary_drift = copy.deepcopy(self.successor)
@@ -141,8 +215,8 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
                 root=materializer.ROOT,
                 receipt=summary_drift,
                 historical_receipt=self.historical,
-                catalog=self.catalog,
-                cues=self.cues,
+                catalog=self.base_catalog,
+                cues=self.base_cues,
             )
 
     def test_document_hash_and_baseline_denominator_drift_fail_closed(self) -> None:
@@ -187,7 +261,7 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
             )
 
     def test_selection_and_owner_rebound_drift_fail_closed(self) -> None:
-        selection = copy.deepcopy(self.selection)
+        selection = copy.deepcopy(self.base_selection)
         selection["selections"][0]["reviewBasis"] += " drift"
         with self.assertRaisesRegex(
             lineage.SuccessorLineageError,
@@ -209,7 +283,7 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
             )
 
     def test_live_catalog_and_cue_drift_fail_closed(self) -> None:
-        catalog = copy.deepcopy(self.catalog)
+        catalog = copy.deepcopy(self.base_catalog)
         excluded_id = self.successor["historicalInputProjection"]["catalog"][
             "excludedLiveRows"
         ][0]["effectAssetId"]
@@ -222,7 +296,7 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
         ):
             lineage.project_historical_catalog(catalog, self.successor)
 
-        cues = copy.deepcopy(self.cues)
+        cues = copy.deepcopy(self.base_cues)
         live_row = self.successor["historicalInputProjection"]["cues"][
             "rowRebounds"
         ][0]["liveRow"]

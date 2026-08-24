@@ -5,6 +5,15 @@
 #include <algorithm>
 #include <cmath>
 
+namespace
+{
+	bool_t Is_FinitePosition(const float3_t& value)
+	{
+		return std::isfinite(value.x) && std::isfinite(value.y) &&
+			std::isfinite(value.z);
+	}
+}
+
 const std::array<Client::VALTAN_CINEMATIC_SKY_LAYER_POLICY,
 	Client::CValtanCinematicCameraController::SKY_LAYER_POLICY_COUNT>&
 Client::CValtanCinematicCameraController::Get_SkyLayerPolicies()
@@ -53,8 +62,8 @@ Client::CValtanCinematicCameraController::Find_SkyLayerPolicy(
 const Client::VALTAN_CINEMATIC_SKY_PRESENTATION_FRAME&
 Client::CValtanCinematicCameraController::Get_SkyPresentationFrame()
 {
-	/* This point projects close to the centre for the authored TAKEOFF/DROP
-	   poses. All visible planes share this exact anchor and face down toward the
+	/* This point projects close to the centre for the authored aerial poses.
+	   All visible planes share this exact anchor and face down toward the
 	   cinematic camera, so their procedural radial masks remain concentric. */
 	static const VALTAN_CINEMATIC_SKY_PRESENTATION_FRAME FRAME = {
 		float3_t(156.03f, 74.f, -122.06f),
@@ -81,6 +90,7 @@ Client::CValtanCinematicCameraController::Resolve_SkyState(
 	const f32_t timeDelta)
 {
 	VALTAN_CINEMATIC_SKY_STATE state;
+	state.vAnchor = Get_SkyPresentationFrame().vAnchor;
 	m_LastSkyState = state;
 	if (nullptr == m_pDocument || !input.isValid || 0u == m_iFixedTickHz ||
 		0u == input.iNetEntityId || 0u == input.iServerTick ||
@@ -94,6 +104,12 @@ Client::CValtanCinematicCameraController::Resolve_SkyState(
 		input.strPatternId, input.iStageIndex, input.strStageActionId);
 	if (nullptr == cue || (!input.strStageId.empty() &&
 		cue->strStageId != input.strStageId))
+	{
+		Reset_SkyTimeline();
+		return state;
+	}
+	if (VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ == cue->eTrackingMode &&
+		!Is_FinitePosition(input.vBossPosition))
 	{
 		Reset_SkyTimeline();
 		return state;
@@ -168,6 +184,11 @@ Client::CValtanCinematicCameraController::Resolve_SkyState(
 	state.fCloudRotationDegrees =
 		rotationPhaseOffset + cue->fCloudRotationDegreesPerSecond *
 		(m_fSkyElapsedSeconds - startSeconds);
+	if (VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ == cue->eTrackingMode)
+	{
+		state.vAnchor.x += input.vBossPosition.x - cue->vTrackingOrigin.x;
+		state.vAnchor.z += input.vBossPosition.z - cue->vTrackingOrigin.z;
+	}
 	m_LastSkyState = state;
 	return state;
 }
@@ -198,6 +219,15 @@ bool_t Client::CValtanCinematicCameraController::Update(
 			input.strPatternId, input.iStageIndex, input.strStageActionId);
 	if (nullptr == cue || (!input.isBossDead && !input.strStageId.empty() &&
 		cue->strStageId != input.strStageId))
+	{
+		m_pActiveCue = nullptr;
+		m_strCueId.clear();
+		m_hasCueKey = false;
+		m_isCueFinished = false;
+		return false;
+	}
+	if (VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ == cue->eTrackingMode &&
+		!Is_FinitePosition(input.vBossPosition))
 	{
 		m_pActiveCue = nullptr;
 		m_strCueId.clear();
@@ -253,7 +283,9 @@ bool_t Client::CValtanCinematicCameraController::Update(
 		m_isCueFinished = true;
 		return false;
 	}
-	return Sample_ActiveCue(m_fElapsedSeconds, outPose);
+	if (!Sample_ActiveCue(m_fElapsedSeconds, outPose))
+		return false;
+	return Apply_Tracking(input, outPose);
 }
 
 void Client::CValtanCinematicCameraController::Reset()
@@ -332,6 +364,33 @@ bool_t Client::CValtanCinematicCameraController::Sample_ActiveCue(
 	outPose.fFovYDegrees = left.fFovYDegrees +
 		(right.fFovYDegrees - left.fFovYDegrees) * alpha;
 	Apply_ImpactShake(elapsedSeconds, outPose);
+	return true;
+}
+
+bool_t Client::CValtanCinematicCameraController::Apply_Tracking(
+	const VALTAN_CINEMATIC_CAMERA_INPUT& input,
+	VALTAN_CINEMATIC_CAMERA_POSE& outPose) const
+{
+	if (nullptr == m_pActiveCue)
+		return false;
+	if (VALTAN_CINEMATIC_TRACKING_MODE::WORLD ==
+		m_pActiveCue->eTrackingMode)
+	{
+		return true;
+	}
+	if (VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ !=
+		m_pActiveCue->eTrackingMode || !Is_FinitePosition(input.vBossPosition))
+	{
+		return false;
+	}
+	const f32_t offsetX =
+		input.vBossPosition.x - m_pActiveCue->vTrackingOrigin.x;
+	const f32_t offsetZ =
+		input.vBossPosition.z - m_pActiveCue->vTrackingOrigin.z;
+	outPose.vEye.x += offsetX;
+	outPose.vEye.z += offsetZ;
+	outPose.vLookAt.x += offsetX;
+	outPose.vLookAt.z += offsetZ;
 	return true;
 }
 

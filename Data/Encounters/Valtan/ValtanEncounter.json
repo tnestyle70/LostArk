@@ -1233,7 +1233,7 @@
       "maximumPhase": 3,
       "targetPolicy": "LOCK_RANDOM_ALIVE_ON_START",
       "aimPolicy": "LOCK_FACING_ON_START",
-      "displayName": "100줄 중앙 착지와 4기둥 추적 원뿔",
+      "displayName": "100줄 지목 착지와 4기둥 추적 원뿔",
       "actionId": "valtan.mechanic.four-pillars-105",
       "sourceActionIds": [420610],
       "selectionMode": "HEALTH_BAR",
@@ -1244,10 +1244,11 @@
       "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
+      "serverMotion": { "kind": "LEAP_TO_TARGET", "anchorId": "anchor.valtan.four-pillars-105.landing", "landingPosition": [156.03, 22.99751, -122.06], "apexHeight": 46.0, "travelStageId": "YELLOW_ZONE" },
       "stages": [
-        { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.four-pillars-105.takeoff", "stageKind": "WINDUP", "durationMs": 1600, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "YELLOW_ZONE", "actionId": "valtan.mechanic.four-pillars-105.yellow-zone", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "RING", "hitOuterRadius": 100.0, "hitInnerRadius": 4.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105", "pushRangeM": 1.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
-        { "stageId": "TARGET_CONE", "actionId": "valtan.mechanic.four-pillars-105.target-cone", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 45.0, "hitLength": 30.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105-pierce", "pushRangeM": 1.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
+        { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.four-pillars-105.takeoff", "stageKind": "WINDUP", "durationMs": 1933, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "YELLOW_ZONE", "actionId": "valtan.mechanic.four-pillars-105.yellow-zone", "stageKind": "ACTIVE", "durationMs": 5500, "hitShape": "RING", "hitOuterRadius": 100.0, "hitInnerRadius": 4.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105", "pushRangeM": 1.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
+        { "stageId": "TARGET_CONE", "actionId": "valtan.mechanic.four-pillars-105.target-cone", "stageKind": "ACTIVE", "durationMs": 3200, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 45.0, "hitLength": 30.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 230, "serverDamageProfileId": "damage.valtan.four-pillars-105-pierce", "pushRangeM": 1.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
         { "stageId": "RECOVERY", "actionId": "valtan.mechanic.four-pillars-105.recovery", "stageKind": "RECOVERY", "durationMs": 1300, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },

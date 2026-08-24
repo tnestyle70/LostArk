@@ -44,6 +44,7 @@ if str(TOOLS) not in sys.path:
 import build_valtan_reviewed_source_family_candidates as reviewed_candidates  # noqa: E402
 import build_valtan_source_occurrence_inventory as source_inventory  # noqa: E402
 import build_valtan_legacy_v0_carrier_migration_inventory as legacy_inventory_builder  # noqa: E402
+import migrate_valtan_pattern_occurrences_v2 as occurrence_v2_migration  # noqa: E402
 import valtan_carrier_v1_successor_lineage as successor_lineage  # noqa: E402
 
 
@@ -61,6 +62,11 @@ SUCCESSOR_RECEIPT_PATH = (
     / "Data/Effects/Imported/Valtan/CarrierV1"
     / "Valtan.carrier-v1-successor-lineage-receipt.v1.json"
 )
+ADDITIVE_RECEIPT_PATH = (
+    ROOT
+    / "Data/Effects/Imported/Valtan/CarrierV1"
+    / "Valtan.carrier-v1-four-pillars-additive-receipt.v1.json"
+)
 LEGACY_INVENTORY_PATH = (
     ROOT
     / "Data/Effects/Imported/Valtan/CarrierV1"
@@ -73,6 +79,35 @@ RED_BLADE_CLIP_ID = "valtan.attack.red-blade-wave.active.clip.01"
 RED_BLADE_EFFECT_ID = "effect.valtan.red-blade-wave.active"
 WATERTRAIL_CANARY_EFFECT_ID = (
     "effect.valtan.front-back-front.v1-watertrail-audition"
+)
+FOUR_PILLARS_EFFECT_IDS = {
+    "effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+    "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+}
+FOUR_PILLARS_CUE_IDS = {
+    "cue.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
+    "cue.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+}
+ADDITIVE_BINDING_ROW_SEALS = {
+    "valtan.mechanic.four-pillars-105.takeoff": {
+        "successorBase": "e4163bfb60b4ebb57e18dc5f388bc2b4e0b4eebc3e55ccbcc93b3057f5fbf709",
+        "liveAdditive": "a97d4f6e78516e4678825226be35a2b542f6c9403c3230e03eb592c3b4312de1",
+    },
+    "valtan.mechanic.four-pillars-105.target-cone": {
+        "successorBase": "143fe16425863bf55c0b1cf3d2d6eda56132235e711270594eace245c8dcd596",
+        "liveAdditive": "e4af8c0c69701d1cd8708593b7fa429701b9bfd108c65aeade1b289f2df80da4",
+    },
+    "valtan.mechanic.entrance-whirlwind.recovery": {
+        "successorBase": "e6b5df45216658a732de83146872b8e9777a8addab9bd78ea767942da9b5cd6a",
+        "liveAdditive": "35329c4bb231786970f0e5696c63d484caad0599b46f42d90653c1fa7baeded5",
+    },
+}
+ADDITIVE_ENCOUNTER_ROW_SEALS = {
+    "successorBase": "3e5db0bc40973607ce7120dd5894dceea1a4090a9c877c303a8f6dc23516c992",
+    "liveAdditive": "42c9791868a2749ccc1665013e49ec3fd2e444bd11aa81fc2d3bcc4394969d72",
+}
+ADDITIVE_SELECTION_ROW_SHA256 = (
+    "35873c214c57613b6424a09971bc2b1f318c42e58a78617b9ea5952b11838e0b"
 )
 DECAL_EXPANDED_CLIP_IDS = [
     "valtan.attack.ground-wave-smash.active.clip.02",
@@ -162,6 +197,186 @@ def _load_successor_receipt() -> dict[str, Any]:
     if not SUCCESSOR_RECEIPT_PATH.is_file():
         raise MaterializeError("Carrier V1 successor lineage receipt is missing")
     return read_json(SUCCESSOR_RECEIPT_PATH)
+
+
+def _validate_successor_base_product(
+    successor_receipt: dict[str, Any],
+    catalog: dict[str, Any],
+    cues: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Validate the PR203 live layer with FOUR_PILLARS projected out."""
+
+    historical_receipt = read_json(RECEIPT_PATH)
+    if canonical_sha256(historical_receipt) != BASE_RECEIPT_CANONICAL_SHA256:
+        raise MaterializeError("immutable historical carrier receipt drifted")
+    base_catalog = copy.deepcopy(catalog)
+    base_catalog["effects"] = [
+        copy.deepcopy(row)
+        for row in catalog.get("effects", [])
+        if str(row.get("effectAssetId") or "") not in FOUR_PILLARS_EFFECT_IDS
+    ]
+    base_cues = copy.deepcopy(cues)
+    base_cues["cues"] = [
+        copy.deepcopy(row)
+        for row in cues.get("cues", [])
+        if str(row.get("bindingId") or "") not in FOUR_PILLARS_CUE_IDS
+    ]
+    base_catalog_rows = _catalog_index(base_catalog)
+    base_cue_rows = _cue_index(base_cues)
+    if (
+        sum(
+            effect_id.startswith("effect.valtan.")
+            for effect_id in base_catalog_rows
+        )
+        != 54
+        or len(base_cue_rows) != 47
+    ):
+        raise MaterializeError(
+            "100-bar additive Product baseline denominator drifted"
+        )
+    try:
+        successor_lineage.validate_receipt(
+            root=ROOT,
+            receipt=successor_receipt,
+            historical_receipt=historical_receipt,
+            catalog=base_catalog,
+            cues=base_cues,
+        )
+    except successor_lineage.SuccessorLineageError as error:
+        raise MaterializeError(str(error)) from error
+    return base_catalog, base_cues
+
+
+def project_successor_base_inputs(
+    successor_receipt: dict[str, Any],
+    pattern_bindings: dict[str, Any],
+    encounter: dict[str, Any],
+    selection: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Project the explicit additive input delta off the PR203 live layer."""
+
+    base_bindings = copy.deepcopy(pattern_bindings)
+    bindings_by_action = {
+        str(row.get("actionId") or ""): row
+        for row in base_bindings.get("bindings", [])
+    }
+    binding_transfers = []
+    for action_id, seals in ADDITIVE_BINDING_ROW_SEALS.items():
+        row = bindings_by_action.get(action_id)
+        if row is None or canonical_sha256(row) != seals["liveAdditive"]:
+            raise MaterializeError(
+                "additive live pattern binding drifted: " + action_id
+            )
+        clips = row.get("clips")
+        if not isinstance(clips, list) or len(clips) != 1:
+            raise MaterializeError(
+                "additive pattern binding clip closure drifted: " + action_id
+            )
+        clips[0]["loop"] = True
+        if canonical_sha256(row) != seals["successorBase"]:
+            raise MaterializeError(
+                "additive successor-base pattern binding drifted: " + action_id
+            )
+        binding_transfers.append(
+            {
+                "actionId": action_id,
+                "successorBaseRowCanonicalSha256": seals["successorBase"],
+                "liveAdditiveRowCanonicalSha256": seals["liveAdditive"],
+            }
+        )
+
+    base_encounter = copy.deepcopy(encounter)
+    encounter_rows = {
+        str(row.get("patternId") or ""): row
+        for row in base_encounter.get("patterns", [])
+    }
+    four_pillars = encounter_rows.get("VALTAN_FOUR_PILLARS_105")
+    if (
+        four_pillars is None
+        or canonical_sha256(four_pillars)
+        != ADDITIVE_ENCOUNTER_ROW_SEALS["liveAdditive"]
+    ):
+        raise MaterializeError("additive live encounter row drifted")
+    four_pillars["displayName"] = "100줄 중앙 착지와 4기둥 추적 원뿔"
+    four_pillars.pop("serverMotion", None)
+    stages = {
+        str(row.get("stageId") or ""): row
+        for row in four_pillars.get("stages", [])
+    }
+    if set(stages) != {"TAKEOFF", "YELLOW_ZONE", "TARGET_CONE", "RECOVERY"}:
+        raise MaterializeError("additive encounter stage closure drifted")
+    stages["TAKEOFF"]["durationMs"] = 1600
+    stages["YELLOW_ZONE"]["durationMs"] = 900
+    stages["TARGET_CONE"]["durationMs"] = 900
+    stages["TARGET_CONE"]["hitDelayMs"] = 0
+    if (
+        canonical_sha256(four_pillars)
+        != ADDITIVE_ENCOUNTER_ROW_SEALS["successorBase"]
+    ):
+        raise MaterializeError("additive successor-base encounter row drifted")
+
+    base_selection = copy.deepcopy(selection)
+    additive_selection_rows = [
+        row
+        for row in base_selection.get("selections", [])
+        if row.get("patternId") == "VALTAN_FOUR_PILLARS_105"
+    ]
+    if (
+        len(additive_selection_rows) != 1
+        or canonical_sha256(additive_selection_rows[0])
+        != ADDITIVE_SELECTION_ROW_SHA256
+    ):
+        raise MaterializeError("additive reviewed selection row drifted")
+    base_selection["selections"] = [
+        row
+        for row in base_selection["selections"]
+        if row.get("patternId") != "VALTAN_FOUR_PILLARS_105"
+    ]
+
+    try:
+        successor_lineage.project_historical_pattern_bindings(
+            base_bindings, successor_receipt
+        )
+        successor_lineage.project_historical_encounter(
+            base_encounter, successor_receipt
+        )
+        successor_lineage.project_historical_selection_manifest(
+            base_selection, successor_receipt
+        )
+    except successor_lineage.SuccessorLineageError as error:
+        raise MaterializeError(str(error)) from error
+
+    evidence = {
+        "patternBindings": {
+            "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
+            "liveAdditiveCanonicalSha256": canonical_sha256(pattern_bindings),
+            "successorBaseCanonicalSha256": canonical_sha256(base_bindings),
+            "rowRebounds": binding_transfers,
+        },
+        "encounter": {
+            "path": "Data/Encounters/Valtan/ValtanEncounter.json",
+            "liveAdditiveCanonicalSha256": canonical_sha256(encounter),
+            "successorBaseCanonicalSha256": canonical_sha256(base_encounter),
+            "patternId": "VALTAN_FOUR_PILLARS_105",
+            "successorBaseRowCanonicalSha256": (
+                ADDITIVE_ENCOUNTER_ROW_SEALS["successorBase"]
+            ),
+            "liveAdditiveRowCanonicalSha256": (
+                ADDITIVE_ENCOUNTER_ROW_SEALS["liveAdditive"]
+            ),
+        },
+        "reviewedSelection": {
+            "path": (
+                "Data/Effects/Imported/Valtan/"
+                "Valtan.priority-source-sequence-selections.v1.json"
+            ),
+            "liveAdditiveCanonicalSha256": canonical_sha256(selection),
+            "successorBaseCanonicalSha256": canonical_sha256(base_selection),
+            "addedBranchId": str(additive_selection_rows[0]["branchId"]),
+            "addedRowCanonicalSha256": ADDITIVE_SELECTION_ROW_SHA256,
+        },
+    }
+    return base_bindings, base_encounter, base_selection, evidence
 
 
 def byte_sha256(payload: bytes) -> str:
@@ -291,6 +506,337 @@ def _target_cue_id(clip_id: str) -> str:
     return "cue." + effect_id[len("effect.") :]
 
 
+def _stage_additive_reviewed_selections(
+    inventory: dict[str, Any],
+    selection: dict[str, Any],
+    *,
+    encounter: dict[str, Any],
+    pattern_bindings: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply new reviewed branches to the sealed source payload inventory."""
+
+    staged = copy.deepcopy(inventory)
+    existing_rows = {
+        str(row.get("branchId") or ""): row
+        for row in staged.get("reviewedBranchSelections", [])
+    }
+    selected_rows = {
+        str(row.get("branchId") or ""): row
+        for row in selection.get("selections", [])
+    }
+    if (
+        not existing_rows
+        or not selected_rows
+        or "" in existing_rows
+        or "" in selected_rows
+        or len(existing_rows)
+        != len(staged.get("reviewedBranchSelections", []))
+        or len(selected_rows) != len(selection.get("selections", []))
+    ):
+        raise MaterializeError("reviewed selection identity is invalid")
+    for branch_id, row in existing_rows.items():
+        if selected_rows.get(branch_id) != row:
+            raise MaterializeError(
+                "sealed reviewed selection changed: " + branch_id
+            )
+
+    additions = [
+        copy.deepcopy(selected_rows[branch_id])
+        for branch_id in sorted(set(selected_rows) - set(existing_rows))
+    ]
+    if not additions:
+        staged["_materializerAdditiveReviewedBranchIds"] = []
+        return staged
+
+    product_clips = source_inventory.product_clip_occurrences(
+        encounter, pattern_bindings
+    )
+    branches = {
+        str(row.get("branchId") or ""): row
+        for row in staged.get("branches", [])
+    }
+
+    for reviewed in additions:
+        branch_id = str(reviewed["branchId"])
+        branch = branches.get(branch_id)
+        if branch is None or reviewed.get("status") != "REVIEWED_SELECTED":
+            raise MaterializeError(
+                "additive reviewed selection is not an existing selected branch: "
+                + branch_id
+            )
+        for field in (
+            "patternId",
+            "sourceActionId",
+            "profileId",
+            "sequenceIndex",
+            "sourceSequencePathSha256",
+        ):
+            if reviewed.get(field) != branch.get(field):
+                raise MaterializeError(
+                    f"additive reviewed selection {field} drifted: {branch_id}"
+                )
+
+        source_by_coordinate = {
+            (int(row["sourceStageIndex"]), int(row["sourceClipOrdinal"])): row
+            for row in branch.get("orderedClips", [])
+        }
+        mapping_by_coordinate = {
+            (int(row["sourceStageIndex"]), int(row["sourceClipOrdinal"])): row
+            for row in reviewed.get("stageMappings", [])
+        }
+        if (
+            not source_by_coordinate
+            or set(mapping_by_coordinate) != set(source_by_coordinate)
+        ):
+            raise MaterializeError(
+                "additive reviewed selection must map every source clip: "
+                + branch_id
+            )
+        product_rows = product_clips.get(str(reviewed["patternId"]), [])
+        product_by_id = {
+            str(row["clipOccurrenceId"]): row for row in product_rows
+        }
+        for coordinate, mapping in mapping_by_coordinate.items():
+            timing = str(mapping.get("timingDisposition") or "")
+            clip_id = mapping.get("clipOccurrenceId")
+            product = product_by_id.get(str(clip_id or ""))
+            source = source_by_coordinate[coordinate]
+            if timing == "REACHABLE":
+                if product is None or source["normalizedClip"] != product[
+                    "normalizedClip"
+                ]:
+                    raise MaterializeError(
+                        "additive reviewed source/product clip mapping drifted: "
+                        + branch_id
+                    )
+            elif timing != "UNREACHABLE" or clip_id is not None:
+                raise MaterializeError(
+                    "additive reviewed timing disposition is unsupported: "
+                    + branch_id
+                )
+
+        branch["selectionStatus"] = "REVIEWED_SELECTED"
+        branch["reviewedStageMappings"] = [
+            copy.deepcopy(mapping_by_coordinate[key])
+            for key in sorted(mapping_by_coordinate)
+        ]
+        occurrence_count = 0
+        for occurrence in staged.get("occurrences", []):
+            if occurrence.get("branchId") != branch_id:
+                continue
+            occurrence_count += 1
+            coordinate = (
+                int(occurrence["sourceStageIndex"]),
+                int(occurrence["sourceClipOrdinal"]),
+            )
+            mapping = mapping_by_coordinate[coordinate]
+            timing = str(mapping["timingDisposition"])
+            clip_id = mapping.get("clipOccurrenceId")
+            product = product_by_id.get(str(clip_id or ""))
+            normalized = source_inventory.normalize_clip(
+                str(occurrence.get("sourceClip") or "")
+            )
+            occurrence["candidateClipOccurrenceIds"] = [
+                str(row["clipOccurrenceId"])
+                for row in product_rows
+                if row["normalizedClip"] == normalized
+            ]
+            occurrence["branchSelectionStatus"] = "REVIEWED_SELECTED"
+            occurrence["timingDisposition"] = timing
+            occurrence["mappingReviewBasis"] = mapping.get("reviewBasis")
+            if product is None:
+                occurrence["semanticStageId"] = None
+                occurrence["gameplayActionId"] = None
+                occurrence["clipOccurrenceId"] = None
+                occurrence["reachabilityDisposition"] = (
+                    "UNREACHABLE_SOURCE_OCCURRENCE"
+                )
+            else:
+                occurrence["semanticStageId"] = product["semanticStageId"]
+                occurrence["gameplayActionId"] = product["gameplayActionId"]
+                occurrence["clipOccurrenceId"] = product["clipOccurrenceId"]
+                occurrence["reachabilityDisposition"] = "REACHABLE_REVIEWED"
+        if occurrence_count == 0:
+            raise MaterializeError(
+                "additive reviewed branch has no sealed source occurrences: "
+                + branch_id
+            )
+
+    staged["reviewedBranchSelections"] = copy.deepcopy(
+        selection["selections"]
+    )
+    staged["_materializerAdditiveReviewedBranchIds"] = [
+        str(row["branchId"]) for row in additions
+    ]
+    return staged
+
+
+def _hydrate_carrier_element_seeds_from_applied_product(
+    inventory: dict[str, Any]
+) -> None:
+    """Recover sealed carrier payloads from the already-applied exact owners."""
+
+    receipt = read_json(RECEIPT_PATH)
+    ledger = receipt.get("reviewedProjectionLedger")
+    if (
+        receipt.get("schema")
+        != "lostark.valtan-carrier-v1-materialization-receipt"
+        or receipt.get("formatVersion") != 1
+        or not isinstance(ledger, list)
+    ):
+        raise MaterializeError("applied carrier V1 receipt header is invalid")
+
+    elements_by_source_node: dict[str, dict[str, Any]] = {}
+    output_rows = list((receipt.get("outputs") or {}).get("targetDocuments") or [])
+    protected_output = (receipt.get("outputs") or {}).get(
+        "protectedWhirlwindDocument"
+    )
+    if isinstance(protected_output, dict):
+        output_rows.append(protected_output)
+    for row in output_rows:
+        path = ROOT / str(row.get("path") or "")
+        if not path.is_file():
+            raise MaterializeError(
+                "applied exact owner document is missing: " + str(path)
+            )
+        document = read_json(path)
+        for element in document.get("elements", []):
+            source_node = str(element.get("sourceNode") or "")
+            if not source_node:
+                continue
+            if source_node in elements_by_source_node:
+                raise MaterializeError(
+                    "applied exact sourceNode has two owners: " + source_node
+                )
+            elements_by_source_node[source_node] = copy.deepcopy(element)
+
+    occurrences = {
+        str(row.get("fullKey") or ""): row
+        for row in inventory.get("occurrences", [])
+    }
+    systems = {
+        str(row.get("sourceSystemId") or ""): row
+        for row in inventory.get("sourceSystems", [])
+    }
+    carriers = {
+        (system_id, str(carrier.get("carrierKey") or "")): carrier
+        for system_id, system in systems.items()
+        for carrier in system.get("carriers", [])
+    }
+    additive_branch_ids = set(
+        inventory.get("_materializerAdditiveReviewedBranchIds") or []
+    )
+    needed: dict[tuple[Any, ...], list[tuple[dict[str, Any], dict[str, Any]]]] = (
+        defaultdict(list)
+    )
+    for occurrence in inventory.get("occurrences", []):
+        if (
+            occurrence.get("branchId") not in additive_branch_ids
+            or occurrence.get("reachabilityDisposition")
+            != "REACHABLE_REVIEWED"
+        ):
+            continue
+        system_id = str(occurrence.get("sourceSystemId") or "")
+        system = systems.get(system_id)
+        for carrier in (system or {}).get("carriers", []):
+            if carrier.get("disposition") != "EXECUTABLE_CORE":
+                continue
+            key = (
+                int(occurrence["sourceActionId"]),
+                int(occurrence["sourceStageIndex"]),
+                str(occurrence.get("notifyId") or ""),
+                int(occurrence.get("sourceAssetOrdinal") or 0),
+                system_id,
+                str(carrier.get("carrierKey") or ""),
+            )
+            needed[key].append((occurrence, carrier))
+    if sum(len(rows) for rows in needed.values()) != 26:
+        raise MaterializeError("additive reviewed carrier denominator drifted")
+
+    donors: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for row in ledger:
+        if (
+            row.get("disposition") != "EXECUTABLE_CORE"
+            or row.get("patternId") != "VALTAN_HIGH_JUMP"
+        ):
+            continue
+        occurrence = occurrences.get(str(row.get("occurrenceFullKey") or ""))
+        if occurrence is None:
+            continue
+        source_node = str(row.get("sourceNode") or "")
+        system_id = str(row.get("sourceSystemId") or "")
+        carrier_key = str(row.get("carrierKey") or "")
+        carrier = carriers.get((system_id, carrier_key))
+        key = (
+            int(occurrence["sourceActionId"]),
+            int(occurrence["sourceStageIndex"]),
+            str(occurrence.get("notifyId") or ""),
+            int(occurrence.get("sourceAssetOrdinal") or 0),
+            system_id,
+            carrier_key,
+        )
+        if key not in needed:
+            continue
+        element = elements_by_source_node.get(source_node)
+        if element is None or carrier is None:
+            raise MaterializeError(
+                "additive carrier donor evidence is incomplete: " + source_node
+            )
+        renderer_shape = str(carrier.get("rendererShape") or "")
+        if (
+            canonical_sha256(element.get("resources") or [])
+            != str(carrier.get("runtimeResourceBindingSha256") or "")
+            or str((element.get("sourceRecipe") or {}).get("rendererShape") or "")
+            != renderer_shape
+        ):
+            raise MaterializeError(
+                "applied exact carrier payload drifted: " + source_node
+            )
+        current = donors.get(key)
+        if current is not None:
+            raise MaterializeError(
+                "100-bar High Jump carrier donor is not unique: " + repr(key)
+            )
+        donor_element = copy.deepcopy(element)
+        # Effect Tool successor saves normalize float precision and omit this
+        # historical audit-only field.  The successor receipt seals that live
+        # document; restore the renderer identity from the immutable carrier
+        # inventory before deriving the additive owner.
+        donor_element["inventoryRendererShape"] = renderer_shape
+        donors[key] = {
+            "element": donor_element,
+            "ledger": copy.deepcopy(row),
+        }
+
+    hydrated_count = 0
+    for key, targets in needed.items():
+        donor = donors.get(key)
+        if donor is None:
+            raise MaterializeError(
+                "additive reviewed carrier has no exact Product donor: "
+                + repr(key)
+            )
+        for occurrence, carrier in targets:
+            carrier.setdefault("materializerElementSeeds", {})[
+                str(occurrence["fullKey"])
+            ] = copy.deepcopy(donor["element"])
+            carrier["runtimeResources"] = copy.deepcopy(
+                donor["ledger"].get("runtimeResources") or []
+            )
+            carrier["resourceReceipt"] = copy.deepcopy(
+                donor["ledger"].get("resourceReceipt") or []
+            )
+            carrier["sourceResourceClosure"] = [
+                {"role": "material", "objectPath": object_path}
+                for object_path in donor["ledger"].get(
+                    "materialObjectPaths", []
+                )
+            ]
+            hydrated_count += 1
+    if hydrated_count != 26:
+        raise MaterializeError("additive hydrated carrier denominator drifted")
+
+
 def _load_inventory(
     successor_receipt: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -303,6 +849,35 @@ def _load_inventory(
         source_inventory.PATTERN_BINDINGS_PATH
     )
     live_encounter = read_json(source_inventory.ENCOUNTER_PATH)
+
+    # A newly reviewed branch is an additive layer over the immutable sealed
+    # source inventory.  Stage it against the live Product contract before
+    # projecting the historical input, because unrelated successor edits in
+    # that live contract belong to the successor receipt rather than this
+    # additive receipt.
+    sealed_inventory = source_inventory.read_json(source_inventory.OUTPUT_PATH)
+    source_inventory.validate_inventory(sealed_inventory)
+    staged = _stage_additive_reviewed_selections(
+        sealed_inventory,
+        live_selection,
+        encounter=live_encounter,
+        pattern_bindings=live_pattern_bindings,
+    )
+    if staged.get("_materializerAdditiveReviewedBranchIds"):
+        project_successor_base_inputs(
+            successor_receipt,
+            live_pattern_bindings,
+            live_encounter,
+            live_selection,
+        )
+        _validate_successor_base_product(
+            successor_receipt,
+            read_json(CATALOG_PATH),
+            read_json(CUE_PATH),
+        )
+        _hydrate_carrier_element_seeds_from_applied_product(staged)
+        return staged
+
     try:
         historical_pattern_bindings = (
             successor_lineage.project_historical_pattern_bindings(
@@ -319,7 +894,8 @@ def _load_inventory(
         )
     except successor_lineage.SuccessorLineageError as error:
         raise MaterializeError(str(error)) from error
-    inventory = source_inventory.build_inventory(
+
+    rebuilt = source_inventory.build_inventory(
         previous={
             "reviewedBranchSelections": copy.deepcopy(
                 historical_selection["selections"]
@@ -329,13 +905,16 @@ def _load_inventory(
         pattern_bindings=historical_pattern_bindings,
         encounter=historical_encounter,
     )
-    source_inventory.validate_inventory(inventory)
-    return inventory
+    source_inventory.validate_inventory(rebuilt)
+    return rebuilt
 
 
 def _build_projections(
     inventory: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    additive_branch_ids = set(
+        inventory.get("_materializerAdditiveReviewedBranchIds") or []
+    )
     systems = {
         str(row["sourceSystemId"]): row
         for row in inventory.get("sourceSystems", [])
@@ -348,7 +927,14 @@ def _build_projections(
     source_only_occurrences: list[dict[str, Any]] = []
 
     for occurrence in inventory.get("occurrences", []):
-        if occurrence.get("reachabilityDisposition") != "REACHABLE_REVIEWED":
+        if (
+            occurrence.get("reachabilityDisposition")
+            != "REACHABLE_REVIEWED"
+            or (
+                additive_branch_ids
+                and occurrence.get("branchId") not in additive_branch_ids
+            )
+        ):
             continue
         system = systems.get(str(occurrence.get("sourceSystemId") or ""))
         carriers = list((system or {}).get("carriers", []))
@@ -443,13 +1029,20 @@ def _build_projections(
                 blocked[disposition] += 1
                 blocked_shapes[str(carrier.get("rendererShape") or "unknown")] += 1
                 continue
-            if carrier.get("elementSeed") is None:
+            element_seed = (carrier.get("materializerElementSeeds") or {}).get(
+                str(occurrence["fullKey"])
+            )
+            if element_seed is None:
+                element_seed = carrier.get("elementSeed")
+            if element_seed is None:
                 raise MaterializeError("executable carrier has no elementSeed")
             full_key = (
                 f"{occurrence['fullKey']}|{carrier['carrierKey']}"
             )
+            staged_carrier = copy.deepcopy(carrier)
+            staged_carrier["elementSeed"] = copy.deepcopy(element_seed)
             element = source_inventory.occurrence_element_seed(
-                occurrence, carrier
+                occurrence, staged_carrier
             )
             element = reviewed_candidates.add_v13_transform_ownership_defaults(
                 element
@@ -564,6 +1157,22 @@ def _build_projections(
         "blockedExpandedCarrierCount": sum(blocked.values()),
         "reviewedOccurrenceWithoutCarrierCount": reviewed_without_carrier,
     }
+    additive_expected = {
+        "reviewedCoreProjectionCount": 26,
+        "reviewedCoreSpriteProjectionCount": 16,
+        "reviewedCoreMeshProjectionCount": 8,
+        "reviewedCoreDecalProjectionCount": 2,
+        "reviewedCoreClipCount": 2,
+        "reviewedCorePatternCount": 1,
+        "reviewedProjectionLedgerCount": 54,
+        "protectedProjectionCount": 0,
+        "materializedProjectionCount": 26,
+        "materializedClipGroupCount": 2,
+        "newClipDocumentCount": 2,
+        "blockedExpandedCarrierCount": 28,
+        "reviewedOccurrenceWithoutCarrierCount": 9,
+    }
+    expected_counts = additive_expected if additive_branch_ids else EXPECTED
     for key in (
         "reviewedCoreProjectionCount",
         "reviewedCoreSpriteProjectionCount",
@@ -579,10 +1188,10 @@ def _build_projections(
         "blockedExpandedCarrierCount",
         "reviewedOccurrenceWithoutCarrierCount",
     ):
-        if actual[key] != EXPECTED[key]:
+        if actual[key] != expected_counts[key]:
             raise MaterializeError(
                 f"reviewed carrier denominator drifted: {key}: "
-                f"expected {EXPECTED[key]}, actual {actual[key]}"
+                f"expected {expected_counts[key]}, actual {actual[key]}"
             )
     blocker_summary = {
         "expandedCarrierCount": sum(blocked.values()),
@@ -1291,6 +1900,900 @@ def _validate_existing_receipt(
         raise MaterializeError("applied historical Sky Axe exception drifted")
 
 
+def _incremental_source_element(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sourceNode": row["sourceNode"],
+        "fullSourceKey": row["fullSourceKey"],
+        "occurrenceId": row["occurrenceId"],
+        "carrierKey": row["carrierKey"],
+        "clipOccurrenceId": row["clipOccurrenceId"],
+        "effectAssetId": row["targetEffectAssetId"],
+        "rendererShape": row["rendererShape"],
+        "sourceTimeSeconds": row["sourceTimeSeconds"],
+        "originalMaterial": copy.deepcopy(row["originalMaterial"]),
+        "targetMaterial": {
+            "templateId": "effect.standard",
+            "renderProfile": "alpha_two_sided_depth_read",
+            "sourceProfileEnabled": False,
+        },
+    }
+
+
+def _incremental_clip_group(group: list[dict[str, Any]]) -> dict[str, Any]:
+    first = group[0]
+    shapes = Counter(row["rendererShape"] for row in group)
+    return {
+        "patternId": first["patternId"],
+        "semanticStageId": first["semanticStageId"],
+        "gameplayActionId": first["gameplayActionId"],
+        "clipOccurrenceId": first["clipOccurrenceId"],
+        "effectAssetId": first["targetEffectAssetId"],
+        "cueBindingId": _target_cue_id(first["clipOccurrenceId"]),
+        "owner": "VALTAN_PATTERN_EFFECT_CUE",
+        "projectionCount": len(group),
+        "rendererShapeCounts": dict(sorted(shapes.items())),
+    }
+
+
+BASE_RECEIPT_EVIDENCE_SHA256 = {
+    "ownershipExceptions": "68423be95a97fe29dd207e5f820ea46a40d30d0c0a26661bd85ba21530bee69b",
+    "reviewedProjectionLedger": "ba178c9657cabf38a381321e66784824a2dc0bf007d89940993c93772439740b",
+    "reviewedSourceOnlyOccurrences": "62fd2fdf2e8df805b9022bc7cf05536416bbc2bd7e41b77b689d1c3106a59d6d",
+    "clipGroups": "e4a084a83948d3e044236f74cdd3a003b1a53b31fb991cae65c6633c1a1bbf85",
+    "sourceElements": "d81c752f4dc7fd49fb68cb29a17a3364aab76c64dddae8ed0abb9730a1f2d6cb",
+    "legacyMigration": "803e7dd27f7ef8fbab5ca1f6d8b2b686c5f06ab905a48c9fd2289203981a652b",
+    "outputs": "f6f7c3e15a35944a597403d69c0465d4d7e72b296b7c5e854c2b7f5ec3369968",
+    "protectedWhirlwindExactAliasProof": "43f378f91dfe6c0b99b4a3a24383441e1a6fa27e2940ba5b0284da690222095b",
+    "fourSlashPatternSplitOwnerReseal": "5839e1896a2f0b22e1c8da5863ee79eda8c1f539fc1b5a90773de691bdca384d",
+    "clip01ScreenPostSuccessorOverlay": "d26bddb9d449ca600998ad8c1797254e0e90b2a24251174752ef556d6961dd44",
+    "retiredOwnerSuccessorMappings": "ec138f334a6d6b3f3344bf96dce0a2c3bb6febc5fb9b376e4f64e05890072247",
+    "productReset": "dfd0036961b4ae0b5c33e47a02286b61361ee3da8561f116ce211c98d9de5316",
+    "summary": "46a2888826f10803753dd6106ed9e2be229f00935ff223aeb633f3281a44af10",
+    "decalExpansion": "5ab23cb56afcb36a0bc39f4305158bc3f7c1061a50a3ff1d460930f88e9f2b69",
+    "blocked": "4f8df70aeb90b9ce6c10ff049323f3060c10ad8f42f40563a22ff0fe35712d04",
+}
+
+BASE_CATALOG_OUTPUT = {
+    "path": "Data/Effects/EffectCatalog.json",
+    "scope": "EFFECT_ASSET_ID_PREFIX",
+    "effectAssetIdPrefix": "effect.valtan.",
+    "effectCount": 46,
+    "canonicalSha256": "123c070157e743ef467294607f104a9e5f1d90c3c99f73b6cf9c48033da093da",
+}
+BASE_CUE_OUTPUT = {
+    "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+    "cueCount": 44,
+    "canonicalSha256": "4ff3c88cffdbe84abb99aaee22aad86c92f1b1797dfd8706058ded489b738dc9",
+}
+BASE_PROTECTED_BYTE_SHA256 = (
+    "d51b3ef44d9e9a7ca43c26164721bbac0c2e4a632deb1032b251b570452841c1"
+)
+BASE_OWNED_CATALOG_PROJECTION_SHA256 = (
+    "e429d41b8c2734c0d3929e5c7bd56613d021610b1ecf80b4d5fbf14eb83faef9"
+)
+BASE_CUE_ROW_PROJECTION_SHA256 = (
+    "8b6973e4e1ed332858be67231e9595cb342330cf6ec433921fa3034a3aef5e9d"
+)
+BASE_RECEIPT_CANONICAL_SHA256 = (
+    "92a102cb0b25d0d669014fdce0c4a4e08912b68530960b533769d7d10442cc99"
+)
+BASE_BLOCKED = {
+    "expandedCarrierCount": 917,
+    "dispositionCounts": {
+        "DEFERRED_GENERIC_DUST": 19,
+        "DEFERRED_LIGHT": 40,
+        "MISSING_RUNTIME_RESOURCE": 378,
+        "UNRESOLVED_RUNTIME_ADAPTER": 480,
+    },
+    "rendererShapeCounts": {
+        "light": 40,
+        "mesh": 141,
+        "screenPost": 41,
+        "sprite": 695,
+    },
+    "reviewedOccurrenceWithoutCarrierCount": 197,
+    "productAdmission": False,
+}
+BASE_SUMMARY = {
+    "reviewedCoreProjectionCount": 660,
+    "reviewedCoreSpriteProjectionCount": 455,
+    "reviewedCoreMeshProjectionCount": 173,
+    "reviewedCoreDecalProjectionCount": 32,
+    "reviewedCoreClipCount": 45,
+    "reviewedCorePatternCount": 24,
+    "reviewedProjectionLedgerCount": 1577,
+    "protectedProjectionCount": 3,
+    "materializedProjectionCount": 657,
+    "materializedClipGroupCount": 44,
+    "newClipDocumentCount": 43,
+    "baselineExistingExactProjectionCount": 539,
+    "baselineNewExactProjectionCount": 118,
+    "baselineStrictLegacyRowCount": 3032,
+    "baselineStrictLegacyDocumentCount": 97,
+    "baselineValtanCatalogCount": 108,
+    "baselineBossRootCueCount": 106,
+    "baselineValtanProductRowCount": 3624,
+    "baselineRemovedExistingRowCount": 3612,
+    "baselineRetiredEffectCount": 105,
+    "baselineRetiredCueCount": 105,
+    "finalValtanCatalogCount": 46,
+    "finalBossRootCueCount": 44,
+    "blockedExpandedCarrierCount": 917,
+    "reviewedOccurrenceWithoutCarrierCount": 197,
+    "newlySeededProjectionCount": 118,
+    "migratedExistingProjectionCount": 539,
+    "retiredEffectCount": 105,
+    "retiredCueCount": 105,
+    "finalValtanProductRowCount": 669,
+}
+BASE_DECAL_EXPANSION = {
+    "newClipOccurrenceIds": [
+        "valtan.attack.ground-wave-smash.active.clip.02",
+        "valtan.attack.jump-spin.jump.clip.01",
+    ],
+    "newPatternIds": ["VALTAN_JUMP_SPIN"],
+    "exactProjectionCount": 32,
+}
+
+
+def _validate_and_project_base_receipt_evidence(
+    receipt: dict[str, Any],
+    successor_receipt: dict[str, Any],
+    target_effect_ids: set[str],
+    catalog_source: dict[str, Any],
+    cues_source: dict[str, Any],
+    additive_delta: dict[str, list[dict[str, Any]]],
+    blockers: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate the historical receipt and return its unmodified base scope.
+
+    A prior interrupted write may still contain the exact reviewed delta in the
+    historical arrays.  Such rows are accepted only when they byte-for-byte
+    match the regenerated delta, then projected out.  No unrelated historical
+    value is repaired or resealed.
+    """
+
+    base_ledger = [
+        row
+        for row in receipt.get("reviewedProjectionLedger") or []
+        if row.get("patternId") != "VALTAN_FOUR_PILLARS_105"
+    ]
+    base_source_only = [
+        row
+        for row in receipt.get("reviewedSourceOnlyOccurrences") or []
+        if row.get("patternId") != "VALTAN_FOUR_PILLARS_105"
+    ]
+    base_clip_groups = [
+        row
+        for row in receipt.get("clipGroups") or []
+        if row.get("effectAssetId") not in target_effect_ids
+    ]
+    base_source_elements = [
+        row
+        for row in receipt.get("sourceElements") or []
+        if row.get("effectAssetId") not in target_effect_ids
+    ]
+    present_delta = {
+        "reviewedProjectionLedger": [
+            row
+            for row in receipt.get("reviewedProjectionLedger") or []
+            if row.get("patternId") == "VALTAN_FOUR_PILLARS_105"
+        ],
+        "reviewedSourceOnlyOccurrences": [
+            row
+            for row in receipt.get("reviewedSourceOnlyOccurrences") or []
+            if row.get("patternId") == "VALTAN_FOUR_PILLARS_105"
+        ],
+        "sourceElements": [
+            row
+            for row in receipt.get("sourceElements") or []
+            if row.get("effectAssetId") in target_effect_ids
+        ],
+        "clipGroups": [
+            row
+            for row in receipt.get("clipGroups") or []
+            if row.get("effectAssetId") in target_effect_ids
+        ],
+    }
+    for name, rows in present_delta.items():
+        expected_rows = additive_delta[name]
+        if rows and canonical_sha256(rows) != canonical_sha256(expected_rows):
+            raise MaterializeError(
+                "interrupted 100-bar receipt delta drifted: " + name
+            )
+
+    projected = copy.deepcopy(receipt)
+    projected.pop("additiveReviewedOwnerAppend", None)
+    projected["reviewedProjectionLedger"] = copy.deepcopy(base_ledger)
+    projected["reviewedSourceOnlyOccurrences"] = copy.deepcopy(base_source_only)
+    projected["clipGroups"] = copy.deepcopy(base_clip_groups)
+    projected["sourceElements"] = copy.deepcopy(base_source_elements)
+    base_sections = {
+        "reviewedProjectionLedger": base_ledger,
+        "reviewedSourceOnlyOccurrences": base_source_only,
+        "clipGroups": base_clip_groups,
+        "sourceElements": base_source_elements,
+        "legacyMigration": projected.get("legacyMigration"),
+        "protectedWhirlwindExactAliasProof": projected.get(
+            "protectedWhirlwindExactAliasProof"
+        ),
+        "fourSlashPatternSplitOwnerReseal": projected.get(
+            "fourSlashPatternSplitOwnerReseal"
+        ),
+        "clip01ScreenPostSuccessorOverlay": projected.get(
+            "clip01ScreenPostSuccessorOverlay"
+        ),
+    }
+
+    outputs = copy.deepcopy(projected.get("outputs") or {})
+    outputs["targetDocuments"] = [
+        copy.deepcopy(row)
+        for row in outputs.get("targetDocuments") or []
+        if row.get("effectAssetId") not in target_effect_ids
+    ]
+    projected["outputs"] = outputs
+    base_sections["outputs"] = outputs
+
+    ownership = copy.deepcopy(projected.get("ownershipExceptions") or [])
+    base_sections["ownershipExceptions"] = ownership
+
+    base_successors = copy.deepcopy(
+        projected.get("retiredOwnerSuccessorMappings") or []
+    )
+    base_sections["retiredOwnerSuccessorMappings"] = base_successors
+
+    base_product_reset = copy.deepcopy(projected.get("productReset") or {})
+    base_sections["productReset"] = base_product_reset
+    base_sections["summary"] = projected.get("summary")
+    base_sections["decalExpansion"] = projected.get("decalExpansion")
+
+    additive_blocked = {
+        "expandedCarrierCount": BASE_BLOCKED["expandedCarrierCount"]
+        + int(blockers["expandedCarrierCount"]),
+        "dispositionCounts": dict(
+            sorted(
+                (
+                    Counter(BASE_BLOCKED["dispositionCounts"])
+                    + Counter(blockers["dispositionCounts"])
+                ).items()
+            )
+        ),
+        "rendererShapeCounts": dict(
+            sorted(
+                (
+                    Counter(BASE_BLOCKED["rendererShapeCounts"])
+                    + Counter(blockers["rendererShapeCounts"])
+                ).items()
+            )
+        ),
+        "reviewedOccurrenceWithoutCarrierCount": (
+            BASE_BLOCKED["reviewedOccurrenceWithoutCarrierCount"]
+            + int(blockers["reviewedOccurrenceWithoutCarrierCount"])
+        ),
+        "productAdmission": False,
+    }
+    current_blocked = projected.get("blocked")
+    if current_blocked not in (BASE_BLOCKED, additive_blocked):
+        raise MaterializeError("historical carrier blocked evidence drifted")
+    projected["blocked"] = copy.deepcopy(BASE_BLOCKED)
+    base_sections["blocked"] = projected["blocked"]
+
+    for name, value in base_sections.items():
+        if canonical_sha256(value) != BASE_RECEIPT_EVIDENCE_SHA256[name]:
+            raise MaterializeError(
+                "pre-existing carrier receipt evidence drifted: " + name
+            )
+    if canonical_sha256(projected) != BASE_RECEIPT_CANONICAL_SHA256:
+        raise MaterializeError(
+            "pre-existing carrier receipt full evidence drifted"
+        )
+
+    # The receipt seals the original 46-owner carrier product, not every
+    # supplemental Valtan owner currently present in the shared catalog.  Seal
+    # that exact owned projection before appending the two reviewed 100-bar
+    # owners so unrelated catalog/cue/doc drift cannot be absorbed by a new
+    # cumulative receipt hash.
+    base_document_rows = outputs["targetDocuments"]
+    if len(base_document_rows) != 44:
+        raise MaterializeError("historical carrier target document scope drifted")
+    base_document_ids = {
+        str(row.get("effectAssetId") or "") for row in base_document_rows
+    }
+    if len(base_document_ids) != 44 or "" in base_document_ids:
+        raise MaterializeError("historical carrier target document identity drifted")
+
+    successor_document_ids = set(
+        successor_lineage.successor_documents(successor_receipt)
+    )
+    four_slash_id = (
+        "effect.valtan.carrier-v1.attack.four-slash.active.clip-01"
+    )
+    for row in base_document_rows:
+        effect_id = str(row["effectAssetId"])
+        document = read_json(ROOT / str(row["path"]))
+        _validate_document(document, effect_id)
+        actual_count = len(document["elements"])
+        actual_hash = canonical_sha256(document)
+        if effect_id == four_slash_id:
+            try:
+                occurrence_v2_migration.validate_four_slash_clip01_screen_post_overlay(
+                    projected, document
+                )
+            except occurrence_v2_migration.MigrationError as error:
+                raise MaterializeError(str(error)) from error
+            continue
+        if effect_id in successor_document_ids:
+            continue
+        if (
+            actual_count != row["elementCount"]
+            or actual_hash != row["canonicalSha256"]
+        ):
+            raise MaterializeError(
+                "pre-existing carrier target document drifted: " + effect_id
+            )
+
+    protected_row = outputs["protectedWhirlwindDocument"]
+    protected = read_json(ROOT / str(protected_row["path"]))
+    _validate_document(protected, PROTECTED_EFFECT_ID)
+    if (
+        len(protected["elements"]) != protected_row["elementCount"]
+        or canonical_sha256(protected) != protected_row["canonicalSha256"]
+        or byte_sha256(pretty_bytes(protected)) != BASE_PROTECTED_BYTE_SHA256
+    ):
+        raise MaterializeError("protected Whirlwind document drifted")
+
+    sky_rows = [
+        row
+        for row in ownership
+        if row.get("effectAssetId") == "effect.valtan.sky-axe.active"
+    ]
+    if len(sky_rows) != 1:
+        raise MaterializeError("Sky Axe ownership exception drifted")
+    sky_row = sky_rows[0]
+    sky = read_json(
+        AUTHORED_ROOT / "effect.valtan.sky-axe.active.effect.json"
+    )
+    _validate_document(sky, "effect.valtan.sky-axe.active")
+    if "effect.valtan.sky-axe.active" not in successor_document_ids and (
+        len(sky["elements"]) != sky_row["elementCount"]
+        or canonical_sha256(sky) != sky_row["documentCanonicalSha256"]
+        or byte_sha256(pretty_bytes(sky)) != sky_row["documentByteSha256"]
+    ):
+        raise MaterializeError("Sky Axe external owner document drifted")
+
+    base_owned_ids = base_document_ids | {
+        PROTECTED_EFFECT_ID,
+        "effect.valtan.sky-axe.active",
+    }
+    if len(base_owned_ids) != 46:
+        raise MaterializeError("historical carrier catalog owner scope drifted")
+    successor_base_catalog = copy.deepcopy(catalog_source)
+    successor_base_catalog["effects"] = [
+        copy.deepcopy(row)
+        for row in catalog_source["effects"]
+        if str(row.get("effectAssetId") or "") not in target_effect_ids
+    ]
+    successor_base_cues = copy.deepcopy(cues_source)
+    successor_base_cues["cues"] = [
+        copy.deepcopy(row)
+        for row in cues_source["cues"]
+        if str(row.get("effectAssetId") or "") not in target_effect_ids
+    ]
+    try:
+        historical_catalog_source = (
+            successor_lineage.project_historical_catalog(
+                successor_base_catalog, successor_receipt
+            )
+        )
+        historical_cues_source = successor_lineage.project_historical_cues(
+            successor_base_cues, successor_receipt
+        )
+    except successor_lineage.SuccessorLineageError as error:
+        raise MaterializeError(str(error)) from error
+    catalog_rows = _catalog_index(historical_catalog_source)
+    if not base_owned_ids <= set(catalog_rows):
+        raise MaterializeError("historical carrier catalog owner is missing")
+    base_catalog_projection = {
+        "effects": [
+            copy.deepcopy(catalog_rows[effect_id])
+            for effect_id in sorted(base_owned_ids)
+        ]
+    }
+    if (
+        canonical_sha256(base_catalog_projection)
+        != BASE_OWNED_CATALOG_PROJECTION_SHA256
+    ):
+        raise MaterializeError("historical carrier-owned catalog rows drifted")
+
+    cue_rows = _cue_index(historical_cues_source)
+    base_cue_rows = sorted(
+        (
+            copy.deepcopy(row)
+            for row in cue_rows.values()
+            if row.get("effectAssetId") in base_owned_ids
+        ),
+        key=lambda row: str(row["bindingId"]),
+    )
+    # The immutable receipt seals the original 44 rows.  Pattern occurrence
+    # successor migrations may legitimately rebind their semantic owner while
+    # keeping the same carrier cue identities, so the successor receipt (fully
+    # validated above) owns their live row values.
+    if len(base_cue_rows) != 44:
+        raise MaterializeError("historical carrier-owned cue rows drifted")
+    return projected
+
+
+def _build_additive_outputs(
+    core: list[dict[str, Any]],
+    materialized: list[dict[str, Any]],
+    blockers: dict[str, Any],
+    successor_receipt: dict[str, Any],
+) -> tuple[str, dict[Path, bytes], dict[str, Any]]:
+    """Append the reviewed 100-bar branch without resetting other Valtan owners."""
+
+    if len(core) != 26 or len(materialized) != 26:
+        raise MaterializeError("100-bar additive exact denominator drifted")
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in materialized:
+        groups[row["clipOccurrenceId"]].append(row)
+    if set(groups) != {
+        "valtan.mechanic.four-pillars-105.takeoff.clip.01",
+        "valtan.mechanic.four-pillars-105.target-cone.clip.01",
+    }:
+        raise MaterializeError("100-bar exact clip closure drifted")
+
+    catalog_source = read_json(CATALOG_PATH)
+    cues_source = read_json(CUE_PATH)
+    catalog_rows = _catalog_index(catalog_source)
+    cue_rows = _cue_index(cues_source)
+    target_effect_ids = {
+        str(row["targetEffectAssetId"]) for row in materialized
+    }
+    target_cue_ids = {_target_cue_id(clip_id) for clip_id in groups}
+    if (
+        target_effect_ids != FOUR_PILLARS_EFFECT_IDS
+        or target_cue_ids != FOUR_PILLARS_CUE_IDS
+    ):
+        raise MaterializeError("100-bar additive Product identity drifted")
+    if any("high-jump" in value for value in target_effect_ids):
+        raise MaterializeError("100-bar branch reused a High Jump owner")
+
+    current_effect_hits = target_effect_ids & set(catalog_rows)
+    current_cue_hits = target_cue_ids & set(cue_rows)
+    if not current_effect_hits and not current_cue_hits:
+        state = "BASELINE_ADDITIVE"
+    elif (
+        current_effect_hits == target_effect_ids
+        and current_cue_hits == target_cue_ids
+    ):
+        state = "APPLIED"
+    else:
+        raise MaterializeError("100-bar carrier Product append is partial")
+
+    base_catalog, base_cues = _validate_successor_base_product(
+        successor_receipt, catalog_source, cues_source
+    )
+    base_catalog_rows = _catalog_index(base_catalog)
+    base_cue_rows = _cue_index(base_cues)
+
+    historical_receipt = read_json(RECEIPT_PATH)
+    try:
+        historical_catalog = successor_lineage.project_historical_catalog(
+            base_catalog, successor_receipt
+        )
+        historical_cues = successor_lineage.project_historical_cues(
+            base_cues, successor_receipt
+        )
+    except successor_lineage.SuccessorLineageError as error:
+        raise MaterializeError(str(error)) from error
+    if (
+        sum(
+            str(row.get("effectAssetId") or "").startswith("effect.valtan.")
+            for row in historical_catalog["effects"]
+        )
+        != 46
+        or len(historical_cues["cues"]) != 44
+    ):
+        raise MaterializeError("historical successor projection drifted")
+
+    target_documents: dict[str, dict[str, Any]] = {}
+    target_document_paths: dict[str, Path] = {}
+    for clip_id in sorted(groups):
+        group = sorted(groups[clip_id], key=lambda row: row["sourceNode"])
+        effect_id = str(group[0]["targetEffectAssetId"])
+        path = AUTHORED_ROOT / f"{effect_id}.effect.json"
+        target_document_paths[effect_id] = path
+        if effect_id in catalog_rows:
+            if catalog_rows[effect_id] != _catalog_row(effect_id):
+                raise MaterializeError(
+                    "100-bar carrier catalog owner is rebound: " + effect_id
+                )
+            if path.is_file():
+                document = read_json(path)
+                _validate_document(document, effect_id)
+                existing = {
+                    str(row.get("sourceNode") or ""): row
+                    for row in document["elements"]
+                }
+            else:
+                document = _new_document(effect_id, group)
+                existing = {}
+        else:
+            document = _new_document(effect_id, group)
+            existing = {}
+        document["elements"] = sorted(
+            [
+                _common_translucent_element(
+                    row["element"], existing.get(row["sourceNode"])
+                )
+                for row in group
+            ],
+            key=lambda row: (
+                str(row.get("sourceNode") or ""),
+                str(row.get("id") or ""),
+            ),
+        )
+        _validate_document(document, effect_id)
+        expected_nodes = {row["sourceNode"] for row in group}
+        actual_nodes = {
+            str(row.get("sourceNode") or "") for row in document["elements"]
+        }
+        if actual_nodes != expected_nodes:
+            raise MaterializeError(
+                "100-bar exact owner source closure drifted: " + effect_id
+            )
+        target_documents[effect_id] = document
+
+    target_catalog = copy.deepcopy(catalog_source)
+    target_catalog_rows = copy.deepcopy(catalog_rows)
+    for effect_id in target_effect_ids:
+        target_catalog_rows[effect_id] = _catalog_row(effect_id)
+    target_catalog["effects"] = copy.deepcopy(catalog_source["effects"])
+    present_effect_ids = {
+        str(row["effectAssetId"]) for row in target_catalog["effects"]
+    }
+    for effect_id in sorted(target_effect_ids):
+        if effect_id in present_effect_ids:
+            continue
+        insertion = next(
+            (
+                index
+                for index, row in enumerate(target_catalog["effects"])
+                if str(row["effectAssetId"]) > effect_id
+            ),
+            len(target_catalog["effects"]),
+        )
+        target_catalog["effects"].insert(insertion, _catalog_row(effect_id))
+        present_effect_ids.add(effect_id)
+    if sum(
+        str(row.get("effectAssetId") or "").startswith("effect.valtan.")
+        for row in target_catalog["effects"]
+    ) != 56:
+        raise MaterializeError("100-bar final Valtan catalog closure drifted")
+
+    target_cues = copy.deepcopy(cues_source)
+    target_cue_rows = copy.deepcopy(cue_rows)
+    present_cue_ids = {
+        str(row["bindingId"]) for row in target_cues["cues"]
+    }
+    for clip_id in sorted(groups):
+        generated = _cue_row(groups[clip_id])
+        binding_id = str(generated["bindingId"])
+        current = cue_rows.get(binding_id)
+        if current is not None and current != generated:
+            raise MaterializeError(
+                "100-bar carrier cue is rebound: " + binding_id
+            )
+        target_cue_rows[binding_id] = generated
+        if binding_id in present_cue_ids:
+            continue
+        insertion = next(
+            (
+                index
+                for index, row in enumerate(target_cues["cues"])
+                if str(row["bindingId"]) > binding_id
+            ),
+            len(target_cues["cues"]),
+        )
+        target_cues["cues"].insert(insertion, generated)
+        present_cue_ids.add(binding_id)
+    _cue_index(target_cues)
+    if len(target_cues["cues"]) != 49:
+        raise MaterializeError("100-bar final cue closure drifted")
+
+    new_ledger = sorted(
+        copy.deepcopy(blockers["reviewedProjectionLedger"]),
+        key=lambda row: (row["occurrenceFullKey"], row["carrierKey"]),
+    )
+    new_source_only = sorted(
+        copy.deepcopy(blockers["reviewedSourceOnlyOccurrences"]),
+        key=lambda row: row["occurrenceFullKey"],
+    )
+    new_source_elements = sorted(
+        (_incremental_source_element(row) for row in materialized),
+        key=lambda row: row["fullSourceKey"],
+    )
+    new_clip_groups = sorted(
+        (_incremental_clip_group(groups[clip_id]) for clip_id in groups),
+        key=lambda row: row["clipOccurrenceId"],
+    )
+    new_ledger_by_key = {
+        (row["occurrenceFullKey"], row["carrierKey"]): row
+        for row in new_ledger
+    }
+    new_core = [
+        row for row in new_ledger if row["disposition"] == "EXECUTABLE_CORE"
+    ]
+    if (
+        len(new_ledger_by_key) != 54
+        or len(new_source_only) != 9
+        or len(new_source_elements) != 26
+        or len(new_clip_groups) != 2
+        or len(new_core) != 26
+        or Counter(row["rendererShape"] for row in new_core)
+        != Counter({"sprite": 16, "mesh": 8, "decal": 2})
+    ):
+        raise MaterializeError("100-bar additive ledger identity drifted")
+    additive_delta = {
+        "reviewedProjectionLedger": new_ledger,
+        "reviewedSourceOnlyOccurrences": new_source_only,
+        "sourceElements": new_source_elements,
+        "clipGroups": new_clip_groups,
+    }
+
+    source_receipt = copy.deepcopy(historical_receipt)
+    if (
+        source_receipt.get("schema")
+        != "lostark.valtan-carrier-v1-materialization-receipt"
+        or source_receipt.get("formatVersion") != 1
+    ):
+        raise MaterializeError("carrier V1 receipt header is invalid")
+    receipt = _validate_and_project_base_receipt_evidence(
+        source_receipt,
+        successor_receipt,
+        target_effect_ids,
+        catalog_source,
+        cues_source,
+        additive_delta,
+        blockers,
+    )
+
+    target_catalog_index = _catalog_index(target_catalog)
+    target_cue_index = _cue_index(target_cues)
+    additive_documents = []
+    additive_catalog_rows = []
+    additive_cue_rows = []
+    for effect_id in sorted(target_effect_ids):
+        document = target_documents[effect_id]
+        document_path = target_document_paths[effect_id]
+        catalog_row = target_catalog_index[effect_id]
+        clip_id = next(
+            row["clipOccurrenceId"]
+            for row in materialized
+            if row["targetEffectAssetId"] == effect_id
+        )
+        cue_row = target_cue_index[_target_cue_id(clip_id)]
+        additive_documents.append(
+            {
+                "effectAssetId": effect_id,
+                "path": repository_path(document_path),
+                "elementCount": len(document["elements"]),
+                "canonicalSha256": canonical_sha256(document),
+                "byteSha256": byte_sha256(pretty_bytes(document)),
+            }
+        )
+        additive_catalog_rows.append(
+            {
+                "effectAssetId": effect_id,
+                "rowCanonicalSha256": canonical_sha256(catalog_row),
+            }
+        )
+        additive_cue_rows.append(
+            {
+                "bindingId": cue_row["bindingId"],
+                "rowCanonicalSha256": canonical_sha256(cue_row),
+            }
+        )
+    successor_mappings = []
+    for clip_id in sorted(groups):
+        group = groups[clip_id]
+        successor_mappings.append(
+            {
+                "clipOccurrenceId": clip_id,
+                "disposition": "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER",
+                "replacementBindingId": _target_cue_id(clip_id),
+                "replacementEffectAssetId": str(
+                    group[0]["targetEffectAssetId"]
+                ),
+            }
+        )
+    _, _, _, additive_input_evidence = project_successor_base_inputs(
+        successor_receipt,
+        read_json(source_inventory.PATTERN_BINDINGS_PATH),
+        read_json(source_inventory.ENCOUNTER_PATH),
+        source_inventory.load_selection_manifest(
+            reviewed_candidates.SELECTION_PATH
+        ),
+    )
+
+    base_valtan_projection = {
+        "effects": sorted(
+            (
+                copy.deepcopy(row)
+                for row in base_catalog["effects"]
+                if str(row.get("effectAssetId") or "").startswith(
+                    "effect.valtan."
+                )
+            ),
+            key=lambda row: str(row["effectAssetId"]),
+        )
+    }
+    final_valtan_projection = {
+        "effects": sorted(
+            (
+                copy.deepcopy(row)
+                for row in target_catalog["effects"]
+                if str(row.get("effectAssetId") or "").startswith(
+                    "effect.valtan."
+                )
+            ),
+            key=lambda row: str(row["effectAssetId"]),
+        )
+    }
+    expected_append = {
+        "schema": (
+            "lostark.valtan-carrier-v1-four-pillars-additive-receipt"
+        ),
+        "formatVersion": 2,
+        "patternId": "VALTAN_FOUR_PILLARS_105",
+        "sourceActionId": 420610,
+        "sequenceIndex": 2,
+        "sourceStagePath": [19, 20, 21, 22],
+        "reviewBasis": (
+            "YouTube tSpXa0v9TXw 19:32-19:43 reviewed against source "
+            "420610 sequence 2"
+        ),
+        "baseReceiptCanonicalSha256": BASE_RECEIPT_CANONICAL_SHA256,
+        "successorReceipt": {
+            "path": repository_path(SUCCESSOR_RECEIPT_PATH),
+            "canonicalSha256": canonical_sha256(successor_receipt),
+        },
+        "successorBaseInputProjection": additive_input_evidence,
+        "baseReceiptSectionCanonicalSha256": copy.deepcopy(
+            BASE_RECEIPT_EVIDENCE_SHA256
+        ),
+        "deltaEvidence": {
+            "reviewedProjectionLedger": {
+                "count": len(new_ledger),
+                "executableCoreCount": len(new_core),
+                "canonicalSha256": canonical_sha256(new_ledger),
+            },
+            "reviewedSourceOnlyOccurrences": {
+                "count": len(new_source_only),
+                "canonicalSha256": canonical_sha256(new_source_only),
+            },
+            "sourceElements": {
+                "count": len(new_source_elements),
+                "canonicalSha256": canonical_sha256(new_source_elements),
+            },
+            "clipGroups": {
+                "count": len(new_clip_groups),
+                "canonicalSha256": canonical_sha256(new_clip_groups),
+            },
+            "blocked": {
+                "expandedCarrierCount": int(blockers["expandedCarrierCount"]),
+                "reviewedOccurrenceWithoutCarrierCount": int(
+                    blockers["reviewedOccurrenceWithoutCarrierCount"]
+                ),
+                "canonicalSha256": canonical_sha256(blockers),
+            },
+        },
+        "historicalDerivedCounts": {
+            "carrierCatalogOwnerCount": {
+                "base": 46,
+                "delta": 2,
+                "historicalDerived": 48,
+            },
+            "bossRootCueCount": {
+                "base": 44,
+                "delta": 2,
+                "historicalDerived": 46,
+            },
+            "carrierProductRowCount": {
+                "base": 669,
+                "delta": 26,
+                "historicalDerived": 695,
+                "meaning": (
+                    "RECEIPT_ARITHMETIC_ONLY_NOT_CURRENT_PHYSICAL_PRODUCT_COUNT"
+                ),
+            },
+            "reviewedProjectionLedgerCount": {
+                "base": 1577,
+                "delta": 54,
+                "historicalDerived": 1631,
+            },
+            "reviewedCoreProjectionCount": {
+                "base": 660,
+                "delta": 26,
+                "historicalDerived": 686,
+            },
+            "reviewedSourceOnlyOccurrenceCount": {
+                "base": 197,
+                "delta": 9,
+                "historicalDerived": 206,
+            },
+            "sourceElementCount": {
+                "base": 657,
+                "delta": 26,
+                "historicalDerived": 683,
+            },
+            "clipGroupCount": {
+                "base": 44,
+                "delta": 2,
+                "historicalDerived": 46,
+            },
+        },
+        "liveProductUnion": {
+            "valtanCatalogRows": {
+                "successorBase": 54,
+                "additiveDelta": 2,
+                "final": 56,
+                "successorBaseCanonicalSha256": canonical_sha256(
+                    base_valtan_projection
+                ),
+                "finalCanonicalSha256": canonical_sha256(
+                    final_valtan_projection
+                ),
+            },
+            "bossRootCueRows": {
+                "successorBase": 47,
+                "additiveDelta": 2,
+                "final": 49,
+                "successorBaseCanonicalSha256": canonical_sha256(
+                    base_cues["cues"]
+                ),
+                "finalCanonicalSha256": canonical_sha256(
+                    target_cues["cues"]
+                ),
+            },
+        },
+        "decalAppend": {
+            "clipOccurrenceIds": sorted(groups),
+            "patternIds": ["VALTAN_FOUR_PILLARS_105"],
+            "exactProjectionCount": 2,
+        },
+        "successorMappings": successor_mappings,
+        "catalogRows": additive_catalog_rows,
+        "cueRows": additive_cue_rows,
+        "targetDocuments": additive_documents,
+    }
+    existing_append = (
+        read_json(ADDITIVE_RECEIPT_PATH)
+        if ADDITIVE_RECEIPT_PATH.is_file()
+        else None
+    )
+    if existing_append is not None and existing_append != expected_append:
+        prior_additive = copy.deepcopy(expected_append)
+        prior_additive["formatVersion"] = 1
+        prior_additive.pop("successorBaseInputProjection", None)
+        if existing_append != prior_additive:
+            raise MaterializeError("100-bar additive receipt proof drifted")
+    receipt_view = copy.deepcopy(receipt)
+    receipt_view["additiveReviewedOwnerAppend"] = expected_append
+
+    writes: dict[Path, bytes] = {
+        CATALOG_PATH: pretty_bytes(target_catalog),
+        CUE_PATH: pretty_bytes(target_cues),
+        ADDITIVE_RECEIPT_PATH: pretty_bytes(expected_append),
+    }
+    for effect_id, document in target_documents.items():
+        path = target_document_paths[effect_id]
+        payload = pretty_bytes(document)
+        if not path.is_file() or path.read_bytes() != payload:
+            writes[path] = payload
+    return state, writes, receipt_view
+
+
 def build_outputs() -> tuple[str, dict[Path, bytes], dict[str, Any]]:
     successor_receipt = _load_successor_receipt()
     if not RECEIPT_PATH.is_file():
@@ -1298,6 +2801,10 @@ def build_outputs() -> tuple[str, dict[Path, bytes], dict[str, Any]]:
     historical_receipt = read_json(RECEIPT_PATH)
     inventory = _load_inventory(successor_receipt)
     core, materialized, blockers = _build_projections(inventory)
+    if inventory.get("_materializerAdditiveReviewedBranchIds"):
+        return _build_additive_outputs(
+            core, materialized, blockers, successor_receipt
+        )
     legacy_inventory, legacy_authorizations = _load_legacy_authorizations()
     all_exact = {row["sourceNode"]: row for row in core}
     materialized_exact = {row["sourceNode"]: row for row in materialized}
@@ -2034,11 +3541,25 @@ def main(argv: list[str] | None = None) -> int:
     else:
         _atomic_replace(changed)
     summary = receipt["summary"]
+    additive = receipt.get("additiveReviewedOwnerAppend")
+    if isinstance(additive, dict):
+        delta = additive["deltaEvidence"]
+        count_suffix = (
+            f"historicalExact={summary['reviewedCoreProjectionCount']} "
+            f"appendExact={delta['reviewedProjectionLedger']['executableCoreCount']} "
+            f"historicalMaterialized={summary['materializedProjectionCount']} "
+            f"appendMaterialized={delta['sourceElements']['count']} "
+            f"appendOwners={len(additive['targetDocuments'])} "
+        )
+    else:
+        count_suffix = (
+            f"exact={summary['reviewedCoreProjectionCount']} "
+            f"materialized={summary['materializedProjectionCount']} "
+        )
     print(
         "Valtan carrier V1 "
         f"{args.mode}: state={state} changed={len(changed)} "
-        f"exact={summary['reviewedCoreProjectionCount']} "
-        f"materialized={summary['materializedProjectionCount']} "
+        f"{count_suffix}"
         f"legacyRetired={summary['baselineStrictLegacyRowCount']}"
     )
     return 0

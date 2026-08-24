@@ -11170,11 +11170,54 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					"VALTAN_DASH_CHARGE" == Pattern.strPatternId ?
 						m_eValtanDashAuthoringTimelinePath :
 						VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
-				if (Build_ValtanProductPreview(Pattern, eProductPath,
+				if (Pattern.bAuthoringMasterManaged &&
+					Build_ValtanProductPreview(Pattern, eProductPath,
 						*pProductSource->pClip, PlaybackCue, Preview,
 						ProductPlaybackError))
 				{
 					ProductPlaybackPreview = std::move(Preview);
+				}
+				else if (!Pattern.bAuthoringMasterManaged)
+				{
+					const VALTAN_STAGE_VIEW& OwnerStage =
+						*pProductSource->pStage;
+					const VALTAN_CLIP_OCCURRENCE_VIEW& OwnerClip =
+						*pProductSource->pClip;
+					const VALTAN_PRODUCT_EFFECT_CUE_VIEW& SourceCue =
+						*pProductSource->pCue;
+					const bool_t bExactEffectIdentity =
+						SourceCue.strEffectAssetId == Row.strEffectAssetId ||
+						SourceCue.strV1EffectAssetId == Row.strEffectAssetId;
+					if (!bExactEffectIdentity ||
+						SourceCue.strPatternId != Pattern.strPatternId ||
+						SourceCue.strStageId != OwnerStage.strStageId ||
+						SourceCue.strActionId != OwnerStage.strActionId ||
+						SourceCue.strClipOccurrenceId !=
+							OwnerClip.strClipOccurrenceId ||
+						OwnerStage.iDurationMs != SourceCue.iStageDurationMs ||
+						OwnerClip.strClipOccurrenceId.empty() ||
+						OwnerClip.strClipName.empty() ||
+						0u == SourceCue.iStageDurationMs)
+					{
+						ProductPlaybackError =
+							"Legacy Product cue no longer owns one exact stage-local occurrence.";
+					}
+					else
+					{
+						/* Legacy Product data has no master branch wall budgets. Keep
+						   the established compatibility contract: one exact owner clip
+						   fills its Server stage while the complete cue descriptor keeps
+						   source trim, local transform, follow, and stop policy intact. */
+						Preview.Clip = OwnerClip;
+						Preview.Cue = std::move(PlaybackCue);
+						VALTAN_CLIP_OCCURRENCE_VIEW TimelineClip = OwnerClip;
+						TimelineClip.iAuthoringWallMs =
+							Preview.Cue.iStageDurationMs;
+						Preview.TimelineClips = { std::move(TimelineClip) };
+						Preview.iTimelineDurationMs =
+							Preview.Cue.iStageDurationMs;
+						ProductPlaybackPreview = std::move(Preview);
+					}
 				}
 			}
 			const VALTAN_STAGE_VIEW* pNonProductStage =
@@ -11188,6 +11231,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					pNonProductStage->iDurationMs : 0u;
 			const bool_t bAmbiguousOccurrence =
 				1u < Row.ProductSources.size() ||
+				(!Row.ProductSources.empty() && !NonProductStages.empty()) ||
 				(Row.ProductSources.empty() && 1u < NonProductStages.size());
 			const bool_t bHasExactPlaybackOwner =
 				ProductPlaybackPreview.has_value() || nullptr != pNonProductStage;

@@ -32,6 +32,16 @@ enum class VALTAN_CINEMATIC_CAMERA_EASING
 	END
 };
 
+/* WORLD preserves an authored absolute shot. BOSS_XZ translates the authored
+   framing by the replicated boss' horizontal displacement from vTrackingOrigin;
+   Y remains authored so an aerial shot does not climb twice with the leap. */
+enum class VALTAN_CINEMATIC_TRACKING_MODE
+{
+	WORLD,
+	BOSS_XZ,
+	END
+};
+
 struct VALTAN_CINEMATIC_CAMERA_CUE final
 {
 	std::string strCueId;
@@ -42,6 +52,9 @@ struct VALTAN_CINEMATIC_CAMERA_CUE final
 	uint32_t iDurationMs = 0u;
 	VALTAN_CINEMATIC_CAMERA_EASING eEasing =
 		VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
+	VALTAN_CINEMATIC_TRACKING_MODE eTrackingMode =
+		VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
+	float3_t vTrackingOrigin = {};
 	/* Deterministic landing jolt. Amplitude is in world units and decays to
 	   nothing across its own duration, so the shake can never outlive the cue
 	   or diverge between clients. */
@@ -50,8 +63,8 @@ struct VALTAN_CINEMATIC_CAMERA_CUE final
 	std::vector<VALTAN_CINEMATIC_CAMERA_KEYFRAME> Keyframes;
 };
 
-/* The 109 sky is a timed presentation layer, never a skybox swap and never a
-   gameplay state: it turns on and off across the six authoritative transition
+/* The 100-bar sky is a timed presentation layer, never a skybox swap and never
+   a gameplay state: it turns on and off across the four authoritative mechanic
    stages and touches no collision or navigation. The two stable asset IDs seed
    the red-cloud and black-aperture presentation composites. */
 struct VALTAN_CINEMATIC_SKY_CUE final
@@ -70,6 +83,9 @@ struct VALTAN_CINEMATIC_SKY_CUE final
 	f32_t fApertureScaleStart = 0.f;
 	f32_t fApertureScaleEnd = 0.f;
 	f32_t fCloudRotationDegreesPerSecond = 0.f;
+	VALTAN_CINEMATIC_TRACKING_MODE eTrackingMode =
+		VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
+	float3_t vTrackingOrigin = {};
 };
 
 class CValtanCinematicCameraDocument final
