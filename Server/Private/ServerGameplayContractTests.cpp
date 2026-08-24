@@ -612,10 +612,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findStage("VALTAN_FLOOR_WIPE_130", "FIRST_SMASH");
 		const BOSS_PATTERN_STAGE_DEFINITION* roar =
 			findStage("VALTAN_IMPRISON_ROAR", "ROAR");
-		const BOSS_PATTERN_STAGE_DEFINITION* tripleSlashes =
-			findStage("VALTAN_TRIPLE_SLASH", "SLASHES");
-		const BOSS_PATTERN_STAGE_DEFINITION* rotationSpin =
-			findStage("VALTAN_ROTATION_SLASH", "SPIN");
+		const BOSS_PATTERN_STAGE_DEFINITION* fourSlashes =
+			findStage("VALTAN_FOUR_SLASH", "SLASHES");
+		const BOSS_PATTERN_STAGE_DEFINITION* fourSlashSpin =
+			findStage("VALTAN_FOUR_SLASH", "SPIN");
 		const BOSS_PATTERN_STAGE_DEFINITION* highJumpTakeoff =
 			findStage("VALTAN_HIGH_JUMP", "TAKEOFF");
 		const BOSS_PATTERN_STAGE_DEFINITION* highJumpAirborne =
@@ -640,10 +640,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		};
 		const BOSS_PATTERN_DEFINITION* swingPattern =
 			findPattern("VALTAN_SWING");
-		const BOSS_PATTERN_DEFINITION* tripleSlashPattern =
-			findPattern("VALTAN_TRIPLE_SLASH");
-		const BOSS_PATTERN_DEFINITION* rotationSlashPattern =
-			findPattern("VALTAN_ROTATION_SLASH");
+		const BOSS_PATTERN_DEFINITION* fourSlashPattern =
+			findPattern("VALTAN_FOUR_SLASH");
+		const BOSS_PATTERN_DEFINITION* highJumpPattern =
+			findPattern("VALTAN_HIGH_JUMP");
 		const BOSS_PATTERN_DEFINITION* arenaBreakPattern =
 			findPattern("VALTAN_ARENA_BREAK_109");
 		const auto hasAction = [](
@@ -734,9 +734,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const BOSS_PATTERN_STAGE_DEFINITION* centerCounter =
 			findStage("VALTAN_CENTER_GRAB_COUNTER_64", "COUNTER_WINDOW");
 		const bool reactiveTopologyExact = nullptr != patterns &&
-			34u == patterns->size() && 131u == valtanStageCount &&
-			22u == valtanStageActionCount &&
-			139u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
+			33u == patterns->size() && 131u == valtanStageCount &&
+			24u == valtanStageActionCount &&
+			141u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&
 			2u == parryStance->Branches.size() &&
 			hasAction(parryStance,
@@ -827,24 +827,24 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			hasBranch(centerCounter, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
 				"valtan.mechanic.center-grab-counter-64.failed-charge");
 		tests.Require(reactiveTopologyExact,
-			"Load all 131 current Valtan stages with the exact 22 actions and 139 runtime branches");
+			"Load all 131 current Valtan stages with the exact 24 actions and 141 runtime branches");
 		tests.Require(
-			nullptr != tripleSlashes && 3u == tripleSlashes->iHitCount &&
-			0u == tripleSlashes->iHitDelayMs &&
-			0u == tripleSlashes->iHitIntervalMs &&
-			std::vector<std::uint32_t>{ 1791u, 2300u, 3138u } ==
-				tripleSlashes->HitOffsetsMs &&
-			nullptr != rotationSpin && 3u == rotationSpin->iHitCount &&
-			600u == rotationSpin->iHitDelayMs &&
-			1200u == rotationSpin->iHitIntervalMs &&
-			rotationSpin->HitOffsetsMs.empty() &&
-			tripleSlashes->bWallContact && rotationSpin->bWallContact,
-			"Compile split triple and rotation slash Server hit schedules exactly");
+			nullptr != fourSlashes && 3u == fourSlashes->iHitCount &&
+			0u == fourSlashes->iHitDelayMs &&
+			0u == fourSlashes->iHitIntervalMs &&
+			std::vector<std::uint32_t>{ 1790u, 2560u, 3330u } ==
+				fourSlashes->HitOffsetsMs &&
+			nullptr != fourSlashSpin && 1u == fourSlashSpin->iHitCount &&
+			600u == fourSlashSpin->iHitDelayMs &&
+			0u == fourSlashSpin->iHitIntervalMs &&
+			fourSlashSpin->HitOffsetsMs.empty() &&
+			fourSlashes->bWallContact && fourSlashSpin->bWallContact,
+			"Compile the rejoined four-slash Server hit schedule exactly");
 		tests.Require(
 			nullptr != highJumpTakeoff &&
 			1933u == highJumpTakeoff->iDurationMs &&
 			nullptr != highJumpAirborne &&
-			8000u == highJumpAirborne->iDurationMs &&
+			6000u == highJumpAirborne->iDurationMs &&
 			1u == highJumpAirborne->Actions.size() &&
 			hasAction(highJumpAirborne,
 				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
@@ -854,7 +854,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr != highJumpRecovery &&
 			400u == highJumpRecovery->iDurationMs &&
 			nullptr != highJumpTargetAxe &&
-			8000u == highJumpTargetAxe->iLifeMs &&
+			6000u == highJumpTargetAxe->iLifeMs &&
 			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
 				highJumpTargetAxe->eOriginPolicy &&
 			1u == highJumpTargetAxe->Hits.size() &&
@@ -862,18 +862,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				highJumpTargetAxe->Hits.front().eTrigger &&
 			1200u == highJumpTargetAxe->Hits.front().iAtMs &&
 			1u == highJumpTargetAxe->Hits.front().iRepeatCount,
-			"Keep one target axe owner per living player through the 8-second AIRBORNE window, hit once at 1.2 seconds, and leave LAND at 3.2 seconds");
+			"Keep one target axe owner per living player through the 6-second AIRBORNE hold, hit once at 1.2 seconds, and leave LAND at 3.2 seconds");
 		tests.Require(
-			nullptr != tripleSlashPattern && nullptr != rotationSlashPattern &&
-			nullptr != swingPattern &&
-			420609u == tripleSlashPattern->iSourcePrimaryActionId &&
-			tripleSlashPattern->iSourcePrimaryActionId ==
-				rotationSlashPattern->iSourcePrimaryActionId &&
-			tripleSlashPattern->iSourceCooldownTicks ==
-				rotationSlashPattern->iSourceCooldownTicks &&
-			tripleSlashPattern->iSourcePrimaryActionId !=
+			nullptr != fourSlashPattern && nullptr != swingPattern &&
+			420609u == fourSlashPattern->iSourcePrimaryActionId &&
+			fourSlashPattern->iSourcePrimaryActionId !=
 				swingPattern->iSourcePrimaryActionId,
-			"Compile split slash patterns into one source-action cooldown family and keep other sources independent");
+			"Compile one four-slash source-action cooldown family and keep other sources independent");
+		tests.Require(
+			nullptr != highJumpPattern &&
+			2u == highJumpPattern->Motion.iTravelStageIndex &&
+			nullptr != arenaBreakPattern &&
+			1u == arenaBreakPattern->Motion.iTravelStageIndex,
+			"Compile the authored high-jump LAND descent and arena-break DROP descent stage indices");
 		const bool everyPatternHasSourceTiming = nullptr != patterns &&
 			std::all_of(
 				patterns->begin(), patterns->end(),
@@ -2398,17 +2399,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const PLAYER_SKILL_DEFINITION* dimensionMasterBasicAttack =
 			catalog.Find_Skill(2050010u);
 		constexpr std::array<std::uint32_t, 4u> expectedDurationMs =
-			{ 276u, 269u, 494u, 1267u };
+			{ 700u, 1500u, 1067u, 1700u };
 		constexpr std::array<std::uint32_t, 4u> expectedHitMs =
-			{ 92u, 90u, 13u, 250u };
+			{ 50u, 43u, 28u, 335u };
+		constexpr std::array<std::uint32_t, 4u> expectedComboAdvanceMs =
+			{ 276u, 269u, 494u, 1700u };
 		constexpr std::array<std::uint32_t, 4u> expectedOpenMs =
 			{ 92u, 179u, 93u, 0u };
 		constexpr std::array<std::uint32_t, 4u> expectedCloseMs =
 			{ 276u, 269u, 494u, 0u };
 		bool exactDimensionMasterTiming =
 			nullptr != dimensionMasterBasicAttack &&
-			276u == dimensionMasterBasicAttack->iActionDurationMs &&
-			92u == dimensionMasterBasicAttack->iHitTimeMs &&
+			700u == dimensionMasterBasicAttack->iActionDurationMs &&
+			50u == dimensionMasterBasicAttack->iHitTimeMs &&
 			dimensionMasterBasicAttack->ComboStages.size() ==
 				expectedDurationMs.size();
 		if (exactDimensionMasterTiming)
@@ -2420,17 +2423,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				exactDimensionMasterTiming = exactDimensionMasterTiming &&
 					stage.iActionDurationMs == expectedDurationMs[index] &&
 					stage.iHitTimeMs == expectedHitMs[index] &&
-					stage.iComboAdvanceMs == expectedDurationMs[index] &&
+					stage.iComboAdvanceMs == expectedComboAdvanceMs[index] &&
 					stage.iInputOpenMs == expectedOpenMs[index] &&
-					stage.iInputCloseMs == expectedCloseMs[index];
+					stage.iInputCloseMs == expectedCloseMs[index] &&
+					!stage.RootMotion.empty() &&
+					stage.RootMotion.back().iTimeMs == expectedDurationMs[index];
 			}
-			exactDimensionMasterTiming = exactDimensionMasterTiming &&
-				!dimensionMasterBasicAttack->ComboStages.front().RootMotion.empty() &&
-				276u == dimensionMasterBasicAttack->ComboStages.front().
-					RootMotion.back().iTimeMs;
 		}
 		tests.Require(exactDimensionMasterTiming,
-			"Resolve Artist-cadence DimensionMaster BA timing, split input windows and stage-aligned root motion");
+			"Resolve full DimensionMaster BA motions, early combo boundaries and stage-aligned root motion");
 
 		if (nullptr != dimensionMasterBasicAttack)
 		{
@@ -2456,7 +2457,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			SERVER_PLAYER tapped = makePlayer();
 			const bool tappedStarted =
 				skills.Try_Start(tapped, basicAttack, catalog, 100u);
-			tapped.fActionElapsedSeconds = 0.275f;
+			tapped.fActionElapsedSeconds = 0.699f;
 			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
 				0.f, 101u, noDamageEvents);
 			const bool tappedStayedInBa1 =
@@ -2468,7 +2469,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				tappedStarted && tappedStayedInBa1 &&
 				PLAYER_ACTION_STATE::NONE == tapped.eAction &&
 				0u == tapped.iComboStage,
-				"Keep a tapped DimensionMaster BA in BA1 until 276 ms then end it");
+				"Keep a tapped DimensionMaster BA in BA1 for its full 700 ms motion");
 
 			SERVER_PLAYER held = makePlayer();
 			basicAttack.iClientSequence = 1u;
@@ -2507,7 +2508,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 			tests.Require(
 				heldChainedEveryStage && 4u == held.iComboStage,
-				"Advance held DimensionMaster BA through BA2 BA3 BA4 at each full boundary");
+				"Advance held DimensionMaster BA through BA2 BA3 BA4 at each buffered combo boundary");
 		}
 	}
 	{
@@ -2558,22 +2559,22 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 		std::vector<SERVER_WORLD_ENTITY> noTargets;
 		std::vector<DAMAGE_EVENT> noDamageEvents;
-		player.fActionElapsedSeconds = 0.275f;
+		player.fActionElapsedSeconds = 0.699f;
 		skills.Update(player, noTargets, catalog, nullptr, nullptr,
 			0.f, 202u, noDamageEvents);
-		const bool explicitWaitedForBoundary =
+		const bool explicitWaitedForFullMotion =
 			PLAYER_ACTION_STATE::SKILL == player.eAction &&
 			1u == player.iComboStage && player.hasBufferedComboInput;
 		skills.Update(player, noTargets, catalog, nullptr, nullptr,
 			0.002f, 203u, noDamageEvents);
-		const bool explicitWonAtBoundary =
+		const bool explicitWonAfterFullMotion =
 			PLAYER_ACTION_STATE::NONE == player.eAction &&
 			0u == player.iComboStage && !player.hasBufferedComboInput &&
 			PLAYER_PENDING_COMMAND_KIND::SKILL == player.PendingCommand.eKind;
 		const bool pendingStarted =
 			skills.Try_StartPending(player, latestExplicit, catalog, 204u);
 		tests.Require(
-			explicitWaitedForBoundary && explicitWonAtBoundary && pendingStarted &&
+			explicitWaitedForFullMotion && explicitWonAfterFullMotion && pendingStarted &&
 			PLAYER_ACTION_STATE::SKILL == player.eAction &&
 			2050120u == player.iCurrentSkillId &&
 			PLAYER_PENDING_COMMAND_KIND::NONE == player.PendingCommand.eKind &&
@@ -2581,7 +2582,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			resourceBeforePending - pendingSkillDefinition->iResourceCost ==
 				player.iCurrentResource &&
 			player.CooldownEndTickBySkillId.contains(2050120u),
-			"Commit the latest explicit skill before buffered BA and spend costs once");
+			"Commit the latest explicit skill after the full BA1 motion and spend costs once");
 
 		C2S_MOVE pendingMove{};
 		pendingMove.iClientSequence = 1u;
@@ -2653,7 +2654,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				cooldownCountBeforePending ==
 					live.CooldownEndTickBySkillId.size() &&
 				!live.CooldownEndTickBySkillId.contains(2050100u);
-			live.fActionElapsedSeconds = 0.275f;
+			live.fActionElapsedSeconds = 0.699f;
 			std::vector<SERVER_WORLD_ENTITY> noTargets;
 			std::vector<DAMAGE_EVENT> noDamageEvents;
 			room.m_PlayerSkillSystem.Update(
@@ -3737,6 +3738,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					dashPattern = &pattern;
 			}
 		}
+		const auto hasDashBranch = [](
+			const BOSS_PATTERN_STAGE_DEFINITION& stage,
+			const BOSS_PATTERN_STAGE_OUTCOME outcome,
+			const std::string_view nextActionId)
+		{
+			return std::any_of(
+				stage.Branches.begin(), stage.Branches.end(),
+				[outcome, nextActionId](const BOSS_PATTERN_STAGE_BRANCH& branch)
+				{
+					return branch.eOutcome == outcome &&
+						branch.strNextActionId == nextActionId;
+				});
+		};
 		tests.Require(
 			nullptr != dashPattern &&
 			BOSS_PATTERN_SELECTION::NORMAL == dashPattern->eSelection &&
@@ -3781,6 +3795,29 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE ==
 				dashPattern->Stages[3].Motion.eKind,
 			"Keep Dash Charge as a 3650 ms damage-free triple-prep windup followed by the existing 500 ms one-hit 20 m Server charge and 900 ms recovery");
+		tests.Require(
+			nullptr != dashPattern &&
+			2u == dashPattern->Stages[1].Branches.size() &&
+			hasDashBranch(dashPattern->Stages[1],
+				BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT,
+				"valtan.attack.dash-charge.groggy") &&
+			hasDashBranch(dashPattern->Stages[1],
+				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.attack.dash-charge.recovery") &&
+			2u == dashPattern->Stages[2].Branches.size() &&
+			hasDashBranch(dashPattern->Stages[2],
+				BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED,
+				"valtan.attack.dash-charge.part-break") &&
+			hasDashBranch(dashPattern->Stages[2],
+				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.attack.dash-charge.recovery") &&
+			1u == dashPattern->Stages[3].Branches.size() &&
+			hasDashBranch(dashPattern->Stages[3],
+				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "") &&
+			1u == dashPattern->Stages[4].Branches.size() &&
+			hasDashBranch(dashPattern->Stages[4],
+				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, ""),
+			"Compile dash wall-contact, groggy part-break, and terminal recovery branches exactly");
 	}
 
 	{
@@ -4647,8 +4684,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		std::uint32_t previousSequence = 0u;
 		bool respectedCooldowns = true;
 		bool observedPositiveCooldownRepeat = false;
-		bool observedTripleSlash = false;
-		bool observedRotationSlash = false;
+		bool observedFourSlash = false;
 		bool observedIndependentSource = false;
 		bool replayedIntro = false;
 		std::vector<DAMAGE_EVENT> cooldownDamageEvents;
@@ -4694,14 +4730,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 			lastStartTickBySourceAction[
 				definition->iSourcePrimaryActionId] = tick;
-			observedTripleSlash = observedTripleSlash ||
-				"VALTAN_TRIPLE_SLASH" == definition->strPatternId;
-			observedRotationSlash = observedRotationSlash ||
-				"VALTAN_ROTATION_SLASH" == definition->strPatternId;
+			observedFourSlash = observedFourSlash ||
+				"VALTAN_FOUR_SLASH" == definition->strPatternId;
 			observedIndependentSource = observedIndependentSource ||
 				420601u == definition->iSourcePrimaryActionId;
 		}
-		const std::size_t splitSlashCooldownCount =
+		const std::size_t fourSlashCooldownCount =
 			static_cast<std::size_t>(std::count_if(
 				cooldownBoss.PatternCooldowns.begin(),
 				cooldownBoss.PatternCooldowns.end(),
@@ -4714,14 +4748,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			{ return 420601u == cooldown.iSourcePrimaryActionId; });
 		tests.Require(
 			respectedCooldowns && observedPositiveCooldownRepeat &&
-			observedTripleSlash && observedRotationSlash &&
-			observedIndependentSource && 1u == splitSlashCooldownCount &&
+			observedFourSlash && observedIndependentSource &&
+			1u == fourSlashCooldownCount &&
 			hasIndependentCooldown && !replayedIntro,
-			"Gate normal Valtan reselection by shared source-action cooldown, keep other sources independent, and never reroll the intro");
+			"Gate normal Valtan reselection by four-slash source-action cooldown, keep other sources independent, and never reroll the intro");
 	}
 
 	{
-		/* Drive the published split pattern through the real fixed-step brain.
+		/* Drive the published rejoined pattern through the real fixed-step brain.
 		The authored millisecond offsets deliberately do not all fall on exact
 		30 Hz boundaries, so each pulse must wait for the first crossing tick. */
 		std::map<PLAYER_ID, SERVER_PLAYER> slashPlayers;
@@ -4752,7 +4786,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		slashBoss.fMoveSpeed = 3.f;
 		slashBoss.bIntroPatternConsumed = true;
 		slashBoss.bScriptedPatternPlayback = true;
-		slashBoss.PendingPatternIds.push_back("VALTAN_TRIPLE_SLASH");
+		slashBoss.PendingPatternIds.push_back("VALTAN_FOUR_SLASH");
 
 		CValtanBrain slashBrain;
 		std::vector<DAMAGE_EVENT> slashDamageEvents;
@@ -4777,7 +4811,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		std::vector<std::uint32_t> observedContactTicks;
 		std::size_t observedContactCount = 0u;
 		bool crossingStateExact = enteredSlashStage;
-		std::uint32_t slashFinishTick = 0u;
+		std::uint32_t slashTransitionTick = 0u;
 		for (std::uint32_t activeTick = 1u;
 			activeTick <= 120u && enteredSlashStage; ++activeTick)
 		{
@@ -4790,7 +4824,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				observedContactTicks.push_back(activeTick);
 
 			const bool expectsContact =
-				54u == activeTick || 69u == activeTick || 95u == activeTick;
+				54u == activeTick || 77u == activeTick || 100u == activeTick;
 			crossingStateExact = crossingStateExact &&
 				(expectsContact ?
 					1u == slashDamageEvents.size() &&
@@ -4800,122 +4834,70 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			if (53u == activeTick)
 				crossingStateExact = crossingStateExact &&
 					0u == slashBoss.iAppliedPatternHitCount;
-			else if (54u == activeTick || 68u == activeTick)
+			else if (54u == activeTick || 76u == activeTick)
 				crossingStateExact = crossingStateExact &&
 					1u == slashBoss.iAppliedPatternHitCount;
-			else if (69u == activeTick || 94u == activeTick)
+			else if (77u == activeTick || 99u == activeTick)
 				crossingStateExact = crossingStateExact &&
 					2u == slashBoss.iAppliedPatternHitCount;
-			else if (95u == activeTick)
+			else if (100u == activeTick)
 				crossingStateExact = crossingStateExact &&
 					3u == slashBoss.iAppliedPatternHitCount;
 
-			if (slashBoss.strPatternId.empty())
+			if ("SPIN" == slashBoss.strPatternStageId)
 			{
-				slashFinishTick = activeTick;
+				slashTransitionTick = activeTick;
 				break;
 			}
 		}
 		tests.Require(
 			windupStayedDamageFree && crossingStateExact &&
-			105u == slashFinishTick && 3u == observedContactCount &&
-			std::vector<std::uint32_t>{ 54u, 69u, 95u } ==
+			105u == slashTransitionTick && 3u == observedContactCount &&
+			std::vector<std::uint32_t>{ 54u, 77u, 100u } ==
 				observedContactTicks,
-			"Consume 1791/2300/3138 ms triple-slash contacts at ticks 54/69/95 and finish at tick 105 with no extra pulse");
+			"Consume 1790/2560/3330 ms slash contacts at ticks 54/77/100 and enter the joined SPIN at tick 105 with no extra pulse");
 
-		/* Rotation begins directly in SPIN. Start near uint32 wrap so the same
-		rational clock also proves that reserved tick zero is skipped. */
-		std::map<PLAYER_ID, SERVER_PLAYER> rotationPlayers;
-		rotationPlayers.emplace(slashTarget.iPlayerId, slashTarget);
-		SERVER_WORLD_ENTITY rotationBoss{};
-		rotationBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-		rotationBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
-		rotationBoss.strArchetypeId = "BOSS_VALTAN";
-		rotationBoss.strEncounterId = "ENCOUNTER_VALTAN";
-		rotationBoss.iCurrentHp = 60000u;
-		rotationBoss.iMaximumHp = 60000u;
-		rotationBoss.iMaximumHealthBars = 160u;
-		rotationBoss.iLastEvaluatedHealthBar = 160u;
-		rotationBoss.iPhaseTwoHpPercent = 50u;
-		rotationBoss.fPositionY = 22.97f;
-		rotationBoss.fSpawnPositionY = 22.97f;
-		rotationBoss.fEngageDistance = 35.f;
-		rotationBoss.fMoveSpeed = 3.f;
-		rotationBoss.bIntroPatternConsumed = true;
-		rotationBoss.bScriptedPatternPlayback = true;
-		rotationBoss.PendingPatternIds.push_back("VALTAN_ROTATION_SLASH");
-
-		CValtanBrain rotationBrain;
-		std::vector<DAMAGE_EVENT> rotationDamageEvents;
-		std::vector<std::uint32_t> rotationContactTicks;
-		std::size_t rotationContactCount = 0u;
-		std::uint32_t rotationTransitionTick = 0u;
-		std::uint32_t rotationServerTick =
-			(std::numeric_limits<std::uint32_t>::max)() - 10u;
-		bool rotationCrossingStateExact = true;
-		bool crossedReservedZero = false;
-		bool firstStageEntryConventionExact = false;
+		/* SPIN is the next stage of the same pattern, not a separately rolled
+		pattern. It owns one contact at 600 ms and then hands off to recovery. */
+		std::vector<std::uint32_t> spinContactTicks;
+		std::size_t spinContactCount = 0u;
+		std::uint32_t spinTransitionTick = 0u;
+		bool spinCrossingStateExact = true;
 		for (std::uint32_t activeTick = 1u; activeTick <= 100u; ++activeTick)
 		{
-			rotationDamageEvents.clear();
-			const std::uint32_t evaluatedServerTick = rotationServerTick;
-			rotationBrain.Update(
-				rotationBoss, rotationPlayers, catalog, navigation,
-				1.f / 30.f, evaluatedServerTick, {}, rotationDamageEvents);
-			rotationServerTick =
-				(std::numeric_limits<std::uint32_t>::max)() ==
-					evaluatedServerTick ? 1u : evaluatedServerTick + 1u;
-			crossedReservedZero = crossedReservedZero ||
-				1u == rotationServerTick &&
-				(std::numeric_limits<std::uint32_t>::max)() ==
-					evaluatedServerTick;
-			if (1u == activeTick)
-			{
-				/* The first pattern stage historically consumes its entry tick while
-				the replicated action age is still zero on that same snapshot. */
-				firstStageEntryConventionExact =
-					rotationBoss.iActionStartTick == evaluatedServerTick &&
-					std::abs(rotationBoss.fActionElapsedSeconds - 1.f / 30.f) <
-						1.0e-6f;
-			}
-			rotationContactCount += rotationDamageEvents.size();
-			if (!rotationDamageEvents.empty())
-				rotationContactTicks.push_back(activeTick);
+			slashDamageEvents.clear();
+			slashBrain.Update(
+				slashBoss, slashPlayers, catalog, navigation,
+				1.f / 30.f, slashServerTick++, {}, slashDamageEvents);
+			spinContactCount += slashDamageEvents.size();
+			if (!slashDamageEvents.empty())
+				spinContactTicks.push_back(activeTick);
 
-			const bool expectsContact =
-				18u == activeTick || 54u == activeTick || 90u == activeTick;
-			rotationCrossingStateExact = rotationCrossingStateExact &&
+			const bool expectsContact = 18u == activeTick;
+			spinCrossingStateExact = spinCrossingStateExact &&
 				(expectsContact ?
-					1u == rotationDamageEvents.size() &&
-					178u == rotationDamageEvents.front().iTargetNetEntityId &&
-					!rotationDamageEvents.front().isOutgoing :
-					rotationDamageEvents.empty());
+					1u == slashDamageEvents.size() &&
+					178u == slashDamageEvents.front().iTargetNetEntityId &&
+					!slashDamageEvents.front().isOutgoing :
+					slashDamageEvents.empty());
 			if (17u == activeTick)
-				rotationCrossingStateExact = rotationCrossingStateExact &&
-					0u == rotationBoss.iAppliedPatternHitCount;
-			else if (18u == activeTick || 53u == activeTick)
-				rotationCrossingStateExact = rotationCrossingStateExact &&
-					1u == rotationBoss.iAppliedPatternHitCount;
-			else if (54u == activeTick || 89u == activeTick)
-				rotationCrossingStateExact = rotationCrossingStateExact &&
-					2u == rotationBoss.iAppliedPatternHitCount;
-			else if (90u == activeTick || 95u == activeTick)
-				rotationCrossingStateExact = rotationCrossingStateExact &&
-					3u == rotationBoss.iAppliedPatternHitCount;
+				spinCrossingStateExact = spinCrossingStateExact &&
+					0u == slashBoss.iAppliedPatternHitCount;
+			else if (18u <= activeTick)
+				spinCrossingStateExact = spinCrossingStateExact &&
+					1u == slashBoss.iAppliedPatternHitCount;
 
-			if ("RECOVERY" == rotationBoss.strPatternStageId)
+			if ("RECOVERY" == slashBoss.strPatternStageId)
 			{
-				rotationTransitionTick = activeTick;
+				spinTransitionTick = activeTick;
 				break;
 			}
 		}
 		tests.Require(
-			rotationCrossingStateExact && crossedReservedZero &&
-			firstStageEntryConventionExact && 96u == rotationTransitionTick &&
-			3u == rotationContactCount &&
-			std::vector<std::uint32_t>{ 18u, 54u, 90u } ==
-				rotationContactTicks,
-			"Consume rotation contacts at ticks 18/54/90, cross uint32 wrap, and enter recovery at ceil(3167ms*30Hz)=tick 96");
+			spinCrossingStateExact && 96u == spinTransitionTick &&
+			1u == spinContactCount &&
+			std::vector<std::uint32_t>{ 18u } == spinContactTicks,
+			"Consume the joined SPIN contact at tick 18 and enter recovery at ceil(3167ms*30Hz)=tick 96");
 	}
 
 	{
@@ -5095,10 +5077,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			hurtBoss.bIntroPatternConsumed &&
 			"VALTAN_ENTRANCE_WHIRLWIND" != hurtBoss.strPatternId,
 			"Drop the pending Valtan entrance once the boss is already taking damage");
-		/* The authored list introduces the band: it is advanced one step per
-		pattern and is not repeated. Being hit cannot reshuffle it, and once it
-		is spent the stretch hands over to the weighted roll so the rest of the
-		moveset can appear too. */
+		/* Phase one is weighted from its first normal choice. PatternIds is an
+		exact master-owned whitelist; each admitted pattern still owns weight,
+		range, phase, armour, cooldown, and maximum consecutive uses. */
 		const auto observeOrder = [&](
 			SERVER_WORLD_ENTITY& boss, const std::uint32_t count)
 		{
@@ -5124,60 +5105,50 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		SERVER_WORLD_ENTITY rotationBoss = makeEntranceBoss();
 		const std::vector<std::string> observedOrder =
 			observeOrder(rotationBoss, 3600u);
-		/* observeOrder collapses a pattern that repeats back to back, so the
-		authored charge that opens and closes the list is seen once at each end
-		rather than twice in a row. */
-		const std::vector<std::string> expectedOrder{
-			"VALTAN_ENTRANCE_WHIRLWIND",
-			"VALTAN_DASH_CHARGE", "VALTAN_JUMP_SPIN", "VALTAN_TRIPLE_SLASH",
-			"VALTAN_HIGH_JUMP", "VALTAN_DASH_CHARGE", "VALTAN_HIGH_JUMP",
-			"VALTAN_EARTHQUAKE_SMASH", "VALTAN_WHIRLWIND",
-			"VALTAN_EARTHQUAKE_SMASH", "VALTAN_SUPER_SMASH",
-			"VALTAN_ROTATION_SLASH", "VALTAN_DASH_CHARGE" };
-		tests.Require(
-			observedOrder.size() >= expectedOrder.size() &&
-			std::equal(
-				expectedOrder.begin(), expectedOrder.end(), observedOrder.begin()),
-			"Introduce every authored Valtan rotation step once and in order");
-		/* The introduction is spent by now, so the stretch has to be drawing
-		from the whole eligible moveset. A pattern the authored list never names
-		proves the roll took over instead of the list looping. */
 		const BOSS_PATTERN_ROTATION_DEFINITION* introducedSpan =
 			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 160u);
-		bool reachedBeyondTheList = false;
-		if (nullptr != introducedSpan)
+		bool observedOnlyWeightedPool = observedOrder.size() > 1u &&
+			"VALTAN_ENTRANCE_WHIRLWIND" == observedOrder.front();
+		if (nullptr == introducedSpan)
+			observedOnlyWeightedPool = false;
+		else
 		{
-			for (std::size_t index = expectedOrder.size();
+			for (std::size_t index = 1u;
 				index < observedOrder.size(); ++index)
 			{
-				reachedBeyondTheList = reachedBeyondTheList ||
-					introducedSpan->PatternIds.end() == std::find(
+				observedOnlyWeightedPool = observedOnlyWeightedPool &&
+					introducedSpan->PatternIds.end() != std::find(
 						introducedSpan->PatternIds.begin(),
 						introducedSpan->PatternIds.end(), observedOrder[index]);
 			}
 		}
 		tests.Require(
-			reachedBeyondTheList,
-			"Hand the stretch to the weighted roll once the introduction is spent");
+			observedOnlyWeightedPool,
+			"Select Phase-1 normal patterns immediately from the exact weighted pool");
 		const BOSS_PATTERN_ROTATION_DEFINITION* openingSpan =
 			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 160u);
 		const BOSS_PATTERN_ROTATION_DEFINITION* secondSpan =
 			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 129u);
 		tests.Require(
 			nullptr != openingSpan &&
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
+				openingSpan->eSelectionMode &&
 			160u == openingSpan->iFromHealthBar &&
 			130u == openingSpan->iToHealthBar &&
+			5u == openingSpan->PatternIds.size() &&
 			openingSpan == catalog.Find_BossPatternRotation(
 				"ENCOUNTER_VALTAN", 131u) &&
-			nullptr == catalog.Find_BossPatternRotation(
-				"ENCOUNTER_VALTAN", 130u) &&
 			nullptr != secondSpan && openingSpan != secondSpan &&
-			129u == secondSpan->iFromHealthBar &&
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
+				secondSpan->eSelectionMode &&
+			130u == secondSpan->iFromHealthBar &&
 			109u == secondSpan->iToHealthBar &&
+			secondSpan == catalog.Find_BossPatternRotation(
+				"ENCOUNTER_VALTAN", 130u) &&
+			openingSpan->PatternIds == secondSpan->PatternIds &&
 			nullptr == catalog.Find_BossPatternRotation(
 				"ENCOUNTER_VALTAN", 1u),
-			"End the 160-to-130 span on the bar its scripted mechanic owns and "
-			"open the 129-to-109 span below it");
+			"Keep both Phase-1 health bands on the same five-pattern weighted pool");
 		SERVER_WORLD_ENTITY scriptedBoss = makeEntranceBoss();
 		scriptedBoss.bScriptedPatternPlayback = true;
 		observeOrder(scriptedBoss, 400u);
@@ -9222,6 +9193,56 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			startedTheJump && landsOnTheTarget && leftItsOwnFeet &&
 			leapArcBoss.fPatternLeapApexHeight == highJump->Motion.fApexHeight,
 			"Land the high jump on the player it locked instead of its own feet");
+
+		std::uint32_t leapArcTick = 901u;
+		for (std::uint32_t tick = 0u;
+			tick < 70u && "TAKEOFF" == leapArcBoss.strPatternStageId; ++tick)
+		{
+			leapArcDamage.clear();
+			leapArcBrain.Update(
+				leapArcBoss, leapArcPlayers, catalog, navigation,
+				1.f / 30.f, leapArcTick++, {}, leapArcDamage);
+		}
+		const float expectedApexY =
+			leapArcBoss.fLeapOriginY +
+			(nullptr == highJump ? 0.f : highJump->Motion.fApexHeight);
+		bool heldAtApex = "AIRBORNE" == leapArcBoss.strPatternStageId;
+		bool enteredLand = false;
+		for (std::uint32_t tick = 0u;
+			tick < 200u && !enteredLand; ++tick)
+		{
+			if ("AIRBORNE" == leapArcBoss.strPatternStageId)
+			{
+				heldAtApex = heldAtApex &&
+					std::abs(leapArcBoss.fPositionX - leapArcBoss.fLeapOriginX) <
+						0.001f &&
+					std::abs(leapArcBoss.fPositionY - expectedApexY) < 0.001f &&
+					std::abs(leapArcBoss.fPositionZ - leapArcBoss.fLeapOriginZ) <
+						0.001f;
+			}
+			leapArcDamage.clear();
+			leapArcBrain.Update(
+				leapArcBoss, leapArcPlayers, catalog, navigation,
+				1.f / 30.f, leapArcTick++, {}, leapArcDamage);
+			enteredLand = "LAND" == leapArcBoss.strPatternStageId;
+		}
+		bool enteredRecovery = false;
+		for (std::uint32_t tick = 0u;
+			tick < 110u && !enteredRecovery; ++tick)
+		{
+			leapArcDamage.clear();
+			leapArcBrain.Update(
+				leapArcBoss, leapArcPlayers, catalog, navigation,
+				1.f / 30.f, leapArcTick++, {}, leapArcDamage);
+			enteredRecovery = "RECOVERY" == leapArcBoss.strPatternStageId;
+		}
+		tests.Require(
+			heldAtApex && enteredLand && enteredRecovery &&
+			2u == leapArcBoss.iPatternLeapTravelStageIndex &&
+			std::abs(leapArcBoss.fPositionX - leapArcTarget.fPositionX) < 0.01f &&
+			std::abs(leapArcBoss.fPositionY - leapArcTarget.fPositionY) < 0.01f &&
+			std::abs(leapArcBoss.fPositionZ - leapArcTarget.fPositionZ) < 0.01f,
+			"Hold the high jump at its apex for AIRBORNE and descend only during LAND");
 
 		/* With nobody to lock, the arc still needs a real destination or the
 		boss would drop through an uninitialised landing. */

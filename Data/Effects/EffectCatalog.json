@@ -277,15 +277,6 @@
       "sourceDocumentRawSha256": "c1a6d50a386e292589863477d51bbbff82a674bd60ab563a6ee15d8775f82f46"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050210.authored-baseline",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.authored-baseline.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050210.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.unified.effect.json"
-    },
-    {
       "effectAssetId": "effect.dimensionmaster.skill.2050210.a1.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.a1.unified.effect.json"
@@ -304,6 +295,15 @@
       "effectAssetId": "effect.dimensionmaster.skill.2050210.a4.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.a4.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.unified.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050220.authored-baseline",

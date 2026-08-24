@@ -305,11 +305,17 @@ HRESULT CLevel_CharacterSelect::Ready_Camera()
 
 HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
 {
+	const CLIENT_LEVEL_DESCRIPTOR* entry =
+		CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (nullptr == entry || nullptr == entry->pMapAreaId)
+		return E_FAIL;
+
 	CClientReplication::DESC desc{};
 	desc.pDevice = m_pDevice;
 	desc.pContext = m_pContext;
 	desc.iPrototypeLevelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
 	desc.iLayerLevelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
+	desc.strMapAreaId = entry->pMapAreaId;
 	desc.strPlayerLayerTag = TEXT("Layer_Player");
 	desc.strWorldEntityLayerTag = TEXT("Layer_WorldEntity");
 	desc.bDeferLocalCharacterClassReplacement = true;

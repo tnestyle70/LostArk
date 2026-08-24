@@ -2,6 +2,7 @@
 
 #include "Animation_Tool.h"
 
+#include "ActionPresentationTimeline.h"
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
@@ -17,6 +18,7 @@
 
 #include <charconv>
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cmath>
 #include <cstdio>
@@ -24,6 +26,8 @@
 #include <cstring>
 #include <filesystem>
 #include <io.h>
+#include <limits>
+#include <span>
 #include <system_error>
 #include <unordered_set>
 
@@ -37,6 +41,38 @@ namespace
 	/* Used when a clip carries no usable rate, which would otherwise make the
 	frame <-> millisecond conversion divide by zero. */
 	constexpr f32_t DEFAULT_TICK_RATE = 30.f;
+	constexpr std::array<std::string_view, 7u>
+		VALTAN_PATTERN_MASTER_ORDER = {
+			"VALTAN_WHIRLWIND",
+			"VALTAN_DASH_CHARGE",
+			"VALTAN_FOUR_SLASH",
+			"VALTAN_FIST_IN_OUT",
+			"VALTAN_HIGH_JUMP",
+			"VALTAN_FLOOR_WIPE_130",
+			"VALTAN_ARENA_BREAK_109",
+		};
+
+	const Client::VALTAN_PATTERN_VIEW* Find_ValtanPatternMaster(
+		const Client::VALTAN_PATTERN_TREE_VIEW& View,
+		const std::string_view strPatternId)
+	{
+		const auto FindIn = [strPatternId](
+			const std::vector<Client::VALTAN_PATTERN_VIEW>& Patterns)
+			-> const Client::VALTAN_PATTERN_VIEW*
+		{
+			const auto Pattern = std::find_if(
+				Patterns.begin(), Patterns.end(),
+				[strPatternId](const Client::VALTAN_PATTERN_VIEW& Candidate)
+				{
+					return Candidate.bAuthoringMasterManaged &&
+						Candidate.strPatternId == strPatternId;
+				});
+			return Pattern == Patterns.end() ? nullptr : &*Pattern;
+		};
+		if (const Client::VALTAN_PATTERN_VIEW* pPattern = FindIn(View.Rotation))
+			return pPattern;
+		return FindIn(View.Gimmicks);
+	}
 
 	void Skip_Space(const char_t*& p)
 	{
@@ -170,6 +206,75 @@ void Client::CAnimation_Tool::Update(
 	const f32_t fTimeDelta,
 	const bool_t bIsActiveTool)
 {
+	if (m_bValtanPatternMasterPlaying)
+	{
+		const shared_ptr<Engine::CModel> PreviewModel =
+			m_ValtanPatternMasterModel.lock();
+		if (nullptr == PreviewModel ||
+			0u == m_iValtanPatternMasterTargetGeneration ||
+			m_iValtanPatternMasterTargetGeneration !=
+				CAnimationTargetService::Resolve_TargetGeneration() ||
+			CAnimationTargetService::Resolve_Model() != PreviewModel)
+		{
+			if (nullptr != PreviewModel)
+				PreviewModel->Set_AnimationSpeed(1.f);
+			Reset_ValtanPatternMasterPreviewState(
+				"Valtan Pattern Master preview cancelled because the animation target changed.");
+			return;
+		}
+		if (!bIsActiveTool)
+		{
+			Stop_ValtanPatternMasterPreview(
+				PreviewModel,
+				"Valtan Pattern Master preview stopped because Animation Tool was deactivated; idle restored.");
+			return;
+		}
+		if (m_iValtanPatternMasterItem >=
+			m_ValtanPatternMasterPlaylist.size())
+		{
+			Stop_ValtanPatternMasterPreview(
+				PreviewModel,
+				"Valtan Pattern Master preview stopped because its admitted timeline became invalid; idle restored.");
+			return;
+		}
+
+		const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item =
+			m_ValtanPatternMasterPlaylist[m_iValtanPatternMasterItem];
+		const char_t* pCurrentClip = PreviewModel->Get_AnimationName(
+			PreviewModel->Get_CurrentAnimIndex());
+		if (nullptr == pCurrentClip || Item.strClipName != pCurrentClip)
+		{
+			Stop_ValtanPatternMasterPreview(
+				PreviewModel,
+				"Valtan Pattern Master preview stopped because another control replaced its clip; idle restored.");
+			return;
+		}
+		if (!m_bValtanPatternMasterPaused &&
+			std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+		{
+			m_fValtanPatternMasterItemElapsedSeconds +=
+				fTimeDelta * m_fValtanPatternPreviewSpeed;
+			const f32_t fItemDurationSeconds =
+				static_cast<f32_t>(Item.iAuthoringWallMs) * 0.001f;
+			if (m_fValtanPatternMasterItemElapsedSeconds + 0.000001f >=
+				fItemDurationSeconds)
+			{
+				Advance_ValtanPatternMasterPreview(PreviewModel);
+			}
+			else if (!Apply_ValtanPatternMasterPose(
+				PreviewModel, Item,
+				m_fValtanPatternMasterItemElapsedSeconds))
+			{
+				Stop_ValtanPatternMasterPreview(
+					PreviewModel,
+					"Valtan Pattern Master preview stopped because its source-clock sample failed; idle restored.");
+				return;
+			}
+		}
+		Update_ValtanPatternMasterHitAreaPreview();
+		return;
+	}
+
 	if (!m_bValtanPatternPreviewPlaying)
 		return;
 
@@ -308,6 +413,20 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_bClipNotifyLoadAttempted = false;
 	m_bClipSeqLoadAttempted = false;
 	m_bSkillBindingLoadAttempted = false;
+	m_ValtanPatternMasterView = {};
+	m_ValtanPatternMasterPlaylist.clear();
+	m_bValtanPatternMasterLoadAttempted = false;
+	m_bValtanPatternMasterPlaying = false;
+	m_bValtanPatternMasterPaused = false;
+	m_bShowValtanSourceReferenceWindow = false;
+	m_iValtanPatternMasterSelected = 0;
+	m_iValtanPatternMasterItem = 0u;
+	m_fValtanPatternMasterItemElapsedSeconds = 0.f;
+	m_iValtanPatternMasterDurationMs = 0u;
+	m_eValtanPatternMasterPath = VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
+	m_strValtanPatternMasterStatus.clear();
+	m_ValtanPatternMasterModel.reset();
+	m_iValtanPatternMasterTargetGeneration = 0u;
 	m_ValtanPatternPreviewDocument = {};
 	m_ValtanPatternPreviewPlaylist.clear();
 	m_bValtanPatternPreviewLoadAttempted = false;
@@ -603,12 +722,14 @@ void Client::CAnimation_Tool::Render()
 			pModel->Get_NumAnimations());
 		ImGui::TextDisabled(
 			"Playback-only preview: authored events and gameplay skill bindings are disabled.");
-		ImGui::BeginDisabled(m_bValtanPatternPreviewPlaying);
+		ImGui::BeginDisabled(
+			m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying);
 		Render_Playback(pModel);
 		ImGui::EndDisabled();
 		if ("Valtan" == m_AssetName)
 			Render_ValtanPatternPreview(pModel);
-		ImGui::BeginDisabled(m_bValtanPatternPreviewPlaying);
+		ImGui::BeginDisabled(
+			m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying);
 		Render_ClipChain(pModel);
 		Render_NotifyReference(pModel);
 		Render_HitAreaWires(pModel);
@@ -835,12 +956,828 @@ void Client::CAnimation_Tool::Render_Playback(const shared_ptr<Engine::CModel>& 
 		pModel->Set_Animation(iCurrentIndex, m_bLoop);
 }
 
+const char_t* Client::CAnimation_Tool::ValtanPatternMasterPathName(
+	const VALTAN_PATTERN_PREVIEW_PATH ePath)
+{
+	switch (ePath)
+	{
+	case VALTAN_PATTERN_PREVIEW_PATH::NORMAL:
+		return "Normal";
+	case VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY:
+		return "Wall -> Groggy -> Recovery";
+	case VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK:
+		return "Wall -> Groggy -> Part Break";
+	default:
+		return "Invalid";
+	}
+}
+
+std::vector<const Client::VALTAN_PATTERN_VIEW*>
+Client::CAnimation_Tool::Collect_ValtanPatternMasterPatterns() const
+{
+	std::vector<const VALTAN_PATTERN_VIEW*> Patterns;
+	Patterns.reserve(VALTAN_PATTERN_MASTER_ORDER.size());
+	for (const std::string_view strPatternId : VALTAN_PATTERN_MASTER_ORDER)
+	{
+		if (const VALTAN_PATTERN_VIEW* pPattern = Find_ValtanPatternMaster(
+			m_ValtanPatternMasterView, strPatternId))
+		{
+			Patterns.push_back(pPattern);
+		}
+	}
+	return Patterns;
+}
+
+bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
+{
+	VALTAN_PATTERN_TREE_VIEW Staged;
+	std::string Status;
+	if (!CValtanPatternTree::Load(Staged, Status))
+	{
+		m_strValtanPatternMasterStatus =
+			"Valtan Pattern Master reload rejected; current admitted view and pose preserved: " +
+			Status;
+		return false;
+	}
+
+	size_t iManagedPatternCount = 0u;
+	const auto CountManaged = [&iManagedPatternCount](
+		const std::vector<VALTAN_PATTERN_VIEW>& Patterns)
+	{
+		for (const VALTAN_PATTERN_VIEW& Pattern : Patterns)
+		{
+			if (Pattern.bAuthoringMasterManaged)
+				++iManagedPatternCount;
+		}
+	};
+	CountManaged(Staged.Rotation);
+	CountManaged(Staged.Gimmicks);
+	if (VALTAN_PATTERN_MASTER_ORDER.size() != iManagedPatternCount)
+	{
+		m_strValtanPatternMasterStatus =
+			"Valtan Pattern Master reload rejected; expected exactly 7 managed patterns, found " +
+			std::to_string(iManagedPatternCount) +
+			". Current admitted view and pose preserved.";
+		return false;
+	}
+	for (const std::string_view strPatternId : VALTAN_PATTERN_MASTER_ORDER)
+	{
+		if (nullptr == Find_ValtanPatternMaster(Staged, strPatternId))
+		{
+			m_strValtanPatternMasterStatus =
+				"Valtan Pattern Master reload rejected; required pattern is missing: " +
+				std::string(strPatternId) +
+				". Current admitted view and pose preserved.";
+			return false;
+		}
+	}
+
+	m_ValtanPatternMasterView = std::move(Staged);
+	m_iValtanPatternMasterSelected = std::clamp(
+		m_iValtanPatternMasterSelected, 0,
+		static_cast<int32_t>(VALTAN_PATTERN_MASTER_ORDER.size() - 1u));
+	m_strValtanPatternMasterStatus =
+		"Valtan Pattern Master admitted: 7 patterns from Data/Valtan/Valtan.pattern.json. " +
+		Status;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_PATTERN_PREVIEW_PATH ePath,
+	const shared_ptr<Engine::CModel>& pModel,
+	std::vector<VALTAN_PATTERN_MASTER_PLAY_ITEM>& OutPlaylist,
+	uint32_t& iOutDurationMs,
+	std::string& strOutStatus) const
+{
+	OutPlaylist.clear();
+	iOutDurationMs = 0u;
+	strOutStatus.clear();
+	if (nullptr == pModel || CAnimationTargetService::Resolve_Model() != pModel)
+	{
+		strOutStatus = "Animation target changed before the master timeline was staged.";
+		return false;
+	}
+	if (!Pattern.bAuthoringMasterManaged || Pattern.Stages.empty())
+	{
+		strOutStatus = "Selected pattern is not admitted by Valtan.pattern.json.";
+		return false;
+	}
+
+	std::vector<const VALTAN_STAGE_VIEW*> StagePath;
+	if (!CValtanPatternTree::Build_PreviewStagePath(
+		Pattern, ePath, StagePath, strOutStatus))
+	{
+		return false;
+	}
+
+	uint64_t iTimelineMs = 0u;
+	for (const VALTAN_STAGE_VIEW* pStage : StagePath)
+	{
+		if (nullptr == pStage || 0u == pStage->iDurationMs ||
+			pStage->strActionId.empty() || pStage->ClipOccurrences.empty())
+		{
+			strOutStatus =
+				"Master branch graph contains an incomplete animation stage.";
+			return false;
+		}
+		const VALTAN_STAGE_VIEW& Stage = *pStage;
+		const size_t iPlayableOccurrenceCount =
+			Stage.iAuthoringRepeatCount > 1u ?
+				static_cast<size_t>(Stage.iAuthoringRepeatCount) :
+				Stage.ClipOccurrences.size();
+		if (0u == iPlayableOccurrenceCount ||
+			iPlayableOccurrenceCount != Stage.ClipOccurrences.size())
+		{
+			strOutStatus = "Master repeatCount does not own exactly its explicit occurrences for " +
+				Stage.strActionId + ".";
+			return false;
+		}
+
+		const uint64_t iStageTimelineStartMs = iTimelineMs;
+		uint64_t iStageAnimationWallMs = 0u;
+		for (size_t iClip = 0u; iClip < iPlayableOccurrenceCount; ++iClip)
+		{
+			const VALTAN_CLIP_OCCURRENCE_VIEW& Clip =
+				Stage.ClipOccurrences[iClip];
+			if (Clip.strClipOccurrenceId.empty() || Clip.strClipName.empty() ||
+				0u == Clip.iAuthoringWallMs ||
+				!std::isfinite(Clip.fPlayRate) || Clip.fPlayRate <= 0.f)
+			{
+				strOutStatus = "Master occurrence is incomplete: " +
+					Clip.strClipOccurrenceId + ".";
+				return false;
+			}
+
+			uint32_t iAnimationIndex = (std::numeric_limits<uint32_t>::max)();
+			for (uint32_t iAnimation = 0u;
+				iAnimation < pModel->Get_NumAnimations(); ++iAnimation)
+			{
+				const char_t* pName = pModel->Get_AnimationName(iAnimation);
+				if (nullptr != pName && Clip.strClipName == pName)
+				{
+					iAnimationIndex = iAnimation;
+					break;
+				}
+			}
+			if ((std::numeric_limits<uint32_t>::max)() == iAnimationIndex)
+			{
+				strOutStatus = "Scene Valtan model is missing master clip " +
+					Clip.strClipName + ".";
+				return false;
+			}
+
+			f32_t fTrackPosition = 0.f;
+			f32_t fTrackDuration = 0.f;
+			const f32_t fTickRate =
+				pModel->Get_AnimationTickPerSecond(iAnimationIndex);
+			if (!std::isfinite(fTickRate) || fTickRate <= 0.f ||
+				!pModel->Get_AnimationProgress(
+					iAnimationIndex, fTrackPosition, fTrackDuration) ||
+				!std::isfinite(fTrackDuration) || fTrackDuration <= 0.f)
+			{
+				strOutStatus = "Master clip has no valid model clock: " +
+					Clip.strClipName + ".";
+				return false;
+			}
+			const ACTION_PRESENTATION_CLIP_TIMING Timing{
+				fTrackDuration / fTickRate,
+				Clip.iPlayMs,
+				Clip.fPlayRate,
+				Clip.bLoop,
+				static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f };
+			f32_t fSourceDuration = 0.f;
+			f32_t fSourceWallDuration = 0.f;
+			if (!CActionPresentationTimeline::Resolve_ClipDuration(
+				Timing, fSourceDuration, fSourceWallDuration))
+			{
+				strOutStatus = "Master source window is outside the model clip: " +
+					Clip.strClipOccurrenceId + ".";
+				return false;
+			}
+
+			VALTAN_PATTERN_MASTER_PLAY_ITEM Item;
+			Item.strPatternId = Pattern.strPatternId;
+			Item.strPatternDisplayName = Pattern.strDisplayName;
+			Item.strStageId = Stage.strStageId;
+			Item.strSequenceRole = Stage.strSequenceRole;
+			Item.strActionId = Stage.strActionId;
+			Item.strClipOccurrenceId = Clip.strClipOccurrenceId;
+			Item.strClipName = Clip.strClipName;
+			Item.iSourceStartMs = Clip.iSourceStartMs;
+			Item.iPlayMs = Clip.iPlayMs;
+			Item.iAuthoringWallMs = Clip.iAuthoringWallMs;
+			Item.iTimelineStartMs = static_cast<uint32_t>(iTimelineMs);
+			Item.iStageTimelineStartMs =
+				static_cast<uint32_t>(iStageTimelineStartMs);
+			Item.iOccurrenceNumber = static_cast<uint32_t>(iClip + 1u);
+			Item.iOccurrenceCount = static_cast<uint32_t>(
+				iPlayableOccurrenceCount);
+			Item.fPlayRate = Clip.fPlayRate;
+			Item.bRepeatUntilStageEnd = Clip.bLoop;
+			OutPlaylist.push_back(std::move(Item));
+
+			iStageAnimationWallMs += Clip.iAuthoringWallMs;
+			iTimelineMs += Clip.iAuthoringWallMs;
+			if (iTimelineMs > static_cast<uint64_t>(
+				(std::numeric_limits<uint32_t>::max)()))
+			{
+				strOutStatus = "Master authoring timeline duration overflowed.";
+				return false;
+			}
+		}
+		if (iStageAnimationWallMs != Stage.iDurationMs)
+		{
+			strOutStatus = "Master occurrences do not fill Server stage " +
+				Stage.strStageId + ".";
+			return false;
+		}
+	}
+	if (OutPlaylist.empty() || 0u == iTimelineMs)
+	{
+		strOutStatus = "Master authoring timeline is empty.";
+		return false;
+	}
+	iOutDurationMs = static_cast<uint32_t>(iTimelineMs);
+	strOutStatus = "Admitted " + Pattern.strPatternId + " / " +
+		ValtanPatternMasterPathName(ePath) + " / " +
+		std::to_string(OutPlaylist.size()) + " occurrences / " +
+		std::to_string(iOutDurationMs) + " ms.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
+	const shared_ptr<Engine::CModel>& pModel,
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_PATTERN_PREVIEW_PATH ePath)
+{
+	std::vector<VALTAN_PATTERN_MASTER_PLAY_ITEM> StagedPlaylist;
+	uint32_t iStagedDurationMs = 0u;
+	std::string Status;
+	if (!Build_ValtanPatternMasterTimeline(
+		Pattern, ePath, pModel, StagedPlaylist, iStagedDurationMs, Status))
+	{
+		m_strValtanPatternMasterStatus =
+			"Valtan Pattern Master play rejected; current model pose preserved: " +
+			Status;
+		return false;
+	}
+
+	const uint32_t iPreviousAnimation = pModel->Get_CurrentAnimIndex();
+	f32_t fPreviousPosition = 0.f;
+	f32_t fPreviousDuration = 0.f;
+	const bool_t bPreviousTrack = pModel->Get_AnimationProgress(
+		iPreviousAnimation, fPreviousPosition, fPreviousDuration);
+	const bool_t bPreviousPaused = pModel->Is_AnimPaused();
+	const bool_t bPreviousLoop = pModel->Is_AnimLoop();
+	const f32_t fPreviousSpeed = m_bValtanPatternPreviewPlaying ?
+		m_fValtanPatternPreviewSpeed : 1.f;
+	if (m_bValtanPatternPreviewPlaying)
+	{
+		Reset_ValtanPatternPreviewState(
+			"Source reference preview yielded to Valtan Pattern Master.");
+	}
+
+	m_ValtanPatternMasterPlaylist = std::move(StagedPlaylist);
+	m_iValtanPatternMasterItem = 0u;
+	m_fValtanPatternMasterItemElapsedSeconds = 0.f;
+	m_iValtanPatternMasterDurationMs = iStagedDurationMs;
+	m_eValtanPatternMasterPath = ePath;
+	m_bValtanPatternMasterPlaying = true;
+	m_bValtanPatternMasterPaused = false;
+	m_ValtanPatternMasterModel = pModel;
+	m_iValtanPatternMasterTargetGeneration =
+		CAnimationTargetService::Resolve_TargetGeneration();
+	m_strValtanPatternMasterStatus = Status;
+	if (Activate_ValtanPatternMasterItem(pModel, 0u, 0.f))
+	{
+		Update_ValtanPatternMasterHitAreaPreview();
+		return true;
+	}
+
+	Reset_ValtanPatternMasterPreviewState(
+		"Valtan Pattern Master play failed; previous model pose restored.");
+	if (bPreviousTrack &&
+		pModel->Start_Animation(iPreviousAnimation, bPreviousLoop))
+	{
+		pModel->Set_AnimationSpeed(fPreviousSpeed);
+		pModel->Set_AnimTrackPosition(iPreviousAnimation, fPreviousPosition);
+		pModel->Set_AnimPaused(bPreviousPaused);
+		pModel->Play_Animation(0.f);
+	}
+	return false;
+}
+
+bool_t Client::CAnimation_Tool::Apply_ValtanPatternMasterPose(
+	const shared_ptr<Engine::CModel>& pModel,
+	const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item,
+	const f32_t fLocalWallSeconds) const
+{
+	if (nullptr == pModel || !std::isfinite(fLocalWallSeconds) ||
+		fLocalWallSeconds < 0.f)
+	{
+		return false;
+	}
+	const uint32_t iAnimation = pModel->Get_CurrentAnimIndex();
+	const char_t* pName = pModel->Get_AnimationName(iAnimation);
+	if (nullptr == pName || Item.strClipName != pName)
+		return false;
+
+	f32_t fTrackPosition = 0.f;
+	f32_t fTrackDuration = 0.f;
+	const f32_t fTickRate = pModel->Get_AnimationTickPerSecond(iAnimation);
+	if (!std::isfinite(fTickRate) || fTickRate <= 0.f ||
+		!pModel->Get_AnimationProgress(
+			iAnimation, fTrackPosition, fTrackDuration) ||
+		!std::isfinite(fTrackDuration) || fTrackDuration <= 0.f)
+	{
+		return false;
+	}
+	const ACTION_PRESENTATION_CLIP_TIMING Timing{
+		fTrackDuration / fTickRate,
+		Item.iPlayMs,
+		Item.fPlayRate,
+		Item.bRepeatUntilStageEnd,
+		static_cast<f32_t>(Item.iSourceStartMs) * 0.001f };
+	ACTION_PRESENTATION_SAMPLE Sample;
+	if (!CActionPresentationTimeline::Resolve_Sample(
+		std::span<const ACTION_PRESENTATION_CLIP_TIMING>(&Timing, 1u),
+		fLocalWallSeconds, Sample))
+	{
+		return false;
+	}
+
+	pModel->Set_AnimationSpeed(1.f);
+	pModel->Set_AnimPaused(true);
+	if (!pModel->Set_AnimTrackPosition(
+		iAnimation, Sample.fClipSourceTimeSeconds * fTickRate))
+	{
+		return false;
+	}
+	pModel->Play_Animation(0.f);
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Activate_ValtanPatternMasterItem(
+	const shared_ptr<Engine::CModel>& pModel,
+	const std::size_t iItem,
+	const f32_t fLocalWallSeconds)
+{
+	if (nullptr == pModel ||
+		iItem >= m_ValtanPatternMasterPlaylist.size())
+	{
+		return false;
+	}
+	const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item =
+		m_ValtanPatternMasterPlaylist[iItem];
+	const f32_t fDurationSeconds =
+		static_cast<f32_t>(Item.iAuthoringWallMs) * 0.001f;
+	if (!std::isfinite(fLocalWallSeconds) || fLocalWallSeconds < 0.f ||
+		fLocalWallSeconds > fDurationSeconds + 0.000001f ||
+		!pModel->Start_Animation(
+			Item.strClipName.c_str(), Item.bRepeatUntilStageEnd))
+	{
+		return false;
+	}
+	m_iValtanPatternMasterItem = iItem;
+	m_fValtanPatternMasterItemElapsedSeconds =
+		std::clamp(fLocalWallSeconds, 0.f, fDurationSeconds);
+	if (!Apply_ValtanPatternMasterPose(
+		pModel, Item, m_fValtanPatternMasterItemElapsedSeconds))
+	{
+		return false;
+	}
+	m_strValtanPatternMasterStatus = "Playing admitted occurrence " +
+		Item.strClipOccurrenceId + " | " + Item.strStageId + " / " +
+		Item.strSequenceRole + ".";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Seek_ValtanPatternMasterPreview(
+	const shared_ptr<Engine::CModel>& pModel,
+	const f32_t fTimelineSeconds,
+	const bool_t bPause)
+{
+	if (!m_bValtanPatternMasterPlaying || nullptr == pModel ||
+		m_ValtanPatternMasterPlaylist.empty() ||
+		!std::isfinite(fTimelineSeconds) || fTimelineSeconds < 0.f)
+	{
+		return false;
+	}
+	const f32_t fTimelineMs = std::clamp(
+		fTimelineSeconds * 1000.f, 0.f,
+		static_cast<f32_t>(m_iValtanPatternMasterDurationMs));
+	for (size_t iItem = 0u;
+		iItem < m_ValtanPatternMasterPlaylist.size(); ++iItem)
+	{
+		const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item =
+			m_ValtanPatternMasterPlaylist[iItem];
+		const f32_t fEndMs = static_cast<f32_t>(
+			Item.iTimelineStartMs + Item.iAuthoringWallMs);
+		const bool_t bLast =
+			iItem + 1u == m_ValtanPatternMasterPlaylist.size();
+		if (fTimelineMs < fEndMs || bLast)
+		{
+			f32_t fLocalSeconds = std::clamp(
+				(fTimelineMs - static_cast<f32_t>(Item.iTimelineStartMs)) *
+					0.001f,
+				0.f,
+				static_cast<f32_t>(Item.iAuthoringWallMs) * 0.001f);
+			/* Sampling an exact looping endpoint wraps to source time zero.
+			   The timeline endpoint means the final visible pose, so only that
+			   endpoint is moved to the previous representable wall time. */
+			if (bLast && fTimelineMs >= fEndMs && fLocalSeconds > 0.f)
+				fLocalSeconds = std::nextafter(fLocalSeconds, 0.f);
+			if (!Activate_ValtanPatternMasterItem(
+				pModel, iItem, fLocalSeconds))
+			{
+				return false;
+			}
+			m_bValtanPatternMasterPaused = bPause;
+			Update_ValtanPatternMasterHitAreaPreview();
+			return true;
+		}
+	}
+	return false;
+}
+
+void Client::CAnimation_Tool::Advance_ValtanPatternMasterPreview(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (!m_bValtanPatternMasterPlaying ||
+		m_iValtanPatternMasterItem >= m_ValtanPatternMasterPlaylist.size())
+	{
+		return;
+	}
+	const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item =
+		m_ValtanPatternMasterPlaylist[m_iValtanPatternMasterItem];
+	const f32_t fAbsoluteSeconds =
+		static_cast<f32_t>(Item.iTimelineStartMs) * 0.001f +
+		m_fValtanPatternMasterItemElapsedSeconds;
+	if (fAbsoluteSeconds * 1000.f + 0.001f >=
+		static_cast<f32_t>(m_iValtanPatternMasterDurationMs))
+	{
+		Stop_ValtanPatternMasterPreview(
+			pModel,
+			"Valtan Pattern Master timeline completed; idle restored.");
+		return;
+	}
+	if (!Seek_ValtanPatternMasterPreview(pModel, fAbsoluteSeconds, false))
+	{
+		Stop_ValtanPatternMasterPreview(
+			pModel,
+			"Valtan Pattern Master timeline failed to advance; idle restored.");
+	}
+}
+
+void Client::CAnimation_Tool::Stop_ValtanPatternMasterPreview(
+	const shared_ptr<Engine::CModel>& pModel,
+	const std::string& status)
+{
+	if (nullptr != pModel)
+	{
+		m_bLoop = true;
+		pModel->Set_AnimationSpeed(1.f);
+		if (!pModel->Start_Animation("mesh_idle_battle_1", true))
+			pModel->Set_AnimPaused(true);
+	}
+	Reset_ValtanPatternMasterPreviewState(status);
+}
+
+void Client::CAnimation_Tool::Reset_ValtanPatternMasterPreviewState(
+	const std::string& status)
+{
+	m_bValtanPatternMasterPlaying = false;
+	m_bValtanPatternMasterPaused = false;
+	m_iValtanPatternMasterItem = 0u;
+	m_fValtanPatternMasterItemElapsedSeconds = 0.f;
+	m_iValtanPatternMasterDurationMs = 0u;
+	m_ValtanPatternMasterPlaylist.clear();
+	m_strValtanPatternMasterStatus = status;
+	m_ValtanPatternMasterModel.reset();
+	m_iValtanPatternMasterTargetGeneration = 0u;
+#ifdef _DEBUG
+	if (const shared_ptr<CValtan> Boss =
+		CAnimationTargetService::Resolve_Boss())
+	{
+		Boss->Clear_PatternHitAreaPreview();
+	}
+#endif
+}
+
+void Client::CAnimation_Tool::Update_ValtanPatternMasterHitAreaPreview()
+{
+#ifdef _DEBUG
+	const shared_ptr<CValtan> Boss = CAnimationTargetService::Resolve_Boss();
+	if (nullptr == Boss)
+		return;
+	if (!m_bValtanPatternMasterPlaying ||
+		m_iValtanPatternMasterItem >= m_ValtanPatternMasterPlaylist.size())
+	{
+		Boss->Clear_PatternHitAreaPreview();
+		return;
+	}
+	const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item =
+		m_ValtanPatternMasterPlaylist[m_iValtanPatternMasterItem];
+	const f32_t fStageSeconds =
+		(static_cast<f32_t>(Item.iTimelineStartMs -
+			Item.iStageTimelineStartMs) * 0.001f) +
+		m_fValtanPatternMasterItemElapsedSeconds;
+	Boss->Set_PatternHitAreaPreview(Item.strActionId, fStageSeconds);
+#endif
+}
+
+void Client::CAnimation_Tool::Render_ValtanPatternMaster(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	ImGui::SeparatorText("Valtan Pattern Master (Authoritative)");
+	ImGui::TextWrapped(
+		"Primary animator workflow. Data/Valtan/Valtan.pattern.json owns the ordered Server-stage wall clock; each stage declares EXACT, HOLD_LAST_POSE, or LOOP_TO_STAGE_END, and each occurrence owns sourceStartMs, playMs, playRate, and repeatUntilStageEnd. Effects and boss logic consume this same admitted timeline.");
+
+	if (!m_bValtanPatternMasterLoadAttempted)
+	{
+		m_bValtanPatternMasterLoadAttempted = true;
+		Reload_ValtanPatternMaster();
+	}
+	ImGui::BeginDisabled(
+		m_bValtanPatternMasterPlaying || m_bValtanPatternPreviewPlaying);
+	if (ImGui::SmallButton("Reload Valtan Pattern Master"))
+		Reload_ValtanPatternMaster();
+	ImGui::EndDisabled();
+
+	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
+		Collect_ValtanPatternMasterPatterns();
+	const bool_t bReady =
+		VALTAN_PATTERN_MASTER_ORDER.size() == Patterns.size();
+	if (!bReady)
+	{
+		ImGui::TextDisabled(
+			"No admitted seven-pattern master is available; current model is untouched.");
+		if (!m_strValtanPatternMasterStatus.empty())
+			ImGui::TextWrapped("%s", m_strValtanPatternMasterStatus.c_str());
+		return;
+	}
+
+	m_iValtanPatternMasterSelected = std::clamp(
+		m_iValtanPatternMasterSelected, 0,
+		static_cast<int32_t>(Patterns.size() - 1u));
+	const VALTAN_PATTERN_VIEW* pSelected =
+		Patterns[static_cast<size_t>(m_iValtanPatternMasterSelected)];
+	ImGui::BeginDisabled(m_bValtanPatternMasterPlaying);
+	if (ImGui::BeginCombo(
+		"Pattern##ValtanPatternMaster",
+		(pSelected->strPatternId + " | " +
+			pSelected->strDisplayName).c_str()))
+	{
+		for (size_t iPattern = 0u; iPattern < Patterns.size(); ++iPattern)
+		{
+			const VALTAN_PATTERN_VIEW& Pattern = *Patterns[iPattern];
+			const std::string Label = Pattern.strPatternId + " | " +
+				Pattern.strDisplayName;
+			if (ImGui::Selectable(
+				Label.c_str(),
+				static_cast<int32_t>(iPattern) ==
+					m_iValtanPatternMasterSelected))
+			{
+				m_iValtanPatternMasterSelected =
+					static_cast<int32_t>(iPattern);
+				m_eValtanPatternMasterPath =
+					VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
+			}
+		}
+		ImGui::EndCombo();
+	}
+	if ("VALTAN_DASH_CHARGE" == pSelected->strPatternId &&
+		ImGui::BeginCombo(
+			"Dash authoring path##ValtanPatternMaster",
+			ValtanPatternMasterPathName(m_eValtanPatternMasterPath)))
+	{
+		for (const VALTAN_PATTERN_PREVIEW_PATH eCandidate : {
+			VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+			VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
+			VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK })
+		{
+			if (ImGui::Selectable(
+				ValtanPatternMasterPathName(eCandidate),
+				eCandidate == m_eValtanPatternMasterPath))
+			{
+				m_eValtanPatternMasterPath = eCandidate;
+			}
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::EndDisabled();
+
+	if (ImGui::Button("Play Complete Master Timeline"))
+	{
+		Start_ValtanPatternMasterPreview(
+			pModel, *pSelected, m_eValtanPatternMasterPath);
+	}
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!m_bValtanPatternMasterPlaying);
+	if (ImGui::Button(
+		m_bValtanPatternMasterPaused ? "Resume Master" : "Pause Master"))
+	{
+		m_bValtanPatternMasterPaused = !m_bValtanPatternMasterPaused;
+		pModel->Set_AnimPaused(true);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Stop Master"))
+	{
+		Stop_ValtanPatternMasterPreview(
+			pModel, "Valtan Pattern Master preview stopped; idle restored.");
+	}
+	ImGui::EndDisabled();
+
+	ImGui::SetNextItemWidth(120.f);
+	if (ImGui::SliderFloat(
+		"Preview speed##ValtanPatternMaster",
+		&m_fValtanPatternPreviewSpeed, 0.25f, 3.f, "%.2fx"))
+	{
+		m_fValtanPatternPreviewSpeed = std::clamp(
+			m_fValtanPatternPreviewSpeed, 0.25f, 3.f);
+	}
+	if (m_bValtanPatternMasterPlaying &&
+		m_iValtanPatternMasterItem < m_ValtanPatternMasterPlaylist.size())
+	{
+		const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item =
+			m_ValtanPatternMasterPlaylist[m_iValtanPatternMasterItem];
+		f32_t fTimelineSeconds =
+			static_cast<f32_t>(Item.iTimelineStartMs) * 0.001f +
+			m_fValtanPatternMasterItemElapsedSeconds;
+		const f32_t fDurationSeconds =
+			static_cast<f32_t>(m_iValtanPatternMasterDurationMs) * 0.001f;
+		char_t TimelineFormat[96]{};
+		snprintf(
+			TimelineFormat, sizeof(TimelineFormat),
+			"%%.3f s / %.3f s", fDurationSeconds);
+		ImGui::SetNextItemWidth(-1.f);
+		if (ImGui::SliderFloat(
+			"##ValtanPatternMasterTimeline",
+			&fTimelineSeconds, 0.f, fDurationSeconds, TimelineFormat))
+		{
+			if (!Seek_ValtanPatternMasterPreview(
+				pModel, fTimelineSeconds, true))
+			{
+				m_strValtanPatternMasterStatus =
+					"Master seek rejected; current admitted pose preserved.";
+			}
+		}
+		ImGui::Text(
+			"Now %s / %s | occurrence %u/%u | wall %u ms",
+			Item.strStageId.c_str(), Item.strSequenceRole.c_str(),
+			Item.iOccurrenceNumber, Item.iOccurrenceCount,
+			Item.iAuthoringWallMs);
+		ImGui::TextDisabled(
+			"%s | source +%u ms, play %u ms, rate %.6g, repeatUntilStageEnd=%s",
+			Item.strClipName.c_str(), Item.iSourceStartMs, Item.iPlayMs,
+			Item.fPlayRate,
+			Item.bRepeatUntilStageEnd ? "true" : "false");
+	}
+	if (!m_strValtanPatternMasterStatus.empty())
+		ImGui::TextWrapped("%s", m_strValtanPatternMasterStatus.c_str());
+
+	ImGui::SeparatorText("Phase-1 weighted normal selection");
+	ImGui::TextDisabled(
+		"%s | five admitted normal patterns; health-bar mechanics keep queue precedence",
+		m_ValtanPatternMasterView.NormalSelection.strSelectionMode.c_str());
+	for (const VALTAN_NORMAL_SELECTION_RANGE_VIEW& Range :
+		m_ValtanPatternMasterView.NormalSelection.Ranges)
+	{
+		ImGui::BulletText(
+			"%s | bars %u > HP bar > %u",
+			Range.strRotationId.c_str(), Range.iFromHealthBar,
+			Range.iToHealthBar);
+	}
+	for (const std::string& PatternId :
+		m_ValtanPatternMasterView.NormalSelection.PatternIds)
+	{
+		const auto Found = std::find_if(
+			Patterns.begin(), Patterns.end(),
+			[&PatternId](const VALTAN_PATTERN_VIEW* pPattern)
+			{
+				return nullptr != pPattern &&
+					pPattern->strPatternId == PatternId;
+			});
+		if (Found == Patterns.end())
+			continue;
+		const VALTAN_PATTERN_VIEW& Pattern = **Found;
+		ImGui::TextDisabled(
+			"%s | weight %u | range %.1f..%.1f | max consecutive %u | %s / %s",
+			Pattern.strPatternId.c_str(), Pattern.iSelectionWeight,
+			Pattern.fMinimumRange, Pattern.fMaximumRange,
+			Pattern.iMaximumConsecutiveUses,
+			Pattern.strArmorRequirement.c_str(),
+			Pattern.strPhaseRequirement.c_str());
+	}
+
+	ImGui::SeparatorText("Counter reaction animation layers (reference only)");
+	ImGui::TextDisabled(
+		"These exact legacy Encounter actions are not admitted into the seven-pattern Phase-1 pool.");
+	for (const VALTAN_COUNTER_REACTION_LAYER_VIEW& Layer :
+		m_ValtanPatternMasterView.CounterReactionLayers)
+	{
+		ImGui::PushID(Layer.strReactionLayerId.c_str());
+		const std::string Label = Layer.strReactionLayerId + " | " +
+			Layer.strOwnerPatternId + "/" + Layer.strOwnerStageId;
+		if (ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+		{
+			for (const auto* pAction :
+				{ &Layer.Window, &Layer.Success, &Layer.Failure })
+			{
+				ImGui::TextDisabled("action %s", pAction->strActionId.c_str());
+				for (const VALTAN_CLIP_OCCURRENCE_VIEW& Clip :
+					pAction->ClipOccurrences)
+				{
+					ImGui::BulletText(
+						"%s | %s", Clip.strClipOccurrenceId.c_str(),
+						Clip.strClipName.c_str());
+				}
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+
+	ImGui::SeparatorText("Presentation sources");
+	for (const VALTAN_PRESENTATION_SOURCE_VIEW& Source :
+		pSelected->PresentationSources)
+	{
+		ImGui::BulletText(
+			"action %u | sequence %u | %s",
+			Source.iSourceActionId, Source.iSequenceIndex,
+			Source.strRole.c_str());
+	}
+
+	ImGui::SeparatorText("Ordered stages / sequence roles");
+	std::vector<const VALTAN_STAGE_VIEW*> PreviewPath;
+	std::string PreviewPathStatus;
+	if (CValtanPatternTree::Build_PreviewStagePath(
+		*pSelected, m_eValtanPatternMasterPath,
+		PreviewPath, PreviewPathStatus))
+	{
+		std::string PathLabel = "Current path: ";
+		for (size_t iStage = 0u; iStage < PreviewPath.size(); ++iStage)
+		{
+			if (0u != iStage)
+				PathLabel += " -> ";
+			PathLabel += PreviewPath[iStage]->strStageId;
+		}
+		ImGui::TextDisabled("%s", PathLabel.c_str());
+	}
+	else
+	{
+		ImGui::TextDisabled("Current path rejected: %s",
+			PreviewPathStatus.c_str());
+	}
+	for (size_t iStage = 0u; iStage < pSelected->Stages.size(); ++iStage)
+	{
+		const VALTAN_STAGE_VIEW& Stage = pSelected->Stages[iStage];
+		ImGui::PushID(static_cast<int32_t>(iStage));
+		char_t Label[512]{};
+		snprintf(
+			Label, sizeof(Label),
+			"%02zu  %s | %s | %u ms | %s | repeatCount %u | %zu occurrences",
+			iStage + 1u, Stage.strStageId.c_str(),
+			Stage.strSequenceRole.c_str(), Stage.iDurationMs,
+			Stage.strAnimationEndPolicy.c_str(),
+			Stage.iAuthoringRepeatCount, Stage.ClipOccurrences.size());
+		if (ImGui::TreeNodeEx(Label, ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::TextDisabled("action %s | %s | damage %s",
+				Stage.strActionId.c_str(), Stage.strStageKind.c_str(),
+				Stage.strServerDamageProfileId.empty() ? "NONE" :
+					Stage.strServerDamageProfileId.c_str());
+			for (size_t iClip = 0u;
+				iClip < Stage.ClipOccurrences.size(); ++iClip)
+			{
+				const VALTAN_CLIP_OCCURRENCE_VIEW& Clip =
+					Stage.ClipOccurrences[iClip];
+				ImGui::BulletText(
+					"%zu. %s | %s | wall %u ms",
+					iClip + 1u, Clip.strClipName.c_str(),
+					Clip.strClipOccurrenceId.c_str(),
+					Clip.iAuthoringWallMs);
+				ImGui::Indent();
+				ImGui::TextDisabled(
+					"sourceStartMs=%u playMs=%u playRate=%.6g repeatUntilStageEnd=%s",
+					Clip.iSourceStartMs, Clip.iPlayMs, Clip.fPlayRate,
+					Clip.bLoop ? "true" : "false");
+				ImGui::Unindent();
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+}
+
 void Client::CAnimation_Tool::Render_ValtanPatternPreview(
 	const shared_ptr<Engine::CModel>& pModel)
 {
-	ImGui::SeparatorText("Valtan 1-67 Pattern Preview");
+	Render_ValtanPatternMaster(pModel);
+	ImGui::SeparatorText("Secondary / Read-only Source Reference (1-67)");
 	ImGui::TextWrapped(
-		"Review-only sequence resolved from Valtan.clipseq. Every source clip plays once, non-looping, for its full native model duration. Environment, movement, effects, and damage are not simulated here.");
+		"Historical reference only: Valtan.patternpreview.json and Valtan.clipseq are source evidence, not the Product pattern master. Every source clip plays once for review; environment, movement, effects, and damage are not simulated here.");
 
 	if (!m_bValtanPatternPreviewLoadAttempted)
 	{
@@ -1010,7 +1947,10 @@ void Client::CAnimation_Tool::Render_ValtanPatternPreview(
 		}
 	}
 
-	Render_ValtanPatternReferenceWindow(pModel);
+	if (ImGui::SmallButton("Open Read-only Source Sequence Window"))
+		m_bShowValtanSourceReferenceWindow = true;
+	if (m_bShowValtanSourceReferenceWindow)
+		Render_ValtanPatternReferenceWindow(pModel);
 
 	if (bReady)
 	{
@@ -1052,14 +1992,16 @@ void Client::CAnimation_Tool::Render_ValtanPatternReferenceWindow(
 {
 	ImGui::SetNextWindowSize(ImVec2(460.f, 560.f), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowPos(ImVec2(540.f, 60.f), ImGuiCond_FirstUseEver);
-	if (!ImGui::Begin("Valtan Pattern Reference"))
+	if (!ImGui::Begin(
+		"Valtan Source Reference (Read-only)",
+		&m_bShowValtanSourceReferenceWindow))
 	{
 		ImGui::End();
 		return;
 	}
 
 	ImGui::TextWrapped(
-		"One button per source clip sequence from Valtan.clipseq. Click plays its clips chained in order on the scene Valtan.");
+		"Secondary source evidence only. One button per read-only Valtan.clipseq sequence; Product authoring must use Valtan Pattern Master in the main Animation Tool window.");
 
 	if (m_bValtanPatternPreviewPlaying &&
 		m_iValtanPatternPreviewItem < m_ValtanPatternPreviewPlaylist.size())
@@ -1250,6 +2192,11 @@ bool_t Client::CAnimation_Tool::Start_ValtanSequencePreview(
 			"Sequence preview start rejected because every step is skipped.";
 		return false;
 	}
+	if (m_bValtanPatternMasterPlaying)
+	{
+		Reset_ValtanPatternMasterPreviewState(
+			"Valtan Pattern Master yielded to the read-only source reference.");
+	}
 
 	m_ValtanPatternPreviewPlaylist = std::move(staged);
 	m_iValtanPatternPreviewItem = 0u;
@@ -1289,6 +2236,11 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternPreview(
 		m_strValtanPatternPreviewStatus =
 			"Pattern preview start rejected; current pose preserved: " + status;
 		return false;
+	}
+	if (m_bValtanPatternMasterPlaying)
+	{
+		Reset_ValtanPatternMasterPreviewState(
+			"Valtan Pattern Master yielded to the read-only source reference.");
 	}
 
 	m_ValtanPatternPreviewPlaylist = std::move(staged);

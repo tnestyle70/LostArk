@@ -127,6 +127,52 @@ class ValtanPortalRushImportedCanaryTests(unittest.TestCase):
             with self.assertRaises(canary.CanaryError):
                 canary.load_carrier_v1_successor_contract()
 
+    def test_unrelated_current_cue_does_not_reseal_history(self) -> None:
+        cues = canary.read_json(canary.CUE_PATH)
+        cues["cues"].append({"bindingId": "cue.valtan.unrelated.successor"})
+        actual_read_json = canary.read_json
+
+        def appended_read_json(path: Path) -> dict:
+            if path == canary.CUE_PATH:
+                return copy.deepcopy(cues)
+            return actual_read_json(path)
+
+        with mock.patch.object(
+            canary, "read_json", side_effect=appended_read_json
+        ):
+            contract = canary.load_carrier_v1_successor_contract()
+        self.assertEqual(
+            inventory.canonical_sha256(cues),
+            contract["currentCueCanonicalSha256"],
+        )
+
+    def test_removing_an_exact_live_successor_cue_fails_closed(self) -> None:
+        cues = canary.read_json(canary.CUE_PATH)
+        required = next(
+            row
+            for row in canary.read_json(canary.CARRIER_V1_RECEIPT_PATH)[
+                "retiredOwnerSuccessorMappings"
+            ]
+            if row.get("replacementBindingId")
+        )["replacementBindingId"]
+        cues["cues"] = [
+            row for row in cues["cues"] if row.get("bindingId") != required
+        ]
+        actual_read_json = canary.read_json
+
+        def missing_read_json(path: Path) -> dict:
+            if path == canary.CUE_PATH:
+                return copy.deepcopy(cues)
+            return actual_read_json(path)
+
+        with mock.patch.object(
+            canary, "read_json", side_effect=missing_read_json
+        ):
+            with self.assertRaisesRegex(
+                canary.CanaryError, "missing a Carrier V1 successor"
+            ):
+                canary.load_carrier_v1_successor_contract()
+
     def test_user_tuned_existing_source_row_is_never_overwritten(self) -> None:
         document_row = self.receipt["documents"][0]
         candidate = json.loads(

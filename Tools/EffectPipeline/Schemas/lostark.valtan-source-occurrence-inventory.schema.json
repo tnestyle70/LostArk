@@ -72,8 +72,8 @@
         },
         "missingActionBindingPatterns": {
           "type": "array",
-          "minItems": 2,
-          "maxItems": 2,
+          "minItems": 1,
+          "maxItems": 1,
           "items": {
             "$ref": "#/$defs/missingPattern"
           }
@@ -235,16 +235,10 @@
       "required": ["patternId", "status", "sourceActionIds"],
       "properties": {
         "patternId": {
-          "enum": [
-            "VALTAN_ENTRANCE_WHIRLWIND",
-            "VALTAN_ARENA_BREAK_84"
-          ]
+          "const": "VALTAN_ENTRANCE_WHIRLWIND"
         },
         "status": {
-          "enum": [
-            "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW",
-            "MISSING_ACTION_BINDING_NO_SOURCE_ACTION"
-          ]
+          "const": "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW"
         },
         "sourceActionIds": {
           "type": "array",
@@ -949,10 +943,10 @@
           "const": 33
         },
         "actionBindingPatternCount": {
-          "const": 31
+          "const": 32
         },
         "missingActionBindingPatternCount": {
-          "const": 2
+          "const": 1
         },
         "branchCandidateCount": {
           "type": "integer",
@@ -983,13 +977,13 @@
           "minimum": 1
         },
         "encounterStageActionCount": {
-          "const": 127
+          "const": 131
         },
         "patternBindingActionCount": {
-          "const": 124
+          "const": 131
         },
         "patternBindingGapCount": {
-          "const": 3
+          "const": 0
         },
         "patternBindingGapProposalCount": {
           "const": 3

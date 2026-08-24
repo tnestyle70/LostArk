@@ -6517,11 +6517,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 							"Valtan impact stage transition failed";
 						m_isReady = false;
 						return;
-						/* The impact publishes WALL_CONTACT. The Brain consumes it on
-						the next fixed tick through the authored actionId branch, so
-						GameRoom never chooses GROGGY itself. */
-						entity.fPatternForcedMotionSpeed = 0.f;
 					}
+					/* Complete_ImpactStage resolves the authored WALL_CONTACT branch;
+					   GameRoom only owns collision/world-destruction transaction order. */
 				}
 				else
 				{

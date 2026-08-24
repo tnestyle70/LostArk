@@ -8,6 +8,7 @@
 #include "EffectV2_Runtime.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
+#include "MapNavigationContract.h"
 #include "Model.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
@@ -102,6 +103,7 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 	//?꾩옱 network ?곌껐 ?곹깭??湲곗뼲???먯뼱, ?댄썑 ?곌껐???딄꼈?붿? 媛먯??????덇쾶 ?쒕떎.
 	if (nullptr == desc.pDevice ||
 		nullptr == desc.pContext ||
+		desc.strMapAreaId.empty() ||
 		desc.strPlayerLayerTag.empty() ||
 		desc.strWorldEntityLayerTag.empty() ||
 		((nullptr == desc.pDeployPropRuntime) !=
@@ -111,7 +113,22 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 		!CCombatHUDViewModel::Get().Initialize_Definitions())
 		return false;
 
+	MAP_NAVIGATION_CONTRACT navigationContract{};
+	std::string navigationStatus;
+	if (!CMapNavigationContract::Resolve_Area(
+			desc.strMapAreaId, navigationContract, navigationStatus) ||
+		!navigationContract.runtimeGridAvailable ||
+		navigationContract.prototypeTag.empty())
+	{
+		OutputDebugStringA((
+			"Client replication navigation unavailable: " +
+			navigationStatus + "\n").c_str());
+		return false;
+	}
+
 	m_Desc = desc;
+	m_strLocalPlayerNavigationPrototypeTag =
+		std::move(navigationContract.prototypeTag);
 	m_isInitialized = true;
 	m_hasPendingConnectionLoss = false;
 	m_hasFatalWorldDestructionFailure = false;
@@ -583,7 +600,9 @@ bool Client::CClientReplication::Create_Character(
 	CCharacter::CHARACTER_DESC desc{};
 	desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
 	desc.pSpec = spec;
-	desc.pNavigationPrototypeTag = nullptr;
+	desc.pNavigationPrototypeTag =
+		isLocallyControlled ?
+			m_strLocalPlayerNavigationPrototypeTag.c_str() : nullptr;
 	desc.fSpeedPerSec = 6.f;
 	desc.fRotationPerSec = 180.f;
 	desc.vPosition = position;

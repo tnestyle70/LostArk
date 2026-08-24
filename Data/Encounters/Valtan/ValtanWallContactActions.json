@@ -10,10 +10,10 @@
     { "patternId": "VALTAN_EARTHQUAKE_SMASH", "stageId": "IMPACT", "actionId": "valtan.attack.earthquake-smash.impact" },
     { "patternId": "VALTAN_FRONT_BACK_FRONT", "stageId": "SMASHES", "actionId": "valtan.attack.front-back-front.active" },
     { "patternId": "VALTAN_JUMP_SPIN", "stageId": "SPIN", "actionId": "valtan.attack.jump-spin.spin" },
-    { "patternId": "VALTAN_ROTATION_SLASH", "stageId": "SPIN", "actionId": "valtan.attack.rotation-slash.active" },
+    { "patternId": "VALTAN_FOUR_SLASH", "stageId": "SPIN", "actionId": "valtan.attack.rotation-slash.active" },
     { "patternId": "VALTAN_SUPER_SMASH", "stageId": "IMPACTS", "actionId": "valtan.attack.super-smash.active" },
     { "patternId": "VALTAN_SWING", "stageId": "SWEEP", "actionId": "valtan.attack.swing.active" },
-    { "patternId": "VALTAN_TRIPLE_SLASH", "stageId": "SLASHES", "actionId": "valtan.attack.triple-slash.active" },
+    { "patternId": "VALTAN_FOUR_SLASH", "stageId": "SLASHES", "actionId": "valtan.attack.triple-slash.active" },
     { "patternId": "VALTAN_WHIRLWIND", "stageId": "SPIN", "actionId": "valtan.attack.whirlwind.active" },
     { "patternId": "VALTAN_ENTRANCE_WHIRLWIND", "stageId": "SWEEP", "actionId": "valtan.mechanic.entrance-whirlwind.sweep" },
     { "patternId": "VALTAN_PARRY", "stageId": "COUNTER_SLASH", "actionId": "valtan.reactive.parry.slash" }

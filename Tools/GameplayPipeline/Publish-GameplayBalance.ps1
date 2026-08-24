@@ -1329,9 +1329,11 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		# three can drift into its own copy of the coordinate.
 		$motion = $pattern.serverMotion
 		Assert-ExactProperties $motion @(
-			'kind','anchorId','landingPosition','apexHeight') "pattern $($pattern.patternId) serverMotion"
+			'kind','anchorId','landingPosition','apexHeight','travelStageId') "pattern $($pattern.patternId) serverMotion"
 		Assert-JsonString $motion.kind "pattern $($pattern.patternId) serverMotion kind"
 		Assert-StableId $motion.anchorId "pattern $($pattern.patternId) serverMotion anchorId"
+		Assert-JsonString $motion.travelStageId "pattern $($pattern.patternId) serverMotion travelStageId"
+		Assert-StableId $motion.travelStageId "pattern $($pattern.patternId) serverMotion travelStageId"
 		# LEAP_TO_TARGET lands where the pattern locked its target; the authored
 		# position is the anchor it falls back to when there was no target, and it
 		# still feeds the camera lookAt check below.
@@ -1358,6 +1360,17 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		if (-not $serverMotionAnchorIds.Add([string]$motion.anchorId)) {
 			throw "Duplicate serverMotion anchorId: $($motion.anchorId)"
 		}
+		$travelStageIndex = -1
+		for ($candidateStageIndex = 0; $candidateStageIndex -lt @($pattern.stages).Count; ++$candidateStageIndex) {
+			if ([string]$pattern.stages[$candidateStageIndex].stageId -ceq
+				[string]$motion.travelStageId) {
+				$travelStageIndex = $candidateStageIndex
+				break
+			}
+		}
+		if ($travelStageIndex -le 0) {
+			throw "serverMotion travelStageId must resolve after TAKEOFF: $($pattern.patternId)/$($motion.travelStageId)"
+		}
 		$serverMotionByPatternId[[string]$pattern.patternId] = [pscustomobject]@{
 			Kind = [string]$motion.kind
 			AnchorId = [string]$motion.anchorId
@@ -1371,7 +1384,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			(Format-InvariantSignedFloat $motion.landingPosition[0] 'serverMotion landing x'),
 			(Format-InvariantSignedFloat $motion.landingPosition[1] 'serverMotion landing y'),
 			(Format-InvariantSignedFloat $motion.landingPosition[2] 'serverMotion landing z'),
-			(Format-InvariantFloat $motion.apexHeight 'serverMotion apexHeight')) -join "`t"))
+			(Format-InvariantFloat $motion.apexHeight 'serverMotion apexHeight'),
+			[uint32]$travelStageIndex) -join "`t"))
 	}
 	if ($aimPolicy -eq 'FACE_MOTION_ANCHOR' -and -not $hasServerMotion) {
 		throw "FACE_MOTION_ANCHOR requires serverMotion: $($pattern.patternId)"
@@ -1737,10 +1751,10 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		}
 	}
 }
-if (@($encounterDocument.patterns).Count -ne 34 -or
+if (@($encounterDocument.patterns).Count -ne 33 -or
 	$authoredStageCount -ne 131 -or
-	$authoredStageActionCount -ne 22 -or
-	$authoredStageBranchCount -ne 18 -or
+	$authoredStageActionCount -ne 24 -or
+	$authoredStageBranchCount -ne 24 -or
 	$authoredStageMotionCount -ne 2) {
 	throw ('Valtan reactive stage topology count drifted: ' +
 		"patterns=$(@($encounterDocument.patterns).Count) " +
@@ -1749,9 +1763,11 @@ if (@($encounterDocument.patterns).Count -ne 34 -or
 }
 
 $requiredReactiveRows = @(
-	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_SLASH`tvaltan.attack.triple-slash.active`t0`t1791",
-	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_SLASH`tvaltan.attack.triple-slash.active`t1`t2300",
-	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_SLASH`tvaltan.attack.triple-slash.active`t2`t3138",
+	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t0`t1790",
+	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t1`t2560",
+	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t2`t3330",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.groggy`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.groggy`t0`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t0`tENTER`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t30`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t1`tEXIT`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t0`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_HIGH_JUMP`tvaltan.attack.high-jump.airborne`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.high-jump.target-axe`t1`t0",
@@ -1775,6 +1791,12 @@ $requiredReactiveRows = @(
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`tSTAGGER_BROKEN`tvaltan.reactive.parry.slash",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.active`tWALL_CONTACT`tvaltan.attack.dash-charge.groggy",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.active`tTIMEOUT`tvaltan.attack.dash-charge.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`tPART_DESTROYED`tvaltan.attack.dash-charge.part-break",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`tTIMEOUT`tvaltan.attack.dash-charge.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.recovery`tTIMEOUT`t-",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.part-break`tTIMEOUT`t-",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`tTIMEOUT`tvaltan.reactive.parry.normal-slash",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.slash`tTIMEOUT`tvaltan.reactive.parry.recovery",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`tCOUNTER_HIT`tvaltan.reactive.triple-counter.second",
@@ -2423,10 +2445,9 @@ foreach ($propBreak in @($propBreakDocument.actions)) {
 	}
 }
 
-# Between two health-bar mechanics the boss runs an authored order rather than a
-# weighted roll: the script owns that stretch, and being hit does not reshuffle
-# it. The span is declared by the bars it sits between, so the next scripted
-# mechanic ends it wherever the list happens to be.
+# Between two health-bar mechanics each span explicitly chooses whether its
+# patternIds are a weighted candidate pool or a one-shot ordered introduction.
+# Health-bar mechanics remain separately queued by the Encounter trigger rows.
 $rotationDocument = Read-JsonDocument `
 	'Data/Encounters/Valtan/ValtanPatternRotations.json'
 Assert-ExactProperties $rotationDocument @(
@@ -2434,14 +2455,14 @@ Assert-ExactProperties $rotationDocument @(
 	'Valtan pattern rotation document'
 Assert-JsonString $rotationDocument.schema 'Valtan pattern rotation schema'
 Assert-JsonInteger $rotationDocument.formatVersion `
-	'Valtan pattern rotation formatVersion' 1 1
+	'Valtan pattern rotation formatVersion' 2 2
 Assert-JsonString $rotationDocument.encounterId `
 	'Valtan pattern rotation encounterId'
 Assert-JsonString $rotationDocument.bossArchetypeId `
 	'Valtan pattern rotation bossArchetypeId'
 if ([string]$rotationDocument.schema -cne `
 	'lostark.valtan-pattern-rotations' -or
-	[uint32]$rotationDocument.formatVersion -ne 1 -or
+	[uint32]$rotationDocument.formatVersion -ne 2 -or
 	[string]$rotationDocument.encounterId -cne `
 		[string]$encounterDocument.encounterId -or
 	[string]$rotationDocument.bossArchetypeId -cne `
@@ -2456,10 +2477,15 @@ $rotationIds =
 $previousRotationFromBar = [uint32]::MaxValue
 foreach ($rotation in @($rotationDocument.rotations)) {
 	Assert-ExactProperties $rotation @(
-		'rotationId','fromHealthBar','toHealthBar','patternIds') `
+		'rotationId','selectionMode','fromHealthBar','toHealthBar','patternIds') `
 		'Valtan pattern rotation'
 	Assert-JsonString $rotation.rotationId 'Valtan pattern rotation rotationId'
 	Assert-StableId ([string]$rotation.rotationId) 'Valtan pattern rotation rotationId'
+	Assert-JsonString $rotation.selectionMode 'Valtan pattern rotation selectionMode'
+	if ([string]$rotation.selectionMode -cnotin @(
+		'WEIGHTED_POOL','ORDERED_INTRO_THEN_WEIGHTED')) {
+		throw "Valtan pattern rotation selectionMode is invalid: $($rotation.rotationId)"
+	}
 	Assert-JsonInteger $rotation.fromHealthBar `
 		'Valtan pattern rotation fromHealthBar' 1 $maximumHealthBars
 	Assert-JsonInteger $rotation.toHealthBar `
@@ -2481,6 +2507,8 @@ foreach ($rotation in @($rotationDocument.rotations)) {
 		@($rotation.patternIds).Count -gt 32) {
 		throw "Valtan pattern rotation step count is invalid: $($rotation.rotationId)"
 	}
+	$weightedPoolIds =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	$rotationStepIndex = 0
 	foreach ($rotationPatternId in @($rotation.patternIds)) {
 		Assert-JsonString $rotationPatternId 'Valtan pattern rotation patternId'
@@ -2497,6 +2525,10 @@ foreach ($rotation in @($rotationDocument.rotations)) {
 				[string]$encounterDocument.introPatternId) {
 			throw "Valtan pattern rotation step is not a normal pattern: $rotationPatternId"
 		}
+		if ([string]$rotation.selectionMode -ceq 'WEIGHTED_POOL' -and
+			-not $weightedPoolIds.Add([string]$rotationPatternId)) {
+			throw "Valtan weighted pattern pool duplicates a pattern: $rotationPatternId"
+		}
 		$patternRows.Add((@(
 			'PATTERNROTATIONSTEP', $encounterDocument.encounterId,
 			$rotation.rotationId, $rotationStepIndex, $rotationPatternId) -join "`t"))
@@ -2505,7 +2537,7 @@ foreach ($rotation in @($rotationDocument.rotations)) {
 	$patternRows.Add((@(
 		'PATTERNROTATION', $encounterDocument.encounterId,
 		$rotation.rotationId, $rotationFromBar, $rotationToBar,
-		$rotationStepIndex) -join "`t"))
+		$rotation.selectionMode, $rotationStepIndex) -join "`t"))
 }
 
 # A charge stage drives the boss forward until it meets an impact receiver, and

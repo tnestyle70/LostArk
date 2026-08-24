@@ -837,28 +837,28 @@
       "patternId": "VALTAN_ARENA_BREAK_109",
       "sourceActionId": 420629,
       "profileId": "MN_RPBF_00",
-      "sequenceIndex": 1,
-      "sourceSequencePathSha256": "d6a6b80456d1716dd633ae0a3b4deba95125e51e1685e6753b17883f49b33ba5",
-      "branchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-001.stages-000-002",
+      "sequenceIndex": 3,
+      "sourceSequencePathSha256": "fe993599c9b184e212c8496ce40ea45d4bf55a996c5af3868ccde8fd8a8ed450",
+      "branchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-003.stages-006-008",
       "status": "REVIEWED_SELECTED",
-      "reviewBasis": "B4 reviewed safe 420629 seq=1 takeoff/drop/impact source path",
+      "reviewBasis": "Valtan master selects 420629 sequence 3 and continuously windows 12_01/12_02/12_03 through WIDE_REVEAL",
       "stageMappings": [
         {
-          "sourceStageIndex": 0,
+          "sourceStageIndex": 6,
           "sourceClipOrdinal": 0,
           "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
           "timingDisposition": "REACHABLE"
         },
         {
-          "sourceStageIndex": 1,
+          "sourceStageIndex": 7,
           "sourceClipOrdinal": 0,
           "clipOccurrenceId": "valtan.mechanic.arena-break-109.drop.clip.01",
           "timingDisposition": "REACHABLE"
         },
         {
-          "sourceStageIndex": 2,
+          "sourceStageIndex": 8,
           "sourceClipOrdinal": 0,
-          "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
           "timingDisposition": "REACHABLE"
         }
       ]

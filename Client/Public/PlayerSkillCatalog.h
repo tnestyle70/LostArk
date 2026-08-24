@@ -23,6 +23,17 @@ namespace Client
 		std::string strUsageBasis;
 		std::string strSourceEvidence;
 	};
+	/* Read-only timing for one Server-owned comboStages row. The Client never
+		advances a combo from these values; authoring tools use them to reproduce
+		the same stage boundaries that the Server admits. */
+	struct PLAYER_COMBO_STAGE_TIMING
+	{
+		std::uint32_t iActionDurationMs = 0;
+		std::uint32_t iHitTimeMs = 0;
+		std::uint32_t iComboAdvanceMs = 0;
+		std::uint32_t iInputOpenMs = 0;
+		std::uint32_t iInputCloseMs = 0;
+	};
 	/* One row of Data/Balance/PlayerSkills.json with its damage rate already
 	resolved through Data/Balance/DamageProfiles.json.
 
@@ -69,6 +80,7 @@ namespace Client
 		/* Presentation authoring maps one COMBO clip to each Server-owned stage.
 		ACTIVE skills therefore carry zero and COMBO skills carry 2..8. */
 		std::size_t iComboStageCount = 0;
+		std::vector<PLAYER_COMBO_STAGE_TIMING> ComboStages;
 	};
 
 	class CPlayerSkillCatalog final
