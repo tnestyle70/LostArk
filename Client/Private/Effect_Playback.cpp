@@ -5459,11 +5459,16 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 	const EFFECT_DETAIL_DESC& Detail = Element.Detail;
 	const f32_t fLocalTime = (std::max)(0.f,
 		fSampleTimeSeconds - Detail.Timing.fStartDelaySeconds);
-	const f32_t fMotionDuration =
-		Detail.Timing.fTransformMotionDurationSeconds > 0.f ?
+	const bool_t bHasExplicitMotionDuration =
+		Detail.Timing.fTransformMotionDurationSeconds > 0.f;
+	const f32_t fMotionDuration = bHasExplicitMotionDuration ?
 		Detail.Timing.fTransformMotionDurationSeconds :
 		Detail.Timing.fLifeTimeSeconds;
-	const f32_t fMotionTime = (std::min)(fLocalTime, fMotionDuration);
+	/* Before Motion/Hold existed, Life normalized authored lerps but never
+	   clamped velocity or Revolution accumulation.  Only an explicit Motion
+	   Duration opts an Element into the new frozen-root contract. */
+	const f32_t fMotionTime = bHasExplicitMotionDuration ?
+		(std::min)(fLocalTime, fMotionDuration) : fLocalTime;
 	const f32_t T = Clamp01(fMotionTime / fMotionDuration);
 	const EFFECT_LINEAR_LERP_DESC& Lerp = Detail.LinearLerp;
 

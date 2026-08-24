@@ -1543,6 +1543,102 @@ namespace
 			return false;
 		}
 
+		Client::EFFECT_DOCUMENT_DESC LegacyRevolutionDocument =
+			ParticleDocument;
+		Client::EFFECT_ELEMENT_DESC& LegacyRevolution =
+			LegacyRevolutionDocument.Elements.front();
+		LegacyRevolution.Detail.Timing.fLifeTimeSeconds = 1.f / 60.f;
+		LegacyRevolution.Detail.Timing.fTransformMotionDurationSeconds = 0.f;
+		LegacyRevolution.Detail.Transform.vPosition = {};
+		LegacyRevolution.Detail.Transform.vVelocityPerSecond = {};
+		LegacyRevolution.Detail.Transform.vRotationDegrees = {};
+		LegacyRevolution.Detail.Transform.vRevolutionDegreesPerSecond =
+			{ 0.f, 1300.f, 0.f };
+		LegacyRevolution.Detail.LinearLerp = {};
+		LegacyRevolution.Detail.Particle.vLifeTimeSeconds = { 1.05f, 1.05f };
+		LegacyRevolution.Detail.Particle.vInitialPositionMin = { 1.f, 0.f, 0.f };
+		LegacyRevolution.Detail.Particle.vInitialPositionMax = { 1.f, 0.f, 0.f };
+		LegacyRevolution.Detail.Particle.vInitialVelocityMin = {};
+		LegacyRevolution.Detail.Particle.vInitialVelocityMax = {};
+		LegacyRevolution.Detail.Particle.vAcceleration = {};
+		LegacyRevolution.Detail.Particle.bLocalSpace = true;
+		std::shared_ptr<const Client::CEffectPlayback::PREPARED_RESOURCES>
+			PreparedLegacyRevolution;
+		if (!Client::CEffectPlayback::Prepare_DocumentResources(
+				LegacyRevolutionDocument, PreparedLegacyRevolution, strOutError))
+		{
+			strOutError = "legacy Revolution resources failed: " + strOutError;
+			return false;
+		}
+		Client::CEffectPlayback LegacyRevolutionPlayback;
+		if (!LegacyRevolutionPlayback.Stage_PrevalidatedDocument(
+				LegacyRevolutionDocument, PreparedLegacyRevolution, strOutError))
+		{
+			strOutError = "legacy Revolution staging failed: " + strOutError;
+			return false;
+		}
+		Client::EFFECT_PARTICLE_RUNTIME_PROBE FirstLegacyRevolutionSample;
+		Client::EFFECT_PARTICLE_RUNTIME_PROBE SecondLegacyRevolutionSample;
+		LegacyRevolutionPlayback.Seek(0.1f, Identity);
+		if (!LegacyRevolutionPlayback.Query_ParticleRuntimeProbe(
+				LegacyRevolution.strElementId, FirstLegacyRevolutionSample) ||
+			FirstLegacyRevolutionSample.iActiveParticleCount != 1u)
+		{
+			strOutError = "legacy Revolution first sample is missing";
+			return false;
+		}
+		LegacyRevolutionPlayback.Seek(0.2f, Identity);
+		if (!LegacyRevolutionPlayback.Query_ParticleRuntimeProbe(
+				LegacyRevolution.strElementId, SecondLegacyRevolutionSample) ||
+			SecondLegacyRevolutionSample.iActiveParticleCount != 1u)
+		{
+			strOutError = "legacy Revolution second sample is missing";
+			return false;
+		}
+		const float3_t LegacyRevolutionDelta = {
+			SecondLegacyRevolutionSample.vFirstWorldPosition.x -
+				FirstLegacyRevolutionSample.vFirstWorldPosition.x,
+			SecondLegacyRevolutionSample.vFirstWorldPosition.y -
+				FirstLegacyRevolutionSample.vFirstWorldPosition.y,
+			SecondLegacyRevolutionSample.vFirstWorldPosition.z -
+				FirstLegacyRevolutionSample.vFirstWorldPosition.z };
+		const f32_t fLegacyRevolutionDeltaSquared =
+			LegacyRevolutionDelta.x * LegacyRevolutionDelta.x +
+			LegacyRevolutionDelta.y * LegacyRevolutionDelta.y +
+			LegacyRevolutionDelta.z * LegacyRevolutionDelta.z;
+		const auto ExpectedLegacyRevolutionPosition = [](const f32_t fTime)
+		{
+			float4x4_t ExpectedWorld{};
+			XMStoreFloat4x4(&ExpectedWorld,
+				XMMatrixTranslation(1.f, 0.f, 0.f) *
+				XMMatrixRotationY(XMConvertToRadians(1300.f * fTime)));
+			return float3_t(
+				ExpectedWorld._41, ExpectedWorld._42, ExpectedWorld._43);
+		};
+		const float3_t ExpectedFirstLegacyRevolution =
+			ExpectedLegacyRevolutionPosition(0.1f);
+		const float3_t ExpectedSecondLegacyRevolution =
+			ExpectedLegacyRevolutionPosition(0.2f);
+		const auto PositionMatches = [](const float3_t& Actual,
+			const float3_t& Expected)
+		{
+			return std::abs(Actual.x - Expected.x) <= 1.0e-4f &&
+				std::abs(Actual.y - Expected.y) <= 1.0e-4f &&
+				std::abs(Actual.z - Expected.z) <= 1.0e-4f;
+		};
+		if (!(fLegacyRevolutionDeltaSquared > 1.f) ||
+			!PositionMatches(
+				FirstLegacyRevolutionSample.vFirstWorldPosition,
+				ExpectedFirstLegacyRevolution) ||
+			!PositionMatches(
+				SecondLegacyRevolutionSample.vFirstWorldPosition,
+				ExpectedSecondLegacyRevolution))
+		{
+			strOutError =
+				"zero Motion Duration did not preserve legacy Revolution time";
+			return false;
+		}
+
 		strOutError.clear();
 		return true;
 	}
