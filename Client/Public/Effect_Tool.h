@@ -341,6 +341,9 @@ private:
         std::string strDomainId;
         std::filesystem::path Path;
         EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pParsedDocument;
+		bool_t bDocumentParseAttempted = false;
+		std::string strDocumentParseStatus;
     };
 
 	struct DIRECT_AUTHORED_EDITABLE_ENTRY final
@@ -365,6 +368,7 @@ private:
 		optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ValtanCue;
 		optional<std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>>
 			ValtanReferenceClips;
+		uint32_t iValtanWorldOwnerStageDurationMs = 0u;
     };
 
 	struct UNIFIED_EFFECT_CACHE final
@@ -521,6 +525,7 @@ private:
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId,
 		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips,
+		uint32_t iWorldOwnerStageDurationMs = 0u,
 		bool_t bQueuePlayCompleteAfterLoad = false);
 	bool_t Try_OpenValtanAuthoredEffect(
 		const std::filesystem::path& Path,
@@ -612,6 +617,10 @@ private:
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanPatternTree();
     bool_t Refresh_DataFiles();
+	bool_t Try_AppendSavedElementToActiveDocument(
+		const std::filesystem::path& Path,
+		const std::string& strExpectedEffectAssetId,
+		const std::string& strElementId);
     bool_t Refresh_ResourceCatalog();
     void Select_AuthoringDomain(const std::string& strDomainId);
     bool_t Select_AuthoringDomainForClass(
@@ -969,6 +978,7 @@ private:
 	EFFECT_OCCURRENCE_LOCAL_TRANSFORM m_SelectedOccurrenceSourceTransform;
     string m_strSelectedResourceAssetId;
     string m_strSelectedDataFileAssetId;
+	string m_strSelectedDataFileElementId;
     string m_strSelectedAuthoringDomainId = "DimensionMaster";
     string m_strPreviewAnchorSlotId = "root";
 	string m_strDetailDraftElementId;
@@ -1006,6 +1016,7 @@ private:
     float3_t m_vPickedWorldPosition{};
     f32_t m_fPreviewTimeSeconds = 0.f;
     f32_t m_fPreviewDurationSeconds = 1.f;
+	uint32_t m_iValtanWorldOwnerStageDurationMs = 0u;
 	double m_fDetailDraftPreviewDueSeconds = 0.0;
     bool_t m_bPreviewPlaying = false;
     bool_t m_bPreviewLoop = true;

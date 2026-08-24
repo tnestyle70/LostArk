@@ -1239,6 +1239,314 @@ namespace
 		return true;
 	}
 
+	bool_t Validate_TransformMotionHoldContract(
+		const std::filesystem::path& RepositoryRoot,
+		std::string& strOutError)
+	{
+		const std::filesystem::path AuthoredRoot = RepositoryRoot / L"Data" /
+			L"Effects" / L"Authored";
+		Client::EFFECT_DOCUMENT_DESC SourceDocument;
+		if (!Client::CEffectDocumentCodec::Load(
+				AuthoredRoot /
+					L"effect.dimensionmaster.skill.2050010.ba1.effect.json",
+				SourceDocument, strOutError))
+		{
+			strOutError = "transform-motion standalone Mesh fixture failed to load: " +
+				strOutError;
+			return false;
+		}
+		const auto SourceMesh = std::find_if(SourceDocument.Elements.begin(),
+			SourceDocument.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.eKind == Client::EFFECT_ELEMENT_KIND::MESH;
+			});
+		if (SourceMesh == SourceDocument.Elements.end())
+		{
+			strOutError = "transform-motion standalone Mesh fixture is missing";
+			return false;
+		}
+
+		const std::string LegacyJson =
+			Client::CEffectDocumentCodec::Serialize(SourceDocument);
+		Client::EFFECT_DOCUMENT_DESC LegacyRoundTrip;
+		if (LegacyJson.find("transformMotionDurationSeconds") !=
+				std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				LegacyJson, LegacyRoundTrip, strOutError) ||
+			std::any_of(LegacyRoundTrip.Elements.begin(),
+				LegacyRoundTrip.Elements.end(),
+				[](const Client::EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.Detail.Timing.
+						fTransformMotionDurationSeconds != 0.f;
+				}))
+		{
+			strOutError =
+				"legacy timing omission did not round-trip as the zero fallback";
+			return false;
+		}
+
+		const std::string SourceMeshId = SourceMesh->strElementId;
+		Client::EFFECT_ELEMENT_DESC& TunedSourceMesh = *std::find_if(
+			SourceDocument.Elements.begin(), SourceDocument.Elements.end(),
+			[&SourceMeshId](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == SourceMeshId;
+			});
+		TunedSourceMesh.Detail.Timing.fLifeTimeSeconds = 3.f;
+		TunedSourceMesh.Detail.Timing.fTransformMotionDurationSeconds = 1.f;
+		std::string ValidationError;
+		if (!Client::CEffectDocumentCodec::Validate(
+				SourceDocument, ValidationError))
+		{
+			strOutError = "valid transform-motion timing was rejected: " +
+				ValidationError;
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC InvalidDuration = SourceDocument;
+		auto InvalidMesh = std::find_if(InvalidDuration.Elements.begin(),
+			InvalidDuration.Elements.end(),
+			[&SourceMeshId](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == SourceMeshId;
+			});
+		InvalidMesh->Detail.Timing.fTransformMotionDurationSeconds = 3.001f;
+		if (Client::CEffectDocumentCodec::Validate(
+				InvalidDuration, ValidationError))
+		{
+			strOutError = "transform motion longer than Life was accepted";
+			return false;
+		}
+		InvalidDuration = SourceDocument;
+		InvalidMesh = std::find_if(InvalidDuration.Elements.begin(),
+			InvalidDuration.Elements.end(),
+			[&SourceMeshId](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == SourceMeshId;
+			});
+		InvalidMesh->Detail.Timing.fTransformMotionDurationSeconds = -0.001f;
+		if (Client::CEffectDocumentCodec::Validate(
+				InvalidDuration, ValidationError))
+		{
+			strOutError = "negative transform motion was accepted";
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC UnsupportedCarrier = SourceDocument;
+		const auto Sprite = std::find_if(UnsupportedCarrier.Elements.begin(),
+			UnsupportedCarrier.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.eKind == Client::EFFECT_ELEMENT_KIND::SPRITE;
+			});
+		if (Sprite == UnsupportedCarrier.Elements.end())
+		{
+			strOutError = "transform-motion Sprite rejection fixture is missing";
+			return false;
+		}
+		Sprite->Detail.Timing.fTransformMotionDurationSeconds =
+			(std::min)(Sprite->Detail.Timing.fLifeTimeSeconds, 0.1f);
+		if (Client::CEffectDocumentCodec::Validate(
+				UnsupportedCarrier, ValidationError))
+		{
+			strOutError =
+				"transform motion was accepted on an unsupported Sprite carrier";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC MeshDocument;
+		if (!Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				SourceDocument, SourceMeshId,
+				"effect.contract.transform-motion.mesh", MeshDocument,
+				strOutError) || MeshDocument.Elements.size() != 1u ||
+			MeshDocument.Elements.front().Detail.Timing.
+				fTransformMotionDurationSeconds != 1.f)
+		{
+			strOutError =
+				"generic authored Element copy did not preserve transform motion: " +
+				strOutError;
+			return false;
+		}
+		const std::string MotionJson =
+			Client::CEffectDocumentCodec::Serialize(MeshDocument);
+		Client::EFFECT_DOCUMENT_DESC MotionRoundTrip;
+		if (MotionJson.find("transformMotionDurationSeconds") ==
+				std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				MotionJson, MotionRoundTrip, strOutError) ||
+			MotionRoundTrip.Elements.size() != 1u ||
+			MotionRoundTrip.Elements.front().Detail.Timing.
+				fTransformMotionDurationSeconds != 1.f)
+		{
+			strOutError =
+				"explicit transform motion did not survive codec round-trip";
+			return false;
+		}
+
+		Client::EFFECT_ELEMENT_DESC& Mesh = MeshDocument.Elements.front();
+		Mesh.Detail.Timing.fStartDelaySeconds = 0.f;
+		Mesh.Detail.Timing.fLifeTimeSeconds = 3.f;
+		Mesh.Detail.Timing.fTransformMotionDurationSeconds = 1.f;
+		Mesh.Detail.Transform.vPosition = { 0.f, 0.f, 0.f };
+		Mesh.Detail.Transform.vVelocityPerSecond = { 2.f, 1.f, -1.f };
+		Mesh.Detail.Transform.vRotationDegrees = { 10.f, 20.f, 30.f };
+		Mesh.Detail.Transform.vRevolutionDegreesPerSecond =
+			{ 45.f, 90.f, 135.f };
+		Mesh.Detail.Transform.vScale = { 1.f, 1.f, 1.f };
+		Mesh.Detail.LinearLerp.bPosition = true;
+		Mesh.Detail.LinearLerp.vEndPosition = { 3.f, 4.f, 5.f };
+		Mesh.Detail.LinearLerp.bRotation = true;
+		Mesh.Detail.LinearLerp.vEndRotationDegrees = { 40.f, 50.f, 60.f };
+		Mesh.Detail.LinearLerp.bScale = true;
+		Mesh.Detail.LinearLerp.vEndScale = { 2.f, 3.f, 4.f };
+		Mesh.Detail.LinearLerp.bVelocity = true;
+		Mesh.Detail.LinearLerp.vEndVelocityPerSecond = { 4.f, 3.f, 1.f };
+		Mesh.Detail.Color.vColorMultiply = { 1.f, 1.f, 1.f, 1.f };
+		Mesh.Detail.LinearLerp.bColorMultiply = true;
+		Mesh.Detail.LinearLerp.vEndColorMultiply = { 1.f, 1.f, 1.f, 0.f };
+		std::shared_ptr<const Client::CEffectPlayback::PREPARED_RESOURCES>
+			PreparedMesh;
+		if (!Client::CEffectPlayback::Prepare_DocumentResources(
+				MeshDocument, PreparedMesh, strOutError))
+		{
+			strOutError = "transform-motion Mesh resources failed: " + strOutError;
+			return false;
+		}
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		Client::CEffectPlayback MeshPlayback;
+		if (!MeshPlayback.Stage_PrevalidatedDocument(
+				MeshDocument, PreparedMesh, strOutError))
+		{
+			strOutError = "transform-motion Mesh staging failed: " + strOutError;
+			return false;
+		}
+		MeshPlayback.Seek(1.f, Identity);
+		if (MeshPlayback.Get_Frame().Elements.size() != 1u)
+		{
+			strOutError = "transform-motion Mesh end sample is missing";
+			return false;
+		}
+		const float4x4_t MotionEndWorld =
+			MeshPlayback.Get_Frame().Elements.front().World;
+		const f32_t fMotionEndAlpha =
+			MeshPlayback.Get_Frame().Elements.front().Color.vColorMultiply.w;
+		MeshPlayback.Seek(2.f, Identity);
+		if (MeshPlayback.Get_Frame().Elements.size() != 1u)
+		{
+			strOutError = "transform-motion Mesh hold sample is missing";
+			return false;
+		}
+		const Client::EFFECT_EVALUATED_ELEMENT& HoldSample =
+			MeshPlayback.Get_Frame().Elements.front();
+		for (size_t iRow = 0u; iRow < 4u; ++iRow)
+		{
+			for (size_t iColumn = 0u; iColumn < 4u; ++iColumn)
+			{
+				if (std::abs(MotionEndWorld.m[iRow][iColumn] -
+						HoldSample.World.m[iRow][iColumn]) > 1.0e-4f)
+				{
+					strOutError =
+						"Element root transform continued moving during hold";
+					return false;
+				}
+			}
+		}
+		if (!(HoldSample.fNormalizedLife > 0.66f &&
+			HoldSample.fNormalizedLife < 0.67f &&
+			HoldSample.Color.vColorMultiply.w < fMotionEndAlpha - 0.3f))
+		{
+			strOutError =
+				"Element Life/color clock did not continue during transform hold";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC ParticleSource;
+		if (!Client::CEffectDocumentCodec::Load(
+				AuthoredRoot /
+					L"effect.lancemaster.skill.34580.ba1.unified.effect.json",
+				ParticleSource, strOutError) || ParticleSource.Elements.size() != 1u)
+		{
+			strOutError = "transform-motion Mesh Particle fixture failed: " +
+				strOutError;
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC ParticleDocument;
+		if (!Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				ParticleSource, ParticleSource.Elements.front().strElementId,
+				"effect.contract.transform-motion.mesh-particle",
+				ParticleDocument, strOutError))
+		{
+			strOutError = "transform-motion Mesh Particle copy failed: " +
+				strOutError;
+			return false;
+		}
+		Client::EFFECT_ELEMENT_DESC& Particle = ParticleDocument.Elements.front();
+		Particle.Detail.Timing.fStartDelaySeconds = 0.f;
+		Particle.Detail.Timing.fLifeTimeSeconds = 3.f;
+		Particle.Detail.Timing.fTransformMotionDurationSeconds = 1.f;
+		Particle.Detail.Transform.vPosition = {};
+		Particle.Detail.Transform.vVelocityPerSecond = { 2.f, 0.f, 0.f };
+		Particle.Detail.LinearLerp = {};
+		Particle.Detail.Particle.iMaxParticles = 1u;
+		Particle.Detail.Particle.iBurstCount = 1u;
+		Particle.Detail.Particle.fSpawnRatePerSecond = 0.f;
+		Particle.Detail.Particle.vLifeTimeSeconds = { 3.f, 3.f };
+		Particle.Detail.Particle.vInitialPositionMin = {};
+		Particle.Detail.Particle.vInitialPositionMax = {};
+		Particle.Detail.Particle.vInitialVelocityMin = {};
+		Particle.Detail.Particle.vInitialVelocityMax = {};
+		Particle.Detail.Particle.vAcceleration = {};
+		Particle.Detail.Particle.vStartSize = { 1.f, 1.f };
+		Particle.Detail.Particle.vEndSize = { 1.f, 1.f };
+		Particle.Detail.Particle.bLocalSpace = true;
+		std::shared_ptr<const Client::CEffectPlayback::PREPARED_RESOURCES>
+			PreparedParticle;
+		if (!Client::CEffectPlayback::Prepare_DocumentResources(
+				ParticleDocument, PreparedParticle, strOutError))
+		{
+			strOutError = "transform-motion Mesh Particle resources failed: " +
+				strOutError;
+			return false;
+		}
+		Client::CEffectPlayback ParticlePlayback;
+		if (!ParticlePlayback.Stage_PrevalidatedDocument(
+				ParticleDocument, PreparedParticle, strOutError))
+		{
+			strOutError = "transform-motion Mesh Particle staging failed: " +
+				strOutError;
+			return false;
+		}
+		Client::EFFECT_PARTICLE_RUNTIME_PROBE MotionEndParticle;
+		Client::EFFECT_PARTICLE_RUNTIME_PROBE HoldParticle;
+		ParticlePlayback.Seek(1.f, Identity);
+		if (!ParticlePlayback.Query_ParticleRuntimeProbe(
+				Particle.strElementId, MotionEndParticle) ||
+			MotionEndParticle.iActiveParticleCount != 1u)
+		{
+			strOutError = "transform-motion Mesh Particle end probe is missing";
+			return false;
+		}
+		ParticlePlayback.Seek(2.f, Identity);
+		if (!ParticlePlayback.Query_ParticleRuntimeProbe(
+				Particle.strElementId, HoldParticle) ||
+			HoldParticle.iActiveParticleCount != 1u ||
+			std::abs(MotionEndParticle.vFirstWorldPosition.x -
+				HoldParticle.vFirstWorldPosition.x) > 1.0e-4f ||
+			std::abs(MotionEndParticle.vFirstWorldPosition.y -
+				HoldParticle.vFirstWorldPosition.y) > 1.0e-4f ||
+			std::abs(MotionEndParticle.vFirstWorldPosition.z -
+				HoldParticle.vFirstWorldPosition.z) > 1.0e-4f)
+		{
+			strOutError =
+				"Mesh Particle Element root continued moving during hold";
+			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
 	std::shared_ptr<Client::CEffectObject> Add_EffectObject(
 		const wchar_t* pPrototypeTag, const wchar_t* pLayerTag,
 		Client::CEffectObject::EFFECT_OBJECT_DESC& Desc)
@@ -2182,6 +2490,13 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("source-playback-tuning.complete");
+	Write_Progress("transform-motion-hold.begin");
+	if (!Validate_TransformMotionHoldContract(RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("transform-motion-hold.complete");
 
 	Engine::Set_NonInteractiveErrorMode(true);
 	Client::CEffectDocumentRenderer::Clear_Prepared_Catalog();

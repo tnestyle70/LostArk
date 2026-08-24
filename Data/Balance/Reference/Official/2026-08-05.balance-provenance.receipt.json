@@ -35355,10 +35355,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1900,
+                        "sourceValue":  8000,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1900,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  8000,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -45206,7 +45206,7 @@
                                                 "stageId":  "AIRBORNE",
                                                 "actionId":  "valtan.attack.high-jump.airborne",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  2400,
+                                                "durationMs":  8000,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -45298,7 +45298,7 @@
                                                 "stageId":  "AIRBORNE",
                                                 "actionId":  "valtan.attack.high-jump.airborne",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  2400,
+                                                "durationMs":  8000,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,

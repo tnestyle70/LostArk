@@ -15,7 +15,7 @@
       "offsetRightM": 0.0,
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
-      "lifeMs": 1900,
+      "lifeMs": 8000,
       "hits": [
         {
           "trigger": "TIMED",
