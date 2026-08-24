@@ -4808,8 +4808,8 @@ namespace
 			<< ", \"tileIndex\": " << Detail.UV.iTileIndex
 			<< " },\n        \"timing\": { \"startDelaySeconds\": " << Detail.Timing.fStartDelaySeconds
 			<< ", \"lifeTimeSeconds\": " << Detail.Timing.fLifeTimeSeconds;
-		/* Omission is the legacy identity: old documents remain byte-stable and
-		   continue to use Life as their transform clock. */
+		/* Omission is the legacy identity: old documents remain byte-stable,
+		   use Life for authored lerps, and keep velocity/Revolution on local time. */
 		if (Detail.Timing.fTransformMotionDurationSeconds != 0.f)
 		{
 			Output << ", \"transformMotionDurationSeconds\": " <<
