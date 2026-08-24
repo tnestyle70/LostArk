@@ -7,6 +7,7 @@
 
 #include <fstream>
 #include <cmath>
+#include <algorithm>
 
 namespace
 {
@@ -471,6 +472,34 @@ bool_t Client::CHUDRuntimeView::Set_SlotPosition(const string& strSlotId, f32_t 
 	return false;
 }
 
+bool_t Client::CHUDRuntimeView::Set_SlotTexture(const string& strSlotId, const string& strAssetPath)
+{
+	for (HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strSlotId || Slot.Layers.empty())
+			continue;
+
+		Slot.Layers[0].strPath = strAssetPath;
+		return true;
+	}
+
+	return false;
+}
+
+bool_t Client::CHUDRuntimeView::Set_SlotAlpha(const string& strSlotId, f32_t fAlpha)
+{
+	for (HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strSlotId || Slot.Layers.empty())
+			continue;
+
+		Slot.Layers[0].vTint[3] = std::clamp(fAlpha, 0.f, 1.f);
+		return true;
+	}
+
+	return false;
+}
+
 bool_t Client::CHUDRuntimeView::Set_SlotVisible(const string& strSlotId, bool_t bVisible)
 {
 	for (HUD_SLOT& Slot : m_Slots)
@@ -493,6 +522,29 @@ bool_t Client::CHUDRuntimeView::Restart_Animation(const string& strSlotId)
 			continue;
 
 		Slot.dAnimationStartSeconds = ImGui::GetTime();
+		return true;
+	}
+
+	return false;
+}
+
+bool_t Client::CHUDRuntimeView::Set_Animation_Frame(const string& strSlotId, int32_t iFrameIndex)
+{
+	for (HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strSlotId || Slot.AnimationFrames.empty())
+			continue;
+
+		/* AnimationFrames otherwise free-runs off its own dAnimationStartSeconds clock, so a
+		caller driving it from a real data value (a gauge percent, not decoration) needs to pin
+		the exact frame instead -- back-date the start time so the clock-based frame selection in
+		Render() lands on iFrameIndex right now. Mirrors Set_SlotRotation's reasoning for a
+		continuous data-driven value the frame-indexed clip system can't otherwise express. */
+		const int32_t iFrameCount = static_cast<int32_t>(Slot.AnimationFrames.size());
+		const int32_t iClamped = std::clamp(iFrameIndex, 0, iFrameCount - 1);
+		const f64_t dFrameSeconds = (Slot.fAnimationFPS > 0.f)
+			? static_cast<f64_t>(iClamped) / static_cast<f64_t>(Slot.fAnimationFPS) : 0.0;
+		Slot.dAnimationStartSeconds = ImGui::GetTime() - dFrameSeconds;
 		return true;
 	}
 
