@@ -6417,6 +6417,61 @@ void Client::CEffect_Tool::Render_TimingDetail(
 	bChanged |= ImGui::DragFloat("Start Delay Timer",
 		&Detail.Timing.fStartDelaySeconds, 0.01f, 0.f, 60.f, "%.3f",
 		ImGuiSliderFlags_AlwaysClamp);
+	const bool_t bSupportsSeparateTransformMotion =
+		Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+		Resolve_AuthoringFamily(Element) ==
+			EFFECT_AUTHORING_FAMILY::MESH_PARTICLE;
+	if (bSupportsSeparateTransformMotion)
+	{
+		bool_t bSeparateTransformMotion =
+			Detail.Timing.fTransformMotionDurationSeconds > 0.f;
+		if (ImGui::Checkbox("Separate Transform Motion From Life",
+			&bSeparateTransformMotion))
+		{
+			Detail.Timing.fTransformMotionDurationSeconds =
+				bSeparateTransformMotion ?
+				Detail.Timing.fLifeTimeSeconds : 0.f;
+			bChanged = true;
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Freezes the Element root position, rotation, scale, velocity, and revolution when Motion Duration ends. Particle Initial Velocity and Acceleration keep their own particle-life clock.");
+		}
+		if (bSeparateTransformMotion)
+		{
+			f32_t& fMotionDuration =
+				Detail.Timing.fTransformMotionDurationSeconds;
+			if (fMotionDuration > Detail.Timing.fLifeTimeSeconds)
+			{
+				fMotionDuration = Detail.Timing.fLifeTimeSeconds;
+				bChanged = true;
+			}
+			f32_t fHoldAfterMotion = (std::max)(0.f,
+				Detail.Timing.fLifeTimeSeconds - fMotionDuration);
+			if (ImGui::DragFloat("Motion Duration",
+				&fMotionDuration, 0.01f, 0.001f,
+				(std::max)(0.001f, 60.f - fHoldAfterMotion), "%.3f",
+				ImGuiSliderFlags_AlwaysClamp))
+			{
+				Detail.Timing.fLifeTimeSeconds =
+					fMotionDuration + fHoldAfterMotion;
+				bChanged = true;
+			}
+			const f32_t fMaximumHold = (std::max)(
+				0.f, 60.f - fMotionDuration);
+			if (ImGui::DragFloat("Hold After Motion", &fHoldAfterMotion,
+				0.01f, 0.f, fMaximumHold, "%.3f",
+				ImGuiSliderFlags_AlwaysClamp))
+			{
+				Detail.Timing.fLifeTimeSeconds =
+					fMotionDuration + fHoldAfterMotion;
+				bChanged = true;
+			}
+			ImGui::TextDisabled("Motion End: %.3f s",
+				Detail.Timing.fStartDelaySeconds + fMotionDuration);
+		}
+	}
 	if (Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
 		Element.eKind == EFFECT_ELEMENT_KIND::SPRITE)
 	{

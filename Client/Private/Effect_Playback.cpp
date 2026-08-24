@@ -5459,7 +5459,12 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 	const EFFECT_DETAIL_DESC& Detail = Element.Detail;
 	const f32_t fLocalTime = (std::max)(0.f,
 		fSampleTimeSeconds - Detail.Timing.fStartDelaySeconds);
-	const f32_t T = Clamp01(fLocalTime / Detail.Timing.fLifeTimeSeconds);
+	const f32_t fMotionDuration =
+		Detail.Timing.fTransformMotionDurationSeconds > 0.f ?
+		Detail.Timing.fTransformMotionDurationSeconds :
+		Detail.Timing.fLifeTimeSeconds;
+	const f32_t fMotionTime = (std::min)(fLocalTime, fMotionDuration);
+	const f32_t T = Clamp01(fMotionTime / fMotionDuration);
 	const EFFECT_LINEAR_LERP_DESC& Lerp = Detail.LinearLerp;
 
 	float3_t Position = Lerp.bPosition ?
@@ -5469,9 +5474,9 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 	const float3_t EndVelocity = Lerp.bVelocity ?
 		Lerp.vEndVelocityPerSecond : StartVelocity;
 	Position = Add3(Position, Add3(
-		Scale3(StartVelocity, fLocalTime),
+		Scale3(StartVelocity, fMotionTime),
 		Scale3(Add3(EndVelocity, Scale3(StartVelocity, -1.f)),
-			0.5f * fLocalTime * T)));
+			0.5f * fMotionTime * T)));
 
 	const float3_t Rotation = Lerp.bRotation ?
 		Lerp3(Detail.Transform.vRotationDegrees,
@@ -5488,9 +5493,9 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 	const matrix_t Local =
 		XMMatrixScaling(Scale.x, Scale.y, Scale.z) *
 		XMMatrixRotationRollPitchYaw(
-			XMConvertToRadians(Rotation.x + Revolution.x * fLocalTime),
-			XMConvertToRadians(Rotation.y + Revolution.y * fLocalTime),
-			XMConvertToRadians(Rotation.z + Revolution.z * fLocalTime)) *
+			XMConvertToRadians(Rotation.x + Revolution.x * fMotionTime),
+			XMConvertToRadians(Rotation.y + Revolution.y * fMotionTime),
+			XMConvertToRadians(Rotation.z + Revolution.z * fMotionTime)) *
 		XMMatrixTranslation(Position.x, Position.y, Position.z);
 	matrix_t Parent = XMLoadFloat4x4(&RootWorld);
 	const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =

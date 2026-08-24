@@ -522,6 +522,10 @@ struct EFFECT_TIMING_DESC final
 {
 	f32_t fStartDelaySeconds = 0.f;
 	f32_t fLifeTimeSeconds = 1.f;
+	/* Optional root-transform clock. Zero preserves the legacy contract where
+	   Element Life drives both motion and visibility. A positive value freezes
+	   the Element root transform at that time while the Life clock continues. */
+	f32_t fTransformMotionDurationSeconds = 0.f;
 	f32_t fAfterImageSeconds = 0.f;
 	f32_t fDissolveStartNormalized = 1.f;
 };

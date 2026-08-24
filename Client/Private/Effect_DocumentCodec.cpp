@@ -4549,6 +4549,8 @@ namespace
 			Read_Int(*pUV, "tileIndex", Out.UV.iTileIndex, strOutError) &&
 			Read_Float(*pTiming, "startDelaySeconds", Out.Timing.fStartDelaySeconds, strOutError) &&
 			Read_Float(*pTiming, "lifeTimeSeconds", Out.Timing.fLifeTimeSeconds, strOutError) &&
+			Read_OptionalFloat(*pTiming, "transformMotionDurationSeconds",
+				Out.Timing.fTransformMotionDurationSeconds, strOutError) &&
 			Read_Float(*pTiming, "afterImageSeconds", Out.Timing.fAfterImageSeconds, strOutError) &&
 			Read_Float(*pTiming, "dissolveStartNormalized", Out.Timing.fDissolveStartNormalized, strOutError) &&
 			Read_Bool(*pMesh, "useModelMaterial", Out.Mesh.bUseModelMaterial, strOutError) &&
@@ -4805,8 +4807,15 @@ namespace
 			<< ", \"tileRows\": " << Detail.UV.iTileRows
 			<< ", \"tileIndex\": " << Detail.UV.iTileIndex
 			<< " },\n        \"timing\": { \"startDelaySeconds\": " << Detail.Timing.fStartDelaySeconds
-			<< ", \"lifeTimeSeconds\": " << Detail.Timing.fLifeTimeSeconds
-			<< ", \"afterImageSeconds\": " << Detail.Timing.fAfterImageSeconds
+			<< ", \"lifeTimeSeconds\": " << Detail.Timing.fLifeTimeSeconds;
+		/* Omission is the legacy identity: old documents remain byte-stable and
+		   continue to use Life as their transform clock. */
+		if (Detail.Timing.fTransformMotionDurationSeconds != 0.f)
+		{
+			Output << ", \"transformMotionDurationSeconds\": " <<
+				Detail.Timing.fTransformMotionDurationSeconds;
+		}
+		Output << ", \"afterImageSeconds\": " << Detail.Timing.fAfterImageSeconds
 			<< ", \"dissolveStartNormalized\": " << Detail.Timing.fDissolveStartNormalized
 			<< " },\n        \"mesh\": { \"useModelMaterial\": " << (Detail.Mesh.bUseModelMaterial ? "true" : "false");
 		/* Keep legacy v12/v13 typed-codec identities byte-stable. The optional
@@ -6398,6 +6407,15 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			}
 		}
 		const EFFECT_DETAIL_DESC& D = Element.Detail;
+		const bool_t bMeshTransformMotionCarrier =
+			Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+			(Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			 std::any_of(Element.ResourceBindings.begin(),
+				Element.ResourceBindings.end(),
+				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == "meshModel";
+				}));
 		const int64_t iTileCount = static_cast<int64_t>(D.UV.iTileColumns) * D.UV.iTileRows;
 		const bool_t bCommonValid =
 			Is_Finite(D.Transform.vPosition) && Is_Finite(D.Transform.vRotationDegrees) &&
@@ -6416,6 +6434,11 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			iTileCount > 0 && D.UV.iTileIndex < iTileCount &&
 			std::isfinite(D.Timing.fStartDelaySeconds) && D.Timing.fStartDelaySeconds >= 0.f &&
 			std::isfinite(D.Timing.fLifeTimeSeconds) && D.Timing.fLifeTimeSeconds > 0.f &&
+			std::isfinite(D.Timing.fTransformMotionDurationSeconds) &&
+			D.Timing.fTransformMotionDurationSeconds >= 0.f &&
+			D.Timing.fTransformMotionDurationSeconds <= D.Timing.fLifeTimeSeconds &&
+			(0.f == D.Timing.fTransformMotionDurationSeconds ||
+			 bMeshTransformMotionCarrier) &&
 			std::isfinite(D.Timing.fAfterImageSeconds) && D.Timing.fAfterImageSeconds >= 0.f &&
 			std::isfinite(D.Timing.fDissolveStartNormalized) &&
 			D.Timing.fDissolveStartNormalized >= 0.f && D.Timing.fDissolveStartNormalized <= 1.f &&
@@ -6913,6 +6936,23 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 		if (Element.Renderer.eSourceSpace != eExpectedSpace)
 		{
 			strOutError = "Source-contract renderer source space is inconsistent.";
+			return false;
+		}
+		const f32_t fTransformMotionDuration = Element.Detail.Timing.
+			fTransformMotionDurationSeconds;
+		if (!std::isfinite(fTransformMotionDuration) ||
+			fTransformMotionDuration < 0.f ||
+			(fTransformMotionDuration > 0.f &&
+			 (!std::isfinite(Element.Detail.Timing.fLifeTimeSeconds) ||
+			  fTransformMotionDuration >
+				Element.Detail.Timing.fLifeTimeSeconds ||
+			  (Element.Renderer.eType !=
+				EFFECT_RENDERER_TYPE::STANDALONE_MESH &&
+			   Element.Renderer.eType !=
+				EFFECT_RENDERER_TYPE::MESH_PARTICLE))))
+		{
+			strOutError =
+				"Source-contract transform motion timing is invalid.";
 			return false;
 		}
 		for (const EFFECT_RESOURCE_BINDING_DESC& Resource :
