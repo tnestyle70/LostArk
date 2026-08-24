@@ -159,15 +159,6 @@ namespace LostArk::Shared
 		PATTERN_ACTIVE,
 		PATTERN_RECOVERY,
 		DEAD,
-		/* Walking while disengaged: the trip home to the spawn anchor and the
-		wander around it are the same calm gait, so they share one action. Only
-		monsters send it; the boss never leaves its encounter. Appended before
-		END so every value already on the wire keeps its number. */
-		PATROL,
-		/* Reeling from a hit that landed. The action it was in is cancelled, so
-		unlike a knockback this actually interrupts a swing. An archetype that
-		authors no stagger window never enters it. */
-		HIT_STAGGER,
 		END
 	};
 

@@ -6,19 +6,14 @@
 #include "ServerWorldEntity.h"
 
 #include <map>
-#include <vector>
 
 namespace LostArk::Server
 {
 	class CMonsterBrain final
 	{
 	public:
-		/* worldEntities is the room's own live list, read only to push this
-		monster out of a body it overlaps. The caller iterates that same list, so
-		the brain must not spawn, despawn or reorder anything in it. */
 		void Update(SERVER_WORLD_ENTITY& monster,
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
-			const std::vector<SERVER_WORLD_ENTITY>& worldEntities,
 			const CGameplayCatalog& catalog,
 			const CServerNavigation& navigation,
 			float fixedDeltaSeconds,

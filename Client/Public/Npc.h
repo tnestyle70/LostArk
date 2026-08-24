@@ -72,14 +72,6 @@ public:
 		const float3_t& position,
 		f32_t yawDegrees);
 	void Trigger_HitFlash();
-	/* Starts a clip at an authored offset and rate, the way a Character starts a
-	skill clip. Set_Animation alone always begins at frame zero at rate one, so a
-	swing longer than the Server's window for it was simply cut off partway. */
-	bool_t Set_AnimationTimed(
-		const char_t* pClipName,
-		bool_t isLoop,
-		uint32_t iSourceStartMs,
-		f32_t fPlayRate);
 #ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;

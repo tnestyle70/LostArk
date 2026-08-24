@@ -16,44 +16,11 @@
       "attackActiveMs": 195,
       "attackRecoveryMs": 650,
       "deadDespawnMs": 1800,
-      "hitStaggerMs": 300,
       "hitKnockbackScale": 1.0,
       "attackPushRangeM": 0.5,
       "attackPushMs": 150,
       "attackKnockdown": false,
-      "attackDownMs": 0,
-      "attacks": [
-        {
-          "attackRange": 1.8,
-          "attackWindupMs": 455,
-          "attackActiveMs": 195,
-          "attackRecoveryMs": 650,
-          "attackPushRangeM": 0.5,
-          "attackPushMs": 150,
-          "attackKnockdown": false,
-          "attackDownMs": 0
-        },
-        {
-          "attackRange": 1.9,
-          "attackWindupMs": 396,
-          "attackActiveMs": 170,
-          "attackRecoveryMs": 564,
-          "attackPushRangeM": 0.4,
-          "attackPushMs": 150,
-          "attackKnockdown": false,
-          "attackDownMs": 0
-        },
-        {
-          "attackRange": 2.1,
-          "attackWindupMs": 478,
-          "attackActiveMs": 205,
-          "attackRecoveryMs": 684,
-          "attackPushRangeM": 1.2,
-          "attackPushMs": 200,
-          "attackKnockdown": true,
-          "attackDownMs": 900
-        }
-      ]
+      "attackDownMs": 0
     },
     {
       "archetypeId": "MONSTER_VALTAN_SJFC_00_4",
@@ -68,44 +35,11 @@
       "attackActiveMs": 263,
       "attackRecoveryMs": 877,
       "deadDespawnMs": 1900,
-      "hitStaggerMs": 320,
       "hitKnockbackScale": 1.0,
       "attackPushRangeM": 0.5,
       "attackPushMs": 150,
       "attackKnockdown": false,
-      "attackDownMs": 0,
-      "attacks": [
-        {
-          "attackRange": 2.0,
-          "attackWindupMs": 614,
-          "attackActiveMs": 263,
-          "attackRecoveryMs": 877,
-          "attackPushRangeM": 0.5,
-          "attackPushMs": 150,
-          "attackKnockdown": false,
-          "attackDownMs": 0
-        },
-        {
-          "attackRange": 2.0,
-          "attackWindupMs": 477,
-          "attackActiveMs": 204,
-          "attackRecoveryMs": 682,
-          "attackPushRangeM": 0.4,
-          "attackPushMs": 150,
-          "attackKnockdown": false,
-          "attackDownMs": 0
-        },
-        {
-          "attackRange": 2.3,
-          "attackWindupMs": 630,
-          "attackActiveMs": 270,
-          "attackRecoveryMs": 900,
-          "attackPushRangeM": 1.4,
-          "attackPushMs": 220,
-          "attackKnockdown": true,
-          "attackDownMs": 1000
-        }
-      ]
+      "attackDownMs": 0
     },
     {
       "archetypeId": "MONSTER_VALTAN_0019_05",
@@ -120,24 +54,11 @@
       "attackActiveMs": 225,
       "attackRecoveryMs": 750,
       "deadDespawnMs": 2000,
-      "hitStaggerMs": 360,
       "hitKnockbackScale": 1.0,
       "attackPushRangeM": 0.6,
       "attackPushMs": 150,
       "attackKnockdown": false,
-      "attackDownMs": 0,
-      "attacks": [
-        {
-          "attackRange": 2.2,
-          "attackWindupMs": 525,
-          "attackActiveMs": 225,
-          "attackRecoveryMs": 750,
-          "attackPushRangeM": 0.6,
-          "attackPushMs": 150,
-          "attackKnockdown": false,
-          "attackDownMs": 0
-        }
-      ]
+      "attackDownMs": 0
     },
     {
       "archetypeId": "MINIBOSS_LUGARU",
@@ -152,7 +73,6 @@
       "attackActiveMs": 280,
       "attackRecoveryMs": 1050,
       "deadDespawnMs": 3000,
-      "hitStaggerMs": 0,
       "hitKnockbackScale": 0.0,
       "attackPushRangeM": 2.0,
       "attackPushMs": 250,
@@ -172,44 +92,11 @@
       "attackActiveMs": 200,
       "attackRecoveryMs": 760,
       "deadDespawnMs": 1900,
-      "hitStaggerMs": 220,
       "hitKnockbackScale": 1.0,
       "attackPushRangeM": 0.5,
       "attackPushMs": 150,
       "attackKnockdown": false,
-      "attackDownMs": 0,
-      "attacks": [
-        {
-          "attackRange": 2.0,
-          "attackWindupMs": 520,
-          "attackActiveMs": 200,
-          "attackRecoveryMs": 760,
-          "attackPushRangeM": 0.5,
-          "attackPushMs": 150,
-          "attackKnockdown": false,
-          "attackDownMs": 0
-        },
-        {
-          "attackRange": 2.0,
-          "attackWindupMs": 430,
-          "attackActiveMs": 180,
-          "attackRecoveryMs": 660,
-          "attackPushRangeM": 0.4,
-          "attackPushMs": 150,
-          "attackKnockdown": false,
-          "attackDownMs": 0
-        },
-        {
-          "attackRange": 2.3,
-          "attackWindupMs": 700,
-          "attackActiveMs": 240,
-          "attackRecoveryMs": 980,
-          "attackPushRangeM": 1.4,
-          "attackPushMs": 220,
-          "attackKnockdown": true,
-          "attackDownMs": 1000
-        }
-      ]
+      "attackDownMs": 0
     }
   ]
 }

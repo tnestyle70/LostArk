@@ -121,11 +121,6 @@ private:
 	server-authoritative). Positions are world-space and captured at hit time, so a number stays
 	where the hit landed instead of following the target. */
 	void RenderDamageNumbers();
-	/* A small bar over every living MONSTER-kind entity, read from
-	CCombatHUDViewModel::Get_Monsters() (server-authoritative HP). The boss keeps
-	its own segmented bar in RenderBossHealthBar; this is the plain ratio for
-	entities that have no health-bar segments. */
-	void RenderMonsterHealthBars();
 	void RenderSkillIcons();
 	void RenderSkillCooldowns();
 	/* Experimental replacement for RenderSkillIcons/RenderSkillCooldowns, built from the real

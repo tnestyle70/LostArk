@@ -136,9 +136,7 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 		{
 			MONSTER_RUNTIME_PROFILE profile;
 			std::uint32_t attackKnockdownFlag = 0u;
-			if (19u != fields.size() ||
-				!ParseNumber(fields[18], profile.iHitStaggerMs) ||
-				profile.iHitStaggerMs > 600000u ||
+			if (18u != fields.size() ||
 				!ParseNumber(fields[2], profile.iMaxHp) || 0u == profile.iMaxHp ||
 				!ParseNumber(fields[3], profile.iAttackPower) ||
 				!ParseNumber(fields[4], profile.iDefense) ||
@@ -179,36 +177,6 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 				m_strStatus = "Duplicate spawn group monster profile";
 				return false;
 			}
-		}
-		else if (!fields.empty() && "MONSTERATTACK" == fields[0])
-		{
-			SERVER_MONSTER_ATTACK attack;
-			std::uint32_t attackIndex = 0u;
-			std::uint32_t knockdownFlag = 0u;
-			const auto profile = 2u <= fields.size() ?
-				stagedProfiles.find(std::string(fields[1])) : stagedProfiles.end();
-			if (11u != fields.size() || stagedProfiles.end() == profile ||
-				!ParseNumber(fields[2], attackIndex) ||
-				attackIndex != profile->second.Attacks.size() ||
-				!ParseNumber(fields[3], attack.fAttackRange) ||
-				!std::isfinite(attack.fAttackRange) || attack.fAttackRange <= 0.f ||
-				!ParseNumber(fields[4], attack.iWindupMs) || 0u == attack.iWindupMs ||
-				!ParseNumber(fields[5], attack.iActiveMs) || 0u == attack.iActiveMs ||
-				!ParseNumber(fields[6], attack.iRecoveryMs) || 0u == attack.iRecoveryMs ||
-				!ParseNumber(fields[7], attack.fPushRangeM) ||
-				!std::isfinite(attack.fPushRangeM) ||
-				std::fabs(attack.fPushRangeM) > 20.f ||
-				!ParseNumber(fields[8], attack.iPushMs) ||
-				!ParseNumber(fields[9], knockdownFlag) || knockdownFlag > 1u ||
-				!ParseNumber(fields[10], attack.iDownMs) ||
-				(0.f != attack.fPushRangeM) != (0u != attack.iPushMs) ||
-				(1u == knockdownFlag) != (0u != attack.iDownMs))
-			{
-				m_strStatus = "Spawn group monster attack row is invalid";
-				return false;
-			}
-			attack.bKnockdown = 1u == knockdownFlag;
-			profile->second.Attacks.push_back(attack);
 		}
 		else if (!fields.empty() && "ANCHOR" == fields[0])
 		{
@@ -357,26 +325,6 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 			m_strStatus = "Spawn group prerequisite is unknown";
 			return false;
 		}
-	/* An archetype that authored no swing list keeps its single set of attack
-	fields, promoted here to a one-entry cycle. The brain then has exactly one
-	shape to read rather than two, and the runtime never has to ask whether a
-	monster is the old kind or the new one. */
-	for (auto& [archetypeId, profile] : stagedProfiles)
-	{
-		(void)archetypeId;
-		if (!profile.Attacks.empty())
-			continue;
-		SERVER_MONSTER_ATTACK attack;
-		attack.fAttackRange = profile.fAttackRange;
-		attack.iWindupMs = profile.iAttackWindupMs;
-		attack.iActiveMs = profile.iAttackActiveMs;
-		attack.iRecoveryMs = profile.iAttackRecoveryMs;
-		attack.fPushRangeM = profile.fAttackPushRangeM;
-		attack.iPushMs = profile.iAttackPushMs;
-		attack.bKnockdown = profile.bAttackKnockdown;
-		attack.iDownMs = profile.iAttackDownMs;
-		profile.Attacks.push_back(attack);
-	}
 	m_Groups = std::move(stagedGroups);
 	m_Anchors = std::move(stagedAnchors);
 	m_Profiles = std::move(stagedProfiles);

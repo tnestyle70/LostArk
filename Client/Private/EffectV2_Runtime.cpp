@@ -59,9 +59,6 @@ namespace
 	bool_t g_bModelTagMapBuilt = false;
 	std::map<const Client::CNpc*, NPC_STATE> g_NpcStates;
 	std::set<const Client::CNpc*> g_IgnoredNpcs;
-	/* Event-driven occurrences that outlive no clip and belong to no NPC_STATE.
-	Tick_Npc's own sweep releases them once each one reports finished. */
-	std::vector<SPAWNED_EFFECT> g_OneShots;
 	bool_t g_bPrototypeRegistered = false;
 	std::string g_strLastError;
 
@@ -143,29 +140,28 @@ namespace
 		return true;
 	}
 
-	std::shared_ptr<Client::CEffectV2Object> Create_Occurrence(
+	void Spawn(
+		NPC_STATE& State,
+		PENDING_SPAWN& Pending,
 		const std::shared_ptr<Client::CNpc>& pNpc,
-		const std::string& strEffectId,
-		const std::string& strBone,
-		const Client::CEffectV2Object::PIVOT_ROTATION eRotation,
-		const bool_t bFollowBone,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext)
 	{
-		const DOCUMENT_ENTRY& Entry = Ensure_Document(strEffectId);
+		Pending.bSpawned = true;
+		const DOCUMENT_ENTRY& Entry = Ensure_Document(Pending.Binding.strEffectId);
 		if (Entry.bFailed || !Ensure_Prototype(pDevice, pContext))
-			return nullptr;
+			return;
 		CGameInstance& GameInstance = CGameInstance::Get();
 		Client::CEffectV2Object::DESC Desc = Entry.Document.Desc;
 		if (!Client::CEffectV2Object::Resolve_TargetPivot(
 			*pNpc,
-			strBone,
-			eRotation,
+			Pending.Binding.strBone,
+			Pending.Binding.eRotation,
 			Desc.PivotWorld))
 		{
-			Report("pivot bone not found: " + strBone +
-				" for " + strEffectId);
-			return nullptr;
+			Report("pivot bone not found: " + Pending.Binding.strBone +
+				" for " + Pending.Binding.strEffectId);
+			return;
 		}
 		std::shared_ptr<CGameObject> pGameObject;
 		if (FAILED(GameInstance.Add_GameObject_to_Layer(
@@ -173,14 +169,14 @@ namespace
 			GameInstance.Get_CurrentLevelID(), EFFECT_LAYER_TAG,
 			&Desc, &pGameObject)))
 		{
-			Report("spawn failed for " + strEffectId + ": " +
+			Report("spawn failed for " + Pending.Binding.strEffectId + ": " +
 				Client::CEffectV2Object::Last_Error());
-			return nullptr;
+			return;
 		}
 		const std::shared_ptr<Client::CEffectV2Object> pObject =
 			std::dynamic_pointer_cast<Client::CEffectV2Object>(pGameObject);
 		if (nullptr == pObject)
-			return nullptr;
+			return;
 		for (uint32_t iPart = 0u;
 			iPart < Entry.Document.Parts.size() && iPart < pObject->Part_Count(); ++iPart)
 		{
@@ -200,29 +196,11 @@ namespace
 				}
 			}
 		}
-		if (bFollowBone)
-			pObject->Set_FollowTarget(pNpc, strBone, eRotation);
-		return pObject;
-	}
-
-	void Spawn(
-		NPC_STATE& State,
-		PENDING_SPAWN& Pending,
-		const std::shared_ptr<Client::CNpc>& pNpc,
-		const ComPtr<ID3D11Device>& pDevice,
-		const ComPtr<ID3D11DeviceContext>& pContext)
-	{
-		Pending.bSpawned = true;
-		const std::shared_ptr<Client::CEffectV2Object> pObject = Create_Occurrence(
-			pNpc,
-			Pending.Binding.strEffectId,
-			Pending.Binding.strBone,
-			Pending.Binding.eRotation,
-			Pending.Binding.bFollowBone,
-			pDevice,
-			pContext);
-		if (nullptr == pObject)
-			return;
+		if (Pending.Binding.bFollowBone)
+		{
+			pObject->Set_FollowTarget(
+				pNpc, Pending.Binding.strBone, Pending.Binding.eRotation);
+		}
 		State.Spawned.push_back({ pObject, Pending.Binding.bStopWithClip });
 	}
 
@@ -242,26 +220,6 @@ namespace
 						GameInstance.Get_CurrentLevelID(), EFFECT_LAYER_TAG, pObject);
 				}
 				Iterator = State.Spawned.erase(Iterator);
-				continue;
-			}
-			++Iterator;
-		}
-	}
-
-	void Prune_OneShots()
-	{
-		CGameInstance& GameInstance = CGameInstance::Get();
-		for (auto Iterator = g_OneShots.begin(); Iterator != g_OneShots.end();)
-		{
-			const std::shared_ptr<Client::CEffectV2Object> pObject = Iterator->pObject.lock();
-			if (nullptr == pObject || pObject->Is_Finished())
-			{
-				if (nullptr != pObject)
-				{
-					GameInstance.Remove_GameObject_from_Layer(
-						GameInstance.Get_CurrentLevelID(), EFFECT_LAYER_TAG, pObject);
-				}
-				Iterator = g_OneShots.erase(Iterator);
 				continue;
 			}
 			++Iterator;
@@ -287,40 +245,6 @@ void Client::CEffectV2Runtime::Prewarm_Archetype(
 			Report("prewarm failed " + Binding.strEffectId + ": " + strError);
 	}
 	Ensure_Prototype(pDevice, pContext);
-}
-
-void Client::CEffectV2Runtime::Spawn_OneShot(
-	const std::shared_ptr<CNpc>& pNpc,
-	const std::string& strEffectId,
-	const ComPtr<ID3D11Device>& pDevice,
-	const ComPtr<ID3D11DeviceContext>& pContext)
-{
-	/* One wide player skill can land on every monster it overlaps in the same
-	tick, so the cap keeps a burst from queueing more occurrences than the hits
-	are worth. A refused hit simply shows the flash the caller already applied. */
-	constexpr std::size_t MAX_LIVE_ONE_SHOTS = 24u;
-	if (nullptr == pNpc || strEffectId.empty() ||
-		g_IgnoredNpcs.contains(pNpc.get()))
-	{
-		return;
-	}
-	/* Tick_Npc's sweep only runs while some CNpc is alive, so releasing finished
-	occurrences here too keeps the cap from wedging after the last monster of a
-	wave despawns mid-effect. */
-	Prune_OneShots();
-	if (g_OneShots.size() >= MAX_LIVE_ONE_SHOTS)
-		return;
-	const std::shared_ptr<CEffectV2Object> pObject = Create_Occurrence(
-		pNpc,
-		strEffectId,
-		std::string(),
-		CEffectV2Object::PIVOT_ROTATION::TARGET_YAW,
-		false,
-		pDevice,
-		pContext);
-	if (nullptr == pObject)
-		return;
-	g_OneShots.push_back({ pObject, false });
 }
 
 void Client::CEffectV2Runtime::Set_Ignored(const std::shared_ptr<CNpc>& pNpc, const bool_t bIgnored)
@@ -395,7 +319,6 @@ void Client::CEffectV2Runtime::Tick_Npc(
 		}
 		++Iterator;
 	}
-	Prune_OneShots();
 	if (nullptr == pNpc)
 		return;
 	const auto Found = g_NpcStates.find(pNpc.get());

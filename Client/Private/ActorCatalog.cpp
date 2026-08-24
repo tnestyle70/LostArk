@@ -492,14 +492,8 @@ namespace
 		std::vector<MONSTER_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			/* attackClips is the one optional member, so the count stays exact
-			either way and an unknown extra field is still rejected. */
-			const bool_t hasAttackClips = nullptr != value.Find("attackClips");
-			if (!value.Is_Object() ||
-				value.Get_Object().size() != (hasAttackClips ? 9u : 8u))
-			{
+			if (!value.Is_Object() || 7u != value.Get_Object().size())
 				return false;
-			}
 			MONSTER_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
@@ -509,9 +503,8 @@ namespace
 				!ReadRequiredNumber(value, "modelScale", entry.modelScale) ||
 				!ReadRequiredNumber(value, "modelYawDegrees",
 					entry.modelYawDegrees) ||
-				!ReadRequiredString(value, "hitEffectId", entry.hitEffectId) ||
 				nullptr == pClips || !pClips->Is_Object() ||
-				6u != pClips->Get_Object().size() ||
+				4u != pClips->Get_Object().size() ||
 				!ReadRequiredString(*pClips, "idle",
 					entry.presentationClips.idle) ||
 				!ReadRequiredString(*pClips, "chase",
@@ -520,10 +513,6 @@ namespace
 					entry.presentationClips.attack) ||
 				!ReadRequiredString(*pClips, "dead",
 					entry.presentationClips.dead) ||
-				!ReadRequiredString(*pClips, "patrol",
-					entry.presentationClips.patrol) ||
-				nullptr == pClips->Find("hit") ||
-				!pClips->Find("hit")->Is_String() ||
 				!ReadRequiredString(value, "runtimeStatus", entry.runtimeStatus) ||
 				!IsResourceId(entry.modelAssetId) ||
 				entry.modelScale <= 0.f || entry.modelScale > 100.f ||
@@ -533,46 +522,6 @@ namespace
 				!presentations.insert(entry.clientPresentationId).second)
 			{
 				return false;
-			}
-			/* Read apart from the required strings above because an empty hit
-			clip is the legal super-armour case, not a missing field. */
-			entry.presentationClips.hit = pClips->Find("hit")->Get_String();
-			/* Optional, so an archetype with one swing needs no list. Every
-			entry has to be a non-empty string; a blank would present as a frozen
-			monster with no way to tell it from an authoring slip. */
-			if (const DATA_JSON_VALUE* pAttacks = value.Find("attackClips"))
-			{
-				if (!pAttacks->Is_Array() || pAttacks->Get_Array().empty() ||
-					pAttacks->Get_Array().size() > 8u)
-				{
-					return false;
-				}
-				for (const DATA_JSON_VALUE& swing : pAttacks->Get_Array())
-				{
-					if (!swing.Is_Object() || 3u != swing.Get_Object().size())
-						return false;
-					MONSTER_ACTOR_ENTRY::PRESENTATION_CLIPS::ATTACK_CLIP staged;
-					const DATA_JSON_VALUE* pStart = swing.Find("sourceStartMs");
-					const DATA_JSON_VALUE* pRate = swing.Find("playRate");
-					if (!ReadRequiredString(swing, "clip", staged.clip) ||
-						staged.clip.empty() ||
-						nullptr == pStart || !pStart->Is_Number() ||
-						nullptr == pRate || !pRate->Is_Number())
-					{
-						return false;
-					}
-					staged.sourceStartMs =
-						static_cast<uint32_t>(pStart->Get_Number());
-					staged.playRate = static_cast<f32_t>(pRate->Get_Number());
-					/* A non-positive rate would stall the swing on its first
-					frame, which reads as a monster frozen mid-attack. */
-					if (staged.playRate <= 0.f || staged.playRate > 8.f ||
-						staged.sourceStartMs > 600000u)
-					{
-						return false;
-					}
-					entry.presentationClips.attacks.push_back(std::move(staged));
-				}
 			}
 			staged.push_back(std::move(entry));
 		}
@@ -623,13 +572,6 @@ const std::vector<Client::NPC_ACTOR_ENTRY>& Client::CActorCatalog::Get_Npcs()
 {
 	Initialize();
 	return g_Npcs;
-}
-
-const std::vector<Client::MONSTER_ACTOR_ENTRY>&
-Client::CActorCatalog::Get_Monsters()
-{
-	Initialize();
-	return g_Monsters;
 }
 
 const Client::MONSTER_ACTOR_ENTRY* Client::CActorCatalog::Find_Monster(

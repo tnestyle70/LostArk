@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Network/PacketType.h"
-#include "ServerWorldEntity.h"
 
 #include <cstdint>
 #include <string>
@@ -24,10 +23,6 @@ namespace LostArk::Server
 		std::uint32_t iAttackActiveMs = 0;
 		std::uint32_t iAttackRecoveryMs = 0;
 		std::uint32_t iDeadDespawnMs = 0;
-		/* How long a landed player hit holds this archetype in HIT_STAGGER,
-		cancelling whatever it was doing. Zero means super armour: the hit lands
-		and pushes but never interrupts. */
-		std::uint32_t iHitStaggerMs = 0;
 		/* Multiplier on the authored push range of each player hit; 0 means the
 		monster never moves (super armour). */
 		float fHitKnockbackScale = 0.f;
@@ -37,10 +32,6 @@ namespace LostArk::Server
 		std::uint32_t iAttackPushMs = 0;
 		bool bAttackKnockdown = false;
 		std::uint32_t iAttackDownMs = 0;
-		/* Every swing this archetype cycles through, in authored order. Empty
-		means the single set of attack fields above is its one swing, which is
-		how an archetype that never authored a list keeps working. */
-		std::vector<SERVER_MONSTER_ATTACK> Attacks;
 	};
 
 	struct SPAWN_GROUP_ANCHOR final

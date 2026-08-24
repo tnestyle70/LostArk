@@ -106,22 +106,6 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		target.fKnockbackSpeed = pushDistance / durationSeconds;
 		target.fKnockbackRemainingSeconds = durationSeconds;
 	}
-	/* The stagger, unlike the push above, cancels the action that was running,
-	which is what makes interrupting a wind-up possible. An archetype that
-	authors no window keeps its super armour and simply never enters the state.
-	Re-entering while already staggered restarts the window, so being chained is
-	being held. */
-	if (0u != damage && WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind &&
-		0u != target.iHitStaggerMs && 0u != target.iCurrentHp)
-	{
-		target.eAction = SERVER_ENTITY_ACTION::HIT_STAGGER;
-		target.fActionElapsedSeconds = 0.f;
-		target.iActionStartTick = 0u == hit.iServerTick ? 1u : hit.iServerTick;
-		target.hasAppliedPatternDamage = false;
-		target.strActionId.clear();
-		target.MovePath.clear();
-		target.iMovePathIndex = 0;
-	}
 	if (0u != target.iCurrentHp)
 		return SERVER_COMBAT_HIT_RESULT::LANDED;
 	target.eAction = SERVER_ENTITY_ACTION::DEAD;

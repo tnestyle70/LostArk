@@ -87,38 +87,6 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	return true;
 }
 
-bool_t CNpc::Set_AnimationTimed(
-	const char_t* pClipName,
-	const bool_t isLoop,
-	const uint32_t iSourceStartMs,
-	const f32_t fPlayRate)
-{
-	if (!std::isfinite(fPlayRate) || fPlayRate <= 0.f ||
-		!Set_Animation(pClipName, isLoop))
-	{
-		return false;
-	}
-	if (0u != iSourceStartMs)
-	{
-		const uint32_t iAnimation = m_pModelCom->Get_CurrentAnimIndex();
-		const f32_t fTicksPerSecond =
-			m_pModelCom->Get_AnimationTickPerSecond(iAnimation);
-		if (fTicksPerSecond > 0.f)
-		{
-			const f32_t fStartTicks = static_cast<f32_t>(iSourceStartMs) *
-				0.001f * fTicksPerSecond;
-			if (m_pModelCom->Set_AnimTrackPosition(iAnimation, fStartTicks))
-			{
-				/* Applies the offset pose on this frame instead of leaving the
-				body on frame zero until the next update. */
-				m_pModelCom->Play_Animation(0.f);
-			}
-		}
-	}
-	m_pModelCom->Set_AnimationSpeed(fPlayRate);
-	return true;
-}
-
 bool_t CNpc::Apply_NetworkState(
 	const float3_t& position,
 	const f32_t yawDegrees)

@@ -198,17 +198,12 @@ function Get-MonsterProfiles {
     }
     $profiles = @{}
     foreach ($profile in @($document.profiles)) {
-        # attacks is optional: an archetype that authors none keeps the single
-        # set of attack fields as its one swing.
         $profileProperties = @(
             'archetypeId','maxHp','attackPower','defense','collisionRadius',
             'engageRange','moveSpeed','attackRange','attackWindupMs',
-            'attackActiveMs','attackRecoveryMs','deadDespawnMs','hitStaggerMs',
+            'attackActiveMs','attackRecoveryMs','deadDespawnMs',
             'hitKnockbackScale','attackPushRangeM','attackPushMs',
             'attackKnockdown','attackDownMs')
-        if ($null -ne $profile.PSObject.Properties['attacks']) {
-            $profileProperties += 'attacks'
-        }
         Assert-ExactProperties $profile $profileProperties 'monster profile'
         Assert-StableId $profile.archetypeId 'monster profile archetypeId'
         Assert-JsonInteger $profile.maxHp "$($profile.archetypeId) maxHp" 1 2000000000
@@ -223,9 +218,6 @@ function Get-MonsterProfiles {
         foreach ($field in @('attackWindupMs','attackActiveMs','attackRecoveryMs','deadDespawnMs')) {
             Assert-JsonInteger $profile.$field "$($profile.archetypeId) $field" 1 600000
         }
-        # Zero is the super-armour case, so this one is allowed to be zero while
-        # every other duration on the profile has to be positive.
-        Assert-JsonInteger $profile.hitStaggerMs "$($profile.archetypeId) hitStaggerMs" 0 600000
         Assert-JsonNumber $profile.hitKnockbackScale "$($profile.archetypeId) hitKnockbackScale"
         if ([double]$profile.hitKnockbackScale -lt 0.0 -or [double]$profile.hitKnockbackScale -gt 10.0) {
             throw "Monster profile hitKnockbackScale is out of range: $($profile.archetypeId)"
@@ -244,38 +236,6 @@ function Get-MonsterProfiles {
             ([bool]$profile.attackKnockdown -and [uint32]$profile.attackDownMs -eq 0) -or
             (-not [bool]$profile.attackKnockdown -and [uint32]$profile.attackDownMs -ne 0)) {
             throw "Monster profile attack push contract is invalid: $($profile.archetypeId)"
-        }
-        if ($null -ne $profile.PSObject.Properties['attacks']) {
-            $attacks = @($profile.attacks)
-            if ($attacks.Count -lt 1 -or $attacks.Count -gt 8) {
-                throw "Monster attack count is invalid: $($profile.archetypeId)"
-            }
-            foreach ($attack in $attacks) {
-                Assert-ExactProperties $attack @(
-                    'attackRange','attackWindupMs','attackActiveMs',
-                    'attackRecoveryMs','attackPushRangeM','attackPushMs',
-                    'attackKnockdown','attackDownMs') "$($profile.archetypeId) attack"
-                Assert-JsonNumber $attack.attackRange "$($profile.archetypeId) attack attackRange"
-                if ([double]$attack.attackRange -le 0.0 -or [double]$attack.attackRange -gt 1000.0) {
-                    throw "Monster attack range is out of range: $($profile.archetypeId)"
-                }
-                foreach ($field in @('attackWindupMs','attackActiveMs','attackRecoveryMs')) {
-                    Assert-JsonInteger $attack.$field "$($profile.archetypeId) attack $field" 1 600000
-                }
-                Assert-JsonNumber $attack.attackPushRangeM "$($profile.archetypeId) attack attackPushRangeM"
-                foreach ($field in @('attackPushMs','attackDownMs')) {
-                    Assert-JsonInteger $attack.$field "$($profile.archetypeId) attack $field" 0 600000
-                }
-                if ($attack.attackKnockdown -isnot [bool]) {
-                    throw "Monster attack knockdown must be a JSON Boolean: $($profile.archetypeId)"
-                }
-                $pushRange = [double]$attack.attackPushRangeM
-                if ([math]::Abs($pushRange) -gt 20.0 -or
-                    ($pushRange -ne 0.0) -ne ([uint32]$attack.attackPushMs -ne 0) -or
-                    ([bool]$attack.attackKnockdown) -ne ([uint32]$attack.attackDownMs -ne 0)) {
-                    throw "Monster attack push contract is invalid: $($profile.archetypeId)"
-                }
-            }
         }
         if ($profiles.ContainsKey([string]$profile.archetypeId)) {
             throw "Duplicate monster profile: $($profile.archetypeId)"
@@ -429,7 +389,6 @@ function Convert-SpawnGroupsDocument {
     # Kept apart from $profileRows because the header publishes that list's
     # count as the profile count, and the Server rejects a bootstrap whose
     # PROFILE rows do not match it.
-    $attackRows = [Collections.Generic.List[string]]::new()
     foreach ($archetypeId in @($usedArchetypes | Sort-Object)) {
         $profile = $MonsterProfiles[$archetypeId]
         $profileRows.Add((@('PROFILE',$archetypeId,[string][uint32]$profile.maxHp,
@@ -444,30 +403,11 @@ function Convert-SpawnGroupsDocument {
             (Format-InvariantFloat $profile.attackPushRangeM),
             [string][uint32]$profile.attackPushMs,
             $(if ([bool]$profile.attackKnockdown) { '1' } else { '0' }),
-            [string][uint32]$profile.attackDownMs,
-            [string][uint32]$profile.hitStaggerMs) -join "`t"))
-        # One row per authored swing, in order. An archetype that authors none
-        # emits none, and the Server promotes its single attack fields instead.
-        if ($null -ne $profile.PSObject.Properties['attacks']) {
-            $attackIndex = 0
-            foreach ($attack in @($profile.attacks)) {
-                $attackRows.Add((@('MONSTERATTACK',$archetypeId,[string]$attackIndex,
-                    (Format-InvariantFloat $attack.attackRange),
-                    [string][uint32]$attack.attackWindupMs,
-                    [string][uint32]$attack.attackActiveMs,
-                    [string][uint32]$attack.attackRecoveryMs,
-                    (Format-InvariantFloat $attack.attackPushRangeM),
-                    [string][uint32]$attack.attackPushMs,
-                    $(if ([bool]$attack.attackKnockdown) { '1' } else { '0' }),
-                    [string][uint32]$attack.attackDownMs) -join "`t"))
-                $attackIndex++
-            }
-        }
+            [string][uint32]$profile.attackDownMs) -join "`t"))
     }
     $lines = [Collections.Generic.List[string]]::new()
     $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t3`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
     foreach ($row in @($profileRows | Sort-Object)) { $lines.Add($row) }
-    foreach ($row in @($attackRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in @($anchorRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in $groupRows) { $lines.Add($row) }
     return [ordered]@{

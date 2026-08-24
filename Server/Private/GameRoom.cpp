@@ -335,9 +335,6 @@ namespace
 		case SERVER_ENTITY_ACTION::PATTERN_ACTIVE: return WORLD_ENTITY_ACTION::PATTERN_ACTIVE;
 		case SERVER_ENTITY_ACTION::PATTERN_RECOVERY: return WORLD_ENTITY_ACTION::PATTERN_RECOVERY;
 		case SERVER_ENTITY_ACTION::DEAD: return WORLD_ENTITY_ACTION::DEAD;
-		case SERVER_ENTITY_ACTION::PATROL: return WORLD_ENTITY_ACTION::PATROL;
-		case SERVER_ENTITY_ACTION::HIT_STAGGER:
-			return WORLD_ENTITY_ACTION::HIT_STAGGER;
 		default: return WORLD_ENTITY_ACTION::END;
 		}
 	}
@@ -5942,11 +5939,6 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.iPatternActiveMs = profile.iAttackActiveMs;
 	staged.iPatternRecoveryMs = profile.iAttackRecoveryMs;
 	staged.iDeadDespawnMs = profile.iDeadDespawnMs;
-	staged.iHitStaggerMs = profile.iHitStaggerMs;
-	/* Copied so a swing in flight never reaches back into the catalog. The
-	bootstrap guarantees at least one entry, so the brain always has a swing
-	to reach for. */
-	staged.Attacks = profile.Attacks;
 	staged.fHitKnockbackScale = profile.fHitKnockbackScale;
 	staged.fAttackPushRangeM = profile.fAttackPushRangeM;
 	staged.iAttackPushMs = profile.iAttackPushMs;
@@ -6545,7 +6537,6 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			m_MonsterBrain.Update(
 				entity,
 				m_Players,
-				m_WorldEntities,
 				m_GameplayCatalog,
 				m_ServerNavigation,
 				fixedDeltaSeconds,

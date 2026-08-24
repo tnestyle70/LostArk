@@ -1669,17 +1669,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		std::vector<DAMAGE_EVENT> damageEvents;
 		/* This case owns one loose monster rather than a room's entity list, so
 		it has no neighbour to separate from. */
-		const std::vector<SERVER_WORLD_ENTITY> noNeighbours;
 		CMonsterBrain monsterBrain;
 		monsterBrain.Update(
-			monster, players, noNeighbours, catalog, navigation,
+			monster, players, catalog, navigation,
 			1.f / 30.f, 1u, damageEvents);
 		const bool ignoredProtectedPlayer =
 			INVALID_NET_ENTITY_ID == monster.iTargetEntityId &&
 			SERVER_ENTITY_ACTION::IDLE == monster.eAction;
 		players.begin()->second.isCombatReady = true;
 		monsterBrain.Update(
-			monster, players, noNeighbours, catalog, navigation,
+			monster, players, catalog, navigation,
 			1.f / 30.f, 2u, damageEvents);
 		tests.Require(
 			navigationLoaded && ignoredProtectedPlayer &&
