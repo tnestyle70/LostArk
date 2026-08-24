@@ -44,6 +44,8 @@ namespace Client
 		bool isCombatReady = true;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+		LostArk::Shared::SKILL_ID iCurrentSkillId =
+			LostArk::Shared::INVALID_SKILL_ID;
 		LostArk::Shared::PLAYER_STANCE_ID eStance =
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		std::vector<HUD_SKILL_STATE> Skills;

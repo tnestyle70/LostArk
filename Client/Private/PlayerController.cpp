@@ -53,6 +53,54 @@ namespace
 	constexpr f32_t MOVE_GOAL_RESEND_EPSILON = 0.25f;
 	constexpr std::chrono::milliseconds SKILL_AIM_RESEND_INTERVAL{ 50 };
 	constexpr f32_t SKILL_AIM_RESEND_EPSILON = 0.1f;
+
+	bool_t Is_GroundTargetSkillAvailable(
+		const Client::PLAYER_SKILL_DEFINITION& skill,
+		const Client::HUD_PLAYER_STATE& player)
+	{
+		if (!player.isValid || player.isPreview || 0u == player.iCurrentHp ||
+			player.eCharacterClass != skill.eCharacterClass ||
+			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE != skill.eSkillKind ||
+			LostArk::Shared::SKILL_TARGET_INTENT_KIND::GROUND_POINT !=
+				skill.eTargetIntent)
+		{
+			return false;
+		}
+
+		const bool canStartImmediately =
+			LostArk::Shared::PLAYER_ACTION_STATE::NONE == player.eAction;
+		bool canStageAfterCombo = false;
+		if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL == player.eAction &&
+			LostArk::Shared::INVALID_SKILL_ID != player.iCurrentSkillId &&
+			player.iCurrentSkillId != skill.iSkillId)
+		{
+			const Client::PLAYER_SKILL_DEFINITION* running =
+				Client::CPlayerSkillCatalog::Find_ById(player.iCurrentSkillId);
+			canStageAfterCombo = nullptr != running &&
+				LostArk::Shared::PLAYER_SKILL_KIND::COMBO == running->eSkillKind;
+		}
+		if (!canStartImmediately && !canStageAfterCombo)
+			return false;
+
+		/* The Server admits an explicit skill while a COMBO runs as a pending
+		command and revalidates it when the full motion ends. Still reject a preview
+		that the latest snapshot already proves cannot pay or use the skill; otherwise
+		the confirm would close the overlay and silently fail at that boundary. */
+		if (player.iCurrentResource < skill.iResourceCost ||
+			player.iCurrentIdentity < skill.iIdentityCost ||
+			(LostArk::Shared::PLAYER_STANCE_ID::NONE != skill.eRequiredStance &&
+				player.eStance != skill.eRequiredStance))
+		{
+			return false;
+		}
+
+		for (const Client::HUD_SKILL_STATE& hudSkill : player.Skills)
+		{
+			if (hudSkill.iSkillId == skill.iSkillId)
+				return hudSkill.Is_Ready(player.iServerTick);
+		}
+		return false;
+	}
 }
 
 void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>& character)
@@ -123,11 +171,12 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 	if (m_GroundTargeting.Is_Active())
 	{
 		const auto& playerState = CCombatHUDViewModel::Get().Get_Player();
+		const PLAYER_SKILL_DEFINITION* targetingDefinition =
+			CPlayerSkillCatalog::Find_ById(m_GroundTargeting.Get_SkillId());
 		if (!gameplayCommandsEnabled || nullptr == character ||
 			nullptr == commandSink || nullptr == m_pGroundTargetPreview ||
-			!playerState.isValid || 0u == playerState.iCurrentHp ||
-			!playerState.isCombatReady ||
-			LostArk::Shared::PLAYER_ACTION_STATE::NONE != playerState.eAction)
+			nullptr == targetingDefinition ||
+			!Is_GroundTargetSkillAvailable(*targetingDefinition, playerState))
 		{
 			Cancel_GroundTargeting();
 		}
@@ -181,10 +230,15 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 				{
 					const float3_t target =
 						m_GroundTargeting.Get_TargetPosition();
-					if (commandSink->Request_UseGroundTargetSkill(
+					const auto requestGroundTargetSkill = [&]()
+					{
+						return commandSink->Request_UseGroundTargetSkill(
 							m_iNextActionSequence,
 							m_GroundTargeting.Get_SkillId(),
-							target.x, target.z))
+							target.x, target.z);
+					};
+					if (Try_Commit_GroundTargetConfirmation(
+							m_BasicAttackResendGate, requestGroundTargetSkill))
 					{
 						++m_iNextActionSequence;
 						if (0u == m_iNextActionSequence)
@@ -277,7 +331,11 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 				LostArk::Shared::SKILL_TARGET_INTENT_KIND::GROUND_POINT ==
 					requestedDefinition->eTargetIntent)
 			{
-				if (nullptr != m_pGroundTargetPreview &&
+				const auto& playerState =
+					CCombatHUDViewModel::Get().Get_Player();
+				if (Is_GroundTargetSkillAvailable(
+						*requestedDefinition, playerState) &&
+					nullptr != m_pGroundTargetPreview &&
 					m_GroundTargeting.Begin(
 						requestedSkillId,
 						requestedDefinition->fTargetMaximumRange) &&
@@ -314,6 +372,8 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 			{
 				const bool_t requestedBasicAttack =
 					requestedSkillId == m_iHeldBasicAttackSkillId;
+				if (requestedBasicAttack)
+					m_BasicAttackPressEdgeGate.Commit_Submission();
 				/* Poll_BasicAttack has already observed this frame.  Suppress only
 				when an explicit skill won while LMB is physically still held. */
 				const bool_t isBasicAttackPhysicallyHeld =
@@ -509,20 +569,17 @@ void Client::CPlayerController::Poll_BasicAttack(
 		return;
 	}
 
-	const bool_t commandEligible =
-		isGameplayDown && !commandSuppressed && !resendSuppressed && nullptr != pSpec &&
-		LostArk::Shared::INVALID_SKILL_ID == outSkillId;
-	if (!commandEligible)
+	const PLAYER_SKILL_DEFINITION* pSkill = nullptr;
+	if (nullptr != pSpec)
 	{
-		(void)m_BasicAttackPressEdgeGate.Should_Submit(true, false);
-		return;
+		pSkill = CPlayerSkillCatalog::Find_BySlot(
+			pSpec->eCharacterClass, "LMB", stance);
 	}
-
-	const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
-		pSpec->eCharacterClass, "LMB", stance);
-	if (nullptr == pSkill)
-		return;
-	if (!m_BasicAttackPressEdgeGate.Should_Submit(true, true))
+	const bool_t commandEligible =
+		isGameplayDown && !commandSuppressed && !resendSuppressed && nullptr != pSkill &&
+		LostArk::Shared::INVALID_SKILL_ID == outSkillId;
+	if (!m_BasicAttackPressEdgeGate.Should_Submit(
+			isPhysicallyDown, commandEligible))
 	{
 		return;
 	}

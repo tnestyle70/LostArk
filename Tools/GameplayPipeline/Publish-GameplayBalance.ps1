@@ -756,9 +756,21 @@ foreach ($skill in @($skillDocument.skills)) {
 					throw "Final combo stage must not open an input window: $id"
 				}
 			}
-			elseif ([uint32]$stage.inputOpenMs -ge [uint32]$stage.inputCloseMs -or
-				[uint32]$stage.inputCloseMs -gt [uint32]$stage.actionDurationMs) {
-				throw "Combo input window is invalid: $id stage $stageIndex"
+			else {
+				$automaticStage = [uint32]$stage.inputOpenMs -eq 0 -and
+					[uint32]$stage.inputCloseMs -eq 0
+				if ($automaticStage) {
+					if ([uint32]$stage.comboAdvanceMs -ne
+						[uint32]$stage.actionDurationMs) {
+						throw "Automatic combo stage must advance after its full motion: $id stage $stageIndex"
+					}
+				}
+				elseif ([uint32]$stage.inputOpenMs -ge
+						[uint32]$stage.inputCloseMs -or
+					[uint32]$stage.inputCloseMs -gt
+						[uint32]$stage.actionDurationMs) {
+					throw "Combo input window is invalid: $id stage $stageIndex"
+				}
 			}
 		}
 	}

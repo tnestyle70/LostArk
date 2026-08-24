@@ -64,6 +64,9 @@ namespace Client
 		/* Official CostMp so the HUD can show a skill the server would refuse
 		to pay for. The server keeps its own copy from the bootstrap. */
 		std::uint32_t iResourceCost = 0;
+		/* Server-owned identity payment mirrored read-only so a two-step target
+		preview does not open for a cast the latest snapshot cannot afford. */
+		std::uint32_t iIdentityCost = 0;
 		float fMaximumRange = 0.f;
 		LostArk::Shared::SKILL_TARGET_INTENT_KIND eTargetIntent =
 			LostArk::Shared::SKILL_TARGET_INTENT_KIND::AIM_POINT;

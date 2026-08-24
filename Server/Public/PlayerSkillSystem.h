@@ -23,7 +23,7 @@ namespace LostArk::Server
 
 		/* A different skill pressed during a COMBO consumes its sequence and is
 		copied as the one pending explicit intent. Costs/cooldown are rechecked only
-		when the stage boundary commits it. */
+		when a manual stage or the complete automatic chain commits it. */
 		bool Try_StagePendingSkill(
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_USE_SKILL& command,
