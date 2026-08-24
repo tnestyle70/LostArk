@@ -62,6 +62,7 @@
     <ClInclude Include="..\Public\Effect_OccurrenceTuning.h" />
     <ClInclude Include="..\Public\Effect_VisualProgramCorpus.h" />
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
+    <ClInclude Include="..\Public\SoundCueCatalog.h" />
     <ClInclude Include="..\Public\Effect_PresentationService.h" />
     <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h" />
 	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h" />
@@ -204,6 +205,7 @@
     <ClCompile Include="..\Private\Effect_OccurrenceTuning.cpp" />
     <ClCompile Include="..\Private\Effect_VisualProgramCorpus.cpp" />
     <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp" />
+    <ClCompile Include="..\Private\SoundCueCatalog.cpp" />
     <ClCompile Include="..\Private\Effect_PresentationService.cpp" />
     <ClCompile Include="..\Private\Effect_ProductPrewarmQueue.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />

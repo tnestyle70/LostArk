@@ -63,7 +63,7 @@ HRESULT CSound_Manager::Initialize()
 
 HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume)
 {
-	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath);
+	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath, false);
 	if (nullptr == pSound)
 		return E_FAIL;
 
@@ -85,6 +85,41 @@ HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVol
 	return S_OK;
 }
 
+HRESULT CSound_Manager::Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume)
+{
+	Stop_Music();
+
+	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath, true);
+	if (nullptr == pSound)
+		return E_FAIL;
+
+	FMOD_RESULT eResult = m_pSystem->playSound(pSound, nullptr, false, &m_pMusicChannel);
+	if (FMOD_OK != eResult || nullptr == m_pMusicChannel)
+	{
+		Write_FMOD_Error("System::playSound (music)", eResult);
+		m_pMusicChannel = nullptr;
+		return E_FAIL;
+	}
+
+	eResult = m_pMusicChannel->setVolume(fVolume);
+	if (FMOD_OK != eResult)
+	{
+		Write_FMOD_Error("Channel::setVolume (music)", eResult);
+		return E_FAIL;
+	}
+
+	return S_OK;
+}
+
+void CSound_Manager::Stop_Music()
+{
+	if (nullptr == m_pMusicChannel)
+		return;
+
+	m_pMusicChannel->stop();
+	m_pMusicChannel = nullptr;
+}
+
 void CSound_Manager::Update()
 {
 	if (nullptr == m_pSystem)
@@ -95,7 +130,7 @@ void CSound_Manager::Update()
 		Write_FMOD_Error("System::update", eResult);
 }
 
-FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath)
+FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath, bool_t bLoop)
 {
 	const auto SoundIter = m_Sounds.find(strSoundFilePath);
 	if (m_Sounds.end() != SoundIter)
@@ -113,13 +148,17 @@ FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath
 		return nullptr;
 
 	FMOD::Sound* pSound = nullptr;
+	const FMOD_MODE eMode = bLoop ? (FMOD_LOOP_NORMAL | FMOD_2D) : FMOD_DEFAULT;
 	const FMOD_RESULT eResult = m_pSystem->createSound(
-		strUtf8Path.c_str(), FMOD_DEFAULT, nullptr, &pSound);
+		strUtf8Path.c_str(), eMode, nullptr, &pSound);
 	if (FMOD_OK != eResult || nullptr == pSound)
 	{
 		Write_FMOD_Error("System::createSound", eResult);
 		return nullptr;
 	}
+
+	if (bLoop)
+		pSound->setLoopCount(-1);
 
 	m_Sounds.emplace(strSoundFilePath, pSound);
 	return pSound;
