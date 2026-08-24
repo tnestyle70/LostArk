@@ -923,9 +923,9 @@
           "clip": "mesh_att_battle_20_03",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
-          "playRate": 0.888888889,
-          "loop": true
+          "playMs": 533,
+          "playRate": 0.4441666667,
+          "loop": false
         }
       ]
     },
@@ -1485,7 +1485,7 @@
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
