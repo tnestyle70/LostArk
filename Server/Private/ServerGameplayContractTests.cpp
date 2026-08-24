@@ -5540,11 +5540,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		/* The Valtan route has no playable monster damage yet. Debug replaces only
-		the four progression spawn triggers with authored moves; Release must keep
-		the product activation action unchanged. */
+		/* Stage_1 is the stage whose wave is being built, so it runs its real
+		activateSpawnGroup action in Debug as well. The later stages keep the
+		shortcut, which is what still carries boss work to Valtan without
+		clearing the corridor. Stage_MiniBoss stands in for those here. */
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
-		trigger.strPlacementId = "Stage_1";
+		trigger.strPlacementId = "Stage_MiniBoss";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
 		trigger.isEnabled = true;
 		trigger.fHalfExtentX = 2.f;
@@ -5553,7 +5554,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		trigger.isTriggerOnce = true;
 		WORLD_TRIGGER_ACTION activate{};
 		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
-		activate.strTargetId = "spawn.valtan.stage01";
+		activate.strTargetId = "spawn.valtan.stage02.miniboss";
 		trigger.TriggerActions.push_back(activate);
 
 		CServerTriggerSystem triggerSystem;
@@ -5582,14 +5583,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			0u == activationCount &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE == moving.eAction &&
 			moving.TriggerMove.isActive &&
-			std::abs(moving.TriggerMove.fTargetX - 46.741f) < 0.001f &&
-			std::abs(moving.TriggerMove.fTargetZ + 61.417f) < 0.001f,
-			"Bypass the unkillable Stage_1 group and move toward the next trigger in Debug");
+			std::abs(moving.TriggerMove.fTargetX - 86.110f) < 0.001f &&
+			std::abs(moving.TriggerMove.fTargetZ + 93.033f) < 0.001f,
+			"Bypass a later Valtan stage group and move toward the next trigger in Debug");
 		triggerSystem.Update_PlayerMotion(players.begin()->second, 1.f);
 		tests.Require(
 			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction &&
-			std::abs(players.begin()->second.fPositionX - 46.741f) < 0.001f &&
-			std::abs(players.begin()->second.fPositionZ + 61.417f) < 0.001f,
+			std::abs(players.begin()->second.fPositionX - 86.110f) < 0.001f &&
+			std::abs(players.begin()->second.fPositionZ + 93.033f) < 0.001f,
 			"Complete the Debug stage bypass at the authored next-stage approach point");
 #else
 		tests.Require(
@@ -5597,6 +5598,56 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction,
 			"Keep the original Valtan spawn-group trigger unchanged in Release");
 #endif
+	}
+
+	{
+		/* Stage_1 is exempt from the Debug shortcut on purpose: it is the wave
+		being built, so stepping into it has to run the real activation even with
+		the bypass switched on. Without this the corridor's first fight is
+		unreachable in a Debug session. */
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "Stage_1";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = 2.f;
+		trigger.fHalfExtentY = 2.f;
+		trigger.fHalfExtentZ = 2.f;
+		trigger.isTriggerOnce = true;
+		WORLD_TRIGGER_ACTION activate{};
+		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
+		activate.strTargetId = "spawn.valtan.stage01";
+		trigger.TriggerActions.push_back(activate);
+
+		CServerTriggerSystem triggerSystem;
+		std::string triggerStatus;
+		tests.Require(
+			triggerSystem.Initialize({ trigger }, triggerStatus, true),
+			"Initialize the Debug bypass with Stage_1 present");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER player{};
+		player.iPlayerId = 405u;
+		player.iCurrentHp = 100u;
+		player.iMaximumHp = 100u;
+		players.emplace(player.iPlayerId, player);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::string activatedTargetId;
+		std::size_t activationCount = 0u;
+		triggerSystem.Evaluate_Entries(
+			players, 42u, transfers,
+			[&activationCount, &activatedTargetId](
+				const WORLD_TRIGGER_ACTION_KIND kind, const std::string& targetId)
+			{
+				if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP != kind)
+					return false;
+				++activationCount;
+				activatedTargetId = targetId;
+				return true;
+			});
+		tests.Require(
+			1u == activationCount &&
+			"spawn.valtan.stage01" == activatedTargetId &&
+			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction,
+			"Activate the Stage_1 wave instead of bypassing it, Debug included");
 	}
 
 	{
@@ -6362,12 +6413,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			spawnBootstrap.Find_Profile("MONSTER_VALTAN_PADD_01");
 		const MONSTER_RUNTIME_PROFILE* minibossProfile =
 			spawnBootstrap.Find_Profile("MINIBOSS_LUGARU");
+		/* Named rather than counted: the audition Area gains a group whenever a
+		new archetype needs somewhere to be tried out, and a bare count would
+		make every such addition look like a regression. */
 		tests.Require(
-			loaded && 1u == spawnBootstrap.Get_Revision() && 2u == groups.size() &&
+			loaded && 1u == spawnBootstrap.Get_Revision() && !groups.empty() &&
 			groups.end() != monsterGroup && groups.end() != minibossGroup &&
 			nullptr != monsterAnchor && nullptr != minibossAnchor &&
 			nullptr != monsterProfile && nullptr != minibossProfile,
-			"Load two Character Select spawn groups, anchors, and profiles");
+			"Load the Character Select spawn groups, anchors, and profiles");
 		tests.Require(
 			nullptr != monsterProfile && nullptr != minibossProfile &&
 			std::fabs(monsterProfile->fHitKnockbackScale - 1.f) < 0.0001f &&
@@ -6821,6 +6875,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		tests.Require(
 			spawnRuntime.Activate("spawn.valtan.stage01"),
 			"Activate Stage 1 spawn group exactly once");
+		/* Counted from the loaded groups rather than written down, because the
+		wave composition is authoring that changes whenever the corridor is
+		retuned. What the contract owns is that every authored entry is
+		scheduled exactly once and the group then completes. */
+		std::uint32_t authoredMonsterCount = 0;
+		for (const SPAWN_GROUP_DEFINITION& definition : spawnBootstrap.Get_Groups())
+		{
+			if (definition.strSpawnGroupId != "spawn.valtan.stage01")
+				continue;
+			for (const SPAWN_GROUP_WAVE& wave : definition.Waves)
+				for (const SPAWN_GROUP_ENTRY& groupEntry : wave.Entries)
+					authoredMonsterCount += groupEntry.iCount;
+		}
 		std::uint32_t scheduledMonsterCount = 0;
 		for (std::uint32_t step = 0; step < 64u &&
 			!spawnRuntime.Is_Completed("spawn.valtan.stage01"); ++step)
@@ -6840,7 +6907,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				});
 		}
 		tests.Require(
-			15u == scheduledMonsterCount &&
+			0u != authoredMonsterCount &&
+			authoredMonsterCount == scheduledMonsterCount &&
 			spawnRuntime.Is_Completed("spawn.valtan.stage01"),
 			"Schedule all Stage 1 waves and complete after all entities clear");
 		tests.Require(

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Network/PacketType.h"
+#include "ServerWorldEntity.h"
 
 #include <cstdint>
 #include <string>
@@ -23,6 +24,10 @@ namespace LostArk::Server
 		std::uint32_t iAttackActiveMs = 0;
 		std::uint32_t iAttackRecoveryMs = 0;
 		std::uint32_t iDeadDespawnMs = 0;
+		/* How long a landed player hit holds this archetype in HIT_STAGGER,
+		cancelling whatever it was doing. Zero means super armour: the hit lands
+		and pushes but never interrupts. */
+		std::uint32_t iHitStaggerMs = 0;
 		/* Multiplier on the authored push range of each player hit; 0 means the
 		monster never moves (super armour). */
 		float fHitKnockbackScale = 0.f;
@@ -32,6 +37,10 @@ namespace LostArk::Server
 		std::uint32_t iAttackPushMs = 0;
 		bool bAttackKnockdown = false;
 		std::uint32_t iAttackDownMs = 0;
+		/* Every swing this archetype cycles through, in authored order. Empty
+		means the single set of attack fields above is its one swing, which is
+		how an archetype that never authored a list keeps working. */
+		std::vector<SERVER_MONSTER_ATTACK> Attacks;
 	};
 
 	struct SPAWN_GROUP_ANCHOR final
@@ -52,10 +61,32 @@ namespace LostArk::Server
 		std::uint32_t iSpawnIntervalMs = 0;
 	};
 
+	enum class SPAWN_NEXT_WAVE_POLICY : std::uint8_t
+	{
+		/* The wave ends only once everything it scheduled is dead. */
+		ALL_DEAD,
+		/* The wave ends on its own clock, so the next one can start while the
+		previous is still alive. maxAlive still caps the group. */
+		TIMER
+	};
+
+	enum class SPAWN_GROUP_REPEAT_POLICY : std::uint8_t
+	{
+		ONCE,
+		/* The group restarts at its first wave after iRepeatDelayMs. */
+		REPEAT
+	};
+
 	struct SPAWN_GROUP_WAVE final
 	{
 		std::string strWaveId;
 		std::uint32_t iStartDelayMs = 0;
+		SPAWN_NEXT_WAVE_POLICY eNextWavePolicy =
+			SPAWN_NEXT_WAVE_POLICY::ALL_DEAD;
+		/* Measured from the wave's own start, and only read by TIMER. ALL_DEAD
+		waves are required to publish zero so the field can never quietly mean
+		two things. */
+		std::uint32_t iNextWaveDelayMs = 0;
 		std::vector<SPAWN_GROUP_ENTRY> Entries;
 	};
 
@@ -64,6 +95,11 @@ namespace LostArk::Server
 		std::string strSpawnGroupId;
 		std::string strRequiredCompletedGroupId;
 		std::uint32_t iMaxAlive = 0;
+		SPAWN_GROUP_REPEAT_POLICY eRepeatPolicy =
+			SPAWN_GROUP_REPEAT_POLICY::ONCE;
+		/* Quiet time between the group completing and restarting. Only read by
+		REPEAT; ONCE groups publish zero. */
+		std::uint32_t iRepeatDelayMs = 0;
 		std::vector<SPAWN_GROUP_WAVE> Waves;
 	};
 

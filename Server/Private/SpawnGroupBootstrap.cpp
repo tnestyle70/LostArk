@@ -136,7 +136,9 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 		{
 			MONSTER_RUNTIME_PROFILE profile;
 			std::uint32_t attackKnockdownFlag = 0u;
-			if (18u != fields.size() ||
+			if (19u != fields.size() ||
+				!ParseNumber(fields[18], profile.iHitStaggerMs) ||
+				profile.iHitStaggerMs > 600000u ||
 				!ParseNumber(fields[2], profile.iMaxHp) || 0u == profile.iMaxHp ||
 				!ParseNumber(fields[3], profile.iAttackPower) ||
 				!ParseNumber(fields[4], profile.iDefense) ||
@@ -178,6 +180,36 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 				return false;
 			}
 		}
+		else if (!fields.empty() && "MONSTERATTACK" == fields[0])
+		{
+			SERVER_MONSTER_ATTACK attack;
+			std::uint32_t attackIndex = 0u;
+			std::uint32_t knockdownFlag = 0u;
+			const auto profile = 2u <= fields.size() ?
+				stagedProfiles.find(std::string(fields[1])) : stagedProfiles.end();
+			if (11u != fields.size() || stagedProfiles.end() == profile ||
+				!ParseNumber(fields[2], attackIndex) ||
+				attackIndex != profile->second.Attacks.size() ||
+				!ParseNumber(fields[3], attack.fAttackRange) ||
+				!std::isfinite(attack.fAttackRange) || attack.fAttackRange <= 0.f ||
+				!ParseNumber(fields[4], attack.iWindupMs) || 0u == attack.iWindupMs ||
+				!ParseNumber(fields[5], attack.iActiveMs) || 0u == attack.iActiveMs ||
+				!ParseNumber(fields[6], attack.iRecoveryMs) || 0u == attack.iRecoveryMs ||
+				!ParseNumber(fields[7], attack.fPushRangeM) ||
+				!std::isfinite(attack.fPushRangeM) ||
+				std::fabs(attack.fPushRangeM) > 20.f ||
+				!ParseNumber(fields[8], attack.iPushMs) ||
+				!ParseNumber(fields[9], knockdownFlag) || knockdownFlag > 1u ||
+				!ParseNumber(fields[10], attack.iDownMs) ||
+				(0.f != attack.fPushRangeM) != (0u != attack.iPushMs) ||
+				(1u == knockdownFlag) != (0u != attack.iDownMs))
+			{
+				m_strStatus = "Spawn group monster attack row is invalid";
+				return false;
+			}
+			attack.bKnockdown = 1u == knockdownFlag;
+			profile->second.Attacks.push_back(attack);
+		}
 		else if (!fields.empty() && "ANCHOR" == fields[0])
 		{
 			SPAWN_GROUP_ANCHOR anchor;
@@ -200,11 +232,30 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 		{
 			SPAWN_GROUP_DEFINITION group;
 			std::uint32_t waveCount = 0;
-			if (5u != fields.size() || !ParseNumber(fields[3], group.iMaxAlive) ||
+			if (7u != fields.size() || !ParseNumber(fields[3], group.iMaxAlive) ||
 				0u == group.iMaxAlive || group.iMaxAlive > 64u ||
-				!ParseNumber(fields[4], waveCount) || 0u == waveCount || waveCount > 16u)
+				!ParseNumber(fields[4], waveCount) || 0u == waveCount || waveCount > 16u ||
+				!ParseNumber(fields[6], group.iRepeatDelayMs) ||
+				group.iRepeatDelayMs > 600000u)
 			{
 				m_strStatus = "Spawn group definition row is invalid";
+				return false;
+			}
+			if ("ONCE" == fields[5])
+				group.eRepeatPolicy = SPAWN_GROUP_REPEAT_POLICY::ONCE;
+			else if ("REPEAT" == fields[5])
+				group.eRepeatPolicy = SPAWN_GROUP_REPEAT_POLICY::REPEAT;
+			else
+			{
+				m_strStatus = "Spawn group repeat policy is unknown";
+				return false;
+			}
+			/* The delay only means something to REPEAT, so a ONCE group that
+			publishes one is a publisher bug rather than a value to ignore. */
+			if ((SPAWN_GROUP_REPEAT_POLICY::REPEAT == group.eRepeatPolicy) !=
+				(0u != group.iRepeatDelayMs))
+			{
+				m_strStatus = "Spawn group repeat delay contradicts its policy";
 				return false;
 			}
 			group.strSpawnGroupId = fields[1];
@@ -223,13 +274,30 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 			std::uint32_t entryCount = 0;
 			SPAWN_GROUP_WAVE wave;
 			const auto group = 3u <= fields.size() ? groupIndices.find(std::string(fields[1])) : groupIndices.end();
-			if (6u != fields.size() || groupIndices.end() == group ||
+			if (8u != fields.size() || groupIndices.end() == group ||
 				!ParseNumber(fields[3], waveIndex) ||
 				waveIndex != stagedGroups[group->second].Waves.size() ||
 				!ParseNumber(fields[4], wave.iStartDelayMs) ||
-				!ParseNumber(fields[5], entryCount) || 0u == entryCount || entryCount > 16u)
+				!ParseNumber(fields[5], entryCount) || 0u == entryCount || entryCount > 16u ||
+				!ParseNumber(fields[7], wave.iNextWaveDelayMs) ||
+				wave.iNextWaveDelayMs > 600000u)
 			{
 				m_strStatus = "Spawn group wave row is invalid";
+				return false;
+			}
+			if ("ALL_DEAD" == fields[6])
+				wave.eNextWavePolicy = SPAWN_NEXT_WAVE_POLICY::ALL_DEAD;
+			else if ("TIMER" == fields[6])
+				wave.eNextWavePolicy = SPAWN_NEXT_WAVE_POLICY::TIMER;
+			else
+			{
+				m_strStatus = "Spawn group next wave policy is unknown";
+				return false;
+			}
+			if ((SPAWN_NEXT_WAVE_POLICY::TIMER == wave.eNextWavePolicy) !=
+				(0u != wave.iNextWaveDelayMs))
+			{
+				m_strStatus = "Spawn group wave delay contradicts its policy";
 				return false;
 			}
 			wave.strWaveId = fields[2];
@@ -289,6 +357,26 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 			m_strStatus = "Spawn group prerequisite is unknown";
 			return false;
 		}
+	/* An archetype that authored no swing list keeps its single set of attack
+	fields, promoted here to a one-entry cycle. The brain then has exactly one
+	shape to read rather than two, and the runtime never has to ask whether a
+	monster is the old kind or the new one. */
+	for (auto& [archetypeId, profile] : stagedProfiles)
+	{
+		(void)archetypeId;
+		if (!profile.Attacks.empty())
+			continue;
+		SERVER_MONSTER_ATTACK attack;
+		attack.fAttackRange = profile.fAttackRange;
+		attack.iWindupMs = profile.iAttackWindupMs;
+		attack.iActiveMs = profile.iAttackActiveMs;
+		attack.iRecoveryMs = profile.iAttackRecoveryMs;
+		attack.fPushRangeM = profile.fAttackPushRangeM;
+		attack.iPushMs = profile.iAttackPushMs;
+		attack.bKnockdown = profile.bAttackKnockdown;
+		attack.iDownMs = profile.iAttackDownMs;
+		profile.Attacks.push_back(attack);
+	}
 	m_Groups = std::move(stagedGroups);
 	m_Anchors = std::move(stagedAnchors);
 	m_Profiles = std::move(stagedProfiles);

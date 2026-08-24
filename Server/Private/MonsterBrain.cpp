@@ -211,6 +211,30 @@ namespace
 		monster.fPositionZ = reachable.z;
 	}
 
+	/* Loads the next swing in the archetype's cycle onto the fields the rest of
+	the brain already reads, so wind-up, reach, damage window and reaction all
+	come from one place. The cycle advances here rather than on the hit, which
+	means a swing that was interrupted still moves the monster along instead of
+	letting it repeat the same move until one connects. */
+	void Begin_NextAttack(LostArk::Server::SERVER_WORLD_ENTITY& monster)
+	{
+		if (monster.Attacks.empty())
+			return;
+		const std::size_t index =
+			monster.iAttackIndex % monster.Attacks.size();
+		const LostArk::Server::SERVER_MONSTER_ATTACK& attack =
+			monster.Attacks[index];
+		monster.fAttackRange = attack.fAttackRange;
+		monster.iPatternTelegraphMs = attack.iWindupMs;
+		monster.iPatternActiveMs = attack.iActiveMs;
+		monster.iPatternRecoveryMs = attack.iRecoveryMs;
+		monster.fAttackPushRangeM = attack.fPushRangeM;
+		monster.iAttackPushMs = attack.iPushMs;
+		monster.bAttackKnockdown = attack.bKnockdown;
+		monster.iAttackDownMs = attack.iDownMs;
+		monster.iAttackIndex = static_cast<std::uint32_t>(index + 1u);
+	}
+
 	void Transition(LostArk::Server::SERVER_WORLD_ENTITY& monster,
 		const LostArk::Server::SERVER_ENTITY_ACTION action,
 		const std::uint32_t serverTick)
@@ -220,7 +244,17 @@ namespace
 		monster.iActionStartTick = 0u == serverTick ? 1u : serverTick;
 		monster.hasAppliedPatternDamage = false;
 		if (LostArk::Server::SERVER_ENTITY_ACTION::PATTERN_WINDUP == action)
-			monster.strActionId = "monster.basic.attack";
+		{
+			/* The swing already chosen, named so the Client can pick the clip
+			that belongs to it. The snapshot carries strActionId already, so the
+			cycle needs no field of its own on the wire. Begin_NextAttack has
+			advanced past this swing, hence the step back. */
+			const std::size_t played = monster.Attacks.empty() ? 0u :
+				(monster.iAttackIndex + monster.Attacks.size() - 1u) %
+					monster.Attacks.size();
+			monster.strActionId =
+				"monster.attack." + std::to_string(played);
+		}
 		else if (LostArk::Server::SERVER_ENTITY_ACTION::IDLE == action ||
 			LostArk::Server::SERVER_ENTITY_ACTION::CHASE == action ||
 			LostArk::Server::SERVER_ENTITY_ACTION::PATROL == action)
@@ -329,6 +363,20 @@ void LostArk::Server::CMonsterBrain::Update(
 	walks. A corpse is skipped above, so bodies stop pushing when they die. */
 	Separate_FromNeighbours(
 		monster, worldEntities, navigation, fixedDeltaSeconds);
+	/* Reeling: no target search, no step, no swing. The hit runtime already
+	cleared the action that was running, so all this owes is the window and the
+	way out of it. It leaves through IDLE, which lets the disengaged branch
+	decide on the next tick whether to re-engage or walk home. */
+	if (SERVER_ENTITY_ACTION::HIT_STAGGER == monster.eAction)
+	{
+		monster.fActionElapsedSeconds += fixedDeltaSeconds;
+		if (monster.fActionElapsedSeconds >=
+			static_cast<float>(monster.iHitStaggerMs) * MILLISECONDS_TO_SECONDS)
+		{
+			Transition(monster, SERVER_ENTITY_ACTION::IDLE, serverTick);
+		}
+		return;
+	}
 
 	const float engageDistanceSquared =
 		monster.fEngageDistance * monster.fEngageDistance;
@@ -396,6 +444,7 @@ void LostArk::Server::CMonsterBrain::Update(
 			attackCircle, targetBody))
 		{
 			monster.MovePath.clear();
+			Begin_NextAttack(monster);
 			Transition(monster, SERVER_ENTITY_ACTION::PATTERN_WINDUP, serverTick);
 			return;
 		}
@@ -569,7 +618,9 @@ bool LostArk::Server::CMonsterBrain::Advance_Knockback(
 	monster.fPositionZ = reachable.z;
 	monster.fKnockbackRemainingSeconds = wasClamped ?
 		0.f : monster.fKnockbackRemainingSeconds - step;
-	/* Pattern timers keep running so a windup is not frozen by a hit. */
+	/* The clock keeps running while the body slides. Interrupting an action is
+	the stagger's job, not the push's, so a monster whose profile authors no
+	stagger window still completes the swing it was sliding through. */
 	monster.fActionElapsedSeconds += fixedDeltaSeconds;
 	return true;
 }

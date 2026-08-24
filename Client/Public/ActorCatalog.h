@@ -114,6 +114,24 @@ struct MONSTER_ACTOR_ENTRY final
 		anchor and the wander around it. Distinct from chase, which is the battle
 		run this monster uses while it has a target. */
 		std::string patrol;
+		/* Reeling clip for HIT_STAGGER. Empty is legal and means this archetype
+		wears super armour: its profile authors no stagger window, so the state
+		is never entered and no clip is ever asked for. */
+		std::string hit;
+		/* One entry per authored swing, matching the Server's attack order. Empty
+		means this archetype owns a single swing and `attack` is it, which is how
+		an archetype that never authored a list keeps working. */
+		struct ATTACK_CLIP final
+		{
+			std::string clip;
+			/* Where in the source clip the swing starts, and how fast it runs.
+			The Server's window for the same swing is authored as the clip length
+			divided by this rate, so the whole motion lands inside the window
+			instead of being cut off partway. */
+			uint32_t sourceStartMs = 0;
+			f32_t playRate = 1.f;
+		};
+		std::vector<ATTACK_CLIP> attacks;
 	};
 
 	std::string archetypeId;
@@ -142,6 +160,10 @@ public:
 			std::string_view clientVisualId);
 	static const NPC_ACTOR_ENTRY* Find_Npc(std::string_view archetypeId);
 	static const std::vector<NPC_ACTOR_ENTRY>& Get_Npcs();
+	/* Every monster archetype the catalog admitted, in document order. The
+	authoring tool lists these instead of carrying its own copy, so adding an
+	archetype stays a catalog edit rather than a code edit. */
+	static const std::vector<MONSTER_ACTOR_ENTRY>& Get_Monsters();
 	static const MONSTER_ACTOR_ENTRY* Find_Monster(
 		std::string_view archetypeId);
 	static const std::string& Get_Status();

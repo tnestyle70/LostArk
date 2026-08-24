@@ -208,9 +208,12 @@ bool LostArk::Server::CServerTriggerSystem::Build_ValtanStageBypassMove(
 		float duration;
 		float arcHeight;
 	};
+	/* Stage_1 is deliberately absent. It is the stage whose spawn group is being
+	built, so it has to run its real activateSpawnGroup action and let the wave
+	be fought. Every later stage keeps the shortcut, which is still how boss work
+	reaches Valtan without clearing the whole corridor. */
 	static constexpr BYPASS_DESTINATION DESTINATIONS[] =
 	{
-		{ "Stage_1", 46.741f, 10.060f, -61.417f, 0.65f, 1.0f },
 		{ "Stage_MiniBoss", 86.110f, 14.627f, -93.033f, 0.75f, 1.2f },
 		{ "Stage_2", 94.762f, 15.511f, -90.633f, 0.55f, 0.8f },
 		{ "Stage_3", 126.450f, 23.061f, -94.750f, 0.90f, 2.0f },

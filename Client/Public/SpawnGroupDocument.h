@@ -29,6 +29,11 @@ struct SPAWN_WAVE_RECORD
 {
 	std::string waveId;
 	uint32_t startDelayMs = 0;
+	/* false = ALL_DEAD, the wave ends when everything it spawned is dead.
+	true = TIMER, it ends on nextWaveDelayMs from its own start so the next wave
+	can open while this one is still standing. */
+	bool_t usesTimerNextWave = false;
+	uint32_t nextWaveDelayMs = 0;
 	std::vector<SPAWN_WAVE_ENTRY_RECORD> entries;
 };
 
@@ -37,6 +42,10 @@ struct SPAWN_GROUP_RECORD
 	std::string spawnGroupId;
 	std::string requiredCompletedGroupId;
 	uint32_t maxAlive = 8;
+	/* false = ONCE. true = REPEAT, the group restarts at its first wave once the
+	field is clear and repeatDelayMs has passed. */
+	bool_t repeats = false;
+	uint32_t repeatDelayMs = 0;
 	std::vector<SPAWN_WAVE_RECORD> waves;
 };
 

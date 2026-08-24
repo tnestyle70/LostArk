@@ -198,12 +198,18 @@ function Get-MonsterProfiles {
     }
     $profiles = @{}
     foreach ($profile in @($document.profiles)) {
-        Assert-ExactProperties $profile @(
+        # attacks is optional: an archetype that authors none keeps the single
+        # set of attack fields as its one swing.
+        $profileProperties = @(
             'archetypeId','maxHp','attackPower','defense','collisionRadius',
             'engageRange','moveSpeed','attackRange','attackWindupMs',
-            'attackActiveMs','attackRecoveryMs','deadDespawnMs',
+            'attackActiveMs','attackRecoveryMs','deadDespawnMs','hitStaggerMs',
             'hitKnockbackScale','attackPushRangeM','attackPushMs',
-            'attackKnockdown','attackDownMs') 'monster profile'
+            'attackKnockdown','attackDownMs')
+        if ($null -ne $profile.PSObject.Properties['attacks']) {
+            $profileProperties += 'attacks'
+        }
+        Assert-ExactProperties $profile $profileProperties 'monster profile'
         Assert-StableId $profile.archetypeId 'monster profile archetypeId'
         Assert-JsonInteger $profile.maxHp "$($profile.archetypeId) maxHp" 1 2000000000
         Assert-JsonInteger $profile.attackPower "$($profile.archetypeId) attackPower" 1 2000000000
@@ -217,6 +223,9 @@ function Get-MonsterProfiles {
         foreach ($field in @('attackWindupMs','attackActiveMs','attackRecoveryMs','deadDespawnMs')) {
             Assert-JsonInteger $profile.$field "$($profile.archetypeId) $field" 1 600000
         }
+        # Zero is the super-armour case, so this one is allowed to be zero while
+        # every other duration on the profile has to be positive.
+        Assert-JsonInteger $profile.hitStaggerMs "$($profile.archetypeId) hitStaggerMs" 0 600000
         Assert-JsonNumber $profile.hitKnockbackScale "$($profile.archetypeId) hitKnockbackScale"
         if ([double]$profile.hitKnockbackScale -lt 0.0 -or [double]$profile.hitKnockbackScale -gt 10.0) {
             throw "Monster profile hitKnockbackScale is out of range: $($profile.archetypeId)"
@@ -235,6 +244,38 @@ function Get-MonsterProfiles {
             ([bool]$profile.attackKnockdown -and [uint32]$profile.attackDownMs -eq 0) -or
             (-not [bool]$profile.attackKnockdown -and [uint32]$profile.attackDownMs -ne 0)) {
             throw "Monster profile attack push contract is invalid: $($profile.archetypeId)"
+        }
+        if ($null -ne $profile.PSObject.Properties['attacks']) {
+            $attacks = @($profile.attacks)
+            if ($attacks.Count -lt 1 -or $attacks.Count -gt 8) {
+                throw "Monster attack count is invalid: $($profile.archetypeId)"
+            }
+            foreach ($attack in $attacks) {
+                Assert-ExactProperties $attack @(
+                    'attackRange','attackWindupMs','attackActiveMs',
+                    'attackRecoveryMs','attackPushRangeM','attackPushMs',
+                    'attackKnockdown','attackDownMs') "$($profile.archetypeId) attack"
+                Assert-JsonNumber $attack.attackRange "$($profile.archetypeId) attack attackRange"
+                if ([double]$attack.attackRange -le 0.0 -or [double]$attack.attackRange -gt 1000.0) {
+                    throw "Monster attack range is out of range: $($profile.archetypeId)"
+                }
+                foreach ($field in @('attackWindupMs','attackActiveMs','attackRecoveryMs')) {
+                    Assert-JsonInteger $attack.$field "$($profile.archetypeId) attack $field" 1 600000
+                }
+                Assert-JsonNumber $attack.attackPushRangeM "$($profile.archetypeId) attack attackPushRangeM"
+                foreach ($field in @('attackPushMs','attackDownMs')) {
+                    Assert-JsonInteger $attack.$field "$($profile.archetypeId) attack $field" 0 600000
+                }
+                if ($attack.attackKnockdown -isnot [bool]) {
+                    throw "Monster attack knockdown must be a JSON Boolean: $($profile.archetypeId)"
+                }
+                $pushRange = [double]$attack.attackPushRangeM
+                if ([math]::Abs($pushRange) -gt 20.0 -or
+                    ($pushRange -ne 0.0) -ne ([uint32]$attack.attackPushMs -ne 0) -or
+                    ([bool]$attack.attackKnockdown) -ne ([uint32]$attack.attackDownMs -ne 0)) {
+                    throw "Monster attack push contract is invalid: $($profile.archetypeId)"
+                }
+            }
         }
         if ($profiles.ContainsKey([string]$profile.archetypeId)) {
             throw "Duplicate monster profile: $($profile.archetypeId)"
@@ -304,7 +345,7 @@ function Convert-SpawnGroupsDocument {
     foreach ($group in @($document.spawnGroups)) {
         Assert-ExactProperties $group @(
             'spawnGroupId','requiredCompletedGroupId','maxAlive','repeatPolicy',
-            'completionPolicy','waves') "$relativePath group"
+            'repeatDelayMs','completionPolicy','waves') "$relativePath group"
         Assert-JsonString $group.requiredCompletedGroupId "$relativePath prerequisite" -AllowNull
         if ($null -ne $group.requiredCompletedGroupId) {
             Assert-StableId $group.requiredCompletedGroupId "$relativePath prerequisite"
@@ -313,26 +354,44 @@ function Convert-SpawnGroupsDocument {
             }
         }
         Assert-JsonInteger $group.maxAlive "$relativePath maxAlive" 1 64
-        if ($group.repeatPolicy -ne 'ONCE' -or $group.completionPolicy -ne 'ALL_WAVES_CLEARED') {
-            throw "Unsupported spawn group policy: $($group.spawnGroupId)"
+        if ($group.completionPolicy -ne 'ALL_WAVES_CLEARED') {
+            throw "Unsupported spawn group completion policy: $($group.spawnGroupId)"
+        }
+        if ($group.repeatPolicy -ne 'ONCE' -and $group.repeatPolicy -ne 'REPEAT') {
+            throw "Unsupported spawn group repeat policy: $($group.spawnGroupId)"
+        }
+        Assert-JsonInteger $group.repeatDelayMs "$relativePath repeatDelayMs" 0 600000
+        # The delay only means something to REPEAT, so a ONCE group carrying one
+        # is an authoring mistake rather than a value the runtime should ignore.
+        if (($group.repeatPolicy -eq 'REPEAT') -ne ([uint32]$group.repeatDelayMs -ne 0)) {
+            throw "Spawn group repeat delay contradicts its policy: $($group.spawnGroupId)"
         }
         $waves = @($group.waves)
         if ($waves.Count -lt 1 -or $waves.Count -gt 16) { throw "Spawn group wave count is invalid: $($group.spawnGroupId)" }
         $prerequisite = if ($null -eq $group.requiredCompletedGroupId) { '-' } else { [string]$group.requiredCompletedGroupId }
-        $groupRows.Add((@('GROUP',[string]$group.spawnGroupId,$prerequisite,[string][uint32]$group.maxAlive,[string]$waves.Count) -join "`t"))
+        $groupRows.Add((@('GROUP',[string]$group.spawnGroupId,$prerequisite,
+            [string][uint32]$group.maxAlive,[string]$waves.Count,
+            [string]$group.repeatPolicy,[string][uint32]$group.repeatDelayMs) -join "`t"))
         $waveIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $totalCount = 0
         for ($waveIndex = 0; $waveIndex -lt $waves.Count; $waveIndex++) {
             $wave = $waves[$waveIndex]
-            Assert-ExactProperties $wave @('waveId','startDelayMs','nextWavePolicy','entries') "$relativePath wave"
+            Assert-ExactProperties $wave @('waveId','startDelayMs','nextWavePolicy','nextWaveDelayMs','entries') "$relativePath wave"
             Assert-StableId $wave.waveId "$relativePath waveId"
             if (-not $waveIds.Add([string]$wave.waveId)) { throw "Duplicate wave ID in group $($group.spawnGroupId): $($wave.waveId)" }
             Assert-JsonInteger $wave.startDelayMs "$relativePath startDelayMs" 0 600000
-            if ($wave.nextWavePolicy -ne 'ALL_DEAD') { throw "Unsupported next wave policy: $($wave.waveId)" }
+            if ($wave.nextWavePolicy -ne 'ALL_DEAD' -and $wave.nextWavePolicy -ne 'TIMER') {
+                throw "Unsupported next wave policy: $($wave.waveId)"
+            }
+            Assert-JsonInteger $wave.nextWaveDelayMs "$relativePath nextWaveDelayMs" 0 600000
+            if (($wave.nextWavePolicy -eq 'TIMER') -ne ([uint32]$wave.nextWaveDelayMs -ne 0)) {
+                throw "Spawn wave delay contradicts its policy: $($wave.waveId)"
+            }
             $entries = @($wave.entries)
             if ($entries.Count -lt 1 -or $entries.Count -gt 16) { throw "Spawn wave entry count is invalid: $($wave.waveId)" }
             $groupRows.Add((@('WAVE',[string]$group.spawnGroupId,[string]$wave.waveId,
-                [string]$waveIndex,[string][uint32]$wave.startDelayMs,[string]$entries.Count) -join "`t"))
+                [string]$waveIndex,[string][uint32]$wave.startDelayMs,[string]$entries.Count,
+                [string]$wave.nextWavePolicy,[string][uint32]$wave.nextWaveDelayMs) -join "`t"))
             for ($entryIndex = 0; $entryIndex -lt $entries.Count; $entryIndex++) {
                 $entry = $entries[$entryIndex]
                 Assert-ExactProperties $entry @('archetypeId','count','anchorId','initialDelayMs','spawnIntervalMs') "$relativePath entry"
@@ -367,6 +426,10 @@ function Convert-SpawnGroupsDocument {
     }
 
     $profileRows = [Collections.Generic.List[string]]::new()
+    # Kept apart from $profileRows because the header publishes that list's
+    # count as the profile count, and the Server rejects a bootstrap whose
+    # PROFILE rows do not match it.
+    $attackRows = [Collections.Generic.List[string]]::new()
     foreach ($archetypeId in @($usedArchetypes | Sort-Object)) {
         $profile = $MonsterProfiles[$archetypeId]
         $profileRows.Add((@('PROFILE',$archetypeId,[string][uint32]$profile.maxHp,
@@ -381,11 +444,30 @@ function Convert-SpawnGroupsDocument {
             (Format-InvariantFloat $profile.attackPushRangeM),
             [string][uint32]$profile.attackPushMs,
             $(if ([bool]$profile.attackKnockdown) { '1' } else { '0' }),
-            [string][uint32]$profile.attackDownMs) -join "`t"))
+            [string][uint32]$profile.attackDownMs,
+            [string][uint32]$profile.hitStaggerMs) -join "`t"))
+        # One row per authored swing, in order. An archetype that authors none
+        # emits none, and the Server promotes its single attack fields instead.
+        if ($null -ne $profile.PSObject.Properties['attacks']) {
+            $attackIndex = 0
+            foreach ($attack in @($profile.attacks)) {
+                $attackRows.Add((@('MONSTERATTACK',$archetypeId,[string]$attackIndex,
+                    (Format-InvariantFloat $attack.attackRange),
+                    [string][uint32]$attack.attackWindupMs,
+                    [string][uint32]$attack.attackActiveMs,
+                    [string][uint32]$attack.attackRecoveryMs,
+                    (Format-InvariantFloat $attack.attackPushRangeM),
+                    [string][uint32]$attack.attackPushMs,
+                    $(if ([bool]$attack.attackKnockdown) { '1' } else { '0' }),
+                    [string][uint32]$attack.attackDownMs) -join "`t"))
+                $attackIndex++
+            }
+        }
     }
     $lines = [Collections.Generic.List[string]]::new()
     $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t3`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
     foreach ($row in @($profileRows | Sort-Object)) { $lines.Add($row) }
+    foreach ($row in @($attackRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in @($anchorRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in $groupRows) { $lines.Add($row) }
     return [ordered]@{

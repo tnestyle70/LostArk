@@ -21,9 +21,26 @@
 #include "DeployPropRuntime.h"
 
 #include <algorithm>
+#include <charconv>
+#include <cmath>
 
 namespace
 {
+	/* A monster that never appears is invisible in every sense: nothing throws,
+	nothing draws, and the only evidence is an empty patch of floor. Every
+	refusal below therefore names itself, and says so out loud in Debug so the
+	archetype is identified without having to guess which one is missing. */
+	void Report_MonsterPresentationFailure(
+		std::string& outPending,
+		std::string message)
+	{
+#ifdef _DEBUG
+		OutputDebugStringA(
+			("[ClientReplication][Monster] " + message + "\n").c_str());
+#endif
+		outPending = std::move(message);
+	}
+
 	Client::NET_PLAYER_RECORD Make_Record(
 		const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned)
 	{
@@ -835,15 +852,35 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 	if (WORLD_ENTITY_KIND::MONSTER == spawned.eKind)
 	{
+		/* Each refusal names itself. A monster that never appears used to be
+		indistinguishable from one that was never spawned, so the only way to
+		tell an unsupported archetype from a model that failed to load was to
+		guess. */
 		const MONSTER_ACTOR_ENTRY* actor =
 			CActorCatalog::Find_Monster(spawned.strArchetypeId);
-		if (nullptr == actor || actor->runtimeStatus != "supported" ||
-			FAILED(CMonsterPresentationAssetService::Ensure_Prototypes(
-				m_Desc.pDevice,
-				m_Desc.pContext,
-				m_Desc.iPrototypeLevelIndex,
-				spawned.strArchetypeId)))
+		if (nullptr == actor)
 		{
+			Report_MonsterPresentationFailure(m_strPendingPresentationFailure,
+				"archetype is missing from the catalog: " +
+				spawned.strArchetypeId);
+			return false;
+		}
+		if (actor->runtimeStatus != "supported")
+		{
+			Report_MonsterPresentationFailure(m_strPendingPresentationFailure,
+				"archetype is not supported: " + spawned.strArchetypeId +
+				" (runtimeStatus=" + actor->runtimeStatus + ")");
+			return false;
+		}
+		if (FAILED(CMonsterPresentationAssetService::Ensure_Prototypes(
+			m_Desc.pDevice,
+			m_Desc.pContext,
+			m_Desc.iPrototypeLevelIndex,
+			spawned.strArchetypeId)))
+		{
+			Report_MonsterPresentationFailure(m_strPendingPresentationFailure,
+				"presentation prototypes failed for " +
+				spawned.strArchetypeId + " (model " + actor->modelAssetId + ")");
 			return false;
 		}
 
@@ -872,6 +909,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			&desc,
 			&gameObject)))
 		{
+			Report_MonsterPresentationFailure(m_strPendingPresentationFailure,
+				"object could not be added to the layer: " +
+				spawned.strArchetypeId);
 			return false;
 		}
 		const std::shared_ptr<CNpc> monster =
@@ -883,6 +923,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 				m_Desc.iLayerLevelIndex,
 				m_Desc.strWorldEntityLayerTag,
 				gameObject);
+			Report_MonsterPresentationFailure(m_strPendingPresentationFailure,
+				"spawn state was rejected: " + spawned.strArchetypeId);
 			return false;
 		}
 
@@ -1376,8 +1418,22 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			const std::shared_ptr<CNpc> monster = iter->second.pNpc.lock();
 			const MONSTER_ACTOR_ENTRY* actor =
 				CActorCatalog::Find_Monster(iter->second.strArchetypeId);
-			if (nullptr == monster || nullptr == actor ||
-				!monster->Apply_NetworkState(position, entity.fYawDegrees))
+			if (nullptr == monster || nullptr == actor)
+			{
+				allSucceeded = false;
+				continue;
+			}
+			/* Read before the snapshot overwrites it: the distance between the
+			two is how far the Server moved this body, which is what the gait
+			below is matched against. */
+			float3_t previousPosition = position;
+			if (const std::shared_ptr<CTransform> transform =
+				monster->Get_Transform())
+			{
+				XMStoreFloat3(&previousPosition,
+					transform->Get_State(STATE::POSITION));
+			}
+			if (!monster->Apply_NetworkState(position, entity.fYawDegrees))
 			{
 				allSucceeded = false;
 				continue;
@@ -1385,9 +1441,21 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 			const std::string* clip = &actor->presentationClips.idle;
 			bool_t loop = true;
+			uint32_t sourceStartMs = 0u;
+			f32_t playRate = 1.f;
 			if (WORLD_ENTITY_ACTION::CHASE == entity.eAction)
 			{
 				clip = &actor->presentationClips.chase;
+			}
+			else if (WORLD_ENTITY_ACTION::HIT_STAGGER == entity.eAction)
+			{
+				/* An archetype with super armour never sends this action, so an
+				empty clip here would mean the catalog and the profile disagree.
+				Idle is the safe read rather than freezing mid-stride. */
+				clip = actor->presentationClips.hit.empty() ?
+					&actor->presentationClips.idle :
+					&actor->presentationClips.hit;
+				loop = false;
 			}
 			else if (WORLD_ENTITY_ACTION::PATROL == entity.eAction)
 			{
@@ -1402,7 +1470,33 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				WORLD_ENTITY_ACTION::PATTERN_ACTIVE == entity.eAction ||
 				WORLD_ENTITY_ACTION::PATTERN_RECOVERY == entity.eAction)
 			{
+				/* The Server names the swing it chose in strActionId
+				("monster.attack.<n>"), so the cycle needs no snapshot field of
+				its own. An index the catalog has no clip for falls back to the
+				single attack clip rather than leaving the monster frozen. */
 				clip = &actor->presentationClips.attack;
+				constexpr std::string_view ATTACK_PREFIX = "monster.attack.";
+				if (!actor->presentationClips.attacks.empty() &&
+					entity.strActionId.starts_with(ATTACK_PREFIX))
+				{
+					const std::string_view indexText =
+						std::string_view(entity.strActionId).substr(
+							ATTACK_PREFIX.size());
+					std::size_t attackIndex = 0u;
+					const auto parsed = std::from_chars(
+						indexText.data(), indexText.data() + indexText.size(),
+						attackIndex);
+					if (std::errc{} == parsed.ec &&
+						parsed.ptr == indexText.data() + indexText.size() &&
+						attackIndex < actor->presentationClips.attacks.size())
+					{
+						const auto& swing =
+							actor->presentationClips.attacks[attackIndex];
+						clip = &swing.clip;
+						sourceStartMs = swing.sourceStartMs;
+						playRate = swing.playRate;
+					}
+				}
 				loop = false;
 			}
 			else if (WORLD_ENTITY_ACTION::DEAD == entity.eAction)
@@ -1410,12 +1504,40 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				clip = &actor->presentationClips.dead;
 				loop = false;
 			}
+			/* Moving clips run at the rate the body is actually travelling at, so
+			the stride matches the ground instead of sliding. These monsters bake
+			no root motion at all -- every clip walks in place -- so the gait can
+			only be matched by scaling it against the distance the Server actually
+			moved them. Measured rather than read from a profile, because the
+			Client owns no copy of the Server's speed and a second copy would be
+			free to drift from it. */
+			if (WORLD_ENTITY_ACTION::CHASE == entity.eAction ||
+				WORLD_ENTITY_ACTION::PATROL == entity.eAction)
+			{
+				constexpr f32_t REFERENCE_GAIT_SPEED = 3.f;
+				constexpr f32_t SERVER_TICK_SECONDS = 1.f / 30.f;
+				const f32_t deltaX = position.x - previousPosition.x;
+				const f32_t deltaZ = position.z - previousPosition.z;
+				const f32_t elapsed = (std::max)(
+					SERVER_TICK_SECONDS,
+					static_cast<f32_t>(snapshot.iServerTick - m_iLastServerTick) *
+						SERVER_TICK_SECONDS);
+				const f32_t speed =
+					std::sqrt(deltaX * deltaX + deltaZ * deltaZ) / elapsed;
+				playRate = (std::clamp)(
+					speed / REFERENCE_GAIT_SPEED, 0.35f, 2.5f);
+			}
 			if (iter->second.strCurrentClip != *clip)
 			{
-				if (!monster->Set_Animation(clip->c_str(), loop))
+				if (!monster->Set_AnimationTimed(
+					clip->c_str(), loop, sourceStartMs, playRate))
+				{
 					allSucceeded = false;
+				}
 				else
+				{
 					iter->second.strCurrentClip = *clip;
+				}
 			}
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == iter->second.eKind)

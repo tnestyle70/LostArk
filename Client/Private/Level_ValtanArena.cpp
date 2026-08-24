@@ -1384,6 +1384,12 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 			ImGui::TextUnformatted(label);
 			ImGui::PopTextWrapPos();
 			ImGui::SetCursorScreenPos(nextRow);
+			/* Moving the cursor back down past the label does not by itself grow
+			the child's content extent, and ImGui asserts at EndChild when the
+			last thing a window did was push its cursor beyond that extent. A
+			zero-size item claims the row end so the scroll region matches the
+			rows actually drawn. */
+			ImGui::Dummy(ImVec2(0.f, 0.f));
 			if (isMechanic)
 				ImGui::PopStyleColor();
 			ImGui::PopID();

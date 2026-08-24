@@ -43,7 +43,27 @@ namespace LostArk::Server
 		DEAD,
 		/* Disengaged walking, both the trip back to the spawn anchor and the
 		wander around it. The goal it walks to lives in fPatrolGoalX/Z. */
-		PATROL
+		PATROL,
+		/* Reeling from a landed hit. Unlike a knockback this cancels whatever
+		action was running, so a swing can actually be interrupted. Entered only
+		by an archetype whose profile authors a stagger window. */
+		HIT_STAGGER
+	};
+
+	/* One melee swing a monster owns. An archetype with several of these cycles
+	through them in order rather than repeating a single move, and each swing
+	brings its own reach, timing and reaction. The clip that goes with it lives
+	in the Client catalog at the same index. */
+	struct SERVER_MONSTER_ATTACK final
+	{
+		float fAttackRange = 0.f;
+		std::uint32_t iWindupMs = 0;
+		std::uint32_t iActiveMs = 0;
+		std::uint32_t iRecoveryMs = 0;
+		float fPushRangeM = 0.f;
+		std::uint32_t iPushMs = 0;
+		bool bKnockdown = false;
+		std::uint32_t iDownMs = 0;
 	};
 
 	struct SERVER_WORLD_ENTITY
@@ -220,6 +240,18 @@ namespace LostArk::Server
 		float fPatrolGoalX = 0.f;
 		float fPatrolGoalZ = 0.f;
 		std::uint32_t iPatrolStep = 0;
+		/* How long a landed hit holds this entity in HIT_STAGGER. Zero is the
+		super-armour case: the hit still lands and still pushes, it just never
+		interrupts. Copied from the profile at spawn. */
+		std::uint32_t iHitStaggerMs = 0;
+		/* The swings this monster cycles through, copied at spawn so a swing in
+		flight never reaches back into the catalog. Always holds at least one
+		entry; an archetype that authors none gets its single profile swing. */
+		std::vector<SERVER_MONSTER_ATTACK> Attacks;
+		/* Which swing comes next. It advances on every wind-up, so the cycle is
+		the authored order rather than a draw, and a replay of the same fight
+		produces the same sequence. */
+		std::uint32_t iAttackIndex = 0;
 		std::vector<SERVER_NAV_POINT> MovePath;
 		std::size_t iMovePathIndex = 0;
 	};

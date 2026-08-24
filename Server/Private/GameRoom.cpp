@@ -336,6 +336,8 @@ namespace
 		case SERVER_ENTITY_ACTION::PATTERN_RECOVERY: return WORLD_ENTITY_ACTION::PATTERN_RECOVERY;
 		case SERVER_ENTITY_ACTION::DEAD: return WORLD_ENTITY_ACTION::DEAD;
 		case SERVER_ENTITY_ACTION::PATROL: return WORLD_ENTITY_ACTION::PATROL;
+		case SERVER_ENTITY_ACTION::HIT_STAGGER:
+			return WORLD_ENTITY_ACTION::HIT_STAGGER;
 		default: return WORLD_ENTITY_ACTION::END;
 		}
 	}
@@ -5897,6 +5899,14 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 		!m_ServerNavigation.Project_Point(
 			anchor.fPositionX, anchor.fPositionZ, projected))
 	{
+		/* An anchor placed off the walkable floor used to swallow the whole
+		entry: the spawn returned false, the wave never finished scheduling, and
+		nothing anywhere said which anchor was at fault. */
+		m_strStatus = "Spawn anchor is not on walkable ground: " +
+			entry.strAnchorId + " for " + entry.strArchetypeId;
+#ifdef _DEBUG
+		OutputDebugStringA(("[GameRoom] " + m_strStatus + "\n").c_str());
+#endif
 		return false;
 	}
 
@@ -5932,6 +5942,11 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.iPatternActiveMs = profile.iAttackActiveMs;
 	staged.iPatternRecoveryMs = profile.iAttackRecoveryMs;
 	staged.iDeadDespawnMs = profile.iDeadDespawnMs;
+	staged.iHitStaggerMs = profile.iHitStaggerMs;
+	/* Copied so a swing in flight never reaches back into the catalog. The
+	bootstrap guarantees at least one entry, so the brain always has a swing
+	to reach for. */
+	staged.Attacks = profile.Attacks;
 	staged.fHitKnockbackScale = profile.fHitKnockbackScale;
 	staged.fAttackPushRangeM = profile.fAttackPushRangeM;
 	staged.iAttackPushMs = profile.iAttackPushMs;
