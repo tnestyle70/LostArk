@@ -12314,7 +12314,15 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 	{
 		std::string RowLabel = "Saved Effect";
 		bool_t bGameplayLinked = false;
-		if (nullptr != pSkill)
+		if (nullptr == pSkill)
+		{
+			RowLabel = nullptr != DataFile.pParsedDocument &&
+				!DataFile.pParsedDocument->strDisplayName.empty() ?
+				DataFile.pParsedDocument->strDisplayName + " | " +
+					DataFile.strAssetId :
+				DataFile.strAssetId;
+		}
+		else
 		{
 			const auto Cue = std::find_if(pSkill->ProductCues.begin(),
 				pSkill->ProductCues.end(), [&DataFile](const auto& Candidate)
@@ -12351,10 +12359,18 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 			}
 		}
 		RowLabel += "##saved-" + DataFile.strAssetId;
-		if (ImGui::Selectable(RowLabel.c_str(),
-			DataFile.strAssetId == m_strSelectedDataFileAssetId))
+		const bool_t bEffectSelected =
+			DataFile.strAssetId == m_strSelectedDataFileAssetId &&
+			m_strSelectedDataFileElementId.empty();
+		const bool_t bEffectOpen = ImGui::TreeNodeEx(RowLabel.c_str(),
+			ImGuiTreeNodeFlags_OpenOnArrow |
+			ImGuiTreeNodeFlags_OpenOnDoubleClick |
+			ImGuiTreeNodeFlags_SpanAvailWidth |
+			(bEffectSelected ? ImGuiTreeNodeFlags_Selected : 0));
+		if (ImGui::IsItemClicked())
 		{
 			m_strSelectedDataFileAssetId = DataFile.strAssetId;
+			m_strSelectedDataFileElementId.clear();
 			Select_AuthoringDomain(DataFile.strDomainId);
 			Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(),
 				DataFile.strAssetId);
@@ -12365,10 +12381,90 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 			}
 		}
 		if (ImGui::IsItemHovered())
-			ImGui::SetTooltip("Effect Asset ID: %s\nGameplay mapping: %s\n%s",
+			ImGui::SetTooltip("Effect Asset ID: %s\nGameplay mapping: %s\nTree parse: %s\n%s",
 				DataFile.strAssetId.c_str(),
 				bGameplayLinked ? "linked" : "not linked",
+				DataFile.strDocumentParseStatus.empty() ? "not available" :
+					DataFile.strDocumentParseStatus.c_str(),
 				DataFile.Path.string().c_str());
+		if (!bEffectOpen)
+			return;
+
+		if (nullptr == DataFile.pParsedDocument)
+		{
+			ImGui::TextDisabled("%s",
+				DataFile.strDocumentParseStatus.empty() ?
+					"Saved Effect tree is unavailable." :
+					DataFile.strDocumentParseStatus.c_str());
+			ImGui::TreePop();
+			return;
+		}
+		const EFFECT_DOCUMENT_DESC& Document = *DataFile.pParsedDocument;
+		if (Document.Elements.empty())
+			ImGui::TextDisabled("This saved Effect has no drawable Elements yet.");
+		for (int32_t iFamily = 0;
+			iFamily < static_cast<int32_t>(EFFECT_AUTHORING_FAMILY::END);
+			++iFamily)
+		{
+			const EFFECT_AUTHORING_FAMILY eFamily =
+				static_cast<EFFECT_AUTHORING_FAMILY>(iFamily);
+			const size_t iCount = static_cast<size_t>(std::count_if(
+				Document.Elements.begin(), Document.Elements.end(),
+				[eFamily](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Resolve_AuthoringFamily(Element) == eFamily;
+				}));
+			if (0u == iCount)
+				continue;
+			ImGui::PushID(iFamily);
+			const std::string FamilyLabel = std::string(
+				AuthoringFamily_Label(eFamily)) + " (" +
+				std::to_string(iCount) + ")";
+			if (ImGui::TreeNodeEx(FamilyLabel.c_str(),
+				ImGuiTreeNodeFlags_OpenOnArrow))
+			{
+				size_t iOrdinal = 0u;
+				for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+				{
+					if (Resolve_AuthoringFamily(Element) != eFamily)
+						continue;
+					++iOrdinal;
+					ImGui::PushID(Element.strElementId.c_str());
+					const std::string ElementLabel =
+						FriendlyAuthoringElementLabel(
+							eFamily, iOrdinal, Element);
+					const bool_t bElementSelected =
+						DataFile.strAssetId ==
+							m_strSelectedDataFileAssetId &&
+						Element.strElementId ==
+							m_strSelectedDataFileElementId;
+					if (ImGui::Selectable(
+						ElementLabel.c_str(), bElementSelected))
+					{
+						m_strSelectedDataFileAssetId =
+							DataFile.strAssetId;
+						m_strSelectedDataFileElementId =
+							Element.strElementId;
+						Select_AuthoringDomain(DataFile.strDomainId);
+						Copy_Buffer(m_NewAssetId.data(),
+							m_NewAssetId.size(), DataFile.strAssetId);
+					}
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SetTooltip(
+							"Stable Element: %s\nFamily: %s\nSlots: %s",
+							Element.strElementId.c_str(),
+							AuthoringFamily_Label(eFamily),
+							AuthoringElementResourceSlotSummary(
+								Element).c_str());
+					}
+					ImGui::PopID();
+				}
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+		ImGui::TreePop();
 	};
 	for (const EFFECT_SKILL_TREE_ENTRY& SkillEntry : m_AllEffects)
 	{
@@ -12399,20 +12495,7 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 		ImGuiTreeNodeFlags_OpenOnArrow))
 	{
 		for (const EFFECT_DATA_FILE_ENTRY* pDataFile : UnassignedEffects)
-		{
-			ImGui::PushID(pDataFile->strAssetId.c_str());
-			if (ImGui::Selectable(pDataFile->strAssetId.c_str(),
-				pDataFile->strAssetId == m_strSelectedDataFileAssetId))
-			{
-				m_strSelectedDataFileAssetId = pDataFile->strAssetId;
-				Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(),
-					pDataFile->strAssetId);
-			}
-			if (ImGui::IsItemHovered())
-				ImGui::SetTooltip("Unmapped authoring/test Effect\n%s",
-					pDataFile->Path.string().c_str());
-			ImGui::PopID();
-		}
+			RenderSavedEffectRow(*pDataFile, nullptr);
 		ImGui::TreePop();
 	}
 	if (!MigrationReferences.empty())
@@ -12442,6 +12525,7 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 					pDataFile->strAssetId == m_strSelectedDataFileAssetId))
 				{
 					m_strSelectedDataFileAssetId = pDataFile->strAssetId;
+					m_strSelectedDataFileElementId.clear();
 					Select_AuthoringDomain(pDataFile->strDomainId);
 					Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(),
 						pDataFile->strAssetId + ".migrated");
@@ -12483,9 +12567,52 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
         SelectedDataFile != m_DataFiles.end() &&
 		EFFECT_DOCUMENT_SOURCE::AUTHORED == SelectedDataFile->eSource &&
 		!IsLegacyMigrationReference(*SelectedDataFile);
+	const EFFECT_ELEMENT_DESC* pSelectedSavedElement = nullptr;
+	if (bSelectedSavedEffect &&
+		nullptr != SelectedDataFile->pParsedDocument &&
+		!m_strSelectedDataFileElementId.empty())
+	{
+		const auto SelectedElement = std::find_if(
+			SelectedDataFile->pParsedDocument->Elements.begin(),
+			SelectedDataFile->pParsedDocument->Elements.end(),
+			[this](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId ==
+					m_strSelectedDataFileElementId;
+			});
+		if (SelectedElement !=
+			SelectedDataFile->pParsedDocument->Elements.end())
+		{
+			pSelectedSavedElement = &*SelectedElement;
+		}
+	}
+	const bool_t bCanAppendSavedElement =
+		nullptr != pSelectedSavedElement &&
+		AuthoringFamily_CanCreate(
+			Resolve_AuthoringFamily(*pSelectedSavedElement)) &&
+		m_ActiveDocument.has_value() &&
+		(EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT == m_eActiveDocumentSource ||
+		 EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource) &&
+		!Has_UnappliedDetailDraft();
 	const bool_t bSelectedMigrationReference =
 		SelectedDataFile != m_DataFiles.end() &&
 		IsLegacyMigrationReference(*SelectedDataFile);
+	ImGui::BeginDisabled(!bCanAppendSavedElement);
+	if (ImGui::Button("Load Saved Element for Editing") &&
+		SelectedDataFile != m_DataFiles.end())
+	{
+		Try_AppendSavedElementToActiveDocument(
+			SelectedDataFile->Path,
+			SelectedDataFile->strAssetId,
+			m_strSelectedDataFileElementId);
+	}
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		ImGui::SetTooltip(
+			"Select one Mesh, Sprite, Particle, Decal, or Trail child row and open/create a Current Effect with no unapplied Detail draft. The source Effect will stay closed.");
+	}
+	ImGui::SameLine();
     ImGui::BeginDisabled(!bSelectedSavedEffect);
     if (ImGui::Button("Load Saved Effect for Editing") &&
         SelectedDataFile != m_DataFiles.end())
@@ -12547,6 +12674,7 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
                 Entry.strAssetId == m_strSelectedDataFileAssetId))
             {
                 m_strSelectedDataFileAssetId = Entry.strAssetId;
+				m_strSelectedDataFileElementId.clear();
                 Select_AuthoringDomain(Entry.strDomainId);
                 if (EFFECT_DOCUMENT_SOURCE::IMPORTED_REFERENCE == Entry.eSource)
                 {
@@ -15184,9 +15312,35 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
             const std::string DomainId = ResolveDocumentDomain(
                 EffectAssetId, RelativePath, eSource);
             StagedDomainIds.insert(DomainId);
-            Staged.push_back({
-                EffectAssetId, DomainId,
-                Iterator->path(), eSource });
+			EFFECT_DATA_FILE_ENTRY Entry{
+				EffectAssetId, DomainId, Iterator->path(), eSource };
+			if (EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource)
+			{
+				Entry.bDocumentParseAttempted = true;
+				EFFECT_DOCUMENT_DESC ParsedDocument;
+				std::string ParseError;
+				if (!CEffectDocumentCodec::Load(
+						Entry.Path, ParsedDocument, ParseError))
+				{
+					Entry.strDocumentParseStatus =
+						"Saved Effect tree unavailable: " + ParseError;
+				}
+				else if (ParsedDocument.strEffectAssetId != EffectAssetId)
+				{
+					Entry.strDocumentParseStatus =
+						"Saved Effect tree rejected embedded Effect ID '" +
+						ParsedDocument.strEffectAssetId + "'.";
+				}
+				else
+				{
+					Entry.pParsedDocument =
+						std::make_shared<const EFFECT_DOCUMENT_DESC>(
+							std::move(ParsedDocument));
+					Entry.strDocumentParseStatus =
+						"Saved Effect tree parsed.";
+				}
+			}
+			Staged.push_back(std::move(Entry));
         }
         return true;
     };
@@ -15287,6 +15441,30 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
 	const bool_t bDirectAuthoredEditableIndexReady =
 		Refresh_DirectAuthoredEditableIndex(Staged);
     m_DataFiles = std::move(Staged);
+	const auto SelectedDataFile = std::find_if(
+		m_DataFiles.begin(), m_DataFiles.end(),
+		[this](const EFFECT_DATA_FILE_ENTRY& Entry)
+		{
+			return Entry.strAssetId == m_strSelectedDataFileAssetId;
+		});
+	if (SelectedDataFile == m_DataFiles.end())
+	{
+		m_strSelectedDataFileAssetId.clear();
+		m_strSelectedDataFileElementId.clear();
+	}
+	else if (!m_strSelectedDataFileElementId.empty() &&
+		(nullptr == SelectedDataFile->pParsedDocument ||
+		 1u != static_cast<size_t>(std::count_if(
+			 SelectedDataFile->pParsedDocument->Elements.begin(),
+			 SelectedDataFile->pParsedDocument->Elements.end(),
+			 [this](const EFFECT_ELEMENT_DESC& Element)
+			 {
+				 return Element.strElementId ==
+					 m_strSelectedDataFileElementId;
+			 }))))
+	{
+		m_strSelectedDataFileElementId.clear();
+	}
     m_DataFileDomains.assign(
         StagedDomainIds.begin(), StagedDomainIds.end());
     if (m_DataFileDomains.end() == std::find(
@@ -15318,6 +15496,148 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
 	}
 	m_strDocumentStatus += " " + m_strUnifiedCandidateStatus;
     return true;
+}
+
+bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(
+	const std::filesystem::path& Path,
+	const std::string& strExpectedEffectAssetId,
+	const std::string& strElementId)
+{
+	if (!m_ActiveDocument.has_value() ||
+		(EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT != m_eActiveDocumentSource &&
+		 EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource))
+	{
+		m_strDocumentStatus =
+			"Create or open a New/Authored Current Effect before loading one saved Element.";
+		return false;
+	}
+	if (Has_UnappliedDetailDraft())
+	{
+		m_strDocumentStatus =
+			"Apply or Revert the open Detail draft before loading one saved Element.";
+		return false;
+	}
+	if (Path.empty() || strExpectedEffectAssetId.empty() ||
+		strElementId.empty())
+	{
+		m_strDocumentStatus =
+			"Select one saved Effect Element before loading it for editing.";
+		return false;
+	}
+
+	EFFECT_DOCUMENT_DESC SourceDocument;
+	std::string Error;
+	if (!CEffectDocumentCodec::Load(Path, SourceDocument, Error))
+	{
+		m_strDocumentStatus =
+			"Saved Element source changed or became invalid: " + Error;
+		return false;
+	}
+	if (SourceDocument.strEffectAssetId != strExpectedEffectAssetId)
+	{
+		m_strDocumentStatus =
+			"Saved Element source identity changed; refresh Data Files before retrying.";
+		return false;
+	}
+	const size_t iExactSourceCount = static_cast<size_t>(std::count_if(
+		SourceDocument.Elements.begin(), SourceDocument.Elements.end(),
+		[&strElementId](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.strElementId == strElementId;
+		}));
+	if (1u != iExactSourceCount)
+	{
+		m_strDocumentStatus =
+			"Saved Element source no longer contains exactly one selected stable Element ID.";
+		return false;
+	}
+
+	const EFFECT_PARTICLE_SYSTEM_DESC& SourceSystem =
+		SourceDocument.ParticleSystem;
+	const EFFECT_PARTICLE_SYSTEM_DESC& TargetSystem =
+		m_ActiveDocument->ParticleSystem;
+	if (SourceSystem.fUniformScaleMultiplier !=
+			TargetSystem.fUniformScaleMultiplier ||
+		SourceSystem.fYawOffsetDegrees != TargetSystem.fYawOffsetDegrees ||
+		SourceSystem.fDirectionYawDegrees !=
+			TargetSystem.fDirectionYawDegrees ||
+		SourceSystem.fInitialSpeedMultiplier !=
+			TargetSystem.fInitialSpeedMultiplier)
+	{
+		m_strDocumentStatus =
+			"Saved Element copy rejected different Effect-level Particle System controls; align the source and Current Effect system values first.";
+		return false;
+	}
+
+	EFFECT_DOCUMENT_DESC GenericCopy;
+	if (!CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+			SourceDocument, strElementId,
+			m_ActiveDocument->strEffectAssetId, GenericCopy, Error) ||
+		1u != GenericCopy.Elements.size())
+	{
+		m_strDocumentStatus = Error.empty() ?
+			"The selected saved Element cannot become a generic authored copy." :
+			"Saved Element copy rejected: " + Error;
+		return false;
+	}
+
+	EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
+	const std::string Prefix = "authored.copy.";
+	std::string CopyElementId;
+	for (size_t iCopy = 1u; iCopy <= Staged.Elements.size() + 1u; ++iCopy)
+	{
+		const std::string Suffix = "." + std::to_string(iCopy);
+		const size_t iMaximumSourceLength =
+			128u - Prefix.size() - Suffix.size();
+		CopyElementId = Prefix +
+			strElementId.substr(0u, iMaximumSourceLength) + Suffix;
+		if (std::none_of(Staged.Elements.begin(), Staged.Elements.end(),
+			[&CopyElementId](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == CopyElementId;
+			}))
+		{
+			break;
+		}
+		CopyElementId.clear();
+	}
+	if (CopyElementId.empty())
+	{
+		m_strDocumentStatus =
+			"Saved Element copy could not allocate a unique authored Element ID.";
+		return false;
+	}
+
+	EFFECT_ELEMENT_DESC AppendedElement =
+		std::move(GenericCopy.Elements.front());
+	AppendedElement.strElementId = CopyElementId;
+	Staged.Elements.push_back(std::move(AppendedElement));
+	if (!Try_CommitDocument(std::move(Staged)))
+		return false;
+
+	const EFFECT_ELEMENT_DESC& Committed = m_ActiveDocument->Elements.back();
+	Reset_ParticleSystemDraft();
+	Reset_DetailDraft();
+	Reset_ModelCueDraft();
+	m_MarkedElementIds.clear();
+	m_eDetailSelection = EFFECT_DETAIL_SELECTION::ELEMENT;
+	m_strSelectedElementId = CopyElementId;
+	m_strSelectedElementGroupId = Committed.strGroupId;
+	m_strSelectedModelCueId.clear();
+	m_strSelectedComponentId.clear();
+	m_strSelectedEmitterId.clear();
+	m_strSelectedSourceModuleId.clear();
+	m_eSelectedAuthoringFamily = Resolve_AuthoringFamily(Committed);
+	m_eSelectedEffectType = Committed.eKind;
+	m_strSelectedResourceSlotId = Default_SlotId(Committed.eKind);
+	m_eResourceLibraryFileKind = Slot_FileKind(
+		Committed, m_strSelectedResourceSlotId);
+	m_strSelectedResourceAssetId.clear();
+	m_strElementStatus = "Loaded saved Element '" + strElementId +
+		"' as unsaved '" + CopyElementId + "' in Current Effect.";
+	m_strDocumentStatus =
+		"Current Effect gained one generic authored Element copy; the source Effect was not opened or changed and no file was saved.";
+	return true;
 }
 
 bool_t Client::CEffect_Tool::Try_SelectProductCue(

@@ -341,6 +341,9 @@ private:
         std::string strDomainId;
         std::filesystem::path Path;
         EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pParsedDocument;
+		bool_t bDocumentParseAttempted = false;
+		std::string strDocumentParseStatus;
     };
 
 	struct DIRECT_AUTHORED_EDITABLE_ENTRY final
@@ -614,6 +617,10 @@ private:
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanPatternTree();
     bool_t Refresh_DataFiles();
+	bool_t Try_AppendSavedElementToActiveDocument(
+		const std::filesystem::path& Path,
+		const std::string& strExpectedEffectAssetId,
+		const std::string& strElementId);
     bool_t Refresh_ResourceCatalog();
     void Select_AuthoringDomain(const std::string& strDomainId);
     bool_t Select_AuthoringDomainForClass(
@@ -971,6 +978,7 @@ private:
 	EFFECT_OCCURRENCE_LOCAL_TRANSFORM m_SelectedOccurrenceSourceTransform;
     string m_strSelectedResourceAssetId;
     string m_strSelectedDataFileAssetId;
+	string m_strSelectedDataFileElementId;
     string m_strSelectedAuthoringDomainId = "DimensionMaster";
     string m_strPreviewAnchorSlotId = "root";
 	string m_strDetailDraftElementId;
