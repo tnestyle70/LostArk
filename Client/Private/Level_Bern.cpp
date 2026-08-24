@@ -70,6 +70,7 @@ HRESULT CLevel_Bern::Initialize()
 
 	replicationDesc.iLayerLevelIndex =
 		ETOUI(LEVEL::BERN);
+	replicationDesc.strMapAreaId = pEntry->pMapAreaId;
 
 	replicationDesc.strPlayerLayerTag =
 		TEXT("Layer_Player");

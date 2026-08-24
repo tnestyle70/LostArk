@@ -86,6 +86,7 @@ HRESULT CLevel_Development::Initialize()
 	replicationDesc.pContext = m_pContext;
 	replicationDesc.iPrototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
 	replicationDesc.iLayerLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
+	replicationDesc.strMapAreaId = pEntry->pMapAreaId;
 	replicationDesc.strPlayerLayerTag = TEXT("Layer_Player");
 	replicationDesc.strWorldEntityLayerTag = TEXT("Layer_WorldEntity");
 	if (!m_Replication.Initialize(replicationDesc))
