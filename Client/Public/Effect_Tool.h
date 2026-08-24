@@ -620,6 +620,8 @@ private:
 	bool_t Try_ResetAuthoringResourceOverride(const std::string& strSlotId);
 	bool_t Try_ClearAuthoringOverrides();
     bool_t Try_ClearSelectedSlot();
+	bool_t Try_SetSelectedTrailFollowAnchor(const std::string& strBoneName);
+	bool_t Try_ClearSelectedTrailFollowAnchor();
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
@@ -802,6 +804,11 @@ private:
 	bool_t Has_ProductCuePreview() const;
     f32_t Resolve_EffectSampleTime(f32_t fTimelineSeconds) const;
 	f32_t Resolve_EffectTimelineTime(f32_t fEffectSampleSeconds) const;
+	bool_t Seek_WorldPreviewWithSourceAnchorHistory(
+		const std::shared_ptr<CEffectObject>& pObject,
+		const EFFECT_DOCUMENT_DESC& Document,
+		f32_t fEffectSampleSeconds,
+		std::string& strOutError);
     bool_t Is_ProductCueVisible(f32_t fTimelineSeconds) const;
 	bool_t Restore_ValtanProductPreviewPlayback(
 		const optional<VALTAN_PRODUCT_PREVIEW>& Preview,

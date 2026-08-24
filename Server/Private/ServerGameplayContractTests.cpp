@@ -3620,6 +3620,44 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			0u != dashPattern->iSelectionWeight &&
 			dashPattern->fMaximumRange > 0.f,
 			"Keep the armour-opening dash a repeatable weighted pattern with travel distance");
+		tests.Require(
+			nullptr != dashPattern && 5u == dashPattern->Stages.size() &&
+			nullptr != dashCharge && &dashPattern->Stages[1] == dashCharge &&
+			420604u == dashPattern->iSourcePrimaryActionId &&
+			BOSS_PATTERN_TARGET_POLICY::LOCK_NEAREST_ON_START ==
+				dashPattern->eTargetPolicy &&
+			BOSS_PATTERN_AIM_POLICY::LOCK_FACING_ON_START ==
+				dashPattern->eAimPolicy &&
+			BOSS_PATTERN_STAGE_KIND::WINDUP ==
+				dashPattern->Stages[0].eStageKind &&
+			3650u == dashPattern->Stages[0].iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE ==
+				dashPattern->Stages[0].eHitShape &&
+			0u == dashPattern->Stages[0].iHitCount &&
+			BOSS_PATTERN_STAGE_MOTION_KIND::NONE ==
+				dashPattern->Stages[0].Motion.eKind &&
+			500u == dashCharge->iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::BOX == dashCharge->eHitShape &&
+			std::abs(dashCharge->fHitLength - 10.f) < 1.0e-6f &&
+			std::abs(dashCharge->fHitHalfWidth - 2.5f) < 1.0e-6f &&
+			1u == dashCharge->iHitCount && 0u == dashCharge->iHitDelayMs &&
+			dashCharge->HitOffsetsMs.empty() &&
+			"damage.valtan.dash-charge" == dashCharge->strDamageProfileId &&
+			std::abs(dashCharge->fPushRangeM - 2.f) < 1.0e-6f &&
+			150u == dashCharge->iPushMs && dashCharge->bKnockdown &&
+			1000u == dashCharge->iDownMs && dashCharge->bChargeImpact &&
+			BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD ==
+				dashCharge->Motion.eKind &&
+			std::abs(dashCharge->Motion.fDistance - 20.f) < 1.0e-6f &&
+			BOSS_PATTERN_STAGE_KIND::RECOVERY ==
+				dashPattern->Stages[3].eStageKind &&
+			900u == dashPattern->Stages[3].iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE ==
+				dashPattern->Stages[3].eHitShape &&
+			0u == dashPattern->Stages[3].iHitCount &&
+			BOSS_PATTERN_STAGE_MOTION_KIND::NONE ==
+				dashPattern->Stages[3].Motion.eKind,
+			"Keep Dash Charge as a 3650 ms damage-free triple-prep windup followed by the existing 500 ms one-hit 20 m Server charge and 900 ms recovery");
 	}
 
 	{

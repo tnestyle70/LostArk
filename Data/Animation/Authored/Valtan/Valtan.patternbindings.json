@@ -142,13 +142,31 @@
       "actionId": "valtan.attack.dash-charge.windup",
       "clips": [
         {
+          "clipOccurrenceId": "valtan.attack.dash-charge.windup.project-tuned.prep-repeat.clip.01",
+          "clip": "mesh_att_battle_4_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 600,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.windup.project-tuned.prep-repeat.clip.02",
+          "clip": "mesh_att_battle_4_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 600,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
           "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
           "clip": "mesh_att_battle_4_01",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 2450,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
@@ -158,11 +176,11 @@
         {
           "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
           "clip": "mesh_att_battle_4_01",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-          "sourceStartMs": 0,
-          "playMs": 0,
-          "playRate": 1.0,
-          "loop": true
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 2450,
+          "playMs": 900,
+          "playRate": 1.8,
+          "loop": false
         }
       ]
     },
@@ -198,13 +216,13 @@
       "actionId": "valtan.attack.dash-charge.recovery",
       "clips": [
         {
-          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.clip.01",
-          "clip": "mesh_att_battle_4_02",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-          "sourceStartMs": 0,
-          "playMs": 0,
-          "playRate": 1.0,
-          "loop": true
+          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
+          "clip": "mesh_att_battle_4_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 3350,
+          "playMs": 1383,
+          "playRate": 1.5366667,
+          "loop": false
         }
       ]
     },
@@ -903,10 +921,10 @@
         {
           "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
           "clip": "mesh_att_battle_20_03",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1.0,
+          "playRate": 0.761904762,
           "loop": true
         }
       ]

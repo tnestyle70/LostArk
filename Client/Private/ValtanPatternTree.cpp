@@ -595,6 +595,7 @@ bool_t Client::CValtanPatternTree::Load(
 		Cue.strRepeatPolicy = Describe_RepeatPolicy(SourceCue.eRepeatPolicy);
 		Cue.iSourceStartMs = SourceCue.iStartMs;
 		Cue.iSourceEndMs = SourceCue.iEndMs;
+		Cue.iStageDurationMs = SourceCue.iStageDurationMs;
 		Cue.bHasSourceEnd = SourceCue.bHasSourceEnd;
 		CueByAction[Cue.strActionId].push_back(std::move(Cue));
 	}
