@@ -2206,6 +2206,46 @@ namespace
 				!Write_Message(knockdownWithSkillWriter, knockdownWithSkill),
 				"Reject Knockdown That Carries A Skill");
 
+			/* The Esther call carries no skill id (the summon is a roster slot)
+			but must carry its start tick, same shape as FALLING/KNOCKDOWN. */
+			S2C_WORLD_SNAPSHOT estherCast = source;
+			estherCast.Players[1].eAction = PLAYER_ACTION_STATE::ESTHER_CAST;
+			estherCast.Players[1].iSkillId = INVALID_SKILL_ID;
+			estherCast.Players[1].iActionStartTick = 45;
+			std::vector<std::uint8_t> estherCastPayload;
+			S2C_WORLD_SNAPSHOT decodedEstherCast{};
+			bool estherCastRoundTrip =
+				Build_WorldSnapshotPayload(estherCast, estherCastPayload);
+			if (estherCastRoundTrip)
+			{
+				CPacketReader estherCastReader{ estherCastPayload };
+				estherCastRoundTrip =
+					Read_Message(estherCastReader, decodedEstherCast);
+			}
+			testRunner.Require(
+				estherCastRoundTrip &&
+				2u == decodedEstherCast.Players.size() &&
+				decodedEstherCast.Players[1].eAction ==
+					PLAYER_ACTION_STATE::ESTHER_CAST &&
+				decodedEstherCast.Players[1].iSkillId == INVALID_SKILL_ID &&
+				decodedEstherCast.Players[1].iActionStartTick == 45,
+				"Esther Cast Player Snapshot Round Trip");
+
+			S2C_WORLD_SNAPSHOT estherCastWithSkill = estherCast;
+			estherCastWithSkill.Players[1].iSkillId = 34010;
+			CPacketWriter estherCastWithSkillWriter;
+			testRunner.Require(
+				!Write_Message(estherCastWithSkillWriter, estherCastWithSkill),
+				"Reject An Esther Cast That Carries A Skill");
+
+			S2C_WORLD_SNAPSHOT estherCastWithoutTick = estherCast;
+			estherCastWithoutTick.Players[1].iActionStartTick = 0;
+			CPacketWriter estherCastWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(
+					estherCastWithoutTickWriter, estherCastWithoutTick),
+				"Reject An Esther Cast Without A Start Tick");
+
 			S2C_WORLD_SNAPSHOT phaseMismatch = source;
 			phaseMismatch.Entities[0].BossCombat.iGameplayPhase = 2u;
 			CPacketWriter phaseMismatchWriter;
@@ -2330,12 +2370,12 @@ namespace
 		case here compares against NETWORK_PROTOCOL_VERSION itself, and pinning a
 		literal only made an unrelated bump fail this row. */
 		testRunner.Require(
-			32u == NETWORK_PROTOCOL_VERSION &&
+			33u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Packet Types At Protocol V32");
+			"World Destruction Packet Types At Protocol V33");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();

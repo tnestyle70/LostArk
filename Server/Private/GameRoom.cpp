@@ -210,6 +210,10 @@ namespace
 
 	constexpr std::uint32_t VALTAN_ORDERED_AUDITION_TICK_HZ = 30u;
 
+	// The caster's Esther call converted to fixed 30 Hz room ticks.
+	constexpr std::uint32_t ESTHER_CAST_TICKS =
+		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
+
 	constexpr std::uint32_t To_OrderedAuditionPauseTicks(
 		const std::uint32_t milliseconds)
 	{
@@ -1596,7 +1600,9 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
 		return;
-	if (LostArk::Shared::PLAYER_ACTION_STATE::DEAD ==
+	/* The call locks the caster into ESTHER_CAST, so only an idle caster may
+	start one: a running skill, knockdown, fall or death keeps the gauge full. */
+	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE !=
 		playerIter->second.eAction)
 	{
 		return;
@@ -1618,7 +1624,7 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 	the aim. Position, height and facing are frozen here so a caster who moves
 	during the delay does not drag the landing spot with them. A degenerate
 	aim (cursor on the caster) keeps the caster's yaw and lands at their feet. */
-	const SERVER_PLAYER& caster = playerIter->second;
+	SERVER_PLAYER& caster = playerIter->second;
 	PENDING_ESTHER_SUMMON pending{};
 	pending.pRosterEntry = pRosterEntry;
 	pending.fPositionX = caster.fPositionX;
@@ -1647,6 +1653,23 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 		}
 	}
 	m_PendingEstherSummons.push_back(pending);
+
+	/* The caster turns to the aim and holds the call animation; Update_Players
+	returns the action to NONE once ESTHER_CAST_DURATION_MS has elapsed. */
+	caster.eAction = LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST;
+	caster.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+	caster.iActionStartTick =
+		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
+		1u : m_iServerTick + 1u;
+	caster.fActionElapsedSeconds = 0.f;
+	caster.fYawDegrees = pending.fYawDegrees;
+	caster.iComboStage = 0u;
+	caster.hasBufferedComboInput = false;
+	caster.hasMoveGoal = false;
+	caster.MovePath.clear();
+	caster.iMovePathIndex = 0;
+	caster.Clear_SkillTarget();
+	caster.PendingCommand.Clear();
 }
 
 void LostArk::Server::CGameRoom::Update_PendingEstherSummons(
@@ -5850,6 +5873,21 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.iKnockdownEndTick = 0u;
 			player.iHitReactionGraceEndTick =
 				updateTick + PLAYER_HIT_REACTION_GRACE_TICKS;
+			player.PendingCommand.Clear();
+		}
+		/* The Esther call is a fixed-length lock, not a balance skill: the
+		roster owns the summon, this block only releases the caster once the
+		call clip has run out. Signed difference keeps ordering across a
+		wrapped tick counter. */
+		if (LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST ==
+				player.eAction &&
+			static_cast<std::int32_t>(updateTick -
+				(player.iActionStartTick + ESTHER_CAST_TICKS)) >= 0)
+		{
+			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+			player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			player.iActionStartTick = 0u;
+			player.fActionElapsedSeconds = 0.f;
 			player.PendingCommand.Clear();
 		}
 		m_PlayerSkillSystem.Update(

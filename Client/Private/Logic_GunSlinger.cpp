@@ -83,6 +83,8 @@ const CHARACTER_SPEC Spec_GunSlinger =
 		"gdh_knockdown_land",
 		"gdh_down",
 		"gdh_standup_1",
+		/* No Esther animation set is attached for this class yet. */
+		nullptr,
 	},
 
 	&Create_Logic,

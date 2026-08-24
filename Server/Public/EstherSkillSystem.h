@@ -25,6 +25,11 @@ namespace LostArk::Server
 	inline constexpr float ESTHER_SUMMON_DELAY_SECONDS = 1.f;
 	inline constexpr float ESTHER_SUMMON_FORWARD_METERS = 2.f;
 
+	/* The caster's call animation (act_estherskill_1, 45 frames at 30 fps) is
+	the same length for every class, so the ESTHER_CAST action holds exactly
+	this long before the room returns the player to NONE. */
+	inline constexpr std::uint32_t ESTHER_CAST_DURATION_MS = 1500u;
+
 	/* Valtan roster order is Sillian, Wei, Bahuntur. Every summon's authored
 	clip carries its own entrance and exit (Sillian
 	npc_evt1_sk_swordofchampion_bk 157 frames at 30 fps, Wei npc_sk_dochul 213,

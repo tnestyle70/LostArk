@@ -14,6 +14,10 @@ and ordering differ per class, so the logic addresses those by name itself. */
 enum class CHARACTER_ANIM {
 	IDLE, RUN, HIT, DEAD,
 	KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
+	/* The Esther call (act_estherskill_1) lives in the attached animation-set
+	wmodel, not the body cook; a class without that attachment keeps nullptr
+	here and its cast presentation is isolated to the pose it already holds. */
+	ESTHER_CAST,
 	END
 };
 

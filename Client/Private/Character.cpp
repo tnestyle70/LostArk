@@ -1115,6 +1115,42 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
+	else if (PLAYER_ACTION_STATE::ESTHER_CAST == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		m_pChain = nullptr;
+		m_iChainStage = 0;
+		m_iChainStep = 0;
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+		m_fActionPresentationSeconds = 0.f;
+		Commit_PendingClipChains();
+		/* The call clip lives in the attached animation set and holds its last
+		frame until the Server releases the action. Start_Clip rewinds it, so a
+		later cast replays the raise instead of resuming the held final pose. A
+		class without the attachment keeps the locomotion pose it already has. */
+		const char_t* pCastClip =
+			m_pSpec->AnimationClips[ETOUI(CHARACTER_ANIM::ESTHER_CAST)];
+		CLIP_STEP CastStep{};
+		if (nullptr != pCastClip)
+			CastStep.clip = pCastClip;
+		if (!Start_Clip(CastStep))
+		{
+			Set_Animation(
+				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+				true);
+		}
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == action)
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
@@ -1152,7 +1188,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
-	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
+	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction)
 	{
 		m_pChain = nullptr;
 		m_iChainStage = 0;
@@ -1747,8 +1784,14 @@ void CCharacter::Set_Locomotion(bool_t isMoving)
 void CCharacter::Commit_Locomotion(bool_t isMoving)
 {
 	m_isMoving = isMoving;
-	if (Is_PlayingSkill())
+	/* The Esther call plays without a chain, so a run-to-idle edge from just
+	before the cast must not stomp its clip; the action edge restores
+	locomotion when the Server releases ESTHER_CAST. */
+	if (Is_PlayingSkill() ||
+		LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction)
+	{
 		return;
+	}
 
 	Set_Animation(
 		isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,

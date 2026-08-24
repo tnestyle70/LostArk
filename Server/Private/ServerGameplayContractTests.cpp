@@ -9725,6 +9725,39 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			1u == valtanRoom.m_PendingEstherSummons.size(),
 			"Drain the Esther gauge at once but hold the summon for the landing delay");
 
+		/* The accepted call locks the caster: ESTHER_CAST with no skill id,
+		turned to the aim (east of the caster is +90 degrees). */
+		SERVER_PLAYER& roomCaster = valtanRoom.m_Players.at(casterPlayerId);
+		tests.Require(
+			LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST ==
+				roomCaster.eAction &&
+			LostArk::Shared::INVALID_SKILL_ID == roomCaster.iCurrentSkillId &&
+			0u != roomCaster.iActionStartTick &&
+			std::abs(roomCaster.fYawDegrees - 90.f) < 0.01f,
+			"Lock the caster into the Esther call turned to the aim");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, notFullUse);
+		tests.Require(
+			1000u == valtanRoom.m_EstherSkillSystem.Get_Gauge() &&
+			1u == valtanRoom.m_PendingEstherSummons.size(),
+			"Reject an Esther use while the caster is still casting");
+
+		/* The room releases the cast through the player update once the call
+		clip's 1500 ms have elapsed on the tick clock. */
+		valtanRoom.m_iServerTick = 60u;
+		valtanRoom.Update_Players(1.f / 30.f);
+		tests.Require(
+			LostArk::Shared::PLAYER_ACTION_STATE::NONE == roomCaster.eAction &&
+			0u == roomCaster.iActionStartTick,
+			"Release the caster to NONE once the call clip has run out");
+
+		/* Drain the recharged gauge again so the emptied-gauge rejection
+		below still tests the gauge and not the cast lock. */
+		pRosterEntry = nullptr;
+		(void)valtanRoom.m_EstherSkillSystem.Try_Consume(1u, pRosterEntry);
+
 		/* The landing spot is two metres along the aim (east here), sampled on
 		the navigation grid; an unwalkable sample falls back to the caster. */
 		SERVER_NAV_POINT expectedLanding{
@@ -9796,6 +9829,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr == findSummon(),
 			"Despawn Bahuntur the moment its clip ends without the skyward rise");
 
+		/* Release the Bahuntur call before the next use; the caster would
+		otherwise still hold ESTHER_CAST and reject it. */
+		valtanRoom.m_iServerTick = 120u;
+		valtanRoom.Update_Players(1.f / 30.f);
 		for (int tick = 0; tick < 200; ++tick)
 			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
 		LostArk::Shared::C2S_USE_ESTHER_SKILL weiUse{};
