@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 6 "DimensionMaster" 1547
+LOSTARK_ANIM_EVENTS 6 "DimensionMaster" 1548
 "pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="FX_O_W_01.Par_O_Test_01_01" src=orig
 "pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="FX_O_W_01.Par_O_Test_02_01" src=orig
 "pc_sp_m_00_sk_att_battle_1_01" SOUND startms=29 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1" src=orig
@@ -1522,6 +1522,7 @@ LOSTARK_ANIM_EVENTS 6 "DimensionMaster" 1547
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=2350 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Rb_00_1" src=orig
 "pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050010.ba2.unified" effectref=asset anchor="root" follow=follow orientation=action_facing stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050010.ba3.unified" effectref=asset anchor="root" follow=follow orientation=action_facing stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050010.ba1.unified" effectref=asset anchor="root" follow=follow orientation=action_facing stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050230.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_dimensionalleap_02" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050120.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050120.clip3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

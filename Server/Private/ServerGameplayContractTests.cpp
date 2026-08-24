@@ -525,7 +525,7 @@ namespace
 		BASIC_ATTACK_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31000, 4 },
 		BASIC_ATTACK_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050010, 4 }
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050010, 3 }
 	};
 }
 
@@ -2215,56 +2215,71 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		SERVER_PLAYER tappedPlayer = comboPlayer;
 
 		const PLAYER_COMBO_STAGE& firstStage = combo->ComboStages.front();
-		comboPlayer.fActionElapsedSeconds =
-			static_cast<float>(firstStage.iInputOpenMs +
-				firstStage.iInputCloseMs) * 0.0005f;
-		press.iClientSequence = 2;
-		comboSystem.Try_Start(comboPlayer, press, catalog, 11);
-		tests.Require(
-			comboPlayer.hasBufferedComboInput,
-			"Buffer playable basic attack inside its input window");
-
-		/* COMBO uses another USE_SKILL as its continuation. A mouse-up packet is
-		HOLD-only and must not consume sequence or revoke a repeated click/hold. */
-		C2S_RELEASE_SKILL release{};
-		release.iClientSequence = 3u;
-		release.iSkillId = contract.skillId;
-		comboSystem.Release(comboPlayer, release, catalog);
-		tests.Require(
-			comboPlayer.hasBufferedComboInput &&
-			2u == comboPlayer.iLastSkillSequence &&
-			1u == comboPlayer.iComboStage,
-			"Ignore COMBO mouse-up without consuming its continuation sequence");
-
-		std::vector<SERVER_WORLD_ENTITY> noTargets;
-		std::vector<DAMAGE_EVENT> noDamageEvents;
-		tappedPlayer.fActionElapsedSeconds =
-			static_cast<float>(firstStage.iActionDurationMs - 1u) * 0.001f;
-		comboSystem.Update(
-			tappedPlayer, noTargets, catalog, nullptr, nullptr,
-			0.002f, 12u, noDamageEvents);
-		tests.Require(
-			PLAYER_ACTION_STATE::NONE == tappedPlayer.eAction &&
-			0u == tappedPlayer.iComboStage,
-			"End a one-command basic attack at stage one without auto continuation");
-
-		for (std::uint32_t tick = 12;
-			tick < 132 && comboPlayer.iComboStage < 2u;
-			++tick)
+		const bool automaticFirstStage = 0u == firstStage.iInputOpenMs &&
+			0u == firstStage.iInputCloseMs;
+		if (automaticFirstStage)
 		{
-			comboSystem.Update(
-				comboPlayer,
-				noTargets,
-				catalog,
-				nullptr,
-				nullptr,
-				1.f / 30.f,
-				tick,
-				noDamageEvents);
+			press.iClientSequence = 2u;
+			comboSystem.Try_Start(comboPlayer, press, catalog, 11u);
+			tests.Require(
+				!comboPlayer.hasBufferedComboInput &&
+				1u == comboPlayer.iLastSkillSequence &&
+				1u == comboPlayer.iComboStage,
+				"Ignore repeated input while an automatic basic attack owns its sequence");
 		}
-		tests.Require(
-			2u == comboPlayer.iComboStage,
-			"Advance playable basic attack from Server-owned combo window");
+		else
+		{
+			comboPlayer.fActionElapsedSeconds =
+				static_cast<float>(firstStage.iInputOpenMs +
+					firstStage.iInputCloseMs) * 0.0005f;
+			press.iClientSequence = 2;
+			comboSystem.Try_Start(comboPlayer, press, catalog, 11);
+			tests.Require(
+				comboPlayer.hasBufferedComboInput,
+				"Buffer playable basic attack inside its input window");
+
+			/* COMBO uses another USE_SKILL as its continuation. A mouse-up packet is
+			HOLD-only and must not consume sequence or revoke a repeated click/hold. */
+			C2S_RELEASE_SKILL release{};
+			release.iClientSequence = 3u;
+			release.iSkillId = contract.skillId;
+			comboSystem.Release(comboPlayer, release, catalog);
+			tests.Require(
+				comboPlayer.hasBufferedComboInput &&
+				2u == comboPlayer.iLastSkillSequence &&
+				1u == comboPlayer.iComboStage,
+				"Ignore COMBO mouse-up without consuming its continuation sequence");
+
+			std::vector<SERVER_WORLD_ENTITY> noTargets;
+			std::vector<DAMAGE_EVENT> noDamageEvents;
+			tappedPlayer.fActionElapsedSeconds =
+				static_cast<float>(firstStage.iActionDurationMs - 1u) * 0.001f;
+			comboSystem.Update(
+				tappedPlayer, noTargets, catalog, nullptr, nullptr,
+				0.002f, 12u, noDamageEvents);
+			tests.Require(
+				PLAYER_ACTION_STATE::NONE == tappedPlayer.eAction &&
+				0u == tappedPlayer.iComboStage,
+				"End a buffered-input basic attack at stage one without continuation");
+
+			for (std::uint32_t tick = 12;
+				tick < 132 && comboPlayer.iComboStage < 2u;
+				++tick)
+			{
+				comboSystem.Update(
+					comboPlayer,
+					noTargets,
+					catalog,
+					nullptr,
+					nullptr,
+					1.f / 30.f,
+					tick,
+					noDamageEvents);
+			}
+			tests.Require(
+				2u == comboPlayer.iComboStage,
+				"Advance buffered-input basic attack from its Server-owned window");
+		}
 
 		SERVER_PLAYER wrongClassPlayer{};
 		wrongClassPlayer.eCharacterClass =
@@ -2397,19 +2412,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		const PLAYER_SKILL_DEFINITION* dimensionMasterBasicAttack =
 			catalog.Find_Skill(2050010u);
-		constexpr std::array<std::uint32_t, 4u> expectedDurationMs =
-			{ 700u, 1500u, 1067u, 1700u };
-		constexpr std::array<std::uint32_t, 4u> expectedHitMs =
-			{ 50u, 43u, 28u, 335u };
-		constexpr std::array<std::uint32_t, 4u> expectedComboAdvanceMs =
-			{ 276u, 269u, 494u, 1700u };
-		constexpr std::array<std::uint32_t, 4u> expectedOpenMs =
-			{ 92u, 179u, 93u, 0u };
-		constexpr std::array<std::uint32_t, 4u> expectedCloseMs =
-			{ 276u, 269u, 494u, 0u };
+		constexpr std::array<std::uint32_t, 3u> expectedDurationMs =
+			{ 1500u, 1067u, 1700u };
+		constexpr std::array<std::uint32_t, 3u> expectedHitMs =
+			{ 50u, 28u, 335u };
+		constexpr std::array<std::uint32_t, 3u> expectedComboAdvanceMs =
+			{ 1500u, 1067u, 1700u };
+		constexpr std::array<std::uint32_t, 3u> expectedOpenMs =
+			{ 0u, 0u, 0u };
+		constexpr std::array<std::uint32_t, 3u> expectedCloseMs =
+			{ 0u, 0u, 0u };
 		bool exactDimensionMasterTiming =
 			nullptr != dimensionMasterBasicAttack &&
-			700u == dimensionMasterBasicAttack->iActionDurationMs &&
+			1500u == dimensionMasterBasicAttack->iActionDurationMs &&
 			50u == dimensionMasterBasicAttack->iHitTimeMs &&
 			dimensionMasterBasicAttack->ComboStages.size() ==
 				expectedDurationMs.size();
@@ -2430,7 +2445,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 		}
 		tests.Require(exactDimensionMasterTiming,
-			"Resolve full DimensionMaster BA motions, early combo boundaries and stage-aligned root motion");
+			"Resolve full automatic DimensionMaster BA motions and stage-aligned root motion");
 
 		if (nullptr != dimensionMasterBasicAttack)
 		{
@@ -2453,64 +2468,59 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			basicAttack.fAimX = 1.f;
 			basicAttack.fAimZ = 0.f;
 
-			SERVER_PLAYER tapped = makePlayer();
-			const bool tappedStarted =
-				skills.Try_Start(tapped, basicAttack, catalog, 100u);
-			tapped.fActionElapsedSeconds = 0.699f;
-			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
-				0.f, 101u, noDamageEvents);
-			const bool tappedStayedInBa1 =
-				PLAYER_ACTION_STATE::SKILL == tapped.eAction &&
-				1u == tapped.iComboStage;
-			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
-				0.002f, 102u, noDamageEvents);
-			tests.Require(
-				tappedStarted && tappedStayedInBa1 &&
-				PLAYER_ACTION_STATE::NONE == tapped.eAction &&
-				0u == tapped.iComboStage,
-				"Keep a tapped DimensionMaster BA in BA1 for its full 700 ms motion");
-
-			SERVER_PLAYER held = makePlayer();
-			basicAttack.iClientSequence = 1u;
-			const bool heldStarted =
-				skills.Try_Start(held, basicAttack, catalog, 110u);
-			bool heldChainedEveryStage = heldStarted;
-			std::uint32_t heldTick = 111u;
+			SERVER_PLAYER automatic = makePlayer();
+			const bool automaticStarted =
+				skills.Try_Start(automatic, basicAttack, catalog, 100u);
+			bool chainedEveryStage = automaticStarted &&
+				!automatic.hasBufferedComboInput;
+			std::uint32_t automaticTick = 101u;
 			for (std::size_t stageIndex = 0u;
-				heldChainedEveryStage &&
-				stageIndex + 1u < dimensionMasterBasicAttack->ComboStages.size();
+				chainedEveryStage &&
+					stageIndex + 1u < dimensionMasterBasicAttack->ComboStages.size();
 				++stageIndex)
 			{
 				const PLAYER_COMBO_STAGE& stage =
 					dimensionMasterBasicAttack->ComboStages[stageIndex];
-				held.fActionElapsedSeconds = static_cast<float>(
-					stage.iInputOpenMs + stage.iInputCloseMs) * 0.0005f;
-				basicAttack.iClientSequence =
-					static_cast<std::uint32_t>(stageIndex) + 2u;
-				skills.Try_Start(
-					held, basicAttack, catalog, heldTick++);
-				heldChainedEveryStage = heldChainedEveryStage &&
-					held.hasBufferedComboInput;
-
-				held.fActionElapsedSeconds =
+				const std::uint32_t previousStartTick =
+					automatic.iActionStartTick;
+				automatic.fActionElapsedSeconds =
 					static_cast<float>(stage.iComboAdvanceMs - 1u) * 0.001f;
-				skills.Update(held, noTargets, catalog, nullptr, nullptr,
-					0.f, heldTick++, noDamageEvents);
-				heldChainedEveryStage = heldChainedEveryStage &&
-					PLAYER_ACTION_STATE::SKILL == held.eAction &&
-					held.iComboStage == stageIndex + 1u;
-				skills.Update(held, noTargets, catalog, nullptr, nullptr,
-					0.002f, heldTick++, noDamageEvents);
-				heldChainedEveryStage = heldChainedEveryStage &&
-					PLAYER_ACTION_STATE::SKILL == held.eAction &&
-					held.iComboStage == stageIndex + 2u;
+				skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
+					0.f, automaticTick++, noDamageEvents);
+				chainedEveryStage = chainedEveryStage &&
+					PLAYER_ACTION_STATE::SKILL == automatic.eAction &&
+					automatic.iComboStage == stageIndex + 1u &&
+					previousStartTick == automatic.iActionStartTick;
+				skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
+					0.002f, automaticTick++, noDamageEvents);
+				chainedEveryStage = chainedEveryStage &&
+					PLAYER_ACTION_STATE::SKILL == automatic.eAction &&
+					automatic.iComboStage == stageIndex + 2u &&
+					previousStartTick != automatic.iActionStartTick &&
+					!automatic.hasBufferedComboInput;
 			}
+
+			const PLAYER_COMBO_STAGE& finalStage =
+				dimensionMasterBasicAttack->ComboStages.back();
+			automatic.fActionElapsedSeconds =
+				static_cast<float>(finalStage.iActionDurationMs - 1u) * 0.001f;
+			skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
+				0.f, automaticTick++, noDamageEvents);
+			const bool heldFinalFullMotion =
+				PLAYER_ACTION_STATE::SKILL == automatic.eAction &&
+				3u == automatic.iComboStage;
+			skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
+				0.002f, automaticTick++, noDamageEvents);
 			tests.Require(
-				heldChainedEveryStage && 4u == held.iComboStage,
-				"Advance held DimensionMaster BA through BA2 BA3 BA4 at each buffered combo boundary");
+				chainedEveryStage && heldFinalFullMotion &&
+					PLAYER_ACTION_STATE::NONE == automatic.eAction &&
+					0u == automatic.iComboStage,
+				"Advance one DimensionMaster LMB through the three project-tuned BA motions");
 		}
 	}
 	{
+		const PLAYER_SKILL_DEFINITION* basicAttackDefinition =
+			catalog.Find_Skill(2050010u);
 		const PLAYER_SKILL_DEFINITION* pendingSkillDefinition =
 			catalog.Find_Skill(2050120u);
 		SERVER_PLAYER player{};
@@ -2526,9 +2536,6 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		basicAttack.fAimX = 1.f;
 		basicAttack.fAimZ = 0.f;
 		const bool started = skills.Try_Start(player, basicAttack, catalog, 200u);
-		player.fActionElapsedSeconds = 0.2f;
-		basicAttack.iClientSequence = 2u;
-		skills.Try_Start(player, basicAttack, catalog, 201u);
 
 		C2S_USE_SKILL firstExplicit{};
 		firstExplicit.iClientSequence = 3u;
@@ -2551,29 +2558,56 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			started && firstStaged && latestStaged && staleRejected &&
 			PLAYER_PENDING_COMMAND_KIND::SKILL == player.PendingCommand.eKind &&
 			2050120u == player.PendingCommand.iSkillId &&
-			4u == player.iLastSkillSequence && player.hasBufferedComboInput &&
+			4u == player.iLastSkillSequence && !player.hasBufferedComboInput &&
 			resourceBeforePending == player.iCurrentResource &&
 			cooldownsBeforePending == player.CooldownEndTickBySkillId,
 			"Stage only the latest explicit skill without spending gameplay costs");
 
 		std::vector<SERVER_WORLD_ENTITY> noTargets;
 		std::vector<DAMAGE_EVENT> noDamageEvents;
-		player.fActionElapsedSeconds = 0.699f;
-		skills.Update(player, noTargets, catalog, nullptr, nullptr,
-			0.f, 202u, noDamageEvents);
-		const bool explicitWaitedForFullMotion =
-			PLAYER_ACTION_STATE::SKILL == player.eAction &&
-			1u == player.iComboStage && player.hasBufferedComboInput;
-		skills.Update(player, noTargets, catalog, nullptr, nullptr,
-			0.002f, 203u, noDamageEvents);
-		const bool explicitWonAfterFullMotion =
-			PLAYER_ACTION_STATE::NONE == player.eAction &&
-			0u == player.iComboStage && !player.hasBufferedComboInput &&
-			PLAYER_PENDING_COMMAND_KIND::SKILL == player.PendingCommand.eKind;
+		bool explicitWaitedForAutomaticChain =
+			nullptr != basicAttackDefinition &&
+				!basicAttackDefinition->ComboStages.empty();
+		std::uint32_t pendingBoundaryTick = 202u;
+		if (explicitWaitedForAutomaticChain)
+		{
+			for (std::size_t stageIndex = 0u;
+				stageIndex < basicAttackDefinition->ComboStages.size();
+				++stageIndex)
+			{
+				const PLAYER_COMBO_STAGE& stage =
+					basicAttackDefinition->ComboStages[stageIndex];
+				player.fActionElapsedSeconds =
+					static_cast<float>(stage.iActionDurationMs - 1u) * 0.001f;
+				skills.Update(player, noTargets, catalog, nullptr, nullptr,
+					0.f, pendingBoundaryTick++, noDamageEvents);
+				explicitWaitedForAutomaticChain =
+					explicitWaitedForAutomaticChain &&
+					PLAYER_ACTION_STATE::SKILL == player.eAction &&
+					player.iComboStage == stageIndex + 1u &&
+					PLAYER_PENDING_COMMAND_KIND::SKILL ==
+						player.PendingCommand.eKind;
+
+				skills.Update(player, noTargets, catalog, nullptr, nullptr,
+					0.002f, pendingBoundaryTick++, noDamageEvents);
+				const bool isFinalStage = stageIndex + 1u ==
+					basicAttackDefinition->ComboStages.size();
+				explicitWaitedForAutomaticChain =
+					explicitWaitedForAutomaticChain &&
+					PLAYER_PENDING_COMMAND_KIND::SKILL ==
+						player.PendingCommand.eKind &&
+					(isFinalStage ?
+						(PLAYER_ACTION_STATE::NONE == player.eAction &&
+							0u == player.iComboStage) :
+						(PLAYER_ACTION_STATE::SKILL == player.eAction &&
+							player.iComboStage == stageIndex + 2u));
+			}
+		}
 		const bool pendingStarted =
-			skills.Try_StartPending(player, latestExplicit, catalog, 204u);
+			skills.Try_StartPending(
+				player, latestExplicit, catalog, pendingBoundaryTick++);
 		tests.Require(
-			explicitWaitedForFullMotion && explicitWonAfterFullMotion && pendingStarted &&
+			explicitWaitedForAutomaticChain && pendingStarted &&
 			PLAYER_ACTION_STATE::SKILL == player.eAction &&
 			2050120u == player.iCurrentSkillId &&
 			PLAYER_PENDING_COMMAND_KIND::NONE == player.PendingCommand.eKind &&
@@ -2581,7 +2615,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			resourceBeforePending - pendingSkillDefinition->iResourceCost ==
 				player.iCurrentResource &&
 			player.CooldownEndTickBySkillId.contains(2050120u),
-			"Commit the latest explicit skill after the full BA1 motion and spend costs once");
+			"Commit the latest explicit skill after the full automatic BA chain and spend costs once");
 
 		C2S_MOVE pendingMove{};
 		pendingMove.iClientSequence = 1u;
@@ -2626,10 +2660,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			basicAttack.fAimZ = live.fPositionZ;
 			const bool roomAttackStarted = room.m_PlayerSkillSystem.Try_Start(
 				live, basicAttack, room.m_GameplayCatalog, 300u);
-			live.fActionElapsedSeconds = 0.2f;
-			basicAttack.iClientSequence = 2u;
-			room.m_PlayerSkillSystem.Try_Start(
-				live, basicAttack, room.m_GameplayCatalog, 301u);
+			const PLAYER_SKILL_DEFINITION* roomBasicAttackDefinition =
+				room.m_GameplayCatalog.Find_Skill(2050010u);
 			const std::size_t cooldownCountBeforePending =
 				live.CooldownEndTickBySkillId.size();
 			C2S_MOVE move{};
@@ -2653,14 +2685,41 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				cooldownCountBeforePending ==
 					live.CooldownEndTickBySkillId.size() &&
 				!live.CooldownEndTickBySkillId.contains(2050100u);
-			live.fActionElapsedSeconds = 0.699f;
 			std::vector<SERVER_WORLD_ENTITY> noTargets;
 			std::vector<DAMAGE_EVENT> noDamageEvents;
-			room.m_PlayerSkillSystem.Update(
-				live, noTargets, room.m_GameplayCatalog, nullptr, nullptr,
-				0.002f, 302u, noDamageEvents);
-			room.Commit_PendingPlayerCommand(live, 302u);
-			stagedAndCommittedMove = roomAttackStarted && latestMoveReplacedSkill &&
+			bool moveWaitedForAutomaticChain =
+				nullptr != roomBasicAttackDefinition &&
+					!roomBasicAttackDefinition->ComboStages.empty();
+			std::uint32_t roomBoundaryTick = 302u;
+			if (moveWaitedForAutomaticChain)
+			{
+				for (std::size_t stageIndex = 0u;
+					stageIndex < roomBasicAttackDefinition->ComboStages.size();
+					++stageIndex)
+				{
+					const PLAYER_COMBO_STAGE& stage =
+						roomBasicAttackDefinition->ComboStages[stageIndex];
+					live.fActionElapsedSeconds =
+						static_cast<float>(stage.iActionDurationMs - 1u) * 0.001f;
+					room.m_PlayerSkillSystem.Update(
+						live, noTargets, room.m_GameplayCatalog, nullptr, nullptr,
+						0.002f, roomBoundaryTick++, noDamageEvents);
+					const bool isFinalStage = stageIndex + 1u ==
+						roomBasicAttackDefinition->ComboStages.size();
+					moveWaitedForAutomaticChain =
+						moveWaitedForAutomaticChain &&
+						PLAYER_PENDING_COMMAND_KIND::MOVE ==
+							live.PendingCommand.eKind &&
+						(isFinalStage ?
+							(PLAYER_ACTION_STATE::NONE == live.eAction &&
+								0u == live.iComboStage) :
+							(PLAYER_ACTION_STATE::SKILL == live.eAction &&
+								live.iComboStage == stageIndex + 2u));
+				}
+			}
+			room.Commit_PendingPlayerCommand(live, roomBoundaryTick++);
+			stagedAndCommittedMove = roomAttackStarted &&
+				latestMoveReplacedSkill && moveWaitedForAutomaticChain &&
 				PLAYER_PENDING_COMMAND_KIND::NONE == live.PendingCommand.eKind &&
 				PLAYER_ACTION_STATE::NONE == live.eAction &&
 				0u == live.iComboStage && live.hasMoveGoal;
@@ -2678,7 +2737,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				0u == invalidPending.iCurrentResource;
 		}
 		tests.Require(stagedAndCommittedMove,
-			"Keep latest MOVE during BA and commit it from the boundary position");
+			"Keep latest MOVE through automatic BA and commit it from the final boundary position");
 		tests.Require(failedPendingSkillWasIsolated,
 			"Discard only a pending skill that fails boundary revalidation");
 	}

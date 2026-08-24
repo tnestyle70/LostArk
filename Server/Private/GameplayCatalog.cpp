@@ -2556,8 +2556,23 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		}
 		if (isCombo)
 		{
-			for (const PLAYER_COMBO_STAGE& stage : skill.ComboStages)
+			for (std::size_t stageIndex = 0u;
+				stageIndex < skill.ComboStages.size(); ++stageIndex)
 			{
+				const PLAYER_COMBO_STAGE& stage = skill.ComboStages[stageIndex];
+				const bool isFinalStage =
+					stageIndex + 1u == skill.ComboStages.size();
+				const bool isAutomaticStage = !isFinalStage &&
+					0u == stage.iInputOpenMs && 0u == stage.iInputCloseMs;
+				if ((isAutomaticStage &&
+						stage.iComboAdvanceMs != stage.iActionDurationMs) ||
+					(!isFinalStage && !isAutomaticStage &&
+						(stage.iInputOpenMs >= stage.iInputCloseMs ||
+							stage.iInputCloseMs > stage.iActionDurationMs)))
+				{
+					m_strStatus = "Player combo stage input contract is invalid";
+					return false;
+				}
 				std::uint64_t latestRequiredFireMs = 0u;
 				for (const PLAYER_SKILL_HIT& hit : stage.Hits)
 				{

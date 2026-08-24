@@ -1,149 +1,129 @@
-# 차원술사 BA 전체 모션·stage별 Effect 및 T 확정 입력 연결 수정 구현 계획
+# 차원술사 BA 3동작 자동 연계와 LMB/T 확정 입력 수정 구현 계획
 
-## 1. 목표와 종료 증거
+## 1. 목표와 기준선
 
-- 기준선은 `origin/main@625471363811a20e296aab77c3ee4117479f4335`이다.
-- 차원술사 기본 공격 `2050010`을 `_01/_02/_03/_04`의 네 독립 BA stage clip으로 복구한다.
-- `actionDurationMs`는 단발 입력의 전체 모션 시간, `comboAdvanceMs`는 버퍼된 다음 LMB가 다음 stage로 전환되는 시간으로 분리한다.
-- BA1~BA4 clip source `0ms`에 기존 stable Product Effect ID를 1:1 연결하고 `root / follow / action_facing / natural` 계약을 유지한다.
-- 차원술사 T `2050500`의 targeting preview가 열린 뒤 valid 위치에서 LMB를 누르면 typed `GROUND_POINT` command가 서버로 전달되고, 승인 snapshot이 기존 `pc_sp_m_00_sk_sk_dimensionprison` 애니메이션을 재생하게 한다.
-- V0 또는 과거 Effect payload를 복구하지 않는다. `main`의 현재 authored Effect 내용과 runtime payload는 그대로 두며, 이후 시각 authoring은 사용자가 같은 stable ID에서 수행한다.
-- gameplay balance publisher, Effect publisher validation, focused Python contract, Server contract test, Client build가 실제 수정 데이터를 소비해야 자동 구현 완료다. 화면 결과는 사용자가 직접 판정한다.
+- 기준선은 `origin/main@1eb50f0bf9e33bd38267df41c336c50463b9e940`이다.
+- 차원술사 기본 공격 `2050010`은 LMB 한 번으로 `_01 -> _03 -> _04` 세 제품 동작을 자동 재생한다.
+- 첫 동작은 현재 main의 BA2 stage가 사용하던 `_01 source 0..3000ms / playRate 2.0`을 그대로 사용한다. `_01` 안의 두 attack occurrence를 다시 둘로 자르지 않는다.
+- Product Effect stable ID는 사용자 판정 순서대로 `_01 -> ba2`, `_03 -> ba3`, `_04 -> ba1`만 연결한다. Effect 문서 내용은 사용자가 저작하므로 이번 변경에서 손대지 않는다.
+- 물리 LMB 한 번은 정확히 한 BA command만 제출한다. 입력 차단 중 시작된 press는 차단 해제 뒤 늦게 발사되지 않고, command sink의 일시 실패는 같은 press를 영구 소비하지 않는다.
+- T `2050500`은 최신 snapshot상 즉시 시작 가능하거나 실행 중 COMBO 뒤에 예약 가능한 경우 preview를 열고 유지하며, 성공한 confirm LMB는 release 전 BA로 새지 않는다.
+- 자동 검증과 Debug/Release compile/link를 완료하되 Client 실행과 visual fidelity 판정은 사용자가 직접 한다.
 
-## 2. 현재 실측과 교정 경계
+## 2. 원본과 현재 main의 실측
 
-2026-08-24 변경은 도화가의 빠른 `comboAdvanceMs`인 `276/269/494/1267ms`를 차원술사의 animation wall duration과 Server `actionDurationMs`에도 사용했다. 그 결과 BA1/BA2는 같은 `_01` clip의 `[0,300)`, `[300,600)` 구간으로 잘렸고 `_02` clip은 Product binding에서 빠졌다. BA3/BA4도 각각 `2.15991903`, `1.34175217` 배속으로 짧아졌다.
-
-Server의 public 계약은 `comboAdvanceMs`를 buffered BA continuation boundary로만 소비하며, 입력이 없거나 MOVE/SKILL 명령을 대기할 때는 `actionDurationMs`까지 현재 stage를 유지한다. 따라서 두 시간을 같게 만든 차원술사 데이터가 교정 대상이고 공용 Server 알고리즘은 바꾸지 않는다.
-
-`main`에는 다음 stable ID와 v13 authoring 문서가 이미 모두 존재한다.
-
-| BA | Product Effect stable ID | 이번 작업의 payload 변경 |
-|---|---|---|
-| BA1 | `effect.dimensionmaster.skill.2050010.ba1.unified` | 없음 |
-| BA2 | `effect.dimensionmaster.skill.2050010.ba2.unified` | 없음 |
-| BA3 | `effect.dimensionmaster.skill.2050010.ba3.unified` | 없음 |
-| BA4 | `effect.dimensionmaster.skill.2050010.ba4.unified` | 없음 |
-
-이번 작업은 Element 수, delay, texture, material, source recipe 또는 content-addressed runtime hash를 고정하거나 바꾸지 않는다. Effect Tool에서 이후 내용을 교체해도 stable ID와 cue 연결만 유지되면 같은 stage에서 재생돼야 한다.
-
-## G00. BA stage animation·Server timing·root motion
-
-### 3. 대상 계약
-
-| BA | stage clip | presentation wall duration | Server hit | buffered combo advance | 입력 window |
-|---|---|---:|---:|---:|---:|
-| BA1 | `_01`, source `0..1400ms`, `playRate=2.0` | `700ms` | `50ms` | `276ms` | `92..276ms` |
-| BA2 | `_02`, natural full clip, `1.0` | `1500ms` | `43ms` | `269ms` | `179..269ms` |
-| BA3 | `_03`, natural full clip, `1.0` | `1067ms` | `28ms` | `494ms` | `93..494ms` |
-| BA4 | `_04`, natural full clip, `1.0` | `1700ms` | `335ms` | terminal `1700ms` | 없음 |
-
-BA1~BA3 입력 window와 빠른 cadence는 `main`에서 유지해 입력 감각을 임의로 넓히지 않는다. BA4는 terminal stage이므로 validator 계약에 따라 `comboAdvanceMs == actionDurationMs`다.
-
-### 4. 수정 파일과 흐름
-
-- `Data/Animation/Authored/DimensionMaster/DimensionMaster.skillbindings.json`
-  - stage 0은 `_01` source `1400ms / playRate 2.0`으로 재생한다.
-  - stage 1~3은 `_02/_03/_04` natural full clip으로 복구한다.
-- `Data/Balance/PlayerSkills.json`
-  - top-level mirror와 네 `comboStages[].actionDurationMs/hitTimeMs`를 full motion clock으로 복구한다.
-  - BA1~BA3 `comboAdvanceMs`와 입력 window는 빠른 연계 경계로 보존한다.
-- `Data/Animation/RootMotion/DimensionMaster.rootmotion.json`
-  - `700/1500/1067/1700ms` stage curve와 끝 이동량 `0.8418/0.5131/0.2802/1.0404`를 복구한다.
-- `Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json`
-  - gameplay authoring 변경 뒤 receipt 동기화 도구로 실제 result를 갱신한다.
-- `Server/Private/ServerGameplayContractTests.cpp`
-  - full duration과 distinct combo boundary를 따로 고정한다.
-  - 단발 BA1은 `700ms`까지 유지되고 buffered BA는 `276ms`에 BA2로 넘어감을 각각 검증한다.
-
-공용 `sourceStartMs` parser/runtime 지원과 `CPlayerSkillSystem` 알고리즘은 다른 action의 public 기능이므로 제거하거나 우회하지 않는다.
-
-## G01. BA1~BA4 Product Effect cue 연결
-
-### 5. stable ID 연결
-
-- `Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents`
-  - BA1 `_01@0ms`, BA2 `_02@0ms`, BA3 `_03@0ms`, BA4 `_04@0ms`를 각 unified Product ID에 1:1 연결한다.
-  - 네 cue의 `root / follow / action_facing / natural`을 유지한다.
-- `Data/Effects/EffectCatalog.json`과 네 `Data/Effects/Authored/*.unified.effect.json`
-  - 이미 필요한 stable ID와 v13 문서가 있으므로 수정하지 않는다.
-- `Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json`과 hashed authored payload
-  - Effect source가 바뀌지 않으므로 이번 작업에서 publish하거나 수정하지 않는다.
-  - `Publish-Effects.ps1 -Mode Validate`로 cue가 가리키는 네 stable ID의 admission만 확인한다.
-
-`stop=natural`이므로 빠른 LMB로 다음 stage에 진입해도 현재 authored Effect의 particle tail은 자체 lifetime까지 유지한다. animation stage 종료가 Effect를 강제 종료하는 별도 경로는 만들지 않는다.
-
-## G02. T ground-target confirm과 실제 애니메이션 연결
-
-### 6. 확인된 단절과 수정 경계
-
-`CClientReplication::Create_Character`는 모든 replicated Character에
-`pNavigationPrototypeTag = nullptr`를 전달한다. 따라서 로컬 차원술사도
-`CCharacter::Try_SampleTargetGround`를 항상 실패하고, preview 이미지는 표시돼도
-`CGROUND_TARGETING_STATE::Can_Confirm()`이 한 번도 true가 되지 않는다. LMB confirm packet,
-Server action, `2050500` presentation animation이 전부 이 지점에서 막힌다.
-
-Loader는 이미 각 Level의 stable Area ID로
-`Prototype_Component_Navigation_<AreaId>`를 등록한다. 다음 한 경로만 연결한다.
+원본 read-only reference인 `DimensionMaster.clipseq/.clipmap/.animnotify`에는 `_01/_02/_03/_04` 네 clip이 있다. 따라서 원본 파일이 세 clip이라고 기록하지 않는다. 다만 `_01` 하나에는 다음 두 attack occurrence가 이미 함께 들어 있다.
 
 ```text
-LevelRegistry map area ID
--> CClientReplication::DESC.strMapAreaId
--> CMapNavigationContract::Resolve_Area
--> local replicated Character navigation component
--> valid LMB confirm
--> typed GROUND_POINT C2S_USE_SKILL
--> Server-approved snapshot
--> pc_sp_m_00_sk_sk_dimensionprison
+SOUND  29ms / 303ms
+EFFECT 200ms / 400ms
+HIT    100..602ms
 ```
 
-- remote Character에는 navigation component를 추가하지 않는다.
-- Client navigation은 preview의 valid/invalid 판정에만 사용한다. Server의 finite/range/current
-  navigation 재검증과 승인 target XYZ 권위는 그대로 유지한다.
-- `PlayerSkillTargeting.json`, `2050500` skillbinding, Server damage/timing, T Effect authored payload는
-  이미 존재하므로 수정하지 않는다.
-- Character Select, Bern, Development, Valtan 네 product Level이 각자의 실제 map area ID를
-  replication에 명시한다. level enum이나 prototype tag를 replication이 추측하지 않는다.
+이번 제품 계약은 원본 네 clip을 그대로 복제하는 것이 아니라, 사용자가 확인한 `두 번 찌르기 -> 휘두르기 -> 마무리 베기`를 세 Server stage로 표현하는 project-tuned 구성이다.
 
-구현은 `CClientReplication::DESC::strMapAreaId`와
-`m_strLocalPlayerNavigationPrototypeTag`를 추가하고, `Initialize`에서
-`CMapNavigationContract::Resolve_Area`의 runtime grid와 prototype tag를 검증·보관한 뒤
-`Create_Character`가 locally controlled Character에만 그 tag를 전달하는 한 경로로 닫는다.
-`Level_CharacterSelect.cpp`, `Level_Bern.cpp`, `Level_Development.cpp`,
-`Level_ValtanArena.cpp`는 모두 `CLevelRegistry` descriptor의 `pMapAreaId`를 전달한다.
+현재 main의 회귀 상태는 다음과 같다.
 
-## G03. focused contract와 결과 문서
+```text
+stage 1  _01 1400ms / 2x
+stage 2  _01 3000ms / 2x
+stage 3  _03
+stage 4  _01 3400ms / 2x
 
-### 7. 실행형 검증과 현재 종료 상태
+_01 -> ba2
+_03 -> ba3
+```
 
-- `Tools/EffectPipeline/test_dimensionmaster_2050010_stage_split.py`
-  - 기존 discovery 파일명은 유지하되 full-stage 연결 contract로 교체한다.
-  - stage clip 1:1, full duration 대 combo advance, root-motion duration/end, animevent Product cue를 검증한다.
-  - Element 수, delay bucket, runtime hash는 사용자의 후속 Effect authoring을 막지 않도록 고정하지 않는다. 네 v13 stable ID가 catalog와 authoring 문서에서 resolve되는지만 검사한다.
-- gameplay balance publisher `Validate/Publish`와 balance runtime-set publisher를 실행한다.
-- Effect publisher는 `Validate`를 실행한다.
-- `ActionPresentationTimelineHarness`, `Server.exe --contract-test`, 관련 Debug/Release build를 실행한다.
-- JSON parse, `git diff --check`, clean stage 범위를 확인한다.
-- `test_ground_target_preview_prototype_scope.py`는 네 product Level의 Area ID 전달,
-  navigation contract resolve, local-only Character component 연결을 검증한다.
+같은 `_01`을 시작점부터 세 번 재생하고 `_01@0`의 BA2 cue도 재사용하므로, 두 타 모션과 natural Effect tail이 중첩된다. 과거 `_01`을 300ms 경계에서 잘랐던 방식도 같은 clip 내부 occurrence와 Server stage를 혼동했다. 이 둘이 반복·절단 animation의 원인이다. LMB가 늦거나 씹히는 문제는 별도의 input/capture/Server window 결함으로 분리해 수정한다.
 
-T wiring 반영 뒤 focused ground-target test는 3 tests PASS이고, post-fix Client x64 Debug와
-Release compile/link도 각각 PASS다. Release 전체
-`Invoke-BuildAndRegression.ps1 -Configuration Release`는 Engine, Shared,
-NetworkProtocolHarness, Server, Client compile/link와 Effect validate까지 완료한 뒤 기존
-`Sync-EffectDataProject.ps1 -Check` stale registration에서 중단됐다. 이는 full regression
-PASS가 아니라 기존 baseline gate이며, 자동 검증 결과의 상세 구분은 대응 RESULT가 소유한다.
+## G00. 3-stage animation·Server timing·root motion
 
-### 8. 사용자 화면 확인
+### 3. 제품 계약
 
-에이전트는 Client를 실행·조작하거나 visual PASS를 기록하지 않는다. 자동 검증 뒤 사용자가 Character Select에서 차원술사를 선택해 다음을 직접 확인한다.
+| 제품 stage | 의미 | clip | wall duration | Server hit | advance/window |
+|---|---|---|---:|---:|---|
+| 1 | 두 번 찌르기 | `_01`, `playMs=3000`, `playRate=2.0` | `1500ms` | `50ms` | automatic `1500ms`, `0/0` |
+| 2 | 휘두르기 | `_03` natural | `1067ms` | `28ms` | automatic `1067ms`, `0/0` |
+| 3 | 마무리 베기 | `_04` natural | `1700ms` | `335ms` | terminal `1700ms`, `0/0` |
 
-1. LMB 한 번은 BA1 모션을 재생하고 약 `700ms` 뒤 종료한다.
-2. 다음 LMB가 buffer되면 BA1은 `276ms`에 BA2로 전환하고 이후 `_02/_03/_04` 순서로 이어진다.
-3. 현재 `main`의 BA1/BA2/BA3/BA4 authored Effect가 각 stage 시작에 한 번씩 재생된다.
-4. Effect Tool에서 같은 stable ID 내용을 바꾼 뒤 publish해도 cue를 다시 연결할 필요 없이 해당 BA에서 재생된다.
-5. T로 range/cursor preview를 연 뒤 valid 위치에서 LMB를 누르면 preview가 닫히고
-   `pc_sp_m_00_sk_sk_dimensionprison` 애니메이션이 재생된다.
-6. invalid 위치의 red preview와 RMB cancel은 계속 action을 시작하지 않는다.
+총 animation wall time은 `4267ms`다. non-final COMBO의 `inputOpenMs/inputCloseMs == 0/0`은 `comboAdvanceMs == actionDurationMs`인 automatic stage로 정의한다. 기존 non-zero window를 가진 다른 직업 COMBO는 계속 실제 추가 입력을 요구한다.
 
-사용자의 서면 관찰 전에는 `PENDING_USER_VISUAL_GATE`를 유지한다.
+수정 경로는 다음 하나다.
+
+- `DimensionMaster.skillbindings.json`: 세 group `_01(3000/2x)`, `_03`, `_04`.
+- `PlayerSkills.json`: `2050010.comboStages`를 `1500/1067/1700ms` 세 행으로 축소하고 automatic `0/0`을 저장한다.
+- `DimensionMaster.rootmotion.json`: source `_01 0..3000ms` curve를 2배속 wall clock으로 변환한 stage 0, 기존 `_03/_04` curve를 stage 1/2로 재번호화한다.
+- gameplay balance receipt는 publisher 동기화 도구가 실제 새 배열 길이와 값을 기록하게 한다.
+- `CPlayerSkillSystem`은 automatic non-final stage를 buffered press 없이 전환한다. pending MOVE/SKILL은 automatic chain 전체를 보존해 마지막 motion 종료 뒤 commit하고, manual COMBO는 현재 full motion 경계를 유지한다.
+- catalog/Balance Tool/publisher는 manual window와 automatic `0/0`을 구분해 fail-closed 검증한다.
+- Server contract는 단 한 번의 `Try_Start`가 stage `1 -> 2 -> 3 -> NONE`을 만들고, 다른 직업 manual COMBO는 자동화되지 않음을 검증한다.
+
+Server stage 수를 4에서 3으로 줄이면 현재 fallback damage 발생도 네 번에서 세 번으로 바뀐다. 이번 요청은 animation/input/Effect 연결 범위이므로 별도 damage-profile 증폭이나 새 hit shape를 추측해 넣지 않고 결과 문서에 이 경계를 명시한다.
+
+## G01. Product Effect stable cue
+
+### 4. 연결만 수정
+
+`DimensionMaster.animevents`의 Product cue는 다음 세 행만 둔다.
+
+```text
+_01 @ 0ms -> effect.dimensionmaster.skill.2050010.ba2.unified
+_03 @ 0ms -> effect.dimensionmaster.skill.2050010.ba3.unified
+_04 @ 0ms -> effect.dimensionmaster.skill.2050010.ba1.unified
+```
+
+세 cue는 모두 `root / follow / action_facing / natural`이다. `ba1~ba4.unified` authored 문서, Element, delay, mesh, DDS, material, runtime payload는 수정하지 않는다. 사용자의 로컬 BA2 손튜닝도 stable ID가 같으면 첫 동작에서 한 번 재생된다. 사용하지 않는 `_02`와 `ba4` 파일도 삭제하지 않는다.
+
+## G02. LMB edge와 T confirm
+
+### 5. LMB command transaction
+
+현재 `CBASIC_ATTACK_PRESS_EDGE_GATE`는 `Poll_BasicAttack`에서 command sink 호출 전에 press를 제출 완료로 표시한다. 이후 aim/transform/send가 실패하면 같은 물리 press가 영구히 소비된다. 반대로 ImGui 또는 gameplay input 차단 중 시작된 press는 차단이 풀릴 때까지 미제출로 남아 늦은 BA가 될 수 있다.
+
+수정 계약은 다음과 같다.
+
+1. raw up은 gate를 rearm한다.
+2. raw down이지만 gameplay command가 차단된 press는 그 release까지 consume한다.
+3. eligible raw down은 candidate만 만든다.
+4. `Request_UseSkill` 성공 뒤에만 gate를 commit한다.
+5. 일시적인 local sink 실패는 commit하지 않아 같은 held press가 다음 frame 재시도된다.
+6. 성공 뒤 held 상태에서는 중복 command를 제출하지 않는다.
+
+Client가 animation을 선행 예측하지는 않는다. 첫 화면 animation은 계속 Server 승인 snapshot edge에서 시작하므로 정상 network tick 지연과 입력 유실을 구분한다.
+
+### 6. T ground target
+
+- `PlayerSkillCatalog`은 `identityCost`를 exact `uint32`로 검증·보존하고, HUD는 snapshot의 현재 skill ID를 보존한다.
+- action이 `NONE`이면 class, ACTIVE/GROUND_POINT kind, HP, stance, cooldown, resource, identity를 검사해 즉시 시작 가능한 경우에만 preview를 연다.
+- 다른 COMBO가 실행 중이어도 현재 snapshot의 cost/cooldown/stance를 만족하면 Server pending 계약과 같이 T preview/confirm을 허용한다. automatic BA에서는 3동작 전체 종료 뒤 Server가 다시 검증하고 실행한다.
+- Valtan의 `isCombatReady=false`는 유효한 첫 이동/스킬이 전투를 시작하는 상태이므로 T를 선제 차단하지 않는다.
+- `Request_UseGroundTargetSkill` 성공 직후 confirm LMB를 `Suppress_UntilRelease()`하고 나서 preview를 닫는다.
+- invalid ground와 RMB cancel은 action을 시작하지 않는다.
+- ImGui mouse capture를 전역 우회하지 않는다.
+
+## G03. 검증과 인계
+
+### 7. 자동 검증
+
+- `test_dimensionmaster_2050010_stage_split.py`: 세 clip group, 3-stage timing, root motion, 세 stable cue.
+- `test_player_skill_catalog_combo_timings.py`: automatic stage parse/rollback과 DM만의 automatic non-final 행.
+- `test_effect_tool_buffered_combo_audition.py`: `_01 -> _03 -> _04`, BA3 누적 offset `1500ms`, final tail.
+- `PlayerController.h` compile-time contract +
+  `test_ground_target_preview_prototype_scope.py`: production gate/fake-confirm callback의
+  blocked/retry/commit/release 상태 전이와 T availability/runtime join.
+- gameplay balance Validate/Publish 및 runtime-set Validate/Publish.
+- Effect publisher Validate.
+- Server Debug/Release build와 `Server.exe --contract-test`.
+- Client Debug/Release compile/link.
+- JSON parse와 `git diff --check`.
+
+### 8. 사용자 수동 확인
+
+1. LMB 한 번으로 `_01(약 1.5초) -> _03(약 1.067초) -> _04(약 1.7초)`가 자동으로 이어지는지 확인한다.
+2. 첫 `_01`에서 현재 손튜닝한 `ba2`, `_03`에서 `ba3`, 마지막 `_04`에서 `ba1` stable Effect가 각각 한 번 시작하는지 확인한다.
+3. LMB를 누르고 있어도 두 번째 BA command가 자동 제출되지 않고, 추가 클릭 없이 Server 자동 stage만 진행하는지 확인한다.
+4. F1/ImGui가 press를 잡은 상태에서 시작한 LMB가 캡처 해제 뒤 늦게 BA로 발사되지 않는지 확인한다.
+5. 평시 또는 BA 진행 중 T preview 뒤 valid 위치 LMB가 `dimensionprison` animation을 즉시 또는 BA 종료 뒤 재생하고, 같은 click이 BA로 새지 않는지 확인한다.
+6. invalid 위치와 RMB cancel은 T와 BA를 모두 시작하지 않는지 확인한다.
+
+사용자의 서면 관찰 전 visual 상태는 `PENDING_USER_VISUAL_GATE`로 유지한다.
