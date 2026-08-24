@@ -170,6 +170,37 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
             append.index("m_strSelectedElementId = CopyElementId"),
         )
 
+    def test_effect_asset_transitions_clear_the_saved_element_half_of_selection(self) -> None:
+        create_element = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_CreateMeshEffect(",
+            "bool_t Client::CEffect_Tool::Try_UseSelectedElementAsAuthoringPreset()",
+        )
+        save = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_SaveDocument()",
+            "bool_t Client::CEffect_Tool::Try_SaveDocumentAs(",
+        )
+        save_as = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_SaveDocumentAs(",
+            "bool_t Client::CEffect_Tool::\n\tTry_SaveSelectedAdapterElementAsGenericAuthoredCopy(",
+        )
+        load = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(",
+            "bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(",
+        )
+        for transition in (create_element, save, save_as, load):
+            asset_selection = transition.index(
+                "m_strSelectedDataFileAssetId ="
+            )
+            element_clear = transition.index(
+                "m_strSelectedDataFileElementId.clear()",
+                asset_selection,
+            )
+            self.assertLess(asset_selection, element_clear)
+
     def test_generic_copy_clears_source_ownership_but_preserves_element_payload(self) -> None:
         generic = function_slice(
             self.codec,

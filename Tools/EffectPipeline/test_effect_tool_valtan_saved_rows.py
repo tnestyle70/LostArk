@@ -875,7 +875,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             if row["combatObjectArchetypeId"]
             == "combatobject.valtan.high-jump.target-axe"
         )
-        self.assertEqual(4200, target_axe["lifeMs"])
+        self.assertEqual(8000, target_axe["lifeMs"])
         self.assertEqual(1, len(target_axe["hits"]))
         self.assertEqual(1200, target_axe["hits"][0]["atMs"])
         self.assertEqual(1, target_axe["hits"][0]["repeatCount"])
@@ -897,6 +897,11 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "void Client::CEffect_Tool::Recalculate_PreviewDuration(",
             "bool_t Client::CEffect_Tool::Has_UnsavedWork() const",
         )
+        create_element = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Try_CreateMeshEffect(",
+            "bool_t Client::CEffect_Tool::Try_UseSelectedElementAsAuthoringPreset()",
+        )
         for token in (
             "iValtanWorldOwnerStageDurationMs",
             "m_iValtanWorldOwnerStageDurationMs",
@@ -907,6 +912,16 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertIn("Recalculate_PreviewDuration();", reference_open)
         self.assertIn("m_iValtanWorldOwnerStageDurationMs", duration)
         self.assertIn("(std::max)(", duration)
+        self.assertIn(
+            "iPreviousValtanWorldOwnerStageDurationMs",
+            create_element,
+        )
+        self.assertGreaterEqual(
+            create_element.count(
+                "m_iValtanWorldOwnerStageDurationMs ="
+            ),
+            2,
+        )
 
     def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:
         validate_manual_authoring_detail_contract(

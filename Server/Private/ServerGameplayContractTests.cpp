@@ -770,7 +770,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr != highJumpRecovery &&
 			400u == highJumpRecovery->iDurationMs &&
 			nullptr != highJumpTargetAxe &&
-			4200u == highJumpTargetAxe->iLifeMs &&
+			8000u == highJumpTargetAxe->iLifeMs &&
 			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
 				highJumpTargetAxe->eOriginPolicy &&
 			1u == highJumpTargetAxe->Hits.size() &&
@@ -778,7 +778,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				highJumpTargetAxe->Hits.front().eTrigger &&
 			1200u == highJumpTargetAxe->Hits.front().iAtMs &&
 			1u == highJumpTargetAxe->Hits.front().iRepeatCount,
-			"Keep one target axe per living player, hit at 1.2 seconds, planted through 4.2 seconds, and leave LAND at 3.2 seconds");
+			"Keep one target axe owner per living player through the 8-second AIRBORNE window, hit once at 1.2 seconds, and leave LAND at 3.2 seconds");
 		tests.Require(
 			nullptr != tripleSlashPattern && nullptr != rotationSlashPattern &&
 			nullptr != swingPattern &&

@@ -44,7 +44,7 @@ base: `origin/main@26147430`
   - Hold 편집은 `Life = Motion + Hold`로 stage한 뒤 기존 Apply 흐름으로만 commit한다.
 - `Tools/EffectPipeline/Publish-Effects.ps1`
   - source/runtime 양쪽 optional field를 같은 범위로 검증한다.
-- `Client/Private/EffectRenderContractHarness.cpp`
+- `Tools/EffectRenderContractHarness/Private/EffectRenderContractHarness.cpp`
   - legacy omission round-trip, invalid range, motion 종료 뒤 matrix 고정, hold 중 color clock 진행을
     계약 테스트로 추가한다.
 
@@ -118,7 +118,9 @@ target axe life 1900 ms
 - LAND는 현재 end clip이 loop이므로 8초로 늘리지 않는다. 중앙 원은 AIRBORNE Product/WORLD와
   별도 owner를 갖게 한다.
 - `[WORLD]` preview는 `max(effect end, owner AIRBORNE duration)`을 timeline으로 사용한다.
-- target axe Server life를 `4200 ms`로 늘려 hit 1.2초 뒤 3초간 planted 상태를 허용한다.
+- target axe Server owner life를 AIRBORNE와 같은 `8000 ms`로 늘려 `[WORLD]` Effect가
+  stage 도중 조기 제거되지 않게 한다. 도끼 Mesh 자체의 planted/소멸 시점은 Element의
+  Motion Duration과 Life가 소유한다.
 - player별 WORLD axe Effect에 arena-center 원을 넣으면 인원수만큼 중복되므로 중앙 원 Effect는 이번
   Element 복제/시간 계약과 분리한다.
 - AIRBORNE ENTER는 플레이어별 axe를 한 번씩만 생성한다. 반복 투척 schedule은 이번 변경에 넣지 않는다.
@@ -126,7 +128,7 @@ target axe life 1900 ms
 ### 수정 파일과 계약
 
 - `Data/Encounters/Valtan/ValtanEncounter.json`: HIGH_JUMP AIRBORNE `8000 ms`.
-- `Data/Encounters/Valtan/ValtanCombatObjects.json`: target axe `lifeMs = 4200`.
+- `Data/Encounters/Valtan/ValtanCombatObjects.json`: target axe owner `lifeMs = 8000`.
 - `Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json`: 바뀐 두 field를
   `PROJECT_TUNED` 결과와 동기화한다.
 - `Client/Public/Effect_Tool.h`, `Client/Private/Effect_Tool.cpp`: WORLD owner stage duration을 preview에 전달한다.
@@ -147,7 +149,8 @@ target axe life 1900 ms
 - 하나를 선택해 `Load Saved Element for Editing`을 누르면 현재 Effect에 복제되고 source Effect는
   열리지 않는지 확인한다.
 - Sky Axe Mesh에서 Motion Duration을 고정한 채 Hold를 늘려도 낙하 속도가 변하지 않는지 확인한다.
-- Pattern 행 `Play Server Pattern`으로 HIGH_JUMP를 재생해 axe가 hit 뒤 3초간 고정되는지 확인한다.
+- Pattern 행 `Play Server Pattern`으로 HIGH_JUMP를 재생해 WORLD owner가 8초를 유지하고,
+  axe Mesh는 손튜닝한 Motion/Hold 시점에 맞게 정지·소멸하는지 확인한다.
 - AIRBORNE WORLD timeline이 8초까지 열리는지 확인한다.
 
 에이전트는 Client를 실행하거나 visual PASS를 대신 기록하지 않는다.

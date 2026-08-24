@@ -13070,6 +13070,8 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
     const EFFECT_PREVIEW_FILTER ePreviousPreviewFilter = m_ePreviewFilter;
 	const f32_t fPreviousPreviewTimeSeconds = m_fPreviewTimeSeconds;
 	const f32_t fPreviousPreviewDurationSeconds = m_fPreviewDurationSeconds;
+	const uint32_t iPreviousValtanWorldOwnerStageDurationMs =
+		m_iValtanWorldOwnerStageDurationMs;
 	const bool_t bPreviousPreviewPlaying = m_bPreviewPlaying;
 	const bool_t bPreviousPreviewVisibleRequested =
 		m_bPreviewVisibleRequested;
@@ -13088,7 +13090,8 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		&strPreviousIsolationElement, &strPreviousIsolationGroup,
 		bPreviousArtistAdapterPreviewActive,
 		ePreviousPreviewFilter, fPreviousPreviewTimeSeconds,
-		fPreviousPreviewDurationSeconds, bPreviousPreviewPlaying,
+		fPreviousPreviewDurationSeconds,
+		iPreviousValtanWorldOwnerStageDurationMs, bPreviousPreviewPlaying,
 		bPreviousPreviewVisibleRequested, &PreviousProductCueSnapshotRoot,
 		bPreviousProductCueSnapshotCaptured,
 		fPreviousProductCueActionFacingYawDegrees,
@@ -13102,6 +13105,8 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		m_ePreviewFilter = ePreviousPreviewFilter;
 		m_fPreviewTimeSeconds = fPreviousPreviewTimeSeconds;
 		m_fPreviewDurationSeconds = fPreviousPreviewDurationSeconds;
+		m_iValtanWorldOwnerStageDurationMs =
+			iPreviousValtanWorldOwnerStageDurationMs;
 		Reset_ProductCueSnapshot();
 		if (!bPreviousArtistAdapterPreviewActive)
 		{
@@ -13190,6 +13195,8 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		Set_SynchronizedAnimationPaused(!bPreviousPreviewPlaying);
 	};
 	Clear_ProductCuePreview();
+	m_iValtanWorldOwnerStageDurationMs =
+		iPreviousValtanWorldOwnerStageDurationMs;
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     if (!Stage_WorldPreview(Staged))
     {
@@ -13276,6 +13283,7 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		EFFECT_RESOURCE_FILE_KIND::MODEL : EFFECT_RESOURCE_FILE_KIND::TEXTURE;
     m_strSelectedResourceAssetId.clear();
     m_strSelectedDataFileAssetId = strTargetEffectId;
+	m_strSelectedDataFileElementId.clear();
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     m_NewElementId[0u] = '\0';
     Recalculate_PreviewDuration();
@@ -14217,6 +14225,7 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
 	m_bActiveDocumentMatchesRuntime = false;
     m_strSelectedDataFileAssetId =
         m_ActiveDocument->strEffectAssetId;
+	m_strSelectedDataFileElementId.clear();
     m_strDocumentStatus = "Saved Authored atomically: " + Path.string();
 	if (!m_bActiveDocumentDrawable)
 	{
@@ -14316,6 +14325,7 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
 	m_strSaveHotReloadStatus.clear();
     Refresh_RuntimeEquivalence();
     m_strSelectedDataFileAssetId = strAssetId;
+	m_strSelectedDataFileElementId.clear();
     Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(), strAssetId);
     Refresh_DataFiles();
     Refresh_AllEffects();
@@ -14414,6 +14424,7 @@ bool_t Client::CEffect_Tool::
 	m_bDocumentDirty = false;
 	m_bActiveDocumentMatchesRuntime = false;
 	m_strSelectedDataFileAssetId = strAssetId;
+	m_strSelectedDataFileElementId.clear();
 	Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(), strAssetId);
 	Reset_ParticleSystemDraft();
 	Reset_DetailDraft();
@@ -14531,6 +14542,7 @@ bool_t Client::CEffect_Tool::Try_PromoteImportedDocument()
 	m_strSaveHotReloadStatus.clear();
     Refresh_RuntimeEquivalence();
     m_strSelectedDataFileAssetId = TargetId;
+	m_strSelectedDataFileElementId.clear();
     Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(), TargetId);
     Copy_Buffer(m_NewDisplayName.data(), m_NewDisplayName.size(),
         m_ActiveDocument->strDisplayName);
@@ -14814,6 +14826,7 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
             *pSelected, m_strSelectedResourceSlotId);
     }
     m_strSelectedDataFileAssetId = strSelectionId;
+	m_strSelectedDataFileElementId.clear();
 	std::string SuggestedAssetId = m_ActiveDocument->strEffectAssetId;
 	if (EFFECT_DOCUMENT_SOURCE::RUNTIME_VISUAL_PROGRAM == eSource &&
 		SuggestedAssetId.size() + std::string_view(".authored-copy").size() <
