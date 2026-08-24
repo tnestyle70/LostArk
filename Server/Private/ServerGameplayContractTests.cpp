@@ -3183,6 +3183,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 			return placement.strPlacementId == "valtan";
 		});
+	const auto bernEntryTrigger = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "trigger.bern.to-valtan";
+		});
 	const auto bernCollision = std::find_if(
 		bernPlacements.begin(), bernPlacements.end(),
 		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -3210,6 +3216,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == bernValtanTrigger->eKind &&
 		bernValtanTrigger->isEnabled &&
 		1u == bernValtanTrigger->TriggerActions.size() &&
+		bernEntryTrigger != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == bernEntryTrigger->eKind &&
+		bernEntryTrigger->isEnabled &&
+		1u == bernEntryTrigger->TriggerActions.size() &&
 		bernCollision != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind,
 		"Load Bern spawns, both NPCs, both triggers, and collision box");
@@ -3335,6 +3345,45 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.Require(
 		bernNavigation.Load("LV_BER_BERNCASTLE"),
 		"Load Bern server navigation");
+	const auto bernFirstSpawn = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+				placement.isEnabled;
+		});
+	std::vector<SERVER_NAV_POINT> bernEntryPath;
+	const bool bernEntryReachable =
+		bernFirstSpawn != bernPlacements.end() &&
+		bernEntryTrigger != bernPlacements.end() &&
+		bernNavigation.Find_Path(
+			bernFirstSpawn->fPositionX,
+			bernFirstSpawn->fPositionZ,
+			bernEntryTrigger->fPositionX,
+			bernEntryTrigger->fPositionZ,
+			bernEntryPath) &&
+		!bernEntryPath.empty();
+	bool bernEntryPathEndsInsideTrigger = false;
+	if (bernEntryReachable)
+	{
+		const SERVER_NAV_POINT& endpoint = bernEntryPath.back();
+		bernEntryPathEndsInsideTrigger =
+			std::abs(endpoint.x - bernEntryTrigger->fPositionX) <=
+				bernEntryTrigger->fHalfExtentX +
+				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X &&
+			std::abs(endpoint.z - bernEntryTrigger->fPositionZ) <=
+				bernEntryTrigger->fHalfExtentZ +
+				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Z &&
+			std::abs(
+				endpoint.y +
+					LostArk::Shared::WorldCollision::PLAYER_CENTER_OFFSET_Y -
+				bernEntryTrigger->fPositionY) <=
+				bernEntryTrigger->fHalfExtentY +
+				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Y;
+	}
+	tests.Require(
+		bernEntryReachable && bernEntryPathEndsInsideTrigger,
+		"Reach the Bern-to-Valtan trigger through authoritative navigation");
 	bool bernSpawnsOnNavigation = bernLoaded;
 	for (const WORLD_BOOTSTRAP_PLACEMENT& spawn : bernPlacements)
 	{
