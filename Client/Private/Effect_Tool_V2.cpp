@@ -1753,7 +1753,9 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 			Binding.strEffectId.c_str(), Binding.strClip.c_str(), Binding.iStartMs,
 			Binding.strBone.empty() ? "(world)" : Binding.strBone.c_str(),
 			Binding.bFollowBone ? "" : " [snap once]");
-		if (ImGui::Selectable(szRow, false))
+		/* The row spans the full line, so the overlapping SameLine checkbox and
+		Remove button need AllowOverlap or the row swallows their clicks. */
+		if (ImGui::Selectable(szRow, false, ImGuiSelectableFlags_AllowOverlap))
 		{
 			std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", Binding.strEffectId.c_str());
 			m_iSpawnFrame = static_cast<int32_t>(
