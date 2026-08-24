@@ -9717,6 +9717,7 @@ bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 	const std::filesystem::path& Path,
 	const std::string& strEffectAssetId,
 	const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips,
+	const uint32_t iWorldOwnerStageDurationMs,
 	const bool_t bQueuePlayCompleteAfterLoad)
 {
 	UNIFIED_EFFECT_CACHE& Cache =
@@ -9739,6 +9740,8 @@ bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 			m_PendingDocumentLoad->Path == Path)
 		{
 			m_PendingDocumentLoad->ValtanReferenceClips = Clips;
+			m_PendingDocumentLoad->iValtanWorldOwnerStageDurationMs =
+				iWorldOwnerStageDurationMs;
 			m_PendingDocumentLoad->ValtanClip.reset();
 			m_PendingDocumentLoad->ValtanCue.reset();
 			m_PendingDocumentLoad->bPlayCompleteAfterLoad =
@@ -9746,6 +9749,9 @@ bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 		}
 		return false;
 	}
+	Clear_ProductCuePreview();
+	m_iValtanWorldOwnerStageDurationMs = iWorldOwnerStageDurationMs;
+	Recalculate_PreviewDuration();
 	if (!Clips.empty())
 	{
 		if (!Play_ValtanStageSequence(Clips))
@@ -10401,6 +10407,12 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			const VALTAN_STAGE_VIEW* pNonProductStage =
 				Row.ProductSources.empty() && 1u == NonProductStages.size() ?
 					NonProductStages.front() : nullptr;
+			const uint32_t iWorldOwnerStageDurationMs =
+				nullptr != pNonProductStage &&
+				std::find(Row.CombatObjectStages.begin(),
+					Row.CombatObjectStages.end(), pNonProductStage) !=
+					Row.CombatObjectStages.end() ?
+					pNonProductStage->iDurationMs : 0u;
 			const bool_t bAmbiguousOccurrence =
 				1u < Row.ProductSources.size() ||
 				(Row.ProductSources.empty() && 1u < NonProductStages.size());
@@ -10511,7 +10523,8 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					{
 						Try_OpenValtanSavedReferenceEffect(Row.Path,
 							Row.strEffectAssetId,
-							pNonProductStage->ClipOccurrences);
+							pNonProductStage->ClipOccurrences,
+							iWorldOwnerStageDurationMs);
 					}
 				}
 				ImGui::EndDisabled();
@@ -10534,7 +10547,8 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					{
 						Try_OpenValtanSavedReferenceEffect(Row.Path,
 							Row.strEffectAssetId,
-							pNonProductStage->ClipOccurrences, true);
+							pNonProductStage->ClipOccurrences,
+							iWorldOwnerStageDurationMs, true);
 					}
 				}
 				ImGui::EndDisabled();
@@ -14732,6 +14746,9 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
 	}
 	if (Pending.ValtanReferenceClips.has_value())
 	{
+		m_iValtanWorldOwnerStageDurationMs =
+			Pending.iValtanWorldOwnerStageDurationMs;
+		Recalculate_PreviewDuration();
 		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips =
 			*Pending.ValtanReferenceClips;
 		const bool_t bTargetReady = Clips.empty() ?
@@ -21905,6 +21922,7 @@ void Client::CEffect_Tool::Clear_ProductCuePreview()
 {
     m_ProductPreview.reset();
 	m_ValtanProductPreview.reset();
+	m_iValtanWorldOwnerStageDurationMs = 0u;
 	m_SourcePreviewDocument.reset();
 	m_PlayerPreviewCueCandidates.clear();
 	m_iPlayerPreviewCueCandidateIndex = 0u;
@@ -23280,6 +23298,15 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
 			m_fPreviewDurationSeconds = static_cast<f32_t>(
 				m_ValtanProductPreview->Cue.iStageDurationMs) * 0.001f;
 		}
+	}
+	else if (0u != m_iValtanWorldOwnerStageDurationMs)
+	{
+		/* A WORLD visual is owned by its Server semantic stage even when the
+		   Effect itself ends sooner. Keep that owner window authorable without
+		   changing Product cue stop policy or extending the LAND stage. */
+		m_fPreviewDurationSeconds = (std::max)(
+			m_fPreviewDurationSeconds,
+			static_cast<f32_t>(m_iValtanWorldOwnerStageDurationMs) * 0.001f);
 	}
     m_fPreviewTimeSeconds = std::clamp(
         m_fPreviewTimeSeconds, 0.f, m_fPreviewDurationSeconds);

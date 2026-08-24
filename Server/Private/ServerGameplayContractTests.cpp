@@ -532,6 +532,17 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findStage("VALTAN_TRIPLE_SLASH", "SLASHES");
 		const BOSS_PATTERN_STAGE_DEFINITION* rotationSpin =
 			findStage("VALTAN_ROTATION_SLASH", "SPIN");
+		const BOSS_PATTERN_STAGE_DEFINITION* highJumpTakeoff =
+			findStage("VALTAN_HIGH_JUMP", "TAKEOFF");
+		const BOSS_PATTERN_STAGE_DEFINITION* highJumpAirborne =
+			findStage("VALTAN_HIGH_JUMP", "AIRBORNE");
+		const BOSS_PATTERN_STAGE_DEFINITION* highJumpLand =
+			findStage("VALTAN_HIGH_JUMP", "LAND");
+		const BOSS_PATTERN_STAGE_DEFINITION* highJumpRecovery =
+			findStage("VALTAN_HIGH_JUMP", "RECOVERY");
+		const BOSS_COMBAT_OBJECT_DEFINITION* highJumpTargetAxe =
+			catalog.Find_BossCombatObject(
+				"combatobject.valtan.high-jump.target-axe");
 		const auto findPattern = [patterns](
 			const std::string& patternId) -> const BOSS_PATTERN_DEFINITION*
 		{
@@ -745,6 +756,29 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			rotationSpin->HitOffsetsMs.empty() &&
 			tripleSlashes->bWallContact && rotationSpin->bWallContact,
 			"Compile split triple and rotation slash Server hit schedules exactly");
+		tests.Require(
+			nullptr != highJumpTakeoff &&
+			1933u == highJumpTakeoff->iDurationMs &&
+			nullptr != highJumpAirborne &&
+			8000u == highJumpAirborne->iDurationMs &&
+			1u == highJumpAirborne->Actions.size() &&
+			hasAction(highJumpAirborne,
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT,
+				"combatobject.valtan.high-jump.target-axe", 1u) &&
+			nullptr != highJumpLand && 3200u == highJumpLand->iDurationMs &&
+			nullptr != highJumpRecovery &&
+			400u == highJumpRecovery->iDurationMs &&
+			nullptr != highJumpTargetAxe &&
+			4200u == highJumpTargetAxe->iLifeMs &&
+			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
+				highJumpTargetAxe->eOriginPolicy &&
+			1u == highJumpTargetAxe->Hits.size() &&
+			BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED ==
+				highJumpTargetAxe->Hits.front().eTrigger &&
+			1200u == highJumpTargetAxe->Hits.front().iAtMs &&
+			1u == highJumpTargetAxe->Hits.front().iRepeatCount,
+			"Keep one target axe per living player, hit at 1.2 seconds, planted through 4.2 seconds, and leave LAND at 3.2 seconds");
 		tests.Require(
 			nullptr != tripleSlashPattern && nullptr != rotationSlashPattern &&
 			nullptr != swingPattern &&

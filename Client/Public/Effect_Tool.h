@@ -365,6 +365,7 @@ private:
 		optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ValtanCue;
 		optional<std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>>
 			ValtanReferenceClips;
+		uint32_t iValtanWorldOwnerStageDurationMs = 0u;
     };
 
 	struct UNIFIED_EFFECT_CACHE final
@@ -521,6 +522,7 @@ private:
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId,
 		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips,
+		uint32_t iWorldOwnerStageDurationMs = 0u,
 		bool_t bQueuePlayCompleteAfterLoad = false);
 	bool_t Try_OpenValtanAuthoredEffect(
 		const std::filesystem::path& Path,
@@ -1006,6 +1008,7 @@ private:
     float3_t m_vPickedWorldPosition{};
     f32_t m_fPreviewTimeSeconds = 0.f;
     f32_t m_fPreviewDurationSeconds = 1.f;
+	uint32_t m_iValtanWorldOwnerStageDurationMs = 0u;
 	double m_fDetailDraftPreviewDueSeconds = 0.0;
     bool_t m_bPreviewPlaying = false;
     bool_t m_bPreviewLoop = true;

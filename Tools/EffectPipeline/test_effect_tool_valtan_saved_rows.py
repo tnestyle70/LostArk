@@ -17,6 +17,9 @@ VALTAN_PATTERN_TREE_HEADER = REPOSITORY_ROOT / "Client/Public/ValtanPatternTree.
 ENCOUNTER_PATH = (
     REPOSITORY_ROOT / "Data/Encounters/Valtan/ValtanEncounter.json"
 )
+COMBAT_OBJECT_PATH = (
+    REPOSITORY_ROOT / "Data/Encounters/Valtan/ValtanCombatObjects.json"
+)
 CUE_PATH = (
     REPOSITORY_ROOT
     / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
@@ -837,6 +840,73 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         validate_pending_reference_preview_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         )
+
+    def test_high_jump_world_owner_and_target_axe_timing_are_exact(self) -> None:
+        encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
+        high_jump = next(
+            pattern
+            for pattern in encounter["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        stages = {stage["stageId"]: stage for stage in high_jump["stages"]}
+        self.assertEqual(1933, stages["TAKEOFF"]["durationMs"])
+        self.assertEqual(8000, stages["AIRBORNE"]["durationMs"])
+        self.assertEqual(3200, stages["LAND"]["durationMs"])
+        self.assertEqual(400, stages["RECOVERY"]["durationMs"])
+        self.assertEqual(
+            [
+                {
+                    "trigger": "ENTER",
+                    "kind": "SPAWN_COMBAT_OBJECT",
+                    "targetId": "combatobject.valtan.high-jump.target-axe",
+                    "value": 1,
+                    "durationMs": 0,
+                }
+            ],
+            stages["AIRBORNE"]["actions"],
+        )
+
+        combat_objects = json.loads(
+            COMBAT_OBJECT_PATH.read_text(encoding="utf-8")
+        )
+        target_axe = next(
+            row
+            for row in combat_objects["objects"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.high-jump.target-axe"
+        )
+        self.assertEqual(4200, target_axe["lifeMs"])
+        self.assertEqual(1, len(target_axe["hits"]))
+        self.assertEqual(1200, target_axe["hits"][0]["atMs"])
+        self.assertEqual(1, target_axe["hits"][0]["repeatCount"])
+
+        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
+        pattern = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Render_ValtanPatternNode(",
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        )
+        reference_open = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(",
+            "bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(",
+        )
+        duration = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Recalculate_PreviewDuration(",
+            "bool_t Client::CEffect_Tool::Has_UnsavedWork() const",
+        )
+        for token in (
+            "iValtanWorldOwnerStageDurationMs",
+            "m_iValtanWorldOwnerStageDurationMs",
+        ):
+            self.assertIn(token, header_text)
+        self.assertIn("pNonProductStage->iDurationMs", pattern)
+        self.assertIn("iWorldOwnerStageDurationMs", reference_open)
+        self.assertIn("Recalculate_PreviewDuration();", reference_open)
+        self.assertIn("m_iValtanWorldOwnerStageDurationMs", duration)
+        self.assertIn("(std::max)(", duration)
 
     def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:
         validate_manual_authoring_detail_contract(
