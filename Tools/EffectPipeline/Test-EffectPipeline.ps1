@@ -1977,9 +1977,10 @@ $pythonContractTests = @(
     'Tools.EffectPipeline.test_build_valtan_action_bindings',
     'Tools.EffectPipeline.test_build_valtan_source_occurrence_inventory',
     'Tools.EffectPipeline.test_build_valtan_legacy_v0_carrier_migration_inventory',
-    # Carrier V1 is a sealed one-shot materialization preimage. Current
-    # PRODUCT/V1 aliases intentionally share exact source rows, so replaying
-    # that retired writer against live authoring would reject a valid alias.
+    # Carrier V1 keeps its immutable preimage while a separate lineage receipt
+    # validates product-owned successor documents and live owner projections.
+    'Tools.EffectPipeline.test_materialize_valtan_carrier_v1',
+    'Tools.EffectPipeline.test_valtan_carrier_v1_successor_lineage',
     'Tools.EffectPipeline.test_build_valtan_reviewed_source_family_candidates',
     'Tools.EffectPipeline.test_valtan_safe_reviewed_gaps',
     'Tools.EffectPipeline.test_materialize_valtan_watertrail_v1_reuse_canaries',

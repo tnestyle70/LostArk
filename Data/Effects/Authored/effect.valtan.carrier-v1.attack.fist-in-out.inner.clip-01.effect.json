@@ -12918,15 +12918,15 @@
         },
         {
           "slotId": "base",
-          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds"
+          "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds"
         },
         {
           "slotId": "noise",
-          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_noise_001.dds"
+          "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds"
         },
         {
           "slotId": "mask",
-          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_002.dds"
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds"
         }
       ],
       "material": {
@@ -12937,248 +12937,266 @@
           "enabled": false
         }
       },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "",
+        "runtimeAnchorSlotId": "",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
       "detail": {
         "transform": {
           "position": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1.77999997,
+            1.48000002,
+            1.77999997
           ],
           "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ]
         },
         "color": {
           "offset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            4,
+            3,
+            1.55999994
           ],
-          "clip": 0.0,
-          "emissiveIntensity": 1.0,
-          "distortionIntensity": 0.0,
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
           "distortionOnBaseMaterial": false,
-          "radialTime": 0.0,
-          "radialIntensity": 0.0
+          "radialTime": 0,
+          "radialIntensity": 0
         },
         "uv": {
           "start": [
-            0.0,
-            0.0
+            0,
+            0
           ],
           "speed": [
-            0.0,
-            0.0
+            0,
+            0
           ],
           "wave": false,
           "waveAmplitude": [
-            0.0,
-            0.0
+            0,
+            0
           ],
-          "waveFrequency": 1.0,
+          "waveFrequency": 1,
           "sequence": false,
           "loop": true,
-          "sequenceTerm": 0.1,
+          "sequenceTerm": 0.100000001,
           "tileColumns": 1,
           "tileRows": 1,
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.0153590440750122,
-          "lifeTimeSeconds": 1.5846409559249879,
-          "afterImageSeconds": 0.0,
-          "dissolveStartNormalized": 1.0
+          "startDelaySeconds": 0.899999976,
+          "lifeTimeSeconds": 0.354999989,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
         },
         "mesh": {
           "useModelMaterial": false,
-          "modelPreScale": 0.01
+          "modelPreScale": 0.00999999978,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
         },
         "decal": {
           "size": [
-            0.034000000953674316,
-            0.034000000953674316
+            0.0340000018,
+            0.0340000018
           ],
           "depth": 0.25
         },
         "linearLerp": {
           "position": false,
           "endPosition": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotation": false,
           "endRotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "revolution": false,
           "endRevolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": false,
           "endScale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "velocity": false,
           "endVelocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "colorOffset": false,
           "endColorOffset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "colorMultiply": false,
           "endColorMultiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
           "emissiveIntensity": false,
-          "endEmissiveIntensity": 1.0
+          "endEmissiveIntensity": 1
         },
         "particle": {
           "maxParticles": 3,
-          "spawnRatePerSecond": 0.0,
+          "spawnRatePerSecond": 0,
           "burstCount": 0,
           "randomSeed": 4,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            1,
+            1
           ],
           "initialPositionMin": [
-            0.0,
-            0.1,
-            -0.0
+            0,
+            0.100000001,
+            0
           ],
           "initialPositionMax": [
-            0.0,
-            0.1,
-            -0.0
+            0,
+            0.100000001,
+            0
           ],
           "initialVelocityMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "acceleration": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "startSize": [
-            0.034000000953674316,
-            0.034000000953674316
+            0.0340000018,
+            0.0340000018
           ],
           "endSize": [
-            0.061200000095367385,
-            0.061200000095367385
+            0.0612000003,
+            0.0612000003
           ],
           "localSpace": true,
-          "billboard": false
+          "billboard": false,
+          "sourceScale": {
+            "count": 1,
+            "size": 1,
+            "lifeTime": 0.5,
+            "speed": 1,
+            "rotation": 1,
+            "alpha": 1,
+            "spawnDelay": 1
+          }
         },
         "trail": {
           "maxPoints": 64,
-          "pointLifeTimeSeconds": 0.35,
-          "sampleIntervalSeconds": 0.0166667,
-          "minimumDistance": 0.01,
-          "startWidth": 0.2,
-          "endWidth": 0.0,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
           "faceCamera": true
         },
         "afterImage": {
-          "sampleIntervalSeconds": 0.05,
+          "sampleIntervalSeconds": 0.0500000007,
           "maxCopies": 16,
-          "alphaExponent": 1.0
+          "alphaExponent": 1
         },
         "light": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "range": 0.0,
-          "intensity": 0.0,
-          "color": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "ambient": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "falloffExponent": 0.0
+          "enabled": false
         },
         "screenPost": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "intensity": 0.0,
-          "secondaryIntensity": 0.0,
-          "frequency": 0.0,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "randomSeed": 1
+          "enabled": false
         }
       },
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.0,
+        "emitterDurationSeconds": 2,
         "emitterLoopCount": 1,
         "bursts": [
           {
-            "timeSeconds": 0.0,
+            "timeSeconds": 0,
             "countMinimum": 1,
             "countMaximum": 1
           }
@@ -13212,37 +13230,37 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 2.0
+                "value": 2
               },
               {
                 "propertyPath": "emitterloops",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "material",
                 "kind": "number",
-                "value": -245.0
+                "value": -245
               },
               {
                 "propertyPath": "randomimagetime",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "subimages_horizontal",
                 "kind": "number",
-                "value": 8.0
+                "value": 8
               },
               {
                 "propertyPath": "subimages_vertical",
                 "kind": "number",
-                "value": 4.0
+                "value": 4
               }
             ],
             "distributions": [
@@ -13255,19 +13273,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -13282,7 +13300,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -13295,25 +13313,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -13327,7 +13345,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "randomseedinfo.hex",
@@ -13337,7 +13355,7 @@
               {
                 "propertyPath": "randomseedinfo.size",
                 "kind": "number",
-                "value": 40.0
+                "value": 40
               }
             ],
             "distributions": [
@@ -13350,29 +13368,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.009999999776482582,
-                  3.4000000953674316,
-                  3.4000000953674316,
-                  3.4000000953674316,
-                  0.009999999776482582,
-                  3.4000000953674316,
-                  3.4000000953674316,
-                  0.009999999776482582
+                  0.00999999978,
+                  3.4000001,
+                  3.4000001,
+                  3.4000001,
+                  0.00999999978,
+                  3.4000001,
+                  3.4000001,
+                  0.00999999978
                 ],
                 "keys": []
               }
@@ -13391,7 +13409,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "randomseedinfo.hex",
@@ -13401,7 +13419,7 @@
               {
                 "propertyPath": "randomseedinfo.size",
                 "kind": "number",
-                "value": 40.0
+                "value": 40
               }
             ],
             "distributions": [
@@ -13414,25 +13432,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.10000000149011612,
-                  0.10000000149011612,
-                  0.10000000149011612,
-                  0.10000000149011612
+                  0.100000001,
+                  0.100000001,
+                  0.100000001,
+                  0.100000001
                 ],
                 "keys": []
               },
@@ -13445,28 +13463,28 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
                   0.5,
-                  3.0,
+                  3,
                   0.5,
-                  3.0,
+                  3,
                   1.5,
                   0.5,
-                  3.0,
+                  3,
                   1.5
                 ],
                 "keys": []
@@ -13486,7 +13504,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -13499,139 +13517,139 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": [
                   {
-                    "time": 0.0003941841423511505,
+                    "time": 0.000394184142,
                     "minimum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "maximum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "arriveTangentMinimum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "leaveTangentMinimum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "arriveTangentMaximum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "leaveTangentMaximum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "interpolation": "cubic"
                   },
                   {
-                    "time": 0.30000001192092896,
+                    "time": 0.300000012,
                     "minimum": [
-                      1.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      1,
+                      0,
+                      0,
+                      0
                     ],
                     "maximum": [
-                      1.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      1,
+                      0,
+                      0,
+                      0
                     ],
                     "arriveTangentMinimum": [
-                      -3.4043877124786377,
-                      0.0,
-                      0.0,
-                      0.0
+                      -3.40438771,
+                      0,
+                      0,
+                      0
                     ],
                     "leaveTangentMinimum": [
-                      -3.4043877124786377,
-                      0.0,
-                      0.0,
-                      0.0
+                      -3.40438771,
+                      0,
+                      0,
+                      0
                     ],
                     "arriveTangentMaximum": [
-                      -3.4043877124786377,
-                      0.0,
-                      0.0,
-                      0.0
+                      -3.40438771,
+                      0,
+                      0,
+                      0
                     ],
                     "leaveTangentMaximum": [
-                      -3.4043877124786377,
-                      0.0,
-                      0.0,
-                      0.0
+                      -3.40438771,
+                      0,
+                      0,
+                      0
                     ],
                     "interpolation": "cubic"
                   },
                   {
-                    "time": 0.8999999761581421,
+                    "time": 0.899999976,
                     "minimum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "maximum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "arriveTangentMinimum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "leaveTangentMinimum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "arriveTangentMaximum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "leaveTangentMaximum": [
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "interpolation": "cubic"
                   }
@@ -13646,86 +13664,86 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  7.0,
-                  7.0,
-                  7.0,
-                  7.0,
-                  6.092158317565918,
-                  6.092158317565918,
-                  6.092158317565918,
-                  5.265508651733398,
-                  5.265508651733398,
-                  5.265508651733398,
-                  4.516305446624756,
-                  4.516305446624756,
-                  4.516305446624756,
-                  3.840804100036621,
-                  3.840804100036621,
-                  3.840804100036621,
-                  3.235258102416992,
-                  3.235258102416992,
-                  3.235258102416992,
-                  2.695922613143921,
-                  2.695922613143921,
-                  2.695922613143921,
-                  2.219053268432617,
-                  2.219053268432617,
-                  2.219053268432617,
-                  1.8009045124053955,
-                  1.8009045124053955,
-                  1.8009045124053955,
-                  1.4377293586730957,
-                  1.4377293586730957,
-                  1.4377293586730957,
-                  1.1257848739624023,
-                  1.1257848739624023,
-                  1.1257848739624023,
-                  0.8613240718841553,
-                  0.8613240718841553,
-                  0.8613240718841553,
-                  0.6406024694442749,
-                  0.6406024694442749,
-                  0.6406024694442749,
-                  0.459875226020813,
-                  0.459875226020813,
-                  0.459875226020813,
-                  0.315395712852478,
-                  0.315395712852478,
-                  0.315395712852478,
-                  0.20341932773590088,
-                  0.20341932773590088,
-                  0.20341932773590088,
-                  0.12020176649093628,
-                  0.12020176649093628,
-                  0.12020176649093628,
-                  0.06199541687965393,
-                  0.06199541687965393,
-                  0.06199541687965393,
-                  0.02505558729171753,
-                  0.02505558729171753,
-                  0.02505558729171753,
-                  0.005639445036649704,
-                  0.005639445036649704,
-                  0.005639445036649704,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  7,
+                  7,
+                  7,
+                  7,
+                  6.09215832,
+                  6.09215832,
+                  6.09215832,
+                  5.26550865,
+                  5.26550865,
+                  5.26550865,
+                  4.51630545,
+                  4.51630545,
+                  4.51630545,
+                  3.8408041,
+                  3.8408041,
+                  3.8408041,
+                  3.2352581,
+                  3.2352581,
+                  3.2352581,
+                  2.69592261,
+                  2.69592261,
+                  2.69592261,
+                  2.21905327,
+                  2.21905327,
+                  2.21905327,
+                  1.80090451,
+                  1.80090451,
+                  1.80090451,
+                  1.43772936,
+                  1.43772936,
+                  1.43772936,
+                  1.12578487,
+                  1.12578487,
+                  1.12578487,
+                  0.861324072,
+                  0.861324072,
+                  0.861324072,
+                  0.640602469,
+                  0.640602469,
+                  0.640602469,
+                  0.459875226,
+                  0.459875226,
+                  0.459875226,
+                  0.315395713,
+                  0.315395713,
+                  0.315395713,
+                  0.203419328,
+                  0.203419328,
+                  0.203419328,
+                  0.120201766,
+                  0.120201766,
+                  0.120201766,
+                  0.0619954169,
+                  0.0619954169,
+                  0.0619954169,
+                  0.0250555873,
+                  0.0250555873,
+                  0.0250555873,
+                  0.00563944504,
+                  0.00563944504,
+                  0.00563944504,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               }
@@ -13839,12 +13857,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "updateflags",
                 "kind": "number",
-                "value": 15.0
+                "value": 15
               }
             ],
             "distributions": [
@@ -13857,43 +13875,43 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
+                  0,
                   0.5,
-                  0.0,
-                  0.0036250001285225153,
-                  0.014000000432133675,
-                  0.030375000089406967,
-                  0.052000001072883606,
+                  0,
+                  0.00362500013,
+                  0.0140000004,
+                  0.0303750001,
+                  0.0520000011,
                   0.078125,
-                  0.1080000028014183,
-                  0.140874981880188,
-                  0.17599999904632568,
-                  0.21262502670288086,
+                  0.108000003,
+                  0.140874982,
+                  0.175999999,
+                  0.212625027,
                   0.25,
-                  0.28737500309944153,
-                  0.3240000009536743,
-                  0.3591250479221344,
-                  0.3919999599456787,
+                  0.287375003,
+                  0.324000001,
+                  0.359125048,
+                  0.39199996,
                   0.421875,
-                  0.4480000138282776,
-                  0.46962499618530273,
-                  0.48600006103515625,
-                  0.49637502431869507,
+                  0.448000014,
+                  0.469624996,
+                  0.486000061,
+                  0.496375024,
                   0.5
                 ],
                 "keys": []
@@ -13907,44 +13925,44 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  -1.0,
+                  -1,
                   0.5,
                   0.5,
-                  0.3049439787864685,
-                  0.12739259004592896,
-                  -0.03346549719572067,
-                  -0.17844131588935852,
-                  -0.3083462119102478,
-                  -0.423991322517395,
-                  -0.5261875987052917,
-                  -0.6157464981079102,
-                  -0.6934791803359985,
-                  -0.7601966261863708,
-                  -0.8167102336883545,
-                  -0.8638310432434082,
-                  -0.9023702144622803,
-                  -0.9331390857696533,
-                  -0.9569487571716309,
-                  -0.9746101498603821,
-                  -0.986935019493103,
-                  -0.9947343468666077,
-                  -0.9988188147544861,
-                  -1.0
+                  0.304943979,
+                  0.12739259,
+                  -0.0334654972,
+                  -0.178441316,
+                  -0.308346212,
+                  -0.423991323,
+                  -0.526187599,
+                  -0.615746498,
+                  -0.69347918,
+                  -0.760196626,
+                  -0.816710234,
+                  -0.863831043,
+                  -0.902370214,
+                  -0.933139086,
+                  -0.956948757,
+                  -0.97461015,
+                  -0.986935019,
+                  -0.994734347,
+                  -0.998818815,
+                  -1
                 ],
                 "keys": []
               },
@@ -13957,25 +13975,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               },
@@ -13988,44 +14006,44 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.10000000149011612,
-                  0.30000001192092896,
-                  0.30000001192092896,
-                  0.298550009727478,
-                  0.29440000653266907,
-                  0.2878499925136566,
-                  0.27920001745224,
-                  0.26875001192092896,
-                  0.25679999589920044,
-                  0.24365001916885376,
-                  0.22960001230239868,
-                  0.21494999527931213,
-                  0.20000000298023224,
-                  0.18505001068115234,
-                  0.170400008559227,
-                  0.15634998679161072,
-                  0.14320001006126404,
-                  0.13124999403953552,
-                  0.12079999595880508,
-                  0.11214999854564667,
-                  0.10559997707605362,
-                  0.10144999623298645,
-                  0.10000000149011612
+                  0.100000001,
+                  0.300000012,
+                  0.300000012,
+                  0.29855001,
+                  0.294400007,
+                  0.287849993,
+                  0.279200017,
+                  0.268750012,
+                  0.256799996,
+                  0.243650019,
+                  0.229600012,
+                  0.214949995,
+                  0.200000003,
+                  0.185050011,
+                  0.170400009,
+                  0.156349987,
+                  0.14320001,
+                  0.131249994,
+                  0.120799996,
+                  0.112149999,
+                  0.105599977,
+                  0.101449996,
+                  0.100000001
                 ],
                 "keys": []
               }
@@ -14039,7 +14057,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "randomseedinfo.hex",
@@ -14049,7 +14067,7 @@
               {
                 "propertyPath": "randomseedinfo.size",
                 "kind": "number",
-                "value": 40.0
+                "value": 40
               }
             ],
             "distributions": [
@@ -14062,35 +14080,35 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  1.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
                 ],
                 "keys": []
               }
@@ -14104,7 +14122,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -14117,29 +14135,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  10.0,
-                  0.0,
-                  0.0,
-                  10.0,
-                  0.0,
-                  0.0,
-                  10.0
+                  0,
+                  10,
+                  0,
+                  0,
+                  10,
+                  0,
+                  0,
+                  10
                 ],
                 "keys": []
               }
@@ -14153,7 +14171,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -14166,86 +14184,86 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.2000000476837158,
-                  1.7999999523162842,
-                  1.2000000476837158,
-                  1.2000000476837158,
-                  1.2000000476837158,
-                  1.2717115879058838,
-                  1.2717115879058838,
-                  1.2717115879058838,
-                  1.3372313976287842,
-                  1.3372313976287842,
-                  1.3372313976287842,
-                  1.3968592882156372,
-                  1.3968592882156372,
-                  1.3968592882156372,
-                  1.4508957862854004,
-                  1.4508957862854004,
-                  1.4508957862854004,
-                  1.4996410608291626,
-                  1.4996410608291626,
-                  1.4996410608291626,
-                  1.5433952808380127,
-                  1.5433952808380127,
-                  1.5433952808380127,
-                  1.58245849609375,
-                  1.58245849609375,
-                  1.58245849609375,
-                  1.617130994796753,
-                  1.617130994796753,
-                  1.617130994796753,
-                  1.6477129459381104,
-                  1.6477129459381104,
-                  1.6477129459381104,
-                  1.6745047569274902,
-                  1.6745047569274902,
-                  1.6745047569274902,
-                  1.6978063583374023,
-                  1.6978063583374023,
-                  1.6978063583374023,
-                  1.7179181575775146,
-                  1.7179181575775146,
-                  1.7179181575775146,
-                  1.7351402044296265,
-                  1.7351402044296265,
-                  1.7351402044296265,
-                  1.7497727870941162,
-                  1.7497727870941162,
-                  1.7497727870941162,
-                  1.7621160745620728,
-                  1.7621160745620728,
-                  1.7621160745620728,
-                  1.772470235824585,
-                  1.772470235824585,
-                  1.772470235824585,
-                  1.7811355590820312,
-                  1.7811355590820312,
-                  1.7811355590820312,
-                  1.7884122133255005,
-                  1.7884122133255005,
-                  1.7884122133255005,
-                  1.7946001291275024,
-                  1.7946001291275024,
-                  1.7946001291275024,
-                  1.7999999523162842,
-                  1.7999999523162842,
-                  1.7999999523162842
+                  1.20000005,
+                  1.79999995,
+                  1.20000005,
+                  1.20000005,
+                  1.20000005,
+                  1.27171159,
+                  1.27171159,
+                  1.27171159,
+                  1.3372314,
+                  1.3372314,
+                  1.3372314,
+                  1.39685929,
+                  1.39685929,
+                  1.39685929,
+                  1.45089579,
+                  1.45089579,
+                  1.45089579,
+                  1.49964106,
+                  1.49964106,
+                  1.49964106,
+                  1.54339528,
+                  1.54339528,
+                  1.54339528,
+                  1.5824585,
+                  1.5824585,
+                  1.5824585,
+                  1.61713099,
+                  1.61713099,
+                  1.61713099,
+                  1.64771295,
+                  1.64771295,
+                  1.64771295,
+                  1.67450476,
+                  1.67450476,
+                  1.67450476,
+                  1.69780636,
+                  1.69780636,
+                  1.69780636,
+                  1.71791816,
+                  1.71791816,
+                  1.71791816,
+                  1.7351402,
+                  1.7351402,
+                  1.7351402,
+                  1.74977279,
+                  1.74977279,
+                  1.74977279,
+                  1.76211607,
+                  1.76211607,
+                  1.76211607,
+                  1.77247024,
+                  1.77247024,
+                  1.77247024,
+                  1.78113556,
+                  1.78113556,
+                  1.78113556,
+                  1.78841221,
+                  1.78841221,
+                  1.78841221,
+                  1.79460013,
+                  1.79460013,
+                  1.79460013,
+                  1.79999995,
+                  1.79999995,
+                  1.79999995
                 ],
                 "keys": []
               }
@@ -14264,12 +14282,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "mesh",
                 "kind": "number",
-                "value": -1229.0
+                "value": -1229
               }
             ],
             "distributions": []
@@ -14282,22 +14300,22 @@
               {
                 "propertyPath": "burstlist[0].count",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "burstlist[0].countlow",
                 "kind": "number",
-                "value": -1.0
+                "value": -1
               },
               {
                 "propertyPath": "burstlist[0].time",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -14310,25 +14328,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               },
@@ -14341,19 +14359,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -14363,47 +14381,28 @@
         ]
       },
       "sourcePresentation": {
-        "enabled": false,
-        "schema": "lostark.effect-source-presentation",
-        "version": 1,
-        "profileId": "",
-        "status": "unresolved",
-        "sourceObjectPath": "",
-        "sourceActionCueId": "",
-        "sourceEventId": "",
-        "sourceOccurrenceIndex": 0,
-        "sourceTimeSeconds": 0.0,
-        "parameters": []
+        "enabled": false
       },
-      "inventoryRendererShape": "mesh",
-      "actionCueAttachment": {
-        "enabled": false,
-        "follow": false,
-        "sourceAnchorSlotId": "",
-        "runtimeAnchorSlotId": "",
-        "runtimeBoneName": "",
-        "snapshotRootSourceBasisYawDegrees": 0,
-        "socketLocalTransform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
-        }
-      },
-      "transformInheritance": {
-        "enabled": false,
-        "masterElementId": ""
+      "authoringOverrides": {
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds",
+            "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds"
+          },
+          {
+            "slotId": "mask",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+            "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_002.dds"
+          },
+          {
+            "slotId": "noise",
+            "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds",
+            "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_noise_001.dds"
+          }
+        ],
+        "scalars": [],
+        "colors": []
       }
     },
     {
@@ -24413,6 +24412,1157 @@
       "transformInheritance": {
         "enabled": false,
         "masterElementId": ""
+      }
+    },
+    {
+      "id": "donut.telegraph.outer.red",
+      "displayName": "donut.telegraph.outer.red",
+      "groupId": "manual.hit1",
+      "sourceNode": "",
+      "visible": true,
+      "kind": "particle",
+      "resources": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds"
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "",
+        "runtimeAnchorSlotId": "",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0.280000001,
+            0
+          ],
+          "rotationDegrees": [
+            -90,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            22,
+            22,
+            22
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            0.449999988,
+            0,
+            0,
+            0.920000017
+          ],
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": false,
+          "sequenceTerm": 0.100000001,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 5,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 0
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
+        },
+        "sprite": {
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
+        },
+        "decal": {
+          "size": [
+            1,
+            1
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": false,
+          "endScale": [
+            1,
+            1,
+            1
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1
+        },
+        "particle": {
+          "maxParticles": 1,
+          "spawnRatePerSecond": 0,
+          "burstCount": 1,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            2,
+            2
+          ],
+          "initialPositionMin": [
+            0,
+            0,
+            0
+          ],
+          "initialPositionMax": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMin": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMax": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            0.75,
+            0.75
+          ],
+          "endSize": [
+            0.75,
+            0.75
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666675,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.0500000007,
+          "maxCopies": 16,
+          "alphaExponent": 1
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 0,
+        "emitterLoopCount": 1,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false
+      },
+      "authoringOverrides": {
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+            "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_05/fx_m_noise_001.dds"
+          },
+          {
+            "slotId": "mask",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+            "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_00/fx_b_ring_005_cl.dds"
+          }
+        ],
+        "scalars": [],
+        "colors": []
+      }
+    },
+    {
+      "id": "sprite_particle_6",
+      "displayName": "sprite_particle_6",
+      "groupId": "manual.hit1",
+      "sourceNode": "",
+      "visible": true,
+      "kind": "particle",
+      "resources": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_ring_001_cl.dds"
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_ring_001_cl.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "",
+        "runtimeAnchorSlotId": "",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0.310000002,
+            0
+          ],
+          "rotationDegrees": [
+            90,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            18,
+            18,
+            18
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            0.930000007,
+            0,
+            0,
+            4.11000013
+          ],
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": false,
+          "sequenceTerm": 0.100000001,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 5,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
+        },
+        "sprite": {
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
+        },
+        "decal": {
+          "size": [
+            1,
+            1
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": false,
+          "endScale": [
+            1,
+            1,
+            1
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1
+        },
+        "particle": {
+          "maxParticles": 1,
+          "spawnRatePerSecond": 0,
+          "burstCount": 1,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            2,
+            2
+          ],
+          "initialPositionMin": [
+            0,
+            0,
+            0
+          ],
+          "initialPositionMax": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMin": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMax": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            0.75,
+            0.75
+          ],
+          "endSize": [
+            0.75,
+            0.75
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666675,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.0500000007,
+          "maxCopies": 16,
+          "alphaExponent": 1
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 0,
+        "emitterLoopCount": 1,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "donut.telegraph.inner.grow",
+      "displayName": "donut.telegraph.inner.grow",
+      "groupId": "manual.hit1",
+      "sourceNode": "",
+      "visible": true,
+      "kind": "particle",
+      "resources": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_b_ring_001.dds"
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_b_ring_001.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "",
+        "runtimeAnchorSlotId": "",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.100000001,
+            0.319999993,
+            -0.100000001
+          ],
+          "rotationDegrees": [
+            90,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            17,
+            17,
+            17
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            0.819999993,
+            0,
+            0,
+            0.800000012
+          ],
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": false,
+          "sequenceTerm": 0.100000001,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 5,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
+        },
+        "sprite": {
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
+        },
+        "decal": {
+          "size": [
+            1,
+            1
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": true,
+          "endScale": [
+            41.2999992,
+            41.2999992,
+            1
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1
+        },
+        "particle": {
+          "maxParticles": 1,
+          "spawnRatePerSecond": 0,
+          "burstCount": 1,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            2,
+            2
+          ],
+          "initialPositionMin": [
+            0,
+            0,
+            0
+          ],
+          "initialPositionMax": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMin": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMax": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            0.75,
+            0.75
+          ],
+          "endSize": [
+            0.75,
+            0.75
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666675,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.0500000007,
+          "maxCopies": 16,
+          "alphaExponent": 1
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 0,
+        "emitterLoopCount": 1,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "donut.impact.wave.black",
+      "displayName": "donut.impact.wave.black",
+      "groupId": "manual.hit1",
+      "sourceNode": "",
+      "visible": true,
+      "kind": "particle",
+      "resources": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds"
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_005.dds"
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds"
+        },
+        {
+          "slotId": "dissolve",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_026.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "",
+        "runtimeAnchorSlotId": "",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0.620000005,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -90,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.49000001,
+            7.11999989,
+            0.439999998
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            1,
+            4,
+            3,
+            3
+          ],
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": false,
+          "sequenceTerm": 0.100000001,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.460000008,
+          "lifeTimeSeconds": 5,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
+        },
+        "sprite": {
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
+        },
+        "decal": {
+          "size": [
+            1,
+            1
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": false,
+          "endScale": [
+            1,
+            1,
+            1
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1
+        },
+        "particle": {
+          "maxParticles": 16,
+          "spawnRatePerSecond": 0,
+          "burstCount": 16,
+          "randomSeed": 4,
+          "lifeTimeSeconds": [
+            0.5,
+            0.5
+          ],
+          "initialPositionMin": [
+            0,
+            0,
+            0
+          ],
+          "initialPositionMax": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMin": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMax": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            2.36999989,
+            0.75
+          ],
+          "endSize": [
+            6.71999979,
+            0.75
+          ],
+          "localSpace": false,
+          "billboard": false,
+          "spawnShape": {
+            "kind": "ring",
+            "radius": 15,
+            "innerRadius": 15,
+            "extents": [
+              0,
+              0,
+              0
+            ],
+            "arcDegrees": 360
+          }
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666675,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.0500000007,
+          "maxCopies": 16,
+          "alphaExponent": 1
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 0,
+        "emitterLoopCount": 1,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false
       }
     }
   ]

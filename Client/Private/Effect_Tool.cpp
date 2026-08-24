@@ -10004,6 +10004,7 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 {
 	/* parse -> validate -> stage -> commit. A failed reload keeps whatever the
 	   window is already showing so a transient read error never empties it. */
+	m_bValtanPatternTreeLoadAttempted = true;
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	std::string Status;
 	if (!CValtanPatternTree::Load(Staged, Status))
@@ -11447,7 +11448,7 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	const std::string& strSearch)
 {
-	if (!m_bValtanPatternTreeLoaded)
+	if (!m_bValtanPatternTreeLoaded && !m_bValtanPatternTreeLoadAttempted)
 		Refresh_ValtanPatternTree();
 	if (!m_strValtanPatternTreeStatus.empty())
 		ImGui::TextDisabled("%s", m_strValtanPatternTreeStatus.c_str());
@@ -23852,17 +23853,19 @@ bool_t Client::CEffect_Tool::Is_ProductCueVisible(
 	const f32_t fTimelineMs = fTimelineSeconds * 1000.f;
 	const f32_t fStageStartMs = static_cast<f32_t>(
 		m_ValtanProductPreview->iOwningStageTimelineOffsetMs);
-	const f32_t fStageEndMs = fStageStartMs + static_cast<f32_t>(
-		m_ValtanProductPreview->Cue.iStageDurationMs);
 	const f32_t fClipStartMs = static_cast<f32_t>(
 		m_ValtanProductPreview->iOwningClipTimelineOffsetMs);
 	if (0u == m_ValtanProductPreview->Cue.iStageDurationMs ||
 		fTimelineMs + 0.5f < fStageStartMs ||
-		fTimelineMs + 0.5f < fClipStartMs ||
-		fTimelineMs + 0.5f >= fStageEndMs)
+		fTimelineMs + 0.5f < fClipStartMs)
 	{
 		return false;
 	}
+	/* Product runtime retains NATURAL boss-action Effects when the Server
+	   advances to the next stage.  Do not clamp those previews to their owner
+	   stage: the Effect document's own lifetime may intentionally cover a
+	   following semantic stage (the unified INNER -> OUTER donut does).  A
+	   CUE_END source window remains bounded by Resolve_CuePreviewSample below. */
 
 	ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
 	Timing.fClipSourceStartSeconds = static_cast<f32_t>(
@@ -25575,8 +25578,9 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
 	else if (m_ValtanProductPreview.has_value())
 	{
 		/* Valtan Product Play now owns the complete chosen pattern branch.
-		   Cue visibility is still capped by the owning stage and stop policy,
-		   but the scrubber must continue through all later animation stages. */
+		   CUE_END visibility is bounded by its source window while NATURAL
+		   Effects retain their document lifetime across later stages, matching
+		   the Server-authoritative boss presentation path. */
 		const uint32_t iProductTimelineDurationMs =
 			0u != m_ValtanProductPreview->iTimelineDurationMs ?
 				m_ValtanProductPreview->iTimelineDurationMs :

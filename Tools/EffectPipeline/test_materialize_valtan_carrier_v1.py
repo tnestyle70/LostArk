@@ -17,12 +17,14 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 import materialize_valtan_carrier_v1 as materializer
+import valtan_carrier_v1_successor_lineage as successor_lineage
 
 
 class ValtanCarrierV1MaterializerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.state, cls.outputs, cls.receipt = materializer.build_outputs()
+        cls.successor_receipt = materializer._load_successor_receipt()
         cls.catalog = json.loads(
             cls.outputs[materializer.CATALOG_PATH].decode("utf-8")
         )
@@ -44,14 +46,28 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
             if cls.protected_path in cls.outputs
             else cls.protected_path.read_text(encoding="utf-8")
         )
+        cls.successor_target_ids = set(
+            successor_lineage.successor_documents(cls.successor_receipt)
+        ).intersection(cls.documents)
 
     def test_exact_reviewed_denominator_and_decal_expansion(self) -> None:
         summary = self.receipt["summary"]
         for key, expected in materializer.EXPECTED.items():
             self.assertEqual(expected, summary[key], key)
         self.assertEqual(44, len(self.documents))
+        successor_entries = successor_lineage.successor_documents(
+            self.successor_receipt
+        )
+        expected_live_count = 657 - sum(
+            successor_entries[effect_id]["historicalBaseline"]["elementCount"]
+            for effect_id in self.successor_target_ids
+        ) + sum(
+            successor_entries[effect_id]["finalDocument"]["elementCount"]
+            for effect_id in self.successor_target_ids
+        )
         self.assertEqual(
-            657, sum(len(row["elements"]) for row in self.documents.values())
+            expected_live_count,
+            sum(len(row["elements"]) for row in self.documents.values()),
         )
         self.assertEqual(669, summary["finalValtanProductRowCount"])
         self.assertEqual(
@@ -89,7 +105,8 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
     def test_all_materialized_rows_use_exact_carrier_and_common_alpha(self) -> None:
         by_source = {
             element["sourceNode"]: element
-            for document in self.documents.values()
+            for effect_id, document in self.documents.items()
+            if effect_id not in self.successor_target_ids
             for element in document["elements"]
         }
         ledger = {
@@ -97,9 +114,15 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
             for row in self.receipt["reviewedProjectionLedger"]
             if row.get("sourceNode")
         }
-        self.assertEqual(657, len(by_source))
+        managed_sources = [
+            row
+            for row in self.receipt["sourceElements"]
+            if row["effectAssetId"] not in self.successor_target_ids
+        ]
+        self.assertEqual(577, len(managed_sources))
+        self.assertEqual(577, len(by_source))
         shapes = Counter()
-        for source in self.receipt["sourceElements"]:
+        for source in managed_sources:
             element = by_source[source["sourceNode"]]
             material = element["material"]
             self.assertEqual("effect.standard", material["templateId"])
@@ -145,22 +168,30 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
             else:
                 self.assertFalse(mesh_models)
                 self.assertNotIn("modelPreScale", element["detail"].get("mesh", {}))
+        expected_shapes = Counter(
+            row["rendererShape"] for row in managed_sources
+        )
         self.assertEqual(
-            {"decal": 32, "mesh": 171, "sprite": 454},
+            dict(sorted(expected_shapes.items())),
             dict(sorted(shapes.items())),
         )
 
     def test_one_product_owner_per_clip_and_explicit_exceptions(self) -> None:
+        historical_cues = successor_lineage.project_historical_cues(
+            self.cues, self.successor_receipt
+        )
         carrier_cues = [
             row
-            for row in self.cues["cues"]
+            for row in historical_cues["cues"]
             if str(row.get("bindingId") or "").startswith(
                 "cue.valtan.carrier-v1."
             )
         ]
         self.assertEqual(43, len(carrier_cues))
         self.assertEqual(43, len({row["clipOccurrenceId"] for row in carrier_cues}))
-        owners = Counter(row["clipOccurrenceId"] for row in self.cues["cues"])
+        owners = Counter(
+            row["clipOccurrenceId"] for row in historical_cues["cues"]
+        )
         self.assertTrue(all(value == 1 for value in owners.values()))
         self.assertEqual(0, owners[materializer.RED_BLADE_CLIP_ID])
         self.assertTrue(
@@ -172,8 +203,12 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
             )
         )
 
+        historical_catalog = successor_lineage.project_historical_catalog(
+            self.catalog, self.successor_receipt
+        )
         catalog_ids = {
             row["effectAssetId"] for row in self.catalog["effects"]
+            if row in historical_catalog["effects"]
             if row["effectAssetId"].startswith("effect.valtan.")
         }
         self.assertEqual(46, len(catalog_ids))
@@ -198,7 +233,7 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
         self.assertEqual(
             105, len({row["retiredBindingId"] for row in successors})
         )
-        cue_ids = {row["bindingId"] for row in self.cues["cues"]}
+        cue_ids = {row["bindingId"] for row in historical_cues["cues"]}
         replaced = [
             row
             for row in successors
@@ -313,6 +348,7 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
             blockers,
             self.catalog,
             self.cues,
+            self.successor_receipt,
         )
         unrelated_catalog = copy.deepcopy(self.catalog)
         unrelated_catalog["effects"].append(
@@ -332,6 +368,7 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
             blockers,
             unrelated_catalog,
             self.cues,
+            self.successor_receipt,
         )
         drifted_catalog = copy.deepcopy(self.catalog)
         next(
@@ -348,6 +385,7 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 blockers,
                 drifted_catalog,
                 self.cues,
+                self.successor_receipt,
             )
         drifted = copy.deepcopy(blockers)
         drifted["reviewedProjectionLedger"][0]["conversionStatus"] += ".drift"
@@ -360,6 +398,7 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 drifted,
                 self.catalog,
                 self.cues,
+                self.successor_receipt,
             )
 
     def test_temp_transaction_second_build_is_applied_and_idempotent(self) -> None:
@@ -371,6 +410,8 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 staged[temp_root / relative] = payload
 
             required = [
+                materializer.RECEIPT_PATH,
+                materializer.SUCCESSOR_RECEIPT_PATH,
                 materializer.LEGACY_INVENTORY_PATH,
                 materializer.AUTHORED_ROOT
                 / f"{materializer.PROTECTED_EFFECT_ID}.effect.json",
@@ -404,6 +445,11 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 / "Data/Effects/Imported/Valtan/CarrierV1"
                 / "Valtan.carrier-v1-materialization-receipt.v1.json"
             )
+            temp_successor_receipt = (
+                temp_root
+                / "Data/Effects/Imported/Valtan/CarrierV1"
+                / "Valtan.carrier-v1-successor-lineage-receipt.v1.json"
+            )
             temp_legacy = (
                 temp_root
                 / "Data/Effects/Imported/Valtan/CarrierV1"
@@ -416,6 +462,7 @@ class ValtanCarrierV1MaterializerTests(unittest.TestCase):
                 CUE_PATH=temp_cues,
                 AUTHORED_ROOT=temp_authored,
                 RECEIPT_PATH=temp_receipt,
+                SUCCESSOR_RECEIPT_PATH=temp_successor_receipt,
                 LEGACY_INVENTORY_PATH=temp_legacy,
             ):
                 state, writes, _ = materializer.build_outputs()
