@@ -386,6 +386,7 @@
 	<None Include="..\..\Data\Valtan\Valtan.pattern.json" />
 	<None Include="..\..\Data\Valtan\Valtan.gameplay.json" />
 	<None Include="..\..\Data\Valtan\Valtan.presentation.json" />
+	<None Include="..\..\Data\Valtan\Valtan.presentation.debug.json" />
 	<None Include="..\..\Data\Valtan\Valtan.combatobjects.json" />
 	<None Include="..\..\Data\Valtan\Valtan.worldeventsets.json" />
 	<None Include="..\..\Data\Valtan\Valtan.legacy-compatibility.json" />

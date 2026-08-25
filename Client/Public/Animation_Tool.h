@@ -163,6 +163,28 @@ private:
 		std::vector<f32_t> cuts;
 	};
 
+	/* One step of a chain the animator assembles by hand instead of reading it
+	out of .clipseq. The duration carries the same meaning the source cuts do:
+	zero plays the clip's native length, shorter cuts it, longer loops it until
+	the step is filled. Session-scoped -- nothing here is authoring data yet. */
+	struct CUSTOM_CHAIN_STEP
+	{
+		std::string clipName;
+		f32_t fDurationSeconds = {};
+	};
+
+	/* A saved chain in Valtan.presentation.debug.json. The target ids are the
+	stage this chain is meant for and stay free text on purpose: the pattern may
+	not be promoted into Valtan.gameplay.json yet, and the debug file is a
+	handoff note rather than a document the publisher joins. */
+	struct CUSTOM_CHAIN_ENTRY
+	{
+		std::string chainId;
+		std::string targetPatternId;
+		std::string targetStageId;
+		std::vector<CUSTOM_CHAIN_STEP> steps;
+	};
+
 	/* One hit of a .skilltiming row. v2 files spell these out on "hit" lines; a
 	v1 file only has windows, so the rest stays zero. */
 	struct SKILL_HIT
@@ -220,6 +242,17 @@ private:
 		const shared_ptr<Engine::CModel>& pModel);
 	void Render_ValtanPatternReferenceWindow(
 		const shared_ptr<Engine::CModel>& pModel);
+	void Render_ValtanCustomChainWindow(
+		const shared_ptr<Engine::CModel>& pModel);
+	/* Feeds the hand-built steps through the same preview playlist the source
+	   sequences use, so transport, cuts and looping behave identically. */
+	bool_t Start_ValtanCustomChainPreview(
+		const shared_ptr<Engine::CModel>& pModel);
+	std::filesystem::path Get_CustomChainFilePath() const;
+	bool_t Load_CustomChainLibrary();
+	/* Whole-file atomic replace. A rejected write leaves the previous library
+	   on disk and in memory so a failed save never costs saved chains. */
+	bool_t Save_CustomChainLibrary();
 	bool_t Reload_ValtanPatternMaster();
 	std::vector<const VALTAN_PATTERN_VIEW*>
 		Collect_ValtanPatternMasterPatterns() const;
@@ -382,6 +415,20 @@ private:
 	bool_t m_bValtanPatternMasterPlaying = false;
 	bool_t m_bValtanPatternMasterPaused = false;
 	bool_t m_bShowValtanSourceReferenceWindow = false;
+	bool_t m_bShowValtanCustomChainWindow = false;
+	std::vector<CUSTOM_CHAIN_STEP> m_CustomChainSteps;
+	std::vector<CUSTOM_CHAIN_ENTRY> m_CustomChainLibrary;
+	bool_t m_bCustomChainLibraryLoadAttempted = false;
+	char m_CustomChainFilter[128]{};
+	char m_CustomChainId[64]{};
+	char m_CustomChainTargetPatternId[64]{};
+	char m_CustomChainTargetStageId[64]{};
+	std::string m_strCustomChainStatus;
+	/* Preview-only cross-fade between chain steps. CCharacter already blends
+	   its clips at 0.12 s; the product Valtan does not blend at all yet, so a
+	   sequence judged here reads smoother than the live boss until the boss
+	   owner adopts the same value. */
+	f32_t m_fPreviewBlendSeconds = 0.12f;
 	int32_t m_iValtanPatternMasterSelected = 0;
 	std::size_t m_iValtanPatternMasterItem = 0u;
 	f32_t m_fValtanPatternMasterItemElapsedSeconds = 0.f;
