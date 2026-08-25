@@ -1,41 +1,3 @@
-# Character Select 중앙 교차 바닥 depth 분리 디테일 계획서
-
-## G00. 배치 correction
-
-### 목표와 종료 증거
-
-원본 imported 배치를 증거로 보존하면서 제품 authoring과 runtime publish에서 실제로 coplanar overlap을 만드는 placement만 2mm depth step으로 분리한다. mesh, material, texture, asset ID, stable placement ID와 총 배치 수는 변하지 않는다.
-
-### 정확한 교체 위치
-
-`Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.mapplacements`와 `Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapplacements`의 대상 행은 다음 최종 값을 사용한다. export 442는 하단 4-way group의 원본 anchor다.
-
-```text
-13004387245150734382 "LV_LOBBY_CLASSSELECT_SL00:export:442" "LV_LOBBY_CLASSSELECT_SL00" "actor" "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM" -771.506328 -142.735918 197.05627 0 0.382683432 0 0.923879533 -0.632373989 0.33149299 0.850476027 1
-9728074828520549347 "LV_LOBBY_CLASSSELECT_SL00:export:444" "LV_LOBBY_CLASSSELECT_SL00" "actor" "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM" -771.535938 -142.737918 198.048906 0 -0.382683432 0 0.923879533 -0.632373989 0.33149299 0.850475848 1
-17033911184007117021 "LV_LOBBY_CLASSSELECT_SL00:export:458" "LV_LOBBY_CLASSSELECT_SL00" "actor" "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM" -772.507812 -142.739918 197.035352 0 0.923879533 0 0.382683432 -0.632373989 0.33149299 0.850475848 1
-9567686591551344922 "LV_LOBBY_CLASSSELECT_SL00:export:474" "LV_LOBBY_CLASSSELECT_SL00" "actor" "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM" -772.519922 -142.741918 198.028262 -0 -0.923879533 -0 0.382683432 -0.632373989 0.33149299 0.850476027 1
-11968900681581939590 "LV_LOBBY_CLASSSELECT_SL00:export:490" "LV_LOBBY_CLASSSELECT_SL00" "actor" "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM" -772.017422 -142.713572 197.537871 0 0.923879533 0 0.382683432 -0.605117977 0.631070793 0.907677352 1
-10547857777741800178 "LV_LOBBY_CLASSSELECT_SL00:export:495" "LV_LOBBY_CLASSSELECT_SL00" "actor" "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM" -772.017422 -142.72116 197.537813 0 0.923879533 0 0.382683432 0.672353625 0.383848429 0.907677352 1
-```
-
-Imported의 442/444/458/474는 모두 Y `-142.735918`을 유지한다. authoring/runtime에서만 444/458/474를 2/4/6mm 낮춘다. 기존 중앙 pair인 490/495의 2mm correction도 유지한다.
-
-## G01. `Test-CharacterSelectCenterDepthSeparation.ps1`
-
-### 책임과 호출 흐름
-
-독립 하네스가 imported, authoring, runtime placement와 source/runtime catalog를 읽고 다음을 fail-closed로 검사한다.
-
-- Imported 대비 authoring 차이는 export 444/458/474/490/495의 Y에만 존재한다.
-- 여덟 중앙 bridge placement는 모두 원래 textured asset ID를 유지한다.
-- source/runtime catalog는 55개이고 byte-equivalent다.
-- authoring/runtime placement는 803개이고 byte-equivalent다.
-- MapCatalog count도 55/803을 유지한다.
-
-### 새 파일 전체 코드
-
-```powershell
 param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 )
@@ -161,12 +123,3 @@ if ($area.Count -ne 1 -or $area[0].placementCount -ne 803 -or $area[0].assetCoun
 }
 
 Write-Host '[CharacterSelectCenterDepthSeparation] PASS: only five crossing placements have deterministic 2mm depth steps; all original textured assets are preserved.'
-```
-
-### 검증 명령
-
-```powershell
-powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LOBBY_CLASSSELECT_SL00
-powershell -ExecutionPolicy Bypass -File Tools/ProjectAudit/Test-CharacterSelectCenterDepthSeparation.ps1
-git diff --check
-```
