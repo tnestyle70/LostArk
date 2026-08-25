@@ -34,7 +34,10 @@ namespace
 }
 #include "GameInstance.h"
 #include "Presentation_Manager.h"
+#include "Transform.h"
 
+#include <algorithm>
+#include <cfloat>
 #include <cmath>
 
 namespace
@@ -795,6 +798,70 @@ HRESULT CRenderer::Render_NonLight()
 HRESULT CRenderer::Render_Blend()
 {
 	HRESULT hFirstFailure = S_OK;
+
+	/* Translucent surfaces have to be drawn far to near or they overwrite each
+	   other in submission order, which is what made overlapping water sheets
+	   and their props flip depending on which placement happened to be added
+	   first. The list itself is left alone; only the draw order is sorted, so
+	   nothing else that walks the render group sees a different sequence.
+
+	   The scratch buffer is a function-local static because rendering runs on
+	   one thread and the alternative is a heap allocation every frame. */
+	static vector<pair<f32_t, CGameObject*>> SortedBlendObjects;
+	SortedBlendObjects.clear();
+	const float4_t* pCamPosition = CGameInstance::Get().Get_CamPosition();
+	if (nullptr != pCamPosition)
+	{
+		SortedBlendObjects.reserve(
+			m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].size());
+		const vector_t vCamera = XMLoadFloat4(pCamPosition);
+		for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::BLEND)])
+		{
+			if (nullptr == pRenderObject)
+				continue;
+			/* No transform is not an error here: the object still has to draw,
+			   it just cannot be placed in the ordering, so it goes first. */
+			f32_t fDistanceSquared = FLT_MAX;
+			const shared_ptr<CTransform> pTransform =
+				dynamic_pointer_cast<CTransform>(
+					pRenderObject->Get_Component(g_strTransformComTag));
+			if (nullptr != pTransform)
+			{
+				const vector_t vDelta =
+					pTransform->Get_State(STATE::POSITION) - vCamera;
+				fDistanceSquared =
+					XMVectorGetX(XMVector3LengthSq(vDelta));
+				if (!std::isfinite(fDistanceSquared))
+					fDistanceSquared = FLT_MAX;
+			}
+			SortedBlendObjects.emplace_back(
+				fDistanceSquared, pRenderObject.get());
+		}
+		std::stable_sort(
+			SortedBlendObjects.begin(), SortedBlendObjects.end(),
+			[](const pair<f32_t, CGameObject*>& lhs,
+				const pair<f32_t, CGameObject*>& rhs)
+			{
+				return lhs.first > rhs.first;
+			});
+		for (const auto& [fDistanceSquared, pRenderObject] :
+			SortedBlendObjects)
+		{
+			UNREFERENCED_PARAMETER(fDistanceSquared);
+			const HRESULT hResult = pRenderObject->Render();
+			if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
+			{
+				WriteRendererFailure(
+					"Render_Blend_Object",
+					hResult,
+					typeid(*pRenderObject).name());
+				hFirstFailure = hResult;
+			}
+		}
+		m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].clear();
+		return hFirstFailure;
+	}
+
 	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::BLEND)])
 	{
 		if (nullptr != pRenderObject)

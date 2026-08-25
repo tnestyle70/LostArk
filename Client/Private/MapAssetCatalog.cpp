@@ -1,5 +1,6 @@
 #include "MapAssetCatalog.h"
 
+#include "DataJson.h"
 #include "RuntimeAssetRoot.h"
 #include "ProjectDataRoot.h"
 
@@ -405,6 +406,11 @@ bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 			m_SourcePlacementOverride : std::filesystem::path{};
 		m_bSharded = true;
 		m_bReady = true;
+		if (!Load_WaterPresentation(m_AreaId))
+		{
+			m_bReady = false;
+			return false;
+		}
 		m_Status = "Shard set ready: " + std::to_string(m_Shards.size()) +
 			" shards / " + std::to_string(m_Entries.size()) + " assets";
 		return true;
@@ -420,6 +426,11 @@ bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 	m_PlacementPath = hasSourceOverride ?
 		m_SourcePlacementOverride :
 		mapRoot / (std::filesystem::path(selectedAreaId).wstring() + L".mapplacements");
+	if (!Load_WaterPresentation(m_AreaId))
+	{
+		m_bReady = false;
+		return false;
+	}
 	return true;
 }
 
@@ -555,6 +566,8 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 			entry.renderProfile.renderMode = MAP_ASSET_RENDER_MODE::BACKGROUND;
 		else if (row.renderMode == "Additive")
 			entry.renderProfile.renderMode = MAP_ASSET_RENDER_MODE::ADDITIVE;
+		else if (row.renderMode == "Water")
+			entry.renderProfile.renderMode = MAP_ASSET_RENDER_MODE::WATER;
 		else
 		{
 			m_Status = "Unknown render mode for " + entry.id;
@@ -625,6 +638,200 @@ const MAP_ASSET_ENTRY* CMapAssetCatalog::Find(const std::string& assetId) const
 	const auto iter = m_EntryLookup.find(assetId);
 	return iter == m_EntryLookup.end() || iter->second >= m_Entries.size() ?
 		nullptr : &m_Entries[iter->second];
+}
+
+const MAP_ASSET_WATER_PROFILE* CMapAssetCatalog::Find_Water(
+	const std::string& assetId) const
+{
+	const auto iter = m_WaterProfiles.find(assetId);
+	return iter == m_WaterProfiles.end() ? nullptr : &iter->second;
+}
+
+bool_t CMapAssetCatalog::Load_WaterPresentation(const std::string& areaId)
+{
+	m_WaterProfiles.clear();
+
+	const auto countWaterAssets = [this]()
+	{
+		size_t count = 0;
+		for (const MAP_ASSET_ENTRY& entry : m_Entries)
+		{
+			if (MAP_ASSET_RENDER_MODE::WATER == entry.renderProfile.renderMode)
+				++count;
+		}
+		return count;
+	};
+
+	const std::filesystem::path documentPath =
+		m_SourceCatalogOverride.empty() ?
+		Get_MapDataRoot() /
+			(std::filesystem::path(areaId).wstring() + L".mapwater.json") :
+		Get_MapAuthoringRoot() / areaId /
+			(std::filesystem::path(areaId).wstring() + L".mapwater.json");
+
+	std::error_code existsError;
+	if (!std::filesystem::exists(documentPath, existsError) || existsError)
+	{
+		/* No document is only valid when nothing claims to be water. */
+		if (0 != countWaterAssets())
+		{
+			m_Status = "Map water document is missing for a WATER asset: " +
+				documentPath.string();
+			return false;
+		}
+		return true;
+	}
+
+	std::ifstream input(documentPath, std::ios::binary);
+	if (!input)
+	{
+		m_Status = "Map water document could not be opened: " +
+			documentPath.string();
+		return false;
+	}
+	const std::string text(
+		(std::istreambuf_iterator<char>(input)),
+		std::istreambuf_iterator<char>());
+
+	DATA_JSON_VALUE root;
+	std::string parseError;
+	if (!CDataJson::Parse(text, root, parseError) || !root.Is_Object())
+	{
+		m_Status = "Map water document parse failed: " + parseError;
+		return false;
+	}
+
+	const auto readNumber = [](const DATA_JSON_VALUE& owner,
+		const char* key, float& outValue)
+	{
+		const DATA_JSON_VALUE* value = owner.Find(key);
+		if (nullptr == value || !value->Is_Number() ||
+			!std::isfinite(value->Get_Number()))
+		{
+			return false;
+		}
+		outValue = static_cast<float>(value->Get_Number());
+		return true;
+	};
+	const auto readString = [](const DATA_JSON_VALUE& owner,
+		const char* key, std::string& outValue)
+	{
+		const DATA_JSON_VALUE* value = owner.Find(key);
+		if (nullptr == value || !value->Is_String())
+			return false;
+		outValue = value->Get_String();
+		return true;
+	};
+	const auto readVector = [](const DATA_JSON_VALUE& owner,
+		const char* key, float4_t& outValue)
+	{
+		const DATA_JSON_VALUE* value = owner.Find(key);
+		if (nullptr == value || !value->Is_Array() ||
+			4u != value->Get_Array().size())
+		{
+			return false;
+		}
+		float components[4]{};
+		for (size_t index = 0; index < 4u; ++index)
+		{
+			const DATA_JSON_VALUE& component = value->Get_Array()[index];
+			if (!component.Is_Number() ||
+				!std::isfinite(component.Get_Number()))
+			{
+				return false;
+			}
+			components[index] = static_cast<float>(component.Get_Number());
+		}
+		outValue = float4_t(
+			components[0], components[1], components[2], components[3]);
+		return true;
+	};
+
+	std::string schema;
+	std::string documentAreaId;
+	const DATA_JSON_VALUE* version = root.Find("formatVersion");
+	const DATA_JSON_VALUE* waters = root.Find("waters");
+	if (!readString(root, "schema", schema) ||
+		schema != "lostark.map-water-presentation" ||
+		nullptr == version || !version->Is_Number() ||
+		1.0 != version->Get_Number() ||
+		!readString(root, "areaId", documentAreaId) ||
+		documentAreaId != areaId ||
+		nullptr == waters || !waters->Is_Array() ||
+		waters->Get_Array().size() > 64u)
+	{
+		m_Status = "Map water document header is invalid: " +
+			documentPath.string();
+		return false;
+	}
+
+	std::unordered_map<std::string, MAP_ASSET_WATER_PROFILE> staged;
+	for (const DATA_JSON_VALUE& row : waters->Get_Array())
+	{
+		if (!row.Is_Object())
+		{
+			m_Status = "Map water row is not an object";
+			return false;
+		}
+		std::string assetId;
+		MAP_ASSET_WATER_PROFILE profile{};
+		if (!readString(row, "assetId", assetId) || assetId.empty() ||
+			!readString(row, "materialName", profile.materialName) ||
+			profile.materialName.empty() ||
+			!readString(row, "detailNormalTexture", profile.detailNormalTexture) ||
+			!readString(row, "reflectionTexture", profile.reflectionTexture) ||
+			!readString(row, "foamTexture", profile.foamTexture) ||
+			!readNumber(row, "opacity", profile.opacity) ||
+			!readNumber(row, "opacityPower", profile.opacityPower) ||
+			!readNumber(row, "fresnelIntensity", profile.fresnelIntensity) ||
+			!readNumber(row, "fresnelPower", profile.fresnelPower) ||
+			!readNumber(row, "screenDistortionIntensity",
+				profile.screenDistortionIntensity) ||
+			!readNumber(row, "normalIntensity", profile.normalIntensity) ||
+			!readNumber(row, "detailNormalIntensity",
+				profile.detailNormalIntensity) ||
+			!readNumber(row, "normalDistortionIntensity",
+				profile.normalDistortionIntensity) ||
+			!readNumber(row, "reflectionIntensity", profile.reflectionIntensity) ||
+			!readNumber(row, "reflectionUv", profile.reflectionUv) ||
+			!readNumber(row, "depthBias", profile.depthBias) ||
+			!readNumber(row, "diffuseTiling", profile.diffuseTiling) ||
+			!readVector(row, "diffuseColor", profile.diffuseColor) ||
+			!readVector(row, "reflectionColor", profile.reflectionColor) ||
+			!readVector(row, "normalTilingPanning", profile.normalTilingPanning) ||
+			!readVector(row, "detailNormalTilingPanning",
+				profile.detailNormalTilingPanning) ||
+			!readVector(row, "reflectionTilingPanning",
+				profile.reflectionTilingPanning))
+		{
+			m_Status = "Map water row is invalid in " + documentPath.string();
+			return false;
+		}
+		if (!staged.emplace(assetId, std::move(profile)).second)
+		{
+			m_Status = "Duplicate map water asset row: " + assetId;
+			return false;
+		}
+	}
+
+	/* Both directions, so neither a water asset without parameters nor a row
+	   whose asset was never switched to WATER can pass unnoticed. */
+	for (const MAP_ASSET_ENTRY& entry : m_Entries)
+	{
+		const bool_t isWater =
+			MAP_ASSET_RENDER_MODE::WATER == entry.renderProfile.renderMode;
+		const bool_t hasRow = staged.find(entry.id) != staged.end();
+		if (isWater != hasRow && (isWater || hasRow))
+		{
+			m_Status = isWater ?
+				"WATER asset has no map water row: " + entry.id :
+				"Map water row is not a WATER asset: " + entry.id;
+			return false;
+		}
+	}
+
+	m_WaterProfiles = std::move(staged);
+	return true;
 }
 
 std::filesystem::path CMapAssetCatalog::Get_MapDataRoot()

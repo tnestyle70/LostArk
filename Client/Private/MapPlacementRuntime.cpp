@@ -386,6 +386,11 @@ bool_t CMapPlacementRuntime::Create_Placement(
 	desc.visible = record.visible;
 	desc.renderProfile = asset->renderProfile;
 	desc.frustumCulling = frustumCulling;
+	if (const MAP_ASSET_WATER_PROFILE* water = catalog.Find_Water(asset->id))
+	{
+		desc.hasWaterProfile = true;
+		desc.waterProfile = *water;
+	}
 
 	shared_ptr<CGameObject> gameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(

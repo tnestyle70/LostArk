@@ -10,6 +10,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 EFFECT_TOOL_CPP = REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
 EFFECT_TOOL_HEADER = REPOSITORY_ROOT / "Client/Public/Effect_Tool.h"
 EFFECT_CODEC_CPP = REPOSITORY_ROOT / "Client/Private/Effect_DocumentCodec.cpp"
+EFFECT_PLAYBACK_CPP = REPOSITORY_ROOT / "Client/Private/Effect_Playback.cpp"
 
 
 def function_slice(text: str, signature: str, next_signature: str) -> str:
@@ -24,6 +25,7 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         cls.cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         cls.header = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
         cls.codec = EFFECT_CODEC_CPP.read_text(encoding="utf-8")
+        cls.playback = EFFECT_PLAYBACK_CPP.read_text(encoding="utf-8")
 
     def test_refresh_stages_parsed_authored_documents_for_tree_projection(self) -> None:
         refresh = function_slice(
@@ -76,7 +78,7 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         append = function_slice(
             self.cpp,
             "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
-            "bool_t Client::CEffect_Tool::Try_SelectProductCue(",
+            "void Client::CEffect_Tool::Reset_BufferedComboAudition()",
         )
         required = (
             "EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT != m_eActiveDocumentSource",
@@ -98,7 +100,7 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         append = function_slice(
             self.cpp,
             "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
-            "bool_t Client::CEffect_Tool::Try_SelectProductCue(",
+            "void Client::CEffect_Tool::Reset_BufferedComboAudition()",
         )
         particle_fields = (
             "fUniformScaleMultiplier",
@@ -111,19 +113,48 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         rejection = append.index(
             "Saved Element copy rejected different Effect-level Particle System controls"
         )
-        generic_copy = append.index(
-            "CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy("
+        portable_copy = append.index(
+            "CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy("
         )
-        self.assertLess(rejection, generic_copy)
+        self.assertLess(rejection, portable_copy)
+        for token in (
+            "bTargetUsesParticleSystem",
+            "bUsesParticleSystem && bTargetUsesParticleSystem",
+            "bUsesParticleSystem && !bTargetUsesParticleSystem",
+            "Staged.ParticleSystem = SourceSystem",
+        ):
+            self.assertIn(token, append)
+
+    def test_tool_delegates_saved_element_portability_before_commit(self) -> None:
+        append = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
+            "void Client::CEffect_Tool::Reset_BufferedComboAudition()",
+        )
+        required = (
+            "CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(",
+            "PortableCopy.Elements.size()",
+            '"Saved Element copy rejected: " + Error',
+        )
+        for token in required:
+            self.assertIn(token, append)
+        ordered = (
+            "CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(",
+            "EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument",
+            "Staged.Elements.push_back(std::move(AppendedElement))",
+            "Try_CommitDocument(std::move(Staged))",
+        )
+        positions = [append.index(token) for token in ordered]
+        self.assertEqual(positions, sorted(positions))
 
     def test_append_allocates_unique_id_and_commits_only_staged_document(self) -> None:
         append = function_slice(
             self.cpp,
             "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
-            "bool_t Client::CEffect_Tool::Try_SelectProductCue(",
+            "void Client::CEffect_Tool::Reset_BufferedComboAudition()",
         )
         ordered = (
-            "CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(",
+            "CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(",
             "EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument",
             'const std::string Prefix = "authored.copy."',
             "128u - Prefix.size() - Suffix.size()",
@@ -131,6 +162,8 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
             "Staged.Elements.push_back(std::move(AppendedElement))",
             "Try_CommitDocument(std::move(Staged))",
             "m_strSelectedElementId = CopyElementId",
+            "if (m_bActiveDocumentDrawable)",
+            "Start_WorldPreviewFromBeginning();",
         )
         for token in ordered:
             self.assertIn(token, append)
@@ -143,7 +176,7 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         append = function_slice(
             self.cpp,
             "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
-            "bool_t Client::CEffect_Tool::Try_SelectProductCue(",
+            "void Client::CEffect_Tool::Reset_BufferedComboAudition()",
         )
         commit = function_slice(
             self.cpp,
@@ -169,6 +202,91 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
             append.index(commit_call),
             append.index("m_strSelectedElementId = CopyElementId"),
         )
+
+    def test_successful_append_restarts_player_and_valtan_preview_from_zero(self) -> None:
+        append = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
+            "void Client::CEffect_Tool::Reset_BufferedComboAudition()",
+        )
+        restart = function_slice(
+            self.cpp,
+            "void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()",
+            "void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()",
+        )
+        self.assertEqual(1, append.count("Start_WorldPreviewFromBeginning();"))
+        self.assertLess(
+            append.index("Try_CommitDocument(std::move(Staged))"),
+            append.index("Start_WorldPreviewFromBeginning();"),
+        )
+        self.assertLess(
+            append.index("m_strSelectedElementId = CopyElementId"),
+            append.index("Start_WorldPreviewFromBeginning();"),
+        )
+        valtan_begin = restart.index(
+            "if (m_bValtanBossPatternTransformHistoryRequired)"
+        )
+        generic_begin = restart.index("float4x4_t TargetRoot{};", valtan_begin)
+        valtan_restart = restart[valtan_begin:generic_begin]
+        ordered_valtan_restart = (
+            "pObject->Reset();",
+            "pObject->Set_SampleTimeWithTransformHistory(",
+            "pObject->Set_Visible(true);",
+        )
+        for token in ordered_valtan_restart:
+            self.assertIn(token, valtan_restart)
+        self.assertEqual(
+            sorted(valtan_restart.index(token) for token in ordered_valtan_restart),
+            [valtan_restart.index(token) for token in ordered_valtan_restart],
+        )
+        self.assertGreater(
+            restart.index("Resolve_PreviewRoot(TargetRoot)", generic_begin),
+            valtan_begin,
+        )
+
+    def test_append_stages_complete_scope_and_rebinds_current_document_timeline(self) -> None:
+        append = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
+            "void Client::CEffect_Tool::Reset_BufferedComboAudition()",
+        )
+        commit = "Try_CommitDocument(std::move(Staged))"
+        scope_tokens = (
+            "const EFFECT_PREVIEW_FILTER ePreviousPreviewFilter",
+            "const std::string strPreviousIsolationElement",
+            "const std::string strPreviousIsolationGroup",
+            "const std::string strPreviousIsolationModelCue",
+            "const EFFECT_AUTHORING_FAMILY ePreviousIsolationAuthoringFamily",
+            "m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE",
+            "m_strPreviewIsolationElementId.clear()",
+            "m_strPreviewIsolationGroupId.clear()",
+            "m_strPreviewIsolationModelCueId.clear()",
+            "m_ePreviewIsolationAuthoringFamily = EFFECT_AUTHORING_FAMILY::END",
+        )
+        for token in scope_tokens:
+            self.assertIn(token, append)
+            self.assertLess(append.index(token), append.index(commit))
+        rollback = append[append.index(f"if (!{commit})") :]
+        for token in (
+            "m_ePreviewFilter = ePreviousPreviewFilter",
+            "m_strPreviewIsolationElementId = strPreviousIsolationElement",
+            "m_strPreviewIsolationGroupId = strPreviousIsolationGroup",
+            "m_strPreviewIsolationModelCueId = strPreviousIsolationModelCue",
+            "ePreviousIsolationAuthoringFamily",
+        ):
+            self.assertIn(token, rollback)
+        ordered_success = (
+            commit,
+            "bForeignPlayerProduct",
+            "bForeignValtanProduct",
+            "m_SourcePreviewDocument.reset()",
+            "m_strSelectedElementId = CopyElementId",
+            "Recalculate_PreviewDuration(*m_ActiveDocument)",
+            "Synchronize_LoadedSkillPreview()",
+            "Start_WorldPreviewFromBeginning()",
+        )
+        positions = [append.index(token) for token in ordered_success]
+        self.assertEqual(positions, sorted(positions))
 
     def test_effect_asset_transitions_clear_the_saved_element_half_of_selection(self) -> None:
         create_element = function_slice(
@@ -205,7 +323,7 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         generic = function_slice(
             self.codec,
             "bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(",
-            "void Client::CEffectDocumentCodec::Record_AuthoringResourceOverride(",
+            "bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(",
         )
         self.assertIn("Candidate.Elements.push_back(*First)", generic)
         for token in (
@@ -217,6 +335,175 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
             "Lowered.SourcePresentation = {}",
         ):
             self.assertIn(token, generic)
+        emission_fallback = (
+            "Lowered.eKind == EFFECT_ELEMENT_KIND::PARTICLE",
+            "Lowered.Detail.Particle.fSpawnRatePerSecond <= 0.f",
+            "0u == Lowered.Detail.Particle.iBurstCount",
+            "Lowered.Detail.Particle.iMaxParticles = (std::max)(",
+            "Lowered.Detail.Particle.iBurstCount = 1u;",
+        )
+        for token in emission_fallback:
+            self.assertIn(token, generic)
+        recipe_clear = generic.index("Lowered.SourceRecipe = {}")
+        self.assertLess(
+            recipe_clear,
+            generic.index(emission_fallback[0], recipe_clear),
+        )
+        size_normalization = (
+            'Lowered.SourceRecipe.strRendererShape == "mesh"',
+            "std::string_view SourceClass = Module.strClassName",
+            'SourceClass.starts_with("efparticlemodule")',
+            'SourceClass.ends_with("_seeded")',
+            'SourceClass != "particlemodulesize"',
+            'Distribution.strPropertyPath == "startsize"',
+            "iSourceStartSizeCandidateCount",
+            "Distribution.iOperation == 1u",
+            "CEffectDistribution::Validate(",
+            "CEffectDistribution::Evaluate(",
+            "bLegacyGeometryScaledSize",
+            "1.f / fModelPreScale",
+            "Lowered.Detail.Particle.vStartSize.x *= fDimensionlessSizeScale",
+            "Lowered.Detail.Particle.vEndSize.y *= fDimensionlessSizeScale",
+            "Lowered.Detail.Particle.SourceScale.fSize",
+            "Lowered.Detail.Particle.vStartSize.x *= fSourceSizeScale",
+            "Lowered.Detail.Particle.SourceScale.fSize = 1.f",
+        )
+        for token in size_normalization:
+            self.assertIn(token, generic)
+        self.assertLess(
+            generic.index('Distribution.strPropertyPath == "startsize"'),
+            generic.index("Lowered.SourceRecipe = {}"),
+        )
+        self.assertLess(
+            generic.index("Lowered.SourceRecipe = {}"),
+            generic.index("bLegacyGeometryScaledSize"),
+        )
+
+    def test_portable_copy_restores_exact_detail_and_family_carriers(self) -> None:
+        portable = function_slice(
+            self.codec,
+            "bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(",
+            "void Client::CEffectDocumentCodec::Record_AuthoringResourceOverride(",
+        )
+        required = (
+            "SourceDocument.bSourceContract",
+            "!Source->bVisible",
+            "Source->eKind == EFFECT_ELEMENT_KIND::TRAIL",
+            "Source->TransformInheritance.bEnabled",
+            "Source->SourcePresentation.bEnabled",
+            "Source->ActionCueAttachment.bFollow",
+            "Candidate.Elements.push_back(*Source)",
+            "Portable.Renderer = {}",
+            "Portable.TransformInheritance = {}",
+            "Portable.SourceRecipe = {}",
+            "Portable.SourcePresentation = {}",
+            "Portable.Detail = Source->Detail",
+            "Portable.ActionCueAttachment = Source->ActionCueAttachment",
+            'AuthoredCopyPrefix = "authored-copy:"',
+            "Source->strSourceNode.starts_with(AuthoredCopyPrefix)",
+            "std::string(AuthoredCopyPrefix) + Source->strElementId",
+            "Apply_PortableAuthoredParticleRuntimeCarrier(",
+            "Apply_PortableAuthoredDecalRuntimeCarrier(",
+            "Portable.SourceRecipe.fEmitterDelaySeconds =",
+            "Source->SourceRecipe.fEmitterDelaySeconds",
+            "Validate(Staged, strOutError)",
+            "Serialize(Staged) != Canonical",
+        )
+        for token in required:
+            self.assertIn(token, portable)
+        self.assertLess(
+            portable.index("Portable.Detail = Source->Detail"),
+            portable.index("Apply_PortableAuthoredParticleRuntimeCarrier("),
+        )
+        self.assertLess(
+            portable.index("Apply_PortableAuthoredParticleRuntimeCarrier("),
+            portable.index("Portable.SourceRecipe.fEmitterDelaySeconds ="),
+        )
+        self.assertNotIn("OwnerNamespace", portable)
+
+    def test_portable_copy_fails_closed_on_nonportable_visibility_and_history(self) -> None:
+        portable = function_slice(
+            self.codec,
+            "bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(",
+            "void Client::CEffectDocumentCodec::Record_AuthoringResourceOverride(",
+        )
+        for token in (
+            "cannot turn an invisible source Element into a visible occurrence",
+            "cannot detach Trail transform history",
+            "cannot detach a FOLLOW attachment from its owner animation history",
+            "load the complete Effect instead",
+        ):
+            self.assertIn(token, portable)
+
+        carrier = function_slice(
+            self.codec,
+            "bool_t ApplyPortableAuthoredEmitterRuntimeCarrier(",
+            "bool_t Client::CEffectDocumentCodec::\n\tApply_PortableAuthoredParticleRuntimeCarrier(",
+        )
+        self.assertIn("HasPortableAuthoredAutonomousEmission(Staged)", carrier)
+        self.assertIn("no autonomous positive Burst or Rate", carrier)
+        self.assertIn("SpawnPerUnit/event/history-only emitters", carrier)
+
+        autonomous = function_slice(
+            self.codec,
+            "bool_t HasPortableAuthoredAutonomousEmission(",
+            "bool_t IsPortableVectorFieldAssetId(",
+        )
+        for token in (
+            "Burst.iCountMaximum > 0u",
+            'FindDistribution("rate")',
+            'FindDistribution("ratescale")',
+            "IsPortableNullCdoDistribution(*pRateScale)",
+            "CEffectDistribution::Evaluate(",
+        ):
+            self.assertIn(token, autonomous)
+
+    def test_portable_decal_and_random_identity_are_runtime_admitted(self) -> None:
+        for token in (
+            '"particlemoduletypedatadecal"',
+            'Module.strClassName != "efparticlemoduletypedatadecal"',
+            "Apply_PortableAuthoredDecalRuntimeCarrier(",
+            "bDecalCardinalityValid",
+        ):
+            self.assertIn(token, self.codec)
+        for token in (
+            "bool_t Is_PortableAuthoredDecalCarrier(",
+            "bool_t Is_PortableAuthoredEmitterCarrier(",
+            "bSourceVisualProgramActive ||",
+            "Is_PortableAuthoredDecalCarrier(Element)",
+            "Hash_RuntimeRandomIdentity(Element)",
+            "Resolve_EffectPortableOriginElementId(Element)",
+        ):
+            self.assertIn(token, self.playback)
+        self.assertEqual(self.playback.count("Hash_RuntimeRandomIdentity(Element)"), 3)
+
+    def test_portable_origin_identity_reaches_exact_material_contracts(self) -> None:
+        header = (REPOSITORY_ROOT / "Client/Public/Effect_AuthoringDocument.h").read_text(
+            encoding="utf-8-sig"
+        )
+        renderer = (REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp").read_text(
+            encoding="utf-8-sig"
+        )
+        material = (REPOSITORY_ROOT / "Client/Public/Effect_MaterialTemplate.h").read_text(
+            encoding="utf-8-sig"
+        )
+        for token in (
+            "EFFECT_PORTABLE_AUTHORED_COPY_PREFIX",
+            "Resolve_EffectPortableOriginElementId(",
+            "Is_EffectSourceIdentityOrPortableCopy(",
+        ):
+            self.assertIn(token, header)
+        self.assertGreaterEqual(
+            renderer.count("Resolve_EffectPortableOriginElementId(Element)"), 5
+        )
+        self.assertGreaterEqual(
+            renderer.count("Is_EffectSourceIdentityOrPortableCopy("), 5
+        )
+        self.assertIn("Is_EffectSourceIdentityOrPortableCopy(Element,", material)
+        self.assertIn("WARLORD_CHAIN_ORIGIN_ELEMENT_IDS", self.playback)
+        self.assertIn(
+            "Resolve_EffectPortableOriginElementId(Element)", self.codec
+        )
 
 
 if __name__ == "__main__":

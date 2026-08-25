@@ -21,6 +21,14 @@ enum class VALTAN_PATTERN_EFFECT_REPEAT_POLICY : uint8_t
 	END
 };
 
+enum class VALTAN_PATTERN_EFFECT_SCALE_POLICY : uint8_t
+{
+	OWNER_RELATIVE,
+	GAMEPLAY_FOOTPRINT,
+	ARENA_ABSOLUTE,
+	END
+};
+
 struct VALTAN_PATTERN_EFFECT_CUE final
 {
 	std::string strBindingId;
@@ -40,6 +48,10 @@ struct VALTAN_PATTERN_EFFECT_CUE final
 	EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 	VALTAN_PATTERN_EFFECT_REPEAT_POLICY eRepeatPolicy =
 		VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE;
+	VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy =
+		VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+	float3_t vWorldScale{ 1.f, 1.f, 1.f };
+	bool_t bHasExplicitScalePolicy = false;
 	/* v2 values are absolute source-local positions in the referenced clip
 	occurrence.  The names remain source-compatible with the v1 readers. */
 	uint32_t iStartMs = 0u;

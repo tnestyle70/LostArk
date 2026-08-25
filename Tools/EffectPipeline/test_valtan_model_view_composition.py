@@ -12,6 +12,9 @@ from pathlib import Path
 
 SCRIPT_PATH = Path(__file__).resolve()
 REPOSITORY_ROOT = SCRIPT_PATH.parent.parent.parent
+LEVEL_PLACEMENT_EXTRACTOR = (
+    REPOSITORY_ROOT / "Tools/LevelPlacementExtractor"
+)
 
 
 def load_module(name: str, path: Path):
@@ -27,6 +30,12 @@ def load_module(name: str, path: Path):
 builder = load_module(
     "build_valtan_whirlwind_effect_canary_for_model_view",
     SCRIPT_PATH.parent / "build_valtan_whirlwind_effect_canary.py",
+)
+if str(LEVEL_PLACEMENT_EXTRACTOR) not in sys.path:
+    sys.path.insert(0, str(LEVEL_PLACEMENT_EXTRACTOR))
+floor_contract = load_module(
+    "test_valtan_floor_emissive_contract_for_model_view",
+    LEVEL_PLACEMENT_EXTRACTOR / "test_valtan_floor_emissive_contract.py",
 )
 
 
@@ -48,6 +57,12 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             cls.resource_root
             / "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel"
         )
+        cls.armor_part_paths = (
+            cls.resource_root
+            / "Character/Valtan/MN_RPBF_01_Parts1.wmodel",
+            cls.resource_root
+            / "Character/Valtan/MN_RPBF_01_Parts2.wmodel",
+        )
 
     def test_boss_catalog_joins_exact_product_bundle(self) -> None:
         catalog = json.loads(
@@ -56,15 +71,23 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             )
         )
         self.assertEqual(catalog["schema"], "lostark.boss-catalog")
-        self.assertEqual(catalog["formatVersion"], 3)
+        self.assertEqual(catalog["formatVersion"], 4)
         self.assertEqual(len(catalog["bosses"]), 1)
         valtan = catalog["bosses"][0]
         self.assertEqual(valtan["archetypeId"], "BOSS_VALTAN")
+        self.assertEqual(valtan["presentationScale"], 0.75)
         self.assertEqual(
             valtan["bodyModel"], "Character/Valtan/MN_RPBF_01.wmodel"
         )
         self.assertEqual(
             valtan["weaponModel"], "Character/Valtan/ValtanWeapon.wmodel"
+        )
+        self.assertEqual(
+            valtan["armorModels"],
+            [
+                "Character/Valtan/MN_RPBF_01_Parts1.wmodel",
+                "Character/Valtan/MN_RPBF_01_Parts2.wmodel",
+            ],
         )
         self.assertEqual(
             valtan["animationSetId"],
@@ -108,9 +131,124 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                 46_540_308,
                 "4fd71652bf4ca6b11607449b7ece83509d9b3886b1bcdde9e2dc49c5b8c561c0",
             ),
+            self.armor_part_paths[0]: (
+                178_344,
+                "8db32a0097a7dcf9eabe1adfeac2288f68f133bf1739626fe2d9321146182f8b",
+            ),
+            self.armor_part_paths[1]: (
+                233_544,
+                "9096c312af174ca6836b0afdce6955afb39c2ecdfcf7a332a540e5755ada4f03",
+            ),
         }
         for path, (size, digest) in expected.items():
             with self.subTest(path=path):
+                self.assertTrue(path.is_file())
+                self.assertEqual(path.stat().st_size, size)
+                self.assertEqual(raw_sha256(path), digest)
+
+    def test_product_bundle_material_dependency_closure_is_pinned(self) -> None:
+        expected = {
+            "Character/Valtan/textures/mn_rpbf_01-1_d_loc_int.tga": (
+                2_077_007,
+                "08f7c503120b490b65930c26443ed2a93200bf76f242ea9d7f9fa19c6b2861f8",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01-1_e_loc_int.tga": (
+                80_729,
+                "9e2a0aa576a07c7fcc0e160b699e019c2ca396362630ac3d812a8762eb073fe0",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01-1_n_loc_int.tga": (
+                1_803_671,
+                "10c163a36731cacaa7bbeca50406e48496ab0580a758afce60b074ce8ed4119c",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01-1_s_loc_int.tga": (
+                899_431,
+                "c8369c517579e2cae57b0c4286f65b8eb9c8fd087e7ef6049d507a6e56ccdadd",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01-2_d_loc_int.tga": (
+                1_937_817,
+                "c07e06c57145e089739eaf3176f171300ba95e36d9cf85cd56ea001121acdb1e",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01-2_e.tga": (
+                118_645,
+                "f166d6ef9932faa43ae92e854204647e007ed9738d3e23fa6e82feb5ed978614",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01-2_n_loc_int.tga": (
+                3_034_736,
+                "39e977c07f4d511fabf2faee3cf67e7464f459e07c136dd3b86c8a30541c2fc5",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01-2_s_loc_int.tga": (
+                857_089,
+                "26a900fb82b256dc99eed1b1369471713e59b3fabb8d3fe891fecdd71d31af61",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01_d.tga": (
+                2_983_165,
+                "03364ba28d897c4ba14ada4af4cce90e1e78879c7b23587b6479767631d84d8c",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01_e.tga": (
+                168_105,
+                "70ff1d7b25f1c7246d4dd5fd1f3852d286b3174afbb8c5795aa0257808ef0de2",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01_n.tga": (
+                2_305_531,
+                "52ab0301d3c7e4d89ae6793be9a2001be4e966dd7137d04f731a36bd8f754b5a",
+            ),
+            "Character/Valtan/textures/mn_rpbf_01_s.tga": (
+                883_529,
+                "911e6aefe61b314072d8152e4c2298fc059cd59804edb3ad1d311e3c5d91e466",
+            ),
+            "Character/Valtan/textures/wp_mn_rpbf_01-1_d.dds": (
+                131_200,
+                "d96edae6b1abf000a72213e177f3ddac5bebafa935991702b34141c397a2936d",
+            ),
+            "Character/Valtan/textures/wp_mn_rpbf_01-1_e.dds": (
+                131_200,
+                "b1e51c9333ec78ab078a49abb147598f45dc3e11dfb481b385bd10507ce9e3b1",
+            ),
+            "Character/Valtan/textures/wp_mn_rpbf_01-1_n.dds": (
+                262_272,
+                "c9f7e89c33d87b8250a07d5a2e7463731b1e413f648bda5e6cbf58a8a23a4d3d",
+            ),
+            "Character/Valtan/textures/wp_mn_rpbf_01-1_s.dds": (
+                262_272,
+                "8c671844df1bdc3df8ef327e282639b88926295491e80e18affa1cabaf147945",
+            ),
+            "Character/Valtan/textures/wp_mn_rpbf_01_d.dds": (
+                131_200,
+                "0c43ce060328be3a52e92bfc71aaaf724c6dca60a8e105e00ecdc2fff1a3ca15",
+            ),
+            "Character/Valtan/textures/wp_mn_rpbf_01_e.dds": (
+                131_200,
+                "2a1f6b86415ca99ab91952ba29031f1aa22c91052cdb1155296e8224404cea38",
+            ),
+            "Character/Valtan/textures/wp_mn_rpbf_01_n.dds": (
+                262_272,
+                "e287ce49b1620ffaa62e16d89a9920036c25a5ee455b13ae0009b776f8a94c29",
+            ),
+            "Character/Valtan/textures/wp_mn_rpbf_01_s.dds": (
+                65_664,
+                "f6908170a8d0d94c95655739fa609a9493fd9c9653305cfa82f4ceb2aff97c19",
+            ),
+        }
+
+        material_asset_ids: set[str] = set()
+        for model_path in (
+            self.body_path,
+            *self.armor_part_paths,
+            self.weapon_path,
+        ):
+            materials = floor_contract.parse_wmodel_materials(model_path)
+            for slots in materials.values():
+                for relative_path in slots.values():
+                    if relative_path:
+                        self.assertTrue(relative_path.startswith("textures/"))
+                        material_asset_ids.add(
+                            f"Character/Valtan/{relative_path}"
+                        )
+
+        self.assertEqual(material_asset_ids, set(expected))
+        for asset_id, (size, digest) in expected.items():
+            with self.subTest(asset_id=asset_id):
+                path = self.resource_root / asset_id
                 self.assertTrue(path.is_file())
                 self.assertEqual(path.stat().st_size, size)
                 self.assertEqual(raw_sha256(path), digest)
@@ -139,6 +277,9 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         panel = (
             REPOSITORY_ROOT / "Client/Private/CharacterPreviewPanel.cpp"
         ).read_text(encoding="utf-8-sig")
+        replication = (
+            REPOSITORY_ROOT / "Client/Private/ClientReplication.cpp"
+        ).read_text(encoding="utf-8-sig")
         valtan_header = (
             REPOSITORY_ROOT / "Client/Public/Valtan.h"
         ).read_text(encoding="utf-8-sig")
@@ -152,7 +293,9 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             "return CValtanPresentationAssetService::Ensure_Prototypes(", loader
         )
         self.assertIn('TEXT("Prototype_GameObject_Valtan")', panel)
-        self.assertIn("CValtan::MODEL_VIEW_SCALE", panel)
+        self.assertIn("desc.fScale = pBoss->presentationScale;", panel)
+        self.assertIn("desc.fScale = pBoss->presentationScale;", replication)
+        self.assertNotIn("MODEL_VIEW_SCALE", valtan_header)
         self.assertIn("stagedValtan", panel)
         self.assertIn('WEAPON_PART_TAG = TEXT("Part_Weapon_R")', valtan_header)
         self.assertIn('WEAPON_SOCKET_BONE = "b_wp_r_01"', valtan_header)
@@ -183,6 +326,208 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         self.assertLess(panel.index("Release(true);"), panel.index(
             "m_iPreviewParentMatrixIndex = stagedParentMatrixIndex;"
         ))
+
+    def test_pattern_effect_scale_policy_preserves_world_footprints(self) -> None:
+        service = (
+            REPOSITORY_ROOT / "Client/Private/Effect_PresentationService.cpp"
+        ).read_text(encoding="utf-8-sig")
+        service_header = (
+            REPOSITORY_ROOT / "Client/Public/Effect_PresentationService.h"
+        ).read_text(encoding="utf-8-sig")
+        effect_tool = (
+            REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
+        ).read_text(encoding="utf-8-sig")
+        valtan = (REPOSITORY_ROOT / "Client/Private/Valtan.cpp").read_text(
+            encoding="utf-8-sig"
+        )
+        tree = (
+            REPOSITORY_ROOT / "Client/Private/ValtanPatternTree.cpp"
+        ).read_text(encoding="utf-8-sig")
+        self.assertIn("Try_BuildCueScalePolicyAnchor", service)
+        self.assertIn("WorldScale.x / fScaleX", service)
+        self.assertIn("Build_CueScalePolicyAnchor", service_header)
+        self.assertIn("Build_CueScalePolicyRoot", service_header)
+        self.assertIn(
+            "Owner, Effect.eScalePolicy, Effect.vWorldScale", service
+        )
+        self.assertGreaterEqual(
+            effect_tool.count(
+                "CEffectPresentationService::Build_CueScalePolicyRoot("
+            ),
+            2,
+        )
+        self.assertIn(
+            "CEffectPresentationService::Build_CueScalePolicyAnchor(",
+            effect_tool,
+        )
+
+        helper_start = effect_tool.index(
+            "bool Build_ToolValtanSourceAnchorWorld("
+        )
+        live_start = effect_tool.index(
+            "bool Resolve_ToolSourceAnchorWorlds("
+        )
+        helper_scope = effect_tool[helper_start:live_start]
+        live_end = effect_tool.index(
+            "bool Is_CompilerOwnedPortableRecipe(", live_start
+        )
+        live_scope = effect_tool[live_start:live_end]
+        history_start = effect_tool.index(
+            "bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory("
+        )
+        history_end = effect_tool.index(
+            "bool_t Client::CEffect_Tool::Is_ProductCueVisible(",
+            history_start,
+        )
+        history_scope = effect_tool[history_start:history_end]
+        self.assertIn("Build_CueScalePolicyAnchor(", helper_scope)
+        self.assertIn("AnchorBuild.RawBone = RawBone;", helper_scope)
+        self.assertIn(
+            "AnchorBuild.OwnerWorld = EffectiveOwnerRoot;", helper_scope
+        )
+        self.assertIn("Build_SourceBoneAnchorWorld(", helper_scope)
+        self.assertIn(
+            "const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW* pValtanCue",
+            live_scope,
+        )
+        self.assertIn("pValtanModel->Get_BoneMatrix(", live_scope)
+        self.assertIn("Build_ToolValtanSourceAnchorWorld(", live_scope)
+        self.assertIn(
+            "&m_ValtanProductPreview->Cue : nullptr", effect_tool
+        )
+        self.assertIn("PoseSample.BoneCombinedMatrices[iRequest]", history_scope)
+        self.assertIn(
+            "Build_ToolValtanSourceAnchorWorld(", history_scope
+        )
+        self.assertIn(
+            "Source-anchor history could not normalize the Valtan source bone",
+            history_scope,
+        )
+        self.assertIn("AnchorBuild.OwnerWorld = EffectiveOwnerRoot;", effect_tool)
+        self.assertIn("Staged.RootWorld = CueRoot;", effect_tool)
+        self.assertIn("Desc.eScalePolicy = Cue.eScalePolicy;", valtan)
+        self.assertIn("Desc.vWorldScale = Cue.vWorldScale;", valtan)
+        self.assertIn(
+            '"split presentation cue worldScale must preserve 1.5"', tree
+        )
+        self.assertIn(
+            '"effect.valtan.pattern.420633.active.v1.unified"', effect_tool
+        )
+        self.assertIn(
+            "Is_ValtanExactHistoryPreviewEffectAssetId(", effect_tool
+        )
+        self.assertIn("Matches_ValtanExactHistoryBinding(", effect_tool)
+        self.assertGreaterEqual(
+            effect_tool.count("Seek_ValtanBossPatternTransformHistory("), 8
+        )
+        prepare_start = effect_tool.index(
+            "bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory("
+        )
+        prepare_end = effect_tool.index(
+            "bool_t Client::CEffect_Tool::Build_ValtanBossPatternTransformSample(",
+            prepare_start,
+        )
+        prepare_scope = effect_tool[prepare_start:prepare_end]
+        self.assertIn("Matches_ValtanExactHistoryBinding(", prepare_scope)
+        self.assertIn("5u : 3u;", prepare_scope)
+
+        stage_start = effect_tool.index(
+            "bool_t Client::CEffect_Tool::Stage_WorldPreview(\n"
+            "\tconst EFFECT_DOCUMENT_DESC& Document,\n"
+            "\tconst bool_t bAllowReadOnlySourceProjection)"
+        )
+        stage_end = effect_tool.index(
+            "Client::CEffect_Tool::Build_PreviewDocument(", stage_start
+        )
+        particle_start = effect_tool.index(
+            "bool_t Client::CEffect_Tool::Try_AuditionParticleSystem("
+        )
+        selected_start = effect_tool.index(
+            "bool_t Client::CEffect_Tool::Try_AuditionSelectedElement("
+        )
+        selected_end = effect_tool.index(
+            "bool_t Client::CEffect_Tool::Refresh_ResourceCatalog(",
+            selected_start,
+        )
+        for scope in (
+            effect_tool[stage_start:stage_end],
+            effect_tool[particle_start:selected_start],
+            effect_tool[selected_start:selected_end],
+        ):
+            self.assertIn("Seek_ValtanBossPatternTransformHistory(", scope)
+
+        alias = json.loads(
+            (
+                REPOSITORY_ROOT
+                / "Data/Effects/Authored/effect.valtan.pattern.420633.active.v1.unified.effect.json"
+            ).read_text(encoding="utf-8-sig")
+        )
+        self.assertEqual(
+            alias["effectAssetId"],
+            "effect.valtan.pattern.420633.active.v1.unified",
+        )
+        visible_follow_carriers = [
+            element["actionCueAttachment"]
+            for element in alias["elements"]
+            if element.get("visible")
+            and element.get("material", {})
+            .get("execution", {})
+            .get("enabled")
+            and element.get("actionCueAttachment", {}).get("enabled")
+            and element["actionCueAttachment"].get("follow")
+        ]
+        self.assertEqual(len(visible_follow_carriers), 5)
+        self.assertEqual(
+            {
+                (
+                    attachment["sourceAnchorSlotId"],
+                    attachment["runtimeAnchorSlotId"],
+                    attachment["runtimeBoneName"],
+                )
+                for attachment in visible_follow_carriers
+            },
+            {("B_EffectRoot", "B_EffectRoot", "b_effectroot")},
+        )
+        self.assertTrue(
+            all(
+                attachment.get("follow")
+                for attachment in visible_follow_carriers
+            )
+        )
+        alias_pairs = json.loads(
+            (
+                REPOSITORY_ROOT
+                / "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
+            ).read_text(encoding="utf-8-sig")
+        )["aliases"]
+        self.assertIn(
+            {
+                "effectAssetId": "effect.valtan.pattern.420633.active",
+                "v1EffectAssetId": (
+                    "effect.valtan.pattern.420633.active.v1.unified"
+                ),
+            },
+            alias_pairs,
+        )
+
+    def test_high_jump_recovery_uses_a_non_loop_idle_hold(self) -> None:
+        presentation = json.loads(
+            (REPOSITORY_ROOT / "Data/Valtan/Valtan.presentation.json")
+            .read_text(encoding="utf-8-sig")
+        )
+        high_jump = next(
+            row for row in presentation["patterns"]
+            if row["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        recovery = next(
+            row for row in high_jump["stages"]
+            if row["stageId"] == "RECOVERY"
+        )
+        occurrences = recovery["animation"]["occurrences"]
+        self.assertEqual(len(occurrences), 1)
+        self.assertEqual(occurrences[0]["clip"], "mesh_idle_battle_1")
+        self.assertEqual(occurrences[0]["playMs"], 400)
+        self.assertFalse(occurrences[0]["repeatUntilStageEnd"])
 
 
 if __name__ == "__main__":

@@ -580,12 +580,34 @@ namespace
 			if (!rotation.Is_Object())
 				continue;
 			const Client::DATA_JSON_VALUE* ids = rotation.Find("patternIds");
-			if (nullptr == ids || !ids->Is_Array())
-				continue;
-			for (const Client::DATA_JSON_VALUE& id : ids->Get_Array())
+			if (nullptr != ids && ids->Is_Array())
 			{
-				if (id.Is_String())
-					ordered.push_back(id.Get_String());
+				for (const Client::DATA_JSON_VALUE& id : ids->Get_Array())
+				{
+					if (id.Is_String())
+						ordered.push_back(id.Get_String());
+				}
+				continue;
+			}
+			const Client::DATA_JSON_VALUE* candidates =
+				rotation.Find("candidates");
+			if (nullptr == candidates || !candidates->Is_Array())
+				continue;
+			for (const Client::DATA_JSON_VALUE& candidate :
+				candidates->Get_Array())
+			{
+				if (!candidate.Is_Object())
+					continue;
+				const Client::DATA_JSON_VALUE* id =
+					candidate.Find("patternId");
+				const Client::DATA_JSON_VALUE* enabled =
+					candidate.Find("enabled");
+				if (nullptr != id && id->Is_String() &&
+					nullptr != enabled && enabled->Is_Boolean() &&
+					enabled->Get_Boolean())
+				{
+					ordered.push_back(id->Get_String());
+				}
 			}
 		}
 		return ordered;

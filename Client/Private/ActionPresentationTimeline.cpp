@@ -103,6 +103,96 @@ bool Client::CActionPresentationTimeline::Resolve_Sample(
 	return false;
 }
 
+bool Client::CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
+	const std::size_t iCurrentClipOccurrenceIndex,
+	const std::size_t iExpectedClipOccurrenceIndex,
+	const uint32_t iCurrentAnimationIndex,
+	const uint32_t iExpectedAnimationIndex)
+{
+	return iCurrentClipOccurrenceIndex != iExpectedClipOccurrenceIndex ||
+		iCurrentAnimationIndex != iExpectedAnimationIndex;
+}
+
+namespace
+{
+	enum class CUE_SOURCE_BOUNDARY
+	{
+		START_HALF_OPEN,
+		END_INCLUSIVE
+	};
+
+	bool ResolveCueWallOffset(
+		const std::span<const Client::ACTION_PRESENTATION_CLIP_TIMING> Clips,
+		const std::size_t iClipIndex,
+		const float fCueSourceTimeSeconds,
+		const uint64_t iLoopEpoch,
+		const CUE_SOURCE_BOUNDARY eBoundary,
+		float& fOutStageWallTimeSeconds)
+	{
+		fOutStageWallTimeSeconds = 0.f;
+		if (iClipIndex >= Clips.size() ||
+			!std::isfinite(fCueSourceTimeSeconds) ||
+			fCueSourceTimeSeconds < 0.f)
+		{
+			return false;
+		}
+
+		double fWallOffset = 0.0;
+		for (std::size_t iClip = 0u; iClip <= iClipIndex; ++iClip)
+		{
+			float fSourceDurationSeconds = 0.f;
+			float fWallDurationSeconds = 0.f;
+			if (!Client::CActionPresentationTimeline::Resolve_ClipDuration(
+					Clips[iClip], fSourceDurationSeconds,
+					fWallDurationSeconds))
+			{
+				return false;
+			}
+			if (iClip < iClipIndex)
+			{
+				/* A loop consumes the rest of its stage, so a later clip is not
+				reachable until the Server starts a new authored stage. */
+				if (Clips[iClip].bLoop)
+					return false;
+				fWallOffset += fWallDurationSeconds;
+				continue;
+			}
+
+			const float fSourceStartSeconds =
+				Clips[iClip].fSourceStartSeconds;
+			const float fSourceEndSeconds =
+				fSourceStartSeconds + fSourceDurationSeconds;
+			/* Starts keep adjacent explicit source slices half-open.  A finite
+			cue end may close exactly on its own slice boundary. */
+			const bool bPastSourceEnd = 0u != Clips[iClip].iPlayMs ?
+				(CUE_SOURCE_BOUNDARY::END_INCLUSIVE == eBoundary ?
+					fCueSourceTimeSeconds > fSourceEndSeconds + 0.000001f :
+					fCueSourceTimeSeconds + 0.000001f >= fSourceEndSeconds) :
+				fCueSourceTimeSeconds > fSourceEndSeconds + 0.000001f;
+			if (fCueSourceTimeSeconds + 0.000001f < fSourceStartSeconds ||
+				bPastSourceEnd ||
+				(!Clips[iClip].bLoop && 0u != iLoopEpoch))
+			{
+				return false;
+			}
+			fWallOffset += static_cast<double>(iLoopEpoch) *
+				static_cast<double>(fWallDurationSeconds);
+			fWallOffset += ((std::min)(
+				(std::max)(fCueSourceTimeSeconds, fSourceStartSeconds),
+				fSourceEndSeconds) - fSourceStartSeconds) /
+				Clips[iClip].fPlayRate;
+		}
+		if (!std::isfinite(fWallOffset) ||
+			fWallOffset >
+				static_cast<double>((std::numeric_limits<float>::max)()))
+		{
+			return false;
+		}
+		fOutStageWallTimeSeconds = static_cast<float>(fWallOffset);
+		return true;
+	}
+}
+
 bool Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 	const std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
 	const std::size_t iClipIndex,
@@ -110,62 +200,21 @@ bool Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 	const uint64_t iLoopEpoch,
 	float& fOutStageWallTimeSeconds)
 {
-	fOutStageWallTimeSeconds = 0.f;
-	if (iClipIndex >= Clips.size() ||
-		!std::isfinite(fCueSourceTimeSeconds) || fCueSourceTimeSeconds < 0.f)
-	{
-		return false;
-	}
+	return ResolveCueWallOffset(Clips, iClipIndex, fCueSourceTimeSeconds,
+		iLoopEpoch, CUE_SOURCE_BOUNDARY::START_HALF_OPEN,
+		fOutStageWallTimeSeconds);
+}
 
-	double fWallOffset = 0.0;
-	for (std::size_t iClip = 0u; iClip <= iClipIndex; ++iClip)
-	{
-		float fSourceDurationSeconds = 0.f;
-		float fWallDurationSeconds = 0.f;
-		if (!Resolve_ClipDuration(
-			Clips[iClip], fSourceDurationSeconds, fWallDurationSeconds))
-		{
-			return false;
-		}
-		if (iClip < iClipIndex)
-		{
-			/* A loop consumes the rest of its stage, so a later clip is not
-			reachable until the Server starts a new authored stage. */
-			if (Clips[iClip].bLoop)
-				return false;
-			fWallOffset += fWallDurationSeconds;
-			continue;
-		}
-
-		const float fSourceStartSeconds =
-			Clips[iClip].fSourceStartSeconds;
-		const float fSourceEndSeconds =
-			fSourceStartSeconds + fSourceDurationSeconds;
-		/* Explicit source trims are half-open.  Adjacent slices of the same source
-		clip must never both claim a cue on their shared boundary.  A legacy
-		natural remainder keeps its inclusive model-end tolerance. */
-		if (fCueSourceTimeSeconds + 0.000001f < fSourceStartSeconds ||
-			(0u != Clips[iClip].iPlayMs ?
-				fCueSourceTimeSeconds + 0.000001f >= fSourceEndSeconds :
-				fCueSourceTimeSeconds > fSourceEndSeconds + 0.000001f) ||
-			(!Clips[iClip].bLoop && 0u != iLoopEpoch))
-		{
-			return false;
-		}
-		fWallOffset += static_cast<double>(iLoopEpoch) *
-			static_cast<double>(fWallDurationSeconds);
-		fWallOffset += ((std::min)(
-			(std::max)(fCueSourceTimeSeconds, fSourceStartSeconds),
-			fSourceEndSeconds) - fSourceStartSeconds) /
-			Clips[iClip].fPlayRate;
-	}
-	if (!std::isfinite(fWallOffset) ||
-		fWallOffset > static_cast<double>((std::numeric_limits<float>::max)()))
-	{
-		return false;
-	}
-	fOutStageWallTimeSeconds = static_cast<float>(fWallOffset);
-	return true;
+bool Client::CActionPresentationTimeline::Resolve_CueEndWallOffset(
+	const std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
+	const std::size_t iClipIndex,
+	const float fCueSourceTimeSeconds,
+	const uint64_t iLoopEpoch,
+	float& fOutStageWallTimeSeconds)
+{
+	return ResolveCueWallOffset(Clips, iClipIndex, fCueSourceTimeSeconds,
+		iLoopEpoch, CUE_SOURCE_BOUNDARY::END_INCLUSIVE,
+		fOutStageWallTimeSeconds);
 }
 
 bool Client::CActionPresentationTimeline::Resolve_CuePreviewSample(
@@ -228,11 +277,13 @@ bool Client::CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
 	const bool bHasExplicitLoopPolicy,
 	const bool bLoop,
 	const bool bLastClip,
+	const bool bAuthoredEndPoseHold,
 	const bool bAnimationPaused,
 	const float fCurrentSourceSeconds,
 	const float fSourceDurationSeconds)
 {
-	return bHasExplicitLoopPolicy && !bLoop && bLastClip &&
+	return bHasExplicitLoopPolicy && !bLoop &&
+		(bLastClip || bAuthoredEndPoseHold) &&
 		bAnimationPaused && std::isfinite(fCurrentSourceSeconds) &&
 		std::isfinite(fSourceDurationSeconds) &&
 		fSourceDurationSeconds > 0.f &&

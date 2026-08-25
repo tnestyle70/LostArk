@@ -31,6 +31,7 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
+    <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
@@ -181,6 +182,7 @@
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
+    <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
@@ -386,6 +388,7 @@
 	<None Include="..\..\Data\Valtan\Valtan.pattern.json" />
 	<None Include="..\..\Data\Valtan\Valtan.gameplay.json" />
 	<None Include="..\..\Data\Valtan\Valtan.presentation.json" />
+	<None Include="..\..\Data\Valtan\Valtan.presentation.debug.json" />
 	<None Include="..\..\Data\Valtan\Valtan.combatobjects.json" />
 	<None Include="..\..\Data\Valtan\Valtan.worldeventsets.json" />
 	<None Include="..\..\Data\Valtan\Valtan.legacy-compatibility.json" />
@@ -782,6 +785,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31430.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31430.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.authored-baseline.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.linear-reveal.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31470.unified.effect.json" />
@@ -1256,7 +1260,6 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.source-material-contract.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.source-material-contract.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.targeted-current-combat-transaction.receipt.json" />
-    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-authored-import-batch.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-restoration-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-targeted-current-combat-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34010.ba1.approximation-receipt.json" />
@@ -2536,6 +2539,15 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34600.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34620.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34640.source-receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.artist.skill.31910.unified.3fa387259fabe72d6855c02239850784f1ce4cabb2ff4bc4b4d34382a5449bee.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01.17fec00d5b742c78047ed7154689d7b75e51afa14c39cb89cff68978973d1464.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.valtan.carrier-v1.attack.four-slash.active.clip-01.b3365dde87e18f0d7a7f455c9550ebae2a5deaa14d87f951c9cd5e0f6ec31418.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.valtan.carrier-v1.attack.four-slash.active.clip-02.92f718ddf1f4e9a8c3c7cc0a2c35d58d06ee13a6bb470be8b4884fc17687418b.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.valtan.carrier-v1.attack.high-jump.land.clip-01.b931ee6bdbf491cb076af08dcf86f5ddaf1fd1478ece30cb30eee7877adc87df.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01.8a30be8e014922dd46eb3a0b1314481ab7c5596b0394bdcffa338d41cfb9405f.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.001ce3233f994dcc7cb15e43227184cc72f802a221e9533019a5b18a977d2516.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.warlord.skill.17240.ba1.unified.e6e4b9daec3c478d38289cfc1eaf60de7ea6f035d5024f21b3376c5759cba62f.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\LegacyRuntimeDonors\effect.warlord.skill.17240.ba3.unified.4565ef2375c333bd4fb031704a439a1d40189002ec84706c2e8b2fbf4e1ade05.effect.json" />
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-denominator.checkpoint.json" />
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-four-pillars-additive-receipt.v1.json" />
@@ -2946,6 +2958,39 @@
     <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_s_pa_glasshole_02_tr.hlsli" />
     <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_w_pa_area_01_tr.hlsli" />
     <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_realpbr_wp_dead_msk.hlsli" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.appear_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.aura_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.aura_2.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.aura_3.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.aura_4.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_10.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_11.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_12.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_13.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_14.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_15.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_16.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_17.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_2.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_3.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_4.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_5.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_6.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_7.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_8.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blade_9.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blur_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.decal_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.decal_2.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.decal_3.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.decal_4.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.decal_5.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.decal_6.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.distortion_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.magic_circle_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.magic_circle_2.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.trail_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.appear_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.blur_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.blur_2.effectv2.json" />
@@ -2960,12 +3005,12 @@
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_2.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_3.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_4.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_2.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_58700.effectv2bindings.json" />
+    <None Include="..\..\Data\Effects\V2\Bindings\NPC_59030.effectv2bindings.json" />
     <None Include="..\..\Data\Effects\V2\TextureSlotUsage.v1.json" />
-    <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-corpus.v1.json" />
-    <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-runtime.v1.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <PropertyGroup>
@@ -2978,6 +3023,9 @@
     <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
     <PhysXRuntimeRoot>$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\</PhysXRuntimeRoot>
   </PropertyGroup>
+  <Target Name="ValidateValtanSplitProducts" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1&quot; -Mode ValidateV2" />
+  </Target>
   <Target Name="PrepareEngineSdk" BeforeTargets="ClCompile" DependsOnTargets="ResolveProjectReferences" Condition="'$(Platform)'=='x64'">
     <ItemGroup>
       <EnginePublicHeaders Include="$(EngineRoot)Public\**\*.*" />

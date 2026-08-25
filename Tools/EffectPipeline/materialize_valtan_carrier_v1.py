@@ -52,6 +52,7 @@ CATALOG_PATH = ROOT / "Data/Effects/EffectCatalog.json"
 CUE_PATH = ROOT / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
 BOSS_CATALOG_PATH = ROOT / "Data/Actors/BossCatalog.json"
 AUTHORED_ROOT = ROOT / "Data/Effects/Authored"
+LEGACY_DONOR_ROOT = ROOT / "Data/Effects/Imported/LegacyRuntimeDonors"
 RECEIPT_PATH = (
     ROOT
     / "Data/Effects/Imported/Valtan/CarrierV1"
@@ -693,6 +694,7 @@ def _hydrate_carrier_element_seeds_from_applied_product(
     )
     if isinstance(protected_output, dict):
         output_rows.append(protected_output)
+    historical_fallback_documents: list[dict[str, Any]] = []
     for row in output_rows:
         path = ROOT / str(row.get("path") or "")
         if not path.is_file():
@@ -708,6 +710,38 @@ def _hydrate_carrier_element_seeds_from_applied_product(
                 raise MaterializeError(
                     "applied exact sourceNode has two owners: " + source_node
                 )
+            elements_by_source_node[source_node] = copy.deepcopy(element)
+
+        # A Product successor may intentionally remove historical Carrier V1
+        # rows while a later additive import still needs one of those exact
+        # payloads as a donor.  Resolve that donor from the immutable sealed
+        # historical document; never reinsert it into the live successor.
+        historical_sha = str(row.get("canonicalSha256") or "")
+        if canonical_sha256(document) == historical_sha:
+            continue
+        effect_id = str(row.get("effectAssetId") or "")
+        matches: list[dict[str, Any]] = []
+        for candidate in sorted(
+            LEGACY_DONOR_ROOT.glob(f"{effect_id}.*.effect.json")
+        ):
+            candidate_document = read_json(candidate)
+            if (
+                candidate_document.get("effectAssetId") == effect_id
+                and canonical_sha256(candidate_document) == historical_sha
+            ):
+                matches.append(candidate_document)
+        if len(matches) != 1:
+            raise MaterializeError(
+                "historical carrier donor seal is not unique: "
+                + effect_id
+            )
+        historical_fallback_documents.append(matches[0])
+
+    for document in historical_fallback_documents:
+        for element in document.get("elements", []):
+            source_node = str(element.get("sourceNode") or "")
+            if not source_node or source_node in elements_by_source_node:
+                continue
             elements_by_source_node[source_node] = copy.deepcopy(element)
 
     occurrences = {

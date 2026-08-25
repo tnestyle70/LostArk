@@ -3271,91 +3271,69 @@
       "lineage": [
         {
           "baselineIdentity": "valtan.source.09837531929147b2c73559bd6eb7686543c56f58b1345e62f9ea45e1eeb59ed9",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.09837531929147b2c735"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.0a0fd45f5f5a43cac37a2b8e603820166538b42bbaa22b2f71d615216de80479",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.0a0fd45f5f5a43cac37a"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.0e2c496db903785e468f8da30b892e947530c2b70f8ed5374e48849599cf97e5",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.0e2c496db903785e468f"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.0f94c3c2e7360f64a4b499d7c0f11ede6a8d9cddb3d98556de8915296880e6b5",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.0f94c3c2e7360f64a4b4"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.1afcf717a3747d3474dbfa115fe9f3b1ab5b654ae1e2ffa053788ef161ab32b1",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.1afcf717a3747d3474db"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.203f133964614442de86d8c93c4a143f2dd6ac2902c94a6e2461758dc3016d39",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.203f133964614442de86"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.2f5b3010a12a98b8125fac7e2ed3143985065101afd01b96ec6460539446928b",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.2f5b3010a12a98b8125f"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.30e485d1767abb573cce946c2c0616c802613edd489f1f85b58050d0a101ff20",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.30e485d1767abb573cce"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.4787e8102516f8a272fc3d62afefeb61aa2aa42d26af4a9c9aaec51678e28350",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.4787e8102516f8a272fc"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.4ae99780674e1213124125a5d312491b2b5a83602a85cc328e0d941d0c312f56",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.4ae99780674e12131241"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.4fc3b75bf5e197a2797909766c53802ccbe38b9ec4a36d823492ecdfc1d86c4d",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.4fc3b75bf5e197a27979"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.816ecdd06b33943dd18559ceb48fb8a530df16ee08e75544cf7db786be30d709",
@@ -3367,67 +3345,51 @@
         },
         {
           "baselineIdentity": "valtan.source.83a55bcbd440d7e3d11ae82e62b48c5874bc1faed61b36af2a6ba4a8e56c7b91",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.83a55bcbd440d7e3d11a"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.8d431d8c3bf38ece65f91f051e9e36822dcbaab3e299e04f2968a0a800291ab3",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.8d431d8c3bf38ece65f9"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.9d63f5607fdf51f557c34a7712440ee2b8f0ba1cba9ed5431ba6459fb5508d5d",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.9d63f5607fdf51f557c3"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.b819383a3f79ab87ec1d21e2bb46404f987da60dcf690169fcd7677d7e393605",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.b819383a3f79ab87ec1d"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.b8fdc5c0154c0eb5ddb7e63757ecac9ec9966ba3351f60bd5581755c2d889f54",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.b8fdc5c0154c0eb5ddb7"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.cd6f972fe48bd7074be37f89c41a4e6b61616ecdd280f54b87bd9aa352a8a8fd",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.cd6f972fe48bd7074be3"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.d290be8444262f5c42c070f8480eb0416be6c5d478c676ccbab8eaf328b99561",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.d290be8444262f5c42c0"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.fa8711bdd5ec2cb977a4f1b20e0d9befeef2c6e29af8a61350a504789dde58c0",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.fa8711bdd5ec2cb977a4"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         }
       ],
       "introducedElements": [
@@ -3449,8 +3411,8 @@
         }
       ],
       "finalDocument": {
-        "elementCount": 24,
-        "canonicalSha256": "2cc96999b897e8d5db7db61f461ef96bee62c5990e2bfdb0bac33401ebd2d102"
+        "elementCount": 5,
+        "canonicalSha256": "0126682438ff1c7a110e08a179de5817bfb6cebf9b70ad44731e39851fb7eb3d"
       }
     },
     {
@@ -3801,99 +3763,75 @@
       "lineage": [
         {
           "baselineIdentity": "valtan.source.02a08172b8b42f2e7447c742eccb4805cfdb20a3262b13930801d5af0a4e149b",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.02a08172b8b42f2e7447"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.152f0042214bbc7d77989b87dfd4e404abebc800c2983c3720d057008377e245",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.152f0042214bbc7d7798"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.211f476bb3c8adb6093016038ddbe4d0c14005ad4ab63af0869c5c5939d676d4",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.211f476bb3c8adb60930"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.376ac01b5ea8ae7ddfd6518c5fc9fce0b772e0cecdd7529577a9a81ff865e930",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.376ac01b5ea8ae7ddfd6"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.427dc449c6069d654a73fcbaad587c4dcfe709167d8768a86abb00a11ce718ec",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.427dc449c6069d654a73"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.4589aa1922ad69610e9d007b46d4aa68dd6a24d4e0dcc53e4a43d05fc763caa6",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.4589aa1922ad69610e9d"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.624a586d9edd1b2ef416197dcefc649683de450034d6d3f77e6ba7836a580337",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.624a586d9edd1b2ef416"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.6adb32347d26a9d79a66d274b79f2cc0da66f246d54ad045f72dd40d2416931e",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.6adb32347d26a9d79a66"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.6bd1741668d9309740e07db8bade450ed09ef567ea087fbe7ab6b7bc895ba9b5",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.6bd1741668d9309740e0"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.6df0e58123e693f50f14d2c089d5f3b48afc81a9ac211f8abf6572d5673d2713",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.6df0e58123e693f50f14"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.7660fb560f05124e17c2e5f043eac9e561fdef29eba59e9d4853ce73d375e36b",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.7660fb560f05124e17c2"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.78f866e4629cf9cf98603c54ad7ee65e9ea3d38d2d5bc29bbfd1241529c692cd",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.78f866e4629cf9cf9860"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.7b7b7c81b12e9dd59483b2338eee3f3f3816de3d4af41dd6a9c400b7fbc0f80c",
@@ -3905,83 +3843,63 @@
         },
         {
           "baselineIdentity": "valtan.source.7be05e8b261aa56368b0443742b1cb4473fcaa693ce8f7c6f2862c8289fe4484",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.7be05e8b261aa56368b0"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.7c6a67389e1e698ef5a67d1950b7e3b55b61d7ba7604203c80fe4cf73454d1db",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.7c6a67389e1e698ef5a6"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.a520ae0f9019b499ab0c8f48e4b09fc80c26e52c292e5ca94d0a0b39260ded70",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.a520ae0f9019b499ab0c"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.a5da306351c5373b7e38fcdba3fa8ce300cf69ffad6486c7347bb062dc0332ef",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.a5da306351c5373b7e38"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.a6504522856bc7469dcad0fb61e83d65e252f8e01f085ccb97a01c1fa6dac868",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.a6504522856bc7469dca"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.b1cef03c33fe3619f560a08023c18ee918728a6187496734253725641e0bd548",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.b1cef03c33fe3619f560"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.b62b3f3edbee532cd8cb76eaaa3d2ea5c5116baf33ea630f6c68c2363025113b",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.b62b3f3edbee532cd8cb"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.bad75466d9a006ff462fa44bf61c4d741230591185b82ef8a955d372bd87379a",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.bad75466d9a006ff462f"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.be3ff3cc7c557a9d51bf3cf645f2adfb2dac9317abddcf8ac5084cb455cc4f27",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.be3ff3cc7c557a9d51bf"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.e3ef118ecfa0fabe94064d01256c739dcaf1c7fcdc7218bad1a538f972d94df9",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.e3ef118ecfa0fabe9406"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         }
       ],
       "introducedElements": [
@@ -3991,8 +3909,8 @@
         }
       ],
       "finalDocument": {
-        "elementCount": 24,
-        "canonicalSha256": "d432a0dd79c3f61a57619c0e82fde08c47cdefccc38c0cd43be25635aa20cd0a"
+        "elementCount": 2,
+        "canonicalSha256": "0b0cd6c12a0eb5a9c2d61a84dfd9d92dd21aad6ff973eecd715c481cbd1a9d08"
       }
     },
     {
@@ -4006,19 +3924,15 @@
       "lineage": [
         {
           "baselineIdentity": "valtan.source.d380f17792f1c67e9dc255274a1a75ad0988649ae8f3d522f8df169d38d81ec5",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.d380f17792f1c67e9dc2"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.ece7ae1d1376d407ef1d76a1c236bcfbe9dd60afa78973915ffec7cbe4fd8627",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "source.ece7ae1d1376d407ef1d"
-          ],
-          "reason": "EXACT_CARRIER_IDENTITY_RETAINED_IN_PRODUCT_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "valtan.source.f4617c98d44349eec51d27cc338ba47fe5621aeaef7062b5cf332a11727c9ff4",
@@ -4031,8 +3945,8 @@
       ],
       "introducedElements": [],
       "finalDocument": {
-        "elementCount": 3,
-        "canonicalSha256": "669c2a5243c35c68bf176cfa93ac5375c5b6867085e2ce9dfe9316d2ecb1fbff"
+        "elementCount": 1,
+        "canonicalSha256": "5a3a30376a3250f7f9781a94462633f79f35a48ce2f75e386c120a52e69dccf1"
       }
     },
     {
@@ -4105,11 +4019,9 @@
         },
         {
           "baselineIdentity": "decal.valtan.sky-axe.target",
-          "disposition": "RETAIN",
-          "successorElementIds": [
-            "decal.valtan.sky-axe.target"
-          ],
-          "reason": "EXTERNAL_OWNER_ELEMENT_ID_RETAINED_IN_UNION_SUCCESSOR"
+          "disposition": "INTENTIONALLY_REMOVED",
+          "successorElementIds": [],
+          "reason": "PRODUCT_AUTHOR_CONFIRMED_INTENTIONAL_REMOVAL_DURING_2026_08_24_EFFECT_TUNING"
         },
         {
           "baselineIdentity": "particle.valtan.sky-axe.impact",
@@ -4135,8 +4047,8 @@
         }
       ],
       "finalDocument": {
-        "elementCount": 6,
-        "canonicalSha256": "28d98a17f5c9b22b3e43fbc858483db0da281017f5e85fc0b276df3db2cf21b8"
+        "elementCount": 5,
+        "canonicalSha256": "7e7a750fc64c5664708ae4cf59ce046dc0428093ad0b48a64aab14ad37749d51"
       }
     }
   ],
@@ -4154,8 +4066,8 @@
     "successorDocumentCount": 7,
     "historicalTargetSuccessorCount": 6,
     "historicalBaselineElementCount": 83,
-    "finalSuccessorElementCount": 69,
-    "historicalOwnerFinalElementCount": 655
+    "finalSuccessorElementCount": 25,
+    "historicalOwnerFinalElementCount": 611
   },
   "historicalOutputProjection": {
     "reviewedProjectionLedger": {

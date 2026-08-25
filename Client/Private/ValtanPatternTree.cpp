@@ -1694,9 +1694,17 @@ namespace
 			Product.eFollowPolicy == Authored.eFollowPolicy &&
 			Product.eStopPolicy == Authored.eStopPolicy &&
 			Product.strRepeatPolicy == Authored.strRepeatPolicy &&
+			Product.eScalePolicy == Authored.eScalePolicy &&
+			Product.strScalePolicy == Authored.strScalePolicy &&
+			Product.bHasExplicitScalePolicy ==
+				Authored.bHasExplicitScalePolicy &&
+			Product.vWorldScale.x == Authored.vWorldScale.x &&
+			Product.vWorldScale.y == Authored.vWorldScale.y &&
+			Product.vWorldScale.z == Authored.vWorldScale.z &&
 			Product.iSourceStartMs == Authored.iSourceStartMs &&
-			Product.iSourceEndMs == Authored.iSourceEndMs &&
 			Product.bHasSourceEnd == Authored.bHasSourceEnd &&
+			(!Product.bHasSourceEnd ||
+			 Product.iSourceEndMs == Authored.iSourceEndMs) &&
 			Product.LocalTransform.vPosition.x == Authored.LocalTransform.vPosition.x &&
 			Product.LocalTransform.vPosition.y == Authored.LocalTransform.vPosition.y &&
 			Product.LocalTransform.vPosition.z == Authored.LocalTransform.vPosition.z &&
@@ -2059,7 +2067,7 @@ namespace
 				{ "cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId",
 				  "sourceStartMs", "sourceEndMs", "anchorSlotId", "followPolicy",
 				  "stopPolicy", "repeatPolicy", "localTransform",
-				  "mappingBasis" }))
+				  "scalePolicy", "mappingBasis" }))
 		{
 			strOutError = "split presentation cue has unexpected properties";
 			return false;
@@ -2119,6 +2127,42 @@ namespace
 				return false;
 			}
 		}
+		const DATA_JSON_VALUE* pScalePolicy = Required(
+			Cue, "scalePolicy", DATA_JSON_TYPE::OBJECT);
+		const std::string strScalePolicy = nullptr == pScalePolicy ?
+			std::string{} : Read_String(*pScalePolicy, "kind");
+		if (nullptr == pScalePolicy ||
+			("OWNER_RELATIVE" == strScalePolicy &&
+			 !Has_ExactProperties(*pScalePolicy, { "kind" })) ||
+			(("GAMEPLAY_FOOTPRINT" == strScalePolicy ||
+			  "ARENA_ABSOLUTE" == strScalePolicy) &&
+				 (!Has_ExactProperties(*pScalePolicy, { "kind", "worldScale" }) ||
+				  nullptr == Required(*pScalePolicy, "worldScale",
+					  DATA_JSON_TYPE::ARRAY))) ||
+			("OWNER_RELATIVE" != strScalePolicy &&
+			 "GAMEPLAY_FOOTPRINT" != strScalePolicy &&
+			 "ARENA_ABSOLUTE" != strScalePolicy))
+		{
+			strOutError = "split presentation cue scalePolicy is invalid";
+			return false;
+		}
+		if ("OWNER_RELATIVE" != strScalePolicy)
+		{
+			const DATA_JSON_VALUE::ARRAY& WorldScale =
+				pScalePolicy->Find("worldScale")->Get_Array();
+			if (3u != WorldScale.size() ||
+				std::any_of(WorldScale.begin(), WorldScale.end(),
+					[](const DATA_JSON_VALUE& Value)
+					{
+						return !Is_FiniteNumber(&Value) ||
+							Value.Get_Number() != 1.5;
+					}))
+			{
+				strOutError =
+					"split presentation cue worldScale must preserve 1.5";
+				return false;
+			}
+		}
 		return true;
 	}
 
@@ -2141,6 +2185,28 @@ namespace
 		View.strFollowPolicy = Read_String(Cue, "followPolicy");
 		View.strStopPolicy = Read_String(Cue, "stopPolicy");
 		View.strRepeatPolicy = Read_String(Cue, "repeatPolicy");
+		const DATA_JSON_VALUE& ScalePolicy = *Cue.Find("scalePolicy");
+		View.strScalePolicy = Read_String(ScalePolicy, "kind");
+		View.bHasExplicitScalePolicy = true;
+		if ("GAMEPLAY_FOOTPRINT" == View.strScalePolicy)
+			View.eScalePolicy =
+				Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::GAMEPLAY_FOOTPRINT;
+		else if ("ARENA_ABSOLUTE" == View.strScalePolicy)
+			View.eScalePolicy =
+				Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::ARENA_ABSOLUTE;
+		else
+			View.eScalePolicy =
+				Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+		if (Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE !=
+			View.eScalePolicy)
+		{
+			const DATA_JSON_VALUE::ARRAY& WorldScale =
+				ScalePolicy.Find("worldScale")->Get_Array();
+			View.vWorldScale = {
+				static_cast<f32_t>(WorldScale[0].Get_Number()),
+				static_cast<f32_t>(WorldScale[1].Get_Number()),
+				static_cast<f32_t>(WorldScale[2].Get_Number()) };
+		}
 		View.eFollowPolicy = "snapshot" == View.strFollowPolicy ?
 			Client::EFFECT_FOLLOW_POLICY::SNAPSHOT :
 			Client::EFFECT_FOLLOW_POLICY::FOLLOW;
@@ -4213,6 +4279,21 @@ namespace
 		default: return {};
 		}
 	}
+
+	std::string Describe_ScalePolicy(
+		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY ePolicy)
+	{
+		switch (ePolicy)
+		{
+		case Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE:
+			return "OWNER_RELATIVE";
+		case Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::GAMEPLAY_FOOTPRINT:
+			return "GAMEPLAY_FOOTPRINT";
+		case Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::ARENA_ABSOLUTE:
+			return "ARENA_ABSOLUTE";
+		default: return {};
+		}
+	}
 }
 
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_StageCount() const
@@ -4814,6 +4895,10 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		Cue.strFollowPolicy = Describe_FollowPolicy(SourceCue.eFollowPolicy);
 		Cue.strStopPolicy = Describe_StopPolicy(SourceCue.eStopPolicy);
 		Cue.strRepeatPolicy = Describe_RepeatPolicy(SourceCue.eRepeatPolicy);
+		Cue.eScalePolicy = SourceCue.eScalePolicy;
+		Cue.strScalePolicy = Describe_ScalePolicy(SourceCue.eScalePolicy);
+		Cue.vWorldScale = SourceCue.vWorldScale;
+		Cue.bHasExplicitScalePolicy = SourceCue.bHasExplicitScalePolicy;
 		Cue.iSourceStartMs = SourceCue.iStartMs;
 		Cue.iSourceEndMs = SourceCue.iEndMs;
 		Cue.iStageDurationMs = SourceCue.iStageDurationMs;

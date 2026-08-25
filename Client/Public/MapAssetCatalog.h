@@ -22,6 +22,11 @@ enum class MAP_ASSET_RENDER_MODE
 	TRANSLUCENT,
 	BACKGROUND,
 	ADDITIVE,
+	/* A translucent surface that also refracts what is behind it. The source
+	   BlendMode alone cannot say this -- an ordinary translucent decal shares
+	   it -- so an asset only becomes WATER when the published water
+	   presentation document carries a row for it. */
+	WATER,
 };
 
 enum class MAP_ASSET_CULL_MODE
@@ -49,6 +54,40 @@ struct MAP_ASSET_RENDER_PROFILE
 	   and converts world height into the texel density the authored UV
 	   already uses on flat ground. Zero keeps the authored mapping. */
 	float triplanarHeightScale = 0.f;
+};
+
+/* One row of <AreaId>.mapwater.json. Every value is the source
+   MaterialInstanceConstant parameter of the same name, folded down the parent
+   chain by the publisher, so nothing here is tuned in code. An asset whose
+   catalog render mode is WATER must have exactly one of these or the Area
+   fails to load: a water pass with identity parameters would draw an opaque
+   plate and look like a bug rather than a missing document. */
+struct MAP_ASSET_WATER_PROFILE
+{
+	std::string materialName;
+	/* Resources-relative IDs. Declared by the document and validated by the
+	   publisher; the runtime does not bind them yet, so they stay empty of
+	   meaning for drawing until the auxiliary texture path is opened. */
+	std::string detailNormalTexture;
+	std::string reflectionTexture;
+	std::string foamTexture;
+	float opacity = 1.f;
+	float opacityPower = 1.f;
+	float fresnelIntensity = 0.f;
+	float fresnelPower = 1.f;
+	float screenDistortionIntensity = 0.f;
+	float normalIntensity = 0.f;
+	float detailNormalIntensity = 0.f;
+	float normalDistortionIntensity = 0.f;
+	float reflectionIntensity = 0.f;
+	float reflectionUv = 1.f;
+	float depthBias = 0.f;
+	float diffuseTiling = 1.f;
+	float4_t diffuseColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	float4_t reflectionColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	float4_t normalTilingPanning = float4_t(1.f, 1.f, 0.f, 0.f);
+	float4_t detailNormalTilingPanning = float4_t(1.f, 1.f, 0.f, 0.f);
+	float4_t reflectionTilingPanning = float4_t(1.f, 1.f, 0.f, 0.f);
 };
 
 struct MAP_ASSET_ENTRY
@@ -88,6 +127,7 @@ public:
 		const std::string& expectedAreaId = {});
 
 	const MAP_ASSET_ENTRY* Find(const std::string& assetId) const;
+	const MAP_ASSET_WATER_PROFILE* Find_Water(const std::string& assetId) const;
 	const std::vector<MAP_ASSET_ENTRY>& Get_Entries() const { return m_Entries; }
 	const std::vector<MAP_ASSET_SHARD>& Get_Shards() const { return m_Shards; }
 	const std::string& Get_AreaId() const { return m_AreaId; }
@@ -104,8 +144,15 @@ public:
 	static std::filesystem::path Get_AreaSelectionPath();
 
 private:
+	/* Reads <AreaId>.mapwater.json beside the runtime catalog when it exists,
+	   then requires that the WATER render modes and the water rows agree in
+	   both directions. Called at the end of a successful Area load. */
+	bool_t Load_WaterPresentation(const std::string& areaId);
+
+private:
 	std::vector<MAP_ASSET_ENTRY> m_Entries;
 	std::unordered_map<std::string, size_t> m_EntryLookup;
+	std::unordered_map<std::string, MAP_ASSET_WATER_PROFILE> m_WaterProfiles;
 	std::vector<MAP_ASSET_SHARD> m_Shards;
 	std::string m_AreaId;
 	std::string m_Status = "Catalog not loaded";

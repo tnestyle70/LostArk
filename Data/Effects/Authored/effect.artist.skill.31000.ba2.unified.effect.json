@@ -26,7 +26,7 @@
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
         "transform": { "position": [0, 1.17999995, 0], "rotationDegrees": [0, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [1, 1, 1], "velocityPerSecond": [0, 0, 0] },
-        "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
+        "color": { "offset": [0, 0, 0, 0], "multiply": [1, 0.699999988, 10, 1], "clip": 0, "emissiveIntensity": 7, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [-0.200000003, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
         "timing": { "startDelaySeconds": 0.0958999991, "lifeTimeSeconds": 0.530099988, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
         "mesh": { "useModelMaterial": false, "modelPreScale": 0.00999999978, "sourceTypeDataRotationDegrees": [0, 0, 0] },

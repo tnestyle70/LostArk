@@ -19,6 +19,9 @@ namespace
 	using namespace Engine;
 
 	constexpr size_t MAX_SCREEN_OVERLAY_ROWS = 64u;
+	constexpr size_t MAX_SCREEN_OVERLAY_DOCUMENT_BYTES = 4u * 1024u * 1024u;
+	constexpr size_t MAX_SCREEN_OVERLAY_DOCUMENT_DEPTH = 16u;
+	constexpr size_t MAX_SCREEN_OVERLAY_DOCUMENT_VALUES = 10'000u;
 
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& Object,
@@ -151,19 +154,30 @@ namespace
 		return true;
 	}
 
-	bool_t IsEffectDdsAssetId(
+	bool_t IsEffectDdsAssetIdSyntax(
 		const string& AssetId,
-		std::filesystem::path& OutPath)
+		std::filesystem::path& OutRelativePath)
 	{
-		if (AssetId.empty() || AssetId.size() > 512u)
-			return false;
-		const std::filesystem::path Relative =
-			std::filesystem::path(AssetId).lexically_normal();
-		if (Relative.empty() || Relative.is_absolute() ||
-			Relative.has_root_path() || Relative.begin() == Relative.end() ||
-			*Relative.begin() != L"Effect")
+		if (AssetId.empty() || AssetId.size() > 512u ||
+			0u != AssetId.rfind("Effect/", 0u) ||
+			string::npos != AssetId.find('\\') ||
+			string::npos != AssetId.find(':'))
 		{
 			return false;
+		}
+		const std::filesystem::path Relative =
+			std::filesystem::path(AssetId);
+		if (Relative.empty() || Relative.is_absolute() ||
+			Relative.has_root_path() || Relative.begin() == Relative.end() ||
+			Relative.lexically_normal().generic_string() != AssetId)
+		{
+			return false;
+		}
+		for (const std::filesystem::path& Component : Relative)
+		{
+			const string Value = Component.generic_string();
+			if (Value.empty() || Value == "." || Value == "..")
+				return false;
 		}
 		string Extension = Relative.extension().string();
 		std::transform(Extension.begin(), Extension.end(), Extension.begin(),
@@ -174,8 +188,242 @@ namespace
 			});
 		if (Extension != ".dds")
 			return false;
+		OutRelativePath = Relative;
+		return true;
+	}
+
+	bool_t ResolveEffectDdsAssetId(
+		const string& AssetId,
+		std::filesystem::path& OutPath)
+	{
+		std::filesystem::path Relative;
+		if (!IsEffectDdsAssetIdSyntax(AssetId, Relative))
+			return false;
 		OutPath = CRuntimeAssetRoot::Resolve(Relative);
-		return !OutPath.empty() && std::filesystem::is_regular_file(OutPath);
+		std::error_code Error;
+		return !OutPath.empty() &&
+			std::filesystem::is_regular_file(OutPath, Error) && !Error;
+	}
+
+	struct PARSED_SOURCE_OVERLAY final
+	{
+		string strOverlayId;
+		string strTextureAssetId;
+		f32_t fStartSeconds = 0.f;
+		f32_t fLifetimeSeconds = 0.f;
+		f32_t fAlphaStart = 1.f;
+		f32_t fAlphaEnd = 0.f;
+		PRESENTATION_SCREEN_OVERLAY_DESC Desc;
+	};
+
+	struct PARSED_SOURCE_DOCUMENT final
+	{
+		string strPresentationId;
+		vector<PARSED_SOURCE_OVERLAY> Overlays;
+		vector<string> TextureAssetIds;
+		f32_t fMaximumEndSeconds = 0.f;
+	};
+
+	bool_t ParseScreenOverlaySourceDocument(
+		const std::string_view strUtf8Json,
+		PARSED_SOURCE_DOCUMENT& OutDocument,
+		std::string& strOutError)
+	{
+		strOutError.clear();
+		DATA_JSON_VALUE Root;
+		DATA_JSON_PARSE_LIMITS Limits;
+		Limits.iMaximumBytes = MAX_SCREEN_OVERLAY_DOCUMENT_BYTES;
+		Limits.iMaximumDepth = MAX_SCREEN_OVERLAY_DOCUMENT_DEPTH;
+		Limits.iMaximumValues = MAX_SCREEN_OVERLAY_DOCUMENT_VALUES;
+		if (!CDataJson::Parse(strUtf8Json, Root, strOutError, Limits) ||
+			!HasOnlyFields(Root,
+				{ "schema", "formatVersion", "provenance",
+				  "presentationId", "overlays" }))
+		{
+			if (strOutError.empty())
+				strOutError = "Screen overlay root contract is invalid.";
+			return false;
+		}
+		const DATA_JSON_VALUE* pSchema = Required(
+			Root, "schema", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pVersion = Required(
+			Root, "formatVersion", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* pProvenance = Required(
+			Root, "provenance", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pPresentationId = Required(
+			Root, "presentationId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pOverlays = Required(
+			Root, "overlays", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pSchema || pSchema->Get_String() !=
+				"lostark.effect-screen-overlay" ||
+			nullptr == pVersion || pVersion->Was_FloatingPointToken() ||
+			pVersion->Get_Number() != 1.0 ||
+			nullptr == pProvenance ||
+			pProvenance->Get_String() != "PROJECT_TUNED" ||
+			nullptr == pPresentationId ||
+			!IsStableId(pPresentationId->Get_String()) ||
+			nullptr == pOverlays || pOverlays->Get_Array().empty() ||
+			pOverlays->Get_Array().size() > MAX_SCREEN_OVERLAY_ROWS)
+		{
+			strOutError = "Screen overlay schema, version, provenance, identity, or row count is invalid.";
+			return false;
+		}
+
+		PARSED_SOURCE_DOCUMENT StagedDocument;
+		StagedDocument.strPresentationId = pPresentationId->Get_String();
+		StagedDocument.Overlays.reserve(pOverlays->Get_Array().size());
+		std::set<string> OverlayIds;
+		std::set<uint32_t> SourceOrders;
+		std::set<string> TextureAssetIds;
+		for (const DATA_JSON_VALUE& Row : pOverlays->Get_Array())
+		{
+			if (!HasOnlyFields(Row,
+					{ "id", "sourceOrder", "textureAssetId", "colorSpace",
+					  "coverageChannel", "sampler", "timing", "transform", "tint" }))
+			{
+				strOutError = "Screen overlay row fields are invalid.";
+				return false;
+			}
+			const DATA_JSON_VALUE* pId = Required(
+				Row, "id", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pAssetId = Required(
+				Row, "textureAssetId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pColorSpace = Required(
+				Row, "colorSpace", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pCoverageChannel = Required(
+				Row, "coverageChannel", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pSampler = Required(
+				Row, "sampler", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* pTiming = Required(
+				Row, "timing", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* pTransform = Required(
+				Row, "transform", DATA_JSON_TYPE::OBJECT);
+			PARSED_SOURCE_OVERLAY Staged;
+			std::filesystem::path RelativeTexturePath;
+			if (nullptr == pId || !IsStableId(pId->Get_String()) ||
+				!OverlayIds.emplace(pId->Get_String()).second ||
+				!ReadU32(Row, "sourceOrder", Staged.Desc.iSourceOrder) ||
+				!SourceOrders.emplace(Staged.Desc.iSourceOrder).second ||
+				nullptr == pAssetId ||
+				!IsEffectDdsAssetIdSyntax(
+					pAssetId->Get_String(), RelativeTexturePath) ||
+				nullptr == pColorSpace || nullptr == pCoverageChannel ||
+				nullptr == pSampler || nullptr == pTiming ||
+				nullptr == pTransform ||
+				!HasOnlyFields(*pSampler, { "filter", "address" }) ||
+				!HasOnlyFields(*pTiming,
+					{ "startSeconds", "lifetimeSeconds", "alphaStart", "alphaEnd" }) ||
+				!HasOnlyFields(*pTransform,
+					{ "position", "scale", "rotationDegrees",
+					  "angularVelocityDegreesPerSecond", "uvDriftPerSecond" }) ||
+				!ReadTint(Row, Staged.Desc.vTint))
+			{
+				strOutError = "Screen overlay row identity or typed field is invalid.";
+				return false;
+			}
+
+			const string& ColorSpace = pColorSpace->Get_String();
+			if (ColorSpace == "linear")
+				Staged.Desc.eColorSpace =
+					PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::LINEAR;
+			else if (ColorSpace == "srgb")
+				Staged.Desc.eColorSpace =
+					PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::SRGB;
+			else
+			{
+				strOutError = "Screen overlay color space is invalid.";
+				return false;
+			}
+			const string& CoverageChannel = pCoverageChannel->Get_String();
+			if (CoverageChannel == "r")
+				Staged.Desc.eCoverageChannel =
+					PRESENTATION_SCREEN_OVERLAY_CHANNEL::R;
+			else if (CoverageChannel == "g")
+				Staged.Desc.eCoverageChannel =
+					PRESENTATION_SCREEN_OVERLAY_CHANNEL::G;
+			else if (CoverageChannel == "b")
+				Staged.Desc.eCoverageChannel =
+					PRESENTATION_SCREEN_OVERLAY_CHANNEL::B;
+			else if (CoverageChannel == "a")
+				Staged.Desc.eCoverageChannel =
+					PRESENTATION_SCREEN_OVERLAY_CHANNEL::A;
+			else
+			{
+				strOutError = "Screen overlay coverage channel is invalid.";
+				return false;
+			}
+
+			const DATA_JSON_VALUE* pFilter = Required(
+				*pSampler, "filter", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pAddress = Required(
+				*pSampler, "address", DATA_JSON_TYPE::STRING);
+			if (nullptr == pFilter || nullptr == pAddress)
+			{
+				strOutError = "Screen overlay sampler is invalid.";
+				return false;
+			}
+			if (pFilter->Get_String() == "point")
+				Staged.Desc.eFilter = PRESENTATION_SCREEN_OVERLAY_FILTER::POINT;
+			else if (pFilter->Get_String() == "linear")
+				Staged.Desc.eFilter = PRESENTATION_SCREEN_OVERLAY_FILTER::LINEAR;
+			else
+			{
+				strOutError = "Screen overlay filter is invalid.";
+				return false;
+			}
+			if (pAddress->Get_String() == "clamp")
+				Staged.Desc.eAddress = PRESENTATION_SCREEN_OVERLAY_ADDRESS::CLAMP;
+			else if (pAddress->Get_String() == "wrap")
+				Staged.Desc.eAddress = PRESENTATION_SCREEN_OVERLAY_ADDRESS::WRAP;
+			else
+			{
+				strOutError = "Screen overlay address mode is invalid.";
+				return false;
+			}
+
+			if (!ReadFloat(*pTiming, "startSeconds", 0.f, 30.f,
+					Staged.fStartSeconds) ||
+				!ReadFloat(*pTiming, "lifetimeSeconds", 0.001f, 30.f,
+					Staged.fLifetimeSeconds) ||
+				!ReadFloat(*pTiming, "alphaStart", 0.f, 1.f,
+					Staged.fAlphaStart) ||
+				!ReadFloat(*pTiming, "alphaEnd", 0.f, 1.f,
+					Staged.fAlphaEnd) ||
+				!ReadFloat2(*pTransform, "position", -2.f, 3.f,
+					Staged.Desc.vPosition) ||
+				!ReadFloat2(*pTransform, "scale", 0.001f, 4.f,
+					Staged.Desc.vScale) ||
+				!ReadFloat(*pTransform, "rotationDegrees", -100000.f, 100000.f,
+					Staged.Desc.fRotationDegrees) ||
+				!ReadFloat(*pTransform, "angularVelocityDegreesPerSecond",
+					-100000.f, 100000.f,
+					Staged.Desc.fAngularVelocityDegreesPerSecond) ||
+				!ReadFloat2(*pTransform, "uvDriftPerSecond", -1000.f, 1000.f,
+					Staged.Desc.vUvDriftPerSecond))
+			{
+				strOutError = "Screen overlay timing or transform is invalid.";
+				return false;
+			}
+			const f32_t fEndSeconds =
+				Staged.fStartSeconds + Staged.fLifetimeSeconds;
+			if (!std::isfinite(fEndSeconds) || fEndSeconds > 60.f)
+			{
+				strOutError = "Screen overlay lifetime end is invalid.";
+				return false;
+			}
+
+			Staged.strOverlayId = pId->Get_String();
+			Staged.strTextureAssetId = pAssetId->Get_String();
+			TextureAssetIds.emplace(Staged.strTextureAssetId);
+			StagedDocument.fMaximumEndSeconds = (std::max)(
+				StagedDocument.fMaximumEndSeconds, fEndSeconds);
+			StagedDocument.Overlays.push_back(std::move(Staged));
+		}
+		StagedDocument.TextureAssetIds.assign(
+			TextureAssetIds.begin(), TextureAssetIds.end());
+		OutDocument = std::move(StagedDocument);
+		strOutError.clear();
+		return true;
 	}
 
 	bool_t IsSrgbFormat(const DXGI_FORMAT eFormat)
@@ -245,6 +493,25 @@ Client::CEffectScreenOverlayPresentation::
 {
 }
 
+bool_t Client::CEffectScreenOverlayPresentation::Parse_SourceDocument(
+	const std::string_view strUtf8Json,
+	SOURCE_DOCUMENT_MANIFEST& OutManifest,
+	std::string& strOutError)
+{
+	PARSED_SOURCE_DOCUMENT Parsed;
+	if (!ParseScreenOverlaySourceDocument(
+			strUtf8Json, Parsed, strOutError))
+	{
+		return false;
+	}
+	SOURCE_DOCUMENT_MANIFEST Staged;
+	Staged.strPresentationId = std::move(Parsed.strPresentationId);
+	Staged.TextureAssetIds = std::move(Parsed.TextureAssetIds);
+	OutManifest = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
 shared_ptr<Client::CEffectScreenOverlayPresentation>
 Client::CEffectScreenOverlayPresentation::Create(
 	ComPtr<ID3D11Device> pDevice)
@@ -287,182 +554,29 @@ bool_t Client::CEffectScreenOverlayPresentation::Stage_AndCommit(
 		return false;
 	}
 
-	DATA_JSON_VALUE Root;
-	if (!CDataJson::Parse(strUtf8Json, Root, strOutError) ||
-		!HasOnlyFields(Root,
-			{ "schema", "formatVersion", "provenance",
-			  "presentationId", "overlays" }))
+	PARSED_SOURCE_DOCUMENT Parsed;
+	if (!ParseScreenOverlaySourceDocument(
+			strUtf8Json, Parsed, strOutError))
 	{
-		if (strOutError.empty())
-			strOutError = "Screen overlay root contract is invalid.";
-		return false;
-	}
-	const DATA_JSON_VALUE* pSchema = Required(
-		Root, "schema", DATA_JSON_TYPE::STRING);
-	const DATA_JSON_VALUE* pVersion = Required(
-		Root, "formatVersion", DATA_JSON_TYPE::NUMBER);
-	const DATA_JSON_VALUE* pProvenance = Required(
-		Root, "provenance", DATA_JSON_TYPE::STRING);
-	const DATA_JSON_VALUE* pPresentationId = Required(
-		Root, "presentationId", DATA_JSON_TYPE::STRING);
-	const DATA_JSON_VALUE* pOverlays = Required(
-		Root, "overlays", DATA_JSON_TYPE::ARRAY);
-	if (nullptr == pSchema || pSchema->Get_String() !=
-			"lostark.effect-screen-overlay" ||
-		nullptr == pVersion || pVersion->Was_FloatingPointToken() ||
-		pVersion->Get_Number() != 1.0 ||
-		nullptr == pProvenance ||
-		pProvenance->Get_String() != "PROJECT_TUNED" ||
-		nullptr == pPresentationId ||
-		!IsStableId(pPresentationId->Get_String()) ||
-		nullptr == pOverlays || pOverlays->Get_Array().empty() ||
-		pOverlays->Get_Array().size() > MAX_SCREEN_OVERLAY_ROWS)
-	{
-		strOutError = "Screen overlay schema, version, provenance, identity, or row count is invalid.";
 		return false;
 	}
 
 	vector<PREPARED_OVERLAY> StagedOverlays;
-	StagedOverlays.reserve(pOverlays->Get_Array().size());
-	string StagedPresentationId = pPresentationId->Get_String();
-	std::set<string> OverlayIds;
-	std::set<uint32_t> SourceOrders;
-	f32_t fMaximumEndSeconds = 0.f;
-	for (const DATA_JSON_VALUE& Row : pOverlays->Get_Array())
+	StagedOverlays.reserve(Parsed.Overlays.size());
+	string StagedPresentationId = Parsed.strPresentationId;
+	for (const PARSED_SOURCE_OVERLAY& Source : Parsed.Overlays)
 	{
-		if (!HasOnlyFields(Row,
-				{ "id", "sourceOrder", "textureAssetId", "colorSpace",
-				  "coverageChannel", "sampler", "timing", "transform", "tint" }))
-		{
-			strOutError = "Screen overlay row fields are invalid.";
-			return false;
-		}
-		const DATA_JSON_VALUE* pId = Required(
-			Row, "id", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* pAssetId = Required(
-			Row, "textureAssetId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* pColorSpace = Required(
-			Row, "colorSpace", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* pCoverageChannel = Required(
-			Row, "coverageChannel", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* pSampler = Required(
-			Row, "sampler", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* pTiming = Required(
-			Row, "timing", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* pTransform = Required(
-			Row, "transform", DATA_JSON_TYPE::OBJECT);
 		PREPARED_OVERLAY Staged;
-		if (nullptr == pId || !IsStableId(pId->Get_String()) ||
-			!OverlayIds.emplace(pId->Get_String()).second ||
-			!ReadU32(Row, "sourceOrder", Staged.Desc.iSourceOrder) ||
-			!SourceOrders.emplace(Staged.Desc.iSourceOrder).second ||
-			nullptr == pAssetId || nullptr == pColorSpace ||
-			nullptr == pCoverageChannel || nullptr == pSampler ||
-			nullptr == pTiming || nullptr == pTransform ||
-			!HasOnlyFields(*pSampler, { "filter", "address" }) ||
-			!HasOnlyFields(*pTiming,
-				{ "startSeconds", "lifetimeSeconds", "alphaStart", "alphaEnd" }) ||
-			!HasOnlyFields(*pTransform,
-				{ "position", "scale", "rotationDegrees",
-				  "angularVelocityDegreesPerSecond", "uvDriftPerSecond" }) ||
-			!ReadTint(Row, Staged.Desc.vTint))
-		{
-			strOutError = "Screen overlay row identity or typed field is invalid.";
-			return false;
-		}
-
-		const string& ColorSpace = pColorSpace->Get_String();
-		if (ColorSpace == "linear")
-			Staged.Desc.eColorSpace =
-				PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::LINEAR;
-		else if (ColorSpace == "srgb")
-			Staged.Desc.eColorSpace =
-				PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::SRGB;
-		else
-		{
-			strOutError = "Screen overlay color space is invalid.";
-			return false;
-		}
-		const string& CoverageChannel = pCoverageChannel->Get_String();
-		if (CoverageChannel == "r")
-			Staged.Desc.eCoverageChannel =
-				PRESENTATION_SCREEN_OVERLAY_CHANNEL::R;
-		else if (CoverageChannel == "g")
-			Staged.Desc.eCoverageChannel =
-				PRESENTATION_SCREEN_OVERLAY_CHANNEL::G;
-		else if (CoverageChannel == "b")
-			Staged.Desc.eCoverageChannel =
-				PRESENTATION_SCREEN_OVERLAY_CHANNEL::B;
-		else if (CoverageChannel == "a")
-			Staged.Desc.eCoverageChannel =
-				PRESENTATION_SCREEN_OVERLAY_CHANNEL::A;
-		else
-		{
-			strOutError = "Screen overlay coverage channel is invalid.";
-			return false;
-		}
-
-		const DATA_JSON_VALUE* pFilter = Required(
-			*pSampler, "filter", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* pAddress = Required(
-			*pSampler, "address", DATA_JSON_TYPE::STRING);
-		if (nullptr == pFilter || nullptr == pAddress)
-		{
-			strOutError = "Screen overlay sampler is invalid.";
-			return false;
-		}
-		if (pFilter->Get_String() == "point")
-			Staged.Desc.eFilter = PRESENTATION_SCREEN_OVERLAY_FILTER::POINT;
-		else if (pFilter->Get_String() == "linear")
-			Staged.Desc.eFilter = PRESENTATION_SCREEN_OVERLAY_FILTER::LINEAR;
-		else
-		{
-			strOutError = "Screen overlay filter is invalid.";
-			return false;
-		}
-		if (pAddress->Get_String() == "clamp")
-			Staged.Desc.eAddress = PRESENTATION_SCREEN_OVERLAY_ADDRESS::CLAMP;
-		else if (pAddress->Get_String() == "wrap")
-			Staged.Desc.eAddress = PRESENTATION_SCREEN_OVERLAY_ADDRESS::WRAP;
-		else
-		{
-			strOutError = "Screen overlay address mode is invalid.";
-			return false;
-		}
-
-		if (!ReadFloat(*pTiming, "startSeconds", 0.f, 30.f,
-				Staged.fStartSeconds) ||
-			!ReadFloat(*pTiming, "lifetimeSeconds", 0.001f, 30.f,
-				Staged.fLifetimeSeconds) ||
-			!ReadFloat(*pTiming, "alphaStart", 0.f, 1.f,
-				Staged.fAlphaStart) ||
-			!ReadFloat(*pTiming, "alphaEnd", 0.f, 1.f,
-				Staged.fAlphaEnd) ||
-			!ReadFloat2(*pTransform, "position", -2.f, 3.f,
-				Staged.Desc.vPosition) ||
-			!ReadFloat2(*pTransform, "scale", 0.001f, 4.f,
-				Staged.Desc.vScale) ||
-			!ReadFloat(*pTransform, "rotationDegrees", -100000.f, 100000.f,
-				Staged.Desc.fRotationDegrees) ||
-			!ReadFloat(*pTransform, "angularVelocityDegreesPerSecond",
-				-100000.f, 100000.f,
-				Staged.Desc.fAngularVelocityDegreesPerSecond) ||
-			!ReadFloat2(*pTransform, "uvDriftPerSecond", -1000.f, 1000.f,
-				Staged.Desc.vUvDriftPerSecond))
-		{
-			strOutError = "Screen overlay timing or transform is invalid.";
-			return false;
-		}
-		const f32_t fEndSeconds =
-			Staged.fStartSeconds + Staged.fLifetimeSeconds;
-		if (!std::isfinite(fEndSeconds) || fEndSeconds > 60.f)
-		{
-			strOutError = "Screen overlay lifetime end is invalid.";
-			return false;
-		}
+		Staged.strOverlayId = Source.strOverlayId;
+		Staged.fStartSeconds = Source.fStartSeconds;
+		Staged.fLifetimeSeconds = Source.fLifetimeSeconds;
+		Staged.fAlphaStart = Source.fAlphaStart;
+		Staged.fAlphaEnd = Source.fAlphaEnd;
+		Staged.Desc = Source.Desc;
 
 		std::filesystem::path TexturePath;
-		if (!IsEffectDdsAssetId(pAssetId->Get_String(), TexturePath))
+		if (!ResolveEffectDdsAssetId(
+				Source.strTextureAssetId, TexturePath))
 		{
 			strOutError = "Screen overlay texture asset is invalid or missing.";
 			return false;
@@ -500,9 +614,6 @@ bool_t Client::CEffectScreenOverlayPresentation::Stage_AndCommit(
 			strOutError = "Screen overlay DDS channel or color-space contract is unavailable.";
 			return false;
 		}
-
-		Staged.strOverlayId = pId->Get_String();
-		fMaximumEndSeconds = (std::max)(fMaximumEndSeconds, fEndSeconds);
 		StagedOverlays.push_back(std::move(Staged));
 	}
 
@@ -514,7 +625,7 @@ bool_t Client::CEffectScreenOverlayPresentation::Stage_AndCommit(
 	}
 	m_PreparedOverlays.swap(StagedOverlays);
 	m_strPresentationId.swap(StagedPresentationId);
-	m_fMaximumEndSeconds = fMaximumEndSeconds;
+	m_fMaximumEndSeconds = Parsed.fMaximumEndSeconds;
 	++m_iCommittedGeneration;
 	Stop();
 	return true;

@@ -7,6 +7,7 @@
 #include "Effect_ReconstructedExecution.h"
 
 #include <functional>
+#include <deque>
 #include <string>
 #include <string_view>
 #include <memory>
@@ -294,8 +295,8 @@ private:
 		std::unordered_map<std::string, uint32_t> EventTrackingCounts;
 		std::unordered_map<std::string, uint32_t> BoneSocketNextIndices;
 		std::vector<PARTICLE_STATE> Particles;
-		std::vector<EFFECT_EVALUATED_TRAIL_POINT> TrailPoints;
-		std::vector<AFTERIMAGE_STATE> AfterImages;
+		std::deque<EFFECT_EVALUATED_TRAIL_POINT> TrailPoints;
+		std::deque<AFTERIMAGE_STATE> AfterImages;
 	};
 
 public:

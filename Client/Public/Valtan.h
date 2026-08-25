@@ -7,6 +7,7 @@
 #include "NavPathFollower.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternSoundCueDocument.h"
 
 #include <algorithm>
 #include <cmath>
@@ -185,7 +186,6 @@ public:
 	static constexpr const tchar_t* BODY_PART_TAG = TEXT("Part_Body");
 	static constexpr const tchar_t* WEAPON_PART_TAG = TEXT("Part_Weapon_R");
 	static constexpr const char_t* WEAPON_SOCKET_BONE = "b_wp_r_01";
-	static constexpr f32_t MODEL_VIEW_SCALE = 1.f;
 	/* Armour parts are authored on the body rig, so they are skinned parts
 	with no socket bone. The stable state mask, never array order, joins them
 	to Server-owned alive-part state. */
@@ -198,7 +198,7 @@ public:
 		uint32_t iPrototypeLevelIndex = {};
 		shared_ptr<CTransform> pTargetTransform = { nullptr };
 		float3_t vPosition = {};
-		f32_t fScale = 1.5f;
+		f32_t fScale = {};
 		bool_t isServerAuthoritative = false;
 		f32_t fCollisionRadius = 0.f;
 	} VALTAN_DESC;
@@ -307,6 +307,8 @@ private:
 	uint32_t m_iServerPatternSequence = 0u;
 	uint32_t m_iServerPatternStageIndex = 0u;
 	f32_t m_fServerActionAgeSeconds = 0.f;
+	std::size_t m_iPatternPresentationClipOccurrenceIndex =
+		(std::numeric_limits<std::size_t>::max)();
 	/* Presentation only: pattern stage actionId -> ordered original clip
 	chain, from Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A
 	missing or corrupt document leaves this empty and every pattern falls back
@@ -323,6 +325,15 @@ private:
 	std::unordered_set<std::string> m_AttemptedPatternEffectOccurrenceKeys;
 	bool_t m_bPatternEffectCueScanAgeValid = false;
 	f32_t m_fPatternEffectCueScanAgeSeconds = 0.f;
+	/* Same role as m_PatternEffectCuesByActionId/m_AttemptedPatternEffectOccurrenceKeys
+	   above, mirrored for boss voice/impact Sound cues instead of Effect spawns --
+	   see CValtanPatternSoundCueDocument's own header comment for why this is a
+	   separate, smaller validated map rather than reusing the Effect one. */
+	std::unordered_map<std::string,
+		std::vector<VALTAN_PATTERN_SOUND_CUE>> m_PatternSoundCuesByActionId;
+	std::unordered_set<std::string> m_AttemptedPatternSoundOccurrenceKeys;
+	bool_t m_bPatternSoundCueScanAgeValid = false;
+	f32_t m_fPatternSoundCueScanAgeSeconds = 0.f;
 #ifdef _DEBUG
 	/* Display copy of the encounter stage hit shapes, keyed by the snapshot's
 	   stage actionId. The Server owns the judgment; this only mirrors it as a
@@ -360,6 +371,8 @@ private:
 	void Load_PatternBindings();
 	void Load_PatternEffectCues();
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
+	void Load_PatternSoundCues();
+	void Spawn_DuePatternSoundCues(f32_t fActionAgeSeconds);
 #ifdef _DEBUG
 	void Load_PatternHitAreaDebug();
 	void Draw_PatternHitAreaDebug() const;

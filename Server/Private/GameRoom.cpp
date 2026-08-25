@@ -6299,6 +6299,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				{
 					for (const SERVER_PLAYER* volleyPlayer : aliveTargets)
 					{
+						const std::size_t targetPointBegin = resolvedPoints.size();
 						for (std::uint32_t ordinal = 0u;
 							ordinal < countPerTarget; ++ordinal)
 						{
@@ -6324,29 +6325,32 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 							}
 							resolvedPoints.push_back({ x, z });
 						}
-					}
-					if (!action.Volley.bAllowOverlap)
-					{
-						const float minimumSpacing =
-							Resolve_VolleyMinimumSpacing(*definition);
-						const float minimumSpacingSquared =
-							minimumSpacing * minimumSpacing;
-						for (std::size_t left = 0u;
-							left < resolvedPoints.size(); ++left)
+						/* Layout belongs to one resolved target. Players may legitimately
+						stack, so overlap admission compares only the ordinals dealt around
+						that same target. */
+						if (!action.Volley.bAllowOverlap)
 						{
-							for (std::size_t right = left + 1u;
-								right < resolvedPoints.size(); ++right)
+							const float minimumSpacing =
+								Resolve_VolleyMinimumSpacing(*definition);
+							const float minimumSpacingSquared =
+								minimumSpacing * minimumSpacing;
+							for (std::size_t left = targetPointBegin;
+								left < resolvedPoints.size(); ++left)
 							{
-								const float deltaX =
-									resolvedPoints[left].fX - resolvedPoints[right].fX;
-								const float deltaZ =
-									resolvedPoints[left].fZ - resolvedPoints[right].fZ;
-								if (deltaX * deltaX + deltaZ * deltaZ +
-									VOLLEY_SPACING_EPSILON < minimumSpacingSquared)
+								for (std::size_t right = left + 1u;
+								right < resolvedPoints.size(); ++right)
 								{
-									m_strStatus =
-										"Boss combat object volley spacing is invalid";
-									return false;
+									const float deltaX = resolvedPoints[left].fX -
+										resolvedPoints[right].fX;
+									const float deltaZ = resolvedPoints[left].fZ -
+										resolvedPoints[right].fZ;
+									if (deltaX * deltaX + deltaZ * deltaZ +
+										VOLLEY_SPACING_EPSILON < minimumSpacingSquared)
+									{
+										m_strStatus =
+											"Boss combat object volley spacing is invalid";
+										return false;
+									}
 								}
 							}
 						}

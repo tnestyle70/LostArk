@@ -7,6 +7,7 @@
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
+#include "ValtanPatternEffectCueDocument.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -28,6 +29,9 @@ struct EFFECT_SPAWN_DESC final
     std::string strAnchorSlotId = "root";
     EFFECT_TRANSFORM_DESC LocalTransform{};
     EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy =
+		VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+	float3_t vWorldScale{ 1.f, 1.f, 1.f };
 	EFFECT_ORIENTATION_POLICY eOrientationPolicy =
 		EFFECT_ORIENTATION_POLICY::ANCHOR;
 	/* Valid only for ACTION_FACING and captured with iActionStartTick from the
@@ -176,6 +180,20 @@ public:
 	static bool_t Build_SourceBoneAnchorWorld(
 		const EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC& Desc,
 		float4x4_t& OutWorld);
+	/* Effect Tool and product runtime must use the same owner-basis replacement
+	   for Valtan cue-v3 scale policies.  These helpers validate the sampled
+	   owner transform and never mutate it on failure. */
+	static bool_t Build_CueScalePolicyAnchor(
+		VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
+		const float3_t& WorldScale,
+		const float4x4_t& SampledOwnerAnchor,
+		float4x4_t& OutAnchor);
+	static bool_t Build_CueScalePolicyRoot(
+		const EFFECT_TRANSFORM_DESC& LocalTransform,
+		VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
+		const float3_t& WorldScale,
+		const float4x4_t& SampledOwnerAnchor,
+		float4x4_t& OutRoot);
     static bool_t Queue_ProductCues(
         const std::vector<ANIMATION_EFFECT_CUE>& Cues,
         std::string& strOutStatus);

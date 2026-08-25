@@ -591,6 +591,21 @@ namespace
 int LostArk::Server::Run_ServerGameplayContractTests(
 	const bool dimensionMasterGroundTargetOnly)
 {
+	struct CONTRACT_TEST_RUN_CONTEXT final
+	{
+		bool dimensionMasterGroundTargetOnly = false;
+		int result = 1;
+	};
+
+	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, 1 };
+	const auto runContract = [](void* opaque)
+	{
+		CONTRACT_TEST_RUN_CONTEXT& context =
+			*static_cast<CONTRACT_TEST_RUN_CONTEXT*>(opaque);
+		const bool dimensionMasterGroundTargetOnly =
+			context.dimensionMasterGroundTargetOnly;
+		context.result = [&]() -> int
+		{
 	using namespace LostArk::Shared;
 	TESTS tests{ dimensionMasterGroundTargetOnly };
 	CGameplayCatalog catalog;
@@ -6489,11 +6504,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"Spawn the missile at its authored time and land nothing before it arrives");
 			}
 		}
-		/* tick 10 = action start, spawn on tick 45 (elapsed 1.167 s). The
-		root-motion caster pose advances its spawn origin, so the 0.217 m steps
-		reach contact on tick 60, give or take one tick of float accumulation. */
+		/* tick 10 = action start, spawn on tick 45 (elapsed 1.167 s), then 17
+		moves of 0.217 m to pass 3.5 m: tick 62, give or take one tick of float
+		accumulation. */
 		tests.Require(
-			1u == tigerEvents.size() && firstHitTick >= 59u && firstHitTick <= 61u &&
+			1u == tigerEvents.size() && firstHitTick >= 61u && firstHitTick <= 63u &&
 			tigerTargets[0].iNetEntityId == tigerEvents[0].iTargetNetEntityId,
 			"Land the missile's contact hit once when its box reaches the target");
 		const std::uint32_t tigerRate = catalog.Find_DamageRatePercent(
@@ -7404,7 +7419,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raider.iCurrentHp = 5000u;
 			raider.iMaximumHp = 5000u;
 			raider.isCombatReady = true;
-			raider.fPositionX = 137.f + 8.f * static_cast<float>(index);
+			raider.fPositionX = 137.f + static_cast<float>(index);
 			raider.fPositionZ = -113.5f;
 			volleyRoom.m_Players.emplace(raider.iPlayerId, raider);
 		}
@@ -7420,13 +7435,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			volleyRoom.m_CombatObjectRuntime.Get_LiveObjects();
 		std::set<std::uint32_t> lockedTargets;
 		std::vector<std::uint32_t> lockedTargetOrder;
-		std::vector<SERVER_COMBAT_OBJECT_POSE> stageEnterPoses;
 		for (const SERVER_COMBAT_OBJECT& object : liveObjects)
 		{
 			lockedTargets.insert(object.iLockedTargetNetEntityId);
 			lockedTargetOrder.push_back(
 				static_cast<std::uint32_t>(object.iLockedTargetNetEntityId));
-			stageEnterPoses.push_back(object.LiveState.CurrentPose);
 		}
 		std::vector<S2C_COMBAT_OBJECT_SPAWNED> initialSpawned;
 		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> initialDespawned;
@@ -7462,27 +7475,62 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		for (auto& [raiderId, raider] : volleyRoom.m_Players)
 		{
 			(void)raiderId;
-			raider.fPositionX += 5.f;
-			raider.fPositionZ += 5.f;
+			if (0u != raider.iCurrentHp)
+				raider.fPositionZ += 0.5f;
 		}
 		std::vector<DAMAGE_EVENT> volleyDamageEvents;
 		volleyRoom.m_CombatObjectRuntime.Update(
 			volleyRoom.m_Players, volleyRoom.m_WorldEntities,
 			volleyRoom.m_GameplayCatalog, 1.f / 30.f, 901u,
 			volleyDamageEvents);
-		bool keptStageEnterSamples =
-			stageEnterPoses.size() == liveObjects.size();
-		for (std::size_t index = 0u;
-			keptStageEnterSamples && index < liveObjects.size(); ++index)
+		const auto followsResolvedTarget = [&volleyRoom](
+			const SERVER_COMBAT_OBJECT& object)
 		{
-			keptStageEnterSamples =
-				stageEnterPoses[index].fPositionX ==
-					liveObjects[index].LiveState.CurrentPose.fPositionX &&
-				stageEnterPoses[index].fPositionZ ==
-					liveObjects[index].LiveState.CurrentPose.fPositionZ;
+			const auto target = std::find_if(
+				volleyRoom.m_Players.begin(), volleyRoom.m_Players.end(),
+				[&object](const auto& entry)
+				{ return entry.second.iNetEntityId == object.iLockedTargetNetEntityId; });
+			return volleyRoom.m_Players.end() != target &&
+				std::abs(object.LiveState.CurrentPose.fPositionX -
+					target->second.fPositionX) < 0.001f &&
+				std::abs(object.LiveState.CurrentPose.fPositionZ -
+					target->second.fPositionZ) < 0.001f;
+		};
+		tests.Require(std::all_of(
+			liveObjects.begin(), liveObjects.end(), followsResolvedTarget),
+			"Follow each resolved sky-axe target until its first timed pulse");
+		for (std::uint32_t tick = 902u; tick <= 936u; ++tick)
+		{
+			volleyRoom.m_CombatObjectRuntime.Update(
+				volleyRoom.m_Players, volleyRoom.m_WorldEntities,
+				volleyRoom.m_GameplayCatalog, 1.f / 30.f, tick,
+				volleyDamageEvents);
 		}
-		tests.Require(keptStageEnterSamples,
-			"Keep per-player volley positions fixed at the STAGE_ENTER sample");
+		std::vector<SERVER_COMBAT_OBJECT_POSE> firstPulsePoses;
+		for (const SERVER_COMBAT_OBJECT& object : liveObjects)
+			firstPulsePoses.push_back(object.LiveState.CurrentPose);
+		for (auto& [raiderId, raider] : volleyRoom.m_Players)
+		{
+			(void)raiderId;
+			if (0u != raider.iCurrentHp)
+				raider.fPositionZ += 5.f;
+		}
+		volleyRoom.m_CombatObjectRuntime.Update(
+			volleyRoom.m_Players, volleyRoom.m_WorldEntities,
+			volleyRoom.m_GameplayCatalog, 1.f / 30.f, 937u,
+			volleyDamageEvents);
+		bool fixedAfterFirstPulse = firstPulsePoses.size() == liveObjects.size();
+		for (std::size_t index = 0u;
+			fixedAfterFirstPulse && index < liveObjects.size(); ++index)
+		{
+			fixedAfterFirstPulse =
+				std::abs(firstPulsePoses[index].fPositionX -
+					liveObjects[index].LiveState.CurrentPose.fPositionX) < 0.001f &&
+				std::abs(firstPulsePoses[index].fPositionZ -
+					liveObjects[index].LiveState.CurrentPose.fPositionZ) < 0.001f;
+		}
+		tests.Require(fixedAfterFirstPulse,
+			"Freeze each sky axe at its first timed-pulse position");
 
 		auto* mutableVolleyPatterns = const_cast<
 			std::vector<BOSS_PATTERN_DEFINITION>*>(
@@ -7613,9 +7661,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"valtan.attack.high-jump.airborne",
 					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 930u);
 			tests.Require(
-				!overlappingAccepted &&
-				volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().empty(),
-				"Reject overlapping resolved volley positions with zero partial spawn");
+				overlappingAccepted &&
+				2u == volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().size(),
+				"Allow different players' resolved volley positions to overlap");
 
 			volleyRoom.m_CombatObjectRuntime.Reset();
 			volleyRoom.m_Players.at(8101u).iCurrentHp = 0u;
@@ -8530,18 +8578,34 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					nullptr : previous);
 			return loaded;
 		};
-		const bool acceptedContactDelay = loadWithPatternStageRows(
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t600\tdamage.player.34120\t2\t242\t1\t2000\n"
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t1\tSPAWN\tvaltan.test.spawn\tWINDUP\t500\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n"
-				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
-				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
-				"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
-				"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n",
-				{});
+		const std::string acceptedContactDelayRows =
+			"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t600\tdamage.player.34120\t2\t242\t1\t2000\n"
+			"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t1\tSPAWN\tvaltan.test.spawn\tWINDUP\t500\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n"
+			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
+			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
+			"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
+			"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+			"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n";
+		const bool acceptedContactDelay =
+			loadWithPatternStageRows(acceptedContactDelayRows, {});
 		tests.Require(
 			acceptedContactDelay,
 			"Accept a stage whose first hit lands at its authored contact delay");
+		std::string invalidLegacySpawnCountRows = acceptedContactDelayRows;
+		const std::string validLegacySpawnSuffix =
+			"SPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n";
+		const std::size_t legacySpawnSuffixAt =
+			invalidLegacySpawnCountRows.find(validLegacySpawnSuffix);
+		if (std::string::npos != legacySpawnSuffixAt)
+		{
+			invalidLegacySpawnCountRows.replace(
+				legacySpawnSuffixAt, validLegacySpawnSuffix.size(),
+				"SPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t2\t0\n");
+		}
+		tests.Require(
+			std::string::npos != legacySpawnSuffixAt &&
+			!loadWithPatternStageRows(invalidLegacySpawnCountRows, {}),
+			"Reject legacy combat-object action counts above one");
 		tests.Require(
 			!loadWithPatternStageRows(
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t1000\tdamage.player.34120\t2\t242\t1\t2000\n"
@@ -12500,6 +12564,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.failures += Run_WorldDestructionBootstrapContractTests();
 	std::cout << "failures : " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;
+		}();
+	};
+	if (!Run_WithContractWorkerStack(runContract, &context))
+	{
+		std::cerr << "[FAILURE] Server gameplay contract worker did not complete\n";
+		return 1;
+	}
+	return context.result;
 }
 
 int LostArk::Server::Run_ServerNavigationContractTests()

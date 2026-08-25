@@ -123,8 +123,8 @@ flowchart LR
 | `Data/Combat/Timelines/Player` | skill별 Server action/hit/collider/movement/combo timeline | 첫 multi-hit/collider Server 슬라이스 |
 | `Data/Combat/Timelines/Boss` | boss pattern별 Server action/hit/status timeline | Valtan 원작 pattern parser와 함께 |
 | `Data/Balance/StatusEffectProfiles.json` | stun, knockback, invulnerability 등 Server 상태이상 정의 | 첫 실제 상태이상과 Server consumer가 함께 생길 때 |
-| `Data/Effects/Authored` | Effect Tool 저작 문서 | 현재 Tool Save 경로이며 첫 admitted runtime effect와 함께 Git 정본화 |
-| `Data/Effects/EffectCatalog.json` | publish 가능한 EffectAssetId와 dependency/content hash | 첫 effect runtime consumer와 publisher가 생길 때 |
+| `Data/Effects/Authored` | 제품 Effect element/runtime 문서의 단일 정본 | Effect Tool Save와 다음 제품 재생·다음 Client 실행이 동일 파일 소비 |
+| `Data/Effects/EffectCatalog.json` | 제품 EffectAssetId와 exact authored 상대 경로 | source validator와 `CEffectCatalog`가 직접 소비 |
 | `Data/Worlds/<AreaId>/SpawnGroups.world.json` | monster wave/group와 spawn anchor 연결 | 첫 실제 Monster archetype/brain/replication과 함께 |
 | `Data/Balance/Reference/Official` | raw payload가 아닌 field provenance receipt | 공식 수치 자동 재추출을 저장소에서 재현할 때 |
 
@@ -169,7 +169,7 @@ flowchart TD
 | `combatTimelineId` | 목표 `Data/Combat/Timelines` | Server action-relative event sequence |
 | `animationAssetId` | `CharacterCatalog`/Animation document owner | 어떤 cooked model clip 집합을 쓰는지 식별 |
 | `clipName` | cooked `CModel` | animation asset 내부 stable clip 이름 |
-| `effectAssetId` | 목표 `EffectCatalog` | publish/admission된 Client effect definition |
+| `effectAssetId` | `EffectCatalog` | source-admission된 Client effect definition |
 | `areaId` | `MapCatalog.json` | visual/gameplay/navigation layer를 묶는 Area |
 | `placementId` | `Gameplay.world.json` | Area 안 gameplay instance identity |
 | `runtimePlacementId` | map/deploy placement publisher | 시각 placement identity. gameplay `placementId`와 다른 domain |
@@ -471,7 +471,7 @@ effect를 hit보다 먼저 보이게 할 수도 있으므로 publisher가 두 �
 
 ### 11.1 현재 상태
 
-현재 Effect Tool의 실행 계약은 `lostark.effect-authoring` v2다.
+현재 제품 Effect의 실행 계약은 `lostark.effect-authoring` v13/v15 direct source다.
 
 ```text
 EffectAssetId + displayName
@@ -480,23 +480,27 @@ EffectAssetId + displayName
    -> typed resource slot + Resources/Effect relative asset ID
 ```
 
-resource binding과 atomic Save/Load는 있으나 emitter simulation, material/render profile 전체, admitted
-Effect catalog, 제품 runtime cue player는 아직 닫히지 않았다. 계획서에 있는 이후 v3/v4 전문은 현재 구현
-정본으로 간주하지 않는다.
+v15는 고급 trail/light와 baked history projection을 `runtimeExtensions.runtimeCarriers`에 typed inline
+carrier로 저장한다. 이 carrier도 같은 authored 문서의 일부이며 별도 VisualPrograms corpus나 generated
+sidecar를 두 번째 정본으로 만들지 않는다.
 
 ### 11.2 목표 구조
 
 | 문서 | 소유 정보 |
 |---|---|
 | `Data/Effects/Authored/<EffectAssetId>.effect.json` | element/module/local transform/lifetime/render property/resource dependency |
-| `Data/Effects/EffectCatalog.json` | admitted EffectAssetId, authoring content hash, runtime status/dependency set |
-| `Client/Bin/DataFiles/Effect/*` | publisher가 생성한 runtime effect definition |
-| `Client/Bin/Resources/Effect/*` | texture/model binary payload |
+| `Data/Effects/EffectCatalog.json` | admitted EffectAssetId와 exact authored 상대 경로 |
+| `Client/Bin/Resources/Effect/*` | texture/model binary payload; V1 Product가 참조하는 최소 closure는 pull 재현용 Git/LFS 입력 |
 | Animation `.animevents` | 언제, 어디에, 어떤 attachment 정책으로 EffectAssetId를 호출하는지 |
 
 Effect Tool은 Active Document를 `parse -> validate -> stage -> commit`하고 Preview도 제품과 같은 Effect
-runtime을 사용한다. Preview 전용 두 번째 emitter 구현을 만들지 않는다. Save 성공은 authoring 저장 완료일
-뿐이며, Catalog admission/publish/runtime smoke가 끝나기 전에는 제품 effect 연결 완료가 아니다.
+runtime을 사용한다. Preview 전용 두 번째 emitter 구현을 만들지 않는다. Save는 authored 파일 원자 교체와
+다음 제품 spawn target 활성화를 한 transaction으로 처리한다. activation 실패 시 compare-and-swap으로 파일을
+이전 bytes로 복원하고 기존 target을 유지한다. 다음 Client 실행도 같은 authored 파일을 직접 읽으며
+`Client/Bin/DataFiles/Effect` 복사본과 Effect publisher는 없다. 전체 정적 검증은
+`Tools/EffectPipeline/Validate-EffectSources.ps1`가 담당한다.
+V1 pull 재현 closure는 authored Product 문서에서 도달 가능한 Resources-relative DDS/WModel만 포함하며,
+별도 runtime manifest나 두 번째 asset catalog를 만들지 않는다.
 
 ### 11.3 Effect와 damage 분리
 
@@ -1014,10 +1018,10 @@ definition을 혼동하지 않는다. 모든 field에 receipt가 있다는 사�
 ### 18.3 Effect 담당
 
 1. Effect Tool에서 EffectAssetId와 element/module/resource를 저작한다.
-2. Save는 `Data/Effects/Authored`, binary는 Resources pack workflow로 관리한다.
-3. Catalog admission과 Effect publisher 검증 뒤 Animation cue에서 ID를 선택한다.
+2. Save는 `Data/Effects/Authored` 파일과 다음-spawn Product target을 한 transaction으로 교체한다. binary는 기본적으로 Resources 물리 폴더로 관리하되, pull-only V1은 현재 Product가 참조하는 최소 dependency closure를 Git/LFS로 함께 관리한다.
+3. `EffectCatalog.json` source admission과 `Validate-EffectSources.ps1` 검증 뒤 Animation cue에서 ID를 선택한다.
 4. collider/damage timing은 Effect 문서에 저장하지 않는다.
-5. Preview와 제품은 같은 Effect runtime을 사용한다.
+5. Preview, 다음 제품 spawn과 다음 Client 실행은 같은 authored 파일과 Effect runtime을 사용한다.
 
 ### 18.4 Gameplay/Balance 담당
 
@@ -1068,7 +1072,7 @@ promotion 실패와 기존 runtime 보존을 검증한다.
 
 1. UI layout typed `inputSlot` binding + ViewModel cooldown API + radial cooldown widget
 2. `DAMAGE_EVENT` Client consumer + damage font style/presentation
-3. Effect authoring schema/runtime/catalog/publisher 한 개 admitted fixture
+3. Effect source-only catalog/validator + Save next-spawn/next-launch rollback fixture
 4. Animation EFFECT point cue → Effect runtime, 이후 anchor/window trail
 5. Player Combat Timeline + Server hit volume/multi-hit publisher
 6. Balance Tool의 offline Save/Validate/Publish

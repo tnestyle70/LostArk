@@ -24,8 +24,9 @@ F1 Balance Tool draft
 -> Server snapshot / damage event로 실측
 ```
 
-런타임 hot reload는 없다. `Publish Server Data` 뒤 Server를 재시작해야 적용된다. Client만 JSON을
-다시 읽어서 Server와 다른 수치를 보여주는 경로는 만들지 않는다.
+player/base balance는 `Publish Server Data` 뒤 Server를 재시작해야 적용된다. Valtan split gameplay candidate의
+typed hot reload는 별도 revision/2PC 계약을 사용하므로 아래 일반 balance publish와 섞지 않는다. 어느 경로에서도
+Client만 JSON을 다시 읽어 Server와 다른 수치를 보여 주지 않는다.
 
 ## 2. 정본 파일
 
@@ -35,14 +36,20 @@ F1 Balance Tool draft
 | class/slot/skill/timing/range/combo | `Data/Balance/PlayerSkills.json` |
 | attack power에 곱하는 damage rate | `Data/Balance/DamageProfiles.json` |
 | Valtan HP/AP/detection/movement/phase threshold | `Data/Balance/BossProfiles.json` |
-| Valtan state/action/pattern timing/range | `Data/Encounters/Valtan/ValtanEncounter.json` |
+| Valtan pattern graph/selection/stage/action/hit/motion/volley | `Data/Valtan/Valtan.gameplay.json` |
+| Valtan animation/Effect/camera invocation | `Data/Valtan/Valtan.presentation.json` |
+| Valtan combat-object definition | `Data/Valtan/Valtan.combatobjects.json` |
+| Valtan stable world-event membership | `Data/Valtan/Valtan.worldeventsets.json` |
+| Valtan unmanaged Product migration closure | `Data/Valtan/Valtan.legacy-compatibility.json` |
 | field-level 출처와 변환 | `Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json` |
 | 재추출기 | `Tools/GameplayPipeline/Export-OfficialBalanceReceipt.py` |
 | Tool 편집 후 receipt 동기화 | `Tools/GameplayPipeline/Update-BalanceProvenanceReceipt.ps1` |
 | domain 검증·cook | `Tools/GameplayPipeline/Publish-GameplayBalance.ps1`, `Tools/WorldPipeline/Publish-WorldGameplay.ps1` |
 | Balance/World/Items 통합 promotion | `Tools/GameplayPipeline/Publish-BalanceRuntimeSet.ps1` |
 
-Server가 읽는 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 생성물이다. 직접 편집하지 않는다.
+`Data/Valtan/Valtan.pattern.json`은 migration fixture다. `Data/Encounters/Valtan/ValtanEncounter.json`, rotations,
+combat objects, world events, pattern bindings/cues와 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 생성물이다.
+직접 편집하지 않는다.
 
 ## 3. 공식값 표기의 정확한 의미
 
@@ -103,16 +110,22 @@ damage 정답을 Client notify에서 만들지 않는다.
 
 ## 6. Valtan 튜닝 방법
 
-왼쪽 `Bosses -> 발탄`에서 다음을 분리해 본다.
+왼쪽 `Bosses -> Valtan`은 한 화면에서 joined 결과를 보여 주지만 저장 소유권은 분리한다.
 
-- `Base stats`: HP, attack power, collision radius
-- `Detection and movement`: engage distance, move speed
-- `Phase`: phase 2 HP threshold
-- `Patterns`: range, telegraph/active/recovery, damage rate, animation action ID
+- `Base stats`: `BossProfiles.json`의 HP, attack power, collision radius, detection/movement를 편집한다.
+- `Decision / Pattern / Stage`: `Valtan.gameplay.json`의 selection window/set, weight, eligibility, duration,
+  hit, branch, motion, volley를 편집한다.
+- `Combat Object`: `Valtan.combatobjects.json`의 object-owned geometry/damage를 편집한다.
+- `Presentation`: `Valtan.presentation.json`의 animation occurrence, Effect/camera invocation은 read-only로 표시하고
+  owning Animation/Effect/Camera Tool로 안내한다.
+- `World / Legacy`: `Valtan.worldeventsets.json` membership과 `Valtan.legacy-compatibility.json` closure는
+  read-only다. generated Product를 편집 대상으로 열지 않는다.
 
-현재 Server 행동은 nearest alive player 감지 → chase → 8m 이내 windup → active 시작 tick에 radial 2D
-1회 hit → recovery다. min range는 아직 행동 선택에 사용되지 않고, phase 2는 snapshot phase byte만
-변경하며 별도 패턴 목록을 선택하지 않는다. Tool은 이 사실을 잠긴 진단 문구로 보여준다.
+`Resolved Scale` lane도 read-only다. boss row에는 `BossCatalog.json`의 `presentationScale: 0.75`를, cue row에는
+presentation source의 `scalePolicy`와 resolved scale을 표시한다. `OWNER_RELATIVE`는 actor scale을 상속하고,
+`GAMEPLAY_FOOTPRINT`와 `ARENA_ABSOLUTE`는 actor scale을 제거한 뒤 authored `worldScale`을 사용한다. Balance Tool이
+이 lane에서 `BossCatalog.json`, `Valtan.presentation.json`, `Data/Effects/Authored`를 저장하거나 Effect element를
+일괄 축소하지 않는다. 특히 sky-axe geometry와 속도·회전·decal은 Effect V1 저작 데이터와 Effect Tool이 소유한다.
 
 플레이어 방어력은 이제 실제 incoming damage에 사용한다. 공식 Server 감산식은 client payload에 없어서
 다음 식은 `PROJECT_TUNED` 계약이다.

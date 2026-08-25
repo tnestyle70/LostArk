@@ -6,6 +6,7 @@
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
+#include "DataJson.h"
 #include "Effect_Catalog.h"
 #include "EffectAuthoringTransfer.h"
 #include "GameInstance.h"
@@ -20,6 +21,7 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
+#include <cfloat>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -186,6 +188,26 @@ namespace
 				return true;
 		}
 		return false;
+	}
+
+	/* Start_Animation cuts straight to the new clip's first frame, which is what
+	   the product Valtan still does. The preview blends the way CCharacter
+	   already does so the animator judges motion rather than the seam. The
+	   blend snapshot has to be taken before the track reset overwrites the
+	   bones, hence the two calls in this order. Clips repeated back to back
+	   keep their hard restart: the pose is identical, so there is nothing to
+	   blend, and a re-strike is meant to read as a new strike. */
+	bool_t Start_PreviewClip(
+		const shared_ptr<Engine::CModel>& pModel,
+		const char_t* pClipName,
+		const bool_t bLoop,
+		const f32_t fBlendSeconds)
+	{
+		if (nullptr == pModel || nullptr == pClipName)
+			return false;
+		if (fBlendSeconds > 0.f)
+			pModel->Set_Animation(pClipName, bLoop, fBlendSeconds);
+		return pModel->Start_Animation(pClipName, bLoop);
 	}
 }
 
@@ -646,6 +668,18 @@ void Client::CAnimation_Tool::Select_Clip(const shared_ptr<Engine::CModel>& pMod
 void Client::CAnimation_Tool::Render()
 {
 	ImGui::SetNextWindowSize(ImVec2(460.f, 720.f), ImGuiCond_FirstUseEver);
+	/* A scrollbar only moves when the content is longer than the window. Left
+	   alone the window keeps whatever height it was dragged to, or restored to
+	   from imgui.ini, and once that is taller than the display the content
+	   always fits: the bar is drawn full height and nothing scrolls, while the
+	   rows past the bottom edge sit off-screen. Capping the height at the work
+	   area is what puts the overflow back inside the window. */
+	if (const ImGuiViewport* pViewport = ImGui::GetMainViewport())
+	{
+		ImGui::SetNextWindowSizeConstraints(
+			ImVec2(320.f, 200.f),
+			ImVec2(FLT_MAX, pViewport->WorkSize.y));
+	}
 	const bool_t isTargetLocked = Is_AnyDocumentDirty();
 	m_pPreviewPanel->Set_SessionLock(
 		CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL,
@@ -653,7 +687,10 @@ void Client::CAnimation_Tool::Render()
 		"Save or discard Animation Events and Skill Bindings before changing target.");
 	m_pPreviewPanel->Refresh_Level();
 
-	if (!ImGui::Begin("LostArk Animation Tool"))
+	if (!ImGui::Begin(
+		"LostArk Animation Tool",
+		nullptr,
+		ImGuiWindowFlags_AlwaysVerticalScrollbar))
 	{
 		ImGui::End();
 		return;
@@ -730,7 +767,9 @@ void Client::CAnimation_Tool::Render()
 			Render_ValtanPatternPreview(pModel);
 		ImGui::BeginDisabled(
 			m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying);
-		Render_ClipChain(pModel);
+		/* The source chain rows are not drawn for Valtan: the Custom Chain
+		   window owns chain playback now, and the per-clip buttons crowded the
+		   panel the animator actually works in. Other assets keep them. */
 		Render_NotifyReference(pModel);
 		Render_HitAreaWires(pModel);
 		Render_SkillReference(pModel, true);
@@ -1334,8 +1373,9 @@ bool_t Client::CAnimation_Tool::Activate_ValtanPatternMasterItem(
 		static_cast<f32_t>(Item.iAuthoringWallMs) * 0.001f;
 	if (!std::isfinite(fLocalWallSeconds) || fLocalWallSeconds < 0.f ||
 		fLocalWallSeconds > fDurationSeconds + 0.000001f ||
-		!pModel->Start_Animation(
-			Item.strClipName.c_str(), Item.bRepeatUntilStageEnd))
+		!Start_PreviewClip(
+			pModel, Item.strClipName.c_str(), Item.bRepeatUntilStageEnd,
+			m_fPreviewBlendSeconds))
 	{
 		return false;
 	}
@@ -1504,6 +1544,13 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	if (ImGui::SmallButton("Reload Valtan Pattern Master"))
 		Reload_ValtanPatternMaster();
 	ImGui::EndDisabled();
+
+	/* Opened ahead of the seven-pattern admission below: assembling a chain by
+	   hand must stay possible even when the master itself refuses to load. */
+	if (ImGui::SmallButton("Open Custom Chain Window"))
+		m_bShowValtanCustomChainWindow = true;
+	if (m_bShowValtanCustomChainWindow)
+		Render_ValtanCustomChainWindow(pModel);
 
 	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
 		Collect_ValtanPatternMasterPatterns();
@@ -1957,7 +2004,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternPreview(
 		const bool_t bListVisible = ImGui::BeginChild(
 			"##ValtanPatternPreviewList",
 			ImVec2(0.f, 260.f),
-			ImGuiChildFlags_Borders);
+			ImGuiChildFlags_Borders,
+			ImGuiWindowFlags_NoScrollWithMouse);
 		if (bListVisible)
 		{
 			for (int32_t Index = 0; Index < iPatternCount; ++Index)
@@ -2061,7 +2109,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternReferenceWindow(
 	if (ImGui::BeginChild(
 		"##ValtanPatternReferenceButtons",
 		ImVec2(0.f, 0.f),
-		ImGuiChildFlags_Borders))
+		ImGuiChildFlags_Borders,
+		ImGuiWindowFlags_NoScrollWithMouse))
 	{
 		if (m_ClipSeqs.empty())
 		{
@@ -2213,6 +2262,559 @@ bool_t Client::CAnimation_Tool::Start_ValtanSequencePreview(
 	return Activate_ValtanPatternPreviewItem(pModel);
 }
 
+std::filesystem::path Client::CAnimation_Tool::Get_CustomChainFilePath() const
+{
+	return CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Valtan") / L"Valtan.presentation.debug.json");
+}
+
+bool_t Client::CAnimation_Tool::Load_CustomChainLibrary()
+{
+	const std::filesystem::path source = Get_CustomChainFilePath();
+	std::error_code existsError;
+	if (!std::filesystem::exists(source, existsError) || existsError)
+	{
+		/* Nothing saved yet is the normal first state, not a failure. */
+		m_CustomChainLibrary.clear();
+		m_strCustomChainStatus.clear();
+		return true;
+	}
+
+	FILE* file = nullptr;
+	if (0 != _wfopen_s(&file, source.c_str(), L"rb") || nullptr == file)
+	{
+		m_strCustomChainStatus =
+			"Could not open the debug chain file; saved chains preserved.";
+		return false;
+	}
+	std::string text;
+	char_t buffer[4096]{};
+	size_t read = 0u;
+	while (0u < (read = fread(buffer, 1u, sizeof(buffer), file)))
+		text.append(buffer, read);
+	fclose(file);
+
+	DATA_JSON_VALUE root;
+	std::string error;
+	if (!CDataJson::Parse(text, root, error) || !root.Is_Object())
+	{
+		m_strCustomChainStatus =
+			"Debug chain file is unreadable; saved chains preserved: " + error;
+		return false;
+	}
+	const DATA_JSON_VALUE* pChains = root.Find("chains");
+	if (nullptr == pChains || !pChains->Is_Array())
+	{
+		m_strCustomChainStatus =
+			"Debug chain file has no chain array; saved chains preserved.";
+		return false;
+	}
+
+	/* Staged first so a malformed row leaves the previous library intact. */
+	std::vector<CUSTOM_CHAIN_ENTRY> staged;
+	for (const DATA_JSON_VALUE& Chain : pChains->Get_Array())
+	{
+		if (!Chain.Is_Object())
+			continue;
+		const DATA_JSON_VALUE* pId = Chain.Find("chainId");
+		const DATA_JSON_VALUE* pAnimation = Chain.Find("animation");
+		if (nullptr == pId || !pId->Is_String() || pId->Get_String().empty() ||
+			nullptr == pAnimation || !pAnimation->Is_Object())
+		{
+			continue;
+		}
+		const DATA_JSON_VALUE* pOccurrences = pAnimation->Find("occurrences");
+		if (nullptr == pOccurrences || !pOccurrences->Is_Array())
+			continue;
+
+		CUSTOM_CHAIN_ENTRY Entry;
+		Entry.chainId = pId->Get_String();
+		if (const DATA_JSON_VALUE* pPattern = Chain.Find("targetPatternId"))
+		{
+			if (pPattern->Is_String())
+				Entry.targetPatternId = pPattern->Get_String();
+		}
+		if (const DATA_JSON_VALUE* pStage = Chain.Find("targetStageId"))
+		{
+			if (pStage->Is_String())
+				Entry.targetStageId = pStage->Get_String();
+		}
+		for (const DATA_JSON_VALUE& Occurrence : pOccurrences->Get_Array())
+		{
+			if (!Occurrence.Is_Object())
+				continue;
+			const DATA_JSON_VALUE* pClip = Occurrence.Find("clip");
+			const DATA_JSON_VALUE* pPlayMs = Occurrence.Find("playMs");
+			if (nullptr == pClip || !pClip->Is_String() ||
+				nullptr == pPlayMs || !pPlayMs->Is_Number())
+			{
+				continue;
+			}
+			CUSTOM_CHAIN_STEP Step;
+			Step.clipName = pClip->Get_String();
+			Step.fDurationSeconds =
+				static_cast<f32_t>(pPlayMs->Get_Number()) * 0.001f;
+			Entry.steps.push_back(std::move(Step));
+		}
+		if (!Entry.steps.empty())
+			staged.push_back(std::move(Entry));
+	}
+
+	m_CustomChainLibrary = std::move(staged);
+	m_strCustomChainStatus = "Loaded " +
+		std::to_string(m_CustomChainLibrary.size()) + " saved chains.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
+{
+	const std::filesystem::path destination = Get_CustomChainFilePath();
+	std::error_code directoryError;
+	std::filesystem::create_directories(
+		destination.parent_path(), directoryError);
+	if (directoryError)
+	{
+		m_strCustomChainStatus =
+			"Save failed to create the Data directory: " +
+			directoryError.message();
+		return false;
+	}
+
+	std::filesystem::path temporary = destination;
+	temporary += L".tmp";
+	std::error_code removeError;
+	std::filesystem::remove(temporary, removeError);
+
+	FILE* file = nullptr;
+	if (0 != _wfopen_s(&file, temporary.c_str(), L"wb") || nullptr == file)
+	{
+		m_strCustomChainStatus =
+			"Save failed to open a temporary file; previous chains preserved.";
+		return false;
+	}
+
+	bool_t bWritten = 0 <= fprintf(file,
+		"{\n"
+		"  \"schema\": \"lostark.valtan-pattern-presentation-debug\",\n"
+		"  \"formatVersion\": 1,\n"
+		"  \"bossArchetypeId\": \"BOSS_VALTAN\",\n"
+		"  \"encounterId\": \"ENCOUNTER_VALTAN\",\n"
+		"  \"chains\": [\n");
+	for (size_t iChain = 0u; iChain < m_CustomChainLibrary.size(); ++iChain)
+	{
+		const CUSTOM_CHAIN_ENTRY& Entry = m_CustomChainLibrary[iChain];
+		/* A step left at zero has no authored wall, so the chain cannot claim
+		   it fills a Server stage exactly. The distinction is recorded rather
+		   than guessed away, because merging it is a decision, not a rename. */
+		bool_t bEveryStepAuthored = true;
+		for (const CUSTOM_CHAIN_STEP& Step : Entry.steps)
+		{
+			if (Step.fDurationSeconds <= 0.f)
+				bEveryStepAuthored = false;
+		}
+		bWritten = bWritten && 0 <= fprintf(file,
+			"    {\n"
+			"      \"chainId\": \"%s\",\n"
+			"      \"targetPatternId\": \"%s\",\n"
+			"      \"targetStageId\": \"%s\",\n"
+			"      \"animation\": {\n"
+			"        \"endPolicy\": \"%s\",\n"
+			"        \"repeatCount\": %zu,\n"
+			"        \"occurrences\": [\n",
+			CDataJson::Escape(Entry.chainId).c_str(),
+			CDataJson::Escape(Entry.targetPatternId).c_str(),
+			CDataJson::Escape(Entry.targetStageId).c_str(),
+			bEveryStepAuthored ? "EXACT" : "NATIVE_CLIP_LENGTHS",
+			Entry.steps.size());
+		for (size_t iStep = 0u; iStep < Entry.steps.size(); ++iStep)
+		{
+			const CUSTOM_CHAIN_STEP& Step = Entry.steps[iStep];
+			const int32_t iPlayMs = static_cast<int32_t>(
+				std::lround(Step.fDurationSeconds * 1000.f));
+			bWritten = bWritten && 0 <= fprintf(file,
+				"          {\n"
+				"            \"clipOccurrenceId\": \"valtan.debug.%s.clip.%02zu\",\n"
+				"            \"clip\": \"%s\",\n"
+				"            \"mappingBasis\": \"PROJECT_AUTHORED\",\n"
+				"            \"sourceStartMs\": 0,\n"
+				"            \"playMs\": %d,\n"
+				"            \"playRate\": 1.0,\n"
+				"            \"repeatUntilStageEnd\": false\n"
+				"          }%s\n",
+				CDataJson::Escape(Entry.chainId).c_str(),
+				iStep + 1u,
+				CDataJson::Escape(Step.clipName).c_str(),
+				iPlayMs < 0 ? 0 : iPlayMs,
+				iStep + 1u == Entry.steps.size() ? "" : ",");
+		}
+		bWritten = bWritten && 0 <= fprintf(file,
+			"        ]\n"
+			"      }\n"
+			"    }%s\n",
+			iChain + 1u == m_CustomChainLibrary.size() ? "" : ",");
+	}
+	bWritten = bWritten && 0 <= fprintf(file, "  ]\n}\n");
+	const bool_t bClosed = 0 == fclose(file);
+
+	if (!bWritten || !bClosed)
+	{
+		std::error_code cleanupError;
+		std::filesystem::remove(temporary, cleanupError);
+		m_strCustomChainStatus =
+			"Save failed while writing; previous chains preserved.";
+		return false;
+	}
+
+	std::error_code replaceError;
+	std::filesystem::rename(temporary, destination, replaceError);
+	if (replaceError)
+	{
+		std::filesystem::remove(destination, replaceError);
+		std::filesystem::rename(temporary, destination, replaceError);
+	}
+	if (replaceError)
+	{
+		std::error_code cleanupError;
+		std::filesystem::remove(temporary, cleanupError);
+		m_strCustomChainStatus = "Save failed to replace the file: " +
+			replaceError.message();
+		return false;
+	}
+
+	m_strCustomChainStatus = "Saved " +
+		std::to_string(m_CustomChainLibrary.size()) + " chains to " +
+		destination.filename().string() + ".";
+	return true;
+}
+
+void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (!ImGui::Begin("Valtan Custom Chain", &m_bShowValtanCustomChainWindow))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::TextWrapped(
+		"Assemble a chain by hand out of the model's own clips. Seconds carry "
+		"the same meaning the source cuts do: 0 plays the clip's native length, "
+		"a shorter value cuts it, a longer one loops it until the step is "
+		"filled. Steps live for this session only and are not authoring data.");
+
+	const bool_t bBusy =
+		m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying;
+
+	ImGui::BeginDisabled(bBusy || m_CustomChainSteps.empty());
+	if (ImGui::Button("Play Chain"))
+	{
+		/* The transport that owns step, progress, pause and speed already
+		   lives in the source reference window, so playback opens it. */
+		if (Start_ValtanCustomChainPreview(pModel))
+			m_bShowValtanSourceReferenceWindow = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Clear Steps"))
+		m_CustomChainSteps.clear();
+	ImGui::EndDisabled();
+
+	ImGui::SetNextItemWidth(160.f);
+	ImGui::SliderFloat(
+		"Blend##customchainblend", &m_fPreviewBlendSeconds, 0.f, 0.5f, "%.3f s");
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip(
+			"Preview-only cross-fade when a step changes clip. 0 matches the "
+			"product Valtan, which does not blend yet; 0.12 matches the value "
+			"CCharacter already uses.");
+	}
+
+	if (!m_bCustomChainLibraryLoadAttempted)
+	{
+		m_bCustomChainLibraryLoadAttempted = true;
+		Load_CustomChainLibrary();
+	}
+
+	ImGui::SeparatorText("Saved chains");
+	ImGui::TextDisabled("Data/Valtan/Valtan.presentation.debug.json");
+	ImGui::BeginDisabled(bBusy);
+	ImGui::SetNextItemWidth(160.f);
+	ImGui::InputTextWithHint("##chainid", "chain name",
+		m_CustomChainId, sizeof(m_CustomChainId));
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(160.f);
+	ImGui::InputTextWithHint("##chaintargetpattern", "target patternId",
+		m_CustomChainTargetPatternId, sizeof(m_CustomChainTargetPatternId));
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(120.f);
+	ImGui::InputTextWithHint("##chaintargetstage", "target stageId",
+		m_CustomChainTargetStageId, sizeof(m_CustomChainTargetStageId));
+
+	if (ImGui::Button("Save Chain"))
+	{
+		if ('\0' == m_CustomChainId[0])
+		{
+			m_strCustomChainStatus = "Save rejected: name the chain first.";
+		}
+		else if (m_CustomChainSteps.empty())
+		{
+			m_strCustomChainStatus = "Save rejected: the chain owns no step.";
+		}
+		else
+		{
+			CUSTOM_CHAIN_ENTRY Entry;
+			Entry.chainId = m_CustomChainId;
+			Entry.targetPatternId = m_CustomChainTargetPatternId;
+			Entry.targetStageId = m_CustomChainTargetStageId;
+			Entry.steps = m_CustomChainSteps;
+			/* Same name replaces in place so re-saving a chain being tuned
+			   does not grow a pile of near-identical entries. */
+			const std::vector<CUSTOM_CHAIN_ENTRY> Previous =
+				m_CustomChainLibrary;
+			bool_t bReplaced = false;
+			for (CUSTOM_CHAIN_ENTRY& Existing : m_CustomChainLibrary)
+			{
+				if (Existing.chainId != Entry.chainId)
+					continue;
+				Existing = Entry;
+				bReplaced = true;
+				break;
+			}
+			if (!bReplaced)
+				m_CustomChainLibrary.push_back(std::move(Entry));
+			if (!Save_CustomChainLibrary())
+				m_CustomChainLibrary = Previous;
+		}
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Reload File"))
+	{
+		Load_CustomChainLibrary();
+	}
+	ImGui::EndDisabled();
+
+	if (!m_strCustomChainStatus.empty())
+		ImGui::TextWrapped("%s", m_strCustomChainStatus.c_str());
+
+	if (!m_CustomChainLibrary.empty())
+	{
+		size_t iDeleteEntry = m_CustomChainLibrary.size();
+		ImGui::BeginDisabled(bBusy);
+		for (size_t iEntry = 0u; iEntry < m_CustomChainLibrary.size(); ++iEntry)
+		{
+			const CUSTOM_CHAIN_ENTRY& Entry = m_CustomChainLibrary[iEntry];
+			ImGui::PushID(static_cast<int32_t>(iEntry) + 20000);
+			if (ImGui::SmallButton("Load"))
+			{
+				m_CustomChainSteps = Entry.steps;
+				snprintf(m_CustomChainId, sizeof(m_CustomChainId), "%s",
+					Entry.chainId.c_str());
+				snprintf(m_CustomChainTargetPatternId,
+					sizeof(m_CustomChainTargetPatternId), "%s",
+					Entry.targetPatternId.c_str());
+				snprintf(m_CustomChainTargetStageId,
+					sizeof(m_CustomChainTargetStageId), "%s",
+					Entry.targetStageId.c_str());
+				m_strCustomChainStatus =
+					"Loaded chain " + Entry.chainId + " into the steps.";
+			}
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Delete"))
+				iDeleteEntry = iEntry;
+			ImGui::SameLine();
+			ImGui::Text("%s  |  %s / %s  |  %zu steps",
+				Entry.chainId.c_str(),
+				Entry.targetPatternId.empty() ? "-" :
+					Entry.targetPatternId.c_str(),
+				Entry.targetStageId.empty() ? "-" :
+					Entry.targetStageId.c_str(),
+				Entry.steps.size());
+			ImGui::PopID();
+		}
+		ImGui::EndDisabled();
+		if (iDeleteEntry < m_CustomChainLibrary.size())
+		{
+			const std::vector<CUSTOM_CHAIN_ENTRY> Previous =
+				m_CustomChainLibrary;
+			m_CustomChainLibrary.erase(
+				m_CustomChainLibrary.begin() +
+				static_cast<std::ptrdiff_t>(iDeleteEntry));
+			if (!Save_CustomChainLibrary())
+				m_CustomChainLibrary = Previous;
+		}
+	}
+
+	ImGui::SeparatorText("Steps");
+	if (m_CustomChainSteps.empty())
+	{
+		ImGui::TextDisabled("No step yet. Add clips from the list below.");
+	}
+	else
+	{
+		f32_t fTotalSeconds = 0.f;
+		size_t iRemove = m_CustomChainSteps.size();
+		size_t iMoveUp = m_CustomChainSteps.size();
+		size_t iMoveDown = m_CustomChainSteps.size();
+		ImGui::BeginDisabled(bBusy);
+		for (size_t iStep = 0u; iStep < m_CustomChainSteps.size(); ++iStep)
+		{
+			CUSTOM_CHAIN_STEP& Step = m_CustomChainSteps[iStep];
+			ImGui::PushID(static_cast<int32_t>(iStep));
+			ImGui::Text("%2zu", iStep + 1u);
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(80.f);
+			ImGui::InputFloat("##seconds", &Step.fDurationSeconds, 0.f, 0.f, "%.3f");
+			if (!std::isfinite(Step.fDurationSeconds) ||
+				Step.fDurationSeconds < 0.f)
+			{
+				Step.fDurationSeconds = 0.f;
+			}
+			ImGui::SameLine();
+			if (ImGui::SmallButton("^"))
+				iMoveUp = iStep;
+			ImGui::SameLine();
+			if (ImGui::SmallButton("v"))
+				iMoveDown = iStep;
+			ImGui::SameLine();
+			if (ImGui::SmallButton("x"))
+				iRemove = iStep;
+			ImGui::SameLine();
+			ImGui::TextUnformatted(Step.clipName.c_str());
+			fTotalSeconds += Step.fDurationSeconds;
+			ImGui::PopID();
+		}
+		ImGui::EndDisabled();
+		ImGui::Text(
+			"%zu steps, %.3f s of authored length (steps left at 0 add their "
+			"native length on top).",
+			m_CustomChainSteps.size(), fTotalSeconds);
+
+		/* The list is edited after the row loop so the vector never moves while
+		   ImGui is still drawing from it. */
+		if (iRemove < m_CustomChainSteps.size())
+		{
+			m_CustomChainSteps.erase(
+				m_CustomChainSteps.begin() +
+				static_cast<std::ptrdiff_t>(iRemove));
+		}
+		else if (iMoveUp > 0u && iMoveUp < m_CustomChainSteps.size())
+		{
+			std::swap(
+				m_CustomChainSteps[iMoveUp - 1u], m_CustomChainSteps[iMoveUp]);
+		}
+		else if (iMoveDown + 1u < m_CustomChainSteps.size())
+		{
+			std::swap(
+				m_CustomChainSteps[iMoveDown], m_CustomChainSteps[iMoveDown + 1u]);
+		}
+	}
+
+	ImGui::SeparatorText("Clips");
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint(
+		"##customchainfilter",
+		"filter by clip name",
+		m_CustomChainFilter,
+		sizeof(m_CustomChainFilter));
+
+	ImGui::BeginDisabled(bBusy);
+	if (ImGui::BeginChild(
+		"##customchainclips",
+		ImVec2(0.f, 260.f),
+		ImGuiChildFlags_Borders,
+		ImGuiWindowFlags_NoScrollWithMouse))
+	{
+		for (uint32_t iAnimation = 0u;
+			iAnimation < pModel->Get_NumAnimations(); ++iAnimation)
+		{
+			const char_t* pName = pModel->Get_AnimationName(iAnimation);
+			if (nullptr == pName ||
+				!Contains_NoCase(pName, m_CustomChainFilter))
+			{
+				continue;
+			}
+			ImGui::PushID(static_cast<int32_t>(iAnimation));
+			if (ImGui::SmallButton("+"))
+			{
+				CUSTOM_CHAIN_STEP Step;
+				Step.clipName = pName;
+				m_CustomChainSteps.push_back(std::move(Step));
+			}
+			ImGui::SameLine();
+			ImGui::TextUnformatted(pName);
+			ImGui::PopID();
+		}
+	}
+	ImGui::EndChild();
+	ImGui::EndDisabled();
+
+	ImGui::End();
+}
+
+bool_t Client::CAnimation_Tool::Start_ValtanCustomChainPreview(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (nullptr == pModel || CAnimationTargetService::Resolve_Model() != pModel)
+	{
+		m_strValtanPatternPreviewStatus =
+			"Custom chain start rejected because the animation target changed.";
+		return false;
+	}
+	if (m_CustomChainSteps.empty())
+	{
+		m_strValtanPatternPreviewStatus =
+			"Custom chain start rejected because it owns no step.";
+		return false;
+	}
+
+	std::vector<VALTAN_PATTERN_PREVIEW_PLAY_ITEM> staged;
+	staged.reserve(m_CustomChainSteps.size());
+	const uint32_t iStepCount =
+		static_cast<uint32_t>(m_CustomChainSteps.size());
+	for (uint32_t iStep = 0u; iStep < iStepCount; ++iStep)
+	{
+		const CUSTOM_CHAIN_STEP& Step = m_CustomChainSteps[iStep];
+		VALTAN_PATTERN_PREVIEW_PLAY_ITEM item;
+		item.strPatternLabel = "Custom chain";
+		item.iSequenceIndex = -1;
+		item.iSequenceRepeatNumber = 1u;
+		item.iSequenceRepeatCount = 1u;
+		item.iSourceStepNumber = iStep + 1u;
+		item.iSourceStepCount = iStepCount;
+		item.strSequenceName = "Custom chain";
+		item.strSequenceMode = "CUSTOM";
+		item.strClipName = Step.clipName;
+		item.iStepNumber = iStep + 1u;
+		item.iStepCount = iStepCount;
+		/* A non-positive or non-finite entry means the animator has not chosen
+		   a length yet, which the playlist already reads as the native one. */
+		item.fAuthoredDurationSeconds =
+			std::isfinite(Step.fDurationSeconds) && Step.fDurationSeconds > 0.f ?
+				Step.fDurationSeconds : 0.f;
+		staged.push_back(std::move(item));
+	}
+
+	if (m_bValtanPatternMasterPlaying)
+	{
+		Reset_ValtanPatternMasterPreviewState(
+			"Valtan Pattern Master yielded to the custom chain.");
+	}
+
+	m_ValtanPatternPreviewPlaylist = std::move(staged);
+	m_iValtanPatternPreviewItem = 0u;
+	m_bValtanPatternPreviewPlaying = true;
+	m_bValtanPatternPreviewPaused = false;
+	m_fValtanPatternPreviewElapsedSeconds = 0.f;
+	m_ValtanPatternPreviewModel = pModel;
+	m_iValtanPatternPreviewTargetGeneration =
+		CAnimationTargetService::Resolve_TargetGeneration();
+	m_iValtanSequenceSelected = -1;
+	m_fValtanPatternHitTimelineBaseSeconds = 0.f;
+	m_strValtanPatternPreviewStatus = "Playing the custom chain: " +
+		std::to_string(iStepCount) + " steps.";
+	return Activate_ValtanPatternPreviewItem(pModel);
+}
+
 bool_t Client::CAnimation_Tool::Start_ValtanPatternPreview(
 	const shared_ptr<Engine::CModel>& pModel,
 	const uint32_t iFirstPattern,
@@ -2303,7 +2905,8 @@ bool_t Client::CAnimation_Tool::Activate_ValtanPatternPreviewItem(
 			return true;
 		}
 
-		if (!pModel->Start_Animation(Item.strClipName.c_str(), false))
+		if (!Start_PreviewClip(
+			pModel, Item.strClipName.c_str(), false, m_fPreviewBlendSeconds))
 		{
 			RecordSkip(
 				"Skipped unavailable clip without stopping Play All: " +
@@ -2352,7 +2955,9 @@ bool_t Client::CAnimation_Tool::Activate_ValtanPatternPreviewItem(
 				" started looping for its source stage length (" :
 				" started for its source stage length (";
 			if (bLoopClip &&
-				!pModel->Start_Animation(Item.strClipName.c_str(), true))
+				!Start_PreviewClip(
+					pModel, Item.strClipName.c_str(), true,
+					m_fPreviewBlendSeconds))
 			{
 				RecordSkip(
 					"Skipped unavailable clip without stopping Play All: " +
@@ -2556,8 +3161,9 @@ void Client::CAnimation_Tool::Render_ClipChain(const shared_ptr<Engine::CModel>&
 		return;
 
 	int32_t iMatches = 0;
-	for (const CLIP_SEQ& seq : m_ClipSeqs)
+	for (size_t iSeq = 0u; iSeq < m_ClipSeqs.size(); ++iSeq)
 	{
+		const CLIP_SEQ& seq = m_ClipSeqs[iSeq];
 		int32_t iPos = -1;
 		for (int32_t i = 0; i < static_cast<int32_t>(seq.clips.size()); ++i)
 		{
@@ -2577,9 +3183,23 @@ void Client::CAnimation_Tool::Render_ClipChain(const shared_ptr<Engine::CModel>&
 		ImGui::PushID(seq.iSkillId * 100 + seq.iSeqIndex);
 
 		const int32_t iOffsetMs = Get_ChainOffsetMs(seq, iPos);
-		ImGui::Text("%s  seq%d  [%s]  %d/%d", seq.name.c_str(), seq.iSeqIndex,
+		/* The numbered buttons below select one clip. Pressing the chain itself
+		   runs every step in authored order, which is the only way to judge how
+		   the sequence reads as one motion. The transport lives in the source
+		   reference window, so opening it is part of starting playback. */
+		char_t szChain[192]{};
+		snprintf(szChain, sizeof(szChain), "%s  seq%d  [%s]  %d/%d",
+			seq.name.c_str(), seq.iSeqIndex,
 			seq.sMode.empty() ? "?" : seq.sMode.c_str(),
 			iPos + 1, static_cast<int32_t>(seq.clips.size()));
+		if (ImGui::Button(szChain))
+		{
+			if (Start_ValtanSequencePreview(pModel, iSeq))
+				m_bShowValtanSourceReferenceWindow = true;
+		}
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Play all %d clips in order.",
+				static_cast<int32_t>(seq.clips.size()));
 
 		ImGui::SameLine();
 		char_t szUse[64]{};
@@ -2646,7 +3266,7 @@ void Client::CAnimation_Tool::Render_NotifyReference(
 		bHasTrack && fRate > 0.f ? fPosition / fRate : -1.f;
 
 	if (!ImGui::BeginChild("##notifyref", ImVec2(0.f, 180.f),
-		ImGuiChildFlags_Borders))
+		ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollWithMouse))
 	{
 		ImGui::EndChild();
 		return;
@@ -2996,7 +3616,8 @@ void Client::CAnimation_Tool::Render_SkillBindings(
 	if (!ImGui::BeginChild(
 		"##skillbindings",
 		ImVec2(0.f, 300.f),
-		ImGuiChildFlags_Borders))
+		ImGuiChildFlags_Borders,
+		ImGuiWindowFlags_NoScrollWithMouse))
 	{
 		ImGui::EndChild();
 		return;
@@ -3318,7 +3939,8 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 	if (!m_Status.empty())
 		ImGui::TextWrapped("%s", m_Status.c_str());
 
-	if (!ImGui::BeginChild("##eventlist", ImVec2(0.f, 170.f), ImGuiChildFlags_Borders))
+	if (!ImGui::BeginChild("##eventlist", ImVec2(0.f, 170.f),
+		ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollWithMouse))
 	{
 		ImGui::EndChild();
 		return;
@@ -3740,7 +4362,15 @@ void Client::CAnimation_Tool::Render_HitAreaWires(
 
 void Client::CAnimation_Tool::Render_AnimationList(const shared_ptr<Engine::CModel>& pModel)
 {
-	if (!ImGui::BeginChild("##cliplist", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders))
+	/* A zero height means "every pixel left in the window", which let the list
+	   swallow the panel and the mouse wheel with it: the sections above it
+	   could not be reached again without dragging the scrollbar. A fixed height
+	   keeps the wheel over the list scrolling the list and the wheel anywhere
+	   else scrolling the tool window. */
+	constexpr f32_t CLIP_LIST_HEIGHT = 280.f;
+	if (!ImGui::BeginChild(
+		"##cliplist", ImVec2(0.f, CLIP_LIST_HEIGHT),
+		ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollWithMouse))
 	{
 		ImGui::EndChild();
 		return;
@@ -5403,7 +6033,8 @@ void Client::CAnimation_Tool::Render_SkillReference(
 	const f32_t fRate = Get_ClipTickRate(pModel,
 		nullptr != pCurrentName ? pCurrentName : "");
 
-	if (!ImGui::BeginChild("##reflist", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders))
+	if (!ImGui::BeginChild("##reflist", ImVec2(0.f, 0.f),
+		ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollWithMouse))
 	{
 		ImGui::EndChild();
 		ImGui::End();

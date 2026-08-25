@@ -16,6 +16,10 @@ NS_BEGIN(Client)
 inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 13u;
 inline constexpr uint32_t EFFECT_AUTHORING_MIN_SUPPORTED_VERSION = 3u;
 inline constexpr uint32_t EFFECT_SOURCE_CONTRACT_FORMAT_VERSION = 14u;
+inline constexpr uint32_t EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION = 15u;
+inline constexpr uint32_t EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION = 1u;
+inline constexpr uint32_t EFFECT_AUTHORING_MAX_SUPPORTED_VERSION =
+	EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION;
 
 enum class EFFECT_ELEMENT_KIND : uint8_t
 {
@@ -531,6 +535,49 @@ struct EFFECT_TIMING_DESC final
 	f32_t fDissolveStartNormalized = 1.f;
 };
 
+enum class EFFECT_LINEAR_REVEAL_AXIS : uint8_t
+{
+	U,
+	V,
+	END
+};
+
+/* World marks are opaque-world overlays that must be composed before ordinary
+   translucent Effect rows.  NORMAL remains the omission/default identity for
+   every document written before this contract existed. */
+enum class EFFECT_COMPOSITION_LAYER : uint8_t
+{
+	NORMAL,
+	WORLD_MARK,
+	END
+};
+
+/* Direct-authored generic sprite coverage. Geometry stays fully sized and
+   stationary; only the raw carrier UV coverage advances, with an HDR band at
+   the moving boundary. V + invert maps DirectX texture bottom to progress 0. */
+struct EFFECT_LINEAR_REVEAL_DESC final
+{
+	bool_t bEnabled = false;
+	EFFECT_LINEAR_REVEAL_AXIS eAxis = EFFECT_LINEAR_REVEAL_AXIS::V;
+	bool_t bInvert = true;
+	f32_t fStartSeconds = 0.f;
+	f32_t fDurationSeconds = 0.55f;
+	f32_t fEdgeWidth = 0.045f;
+	f32_t fSoftness = 0.03f;
+	float4_t vEdgeColor = { 1.f, 1.f, 1.f, 1.f };
+	f32_t fEdgeEmissive = 7.f;
+
+	bool_t Is_Default() const
+	{
+		return !bEnabled && eAxis == EFFECT_LINEAR_REVEAL_AXIS::V &&
+			bInvert && fStartSeconds == 0.f && fDurationSeconds == 0.55f &&
+			fEdgeWidth == 0.045f && fSoftness == 0.03f &&
+			vEdgeColor.x == 1.f && vEdgeColor.y == 1.f &&
+			vEdgeColor.z == 1.f && vEdgeColor.w == 1.f &&
+			fEdgeEmissive == 7.f;
+	}
+};
+
 enum class EFFECT_RING_FILL_DIRECTION : uint8_t
 {
 	INNER_TO_OUTER,
@@ -577,12 +624,34 @@ struct EFFECT_SPRITE_DETAIL_DESC final
 	   billboarded quad has is this roll about the view axis. The constant above
 	   sets where it starts; this rate is what actually makes it spin. */
 	f32_t fBillboardRollDegreesPerSecond = 0.f;
+	EFFECT_LINEAR_REVEAL_DESC LinearReveal;
+};
+
+enum class EFFECT_DECAL_RECEIVER_MODE : uint8_t
+{
+	ALL_OPAQUE,
+	UPWARD_SURFACES,
+	END
 };
 
 struct EFFECT_DECAL_DETAIL_DESC final
 {
 	float2_t vSize = { 1.f, 1.f };
 	f32_t fDepth = 0.25f;
+	EFFECT_DECAL_RECEIVER_MODE eReceiverMode =
+		EFFECT_DECAL_RECEIVER_MODE::ALL_OPAQUE;
+	/* -1 preserves the legacy all-opaque projector.  Upward receivers use a
+	   normalized world-normal dot cutoff in [0, 1]. */
+	f32_t fNormalCutoff = -1.f;
+	/* Normalized distance from the projector volume boundary over which alpha
+	   fades in.  Zero preserves the legacy hard projector edge. */
+	f32_t fEdgeFade = 0.f;
+
+	bool_t Is_ReceiverDefault() const
+	{
+		return eReceiverMode == EFFECT_DECAL_RECEIVER_MODE::ALL_OPAQUE &&
+			fNormalCutoff == -1.f && fEdgeFade == 0.f;
+	}
 };
 
 struct EFFECT_LINEAR_LERP_DESC final
@@ -1216,6 +1285,84 @@ enum class EFFECT_AUTHORING_FIDELITY : uint8_t
 	END
 };
 
+enum class EFFECT_AUTHORED_RUNTIME_CARRIER_KIND : uint8_t
+{
+	CASCADE_RIBBON_V1,
+	ANIMATION_TRAIL_BAKED_EDGE_V1,
+	LIGHT_BAKED_EDGE_ATTACHMENT_V1,
+	END
+};
+
+enum class EFFECT_AUTHORED_RUNTIME_CARRIER_ADMISSION : uint8_t
+{
+	BOUNDED,
+	END
+};
+
+enum class EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE : uint8_t
+{
+	FIRST_EDGE,
+	END
+};
+
+enum class EFFECT_AUTHORED_RUNTIME_COORDINATE_BASIS : uint8_t
+{
+	UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS,
+	END
+};
+
+struct EFFECT_AUTHORED_RUNTIME_EDGE_SAMPLE_DESC final
+{
+	f32_t fRelativeTimeSeconds = 0.f;
+	float3_t vFirstEdgeUE3Cm{};
+	float3_t vControlPointUE3Cm{};
+	float3_t vSecondEdgeUE3Cm{};
+};
+
+struct EFFECT_AUTHORED_RUNTIME_EDGE_HISTORY_DESC final
+{
+	std::string strHistoryId;
+	EFFECT_AUTHORED_RUNTIME_COORDINATE_BASIS eCoordinateBasis =
+		EFFECT_AUTHORED_RUNTIME_COORDINATE_BASIS::END;
+	f32_t fSourceEndTimeSeconds = 0.f;
+	f32_t fPlaybackClampSeconds = 0.f;
+	std::vector<EFFECT_AUTHORED_RUNTIME_EDGE_SAMPLE_DESC> Samples;
+};
+
+struct EFFECT_AUTHORED_RUNTIME_CARRIER_DESC final
+{
+	uint32_t iFormatVersion =
+		EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION;
+	EFFECT_AUTHORED_RUNTIME_CARRIER_KIND eKind =
+		EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::END;
+	EFFECT_AUTHORED_RUNTIME_CARRIER_ADMISSION eAdmission =
+		EFFECT_AUTHORED_RUNTIME_CARRIER_ADMISSION::END;
+	std::string strTypeDataModuleStableId;
+	std::string strHistoryId;
+	EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE eEdgeLane =
+		EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE::END;
+
+	bool_t Is_Empty() const
+	{
+		return eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::END &&
+			eAdmission == EFFECT_AUTHORED_RUNTIME_CARRIER_ADMISSION::END &&
+			strTypeDataModuleStableId.empty() && strHistoryId.empty() &&
+			eEdgeLane == EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE::END;
+	}
+};
+
+struct EFFECT_AUTHORED_RUNTIME_EXTENSIONS_DESC final
+{
+	uint32_t iFormatVersion =
+		EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION;
+	std::vector<EFFECT_AUTHORED_RUNTIME_EDGE_HISTORY_DESC> BakedEdgeHistories;
+
+	bool_t Is_Empty() const
+	{
+		return BakedEdgeHistories.empty();
+	}
+};
+
 struct EFFECT_ELEMENT_DESC final
 {
 	std::string strElementId;
@@ -1224,6 +1371,9 @@ struct EFFECT_ELEMENT_DESC final
 	std::string strSourceNode;
 	bool_t bVisible = true;
 	EFFECT_ELEMENT_KIND eKind = EFFECT_ELEMENT_KIND::END;
+	EFFECT_AUTHORED_RUNTIME_CARRIER_DESC RuntimeCarrier;
+	EFFECT_COMPOSITION_LAYER eCompositionLayer =
+		EFFECT_COMPOSITION_LAYER::NORMAL;
 	EFFECT_RENDERER_DESC Renderer;
 	std::vector<EFFECT_RESOURCE_BINDING_DESC> ResourceBindings;
 	/* Resources-relative ids the original emitter referenced but that did not
@@ -1239,6 +1389,74 @@ struct EFFECT_ELEMENT_DESC final
 	EFFECT_SOURCE_PRESENTATION_DESC SourcePresentation;
 	EFFECT_AUTHORING_OVERRIDES_DESC AuthoringOverrides;
 };
+
+inline constexpr std::string_view EFFECT_PORTABLE_AUTHORED_COPY_PREFIX =
+	"authored-copy:";
+
+inline std::string_view Resolve_EffectPortableOriginElementId(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	if (Element.strSourceNode.starts_with(
+			EFFECT_PORTABLE_AUTHORED_COPY_PREFIX) &&
+		Element.strSourceNode.size() >
+			EFFECT_PORTABLE_AUTHORED_COPY_PREFIX.size())
+	{
+		return std::string_view(Element.strSourceNode).substr(
+			EFFECT_PORTABLE_AUTHORED_COPY_PREFIX.size());
+	}
+	return Element.strElementId;
+}
+
+inline bool_t Is_EffectSourceIdentityOrPortableCopy(
+	const EFFECT_ELEMENT_DESC& Element,
+	const std::string_view strExpectedElementId,
+	const std::string_view strExpectedSourceNode)
+{
+	return (Element.strElementId == strExpectedElementId &&
+			Element.strSourceNode == strExpectedSourceNode) ||
+		(Element.strSourceNode ==
+			std::string(EFFECT_PORTABLE_AUTHORED_COPY_PREFIX) +
+				std::string(strExpectedElementId));
+}
+
+inline bool_t Is_EffectWorldMarkCarrier(const EFFECT_ELEMENT_DESC& Element)
+{
+	if (Element.Material.eRenderProfile ==
+		EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE)
+	{
+		return false;
+	}
+	/* Local Decal projection may preserve a source recipe or a typed material;
+	   composition and receiver filtering do not replace either contract. */
+	if (Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
+		return true;
+	const bool_t bDirectHandAuthored = Element.strSourceNode.empty() ||
+		Element.strSourceNode.starts_with(
+			EFFECT_PORTABLE_AUTHORED_COPY_PREFIX);
+	if (!bDirectHandAuthored || Element.SourceRecipe.bEnabled ||
+		Element.SourcePresentation.bEnabled ||
+		Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+		Element.Material.strTemplateId != "effect.standard" ||
+		!Element.Material.strSourceMaterialPath.empty() ||
+		Element.Material.SourceMaterial.bEnabled ||
+		Element.Material.Execution.bEnabled ||
+		Element.Material.Execution.bFailClosed ||
+		Element.Material.Execution.bAuthoringApproximate)
+	{
+		return false;
+	}
+	if (Element.eKind == EFFECT_ELEMENT_KIND::SPRITE)
+		return true;
+	if (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE)
+		return false;
+	for (const EFFECT_RESOURCE_BINDING_DESC& Binding :
+		Element.ResourceBindings)
+	{
+		if (Binding.strSlotId == "meshModel")
+			return false;
+	}
+	return true;
+}
 
 inline bool_t Is_EffectPresentationExecutionTarget(
 	const EFFECT_ELEMENT_DESC& Element)
@@ -1582,6 +1800,7 @@ struct EFFECT_DOCUMENT_DESC final
 	std::string strDisplayName;
 	EFFECT_PARTICLE_SYSTEM_DESC ParticleSystem;
 	std::vector<EFFECT_MODEL_CUE_DESC> ModelCues;
+	EFFECT_AUTHORED_RUNTIME_EXTENSIONS_DESC RuntimeExtensions;
 	std::vector<EFFECT_ELEMENT_DESC> Elements;
 };
 
@@ -1775,6 +1994,7 @@ inline void Apply_EffectElementDetailDraft(
 	Target.strGroupId = Draft.strGroupId;
 	Target.strSourceNode = Draft.strSourceNode;
 	Target.bVisible = Draft.bVisible;
+	Target.eCompositionLayer = Draft.eCompositionLayer;
 	Target.ResourceBindings = Draft.ResourceBindings;
 	Target.Detail = Draft.Detail;
 	Target.Material = Draft.Material;

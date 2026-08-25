@@ -6,37 +6,11 @@
 
 #include <algorithm>
 #include <cmath>
-#include <fstream>
-#include <iterator>
-#include <limits>
-#include <map>
 #include <set>
-#include <unordered_set>
 
 namespace
 {
 	using namespace Client;
-
-	const DATA_JSON_VALUE* Required(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		const DATA_JSON_TYPE eType)
-	{
-		const DATA_JSON_VALUE* Value = Object.Find(Name);
-		return nullptr != Value && Value->Get_Type() == eType ? Value : nullptr;
-	}
-
-	bool_t Has_ExactKeys(
-		const DATA_JSON_VALUE& Value,
-		const std::initializer_list<std::string_view> Keys)
-	{
-		if (!Value.Is_Object() || Value.Get_Object().size() != Keys.size())
-			return false;
-		return std::all_of(Keys.begin(), Keys.end(), [&Value](const auto Key)
-		{
-			return nullptr != Value.Find(Key);
-		});
-	}
 
 	bool_t Is_LowerSha256(const std::string_view Value)
 	{
@@ -60,1589 +34,10 @@ namespace
 			});
 	}
 
-	bool_t Read_String(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::string& Out)
-	{
-		const DATA_JSON_VALUE* Value = Required(Object, Name, DATA_JSON_TYPE::STRING);
-		if (nullptr == Value || Value->Get_String().empty())
-			return false;
-		Out = Value->Get_String();
-		return true;
-	}
-
-	bool_t Read_StringAllowEmpty(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::string& Out)
-	{
-		const DATA_JSON_VALUE* Value = Required(
-			Object, Name, DATA_JSON_TYPE::STRING);
-		if (nullptr == Value)
-			return false;
-		Out = Value->Get_String();
-		return true;
-	}
-
-	bool_t Read_Sha(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::string& Out)
-	{
-		return Read_String(Object, Name, Out) && Is_LowerSha256(Out);
-	}
-
-	bool_t Read_Bool(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		bool_t& Out)
-	{
-		const DATA_JSON_VALUE* Value = Required(Object, Name, DATA_JSON_TYPE::BOOLEAN);
-		if (nullptr == Value)
-			return false;
-		Out = Value->Get_Boolean();
-		return true;
-	}
-
-	template <typename Integer>
-	bool_t Read_Unsigned(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		Integer& Out)
-	{
-		const DATA_JSON_VALUE* Value = Required(Object, Name, DATA_JSON_TYPE::NUMBER);
-		if (nullptr == Value || Value->Was_FloatingPointToken() ||
-			!std::isfinite(Value->Get_Number()) ||
-			Value->Get_Number() != std::floor(Value->Get_Number()) ||
-			Value->Get_Number() < 0.0 ||
-			Value->Get_Number() > static_cast<double>(
-				(std::numeric_limits<Integer>::max)()))
-		{
-			return false;
-		}
-		Out = static_cast<Integer>(Value->Get_Number());
-		return true;
-	}
-
-	bool_t Read_Number(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		double& Out)
-	{
-		const DATA_JSON_VALUE* Value = Required(Object, Name, DATA_JSON_TYPE::NUMBER);
-		if (nullptr == Value || !std::isfinite(Value->Get_Number()))
-			return false;
-		Out = Value->Get_Number();
-		return true;
-	}
-
-	bool_t Read_NullableString(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::string& Out)
-	{
-		const DATA_JSON_VALUE* Value = Object.Find(Name);
-		if (nullptr == Value)
-			return false;
-		if (Value->Is_Null())
-		{
-			Out.clear();
-			return true;
-		}
-		if (!Value->Is_String() || Value->Get_String().empty())
-			return false;
-		Out = Value->Get_String();
-		return true;
-	}
-
-	bool_t Read_StringArray(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::vector<std::string>& Out)
-	{
-		const DATA_JSON_VALUE* Values = Required(Object, Name, DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Values)
-			return false;
-		std::vector<std::string> Staged;
-		Staged.reserve(Values->Get_Array().size());
-		for (const DATA_JSON_VALUE& Value : Values->Get_Array())
-		{
-			if (!Value.Is_String() || Value.Get_String().empty())
-				return false;
-			Staged.push_back(Value.Get_String());
-		}
-		Out = std::move(Staged);
-		return true;
-	}
-
-	template <size_t Size>
-	bool_t Read_U32Array(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::array<uint32_t, Size>& Out)
-	{
-		const DATA_JSON_VALUE* Values = Required(Object, Name, DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Values || Values->Get_Array().size() != Size)
-			return false;
-		std::array<uint32_t, Size> Staged{};
-		for (size_t Index = 0u; Index < Size; ++Index)
-		{
-			const DATA_JSON_VALUE& Value = Values->Get_Array()[Index];
-			if (!Value.Is_Number() || Value.Was_FloatingPointToken() ||
-				!std::isfinite(Value.Get_Number()) ||
-				Value.Get_Number() != std::floor(Value.Get_Number()) ||
-				Value.Get_Number() < 0.0 ||
-				Value.Get_Number() > static_cast<double>(UINT32_MAX))
-			{
-				return false;
-			}
-			Staged[Index] = static_cast<uint32_t>(Value.Get_Number());
-		}
-		Out = Staged;
-		return true;
-	}
-
-	template <size_t Size>
-	bool_t Read_NumberArray(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::array<double, Size>& Out)
-	{
-		const DATA_JSON_VALUE* Values = Required(Object, Name, DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Values || Values->Get_Array().size() != Size)
-			return false;
-		std::array<double, Size> Staged{};
-		for (size_t Index = 0u; Index < Size; ++Index)
-		{
-			const DATA_JSON_VALUE& Value = Values->Get_Array()[Index];
-			if (!Value.Is_Number() || !std::isfinite(Value.Get_Number()))
-				return false;
-			Staged[Index] = Value.Get_Number();
-		}
-		Out = Staged;
-		return true;
-	}
-
-	bool_t Verify_Seal(
-		const DATA_JSON_VALUE& Value,
-		const std::string_view Field,
-		std::string& strOutError)
-	{
-		const DATA_JSON_VALUE* Claimed = Required(Value, Field, DATA_JSON_TYPE::STRING);
-		if (nullptr == Claimed || !Is_LowerSha256(Claimed->Get_String()))
-		{
-			strOutError = "Visual-program seal is missing or invalid: " +
-				std::string(Field);
-			return false;
-		}
-		DATA_JSON_VALUE::OBJECT Unsigned = Value.Get_Object();
-		Unsigned.erase(std::string(Field));
-		const DATA_JSON_VALUE UnsignedValue =
-			DATA_JSON_VALUE::Object(std::move(Unsigned));
-		const std::string Actual = CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
-			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(UnsignedValue));
-		if (Actual != Claimed->Get_String())
-		{
-			strOutError = "Visual-program seal is stale: " + std::string(Field);
-			return false;
-		}
-		return true;
-	}
-
-	EFFECT_VISUAL_PROGRAM_FAMILY Parse_Family(const std::string_view Token)
-	{
-		if (Token == "MESH_PARTICLE") return EFFECT_VISUAL_PROGRAM_FAMILY::MESH_PARTICLE;
-		if (Token == "SPRITE_PARTICLE") return EFFECT_VISUAL_PROGRAM_FAMILY::SPRITE_PARTICLE;
-		if (Token == "DECAL_PARTICLE") return EFFECT_VISUAL_PROGRAM_FAMILY::DECAL_PARTICLE;
-		if (Token == "CASCADE_RIBBON") return EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON;
-		if (Token == "ANIMATION_TRAIL") return EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL;
-		if (Token == "LIGHT_PARTICLE") return EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE;
-		if (Token == "SCREEN_POST") return EFFECT_VISUAL_PROGRAM_FAMILY::SCREEN_POST;
-		return EFFECT_VISUAL_PROGRAM_FAMILY::END;
-	}
-
-	EFFECT_VISUAL_PROGRAM_VALUE_VARIANT Parse_ValueVariant(
-		const std::string_view Token)
-	{
-		if (Token == "F64") return EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::F64;
-		if (Token == "F64X4") return EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::F64X4;
-		if (Token == "TEXTURE_ID") return EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::TEXTURE_ID;
-		if (Token == "BOOL") return EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::BOOLEAN;
-		if (Token == "ENUM_STRING") return EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::ENUM_STRING;
-		return EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::END;
-	}
-
-	EFFECT_VISUAL_PROGRAM_VALUE_DISPOSITION Parse_ValueDisposition(
-		const std::string_view Token)
-	{
-		if (Token == "CONSUMED") return EFFECT_VISUAL_PROGRAM_VALUE_DISPOSITION::CONSUMED;
-		if (Token == "SUPPRESSED") return EFFECT_VISUAL_PROGRAM_VALUE_DISPOSITION::SUPPRESSED;
-		return EFFECT_VISUAL_PROGRAM_VALUE_DISPOSITION::END;
-	}
-
-	bool_t Parse_Selector(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_SELECTOR& Out,
-		std::string& strOutError)
-	{
-		if (!Has_ExactKeys(Value, { "effectAssetId", "occurrenceId" }) ||
-			!Read_String(Value, "effectAssetId", Out.strEffectAssetId) ||
-			!Read_String(Value, "occurrenceId", Out.strOccurrenceId) ||
-			!Is_StableId(Out.strEffectAssetId) || !Is_StableId(Out.strOccurrenceId))
-		{
-			strOutError =
-				"Visual-program selector must contain only effectAssetId and occurrenceId.";
-			return false;
-		}
-		Out.strSelectorSha256 = CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
-			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(Value));
-		return true;
-	}
-
-	bool_t Parse_SourceIdentity(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_SOURCE_IDENTITY& Out,
-		std::string& strOutError)
-	{
-		if (!Has_ExactKeys(Value, {
-			"sourceRowId", "sourceRowSha256", "sourceRecordId",
-			"sourceRecordSha256", "sourceRecipeSha256",
-			"moduleClosureSha256", "moduleCount" }) ||
-			!Read_String(Value, "sourceRowId", Out.strSourceRowId) ||
-			!Read_Sha(Value, "sourceRowSha256", Out.strSourceRowSha256) ||
-			!Read_String(Value, "sourceRecordId", Out.strSourceRecordId) ||
-			!Read_Sha(Value, "sourceRecordSha256", Out.strSourceRecordSha256) ||
-			!Read_Sha(Value, "sourceRecipeSha256", Out.strSourceRecipeSha256) ||
-			!Read_Sha(Value, "moduleClosureSha256", Out.strModuleClosureSha256) ||
-			!Read_Unsigned(Value, "moduleCount", Out.iModuleCount))
-		{
-			strOutError = "Visual-program source identity is invalid.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Parse_TargetIdentity(
-		const DATA_JSON_VALUE& Value,
-		std::optional<EFFECT_VISUAL_PROGRAM_TARGET_IDENTITY>& Out,
-		std::string& strOutError)
-	{
-		if (Value.Is_Null())
-		{
-			Out.reset();
-			return true;
-		}
-		EFFECT_VISUAL_PROGRAM_TARGET_IDENTITY Staged;
-		if (!Has_ExactKeys(Value, {
-			"targetElementId", "targetRecordSha256", "targetPayloadRawSha256" }) ||
-			!Read_String(Value, "targetElementId", Staged.strTargetElementId) ||
-			!Read_Sha(Value, "targetRecordSha256", Staged.strTargetRecordSha256) ||
-			!Read_Sha(Value, "targetPayloadRawSha256", Staged.strTargetPayloadRawSha256))
-		{
-			strOutError = "Visual-program target identity is invalid.";
-			return false;
-		}
-		Out = std::move(Staged);
-		return true;
-	}
-
-	bool_t Parse_Resource(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_RESOURCE_PACKET_ROW& Out,
-		std::string& strOutError)
-	{
-		if (!Has_ExactKeys(Value, {
-			"role", "slotId", "assetId", "resolutionStatus", "rawSha256",
-			"byteCount", "shaderRegister", "sourceChannel" }) ||
-			!Read_String(Value, "role", Out.strRole) ||
-			!Read_String(Value, "slotId", Out.strSlotId) ||
-			!Read_String(Value, "assetId", Out.strAssetId) ||
-			!Read_String(Value, "resolutionStatus", Out.strResolutionStatus) ||
-			!Read_NullableString(Value, "rawSha256", Out.strRawSha256) ||
-			(!Out.strRawSha256.empty() && !Is_LowerSha256(Out.strRawSha256)) ||
-			!Read_NullableString(Value, "shaderRegister", Out.strShaderRegister) ||
-			!Read_NullableString(Value, "sourceChannel", Out.strSourceChannel))
-		{
-			strOutError = "Visual-program resource packet row is invalid.";
-			return false;
-		}
-		const DATA_JSON_VALUE* ByteCount = Value.Find("byteCount");
-		if (nullptr == ByteCount)
-			return false;
-		if (ByteCount->Is_Null())
-			Out.iByteCount = 0u;
-		else if (!Read_Unsigned(Value, "byteCount", Out.iByteCount) || 0u == Out.iByteCount)
-		{
-			strOutError = "Visual-program resource byte count is invalid.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Read_NullableNumber(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::optional<double>& Out)
-	{
-		const DATA_JSON_VALUE* Value = Object.Find(Name);
-		if (nullptr == Value)
-			return false;
-		if (Value->Is_Null())
-		{
-			Out.reset();
-			return true;
-		}
-		if (!Value->Is_Number() || !std::isfinite(Value->Get_Number()))
-			return false;
-		Out = Value->Get_Number();
-		return true;
-	}
-
-	bool_t Read_NullableBool(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::optional<bool_t>& Out)
-	{
-		const DATA_JSON_VALUE* Value = Object.Find(Name);
-		if (nullptr == Value)
-			return false;
-		if (Value->Is_Null())
-		{
-			Out.reset();
-			return true;
-		}
-		if (!Value->Is_Boolean())
-			return false;
-		Out = Value->Get_Boolean();
-		return true;
-	}
-
-	bool_t Read_NullableIndex(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::optional<uint32_t>& Out)
-	{
-		const DATA_JSON_VALUE* Value = Object.Find(Name);
-		if (nullptr == Value)
-			return false;
-		if (Value->Is_Null())
-		{
-			Out.reset();
-			return true;
-		}
-		uint32_t Staged = 0u;
-		if (!Read_Unsigned(Object, Name, Staged))
-			return false;
-		Out = Staged;
-		return true;
-	}
-
-	bool_t Read_NullableVector4(
-		const DATA_JSON_VALUE& Object,
-		const std::string_view Name,
-		std::optional<std::array<double, 4u>>& Out)
-	{
-		const DATA_JSON_VALUE* Value = Object.Find(Name);
-		if (nullptr == Value)
-			return false;
-		if (Value->Is_Null())
-		{
-			Out.reset();
-			return true;
-		}
-		if (!Value->Is_Array() || 4u != Value->Get_Array().size())
-			return false;
-		std::array<double, 4u> Staged{};
-		for (size_t Index = 0u; Index < Staged.size(); ++Index)
-		{
-			const DATA_JSON_VALUE& Component = Value->Get_Array()[Index];
-			if (!Component.Is_Number() || !std::isfinite(Component.Get_Number()))
-				return false;
-			Staged[Index] = Component.Get_Number();
-		}
-		Out = Staged;
-		return true;
-	}
-
-	bool_t Parse_LocalDecalInput(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_INPUT& Out,
-		std::string& strOutError)
-	{
-		std::string Variant;
-		std::string Disposition;
-		if (!Has_ExactKeys(Value, {
-			"inputId", "normalizedParameterName", "rowSha256", "valueVariant",
-			"disposition", "scalarValue", "vectorValue", "textureId",
-			"packedScalarIndex", "packedVectorIndex" }) ||
-			!Read_String(Value, "inputId", Out.strInputId) ||
-			!Read_String(Value, "normalizedParameterName", Out.strNormalizedParameterName) ||
-			!Read_Sha(Value, "rowSha256", Out.strRowSha256) ||
-			!Read_String(Value, "valueVariant", Variant) ||
-			!Read_String(Value, "disposition", Disposition) ||
-			!Read_NullableNumber(Value, "scalarValue", Out.fScalarValue) ||
-			!Read_NullableVector4(Value, "vectorValue", Out.vVectorValue) ||
-			!Read_NullableString(Value, "textureId", Out.strTextureId) ||
-			!Read_NullableIndex(Value, "packedScalarIndex", Out.iPackedScalarIndex) ||
-			!Read_NullableIndex(Value, "packedVectorIndex", Out.iPackedVectorIndex))
-		{
-			strOutError = "LocalDecal input disposition is invalid.";
-			return false;
-		}
-		Out.eVariant = Parse_ValueVariant(Variant);
-		Out.eDisposition = Parse_ValueDisposition(Disposition);
-		if (Out.eVariant == EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::END ||
-			Out.eDisposition == EFFECT_VISUAL_PROGRAM_VALUE_DISPOSITION::END)
-		{
-			strOutError = "LocalDecal input variant/disposition is unknown.";
-			return false;
-		}
-		const bool_t bScalar =
-			Out.eVariant == EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::F64;
-		const bool_t bVector =
-			Out.eVariant == EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::F64X4;
-		const bool_t bTexture =
-			Out.eVariant == EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::TEXTURE_ID;
-		if ((bScalar != Out.fScalarValue.has_value()) ||
-			(bScalar != Out.iPackedScalarIndex.has_value()) ||
-			(bVector != Out.vVectorValue.has_value()) ||
-			(bVector != Out.iPackedVectorIndex.has_value()) ||
-			(bTexture != !Out.strTextureId.empty()) ||
-			(!bScalar && !bVector && !bTexture))
-		{
-			strOutError = "LocalDecal input payload does not match its variant.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Parse_LocalDecalStatic(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_STATIC& Out,
-		std::string& strOutError)
-	{
-		std::string Disposition;
-		if (!Has_ExactKeys(Value, {
-			"bindingId", "normalizedParameterName", "rowSha256", "sourceValue",
-			"selectedValue", "policyRowId", "disposition" }) ||
-			!Read_String(Value, "bindingId", Out.strBindingId) ||
-			!Read_String(Value, "normalizedParameterName", Out.strNormalizedParameterName) ||
-			!Read_Sha(Value, "rowSha256", Out.strRowSha256) ||
-			!Read_Bool(Value, "sourceValue", Out.bSourceValue) ||
-			!Read_Bool(Value, "selectedValue", Out.bSelectedValue) ||
-			!Read_String(Value, "policyRowId", Out.strPolicyRowId) ||
-			!Read_String(Value, "disposition", Disposition) ||
-			Disposition != "CONSUMED")
-		{
-			strOutError = "LocalDecal static disposition is invalid.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Parse_LocalDecalRender(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_RENDER& Out,
-		std::string& strOutError)
-	{
-		std::string Variant;
-		std::string Disposition;
-		if (!Has_ExactKeys(Value, {
-			"bindingId", "fieldName", "rowSha256", "valueVariant", "boolValue",
-			"enumValue", "f64Value", "sourceStatus", "sourceFidelity",
-			"disposition" }) ||
-			!Read_String(Value, "bindingId", Out.strBindingId) ||
-			!Read_String(Value, "fieldName", Out.strFieldName) ||
-			!Read_Sha(Value, "rowSha256", Out.strRowSha256) ||
-			!Read_String(Value, "valueVariant", Variant) ||
-			!Read_NullableBool(Value, "boolValue", Out.bValue) ||
-			!Read_NullableString(Value, "enumValue", Out.strEnumValue) ||
-			!Read_NullableNumber(Value, "f64Value", Out.fValue) ||
-			!Read_String(Value, "sourceStatus", Out.strSourceStatus) ||
-			!Read_String(Value, "sourceFidelity", Out.strSourceFidelity) ||
-			!Read_String(Value, "disposition", Disposition))
-		{
-			strOutError = "LocalDecal render disposition is invalid.";
-			return false;
-		}
-		Out.eVariant = Parse_ValueVariant(Variant);
-		Out.eDisposition = Parse_ValueDisposition(Disposition);
-		const bool_t bBool = Out.eVariant == EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::BOOLEAN;
-		const bool_t bEnum = Out.eVariant == EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::ENUM_STRING;
-		const bool_t bNumber = Out.eVariant == EFFECT_VISUAL_PROGRAM_VALUE_VARIANT::F64;
-		if (Out.eDisposition == EFFECT_VISUAL_PROGRAM_VALUE_DISPOSITION::END ||
-			(bBool != Out.bValue.has_value()) || (bEnum != !Out.strEnumValue.empty()) ||
-			(bNumber != Out.fValue.has_value()) || (!bBool && !bEnum && !bNumber))
-		{
-			strOutError = "LocalDecal render payload does not match its variant.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Parse_LocalDecalSrv(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_SRV& Out,
-		std::string& strOutError)
-	{
-		if (!Has_ExactKeys(Value, {
-			"role", "assetId", "rawSha256", "byteCount", "shaderRegister",
-			"sourceChannel", "runtimeSamplerRegister", "sourceSamplerEvidence",
-			"samplerPolicy", "linearFormat", "srgb", "width", "height",
-			"mipCount", "arraySize" }) ||
-			!Read_String(Value, "role", Out.strRole) ||
-			!Read_String(Value, "assetId", Out.strAssetId) ||
-			!Read_Sha(Value, "rawSha256", Out.strRawSha256) ||
-			!Read_Unsigned(Value, "byteCount", Out.iByteCount) || 0u == Out.iByteCount ||
-			!Read_String(Value, "shaderRegister", Out.strShaderRegister) ||
-			!Read_String(Value, "sourceChannel", Out.strSourceChannel) ||
-			!Read_String(Value, "runtimeSamplerRegister", Out.strRuntimeSamplerRegister) ||
-			!Read_NullableString(Value, "sourceSamplerEvidence", Out.strSourceSamplerEvidence) ||
-			!Read_String(Value, "samplerPolicy", Out.strSamplerPolicy) ||
-			!Read_String(Value, "linearFormat", Out.strLinearFormat) ||
-			!Read_Bool(Value, "srgb", Out.bSrgb) ||
-			!Read_Unsigned(Value, "width", Out.iWidth) || 0u == Out.iWidth ||
-			!Read_Unsigned(Value, "height", Out.iHeight) || 0u == Out.iHeight ||
-			!Read_Unsigned(Value, "mipCount", Out.iMipCount) || 0u == Out.iMipCount ||
-			!Read_Unsigned(Value, "arraySize", Out.iArraySize) || 0u == Out.iArraySize)
-		{
-			strOutError = "LocalDecal SRV binding is invalid.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Parse_LocalDecalPacket(
-		const DATA_JSON_VALUE& Value,
-		std::optional<EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_PACKET>& Out,
-		std::string& strOutError)
-	{
-		if (Value.Is_Null())
-		{
-			Out.reset();
-			return true;
-		}
-		if (!Has_ExactKeys(Value, {
-			"packetVersion", "adapterId", "boundedSemanticReplay", "nativeExecution",
-			"nativeVertexFactoryAdmitted", "nativeMrtAdmitted", "runtimeCarrier",
-			"nativeVertexFactoryCandidate", "nativeVertexShaderSha256",
-			"nativePixelShaderSha256", "renderProfile", "passIndex", "pipelineState",
-			"opcode", "textureLaneCount", "textureMask", "dynamicConsumedMask",
-			"dynamicSuppressedMask", "particleColorPolicy",
-			"particleColorConsumedMask", "particleColorSuppressedMask",
-			"inputConsumedMask", "inputSuppressedMask",
-			"vectorComponentConsumedMask", "vectorComponentSuppressedMask",
-			"staticSelectedMask", "staticConsumedMask", "staticSuppressedMask",
-			"renderConsumedMask", "renderSuppressedMask", "inputDispositions",
-			"staticDispositions", "renderDispositions", "packedScalars",
-			"packedVectors", "srvs", "preservedLimitations", "packetSha256" }) ||
-			!Verify_Seal(Value, "packetSha256", strOutError))
-		{
-			if (strOutError.empty())
-				strOutError = "LocalDecal packet shape is invalid.";
-			return false;
-		}
-
-		EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_PACKET Staged;
-		const DATA_JSON_VALUE* Pipeline = Required(Value, "pipelineState", DATA_JSON_TYPE::OBJECT);
-		if (!Read_Unsigned(Value, "packetVersion", Staged.iPacketVersion) ||
-			!Read_String(Value, "adapterId", Staged.strAdapterId) ||
-			!Read_Bool(Value, "boundedSemanticReplay", Staged.bBoundedSemanticReplay) ||
-			!Read_Bool(Value, "nativeExecution", Staged.bNativeExecution) ||
-			!Read_Bool(Value, "nativeVertexFactoryAdmitted", Staged.bNativeVertexFactoryAdmitted) ||
-			!Read_Bool(Value, "nativeMrtAdmitted", Staged.bNativeMrtAdmitted) ||
-			!Read_String(Value, "runtimeCarrier", Staged.strRuntimeCarrier) ||
-			!Read_String(Value, "nativeVertexFactoryCandidate", Staged.strNativeVertexFactoryCandidate) ||
-			!Read_Sha(Value, "nativeVertexShaderSha256", Staged.strNativeVertexShaderSha256) ||
-			!Read_Sha(Value, "nativePixelShaderSha256", Staged.strNativePixelShaderSha256) ||
-			!Read_String(Value, "renderProfile", Staged.strRenderProfile) ||
-			!Read_Unsigned(Value, "passIndex", Staged.iPassIndex) ||
-			nullptr == Pipeline || !Has_ExactKeys(*Pipeline, {
-				"rasterizer", "depthStencil", "blend", "stencilReference" }) ||
-			!Read_String(*Pipeline, "rasterizer", Staged.strRasterizerState) ||
-			!Read_String(*Pipeline, "depthStencil", Staged.strDepthStencilState) ||
-			!Read_String(*Pipeline, "blend", Staged.strBlendState) ||
-			!Read_Unsigned(*Pipeline, "stencilReference", Staged.iStencilReference) ||
-			!Read_Unsigned(Value, "opcode", Staged.iOpcode) ||
-			!Read_Unsigned(Value, "textureLaneCount", Staged.iTextureLaneCount) ||
-			!Read_Unsigned(Value, "textureMask", Staged.iTextureMask) ||
-			!Read_Unsigned(Value, "dynamicConsumedMask", Staged.iDynamicConsumedMask) ||
-			!Read_Unsigned(Value, "dynamicSuppressedMask", Staged.iDynamicSuppressedMask) ||
-			!Read_Unsigned(Value, "particleColorPolicy", Staged.iParticleColorPolicy) ||
-			!Read_Unsigned(Value, "particleColorConsumedMask", Staged.iParticleColorConsumedMask) ||
-			!Read_Unsigned(Value, "particleColorSuppressedMask", Staged.iParticleColorSuppressedMask) ||
-			!Read_U32Array(Value, "inputConsumedMask", Staged.InputConsumedMask) ||
-			!Read_U32Array(Value, "inputSuppressedMask", Staged.InputSuppressedMask) ||
-			!Read_U32Array(Value, "vectorComponentConsumedMask", Staged.VectorComponentConsumedMask) ||
-			!Read_U32Array(Value, "vectorComponentSuppressedMask", Staged.VectorComponentSuppressedMask) ||
-			!Read_Unsigned(Value, "staticSelectedMask", Staged.iStaticSelectedMask) ||
-			!Read_Unsigned(Value, "staticConsumedMask", Staged.iStaticConsumedMask) ||
-			!Read_Unsigned(Value, "staticSuppressedMask", Staged.iStaticSuppressedMask) ||
-			!Read_Unsigned(Value, "renderConsumedMask", Staged.iRenderConsumedMask) ||
-			!Read_Unsigned(Value, "renderSuppressedMask", Staged.iRenderSuppressedMask) ||
-			!Read_StringArray(Value, "preservedLimitations", Staged.PreservedLimitations) ||
-			!Read_Sha(Value, "packetSha256", Staged.strPacketSha256))
-		{
-			strOutError = "LocalDecal packet header/state is invalid.";
-			return false;
-		}
-
-		const DATA_JSON_VALUE* Inputs = Required(Value, "inputDispositions", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* Statics = Required(Value, "staticDispositions", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* Renders = Required(Value, "renderDispositions", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* Scalars = Required(Value, "packedScalars", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* Vectors = Required(Value, "packedVectors", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* Srvs = Required(Value, "srvs", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Inputs || 33u != Inputs->Get_Array().size() ||
-			nullptr == Statics || 18u != Statics->Get_Array().size() ||
-			nullptr == Renders || 6u != Renders->Get_Array().size() ||
-			nullptr == Scalars || 22u != Scalars->Get_Array().size() ||
-			nullptr == Vectors || 3u != Vectors->Get_Array().size() ||
-			nullptr == Srvs || 6u != Srvs->Get_Array().size())
-		{
-			strOutError = "LocalDecal packet denominator changed.";
-			return false;
-		}
-
-		for (const DATA_JSON_VALUE& Input : Inputs->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_INPUT Parsed;
-			if (!Parse_LocalDecalInput(Input, Parsed, strOutError)) return false;
-			Staged.Inputs.push_back(std::move(Parsed));
-		}
-		for (const DATA_JSON_VALUE& Static : Statics->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_STATIC Parsed;
-			if (!Parse_LocalDecalStatic(Static, Parsed, strOutError)) return false;
-			Staged.StaticBindings.push_back(std::move(Parsed));
-		}
-		for (const DATA_JSON_VALUE& Render : Renders->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_LOCAL_DECAL_RENDER Parsed;
-			if (!Parse_LocalDecalRender(Render, Parsed, strOutError)) return false;
-			Staged.RenderBindings.push_back(std::move(Parsed));
-		}
-
-		for (size_t Index = 0u; Index < Scalars->Get_Array().size(); ++Index)
-		{
-			const DATA_JSON_VALUE& Packed = Scalars->Get_Array()[Index];
-			std::string InputId;
-			double Number = 0.0;
-			if (!Has_ExactKeys(Packed, { "inputId", "value" }) ||
-				!Read_String(Packed, "inputId", InputId) ||
-				!Read_Number(Packed, "value", Number))
-			{
-				strOutError = "LocalDecal packed scalar is invalid.";
-				return false;
-			}
-			const auto Found = std::find_if(Staged.Inputs.begin(), Staged.Inputs.end(),
-				[&InputId, Index](const auto& Input)
-				{
-					return Input.strInputId == InputId && Input.iPackedScalarIndex == Index;
-				});
-			if (Found == Staged.Inputs.end() || !Found->fScalarValue.has_value() ||
-				Found->fScalarValue.value() != Number)
-			{
-				strOutError = "LocalDecal packed scalar/input join is stale.";
-				return false;
-			}
-			Staged.PackedScalars[Index] = Number;
-		}
-		for (size_t Index = 0u; Index < Vectors->Get_Array().size(); ++Index)
-		{
-			const DATA_JSON_VALUE& Packed = Vectors->Get_Array()[Index];
-			std::string InputId;
-			std::optional<std::array<double, 4u>> Vector;
-			if (!Has_ExactKeys(Packed, { "inputId", "value" }) ||
-				!Read_String(Packed, "inputId", InputId) ||
-				!Read_NullableVector4(Packed, "value", Vector) || !Vector.has_value())
-			{
-				strOutError = "LocalDecal packed vector is invalid.";
-				return false;
-			}
-			const auto Found = std::find_if(Staged.Inputs.begin(), Staged.Inputs.end(),
-				[&InputId, Index](const auto& Input)
-				{
-					return Input.strInputId == InputId && Input.iPackedVectorIndex == Index;
-				});
-			if (Found == Staged.Inputs.end() || Found->vVectorValue != Vector)
-			{
-				strOutError = "LocalDecal packed vector/input join is stale.";
-				return false;
-			}
-			Staged.PackedVectors[Index] = Vector.value();
-		}
-		for (size_t Index = 0u; Index < Srvs->Get_Array().size(); ++Index)
-		{
-			if (!Parse_LocalDecalSrv(Srvs->Get_Array()[Index], Staged.Srvs[Index], strOutError))
-				return false;
-		}
-
-		static constexpr std::array<std::string_view, 6u> Roles = {
-			"HEIGHT", "DIFFUSE", "DISSOLVE", "NORMAL", "SPECULAR", "EMISSIVE" };
-		static constexpr std::array<std::string_view, 6u> Channels = {
-			"B", "RGBA", "G", "RG", "RGB", "R" };
-		static constexpr std::array<std::string_view, 6u> Formats = {
-			"BC1_UNORM", "BC3_UNORM", "BC1_UNORM", "BC5_UNORM", "BC1_UNORM", "BC1_UNORM" };
-		static constexpr std::array<bool_t, 6u> Srgb = {
-			false, true, false, false, true, true };
-		for (size_t Index = 0u; Index < Staged.Srvs.size(); ++Index)
-		{
-			const auto& Srv = Staged.Srvs[Index];
-			if (Srv.strRole != Roles[Index] || Srv.strShaderRegister != "t" + std::to_string(Index) ||
-				Srv.strRuntimeSamplerRegister != "s" + std::to_string(5u + Index) ||
-				Srv.strSourceChannel != Channels[Index] || Srv.strLinearFormat != Formats[Index] ||
-				Srv.bSrgb != Srgb[Index] || Srv.strSamplerPolicy != "LINEAR_CLAMP_UVW_BOUNDED_V1" ||
-				(Index == 0u ? Srv.strSourceSamplerEvidence != "s0" :
-				 Index == 2u ? Srv.strSourceSamplerEvidence != "s5" :
-				 !Srv.strSourceSamplerEvidence.empty()))
-			{
-				strOutError = "LocalDecal SRV role/register/channel/sampler contract changed.";
-				return false;
-			}
-		}
-
-		if (1u != Staged.iPacketVersion ||
-			Staged.strAdapterId != "local-decal-rt0-bounded-v1" ||
-			!Staged.bBoundedSemanticReplay || Staged.bNativeExecution ||
-			Staged.bNativeVertexFactoryAdmitted || Staged.bNativeMrtAdmitted ||
-			Staged.strRuntimeCarrier != "EFFECT_TYPED_DECAL_PROJECTOR_RECT_V1" ||
-			Staged.strRenderProfile != "ALPHA_ONE_SIDED_DEPTH_READ" ||
-			3u != Staged.iPassIndex || Staged.strRasterizerState != "RS_Default" ||
-			Staged.strDepthStencilState != "DSS_ReadOnly" ||
-			Staged.strBlendState != "BS_EffectAlpha" || 0u != Staged.iStencilReference ||
-			14u != Staged.iOpcode || 6u != Staged.iTextureLaneCount || 0x3fu != Staged.iTextureMask ||
-			0u != Staged.iDynamicConsumedMask || 0x0fu != Staged.iDynamicSuppressedMask ||
-			0u != Staged.iParticleColorPolicy || 0u != Staged.iParticleColorConsumedMask ||
-			0u != Staged.iParticleColorSuppressedMask ||
-			Staged.InputConsumedMask != std::array<uint32_t, 2u>{ 0x820ec1ffu, 1u } ||
-			Staged.InputSuppressedMask != std::array<uint32_t, 2u>{ 0x7df13e00u, 0u } ||
-			Staged.VectorComponentConsumedMask != std::array<uint32_t, 3u>{ 0x0fu, 0x0fu, 0u } ||
-			Staged.VectorComponentSuppressedMask != std::array<uint32_t, 3u>{ 0u, 0u, 0x0fu } ||
-			0x3fffbu != Staged.iStaticSelectedMask || 0x3ffffu != Staged.iStaticConsumedMask ||
-			0u != Staged.iStaticSuppressedMask || 0x03u != Staged.iRenderConsumedMask ||
-			0x3cu != Staged.iRenderSuppressedMask)
-		{
-			strOutError = "LocalDecal bounded adapter admission constants changed.";
-			return false;
-		}
-		Out = std::move(Staged);
-		return true;
-	}
-
-	struct ADAPTER_RULE final
-	{
-		EFFECT_VISUAL_PROGRAM_FAMILY eFamily = EFFECT_VISUAL_PROGRAM_FAMILY::END;
-		std::set<std::string, std::less<>> PacketLayouts;
-		std::set<std::string, std::less<>> ResourceRoles;
-	};
-
-	using ADAPTER_RULES = std::map<std::string, ADAPTER_RULE, std::less<>>;
-
-	bool_t Parse_TrailTiming(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_TRAIL_TIMING& Out)
-	{
-		return Has_ExactKeys(Value, {
-			"startDelaySeconds", "lifeTimeSeconds", "afterImageSeconds",
-			"dissolveStartNormalized" }) &&
-			Read_Number(Value, "startDelaySeconds", Out.fStartDelaySeconds) &&
-			Read_Number(Value, "lifeTimeSeconds", Out.fLifeTimeSeconds) &&
-			Read_Number(Value, "afterImageSeconds", Out.fAfterImageSeconds) &&
-			Read_Number(Value, "dissolveStartNormalized",
-				Out.fDissolveStartNormalized) &&
-			Out.fStartDelaySeconds >= 0.0 && Out.fLifeTimeSeconds > 0.0 &&
-			Out.fAfterImageSeconds >= 0.0 &&
-			Out.fDissolveStartNormalized >= 0.0 &&
-			Out.fDissolveStartNormalized <= 1.0;
-	}
-
-	bool_t Parse_TrailAttachment(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_TRAIL_ATTACHMENT& Out,
-		const bool_t bBakedEdgePacket,
-		const bool_t bAllowDetachedCascade,
-		std::string& strOutError)
-	{
-		const DATA_JSON_VALUE* Transform = Required(
-			Value, "socketLocalTransform", DATA_JSON_TYPE::OBJECT);
-		const bool_t bHasSnapshotBasis = nullptr !=
-			Value.Find("snapshotRootSourceBasisYawDegrees");
-		const bool_t bShapeValid = bBakedEdgePacket ?
-			Has_ExactKeys(Value, {
-				"enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId",
-				"runtimeBoneName", "snapshotRootSourceBasisYawDegrees",
-				"socketLocalTransform" }) :
-			(Has_ExactKeys(Value, {
-					"enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId",
-					"runtimeBoneName", "socketLocalTransform" }) ||
-			 (bAllowDetachedCascade && Has_ExactKeys(Value, {
-					"enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId",
-					"runtimeBoneName", "snapshotRootSourceBasisYawDegrees",
-					"socketLocalTransform" })));
-		EFFECT_VISUAL_PROGRAM_TRAIL_ATTACHMENT Staged;
-		if (!bShapeValid || nullptr == Transform ||
-			!Has_ExactKeys(*Transform, {
-				"position", "rotationDegrees", "scale" }) ||
-			!Read_Bool(Value, "enabled", Staged.bEnabled) ||
-			!Read_Bool(Value, "follow", Staged.bFollow) ||
-			!Read_StringAllowEmpty(Value, "sourceAnchorSlotId",
-				Staged.strSourceAnchorSlotId) ||
-			!Read_StringAllowEmpty(Value, "runtimeAnchorSlotId",
-				Staged.strRuntimeAnchorSlotId) ||
-			!Read_StringAllowEmpty(Value, "runtimeBoneName",
-				Staged.strRuntimeBoneName) ||
-			((bBakedEdgePacket || bHasSnapshotBasis) &&
-				!Read_Number(Value, "snapshotRootSourceBasisYawDegrees",
-					Staged.fSnapshotRootSourceBasisYawDegrees)) ||
-			!Read_NumberArray(*Transform, "position", Staged.vPosition) ||
-			!Read_NumberArray(*Transform, "rotationDegrees",
-				Staged.vRotationDegrees) ||
-			!Read_NumberArray(*Transform, "scale", Staged.vScale) ||
-			!std::all_of(Staged.vScale.begin(), Staged.vScale.end(),
-				[](const double Component) { return Component > 0.0; }))
-		{
-			strOutError = "Trail attachment shape or field type is invalid.";
-			return false;
-		}
-
-		const bool_t bIdentityTransform =
-			Staged.vPosition == std::array<double, 3u>{ 0.0, 0.0, 0.0 } &&
-			Staged.vRotationDegrees ==
-				std::array<double, 3u>{ 0.0, 0.0, 0.0 } &&
-			Staged.vScale == std::array<double, 3u>{ 1.0, 1.0, 1.0 };
-		if (bBakedEdgePacket)
-		{
-			if (Staged.bEnabled || Staged.bFollow ||
-				!Staged.strSourceAnchorSlotId.empty() ||
-				!Staged.strRuntimeAnchorSlotId.empty() ||
-				!Staged.strRuntimeBoneName.empty() ||
-				0.0 != Staged.fSnapshotRootSourceBasisYawDegrees ||
-				!bIdentityTransform)
-			{
-				strOutError =
-					"Baked-edge trail attachment must be detached with an identity transform.";
-				return false;
-			}
-		}
-		else if (Staged.strSourceAnchorSlotId.empty() ||
-			Staged.strRuntimeAnchorSlotId.empty() ||
-			Staged.strRuntimeBoneName.empty())
-		{
-			if (!bAllowDetachedCascade || Staged.bEnabled || Staged.bFollow ||
-				!Staged.strSourceAnchorSlotId.empty() ||
-				!Staged.strRuntimeAnchorSlotId.empty() ||
-				!Staged.strRuntimeBoneName.empty() ||
-				0.0 != Staged.fSnapshotRootSourceBasisYawDegrees ||
-				!bIdentityTransform)
-			{
-				strOutError = "Trail attachment identity is empty.";
-				return false;
-			}
-		}
-
-		Out = std::move(Staged);
-		return true;
-	}
-
-	bool_t Parse_TrailGeometry(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_TRAIL_GEOMETRY& Out,
-		const bool_t bAllowDistanceFields = false)
-	{
-		const bool_t bShapeValid = Has_ExactKeys(Value, {
-				"maxPoints", "pointLifeTimeSeconds", "sampleIntervalSeconds",
-				"minimumDistance", "startWidth", "endWidth", "faceCamera" }) ||
-			(bAllowDistanceFields && Has_ExactKeys(Value, {
-				"maxPoints", "pointLifeTimeSeconds", "sampleIntervalSeconds",
-				"minimumDistance", "startWidth", "endWidth",
-				"tilingDistanceWorldUnits",
-				"distanceTessellationStepWorldUnits", "faceCamera" }));
-		return bShapeValid &&
-			Read_Unsigned(Value, "maxPoints", Out.iMaxPoints) &&
-			Read_Number(Value, "pointLifeTimeSeconds",
-				Out.fPointLifeTimeSeconds) &&
-			Read_Number(Value, "sampleIntervalSeconds",
-				Out.fSampleIntervalSeconds) &&
-			Read_Number(Value, "minimumDistance", Out.fMinimumDistance) &&
-			Read_Number(Value, "startWidth", Out.fStartWidth) &&
-			Read_Number(Value, "endWidth", Out.fEndWidth) &&
-			Read_Bool(Value, "faceCamera", Out.bFaceCamera) &&
-			Out.iMaxPoints >= 2u && Out.fPointLifeTimeSeconds > 0.0 &&
-			Out.fSampleIntervalSeconds > 0.0 && Out.fMinimumDistance >= 0.0 &&
-			Out.fStartWidth > 0.0 && Out.fEndWidth >= 0.0;
-	}
-
-	bool_t Parse_CascadeRibbonPacket(
-		const DATA_JSON_VALUE& Value,
-		std::optional<EFFECT_VISUAL_PROGRAM_CASCADE_RIBBON_PACKET>& Out,
-		std::string& strOutError)
-	{
-		if (Value.Is_Null()) { Out.reset(); return true; }
-		if (!Has_ExactKeys(Value, {
-			"packetVersion", "adapterId", "boundedSemanticReplay",
-			"nativeExecution", "runtimeCarrier", "typeDataStableId",
-			"typeDataClassName", "typeDataObjectPath", "typeDataModuleSha256",
-			"resolvedRendererShape", "tilingDistance",
-			"distanceTessellationStepSize", "tangentTessellationScalar",
-			"lodValidity", "operationalMaxPoints", "targetTiming",
-			"attachment", "trail", "sourceRecipeSha256",
-			"moduleClosureSha256", "moduleCount", "preservedLimitations",
-			"packetSha256" }) || !Verify_Seal(Value, "packetSha256", strOutError))
-			return false;
-		const DATA_JSON_VALUE* Timing = Required(
-			Value, "targetTiming", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Attachment = Required(
-			Value, "attachment", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Trail = Required(
-			Value, "trail", DATA_JSON_TYPE::OBJECT);
-		EFFECT_VISUAL_PROGRAM_CASCADE_RIBBON_PACKET Staged;
-		if (nullptr == Timing || nullptr == Attachment || nullptr == Trail ||
-			!Read_Unsigned(Value, "packetVersion", Staged.iPacketVersion) ||
-			!Read_String(Value, "adapterId", Staged.strAdapterId) ||
-			!Read_Bool(Value, "boundedSemanticReplay",
-				Staged.bBoundedSemanticReplay) ||
-			!Read_Bool(Value, "nativeExecution", Staged.bNativeExecution) ||
-			!Read_String(Value, "runtimeCarrier", Staged.strRuntimeCarrier) ||
-			!Read_String(Value, "typeDataStableId", Staged.strTypeDataStableId) ||
-			!Read_String(Value, "typeDataClassName", Staged.strTypeDataClassName) ||
-			!Read_String(Value, "typeDataObjectPath", Staged.strTypeDataObjectPath) ||
-			!Read_Sha(Value, "typeDataModuleSha256",
-				Staged.strTypeDataModuleSha256) ||
-			!Read_String(Value, "resolvedRendererShape",
-				Staged.strResolvedRendererShape) ||
-			!Read_Number(Value, "tilingDistance", Staged.fTilingDistance) ||
-			!Read_Number(Value, "distanceTessellationStepSize",
-				Staged.fDistanceTessellationStepSize) ||
-			!Read_Number(Value, "tangentTessellationScalar",
-				Staged.fTangentTessellationScalar) ||
-			!Read_Number(Value, "lodValidity", Staged.fLodValidity) ||
-			!Read_Unsigned(Value, "operationalMaxPoints",
-				Staged.iOperationalMaxPoints) ||
-			!Parse_TrailTiming(*Timing, Staged.Timing) ||
-			!Parse_TrailAttachment(*Attachment, Staged.Attachment, false, true,
-				strOutError) ||
-			!Parse_TrailGeometry(*Trail, Staged.Trail, true) ||
-			!Read_Sha(Value, "sourceRecipeSha256",
-				Staged.strSourceRecipeSha256) ||
-			!Read_Sha(Value, "moduleClosureSha256",
-				Staged.strModuleClosureSha256) ||
-			!Read_Unsigned(Value, "moduleCount", Staged.iModuleCount) ||
-			!Read_StringArray(Value, "preservedLimitations",
-				Staged.PreservedLimitations) ||
-			!Read_Sha(Value, "packetSha256", Staged.strPacketSha256) ||
-			1u != Staged.iPacketVersion ||
-			Staged.strAdapterId != "cascade-ribbon-document-v12" ||
-			!Staged.bBoundedSemanticReplay || Staged.bNativeExecution ||
-			Staged.strRuntimeCarrier != "EFFECT_TYPED_CASCADE_RIBBON_V1" ||
-			Staged.strTypeDataClassName != "particlemoduletypedataribbon" ||
-			Staged.strResolvedRendererShape != "ribbon" ||
-			Staged.iOperationalMaxPoints < 2u || 0u == Staged.iModuleCount ||
-			Staged.PreservedLimitations.empty())
-			return false;
-		if (nullptr != Trail->Find("tilingDistanceWorldUnits"))
-		{
-			double fTrailTilingDistance = 0.0;
-			double fTrailTessellationStep = 0.0;
-			if (!Read_Number(*Trail, "tilingDistanceWorldUnits",
-					fTrailTilingDistance) ||
-				!Read_Number(*Trail, "distanceTessellationStepWorldUnits",
-					fTrailTessellationStep) ||
-				std::abs(fTrailTilingDistance - Staged.fTilingDistance) > 1e-5 ||
-				std::abs(fTrailTessellationStep -
-					Staged.fDistanceTessellationStepSize) > 1e-5)
-			{
-				strOutError =
-					"CascadeRibbon Trail distance fields do not match its typed packet.";
-				return false;
-			}
-		}
-		Out = std::move(Staged);
-		return true;
-	}
-
-	bool_t Parse_AnimationTrailPacket(
-		const DATA_JSON_VALUE& Value,
-		std::optional<EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_PACKET>& Out,
-		std::string& strOutError)
-	{
-		if (Value.Is_Null()) { Out.reset(); return true; }
-		uint32_t iPacketVersion = 0u;
-		if (!Read_Unsigned(Value, "packetVersion", iPacketVersion)) return false;
-		const bool_t bBakedEdgePacket = 2u == iPacketVersion;
-		const bool_t bShapeValid = bBakedEdgePacket ?
-			Has_ExactKeys(Value, {
-				"packetVersion", "adapterId", "boundedSemanticReplay",
-				"nativeExecution", "runtimeCarrier", "sourceNotifyType",
-				"sourceEventId", "sourceEventRecordSha256", "sourceAsset", "clip",
-				"localTimeSeconds", "globalTimeSeconds", "durationSeconds",
-				"targetElementId", "targetTiming", "attachment", "trail",
-				"historyId", "historySha256", "playbackClampSeconds",
-				"coordinateBasis", "preservedLimitations", "packetSha256" }) :
-			Has_ExactKeys(Value, {
-				"packetVersion", "adapterId", "boundedSemanticReplay",
-				"nativeExecution", "runtimeCarrier", "sourceNotifyType",
-				"sourceEventId", "sourceEventRecordSha256", "sourceAsset", "clip",
-				"localTimeSeconds", "globalTimeSeconds", "durationSeconds",
-				"targetElementId", "targetTiming", "attachment", "trail",
-				"preservedLimitations", "packetSha256" });
-		if (!bShapeValid || (1u != iPacketVersion && !bBakedEdgePacket) ||
-			!Verify_Seal(Value, "packetSha256", strOutError))
-			return false;
-		const DATA_JSON_VALUE* Timing = Required(
-			Value, "targetTiming", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Attachment = Required(
-			Value, "attachment", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Trail = Required(
-			Value, "trail", DATA_JSON_TYPE::OBJECT);
-		EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_PACKET Staged;
-		if (nullptr == Timing || nullptr == Attachment || nullptr == Trail ||
-			!Read_Unsigned(Value, "packetVersion", Staged.iPacketVersion) ||
-			!Read_String(Value, "adapterId", Staged.strAdapterId) ||
-			!Read_Bool(Value, "boundedSemanticReplay",
-				Staged.bBoundedSemanticReplay) ||
-			!Read_Bool(Value, "nativeExecution", Staged.bNativeExecution) ||
-			!Read_String(Value, "runtimeCarrier", Staged.strRuntimeCarrier) ||
-			!Read_String(Value, "sourceNotifyType", Staged.strSourceNotifyType) ||
-			!Read_String(Value, "sourceEventId", Staged.strSourceEventId) ||
-			!Read_Sha(Value, "sourceEventRecordSha256",
-				Staged.strSourceEventRecordSha256) ||
-			!Read_String(Value, "sourceAsset", Staged.strSourceAsset) ||
-			!Read_String(Value, "clip", Staged.strClip) ||
-			!Read_Number(Value, "localTimeSeconds", Staged.fLocalTimeSeconds) ||
-			!Read_Number(Value, "globalTimeSeconds", Staged.fGlobalTimeSeconds) ||
-			!Read_Number(Value, "durationSeconds", Staged.fDurationSeconds) ||
-			!Read_String(Value, "targetElementId", Staged.strTargetElementId) ||
-			!Parse_TrailTiming(*Timing, Staged.TargetTiming) ||
-			!Parse_TrailAttachment(*Attachment, Staged.Attachment,
-				bBakedEdgePacket, false, strOutError) ||
-			!Parse_TrailGeometry(*Trail, Staged.Trail) ||
-			(bBakedEdgePacket &&
-				(!Read_String(Value, "historyId", Staged.strHistoryId) ||
-				 !Read_Sha(Value, "historySha256", Staged.strHistorySha256) ||
-				 !Read_Number(Value, "playbackClampSeconds",
-					 Staged.fPlaybackClampSeconds) ||
-				 !Read_String(Value, "coordinateBasis", Staged.strCoordinateBasis))) ||
-			!Read_StringArray(Value, "preservedLimitations",
-				Staged.PreservedLimitations) ||
-			!Read_Sha(Value, "packetSha256", Staged.strPacketSha256) ||
-			Staged.strAdapterId != "animation-trail-document-v12" ||
-			!Staged.bBoundedSemanticReplay || Staged.bNativeExecution ||
-			Staged.strSourceNotifyType != "Trails" ||
-			Staged.fLocalTimeSeconds < 0.0 || Staged.fGlobalTimeSeconds < 0.0 ||
-			Staged.fDurationSeconds <= 0.0 || Staged.PreservedLimitations.empty())
-			return false;
-		if (bBakedEdgePacket)
-		{
-			if (Staged.strRuntimeCarrier !=
-					"EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1" ||
-				!Is_StableId(Staged.strHistoryId) ||
-				Staged.fPlaybackClampSeconds <= 0.0 ||
-				Staged.fPlaybackClampSeconds > Staged.fDurationSeconds + 5e-5 ||
-				Staged.strCoordinateBasis !=
-					"UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS")
-				return false;
-		}
-		else if (Staged.strRuntimeCarrier != "EFFECT_TYPED_ANIMATION_TRAIL_V1")
-			return false;
-		Out = std::move(Staged);
-		return true;
-	}
-
-	bool_t Parse_VisualLightProfile(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_LIGHT_PROFILE& Out)
-	{
-		if (!Has_ExactKeys(Value, {
-			"enabled", "profileId", "status", "range", "intensity", "color",
-			"ambient", "falloffExponent" }))
-			return false;
-		EFFECT_VISUAL_PROGRAM_LIGHT_PROFILE Staged;
-		if (!Read_Bool(Value, "enabled", Staged.bEnabled) ||
-			!Read_String(Value, "profileId", Staged.strProfileId) ||
-			!Read_String(Value, "status", Staged.strStatus) ||
-			!Read_Number(Value, "range", Staged.fRange) ||
-			!Read_Number(Value, "intensity", Staged.fIntensity) ||
-			!Read_NumberArray(Value, "color", Staged.vColor) ||
-			!Read_NumberArray(Value, "ambient", Staged.vAmbient) ||
-			!Read_Number(Value, "falloffExponent", Staged.fFalloffExponent) ||
-			!Staged.bEnabled ||
-			Staged.strProfileId != "light.point.reconstructed.v1" ||
-			Staged.strStatus != "reconstructed_profile" ||
-			Staged.fRange <= 0.0 || Staged.fIntensity < 0.0 ||
-			Staged.fFalloffExponent <= 0.0)
-			return false;
-		Out = std::move(Staged);
-		return true;
-	}
-
-	bool_t Parse_BakedEdgeLightPacket(
-		const DATA_JSON_VALUE& Value,
-		std::optional<EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LIGHT_PACKET>& Out,
-		std::string& strOutError)
-	{
-		if (Value.Is_Null()) { Out.reset(); return true; }
-		if (!Has_ExactKeys(Value, {
-			"packetVersion", "adapterId", "boundedSemanticReplay",
-			"nativeExecution", "runtimeCarrier", "sourceEventId",
-			"sourceEventRecordSha256", "targetElementId", "historyId",
-			"historySha256", "lane", "activeStartSeconds",
-			"activeDurationSeconds", "activeEndSeconds",
-			"historyPlaybackClampSeconds", "coordinateBasis",
-			"attachmentEvidenceStatus", "targetLight",
-			"preservedLimitations", "packetSha256" }) ||
-			!Verify_Seal(Value, "packetSha256", strOutError))
-			return false;
-		EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LIGHT_PACKET Staged;
-		std::string Lane;
-		const DATA_JSON_VALUE* TargetLight = Required(
-			Value, "targetLight", DATA_JSON_TYPE::OBJECT);
-		if (nullptr == TargetLight ||
-			!Read_Unsigned(Value, "packetVersion", Staged.iPacketVersion) ||
-			!Read_String(Value, "adapterId", Staged.strAdapterId) ||
-			!Read_Bool(Value, "boundedSemanticReplay",
-				Staged.bBoundedSemanticReplay) ||
-			!Read_Bool(Value, "nativeExecution", Staged.bNativeExecution) ||
-			!Read_String(Value, "runtimeCarrier", Staged.strRuntimeCarrier) ||
-			!Read_String(Value, "sourceEventId", Staged.strSourceEventId) ||
-			!Read_Sha(Value, "sourceEventRecordSha256",
-				Staged.strSourceEventRecordSha256) ||
-			!Read_String(Value, "targetElementId", Staged.strTargetElementId) ||
-			!Read_String(Value, "historyId", Staged.strHistoryId) ||
-			!Read_Sha(Value, "historySha256", Staged.strHistorySha256) ||
-			!Read_String(Value, "lane", Lane) ||
-			!Read_Number(Value, "activeStartSeconds", Staged.fActiveStartSeconds) ||
-			!Read_Number(Value, "activeDurationSeconds",
-				Staged.fActiveDurationSeconds) ||
-			!Read_Number(Value, "activeEndSeconds", Staged.fActiveEndSeconds) ||
-			!Read_Number(Value, "historyPlaybackClampSeconds",
-				Staged.fHistoryPlaybackClampSeconds) ||
-			!Read_String(Value, "coordinateBasis", Staged.strCoordinateBasis) ||
-			!Read_String(Value, "attachmentEvidenceStatus",
-				Staged.strAttachmentEvidenceStatus) ||
-			!Parse_VisualLightProfile(*TargetLight, Staged.TargetLight) ||
-			!Read_StringArray(Value, "preservedLimitations",
-				Staged.PreservedLimitations) ||
-			!Read_Sha(Value, "packetSha256", Staged.strPacketSha256))
-			return false;
-		Staged.eLane = Lane == "FIRST_EDGE" ?
-			EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE::FIRST_EDGE :
-			EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE::END;
-		if (1u != Staged.iPacketVersion ||
-			Staged.strAdapterId != "light-particle-document-v12" ||
-			!Staged.bBoundedSemanticReplay || Staged.bNativeExecution ||
-			Staged.strRuntimeCarrier !=
-				"EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1" ||
-			Staged.strSourceEventId.empty() ||
-			!Is_StableId(Staged.strTargetElementId) ||
-			!Is_StableId(Staged.strHistoryId) ||
-			Staged.eLane != EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE::FIRST_EDGE ||
-			Staged.fActiveStartSeconds < 0.0 ||
-			Staged.fActiveDurationSeconds <= 0.0 ||
-			std::abs(Staged.fActiveEndSeconds -
-				(Staged.fActiveStartSeconds + Staged.fActiveDurationSeconds)) > 5e-5 ||
-			Staged.fHistoryPlaybackClampSeconds <= 0.0 ||
-			Staged.fActiveEndSeconds > Staged.fHistoryPlaybackClampSeconds + 5e-5 ||
-			Staged.strCoordinateBasis !=
-				"UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS" ||
-			Staged.strAttachmentEvidenceStatus !=
-				"SIBLING_TEMPLATE_INFERRED" ||
-			Staged.PreservedLimitations.empty())
-			return false;
-		Out = std::move(Staged);
-		return true;
-	}
-
-	bool_t Parse_AdapterRules(
-		const DATA_JSON_VALUE& Root,
-		ADAPTER_RULES& Out,
-		std::string& strOutError)
-	{
-		const DATA_JSON_VALUE* Values = Required(Root, "adapterContracts", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Values || Values->Get_Array().empty())
-		{
-			strOutError = "Visual-program adapter allowlist is missing.";
-			return false;
-		}
-		ADAPTER_RULES Staged;
-		for (const DATA_JSON_VALUE& Value : Values->Get_Array())
-		{
-			std::string AdapterId;
-			std::string Family;
-			std::vector<std::string> Layouts;
-			std::vector<std::string> Roles;
-			if (!Has_ExactKeys(Value, {
-				"adapterId", "family", "packetLayouts", "allowedResourceRoles" }) ||
-				!Read_String(Value, "adapterId", AdapterId) ||
-				!Read_String(Value, "family", Family) ||
-				!Read_StringArray(Value, "packetLayouts", Layouts) || Layouts.empty() ||
-				!Read_StringArray(Value, "allowedResourceRoles", Roles) || Roles.empty())
-			{
-				strOutError = "Visual-program adapter allowlist row is invalid.";
-				return false;
-			}
-			ADAPTER_RULE Rule;
-			Rule.eFamily = Parse_Family(Family);
-			Rule.PacketLayouts.insert(Layouts.begin(), Layouts.end());
-			Rule.ResourceRoles.insert(Roles.begin(), Roles.end());
-			if (Rule.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::END ||
-				Rule.PacketLayouts.size() != Layouts.size() ||
-				Rule.ResourceRoles.size() != Roles.size() ||
-				!Staged.emplace(AdapterId, std::move(Rule)).second)
-			{
-				strOutError = "Visual-program adapter allowlist has an unknown or duplicate value.";
-				return false;
-			}
-		}
-		Out = std::move(Staged);
-		return true;
-	}
-
-	bool_t Parse_RuntimeRow(
-		const DATA_JSON_VALUE& Value,
-		const ADAPTER_RULES& AdapterRules,
-		EFFECT_VISUAL_PROGRAM_ROW& Out,
-		std::string& strOutError)
-	{
-		if (!Has_ExactKeys(Value, {
-			"selector", "selectorSha256", "family", "adapterId", "packetLayout",
-			"fidelity", "disposition", "tuningEligibleTransform", "sourceIdentity",
-			"targetIdentity", "resourcePacket", "localDecalPacket",
-			"admissionBlockers", "rowSha256" }) ||
-			!Verify_Seal(Value, "rowSha256", strOutError))
-		{
-			if (strOutError.empty()) strOutError = "Visual-program row shape is invalid.";
-			return false;
-		}
-		const DATA_JSON_VALUE* Selector = Required(Value, "selector", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Source = Required(Value, "sourceIdentity", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Target = Value.Find("targetIdentity");
-		const DATA_JSON_VALUE* Resources = Required(Value, "resourcePacket", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* Packet = Value.Find("localDecalPacket");
-		std::string ClaimedSelectorSha;
-		std::string Family;
-		std::string Disposition;
-		if (nullptr == Selector || nullptr == Source || nullptr == Target || nullptr == Resources ||
-			nullptr == Packet || !Parse_Selector(*Selector, Out.Selector, strOutError) ||
-			!Read_Sha(Value, "selectorSha256", ClaimedSelectorSha) ||
-			ClaimedSelectorSha != Out.Selector.strSelectorSha256 ||
-			!Read_String(Value, "family", Family) ||
-			!Read_String(Value, "adapterId", Out.strAdapterId) ||
-			!Read_String(Value, "packetLayout", Out.strPacketLayout) ||
-			!Read_String(Value, "fidelity", Out.strFidelity) ||
-			!Read_String(Value, "disposition", Disposition) ||
-			!Read_Bool(Value, "tuningEligibleTransform", Out.bTuningEligibleTransform) ||
-			!Parse_SourceIdentity(*Source, Out.SourceIdentity, strOutError) ||
-			!Parse_TargetIdentity(*Target, Out.TargetIdentity, strOutError) ||
-			!Parse_LocalDecalPacket(*Packet, Out.LocalDecalPacket, strOutError) ||
-			!Read_StringArray(Value, "admissionBlockers", Out.AdmissionBlockers) ||
-			!Read_Sha(Value, "rowSha256", Out.strRowSha256))
-		{
-			if (strOutError.empty()) strOutError = "Visual-program row identity is invalid.";
-			return false;
-		}
-		Out.eFamily = Parse_Family(Family);
-		if (Disposition == "ADMITTED_BOUNDED")
-			Out.eDisposition = EFFECT_VISUAL_PROGRAM_DISPOSITION::ADMITTED_BOUNDED;
-		else if (Disposition == "FAIL_CLOSED")
-			Out.eDisposition = EFFECT_VISUAL_PROGRAM_DISPOSITION::FAIL_CLOSED;
-		else
-			Out.eDisposition = EFFECT_VISUAL_PROGRAM_DISPOSITION::END;
-		const auto Adapter = AdapterRules.find(Out.strAdapterId);
-		if (Out.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::END ||
-			Out.eDisposition == EFFECT_VISUAL_PROGRAM_DISPOSITION::END ||
-			Adapter == AdapterRules.end() || Adapter->second.eFamily != Out.eFamily ||
-			!Adapter->second.PacketLayouts.contains(Out.strPacketLayout))
-		{
-			strOutError = "Visual-program row uses an unknown adapter/family/layout combination.";
-			return false;
-		}
-		for (const DATA_JSON_VALUE& Resource : Resources->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_RESOURCE_PACKET_ROW Parsed;
-			if (!Parse_Resource(Resource, Parsed, strOutError) ||
-				!Adapter->second.ResourceRoles.contains(Parsed.strRole))
-			{
-				if (strOutError.empty()) strOutError = "Visual-program resource role is not allowed.";
-				return false;
-			}
-			Out.Resources.push_back(std::move(Parsed));
-		}
-		if (Out.eDisposition == EFFECT_VISUAL_PROGRAM_DISPOSITION::FAIL_CLOSED)
-		{
-			if (Out.TargetIdentity.has_value() || Out.LocalDecalPacket.has_value() ||
-				Out.strPacketLayout != "NONE" || Out.AdmissionBlockers.empty())
-			{
-				strOutError = "Fail-closed visual row contains executable mutation state.";
-				return false;
-			}
-		}
-		else if (!Out.TargetIdentity.has_value() || !Out.AdmissionBlockers.empty())
-		{
-			strOutError = "Admitted visual row lacks a target or retains blockers.";
-			return false;
-		}
-		if (Out.LocalDecalPacket.has_value())
-		{
-			if (Out.LocalDecalPacket->strAdapterId != Out.strAdapterId ||
-				Out.strPacketLayout != "LOCAL_DECAL_RT0_SIX_SRV_V1" ||
-				Out.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::DECAL_PARTICLE ||
-				Out.Resources.size() != Out.LocalDecalPacket->Srvs.size())
-			{
-				strOutError = "LocalDecal packet/row identity is inconsistent.";
-				return false;
-			}
-			for (size_t Index = 0u; Index < Out.Resources.size(); ++Index)
-			{
-				const auto& Resource = Out.Resources[Index];
-				const auto& Srv = Out.LocalDecalPacket->Srvs[Index];
-				if (Resource.strRole != Srv.strRole || Resource.strAssetId != Srv.strAssetId ||
-					Resource.strRawSha256 != Srv.strRawSha256 || Resource.iByteCount != Srv.iByteCount ||
-					Resource.strShaderRegister != Srv.strShaderRegister ||
-					Resource.strSourceChannel != Srv.strSourceChannel)
-				{
-					strOutError = "LocalDecal packet/resource join is stale.";
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
-	bool_t Parse_RuntimeSupplementalElement(
-		const DATA_JSON_VALUE& Value,
-		const ADAPTER_RULES& AdapterRules,
-		EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Out,
-		std::string& strOutError)
-	{
-		if (!Has_ExactKeys(Value, {
-			"selector", "selectorSha256", "family", "adapterId", "packetLayout",
-			"fidelity", "disposition", "tuningEligibleTransform",
-			"sourceIdentity", "targetIdentity", "schedule", "resourcePacket",
-			"cascadeRibbonPacket", "animationTrailPacket",
-			"bakedEdgeLightPacket", "admissionBlockers",
-			"rowSha256" }) || !Verify_Seal(Value, "rowSha256", strOutError))
-			return false;
-		const DATA_JSON_VALUE* Selector = Required(
-			Value, "selector", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Source = Required(
-			Value, "sourceIdentity", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Target = Required(
-			Value, "targetIdentity", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Schedule = Required(
-			Value, "schedule", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* Resources = Required(
-			Value, "resourcePacket", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* Cascade = Value.Find("cascadeRibbonPacket");
-		const DATA_JSON_VALUE* Animation = Value.Find("animationTrailPacket");
-		const DATA_JSON_VALUE* BakedEdgeLight =
-			Value.Find("bakedEdgeLightPacket");
-		std::string SelectorSha;
-		std::string Family;
-		std::string Disposition;
-		std::optional<EFFECT_VISUAL_PROGRAM_TARGET_IDENTITY> ParsedTarget;
-		if (nullptr == Selector || nullptr == Source || nullptr == Target ||
-			nullptr == Schedule || nullptr == Resources || nullptr == Cascade ||
-			nullptr == Animation || nullptr == BakedEdgeLight ||
-			!Parse_Selector(*Selector, Out.Selector, strOutError) ||
-			!Read_Sha(Value, "selectorSha256", SelectorSha) ||
-			SelectorSha != Out.Selector.strSelectorSha256 ||
-			!Read_String(Value, "family", Family) ||
-			!Read_String(Value, "adapterId", Out.strAdapterId) ||
-			!Read_String(Value, "packetLayout", Out.strPacketLayout) ||
-			!Read_String(Value, "fidelity", Out.strFidelity) ||
-			!Read_String(Value, "disposition", Disposition) ||
-			!Read_Bool(Value, "tuningEligibleTransform",
-				Out.bTuningEligibleTransform) ||
-			!Has_ExactKeys(*Source, {
-				"sourceRecordId", "sourceRecordSha256", "sourcePayloadRawSha256" }) ||
-			!Read_String(*Source, "sourceRecordId", Out.strSourceRecordId) ||
-			!Read_Sha(*Source, "sourceRecordSha256", Out.strSourceRecordSha256) ||
-			!Read_Sha(*Source, "sourcePayloadRawSha256",
-				Out.strSourcePayloadRawSha256) ||
-			!Parse_TargetIdentity(*Target, ParsedTarget, strOutError) ||
-			!ParsedTarget.has_value() ||
-			!Has_ExactKeys(*Schedule, {
-				"stageId", "sourceEventId", "sourceTimelineSeconds",
-				"localTimeSeconds", "durationSeconds" }) ||
-			!Read_String(*Schedule, "stageId", Out.strStageId) ||
-			!Read_String(*Schedule, "sourceEventId", Out.strSourceEventId) ||
-			!Read_Number(*Schedule, "sourceTimelineSeconds",
-				Out.fSourceTimelineSeconds) ||
-			!Read_Number(*Schedule, "localTimeSeconds", Out.fLocalTimeSeconds) ||
-			!Read_Number(*Schedule, "durationSeconds", Out.fDurationSeconds) ||
-			!Parse_CascadeRibbonPacket(*Cascade, Out.CascadeRibbonPacket,
-				strOutError) ||
-			!Parse_AnimationTrailPacket(*Animation, Out.AnimationTrailPacket,
-				strOutError) ||
-			!Parse_BakedEdgeLightPacket(*BakedEdgeLight,
-				Out.BakedEdgeLightPacket, strOutError) ||
-			!Read_StringArray(Value, "admissionBlockers", Out.AdmissionBlockers) ||
-			!Read_Sha(Value, "rowSha256", Out.strRowSha256))
-			return false;
-		Out.TargetIdentity = *ParsedTarget;
-		Out.eFamily = Parse_Family(Family);
-		Out.eDisposition = Disposition == "ADMITTED_BOUNDED" ?
-			EFFECT_VISUAL_PROGRAM_DISPOSITION::ADMITTED_BOUNDED :
-			EFFECT_VISUAL_PROGRAM_DISPOSITION::END;
-		const auto Adapter = AdapterRules.find(Out.strAdapterId);
-		if (Out.eDisposition != EFFECT_VISUAL_PROGRAM_DISPOSITION::ADMITTED_BOUNDED ||
-			!Out.bTuningEligibleTransform || !Out.AdmissionBlockers.empty() ||
-			Out.strFidelity != "BOUNDED_RECONSTRUCTION" ||
-			Adapter == AdapterRules.end() || Adapter->second.eFamily != Out.eFamily ||
-			!Adapter->second.PacketLayouts.contains(Out.strPacketLayout) ||
-			Out.fSourceTimelineSeconds < 0.0 || Out.fLocalTimeSeconds < 0.0 ||
-			Out.fDurationSeconds <= 0.0)
-			return false;
-		for (const DATA_JSON_VALUE& Resource : Resources->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_RESOURCE_PACKET_ROW Parsed;
-			if (!Parse_Resource(Resource, Parsed, strOutError) ||
-				!Adapter->second.ResourceRoles.contains(Parsed.strRole))
-				return false;
-			Out.Resources.push_back(std::move(Parsed));
-		}
-		if (Out.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON)
-		{
-			if (Out.strPacketLayout != "CASCADE_RIBBON_TYPED_PACKET_V1" ||
-				!Out.CascadeRibbonPacket.has_value() ||
-				Out.AnimationTrailPacket.has_value() ||
-				Out.BakedEdgeLightPacket.has_value() ||
-				Out.CascadeRibbonPacket->strAdapterId != Out.strAdapterId)
-				return false;
-		}
-		else if (Out.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL)
-		{
-			const bool_t bLegacyPacket =
-				Out.strPacketLayout == "ANIMATION_TRAIL_ELEMENT_V1";
-			const bool_t bBakedEdgePacket = Out.strPacketLayout ==
-				"ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1";
-			if ((!bLegacyPacket && !bBakedEdgePacket) ||
-				Out.CascadeRibbonPacket.has_value() ||
-				Out.BakedEdgeLightPacket.has_value() ||
-				!Out.AnimationTrailPacket.has_value() ||
-				Out.AnimationTrailPacket->strAdapterId != Out.strAdapterId ||
-				Out.AnimationTrailPacket->iPacketVersion !=
-					(bBakedEdgePacket ? 2u : 1u) ||
-				Out.AnimationTrailPacket->strSourceEventId != Out.strSourceEventId ||
-				Out.AnimationTrailPacket->strTargetElementId !=
-					Out.TargetIdentity.strTargetElementId)
-				return false;
-		}
-		else if (Out.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE)
-		{
-			if (Out.strPacketLayout != "LIGHT_BAKED_EDGE_ATTACHMENT_V1" ||
-				Out.CascadeRibbonPacket.has_value() ||
-				Out.AnimationTrailPacket.has_value() ||
-				!Out.BakedEdgeLightPacket.has_value() ||
-				Out.BakedEdgeLightPacket->strAdapterId != Out.strAdapterId ||
-				Out.BakedEdgeLightPacket->strSourceEventId != Out.strSourceEventId ||
-				Out.BakedEdgeLightPacket->strTargetElementId !=
-					Out.TargetIdentity.strTargetElementId)
-				return false;
-		}
-		else return false;
-		return true;
-	}
-
-	const DATA_JSON_VALUE* Find_ElementValue(
-		const DATA_JSON_VALUE& Document,
-		const std::string_view ElementId)
-	{
-		const DATA_JSON_VALUE* Elements = Required(Document, "elements", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Elements) return nullptr;
-		const DATA_JSON_VALUE* Found = nullptr;
-		for (const DATA_JSON_VALUE& Element : Elements->Get_Array())
-		{
-			const DATA_JSON_VALUE* Id = Required(Element, "id", DATA_JSON_TYPE::STRING);
-			if (nullptr != Id && Id->Get_String() == ElementId)
-			{
-				if (nullptr != Found) return nullptr;
-				Found = &Element;
-			}
-		}
-		return Found;
-	}
-
 	std::string Canonical_Sha(const DATA_JSON_VALUE& Value)
 	{
 		return CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
 			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(Value));
-	}
-
-	bool_t Parse_BakedEdgeHistory(
-		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY& Out,
-		std::string& strOutError)
-	{
-		if (!Has_ExactKeys(Value, {
-			"historyId", "sourceKind", "sourceArtifactPath",
-			"sourceArtifactRawSha256", "coordinateBasis",
-			"sourceEndTimeSeconds", "playbackClampSeconds", "sampleCount",
-			"samples", "samplesSha256", "historySha256" }) ||
-			!Verify_Seal(Value, "historySha256", strOutError))
-			return false;
-		const DATA_JSON_VALUE* Samples = Required(
-			Value, "samples", DATA_JSON_TYPE::ARRAY);
-		EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY Staged;
-		if (nullptr == Samples || Samples->Get_Array().size() < 2u ||
-			!Read_String(Value, "historyId", Staged.strHistoryId) ||
-			!Read_String(Value, "sourceKind", Staged.strSourceKind) ||
-			!Read_String(Value, "sourceArtifactPath", Staged.strSourceArtifactPath) ||
-			!Read_Sha(Value, "sourceArtifactRawSha256",
-				Staged.strSourceArtifactRawSha256) ||
-			!Read_String(Value, "coordinateBasis", Staged.strCoordinateBasis) ||
-			!Read_Number(Value, "sourceEndTimeSeconds",
-				Staged.fSourceEndTimeSeconds) ||
-			!Read_Number(Value, "playbackClampSeconds",
-				Staged.fPlaybackClampSeconds) ||
-			!Read_Unsigned(Value, "sampleCount", Staged.iSampleCount) ||
-			!Read_Sha(Value, "samplesSha256", Staged.strSamplesSha256) ||
-			!Read_Sha(Value, "historySha256", Staged.strHistorySha256) ||
-			!Is_StableId(Staged.strHistoryId) ||
-			Staged.strSourceKind !=
-				"UE3_ANIMTRAIL_BAKED_EDGE_HISTORY_V1" ||
-			Staged.strCoordinateBasis !=
-				"UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS" ||
-			Staged.strSourceArtifactPath.find("..") != std::string::npos ||
-			Staged.strSourceArtifactPath.find(':') != std::string::npos ||
-			Staged.fSourceEndTimeSeconds <= 0.0 ||
-			Staged.fPlaybackClampSeconds <= 0.0 ||
-			Staged.fPlaybackClampSeconds > Staged.fSourceEndTimeSeconds ||
-			Staged.iSampleCount != Samples->Get_Array().size() ||
-			Canonical_Sha(*Samples) != Staged.strSamplesSha256)
-			return false;
-
-		Staged.Samples.reserve(Samples->Get_Array().size());
-		double fPreviousTime = -1.0;
-		for (const DATA_JSON_VALUE& SampleValue : Samples->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE Sample;
-			if (!Has_ExactKeys(SampleValue, {
-				"relativeTimeSeconds", "firstEdgeUE3Cm", "controlPointUE3Cm",
-				"secondEdgeUE3Cm" }) ||
-				!Read_Number(SampleValue, "relativeTimeSeconds",
-					Sample.fRelativeTimeSeconds) ||
-				!Read_NumberArray(SampleValue, "firstEdgeUE3Cm",
-					Sample.vFirstEdgeUE3Cm) ||
-				!Read_NumberArray(SampleValue, "controlPointUE3Cm",
-					Sample.vControlPointUE3Cm) ||
-				!Read_NumberArray(SampleValue, "secondEdgeUE3Cm",
-					Sample.vSecondEdgeUE3Cm) ||
-				Sample.fRelativeTimeSeconds <= fPreviousTime)
-				return false;
-			fPreviousTime = Sample.fRelativeTimeSeconds;
-			Staged.Samples.push_back(std::move(Sample));
-		}
-		if (std::abs(Staged.Samples.front().fRelativeTimeSeconds) > 1e-6 ||
-			Staged.Samples.back().fRelativeTimeSeconds + 5e-5 <
-				Staged.fPlaybackClampSeconds ||
-			Staged.Samples.back().fRelativeTimeSeconds >
-				Staged.fSourceEndTimeSeconds + 5e-5)
-			return false;
-		Out = std::move(Staged);
-		return true;
 	}
 
 	DATA_JSON_VALUE Normalize_TypedSemanticZero(const DATA_JSON_VALUE& Value)
@@ -1676,435 +71,6 @@ namespace
 		default:
 			return DATA_JSON_VALUE::Null();
 		}
-	}
-
-	bool_t Parse_RuntimeProgram(
-		const DATA_JSON_VALUE& Value,
-		const ADAPTER_RULES& AdapterRules,
-		EFFECT_VISUAL_PROGRAM& Out,
-		std::string& strOutError)
-	{
-		if (!Has_ExactKeys(Value, {
-			"effectAssetId", "projectionKind", "baseDocumentIdentity",
-			"projectedDocument", "projectedDocumentCanonicalByteCount",
-			"projectedDocumentSha256", "projectedDocumentTypedCodecSha256",
-			"visualRows", "supplementalElements", "bakedEdgeHistories",
-			"programSha256" }) ||
-			!Verify_Seal(Value, "programSha256", strOutError) ||
-			!Read_String(Value, "effectAssetId", Out.strEffectAssetId) ||
-			!Is_StableId(Out.strEffectAssetId) ||
-			!Read_Sha(Value, "programSha256", Out.strProgramSha256))
-		{
-			if (strOutError.empty()) strOutError = "Visual-program entry shape is invalid.";
-			return false;
-		}
-		std::string ProjectionKind;
-		if (!Read_String(Value, "projectionKind", ProjectionKind)) return false;
-		if (ProjectionKind == "SOURCE_RECIPE_OVERLAY_V1")
-			Out.eProjectionKind = EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1;
-		else if (ProjectionKind == "ADAPTER_PACKET_V1")
-			Out.eProjectionKind = EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1;
-		else
-		{
-			strOutError = "Visual-program projection kind is unknown.";
-			return false;
-		}
-
-		const DATA_JSON_VALUE* BaseIdentity = Value.Find("baseDocumentIdentity");
-		const DATA_JSON_VALUE* ProjectedValue = Value.Find("projectedDocument");
-		const DATA_JSON_VALUE* ByteCount = Value.Find("projectedDocumentCanonicalByteCount");
-		const DATA_JSON_VALUE* ProjectedSha = Value.Find("projectedDocumentSha256");
-		if (nullptr == BaseIdentity || nullptr == ProjectedValue || nullptr == ByteCount || nullptr == ProjectedSha)
-			return false;
-		if (Out.eProjectionKind == EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1)
-		{
-			if (!Has_ExactKeys(*BaseIdentity, {
-				"rawSha256", "canonicalSha256", "typedCodecSha256" }) ||
-				!Read_Sha(*BaseIdentity, "rawSha256", Out.strBaseDocumentRawSha256) ||
-				!Read_Sha(*BaseIdentity, "canonicalSha256", Out.strBaseDocumentCanonicalSha256) ||
-				!Read_Sha(*BaseIdentity, "typedCodecSha256", Out.strBaseDocumentTypedCodecSha256) ||
-				!ProjectedValue->Is_Object() ||
-				!Read_Unsigned(Value, "projectedDocumentCanonicalByteCount",
-					Out.iProjectedDocumentCanonicalByteCount) ||
-				!Read_Sha(Value, "projectedDocumentSha256", Out.strProjectedDocumentSha256) ||
-				!Read_Sha(Value, "projectedDocumentTypedCodecSha256",
-					Out.strProjectedDocumentTypedCodecSha256))
-			{
-				strOutError = "SourceRecipe overlay document identity is invalid.";
-				return false;
-			}
-			const std::string Canonical =
-				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(*ProjectedValue);
-			if (Canonical.size() != Out.iProjectedDocumentCanonicalByteCount ||
-				Canonical_Sha(*ProjectedValue) != Out.strProjectedDocumentSha256)
-			{
-				strOutError = "SourceRecipe projected document canonical bytes/SHA are stale.";
-				return false;
-			}
-			EFFECT_DOCUMENT_DESC Parsed;
-			if (!CEffectDocumentCodec::Parse_Value(*ProjectedValue, Parsed, strOutError) ||
-				Parsed.strEffectAssetId != Out.strEffectAssetId ||
-				!CEffectDocumentCodec::Validate_Drawable(Parsed, strOutError))
-			{
-				if (strOutError.empty()) strOutError = "Projected Effect document is not drawable.";
-				return false;
-			}
-			const std::string TypedCodecSha =
-				CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
-					Parsed, strOutError);
-			if (TypedCodecSha.empty() ||
-				TypedCodecSha != Out.strProjectedDocumentTypedCodecSha256)
-			{
-				if (strOutError.empty())
-					strOutError = "Projected Effect document typed-codec SHA is stale.";
-				return false;
-			}
-			Out.pProjectedDocument = std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(Parsed));
-		}
-		else if (!BaseIdentity->Is_Null() || !ProjectedValue->Is_Null() ||
-			!ByteCount->Is_Null() || !ProjectedSha->Is_Null() ||
-			!Value.Find("projectedDocumentTypedCodecSha256")->Is_Null())
-		{
-			strOutError = "Adapter-packet program must not embed a projected document.";
-			return false;
-		}
-
-		const DATA_JSON_VALUE* Rows = Required(Value, "visualRows", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* Supplemental = Required(
-			Value, "supplementalElements", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* BakedEdgeHistories = Required(
-			Value, "bakedEdgeHistories", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Rows || nullptr == Supplemental ||
-			nullptr == BakedEdgeHistories ||
-			(Rows->Get_Array().empty() && Supplemental->Get_Array().empty()))
-		{
-			strOutError = "Visual program contains no executable rows.";
-			return false;
-		}
-		std::string PreviousHistoryId;
-		for (const DATA_JSON_VALUE& HistoryValue :
-			BakedEdgeHistories->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY History;
-			if (!Parse_BakedEdgeHistory(HistoryValue, History, strOutError) ||
-				(!PreviousHistoryId.empty() &&
-				 History.strHistoryId <= PreviousHistoryId))
-			{
-				if (strOutError.empty())
-					strOutError =
-						"Baked-edge histories are invalid, duplicate, or unsorted.";
-				return false;
-			}
-			PreviousHistoryId = History.strHistoryId;
-			Out.BakedEdgeHistories.push_back(std::move(History));
-		}
-		std::string PreviousOccurrence;
-		for (const DATA_JSON_VALUE& RowValue : Rows->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_ROW Row;
-			if (!Parse_RuntimeRow(RowValue, AdapterRules, Row, strOutError)) return false;
-			if (Row.Selector.strEffectAssetId != Out.strEffectAssetId ||
-				(!PreviousOccurrence.empty() && Row.Selector.strOccurrenceId <= PreviousOccurrence))
-			{
-				strOutError = "Visual-program rows are not deterministically grouped/sorted.";
-				return false;
-			}
-			PreviousOccurrence = Row.Selector.strOccurrenceId;
-			if (Out.eProjectionKind == EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1 &&
-				Row.eDisposition == EFFECT_VISUAL_PROGRAM_DISPOSITION::ADMITTED_BOUNDED)
-			{
-				if (!Row.TargetIdentity.has_value() || Row.LocalDecalPacket.has_value() ||
-					Row.strPacketLayout != "EFFECT_DOCUMENT_ELEMENT_V12")
-				{
-					strOutError = "SourceRecipe overlay row has an invalid executable target.";
-					return false;
-				}
-				const DATA_JSON_VALUE* Element = Find_ElementValue(
-					*ProjectedValue, Row.TargetIdentity->strTargetElementId);
-				const DATA_JSON_VALUE* Recipe = nullptr == Element ? nullptr :
-					Required(*Element, "sourceRecipe", DATA_JSON_TYPE::OBJECT);
-				const DATA_JSON_VALUE* Modules = nullptr == Recipe ? nullptr :
-					Required(*Recipe, "modules", DATA_JSON_TYPE::ARRAY);
-				const DATA_JSON_VALUE* Enabled = nullptr == Recipe ? nullptr :
-					Required(*Recipe, "enabled", DATA_JSON_TYPE::BOOLEAN);
-				const DATA_JSON_VALUE* RendererShape = nullptr == Recipe ? nullptr :
-					Required(*Recipe, "rendererShape", DATA_JSON_TYPE::STRING);
-				const std::string_view ResolvedExpectedShape =
-					Row.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::MESH_PARTICLE ? "mesh" :
-					Row.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::SPRITE_PARTICLE ? "sprite" :
-					Row.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON ? "ribbon" : "";
-				if (nullptr == Recipe || nullptr == Modules || nullptr == Enabled ||
-					!Enabled->Get_Boolean() || nullptr == RendererShape ||
-					(Row.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::MESH_PARTICLE &&
-					 Row.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::SPRITE_PARTICLE &&
-					 Row.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON) ||
-					RendererShape->Get_String() != ResolvedExpectedShape ||
-					Canonical_Sha(*Recipe) != Row.SourceIdentity.strSourceRecipeSha256 ||
-					Canonical_Sha(*Modules) != Row.SourceIdentity.strModuleClosureSha256 ||
-					Modules->Get_Array().size() != Row.SourceIdentity.iModuleCount)
-				{
-					strOutError = "Projected SourceRecipe/module closure/family is stale.";
-					return false;
-				}
-			}
-			else if (Out.eProjectionKind == EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 &&
-				Row.eDisposition == EFFECT_VISUAL_PROGRAM_DISPOSITION::ADMITTED_BOUNDED &&
-				!Row.LocalDecalPacket.has_value())
-			{
-				strOutError = "Adapter-packet admitted row lacks its typed runtime packet.";
-				return false;
-			}
-			Out.VisualRows.push_back(std::move(Row));
-		}
-		std::string PreviousSupplementalOccurrence;
-		for (const DATA_JSON_VALUE& SupplementalValue : Supplemental->Get_Array())
-		{
-			EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT Element;
-			if (!Parse_RuntimeSupplementalElement(
-				SupplementalValue, AdapterRules, Element, strOutError))
-			{
-				const DATA_JSON_VALUE* Selector =
-					SupplementalValue.Find("selector");
-				const DATA_JSON_VALUE* Occurrence =
-					nullptr != Selector ? Selector->Find("occurrenceId") : nullptr;
-				const std::string Identity =
-					nullptr != Occurrence && Occurrence->Is_String() ?
-					Occurrence->Get_String() : std::string("<unknown>");
-				strOutError = "Supplemental visual-program element rejected for " +
-					Identity + (strOutError.empty() ? std::string{} :
-						": " + strOutError);
-				return false;
-			}
-			if (Element.Selector.strEffectAssetId != Out.strEffectAssetId ||
-				(!PreviousSupplementalOccurrence.empty() &&
-				 Element.Selector.strOccurrenceId <= PreviousSupplementalOccurrence))
-			{
-				strOutError = "Supplemental visual-program elements are not sorted/grouped.";
-				return false;
-			}
-			PreviousSupplementalOccurrence = Element.Selector.strOccurrenceId;
-			if (Out.eProjectionKind ==
-					EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1 &&
-				Element.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL &&
-				Element.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON &&
-				Element.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE)
-			{
-				strOutError =
-					"Source overlay contains an unsupported supplemental element.";
-				return false;
-			}
-			if (Out.eProjectionKind ==
-					EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 &&
-				Element.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON)
-			{
-				strOutError = "Adapter program contains a non-Cascade supplemental element.";
-				return false;
-			}
-			if (Out.eProjectionKind ==
-					EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1)
-			{
-				const DATA_JSON_VALUE* TargetElement = Find_ElementValue(
-					*ProjectedValue, Element.TargetIdentity.strTargetElementId);
-				if (nullptr == TargetElement)
-				{
-					strOutError = "Projected supplemental target is missing.";
-					return false;
-				}
-			}
-			Out.SupplementalElements.push_back(std::move(Element));
-		}
-		std::set<std::string, std::less<>> ReferencedHistoryIds;
-		for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Element :
-			Out.SupplementalElements)
-		{
-			std::string_view HistoryId;
-			std::string_view HistorySha;
-			std::string_view CoordinateBasis;
-			double PlaybackClampSeconds = 0.0;
-			if (Element.AnimationTrailPacket.has_value() &&
-				2u == Element.AnimationTrailPacket->iPacketVersion)
-			{
-				const auto& Packet = *Element.AnimationTrailPacket;
-				HistoryId = Packet.strHistoryId;
-				HistorySha = Packet.strHistorySha256;
-				CoordinateBasis = Packet.strCoordinateBasis;
-				PlaybackClampSeconds = Packet.fPlaybackClampSeconds;
-			}
-			else if (Element.BakedEdgeLightPacket.has_value())
-			{
-				const auto& Packet = *Element.BakedEdgeLightPacket;
-				HistoryId = Packet.strHistoryId;
-				HistorySha = Packet.strHistorySha256;
-				CoordinateBasis = Packet.strCoordinateBasis;
-				PlaybackClampSeconds = Packet.fHistoryPlaybackClampSeconds;
-			}
-			else continue;
-			const auto History = std::find_if(
-				Out.BakedEdgeHistories.begin(), Out.BakedEdgeHistories.end(),
-				[HistoryId](const auto& Candidate)
-				{
-					return Candidate.strHistoryId == HistoryId;
-				});
-			if (History == Out.BakedEdgeHistories.end() ||
-				History->strHistorySha256 != HistorySha ||
-				History->strCoordinateBasis != CoordinateBasis ||
-				std::abs(History->fPlaybackClampSeconds -
-					PlaybackClampSeconds) > 5e-5)
-			{
-				strOutError =
-					"Baked-edge packet/history join is stale.";
-				return false;
-			}
-			ReferencedHistoryIds.emplace(HistoryId);
-		}
-		if (ReferencedHistoryIds.size() != Out.BakedEdgeHistories.size())
-		{
-			strOutError = "Visual program contains an unreferenced baked-edge history.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Parse_ExtensionCanaries(
-		const DATA_JSON_VALUE& Root,
-		const ADAPTER_RULES& AdapterRules,
-		uint32_t& iOutCount,
-		std::string& strOutError)
-	{
-		const DATA_JSON_VALUE* Canaries = Required(Root, "extensionCanaries", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Canaries || Canaries->Get_Array().size() > UINT32_MAX)
-			return false;
-		std::set<std::string, std::less<>> CanaryIds;
-		std::set<std::pair<std::string, std::string>> Selectors;
-		for (const DATA_JSON_VALUE& Canary : Canaries->Get_Array())
-		{
-			if (!Has_ExactKeys(Canary, {
-				"canaryId", "domain", "selector", "selectorSha256", "family",
-				"adapterId", "packetLayout", "fidelity", "disposition",
-				"productCountContribution", "admissionBlockers", "canarySha256" }) ||
-				!Verify_Seal(Canary, "canarySha256", strOutError))
-			{
-				if (strOutError.empty()) strOutError = "Extension canary shape is invalid.";
-				return false;
-			}
-			std::string CanaryId;
-			std::string Domain;
-			std::string Family;
-			std::string AdapterId;
-			std::string PacketLayout;
-			std::string Fidelity;
-			std::string Disposition;
-			std::string SelectorSha;
-			bool_t bProduct = true;
-			std::vector<std::string> Blockers;
-			EFFECT_VISUAL_PROGRAM_SELECTOR Selector;
-			const DATA_JSON_VALUE* SelectorValue = Required(Canary, "selector", DATA_JSON_TYPE::OBJECT);
-			if (nullptr == SelectorValue ||
-				!Read_String(Canary, "canaryId", CanaryId) ||
-				!Read_String(Canary, "domain", Domain) ||
-				!Parse_Selector(*SelectorValue, Selector, strOutError) ||
-				!Read_Sha(Canary, "selectorSha256", SelectorSha) ||
-				SelectorSha != Selector.strSelectorSha256 ||
-				!Read_String(Canary, "family", Family) ||
-				!Read_String(Canary, "adapterId", AdapterId) ||
-				!Read_String(Canary, "packetLayout", PacketLayout) ||
-				!Read_String(Canary, "fidelity", Fidelity) || Fidelity != "EVIDENCE_ONLY" ||
-				!Read_String(Canary, "disposition", Disposition) || Disposition != "FAIL_CLOSED" ||
-				!Read_Bool(Canary, "productCountContribution", bProduct) || bProduct ||
-				!Read_StringArray(Canary, "admissionBlockers", Blockers) || Blockers.empty())
-			{
-				if (strOutError.empty()) strOutError = "Extension canary admission boundary is invalid.";
-				return false;
-			}
-			const auto Adapter = AdapterRules.find(AdapterId);
-			if (Parse_Family(Family) == EFFECT_VISUAL_PROGRAM_FAMILY::END ||
-				Adapter == AdapterRules.end() || Adapter->second.eFamily != Parse_Family(Family) ||
-				!Adapter->second.PacketLayouts.contains(PacketLayout) || PacketLayout != "NONE" ||
-				!CanaryIds.emplace(CanaryId).second ||
-				!Selectors.emplace(Selector.strEffectAssetId, Selector.strOccurrenceId).second)
-			{
-				strOutError = "Extension canary adapter/selector is unknown or duplicate.";
-				return false;
-			}
-		}
-		iOutCount = static_cast<uint32_t>(Canaries->Get_Array().size());
-		return true;
-	}
-
-	bool_t Parse_Denominators(
-		const DATA_JSON_VALUE& Root,
-		EFFECT_VISUAL_PROGRAM_CORPUS& Out,
-		std::string& strOutError)
-	{
-		const DATA_JSON_VALUE* Value = Required(Root, "denominators", DATA_JSON_TYPE::OBJECT);
-		uint32_t ProductMutationCount = 1u;
-		if (nullptr == Value || !Has_ExactKeys(*Value, {
-			"programCount", "sourceRecipeOverlayProgramCount", "adapterPacketProgramCount",
-			"visualRowCount", "sourceRecipeOverlayCount", "localDecalAdapterPacketCount",
-			"cascadeRibbonVisualRowCount", "supplementalElementCount",
-			"artistFCascadeRibbonElementCount", "artistTCascadeRibbonElementCount",
-			"animationTrailElementCount",
-			"bakedEdgeLightElementCount",
-			"failClosedCount", "extensionCanaryCount", "productMutationCount" }) ||
-			!Read_Unsigned(*Value, "programCount", Out.iDeclaredProgramCount) ||
-			!Read_Unsigned(*Value, "sourceRecipeOverlayProgramCount",
-				Out.iDeclaredSourceRecipeOverlayProgramCount) ||
-			!Read_Unsigned(*Value, "adapterPacketProgramCount",
-				Out.iDeclaredAdapterPacketProgramCount) ||
-			!Read_Unsigned(*Value, "visualRowCount", Out.iDeclaredVisualRowCount) ||
-			!Read_Unsigned(*Value, "sourceRecipeOverlayCount",
-				Out.iDeclaredSourceRecipeOverlayCount) ||
-			!Read_Unsigned(*Value, "localDecalAdapterPacketCount",
-				Out.iDeclaredLocalDecalAdapterPacketCount) ||
-			!Read_Unsigned(*Value, "cascadeRibbonVisualRowCount",
-				Out.iDeclaredCascadeRibbonVisualRowCount) ||
-			!Read_Unsigned(*Value, "supplementalElementCount",
-				Out.iDeclaredSupplementalElementCount) ||
-			!Read_Unsigned(*Value, "artistFCascadeRibbonElementCount",
-				Out.iDeclaredArtistFCascadeRibbonElementCount) ||
-			!Read_Unsigned(*Value, "artistTCascadeRibbonElementCount",
-				Out.iDeclaredArtistTCascadeRibbonElementCount) ||
-			!Read_Unsigned(*Value, "animationTrailElementCount",
-				Out.iDeclaredAnimationTrailElementCount) ||
-			!Read_Unsigned(*Value, "bakedEdgeLightElementCount",
-				Out.iDeclaredBakedEdgeLightElementCount) ||
-			!Read_Unsigned(*Value, "failClosedCount", Out.iDeclaredFailClosedCount) ||
-			!Read_Unsigned(*Value, "extensionCanaryCount",
-				Out.iDeclaredExtensionCanaryCount) ||
-			!Read_Unsigned(*Value, "productMutationCount", ProductMutationCount) ||
-			0u != ProductMutationCount)
-		{
-			strOutError = "Visual-program declared denominators are invalid.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Validate_TransactionPolicy(
-		const DATA_JSON_VALUE& Root,
-		std::string& strOutError)
-	{
-		const DATA_JSON_VALUE* Policy = Required(Root, "transactionPolicy", DATA_JSON_TYPE::OBJECT);
-		std::vector<std::string> LoadOrder;
-		std::string CommitMode;
-		std::string FailureAction;
-		bool_t bProductMutation = true;
-		bool_t bCatalogMutation = true;
-		if (nullptr == Policy || !Has_ExactKeys(*Policy, {
-			"loadOrder", "commitMode", "failureAction", "productMutation", "catalogMutation" }) ||
-			!Read_StringArray(*Policy, "loadOrder", LoadOrder) ||
-			LoadOrder != std::vector<std::string>{ "parse", "validate", "stage", "commit" } ||
-			!Read_String(*Policy, "commitMode", CommitMode) ||
-			CommitMode != "ATOMIC_REPLACE_AFTER_FULL_RUNTIME_VALIDATION" ||
-			!Read_String(*Policy, "failureAction", FailureAction) ||
-			FailureAction != "PRESERVE_PREVIOUS_SIDECAR_AND_PRODUCT_RUNTIME" ||
-			!Read_Bool(*Policy, "productMutation", bProductMutation) || bProductMutation ||
-			!Read_Bool(*Policy, "catalogMutation", bCatalogMutation) || bCatalogMutation)
-		{
-			strOutError = "Visual-program transaction policy is invalid.";
-			return false;
-		}
-		return true;
 	}
 
 	bool_t Parse_DocumentJson(
@@ -2276,6 +242,543 @@ namespace
 		}
 		return true;
 	}
+
+	constexpr double SOURCE_OWNED_RUNTIME_EPSILON = 5e-5;
+
+	std::string Compute_SourceOwnedRuntimeSha(
+		const std::string_view strDocumentSha256,
+		const std::string_view strDomain,
+		const std::string_view strStableId,
+		const std::string_view strDependency = {})
+	{
+		std::string Material = "effect-source-owned-runtime-v1\n";
+		Material.append(strDocumentSha256);
+		Material.push_back('\n');
+		Material.append(strDomain);
+		Material.push_back('\n');
+		Material.append(strStableId);
+		Material.push_back('\n');
+		Material.append(strDependency);
+		Material.push_back('\n');
+		return CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Material);
+	}
+
+	bool_t Is_FiniteSourceRuntimeVector(const float3_t& Value)
+	{
+		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
+			std::isfinite(Value.z);
+	}
+
+	std::array<double, 3u> To_SourceRuntimeArray(const float3_t& Value)
+	{
+		return { static_cast<double>(Value.x), static_cast<double>(Value.y),
+			static_cast<double>(Value.z) };
+	}
+
+	void Copy_SourceRuntimeTiming(
+		const EFFECT_TIMING_DESC& Source,
+		EFFECT_VISUAL_PROGRAM_TRAIL_TIMING& Out)
+	{
+		Out.fStartDelaySeconds = Source.fStartDelaySeconds;
+		Out.fLifeTimeSeconds = Source.fLifeTimeSeconds;
+		Out.fAfterImageSeconds = Source.fAfterImageSeconds;
+		Out.fDissolveStartNormalized = Source.fDissolveStartNormalized;
+	}
+
+	void Copy_SourceRuntimeAttachment(
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Source,
+		EFFECT_VISUAL_PROGRAM_TRAIL_ATTACHMENT& Out)
+	{
+		Out.bEnabled = Source.bEnabled;
+		Out.bFollow = Source.bFollow;
+		Out.strSourceAnchorSlotId = Source.strSourceAnchorSlotId;
+		Out.strRuntimeAnchorSlotId = Source.strRuntimeAnchorSlotId;
+		Out.strRuntimeBoneName = Source.strRuntimeBoneName;
+		Out.fSnapshotRootSourceBasisYawDegrees =
+			Source.fSnapshotRootSourceBasisYawDegrees;
+		Out.vPosition = To_SourceRuntimeArray(
+			Source.SocketLocalTransform.vPosition);
+		Out.vRotationDegrees = To_SourceRuntimeArray(
+			Source.SocketLocalTransform.vRotationDegrees);
+		Out.vScale = To_SourceRuntimeArray(
+			Source.SocketLocalTransform.vScale);
+	}
+
+	void Copy_SourceRuntimeTrail(
+		const EFFECT_TRAIL_DESC& Source,
+		EFFECT_VISUAL_PROGRAM_TRAIL_GEOMETRY& Out)
+	{
+		Out.iMaxPoints = Source.iMaxPoints;
+		Out.fPointLifeTimeSeconds = Source.fPointLifeTimeSeconds;
+		Out.fSampleIntervalSeconds = Source.fSampleIntervalSeconds;
+		Out.fMinimumDistance = Source.fMinimumDistance;
+		Out.fStartWidth = Source.fStartWidth;
+		Out.fEndWidth = Source.fEndWidth;
+		Out.bFaceCamera = Source.bFaceCamera;
+	}
+
+	const EFFECT_SOURCE_MODULE_DESC* Find_SourceRuntimeModule(
+		const EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strStableId)
+	{
+		const EFFECT_SOURCE_MODULE_DESC* Found = nullptr;
+		for (const EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (Module.strStableId != strStableId)
+				continue;
+			if (nullptr != Found)
+				return nullptr;
+			Found = &Module;
+		}
+		return Found;
+	}
+
+	bool_t Try_ReadSourceRuntimeLiteral(
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view strPropertyPath,
+		double& fOutValue,
+		bool_t& bOutFound)
+	{
+		bOutFound = false;
+		for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
+		{
+			if (Literal.strPropertyPath != strPropertyPath)
+				continue;
+			if (bOutFound ||
+				Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+				!std::isfinite(Literal.fNumber))
+			{
+				return false;
+			}
+			bOutFound = true;
+			fOutValue = Literal.fNumber;
+		}
+		return true;
+	}
+
+	bool_t Build_SourceOwnedRuntimeHistory(
+		const EFFECT_DOCUMENT_DESC& Document,
+		const EFFECT_AUTHORED_RUNTIME_EDGE_HISTORY_DESC& Source,
+		const std::string_view strDocumentSha256,
+		EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY& Out,
+		std::string& strOutError)
+	{
+		if (!Is_StableId(Source.strHistoryId) ||
+			Source.eCoordinateBasis !=
+				EFFECT_AUTHORED_RUNTIME_COORDINATE_BASIS::
+					UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS ||
+			!std::isfinite(Source.fSourceEndTimeSeconds) ||
+			!std::isfinite(Source.fPlaybackClampSeconds) ||
+			Source.fSourceEndTimeSeconds <= 0.f ||
+			Source.fPlaybackClampSeconds <= 0.f ||
+			Source.fPlaybackClampSeconds > Source.fSourceEndTimeSeconds ||
+			Source.Samples.size() < 2u ||
+			Source.Samples.size() > UINT32_MAX)
+		{
+			strOutError =
+				"Source-owned baked-edge history metadata is invalid.";
+			return false;
+		}
+
+		EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY Staged;
+		Staged.strHistoryId = Source.strHistoryId;
+		Staged.strSourceKind = "UE3_ANIMTRAIL_BAKED_EDGE_HISTORY_V1";
+		Staged.strSourceArtifactPath = "Data/Effects/Authored/" +
+			Document.strEffectAssetId + ".effect.json";
+		Staged.strSourceArtifactRawSha256 = strDocumentSha256;
+		Staged.strCoordinateBasis =
+			"UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS";
+		Staged.fSourceEndTimeSeconds = Source.fSourceEndTimeSeconds;
+		Staged.fPlaybackClampSeconds = Source.fPlaybackClampSeconds;
+		Staged.iSampleCount = static_cast<uint32_t>(Source.Samples.size());
+		Staged.Samples.reserve(Source.Samples.size());
+
+		double fPreviousTime = -1.0;
+		for (const EFFECT_AUTHORED_RUNTIME_EDGE_SAMPLE_DESC& SourceSample :
+			Source.Samples)
+		{
+			if (!std::isfinite(SourceSample.fRelativeTimeSeconds) ||
+				SourceSample.fRelativeTimeSeconds <= fPreviousTime ||
+				!Is_FiniteSourceRuntimeVector(SourceSample.vFirstEdgeUE3Cm) ||
+				!Is_FiniteSourceRuntimeVector(SourceSample.vControlPointUE3Cm) ||
+				!Is_FiniteSourceRuntimeVector(SourceSample.vSecondEdgeUE3Cm))
+			{
+				strOutError =
+					"Source-owned baked-edge history samples are invalid or unsorted.";
+				return false;
+			}
+			fPreviousTime = SourceSample.fRelativeTimeSeconds;
+			EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE Sample;
+			Sample.fRelativeTimeSeconds = SourceSample.fRelativeTimeSeconds;
+			Sample.vFirstEdgeUE3Cm = To_SourceRuntimeArray(
+				SourceSample.vFirstEdgeUE3Cm);
+			Sample.vControlPointUE3Cm = To_SourceRuntimeArray(
+				SourceSample.vControlPointUE3Cm);
+			Sample.vSecondEdgeUE3Cm = To_SourceRuntimeArray(
+				SourceSample.vSecondEdgeUE3Cm);
+			Staged.Samples.push_back(std::move(Sample));
+		}
+		if (std::abs(Staged.Samples.front().fRelativeTimeSeconds) > 1e-6 ||
+			Staged.Samples.back().fRelativeTimeSeconds +
+				SOURCE_OWNED_RUNTIME_EPSILON < Staged.fPlaybackClampSeconds ||
+			Staged.Samples.back().fRelativeTimeSeconds >
+				Staged.fSourceEndTimeSeconds + SOURCE_OWNED_RUNTIME_EPSILON)
+		{
+			strOutError =
+				"Source-owned baked-edge history time closure is invalid.";
+			return false;
+		}
+		Staged.strSamplesSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "baked-edge-samples", Source.strHistoryId);
+		Staged.strHistorySha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "baked-edge-history", Source.strHistoryId,
+			Staged.strSamplesSha256);
+		Out = std::move(Staged);
+		return true;
+	}
+
+	bool_t Validate_SourceRuntimeTrailTarget(
+		const EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		const EFFECT_TRAIL_DESC& Trail = Element.Detail.Trail;
+		const EFFECT_TIMING_DESC& Timing = Element.Detail.Timing;
+		if (!Element.bVisible || Element.eKind != EFFECT_ELEMENT_KIND::TRAIL ||
+			Trail.iMaxPoints < 2u ||
+			!std::isfinite(Trail.fPointLifeTimeSeconds) ||
+			!std::isfinite(Trail.fSampleIntervalSeconds) ||
+			!std::isfinite(Trail.fMinimumDistance) ||
+			!std::isfinite(Trail.fStartWidth) ||
+			!std::isfinite(Trail.fEndWidth) ||
+			Trail.fPointLifeTimeSeconds <= 0.f ||
+			Trail.fSampleIntervalSeconds <= 0.f ||
+			Trail.fMinimumDistance < 0.f || Trail.fStartWidth < 0.f ||
+			Trail.fEndWidth < 0.f ||
+			!std::isfinite(Timing.fStartDelaySeconds) ||
+			!std::isfinite(Timing.fLifeTimeSeconds) ||
+			Timing.fStartDelaySeconds < 0.f || Timing.fLifeTimeSeconds <= 0.f)
+		{
+			strOutError =
+				"Source-owned runtime carrier requires one visible bounded Trail target.";
+			return false;
+		}
+		return true;
+	}
+
+	void Initialize_SourceOwnedSupplementalIdentity(
+		const EFFECT_DOCUMENT_DESC& Document,
+		const EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strDocumentSha256,
+		EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Out)
+	{
+		Out.Selector.strEffectAssetId = Document.strEffectAssetId;
+		Out.Selector.strOccurrenceId = Element.strElementId;
+		Out.Selector.strSelectorSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "selector", Element.strElementId);
+		Out.eDisposition = EFFECT_VISUAL_PROGRAM_DISPOSITION::ADMITTED_BOUNDED;
+		Out.strFidelity = "BOUNDED_RECONSTRUCTION";
+		Out.bTuningEligibleTransform = true;
+		Out.strSourceRecordId = Element.strElementId;
+		Out.strSourceRecordSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "source-record", Element.strElementId);
+		Out.strSourcePayloadRawSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "source-payload", Element.strElementId);
+		Out.TargetIdentity.strTargetElementId = Element.strElementId;
+		Out.TargetIdentity.strTargetRecordSha256 =
+			Out.strSourceRecordSha256;
+		Out.TargetIdentity.strTargetPayloadRawSha256 =
+			Out.strSourcePayloadRawSha256;
+		Out.strStageId = Element.SourcePresentation.bEnabled &&
+			!Element.SourcePresentation.strSourceActionCueId.empty() ?
+			Element.SourcePresentation.strSourceActionCueId :
+			Document.strEffectAssetId;
+		Out.strSourceEventId = Element.SourcePresentation.bEnabled &&
+			!Element.SourcePresentation.strSourceEventId.empty() ?
+			Element.SourcePresentation.strSourceEventId : Element.strElementId;
+		Out.fSourceTimelineSeconds = Element.SourcePresentation.bEnabled ?
+			Element.SourcePresentation.fSourceTimeSeconds :
+			Element.Detail.Timing.fStartDelaySeconds;
+		Out.fLocalTimeSeconds = Element.Detail.Timing.fStartDelaySeconds;
+		Out.fDurationSeconds = Element.Detail.Timing.fLifeTimeSeconds;
+	}
+
+	bool_t Build_SourceOwnedCascadeRibbon(
+		const EFFECT_DOCUMENT_DESC& Document,
+		const EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strDocumentSha256,
+		EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Out,
+		std::string& strOutError)
+	{
+		const EFFECT_AUTHORED_RUNTIME_CARRIER_DESC& Carrier =
+			Element.RuntimeCarrier;
+		if (!Validate_SourceRuntimeTrailTarget(Element, strOutError) ||
+			!Carrier.strHistoryId.empty() ||
+			Carrier.eEdgeLane != EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE::END ||
+			!Element.SourceRecipe.bEnabled ||
+			Element.SourceRecipe.strRendererShape != "ribbon" ||
+			Carrier.strTypeDataModuleStableId.empty() ||
+			Carrier.strTypeDataModuleStableId.size() > 512u)
+		{
+			if (strOutError.empty())
+				strOutError =
+					"Source-owned CascadeRibbon carrier target closure is invalid.";
+			return false;
+		}
+		const EFFECT_SOURCE_MODULE_DESC* const pTypeData =
+			Find_SourceRuntimeModule(
+				Element, Carrier.strTypeDataModuleStableId);
+		if (nullptr == pTypeData ||
+			pTypeData->strClassName != "particlemoduletypedataribbon" ||
+			pTypeData->strObjectPath.empty())
+		{
+			strOutError =
+				"Source-owned CascadeRibbon type-data module join is stale.";
+			return false;
+		}
+
+		EFFECT_VISUAL_PROGRAM_CASCADE_RIBBON_PACKET Packet;
+		Packet.iPacketVersion = 1u;
+		Packet.strAdapterId = "cascade-ribbon-document-v12";
+		Packet.bBoundedSemanticReplay = true;
+		Packet.bNativeExecution = false;
+		Packet.strRuntimeCarrier = "EFFECT_TYPED_CASCADE_RIBBON_V1";
+		Packet.strTypeDataStableId = pTypeData->strStableId;
+		Packet.strTypeDataClassName = pTypeData->strClassName;
+		Packet.strTypeDataObjectPath = pTypeData->strObjectPath;
+		Packet.strTypeDataModuleSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "cascade-type-data", Element.strElementId,
+			pTypeData->strStableId);
+		Packet.strResolvedRendererShape = "ribbon";
+		Packet.fTilingDistance =
+			Element.Detail.Trail.fTilingDistanceWorldUnits;
+		Packet.fDistanceTessellationStepSize =
+			Element.Detail.Trail.fDistanceTessellationStepWorldUnits;
+		double fLiteral = 0.0;
+		bool_t bFound = false;
+		if (!Try_ReadSourceRuntimeLiteral(*pTypeData,
+				"tangenttessellationscalar", fLiteral, bFound))
+		{
+			strOutError =
+				"Source-owned CascadeRibbon tangent literal is ambiguous.";
+			return false;
+		}
+		Packet.fTangentTessellationScalar = bFound ? fLiteral : 0.0;
+		if (!Try_ReadSourceRuntimeLiteral(
+				*pTypeData, "lodvalidity", fLiteral, bFound))
+		{
+			strOutError =
+				"Source-owned CascadeRibbon LOD literal is ambiguous.";
+			return false;
+		}
+		Packet.fLodValidity = bFound ? fLiteral : 0.0;
+		Packet.iOperationalMaxPoints = Element.Detail.Trail.iMaxPoints;
+		Copy_SourceRuntimeTiming(Element.Detail.Timing, Packet.Timing);
+		Copy_SourceRuntimeAttachment(
+			Element.ActionCueAttachment, Packet.Attachment);
+		Copy_SourceRuntimeTrail(Element.Detail.Trail, Packet.Trail);
+		Packet.strSourceRecipeSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "cascade-source-recipe", Element.strElementId);
+		Packet.strModuleClosureSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "cascade-module-closure", Element.strElementId);
+		if (Element.SourceRecipe.Modules.size() > UINT32_MAX)
+		{
+			strOutError =
+				"Source-owned CascadeRibbon module closure exceeds uint32.";
+			return false;
+		}
+		Packet.iModuleCount = static_cast<uint32_t>(
+			Element.SourceRecipe.Modules.size());
+		Packet.PreservedLimitations = {
+			"SOURCE_OWNED_BOUNDED_RUNTIME_EXTENSION_V1" };
+		Packet.strPacketSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "cascade-packet", Element.strElementId,
+			Packet.strTypeDataModuleSha256);
+
+		Initialize_SourceOwnedSupplementalIdentity(
+			Document, Element, strDocumentSha256, Out);
+		Out.eFamily = EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON;
+		Out.strAdapterId = Packet.strAdapterId;
+		Out.strPacketLayout = "CASCADE_RIBBON_TYPED_PACKET_V1";
+		Out.CascadeRibbonPacket = std::move(Packet);
+		Out.strRowSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "cascade-row", Element.strElementId,
+			Out.CascadeRibbonPacket->strPacketSha256);
+		return true;
+	}
+
+	bool_t Build_SourceOwnedAnimationTrail(
+		const EFFECT_DOCUMENT_DESC& Document,
+		const EFFECT_ELEMENT_DESC& Element,
+		const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY& History,
+		const std::string_view strDocumentSha256,
+		EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Out,
+		std::string& strOutError)
+	{
+		if (!Validate_SourceRuntimeTrailTarget(Element, strOutError) ||
+			Element.SourceRecipe.bEnabled ||
+			!Element.SourcePresentation.bEnabled ||
+			Element.SourcePresentation.strSourceObjectPath.empty() ||
+			Element.SourcePresentation.strSourceActionCueId.empty() ||
+			Element.SourcePresentation.strSourceEventId.empty() ||
+			std::abs(static_cast<double>(Element.Detail.Timing.fLifeTimeSeconds) -
+				History.fPlaybackClampSeconds) > SOURCE_OWNED_RUNTIME_EPSILON)
+		{
+			if (strOutError.empty())
+				strOutError =
+					"Source-owned AnimationTrail carrier target/history closure is invalid.";
+			return false;
+		}
+
+		EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_PACKET Packet;
+		Packet.iPacketVersion = 2u;
+		Packet.strAdapterId = "animation-trail-document-v12";
+		Packet.bBoundedSemanticReplay = true;
+		Packet.bNativeExecution = false;
+		Packet.strRuntimeCarrier =
+			"EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1";
+		Packet.strSourceNotifyType = "Trails";
+		Packet.strSourceEventId =
+			Element.SourcePresentation.strSourceEventId;
+		Packet.strSourceEventRecordSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "animation-trail-source-event",
+			Element.strElementId, Packet.strSourceEventId);
+		Packet.strSourceAsset =
+			Element.SourcePresentation.strSourceObjectPath;
+		/* The source-owned schema has no separate clip string.  Keep the existing
+		   packet ABI populated with the stable action-cue identity; playback uses
+		   the typed baked history and never interprets this compatibility field. */
+		Packet.strClip = Element.SourcePresentation.strSourceActionCueId;
+		Packet.fLocalTimeSeconds = Element.Detail.Timing.fStartDelaySeconds;
+		Packet.fGlobalTimeSeconds =
+			Element.SourcePresentation.fSourceTimeSeconds;
+		Packet.fDurationSeconds = Element.Detail.Timing.fLifeTimeSeconds;
+		Packet.strTargetElementId = Element.strElementId;
+		Copy_SourceRuntimeTiming(Element.Detail.Timing, Packet.TargetTiming);
+		Copy_SourceRuntimeAttachment(
+			Element.ActionCueAttachment, Packet.Attachment);
+		Copy_SourceRuntimeTrail(Element.Detail.Trail, Packet.Trail);
+		Packet.strHistoryId = History.strHistoryId;
+		Packet.strHistorySha256 = History.strHistorySha256;
+		Packet.fPlaybackClampSeconds = History.fPlaybackClampSeconds;
+		Packet.strCoordinateBasis = History.strCoordinateBasis;
+		Packet.PreservedLimitations = {
+			"SOURCE_OWNED_BAKED_EDGE_GEOMETRY_V1" };
+		Packet.strPacketSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "animation-trail-packet", Element.strElementId,
+			History.strHistorySha256);
+
+		Initialize_SourceOwnedSupplementalIdentity(
+			Document, Element, strDocumentSha256, Out);
+		Out.eFamily = EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL;
+		Out.strAdapterId = Packet.strAdapterId;
+		Out.strPacketLayout =
+			"ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1";
+		Out.strSourceEventId = Packet.strSourceEventId;
+		Out.fSourceTimelineSeconds = Packet.fGlobalTimeSeconds;
+		Out.fLocalTimeSeconds = Packet.fLocalTimeSeconds;
+		Out.fDurationSeconds = Packet.fDurationSeconds;
+		Out.AnimationTrailPacket = std::move(Packet);
+		Out.strRowSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "animation-trail-row", Element.strElementId,
+			Out.AnimationTrailPacket->strPacketSha256);
+		return true;
+	}
+
+	bool_t Build_SourceOwnedBakedEdgeLight(
+		const EFFECT_DOCUMENT_DESC& Document,
+		const EFFECT_ELEMENT_DESC& Element,
+		const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY& History,
+		const std::string_view strDocumentSha256,
+		EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Out,
+		std::string& strOutError)
+	{
+		const EFFECT_LIGHT_DETAIL_DESC& Light = Element.Detail.Light;
+		const EFFECT_TIMING_DESC& Timing = Element.Detail.Timing;
+		const double fActiveEnd = static_cast<double>(
+			Timing.fStartDelaySeconds) + Timing.fLifeTimeSeconds;
+		if (!Element.bVisible || Element.eKind != EFFECT_ELEMENT_KIND::LIGHT ||
+			Element.SourceRecipe.bEnabled ||
+			!Element.SourcePresentation.bEnabled ||
+			Element.SourcePresentation.strSourceObjectPath.empty() ||
+			Element.SourcePresentation.strSourceActionCueId.empty() ||
+			Element.SourcePresentation.strSourceEventId.empty() ||
+			!std::isfinite(Timing.fStartDelaySeconds) ||
+			!std::isfinite(Timing.fLifeTimeSeconds) ||
+			Timing.fStartDelaySeconds < 0.f || Timing.fLifeTimeSeconds <= 0.f ||
+			fActiveEnd > History.fPlaybackClampSeconds +
+				SOURCE_OWNED_RUNTIME_EPSILON ||
+			!Light.bEnabled ||
+			Light.eProfile != EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1 ||
+			Light.eStatus !=
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE ||
+			!std::isfinite(Light.fRange) ||
+			!std::isfinite(Light.fIntensity) ||
+			!std::isfinite(Light.fFalloffExponent) || Light.fRange <= 0.f ||
+			Light.fIntensity < 0.f || Light.fFalloffExponent <= 0.f)
+		{
+			strOutError =
+				"Source-owned baked-edge Light target/history closure is invalid.";
+			return false;
+		}
+
+		EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LIGHT_PACKET Packet;
+		Packet.iPacketVersion = 1u;
+		Packet.strAdapterId = "light-particle-document-v12";
+		Packet.bBoundedSemanticReplay = true;
+		Packet.bNativeExecution = false;
+		Packet.strRuntimeCarrier =
+			"EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1";
+		Packet.strSourceEventId =
+			Element.SourcePresentation.strSourceEventId;
+		Packet.strSourceEventRecordSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "baked-edge-light-source-event",
+			Element.strElementId, Packet.strSourceEventId);
+		Packet.strTargetElementId = Element.strElementId;
+		Packet.strHistoryId = History.strHistoryId;
+		Packet.strHistorySha256 = History.strHistorySha256;
+		Packet.eLane = EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE::FIRST_EDGE;
+		Packet.fActiveStartSeconds = Timing.fStartDelaySeconds;
+		Packet.fActiveDurationSeconds = Timing.fLifeTimeSeconds;
+		Packet.fActiveEndSeconds = fActiveEnd;
+		Packet.fHistoryPlaybackClampSeconds =
+			History.fPlaybackClampSeconds;
+		Packet.strCoordinateBasis = History.strCoordinateBasis;
+		Packet.strAttachmentEvidenceStatus =
+			"SOURCE_AUTHORED_RUNTIME_EXTENSION_V1";
+		Packet.TargetLight.bEnabled = Light.bEnabled;
+		Packet.TargetLight.strProfileId =
+			"light.point.reconstructed.v1";
+		Packet.TargetLight.strStatus = "reconstructed_profile";
+		Packet.TargetLight.fRange = Light.fRange;
+		Packet.TargetLight.fIntensity = Light.fIntensity;
+		Packet.TargetLight.vColor = { Light.vColor.x, Light.vColor.y,
+			Light.vColor.z, Light.vColor.w };
+		Packet.TargetLight.vAmbient = { Light.vAmbient.x, Light.vAmbient.y,
+			Light.vAmbient.z, Light.vAmbient.w };
+		Packet.TargetLight.fFalloffExponent = Light.fFalloffExponent;
+		Packet.PreservedLimitations = {
+			"SOURCE_OWNED_FIRST_EDGE_ATTACHMENT_V1" };
+		Packet.strPacketSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "baked-edge-light-packet", Element.strElementId,
+			History.strHistorySha256);
+
+		Initialize_SourceOwnedSupplementalIdentity(
+			Document, Element, strDocumentSha256, Out);
+		Out.eFamily = EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE;
+		Out.strAdapterId = Packet.strAdapterId;
+		Out.strPacketLayout = "LIGHT_BAKED_EDGE_ATTACHMENT_V1";
+		Out.strSourceEventId = Packet.strSourceEventId;
+		Out.fSourceTimelineSeconds =
+			Element.SourcePresentation.fSourceTimeSeconds;
+		Out.fLocalTimeSeconds = Packet.fActiveStartSeconds;
+		Out.fDurationSeconds = Packet.fActiveDurationSeconds;
+		Out.BakedEdgeLightPacket = std::move(Packet);
+		Out.strRowSha256 = Compute_SourceOwnedRuntimeSha(
+			strDocumentSha256, "baked-edge-light-row", Element.strElementId,
+			Out.BakedEdgeLightPacket->strPacketSha256);
+		return true;
+	}
 }
 
 const EFFECT_VISUAL_PROGRAM_ROW*
@@ -2351,133 +854,6 @@ Find_SupplementalElementByTargetElementId(
 		}
 	}
 	return Found;
-}
-
-bool_t Client::CEffectVisualProgramCorpusCodec::Parse(
-	const std::string_view Utf8Json,
-	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS>& InOutCorpus,
-	std::string& strOutError)
-{
-	strOutError.clear();
-	if (Utf8Json.size() >= 3u &&
-		static_cast<unsigned char>(Utf8Json[0]) == 0xefu &&
-		static_cast<unsigned char>(Utf8Json[1]) == 0xbbu &&
-		static_cast<unsigned char>(Utf8Json[2]) == 0xbfu)
-	{
-		strOutError = "Visual-program runtime sidecar must be UTF-8 without BOM.";
-		return false;
-	}
-	DATA_JSON_PARSE_LIMITS Limits;
-	Limits.iMaximumBytes = 16u * 1024u * 1024u;
-	Limits.iMaximumDepth = 96u;
-	Limits.iMaximumValues = 4'000'000u;
-	DATA_JSON_VALUE Root;
-	if (!CDataJson::Parse(Utf8Json, Root, strOutError, Limits)) return false;
-	if (!Has_ExactKeys(Root, {
-		"schema", "formatVersion", "runtimeId", "contractRole", "sourceCorpus",
-		"adapterContracts", "programs", "extensionCanaries", "denominators",
-		"transactionPolicy", "artifactSha256" }) ||
-		!Verify_Seal(Root, "artifactSha256", strOutError))
-	{
-		if (strOutError.empty()) strOutError = "Visual-program runtime root shape is invalid.";
-		return false;
-	}
-
-	auto Staged = std::make_shared<EFFECT_VISUAL_PROGRAM_CORPUS>();
-	std::string Schema;
-	std::string ContractRole;
-	if (!Read_String(Root, "schema", Schema) ||
-		Schema != "lostark.effect-visual-program-runtime" ||
-		!Read_Unsigned(Root, "formatVersion", Staged->iFormatVersion) ||
-		1u != Staged->iFormatVersion ||
-		!Read_String(Root, "runtimeId", Staged->strRuntimeId) ||
-		!Read_String(Root, "contractRole", ContractRole) ||
-		ContractRole != "GENERIC_VISUAL_PROGRAM_RUNTIME_SIDECAR_STAGE_INPUT" ||
-		!Read_Sha(Root, "artifactSha256", Staged->strArtifactSha256))
-	{
-		strOutError = "Visual-program runtime header is invalid.";
-		return false;
-	}
-	const DATA_JSON_VALUE* SourceCorpus = Required(Root, "sourceCorpus", DATA_JSON_TYPE::OBJECT);
-	std::string SourceCorpusId;
-	std::string SourceRawSha;
-	if (nullptr == SourceCorpus || !Has_ExactKeys(*SourceCorpus, {
-		"corpusId", "artifactSha256", "rawSha256" }) ||
-		!Read_String(*SourceCorpus, "corpusId", SourceCorpusId) ||
-		!Read_Sha(*SourceCorpus, "artifactSha256", Staged->strSourceCorpusArtifactSha256) ||
-		!Read_Sha(*SourceCorpus, "rawSha256", SourceRawSha))
-	{
-		strOutError = "Visual-program source corpus identity is invalid.";
-		return false;
-	}
-	ADAPTER_RULES AdapterRules;
-	if (!Parse_AdapterRules(Root, AdapterRules, strOutError) ||
-		!Parse_Denominators(Root, *Staged, strOutError) ||
-		!Validate_TransactionPolicy(Root, strOutError))
-	{
-		return false;
-	}
-	uint32_t iCanaryCount = 0u;
-	if (!Parse_ExtensionCanaries(Root, AdapterRules, iCanaryCount, strOutError) ||
-		iCanaryCount != Staged->iDeclaredExtensionCanaryCount)
-	{
-		if (strOutError.empty()) strOutError = "Extension-canary denominator is stale.";
-		return false;
-	}
-	const DATA_JSON_VALUE* Programs = Required(Root, "programs", DATA_JSON_TYPE::ARRAY);
-	if (nullptr == Programs || Programs->Get_Array().empty())
-	{
-		strOutError = "Visual-program runtime has no programs.";
-		return false;
-	}
-	std::string PreviousEffect;
-	for (const DATA_JSON_VALUE& ProgramValue : Programs->Get_Array())
-	{
-		EFFECT_VISUAL_PROGRAM Program;
-		if (!Parse_RuntimeProgram(ProgramValue, AdapterRules, Program, strOutError))
-		{
-			const DATA_JSON_VALUE* EffectAssetId =
-				ProgramValue.Find("effectAssetId");
-			const std::string Identity =
-				nullptr != EffectAssetId && EffectAssetId->Is_String() ?
-				EffectAssetId->Get_String() : std::string("<unknown>");
-			strOutError = "Visual-program entry rejected for " + Identity +
-				(strOutError.empty() ? std::string{} : ": " + strOutError);
-			return false;
-		}
-		if ((!PreviousEffect.empty() && Program.strEffectAssetId <= PreviousEffect))
-		{
-			strOutError = "Visual-program entries are not deterministically sorted.";
-			return false;
-		}
-		PreviousEffect = Program.strEffectAssetId;
-		Staged->Programs.push_back(std::move(Program));
-	}
-	if (!Validate(*Staged, strOutError)) return false;
-	InOutCorpus = std::move(Staged);
-	return true;
-}
-
-bool_t Client::CEffectVisualProgramCorpusCodec::Load(
-	const std::filesystem::path& Path,
-	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS>& InOutCorpus,
-	std::string& strOutError)
-{
-	strOutError.clear();
-	std::ifstream Input(Path, std::ios::binary);
-	if (!Input)
-	{
-		strOutError = "Failed to open visual-program runtime sidecar: " + Path.string();
-		return false;
-	}
-	const std::string Json(
-		(std::istreambuf_iterator<char>(Input)), std::istreambuf_iterator<char>());
-	if (!Input.good() && !Input.eof())
-	{
-		strOutError = "Failed to read visual-program runtime sidecar: " + Path.string();
-		return false;
-	}
-	return Parse(Json, InOutCorpus, strOutError);
 }
 
 bool_t Client::CEffectVisualProgramCorpusCodec::Validate(
@@ -2842,6 +1218,249 @@ std::string Client::CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSh
 	return Canonical_Sha(Normalize_TypedSemanticZero(Value));
 }
 
+bool_t Client::CEffectVisualProgramCorpusCodec::
+Create_DocumentOwnedRuntimeProjection(
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& pDocument,
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		InOutProjection,
+	std::string& strOutError)
+{
+	strOutError.clear();
+	if (nullptr == pDocument ||
+		pDocument->iLoadedFormatVersion !=
+			EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION ||
+		pDocument->bSourceContract ||
+		pDocument->RuntimeExtensions.iFormatVersion !=
+			EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION ||
+		!Is_StableId(pDocument->strEffectAssetId) ||
+		!CEffectDocumentCodec::Validate_Drawable(*pDocument, strOutError))
+	{
+		if (strOutError.empty())
+		{
+			strOutError =
+				"Document-owned runtime projection requires one valid authored v15 document.";
+		}
+		return false;
+	}
+
+	const std::string DocumentSha =
+		Compute_DocumentCanonicalSha256(*pDocument, strOutError);
+	if (DocumentSha.empty())
+		return false;
+
+	std::vector<EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY>
+		StagedHistories;
+	StagedHistories.reserve(
+		pDocument->RuntimeExtensions.BakedEdgeHistories.size());
+	std::set<std::string, std::less<>> SeenHistoryIds;
+	for (const EFFECT_AUTHORED_RUNTIME_EDGE_HISTORY_DESC& SourceHistory :
+		pDocument->RuntimeExtensions.BakedEdgeHistories)
+	{
+		EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY History;
+		if (!SeenHistoryIds.emplace(SourceHistory.strHistoryId).second ||
+			!Build_SourceOwnedRuntimeHistory(*pDocument, SourceHistory,
+				DocumentSha, History, strOutError))
+		{
+			if (strOutError.empty())
+			{
+				strOutError =
+					"Document-owned runtime projection contains a duplicate baked-edge history.";
+			}
+			return false;
+		}
+		StagedHistories.push_back(std::move(History));
+	}
+	std::sort(StagedHistories.begin(), StagedHistories.end(),
+		[](const auto& Left, const auto& Right)
+		{
+			return Left.strHistoryId < Right.strHistoryId;
+		});
+
+	const auto FindHistory = [&StagedHistories](
+		const std::string_view strHistoryId)
+		-> const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY*
+	{
+		const auto Found = std::lower_bound(
+			StagedHistories.begin(), StagedHistories.end(), strHistoryId,
+			[](const auto& Candidate, const std::string_view Identity)
+			{
+				return Candidate.strHistoryId < Identity;
+			});
+		return Found != StagedHistories.end() &&
+			Found->strHistoryId == strHistoryId ? &*Found : nullptr;
+	};
+
+	std::vector<EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT>
+		StagedSupplementals;
+	std::set<std::string, std::less<>> SeenTargetElementIds;
+	std::set<std::string, std::less<>> ReferencedHistoryIds;
+	for (const EFFECT_ELEMENT_DESC& Element : pDocument->Elements)
+	{
+		const EFFECT_AUTHORED_RUNTIME_CARRIER_DESC& Carrier =
+			Element.RuntimeCarrier;
+		if (Carrier.Is_Empty())
+			continue;
+		if (Carrier.iFormatVersion !=
+				EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION ||
+			Carrier.eAdmission !=
+				EFFECT_AUTHORED_RUNTIME_CARRIER_ADMISSION::BOUNDED ||
+			!Is_StableId(Element.strElementId) ||
+			!SeenTargetElementIds.emplace(Element.strElementId).second)
+		{
+			strOutError =
+				"Document-owned runtime carrier identity/admission is invalid or duplicate.";
+			return false;
+		}
+
+		EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT Supplemental;
+		switch (Carrier.eKind)
+		{
+		case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1:
+			if (!Build_SourceOwnedCascadeRibbon(*pDocument, Element,
+					DocumentSha, Supplemental, strOutError))
+			{
+				return false;
+			}
+			break;
+
+		case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::
+			ANIMATION_TRAIL_BAKED_EDGE_V1:
+		{
+			if (Carrier.strTypeDataModuleStableId.empty() == false ||
+				Carrier.eEdgeLane !=
+					EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE::END ||
+				!Is_StableId(Carrier.strHistoryId))
+			{
+				strOutError =
+					"Document-owned AnimationTrail carrier shape is invalid.";
+				return false;
+			}
+			const auto* const pHistory = FindHistory(Carrier.strHistoryId);
+			if (nullptr == pHistory ||
+				!Build_SourceOwnedAnimationTrail(*pDocument, Element,
+					*pHistory, DocumentSha, Supplemental, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Document-owned AnimationTrail history join is missing.";
+				return false;
+			}
+			ReferencedHistoryIds.emplace(Carrier.strHistoryId);
+			break;
+		}
+
+		case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::
+			LIGHT_BAKED_EDGE_ATTACHMENT_V1:
+		{
+			if (!Carrier.strTypeDataModuleStableId.empty() ||
+				Carrier.eEdgeLane !=
+					EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE::FIRST_EDGE ||
+				!Is_StableId(Carrier.strHistoryId))
+			{
+				strOutError =
+					"Document-owned baked-edge Light carrier shape is invalid.";
+				return false;
+			}
+			const auto* const pHistory = FindHistory(Carrier.strHistoryId);
+			if (nullptr == pHistory ||
+				!Build_SourceOwnedBakedEdgeLight(*pDocument, Element,
+					*pHistory, DocumentSha, Supplemental, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Document-owned baked-edge Light history join is missing.";
+				return false;
+			}
+			ReferencedHistoryIds.emplace(Carrier.strHistoryId);
+			break;
+		}
+
+		case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::END:
+		default:
+			strOutError =
+				"Document-owned runtime carrier kind is unsupported.";
+			return false;
+		}
+		StagedSupplementals.push_back(std::move(Supplemental));
+	}
+
+	if (StagedSupplementals.empty())
+	{
+		strOutError =
+			"Authored v15 document contains no admitted runtime carrier.";
+		return false;
+	}
+	if (ReferencedHistoryIds.size() != StagedHistories.size())
+	{
+		strOutError =
+			"Document-owned runtime extension contains an unreferenced baked-edge history.";
+		return false;
+	}
+	std::sort(StagedSupplementals.begin(), StagedSupplementals.end(),
+		[](const auto& Left, const auto& Right)
+		{
+			return Left.Selector.strOccurrenceId <
+				Right.Selector.strOccurrenceId;
+		});
+
+	std::string ProgramMaterial =
+		"effect-source-owned-runtime-program-v1\n" + DocumentSha + "\n";
+	std::vector<EFFECT_VISUAL_PROGRAM_SELECTOR> StagedSelectors;
+	StagedSelectors.reserve(StagedSupplementals.size());
+	for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental :
+		StagedSupplementals)
+	{
+		ProgramMaterial += Supplemental.Selector.strOccurrenceId + "\n" +
+			Supplemental.strRowSha256 + "\n";
+		StagedSelectors.push_back(Supplemental.Selector);
+	}
+	for (const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY& History :
+		StagedHistories)
+	{
+		ProgramMaterial += History.strHistoryId + "\n" +
+			History.strHistorySha256 + "\n";
+	}
+	const std::string ProgramSha =
+		CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(ProgramMaterial);
+	const std::string AdmissionToken =
+		CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+			"effect-source-owned-runtime-admission-token-v1\n" +
+			pDocument->strEffectAssetId + "\n" + ProgramSha + "\n" +
+			DocumentSha + "\n");
+
+	auto Projection =
+		std::make_shared<EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>();
+	/* This pointer identity is the core source-owned invariant.  Packets are a
+	   transient execution view; they never replace or mutate the authored
+	   document staged by the catalog/tool transaction. */
+	Projection->m_pDocument = pDocument;
+	Projection->m_eProjectionKind =
+		EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1;
+	Projection->m_strEffectAssetId = pDocument->strEffectAssetId;
+	Projection->m_strProgramSha256 = ProgramSha;
+	Projection->m_strBaseDocumentCanonicalSha256 = DocumentSha;
+	Projection->m_strProjectedDocumentSha256 = DocumentSha;
+	Projection->m_strAdmissionTokenSha256 = AdmissionToken;
+	Projection->m_AdmittedSelectors = std::move(StagedSelectors);
+	Projection->m_AdmittedRows.clear();
+	Projection->m_AdmittedSupplementalElements =
+		std::move(StagedSupplementals);
+	Projection->m_BakedEdgeHistories = std::move(StagedHistories);
+	if (!Projection->Is_Valid() ||
+		Projection->Get_DocumentShared().get() != pDocument.get() ||
+		Projection->Get_BaseDocumentCanonicalSha256() !=
+			Projection->Get_ProjectedDocumentSha256())
+	{
+		strOutError =
+			"Document-owned runtime projection construction lost source identity.";
+		return false;
+	}
+
+	InOutProjection = std::move(Projection);
+	strOutError.clear();
+	return true;
+}
+
 bool_t Client::CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
 	const EFFECT_VISUAL_PROGRAM_CORPUS& Corpus,
 	const EFFECT_DOCUMENT_DESC& BaseDocument,
@@ -2884,8 +1503,8 @@ bool_t Client::CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
 			Program->strBaseDocumentTypedCodecSha256 + " actual=" + BaseSha + ".";
 		return false;
 	}
-	/* baseDocumentCanonicalSha256 is the sealed raw-JSON identity and is
-	   verified while parsing the sidecar.  A typed EFFECT_DOCUMENT_DESC uses
+	/* baseDocumentCanonicalSha256 is the legacy projected raw-JSON identity.
+	   A typed EFFECT_DOCUMENT_DESC uses
 	   f32 fields and cannot reproduce arbitrary source JSON f64 lexemes.  The
 	   admission-time identity below is therefore an exact typed-codec compare,
 	   not a false equality between those two domains. */

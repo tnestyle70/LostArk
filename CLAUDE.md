@@ -28,7 +28,7 @@ Set-Location LostArk
 git lfs pull
 ```
 
-팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` 물리 폴더에 둔다. 별도 asset-pack lock, ZIP hash, publish/hydrate/verify 절차는 사용하지 않는다.
+팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` 물리 폴더에 둔다. Git pull 재현이 명시된 V1 Effect는 Product 문서가 실제 참조하는 선별 dependency closure를 Git/LFS로 함께 받는다. 별도 asset-pack lock, ZIP hash, publish/hydrate/verify 절차는 사용하지 않는다.
 
 세팅 후 Debug 정본 회귀를 한 번 실행한다.
 
@@ -100,14 +100,14 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 | 프로젝트 데이터 정본 | `Data/`의 catalog, imported, authoring, reference JSON/문서 | Git 일반 추적; 대용량 map 문서는 Git LFS |
 | 필수 바이너리 입력 | `Engine/ThirdPartyLib/` | **Git LFS** (`.gitattributes` 패턴) |
 | 실행 데이터 생성물 | `Client/Bin/DataFiles/`, `Server/Bin/DataFiles/` | `Data/`에서 publisher가 생성; 직접 편집 금지 |
-| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` | 팀장 관리 물리 폴더 |
+| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` | 기본은 팀장 관리 물리 폴더; 명시된 feature의 exact dependency closure만 Git/LFS |
 
 - clone 시 `git lfs install` 후 clone하거나, 이미 받았다면 `git lfs pull`을 실행해야 lib/DLL/DDS가 포인터가 아닌 실물이 된다.
 - `Client/Bin/Resources/` 최상위에는 위 여섯 폴더만 허용한다. `Resources/LostArk`, `Models`, `Textures`, `SourceData`, `Sound` 래퍼를 다시 만들지 않는다.
 - raw 추출물과 SourceData는 runtime Resources에 넣지 않는다. 팀장이 채택한 쿠킹 결과만 물리 폴더에 둔다.
 - UI와 gameplay 설정 정본은 JSON이다. `.cfg`를 새로 만들거나 Resources에서 직접 읽지 않는다.
 - 빌드 산출물(`exe/dll/lib/pdb/cso`), `.vs`, `EngineSDK`, `_work`, `out`, `imgui.ini`는 전부 ignore 대상이다. **커밋에 섞여 들어가지 않게 할 것.**
-- 새 바이너리 자산을 추가할 때는 LFS 대상인지 Drive 팩 대상인지 먼저 판단하고, 애매하면 커밋하지 말고 물어본다.
+- 새 바이너리 자산을 추가할 때는 LFS 대상인지 Drive 팩 대상인지 먼저 판단한다. pull-only 재현 feature는 현재 Product가 참조하는 최소 closure만 포함하고 전체 pack이나 미참조 자산을 커밋하지 않는다.
 
 ### 브랜치 · PR
 
@@ -287,12 +287,18 @@ Open/Play 전까지 지연한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
 않는다. 두 owner는 같은 Mesh, Sprite, Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family를
 사용한다.
-Save는 선택된 direct-authored Effect 하나만 원자 저장한 뒤 같은 catalog revision의 prepared target을
+Save는 선택된 direct-authored Effect 하나를 원자 저장한 뒤 같은 catalog revision의 prepared target을
 stage/validate/commit한다. 실행 중 occurrence는 이전 immutable document를 끝까지 유지하고 다음 spawn부터
-새 document를 사용하며, 준비나 renderer commit 실패는 이전 Product pointer와 cache를 보존한다.
-schema·catalog·source batch 변경은 계속 `Tools/EffectPipeline/Publish-Effects.ps1`의 명시적 전체 publish로
-runtime data를 갱신한다. runtime 재생은 별도 Tool renderer 없이
-`CEffectCatalog -> CEffectPresentationService -> CEffectObject` 한 경로만 사용한다.
+새 document를 사용한다. 준비나 renderer commit 실패 시에는 compare-and-swap으로 저장 파일도 이전 bytes로
+복원하고 이전 Product pointer와 cache를 유지한다.
+`Data/Effects/EffectCatalog.json`과 `Data/Effects/Authored/*.effect.json`이 제품 Effect의 단일 입력이며,
+Editor Save 직후의 다음 재생과 다음 Client 실행이 같은 authored 파일을 소비한다. schema·catalog·source batch는
+`Tools/EffectPipeline/Validate-EffectSources.ps1`로 검증하고 다른 폴더로 복사하거나 publish하지 않는다.
+v15의 고급 trail/light projection도 같은 authored 문서의 typed `runtimeCarrier`에 inline 저장한다. runtime 재생은
+별도 Tool renderer 없이 `CEffectCatalog -> CEffectPresentationService -> CEffectObject` 한 경로만 사용한다.
+V1 Product 문서가 참조하는 DDS/WModel dependency closure는 `Client/Bin/Resources`의 같은 상대 asset ID로
+선별 추적되므로 팀원은 clone/pull 뒤 `git lfs pull`만 수행하면 같은 Effect payload를 받는다. 이 예외는 전체
+Resources pack이나 미참조 자산을 Git 정본으로 승격하지 않는다.
 
 #### Artist F와 Effect 화면 검증은 사용자 전용
 

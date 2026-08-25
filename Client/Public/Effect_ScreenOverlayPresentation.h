@@ -19,6 +19,17 @@ public:
 		ComPtr<ID3D11Device> pDevice);
 	~CEffectScreenOverlayPresentation() override = default;
 
+	struct SOURCE_DOCUMENT_MANIFEST final
+	{
+		string strPresentationId;
+		vector<string> TextureAssetIds;
+	};
+
+	static bool_t Parse_SourceDocument(
+		std::string_view strUtf8Json,
+		SOURCE_DOCUMENT_MANIFEST& OutManifest,
+		std::string& strOutError);
+
 	static shared_ptr<CEffectScreenOverlayPresentation> Create(
 		ComPtr<ID3D11Device> pDevice);
 	shared_ptr<CEffectScreenOverlayPresentation>

@@ -441,7 +441,7 @@ private:
 	std::string m_strEffectAssetId;
 	uint64_t m_iRuntimeRevision = 0u;
 	uint32_t m_iStagingThreadId = 0u;
-	std::filesystem::path m_ExpectedSealedSourcePath;
+	std::filesystem::path m_ExpectedAuthoredSourcePath;
 	bool_t m_bHadPreviousDocument = false;
 	bool_t m_bHadPreviousVisualProjection = false;
 	std::shared_ptr<const EFFECT_DOCUMENT_DESC> m_pPreviousDocument;
@@ -478,8 +478,9 @@ public:
 		std::string& strOutStatus);
     static std::shared_ptr<const EFFECT_DOCUMENT_DESC> Find(
         const std::string& strEffectAssetId);
-	/* Cache-only lookup used by Product spawn.  It never parses a sealed
-	   direct-authored document or mutates catalog status. */
+	/* Cache-only lookup used by Product spawn. It never performs source-file
+	   I/O or mutates catalog status; startup/first lookup and Save activation
+	   populate the cache from Data/Effects/Authored. */
 	static std::shared_ptr<const EFFECT_DOCUMENT_DESC> Find_Loaded(
 		const std::string& strEffectAssetId);
     static std::shared_ptr<const EFFECT_ASSEMBLY_DESC> Find_Assembly(

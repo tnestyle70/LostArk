@@ -10,8 +10,9 @@
 *.spritefont filter=lfs diff=lfs merge=lfs -text
 *.dat filter=lfs diff=lfs merge=lfs -text
 
-# Cooked W-format resources are distributed through the shared Drive pack.
-# They are ignored by .gitignore instead of being stored in Git LFS.
+# Cooked W-format resources are distributed through the shared Drive pack by
+# default. A feature PR may force-add its exact pull-reproducible dependency
+# closure; those selected files remain ordinary tracked Git inputs.
 
 # Map source documents under Data/Maps and published runtime snapshots grow to multiple MB per shard.
 *.mapset filter=lfs diff=lfs merge=lfs -text
@@ -68,8 +69,8 @@
 # byte identities and must remain byte-stable in core.autocrlf=true checkouts.
 /Data/Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json text eol=lf
 
-# The material-program registry is a raw-byte source authority consumed by the
-# publisher. Keep it stable across fresh checkouts before publishing the catalog.
+# The material-program registry is a raw-byte reconstruction authority. Keep it
+# stable across fresh checkouts for offline evidence and authoring validation.
 /Data/Effects/MaterialPrograms/effect-material-program-registry.v1.json text eol=lf
 /Data/Effects/MaterialPrograms/Fragments/*.json text eol=lf
 
@@ -89,11 +90,6 @@
 /Data/Effects/Authored/effect.warlord.skill.17110.clip3.v1.unified.effect.json text eol=lf
 /Data/Effects/AuthoredCorrections/Generated/RepresentativeFour/representative-four-v1-standard-color.receipt.json text eol=lf
 
-# The generated Effect runtime Catalog is a raw-byte authority consumed by the
-# exact old10/new13 harness. Keep its one trailing newline byte-exact on every
-# checkout instead of allowing core.autocrlf to rewrite it.
-/Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json text eol=lf
-
 # The independent legacy Product cue projection is frozen by its raw file SHA.
 # Keep the baseline byte-exact so its read-only verifier also passes fresh checkouts.
 /Data/Effects/Baselines/legacy-product-cue-projection-v1.json text eol=lf
@@ -112,15 +108,20 @@
 # encounter, authored Effect, imported-candidate, and catalog layers. Keep the
 # whole joined input/output slice LF-stable so a core.autocrlf=true checkout
 # cannot invalidate its candidate/proof/application SHA chain.
+/Data/Valtan/*.json text eol=lf
+/Data/Actors/BossCatalog.json text eol=lf
+/Data/Balance/BossProfiles.json text eol=lf
+/Data/Balance/DamageProfiles.json text eol=lf
+/Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json text eol=lf
 /Data/Animation/Authored/Valtan/*.json text eol=lf
 /Data/Animation/Authored/Valtan/Valtan.patterneffects.json text eol=crlf
 /Data/Animation/Reference/Valtan/Valtan.clipseq text eol=lf
 /Data/Encounters/Valtan/*.json text eol=lf
 /Data/Effects/EffectCatalog.json text eol=lf
 /Data/Effects/Authored/effect.valtan*.json text eol=lf
-# The existing Whirlwind 420633 authored canary predates the LF Valtan receipt
+# The Whirlwind 420633 direct-authored Product predates the LF Valtan receipt
 # chain and intentionally freezes its CRLF raw identity (e94ddf...). Preserve
-# that one legacy byte contract until its VisualProgram canary is migrated.
+# that source identity while its v15 inline carrier/history remains canonical.
 /Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json text eol=crlf
 /Data/Effects/Imported/Valtan/*.json text eol=lf
 /Data/Effects/Imported/Valtan/**/*.json text eol=lf

@@ -56,6 +56,8 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 	m_bVisible = desc.visible;
 	m_RenderProfile = desc.renderProfile;
 	m_FrustumCulling = desc.frustumCulling;
+	m_bHasWaterProfile = desc.hasWaterProfile;
+	m_WaterProfile = desc.waterProfile;
 	m_fPresentationOpacityMultiplier = 1.f;
 	Set_PresentationVortexProfile(
 		PRESENTATION_VORTEX_PROFILE::NONE, 0.f);
@@ -115,7 +117,8 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 	RENDERGROUP renderGroup = RENDERGROUP::NONBLEND;
 
 	if (effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::TRANSLUCENT ||
-		effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::ADDITIVE)
+		effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::ADDITIVE ||
+		effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::WATER)
 		renderGroup = RENDERGROUP::BLEND;
 	else if (effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::BACKGROUND)
 		renderGroup = RENDERGROUP::PRIORITY;
@@ -169,11 +172,25 @@ HRESULT CMapAssetObject::Render()
 	{
 		MAP_ASSET_RENDER_PROFILE presentationProfile =
 			Get_EffectiveRenderProfile();
+		const bool_t bWater =
+			MAP_ASSET_RENDER_MODE::WATER == presentationProfile.renderMode &&
+			m_bHasWaterProfile;
+		if (MAP_ASSET_RENDER_MODE::WATER == presentationProfile.renderMode &&
+			!m_bHasWaterProfile)
+		{
+			/* The catalog load refuses a WATER asset without a row, so this can
+			   only be a placement built before that check. Draw it as an
+			   ordinary translucent surface rather than through a water pass
+			   with identity parameters. */
+			presentationProfile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
+		}
 		const uint32_t passIndex = CMapAssetRenderUtils::Select_Pass(
 			presentationProfile, m_bMirrored);
 		presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
+		renderResult = Bind_WaterShaderResources(bWater);
 
 		for (uint32_t meshIndex = 0;
+			SUCCEEDED(renderResult) &&
 			meshIndex < m_pModelCom->Get_NumMeshes(); ++meshIndex)
 		{
 			if (FAILED(
@@ -195,7 +212,10 @@ HRESULT CMapAssetObject::Render()
 	   draw so a later character, prop or ordinary map asset cannot inherit the
 	   presentation-only branch. */
 	const HRESULT resetResult = Reset_PresentationVortexShaderResources();
-	return FAILED(renderResult) ? renderResult : resetResult;
+	const HRESULT waterResetResult = Bind_WaterShaderResources(false);
+	if (FAILED(renderResult))
+		return renderResult;
+	return FAILED(resetResult) ? resetResult : waterResetResult;
 }
 
 HRESULT CMapAssetObject::Render_Shadow()
@@ -415,6 +435,89 @@ HRESULT CMapAssetObject::Reset_PresentationVortexShaderResources()
 {
 	return Bind_PresentationVortexShaderResources(
 		PRESENTATION_VORTEX_PROFILE::NONE, 0.f);
+}
+
+HRESULT CMapAssetObject::Bind_WaterShaderResources(const bool_t bEnabled)
+{
+	if (nullptr == m_pShaderCom)
+		return E_FAIL;
+
+	/* Disabled is the identity water: no fresnel, no distortion, no reflection
+	   and a flat normal, so the water passes cannot tint or bend anything if
+	   they are ever reached without a row. */
+	const MAP_ASSET_WATER_PROFILE identity{};
+	const MAP_ASSET_WATER_PROFILE& profile =
+		bEnabled ? m_WaterProfile : identity;
+
+	/* The auxiliary textures are declared by the water document but the
+	   runtime does not own an SRV for them yet, so both flags stay zero and
+	   the shader falls back to the model's own diffuse and normal. */
+	constexpr uint32_t hasDetailNormalTexture = 0u;
+	constexpr uint32_t hasReflectionTexture = 0u;
+	const f32_t elapsedTime = bEnabled ? m_fElapsedTime : 0.f;
+
+	struct WATER_SCALAR_BINDING final
+	{
+		const char_t* pName;
+		f32_t value;
+	};
+	const WATER_SCALAR_BINDING scalars[]
+	{
+		{ "g_WaterOpacity", profile.opacity },
+		{ "g_WaterOpacityPower", profile.opacityPower },
+		{ "g_WaterFresnelIntensity", profile.fresnelIntensity },
+		{ "g_WaterFresnelPower", profile.fresnelPower },
+		{ "g_WaterScreenDistortionIntensity", profile.screenDistortionIntensity },
+		{ "g_WaterNormalIntensity", profile.normalIntensity },
+		{ "g_WaterDetailNormalIntensity", profile.detailNormalIntensity },
+		{ "g_WaterReflectionIntensity", profile.reflectionIntensity },
+		{ "g_WaterDiffuseTiling", profile.diffuseTiling },
+		{ "g_ElapsedTime", elapsedTime },
+	};
+	struct WATER_VECTOR_BINDING final
+	{
+		const char_t* pName;
+		const float4_t* pValue;
+	};
+	const WATER_VECTOR_BINDING vectors[]
+	{
+		{ "g_WaterDiffuseColor", &profile.diffuseColor },
+		{ "g_WaterReflectionColor", &profile.reflectionColor },
+		{ "g_WaterNormalTilingPanning", &profile.normalTilingPanning },
+		{ "g_WaterDetailNormalTilingPanning",
+			&profile.detailNormalTilingPanning },
+		{ "g_WaterReflectionTilingPanning", &profile.reflectionTilingPanning },
+	};
+
+	HRESULT firstFailure = S_OK;
+	const auto record = [&firstFailure](const HRESULT result)
+	{
+		if (FAILED(result) && SUCCEEDED(firstFailure))
+			firstFailure = result;
+	};
+
+	for (const WATER_SCALAR_BINDING& binding : scalars)
+	{
+		record(m_pShaderCom->Bind_RawValue(
+			binding.pName, &binding.value, sizeof(binding.value)));
+	}
+	for (const WATER_VECTOR_BINDING& binding : vectors)
+	{
+		record(m_pShaderCom->Bind_RawValue(
+			binding.pName, binding.pValue, sizeof(*binding.pValue)));
+	}
+	record(m_pShaderCom->Bind_RawValue(
+		"g_HasDetailNormalTexture",
+		&hasDetailNormalTexture, sizeof(hasDetailNormalTexture)));
+	record(m_pShaderCom->Bind_RawValue(
+		"g_HasReflectionTexture",
+		&hasReflectionTexture, sizeof(hasReflectionTexture)));
+	if (bEnabled)
+	{
+		record(CGameInstance::Get().Bind_CamPosition(
+			m_pShaderCom, "g_vCamPosition"));
+	}
+	return firstFailure;
 }
 
 HRESULT CMapAssetObject::Bind_ShadowShaderResources()

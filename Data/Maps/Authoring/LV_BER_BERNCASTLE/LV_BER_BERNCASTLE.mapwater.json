@@ -1,0 +1,88 @@
+{
+  "schema": "lostark.map-water-presentation",
+  "formatVersion": 1,
+  "areaId": "LV_BER_BERNCASTLE",
+  "revision": 1,
+  "unclassifiedAssetCount": 945,
+  "waters": [
+    {
+      "assetId": "MAP_5387B1504BDD_LV_BER_BERNCASTLE_WATER01_SM",
+      "materialName": "lv_atm_koilsv_water_01_mi",
+      "provenance": "SOURCE_MATERIAL_EXACT",
+      "sourceParentChain": [
+        "bg.preset.preset_waterbase_trn",
+        "mastermaterial_bg_preset.preset_water",
+        "mastermaterial_bg_preset.preset_water_riverwindless",
+        "lv_atm_koilsv_water_01_mi"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_BER_BERNCASTLE/MAP_5387B1504BDD_LV_BER_BERNCASTLE_WATER01_SM/textures/waterbump_tex.dds",
+      "reflectionTexture": "Map/LV_BER_BERNCASTLE/MAP_5387B1504BDD_LV_BER_BERNCASTLE_WATER01_SM/textures/lv_common_wet_04_d.dds",
+      "foamTexture": "",
+      "opacity": 0.8,
+      "opacityPower": 0.6,
+      "fresnelIntensity": 1.0,
+      "fresnelPower": 1.0,
+      "screenDistortionIntensity": 0.5,
+      "normalIntensity": 0.005,
+      "detailNormalIntensity": 0.1,
+      "normalDistortionIntensity": 0.1,
+      "reflectionIntensity": 0.5,
+      "reflectionUv": 0.5,
+      "depthBias": -80.0,
+      "diffuseTiling": 1.0,
+      "diffuseColor": [
+        0.0592564,
+        0.146067,
+        0.0416863,
+        1.0
+      ],
+      "reflectionColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.01,
+        0.014,
+        0.45,
+        0.45
+      ],
+      "detailNormalTilingPanning": [
+        0.1,
+        0.2,
+        0.05,
+        0.05
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "missingSourceTextures": [
+        "texture_foam",
+        "texture_opacity"
+      ]
+    }
+  ],
+  "deferred": [
+    {
+      "assetId": "MAP_453388A3B6F7_BG_LUT_MEMONAST_HOLYWATERPOLLUTION01_SM_YSI",
+      "reason": "MIXED_MATERIAL_BLEND_MODES",
+      "detail": "The render group and the shader pass are chosen once per object, so an asset whose materials disagree cannot be drawn correctly without splitting its meshes into two submissions. Left at its authored render mode.",
+      "materials": [
+        {
+          "name": "bg_lut_memonast_holywaterpollution01_mi_ysi",
+          "blendMode": "BLEND_Opaque"
+        },
+        {
+          "name": "bg_lut_memonast_holywaterpollution02_mi_ysi",
+          "blendMode": "BLEND_Translucent"
+        }
+      ]
+    }
+  ]
+}

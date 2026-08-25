@@ -13,13 +13,13 @@
                           "bloomThreshold":  2.74000001,
                           "bloomSoftKnee":  1,
                           "bloomIntensity":  2.6099999,
-                          "bloomScatter":  2.75999999,
+                          "bloomScatter":  1,
                           "exposure":  0.730000019,
                           "whitePoint":  1,
                           "gamma":  1.90499997,
                           "fxaaEnabled":  true,
                           "fxaaSubpixel":  0,
-                          "fxaaEdgeThreshold":  0.0312,
+                          "fxaaEdgeThreshold":  0.0311999992,
                           "fxaaEdgeThresholdMin":  0.0183000006
                       },
     "profiles":  [
@@ -85,13 +85,19 @@
                                      "maximumOpacity":  0.92,
                                      "driftSpeed":  0.12,
                                      "driftHeightAmplitude":  1.5,
-                                     "driftDensityAmplitude":  0.06
+                                     "driftDensityAmplitude":  0.06,
+                                     "coveragePercent":  0.45,
+                                     "windDirectionX":  0.8,
+                                     "windDirectionZ":  0.6,
+                                     "windSpeed":  1.5,
+                                     "patchScale":  0.012,
+                                     "patchSoftness":  0.18
                                  }
                      },
                      {
                          "profileId":  "scene.character-select.warm-high-key.v1",
                          "exposureMultiplier":  0.870000005,
-                         "bloomIntensityMultiplier":  0.85,
+                         "bloomIntensityMultiplier":  0.850000024,
                          "light":  {
                                        "type":  "directional",
                                        "direction":  [
@@ -150,7 +156,13 @@
                                      "maximumOpacity":  0.9,
                                      "driftSpeed":  0,
                                      "driftHeightAmplitude":  0,
-                                     "driftDensityAmplitude":  0
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.01,
+                                     "patchSoftness":  0.15
                                  }
                      },
                      {
@@ -215,7 +227,13 @@
                                      "maximumOpacity":  0.9,
                                      "driftSpeed":  0,
                                      "driftHeightAmplitude":  0,
-                                     "driftDensityAmplitude":  0
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.01,
+                                     "patchSoftness":  0.15
                                  }
                      },
                      {
@@ -280,7 +298,13 @@
                                      "maximumOpacity":  0.9,
                                      "driftSpeed":  0,
                                      "driftHeightAmplitude":  0,
-                                     "driftDensityAmplitude":  0
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.01,
+                                     "patchSoftness":  0.15
                                  }
                      },
                      {
@@ -345,37 +369,43 @@
                                      "maximumOpacity":  0.9,
                                      "driftSpeed":  0,
                                      "driftHeightAmplitude":  0,
-                                     "driftDensityAmplitude":  0
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.01,
+                                     "patchSoftness":  0.15
                                  }
                      },
                      {
                          "profileId":  "scene.valtan.cool-low-key.v1",
-                         "exposureMultiplier":  1.55,
-                         "bloomIntensityMultiplier":  0.85,
+                         "exposureMultiplier":  1.54999995,
+                         "bloomIntensityMultiplier":  0.850000024,
                          "light":  {
                                        "type":  "directional",
                                        "direction":  [
-                                                         0.35,
+                                                         0.349999994,
                                                          -1,
                                                          0.25,
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0.24,
-                                                       0.28,
-                                                       0.34,
+                                                       0.239999995,
+                                                       0.280000001,
+                                                       0.340000004,
                                                        1
                                                    ],
                                        "ambient":  [
-                                                       0.16,
-                                                       0.21,
-                                                       0.28,
+                                                       0.159999996,
+                                                       0.209999993,
+                                                       0.280000001,
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0.12,
-                                                        0.15,
-                                                        0.2,
+                                                        0.119999997,
+                                                        0.150000006,
+                                                        0.200000003,
                                                         1
                                                     ]
                                    },
@@ -393,7 +423,7 @@
                                         "far":  520,
                                         "depthBias":  0.00260000001,
                                         "normalBias":  0.0340000018,
-                                        "strength":  0.86
+                                        "strength":  0.860000014
                                     },
                          "fog":  {
                                      "enabled":  false,
@@ -410,7 +440,13 @@
                                      "maximumOpacity":  0.85,
                                      "driftSpeed":  0.1,
                                      "driftHeightAmplitude":  1.0,
-                                     "driftDensityAmplitude":  0.05
+                                     "driftDensityAmplitude":  0.05,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.01,
+                                     "patchSoftness":  0.15
                                  }
                      }
                  ]

@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -153,7 +154,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ],
         }
 
-    def test_v1_migration_is_staged_and_lossless(self) -> None:
+    def test_v1_migration_is_staged_and_excluded_from_current_split_authority(self) -> None:
         source_path = self.root / pipeline.MASTER_REL
         before = pipeline.sha256_file(source_path)
         migrated = self.migrate()
@@ -187,11 +188,39 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         )
         projected = pipeline.project_v2_products(self.root, self.docs, migrated)
         for relative, text in projected.items():
+            if relative in (pipeline.ENCOUNTER_REL, pipeline.BINDINGS_REL):
+                continue
             self.assertEqual(
                 self.docs[relative],
                 json.loads(text, object_pairs_hook=pipeline._reject_duplicate_pairs),
                 relative,
             )
+        migrated_high_jump = next(
+            pattern
+            for pattern in migrated["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        current_high_jump = next(
+            pattern
+            for pattern in self.docs[pipeline.GAMEPLAY_AUTHORING_REL]["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        self.assertEqual("LAND", migrated_high_jump["serverMotion"]["travelStageId"])
+        self.assertEqual("LAND", current_high_jump["serverMotion"]["travelStageId"])
+        self.assertEqual(
+            self.docs[pipeline.ENCOUNTER_REL],
+            json.loads(
+                projected[pipeline.ENCOUNTER_REL],
+                object_pairs_hook=pipeline._reject_duplicate_pairs,
+            ),
+        )
+        self.assertNotEqual(
+            self.docs[pipeline.BINDINGS_REL],
+            json.loads(
+                projected[pipeline.BINDINGS_REL],
+                object_pairs_hook=pipeline._reject_duplicate_pairs,
+            ),
+        )
 
     def test_split_authoring_round_trips_canonically_and_preserves_products(self) -> None:
         self.assertTrue(self.source_manifest["splitJoinValidated"])
@@ -202,9 +231,14 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(1, self.source_manifest["gameplaySourceVersion"])
         self.assertEqual(1, self.source_manifest["presentationSourceVersion"])
         self.assertEqual(2, self.source_manifest["joinedSourceVersion"])
-        migrated = self.migrate()
+        repository_join = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
         gameplay, presentation = pipeline.split_v2_authoring(
-            migrated,
+            repository_join,
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
@@ -217,14 +251,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         self.assertEqual(
-            pipeline.canonical_bytes(migrated), pipeline.canonical_bytes(joined)
+            pipeline.canonical_bytes(repository_join),
+            pipeline.canonical_bytes(joined),
         )
-        migrated_products = pipeline.project_v2_products(
-            self.root, self.docs, migrated
+        repository_products = pipeline.project_v2_products(
+            self.root, self.docs, repository_join
         )
         joined_products = pipeline.project_v2_products(self.root, self.docs, joined)
         self.assertEqual(
-            {path: text.encode("utf-8") for path, text in migrated_products.items()},
+            {path: text.encode("utf-8") for path, text in repository_products.items()},
             {path: text.encode("utf-8") for path, text in joined_products.items()},
         )
         pipeline._preserve_byte_identical_client_products(
@@ -242,6 +277,44 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 relative,
             )
         self.assert_v1_migration_fixture_is_excluded_from_normal_revision_and_load()
+
+    def test_source_manifest_is_stable_across_platform_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary) / "repository"
+            for row in self.source_manifest["files"]:
+                source = self.root / row["path"]
+                destination = repository_root / row["path"]
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+
+            for row in self.source_manifest["files"]:
+                path = repository_root / row["path"]
+                text = (
+                    pipeline.read_text(path)
+                    .replace("\r\n", "\n")
+                    .replace("\r", "\n")
+                )
+                path.write_bytes(text.encode("utf-8"))
+            lf_manifest = pipeline.source_manifest(repository_root)
+            gameplay_path = repository_root / pipeline.GAMEPLAY_AUTHORING_REL
+            raw_lf = pipeline.sha256_file(gameplay_path)
+
+            for row in self.source_manifest["files"]:
+                path = repository_root / row["path"]
+                text = pipeline.read_text(path).replace("\n", "\r\n")
+                path.write_bytes(text.encode("utf-8"))
+            crlf_manifest = pipeline.source_manifest(repository_root)
+            raw_crlf = pipeline.sha256_file(gameplay_path)
+
+            for row in self.source_manifest["files"]:
+                path = repository_root / row["path"]
+                text = pipeline.read_text(path).replace("\r\n", "\r")
+                path.write_bytes(text.encode("utf-8"))
+            cr_manifest = pipeline.source_manifest(repository_root)
+
+            self.assertNotEqual(raw_lf, raw_crlf)
+            self.assertEqual(lf_manifest, crlf_manifest)
+            self.assertEqual(lf_manifest, cr_manifest)
 
     def test_split_authoring_strict_join_rejects_drift_and_role_leaks(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
@@ -495,6 +568,213 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 drifted_docs,
                 set(pipeline.MANAGED_PATTERN_IDS),
             )
+
+    def test_mapping_basis_vocabulary_rejects_occurrence_and_cue_typos(self) -> None:
+        self.assertEqual(
+            frozenset(
+                {
+                    "CURRENT_PRODUCT_BASELINE",
+                    "PATTERN_PR_REFERENCE",
+                    "ANIMATION_PR_127",
+                    "SOURCE_REVIEWED_DELTA",
+                    "PROJECT_AUTHORED",
+                    "LEGACY_V1_MIGRATION",
+                }
+            ),
+            pipeline.ALLOWED_MAPPING_BASES,
+        )
+        invalid_occurrence = self.migrate()
+        occurrence = next(
+            occurrence
+            for pattern in invalid_occurrence["patterns"]
+            for stage in pattern["stages"]
+            for occurrence in stage["animation"]["occurrences"]
+        )
+        occurrence["mappingBasis"] = "PROJECT_AUTHORDE"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "mappingBasis vocabulary",
+        ):
+            pipeline.validate_v2_master(
+                invalid_occurrence,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        invalid_cue = self.migrate()
+        cue = next(
+            cue
+            for pattern in invalid_cue["patterns"]
+            for stage in pattern["stages"]
+            for cue in stage["effectCues"]
+        )
+        cue["mappingBasis"] = "PROJECT_AUTHORDE"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "mappingBasis vocabulary",
+        ):
+            pipeline.validate_v2_master(
+                invalid_cue,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+    def test_high_jump_clock_and_motion_project_losslessly(self) -> None:
+        gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
+        presentation = self.docs[pipeline.PRESENTATION_AUTHORING_REL]
+        gameplay_pattern = next(
+            pattern
+            for pattern in gameplay["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        presentation_pattern = next(
+            pattern
+            for pattern in presentation["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        self.assertEqual("LAND", gameplay_pattern["serverMotion"]["travelStageId"])
+        self.assertEqual(
+            [
+                ("TAKEOFF", "EXACT", "mesh_att_battle_8_01_start", 1933, False),
+                ("AIRBORNE", "LOOP_TO_STAGE_END", "mesh_att_battle_8_01_loop", 0, True),
+                ("LAND", "EXACT", "mesh_att_battle_8_01_end", 3200, False),
+                ("RECOVERY", "EXACT", "mesh_idle_battle_1", 400, False),
+            ],
+            [
+                (
+                    stage["stageId"],
+                    stage["animation"]["endPolicy"],
+                    stage["animation"]["occurrences"][0]["clip"],
+                    stage["animation"]["occurrences"][0]["playMs"],
+                    stage["animation"]["occurrences"][0]["repeatUntilStageEnd"],
+                )
+                for stage in presentation_pattern["stages"]
+            ],
+        )
+        _, joined, outputs = pipeline.build_repository_product_projection(self.root)
+        joined_pattern = next(
+            pattern
+            for pattern in joined["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        encounter = json.loads(outputs[pipeline.ENCOUNTER_REL])
+        product_pattern = next(
+            pattern
+            for pattern in encounter["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        self.assertEqual("LAND", joined_pattern["serverMotion"]["travelStageId"])
+        self.assertEqual("LAND", product_pattern["serverMotion"]["travelStageId"])
+        bindings = json.loads(outputs[pipeline.BINDINGS_REL])
+        binding_by_action = {row["actionId"]: row for row in bindings["bindings"]}
+        for stage in presentation_pattern["stages"]:
+            occurrence = stage["animation"]["occurrences"][0]
+            clip = binding_by_action[stage["actionId"]]["clips"][0]
+            self.assertEqual(occurrence["clip"], clip["clip"])
+            self.assertEqual(occurrence["playMs"], clip["playMs"])
+            self.assertEqual(occurrence["repeatUntilStageEnd"], clip["loop"])
+
+    def test_managed_cue_scale_policy_is_typed_and_projects_losslessly(self) -> None:
+        presentation = self.docs[pipeline.PRESENTATION_AUTHORING_REL]
+        managed_cues = [
+            cue
+            for pattern in presentation["patterns"]
+            for stage in pattern["stages"]
+            for cue in stage["effectCues"]
+        ]
+        self.assertEqual(15, len(managed_cues))
+        self.assertEqual(
+            {"OWNER_RELATIVE": 4, "GAMEPLAY_FOOTPRINT": 9, "ARENA_ABSOLUTE": 2},
+            dict(Counter(cue["scalePolicy"]["kind"] for cue in managed_cues)),
+        )
+        self.assertEqual(
+            pipeline.MANAGED_CUE_SCALE_POLICIES,
+            {cue["cueId"]: cue["scalePolicy"]["kind"] for cue in managed_cues},
+        )
+        for cue in managed_cues:
+            policy = cue["scalePolicy"]
+            if policy["kind"] == pipeline.OWNER_RELATIVE:
+                self.assertEqual({"kind": pipeline.OWNER_RELATIVE}, policy)
+            else:
+                self.assertEqual([1.5, 1.5, 1.5], policy["worldScale"])
+
+        _, joined, outputs = pipeline.build_repository_product_projection(self.root)
+        projected = json.loads(outputs[pipeline.CUES_REL])
+        self.assertEqual(3, projected["formatVersion"])
+        projected_by_id = {cue["bindingId"]: cue for cue in projected["cues"]}
+        for cue in managed_cues:
+            self.assertEqual(
+                cue["scalePolicy"],
+                projected_by_id[cue["cueId"]]["scalePolicy"],
+            )
+        self.assertEqual(
+            15,
+            sum(1 for cue in projected["cues"] if "scalePolicy" in cue),
+        )
+        self.assertEqual(
+            15,
+            sum(
+                len(stage["effectCues"])
+                for pattern in joined["patterns"]
+                for stage in pattern["stages"]
+            ),
+        )
+
+    def test_managed_cue_scale_policy_drift_fails_closed(self) -> None:
+        gameplay = copy.deepcopy(self.docs[pipeline.GAMEPLAY_AUTHORING_REL])
+        source = self.docs[pipeline.PRESENTATION_AUTHORING_REL]
+
+        def mutate(cue_id, edit):
+            presentation = copy.deepcopy(source)
+            cue = next(
+                cue
+                for pattern in presentation["patterns"]
+                for stage in pattern["stages"]
+                for cue in stage["effectCues"]
+                if cue["cueId"] == cue_id
+            )
+            edit(cue)
+            return presentation
+
+        cases = [
+            mutate(
+                "cue.valtan.project-tuned.attack.dash-charge.active-shield",
+                lambda cue: cue["scalePolicy"].update(
+                    {"worldScale": [1.5, 1.5, 1.5]}
+                ),
+            ),
+            mutate(
+                "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph",
+                lambda cue: cue["scalePolicy"].pop("worldScale"),
+            ),
+            mutate(
+                "cue.valtan.whirlwind.active",
+                lambda cue: cue["scalePolicy"].update({"kind": "UNKNOWN"}),
+            ),
+            mutate(
+                "cue.valtan.carrier-v1.attack.high-jump.land.clip-01",
+                lambda cue: cue["scalePolicy"].update(
+                    {"worldScale": [1.5, 0.0, 1.5]}
+                ),
+            ),
+            mutate(
+                "cue.valtan.project-tuned.attack.dash-charge.active-shield",
+                lambda cue: cue["scalePolicy"].update(
+                    {
+                        "kind": "GAMEPLAY_FOOTPRINT",
+                        "worldScale": [1.5, 1.5, 1.5],
+                    }
+                ),
+            ),
+        ]
+        for presentation in cases:
+            with self.subTest(), self.assertRaises(pipeline.PipelineError):
+                pipeline.join_v2_authoring(
+                    copy.deepcopy(gameplay),
+                    presentation,
+                    self.docs[pipeline.WORLD_SET_REL],
+                    self.docs[pipeline.COMBAT_AUTHORING_REL],
+                )
 
     def test_source_hash_precondition_and_revision_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

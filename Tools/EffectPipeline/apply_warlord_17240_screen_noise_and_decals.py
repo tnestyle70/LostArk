@@ -22,13 +22,13 @@ BA3_PATH = REPOSITORY_ROOT / (
     "Data/Effects/Authored/effect.warlord.skill.17240.ba3.unified.effect.json"
 )
 BA1_SOURCE_PATH = REPOSITORY_ROOT / (
-    "Client/Bin/DataFiles/Effect/Authored/"
+    "Data/Effects/Imported/LegacyRuntimeDonors/"
     "effect.warlord.skill.17240.ba1.unified."
     "e6e4b9daec3c478d38289cfc1eaf60de7ea6f035d5024f21b3376c5759cba62f."
     "effect.json"
 )
 BA3_SOURCE_PATH = REPOSITORY_ROOT / (
-    "Client/Bin/DataFiles/Effect/Authored/"
+    "Data/Effects/Imported/LegacyRuntimeDonors/"
     "effect.warlord.skill.17240.ba3.unified."
     "4565ef2375c333bd4fb031704a439a1d40189002ec84706c2e8b2fbf4e1ade05."
     "effect.json"

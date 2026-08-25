@@ -60,7 +60,22 @@ public:
 		std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
 		float fStageWallTimeSeconds,
 		ACTION_PRESENTATION_SAMPLE& OutSample);
+	/* Sequential occurrences may intentionally reuse one model animation. The
+	   occurrence identity must still force a restart/seek at their boundary. */
+	static bool Requires_ClipOccurrenceTransition(
+		std::size_t iCurrentClipOccurrenceIndex,
+		std::size_t iExpectedClipOccurrenceIndex,
+		uint32_t iCurrentAnimationIndex,
+		uint32_t iExpectedAnimationIndex);
 	static bool Resolve_CueWallOffset(
+		std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
+		std::size_t iClipIndex,
+		float fCueSourceTimeSeconds,
+		uint64_t iLoopEpoch,
+		float& fOutStageWallTimeSeconds);
+	/* Cue starts own a half-open source slice, while a finite cue end may
+	   coincide with that slice's authored end boundary. */
+	static bool Resolve_CueEndWallOffset(
 		std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
 		std::size_t iClipIndex,
 		float fCueSourceTimeSeconds,
@@ -70,14 +85,16 @@ public:
 		const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
 		float fTimelineWallSeconds,
 		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE& OutSample);
-	/* Once a final explicit non-loop clip reaches its held end pose, the
-	   animation clock can no longer advance a natural Effect tail.  The
-	   authoring preview hands ownership back to its wall clock at that exact
-	   boundary while retaining the final animation pose. */
+	/* Once an explicit non-loop clip reaches its held end pose, the animation
+	   clock can no longer advance.  A final clip releases the natural Effect
+	   tail; a non-final clip releases only when its authored wall interval is
+	   longer than the playable source window, so the wall clock can finish the
+	   hold and select the next occurrence without changing the held pose. */
 	static bool Should_ReleaseCompletedAnimationClock(
 		bool bHasExplicitLoopPolicy,
 		bool bLoop,
 		bool bLastClip,
+		bool bAuthoredEndPoseHold,
 		bool bAnimationPaused,
 		float fCurrentSourceSeconds,
 		float fSourceDurationSeconds);

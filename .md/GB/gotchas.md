@@ -66,6 +66,10 @@ git rev-list --left-right --count HEAD...origin/main
   G2의 Add Element 이후에만 Element가 Document에 들어간다.
 - Effect asset ID와 resource ID는 `Client/Bin/Resources` 기준 상대 안정 ID다. 절대 경로,
   drive-qualified 경로, `..` 탈출 경로를 저장 계약으로 되살리지 않는다.
+- 제품 Effect는 `Data/Effects/EffectCatalog.json`과 `Data/Effects/Authored/*.effect.json`만 직접 읽는다.
+  `Client/Bin/DataFiles/Effect`, hash seal, VisualPrograms sidecar, Effect publisher를 merge나 복구 과정에서
+  다시 만들지 않는다. Editor Save는 파일 저장과 다음-spawn Product activation을 한 transaction으로 처리하고,
+  activation 실패 시 compare-and-swap으로 이전 파일과 prepared target을 모두 보존한다.
 
 ### Bone/socket scale은 transform 계층별로 검증
 

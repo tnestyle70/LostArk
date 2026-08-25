@@ -9,6 +9,7 @@
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Profiler.h"
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Valtan.h"
@@ -59,6 +60,10 @@ namespace
 	constexpr f32_t SOURCE_BONE_AFFINE_TOLERANCE = 0.00001f;
 	constexpr f32_t SOURCE_BONE_MINIMUM_BASIS_LENGTH = 0.00000001f;
 	constexpr f32_t SOURCE_BONE_MINIMUM_NORMALIZED_DETERMINANT = 0.0001f;
+	constexpr f32_t CUE_OWNER_UNIFORM_SCALE_TOLERANCE = 0.0001f;
+	constexpr f32_t CUE_OWNER_ORTHOGONAL_TOLERANCE = 0.001f;
+	constexpr f32_t CUE_OWNER_MINIMUM_SIGNED_DETERMINANT = 0.999f;
+	constexpr f32_t CUE_MAXIMUM_AUTHORED_WORLD_SCALE = 1000.f;
 
     struct SOURCE_ANCHOR_REQUEST final
     {
@@ -131,6 +136,9 @@ namespace
         Client::EFFECT_TRANSFORM_DESC LocalTransform{};
         Client::EFFECT_FOLLOW_POLICY eFollowPolicy =
             Client::EFFECT_FOLLOW_POLICY::FOLLOW;
+		Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy =
+			Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+		float3_t vWorldScale{ 1.f, 1.f, 1.f };
 		Client::EFFECT_ORIENTATION_POLICY eOrientationPolicy =
 			Client::EFFECT_ORIENTATION_POLICY::ANCHOR;
 		f32_t fActionFacingYawDegrees = 0.f;
@@ -512,7 +520,7 @@ namespace
 		if (0u == iCatalogRevision)
 		{
 			strOutStatus =
-				"Animation Effect cue registration has no runtime catalog revision.";
+				"Animation Effect cue registration has no source catalog revision.";
 			return false;
 		}
 
@@ -781,6 +789,125 @@ namespace
 				SOURCE_BONE_MINIMUM_NORMALIZED_DETERMINANT;
 	}
 
+	bool_t Is_ValidCueScaleDescriptor(
+		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY ePolicy,
+		const float3_t& WorldScale)
+	{
+		if (ePolicy >= Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::END)
+			return false;
+		if (Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE ==
+			ePolicy)
+		{
+			return true;
+		}
+		return std::isfinite(WorldScale.x) &&
+			std::isfinite(WorldScale.y) && std::isfinite(WorldScale.z) &&
+			WorldScale.x > 0.f && WorldScale.y > 0.f && WorldScale.z > 0.f &&
+			WorldScale.x <= CUE_MAXIMUM_AUTHORED_WORLD_SCALE &&
+			WorldScale.y <= CUE_MAXIMUM_AUTHORED_WORLD_SCALE &&
+			WorldScale.z <= CUE_MAXIMUM_AUTHORED_WORLD_SCALE;
+	}
+
+	bool_t Try_BuildCueScalePolicyAnchor(
+		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY ePolicy,
+		const float3_t& WorldScale,
+		const float4x4_t& SampledOwnerAnchor,
+		float4x4_t& OutAnchor)
+	{
+		OutAnchor = {};
+		if (!Is_ValidCueScaleDescriptor(ePolicy, WorldScale) ||
+			!Is_NonDegenerateAffineMatrix(SampledOwnerAnchor))
+		{
+			return false;
+		}
+		if (Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE ==
+			ePolicy)
+		{
+			OutAnchor = SampledOwnerAnchor;
+			return true;
+		}
+
+		const f32_t fScaleX = Basis_Length(
+			SampledOwnerAnchor._11, SampledOwnerAnchor._12,
+			SampledOwnerAnchor._13);
+		const f32_t fScaleY = Basis_Length(
+			SampledOwnerAnchor._21, SampledOwnerAnchor._22,
+			SampledOwnerAnchor._23);
+		const f32_t fScaleZ = Basis_Length(
+			SampledOwnerAnchor._31, SampledOwnerAnchor._32,
+			SampledOwnerAnchor._33);
+		const f32_t fMaximumScale =
+			(std::max)({ fScaleX, fScaleY, fScaleZ });
+		const f32_t fMinimumScale =
+			(std::min)({ fScaleX, fScaleY, fScaleZ });
+		if (fMaximumScale - fMinimumScale >
+			fMaximumScale * CUE_OWNER_UNIFORM_SCALE_TOLERANCE)
+		{
+			return false;
+		}
+
+		const f32_t fXY = std::abs(Basis_Dot(
+			SampledOwnerAnchor._11, SampledOwnerAnchor._12,
+			SampledOwnerAnchor._13, SampledOwnerAnchor._21,
+			SampledOwnerAnchor._22, SampledOwnerAnchor._23) /
+			(fScaleX * fScaleY));
+		const f32_t fXZ = std::abs(Basis_Dot(
+			SampledOwnerAnchor._11, SampledOwnerAnchor._12,
+			SampledOwnerAnchor._13, SampledOwnerAnchor._31,
+			SampledOwnerAnchor._32, SampledOwnerAnchor._33) /
+			(fScaleX * fScaleZ));
+		const f32_t fYZ = std::abs(Basis_Dot(
+			SampledOwnerAnchor._21, SampledOwnerAnchor._22,
+			SampledOwnerAnchor._23, SampledOwnerAnchor._31,
+			SampledOwnerAnchor._32, SampledOwnerAnchor._33) /
+			(fScaleY * fScaleZ));
+		const f32_t fSignedNormalizedDeterminant =
+			Basis_Determinant(SampledOwnerAnchor) /
+			(fScaleX * fScaleY * fScaleZ);
+		if (fXY > CUE_OWNER_ORTHOGONAL_TOLERANCE ||
+			fXZ > CUE_OWNER_ORTHOGONAL_TOLERANCE ||
+			fYZ > CUE_OWNER_ORTHOGONAL_TOLERANCE ||
+			!std::isfinite(fSignedNormalizedDeterminant) ||
+			fSignedNormalizedDeterminant <
+				CUE_OWNER_MINIMUM_SIGNED_DETERMINANT)
+		{
+			return false;
+		}
+
+		OutAnchor = SampledOwnerAnchor;
+		const f32_t fScaleFactors[3]{
+			WorldScale.x / fScaleX,
+			WorldScale.y / fScaleY,
+			WorldScale.z / fScaleZ };
+		OutAnchor._11 *= fScaleFactors[0];
+		OutAnchor._12 *= fScaleFactors[0];
+		OutAnchor._13 *= fScaleFactors[0];
+		OutAnchor._21 *= fScaleFactors[1];
+		OutAnchor._22 *= fScaleFactors[1];
+		OutAnchor._23 *= fScaleFactors[1];
+		OutAnchor._31 *= fScaleFactors[2];
+		OutAnchor._32 *= fScaleFactors[2];
+		OutAnchor._33 *= fScaleFactors[2];
+		return Is_NonDegenerateAffineMatrix(OutAnchor);
+	}
+
+	bool_t Try_ComposeCueScalePolicyRoot(
+		const Client::EFFECT_TRANSFORM_DESC& LocalTransform,
+		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
+		const float3_t& WorldScale,
+		const float4x4_t& SampledOwnerAnchor,
+		const Client::EFFECT_ORIENTATION_POLICY eOrientationPolicy,
+		const f32_t fActionFacingYawDegrees,
+		float4x4_t& OutRoot)
+	{
+		float4x4_t EffectiveAnchor{};
+		return Try_BuildCueScalePolicyAnchor(
+			eScalePolicy, WorldScale, SampledOwnerAnchor, EffectiveAnchor) &&
+			Client::CAnimationEffectCueDocument::Try_ComposeRootTransform(
+				LocalTransform, EffectiveAnchor, eOrientationPolicy,
+				fActionFacingYawDegrees, OutRoot);
+	}
+
 	bool_t Has_ExpectedArtistSourceBoneCombinedScale(const float4x4_t& RawBone)
 	{
 		if (!Is_NonDegenerateAffineMatrix(RawBone))
@@ -862,7 +989,7 @@ namespace
             if (nullptr == Document)
             {
                 strOutStatus =
-                    "Animation Effect target is absent from the runtime catalog: " +
+                    "Animation Effect target is absent from the source catalog: " +
                     EffectId;
                 return false;
             }
@@ -1126,19 +1253,29 @@ namespace
 
     void Resolve_SourceAnchors(
 		const EFFECT_OWNER_VIEW& Owner,
+		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
+		const float3_t& WorldScale,
         const std::vector<SOURCE_ANCHOR_REQUEST>& Requests,
 		std::unordered_map<std::string, float4x4_t>& InOutResult)
     {
 		InOutResult.clear();
 		InOutResult.reserve(Requests.size());
 		float4x4_t PresentationRoot{};
+		float4x4_t EffectivePresentationRoot{};
 		if (!Owner.Is_Valid() ||
-			!Owner.Try_Get_PresentationRoot(PresentationRoot))
+			!Owner.Try_Get_PresentationRoot(PresentationRoot) ||
+			!Try_BuildCueScalePolicyAnchor(
+				eScalePolicy, WorldScale, PresentationRoot,
+				EffectivePresentationRoot))
             return;
 		const std::shared_ptr<Engine::CModel> pModel = Owner.Get_Model();
         if (nullptr == pModel)
             return;
-		const matrix_t OwnerWorld = XMLoadFloat4x4(&PresentationRoot);
+		/* Source-bone attachments replace the Effect root in playback. Build
+		   them from the same effective owner basis as the cue root so a world-
+		   footprint cue cannot fall back to the resized boss scale. */
+		const matrix_t OwnerWorld =
+			XMLoadFloat4x4(&EffectivePresentationRoot);
         for (const SOURCE_ANCHOR_REQUEST& Request : Requests)
         {
             if (!pModel->Has_Bone(Request.strRuntimeBoneName.c_str()))
@@ -2101,6 +2238,8 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Prewarm.Advance");
 	const std::shared_ptr<const CEffectMaterialProgramRegistry>
 		MaterialProgramRegistry =
 			CEffectCatalog::Acquire_MaterialProgramRegistry();
@@ -2464,6 +2603,28 @@ bool_t Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(
 		return false;
 	}
 	return true;
+}
+
+bool_t Client::CEffectPresentationService::Build_CueScalePolicyAnchor(
+	const VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
+	const float3_t& WorldScale,
+	const float4x4_t& SampledOwnerAnchor,
+	float4x4_t& OutAnchor)
+{
+	return Try_BuildCueScalePolicyAnchor(
+		eScalePolicy, WorldScale, SampledOwnerAnchor, OutAnchor);
+}
+
+bool_t Client::CEffectPresentationService::Build_CueScalePolicyRoot(
+	const EFFECT_TRANSFORM_DESC& LocalTransform,
+	const VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
+	const float3_t& WorldScale,
+	const float4x4_t& SampledOwnerAnchor,
+	float4x4_t& OutRoot)
+{
+	return Try_ComposeCueScalePolicyRoot(
+		LocalTransform, eScalePolicy, WorldScale, SampledOwnerAnchor,
+		EFFECT_ORIENTATION_POLICY::ANCHOR, 0.f, OutRoot);
 }
 
 bool_t Client::CEffectPresentationService::Prepare_ReconstructedRuntimeProgram(
@@ -2937,6 +3098,9 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
 		Desc.fInitialSampleTimeSeconds < 0.f ||
 		EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
+		!Is_ValidCueScaleDescriptor(Desc.eScalePolicy, Desc.vWorldScale) ||
+		Desc.eScalePolicy !=
+			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE ||
 		!Is_ValidOrientationDescriptor(Desc) ||
 		EFFECT_STOP_POLICY::NATURAL != Desc.eStopPolicy)
 	{
@@ -2993,8 +3157,9 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		return false;
 	}
 	float4x4_t Root{};
-	if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
-		Desc.LocalTransform, Anchor, Desc.eOrientationPolicy,
+	if (!Try_ComposeCueScalePolicyRoot(
+		Desc.LocalTransform, Desc.eScalePolicy, Desc.vWorldScale,
+		Anchor, Desc.eOrientationPolicy,
 		Desc.fActionFacingYawDegrees, Root))
 	{
 		strOutStatus = "Artist 31470 root transform is invalid.";
@@ -3070,6 +3235,8 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 	Active.strAnchorSlotId = Desc.strAnchorSlotId;
 	Active.LocalTransform = Desc.LocalTransform;
 	Active.eFollowPolicy = Desc.eFollowPolicy;
+	Active.eScalePolicy = Desc.eScalePolicy;
+	Active.vWorldScale = Desc.vWorldScale;
 	Active.eOrientationPolicy = Desc.eOrientationPolicy;
 	Active.fActionFacingYawDegrees = Desc.fActionFacingYawDegrees;
 	Active.eStopPolicy = Desc.eStopPolicy;
@@ -3174,6 +3341,10 @@ bool_t Client::CEffectPresentationService::Spawn(
 		std::isfinite(Desc.fInitialSampleTimeSeconds) &&
 		Desc.fInitialSampleTimeSeconds >= 0.f &&
 		EFFECT_FOLLOW_POLICY::END != Desc.eFollowPolicy &&
+		Is_ValidCueScaleDescriptor(Desc.eScalePolicy, Desc.vWorldScale) &&
+		(!Desc.bUseWorldRoot ||
+		 Desc.eScalePolicy ==
+			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE) &&
 		Is_ValidOrientationDescriptor(Desc) &&
 		EFFECT_STOP_POLICY::END != Desc.eStopPolicy &&
 		(EFFECT_STOP_POLICY::CUE_END != Desc.eStopPolicy ||
@@ -3354,6 +3525,8 @@ void Client::CEffectPresentationService::Stop_WorldRoot(
 
 void Client::CEffectPresentationService::Commit_PendingSpawns()
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Spawn.Commit");
 	if (g_PendingEffectSpawns.empty())
 		return;
 
@@ -3398,6 +3571,9 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         !std::isfinite(Desc.fInitialSampleTimeSeconds) ||
         Desc.fInitialSampleTimeSeconds < 0.f ||
         EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
+		!Is_ValidCueScaleDescriptor(Desc.eScalePolicy, Desc.vWorldScale) ||
+		(Desc.bUseWorldRoot && Desc.eScalePolicy !=
+			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE) ||
 		!Is_ValidOrientationDescriptor(Desc) ||
         EFFECT_STOP_POLICY::END == Desc.eStopPolicy ||
         (EFFECT_STOP_POLICY::CUE_END == Desc.eStopPolicy &&
@@ -3487,8 +3663,9 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 			g_strStatus = strOutStatus;
 			return false;
 		}
-		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
-			Desc.LocalTransform, Anchor, Desc.eOrientationPolicy,
+		if (!Try_ComposeCueScalePolicyRoot(
+			Desc.LocalTransform, Desc.eScalePolicy, Desc.vWorldScale,
+			Anchor, Desc.eOrientationPolicy,
 			Desc.fActionFacingYawDegrees, Root))
 		{
 			strOutStatus = "Effect cue root transform is invalid.";
@@ -3563,6 +3740,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     Active.strAnchorSlotId = Desc.strAnchorSlotId;
     Active.LocalTransform = Desc.LocalTransform;
     Active.eFollowPolicy = Desc.eFollowPolicy;
+	Active.eScalePolicy = Desc.eScalePolicy;
+	Active.vWorldScale = Desc.vWorldScale;
 	Active.eOrientationPolicy = Desc.eOrientationPolicy;
 	Active.fActionFacingYawDegrees = Desc.fActionFacingYawDegrees;
     Active.eStopPolicy = Desc.eStopPolicy;
@@ -3586,6 +3765,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 
 void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Service.Update");
     const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
     for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
     {
@@ -3684,6 +3865,8 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 
 void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.FollowAnchors.Update");
     const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
     for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
     {
@@ -3719,7 +3902,8 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 			continue;
 		}
 		Resolve_SourceAnchors(
-			Owner, Effect.SourceAnchorRequests,
+			Owner, Effect.eScalePolicy, Effect.vWorldScale,
+			Effect.SourceAnchorRequests,
 			Effect.SourceAnchorWorldsScratch);
 		Effect.pObject->Set_SourceAnchorWorlds(
 			std::move(Effect.SourceAnchorWorldsScratch));
@@ -3734,8 +3918,9 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
             continue;
         }
 		float4x4_t Root{};
-		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
-			Effect.LocalTransform, Anchor, Effect.eOrientationPolicy,
+		if (!Try_ComposeCueScalePolicyRoot(
+			Effect.LocalTransform, Effect.eScalePolicy, Effect.vWorldScale,
+			Anchor, Effect.eOrientationPolicy,
 			Effect.fActionFacingYawDegrees, Root))
 		{
 			Effect.bFollowAnchorMissing = true;

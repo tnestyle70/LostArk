@@ -40,6 +40,9 @@ public:
 		bool_t visible = true;
 		MAP_ASSET_RENDER_PROFILE renderProfile;
 		MAP_FRUSTUM_CULLING_POLICY frustumCulling{};
+		/* Only set when the catalog resolved a water row for this asset. */
+		bool_t hasWaterProfile = false;
+		MAP_ASSET_WATER_PROFILE waterProfile;
 	};
 
 private:
@@ -93,6 +96,8 @@ private:
 	MAP_FRUSTUM_RUNTIME_STATE m_FrustumState{};
 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
+	bool_t m_bHasWaterProfile = false;
+	MAP_ASSET_WATER_PROFILE m_WaterProfile;
 	/* Runtime presentation may fade a placement without mutating the authored
 	   catalog profile shared by every occurrence of the asset. */
 	f32_t m_fPresentationOpacityMultiplier = 1.f;
@@ -114,6 +119,10 @@ private:
 		PRESENTATION_VORTEX_PROFILE profile,
 		f32_t strength);
 	HRESULT Reset_PresentationVortexShaderResources();
+	/* Pushes the authored water parameters and clears them again, so an
+	   ordinary asset drawn later through the same shared FX11 effect cannot
+	   inherit another placement's water values. */
+	HRESULT Bind_WaterShaderResources(bool_t bEnabled);
 	//Frustum Culling
 	void Ready_CullBounds();
 	void Update_WorldCullBounds();

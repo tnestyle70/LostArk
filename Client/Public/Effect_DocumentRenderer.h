@@ -65,6 +65,9 @@ struct EFFECT_DECAL_SHADER_PROJECTION_DESC final
 {
 	float2_t vSize = { 1.f, 1.f };
 	f32_t fDepth = 1.f;
+	f32_t fEdgeFade = 0.f;
+	float3_t vUp = { 0.f, 1.f, 0.f };
+	f32_t fNormalCutoff = -1.f;
 };
 
 struct EFFECT_PARTICLE_SPRITE_SCALE_DESC final
@@ -143,6 +146,9 @@ struct EFFECT_GPU_RENDER_OCCURRENCE_STATS final
 {
 	std::string strElementId;
 	EFFECT_GPU_RENDER_FAMILY eFamily = EFFECT_GPU_RENDER_FAMILY::END;
+	EFFECT_COMPOSITION_LAYER eCompositionLayer =
+		EFFECT_COMPOSITION_LAYER::NORMAL;
+	uint64_t iFirstIssuedDrawOrdinal = UINT64_MAX;
 	uint64_t iConfigured = 0u;
 	uint64_t iEvaluated = 0u;
 	uint64_t iActive = 0u;
@@ -178,6 +184,16 @@ struct EFFECT_GPU_RENDER_OCCURRENCE_STATS final
 	f32_t fFinalTrailPairWidthMin = 0.f;
 	f32_t fFinalTrailPairWidthMax = 0.f;
 	bool_t bHasFinalTrailPairCenter = false;
+};
+
+struct EFFECT_MODEL_CUE_ANIMATION_PROBE final
+{
+	f32_t fPrototypeDurationSeconds = 0.f;
+	f32_t fCloneDurationSeconds = 0.f;
+	f32_t fMidTrackPositionTicks = 0.f;
+	f32_t fTailTrackPositionTicks = 0.f;
+	f32_t fTrackDurationTicks = 0.f;
+	f32_t fWitnessBoneMaximumDelta = 0.f;
 };
 #endif
 
@@ -366,6 +382,17 @@ public:
 		const std::shared_ptr<const PREPARED_DOCUMENT>& pBoundPrepared,
 		std::string_view strElementId,
 		std::string& strOutError);
+	/* Exercises the product prototype-to-instance clone seam and proves that a
+	   hold-last Model Cue can advance a named skeletal witness before clamping
+	   at the source clip tail. */
+	static bool_t Probe_ModelCueCloneAnimationForTests(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<const PREPARED_DOCUMENT>& pPrepared,
+		std::string_view strCueId,
+		std::string_view strWitnessBoneName,
+		EFFECT_MODEL_CUE_ANIMATION_PROBE& OutProbe,
+		std::string& strOutError);
 #endif
 	static bool_t Resolve_ParticleSpriteScale(
 		const EFFECT_EVALUATED_PARTICLE& Particle,
@@ -441,10 +468,28 @@ public:
 			Staged.vSize = Element.pElement->Detail.Decal.vSize;
 			Staged.fDepth = Element.pElement->Detail.Decal.fDepth;
 		}
+		const EFFECT_DECAL_DETAIL_DESC& Decal =
+			Element.pElement->Detail.Decal;
+		Staged.fEdgeFade = Decal.fEdgeFade;
+		Staged.fNormalCutoff = Decal.eReceiverMode ==
+			EFFECT_DECAL_RECEIVER_MODE::UPWARD_SURFACES ?
+				Decal.fNormalCutoff : -1.f;
+		const vector_t WorldUp = XMVector3TransformNormal(
+			XMVectorSet(0.f, 1.f, 0.f, 0.f),
+			XMLoadFloat4x4(&Element.World));
+		const f32_t fWorldUpLength = XMVectorGetX(XMVector3Length(WorldUp));
+		if (!std::isfinite(fWorldUpLength) || fWorldUpLength <= 0.000001f)
+			return false;
+		XMStoreFloat3(&Staged.vUp, XMVectorScale(WorldUp, 1.f / fWorldUpLength));
 		if (!std::isfinite(Staged.vSize.x) ||
 			!std::isfinite(Staged.vSize.y) ||
-			!std::isfinite(Staged.fDepth) || Staged.vSize.x <= 0.f ||
-			Staged.vSize.y <= 0.f || Staged.fDepth <= 0.f)
+			!std::isfinite(Staged.fDepth) ||
+			!std::isfinite(Staged.fEdgeFade) ||
+			!std::isfinite(Staged.fNormalCutoff) ||
+			Staged.vSize.x <= 0.f || Staged.vSize.y <= 0.f ||
+			Staged.fDepth <= 0.f || Staged.fEdgeFade < 0.f ||
+			Staged.fEdgeFade > 1.f || Staged.fNormalCutoff < -1.f ||
+			Staged.fNormalCutoff > 1.f)
 		{
 			return false;
 		}
@@ -545,8 +590,14 @@ public:
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> pFrame,
 		std::string& strOutError);
 	bool_t Has_NonBlendModelCues() const;
+	bool_t Has_WorldMarkElements() const;
 	HRESULT Render_NonBlendModelCues(const EFFECT_EVALUATED_FRAME& Frame);
-	HRESULT Render(const EFFECT_EVALUATED_FRAME& Frame);
+	HRESULT Render_WorldMarks(
+		const EFFECT_EVALUATED_FRAME& Frame,
+		uint64_t iSubmissionSerial = 0u);
+	HRESULT Render(
+		const EFFECT_EVALUATED_FRAME& Frame,
+		uint64_t iSubmissionSerial = 0u);
 	HRESULT Render_ReconstructedDiagnostic(
 		const float4x4_t& RootWorld,
 		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
@@ -712,6 +763,12 @@ private:
 	HRESULT Render_ModelCues(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		bool_t bNonBlendCharacterSurfaceOnly);
+	HRESULT Render_CompositionPhase(
+		const EFFECT_EVALUATED_FRAME& Frame,
+		EFFECT_COMPOSITION_LAYER ePhase,
+		bool_t bBeginSubmission,
+		bool_t bFinalizeSubmission,
+		uint64_t iSubmissionSerial);
 	HRESULT Fail_RenderOperation(
 		std::string strOperation,
 		HRESULT hResult = E_FAIL,
@@ -772,8 +829,11 @@ private:
 	bool_t m_bSourceVisualProgramActive = false;
 	EFFECT_PREVIEW_SUBMISSION_ISOLATION m_PreviewSubmissionIsolation;
 	EFFECT_GPU_RENDER_SUBMISSION_STATS m_LastRenderSubmissionStats;
+	bool_t m_bWorldMarkSubmissionPending = false;
+	uint64_t m_iWorldMarkSubmissionSerial = 0u;
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	EFFECT_GPU_RENDER_OCCURRENCE_STATS* m_pActiveOccurrenceStats = nullptr;
+	uint64_t m_iTestIssuedDrawOrdinal = 0u;
 #endif
 	std::string m_strStatus;
 	uint64_t m_iStatusEvaluated = (std::numeric_limits<uint64_t>::max)();
