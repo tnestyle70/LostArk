@@ -2,15 +2,32 @@
 param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
-    [string]$OutputRoot = 'Server/Bin/DataFiles/Gameplay'
+    [string]$OutputRoot = 'Server/Bin/DataFiles/Gameplay',
+    [string]$InputOverlayRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$resolvedInputOverlayRoot = if ([string]::IsNullOrWhiteSpace($InputOverlayRoot)) {
+    ''
+}
+elseif ([IO.Path]::IsPathRooted($InputOverlayRoot)) {
+    [IO.Path]::GetFullPath($InputOverlayRoot)
+}
+else {
+    [IO.Path]::GetFullPath((Join-Path $repoRoot $InputOverlayRoot))
+}
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
 
 function Read-JsonDocument([string]$RelativePath) {
     $path = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePath))
+    if (-not [string]::IsNullOrWhiteSpace($resolvedInputOverlayRoot)) {
+        $overlayPath = [IO.Path]::GetFullPath(
+            (Join-Path $resolvedInputOverlayRoot $RelativePath))
+        if ([IO.File]::Exists($overlayPath)) {
+            $path = $overlayPath
+        }
+    }
     if (-not [IO.File]::Exists($path)) { throw "Missing gameplay document: $RelativePath" }
 	return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
 }
@@ -935,8 +952,8 @@ foreach ($player in @($playerDocument.players)) {
 $bossDocument = Read-JsonDocument 'Data/Balance/BossProfiles.json'
 Assert-ExactProperties $bossDocument @('schema','formatVersion','bosses') 'boss document'
 Assert-JsonString $bossDocument.schema 'boss document schema'
-Assert-JsonInteger $bossDocument.formatVersion 'boss document formatVersion' 3 3
-if ($bossDocument.schema -ne 'lostark.boss-profiles' -or $bossDocument.formatVersion -ne 3) {
+Assert-JsonInteger $bossDocument.formatVersion 'boss document formatVersion' 4 4
+if ($bossDocument.schema -ne 'lostark.boss-profiles' -or $bossDocument.formatVersion -ne 4) {
     throw 'Boss profile header is invalid.'
 }
 $bossIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -944,14 +961,13 @@ $bossRows = [Collections.Generic.List[string]]::new()
 foreach ($boss in @($bossDocument.bosses)) {
 	Assert-ExactProperties $boss @(
 		'archetypeId','encounterId','displayName','maximumHp','maximumHealthBars','attackPower','collisionRadius',
-		'engageDistance','moveSpeed','phaseTwoHpPercent','armorPlates') 'boss profile'
+		'engageDistance','moveSpeed','phasePolicy','armorPlates') 'boss profile'
 	foreach ($stringField in @('archetypeId','encounterId','displayName')) {
 		Assert-JsonString $boss.$stringField "boss $stringField"
 	}
 	Assert-JsonInteger $boss.maximumHp 'boss maximumHp' 1 ([uint32]::MaxValue)
 	Assert-JsonInteger $boss.maximumHealthBars 'boss maximumHealthBars' 1 1000
 	Assert-JsonInteger $boss.attackPower 'boss attackPower' 1 ([uint32]::MaxValue)
-	Assert-JsonInteger $boss.phaseTwoHpPercent 'boss phaseTwoHpPercent' 1 99
 	Assert-JsonNumber $boss.collisionRadius 'boss collisionRadius'
 	Assert-JsonNumber $boss.engageDistance 'boss engageDistance'
 	Assert-JsonNumber $boss.moveSpeed 'boss moveSpeed'
@@ -963,11 +979,36 @@ foreach ($boss in @($bossDocument.bosses)) {
 	# collisionRadius closes the gap between an official skill range, which is
 	# measured to the edge of the target, and this server's centre-to-centre reach
 	# test. A zero would put every melee skill out of range of its own boss.
-    if (-not $bossIds.Add([string]$boss.archetypeId) -or [uint32]$boss.maximumHp -eq 0 -or
+	if ($null -eq $boss.phasePolicy -or
+		$boss.phasePolicy -isnot [pscustomobject]) {
+		throw "Boss phasePolicy must be a tagged object: $($boss.archetypeId)"
+	}
+	Assert-JsonString $boss.phasePolicy.kind 'boss phase policy kind'
+	$phasePolicyKind = [string]$boss.phasePolicy.kind
+	$phasePolicyThreshold = [uint32]0
+	if ($phasePolicyKind -ceq 'HEALTH_PERCENT_THRESHOLD') {
+		Assert-ExactProperties $boss.phasePolicy @(
+			'kind','thresholdPercent') 'boss health-percent phase policy'
+		Assert-JsonInteger $boss.phasePolicy.thresholdPercent `
+			'boss phase policy thresholdPercent' 1 99
+		$phasePolicyThreshold = [uint32]$boss.phasePolicy.thresholdPercent
+	}
+	elseif ($phasePolicyKind -ceq 'AUTHORED_PATTERN_EVENT') {
+		Assert-ExactProperties $boss.phasePolicy @('kind') `
+			'boss authored-event phase policy'
+	}
+	else {
+		throw "Boss phase policy kind is invalid: $($boss.archetypeId)"
+	}
+	if ([string]$boss.archetypeId -ceq 'BOSS_VALTAN' -and
+		([string]$boss.encounterId -cne 'ENCOUNTER_VALTAN' -or
+		 $phasePolicyKind -cne 'AUTHORED_PATTERN_EVENT')) {
+		throw 'BOSS_VALTAN must use the ENCOUNTER_VALTAN authored-event phase policy.'
+	}
+	if (-not $bossIds.Add([string]$boss.archetypeId) -or [uint32]$boss.maximumHp -eq 0 -or
 		[uint32]$boss.maximumHealthBars -eq 0 -or
         [uint32]$boss.attackPower -eq 0 -or [double]$boss.collisionRadius -le 0.0 -or
-		[double]$boss.engageDistance -le 0.0 -or [double]$boss.moveSpeed -le 0.0 -or
-        [uint32]$boss.phaseTwoHpPercent -eq 0 -or [uint32]$boss.phaseTwoHpPercent -ge 100) {
+		[double]$boss.engageDistance -le 0.0 -or [double]$boss.moveSpeed -le 0.0) {
         throw "Boss profile is invalid: $($boss.archetypeId)"
     }
     $bossRows.Add((@(
@@ -977,7 +1018,7 @@ foreach ($boss in @($bossDocument.bosses)) {
         (Format-InvariantFloat $boss.collisionRadius 'boss collisionRadius'),
         (Format-InvariantFloat $boss.engageDistance 'boss engageDistance'),
         (Format-InvariantFloat $boss.moveSpeed 'boss moveSpeed'),
-        [uint32]$boss.phaseTwoHpPercent) -join "`t"))
+		$phasePolicyKind, $phasePolicyThreshold) -join "`t"))
 	# A plate is a destructible piece of this boss: it mitigates while intact and
 	# only loses durability inside a GROGGY stage. plateIndex is also the client
 	# part order, so it must stay dense and start at zero.
@@ -1176,6 +1217,8 @@ if ($encounterBoss.Count -ne 1) {
 $maximumHealthBars = [uint32]$encounterBoss[0].maximumHealthBars
 $patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $actionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$healthBarTriggerKeys =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $coveredSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
 $sourceTimingByActionId = Read-ValtanSkillTiming
 $patternRows = [Collections.Generic.List[string]]::new()
@@ -1187,6 +1230,10 @@ $stageOwnerByKey = @{}
 # below records the gameplay duration each curve has to stay inside.
 $patternStageDurationByKey = @{}
 $spawnCombatObjectOwnerById = @{}
+$gameplayPhaseActionCount = 0
+$hasExactValtanArenaBreakPhaseAction = $false
+$valtanHighJumpTypedVolleyCount = 0
+$hasExactValtanHighJumpTypedVolleyOwner = $false
 foreach ($pattern in @($encounterDocument.patterns)) {
 	# serverMotion is optional. Only a pattern whose boss motion the Server has to
 	# compute itself, like the 109 leap to its landing anchor, carries one.
@@ -1309,6 +1356,10 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		}
 		if ($category -cne 'MECHANIC') {
 			throw "Health-bar pattern must use the MECHANIC category: $($pattern.patternId)"
+		}
+		$triggerKey = "$( [uint32]$pattern.triggerHealthBar )/$( [uint32]$pattern.triggerOrder )"
+		if (-not $healthBarTriggerKeys.Add($triggerKey)) {
+			throw "Health-bar pattern trigger tuple is duplicated: $triggerKey"
 		}
 	}
 	else { throw "Unknown pattern selection mode: $($pattern.patternId)" }
@@ -1582,10 +1633,95 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$stageActionKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 			for ($actionIndex = 0; $actionIndex -lt @($stage.actions).Count; ++$actionIndex) {
 				$stageAction = $stage.actions[$actionIndex]
+				Assert-JsonString $stageAction.kind `
+					"pattern $($pattern.patternId) stage $stageIndex action kind"
+				$actionKind = [string]$stageAction.kind
+				if ($actionKind -ceq 'SPAWN_COMBAT_OBJECT_VOLLEY') {
+					Assert-ExactProperties $stageAction @(
+						'trigger','kind','targetId','targetingPolicy',
+						'countPerResolvedTarget','layout','radiusM',
+						'startAngleDegrees','angleStepDegrees','allowOverlap',
+						'maximumTotalObjects') 'encounter pattern stage volley'
+					foreach ($field in @(
+						'trigger','targetId','targetingPolicy','layout')) {
+						Assert-JsonString $stageAction.$field `
+							"pattern $($pattern.patternId) stage $stageIndex volley $field"
+					}
+					Assert-StableId $stageAction.targetId `
+						'pattern stage volley targetId'
+					Assert-JsonInteger $stageAction.countPerResolvedTarget `
+						'pattern stage volley countPerResolvedTarget' 1 8
+					Assert-JsonInteger $stageAction.maximumTotalObjects `
+						'pattern stage volley maximumTotalObjects' 1 32
+					foreach ($field in @(
+						'radiusM','startAngleDegrees','angleStepDegrees')) {
+						Assert-JsonNumber $stageAction.$field `
+							"pattern stage volley $field"
+					}
+					if ($stageAction.allowOverlap -isnot [bool]) {
+						throw 'Pattern stage volley allowOverlap must be a JSON Boolean.'
+					}
+					$actionTrigger = [string]$stageAction.trigger
+					$actionTargetId = [string]$stageAction.targetId
+					$countPerTarget = [uint32]$stageAction.countPerResolvedTarget
+					$maximumTotalObjects = [uint32]$stageAction.maximumTotalObjects
+					$layout = [string]$stageAction.layout
+					$radiusM = [double]$stageAction.radiusM
+					$startAngleDegrees = [double]$stageAction.startAngleDegrees
+					$angleStepDegrees = [double]$stageAction.angleStepDegrees
+					$allowOverlap = [bool]$stageAction.allowOverlap
+					$isSingle = [uint32]1 -eq $countPerTarget
+					if ($actionTrigger -cne 'ENTER' -or
+						[string]$stageAction.targetingPolicy -cne 'PER_ALIVE_PLAYER' -or
+						$maximumTotalObjects -lt $countPerTarget -or
+						$radiusM -lt 0.0 -or
+						($isSingle -and ($layout -cne 'SINGLE' -or
+							$radiusM -ne 0.0 -or $startAngleDegrees -ne 0.0 -or
+							$angleStepDegrees -ne 0.0 -or $allowOverlap)) -or
+						(-not $isSingle -and ($layout -cne 'RADIAL' -or
+							$radiusM -le 0.0 -or $angleStepDegrees -eq 0.0 -or
+							$allowOverlap))) {
+						throw "Pattern stage volley contract is invalid: $($pattern.patternId) stage $stageIndex"
+					}
+					$actionKey = "$actionTrigger/$actionTargetId"
+					if (-not $stageActionKeys.Add($actionKey) -or
+						$spawnCombatObjectOwnerById.ContainsKey($actionTargetId)) {
+						throw "Pattern stage volley is duplicated: $($pattern.patternId) stage $stageIndex"
+					}
+					$spawnCombatObjectOwnerById[$actionTargetId] = [pscustomobject]@{
+						PatternId = [string]$pattern.patternId
+						StageActionId = [string]$stage.actionId
+					}
+					if ($actionTargetId -ceq
+						'combatobject.valtan.high-jump.target-axe') {
+						++$valtanHighJumpTypedVolleyCount
+						$hasExactValtanHighJumpTypedVolleyOwner =
+							[string]$pattern.patternId -ceq 'VALTAN_HIGH_JUMP' -and
+							[string]$stage.stageId -ceq 'AIRBORNE' -and
+							[string]$stage.actionId -ceq `
+								'valtan.attack.high-jump.airborne' -and
+							$actionIndex -eq 0
+					}
+					$hasSpawnCombatObjectAction = $true
+					$patternRows.Add((@(
+						'PATTERNSTAGEVOLLEY', $encounterDocument.encounterId,
+						$pattern.patternId, $stage.actionId, $actionIndex,
+						$actionTrigger, $actionTargetId,
+						[string]$stageAction.targetingPolicy, $countPerTarget, $layout,
+						(Format-InvariantFloat $radiusM 'pattern stage volley radiusM'),
+						(Format-InvariantSignedFloat $startAngleDegrees `
+							'pattern stage volley startAngleDegrees'),
+						(Format-InvariantSignedFloat $angleStepDegrees `
+							'pattern stage volley angleStepDegrees'),
+						$(if ($allowOverlap) { 1 } else { 0 }),
+						$maximumTotalObjects) -join "`t"))
+					continue
+				}
+
 				Assert-ExactProperties $stageAction @(
 					'trigger','kind','targetId','value','durationMs') `
 					'encounter pattern stage action'
-				foreach ($field in @('trigger','kind','targetId')) {
+				foreach ($field in @('trigger','targetId')) {
 					Assert-JsonString $stageAction.$field `
 						"pattern $($pattern.patternId) stage $stageIndex action $field"
 				}
@@ -1596,10 +1732,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				Assert-JsonInteger $stageAction.durationMs `
 					'pattern stage action durationMs' 0 0
 				$actionTrigger = [string]$stageAction.trigger
-				$actionKind = [string]$stageAction.kind
 				$actionTargetId = [string]$stageAction.targetId
 				$actionValue = [uint32]$stageAction.value
-				$actionKey = "$actionTrigger/$actionKind/$($stageAction.targetId)"
+				$actionKey = "$actionTrigger/$actionTargetId"
 				$validTypedAction = $false
 				switch ($actionKind) {
 					'SET_BOSS_FLAG' {
@@ -1617,8 +1752,14 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
 							$actionValue -eq 1
 					}
+					'SET_GAMEPLAY_PHASE' {
+						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
+							$actionTargetId -ceq 'boss.phase.gameplay' -and
+							$actionValue -eq 2
+					}
 				}
-				if ($actionKind -cne 'SPAWN_COMBAT_OBJECT') {
+				if ($actionKind -cne 'SPAWN_COMBAT_OBJECT' -and
+					$actionKind -cne 'SET_GAMEPLAY_PHASE') {
 					$validTypedAction = $validTypedAction -and
 						(($actionTrigger -ceq 'ENTER' -and $actionValue -gt 0) -or
 						 ($actionTrigger -ceq 'EXIT' -and $actionValue -eq 0))
@@ -1635,6 +1776,16 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						StageActionId = [string]$stage.actionId
 					}
 					$hasSpawnCombatObjectAction = $true
+				}
+				elseif ($actionKind -ceq 'SET_GAMEPLAY_PHASE') {
+					++$gameplayPhaseActionCount
+					$hasExactValtanArenaBreakPhaseAction =
+						[string]$encounterDocument.encounterId -ceq 'ENCOUNTER_VALTAN' -and
+						[string]$pattern.patternId -ceq 'VALTAN_ARENA_BREAK_109' -and
+						[string]$stage.stageId -ceq 'IMPACT' -and
+						[string]$stage.actionId -ceq `
+							'valtan.mechanic.arena-break-109.impact' -and
+						$actionIndex -eq 0
 				}
 				else {
 					$stateKey = "$actionKind/$actionTargetId"
@@ -1735,6 +1886,22 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		throw "Pattern stage action lifetime is not closed: $($pattern.patternId)"
 	}
 }
+if ([string]$encounterBoss[0].phasePolicy.kind -ceq
+	'AUTHORED_PATTERN_EVENT') {
+	if ($gameplayPhaseActionCount -ne 1 -or
+		-not $hasExactValtanArenaBreakPhaseAction) {
+		throw ('Valtan authored phase policy requires exactly one ' +
+			'109 IMPACT ENTER SET_GAMEPLAY_PHASE action.')
+	}
+}
+elseif ($gameplayPhaseActionCount -ne 0) {
+	throw 'Health-percent phase policy cannot also author SET_GAMEPLAY_PHASE.'
+}
+if ($valtanHighJumpTypedVolleyCount -ne 1 -or
+	-not $hasExactValtanHighJumpTypedVolleyOwner) {
+	throw ('Valtan HIGH_JUMP AIRBORNE must own exactly one typed target-axe ' +
+		'volley at action ordinal zero.')
+}
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
 
 # The combat-runtime branch owns these reactive/mechanic transitions.  A merge
@@ -1765,7 +1932,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 }
 if (@($encounterDocument.patterns).Count -ne 33 -or
 	$authoredStageCount -ne 131 -or
-	$authoredStageActionCount -ne 24 -or
+	$authoredStageActionCount -ne 25 -or
 	$authoredStageBranchCount -ne 24 -or
 	$authoredStageMotionCount -ne 2) {
 	throw ('Valtan reactive stage topology count drifted: ' +
@@ -1782,7 +1949,7 @@ $requiredReactiveRows = @(
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.groggy`t0`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t0`tENTER`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t30`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t1`tEXIT`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t0`t0",
-	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_HIGH_JUMP`tvaltan.attack.high-jump.airborne`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.high-jump.target-axe`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_ARENA_BREAK_109`tvaltan.mechanic.arena-break-109.impact`t0`tENTER`tSET_GAMEPLAY_PHASE`tboss.phase.gameplay`t2`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_RED_BLADE_WAVE`tvaltan.attack.red-blade-wave.active`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.red-blade-wave.projectile`t1`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
@@ -2457,9 +2624,11 @@ foreach ($propBreak in @($propBreakDocument.actions)) {
 	}
 }
 
-# Between two health-bar mechanics each span explicitly chooses whether its
-# patternIds are a weighted candidate pool or a one-shot ordered introduction.
-# Health-bar mechanics remain separately queued by the Encounter trigger rows.
+# Rotation Product v3 is a tagged union. Managed WEIGHTED_POOL rows retain the
+# authoring window/set identities and each candidate's weight/enabled state.
+# Legacy ORDERED_INTRO_THEN_WEIGHTED rows retain their ordered patternIds,
+# including intentional duplicates. Version 2 remains a repository migration
+# input only; a v3 overlay emits bootstrap v19 rows for the new Server consumer.
 $rotationDocument = Read-JsonDocument `
 	'Data/Encounters/Valtan/ValtanPatternRotations.json'
 Assert-ExactProperties $rotationDocument @(
@@ -2467,14 +2636,14 @@ Assert-ExactProperties $rotationDocument @(
 	'Valtan pattern rotation document'
 Assert-JsonString $rotationDocument.schema 'Valtan pattern rotation schema'
 Assert-JsonInteger $rotationDocument.formatVersion `
-	'Valtan pattern rotation formatVersion' 2 2
+	'Valtan pattern rotation formatVersion' 2 3
 Assert-JsonString $rotationDocument.encounterId `
 	'Valtan pattern rotation encounterId'
 Assert-JsonString $rotationDocument.bossArchetypeId `
 	'Valtan pattern rotation bossArchetypeId'
 if ([string]$rotationDocument.schema -cne `
 	'lostark.valtan-pattern-rotations' -or
-	[uint32]$rotationDocument.formatVersion -ne 2 -or
+	[uint32]$rotationDocument.formatVersion -notin @(2, 3) -or
 	[string]$rotationDocument.encounterId -cne `
 		[string]$encounterDocument.encounterId -or
 	[string]$rotationDocument.bossArchetypeId -cne `
@@ -2487,10 +2656,8 @@ if ([string]$rotationDocument.schema -cne `
 $rotationIds =
 	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $previousRotationFromBar = [uint32]::MaxValue
+$rotationFormatVersion = [uint32]$rotationDocument.formatVersion
 foreach ($rotation in @($rotationDocument.rotations)) {
-	Assert-ExactProperties $rotation @(
-		'rotationId','selectionMode','fromHealthBar','toHealthBar','patternIds') `
-		'Valtan pattern rotation'
 	Assert-JsonString $rotation.rotationId 'Valtan pattern rotation rotationId'
 	Assert-StableId ([string]$rotation.rotationId) 'Valtan pattern rotation rotationId'
 	Assert-JsonString $rotation.selectionMode 'Valtan pattern rotation selectionMode'
@@ -2514,15 +2681,59 @@ foreach ($rotation in @($rotationDocument.rotations)) {
 		throw "Valtan pattern rotation span is invalid: $($rotation.rotationId)"
 	}
 	$previousRotationFromBar = $rotationFromBar
-	if ($rotation.patternIds -isnot [Array] -or
-		@($rotation.patternIds).Count -eq 0 -or
-		@($rotation.patternIds).Count -gt 32) {
-		throw "Valtan pattern rotation step count is invalid: $($rotation.rotationId)"
+	$isWeightedV3 = $rotationFormatVersion -eq 3 -and
+		[string]$rotation.selectionMode -ceq 'WEIGHTED_POOL'
+	if ($isWeightedV3) {
+		Assert-ExactProperties $rotation @(
+			'rotationId','selectionMode','fromHealthBar','toHealthBar',
+			'windowId','gameplayPhase','selectionSetId','candidates') `
+			'Valtan weighted pattern rotation v3'
+		Assert-JsonString $rotation.windowId 'Valtan rotation windowId'
+		Assert-StableId ([string]$rotation.windowId) 'Valtan rotation windowId'
+		Assert-JsonInteger $rotation.gameplayPhase `
+			'Valtan rotation gameplayPhase' 1 3
+		Assert-JsonString $rotation.selectionSetId 'Valtan rotation selectionSetId'
+		Assert-StableId ([string]$rotation.selectionSetId) `
+			'Valtan rotation selectionSetId'
+		if ($rotation.candidates -isnot [Array] -or
+			@($rotation.candidates).Count -eq 0 -or
+			@($rotation.candidates).Count -gt 32) {
+			throw "Valtan weighted candidate count is invalid: $($rotation.rotationId)"
+		}
+	}
+	else {
+		Assert-ExactProperties $rotation @(
+			'rotationId','selectionMode','fromHealthBar','toHealthBar','patternIds') `
+			'Valtan ordered/legacy pattern rotation'
+		if ($rotation.patternIds -isnot [Array] -or
+			@($rotation.patternIds).Count -eq 0 -or
+			@($rotation.patternIds).Count -gt 32) {
+			throw "Valtan pattern rotation step count is invalid: $($rotation.rotationId)"
+		}
 	}
 	$weightedPoolIds =
 		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	$rotationStepIndex = 0
-	foreach ($rotationPatternId in @($rotation.patternIds)) {
+	$enabledPositiveWeight = [uint64]0
+	$rotationEntries = if ($isWeightedV3) {
+		@($rotation.candidates)
+	}
+	else {
+		@($rotation.patternIds | ForEach-Object {
+			[pscustomobject]@{ patternId = $_; weight = 0; enabled = $true }
+		})
+	}
+	foreach ($rotationEntry in $rotationEntries) {
+		if ($isWeightedV3) {
+			Assert-ExactProperties $rotationEntry @(
+				'patternId','weight','enabled') 'Valtan weighted candidate'
+			Assert-JsonInteger $rotationEntry.weight `
+				'Valtan weighted candidate weight' 1 100000
+			if ($rotationEntry.enabled -isnot [bool]) {
+				throw 'Valtan weighted candidate enabled must be a JSON Boolean.'
+			}
+		}
+		$rotationPatternId = [string]$rotationEntry.patternId
 		Assert-JsonString $rotationPatternId 'Valtan pattern rotation patternId'
 		Assert-StableId ([string]$rotationPatternId) 'Valtan pattern rotation patternId'
 		$rotationOwners = @($encounterDocument.patterns | Where-Object {
@@ -2541,15 +2752,68 @@ foreach ($rotation in @($rotationDocument.rotations)) {
 			-not $weightedPoolIds.Add([string]$rotationPatternId)) {
 			throw "Valtan weighted pattern pool duplicates a pattern: $rotationPatternId"
 		}
-		$patternRows.Add((@(
-			'PATTERNROTATIONSTEP', $encounterDocument.encounterId,
-			$rotation.rotationId, $rotationStepIndex, $rotationPatternId) -join "`t"))
+		if ($isWeightedV3 -and [bool]$rotationEntry.enabled) {
+			$enabledPositiveWeight += [uint64]$rotationEntry.weight
+		}
+		if ($isWeightedV3) {
+			$patternRows.Add((@(
+				'PATTERNROTATIONCANDIDATE', $encounterDocument.encounterId,
+				$rotation.rotationId, $rotationStepIndex, $rotationPatternId,
+				[uint32]$rotationEntry.weight,
+				$(if ([bool]$rotationEntry.enabled) { 1 } else { 0 })) -join "`t"))
+		}
+		else {
+			$patternRows.Add((@(
+				'PATTERNROTATIONSTEP', $encounterDocument.encounterId,
+				$rotation.rotationId, $rotationStepIndex,
+				$rotationPatternId) -join "`t"))
+		}
 		++$rotationStepIndex
+	}
+	if ($isWeightedV3 -and 0 -eq $enabledPositiveWeight) {
+		throw "Valtan weighted rotation has no enabled positive weight: $($rotation.rotationId)"
 	}
 	$patternRows.Add((@(
 		'PATTERNROTATION', $encounterDocument.encounterId,
 		$rotation.rotationId, $rotationFromBar, $rotationToBar,
 		$rotation.selectionMode, $rotationStepIndex) -join "`t"))
+	if ($isWeightedV3) {
+		$patternRows.Add((@(
+			'PATTERNROTATIONWINDOW', $encounterDocument.encounterId,
+			$rotation.rotationId, $rotation.windowId,
+			[uint32]$rotation.gameplayPhase, $rotation.selectionSetId,
+			$rotationFromBar, $rotationToBar, $rotationStepIndex) -join "`t"))
+	}
+}
+
+# A phase-changing health mechanic cannot move independently from both sides of
+# its rotation topology.  The authoring pipeline currently exposes no atomic
+# operation that promotes the managed window and the sealed legacy span
+# together, so a partial Product overlay must fail before a bootstrap is built.
+if ($rotationFormatVersion -eq 3) {
+	$arenaBreakPatterns = @($encounterDocument.patterns | Where-Object {
+		[string]$_.patternId -ceq 'VALTAN_ARENA_BREAK_109'
+	})
+	$phaseOneManagedRotations = @($rotationDocument.rotations | Where-Object {
+		[string]$_.selectionMode -ceq 'WEIGHTED_POOL' -and
+		[uint32]$_.gameplayPhase -eq 1
+	})
+	$legacyOrderedRotations = @($rotationDocument.rotations | Where-Object {
+		[string]$_.selectionMode -ceq 'ORDERED_INTRO_THEN_WEIGHTED'
+	})
+	if ($arenaBreakPatterns.Count -ne 1 -or
+		$phaseOneManagedRotations.Count -eq 0 -or
+		$legacyOrderedRotations.Count -eq 0) {
+		throw 'Valtan phase-boundary topology inventory is incomplete.'
+	}
+	$arenaBreakBar = [uint32]$arenaBreakPatterns[0].triggerHealthBar
+	$finalPhaseOneBoundary = [uint32]$phaseOneManagedRotations[
+		$phaseOneManagedRotations.Count - 1].toHealthBar
+	$firstLegacyBoundary = [uint32]$legacyOrderedRotations[0].fromHealthBar + 1
+	if ($arenaBreakBar -ne $finalPhaseOneBoundary -or
+		$arenaBreakBar -ne $firstLegacyBoundary) {
+		throw "VALTAN_ARENA_BREAK_109 triggerHealthBar must equal the final phase-1 WINDOW.toHealthBar and first ORDERED.fromHealthBar+1. arena=$arenaBreakBar phase1=$finalPhaseOneBoundary legacy=$firstLegacyBoundary"
+	}
 }
 
 # A charge stage drives the boss forward until it meets an impact receiver, and
@@ -3261,6 +3525,18 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 function Get-BootstrapRowSortKey {
 	param([Parameter(Mandatory = $true)][string]$Row)
 
+	$fields = @($Row.Split("`t"))
+	if ($fields.Count -ge 5 -and $fields[0] -cin @(
+		'PATTERNSTAGEACTION','PATTERNSTAGEVOLLEY')) {
+		# Both row kinds append to the same Server stage action vector. Keep their
+		# authored ordinal ahead of the concrete kind so mixed typed actions still
+		# arrive as one dense 0..N-1 sequence.
+		$tail = if ($fields.Count -gt 5) { @($fields[5..($fields.Count - 1)]) }
+			else { @() }
+		$Row = (@(
+			'PATTERNSTAGEACTION', $fields[1], $fields[2], $fields[3],
+			$fields[4], $fields[0]) + $tail) -join "`t"
+	}
 	$key = [Text.StringBuilder]::new()
 	$digits = [Text.StringBuilder]::new()
 	foreach ($character in $Row.ToCharArray()) {
@@ -3287,10 +3563,16 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t17`t$($rows.Count)") + $rows
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 3) { 19 } else { 18 }
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
-    $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
+    $root = if ([IO.Path]::IsPathRooted($OutputRoot)) {
+        [IO.Path]::GetFullPath($OutputRoot)
+    }
+    else {
+        [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
+    }
     [IO.Directory]::CreateDirectory($root) | Out-Null
     $destination = Join-Path $root 'Gameplay.bootstrap'
     $staged = Join-Path $root ('.Gameplay.staging.' + [Guid]::NewGuid().ToString('N'))

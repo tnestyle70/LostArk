@@ -535,10 +535,16 @@
           "actions": [
             {
               "trigger": "ENTER",
-              "kind": "SPAWN_COMBAT_OBJECT",
+              "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
               "targetId": "combatobject.valtan.high-jump.target-axe",
-              "value": 1,
-              "durationMs": 0
+              "targetingPolicy": "PER_ALIVE_PLAYER",
+              "countPerResolvedTarget": 1,
+              "layout": "SINGLE",
+              "radiusM": 0,
+              "startAngleDegrees": 0,
+              "angleStepDegrees": 0,
+              "allowOverlap": false,
+              "maximumTotalObjects": 32
             }
           ]
         },
@@ -1370,7 +1376,16 @@
           "pushRangeM": 0,
           "pushMs": 0,
           "knockdown": true,
-          "downMs": 1000
+          "downMs": 1000,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_GAMEPLAY_PHASE",
+              "targetId": "boss.phase.gameplay",
+              "value": 2,
+              "durationMs": 0
+            }
+          ]
         },
         {
           "stageId": "IMPACT_HOLD",
