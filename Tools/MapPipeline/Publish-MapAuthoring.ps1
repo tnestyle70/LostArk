@@ -18,6 +18,7 @@ $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
 $authoringPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapplacements"
 $authoringDeployPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.deployplacements"
 $authoringLightPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.maplights.json"
+$authoringWaterPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapwater.json"
 $importRoot = Join-Path $ProjectRoot "Data\Maps\Imported\$AreaId"
 $sourceCatalogPath = Join-Path $importRoot "$AreaId.mapassets"
 $sourceShardSetPath = Join-Path $importRoot "$AreaId.mapset"
@@ -25,6 +26,7 @@ $sourceDeployCatalogPath = Join-Path $importRoot "$AreaId.deployassets"
 $runtimeRoot = Join-Path $ProjectRoot 'Client\Bin\DataFiles\Map'
 $runtimePath = Join-Path $runtimeRoot "$AreaId.mapplacements"
 $runtimeLightPath = Join-Path $runtimeRoot "$AreaId.maplights.json"
+$runtimeWaterPath = Join-Path $runtimeRoot "$AreaId.mapwater.json"
 $mapCatalogPath = Join-Path $ProjectRoot 'Data\Maps\MapCatalog.json'
 $shardSetPath = Join-Path $runtimeRoot "$AreaId.mapset"
 $utf8 = [Text.UTF8Encoding]::new($false)
@@ -238,6 +240,119 @@ function Add-MapLightPublishFile {
     }
 }
 
+function Read-MapWaterDocument {
+    param([string]$Path)
+    $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
+    try { $document = $raw | ConvertFrom-Json }
+    catch { throw "Map water JSON parse failed: $Path" }
+    Assert-ExactJsonProperties $document `
+        @('schema','formatVersion','areaId','revision','unclassifiedAssetCount',
+          'waters','deferred') `
+        'Map water root'
+    if ($document.schema -isnot [string] -or
+        $document.schema -ne 'lostark.map-water-presentation' -or
+        -not (Test-JsonNumber $document.formatVersion) -or
+        [double]$document.formatVersion -ne 1.0 -or
+        $document.areaId -isnot [string] -or $document.areaId -ne $AreaId -or
+        -not (Test-JsonNumber $document.revision) -or
+        -not (Test-JsonNumber $document.unclassifiedAssetCount)) {
+        throw "Map water header is invalid: $Path"
+    }
+    if ($document.waters -isnot [System.Array] -or
+        $document.deferred -isnot [System.Array]) {
+        throw "Map water waters/deferred properties must be arrays: $Path"
+    }
+    $waters = @($document.waters)
+    if ($waters.Count -lt 1 -or $waters.Count -gt 64) {
+        throw "Map water material count is invalid: $Path"
+    }
+    $scalarNames = @(
+        'opacity','opacityPower','fresnelIntensity','fresnelPower',
+        'screenDistortionIntensity','normalIntensity','detailNormalIntensity',
+        'normalDistortionIntensity','reflectionIntensity','reflectionUv',
+        'depthBias','diffuseTiling')
+    $vectorNames = @(
+        'diffuseColor','reflectionColor','normalTilingPanning',
+        'detailNormalTilingPanning','reflectionTilingPanning')
+    $keys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($water in $waters) {
+        $required = @(
+            'assetId','materialName','provenance','sourceParentChain',
+            'sourceBlendMode','twoSided','detailNormalTexture','reflectionTexture',
+            'foamTexture') + $scalarNames + $vectorNames
+        $present = @($water.PSObject.Properties.Name)
+        $extra = @($present | Where-Object {
+            $_ -ne 'missingSourceTextures' -and $required -notcontains $_ })
+        if ($extra.Count -gt 0) {
+            throw "Map water row has unknown properties: $($extra -join ', ')"
+        }
+        foreach ($name in $required) {
+            if ($present -notcontains $name) {
+                throw "Map water row is missing $name in $Path"
+            }
+        }
+        if ($water.assetId -isnot [string] -or
+            [string]::IsNullOrWhiteSpace($water.assetId) -or
+            $water.materialName -isnot [string] -or
+            [string]::IsNullOrWhiteSpace($water.materialName)) {
+            throw "Map water row identity is invalid: $Path"
+        }
+        # The runtime picks one shader pass per asset, so two rows for the same
+        # asset would silently make one of them unreachable.
+        if (-not $keys.Add($water.assetId)) {
+            throw "Duplicate map water asset row: $($water.assetId)"
+        }
+        if ($water.sourceBlendMode -ne 'BLEND_Translucent') {
+            throw "Map water row is not translucent in the source: $($water.assetId)"
+        }
+        if ($water.provenance -isnot [string] -or
+            $water.provenance -notin @('SOURCE_MATERIAL_EXACT','PROJECT_AUTHORED')) {
+            throw "Map water provenance is invalid: $($water.assetId)"
+        }
+        foreach ($name in @('detailNormalTexture','reflectionTexture','foamTexture')) {
+            $value = $water.$name
+            if ($value -isnot [string]) {
+                throw "Map water $name must be a string: $($water.assetId)"
+            }
+            if ([string]::IsNullOrEmpty($value)) { continue }
+            if ($value -notlike 'Map/*' -or $value -match '\.\.' -or
+                $value -match '^[A-Za-z]:' -or $value.Contains('\')) {
+                throw "Map water $name is not a Resources-relative id: $value"
+            }
+        }
+        foreach ($name in $scalarNames) {
+            if (-not (Test-JsonNumber $water.$name)) {
+                throw "Map water $name is not finite: $($water.assetId)"
+            }
+        }
+        foreach ($name in $vectorNames) {
+            $vector = @($water.$name)
+            if ($vector.Count -ne 4) {
+                throw "Map water $name must have four components: $($water.assetId)"
+            }
+            foreach ($component in $vector) {
+                if (-not (Test-JsonNumber $component)) {
+                    throw "Map water $name component is not finite: $($water.assetId)"
+                }
+            }
+        }
+    }
+    return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+}
+
+function Add-MapWaterPublishFile {
+    param([Collections.Generic.List[object]]$Files)
+    if ($script:mapWaterDeclared) {
+        if (-not [IO.File]::Exists($authoringWaterPath)) {
+            throw "Declared map water authoring source is missing: $authoringWaterPath"
+        }
+        $Files.Add([pscustomobject]@{
+            Name = "$AreaId.mapwater.json"
+            Lines = Read-MapWaterDocument $authoringWaterPath
+        })
+    }
+}
+
 if (-not [IO.File]::Exists($mapCatalogPath)) {
     throw "Map catalog is missing: $mapCatalogPath"
 }
@@ -270,6 +385,26 @@ if ($script:mapLightsDeclared) {
 }
 elseif ([IO.File]::Exists($authoringLightPath)) {
     throw "Map light source exists without a MapCatalog declaration: $AreaId"
+}
+
+$sourceWaterProperty = $areaEntry.PSObject.Properties['sourceWater']
+$runtimeWaterProperty = $areaEntry.PSObject.Properties['water']
+if (($null -eq $sourceWaterProperty) -ne ($null -eq $runtimeWaterProperty)) {
+    throw "Map catalog water source/runtime declaration is incomplete: $AreaId"
+}
+$script:mapWaterDeclared = $null -ne $sourceWaterProperty
+if ($script:mapWaterDeclared) {
+    $expectedSourceWater = "Data/Maps/Authoring/$AreaId/$AreaId.mapwater.json"
+    $expectedRuntimeWater = "Client/Bin/DataFiles/Map/$AreaId.mapwater.json"
+    if ($areaEntry.sourceWater -isnot [string] -or
+        $areaEntry.sourceWater -ne $expectedSourceWater -or
+        $areaEntry.water -isnot [string] -or
+        $areaEntry.water -ne $expectedRuntimeWater) {
+        throw "Map catalog water paths are not canonical: $AreaId"
+    }
+}
+elseif ([IO.File]::Exists($authoringWaterPath)) {
+    throw "Map water source exists without a MapCatalog declaration: $AreaId"
 }
 
 function Invoke-FileSetTransaction {
@@ -391,6 +526,7 @@ if (-not [IO.File]::Exists($sourceShardSetPath)) {
     }
 
     Add-MapLightPublishFile $files
+    Add-MapWaterPublishFile $files
 
     Invoke-FileSetTransaction $files
     [pscustomobject]@{
@@ -512,6 +648,7 @@ $files.Add([pscustomobject]@{
     Lines = $newMapSetLines
 })
 Add-MapLightPublishFile $files
+Add-MapWaterPublishFile $files
 Invoke-FileSetTransaction $files
 
 [pscustomobject]@{

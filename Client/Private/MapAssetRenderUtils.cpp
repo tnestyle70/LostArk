@@ -20,10 +20,14 @@ uint32_t CMapAssetRenderUtils::Select_Pass(const MAP_ASSET_RENDER_PROFILE& profi
 		MAP_ASSET_CULL_MODE::CULL_BACK == cullMode ? 0u :
 		MAP_ASSET_CULL_MODE::CULL_FRONT == cullMode ? 1u : 2u;
 	//deffered translucent background
+	/* Water sits after the shadow passes so adding it leaves every existing
+	   pass index where it was; the three cull variants keep the +0/+1/+2 rule
+	   even though the source water material is never two sided. */
 	const uint32_t modeOffset =
 		MAP_ASSET_RENDER_MODE::DEFERRED == profile.renderMode ? 0u :
 		MAP_ASSET_RENDER_MODE::TRANSLUCENT == profile.renderMode ? 3u :
-		MAP_ASSET_RENDER_MODE::BACKGROUND == profile.renderMode ? 6u : 9u;
+		MAP_ASSET_RENDER_MODE::BACKGROUND == profile.renderMode ? 6u :
+		MAP_ASSET_RENDER_MODE::WATER == profile.renderMode ? 15u : 9u;
 	
 	return modeOffset + cullOfset;
 }
