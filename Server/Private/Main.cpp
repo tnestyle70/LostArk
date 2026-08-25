@@ -28,6 +28,12 @@ int main(const int argumentCount, char** arguments)
 	{
 		return LostArk::Server::Run_ServerGameplayContractTests(true);
 	}
+	if (2 == argumentCount &&
+		std::string_view(arguments[1]) ==
+			"--reset-valtan-runtime-to-packaged")
+	{
+		return LostArk::Server::CServerApp::Reset_ValtanRuntimeToPackaged();
+	}
 	std::uint32_t automaticShutdownMilliseconds = 0;
 	std::uint32_t serverPort = 7777u;
 	std::string bindAddress = "127.0.0.1";
@@ -109,6 +115,7 @@ int main(const int argumentCount, char** arguments)
 
 		std::cerr << "Usage: Server [--contract-test | "
 			"--dimensionmaster-ground-target-contract | "
+			"--reset-valtan-runtime-to-packaged | "
 			"--bind-address IPv4] [--port 1..65535] "
 			"[--smoke-timeout-ms 100..60000]\n";
 		return 2;

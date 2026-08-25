@@ -144,6 +144,97 @@ namespace
 				}));
 	}
 
+	bool Is_Valid_BoundedReason(
+		const std::string& value,
+		const std::size_t maximumBytes,
+		const bool allowEmpty)
+	{
+		return value.size() <= maximumBytes &&
+			(allowEmpty || !value.empty()) &&
+			std::string::npos == value.find('\0');
+	}
+
+	bool Is_Valid_PresentationLaneMask(const std::uint32_t mask) noexcept
+	{
+		return 0u == (mask &
+			~LostArk::Shared::GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK);
+	}
+
+	bool Are_Valid_RequiredPinnedRevisions(
+		const LostArk::Shared::GameplayDataRevision& activeRevision,
+		const std::vector<LostArk::Shared::GameplayDataRevision>& revisions)
+	{
+		if (!activeRevision.Is_Valid() ||
+			revisions.size() >
+				LostArk::Shared::MAX_REQUIRED_PINNED_GAMEPLAY_REVISIONS)
+		{
+			return false;
+		}
+		for (std::size_t index = 0; index < revisions.size(); ++index)
+		{
+			if (!revisions[index].Is_Valid() ||
+				revisions[index] == activeRevision)
+			{
+				return false;
+			}
+			for (std::size_t other = index + 1u;
+				other < revisions.size(); ++other)
+			{
+				if (revisions[index] == revisions[other])
+					return false;
+			}
+		}
+		return true;
+	}
+
+	bool Write_RequiredPinnedRevisions(
+		LostArk::Shared::CPacketWriter& writer,
+		const LostArk::Shared::GameplayDataRevision& activeRevision,
+		const std::vector<LostArk::Shared::GameplayDataRevision>& revisions)
+	{
+		if (!Are_Valid_RequiredPinnedRevisions(activeRevision, revisions) ||
+			!LostArk::Shared::Write_GameplayDataRevision(writer, activeRevision))
+		{
+			return false;
+		}
+		writer.Write_U8(static_cast<std::uint8_t>(revisions.size()));
+		for (const LostArk::Shared::GameplayDataRevision& revision : revisions)
+		{
+			if (!LostArk::Shared::Write_GameplayDataRevision(writer, revision))
+				return false;
+		}
+		return true;
+	}
+
+	bool Read_RequiredPinnedRevisions(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::GameplayDataRevision& activeRevision,
+		std::vector<LostArk::Shared::GameplayDataRevision>& revisions)
+	{
+		LostArk::Shared::GameplayDataRevision decodedActive{};
+		std::uint8_t count = 0;
+		if (!LostArk::Shared::Read_GameplayDataRevision(reader, decodedActive) ||
+			!reader.Read_U8(count) ||
+			count > LostArk::Shared::MAX_REQUIRED_PINNED_GAMEPLAY_REVISIONS)
+		{
+			return false;
+		}
+		std::vector<LostArk::Shared::GameplayDataRevision> decoded;
+		decoded.reserve(count);
+		for (std::uint8_t index = 0; index < count; ++index)
+		{
+			LostArk::Shared::GameplayDataRevision revision{};
+			if (!LostArk::Shared::Read_GameplayDataRevision(reader, revision))
+				return false;
+			decoded.push_back(revision);
+		}
+		if (!Are_Valid_RequiredPinnedRevisions(decodedActive, decoded))
+			return false;
+		activeRevision = decodedActive;
+		revisions = std::move(decoded);
+		return true;
+	}
+
 	// Same character class as Is_Valid_StableId, but capped at the item ID's
 	// own, tighter wire bound instead of the general stable-ID bound.
 	bool Is_Valid_ItemId(const std::string& value)
@@ -243,7 +334,8 @@ namespace
 			(snapshot.hasBossCombatState ?
 				(Is_Valid_BossCombatSnapshot(snapshot.BossCombat) &&
 				 snapshot.iPhase == snapshot.BossCombat.iGameplayPhase) :
-				Is_Default_BossCombatSnapshot(snapshot.BossCombat));
+				Is_Default_BossCombatSnapshot(snapshot.BossCombat)) &&
+			snapshot.PinnedDefinitionRevision.Is_Valid();
 	}
 
 	// A zero amount is not a hit, so it must not reach presentation as one; the
@@ -319,7 +411,8 @@ namespace
 			std::isfinite(snapshot.fPositionX) &&
 			std::isfinite(snapshot.fPositionY) &&
 			std::isfinite(snapshot.fPositionZ) &&
-			std::isfinite(snapshot.fYawDegrees);
+			std::isfinite(snapshot.fYawDegrees) &&
+			snapshot.PinnedDefinitionRevision.Is_Valid();
 	}
 
 	bool Are_CombatObjectSnapshotsCanonical(
@@ -806,7 +899,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     const S2C_ENTER_ACCEPTED& message)
 {
 	if (NETWORK_PROTOCOL_VERSION != message.iProtocolVersion ||
-		!Is_Known_World_Id(message.eWorldId))
+		!Is_Known_World_Id(message.eWorldId) ||
+		!Are_Valid_RequiredPinnedRevisions(
+			message.ActiveGameplayRevision,
+			message.RequiredPinnedGameplayRevisions))
 	{
 		return false;
 	}
@@ -826,7 +922,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     writer.Write_U32(message.iPlayerId);
     writer.Write_U32(message.iNetEntityId);
 
-    return true;
+	return Write_RequiredPinnedRevisions(
+		writer,
+		message.ActiveGameplayRevision,
+		message.RequiredPinnedGameplayRevisions);
 }
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader,
@@ -850,10 +949,14 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
 
 	if (!reader.Read_U32(playerId))
         return false;
-    if (!reader.Read_U32(netEntityId))
+	if (!reader.Read_U32(netEntityId))
         return false;
 
-    if (playerId == 0 || netEntityId == 0)
+	GameplayDataRevision activeRevision{};
+	std::vector<GameplayDataRevision> requiredPinnedRevisions;
+	if (playerId == 0 || netEntityId == 0 ||
+		!Read_RequiredPinnedRevisions(
+			reader, activeRevision, requiredPinnedRevisions))
         return false;
 
 	S2C_ENTER_ACCEPTED decoded {};
@@ -862,6 +965,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
 	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
 	decoded.iPlayerId = playerId;
     decoded.iNetEntityId = netEntityId;
+	decoded.ActiveGameplayRevision = activeRevision;
+	decoded.RequiredPinnedGameplayRevisions =
+		std::move(requiredPinnedRevisions);
    
     message = decoded;
 
@@ -1187,7 +1293,8 @@ bool LostArk::Shared::Write_Message(
 		!std::isfinite(spawned.fPositionX) ||
 		!std::isfinite(spawned.fPositionY) ||
 		!std::isfinite(spawned.fPositionZ) ||
-		!std::isfinite(spawned.fYawDegrees))
+		!std::isfinite(spawned.fYawDegrees) ||
+		!spawned.PinnedDefinitionRevision.Is_Valid())
 	{
 		return false;
 	}
@@ -1209,7 +1316,8 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_F32(spawned.fPositionY);
 	writer.Write_F32(spawned.fPositionZ);
 	writer.Write_F32(spawned.fYawDegrees);
-	return true;
+	return Write_GameplayDataRevision(
+		writer, spawned.PinnedDefinitionRevision);
 }
 
 bool LostArk::Shared::Read_Message(
@@ -1231,6 +1339,8 @@ bool LostArk::Shared::Read_Message(
 		!reader.Read_F32(decoded.fPositionY) ||
 		!reader.Read_F32(decoded.fPositionZ) ||
 		!reader.Read_F32(decoded.fYawDegrees) ||
+		!Read_GameplayDataRevision(
+			reader, decoded.PinnedDefinitionRevision) ||
 		INVALID_COMBAT_OBJECT_ID == decoded.iCombatObjectId ||
 		INVALID_NET_ENTITY_ID == decoded.iSourceNetEntityId ||
 		0u == decoded.iSpawnTick ||
@@ -1241,7 +1351,8 @@ bool LostArk::Shared::Read_Message(
 		!std::isfinite(decoded.fPositionX) ||
 		!std::isfinite(decoded.fPositionY) ||
 		!std::isfinite(decoded.fPositionZ) ||
-		!std::isfinite(decoded.fYawDegrees))
+		!std::isfinite(decoded.fYawDegrees) ||
+		!decoded.PinnedDefinitionRevision.Is_Valid())
 	{
 		return false;
 	}
@@ -1742,6 +1853,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		message.DamageEvents.size() > MAX_DAMAGE_EVENTS ||
 		message.BossCombatEvents.size() > MAX_BOSS_COMBAT_EVENTS ||
 		message.CombatObjects.size() > MAX_COMBAT_OBJECTS_PER_SNAPSHOT ||
+		!Are_Valid_RequiredPinnedRevisions(
+			message.ActiveGameplayRevision,
+			message.RequiredPinnedGameplayRevisions) ||
 		// maximum 0 means "no Esther in this world" and then the level must be
 		// 0 too; a live gauge can never exceed its maximum.
 		(0 == message.iEstherGaugeMaximum && 0 != message.iEstherGauge) ||
@@ -1863,6 +1977,11 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 			writer.Write_U32(entity.BossCombat.iMaximumShield);
 			writer.Write_U8(entity.BossCombat.iGameplayPhase);
 		}
+		if (!Write_GameplayDataRevision(
+			writer, entity.PinnedDefinitionRevision))
+		{
+			return false;
+		}
 	}
 	for (const DAMAGE_EVENT& damage : message.DamageEvents)
 	{
@@ -1889,9 +2008,17 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(object.fPositionY);
 		writer.Write_F32(object.fPositionZ);
 		writer.Write_F32(object.fYawDegrees);
+		if (!Write_GameplayDataRevision(
+			writer, object.PinnedDefinitionRevision))
+		{
+			return false;
+		}
 	}
 
-    return true;
+	return Write_RequiredPinnedRevisions(
+		writer,
+		message.ActiveGameplayRevision,
+		message.RequiredPinnedGameplayRevisions);
 }
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& message)
@@ -2054,6 +2181,11 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		{
 			return false;
 		}
+		if (!Read_GameplayDataRevision(
+			reader, entity.PinnedDefinitionRevision))
+		{
+			return false;
+		}
 		entity.eAction = static_cast<WORLD_ENTITY_ACTION>(rawAction);
 		if (!Is_Valid_WorldEntitySnapshot(entity))
 			return false;
@@ -2106,7 +2238,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_F32(object.fPositionX) ||
 			!reader.Read_F32(object.fPositionY) ||
 			!reader.Read_F32(object.fPositionZ) ||
-			!reader.Read_F32(object.fYawDegrees))
+			!reader.Read_F32(object.fYawDegrees) ||
+			!Read_GameplayDataRevision(
+				reader, object.PinnedDefinitionRevision))
 		{
 			return false;
 		}
@@ -2115,6 +2249,13 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	if (!Are_CombatObjectSnapshotsCanonical(decoded.CombatObjects) ||
 		!Are_CombatObjectSourcesPresent(
 			decoded.Players, decoded.Entities, decoded.CombatObjects))
+	{
+		return false;
+	}
+	if (!Read_RequiredPinnedRevisions(
+		reader,
+		decoded.ActiveGameplayRevision,
+		decoded.RequiredPinnedGameplayRevisions))
 	{
 		return false;
 	}
@@ -2551,6 +2692,703 @@ bool LostArk::Shared::Read_Message(
 	decoded.eOperation =
 		static_cast<VALTAN_AUDITION_OPERATION>(rawOperation);
 	decoded.eResult = static_cast<VALTAN_AUDITION_RESULT>(rawResult);
+	message = std::move(decoded);
+	return true;
+}
+
+namespace
+{
+	using namespace LostArk::Shared;
+
+	bool Is_Valid_AuditionLifecycle(
+		const S2C_VALTAN_AUDITION_LIFECYCLE& message)
+	{
+		const std::uint8_t rawState =
+			static_cast<std::uint8_t>(message.eState);
+		if (0u == message.iRequestSequence ||
+			0u == message.iRoomAuditionEpoch ||
+			!Is_Valid_StableId(message.strPatternId, false) ||
+			rawState >= static_cast<std::uint8_t>(
+				VALTAN_AUDITION_LIFECYCLE_STATE::END) ||
+			!message.PinnedDefinitionRevision.Is_Valid())
+		{
+			return false;
+		}
+		if (0u == message.iPatternSequence &&
+			(VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE == message.eState ||
+			 VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED == message.eState))
+		{
+			return false;
+		}
+
+		const bool aborted =
+			VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED == message.eState;
+		return Is_Valid_BoundedReason(
+			message.strReason,
+			MAX_VALTAN_AUDITION_LIFECYCLE_REASON_BYTES,
+			!aborted) &&
+			(aborted || message.strReason.empty());
+	}
+
+	bool Is_Valid_ValtanDecisionTraceCandidate(
+		const VALTAN_DECISION_TRACE_CANDIDATE_WIRE& candidate)
+	{
+		if (!Is_Valid_StableId(candidate.strPatternId, false) ||
+			0u != (candidate.iExclusionMask &
+				~VALTAN_DECISION_TRACE_KNOWN_EXCLUSION_MASK) ||
+			candidate.iWeightEndExclusive <
+				candidate.iWeightBeginInclusive)
+		{
+			return false;
+		}
+
+		const std::uint64_t interval = candidate.iWeightEndExclusive -
+			candidate.iWeightBeginInclusive;
+		if (0u == candidate.iEffectiveWeight)
+		{
+			return 0u == candidate.iWeightBeginInclusive &&
+				0u == candidate.iWeightEndExclusive;
+		}
+		return interval == candidate.iEffectiveWeight;
+	}
+
+	bool Is_Valid_ValtanDecisionTrace(
+		const VALTAN_DECISION_TRACE_WIRE& trace)
+	{
+		const std::uint8_t rawSource =
+			static_cast<std::uint8_t>(trace.eSource);
+		const std::uint8_t rawPendingSource =
+			static_cast<std::uint8_t>(trace.ePendingSource);
+		const std::uint8_t rawResult =
+			static_cast<std::uint8_t>(trace.eResult);
+		if (0u == trace.iTraceSequence ||
+			0u == trace.iExpectedPatternSequence ||
+			0u == trace.iMaximumHp ||
+			trace.iCurrentHp > trace.iMaximumHp ||
+			0u == trace.iGameplayPhase ||
+			!std::isfinite(trace.fTargetDistance) ||
+			trace.fTargetDistance < 0.f ||
+			rawSource >= static_cast<std::uint8_t>(
+				VALTAN_DECISION_TRACE_SOURCE::END) ||
+			rawPendingSource >= static_cast<std::uint8_t>(
+				VALTAN_DECISION_TRACE_SOURCE::END) ||
+			rawResult >= static_cast<std::uint8_t>(
+				VALTAN_DECISION_TRACE_RESULT::END) ||
+			!Is_Valid_StableId(trace.strRotationId, true) ||
+			!Is_Valid_StableId(trace.strPendingPatternId, true) ||
+			!Is_Valid_StableId(trace.strSelectedPatternId, true) ||
+			trace.Candidates.size() >
+				MAX_VALTAN_DECISION_TRACE_CANDIDATES ||
+			(0u != trace.iTotalWeight &&
+				trace.iRandomTicket >= trace.iTotalWeight))
+		{
+			return false;
+		}
+
+		std::size_t selectedCount = 0u;
+		for (std::size_t index = 0u; index < trace.Candidates.size(); ++index)
+		{
+			const VALTAN_DECISION_TRACE_CANDIDATE_WIRE& candidate =
+				trace.Candidates[index];
+			if (!Is_Valid_ValtanDecisionTraceCandidate(candidate))
+				return false;
+			for (std::size_t other = index + 1u;
+				other < trace.Candidates.size(); ++other)
+			{
+				if (candidate.strPatternId ==
+					trace.Candidates[other].strPatternId)
+				{
+					return false;
+				}
+			}
+			if (candidate.isSelected)
+			{
+				++selectedCount;
+				if (candidate.strPatternId != trace.strSelectedPatternId)
+					return false;
+			}
+		}
+
+		if (VALTAN_DECISION_TRACE_RESULT::SELECTED == trace.eResult)
+		{
+			return !trace.strSelectedPatternId.empty() && 1u == selectedCount;
+		}
+		return trace.strSelectedPatternId.empty() && 0u == selectedCount;
+	}
+
+	bool Is_Valid_ValtanDecisionTraceQuery(
+		const C2S_VALTAN_DECISION_TRACE_QUERY& message)
+	{
+		return 0u != message.iRequestSequence &&
+			Is_Valid_StableId(message.strBossPlacementId, false);
+	}
+
+	bool Has_Empty_ValtanDecisionTracePayload(
+		const S2C_VALTAN_DECISION_TRACE_RESPONSE& message)
+	{
+		return !message.DefinitionRevision.Is_Valid() &&
+			0u == message.Trace.iTraceSequence &&
+			message.Trace.strRotationId.empty() &&
+			message.Trace.strPendingPatternId.empty() &&
+			message.Trace.strSelectedPatternId.empty() &&
+			message.Trace.Candidates.empty();
+	}
+
+	bool Is_Valid_ValtanDecisionTraceResponse(
+		const S2C_VALTAN_DECISION_TRACE_RESPONSE& message)
+	{
+		const std::uint8_t rawResult =
+			static_cast<std::uint8_t>(message.eResult);
+		if (0u == message.iRequestSequence ||
+			!Is_Valid_StableId(message.strBossPlacementId, false) ||
+			rawResult >= static_cast<std::uint8_t>(
+				VALTAN_DECISION_TRACE_QUERY_RESULT::END))
+		{
+			return false;
+		}
+		if (VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE == message.eResult)
+		{
+			return message.DefinitionRevision.Is_Valid() &&
+				Is_Valid_ValtanDecisionTrace(message.Trace);
+		}
+		return Has_Empty_ValtanDecisionTracePayload(message);
+	}
+
+	bool Is_Valid_DataRevisionPrepareIdentity(
+		const std::uint32_t sequence,
+		const GameplayDataRevision& baseRevision,
+		const GameplayDataRevision& candidateRevision,
+		const std::uint32_t requiredLaneMask)
+	{
+		return 0u != sequence &&
+			baseRevision.Is_Valid() &&
+			candidateRevision.Is_Valid() &&
+			baseRevision != candidateRevision &&
+			Is_Valid_PresentationLaneMask(requiredLaneMask);
+	}
+
+	bool Is_Valid_DataRevisionPrepareResponse(
+		const C2S_DATA_REVISION_PREPARE_RESPONSE& message)
+	{
+		const std::uint8_t rawStatus =
+			static_cast<std::uint8_t>(message.eStatus);
+		if (0u == message.iTransactionSequence ||
+			!message.CandidateRevision.Is_Valid() ||
+			rawStatus >= static_cast<std::uint8_t>(
+				DATA_REVISION_PREPARE_STATUS::END) ||
+			!Is_Valid_PresentationLaneMask(
+				message.iRequiredPresentationLaneMask) ||
+			!Is_Valid_PresentationLaneMask(
+				message.iPreparedPresentationLaneMask) ||
+			!Is_Valid_PresentationLaneMask(
+				message.iFailedPresentationLaneMask) ||
+			0u != (message.iPreparedPresentationLaneMask &
+				message.iFailedPresentationLaneMask))
+		{
+			return false;
+		}
+
+		switch (message.eStatus)
+		{
+		case DATA_REVISION_PREPARE_STATUS::READY:
+			return 0u == message.iFailedPresentationLaneMask &&
+				(message.iPreparedPresentationLaneMask &
+					message.iRequiredPresentationLaneMask) ==
+					message.iRequiredPresentationLaneMask &&
+				message.strReason.empty();
+		case DATA_REVISION_PREPARE_STATUS::READY_DEGRADED:
+			return 0u != message.iFailedPresentationLaneMask &&
+				0u == (message.iFailedPresentationLaneMask &
+					message.iRequiredPresentationLaneMask) &&
+				(message.iPreparedPresentationLaneMask &
+					message.iRequiredPresentationLaneMask) ==
+					message.iRequiredPresentationLaneMask &&
+				Is_Valid_BoundedReason(
+					message.strReason,
+					MAX_DATA_REVISION_REASON_BYTES,
+					false);
+		case DATA_REVISION_PREPARE_STATUS::NACK:
+			return Is_Valid_BoundedReason(
+				message.strReason,
+				MAX_DATA_REVISION_REASON_BYTES,
+				false);
+		default:
+			return false;
+		}
+	}
+
+	bool Is_Valid_DataRevisionResult(
+		const S2C_DATA_REVISION_RESULT& message)
+	{
+		const std::uint8_t rawResult =
+			static_cast<std::uint8_t>(message.eResult);
+		if (0u == message.iTransactionSequence ||
+			!message.CandidateRevision.Is_Valid() ||
+			!message.ActiveRevision.Is_Valid() ||
+			rawResult >= static_cast<std::uint8_t>(
+				DATA_REVISION_RESULT::END))
+		{
+			return false;
+		}
+
+		if (DATA_REVISION_RESULT::COMMITTED == message.eResult)
+		{
+			return message.ActiveRevision == message.CandidateRevision &&
+				message.strReason.empty();
+		}
+		return message.ActiveRevision != message.CandidateRevision &&
+			Is_Valid_BoundedReason(
+				message.strReason,
+				MAX_DATA_REVISION_REASON_BYTES,
+				false);
+	}
+
+	bool Write_ValtanDecisionTrace(
+		CPacketWriter& writer,
+		const VALTAN_DECISION_TRACE_WIRE& trace)
+	{
+		if (!Is_Valid_ValtanDecisionTrace(trace))
+			return false;
+		Write_U64(writer, trace.iTraceSequence);
+		writer.Write_U32(trace.iServerTick);
+		writer.Write_U32(trace.iPatternSequenceBeforeDecision);
+		writer.Write_U32(trace.iExpectedPatternSequence);
+		writer.Write_U32(trace.iCurrentHp);
+		writer.Write_U32(trace.iMaximumHp);
+		writer.Write_U32(trace.iHealthBar);
+		writer.Write_U8(trace.iGameplayPhase);
+		writer.Write_U32(trace.iTargetNetEntityId);
+		writer.Write_F32(trace.fTargetDistance);
+		writer.Write_U8(trace.isIntroPatternConsumed ? 1u : 0u);
+		writer.Write_U32(trace.iRotationStepIndex);
+		writer.Write_U8(static_cast<std::uint8_t>(trace.eSource));
+		writer.Write_U8(static_cast<std::uint8_t>(trace.eResult));
+		if (!writer.Write_String(
+				trace.strRotationId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!writer.Write_String(
+				trace.strPendingPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		writer.Write_U8(static_cast<std::uint8_t>(trace.ePendingSource));
+		if (!writer.Write_String(
+				trace.strSelectedPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		Write_U64(writer, trace.iRawRandomInput);
+		Write_U64(writer, trace.iMixedRandomValue);
+		Write_U64(writer, trace.iTotalWeight);
+		Write_U64(writer, trace.iRandomTicket);
+		writer.Write_U8(trace.isMaximumConsecutiveRelaxed ? 1u : 0u);
+		writer.Write_U8(trace.areCandidatesTruncated ? 1u : 0u);
+		writer.Write_U16(static_cast<std::uint16_t>(trace.Candidates.size()));
+		for (const VALTAN_DECISION_TRACE_CANDIDATE_WIRE& candidate :
+			trace.Candidates)
+		{
+			if (!writer.Write_String(
+					candidate.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+			{
+				return false;
+			}
+			writer.Write_U32(candidate.iExclusionMask);
+			writer.Write_U32(candidate.iAuthoredWeight);
+			writer.Write_U32(candidate.iEffectiveWeight);
+			writer.Write_U32(candidate.iCooldownRemainingTicks);
+			writer.Write_U32(candidate.iConsecutiveUses);
+			writer.Write_U32(candidate.iMaximumConsecutiveUses);
+			Write_U64(writer, candidate.iWeightBeginInclusive);
+			Write_U64(writer, candidate.iWeightEndExclusive);
+			writer.Write_U8(candidate.isSelected ? 1u : 0u);
+		}
+		return true;
+	}
+
+	bool Read_ValtanDecisionTrace(
+		CPacketReader& reader,
+		VALTAN_DECISION_TRACE_WIRE& trace)
+	{
+		VALTAN_DECISION_TRACE_WIRE decoded{};
+		std::uint8_t rawIntroConsumed = 0u;
+		std::uint8_t rawSource = 0u;
+		std::uint8_t rawResult = 0u;
+		std::uint8_t rawPendingSource = 0u;
+		std::uint8_t rawRelaxed = 0u;
+		std::uint8_t rawTruncated = 0u;
+		std::uint16_t candidateCount = 0u;
+		if (!Read_U64(reader, decoded.iTraceSequence) ||
+			!reader.Read_U32(decoded.iServerTick) ||
+			!reader.Read_U32(decoded.iPatternSequenceBeforeDecision) ||
+			!reader.Read_U32(decoded.iExpectedPatternSequence) ||
+			!reader.Read_U32(decoded.iCurrentHp) ||
+			!reader.Read_U32(decoded.iMaximumHp) ||
+			!reader.Read_U32(decoded.iHealthBar) ||
+			!reader.Read_U8(decoded.iGameplayPhase) ||
+			!reader.Read_U32(decoded.iTargetNetEntityId) ||
+			!reader.Read_F32(decoded.fTargetDistance) ||
+			!reader.Read_U8(rawIntroConsumed) || rawIntroConsumed > 1u ||
+			!reader.Read_U32(decoded.iRotationStepIndex) ||
+			!reader.Read_U8(rawSource) ||
+			rawSource >= static_cast<std::uint8_t>(
+				VALTAN_DECISION_TRACE_SOURCE::END) ||
+			!reader.Read_U8(rawResult) ||
+			rawResult >= static_cast<std::uint8_t>(
+				VALTAN_DECISION_TRACE_RESULT::END) ||
+			!reader.Read_String(
+				decoded.strRotationId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(
+				decoded.strPendingPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_U8(rawPendingSource) ||
+			rawPendingSource >= static_cast<std::uint8_t>(
+				VALTAN_DECISION_TRACE_SOURCE::END) ||
+			!reader.Read_String(
+				decoded.strSelectedPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!Read_U64(reader, decoded.iRawRandomInput) ||
+			!Read_U64(reader, decoded.iMixedRandomValue) ||
+			!Read_U64(reader, decoded.iTotalWeight) ||
+			!Read_U64(reader, decoded.iRandomTicket) ||
+			!reader.Read_U8(rawRelaxed) || rawRelaxed > 1u ||
+			!reader.Read_U8(rawTruncated) || rawTruncated > 1u ||
+			!reader.Read_U16(candidateCount) ||
+			candidateCount > MAX_VALTAN_DECISION_TRACE_CANDIDATES)
+		{
+			return false;
+		}
+		decoded.isIntroPatternConsumed = 0u != rawIntroConsumed;
+		decoded.eSource = static_cast<VALTAN_DECISION_TRACE_SOURCE>(rawSource);
+		decoded.eResult = static_cast<VALTAN_DECISION_TRACE_RESULT>(rawResult);
+		decoded.ePendingSource =
+			static_cast<VALTAN_DECISION_TRACE_SOURCE>(rawPendingSource);
+		decoded.isMaximumConsecutiveRelaxed = 0u != rawRelaxed;
+		decoded.areCandidatesTruncated = 0u != rawTruncated;
+		decoded.Candidates.reserve(candidateCount);
+		for (std::uint16_t index = 0u; index < candidateCount; ++index)
+		{
+			VALTAN_DECISION_TRACE_CANDIDATE_WIRE candidate{};
+			std::uint8_t rawSelected = 0u;
+			if (!reader.Read_String(
+					candidate.strPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+				!reader.Read_U32(candidate.iExclusionMask) ||
+				!reader.Read_U32(candidate.iAuthoredWeight) ||
+				!reader.Read_U32(candidate.iEffectiveWeight) ||
+				!reader.Read_U32(candidate.iCooldownRemainingTicks) ||
+				!reader.Read_U32(candidate.iConsecutiveUses) ||
+				!reader.Read_U32(candidate.iMaximumConsecutiveUses) ||
+				!Read_U64(reader, candidate.iWeightBeginInclusive) ||
+				!Read_U64(reader, candidate.iWeightEndExclusive) ||
+				!reader.Read_U8(rawSelected) || rawSelected > 1u)
+			{
+				return false;
+			}
+			candidate.isSelected = 0u != rawSelected;
+			decoded.Candidates.push_back(std::move(candidate));
+		}
+		if (!Is_Valid_ValtanDecisionTrace(decoded))
+			return false;
+		trace = std::move(decoded);
+		return true;
+	}
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_VALTAN_AUDITION_LIFECYCLE& message)
+{
+	if (!Is_Valid_AuditionLifecycle(message))
+		return false;
+
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U32(message.iRoomAuditionEpoch);
+	writer.Write_U32(message.iPatternSequence);
+	if (!writer.Write_String(message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.eState));
+	if (!Write_GameplayDataRevision(
+		writer, message.PinnedDefinitionRevision))
+	{
+		return false;
+	}
+	return writer.Write_String(
+		message.strReason, MAX_VALTAN_AUDITION_LIFECYCLE_REASON_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_VALTAN_AUDITION_LIFECYCLE& message)
+{
+	S2C_VALTAN_AUDITION_LIFECYCLE decoded{};
+	std::uint8_t rawState = 0;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U32(decoded.iRoomAuditionEpoch) ||
+		!reader.Read_U32(decoded.iPatternSequence) ||
+		!reader.Read_String(
+			decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U8(rawState) ||
+		rawState >= static_cast<std::uint8_t>(
+			VALTAN_AUDITION_LIFECYCLE_STATE::END) ||
+		!Read_GameplayDataRevision(
+			reader, decoded.PinnedDefinitionRevision) ||
+		!reader.Read_String(
+			decoded.strReason,
+			MAX_VALTAN_AUDITION_LIFECYCLE_REASON_BYTES))
+	{
+		return false;
+	}
+	decoded.eState = static_cast<VALTAN_AUDITION_LIFECYCLE_STATE>(rawState);
+	if (!Is_Valid_AuditionLifecycle(decoded))
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_VALTAN_DECISION_TRACE_QUERY& message)
+{
+	if (!Is_Valid_ValtanDecisionTraceQuery(message))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(
+			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	Write_U64(writer, message.iAfterTraceSequence);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_VALTAN_DECISION_TRACE_QUERY& message)
+{
+	C2S_VALTAN_DECISION_TRACE_QUERY decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(
+			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!Read_U64(reader, decoded.iAfterTraceSequence) ||
+		!Is_Valid_ValtanDecisionTraceQuery(decoded))
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_VALTAN_DECISION_TRACE_RESPONSE& message)
+{
+	if (!Is_Valid_ValtanDecisionTraceResponse(message))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(
+			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	if (VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE != message.eResult)
+		return true;
+	return Write_GameplayDataRevision(
+		writer, message.DefinitionRevision) &&
+		Write_ValtanDecisionTrace(writer, message.Trace);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_VALTAN_DECISION_TRACE_RESPONSE& message)
+{
+	S2C_VALTAN_DECISION_TRACE_RESPONSE decoded{};
+	std::uint8_t rawResult = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(
+			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U8(rawResult) ||
+		rawResult >= static_cast<std::uint8_t>(
+			VALTAN_DECISION_TRACE_QUERY_RESULT::END))
+	{
+		return false;
+	}
+	decoded.eResult =
+		static_cast<VALTAN_DECISION_TRACE_QUERY_RESULT>(rawResult);
+	if (VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE == decoded.eResult &&
+		(!Read_GameplayDataRevision(
+			reader, decoded.DefinitionRevision) ||
+		 !Read_ValtanDecisionTrace(reader, decoded.Trace)))
+	{
+		return false;
+	}
+	if (!Is_Valid_ValtanDecisionTraceResponse(decoded))
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_DATA_REVISION_PREPARE_REQUEST& message)
+{
+	if (!Is_Valid_DataRevisionPrepareIdentity(
+		message.iTransactionSequence,
+		message.BaseRevision,
+		message.CandidateRevision,
+		message.iRequiredPresentationLaneMask))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iTransactionSequence);
+	if (!Write_GameplayDataRevision(writer, message.BaseRevision) ||
+		!Write_GameplayDataRevision(writer, message.CandidateRevision))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequiredPresentationLaneMask);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DATA_REVISION_PREPARE_REQUEST& message)
+{
+	C2S_DATA_REVISION_PREPARE_REQUEST decoded{};
+	if (!reader.Read_U32(decoded.iTransactionSequence) ||
+		!Read_GameplayDataRevision(reader, decoded.BaseRevision) ||
+		!Read_GameplayDataRevision(reader, decoded.CandidateRevision) ||
+		!reader.Read_U32(decoded.iRequiredPresentationLaneMask) ||
+		!Is_Valid_DataRevisionPrepareIdentity(
+			decoded.iTransactionSequence,
+			decoded.BaseRevision,
+			decoded.CandidateRevision,
+			decoded.iRequiredPresentationLaneMask))
+	{
+		return false;
+	}
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_DATA_REVISION_PREPARE& message)
+{
+	if (!Is_Valid_DataRevisionPrepareIdentity(
+		message.iTransactionSequence,
+		message.BaseRevision,
+		message.CandidateRevision,
+		message.iRequiredPresentationLaneMask))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iTransactionSequence);
+	if (!Write_GameplayDataRevision(writer, message.BaseRevision) ||
+		!Write_GameplayDataRevision(writer, message.CandidateRevision))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequiredPresentationLaneMask);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_DATA_REVISION_PREPARE& message)
+{
+	S2C_DATA_REVISION_PREPARE decoded{};
+	if (!reader.Read_U32(decoded.iTransactionSequence) ||
+		!Read_GameplayDataRevision(reader, decoded.BaseRevision) ||
+		!Read_GameplayDataRevision(reader, decoded.CandidateRevision) ||
+		!reader.Read_U32(decoded.iRequiredPresentationLaneMask) ||
+		!Is_Valid_DataRevisionPrepareIdentity(
+			decoded.iTransactionSequence,
+			decoded.BaseRevision,
+			decoded.CandidateRevision,
+			decoded.iRequiredPresentationLaneMask))
+	{
+		return false;
+	}
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_DATA_REVISION_PREPARE_RESPONSE& message)
+{
+	if (!Is_Valid_DataRevisionPrepareResponse(message))
+		return false;
+	writer.Write_U32(message.iTransactionSequence);
+	if (!Write_GameplayDataRevision(writer, message.CandidateRevision))
+		return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.eStatus));
+	writer.Write_U32(message.iRequiredPresentationLaneMask);
+	writer.Write_U32(message.iPreparedPresentationLaneMask);
+	writer.Write_U32(message.iFailedPresentationLaneMask);
+	return writer.Write_String(
+		message.strReason, MAX_DATA_REVISION_REASON_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DATA_REVISION_PREPARE_RESPONSE& message)
+{
+	C2S_DATA_REVISION_PREPARE_RESPONSE decoded{};
+	std::uint8_t rawStatus = 0;
+	if (!reader.Read_U32(decoded.iTransactionSequence) ||
+		!Read_GameplayDataRevision(reader, decoded.CandidateRevision) ||
+		!reader.Read_U8(rawStatus) ||
+		rawStatus >= static_cast<std::uint8_t>(
+			DATA_REVISION_PREPARE_STATUS::END) ||
+		!reader.Read_U32(decoded.iRequiredPresentationLaneMask) ||
+		!reader.Read_U32(decoded.iPreparedPresentationLaneMask) ||
+		!reader.Read_U32(decoded.iFailedPresentationLaneMask) ||
+		!reader.Read_String(
+			decoded.strReason, MAX_DATA_REVISION_REASON_BYTES))
+	{
+		return false;
+	}
+	decoded.eStatus = static_cast<DATA_REVISION_PREPARE_STATUS>(rawStatus);
+	if (!Is_Valid_DataRevisionPrepareResponse(decoded))
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_DATA_REVISION_RESULT& message)
+{
+	if (!Is_Valid_DataRevisionResult(message))
+		return false;
+	writer.Write_U32(message.iTransactionSequence);
+	if (!Write_GameplayDataRevision(writer, message.CandidateRevision) ||
+		!Write_GameplayDataRevision(writer, message.ActiveRevision))
+	{
+		return false;
+	}
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	return writer.Write_String(
+		message.strReason, MAX_DATA_REVISION_REASON_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_DATA_REVISION_RESULT& message)
+{
+	S2C_DATA_REVISION_RESULT decoded{};
+	std::uint8_t rawResult = 0;
+	if (!reader.Read_U32(decoded.iTransactionSequence) ||
+		!Read_GameplayDataRevision(reader, decoded.CandidateRevision) ||
+		!Read_GameplayDataRevision(reader, decoded.ActiveRevision) ||
+		!reader.Read_U8(rawResult) ||
+		rawResult >= static_cast<std::uint8_t>(DATA_REVISION_RESULT::END) ||
+		!reader.Read_String(
+			decoded.strReason, MAX_DATA_REVISION_REASON_BYTES))
+	{
+		return false;
+	}
+	decoded.eResult = static_cast<DATA_REVISION_RESULT>(rawResult);
+	if (!Is_Valid_DataRevisionResult(decoded))
+		return false;
 	message = std::move(decoded);
 	return true;
 }

@@ -21,6 +21,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+	<ClInclude Include="..\Public\GameplayDataRevision.h">
+	  <Filter>Public</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\Gameplay\CombatCollisionContract.h">
 	  <Filter>Public\Gameplay</Filter>
 	</ClInclude>
@@ -50,6 +53,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+	<ClCompile Include="..\Private\GameplayDataRevision.cpp">
+	  <Filter>Private</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\Gameplay\CombatCollisionContract.cpp">
 	  <Filter>Private\Gameplay</Filter>
 	</ClCompile>

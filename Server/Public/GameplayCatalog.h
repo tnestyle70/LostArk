@@ -3,6 +3,7 @@
 #include "Network/PacketMessages.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -12,7 +13,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 17u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 19u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -161,6 +162,23 @@ namespace LostArk::Server
 		std::uint32_t iDefense = 0;
 	};
 
+	enum class BOSS_PHASE_POLICY_KIND : std::uint8_t
+	{
+		/* Compatibility policy for encounters whose phase is still an HP rule.
+		The threshold is carried by BOSS_PHASE_POLICY::iThresholdPercent. */
+		HEALTH_PERCENT_THRESHOLD,
+		/* The profile deliberately carries no pattern/stage echo. One typed
+		SET_GAMEPLAY_PHASE stage action is the sole authored transition edge. */
+		AUTHORED_PATTERN_EVENT
+	};
+
+	struct BOSS_PHASE_POLICY final
+	{
+		BOSS_PHASE_POLICY_KIND eKind =
+			BOSS_PHASE_POLICY_KIND::HEALTH_PERCENT_THRESHOLD;
+		std::uint32_t iThresholdPercent = 0;
+	};
+
 	struct BOSS_RUNTIME_PROFILE
 	{
 		std::string strArchetypeId;
@@ -174,7 +192,7 @@ namespace LostArk::Server
 		float fCollisionRadius = 0.f;
 		float fEngageDistance = 0.f;
 		float fMoveSpeed = 0.f;
-		std::uint32_t iPhaseTwoHpPercent = 0;
+		BOSS_PHASE_POLICY PhasePolicy;
 		/* Empty for a boss that wears no armour, which then takes raw damage
 		exactly as it did before plates existed. */
 		std::vector<BOSS_ARMOR_PLATE> ArmorPlates;
@@ -363,7 +381,35 @@ namespace LostArk::Server
 		SET_BOSS_FLAG,
 		SET_STAGGER_GAUGE,
 		SET_SHIELD,
-		SPAWN_COMBAT_OBJECT
+		SET_GAMEPLAY_PHASE,
+		SPAWN_COMBAT_OBJECT,
+		SPAWN_COMBAT_OBJECT_VOLLEY
+	};
+
+	enum class BOSS_COMBAT_OBJECT_VOLLEY_POLICY : std::uint8_t
+	{
+		NONE,
+		PER_ALIVE_PLAYER
+	};
+
+	enum class BOSS_COMBAT_OBJECT_LAYOUT_KIND : std::uint8_t
+	{
+		SINGLE,
+		RADIAL
+	};
+
+	struct BOSS_COMBAT_OBJECT_VOLLEY final
+	{
+		BOSS_COMBAT_OBJECT_VOLLEY_POLICY ePolicy =
+			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::NONE;
+		std::uint32_t iCountPerResolvedTarget = 1u;
+		BOSS_COMBAT_OBJECT_LAYOUT_KIND eLayout =
+			BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE;
+		float fRadiusM = 0.f;
+		float fStartAngleDegrees = 0.f;
+		float fAngleStepDegrees = 0.f;
+		bool bAllowOverlap = false;
+		std::uint32_t iMaximumTotalObjects = 1u;
 	};
 
 	struct BOSS_PATTERN_STAGE_ACTION final
@@ -375,6 +421,7 @@ namespace LostArk::Server
 		std::string strTargetId;
 		std::uint32_t iValue = 0;
 		std::uint32_t iDurationMs = 0;
+		BOSS_COMBAT_OBJECT_VOLLEY Volley;
 	};
 
 	enum class BOSS_PATTERN_STAGE_MOTION_KIND : std::uint8_t
@@ -474,13 +521,35 @@ namespace LostArk::Server
 
 	enum class BOSS_PATTERN_ROTATION_SELECTION_MODE : std::uint8_t
 	{
-		/* PatternIds is the complete weighted candidate pool. The individual
-		   pattern definitions still own weight, range, phase, armour, cooldown,
-		   and maximum-consecutive-use tuning. */
+		/* Managed windows own an explicit enabled/weight candidate set. Pattern
+		   definitions continue to own range, phase, armour, cooldown and
+		   maximum-consecutive-use tuning, but not this window's roll weight. */
 		WEIGHTED_POOL,
 		/* Legacy authored lists introduce each step once, then hand back to the
 		   encounter-wide weighted selector. */
 		ORDERED_INTRO_THEN_WEIGHTED
+	};
+
+	struct BOSS_PATTERN_ROTATION_CANDIDATE final
+	{
+		std::string strPatternId;
+		std::uint32_t iSelectionWeight = 0u;
+		bool bEnabled = false;
+	};
+
+	struct BOSS_PATTERN_ROTATION_WINDOW final
+	{
+		std::string strWindowId;
+		std::string strSelectionSetId;
+		std::uint32_t iGameplayPhase = 0u;
+		std::uint32_t iFromHealthBar = 0u;
+		std::uint32_t iToHealthBar = 0u;
+		std::uint32_t iExpectedCandidateCount = 0u;
+
+		[[nodiscard]] bool Is_Defined() const noexcept
+		{
+			return !strWindowId.empty();
+		}
 	};
 
 	/* One normal-selection stretch between two scripted health-bar mechanics.
@@ -494,6 +563,10 @@ namespace LostArk::Server
 		std::uint32_t iFromHealthBar = 0;
 		std::uint32_t iToHealthBar = 0;
 		std::uint32_t iExpectedStepCount = 0;
+		/* Strict v19 tagged union: managed WEIGHTED_POOL rows use Window and
+		Candidates only; legacy ORDERED rows use PatternIds only. */
+		BOSS_PATTERN_ROTATION_WINDOW Window;
+		std::vector<BOSS_PATTERN_ROTATION_CANDIDATE> Candidates;
 		std::vector<std::string> PatternIds;
 	};
 
@@ -650,7 +723,13 @@ namespace LostArk::Server
 	{
 	public:
 		bool Load();
-
+		/* Load one immutable candidate artifact by its exact canonical path. The
+		content hash is checked before parsing/commit; a successful load exposes
+		the verified parent manifest revision, not the child bootstrap hash. */
+		bool Load_FromBootstrap(
+			const std::filesystem::path& bootstrapPath,
+			const LostArk::Shared::GameplayDataRevision& expectedBootstrapRevision,
+			const LostArk::Shared::GameplayDataRevision& parentRevision);
 		const PLAYER_SKILL_DEFINITION* Find_Skill(
 			LostArk::Shared::SKILL_ID skillId) const;
 		const BOSS_RUNTIME_PROFILE* Find_Boss(
@@ -672,6 +751,7 @@ namespace LostArk::Server
 		has no authored order and the weighted roll owns it. */
 		const BOSS_PATTERN_ROTATION_DEFINITION* Find_BossPatternRotation(
 			const std::string& encounterId,
+			std::uint32_t gameplayPhase,
 			std::uint32_t healthBar) const;
 		const std::string& Find_IntroPatternId(
 			const std::string& encounterId) const;
@@ -693,9 +773,18 @@ namespace LostArk::Server
 		static std::uint32_t Apply_Defense(
 			std::uint32_t rawDamage, std::uint32_t defense);
 
+		[[nodiscard]] const LostArk::Shared::GameplayDataRevision&
+			Get_ActiveRevision() const noexcept
+		{
+			return m_ActiveRevision;
+		}
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
+		bool Load_BootstrapPath(
+			const std::filesystem::path& bootstrapPath,
+			const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
+			const LostArk::Shared::GameplayDataRevision* parentRevision);
 		/* Shared by the per-skill and per-stage rows so both read one packed
 		encoding and one ordering rule. Reports its own failure into m_strStatus. */
 		bool Parse_RootMotionSamples(
@@ -741,6 +830,7 @@ namespace LostArk::Server
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
+		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};
 		std::string m_strStatus;
 	};
 }

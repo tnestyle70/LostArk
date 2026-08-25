@@ -215,6 +215,65 @@ namespace
 		return true;
 	}
 
+	GameplayDataRevision Make_GameplayDataRevision(
+		const std::uint8_t seed)
+	{
+		GameplayDataRevision revision{};
+		for (std::size_t index = 0; index < revision.Bytes.size(); ++index)
+		{
+			revision.Bytes[index] = static_cast<std::uint8_t>(seed + index);
+		}
+		return revision;
+	}
+
+	S2C_VALTAN_DECISION_TRACE_RESPONSE Make_ValtanDecisionTraceResponse()
+	{
+		S2C_VALTAN_DECISION_TRACE_RESPONSE response{};
+		response.iRequestSequence = 91u;
+		response.strBossPlacementId = "boss.valtan.center";
+		response.eResult = VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE;
+		response.DefinitionRevision = Make_GameplayDataRevision(90u);
+		response.Trace.iTraceSequence = 7001u;
+		response.Trace.iServerTick = 1440u;
+		response.Trace.iPatternSequenceBeforeDecision = 12u;
+		response.Trace.iExpectedPatternSequence = 13u;
+		response.Trace.iCurrentHp = 880000u;
+		response.Trace.iMaximumHp = 1000000u;
+		response.Trace.iHealthBar = 140u;
+		response.Trace.iGameplayPhase = 1u;
+		response.Trace.iTargetNetEntityId = 44u;
+		response.Trace.fTargetDistance = 6.25f;
+		response.Trace.isIntroPatternConsumed = true;
+		response.Trace.iRotationStepIndex = 2u;
+		response.Trace.eSource = VALTAN_DECISION_TRACE_SOURCE::WEIGHTED;
+		response.Trace.eResult = VALTAN_DECISION_TRACE_RESULT::SELECTED;
+		response.Trace.strRotationId = "rotation.valtan.phase-1";
+		response.Trace.ePendingSource = VALTAN_DECISION_TRACE_SOURCE::NONE;
+		response.Trace.strSelectedPatternId = "VALTAN_WHIRLWIND";
+		response.Trace.iRawRandomInput = 0x1122334455667788ull;
+		response.Trace.iMixedRandomValue = 0x8877665544332211ull;
+		response.Trace.iTotalWeight = 70u;
+		response.Trace.iRandomTicket = 42u;
+
+		VALTAN_DECISION_TRACE_CANDIDATE_WIRE donut{};
+		donut.strPatternId = "VALTAN_DONUT";
+		donut.iExclusionMask = VALTAN_DECISION_TRACE_EXCLUDE_COOLDOWN;
+		donut.iAuthoredWeight = 30u;
+		donut.iCooldownRemainingTicks = 4u;
+		donut.iConsecutiveUses = 1u;
+		donut.iMaximumConsecutiveUses = 2u;
+		response.Trace.Candidates.push_back(donut);
+
+		VALTAN_DECISION_TRACE_CANDIDATE_WIRE whirlwind{};
+		whirlwind.strPatternId = "VALTAN_WHIRLWIND";
+		whirlwind.iAuthoredWeight = 70u;
+		whirlwind.iEffectiveWeight = 70u;
+		whirlwind.iWeightEndExclusive = 70u;
+		whirlwind.isSelected = true;
+		response.Trace.Candidates.push_back(whirlwind);
+		return response;
+	}
+
 	std::string Make_CombatRuntimeRevision()
 	{
 		return std::string(63u, 'a') + "1";
@@ -475,6 +534,9 @@ namespace
 
 		source.iPlayerId = 1;
 		source.iNetEntityId = 100;
+		source.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+		source.RequiredPinnedGameplayRevisions.push_back(
+			Make_GameplayDataRevision(2u));
 
 		std::vector<std::uint8_t> payload;
 
@@ -489,7 +551,8 @@ namespace
 			payload);
 
 		testRunner.Require(
-			12 == payload.size(),
+			12u + GAMEPLAY_DATA_REVISION_BYTES + 1u +
+				GAMEPLAY_DATA_REVISION_BYTES == payload.size(),
 			"Enter Accepted Payload Size");
 
 		CPacketReader reader{ payload };
@@ -514,6 +577,13 @@ namespace
 			source.iNetEntityId ==
 			decoded.iNetEntityId,
 			"Net Entity ID Round Trip");
+
+		testRunner.Require(
+			source.ActiveGameplayRevision ==
+				decoded.ActiveGameplayRevision &&
+			source.RequiredPinnedGameplayRevisions ==
+				decoded.RequiredPinnedGameplayRevisions,
+			"Enter Accepted Revision Set Round Trip");
 
 		testRunner.Require(
 			0 == reader.Get_RemainingSize(),
@@ -956,6 +1026,7 @@ namespace
 		source.fPositionY = 22.97f;
 		source.fPositionZ = -121.75f;
 		source.fYawDegrees = 225.f;
+		source.PinnedDefinitionRevision = Make_GameplayDataRevision(3u);
 
 		std::vector<std::uint8_t> payload;
 		testRunner.Require(
@@ -976,7 +1047,9 @@ namespace
 			decoded.fPositionX == source.fPositionX &&
 			decoded.fPositionY == source.fPositionY &&
 			decoded.fPositionZ == source.fPositionZ &&
-			decoded.fYawDegrees == source.fYawDegrees,
+			decoded.fYawDegrees == source.fYawDegrees &&
+			decoded.PinnedDefinitionRevision ==
+				source.PinnedDefinitionRevision,
 			"Combat Object Spawned Round Trip");
 
 		S2C_COMBAT_OBJECT_SPAWNED invalid = source;
@@ -1004,6 +1077,11 @@ namespace
 		CPacketWriter invalidPoseWriter;
 		testRunner.Require(!Write_Message(invalidPoseWriter, invalid),
 			"Reject Non-Finite Combat Object Spawn Pose");
+		invalid = source;
+		invalid.PinnedDefinitionRevision = {};
+		CPacketWriter invalidRevisionWriter;
+		testRunner.Require(!Write_Message(invalidRevisionWriter, invalid),
+			"Reject Combat Object Spawn With Zero Definition Revision");
 
 		payload.pop_back();
 		CPacketReader truncatedReader{ payload };
@@ -1042,6 +1120,7 @@ namespace
 			INVALID_PLAYER_ID;
 
 		invalidPlayer.iNetEntityId = 100;
+		invalidPlayer.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
 
 		CPacketWriter invalidPlayerWriter;
 
@@ -1057,6 +1136,7 @@ namespace
 
 		invalidEntity.iNetEntityId =
 			INVALID_NET_ENTITY_ID;
+		invalidEntity.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
 
 		CPacketWriter invalidEntityWriter;
 
@@ -1843,6 +1923,9 @@ namespace
 		source.iServerTick = 30;
 		source.iEstherGauge = 640;
 		source.iEstherGaugeMaximum = 1000;
+		source.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+		source.RequiredPinnedGameplayRevisions.push_back(
+			Make_GameplayDataRevision(2u));
 
 		PLAYER_SNAPSHOT first{};
 		first.iNetEntityId = 100;
@@ -1912,6 +1995,7 @@ namespace
 		entity.BossCombat.iCurrentShield = 0u;
 		entity.BossCombat.iMaximumShield = 0u;
 		entity.BossCombat.iGameplayPhase = 1u;
+		entity.PinnedDefinitionRevision = source.ActiveGameplayRevision;
 		source.Entities.push_back(entity);
 
 		BOSS_COMBAT_EVENT partBroken{};
@@ -1929,6 +2013,8 @@ namespace
 		combatObject.fPositionY = 24.f;
 		combatObject.fPositionZ = -120.f;
 		combatObject.fYawDegrees = 180.f;
+		combatObject.PinnedDefinitionRevision =
+			source.RequiredPinnedGameplayRevisions.front();
 		source.CombatObjects.push_back(combatObject);
 
 		std::vector<std::uint8_t> payload;
@@ -1949,18 +2035,23 @@ namespace
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
 			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1 + 1 + 1 +
-			4 + 4 + 2 + (4 * 4) + 1;
+			4 + 4 + 2 + (4 * 4) + 1 + GAMEPLAY_DATA_REVISION_BYTES;
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
 		constexpr std::size_t combatObjectBytes =
-			8 + 4 + (4 * 4);
+			8 + 4 + (4 * 4) + GAMEPLAY_DATA_REVISION_BYTES;
+		const std::size_t snapshotRevisionBytes =
+			GAMEPLAY_DATA_REVISION_BYTES + 1u +
+			(source.RequiredPinnedGameplayRevisions.size() *
+				GAMEPLAY_DATA_REVISION_BYTES);
 		const std::size_t expectedPayloadBytes =
 			snapshotHeaderBytes +
 			(playerFixedBytes * 2) +
 			cooldownBytes +
 			entityBytes +
 			bossCombatEventBytes +
-			combatObjectBytes;
+			combatObjectBytes +
+			snapshotRevisionBytes;
 
 		testRunner.Require(
 			expectedPayloadBytes == payload.size(),
@@ -1981,7 +2072,15 @@ namespace
 			decoded.BossCombatEvents.size() == 1 &&
 			decoded.CombatObjects.size() == 1 &&
 			decoded.iEstherGauge == 640 &&
-			decoded.iEstherGaugeMaximum == 1000,
+			decoded.iEstherGaugeMaximum == 1000 &&
+			decoded.ActiveGameplayRevision ==
+				source.ActiveGameplayRevision &&
+			decoded.RequiredPinnedGameplayRevisions ==
+				source.RequiredPinnedGameplayRevisions &&
+			decoded.Entities.front().PinnedDefinitionRevision ==
+				entity.PinnedDefinitionRevision &&
+			decoded.CombatObjects.front().PinnedDefinitionRevision ==
+				combatObject.PinnedDefinitionRevision,
 			"World Snapshot Header Round Trip");
 
 		S2C_WORLD_SNAPSHOT overfullGauge = source;
@@ -2066,6 +2165,27 @@ namespace
 		testRunner.Require(
 			!Write_Message(overArmouredWriter, overArmoured),
 			"Reject A Broken Armour Mask That Names An Unsupported Plate");
+
+		S2C_WORLD_SNAPSHOT zeroEntityRevision = source;
+		zeroEntityRevision.Entities[0].PinnedDefinitionRevision = {};
+		CPacketWriter zeroEntityRevisionWriter;
+		testRunner.Require(
+			!Write_Message(zeroEntityRevisionWriter, zeroEntityRevision),
+			"Reject World Entity Snapshot With Zero Pinned Revision");
+
+		S2C_WORLD_SNAPSHOT zeroCombatRevision = source;
+		zeroCombatRevision.CombatObjects[0].PinnedDefinitionRevision = {};
+		CPacketWriter zeroCombatRevisionWriter;
+		testRunner.Require(
+			!Write_Message(zeroCombatRevisionWriter, zeroCombatRevision),
+			"Reject Combat Object Snapshot With Zero Pinned Revision");
+
+		S2C_WORLD_SNAPSHOT zeroActiveRevision = source;
+		zeroActiveRevision.ActiveGameplayRevision = {};
+		CPacketWriter zeroActiveRevisionWriter;
+		testRunner.Require(
+			!Write_Message(zeroActiveRevisionWriter, zeroActiveRevision),
+			"Reject World Snapshot With Zero Active Revision");
 
 		testRunner.Require(
 			decoded.BossCombatEvents[0].iEventSequence ==
@@ -2338,7 +2458,8 @@ namespace
 
 		std::vector<std::uint8_t> unknownBossEventKindPayload = payload;
 		unknownBossEventKindPayload[
-			unknownBossEventKindPayload.size() - combatObjectBytes - 5u] =
+			unknownBossEventKindPayload.size() - snapshotRevisionBytes -
+				combatObjectBytes - 5u] =
 			static_cast<std::uint8_t>(BOSS_COMBAT_EVENT_KIND::END);
 		CPacketReader unknownBossEventKindReader{ unknownBossEventKindPayload };
 		S2C_WORLD_SNAPSHOT unchangedUnknownKind{};
@@ -3378,6 +3499,606 @@ namespace
 			0u == activationReader.Get_RemainingSize(),
 			"Spawn Group Activation Result Round Trip");
 	}
+
+	void Test_GameplayDataRevisionContract(TEST_RUNNER& testRunner)
+	{
+		const std::string upperHex =
+			"0123456789ABCDEF0123456789ABCDEF"
+			"0123456789ABCDEF0123456789ABCDEF";
+		GameplayDataRevision parsed{};
+		testRunner.Require(
+			Try_Parse_GameplayDataRevision(upperHex, parsed) &&
+			parsed.Is_Valid() &&
+			Format_GameplayDataRevision(parsed) ==
+				"0123456789abcdef0123456789abcdef"
+				"0123456789abcdef0123456789abcdef",
+			"Gameplay Revision Hex Parse And Canonical Format");
+
+		GameplayDataRevision unchanged = Make_GameplayDataRevision(91u);
+		const GameplayDataRevision sentinel = unchanged;
+		testRunner.Require(
+			!Try_Parse_GameplayDataRevision(std::string(64u, '0'), unchanged) &&
+			unchanged == sentinel &&
+			!Try_Parse_GameplayDataRevision("not-a-revision", unchanged) &&
+			unchanged == sentinel,
+			"Reject Zero Or Malformed Revision Hex Without Mutation");
+
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_GameplayDataRevision(writer, parsed) &&
+			writer.Get_Buffer().size() == GAMEPLAY_DATA_REVISION_BYTES,
+			"Gameplay Revision Fixed Width Wire");
+		CPacketReader reader{ writer.Get_Buffer() };
+		GameplayDataRevision decoded{};
+		testRunner.Require(
+			Read_GameplayDataRevision(reader, decoded) &&
+			decoded == parsed && 0u == reader.Get_RemainingSize(),
+			"Gameplay Revision Wire Round Trip");
+
+		CPacketWriter zeroWriter;
+		testRunner.Require(
+			!Write_GameplayDataRevision(zeroWriter, GameplayDataRevision{}) &&
+			zeroWriter.Get_Buffer().empty(),
+			"Reject Reserved Zero Gameplay Revision On Write");
+		std::vector<std::uint8_t> zeroBytes(GAMEPLAY_DATA_REVISION_BYTES, 0u);
+		CPacketReader zeroReader{ zeroBytes };
+		unchanged = sentinel;
+		testRunner.Require(
+			!Read_GameplayDataRevision(zeroReader, unchanged) &&
+			unchanged == sentinel,
+			"Reject Reserved Zero Gameplay Revision On Read Atomically");
+		std::vector<std::uint8_t> truncated = writer.Get_Buffer();
+		truncated.pop_back();
+		CPacketReader truncatedReader{ truncated };
+		unchanged = sentinel;
+		testRunner.Require(
+			!Read_GameplayDataRevision(truncatedReader, unchanged) &&
+			unchanged == sentinel,
+			"Reject Truncated Gameplay Revision Atomically");
+
+		S2C_ENTER_ACCEPTED accepted{};
+		accepted.iPlayerId = 1u;
+		accepted.iNetEntityId = 100u;
+		accepted.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+		accepted.RequiredPinnedGameplayRevisions = {
+			Make_GameplayDataRevision(2u), Make_GameplayDataRevision(2u) };
+		CPacketWriter duplicateWriter;
+		testRunner.Require(
+			!Write_Message(duplicateWriter, accepted),
+			"Reject Duplicate Required Pinned Revision On Write");
+
+		CPacketWriter duplicateWire;
+		duplicateWire.Write_U16(NETWORK_PROTOCOL_VERSION);
+		duplicateWire.Write_U16(static_cast<std::uint16_t>(WORLD_ID::BERN));
+		duplicateWire.Write_U32(1u);
+		duplicateWire.Write_U32(100u);
+		const GameplayDataRevision active = Make_GameplayDataRevision(1u);
+		const GameplayDataRevision duplicate = Make_GameplayDataRevision(2u);
+		const bool wroteActive =
+			Write_GameplayDataRevision(duplicateWire, active);
+		duplicateWire.Write_U8(2u);
+		const bool wroteFirst =
+			Write_GameplayDataRevision(duplicateWire, duplicate);
+		const bool wroteSecond =
+			Write_GameplayDataRevision(duplicateWire, duplicate);
+		CPacketReader duplicateReader{ duplicateWire.Get_Buffer() };
+		S2C_ENTER_ACCEPTED unchangedAccepted{};
+		unchangedAccepted.iPlayerId = 77u;
+		unchangedAccepted.ActiveGameplayRevision = sentinel;
+		testRunner.Require(
+			wroteActive && wroteFirst && wroteSecond &&
+			!Read_Message(duplicateReader, unchangedAccepted) &&
+			77u == unchangedAccepted.iPlayerId &&
+			unchangedAccepted.ActiveGameplayRevision == sentinel,
+			"Reject Duplicate Required Pinned Revision On Read Atomically");
+
+		accepted.RequiredPinnedGameplayRevisions.assign(
+			MAX_REQUIRED_PINNED_GAMEPLAY_REVISIONS + 1u,
+			Make_GameplayDataRevision(3u));
+		CPacketWriter oversizeListWriter;
+		testRunner.Require(
+			!Write_Message(oversizeListWriter, accepted),
+			"Reject Oversize Required Pinned Revision List");
+	}
+
+	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			36u == NETWORK_PROTOCOL_VERSION,
+			"Decision Observatory Contract Uses Protocol 36");
+		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
+		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
+		const std::uint32_t required =
+			static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::ANIMATION) |
+			static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::EFFECT);
+
+		testRunner.Require(
+			Is_Known_Packet_Type(
+				PACKET_TYPE::C2S_DATA_REVISION_PREPARE_REQUEST) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_DATA_REVISION_PREPARE) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::C2S_DATA_REVISION_PREPARE_RESPONSE) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_DATA_REVISION_RESULT),
+			"Data Revision Two Phase Packet Types Are Known");
+
+		C2S_DATA_REVISION_PREPARE_REQUEST request{};
+		request.iTransactionSequence = 7u;
+		request.BaseRevision = base;
+		request.CandidateRevision = candidate;
+		request.iRequiredPresentationLaneMask = required;
+		CPacketWriter requestWriter;
+		CPacketReader requestReader{
+			(Write_Message(requestWriter, request), requestWriter.Get_Buffer()) };
+		C2S_DATA_REVISION_PREPARE_REQUEST decodedRequest{};
+		testRunner.Require(
+			Read_Message(requestReader, decodedRequest) &&
+			0u == requestReader.Get_RemainingSize() &&
+			decodedRequest.iTransactionSequence == request.iTransactionSequence &&
+			decodedRequest.BaseRevision == base &&
+			decodedRequest.CandidateRevision == candidate &&
+			decodedRequest.iRequiredPresentationLaneMask == required,
+			"Data Revision Prepare Request Round Trip");
+
+		S2C_DATA_REVISION_PREPARE prepare{};
+		prepare.iTransactionSequence = request.iTransactionSequence;
+		prepare.BaseRevision = base;
+		prepare.CandidateRevision = candidate;
+		prepare.iRequiredPresentationLaneMask = required;
+		CPacketWriter prepareWriter;
+		CPacketReader prepareReader{
+			(Write_Message(prepareWriter, prepare), prepareWriter.Get_Buffer()) };
+		S2C_DATA_REVISION_PREPARE decodedPrepare{};
+		testRunner.Require(
+			Read_Message(prepareReader, decodedPrepare) &&
+			0u == prepareReader.Get_RemainingSize() &&
+			decodedPrepare.CandidateRevision == candidate,
+			"Data Revision Server Prepare Round Trip");
+
+		request.iRequiredPresentationLaneMask =
+			GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK | (1u << 31u);
+		CPacketWriter unknownMaskWriter;
+		testRunner.Require(
+			!Write_Message(unknownMaskWriter, request),
+			"Reject Unknown Required Presentation Lane On Write");
+		std::vector<std::uint8_t> unknownMaskWire =
+			prepareWriter.Get_Buffer();
+		unknownMaskWire[unknownMaskWire.size() - 1u] |= 0x80u;
+		CPacketReader unknownMaskReader{ unknownMaskWire };
+		S2C_DATA_REVISION_PREPARE unchangedPrepare{};
+		unchangedPrepare.iTransactionSequence = 99u;
+		unchangedPrepare.CandidateRevision = base;
+		testRunner.Require(
+			!Read_Message(unknownMaskReader, unchangedPrepare) &&
+			99u == unchangedPrepare.iTransactionSequence &&
+			unchangedPrepare.CandidateRevision == base,
+			"Reject Unknown Required Presentation Lane Atomically");
+
+		request.iRequiredPresentationLaneMask = required;
+		request.CandidateRevision = {};
+		CPacketWriter zeroCandidateWriter;
+		testRunner.Require(
+			!Write_Message(zeroCandidateWriter, request),
+			"Reject Zero Candidate Revision In Prepare");
+		request.CandidateRevision = base;
+		CPacketWriter sameRevisionWriter;
+		testRunner.Require(
+			!Write_Message(sameRevisionWriter, request),
+			"Reject Prepare Whose Base Equals Candidate");
+
+		C2S_DATA_REVISION_PREPARE_RESPONSE response{};
+		response.iTransactionSequence = 7u;
+		response.CandidateRevision = candidate;
+		response.eStatus = DATA_REVISION_PREPARE_STATUS::READY;
+		response.iRequiredPresentationLaneMask = required;
+		response.iPreparedPresentationLaneMask = required;
+		CPacketWriter readyWriter;
+		CPacketReader readyReader{
+			(Write_Message(readyWriter, response), readyWriter.Get_Buffer()) };
+		C2S_DATA_REVISION_PREPARE_RESPONSE decodedResponse{};
+		testRunner.Require(
+			Read_Message(readyReader, decodedResponse) &&
+			0u == readyReader.Get_RemainingSize() &&
+			DATA_REVISION_PREPARE_STATUS::READY == decodedResponse.eStatus,
+			"Data Revision READY Round Trip");
+
+		response.eStatus = DATA_REVISION_PREPARE_STATUS::READY_DEGRADED;
+		response.iFailedPresentationLaneMask =
+			static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::CAMERA);
+		response.strReason = "optional camera lane unavailable";
+		CPacketWriter degradedWriter;
+		CPacketReader degradedReader{
+			(Write_Message(degradedWriter, response), degradedWriter.Get_Buffer()) };
+		decodedResponse = {};
+		testRunner.Require(
+			Read_Message(degradedReader, decodedResponse) &&
+			DATA_REVISION_PREPARE_STATUS::READY_DEGRADED ==
+				decodedResponse.eStatus &&
+			decodedResponse.iFailedPresentationLaneMask ==
+				response.iFailedPresentationLaneMask,
+			"Data Revision READY DEGRADED Round Trip");
+
+		response.iFailedPresentationLaneMask =
+			static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::EFFECT);
+		CPacketWriter invalidDegradedWriter;
+		testRunner.Require(
+			!Write_Message(invalidDegradedWriter, response),
+			"Reject READY DEGRADED With Failed Required Lane");
+
+		response.eStatus = DATA_REVISION_PREPARE_STATUS::NACK;
+		response.iPreparedPresentationLaneMask = 0u;
+		response.iFailedPresentationLaneMask = required;
+		response.strReason = "required lanes unavailable";
+		CPacketWriter nackWriter;
+		CPacketReader nackReader{
+			(Write_Message(nackWriter, response), nackWriter.Get_Buffer()) };
+		decodedResponse = {};
+		testRunner.Require(
+			Read_Message(nackReader, decodedResponse) &&
+			DATA_REVISION_PREPARE_STATUS::NACK == decodedResponse.eStatus,
+			"Data Revision NACK Round Trip");
+
+		response.strReason.assign(
+			MAX_DATA_REVISION_REASON_BYTES + 1u, 'x');
+		CPacketWriter oversizeReasonWriter;
+		testRunner.Require(
+			!Write_Message(oversizeReasonWriter, response),
+			"Reject Oversize Data Revision Response Reason");
+
+		CPacketWriter oversizeReasonWire;
+		oversizeReasonWire.Write_U32(7u);
+		const bool wroteOversizeRevision = Write_GameplayDataRevision(
+			oversizeReasonWire, candidate);
+		oversizeReasonWire.Write_U8(static_cast<std::uint8_t>(
+			DATA_REVISION_PREPARE_STATUS::NACK));
+		oversizeReasonWire.Write_U32(required);
+		oversizeReasonWire.Write_U32(0u);
+		oversizeReasonWire.Write_U32(required);
+		const std::string oversizeReason(
+			MAX_DATA_REVISION_REASON_BYTES + 1u, 'x');
+		const bool wroteOversizeReason = oversizeReasonWire.Write_String(
+			oversizeReason, oversizeReason.size());
+		CPacketReader oversizeReasonReader{
+			oversizeReasonWire.Get_Buffer() };
+		C2S_DATA_REVISION_PREPARE_RESPONSE unchangedOversize{};
+		unchangedOversize.iTransactionSequence = 124u;
+		unchangedOversize.CandidateRevision = base;
+		testRunner.Require(
+			wroteOversizeRevision && wroteOversizeReason &&
+			!Read_Message(oversizeReasonReader, unchangedOversize) &&
+			124u == unchangedOversize.iTransactionSequence &&
+			unchangedOversize.CandidateRevision == base,
+			"Reject Oversize Data Revision Reason On Read Atomically");
+
+		std::vector<std::uint8_t> unknownStatusWire = nackWriter.Get_Buffer();
+		unknownStatusWire[4u + GAMEPLAY_DATA_REVISION_BYTES] =
+			static_cast<std::uint8_t>(DATA_REVISION_PREPARE_STATUS::END);
+		CPacketReader unknownStatusReader{ unknownStatusWire };
+		C2S_DATA_REVISION_PREPARE_RESPONSE unchangedResponse{};
+		unchangedResponse.iTransactionSequence = 123u;
+		unchangedResponse.CandidateRevision = base;
+		testRunner.Require(
+			!Read_Message(unknownStatusReader, unchangedResponse) &&
+			123u == unchangedResponse.iTransactionSequence &&
+			unchangedResponse.CandidateRevision == base,
+			"Reject Unknown Data Revision Readiness Atomically");
+
+		S2C_DATA_REVISION_RESULT result{};
+		result.iTransactionSequence = 7u;
+		result.CandidateRevision = candidate;
+		result.ActiveRevision = candidate;
+		result.eResult = DATA_REVISION_RESULT::COMMITTED;
+		CPacketWriter commitWriter;
+		CPacketReader commitReader{
+			(Write_Message(commitWriter, result), commitWriter.Get_Buffer()) };
+		S2C_DATA_REVISION_RESULT decodedResult{};
+		testRunner.Require(
+			Read_Message(commitReader, decodedResult) &&
+			DATA_REVISION_RESULT::COMMITTED == decodedResult.eResult &&
+			decodedResult.ActiveRevision == candidate,
+			"Data Revision COMMIT Round Trip");
+
+		result.ActiveRevision = base;
+		result.eResult = DATA_REVISION_RESULT::ABORTED;
+		result.strReason = "client readiness timeout";
+		CPacketWriter abortWriter;
+		CPacketReader abortReader{
+			(Write_Message(abortWriter, result), abortWriter.Get_Buffer()) };
+		decodedResult = {};
+		testRunner.Require(
+			Read_Message(abortReader, decodedResult) &&
+			DATA_REVISION_RESULT::ABORTED == decodedResult.eResult &&
+			decodedResult.ActiveRevision == base,
+			"Data Revision ABORT Round Trip");
+
+		std::vector<std::uint8_t> truncated = abortWriter.Get_Buffer();
+		truncated.pop_back();
+		CPacketReader truncatedReader{ truncated };
+		S2C_DATA_REVISION_RESULT unchangedResult{};
+		unchangedResult.iTransactionSequence = 456u;
+		unchangedResult.ActiveRevision = candidate;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchangedResult) &&
+			456u == unchangedResult.iTransactionSequence &&
+			unchangedResult.ActiveRevision == candidate,
+			"Reject Truncated Data Revision Result Atomically");
+	}
+
+	void Test_ValtanAuditionLifecycleProtocol(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_VALTAN_AUDITION_LIFECYCLE),
+			"Valtan Audition Lifecycle Packet Type Is Known");
+
+		S2C_VALTAN_AUDITION_LIFECYCLE lifecycle{};
+		lifecycle.iRequestSequence = 71u;
+		lifecycle.iRoomAuditionEpoch = 9u;
+		lifecycle.iPatternSequence = 14u;
+		lifecycle.strPatternId = "HIGH_JUMP";
+		lifecycle.eState = VALTAN_AUDITION_LIFECYCLE_STATE::PENDING;
+		lifecycle.PinnedDefinitionRevision = Make_GameplayDataRevision(60u);
+		S2C_VALTAN_AUDITION_LIFECYCLE pendingWithoutPattern = lifecycle;
+		pendingWithoutPattern.iPatternSequence = 0u;
+		CPacketWriter pendingWriter;
+		CPacketReader pendingReader{
+			(Write_Message(pendingWriter, pendingWithoutPattern),
+				pendingWriter.Get_Buffer()) };
+		S2C_VALTAN_AUDITION_LIFECYCLE decodedPending{};
+		testRunner.Require(
+			Read_Message(pendingReader, decodedPending) &&
+			0u == decodedPending.iPatternSequence &&
+			VALTAN_AUDITION_LIFECYCLE_STATE::PENDING == decodedPending.eState,
+			"Valtan Pending Audition May Await Pattern Sequence Assignment");
+		for (const VALTAN_AUDITION_LIFECYCLE_STATE state : {
+			VALTAN_AUDITION_LIFECYCLE_STATE::PENDING,
+			VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE,
+			VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED })
+		{
+			lifecycle.eState = state;
+			lifecycle.strReason.clear();
+			CPacketWriter writer;
+			CPacketReader reader{
+				(Write_Message(writer, lifecycle), writer.Get_Buffer()) };
+			S2C_VALTAN_AUDITION_LIFECYCLE decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				0u == reader.Get_RemainingSize() &&
+				decoded.eState == state &&
+				decoded.iRequestSequence == lifecycle.iRequestSequence &&
+				decoded.iRoomAuditionEpoch == lifecycle.iRoomAuditionEpoch &&
+				decoded.iPatternSequence == lifecycle.iPatternSequence &&
+				decoded.strPatternId == lifecycle.strPatternId &&
+				decoded.PinnedDefinitionRevision ==
+					lifecycle.PinnedDefinitionRevision,
+				"Valtan Audition Lifecycle Edge Round Trip");
+		}
+
+		lifecycle.eState = VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED;
+		lifecycle.strReason = "owner disconnected";
+		CPacketWriter abortedWriter;
+		CPacketReader abortedReader{
+			(Write_Message(abortedWriter, lifecycle),
+				abortedWriter.Get_Buffer()) };
+		S2C_VALTAN_AUDITION_LIFECYCLE decodedAborted{};
+		testRunner.Require(
+			Read_Message(abortedReader, decodedAborted) &&
+			VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED ==
+				decodedAborted.eState &&
+			decodedAborted.strReason == lifecycle.strReason,
+			"Valtan Audition ABORTED Round Trip");
+
+		lifecycle.PinnedDefinitionRevision = {};
+		CPacketWriter zeroRevisionWriter;
+		testRunner.Require(
+			!Write_Message(zeroRevisionWriter, lifecycle),
+			"Reject Valtan Lifecycle With Zero Pinned Revision");
+		lifecycle.PinnedDefinitionRevision = Make_GameplayDataRevision(60u);
+		lifecycle.strReason.assign(
+			MAX_VALTAN_AUDITION_LIFECYCLE_REASON_BYTES + 1u, 'x');
+		CPacketWriter oversizeReasonWriter;
+		testRunner.Require(
+			!Write_Message(oversizeReasonWriter, lifecycle),
+			"Reject Oversize Valtan Lifecycle Abort Reason");
+		lifecycle.eState = VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE;
+		lifecycle.strReason = "owner disconnected";
+		CPacketWriter activeWithReasonWriter;
+		testRunner.Require(
+			!Write_Message(activeWithReasonWriter, lifecycle),
+			"Reject Non-Aborted Valtan Lifecycle Reason");
+		lifecycle.strReason.clear();
+		lifecycle.iPatternSequence = 0u;
+		CPacketWriter activeWithoutPatternWriter;
+		testRunner.Require(
+			!Write_Message(activeWithoutPatternWriter, lifecycle),
+			"Reject Active Valtan Lifecycle Without Pattern Sequence");
+		lifecycle.iPatternSequence = 14u;
+
+		std::vector<std::uint8_t> unknownStateWire =
+			abortedWriter.Get_Buffer();
+		const std::size_t stateOffset = 12u + sizeof(std::uint16_t) +
+			lifecycle.strPatternId.size();
+		unknownStateWire[stateOffset] = static_cast<std::uint8_t>(
+			VALTAN_AUDITION_LIFECYCLE_STATE::END);
+		CPacketReader unknownStateReader{ unknownStateWire };
+		S2C_VALTAN_AUDITION_LIFECYCLE unchanged{};
+		unchanged.iRequestSequence = 999u;
+		unchanged.PinnedDefinitionRevision = Make_GameplayDataRevision(80u);
+		testRunner.Require(
+			!Read_Message(unknownStateReader, unchanged) &&
+			999u == unchanged.iRequestSequence &&
+			unchanged.PinnedDefinitionRevision ==
+				Make_GameplayDataRevision(80u),
+			"Reject Unknown Valtan Lifecycle State Atomically");
+	}
+
+	void Test_ValtanDecisionTraceProtocol(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			Is_Known_Packet_Type(
+				PACKET_TYPE::C2S_VALTAN_DECISION_TRACE_QUERY) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_VALTAN_DECISION_TRACE_RESPONSE),
+			"Valtan Decision Trace Packet Types Are Known");
+
+		C2S_VALTAN_DECISION_TRACE_QUERY query{};
+		query.iRequestSequence = 91u;
+		query.strBossPlacementId = "boss.valtan.center";
+		query.iAfterTraceSequence = 7000u;
+		CPacketWriter queryWriter;
+		CPacketReader queryReader{
+			(Write_Message(queryWriter, query), queryWriter.Get_Buffer()) };
+		C2S_VALTAN_DECISION_TRACE_QUERY decodedQuery{};
+		testRunner.Require(
+			Read_Message(queryReader, decodedQuery) &&
+			0u == queryReader.Get_RemainingSize() &&
+			decodedQuery.iRequestSequence == query.iRequestSequence &&
+			decodedQuery.strBossPlacementId == query.strBossPlacementId &&
+			decodedQuery.iAfterTraceSequence == query.iAfterTraceSequence,
+			"Valtan Decision Trace Query Round Trip");
+
+		C2S_VALTAN_DECISION_TRACE_QUERY invalidQuery = query;
+		invalidQuery.iRequestSequence = 0u;
+		CPacketWriter invalidQueryWriter;
+		testRunner.Require(
+			!Write_Message(invalidQueryWriter, invalidQuery),
+			"Reject Zero Valtan Decision Trace Query Sequence");
+		invalidQuery = query;
+		invalidQuery.strBossPlacementId.assign(
+			MAX_STABLE_NETWORK_ID_BYTES + 1u, 'x');
+		CPacketWriter overlongQueryWriter;
+		testRunner.Require(
+			!Write_Message(overlongQueryWriter, invalidQuery),
+			"Reject Overlong Valtan Decision Trace Boss ID");
+
+		std::vector<std::uint8_t> truncatedQuery = queryWriter.Get_Buffer();
+		truncatedQuery.pop_back();
+		CPacketReader truncatedQueryReader{ truncatedQuery };
+		C2S_VALTAN_DECISION_TRACE_QUERY unchangedQuery{};
+		unchangedQuery.iRequestSequence = 500u;
+		unchangedQuery.strBossPlacementId = "sentinel";
+		testRunner.Require(
+			!Read_Message(truncatedQueryReader, unchangedQuery) &&
+			500u == unchangedQuery.iRequestSequence &&
+			"sentinel" == unchangedQuery.strBossPlacementId,
+			"Reject Truncated Valtan Decision Trace Query Atomically");
+
+		const S2C_VALTAN_DECISION_TRACE_RESPONSE response =
+			Make_ValtanDecisionTraceResponse();
+		CPacketWriter responseWriter;
+		const bool wroteResponse = Write_Message(responseWriter, response);
+		CPacketReader responseReader{ responseWriter.Get_Buffer() };
+		S2C_VALTAN_DECISION_TRACE_RESPONSE decodedResponse{};
+		testRunner.Require(
+			wroteResponse && Read_Message(responseReader, decodedResponse) &&
+			0u == responseReader.Get_RemainingSize() &&
+			decodedResponse.DefinitionRevision ==
+				response.DefinitionRevision &&
+			decodedResponse.Trace.iTraceSequence == 7001u &&
+			decodedResponse.Trace.iServerTick == 1440u &&
+			decodedResponse.Trace.eSource ==
+				VALTAN_DECISION_TRACE_SOURCE::WEIGHTED &&
+			decodedResponse.Trace.eResult ==
+				VALTAN_DECISION_TRACE_RESULT::SELECTED &&
+			decodedResponse.Trace.strSelectedPatternId ==
+				"VALTAN_WHIRLWIND" &&
+			decodedResponse.Trace.iRawRandomInput ==
+				0x1122334455667788ull &&
+			decodedResponse.Trace.iRandomTicket == 42u &&
+			2u == decodedResponse.Trace.Candidates.size() &&
+			decodedResponse.Trace.Candidates.front().iExclusionMask ==
+				VALTAN_DECISION_TRACE_EXCLUDE_COOLDOWN &&
+			decodedResponse.Trace.Candidates.back().isSelected,
+			"Valtan Decision Trace Response Round Trip");
+
+		S2C_VALTAN_DECISION_TRACE_RESPONSE unchanged{};
+		unchanged.iRequestSequence = 92u;
+		unchanged.strBossPlacementId = "boss.valtan.center";
+		unchanged.eResult = VALTAN_DECISION_TRACE_QUERY_RESULT::UNCHANGED;
+		CPacketWriter unchangedWriter;
+		CPacketReader unchangedReader{
+			(Write_Message(unchangedWriter, unchanged),
+				unchangedWriter.Get_Buffer()) };
+		S2C_VALTAN_DECISION_TRACE_RESPONSE decodedUnchanged{};
+		testRunner.Require(
+			Read_Message(unchangedReader, decodedUnchanged) &&
+			VALTAN_DECISION_TRACE_QUERY_RESULT::UNCHANGED ==
+				decodedUnchanged.eResult &&
+			!decodedUnchanged.DefinitionRevision.Is_Valid() &&
+			0u == decodedUnchanged.Trace.iTraceSequence,
+			"Valtan Decision Trace Unchanged Round Trip");
+
+		unchanged.eResult =
+			VALTAN_DECISION_TRACE_QUERY_RESULT::REJECTED_RELEASE_BUILD;
+		CPacketWriter releaseRejectWriter;
+		CPacketReader releaseRejectReader{
+			(Write_Message(releaseRejectWriter, unchanged),
+				releaseRejectWriter.Get_Buffer()) };
+		S2C_VALTAN_DECISION_TRACE_RESPONSE decodedReleaseReject{};
+		testRunner.Require(
+			Read_Message(releaseRejectReader, decodedReleaseReject) &&
+			VALTAN_DECISION_TRACE_QUERY_RESULT::REJECTED_RELEASE_BUILD ==
+				decodedReleaseReject.eResult,
+			"Release Policy Decision Trace Rejection Is Typed");
+
+		S2C_VALTAN_DECISION_TRACE_RESPONSE invalidResponse = response;
+		invalidResponse.Trace.Candidates.front().iExclusionMask |= 1u << 31u;
+		CPacketWriter unknownMaskWriter;
+		testRunner.Require(
+			!Write_Message(unknownMaskWriter, invalidResponse),
+			"Reject Unknown Valtan Decision Exclusion Bit");
+
+		invalidResponse = response;
+		invalidResponse.Trace.Candidates.back().strPatternId =
+			invalidResponse.Trace.Candidates.front().strPatternId;
+		CPacketWriter duplicateCandidateWriter;
+		testRunner.Require(
+			!Write_Message(duplicateCandidateWriter, invalidResponse),
+			"Reject Duplicate Valtan Decision Candidate ID");
+
+		invalidResponse = response;
+		invalidResponse.Trace.Candidates.clear();
+		invalidResponse.Trace.strSelectedPatternId.clear();
+		invalidResponse.Trace.eResult =
+			VALTAN_DECISION_TRACE_RESULT::NO_ELIGIBLE_PATTERN;
+		invalidResponse.Trace.iTotalWeight = 0u;
+		invalidResponse.Trace.iRandomTicket = 0u;
+		for (std::size_t index = 0u;
+			index <= MAX_VALTAN_DECISION_TRACE_CANDIDATES; ++index)
+		{
+			VALTAN_DECISION_TRACE_CANDIDATE_WIRE candidate{};
+			candidate.strPatternId = "PATTERN_" + std::to_string(index);
+			invalidResponse.Trace.Candidates.push_back(std::move(candidate));
+		}
+		CPacketWriter tooManyCandidatesWriter;
+		testRunner.Require(
+			!Write_Message(tooManyCandidatesWriter, invalidResponse),
+			"Reject Oversize Valtan Decision Candidate Table");
+
+		std::vector<std::uint8_t> unknownResult = responseWriter.Get_Buffer();
+		const std::size_t resultOffset = sizeof(std::uint32_t) +
+			sizeof(std::uint16_t) + response.strBossPlacementId.size();
+		unknownResult[resultOffset] = static_cast<std::uint8_t>(
+			VALTAN_DECISION_TRACE_QUERY_RESULT::END);
+		CPacketReader unknownResultReader{ unknownResult };
+		S2C_VALTAN_DECISION_TRACE_RESPONSE unchangedResponse{};
+		unchangedResponse.iRequestSequence = 999u;
+		unchangedResponse.strBossPlacementId = "sentinel";
+		testRunner.Require(
+			!Read_Message(unknownResultReader, unchangedResponse) &&
+			999u == unchangedResponse.iRequestSequence &&
+			"sentinel" == unchangedResponse.strBossPlacementId,
+			"Reject Unknown Valtan Decision Trace Result Atomically");
+
+		std::vector<std::uint8_t> truncatedResponse =
+			responseWriter.Get_Buffer();
+		truncatedResponse.pop_back();
+		CPacketReader truncatedResponseReader{ truncatedResponse };
+		unchangedResponse.iRequestSequence = 1000u;
+		testRunner.Require(
+			!Read_Message(truncatedResponseReader, unchangedResponse) &&
+			1000u == unchangedResponse.iRequestSequence,
+			"Reject Truncated Valtan Decision Trace Response Atomically");
+	}
 }
 
 int main()
@@ -3413,6 +4134,10 @@ int main()
 	Test_WorldDestructionProtocol(testRunner);
 	Test_EncounterPropSyncProtocol(testRunner);
 	Test_ValtanAuditionProtocol(testRunner);
+	Test_GameplayDataRevisionContract(testRunner);
+	Test_DataRevisionHotReloadProtocol(testRunner);
+	Test_ValtanAuditionLifecycleProtocol(testRunner);
+	Test_ValtanDecisionTraceProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);
 
