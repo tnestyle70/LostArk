@@ -396,18 +396,41 @@ namespace
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
 		const std::uint32_t serverTick,
-		const std::vector<std::string>* eligiblePatternIds = nullptr)
+		const BOSS_PATTERN_ROTATION_DEFINITION* managedRotation = nullptr)
 	{
-		std::vector<const BOSS_PATTERN_DEFINITION*> eligible;
-		std::vector<const BOSS_PATTERN_DEFINITION*> repeatAllowed;
-		for (const BOSS_PATTERN_DEFINITION& pattern : patterns)
+		struct WEIGHTED_PATTERN final
 		{
+			const BOSS_PATTERN_DEFINITION* pPattern = nullptr;
+			std::uint32_t iWeight = 0u;
+		};
+		std::vector<WEIGHTED_PATTERN> eligible;
+		std::vector<WEIGHTED_PATTERN> repeatAllowed;
+		std::vector<WEIGHTED_PATTERN> authoredOrder;
+		if (nullptr != managedRotation)
+		{
+			authoredOrder.reserve(managedRotation->Candidates.size());
+			for (const BOSS_PATTERN_ROTATION_CANDIDATE& candidate :
+				managedRotation->Candidates)
+			{
+				if (!candidate.bEnabled)
+					continue;
+				const BOSS_PATTERN_DEFINITION* pattern =
+					FindPattern(patterns, candidate.strPatternId);
+				if (nullptr != pattern)
+					authoredOrder.push_back({ pattern, candidate.iSelectionWeight });
+			}
+		}
+		else
+		{
+			authoredOrder.reserve(patterns.size());
+			for (const BOSS_PATTERN_DEFINITION& pattern : patterns)
+				authoredOrder.push_back({ &pattern, pattern.iSelectionWeight });
+		}
+		for (const WEIGHTED_PATTERN& weighted : authoredOrder)
+		{
+			const BOSS_PATTERN_DEFINITION& pattern = *weighted.pPattern;
 			if (BOSS_PATTERN_SELECTION::NORMAL != pattern.eSelection ||
 				pattern.strPatternId == introPatternId ||
-				(nullptr != eligiblePatternIds &&
-					eligiblePatternIds->end() == std::find(
-						eligiblePatternIds->begin(), eligiblePatternIds->end(),
-						pattern.strPatternId)) ||
 				!CValtanBrain::Is_ArmorRequirementMet(
 					boss, pattern.eArmorRequirement) ||
 				!CValtanBrain::Is_PhaseRequirementMet(
@@ -422,17 +445,17 @@ namespace
 			{
 				continue;
 			}
-			eligible.push_back(&pattern);
+			eligible.push_back(weighted);
 			if (pattern.strPatternId != boss.strLastPatternId ||
 				boss.iConsecutivePatternUses < pattern.iMaximumConsecutiveUses)
 			{
-				repeatAllowed.push_back(&pattern);
+				repeatAllowed.push_back(weighted);
 			}
 		}
 		const auto& candidates = repeatAllowed.empty() ? eligible : repeatAllowed;
 		std::uint64_t totalWeight = 0u;
-		for (const BOSS_PATTERN_DEFINITION* pattern : candidates)
-			totalWeight += pattern->iSelectionWeight;
+		for (const WEIGHTED_PATTERN& pattern : candidates)
+			totalWeight += pattern.iWeight;
 		if (0u == totalWeight)
 			return nullptr;
 
@@ -445,13 +468,13 @@ namespace
 		random *= 0x94d049bb133111ebull;
 		random ^= random >> 31u;
 		std::uint64_t ticket = random % totalWeight;
-		for (const BOSS_PATTERN_DEFINITION* pattern : candidates)
+		for (const WEIGHTED_PATTERN& pattern : candidates)
 		{
-			if (ticket < pattern->iSelectionWeight)
-				return pattern;
-			ticket -= pattern->iSelectionWeight;
+			if (ticket < pattern.iWeight)
+				return pattern.pPattern;
+			ticket -= pattern.iWeight;
 		}
-		return candidates.back();
+		return candidates.back().pPattern;
 	}
 
 	const BOSS_PATTERN_DEFINITION* SelectPattern(
@@ -507,10 +530,10 @@ namespace
 				return pattern;
 			}
 		}
-		/* Phase-one master ranges are weighted from their first normal choice.
-		PatternIds is a whitelist, while each pattern continues to own its weight,
-		range, phase, armour, cooldown, and consecutive-use conditions. Scripted
-		health-bar mechanics already returned from the queue above. */
+		/* Phase-one managed ranges are weighted from their first normal choice.
+		Candidates own the window-local whitelist, weight and enabled state; each
+		pattern continues to own range, phase, armour, cooldown and consecutive-use
+		conditions. Scripted health-bar mechanics already returned above. */
 		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
 			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
 				rotation->eSelectionMode)
@@ -519,7 +542,7 @@ namespace
 			boss.iRotationStepIndex = 0u;
 			return SelectNormalPattern(
 				boss, patterns, introPatternId, currentHealthBar,
-				targetDistance, serverTick, &rotation->PatternIds);
+				targetDistance, serverTick, rotation);
 		}
 		/* The authored list introduces the band rather than looping it. Every
 		pattern the band brings is shown once, in order, so nothing the encounter
@@ -1132,9 +1155,12 @@ void LostArk::Server::CValtanBrain::Update(
 	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	if (nullptr == bossProfile || nullptr == patterns || patterns->empty())
 		return;
-	if (boss.iMaximumHp > 0u && boss.iPhaseTwoHpPercent > 0u &&
+	if (BOSS_PHASE_POLICY_KIND::HEALTH_PERCENT_THRESHOLD ==
+		bossProfile->PhasePolicy.eKind && boss.iMaximumHp > 0u &&
+		bossProfile->PhasePolicy.iThresholdPercent > 0u &&
 		static_cast<std::uint64_t>(boss.iCurrentHp) * 100u <=
-		static_cast<std::uint64_t>(boss.iMaximumHp) * boss.iPhaseTwoHpPercent)
+		static_cast<std::uint64_t>(boss.iMaximumHp) *
+			bossProfile->PhasePolicy.iThresholdPercent)
 	{
 		/* The phase ships inside the boss combat snapshot, so it moves through
 		the runtime that owns that snapshot's revision rather than being written
@@ -1182,7 +1208,7 @@ void LostArk::Server::CValtanBrain::Update(
 		const BOSS_PATTERN_DEFINITION* selected = SelectPattern(
 			boss, *patterns, catalog.Find_IntroPatternId(boss.strEncounterId),
 			catalog.Find_BossPatternRotation(
-				boss.strEncounterId, currentHealthBar),
+				boss.strEncounterId, boss.iPhase, currentHealthBar),
 			currentHealthBar, distance, serverTick);
 		if (nullptr == selected)
 		{

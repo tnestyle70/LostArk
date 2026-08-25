@@ -12,7 +12,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 17u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 19u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -161,6 +161,19 @@ namespace LostArk::Server
 		std::uint32_t iDefense = 0;
 	};
 
+	enum class BOSS_PHASE_POLICY_KIND : std::uint8_t
+	{
+		HEALTH_PERCENT_THRESHOLD,
+		AUTHORED_PATTERN_EVENT
+	};
+
+	struct BOSS_PHASE_POLICY final
+	{
+		BOSS_PHASE_POLICY_KIND eKind =
+			BOSS_PHASE_POLICY_KIND::HEALTH_PERCENT_THRESHOLD;
+		std::uint32_t iThresholdPercent = 0;
+	};
+
 	struct BOSS_RUNTIME_PROFILE
 	{
 		std::string strArchetypeId;
@@ -174,7 +187,7 @@ namespace LostArk::Server
 		float fCollisionRadius = 0.f;
 		float fEngageDistance = 0.f;
 		float fMoveSpeed = 0.f;
-		std::uint32_t iPhaseTwoHpPercent = 0;
+		BOSS_PHASE_POLICY PhasePolicy;
 		/* Empty for a boss that wears no armour, which then takes raw damage
 		exactly as it did before plates existed. */
 		std::vector<BOSS_ARMOR_PLATE> ArmorPlates;
@@ -196,9 +209,9 @@ namespace LostArk::Server
 		STRIPPED
 	};
 
-	/* Which phase a weighted pattern is offered in. The boss advances to phase
-	two on its authored HP threshold, which the encounter lines up with the
-	health bar its transition mechanic fires on. */
+	/* Which gameplay phase a weighted pattern is offered in. The boss profile
+	chooses whether phase changes come from a health-percent threshold or from a
+	validated authored pattern-stage event. */
 	enum class BOSS_PATTERN_PHASE_REQUIREMENT
 	{
 		ANY,
@@ -363,7 +376,35 @@ namespace LostArk::Server
 		SET_BOSS_FLAG,
 		SET_STAGGER_GAUGE,
 		SET_SHIELD,
-		SPAWN_COMBAT_OBJECT
+		SET_GAMEPLAY_PHASE,
+		SPAWN_COMBAT_OBJECT,
+		SPAWN_COMBAT_OBJECT_VOLLEY
+	};
+
+	enum class BOSS_COMBAT_OBJECT_VOLLEY_POLICY : std::uint8_t
+	{
+		NONE,
+		PER_ALIVE_PLAYER
+	};
+
+	enum class BOSS_COMBAT_OBJECT_LAYOUT_KIND : std::uint8_t
+	{
+		SINGLE,
+		RADIAL
+	};
+
+	struct BOSS_COMBAT_OBJECT_VOLLEY final
+	{
+		BOSS_COMBAT_OBJECT_VOLLEY_POLICY ePolicy =
+			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::NONE;
+		std::uint32_t iCountPerResolvedTarget = 1u;
+		BOSS_COMBAT_OBJECT_LAYOUT_KIND eLayout =
+			BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE;
+		float fRadiusM = 0.f;
+		float fStartAngleDegrees = 0.f;
+		float fAngleStepDegrees = 0.f;
+		bool bAllowOverlap = false;
+		std::uint32_t iMaximumTotalObjects = 1u;
 	};
 
 	struct BOSS_PATTERN_STAGE_ACTION final
@@ -375,6 +416,7 @@ namespace LostArk::Server
 		std::string strTargetId;
 		std::uint32_t iValue = 0;
 		std::uint32_t iDurationMs = 0;
+		BOSS_COMBAT_OBJECT_VOLLEY Volley;
 	};
 
 	enum class BOSS_PATTERN_STAGE_MOTION_KIND : std::uint8_t
@@ -474,13 +516,35 @@ namespace LostArk::Server
 
 	enum class BOSS_PATTERN_ROTATION_SELECTION_MODE : std::uint8_t
 	{
-		/* PatternIds is the complete weighted candidate pool. The individual
-		   pattern definitions still own weight, range, phase, armour, cooldown,
-		   and maximum-consecutive-use tuning. */
+		/* Managed v19 rotations use Candidates as the complete pool and keep each
+		   selection-set weight/enabled override there. Pattern definitions still
+		   own range, phase, armour, cooldown and maximum-consecutive-use gates. */
 		WEIGHTED_POOL,
 		/* Legacy authored lists introduce each step once, then hand back to the
 		   encounter-wide weighted selector. */
 		ORDERED_INTRO_THEN_WEIGHTED
+	};
+
+	struct BOSS_PATTERN_ROTATION_CANDIDATE final
+	{
+		std::string strPatternId;
+		std::uint32_t iSelectionWeight = 0u;
+		bool bEnabled = false;
+	};
+
+	struct BOSS_PATTERN_ROTATION_WINDOW final
+	{
+		std::string strWindowId;
+		std::string strSelectionSetId;
+		std::uint32_t iGameplayPhase = 0u;
+		std::uint32_t iFromHealthBar = 0u;
+		std::uint32_t iToHealthBar = 0u;
+		std::uint32_t iExpectedCandidateCount = 0u;
+
+		[[nodiscard]] bool Is_Defined() const noexcept
+		{
+			return !strWindowId.empty();
+		}
 	};
 
 	/* One normal-selection stretch between two scripted health-bar mechanics.
@@ -494,6 +558,8 @@ namespace LostArk::Server
 		std::uint32_t iFromHealthBar = 0;
 		std::uint32_t iToHealthBar = 0;
 		std::uint32_t iExpectedStepCount = 0;
+		BOSS_PATTERN_ROTATION_WINDOW Window;
+		std::vector<BOSS_PATTERN_ROTATION_CANDIDATE> Candidates;
 		std::vector<std::string> PatternIds;
 	};
 
@@ -672,6 +738,7 @@ namespace LostArk::Server
 		has no authored order and the weighted roll owns it. */
 		const BOSS_PATTERN_ROTATION_DEFINITION* Find_BossPatternRotation(
 			const std::string& encounterId,
+			std::uint32_t gameplayPhase,
 			std::uint32_t healthBar) const;
 		const std::string& Find_IntroPatternId(
 			const std::string& encounterId) const;

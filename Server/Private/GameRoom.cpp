@@ -40,6 +40,38 @@ namespace
 	constexpr float DEGREES_TO_RADIANS = 0.01745329251994329577f;
 	constexpr float PLAYER_TURN_DEGREES_PER_SECOND = 540.f;
 	constexpr float DIRECT_BEARING_DISTANCE = 1.5f;
+	constexpr float VOLLEY_SPACING_EPSILON = 0.0001f;
+
+	float Resolve_VolleyMinimumSpacing(
+		const BOSS_COMBAT_OBJECT_DEFINITION& definition)
+	{
+		float maximumExtent = 0.f;
+		for (const BOSS_COMBAT_OBJECT_HIT& hit : definition.Hits)
+		{
+			float extent = 0.f;
+			switch (hit.eHitShape)
+			{
+			case BOSS_PATTERN_HIT_SHAPE::CIRCLE:
+			case BOSS_PATTERN_HIT_SHAPE::RING:
+				extent = hit.fHitOuterRadius;
+				break;
+			case BOSS_PATTERN_HIT_SHAPE::CONE:
+				extent = hit.fHitLength;
+				break;
+			case BOSS_PATTERN_HIT_SHAPE::BOX:
+			case BOSS_PATTERN_HIT_SHAPE::CROSS:
+			case BOSS_PATTERN_HIT_SHAPE::SIX_DIRECTIONS:
+				extent = std::sqrt(
+					hit.fHitLength * hit.fHitLength +
+					hit.fHitHalfWidth * hit.fHitHalfWidth);
+				break;
+			default:
+				break;
+			}
+			maximumExtent = (std::max)(maximumExtent, extent);
+		}
+		return maximumExtent * 2.f;
+	}
 
 	std::uint64_t To_Microseconds(
 		const std::chrono::steady_clock::duration duration)
@@ -152,6 +184,9 @@ namespace
 		return currentTick == targetTick ||
 			static_cast<std::int32_t>(currentTick - targetTick) > 0;
 	}
+	// The product tick releases an Esther caster in every build configuration.
+	constexpr std::uint32_t ESTHER_CAST_TICKS =
+		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
 #ifdef _DEBUG
 	constexpr std::uint32_t CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS = 90u;
 	constexpr const char* VALTAN_ARENA_AUDITION_PLACEMENT_ID =
@@ -207,10 +242,6 @@ namespace
 	constexpr float WALL_ATTACK_CENTER_Z = -133.312236f;
 	constexpr float WALL_ATTACK_BOSS_OFFSET_Z = -6.f;
 	constexpr float WALL_ATTACK_PLAYER_OFFSET_Z = 8.f;
-
-	// The caster's Esther call converted to fixed 30 Hz room ticks.
-	constexpr std::uint32_t ESTHER_CAST_TICKS =
-		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
 
 	void Freeze_TimelineAuditionPlayer(SERVER_PLAYER& player)
 	{
@@ -4692,7 +4723,10 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 		staged.fCollisionRadius = profile->fCollisionRadius;
 		staged.fEngageDistance = profile->fEngageDistance;
 		staged.fMoveSpeed = profile->fMoveSpeed;
-		staged.iPhaseTwoHpPercent = profile->iPhaseTwoHpPercent;
+		staged.iPhaseTwoHpPercent =
+			BOSS_PHASE_POLICY_KIND::HEALTH_PERCENT_THRESHOLD ==
+				profile->PhasePolicy.eKind ?
+					profile->PhasePolicy.iThresholdPercent : 0u;
 		/* Every plate starts intact. A boss with no authored plates keeps an
 		empty list and therefore no mitigation, which is the pre-armour rule. */
 		staged.ArmorPlates.clear();
@@ -4972,11 +5006,12 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageActions(
 	const std::uint32_t serverTick)
 {
 	SERVER_BOSS_COMBAT_STATE stagedCombat = boss.BossCombat;
+	std::uint8_t stagedGameplayPhase = boss.iPhase;
 	SERVER_COMBAT_OBJECT_TRANSACTION transaction =
 		m_CombatObjectRuntime.Begin_Transaction();
 	if (!Stage_BossPatternStageActions(
 		boss, patternId, actionId, trigger, serverTick,
-		stagedCombat, transaction))
+		stagedCombat, stagedGameplayPhase, transaction))
 	{
 		return false;
 	}
@@ -4986,6 +5021,7 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageActions(
 		return false;
 	}
 	boss.BossCombat = std::move(stagedCombat);
+	boss.iPhase = stagedGameplayPhase;
 	return true;
 }
 
@@ -4998,16 +5034,17 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageTransition(
 	const std::uint32_t serverTick)
 {
 	SERVER_BOSS_COMBAT_STATE stagedCombat = boss.BossCombat;
+	std::uint8_t stagedGameplayPhase = boss.iPhase;
 	SERVER_COMBAT_OBJECT_TRANSACTION transaction =
 		m_CombatObjectRuntime.Begin_Transaction();
 	if (!Stage_BossPatternStageActions(
 		boss, previousPatternId, previousActionId,
 		BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT, serverTick,
-		stagedCombat, transaction) ||
+		stagedCombat, stagedGameplayPhase, transaction) ||
 		!Stage_BossPatternStageActions(
 			boss, nextPatternId, nextActionId,
 			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, serverTick,
-			stagedCombat, transaction))
+			stagedCombat, stagedGameplayPhase, transaction))
 	{
 		return false;
 	}
@@ -5017,6 +5054,7 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageTransition(
 		return false;
 	}
 	boss.BossCombat = std::move(stagedCombat);
+	boss.iPhase = stagedGameplayPhase;
 	return true;
 }
 
@@ -5027,6 +5065,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 	const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
 	const std::uint32_t serverTick,
 	SERVER_BOSS_COMBAT_STATE& stagedCombat,
+	std::uint8_t& stagedGameplayPhase,
 	SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction)
 {
 	if (patternId.empty() || actionId.empty())
@@ -5115,8 +5154,42 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 			(void)CBossCombatRuntime::Set_Shield(
 				stagedCombat, action.iValue);
 			break;
-		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT:
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE:
 		{
+			const BOSS_RUNTIME_PROFILE* profile =
+				m_GameplayCatalog.Find_Boss(boss.strArchetypeId);
+			const bool isValtan = "BOSS_VALTAN" == boss.strArchetypeId &&
+				"ENCOUNTER_VALTAN" == boss.strEncounterId;
+			if (nullptr == profile ||
+				BOSS_PHASE_POLICY_KIND::AUTHORED_PATTERN_EVENT !=
+					profile->PhasePolicy.eKind ||
+				"boss.phase.gameplay" != action.strTargetId ||
+				action.iValue < 2u || action.iValue > 3u ||
+				(isValtan &&
+					("VALTAN_ARENA_BREAK_109" != patternId ||
+					 "valtan.mechanic.arena-break-109.impact" != actionId ||
+					 BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != trigger ||
+					 2u != action.iValue)) ||
+				action.iValue < stagedGameplayPhase)
+			{
+				m_strStatus = "Boss gameplay phase stage action is invalid";
+				return false;
+			}
+			SERVER_WORLD_ENTITY stagedPhaseBoss{};
+			stagedPhaseBoss.iPhase = stagedGameplayPhase;
+			stagedPhaseBoss.BossCombat = stagedCombat;
+			(void)CBossCombatRuntime::Set_GameplayPhase(
+				stagedPhaseBoss, static_cast<std::uint8_t>(action.iValue));
+			stagedGameplayPhase = stagedPhaseBoss.iPhase;
+			stagedCombat = std::move(stagedPhaseBoss.BossCombat);
+			break;
+		}
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT:
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY:
+		{
+			const bool isTypedVolley =
+				BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY ==
+					action.eKind;
 			const BOSS_COMBAT_OBJECT_DEFINITION* definition =
 				m_GameplayCatalog.Find_BossCombatObject(action.strTargetId);
 			if (nullptr == definition ||
@@ -5125,6 +5198,16 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				definition->strOwnerStageActionId != actionId)
 			{
 				m_strStatus = "Boss combat object owner is invalid: " +
+					action.strTargetId;
+				return false;
+			}
+			if (isTypedVolley &&
+				(BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER !=
+					definition->eOriginPolicy ||
+				 BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER !=
+					action.Volley.ePolicy))
+			{
+				m_strStatus = "Boss combat object volley policy is invalid: " +
 					action.strTargetId;
 				return false;
 			}
@@ -5178,10 +5261,13 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 			if (BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
 				definition->eOriginPolicy)
 			{
-				/* The volley is dealt once: every player alive at this edge gets
-				one object locked to where they stand, and the whole set shares the
-				staging transaction so a single failure drops all of it. */
-				std::uint32_t dealt = 0u;
+				if (!isTypedVolley && action.iValue > 1u)
+				{
+					m_strStatus =
+						"Multi-object per-player spawn requires typed volley layout";
+					return false;
+				}
+				std::vector<const SERVER_PLAYER*> aliveTargets;
 				for (const auto& [volleyPlayerId, volleyPlayer] : m_Players)
 				{
 					(void)volleyPlayerId;
@@ -5194,27 +5280,121 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					{
 						continue;
 					}
+					aliveTargets.push_back(&volleyPlayer);
+				}
+				const std::uint32_t countPerTarget = isTypedVolley ?
+					action.Volley.iCountPerResolvedTarget : action.iValue;
+				if (0u == countPerTarget || countPerTarget > 8u ||
+					(isTypedVolley && action.iValue != countPerTarget))
+				{
+					m_strStatus =
+						"Boss combat object volley count is out of range";
+					return false;
+				}
+				const std::uint32_t maximumTotal = isTypedVolley ?
+					action.Volley.iMaximumTotalObjects : 32u;
+				const std::uint64_t requestedTotal =
+					static_cast<std::uint64_t>(aliveTargets.size()) * countPerTarget;
+				if (maximumTotal < countPerTarget ||
+					requestedTotal > maximumTotal || requestedTotal > 32u)
+				{
+					m_strStatus = "Boss combat object volley total is out of range";
+					return false;
+				}
+				struct VOLLEY_POINT final
+				{
+					float fX = 0.f;
+					float fZ = 0.f;
+				};
+				std::vector<VOLLEY_POINT> resolvedPoints;
+				resolvedPoints.reserve(static_cast<std::size_t>(requestedTotal));
+				if (isTypedVolley && !m_ServerNavigation.Is_Loaded())
+				{
+					m_strStatus =
+						"Boss combat object volley navigation is unavailable";
+					return false;
+				}
+				if (isTypedVolley)
+				{
+					for (const SERVER_PLAYER* volleyPlayer : aliveTargets)
+					{
+						const std::size_t targetPointBegin = resolvedPoints.size();
+						for (std::uint32_t ordinal = 0u;
+							ordinal < countPerTarget; ++ordinal)
+						{
+							float x = volleyPlayer->fPositionX;
+							float z = volleyPlayer->fPositionZ;
+							if (BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
+								action.Volley.eLayout)
+							{
+								const float degrees =
+									action.Volley.fStartAngleDegrees +
+									action.Volley.fAngleStepDegrees *
+										static_cast<float>(ordinal);
+								const float radians = degrees * DEGREES_TO_RADIANS;
+								x += std::sin(radians) * action.Volley.fRadiusM;
+								z += std::cos(radians) * action.Volley.fRadiusM;
+							}
+							if (!std::isfinite(x) || !std::isfinite(z) ||
+								!m_ServerNavigation.Is_PointWalkableExact(x, z))
+							{
+								m_strStatus =
+									"Boss combat object volley leaves navigable arena";
+								return false;
+							}
+							resolvedPoints.push_back({ x, z });
+						}
+						/* Layout belongs to one resolved target. Players may legitimately
+						stack, so overlap admission compares only the ordinals dealt around
+						that same target. */
+						if (!action.Volley.bAllowOverlap)
+						{
+							const float minimumSpacing =
+								Resolve_VolleyMinimumSpacing(*definition);
+							const float minimumSpacingSquared =
+								minimumSpacing * minimumSpacing;
+							for (std::size_t left = targetPointBegin;
+								left < resolvedPoints.size(); ++left)
+							{
+								for (std::size_t right = left + 1u;
+								right < resolvedPoints.size(); ++right)
+								{
+									const float deltaX = resolvedPoints[left].fX -
+										resolvedPoints[right].fX;
+									const float deltaZ = resolvedPoints[left].fZ -
+										resolvedPoints[right].fZ;
+									if (deltaX * deltaX + deltaZ * deltaZ +
+										VOLLEY_SPACING_EPSILON < minimumSpacingSquared)
+									{
+										m_strStatus =
+											"Boss combat object volley spacing is invalid";
+										return false;
+									}
+								}
+							}
+						}
+					}
+				}
+				for (const SERVER_PLAYER* volleyPlayer : aliveTargets)
+				{
 					SERVER_COMBAT_OBJECT_LOCKED_TARGET volleyTarget{};
-					volleyTarget.iNetEntityId = volleyPlayer.iNetEntityId;
-					volleyTarget.fPositionX = volleyPlayer.fPositionX;
-					volleyTarget.fPositionY = volleyPlayer.fPositionY;
-					volleyTarget.fPositionZ = volleyPlayer.fPositionZ;
+					volleyTarget.iNetEntityId = volleyPlayer->iNetEntityId;
+					volleyTarget.fPositionX = volleyPlayer->fPositionX;
+					volleyTarget.fPositionY = volleyPlayer->fPositionY;
+					volleyTarget.fPositionZ = volleyPlayer->fPositionZ;
 					if (!m_CombatObjectRuntime.Stage_BossCombatObject(
 						combatObjectTransaction, boss, &volleyTarget, *definition,
-						m_GameplayCatalog, action.iValue, serverTick, m_strStatus))
+						isTypedVolley ? &action.Volley : nullptr,
+						m_GameplayCatalog, countPerTarget, serverTick, m_strStatus))
 					{
 						return false;
 					}
-					++dealt;
 				}
-				/* An empty arena spawns nothing rather than falling back to the
-				boss position, which would drop an axe on the boss itself. */
-				(void)dealt;
 				break;
 			}
 			if (!m_CombatObjectRuntime.Stage_BossCombatObject(
 				combatObjectTransaction, boss, resolvedLockedTarget, *definition,
-				m_GameplayCatalog, action.iValue, serverTick, m_strStatus))
+				nullptr, m_GameplayCatalog, action.iValue, serverTick, m_strStatus))
 			{
 				return false;
 			}
