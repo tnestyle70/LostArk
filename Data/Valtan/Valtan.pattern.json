@@ -1033,12 +1033,7 @@
               }
             ]
           },
-          "effectRefs": [
-            {
-              "refType": "INDEPENDENT_EFFECT",
-              "refId": "valtan.independent-effect.donut-in-out"
-            }
-          ]
+          "effectRefs": []
         },
         {
           "stageId": "RECOVERY",

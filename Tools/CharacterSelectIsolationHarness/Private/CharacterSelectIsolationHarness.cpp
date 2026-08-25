@@ -1084,7 +1084,11 @@ namespace
 		{
 			return false;
 		}
-		if (!client->Send_Move(1u, 144.800003f, -60.2999992f, error))
+		/* This is the authored centre of trigger.bern.to-valtan.  The old
+		coordinate at (144.8, -60.3) predates Bern's authoritative navigation:
+		all baked cells inside that trigger were disconnected castle geometry,
+		so a valid C2S_MOVE was correctly rejected without ever entering it. */
+		if (!client->Send_Move(1u, 140.800003f, -60.2999992f, error))
 			return false;
 
 		if (!Pump_Until(clients, transitionTimeout,

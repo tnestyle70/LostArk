@@ -238,6 +238,7 @@ private:
 	f32_t m_fActionPresentationSeconds = 0.f;
 	ANIMATION_EFFECT_CUE_DOCUMENT m_EffectCueDocument;
 	f32_t m_fPreviousEffectCueStageWallSeconds = -1.f;
+	f32_t m_fPreviousSoundCueStageWallSeconds = -1.f;
 	std::uint32_t m_iEffectActionStartTick = 0u;
 	f32_t m_fEffectActionFacingYawDegrees = 0.f;
 	bool_t m_bHasEffectActionFacingYaw = false;
@@ -310,6 +311,7 @@ private:
 		std::uint32_t iActionStartTick,
 		f32_t fActionFacingYawDegrees);
 	void Update_EffectCues();
+	void Update_SoundCues();
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
 	f32_t Get_EffectPlaybackRate() const;
 	void Update_ActionEmissiveOverride(

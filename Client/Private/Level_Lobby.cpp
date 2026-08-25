@@ -3,9 +3,11 @@
 #include "Level_Lobby.h"
 
 #include "CharacterSelectionState.h"
+#include "GameInstance.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
 #include "NetworkManager.h"
+#include "RuntimeAssetRoot.h"
 
 #ifdef _DEBUG
 #include "MapEditorWorkspaceService.h"
@@ -64,7 +66,15 @@ CLevel_Lobby::~CLevel_Lobby()
 
 HRESULT CLevel_Lobby::Initialize()
 {
-	return __super::Initialize();
+	const HRESULT hr = __super::Initialize();
+	if (FAILED(hr))
+		return hr;
+
+	const filesystem::path bgmPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/BGM/Lobby/bgm_wallpaperin.wav");
+	CGameInstance::Get().Play_Music(bgmPath.wstring(), 1.f);
+
+	return S_OK;
 }
 
 void CLevel_Lobby::Update(const f32_t fTimeDelta)
@@ -334,6 +344,10 @@ void CLevel_Lobby::Consume_EnterAccepted()
 		Cancel_PendingEntry(CLevelTransitionService::Get_Status());
 		return;
 	}
+
+	// Lobby BGM ends the moment the level is actually leaving (a rejected/failed
+	// request above keeps Lobby active, so the music should keep playing there).
+	CGameInstance::Get().Stop_Music();
 
 #ifdef _DEBUG
 	if (opensMapEditorWorkspace)

@@ -375,6 +375,9 @@
     <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\SoundCueCatalog.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Effect_PresentationService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -986,6 +989,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\EffectAuthoringTransfer.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SoundCueCatalog.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h">
@@ -3322,6 +3328,12 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01.effect.json">
@@ -7854,7 +7866,13 @@
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json">
       <Filter>96.DataFiles\Effects\Imported\RawResourceInventory</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-four-pillars-additive-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\CarrierV1</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-materialization-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\CarrierV1</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-successor-lineage-receipt.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\CarrierV1</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.legacy-v0-carrier-migration-inventory.v1.json">
@@ -9118,9 +9136,6 @@
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_2.effectv2.json">
-      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\V2\Authored\monster.hit.impact_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_58700.effectv2bindings.json">

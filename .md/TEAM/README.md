@@ -35,7 +35,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 6. 담당별 입력·출력 계약: `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
 7. F1 Balance Tool과 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
 8. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
-9. 발탄 1페이즈 pattern/animation/effect 공동 정본: `발탄인수인계서.md`
+9. 발탄 gameplay/presentation split 정본과 joined revision: `발탄인수인계서.md`
 10. Effect family/runtime ABI 복원 경계: `EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md`
 11. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
 12. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
@@ -59,7 +59,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 | `BALANCE_TOOL_OWNER_HANDOFF.md` | 공식 receipt, F1 Balance Tool, Server 적용·검증 절차가 바뀔 때 |
 | `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 담당자가 소비하는 C++/데이터 public 계약이 바뀔 때 |
 | `ANIMATION_TOOL_OWNER_HANDOFF.md` | Animation/Effect/Character Preview Tool의 authoring 소유권이 바뀔 때 |
-| `발탄인수인계서.md` | 발탄 master pattern, animation occurrence, independent Effect 또는 담당별 튜닝 경계가 바뀔 때 |
+| `발탄인수인계서.md` | 발탄 gameplay/presentation split, joined revision, animation/Effect invocation 또는 담당별 튜닝 경계가 바뀔 때 |
 | `EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md` | Effect element→pixel 구조, family/program/descriptor/adapter 경계와 source-exact admission 공정이 바뀔 때 |
 | `AREA_DATA_LAYER_GUIDE.md` | Area 등록, optional layer, publisher, MapTool 지원 범위가 바뀔 때 |
 | `MAP_DESTRUCTION_PHYSX_HANDOFF.md` | MapTool 파괴 preview의 Mesh Emitter, PhysX, trigger/effect 연결 절차가 바뀔 때 |

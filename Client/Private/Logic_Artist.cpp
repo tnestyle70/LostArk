@@ -137,9 +137,10 @@ const CHARACTER_SPEC Spec_Artist =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP --
-	FBX takes are "<armature>_<action>" and the armature is named "sdm", so
-	every clip carries that prefix. */
+	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
+	ESTHER_CAST -- FBX takes are "<armature>_<action>" and the armature is
+	named "sdm", so every clip carries that prefix. The cast clip comes from
+	the attached Esther animation set. */
 	{
 		"sdm_idle_battle_1",
 		"sdm_run_battle_1",
@@ -149,6 +150,7 @@ const CHARACTER_SPEC Spec_Artist =
 		"sdm_knockdown_land",
 		"sdm_down",
 		"sdm_standup_1",
+		"sdm_act_estherskill_1",
 	},
 
 	&Create_Logic,

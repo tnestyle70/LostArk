@@ -1582,6 +1582,7 @@ function Get-NumberVector(
 
 function Assert-EffectDetail(
     [object]$Detail, [string]$Kind, [bool]$IsMeshParticle,
+	[bool]$IsManualParticle, [bool]$IsGenericMeshRingFillCarrier,
     [string]$Label) {
     $transform = Get-RequiredProperty $Detail 'transform' Object
     $color = Get-RequiredProperty $Detail 'color' Object
@@ -1653,7 +1654,33 @@ function Assert-EffectDetail(
         throw "$Label timing range is invalid."
     }
 
-    [void](Get-RequiredProperty $mesh 'useModelMaterial' Boolean)
+	[void](Get-RequiredProperty $mesh 'useModelMaterial' Boolean)
+	$ringFillEnabled = $false
+	if ($null -ne $mesh.PSObject.Properties['ringFill']) {
+		$ringFill = Get-RequiredProperty $mesh 'ringFill' Object
+		$ringFillEnabled = [bool](Get-RequiredProperty `
+			$ringFill 'enabled' Boolean)
+		$ringFillProgress = Get-NumberValue $ringFill 'progress' $Label
+		$ringFillDirection = Get-RequiredProperty `
+			$ringFill 'direction' String
+		$ringFillFeather = Get-NumberValue $ringFill 'feather' $Label
+		$ringFillInvert = [bool](Get-RequiredProperty `
+			$ringFill 'invert' Boolean)
+		if ($ringFillProgress -lt 0 -or $ringFillProgress -gt 1 -or
+			$ringFillDirection -cnotin @('innerToOuter','outerToInner') -or
+			$ringFillFeather -lt 0 -or $ringFillFeather -gt 0.5) {
+			throw "$Label mesh ringFill range or direction is invalid."
+		}
+		if (-not $ringFillEnabled -and
+			($ringFillProgress -ne 1 -or
+			 $ringFillDirection -cne 'innerToOuter' -or
+			 $ringFillFeather -ne 0.05 -or $ringFillInvert)) {
+			throw "$Label disabled mesh ringFill must retain default state."
+		}
+		if ($ringFillEnabled -and -not $IsGenericMeshRingFillCarrier) {
+			throw "$Label mesh ringFill requires a manual generic non-Opaque Mesh Particle."
+		}
+	}
     [void](Get-RequiredProperty $sprite 'billboard' Boolean)
     $decalSize = Get-NumberVector $decal 'size' 2 $Label
     $decalDepth = Get-NumberValue $decal 'depth' $Label
@@ -1674,8 +1701,19 @@ function Assert-EffectDetail(
     [void](Get-NumberVector $lerp 'endColorOffset' 4 $Label)
     [void](Get-NumberVector $lerp 'endColorMultiply' 4 $Label)
     $endEmissive = Get-NumberValue $lerp 'endEmissiveIntensity' $Label
+	$ringFillLerp = if ($null -ne
+		$lerp.PSObject.Properties['ringFillProgress']) {
+		[bool](Get-RequiredProperty $lerp 'ringFillProgress' Boolean)
+	} else { $false }
+	$endRingFillProgress = if ($null -ne
+		$lerp.PSObject.Properties['endRingFillProgress']) {
+		Get-NumberValue $lerp 'endRingFillProgress' $Label
+	} else { 1.0 }
     if (@($endScale | Where-Object { $_ -le 0 }).Count -ne 0 -or
-        $endEmissive -lt 0) {
+		$endEmissive -lt 0 -or $endRingFillProgress -lt 0 -or
+		$endRingFillProgress -gt 1 -or
+		(-not $ringFillLerp -and $endRingFillProgress -ne 1) -or
+		($ringFillLerp -and -not $ringFillEnabled)) {
         throw "$Label linearLerp range is invalid."
     }
 
@@ -1695,8 +1733,10 @@ function Assert-EffectDetail(
     [void](Get-NumberVector $particle 'acceleration' 3 $Label)
     $startSize = Get-NumberVector $particle 'startSize' 2 $Label
     $endSize = Get-NumberVector $particle 'endSize' 2 $Label
-    [void](Get-RequiredProperty $particle 'localSpace' Boolean)
-    [void](Get-RequiredProperty $particle 'billboard' Boolean)
+	$particleLocalSpace = [bool](Get-RequiredProperty `
+		$particle 'localSpace' Boolean)
+	$particleBillboard = [bool](Get-RequiredProperty `
+		$particle 'billboard' Boolean)
     if ($maxParticles -lt 1 -or $maxParticles -gt 2048 -or
         $spawnRate -lt 0 -or $spawnRate -gt 2048 -or
         $burstCount -lt 0 -or $burstCount -gt $maxParticles -or
@@ -1716,7 +1756,9 @@ function Assert-EffectDetail(
     # spawnShape and initialVelocity are optional: a document that omits them
     # spawns from the initialPosition box with the initialVelocity box, which is
     # what every document written before these blocks existed means.
-    if ($null -ne $particle.PSObject.Properties['spawnShape']) {
+	$shapeKind = 'point'
+	$spawnDistribution = 'random'
+	if ($null -ne $particle.PSObject.Properties['spawnShape']) {
         $spawnShape = Get-RequiredProperty $particle 'spawnShape' Object
         $shapeKind = Get-RequiredProperty $spawnShape 'kind' String
         if ($shapeKind -cnotin @('point', 'sphere', 'ring', 'box')) {
@@ -1731,6 +1773,10 @@ function Assert-EffectDetail(
         } else { @(0.0, 0.0, 0.0) }
         $shapeArc = if ($null -ne $spawnShape.arcDegrees) {
             Get-NumberValue $spawnShape 'arcDegrees' $Label } else { 360.0 }
+		$spawnDistribution = if ($null -ne
+			$spawnShape.PSObject.Properties['distribution']) {
+			Get-RequiredProperty $spawnShape 'distribution' String
+		} else { 'random' }
         if ($shapeRadius -lt 0 -or $shapeInner -lt 0 -or
             $shapeInner -gt $shapeRadius -or
             $shapeArc -le 0 -or $shapeArc -gt 360 -or
@@ -1738,10 +1784,32 @@ function Assert-EffectDetail(
             ($shapeKind -cne 'point' -and $Kind -cne 'particle') -or
             ($shapeKind -cin @('sphere', 'ring') -and $shapeRadius -le 0) -or
             ($shapeKind -ceq 'box' -and
-                @($shapeExtents | Where-Object { $_ -gt 0 }).Count -eq 0)) {
+				@($shapeExtents | Where-Object { $_ -gt 0 }).Count -eq 0) -or
+			$spawnDistribution -cnotin @('random','even') -or
+			($spawnDistribution -ceq 'even' -and
+				(-not $IsManualParticle -or $shapeKind -cne 'ring' -or
+				 $spawnRate -ne 0 -or $burstCount -lt 2))) {
             throw "$Label particle spawnShape range is invalid."
         }
     }
+	if ($null -ne $particle.PSObject.Properties['initialOrientation']) {
+		$orientation = Get-RequiredProperty `
+			$particle 'initialOrientation' Object
+		$orientationMode = Get-RequiredProperty $orientation 'mode' String
+		$orientationOffset = Get-NumberValue `
+			$orientation 'offsetDegrees' $Label
+		if ($orientationMode -cnotin @(
+				'fixed','groundRadialOutward','groundRadialInward',
+				'groundTangentClockwise','groundTangentCounterClockwise') -or
+			[Math]::Abs($orientationOffset) -gt 3600 -or
+			($orientationMode -ceq 'fixed' -and $orientationOffset -ne 0) -or
+			($orientationMode -cne 'fixed' -and
+				(-not $IsManualParticle -or $IsMeshParticle -or
+				 $shapeKind -cne 'ring' -or -not $particleLocalSpace -or
+				 $particleBillboard))) {
+			throw "$Label particle initialOrientation is invalid for this carrier."
+		}
+	}
     if ($null -ne $particle.PSObject.Properties['initialVelocity']) {
         $emission = Get-RequiredProperty $particle 'initialVelocity' Object
         $emissionMode = Get-RequiredProperty $emission 'mode' String
@@ -2734,6 +2802,7 @@ try {
                         -not $earlyFailClosed -or $earlyAuthoringApproximate
                 }
                 $detail = Get-RequiredProperty $element 'detail' Object
+				$sourceNode = ''
                 $sourceProfileEnabled = $false
                 $shaderProfileId = ''
                 $groupedHasAlpha = $false
@@ -2756,7 +2825,7 @@ try {
                 if ($documentVersion -ge 6) {
                     $elementDisplayName = Get-RequiredProperty $element 'displayName' String
                     $groupId = Get-RequiredProperty $element 'groupId' String
-                    [void](Get-RequiredProperty $element 'sourceNode' String)
+					$sourceNode = Get-RequiredProperty $element 'sourceNode' String
 					$elementVisible = [bool](Get-RequiredProperty `
 						$element 'visible' Boolean)
                     if ([Text.Encoding]::UTF8.GetByteCount($elementDisplayName) -lt 1 -or
@@ -3372,6 +3441,38 @@ try {
                     }
                 }
 				$isMeshParticle = $kind -eq 'particle' -and $claimedSlots.Contains('meshModel')
+				$sourceRecipeEnabled = $false
+				$sourceRendererShape = ''
+				$sourceRecipe = $null
+				if ($null -ne $element.PSObject.Properties['sourceRecipe']) {
+					$sourceRecipe = Get-RequiredProperty $element 'sourceRecipe' Object
+					$sourceRecipeEnabled = [bool](Get-RequiredProperty `
+						$sourceRecipe 'enabled' Boolean)
+					if ($sourceRecipeEnabled) {
+						$sourceRendererShape = [string](Get-RequiredProperty `
+							$sourceRecipe 'rendererShape' String)
+					}
+				}
+				$sourcePresentationEnabled = $false
+				if ($null -ne $element.PSObject.Properties['sourcePresentation']) {
+					$sourcePresentation = Get-RequiredProperty `
+						$element 'sourcePresentation' Object
+					$sourcePresentationEnabled = [bool](Get-RequiredProperty `
+						$sourcePresentation 'enabled' Boolean)
+				}
+				$isDirectHandAuthored = [string]::IsNullOrEmpty($sourceNode) -or
+					$sourceNode.StartsWith('authored-copy:',
+						[StringComparison]::Ordinal)
+				$isManualParticle = $kind -ceq 'particle' -and
+					$isDirectHandAuthored -and -not $sourceRecipeEnabled -and
+					-not $sourcePresentationEnabled
+				$isGenericMeshRingFillCarrier = $isManualParticle -and
+					$isMeshParticle -and $materialTemplateId -ceq 'effect.standard' -and
+					[string]::IsNullOrEmpty($sourceMaterialPath) -and
+					-not $sourceProfileEnabled -and -not $executionEnabled -and
+					-not $executionFailClosed -and
+					-not $executionAuthoringApproximate -and
+					$renderProfile -cne 'opaque_back_depth_write'
 				$isProductExecutionTarget = -not $executionFailClosed -or
 					$executionAuthoringApproximate
 				$profileRequiredSlots = @()
@@ -3436,7 +3537,8 @@ try {
 					-not ($hasSafeGroupedBase -or $hasGroupedEmissive)) {
 					throw "Grouped emissive profile has no runtime emission carrier in ${effectAssetId}: $elementId"
 				}
-                Assert-EffectDetail $detail $kind $isMeshParticle `
+				Assert-EffectDetail $detail $kind $isMeshParticle `
+					$isManualParticle $isGenericMeshRingFillCarrier `
 					"${effectAssetId}/$elementId"
                 if ($isProductExecutionTarget -and
                     ($kind -eq 'mesh' -or $isMeshParticle) -and
@@ -3455,18 +3557,6 @@ try {
 								'effect.ue3.local-crack.v1'))) {
                     throw "Mesh useModelMaterial=false requires 'base' in ${effectAssetId}: $elementId"
                 }
-				$sourceRecipeEnabled = $false
-				$sourceRendererShape = ''
-				$sourceRecipe = $null
-				if ($null -ne $element.PSObject.Properties['sourceRecipe']) {
-					$sourceRecipe = Get-RequiredProperty $element 'sourceRecipe' Object
-					$sourceRecipeEnabled = [bool](Get-RequiredProperty `
-						$sourceRecipe 'enabled' Boolean)
-					if ($sourceRecipeEnabled) {
-						$sourceRendererShape = [string](Get-RequiredProperty `
-							$sourceRecipe 'rendererShape' String)
-					}
-				}
 				$isSourceParticleCarrier = $sourceRecipeEnabled -and
 					$sourceRendererShape -cin @('mesh', 'sprite', 'decal')
 				if ($kind -eq 'particle' -or $isSourceParticleCarrier) {

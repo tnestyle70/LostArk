@@ -2967,6 +2967,8 @@ namespace
 					A.Material.Execution, B.Material.Execution) ||
 				!Client::Is_EffectSourceMaterialStagingSignatureEqual(
 					A.Material.SourceMaterial, B.Material.SourceMaterial) ||
+				A.Detail.Mesh.fModelPreScale !=
+					B.Detail.Mesh.fModelPreScale ||
 				A.ResourceBindings.size() != B.ResourceBindings.size())
 				return false;
 			for (size_t j = 0u; j < A.ResourceBindings.size(); ++j)
@@ -17133,6 +17135,73 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		return Fail_RenderOperation(
 			"Material bind failed: typed sprite rect source texture mask.",
 			hFirstBindFailure);
+	}
+	if (pShader == m_pMeshShader)
+	{
+		uint32_t iRingFillEnabled = 0u;
+		uint32_t iRingFillDirection = 0u;
+		uint32_t iRingFillInvert = 0u;
+		f32_t fRingFillProgress = 1.f;
+		f32_t fRingFillFeather = 0.f;
+		const EFFECT_MESH_RING_FILL_DESC& RingFill =
+			Element.Detail.Mesh.RingFill;
+		const bool_t bGenericManualMeshParticle =
+			RingFill.bEnabled &&
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			nullptr != Find_Binding(
+				Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
+			nullptr != Resource.pModel &&
+			!Element.SourceRecipe.bEnabled &&
+			Element.Material.strTemplateId ==
+				EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			Element.Material.eRenderProfile !=
+				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			!Element.Material.Execution.bEnabled &&
+			0u == Resource.iSourceMaterialProfile &&
+			0u == Resource.iReconstructedMaterialEvaluatorEnabled &&
+			0u == Resource.iArtistVisualV4Opcode &&
+			0u == Resource.iRuntimeMaterialV2Enabled &&
+			0u == Resource.iStandardColorV1Enabled;
+		if (bGenericManualMeshParticle)
+		{
+			iRingFillEnabled = 1u;
+			iRingFillDirection = static_cast<uint32_t>(RingFill.eDirection);
+			iRingFillInvert = RingFill.bInvert ? 1u : 0u;
+			fRingFillProgress = RingFill.fProgress;
+			const EFFECT_LINEAR_LERP_DESC& LinearLerp =
+				Element.Detail.LinearLerp;
+			if (LinearLerp.bRingFillProgress)
+			{
+				/* Ring Fill is an Element timeline, not an implicit particle fade.
+				   Fixed bursts are born on the first simulation step, so particle
+				   age cannot reach one at the authored completion-wave boundary. */
+				const f32_t fLifeT = Element.Detail.Timing.fLifeTimeSeconds > 0.f ?
+					std::clamp(fLocalTimeSeconds /
+						Element.Detail.Timing.fLifeTimeSeconds, 0.f, 1.f) :
+					std::clamp(fNormalizedLife, 0.f, 1.f);
+				fRingFillProgress +=
+					(LinearLerp.fEndRingFillProgress - fRingFillProgress) *
+					fLifeT;
+			}
+			fRingFillProgress = std::clamp(fRingFillProgress, 0.f, 1.f);
+			fRingFillFeather = std::clamp(RingFill.fFeather, 0.f, 0.5f);
+		}
+		if (BindFailed(pShader->Bind_RawValue("g_RingFillEnabled",
+				&iRingFillEnabled, sizeof(iRingFillEnabled))) ||
+			BindFailed(pShader->Bind_RawValue("g_RingFillDirection",
+				&iRingFillDirection, sizeof(iRingFillDirection))) ||
+			BindFailed(pShader->Bind_RawValue("g_RingFillInvert",
+				&iRingFillInvert, sizeof(iRingFillInvert))) ||
+			BindFailed(pShader->Bind_RawValue("g_RingFillProgress",
+				&fRingFillProgress, sizeof(fRingFillProgress))) ||
+			BindFailed(pShader->Bind_RawValue("g_RingFillFeather",
+				&fRingFillFeather, sizeof(fRingFillFeather))))
+		{
+			return Fail_RenderOperation(
+				"Material bind failed: generic mesh Ring Fill block.",
+				hFirstBindFailure);
+		}
 	}
 
 	const bool_t bBindFailed =

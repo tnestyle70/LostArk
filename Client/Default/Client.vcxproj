@@ -62,6 +62,7 @@
     <ClInclude Include="..\Public\Effect_OccurrenceTuning.h" />
     <ClInclude Include="..\Public\Effect_VisualProgramCorpus.h" />
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
+    <ClInclude Include="..\Public\SoundCueCatalog.h" />
     <ClInclude Include="..\Public\Effect_PresentationService.h" />
     <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h" />
 	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h" />
@@ -204,6 +205,7 @@
     <ClCompile Include="..\Private\Effect_OccurrenceTuning.cpp" />
     <ClCompile Include="..\Private\Effect_VisualProgramCorpus.cpp" />
     <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp" />
+    <ClCompile Include="..\Private\SoundCueCatalog.cpp" />
     <ClCompile Include="..\Private\Effect_PresentationService.cpp" />
     <ClCompile Include="..\Private\Effect_ProductPrewarmQueue.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
@@ -1017,6 +1019,8 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.v1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.reactive.parry.slash.clip-01.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.reactive.parry.stance.clip-01.effect.json" />
@@ -2527,7 +2531,9 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34640.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-denominator.checkpoint.json" />
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-four-pillars-additive-receipt.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-materialization-receipt.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-successor-lineage-receipt.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.legacy-v0-carrier-migration-inventory.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\CombatObjectDrawableProof\Valtan.combat-object.drawable-proof.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\CombatObjectDrawableProof\Valtan.combat-object.runtime-sweep.v1.json" />
@@ -2949,7 +2955,6 @@
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_3.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_2.effectv2.json" />
-    <None Include="..\..\Data\Effects\V2\Authored\monster.hit.impact_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_58700.effectv2bindings.json" />
     <None Include="..\..\Data\Effects\V2\TextureSlotUsage.v1.json" />
     <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-corpus.v1.json" />

@@ -6879,6 +6879,14 @@ void Client::CEffect_Tool::Render_KindDetail(
 			bSourcePlayback;
 		const bool_t bMeshParticle = Resolve_AuthoringFamily(Element) ==
 			EFFECT_AUTHORING_FAMILY::MESH_PARTICLE;
+		const bool_t bGenericMeshRingFillCarrier = bMeshParticle &&
+			Is_DirectHandAuthoredElement(Element) &&
+			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+			Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			!Element.Material.Execution.bFailClosed &&
+			!Element.Material.Execution.bAuthoringApproximate &&
+			Element.Material.eRenderProfile !=
+				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
 		if (bCompilerOwnedSourceParticle)
 		{
 			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
@@ -6893,6 +6901,63 @@ void Client::CEffect_Tool::Render_KindDetail(
 				&Detail.Mesh.bUseModelMaterial);
 			ImGui::TextDisabled(
 				"Model Import Scale is edited once in Size or Source Playback Tuning above.");
+			if (bGenericMeshRingFillCarrier)
+			{
+				ImGui::SeparatorText("Mesh Ring Fill (Raw Radial V)");
+				EFFECT_MESH_RING_FILL_DESC& RingFill = Detail.Mesh.RingFill;
+				bool_t bRingFillEnabled = RingFill.bEnabled;
+				if (ImGui::Checkbox("Enable Mesh Ring Fill", &bRingFillEnabled))
+				{
+					if (bRingFillEnabled)
+					{
+						RingFill = EFFECT_MESH_RING_FILL_DESC{};
+						RingFill.bEnabled = true;
+						RingFill.fProgress = 0.f;
+					}
+					else
+					{
+						RingFill = EFFECT_MESH_RING_FILL_DESC{};
+						Detail.LinearLerp.bRingFillProgress = false;
+						Detail.LinearLerp.fEndRingFillProgress = 1.f;
+					}
+					bChanged = true;
+				}
+				if (RingFill.bEnabled)
+				{
+					bChanged |= ImGui::SliderFloat("Ring Fill Progress",
+						&RingFill.fProgress, 0.f, 1.f, "%.3f",
+						ImGuiSliderFlags_AlwaysClamp);
+					static const char* const s_RingFillDirectionLabels[] =
+					{
+						"Inner To Outer (V low to high)",
+						"Outer To Inner (V high to low)"
+					};
+					int32_t iDirection = static_cast<int32_t>(
+						RingFill.eDirection);
+					if (ImGui::Combo("Ring Fill Direction", &iDirection,
+						s_RingFillDirectionLabels,
+						IM_ARRAYSIZE(s_RingFillDirectionLabels)))
+					{
+						RingFill.eDirection =
+							static_cast<EFFECT_RING_FILL_DIRECTION>(iDirection);
+						bChanged = true;
+					}
+					bChanged |= ImGui::SliderFloat("Ring Fill Feather",
+						&RingFill.fFeather, 0.f, 0.5f, "%.3f",
+						ImGuiSliderFlags_AlwaysClamp);
+					bChanged |= ImGui::Checkbox("Invert Carrier Radial V",
+						&RingFill.bInvert);
+					ImGui::TextDisabled(
+						"Uses the mesh carrier's raw TEXCOORD0.y. Invert calibrates reversed carrier UVs before Direction is applied.");
+					ImGui::TextDisabled(
+						"Lerp uses Element Timing Life; particle lifetime may extend past it for a short completed-ring hold.");
+				}
+			}
+			else
+			{
+				ImGui::TextDisabled(
+					"Ring Fill requires a direct-authored effect.standard Mesh Particle with a non-Opaque profile.");
+			}
 		}
 		ImGui::SeparatorText("Particle Runtime Overlays");
 		if (ImGui::InputScalar("Max Particles", ImGuiDataType_U32,
@@ -6924,11 +6989,27 @@ void Client::CEffect_Tool::Render_KindDetail(
 		else
 		{
 			ImGui::SeparatorText("Particle Spawn");
+			const bool_t bEvenRingDistribution =
+				Detail.Particle.SpawnShape.eKind ==
+					EFFECT_PARTICLE_SPAWN_SHAPE::RING &&
+				Detail.Particle.SpawnShape.eDistribution ==
+					EFFECT_PARTICLE_SPAWN_DISTRIBUTION::EVEN;
+			if (bEvenRingDistribution)
+				ImGui::BeginDisabled();
 			bChanged |= ImGui::DragFloat("Spawn Rate / Second",
 				&Detail.Particle.fSpawnRatePerSecond, 1.f, 0.f, 2048.f,
 				"%.3f", ImGuiSliderFlags_AlwaysClamp);
-			bChanged |= ImGui::InputScalar("Fixed Burst at Element Start",
-				ImGuiDataType_U32, &Detail.Particle.iBurstCount);
+			if (bEvenRingDistribution)
+				ImGui::EndDisabled();
+			if (ImGui::InputScalar("Fixed Burst at Element Start",
+				ImGuiDataType_U32, &Detail.Particle.iBurstCount))
+			{
+				const uint32_t iMinimum = bEvenRingDistribution ? 2u : 0u;
+				Detail.Particle.iBurstCount = std::clamp(
+					Detail.Particle.iBurstCount, iMinimum,
+					Detail.Particle.iMaxParticles);
+				bChanged = true;
+			}
 			if (ImGui::IsItemHovered())
 			{
 				ImGui::SetTooltip(
@@ -7010,6 +7091,13 @@ void Client::CEffect_Tool::Render_KindDetail(
 			{
 				Shape.vExtents = { 0.5f, 0.5f, 0.5f };
 			}
+			if (EFFECT_PARTICLE_SPAWN_SHAPE::RING != Shape.eKind)
+			{
+				Shape.eDistribution =
+					EFFECT_PARTICLE_SPAWN_DISTRIBUTION::RANDOM;
+				Detail.Particle.InitialOrientation =
+					EFFECT_PARTICLE_INITIAL_ORIENTATION_DESC{};
+			}
 			bChanged = true;
 		}
 		if (EFFECT_PARTICLE_SPAWN_SHAPE::POINT != Shape.eKind)
@@ -7039,6 +7127,80 @@ void Client::CEffect_Tool::Render_KindDetail(
 			}
 			ImGui::TextDisabled(
 				"The shape offset is added on top of the Initial Position box.");
+		}
+		if (EFFECT_PARTICLE_SPAWN_SHAPE::RING == Shape.eKind &&
+			Is_DirectHandAuthoredElement(Element))
+		{
+			static const char* const s_DistributionLabels[] =
+			{
+				"Random", "Even (Fixed Burst)"
+			};
+			int32_t iDistribution = static_cast<int32_t>(Shape.eDistribution);
+			if (ImGui::Combo("Ring Distribution", &iDistribution,
+				s_DistributionLabels, IM_ARRAYSIZE(s_DistributionLabels)))
+			{
+				Shape.eDistribution =
+					static_cast<EFFECT_PARTICLE_SPAWN_DISTRIBUTION>(
+						iDistribution);
+				if (EFFECT_PARTICLE_SPAWN_DISTRIBUTION::EVEN ==
+					Shape.eDistribution)
+				{
+					Detail.Particle.fSpawnRatePerSecond = 0.f;
+					Detail.Particle.iBurstCount = (std::max)(
+						2u, Detail.Particle.iBurstCount);
+					Detail.Particle.iMaxParticles = (std::max)(
+						Detail.Particle.iMaxParticles,
+						Detail.Particle.iBurstCount);
+				}
+				bChanged = true;
+			}
+			if (EFFECT_PARTICLE_SPAWN_DISTRIBUTION::EVEN ==
+				Shape.eDistribution)
+			{
+				ImGui::TextDisabled(
+					"Even uses one fixed burst: full 360 degrees uses i/N without a duplicate endpoint; partial arcs include both endpoints.");
+			}
+
+			if (!bMeshParticle)
+			{
+				EFFECT_PARTICLE_INITIAL_ORIENTATION_DESC& Orientation =
+					Detail.Particle.InitialOrientation;
+				static const char* const s_OrientationModeLabels[] =
+				{
+					"Fixed", "Ground Radial Outward",
+					"Ground Radial Inward", "Ground Tangent Clockwise",
+					"Ground Tangent Counter Clockwise"
+				};
+				int32_t iOrientationMode = static_cast<int32_t>(Orientation.eMode);
+				if (ImGui::Combo("Initial Sprite Orientation", &iOrientationMode,
+					s_OrientationModeLabels,
+					IM_ARRAYSIZE(s_OrientationModeLabels)))
+				{
+					Orientation.eMode =
+						static_cast<EFFECT_PARTICLE_ORIENTATION_MODE>(
+							iOrientationMode);
+					if (EFFECT_PARTICLE_ORIENTATION_MODE::FIXED ==
+						Orientation.eMode)
+					{
+						Orientation.fOffsetDegrees = 0.f;
+					}
+					else
+					{
+						Detail.Particle.bLocalSpace = true;
+						Detail.Particle.bBillboard = false;
+					}
+					bChanged = true;
+				}
+				if (EFFECT_PARTICLE_ORIENTATION_MODE::FIXED !=
+					Orientation.eMode)
+				{
+					bChanged |= ImGui::DragFloat("Orientation Offset Degrees",
+						&Orientation.fOffsetDegrees, 1.f, -3600.f, 3600.f,
+						"%.1f", ImGuiSliderFlags_AlwaysClamp);
+					ImGui::TextDisabled(
+						"Ground orientation is particle-local and requires Local Space ON plus Billboard OFF.");
+				}
+			}
 		}
 
 		ImGui::SeparatorText("Particle Emission Direction");
@@ -7146,8 +7308,15 @@ void Client::CEffect_Tool::Render_KindDetail(
 			ImGui::TextDisabled(
 				"Authored PROJECT_TUNED motion layer. SourceRecipe modules run first; this layer then steers the effective velocity toward the selected centre.");
 		}
-        bChanged |= ImGui::Checkbox("Particle Local Space",
-            &Detail.Particle.bLocalSpace);
+		const bool_t bOrientationLocksParticleBasis =
+			EFFECT_PARTICLE_ORIENTATION_MODE::FIXED !=
+				Detail.Particle.InitialOrientation.eMode;
+		if (bOrientationLocksParticleBasis)
+			ImGui::BeginDisabled();
+		bChanged |= ImGui::Checkbox("Particle Local Space",
+			&Detail.Particle.bLocalSpace);
+		if (bOrientationLocksParticleBasis)
+			ImGui::EndDisabled();
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip(
@@ -7156,8 +7325,12 @@ void Client::CEffect_Tool::Render_KindDetail(
 		}
 		if (!bMeshParticle)
 		{
+			if (bOrientationLocksParticleBasis)
+				ImGui::BeginDisabled();
 			bChanged |= ImGui::Checkbox("Particle Billboard",
 				&Detail.Particle.bBillboard);
+			if (bOrientationLocksParticleBasis)
+				ImGui::EndDisabled();
 			if (Detail.Particle.bBillboard)
 			{
 				/* The renderer rebuilds a billboarded quad from the camera every
@@ -7680,7 +7853,21 @@ void Client::CEffect_Tool::Render_LerpDetail(
 	if (Lerp.bEmissiveIntensity)
 		bChanged |= ImGui::DragFloat("Emissive Intensity End##lerp",
 			&Lerp.fEndEmissiveIntensity, 0.05f, 0.f, 100.f, "%.3f",
-            ImGuiSliderFlags_AlwaysClamp);
+			ImGuiSliderFlags_AlwaysClamp);
+	if (Detail.Mesh.RingFill.bEnabled)
+	{
+		ImGui::SeparatorText("Mesh Ring Fill");
+		const bool_t bWasRingFillLerpEnabled = Lerp.bRingFillProgress;
+		RenderLerpToggle("Lerp Ring Fill Progress", Lerp.bRingFillProgress);
+		if (bWasRingFillLerpEnabled && !Lerp.bRingFillProgress)
+			Lerp.fEndRingFillProgress = 1.f;
+		if (Lerp.bRingFillProgress)
+		{
+			bChanged |= ImGui::SliderFloat("Ring Fill Progress End##lerp",
+				&Lerp.fEndRingFillProgress, 0.f, 1.f, "%.3f",
+				ImGuiSliderFlags_AlwaysClamp);
+		}
+	}
 }
 
 void Client::CEffect_Tool::Render_AssemblyHierarchy(
@@ -10004,6 +10191,7 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 {
 	/* parse -> validate -> stage -> commit. A failed reload keeps whatever the
 	   window is already showing so a transient read error never empties it. */
+	m_bValtanPatternTreeLoadAttempted = true;
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	std::string Status;
 	if (!CValtanPatternTree::Load(Staged, Status))
@@ -10982,11 +11170,54 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					"VALTAN_DASH_CHARGE" == Pattern.strPatternId ?
 						m_eValtanDashAuthoringTimelinePath :
 						VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
-				if (Build_ValtanProductPreview(Pattern, eProductPath,
+				if (Pattern.bAuthoringMasterManaged &&
+					Build_ValtanProductPreview(Pattern, eProductPath,
 						*pProductSource->pClip, PlaybackCue, Preview,
 						ProductPlaybackError))
 				{
 					ProductPlaybackPreview = std::move(Preview);
+				}
+				else if (!Pattern.bAuthoringMasterManaged)
+				{
+					const VALTAN_STAGE_VIEW& OwnerStage =
+						*pProductSource->pStage;
+					const VALTAN_CLIP_OCCURRENCE_VIEW& OwnerClip =
+						*pProductSource->pClip;
+					const VALTAN_PRODUCT_EFFECT_CUE_VIEW& SourceCue =
+						*pProductSource->pCue;
+					const bool_t bExactEffectIdentity =
+						SourceCue.strEffectAssetId == Row.strEffectAssetId ||
+						SourceCue.strV1EffectAssetId == Row.strEffectAssetId;
+					if (!bExactEffectIdentity ||
+						SourceCue.strPatternId != Pattern.strPatternId ||
+						SourceCue.strStageId != OwnerStage.strStageId ||
+						SourceCue.strActionId != OwnerStage.strActionId ||
+						SourceCue.strClipOccurrenceId !=
+							OwnerClip.strClipOccurrenceId ||
+						OwnerStage.iDurationMs != SourceCue.iStageDurationMs ||
+						OwnerClip.strClipOccurrenceId.empty() ||
+						OwnerClip.strClipName.empty() ||
+						0u == SourceCue.iStageDurationMs)
+					{
+						ProductPlaybackError =
+							"Legacy Product cue no longer owns one exact stage-local occurrence.";
+					}
+					else
+					{
+						/* Legacy Product data has no master branch wall budgets. Keep
+						   the established compatibility contract: one exact owner clip
+						   fills its Server stage while the complete cue descriptor keeps
+						   source trim, local transform, follow, and stop policy intact. */
+						Preview.Clip = OwnerClip;
+						Preview.Cue = std::move(PlaybackCue);
+						VALTAN_CLIP_OCCURRENCE_VIEW TimelineClip = OwnerClip;
+						TimelineClip.iAuthoringWallMs =
+							Preview.Cue.iStageDurationMs;
+						Preview.TimelineClips = { std::move(TimelineClip) };
+						Preview.iTimelineDurationMs =
+							Preview.Cue.iStageDurationMs;
+						ProductPlaybackPreview = std::move(Preview);
+					}
 				}
 			}
 			const VALTAN_STAGE_VIEW* pNonProductStage =
@@ -11000,6 +11231,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					pNonProductStage->iDurationMs : 0u;
 			const bool_t bAmbiguousOccurrence =
 				1u < Row.ProductSources.size() ||
+				(!Row.ProductSources.empty() && !NonProductStages.empty()) ||
 				(Row.ProductSources.empty() && 1u < NonProductStages.size());
 			const bool_t bHasExactPlaybackOwner =
 				ProductPlaybackPreview.has_value() || nullptr != pNonProductStage;
@@ -11447,7 +11679,7 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	const std::string& strSearch)
 {
-	if (!m_bValtanPatternTreeLoaded)
+	if (!m_bValtanPatternTreeLoaded && !m_bValtanPatternTreeLoadAttempted)
 		Refresh_ValtanPatternTree();
 	if (!m_strValtanPatternTreeStatus.empty())
 		ImGui::TextDisabled("%s", m_strValtanPatternTreeStatus.c_str());
@@ -23852,17 +24084,19 @@ bool_t Client::CEffect_Tool::Is_ProductCueVisible(
 	const f32_t fTimelineMs = fTimelineSeconds * 1000.f;
 	const f32_t fStageStartMs = static_cast<f32_t>(
 		m_ValtanProductPreview->iOwningStageTimelineOffsetMs);
-	const f32_t fStageEndMs = fStageStartMs + static_cast<f32_t>(
-		m_ValtanProductPreview->Cue.iStageDurationMs);
 	const f32_t fClipStartMs = static_cast<f32_t>(
 		m_ValtanProductPreview->iOwningClipTimelineOffsetMs);
 	if (0u == m_ValtanProductPreview->Cue.iStageDurationMs ||
 		fTimelineMs + 0.5f < fStageStartMs ||
-		fTimelineMs + 0.5f < fClipStartMs ||
-		fTimelineMs + 0.5f >= fStageEndMs)
+		fTimelineMs + 0.5f < fClipStartMs)
 	{
 		return false;
 	}
+	/* Product runtime retains NATURAL boss-action Effects when the Server
+	   advances to the next stage.  Do not clamp those previews to their owner
+	   stage: the Effect document's own lifetime may intentionally cover a
+	   following semantic stage (the unified INNER -> OUTER donut does).  A
+	   CUE_END source window remains bounded by Resolve_CuePreviewSample below. */
 
 	ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
 	Timing.fClipSourceStartSeconds = static_cast<f32_t>(
@@ -25361,14 +25595,15 @@ void Client::CEffect_Tool::Reset_MeshAuthoringDraft()
         std::string(EFFECT_STANDARD_MATERIAL_TEMPLATE_ID);
     m_MeshAuthoringDraft.Material.eRenderProfile =
         EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
-    m_MeshAuthoringDraft.Detail.Mesh.bUseModelMaterial = false;
+	m_MeshAuthoringDraft.Detail.Mesh.bUseModelMaterial = false;
 	m_MeshAuthoringDraft.Detail.Timing.fLifeTimeSeconds = 5.f;
 	if (AuthoringFamily_RequiresMesh(m_eSelectedAuthoringFamily))
 	{
-		m_MeshAuthoringDraft.Detail.Transform.vScale = {
-			EFFECT_MANUAL_MESH_DEFAULT_SCALE,
-			EFFECT_MANUAL_MESH_DEFAULT_SCALE,
-			EFFECT_MANUAL_MESH_DEFAULT_SCALE };
+		/* WModel source-unit normalization belongs to the import transform.
+		   Keep the Element transform at identity so Scaling remains the artist's
+		   direct, live size control instead of applying a second 0.01 factor. */
+		m_MeshAuthoringDraft.Detail.Mesh.fModelPreScale =
+			EFFECT_MANUAL_MESH_DEFAULT_SCALE;
 	}
 	if (EFFECT_AUTHORING_FAMILY::MESH_PARTICLE ==
 			m_eSelectedAuthoringFamily ||
@@ -25575,8 +25810,9 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
 	else if (m_ValtanProductPreview.has_value())
 	{
 		/* Valtan Product Play now owns the complete chosen pattern branch.
-		   Cue visibility is still capped by the owning stage and stop policy,
-		   but the scrubber must continue through all later animation stages. */
+		   CUE_END visibility is bounded by its source window while NATURAL
+		   Effects retain their document lifetime across later stages, matching
+		   the Server-authoritative boss presentation path. */
 		const uint32_t iProductTimelineDurationMs =
 			0u != m_ValtanProductPreview->iTimelineDurationMs ?
 				m_ValtanProductPreview->iTimelineDurationMs :

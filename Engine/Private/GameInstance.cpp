@@ -310,6 +310,16 @@ HRESULT CGameInstance::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolu
 {
 	return m_pSound_Manager->Play_Sound(strSoundFilePath, fVolume);
 }
+
+HRESULT CGameInstance::Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume)
+{
+	return m_pSound_Manager->Play_Music(strSoundFilePath, fVolume);
+}
+
+void CGameInstance::Stop_Music()
+{
+	m_pSound_Manager->Stop_Music();
+}
 #endif
 
 f32_t CGameInstance::Get_TimeDelta(const wstring_t& strTimerTag)

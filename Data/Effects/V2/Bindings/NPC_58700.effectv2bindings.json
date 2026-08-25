@@ -18,6 +18,7 @@
     { "effectId": "esther.wei.blur_4", "clip": "npc_sk_dochul", "startMs": 4933, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
     { "effectId": "esther.wei.trail_1", "clip": "npc_sk_dochul", "startMs": 900, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
     { "effectId": "esther.wei.trail_2", "clip": "npc_sk_dochul", "startMs": 900, "bone": "bip001-r-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
-    { "effectId": "esther.wei.magic_circle_3", "clip": "npc_sk_dochul", "startMs": 4000, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false }
+    { "effectId": "esther.wei.magic_circle_3", "clip": "npc_sk_dochul", "startMs": 4000, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.wei.magic_circle_4", "clip": "npc_sk_dochul", "startMs": 4000, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false }
   ]
 }

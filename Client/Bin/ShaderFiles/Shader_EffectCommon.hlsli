@@ -81,6 +81,11 @@ float4 g_GroupedTint = float4(1.f, 1.f, 1.f, 1.f);
 uint g_GroupedMaterialFlags = 0;
 float g_EffectLocalTime = 0.f;
 uint4 g_DynamicParameterSemantics = uint4(0, 0, 0, 0);
+uint g_RingFillEnabled = 0u;
+uint g_RingFillDirection = 0u;
+uint g_RingFillInvert = 0u;
+float g_RingFillProgress = 1.f;
+float g_RingFillFeather = 0.f;
 
 #define DEFINE_SOURCE_TEXTURE_SAMPLE(index) \
 float4 Sample_SourceTexture##index(float2 uv) \
@@ -116,6 +121,42 @@ struct EFFECT_PS_OUT
     float4 SceneColor : SV_TARGET0;
     float4 Distortion : SV_TARGET1;
 };
+
+EFFECT_PS_OUT Apply_GenericMeshRingFill(
+    EFFECT_PS_OUT output,
+    float2 rawCarrierUV)
+{
+    if (0u == g_RingFillEnabled)
+        return output;
+
+    const float progress = saturate(g_RingFillProgress);
+    float coverage = 0.f;
+    if (progress >= 1.f)
+    {
+        coverage = 1.f;
+    }
+    else if (progress > 0.f)
+    {
+        float radialV = saturate(rawCarrierUV.y);
+        if (0u != g_RingFillInvert)
+            radialV = 1.f - radialV;
+        if (0u != g_RingFillDirection)
+            radialV = 1.f - radialV;
+
+        const float feather = clamp(abs(g_RingFillFeather), 0.f, 0.5f);
+        coverage = feather > 0.f ?
+            1.f - smoothstep(
+                progress - feather, progress + feather, radialV) :
+            (radialV <= progress ? 1.f : 0.f);
+    }
+
+    // Alpha/Additive effect passes both use SrcAlpha. Multiplying RGB here too
+    // would apply the feather twice in the framebuffer blend.
+    output.SceneColor.a *= coverage;
+    output.Distortion.xy *= coverage;
+    clip(coverage - (1.f / 255.f));
+    return output;
+}
 
 float2 Apply_Radial_UV(float2 uv)
 {

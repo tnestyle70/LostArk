@@ -101,6 +101,19 @@ private:
 	UI/Lobby/create_character_button.png), text drawn separately on top. */
 	void RenderItemUpgradeButtonText();
 	void RenderItemUpgradeLevelText();
+	void RenderItemUpgradeMaterialCounts();
+	void RenderItemUpgradeGaugePercentText();
+	void RenderItemUpgradeListText();
+	/* Hover/click hit-test for the 6 left-list rows, mirrored from Render_LobbyButtons's
+	Lobby_CreateCharacterButton pattern (screen-space rect from Get_SlotRect, ImGui mouse). On
+	click, moves ItemUpgrade_ListSelectedExample and swaps ItemUpgrade_SelectedItemIcon's texture
+	to the clicked row. */
+	void Update_ItemUpgradeSelection();
+	/* Hover/click hit-test for ItemUpgrade_LevelUpBtn ("성장"), same pattern as
+	Update_ItemUpgradeSelection. On click (re)starts the 0->100 gauge fill from 0, restarts
+	ItemUpgrade_CoreFlash once, and hides WingedRingGold/LevelUpMotion2Big/CompleteEffect until
+	the fill reaches 100. */
+	void Update_ItemUpgradeGrowButton();
 	void RenderBossHealthBar();
 	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
 	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text
@@ -163,14 +176,34 @@ private:
 	preview that ended up blocking everything else on screen. */
 	unique_ptr<CHUDRuntimeView> m_pItemUpgradeView = { nullptr };
 	bool_t m_bItemUpgradePreviewVisible = false;
+	/* Which of the 6 left-list rows (head/shoulder/top/bottom/glove/weapon, index-matched to
+	ITEM_UPGRADE_SLOTS in MainApp.cpp) is the current "재련 대상" -- Update_ItemUpgradeSelection()
+	is the only writer, on a left-list row click. Defaults to 2 ("상의") to match
+	ItemUpgrade_ListSelectedExample's originally-authored resting position. */
+	int32_t m_iItemUpgradeSelectedSlot = 2;
 	bool_t m_bPDown = false;
-	/* Edge-detects the synthetic 0..99 gauge sweep wrapping back to 0 (see the "%" text draw call
-	near ItemUpgradeView's Render()) to fire the real ItemUpgrade_CoreFlash/_ShockwaveRing one-shot
-	burst once per "0->100" cycle -- CoreFlash plays first, then ShockwaveRing once CoreFlash's own
-	28-frame/20fps duration elapses (real Scaleform ordering: coreLevelEffect1 before
-	compF_shockwave_red inside levelUpMotion_mc). Once a real Server 재련 completion event exists
-	this should fire from that instead of the synthetic sweep wrapping. */
-	int32_t m_iItemUpgradePreviousPercent = -1;
+	/* Current held ItemUpgrade_GaugeFill percent (0..100), driven by the ItemUpgrade_LevelUpBtn
+	("성장") click state machine (see m_bItemUpgradeGrowing) instead of a free-running clock. Stays
+	0 until the button is clicked, holds at 100 once the fill completes. Also read directly by
+	RenderItemUpgradeGaugePercentText() for the "%" number. */
+	int32_t m_iItemUpgradePreviousPercent = 0;
+	/* true while the 0->100 fill triggered by ItemUpgrade_LevelUpBtn is in progress -- gates
+	ItemUpgrade_WingedRingGold/_LevelUpMotion2Big/_CompleteEffect (hidden while growing or idle,
+	shown only once iPercent reaches 100) and ItemUpgrade_SmeltGlow (loops only while idle, i.e.
+	!m_bItemUpgradeGrowing && 0 == m_iItemUpgradePreviousPercent). */
+	bool_t m_bItemUpgradeGrowing = false;
+	f64_t m_dItemUpgradeGrowStartSeconds = -1.0;
+	/* Wall-clock start of WingedRingGold/LevelUpMotion2Big's fade-in (alpha 0->1) once the fill
+	reaches 100% -- negative = not fading (either idle/growing with both hidden, or the fade
+	already finished and both sit at full alpha). Reset to -1 on every new button click so the
+	next completion fades in fresh instead of resuming a stale progress. */
+	f64_t m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
+	/* Fires ItemUpgrade_CoreFlash exactly once at the start of a fill (Update_ItemUpgradeGrowButton
+	sets this true on click; the per-frame gauge block consumes it the same frame and clears it) --
+	real Scaleform ordering plays coreLevelEffect1 before compF_shockwave_red inside
+	levelUpMotion_mc, so ShockwaveRing is scheduled for CoreFlash's own real 28-frame/20fps
+	duration later instead of together. */
+	bool_t m_bItemUpgradeCoreFlashPending = false;
 	f64_t m_dItemUpgradeShockwaveScheduledAt = -1.0;
 	/* Edge-detects the local player's stance so RenderCombatHUD only calls
 	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is

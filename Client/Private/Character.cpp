@@ -10,10 +10,13 @@
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 #include "PlayerSkillCatalog.h"
+#include "RuntimeAssetRoot.h"
+#include "SoundCueCatalog.h"
 #include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 
 namespace
@@ -276,6 +279,7 @@ void CCharacter::Reset_EffectCueCursor(
 	const f32_t fActionFacingYawDegrees)
 {
 	m_fPreviousEffectCueStageWallSeconds = -1.f;
+	m_fPreviousSoundCueStageWallSeconds = -1.f;
 	m_iEffectActionStartTick = iActionStartTick;
 	m_fEffectActionFacingYawDegrees = fActionFacingYawDegrees;
 	m_bHasEffectActionFacingYaw = true;
@@ -484,6 +488,115 @@ void CCharacter::Update_EffectCues()
 		}
 	}
 	m_fPreviousEffectCueStageWallSeconds = fCurrentStageWallSeconds;
+}
+
+void CCharacter::Update_SoundCues()
+{
+	if (nullptr == m_pBodyModel || nullptr == m_pChain ||
+		0u == m_iEffectActionStartTick || m_iChainStage < 0 ||
+		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
+		return;
+	if (nullptr == m_pSpec || nullptr == m_pSpec->pAssetName ||
+		m_EffectCueDocument.Sounds.empty())
+		return;
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
+	if (!Build_ActiveStageTimeline(Timings))
+		return;
+	const std::vector<CLIP_STEP>& Clips =
+		m_pChain->stages[m_iChainStage].clips;
+	const f32_t fCurrentStageWallSeconds = (std::max)(
+		0.f, m_fActionPresentationSeconds);
+	const f32_t fPreviousStageWallSeconds =
+		m_fPreviousSoundCueStageWallSeconds;
+	const std::string strClassName = m_pSpec->pAssetName;
+
+	for (std::size_t iCue = 0u;
+		iCue < m_EffectCueDocument.Sounds.size(); ++iCue)
+	{
+		const ANIMATION_SOUND_CUE& Cue = m_EffectCueDocument.Sounds[iCue];
+		const std::vector<std::string>& Variants =
+			CSoundCueCatalog::Find_Variants(strClassName, Cue.strEventName);
+		if (Variants.empty())
+			continue;
+
+		for (std::size_t iClip = 0u; iClip < Clips.size(); ++iClip)
+		{
+			if (Cue.strClipName != Clips[iClip].clip)
+				continue;
+			f32_t fSourceDurationSeconds = 0.f;
+			f32_t fWallDurationSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_ClipDuration(
+				Timings[iClip], fSourceDurationSeconds, fWallDurationSeconds))
+			{
+				continue;
+			}
+			const f32_t fCueSourceSeconds =
+				static_cast<f32_t>(Cue.iStartMs) * 0.001f;
+			f32_t fFirstOccurrenceWallSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_CueWallOffset(
+				Timings, iClip, fCueSourceSeconds, 0u,
+				fFirstOccurrenceWallSeconds))
+			{
+				continue;
+			}
+
+			uint64_t iFirstEpoch = 0u;
+			uint64_t iLastEpoch = 0u;
+			if (Timings[iClip].bLoop)
+			{
+				if (fCurrentStageWallSeconds <
+					fFirstOccurrenceWallSeconds)
+				{
+					continue;
+				}
+				if (fPreviousStageWallSeconds >=
+					fFirstOccurrenceWallSeconds)
+				{
+					iFirstEpoch = static_cast<uint64_t>(std::floor(
+						(fPreviousStageWallSeconds -
+							fFirstOccurrenceWallSeconds) /
+						fWallDurationSeconds)) + 1u;
+				}
+				iLastEpoch = static_cast<uint64_t>(std::floor((std::max)(
+					0.f, fCurrentStageWallSeconds -
+						fFirstOccurrenceWallSeconds) /
+					fWallDurationSeconds));
+				if (iFirstEpoch > iLastEpoch)
+					continue;
+				if (iLastEpoch - iFirstEpoch + 1u >
+					MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE)
+				{
+					iFirstEpoch = iLastEpoch -
+						MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE + 1u;
+				}
+			}
+
+			for (uint64_t iEpoch = iFirstEpoch;
+				iEpoch <= iLastEpoch; ++iEpoch)
+			{
+				f32_t fOccurrenceWallSeconds = 0.f;
+				if (!CActionPresentationTimeline::Resolve_CueWallOffset(
+					Timings, iClip, fCueSourceSeconds, iEpoch,
+					fOccurrenceWallSeconds) ||
+					fOccurrenceWallSeconds <=
+						fPreviousStageWallSeconds ||
+					fOccurrenceWallSeconds > fCurrentStageWallSeconds)
+				{
+					continue;
+				}
+
+				const std::size_t iVariant = Variants.size() == 1u ? 0u :
+					(static_cast<std::size_t>(std::rand()) % Variants.size());
+				const filesystem::path SoundPath =
+					CRuntimeAssetRoot::Resolve(Variants[iVariant]);
+				CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f);
+
+				if (iEpoch == (std::numeric_limits<uint64_t>::max)())
+					break;
+			}
+		}
+	}
+	m_fPreviousSoundCueStageWallSeconds = fCurrentStageWallSeconds;
 }
 
 void CCharacter::Commit_PendingClipChains()
@@ -1115,6 +1228,42 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
+	else if (PLAYER_ACTION_STATE::ESTHER_CAST == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		m_pChain = nullptr;
+		m_iChainStage = 0;
+		m_iChainStep = 0;
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+		m_fActionPresentationSeconds = 0.f;
+		Commit_PendingClipChains();
+		/* The call clip lives in the attached animation set and holds its last
+		frame until the Server releases the action. Start_Clip rewinds it, so a
+		later cast replays the raise instead of resuming the held final pose. A
+		class without the attachment keeps the locomotion pose it already has. */
+		const char_t* pCastClip =
+			m_pSpec->AnimationClips[ETOUI(CHARACTER_ANIM::ESTHER_CAST)];
+		CLIP_STEP CastStep{};
+		if (nullptr != pCastClip)
+			CastStep.clip = pCastClip;
+		if (!Start_Clip(CastStep))
+		{
+			Set_Animation(
+				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+				true);
+		}
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == action)
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
@@ -1152,7 +1301,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
-	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
+	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction)
 	{
 		m_pChain = nullptr;
 		m_iChainStage = 0;
@@ -1395,6 +1545,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 		m_pColliderCom->Update(XMLoadFloat4x4(
 			m_pTransformCom->Get_WorldMatrixPtr()));
 	Update_EffectCues();
+	Update_SoundCues();
 }
 
 void CCharacter::Late_Update(f32_t fTimeDelta)
@@ -1747,8 +1898,14 @@ void CCharacter::Set_Locomotion(bool_t isMoving)
 void CCharacter::Commit_Locomotion(bool_t isMoving)
 {
 	m_isMoving = isMoving;
-	if (Is_PlayingSkill())
+	/* The Esther call plays without a chain, so a run-to-idle edge from just
+	before the cast must not stomp its clip; the action edge restores
+	locomotion when the Server releases ESTHER_CAST. */
+	if (Is_PlayingSkill() ||
+		LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction)
+	{
 		return;
+	}
 
 	Set_Animation(
 		isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,

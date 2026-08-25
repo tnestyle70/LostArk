@@ -30,6 +30,7 @@
 #include "InventoryView.h"
 #include "SkillWindowView.h"
 #include "SkillGroundTargetPreview.h"
+#include "SoundCueCatalog.h"
 #include "UI_Sprite.h"
 
 #ifdef _DEBUG
@@ -81,6 +82,26 @@ namespace
 		std::reverse(strResult.begin(), strResult.end());
 		return strResult;
 	}
+
+	/* Shared by RenderItemUpgradeListText (all 6 left-list rows), RenderItemUpgradeLevelText (the
+	big "selected item" name label), and Update_ItemUpgradeSelection (click-to-select + icon swap)
+	so the row order/name/icon triple has exactly one source instead of drifting across three
+	independent literals. Same placeholder "운명의 업화" set/order established earlier -- real
+	inventory/equipment data isn't wired in yet. */
+	struct ITEM_UPGRADE_SLOT_INFO
+	{
+		const wchar_t* pName;
+		const char* pIconPath;
+	};
+	const ITEM_UPGRADE_SLOT_INFO ITEM_UPGRADE_SLOTS[6] =
+	{
+		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xBA38\xB9AC\xC7A5\xC2DD", "UI/ItemUpgrade/lm_head_icon.png" },     // 운명의 업화 머리장식
+		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC5B4\xAE68\xC7A5\xC2DD", "UI/ItemUpgrade/lm_shoulder_icon.png" }, // 운명의 업화 어깨장식
+		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC0C1\xC758", "UI/ItemUpgrade/lm_top_icon.png" },                 // 운명의 업화 상의
+		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xD558\xC758", "UI/ItemUpgrade/lm_bottom_icon.png" },              // 운명의 업화 하의
+		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC7A5\xAC11", "UI/ItemUpgrade/lm_glove_icon.png" },               // 운명의 업화 장갑
+		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC2DC\xACC4", "UI/ItemUpgrade/lm_weapon_icon.png" },              // 운명의 업화 시계
+	};
 
 #ifdef _DEBUG
 
@@ -257,6 +278,17 @@ HRESULT CMainApp::Initialize()
 		OutputDebugStringA(diagnostic.c_str());
 	}
 
+	/* Not fatal, same reasoning as CItemCatalog above -- a missing/broken sound catalog just
+	means CCharacter::Update_SoundCues() finds no variants for every cue and silently plays
+	nothing (Client-only presentation, no gameplay authority depends on it). */
+	std::string soundCatalogStatus;
+	if (!Client::CSoundCueCatalog::Load(soundCatalogStatus))
+	{
+		const std::string diagnostic =
+			"[MainApp] Sound Cue Catalog initialization failed: " + soundCatalogStatus + "\n";
+		OutputDebugStringA(diagnostic.c_str());
+	}
+
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
 	m_pBossUIView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/BossUI/BossUI.json");
@@ -321,7 +353,25 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		const bool_t pDown = windowFocused &&
 			0 != (GetAsyncKeyState(0x50 /* VK_P */) & 0x8000);
 		if (pDown && !m_bPDown)
+		{
 			m_bItemUpgradePreviewVisible = !m_bItemUpgradePreviewVisible;
+			if (m_bItemUpgradePreviewVisible)
+			{
+				/* Reopening always starts the gauge idle at 0 -- reset the state machine and hide
+				the 100%-only art so a completed run from a previous open doesn't carry over. */
+				m_iItemUpgradePreviousPercent = 0;
+				m_bItemUpgradeGrowing = false;
+				m_dItemUpgradeGrowStartSeconds = -1.0;
+				m_bItemUpgradeCoreFlashPending = false;
+				m_dItemUpgradeShockwaveScheduledAt = -1.0;
+				m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", false);
+				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
+				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
+			}
+		}
 		m_bPDown = pDown;
 	}
 
@@ -570,6 +620,9 @@ HRESULT CMainApp::Render()
 	RenderLobbyButtonText();
 	RenderItemUpgradeButtonText();
 	RenderItemUpgradeLevelText();
+	RenderItemUpgradeMaterialCounts();
+	RenderItemUpgradeGaugePercentText();
+	RenderItemUpgradeListText();
 	if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
@@ -978,55 +1031,104 @@ void CMainApp::RenderCombatHUD()
 	if (nullptr != m_pItemUpgradeView && m_bItemUpgradePreviewVisible)
 	{
 		m_pItemUpgradeView->Render("Default", 0);
+		Update_ItemUpgradeSelection();
+		Update_ItemUpgradeGrowButton();
 
-		/* No real Server 재련 percent exists yet (see comment above), so this is a synthetic
-		sweep 0..99 kept in lockstep with ItemUpgrade_GaugeFill's own JSON animation (100 frames
-		at 45fps) purely so the preview number matches the bar it sits over. Once a real gauge
-		value exists this should read it the same way RenderLanceMasterIdentityGauge() reads
-		player.iCurrentIdentity, not this clock. */
-		f32_t fSlotX, fSlotY, fSlotWidth, fSlotHeight;
-		if (m_pItemUpgradeView->Get_SlotRect(
-			"ItemUpgrade_GaugeFill", fSlotX, fSlotY, fSlotWidth, fSlotHeight))
+		/* No real Server 재련 percent exists yet (see comment above), so the gauge is a manual
+		state machine driven by ItemUpgrade_LevelUpBtn's click (Update_ItemUpgradeGrowButton) instead
+		of a free-running clock. Idle at 0 until clicked; 0->100 fill plays once per click; holds at
+		100 until the next click. Once a real gauge value exists this should read it the same way
+		RenderLanceMasterIdentityGauge() reads player.iCurrentIdentity, not this state. */
+		if (m_bItemUpgradeGrowing)
 		{
 			constexpr f32_t GAUGE_FILL_FPS = 45.f;
 			constexpr f32_t GAUGE_FILL_FRAME_COUNT = 100.f;
 			const f32_t fCycleSeconds = GAUGE_FILL_FRAME_COUNT / GAUGE_FILL_FPS;
-			const f32_t fElapsed = std::fmod(
-				static_cast<f32_t>(ImGui::GetTime()), fCycleSeconds);
+			const f64_t fElapsed = ImGui::GetTime() - m_dItemUpgradeGrowStartSeconds;
 			const int32_t iPercent = std::clamp(
 				static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT),
-				0, 99);
+				0, 100);
 
-			/* Wrap (99 -> 0) = one synthetic "gauge filled to 100%" cycle. CoreFlash fires now;
-			ShockwaveRing is scheduled for CoreFlash's own real duration (28 frames/20fps) later so
-			the two real Scaleform layers play in their authored order instead of together. */
-			if (iPercent < m_iItemUpgradePreviousPercent)
+			if (100 <= iPercent)
 			{
-				m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
-				constexpr f64_t CORE_FLASH_DURATION_SECONDS = 28.0 / 20.0;
-				m_dItemUpgradeShockwaveScheduledAt =
-					ImGui::GetTime() + CORE_FLASH_DURATION_SECONDS;
+				m_iItemUpgradePreviousPercent = 100;
+				m_bItemUpgradeGrowing = false;
+				/* Alpha starts at 0 here -- Set_SlotVisible only lifts bForceHidden (both slots
+				become drawable this same frame), the actual reveal is the fade-in progress block
+				below, driven by m_dItemUpgradeCompleteRevealStartSeconds. */
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", true);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", true);
+				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
+				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
+				m_dItemUpgradeCompleteRevealStartSeconds = ImGui::GetTime();
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", true);
+				m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CompleteEffect");
 			}
-			m_iItemUpgradePreviousPercent = iPercent;
-
-			if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
-				ImGui::GetTime() >= m_dItemUpgradeShockwaveScheduledAt)
+			else
 			{
-				m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
-				m_dItemUpgradeShockwaveScheduledAt = -1.0;
+				m_iItemUpgradePreviousPercent = iPercent;
+				/* GaugeFill's own AnimationFrames clock starts independently on this slot's first
+				Render() call, so it would otherwise drift out of phase with iPercent (which is
+				anchored to m_dItemUpgradeGrowStartSeconds) -- pin it to the exact frame every tick
+				instead of letting the two clocks disagree about what "63%" looks like. */
+				m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", iPercent);
 			}
-
-			const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
-			const float scaleX = viewportSize.x / 1280.f;
-			const float scaleY = viewportSize.y / 720.f;
-			const float textScale = (std::min)(scaleX, scaleY);
-			const wstring strPercent = std::to_wstring(iPercent) + L"%";
-			CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strPercent.c_str(),
-				float2_t(
-					(fSlotX + fSlotWidth * 0.5f) * scaleX,
-					(fSlotY + fSlotHeight * 0.5f) * scaleY),
-				Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.3f * textScale);
 		}
+		else if (100 == m_iItemUpgradePreviousPercent)
+		{
+			/* Held-100 state: nothing re-pins this once growing flips false above, so without this
+			GaugeFill's own looping AnimationFrames clock (JSON loop=true, 100 frames/45fps) would
+			free-run straight past frame 99 and repeat the whole 0->100 sweep visually even though
+			m_iItemUpgradePreviousPercent correctly stays at 100. */
+			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 99);
+
+			if (m_dItemUpgradeCompleteRevealStartSeconds >= 0.0)
+			{
+				constexpr f64_t REVEAL_FADE_SECONDS = 0.45;
+				const f32_t fFadeAlpha = static_cast<f32_t>(std::clamp(
+					(ImGui::GetTime() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS,
+					0.0, 1.0));
+				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", fFadeAlpha);
+				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", fFadeAlpha);
+			}
+		}
+
+		/* CoreFlash fires exactly once, the same frame Update_ItemUpgradeGrowButton starts a fill;
+		ShockwaveRing is scheduled for CoreFlash's own real duration (28 frames/20fps) later so the
+		two real Scaleform layers play in their authored order instead of together (real ordering:
+		coreLevelEffect1 before compF_shockwave_red inside levelUpMotion_mc). */
+		if (m_bItemUpgradeCoreFlashPending)
+		{
+			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
+			constexpr f64_t CORE_FLASH_DURATION_SECONDS = 28.0 / 20.0;
+			m_dItemUpgradeShockwaveScheduledAt = ImGui::GetTime() + CORE_FLASH_DURATION_SECONDS;
+			m_bItemUpgradeCoreFlashPending = false;
+		}
+		if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
+			ImGui::GetTime() >= m_dItemUpgradeShockwaveScheduledAt)
+		{
+			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
+			m_dItemUpgradeShockwaveScheduledAt = -1.0;
+		}
+
+		/* Idle (not growing, held at 0) is the only state SmeltGlow's own JSON loop should be
+		visible in -- hidden for the rest of the fill and at 100% so it doesn't glow underneath the
+		completion art. WingedRingGold/LevelUpMotion2Big/CompleteEffect are the inverse: hidden
+		everywhere except the held-100 state set above. A fresh click (Update_ItemUpgradeGrowButton)
+		re-hides all three the same frame it restarts the fill from 0. */
+		const bool_t bIdle = !m_bItemUpgradeGrowing && 0 == m_iItemUpgradePreviousPercent;
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SmeltGlow", bIdle);
+		/* Idle has no per-frame branch above to pin this itself (unlike the growing/held-100
+		cases), so GaugeFill's own clock would otherwise free-run through its looping AnimationFrames
+		while sitting idle at 0%. */
+		if (bIdle)
+			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 0);
+
+		/* Drawing the percent number itself is deferred to RenderItemUpgradeGaugePercentText()
+		(called after CImGuiLayer::EndFrame(), same reason as RenderBossHealthBar's text split --
+		this Render() call's own AnimationFrames images composite later inside EndFrame() and would
+		otherwise paint over a Draw_Text() submitted here). m_iItemUpgradePreviousPercent is already
+		updated above and doubles as that function's read of "current percent". */
 	}
 	Render_ItemQuickSlots();
 }
@@ -1209,6 +1311,212 @@ void CMainApp::RenderItemUpgradeButtonText()
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
 		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+
+	// "성장" label for ItemUpgrade_LevelUpBtn, same pattern as the button above.
+	f32_t fGrowX = 0.f, fGrowY = 0.f, fGrowWidth = 0.f, fGrowHeight = 0.f;
+	if (m_pItemUpgradeView->Get_SlotRect(
+		"ItemUpgrade_LevelUpBtn", fGrowX, fGrowY, fGrowWidth, fGrowHeight))
+	{
+		const wchar_t* pGrowLabel = L"\xC131\xC7A5"; // "성장"
+		const float2_t vGrowMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pGrowLabel);
+		const f32_t fGrowScaleByHeight = (vGrowMeasured.y > 0.f) ? (fGrowHeight * 0.35f / vGrowMeasured.y) : 1.f; // 0.5 * 0.7
+		const f32_t fGrowScaleByWidth = (vGrowMeasured.x > 0.f) ? (fGrowWidth * 0.8f / vGrowMeasured.x) : 1.f;
+		const f32_t fGrowScale = (std::min)(fGrowScaleByHeight, fGrowScaleByWidth);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pGrowLabel,
+			float2_t((fGrowX + fGrowWidth * 0.5f) * textScaleX, (fGrowY + fGrowHeight * 0.5f) * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fGrowScale * textUiScale);
+	}
+}
+
+void CMainApp::RenderItemUpgradeListText()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	auto DrawFit = [&](const char* pSlotId, const wchar_t* pLabel, f32_t fHeightRatio, fvector_t vColor)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pItemUpgradeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight))
+			return;
+
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * fHeightRatio / vMeasured.y) : 1.f;
+		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
+		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+			float2_t(fX * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+			vColor, 0.f, float2_t(0.f, 0.5f), fScale * textUiScale);
+	};
+
+	/* Left equipment list: level + item name per row, real slot/text field names
+	(buildUpGrade_txt / itemName_txt) confirmed in ItemBuildUpListRendererMc's own trace, though
+	this renderer is instantiated per-row purely by AS3 (no static per-row placement to trace an
+	exact position from), so the anchor rects here are a reasonable icon-relative placement for
+	the user to nudge in the Tool rather than an exact traced position. Placeholder item data
+	(same "운명의 업화" set, level 18) until real inventory/equipment data is wired in. */
+	// real sampled reference pixels (list row "18 단계" / item name text):
+	// level = (255,189,74) same gold as curLevel_lb; name = (227,199,161) warm cream, not white.
+	const fvector_t vLevelColor = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
+	const fvector_t vNameColor = XMVectorSet(0.8902f, 0.7804f, 0.6314f, 1.f); // #E3C7A1
+	for (int32_t i = 0; i < 6; ++i)
+	{
+		const string strLevelSlot = "ItemUpgrade_ListLevel" + to_string(i);
+		const string strNameSlot = "ItemUpgrade_ListItemName" + to_string(i);
+		DrawFit(strLevelSlot.c_str(), L"18\xB2E8\xACC4", 0.765f, vLevelColor); // "18단계" (0.85 * 0.9)
+		DrawFit(strNameSlot.c_str(), ITEM_UPGRADE_SLOTS[i].pName, 0.72f, vNameColor); // 0.8 * 0.9
+	}
+
+	/* Right 재련 단계 list: 7 rows now (JSON grew GradeRowEmblem/GradeStripB/GradeRowText from 4 to
+	7, evenly filling the panel from its top edge down) -- the ask was more row slots, not more
+	stat lines per row, so this stays at 1 stat line ("공격력 +N") like before. Real reference
+	scrolls higher levels at the TOP and the current level at the BOTTOM (24단계...18단계 reading
+	top to bottom, i.e. numbers increase bottom -> top), so row 0 (topmost) is the highest of our
+	seven and row 6 (bottom, nearest the gauge) is 19 -- the level actually being reforged toward.
+	GradeSelectedExample sits on row 6 to match. Non-selected rows sample as a muted gray (real
+	24/23/22단계 rows, (103,103,103)); the selected (현재/19단계) row uses gold for the level and
+	white for its stat, matching every other "selected" element in this window reading brighter
+	than its neighbors. Stat is a placeholder "공격력 +N" (N = that row's own level) until real
+	per-level balance data exists. */
+	const fvector_t vRowGray = XMVectorSet(0.4039f, 0.4039f, 0.4039f, 1.f); // #676767
+	const fvector_t vSelectedGold = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
+	const int32_t ROW_COUNT = 7;
+	const int32_t ROW_LEVELS[ROW_COUNT] = { 25, 24, 23, 22, 21, 20, 19 };
+	for (int32_t i = 0; i < ROW_COUNT; ++i)
+	{
+		const string strSlot = "ItemUpgrade_GradeRowText" + to_string(i);
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pItemUpgradeView->Get_SlotRect(strSlot.c_str(), fX, fY, fWidth, fHeight))
+			continue;
+
+		const bool_t bSelected = (19 == ROW_LEVELS[i]);
+		const fvector_t vNumColor = bSelected ? vSelectedGold : vRowGray;
+		const fvector_t vStatTextColor = bSelected ? Colors::White : vRowGray;
+
+		const wstring strNum = to_wstring(ROW_LEVELS[i]);
+		const wchar_t* pDanggye = L"\xB2E8\xACC4"; // "단계"
+		const wstring strStat = L"\xACF5\xACA9\xB825 +" + to_wstring(ROW_LEVELS[i]); // "공격력 +N"
+
+		const float2_t vNumMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strNum.c_str());
+		const f32_t fNumScale = (std::min)(
+			(vNumMeasured.y > 0.f) ? fHeight * 0.24f / vNumMeasured.y : 1.f,
+			(vNumMeasured.x > 0.f) ? fWidth * 0.3f / vNumMeasured.x : 1.f);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strNum.c_str(),
+			float2_t((fX + fWidth * 0.15f) * textScaleX, (fY + fHeight * 0.35f) * textScaleY),
+			vNumColor, 0.f, float2_t(0.5f, 0.5f), fNumScale * textUiScale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pDanggye,
+			float2_t((fX + fWidth * 0.15f) * textScaleX, (fY + fHeight * 0.65f) * textScaleY),
+			vNumColor, 0.f, float2_t(0.5f, 0.5f), fNumScale * textUiScale);
+
+		const float2_t vStatMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strStat.c_str());
+		const f32_t fStatScale = (vStatMeasured.y > 0.f) ? (fHeight * 0.18f / vStatMeasured.y) : 1.f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStat.c_str(),
+			float2_t((fX + fWidth * 0.35f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+			vStatTextColor, 0.f, float2_t(0.f, 0.5f), fStatScale * textUiScale);
+	}
+}
+
+void CMainApp::Update_ItemUpgradeSelection()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+
+	f32_t fListX = 0.f, fListY = 0.f, fListWidth = 0.f, fListHeight = 0.f;
+	if (!m_pItemUpgradeView->Get_SlotRect(
+		"ItemUpgrade_LeftListBg", fListX, fListY, fListWidth, fListHeight))
+	{
+		return;
+	}
+
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+
+	for (int32_t i = 0; i < 6; ++i)
+	{
+		const string strGradeBgSlot = "ItemUpgrade_ListGradeBg" + to_string(i);
+		f32_t fRowX = 0.f, fRowY = 0.f, fRowWidth = 0.f, fRowHeight = 0.f;
+		if (!m_pItemUpgradeView->Get_SlotRect(
+			strGradeBgSlot.c_str(), fRowX, fRowY, fRowWidth, fRowHeight))
+		{
+			continue;
+		}
+
+		/* Full row width (LeftListBg's own x/width), not just the icon/grade-glow's own narrower
+		rect, so clicking anywhere across the name text also selects this row. */
+		const ImVec2 vMin(
+			pViewport->WorkPos.x + fListX * scaleX,
+			pViewport->WorkPos.y + fRowY * scaleY);
+		const ImVec2 vMax(
+			vMin.x + fListWidth * scaleX,
+			vMin.y + fRowHeight * scaleY);
+		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+			vMouse.y >= vMin.y && vMouse.y < vMax.y;
+		if (!bHovered || !bClicked)
+			continue;
+
+		m_iItemUpgradeSelectedSlot = i;
+
+		f32_t fTargetX = 0.f, fTargetY = 0.f, fTargetWidth = 0.f, fTargetHeight = 0.f;
+		if (m_pItemUpgradeView->Get_SlotRect(
+			strGradeBgSlot.c_str(), fTargetX, fTargetY, fTargetWidth, fTargetHeight))
+		{
+			m_pItemUpgradeView->Set_SlotPosition(
+				"ItemUpgrade_ListSelectedExample", fTargetX, fTargetY);
+		}
+		m_pItemUpgradeView->Set_SlotTexture(
+			"ItemUpgrade_SelectedItemIcon", ITEM_UPGRADE_SLOTS[i].pIconPath);
+		break;
+	}
+}
+
+void CMainApp::Update_ItemUpgradeGrowButton()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_LevelUpBtn", fX, fY, fWidth, fHeight))
+		return;
+
+	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
+	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+		vMouse.y >= vMin.y && vMouse.y < vMax.y;
+	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		return;
+
+	/* (Re)starts the fill from 0 even if a previous run already completed -- a debug preview
+	button is expected to be repeatable. Hides the 100%-only art immediately so a re-click during
+	the held-100 state doesn't leave it showing through the new fill. */
+	m_iItemUpgradePreviousPercent = 0;
+	m_bItemUpgradeGrowing = true;
+	m_dItemUpgradeGrowStartSeconds = ImGui::GetTime();
+	m_bItemUpgradeCoreFlashPending = true;
+	m_dItemUpgradeShockwaveScheduledAt = -1.0;
+	m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", false);
+	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
+	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
 }
 
 void CMainApp::RenderItemUpgradeLevelText()
@@ -1232,13 +1540,31 @@ void CMainApp::RenderItemUpgradeLevelText()
 	// itemName_lb.color=13769983(0xD21CFF), curLevel_lb.color=16760138(0xFFBD4A),
 	// nextLevel_lb.color=12057344(0xB7FB00). The ">>>" arrow is a real animated
 	// flourish icon (ItemUpgrade_LevelArrow AnimationFrames), not text.
+	// "운명의 업화 상의" -- same legend-grade gold as buildup_gradebg_legend.png. The item name
+	// itself tracks m_iItemUpgradeSelectedSlot (Update_ItemUpgradeSelection), so it can't live in
+	// the fixed-literal SLOTS array below like CurLevel/NextLevel.
+	const int32_t iSelectedSlot = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ItemNameLabel", fX, fY, fWidth, fHeight))
+		{
+			const wchar_t* pLabel = ITEM_UPGRADE_SLOTS[iSelectedSlot].pName;
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+			const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.95f / vMeasured.y) : 1.f;
+			const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
+			const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+				float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+				XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f), 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+		}
+	}
+
 	const LEVEL_TEXT_SLOT SLOTS[] =
 	{
-		{ "ItemUpgrade_ItemNameLabel", L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC0C1\xC758", 0.6f,
-			XMVectorSet(0.8235f, 0.1098f, 1.0f, 1.f) }, // "운명의 업화 상의"
-		{ "ItemUpgrade_CurLevelLabel", L"18\xB2E8\xACC4", 0.7f,
+		{ "ItemUpgrade_CurLevelLabel", L"18\xB2E8\xACC4", 0.95f,
 			XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f) }, // "18단계"
-		{ "ItemUpgrade_NextLevelLabel", L"19\xB2E8\xACC4", 0.7f,
+		{ "ItemUpgrade_NextLevelLabel", L"19\xB2E8\xACC4", 0.95f,
 			XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f) }, // "19단계"
 	};
 
@@ -1254,12 +1580,108 @@ void CMainApp::RenderItemUpgradeLevelText()
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Slot.pLabel);
 		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * Slot.fHeightRatio / vMeasured.y) : 1.f;
-		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.9f / vMeasured.x) : 1.f;
+		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
 		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Slot.pLabel,
 			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
 			Slot.vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	}
+}
+
+void CMainApp::RenderItemUpgradeMaterialCounts()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	/* Placeholder preview economy, matching the fixed 18 -> 19 level text drawn above
+	(no live Server balance data is wired into this preview): required amount for the
+	18 -> 19 transition, i.e. targetLevel = 19.
+	  - blue crystal : 100 per level (100 * targetLevel)
+	  - pink gem     : 5 per every 5-level band (5 * ceil(targetLevel / 5))
+	  - orange gem   : 3 per every 5-level band (3 * ceil(targetLevel / 5))
+	Owned is a placeholder 9999 until real inventory data is wired in. Colors are the real
+	sampled reference (lime "owned/[B7FB00]" when owned >= required, red "0xE73517" style
+	when short) -- reference screenshot shows all three counts at one shared font size
+	regardless of digit count, so this measures the longest string once (rather than
+	independently fitting each slot's own box) and reuses that scale for all three. */
+	const int32_t iTargetLevel = 19;
+	const int32_t iBand = (iTargetLevel + 4) / 5;
+	const int32_t iOwned = 9999;
+	const int32_t iRequired[3] = { 100 * iTargetLevel, 5 * iBand, 3 * iBand };
+	const char* SLOT_IDS[3] = { "ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeAmount1", "ItemUpgrade_RecipeAmount2" };
+	const fvector_t vSufficientColor = XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f); // #B7FB00
+	const fvector_t vInsufficientColor = XMVectorSet(0.9059f, 0.2078f, 0.0902f, 1.f); // #E73517
+
+	/* One shared scale for all three (so digit-count differences don't change apparent size),
+	but taken as the minimum fit across all three slots' own box -- not just the first slot's
+	height -- so the longest string ("9999 / 1900") can't overflow into its neighbors. */
+	f32_t fSharedScale = 1.f;
+	{
+		bool_t bAny = false;
+		for (int32_t i = 0; i < 3; ++i)
+		{
+			f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+			if (!m_pItemUpgradeView->Get_SlotRect(SLOT_IDS[i], fX, fY, fW, fH))
+				continue;
+
+			const wstring strAmount = to_wstring(iOwned) + L" / " + to_wstring(iRequired[i]);
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strAmount.c_str());
+			if (vMeasured.y <= 0.f || vMeasured.x <= 0.f)
+				continue;
+
+			const f32_t fFit = (std::min)(fH * 0.9f / vMeasured.y, fW * 0.95f / vMeasured.x);
+			fSharedScale = bAny ? (std::min)(fSharedScale, fFit) : fFit;
+			bAny = true;
+		}
+	}
+
+	for (int32_t i = 0; i < 3; ++i)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pItemUpgradeView->Get_SlotRect(SLOT_IDS[i], fX, fY, fWidth, fHeight))
+			continue;
+
+		const f32_t fCenterX = fX + fWidth * 0.5f;
+		const f32_t fCenterY = fY + fHeight * 0.5f;
+
+		const wstring strAmount = to_wstring(iOwned) + L" / " + to_wstring(iRequired[i]);
+		const fvector_t vColor = (iOwned >= iRequired[i]) ? vSufficientColor : vInsufficientColor;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strAmount.c_str(),
+			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+			vColor, 0.f, float2_t(0.5f, 0.5f), fSharedScale * textUiScale);
+	}
+}
+
+void CMainApp::RenderItemUpgradeGaugePercentText()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+		return;
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_GaugeFill", fX, fY, fWidth, fHeight))
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const wstring strPercent = to_wstring(m_iItemUpgradePreviousPercent) + L"%";
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strPercent.c_str());
+	const f32_t fScale = (vMeasured.y > 0.f) ? (fHeight * 0.2f / vMeasured.y) : 1.f;
+
+	// bright glowing gold/yellow, matching the ring's own fire-flourish palette.
+	const fvector_t vColor = XMVectorSet(1.0f, 0.851f, 0.353f, 1.f); // #FFD959
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strPercent.c_str(),
+		float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+		vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 }
 
 void CMainApp::Render_ItemQuickSlots()
@@ -2606,6 +3028,12 @@ HRESULT CMainApp::Start_Level(
 	const LEVEL eTargetLevel,
 	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
+	/* The P-toggled Item Upgrade debug preview (see m_pItemUpgradeView's declaration comment)
+	has no level awareness of its own -- it just draws whenever the flag is on. Without this,
+	leaving Character Select with the preview open (e.g. entering Valtan) left its text drawing
+	over the Loading screen and the destination level too. Any real level transition ends it. */
+	m_bItemUpgradePreviewVisible = false;
+
 	const CLIENT_LEVEL_DESCRIPTOR* pTarget =
 		CLevelRegistry::Find(eTargetLevel);
 	if (nullptr == pTarget || nullptr == pTarget->pRenderingProfileId ||

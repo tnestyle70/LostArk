@@ -835,11 +835,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			std::vector<std::uint32_t>{ 1790u, 2560u, 3330u } ==
 				fourSlashes->HitOffsetsMs &&
 			nullptr != fourSlashSpin && 1u == fourSlashSpin->iHitCount &&
-			600u == fourSlashSpin->iHitDelayMs &&
+			0u == fourSlashSpin->iHitDelayMs &&
 			0u == fourSlashSpin->iHitIntervalMs &&
-			fourSlashSpin->HitOffsetsMs.empty() &&
+			std::vector<std::uint32_t>{ 600u } ==
+				fourSlashSpin->HitOffsetsMs &&
 			fourSlashes->bWallContact && fourSlashSpin->bWallContact,
-			"Compile the rejoined four-slash Server hit schedule exactly");
+			"Compile the rejoined four-slash explicit Server hit schedule exactly");
 		tests.Require(
 			nullptr != highJumpTakeoff &&
 			1933u == highJumpTakeoff->iDurationMs &&
@@ -939,14 +940,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 		tests.Require(
 			everyDamagingStageResolves && 48u == damagingStageCount &&
-			75u == authoredHitPulseCount &&
+			73u == authoredHitPulseCount &&
 			700u == catalog.Find_DamageRatePercent(
 				"damage.valtan.arena-destroy-109") &&
 			450u == catalog.Find_DamageRatePercent(
 				"damage.valtan.six-direction-130") &&
 			900u == catalog.Find_DamageRatePercent(
 				"damage.valtan.ghost-transition-15"),
-			"Resolve all 48 Valtan hit stages and 75 pulses through project-tuned damage profiles");
+			"Resolve all 48 Valtan hit stages and 73 pulses through project-tuned damage profiles");
 	}
 	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
@@ -3182,6 +3183,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 			return placement.strPlacementId == "valtan";
 		});
+	const auto bernEntryTrigger = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "trigger.bern.to-valtan";
+		});
 	const auto bernCollision = std::find_if(
 		bernPlacements.begin(), bernPlacements.end(),
 		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -3209,6 +3216,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == bernValtanTrigger->eKind &&
 		bernValtanTrigger->isEnabled &&
 		1u == bernValtanTrigger->TriggerActions.size() &&
+		bernEntryTrigger != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == bernEntryTrigger->eKind &&
+		bernEntryTrigger->isEnabled &&
+		1u == bernEntryTrigger->TriggerActions.size() &&
 		bernCollision != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind,
 		"Load Bern spawns, both NPCs, both triggers, and collision box");
@@ -3334,6 +3345,45 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.Require(
 		bernNavigation.Load("LV_BER_BERNCASTLE"),
 		"Load Bern server navigation");
+	const auto bernFirstSpawn = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+				placement.isEnabled;
+		});
+	std::vector<SERVER_NAV_POINT> bernEntryPath;
+	const bool bernEntryReachable =
+		bernFirstSpawn != bernPlacements.end() &&
+		bernEntryTrigger != bernPlacements.end() &&
+		bernNavigation.Find_Path(
+			bernFirstSpawn->fPositionX,
+			bernFirstSpawn->fPositionZ,
+			bernEntryTrigger->fPositionX,
+			bernEntryTrigger->fPositionZ,
+			bernEntryPath) &&
+		!bernEntryPath.empty();
+	bool bernEntryPathEndsInsideTrigger = false;
+	if (bernEntryReachable)
+	{
+		const SERVER_NAV_POINT& endpoint = bernEntryPath.back();
+		bernEntryPathEndsInsideTrigger =
+			std::abs(endpoint.x - bernEntryTrigger->fPositionX) <=
+				bernEntryTrigger->fHalfExtentX +
+				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X &&
+			std::abs(endpoint.z - bernEntryTrigger->fPositionZ) <=
+				bernEntryTrigger->fHalfExtentZ +
+				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Z &&
+			std::abs(
+				endpoint.y +
+					LostArk::Shared::WorldCollision::PLAYER_CENTER_OFFSET_Y -
+				bernEntryTrigger->fPositionY) <=
+				bernEntryTrigger->fHalfExtentY +
+				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Y;
+	}
+	tests.Require(
+		bernEntryReachable && bernEntryPathEndsInsideTrigger,
+		"Reach the Bern-to-Valtan trigger through authoritative navigation");
 	bool bernSpawnsOnNavigation = bernLoaded;
 	for (const WORLD_BOOTSTRAP_PLACEMENT& spawn : bernPlacements)
 	{
@@ -4941,9 +4991,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			if (17u == activeTick)
 				spinCrossingStateExact = spinCrossingStateExact &&
 					0u == slashBoss.iAppliedPatternHitCount;
-			else if (18u <= activeTick)
+			else if (18u <= activeTick &&
+				"SPIN" == slashBoss.strPatternStageId)
 				spinCrossingStateExact = spinCrossingStateExact &&
 					1u == slashBoss.iAppliedPatternHitCount;
+			else if ("RECOVERY" == slashBoss.strPatternStageId)
+				spinCrossingStateExact = spinCrossingStateExact &&
+					0u == slashBoss.iAppliedPatternHitCount;
 
 			if ("RECOVERY" == slashBoss.strPatternStageId)
 			{
@@ -6146,7 +6200,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					std::ios::binary);
 				bootstrap <<
 					"LOSTARK_GAMEPLAY_BOOTSTRAP\t" << GAMEPLAY_BOOTSTRAP_VERSION <<
-					"\t87\n"
+					'\t' << (19u + VALID_VALTAN_TIMELINE_ROW_COUNT) << "\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"BOSSPART\tBOSS_VALTAN\tboss.part.valtan.arm-armor\t2\t1000\t15\tGROGGY_ONLY\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
@@ -9766,6 +9820,39 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			1u == valtanRoom.m_PendingEstherSummons.size(),
 			"Drain the Esther gauge at once but hold the summon for the landing delay");
 
+		/* The accepted call locks the caster: ESTHER_CAST with no skill id,
+		turned to the aim (east of the caster is +90 degrees). */
+		SERVER_PLAYER& roomCaster = valtanRoom.m_Players.at(casterPlayerId);
+		tests.Require(
+			LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST ==
+				roomCaster.eAction &&
+			LostArk::Shared::INVALID_SKILL_ID == roomCaster.iCurrentSkillId &&
+			0u != roomCaster.iActionStartTick &&
+			std::abs(roomCaster.fYawDegrees - 90.f) < 0.01f,
+			"Lock the caster into the Esther call turned to the aim");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, notFullUse);
+		tests.Require(
+			1000u == valtanRoom.m_EstherSkillSystem.Get_Gauge() &&
+			1u == valtanRoom.m_PendingEstherSummons.size(),
+			"Reject an Esther use while the caster is still casting");
+
+		/* The room releases the cast through the player update once the call
+		clip's 1500 ms have elapsed on the tick clock. */
+		valtanRoom.m_iServerTick = 60u;
+		valtanRoom.Update_Players(1.f / 30.f);
+		tests.Require(
+			LostArk::Shared::PLAYER_ACTION_STATE::NONE == roomCaster.eAction &&
+			0u == roomCaster.iActionStartTick,
+			"Release the caster to NONE once the call clip has run out");
+
+		/* Drain the recharged gauge again so the emptied-gauge rejection
+		below still tests the gauge and not the cast lock. */
+		pRosterEntry = nullptr;
+		(void)valtanRoom.m_EstherSkillSystem.Try_Consume(1u, pRosterEntry);
+
 		/* The landing spot is two metres along the aim (east here), sampled on
 		the navigation grid; an unwalkable sample falls back to the caster. */
 		SERVER_NAV_POINT expectedLanding{
@@ -9837,6 +9924,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr == findSummon(),
 			"Despawn Bahuntur the moment its clip ends without the skyward rise");
 
+		/* Release the Bahuntur call before the next use; the caster would
+		otherwise still hold ESTHER_CAST and reject it. */
+		valtanRoom.m_iServerTick = 120u;
+		valtanRoom.Update_Players(1.f / 30.f);
 		for (int tick = 0; tick < 200; ++tick)
 			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
 		LostArk::Shared::C2S_USE_ESTHER_SKILL weiUse{};
