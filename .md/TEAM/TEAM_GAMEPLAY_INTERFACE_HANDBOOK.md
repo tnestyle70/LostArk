@@ -527,7 +527,7 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
 
 ## 10. Asset과 Git
 
-`Client/Bin/Resources`는 `Fonts, Character, Deploy, Effect, Map, UI` 여섯 root만 허용한다. asset ID는 Resources 상대 경로이며 절대 경로, drive-qualified 경로, `..` 탈출을 금지한다.
+asset ID는 Resources 상대 경로이며 절대 경로, drive-qualified 경로, `..` 탈출을 금지한다.
 
 runtime payload는 팀장이 `Client/Bin/Resources` 물리 폴더로 관리한다. AssetPacks lock, immutable manifest, ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
 

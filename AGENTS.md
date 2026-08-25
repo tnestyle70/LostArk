@@ -139,7 +139,6 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=127.0.0.1`로 갱신한
 - 제품 맵은 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`로 선언한 진입/전투 범위와 배경만 로드한다. Loader와 runtime placement는 반드시 같은 scope를 소비한다.
 - 레벨 전환 요청은 `CLevelTransitionService`로 보낸다. `Change_Level`은 현재 Level update가 끝난 뒤 `CMainApp`만 호출한다. `CLevel_Loading`은 로드 성공 시 activation 요청만 제출한다.
 - 공식 전역 기능키는 Debug Developer Tools의 F1과 follow/free camera 전환의 F6뿐이다. F2~F5, F7~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다.
-- `Client/Bin/Resources`의 최상위 폴더는 `Fonts, Character, Deploy, Effect, Map, UI` 정확히 여섯 개다. `Resources/LostArk` 래퍼와 `SourceData`를 만들지 않는다.
 - 런타임 asset ID는 Resources 상대 경로다. 절대 경로, drive-qualified 경로, `..`로 루트를 벗어나는 경로를 거부한다.
 - UI와 gameplay 설정은 JSON만 사용한다. `.cfg` 신규 추가와 runtime cfg reader는 금지한다.
 - Git 관리 대상 `Data` 원본은 Client 프로젝트의 `96.DataFiles` 아래 `None` 항목으로만 노출한다. 프로젝트별 복사본이나 build output `Content` 항목으로 만들지 않는다.

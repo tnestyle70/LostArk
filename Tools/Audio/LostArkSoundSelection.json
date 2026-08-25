@@ -1,0 +1,155 @@
+{
+  "formatVersion": 1,
+  "packages": [
+    {
+      "logicalName": "SOUND_BGM_ALL",
+      "categories": [
+        "BGM/Lobby",
+        "BGM/CharacterSelect"
+      ]
+    },
+    {
+      "logicalName": "SOUND_BGM_ALL_NONSTREAM",
+      "categories": [
+        "BGM/Lobby",
+        "BGM/CharacterSelect"
+      ]
+    },
+    {
+      "logicalName": "SOUND_BGM_TRISION",
+      "categories": [
+        "BGM/CharacterSelect"
+      ]
+    },
+    {
+      "logicalName": "SOUND_BGM_COMMANDERRAID",
+      "categories": [
+        "BGM/Valtan"
+      ]
+    },
+    {
+      "logicalName": "SOUND_BGM_BERN",
+      "categories": [
+        "BGM/BernCastle"
+      ]
+    },
+    {
+      "logicalName": "SOUND_AMB_AIR1",
+      "categories": [
+        "Ambience/BernCastle"
+      ]
+    },
+    {
+      "logicalName": "SOUND_AMB_ACT",
+      "categories": [
+        "Ambience/BernCastle"
+      ]
+    },
+    {
+      "logicalName": "SOUND_AMB_ACT_NONSTREAM",
+      "categories": [
+        "Ambience/BernCastle"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_LANCEMASTER",
+      "categories": [
+        "Character/LanceMaster"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_YINYANGSHI",
+      "categories": [
+        "Character/Artist"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_GUNLANCER",
+      "categories": [
+        "Character/Warlord"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_DIMENSIONMASTER",
+      "categories": [
+        "Character/DimensionMaster"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_DIMENSIONMASTER_NONSTREAM",
+      "categories": [
+        "Character/DimensionMaster"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_COMMON",
+      "categories": [
+        "Character/Common"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_COMMON_NONSTREAM",
+      "categories": [
+        "Character/Common"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_COMMON_HITTED",
+      "categories": [
+        "Character/Common"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_COMMON_GLOBAL",
+      "categories": [
+        "Character/Common"
+      ]
+    },
+    {
+      "logicalName": "SOUND_PC_COMMON_GLOBAL_NONSTREAM",
+      "categories": [
+        "Character/Common"
+      ]
+    },
+    {
+      "logicalName": "SOUND_MOB_GLOBAL5",
+      "categories": [
+        "Boss/Valtan"
+      ]
+    },
+    {
+      "logicalName": "SOUND_MOB_GLOBAL5_NONSTREAM",
+      "categories": [
+        "Boss/Valtan"
+      ]
+    },
+    {
+      "logicalName": "SOUND_THEME",
+      "categories": [
+        "UI/Select",
+        "UI/Enhancement",
+        "UI/System"
+      ]
+    },
+    {
+      "logicalName": "SOUND_THEME_NONSTREAM",
+      "categories": [
+        "UI/Select",
+        "UI/Enhancement",
+        "UI/System"
+      ]
+    },
+    {
+      "logicalName": "SOUND_UI",
+      "categories": [
+        "UI/System"
+      ]
+    },
+    {
+      "logicalName": "SOUND_UI_NONSTREAM",
+      "categories": [
+        "UI/System"
+      ]
+    }
+  ]
+}
