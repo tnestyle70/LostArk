@@ -591,6 +591,21 @@ namespace
 int LostArk::Server::Run_ServerGameplayContractTests(
 	const bool dimensionMasterGroundTargetOnly)
 {
+	struct CONTRACT_TEST_RUN_CONTEXT final
+	{
+		bool dimensionMasterGroundTargetOnly = false;
+		int result = 1;
+	};
+
+	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, 1 };
+	const auto runContract = [](void* opaque)
+	{
+		CONTRACT_TEST_RUN_CONTEXT& context =
+			*static_cast<CONTRACT_TEST_RUN_CONTEXT*>(opaque);
+		const bool dimensionMasterGroundTargetOnly =
+			context.dimensionMasterGroundTargetOnly;
+		context.result = [&]() -> int
+		{
 	using namespace LostArk::Shared;
 	TESTS tests{ dimensionMasterGroundTargetOnly };
 	CGameplayCatalog catalog;
@@ -6489,11 +6504,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"Spawn the missile at its authored time and land nothing before it arrives");
 			}
 		}
-		/* tick 10 = action start, spawn on tick 45 (elapsed 1.167 s). The
-		root-motion caster pose advances its spawn origin, so the 0.217 m steps
-		reach contact on tick 60, give or take one tick of float accumulation. */
+		/* tick 10 = action start, spawn on tick 45 (elapsed 1.167 s), then 17
+		moves of 0.217 m to pass 3.5 m: tick 62, give or take one tick of float
+		accumulation. */
 		tests.Require(
-			1u == tigerEvents.size() && firstHitTick >= 59u && firstHitTick <= 61u &&
+			1u == tigerEvents.size() && firstHitTick >= 61u && firstHitTick <= 63u &&
 			tigerTargets[0].iNetEntityId == tigerEvents[0].iTargetNetEntityId,
 			"Land the missile's contact hit once when its box reaches the target");
 		const std::uint32_t tigerRate = catalog.Find_DamageRatePercent(
@@ -12500,4 +12515,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.failures += Run_WorldDestructionBootstrapContractTests();
 	std::cout << "failures : " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;
+		}();
+	};
+	if (!Run_WithContractWorkerStack(runContract, &context))
+	{
+		std::cerr << "[FAILURE] Server gameplay contract worker did not complete\n";
+		return 1;
+	}
+	return context.result;
 }

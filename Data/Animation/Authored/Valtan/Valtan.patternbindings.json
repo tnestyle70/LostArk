@@ -147,7 +147,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 600,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         },
         {
@@ -156,7 +156,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 600,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         },
         {
@@ -165,7 +165,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 2450,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -193,7 +193,7 @@
           "mappingBasis": "PATTERN_PR_REFERENCE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -207,7 +207,7 @@
           "mappingBasis": "PATTERN_PR_REFERENCE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -403,7 +403,7 @@
           "mappingBasis": "ANIMATION_PR_127",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -417,7 +417,7 @@
           "mappingBasis": "ANIMATION_PR_127",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -431,7 +431,7 @@
           "mappingBasis": "ANIMATION_PR_127",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -445,7 +445,7 @@
           "mappingBasis": "ANIMATION_PR_127",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -459,7 +459,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -473,7 +473,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -487,7 +487,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -501,7 +501,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -910,7 +910,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -938,7 +938,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -1078,7 +1078,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -1092,7 +1092,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -1106,7 +1106,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 800,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -1120,7 +1120,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 800,
           "playMs": 800,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -1330,7 +1330,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -1344,7 +1344,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -1358,7 +1358,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -1372,7 +1372,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -1386,7 +1386,7 @@
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -1498,7 +1498,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 900,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -1512,7 +1512,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 900,
           "playMs": 300,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         },
         {
@@ -1521,7 +1521,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 400,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -1535,7 +1535,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 400,
           "playMs": 400,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -1549,7 +1549,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 800,
           "playMs": 200,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         },
         {
@@ -1558,7 +1558,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 900,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -1572,7 +1572,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 900,
           "playMs": 300,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -1586,7 +1586,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 0,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": true
         }
       ]

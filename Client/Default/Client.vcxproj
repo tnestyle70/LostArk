@@ -2978,6 +2978,9 @@
     <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
     <PhysXRuntimeRoot>$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\</PhysXRuntimeRoot>
   </PropertyGroup>
+  <Target Name="ValidateValtanSplitProducts" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1&quot; -Mode ValidateV2" />
+  </Target>
   <Target Name="PrepareEngineSdk" BeforeTargets="ClCompile" DependsOnTargets="ResolveProjectReferences" Condition="'$(Platform)'=='x64'">
     <ItemGroup>
       <EnginePublicHeaders Include="$(EngineRoot)Public\**\*.*" />

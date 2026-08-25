@@ -88,6 +88,16 @@ namespace
 				std::span<const ACTION_PRESENTATION_CLIP_TIMING>(Clips),
 				0u, 0.3f, 0u, fCueWallOffset),
 			"first explicit slice claimed its half-open end") ||
+			!Require(CActionPresentationTimeline::Resolve_CueEndWallOffset(
+				std::span<const ACTION_PRESENTATION_CLIP_TIMING>(Clips),
+				0u, 0.3f, 0u, fCueWallOffset),
+			"finite cue end rejected its explicit slice boundary") ||
+			!Require(NearlyEqual(fCueWallOffset, 0.3f),
+			"finite cue-end wall offset changed") ||
+			!Require(!CActionPresentationTimeline::Resolve_CueEndWallOffset(
+				std::span<const ACTION_PRESENTATION_CLIP_TIMING>(Clips),
+				0u, 0.302f, 0u, fCueWallOffset),
+			"finite cue end escaped its explicit source slice") ||
 			!Require(CActionPresentationTimeline::Resolve_CueWallOffset(
 				std::span<const ACTION_PRESENTATION_CLIP_TIMING>(Clips),
 				1u, 0.3f, 0u, fCueWallOffset),

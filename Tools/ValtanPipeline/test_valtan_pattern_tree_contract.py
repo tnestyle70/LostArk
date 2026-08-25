@@ -19,6 +19,7 @@ ROTATIONS_PATH = ROOT / "Data/Encounters/Valtan/ValtanPatternRotations.json"
 TREE_CPP = ROOT / "Client/Private/ValtanPatternTree.cpp"
 TREE_HEADER = ROOT / "Client/Public/ValtanPatternTree.h"
 ENCOUNTER_REFERENCE_CPP = ROOT / "Client/Private/EncounterPatternReference.cpp"
+VALTAN_LEVEL_CPP = ROOT / "Client/Private/Level_ValtanArena.cpp"
 WORLD_SETS_PATH = ROOT / "Data/Valtan/Valtan.worldeventsets.json"
 COMBAT_AUTHORING_PATH = ROOT / "Data/Valtan/Valtan.combatobjects.json"
 
@@ -363,6 +364,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         cls.encounter_reference_cpp = ENCOUNTER_REFERENCE_CPP.read_text(
             encoding="utf-8"
         )
+        cls.valtan_level_cpp = VALTAN_LEVEL_CPP.read_text(encoding="utf-8")
 
     def test_v1_monolith_is_migration_fixture_not_runtime_admission(self) -> None:
         self.assertEqual(
@@ -378,6 +380,11 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertIn("Load_FromAuthoringPaths", self.cpp + self.header)
         self.assertIn("Parse_SplitMasterDocument", self.cpp)
         self.assertNotIn('L"Valtan.pattern.json"', self.cpp)
+
+    def test_level_audition_reads_rotation_v3_candidates(self) -> None:
+        self.assertIn('rotation.Find("candidates")', self.valtan_level_cpp)
+        self.assertIn('candidate.Find("patternId")', self.valtan_level_cpp)
+        self.assertIn('candidate.Find("enabled")', self.valtan_level_cpp)
 
     def test_split_identity_action_and_wall_drift_fail_closed(self) -> None:
         mutations: list[tuple[str, dict, dict]] = []

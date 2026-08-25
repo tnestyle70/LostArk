@@ -34,7 +34,7 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 	/* 발탄 원본 모델의 전방축을 Engine의 LOOK(+Z) 기준에 맞춘다. */
 	m_pTransformCom->Rotation(0.f, -90.f, 0.f);
 
-	if (!m_pModelCom->Set_Animation("idle_battle_1", true))
+	if (!m_pModelCom->Set_Animation("mesh_idle_battle_1", true))
 		m_pModelCom->Set_Animation(0u, true);
 	return S_OK;
 }

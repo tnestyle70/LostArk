@@ -3,7 +3,8 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/Gameplay',
-    [string]$InputOverlayRoot = ''
+    [string]$InputOverlayRoot = '',
+    [switch]$SkipValtanSplitProjection
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +17,15 @@ elseif ([IO.Path]::IsPathRooted($InputOverlayRoot)) {
 }
 else {
     [IO.Path]::GetFullPath((Join-Path $repoRoot $InputOverlayRoot))
+}
+$hasExplicitOverlay = -not [string]::IsNullOrWhiteSpace($resolvedInputOverlayRoot)
+if (-not $hasExplicitOverlay -and -not $SkipValtanSplitProjection) {
+    $valtanProjector = Join-Path $repoRoot `
+        'Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1'
+    & $valtanProjector -Mode ValidateV2 -RepositoryRoot $repoRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Valtan split Product validation failed.'
+    }
 }
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
 
@@ -192,9 +202,42 @@ function Read-ValtanSkillTiming {
     return $rows
 }
 
+function ConvertTo-CanonicalReceiptNode([object]$Value) {
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [string] -or $Value -is [bool] -or
+        $Value -is [byte] -or $Value -is [sbyte] -or
+        $Value -is [int16] -or $Value -is [uint16] -or
+        $Value -is [int32] -or $Value -is [uint32] -or
+        $Value -is [int64] -or $Value -is [uint64] -or
+        $Value -is [single] -or $Value -is [double] -or
+        $Value -is [decimal]) {
+        return $Value
+    }
+    if ($Value -is [Collections.IDictionary]) {
+        $ordered = [ordered]@{}
+        [string[]]$keys = @($Value.Keys | ForEach-Object { [string]$_ })
+        [Array]::Sort($keys, [StringComparer]::Ordinal)
+        foreach ($key in $keys) {
+            $ordered[$key] = ConvertTo-CanonicalReceiptNode $Value[$key]
+        }
+        return [pscustomobject]$ordered
+    }
+    if ($Value -is [Collections.IEnumerable] -and $Value -isnot [string]) {
+        return @($Value | ForEach-Object { ConvertTo-CanonicalReceiptNode $_ })
+    }
+    $object = [ordered]@{}
+    [string[]]$propertyNames = @($Value.PSObject.Properties.Name)
+    [Array]::Sort($propertyNames, [StringComparer]::Ordinal)
+    foreach ($propertyName in $propertyNames) {
+        $object[$propertyName] = ConvertTo-CanonicalReceiptNode $Value.$propertyName
+    }
+    return [pscustomobject]$object
+}
+
 function ConvertTo-ReceiptValue([object]$Value) {
     if ($null -eq $Value) { return 'null' }
-    return ($Value | ConvertTo-Json -Compress -Depth 32)
+    return ((ConvertTo-CanonicalReceiptNode $Value) |
+        ConvertTo-Json -Compress -Depth 32)
 }
 
 function Get-CanonicalTextFileSha256([string]$Path) {
@@ -2816,89 +2859,68 @@ if ($rotationFormatVersion -eq 3) {
 	}
 }
 
-# A charge stage drives the boss forward until it meets an impact receiver, and
-# the collision ends the stage early instead of the clock. That is what turns a
-# wall into a stun, so it is authored per stage rather than inferred from a
-# pattern name the Server would have to hard-code.
-$chargeImpactDocument = Read-JsonDocument `
-	'Data/Encounters/Valtan/ValtanChargeImpactActions.json'
-Assert-ExactProperties $chargeImpactDocument @(
-	'schema','formatVersion','encounterId','bossArchetypeId','actions') `
-	'Valtan charge impact document'
-Assert-JsonString $chargeImpactDocument.schema 'Valtan charge impact schema'
-Assert-JsonInteger $chargeImpactDocument.formatVersion `
-	'Valtan charge impact formatVersion' 1 1
-Assert-JsonString $chargeImpactDocument.encounterId `
-	'Valtan charge impact encounterId'
-Assert-JsonString $chargeImpactDocument.bossArchetypeId `
-	'Valtan charge impact bossArchetypeId'
-if ([string]$chargeImpactDocument.schema -cne `
-	'lostark.valtan-charge-impact-actions' -or
-	[uint32]$chargeImpactDocument.formatVersion -ne 1 -or
-	[string]$chargeImpactDocument.encounterId -cne `
-		[string]$encounterDocument.encounterId -or
-	[string]$chargeImpactDocument.bossArchetypeId -cne `
-		[string]$encounterDocument.bossArchetypeId -or
-	$chargeImpactDocument.actions -isnot [Array] -or
-	@($chargeImpactDocument.actions).Count -eq 0 -or
-	@($chargeImpactDocument.actions).Count -gt 16) {
-	throw 'Valtan charge impact document header is invalid.'
-}
+# A WALL_CONTACT branch is the typed charge-impact marker. Derive the Server
+# row from the final Encounter graph so split Valtan gameplay and sealed legacy
+# patterns cannot drift behind a second hand-maintained allowlist.
 $chargeImpactActionIds =
 	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-foreach ($chargeImpact in @($chargeImpactDocument.actions)) {
-	Assert-ExactProperties $chargeImpact @('patternId','stageId','actionId') `
-		'Valtan charge impact action'
-	foreach ($field in @('patternId','stageId','actionId')) {
-		Assert-JsonString $chargeImpact.$field "Valtan charge impact $field"
-		Assert-StableId ([string]$chargeImpact.$field) "Valtan charge impact $field"
-	}
-	$chargeActionId = [string]$chargeImpact.actionId
-	if (-not $chargeImpactActionIds.Add($chargeActionId)) {
-		throw "Valtan charge impact action is duplicated: $chargeActionId"
-	}
-	$chargeOwners = @($encounterDocument.patterns | Where-Object {
-		[string]$_.patternId -ceq [string]$chargeImpact.patternId })
-	if ($chargeOwners.Count -ne 1) {
-		throw "Valtan charge impact pattern is missing: $($chargeImpact.patternId)"
-	}
-	$chargeOwner = $chargeOwners[0]
-	$chargeStageIndex = -1
-	for ($candidateIndex = 0;
-		$candidateIndex -lt @($chargeOwner.stages).Count; ++$candidateIndex) {
-		$candidate = $chargeOwner.stages[$candidateIndex]
-		if ([string]$candidate.stageId -ceq [string]$chargeImpact.stageId -and
-			[string]$candidate.actionId -ceq $chargeActionId) {
-			if ($chargeStageIndex -ne -1) {
-				throw "Valtan charge impact stage is duplicated: $chargeActionId"
-			}
-			$chargeStageIndex = $candidateIndex
+foreach ($chargeOwner in @($encounterDocument.patterns)) {
+	$ownerStages = @($chargeOwner.stages)
+	for ($chargeStageIndex = 0; $chargeStageIndex -lt $ownerStages.Count;
+		++$chargeStageIndex) {
+		$chargeStage = $ownerStages[$chargeStageIndex]
+		$branches = if ($null -eq $chargeStage.PSObject.Properties['branches']) {
+			@()
 		}
+		else { @($chargeStage.branches) }
+		$wallContacts = @($branches | Where-Object {
+			[string]$_.outcome -ceq 'WALL_CONTACT' })
+		if ($wallContacts.Count -eq 0) { continue }
+		$chargeActionId = [string]$chargeStage.actionId
+		if ($wallContacts.Count -ne 1) {
+			throw "Valtan charge stage must have exactly one WALL_CONTACT branch: $chargeActionId"
+		}
+		$motion = if ($null -eq $chargeStage.PSObject.Properties['motion']) {
+			$null
+		}
+		else { $chargeStage.motion }
+		if ($null -eq $motion -or [string]$motion.kind -cne 'FORWARD') {
+			throw "Valtan WALL_CONTACT stage must use FORWARD motion: $chargeActionId"
+		}
+		Assert-JsonNumber $motion.distance "Valtan charge distance $chargeActionId"
+		if ([double]$motion.distance -le 0.0) {
+			throw "Valtan charge distance must be positive: $chargeActionId"
+		}
+		$groggyIndex = $chargeStageIndex + 1
+		$nextActionId = [string]$wallContacts[0].nextActionId
+		$targetOwners = @($ownerStages | Where-Object {
+			[string]$_.actionId -ceq $nextActionId })
+		if ($targetOwners.Count -ne 1 -or $groggyIndex -ge $ownerStages.Count -or
+			[string]$ownerStages[$groggyIndex].actionId -cne $nextActionId -or
+			[string]$ownerStages[$groggyIndex].stageKind -cne 'GROGGY') {
+			throw "Valtan WALL_CONTACT must target the immediate GROGGY stage: $chargeActionId"
+		}
+		$partBreakCount = @($ownerStages | Where-Object {
+			[string]$_.stageKind -ceq 'PART_BREAK' }).Count
+		if ($partBreakCount -ne 1) {
+			throw "Valtan charge impact pattern needs exactly one PART_BREAK stage: $chargeActionId"
+		}
+		Assert-JsonNumber $chargeOwner.maximumRange `
+			"Valtan charge maximumRange $chargeActionId"
+		if ([double]$chargeOwner.maximumRange -le 0.0) {
+			throw "Valtan charge impact pattern has no travel distance: $chargeActionId"
+		}
+		if (-not $chargeImpactActionIds.Add($chargeActionId)) {
+			throw "Valtan charge impact action is duplicated: $chargeActionId"
+		}
+		$patternRows.Add((@(
+			'PATTERNSTAGECHARGE', $encounterDocument.encounterId,
+			$chargeOwner.patternId, [uint32]$chargeStageIndex,
+			$chargeStage.stageId, $chargeActionId) -join "`t"))
 	}
-	if ($chargeStageIndex -lt 0) {
-		throw "Valtan charge impact stage/action join failed: $chargeActionId"
-	}
-	# The stun the charge opens is the next stage. The PART_BREAK stage replaces
-	# the ordinary recovery when a plate comes off, so it only has to exist once
-	# in the pattern; the clock never walks into it.
-	$groggyIndex = $chargeStageIndex + 1
-	$partBreakCount = @($chargeOwner.stages | Where-Object {
-		[string]$_.stageKind -ceq 'PART_BREAK' }).Count
-	if ($groggyIndex -ge @($chargeOwner.stages).Count -or
-		[string]$chargeOwner.stages[$groggyIndex].stageKind -cne 'GROGGY') {
-		throw "Valtan charge impact stage is not followed by a GROGGY stage: $chargeActionId"
-	}
-	if ($partBreakCount -ne 1) {
-		throw "Valtan charge impact pattern needs exactly one PART_BREAK stage: $chargeActionId"
-	}
-	if ([double]$chargeOwner.maximumRange -le 0.0) {
-		throw "Valtan charge impact pattern has no travel distance: $chargeActionId"
-	}
-	$patternRows.Add((@(
-		'PATTERNSTAGECHARGE', $encounterDocument.encounterId,
-		$chargeOwner.patternId, [uint32]$chargeStageIndex,
-		$chargeOwner.stages[$chargeStageIndex].stageId,
-		$chargeOwner.stages[$chargeStageIndex].actionId) -join "`t"))
+}
+if ($chargeImpactActionIds.Count -eq 0 -or $chargeImpactActionIds.Count -gt 16) {
+	throw 'Valtan Encounter has an invalid charge-impact inventory.'
 }
 
 # The intro pattern runs exactly once per encounter epoch, before normal

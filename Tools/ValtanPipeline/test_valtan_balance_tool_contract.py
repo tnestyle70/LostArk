@@ -19,6 +19,9 @@ NETWORK_CPP = ROOT / "Client/Private/NetworkManager.cpp"
 NETWORK_H = ROOT / "Client/Public/NetworkManager.h"
 MAIN_APP_CPP = ROOT / "Client/Private/MainApp.cpp"
 SERVER_GAME_ROOM_CPP = ROOT / "Server/Private/GameRoom.cpp"
+SERVER_PROJECT = ROOT / "Server/Default/Server.vcxproj"
+GAMEPLAY_PUBLISHER = ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"
+VALTAN_PROJECTOR = ROOT / "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1"
 
 
 def function_body(source: str, signature: str) -> str:
@@ -50,6 +53,9 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         cls.network_h = NETWORK_H.read_text(encoding="utf-8")
         cls.main_app_cpp = MAIN_APP_CPP.read_text(encoding="utf-8")
         cls.server_game_room_cpp = SERVER_GAME_ROOM_CPP.read_text(encoding="utf-8")
+        cls.server_project = SERVER_PROJECT.read_text(encoding="utf-8")
+        cls.gameplay_publisher = GAMEPLAY_PUBLISHER.read_text(encoding="utf-8")
+        cls.valtan_projector = VALTAN_PROJECTOR.read_text(encoding="utf-8")
 
     def test_generated_encounter_v4_is_read_only(self) -> None:
         self.assertIn('encounterFormatVersion != 4u', self.balance_cpp)
@@ -476,6 +482,18 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         ):
             self.assertIn(relative, self.project)
             self.assertIn(relative, self.filters)
+
+    def test_split_products_drive_client_and_server_builds(self) -> None:
+        self.assertIn('Name="ValidateValtanSplitProducts"', self.project)
+        self.assertIn('-Mode ValidateV2', self.project)
+        self.assertIn('Publish-GameplayBalance.ps1', self.server_project)
+        self.assertIn("-Mode ValidateV2", self.gameplay_publisher)
+        self.assertNotIn("if ($Mode -eq 'Publish') { 'PublishV2' }", self.gameplay_publisher)
+        self.assertIn('project-products', self.valtan_projector)
+        self.assertNotIn('ValtanChargeImpactActions.json', self.gameplay_publisher)
+        self.assertIn("[string]$_.outcome -ceq 'WALL_CONTACT'", self.gameplay_publisher)
+        self.assertIn("[string]$motion.kind -cne 'FORWARD'", self.gameplay_publisher)
+        self.assertIn("stageKind -cne 'GROGGY'", self.gameplay_publisher)
 
 
 if __name__ == "__main__":

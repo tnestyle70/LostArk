@@ -545,7 +545,7 @@ void CValtan::Load_PatternEffectCues()
 			if (Cue.bHasSourceEnd)
 			{
 				f32_t fCueEndWallSeconds = 0.f;
-				if (!Client::CActionPresentationTimeline::Resolve_CueWallOffset(
+				if (!Client::CActionPresentationTimeline::Resolve_CueEndWallOffset(
 						Timings->second, iClipIndex,
 						static_cast<f32_t>(Cue.iEndMs) * 0.001f,
 						0u, fCueEndWallSeconds) ||
@@ -1065,7 +1065,7 @@ void CValtan::Set_ChaseState(bool_t isChasing)
 	if (nullptr != m_pBodyModelCom)
 	{
 		m_pBodyModelCom->Set_Animation(
-			isChasing ? "run_battle_1" : "idle_battle_1",
+			isChasing ? "mesh_run_battle_1" : "mesh_idle_battle_1",
 			true);
 	}
 }

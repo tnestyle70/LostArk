@@ -66,6 +66,14 @@ public:
 		float fCueSourceTimeSeconds,
 		uint64_t iLoopEpoch,
 		float& fOutStageWallTimeSeconds);
+	/* Cue starts own a half-open source slice, while a finite cue end may
+	   coincide with that slice's authored end boundary. */
+	static bool Resolve_CueEndWallOffset(
+		std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
+		std::size_t iClipIndex,
+		float fCueSourceTimeSeconds,
+		uint64_t iLoopEpoch,
+		float& fOutStageWallTimeSeconds);
 	static bool Resolve_CuePreviewSample(
 		const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
 		float fTimelineWallSeconds,

@@ -50,6 +50,16 @@ PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
 GAMEPLAY_BOOTSTRAP_VERSION = 19
 
+REPOSITORY_PRODUCT_ARTIFACTS = (
+    ENCOUNTER_REL,
+    ROTATIONS_REL,
+    COMBAT_PRODUCT_REL,
+    WORLD_PRODUCT_REL,
+    BINDINGS_REL,
+    CUES_REL,
+    PROVENANCE_REL,
+)
+
 AUTHORING_ARTIFACTS = (
     GAMEPLAY_AUTHORING_REL,
     PRESENTATION_AUTHORING_REL,
@@ -78,6 +88,16 @@ MANAGED_PATTERN_IDS = (
 )
 MANAGED_ROTATION_IDS = frozenset(
     ("rotation.valtan.160.130", "rotation.valtan.130.109")
+)
+ALLOWED_MAPPING_BASES = frozenset(
+    (
+        "CURRENT_PRODUCT_BASELINE",
+        "PATTERN_PR_REFERENCE",
+        "ANIMATION_PR_127",
+        "SOURCE_REVIEWED_DELTA",
+        "PROJECT_AUTHORED",
+        "LEGACY_V1_MIGRATION",
+    )
 )
 
 STABLE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,160}$")
@@ -254,6 +274,15 @@ def stable_id(value: Any, context: str, *, allow_empty: bool = False) -> str:
     return value
 
 
+def mapping_basis(value: Any, context: str) -> str:
+    result = stable_id(value, context)
+    if result not in ALLOWED_MAPPING_BASES:
+        raise PipelineError(
+            f"{context} is not in the allowed mappingBasis vocabulary: {result}"
+        )
+    return result
+
+
 def integer(value: Any, context: str, minimum: int = 0, maximum: int = 2**31 - 1) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise PipelineError(f"{context} must be an integer")
@@ -285,6 +314,68 @@ def unique_index(rows: Sequence[dict[str, Any]], key: str, context: str) -> dict
             raise PipelineError(f"duplicate {context} {key}: {identity}")
         result[identity] = row
     return result
+
+
+def validate_cue_animation_join(
+    cue: dict[str, Any],
+    occurrences_by_id: Mapping[str, dict[str, Any]],
+    context: str,
+) -> dict[str, Any]:
+    clip_occurrence_id = stable_id(
+        cue.get("clipOccurrenceId"), f"{context}.clipOccurrenceId"
+    )
+    occurrence = occurrences_by_id.get(clip_occurrence_id)
+    if occurrence is None:
+        raise PipelineError(
+            f"{context} does not resolve its saved animation occurrence: "
+            f"{clip_occurrence_id}"
+        )
+
+    cue_basis = mapping_basis(cue.get("mappingBasis"), f"{context}.mappingBasis")
+    occurrence_basis = mapping_basis(
+        occurrence.get("mappingBasis"),
+        f"{context} occurrence.mappingBasis",
+    )
+    if cue_basis != occurrence_basis:
+        raise PipelineError(
+            f"{context} mappingBasis does not match its saved animation occurrence"
+        )
+
+    cue_start = integer(
+        cue.get("sourceStartMs"), f"{context}.sourceStartMs", 0, 600000
+    )
+    occurrence_start = integer(
+        occurrence.get("sourceStartMs"),
+        f"{context} occurrence.sourceStartMs",
+        0,
+        600000,
+    )
+    if cue_start < occurrence_start:
+        raise PipelineError(
+            f"{context} starts before its saved animation occurrence"
+        )
+
+    cue_end = cue.get("sourceEndMs")
+    if cue_end is not None:
+        cue_end = integer(cue_end, f"{context}.sourceEndMs", 0, 600000)
+        if cue_end <= cue_start:
+            raise PipelineError(f"{context} source window is not positive")
+
+    occurrence_play_ms = integer(
+        occurrence.get("playMs"),
+        f"{context} occurrence.playMs",
+        0,
+        600000,
+    )
+    if occurrence_play_ms:
+        occurrence_end = occurrence_start + occurrence_play_ms
+        if cue_start >= occurrence_end or (
+            cue_end is not None and cue_end > occurrence_end
+        ):
+            raise PipelineError(
+                f"{context} source window escapes its saved animation occurrence"
+            )
+    return occurrence
 
 
 def repo_path(root: Path, relative: str) -> Path:
@@ -1210,7 +1301,10 @@ def _migrate_action(
 
 
 def _migrate_effect_cue(
-    effect_ref: dict[str, Any], cue_by_id: dict[str, dict[str, Any]]
+    effect_ref: dict[str, Any],
+    cue_by_id: dict[str, dict[str, Any]],
+    occurrences_by_id: Mapping[str, dict[str, Any]],
+    context: str,
 ) -> dict[str, Any]:
     cue_id = effect_ref["refId"]
     cue = cue_by_id.get(cue_id)
@@ -1223,7 +1317,12 @@ def _migrate_effect_cue(
         or cue["sourceEndMs"] != projection["sourceEndMs"]
     ):
         raise PipelineError(f"managed cue owner/source window drift: {cue_id}")
-    return {
+    occurrence = occurrences_by_id.get(cue["clipOccurrenceId"])
+    if occurrence is None:
+        raise PipelineError(
+            f"managed cue does not resolve its saved animation occurrence: {cue_id}"
+        )
+    migrated = {
         "cueId": cue_id,
         "occurrenceId": cue["occurrenceId"],
         "effectAssetId": cue["effectAssetId"],
@@ -1235,8 +1334,10 @@ def _migrate_effect_cue(
         "stopPolicy": cue["stopPolicy"],
         "repeatPolicy": cue["repeatPolicy"],
         "localTransform": copy.deepcopy(cue["localTransform"]),
-        "mappingBasis": projection["mappingBasis"],
+        "mappingBasis": occurrence["mappingBasis"],
     }
+    validate_cue_animation_join(migrated, occurrences_by_id, context)
+    return migrated
 
 
 def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
@@ -1327,9 +1428,19 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
                     }
                 )
             effect_cues = []
+            occurrences_by_id = unique_index(
+                stage["animation"]["occurrences"],
+                "clipOccurrenceId",
+                f"{pattern_id}/{stage['stageId']} animation occurrences",
+            )
             for effect_ref in stage["effectRefs"]:
                 if effect_ref["refType"] == "CUE_BINDING":
-                    migrated_cue = _migrate_effect_cue(effect_ref, cue_by_id)
+                    migrated_cue = _migrate_effect_cue(
+                        effect_ref,
+                        cue_by_id,
+                        occurrences_by_id,
+                        f"{pattern_id}/{stage['stageId']} managed cue",
+                    )
                     effect_cues.append(migrated_cue)
                     cue_owners[migrated_cue["cueId"]] = (pattern_id, stage["stageId"])
             camera_invocations = []
@@ -1413,8 +1524,16 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
             owner_pattern = next(row for row in migrated_patterns if row["patternId"] == entry["ownerPatternId"])
             owner_stage = next(row for row in owner_pattern["stages"] if row["stageId"] == entry["ownerStageId"])
             if cue_id not in cue_owners:
+                occurrences_by_id = unique_index(
+                    owner_stage["animation"]["occurrences"],
+                    "clipOccurrenceId",
+                    f"{entry['ownerPatternId']}/{entry['ownerStageId']} animation occurrences",
+                )
                 cue = _migrate_effect_cue(
-                    {"refId": cue_id, "cueProjection": entry["cueProjection"]}, cue_by_id
+                    {"refId": cue_id, "cueProjection": entry["cueProjection"]},
+                    cue_by_id,
+                    occurrences_by_id,
+                    f"{entry['ownerPatternId']}/{entry['ownerStageId']} managed cue",
                 )
                 owner_stage["effectCues"].append(cue)
                 cue_owners[cue_id] = (entry["ownerPatternId"], entry["ownerStageId"])
@@ -1782,6 +1901,20 @@ def validate_v2_master(
                     ("clipOccurrenceId", "clip", "mappingBasis", "sourceStartMs", "playMs", "playRate", "repeatUntilStageEnd"),
                     f"{pattern_id}/{stage_id}.occurrence",
                 )
+                stable_id(
+                    occurrence["clip"],
+                    f"{pattern_id}/{stage_id}.occurrence.clip",
+                )
+                mapping_basis(
+                    occurrence["mappingBasis"],
+                    f"{pattern_id}/{stage_id}.occurrence.mappingBasis",
+                )
+                integer(
+                    occurrence["sourceStartMs"],
+                    f"{pattern_id}/{stage_id}.occurrence.sourceStartMs",
+                    0,
+                    600000,
+                )
                 play_ms = integer(occurrence["playMs"], "occurrence playMs", 0, 600000)
                 play_rate = number(occurrence["playRate"], "occurrence playRate", 0.000001, 1000)
                 if play_ms == 0:
@@ -1796,7 +1929,11 @@ def validate_v2_master(
                 raise PipelineError(f"LOOP animation budget mismatch: {pattern_id}/{stage_id}")
             if animation["endPolicy"] == "HOLD_LAST_POSE" and (loops or known_wall >= duration + 2.0):
                 raise PipelineError(f"HOLD animation budget mismatch: {pattern_id}/{stage_id}")
-            occurrence_ids = {row["clipOccurrenceId"] for row in animation["occurrences"]}
+            occurrences_by_id = unique_index(
+                animation["occurrences"],
+                "clipOccurrenceId",
+                f"{pattern_id}/{stage_id} animation occurrences",
+            )
             for event in stage["events"]:
                 fields = _event_fields(event.get("kind"))
                 if not fields:
@@ -1867,8 +2004,13 @@ def validate_v2_master(
                     f"{pattern_id}/{stage_id}.effectCue",
                 )
                 cue_id = stable_id(cue["cueId"], f"{pattern_id}/{stage_id}.cueId")
-                if cue_id in cue_ids or cue["clipOccurrenceId"] not in occurrence_ids:
-                    raise PipelineError(f"duplicate/unresolved managed cue: {cue_id}")
+                if cue_id in cue_ids:
+                    raise PipelineError(f"duplicate managed cue: {cue_id}")
+                validate_cue_animation_join(
+                    cue,
+                    occurrences_by_id,
+                    f"{pattern_id}/{stage_id} cue {cue_id}",
+                )
                 cue_ids.add(cue_id)
                 if "stageOffsetMs" in cue:
                     raise PipelineError(f"derived stage-global cue offset is forbidden: {cue_id}")
@@ -3054,6 +3196,78 @@ def project_v2_products(root: Path, docs: dict[str, Any], master: dict[str, Any]
     return outputs
 
 
+def build_repository_product_projection(
+    root: Path,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
+    """Project the checked-in split authoring head into its runtime Products."""
+
+    docs = load_pipeline_documents(root)
+    validate_world_event_sets(
+        docs[WORLD_SET_REL], docs[WORLD_PRODUCT_REL], migration_fixture=True
+    )
+    validate_combat_authoring(docs[COMBAT_AUTHORING_REL])
+    validate_balance_documents(docs[BOSS_PROFILES_REL], docs[DAMAGE_REL])
+    joined = join_v2_authoring(
+        docs[GAMEPLAY_AUTHORING_REL],
+        docs[PRESENTATION_AUTHORING_REL],
+        docs[WORLD_SET_REL],
+        docs[COMBAT_AUTHORING_REL],
+    )
+    managed = {row["patternId"] for row in joined["patterns"]}
+    validate_legacy_manifest(docs[LEGACY_REL], managed)
+    outputs = project_v2_products(root, docs, joined)
+    balance_outputs = project_balance_products(
+        root, docs[BOSS_PROFILES_REL], docs[DAMAGE_REL]
+    )
+    provenance_inputs = {**outputs, **balance_outputs}
+    outputs[PROVENANCE_REL] = project_provenance_receipt(
+        root, provenance_inputs
+    )
+    return docs, joined, outputs
+
+
+def stage_repository_product_projection(
+    root: Path, output_root: Path
+) -> dict[str, Any]:
+    """Materialize a validated projection below an isolated external root."""
+
+    resolved_output = staging_root(root, output_root, "OutputRoot")
+    if resolved_output.exists():
+        if _is_reparse_point(resolved_output) or not resolved_output.is_dir():
+            raise PipelineError("OutputRoot must be a regular directory")
+        if any(resolved_output.iterdir()):
+            raise PipelineError("OutputRoot must be empty")
+    else:
+        resolved_output.mkdir(parents=True)
+
+    before = source_manifest(root)
+    _, _, outputs = build_repository_product_projection(root)
+    if source_manifest(root)["sourceManifestId"] != before["sourceManifestId"]:
+        raise PipelineError("Valtan sources changed during Product projection")
+
+    artifacts = []
+    for relative in REPOSITORY_PRODUCT_ARTIFACTS:
+        text = outputs[relative]
+        parsed = json.loads(text, object_pairs_hook=_reject_duplicate_pairs)
+        if not isinstance(parsed, dict):
+            raise PipelineError(f"projected Product root is not an object: {relative}")
+        destination = resolved_output / relative
+        _write_fsync(destination, text.encode("utf-8"))
+        artifacts.append(
+            {
+                "path": relative,
+                "sha256": sha256_file(destination),
+                "bytes": destination.stat().st_size,
+            }
+        )
+    return {
+        "outputRoot": str(resolved_output),
+        "sourceManifestId": before["sourceManifestId"],
+        "projectedArtifacts": len(artifacts),
+        "files": artifacts,
+    }
+
+
 def load_pipeline_documents(
     root: Path,
     *,
@@ -3899,6 +4113,7 @@ def _publish_gameplay_bootstrap(
         "Publish",
         "-OutputRoot",
         str(output_root),
+        "-SkipValtanSplitProjection",
     ]
     if input_overlay_root is not None:
         command.extend(("-InputOverlayRoot", str(input_overlay_root)))
@@ -5687,23 +5902,20 @@ def emit_bootstrap_patch(root: Path) -> str:
 
 
 def validate_repository(root: Path) -> dict[str, Any]:
-    docs = load_pipeline_documents(root)
-    validate_world_event_sets(docs[WORLD_SET_REL], docs[WORLD_PRODUCT_REL], migration_fixture=True)
-    validate_combat_authoring(docs[COMBAT_AUTHORING_REL])
-    validate_balance_documents(docs[BOSS_PROFILES_REL], docs[DAMAGE_REL])
-    v2 = join_v2_authoring(
-        docs[GAMEPLAY_AUTHORING_REL],
-        docs[PRESENTATION_AUTHORING_REL],
-        docs[WORLD_SET_REL],
-        docs[COMBAT_AUTHORING_REL],
-    )
-    managed = {row["patternId"] for row in v2["patterns"]}
-    validate_legacy_manifest(docs[LEGACY_REL], managed)
-    outputs = project_v2_products(root, docs, v2)
+    docs, v2, product_outputs = build_repository_product_projection(root)
+    outputs = dict(product_outputs)
     outputs.update(
         project_balance_products(root, docs[BOSS_PROFILES_REL], docs[DAMAGE_REL])
     )
-    outputs[PROVENANCE_REL] = project_provenance_receipt(root, outputs)
+    for relative, projected_text in outputs.items():
+        projected = json.loads(
+            projected_text, object_pairs_hook=_reject_duplicate_pairs
+        )
+        current = read_json(repo_path(root, relative))
+        if current != projected:
+            raise PipelineError(
+                "split authoring Product drift; run PublishV2: " + relative
+            )
     return {
         "schema": "lostark.valtan-tuning-pipeline-validation",
         "formatVersion": 1,
@@ -5839,6 +6051,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     migrate_parser.add_argument("--output", type=Path, required=True)
     migrate_parser.add_argument("--draft-patch", type=Path)
     subparsers.add_parser("validate")
+    product_parser = subparsers.add_parser("project-products")
+    product_parser.add_argument("--output-root", type=Path, required=True)
     draft_parser = subparsers.add_parser("validate-draft")
     draft_parser.add_argument("--draft-patch", type=Path)
     draft_parser.add_argument("--authoring-root", type=Path)
@@ -5949,6 +6163,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
         elif args.command == "validate":
             payload = validate_repository(root)
+        elif args.command == "project-products":
+            output_root = args.output_root
+            if not output_root.is_absolute():
+                output_root = root / output_root
+            payload = stage_repository_product_projection(root, output_root)
         elif args.command == "validate-draft":
             if args.draft_patch is None:
                 raise DraftPatchError(

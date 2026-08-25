@@ -1004,7 +1004,10 @@ def project_saved_rows(
 
             combat_ids: list[str] = []
             for action in stage.get("actions", []):
-                if action.get("kind") != "SPAWN_COMBAT_OBJECT":
+                if action.get("kind") not in {
+                    "SPAWN_COMBAT_OBJECT",
+                    "SPAWN_COMBAT_OBJECT_VOLLEY",
+                }:
                     continue
                 effect_id = combat_visuals.get(action.get("targetId"))
                 if effect_id:
