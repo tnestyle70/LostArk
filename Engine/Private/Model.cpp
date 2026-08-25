@@ -7,6 +7,8 @@
 #include "Shader.h"
 #include "Material.h"
 #include "Animation.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 
 #include <algorithm>
 #include <cctype>
@@ -635,6 +637,8 @@ HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
 
 bool_t CModel::Play_Animation(f32_t fTimeDelta)
 {
+	CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+	CProfilerScope profile(pProfiler, "Animation.Model.Update");
     if (m_Animations.empty() || m_iCurrentAnimIndex >= m_Animations.size())
         return false;
 
@@ -670,6 +674,17 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
     for (auto& pBone : m_Bones)
     {
         pBone->Update_CombinedTransformationMatrix(m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
+    }
+
+    if (nullptr != pProfiler)
+    {
+        pProfiler->Add_Counter(EProfilerCounter::AnimationCharacters);
+        pProfiler->Add_Counter(
+            EProfilerCounter::AnimationChannels,
+            m_Animations[m_iCurrentAnimIndex]->m_iNumChannels);
+        pProfiler->Add_Counter(
+            EProfilerCounter::AnimationBones,
+            static_cast<uint64_t>(m_Bones.size()));
     }
 
     return isFinished;

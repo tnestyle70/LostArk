@@ -50,6 +50,8 @@
 #include <cmath>
 #include <cwchar>
 #include <fstream>
+#include <unordered_map>
+#include <vector>
 
 namespace
 {
@@ -126,6 +128,59 @@ namespace
 		default:
 			return "Default";
 		}
+	}
+
+	struct PROFILER_UI_STATE final
+	{
+		Engine::FProfilerCaptureSnapshot Snapshot;
+		f64_t dNextRefreshSeconds = 0.0;
+		bool_t bPaused = false;
+		bool_t bFollowLatest = true;
+		uint64_t iSelectedFrameNumber = 0u;
+		uint64_t iScopeFrameNumber = 0u;
+		int32_t iVisibleFrameCount = 240;
+		size_t iFramesFromLatest = 0u;
+		f64_t dFramePanRemainder = 0.0;
+		f64_t dScopeWindowStartMs = 0.0;
+		f64_t dScopeWindowWidthMs = 16.667;
+	};
+
+	uint64_t QueryProfilerUtc100ns()
+	{
+		FILETIME fileTime{};
+		GetSystemTimePreciseAsFileTime(&fileTime);
+		ULARGE_INTEGER value{};
+		value.LowPart = fileTime.dwLowDateTime;
+		value.HighPart = fileTime.dwHighDateTime;
+		return value.QuadPart;
+	}
+
+	PROFILER_UI_STATE& GetProfilerUIState()
+	{
+		static PROFILER_UI_STATE state;
+		return state;
+	}
+
+	f64_t ProfilerCounterMs(
+		const Engine::FProfilerFrame& frame,
+		const Engine::EProfilerCounter counter)
+	{
+		return static_cast<f64_t>(
+			frame.Counters[static_cast<size_t>(counter)]) / 1000.0;
+	}
+
+	f64_t ProfilerBytesMiB(const uint64_t bytes)
+	{
+		return static_cast<f64_t>(bytes) / (1024.0 * 1024.0);
+	}
+
+	ImU32 ProfilerScopeColor(const uint32_t nameId)
+	{
+		const uint32_t hash = nameId * 2654435761u;
+		const int32_t red = 80 + static_cast<int32_t>((hash >> 16u) & 0x7fu);
+		const int32_t green = 80 + static_cast<int32_t>((hash >> 8u) & 0x7fu);
+		const int32_t blue = 80 + static_cast<int32_t>(hash & 0x7fu);
+		return IM_COL32(red, green, blue, 230);
 	}
 #endif
 
@@ -634,6 +689,11 @@ HRESULT CMainApp::Render()
 			pBern->Render_ValtanEntryModalText();
 	}
 
+	return S_OK;
+}
+
+HRESULT CMainApp::Present()
+{
 	return CGameInstance::Get().Render_End();
 }
 
@@ -3226,6 +3286,7 @@ HRESULT CMainApp::ReadyDebugTools()
 		pProfiler->Reset_History();
 		pProfiler->Set_Enabled(false);
 	}
+	GetProfilerUIState() = {};
 	m_bProfilerVisible = false;
 	m_pHUDLayoutTool =
 		make_unique<CHUDLayoutTool>(m_pDevice, m_pContext);
@@ -3367,6 +3428,7 @@ void CMainApp::RenderDeveloperTools()
 	if (ImGui::Checkbox("Profiler", &profilerVisible))
 	{
 		m_bProfilerVisible = profilerVisible;
+		GetProfilerUIState() = {};
 		if (Engine::CProfiler* pProfiler =
 			CGameInstance::Get().Get_Profiler())
 		{
@@ -3820,11 +3882,27 @@ void CMainApp::RenderProfilerOverlay()
 			io.Framerate > 0.f ? 1000.f / io.Framerate : 0.f);
 		if (hasStats)
 		{
-			ImGui::Text("CPU: %.3f ms", stats.CpuFrameMs);
-			ImGui::Text("GPU: %s",
-				stats.GpuValid ? "available" : "warming up");
+			const f64_t cadenceMs = static_cast<f64_t>(
+				stats.Counters[static_cast<size_t>(
+					Engine::EProfilerCounter::FrameCadenceMicroseconds)]) / 1000.0;
+			ImGui::Text("CPU %.3f ms | GPU %s",
+				stats.CpuFrameMs,
+				stats.GpuValid ? "ready" : "warming up");
 			if (stats.GpuValid)
-				ImGui::Text("GPU time: %.3f ms", stats.GpuFrameMs);
+			{
+				ImGui::SameLine();
+				ImGui::Text("%.3f ms", stats.GpuFrameMs);
+			}
+			ImGui::Text("Cadence %.3f | U %.3f | R %.3f | P %.3f | Wait %.3f ms",
+				cadenceMs,
+				static_cast<f64_t>(stats.Counters[static_cast<size_t>(
+					Engine::EProfilerCounter::FrameUpdateMicroseconds)]) / 1000.0,
+				static_cast<f64_t>(stats.Counters[static_cast<size_t>(
+					Engine::EProfilerCounter::FrameRenderMicroseconds)]) / 1000.0,
+				static_cast<f64_t>(stats.Counters[static_cast<size_t>(
+					Engine::EProfilerCounter::FramePresentMicroseconds)]) / 1000.0,
+				static_cast<f64_t>(stats.Counters[static_cast<size_t>(
+					Engine::EProfilerCounter::FrameWaitMicroseconds)]) / 1000.0);
 		}
 	}
 	ImGui::End();
@@ -3835,20 +3913,49 @@ void CMainApp::RenderProfilerSettings()
 	if (!m_bProfilerVisible)
 		return;
 
+	Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+	PROFILER_UI_STATE& state = GetProfilerUIState();
+	ImGui::SetNextWindowSize(ImVec2(1100.f, 780.f), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin(
 		"LostArk Profiler Details",
-		nullptr,
-		ImGuiWindowFlags_AlwaysAutoResize))
+		nullptr))
 	{
 		ImGui::End();
 		return;
 	}
 
-	Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
-	if (ImGui::Button("Reset profiler history") && nullptr != pProfiler)
-		pProfiler->Reset_History();
+	bool_t forceRefresh = false;
+	if (ImGui::Button(state.bPaused ? "Resume view" : "Pause view"))
+	{
+		state.bPaused = !state.bPaused;
+		if (!state.bPaused)
+			state.dNextRefreshSeconds = 0.0;
+	}
 	ImGui::SameLine();
-	if (ImGui::Button("Save profiler JSON"))
+	if (ImGui::Checkbox("Follow latest", &state.bFollowLatest) &&
+		state.bFollowLatest)
+	{
+		state.iFramesFromLatest = 0u;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Refresh now"))
+		forceRefresh = true;
+	ImGui::SameLine();
+	if (ImGui::Button("Reset history"))
+	{
+		if (nullptr != pProfiler)
+			pProfiler->Reset_History();
+		state.Snapshot = {};
+		state.iSelectedFrameNumber = 0u;
+		state.iScopeFrameNumber = 0u;
+		state.iFramesFromLatest = 0u;
+		state.dScopeWindowStartMs = 0.0;
+		state.dScopeWindowWidthMs = 16.667;
+		state.dNextRefreshSeconds = 0.0;
+		forceRefresh = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Save full JSON"))
 	{
 		if (nullptr == pProfiler)
 		{
@@ -3860,17 +3967,785 @@ void CMainApp::RenderProfilerSettings()
 				pProfiler->Snapshot();
 			const uint64_t frameNumber = snapshot.Frames.empty() ?
 				0u : snapshot.Frames.back().FrameNumber;
-			const filesystem::path outputPath =
+			const uint32_t processId = GetCurrentProcessId();
+			const filesystem::path basePath =
 				CProfilerCaptureIO::Make_DefaultPath(frameNumber);
+			const filesystem::path outputPath =
+				basePath.parent_path() /
+				(basePath.stem().wstring() + L"_pid" +
+					std::to_wstring(processId) +
+					basePath.extension().wstring());
+			PROFILER_CAPTURE_METADATA metadata{};
+			metadata.iProcessId = processId;
+			metadata.iLevelId =
+				CGameInstance::Get().Get_CurrentLevelID();
+			metadata.iWidth = g_iWinSizeX;
+			metadata.iHeight = g_iWinSizeY;
+			metadata.iRequestedFrames = snapshot.Frames.size();
+			metadata.iCaptureEndUtc100ns = QueryProfilerUtc100ns();
+#ifdef _DEBUG
+			metadata.strConfiguration = "Debug";
+#else
+			metadata.strConfiguration = "Release";
+#endif
+			metadata.strRunId =
+				"manual-pid-" + std::to_string(processId);
+			metadata.strPhase = "manual";
 			string error;
 			m_strProfilerCaptureStatus = CProfilerCaptureIO::Save_Json(
 				snapshot,
+				metadata,
 				outputPath,
 				&error) ? "Saved: " + outputPath.string() : error;
 		}
 	}
+	ImGui::TextDisabled(
+		"Pause freezes this view only; collection continues. View refresh copies at most 600 frames, 4 times/second.");
 	if (!m_strProfilerCaptureStatus.empty())
 		ImGui::TextWrapped("%s", m_strProfilerCaptureStatus.c_str());
+
+	const f64_t nowSeconds = ImGui::GetTime();
+	if (nullptr != pProfiler &&
+		(forceRefresh || (!state.bPaused &&
+			nowSeconds >= state.dNextRefreshSeconds)))
+	{
+		state.Snapshot = pProfiler->Snapshot_Recent(600u);
+		state.dNextRefreshSeconds = nowSeconds + 0.25;
+		if (state.bFollowLatest)
+			state.iFramesFromLatest = 0u;
+	}
+
+	if (state.Snapshot.Frames.empty())
+	{
+		ImGui::Separator();
+		ImGui::TextDisabled("Waiting for profiler frames...");
+		ImGui::End();
+		return;
+	}
+
+	const size_t frameCount = state.Snapshot.Frames.size();
+	auto resolveFrameWindow = [&state, frameCount](
+		size_t& outBegin, size_t& outEnd)
+	{
+		const size_t desiredCount = static_cast<size_t>(std::clamp(
+			state.iVisibleFrameCount, 30, 600));
+		const size_t visibleCount = (std::min)(desiredCount, frameCount);
+		const size_t maximumOffset = frameCount - visibleCount;
+		state.iFramesFromLatest = (std::min)(
+			state.iFramesFromLatest, maximumOffset);
+		outEnd = frameCount - state.iFramesFromLatest;
+		outBegin = outEnd - visibleCount;
+	};
+
+	size_t visibleBegin = 0u;
+	size_t visibleEnd = 0u;
+	resolveFrameWindow(visibleBegin, visibleEnd);
+
+	ImGui::SeparatorText("Frame History");
+	ImGui::TextDisabled(
+		"Wheel: horizontal zoom | Right-drag: pan | Left-click: select frame");
+	const ImVec2 graphSize(
+		(std::max)(320.f, ImGui::GetContentRegionAvail().x),
+		220.f);
+	ImGui::InvisibleButton(
+		"##ProfilerFrameGraph",
+		graphSize,
+		ImGuiButtonFlags_MouseButtonLeft |
+		ImGuiButtonFlags_MouseButtonRight);
+	const bool_t graphHovered = ImGui::IsItemHovered();
+	const ImVec2 graphMin = ImGui::GetItemRectMin();
+	const ImVec2 graphMax = ImGui::GetItemRectMax();
+	constexpr f32_t GRAPH_LABEL_WIDTH = 54.f;
+	const f32_t plotLeft = graphMin.x + GRAPH_LABEL_WIDTH;
+	const f32_t plotRight = graphMax.x - 4.f;
+	const f32_t plotTop = graphMin.y + 4.f;
+	const f32_t plotBottom = graphMax.y - 20.f;
+	const f32_t plotWidth = (std::max)(1.f, plotRight - plotLeft);
+	const f32_t plotHeight = (std::max)(1.f, plotBottom - plotTop);
+
+	if (graphHovered && 0.f != ImGui::GetIO().MouseWheel)
+	{
+		const size_t oldVisibleCount = visibleEnd - visibleBegin;
+		const f64_t cursorRatio = std::clamp(
+			static_cast<f64_t>(
+				(ImGui::GetIO().MousePos.x - plotLeft) / plotWidth),
+			0.0,
+			1.0);
+		const f64_t zoomFactor = ImGui::GetIO().MouseWheel > 0.f ?
+			0.8 : 1.25;
+		const int32_t newDesiredCount = std::clamp(
+			static_cast<int32_t>(std::llround(
+				static_cast<f64_t>(state.iVisibleFrameCount) * zoomFactor)),
+			30,
+			600);
+		const size_t newVisibleCount = (std::min)(
+			static_cast<size_t>(newDesiredCount), frameCount);
+		const f64_t anchorIndex = static_cast<f64_t>(visibleBegin) +
+			cursorRatio * static_cast<f64_t>(
+				oldVisibleCount > 1u ? oldVisibleCount - 1u : 0u);
+		const f64_t requestedBegin = anchorIndex -
+			cursorRatio * static_cast<f64_t>(
+				newVisibleCount > 1u ? newVisibleCount - 1u : 0u);
+		const size_t maximumBegin = frameCount - newVisibleCount;
+		const size_t newBegin = static_cast<size_t>(std::clamp(
+			std::llround(requestedBegin),
+			0ll,
+			static_cast<long long>(maximumBegin)));
+		state.iVisibleFrameCount = newDesiredCount;
+		state.iFramesFromLatest = frameCount -
+			(newBegin + newVisibleCount);
+		state.bFollowLatest = false;
+		resolveFrameWindow(visibleBegin, visibleEnd);
+	}
+
+	if (graphHovered &&
+		ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.f))
+	{
+		const size_t visibleCount = visibleEnd - visibleBegin;
+		state.dFramePanRemainder +=
+			static_cast<f64_t>(ImGui::GetIO().MouseDelta.x) *
+			static_cast<f64_t>(visibleCount) /
+			static_cast<f64_t>(plotWidth);
+		const int64_t wholeFrames = static_cast<int64_t>(
+			std::trunc(state.dFramePanRemainder));
+		if (0 != wholeFrames)
+		{
+			const size_t maximumOffset = frameCount - visibleCount;
+			const int64_t requestedOffset =
+				static_cast<int64_t>(state.iFramesFromLatest) +
+				wholeFrames;
+			state.iFramesFromLatest = static_cast<size_t>(std::clamp(
+				requestedOffset,
+				0ll,
+				static_cast<long long>(maximumOffset)));
+			state.dFramePanRemainder -= static_cast<f64_t>(wholeFrames);
+			state.bFollowLatest = false;
+			resolveFrameWindow(visibleBegin, visibleEnd);
+		}
+	}
+
+	const size_t visibleCount = visibleEnd - visibleBegin;
+	if (graphHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		const f64_t cursorRatio = std::clamp(
+			static_cast<f64_t>(
+				(ImGui::GetIO().MousePos.x - plotLeft) / plotWidth),
+			0.0,
+			0.999999);
+		const size_t clickedOffset = (std::min)(
+			static_cast<size_t>(cursorRatio *
+				static_cast<f64_t>(visibleCount)),
+			visibleCount - 1u);
+		state.iSelectedFrameNumber = state.Snapshot.Frames[
+			visibleBegin + clickedOffset].FrameNumber;
+	}
+
+	f64_t graphMaximumMs = 50.0;
+	for (size_t index = visibleBegin; index < visibleEnd; ++index)
+	{
+		const Engine::FProfilerFrame& frame = state.Snapshot.Frames[index];
+		graphMaximumMs = (std::max)(graphMaximumMs, frame.CpuFrameMs);
+		if (frame.GpuValid)
+			graphMaximumMs = (std::max)(graphMaximumMs, frame.GpuFrameMs);
+		graphMaximumMs = (std::max)(
+			graphMaximumMs,
+			ProfilerCounterMs(
+				frame,
+				Engine::EProfilerCounter::FrameCadenceMicroseconds));
+	}
+	graphMaximumMs = (std::max)(55.0, graphMaximumMs * 1.08);
+
+	ImDrawList* graphDrawList = ImGui::GetWindowDrawList();
+	graphDrawList->AddRectFilled(
+		graphMin,
+		graphMax,
+		IM_COL32(18, 20, 24, 245));
+	graphDrawList->AddRect(
+		ImVec2(plotLeft, plotTop),
+		ImVec2(plotRight, plotBottom),
+		ImGui::GetColorU32(ImGuiCol_Border));
+	auto graphY = [plotBottom, plotHeight, graphMaximumMs](const f64_t valueMs)
+	{
+		return plotBottom - static_cast<f32_t>(
+			std::clamp(valueMs / graphMaximumMs, 0.0, 1.0)) * plotHeight;
+	};
+	const f64_t referenceLines[] = { 16.667, 33.333, 50.0 };
+	for (const f64_t referenceMs : referenceLines)
+	{
+		const f32_t y = graphY(referenceMs);
+		graphDrawList->AddLine(
+			ImVec2(plotLeft, y),
+			ImVec2(plotRight, y),
+			IM_COL32(180, 180, 180, 80));
+		char_t label[24]{};
+		::_snprintf_s(label, _countof(label), _TRUNCATE,
+			"%.2f ms", referenceMs);
+		graphDrawList->AddText(
+			ImVec2(graphMin.x + 2.f, y - 7.f),
+			IM_COL32(190, 190, 190, 210),
+			label);
+	}
+
+	const f32_t pixelsPerFrame = plotWidth /
+		static_cast<f32_t>(std::max<size_t>(1u, visibleCount));
+	ImVec2 previousGpuPoint{};
+	ImVec2 previousCadencePoint{};
+	bool_t hasPreviousGpuPoint = false;
+	bool_t hasPreviousCadencePoint = false;
+	for (size_t offset = 0u; offset < visibleCount; ++offset)
+	{
+		const Engine::FProfilerFrame& frame =
+			state.Snapshot.Frames[visibleBegin + offset];
+		const f32_t x = plotLeft +
+			(static_cast<f32_t>(offset) + 0.5f) * pixelsPerFrame;
+		graphDrawList->AddLine(
+			ImVec2(x, plotBottom),
+			ImVec2(x, graphY(frame.CpuFrameMs)),
+			IM_COL32(78, 206, 115, 205),
+			(std::max)(1.f, pixelsPerFrame * 0.42f));
+
+		if (frame.GpuValid)
+		{
+			const ImVec2 gpuPoint(x, graphY(frame.GpuFrameMs));
+			if (hasPreviousGpuPoint)
+				graphDrawList->AddLine(
+					previousGpuPoint,
+					gpuPoint,
+					IM_COL32(75, 155, 255, 240),
+					1.5f);
+			previousGpuPoint = gpuPoint;
+			hasPreviousGpuPoint = true;
+		}
+
+		const f64_t cadenceMs = ProfilerCounterMs(
+			frame,
+			Engine::EProfilerCounter::FrameCadenceMicroseconds);
+		const ImVec2 cadencePoint(x, graphY(cadenceMs));
+		if (hasPreviousCadencePoint)
+			graphDrawList->AddLine(
+				previousCadencePoint,
+				cadencePoint,
+				IM_COL32(255, 174, 66, 210),
+				1.2f);
+		previousCadencePoint = cadencePoint;
+		hasPreviousCadencePoint = true;
+
+		if (frame.FrameNumber == state.iSelectedFrameNumber)
+		{
+			graphDrawList->AddLine(
+				ImVec2(x, plotTop),
+				ImVec2(x, plotBottom),
+				IM_COL32(255, 255, 255, 230),
+				2.f);
+		}
+	}
+	graphDrawList->AddText(
+		ImVec2(plotLeft, plotBottom + 3.f),
+		IM_COL32(78, 206, 115, 255),
+		"CPU bar");
+	graphDrawList->AddText(
+		ImVec2(plotLeft + 72.f, plotBottom + 3.f),
+		IM_COL32(75, 155, 255, 255),
+		"GPU total");
+	graphDrawList->AddText(
+		ImVec2(plotLeft + 158.f, plotBottom + 3.f),
+		IM_COL32(255, 174, 66, 255),
+		"Cadence");
+
+	if (graphHovered && ImGui::GetIO().MousePos.x >= plotLeft &&
+		ImGui::GetIO().MousePos.x <= plotRight)
+	{
+		const f64_t cursorRatio = std::clamp(
+			static_cast<f64_t>(
+				(ImGui::GetIO().MousePos.x - plotLeft) / plotWidth),
+			0.0,
+			0.999999);
+		const size_t hoveredOffset = (std::min)(
+			static_cast<size_t>(cursorRatio *
+				static_cast<f64_t>(visibleCount)),
+			visibleCount - 1u);
+		const Engine::FProfilerFrame& hoveredFrame =
+			state.Snapshot.Frames[visibleBegin + hoveredOffset];
+		if (hoveredFrame.GpuValid)
+		{
+			ImGui::SetTooltip(
+				"Frame %llu\nCPU %.3f ms\nGPU %.3f ms\nCadence %.3f ms",
+				static_cast<unsigned long long>(hoveredFrame.FrameNumber),
+				hoveredFrame.CpuFrameMs,
+				hoveredFrame.GpuFrameMs,
+				ProfilerCounterMs(
+					hoveredFrame,
+					Engine::EProfilerCounter::FrameCadenceMicroseconds));
+		}
+		else
+		{
+			ImGui::SetTooltip(
+				"Frame %llu\nCPU %.3f ms\nGPU pending\nCadence %.3f ms",
+				static_cast<unsigned long long>(hoveredFrame.FrameNumber),
+				hoveredFrame.CpuFrameMs,
+				ProfilerCounterMs(
+					hoveredFrame,
+					Engine::EProfilerCounter::FrameCadenceMicroseconds));
+		}
+	}
+
+	ImGui::Text("Showing %zu/%zu frames (history offset %zu)",
+		visibleCount,
+		frameCount,
+		state.iFramesFromLatest);
+
+	const Engine::FProfilerFrame* pSelectedFrame = nullptr;
+	for (const Engine::FProfilerFrame& frame : state.Snapshot.Frames)
+	{
+		if (frame.FrameNumber == state.iSelectedFrameNumber)
+		{
+			pSelectedFrame = &frame;
+			break;
+		}
+	}
+	if (nullptr == pSelectedFrame)
+	{
+		pSelectedFrame = &state.Snapshot.Frames.back();
+		state.iSelectedFrameNumber = pSelectedFrame->FrameNumber;
+	}
+
+	const auto counterValue = [pSelectedFrame](
+		const Engine::EProfilerCounter counter)
+	{
+		return pSelectedFrame->Counters[static_cast<size_t>(counter)];
+	};
+	ImGui::SeparatorText("Selected Frame");
+	if (pSelectedFrame->GpuValid)
+	{
+		ImGui::Text(
+			"Frame %llu | CPU %.3f ms | GPU %.3f ms | GPU query latency %u frames",
+			static_cast<unsigned long long>(pSelectedFrame->FrameNumber),
+			pSelectedFrame->CpuFrameMs,
+			pSelectedFrame->GpuFrameMs,
+			pSelectedFrame->GpuLatencyFrames);
+	}
+	else
+	{
+		ImGui::Text(
+			"Frame %llu | CPU %.3f ms | GPU pending | GPU query latency %u frames",
+			static_cast<unsigned long long>(pSelectedFrame->FrameNumber),
+			pSelectedFrame->CpuFrameMs,
+			pSelectedFrame->GpuLatencyFrames);
+	}
+	if (ImGui::BeginTable(
+		"ProfilerFrameBreakdown",
+		6,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_SizingStretchSame))
+	{
+		const char_t* headings[] =
+			{ "Cadence", "Update", "Render", "Present", "Wait", "CPU frame" };
+		const f64_t values[] =
+		{
+			ProfilerCounterMs(*pSelectedFrame,
+				Engine::EProfilerCounter::FrameCadenceMicroseconds),
+			ProfilerCounterMs(*pSelectedFrame,
+				Engine::EProfilerCounter::FrameUpdateMicroseconds),
+			ProfilerCounterMs(*pSelectedFrame,
+				Engine::EProfilerCounter::FrameRenderMicroseconds),
+			ProfilerCounterMs(*pSelectedFrame,
+				Engine::EProfilerCounter::FramePresentMicroseconds),
+			ProfilerCounterMs(*pSelectedFrame,
+				Engine::EProfilerCounter::FrameWaitMicroseconds),
+			pSelectedFrame->CpuFrameMs
+		};
+		for (const char_t* heading : headings)
+			ImGui::TableSetupColumn(heading);
+		ImGui::TableHeadersRow();
+		ImGui::TableNextRow();
+		for (int32_t column = 0; column < 6; ++column)
+		{
+			ImGui::TableSetColumnIndex(column);
+			ImGui::Text("%.3f ms", values[column]);
+		}
+		ImGui::EndTable();
+	}
+
+	ImGui::Text(
+		"Effect: occurrences %llu | elements %llu | particles %llu (mesh %llu) | trails %llu",
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectActiveOccurrences)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectActiveElements)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectParticles)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectMeshParticles)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectTrailPoints)));
+	ImGui::Text(
+		"Effect work: fixed %llu | catch-up %llu | spawned %llu | rejected %llu | suppressed %llu | draws %llu | upload %.2f MiB",
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectFixedSteps)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectCatchupSteps)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectSpawned)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectRejected)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectSuppressed)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::EffectActualDraws)),
+		ProfilerBytesMiB(counterValue(
+			Engine::EProfilerCounter::EffectDynamicUploadBytes)));
+	ImGui::Text(
+		"Animation: characters %llu | channels %llu | bones %llu | timeline builds %llu | correction seeks %llu | palette upload %.2f MiB",
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::AnimationCharacters)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::AnimationChannels)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::AnimationBones)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::AnimationTimelineBuilds)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::AnimationCorrectionSeeks)),
+		ProfilerBytesMiB(counterValue(
+			Engine::EProfilerCounter::AnimationPaletteUploadBytes)));
+	ImGui::Text(
+		"Draw: calls %llu | instanced %llu | instances %llu | indices %llu | priority/shadow/nonblend/blend %llu/%llu/%llu/%llu",
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::DrawCalls)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::InstancedDrawCalls)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::Instances)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::Indices)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::RenderSubmissionsPriority)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::RenderSubmissionsShadow)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::RenderSubmissionsNonBlend)),
+		static_cast<unsigned long long>(counterValue(
+			Engine::EProfilerCounter::RenderSubmissionsBlend)));
+	ImGui::Text(
+		"Memory: private %.1f MiB | working set %.1f MiB | GPU local %.1f / %.1f MiB",
+		ProfilerBytesMiB(counterValue(
+			Engine::EProfilerCounter::ProcessPrivateBytes)),
+		ProfilerBytesMiB(counterValue(
+			Engine::EProfilerCounter::ProcessWorkingSetBytes)),
+		ProfilerBytesMiB(counterValue(
+			Engine::EProfilerCounter::GpuLocalUsageBytes)),
+		ProfilerBytesMiB(counterValue(
+			Engine::EProfilerCounter::GpuLocalBudgetBytes)));
+
+	ImGui::SeparatorText("Selected Frame CPU Scope Timeline");
+	ImGui::TextDisabled(
+		"QPC CPU scopes are depth lanes. GPU line above is whole-frame D3D11 query time, not per-pass GPU time.");
+	const uint64_t tickFrequency = state.Snapshot.TickFrequency;
+	const uint64_t frameBeginTick = pSelectedFrame->CpuFrameBeginTick;
+	const uint64_t frameEndTick = pSelectedFrame->CpuFrameEndTick;
+	const f64_t measuredFrameMs = tickFrequency > 0u &&
+		frameEndTick > frameBeginTick ?
+		static_cast<f64_t>(frameEndTick - frameBeginTick) * 1000.0 /
+			static_cast<f64_t>(tickFrequency) :
+		(std::max)(0.001, pSelectedFrame->CpuFrameMs);
+	if (state.iScopeFrameNumber != pSelectedFrame->FrameNumber)
+	{
+		state.iScopeFrameNumber = pSelectedFrame->FrameNumber;
+		state.dScopeWindowStartMs = 0.0;
+		state.dScopeWindowWidthMs = (std::max)(0.05, measuredFrameMs);
+	}
+	if (ImGui::Button("Fit selected frame"))
+	{
+		state.dScopeWindowStartMs = 0.0;
+		state.dScopeWindowWidthMs = (std::max)(0.05, measuredFrameMs);
+	}
+	ImGui::SameLine();
+	ImGui::Text("view %.3f .. %.3f ms",
+		state.dScopeWindowStartMs,
+		state.dScopeWindowStartMs + state.dScopeWindowWidthMs);
+	ImGui::TextDisabled("Wheel: horizontal zoom | Right-drag: pan | Hover: exact scope time");
+
+	uint32_t maximumDepth = 0u;
+	for (const Engine::FProfilerScopeSample& scope : pSelectedFrame->CpuScopes)
+		maximumDepth = (std::max)(maximumDepth, scope.Depth);
+	const uint32_t visibleDepthCount = std::min<uint32_t>(maximumDepth + 1u, 12u);
+	const f32_t timelineHeight = std::clamp(
+		34.f + static_cast<f32_t>(visibleDepthCount) * 24.f,
+		130.f,
+		320.f);
+	const ImVec2 timelineSize(
+		(std::max)(320.f, ImGui::GetContentRegionAvail().x),
+		timelineHeight);
+	ImGui::InvisibleButton(
+		"##ProfilerScopeTimeline",
+		timelineSize,
+		ImGuiButtonFlags_MouseButtonLeft |
+		ImGuiButtonFlags_MouseButtonRight);
+	const bool_t timelineHovered = ImGui::IsItemHovered();
+	const ImVec2 timelineMin = ImGui::GetItemRectMin();
+	const ImVec2 timelineMax = ImGui::GetItemRectMax();
+	constexpr f32_t TIMELINE_LABEL_WIDTH = 58.f;
+	constexpr f32_t TIMELINE_AXIS_HEIGHT = 22.f;
+	const f32_t timelinePlotLeft = timelineMin.x + TIMELINE_LABEL_WIDTH;
+	const f32_t timelinePlotRight = timelineMax.x - 4.f;
+	const f32_t timelinePlotTop = timelineMin.y + TIMELINE_AXIS_HEIGHT;
+	const f32_t timelinePlotBottom = timelineMax.y - 4.f;
+	const f32_t timelinePlotWidth = (std::max)(
+		1.f, timelinePlotRight - timelinePlotLeft);
+	const f32_t timelineLaneHeight = visibleDepthCount > 0u ?
+		(timelinePlotBottom - timelinePlotTop) /
+			static_cast<f32_t>(visibleDepthCount) :
+		(timelinePlotBottom - timelinePlotTop);
+
+	if (timelineHovered && 0.f != ImGui::GetIO().MouseWheel)
+	{
+		const f64_t cursorRatio = std::clamp(
+			static_cast<f64_t>(
+				(ImGui::GetIO().MousePos.x - timelinePlotLeft) /
+				timelinePlotWidth),
+			0.0,
+			1.0);
+		const f64_t anchorMs = state.dScopeWindowStartMs +
+			cursorRatio * state.dScopeWindowWidthMs;
+		const f64_t zoomFactor = ImGui::GetIO().MouseWheel > 0.f ?
+			0.8 : 1.25;
+		const f64_t maximumWindowMs = (std::max)(0.05, measuredFrameMs);
+		const f64_t newWidthMs = std::clamp(
+			state.dScopeWindowWidthMs * zoomFactor,
+			0.05,
+			maximumWindowMs);
+		state.dScopeWindowWidthMs = newWidthMs;
+		state.dScopeWindowStartMs = anchorMs - cursorRatio * newWidthMs;
+	}
+	if (timelineHovered &&
+		ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.f))
+	{
+		state.dScopeWindowStartMs -=
+			static_cast<f64_t>(ImGui::GetIO().MouseDelta.x) /
+			static_cast<f64_t>(timelinePlotWidth) *
+			state.dScopeWindowWidthMs;
+	}
+	state.dScopeWindowWidthMs = std::clamp(
+		state.dScopeWindowWidthMs,
+		0.05,
+		(std::max)(0.05, measuredFrameMs));
+	state.dScopeWindowStartMs = std::clamp(
+		state.dScopeWindowStartMs,
+		0.0,
+		(std::max)(0.0, measuredFrameMs - state.dScopeWindowWidthMs));
+
+	ImDrawList* timelineDrawList = ImGui::GetWindowDrawList();
+	timelineDrawList->AddRectFilled(
+		timelineMin,
+		timelineMax,
+		IM_COL32(18, 20, 24, 245));
+	timelineDrawList->AddRect(
+		ImVec2(timelinePlotLeft, timelinePlotTop),
+		ImVec2(timelinePlotRight, timelinePlotBottom),
+		ImGui::GetColorU32(ImGuiCol_Border));
+
+	const f64_t rawGridMs = state.dScopeWindowWidthMs *
+		70.0 / static_cast<f64_t>(timelinePlotWidth);
+	const f64_t gridMagnitude = std::pow(
+		10.0,
+		std::floor(std::log10((std::max)(0.000001, rawGridMs))));
+	const f64_t normalizedGrid = rawGridMs / gridMagnitude;
+	const f64_t gridMultiplier = normalizedGrid <= 1.0 ? 1.0 :
+		(normalizedGrid <= 2.0 ? 2.0 :
+			(normalizedGrid <= 5.0 ? 5.0 : 10.0));
+	const f64_t gridStepMs = gridMagnitude * gridMultiplier;
+	const f64_t firstGridMs = std::ceil(
+		state.dScopeWindowStartMs / gridStepMs) * gridStepMs;
+	for (f64_t gridMs = firstGridMs;
+		gridMs <= state.dScopeWindowStartMs +
+			state.dScopeWindowWidthMs + gridStepMs * 0.5;
+		gridMs += gridStepMs)
+	{
+		const f32_t x = timelinePlotLeft + static_cast<f32_t>(
+			(gridMs - state.dScopeWindowStartMs) /
+			state.dScopeWindowWidthMs) * timelinePlotWidth;
+		timelineDrawList->AddLine(
+			ImVec2(x, timelinePlotTop),
+			ImVec2(x, timelinePlotBottom),
+			IM_COL32(180, 180, 180, 45));
+		char_t label[32]{};
+		::_snprintf_s(label, _countof(label), _TRUNCATE,
+			"%.3f", gridMs);
+		timelineDrawList->AddText(
+			ImVec2(x + 2.f, timelineMin.y + 3.f),
+			IM_COL32(195, 195, 195, 210),
+			label);
+	}
+	for (uint32_t depth = 0u; depth < visibleDepthCount; ++depth)
+	{
+		const f32_t y = timelinePlotTop +
+			static_cast<f32_t>(depth) * timelineLaneHeight;
+		char_t depthLabel[16]{};
+		::_snprintf_s(depthLabel, _countof(depthLabel), _TRUNCATE,
+			"D%u", depth);
+		timelineDrawList->AddText(
+			ImVec2(timelineMin.x + 4.f, y + 3.f),
+			IM_COL32(190, 190, 190, 220),
+			depthLabel);
+		if (0u != depth)
+			timelineDrawList->AddLine(
+				ImVec2(timelinePlotLeft, y),
+				ImVec2(timelinePlotRight, y),
+				IM_COL32(120, 120, 120, 35));
+	}
+
+	auto scopeTickToMs = [frameBeginTick, tickFrequency](
+		const uint64_t tick)
+	{
+		if (0u == tickFrequency || tick <= frameBeginTick)
+			return 0.0;
+		return static_cast<f64_t>(tick - frameBeginTick) * 1000.0 /
+			static_cast<f64_t>(tickFrequency);
+	};
+	timelineDrawList->PushClipRect(
+		ImVec2(timelinePlotLeft, timelinePlotTop),
+		ImVec2(timelinePlotRight, timelinePlotBottom),
+		true);
+	for (const Engine::FProfilerScopeSample& scope : pSelectedFrame->CpuScopes)
+	{
+		if (scope.Depth >= visibleDepthCount ||
+			scope.EndTick <= scope.BeginTick)
+		{
+			continue;
+		}
+		const f64_t scopeBeginMs = scopeTickToMs(scope.BeginTick);
+		const f64_t scopeEndMs = scopeTickToMs(scope.EndTick);
+		const f64_t viewEndMs = state.dScopeWindowStartMs +
+			state.dScopeWindowWidthMs;
+		if (scopeEndMs < state.dScopeWindowStartMs ||
+			scopeBeginMs > viewEndMs)
+		{
+			continue;
+		}
+		const f32_t x0 = timelinePlotLeft + static_cast<f32_t>(
+			((std::max)(scopeBeginMs, state.dScopeWindowStartMs) -
+				state.dScopeWindowStartMs) /
+			state.dScopeWindowWidthMs) * timelinePlotWidth;
+		const f32_t x1 = timelinePlotLeft + static_cast<f32_t>(
+			((std::min)(scopeEndMs, viewEndMs) -
+				state.dScopeWindowStartMs) /
+			state.dScopeWindowWidthMs) * timelinePlotWidth;
+		const f32_t y0 = timelinePlotTop +
+			static_cast<f32_t>(scope.Depth) * timelineLaneHeight + 2.f;
+		const f32_t y1 = y0 + (std::max)(2.f, timelineLaneHeight - 4.f);
+		const ImVec2 scopeMin(x0, y0);
+		const ImVec2 scopeMax((std::max)(x0 + 1.f, x1), y1);
+		timelineDrawList->AddRectFilled(
+			scopeMin,
+			scopeMax,
+			ProfilerScopeColor(scope.NameId),
+			2.f);
+
+		const char_t* scopeName = scope.NameId <
+			state.Snapshot.ScopeNames.size() ?
+			state.Snapshot.ScopeNames[scope.NameId].c_str() :
+			"<unknown>";
+		if (scopeMax.x - scopeMin.x >
+			ImGui::CalcTextSize(scopeName).x + 6.f)
+		{
+			timelineDrawList->AddText(
+				ImVec2(scopeMin.x + 3.f, scopeMin.y + 1.f),
+				IM_COL32(12, 12, 12, 255),
+				scopeName);
+		}
+		if (timelineHovered &&
+			ImGui::GetIO().MousePos.x >= scopeMin.x &&
+			ImGui::GetIO().MousePos.x <= scopeMax.x &&
+			ImGui::GetIO().MousePos.y >= scopeMin.y &&
+			ImGui::GetIO().MousePos.y <= scopeMax.y)
+		{
+			ImGui::SetTooltip(
+				"%s\nDepth %u\n%.3f .. %.3f ms\nDuration %.3f ms",
+				scopeName,
+				scope.Depth,
+				scopeBeginMs,
+				scopeEndMs,
+				scopeEndMs - scopeBeginMs);
+		}
+	}
+	timelineDrawList->PopClipRect();
+	if (maximumDepth + 1u > visibleDepthCount)
+	{
+		ImGui::TextDisabled(
+			"Timeline shows first %u of %u scope depths.",
+			visibleDepthCount,
+			maximumDepth + 1u);
+	}
+
+	struct SCOPE_TOTAL final
+	{
+		uint32_t iNameId = 0u;
+		uint32_t iCount = 0u;
+		f64_t dTotalMs = 0.0;
+		f64_t dMaximumMs = 0.0;
+	};
+	std::unordered_map<uint32_t, SCOPE_TOTAL> totalsByName;
+	for (const Engine::FProfilerScopeSample& scope : pSelectedFrame->CpuScopes)
+	{
+		if (scope.EndTick <= scope.BeginTick || 0u == tickFrequency)
+			continue;
+		const f64_t durationMs = static_cast<f64_t>(
+			scope.EndTick - scope.BeginTick) * 1000.0 /
+			static_cast<f64_t>(tickFrequency);
+		SCOPE_TOTAL& total = totalsByName[scope.NameId];
+		total.iNameId = scope.NameId;
+		++total.iCount;
+		total.dTotalMs += durationMs;
+		total.dMaximumMs = (std::max)(total.dMaximumMs, durationMs);
+	}
+	std::vector<SCOPE_TOTAL> scopeTotals;
+	scopeTotals.reserve(totalsByName.size());
+	for (const auto& pair : totalsByName)
+		scopeTotals.push_back(pair.second);
+	std::sort(
+		scopeTotals.begin(),
+		scopeTotals.end(),
+		[](const SCOPE_TOTAL& left, const SCOPE_TOTAL& right)
+		{
+			return left.dTotalMs > right.dTotalMs;
+		});
+	ImGui::TextDisabled(
+		"Top scope totals are inclusive; nested scopes can overlap their parent total.");
+	if (ImGui::BeginTable(
+		"ProfilerScopeTotals",
+		4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_SizingStretchProp))
+	{
+		ImGui::TableSetupColumn("Scope");
+		ImGui::TableSetupColumn("Calls");
+		ImGui::TableSetupColumn("Total ms");
+		ImGui::TableSetupColumn("Max ms");
+		ImGui::TableHeadersRow();
+		const size_t totalRows = std::min<size_t>(12u, scopeTotals.size());
+		for (size_t row = 0u; row < totalRows; ++row)
+		{
+			const SCOPE_TOTAL& total = scopeTotals[row];
+			const char_t* scopeName = total.iNameId <
+				state.Snapshot.ScopeNames.size() ?
+				state.Snapshot.ScopeNames[total.iNameId].c_str() :
+				"<unknown>";
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::TextUnformatted(scopeName);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%u", total.iCount);
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%.3f", total.dTotalMs);
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%.3f", total.dMaximumMs);
+		}
+		ImGui::EndTable();
+	}
+	ImGui::TextDisabled(
+		"Capture diagnostics: dropped CPU scopes %llu | dropped GPU frames %llu",
+		static_cast<unsigned long long>(state.Snapshot.DroppedCpuScopes),
+		static_cast<unsigned long long>(state.Snapshot.DroppedGpuFrames));
 	ImGui::End();
 }
 

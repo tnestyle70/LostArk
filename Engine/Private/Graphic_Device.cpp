@@ -1,4 +1,8 @@
 #include "..\public\Graphic_Device.h"
+#include "GameInstance.h"
+#include "Profiler.h"
+
+#include <chrono>
 
 CGraphic_Device::CGraphic_Device()
 
@@ -140,8 +144,20 @@ HRESULT CGraphic_Device::Present()
 		return E_FAIL;
 	
 	/* 전면 버퍼와 후면 버퍼를 교체하여 후면 버퍼를 전면으로 보여주는 역할을 한다. */
-	/* 후면 버퍼를 직접 화면에 보여줄게. */	
-	return m_pSwapChain->Present(0, 0);	
+	/* 후면 버퍼를 직접 화면에 보여줄게. */
+	Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+	if (nullptr == pProfiler || !pProfiler->Is_Enabled())
+		return m_pSwapChain->Present(0, 0);
+
+	Engine::CProfilerScope scope(pProfiler, "Client.Present");
+	const auto begin = std::chrono::steady_clock::now();
+	const HRESULT result = m_pSwapChain->Present(0, 0);
+	const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::steady_clock::now() - begin).count();
+	pProfiler->Set_Counter(
+		Engine::EProfilerCounter::FramePresentMicroseconds,
+		elapsed > 0 ? static_cast<uint64_t>(elapsed) : 0u);
+	return result;
 }
 
 void CGraphic_Device::Shutdown()

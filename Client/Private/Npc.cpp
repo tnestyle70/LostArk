@@ -5,6 +5,7 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Profiler.h"
 #include "Shader.h"
 #include "Transform.h"
 
@@ -126,6 +127,8 @@ void CNpc::Priority_Update(f32_t fTimeDelta)
 
 void CNpc::Update(f32_t fTimeDelta)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Animation.Npc.Update");
 	m_pModelCom->Play_Animation(fTimeDelta);
 	CEffectV2Runtime::Tick_Npc(
 		static_pointer_cast<CNpc>(shared_from_this()), m_pDevice, m_pContext);

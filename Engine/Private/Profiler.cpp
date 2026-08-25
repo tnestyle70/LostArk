@@ -1,7 +1,10 @@
 #include "Profiler.h"
 
 #include <algorithm>
+#include <dxgi1_4.h>
 #include <limits>
+#include <map>
+#include <psapi.h>
 
 using namespace Engine;
 
@@ -39,6 +42,8 @@ void CProfiler::Begin_Frame()
     m_CurrentFrame.CpuScopes.reserve(128);
     m_OpenScopes.clear();
     m_FrameBeginTick = Query_Tick();
+    m_CurrentFrame.CpuFrameBeginTick = m_FrameBeginTick;
+    Sample_ProcessAndGpuMemory();
     Begin_GpuFrame(m_FrameNumber);
 }
 
@@ -57,6 +62,7 @@ void CProfiler::End_Frame()
     }
 
     const uint64_t endTick = Query_Tick();
+    m_CurrentFrame.CpuFrameEndTick = endTick;
     m_CurrentFrame.CpuFrameMs =
         static_cast<double>(endTick - m_FrameBeginTick) * 1000.0 /
         static_cast<double>(m_Frequency.QuadPart);
@@ -128,6 +134,12 @@ void CProfiler::End_Scope(uint32_t token) noexcept
         return;
 
     m_CurrentFrame.CpuScopes[token].EndTick = Query_Tick();
+    if (!m_OpenScopes.empty() &&
+        m_OpenScopes.back().SampleIndex == token)
+    {
+        m_OpenScopes.pop_back();
+        return;
+    }
     const auto iter = std::find_if(
         m_OpenScopes.rbegin(), m_OpenScopes.rend(),
         [token](const FOpenScope& scope)
@@ -158,10 +170,20 @@ void CProfiler::Set_Counter(
 
 FProfilerCaptureSnapshot CProfiler::Snapshot() const
 {
+    return Snapshot_Recent(MAX_HISTORY_FRAMES);
+}
+
+FProfilerCaptureSnapshot CProfiler::Snapshot_Recent(
+    const size_t maximumFrames) const
+{
     std::lock_guard lock(m_Mutex);
     FProfilerCaptureSnapshot snapshot{};
+    snapshot.TickFrequency = static_cast<uint64_t>(m_Frequency.QuadPart);
     snapshot.ScopeNames = m_ScopeNames;
-    snapshot.Frames.assign(m_History.begin(), m_History.end());
+    const size_t frameCount = (std::min)(maximumFrames, m_History.size());
+    const auto first = m_History.end() -
+        static_cast<std::deque<FProfilerFrame>::difference_type>(frameCount);
+    snapshot.Frames.assign(first, m_History.end());
     snapshot.DroppedCpuScopes = m_DroppedCpuScopes;
     snapshot.DroppedGpuFrames = m_DroppedGpuFrames;
     return snapshot;
@@ -204,14 +226,30 @@ uint64_t CProfiler::Query_Tick() const noexcept
 
 uint32_t CProfiler::Intern_Name(std::string_view name)
 {
+    thread_local const CProfiler* cachedProfiler = nullptr;
+    thread_local std::map<std::string, uint32_t, std::less<>> cachedNames;
+    if (cachedProfiler != this)
+    {
+        cachedProfiler = this;
+        cachedNames.clear();
+    }
+
+    const auto cached = cachedNames.find(name);
+    if (cached != cachedNames.end())
+        return cached->second;
+
     const std::string key(name);
     std::lock_guard lock(m_Mutex);
     const auto found = m_ScopeNameLookup.find(key);
     if (found != m_ScopeNameLookup.end())
+    {
+        cachedNames.emplace(found->first, found->second);
         return found->second;
+    }
     const uint32_t id = static_cast<uint32_t>(m_ScopeNames.size());
     m_ScopeNames.push_back(key);
     m_ScopeNameLookup.emplace(m_ScopeNames.back(), id);
+    cachedNames.emplace(m_ScopeNames.back(), id);
     return id;
 }
 
@@ -316,4 +354,42 @@ void CProfiler::Commit_CurrentFrame()
     m_History.push_back(m_CurrentFrame);
     while (m_History.size() > MAX_HISTORY_FRAMES)
         m_History.pop_front();
+}
+
+void CProfiler::Sample_ProcessAndGpuMemory()
+{
+    constexpr uint64_t SAMPLE_INTERVAL_FRAMES = 60;
+    if (1 == m_FrameNumber || 0 == m_FrameNumber % SAMPLE_INTERVAL_FRAMES)
+    {
+        PROCESS_MEMORY_COUNTERS_EX counters{};
+        counters.cb = sizeof(counters);
+        if (GetProcessMemoryInfo(
+                GetCurrentProcess(),
+                reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
+                sizeof(counters)))
+        {
+            m_CachedPrivateBytes = counters.PrivateUsage;
+            m_CachedWorkingSetBytes = counters.WorkingSetSize;
+        }
+
+        ComPtr<IDXGIDevice> dxgiDevice;
+        ComPtr<IDXGIAdapter> adapter;
+        ComPtr<IDXGIAdapter3> adapter3;
+        DXGI_QUERY_VIDEO_MEMORY_INFO videoMemory{};
+        if (nullptr != m_pDevice &&
+            SUCCEEDED(m_pDevice.As(&dxgiDevice)) &&
+            SUCCEEDED(dxgiDevice->GetAdapter(&adapter)) &&
+            SUCCEEDED(adapter.As(&adapter3)) &&
+            SUCCEEDED(adapter3->QueryVideoMemoryInfo(
+                0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &videoMemory)))
+        {
+            m_CachedGpuLocalUsageBytes = videoMemory.CurrentUsage;
+            m_CachedGpuLocalBudgetBytes = videoMemory.Budget;
+        }
+    }
+
+    Set_Counter(EProfilerCounter::ProcessPrivateBytes, m_CachedPrivateBytes);
+    Set_Counter(EProfilerCounter::ProcessWorkingSetBytes, m_CachedWorkingSetBytes);
+    Set_Counter(EProfilerCounter::GpuLocalUsageBytes, m_CachedGpuLocalUsageBytes);
+    Set_Counter(EProfilerCounter::GpuLocalBudgetBytes, m_CachedGpuLocalBudgetBytes);
 }

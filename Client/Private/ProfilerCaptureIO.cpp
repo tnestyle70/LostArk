@@ -32,6 +32,42 @@ namespace
 			"navigationExpandedNodes",
 			"navigationQueryMicroseconds",
 			"navigationPathCells",
+			"frameWaitMicroseconds",
+			"frameCadenceMicroseconds",
+			"frameUpdateMicroseconds",
+			"frameRenderMicroseconds",
+			"framePresentMicroseconds",
+			"pickingReadbackBytes",
+			"pickingReadbackMicroseconds",
+			"effectActiveOccurrences",
+			"effectActiveElements",
+			"effectFixedSteps",
+			"effectCatchupSteps",
+			"effectParticles",
+			"effectMeshParticles",
+			"effectTrailPoints",
+			"effectSpawned",
+			"effectRejected",
+			"effectSuppressed",
+			"effectActualDraws",
+			"effectDynamicUploadBytes",
+			"animationCharacters",
+			"animationChannels",
+			"animationBones",
+			"animationTimelineBuilds",
+			"animationCorrectionSeeks",
+			"animationPaletteUploadBytes",
+			"mapLightsSubmitted",
+			"mapLightsCulled",
+			"networkInboundFrames",
+			"networkEventsApplied",
+			"networkSnapshotsApplied",
+			"audioFirstLoads",
+			"audioFirstLoadMicroseconds",
+			"processPrivateBytes",
+			"processWorkingSetBytes",
+			"gpuLocalUsageBytes",
+			"gpuLocalBudgetBytes",
 	};
 
 	string EscapeJson(const string& Value)
@@ -78,6 +114,15 @@ bool_t Client::CProfilerCaptureIO::Save_Json(
 	const filesystem::path& OutputPath,
 	string* pOutError)
 {
+	return Save_Json(Snapshot, {}, OutputPath, pOutError);
+}
+
+bool_t Client::CProfilerCaptureIO::Save_Json(
+	const Engine::FProfilerCaptureSnapshot& Snapshot,
+	const PROFILER_CAPTURE_METADATA& Metadata,
+	const filesystem::path& OutputPath,
+	string* pOutError)
+{
 	if (OutputPath.empty())
 	{
 		SetError(pOutError, "Profiler output path is empty.");
@@ -107,7 +152,34 @@ bool_t Client::CProfilerCaptureIO::Save_Json(
 
 	Stream << fixed << setprecision(6);
 	Stream << "{\n";
-	Stream << "  \"schema\": \"LostArkProfilerCapture.v1\",\n";
+	Stream << "  \"schema\": \"LostArkProfilerCapture.v2\",\n";
+	Stream << "  \"metadata\": {\n";
+	Stream << "    \"processId\": " << Metadata.iProcessId << ",\n";
+	Stream << "    \"clientSlot\": " << Metadata.iClientSlot << ",\n";
+	Stream << "    \"levelId\": " << Metadata.iLevelId << ",\n";
+	Stream << "    \"width\": " << Metadata.iWidth << ",\n";
+	Stream << "    \"height\": " << Metadata.iHeight << ",\n";
+	Stream << "    \"warmupFrames\": " << Metadata.iWarmupFrames << ",\n";
+	Stream << "    \"requestedFrames\": " << Metadata.iRequestedFrames << ",\n";
+	Stream << "    \"captureStartUtc100ns\": "
+		<< Metadata.iCaptureStartUtc100ns << ",\n";
+	Stream << "    \"captureEndUtc100ns\": "
+		<< Metadata.iCaptureEndUtc100ns << ",\n";
+	Stream << "    \"configuration\": \""
+		<< EscapeJson(Metadata.strConfiguration) << "\",\n";
+	Stream << "    \"runId\": \""
+		<< EscapeJson(Metadata.strRunId) << "\",\n";
+	Stream << "    \"characterClass\": \""
+		<< EscapeJson(Metadata.strCharacterClass) << "\",\n";
+	Stream << "    \"phase\": \"" << EscapeJson(Metadata.strPhase)
+		<< "\",\n";
+	Stream << "    \"buildRevision\": \""
+		<< EscapeJson(Metadata.strBuildRevision) << "\",\n";
+	Stream << "    \"dataRevision\": \""
+		<< EscapeJson(Metadata.strDataRevision) << "\"\n";
+	Stream << "  },\n";
+	Stream << "  \"tickFrequency\": " << Snapshot.TickFrequency << ",\n";
+	Stream << "  \"capturedFrames\": " << Snapshot.Frames.size() << ",\n";
 	Stream << "  \"droppedCpuScopes\": " << Snapshot.DroppedCpuScopes << ",\n";
 	Stream << "  \"droppedGpuFrames\": " << Snapshot.DroppedGpuFrames << ",\n";
 	Stream << "  \"scopeNames\": [";
@@ -125,6 +197,10 @@ bool_t Client::CProfilerCaptureIO::Save_Json(
 		const Engine::FProfilerFrame& Frame = Snapshot.Frames[iFrame];
 		Stream << "    {\n";
 		Stream << "      \"frameNumber\": " << Frame.FrameNumber << ",\n";
+		Stream << "      \"cpuFrameBeginTick\": "
+			<< Frame.CpuFrameBeginTick << ",\n";
+		Stream << "      \"cpuFrameEndTick\": "
+			<< Frame.CpuFrameEndTick << ",\n";
 		Stream << "      \"cpuFrameMs\": " << Frame.CpuFrameMs << ",\n";
 		Stream << "      \"gpuFrameMs\": " << Frame.GpuFrameMs << ",\n";
 		Stream << "      \"gpuValid\": " << (Frame.GpuValid ? "true" : "false") << ",\n";
@@ -178,11 +254,16 @@ bool_t Client::CProfilerCaptureIO::Save_Json(
 		return false;
 	}
 
-	filesystem::rename(TemporaryPath, OutputPath, Error);
-	if (Error)
+	if (FALSE == MoveFileExW(
+		TemporaryPath.c_str(),
+		OutputPath.c_str(),
+		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
+		const DWORD moveError = GetLastError();
 		filesystem::remove(TemporaryPath, Error);
-		SetError(pOutError, "Cannot finalize profiler JSON output.");
+		SetError(pOutError,
+			"Cannot finalize profiler JSON output (Windows error " +
+			std::to_string(moveError) + ").");
 		return false;
 	}
 

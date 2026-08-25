@@ -37,6 +37,42 @@ enum class EProfilerCounter : uint16_t
     NavigationExpandedNodes,
     NavigationQueryMicroseconds,
     NavigationPathCells,
+    FrameWaitMicroseconds,
+    FrameCadenceMicroseconds,
+    FrameUpdateMicroseconds,
+    FrameRenderMicroseconds,
+    FramePresentMicroseconds,
+    PickingReadbackBytes,
+    PickingReadbackMicroseconds,
+    EffectActiveOccurrences,
+    EffectActiveElements,
+    EffectFixedSteps,
+    EffectCatchupSteps,
+    EffectParticles,
+    EffectMeshParticles,
+    EffectTrailPoints,
+    EffectSpawned,
+    EffectRejected,
+    EffectSuppressed,
+    EffectActualDraws,
+    EffectDynamicUploadBytes,
+    AnimationCharacters,
+    AnimationChannels,
+    AnimationBones,
+    AnimationTimelineBuilds,
+    AnimationCorrectionSeeks,
+    AnimationPaletteUploadBytes,
+    MapLightsSubmitted,
+    MapLightsCulled,
+    NetworkInboundFrames,
+    NetworkEventsApplied,
+    NetworkSnapshotsApplied,
+    AudioFirstLoads,
+    AudioFirstLoadMicroseconds,
+    ProcessPrivateBytes,
+    ProcessWorkingSetBytes,
+    GpuLocalUsageBytes,
+    GpuLocalBudgetBytes,
     Count
 };
 
@@ -51,6 +87,8 @@ struct FProfilerScopeSample final
 struct FProfilerFrame final
 {
     uint64_t FrameNumber = 0;
+    uint64_t CpuFrameBeginTick = 0;
+    uint64_t CpuFrameEndTick = 0;
     double CpuFrameMs = 0.0;
     double GpuFrameMs = 0.0;
     bool GpuValid = false;
@@ -62,6 +100,7 @@ struct FProfilerFrame final
 
 struct FProfilerCaptureSnapshot final
 {
+    uint64_t TickFrequency = 0;
     std::vector<std::string> ScopeNames;
     std::vector<FProfilerFrame> Frames;
     uint64_t DroppedCpuScopes = 0;
@@ -86,7 +125,7 @@ class ENGINE_DLL CProfiler final
 public:
     static constexpr uint32_t GPU_QUERY_RING_SIZE = 8;
     static constexpr uint32_t GPU_READ_LATENCY = 4;
-    static constexpr size_t MAX_HISTORY_FRAMES = 1200;
+    static constexpr size_t MAX_HISTORY_FRAMES = 7200;
 
 public:
     CProfiler() = default;
@@ -107,6 +146,7 @@ public:
     void Set_Counter(EProfilerCounter counter, uint64_t value) noexcept;
 
     FProfilerCaptureSnapshot Snapshot() const;
+    FProfilerCaptureSnapshot Snapshot_Recent(size_t maximumFrames) const;
     bool Get_LiveStats(FProfilerLiveStats& outStats) const;
 
 private:
@@ -134,6 +174,7 @@ private:
     void End_GpuFrame(uint64_t frameNumber);
     void Resolve_GpuFrames(uint64_t currentFrame);
     void Commit_CurrentFrame();
+    void Sample_ProcessAndGpuMemory();
 
 private:
     ComPtr<ID3D11Device> m_pDevice;
@@ -154,6 +195,10 @@ private:
     std::unordered_map<std::string, uint32_t> m_ScopeNameLookup;
     uint64_t m_DroppedCpuScopes = 0;
     uint64_t m_DroppedGpuFrames = 0;
+    uint64_t m_CachedPrivateBytes = 0;
+    uint64_t m_CachedWorkingSetBytes = 0;
+    uint64_t m_CachedGpuLocalUsageBytes = 0;
+    uint64_t m_CachedGpuLocalBudgetBytes = 0;
 };
 
 class ENGINE_DLL CProfilerScope final

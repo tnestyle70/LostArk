@@ -53,6 +53,7 @@ public:
 	HRESULT Initialize();
 	void Update(f32_t fTimeDelta);
 	HRESULT Render();
+	HRESULT Present();
 
 #ifdef _DEBUG
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);

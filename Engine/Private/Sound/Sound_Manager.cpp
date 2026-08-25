@@ -1,5 +1,10 @@
 #include "Sound/Sound_Manager.h"
 
+#include "GameInstance.h"
+#include "Profiler.h"
+
+#include <chrono>
+
 #pragma push_macro("new")
 #undef new
 #include <fmod.hpp>
@@ -149,8 +154,19 @@ FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath
 
 	FMOD::Sound* pSound = nullptr;
 	const FMOD_MODE eMode = bLoop ? (FMOD_LOOP_NORMAL | FMOD_2D) : FMOD_DEFAULT;
+	const auto loadBegin = std::chrono::steady_clock::now();
 	const FMOD_RESULT eResult = m_pSystem->createSound(
 		strUtf8Path.c_str(), eMode, nullptr, &pSound);
+	const uint64_t loadMicroseconds = static_cast<uint64_t>(
+		std::chrono::duration_cast<std::chrono::microseconds>(
+			std::chrono::steady_clock::now() - loadBegin).count());
+	if (CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
+	{
+		pProfiler->Add_Counter(EProfilerCounter::AudioFirstLoads, 1u);
+		pProfiler->Add_Counter(
+			EProfilerCounter::AudioFirstLoadMicroseconds,
+			loadMicroseconds);
+	}
 	if (FMOD_OK != eResult || nullptr == pSound)
 	{
 		Write_FMOD_Error("System::createSound", eResult);

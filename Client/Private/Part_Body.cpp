@@ -2,6 +2,7 @@
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 
 CPart_Body::CPart_Body(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -52,6 +53,8 @@ void CPart_Body::Priority_Update(f32_t fTimeDelta)
 
 void CPart_Body::Update(f32_t fTimeDelta)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Animation.Character.Update");
 	/* The body drives the clock every frame; the logic only picks the clip. Parts
 	that borrow this palette read it at render time, so they need no ordering. */
 	m_pModelCom->Update_Animation(fTimeDelta);

@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Render_OutputContract.h"
+#include "Profiler.h"
 
 #include <fstream>
 #include <iomanip>
@@ -286,6 +287,14 @@ HRESULT CRenderer::Apply_RenderQualitySettings(
 
 HRESULT CRenderer::Draw()
 {
+	CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+	CProfilerScope drawScope(pProfiler, "Renderer.Draw");
+	const auto profileStage = [pProfiler](
+		const char* pName, auto&& operation) -> HRESULT
+	{
+		CProfilerScope scope(pProfiler, pName);
+		return operation();
+	};
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
 	auto FailFrame = [this, &Presentation](
 		const char* stage, const HRESULT hResult) -> HRESULT
@@ -296,7 +305,8 @@ HRESULT CRenderer::Draw()
 			RenderGroup.clear();
 		return FAILED(hResult) ? hResult : E_FAIL;
 	};
-	HRESULT hResult = Presentation.Submit_FrameProviders();
+	HRESULT hResult = profileStage("Renderer.SubmitProviders",
+		[&Presentation]() { return Presentation.Submit_FrameProviders(); });
 	if (FAILED(hResult))
 		return FailFrame("Submit_FrameProviders", hResult);
 	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -304,24 +314,31 @@ HRESULT CRenderer::Draw()
 	{
 		return FailFrame("Viewport", E_INVALIDARG);
 	}
-	hResult = Ready_ScenePostTargets(
-		static_cast<uint32_t>(vViewportSize.x),
-		static_cast<uint32_t>(vViewportSize.y));
+	hResult = profileStage("Renderer.ReadyTargets", [this, &vViewportSize]()
+		{
+			return Ready_ScenePostTargets(
+				static_cast<uint32_t>(vViewportSize.x),
+				static_cast<uint32_t>(vViewportSize.y));
+		});
 	if (FAILED(hResult))
 		return FailFrame("Ready_ScenePostTargets", hResult);
-	hResult = Render_Shadow();
+	hResult = profileStage("Renderer.Shadow",
+		[this]() { return Render_Shadow(); });
 	if (FAILED(hResult))
 		return FailFrame("Render_Shadow", hResult);
-	hResult = Render_NonBlend();
+	hResult = profileStage("Renderer.GBuffer",
+		[this]() { return Render_NonBlend(); });
 	if (FAILED(hResult))
 		return FailFrame("Render_NonBlend", hResult);
 	if (m_RenderQualitySettings.bSSAOEnabled)
 	{
-		hResult = Render_SSAO();
+		hResult = profileStage("Renderer.SSAO",
+			[this]() { return Render_SSAO(); });
 		if (FAILED(hResult))
 			return FailFrame("Render_SSAO", hResult);
 	}
-	hResult = Render_Lights();
+	hResult = profileStage("Renderer.Lights",
+		[this]() { return Render_Lights(); });
 	if (FAILED(hResult))
 		return FailFrame("Render_Lights", hResult);
 
@@ -338,13 +355,17 @@ HRESULT CRenderer::Draw()
 			RENDER_OUTPUT_CONTRACT::
 			SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION,
 			m_pContext.Get());
-		hSceneResult = Render_Priority();
+		hSceneResult = profileStage("Renderer.Priority",
+			[this]() { return Render_Priority(); });
 		if (SUCCEEDED(hSceneResult))
-			hSceneResult = Render_Combined();
+			hSceneResult = profileStage("Renderer.Combined",
+				[this]() { return Render_Combined(); });
 		if (SUCCEEDED(hSceneResult))
-			hSceneResult = Render_NonLight();
+			hSceneResult = profileStage("Renderer.NonLight",
+				[this]() { return Render_NonLight(); });
 		if (SUCCEEDED(hSceneResult))
-			hSceneResult = Render_Blend();
+			hSceneResult = profileStage("Renderer.Blend",
+				[this]() { return Render_Blend(); });
 
 		/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
 		hEndSceneResult = CGameInstance::Get().End_MRT();
@@ -354,29 +375,34 @@ HRESULT CRenderer::Draw()
 			FAILED(hSceneResult) ? "Render_Scene" : "End_MRT_SceneHDR",
 			FAILED(hSceneResult) ? hSceneResult : hEndSceneResult);
 
-	hResult = Render_ScreenPosts();
+	hResult = profileStage("Renderer.ScreenPosts",
+		[this]() { return Render_ScreenPosts(); });
 	if (FAILED(hResult))
 		return FailFrame("Render_ScreenPosts", hResult);
 
 	if (m_RenderQualitySettings.bBloomEnabled)
 	{
-		hResult = Render_Bloom();
+		hResult = profileStage("Renderer.Bloom",
+			[this]() { return Render_Bloom(); });
 		if (FAILED(hResult))
 			return FailFrame("Render_Bloom", hResult);
 	}
 
 	/* The one and only place tone mapping and gamma are applied. */
-	hResult = Render_Final();
+	hResult = profileStage("Renderer.Final",
+		[this]() { return Render_Final(); });
 	if (FAILED(hResult))
 		return FailFrame("Render_Final", hResult);
 
 	/* UI is authored in display space, so it stays out of the HDR target. */
-	hResult = Render_UI();
+	hResult = profileStage("Renderer.UI",
+		[this]() { return Render_UI(); });
 	if (FAILED(hResult))
 		return FailFrame("Render_UI", hResult);
 
 #ifdef _DEBUG
-	hResult = Render_Debug();
+	hResult = profileStage("Renderer.Debug",
+		[this]() { return Render_Debug(); });
 	if (FAILED(hResult))
 		return FailFrame("Render_Debug", hResult);
 #endif

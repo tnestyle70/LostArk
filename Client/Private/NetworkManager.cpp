@@ -2,6 +2,9 @@
 
 #include "DataJson.h"
 
+#include "GameInstance.h"
+#include "Profiler.h"
+
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
 
@@ -172,6 +175,14 @@ void CNetworkManager::Update()
 		//swap�� ���ؼ� frame�� �ؼ��ϴ� ���� network workter�� ���
 		//�� frame�� ���� �� �ִ�.
 		receivedFrames.swap(m_InboundFrames);
+	}
+
+	if (Engine::CProfiler* pProfiler =
+		CGameInstance::Get().Get_Profiler())
+	{
+		pProfiler->Add_Counter(
+			Engine::EProfilerCounter::NetworkInboundFrames,
+			static_cast<uint64_t>(receivedFrames.size()));
 	}
 	
 	for (const auto& frame : receivedFrames)
