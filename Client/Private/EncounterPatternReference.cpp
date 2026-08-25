@@ -245,6 +245,67 @@ namespace
 		std::unordered_set<std::string> actionKeys;
 		for (const DATA_JSON_VALUE& action : actions->Get_Array())
 		{
+			const DATA_JSON_VALUE* actionKind = action.Find("kind");
+			if (nullptr == actionKind || !actionKind->Is_String())
+				return false;
+			if (actionKind->Get_String() == "SPAWN_COMBAT_OBJECT_VOLLEY")
+			{
+				std::string trigger;
+				std::string targetId;
+				std::string targetingPolicy;
+				std::string layout;
+				uint32_t countPerResolvedTarget = 0u;
+				uint32_t maximumTotalObjects = 0u;
+				if (!Is_ExactObject(action,
+						{ "trigger", "kind", "targetId", "targetingPolicy",
+						  "countPerResolvedTarget", "layout", "radiusM",
+						  "startAngleDegrees", "angleStepDegrees", "allowOverlap",
+						  "maximumTotalObjects" }) ||
+					!Read_String(action, "trigger", false, trigger) ||
+					trigger != "ENTER" ||
+					!Read_String(action, "targetId", false, targetId) ||
+					!Is_StableId(targetId) ||
+					!Read_String(action, "targetingPolicy", false,
+						targetingPolicy) ||
+					targetingPolicy != "PER_ALIVE_PLAYER" ||
+					!Read_String(action, "layout", false, layout) ||
+					!Read_Unsigned(action, "countPerResolvedTarget", 8u,
+						countPerResolvedTarget) ||
+					0u == countPerResolvedTarget ||
+					!Read_Unsigned(action, "maximumTotalObjects", 32u,
+						maximumTotalObjects) ||
+					maximumTotalObjects < countPerResolvedTarget ||
+					!Is_FiniteNumber(action, "radiusM") ||
+					!Is_FiniteNumber(action, "startAngleDegrees") ||
+					!Is_FiniteNumber(action, "angleStepDegrees") ||
+					!Is_Boolean(action, "allowOverlap"))
+				{
+					return false;
+				}
+
+				const double radius = action.Find("radiusM")->Get_Number();
+				const double startAngle =
+					action.Find("startAngleDegrees")->Get_Number();
+				const double angleStep =
+					action.Find("angleStepDegrees")->Get_Number();
+				const bool_t allowOverlap =
+					action.Find("allowOverlap")->Get_Boolean();
+				const bool_t isSingle = 1u == countPerResolvedTarget;
+				if (radius < 0.0 ||
+					(isSingle && (layout != "SINGLE" || 0.0 != radius ||
+						0.0 != startAngle || 0.0 != angleStep || allowOverlap)) ||
+					(!isSingle && (layout != "RADIAL" || radius <= 0.0 ||
+						0.0 == angleStep || allowOverlap)))
+				{
+					return false;
+				}
+
+				const std::string actionKey = trigger + "\n" + targetId;
+				if (!actionKeys.insert(actionKey).second)
+					return false;
+				continue;
+			}
+
 			std::string trigger;
 			std::string kind;
 			std::string targetId;
@@ -277,13 +338,17 @@ namespace
 				validKind = targetId == "boss.gauge.shield";
 			else if (kind == "SPAWN_COMBAT_OBJECT")
 				validKind = trigger == "ENTER" && 1u == value;
+			else if (kind == "SET_GAMEPLAY_PHASE")
+				validKind = trigger == "ENTER" &&
+					targetId == "boss.phase.gameplay" && 2u == value;
 			if (!validKind || (trigger == "ENTER" ? 0u == value : 0u != value))
 				return false;
 
-			const std::string actionKey = trigger + "\n" + kind + "\n" + targetId;
+			const std::string actionKey = trigger + "\n" + targetId;
 			if (!actionKeys.insert(actionKey).second)
 				return false;
-			if (kind == "SPAWN_COMBAT_OBJECT")
+			if (kind == "SPAWN_COMBAT_OBJECT" ||
+				kind == "SET_GAMEPLAY_PHASE")
 				continue;
 
 			const std::string lifetimeKey = kind + "\n" + targetId;

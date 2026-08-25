@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
+#include <new>
 #include <utility>
 
 namespace
@@ -361,6 +363,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 	const SERVER_WORLD_ENTITY& boss,
 	const SERVER_COMBAT_OBJECT_LOCKED_TARGET* lockedTarget,
 	const BOSS_COMBAT_OBJECT_DEFINITION& definition,
+	const BOSS_COMBAT_OBJECT_VOLLEY* volley,
 	const CGameplayCatalog& catalog,
 	const std::uint32_t count,
 	const std::uint32_t serverTick,
@@ -377,7 +380,33 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		status = "Boss combat object spawn is invalid";
 		return false;
 	}
-	std::size_t replicatedCount = transaction.Objects.size();
+	if (nullptr != volley)
+	{
+		const bool radial = BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
+			volley->eLayout;
+		const bool single = BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE ==
+			volley->eLayout;
+		if (BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER !=
+				volley->ePolicy ||
+			count != volley->iCountPerResolvedTarget || count < 1u || count > 8u ||
+			volley->iMaximumTotalObjects < count ||
+			volley->iMaximumTotalObjects > 32u ||
+			!std::isfinite(volley->fRadiusM) || volley->fRadiusM < 0.f ||
+			!std::isfinite(volley->fStartAngleDegrees) ||
+			!std::isfinite(volley->fAngleStepDegrees) ||
+			(count > 1u && (!radial || volley->fRadiusM <= 0.f ||
+				0.f == volley->fAngleStepDegrees || volley->bAllowOverlap)) ||
+			(1u == count && (!single || 0.f != volley->fRadiusM ||
+				0.f != volley->fStartAngleDegrees ||
+				0.f != volley->fAngleStepDegrees || volley->bAllowOverlap)))
+		{
+			status = "Boss combat object volley layout is invalid";
+			return false;
+		}
+	}
+	std::size_t replicatedCount = static_cast<std::size_t>(std::count_if(
+		transaction.Objects.begin(), transaction.Objects.end(),
+		[](const SERVER_COMBAT_OBJECT& object) { return object.bReplicated; }));
 	for (const SERVER_COMBAT_OBJECT& existing : m_Objects)
 		replicatedCount += existing.bReplicated ? 1u : 0u;
 	if (replicatedCount + count > LostArk::Shared::MAX_COMBAT_OBJECTS_PER_SNAPSHOT)
@@ -415,9 +444,9 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			BOSS_COMBAT_OBJECT_KIND::MISSILE == definition.eKind ?
 			definition.fMaximumDistanceM : 0.f;
 		object.fRemainingMilliseconds = static_cast<float>(definition.iLifeMs);
-		/* Both locked origins place the object on the player it was dealt and
-		track that one player until the first pulse; the volley differs only in
-		how many objects the room stages. */
+		/* Both locked-origin policies follow their resolved player until the first
+		timed pulse. A typed radial volley keeps its stable ordinal offset while
+		following that player. */
 		if (BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_UNTIL_FIRST_PULSE ==
 				definition.eOriginPolicy ||
 			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
@@ -435,9 +464,22 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			}
 			object.iLockedTargetNetEntityId = lockedTarget->iNetEntityId;
 			object.bTrackLockedTargetUntilFirstPulse = true;
-			object.LiveState.CurrentPose.fPositionX = lockedTarget->fPositionX;
+			if (nullptr != volley &&
+				BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL == volley->eLayout)
+			{
+				const float radialDegrees = volley->fStartAngleDegrees +
+					volley->fAngleStepDegrees * static_cast<float>(ordinal);
+				const float radialRadians = radialDegrees * DEGREES_TO_RADIANS;
+				object.fLockedTargetOffsetX =
+					std::sin(radialRadians) * volley->fRadiusM;
+				object.fLockedTargetOffsetZ =
+					std::cos(radialRadians) * volley->fRadiusM;
+			}
+			object.LiveState.CurrentPose.fPositionX = lockedTarget->fPositionX +
+				object.fLockedTargetOffsetX;
 			object.LiveState.CurrentPose.fPositionY = lockedTarget->fPositionY;
-			object.LiveState.CurrentPose.fPositionZ = lockedTarget->fPositionZ;
+			object.LiveState.CurrentPose.fPositionZ = lockedTarget->fPositionZ +
+				object.fLockedTargetOffsetZ;
 		}
 		else
 		{
@@ -486,7 +528,17 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			object.Hits.push_back(std::move(hit));
 		}
 		object.LiveState.PreviousPose = object.LiveState.CurrentPose;
-		transaction.Objects.push_back(std::move(object));
+		try
+		{
+			if (object.bReplicated)
+				transaction.Spawned.push_back(To_SpawnedMessage(object));
+			transaction.Objects.push_back(std::move(object));
+		}
+		catch (const std::bad_alloc&)
+		{
+			status = "Boss combat object transaction allocation failed";
+			return false;
+		}
 	}
 	return true;
 }
@@ -495,16 +547,38 @@ bool LostArk::Server::CCombatObjectRuntime::Commit(
 	SERVER_COMBAT_OBJECT_TRANSACTION&& transaction)
 {
 	if (transaction.iExpectedRevision != m_iRevision ||
-		m_Objects.size() + transaction.Objects.size() > MAX_SERVER_COMBAT_OBJECTS)
+		m_Objects.size() + transaction.Objects.size() > MAX_SERVER_COMBAT_OBJECTS ||
+		transaction.Spawned.size() != static_cast<std::size_t>(std::count_if(
+			transaction.Objects.begin(), transaction.Objects.end(),
+			[](const SERVER_COMBAT_OBJECT& object)
+			{ return object.bReplicated; })))
 	{
 		return false;
 	}
-	for (SERVER_COMBAT_OBJECT& object : transaction.Objects)
+	std::vector<SERVER_COMBAT_OBJECT> stagedObjects;
+	std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED> stagedSpawned;
+	try
 	{
-		if (object.bReplicated)
-			m_PendingSpawned.push_back(To_SpawnedMessage(object));
-		m_Objects.push_back(std::move(object));
+		stagedObjects = m_Objects;
+		stagedSpawned = m_PendingSpawned;
+		stagedObjects.reserve(m_Objects.size() + transaction.Objects.size());
+		stagedSpawned.reserve(
+			m_PendingSpawned.size() + transaction.Spawned.size());
+		stagedObjects.insert(
+			stagedObjects.end(),
+			std::make_move_iterator(transaction.Objects.begin()),
+			std::make_move_iterator(transaction.Objects.end()));
+		stagedSpawned.insert(
+			stagedSpawned.end(),
+			std::make_move_iterator(transaction.Spawned.begin()),
+			std::make_move_iterator(transaction.Spawned.end()));
 	}
+	catch (const std::bad_alloc&)
+	{
+		return false;
+	}
+	m_Objects.swap(stagedObjects);
+	m_PendingSpawned.swap(stagedSpawned);
 	m_iNextCombatObjectId = transaction.iNextCombatObjectId;
 	++m_iRevision;
 	if (0u == m_iRevision)
@@ -561,11 +635,11 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				if (IsDamageable(*target))
 				{
 					object.LiveState.CurrentPose.fPositionX =
-						target->fPositionX;
+						target->fPositionX + object.fLockedTargetOffsetX;
 					object.LiveState.CurrentPose.fPositionY =
 						target->fPositionY;
 					object.LiveState.CurrentPose.fPositionZ =
-						target->fPositionZ;
+						target->fPositionZ + object.fLockedTargetOffsetZ;
 				}
 			}
 		}

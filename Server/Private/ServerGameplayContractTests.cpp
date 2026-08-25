@@ -735,7 +735,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findStage("VALTAN_CENTER_GRAB_COUNTER_64", "COUNTER_WINDOW");
 		const bool reactiveTopologyExact = nullptr != patterns &&
 			33u == patterns->size() && 131u == valtanStageCount &&
-			24u == valtanStageActionCount &&
+			25u == valtanStageActionCount &&
 			141u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&
 			2u == parryStance->Branches.size() &&
@@ -827,7 +827,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			hasBranch(centerCounter, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
 				"valtan.mechanic.center-grab-counter-64.failed-charge");
 		tests.Require(reactiveTopologyExact,
-			"Load all 131 current Valtan stages with the exact 24 actions and 141 runtime branches");
+			"Load all 131 current Valtan stages with the exact 25 actions and 141 runtime branches");
 		tests.Require(
 			nullptr != fourSlashes && 3u == fourSlashes->iHitCount &&
 			0u == fourSlashes->iHitDelayMs &&
@@ -841,16 +841,32 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				fourSlashSpin->HitOffsetsMs &&
 			fourSlashes->bWallContact && fourSlashSpin->bWallContact,
 			"Compile the rejoined four-slash explicit Server hit schedule exactly");
+		const bool hasExactHighJumpVolley = nullptr != highJumpAirborne &&
+			1u == highJumpAirborne->Actions.size() &&
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
+				highJumpAirborne->Actions.front().eTrigger &&
+			BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY ==
+				highJumpAirborne->Actions.front().eKind &&
+			"combatobject.valtan.high-jump.target-axe" ==
+				highJumpAirborne->Actions.front().strTargetId &&
+			1u == highJumpAirborne->Actions.front().iValue &&
+			0u == highJumpAirborne->Actions.front().iDurationMs &&
+			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER ==
+				highJumpAirborne->Actions.front().Volley.ePolicy &&
+			1u == highJumpAirborne->Actions.front().Volley.iCountPerResolvedTarget &&
+			BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE ==
+				highJumpAirborne->Actions.front().Volley.eLayout &&
+			0.f == highJumpAirborne->Actions.front().Volley.fRadiusM &&
+			0.f == highJumpAirborne->Actions.front().Volley.fStartAngleDegrees &&
+			0.f == highJumpAirborne->Actions.front().Volley.fAngleStepDegrees &&
+			!highJumpAirborne->Actions.front().Volley.bAllowOverlap &&
+			32u == highJumpAirborne->Actions.front().Volley.iMaximumTotalObjects;
 		tests.Require(
 			nullptr != highJumpTakeoff &&
 			1933u == highJumpTakeoff->iDurationMs &&
 			nullptr != highJumpAirborne &&
 			6000u == highJumpAirborne->iDurationMs &&
-			1u == highJumpAirborne->Actions.size() &&
-			hasAction(highJumpAirborne,
-				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
-				BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT,
-				"combatobject.valtan.high-jump.target-axe", 1u) &&
+			hasExactHighJumpVolley &&
 			nullptr != highJumpLand && 3200u == highJumpLand->iDurationMs &&
 			nullptr != highJumpRecovery &&
 			400u == highJumpRecovery->iDurationMs &&
@@ -4075,34 +4091,45 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				phaseTwoBoss, PHASE_REQUIREMENT::ANY),
 			"Offer a phase-gated pattern only in the phase it names");
 
-		/* The threshold has to name the bar its own transition mechanic fires on,
-		or the boss would keep offering phase-one patterns long past the cutscene. */
-		SERVER_WORLD_ENTITY thresholdBoss{};
-		thresholdBoss.iMaximumHp = 60000u;
-		thresholdBoss.iMaximumHealthBars = 160u;
+		/* Valtan does not infer phase two from HP. The authored 109 mechanic owns
+		the one IMPACT ENTER phase edge that advances the runtime. */
 		const BOSS_RUNTIME_PROFILE* thresholdProfile =
 			catalog.Find_Boss("BOSS_VALTAN");
 		const auto* thresholdPatterns =
 			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
 		std::uint32_t transitionBar = 0u;
+		bool hasImpactPhaseAction = false;
 		if (nullptr != thresholdPatterns)
 		{
 			for (const BOSS_PATTERN_DEFINITION& pattern : *thresholdPatterns)
 			{
 				if (pattern.strPatternId == "VALTAN_ARENA_BREAK_109")
+				{
 					transitionBar = pattern.iTriggerHealthBar;
+					for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+					{
+						if (stage.strStageId != "IMPACT")
+							continue;
+						for (const BOSS_PATTERN_STAGE_ACTION& action : stage.Actions)
+						{
+							hasImpactPhaseAction = hasImpactPhaseAction ||
+								BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE ==
+									action.eKind &&
+								BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
+									action.eTrigger &&
+								2u == action.iValue;
+						}
+					}
+				}
 			}
 		}
-		thresholdBoss.iCurrentHp = nullptr == thresholdProfile ? 0u :
-			static_cast<std::uint32_t>(
-				static_cast<std::uint64_t>(thresholdBoss.iMaximumHp) *
-				thresholdProfile->iPhaseTwoHpPercent / 100u);
 		tests.Require(
-			nullptr != thresholdProfile && 0u != transitionBar &&
-			0u != thresholdBoss.iCurrentHp &&
-			transitionBar ==
-				CValtanBrain::Calculate_HealthBar(thresholdBoss),
-			"Advance to phase two on the bar the authored transition mechanic fires on");
+			nullptr != thresholdProfile &&
+			BOSS_PHASE_POLICY_KIND::AUTHORED_PATTERN_EVENT ==
+				thresholdProfile->PhasePolicy.eKind &&
+			0u == thresholdProfile->PhasePolicy.iThresholdPercent &&
+			109u == transitionBar && hasImpactPhaseAction,
+			"Advance to phase two only on the authored 109 IMPACT edge");
 
 		/* The wipe is the one mechanic the raid has to answer instead of racing
 		down, so it is the only pattern authored invulnerable and it fires on the
@@ -4754,7 +4781,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	valtan.iCurrentHp = 30000;
 	brain.Update(valtan, players, catalog, navigation, 1.f / 30.f, 171,
 		{}, valtanDamageEvents);
-	tests.Require(2u == valtan.iPhase, "Advance Valtan phase from server HP");
+	tests.Require(1u == valtan.iPhase,
+		"Keep Valtan phase one until the authored 109 IMPACT ENTER edge");
 
 	{
 		/* Source cooldowns are selection gates, not display-only metadata. Run a
@@ -5218,7 +5246,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const std::vector<std::string> observedOrder =
 			observeOrder(rotationBoss, 3600u);
 		const BOSS_PATTERN_ROTATION_DEFINITION* introducedSpan =
-			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 160u);
+			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 1u, 160u);
 		bool observedOnlyWeightedPool = observedOrder.size() > 1u &&
 			"VALTAN_ENTRANCE_WHIRLWIND" == observedOrder.front();
 		if (nullptr == introducedSpan)
@@ -5229,38 +5257,64 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				index < observedOrder.size(); ++index)
 			{
 				observedOnlyWeightedPool = observedOnlyWeightedPool &&
-					introducedSpan->PatternIds.end() != std::find(
-						introducedSpan->PatternIds.begin(),
-						introducedSpan->PatternIds.end(), observedOrder[index]);
+					introducedSpan->Candidates.end() != std::find_if(
+						introducedSpan->Candidates.begin(),
+						introducedSpan->Candidates.end(),
+						[&observedOrder, index](
+							const BOSS_PATTERN_ROTATION_CANDIDATE& candidate)
+						{ return candidate.bEnabled && candidate.strPatternId ==
+							observedOrder[index]; });
 			}
 		}
 		tests.Require(
 			observedOnlyWeightedPool,
 			"Select Phase-1 normal patterns immediately from the exact weighted pool");
 		const BOSS_PATTERN_ROTATION_DEFINITION* openingSpan =
-			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 160u);
+			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 1u, 160u);
 		const BOSS_PATTERN_ROTATION_DEFINITION* secondSpan =
-			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 129u);
+			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 1u, 129u);
+		const BOSS_PATTERN_ROTATION_DEFINITION* firstLegacySpan =
+			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 2u, 108u);
+		const bool managedPoolsMatch = nullptr != openingSpan &&
+			nullptr != secondSpan &&
+			openingSpan->Candidates.size() == secondSpan->Candidates.size() &&
+			std::equal(
+				openingSpan->Candidates.begin(), openingSpan->Candidates.end(),
+				secondSpan->Candidates.begin(),
+				[](const BOSS_PATTERN_ROTATION_CANDIDATE& left,
+					const BOSS_PATTERN_ROTATION_CANDIDATE& right)
+				{
+					return left.strPatternId == right.strPatternId &&
+						left.iSelectionWeight == right.iSelectionWeight &&
+						left.bEnabled == right.bEnabled;
+				});
 		tests.Require(
 			nullptr != openingSpan &&
 			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
 				openingSpan->eSelectionMode &&
 			160u == openingSpan->iFromHealthBar &&
 			130u == openingSpan->iToHealthBar &&
-			5u == openingSpan->PatternIds.size() &&
+			5u == openingSpan->Candidates.size() &&
 			openingSpan == catalog.Find_BossPatternRotation(
-				"ENCOUNTER_VALTAN", 131u) &&
+				"ENCOUNTER_VALTAN", 1u, 131u) &&
 			nullptr != secondSpan && openingSpan != secondSpan &&
 			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
 				secondSpan->eSelectionMode &&
 			130u == secondSpan->iFromHealthBar &&
 			109u == secondSpan->iToHealthBar &&
 			secondSpan == catalog.Find_BossPatternRotation(
-				"ENCOUNTER_VALTAN", 130u) &&
-			openingSpan->PatternIds == secondSpan->PatternIds &&
+				"ENCOUNTER_VALTAN", 1u, 130u) &&
+			managedPoolsMatch &&
 			nullptr == catalog.Find_BossPatternRotation(
-				"ENCOUNTER_VALTAN", 1u),
-			"Keep both Phase-1 health bands on the same five-pattern weighted pool");
+				"ENCOUNTER_VALTAN", 2u, 159u) &&
+			nullptr != firstLegacySpan &&
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::
+				ORDERED_INTRO_THEN_WEIGHTED == firstLegacySpan->eSelectionMode &&
+			firstLegacySpan == catalog.Find_BossPatternRotation(
+				"ENCOUNTER_VALTAN", 1u, 108u) &&
+			nullptr == catalog.Find_BossPatternRotation(
+				"ENCOUNTER_VALTAN", 1u, 1u),
+			"Use phase-owned managed pools while preserving post-109 legacy order");
 		SERVER_WORLD_ENTITY scriptedBoss = makeEntranceBoss();
 		scriptedBoss.bScriptedPatternPlayback = true;
 		observeOrder(scriptedBoss, 400u);
@@ -5308,8 +5362,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raider.iCurrentHp = 5000u;
 			raider.iMaximumHp = 5000u;
 			raider.isCombatReady = true;
-			raider.fPositionX = 150.f + static_cast<float>(index);
-			raider.fPositionZ = -122.f;
+			raider.fPositionX = 137.f + static_cast<float>(index);
+			raider.fPositionZ = -113.5f;
 			volleyRoom.m_Players.emplace(raider.iPlayerId, raider);
 		}
 		/* One raider is down, so the volley must pass them over. */
@@ -5330,6 +5384,76 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			3u == lockedTargets.size() &&
 			0u == lockedTargets.count(8203u),
 			"Deal one sky axe to every living raider and none to the dead");
+		for (auto& [raiderId, raider] : volleyRoom.m_Players)
+		{
+			(void)raiderId;
+			if (0u != raider.iCurrentHp)
+				raider.fPositionZ += 0.5f;
+		}
+		std::vector<DAMAGE_EVENT> volleyDamageEvents;
+		volleyRoom.m_CombatObjectRuntime.Update(
+			volleyRoom.m_Players, volleyRoom.m_WorldEntities,
+			volleyRoom.m_GameplayCatalog, 1.f / 30.f, 901u,
+			volleyDamageEvents);
+		const auto followsResolvedTarget = [&volleyRoom](
+			const SERVER_COMBAT_OBJECT& object)
+		{
+			const auto target = std::find_if(
+				volleyRoom.m_Players.begin(), volleyRoom.m_Players.end(),
+				[&object](const auto& entry)
+				{ return entry.second.iNetEntityId == object.iLockedTargetNetEntityId; });
+			return volleyRoom.m_Players.end() != target &&
+				std::abs(object.LiveState.CurrentPose.fPositionX -
+					target->second.fPositionX) < 0.001f &&
+				std::abs(object.LiveState.CurrentPose.fPositionZ -
+					target->second.fPositionZ) < 0.001f;
+		};
+		tests.Require(std::all_of(
+			liveObjects.begin(), liveObjects.end(), followsResolvedTarget),
+			"Follow each resolved sky-axe target until its first timed pulse");
+		for (std::uint32_t tick = 902u; tick <= 936u; ++tick)
+		{
+			volleyRoom.m_CombatObjectRuntime.Update(
+				volleyRoom.m_Players, volleyRoom.m_WorldEntities,
+				volleyRoom.m_GameplayCatalog, 1.f / 30.f, tick,
+				volleyDamageEvents);
+		}
+		std::vector<SERVER_COMBAT_OBJECT_POSE> firstPulsePoses;
+		for (const SERVER_COMBAT_OBJECT& object : liveObjects)
+			firstPulsePoses.push_back(object.LiveState.CurrentPose);
+		for (auto& [raiderId, raider] : volleyRoom.m_Players)
+		{
+			(void)raiderId;
+			if (0u != raider.iCurrentHp)
+				raider.fPositionZ += 5.f;
+		}
+		volleyRoom.m_CombatObjectRuntime.Update(
+			volleyRoom.m_Players, volleyRoom.m_WorldEntities,
+			volleyRoom.m_GameplayCatalog, 1.f / 30.f, 937u,
+			volleyDamageEvents);
+		bool fixedAfterFirstPulse = firstPulsePoses.size() == liveObjects.size();
+		for (std::size_t index = 0u;
+			fixedAfterFirstPulse && index < liveObjects.size(); ++index)
+		{
+			fixedAfterFirstPulse =
+				std::abs(firstPulsePoses[index].fPositionX -
+					liveObjects[index].LiveState.CurrentPose.fPositionX) < 0.001f &&
+				std::abs(firstPulsePoses[index].fPositionZ -
+					liveObjects[index].LiveState.CurrentPose.fPositionZ) < 0.001f;
+		}
+		tests.Require(fixedAfterFirstPulse,
+			"Freeze each sky axe at its first timed-pulse position");
+		const std::uint32_t phaseRevisionBefore =
+			volleyBoss->BossCombat.iStateRevision;
+		const bool committedAuthoredPhase =
+			volleyRoom.Apply_BossPatternStageActions(
+				*volleyBoss, "VALTAN_ARENA_BREAK_109",
+				"valtan.mechanic.arena-break-109.impact",
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 938u);
+		tests.Require(
+			committedAuthoredPhase && 2u == volleyBoss->iPhase &&
+			phaseRevisionBefore < volleyBoss->BossCombat.iStateRevision,
+			"Commit phase two atomically on the authored 109 IMPACT ENTER edge");
 	}
 
 	SERVER_WORLD_ENTITY openingChargeBoss{};
@@ -5798,7 +5922,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			bootstrap <<
 				"LOSTARK_GAMEPLAY_BOOTSTRAP\t" << GAMEPLAY_BOOTSTRAP_VERSION <<
 				"\t19\n"
-				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\tHEALTH_PERCENT_THRESHOLD\t50\n"
 				"BOSSPART\tBOSS_VALTAN\tboss.part.valtan.arm-armor\t2\t1000\t15\tGROGGY_ONLY\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t2\tANY\tANY\t0\n"
@@ -5886,7 +6010,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				bootstrap <<
 					"LOSTARK_GAMEPLAY_BOOTSTRAP\t" << GAMEPLAY_BOOTSTRAP_VERSION <<
 					'\t' << (16u + Count_TestTimelineRows(timelineVariant)) << '\n' <<
-					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\tHEALTH_PERCENT_THRESHOLD\t50\n"
 					"BOSSPART\tBOSS_VALTAN\tboss.part.valtan.arm-armor\t2\t1000\t15\tGROGGY_ONLY\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t2\tANY\tANY\t0\n"
@@ -5970,7 +6094,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				bootstrap << "LOSTARK_GAMEPLAY_BOOTSTRAP\t" << version << "\t" <<
 					(15u + VALID_VALTAN_TIMELINE_ROW_COUNT +
 					 sourceRows.size() + wallRows.size()) << "\n"
-					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\tHEALTH_PERCENT_THRESHOLD\t50\n"
 					"BOSSPART\tBOSS_VALTAN\tboss.part.valtan.arm-armor\t2\t1000\t15\tGROGGY_ONLY\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t2\tANY\tANY\t0\n"
@@ -6055,7 +6179,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					GAMEPLAY_BOOTSTRAP_VERSION << "\t" <<
 					(16u + VALID_VALTAN_TIMELINE_ROW_COUNT +
 						hitOffsetRows.size()) << "\n"
-					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\tHEALTH_PERCENT_THRESHOLD\t50\n"
 					"BOSSPART\tBOSS_VALTAN\tboss.part.valtan.arm-armor\t2\t1000\t15\tGROGGY_ONLY\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t2\tANY\tANY\t0\n"
@@ -6083,18 +6207,34 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					nullptr : previous);
 			return loaded;
 		};
-		const bool acceptedContactDelay = loadWithPatternStageRows(
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t600\tdamage.player.34120\t2\t242\t1\t2000\n"
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t1\tSPAWN\tvaltan.test.spawn\tWINDUP\t500\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n"
-				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
-				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
-				"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
-				"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n",
-				{});
+		const std::string acceptedContactDelayRows =
+			"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t600\tdamage.player.34120\t2\t242\t1\t2000\n"
+			"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t1\tSPAWN\tvaltan.test.spawn\tWINDUP\t500\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n"
+			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
+			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
+			"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
+			"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+			"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n";
+		const bool acceptedContactDelay =
+			loadWithPatternStageRows(acceptedContactDelayRows, {});
 		tests.Require(
 			acceptedContactDelay,
 			"Accept a stage whose first hit lands at its authored contact delay");
+		std::string invalidLegacySpawnCountRows = acceptedContactDelayRows;
+		const std::string validLegacySpawnSuffix =
+			"SPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n";
+		const std::size_t legacySpawnSuffixAt =
+			invalidLegacySpawnCountRows.find(validLegacySpawnSuffix);
+		if (std::string::npos != legacySpawnSuffixAt)
+		{
+			invalidLegacySpawnCountRows.replace(
+				legacySpawnSuffixAt, validLegacySpawnSuffix.size(),
+				"SPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t2\t0\n");
+		}
+		tests.Require(
+			std::string::npos != legacySpawnSuffixAt &&
+			!loadWithPatternStageRows(invalidLegacySpawnCountRows, {}),
+			"Reject legacy combat-object action counts above one");
 		tests.Require(
 			!loadWithPatternStageRows(
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t1000\tdamage.player.34120\t2\t242\t1\t2000\n"
@@ -6201,7 +6341,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				bootstrap <<
 					"LOSTARK_GAMEPLAY_BOOTSTRAP\t" << GAMEPLAY_BOOTSTRAP_VERSION <<
 					'\t' << (19u + VALID_VALTAN_TIMELINE_ROW_COUNT) << "\n"
-					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\tHEALTH_PERCENT_THRESHOLD\t50\n"
 					"BOSSPART\tBOSS_VALTAN\tboss.part.valtan.arm-armor\t2\t1000\t15\tGROGGY_ONLY\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t2\tANY\tANY\t0\n"

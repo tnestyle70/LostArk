@@ -382,6 +382,7 @@ namespace LostArk::Server
 			BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
 			std::uint32_t serverTick,
 			SERVER_BOSS_COMBAT_STATE& stagedCombat,
+			std::uint8_t& stagedGameplayPhase,
 			SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction);
 		bool Broadcast_CombatObjectLifecycle();
 		void Drain_BossCombatEvents();
