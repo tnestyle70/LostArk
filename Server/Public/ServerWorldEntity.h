@@ -22,6 +22,48 @@ namespace LostArk::Server
 		std::uint32_t iReadyTick = 0;
 	};
 
+	enum class SERVER_BOSS_MECHANIC_STATE : std::uint8_t
+	{
+		QUEUED,
+		ACTIVE,
+		COMPLETED,
+		FAILED_REQUIRES_RESET
+	};
+
+	enum class SERVER_BOSS_MECHANIC_FAILURE : std::uint8_t
+	{
+		NONE,
+		MISSING_PATTERN_DEFINITION,
+		NO_VALID_TARGET,
+		INVALID_RUNNING_DEFINITION,
+		STAGE_TRANSITION_PREFLIGHT,
+		STAGE_TRANSITION_COMMIT,
+		BOSS_DIED
+	};
+
+	/* One health-bar mechanic is armed exactly once by stable pattern ID. The
+	legacy PendingPatternIds queue remains the execution queue, while this
+	bounded ledger explains whether that occurrence is waiting, running, done,
+	or unsafe to retry without resetting the encounter. */
+	struct SERVER_BOSS_MECHANIC_OCCURRENCE final
+	{
+		std::string strPatternId;
+		/* A forced mechanic is an occurrence when the threshold is crossed, not
+		an ID to reinterpret against whichever catalog happens to be active when
+		the current pattern finishes. Keep that immutable definition generation
+		until this queued/running occurrence reaches a terminal state. */
+		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision;
+		SERVER_BOSS_MECHANIC_STATE eState =
+			SERVER_BOSS_MECHANIC_STATE::QUEUED;
+		SERVER_BOSS_MECHANIC_FAILURE eFailure =
+			SERVER_BOSS_MECHANIC_FAILURE::NONE;
+		std::uint32_t iTriggerHealthBar = 0u;
+		std::uint32_t iQueuedTick = 0u;
+		std::uint32_t iStartedTick = 0u;
+		std::uint32_t iFinishedTick = 0u;
+		std::uint32_t iPatternSequence = 0u;
+	};
+
 	/* The live state of one authored boss armour plate. iPlateIndex is copied
 	from the profile and never changes, so it stays the slot a broken plate is
 	named by. iRemainingDurability only falls inside a GROGGY stage and stops at
@@ -106,6 +148,9 @@ namespace LostArk::Server
 		std::uint32_t iPatternRecoveryMs = 0;
 		std::uint32_t iPatternSequence = 0;
 		std::uint32_t iPatternStageIndex = 0;
+		/* Immutable gameplay bootstrap identity pinned when this entity is
+		created and refreshed at each boss pattern occurrence boundary. */
+		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 		std::uint32_t iPatternStageDurationMs = 0;
 		/* First nonzero Server tick on which this stage is evaluated. Tick zero is
 		the process-wide reserved sentinel, so wrap advances UINT32_MAX -> 1. */
@@ -152,6 +197,12 @@ namespace LostArk::Server
 		std::uint32_t iMaximumHealthBars = 1;
 		std::uint32_t iLastEvaluatedHealthBar = 1;
 		std::uint8_t iPhase = 1;
+		/* Room-local immutable-generation epoch last used to evaluate health
+		thresholds. It is distinct from PinnedDefinitionRevision: a running A
+		occurrence executes from A while new crossings are evaluated from active B.
+		The room fails closed before this compact epoch can wrap, and placing it
+		here consumes the phase field's existing alignment gap. */
+		std::uint16_t iLastHealthMechanicGenerationEpoch = 0u;
 		SERVER_BOSS_COMBAT_STATE BossCombat;
 		float fEngageDistance = 0.f;
 		float fMoveSpeed = 0.f;
@@ -183,6 +234,9 @@ namespace LostArk::Server
 		bool isEstherSummon = false;
 		std::uint32_t iEstherStrikeMs = 0;
 		std::uint32_t iNextPathReplanTick = 0;
+		BOSS_PHASE_POLICY PhasePolicy;
+		/* Deprecated fixture mirror retained until callers have migrated to the
+		typed PhasePolicy. Product runtime never reads this field. */
 		std::uint32_t iPhaseTwoHpPercent = 0;
 		/* Staged from the boss profile at spawn, in authored plate order. Empty
 		for every entity that wears no armour. */
@@ -198,6 +252,8 @@ namespace LostArk::Server
 		std::vector<SERVER_BOSS_PATTERN_COOLDOWN> PatternCooldowns;
 		std::vector<std::string> PendingPatternIds;
 		std::vector<std::string> TriggeredPatternIds;
+		std::vector<SERVER_BOSS_MECHANIC_OCCURRENCE> MechanicOccurrences;
+		bool bMechanicLedgerRequiresReset = false;
 		LostArk::Shared::NET_ENTITY_ID iTargetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		/* The authored pattern target is distinct from the nearest entity used to

@@ -1301,10 +1301,16 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             [
                 {
                     "trigger": "ENTER",
-                    "kind": "SPAWN_COMBAT_OBJECT",
+                    "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
                     "targetId": "combatobject.valtan.high-jump.target-axe",
-                    "value": 1,
-                    "durationMs": 0,
+                    "targetingPolicy": "PER_ALIVE_PLAYER",
+                    "layout": "SINGLE",
+                    "countPerResolvedTarget": 1,
+                    "radiusM": 0,
+                    "startAngleDegrees": 0,
+                    "angleStepDegrees": 0,
+                    "allowOverlap": False,
+                    "maximumTotalObjects": 32,
                 }
             ],
             stages["AIRBORNE"]["actions"],

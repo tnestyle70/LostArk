@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+	<ClInclude Include="..\Public\GameplayDataRevision.h" />
 	<ClInclude Include="..\Public\Gameplay\CombatCollisionContract.h" />
 	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h" />
     <ClInclude Include="..\Public\Network\NetworkIds.h" />
@@ -30,6 +31,7 @@
     <ClInclude Include="..\Public\Network\PacketWriter.h" />
   </ItemGroup>
   <ItemGroup>
+	<ClCompile Include="..\Private\GameplayDataRevision.cpp" />
 	<ClCompile Include="..\Private\Gameplay\CombatCollisionContract.cpp" />
     <ClCompile Include="..\Private\Network\PacketFrame.cpp" />
     <ClCompile Include="..\Private\Network\PacketMessages.cpp" />

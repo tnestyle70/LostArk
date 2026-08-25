@@ -5,10 +5,10 @@
 
 namespace LostArk::Shared
 {
-	/* 34 unites two independent v33 contracts merged together: main's
-	S2C_WORLD_ENTITY_SPAWNED strActionId and this branch's
-	PLAYER_ACTION_STATE::ESTHER_CAST. Either v33 build lacks one of them. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 34;
+	/* 36 adds the bounded Server-authoritative Valtan decision trace query.
+	35 introduced immutable gameplay data revisions, audition lifecycle, and
+	the Debug Hot Reload prepare/commit protocol. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 36;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -147,7 +147,25 @@ namespace LostArk::Shared
 
 		// Append-only room-owned combat-object lifecycle.
 		S2C_COMBAT_OBJECT_SPAWNED,
-		S2C_COMBAT_OBJECT_DESPAWNED
+		S2C_COMBAT_OBJECT_DESPAWNED,
+
+		// Versioned lifecycle edges supplement the existing immediate audition
+		// request/result pair; both tools can now correlate completion/abort.
+		S2C_VALTAN_AUDITION_LIFECYCLE,
+
+		// Debug-only immutable data revision two-phase commit. These packet types
+		// remain known in Release so an unsupported request can be rejected by
+		// typed policy instead of being treated as an unknown frame.
+		C2S_DATA_REVISION_PREPARE_REQUEST,
+		S2C_DATA_REVISION_PREPARE,
+		C2S_DATA_REVISION_PREPARE_RESPONSE,
+		S2C_DATA_REVISION_RESULT,
+
+		// Debug decision observatory. Release keeps both packet identities known
+		// and answers the query with REJECTED_RELEASE_BUILD rather than treating
+		// the frame as an incompatible protocol command.
+		C2S_VALTAN_DECISION_TRACE_QUERY,
+		S2C_VALTAN_DECISION_TRACE_RESPONSE
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -189,6 +207,13 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
 		case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
 		case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
+		case PACKET_TYPE::S2C_VALTAN_AUDITION_LIFECYCLE:
+		case PACKET_TYPE::C2S_DATA_REVISION_PREPARE_REQUEST:
+		case PACKET_TYPE::S2C_DATA_REVISION_PREPARE:
+		case PACKET_TYPE::C2S_DATA_REVISION_PREPARE_RESPONSE:
+		case PACKET_TYPE::S2C_DATA_REVISION_RESULT:
+		case PACKET_TYPE::C2S_VALTAN_DECISION_TRACE_QUERY:
+		case PACKET_TYPE::S2C_VALTAN_DECISION_TRACE_RESPONSE:
 		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
 		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
 		case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:

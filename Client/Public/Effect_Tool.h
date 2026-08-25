@@ -331,18 +331,6 @@ private:
 		uint32_t iOwningClipTimelineOffsetMs = 0u;
 	};
 
-	/* Effect Tool owns only its stable-ID Server audition transaction.  The
-	   legacy health-bar audition keeps its separate Level-owned result queue. */
-	struct VALTAN_SERVER_PATTERN_REQUEST final
-	{
-		uint32_t iSequence = 0u;
-		uint64_t iWorldInboundGeneration = 0u;
-		std::string strBossPlacementId;
-		std::string strPatternId;
-
-		bool_t Is_Active() const { return 0u != iSequence; }
-	};
-
     struct EFFECT_DATA_FILE_ENTRY final
     {
         std::string strAssetId;
@@ -983,8 +971,6 @@ private:
 	std::string m_strValtanPatternTreeStatus;
 	bool_t m_bValtanPatternTreeLoaded = false;
 	bool_t m_bValtanPatternTreeLoadAttempted = false;
-	VALTAN_SERVER_PATTERN_REQUEST m_PendingValtanServerPatternRequest;
-	uint32_t m_iNextValtanServerPatternRequestSequence = 1u;
 	std::string m_strValtanServerPatternStatusPatternId;
 	std::string m_strValtanServerPatternStatus;
 	VALTAN_PATTERN_PREVIEW_PATH m_eValtanDashAuthoringTimelinePath =

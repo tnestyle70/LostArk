@@ -17,7 +17,9 @@
 #include <thread>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
+#include <vector>
 
 
 class CNetworkManager final
@@ -25,6 +27,86 @@ class CNetworkManager final
 public:
 	static constexpr std::size_t MAX_REPLICATION_EVENT_QUEUE = 4096u;
 	static constexpr std::size_t MAX_INBOUND_FRAME_QUEUE = 4096u;
+	static constexpr std::size_t MAX_REVISION_CONTROL_QUEUE = 64u;
+	static constexpr std::size_t MAX_PRESENTATION_ALIAS_GENERATIONS = 16u;
+
+	struct PRESENTATION_ARTIFACT_BASELINE final
+	{
+		std::string strRelativePath;
+		std::string strLane;
+		std::string strSha256;
+		std::uint64_t iBytes = 0u;
+	};
+
+	/* The current Valtan tuning slice admits a candidate presentation revision
+	   only as a byte-identical alias of the bootstrap generation.  A candidate
+	   that changes any required Client lane remains fail-closed until that lane
+	   gains a real immutable loader. */
+	struct GAMEPLAY_REVISION_CLIENT_STATE final
+	{
+		/* Captured once at world admission. PREPARE compares candidates with
+		   this immutable view of the presentation generation that the world was
+		   admitted against; it must never re-label newly edited repository bytes
+		   as the already loaded generation. */
+		bool hasPresentationArtifactBaseline = false;
+		std::vector<PRESENTATION_ARTIFACT_BASELINE>
+			PresentationArtifactBaseline;
+		bool hasBootstrapPresentationRevision = false;
+		LostArk::Shared::GameplayDataRevision BootstrapPresentationRevision{};
+		LostArk::Shared::GameplayDataRevision ServerActiveRevision{};
+		std::vector<LostArk::Shared::GameplayDataRevision>
+			RequiredPinnedRevisions;
+		std::uint32_t iLatestTransactionSequence = 0u;
+		bool hasLatestPrepare = false;
+		LostArk::Shared::GameplayDataRevision LatestPrepareBaseRevision{};
+		LostArk::Shared::GameplayDataRevision LatestCandidateRevision{};
+		std::uint32_t iLatestRequiredPresentationLaneMask = 0u;
+		bool hasOutstandingPrepareRequest = false;
+		std::uint32_t iOutstandingPrepareRequestSequence = 0u;
+		LostArk::Shared::GameplayDataRevision
+			OutstandingPrepareCandidateRevision{};
+		/* A participant that rejected PREPARE still belongs to the Server's
+		   process-wide transaction and must consume its matching terminal ABORT.
+		   Keep this separate from the staged READY alias so a rejected overlapping
+		   transaction cannot discard an earlier legitimate stage. */
+		bool hasRejectedPrepareAwaitingAbort = false;
+		std::uint32_t iRejectedPrepareTransactionSequence = 0u;
+		LostArk::Shared::GameplayDataRevision RejectedPrepareBaseRevision{};
+		LostArk::Shared::GameplayDataRevision RejectedPrepareCandidateRevision{};
+		bool hasStagedPresentationAlias = false;
+		LostArk::Shared::GameplayDataRevision StagedPresentationAlias{};
+		std::uint32_t iStagedPresentationTransactionSequence = 0u;
+		std::uint32_t iStagedPresentationLaneMask = 0u;
+		std::vector<LostArk::Shared::GameplayDataRevision>
+			AvailablePresentationAliases;
+		LostArk::Shared::DATA_REVISION_PREPARE_STATUS eLatestPrepareResponse =
+			LostArk::Shared::DATA_REVISION_PREPARE_STATUS::NACK;
+		bool hasLatestResult = false;
+		LostArk::Shared::DATA_REVISION_RESULT eLatestResult =
+			LostArk::Shared::DATA_REVISION_RESULT::ABORTED;
+		std::string strLatestTransactionReason;
+		bool isPresentationIsolated = false;
+		std::string strIsolationReason;
+	};
+
+	/* One in-flight query and one retained trace keep the F1 observatory
+	bounded. UNCHANGED and typed rejection responses update the response status
+	without discarding the last real Server decision. */
+	struct VALTAN_DECISION_TRACE_CLIENT_STATE final
+	{
+		bool isQueryPending = false;
+		std::uint32_t iSubmittedRequestSequence = 0u;
+		std::string strSubmittedBossPlacementId;
+		std::uint64_t iSubmittedAfterTraceSequence = 0u;
+		bool hasLatestResponse = false;
+		std::uint32_t iLatestResponseRequestSequence = 0u;
+		LostArk::Shared::VALTAN_DECISION_TRACE_QUERY_RESULT eLatestResponse =
+			LostArk::Shared::VALTAN_DECISION_TRACE_QUERY_RESULT::NO_TRACE;
+		bool hasLatestTrace = false;
+		std::string strLatestBossPlacementId;
+		LostArk::Shared::GameplayDataRevision LatestDefinitionRevision{};
+		LostArk::Shared::VALTAN_DECISION_TRACE_WIRE LatestTrace{};
+	};
 
 	CNetworkManager() = default;
 	CNetworkManager(const CNetworkManager&) = delete;
@@ -125,6 +207,21 @@ public:
 		std::uint32_t requestSequence,
 		std::string_view bossPlacementId,
 		std::string_view patternId);
+	/* Debug Balance Tool starts one process-wide revision transaction through
+	   this typed boundary.  The Server remains authoritative for candidate
+	   admission, affected-room staging, and the final room-tick commit. */
+	bool Send_DataRevisionPrepareRequest(
+		const LostArk::Shared::C2S_DATA_REVISION_PREPARE_REQUEST& message);
+	/* Typed 2PC response boundary.  Client presentation staging never writes a
+	   packet directly and must report lane masks through this message. */
+	bool Send_DataRevisionPrepareResponse(
+		const LostArk::Shared::C2S_DATA_REVISION_PREPARE_RESPONSE& message);
+	/* Debug-only bounded observatory query. Release Server implementations keep
+	   the packet known and answer with REJECTED_RELEASE_BUILD. */
+	bool Send_ValtanDecisionTraceQuery(
+		std::uint32_t requestSequence,
+		std::string_view bossPlacementId,
+		std::uint64_t afterTraceSequence);
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
@@ -138,6 +235,8 @@ public:
 		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message);
 	bool Try_Consume_ValtanPatternAuditionByIdResult(
 		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message);
+	bool Try_Consume_ValtanAuditionLifecycle(
+		LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& message);
 
 	bool Try_Consume_ReplicationEvent(
 		Client::CLIENT_REPLICATION_EVENT& event);
@@ -156,6 +255,21 @@ public:
 		Get_LocalCharacterClass() const;
 	[[nodiscard]] bool Try_Get_LocalSpawn(
 		LostArk::Shared::S2C_PLAYER_SPAWNED& outSpawn) const;
+	[[nodiscard]] const GAMEPLAY_REVISION_CLIENT_STATE&
+		Get_GameplayRevisionState() const
+	{
+		return m_GameplayRevisionState;
+	}
+	[[nodiscard]] const VALTAN_DECISION_TRACE_CLIENT_STATE&
+		Get_ValtanDecisionTraceState() const
+	{
+		return m_ValtanDecisionTraceState;
+	}
+	[[nodiscard]] bool Try_Get_LatestValtanDecisionTrace(
+		LostArk::Shared::GameplayDataRevision& outDefinitionRevision,
+		LostArk::Shared::VALTAN_DECISION_TRACE_WIRE& outTrace) const;
+	[[nodiscard]] bool Is_PresentationRevisionAvailable(
+		const LostArk::Shared::GameplayDataRevision& revision) const;
 
 
 private:
@@ -164,6 +278,23 @@ private:
 		Client::CLIENT_REPLICATION_EVENT&& event);
 	void Fail_Protocol(int errorCode);
 	void Reset_WorldInboundState();
+	void Record_WorldRevisionSet(
+		const LostArk::Shared::GameplayDataRevision& activeRevision,
+		const std::vector<LostArk::Shared::GameplayDataRevision>&
+			requiredPinnedRevisions);
+	void Prune_PresentationAliases();
+	[[nodiscard]] bool Is_AnnouncedWorldRevision(
+		const LostArk::Shared::GameplayDataRevision& revision) const;
+	void Record_PresentationIsolation(
+		const LostArk::Shared::GameplayDataRevision& revision,
+		std::string_view context);
+	bool Stage_ByteIdenticalPresentationAlias(
+		const LostArk::Shared::S2C_DATA_REVISION_PREPARE& prepare,
+		std::string& status);
+	bool Commit_StagedPresentationAlias(
+		const LostArk::Shared::S2C_DATA_REVISION_RESULT& result,
+		std::string& status);
+	void Discard_StagedPresentationAlias() noexcept;
 	//���� worker �ϳ��� 4096-byte ���� ���۷� Server�� TCP byte stream�� �д´�.
 	void Receive_Loop(SOCKET serverSocket);
 	void Handle_Frame(const LostArk::Shared::PACKET_FRAME& frame);
@@ -227,6 +358,10 @@ private:
 		m_ValtanAuditionResults;
 	std::deque<LostArk::Shared::S2C_VALTAN_AUDITION_RESULT>
 		m_ValtanPatternAuditionByIdResults;
+	std::deque<LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE>
+		m_ValtanAuditionLifecycleEvents;
+	GAMEPLAY_REVISION_CLIENT_STATE m_GameplayRevisionState;
+	VALTAN_DECISION_TRACE_CLIENT_STATE m_ValtanDecisionTraceState;
 	std::uint64_t m_iWorldInboundGeneration = 1u;
 
 	bool m_hasPendingEnterAccepted = false;
