@@ -1111,10 +1111,16 @@ void Client::CHUDLayoutTool::Render_Canvas()
 				ImVec2 FireCorners[4];
 				Get_Rotated_Rect_Corners(vFireTopLeft, vFireBotRight, Slot.fRotation, FireCorners);
 
-				/* Base frame at full opacity, next frame dissolved on top by the blend factor. */
+				/* Base frame at full opacity, next frame dissolved on top by the blend factor. Routed
+				through Draw_Image_Quad (not a raw AddImageQuad) so Slot.bAnimationAdditive actually
+				applies here -- without it, an additive flipbook (SmeltGlow/CoreFlash/ShockwaveRing/
+				CompleteEffect, all baked on a near-black background meant to vanish under additive
+				blending) previews as an opaque black square in the Tool even though the same slot
+				renders correctly in-game via CHUDRuntimeView, which already respects this flag. */
 				ID3D11ShaderResourceView* pFrameA = Get_Or_Load_Texture(Frames[iFrameA]);
 				if (nullptr != pFrameA)
-					pDrawList->AddImageQuad(pFrameA, FireCorners[0], FireCorners[1], FireCorners[2], FireCorners[3]);
+					Draw_Image_Quad(pDrawList, pFrameA, FireCorners, IM_COL32(255, 255, 255, 255),
+						Slot.bAnimationAdditive, false);
 
 				if (iFrameB != iFrameA && fBlend > 0.f)
 				{
@@ -1122,8 +1128,8 @@ void Client::CHUDLayoutTool::Render_Canvas()
 					if (nullptr != pFrameB)
 					{
 						const int32_t iAlpha = static_cast<int32_t>(fBlend * 255.f);
-						pDrawList->AddImageQuad(pFrameB, FireCorners[0], FireCorners[1], FireCorners[2], FireCorners[3],
-							ImVec2(0, 0), ImVec2(1, 0), ImVec2(1, 1), ImVec2(0, 1), IM_COL32(255, 255, 255, iAlpha));
+						Draw_Image_Quad(pDrawList, pFrameB, FireCorners, IM_COL32(255, 255, 255, iAlpha),
+							Slot.bAnimationAdditive, false);
 					}
 				}
 			}
