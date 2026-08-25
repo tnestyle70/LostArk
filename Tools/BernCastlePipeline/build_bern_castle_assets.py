@@ -31,6 +31,7 @@ TEXTURE_PARAMETER_TO_SWITCH = {
     "diffuse": "--material-remap",
     "texture_basecolor": "--material-remap",
     "texture_albedo": "--material-remap",
+    "texture_cloud_mask": "--material-remap",
     "texture_normal": "--normal-remap",
     "normal": "--normal-remap",
     "texture_specular": "--specular-remap",
@@ -48,6 +49,47 @@ TEXTURE_PARAMETER_TO_SWITCH = {
     "texture_ao": "--ao-remap",
     "ao": "--ao-remap",
 }
+# Texture roles the cooked .wmodel has no slot for. MATERIAL_ENTRY_V2/V3 carry
+# baseColor/normal/specular/emissive/opacity (+orm/metallic/roughness/ao/mask),
+# so a water reflection or a second scrolling normal cannot be remapped into a
+# material slot without lying about what that slot means. These are copied
+# beside the model and recorded by role in the source receipt; the water
+# presentation document is what binds them at draw time.
+AUXILIARY_TEXTURE_PARAMETERS = {
+    "texture_reflection": "reflection",
+    "reflection": "reflection",
+    "detail_texture_normal": "detailNormal",
+    "texture_detail_normal": "detailNormal",
+    "texture_foam": "foam",
+    "foam": "foam",
+}
+# Scalars and vectors the original water instances author. They are read from
+# the whole MIC chain with the child winning, and they are evidence only: the
+# runtime value lives in the published water presentation document.
+MATERIAL_SCALAR_PARAMETERS = frozenset({
+    "diffuse_tiling",
+    "screen_distortion_intensity",
+    "fresnel_intensity",
+    "fresnel_power",
+    "normal_intensity",
+    "normal_distortion_intensity",
+    "detail_normal_intensity",
+    "depth_bias",
+    "opacity",
+    "opacity_power",
+    "reflection_intensity",
+    "reflection_uv",
+    "specular_intensity",
+    "specular_power",
+})
+MATERIAL_VECTOR_PARAMETERS = frozenset({
+    "diffuse_color",
+    "reflection_color",
+    "normal_tiling_panning",
+    "detail_normal_tiling_panning",
+    "reflection_tiling_panning",
+})
+SOURCE_RECEIPT_SCHEMA_VERSION = 2
 REQUIRED_WMODEL_MAGICS = {b"WINT", b"WMOD"}
 PRINT_LOCK = threading.Lock()
 
@@ -355,13 +397,19 @@ def choose_props(
     return sorted(candidates, key=lambda row: str(row).casefold())[0]
 
 
-def parse_material_props(path: Path) -> tuple[str | None, dict[str, str]]:
+def parse_material_document(path: Path) -> dict[str, Any]:
+    """One .props.txt as an unfolded record.
+
+    Only what the file itself declares is returned; the parent chain is folded
+    by material_contract. Nothing is guessed: a parameter the file does not
+    declare is simply absent, so a caller can tell "declared as 0" apart from
+    "not declared here".
+    """
     text = path.read_text(encoding="utf-8", errors="replace")
     parent_match = re.search(r"^Parent\s*=\s*[^']*'([^']+)'", text, re.MULTILINE)
-    parent = None
-    if parent_match:
-        parent = parent_match.group(1).strip()
-    parameters: dict[str, str] = {}
+    parent = parent_match.group(1).strip() if parent_match else None
+
+    textures: dict[str, str] = {}
     for block in re.finditer(
         r"ParameterValue\s*=\s*Texture2D'([^']+)'(?:(?!ParameterValue).)*?"
         r"ParameterName\s*=\s*([A-Za-z0-9_]+)", text, re.DOTALL,
@@ -369,32 +417,127 @@ def parse_material_props(path: Path) -> tuple[str | None, dict[str, str]]:
         texture = block.group(1).split(".")[-1].strip()
         parameter = block.group(2).casefold()
         if texture:
-            parameters[parameter] = texture
-    return parent, parameters
+            textures[parameter] = texture
+
+    scalars: dict[str, float] = {}
+    for block in re.finditer(
+        r"ParameterValue\s*=\s*(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\s*[\r\n]"
+        r"(?:(?!ParameterValue).)*?ParameterName\s*=\s*([A-Za-z0-9_]+)",
+        text, re.DOTALL,
+    ):
+        scalars[block.group(2).casefold()] = float(block.group(1))
+
+    vectors: dict[str, list[float]] = {}
+    number = r"(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)"
+    for block in re.finditer(
+        r"ParameterValue\s*=\s*\{\s*R=" + number + r",\s*G=" + number +
+        r",\s*B=" + number + r",\s*A=" + number + r"\s*\}"
+        r"(?:(?!ParameterValue).)*?ParameterName\s*=\s*([A-Za-z0-9_]+)",
+        text, re.DOTALL,
+    ):
+        vectors[block.group(5).casefold()] = [float(block.group(i)) for i in range(1, 5)]
+
+    # The master Material3 declares its own defaults here rather than as
+    # TextureParameterValues. Without these the foam and opacity textures of a
+    # water preset have no source at all, because no instance overrides them.
+    collected: dict[str, dict[str, str]] = {}
+    for block in re.finditer(
+        r"Texture\s*=\s*Texture2D'([^']+)'\s*[\r\n]\s*Name\s*=\s*([A-Za-z0-9_]+)"
+        r"\s*[\r\n]\s*Group\s*=\s*([A-Za-z0-9_]*)", text,
+    ):
+        texture = block.group(1).split(".")[-1].strip()
+        if texture:
+            collected[block.group(2).casefold()] = {
+                "texture": texture,
+                "group": block.group(3).strip().casefold(),
+            }
+
+    flags: dict[str, Any] = {}
+    blend_match = re.search(r"^\s*BlendMode\s*=\s*([A-Za-z_]+)", text, re.MULTILINE)
+    if blend_match:
+        flags["blendMode"] = blend_match.group(1).strip()
+    for name, key in (
+        ("TwoSided", "twoSided"),
+        ("bIsMasked", "isMasked"),
+        ("bDisableDepthTest", "disableDepthTest"),
+    ):
+        match = re.search(rf"^\s*{name}\s*=\s*(true|false)", text, re.MULTILINE)
+        if match:
+            flags[key] = match.group(1) == "true"
+    clip_match = re.search(
+        r"^\s*OpacityMaskClipValue\s*=\s*(-?\d+(?:\.\d+)?)", text, re.MULTILINE)
+    if clip_match:
+        flags["opacityMaskClipValue"] = float(clip_match.group(1))
+
+    return {
+        "parent": parent,
+        "textures": textures,
+        "collectedTextures": collected,
+        "scalars": scalars,
+        "vectors": vectors,
+        "flags": flags,
+    }
 
 
-def material_texture_roles(
+def parse_material_props(path: Path) -> tuple[str | None, dict[str, str]]:
+    document = parse_material_document(path)
+    return document["parent"], document["textures"]
+
+
+def material_contract(
     material_name: str, index: dict[str, list[Path]], logical_package: str,
-) -> tuple[dict[str, str], list[Path]]:
+) -> tuple[dict[str, Any], list[Path]]:
+    """Fold a MaterialInstanceConstant chain into one resolved contract.
+
+    The walk is root first so a child instance overrides its parents, which is
+    what the source engine does. The master Material3 sits at the root and is
+    the only node that carries CollectedTextureParameters and the render flags,
+    so its textures seed the result and its BlendMode decides how the asset has
+    to be drawn. Callers must not re-derive any of this from a file name.
+    """
     visiting: set[str] = set()
     used: list[Path] = []
 
-    def visit(name: str) -> dict[str, str]:
+    def empty() -> dict[str, Any]:
+        return {
+            "textures": {},
+            "collectedTextures": {},
+            "scalars": {},
+            "vectors": {},
+            "flags": {},
+            "chain": [],
+        }
+
+    def visit(name: str) -> dict[str, Any]:
         key = name.casefold()
         if key in visiting:
             raise PipelineError(f"material parent cycle: {material_name}")
         path = choose_props(index, name, logical_package)
         if path is None:
-            return {}
+            return empty()
         visiting.add(key)
         used.append(path)
-        parent, local = parse_material_props(path)
-        result = visit(parent) if parent else {}
-        result.update(local)
+        document = parse_material_document(path)
+        result = visit(document["parent"]) if document["parent"] else empty()
+        for parameter, entry in document["collectedTextures"].items():
+            result["collectedTextures"][parameter] = entry
+            result["textures"].setdefault(parameter, entry["texture"])
+        result["textures"].update(document["textures"])
+        result["scalars"].update(document["scalars"])
+        result["vectors"].update(document["vectors"])
+        result["flags"].update(document["flags"])
+        result["chain"].append(name)
         visiting.remove(key)
         return result
 
     return visit(material_name), used
+
+
+def material_texture_roles(
+    material_name: str, index: dict[str, list[Path]], logical_package: str,
+) -> tuple[dict[str, str], list[Path]]:
+    contract, used = material_contract(material_name, index, logical_package)
+    return contract["textures"], used
 
 
 def find_texture(export_root: Path, texture_name: str) -> Path:
@@ -427,6 +570,11 @@ def receipt_is_valid(directory: Path, receipt_name: str, asset: dict[str, Any]) 
     try:
         receipt = load_json(receipt_path)
         if receipt.get("fullPath") != asset["fullPath"]:
+            return False
+        # A receipt written before the material contract was preserved has no
+        # scalars, render flags or auxiliary textures. Resuming on it would
+        # keep the gap forever, so an older schema counts as not exported.
+        if receipt.get("schemaVersion") != SOURCE_RECEIPT_SCHEMA_VERSION:
             return False
         for item in receipt.get("outputs", []):
             path = directory / str(item["path"])
@@ -476,10 +624,28 @@ def export_one(
         material_receipts: list[dict[str, Any]] = []
         copied_props: dict[str, Path] = {}
         copied_textures: dict[str, tuple[str, Path]] = {}
+        def copy_referenced_texture(texture_name: str) -> dict[str, str]:
+            source_texture = find_texture(export_root, texture_name)
+            texture_key = source_texture.name.casefold()
+            destination_texture = pack / "textures" / source_texture.name
+            destination_texture.parent.mkdir(parents=True, exist_ok=True)
+            prior = copied_textures.get(texture_key)
+            source_hash = sha256(source_texture)
+            if prior is not None and prior[0] != source_hash:
+                raise PipelineError(f"texture filename collision: {source_texture.name}")
+            if not destination_texture.exists():
+                shutil.copy2(source_texture, destination_texture)
+            copied_textures[texture_key] = (source_hash, destination_texture)
+            return {
+                "texture": f"textures/{source_texture.name}",
+                "sha256": source_hash,
+            }
+
         for material in materials:
-            parameters, used_props = material_texture_roles(
+            contract, used_props = material_contract(
                 material, prop_map, str(asset["logicalPackage"])
             )
+            parameters = contract["textures"]
             for source_props in used_props:
                 props_hash = sha256(source_props)
                 destination_props = (
@@ -490,34 +656,56 @@ def export_one(
                     shutil.copy2(source_props, destination_props)
                 copied_props[props_hash] = destination_props
             roles: dict[str, dict[str, str]] = {}
+            auxiliary: dict[str, dict[str, str]] = {}
+            missing: list[dict[str, str]] = []
             for parameter, texture_name in sorted(parameters.items()):
                 switch = TEXTURE_PARAMETER_TO_SWITCH.get(parameter)
-                if switch is None:
+                role = AUXILIARY_TEXTURE_PARAMETERS.get(parameter)
+                if switch is None and role is None:
                     continue
-                source_texture = find_texture(export_root, texture_name)
-                texture_key = source_texture.name.casefold()
-                destination_texture = pack / "textures" / source_texture.name
-                destination_texture.parent.mkdir(parents=True, exist_ok=True)
-                prior = copied_textures.get(texture_key)
-                source_hash = sha256(source_texture)
-                if prior is not None and prior[0] != source_hash:
-                    raise PipelineError(f"texture filename collision: {source_texture.name}")
-                if not destination_texture.exists():
-                    shutil.copy2(source_texture, destination_texture)
-                copied_textures[texture_key] = (source_hash, destination_texture)
-                roles[switch] = {
-                    "parameter": parameter,
-                    "texture": f"textures/{source_texture.name}",
-                    "sha256": source_hash,
+                try:
+                    copied = copy_referenced_texture(texture_name)
+                except PipelineError as error:
+                    # The model still cooks without it; only the water look is
+                    # short. Recording the gap keeps it visible instead of
+                    # letting a silently absent role look like an authored one.
+                    missing.append({
+                        "parameter": parameter,
+                        "texture": texture_name,
+                        "reason": str(error),
+                    })
+                    continue
+                if switch is not None:
+                    roles[switch] = {"parameter": parameter, **copied}
+                else:
+                    auxiliary[role] = {"parameter": parameter, **copied}
+            material_receipt: dict[str, Any] = {"name": material, "roles": roles}
+            if auxiliary:
+                material_receipt["auxiliaryTextures"] = auxiliary
+            if missing:
+                material_receipt["missingTextures"] = missing
+            if contract["scalars"]:
+                material_receipt["scalars"] = {
+                    name: value for name, value in sorted(contract["scalars"].items())
+                    if name in MATERIAL_SCALAR_PARAMETERS
                 }
-            material_receipts.append({"name": material, "roles": roles})
+            if contract["vectors"]:
+                material_receipt["vectors"] = {
+                    name: value for name, value in sorted(contract["vectors"].items())
+                    if name in MATERIAL_VECTOR_PARAMETERS
+                }
+            if contract["flags"]:
+                material_receipt["renderFlags"] = contract["flags"]
+            if contract["chain"]:
+                material_receipt["parentChain"] = contract["chain"]
+            material_receipts.append(material_receipt)
         (pack / "umodel.log.txt").write_text(console, encoding="utf-8", newline="\n")
         for file in sorted((path for path in pack.rglob("*") if path.is_file())):
             if file.name == "source.receipt.json":
                 continue
             outputs.append({"path": file.relative_to(pack).as_posix(), "sha256": sha256(file)})
         receipt = {
-            "schemaVersion": 1,
+            "schemaVersion": SOURCE_RECEIPT_SCHEMA_VERSION,
             "assetId": asset_id,
             "fullPath": asset["fullPath"],
             "logicalPackage": asset["logicalPackage"],
@@ -739,6 +927,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         child.add_argument("--workers", type=int, default=2)
         child.add_argument("--umodel-timeout", type=float, default=180.0)
         child.add_argument("--force", action="store_true")
+        child.add_argument("--asset-id", action="append", default=None)
         if name == "all":
             child.add_argument("--converter", type=Path, required=True)
             child.add_argument("--converter-timeout", type=float, default=180.0)
@@ -751,7 +940,29 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     cook.add_argument("--converter-timeout", type=float, default=180.0)
     cook.add_argument("--expect-assets", type=int, default=950)
     cook.add_argument("--force", action="store_true")
+    cook.add_argument("--asset-id", action="append", default=None)
     return parser.parse_args(argv)
+
+
+def select_assets(
+    assets: Sequence[dict[str, Any]], asset_ids: Sequence[str] | None,
+) -> list[dict[str, Any]]:
+    """Narrow the work list without narrowing the inventory.
+
+    The inventory keeps its full 950-asset gate; only the assets actually
+    handed to UModel or the converter are reduced. An id that matches nothing
+    is an error rather than an empty run, so a typo cannot look like success.
+    """
+    rows = list(assets)
+    if not asset_ids:
+        return rows
+    wanted = {str(value).casefold() for value in asset_ids}
+    selected = [row for row in rows if str(row["assetId"]).casefold() in wanted]
+    found = {str(row["assetId"]).casefold() for row in selected}
+    unknown = sorted(wanted - found)
+    if unknown:
+        raise PipelineError(f"unknown --asset-id: {', '.join(unknown)}")
+    return selected
 
 
 def validate_output_root(path: Path) -> Path:
@@ -797,12 +1008,13 @@ def main(argv: Iterable[str] | None = None) -> int:
         if inventory.get("assetCount") != len(inventory.get("assets", [])):
             raise PipelineError("inventory assetCount mismatch")
 
+    selected = select_assets(inventory["assets"], getattr(args, "asset_id", None))
     if args.command in ("extract", "all"):
         validate_tools(args.umodel, args.package_root)
         if not 1 <= args.workers <= 8:
             raise PipelineError("workers must be in [1, 8]")
         parallel_assets(
-            "extract", inventory["assets"], args.workers,
+            "extract", selected, args.workers,
             lambda asset: export_one(
                 asset, output_root, args.umodel.resolve(), args.package_root.resolve(),
                 args.region, args.umodel_timeout, args.force,
@@ -816,16 +1028,25 @@ def main(argv: Iterable[str] | None = None) -> int:
         if not 1 <= args.workers <= 8:
             raise PipelineError("workers must be in [1, 8]")
         parallel_assets(
-            "cook", inventory["assets"], args.workers,
+            "cook", selected, args.workers,
             lambda asset: cook_one(
                 asset, output_root, args.converter.resolve(), args.converter_timeout,
                 args.force,
             ),
         )
-        manifest = build_runtime_manifest(output_root, inventory, args.expect_assets)
-        print(json.dumps({
-            "phase": "runtime-manifest", "assetCount": manifest["assetCount"]
-        }, ensure_ascii=False), flush=True)
+        if len(selected) != len(inventory["assets"]):
+            # The runtime manifest is a whole-area document gated on the full
+            # asset count. Rebuilding it from a partial run would either fail
+            # that gate or publish a manifest that silently lost assets.
+            print(json.dumps({
+                "phase": "runtime-manifest", "status": "skipped-partial-selection",
+                "selectedAssetCount": len(selected),
+            }, ensure_ascii=False), flush=True)
+        else:
+            manifest = build_runtime_manifest(output_root, inventory, args.expect_assets)
+            print(json.dumps({
+                "phase": "runtime-manifest", "assetCount": manifest["assetCount"]
+            }, ensure_ascii=False), flush=True)
     print(json.dumps({
         "phase": "complete", "command": args.command,
         "elapsedSeconds": round(time.monotonic() - started, 3),
