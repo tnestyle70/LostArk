@@ -1331,7 +1331,7 @@
       "stageId": "WINDUP",
       "actionId": "valtan.mechanic.floor-wipe-130.windup",
       "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
-      "effectAssetId": "effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01",
+      "effectAssetId": "effect.valtan.floor-wipe-130",
       "anchorSlotId": "root",
       "followPolicy": "follow",
       "stopPolicy": "natural",

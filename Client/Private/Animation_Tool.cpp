@@ -1076,7 +1076,8 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 		m_iValtanPatternMasterSelected, 0,
 		static_cast<int32_t>(VALTAN_PATTERN_MASTER_ORDER.size() - 1u));
 	m_strValtanPatternMasterStatus =
-		"Valtan Pattern Master admitted: 7 patterns from Data/Valtan/Valtan.pattern.json. " +
+		"Valtan Pattern Master admitted: 7 patterns from "
+		"Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json. " +
 		Status;
 	return true;
 }
@@ -1099,7 +1100,8 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 	}
 	if (!Pattern.bAuthoringMasterManaged || Pattern.Stages.empty())
 	{
-		strOutStatus = "Selected pattern is not admitted by Valtan.pattern.json.";
+		strOutStatus = "Selected pattern is not admitted by the split "
+			"Valtan.gameplay.json + Valtan.presentation.json source.";
 		return false;
 	}
 
@@ -1532,7 +1534,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 {
 	ImGui::SeparatorText("Valtan Pattern Master (Authoritative)");
 	ImGui::TextWrapped(
-		"Primary animator workflow. Data/Valtan/Valtan.pattern.json owns the ordered Server-stage wall clock; each stage declares EXACT, HOLD_LAST_POSE, or LOOP_TO_STAGE_END, and each occurrence owns sourceStartMs, playMs, playRate, and repeatUntilStageEnd. Effects and boss logic consume this same admitted timeline.");
+		"Primary animator workflow. Data/Valtan/Valtan.gameplay.json owns the ordered Server-stage wall clock and Data/Valtan/Valtan.presentation.json owns the animation occurrences joined onto it; each stage declares EXACT, HOLD_LAST_POSE, or LOOP_TO_STAGE_END, and each occurrence owns sourceStartMs, playMs, playRate, and repeatUntilStageEnd. Effects and boss logic consume this same admitted timeline.");
 
 	if (!m_bValtanPatternMasterLoadAttempted)
 	{

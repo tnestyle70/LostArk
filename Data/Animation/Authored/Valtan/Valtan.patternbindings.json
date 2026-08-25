@@ -1326,8 +1326,8 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
-          "clip": "mesh_att_battle_1_01",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "mesh_att_battle_5_02_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
@@ -1340,8 +1340,8 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.first-smash.clip.01",
-          "clip": "mesh_att_battle_1_02",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "mesh_att_battle_5_02_end",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
@@ -1355,7 +1355,7 @@
         {
           "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.interval.clip.01",
           "clip": "mesh_att_battle_5_02_loop",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
@@ -1369,7 +1369,7 @@
         {
           "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
           "clip": "mesh_att_battle_5_02_end",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
@@ -1572,6 +1572,24 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 900,
           "playMs": 300,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.roar-windup.clip.01",
+          "clip": "mesh_evt1_att_battle_5_01_start",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1300,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.roar-active.clip.01",
+          "clip": "mesh_evt1_att_battle_5_01_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 700,
           "playRate": 1.0,
           "loop": false
         }

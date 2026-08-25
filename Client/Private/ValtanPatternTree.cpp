@@ -2814,6 +2814,24 @@ namespace
 				Event, "combatObjectArchetypeId");
 			return true;
 		}
+		else if ("SPAWN_COMBAT_OBJECT" == strKind)
+		{
+			const std::string strCombatObjectArchetypeId = Read_String(
+				Event, "combatObjectArchetypeId");
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind",
+					  "combatObjectArchetypeId" }) ||
+				"ENTER" != strTrigger ||
+				!Is_StableToken(strCombatObjectArchetypeId))
+			{
+				strOutError = "split gameplay combat-object spawn is invalid";
+				return false;
+			}
+			strOutSpawnArchetypeId = strCombatObjectArchetypeId;
+			Action.emplace("targetId",
+				DATA_JSON_VALUE::String(strCombatObjectArchetypeId));
+			Action.emplace("value", DATA_JSON_VALUE::Number(1));
+		}
 		else
 		{
 			strOutError = "split gameplay event kind is unsupported: " + strKind;
