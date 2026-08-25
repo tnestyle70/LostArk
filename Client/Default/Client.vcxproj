@@ -1060,6 +1060,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.inner.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.outer.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.recovery.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.first-smash.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.interval.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.second-smash.effect.json" />
@@ -1088,6 +1089,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ground-wave-smash.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ground-wave-smash.windup.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.airborne.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.center-landing.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.land.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.takeoff.effect.json" />

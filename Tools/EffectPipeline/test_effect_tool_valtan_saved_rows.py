@@ -45,16 +45,21 @@ VALTAN_PRESENTATION_PATH = (
 )
 AUTHORED_ROOT = REPOSITORY_ROOT / "Data/Effects/Authored"
 SOURCE_CATALOG_PATH = REPOSITORY_ROOT / "Data/Effects/EffectCatalog.json"
+INTENTIONAL_EMPTY_PRODUCT_SHELLS = frozenset({
+    "effect.valtan.floor-wipe-130",
+})
 RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
     "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01": frozenset({
-        "source.816ecdd06b33943dd185",
         "donut.telegraph.outer.red",
         "sprite_particle_6",
         "donut.telegraph.inner.grow",
         "donut.impact.wave.black",
+        "authored.copy.donut.impact.wave.black.1",
     }),
     "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01": frozenset({
         "source.f4617c98d44349eec51d",
+        "sprite_particle_2",
+        "authored.copy.authored.copy.donut.impact.wave.black.1.1",
     }),
     "effect.valtan.carrier-v1.attack.high-jump.land.clip-01": frozenset({
         "source.7b7b7c81b12e9dd59483",
@@ -66,6 +71,8 @@ RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
         "sky-axe-target-inner-fill",
         "authored.copy.sky-axe-target-inner-fill.1",
         "sky-axe-flight-line",
+        "authored.copy.mesh_particle_6.1",
+        "sprite_particle_7",
     }),
 }
 V1_ALIAS_PATH = (
@@ -1750,7 +1757,14 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     + element["detail"]["particle"]["lifeTimeSeconds"][1]
                 )
             self.assertLessEqual(preview_end, source_duration + 0.000001)
-            self.assertAlmostEqual(1.4, preview_end / 0.761904762, places=5)
+            if element["kind"] == "trail":
+                self.assertAlmostEqual(
+                    1.4, preview_end / 0.761904762, places=5
+                )
+            else:
+                self.assertAlmostEqual(
+                    0.9166666435, preview_end, places=7
+                )
 
         v1_document = json.loads(
             (
@@ -2290,8 +2304,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     nonempty_candidates += 1
                 else:
                     empty_shells += 1
-        self.assertEqual(54, nonempty_candidates)
-        self.assertEqual(53, empty_shells)
+        self.assertEqual(53, nonempty_candidates)
+        self.assertEqual(54, empty_shells)
 
     def test_all_declared_v0_product_cues_remain_canonical_and_nonempty(self) -> None:
         cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
@@ -2310,6 +2324,20 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 if cue["effectAssetId"].startswith("effect.valtan.project-tuned.")
             },
         )
+        floor_wipe_cues = [
+            cue
+            for cue in cues
+            if cue["bindingId"] ==
+            "cue.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01"
+        ]
+        self.assertEqual(1, len(floor_wipe_cues))
+        self.assertEqual(
+            "effect.valtan.floor-wipe-130",
+            floor_wipe_cues[0]["effectAssetId"],
+        )
+        self.assertEqual("WINDUP", floor_wipe_cues[0]["stageId"])
+        self.assertEqual("natural", floor_wipe_cues[0]["stopPolicy"])
+        self.assertEqual("once", floor_wipe_cues[0]["repeatPolicy"])
         sealed_cues = [
             cue for cue in cues if cue["effectAssetId"] not in project_tuned_ids
         ]
@@ -2322,6 +2350,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         visible_elements = 0
         hidden_elements = 0
         model_cues = 0
+        observed_empty_shells = set()
         for effect_id in effect_ids:
             source_matches = [
                 row for row in source_catalog if row["effectAssetId"] == effect_id
@@ -2341,10 +2370,16 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             source_path = REPOSITORY_ROOT / "Data" / source_entry["authoringPath"]
             source_document = json.loads(source_path.read_text(encoding="utf-8"))
             self.assertEqual(effect_id, source_document["effectAssetId"])
-            self.assertTrue(
-                source_document.get("elements") or source_document.get("modelCues"),
-                effect_id,
-            )
+            if effect_id in INTENTIONAL_EMPTY_PRODUCT_SHELLS:
+                self.assertEqual([], source_document.get("elements"), effect_id)
+                self.assertEqual([], source_document.get("modelCues"), effect_id)
+                observed_empty_shells.add(effect_id)
+            else:
+                self.assertTrue(
+                    source_document.get("elements") or
+                    source_document.get("modelCues"),
+                    effect_id,
+                )
             visible_elements += sum(
                 1 for element in source_document.get("elements", [])
                 if element.get("visible", True)
@@ -2354,21 +2389,23 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 if not element.get("visible", True)
             )
             model_cues += len(source_document.get("modelCues", []))
-            self.assertTrue(
-                any(
-                    element.get("visible", True)
-                    for element in source_document.get("elements", [])
-                ) or source_document.get("modelCues"),
-                effect_id,
-            )
+            if effect_id not in INTENTIONAL_EMPTY_PRODUCT_SHELLS:
+                self.assertTrue(
+                    any(
+                        element.get("visible", True)
+                        for element in source_document.get("elements", [])
+                    ) or source_document.get("modelCues"),
+                    effect_id,
+                )
         # The reviewed tuning keeps four authored donut rows and one landing
         # row while intentionally excluding 43 visible legacy cue rows. The
         # separate FOUR_PILLARS layer still adds 26 visible exact carriers.
         # Authored v15 also exposes three bounded trail carriers and one
         # bounded light carrier on the reviewed Whirlwind source.
         # Sky Axe is combat-object owned, so its deletion is covered below.
-        self.assertEqual(640, visible_elements)
-        self.assertEqual(1, hidden_elements)
+        self.assertEqual(INTENTIONAL_EMPTY_PRODUCT_SHELLS, observed_empty_shells)
+        self.assertEqual(633, visible_elements)
+        self.assertEqual(3, hidden_elements)
         self.assertEqual(0, model_cues)
 
     def test_recovered_valtan_effects_have_exact_reviewed_tuning_set(self) -> None:
@@ -2392,6 +2429,48 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     "DIRECT_AUTHORED_DOCUMENT",
                     source_entry["payloadKind"],
                 )
+
+    def test_recovered_floor_wipe_and_center_landing_sources_are_catalogued(
+        self,
+    ) -> None:
+        source_catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        floor_id = "effect.valtan.floor-wipe-130"
+        center_id = "effect.valtan.high-jump.center-landing.active"
+        self.assertEqual(
+            "Effects/Authored/effect.valtan.floor-wipe-130.effect.json",
+            source_catalog[floor_id]["authoringPath"],
+        )
+        self.assertEqual(
+            "Effects/Authored/effect.valtan.high-jump.center-landing.active.effect.json",
+            source_catalog[center_id]["authoringPath"],
+        )
+        floor = json.loads(
+            (
+                REPOSITORY_ROOT / "Data" /
+                source_catalog[floor_id]["authoringPath"]
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual([], floor["elements"])
+        self.assertEqual([], floor["modelCues"])
+        center = json.loads(
+            (
+                REPOSITORY_ROOT / "Data" /
+                source_catalog[center_id]["authoringPath"]
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            {
+                "sprite_particle_2",
+                "authored.copy.authored.copy.donut.impact.wave.black.1.1",
+            },
+            {row["id"] for row in center["elements"]},
+        )
+        self.assertTrue(all(row["visible"] for row in center["elements"]))
 
     def test_v1_alias_sidecar_is_exactly_six_valid_pairs(self) -> None:
         aliases = json.loads(V1_ALIAS_PATH.read_text(encoding="utf-8"))["aliases"]

@@ -7,175 +7,6 @@
   "modelCues": [  ],
   "elements": [
     {
-      "id": "source.816ecdd06b33943dd185",
-      "displayName": "particlespriteemitter_86",
-      "groupId": "fx_mn_rpbf_00_n.par_n_rpbf_atk_13_02",
-      "sourceNode": "valtan.source.816ecdd06b33943dd18559ceb48fb8a530df16ee08e75544cf7db786be30d709",
-      "visible": true,
-      "kind": "particle",
-      "resources": [
-        { "slotId": "meshModel", "assetId": "Effect/Valtan/Meshes/FX_SM_00/fm_d_ring_008.wmodel" },
-        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds" },
-        { "slotId": "noise", "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds" },
-        { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds" }
-      ],
-      "material": { "templateId": "effect.standard", "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_02_22_tr", "renderProfile": "alpha_two_sided_depth_read", "sourceProfile": { "enabled": false } },
-      "actionCueAttachment": { "enabled": false, "follow": false, "sourceAnchorSlotId": "", "runtimeAnchorSlotId": "", "runtimeBoneName": "", "snapshotRootSourceBasisYawDegrees": 0, "socketLocalTransform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] } },
-      "transformInheritance": { "enabled": false, "masterElementId": "" },
-      "detail": {
-        "transform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [1.77999997, 1.48000002, 1.77999997], "velocityPerSecond": [0, 0, 0] },
-        "color": { "offset": [0, 0, 0, 0], "multiply": [1, 4, 3, 1.55999994], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
-        "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0.899999976, "lifeTimeSeconds": 0.354999989, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
-        "mesh": { "useModelMaterial": false, "modelPreScale": 0.00999999978, "sourceTypeDataRotationDegrees": [0, 0, 0] },
-        "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
-        "decal": { "size": [0.0340000018, 0.0340000018], "depth": 0.25 },
-        "linearLerp": { "position": false, "endPosition": [0, 0, 0], "rotation": false, "endRotationDegrees": [0, 0, 0], "revolution": false, "endRevolutionDegreesPerSecond": [0, 0, 0], "scale": false, "endScale": [1, 1, 1], "velocity": false, "endVelocityPerSecond": [0, 0, 0], "colorOffset": false, "endColorOffset": [0, 0, 0, 0], "colorMultiply": false, "endColorMultiply": [1, 1, 1, 1], "emissiveIntensity": false, "endEmissiveIntensity": 1 },
-        "particle": { "maxParticles": 3, "spawnRatePerSecond": 0, "burstCount": 0, "randomSeed": 4, "lifeTimeSeconds": [1, 1], "initialPositionMin": [0, 0.100000001, -0], "initialPositionMax": [0, 0.100000001, -0], "initialVelocityMin": [0, 0, 0], "initialVelocityMax": [0, 0, 0], "acceleration": [0, 0, 0], "startSize": [0.0340000018, 0.0340000018], "endSize": [0.0612000003, 0.0612000003], "localSpace": true, "billboard": false, "sourceScale": { "count": 1, "size": 1, "lifeTime": 0.5, "speed": 1, "rotation": 1, "alpha": 1, "spawnDelay": 1 } },
-        "trail": { "maxPoints": 64, "pointLifeTimeSeconds": 0.349999994, "sampleIntervalSeconds": 0.0166666992, "minimumDistance": 0.00999999978, "startWidth": 0.200000003, "endWidth": 0, "tilingDistanceWorldUnits": 0, "distanceTessellationStepWorldUnits": 0, "faceCamera": true },
-        "afterImage": { "sampleIntervalSeconds": 0.0500000007, "maxCopies": 16, "alphaExponent": 1 },
-        "light": { "enabled": false },
-        "screenPost": { "enabled": false }
-      },
-      "sourceRecipe": { "enabled": true, "rendererShape": "mesh", "emitterDelaySeconds": 0, "emitterDurationSeconds": 2, "emitterLoopCount": 1,
-        "bursts": [
-          { "timeSeconds": 0, "countMinimum": 1, "countMaximum": 1 }
-        ],
-        "modules": [
-          { "stableId": "FX_MN_RPBF_00_N:export:4232@ref:0", "className": "particlemodulerequired", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulerequired_86",
-            "literals": [
-              { "propertyPath": "ballowimageflipping", "kind": "boolean", "value": true },
-              { "propertyPath": "bsquareimageflipping", "kind": "boolean", "value": true },
-              { "propertyPath": "buselegacyemittertime", "kind": "boolean", "value": false },
-              { "propertyPath": "buselocalspace", "kind": "boolean", "value": true },
-              { "propertyPath": "emitterduration", "kind": "number", "value": 2 },
-              { "propertyPath": "emitterloops", "kind": "number", "value": 1 },
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 },
-              { "propertyPath": "material", "kind": "number", "value": -245 },
-              { "propertyPath": "randomimagetime", "kind": "number", "value": 1 },
-              { "propertyPath": "subimages_horizontal", "kind": "number", "value": 8 },
-              { "propertyPath": "subimages_vertical", "kind": "number", "value": 4 }
-            ],
-            "distributions": [
-              { "propertyPath": "spawnrate", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 0, "lookupTableNumElements": 0, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:2849@ref:1", "className": "particlemodulelifetime", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulelifetime_80",
-            "literals": [
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 }
-            ],
-            "distributions": [
-              { "propertyPath": "lifetime", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 1, "lookupTableNumElements": 1, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [1, 1, 1, 1], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:5390@ref:2", "className": "particlemodulesize_seeded", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulesize_seeded_3",
-            "literals": [
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 },
-              { "propertyPath": "randomseedinfo.hex", "kind": "string", "value": "2b04000000000000140000000000000008000000000000000100000002000000" },
-              { "propertyPath": "randomseedinfo.size", "kind": "number", "value": 40 }
-            ],
-            "distributions": [
-              { "propertyPath": "startsize", "sourceClass": "", "sourceObjectPath": "", "componentCount": 3, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 3, "lookupTableNumElements": 1, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0.00999999978, 3.4000001, 3.4000001, 3.4000001, 0.00999999978, 3.4000001, 3.4000001, 0.00999999978], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:2117@ref:3", "className": "particlemodulecolor_seeded", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulecolor_seeded_0",
-            "literals": [
-              { "propertyPath": "brequiresloopingnotification", "kind": "boolean", "value": false },
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 },
-              { "propertyPath": "randomseedinfo.hex", "kind": "string", "value": "2b040000000000001400000000000000080000000000000001000000574b0000" },
-              { "propertyPath": "randomseedinfo.size", "kind": "number", "value": 40 }
-            ],
-            "distributions": [
-              { "propertyPath": "startalpha", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 1, "lookupTableNumElements": 1, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0.100000001, 0.100000001, 0.100000001, 0.100000001], "keys": [              ] },
-              { "propertyPath": "startcolor", "sourceClass": "", "sourceObjectPath": "", "componentCount": 3, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 3, "lookupTableNumElements": 1, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0.5, 3, 0.5, 3, 1.5, 0.5, 3, 1.5], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:2424@ref:4", "className": "particlemodulecolorscaleoverlife", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulecolorscaleoverlife_81",
-            "literals": [
-              { "propertyPath": "alphascaleoverlife.distribution.objectpath", "kind": "string", "value": "par_n_rpbf_atk_13_02.particlemodulecolorscaleoverlife_81.distributionfloatconstantcurve_0" },
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 }
-            ],
-            "distributions": [
-              { "propertyPath": "alphascaleoverlife", "sourceClass": "distributionfloatconstantcurve", "sourceObjectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulecolorscaleoverlife_81.distributionfloatconstantcurve_0", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 0, "lookupTableNumElements": 0, "lookupTableTimeScale": 20, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [], "keys": [
-                { "time": 0.000394184142, "minimum": [0, 0, 0, 0], "maximum": [0, 0, 0, 0], "arriveTangentMinimum": [0, 0, 0, 0], "leaveTangentMinimum": [0, 0, 0, 0], "arriveTangentMaximum": [0, 0, 0, 0], "leaveTangentMaximum": [0, 0, 0, 0], "interpolation": "cubic" },
-                { "time": 0.300000012, "minimum": [1, 0, 0, 0], "maximum": [1, 0, 0, 0], "arriveTangentMinimum": [-3.40438771, 0, 0, 0], "leaveTangentMinimum": [-3.40438771, 0, 0, 0], "arriveTangentMaximum": [-3.40438771, 0, 0, 0], "leaveTangentMaximum": [-3.40438771, 0, 0, 0], "interpolation": "cubic" },
-                { "time": 0.899999976, "minimum": [0, 0, 0, 0], "maximum": [0, 0, 0, 0], "arriveTangentMinimum": [0, 0, 0, 0], "leaveTangentMinimum": [0, 0, 0, 0], "arriveTangentMaximum": [0, 0, 0, 0], "leaveTangentMaximum": [0, 0, 0, 0], "interpolation": "cubic" }
-              ] },
-              { "propertyPath": "colorscaleoverlife", "sourceClass": "", "sourceObjectPath": "", "componentCount": 3, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 3, "lookupTableNumElements": 1, "lookupTableTimeScale": 20, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0, 7, 7, 7, 7, 6.09215832, 6.09215832, 6.09215832, 5.26550865, 5.26550865, 5.26550865, 4.51630545, 4.51630545, 4.51630545, 3.8408041, 3.8408041, 3.8408041, 3.2352581, 3.2352581, 3.2352581, 2.69592261, 2.69592261, 2.69592261, 2.21905327, 2.21905327, 2.21905327, 1.80090451, 1.80090451, 1.80090451, 1.43772936, 1.43772936, 1.43772936, 1.12578487, 1.12578487, 1.12578487, 0.861324072, 0.861324072, 0.861324072, 0.640602469, 0.640602469, 0.640602469, 0.459875226, 0.459875226, 0.459875226, 0.315395713, 0.315395713, 0.315395713, 0.203419328, 0.203419328, 0.203419328, 0.120201766, 0.120201766, 0.120201766, 0.0619954169, 0.0619954169, 0.0619954169, 0.0250555873, 0.0250555873, 0.0250555873, 0.00563944504, 0.00563944504, 0.00563944504, 0, 0, 0], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:3849@ref:5", "className": "particlemoduleparameterdynamic", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemoduleparameterdynamic_55",
-            "literals": [
-              { "propertyPath": "dynamicparams[0].bscalevelocitybyparamvalue", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[0].bspawntimeonly", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[0].buseemittertime", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[0].paramname", "kind": "string", "value": "flow_str" },
-              { "propertyPath": "dynamicparams[0].valuemethod", "kind": "string", "value": "edpv_userset" },
-              { "propertyPath": "dynamicparams[1].bscalevelocitybyparamvalue", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[1].bspawntimeonly", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[1].buseemittertime", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[1].paramname", "kind": "string", "value": "opacity_pan_v" },
-              { "propertyPath": "dynamicparams[1].valuemethod", "kind": "string", "value": "edpv_userset" },
-              { "propertyPath": "dynamicparams[2].bscalevelocitybyparamvalue", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[2].bspawntimeonly", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[2].buseemittertime", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[2].paramname", "kind": "string", "value": "opacity_pan_u" },
-              { "propertyPath": "dynamicparams[2].valuemethod", "kind": "string", "value": "edpv_userset" },
-              { "propertyPath": "dynamicparams[3].bscalevelocitybyparamvalue", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[3].bspawntimeonly", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[3].buseemittertime", "kind": "boolean", "value": false },
-              { "propertyPath": "dynamicparams[3].paramname", "kind": "string", "value": "param4" },
-              { "propertyPath": "dynamicparams[3].valuemethod", "kind": "string", "value": "edpv_userset" },
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 },
-              { "propertyPath": "updateflags", "kind": "number", "value": 15 }
-            ],
-            "distributions": [
-              { "propertyPath": "dynamicparams[0].paramvalue", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 1, "lookupTableNumElements": 1, "lookupTableTimeScale": 20, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0, 0.5, 0, 0.00362500013, 0.0140000004, 0.0303750001, 0.0520000011, 0.078125, 0.108000003, 0.140874982, 0.175999999, 0.212625027, 0.25, 0.287375003, 0.324000001, 0.359125048, 0.39199996, 0.421875, 0.448000014, 0.469624996, 0.486000061, 0.496375024, 0.5], "keys": [              ] },
-              { "propertyPath": "dynamicparams[1].paramvalue", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 1, "lookupTableNumElements": 1, "lookupTableTimeScale": 20, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [-1, 0.5, 0.5, 0.304943979, 0.12739259, -0.0334654972, -0.178441316, -0.308346212, -0.423991323, -0.526187599, -0.615746498, -0.69347918, -0.760196626, -0.816710234, -0.863831043, -0.902370214, -0.933139086, -0.956948757, -0.97461015, -0.986935019, -0.994734347, -0.998818815, -1], "keys": [              ] },
-              { "propertyPath": "dynamicparams[2].paramvalue", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 1, "lookupTableNumElements": 1, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0, 0, 0, 0], "keys": [              ] },
-              { "propertyPath": "dynamicparams[3].paramvalue", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 1, "lookupTableNumElements": 1, "lookupTableTimeScale": 20, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0.100000001, 0.300000012, 0.300000012, 0.29855001, 0.294400007, 0.287849993, 0.279200017, 0.268750012, 0.256799996, 0.243650019, 0.229600012, 0.214949995, 0.200000003, 0.185050011, 0.170400009, 0.156349987, 0.14320001, 0.131249994, 0.120799996, 0.112149999, 0.105599977, 0.101449996, 0.100000001], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:3624@ref:6", "className": "particlemodulemeshrotation_seeded", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulemeshrotation_seeded_3",
-            "literals": [
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 },
-              { "propertyPath": "randomseedinfo.hex", "kind": "string", "value": "2b0400000000000014000000000000000800000000000000010000000a000000" },
-              { "propertyPath": "randomseedinfo.size", "kind": "number", "value": 40 }
-            ],
-            "distributions": [
-              { "propertyPath": "startrotation", "sourceClass": "", "sourceObjectPath": "", "componentCount": 3, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 3, "lookupTableNumElements": 1, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:3206@ref:7", "className": "particlemodulelocation", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulelocation_33",
-            "literals": [
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 }
-            ],
-            "distributions": [
-              { "propertyPath": "startlocation", "sourceClass": "", "sourceObjectPath": "", "componentCount": 3, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 3, "lookupTableNumElements": 1, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0, 10, 0, 0, 10, 0, 0, 10], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:5576@ref:8", "className": "particlemodulesizemultiplylife", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulesizemultiplylife_123",
-            "literals": [
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 }
-            ],
-            "distributions": [
-              { "propertyPath": "lifemultiplier", "sourceClass": "", "sourceObjectPath": "", "componentCount": 3, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 3, "lookupTableNumElements": 1, "lookupTableTimeScale": 20, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [1.20000005, 1.79999995, 1.20000005, 1.20000005, 1.20000005, 1.27171159, 1.27171159, 1.27171159, 1.3372314, 1.3372314, 1.3372314, 1.39685929, 1.39685929, 1.39685929, 1.45089579, 1.45089579, 1.45089579, 1.49964106, 1.49964106, 1.49964106, 1.54339528, 1.54339528, 1.54339528, 1.5824585, 1.5824585, 1.5824585, 1.61713099, 1.61713099, 1.61713099, 1.64771295, 1.64771295, 1.64771295, 1.67450476, 1.67450476, 1.67450476, 1.69780636, 1.69780636, 1.69780636, 1.71791816, 1.71791816, 1.71791816, 1.7351402, 1.7351402, 1.7351402, 1.74977279, 1.74977279, 1.74977279, 1.76211607, 1.76211607, 1.76211607, 1.77247024, 1.77247024, 1.77247024, 1.78113556, 1.78113556, 1.78113556, 1.78841221, 1.78841221, 1.78841221, 1.79460013, 1.79460013, 1.79460013, 1.79999995, 1.79999995, 1.79999995], "keys": [              ] }
-            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:6324@ref:9", "className": "particlemoduletypedatamesh", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemoduletypedatamesh_14",
-            "literals": [
-              { "propertyPath": "boverridematerial", "kind": "boolean", "value": true },
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 },
-              { "propertyPath": "mesh", "kind": "number", "value": -1229 }
-            ],
-            "distributions": [            ] },
-          { "stableId": "FX_MN_RPBF_00_N:export:6018@ref:10", "className": "particlemodulespawn", "objectPath": "FX_MN_RPBF_00_N.par_n_rpbf_atk_13_02.particlemodulespawn_136",
-            "literals": [
-              { "propertyPath": "burstlist[0].count", "kind": "number", "value": 1 },
-              { "propertyPath": "burstlist[0].countlow", "kind": "number", "value": -1 },
-              { "propertyPath": "burstlist[0].time", "kind": "number", "value": 0 },
-              { "propertyPath": "lodvalidity", "kind": "number", "value": 3 }
-            ],
-            "distributions": [
-              { "propertyPath": "rate", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 1, "lookupTableNumElements": 1, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [0, 0, 0, 0], "keys": [              ] },
-              { "propertyPath": "ratescale", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 0, "lookupTableNumElements": 0, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [], "keys": [              ] }
-            ] }
-        ] },
-      "sourcePresentation": { "enabled": false },
-      "authoringOverrides": { "resources": [ { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds" }, { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_002.dds" }, { "slotId": "noise", "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_noise_001.dds" } ], "scalars": [], "colors": [] }
-    },
-    {
       "id": "donut.telegraph.outer.red",
       "displayName": "donut.telegraph.outer.red",
       "groupId": "manual.hit1",
@@ -295,15 +126,51 @@
       "actionCueAttachment": { "enabled": false, "follow": false, "sourceAnchorSlotId": "", "runtimeAnchorSlotId": "", "runtimeBoneName": "", "snapshotRootSourceBasisYawDegrees": 0, "socketLocalTransform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] } },
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
-        "transform": { "position": [0, 0.620000005, 0], "rotationDegrees": [0, -90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.49000001, 7.11999989, 0.439999998], "velocityPerSecond": [0, 0, 0] },
+        "transform": { "position": [0, 0.620000005, 0], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.569999993, 7.11999989, 0.610000014], "velocityPerSecond": [0, 0, 0] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 4, 3, 3], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": false, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0.460000008, "lifeTimeSeconds": 5, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
+        "timing": { "startDelaySeconds": 1.60000002, "lifeTimeSeconds": 5, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
         "mesh": { "useModelMaterial": false, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
         "linearLerp": { "position": false, "endPosition": [0, 0, 0], "rotation": false, "endRotationDegrees": [0, 0, 0], "revolution": false, "endRevolutionDegreesPerSecond": [0, 0, 0], "scale": false, "endScale": [1, 1, 1], "velocity": false, "endVelocityPerSecond": [0, 0, 0], "colorOffset": false, "endColorOffset": [0, 0, 0, 0], "colorMultiply": false, "endColorMultiply": [1, 1, 1, 1], "emissiveIntensity": false, "endEmissiveIntensity": 1 },
-        "particle": { "maxParticles": 16, "spawnRatePerSecond": 0, "burstCount": 16, "randomSeed": 4, "lifeTimeSeconds": [0.5, 0.5], "initialPositionMin": [0, 0, 0], "initialPositionMax": [0, 0, 0], "initialVelocityMin": [0, 0, 0], "initialVelocityMax": [0, 0, 0], "acceleration": [0, 0, 0], "startSize": [2.36999989, 0.75], "endSize": [6.71999979, 0.75], "localSpace": false, "billboard": false, "spawnShape": { "kind": "ring", "radius": 15, "innerRadius": 15, "extents": [0, 0, 0], "arcDegrees": 360 } },
+        "particle": { "maxParticles": 16, "spawnRatePerSecond": 0, "burstCount": 16, "randomSeed": 4, "lifeTimeSeconds": [0.200000003, 0.200000003], "initialPositionMin": [0, 0, 0], "initialPositionMax": [0, 0, 0], "initialVelocityMin": [0, 0, 0], "initialVelocityMax": [0, 0, 0], "acceleration": [0, 0, 0], "startSize": [2.36999989, 0.75], "endSize": [3.5, 8], "localSpace": true, "billboard": false, "spawnShape": { "kind": "ring", "radius": 7, "innerRadius": 7, "extents": [0, 0, 0], "arcDegrees": 360, "distribution": "even" }, "initialOrientation": { "mode": "groundTangentClockwise", "offsetDegrees": 0 }, "initialVelocity": { "mode": "outward", "speed": [2, 2], "coneAngleDegrees": 0 } },
+        "trail": { "maxPoints": 64, "pointLifeTimeSeconds": 0.349999994, "sampleIntervalSeconds": 0.0166666675, "minimumDistance": 0.00999999978, "startWidth": 0.200000003, "endWidth": 0, "tilingDistanceWorldUnits": 0, "distanceTessellationStepWorldUnits": 0, "faceCamera": true },
+        "afterImage": { "sampleIntervalSeconds": 0.0500000007, "maxCopies": 16, "alphaExponent": 1 },
+        "light": { "enabled": false },
+        "screenPost": { "enabled": false }
+      },
+      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1,
+        "bursts": [        ],
+        "modules": [        ] },
+      "sourcePresentation": { "enabled": false }
+    },
+    {
+      "id": "authored.copy.donut.impact.wave.black.1",
+      "displayName": "donut.impact.wave.black",
+      "groupId": "manual.hit1",
+      "sourceNode": "authored-copy:donut.impact.wave.black",
+      "visible": true,
+      "kind": "particle",
+      "resources": [
+        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds" },
+        { "slotId": "noise", "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_005.dds" },
+        { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds" },
+        { "slotId": "dissolve", "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_026.dds" }
+      ],
+      "material": { "templateId": "effect.standard", "sourceMaterialPath": "", "renderProfile": "alpha_two_sided_depth_read", "sourceProfile": { "enabled": false } },
+      "actionCueAttachment": { "enabled": false, "follow": false, "sourceAnchorSlotId": "", "runtimeAnchorSlotId": "", "runtimeBoneName": "", "snapshotRootSourceBasisYawDegrees": 0, "socketLocalTransform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] } },
+      "transformInheritance": { "enabled": false, "masterElementId": "" },
+      "detail": {
+        "transform": { "position": [0, 0.620000005, 0], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.569999993, 7.11999989, 0.610000014], "velocityPerSecond": [0, 0, 0] },
+        "color": { "offset": [0, 0, 0, 0], "multiply": [1, 4, 3, 3], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
+        "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": false, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
+        "timing": { "startDelaySeconds": 1.79999995, "lifeTimeSeconds": 5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.150000006 },
+        "mesh": { "useModelMaterial": false, "sourceTypeDataRotationDegrees": [0, 0, 0] },
+        "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
+        "decal": { "size": [1, 1], "depth": 0.25 },
+        "linearLerp": { "position": false, "endPosition": [0, 0, 0], "rotation": false, "endRotationDegrees": [0, 0, 0], "revolution": false, "endRevolutionDegreesPerSecond": [0, 0, 0], "scale": false, "endScale": [1, 1, 1], "velocity": false, "endVelocityPerSecond": [0, 0, 0], "colorOffset": false, "endColorOffset": [0, 0, 0, 0], "colorMultiply": false, "endColorMultiply": [1, 1, 1, 1], "emissiveIntensity": false, "endEmissiveIntensity": 1 },
+        "particle": { "maxParticles": 16, "spawnRatePerSecond": 0, "burstCount": 16, "randomSeed": 4, "lifeTimeSeconds": [0.649999976, 0.649999976], "initialPositionMin": [0, 0, 0], "initialPositionMax": [0, 0, 0], "initialVelocityMin": [0, 0, 0], "initialVelocityMax": [0, 0, 0], "acceleration": [0, 0, 0], "startSize": [3.5, 8], "endSize": [3.5, 8], "localSpace": true, "billboard": false, "spawnShape": { "kind": "ring", "radius": 7, "innerRadius": 7, "extents": [0, 0, 0], "arcDegrees": 360, "distribution": "even" }, "initialOrientation": { "mode": "groundTangentClockwise", "offsetDegrees": 0 } },
         "trail": { "maxPoints": 64, "pointLifeTimeSeconds": 0.349999994, "sampleIntervalSeconds": 0.0166666675, "minimumDistance": 0.00999999978, "startWidth": 0.200000003, "endWidth": 0, "tilingDistanceWorldUnits": 0, "distanceTessellationStepWorldUnits": 0, "faceCamera": true },
         "afterImage": { "sampleIntervalSeconds": 0.0500000007, "maxCopies": 16, "alphaExponent": 1 },
         "light": { "enabled": false },
