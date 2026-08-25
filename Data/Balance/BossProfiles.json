@@ -1,6 +1,6 @@
 {
   "schema": "lostark.boss-profiles",
-  "formatVersion": 4,
+  "formatVersion": 3,
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",
@@ -12,9 +12,7 @@
       "collisionRadius": 3.0,
       "engageDistance": 20.0,
       "moveSpeed": 2.6,
-      "phasePolicy": {
-        "kind": "AUTHORED_PATTERN_EVENT"
-      },
+      "phaseTwoHpPercent": 68,
       "armorPlates": [
         { "plateIndex": 0, "durability": 4000, "defense": 50 },
         { "plateIndex": 1, "durability": 4000, "defense": 50 }

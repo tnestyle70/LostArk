@@ -326,7 +326,7 @@ def main() -> int:
             ("maximumHealthBars", "project-valtan-health-bars-v1"),
             ("attackPower", "project-boss-attack-baseline-v1"),
             ("collisionRadius", "project-boss-collision-radius-v1"),
-            ("phasePolicy", "project-boss-phase-policy-v1"),
+            ("phaseTwoHpPercent", "project-valtan-phase-threshold-v1"),
         ):
             add(boss_path, target_id, field, boss[field], "PROJECT_TUNED",
                 project_source(policy), boss[field], "identity")

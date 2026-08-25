@@ -1,6 +1,6 @@
 {
   "schema": "lostark.valtan-pattern-rotations",
-  "formatVersion": 3,
+  "formatVersion": 2,
   "encounterId": "ENCOUNTER_VALTAN",
   "bossArchetypeId": "BOSS_VALTAN",
   "rotations": [
@@ -9,35 +9,12 @@
       "selectionMode": "WEIGHTED_POOL",
       "fromHealthBar": 160,
       "toHealthBar": 130,
-      "windowId": "window.valtan.phase1.160.130",
-      "gameplayPhase": 1,
-      "selectionSetId": "selectionset.valtan.160.130",
-      "candidates": [
-        {
-          "patternId": "VALTAN_WHIRLWIND",
-          "weight": 20,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_DASH_CHARGE",
-          "weight": 30,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_FOUR_SLASH",
-          "weight": 12,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_FIST_IN_OUT",
-          "weight": 14,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_HIGH_JUMP",
-          "weight": 14,
-          "enabled": true
-        }
+      "patternIds": [
+        "VALTAN_WHIRLWIND",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_FIST_IN_OUT",
+        "VALTAN_HIGH_JUMP"
       ]
     },
     {
@@ -45,35 +22,12 @@
       "selectionMode": "WEIGHTED_POOL",
       "fromHealthBar": 130,
       "toHealthBar": 109,
-      "windowId": "window.valtan.phase1.130.109",
-      "gameplayPhase": 1,
-      "selectionSetId": "selectionset.valtan.130.109",
-      "candidates": [
-        {
-          "patternId": "VALTAN_WHIRLWIND",
-          "weight": 20,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_DASH_CHARGE",
-          "weight": 30,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_FOUR_SLASH",
-          "weight": 12,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_FIST_IN_OUT",
-          "weight": 14,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_HIGH_JUMP",
-          "weight": 14,
-          "enabled": true
-        }
+      "patternIds": [
+        "VALTAN_WHIRLWIND",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_FIST_IN_OUT",
+        "VALTAN_HIGH_JUMP"
       ]
     },
     {
