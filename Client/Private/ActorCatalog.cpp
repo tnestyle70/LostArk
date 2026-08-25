@@ -227,7 +227,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.boss-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 3.0 ||
+			pVersion->Get_Number() != 4.0 ||
 			nullptr == pEntries || !pEntries->Is_Array() ||
 			3u != root.Get_Object().size())
 		{
@@ -238,7 +238,7 @@ namespace
 		std::vector<BOSS_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 12u != value.Get_Object().size())
+			if (!value.Is_Object() || 13u != value.Get_Object().size())
 				return false;
 			BOSS_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
@@ -248,6 +248,8 @@ namespace
 				value.Find("combatObjectVisuals");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!ReadRequiredString(value, "visualAssetId", entry.visualAssetId) ||
+				!ReadRequiredNumber(
+					value, "presentationScale", entry.presentationScale) ||
 				!ReadRequiredString(value, "bodyModel", entry.bodyModel) ||
 				!ReadRequiredString(value, "weaponModel", entry.weaponModel) ||
 				!ReadRequiredString(value, "animationSetId", entry.animationSetId) ||
@@ -265,6 +267,8 @@ namespace
 				!IsResourceId(entry.bodyModel) ||
 				!IsResourceId(entry.weaponModel) ||
 				!IsResourceId(entry.animationSetId) ||
+				entry.presentationScale <= 0.f ||
+				entry.presentationScale > 100.f ||
 				nullptr == pArmor || !pArmor->Is_Array() ||
 				pArmor->Get_Array().size() > 4u ||
 				pArmor->Get_Array().size() > MAX_BOSS_ARMOR_PARTS ||

@@ -950,6 +950,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		spawned.fPositionX,
 		spawned.fPositionY,
 		spawned.fPositionZ);
+	desc.fScale = pBoss->presentationScale;
 	desc.isServerAuthoritative = true;
 	desc.fCollisionRadius = spawned.fCollisionRadius;
 	std::shared_ptr<CGameObject> gameObject;

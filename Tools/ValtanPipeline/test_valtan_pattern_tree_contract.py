@@ -18,6 +18,8 @@ BINDINGS_PATH = ROOT / "Data/Animation/Authored/Valtan/Valtan.patternbindings.js
 ROTATIONS_PATH = ROOT / "Data/Encounters/Valtan/ValtanPatternRotations.json"
 TREE_CPP = ROOT / "Client/Private/ValtanPatternTree.cpp"
 TREE_HEADER = ROOT / "Client/Public/ValtanPatternTree.h"
+EFFECT_CUE_CPP = ROOT / "Client/Private/ValtanPatternEffectCueDocument.cpp"
+EFFECT_SERVICE_CPP = ROOT / "Client/Private/Effect_PresentationService.cpp"
 ENCOUNTER_REFERENCE_CPP = ROOT / "Client/Private/EncounterPatternReference.cpp"
 VALTAN_LEVEL_CPP = ROOT / "Client/Private/Level_ValtanArena.cpp"
 WORLD_SETS_PATH = ROOT / "Data/Valtan/Valtan.worldeventsets.json"
@@ -361,6 +363,8 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         cls.rotations = load(ROTATIONS_PATH)
         cls.cpp = TREE_CPP.read_text(encoding="utf-8")
         cls.header = TREE_HEADER.read_text(encoding="utf-8")
+        cls.effect_cue_cpp = EFFECT_CUE_CPP.read_text(encoding="utf-8")
+        cls.effect_service_cpp = EFFECT_SERVICE_CPP.read_text(encoding="utf-8")
         cls.encounter_reference_cpp = ENCOUNTER_REFERENCE_CPP.read_text(
             encoding="utf-8"
         )
@@ -380,6 +384,21 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertIn("Load_FromAuthoringPaths", self.cpp + self.header)
         self.assertIn("Parse_SplitMasterDocument", self.cpp)
         self.assertNotIn('L"Valtan.pattern.json"', self.cpp)
+
+    def test_optional_source_end_and_typed_scale_policy_fail_closed(self) -> None:
+        self.assertIn('pSourceEnd->Is_Null()', self.cpp)
+        self.assertIn(
+            "(!Product.bHasSourceEnd ||", self.cpp,
+            "a natural cue must not compare an unowned numeric source end",
+        )
+        self.assertIn("constexpr uint32_t FORMAT_VERSION = 3u", self.effect_cue_cpp)
+        self.assertIn("Read_ScalePolicy", self.effect_cue_cpp)
+        self.assertIn(
+            "Managed Valtan pattern Effect cue requires explicit scalePolicy",
+            self.effect_cue_cpp,
+        )
+        self.assertIn("Try_BuildCueScalePolicyAnchor", self.effect_service_cpp)
+        self.assertIn("WorldScale.x / fScaleX", self.effect_service_cpp)
 
     def test_level_audition_reads_rotation_v3_candidates(self) -> None:
         self.assertIn('rotation.Find("candidates")', self.valtan_level_cpp)

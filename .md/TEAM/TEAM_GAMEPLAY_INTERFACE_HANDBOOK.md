@@ -249,6 +249,9 @@ commit한다. 성공 뒤 다음 cue spawn은 새 document를, 이미 재생 중�
 `Tools/EffectPipeline/Validate-EffectSources.ps1`로 수행한다.
 V1 Product source가 실제 참조하는 DDS/WModel dependency closure는 같은 Resources-relative 경로로 Git/LFS에
 선별 추적한다. 팀원은 pull 뒤 `git lfs pull`을 수행하며, 전체 Resources pack과 미참조 파일은 포함하지 않는다.
+Valtan actor Product가 직접 참조하는 body, Parts1/Parts2, AnimSet과 weapon 다섯 WModel, 그리고 그 material
+table이 참조하는 body/parts TGA 12개와 weapon DDS 8개도 같은 pull-only closure에 포함한다. 따라서 새 clone은
+발탄 본체를 위해 별도 추출 WModel이나 material texture를 수동 복사하지 않는다.
 
 Character는 cue/anchor/HIT metadata를 먼저 commit하고 Product ID만 revision별 queue에 등록한다.
 등록 frame에는 resource 작업을 하지 않으며 다음 frame부터 main thread가 target 하나씩 parse,
@@ -400,7 +403,32 @@ CGameRoom::Tick
 -> CValtan presentation + world-root Effect + CCombatHUDViewModel
 ```
 
-`Data/Valtan/Valtan.pattern.json`은 admission된 발탄 1페이즈 pattern의 공동 authoring 정본이다. 전용 publisher가 이를 기존 typed 제품 경계로 투영하며 Server와 Arena는 master를 두 번째 런타임으로 직접 읽지 않는다. `BossProfiles.json`은 boss 기본 수치, `ValtanEncounter.json`은 Server pattern timeline projection, `ValtanCombatObjects.json`은 stage 밖에서도 살아 있는 이동/지연 공격, `DamageProfiles.json`은 피해량을 소유한다. 각 animation stage는 `EXACT`, `HOLD_LAST_POSE`, `LOOP_TO_STAGE_END` 종료 정책을 명시하며 Tool은 같은 branch graph와 ordered presentation source를 소비한다. Phase-1 normal 선택은 master의 정확한 5-pattern `WEIGHTED_POOL`을 사용하고 health-bar mechanic queue가 먼저 실행된다. `counterReactionLayers`는 기존 Product의 네 counterable stage와 animation action을 reference-only로 join하며 7-pattern admission을 늘리지 않는다. `BossCatalog.json`의 `combatObjectVisuals`는 gameplay stable ID를 Client Product Effect에만 연결하며 asset path가 Server bootstrap으로 넘어가지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이 아니다. 담당별 필드와 publish 절차는 `발탄인수인계서.md`를 따른다.
+발탄 저작 정본은 `Data/Valtan`의 다음 다섯 split source다.
+
+| source | 소유 내용 |
+|---|---|
+| `Valtan.gameplay.json` | Server pattern graph, decision, stage, action, hit, motion, volley |
+| `Valtan.presentation.json` | animation occurrence, Effect invocation, camera invocation, cue scale policy |
+| `Valtan.combatobjects.json` | combat-object origin, movement, hit geometry와 damage profile reference |
+| `Valtan.worldeventsets.json` | stable world-event set membership |
+| `Valtan.legacy-compatibility.json` | 아직 승격하지 않은 Product closure와 migration identity |
+
+`Data/Valtan/Valtan.pattern.json`은 migration fixture이며 새 값을 저장하지 않는다. publisher가 다섯 source를 stable
+ID로 strict join해 `ValtanEncounter.json`, rotations, combat objects, world events, pattern bindings/cues와 Server
+bootstrap을 생성한다. 이 generated Product는 read-only이고 Server와 Arena가 split source를 두 번째 런타임으로
+직접 읽지 않는다.
+
+`Data/Actors/BossCatalog.json` format v4의 Valtan `presentationScale: 0.75`는 replicated Arena와 Character/Boss
+Preview가 함께 소비하는 Client actor scale이다. `BossProfiles.json`의 Server collision radius와 hit geometry는
+바꾸지 않는다. managed Effect cue 15개는 `OWNER_RELATIVE` 4개, `GAMEPLAY_FOOTPRINT` 9개,
+`ARENA_ABSOLUTE` 2개로 분류한다. owner-relative만 actor scale을 상속하고, 나머지 두 policy는 owner scale을 제거한
+뒤 authored `worldScale`을 사용한다. 이 정책은 호출 transform 계약이며 `Data/Effects/Authored`의 element geometry를
+고치거나 sky-axe에 `0.75`를 강제하지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이
+아니다. 세부 필드와 publish 절차는 `발탄인수인계서.md`를 따른다.
+
+Effect 시각 기준의 global bloom scatter 정본은 `Data/Rendering/Authored/RenderingProfiles.json`의 exact
+`bloomScatter: 1.0`이다. Rendering publisher는 float32 경계 검증 뒤 같은 값을 runtime JSON에 투영하며 Editor
+Save 뒤 별도 Effect publish나 사용자 sidecar로 이 값을 다시 선택하지 않는다.
 
 플레이어 profile의 defense는 발탄 incoming damage에 실제로 사용된다. 원작 Server 공식이 client
 payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 계약이며
@@ -547,7 +575,7 @@ git lfs pull
 → 담당 public interface에서 작업 시작
 ```
 
-기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, 소비 데이터, project/filter 등록, harness, RESULT를 같은 검증 단위로 묶는다. build output, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, Resources payload를 stage하지 않는다.
+기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, 소비 데이터, project/filter 등록, harness, RESULT를 같은 검증 단위로 묶는다. build output, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, 그리고 승인된 최소 dependency closure 밖의 Resources payload를 stage하지 않는다.
 
 ## 11. 완료 검증
 

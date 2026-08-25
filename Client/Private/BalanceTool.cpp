@@ -10,6 +10,7 @@
 #include "ProjectDataRoot.h"
 #include "ValtanPatternAuditionService.h"
 #if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
+#include "ActorCatalog.h"
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #endif
@@ -2705,11 +2706,42 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 				}
 				for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue : stage.ProductCues)
 				{
-					ImGui::BulletText(
-						"Effect %s | asset %s | anchor %s | %s/%s | repeat %s",
-						cue.strBindingId.c_str(), cue.strEffectAssetId.c_str(),
-						cue.strAnchorSlotId.c_str(), cue.strFollowPolicy.c_str(),
-						cue.strStopPolicy.c_str(), cue.strRepeatPolicy.c_str());
+					if (VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE ==
+						cue.eScalePolicy)
+					{
+						const BOSS_ACTOR_ENTRY* const pValtanActor =
+							CActorCatalog::Find_Boss("BOSS_VALTAN");
+						if (nullptr != pValtanActor)
+						{
+							ImGui::BulletText(
+								"Effect %s | asset %s | anchor %s | %s/%s | repeat %s | scale OWNER %.2fx",
+								cue.strBindingId.c_str(), cue.strEffectAssetId.c_str(),
+								cue.strAnchorSlotId.c_str(), cue.strFollowPolicy.c_str(),
+								cue.strStopPolicy.c_str(), cue.strRepeatPolicy.c_str(),
+								pValtanActor->presentationScale);
+						}
+						else
+						{
+							ImGui::BulletText(
+								"Effect %s | asset %s | anchor %s | %s/%s | repeat %s | scale OWNER (BossCatalog unavailable)",
+								cue.strBindingId.c_str(), cue.strEffectAssetId.c_str(),
+								cue.strAnchorSlotId.c_str(), cue.strFollowPolicy.c_str(),
+								cue.strStopPolicy.c_str(), cue.strRepeatPolicy.c_str());
+						}
+					}
+					else
+					{
+						const char* const scaleSpace =
+							VALTAN_PATTERN_EFFECT_SCALE_POLICY::ARENA_ABSOLUTE ==
+								cue.eScalePolicy ? "ARENA" : "WORLD";
+						ImGui::BulletText(
+							"Effect %s | asset %s | anchor %s | %s/%s | repeat %s | scale %s [%.2f, %.2f, %.2f]",
+							cue.strBindingId.c_str(), cue.strEffectAssetId.c_str(),
+							cue.strAnchorSlotId.c_str(), cue.strFollowPolicy.c_str(),
+							cue.strStopPolicy.c_str(), cue.strRepeatPolicy.c_str(),
+							scaleSpace, cue.vWorldScale.x, cue.vWorldScale.y,
+							cue.vWorldScale.z);
+					}
 				}
 				for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& object :
 					stage.CombatObjectEffects)

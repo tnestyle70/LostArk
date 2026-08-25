@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AnimationEffectCueDocument.h"
+#include "ValtanPatternEffectCueDocument.h"
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
@@ -54,6 +54,11 @@ struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
 	std::string strFollowPolicy;
 	std::string strStopPolicy;
 	std::string strRepeatPolicy;
+	VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy =
+		VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+	std::string strScalePolicy;
+	float3_t vWorldScale{ 1.f, 1.f, 1.f };
+	bool_t bHasExplicitScalePolicy = false;
 	uint32_t iSourceStartMs = 0u;
 	uint32_t iSourceEndMs = 0u;
 	uint32_t iStageDurationMs = 0u;

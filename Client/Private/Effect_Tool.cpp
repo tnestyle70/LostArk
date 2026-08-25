@@ -79,6 +79,8 @@ namespace
 		"valtan.whirlwind.420633.active";
 	constexpr const char_t* VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID =
 		"effect.valtan.pattern.420633.active";
+	constexpr const char_t* VALTAN_EXACT_HISTORY_V1_EFFECT_ASSET_ID =
+		"effect.valtan.pattern.420633.active.v1.unified";
 	constexpr const char_t* VALTAN_CHARACTER_SELECT_BOSS_PLACEMENT_ID =
 		"boss.valtan.character-select.lazy";
 	constexpr const char_t* VALTAN_ARENA_BOSS_PLACEMENT_ID =
@@ -93,6 +95,23 @@ namespace
 		"VALTAN_ARENA_BREAK_33",
 		"VALTAN_FOUR_PILLARS_105"
 	};
+
+	bool Is_ValtanExactHistoryPreviewEffectAssetId(
+		const std::string_view strEffectAssetId)
+	{
+		return strEffectAssetId == VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID ||
+			strEffectAssetId == VALTAN_EXACT_HISTORY_V1_EFFECT_ASSET_ID;
+	}
+
+	bool Matches_ValtanExactHistoryBinding(
+		const std::string_view strBindingId,
+		const std::string_view strBindingEffectAssetId,
+		const std::string_view strPreviewEffectAssetId)
+	{
+		return strBindingId == VALTAN_EXACT_HISTORY_BINDING_ID &&
+			strBindingEffectAssetId == VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID &&
+			Is_ValtanExactHistoryPreviewEffectAssetId(strPreviewEffectAssetId);
+	}
 
 	const char_t* Resolve_ValtanServerPatternBossPlacement(
 		const uint32_t iLevel)
@@ -188,8 +207,30 @@ namespace
 		return Requests;
 	}
 
+	bool Build_ToolValtanSourceAnchorWorld(
+		const float4x4_t& RawBone,
+		const float4x4_t& SampledOwnerRoot,
+		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
+		const float3_t& WorldScale,
+		float4x4_t& OutWorld)
+	{
+		float4x4_t EffectiveOwnerRoot{};
+		if (!Client::CEffectPresentationService::Build_CueScalePolicyAnchor(
+				eScalePolicy, WorldScale, SampledOwnerRoot,
+				EffectiveOwnerRoot))
+		{
+			return false;
+		}
+		Client::EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
+		AnchorBuild.RawBone = RawBone;
+		AnchorBuild.OwnerWorld = EffectiveOwnerRoot;
+		return Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(
+			AnchorBuild, OutWorld);
+	}
+
 	bool Resolve_ToolSourceAnchorWorlds(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW* pValtanCue,
 		std::unordered_map<std::string, float4x4_t>& OutWorlds,
 		std::string& strOutError)
 	{
@@ -197,12 +238,30 @@ namespace
 		const std::vector<TOOL_SOURCE_ANCHOR_REQUEST> Requests =
 			Collect_ToolSourceAnchorRequests(Document);
 		OutWorlds.reserve(Requests.size());
+		std::shared_ptr<Engine::CModel> pValtanModel;
+		float4x4_t SampledValtanOwnerRoot{};
+		if (nullptr != pValtanCue && !Requests.empty())
+		{
+			pValtanModel = Client::CAnimationTargetService::Resolve_Model();
+			if (nullptr == pValtanModel ||
+				!Client::CAnimationTargetService::Resolve_RootTransform(
+					&SampledValtanOwnerRoot))
+			{
+				strOutError =
+					"preview model cannot resolve the Valtan cue owner root.";
+				return false;
+			}
+		}
 		bool_t bAllResolved = true;
 		for (const TOOL_SOURCE_ANCHOR_REQUEST& Request : Requests)
 		{
 			float4x4_t BoneAnchorWorld{};
-			if (!Client::CAnimationTargetService::Resolve_AnchorTransform(
-					Request.strRuntimeBoneName.c_str(), &BoneAnchorWorld))
+			const bool_t bResolved = nullptr != pValtanCue ?
+				(nullptr != pValtanModel &&
+				 pValtanModel->Has_Bone(Request.strRuntimeBoneName.c_str())) :
+				Client::CAnimationTargetService::Resolve_AnchorTransform(
+					Request.strRuntimeBoneName.c_str(), &BoneAnchorWorld);
+			if (!bResolved)
 			{
 				if (strOutError.empty())
 				{
@@ -212,6 +271,26 @@ namespace
 				}
 				bAllResolved = false;
 				continue;
+			}
+			if (nullptr != pValtanCue)
+			{
+				float4x4_t RawBone{};
+				XMStoreFloat4x4(&RawBone, pValtanModel->Get_BoneMatrix(
+					Request.strRuntimeBoneName.c_str()));
+				if (!Build_ToolValtanSourceAnchorWorld(
+						RawBone, SampledValtanOwnerRoot,
+						pValtanCue->eScalePolicy, pValtanCue->vWorldScale,
+						BoneAnchorWorld))
+				{
+					if (strOutError.empty())
+					{
+						strOutError =
+							"preview model cannot normalize the Valtan source bone '" +
+							Request.strRuntimeBoneName + "' with its cue scale policy.";
+					}
+					bAllResolved = false;
+					continue;
+				}
 			}
 
 			const Client::EFFECT_TRANSFORM_DESC& Local =
@@ -1273,25 +1352,6 @@ namespace
         OutImported = std::string_view::npos != Line.find(" src=orig");
         OutEmptyPayload = iValueBegin == iValueEnd;
         return true;
-    }
-
-    float4x4_t Compose_EffectLocal(
-        const Client::EFFECT_TRANSFORM_DESC& Local,
-        const float4x4_t& Anchor)
-    {
-        float4x4_t Result{};
-        XMStoreFloat4x4(&Result,
-            XMMatrixScaling(Local.vScale.x, Local.vScale.y, Local.vScale.z) *
-            XMMatrixRotationRollPitchYaw(
-                XMConvertToRadians(Local.vRotationDegrees.x),
-                XMConvertToRadians(Local.vRotationDegrees.y),
-                XMConvertToRadians(Local.vRotationDegrees.z)) *
-            XMMatrixTranslation(
-                Local.vPosition.x,
-                Local.vPosition.y,
-                Local.vPosition.z) *
-            XMLoadFloat4x4(&Anchor));
-        return Result;
     }
 
 	bool_t Try_ExtractPlanarYawDegrees(
@@ -2501,8 +2561,8 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 				static_cast<f64_t>(fEffectSampleTime)) > 1.0e-5 &&
 			fSequentialAdvance <= 0.f)
 		{
-			bHistoryAdvanced = pObject->Set_SampleTimeWithTransformHistory(
-				fEffectSampleTime, TransformProvider, TransformError);
+			bHistoryAdvanced = Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleTime, TransformError);
 		}
 		else if (fSequentialAdvance > 0.f)
 		{
@@ -2544,7 +2604,10 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 	std::unordered_map<std::string, float4x4_t> SourceAnchorWorlds;
 	std::string SourceAnchorError;
 	const bool_t bSourceAnchorsResolved = Resolve_ToolSourceAnchorWorlds(
-		SourceAnchorDocument, SourceAnchorWorlds, SourceAnchorError);
+		SourceAnchorDocument,
+		m_ValtanProductPreview.has_value() ?
+			&m_ValtanProductPreview->Cue : nullptr,
+		SourceAnchorWorlds, SourceAnchorError);
 	pObject->Set_SourceAnchorWorlds(std::move(SourceAnchorWorlds));
 	if (!bSourceAnchorsResolved)
 	{
@@ -4217,20 +4280,12 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 			{
 				if (m_bValtanBossPatternTransformHistoryRequired)
 				{
-					const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
-						[this](const f32_t fSampleTimeSeconds,
-							EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
-							std::string& strOutError)
-						{
-							return Build_ValtanBossPatternTransformSample(
-								fSampleTimeSeconds, OutSample, strOutError);
-						};
 					std::string TransformError;
 					const bool_t bSampled =
-						m_bValtanBossPatternTransformHistoryActive &&
-						pObject->Set_SampleTimeWithTransformHistory(
+						Seek_ValtanBossPatternTransformHistory(
+							pObject,
 							Resolve_EffectSampleTime(m_fPreviewTimeSeconds),
-							TransformProvider, TransformError);
+							TransformError);
 					pObject->Set_Visible(bSampled);
 					if (!bSampled)
 					{
@@ -10306,6 +10361,49 @@ bool_t Client::CEffect_Tool::Try_PlayValtanSavedUnifiedEffect(
 	return bTargetReady && Try_PlayUnifiedEffect(Cache);
 }
 
+bool_t Client::CEffect_Tool::Try_SnapshotValtanWorldPreviewRoot()
+{
+	float4x4_t TargetRoot{};
+	if (!CAnimationTargetService::Resolve_RootTransform(&TargetRoot))
+	{
+		m_strPreviewStatus =
+			"Valtan world-owned preview could not resolve the current target root.";
+		return false;
+	}
+
+	vector_t Scale{};
+	vector_t Rotation{};
+	vector_t Translation{};
+	if (!XMMatrixDecompose(&Scale, &Rotation, &Translation,
+			XMLoadFloat4x4(&TargetRoot)) ||
+		!std::isfinite(XMVectorGetX(Rotation)) ||
+		!std::isfinite(XMVectorGetY(Rotation)) ||
+		!std::isfinite(XMVectorGetZ(Rotation)) ||
+		!std::isfinite(XMVectorGetW(Rotation)) ||
+		!std::isfinite(XMVectorGetX(Translation)) ||
+		!std::isfinite(XMVectorGetY(Translation)) ||
+		!std::isfinite(XMVectorGetZ(Translation)))
+	{
+		m_strPreviewStatus =
+			"Valtan world-owned preview rejected an invalid target root.";
+		return false;
+	}
+
+	/* A Server combat object owns a fixed world transform. Snapshot the staged
+	   Valtan pose so the local preview stays in the visible arena, but remove
+	   actor presentation scale: the authored combat-object Effect owns its own
+	   geometry and gameplay-footprint sizes. */
+	Rotation = XMQuaternionNormalize(Rotation);
+	XMStoreFloat4x4(&m_PreviewWorldRoot,
+		XMMatrixRotationQuaternion(Rotation) *
+		XMMatrixTranslationFromVector(Translation));
+	m_vPickedWorldPosition = {
+		XMVectorGetX(Translation),
+		XMVectorGetY(Translation),
+		XMVectorGetZ(Translation) };
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 	const std::filesystem::path& Path,
 	const std::string& strEffectAssetId,
@@ -10375,6 +10473,15 @@ bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 		m_strPreviewAnimationStatus =
 			"Valtan model could not be staged for this saved Effect.";
 		return false;
+	}
+	if (0u != iWorldOwnerStageDurationMs &&
+		!Try_SnapshotValtanWorldPreviewRoot())
+	{
+		/* Editing remains available when a scene root cannot be staged. The
+		   explicit Play command is fail-closed instead of silently drawing at
+		   the world origin. */
+		if (bQueuePlayCompleteAfterLoad)
+			return false;
 	}
 	if (bQueuePlayCompleteAfterLoad && !Try_PlayActiveUnifiedEffect())
 		return false;
@@ -11833,10 +11940,22 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 			{
 				Try_OpenValtanSavedReferenceEffect(Path,
 					Effect.strEffectAssetId, OwnerTimeline,
-					iOwnerTimelineDurationMs, true, iEffectStartMs);
+					iOwnerTimelineDurationMs, true, 0u);
 			}
 		}
 		ImGui::EndDisabled();
+		if (bCombatObjectOwner && bActive)
+		{
+			ImGui::TextDisabled(
+				"World preview root: (%.2f, %.2f, %.2f) | Valtan rotation kept, actor scale removed",
+				m_PreviewWorldRoot._41, m_PreviewWorldRoot._42,
+				m_PreviewWorldRoot._43);
+			if (!m_strPreviewStatus.empty())
+			{
+				ImGui::TextWrapped("Last playback: %s",
+					m_strPreviewStatus.c_str());
+			}
+		}
 
 		const auto RefreshedCache = m_ValtanUnifiedEffectCaches.find(
 			Effect.strEffectAssetId);
@@ -16499,6 +16618,17 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
 					std::string("Valtan model or ordered animation unavailable") :
 					m_strPreviewAnimationStatus);
 		}
+		if (0u != Pending.iValtanWorldOwnerStageDurationMs &&
+			!Try_SnapshotValtanWorldPreviewRoot())
+		{
+			if (Pending.bPlayCompleteAfterLoad)
+			{
+				return CompleteValtanPreviewPartial(
+					m_strPreviewStatus.empty() ?
+						std::string("Valtan world preview root unavailable") :
+						m_strPreviewStatus);
+			}
+		}
 		if (Pending.bPlayCompleteAfterLoad)
 		{
 			if (!Try_PlayActiveUnifiedEffect())
@@ -18732,8 +18862,28 @@ bool_t Client::CEffect_Tool::Try_AuditionParticleSystem()
     {
         Reset_ProductCueSnapshot();
         pObject->Reset();
-        pObject->Set_SampleTime(
-            Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+		const f32_t fEffectSampleSeconds =
+			Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
+		std::string TransformError;
+		bool_t bTransformApplied = true;
+		if (m_bValtanBossPatternTransformHistoryRequired)
+		{
+			bTransformApplied = Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleSeconds, TransformError);
+		}
+		else
+		{
+			pObject->Set_SampleTime(fEffectSampleSeconds);
+		}
+		if (!bTransformApplied)
+		{
+			pObject->Set_Visible(false);
+			m_bPreviewPlaying = false;
+			m_strPreviewStatus =
+				"Particle audition refused missing Valtan exact history: " +
+				TransformError;
+			return false;
+		}
 		m_bPreviewVisibleRequested = true;
         m_bPreviewPlaying = true;
     }
@@ -18818,8 +18968,28 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
         if (bRootResolved)
             pObject->Set_RootWorld(Root);
         pObject->Reset();
-        pObject->Set_SampleTime(
-            Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+		const f32_t fEffectSampleSeconds =
+			Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
+		std::string TransformError;
+		bool_t bTransformApplied = true;
+		if (m_bValtanBossPatternTransformHistoryRequired)
+		{
+			bTransformApplied = Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleSeconds, TransformError);
+		}
+		else
+		{
+			pObject->Set_SampleTime(fEffectSampleSeconds);
+		}
+		if (!bTransformApplied)
+		{
+			pObject->Set_Visible(false);
+			m_bPreviewPlaying = false;
+			m_strPreviewStatus =
+				"Element audition refused missing Valtan exact history: " +
+				TransformError;
+			return false;
+		}
 		pObject->Set_Visible(
 			bRootResolved &&
 			Is_ProductCueVisible(m_fPreviewTimeSeconds));
@@ -23213,7 +23383,9 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 	m_fValtanBossPatternAnimationDurationSeconds = 0.f;
 	m_ValtanBossPatternPoseBinding = {};
 
-	if (Binding.strEffectAssetId != Document.strEffectAssetId ||
+	if (!Matches_ValtanExactHistoryBinding(
+			Binding.strBindingId, Binding.strEffectAssetId,
+			Document.strEffectAssetId) ||
 		Binding.strRuntimeClipName.empty() ||
 		Binding.strRuntimeBoneName.empty() ||
 		CAnimationTargetService::Resolve_AssetName() != VALTAN_ANIMATION_ASSET_NAME ||
@@ -23273,13 +23445,17 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 		}
 		++iFollowCarrierCount;
 	}
-	if (3u != iVisibleExecutionCount || 3u != iFollowCarrierCount ||
+	const size_t iExpectedFollowCarrierCount =
+		Document.strEffectAssetId == VALTAN_EXACT_HISTORY_V1_EFFECT_ASSET_ID ?
+			5u : 3u;
+	if (iExpectedFollowCarrierCount != iVisibleExecutionCount ||
+		iExpectedFollowCarrierCount != iFollowCarrierCount ||
 		!bHasSocketLocalTransform ||
 		m_strValtanBossPatternAnchorSlotId != "B_EffectRoot" ||
 		m_strValtanBossPatternBoneName != "b_effectroot")
 	{
 		strOutError =
-			"Valtan 420633 preview requires exactly three B_EffectRoot follow carriers.";
+			"Valtan 420633 preview has an invalid B_EffectRoot follow-carrier count.";
 		return false;
 	}
 
@@ -23365,7 +23541,28 @@ bool_t Client::CEffect_Tool::Build_ValtanBossPatternTransformSample(
 
 	EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
 	AnchorBuild.RawBone = PoseSample.BoneCombinedMatrices.front();
-	AnchorBuild.OwnerWorld = PoseSample.RootWorld;
+	if (!m_ValtanProductPreview.has_value())
+	{
+		strOutError =
+			"Valtan 420633 cue scale policy is unavailable.";
+		return false;
+	}
+	const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue =
+		m_ValtanProductPreview->Cue;
+	float4x4_t EffectiveOwnerRoot{};
+	float4x4_t CueRoot{};
+	if (!CEffectPresentationService::Build_CueScalePolicyAnchor(
+			Cue.eScalePolicy, Cue.vWorldScale, PoseSample.RootWorld,
+			EffectiveOwnerRoot) ||
+		!CEffectPresentationService::Build_CueScalePolicyRoot(
+			Cue.LocalTransform, Cue.eScalePolicy, Cue.vWorldScale,
+			PoseSample.RootWorld, CueRoot))
+	{
+		strOutError =
+			"Valtan 420633 cue scale policy transform is invalid.";
+		return false;
+	}
+	AnchorBuild.OwnerWorld = EffectiveOwnerRoot;
 	float4x4_t BoneWorld{};
 	if (!CEffectPresentationService::Build_SourceBoneAnchorWorld(
 			AnchorBuild, BoneWorld))
@@ -23390,12 +23587,37 @@ bool_t Client::CEffect_Tool::Build_ValtanBossPatternTransformSample(
 		SocketLocal * XMLoadFloat4x4(&BoneWorld));
 
 	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
-	Staged.RootWorld = PoseSample.RootWorld;
+	Staged.RootWorld = CueRoot;
 	Staged.SourceAnchorWorlds.emplace(
 		m_strValtanBossPatternAnchorSlotId, AnchorWorld);
 	OutSample = std::move(Staged);
 	strOutError.clear();
 	return true;
+}
+
+bool_t Client::CEffect_Tool::Seek_ValtanBossPatternTransformHistory(
+	const shared_ptr<CEffectObject>& pObject,
+	const f32_t fEffectSampleTimeSeconds,
+	std::string& strOutError) const
+{
+	if (nullptr == pObject ||
+		!m_bValtanBossPatternTransformHistoryRequired ||
+		!m_bValtanBossPatternTransformHistoryActive)
+	{
+		strOutError =
+			"Valtan 420633 exact transform history is unavailable.";
+		return false;
+	}
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+		[this](const f32_t fSampleTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strProviderError)
+		{
+			return Build_ValtanBossPatternTransformSample(
+				fSampleTimeSeconds, OutSample, strProviderError);
+		};
+	return pObject->Set_SampleTimeWithTransformHistory(
+		fEffectSampleTimeSeconds, TransformProvider, strOutError);
 }
 
 void Client::CEffect_Tool::Reset_ValtanBossPatternTransformHistory()
@@ -23731,9 +23953,19 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 		Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
 	std::string HistoryError;
 	const bool_t bHistorySampled =
-		!m_bValtanBossPatternTransformHistoryRequired &&
-		Seek_WorldPreviewWithSourceAnchorHistory(
-			pObject, PreviewDocument, fEffectSampleSeconds, HistoryError);
+		m_bValtanBossPatternTransformHistoryRequired ?
+			Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleSeconds, HistoryError) :
+			Seek_WorldPreviewWithSourceAnchorHistory(
+				pObject, PreviewDocument, fEffectSampleSeconds, HistoryError);
+	if (m_bValtanBossPatternTransformHistoryRequired && !bHistorySampled)
+	{
+		pObject->Set_Visible(false);
+		m_strPreviewStatus =
+			"Valtan 420633 exact source-anchor preview failed closed: " +
+			HistoryError;
+		return false;
+	}
 	if (!bHistorySampled)
 		pObject->Set_SampleTime(fEffectSampleSeconds);
     switch (m_ePreviewFilter)
@@ -24153,8 +24385,14 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 	}
 	else
 	{
-		OutRoot = Compose_EffectLocal(
-			m_ValtanProductPreview->Cue.LocalTransform, Anchor);
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue =
+			m_ValtanProductPreview->Cue;
+		if (!CEffectPresentationService::Build_CueScalePolicyRoot(
+				Cue.LocalTransform, Cue.eScalePolicy, Cue.vWorldScale,
+				Anchor, OutRoot))
+		{
+			return false;
+		}
 	}
 	if ((bPlayerSnapshot || bValtanSnapshot) &&
 		Is_ProductCueVisible(m_fPreviewTimeSeconds))
@@ -24408,11 +24646,18 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 		strOutError = "Source-anchor history has an invalid wall duration.";
 		return false;
 	}
+	const bool_t bValtanScalePolicy = m_ValtanProductPreview.has_value();
+	const VALTAN_PATTERN_EFFECT_SCALE_POLICY eValtanScalePolicy =
+		bValtanScalePolicy ? m_ValtanProductPreview->Cue.eScalePolicy :
+			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+	const float3_t vValtanWorldScale = bValtanScalePolicy ?
+		m_ValtanProductPreview->Cue.vWorldScale : float3_t{ 1.f, 1.f, 1.f };
 
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
 		[this, &PoseBinding, &Requests, EffectRoot, Clip,
 		 fSourceStartSeconds, fSourceDurationSeconds,
-		 fWallDurationSeconds](const f32_t fHistoryEffectSeconds,
+		 fWallDurationSeconds, bValtanScalePolicy, eValtanScalePolicy,
+		 vValtanWorldScale](const f32_t fHistoryEffectSeconds,
 			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
 			std::string& strProviderError)
 		{
@@ -24435,7 +24680,6 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 					"Source-anchor historical bone sampling failed.";
 				return false;
 			}
-
 			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
 			Staged.RootWorld = EffectRoot;
 			Staged.SourceAnchorWorlds.reserve(Requests.size());
@@ -24443,9 +24687,25 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 			{
 				const TOOL_SOURCE_ANCHOR_REQUEST& Request = Requests[iRequest];
 				float4x4_t BoneWorld{};
-				XMStoreFloat4x4(&BoneWorld,
-					XMLoadFloat4x4(&PoseSample.BoneCombinedMatrices[iRequest]) *
-					XMLoadFloat4x4(&PoseSample.RootWorld));
+				if (bValtanScalePolicy)
+				{
+					if (!Build_ToolValtanSourceAnchorWorld(
+							PoseSample.BoneCombinedMatrices[iRequest],
+							PoseSample.RootWorld, eValtanScalePolicy,
+							vValtanWorldScale, BoneWorld))
+					{
+						strProviderError =
+							"Source-anchor history could not normalize the Valtan source bone with its cue scale policy.";
+						return false;
+					}
+				}
+				else
+				{
+					XMStoreFloat4x4(&BoneWorld,
+						XMLoadFloat4x4(
+							&PoseSample.BoneCombinedMatrices[iRequest]) *
+						XMLoadFloat4x4(&PoseSample.RootWorld));
+				}
 				const EFFECT_TRANSFORM_DESC& Local =
 					Request.SocketLocalTransform;
 				const matrix_t SocketLocal = XMMatrixScaling(
@@ -24646,17 +24906,9 @@ bool_t Client::CEffect_Tool::Restore_ValtanProductPreviewPlayback(
 			return FailRestore(
 				"the exact Valtan transform history is unavailable");
 		}
-		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
-			[this](const f32_t fSampleTimeSeconds,
-				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
-				std::string& strError)
-			{
-				return Build_ValtanBossPatternTransformSample(
-					fSampleTimeSeconds, OutSample, strError);
-			};
 		std::string TransformError;
-		if (!pObject->Set_SampleTimeWithTransformHistory(
-				fEffectSampleSeconds, TransformProvider, TransformError))
+		if (!Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleSeconds, TransformError))
 		{
 			return FailRestore(
 				"the exact Valtan transform-history sample failed: " +
@@ -24821,18 +25073,10 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 				"Valtan 420633 preview refused a missing exact b_effectroot history binding.";
 			return;
 		}
-		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
-			[this](const f32_t fSampleTimeSeconds,
-				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
-				std::string& strOutError)
-			{
-				return Build_ValtanBossPatternTransformSample(
-					fSampleTimeSeconds, OutSample, strOutError);
-			};
 		std::string TransformError;
 		pObject->Reset();
-		if (!pObject->Set_SampleTimeWithTransformHistory(
-				0.f, TransformProvider, TransformError))
+		if (!Seek_ValtanBossPatternTransformHistory(
+				pObject, 0.f, TransformError))
 		{
 			pObject->Set_Playing(false);
 			pObject->Set_Visible(false);
@@ -24903,14 +25147,19 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 					const BOSS_PATTERN_EFFECT_BINDING& Candidate)
 				{
 					return Candidate.strEffectAssetId ==
-						pPreviewDocument->strEffectAssetId;
+							pPreviewDocument->strEffectAssetId ||
+						Matches_ValtanExactHistoryBinding(
+							Candidate.strBindingId,
+							Candidate.strEffectAssetId,
+							pPreviewDocument->strEffectAssetId);
 				});
 			if (BossBinding != BossEffectBindings.Bindings.end())
 			{
 				const bool_t bRequiresExactTransformHistory =
-					BossBinding->strBindingId == VALTAN_EXACT_HISTORY_BINDING_ID &&
-					BossBinding->strEffectAssetId ==
-						VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID;
+					Matches_ValtanExactHistoryBinding(
+						BossBinding->strBindingId,
+						BossBinding->strEffectAssetId,
+						pPreviewDocument->strEffectAssetId);
 				if (bRequiresExactTransformHistory)
 				{
 					m_bValtanBossPatternTransformHistoryRequired = true;
@@ -25726,16 +25975,21 @@ bool_t Client::CEffect_Tool::Try_ResolveSynchronizedAnimationTime(
 		}
 		const bool_t bHasSourceWindow =
 			0u != Clip.iSourceStartMs || 0u != Clip.iPlayMs;
+		const bool_t bAuthoredEndPoseHold =
+			0u != Clip.iAuthoringWallMs &&
+			fTimelineClipWallDurationSeconds >
+				fWallDurationSeconds + 0.0001f;
 		if (CActionPresentationTimeline::
 			Should_ReleaseCompletedAnimationClock(
 				Clip.bHasExplicitLoopPolicy || bHasSourceWindow,
 				Clip.bHasExplicitLoopPolicy ? Clip.bLoop : m_bPreviewLoop,
 				iClip + 1u == m_SynchronizedAnimationClips.size(),
+				bAuthoredEndPoseHold,
 				pModel->Is_AnimPaused(), fCurrentSourceSeconds,
 				fSourceDurationSeconds))
 		{
 			/* Keep the model paused on its final pose, but let the Effect Tool
-			   wall clock finish any natural tail beyond the animation segment. */
+			   wall clock finish an authored hold or final natural Effect tail. */
 			return false;
 		}
 		const f32_t fCurrentWallSeconds =

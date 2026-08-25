@@ -40,6 +40,9 @@ REFERENCE_PATH = (
 )
 BOSS_CATALOG_PATH = REPOSITORY_ROOT / "Data/Actors/BossCatalog.json"
 VALTAN_MASTER_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.pattern.json"
+VALTAN_PRESENTATION_PATH = (
+    REPOSITORY_ROOT / "Data/Valtan/Valtan.presentation.json"
+)
 AUTHORED_ROOT = REPOSITORY_ROOT / "Data/Effects/Authored"
 SOURCE_CATALOG_PATH = REPOSITORY_ROOT / "Data/Effects/EffectCatalog.json"
 RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
@@ -312,6 +315,16 @@ def validate_v1_alias_projection_contract(
     for token in required_pattern:
         if token not in pattern:
             raise AssertionError(f"paired V0/V1 Saved row contract lost: {token}")
+    for token in (
+        '"effect.valtan.pattern.420633.active.v1.unified"',
+        "Is_ValtanExactHistoryPreviewEffectAssetId(",
+        "Matches_ValtanExactHistoryBinding(",
+        "Seek_ValtanBossPatternTransformHistory(",
+    ):
+        if token not in cpp_text:
+            raise AssertionError(
+                f"V1 exact-history preview contract lost: {token}"
+            )
     if re.search(r"strEffectAssetId\s*\+\s*[^;]*v1\.unified", pattern):
         raise AssertionError("V1 Saved rows must consume the typed alias, not infer a suffix")
 
@@ -1274,15 +1287,17 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         ):
             self.assertIn(token, tool_cpp)
 
-    def test_master_animation_occurrences_project_and_dash_paths_are_explicit(self) -> None:
-        master = json.loads(VALTAN_MASTER_PATH.read_text(encoding="utf-8"))
+    def test_split_animation_occurrences_project_and_dash_paths_are_explicit(self) -> None:
+        presentation = json.loads(
+            VALTAN_PRESENTATION_PATH.read_text(encoding="utf-8")
+        )
         bindings = {
             row["actionId"]: row["clips"]
             for row in json.loads(
                 PATTERN_BINDING_PATH.read_text(encoding="utf-8")
             )["bindings"]
         }
-        for pattern in master["patterns"]:
+        for pattern in presentation["patterns"]:
             for stage in pattern["stages"]:
                 expected = [
                     {
@@ -1299,7 +1314,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 self.assertEqual(expected, bindings[stage["actionId"]])
 
         dash = next(
-            row for row in master["patterns"]
+            row for row in presentation["patterns"]
             if row["patternId"] == "VALTAN_DASH_CHARGE"
         )
         windup = next(
@@ -1495,6 +1510,21 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "bool_t Client::CEffect_Tool::Try_CreateMeshEffect(",
             "bool_t Client::CEffect_Tool::Try_UseSelectedElementAsAuthoringPreset()",
         )
+        snapshot_root = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Try_SnapshotValtanWorldPreviewRoot()",
+            "bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(",
+        )
+        independent = function_slice(
+            cpp_text,
+            "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        )
+        pending_load = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(",
+            "bool_t Client::CEffect_Tool::Refresh_AllEffects(",
+        )
         for token in (
             "iValtanWorldOwnerStageDurationMs",
             "m_iValtanWorldOwnerStageDurationMs",
@@ -1519,6 +1549,20 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             ),
             2,
         )
+        self.assertIn(
+            "CAnimationTargetService::Resolve_RootTransform(&TargetRoot)",
+            snapshot_root,
+        )
+        self.assertIn("XMMatrixRotationQuaternion(Rotation) *", snapshot_root)
+        self.assertIn(
+            "XMMatrixTranslationFromVector(Translation)", snapshot_root
+        )
+        self.assertIn("Try_SnapshotValtanWorldPreviewRoot()", reference_open)
+        self.assertIn("Try_SnapshotValtanWorldPreviewRoot()", pending_load)
+        self.assertIn(
+            "iOwnerTimelineDurationMs, true, 0u", independent
+        )
+        self.assertIn("World preview root:", independent)
 
     def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:
         validate_manual_authoring_detail_contract(
@@ -2114,13 +2158,21 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
         self.assertEqual(33, len(projected))
-        self.assertEqual(56, raw_links)
-        self.assertEqual(56, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(57, raw_links)
+        self.assertEqual(57, sum(len(rows) for rows in projected.values()))
         self.assertEqual(2, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(1, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertNotIn("VALTAN_TRIPLE_SLASH", projected)
         self.assertNotIn("VALTAN_ROTATION_SLASH", projected)
         self.assertEqual(3, len(projected["VALTAN_FOUR_SLASH"]))
+        self.assertEqual(
+            [
+                "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
+                "effect.valtan.sky-axe.active",
+                "effect.valtan.carrier-v1.attack.high-jump.land.clip-01",
+            ],
+            projected["VALTAN_HIGH_JUMP"],
+        )
         self.assertEqual(
             [
                 "effect.valtan.carrier-v1.mechanic.four-pillars-105.takeoff.clip-01",
@@ -2341,6 +2393,19 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             cpp_text.replace(
                 "PlaybackCue.strEffectAssetId = Row.strEffectAssetId",
                 "PlaybackCue.strEffectAssetId = pProductSource->pCue->strEffectAssetId",
+            ),
+            cpp_text.replace(
+                '"effect.valtan.pattern.420633.active.v1.unified"',
+                '"effect.valtan.pattern.420633.active.v1.disabled"',
+                1,
+            ),
+            cpp_text.replace(
+                "Matches_ValtanExactHistoryBinding(",
+                "Matches_DisabledValtanExactHistoryBinding(",
+            ),
+            cpp_text.replace(
+                "Seek_ValtanBossPatternTransformHistory(",
+                "Seek_DisabledValtanBossPatternTransformHistory(",
             ),
         )
         for mutation in v1_mutations:

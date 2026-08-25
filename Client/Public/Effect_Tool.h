@@ -556,6 +556,7 @@ private:
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId,
 		const VALTAN_PRODUCT_PREVIEW& Preview);
+	bool_t Try_SnapshotValtanWorldPreviewRoot();
 	bool_t Try_OpenValtanSavedReferenceEffect(
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId,
@@ -796,6 +797,10 @@ private:
 	bool_t Build_ValtanBossPatternTransformSample(
 		f32_t fEffectSampleTimeSeconds,
 		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+		std::string& strOutError) const;
+	bool_t Seek_ValtanBossPatternTransformHistory(
+		const shared_ptr<CEffectObject>& pObject,
+		f32_t fEffectSampleTimeSeconds,
 		std::string& strOutError) const;
 	void Reset_ValtanBossPatternTransformHistory();
 	bool_t Update_ReconstructedSourceRuntimeTimeline(f32_t fTimeDelta);

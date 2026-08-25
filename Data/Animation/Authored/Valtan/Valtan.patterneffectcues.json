@@ -1,6 +1,6 @@
 {
   "schema": "lostark.valtan-pattern-effect-cues",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "ownerArchetypeId": "BOSS_VALTAN",
   "cues": [
     {
@@ -257,6 +257,14 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     },
     {
@@ -288,6 +296,14 @@
           1,
           1,
           1
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
         ]
       }
     },
@@ -321,6 +337,14 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     },
     {
@@ -353,6 +377,9 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
       }
     },
     {
@@ -481,6 +508,14 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     },
     {
@@ -513,6 +548,9 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
       }
     },
     {
@@ -1089,6 +1127,14 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     },
     {
@@ -1120,6 +1166,14 @@
           1,
           1,
           1
+        ]
+      },
+      "scalePolicy": {
+        "kind": "ARENA_ABSOLUTE",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
         ]
       }
     },
@@ -1153,6 +1207,14 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "ARENA_ABSOLUTE",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     },
     {
@@ -1185,6 +1247,9 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
       }
     },
     {
@@ -1249,6 +1314,14 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     },
     {
@@ -1280,6 +1353,14 @@
           1,
           1,
           1
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
         ]
       }
     },
@@ -1505,6 +1586,9 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
       }
     },
     {
@@ -1537,6 +1621,14 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     },
     {
@@ -1568,6 +1660,14 @@
           1,
           1,
           1
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
         ]
       }
     }
