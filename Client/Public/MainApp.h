@@ -114,6 +114,20 @@ private:
 	ItemUpgrade_CoreFlash once, and hides WingedRingGold/LevelUpMotion2Big/CompleteEffect until
 	the fill reaches 100. */
 	void Update_ItemUpgradeGrowButton();
+	/* Hover/click hit-test for ItemUpgrade_ReforgeButton ("장비 재련"), same pattern as
+	Update_ItemUpgradeGrowButton. Only acts once the gauge is held at 100% (a completed "성장");
+	on click rolls a placeholder pass/fail (no real Server 재련 probability exists yet) into
+	m_bItemUpgradePendingAttemptSuccess and shows the "화면을 클릭하여 결과 즉시 확인" wait
+	overlay instead of the result immediately -- the roll is already decided, just not revealed. */
+	void Update_ItemUpgradeReforgeButton();
+	/* While ITEM_UPGRADE_ATTEMPT_RESULT::WAITING is showing, any left-click anywhere (matching the
+	real "화면을 클릭하여 결과 즉시 확인" prompt, not one specific button rect) reveals the
+	already-rolled outcome: hides the wait overlay and shows the matching result modal. */
+	void Update_ItemUpgradeResultWaitClick();
+	/* Hover/click hit-test for whichever of ItemUpgrade_SuccessOkBtn/_FailOkBtn is currently
+	shown. On click, hides both result modals and resets the gauge back to idle (0%) the same way
+	the P-key reopen path does, so the button can be tried again. */
+	void Update_ItemUpgradeResultOkButton();
 	void RenderBossHealthBar();
 	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
 	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text
@@ -205,6 +219,16 @@ private:
 	duration later instead of together. */
 	bool_t m_bItemUpgradeCoreFlashPending = false;
 	f64_t m_dItemUpgradeShockwaveScheduledAt = -1.0;
+	/* Which result modal (if any) ItemUpgrade_ReforgeButton's last roll produced. NONE means no
+	attempt is being shown, so the gauge/reforge button stays interactive; SUCCESS/FAIL means one
+	of ItemUpgrade_SuccessModalBg/_FailModalBg (+ its own OK button) is on screen and blocks a new
+	attempt until Update_ItemUpgradeResultOkButton() dismisses it. */
+	enum class ITEM_UPGRADE_ATTEMPT_RESULT { NONE, WAITING, SUCCESS, FAIL };
+	ITEM_UPGRADE_ATTEMPT_RESULT m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
+	/* Rolled the instant Update_ItemUpgradeReforgeButton() clicks, but not shown until
+	Update_ItemUpgradeResultWaitClick() reveals it -- WAITING holds this pending outcome so the
+	"화면을 클릭하여 결과 즉시 확인" suspense screen can sit in front of an already-decided result. */
+	bool_t m_bItemUpgradePendingAttemptSuccess = false;
 	/* Edge-detects the local player's stance so RenderCombatHUD only calls
 	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
 	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a

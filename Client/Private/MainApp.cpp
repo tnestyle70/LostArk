@@ -48,6 +48,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cwchar>
 #include <fstream>
 
@@ -370,6 +371,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
 				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
 				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
+				m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessModalBg", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailModalBg", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
 			}
 		}
 		m_bPDown = pDown;
@@ -1030,9 +1038,24 @@ void CMainApp::RenderCombatHUD()
 	use for their own static slots. */
 	if (nullptr != m_pItemUpgradeView && m_bItemUpgradePreviewVisible)
 	{
-		m_pItemUpgradeView->Render("Default", 0);
+		/* All state updates below (click handling, gauge state machine, Set_Animation_Frame pins)
+		run BEFORE Render() -- not after -- so this call always draws the fully up-to-date frame
+		instead of last frame's. Pinning a slot's clock-driven frame after Render() left a full
+		frame's delta time between the pin and the next actual draw; that's invisible while a
+		pinned value keeps changing (the 0->100 fill), but a value held constant every frame (the
+		100%-held GaugeFill, pinned to frame 99) accumulates that same delta every tick, and once
+		it pushes the computed frame position past 100.0 (any frame slower than ~1/45s) the
+		loop-modulo math wraps to a low frame index (0 looks nearly blank) and stays wrapped for as
+		long as the hold lasts -- this is the real cause of GaugeFill "disappearing" only once held. */
 		Update_ItemUpgradeSelection();
 		Update_ItemUpgradeGrowButton();
+		/* Wait-click checked before Reforge triggers a new WAITING -- both react to the same
+		ImGui::IsMouseClicked(Left) frame-level flag, so if Reforge ran first the very click that
+		opened the wait overlay would also satisfy the wait-click's "clicked anywhere" check and
+		reveal on the same frame it appeared. */
+		Update_ItemUpgradeResultWaitClick();
+		Update_ItemUpgradeReforgeButton();
+		Update_ItemUpgradeResultOkButton();
 
 		/* No real Server 재련 percent exists yet (see comment above), so the gauge is a manual
 		state machine driven by ItemUpgrade_LevelUpBtn's click (Update_ItemUpgradeGrowButton) instead
@@ -1129,6 +1152,7 @@ void CMainApp::RenderCombatHUD()
 		this Render() call's own AnimationFrames images composite later inside EndFrame() and would
 		otherwise paint over a Draw_Text() submitted here). m_iItemUpgradePreviousPercent is already
 		updated above and doubles as that function's read of "current percent". */
+		m_pItemUpgradeView->Render("Default", 0);
 	}
 	Render_ItemQuickSlots();
 }
@@ -1423,8 +1447,11 @@ void CMainApp::RenderItemUpgradeListText()
 
 void CMainApp::Update_ItemUpgradeSelection()
 {
-	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+	{
 		return;
+	}
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	if (nullptr == pViewport)
@@ -1482,8 +1509,11 @@ void CMainApp::Update_ItemUpgradeSelection()
 
 void CMainApp::Update_ItemUpgradeGrowButton()
 {
-	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+	{
 		return;
+	}
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	if (nullptr == pViewport)
@@ -1510,6 +1540,120 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 	m_bItemUpgradeGrowing = true;
 	m_dItemUpgradeGrowStartSeconds = ImGui::GetTime();
 	m_bItemUpgradeCoreFlashPending = true;
+	m_dItemUpgradeShockwaveScheduledAt = -1.0;
+	m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", false);
+	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
+	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
+}
+
+void CMainApp::Update_ItemUpgradeReforgeButton()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		m_bItemUpgradeGrowing || 100 != m_iItemUpgradePreviousPercent ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+	{
+		return;
+	}
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ReforgeButton", fX, fY, fWidth, fHeight))
+		return;
+
+	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
+	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+		vMouse.y >= vMin.y && vMouse.y < vMax.y;
+	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		return;
+
+	/* Placeholder pass/fail rate -- Data/Balance has no real 재련 success-rate field yet, so this
+	is a flat 50% purely so both result screens can be exercised while testing. The Client never
+	owns real success/fail authority; replace with a real Server-resolved outcome once one exists,
+	the same way every other "no real Server data yet" placeholder in this preview is flagged.
+	Rolled now but held in m_bItemUpgradePendingAttemptSuccess -- not shown until
+	Update_ItemUpgradeResultWaitClick() reveals it, matching the real "화면을 클릭하여 결과 즉시
+	확인" suspense screen instead of an instant reveal. */
+	m_bItemUpgradePendingAttemptSuccess = (std::rand() % 100) < 50;
+	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::WAITING;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", true);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", true);
+	m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ResultWaitEmblem");
+}
+
+void CMainApp::Update_ItemUpgradeResultWaitClick()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::WAITING != m_eItemUpgradeAttemptResult ||
+		!ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		return;
+	}
+
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
+
+	const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
+	m_eItemUpgradeAttemptResult = bSuccess ?
+		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS : ITEM_UPGRADE_ATTEMPT_RESULT::FAIL;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessModalBg", bSuccess);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailModalBg", !bSuccess);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
+}
+
+void CMainApp::Update_ItemUpgradeResultOkButton()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		(ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS != m_eItemUpgradeAttemptResult &&
+		 ITEM_UPGRADE_ATTEMPT_RESULT::FAIL != m_eItemUpgradeAttemptResult))
+	{
+		return;
+	}
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+
+	const char_t* pOkButtonSlotId =
+		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS == m_eItemUpgradeAttemptResult ?
+		"ItemUpgrade_SuccessOkBtn" : "ItemUpgrade_FailOkBtn";
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pItemUpgradeView->Get_SlotRect(pOkButtonSlotId, fX, fY, fWidth, fHeight))
+		return;
+
+	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
+	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+		vMouse.y >= vMin.y && vMouse.y < vMax.y;
+	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		return;
+
+	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessModalBg", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailModalBg", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", false);
+
+	/* Same reset Update_ItemUpgradeGrowButton's own click performs -- dismissing a result always
+	returns the gauge to a clean idle (0%) state so "성장" can be tried again. */
+	m_iItemUpgradePreviousPercent = 0;
+	m_bItemUpgradeGrowing = false;
+	m_dItemUpgradeGrowStartSeconds = -1.0;
+	m_bItemUpgradeCoreFlashPending = false;
 	m_dItemUpgradeShockwaveScheduledAt = -1.0;
 	m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", false);
