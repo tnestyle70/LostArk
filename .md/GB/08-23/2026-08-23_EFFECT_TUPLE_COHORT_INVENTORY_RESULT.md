@@ -4,6 +4,13 @@ branch: `codex/effect-tuple-cohort-inventory`
 
 base: `origin/main@0d199aac942fe8c39ced3a6adb6fce2bee7402ed` (`PR #169` merge, `PR #168` Binding 0 포함)
 
+**[2026-08-23 갱신]** 이 Track B artifact는 `PR #170`으로 merge됐고 이후 `PR #171`(sprite render
+contract harness), `PR #172`(도화가 F sprite 1행 adapter binding)가 들어왔다. 현재 정본 base는
+`origin/main@d6b27084`다. Track A Binding 수가 `0 -> 1`로 바뀌었으므로 아래
+`runtimeVerified=false` / `runtimeDescriptorExpansionEligible=false` 전수 판정은 재생성 시
+도화가 F `sprite.2b3dc6842507e910` 한 행에 한해 다시 계산해야 한다. 나머지 수치(416 문서 /
+7,566 occurrence / 340 cohort)는 authored 기준이고 #171·#172가 authored를 바꾸지 않았으므로 유효하다.
+
 plan: `2026-08-23_EFFECT_TUPLE_COHORT_INVENTORY_IMPLEMENTATION_PLAN.md`
 
 작업 lane: `Track B — 대량 확장을 위한 evidence inventory`

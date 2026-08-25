@@ -1,0 +1,413 @@
+﻿category,categoryOccurrences,blockerCode,blockedOccurrences,pctOfCategory,informationToObtain
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,COMPILED_DRAW_DISPATCH_UNPROVEN,1106,100.0,C++ compiled adapter + actual draw submission proof (harness)
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,VERTEX_FACTORY_UNPROVEN,1106,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,PRODUCT_CONSUMER_ABSENT,1104,99.8,"the occurrence is not in any published Product cue (composition work, not material)"
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,STAGE_INPUT_SEMANTICS_UNPROVEN,972,87.9,stage input semantics (which VS outputs feed the PS)
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,RUNTIME_PACKET_NOT_MATERIALIZED,969,87.6,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,SAMPLER_STATE_UNPROVEN,969,87.6,per-lane sampler state (filter/address/mip) from source material
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,SCALAR_VECTOR_PACKING_UNRESOLVED,969,87.6,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,969,87.6,t#/s# register topology from DXBC signature
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,SCENE_INPUTS_UNPROVEN,958,86.6,scene depth/color feedback requirement per program
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,OUTPUT_TOPOLOGY_MRT_UNPROVEN,957,86.5,MRT topology: RT0 scene color + RT1 distortion semantics
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,CURRENT_PACKET_CAPACITY_EXCEEDED,711,64.3,layout count caps must be raised (texture lanes / scalars / vectors)
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,673,60.8,per-occurrence static parameter set -> exact ShaderMap permutation
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,NAMED_ABI_BLOCKED,135,12.2,named ABI closure for the parent family
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,SOURCE_REGISTER_BINDING_UNRESOLVED,135,12.2,map source parameter names -> registers
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,135,12.2,map source texture parameter -> descriptor slot
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,PROGRAM_EQUATION_EVIDENCE_ABSENT,132,11.9,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,CHILD_PARENT_RESOLUTION_BLOCKED,88,8.0,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,PARENT_UNRESOLVED,88,8.0,no parent material resolved for the occurrence
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,COOKED_CARRIER_MISMATCH,42,3.8,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,DXBC_EXTRACTION_BLOCKED,28,2.5,DXBC not yet extracted for this family/permutation
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,SHADERMAP_ABSENT,16,1.4,no ShaderMap for the parent
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,EXACT_VARIANT_RENDERER_KIND_MISMATCH,6,0.5,exact variant renderer kind disagrees with authored kind
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,COMPILED_DRAW_DISPATCH_UNPROVEN,1083,100.0,C++ compiled adapter + actual draw submission proof (harness)
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,VERTEX_FACTORY_UNPROVEN,1083,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,WPO_VERTEX_PROGRAM_UNPROVEN,1083,100.0,"world-position-offset vertex program (VS, not PS) must be recovered"
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,PRODUCT_CONSUMER_ABSENT,1082,99.9,"the occurrence is not in any published Product cue (composition work, not material)"
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,STAGE_INPUT_SEMANTICS_UNPROVEN,1009,93.2,stage input semantics (which VS outputs feed the PS)
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,RUNTIME_PACKET_NOT_MATERIALIZED,1006,92.9,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,SAMPLER_STATE_UNPROVEN,1006,92.9,per-lane sampler state (filter/address/mip) from source material
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,SCALAR_VECTOR_PACKING_UNRESOLVED,1006,92.9,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,1006,92.9,t#/s# register topology from DXBC signature
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,OUTPUT_TOPOLOGY_MRT_UNPROVEN,1001,92.4,MRT topology: RT0 scene color + RT1 distortion semantics
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,SCENE_INPUTS_UNPROVEN,1001,92.4,scene depth/color feedback requirement per program
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,CURRENT_PACKET_CAPACITY_EXCEEDED,844,77.9,layout count caps must be raised (texture lanes / scalars / vectors)
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,680,62.8,per-occurrence static parameter set -> exact ShaderMap permutation
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,COOKED_CARRIER_MISMATCH,281,25.9,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,NAMED_ABI_BLOCKED,77,7.1,named ABI closure for the parent family
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,SOURCE_REGISTER_BINDING_UNRESOLVED,77,7.1,map source parameter names -> registers
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,77,7.1,map source texture parameter -> descriptor slot
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,PROGRAM_EQUATION_EVIDENCE_ABSENT,74,6.8,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,PARENT_UNRESOLVED,52,4.8,no parent material resolved for the occurrence
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,CHILD_PARENT_RESOLUTION_BLOCKED,44,4.1,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,SHADERMAP_ABSENT,22,2.0,no ShaderMap for the parent
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,COMPILED_DRAW_DISPATCH_UNPROVEN,946,100.0,C++ compiled adapter + actual draw submission proof (harness)
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,VERTEX_FACTORY_UNPROVEN,946,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,STAGE_INPUT_SEMANTICS_UNPROVEN,660,69.8,stage input semantics (which VS outputs feed the PS)
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,RUNTIME_PACKET_NOT_MATERIALIZED,632,66.8,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,SAMPLER_STATE_UNPROVEN,632,66.8,per-lane sampler state (filter/address/mip) from source material
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,SCALAR_VECTOR_PACKING_UNRESOLVED,632,66.8,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,627,66.3,t#/s# register topology from DXBC signature
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,SCENE_INPUTS_UNPROVEN,551,58.2,scene depth/color feedback requirement per program
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,OUTPUT_TOPOLOGY_MRT_UNPROVEN,516,54.5,MRT topology: RT0 scene color + RT1 distortion semantics
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,394,41.6,per-occurrence static parameter set -> exact ShaderMap permutation
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,PRODUCT_CONSUMER_ABSENT,347,36.7,"the occurrence is not in any published Product cue (composition work, not material)"
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,CURRENT_PACKET_CAPACITY_EXCEEDED,332,35.1,layout count caps must be raised (texture lanes / scalars / vectors)
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,NAMED_ABI_BLOCKED,310,32.8,named ABI closure for the parent family
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,SOURCE_REGISTER_BINDING_UNRESOLVED,310,32.8,map source parameter names -> registers
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,310,32.8,map source texture parameter -> descriptor slot
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,PROGRAM_EQUATION_EVIDENCE_ABSENT,246,26.0,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,DXBC_EXTRACTION_BLOCKED,116,12.3,DXBC not yet extracted for this family/permutation
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,CHILD_PARENT_RESOLUTION_BLOCKED,96,10.1,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,PARENT_UNRESOLVED,83,8.8,no parent material resolved for the occurrence
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,SHADERMAP_ABSENT,72,7.6,no ShaderMap for the parent
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,COOKED_CARRIER_MISMATCH,52,5.5,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,PROGRAM_EVIDENCE_ABSENT,11,1.2,no program evidence row
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,CHILD_PARENT_BLOCKED_EXACT_PROMOTION_FORBIDDEN,5,0.5,child-parent BLOCKED so exact promotion is forbidden
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,EXACT_VARIANT_ACTUAL_VF_PASS_UNPROVEN,5,0.5,exact variant VF/pass not proven
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,EXACT_VARIANT_PACKET_TRANSLATION_REQUIRED,5,0.5,exact native wire must be translated into a typed packet
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,EXACT_VARIANT_RUNTIME_ADMISSION_UNPROVEN,5,0.5,exact variant not admitted at runtime
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,EXACT_VARIANT_VISUAL_ADMISSION_UNPROVEN,5,0.5,user visual admission missing
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,SOURCE_VALUE_REPLAY_UNPROVEN,5,0.5,source parameter value replay not proven
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,COMPILED_DRAW_DISPATCH_UNPROVEN,792,100.0,C++ compiled adapter + actual draw submission proof (harness)
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,PRODUCT_CONSUMER_ABSENT,792,100.0,"the occurrence is not in any published Product cue (composition work, not material)"
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,VERTEX_FACTORY_UNPROVEN,792,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,STAGE_INPUT_SEMANTICS_UNPROVEN,586,74.0,stage input semantics (which VS outputs feed the PS)
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,RUNTIME_PACKET_NOT_MATERIALIZED,541,68.3,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,SAMPLER_STATE_UNPROVEN,541,68.3,per-lane sampler state (filter/address/mip) from source material
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,SCALAR_VECTOR_PACKING_UNRESOLVED,541,68.3,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,539,68.1,t#/s# register topology from DXBC signature
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,348,43.9,per-occurrence static parameter set -> exact ShaderMap permutation
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,NAMED_ABI_BLOCKED,251,31.7,named ABI closure for the parent family
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,SOURCE_REGISTER_BINDING_UNRESOLVED,251,31.7,map source parameter names -> registers
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,251,31.7,map source texture parameter -> descriptor slot
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,PROGRAM_EQUATION_EVIDENCE_ABSENT,204,25.8,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,DXBC_EXTRACTION_BLOCKED,173,21.8,DXBC not yet extracted for this family/permutation
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,CURRENT_PACKET_CAPACITY_EXCEEDED,95,12.0,layout count caps must be raised (texture lanes / scalars / vectors)
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,SCENE_INPUTS_UNPROVEN,87,11.0,scene depth/color feedback requirement per program
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,COOKED_CARRIER_MISMATCH,32,4.0,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,CHILD_PARENT_RESOLUTION_BLOCKED,20,2.5,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,PARENT_UNRESOLVED,20,2.5,no parent material resolved for the occurrence
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,SHADERMAP_ABSENT,13,1.6,no ShaderMap for the parent
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,EXACT_VARIANT_RENDERER_KIND_MISMATCH,8,1.0,exact variant renderer kind disagrees with authored kind
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,OUTPUT_TOPOLOGY_MRT_UNPROVEN,1,0.1,MRT topology: RT0 scene color + RT1 distortion semantics
+MESH_PARTICLE / alpha_two_sided_depth_read,789,COMPILED_DRAW_DISPATCH_UNPROVEN,789,100.0,C++ compiled adapter + actual draw submission proof (harness)
+MESH_PARTICLE / alpha_two_sided_depth_read,789,VERTEX_FACTORY_UNPROVEN,789,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+MESH_PARTICLE / alpha_two_sided_depth_read,789,WPO_VERTEX_PROGRAM_UNPROVEN,789,100.0,"world-position-offset vertex program (VS, not PS) must be recovered"
+MESH_PARTICLE / alpha_two_sided_depth_read,789,STAGE_INPUT_SEMANTICS_UNPROVEN,650,82.4,stage input semantics (which VS outputs feed the PS)
+MESH_PARTICLE / alpha_two_sided_depth_read,789,RUNTIME_PACKET_NOT_MATERIALIZED,639,81.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+MESH_PARTICLE / alpha_two_sided_depth_read,789,SAMPLER_STATE_UNPROVEN,639,81.0,per-lane sampler state (filter/address/mip) from source material
+MESH_PARTICLE / alpha_two_sided_depth_read,789,SCALAR_VECTOR_PACKING_UNRESOLVED,639,81.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+MESH_PARTICLE / alpha_two_sided_depth_read,789,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,639,81.0,t#/s# register topology from DXBC signature
+MESH_PARTICLE / alpha_two_sided_depth_read,789,SCENE_INPUTS_UNPROVEN,637,80.7,scene depth/color feedback requirement per program
+MESH_PARTICLE / alpha_two_sided_depth_read,789,OUTPUT_TOPOLOGY_MRT_UNPROVEN,630,79.8,MRT topology: RT0 scene color + RT1 distortion semantics
+MESH_PARTICLE / alpha_two_sided_depth_read,789,CURRENT_PACKET_CAPACITY_EXCEEDED,525,66.5,layout count caps must be raised (texture lanes / scalars / vectors)
+MESH_PARTICLE / alpha_two_sided_depth_read,789,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,364,46.1,per-occurrence static parameter set -> exact ShaderMap permutation
+MESH_PARTICLE / alpha_two_sided_depth_read,789,PRODUCT_CONSUMER_ABSENT,309,39.2,"the occurrence is not in any published Product cue (composition work, not material)"
+MESH_PARTICLE / alpha_two_sided_depth_read,789,NAMED_ABI_BLOCKED,143,18.1,named ABI closure for the parent family
+MESH_PARTICLE / alpha_two_sided_depth_read,789,SOURCE_REGISTER_BINDING_UNRESOLVED,143,18.1,map source parameter names -> registers
+MESH_PARTICLE / alpha_two_sided_depth_read,789,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,143,18.1,map source texture parameter -> descriptor slot
+MESH_PARTICLE / alpha_two_sided_depth_read,789,PROGRAM_EQUATION_EVIDENCE_ABSENT,128,16.2,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+MESH_PARTICLE / alpha_two_sided_depth_read,789,SHADERMAP_ABSENT,103,13.1,no ShaderMap for the parent
+MESH_PARTICLE / alpha_two_sided_depth_read,789,COOKED_CARRIER_MISMATCH,100,12.7,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+MESH_PARTICLE / alpha_two_sided_depth_read,789,CHILD_PARENT_RESOLUTION_BLOCKED,43,5.4,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+MESH_PARTICLE / alpha_two_sided_depth_read,789,PARENT_UNRESOLVED,23,2.9,no parent material resolved for the occurrence
+MESH_PARTICLE / alpha_two_sided_depth_read,789,PROGRAM_EVIDENCE_ABSENT,4,0.5,no program evidence row
+MESH_PARTICLE / alpha_two_sided_depth_read,789,DXBC_EXTRACTION_BLOCKED,2,0.3,DXBC not yet extracted for this family/permutation
+MESH_PARTICLE / alpha_two_sided_depth_read,789,CHILD_PARENT_BLOCKED_EXACT_PROMOTION_FORBIDDEN,2,0.3,child-parent BLOCKED so exact promotion is forbidden
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,COMPILED_DRAW_DISPATCH_UNPROVEN,694,100.0,C++ compiled adapter + actual draw submission proof (harness)
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,VERTEX_FACTORY_UNPROVEN,694,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,PRODUCT_CONSUMER_ABSENT,421,60.7,"the occurrence is not in any published Product cue (composition work, not material)"
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,STAGE_INPUT_SEMANTICS_UNPROVEN,405,58.4,stage input semantics (which VS outputs feed the PS)
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,NAMED_ABI_BLOCKED,371,53.5,named ABI closure for the parent family
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,SOURCE_REGISTER_BINDING_UNRESOLVED,371,53.5,map source parameter names -> registers
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,371,53.5,map source texture parameter -> descriptor slot
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,RUNTIME_PACKET_NOT_MATERIALIZED,311,44.8,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,SAMPLER_STATE_UNPROVEN,311,44.8,per-lane sampler state (filter/address/mip) from source material
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,SCALAR_VECTOR_PACKING_UNRESOLVED,311,44.8,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,298,42.9,t#/s# register topology from DXBC signature
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,181,26.1,per-occurrence static parameter set -> exact ShaderMap permutation
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,SCENE_INPUTS_UNPROVEN,129,18.6,scene depth/color feedback requirement per program
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,PROGRAM_EVIDENCE_ABSENT,122,17.6,no program evidence row
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,DXBC_EXTRACTION_BLOCKED,116,16.7,DXBC not yet extracted for this family/permutation
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,PROGRAM_EQUATION_EVIDENCE_ABSENT,86,12.4,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,CHILD_PARENT_RESOLUTION_BLOCKED,66,9.5,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,CURRENT_PACKET_CAPACITY_EXCEEDED,48,6.9,layout count caps must be raised (texture lanes / scalars / vectors)
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,SHADERMAP_ABSENT,23,3.3,no ShaderMap for the parent
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,PARENT_UNRESOLVED,16,2.3,no parent material resolved for the occurrence
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,COOKED_CARRIER_MISMATCH,15,2.2,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,OUTPUT_TOPOLOGY_MRT_UNPROVEN,2,0.3,MRT topology: RT0 scene color + RT1 distortion semantics
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,EXACT_VARIANT_ACTUAL_VF_PASS_UNPROVEN,1,0.1,exact variant VF/pass not proven
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,EXACT_VARIANT_PACKET_TRANSLATION_REQUIRED,1,0.1,exact native wire must be translated into a typed packet
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,EXACT_VARIANT_RUNTIME_ADMISSION_UNPROVEN,1,0.1,exact variant not admitted at runtime
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,EXACT_VARIANT_VISUAL_ADMISSION_UNPROVEN,1,0.1,user visual admission missing
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,SOURCE_VALUE_REPLAY_UNPROVEN,1,0.1,source parameter value replay not proven
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,COMPILED_DRAW_DISPATCH_UNPROVEN,639,100.0,C++ compiled adapter + actual draw submission proof (harness)
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,VERTEX_FACTORY_UNPROVEN,639,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,STAGE_INPUT_SEMANTICS_UNPROVEN,430,67.3,stage input semantics (which VS outputs feed the PS)
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,RUNTIME_PACKET_NOT_MATERIALIZED,390,61.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,SAMPLER_STATE_UNPROVEN,390,61.0,per-lane sampler state (filter/address/mip) from source material
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,SCALAR_VECTOR_PACKING_UNRESOLVED,390,61.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,386,60.4,t#/s# register topology from DXBC signature
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,NAMED_ABI_BLOCKED,249,39.0,named ABI closure for the parent family
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,SOURCE_REGISTER_BINDING_UNRESOLVED,249,39.0,map source parameter names -> registers
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,249,39.0,map source texture parameter -> descriptor slot
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,DXBC_EXTRACTION_BLOCKED,205,32.1,DXBC not yet extracted for this family/permutation
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,175,27.4,per-occurrence static parameter set -> exact ShaderMap permutation
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,PRODUCT_CONSUMER_ABSENT,138,21.6,"the occurrence is not in any published Product cue (composition work, not material)"
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,SCENE_INPUTS_UNPROVEN,119,18.6,scene depth/color feedback requirement per program
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,CURRENT_PACKET_CAPACITY_EXCEEDED,36,5.6,layout count caps must be raised (texture lanes / scalars / vectors)
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,COOKED_CARRIER_MISMATCH,27,4.2,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,CHILD_PARENT_RESOLUTION_BLOCKED,13,2.0,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,EXACT_VARIANT_ACTUAL_VF_PASS_UNPROVEN,4,0.6,exact variant VF/pass not proven
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,EXACT_VARIANT_PACKET_TRANSLATION_REQUIRED,4,0.6,exact native wire must be translated into a typed packet
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,EXACT_VARIANT_RUNTIME_ADMISSION_UNPROVEN,4,0.6,exact variant not admitted at runtime
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,EXACT_VARIANT_VISUAL_ADMISSION_UNPROVEN,4,0.6,user visual admission missing
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,SOURCE_VALUE_REPLAY_UNPROVEN,4,0.6,source parameter value replay not proven
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,PROGRAM_EVIDENCE_ABSENT,4,0.6,no program evidence row
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,CHILD_PARENT_BLOCKED_EXACT_PROMOTION_FORBIDDEN,1,0.2,child-parent BLOCKED so exact promotion is forbidden
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,COMPILED_DRAW_DISPATCH_UNPROVEN,613,100.0,C++ compiled adapter + actual draw submission proof (harness)
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,VERTEX_FACTORY_UNPROVEN,613,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,OUTPUT_TOPOLOGY_MRT_UNPROVEN,541,88.3,MRT topology: RT0 scene color + RT1 distortion semantics
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,RUNTIME_PACKET_NOT_MATERIALIZED,541,88.3,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,SAMPLER_STATE_UNPROVEN,541,88.3,per-lane sampler state (filter/address/mip) from source material
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,SCALAR_VECTOR_PACKING_UNRESOLVED,541,88.3,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,SCENE_INPUTS_UNPROVEN,541,88.3,scene depth/color feedback requirement per program
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,STAGE_INPUT_SEMANTICS_UNPROVEN,541,88.3,stage input semantics (which VS outputs feed the PS)
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,539,87.9,t#/s# register topology from DXBC signature
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,CURRENT_PACKET_CAPACITY_EXCEEDED,324,52.9,layout count caps must be raised (texture lanes / scalars / vectors)
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,299,48.8,per-occurrence static parameter set -> exact ShaderMap permutation
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,PRODUCT_CONSUMER_ABSENT,191,31.2,"the occurrence is not in any published Product cue (composition work, not material)"
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,DXBC_EXTRACTION_BLOCKED,68,11.1,DXBC not yet extracted for this family/permutation
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,NAMED_ABI_BLOCKED,68,11.1,named ABI closure for the parent family
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,SOURCE_REGISTER_BINDING_UNRESOLVED,68,11.1,map source parameter names -> registers
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,68,11.1,map source texture parameter -> descriptor slot
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,CHILD_PARENT_RESOLUTION_BLOCKED,27,4.4,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,COOKED_CARRIER_MISMATCH,5,0.8,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,CHILD_PARENT_BLOCKED_EXACT_PROMOTION_FORBIDDEN,4,0.7,child-parent BLOCKED so exact promotion is forbidden
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,EXACT_VARIANT_ACTUAL_VF_PASS_UNPROVEN,2,0.3,exact variant VF/pass not proven
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,EXACT_VARIANT_PACKET_TRANSLATION_REQUIRED,2,0.3,exact native wire must be translated into a typed packet
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,EXACT_VARIANT_RUNTIME_ADMISSION_UNPROVEN,2,0.3,exact variant not admitted at runtime
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,EXACT_VARIANT_VISUAL_ADMISSION_UNPROVEN,2,0.3,user visual admission missing
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,SOURCE_VALUE_REPLAY_UNPROVEN,2,0.3,source parameter value replay not proven
+STANDALONE_MESH / additive_two_sided_depth_read,255,COMPILED_DRAW_DISPATCH_UNPROVEN,255,100.0,C++ compiled adapter + actual draw submission proof (harness)
+STANDALONE_MESH / additive_two_sided_depth_read,255,PRODUCT_CONSUMER_ABSENT,255,100.0,"the occurrence is not in any published Product cue (composition work, not material)"
+STANDALONE_MESH / additive_two_sided_depth_read,255,VERTEX_FACTORY_UNPROVEN,255,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+STANDALONE_MESH / additive_two_sided_depth_read,255,WPO_VERTEX_PROGRAM_UNPROVEN,255,100.0,"world-position-offset vertex program (VS, not PS) must be recovered"
+STANDALONE_MESH / additive_two_sided_depth_read,255,RUNTIME_PACKET_NOT_MATERIALIZED,186,72.9,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+STANDALONE_MESH / additive_two_sided_depth_read,255,SAMPLER_STATE_UNPROVEN,186,72.9,per-lane sampler state (filter/address/mip) from source material
+STANDALONE_MESH / additive_two_sided_depth_read,255,SCALAR_VECTOR_PACKING_UNRESOLVED,186,72.9,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+STANDALONE_MESH / additive_two_sided_depth_read,255,STAGE_INPUT_SEMANTICS_UNPROVEN,186,72.9,stage input semantics (which VS outputs feed the PS)
+STANDALONE_MESH / additive_two_sided_depth_read,255,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,184,72.2,t#/s# register topology from DXBC signature
+STANDALONE_MESH / additive_two_sided_depth_read,255,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,146,57.3,per-occurrence static parameter set -> exact ShaderMap permutation
+STANDALONE_MESH / additive_two_sided_depth_read,255,SCENE_INPUTS_UNPROVEN,85,33.3,scene depth/color feedback requirement per program
+STANDALONE_MESH / additive_two_sided_depth_read,255,NAMED_ABI_BLOCKED,69,27.1,named ABI closure for the parent family
+STANDALONE_MESH / additive_two_sided_depth_read,255,PARENT_UNRESOLVED,69,27.1,no parent material resolved for the occurrence
+STANDALONE_MESH / additive_two_sided_depth_read,255,PROGRAM_EQUATION_EVIDENCE_ABSENT,69,27.1,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+STANDALONE_MESH / additive_two_sided_depth_read,255,SOURCE_REGISTER_BINDING_UNRESOLVED,69,27.1,map source parameter names -> registers
+STANDALONE_MESH / additive_two_sided_depth_read,255,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,69,27.1,map source texture parameter -> descriptor slot
+STANDALONE_MESH / additive_two_sided_depth_read,255,CHILD_PARENT_RESOLUTION_BLOCKED,65,25.5,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+STANDALONE_MESH / additive_two_sided_depth_read,255,COOKED_CARRIER_MISMATCH,59,23.1,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+STANDALONE_MESH / additive_two_sided_depth_read,255,CURRENT_PACKET_CAPACITY_EXCEEDED,24,9.4,layout count caps must be raised (texture lanes / scalars / vectors)
+STANDALONE_MESH / additive_two_sided_depth_read,255,EXACT_VARIANT_RENDERER_KIND_MISMATCH,8,3.1,exact variant renderer kind disagrees with authored kind
+STANDALONE_MESH / additive_two_sided_depth_read,255,OUTPUT_TOPOLOGY_MRT_UNPROVEN,2,0.8,MRT topology: RT0 scene color + RT1 distortion semantics
+MESH_PARTICLE / alpha_one_sided_depth_read,174,COMPILED_DRAW_DISPATCH_UNPROVEN,174,100.0,C++ compiled adapter + actual draw submission proof (harness)
+MESH_PARTICLE / alpha_one_sided_depth_read,174,VERTEX_FACTORY_UNPROVEN,174,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+MESH_PARTICLE / alpha_one_sided_depth_read,174,WPO_VERTEX_PROGRAM_UNPROVEN,174,100.0,"world-position-offset vertex program (VS, not PS) must be recovered"
+MESH_PARTICLE / alpha_one_sided_depth_read,174,OUTPUT_TOPOLOGY_MRT_UNPROVEN,159,91.4,MRT topology: RT0 scene color + RT1 distortion semantics
+MESH_PARTICLE / alpha_one_sided_depth_read,174,RUNTIME_PACKET_NOT_MATERIALIZED,159,91.4,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+MESH_PARTICLE / alpha_one_sided_depth_read,174,SAMPLER_STATE_UNPROVEN,159,91.4,per-lane sampler state (filter/address/mip) from source material
+MESH_PARTICLE / alpha_one_sided_depth_read,174,SCALAR_VECTOR_PACKING_UNRESOLVED,159,91.4,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+MESH_PARTICLE / alpha_one_sided_depth_read,174,SCENE_INPUTS_UNPROVEN,159,91.4,scene depth/color feedback requirement per program
+MESH_PARTICLE / alpha_one_sided_depth_read,174,STAGE_INPUT_SEMANTICS_UNPROVEN,159,91.4,stage input semantics (which VS outputs feed the PS)
+MESH_PARTICLE / alpha_one_sided_depth_read,174,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,159,91.4,t#/s# register topology from DXBC signature
+MESH_PARTICLE / alpha_one_sided_depth_read,174,CURRENT_PACKET_CAPACITY_EXCEEDED,141,81.0,layout count caps must be raised (texture lanes / scalars / vectors)
+MESH_PARTICLE / alpha_one_sided_depth_read,174,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,117,67.2,per-occurrence static parameter set -> exact ShaderMap permutation
+MESH_PARTICLE / alpha_one_sided_depth_read,174,PRODUCT_CONSUMER_ABSENT,91,52.3,"the occurrence is not in any published Product cue (composition work, not material)"
+MESH_PARTICLE / alpha_one_sided_depth_read,174,COOKED_CARRIER_MISMATCH,80,46.0,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+MESH_PARTICLE / alpha_one_sided_depth_read,174,NAMED_ABI_BLOCKED,1,0.6,named ABI closure for the parent family
+MESH_PARTICLE / alpha_one_sided_depth_read,174,PROGRAM_EVIDENCE_ABSENT,1,0.6,no program evidence row
+MESH_PARTICLE / alpha_one_sided_depth_read,174,SOURCE_REGISTER_BINDING_UNRESOLVED,1,0.6,map source parameter names -> registers
+MESH_PARTICLE / alpha_one_sided_depth_read,174,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,1,0.6,map source texture parameter -> descriptor slot
+MESH_PARTICLE / additive_one_sided_depth_read,118,COMPILED_DRAW_DISPATCH_UNPROVEN,118,100.0,C++ compiled adapter + actual draw submission proof (harness)
+MESH_PARTICLE / additive_one_sided_depth_read,118,VERTEX_FACTORY_UNPROVEN,118,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+MESH_PARTICLE / additive_one_sided_depth_read,118,WPO_VERTEX_PROGRAM_UNPROVEN,118,100.0,"world-position-offset vertex program (VS, not PS) must be recovered"
+MESH_PARTICLE / additive_one_sided_depth_read,118,RUNTIME_PACKET_NOT_MATERIALIZED,115,97.5,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+MESH_PARTICLE / additive_one_sided_depth_read,118,SAMPLER_STATE_UNPROVEN,115,97.5,per-lane sampler state (filter/address/mip) from source material
+MESH_PARTICLE / additive_one_sided_depth_read,118,SCALAR_VECTOR_PACKING_UNRESOLVED,115,97.5,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+MESH_PARTICLE / additive_one_sided_depth_read,118,STAGE_INPUT_SEMANTICS_UNPROVEN,107,90.7,stage input semantics (which VS outputs feed the PS)
+MESH_PARTICLE / additive_one_sided_depth_read,118,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,107,90.7,t#/s# register topology from DXBC signature
+MESH_PARTICLE / additive_one_sided_depth_read,118,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,95,80.5,per-occurrence static parameter set -> exact ShaderMap permutation
+MESH_PARTICLE / additive_one_sided_depth_read,118,SCENE_INPUTS_UNPROVEN,69,58.5,scene depth/color feedback requirement per program
+MESH_PARTICLE / additive_one_sided_depth_read,118,PRODUCT_CONSUMER_ABSENT,42,35.6,"the occurrence is not in any published Product cue (composition work, not material)"
+MESH_PARTICLE / additive_one_sided_depth_read,118,COOKED_CARRIER_MISMATCH,29,24.6,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+MESH_PARTICLE / additive_one_sided_depth_read,118,CHILD_PARENT_RESOLUTION_BLOCKED,24,20.3,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+MESH_PARTICLE / additive_one_sided_depth_read,118,CURRENT_PACKET_CAPACITY_EXCEEDED,14,11.9,layout count caps must be raised (texture lanes / scalars / vectors)
+MESH_PARTICLE / additive_one_sided_depth_read,118,EXACT_VARIANT_ACTUAL_VF_PASS_UNPROVEN,8,6.8,exact variant VF/pass not proven
+MESH_PARTICLE / additive_one_sided_depth_read,118,EXACT_VARIANT_PACKET_TRANSLATION_REQUIRED,8,6.8,exact native wire must be translated into a typed packet
+MESH_PARTICLE / additive_one_sided_depth_read,118,EXACT_VARIANT_RUNTIME_ADMISSION_UNPROVEN,8,6.8,exact variant not admitted at runtime
+MESH_PARTICLE / additive_one_sided_depth_read,118,EXACT_VARIANT_VISUAL_ADMISSION_UNPROVEN,8,6.8,user visual admission missing
+MESH_PARTICLE / additive_one_sided_depth_read,118,LITERAL_TRANSLATION_MISSING,8,6.8,exact DXBC exists but no runnable HLSL translation yet
+MESH_PARTICLE / additive_one_sided_depth_read,118,SOURCE_VALUE_REPLAY_UNPROVEN,8,6.8,source parameter value replay not proven
+MESH_PARTICLE / additive_one_sided_depth_read,118,NAMED_ABI_BLOCKED,1,0.8,named ABI closure for the parent family
+MESH_PARTICLE / additive_one_sided_depth_read,118,PROGRAM_EVIDENCE_ABSENT,1,0.8,no program evidence row
+MESH_PARTICLE / additive_one_sided_depth_read,118,SOURCE_REGISTER_BINDING_UNRESOLVED,1,0.8,map source parameter names -> registers
+MESH_PARTICLE / additive_one_sided_depth_read,118,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,1,0.8,map source texture parameter -> descriptor slot
+MESH_PARTICLE / additive_two_sided_depth_read,103,COMPILED_DRAW_DISPATCH_UNPROVEN,103,100.0,C++ compiled adapter + actual draw submission proof (harness)
+MESH_PARTICLE / additive_two_sided_depth_read,103,VERTEX_FACTORY_UNPROVEN,103,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+MESH_PARTICLE / additive_two_sided_depth_read,103,WPO_VERTEX_PROGRAM_UNPROVEN,103,100.0,"world-position-offset vertex program (VS, not PS) must be recovered"
+MESH_PARTICLE / additive_two_sided_depth_read,103,PRODUCT_CONSUMER_ABSENT,77,74.8,"the occurrence is not in any published Product cue (composition work, not material)"
+MESH_PARTICLE / additive_two_sided_depth_read,103,RUNTIME_PACKET_NOT_MATERIALIZED,66,64.1,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+MESH_PARTICLE / additive_two_sided_depth_read,103,SAMPLER_STATE_UNPROVEN,66,64.1,per-lane sampler state (filter/address/mip) from source material
+MESH_PARTICLE / additive_two_sided_depth_read,103,SCALAR_VECTOR_PACKING_UNRESOLVED,66,64.1,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+MESH_PARTICLE / additive_two_sided_depth_read,103,STAGE_INPUT_SEMANTICS_UNPROVEN,66,64.1,stage input semantics (which VS outputs feed the PS)
+MESH_PARTICLE / additive_two_sided_depth_read,103,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,64,62.1,t#/s# register topology from DXBC signature
+MESH_PARTICLE / additive_two_sided_depth_read,103,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,41,39.8,per-occurrence static parameter set -> exact ShaderMap permutation
+MESH_PARTICLE / additive_two_sided_depth_read,103,NAMED_ABI_BLOCKED,37,35.9,named ABI closure for the parent family
+MESH_PARTICLE / additive_two_sided_depth_read,103,SOURCE_REGISTER_BINDING_UNRESOLVED,37,35.9,map source parameter names -> registers
+MESH_PARTICLE / additive_two_sided_depth_read,103,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,37,35.9,map source texture parameter -> descriptor slot
+MESH_PARTICLE / additive_two_sided_depth_read,103,COOKED_CARRIER_MISMATCH,36,35.0,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+MESH_PARTICLE / additive_two_sided_depth_read,103,PROGRAM_EQUATION_EVIDENCE_ABSENT,26,25.2,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+MESH_PARTICLE / additive_two_sided_depth_read,103,CURRENT_PACKET_CAPACITY_EXCEEDED,15,14.6,layout count caps must be raised (texture lanes / scalars / vectors)
+MESH_PARTICLE / additive_two_sided_depth_read,103,SHADERMAP_ABSENT,13,12.6,no ShaderMap for the parent
+MESH_PARTICLE / additive_two_sided_depth_read,103,SCENE_INPUTS_UNPROVEN,13,12.6,scene depth/color feedback requirement per program
+MESH_PARTICLE / additive_two_sided_depth_read,103,PROGRAM_EVIDENCE_ABSENT,11,10.7,no program evidence row
+MESH_PARTICLE / additive_two_sided_depth_read,103,DXBC_EXTRACTION_BLOCKED,8,7.8,DXBC not yet extracted for this family/permutation
+MESH_PARTICLE / additive_two_sided_depth_read,103,CHILD_PARENT_RESOLUTION_BLOCKED,6,5.8,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+MESH_PARTICLE / additive_two_sided_depth_read,103,PARENT_UNRESOLVED,5,4.9,no parent material resolved for the occurrence
+MESH_PARTICLE / additive_two_sided_depth_read,103,OUTPUT_TOPOLOGY_MRT_UNPROVEN,4,3.9,MRT topology: RT0 scene color + RT1 distortion semantics
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,COMPILED_DRAW_DISPATCH_UNPROVEN,81,100.0,C++ compiled adapter + actual draw submission proof (harness)
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,NAMED_ABI_BLOCKED,81,100.0,named ABI closure for the parent family
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,SOURCE_REGISTER_BINDING_UNRESOLVED,81,100.0,map source parameter names -> registers
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,81,100.0,map source texture parameter -> descriptor slot
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,VERTEX_FACTORY_UNPROVEN,81,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,PROGRAM_EQUATION_EVIDENCE_ABSENT,79,97.5,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,DXBC_EXTRACTION_BLOCKED,42,51.9,DXBC not yet extracted for this family/permutation
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,PARENT_UNRESOLVED,21,25.9,no parent material resolved for the occurrence
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,SHADERMAP_ABSENT,18,22.2,no ShaderMap for the parent
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,CHILD_PARENT_RESOLUTION_BLOCKED,16,19.8,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,PRODUCT_CONSUMER_ABSENT,9,11.1,"the occurrence is not in any published Product cue (composition work, not material)"
+SCREEN_POST_PRESENTATION / NONE_PRESENTATION,59,PRODUCT_CONSUMER_ABSENT,59,100.0,"the occurrence is not in any published Product cue (composition work, not material)"
+LIGHT_PRESENTATION / NONE_PRESENTATION,50,CHILD_PARENT_RESOLUTION_BLOCKED,50,100.0,child MIC -> parent join is BLOCKED (V1 blocker bucket)
+LIGHT_PRESENTATION / NONE_PRESENTATION,50,PRODUCT_CONSUMER_ABSENT,49,98.0,"the occurrence is not in any published Product cue (composition work, not material)"
+STANDALONE_MESH / alpha_one_sided_depth_read,16,COMPILED_DRAW_DISPATCH_UNPROVEN,16,100.0,C++ compiled adapter + actual draw submission proof (harness)
+STANDALONE_MESH / alpha_one_sided_depth_read,16,CURRENT_PACKET_CAPACITY_EXCEEDED,16,100.0,layout count caps must be raised (texture lanes / scalars / vectors)
+STANDALONE_MESH / alpha_one_sided_depth_read,16,OUTPUT_TOPOLOGY_MRT_UNPROVEN,16,100.0,MRT topology: RT0 scene color + RT1 distortion semantics
+STANDALONE_MESH / alpha_one_sided_depth_read,16,PRODUCT_CONSUMER_ABSENT,16,100.0,"the occurrence is not in any published Product cue (composition work, not material)"
+STANDALONE_MESH / alpha_one_sided_depth_read,16,RUNTIME_PACKET_NOT_MATERIALIZED,16,100.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+STANDALONE_MESH / alpha_one_sided_depth_read,16,SAMPLER_STATE_UNPROVEN,16,100.0,per-lane sampler state (filter/address/mip) from source material
+STANDALONE_MESH / alpha_one_sided_depth_read,16,SCALAR_VECTOR_PACKING_UNRESOLVED,16,100.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+STANDALONE_MESH / alpha_one_sided_depth_read,16,SCENE_INPUTS_UNPROVEN,16,100.0,scene depth/color feedback requirement per program
+STANDALONE_MESH / alpha_one_sided_depth_read,16,STAGE_INPUT_SEMANTICS_UNPROVEN,16,100.0,stage input semantics (which VS outputs feed the PS)
+STANDALONE_MESH / alpha_one_sided_depth_read,16,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,16,100.0,t#/s# register topology from DXBC signature
+STANDALONE_MESH / alpha_one_sided_depth_read,16,VERTEX_FACTORY_UNPROVEN,16,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+STANDALONE_MESH / alpha_one_sided_depth_read,16,WPO_VERTEX_PROGRAM_UNPROVEN,16,100.0,"world-position-offset vertex program (VS, not PS) must be recovered"
+STANDALONE_MESH / alpha_one_sided_depth_read,16,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,8,50.0,per-occurrence static parameter set -> exact ShaderMap permutation
+MESH_PARTICLE / NONE_PRESENTATION,12,COMPILED_DRAW_DISPATCH_UNPROVEN,12,100.0,C++ compiled adapter + actual draw submission proof (harness)
+MESH_PARTICLE / NONE_PRESENTATION,12,MESH_TYPEDATA_MESH_MODEL_MISSING,12,100.0,mesh emitter has no .wmodel bound
+MESH_PARTICLE / NONE_PRESENTATION,12,PRODUCT_CONSUMER_ABSENT,12,100.0,"the occurrence is not in any published Product cue (composition work, not material)"
+MESH_PARTICLE / NONE_PRESENTATION,12,SOURCE_CARRIER_REPLACEMENT_REQUIRED,12,100.0,authored carrier is wrong vs source; REPLACE decision
+MESH_PARTICLE / NONE_PRESENTATION,12,VERTEX_FACTORY_UNPROVEN,12,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+MESH_PARTICLE / NONE_PRESENTATION,12,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,11,91.7,per-occurrence static parameter set -> exact ShaderMap permutation
+MESH_PARTICLE / NONE_PRESENTATION,12,RUNTIME_PACKET_NOT_MATERIALIZED,11,91.7,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+MESH_PARTICLE / NONE_PRESENTATION,12,SAMPLER_STATE_UNPROVEN,11,91.7,per-lane sampler state (filter/address/mip) from source material
+MESH_PARTICLE / NONE_PRESENTATION,12,SCALAR_VECTOR_PACKING_UNRESOLVED,11,91.7,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+MESH_PARTICLE / NONE_PRESENTATION,12,STAGE_INPUT_SEMANTICS_UNPROVEN,11,91.7,stage input semantics (which VS outputs feed the PS)
+MESH_PARTICLE / NONE_PRESENTATION,12,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,11,91.7,t#/s# register topology from DXBC signature
+MESH_PARTICLE / NONE_PRESENTATION,12,CURRENT_PACKET_CAPACITY_EXCEEDED,9,75.0,layout count caps must be raised (texture lanes / scalars / vectors)
+MESH_PARTICLE / NONE_PRESENTATION,12,OUTPUT_TOPOLOGY_MRT_UNPROVEN,7,58.3,MRT topology: RT0 scene color + RT1 distortion semantics
+MESH_PARTICLE / NONE_PRESENTATION,12,SCENE_INPUTS_UNPROVEN,7,58.3,scene depth/color feedback requirement per program
+MESH_PARTICLE / NONE_PRESENTATION,12,COOKED_CARRIER_MISMATCH,2,16.7,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+MESH_PARTICLE / NONE_PRESENTATION,12,NAMED_ABI_BLOCKED,1,8.3,named ABI closure for the parent family
+MESH_PARTICLE / NONE_PRESENTATION,12,PROGRAM_EQUATION_EVIDENCE_ABSENT,1,8.3,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+MESH_PARTICLE / NONE_PRESENTATION,12,SHADERMAP_ABSENT,1,8.3,no ShaderMap for the parent
+MESH_PARTICLE / NONE_PRESENTATION,12,SOURCE_REGISTER_BINDING_UNRESOLVED,1,8.3,map source parameter names -> registers
+MESH_PARTICLE / NONE_PRESENTATION,12,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,1,8.3,map source texture parameter -> descriptor slot
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,COMPILED_DRAW_DISPATCH_UNPROVEN,10,100.0,C++ compiled adapter + actual draw submission proof (harness)
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,VERTEX_FACTORY_UNPROVEN,10,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,COOKED_CARRIER_MISMATCH,9,90.0,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,9,90.0,per-occurrence static parameter set -> exact ShaderMap permutation
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,OUTPUT_TOPOLOGY_MRT_UNPROVEN,9,90.0,MRT topology: RT0 scene color + RT1 distortion semantics
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,RUNTIME_PACKET_NOT_MATERIALIZED,9,90.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,SAMPLER_STATE_UNPROVEN,9,90.0,per-lane sampler state (filter/address/mip) from source material
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,SCALAR_VECTOR_PACKING_UNRESOLVED,9,90.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,SCENE_INPUTS_UNPROVEN,9,90.0,scene depth/color feedback requirement per program
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,STAGE_INPUT_SEMANTICS_UNPROVEN,9,90.0,stage input semantics (which VS outputs feed the PS)
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,9,90.0,t#/s# register topology from DXBC signature
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,CURRENT_PACKET_CAPACITY_EXCEEDED,8,80.0,layout count caps must be raised (texture lanes / scalars / vectors)
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,PRODUCT_CONSUMER_ABSENT,4,40.0,"the occurrence is not in any published Product cue (composition work, not material)"
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,COMPILED_DRAW_DISPATCH_UNPROVEN,10,100.0,C++ compiled adapter + actual draw submission proof (harness)
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,PRODUCT_CONSUMER_ABSENT,10,100.0,"the occurrence is not in any published Product cue (composition work, not material)"
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,RIBBON_TYPEDATA_COARSE_BUCKET_SPRITE,10,100.0,ribbon typedata mis-bucketed as sprite; carrier replacement required
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,SOURCE_CARRIER_REPLACEMENT_REQUIRED,10,100.0,authored carrier is wrong vs source; REPLACE decision
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,VERTEX_FACTORY_UNPROVEN,10,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,NAMED_ABI_BLOCKED,8,80.0,named ABI closure for the parent family
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,PROGRAM_EQUATION_EVIDENCE_ABSENT,8,80.0,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,SHADERMAP_ABSENT,8,80.0,no ShaderMap for the parent
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,SOURCE_REGISTER_BINDING_UNRESOLVED,8,80.0,map source parameter names -> registers
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,8,80.0,map source texture parameter -> descriptor slot
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,COOKED_CARRIER_MISMATCH,2,20.0,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,CURRENT_PACKET_CAPACITY_EXCEEDED,2,20.0,layout count caps must be raised (texture lanes / scalars / vectors)
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,OUTPUT_TOPOLOGY_MRT_UNPROVEN,2,20.0,MRT topology: RT0 scene color + RT1 distortion semantics
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,RUNTIME_PACKET_NOT_MATERIALIZED,2,20.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,SAMPLER_STATE_UNPROVEN,2,20.0,per-lane sampler state (filter/address/mip) from source material
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,SCALAR_VECTOR_PACKING_UNRESOLVED,2,20.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,SCENE_INPUTS_UNPROVEN,2,20.0,scene depth/color feedback requirement per program
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,STAGE_INPUT_SEMANTICS_UNPROVEN,2,20.0,stage input semantics (which VS outputs feed the PS)
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,2,20.0,t#/s# register topology from DXBC signature
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,COMPILED_DRAW_DISPATCH_UNPROVEN,4,100.0,C++ compiled adapter + actual draw submission proof (harness)
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,CURRENT_PACKET_CAPACITY_EXCEEDED,4,100.0,layout count caps must be raised (texture lanes / scalars / vectors)
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,OUTPUT_TOPOLOGY_MRT_UNPROVEN,4,100.0,MRT topology: RT0 scene color + RT1 distortion semantics
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,PRODUCT_CONSUMER_ABSENT,4,100.0,"the occurrence is not in any published Product cue (composition work, not material)"
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,RUNTIME_PACKET_NOT_MATERIALIZED,4,100.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,SAMPLER_STATE_UNPROVEN,4,100.0,per-lane sampler state (filter/address/mip) from source material
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,SCALAR_VECTOR_PACKING_UNRESOLVED,4,100.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,SCENE_INPUTS_UNPROVEN,4,100.0,scene depth/color feedback requirement per program
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,STAGE_INPUT_SEMANTICS_UNPROVEN,4,100.0,stage input semantics (which VS outputs feed the PS)
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,4,100.0,t#/s# register topology from DXBC signature
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,VERTEX_FACTORY_UNPROVEN,4,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,COMPILED_DRAW_DISPATCH_UNPROVEN,4,100.0,C++ compiled adapter + actual draw submission proof (harness)
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,VERTEX_FACTORY_UNPROVEN,4,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,COOKED_CARRIER_MISMATCH,3,75.0,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,CURRENT_PACKET_CAPACITY_EXCEEDED,3,75.0,layout count caps must be raised (texture lanes / scalars / vectors)
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,OUTPUT_TOPOLOGY_MRT_UNPROVEN,3,75.0,MRT topology: RT0 scene color + RT1 distortion semantics
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,RUNTIME_PACKET_NOT_MATERIALIZED,3,75.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,SAMPLER_STATE_UNPROVEN,3,75.0,per-lane sampler state (filter/address/mip) from source material
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,SCALAR_VECTOR_PACKING_UNRESOLVED,3,75.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,SCENE_INPUTS_UNPROVEN,3,75.0,scene depth/color feedback requirement per program
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,STAGE_INPUT_SEMANTICS_UNPROVEN,3,75.0,stage input semantics (which VS outputs feed the PS)
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,3,75.0,t#/s# register topology from DXBC signature
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,1,25.0,per-occurrence static parameter set -> exact ShaderMap permutation
+DECAL_PARTICLE / alpha_one_sided_depth_read,2,COMPILED_DRAW_DISPATCH_UNPROVEN,2,100.0,C++ compiled adapter + actual draw submission proof (harness)
+DECAL_PARTICLE / alpha_one_sided_depth_read,2,VERTEX_FACTORY_UNPROVEN,2,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+AUTHORED_LEGACY_TRAIL / additive_two_sided_depth_read,2,COMPILED_DRAW_DISPATCH_UNPROVEN,2,100.0,C++ compiled adapter + actual draw submission proof (harness)
+AUTHORED_LEGACY_TRAIL / additive_two_sided_depth_read,2,NAMED_ABI_BLOCKED,2,100.0,named ABI closure for the parent family
+AUTHORED_LEGACY_TRAIL / additive_two_sided_depth_read,2,PROGRAM_EQUATION_EVIDENCE_ABSENT,2,100.0,no equation evidence at all -> BOUNDED or PROJECT_RECONSTRUCTED decision
+AUTHORED_LEGACY_TRAIL / additive_two_sided_depth_read,2,SHADERMAP_ABSENT,2,100.0,no ShaderMap for the parent
+AUTHORED_LEGACY_TRAIL / additive_two_sided_depth_read,2,SOURCE_REGISTER_BINDING_UNRESOLVED,2,100.0,map source parameter names -> registers
+AUTHORED_LEGACY_TRAIL / additive_two_sided_depth_read,2,TEXTURE_PARAMETER_TO_SLOT_UNRESOLVED,2,100.0,map source texture parameter -> descriptor slot
+AUTHORED_LEGACY_TRAIL / additive_two_sided_depth_read,2,VERTEX_FACTORY_UNPROVEN,2,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+ANIM_TRAIL / alpha_one_sided_depth_read,2,COMPILED_DRAW_DISPATCH_UNPROVEN,2,100.0,C++ compiled adapter + actual draw submission proof (harness)
+ANIM_TRAIL / alpha_one_sided_depth_read,2,COOKED_CARRIER_MISMATCH,2,100.0,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+ANIM_TRAIL / alpha_one_sided_depth_read,2,CURRENT_PACKET_CAPACITY_EXCEEDED,2,100.0,layout count caps must be raised (texture lanes / scalars / vectors)
+ANIM_TRAIL / alpha_one_sided_depth_read,2,OUTPUT_TOPOLOGY_MRT_UNPROVEN,2,100.0,MRT topology: RT0 scene color + RT1 distortion semantics
+ANIM_TRAIL / alpha_one_sided_depth_read,2,RUNTIME_PACKET_NOT_MATERIALIZED,2,100.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+ANIM_TRAIL / alpha_one_sided_depth_read,2,SAMPLER_STATE_UNPROVEN,2,100.0,per-lane sampler state (filter/address/mip) from source material
+ANIM_TRAIL / alpha_one_sided_depth_read,2,SCALAR_VECTOR_PACKING_UNRESOLVED,2,100.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+ANIM_TRAIL / alpha_one_sided_depth_read,2,SCENE_INPUTS_UNPROVEN,2,100.0,scene depth/color feedback requirement per program
+ANIM_TRAIL / alpha_one_sided_depth_read,2,STAGE_INPUT_SEMANTICS_UNPROVEN,2,100.0,stage input semantics (which VS outputs feed the PS)
+ANIM_TRAIL / alpha_one_sided_depth_read,2,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,2,100.0,t#/s# register topology from DXBC signature
+ANIM_TRAIL / alpha_one_sided_depth_read,2,VERTEX_FACTORY_UNPROVEN,2,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+ANIM_TRAIL / additive_one_sided_depth_read,1,COMPILED_DRAW_DISPATCH_UNPROVEN,1,100.0,C++ compiled adapter + actual draw submission proof (harness)
+ANIM_TRAIL / additive_one_sided_depth_read,1,COOKED_CARRIER_MISMATCH,1,100.0,cooked DXBC carrier disagrees with authored carrier -> carrier decision needed
+ANIM_TRAIL / additive_one_sided_depth_read,1,OCCURRENCE_STATIC_PERMUTATION_NOT_EXTRACTED,1,100.0,per-occurrence static parameter set -> exact ShaderMap permutation
+ANIM_TRAIL / additive_one_sided_depth_read,1,RUNTIME_PACKET_NOT_MATERIALIZED,1,100.0,"typed layout packet (texture lanes, scalar/vector packing, masks)"
+ANIM_TRAIL / additive_one_sided_depth_read,1,SAMPLER_STATE_UNPROVEN,1,100.0,per-lane sampler state (filter/address/mip) from source material
+ANIM_TRAIL / additive_one_sided_depth_read,1,SCALAR_VECTOR_PACKING_UNRESOLVED,1,100.0,scalar/vector CB packed indices from named ABI or DXBC cb0 layout
+ANIM_TRAIL / additive_one_sided_depth_read,1,STAGE_INPUT_SEMANTICS_UNPROVEN,1,100.0,stage input semantics (which VS outputs feed the PS)
+ANIM_TRAIL / additive_one_sided_depth_read,1,TEXTURE_REGISTER_SAMPLER_TOPOLOGY_UNMATERIALIZED,1,100.0,t#/s# register topology from DXBC signature
+ANIM_TRAIL / additive_one_sided_depth_read,1,VERTEX_FACTORY_UNPROVEN,1,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+MESH_PARTICLE / opaque_back_depth_write,1,COMPILED_DRAW_DISPATCH_UNPROVEN,1,100.0,C++ compiled adapter + actual draw submission proof (harness)
+MESH_PARTICLE / opaque_back_depth_write,1,VERTEX_FACTORY_UNPROVEN,1,100.0,VF/vertex layout decision per carrier (Sprite/Mesh/Decal/Trail)
+MESH_PARTICLE / opaque_back_depth_write,1,WPO_VERTEX_PROGRAM_UNPROVEN,1,100.0,"world-position-offset vertex program (VS, not PS) must be recovered"

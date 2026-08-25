@@ -1,0 +1,27 @@
+﻿category,total,productTotal,Artist,Artist_product,LanceMaster,LanceMaster_product,Warlord,Warlord_product,DimensionMaster,DimensionMaster_product,Valtan,Valtan_product
+LEGACY_STANDALONE_SPRITE / alpha_two_sided_depth_read,1106,2,136,2,538,0,269,0,163,0,0,0
+STANDALONE_MESH / alpha_two_sided_depth_read,1083,1,27,0,656,0,265,0,131,0,4,1
+SPRITE_PARTICLE / alpha_two_sided_depth_read,946,599,58,57,113,71,11,8,307,9,457,454
+LEGACY_STANDALONE_SPRITE / additive_two_sided_depth_read,792,0,54,0,417,0,244,0,77,0,0,0
+MESH_PARTICLE / alpha_two_sided_depth_read,789,480,22,22,215,184,93,86,218,17,241,171
+SPRITE_PARTICLE / additive_two_sided_depth_read,694,273,68,65,154,113,65,58,402,36,5,1
+SPRITE_PARTICLE / additive_one_sided_depth_read,639,501,74,74,194,194,140,128,230,104,1,1
+SPRITE_PARTICLE / alpha_one_sided_depth_read,613,422,111,111,137,137,123,117,240,55,2,2
+STANDALONE_MESH / additive_two_sided_depth_read,255,0,10,0,64,0,131,0,50,0,0,0
+MESH_PARTICLE / alpha_one_sided_depth_read,174,83,12,12,33,33,15,15,112,21,2,2
+MESH_PARTICLE / additive_one_sided_depth_read,118,76,9,9,21,21,32,28,56,18,0,0
+MESH_PARTICLE / additive_two_sided_depth_read,103,26,0,0,12,7,13,11,50,8,28,0
+DECAL_PARTICLE / alpha_two_sided_depth_read,81,72,17,17,12,11,10,9,6,2,36,33
+SCREEN_POST_PRESENTATION / NONE_PRESENTATION,59,0,2,0,1,0,0,0,56,0,0,0
+LIGHT_PRESENTATION / NONE_PRESENTATION,50,1,1,0,4,0,0,0,44,0,1,1
+STANDALONE_MESH / alpha_one_sided_depth_read,16,0,0,0,0,0,0,0,16,0,0,0
+MESH_PARTICLE / NONE_PRESENTATION,12,0,4,0,8,0,0,0,0,0,0,0
+AUTHORED_LEGACY_TRAIL / alpha_two_sided_depth_read,10,6,1,1,8,4,1,1,0,0,0,0
+PARTICLE_TYPEDATA_RIBBON_REQUIRES_CARRIER_REPLACEMENT / NONE_PRESENTATION,10,0,2,0,1,0,0,0,7,0,0,0
+LEGACY_STANDALONE_SPRITE / alpha_one_sided_depth_read,4,0,0,0,0,0,0,0,4,0,0,0
+CASCADE_RIBBON / alpha_two_sided_depth_read,4,4,4,4,0,0,0,0,0,0,0,0
+DECAL_PARTICLE / alpha_one_sided_depth_read,2,2,2,2,0,0,0,0,0,0,0,0
+AUTHORED_LEGACY_TRAIL / additive_two_sided_depth_read,2,2,0,0,0,0,2,2,0,0,0,0
+ANIM_TRAIL / alpha_one_sided_depth_read,2,2,0,0,0,0,0,0,0,0,2,2
+ANIM_TRAIL / additive_one_sided_depth_read,1,1,0,0,0,0,0,0,0,0,1,1
+MESH_PARTICLE / opaque_back_depth_write,1,1,1,1,0,0,0,0,0,0,0,0
