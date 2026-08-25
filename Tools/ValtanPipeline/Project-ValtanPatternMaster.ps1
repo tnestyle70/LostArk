@@ -1,9 +1,10 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'Publish')]
+    [ValidateSet('Validate', 'Publish', 'ValidateV2', 'MigrateV2Preview')]
     [string]$Mode = 'Validate',
     [string]$MasterPath = 'Data/Valtan/Valtan.pattern.json',
     [string]$ReceiptPath = '',
+    [string]$V2OutputPath = '',
     [switch]$SkipProductDriftCheck,
     [string]$RepositoryRoot = ''
 )
@@ -22,6 +23,36 @@ else {
 }
 if (-not [IO.Directory]::Exists($repoRoot)) {
     throw "RepositoryRoot does not exist: $repoRoot"
+}
+if ($Mode -in @('ValidateV2', 'MigrateV2Preview')) {
+    $pipeline = Join-Path $PSScriptRoot 'valtan_tuning_pipeline.py'
+    if (-not [IO.File]::Exists($pipeline)) {
+        throw "Missing Valtan v2 tuning pipeline: $pipeline"
+    }
+    $command = @($pipeline, '--repository-root', $repoRoot)
+    if ($Mode -eq 'ValidateV2') {
+        $command += 'validate'
+    }
+    else {
+        if ([string]::IsNullOrWhiteSpace($V2OutputPath)) {
+            throw 'MigrateV2Preview requires -V2OutputPath. The v1 source is never overwritten.'
+        }
+        $resolvedV2Output = if ([IO.Path]::IsPathRooted($V2OutputPath)) {
+            [IO.Path]::GetFullPath($V2OutputPath)
+        }
+        else {
+            [IO.Path]::GetFullPath((Join-Path $repoRoot $V2OutputPath))
+        }
+        if ($resolvedV2Output -eq [IO.Path]::GetFullPath((Join-Path $repoRoot 'Data/Valtan/Valtan.pattern.json'))) {
+            throw 'MigrateV2Preview refuses to overwrite the v1 runtime-compatible master.'
+        }
+        $command += @('migrate-preview', '--output', $resolvedV2Output)
+    }
+    & python @command
+    if ($LASTEXITCODE -ne 0) {
+        throw "Valtan v2 pipeline failed with exit code $LASTEXITCODE."
+    }
+    return
 }
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,160}$'
 $allowedMappingBases = [Collections.Generic.HashSet[string]]::new(
