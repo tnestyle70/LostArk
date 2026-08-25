@@ -695,9 +695,8 @@ Animation Tool은 위 미완료 기능을 로컬 clip 재생이나 임의 part t
     {
       "skillId": 2050010,
       "clips": [
-        [ { "clip": "pc_sp_m_00_sk_att_battle_1_01", "playMs": 3000, "playRate": 2.0 } ],
-        [ "pc_sp_m_00_sk_att_battle_1_03" ],
-        [ "pc_sp_m_00_sk_att_battle_1_04" ]
+        [ { "clip": "pc_sp_m_00_sk_att_battle_1_01", "playMs": 1800, "playRate": 2.0 } ],
+        [ "pc_sp_m_00_sk_att_battle_1_03" ]
       ]
     }
   ]
@@ -717,7 +716,7 @@ skillId, 다른 owner class, 현재 model에 없는 clip, COMBO의 `comboStages`
 5. ACTIVE 스킬은 `Assign Current Clip`으로 현재 clip을 step에 넣는다. 필요한 경우 step을 추가하고 순서를
    바꾸거나 제거해 하나 이상의 ordered clip chain을 만든다.
 6. LMB COMBO는 Server `comboStages` 수만큼 고정된 row에 현재 clip group을 각각 지정한다.
-   차원술사 `2050010`은 `_01(3000ms source/2x)`, `_03`, `_04`의 automatic 3-stage다. BA 단계 수와
+   차원술사 `2050010`은 `_01(1800ms source/2x=900ms)`, `_03(1067ms)`의 automatic 2-stage다. BA 단계 수와
    automatic/manual timing 자체는 Animation Tool에서 추가·삭제하거나 변경하지 않는다.
 7. Save를 누른다. Tool은 sibling temporary file에 쓴 뒤 flush, strict reparse/validate, destination replace를
    수행한다. 실패하면 기존 destination 문서를 유지한다.
@@ -752,14 +751,14 @@ Lance Master    Q W E R A S T V ALT_V + LMB(4단)
 Gunslinger      Q W E R A S D F T V ALT_V + LMB(3단)
 Slayer          Q W E R A S D F V ALT_V + LMB(4단)
 Artist          Q W E R A S T V Z ALT_V + LMB(4단)
-DimensionMaster Q W E R A S D F T V ALT_V + LMB(3단 automatic)
+DimensionMaster Q W E R A S D F T V ALT_V + LMB(2단 automatic)
 ```
 
-DimensionMaster의 LMB `2050010`은 한 번의 command로 세 Server stage가 자동 진행되고 Animation Tool은
-snapshot `iComboStage`에 따라 위 세 clip group을 재생한다. Product Effect suffix는 stage ordinal이
-아니다. 고정 cue는 `_01 -> ba2`, `_03 -> ba3`, `_04 -> ba1`이며 세 cue 모두
-`root/follow/action_facing/natural`을 사용한다. 기존 `ba4` authored payload는 삭제·이름 변경하지 않지만
-현재 3-stage 제품 chain에는 연결하지 않는다. `ALT_V`는 `PlayerSkills.json`의 `2050540`과 skill binding의
+DimensionMaster의 LMB `2050010`은 한 번의 command로 두 Server stage가 자동 진행되고 Animation Tool은
+snapshot `iComboStage`에 따라 위 두 clip group을 재생한다. Product Effect suffix는 stage ordinal이
+아니다. 고정 cue는 `_01 -> ba2`, `_03 -> ba3`이며 두 cue 모두
+`root/follow/action_facing/natural`을 사용한다. 기존 `ba1`, `ba4` authored payload는 삭제·이름 변경하지 않지만
+현재 2-stage 제품 chain에는 연결하지 않는다. `ALT_V`는 `PlayerSkills.json`의 `2050540`과 skill binding의
 `pc_sp_m_00_sk_sk_super_timewave`를 사용한다. Tool 화면은 위 목록을 하드코딩하지 않고 `PlayerSkills.json`을 정렬해
 그리므로 이후 합법적으로 추가되는 `Z`, `SPACE`, `RMB` 등의 slot도 숨기지 않는다.
 

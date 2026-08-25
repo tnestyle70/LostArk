@@ -166,7 +166,7 @@ class EffectToolBufferedComboAuditionTests(unittest.TestCase):
                 stage["comboAdvanceMs"]
                 for stage in dimensionmaster["comboStages"][:1]
             ),
-            1500,
+            900,
         )
         self.assertEqual(
             sum(stage["comboAdvanceMs"] for stage in artist["comboStages"][:2]),

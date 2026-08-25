@@ -525,7 +525,7 @@ namespace
 		BASIC_ATTACK_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31000, 4 },
 		BASIC_ATTACK_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050010, 3 }
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050010, 2 }
 	};
 }
 
@@ -2413,19 +2413,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		const PLAYER_SKILL_DEFINITION* dimensionMasterBasicAttack =
 			catalog.Find_Skill(2050010u);
-		constexpr std::array<std::uint32_t, 3u> expectedDurationMs =
-			{ 1500u, 1067u, 1700u };
-		constexpr std::array<std::uint32_t, 3u> expectedHitMs =
-			{ 50u, 28u, 335u };
-		constexpr std::array<std::uint32_t, 3u> expectedComboAdvanceMs =
-			{ 1500u, 1067u, 1700u };
-		constexpr std::array<std::uint32_t, 3u> expectedOpenMs =
-			{ 0u, 0u, 0u };
-		constexpr std::array<std::uint32_t, 3u> expectedCloseMs =
-			{ 0u, 0u, 0u };
+		constexpr std::array<std::uint32_t, 2u> expectedDurationMs =
+			{ 900u, 1067u };
+		constexpr std::array<std::uint32_t, 2u> expectedHitMs =
+			{ 50u, 28u };
+		constexpr std::array<std::uint32_t, 2u> expectedComboAdvanceMs =
+			{ 900u, 1067u };
+		constexpr std::array<std::uint32_t, 2u> expectedOpenMs =
+			{ 0u, 0u };
+		constexpr std::array<std::uint32_t, 2u> expectedCloseMs =
+			{ 0u, 0u };
 		bool exactDimensionMasterTiming =
 			nullptr != dimensionMasterBasicAttack &&
-			1500u == dimensionMasterBasicAttack->iActionDurationMs &&
+			900u == dimensionMasterBasicAttack->iActionDurationMs &&
 			50u == dimensionMasterBasicAttack->iHitTimeMs &&
 			dimensionMasterBasicAttack->ComboStages.size() ==
 				expectedDurationMs.size();
@@ -2509,14 +2509,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				0.f, automaticTick++, noDamageEvents);
 			const bool heldFinalFullMotion =
 				PLAYER_ACTION_STATE::SKILL == automatic.eAction &&
-				3u == automatic.iComboStage;
+				2u == automatic.iComboStage;
 			skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
 				0.002f, automaticTick++, noDamageEvents);
 			tests.Require(
 				chainedEveryStage && heldFinalFullMotion &&
 					PLAYER_ACTION_STATE::NONE == automatic.eAction &&
 					0u == automatic.iComboStage,
-				"Advance one DimensionMaster LMB through the three project-tuned BA motions");
+				"Advance one DimensionMaster LMB through the two project-tuned BA motions");
 		}
 	}
 	{

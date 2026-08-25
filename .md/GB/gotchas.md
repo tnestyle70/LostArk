@@ -44,8 +44,8 @@ git rev-list --left-right --count HEAD...origin/main
 - 이전 `Dimensionist` 이름은 명시적으로 보존한 역사 문서나 외부 원본 식별자가 아니면 되살리지 않는다.
 - 이름 불일치를 임시 fallback으로 숨기지 않는다. 정의와 실제 소비 경로를 같은 변경에서 맞춘다.
 - DimensionMaster의 Server skill 계약은 `Q W E R A S D F T V ALT_V`와 LMB `2050010` automatic
-  3-stage(`1500/1067/1700ms`)로 닫혔고 `ALT_V`는 `2050540`이다. merge에서 LMB 4단 수동
-  window, 이전 candidate-only `2050550` 또는 Z 슬롯을 되살리지 않는다.
+  2-stage(`900/1067ms`, `_01 -> _03`)로 닫혔고 `ALT_V`는 `2050540`이다. merge에서 `_04 -> ba1`
+  제품 연결, LMB 4단 수동 window, 이전 candidate-only `2050550` 또는 Z 슬롯을 되살리지 않는다.
   candidate-only Effect는 별도의 admitted effect 계약 없이 제품 런타임에 활성화하지 않는다.
 
 ### 공용 Character Preview

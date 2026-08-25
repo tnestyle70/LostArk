@@ -20,7 +20,7 @@ class DimensionMaster2050010AutomaticSequenceTests(unittest.TestCase):
             f"effect.dimensionmaster.skill.2050010.ba{stage}.unified.effect.json"
         )
 
-    def test_ba_sequence_groups_the_double_thrust_then_swing_and_finish(self) -> None:
+    def test_ba_sequence_groups_the_double_thrust_then_swing(self) -> None:
         document = self.load_json(
             "Data/Animation/Authored/DimensionMaster/"
             "DimensionMaster.skillbindings.json"
@@ -35,46 +35,55 @@ class DimensionMaster2050010AutomaticSequenceTests(unittest.TestCase):
                 [
                     {
                         "clip": "pc_sp_m_00_sk_att_battle_1_01",
-                        "playMs": 3000,
+                        "playMs": 1800,
                         "playRate": 2.0,
                     }
                 ],
                 ["pc_sp_m_00_sk_att_battle_1_03"],
-                ["pc_sp_m_00_sk_att_battle_1_04"],
             ],
         )
         self.assertEqual(
             binding["clips"][0][0]["playMs"]
             / binding["clips"][0][0]["playRate"],
-            1500.0,
+            900.0,
         )
+
+        ba2 = self.load_effect(2)
+        visible_start_wall_seconds = [
+            element["detail"]["timing"]["startDelaySeconds"]
+            / binding["clips"][0][0]["playRate"]
+            for element in ba2["elements"]
+            if element["visible"]
+        ]
+        self.assertEqual(len(visible_start_wall_seconds), 2)
+        self.assertLess(max(visible_start_wall_seconds), 0.9)
 
     def test_server_stages_advance_automatically_after_each_full_motion(self) -> None:
         document = self.load_json("Data/Balance/PlayerSkills.json")
         skill = next(row for row in document["skills"] if row["skillId"] == 2050010)
         stages = skill["comboStages"]
 
-        self.assertEqual(skill["actionDurationMs"], 1500)
+        self.assertEqual(skill["actionDurationMs"], 900)
         self.assertEqual(skill["hitTimeMs"], 50)
         self.assertEqual(
             [stage["actionDurationMs"] for stage in stages],
-            [1500, 1067, 1700],
+            [900, 1067],
         )
         self.assertEqual(
             [stage["hitTimeMs"] for stage in stages],
-            [50, 28, 335],
+            [50, 28],
         )
         self.assertEqual(
             [stage["comboAdvanceMs"] for stage in stages],
-            [1500, 1067, 1700],
+            [900, 1067],
         )
         self.assertEqual(
             [stage["inputOpenMs"] for stage in stages],
-            [0, 0, 0],
+            [0, 0],
         )
         self.assertEqual(
             [stage["inputCloseMs"] for stage in stages],
-            [0, 0, 0],
+            [0, 0],
         )
         self.assertTrue(
             all(
@@ -83,7 +92,7 @@ class DimensionMaster2050010AutomaticSequenceTests(unittest.TestCase):
             )
         )
 
-    def test_product_effects_follow_the_confirmed_three_animation_groups(self) -> None:
+    def test_product_effects_follow_the_confirmed_two_animation_groups(self) -> None:
         event_path = (
             self.repository_root
             / "Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents"
@@ -115,15 +124,10 @@ class DimensionMaster2050010AutomaticSequenceTests(unittest.TestCase):
                     0,
                     "effect.dimensionmaster.skill.2050010.ba3.unified",
                 ),
-                (
-                    "pc_sp_m_00_sk_att_battle_1_04",
-                    0,
-                    "effect.dimensionmaster.skill.2050010.ba1.unified",
-                ),
             ],
         )
 
-    def test_stage_effect_assets_are_catalogued_without_pinning_payloads(self) -> None:
+    def test_authored_ba_assets_are_catalogued_without_pinning_payloads(self) -> None:
         catalog = self.load_json("Data/Effects/EffectCatalog.json")
         rows = {row["effectAssetId"]: row for row in catalog["effects"]}
 
@@ -155,10 +159,10 @@ class DimensionMaster2050010AutomaticSequenceTests(unittest.TestCase):
 
         self.assertEqual(
             [stage["durationMs"] for stage in skill["stages"]],
-            [1500, 1067, 1700],
+            [900, 1067],
         )
-        expected_end_forward = [0.9491, 0.2802, 1.0404]
-        expected_sample_counts = [91, 33, 52]
+        expected_end_forward = [0.9298, 0.2802]
+        expected_sample_counts = [55, 33]
         for stage_index, (stage, expected_forward, expected_count) in enumerate(
             zip(skill["stages"], expected_end_forward, expected_sample_counts)
         ):

@@ -94,7 +94,7 @@ class PlayerSkillCatalogComboTimingTests(unittest.TestCase):
 
         self.assertEqual(
             automatic_stages,
-            [(2050010, 0), (2050010, 1)],
+            [(2050010, 0)],
         )
 
     def test_client_catalog_preserves_each_stage_before_atomic_commit(self) -> None:
