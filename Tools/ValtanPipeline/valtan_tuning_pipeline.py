@@ -100,6 +100,31 @@ ALLOWED_MAPPING_BASES = frozenset(
     )
 )
 
+OWNER_RELATIVE = "OWNER_RELATIVE"
+GAMEPLAY_FOOTPRINT = "GAMEPLAY_FOOTPRINT"
+ARENA_ABSOLUTE = "ARENA_ABSOLUTE"
+WORLD_SCALE_POLICY_KINDS = frozenset((GAMEPLAY_FOOTPRINT, ARENA_ABSOLUTE))
+MANAGED_CUE_SCALE_POLICIES = {
+    "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.whirlwind.active": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.project-tuned.attack.dash-charge.active-shield": OWNER_RELATIVE,
+    "cue.valtan.carrier-v1.attack.four-slash.active.clip-01": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.carrier-v1.attack.four-slash.active.clip-02": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01": OWNER_RELATIVE,
+    "cue.valtan.carrier-v1.attack.fist-in-out.inner.clip-01": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.carrier-v1.attack.high-jump.takeoff.clip-01": OWNER_RELATIVE,
+    "cue.valtan.carrier-v1.attack.high-jump.land.clip-01": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01": ARENA_ABSOLUTE,
+    "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01": ARENA_ABSOLUTE,
+    "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01": OWNER_RELATIVE,
+}
+EXPECTED_MANAGED_SCALE_POLICY_COUNTS = Counter(
+    {OWNER_RELATIVE: 4, GAMEPLAY_FOOTPRINT: 9, ARENA_ABSOLUTE: 2}
+)
+
 STABLE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,160}$")
 
 
@@ -385,6 +410,35 @@ def validate_cue_animation_join(
                 f"{context} source window escapes its saved animation occurrence"
             )
     return occurrence
+
+
+def validate_cue_scale_policy(scale_policy: Any, context: str) -> str:
+    if not isinstance(scale_policy, dict):
+        raise PipelineError(f"{context}.scalePolicy must be an object")
+    kind = scale_policy.get("kind")
+    if kind == OWNER_RELATIVE:
+        exact(scale_policy, ("kind",), f"{context}.scalePolicy")
+        return kind
+    if kind not in WORLD_SCALE_POLICY_KINDS:
+        raise PipelineError(f"{context}.scalePolicy.kind is unsupported: {kind!r}")
+    exact(scale_policy, ("kind", "worldScale"), f"{context}.scalePolicy")
+    world_scale = scale_policy["worldScale"]
+    if not isinstance(world_scale, list) or len(world_scale) != 3:
+        raise PipelineError(f"{context}.scalePolicy.worldScale must be float3")
+    normalized = [
+        number(
+            component,
+            f"{context}.scalePolicy.worldScale[{ordinal}]",
+            0.000001,
+            1000.0,
+        )
+        for ordinal, component in enumerate(world_scale)
+    ]
+    if normalized != [1.5, 1.5, 1.5]:
+        raise PipelineError(
+            f"{context}.scalePolicy.worldScale must preserve the 1.5 gameplay footprint"
+        )
+    return kind
 
 
 def repo_path(root: Path, relative: str) -> Path:
@@ -1331,6 +1385,15 @@ def _migrate_effect_cue(
         raise PipelineError(
             f"managed cue does not resolve its saved animation occurrence: {cue_id}"
         )
+    scale_policy = cue.get("scalePolicy")
+    if scale_policy is None:
+        scale_kind = MANAGED_CUE_SCALE_POLICIES.get(cue_id)
+        if scale_kind is None:
+            raise PipelineError(f"managed cue has no scale-policy migration: {cue_id}")
+        scale_policy = {"kind": scale_kind}
+        if scale_kind in WORLD_SCALE_POLICY_KINDS:
+            scale_policy["worldScale"] = [1.5, 1.5, 1.5]
+    validate_cue_scale_policy(scale_policy, context)
     migrated = {
         "cueId": cue_id,
         "occurrenceId": cue["occurrenceId"],
@@ -1343,6 +1406,7 @@ def _migrate_effect_cue(
         "stopPolicy": cue["stopPolicy"],
         "repeatPolicy": cue["repeatPolicy"],
         "localTransform": copy.deepcopy(cue["localTransform"]),
+        "scalePolicy": copy.deepcopy(scale_policy),
         "mappingBasis": occurrence["mappingBasis"],
     }
     validate_cue_animation_join(migrated, occurrences_by_id, context)
@@ -1780,6 +1844,7 @@ def validate_v2_master(
         raise PipelineError("decision model does not cover every managed pattern exactly once")
     event_ids: set[str] = set()
     cue_ids: set[str] = set()
+    scale_policy_counts: Counter[str] = Counter()
     spawn_events: set[str] = set()
     world_events: list[tuple[str, str, str]] = []
     gameplay_phase_events: list[tuple[str, str, str, int]] = []
@@ -2009,12 +2074,23 @@ def validate_v2_master(
             for cue in stage["effectCues"]:
                 exact(
                     cue,
-                    ("cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId", "sourceStartMs", "sourceEndMs", "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy", "localTransform", "mappingBasis"),
+                    ("cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId", "sourceStartMs", "sourceEndMs", "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy", "localTransform", "scalePolicy", "mappingBasis"),
                     f"{pattern_id}/{stage_id}.effectCue",
                 )
                 cue_id = stable_id(cue["cueId"], f"{pattern_id}/{stage_id}.cueId")
                 if cue_id in cue_ids:
                     raise PipelineError(f"duplicate managed cue: {cue_id}")
+                scale_kind = validate_cue_scale_policy(
+                    cue["scalePolicy"],
+                    f"{pattern_id}/{stage_id} cue {cue_id}",
+                )
+                expected_scale_kind = MANAGED_CUE_SCALE_POLICIES.get(cue_id)
+                if scale_kind != expected_scale_kind:
+                    raise PipelineError(
+                        f"managed cue scalePolicy migration mismatch: {cue_id} "
+                        f"expected={expected_scale_kind} actual={scale_kind}"
+                    )
+                scale_policy_counts[scale_kind] += 1
                 validate_cue_animation_join(
                     cue,
                     occurrences_by_id,
@@ -2032,6 +2108,13 @@ def validate_v2_master(
                 if invocation["durationPolicy"] != "EXPLICIT":
                     raise PipelineError("initial camera migration uses EXPLICIT duration")
                 integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
+    if cue_ids != set(MANAGED_CUE_SCALE_POLICIES):
+        raise PipelineError("managed cue scalePolicy migration table coverage drift")
+    if scale_policy_counts != EXPECTED_MANAGED_SCALE_POLICY_COUNTS:
+        raise PipelineError(
+            "managed cue scalePolicy coverage must remain OWNER/GAMEPLAY/ARENA "
+            f"4/9/2, got {dict(scale_policy_counts)}"
+        )
     if world_events != [(WORLD_PATTERN_ID, WORLD_STAGE_ID, WORLD_SET_ID)]:
         raise PipelineError(f"v2 master must own exactly one 109 world-set invocation: {world_events}")
     expected_phase_event = [(WORLD_PATTERN_ID, WORLD_STAGE_ID, "ENTER", 2)]
@@ -2747,6 +2830,7 @@ def compile_cue(pattern_id: str, stage: dict[str, Any], cue: dict[str, Any]) -> 
         "sourceStartMs": cue["sourceStartMs"],
         "sourceEndMs": cue["sourceEndMs"],
         "localTransform": copy.deepcopy(cue["localTransform"]),
+        "scalePolicy": copy.deepcopy(cue["scalePolicy"]),
     }
 
 
@@ -2826,6 +2910,36 @@ def replace_rows_same_ordinal(
     if [row[id_key] for row in projected_rows] != current_ids:
         raise PipelineError(f"{array_key} stable ID/ordinal sequence changed")
     return output
+
+
+def replace_root_format_version(
+    text: str,
+    expected_schema: str,
+    admitted_versions: set[int],
+    projected_version: int,
+) -> str:
+    document = json.loads(text, object_pairs_hook=_reject_duplicate_pairs)
+    if (
+        not isinstance(document, dict)
+        or document.get("schema") != expected_schema
+        or document.get("formatVersion") not in admitted_versions
+    ):
+        raise PipelineError("Product header is not admitted for format projection")
+    current_version = document["formatVersion"]
+    if current_version == projected_version:
+        return text
+    match = re.search(
+        rf'("formatVersion"\s*:\s*){current_version}(?=\s*,)',
+        text,
+    )
+    if match is None:
+        raise PipelineError("Product root formatVersion token was not found")
+    return (
+        text[: match.start()]
+        + match.group(1)
+        + str(projected_version)
+        + text[match.end() :]
+    )
 
 
 def _assert_unmanaged_raw_rows_preserved(
@@ -3157,8 +3271,13 @@ def project_v2_products(root: Path, docs: dict[str, Any], master: dict[str, Any]
         BINDINGS_REL: replace_rows_same_ordinal(
             source_texts[BINDINGS_REL], "bindings", "actionId", managed_bindings
         ),
-        CUES_REL: replace_rows_same_ordinal(
-            source_texts[CUES_REL], "cues", "bindingId", managed_cues
+        CUES_REL: replace_root_format_version(
+            replace_rows_same_ordinal(
+                source_texts[CUES_REL], "cues", "bindingId", managed_cues
+            ),
+            "lostark.valtan-pattern-effect-cues",
+            {2, 3},
+            3,
         ),
         ROTATIONS_REL: json_text(rotation_document),
         COMBAT_PRODUCT_REL: replace_rows_same_ordinal(

@@ -62,6 +62,7 @@ struct BOSS_ACTOR_ENTRY final
 
 	std::string archetypeId;
 	std::string visualAssetId;
+	f32_t presentationScale = {};
 	std::string bodyModel;
 	std::string weaponModel;
 	/* Skinned armour pieces the boss wears on the body rig. They share the

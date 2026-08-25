@@ -14,7 +14,7 @@
   "baseReceiptCanonicalSha256": "92a102cb0b25d0d669014fdce0c4a4e08912b68530960b533769d7d10442cc99",
   "successorReceipt": {
     "path": "Data/Effects/Imported/Valtan/CarrierV1/Valtan.carrier-v1-successor-lineage-receipt.v1.json",
-    "canonicalSha256": "d484648809f96f81f16a7b729536ad8bfc39fa80be7a1b7762a0ce400b22bf6e"
+    "canonicalSha256": "0063493c86df6211f9ef243cf004c22178a9d0bd3751f1655438e5f42bcc49bc"
   },
   "successorBaseInputProjection": {
     "patternBindings": {

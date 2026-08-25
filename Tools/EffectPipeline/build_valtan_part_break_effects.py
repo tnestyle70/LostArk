@@ -14,12 +14,12 @@ hand. Everything downstream - emitter rows, slot assignment, render profile,
 mesh pre-scale, seeded particle defaults - is the sibling seeder's own code, so
 the elements this writes are the ones it would have written had the clip matched.
 
-Nothing here touches `EffectCatalog.json`. `Publish-Effects.ps1` refuses a
-catalogued Valtan Effect that no cue in `Valtan.patterneffectcues.json`
-plays, and a document on disk with no catalog row is the contracted
-authoring-only state - the Effect Tool still reaches it through the Valtan
-pattern tree by the stage naming rule. The catalog row and the cue row are
-one later change, made together.
+Nothing here touches `EffectCatalog.json`. A document on disk with no direct
+catalog row is the contracted authoring-only state: Product consumes only the
+identity-derived `Data/Effects/Authored` rows accepted by
+`Validate-EffectSources.ps1`. The Effect Tool still reaches this reference
+through the Valtan pattern tree by the stage naming rule. The catalog row and
+the cue row are one later change, made together.
 
 `_01` carries `mn_rpbf_01_1_mi` and `_02` carries `mn_rpbf_01_2_mi`: the same two
 armour materials as `MN_RPBF_01_Parts1/Parts2.wmodel`, which are plate 0 and

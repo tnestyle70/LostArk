@@ -26,7 +26,8 @@ namespace
 	constexpr std::string_view V1_ALIAS_SCHEMA =
 		"lostark.valtan-pattern-effect-v1-aliases";
 	constexpr uint32_t V1_ALIAS_FORMAT_VERSION = 1u;
-	constexpr uint32_t FORMAT_VERSION = 2u;
+	constexpr uint32_t V2_FORMAT_VERSION = 2u;
+	constexpr uint32_t FORMAT_VERSION = 3u;
 	constexpr std::string_view OWNER_ARCHETYPE_ID = "BOSS_VALTAN";
 	constexpr size_t MAX_CUE_COUNT = 512u;
 	constexpr f32_t MAX_POSITION_MAGNITUDE = 100000.f;
@@ -343,6 +344,63 @@ namespace
 		return true;
 	}
 
+	bool_t Read_ScalePolicy(
+		const DATA_JSON_VALUE& Parent,
+		VALTAN_PATTERN_EFFECT_CUE& OutCue)
+	{
+		const DATA_JSON_VALUE* pPolicy = Parent.Find("scalePolicy");
+		if (nullptr == pPolicy)
+			return true;
+		if (!pPolicy->Is_Object())
+			return false;
+		const DATA_JSON_VALUE* pKind = pPolicy->Find("kind");
+		if (nullptr == pKind || !pKind->Is_String())
+			return false;
+
+		if ("OWNER_RELATIVE" == pKind->Get_String())
+		{
+			if (!Is_ExactObject(*pPolicy, { "kind" }))
+				return false;
+			OutCue.eScalePolicy =
+				VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+			OutCue.vWorldScale = { 1.f, 1.f, 1.f };
+		}
+		else if ("GAMEPLAY_FOOTPRINT" == pKind->Get_String() ||
+			"ARENA_ABSOLUTE" == pKind->Get_String())
+		{
+			if (!Is_ExactObject(*pPolicy, { "kind", "worldScale" }) ||
+				!Read_Float3(*pPolicy, "worldScale", MAX_SCALE,
+					OutCue.vWorldScale) ||
+				OutCue.vWorldScale.x <= 0.f ||
+				OutCue.vWorldScale.y <= 0.f ||
+				OutCue.vWorldScale.z <= 0.f)
+			{
+				return false;
+			}
+			OutCue.eScalePolicy =
+				"GAMEPLAY_FOOTPRINT" == pKind->Get_String() ?
+				VALTAN_PATTERN_EFFECT_SCALE_POLICY::GAMEPLAY_FOOTPRINT :
+				VALTAN_PATTERN_EFFECT_SCALE_POLICY::ARENA_ABSOLUTE;
+		}
+		else
+		{
+			return false;
+		}
+		OutCue.bHasExplicitScalePolicy = true;
+		return true;
+	}
+
+	bool_t Is_ManagedPatternId(const std::string_view PatternId)
+	{
+		return PatternId == "VALTAN_WHIRLWIND" ||
+			PatternId == "VALTAN_DASH_CHARGE" ||
+			PatternId == "VALTAN_FOUR_SLASH" ||
+			PatternId == "VALTAN_FIST_IN_OUT" ||
+			PatternId == "VALTAN_HIGH_JUMP" ||
+			PatternId == "VALTAN_FLOOR_WIPE_130" ||
+			PatternId == "VALTAN_ARENA_BREAK_109";
+	}
+
 	const BOSS_PATTERN_ANIMATION_BINDING* Find_ActionBinding(
 		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& Document,
 		const std::string_view ActionId)
@@ -438,7 +496,8 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 		pSchema->Get_String() != SCHEMA ||
 		!Read_Unsigned(Root, "formatVersion", FORMAT_VERSION,
 			iFormatVersion) ||
-		(iFormatVersion != 1u && iFormatVersion != FORMAT_VERSION) ||
+		(iFormatVersion != 1u && iFormatVersion != V2_FORMAT_VERSION &&
+		 iFormatVersion != FORMAT_VERSION) ||
 		nullptr == pOwner || !pOwner->Is_String() ||
 		pOwner->Get_String() != OWNER_ARCHETYPE_ID ||
 		pOwner->Get_String() != Encounter.Get_BossArchetypeId() ||
@@ -479,15 +538,29 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 	for (const DATA_JSON_VALUE& CueValue : pCues->Get_Array())
 	{
 		const bool_t bLegacy = 1u == iFormatVersion;
+		const bool_t bHasScalePolicy =
+			nullptr != CueValue.Find("scalePolicy");
 		if ((bLegacy && !Is_ExactObject(CueValue,
 				{ "bindingId", "patternId", "stageId", "actionId",
 				  "effectAssetId", "anchorSlotId", "followPolicy",
 				  "stopPolicy", "startMs", "endMs", "localTransform" })) ||
-			(!bLegacy && !Is_ExactObject(CueValue,
+			(V2_FORMAT_VERSION == iFormatVersion && !Is_ExactObject(CueValue,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "clipOccurrenceId", "effectAssetId",
 				  "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy",
-				  "sourceStartMs", "sourceEndMs", "localTransform" })))
+				  "sourceStartMs", "sourceEndMs", "localTransform" })) ||
+			(FORMAT_VERSION == iFormatVersion &&
+				((!bHasScalePolicy && !Is_ExactObject(CueValue,
+				{ "bindingId", "occurrenceId", "patternId", "stageId",
+				  "actionId", "clipOccurrenceId", "effectAssetId",
+				  "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy",
+				  "sourceStartMs", "sourceEndMs", "localTransform" })) ||
+				 (bHasScalePolicy && !Is_ExactObject(CueValue,
+				{ "bindingId", "occurrenceId", "patternId", "stageId",
+				  "actionId", "clipOccurrenceId", "effectAssetId",
+				  "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy",
+				  "sourceStartMs", "sourceEndMs", "localTransform",
+				  "scalePolicy" })))))
 		{
 			strOutStatus =
 				"Valtan pattern Effect cue has unexpected properties.";
@@ -509,6 +582,8 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 			!Read_StopPolicy(CueValue, Cue.eStopPolicy) ||
 			(!bLegacy && !Read_RepeatPolicy(CueValue,
 				Cue.eRepeatPolicy)) ||
+			(FORMAT_VERSION == iFormatVersion &&
+			 !Read_ScalePolicy(CueValue, Cue)) ||
 			!Read_Unsigned(CueValue,
 				bLegacy ? "startMs" : "sourceStartMs",
 				CEncounterPatternReference::MAX_STAGE_DURATION_MS,
@@ -521,6 +596,15 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 		}
 		if (bLegacy)
 			Cue.strOccurrenceId = Cue.strBindingId;
+		if (FORMAT_VERSION == iFormatVersion &&
+			Is_ManagedPatternId(Cue.strPatternId) &&
+			!Cue.bHasExplicitScalePolicy)
+		{
+			strOutStatus =
+				"Managed Valtan pattern Effect cue requires explicit scalePolicy: " +
+				Cue.strBindingId;
+			return false;
+		}
 		if (!OccurrenceIds.insert(Cue.strOccurrenceId).second)
 		{
 			strOutStatus =

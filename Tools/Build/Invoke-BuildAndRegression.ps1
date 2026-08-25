@@ -93,7 +93,12 @@ function Invoke-PythonGate {
 }
 
 Push-Location $repoRoot
+$previousResourceRoot = [Environment]::GetEnvironmentVariable(
+    'LOSTARK_RESOURCE_ROOT', 'Process')
 try {
+    [Environment]::SetEnvironmentVariable(
+        'LOSTARK_RESOURCE_ROOT', $runtimeResourceRoot, 'Process')
+
     if (-not $SkipBuild) {
         $msbuild = Resolve-MSBuild
         Invoke-MSBuildProject $msbuild 'Engine\Default\Engine.vcxproj'
@@ -147,10 +152,10 @@ try {
     }
 
     $LASTEXITCODE = 0
-    & '.\Tools\EffectPipeline\Publish-Effects.ps1' `
-        -Mode Validate -ResourceRoot $runtimeResourceRoot
+    & '.\Tools\EffectPipeline\Validate-EffectSources.ps1' `
+        -RepositoryRoot $repoRoot
     if ($LASTEXITCODE -ne 0) {
-        throw 'Effect data validation failed.'
+        throw 'Effect source validation failed.'
     }
 
     $LASTEXITCODE = 0
@@ -182,6 +187,9 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw 'Rendering profile validation failed.'
     }
+    Invoke-PythonGate `
+        'Rendering authored/runtime identity and float32 boundary gate' `
+        @('Tools/RenderingPipeline/test_publish_rendering_profiles.py')
 
     $protocolHarness = Join-Path $repoRoot `
         "Tools\NetworkProtocolHarness\Bin\$Configuration\NetworkProtocolHarness.exe"
@@ -207,5 +215,7 @@ try {
     Write-Host 'Runtime level validation uses Framework.slnLaunch (Server + Client).'
 }
 finally {
+    [Environment]::SetEnvironmentVariable(
+        'LOSTARK_RESOURCE_ROOT', $previousResourceRoot, 'Process')
     Pop-Location
 }

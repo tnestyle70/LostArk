@@ -1,10 +1,11 @@
 {
   "schema": "lostark.boss-catalog",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",
       "visualAssetId": "VALTAN_MN_RPBF_01",
+      "presentationScale": 0.75,
       "bodyModel": "Character/Valtan/MN_RPBF_01.wmodel",
       "weaponModel": "Character/Valtan/ValtanWeapon.wmodel",
       "armorModels": [

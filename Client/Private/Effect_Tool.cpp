@@ -79,6 +79,8 @@ namespace
 		"valtan.whirlwind.420633.active";
 	constexpr const char_t* VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID =
 		"effect.valtan.pattern.420633.active";
+	constexpr const char_t* VALTAN_EXACT_HISTORY_V1_EFFECT_ASSET_ID =
+		"effect.valtan.pattern.420633.active.v1.unified";
 	constexpr const char_t* VALTAN_CHARACTER_SELECT_BOSS_PLACEMENT_ID =
 		"boss.valtan.character-select.lazy";
 	constexpr const char_t* VALTAN_ARENA_BOSS_PLACEMENT_ID =
@@ -93,6 +95,23 @@ namespace
 		"VALTAN_ARENA_BREAK_33",
 		"VALTAN_FOUR_PILLARS_105"
 	};
+
+	bool Is_ValtanExactHistoryPreviewEffectAssetId(
+		const std::string_view strEffectAssetId)
+	{
+		return strEffectAssetId == VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID ||
+			strEffectAssetId == VALTAN_EXACT_HISTORY_V1_EFFECT_ASSET_ID;
+	}
+
+	bool Matches_ValtanExactHistoryBinding(
+		const std::string_view strBindingId,
+		const std::string_view strBindingEffectAssetId,
+		const std::string_view strPreviewEffectAssetId)
+	{
+		return strBindingId == VALTAN_EXACT_HISTORY_BINDING_ID &&
+			strBindingEffectAssetId == VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID &&
+			Is_ValtanExactHistoryPreviewEffectAssetId(strPreviewEffectAssetId);
+	}
 
 	const char_t* Resolve_ValtanServerPatternBossPlacement(
 		const uint32_t iLevel)
@@ -188,8 +207,30 @@ namespace
 		return Requests;
 	}
 
+	bool Build_ToolValtanSourceAnchorWorld(
+		const float4x4_t& RawBone,
+		const float4x4_t& SampledOwnerRoot,
+		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
+		const float3_t& WorldScale,
+		float4x4_t& OutWorld)
+	{
+		float4x4_t EffectiveOwnerRoot{};
+		if (!Client::CEffectPresentationService::Build_CueScalePolicyAnchor(
+				eScalePolicy, WorldScale, SampledOwnerRoot,
+				EffectiveOwnerRoot))
+		{
+			return false;
+		}
+		Client::EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
+		AnchorBuild.RawBone = RawBone;
+		AnchorBuild.OwnerWorld = EffectiveOwnerRoot;
+		return Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(
+			AnchorBuild, OutWorld);
+	}
+
 	bool Resolve_ToolSourceAnchorWorlds(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW* pValtanCue,
 		std::unordered_map<std::string, float4x4_t>& OutWorlds,
 		std::string& strOutError)
 	{
@@ -197,12 +238,30 @@ namespace
 		const std::vector<TOOL_SOURCE_ANCHOR_REQUEST> Requests =
 			Collect_ToolSourceAnchorRequests(Document);
 		OutWorlds.reserve(Requests.size());
+		std::shared_ptr<Engine::CModel> pValtanModel;
+		float4x4_t SampledValtanOwnerRoot{};
+		if (nullptr != pValtanCue && !Requests.empty())
+		{
+			pValtanModel = Client::CAnimationTargetService::Resolve_Model();
+			if (nullptr == pValtanModel ||
+				!Client::CAnimationTargetService::Resolve_RootTransform(
+					&SampledValtanOwnerRoot))
+			{
+				strOutError =
+					"preview model cannot resolve the Valtan cue owner root.";
+				return false;
+			}
+		}
 		bool_t bAllResolved = true;
 		for (const TOOL_SOURCE_ANCHOR_REQUEST& Request : Requests)
 		{
 			float4x4_t BoneAnchorWorld{};
-			if (!Client::CAnimationTargetService::Resolve_AnchorTransform(
-					Request.strRuntimeBoneName.c_str(), &BoneAnchorWorld))
+			const bool_t bResolved = nullptr != pValtanCue ?
+				(nullptr != pValtanModel &&
+				 pValtanModel->Has_Bone(Request.strRuntimeBoneName.c_str())) :
+				Client::CAnimationTargetService::Resolve_AnchorTransform(
+					Request.strRuntimeBoneName.c_str(), &BoneAnchorWorld);
+			if (!bResolved)
 			{
 				if (strOutError.empty())
 				{
@@ -212,6 +271,26 @@ namespace
 				}
 				bAllResolved = false;
 				continue;
+			}
+			if (nullptr != pValtanCue)
+			{
+				float4x4_t RawBone{};
+				XMStoreFloat4x4(&RawBone, pValtanModel->Get_BoneMatrix(
+					Request.strRuntimeBoneName.c_str()));
+				if (!Build_ToolValtanSourceAnchorWorld(
+						RawBone, SampledValtanOwnerRoot,
+						pValtanCue->eScalePolicy, pValtanCue->vWorldScale,
+						BoneAnchorWorld))
+				{
+					if (strOutError.empty())
+					{
+						strOutError =
+							"preview model cannot normalize the Valtan source bone '" +
+							Request.strRuntimeBoneName + "' with its cue scale policy.";
+					}
+					bAllResolved = false;
+					continue;
+				}
 			}
 
 			const Client::EFFECT_TRANSFORM_DESC& Local =
@@ -1275,25 +1354,6 @@ namespace
         return true;
     }
 
-    float4x4_t Compose_EffectLocal(
-        const Client::EFFECT_TRANSFORM_DESC& Local,
-        const float4x4_t& Anchor)
-    {
-        float4x4_t Result{};
-        XMStoreFloat4x4(&Result,
-            XMMatrixScaling(Local.vScale.x, Local.vScale.y, Local.vScale.z) *
-            XMMatrixRotationRollPitchYaw(
-                XMConvertToRadians(Local.vRotationDegrees.x),
-                XMConvertToRadians(Local.vRotationDegrees.y),
-                XMConvertToRadians(Local.vRotationDegrees.z)) *
-            XMMatrixTranslation(
-                Local.vPosition.x,
-                Local.vPosition.y,
-                Local.vPosition.z) *
-            XMLoadFloat4x4(&Anchor));
-        return Result;
-    }
-
 	bool_t Try_ExtractPlanarYawDegrees(
 		const float4x4_t& Root,
 		f32_t& fOutYawDegrees)
@@ -1928,6 +1988,26 @@ namespace
             nullptr : &*Iterator;
     }
 
+	bool Is_ParticleMasterEmissionProgram(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Client::Resolve_EffectStrictTypedSourceProfile(
+			Element.Material.strSourceMaterialPath,
+			Element.Material.SourceMaterial) ==
+			Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLE_MASTER_01;
+	}
+
+	bool Has_EffectiveEmissiveRadianceInput(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		if (Is_ParticleMasterEmissionProgram(Element))
+			return Client::Has_EffectParticleMasterNamedTextureContract(
+				Element.Material.SourceMaterial);
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pEmissive =
+			Find_Binding(Element, "emissive");
+		return nullptr != pEmissive && !pEmissive->strAssetId.empty();
+	}
+
 	bool Is_SourceDecalBaseAdmissionCarrier(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
@@ -2132,6 +2212,23 @@ namespace
 			!Element.Material.SourceMaterial.bEnabled &&
 			Element.Material.strSourceMaterialPath.empty() &&
 			!Element.Material.Execution.bEnabled;
+	}
+
+	bool Is_GenericLinearRevealCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		const bool_t bSpriteCarrier =
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::SPRITE ||
+			(Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			 nullptr == Find_Binding(Element, Client::EFFECT_MESH_SHAPE_SLOT_ID));
+		return bSpriteCarrier && Is_DirectHandAuthoredElement(Element) &&
+			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
+			Element.Material.strTemplateId ==
+				Client::EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			!Element.Material.Execution.bFailClosed &&
+			!Element.Material.Execution.bAuthoringApproximate &&
+			Element.Material.eRenderProfile !=
+				Client::EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
 	}
 
 	bool Is_OptionalHandAuthoredResourceSlot(
@@ -2464,8 +2561,8 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 				static_cast<f64_t>(fEffectSampleTime)) > 1.0e-5 &&
 			fSequentialAdvance <= 0.f)
 		{
-			bHistoryAdvanced = pObject->Set_SampleTimeWithTransformHistory(
-				fEffectSampleTime, TransformProvider, TransformError);
+			bHistoryAdvanced = Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleTime, TransformError);
 		}
 		else if (fSequentialAdvance > 0.f)
 		{
@@ -2507,7 +2604,10 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 	std::unordered_map<std::string, float4x4_t> SourceAnchorWorlds;
 	std::string SourceAnchorError;
 	const bool_t bSourceAnchorsResolved = Resolve_ToolSourceAnchorWorlds(
-		SourceAnchorDocument, SourceAnchorWorlds, SourceAnchorError);
+		SourceAnchorDocument,
+		m_ValtanProductPreview.has_value() ?
+			&m_ValtanProductPreview->Cue : nullptr,
+		SourceAnchorWorlds, SourceAnchorError);
 	pObject->Set_SourceAnchorWorlds(std::move(SourceAnchorWorlds));
 	if (!bSourceAnchorsResolved)
 	{
@@ -4180,20 +4280,12 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 			{
 				if (m_bValtanBossPatternTransformHistoryRequired)
 				{
-					const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
-						[this](const f32_t fSampleTimeSeconds,
-							EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
-							std::string& strOutError)
-						{
-							return Build_ValtanBossPatternTransformSample(
-								fSampleTimeSeconds, OutSample, strOutError);
-						};
 					std::string TransformError;
 					const bool_t bSampled =
-						m_bValtanBossPatternTransformHistoryActive &&
-						pObject->Set_SampleTimeWithTransformHistory(
+						Seek_ValtanBossPatternTransformHistory(
+							pObject,
 							Resolve_EffectSampleTime(m_fPreviewTimeSeconds),
-							TransformProvider, TransformError);
+							TransformError);
 					pObject->Set_Visible(bSampled);
 					if (!bSampled)
 					{
@@ -4882,7 +4974,7 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	ImGui::BeginDisabled(!bEditableSource ||
 		(!Has_UnsavedWork() && !bCleanHotReloadRetry));
 	if (ImGui::Button(bCleanHotReloadRetry ?
-		"Retry Product Hot Reload" : "Save Changes"))
+		"Retry Saved Source Activation" : "Save Changes"))
 		Try_ApplyDraftAndSave();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -4908,7 +5000,7 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	if (ImGui::Button("Restart Preview"))
 		Start_WorldPreviewFromBeginning();
 	if (!Has_UnsavedWork() && !m_strSaveHotReloadStatus.empty())
-		ImGui::TextWrapped("Save Hot Reload: %s",
+		ImGui::TextWrapped("Saved Source Activation: %s",
 			m_strSaveHotReloadStatus.c_str());
 	if (!bEditableSource)
 	{
@@ -4968,23 +5060,23 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	else if (!bDrawable)
 	{
 		ImGui::TextWrapped(
-			"Structurally valid partial draft. Preview hidden and Product hot reload blocked: %s",
+			"Structurally valid unbound draft. Preview hidden; a gameplay-bound source must be drawable before Save: %s",
 			m_strActiveDocumentDrawableError.c_str());
 	}
 	else if (m_bActiveDocumentMatchesRuntime)
 	{
 		ImGui::TextDisabled(
-			"Saved Authored matches the Runtime Catalog snapshot loaded in this process.");
+			"Saved Authored is the source currently loaded for Product playback.");
 	}
 	else if (Can_HotReloadSavedProduct())
 	{
 		ImGui::TextDisabled(
-			"Saved Authored differs from Product. Use Retry Product Hot Reload; a failed retry preserves the existing prepared Product target.");
+			"Saved Authored differs from the loaded Product target. Use Retry Saved Source Activation; failure preserves the existing prepared target.");
 	}
 	else
 	{
 		ImGui::TextDisabled(
-			"World preview uses active Authored; no exact direct-authored Product cue is selected for hot reload.");
+			"World preview uses active Authored; no gameplay cue references this exact direct-authored Effect ID.");
 	}
 	ImGui::Separator();
 }
@@ -5831,11 +5923,16 @@ void Client::CEffect_Tool::Render_Detail(
 	{
 		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
 	}
+	Render_CompositionDetail(Element, bChanged);
 	Render_TransformDetail(Element.Detail, bChanged);
 	Render_TimingDetail(Element, bChanged);
 	Render_SizeDetail(Element, bChanged);
+	const bool_t bParticleMasterNamedEmission =
+		Is_ParticleMasterEmissionProgram(Element);
 	Render_ColorDetail(Element.Detail, bChanged,
-		nullptr != Find_Binding(Element, "emissive"));
+		Has_EffectiveEmissiveRadianceInput(Element),
+		bParticleMasterNamedEmission);
+	Render_LinearRevealDetail(Element, bChanged);
 	Render_AuthoringMaterialParameters(Element, bChanged);
 	if (ImGui::CollapsingHeader("Advanced Authoring"))
 	{
@@ -6258,6 +6355,61 @@ void Client::CEffect_Tool::Render_Detail(
 		"Additive treats black as transparent, which is how glow and flare textures are drawn. Alpha needs the texture to carry its own alpha channel.");
 }
 
+void Client::CEffect_Tool::Render_CompositionDetail(
+	EFFECT_ELEMENT_DESC& Element,
+	bool_t& bChanged)
+{
+	if (!ImGui::CollapsingHeader("Ground / World Mark",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+	const bool_t bEligible = Is_EffectWorldMarkCarrier(Element);
+	static const char* const s_CompositionLabels[] =
+	{
+		"Normal Translucency", "World Mark (before translucent FX)"
+	};
+	int32_t iLayer = static_cast<int32_t>(Element.eCompositionLayer);
+	ImGui::BeginDisabled(!bEligible);
+	if (ImGui::Combo("Composition Layer", &iLayer, s_CompositionLabels,
+		IM_ARRAYSIZE(s_CompositionLabels)))
+	{
+		Element.eCompositionLayer =
+			static_cast<EFFECT_COMPOSITION_LAYER>(iLayer);
+		bChanged = true;
+	}
+	if (ImGui::Button("Configure as Ground Mark"))
+	{
+		Element.eCompositionLayer = EFFECT_COMPOSITION_LAYER::WORLD_MARK;
+		if (Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
+		{
+			Element.Detail.Decal.eReceiverMode =
+				EFFECT_DECAL_RECEIVER_MODE::UPWARD_SURFACES;
+			Element.Detail.Decal.fNormalCutoff = 0.75f;
+			Element.Detail.Decal.fDepth = 0.25f;
+			Element.Detail.Decal.fEdgeFade = 0.05f;
+		}
+		bChanged = true;
+	}
+	ImGui::EndDisabled();
+	if (!bEligible)
+	{
+		ImGui::TextDisabled(
+			"World Mark supports non-Opaque Local Decal and direct-authored effect.standard Sprite/Sprite Particle carriers. Mesh, opaque, and source Sprite carriers stay on Normal.");
+		return;
+	}
+	if (Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
+	{
+		ImGui::TextDisabled(
+			"The Decal preset also enables Upward Surfaces, cutoff 0.75, depth 0.25, and a soft projector edge. It does not claim a world-only stencil receiver.");
+	}
+	else
+	{
+		ImGui::TextDisabled(
+			"The Sprite preset changes only composition. Existing texture, transform, color, particle size, and lifetime tuning are preserved.");
+	}
+}
+
 void Client::CEffect_Tool::Render_TransformDetail(
     EFFECT_DETAIL_DESC& Detail,
     bool_t& bChanged)
@@ -6282,7 +6434,8 @@ void Client::CEffect_Tool::Render_TransformDetail(
 void Client::CEffect_Tool::Render_ColorDetail(
     EFFECT_DETAIL_DESC& Detail,
     bool_t& bChanged,
-    const bool_t bHasEmissiveTexture)
+    const bool_t bHasEmissiveRadianceInput,
+    const bool_t bParticleMasterNamedEmission)
 {
     if (!ImGui::CollapsingHeader("Color", ImGuiTreeNodeFlags_DefaultOpen))
         return;
@@ -6295,17 +6448,20 @@ void Client::CEffect_Tool::Render_ColorDetail(
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip(
             "Current v12 runtime clips pixels below this final alpha threshold.");
-	ImGui::BeginDisabled(!bHasEmissiveTexture);
+	ImGui::BeginDisabled(!bHasEmissiveRadianceInput);
 	bChanged |= ImGui::DragFloat("Emissive Intensity (HDR)",
 		&Detail.Color.fEmissiveIntensity, 0.05f, 0.f, 100.f, "%.3f",
 		ImGuiSliderFlags_AlwaysClamp);
 	ImGui::EndDisabled();
-	if (!bHasEmissiveTexture)
+	if (!bHasEmissiveRadianceInput)
 		ImGui::TextDisabled(
-			"Emissive Intensity is inactive until an Emissive texture is bound.");
+			"Emissive Intensity is inactive until the executable material exposes a radiance input.");
+	else if (bParticleMasterNamedEmission)
+		ImGui::TextDisabled(
+			"ParticleMaster radiance uses source 02.map_e / 12.map_f. The generic Emissive card and 11.map_b are not emission lanes in this approximation.");
 	else
 		ImGui::TextDisabled(
-			"This scales the Emissive texture's own RGB. It is not the scene Bloom multiplier; grayscale Emissive can produce a white core at high values.");
+			"This scales the executable material's final HDR radiance. Bloom still depends on the scene Threshold and artistic multiplier.");
     bChanged |= ImGui::DragFloat("Distortion Intensity",
         &Detail.Color.fDistortionIntensity, 0.01f, 0.f, 100.f, "%.3f",
         ImGuiSliderFlags_AlwaysClamp);
@@ -6314,9 +6470,110 @@ void Client::CEffect_Tool::Render_ColorDetail(
     bChanged |= ImGui::DragFloat("Radial Time",
         &Detail.Color.fRadialTime, 0.01f, -100.f, 100.f, "%.3f",
         ImGuiSliderFlags_AlwaysClamp);
-    bChanged |= ImGui::DragFloat("Radial Intensity",
-        &Detail.Color.fRadialIntensity, 0.01f, -100.f, 100.f, "%.3f",
-        ImGuiSliderFlags_AlwaysClamp);
+	bChanged |= ImGui::DragFloat("Radial Intensity",
+		&Detail.Color.fRadialIntensity, 0.01f, -100.f, 100.f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+}
+
+void Client::CEffect_Tool::Render_LinearRevealDetail(
+	EFFECT_ELEMENT_DESC& Element,
+	bool_t& bChanged)
+{
+	if (!ImGui::CollapsingHeader("Linear Reveal + Edge Glow",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+	if (!Is_GenericLinearRevealCarrier(Element))
+	{
+		ImGui::TextDisabled(
+			"Requires a direct-authored effect.standard Sprite or Sprite Particle with a non-Opaque profile. Source, typed, mesh, and decal carriers stay isolated.");
+		return;
+	}
+
+	EFFECT_LINEAR_REVEAL_DESC& Reveal = Element.Detail.Sprite.LinearReveal;
+	bool_t bEnabled = Reveal.bEnabled;
+	if (ImGui::Checkbox("Enable Linear Reveal", &bEnabled))
+	{
+		Reveal = EFFECT_LINEAR_REVEAL_DESC{};
+		Reveal.bEnabled = bEnabled;
+		if (bEnabled)
+		{
+			const f32_t fSuggestedLife =
+				Reveal.fStartSeconds + Reveal.fDurationSeconds + 0.2f;
+			Element.Detail.Timing.fLifeTimeSeconds = (std::max)(
+				Element.Detail.Timing.fLifeTimeSeconds, fSuggestedLife);
+			if (Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+			{
+				const f32_t fFixedLife = (std::max)(
+					Element.Detail.Particle.vLifeTimeSeconds.y, fSuggestedLife);
+				Element.Detail.Particle.vLifeTimeSeconds =
+					{ fFixedLife, fFixedLife };
+			}
+		}
+		bChanged = true;
+	}
+	if (!Reveal.bEnabled)
+		return;
+
+	static const char* const s_AxisLabels[] =
+	{
+		"U (horizontal raw UV)", "V (vertical raw UV)"
+	};
+	int32_t iAxis = static_cast<int32_t>(Reveal.eAxis);
+	if (ImGui::Combo("Reveal Axis", &iAxis, s_AxisLabels,
+		IM_ARRAYSIZE(s_AxisLabels)))
+	{
+		Reveal.eAxis = static_cast<EFFECT_LINEAR_REVEAL_AXIS>(iAxis);
+		bChanged = true;
+	}
+	bChanged |= ImGui::Checkbox("Invert Reveal Axis", &Reveal.bInvert);
+	bChanged |= ImGui::DragFloat("Reveal Start (Seconds)",
+		&Reveal.fStartSeconds, 0.01f, 0.f, 30.f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+	bChanged |= ImGui::DragFloat("Reveal Duration (Seconds)",
+		&Reveal.fDurationSeconds, 0.01f, 0.01f, 30.f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+	bChanged |= ImGui::DragFloat("Edge Half Width",
+		&Reveal.fEdgeWidth, 0.001f, 0.f, 0.5f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+	bChanged |= ImGui::DragFloat("Edge Softness",
+		&Reveal.fSoftness, 0.001f, 0.f, 0.25f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+	if (Reveal.fEdgeWidth + Reveal.fSoftness > 0.5f)
+	{
+		Reveal.fSoftness = (std::max)(0.f, 0.5f - Reveal.fEdgeWidth);
+		bChanged = true;
+	}
+	bChanged |= ImGui::ColorEdit4("Edge Color", &Reveal.vEdgeColor.x,
+		ImGuiColorEditFlags_Float);
+	bChanged |= ImGui::DragFloat("Edge Emissive (HDR)",
+		&Reveal.fEdgeEmissive, 0.05f, 0.f, 100.f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+
+	const f32_t fRequiredLife =
+		Reveal.fStartSeconds + Reveal.fDurationSeconds;
+	if (Element.Detail.Timing.fLifeTimeSeconds < fRequiredLife)
+	{
+		Element.Detail.Timing.fLifeTimeSeconds = fRequiredLife;
+		bChanged = true;
+	}
+	if (Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+	{
+		const f32_t fFixedLife = (std::max)(
+			Element.Detail.Particle.vLifeTimeSeconds.y, fRequiredLife);
+		if (Element.Detail.Particle.vLifeTimeSeconds.x != fFixedLife ||
+			Element.Detail.Particle.vLifeTimeSeconds.y != fFixedLife)
+		{
+			Element.Detail.Particle.vLifeTimeSeconds =
+				{ fFixedLife, fFixedLife };
+			bChanged = true;
+		}
+		ImGui::TextDisabled(
+			"Sprite Particle reveal uses Element-local seconds and keeps Particle Life fixed for deterministic hold/dissolve timing.");
+	}
+	ImGui::TextDisabled(
+		"Bottom to top preset: Axis V + Invert. Geometry, Size, and Velocity remain unchanged; only raw-UV coverage advances.");
 }
 
 void Client::CEffect_Tool::Render_UVDetail(
@@ -6523,6 +6780,33 @@ void Client::CEffect_Tool::Render_SizeDetail(
 	EFFECT_ELEMENT_DESC& Element,
 	bool_t& bChanged)
 {
+	const auto RenderDecalReceiver = [&Element, &bChanged]()
+	{
+		EFFECT_DECAL_DETAIL_DESC& Decal = Element.Detail.Decal;
+		static const char* const s_ReceiverLabels[] =
+		{
+			"All Opaque (legacy)", "Upward Surfaces"
+		};
+		int32_t iReceiver = static_cast<int32_t>(Decal.eReceiverMode);
+		if (ImGui::Combo("Receiver", &iReceiver, s_ReceiverLabels,
+			IM_ARRAYSIZE(s_ReceiverLabels)))
+		{
+			Decal.eReceiverMode =
+				static_cast<EFFECT_DECAL_RECEIVER_MODE>(iReceiver);
+			Decal.fNormalCutoff = Decal.eReceiverMode ==
+				EFFECT_DECAL_RECEIVER_MODE::UPWARD_SURFACES ? 0.75f : -1.f;
+			bChanged = true;
+		}
+		ImGui::BeginDisabled(Decal.eReceiverMode !=
+			EFFECT_DECAL_RECEIVER_MODE::UPWARD_SURFACES);
+		bChanged |= ImGui::SliderFloat("Upward Normal Cutoff",
+			&Decal.fNormalCutoff, 0.f, 1.f, "%.2f");
+		ImGui::EndDisabled();
+		bChanged |= ImGui::SliderFloat("Projection Edge Fade",
+			&Decal.fEdgeFade, 0.f, 1.f, "%.2f");
+		ImGui::TextDisabled(
+			"Upward compares the GBuffer world normal with this projector's local +Y. Tight Projection Depth is still required to avoid horizontal actor surfaces.");
+	};
 	const bool_t bSourceParticleCarrier =
 		Is_SourceParticleCarrier(Element);
 	const bool_t bHasSizeSurface =
@@ -6595,6 +6879,7 @@ void Client::CEffect_Tool::Render_SizeDetail(
 				ImGui::SetTooltip(
 					"Projection depth is a working Decal overlay. Source Size x owns the projected width and height.");
 			}
+			RenderDecalReceiver();
 		}
 		if (!Tuning.Is_Default() &&
 			ImGui::Button("Reset Source Playback Tuning"))
@@ -6632,6 +6917,7 @@ void Client::CEffect_Tool::Render_SizeDetail(
 		bChanged |= ImGui::DragFloat("Projection Depth",
 			&Element.Detail.Decal.fDepth, 0.01f, 0.001f, 1000.f, "%.3f",
 			ImGuiSliderFlags_AlwaysClamp);
+		RenderDecalReceiver();
 	}
 	else if (Element.eKind == EFFECT_ELEMENT_KIND::TRAIL)
 	{
@@ -8736,59 +9022,72 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	const std::filesystem::path AuthoredRoot = CProjectDataRoot::Resolve(
 		std::filesystem::path(L"Effects") / L"Authored");
 	std::string SkillCatalogStatus;
-	if (!Ensure_PlayerSkillCatalog(SkillCatalogStatus))
-	{
-		return PreservePrevious(
-			"Direct authored edit index could not validate PlayerSkills owners: " +
-			SkillCatalogStatus);
-	}
 	EFFECT_DIRECT_AUTHORED_OWNER_SET PlayerSkillOwners;
-	for (const PLAYER_SKILL_DEFINITION& Skill :
-		CPlayerSkillCatalog::Get_Skills())
+	std::string PlayerOwnerIsolationStatus;
+	if (Ensure_PlayerSkillCatalog(SkillCatalogStatus))
 	{
-		PlayerSkillOwners.emplace(Skill.eCharacterClass, Skill.iSkillId);
+		for (const PLAYER_SKILL_DEFINITION& Skill :
+			CPlayerSkillCatalog::Get_Skills())
+		{
+			PlayerSkillOwners.emplace(Skill.eCharacterClass, Skill.iSkillId);
+		}
+	}
+	else
+	{
+		PlayerOwnerIsolationStatus =
+			"Player Product joins were isolated while exact authored documents remained editor-eligible: " +
+			SkillCatalogStatus;
 	}
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT BossCueDocument;
 	std::string BossCueStatus;
-	if (!CValtanPatternEffectCueDocument::Load_Source(
-			BossCueDocument, BossCueStatus))
-	{
-		return PreservePrevious(
-			"Direct authored edit index could not validate Valtan pattern owners: " +
-			BossCueStatus);
-	}
 	EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP BossPatternOwners;
 	std::unordered_map<std::string, size_t> StagedBossProductCueMappingCounts;
-	for (const VALTAN_PATTERN_EFFECT_CUE& Cue : BossCueDocument.Cues)
-	{
-		const EFFECT_DIRECT_AUTHORED_BOSS_OWNER Owner{
-			BossCueDocument.strOwnerArchetypeId, Cue.strPatternId,
-				Cue.strStageId, Cue.strActionId };
-		BossPatternOwners.emplace(Cue.strEffectAssetId, Owner);
-		++StagedBossProductCueMappingCounts[Cue.strEffectAssetId];
-		if (!Cue.strV1EffectAssetId.empty())
-		{
-			BossPatternOwners.emplace(Cue.strV1EffectAssetId, Owner);
-			++StagedBossProductCueMappingCounts[Cue.strV1EffectAssetId];
-		}
-	}
-	const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
-		BossCueDocument.strOwnerArchetypeId);
-	if (nullptr == pBossActor)
-	{
-		return PreservePrevious(
-			"Direct authored edit index could not validate Valtan combat-object owners: " +
-			CActorCatalog::Get_Status());
-	}
 	EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER_MAP
 		BossCombatObjectOwners;
-	for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
-		pBossActor->combatObjectVisuals)
+	std::string BossOwnerIsolationStatus;
+	if (CValtanPatternEffectCueDocument::Load_Source(
+			BossCueDocument, BossCueStatus))
 	{
-		BossCombatObjectOwners.emplace(Visual.effectAssetId,
-			EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER{
-				pBossActor->archetypeId, Visual.combatObjectArchetypeId,
-				Visual.clientVisualId });
+		for (const VALTAN_PATTERN_EFFECT_CUE& Cue : BossCueDocument.Cues)
+		{
+			const EFFECT_DIRECT_AUTHORED_BOSS_OWNER Owner{
+				BossCueDocument.strOwnerArchetypeId, Cue.strPatternId,
+					Cue.strStageId, Cue.strActionId };
+			BossPatternOwners.emplace(Cue.strEffectAssetId, Owner);
+			++StagedBossProductCueMappingCounts[Cue.strEffectAssetId];
+			if (!Cue.strV1EffectAssetId.empty())
+			{
+				BossPatternOwners.emplace(Cue.strV1EffectAssetId, Owner);
+				++StagedBossProductCueMappingCounts[Cue.strV1EffectAssetId];
+			}
+		}
+
+		const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
+			BossCueDocument.strOwnerArchetypeId);
+		if (nullptr == pBossActor)
+		{
+			BossOwnerIsolationStatus =
+				"Valtan combat-object saved rows were isolated: " +
+				CActorCatalog::Get_Status();
+		}
+		else
+		{
+			for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
+				pBossActor->combatObjectVisuals)
+			{
+				BossCombatObjectOwners.emplace(Visual.effectAssetId,
+					EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER{
+						pBossActor->archetypeId,
+						Visual.combatObjectArchetypeId,
+						Visual.clientVisualId });
+			}
+		}
+	}
+	else
+	{
+		BossOwnerIsolationStatus =
+			"Valtan saved rows were isolated while Player saved rows remained available: " +
+			BossCueStatus;
 	}
 
 	std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE> ScannedFiles;
@@ -8834,14 +9133,22 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 			Staged = Existing->second;
 		}
 		StagedEntries.emplace(Source.strEffectAssetId, std::move(Staged));
-		if (EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL ==
-			Source.eOwnerKind)
+		/* A syntactically stable player source identity is sufficient to keep the
+		   document discoverable in the editor. PlayerSkills admission is a
+		   separate Product Play join and must not turn an exact source into
+		   Saved 0. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::END !=
+				Source.eCharacterClass &&
+			LostArk::Shared::INVALID_SKILL_ID != Source.iSkillId)
 		{
 			UNIFIED_EFFECT_CANDIDATE_BINDING Binding;
 			Binding.eCharacterClass = Source.eCharacterClass;
 			Binding.iSkillId = Source.iSkillId;
 			Binding.strEffectAssetId = Source.strEffectAssetId;
 			Binding.Path = Source.Path;
+			Binding.bProductOwnerJoined =
+				EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL ==
+					Source.eOwnerKind;
 			StagedBindings.push_back(std::move(Binding));
 		}
 	}
@@ -8872,10 +9179,32 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	m_BossProductCueMappingCounts =
 		std::move(StagedBossProductCueMappingCounts);
 	m_strDirectAuthoredEditableStatus = SourceIndexStatus;
+	if (!PlayerOwnerIsolationStatus.empty())
+		m_strDirectAuthoredEditableStatus += " " + PlayerOwnerIsolationStatus;
+	if (!BossOwnerIsolationStatus.empty())
+		m_strDirectAuthoredEditableStatus += " " + BossOwnerIsolationStatus;
+	const size_t iJoinedPlayerProductOwners = static_cast<size_t>(
+		std::count_if(m_UnifiedCandidateBindings.begin(),
+			m_UnifiedCandidateBindings.end(),
+			[](const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding)
+			{
+				return Binding.bProductOwnerJoined;
+			}));
 	m_strUnifiedCandidateStatus =
 		"Saved authored catalog indexed " +
+		std::to_string(m_DirectAuthoredEditableEntries.size()) +
+		" editor-ready documents and " +
 		std::to_string(m_UnifiedCandidateBindings.size()) +
-		" unified Effects from EffectCatalog.json; document decode is deferred until Open or Play.";
+		" stable Player source identities (" +
+		std::to_string(iJoinedPlayerProductOwners) +
+		" Product owner joins) from EffectCatalog.json; document decode is deferred until Open or Play.";
+	if (0u != SourceIndex.iOwnerJoinUnavailableCount)
+	{
+		m_strUnifiedCandidateStatus += " Product ownership was isolated for " +
+			std::to_string(SourceIndex.iOwnerJoinUnavailableCount) +
+			" documents without removing Open Editor; first: " +
+			SourceIndex.strFirstOwnerJoinUnavailable;
+	}
 	if (0u != SourceIndex.iUnavailableCount)
 	{
 		const std::string IsolationStatus = " Isolated " +
@@ -8942,7 +9271,7 @@ Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
 		{
 			Entry.strStatus =
 				"Open the writable Data/Effects/Authored version 13 document. "
-				"Save updates Authored and, while the exact ID remains mapped by a Product cue, hot reloads only that Product target. A failed runtime replacement preserves the existing prepared target.";
+				"Save commits this file as the canonical Product source when the exact ID is mapped by a gameplay cue. The next spawn uses it immediately; a failed activation restores the previous disk and prepared target.";
 		}
 		else if (!Error.empty())
 		{
@@ -9258,30 +9587,6 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 	const bool_t bOpen = ImGui::TreeNodeEx(RootLabel.c_str(),
 		ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow |
 		(bActive ? ImGuiTreeNodeFlags_Selected : 0));
-	ImGui::SameLine();
-	ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
-	if (ImGui::SmallButton("Open Editor") && nullptr != pEditablePath)
-	{
-		if (!bValtanProductRow)
-		{
-			Try_LoadDocumentPath(*pEditablePath,
-				EFFECT_DOCUMENT_SOURCE::AUTHORED,
-				Cache.Document.strEffectAssetId);
-		}
-		else
-		{
-			Try_OpenValtanAuthoredEffect(*pEditablePath,
-				Cache.Document.strEffectAssetId,
-				*pValtanClip, *pValtanCue);
-		}
-	}
-	ImGui::EndDisabled();
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-	{
-		ImGui::SetTooltip("%s", bActive ?
-			"This saved authored Effect is already the Current Effect." :
-			strEditableStatus.c_str());
-	}
 	if (!bOpen)
 	{
 		ImGui::PopID();
@@ -10056,6 +10361,49 @@ bool_t Client::CEffect_Tool::Try_PlayValtanSavedUnifiedEffect(
 	return bTargetReady && Try_PlayUnifiedEffect(Cache);
 }
 
+bool_t Client::CEffect_Tool::Try_SnapshotValtanWorldPreviewRoot()
+{
+	float4x4_t TargetRoot{};
+	if (!CAnimationTargetService::Resolve_RootTransform(&TargetRoot))
+	{
+		m_strPreviewStatus =
+			"Valtan world-owned preview could not resolve the current target root.";
+		return false;
+	}
+
+	vector_t Scale{};
+	vector_t Rotation{};
+	vector_t Translation{};
+	if (!XMMatrixDecompose(&Scale, &Rotation, &Translation,
+			XMLoadFloat4x4(&TargetRoot)) ||
+		!std::isfinite(XMVectorGetX(Rotation)) ||
+		!std::isfinite(XMVectorGetY(Rotation)) ||
+		!std::isfinite(XMVectorGetZ(Rotation)) ||
+		!std::isfinite(XMVectorGetW(Rotation)) ||
+		!std::isfinite(XMVectorGetX(Translation)) ||
+		!std::isfinite(XMVectorGetY(Translation)) ||
+		!std::isfinite(XMVectorGetZ(Translation)))
+	{
+		m_strPreviewStatus =
+			"Valtan world-owned preview rejected an invalid target root.";
+		return false;
+	}
+
+	/* A Server combat object owns a fixed world transform. Snapshot the staged
+	   Valtan pose so the local preview stays in the visible arena, but remove
+	   actor presentation scale: the authored combat-object Effect owns its own
+	   geometry and gameplay-footprint sizes. */
+	Rotation = XMQuaternionNormalize(Rotation);
+	XMStoreFloat4x4(&m_PreviewWorldRoot,
+		XMMatrixRotationQuaternion(Rotation) *
+		XMMatrixTranslationFromVector(Translation));
+	m_vPickedWorldPosition = {
+		XMVectorGetX(Translation),
+		XMVectorGetY(Translation),
+		XMVectorGetZ(Translation) };
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 	const std::filesystem::path& Path,
 	const std::string& strEffectAssetId,
@@ -10067,10 +10415,12 @@ bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 	UNIFIED_EFFECT_CACHE& Cache =
 		m_ValtanUnifiedEffectCaches[strEffectAssetId];
 	if (!Refresh_UnifiedEffectCache(Cache, Path, strEffectAssetId) ||
-		!Cache.bValid || !Cache.bDrawable)
+		!Cache.bValid ||
+		(bQueuePlayCompleteAfterLoad && !Cache.bDrawable))
 	{
-		/* A retired evidence shell must not replace the Current Effect merely
-		   because its historical authored file still exists. */
+		/* Open admits a structurally valid partial authoring document so missing
+		   resources can be repaired. Play alone requires drawable readiness. A
+		   malformed or identity-mismatched shell never replaces Current Effect. */
 		m_strPreviewStatus = Cache.strStatus;
 		return false;
 	}
@@ -10123,6 +10473,15 @@ bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(
 		m_strPreviewAnimationStatus =
 			"Valtan model could not be staged for this saved Effect.";
 		return false;
+	}
+	if (0u != iWorldOwnerStageDurationMs &&
+		!Try_SnapshotValtanWorldPreviewRoot())
+	{
+		/* Editing remains available when a scene root cannot be staged. The
+		   explicit Play command is fail-closed instead of silently drawing at
+		   the world origin. */
+		if (bQueuePlayCompleteAfterLoad)
+			return false;
 	}
 	if (bQueuePlayCompleteAfterLoad && !Try_PlayActiveUnifiedEffect())
 		return false;
@@ -10300,7 +10659,8 @@ bool_t Client::CEffect_Tool::Build_ValtanAuthoringTimeline(
 	strOutError.clear();
 	if (!Pattern.bAuthoringMasterManaged || Pattern.Stages.empty())
 	{
-		strOutError = "This pattern is not managed by Valtan.pattern.json.";
+		strOutError =
+			"This pattern is not managed by the joined Valtan gameplay/presentation sources.";
 		return false;
 	}
 
@@ -10341,7 +10701,7 @@ bool_t Client::CEffect_Tool::Build_ValtanAuthoringTimeline(
 			if (0u == Clip.iAuthoringWallMs)
 			{
 				strOutError =
-					"Authoring master did not derive a wall budget for " +
+					"Joined presentation source did not derive a wall budget for " +
 					Clip.strClipOccurrenceId + ".";
 				return false;
 			}
@@ -10543,7 +10903,7 @@ bool_t Client::CEffect_Tool::Play_ValtanAuthoringTimeline(
 		Set_SynchronizedAnimationPaused(false);
 		const bool_t bEffectStarted = Try_PlayActiveUnifiedEffect();
 		m_strPreviewAnimationStatus =
-			"Valtan authoring master timeline + active exact cue: " +
+			"Valtan joined authoring timeline + active exact cue: " +
 			Pattern.strPatternId + " | " + std::to_string(Clips.size()) +
 			" occurrences | " + std::to_string(iDurationMs) + " ms" +
 			(bEffectStarted ? std::string{} :
@@ -10562,7 +10922,7 @@ bool_t Client::CEffect_Tool::Play_ValtanAuthoringTimeline(
 	m_fPreviewDurationSeconds = static_cast<f32_t>(iDurationMs) * 0.001f;
 	m_bPreviewPlaying = true;
 	Set_SynchronizedAnimationPaused(false);
-	m_strPreviewAnimationStatus = "Valtan authoring master animation-only timeline: " +
+	m_strPreviewAnimationStatus = "Valtan joined authoring animation-only timeline: " +
 		Pattern.strPatternId + " | " + std::to_string(Clips.size()) +
 		" occurrences | " + std::to_string(iDurationMs) + " ms | " +
 		(ActiveCueOwners.empty() ?
@@ -10959,7 +11319,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip(
-				"Play and seek the complete ordered animation timeline from Data/Valtan/Valtan.pattern.json locally.");
+				"Play and seek the locally joined Data/Valtan/Valtan.gameplay.json timing and Data/Valtan/Valtan.presentation.json animation timeline.");
 		}
 		ImGui::SameLine();
 	}
@@ -11024,7 +11384,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		if (Pattern.bAuthoringMasterManaged)
 		{
 			ImGui::TextDisabled(
-				"Authoring master: Data/Valtan/Valtan.pattern.json");
+				"Server timing: Data/Valtan/Valtan.gameplay.json | Presentation: Data/Valtan/Valtan.presentation.json");
 			for (const VALTAN_PRESENTATION_SOURCE_VIEW& Source :
 				Pattern.PresentationSources)
 			{
@@ -11211,7 +11571,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				if (bAmbiguousOccurrence)
 				{
 					ImGui::TextDisabled(
-						"Multiple exact owners exist; Open/Play is disabled until an occurrence selector is authored.");
+						"Multiple Product owners exist; Play is disabled until an occurrence selector is authored. Open Editor remains source-owned.");
 				}
 				else if (nullptr != pProductSource &&
 					!ProductPlaybackPreview.has_value())
@@ -11223,28 +11583,40 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				ImGui::TextWrapped("Path: %s", Row.Path.empty() ?
 					"(unavailable)" : Row.Path.generic_string().c_str());
 
-				/* A structurally valid empty Product document must still open so
-				   its first Element can be authored. Play remains fail-closed
-				   below until the document becomes drawable. */
-				ImGui::BeginDisabled(bActive || Row.Path.empty() ||
-					!bHasExactPlaybackOwner || bAmbiguousOccurrence ||
-					bKnownInvalid);
-				if (ImGui::SmallButton("Open Saved Effect"))
+				/* Editor admission belongs to the exact source document only.
+				   Product owner/timeline and renderer readiness are separate Play
+				   contracts and may never remove this entry point. */
+				ImGui::BeginDisabled(bActive || Row.Path.empty());
+				if (ImGui::SmallButton("Open Editor"))
 				{
-					if (nullptr != pProductSource)
+					if (ProductPlaybackPreview.has_value())
 					{
 						Try_OpenValtanAuthoredEffect(Row.Path,
 							Row.strEffectAssetId, *ProductPlaybackPreview);
 					}
-					else
+					else if (nullptr != pNonProductStage)
 					{
 						Try_OpenValtanSavedReferenceEffect(Row.Path,
 							Row.strEffectAssetId,
 							pNonProductStage->ClipOccurrences,
 							iWorldOwnerStageDurationMs);
 					}
+					else
+					{
+						Try_LoadDocumentPath(Row.Path,
+							EFFECT_DOCUMENT_SOURCE::AUTHORED,
+							Row.strEffectAssetId);
+					}
 				}
 				ImGui::EndDisabled();
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				{
+					ImGui::SetTooltip("%s", bActive ?
+						"This exact authored document is already the Current Effect." :
+						(Row.Path.empty() ?
+							"Exact direct-authored source path is unavailable." :
+							"Open the exact authored JSON. Product join and renderer readiness do not gate editing."));
+				}
 				ImGui::SameLine();
 				ImGui::BeginDisabled(Row.Path.empty() ||
 					!bHasExactPlaybackOwner || bAmbiguousOccurrence ||
@@ -11522,24 +11894,38 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 			}
 		}
 
-		ImGui::BeginDisabled(bActive || Path.empty() ||
-			!bIndependentTimelineReady ||
-			bKnownInvalid);
-		if (ImGui::SmallButton("Open Independent Effect"))
+		/* Exact-source editor admission is independent from owner timeline and
+		   cached renderer state. Preserve Product context when it is available,
+		   otherwise open the authored JSON without manufacturing an owner. */
+		ImGui::BeginDisabled(bActive || Path.empty());
+		if (ImGui::SmallButton("Open Editor"))
 		{
 			if (PatternStagePreview.has_value())
 			{
 				Try_OpenValtanAuthoredEffect(Path, Effect.strEffectAssetId,
 					*PatternStagePreview);
 			}
-			else
+			else if (bTimelineReady && bOwnerStageFound)
 			{
 				Try_OpenValtanSavedReferenceEffect(Path,
 					Effect.strEffectAssetId, OwnerTimeline,
 					iOwnerTimelineDurationMs, false, iEffectStartMs);
 			}
+			else
+			{
+				Try_LoadDocumentPath(Path, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+					Effect.strEffectAssetId);
+			}
 		}
 		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip("%s", bActive ?
+				"This exact authored document is already the Current Effect." :
+				(Path.empty() ?
+					"Exact direct-authored source path is unavailable." :
+					"Open the exact authored JSON. Owner timeline and renderer readiness do not gate editing."));
+		}
 		ImGui::SameLine();
 		ImGui::BeginDisabled(Path.empty() || !bIndependentTimelineReady ||
 			bKnownInvalid || bKnownNonDrawable);
@@ -11554,10 +11940,22 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 			{
 				Try_OpenValtanSavedReferenceEffect(Path,
 					Effect.strEffectAssetId, OwnerTimeline,
-					iOwnerTimelineDurationMs, true, iEffectStartMs);
+					iOwnerTimelineDurationMs, true, 0u);
 			}
 		}
 		ImGui::EndDisabled();
+		if (bCombatObjectOwner && bActive)
+		{
+			ImGui::TextDisabled(
+				"World preview root: (%.2f, %.2f, %.2f) | Valtan rotation kept, actor scale removed",
+				m_PreviewWorldRoot._41, m_PreviewWorldRoot._42,
+				m_PreviewWorldRoot._43);
+			if (!m_strPreviewStatus.empty())
+			{
+				ImGui::TextWrapped("Last playback: %s",
+					m_strPreviewStatus.c_str());
+			}
+		}
 
 		const auto RefreshedCache = m_ValtanUnifiedEffectCaches.find(
 			Effect.strEffectAssetId);
@@ -11722,7 +12120,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		ImGui::TextWrapped(
 			"Top Pattern: Play Server Pattern resets and runs the complete pattern on the replicated Valtan through the Server fixed-tick path.");
 		ImGui::TextDisabled(
-			"Play Authoring Timeline, INDEPENDENT EFFECT, Saved Effect, Stage Replay Sequence, and Product Play remain local Model View previews driven by Data/Valtan/Valtan.pattern.json.");
+			"Authoring Timeline and stage previews use the strict gameplay/presentation join; Open Editor remains owned by each exact authored Effect JSON. Product Play is preview-only.");
 	}
 	else
 	{
@@ -11790,6 +12188,77 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	{
 		const std::vector<PLAYER_SKILL_DEFINITION>& Skills =
 			CPlayerSkillCatalog::Get_Skills();
+		std::vector<const UNIFIED_EFFECT_CANDIDATE_BINDING*>
+			UnjoinedEditorSources;
+		for (const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding :
+			m_UnifiedCandidateBindings)
+		{
+			if (Binding.eCharacterClass != m_eAllEffectsClass ||
+				(!Search.empty() &&
+				 !Contains_NoCase(Binding.strEffectAssetId, Search)))
+			{
+				continue;
+			}
+			const bool_t bHasSkillRow = std::any_of(
+				Skills.begin(), Skills.end(),
+				[&Binding](const PLAYER_SKILL_DEFINITION& Skill)
+				{
+					return Skill.eCharacterClass == Binding.eCharacterClass &&
+						Skill.iSkillId == Binding.iSkillId;
+				});
+			if (!bHasSkillRow)
+				UnjoinedEditorSources.push_back(&Binding);
+		}
+		if (!UnjoinedEditorSources.empty())
+		{
+			const std::string UnjoinedLabel =
+				"EDITOR-ONLY EXACT SOURCES (" +
+				std::to_string(UnjoinedEditorSources.size()) + ")";
+			if (ImGui::TreeNodeEx(UnjoinedLabel.c_str(),
+					ImGuiTreeNodeFlags_OpenOnArrow))
+			{
+				ImGui::TextDisabled(
+					"PlayerSkills Product ownership is unavailable; exact authored JSON files remain editable and Play stays isolated.");
+				for (const UNIFIED_EFFECT_CANDIDATE_BINDING* pBinding :
+					UnjoinedEditorSources)
+				{
+					if (nullptr == pBinding)
+						continue;
+					ImGui::PushID(pBinding->strEffectAssetId.c_str());
+					ImGui::TextWrapped("%s | skill %u | %s",
+						pBinding->strEffectAssetId.c_str(),
+						static_cast<uint32_t>(pBinding->iSkillId),
+						pBinding->Path.generic_string().c_str());
+					const bool_t bActive = m_ActiveDocument.has_value() &&
+						m_eActiveDocumentSource ==
+							EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+						m_ActiveDocument->strEffectAssetId ==
+							pBinding->strEffectAssetId;
+					std::string strEditableStatus;
+					const std::filesystem::path* pEditablePath =
+						Resolve_DirectAuthoredEditablePath(
+							pBinding->strEffectAssetId, strEditableStatus);
+					ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
+					if (ImGui::SmallButton("Open Editor") &&
+						nullptr != pEditablePath)
+					{
+						Try_LoadDocumentPath(*pEditablePath,
+							EFFECT_DOCUMENT_SOURCE::AUTHORED,
+							pBinding->strEffectAssetId);
+					}
+					ImGui::EndDisabled();
+					if (ImGui::IsItemHovered(
+							ImGuiHoveredFlags_AllowWhenDisabled))
+					{
+						ImGui::SetTooltip("%s", bActive ?
+							"This exact authored document is already the Current Effect." :
+							strEditableStatus.c_str());
+					}
+					ImGui::PopID();
+				}
+				ImGui::TreePop();
+			}
+		}
 		static const std::vector<EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE>
 			EmptyProductCues;
 		for (const PLAYER_SKILL_DEFINITION& Skill : Skills)
@@ -12023,7 +12492,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							else if (bLegacyProduct)
 							{
 								ImGui::TextDisabled(
-									"Saved authored source for a matching Legacy Product cue; publish remains separate.");
+									"Saved authored source for a matching Legacy reference; this lane is not direct-source Product runtime.");
 							}
 							else
 							{
@@ -12033,7 +12502,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							ImGui::TextWrapped("Path: %s",
 								pBinding->Path.generic_string().c_str());
 							ImGui::BeginDisabled(bActive);
-							if (ImGui::SmallButton("Open Saved Effect"))
+							if (ImGui::SmallButton("Open Editor"))
 							{
 								std::string strEditableStatus;
 								const std::filesystem::path* pEditablePath =
@@ -12104,15 +12573,59 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							   its exact direct-authored document and family tree beside
 							   Play Full Effect so Q/W/E/R/T and BA phases never require
 							   discovering a second, detached Saved list. */
+							const std::string strUnifiedCandidateId =
+								Unified_CandidateAssetId(Cue.Cue.strEffectAssetId);
 							const auto AuthoredBinding = std::find_if(
 								SavedBindings.begin(), SavedBindings.end(),
-								[&Cue](
+								[&Cue, &strUnifiedCandidateId](
 									const UNIFIED_EFFECT_CANDIDATE_BINDING* pBinding)
 								{
 									return nullptr != pBinding &&
-										pBinding->strEffectAssetId ==
-											Cue.Cue.strEffectAssetId;
+										(pBinding->strEffectAssetId ==
+											Cue.Cue.strEffectAssetId ||
+										 pBinding->strEffectAssetId ==
+											strUnifiedCandidateId);
 								});
+							std::string strEditorAssetId =
+								AuthoredBinding == SavedBindings.end() ?
+									Cue.Cue.strEffectAssetId :
+									(*AuthoredBinding)->strEffectAssetId;
+							std::string strEditableStatus;
+							const std::filesystem::path* pEditablePath =
+								Resolve_DirectAuthoredEditablePath(
+									strEditorAssetId, strEditableStatus);
+							if (nullptr == pEditablePath &&
+								strUnifiedCandidateId != strEditorAssetId)
+							{
+								strEditorAssetId = strUnifiedCandidateId;
+								pEditablePath = Resolve_DirectAuthoredEditablePath(
+									strEditorAssetId, strEditableStatus);
+							}
+							const bool_t bEditorDocumentActive =
+								m_ActiveDocument.has_value() &&
+								m_eActiveDocumentSource ==
+									EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+								m_ActiveDocument->strEffectAssetId == strEditorAssetId;
+							/* Product cue ownership, decoded cache, drawable state and
+							   Track A are Play/diagnostic contracts. The exact authored
+							   source path alone owns this editor entry point. */
+							ImGui::BeginDisabled(
+								bEditorDocumentActive || nullptr == pEditablePath);
+							if (ImGui::SmallButton("Open Editor") &&
+								nullptr != pEditablePath)
+							{
+								Try_LoadDocumentPath(*pEditablePath,
+									EFFECT_DOCUMENT_SOURCE::AUTHORED,
+									strEditorAssetId);
+							}
+							ImGui::EndDisabled();
+							if (ImGui::IsItemHovered(
+									ImGuiHoveredFlags_AllowWhenDisabled))
+							{
+								ImGui::SetTooltip("%s", bEditorDocumentActive ?
+									"This exact authored document is already the Current Effect." :
+									strEditableStatus.c_str());
+							}
 							if (AuthoredBinding != SavedBindings.end())
 							{
 								const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding =
@@ -12131,16 +12644,16 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 								else
 								{
 									ImGui::TextDisabled(
-										"Open Editor is unavailable: %s",
+										"Product preview tree unavailable: %s",
 										Cache == m_UnifiedCandidateCaches.end() ?
 											"the authored cache lost this Product ID." :
 											Cache->second.strStatus.c_str());
 								}
 							}
-							else
+							else if (nullptr == pEditablePath)
 							{
 								ImGui::TextDisabled(
-									"Open Editor is unavailable: this Product cue has no exact direct-authored document.");
+									"No exact direct-authored document is indexed for this Product cue.");
 							}
 							if (ImGui::Button("Play Full Effect"))
 								Try_SelectProductCue(*pProductEntry, iCue);
@@ -12688,7 +13201,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			if (bHasPublishedAssembly && !bActiveProductDocument)
 			{
 				if (ImGui::TreeNode(
-					"Advanced Diagnostics | Published Runtime Hierarchy"))
+					"Advanced Diagnostics | Legacy Assembly Runtime Hierarchy"))
 				{
 					Render_AssemblyHierarchy(strProductEffectAssetId);
 					ImGui::TreePop();
@@ -12698,7 +13211,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				continue;
 			}
 			if (bHasPublishedAssembly && bActiveProductDocument && ImGui::TreeNode(
-				"Advanced Diagnostics | Published Runtime Hierarchy"))
+				"Advanced Diagnostics | Legacy Assembly Runtime Hierarchy"))
 			{
 				Render_AssemblyHierarchy(strProductEffectAssetId);
 				ImGui::TreePop();
@@ -13460,7 +13973,7 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 			}
 			else
 			{
-				RowLabel = "Saved Skill Draft (not published)";
+				RowLabel = "Saved Skill Draft (not cataloged or gameplay-bound)";
 			}
 		}
 		RowLabel += "##saved-" + DataFile.strAssetId;
@@ -14354,7 +14867,7 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		AuthoringFamily_Label(eAuthoringFamily) +
 		" Element and saved the Effect atomically; builder selections were preserved.";
     m_strDocumentStatus = "Saved Authored atomically: " + Path.string() +
-        " Live preview is active; Assembly/WFX/Runtime Catalog publish remains separate.";
+        " Live preview is active; add an exact EffectCatalog direct row and gameplay cue before Product use.";
     return true;
 }
 
@@ -15064,7 +15577,7 @@ bool_t Client::CEffect_Tool::Try_HotReloadSavedProduct()
 	{
 		m_bActiveDocumentMatchesRuntime = false;
 		m_strSaveHotReloadStatus =
-			"Saved Authored; Product hot reload failed for '" +
+			"Saved Authored source activation failed for '" +
 			strEffectAssetId + "': " + ReloadStatus +
 			" The existing prepared Product target and active occurrences were preserved.";
 		return false;
@@ -15101,27 +15614,27 @@ bool_t Client::CEffect_Tool::Try_HotReloadSavedProduct()
 	if (!bPreviewStaged)
 	{
 		m_strSaveHotReloadStatus =
-			"Saved Authored and hot reloaded Product '" +
+			"Activated saved Authored source for Product '" +
 			strEffectAssetId + "' for " + std::to_string(iMappingCount) +
 			" mapped cue(s), but the Tool preview could not be restaged: " +
 			m_strPreviewStatus +
 			" Subsequent Product spawns still use the saved revision.";
-		return false;
+		return true;
 	}
 
 	Start_WorldPreviewFromBeginning();
 	if (!m_bPreviewPlaying || nullptr == m_pWorldPreviewObject.lock())
 	{
 		m_strSaveHotReloadStatus =
-			"Saved Authored and hot reloaded Product '" +
+			"Activated saved Authored source for Product '" +
 			strEffectAssetId + "' for " + std::to_string(iMappingCount) +
 			" mapped cue(s), but the Tool preview restart failed. "
 			"Subsequent Product spawns still use the saved revision.";
-		return false;
+		return true;
 	}
 
 	m_strSaveHotReloadStatus =
-		"Saved Authored and hot reloaded Product '" + strEffectAssetId +
+		"Activated saved Authored source for Product '" + strEffectAssetId +
 		"' for all " + std::to_string(iMappingCount) +
 		" mapped cue(s). The Tool preview restarted; active gameplay "
 		"occurrences are unchanged and subsequent spawns use the saved revision.";
@@ -15186,7 +15699,7 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 			Can_HotReloadSavedProduct())
 		{
 			m_strSaveHotReloadStatus =
-				"Saved Authored already matches the loaded Product revision; no hot reload was needed.";
+				"Saved Authored already matches the loaded Product source; no activation was needed.";
 		}
 		else
 		{
@@ -15206,7 +15719,7 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 		else
 		{
 			m_strDetailStatus =
-				"Applied and saved a structurally valid partial draft; world preview is hidden and Product hot reload is blocked: " +
+				"Applied and saved an unbound partial draft; world preview is hidden: " +
 				m_strActiveDocumentDrawableError;
 		}
 	}
@@ -15262,51 +15775,124 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
             "Save refuses to replace an existing Authored file from New; use Save As.";
         return false;
     }
+    const size_t iProductCueMappingCount =
+        Count_ProductCueMappings(m_ActiveDocument->strEffectAssetId);
+    const bool_t bRegisteredDirectProduct =
+        CEffectCatalog::Is_DirectAuthoredDocument(
+            m_ActiveDocument->strEffectAssetId) &&
+        0u != iProductCueMappingCount;
+    if (bRegisteredDirectProduct && !m_bActiveDocumentDrawable)
+    {
+        m_strDocumentStatus =
+            "Save rejected: this Effect is bound to Product gameplay, so a "
+            "non-drawable partial draft cannot replace its canonical source. "
+            "Use Save As for an unbound draft. " +
+            m_strActiveDocumentDrawableError;
+        return false;
+    }
+
+    const bool_t bWasAuthored =
+        EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource;
+    const std::string PreviousBaselineCanonical =
+        m_strActiveDocumentBaselineCanonical;
+    if (bRegisteredDirectProduct &&
+        (!bWasAuthored || PreviousBaselineCanonical.empty()))
+    {
+        m_strDocumentStatus =
+            "Save rejected: a bound Product Effect has no restorable authored "
+            "baseline.";
+        return false;
+    }
+
+    const std::string SavedCanonical =
+        CEffectDocumentCodec::Serialize(*m_ActiveDocument);
     std::string Error;
     if (Path.empty() || !CEffectDocumentCodec::Save_AtomicIfUnchanged(
         Path, *m_ActiveDocument,
-		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource ?
-			std::string_view(m_strActiveDocumentBaselineCanonical) :
-			std::string_view{},
-		Error))
+        bWasAuthored ? std::string_view(PreviousBaselineCanonical) :
+            std::string_view{},
+        Error))
     {
         m_strDocumentStatus = Path.empty() ?
             "Effect authoring path escaped Data/Effects/Authored." : Error;
         return false;
     }
+
     m_bDocumentDirty = false;
     m_ActiveDocumentPath = Path;
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::AUTHORED;
-	m_strActiveDocumentBaselineCanonical =
-		CEffectDocumentCodec::Serialize(*m_ActiveDocument);
-	m_bActiveDocumentMatchesRuntime = false;
+    m_strActiveDocumentBaselineCanonical = SavedCanonical;
+    m_bActiveDocumentMatchesRuntime = false;
+
+    /* All Effects may have cached this Product while it was still an empty,
+       non-drawable authoring shell. Revalidate the exact saved path before
+       activation so every observed Valtan row and Product playback see the
+       same committed source revision. */
+    const auto RefreshObservedValtanProductCache = [&]()
+    {
+        const auto ValtanCache = m_ValtanUnifiedEffectCaches.find(
+            m_ActiveDocument->strEffectAssetId);
+        if (ValtanCache == m_ValtanUnifiedEffectCaches.end())
+            return;
+        ValtanCache->second = {};
+        (void)Refresh_UnifiedEffectCache(ValtanCache->second, Path,
+            m_ActiveDocument->strEffectAssetId);
+    };
+    RefreshObservedValtanProductCache();
+
+    if (bRegisteredDirectProduct && !Try_HotReloadSavedProduct())
+    {
+        EFFECT_DOCUMENT_DESC PreviousDocument;
+        std::string RollbackError;
+        const bool_t bRollbackSucceeded =
+            CEffectDocumentCodec::Parse(
+                PreviousBaselineCanonical, PreviousDocument, RollbackError) &&
+            PreviousDocument.strEffectAssetId ==
+                m_ActiveDocument->strEffectAssetId &&
+            CEffectDocumentCodec::Save_AtomicIfUnchanged(
+                Path, PreviousDocument, SavedCanonical, RollbackError);
+        m_bDocumentDirty = true;
+        m_strActiveDocumentBaselineCanonical = PreviousBaselineCanonical;
+        m_bActiveDocumentMatchesRuntime = false;
+        m_strDocumentStatus =
+            "Save was not committed because the saved source could not become "
+            "the next Product playback: " + m_strSaveHotReloadStatus;
+        if (bRollbackSucceeded)
+        {
+            RefreshObservedValtanProductCache();
+            m_strDocumentStatus +=
+                " The disk source and loaded Product were restored; the edit "
+                "remains open and dirty.";
+        }
+        else
+        {
+            m_strDocumentStatus +=
+                " CRITICAL: disk rollback also failed: " + RollbackError;
+        }
+        return false;
+    }
+
     m_strSelectedDataFileAssetId =
         m_ActiveDocument->strEffectAssetId;
-	m_strSelectedDataFileElementId.clear();
-    m_strDocumentStatus = "Saved Authored atomically: " + Path.string();
-	if (!m_bActiveDocumentDrawable)
-	{
-		m_strDocumentStatus +=
-			" Structurally valid partial draft saved; world preview hidden and Product hot reload blocked: " +
-			m_strActiveDocumentDrawableError;
-	}
+    m_strSelectedDataFileElementId.clear();
+    m_strDocumentStatus =
+        "Saved canonical Authored source atomically: " + Path.string();
+    if (bRegisteredDirectProduct)
+    {
+        m_strDocumentStatus +=
+            " The next playback and next Client launch consume this file.";
+    }
+    else if (!m_bActiveDocumentDrawable)
+    {
+        m_strDocumentStatus +=
+            " Unbound partial draft saved; it is not a Product gameplay cue.";
+    }
     else
     {
-        m_strDocumentStatus += " Authored preview is drawable.";
+        m_strDocumentStatus +=
+            " No Product cue currently references this exact Effect ID.";
     }
-	/* All Effects may have cached this Product while it was still an empty,
-	   non-drawable authoring shell. Revalidate the exact saved path now so its
-	   Play gate reflects the first authored Element without requiring a manual
-	   pattern-tree Refresh. */
-	const auto ValtanCache = m_ValtanUnifiedEffectCaches.find(
-		m_ActiveDocument->strEffectAssetId);
-	if (ValtanCache != m_ValtanUnifiedEffectCaches.end())
-	{
-		ValtanCache->second = {};
-		(void)Refresh_UnifiedEffectCache(ValtanCache->second, Path,
-			m_ActiveDocument->strEffectAssetId);
-	}
-	(void)Try_HotReloadSavedProduct();
+
     return true;
 }
 
@@ -15388,7 +15974,9 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
     Refresh_AllEffects();
     m_strDocumentStatus = "Saved new Authored Effect atomically: " +
         Path.string() +
-		" World preview updated; Assembly/WFX/Runtime Catalog publish pending.";
+		" This is an unbound source copy; add its exact ID to "
+		"Data/Effects/EffectCatalog.json and a typed gameplay cue before Product "
+		"playback can select it.";
 	if (bWasVisualProgramCopy)
 	{
 		m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
@@ -16029,6 +16617,17 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
 				m_strPreviewAnimationStatus.empty() ?
 					std::string("Valtan model or ordered animation unavailable") :
 					m_strPreviewAnimationStatus);
+		}
+		if (0u != Pending.iValtanWorldOwnerStageDurationMs &&
+			!Try_SnapshotValtanWorldPreviewRoot())
+		{
+			if (Pending.bPlayCompleteAfterLoad)
+			{
+				return CompleteValtanPreviewPartial(
+					m_strPreviewStatus.empty() ?
+						std::string("Valtan world preview root unavailable") :
+						m_strPreviewStatus);
+			}
 		}
 		if (Pending.bPlayCompleteAfterLoad)
 		{
@@ -16688,37 +17287,66 @@ bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(
 			"Saved Element source no longer contains exactly one selected stable Element ID.";
 		return false;
 	}
+	const EFFECT_ELEMENT_DESC& SourceElement = *std::find_if(
+		SourceDocument.Elements.begin(), SourceDocument.Elements.end(),
+		[&strElementId](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.strElementId == strElementId;
+		});
 
 	const EFFECT_PARTICLE_SYSTEM_DESC& SourceSystem =
 		SourceDocument.ParticleSystem;
 	const EFFECT_PARTICLE_SYSTEM_DESC& TargetSystem =
 		m_ActiveDocument->ParticleSystem;
-	if (SourceSystem.fUniformScaleMultiplier !=
+	const bool_t bUsesParticleSystem =
+		SourceElement.eKind == EFFECT_ELEMENT_KIND::PARTICLE ||
+		(SourceElement.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+		 SourceElement.SourceRecipe.bEnabled &&
+		 SourceElement.SourceRecipe.strRendererShape == "decal");
+	const bool_t bTargetUsesParticleSystem = std::any_of(
+		m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
+		[](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE ||
+				(Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+				 Element.SourceRecipe.bEnabled &&
+				 Element.SourceRecipe.strRendererShape == "decal");
+		});
+	if (bUsesParticleSystem && bTargetUsesParticleSystem &&
+		(SourceSystem.fUniformScaleMultiplier !=
 			TargetSystem.fUniformScaleMultiplier ||
 		SourceSystem.fYawOffsetDegrees != TargetSystem.fYawOffsetDegrees ||
 		SourceSystem.fDirectionYawDegrees !=
 			TargetSystem.fDirectionYawDegrees ||
 		SourceSystem.fInitialSpeedMultiplier !=
-			TargetSystem.fInitialSpeedMultiplier)
+			TargetSystem.fInitialSpeedMultiplier))
 	{
 		m_strDocumentStatus =
 			"Saved Element copy rejected different Effect-level Particle System controls; align the source and Current Effect system values first.";
 		return false;
 	}
 
-	EFFECT_DOCUMENT_DESC GenericCopy;
-	if (!CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+	EFFECT_DOCUMENT_DESC PortableCopy;
+	if (!CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(
 			SourceDocument, strElementId,
-			m_ActiveDocument->strEffectAssetId, GenericCopy, Error) ||
-		1u != GenericCopy.Elements.size())
+			m_ActiveDocument->strEffectAssetId, PortableCopy, Error) ||
+		1u != PortableCopy.Elements.size())
 	{
 		m_strDocumentStatus = Error.empty() ?
-			"The selected saved Element cannot become a generic authored copy." :
+			"The selected saved Element cannot become a portable authored copy." :
 			"Saved Element copy rejected: " + Error;
 		return false;
 	}
 
 	EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
+	if (bUsesParticleSystem && !bTargetUsesParticleSystem)
+	{
+		/* Particle System controls are Effect-level rather than Element-level.
+		   The first simulation Element therefore establishes that shared state;
+		   later Saved Element loads must match it and are rejected above instead
+		   of silently changing already-authored occurrences. */
+		Staged.ParticleSystem = SourceSystem;
+	}
 	const std::string Prefix = "authored.copy.";
 	std::string CopyElementId;
 	for (size_t iCopy = 1u; iCopy <= Staged.Elements.size() + 1u; ++iCopy)
@@ -16746,11 +17374,49 @@ bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(
 	}
 
 	EFFECT_ELEMENT_DESC AppendedElement =
-		std::move(GenericCopy.Elements.front());
+		std::move(PortableCopy.Elements.front());
 	AppendedElement.strElementId = CopyElementId;
 	Staged.Elements.push_back(std::move(AppendedElement));
+	const EFFECT_PREVIEW_FILTER ePreviousPreviewFilter = m_ePreviewFilter;
+	const std::string strPreviousIsolationElement =
+		m_strPreviewIsolationElementId;
+	const std::string strPreviousIsolationGroup =
+		m_strPreviewIsolationGroupId;
+	const std::string strPreviousIsolationModelCue =
+		m_strPreviewIsolationModelCueId;
+	const EFFECT_AUTHORING_FAMILY ePreviousIsolationAuthoringFamily =
+		m_ePreviewIsolationAuthoringFamily;
+	/* A saved Element may belong to a different family/group than the current
+	   Solo scope.  Stage the append transaction as the Complete Effect so the
+	   newly selected generic copy cannot be pruned before it is committed. */
+	m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+	m_strPreviewIsolationElementId.clear();
+	m_strPreviewIsolationGroupId.clear();
+	m_strPreviewIsolationModelCueId.clear();
+	m_ePreviewIsolationAuthoringFamily = EFFECT_AUTHORING_FAMILY::END;
 	if (!Try_CommitDocument(std::move(Staged)))
+	{
+		m_ePreviewFilter = ePreviousPreviewFilter;
+		m_strPreviewIsolationElementId = strPreviousIsolationElement;
+		m_strPreviewIsolationGroupId = strPreviousIsolationGroup;
+		m_strPreviewIsolationModelCueId = strPreviousIsolationModelCue;
+		m_ePreviewIsolationAuthoringFamily =
+			ePreviousIsolationAuthoringFamily;
 		return false;
+	}
+
+	const std::string& strActiveEffectAssetId =
+		m_ActiveDocument->strEffectAssetId;
+	const bool_t bForeignPlayerProduct = m_ProductPreview.has_value() &&
+		m_ProductPreview->ProductCue.Cue.strEffectAssetId !=
+			strActiveEffectAssetId;
+	const bool_t bForeignValtanProduct = m_ValtanProductPreview.has_value() &&
+		m_ValtanProductPreview->Cue.strEffectAssetId !=
+			strActiveEffectAssetId;
+	if (bForeignPlayerProduct || bForeignValtanProduct)
+		Clear_ProductCuePreview();
+	else
+		m_SourcePreviewDocument.reset();
 
 	const EFFECT_ELEMENT_DESC& Committed = m_ActiveDocument->Elements.back();
 	Reset_ParticleSystemDraft();
@@ -16770,10 +17436,14 @@ bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(
 	m_eResourceLibraryFileKind = Slot_FileKind(
 		Committed, m_strSelectedResourceSlotId);
 	m_strSelectedResourceAssetId.clear();
+	Recalculate_PreviewDuration(*m_ActiveDocument);
+	Synchronize_LoadedSkillPreview();
+	if (m_bActiveDocumentDrawable)
+		Start_WorldPreviewFromBeginning();
 	m_strElementStatus = "Loaded saved Element '" + strElementId +
 		"' as unsaved '" + CopyElementId + "' in Current Effect.";
 	m_strDocumentStatus =
-		"Current Effect gained one generic authored Element copy; the source Effect was not opened or changed and no file was saved.";
+		"Current Effect gained one portable authored Element copy with its executable Detail/material carrier; the source Effect was not opened or changed and no file was saved.";
 	return true;
 }
 
@@ -18192,8 +18862,28 @@ bool_t Client::CEffect_Tool::Try_AuditionParticleSystem()
     {
         Reset_ProductCueSnapshot();
         pObject->Reset();
-        pObject->Set_SampleTime(
-            Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+		const f32_t fEffectSampleSeconds =
+			Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
+		std::string TransformError;
+		bool_t bTransformApplied = true;
+		if (m_bValtanBossPatternTransformHistoryRequired)
+		{
+			bTransformApplied = Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleSeconds, TransformError);
+		}
+		else
+		{
+			pObject->Set_SampleTime(fEffectSampleSeconds);
+		}
+		if (!bTransformApplied)
+		{
+			pObject->Set_Visible(false);
+			m_bPreviewPlaying = false;
+			m_strPreviewStatus =
+				"Particle audition refused missing Valtan exact history: " +
+				TransformError;
+			return false;
+		}
 		m_bPreviewVisibleRequested = true;
         m_bPreviewPlaying = true;
     }
@@ -18278,8 +18968,28 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
         if (bRootResolved)
             pObject->Set_RootWorld(Root);
         pObject->Reset();
-        pObject->Set_SampleTime(
-            Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+		const f32_t fEffectSampleSeconds =
+			Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
+		std::string TransformError;
+		bool_t bTransformApplied = true;
+		if (m_bValtanBossPatternTransformHistoryRequired)
+		{
+			bTransformApplied = Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleSeconds, TransformError);
+		}
+		else
+		{
+			pObject->Set_SampleTime(fEffectSampleSeconds);
+		}
+		if (!bTransformApplied)
+		{
+			pObject->Set_Visible(false);
+			m_bPreviewPlaying = false;
+			m_strPreviewStatus =
+				"Element audition refused missing Valtan exact history: " +
+				TransformError;
+			return false;
+		}
 		pObject->Set_Visible(
 			bRootResolved &&
 			Is_ProductCueVisible(m_fPreviewTimeSeconds));
@@ -22065,7 +22775,7 @@ bool_t Client::CEffect_Tool::Try_SaveRuntimeOccurrenceTuning()
 		CEffectOccurrenceTuningCodec::Serialize(*m_OccurrenceTuningDocument);
 	m_bOccurrenceTuningDirty = false;
 	m_strDetailStatus =
-		"Saved the source occurrence tuning artifact atomically; Publish Effects and runtime catalog reload are still required.";
+		"Saved the reconstructed diagnostic tuning source; direct-authored Product playback does not consume this lane.";
 	return true;
 }
 
@@ -22673,7 +23383,9 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 	m_fValtanBossPatternAnimationDurationSeconds = 0.f;
 	m_ValtanBossPatternPoseBinding = {};
 
-	if (Binding.strEffectAssetId != Document.strEffectAssetId ||
+	if (!Matches_ValtanExactHistoryBinding(
+			Binding.strBindingId, Binding.strEffectAssetId,
+			Document.strEffectAssetId) ||
 		Binding.strRuntimeClipName.empty() ||
 		Binding.strRuntimeBoneName.empty() ||
 		CAnimationTargetService::Resolve_AssetName() != VALTAN_ANIMATION_ASSET_NAME ||
@@ -22733,13 +23445,17 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 		}
 		++iFollowCarrierCount;
 	}
-	if (3u != iVisibleExecutionCount || 3u != iFollowCarrierCount ||
+	const size_t iExpectedFollowCarrierCount =
+		Document.strEffectAssetId == VALTAN_EXACT_HISTORY_V1_EFFECT_ASSET_ID ?
+			5u : 3u;
+	if (iExpectedFollowCarrierCount != iVisibleExecutionCount ||
+		iExpectedFollowCarrierCount != iFollowCarrierCount ||
 		!bHasSocketLocalTransform ||
 		m_strValtanBossPatternAnchorSlotId != "B_EffectRoot" ||
 		m_strValtanBossPatternBoneName != "b_effectroot")
 	{
 		strOutError =
-			"Valtan 420633 preview requires exactly three B_EffectRoot follow carriers.";
+			"Valtan 420633 preview has an invalid B_EffectRoot follow-carrier count.";
 		return false;
 	}
 
@@ -22825,7 +23541,28 @@ bool_t Client::CEffect_Tool::Build_ValtanBossPatternTransformSample(
 
 	EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
 	AnchorBuild.RawBone = PoseSample.BoneCombinedMatrices.front();
-	AnchorBuild.OwnerWorld = PoseSample.RootWorld;
+	if (!m_ValtanProductPreview.has_value())
+	{
+		strOutError =
+			"Valtan 420633 cue scale policy is unavailable.";
+		return false;
+	}
+	const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue =
+		m_ValtanProductPreview->Cue;
+	float4x4_t EffectiveOwnerRoot{};
+	float4x4_t CueRoot{};
+	if (!CEffectPresentationService::Build_CueScalePolicyAnchor(
+			Cue.eScalePolicy, Cue.vWorldScale, PoseSample.RootWorld,
+			EffectiveOwnerRoot) ||
+		!CEffectPresentationService::Build_CueScalePolicyRoot(
+			Cue.LocalTransform, Cue.eScalePolicy, Cue.vWorldScale,
+			PoseSample.RootWorld, CueRoot))
+	{
+		strOutError =
+			"Valtan 420633 cue scale policy transform is invalid.";
+		return false;
+	}
+	AnchorBuild.OwnerWorld = EffectiveOwnerRoot;
 	float4x4_t BoneWorld{};
 	if (!CEffectPresentationService::Build_SourceBoneAnchorWorld(
 			AnchorBuild, BoneWorld))
@@ -22850,12 +23587,37 @@ bool_t Client::CEffect_Tool::Build_ValtanBossPatternTransformSample(
 		SocketLocal * XMLoadFloat4x4(&BoneWorld));
 
 	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
-	Staged.RootWorld = PoseSample.RootWorld;
+	Staged.RootWorld = CueRoot;
 	Staged.SourceAnchorWorlds.emplace(
 		m_strValtanBossPatternAnchorSlotId, AnchorWorld);
 	OutSample = std::move(Staged);
 	strOutError.clear();
 	return true;
+}
+
+bool_t Client::CEffect_Tool::Seek_ValtanBossPatternTransformHistory(
+	const shared_ptr<CEffectObject>& pObject,
+	const f32_t fEffectSampleTimeSeconds,
+	std::string& strOutError) const
+{
+	if (nullptr == pObject ||
+		!m_bValtanBossPatternTransformHistoryRequired ||
+		!m_bValtanBossPatternTransformHistoryActive)
+	{
+		strOutError =
+			"Valtan 420633 exact transform history is unavailable.";
+		return false;
+	}
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+		[this](const f32_t fSampleTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strProviderError)
+		{
+			return Build_ValtanBossPatternTransformSample(
+				fSampleTimeSeconds, OutSample, strProviderError);
+		};
+	return pObject->Set_SampleTimeWithTransformHistory(
+		fEffectSampleTimeSeconds, TransformProvider, strOutError);
 }
 
 void Client::CEffect_Tool::Reset_ValtanBossPatternTransformHistory()
@@ -23191,9 +23953,19 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 		Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
 	std::string HistoryError;
 	const bool_t bHistorySampled =
-		!m_bValtanBossPatternTransformHistoryRequired &&
-		Seek_WorldPreviewWithSourceAnchorHistory(
-			pObject, PreviewDocument, fEffectSampleSeconds, HistoryError);
+		m_bValtanBossPatternTransformHistoryRequired ?
+			Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleSeconds, HistoryError) :
+			Seek_WorldPreviewWithSourceAnchorHistory(
+				pObject, PreviewDocument, fEffectSampleSeconds, HistoryError);
+	if (m_bValtanBossPatternTransformHistoryRequired && !bHistorySampled)
+	{
+		pObject->Set_Visible(false);
+		m_strPreviewStatus =
+			"Valtan 420633 exact source-anchor preview failed closed: " +
+			HistoryError;
+		return false;
+	}
 	if (!bHistorySampled)
 		pObject->Set_SampleTime(fEffectSampleSeconds);
     switch (m_ePreviewFilter)
@@ -23613,8 +24385,14 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 	}
 	else
 	{
-		OutRoot = Compose_EffectLocal(
-			m_ValtanProductPreview->Cue.LocalTransform, Anchor);
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue =
+			m_ValtanProductPreview->Cue;
+		if (!CEffectPresentationService::Build_CueScalePolicyRoot(
+				Cue.LocalTransform, Cue.eScalePolicy, Cue.vWorldScale,
+				Anchor, OutRoot))
+		{
+			return false;
+		}
 	}
 	if ((bPlayerSnapshot || bValtanSnapshot) &&
 		Is_ProductCueVisible(m_fPreviewTimeSeconds))
@@ -23868,11 +24646,18 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 		strOutError = "Source-anchor history has an invalid wall duration.";
 		return false;
 	}
+	const bool_t bValtanScalePolicy = m_ValtanProductPreview.has_value();
+	const VALTAN_PATTERN_EFFECT_SCALE_POLICY eValtanScalePolicy =
+		bValtanScalePolicy ? m_ValtanProductPreview->Cue.eScalePolicy :
+			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+	const float3_t vValtanWorldScale = bValtanScalePolicy ?
+		m_ValtanProductPreview->Cue.vWorldScale : float3_t{ 1.f, 1.f, 1.f };
 
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
 		[this, &PoseBinding, &Requests, EffectRoot, Clip,
 		 fSourceStartSeconds, fSourceDurationSeconds,
-		 fWallDurationSeconds](const f32_t fHistoryEffectSeconds,
+		 fWallDurationSeconds, bValtanScalePolicy, eValtanScalePolicy,
+		 vValtanWorldScale](const f32_t fHistoryEffectSeconds,
 			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
 			std::string& strProviderError)
 		{
@@ -23895,7 +24680,6 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 					"Source-anchor historical bone sampling failed.";
 				return false;
 			}
-
 			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
 			Staged.RootWorld = EffectRoot;
 			Staged.SourceAnchorWorlds.reserve(Requests.size());
@@ -23903,9 +24687,25 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 			{
 				const TOOL_SOURCE_ANCHOR_REQUEST& Request = Requests[iRequest];
 				float4x4_t BoneWorld{};
-				XMStoreFloat4x4(&BoneWorld,
-					XMLoadFloat4x4(&PoseSample.BoneCombinedMatrices[iRequest]) *
-					XMLoadFloat4x4(&PoseSample.RootWorld));
+				if (bValtanScalePolicy)
+				{
+					if (!Build_ToolValtanSourceAnchorWorld(
+							PoseSample.BoneCombinedMatrices[iRequest],
+							PoseSample.RootWorld, eValtanScalePolicy,
+							vValtanWorldScale, BoneWorld))
+					{
+						strProviderError =
+							"Source-anchor history could not normalize the Valtan source bone with its cue scale policy.";
+						return false;
+					}
+				}
+				else
+				{
+					XMStoreFloat4x4(&BoneWorld,
+						XMLoadFloat4x4(
+							&PoseSample.BoneCombinedMatrices[iRequest]) *
+						XMLoadFloat4x4(&PoseSample.RootWorld));
+				}
 				const EFFECT_TRANSFORM_DESC& Local =
 					Request.SocketLocalTransform;
 				const matrix_t SocketLocal = XMMatrixScaling(
@@ -24106,17 +24906,9 @@ bool_t Client::CEffect_Tool::Restore_ValtanProductPreviewPlayback(
 			return FailRestore(
 				"the exact Valtan transform history is unavailable");
 		}
-		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
-			[this](const f32_t fSampleTimeSeconds,
-				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
-				std::string& strError)
-			{
-				return Build_ValtanBossPatternTransformSample(
-					fSampleTimeSeconds, OutSample, strError);
-			};
 		std::string TransformError;
-		if (!pObject->Set_SampleTimeWithTransformHistory(
-				fEffectSampleSeconds, TransformProvider, TransformError))
+		if (!Seek_ValtanBossPatternTransformHistory(
+				pObject, fEffectSampleSeconds, TransformError))
 		{
 			return FailRestore(
 				"the exact Valtan transform-history sample failed: " +
@@ -24281,18 +25073,10 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 				"Valtan 420633 preview refused a missing exact b_effectroot history binding.";
 			return;
 		}
-		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
-			[this](const f32_t fSampleTimeSeconds,
-				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
-				std::string& strOutError)
-			{
-				return Build_ValtanBossPatternTransformSample(
-					fSampleTimeSeconds, OutSample, strOutError);
-			};
 		std::string TransformError;
 		pObject->Reset();
-		if (!pObject->Set_SampleTimeWithTransformHistory(
-				0.f, TransformProvider, TransformError))
+		if (!Seek_ValtanBossPatternTransformHistory(
+				pObject, 0.f, TransformError))
 		{
 			pObject->Set_Playing(false);
 			pObject->Set_Visible(false);
@@ -24363,14 +25147,19 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 					const BOSS_PATTERN_EFFECT_BINDING& Candidate)
 				{
 					return Candidate.strEffectAssetId ==
-						pPreviewDocument->strEffectAssetId;
+							pPreviewDocument->strEffectAssetId ||
+						Matches_ValtanExactHistoryBinding(
+							Candidate.strBindingId,
+							Candidate.strEffectAssetId,
+							pPreviewDocument->strEffectAssetId);
 				});
 			if (BossBinding != BossEffectBindings.Bindings.end())
 			{
 				const bool_t bRequiresExactTransformHistory =
-					BossBinding->strBindingId == VALTAN_EXACT_HISTORY_BINDING_ID &&
-					BossBinding->strEffectAssetId ==
-						VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID;
+					Matches_ValtanExactHistoryBinding(
+						BossBinding->strBindingId,
+						BossBinding->strEffectAssetId,
+						pPreviewDocument->strEffectAssetId);
 				if (bRequiresExactTransformHistory)
 				{
 					m_bValtanBossPatternTransformHistoryRequired = true;
@@ -25186,16 +25975,21 @@ bool_t Client::CEffect_Tool::Try_ResolveSynchronizedAnimationTime(
 		}
 		const bool_t bHasSourceWindow =
 			0u != Clip.iSourceStartMs || 0u != Clip.iPlayMs;
+		const bool_t bAuthoredEndPoseHold =
+			0u != Clip.iAuthoringWallMs &&
+			fTimelineClipWallDurationSeconds >
+				fWallDurationSeconds + 0.0001f;
 		if (CActionPresentationTimeline::
 			Should_ReleaseCompletedAnimationClock(
 				Clip.bHasExplicitLoopPolicy || bHasSourceWindow,
 				Clip.bHasExplicitLoopPolicy ? Clip.bLoop : m_bPreviewLoop,
 				iClip + 1u == m_SynchronizedAnimationClips.size(),
+				bAuthoredEndPoseHold,
 				pModel->Is_AnimPaused(), fCurrentSourceSeconds,
 				fSourceDurationSeconds))
 		{
 			/* Keep the model paused on its final pose, but let the Effect Tool
-			   wall clock finish any natural tail beyond the animation segment. */
+			   wall clock finish an authored hold or final natural Effect tail. */
 			return false;
 		}
 		const f32_t fCurrentWallSeconds =
@@ -25871,9 +26665,9 @@ void Client::CEffect_Tool::Refresh_RuntimeEquivalence()
         m_strRuntimeEquivalenceCanonical == ActiveCanonical;
 }
 
-// Product Play stages the immutable Runtime Catalog revision, never an unsaved
-// Authored draft. Save can replace one exact direct-authored Product target;
-// failures leave the previously prepared target available.
+// Product Play consumes the loaded canonical Authored source, never an unsaved
+// draft. Save replaces one exact direct-authored Product target; failures
+// restore the previous disk source and prepared target.
 std::string Client::CEffect_Tool::Describe_ProductPlaybackAuthoredDivergence(
     const std::string& strProductEffectAssetId)
 {
@@ -25885,19 +26679,18 @@ std::string Client::CEffect_Tool::Describe_ProductPlaybackAuthoredDivergence(
     }
     if (Has_UnsavedWork())
     {
-        return " | STALE PRODUCT: this plays the loaded Product revision; the "
-            "open Authored document has unsaved edits. Save Changes to attempt "
-            "an exact selected-target hot reload.";
+        return " | UNSAVED SOURCE: Product keeps the last committed Authored "
+            "file while this document has unsaved edits.";
     }
     Refresh_RuntimeEquivalence();
     if (m_bActiveDocumentMatchesRuntime)
         return {};
     return Can_HotReloadSavedProduct() ?
-        " | STALE PRODUCT: this loaded Product revision differs from saved "
-            "Authored. Use Retry Product Hot Reload; failure preserves the "
-            "existing prepared Product target." :
-        " | STALE PRODUCT: this Effect is not an exact direct-authored "
-            "Product mapping, so Authored Save does not replace it.";
+        " | SOURCE NOT ACTIVE: the loaded Product target differs from saved "
+            "Authored. Use Retry Saved Source Activation; failure preserves "
+            "the existing prepared target." :
+        " | NOT GAMEPLAY-BOUND: this Effect has no exact direct-authored "
+            "Product cue mapping.";
 }
 
 // The session bar states whether the file is saved; this states whether the
@@ -25913,7 +26706,7 @@ const char_t* Client::CEffect_Tool::Runtime_SyncLabel() const
     if (Has_UnsavedWork())
         return "unsaved";
     if (!CEffectCatalog::Contains(m_ActiveDocument->strEffectAssetId))
-        return "unpublished";
+        return "not cataloged";
     return m_bActiveDocumentMatchesRuntime ? "synced" : "STALE";
 }
 

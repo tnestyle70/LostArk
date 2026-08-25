@@ -4,6 +4,7 @@
 
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
+#include "ActorCatalog.h"
 #include "Character.h"
 #include "GameInstance.h"
 #include "Model.h"
@@ -261,6 +262,15 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 				asset.pAssetName;
 			return false;
 		}
+		const BOSS_ACTOR_ENTRY* pBoss =
+			CActorCatalog::Find_Boss(asset.pBossArchetypeId);
+		if (nullptr == pBoss ||
+			pBoss->clientPresentationId != "boss.valtan.client.v1")
+		{
+			m_Status = nullptr == pBoss ? CActorCatalog::Get_Status() :
+				"Boss preview presentation contract is not admitted.";
+			return false;
+		}
 		if (!CValtanPresentationAssetService::Is_Ready(currentLevel) &&
 			FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
 				m_pDevice,
@@ -278,7 +288,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			XMVectorGetX(previewPosition),
 			XMVectorGetY(previewPosition),
 			XMVectorGetZ(previewPosition));
-		desc.fScale = CValtan::MODEL_VIEW_SCALE;
+		desc.fScale = pBoss->presentationScale;
 		desc.fCollisionRadius = 0.f;
 		desc.isServerAuthoritative = false;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(

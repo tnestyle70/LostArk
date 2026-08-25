@@ -54,7 +54,7 @@ Skill / Pattern cue
 | 공용 gameplay system | 공용 particle/decal/trail/screen carrier와 scheduler |
 | 스킬별 동작 데이터 | material descriptor, module curve, render profile |
 | 재사용 가능한 코드 | material HLSL program, typed packet/layout, renderer adapter |
-| 제품 승인 | catalog/publish/runtime admission과 사용자 화면 승인 |
+| 제품 승인 | source catalog admission, source validator/runtime 소비와 사용자 화면 승인 |
 
 이 비유는 물리 폴더나 권위가 같다는 뜻은 아니다. 전투 command와 damage는 Shared/Server 계약을
 따르지만 Effect pixel은 Client presentation이다. Effect를 추가할 때마다 Shared에 새 renderer
@@ -157,7 +157,7 @@ Adapter는 renderer가 descriptor와 program을 GPU draw로 바꾸는 경계다.
 | descriptor | exact CB/SRV/sampler/VF/scene/RT/state 배선 자료 |
 | packet/layout | C++가 shader에 전달하는 검증된 메모리·register 계약 |
 | adapter | carrier draw를 특정 layout/pass/RT/state에 연결하는 공용 실행 경계 |
-| Visual Program | occurrence selector, source/target hash, admission, immutable document projection을 담는 sidecar. GPU HLSL program이 아님 |
+| Runtime Carrier | v15 authored 문서 안에서 occurrence selector와 typed packet/history를 소유하는 inline projection 입력. GPU HLSL program이 아님 |
 | occurrence | effect 문서 안의 stable element instance |
 
 ## 6. V0에서 V1로 간다는 표현의 정확한 뜻
@@ -220,7 +220,8 @@ V1은 현재 V0 문서를 제자리 변환하는 일만 뜻하지 않는다. V0 
 계약만 선택적으로 바꾼다. 원본에는 있지만 V0에 없는 행은 family가 닫힌 뒤에만 stable source-derived
 ID로 Tool Solo 후보를 다시 만든다. 사용자가 포함을 승인해야 Product에 삽입하며, 거부하거나 의도적으로
 지운 행은 retirement/disabled receipt를 남긴다. 따라서 현재 live element 수는 V0 기준선이지 최종 V1
-분모가 아니다. V1 전수 계획의 generated restoration ledger가 최종 분모를 소유한다.
+분모가 아니다. 기존 generated restoration ledger는 복원 분석 당시의 inventory evidence일 뿐 현재 Product
+membership이나 runtime 정본이 아니다.
 
 ## 6a. 확정된 V1_COMPLETE 판정 기준 (2026-08-22 사용자 결정)
 
@@ -345,7 +346,7 @@ Descriptor: effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1
 ```
 
 현재 compiled S6/M3/D14 allowlist는 `(backend, opcode)`마다 정확히 한 ABI receipt만 허용한다. 같은
-Program에 두 번째 호환 Layout fingerprint가 필요해지면 C++/publisher/harness의 versioned receipt 집합을
+Program에 두 번째 호환 Layout fingerprint가 필요해지면 C++/source validator/harness의 versioned receipt 집합을
 먼저 확장한 뒤에만 public Layout을 추가한다. opcode는 backend 안에서 append-only로 배정하며 다른
 세션이 번호를 수동 예약하거나 기존 번호를 재사용·재정렬하지 않는다.
 
@@ -500,8 +501,9 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 
 ### G8. Product admission
 
-- Product registry에 typed program/layout/descriptor ID와 별도의 fidelity status를 등록한다.
-- publish, restart, runtime selection을 검증한다.
+- `EffectCatalog.json`의 exact source row와 authored v15 `runtimeExtensions.runtimeCarriers`에 typed
+  program/layout/descriptor identity와 별도의 fidelity status를 등록한다.
+- `Validate-EffectSources.ps1`, Save transaction의 next-spawn 교체와 다음 Client source reload를 검증한다.
 
 ### G9. verified cohort 확장
 
@@ -519,7 +521,7 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 | translated equation | structural/numeric replay | 올바른 packet과 carrier |
 | ABI descriptor | CB/SRV/sampler/VF/pass/state closure | 사용자 화면 승인 |
 | Tool canary | stable occurrence의 typed fail-closed draw | Product 전체 admission |
-| Product admission | publish/restart 후 typed selector 소비 | source-exact fidelity 또는 다른 family의 정확성 |
+| Product admission | source catalog와 다음 spawn/다음 Client가 같은 typed selector 소비 | source-exact fidelity 또는 다른 family의 정확성 |
 | 사용자 승인 | 대상 화면의 visual fidelity 판정 | 증거가 다른 occurrence로 자동 전파됨 |
 
 `첫 pixel`, `draw admitted`, `texture 7/7`, `DXBC translated`를 각각 복원 완료와 혼동하지 않는다.
@@ -528,10 +530,12 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 
 | 정본 | 소유 내용 |
 |---|---|
-| `Data/Effects/Authored/*.effect.json` | stable element, composition, carrier/resource/material 선택 |
+| `Data/Effects/Authored/*.effect.json` | stable element, composition, carrier/resource/material 선택과 v15 inline runtime carrier/history |
 | `Data/Effects/Contracts`와 Imported receipts | source identity, exact variant, evidence와 admission 상태 |
-| `Data/Effects/VisualPrograms` | occurrence admission과 immutable projection sidecar. HLSL program registry가 아님 |
+| `Data/Effects/EffectCatalog.json` | Product EffectAssetId와 exact authored 상대 경로 admission |
+| `Client/Bin/Resources/Effect`와 필요한 Character model | Product 문서가 참조하는 DDS/WModel binary; pull-only V1은 최소 dependency closure만 Git/LFS 추적 |
 | `Effect_AuthoringDocument.h` | element, renderer, resource, material execution descriptor schema |
+| `Effect_VisualProgramCorpus.*` | 같은 authored document pointer에서 만드는 transient `ADAPTER_PACKET_V1` projection. disk corpus를 읽거나 쓰지 않음 |
 | `Effect_MaterialTemplate.h` | profile ID, typed constant/packet 구성 계약 |
 | `Shader_EffectCommon.hlsli` | compatibility/grouped 공용 계산 |
 | `Shader_EffectStandardColorV1.hlsli` | 명시적 radiance/coverage/dissolve 표준 ABI |
@@ -539,9 +543,11 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 | family별 translated `.hlsli` | exact 또는 bounded material equation |
 | carrier/technique `.hlsl` | VF input, pass, RT와 render state 연결 |
 | `Effect_DocumentRenderer.*` | packet stage, adapter scheduling, draw, rollback, diagnostics |
-| Effect Tool | occurrence 선택, solo/filter, explicit canary와 저장 transaction |
+| Effect Tool | occurrence 선택, solo/filter, explicit canary와 authored Save/next-spawn transaction |
 
-Generated runtime 문서를 직접 고치지 않는다. Authoring/contract와 publisher가 정본을 소유한다.
+Generated runtime Effect 문서는 존재하지 않는다. authored 문서와 source catalog를 직접 고치고
+`Validate-EffectSources.ps1`로 검증한다. Save activation 실패는 compare-and-swap으로 authored 파일과
+prepared target을 이전 상태로 되돌린다.
 
 현재 contract 파일의 역할도 구분한다.
 

@@ -16,6 +16,7 @@ struct VS_OUT
 {
     float4 position : SV_POSITION;
     float2 uv : TEXCOORD0;
+    float2 rawCarrierUV : TEXCOORD1;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -25,6 +26,7 @@ VS_OUT VS_MAIN(VS_IN input)
         float4(input.position, 1.f),
         mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix));
     output.uv = input.uv * g_UVScale + g_UVOffset;
+    output.rawCarrierUV = input.uv;
     return output;
 }
 
@@ -40,10 +42,11 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         clip(-1.f);
         return (EFFECT_PS_OUT)0;
     }
-    return Shade_Effect(
+    EFFECT_PS_OUT output = Shade_Effect(
         input.uv,
         float3(1.f, 1.f, 1.f),
         float4(1.f, 1.f, 1.f, 1.f));
+    return Apply_GenericLinearReveal(output, input.rawCarrierUV);
 }
 
 technique11 DefaultTechnique

@@ -51,6 +51,7 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 	HRESULT Render_NonBlendModelCues();
+	HRESULT Render_WorldMarks();
 	virtual void Begin_PresentationSubmission() override;
 	virtual HRESULT Submit_Presentation() override;
 	virtual bool_t Is_PresentationFailureIsolated() const override
@@ -266,6 +267,8 @@ private:
 	bool_t m_bPlaying = true;
 	bool_t m_bVisible = true;
 	bool_t m_bNonBlendModelCuePassPending = false;
+	bool_t m_bWorldMarkPassPending = false;
+	uint64_t m_iRenderSubmissionSerial = 0u;
 	f32_t m_fPlaybackRate = 1.f;
 	uint64_t m_iConfiguredLightCount = 0u;
 	uint64_t m_iConfiguredScreenPostCount = 0u;

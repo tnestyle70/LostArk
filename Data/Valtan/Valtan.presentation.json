@@ -60,6 +60,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
               "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
@@ -90,6 +98,14 @@
             },
             {
               "cueId": "cue.valtan.whirlwind.active",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.whirlwind.active.occurrence.01",
               "effectAssetId": "effect.valtan.pattern.420633.active",
               "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
@@ -201,6 +217,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph.occurrence.01",
               "effectAssetId": "effect.valtan.project-tuned.dash-charge.windup-telegraph",
               "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
@@ -254,6 +278,9 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.project-tuned.attack.dash-charge.active-shield",
+              "scalePolicy": {
+                "kind": "OWNER_RELATIVE"
+              },
               "occurrenceId": "cue.valtan.project-tuned.attack.dash-charge.active-shield.occurrence.01",
               "effectAssetId": "effect.valtan.project-tuned.dash-charge.active-shield",
               "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
@@ -408,6 +435,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
               "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
@@ -461,6 +496,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
               "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
@@ -514,6 +557,9 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+              "scalePolicy": {
+                "kind": "OWNER_RELATIVE"
+              },
               "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
               "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
@@ -602,6 +648,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.attack.fist-in-out.inner.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
               "clipOccurrenceId": "valtan.attack.fist-in-out.inner.clip.01",
@@ -695,7 +749,7 @@
           "actionId": "valtan.attack.high-jump.takeoff",
           "sequenceRole": "TAKEOFF",
           "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
+            "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
@@ -703,15 +757,18 @@
                 "clip": "mesh_att_battle_8_01_start",
                 "mappingBasis": "CURRENT_PRODUCT_BASELINE",
                 "sourceStartMs": 0,
-                "playMs": 0,
+                "playMs": 1933,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": true
+                "repeatUntilStageEnd": false
               }
             ]
           },
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
+              "scalePolicy": {
+                "kind": "OWNER_RELATIVE"
+              },
               "occurrenceId": "cue.valtan.carrier-v1.attack.high-jump.takeoff.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
               "clipOccurrenceId": "valtan.attack.high-jump.takeoff.clip.01",
@@ -770,7 +827,7 @@
           "actionId": "valtan.attack.high-jump.land",
           "sequenceRole": "LAND",
           "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
+            "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
@@ -778,15 +835,23 @@
                 "clip": "mesh_att_battle_8_01_end",
                 "mappingBasis": "CURRENT_PRODUCT_BASELINE",
                 "sourceStartMs": 0,
-                "playMs": 0,
+                "playMs": 3200,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": true
+                "repeatUntilStageEnd": false
               }
             ]
           },
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.attack.high-jump.land.clip-01",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.attack.high-jump.land.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.attack.high-jump.land.clip-01",
               "clipOccurrenceId": "valtan.attack.high-jump.land.clip.01",
@@ -823,17 +888,17 @@
           "actionId": "valtan.attack.high-jump.recovery",
           "sequenceRole": "RECOVERY",
           "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
+            "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.attack.high-jump.recovery.clip.01",
-                "clip": "mesh_att_battle_8_01_loop",
+                "clip": "mesh_idle_battle_1",
                 "mappingBasis": "PROJECT_AUTHORED",
                 "sourceStartMs": 0,
-                "playMs": 0,
+                "playMs": 400,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": true
+                "repeatUntilStageEnd": false
               }
             ]
           },
@@ -875,6 +940,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01",
               "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
@@ -972,6 +1045,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
               "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
@@ -1065,6 +1146,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01",
+              "scalePolicy": {
+                "kind": "ARENA_ABSOLUTE",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01",
               "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
@@ -1167,6 +1256,14 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
+              "scalePolicy": {
+                "kind": "ARENA_ABSOLUTE",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
               "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
               "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
@@ -1300,6 +1397,9 @@
           "effectCues": [
             {
               "cueId": "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01",
+              "scalePolicy": {
+                "kind": "OWNER_RELATIVE"
+              },
               "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01.occurrence.01",
               "effectAssetId": "effect.valtan.carrier-v1.attack.ledge-roar.recovery.clip-01",
               "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",

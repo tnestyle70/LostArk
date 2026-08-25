@@ -185,7 +185,6 @@ public:
 	static constexpr const tchar_t* BODY_PART_TAG = TEXT("Part_Body");
 	static constexpr const tchar_t* WEAPON_PART_TAG = TEXT("Part_Weapon_R");
 	static constexpr const char_t* WEAPON_SOCKET_BONE = "b_wp_r_01";
-	static constexpr f32_t MODEL_VIEW_SCALE = 1.f;
 	/* Armour parts are authored on the body rig, so they are skinned parts
 	with no socket bone. The stable state mask, never array order, joins them
 	to Server-owned alive-part state. */
@@ -198,7 +197,7 @@ public:
 		uint32_t iPrototypeLevelIndex = {};
 		shared_ptr<CTransform> pTargetTransform = { nullptr };
 		float3_t vPosition = {};
-		f32_t fScale = 1.5f;
+		f32_t fScale = {};
 		bool_t isServerAuthoritative = false;
 		f32_t fCollisionRadius = 0.f;
 	} VALTAN_DESC;
@@ -307,6 +306,8 @@ private:
 	uint32_t m_iServerPatternSequence = 0u;
 	uint32_t m_iServerPatternStageIndex = 0u;
 	f32_t m_fServerActionAgeSeconds = 0.f;
+	std::size_t m_iPatternPresentationClipOccurrenceIndex =
+		(std::numeric_limits<std::size_t>::max)();
 	/* Presentation only: pattern stage actionId -> ordered original clip
 	chain, from Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A
 	missing or corrupt document leaves this empty and every pattern falls back

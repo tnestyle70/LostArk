@@ -65,8 +65,13 @@ Valtan
 두 owner 모두 Mesh, Sprite, Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family tree와
 `Open for Editing`, Play, Save를 공유한다. Save는 선택된 direct-authored 문서 하나만 원자 저장하고 같은
 catalog revision의 prepared target을 교체한다. 실행 중 occurrence는 이전 document를 유지하고 다음 cue
-spawn부터 새 document를 사용하며 실패 시 이전 Product pointer/cache로 rollback한다. schema, Catalog,
-source-family batch를 바꾸는 작업은 여전히 `Publish-Effects.ps1` 전체 publish와 Client 재시작이 필요하다.
+spawn부터 새 document를 사용한다. 제품 교체가 실패하면 저장 파일을 이전 bytes로 되돌리고 이전 Product
+pointer/cache를 유지한다. `Data/Effects/EffectCatalog.json`과 `Data/Effects/Authored/*.effect.json`만 제품
+Effect 입력이며 schema, Catalog, source-family batch는 `Validate-EffectSources.ps1`로 검증한다. 복사본 생성,
+Effect publish, 적용을 위한 Client 재시작은 없다. 다음 Client 실행도 같은 authored 파일을 직접 읽는다.
+V1 Product가 실제 참조하는 DDS/WModel은 `Client/Bin/Resources`의 동일 상대 경로로 선별 추적한다. 따라서
+팀원이 `git lfs pull`까지 수행하면 authored source와 그 dependency closure를 함께 받으며, 전체 Resources
+pack과 미참조 자산은 계속 팀장 관리 물리 입력이다.
 Animation Tool은 이 경로가 존재해도 Effect element를 직접 편집하지 않고 ordered clip과 cue timing/anchor를
 소유한다. Valtan Server stage와 damage도 계속 Encounter/Server 권위이며 Effect Tool이 바꾸지 않는다.
 
@@ -366,11 +371,11 @@ Character 생성 코드를 수정하지 않고 Effect와 anchor 동작을 독립
 | 설치 원본 | `C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC/Packages` | 난독화된 원본 UPK | 금지 |
 | 원본 DB/LookInfo 증거 | `C:/Users/user/Desktop/LostArk_Legacy_Quarantine_20260803/Resources/LostArk_SourceData/LPK` | PC/Item DB, Action/LookInfo `.loa` | 금지 |
 | 추출·조리 작업공간 | `C:/Users/user/Desktop/Resource_LostArk/01_Extracted/Character` | PSK/PSA, glTF, FBX, Blender, 조리 staging | 금지 |
-| Client Runtime | `Client/Bin/Resources/Character` | `.wmodel`과 그 모델이 참조하는 texture | Resources payload는 금지 |
+| Client Runtime | `Client/Bin/Resources/Character` | `.wmodel`과 그 모델이 참조하는 texture | 기본은 물리 pack; 명시된 feature dependency closure만 허용 |
 | Runtime 등록 정본 | `Data/Actors/CharacterCatalog.json` | stable class ID와 Resources-relative model asset ID | 허용 |
 | Animation 저작 정본 | `Data/Animation/Authored/<AssetName>/<AssetName>.animevents` | 팀이 편집하는 animation event | 허용 |
 | Animation 원본 참조 | `Data/Animation/Reference/<AssetName>` | 추출된 notify/clip/skill timing reference | 허용 |
-| 팀 리소스 관리 | `Client/Bin/Resources` 물리 폴더 | 팀장이 전달한 runtime 리소스 | payload는 Git 금지, 상대 asset ID만 허용 |
+| 팀 리소스 관리 | `Client/Bin/Resources` 물리 폴더 | 팀장이 전달한 runtime 리소스 | 기본은 Drive, pull-only feature의 최소 closure만 Git/LFS 허용 |
 
 `Client/Bin/Resources`에는 UPK, PSK, PSA, FBX, Blender 파일을 넣지 않는다. Runtime은 Assimp로 원본을
 읽지 않고 `ModelAssetConverter`가 미리 조리한 `.wmodel`만 `CModel` 경로로 읽는다. 절대 경로나 drive 경로는

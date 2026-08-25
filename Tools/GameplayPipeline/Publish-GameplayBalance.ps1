@@ -1146,11 +1146,31 @@ Assert-ExactProperties $bossCatalogDocument @(
 	'schema','formatVersion','bosses') 'boss presentation catalog'
 Assert-JsonString $bossCatalogDocument.schema 'boss presentation catalog schema'
 Assert-JsonInteger $bossCatalogDocument.formatVersion `
-	'boss presentation catalog formatVersion' 3 3
+	'boss presentation catalog formatVersion' 4 4
 if ([string]$bossCatalogDocument.schema -cne 'lostark.boss-catalog' -or
-	[uint32]$bossCatalogDocument.formatVersion -ne 3 -or
+	[uint32]$bossCatalogDocument.formatVersion -ne 4 -or
 	$bossCatalogDocument.bosses -isnot [Array]) {
 	throw 'Boss presentation catalog header is invalid.'
+}
+foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
+	Assert-ExactProperties $presentationBoss @(
+		'archetypeId','visualAssetId','presentationScale','bodyModel',
+		'weaponModel','armorModels','armorParts','combatObjectVisuals',
+		'animationSetId','serverProfileId','clientPresentationId',
+		'presentationStatus','presentationClips') 'boss presentation row'
+	Assert-JsonString $presentationBoss.archetypeId `
+		'boss presentation archetypeId'
+	Assert-StableId $presentationBoss.archetypeId `
+		'boss presentation archetypeId'
+	Assert-JsonNumber $presentationBoss.presentationScale `
+		"boss presentation $($presentationBoss.archetypeId) presentationScale"
+	$presentationScale = [double]$presentationBoss.presentationScale
+	if ($presentationScale -le 0.0 -or $presentationScale -gt 100.0) {
+		throw "Boss presentation scale is out of range: $($presentationBoss.archetypeId)"
+	}
+	Assert-ExactProperties $presentationBoss.presentationClips @(
+		'idle','chase','patternWindup','patternActive','patternRecovery','dead') `
+		"boss presentation $($presentationBoss.archetypeId) clips"
 }
 $bossCatalogOwners = @($bossCatalogDocument.bosses | Where-Object {
 	[string]$_.archetypeId -ceq [string]$bossPartDocument.bossArchetypeId })

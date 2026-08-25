@@ -5,7 +5,6 @@
 
 #include <array>
 #include <cstdint>
-#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -560,14 +559,6 @@ struct EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE final
 class CEffectVisualProgramCorpusCodec final
 {
 public:
-	static bool_t Parse(
-		std::string_view Utf8Json,
-		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS>& InOutCorpus,
-		std::string& strOutError);
-	static bool_t Load(
-		const std::filesystem::path& Path,
-		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS>& InOutCorpus,
-		std::string& strOutError);
 	static bool_t Validate(
 		const EFFECT_VISUAL_PROGRAM_CORPUS& Corpus,
 		std::string& strOutError);
@@ -593,6 +584,15 @@ public:
 	static bool_t Create_DocumentProjection(
 		const EFFECT_VISUAL_PROGRAM_CORPUS& Corpus,
 		const EFFECT_DOCUMENT_DESC& BaseDocument,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+			InOutProjection,
+		std::string& strOutError);
+	/* Builds the transient packet view carried by an authored v15 document.
+	   No visual-program corpus or generated sidecar participates: the returned
+	   projection retains the exact supplied document shared_ptr as both its
+	   base and projected document identity. */
+	static bool_t Create_DocumentOwnedRuntimeProjection(
+		const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& pDocument,
 		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
 			InOutProjection,
 		std::string& strOutError);

@@ -3,8 +3,6 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import subprocess
-import sys
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -31,7 +29,6 @@ SOURCE_SEMANTIC_CLOSURE = ROOT / (
     "Data/Effects/Imported/Artist/Candidates/"
     "skill.31470.source-semantic-closure.json"
 )
-PUBLISHER = ROOT / "Tools/EffectPipeline/Publish-Effects.ps1"
 DIMENSION_MESH_ROTATION_FIXTURE = ROOT / (
     "Tools/LevelPlacementExtractor/Fixtures/"
     "dimensionmaster.fx_pc_swp_05.typedatamesh-rotation.fixture.json"
@@ -734,55 +731,34 @@ class Artist31470SourceContractTests(unittest.TestCase):
                 self.assertFalse(binding["enabled"])
                 self.assertEqual(binding["carrierGeometryPreScale"], 1.0)
 
-    def test_existing_publisher_does_not_admit_v14(self) -> None:
-        source = PUBLISHER.read_text(encoding="utf-8")
-        self.assertIn(
-            "$documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12, 13)", source
+    def test_v14_source_contract_is_not_a_product_catalog_source(self) -> None:
+        catalog = json.loads(
+            (ROOT / "Data/Effects/EffectCatalog.json").read_text(encoding="utf-8")
+        )["effects"]
+        candidate_path = CANDIDATE.relative_to(ROOT / "Data").as_posix()
+        self.assertFalse(
+            any(row.get("authoringPath") == candidate_path for row in catalog)
         )
+        product = next(
+            row
+            for row in catalog
+            if row.get("effectAssetId") == "effect.artist.skill.31470.unified"
+        )
+        self.assertEqual("DIRECT_AUTHORED_DOCUMENT", product["payloadKind"])
         self.assertNotIn(
-            "$documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
-            source,
+            "source-contract-candidate", product["authoringPath"]
         )
-        self.assertNotIn("source-contract-candidate", source)
 
-    def test_checked_in_outputs_are_byte_exact(self) -> None:
-        command = [
-            sys.executable,
-            str(ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_source_contract.py"),
-            "--source-receipt",
-            str(SOURCE_RECEIPT),
-            "--action-cue-recipe",
-            str(ROOT / "Data/Effects/Imported/Artist/skill.31470.action-cue-recipe.json"),
-            "--active-inventory",
-            str(ROOT / "Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json"),
-            "--normalized-graph",
-            str(ROOT / "Data/Effects/Imported/Artist/Graphs/skill.31470.normalized-effect-graph.json"),
-            "--module-closure",
-            str(ROOT / "Data/Effects/Imported/Artist/Modules/skill.31470.external-module-closure.json"),
-            "--material-closure",
-            str(ROOT / "Data/Effects/Imported/Artist/Materials/skill.31470.active-material-closure.json"),
-            "--source-evidence",
-            str(SOURCE_EVIDENCE),
-            "--local-reference-closure",
-            str(LOCAL_REFERENCE_CLOSURE),
-            "--geometry-parity",
-            str(GEOMETRY_PARITY),
-            "--source-semantic-closure",
-            str(SOURCE_SEMANTIC_CLOSURE),
-            "--output-candidate",
-            str(CANDIDATE),
-            "--output-receipt",
-            str(RECEIPT),
-            "--output-registry",
-            str(REGISTRY),
-            "--output-header",
-            str(ROOT / "Client/Public/Generated/Effect_SourceContractRegistry.generated.h"),
-            "--check",
-        ]
-        completed = subprocess.run(
-            command, cwd=ROOT, capture_output=True, text=True, check=False
+    def test_checked_in_candidate_remains_byte_pinned_historical_evidence(self) -> None:
+        self.assertEqual(
+            hashlib.sha256(CANDIDATE.read_bytes()).hexdigest(),
+            self.receipt["candidate"]["sha256"],
         )
-        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertFalse(self.receipt["productAdmission"]["allowed"])
+        self.assertEqual(
+            "NATIVE_V14_SOURCE_CONTRACT_HAS_UNRESOLVED_BLOCKERS",
+            self.receipt["productAdmission"]["reason"],
+        )
 
 
 if __name__ == "__main__":

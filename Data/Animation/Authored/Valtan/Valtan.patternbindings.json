@@ -458,9 +458,9 @@
           "clip": "mesh_att_battle_8_01_start",
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1933,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
@@ -486,9 +486,9 @@
           "clip": "mesh_att_battle_8_01_end",
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 3200,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
@@ -497,12 +497,12 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.attack.high-jump.recovery.clip.01",
-          "clip": "mesh_att_battle_8_01_loop",
+          "clip": "mesh_idle_battle_1",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 400,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },

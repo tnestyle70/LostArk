@@ -71,12 +71,17 @@
 !/Engine/Bin/ShaderFiles/
 !/Engine/Bin/ShaderFiles/**
 
-# Client runtime directory: Resources are shared through Drive, not Git or Git LFS.
+# Client runtime directory: Resources are shared through Drive by default.
+# Feature PRs may force-add an exact dependency closure; already tracked files
+# remain visible to Git even though unselected local pack contents stay ignored.
 /Client/Bin/*
 /Server/Bin/
 /Client/Bin/Resources/
 !/Client/Bin/DataFiles/
 !/Client/Bin/DataFiles/**
+# Effect Product reads Data/Effects/Authored directly. Runtime catalogs and
+# hashed authored copies under Bin are retired generated artifacts.
+/Client/Bin/DataFiles/Effect/
 !/Client/Bin/ShaderFiles/
 !/Client/Bin/ShaderFiles/**
 !/Client/Bin/*.dds

@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <span>
@@ -128,6 +129,62 @@ namespace
 			"legacy natural clip no longer accepts a cue at model end") &&
 			Require(NearlyEqual(fCueWallOffset, 0.6f),
 				"legacy natural-end cue wall offset changed");
+	}
+
+	bool VerifyClipOccurrenceTransitions()
+	{
+		constexpr uint32_t Animation = 42u;
+		constexpr uint32_t OtherAnimation = 43u;
+		const std::size_t InvalidOccurrence =
+			(std::numeric_limits<std::size_t>::max)();
+		return Require(
+			!CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
+				0u, 0u, Animation, Animation),
+			"unchanged occurrence and animation requested a transition") &&
+			Require(
+				CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
+					0u, 1u, Animation, Animation),
+				"repeated model clip did not transition at its next occurrence") &&
+			Require(
+				CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
+					0u, 0u, Animation, OtherAnimation),
+				"changed model animation did not request a transition") &&
+			Require(
+				CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
+					InvalidOccurrence, 0u, Animation, Animation),
+				"uninitialized occurrence did not request its first transition");
+	}
+
+	bool VerifyCompletedAnimationClockRelease()
+	{
+		return Require(
+			CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
+				true, false, true, false, true, 0.3333f, 0.3333f),
+			"final explicit non-loop clip did not release its completed clock") &&
+			Require(
+				CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
+					true, false, false, true, true, 0.3333f, 0.3333f),
+				"non-final authored end-pose hold kept ownership of a stopped animation clock") &&
+			Require(
+				!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
+					true, false, false, false, true, 0.3333f, 0.3333f),
+				"ordinary non-final clip released without an authored hold") &&
+			Require(
+				!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
+					true, true, false, true, true, 0.3333f, 0.3333f),
+				"looping clip released its animation clock") &&
+			Require(
+				!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
+					true, false, false, true, true, 0.2f, 0.3333f),
+				"incomplete authored hold released its animation clock") &&
+			Require(
+				!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
+					true, false, false, true, false, 0.3333f, 0.3333f),
+				"actively playing authored hold released its animation clock") &&
+			Require(
+				!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
+					false, false, true, true, true, 0.3333f, 0.3333f),
+				"implicit clip policy released a completed animation clock");
 	}
 
 	bool VerifyProductPreviewClock()
@@ -405,6 +462,8 @@ int main()
 {
 	if (!VerifyAdjacentExplicitSourceWindows() ||
 		!VerifyLegacyNaturalEndCompatibility() ||
+		!VerifyClipOccurrenceTransitions() ||
+		!VerifyCompletedAnimationClockRelease() ||
 		!VerifyProductPreviewClock() ||
 		!VerifyNaturalProductPreviewDurationFloor() ||
 		!VerifyValtanCinematicTracking(std::filesystem::current_path()))

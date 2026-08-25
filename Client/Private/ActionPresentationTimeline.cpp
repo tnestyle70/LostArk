@@ -103,6 +103,16 @@ bool Client::CActionPresentationTimeline::Resolve_Sample(
 	return false;
 }
 
+bool Client::CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
+	const std::size_t iCurrentClipOccurrenceIndex,
+	const std::size_t iExpectedClipOccurrenceIndex,
+	const uint32_t iCurrentAnimationIndex,
+	const uint32_t iExpectedAnimationIndex)
+{
+	return iCurrentClipOccurrenceIndex != iExpectedClipOccurrenceIndex ||
+		iCurrentAnimationIndex != iExpectedAnimationIndex;
+}
+
 namespace
 {
 	enum class CUE_SOURCE_BOUNDARY
@@ -267,11 +277,13 @@ bool Client::CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
 	const bool bHasExplicitLoopPolicy,
 	const bool bLoop,
 	const bool bLastClip,
+	const bool bAuthoredEndPoseHold,
 	const bool bAnimationPaused,
 	const float fCurrentSourceSeconds,
 	const float fSourceDurationSeconds)
 {
-	return bHasExplicitLoopPolicy && !bLoop && bLastClip &&
+	return bHasExplicitLoopPolicy && !bLoop &&
+		(bLastClip || bAuthoredEndPoseHold) &&
 		bAnimationPaused && std::isfinite(fCurrentSourceSeconds) &&
 		std::isfinite(fSourceDurationSeconds) &&
 		fSourceDurationSeconds > 0.f &&

@@ -181,20 +181,18 @@ HRESULT CValtan::Initialize_Prototype()
 
 HRESULT CValtan::Initialize(void* pArg)
 {
-	VALTAN_DESC desc{};
-	desc.fSpeedPerSec = 3.f;
-	desc.fRotationPerSec = 180.f;
-	desc.fScale = 1.5f;
-	if (nullptr != pArg)
+	if (nullptr == pArg)
+		return E_INVALIDARG;
+	VALTAN_DESC desc = *static_cast<VALTAN_DESC*>(pArg);
+	if (!std::isfinite(desc.fScale) || desc.fScale <= 0.f ||
+		desc.fScale > 100.f)
 	{
-		desc = *static_cast<VALTAN_DESC*>(pArg);
-		if (desc.fSpeedPerSec <= 0.f)
-			desc.fSpeedPerSec = 3.f;
-		if (desc.fRotationPerSec <= 0.f)
-			desc.fRotationPerSec = 180.f;
-		if (desc.fScale <= 0.f)
-			desc.fScale = 1.5f;
+		return E_INVALIDARG;
 	}
+	if (desc.fSpeedPerSec <= 0.f)
+		desc.fSpeedPerSec = 3.f;
+	if (desc.fRotationPerSec <= 0.f)
+		desc.fRotationPerSec = 180.f;
 
 	m_fMoveSpeed = desc.fSpeedPerSec;
 	m_iPrototypeLevelIndex = desc.iPrototypeLevelIndex;
@@ -721,6 +719,8 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			Desc.strAnchorSlotId = Cue.strAnchorSlotId;
 			Desc.LocalTransform = Cue.LocalTransform;
 			Desc.eFollowPolicy = Cue.eFollowPolicy;
+			Desc.eScalePolicy = Cue.eScalePolicy;
+			Desc.vWorldScale = Cue.vWorldScale;
 			Desc.eStopPolicy = Cue.eStopPolicy;
 			Desc.iCueDurationMs = iCueDurationMs;
 			Desc.iActionStartTick = m_iServerActionStartTick;
@@ -1225,6 +1225,10 @@ bool_t CValtan::Apply_NetworkState(
 	a row), so the stage's actionId is what marks a clip change there. */
 	const bool_t bAnimationEdgeChanged =
 		m_iState != nextState || patternEdgeChanged;
+	bool_t bPatternClipOccurrenceTransition = false;
+	std::size_t iAcceptedPatternClipOccurrenceIndex =
+		m_iPatternPresentationClipOccurrenceIndex;
+	bool_t bCommitPatternClipOccurrenceIndex = false;
 	const bool_t bEnteredDead =
 		VALTAN_STATE::DEAD == nextState && m_iState != nextState;
 	const uint32_t iPreviousActionStartTick = m_iServerActionStartTick;
@@ -1314,8 +1318,14 @@ bool_t CValtan::Apply_NetworkState(
 				AnimationIndices[Sample.iClipIndex];
 			const Client::BOSS_PATTERN_ANIMATION_CLIP& TargetClip =
 				ClipChain[Sample.iClipIndex];
-			if (bAnimationEdgeChanged ||
-				m_pBodyModelCom->Get_CurrentAnimIndex() != iTargetAnimation)
+			bPatternClipOccurrenceTransition =
+				Client::CActionPresentationTimeline::
+					Requires_ClipOccurrenceTransition(
+						m_iPatternPresentationClipOccurrenceIndex,
+						Sample.iClipIndex,
+						m_pBodyModelCom->Get_CurrentAnimIndex(),
+						iTargetAnimation);
+			if (bAnimationEdgeChanged || bPatternClipOccurrenceTransition)
 			{
 				if (!m_pBodyModelCom->Start_Animation(
 					TargetClip.strClipName.c_str(), TargetClip.bLoop))
@@ -1340,6 +1350,8 @@ bool_t CValtan::Apply_NetworkState(
 				return false;
 			}
 			m_pBodyModelCom->Play_Animation(0.f);
+			iAcceptedPatternClipOccurrenceIndex = Sample.iClipIndex;
+			bCommitPatternClipOccurrenceIndex = true;
 		}
 	}
 
@@ -1375,12 +1387,19 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerPatternSequence = iPatternSequence;
 		m_iServerPatternStageIndex = iPatternStageIndex;
 		m_fServerActionAgeSeconds = fActionAgeSeconds;
+		if (bCommitPatternClipOccurrenceIndex)
+		{
+			m_iPatternPresentationClipOccurrenceIndex =
+				iAcceptedPatternClipOccurrenceIndex;
+		}
 	}
 	else
 	{
 		m_iServerActionStartTick = 0u;
 		m_iServerPatternStageIndex = 0u;
 		m_fServerActionAgeSeconds = 0.f;
+		m_iPatternPresentationClipOccurrenceIndex =
+			(std::numeric_limits<std::size_t>::max)();
 		m_bPatternEffectCueScanAgeValid = false;
 		m_fPatternEffectCueScanAgeSeconds = 0.f;
 	}

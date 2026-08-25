@@ -4,6 +4,8 @@
 #include "Effect_Distribution.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_VisualProgramCorpus.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 #include "RuntimeAssetRoot.h"
 
 #include <algorithm>
@@ -71,6 +73,21 @@ namespace
 		"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel";
 	constexpr std::string_view WARLORD_CHAIN_07_MODEL_ASSET_ID =
 		"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel";
+	constexpr std::array<std::string_view, 12u>
+		WARLORD_CHAIN_ORIGIN_ELEMENT_IDS = {{
+			"authored.source-particle.fe0d3291da32d9c797705c72",
+			"authored.source-particle.1bb7a50a0c3ff729ca586851",
+			"authored.source-particle.eedca4cf57247af0f82fba11",
+			"authored.source-particle.cd8d5f0dbedb3e620880378d",
+			"authored.source-particle.a3cbc6a5ccb3876669945ebd",
+			"authored.source-particle.6ad86a3bed5164050280ee47",
+			"authored.source-particle.3903aa4912d4eeeba9d7d951",
+			"authored.source-particle.71f0b215e9cff2426ac0ce47",
+			"authored.source-particle.a7fae01987d89775468563e4",
+			"authored.source-particle.a2d9eabb94a5702c933cd727",
+			"authored.source-particle.72835f216dd26bb28166301f",
+			"authored.source-particle.78efab80dc7c76fc2b416cba"
+		}};
 
 	bool_t Is_FiniteAffineMatrix(const float4x4_t& Matrix)
 	{
@@ -111,7 +128,7 @@ namespace
 
 	std::atomic_uint64_t g_iVectorFieldDiskLoadCount{ 0u };
 
-	uint32_t Hash_StableId(const std::string& Value)
+	uint32_t Hash_StableId(const std::string_view Value)
 	{
 		uint32_t Hash = 2166136261u;
 		for (const unsigned char Character : Value)
@@ -120,6 +137,13 @@ namespace
 			Hash *= 16777619u;
 		}
 		return 0u == Hash ? 1u : Hash;
+	}
+
+	uint32_t Hash_RuntimeRandomIdentity(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Hash_StableId(
+			Client::Resolve_EffectPortableOriginElementId(Element));
 	}
 
 	f32_t Clamp01(const f32_t Value)
@@ -420,7 +444,13 @@ namespace
 		using namespace Client;
 		const EFFECT_SOURCE_MATERIAL_DESC& SourceProfile =
 			Element.Material.SourceMaterial;
+		const std::string_view OriginElementId =
+			Resolve_EffectPortableOriginElementId(Element);
+		const bool_t bExactOrigin = std::ranges::find(
+			WARLORD_CHAIN_ORIGIN_ELEMENT_IDS, OriginElementId) !=
+			WARLORD_CHAIN_ORIGIN_ELEMENT_IDS.end();
 		if (Module.strClassName != "particlemodulelocationdirect" ||
+			!bExactOrigin ||
 			Element.Material.strSourceMaterialPath !=
 				WARLORD_CHAIN_SOURCE_MATERIAL_PATH ||
 			Element.Material.strTemplateId !=
@@ -435,8 +465,12 @@ namespace
 			!Element.Material.Execution.bFailClosed ||
 			!Element.Material.Execution.bAuthoringApproximate ||
 			Element.Detail.Mesh.bUseModelMaterial ||
-			!Element.strSourceNode.starts_with(
-				"authored-source-particle:effect.warlord.skill.17090.unified|"))
+			(!Element.strSourceNode.starts_with(
+				"authored-source-particle:effect.warlord.skill.17090.unified|") &&
+			 Element.strSourceNode !=
+				std::string(Client::EFFECT_PORTABLE_AUTHORED_COPY_PREFIX) +
+					std::string(Client::Resolve_EffectPortableOriginElementId(
+						Element))))
 		{
 			return false;
 		}
@@ -682,7 +716,7 @@ namespace
 		if (!Supplemental.AnimationTrailPacket.has_value() ||
 			Supplemental.CascadeRibbonPacket.has_value() ||
 			Target.eKind != Client::EFFECT_ELEMENT_KIND::TRAIL ||
-			Target.SourceRecipe.bEnabled || !Target.SourceRecipe.Modules.empty())
+			Target.SourceRecipe.bEnabled)
 		{
 			strOutError =
 				"AnimationTrail supplemental target or immutable packet is invalid.";
@@ -740,8 +774,7 @@ namespace
 			Supplemental.CascadeRibbonPacket.has_value() ||
 			Supplemental.AnimationTrailPacket.has_value() ||
 			Target.eKind != Client::EFFECT_ELEMENT_KIND::LIGHT ||
-			!Target.bVisible || Target.SourceRecipe.bEnabled ||
-			!Target.SourceRecipe.Modules.empty())
+			!Target.bVisible || Target.SourceRecipe.bEnabled)
 		{
 			strOutError =
 				"Baked-edge Light target or immutable packet is invalid.";
@@ -805,11 +838,46 @@ namespace
 		return true;
 	}
 
+	bool_t Is_PortableAuthoredParticleCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == Client::EFFECT_SOURCE_SPACE::END &&
+			Element.SourceRecipe.bEnabled &&
+			(Element.SourceRecipe.strRendererShape == "mesh" ||
+			 Element.SourceRecipe.strRendererShape == "sprite");
+	}
+
+	bool_t Is_PortableAuthoredDecalCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Element.eKind == Client::EFFECT_ELEMENT_KIND::DECAL &&
+			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == Client::EFFECT_SOURCE_SPACE::END &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "decal" &&
+			std::ranges::any_of(Element.SourceRecipe.Modules,
+				[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					return SourceClass_Matches(
+						Module, "particlemoduletypedatadecal");
+				});
+	}
+
+	bool_t Is_PortableAuthoredEmitterCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Is_PortableAuthoredParticleCarrier(Element) ||
+			Is_PortableAuthoredDecalCarrier(Element);
+	}
+
 	bool_t Is_SourceVisualDecalParticle(
 		const Client::EFFECT_ELEMENT_DESC& Element,
 		const bool_t bSourceVisualProgramActive)
 	{
-		return bSourceVisualProgramActive &&
+		return (bSourceVisualProgramActive ||
+				Is_PortableAuthoredDecalCarrier(Element)) &&
 			Client::EFFECT_ELEMENT_KIND::DECAL == Element.eKind &&
 			Element.SourceRecipe.bEnabled &&
 			Element.SourceRecipe.strRendererShape == "decal" &&
@@ -957,17 +1025,6 @@ namespace
 		return SourceBool(Module, "benabled", true);
 	}
 
-	bool_t Is_PortableAuthoredParticleCarrier(
-		const Client::EFFECT_ELEMENT_DESC& Element)
-	{
-		return Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
-			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
-			Element.Renderer.eSourceSpace == Client::EFFECT_SOURCE_SPACE::END &&
-			Element.SourceRecipe.bEnabled &&
-			(Element.SourceRecipe.strRendererShape == "mesh" ||
-			 Element.SourceRecipe.strRendererShape == "sprite");
-	}
-
 	bool_t Validate_PortableSourceEventRoutes(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
 		bool_t& bOutHasEvents,
@@ -990,7 +1047,7 @@ namespace
 			if (!Element.bVisible ||
 				!Client::Is_EffectAuthoringExecutionTarget(
 					Element.Material.Execution) ||
-				!Is_PortableAuthoredParticleCarrier(Element))
+				!Is_PortableAuthoredEmitterCarrier(Element))
 			{
 				continue;
 			}
@@ -2176,72 +2233,54 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedVisualProgramDocument(
 			return false;
 		}
 
-		if (pProjection->Get_ProjectionKind() ==
-			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1)
+		bool_t bSupplementalValid = false;
+		if (Supplemental.eFamily ==
+			EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON &&
+			Supplemental.CascadeRibbonPacket.has_value())
 		{
-			bool_t bSupplementalValid = false;
-			if (Supplemental.eFamily ==
-				EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON &&
-				Supplemental.CascadeRibbonPacket.has_value())
-			{
-				bSupplementalValid = Validate_CascadeRibbonPacket(
-					Supplemental, *pTarget, strOutError);
-			}
-			else if (Supplemental.eFamily ==
-				EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL &&
-				Supplemental.AnimationTrailPacket.has_value())
-			{
-				const auto& Packet = *Supplemental.AnimationTrailPacket;
-				const auto* const pHistory = 2u == Packet.iPacketVersion ?
-					pProjection->Find_BakedEdgeHistory(Packet.strHistoryId) : nullptr;
-				const bool_t bHistoryValid = 1u == Packet.iPacketVersion ||
-					(nullptr != pHistory &&
-					 pHistory->strHistorySha256 == Packet.strHistorySha256 &&
-					 pHistory->strCoordinateBasis == Packet.strCoordinateBasis &&
-					 Nearly_EqualTrailValue(pHistory->fPlaybackClampSeconds,
-						 Packet.fPlaybackClampSeconds));
-				bSupplementalValid = bHistoryValid &&
-					Validate_AnimationTrailPacket(
-						Supplemental, *pTarget, strOutError);
-			}
-			else if (Supplemental.eFamily ==
-				EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE &&
-				Supplemental.BakedEdgeLightPacket.has_value())
-			{
-				const auto& Packet = *Supplemental.BakedEdgeLightPacket;
-				const auto* const pHistory =
-					pProjection->Find_BakedEdgeHistory(Packet.strHistoryId);
-				const bool_t bHistoryValid = nullptr != pHistory &&
-					pHistory->strHistorySha256 == Packet.strHistorySha256 &&
-					pHistory->strCoordinateBasis == Packet.strCoordinateBasis &&
-					Nearly_EqualTrailValue(pHistory->fPlaybackClampSeconds,
-						Packet.fHistoryPlaybackClampSeconds);
-				bSupplementalValid = bHistoryValid &&
-					Validate_BakedEdgeLightPacket(
-						Supplemental, *pTarget, strOutError);
-			}
-			if (!bSupplementalValid ||
-				!SourceVisualTargetElementIds.emplace(
-					Supplemental.TargetIdentity.strTargetElementId).second)
-			{
-				if (strOutError.empty())
-				{
-					strOutError =
-						"Baked-edge supplemental target closure is invalid.";
-				}
-				return false;
-			}
+			bSupplementalValid = Validate_CascadeRibbonPacket(
+				Supplemental, *pTarget, strOutError);
 		}
-		else if (Supplemental.eFamily !=
-				EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON ||
-			!Validate_CascadeRibbonPacket(
-				Supplemental, *pTarget, strOutError))
+		else if (Supplemental.eFamily ==
+			EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL &&
+			Supplemental.AnimationTrailPacket.has_value())
+		{
+			const auto& Packet = *Supplemental.AnimationTrailPacket;
+			const auto* const pHistory = 2u == Packet.iPacketVersion ?
+				pProjection->Find_BakedEdgeHistory(Packet.strHistoryId) : nullptr;
+			const bool_t bHistoryValid = 1u == Packet.iPacketVersion ||
+				(nullptr != pHistory &&
+				 pHistory->strHistorySha256 == Packet.strHistorySha256 &&
+				 pHistory->strCoordinateBasis == Packet.strCoordinateBasis &&
+				 Nearly_EqualTrailValue(pHistory->fPlaybackClampSeconds,
+					 Packet.fPlaybackClampSeconds));
+			bSupplementalValid = bHistoryValid &&
+				Validate_AnimationTrailPacket(
+					Supplemental, *pTarget, strOutError);
+		}
+		else if (Supplemental.eFamily ==
+			EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE &&
+			Supplemental.BakedEdgeLightPacket.has_value())
+		{
+			const auto& Packet = *Supplemental.BakedEdgeLightPacket;
+			const auto* const pHistory =
+				pProjection->Find_BakedEdgeHistory(Packet.strHistoryId);
+			const bool_t bHistoryValid = nullptr != pHistory &&
+				pHistory->strHistorySha256 == Packet.strHistorySha256 &&
+				pHistory->strCoordinateBasis == Packet.strCoordinateBasis &&
+				Nearly_EqualTrailValue(pHistory->fPlaybackClampSeconds,
+					Packet.fHistoryPlaybackClampSeconds);
+			bSupplementalValid = bHistoryValid &&
+				Validate_BakedEdgeLightPacket(
+					Supplemental, *pTarget, strOutError);
+		}
+		if (!bSupplementalValid ||
+			!SourceVisualTargetElementIds.emplace(
+				Supplemental.TargetIdentity.strTargetElementId).second)
 		{
 			if (strOutError.empty())
-			{
 				strOutError =
-					"CascadeRibbon adapter supplemental identity is invalid.";
-			}
+					"Typed supplemental target/history closure is invalid.";
 			return false;
 		}
 	}
@@ -2357,7 +2396,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 				Element.strElementId, MasterIterator->second);
 		}
 		ELEMENT_STATE State;
-		State.iRandomState = Hash_StableId(Element.strElementId) ^
+		State.iRandomState = Hash_RuntimeRandomIdentity(Element) ^
 			Element.Detail.Particle.iRandomSeed;
 		if (0u == State.iRandomState)
 			State.iRandomState = 1u;
@@ -2714,7 +2753,7 @@ void Client::CEffectPlayback::Reset()
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		State = {};
-		State.iRandomState = Hash_StableId(Element.strElementId) ^
+		State.iRandomState = Hash_RuntimeRandomIdentity(Element) ^
 			Element.Detail.Particle.iRandomSeed;
 		if (0u == State.iRandomState)
 			State.iRandomState = 1u;
@@ -2729,6 +2768,8 @@ void Client::CEffectPlayback::Update(
 	const f32_t fTimeDelta,
 	const float4x4_t& RootWorld)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Playback.Update");
 	std::string GateStatus;
 	if (!m_bReconstructedSourceRuntimeActive &&
 		!m_bSourceVisualProgramActive &&
@@ -3041,6 +3082,8 @@ bool_t Client::CEffectPlayback::Step(
 	const f32_t fFixedDelta,
 	const float4x4_t& RootWorld)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Playback.FixedStep");
 	const auto PreviousStates = m_bHasPortableSourceEvents ?
 		m_States : decltype(m_States){};
 	const uint64_t iPreviousSimulationStep = m_iSimulationStep;
@@ -3067,8 +3110,11 @@ bool_t Client::CEffectPlayback::Step(
 	m_PendingSourceEvents.clear();
 	m_bSourceEventQueueOverflow = false;
 
-	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
+		Engine::CProfilerScope particleProfile(
+			CGameInstance::Get().Get_Profiler(), "Effect.Particle.Simulate");
+		for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
+		{
 		if (!Is_PlaybackElementAdmitted(Element))
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
@@ -3191,6 +3237,7 @@ bool_t Client::CEffectPlayback::Step(
 				State.fSpawnAccumulator -= static_cast<f32_t>(iSpawnCount);
 				Spawn_Particles(Element, State, iSpawnCount, RootWorld);
 			}
+			}
 		}
 	}
 
@@ -3211,20 +3258,35 @@ bool_t Client::CEffectPlayback::Step(
 		return false;
 	}
 
-	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
-		if (!Is_PlaybackElementAdmitted(Element))
-			continue;
-		ELEMENT_STATE& State = m_States[Element.strElementId];
-		Update_Particles(Element, State, fFixedDelta, RootWorld);
-		if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
-			Sample_Trail(Element, State, fFixedDelta, RootWorld);
-		if ((EFFECT_ELEMENT_KIND::MESH == Element.eKind ||
-			EFFECT_ELEMENT_KIND::SPRITE == Element.eKind) &&
-			Element.Detail.Timing.fAfterImageSeconds > 0.f &&
-			Element.Detail.AfterImage.iMaxCopies > 0u)
+		Engine::CProfilerScope particleProfile(
+			CGameInstance::Get().Get_Profiler(), "Effect.Particle.Simulate");
+		for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 		{
-			Sample_AfterImages(Element, State, fFixedDelta, RootWorld);
+			if (!Is_PlaybackElementAdmitted(Element))
+				continue;
+			ELEMENT_STATE& State = m_States[Element.strElementId];
+			Update_Particles(Element, State, fFixedDelta, RootWorld);
+		}
+	}
+	{
+		Engine::CProfilerScope historyProfile(
+			CGameInstance::Get().Get_Profiler(),
+			"Effect.TrailAfterimage.Simulate");
+		for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
+		{
+			if (!Is_PlaybackElementAdmitted(Element))
+				continue;
+			ELEMENT_STATE& State = m_States[Element.strElementId];
+			if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
+				Sample_Trail(Element, State, fFixedDelta, RootWorld);
+			if ((EFFECT_ELEMENT_KIND::MESH == Element.eKind ||
+				EFFECT_ELEMENT_KIND::SPRITE == Element.eKind) &&
+				Element.Detail.Timing.fAfterImageSeconds > 0.f &&
+				Element.Detail.AfterImage.iMaxCopies > 0u)
+			{
+				Sample_AfterImages(Element, State, fFixedDelta, RootWorld);
+			}
 		}
 	}
 	return true;
@@ -3237,7 +3299,7 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 	const float4x4_t& RootWorld)
 {
 	if (!Is_SourceVisualProgramElementAdmitted(Element) &&
-		!Is_PortableAuthoredParticleCarrier(Element))
+		!Is_PortableAuthoredEmitterCarrier(Element))
 		return 0u;
 
 	std::vector<const EFFECT_SOURCE_MODULE_DESC*> SpawnPerUnitModules;
@@ -3876,7 +3938,7 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			Module, "particlemodulelocationonground"))
 		{
 			if (!Is_SourceVisualProgramElementAdmitted(Element) &&
-				!Is_PortableAuthoredParticleCarrier(Element))
+				!Is_PortableAuthoredEmitterCarrier(Element))
 				continue;
 			const f32_t fSkipLocation = Evaluate_ModuleFloat(
 				State, Module, "skiplocation", fEmitterTimeSeconds,
@@ -5193,13 +5255,13 @@ void Client::CEffectPlayback::Sample_Trail(
 		Point.fNormalizedAge += fFixedDelta /
 			Element.Detail.Trail.fPointLifeTimeSeconds;
 	}
-	std::erase_if(State.TrailPoints,
-		[bSourceVisualTrail](const EFFECT_EVALUATED_TRAIL_POINT& Point)
-		{
-			return Point.fNormalizedAge +
-				(bSourceVisualTrail ?
-					SOURCE_VISUAL_RIBBON_TIME_EPSILON_SECONDS : 0.f) >= 1.f;
-		});
+	const f32_t fTrailExpiryEpsilon = bSourceVisualTrail ?
+		SOURCE_VISUAL_RIBBON_TIME_EPSILON_SECONDS : 0.f;
+	while (!State.TrailPoints.empty() &&
+		State.TrailPoints.front().fNormalizedAge + fTrailExpiryEpsilon >= 1.f)
+	{
+		State.TrailPoints.pop_front();
+	}
 	for (EFFECT_EVALUATED_TRAIL_POINT& Point : State.TrailPoints)
 		UpdatePointPayload(Point);
 	if (State.TrailPoints.empty())
@@ -5272,7 +5334,7 @@ void Client::CEffectPlayback::Sample_Trail(
 	UpdatePointPayload(Point);
 	State.TrailPoints.push_back(std::move(Point));
 	while (State.TrailPoints.size() > Element.Detail.Trail.iMaxPoints)
-		State.TrailPoints.erase(State.TrailPoints.begin());
+		State.TrailPoints.pop_front();
 }
 
 bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
@@ -5430,12 +5492,12 @@ void Client::CEffectPlayback::Sample_AfterImages(
 {
 	for (AFTERIMAGE_STATE& AfterImage : State.AfterImages)
 		AfterImage.fAgeSeconds += fFixedDelta;
-	std::erase_if(State.AfterImages,
-		[&Element](const AFTERIMAGE_STATE& AfterImage)
-		{
-			return AfterImage.fAgeSeconds >=
-				Element.Detail.Timing.fAfterImageSeconds;
-		});
+	while (!State.AfterImages.empty() &&
+		State.AfterImages.front().fAgeSeconds >=
+			Element.Detail.Timing.fAfterImageSeconds)
+	{
+		State.AfterImages.pop_front();
+	}
 
 	const f32_t fLocalTime = m_fSampleTimeSeconds -
 		Element.Detail.Timing.fStartDelaySeconds;
@@ -5456,7 +5518,7 @@ void Client::CEffectPlayback::Sample_AfterImages(
 	State.AfterImages.push_back({
 		Evaluate_ElementWorld(Element, m_fSampleTimeSeconds, RootWorld), 0.f });
 	while (State.AfterImages.size() > Element.Detail.AfterImage.iMaxCopies)
-		State.AfterImages.erase(State.AfterImages.begin());
+		State.AfterImages.pop_front();
 }
 
 bool_t Client::CEffectPlayback::Can_EvaluateElementWorld(
@@ -5738,7 +5800,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			(Element.SourceRecipe.bEnabled ?
 				Element.SourceRecipe.fEmitterDelaySeconds : 0.f);
 		const f32_t fStableRandom = static_cast<f32_t>(
-			Hash_StableId(Element.strElementId) ^
+			Hash_RuntimeRandomIdentity(Element) ^
 			Element.Detail.Particle.iRandomSeed) /
 			static_cast<f32_t>(UINT32_MAX);
 		f32_t fPresentationLifeTimeSeconds =
@@ -5986,9 +6048,11 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			else
 			{
 				Evaluated.Color = ElementColor;
-				/* Ring Fill alpha is explicitly authored. The legacy implicit
-				   particle fade would hide the completed ring at its wave boundary. */
-				if (!Element.Detail.Mesh.RingFill.bEnabled)
+				/* Ring Fill and Linear Reveal alpha are explicitly authored. The
+				   legacy implicit particle fade would dim their completed carrier
+				   before the authored dissolve window owns disappearance. */
+				if (!Element.Detail.Mesh.RingFill.bEnabled &&
+					!Element.Detail.Sprite.LinearReveal.bEnabled)
 					Evaluated.Color.w *= 1.f - ParticleT;
 			}
 			Evaluated.vDynamicParameter = Particle.vDynamicParameter;
@@ -6068,7 +6132,8 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 		{
 			EFFECT_EVALUATED_TRAIL Trail;
 			Trail.pElement = &Element;
-			Trail.Points = State.TrailPoints;
+			Trail.Points.assign(
+				State.TrailPoints.begin(), State.TrailPoints.end());
 			m_Frame.Trails.push_back(std::move(Trail));
 		}
 

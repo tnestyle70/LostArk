@@ -80,14 +80,18 @@ struct EFFECT_DIRECT_AUTHORED_SOURCE_INDEX final
 	size_t iCatalogDirectCount = 0u;
 	size_t iUnavailableCount = 0u;
 	std::string strFirstUnavailable;
+	size_t iOwnerJoinUnavailableCount = 0u;
+	std::string strFirstOwnerJoinUnavailable;
 };
 
 class CEffectDirectAuthoredSourceIndex final
 {
 public:
-	/* Builds the Effect Tool's saved-unified list from source-catalog metadata.
-	   A catalog-level error preserves InOutIndex. Invalid individual source rows
-	   are isolated and reported in the committed index. */
+	/* Builds the Effect Tool's saved-unified editor list from source-catalog
+	   metadata. Exact source-path admission is independent from Product-owner
+	   joins: an owner failure leaves eOwnerKind == END but never removes an
+	   otherwise valid authored document from Entries. A catalog-level error
+	   preserves InOutIndex; invalid source rows are isolated. */
 	static bool Build(
 		const std::filesystem::path& CatalogPath,
 		const std::filesystem::path& AuthoredRoot,

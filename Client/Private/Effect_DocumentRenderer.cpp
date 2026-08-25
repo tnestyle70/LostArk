@@ -10,6 +10,7 @@
 #include "Effect_RuntimeAuthority.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Profiler.h"
 #include "RuntimeAssetRoot.h"
 #include "Render_OutputContract.h"
 #include "Shader.h"
@@ -41,7 +42,7 @@ namespace
 	bool_t Is_ZeroFloatBits(const FLOAT fValue)
 	{
 		return std::bit_cast<uint32_t>(fValue) == 0u;
-	}
+			}
 
 	bool_t Is_DefaultStencilFace(
 		const D3D11_DEPTH_STENCILOP_DESC& Face)
@@ -439,30 +440,42 @@ namespace
 				pContext, Adapter, iActualPassIndex);
 	}
 
-	bool_t Validate_ActualLocalDecalDepthShaderResource(
+	bool_t Validate_ActualLocalDecalSceneShaderResources(
 		ID3D11DeviceContext* pContext)
 	{
 		/* The compiled six-lane LocalDecal pass consumes Common base/noise/
 		   mask/emissive/dissolve/base2/mask2/noise2 plus SourceTexture0..5.
 		   SourceTexture6 is unreachable for this opcode and is removed by FXC,
-		   so the named Target_Depth receipt is PS t14 after Begin(3). */
+		   so the named Target_Depth/Target_Normal receipts are PS t14/t15
+		   after Begin(3). */
 		constexpr uint32_t LOCAL_DECAL_DEPTH_TEXTURE_SLOT = 14u;
+		constexpr uint32_t LOCAL_DECAL_NORMAL_TEXTURE_SLOT = 15u;
 		static_assert(LOCAL_DECAL_DEPTH_TEXTURE_SLOT <
+			D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT);
+		static_assert(LOCAL_DECAL_NORMAL_TEXTURE_SLOT <
 			D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT);
 		if (nullptr == pContext)
 			return false;
 
 		const ComPtr<ID3D11ShaderResourceView> pExpectedDepth =
 			CGameInstance::Get().Get_RT_SRV(TEXT("Target_Depth"));
-		if (nullptr == pExpectedDepth)
+		const ComPtr<ID3D11ShaderResourceView> pExpectedNormal =
+			CGameInstance::Get().Get_RT_SRV(TEXT("Target_Normal"));
+		if (nullptr == pExpectedDepth || nullptr == pExpectedNormal)
 			return false;
 
 		ID3D11ShaderResourceView* pActualDepthRaw = nullptr;
+		ID3D11ShaderResourceView* pActualNormalRaw = nullptr;
 		pContext->PSGetShaderResources(
 			LOCAL_DECAL_DEPTH_TEXTURE_SLOT, 1u, &pActualDepthRaw);
+		pContext->PSGetShaderResources(
+			LOCAL_DECAL_NORMAL_TEXTURE_SLOT, 1u, &pActualNormalRaw);
 		ComPtr<ID3D11ShaderResourceView> pActualDepth;
+		ComPtr<ID3D11ShaderResourceView> pActualNormal;
 		pActualDepth.Attach(pActualDepthRaw);
-		return pActualDepth.Get() == pExpectedDepth.Get();
+		pActualNormal.Attach(pActualNormalRaw);
+		return pActualDepth.Get() == pExpectedDepth.Get() &&
+			pActualNormal.Get() == pExpectedNormal.Get();
 	}
 
 	struct ARTIST31470_EMITTER_ROW_PIN final
@@ -572,15 +585,18 @@ namespace
 				Desired[i] = Samplers[i].Get();
 			m_pContext->PSSetSamplers(5u, m_iCount, Desired.data());
 
+			bool_t bMatches = true;
+#if defined(_DEBUG) || \
+	defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 			std::array<ID3D11SamplerState*, 6u> Applied{};
 			m_pContext->PSGetSamplers(5u, m_iCount, Applied.data());
-			bool_t bMatches = true;
 			for (size_t i = 0u; i < m_iCount; ++i)
 			{
 				bMatches = bMatches && Applied[i] == Desired[i];
 				if (nullptr != Applied[i])
 					Applied[i]->Release();
 			}
+#endif
 			m_bApplied = true;
 			if (!bMatches)
 				Restore();
@@ -1812,7 +1828,8 @@ namespace
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
 			Element.Material.Execution;
 		const ARTIST_D_BLACK_TIGER_STROKE_ROW* pRow =
-			Find_ArtistDBlackTigerStrokeRow(Element.strElementId);
+			Find_ArtistDBlackTigerStrokeRow(
+				Client::Resolve_EffectPortableOriginElementId(Element));
 		if (nullptr == pRow)
 		{
 			if (Execution.bEnabled &&
@@ -1847,7 +1864,8 @@ namespace
 
 		const bool_t bCarrier = Element.bVisible &&
 			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
-			Element.strSourceNode == strExpectedSourceNode &&
+			Client::Is_EffectSourceIdentityOrPortableCopy(
+				Element, pRow->strElementId, strExpectedSourceNode) &&
 			Element.SourceRecipe.bEnabled &&
 			Element.SourceRecipe.strRendererShape == "sprite" &&
 			Element.ResourceBindings.size() == 3u &&
@@ -2019,7 +2037,8 @@ namespace
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
 			Element.Material.Execution;
 		const WARLORD_WPO_SINWAVE_ROW* pRow =
-			Find_WarlordWpoSinWaveRow(Element.strElementId);
+			Find_WarlordWpoSinWaveRow(
+				Client::Resolve_EffectPortableOriginElementId(Element));
 		if (nullptr == pRow)
 		{
 			if (Execution.bEnabled &&
@@ -2067,7 +2086,8 @@ namespace
 
 		bool_t bValid = Element.bVisible &&
 			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
-			Element.strSourceNode == pRow->strSourceNode &&
+			Client::Is_EffectSourceIdentityOrPortableCopy(
+				Element, pRow->strElementId, pRow->strSourceNode) &&
 			Element.SourceRecipe.bEnabled &&
 			Element.SourceRecipe.strRendererShape == "mesh" &&
 			Has_WarlordWpoSinWaveDynamicModule(Element) &&
@@ -2334,7 +2354,8 @@ namespace
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
 			Element.Material.Execution;
 		const LANCE_DRAGON_MASKED_ROW* pRow =
-			Find_LanceDragonMaskedRow(Element.strElementId);
+			Find_LanceDragonMaskedRow(
+				Client::Resolve_EffectPortableOriginElementId(Element));
 		if (nullptr == pRow)
 		{
 			if (Execution.bEnabled &&
@@ -2371,7 +2392,8 @@ namespace
 
 		const bool_t bCarrier = Element.bVisible &&
 			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
-			Element.strSourceNode == pRow->strSourceNode &&
+			Client::Is_EffectSourceIdentityOrPortableCopy(
+				Element, pRow->strElementId, pRow->strSourceNode) &&
 			Element.SourceRecipe.bEnabled &&
 			Element.SourceRecipe.strRendererShape == "mesh" &&
 			Element.ResourceBindings.size() == 6u &&
@@ -3400,7 +3422,7 @@ namespace
 	bool_t Is_DimensionMasterDBoundarySpriteWaveContract(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
-		return Element.strElementId ==
+		return Client::Resolve_EffectPortableOriginElementId(Element) ==
 				"authored.source-particle.03ae2d86558a1627f9d867e7" &&
 			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
 			Element.SourceRecipe.strRendererShape == "sprite" &&
@@ -3424,12 +3446,14 @@ namespace
 	bool_t Is_DimensionMasterDBoundaryParticleMasterContract(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
+		const std::string_view OriginElementId =
+			Client::Resolve_EffectPortableOriginElementId(Element);
 		const bool_t bExactDimensionMasterDOccurrence =
-			Element.strElementId ==
+			OriginElementId ==
 				"authored.source-particle.20e58ca3740942649576b818" ||
-			Element.strElementId ==
+			OriginElementId ==
 				"authored.source-particle.cd12d28ee975a182b849dae0" ||
-			Element.strElementId ==
+			OriginElementId ==
 				"authored.source-particle.1d400b300d15f98b78e45a92";
 		if (!bExactDimensionMasterDOccurrence ||
 			Element.eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE ||
@@ -6125,11 +6149,11 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 				(std::max)({ 1.f, std::abs(Left), std::abs(Right) });
 		};
 		const bool_t bFirstIdentity =
-			Element.strElementId == ELEMENT_IDS[0] &&
-			Element.strSourceNode == SOURCE_NODES[0];
+			Client::Is_EffectSourceIdentityOrPortableCopy(
+				Element, ELEMENT_IDS[0], SOURCE_NODES[0]);
 		const bool_t bSecondIdentity =
-			Element.strElementId == ELEMENT_IDS[1] &&
-			Element.strSourceNode == SOURCE_NODES[1];
+			Client::Is_EffectSourceIdentityOrPortableCopy(
+				Element, ELEMENT_IDS[1], SOURCE_NODES[1]);
 		bool_t bFluid01ContractValid =
 			(bFirstIdentity || bSecondIdentity) &&
 			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
@@ -14482,6 +14506,7 @@ bool_t Client::CEffectDocumentRenderer::Clone_ModelCueResources(
 		Resource.pModel = Model;
 		Resource.iAnimationIndex = Prototype.iAnimationIndex;
 		Resource.fTicksPerSecond = Prototype.fTicksPerSecond;
+		Resource.fDurationSeconds = Prototype.fDurationSeconds;
 		Staged.emplace(CueId, std::move(Resource));
 	}
 	OutResources = std::move(Staged);
@@ -15439,6 +15464,175 @@ bool_t Client::CEffectDocumentRenderer::
 			strOutError =
 				"Binding0/Binding1 execution packet or prepared snapshot diverged.";
 		}
+		return false;
+	}
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::
+	Probe_ModelCueCloneAnimationForTests(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<const PREPARED_DOCUMENT>& pPrepared,
+		const std::string_view strCueId,
+		const std::string_view strWitnessBoneName,
+		EFFECT_MODEL_CUE_ANIMATION_PROBE& OutProbe,
+		std::string& strOutError)
+{
+	OutProbe = {};
+	if (nullptr == pDevice || nullptr == pContext || nullptr == pPrepared ||
+		strCueId.empty() || strWitnessBoneName.empty())
+	{
+		strOutError = "Model Cue clone animation probe identity is invalid.";
+		return false;
+	}
+	const EFFECT_DOCUMENT_DESC& Document =
+		nullptr == pPrepared->pImmutableDocument ?
+			pPrepared->ResourceDocument : *pPrepared->pImmutableDocument;
+	const auto Cue = std::find_if(Document.ModelCues.begin(),
+		Document.ModelCues.end(), [strCueId](const EFFECT_MODEL_CUE_DESC& Candidate)
+		{
+			return Candidate.strCueId == strCueId;
+		});
+	const std::string CueId(strCueId);
+	const auto Prototype = pPrepared->ModelCuePrototypes.find(CueId);
+	if (Cue == Document.ModelCues.end() || !Cue->bHoldLastFrame ||
+		Prototype == pPrepared->ModelCuePrototypes.end() ||
+		nullptr == Prototype->second.pModel)
+	{
+		strOutError =
+			"Hold-last Model Cue prototype is unavailable for the animation probe: " +
+			CueId;
+		return false;
+	}
+
+	CEffectDocumentRenderer Renderer(std::move(pDevice), std::move(pContext));
+	std::unordered_map<std::string, MODEL_CUE_RESOURCE> Clones;
+	if (!Renderer.Clone_ModelCueResources(*pPrepared, Clones, strOutError))
+		return false;
+	const auto Clone = Clones.find(CueId);
+	if (Clone == Clones.end() || nullptr == Clone->second.pModel)
+	{
+		strOutError = "Model Cue clone is unavailable for the animation probe: " +
+			CueId;
+		return false;
+	}
+
+	const MODEL_CUE_RESOURCE& PrototypeResource = Prototype->second;
+	const MODEL_CUE_RESOURCE& CloneResource = Clone->second;
+	OutProbe.fPrototypeDurationSeconds = PrototypeResource.fDurationSeconds;
+	OutProbe.fCloneDurationSeconds = CloneResource.fDurationSeconds;
+	if (!std::isfinite(PrototypeResource.fDurationSeconds) ||
+		PrototypeResource.fDurationSeconds <= 0.f ||
+		!std::isfinite(CloneResource.fDurationSeconds) ||
+		CloneResource.fDurationSeconds <= 0.f ||
+		std::fabs(PrototypeResource.fDurationSeconds -
+			CloneResource.fDurationSeconds) > 0.00001f ||
+		!std::isfinite(CloneResource.fTicksPerSecond) ||
+		CloneResource.fTicksPerSecond <= 0.f)
+	{
+		strOutError = "Model Cue clone did not preserve finite clip timing: " +
+			CueId;
+		return false;
+	}
+
+	Engine::CModel& Model = *CloneResource.pModel;
+	const std::string WitnessBoneName(strWitnessBoneName);
+	if (!Model.Has_Bone(WitnessBoneName.c_str()))
+	{
+		strOutError = "Model Cue animation witness bone is unavailable: " +
+			WitnessBoneName;
+		return false;
+	}
+	if (!Model.Set_AnimTrackPosition(CloneResource.iAnimationIndex, 0.f))
+	{
+		strOutError = "Model Cue animation probe could not reset its track: " +
+			CueId;
+		return false;
+	}
+	Model.Play_Animation(0.f);
+	float4x4_t StartBone{};
+	XMStoreFloat4x4(&StartBone, Model.Get_BoneMatrix(WitnessBoneName.c_str()));
+
+	const f32_t fMidAnimationSeconds = 0.5f * (std::min)(
+		Cue->fDurationSeconds, CloneResource.fDurationSeconds);
+	const f32_t fExpectedMidTrackTicks =
+		fMidAnimationSeconds * CloneResource.fTicksPerSecond;
+	if (!std::isfinite(fExpectedMidTrackTicks) ||
+		fExpectedMidTrackTicks <= 0.f ||
+		!Model.Set_AnimTrackPosition(
+			CloneResource.iAnimationIndex, fExpectedMidTrackTicks))
+	{
+		strOutError = "Model Cue animation probe could not advance its track: " +
+			CueId;
+		return false;
+	}
+	Model.Play_Animation(0.f);
+	f32_t fMidTrackPosition = 0.f;
+	f32_t fTrackDuration = 0.f;
+	if (!Model.Get_AnimationProgress(CloneResource.iAnimationIndex,
+			fMidTrackPosition, fTrackDuration))
+	{
+		strOutError = "Model Cue animation probe could not read its track: " +
+			CueId;
+		return false;
+	}
+	if (!std::isfinite(fMidTrackPosition) ||
+		!std::isfinite(fTrackDuration) || fTrackDuration <= 0.f)
+	{
+		strOutError = "Model Cue animation probe read non-finite track timing: " +
+			CueId;
+		return false;
+	}
+	OutProbe.fMidTrackPositionTicks = fMidTrackPosition;
+	OutProbe.fTrackDurationTicks = fTrackDuration;
+	float4x4_t MidBone{};
+	XMStoreFloat4x4(&MidBone, Model.Get_BoneMatrix(WitnessBoneName.c_str()));
+	for (size_t iRow = 0u; iRow < 4u; ++iRow)
+	{
+		for (size_t iColumn = 0u; iColumn < 4u; ++iColumn)
+		{
+			if (!std::isfinite(StartBone.m[iRow][iColumn]) ||
+				!std::isfinite(MidBone.m[iRow][iColumn]))
+			{
+				strOutError =
+					"Model Cue animation witness matrix is non-finite: " +
+					WitnessBoneName;
+				return false;
+			}
+			OutProbe.fWitnessBoneMaximumDelta = (std::max)(
+				OutProbe.fWitnessBoneMaximumDelta,
+				std::fabs(StartBone.m[iRow][iColumn] -
+					MidBone.m[iRow][iColumn]));
+		}
+	}
+
+	const f32_t fExpectedTailTrackTicks = (std::min)(
+		Cue->fDurationSeconds, CloneResource.fDurationSeconds) *
+		CloneResource.fTicksPerSecond;
+	if (!Model.Set_AnimTrackPosition(
+			CloneResource.iAnimationIndex, fExpectedTailTrackTicks))
+	{
+		strOutError = "Model Cue animation probe could not clamp its tail: " +
+			CueId;
+		return false;
+	}
+	Model.Play_Animation(0.f);
+	if (!Model.Get_AnimationProgress(CloneResource.iAnimationIndex,
+			OutProbe.fTailTrackPositionTicks, fTrackDuration) ||
+		!std::isfinite(OutProbe.fTailTrackPositionTicks) ||
+		!std::isfinite(fTrackDuration) || fTrackDuration <= 0.f ||
+		std::fabs(OutProbe.fMidTrackPositionTicks -
+			fExpectedMidTrackTicks) > 0.001f ||
+		std::fabs(OutProbe.fTailTrackPositionTicks -
+			fExpectedTailTrackTicks) > 0.001f ||
+		std::fabs(OutProbe.fTrackDurationTicks - fTrackDuration) > 0.001f ||
+		OutProbe.fWitnessBoneMaximumDelta <= 0.0001f)
+	{
+		strOutError =
+			"Model Cue clone animation did not advance or clamp as authored: " +
+			CueId;
 		return false;
 	}
 	strOutError.clear();
@@ -16502,6 +16696,8 @@ void Client::CEffectDocumentRenderer::Clear()
 	Reset_PreviewSubmissionIsolation();
 	m_ModelCueResources.clear();
 	m_LastRenderSubmissionStats = {};
+	m_bWorldMarkSubmissionPending = false;
+	m_iWorldMarkSubmissionSerial = 0u;
 	m_iStatusEvaluated = (std::numeric_limits<uint64_t>::max)();
 	m_iStatusActive = (std::numeric_limits<uint64_t>::max)();
 	m_iStatusSubmitted = (std::numeric_limits<uint64_t>::max)();
@@ -16704,6 +16900,10 @@ void Client::CEffectDocumentRenderer::Record_TestIssuedDraw(
 {
 	if (nullptr == m_pActiveOccurrenceStats)
 		return;
+	if (UINT64_MAX == m_pActiveOccurrenceStats->iFirstIssuedDrawOrdinal)
+		m_pActiveOccurrenceStats->iFirstIssuedDrawOrdinal =
+			m_iTestIssuedDrawOrdinal;
+	++m_iTestIssuedDrawOrdinal;
 	++m_pActiveOccurrenceStats->iVIBufferDrawCount;
 	++m_pActiveOccurrenceStats->iIssuedDrawCallCount;
 	if (!m_pActiveOccurrenceStats->bHasFirstSubmittedParticleWorld)
@@ -16720,6 +16920,10 @@ void Client::CEffectDocumentRenderer::Record_TestIssuedDraw(
 {
 	if (nullptr == m_pActiveOccurrenceStats)
 		return;
+	if (UINT64_MAX == m_pActiveOccurrenceStats->iFirstIssuedDrawOrdinal)
+		m_pActiveOccurrenceStats->iFirstIssuedDrawOrdinal =
+			m_iTestIssuedDrawOrdinal;
+	++m_iTestIssuedDrawOrdinal;
 	++m_pActiveOccurrenceStats->iVIBufferDrawCount;
 	++m_pActiveOccurrenceStats->iIssuedDrawCallCount;
 	for (const Engine::VTXEFFECT_PARTICLE& Instance : Instances)
@@ -16739,6 +16943,10 @@ void Client::CEffectDocumentRenderer::Record_TestIssuedDraw(
 {
 	if (nullptr == m_pActiveOccurrenceStats)
 		return;
+	if (UINT64_MAX == m_pActiveOccurrenceStats->iFirstIssuedDrawOrdinal)
+		m_pActiveOccurrenceStats->iFirstIssuedDrawOrdinal =
+			m_iTestIssuedDrawOrdinal;
+	++m_iTestIssuedDrawOrdinal;
 	++m_pActiveOccurrenceStats->iVIBufferDrawCount;
 	++m_pActiveOccurrenceStats->iIssuedDrawCallCount;
 	for (const Engine::VTXEFFECT_TRAIL& Vertex : Vertices)
@@ -17025,6 +17233,8 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			(fNormalizedLife - Element.Detail.Timing.fDissolveStartNormalized) /
 			(1.f - Element.Detail.Timing.fDissolveStartNormalized), 0.f, 1.f);
 
+	const float4_t AuthoredColorMultiply =
+		Evaluate_CommonColor(Element, fNormalizedLife).vColorMultiply;
 	float4_t ColorMultiply = Color.vColorMultiply;
 	ColorMultiply.w *= fAlphaScale;
 	const uint32_t iHasNoise = nullptr != Find_Texture(
@@ -17048,6 +17258,8 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		(BindFailed(pShader->Bind_RawValue("g_SourceMaterialProfile",
 			&Resource.iSourceMaterialProfile,
 			sizeof(Resource.iSourceMaterialProfile))) ||
+		BindFailed(pShader->Bind_RawValue("g_AuthoredColorMultiply",
+			&AuthoredColorMultiply, sizeof(AuthoredColorMultiply))) ||
 		BindFailed(pShader->Bind_RawValue("g_SourceScalars0",
 			&Resource.vSourceScalars0,
 			sizeof(Resource.vSourceScalars0))) ||
@@ -17200,6 +17412,98 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		{
 			return Fail_RenderOperation(
 				"Material bind failed: generic mesh Ring Fill block.",
+				hFirstBindFailure);
+		}
+	}
+	if (pShader == m_pParticleShader || pShader == m_pRectShader)
+	{
+		uint32_t iLinearRevealEnabled = 0u;
+		uint32_t iLinearRevealAxis = 1u;
+		uint32_t iLinearRevealInvert = 1u;
+		f32_t fLinearRevealStartSeconds = 0.f;
+		f32_t fLinearRevealDurationSeconds = 0.55f;
+		f32_t fLinearRevealEdgeWidth = 0.045f;
+		f32_t fLinearRevealSoftness = 0.03f;
+		float4_t vLinearRevealEdgeColor = { 1.f, 1.f, 1.f, 1.f };
+		f32_t fLinearRevealEdgeEmissive = 7.f;
+		const EFFECT_LINEAR_REVEAL_DESC& LinearReveal =
+			Element.Detail.Sprite.LinearReveal;
+		const bool_t bDirectHandAuthored = Element.strSourceNode.empty() ||
+			Element.strSourceNode.starts_with("authored-copy:");
+		const bool_t bExpectedSpriteCarrier =
+			(pShader == m_pParticleShader &&
+			 Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			 nullptr == Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
+			 nullptr == Resource.pModel) ||
+			(pShader == m_pRectShader &&
+			 Element.eKind == EFFECT_ELEMENT_KIND::SPRITE);
+		const bool_t bGenericManualSprite = LinearReveal.bEnabled &&
+			bExpectedSpriteCarrier && bDirectHandAuthored &&
+			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+			!Element.SourceRecipe.bEnabled &&
+			!Element.SourcePresentation.bEnabled &&
+			Element.Material.strTemplateId ==
+				EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			Element.Material.strSourceMaterialPath.empty() &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			!Element.Material.Execution.bEnabled &&
+			!Element.Material.Execution.bFailClosed &&
+			!Element.Material.Execution.bAuthoringApproximate &&
+			Element.Material.eRenderProfile !=
+				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE &&
+			0u == Resource.iSourceMaterialProfile &&
+			0u == Resource.iReconstructedMaterialEvaluatorEnabled &&
+			0u == Resource.iArtistVisualV4Opcode &&
+			0u == Resource.iRuntimeMaterialV2Enabled &&
+			0u == Resource.iStandardColorV1Enabled;
+		if (bGenericManualSprite)
+		{
+			iLinearRevealEnabled = 1u;
+			iLinearRevealAxis = static_cast<uint32_t>(LinearReveal.eAxis);
+			iLinearRevealInvert = LinearReveal.bInvert ? 1u : 0u;
+			fLinearRevealStartSeconds = std::clamp(
+				LinearReveal.fStartSeconds, 0.f, 30.f);
+			fLinearRevealDurationSeconds = std::clamp(
+				LinearReveal.fDurationSeconds, 0.0001f, 30.f);
+			fLinearRevealEdgeWidth = std::clamp(
+				LinearReveal.fEdgeWidth, 0.f, 0.5f);
+			fLinearRevealSoftness = std::clamp(
+				LinearReveal.fSoftness, 0.f,
+				(std::max)(0.f, 0.5f - fLinearRevealEdgeWidth));
+			vLinearRevealEdgeColor =
+			{
+				std::clamp(LinearReveal.vEdgeColor.x, 0.f, 1.f),
+				std::clamp(LinearReveal.vEdgeColor.y, 0.f, 1.f),
+				std::clamp(LinearReveal.vEdgeColor.z, 0.f, 1.f),
+				std::clamp(LinearReveal.vEdgeColor.w, 0.f, 1.f)
+			};
+			fLinearRevealEdgeEmissive = std::clamp(
+				LinearReveal.fEdgeEmissive, 0.f, 100.f);
+		}
+		if (BindFailed(pShader->Bind_RawValue("g_LinearRevealEnabled",
+				&iLinearRevealEnabled, sizeof(iLinearRevealEnabled))) ||
+			BindFailed(pShader->Bind_RawValue("g_LinearRevealAxis",
+				&iLinearRevealAxis, sizeof(iLinearRevealAxis))) ||
+			BindFailed(pShader->Bind_RawValue("g_LinearRevealInvert",
+				&iLinearRevealInvert, sizeof(iLinearRevealInvert))) ||
+			BindFailed(pShader->Bind_RawValue("g_LinearRevealStartSeconds",
+				&fLinearRevealStartSeconds,
+				sizeof(fLinearRevealStartSeconds))) ||
+			BindFailed(pShader->Bind_RawValue("g_LinearRevealDurationSeconds",
+				&fLinearRevealDurationSeconds,
+				sizeof(fLinearRevealDurationSeconds))) ||
+			BindFailed(pShader->Bind_RawValue("g_LinearRevealEdgeWidth",
+				&fLinearRevealEdgeWidth, sizeof(fLinearRevealEdgeWidth))) ||
+			BindFailed(pShader->Bind_RawValue("g_LinearRevealSoftness",
+				&fLinearRevealSoftness, sizeof(fLinearRevealSoftness))) ||
+			BindFailed(pShader->Bind_RawValue("g_LinearRevealEdgeColor",
+				&vLinearRevealEdgeColor, sizeof(vLinearRevealEdgeColor))) ||
+			BindFailed(pShader->Bind_RawValue("g_LinearRevealEdgeEmissive",
+				&fLinearRevealEdgeEmissive,
+				sizeof(fLinearRevealEdgeEmissive))))
+		{
+			return Fail_RenderOperation(
+				"Material bind failed: generic sprite Linear Reveal block.",
 				hFirstBindFailure);
 		}
 	}
@@ -17566,6 +17870,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		if (FAILED(hResult))
 			return Fail_RenderOperation(
 				"Mesh shader pass apply failed.", hResult);
+#if defined(_DEBUG) || \
+	defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 		if (nullptr != pMaterialProgramBinding &&
 			!Validate_ActualMaterialAdapterPipeline(
 				m_pContext.Get(), pMaterialProgramBinding->Adapter,
@@ -17575,6 +17881,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 				"Bound Mesh material adapter actual pass/state/MRT changed.",
 				E_FAIL, true);
 		}
+#endif
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 		if (nullptr != pMaterialProgramBinding)
 			Record_TestCompiledAdapterPipelineValidation();
@@ -17797,14 +18104,38 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Decal shader bind failed: g_DecalDepth.", hResult);
+	hResult = m_pDecalShader->Bind_RawValue(
+		"g_DecalEdgeFade", &Projection.fEdgeFade,
+		sizeof(Projection.fEdgeFade));
+	if (FAILED(hResult))
+		return Fail_RenderOperation(
+			"Decal shader bind failed: g_DecalEdgeFade.", hResult);
+	hResult = m_pDecalShader->Bind_RawValue(
+		"g_DecalUp", &Projection.vUp, sizeof(Projection.vUp));
+	if (FAILED(hResult))
+		return Fail_RenderOperation(
+			"Decal shader bind failed: g_DecalUp.", hResult);
+	hResult = m_pDecalShader->Bind_RawValue(
+		"g_DecalNormalCutoff", &Projection.fNormalCutoff,
+		sizeof(Projection.fNormalCutoff));
+	if (FAILED(hResult))
+		return Fail_RenderOperation(
+			"Decal shader bind failed: g_DecalNormalCutoff.", hResult);
 	hResult = CGameInstance::Get().Bind_RT_SRV(
 		TEXT("Target_Depth"), m_pDecalShader, "g_DepthTexture");
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Decal depth render-target bind failed.", hResult);
+	hResult = CGameInstance::Get().Bind_RT_SRV(
+		TEXT("Target_Normal"), m_pDecalShader, "g_NormalTexture");
+	if (FAILED(hResult))
+		return Fail_RenderOperation(
+			"Decal normal render-target bind failed.", hResult);
 	hResult = m_pDecalShader->Begin(iPass);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Decal shader pass apply failed.", hResult);
+#if defined(_DEBUG) || \
+	defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	if (nullptr != pMaterialProgramBinding &&
 		!Validate_ActualMaterialAdapterPipeline(
 			m_pContext.Get(), pMaterialProgramBinding->Adapter, iPass))
@@ -17816,12 +18147,13 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	if (nullptr != pMaterialProgramBinding &&
 		pMaterialProgramBinding->Execution.eBackend ==
 			EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL &&
-		!Validate_ActualLocalDecalDepthShaderResource(m_pContext.Get()))
+		!Validate_ActualLocalDecalSceneShaderResources(m_pContext.Get()))
 	{
 		return Fail_RenderOperation(
-			"Bound LocalDecal material adapter actual depth SRV changed.",
+			"Bound LocalDecal material adapter actual depth/normal SRV changed.",
 			E_FAIL, true);
 	}
+#endif
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	if (nullptr != pMaterialProgramBinding)
 		Record_TestCompiledAdapterPipelineValidation();
@@ -17966,6 +18298,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	}
 	if (nullptr == pSource)
 		return S_FALSE;
+	Engine::CProfilerScope particleRenderProfile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Particle.Render");
 	const ELEMENT_RESOURCE* pResource = Find_Resource(pSource->strElementId);
 	if (nullptr == pResource)
 		return Fail_RenderOperation(
@@ -18163,6 +18497,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			"Particle shader pass apply failed.", hResult);
 	if (nullptr != pMaterialProgramBinding)
 	{
+#if defined(_DEBUG) || \
+	defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 		if (!Validate_ActualMaterialAdapterPipeline(
 				m_pContext.Get(), pMaterialProgramBinding->Adapter, iPass))
 		{
@@ -18170,6 +18506,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 				"Bound Sprite material adapter actual pass/state/MRT changed.",
 				E_FAIL, true);
 		}
+#endif
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 		Record_TestCompiledAdapterPipelineValidation();
 #endif
@@ -18221,6 +18558,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 	const EFFECT_EVALUATED_FRAME& Frame,
 	const std::span<const EFFECT_EVALUATED_TRAIL> Trails)
 {
+	if (Trails.empty())
+		return S_FALSE;
+	Engine::CProfilerScope trailRenderProfile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Trail.Render");
 	bool_t bSubmitted = false;
 	const vector_t CameraPosition = XMLoadFloat4(
 		CGameInstance::Get().Get_CamPosition());
@@ -18676,6 +19017,17 @@ bool_t Client::CEffectDocumentRenderer::Has_NonBlendModelCues() const
 		[&Document](const EFFECT_MODEL_CUE_DESC& Cue)
 		{
 			return Is_DimensionSummonCharacterSurfaceCue(Document, Cue);
+		});
+}
+
+bool_t Client::CEffectDocumentRenderer::Has_WorldMarkElements() const
+{
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
+	return std::ranges::any_of(Document.Elements,
+		[](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.bVisible && Element.eCompositionLayer ==
+				EFFECT_COMPOSITION_LAYER::WORLD_MARK;
 		});
 }
 
@@ -19344,17 +19696,86 @@ HRESULT Client::CEffectDocumentRenderer::Render_ReconstructedDiagnostic(
 	return S_OK;
 }
 
+HRESULT Client::CEffectDocumentRenderer::Render_WorldMarks(
+	const EFFECT_EVALUATED_FRAME& Frame,
+	const uint64_t iSubmissionSerial)
+{
+	if (!Has_WorldMarkElements())
+	{
+		m_bWorldMarkSubmissionPending = false;
+		return S_FALSE;
+	}
+	m_bWorldMarkSubmissionPending = false;
+	const HRESULT hResult = Render_CompositionPhase(Frame,
+		EFFECT_COMPOSITION_LAYER::WORLD_MARK, true, false,
+		iSubmissionSerial);
+	if (SUCCEEDED(hResult))
+	{
+		m_bWorldMarkSubmissionPending = true;
+		m_iWorldMarkSubmissionSerial = iSubmissionSerial;
+	}
+	return hResult;
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render(
-	const EFFECT_EVALUATED_FRAME& Frame)
+	const EFFECT_EVALUATED_FRAME& Frame,
+	const uint64_t iSubmissionSerial)
+{
+	const bool_t bHasWorldMarks = Has_WorldMarkElements();
+	if (bHasWorldMarks &&
+		(!m_bWorldMarkSubmissionPending ||
+		 m_iWorldMarkSubmissionSerial != iSubmissionSerial))
+	{
+		const HRESULT hWorldMarkResult =
+			Render_WorldMarks(Frame, iSubmissionSerial);
+		if (FAILED(hWorldMarkResult))
+			return hWorldMarkResult;
+	}
+	if (!bHasWorldMarks)
+		m_bWorldMarkSubmissionPending = false;
+	const HRESULT hResult = Render_CompositionPhase(Frame,
+		EFFECT_COMPOSITION_LAYER::NORMAL, !bHasWorldMarks, true,
+		iSubmissionSerial);
+	m_bWorldMarkSubmissionPending = false;
+	return hResult;
+}
+
+HRESULT Client::CEffectDocumentRenderer::Render_CompositionPhase(
+	const EFFECT_EVALUATED_FRAME& Frame,
+	const EFFECT_COMPOSITION_LAYER ePhase,
+	const bool_t bBeginSubmission,
+	const bool_t bFinalizeSubmission,
+	const uint64_t iSubmissionSerial)
 {
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
-	m_LastRenderSubmissionStats = {};
+	if (ePhase >= EFFECT_COMPOSITION_LAYER::END ||
+		bFinalizeSubmission !=
+			(ePhase == EFFECT_COMPOSITION_LAYER::NORMAL) ||
+		(!bBeginSubmission &&
+		 (!m_bWorldMarkSubmissionPending ||
+		  m_iWorldMarkSubmissionSerial != iSubmissionSerial)))
+	{
+		m_bWorldMarkSubmissionPending = false;
+		m_strStatus = "Effect composition phase submission is inconsistent.";
+		m_bLastRenderFailureObjectLocal = true;
+		return E_INVALIDARG;
+	}
+	if (bBeginSubmission)
+		m_LastRenderSubmissionStats = {};
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	m_pActiveOccurrenceStats = nullptr;
-	m_LastRenderSubmissionStats.Occurrences.reserve(Document.Elements.size());
+	if (bBeginSubmission)
+	{
+		m_iTestIssuedDrawOrdinal = 0u;
+		m_LastRenderSubmissionStats.Occurrences.reserve(
+			Document.Elements.size());
+	}
 #endif
-	m_strRenderFailureDetail.clear();
-	m_bLastRenderFailureObjectLocal = false;
+	if (bBeginSubmission)
+	{
+		m_strRenderFailureDetail.clear();
+		m_bLastRenderFailureObjectLocal = false;
+	}
 	size_t iConfiguredGpuOccurrenceCount = 0u;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
@@ -19365,24 +19786,32 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 		if (EFFECT_GPU_RENDER_FAMILY::END != eFamily)
 		{
 			++iConfiguredGpuOccurrenceCount;
-			++m_LastRenderSubmissionStats.Families[
-				static_cast<size_t>(eFamily)].iConfigured;
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-			EFFECT_GPU_RENDER_OCCURRENCE_STATS Occurrence;
-			Occurrence.strElementId = Element.strElementId;
-			Occurrence.eFamily = eFamily;
-			Occurrence.iConfigured = 1u;
-			if (const ELEMENT_RESOURCE* pResource =
-				Find_Resource(Element.strElementId))
+			if (bBeginSubmission)
 			{
-				Occurrence.iSourceMaterialProfile =
-					pResource->iSourceMaterialProfile;
-				Occurrence.iSourceTextureMask = pResource->iSourceTextureMask;
-				Occurrence.bSourceMaterialFallbackBlocked =
-					pResource->bSourceMaterialFallbackBlocked;
+				++m_LastRenderSubmissionStats.Families[
+					static_cast<size_t>(eFamily)].iConfigured;
 			}
-			m_LastRenderSubmissionStats.Occurrences.emplace_back(
-				std::move(Occurrence));
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+			if (bBeginSubmission)
+			{
+				EFFECT_GPU_RENDER_OCCURRENCE_STATS Occurrence;
+				Occurrence.strElementId = Element.strElementId;
+				Occurrence.eFamily = eFamily;
+				Occurrence.eCompositionLayer = Element.eCompositionLayer;
+				Occurrence.iConfigured = 1u;
+				if (const ELEMENT_RESOURCE* pResource =
+					Find_Resource(Element.strElementId))
+				{
+					Occurrence.iSourceMaterialProfile =
+						pResource->iSourceMaterialProfile;
+					Occurrence.iSourceTextureMask =
+						pResource->iSourceTextureMask;
+					Occurrence.bSourceMaterialFallbackBlocked =
+						pResource->bSourceMaterialFallbackBlocked;
+				}
+				m_LastRenderSubmissionStats.Occurrences.emplace_back(
+					std::move(Occurrence));
+			}
 #endif
 		}
 	}
@@ -19390,6 +19819,7 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 		const HRESULT hResult = E_FAIL,
 		const bool_t bObjectLocal = false) -> HRESULT
 	{
+		m_bWorldMarkSubmissionPending = false;
 		m_LastRenderSubmissionStats.bCompleted = true;
 		m_LastRenderSubmissionStats.bCommitted = false;
 		m_bLastRenderFailureObjectLocal =
@@ -19431,7 +19861,9 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 	{
 		return FailFrame(std::move(GateStatus), E_FAIL, true);
 	}
-	const HRESULT hModelCueResult = Render_ModelCues(Frame, false);
+	const HRESULT hModelCueResult =
+		ePhase == EFFECT_COMPOSITION_LAYER::NORMAL ?
+			Render_ModelCues(Frame, false) : S_FALSE;
 	if (FAILED(hModelCueResult))
 	{
 		return FailFrame(
@@ -19461,15 +19893,20 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 		const EFFECT_GPU_RENDER_FAMILY eFamily = DocumentElement.bVisible ?
 			Resolve_GpuRenderFamily(DocumentElement) :
 			EFFECT_GPU_RENDER_FAMILY::END;
+		const bool_t bHasGpuFamily =
+			EFFECT_GPU_RENDER_FAMILY::END != eFamily;
+		const bool_t bOwnsPhase =
+			DocumentElement.eCompositionLayer == ePhase;
 		EFFECT_GPU_RENDER_FAMILY_STATS* pFamilyStats =
-			EFFECT_GPU_RENDER_FAMILY::END == eFamily ? nullptr :
+			!bHasGpuFamily || !bOwnsPhase ? nullptr :
 				&m_LastRenderSubmissionStats.Families[
 					static_cast<size_t>(eFamily)];
 		const bool_t bSubmitPreviewOccurrence =
+			bOwnsPhase &&
 			Should_SubmitPreviewOccurrence(DocumentElement, eFamily);
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 		EFFECT_GPU_RENDER_OCCURRENCE_STATS* pOccurrenceStats = nullptr;
-		if (nullptr != pFamilyStats)
+		if (bHasGpuFamily)
 		{
 			if (iOccurrenceStats >=
 				m_LastRenderSubmissionStats.Occurrences.size())
@@ -19478,21 +19915,23 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 					"Effect GPU occurrence probe denominator overflow.",
 					E_FAIL, true);
 			}
-			pOccurrenceStats =
+			EFFECT_GPU_RENDER_OCCURRENCE_STATS* pDocumentOccurrenceStats =
 				&m_LastRenderSubmissionStats.Occurrences[iOccurrenceStats++];
-			if (pOccurrenceStats->strElementId != strElementId ||
-				pOccurrenceStats->eFamily != eFamily)
+			if (pDocumentOccurrenceStats->strElementId != strElementId ||
+				pDocumentOccurrenceStats->eFamily != eFamily)
 			{
 				return FailFrame(
 					"Effect GPU occurrence probe order diverged.", E_FAIL, true);
 			}
+			if (bOwnsPhase)
+				pOccurrenceStats = pDocumentOccurrenceStats;
 		}
 		m_pActiveOccurrenceStats = pOccurrenceStats;
 		ACTIVE_OCCURRENCE_SCOPE ActiveOccurrenceScope(
 			m_pActiveOccurrenceStats);
 #endif
 		const EFFECT_EVALUATED_GPU_OCCURRENCE* pGpuOccurrence = nullptr;
-		if (nullptr != pFamilyStats)
+		if (bHasGpuFamily)
 		{
 			if (iGpuOccurrence >= Frame.GpuOccurrences.size())
 			{
@@ -19502,7 +19941,7 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 			}
 			pGpuOccurrence = &Frame.GpuOccurrences[iGpuOccurrence++];
 		}
-		if ((nullptr != pFamilyStats) != (nullptr != pGpuOccurrence) ||
+		if (bHasGpuFamily != (nullptr != pGpuOccurrence) ||
 			(nullptr != pGpuOccurrence &&
 			 (nullptr == pGpuOccurrence->pElement ||
 			  pGpuOccurrence->pElement->strElementId != strElementId ||
@@ -19670,7 +20109,7 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 			bOccurrenceSuppressed = true;
 		if (!bSubmitPreviewOccurrence && bOccurrenceActive)
 			bOccurrenceSuppressed = true;
-		if (bOccurrenceActive)
+		if (bOccurrenceActive && bOwnsPhase)
 		{
 			if (nullptr == pFamilyStats)
 			{
@@ -19758,6 +20197,8 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 			"Effect GPU occurrence probe denominator underflow.", E_FAIL, true);
 	}
 #endif
+	if (!bFinalizeSubmission)
+		return S_OK;
 	uint64_t iActive = 0u;
 	uint64_t iSubmitted = 0u;
 	uint64_t iSuppressed = 0u;

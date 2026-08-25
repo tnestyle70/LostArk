@@ -762,8 +762,9 @@ inline bool_t Has_EffectFlowRibbon01TrailContract(
 		"particlespriteemitter_17";
 	constexpr std::string_view PROJECT_TUNED_MAIN_TEXTURE =
 		"Effect/Artist/Textures/fx_m_trail_010.dds";
-	if (Element.strElementId != ARTIST_E_WHITE_TRAIL_ELEMENT_ID ||
-		Element.strSourceNode != ARTIST_E_WHITE_TRAIL_SOURCE_NODE ||
+	if (!Is_EffectSourceIdentityOrPortableCopy(Element,
+			ARTIST_E_WHITE_TRAIL_ELEMENT_ID,
+			ARTIST_E_WHITE_TRAIL_SOURCE_NODE) ||
 		!BindingMatches("base", PROJECT_TUNED_MAIN_TEXTURE) ||
 		!NamedTextureMatches("tex_main", PROJECT_TUNED_MAIN_TEXTURE) ||
 		Element.AuthoringOverrides.ResourceBindings.size() != 2u)

@@ -5,7 +5,9 @@
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Presentation_Manager.h"
+#include "Profiler.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -68,6 +70,7 @@ namespace
 			static_cast<unsigned int>(hResult));
 		return Buffer;
 	}
+
 }
 
 Client::CEffectObject::CEffectObject(
@@ -768,6 +771,8 @@ void Client::CEffectObject::Reset()
 
 void Client::CEffectObject::Update(const f32_t fTimeDelta)
 {
+	CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Occurrence.Update");
 	if (m_bRenderFailureIsolated)
 		return;
 	if (m_bReconstructedDiagnosticActive)
@@ -791,8 +796,14 @@ void Client::CEffectObject::Update(const f32_t fTimeDelta)
 
 void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 {
+	CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Occurrence.LateUpdate");
 	UNREFERENCED_PARAMETER(fTimeDelta);
 	m_bNonBlendModelCuePassPending = false;
+	m_bWorldMarkPassPending = false;
+	++m_iRenderSubmissionSerial;
+	if (0u == m_iRenderSubmissionSerial)
+		++m_iRenderSubmissionSerial;
 	if (m_bRenderFailureIsolated)
 		return;
 	if (m_bReconstructedDiagnosticActive)
@@ -833,6 +844,16 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 		m_bNonBlendModelCuePassPending = true;
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::NONBLEND,
+			static_pointer_cast<CGameObject>(Self));
+	}
+	if (m_pRenderer->Has_WorldMarkElements())
+	{
+		/* NONLIGHT is globally consumed after opaque lighting and before BLEND.
+		   Queue the same object once more so every ground mark is composed before
+		   any ordinary translucent Effect object. */
+		m_bWorldMarkPassPending = true;
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::NONLIGHT,
 			static_pointer_cast<CGameObject>(Self));
 	}
 	CGameInstance::Get().Add_RenderObject(
@@ -1056,14 +1077,41 @@ HRESULT Client::CEffectObject::Render_NonBlendModelCues()
 	return Complete_RenderResult(Result, m_strStatus);
 }
 
+HRESULT Client::CEffectObject::Render_WorldMarks()
+{
+	if (m_bRenderFailureIsolated)
+		return S_FALSE;
+	if (m_bReconstructedDiagnosticActive || !m_bVisible)
+		return S_FALSE;
+	std::string GateStatus;
+	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_ReconstructedRuntimeBoundary.Admit_Render(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		return Complete_LocalEffectFailure(
+			E_FAIL, m_strStatus, "render", false);
+	}
+	const HRESULT Result = m_pRenderer->Render_WorldMarks(
+		m_Playback.Get_Frame(), m_iRenderSubmissionSerial);
+	m_strStatus = m_pRenderer->Get_Status();
+	return Complete_RenderResult(Result, m_strStatus);
+}
+
 HRESULT Client::CEffectObject::Render()
 {
+	CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Occurrence.Render");
 	/* NONBLEND is consumed before BLEND, so the first queued call owns only the
 	   character-surface ModelCue and clears the lane for the normal Effect draw. */
 	if (m_bNonBlendModelCuePassPending)
 	{
 		m_bNonBlendModelCuePassPending = false;
 		return Render_NonBlendModelCues();
+	}
+	if (m_bWorldMarkPassPending)
+	{
+		m_bWorldMarkPassPending = false;
+		return Render_WorldMarks();
 	}
 	if (m_bRenderFailureIsolated)
 		return S_FALSE;
@@ -1086,7 +1134,8 @@ HRESULT Client::CEffectObject::Render()
 	}
 	if (!m_bVisible)
 		return S_FALSE;
-	const HRESULT Result = m_pRenderer->Render(m_Playback.Get_Frame());
+	const HRESULT Result = m_pRenderer->Render(
+		m_Playback.Get_Frame(), m_iRenderSubmissionSerial);
 	m_strStatus = m_pRenderer->Get_Status();
 	return Complete_RenderResult(Result, m_strStatus);
 }
