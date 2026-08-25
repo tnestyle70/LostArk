@@ -14,6 +14,7 @@ public:
 public:
 	HRESULT Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor);
 	HRESULT Add_MRT(const wstring_t& strMRTTag, const wstring_t& strTargetTag);
+	HRESULT Add_MRT_NullSlot(const wstring_t& strMRTTag);
 	HRESULT Begin_MRT(const wstring_t& strMRTTag, ComPtr<ID3D11DepthStencilView> pDSV = nullptr);
 	HRESULT End_MRT();
 	HRESULT Begin_DepthOnly(ComPtr<ID3D11DepthStencilView> pDSV);

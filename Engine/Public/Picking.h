@@ -17,7 +17,6 @@ public:
 
 public:
 	HRESULT Initialize(HWND hWnd);
-	void Update();
 	bool_t Picking(float4_t& vOut);
 
 private:
@@ -27,8 +26,6 @@ private:
 	ComPtr<ID3D11Texture2D>				m_pTexture2D = { nullptr };
 	HWND								m_hWnd = {};
 	float2_t							m_vViewportSize = {};
-
-	shared_ptr<float4_t[]>				m_pWorldPositions = { };
 
 public:
 	static unique_ptr<CPicking> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, HWND hWnd);

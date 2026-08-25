@@ -14,6 +14,8 @@ $valtanHarnessExe = Join-Path $repoRoot `
     "Tools\ValtanFourPlayerHarness\Bin\$Configuration\ValtanFourPlayerHarness.exe"
 $characterSelectIsolationHarnessExe = Join-Path $repoRoot `
     "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
+$actionPresentationTimelineHarnessExe = Join-Path $repoRoot `
+    "Tools\ActionPresentationTimelineHarness\Bin\$Configuration\ActionPresentationTimelineHarness.exe"
 $runtimeResourceRoot = if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
     Join-Path $repoRoot 'Client\Bin\Resources'
 }
@@ -54,6 +56,7 @@ function Assert-RuntimeLayout {
         $serverExe,
         $valtanHarnessExe,
         $characterSelectIsolationHarnessExe,
+        $actionPresentationTimelineHarnessExe,
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_Deferred.hlsl'),
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_VtxTex.hlsl'),
         (Join-Path $runtimeResourceRoot 'Fonts')
@@ -108,6 +111,8 @@ try {
             'Tools\ValtanFourPlayerHarness\Default\ValtanFourPlayerHarness.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\ActionPresentationTimelineHarness\Default\ActionPresentationTimelineHarness.vcxproj'
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
         Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
     }
@@ -188,6 +193,11 @@ try {
     & $protocolHarness
     if ($LASTEXITCODE -ne 0) {
         throw 'NetworkProtocolHarness failed.'
+    }
+
+    & $actionPresentationTimelineHarnessExe
+    if ($LASTEXITCODE -ne 0) {
+        throw 'ActionPresentationTimelineHarness failed.'
     }
 
     & $serverExe --contract-test

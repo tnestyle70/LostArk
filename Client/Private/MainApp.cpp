@@ -22,6 +22,7 @@
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
 #include "PartyWindowView.h"
+#include "PlayableCharacterAssetService.h"
 #include "PlayerSkillCatalog.h"
 #include "Profiler.h"
 #include "Presentation_Manager.h"
@@ -4771,6 +4772,7 @@ unique_ptr<CMainApp> CMainApp::Create()
 
 void CMainApp::Free()
 {
+	CPlayableCharacterAssetService::Shutdown();
 	CEffectPresentationService::Release_PreparedResources();
 	CEffectCatalog::Clear();
 	CNetworkManager::Get().Shutdown();

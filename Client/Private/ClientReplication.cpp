@@ -15,12 +15,14 @@
 #include "NpcPlacementPresentationService.h"
 #include "NpcPresentationAssetService.h"
 #include "PlayableCharacterAssetService.h"
+#include "Profiler.h"
 #include "Transform.h"
 #include "Valtan.h"
 #include "ValtanPresentationAssetService.h"
 #include "DeployPropRuntime.h"
 
 #include <algorithm>
+#include <array>
 
 namespace
 {
@@ -132,6 +134,10 @@ bool Client::CClientReplication::Update()
 	//珥덇린???щ? 寃??-> ?꾩옱 network ?곌껐 ?곹깭 ?뺤씤
 	CNetworkManager& networkManager =
 		CNetworkManager::Get();
+	Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+	Engine::CProfilerScope profile(pProfiler, "Network.Replication.Update");
+	uint64_t iNetworkEventsApplied = 0u;
+	uint64_t iNetworkSnapshotsApplied = 0u;
 
 	const bool isConnected =
 		networkManager.Is_Connected();
@@ -148,19 +154,19 @@ bool Client::CClientReplication::Update()
 		CLIENT_REPLICATION_EVENT ignored{};
 		while (networkManager.Try_Consume_ReplicationEvent(ignored))
 		{
-
 		}
 		m_wasConnected = false;
 		return true;
 	}
 
 	m_wasConnected = true;
-	bool allSucceeded = true;
+	bool allSucceeded = Advance_PendingPlayerSpawns();
 
 	CLIENT_REPLICATION_EVENT event{};
 
 	while (networkManager.Try_Consume_ReplicationEvent(event))
 	{
+		++iNetworkEventsApplied;
 		switch (event.eType)
 		{
 		case CLIENT_REPLICATION_EVENT_TYPE::PLAYER_SPAWNED:
@@ -197,6 +203,7 @@ bool Client::CClientReplication::Update()
 			break;
 
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT:
+			++iNetworkSnapshotsApplied;
 			allSucceeded = Apply_WorldSnapshot(event.WorldSnapshot) &&
 				allSucceeded;
 			break;
@@ -221,6 +228,15 @@ bool Client::CClientReplication::Update()
 				event.InventorySnapshot) && allSucceeded;
 			break;
 		}
+	}
+	if (nullptr != pProfiler)
+	{
+		pProfiler->Add_Counter(
+			Engine::EProfilerCounter::NetworkEventsApplied,
+			iNetworkEventsApplied);
+		pProfiler->Add_Counter(
+			Engine::EProfilerCounter::NetworkSnapshotsApplied,
+			iNetworkSnapshotsApplied);
 	}
 
 	return allSucceeded;
@@ -565,11 +581,8 @@ bool Client::CClientReplication::Create_Character(
 	std::shared_ptr<CCharacter>& outCharacter)
 {
 	outCharacter.reset();
-	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
-		m_Desc.pDevice,
-		m_Desc.pContext,
-		m_Desc.iPrototypeLevelIndex,
-		characterClass)))
+	if (!CPlayableCharacterAssetService::Is_Ready(
+		m_Desc.iPrototypeLevelIndex, characterClass))
 	{
 		return false;
 	}
@@ -645,6 +658,39 @@ bool Client::CClientReplication::Apply_Spawn(
 		//媛숈? event ?ъ쟾?≪? no-op, ?ㅻⅨ ?댁슜??媛숈? id?? protocol conflict?대떎.
 		return Is_Same_Record(*existing, stagedRecord);
 	}
+	if (!CPlayableCharacterAssetService::Is_Ready(
+		m_Desc.iPrototypeLevelIndex, spawned.eCharacterClass))
+	{
+		const auto pending = m_PendingPlayerSpawns.find(spawned.iNetEntityId);
+		if (pending != m_PendingPlayerSpawns.end())
+		{
+			return Is_Same_Record(
+				Make_Record(pending->second.Spawned), stagedRecord);
+		}
+		if (m_PendingPlayerSpawns.size() >=
+			LostArk::Shared::MAX_WORLD_SNAPSHOT_PLAYERS)
+		{
+			return false;
+		}
+
+		PENDING_PLAYER_SPAWN pendingSpawn;
+		pendingSpawn.Spawned = spawned;
+		m_PendingPlayerSpawns.emplace(
+			spawned.iNetEntityId, std::move(pendingSpawn));
+		const HRESULT queueResult =
+			CPlayableCharacterAssetService::Queue_PrototypePreparation(
+				m_Desc.pDevice,
+				m_Desc.pContext,
+				m_Desc.iPrototypeLevelIndex,
+				spawned.eCharacterClass);
+		if (FAILED(queueResult) &&
+			HRESULT_FROM_WIN32(ERROR_BUSY) != queueResult)
+		{
+			m_PendingPlayerSpawns.erase(spawned.iNetEntityId);
+			return false;
+		}
+		return true;
+	}
 
 	const bool_t isLocallyControlled =
 		spawned.iPlayerId ==
@@ -684,9 +730,116 @@ bool Client::CClientReplication::Apply_Spawn(
 	return true;
 }
 
+bool Client::CClientReplication::Advance_PendingPlayerSpawns()
+{
+	if (m_PendingPlayerSpawns.empty())
+		return true;
+
+	bool_t allSucceeded = true;
+	std::array<bool_t, static_cast<size_t>(
+		LostArk::Shared::CHARACTER_CLASS_ID::END)> pumpedClasses{};
+	for (const auto& [entityId, pending] : m_PendingPlayerSpawns)
+	{
+		(void)entityId;
+		const size_t classIndex = static_cast<size_t>(
+			pending.Spawned.eCharacterClass);
+		if (classIndex >= pumpedClasses.size() || pumpedClasses[classIndex])
+			continue;
+		pumpedClasses[classIndex] = true;
+
+		if (!CPlayableCharacterAssetService::Is_Ready(
+			m_Desc.iPrototypeLevelIndex, pending.Spawned.eCharacterClass))
+		{
+			const HRESULT queueResult =
+				CPlayableCharacterAssetService::Queue_PrototypePreparation(
+					m_Desc.pDevice,
+					m_Desc.pContext,
+					m_Desc.iPrototypeLevelIndex,
+					pending.Spawned.eCharacterClass);
+			if (FAILED(queueResult) &&
+				HRESULT_FROM_WIN32(ERROR_BUSY) != queueResult)
+			{
+				allSucceeded = false;
+				continue;
+			}
+			const HRESULT commitResult =
+				CPlayableCharacterAssetService::Commit_PrototypePreparation(
+					m_Desc.iPrototypeLevelIndex,
+					pending.Spawned.eCharacterClass);
+			if (FAILED(commitResult) &&
+				HRESULT_FROM_WIN32(ERROR_IO_PENDING) != commitResult &&
+				HRESULT_FROM_WIN32(ERROR_NOT_FOUND) != commitResult)
+			{
+				allSucceeded = false;
+			}
+		}
+	}
+
+	std::array<
+		LostArk::Shared::NET_ENTITY_ID,
+		LostArk::Shared::MAX_WORLD_SNAPSHOT_PLAYERS> readyEntityIds{};
+	size_t readyEntityCount = 0u;
+	for (const auto& [entityId, pending] : m_PendingPlayerSpawns)
+	{
+		if (!CPlayableCharacterAssetService::Is_Ready(
+			m_Desc.iPrototypeLevelIndex,
+			pending.Spawned.eCharacterClass))
+		{
+			continue;
+		}
+		if (readyEntityCount >= readyEntityIds.size())
+		{
+			allSucceeded = false;
+			break;
+		}
+		readyEntityIds[readyEntityCount++] = entityId;
+	}
+
+	for (size_t readyIndex = 0u;
+		readyIndex < readyEntityCount;
+		++readyIndex)
+	{
+		const LostArk::Shared::NET_ENTITY_ID entityId =
+			readyEntityIds[readyIndex];
+		const auto pending = m_PendingPlayerSpawns.find(entityId);
+		if (pending == m_PendingPlayerSpawns.end())
+			continue;
+		PENDING_PLAYER_SPAWN stagedPending = std::move(pending->second);
+		m_PendingPlayerSpawns.erase(pending);
+		LostArk::Shared::S2C_PLAYER_SPAWNED spawned =
+			stagedPending.Spawned;
+		if (stagedPending.hasSnapshot)
+		{
+			const LostArk::Shared::PLAYER_SNAPSHOT& latest =
+				stagedPending.Snapshot;
+			spawned.fPositionX = latest.fPositionX;
+			spawned.fPositionY = latest.fPositionY;
+			spawned.fPositionZ = latest.fPositionZ;
+			spawned.fYawDegrees = latest.fYawDegrees;
+		}
+		if (!Apply_Spawn(spawned))
+		{
+			m_PendingPlayerSpawns.emplace(
+				entityId, std::move(stagedPending));
+			allSucceeded = false;
+			continue;
+		}
+		if (stagedPending.hasSnapshot &&
+			!Apply_PlayerSnapshotState(
+				stagedPending.Snapshot,
+				stagedPending.iServerTick))
+		{
+			allSucceeded = false;
+		}
+	}
+
+	return allSucceeded;
+}
+
 bool Client::CClientReplication::Apply_Despawn(
 	const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned)
 {
+	m_PendingPlayerSpawns.erase(despawned.iNetEntityId);
 	OBJECT_HANDLE handle{};
 
 	if (!m_Registry.Find_Handle(
@@ -1201,6 +1354,31 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
 	{
+		const auto pendingSpawn =
+			m_PendingPlayerSpawns.find(player.iNetEntityId);
+		if (pendingSpawn != m_PendingPlayerSpawns.end())
+		{
+			PENDING_PLAYER_SPAWN& pending = pendingSpawn->second;
+			pending.hasSnapshot = true;
+			pending.iServerTick = snapshot.iServerTick;
+			pending.Snapshot = player;
+			if (pending.Spawned.eCharacterClass != player.eCharacterClass)
+			{
+				pending.Spawned.eCharacterClass = player.eCharacterClass;
+				const HRESULT queueResult =
+					CPlayableCharacterAssetService::Queue_PrototypePreparation(
+						m_Desc.pDevice,
+						m_Desc.pContext,
+						m_Desc.iPrototypeLevelIndex,
+						player.eCharacterClass);
+				if (FAILED(queueResult) &&
+					HRESULT_FROM_WIN32(ERROR_BUSY) != queueResult)
+				{
+					allSucceeded = false;
+				}
+			}
+			continue;
+		}
 		const NET_PLAYER_RECORD* record =
 			m_Registry.Find_Record(player.iNetEntityId);
 		const bool_t isLocallyControlled = player.iNetEntityId ==
@@ -1232,71 +1410,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			   class before presentation commit.  Drop the superseded generation. */
 			Clear_DeferredLocalCharacterClassReplacement();
 		}
-		OBJECT_HANDLE handle{};
-
-		if (!m_Registry.Find_Handle(
-			player.iNetEntityId,
-			handle))
-		{
+		if (!Apply_PlayerSnapshotState(player, snapshot.iServerTick))
 			allSucceeded = false;
-			continue;
-		}
-
-		const std::shared_ptr<CCharacter> character =
-			m_Registry.Resolve(handle);
-
-		if (nullptr == character)
-		{
-			allSucceeded = false;
-			continue;
-		}
-
-		const float3_t position(
-			player.fPositionX,
-			player.fPositionY,
-			player.fPositionZ);
-
-		const bool_t isMoving =
-			player.eLocomotionState ==
-			PLAYER_LOCOMOTION_STATE::MOVING;
-
-		if (!character->Apply_NetworkState(
-			position,
-			player.fYawDegrees,
-			isMoving,
-			snapshot.iServerTick) ||
-			!character->Apply_NetworkAction(
-				player.eAction,
-				player.iSkillId,
-				snapshot.iServerTick,
-				player.iActionStartTick,
-				player.fYawDegrees,
-				player.iComboStage,
-				player.hasSkillTarget,
-				float3_t(
-					player.fSkillTargetX,
-					player.fSkillTargetY,
-					player.fSkillTargetZ)))
-		{
-			allSucceeded = false;
-		}
-		character->Apply_NetworkStance(player.eStance);
-		if (isLocallyControlled)
-		{
-			const NET_PLAYER_RECORD* localRecord =
-				m_Registry.Find_Record(player.iNetEntityId);
-			if (nullptr == localRecord)
-			{
-				allSucceeded = false;
-			}
-			else
-			{
-				CCombatHUDViewModel::Get().Apply_LocalPlayer(
-					snapshot.iServerTick,
-					localRecord->eCharacterClass,
-					player);
-			}
-		}
 	}
 	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
 	{
@@ -1536,6 +1651,62 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	return allSucceeded;
 }
 
+bool Client::CClientReplication::Apply_PlayerSnapshotState(
+	const LostArk::Shared::PLAYER_SNAPSHOT& snapshot,
+	const std::uint32_t iServerTick)
+{
+	using namespace LostArk::Shared;
+	OBJECT_HANDLE handle{};
+	if (!m_Registry.Find_Handle(snapshot.iNetEntityId, handle))
+		return false;
+
+	const std::shared_ptr<CCharacter> character = m_Registry.Resolve(handle);
+	if (nullptr == character)
+		return false;
+
+	const float3_t position(
+		snapshot.fPositionX,
+		snapshot.fPositionY,
+		snapshot.fPositionZ);
+	const bool_t isMoving = snapshot.eLocomotionState ==
+		PLAYER_LOCOMOTION_STATE::MOVING;
+	bool_t succeeded = character->Apply_NetworkState(
+		position,
+		snapshot.fYawDegrees,
+		isMoving,
+		iServerTick) &&
+		character->Apply_NetworkAction(
+			snapshot.eAction,
+			snapshot.iSkillId,
+			iServerTick,
+			snapshot.iActionStartTick,
+			snapshot.fYawDegrees,
+			snapshot.iComboStage,
+			snapshot.hasSkillTarget,
+			float3_t(
+				snapshot.fSkillTargetX,
+				snapshot.fSkillTargetY,
+				snapshot.fSkillTargetZ));
+	character->Apply_NetworkStance(snapshot.eStance);
+
+	if (snapshot.iNetEntityId ==
+		CNetworkManager::Get().Get_LocalEntityId())
+	{
+		const NET_PLAYER_RECORD* localRecord =
+			m_Registry.Find_Record(snapshot.iNetEntityId);
+		if (nullptr == localRecord)
+			succeeded = false;
+		else
+		{
+			CCombatHUDViewModel::Get().Apply_LocalPlayer(
+				iServerTick,
+				localRecord->eCharacterClass,
+				snapshot);
+		}
+	}
+	return succeeded;
+}
+
 Client::CClientReplication::CHARACTER_REPLACE_RESULT
 Client::CClientReplication::Replace_CharacterClass(
 	const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
@@ -1555,6 +1726,19 @@ Client::CClientReplication::Replace_CharacterClass(
 
 	const bool_t isLocallyControlled = snapshot.iNetEntityId ==
 		CNetworkManager::Get().Get_LocalEntityId();
+	/* Character Select owns a separate transactional class-change barrier.
+	   Keep that existing synchronous admission contract here; only first remote
+	   roster spawns use the bounded background preparation queue. */
+	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+		m_Desc.pDevice,
+		m_Desc.pContext,
+		m_Desc.iPrototypeLevelIndex,
+		snapshot.eCharacterClass)))
+	{
+		m_strPendingPresentationFailure =
+			"Class change asset admission failed; the previous character remains active.";
+		return CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE;
+	}
 	std::shared_ptr<CCharacter> stagedCharacter;
 	if (!Create_Character(
 		snapshot.eCharacterClass,
@@ -1636,6 +1820,11 @@ void Client::CClientReplication::Clear_DeferredLocalCharacterClassReplacement()
 
 void Client::CClientReplication::Reset_World()
 {
+	if (m_isInitialized)
+	{
+		CPlayableCharacterAssetService::Cancel_LevelPreparations(
+			m_Desc.iPrototypeLevelIndex);
+	}
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
 	//registry? local handle??珥덇린?뷀븳??
 	//?뚭눼?먯뿉???몄텧?섏? ?딅뒗 ?댁쑀??留욌떎. ?꾩옱 engine? ?덈꺼 ?꾪솚 ??layer瑜?
@@ -1677,6 +1866,7 @@ void Client::CClientReplication::Reset_World()
 	}
 	m_WorldEntities.clear();
 	m_Registry.Reset();
+	m_PendingPlayerSpawns.clear();
 	m_LocalCharacterHandle = {};
 	Clear_DeferredLocalCharacterClassReplacement();
 	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;

@@ -1,8 +1,10 @@
 #include "MapLightPresentationRuntime.h"
 
 #include "Effect_LightPresentation.h"
+#include "GameInstance.h"
 #include "MapAssetCatalog.h"
 #include "Presentation_Manager.h"
+#include "Profiler.h"
 
 bool_t Client::CMapLightPresentationRuntime::Load(
 	const std::filesystem::path& path,
@@ -69,11 +71,31 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 	CPresentation_Manager& presentation = CPresentation_Manager::Get();
 	const uint64_t lightCount = static_cast<uint64_t>(
 		m_Document.Get_Lights().size());
-	presentation.Register_ProviderSubmissionExpectation(
-		lightCount, lightCount, 0u, 0u);
-
+	uint64_t visibleLightCount = 0u;
 	for (const MAP_POINT_LIGHT_RECORD& record : m_Document.Get_Lights())
 	{
+		const vector_t worldPosition = XMVectorSet(
+			record.position.x, record.position.y, record.position.z, 1.f);
+		if (CGameInstance::Get().isIn_Frustum_InWorldSpace(
+			worldPosition, record.radiusMeters))
+		{
+			++visibleLightCount;
+		}
+	}
+	presentation.Register_ProviderSubmissionExpectation(
+		lightCount, visibleLightCount, 0u, 0u);
+
+	uint64_t submittedLightCount = 0u;
+	for (const MAP_POINT_LIGHT_RECORD& record : m_Document.Get_Lights())
+	{
+		const vector_t worldPosition = XMVectorSet(
+			record.position.x, record.position.y, record.position.z, 1.f);
+		if (!CGameInstance::Get().isIn_Frustum_InWorldSpace(
+			worldPosition, record.radiusMeters))
+		{
+			continue;
+		}
+
 		EFFECT_EVALUATED_LIGHT evaluated{};
 		evaluated.vWorldPosition = record.position;
 		evaluated.fRange = record.radiusMeters;
@@ -94,9 +116,20 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 			m_Status = "Map point light submission failed: " + record.lightId;
 			return E_FAIL;
 		}
+		if (S_OK == result)
+			++submittedLightCount;
+	}
+	if (CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
+	{
+		pProfiler->Add_Counter(
+			EProfilerCounter::MapLightsSubmitted, submittedLightCount);
+		pProfiler->Add_Counter(
+			EProfilerCounter::MapLightsCulled,
+			lightCount - visibleLightCount);
 	}
 	m_Status = "Map light presentation submitted: " +
-		std::to_string(m_Document.Get_Lights().size()) + " point lights";
+		std::to_string(visibleLightCount) + "/" +
+		std::to_string(lightCount) + " visible point lights";
 	return S_OK;
 }
 

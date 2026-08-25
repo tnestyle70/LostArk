@@ -144,11 +144,6 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
-	/* For.Target_PickPos */
-	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_PickPos"), vViewportSize.x, vViewportSize.y,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
-		return E_FAIL;
-
 	/* For.Target_Emissive */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Emissive"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
@@ -206,7 +201,9 @@ HRESULT CRenderer::Initialize()
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_GameObject"), TEXT("Target_Depth"))))
 		return E_FAIL;
-	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_GameObject"), TEXT("Target_PickPos"))))
+	/* Preserve SV_Target4 for emissive without allocating or writing PickPos.
+	   Debug picking reconstructs one requested pixel from Target_Depth. */
+	if (FAILED(CGameInstance::Get().Add_MRT_NullSlot(TEXT("MRT_GameObject"))))
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_GameObject"), TEXT("Target_Emissive"))))
 		return E_FAIL;

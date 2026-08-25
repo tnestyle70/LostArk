@@ -181,6 +181,7 @@ namespace Client
 			std::shared_ptr<CCharacter>& outCharacter);
 		bool Apply_Spawn(
 			const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned);
+		bool Advance_PendingPlayerSpawns();
 
 		bool Apply_Despawn(
 			const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned);
@@ -195,6 +196,9 @@ namespace Client
 		//snapshot??netentityid瑜??ㅼ젣 client character濡??댁꽍?섎뒗 ?⑥닔
 		bool Apply_WorldSnapshot(
 			const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot);
+		bool Apply_PlayerSnapshotState(
+			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot,
+			std::uint32_t iServerTick);
 		bool Apply_WorldDestructionFullSync(
 			const LostArk::Shared::S2C_WORLD_DESTRUCTION_FULL_SYNC& fullSync);
 		bool Apply_WorldDestructionDelta(
@@ -273,6 +277,16 @@ namespace Client
 		} m_DeferredLocalCharacterClassReplacement;
 		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
+		struct PENDING_PLAYER_SPAWN final
+		{
+			LostArk::Shared::S2C_PLAYER_SPAWNED Spawned{};
+			bool_t hasSnapshot = false;
+			std::uint32_t iServerTick = 0u;
+			LostArk::Shared::PLAYER_SNAPSHOT Snapshot{};
+		};
+		std::unordered_map<
+			LostArk::Shared::NET_ENTITY_ID,
+			PENDING_PLAYER_SPAWN> m_PendingPlayerSpawns;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
 		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
 		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;

@@ -10,6 +10,7 @@
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 #include "PlayerSkillCatalog.h"
+#include "Profiler.h"
 #include "RuntimeAssetRoot.h"
 #include "SoundCueCatalog.h"
 #include "Gameplay/WorldCollisionContract.h"
@@ -41,7 +42,10 @@ namespace
 	constexpr f32_t PLAYBACK_SNAP_TICKS = 6.f;
 	constexpr f32_t PLAYBACK_DRIFT_GAIN = 4.f;
 	constexpr f32_t TELEPORT_DISTANCE_SQ = 100.f;
-	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
+	/* A replicated timeline is advanced locally between 30 Hz snapshots. Only a
+	full half-tick of authoritative lead is worth resetting every animation
+	channel cursor and rebuilding the pose. */
+	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.5f / SERVER_TICK_HZ;
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
@@ -182,6 +186,8 @@ bool_t CCharacter::Load_ClipChains()
 		{
 			CLIP_STAGE stagedStage{};
 			stagedStage.clips.reserve(stage.Clips.size());
+			stagedStage.timings.reserve(stage.Clips.size());
+			stagedStage.animationIndices.reserve(stage.Clips.size());
 			for (std::size_t clipIndex = 0; clipIndex < stage.Clips.size(); ++clipIndex)
 			{
 				const ANIMATION_SKILL_CLIP& clip = stage.Clips[clipIndex];
@@ -204,9 +210,19 @@ bool_t CCharacter::Load_ClipChains()
 				{
 					return false;
 				}
+				stagedStage.timings.push_back({ fSourceDurationSeconds,
+					stagedStep.playMs, stagedStep.playRate, stagedStep.loop,
+					static_cast<f32_t>(stagedStep.sourceStartMs) * 0.001f });
+				stagedStage.animationIndices.push_back(iAnimation);
 				stagedStage.clips.push_back(std::move(stagedStep));
 			}
 			chain.stages.push_back(std::move(stagedStage));
+			if (CProfiler* pProfiler =
+				CGameInstance::Get().Get_Profiler())
+			{
+				pProfiler->Add_Counter(
+					EProfilerCounter::AnimationTimelineBuilds);
+			}
 		}
 		stagedChains.push_back(std::move(chain));
 	}
@@ -357,15 +373,14 @@ void CCharacter::Spawn_FallbackEffect(
 
 void CCharacter::Update_EffectCues()
 {
-	if (nullptr == m_pBodyModel || nullptr == m_pChain ||
+	const CLIP_STAGE* pStage = Get_ActiveStage();
+	if (nullptr == m_pBodyModel || nullptr == pStage ||
 		0u == m_iEffectActionStartTick || m_iChainStage < 0 ||
 		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
 		return;
-	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
-	if (!Build_ActiveStageTimeline(Timings))
-		return;
-	const std::vector<CLIP_STEP>& Clips =
-		m_pChain->stages[m_iChainStage].clips;
+	const std::vector<ACTION_PRESENTATION_CLIP_TIMING>& Timings =
+		pStage->timings;
+	const std::vector<CLIP_STEP>& Clips = pStage->clips;
 	const f32_t fCurrentStageWallSeconds = (std::max)(
 		0.f, m_fActionPresentationSeconds);
 	const f32_t fPreviousStageWallSeconds =
@@ -492,18 +507,17 @@ void CCharacter::Update_EffectCues()
 
 void CCharacter::Update_SoundCues()
 {
-	if (nullptr == m_pBodyModel || nullptr == m_pChain ||
+	const CLIP_STAGE* pStage = Get_ActiveStage();
+	if (nullptr == m_pBodyModel || nullptr == pStage ||
 		0u == m_iEffectActionStartTick || m_iChainStage < 0 ||
 		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
 		return;
 	if (nullptr == m_pSpec || nullptr == m_pSpec->pAssetName ||
 		m_EffectCueDocument.Sounds.empty())
 		return;
-	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
-	if (!Build_ActiveStageTimeline(Timings))
-		return;
-	const std::vector<CLIP_STEP>& Clips =
-		m_pChain->stages[m_iChainStage].clips;
+	const std::vector<ACTION_PRESENTATION_CLIP_TIMING>& Timings =
+		pStage->timings;
+	const std::vector<CLIP_STEP>& Clips = pStage->clips;
 	const f32_t fCurrentStageWallSeconds = (std::max)(
 		0.f, m_fActionPresentationSeconds);
 	const f32_t fPreviousStageWallSeconds =
@@ -674,42 +688,20 @@ bool_t CCharacter::Resolve_ClipTiming(
 		fSourceStartSeconds < fOutSourceDurationSeconds;
 }
 
-bool_t CCharacter::Build_ActiveStageTimeline(
-	std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings,
-	std::vector<std::uint32_t>* pOutAnimations) const
+const CCharacter::CLIP_STAGE* CCharacter::Get_ActiveStage() const
 {
-	OutTimings.clear();
-	if (nullptr != pOutAnimations)
-		pOutAnimations->clear();
 	if (nullptr == m_pChain || m_iChainStage < 0 ||
 		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
 	{
-		return false;
+		return nullptr;
 	}
-	const std::vector<CLIP_STEP>& Clips =
-		m_pChain->stages[m_iChainStage].clips;
-	OutTimings.reserve(Clips.size());
-	if (nullptr != pOutAnimations)
-		pOutAnimations->reserve(Clips.size());
-	for (const CLIP_STEP& Step : Clips)
+	const CLIP_STAGE& Stage = m_pChain->stages[m_iChainStage];
+	if (Stage.clips.empty() || Stage.timings.size() != Stage.clips.size() ||
+		Stage.animationIndices.size() != Stage.clips.size())
 	{
-		std::uint32_t iAnimation = UINT32_MAX;
-		f32_t fModelSourceDurationSeconds = 0.f;
-		if (!Resolve_ClipTiming(
-			Step, iAnimation, fModelSourceDurationSeconds))
-		{
-			OutTimings.clear();
-			if (nullptr != pOutAnimations)
-				pOutAnimations->clear();
-			return false;
-		}
-		OutTimings.push_back({ fModelSourceDurationSeconds,
-			Step.playMs, Step.playRate, Step.loop,
-			static_cast<f32_t>(Step.sourceStartMs) * 0.001f });
-		if (nullptr != pOutAnimations)
-			pOutAnimations->push_back(iAnimation);
+		return nullptr;
 	}
-	return !OutTimings.empty();
+	return &Stage;
 }
 
 bool_t CCharacter::Seek_ActiveStageForward(const f32_t fActionAgeSeconds)
@@ -721,15 +713,14 @@ bool_t CCharacter::Seek_ActiveStageForward(const f32_t fActionAgeSeconds)
 	{
 		return false;
 	}
-	const std::vector<CLIP_STEP>& Clips =
-		m_pChain->stages[m_iChainStage].clips;
-	if (Clips.empty())
+	const CLIP_STAGE* pStage = Get_ActiveStage();
+	if (nullptr == pStage)
 		return false;
-
-	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
-	std::vector<std::uint32_t> Animations;
-	if (!Build_ActiveStageTimeline(Timings, &Animations))
-		return false;
+	const std::vector<CLIP_STEP>& Clips = pStage->clips;
+	const std::vector<ACTION_PRESENTATION_CLIP_TIMING>& Timings =
+		pStage->timings;
+	const std::vector<std::uint32_t>& Animations =
+		pStage->animationIndices;
 	ACTION_PRESENTATION_SAMPLE Sample;
 	if (!CActionPresentationTimeline::Resolve_Sample(
 		Timings, fActionAgeSeconds, Sample) ||
@@ -1138,6 +1129,12 @@ bool_t CCharacter::Apply_NetworkAction(
 			{
 				if (!Seek_ActiveStageForward(fActionAgeSeconds))
 					return false;
+				if (CProfiler* pProfiler =
+					CGameInstance::Get().Get_Profiler())
+				{
+					pProfiler->Add_Counter(
+						EProfilerCounter::AnimationCorrectionSeeks);
+				}
 				m_fActionPresentationSeconds = fActionAgeSeconds;
 			}
 			return true;

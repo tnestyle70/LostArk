@@ -155,8 +155,6 @@ HRESULT CMesh::Initialize(void* pArg)
 
 HRESULT CMesh::Bind_Resource(shared_ptr<class CShader> pShader, const char_t* pConstantName, const vector<shared_ptr<class CBone>>& Bones)
 {
-	ZeroMemory(m_BoneMatrices, sizeof(float4x4_t) * 512);
-
 	for (uint32_t i = 0; i < m_iNumBones; i++)
 	{
 		XMStoreFloat4x4(&m_BoneMatrices[i], 
@@ -164,7 +162,20 @@ HRESULT CMesh::Bind_Resource(shared_ptr<class CShader> pShader, const char_t* pC
 			Bones[m_BoneIndices[i]]->Get_CombinedTransformationMatrix());
 	}
 
-	return pShader->Bind_Matrices(pConstantName, m_BoneMatrices, m_iNumBones);	
+	const HRESULT hr = pShader->Bind_Matrices(
+		pConstantName, m_BoneMatrices, m_iNumBones);
+	if (SUCCEEDED(hr))
+	{
+		if (CProfiler* pProfiler =
+			CGameInstance::Get().Get_Profiler())
+		{
+			pProfiler->Add_Counter(
+				EProfilerCounter::AnimationPaletteUploadBytes,
+				static_cast<uint64_t>(m_iNumBones) *
+					sizeof(float4x4_t));
+		}
+	}
+	return hr;
 }
 
 HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,

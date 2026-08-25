@@ -128,9 +128,11 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<I
 	if (nullptr == m_pFont_Manager)
 		return FailInitialization(E_FAIL);
 
+#ifdef _DEBUG
 	m_pPicking = CPicking::Create(pOutDevice, pOutContext, EngineDesc.hWnd);
 	if (nullptr == m_pPicking)
 		return FailInitialization(E_FAIL);
+#endif
 
 	m_pShadow = CShadow::Create();
 	if (nullptr == m_pShadow)
@@ -155,8 +157,6 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<I
 
 void CGameInstance::Update_Engine(f32_t fTimeDelta)
 {
-	m_pPicking->Update();
-
 	m_pInput_Device->Update();
 
 #ifdef _WIN64
@@ -494,6 +494,11 @@ HRESULT CGameInstance::Add_MRT(const wstring_t& strMRTTag, const wstring_t& strT
 	return m_pTarget_Manager->Add_MRT(strMRTTag, strTargetTag);
 }
 
+HRESULT CGameInstance::Add_MRT_NullSlot(const wstring_t& strMRTTag)
+{
+	return m_pTarget_Manager->Add_MRT_NullSlot(strMRTTag);
+}
+
 HRESULT CGameInstance::Begin_MRT(const wstring_t& strMRTTag, ComPtr<ID3D11DepthStencilView> pDSV)
 {
 	return m_pTarget_Manager->Begin_MRT(strMRTTag, pDSV);
@@ -547,7 +552,12 @@ HRESULT CGameInstance::Render_MRT(const wstring_t& strMRTTag, shared_ptr<class C
 
 bool_t CGameInstance::Picking(float4_t& vOut)
 {
-	return m_pPicking->Picking(vOut);	
+#ifdef _DEBUG
+	return nullptr != m_pPicking && m_pPicking->Picking(vOut);
+#else
+	UNREFERENCED_PARAMETER(vOut);
+	return false;
+#endif
 }
 
 HRESULT CGameInstance::Apply_Shadow_Light(

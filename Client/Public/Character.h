@@ -43,6 +43,12 @@ public:
 	struct CLIP_STAGE
 	{
 		std::vector<CLIP_STEP> clips;
+		/* Compiled once with the body model when the binding document stages.
+		Effect, Sound, and authoritative seek all consume this same immutable
+		timeline instead of resolving clip names and allocating vectors each
+		frame. */
+		std::vector<ACTION_PRESENTATION_CLIP_TIMING> timings;
+		std::vector<std::uint32_t> animationIndices;
 	};
 
 	struct CLIP_CHAIN
@@ -285,9 +291,7 @@ private:
 		const CLIP_STEP& Step,
 		std::uint32_t& iOutAnimation,
 		f32_t& fOutSourceDurationSeconds) const;
-	bool_t Build_ActiveStageTimeline(
-		std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings,
-		std::vector<std::uint32_t>* pOutAnimations = nullptr) const;
+	const CLIP_STAGE* Get_ActiveStage() const;
 	void Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
 	/* Jumps the running chain to the server's stage. Fails when no chain runs or
 	the stage is past its end, so the caller keeps the pose it had. */

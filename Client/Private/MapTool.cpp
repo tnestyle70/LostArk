@@ -496,7 +496,6 @@ void Client::CMapTool::Update(f32_t fTimeDelta)
 			m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	}
 	Update_DestructionSimulation(fTimeDelta, isMapAuthoringLevel);
-	Update_WorldInteraction(isMapAuthoringLevel);
 
 	if (m_bOpen && TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode &&
 		m_bDestructionTimelinePlaying)
@@ -671,6 +670,10 @@ void Client::CMapTool::Render()
 	const bool_t isMapAuthoringLevel =
 		ETOUI(LEVEL::DEVELOPMENT) == currentLevelIndex &&
 		CMapEditorWorkspaceService::Is_Active();
+	/* Target_Depth is produced by the world render immediately before this
+	Debug tool pass. Pick here so its depth and the current inverse camera
+	matrices always describe the same frame, including free-camera movement. */
+	Update_WorldInteraction(isMapAuthoringLevel);
 	Render_WorldOverlay(isMapAuthoringLevel);
 
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 900.f), ImGuiCond_FirstUseEver);
@@ -4180,8 +4183,8 @@ bool_t Client::CMapTool::Try_PickPlacementPosition(float3_t& outPosition) const
 	if (!CGameInstance::Get().Picking(picked))
 		return false;
 
-	/* Target_PickPos is written by the first depth-tested rendered triangle at
-	   the cursor. Do not invent a Y=0 fallback when the view ray misses. */
+	/* Debug picking reconstructs the first depth-tested rendered triangle from
+	   Target_Depth. Do not invent a Y=0 fallback when the view ray misses. */
 	outPosition = float3_t(picked.x, picked.y, picked.z);
 	return IsFinite(outPosition);
 }

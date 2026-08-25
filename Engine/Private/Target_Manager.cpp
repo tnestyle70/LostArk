@@ -50,6 +50,25 @@ HRESULT CTarget_Manager::Add_MRT(const wstring_t& strMRTTag, const wstring_t& st
 	return S_OK;
 }
 
+HRESULT CTarget_Manager::Add_MRT_NullSlot(const wstring_t& strMRTTag)
+{
+	auto pMRTList = Find_MRT(strMRTTag);
+	if (nullptr == pMRTList)
+	{
+		list<shared_ptr<CRenderTarget>> MRTList;
+		MRTList.push_back(nullptr);
+		m_MRTs.emplace(strMRTTag, std::move(MRTList));
+	}
+	else
+	{
+		if (pMRTList->size() >= D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)
+			return E_FAIL;
+		pMRTList->push_back(nullptr);
+	}
+
+	return S_OK;
+}
+
 HRESULT CTarget_Manager::Begin_MRT(const wstring_t& strMRTTag, ComPtr<ID3D11DepthStencilView> pDSV)
 {
 
@@ -72,8 +91,12 @@ HRESULT CTarget_Manager::Begin_MRT(const wstring_t& strMRTTag, ComPtr<ID3D11Dept
 
 	for (auto& pRenderTarget : *pMRTList)
 	{
-		pRenderTarget->Clear();
-		RenderTargets[iNumRenderTargets++] = pRenderTarget->Get_RTV().Get();
+		if (nullptr != pRenderTarget)
+		{
+			pRenderTarget->Clear();
+			RenderTargets[iNumRenderTargets] = pRenderTarget->Get_RTV().Get();
+		}
+		++iNumRenderTargets;
 	}
 
 	if (nullptr != pDSV)
@@ -165,7 +188,8 @@ HRESULT CTarget_Manager::Render_MRT(const wstring_t& strMRTTag, shared_ptr<class
 
 	for (auto& pRenderTarget : *pMRTList)
 	{
-		pRenderTarget->Render(pShader, pVIBuffer);
+		if (nullptr != pRenderTarget)
+			pRenderTarget->Render(pShader, pVIBuffer);
 	}
 
 	return S_OK;
