@@ -7,6 +7,7 @@
 #include "NavPathFollower.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternSoundCueDocument.h"
 
 #include <algorithm>
 #include <cmath>
@@ -323,6 +324,15 @@ private:
 	std::unordered_set<std::string> m_AttemptedPatternEffectOccurrenceKeys;
 	bool_t m_bPatternEffectCueScanAgeValid = false;
 	f32_t m_fPatternEffectCueScanAgeSeconds = 0.f;
+	/* Same role as m_PatternEffectCuesByActionId/m_AttemptedPatternEffectOccurrenceKeys
+	   above, mirrored for boss voice/impact Sound cues instead of Effect spawns --
+	   see CValtanPatternSoundCueDocument's own header comment for why this is a
+	   separate, smaller validated map rather than reusing the Effect one. */
+	std::unordered_map<std::string,
+		std::vector<VALTAN_PATTERN_SOUND_CUE>> m_PatternSoundCuesByActionId;
+	std::unordered_set<std::string> m_AttemptedPatternSoundOccurrenceKeys;
+	bool_t m_bPatternSoundCueScanAgeValid = false;
+	f32_t m_fPatternSoundCueScanAgeSeconds = 0.f;
 #ifdef _DEBUG
 	/* Display copy of the encounter stage hit shapes, keyed by the snapshot's
 	   stage actionId. The Server owns the judgment; this only mirrors it as a
@@ -360,6 +370,8 @@ private:
 	void Load_PatternBindings();
 	void Load_PatternEffectCues();
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
+	void Load_PatternSoundCues();
+	void Spawn_DuePatternSoundCues(f32_t fActionAgeSeconds);
 #ifdef _DEBUG
 	void Load_PatternHitAreaDebug();
 	void Draw_PatternHitAreaDebug() const;

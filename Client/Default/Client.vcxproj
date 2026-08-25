@@ -31,6 +31,7 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
+    <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
@@ -180,6 +181,7 @@
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
+    <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
