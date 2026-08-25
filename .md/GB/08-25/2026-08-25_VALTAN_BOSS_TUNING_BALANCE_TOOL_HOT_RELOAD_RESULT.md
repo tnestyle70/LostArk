@@ -30,6 +30,8 @@ Client/Server build는 투영 결과를 수정하지 않고 drift를 fail-closed
 - high-jump volley의 target axe -> `effect.valtan.sky-axe.active` occurrence 검증
 - main PR #220의 first-pulse target tracking, per-target radial spacing, v19 strict admission 보존
 - `mappingBasis`를 합의된 6개 vocabulary로 제한하고 occurrence/cue 오타를 fail-closed 거부
+- source manifest 입력을 LF로 고정하고 manifest 계산 시 CRLF/CR만 LF로 정규화해
+  기존 Windows checkout과 새 LF checkout이 같은 source revision을 사용
 
 ## 2. 범위 분리
 
@@ -48,7 +50,7 @@ Client/Server build는 투영 결과를 수정하지 않고 drift를 fail-closed
 | `test_valtan_balance_tool_contract.py` | PASS 22/22 |
 | `test_effect_tool_valtan_saved_rows.py` | PASS 28/28 |
 | `test_animation_tool_valtan_pattern_master.py` | PASS 7/7 |
-| `test_valtan_pattern_master_v2.py` | PASS 33/33 |
+| `test_valtan_pattern_master_v2.py` | PASS 34/34; LF/CRLF source revision 동일성 포함 |
 | `Publish-GameplayBalance.ps1 -Mode Validate` | PASS |
 | `Project-ValtanPatternMaster.ps1 -Mode PublishV2` 2회 | PASS; 첫 투영 뒤 `changed=0`, idempotent |
 | `Project-ValtanPatternMaster.ps1 -Mode Validate` | PASS |

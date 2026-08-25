@@ -243,6 +243,44 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             )
         self.assert_v1_migration_fixture_is_excluded_from_normal_revision_and_load()
 
+    def test_source_manifest_is_stable_across_platform_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary) / "repository"
+            for row in self.source_manifest["files"]:
+                source = self.root / row["path"]
+                destination = repository_root / row["path"]
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+
+            for row in self.source_manifest["files"]:
+                path = repository_root / row["path"]
+                text = (
+                    pipeline.read_text(path)
+                    .replace("\r\n", "\n")
+                    .replace("\r", "\n")
+                )
+                path.write_bytes(text.encode("utf-8"))
+            lf_manifest = pipeline.source_manifest(repository_root)
+            gameplay_path = repository_root / pipeline.GAMEPLAY_AUTHORING_REL
+            raw_lf = pipeline.sha256_file(gameplay_path)
+
+            for row in self.source_manifest["files"]:
+                path = repository_root / row["path"]
+                text = pipeline.read_text(path).replace("\n", "\r\n")
+                path.write_bytes(text.encode("utf-8"))
+            crlf_manifest = pipeline.source_manifest(repository_root)
+            raw_crlf = pipeline.sha256_file(gameplay_path)
+
+            for row in self.source_manifest["files"]:
+                path = repository_root / row["path"]
+                text = pipeline.read_text(path).replace("\r\n", "\r")
+                path.write_bytes(text.encode("utf-8"))
+            cr_manifest = pipeline.source_manifest(repository_root)
+
+            self.assertNotEqual(raw_lf, raw_crlf)
+            self.assertEqual(lf_manifest, crlf_manifest)
+            self.assertEqual(lf_manifest, cr_manifest)
+
     def test_split_authoring_strict_join_rejects_drift_and_role_leaks(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
         presentation = self.docs[pipeline.PRESENTATION_AUTHORING_REL]
