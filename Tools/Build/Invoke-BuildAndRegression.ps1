@@ -147,10 +147,10 @@ try {
     }
 
     $LASTEXITCODE = 0
-    & '.\Tools\EffectPipeline\Publish-Effects.ps1' `
-        -Mode Validate -ResourceRoot $runtimeResourceRoot
+    & '.\Tools\EffectPipeline\Validate-EffectSources.ps1' `
+        -RepositoryRoot $repoRoot
     if ($LASTEXITCODE -ne 0) {
-        throw 'Effect data validation failed.'
+        throw 'Effect source validation failed.'
     }
 
     $LASTEXITCODE = 0

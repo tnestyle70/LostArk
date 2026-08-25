@@ -554,8 +554,8 @@ def build_receipt(resource_hashes: dict[str, str]) -> dict[str, Any]:
         "firstPixel": {
             "automaticStatus": "REFERENCE_RT0_NONZERO",
             "harness": (
-                "Tools/EffectPipeline/"
-                "verify_dimensionmaster_2050230_fluid01_first_pixel.py"
+                "Tools/EffectRenderContractHarness/"
+                "Run-EffectRenderContractHarness.ps1"
             ),
             "visualStatus": "PENDING_USER_REVIEW",
         },

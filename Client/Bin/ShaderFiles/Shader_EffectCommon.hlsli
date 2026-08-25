@@ -41,6 +41,7 @@ float2 g_UVScale = float2(1.f, 1.f);
 float2 g_UVOffset = float2(0.f, 0.f);
 float4 g_ColorOffset = float4(0.f, 0.f, 0.f, 0.f);
 float4 g_ColorMultiply = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_AuthoredColorMultiply = float4(1.f, 1.f, 1.f, 1.f);
 float g_ColorClip = 0.f;
 float g_EmissiveIntensity = 1.f;
 float g_DistortionIntensity = 0.f;
@@ -86,6 +87,15 @@ uint g_RingFillDirection = 0u;
 uint g_RingFillInvert = 0u;
 float g_RingFillProgress = 1.f;
 float g_RingFillFeather = 0.f;
+uint g_LinearRevealEnabled = 0u;
+uint g_LinearRevealAxis = 1u;
+uint g_LinearRevealInvert = 1u;
+float g_LinearRevealStartSeconds = 0.f;
+float g_LinearRevealDurationSeconds = 0.55f;
+float g_LinearRevealEdgeWidth = 0.045f;
+float g_LinearRevealSoftness = 0.03f;
+float4 g_LinearRevealEdgeColor = float4(1.f, 1.f, 1.f, 1.f);
+float g_LinearRevealEdgeEmissive = 7.f;
 
 #define DEFINE_SOURCE_TEXTURE_SAMPLE(index) \
 float4 Sample_SourceTexture##index(float2 uv) \
@@ -155,6 +165,55 @@ EFFECT_PS_OUT Apply_GenericMeshRingFill(
     output.SceneColor.a *= coverage;
     output.Distortion.xy *= coverage;
     clip(coverage - (1.f / 255.f));
+    return output;
+}
+
+EFFECT_PS_OUT Apply_GenericLinearReveal(
+    EFFECT_PS_OUT output,
+    float2 rawCarrierUV)
+{
+    if (0u == g_LinearRevealEnabled)
+        return output;
+
+    float axisCoordinate = 0u == g_LinearRevealAxis ?
+        rawCarrierUV.x : rawCarrierUV.y;
+    if (0u != g_LinearRevealInvert)
+        axisCoordinate = 1.f - axisCoordinate;
+    axisCoordinate = saturate(axisCoordinate);
+
+    const float elapsed = g_EffectLocalTime - g_LinearRevealStartSeconds;
+    if (elapsed < 0.f)
+    {
+        output.SceneColor.a = 0.f;
+        output.Distortion.xy = float2(0.f, 0.f);
+        clip(-1.f);
+        return output;
+    }
+
+    const float progress = saturate(
+        elapsed / max(g_LinearRevealDurationSeconds, 0.0001f));
+    if (progress >= 1.f)
+        return output;
+
+    const float softness = clamp(g_LinearRevealSoftness, 0.f, 0.25f);
+    const float visibleCoverage = softness > 0.f ?
+        1.f - smoothstep(
+            progress - softness, progress + softness, axisCoordinate) :
+        (axisCoordinate <= progress ? 1.f : 0.f);
+    const float edgeWidth = clamp(g_LinearRevealEdgeWidth, 0.f, 0.5f);
+    const float edgeDistance = abs(axisCoordinate - progress);
+    const float edgeBand = softness > 0.f ?
+        1.f - smoothstep(edgeWidth, edgeWidth + softness, edgeDistance) :
+        (edgeDistance <= edgeWidth ? 1.f : 0.f);
+    const float edgeCoverage = edgeBand * saturate(g_LinearRevealEdgeColor.a);
+    const float carrierAlpha = saturate(output.SceneColor.a);
+
+	output.SceneColor.rgb += max(g_LinearRevealEdgeColor.rgb, 0.f) *
+		max(g_LinearRevealEdgeEmissive, 0.f) * edgeBand *
+		saturate(g_LinearRevealEdgeColor.a);
+    output.SceneColor.a = carrierAlpha * max(visibleCoverage, edgeCoverage);
+    output.Distortion.xy *= visibleCoverage;
+    clip(output.SceneColor.a - max(g_ColorClip, 1.f / 255.f));
     return output;
 }
 
@@ -2296,15 +2355,35 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         {
             // Cooked ParticleColor curves may be signed or cross exact zero.
             // ParticleMaster and SpriteWave already reconstruct RGB from
-            // source-owned lanes/vectors, so applying the signed curve as a
-            // second chroma source can only collapse that program to black.
-            // Preserve its magnitude, and treat an absent/zero RGB curve as
-            // neutral while alpha continues to own the visibility envelope.
+            // source-owned lanes/vectors. Neutral Detail tint keeps the
+            // existing per-channel magnitude path exactly. ParticleMaster
+            // chromatic authoring instead keeps that path's peak and applies
+            // the normalized Detail hue, so a source color curve cannot erase
+            // an explicit purple tint.
             const float3 colorMagnitude = abs(color.rgb);
             const float peakColorMagnitude = max(colorMagnitude.r,
                 max(colorMagnitude.g, colorMagnitude.b));
-            colorModulator = peakColorMagnitude > 0.0001f ?
-                colorMagnitude : float3(1.f, 1.f, 1.f);
+            const float3 authoredTintMagnitude = abs(
+                (g_AuthoredColorMultiply + g_ColorOffset).rgb);
+            const float peakAuthoredTint = max(authoredTintMagnitude.r,
+                max(authoredTintMagnitude.g, authoredTintMagnitude.b));
+            const float minimumAuthoredTint = min(authoredTintMagnitude.r,
+                min(authoredTintMagnitude.g, authoredTintMagnitude.b));
+            const float3 normalizedAuthoredTint = peakAuthoredTint > 0.0001f ?
+                authoredTintMagnitude / peakAuthoredTint :
+                float3(1.f, 1.f, 1.f);
+            if (19 == g_SourceMaterialProfile &&
+                peakAuthoredTint - minimumAuthoredTint > 0.0001f)
+            {
+                colorModulator = peakColorMagnitude > 0.0001f ?
+                    peakColorMagnitude * normalizedAuthoredTint :
+                    normalizedAuthoredTint;
+            }
+            else
+            {
+                colorModulator = peakColorMagnitude > 0.0001f ?
+                    colorMagnitude : float3(1.f, 1.f, 1.f);
+            }
         }
         output.SceneColor.rgb *= colorModulator;
         if (11 == g_SourceMaterialProfile || 16 == g_SourceMaterialProfile ||
@@ -2316,7 +2395,14 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
             output.SceneColor.rgb /= 1.f + peakRadiance;
         }
     }
-    output.SceneColor.rgb *= lighting * g_EmissiveIntensity * emissive;
+    // ParticleMaster keeps its existing bounded source look at intensity 1,
+    // then treats the authored value as SceneHDR gain.  Applying that value
+    // before the shared-peak denominator makes every value converge below 1
+    // and therefore makes Bloom mathematically unreachable.
+    const float preNormalizationEmissiveIntensity =
+        19 == g_SourceMaterialProfile ? 1.f : g_EmissiveIntensity;
+    output.SceneColor.rgb *=
+        lighting * preNormalizationEmissiveIntensity * emissive;
     if ((g_SourceMaterialProfile >= 19 && g_SourceMaterialProfile <= 32) ||
         34 == g_SourceMaterialProfile ||
         (g_SourceMaterialProfile >= 37 && g_SourceMaterialProfile <= 40))
@@ -2325,6 +2411,8 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
             max(output.SceneColor.g, output.SceneColor.b));
         output.SceneColor.rgb /= 1.f + peakRadiance;
     }
+    if (19 == g_SourceMaterialProfile)
+        output.SceneColor.rgb *= g_EmissiveIntensity;
     const float profileOpacity =
         (9 == g_SourceMaterialProfile || 35 == g_SourceMaterialProfile) ?
             1.f : opacity;

@@ -49,6 +49,11 @@ namespace
 	constexpr size_t MAX_AUTHORED_MATERIAL_SCALARS = 52u;
 	constexpr size_t MAX_AUTHORED_MATERIAL_VECTORS = 8u;
 	constexpr size_t MAX_AUTHORED_MATERIAL_COLORS = 2u;
+	constexpr size_t MAX_AUTHORED_RUNTIME_EDGE_HISTORIES = 16u;
+	constexpr size_t MAX_AUTHORED_RUNTIME_EDGE_SAMPLES_PER_HISTORY = 4096u;
+	constexpr size_t MAX_AUTHORED_RUNTIME_EDGE_SAMPLES_TOTAL = 16384u;
+	constexpr f32_t MAX_AUTHORED_RUNTIME_EDGE_TIME_SECONDS = 30.f;
+	constexpr f32_t MAX_AUTHORED_RUNTIME_EDGE_COORDINATE_UE3_CM = 1'000'000.f;
 
 	uint64_t SourceScaledParticleCeiling(
 		const Client::EFFECT_ELEMENT_DESC& Element)
@@ -85,11 +90,35 @@ namespace
 	bool_t ValidatePortableAuthoredParticleEventRoutes(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
+	bool_t Validate_AuthoredRuntimeExtensions(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError);
 
 	constexpr const char_t* KIND_TOKENS[] =
 	{
 		"mesh", "sprite", "particle", "decal", "trail", "light",
 		"screenPost"
+	};
+	constexpr const char_t* COMPOSITION_LAYER_TOKENS[] =
+	{
+		"normal", "worldMark"
+	};
+	constexpr const char_t* AUTHORED_RUNTIME_CARRIER_KIND_TOKENS[] =
+	{
+		"cascadeRibbonV1", "animationTrailBakedEdgeV1",
+		"lightBakedEdgeAttachmentV1"
+	};
+	constexpr const char_t* AUTHORED_RUNTIME_CARRIER_ADMISSION_TOKENS[] =
+	{
+		"bounded"
+	};
+	constexpr const char_t* AUTHORED_RUNTIME_BAKED_EDGE_LANE_TOKENS[] =
+	{
+		"firstEdge"
+	};
+	constexpr const char_t* AUTHORED_RUNTIME_COORDINATE_BASIS_TOKENS[] =
+	{
+		"UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
 	};
 	constexpr const char_t* RENDERER_TYPE_TOKENS[] =
 	{
@@ -139,6 +168,14 @@ namespace
 	constexpr const char_t* RING_FILL_DIRECTION_TOKENS[] =
 	{
 		"innerToOuter", "outerToInner"
+	};
+	constexpr const char_t* LINEAR_REVEAL_AXIS_TOKENS[] =
+	{
+		"u", "v"
+	};
+	constexpr const char_t* DECAL_RECEIVER_MODE_TOKENS[] =
+	{
+		"allOpaque", "upwardSurfaces"
 	};
 	constexpr const char_t* PARTICLE_ATTRACTOR_TARGET_SPACE_TOKENS[] =
 	{
@@ -571,6 +608,256 @@ namespace
 				return false;
 			}
 		}
+		return true;
+	}
+
+	bool_t Read_AuthoredRuntimeCarrier(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_AUTHORED_RUNTIME_CARRIER_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pKind = Value.Find("kind");
+		const Client::DATA_JSON_VALUE* pAdmission = Value.Find("admission");
+		Client::EFFECT_AUTHORED_RUNTIME_CARRIER_DESC Staged;
+		if (!Value.Is_Object() || nullptr == pKind || !pKind->Is_String() ||
+			nullptr == pAdmission || !pAdmission->Is_String() ||
+			!Read_UInt(Value, "formatVersion", Staged.iFormatVersion,
+				strOutError) ||
+			!Parse_Token(pKind->Get_String(),
+				AUTHORED_RUNTIME_CARRIER_KIND_TOKENS,
+				std::size(AUTHORED_RUNTIME_CARRIER_KIND_TOKENS),
+				Staged.eKind) ||
+			!Parse_Token(pAdmission->Get_String(),
+				AUTHORED_RUNTIME_CARRIER_ADMISSION_TOKENS,
+				std::size(AUTHORED_RUNTIME_CARRIER_ADMISSION_TOKENS),
+				Staged.eAdmission) ||
+			Staged.iFormatVersion !=
+				Client::EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION)
+		{
+			if (strOutError.empty())
+				strOutError = "Effect authored runtimeCarrier identity is invalid.";
+			return false;
+		}
+
+		switch (Staged.eKind)
+		{
+		case Client::EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1:
+		{
+			const Client::DATA_JSON_VALUE* pTypeDataModuleStableId =
+				Value.Find("typeDataModuleStableId");
+			if (!Validate_ExactFields(Value,
+					{ "formatVersion", "kind", "admission",
+						"typeDataModuleStableId" },
+					"Effect authored Cascade runtimeCarrier", strOutError) ||
+				nullptr == pTypeDataModuleStableId ||
+				!pTypeDataModuleStableId->Is_String())
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Effect authored Cascade runtimeCarrier TypeData join is invalid.";
+				return false;
+			}
+			Staged.strTypeDataModuleStableId =
+				pTypeDataModuleStableId->Get_String();
+			break;
+		}
+		case Client::EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::
+			ANIMATION_TRAIL_BAKED_EDGE_V1:
+		{
+			const Client::DATA_JSON_VALUE* pHistoryId = Value.Find("historyId");
+			if (!Validate_ExactFields(Value,
+					{ "formatVersion", "kind", "admission", "historyId" },
+					"Effect authored Animation Trail runtimeCarrier",
+					strOutError) ||
+				nullptr == pHistoryId || !pHistoryId->Is_String())
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Effect authored Animation Trail runtimeCarrier history join is invalid.";
+				return false;
+			}
+			Staged.strHistoryId = pHistoryId->Get_String();
+			break;
+		}
+		case Client::EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::
+			LIGHT_BAKED_EDGE_ATTACHMENT_V1:
+		{
+			const Client::DATA_JSON_VALUE* pHistoryId = Value.Find("historyId");
+			const Client::DATA_JSON_VALUE* pEdgeLane = Value.Find("edgeLane");
+			if (!Validate_ExactFields(Value,
+					{ "formatVersion", "kind", "admission", "historyId",
+						"edgeLane" },
+					"Effect authored Light runtimeCarrier", strOutError) ||
+				nullptr == pHistoryId || !pHistoryId->Is_String() ||
+				nullptr == pEdgeLane || !pEdgeLane->Is_String() ||
+				!Parse_Token(pEdgeLane->Get_String(),
+					AUTHORED_RUNTIME_BAKED_EDGE_LANE_TOKENS,
+					std::size(AUTHORED_RUNTIME_BAKED_EDGE_LANE_TOKENS),
+					Staged.eEdgeLane))
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Effect authored Light runtimeCarrier history/lane join is invalid.";
+				return false;
+			}
+			Staged.strHistoryId = pHistoryId->Get_String();
+			break;
+		}
+		default:
+			strOutError = "Effect authored runtimeCarrier kind is unsupported.";
+			return false;
+		}
+
+		Out = std::move(Staged);
+		return true;
+	}
+
+	bool_t Read_AuthoredRuntimeExtensions(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_AUTHORED_RUNTIME_EXTENSIONS_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pHistories =
+			Value.Find("bakedEdgeHistories");
+		Client::EFFECT_AUTHORED_RUNTIME_EXTENSIONS_DESC Staged;
+		if (!Validate_ExactFields(Value,
+				{ "formatVersion", "bakedEdgeHistories" },
+				"Effect authored runtimeExtensions", strOutError) ||
+			!Read_UInt(Value, "formatVersion", Staged.iFormatVersion,
+				strOutError) ||
+			Staged.iFormatVersion !=
+				Client::EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION ||
+			nullptr == pHistories || !pHistories->Is_Array() ||
+			pHistories->Get_Array().size() >
+				MAX_AUTHORED_RUNTIME_EDGE_HISTORIES)
+		{
+			if (strOutError.empty())
+				strOutError = "Effect authored runtimeExtensions are invalid.";
+			return false;
+		}
+
+		size_t iTotalSampleCount = 0u;
+		std::string strPreviousHistoryId;
+		Staged.BakedEdgeHistories.reserve(pHistories->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& HistoryValue :
+			pHistories->Get_Array())
+		{
+			const Client::DATA_JSON_VALUE* pHistoryId =
+				HistoryValue.Find("historyId");
+			const Client::DATA_JSON_VALUE* pCoordinateBasis =
+				HistoryValue.Find("coordinateBasis");
+			const Client::DATA_JSON_VALUE* pSamples =
+				HistoryValue.Find("samples");
+			Client::EFFECT_AUTHORED_RUNTIME_EDGE_HISTORY_DESC History;
+			if (!Validate_ExactFields(HistoryValue,
+					{ "historyId", "coordinateBasis", "sourceEndTimeSeconds",
+						"playbackClampSeconds", "samples" },
+					"Effect authored baked-edge history", strOutError) ||
+				nullptr == pHistoryId || !pHistoryId->Is_String() ||
+				nullptr == pCoordinateBasis || !pCoordinateBasis->Is_String() ||
+				nullptr == pSamples || !pSamples->Is_Array() ||
+				pSamples->Get_Array().size() < 2u ||
+				pSamples->Get_Array().size() >
+					MAX_AUTHORED_RUNTIME_EDGE_SAMPLES_PER_HISTORY ||
+				!Parse_Token(pCoordinateBasis->Get_String(),
+					AUTHORED_RUNTIME_COORDINATE_BASIS_TOKENS,
+					std::size(AUTHORED_RUNTIME_COORDINATE_BASIS_TOKENS),
+					History.eCoordinateBasis) ||
+				!Read_Float(HistoryValue, "sourceEndTimeSeconds",
+					History.fSourceEndTimeSeconds, strOutError) ||
+				!Read_Float(HistoryValue, "playbackClampSeconds",
+					History.fPlaybackClampSeconds, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect authored baked-edge history is invalid.";
+				return false;
+			}
+			History.strHistoryId = pHistoryId->Get_String();
+			if (!Is_StableId(History.strHistoryId) ||
+				(!strPreviousHistoryId.empty() &&
+				 History.strHistoryId <= strPreviousHistoryId) ||
+				History.fSourceEndTimeSeconds <= 0.f ||
+				History.fSourceEndTimeSeconds >
+					MAX_AUTHORED_RUNTIME_EDGE_TIME_SECONDS ||
+				History.fPlaybackClampSeconds <= 0.f ||
+				History.fPlaybackClampSeconds >
+					History.fSourceEndTimeSeconds)
+			{
+				strOutError =
+					"Effect authored baked-edge history identity/timing is invalid.";
+				return false;
+			}
+			strPreviousHistoryId = History.strHistoryId;
+			iTotalSampleCount += pSamples->Get_Array().size();
+			if (iTotalSampleCount > MAX_AUTHORED_RUNTIME_EDGE_SAMPLES_TOTAL)
+			{
+				strOutError =
+					"Effect authored baked-edge history sample budget is exceeded.";
+				return false;
+			}
+
+			f32_t fPreviousTime = -1.f;
+			History.Samples.reserve(pSamples->Get_Array().size());
+			for (const Client::DATA_JSON_VALUE& SampleValue :
+				pSamples->Get_Array())
+			{
+				Client::EFFECT_AUTHORED_RUNTIME_EDGE_SAMPLE_DESC Sample;
+				if (!Validate_ExactFields(SampleValue,
+						{ "relativeTimeSeconds", "firstEdgeUE3Cm",
+							"controlPointUE3Cm", "secondEdgeUE3Cm" },
+						"Effect authored baked-edge sample", strOutError) ||
+					!Read_Float(SampleValue, "relativeTimeSeconds",
+						Sample.fRelativeTimeSeconds, strOutError) ||
+					!Read_Array(SampleValue, "firstEdgeUE3Cm",
+						&Sample.vFirstEdgeUE3Cm.x, 3u, strOutError) ||
+					!Read_Array(SampleValue, "controlPointUE3Cm",
+						&Sample.vControlPointUE3Cm.x, 3u, strOutError) ||
+					!Read_Array(SampleValue, "secondEdgeUE3Cm",
+						&Sample.vSecondEdgeUE3Cm.x, 3u, strOutError) ||
+					Sample.fRelativeTimeSeconds <= fPreviousTime ||
+					Sample.fRelativeTimeSeconds < 0.f ||
+					Sample.fRelativeTimeSeconds >
+						History.fSourceEndTimeSeconds + 5.0e-5f)
+				{
+					if (strOutError.empty())
+						strOutError =
+							"Effect authored baked-edge sample is invalid.";
+					return false;
+				}
+				const auto CoordinatesBounded = [](const float3_t& Coordinates)
+				{
+					return Is_Finite(Coordinates) &&
+						std::abs(Coordinates.x) <=
+							MAX_AUTHORED_RUNTIME_EDGE_COORDINATE_UE3_CM &&
+						std::abs(Coordinates.y) <=
+							MAX_AUTHORED_RUNTIME_EDGE_COORDINATE_UE3_CM &&
+						std::abs(Coordinates.z) <=
+							MAX_AUTHORED_RUNTIME_EDGE_COORDINATE_UE3_CM;
+				};
+				if (!CoordinatesBounded(Sample.vFirstEdgeUE3Cm) ||
+					!CoordinatesBounded(Sample.vControlPointUE3Cm) ||
+					!CoordinatesBounded(Sample.vSecondEdgeUE3Cm))
+				{
+					strOutError =
+						"Effect authored baked-edge coordinates are invalid.";
+					return false;
+				}
+				fPreviousTime = Sample.fRelativeTimeSeconds;
+				History.Samples.push_back(std::move(Sample));
+			}
+			if (std::abs(History.Samples.front().fRelativeTimeSeconds) >
+					1.0e-6f ||
+				std::abs(History.Samples.back().fRelativeTimeSeconds -
+					History.fSourceEndTimeSeconds) > 5.0e-5f)
+			{
+				strOutError =
+					"Effect authored baked-edge history does not close at its declared source interval.";
+				return false;
+			}
+			Staged.BakedEdgeHistories.push_back(std::move(History));
+		}
+
+		Out = std::move(Staged);
 		return true;
 	}
 
@@ -4535,6 +4822,60 @@ namespace
 			Read_Bool(*pRingFill, "invert", Out.bInvert, strOutError);
 	}
 
+	bool_t Read_LinearReveal(
+		const Client::DATA_JSON_VALUE& Sprite,
+		Client::EFFECT_LINEAR_REVEAL_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pReveal = Sprite.Find("linearReveal");
+		if (nullptr == pReveal)
+			return true;
+		const Client::DATA_JSON_VALUE* pAxis = nullptr;
+		if (!pReveal->Is_Object() ||
+			nullptr == (pAxis = pReveal->Find("axis")) ||
+			!pAxis->Is_String() ||
+			!Parse_Token(pAxis->Get_String(), LINEAR_REVEAL_AXIS_TOKENS,
+				std::size(LINEAR_REVEAL_AXIS_TOKENS), Out.eAxis))
+		{
+			strOutError = "Effect linearReveal axis is invalid.";
+			return false;
+		}
+		return Read_Bool(*pReveal, "enabled", Out.bEnabled, strOutError) &&
+			Read_Bool(*pReveal, "invert", Out.bInvert, strOutError) &&
+			Read_Float(*pReveal, "startSeconds", Out.fStartSeconds,
+				strOutError) &&
+			Read_Float(*pReveal, "durationSeconds", Out.fDurationSeconds,
+				strOutError) &&
+			Read_Float(*pReveal, "edgeWidth", Out.fEdgeWidth, strOutError) &&
+			Read_Float(*pReveal, "softness", Out.fSoftness, strOutError) &&
+			Read_Array(*pReveal, "edgeColor", &Out.vEdgeColor.x, 4u,
+				strOutError) &&
+			Read_Float(*pReveal, "edgeEmissive", Out.fEdgeEmissive,
+				strOutError);
+	}
+
+	bool_t Read_DecalReceiver(
+		const Client::DATA_JSON_VALUE& Decal,
+		Client::EFFECT_DECAL_DETAIL_DESC& Out,
+		std::string& strOutError)
+	{
+		if (const Client::DATA_JSON_VALUE* pMode =
+			Decal.Find("receiverMode"))
+		{
+			if (!pMode->Is_String() ||
+				!Parse_Token(pMode->Get_String(), DECAL_RECEIVER_MODE_TOKENS,
+					std::size(DECAL_RECEIVER_MODE_TOKENS), Out.eReceiverMode))
+			{
+				strOutError = "Effect decal receiverMode is invalid.";
+				return false;
+			}
+		}
+		return Read_OptionalFloat(Decal, "normalCutoff",
+			Out.fNormalCutoff, strOutError) &&
+			Read_OptionalFloat(Decal, "edgeFade", Out.fEdgeFade,
+				strOutError);
+	}
+
 	bool_t Read_CommonDetail(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_DETAIL_DESC& Out,
@@ -4601,8 +4942,10 @@ namespace
 				Out.Sprite.fBillboardRollDegrees, strOutError) &&
 			Read_OptionalFloat(*pSprite, "billboardRollDegreesPerSecond",
 				Out.Sprite.fBillboardRollDegreesPerSecond, strOutError) &&
+			Read_LinearReveal(*pSprite, Out.Sprite.LinearReveal, strOutError) &&
 			Read_Array(*pDecal, "size", &Out.Decal.vSize.x, 2u, strOutError) &&
-			Read_Float(*pDecal, "depth", Out.Decal.fDepth, strOutError);
+			Read_Float(*pDecal, "depth", Out.Decal.fDepth, strOutError) &&
+			Read_DecalReceiver(*pDecal, Out.Decal, strOutError);
 	}
 
 	/* These optional blocks are absent from documents written before they existed,
@@ -4921,10 +5264,40 @@ namespace
 		Output << " },\n        \"sprite\": { \"billboard\": " << (Detail.Sprite.bBillboard ? "true" : "false")
 			<< ", \"billboardRollDegrees\": " << Detail.Sprite.fBillboardRollDegrees
 			<< ", \"billboardRollDegreesPerSecond\": "
-			<< Detail.Sprite.fBillboardRollDegreesPerSecond
-			<< " },\n        \"decal\": { \"size\": ";
+			<< Detail.Sprite.fBillboardRollDegreesPerSecond;
+		if (Detail.Sprite.LinearReveal.bEnabled)
+		{
+			Output << ", \"linearReveal\": { \"enabled\": true, \"axis\": \""
+				<< LINEAR_REVEAL_AXIS_TOKENS[static_cast<size_t>(
+					Detail.Sprite.LinearReveal.eAxis)]
+				<< "\", \"invert\": "
+				<< (Detail.Sprite.LinearReveal.bInvert ? "true" : "false")
+				<< ", \"startSeconds\": "
+				<< Detail.Sprite.LinearReveal.fStartSeconds
+				<< ", \"durationSeconds\": "
+				<< Detail.Sprite.LinearReveal.fDurationSeconds
+				<< ", \"edgeWidth\": " << Detail.Sprite.LinearReveal.fEdgeWidth
+				<< ", \"softness\": " << Detail.Sprite.LinearReveal.fSoftness
+				<< ", \"edgeColor\": ";
+			Write_Float4(Output, Detail.Sprite.LinearReveal.vEdgeColor);
+			Output << ", \"edgeEmissive\": "
+				<< Detail.Sprite.LinearReveal.fEdgeEmissive << " }";
+		}
+		Output << " },\n        \"decal\": { \"size\": ";
 		Write_Float2(Output, Detail.Decal.vSize);
-		Output << ", \"depth\": " << Detail.Decal.fDepth << " },\n"
+		Output << ", \"depth\": " << Detail.Decal.fDepth;
+		if (Detail.Decal.eReceiverMode !=
+			EFFECT_DECAL_RECEIVER_MODE::ALL_OPAQUE)
+		{
+			Output << ", \"receiverMode\": \""
+				<< DECAL_RECEIVER_MODE_TOKENS[static_cast<size_t>(
+					Detail.Decal.eReceiverMode)]
+				<< "\", \"normalCutoff\": "
+				<< Detail.Decal.fNormalCutoff;
+		}
+		if (Detail.Decal.fEdgeFade != 0.f)
+			Output << ", \"edgeFade\": " << Detail.Decal.fEdgeFade;
+		Output << " },\n"
 			<< "        \"linearLerp\": { \"position\": " << (Detail.LinearLerp.bPosition ? "true" : "false")
 			<< ", \"endPosition\": ";
 		Write_Float3(Output, Detail.LinearLerp.vEndPosition);
@@ -5419,9 +5792,11 @@ namespace
 			"authored.source-particle.72835f216dd26bb28166301f",
 			"authored.source-particle.78efab80dc7c76fc2b416cba"
 		};
-		const auto ContainsId = [&Element](const auto& Ids)
+		const std::string_view OriginElementId =
+			Resolve_EffectPortableOriginElementId(Element);
+		const auto ContainsId = [OriginElementId](const auto& Ids)
 		{
-			return std::find(Ids.begin(), Ids.end(), Element.strElementId) !=
+			return std::find(Ids.begin(), Ids.end(), OriginElementId) !=
 				Ids.end();
 		};
 		if ((strMeshAssetId == WARLORD_CHAIN_06_MODEL_ASSET_ID &&
@@ -5873,7 +6248,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 {
 	if (Document.iFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
 		Document.iLoadedFormatVersion < EFFECT_AUTHORING_MIN_SUPPORTED_VERSION ||
-		Document.iLoadedFormatVersion > EFFECT_SOURCE_CONTRACT_FORMAT_VERSION)
+		Document.iLoadedFormatVersion > EFFECT_AUTHORING_MAX_SUPPORTED_VERSION)
 	{
 		strOutError = "Unsupported Effect document version.";
 		return false;
@@ -5885,6 +6260,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			"Native-v14 source contracts are not runtime Effect documents.";
 		return false;
 	}
+	if (!Validate_AuthoredRuntimeExtensions(Document, strOutError))
+		return false;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		const EFFECT_CASCADE_RECIPE_DESC& Recipe = Element.SourceRecipe;
@@ -6442,14 +6819,15 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				}
 			}
 		}
-		if (!Document.bSourceContract &&
-			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-			Recipe.bEnabled && bAuthoringExecutionTarget &&
+		if (!Document.bSourceContract && Recipe.bEnabled &&
+			bAuthoringExecutionTarget &&
+			(Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE ||
+			 Element.eKind == EFFECT_ELEMENT_KIND::DECAL) &&
 			!ValidatePortableAuthoredParticleRuntimeCarrier(
 				Element, strOutError))
 		{
 			strOutError =
-				"Ordinary authored Particle sourceRecipe is not admitted by the portable runtime: " +
+				"Ordinary authored emitter sourceRecipe is not admitted by the portable runtime: " +
 				Element.strElementId + ": " + strOutError;
 			return false;
 		}
@@ -6537,6 +6915,11 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			bDirectHandAuthored && !Element.SourceRecipe.bEnabled &&
 			!Element.SourcePresentation.bEnabled &&
 			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END;
+		const bool_t bManualSprite =
+			Element.eKind == EFFECT_ELEMENT_KIND::SPRITE &&
+			bDirectHandAuthored && !Element.SourceRecipe.bEnabled &&
+			!Element.SourcePresentation.bEnabled &&
+			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END;
 		const bool_t bGenericMeshRingFillCarrier =
 			bManualParticle && bMeshParticle &&
 			Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
@@ -6547,6 +6930,20 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			!Element.Material.Execution.bAuthoringApproximate &&
 			Element.Material.eRenderProfile !=
 				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
+		const bool_t bGenericLinearRevealCarrier =
+			(bManualSprite || (bManualParticle && !bMeshParticle)) &&
+			Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			Element.Material.strSourceMaterialPath.empty() &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			!Element.Material.Execution.bEnabled &&
+			!Element.Material.Execution.bFailClosed &&
+			!Element.Material.Execution.bAuthoringApproximate &&
+			Element.Material.eRenderProfile !=
+				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
+		const bool_t bCompositionLayerValid =
+			Element.eCompositionLayer < EFFECT_COMPOSITION_LAYER::END &&
+			(Element.eCompositionLayer == EFFECT_COMPOSITION_LAYER::NORMAL ||
+			 Is_EffectWorldMarkCarrier(Element));
 		const bool_t bMeshTransformMotionCarrier =
 			Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
 			bMeshParticle;
@@ -6787,9 +7184,63 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			RingFill.fFeather <= 0.5f &&
 			(RingFill.bEnabled || RingFill.Is_Default()) &&
 			(!RingFill.bEnabled || bGenericMeshRingFillCarrier);
-		if (!bCommonValid || !bLerpValid || !bParticleValid ||
+		const EFFECT_LINEAR_REVEAL_DESC& LinearReveal = D.Sprite.LinearReveal;
+		const bool_t bFixedParticleRevealClock = !bManualParticle ||
+			(std::fabs(D.Particle.vLifeTimeSeconds.x -
+				D.Particle.vLifeTimeSeconds.y) <= 0.00001f &&
+			 LinearReveal.fStartSeconds + LinearReveal.fDurationSeconds <=
+				D.Particle.vLifeTimeSeconds.x);
+		const bool_t bLinearRevealValid =
+			LinearReveal.eAxis < EFFECT_LINEAR_REVEAL_AXIS::END &&
+			std::isfinite(LinearReveal.fStartSeconds) &&
+			LinearReveal.fStartSeconds >= 0.f &&
+			LinearReveal.fStartSeconds <= 30.f &&
+			std::isfinite(LinearReveal.fDurationSeconds) &&
+			LinearReveal.fDurationSeconds > 0.f &&
+			LinearReveal.fDurationSeconds <= 30.f &&
+			std::isfinite(LinearReveal.fEdgeWidth) &&
+			LinearReveal.fEdgeWidth >= 0.f &&
+			LinearReveal.fEdgeWidth <= 0.5f &&
+			std::isfinite(LinearReveal.fSoftness) &&
+			LinearReveal.fSoftness >= 0.f &&
+			LinearReveal.fSoftness <= 0.25f &&
+			LinearReveal.fEdgeWidth + LinearReveal.fSoftness <= 0.5f &&
+			Is_Finite(LinearReveal.vEdgeColor) &&
+			LinearReveal.vEdgeColor.x >= 0.f &&
+			LinearReveal.vEdgeColor.x <= 1.f &&
+			LinearReveal.vEdgeColor.y >= 0.f &&
+			LinearReveal.vEdgeColor.y <= 1.f &&
+			LinearReveal.vEdgeColor.z >= 0.f &&
+			LinearReveal.vEdgeColor.z <= 1.f &&
+			LinearReveal.vEdgeColor.w >= 0.f &&
+			LinearReveal.vEdgeColor.w <= 1.f &&
+			std::isfinite(LinearReveal.fEdgeEmissive) &&
+			LinearReveal.fEdgeEmissive >= 0.f &&
+			LinearReveal.fEdgeEmissive <= 100.f &&
+			(LinearReveal.bEnabled || LinearReveal.Is_Default()) &&
+			(!LinearReveal.bEnabled ||
+				 (bGenericLinearRevealCarrier && bFixedParticleRevealClock &&
+				  LinearReveal.fStartSeconds + LinearReveal.fDurationSeconds <=
+					D.Timing.fLifeTimeSeconds));
+		const EFFECT_DECAL_DETAIL_DESC& Decal = D.Decal;
+		const bool_t bDecalReceiverValid =
+			Decal.eReceiverMode < EFFECT_DECAL_RECEIVER_MODE::END &&
+			std::isfinite(Decal.fNormalCutoff) &&
+			std::isfinite(Decal.fEdgeFade) &&
+			Decal.fEdgeFade >= 0.f && Decal.fEdgeFade <= 1.f &&
+			((Decal.eReceiverMode == EFFECT_DECAL_RECEIVER_MODE::ALL_OPAQUE &&
+			  Decal.fNormalCutoff == -1.f) ||
+			 (Decal.eReceiverMode ==
+				EFFECT_DECAL_RECEIVER_MODE::UPWARD_SURFACES &&
+			  Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+			  Decal.fNormalCutoff >= 0.f && Decal.fNormalCutoff <= 1.f)) &&
+			(Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
+			 Decal.Is_ReceiverDefault());
+		if (!bCompositionLayerValid || !bCommonValid ||
+			!bDecalReceiverValid || !bLerpValid || !bParticleValid ||
 			!bSpawnShapeValid || !bInitialOrientationValid ||
 			!bInitialVelocityValid || !bRingFillValid ||
+			!bLinearRevealValid ||
 			!bTargetAttractorValid ||
 			!bSourceScaleValid ||
 			!bTrailValid || !bAfterImageValid || !bLightValid ||
@@ -6981,6 +7432,8 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 		strOutError = "Effect document is not a native-v14 source contract.";
 		return false;
 	}
+	if (!Validate_AuthoredRuntimeExtensions(Document, strOutError))
+		return false;
 	if (!Is_StableId(Document.strEffectAssetId) ||
 		Document.strDisplayName.empty() || Document.strDisplayName.size() > 128u ||
 		Document.Elements.empty() || Document.Elements.size() > MAX_ELEMENTS)
@@ -7092,6 +7545,8 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 		if (!Is_StableId(Element.strElementId) ||
 			!ElementIds.insert(Element.strElementId).second ||
 			Element.eKind >= EFFECT_ELEMENT_KIND::END ||
+			Element.eCompositionLayer != EFFECT_COMPOSITION_LAYER::NORMAL ||
+			!Element.Detail.Decal.Is_ReceiverDefault() ||
 			Element.Renderer.eType >= EFFECT_RENDERER_TYPE::END ||
 			Element.Renderer.eSourceSpace >= EFFECT_SOURCE_SPACE::END ||
 			Kind_ForRenderer(Element.Renderer.eType) != Element.eKind)
@@ -7818,6 +8273,57 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
 	Candidate.ParticleSystem = SourceDocument.ParticleSystem;
 	Candidate.Elements.push_back(*First);
 	EFFECT_ELEMENT_DESC& Lowered = Candidate.Elements.front();
+	const bool_t bSourceMeshParticle =
+		Lowered.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+		Lowered.SourceRecipe.bEnabled &&
+		Lowered.SourceRecipe.strRendererShape == "mesh" &&
+		std::any_of(Lowered.ResourceBindings.begin(),
+			Lowered.ResourceBindings.end(),
+			[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{
+				return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
+			});
+	EFFECT_DISTRIBUTION_DESC SourceStartSize;
+	bool_t bHasSourceStartSize = false;
+	size_t iSourceStartSizeCandidateCount = 0u;
+	if (bSourceMeshParticle)
+	{
+		for (const EFFECT_SOURCE_MODULE_DESC& Module :
+			Lowered.SourceRecipe.Modules)
+		{
+			std::string_view SourceClass = Module.strClassName;
+			if (SourceClass.starts_with("efparticlemodule"))
+				SourceClass.remove_prefix(2u);
+			if (SourceClass.ends_with("_seeded"))
+				SourceClass.remove_suffix(7u);
+			if (SourceClass != "particlemodulesize")
+				continue;
+			for (const EFFECT_DISTRIBUTION_DESC& Distribution :
+				Module.Distributions)
+			{
+				if (Distribution.strPropertyPath == "startsize")
+				{
+					++iSourceStartSizeCandidateCount;
+					std::string DistributionError;
+					if (1u == iSourceStartSizeCandidateCount &&
+						Distribution.iComponentCount >= 2u &&
+						Distribution.iOperation == 1u &&
+						CEffectDistribution::Validate(
+							Distribution, DistributionError))
+					{
+						SourceStartSize = Distribution;
+						bHasSourceStartSize = true;
+					}
+				}
+			}
+		}
+		/* Multiple or random StartSize modules require the portable source
+		   executor's ordered composition.  The generic direct carrier cannot
+		   reproduce that composition after SourceRecipe is removed, so keep the
+		   existing fallback unchanged instead of guessing. */
+		if (1u != iSourceStartSizeCandidateCount)
+			bHasSourceStartSize = false;
+	}
 	/* The document already provides the effect-level namespace.  Keep the
 	   composite group stable and bounded even when the target asset ID is at
 	   the 128-byte contract limit. */
@@ -7829,6 +8335,78 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
 	Lowered.SourceRecipe = {};
 	Lowered.SourcePresentation = {};
 	Lowered.Detail.Mesh.vSourceTypeDataRotationDegrees = {};
+	if (bHasSourceStartSize)
+	{
+		/* Older Track A projections stored the direct Mesh Particle fallback in
+		   the WModel carrier's geometry unit even though portable SourceRecipe
+		   playback consumes StartSize as a dimensionless instance scale.  Once
+		   the recipe is removed, preserving that 0.01-scaled fallback would apply
+		   modelPreScale a second time and make the copied mesh about 100x too
+		   small.  Compare against the immutable source StartSize distribution so
+		   already-normalized documents (for example Artist F) remain unchanged. */
+		const float4_t SourceSize = CEffectDistribution::Evaluate(
+			SourceStartSize, 0.f, 0.5f);
+		const f32_t fModelPreScale = Lowered.Detail.Mesh.fModelPreScale;
+		const auto NearlyEqualRelative = [](const f32_t A, const f32_t B)
+		{
+			const f32_t fTolerance = (std::max)(
+				1.0e-5f, (std::max)(std::abs(A), std::abs(B)) * 1.0e-4f);
+			return std::abs(A - B) <= fTolerance;
+		};
+		const float2_t SourceDimensionless = {
+			std::abs(SourceSize.x), std::abs(SourceSize.y) };
+		const float2_t DirectStart = Lowered.Detail.Particle.vStartSize;
+		const bool_t bLegacyGeometryScaledSize =
+			std::isfinite(fModelPreScale) && fModelPreScale > 0.f &&
+			fModelPreScale < 1.f &&
+			SourceDimensionless.x > 0.f && SourceDimensionless.y > 0.f &&
+			NearlyEqualRelative(
+				DirectStart.x, SourceDimensionless.x * fModelPreScale) &&
+			NearlyEqualRelative(
+				DirectStart.y, SourceDimensionless.y * fModelPreScale) &&
+			(!NearlyEqualRelative(DirectStart.x, SourceDimensionless.x) ||
+			 !NearlyEqualRelative(DirectStart.y, SourceDimensionless.y));
+		if (bLegacyGeometryScaledSize)
+		{
+			const f32_t fDimensionlessSizeScale = 1.f / fModelPreScale;
+			Lowered.Detail.Particle.vStartSize.x *= fDimensionlessSizeScale;
+			Lowered.Detail.Particle.vStartSize.y *= fDimensionlessSizeScale;
+			Lowered.Detail.Particle.vEndSize.x *= fDimensionlessSizeScale;
+			Lowered.Detail.Particle.vEndSize.y *= fDimensionlessSizeScale;
+		}
+	}
+	if (bSourceMeshParticle)
+	{
+		/* SourceScale is consumed only by SourceRecipe playback.  Bake its size
+		   authority into the direct fallback even when no unambiguous StartSize
+		   distribution was available, then neutralize it before the recipe is
+		   discarded. */
+		const f32_t fSourceSizeScale =
+			Lowered.Detail.Particle.SourceScale.fSize;
+		if (std::isfinite(fSourceSizeScale) && fSourceSizeScale > 0.f &&
+			fSourceSizeScale != 1.f)
+		{
+			Lowered.Detail.Particle.vStartSize.x *= fSourceSizeScale;
+			Lowered.Detail.Particle.vStartSize.y *= fSourceSizeScale;
+			Lowered.Detail.Particle.vEndSize.x *= fSourceSizeScale;
+			Lowered.Detail.Particle.vEndSize.y *= fSourceSizeScale;
+			Lowered.Detail.Particle.SourceScale.fSize = 1.f;
+		}
+	}
+	if (Lowered.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+		Lowered.Detail.Particle.fSpawnRatePerSecond <= 0.f &&
+		0u == Lowered.Detail.Particle.iBurstCount)
+	{
+		/* Source-authored Particle carriers may receive every occurrence from
+		   SourceRecipe while their editable direct emission stays at 0/0.  The
+		   generic copy intentionally drops that compiler/source ownership, so
+		   give the lowered authoring carrier the same bounded one-shot default
+		   used by Create Element instead of admitting a drawable that can never
+		   instantiate a Sprite/Mesh Particle. */
+		Lowered.Detail.Particle.iMaxParticles = (std::max)(
+			1u, Lowered.Detail.Particle.iMaxParticles);
+		Lowered.Detail.Particle.iBurstCount = 1u;
+	}
 	const auto IsZeroFloat3 = [](const float3_t& Value)
 	{
 		return Value.x == 0.f && Value.y == 0.f && Value.z == 0.f;
@@ -7875,6 +8453,174 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
 		{
 			strOutError =
 				"Generic authored starting copy did not survive ordinary codec validation exactly.";
+		}
+		return false;
+	}
+	InOutDocument = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(
+	const EFFECT_DOCUMENT_DESC& SourceDocument,
+	const std::string_view strElementId,
+	const std::string_view strTargetEffectAssetId,
+	EFFECT_DOCUMENT_DESC& InOutDocument,
+	std::string& strOutError)
+{
+	if (SourceDocument.bSourceContract)
+	{
+		strOutError =
+			"Portable authored Saved Element copy accepts only an admitted ordinary v13 authored document, not native source-contract evidence.";
+		return false;
+	}
+	const auto Source = std::find_if(SourceDocument.Elements.begin(),
+		SourceDocument.Elements.end(),
+		[strElementId](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.strElementId == strElementId;
+		});
+	if (Source == SourceDocument.Elements.end() ||
+		std::find_if(std::next(Source), SourceDocument.Elements.end(),
+			[strElementId](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == strElementId;
+			}) != SourceDocument.Elements.end())
+	{
+		strOutError =
+			"Portable authored Saved Element copy requires exactly one source Element.";
+		return false;
+	}
+	if ((Source->eKind != EFFECT_ELEMENT_KIND::MESH &&
+		 Source->eKind != EFFECT_ELEMENT_KIND::SPRITE &&
+		 Source->eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
+		 Source->eKind != EFFECT_ELEMENT_KIND::DECAL &&
+		 Source->eKind != EFFECT_ELEMENT_KIND::TRAIL) ||
+		!Is_EffectAuthoringExecutionTarget(Source->Material.Execution))
+	{
+		strOutError =
+			"Portable authored Saved Element copy requires a self-contained executable Mesh, Sprite, Particle, Decal, or Trail Element.";
+		return false;
+	}
+	if (!Source->bVisible)
+	{
+		strOutError =
+			"Portable authored Saved Element copy cannot turn an invisible source Element into a visible occurrence; load the complete Effect instead.";
+		return false;
+	}
+	if (Source->eKind == EFFECT_ELEMENT_KIND::TRAIL)
+	{
+		/* A Trail is geometry made from more than one owner/animation transform
+		   history sample.  Copying its editable material and width fields cannot
+		   make that history portable, even when the row has no explicit source
+		   recipe.  Keep this a single fail-closed boundary instead of inventing a
+		   second synthetic-motion Trail Family for Saved Element reuse. */
+		strOutError =
+			"Portable authored Saved Element copy cannot detach Trail transform history; load the complete Effect instead.";
+		return false;
+	}
+	if (Source->TransformInheritance.bEnabled)
+	{
+		strOutError =
+			"Portable authored Saved Element copy cannot detach a transform-inheritance dependent from its master; load the complete Effect instead.";
+		return false;
+	}
+	if (Source->SourcePresentation.bEnabled)
+	{
+		strOutError =
+			"Portable authored Saved Element copy cannot detach SourcePresentation occurrence ownership; load the complete Effect instead.";
+		return false;
+	}
+	if (Source->Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+		Source->Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END)
+	{
+		strOutError =
+			"Portable authored Saved Element copy cannot detach a native Renderer carrier; load the complete source-program Effect instead.";
+		return false;
+	}
+	if (Source->ActionCueAttachment.bFollow)
+	{
+		/* A matching textual owner prefix does not prove that the target preview
+		   owns the source bone, clip, or fixed-step anchor history.  Snapshot/root
+		   attachments remain portable; FOLLOW rows require the complete Effect. */
+		strOutError =
+			"Portable authored Saved Element copy cannot detach a FOLLOW attachment from its owner animation history; load the complete Effect instead.";
+		return false;
+	}
+
+	EFFECT_DOCUMENT_DESC Candidate;
+	Candidate.strEffectAssetId = std::string(strTargetEffectAssetId);
+	Candidate.strDisplayName = Source->strDisplayName;
+	Candidate.ParticleSystem = SourceDocument.ParticleSystem;
+	Candidate.Elements.push_back(*Source);
+	EFFECT_ELEMENT_DESC& Portable = Candidate.Elements.front();
+	/* Saved Element reuse strips only native compiler/occurrence ownership.
+	   Unlike the generic fallback path, it must never validate an intermediate
+	   recipe-less Particle because StandardColor and other executable materials
+	   require their renderer Family recipe as part of material admission. */
+	Portable.strGroupId = "manual.authoring";
+	Portable.Renderer = {};
+	Portable.TransformInheritance = {};
+	Portable.SourceRecipe = {};
+	Portable.SourcePresentation = {};
+	/* Reassert the complete editable payload in one assignment so size,
+	   SourceScale, TypeData rotation, timing, color, motion, and every future
+	   Effect Detail field cannot drift when this boundary evolves. */
+	Portable.Detail = Source->Detail;
+	Portable.ActionCueAttachment = Source->ActionCueAttachment;
+	constexpr std::string_view AuthoredCopyPrefix = "authored-copy:";
+	Portable.strSourceNode =
+		Source->strSourceNode.starts_with(AuthoredCopyPrefix) &&
+		Source->strSourceNode.size() > AuthoredCopyPrefix.size() ?
+			Source->strSourceNode :
+			std::string(AuthoredCopyPrefix) + Source->strElementId;
+
+	if (Source->SourceRecipe.bEnabled)
+	{
+		bool_t bCarrierApplied = false;
+		if (EFFECT_ELEMENT_KIND::PARTICLE == Source->eKind)
+		{
+			bCarrierApplied = Apply_PortableAuthoredParticleRuntimeCarrier(
+				*Source, Portable, strOutError);
+		}
+		else if (EFFECT_ELEMENT_KIND::DECAL == Source->eKind)
+		{
+			bCarrierApplied = Apply_PortableAuthoredDecalRuntimeCarrier(
+				*Source, Portable, strOutError);
+		}
+		else
+		{
+			strOutError =
+				"Portable authored Saved Element copy has no self-contained runtime carrier for this sourceRecipe Family.";
+			return false;
+		}
+		if (!bCarrierApplied)
+			return false;
+		/* Generic import bakes emitter delay into its sampled starting state, but
+		   Saved Element reuse does not sample or bake. Preserve the source delay
+		   so Detail.startDelay + recipe.emitterDelay remains exactly unchanged. */
+		Portable.SourceRecipe.fEmitterDelaySeconds =
+			Source->SourceRecipe.fEmitterDelaySeconds;
+	}
+
+	const std::string Canonical = Serialize(Candidate);
+	EFFECT_DOCUMENT_DESC Staged;
+	if (!Parse(Canonical, Staged, strOutError) ||
+		!Validate(Staged, strOutError) ||
+		Staged.Elements.size() != 1u ||
+		Staged.Elements.front().strElementId != strElementId ||
+		Staged.Elements.front().eKind != Source->eKind ||
+		Staged.Elements.front().Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+		Staged.Elements.front().Renderer.eSourceSpace !=
+			EFFECT_SOURCE_SPACE::END ||
+		Staged.Elements.front().TransformInheritance.bEnabled ||
+		Staged.Elements.front().SourcePresentation.bEnabled ||
+		Serialize(Staged) != Canonical)
+	{
+		if (strOutError.empty())
+		{
+			strOutError =
+				"Portable authored Saved Element copy did not survive ordinary codec validation exactly.";
 		}
 		return false;
 	}
@@ -8580,6 +9326,7 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementReimportStage(
 	Reimported.strDisplayName = pExistingElement->strDisplayName;
 	Reimported.strGroupId = pExistingElement->strGroupId;
 	Reimported.bVisible = pExistingElement->bVisible;
+	Reimported.eCompositionLayer = pExistingElement->eCompositionLayer;
 	Reimported.ActionCueAttachment = pExistingElement->ActionCueAttachment;
 	Reimported.TransformInheritance = pExistingElement->TransformInheritance;
 	Reimported.Detail = pExistingElement->Detail;
@@ -9515,6 +10262,141 @@ namespace
 			Distribution.LookupTable.empty() && Distribution.Keys.empty();
 	}
 
+	void AppendPortableDistributionProbeTimes(
+		const EFFECT_DISTRIBUTION_DESC& Distribution,
+		const f32_t fDurationSeconds,
+		std::vector<f32_t>& InOutTimes)
+	{
+		const auto Append = [fDurationSeconds, &InOutTimes](const f32_t fTime)
+		{
+			if (std::isfinite(fTime) && fTime >= 0.f &&
+				fTime <= fDurationSeconds)
+			{
+				InOutTimes.push_back(fTime);
+			}
+		};
+		for (size_t iKey = 0u; iKey < Distribution.Keys.size(); ++iKey)
+		{
+			Append(Distribution.Keys[iKey].fTime);
+			if (iKey + 1u < Distribution.Keys.size())
+			{
+				Append(0.5f * (Distribution.Keys[iKey].fTime +
+					Distribution.Keys[iKey + 1u].fTime));
+			}
+		}
+
+		if (Distribution.LookupTable.empty() ||
+			Distribution.fLookupTableTimeScale <= 0.f)
+		{
+			return;
+		}
+		constexpr size_t CookedLookupRangeValueCount = 2u;
+		const size_t iChunkSize =
+			0u != Distribution.iLookupTableChunkSize ?
+				Distribution.iLookupTableChunkSize :
+				static_cast<size_t>(Distribution.iComponentCount) *
+					(Distribution.iOperation >= 2u ? 2u : 1u);
+		const size_t iPayloadCount =
+			Distribution.LookupTable.size() >= CookedLookupRangeValueCount ?
+				Distribution.LookupTable.size() - CookedLookupRangeValueCount : 0u;
+		const size_t iEntryCount = 0u == iChunkSize ? 0u :
+			iPayloadCount / iChunkSize;
+		for (size_t iEntry = 0u; iEntry < iEntryCount; ++iEntry)
+		{
+			const f32_t fTime = Distribution.fLookupTableStartTime +
+				static_cast<f32_t>(iEntry) /
+					Distribution.fLookupTableTimeScale;
+			Append(fTime);
+			if (iEntry + 1u < iEntryCount)
+			{
+				Append(fTime + 0.5f /
+					Distribution.fLookupTableTimeScale);
+			}
+		}
+	}
+
+	bool_t HasPortableAuthoredAutonomousEmission(
+		const EFFECT_ELEMENT_DESC& Element)
+	{
+		if (std::ranges::any_of(Element.SourceRecipe.Bursts,
+			[](const EFFECT_PARTICLE_BURST_DESC& Burst)
+			{
+				return Burst.iCountMaximum > 0u;
+			}))
+		{
+			return true;
+		}
+
+		const EFFECT_SOURCE_MODULE_DESC* pSpawn = nullptr;
+		for (const EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (NormalizePortableParticleModuleClass(Module.strClassName) ==
+				"particlemodulespawn")
+			{
+				pSpawn = &Module;
+				break;
+			}
+		}
+		if (nullptr == pSpawn)
+			return false;
+		const auto FindDistribution = [pSpawn](const std::string_view Property)
+			-> const EFFECT_DISTRIBUTION_DESC*
+		{
+			const auto Iterator = std::ranges::find_if(pSpawn->Distributions,
+				[Property](const EFFECT_DISTRIBUTION_DESC& Distribution)
+				{
+					return Distribution.strPropertyPath == Property;
+				});
+			return Iterator == pSpawn->Distributions.end() ? nullptr : &*Iterator;
+		};
+		const EFFECT_DISTRIBUTION_DESC* const pRate =
+			FindDistribution("rate");
+		const EFFECT_DISTRIBUTION_DESC* const pRateScale =
+			FindDistribution("ratescale");
+		if (nullptr == pRate || nullptr == pRateScale)
+			return false;
+
+		const f32_t fDurationSeconds = (std::max)(0.f,
+			Element.SourceRecipe.fEmitterDurationSeconds > 0.f ?
+				Element.SourceRecipe.fEmitterDurationSeconds :
+				Element.Detail.Timing.fLifeTimeSeconds);
+		std::vector<f32_t> ProbeTimes = {
+			0.f, 0.5f * fDurationSeconds, fDurationSeconds };
+		AppendPortableDistributionProbeTimes(
+			*pRate, fDurationSeconds, ProbeTimes);
+		if (!IsPortableNullCdoDistribution(*pRateScale))
+		{
+			AppendPortableDistributionProbeTimes(
+				*pRateScale, fDurationSeconds, ProbeTimes);
+		}
+		std::ranges::sort(ProbeTimes);
+		ProbeTimes.erase(std::unique(ProbeTimes.begin(), ProbeTimes.end()),
+			ProbeTimes.end());
+
+		constexpr std::array<f32_t, 3u> RandomUnits = { 0.f, 0.5f, 1.f };
+		for (const f32_t fTime : ProbeTimes)
+		{
+			for (const f32_t fRateRandom : RandomUnits)
+			{
+				const f32_t fRate = CEffectDistribution::Evaluate(
+					*pRate, fTime, fRateRandom).x;
+				if (!std::isfinite(fRate) || fRate <= 0.f)
+					continue;
+				if (IsPortableNullCdoDistribution(*pRateScale))
+					return true;
+				for (const f32_t fScaleRandom : RandomUnits)
+				{
+					const f32_t fRateScale = CEffectDistribution::Evaluate(
+						*pRateScale, fTime, fScaleRandom).x;
+					if (std::isfinite(fRateScale) && fRateScale > 0.f)
+						return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	bool_t IsPortableVectorFieldAssetId(const std::string& strAssetId)
 	{
 		if (strAssetId.empty() || strAssetId.size() > MAX_RESOURCE_ID_BYTES ||
@@ -9769,6 +10651,29 @@ namespace
 				return false;
 			}
 		}
+		else if (strNormalizedClass == "particlemoduletypedatadecal")
+		{
+			for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
+			{
+				const bool_t bNumber =
+					Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::NUMBER;
+				const bool_t bBoolean =
+					Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::BOOLEAN;
+				const bool_t bSupported =
+					((Literal.strPropertyPath == "lodvalidity" ||
+					  Literal.strPropertyPath == "nearplane" ||
+					  Literal.strPropertyPath == "farplane") && bNumber) ||
+					(Literal.strPropertyPath == "balwaysdecalupdate" &&
+					 bBoolean);
+				if (!bSupported)
+				{
+					strOutError =
+						"Portable authored decal TypeData has an unsupported literal: " +
+						Literal.strPropertyPath + ".";
+					return false;
+				}
+			}
+		}
 		else if (strNormalizedClass == "particlemodulevortex")
 		{
 			f64_t fPower = 1.0;
@@ -9795,17 +10700,24 @@ namespace
 				return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
 			}));
 		const bool_t bMesh = Element.SourceRecipe.strRendererShape == "mesh";
-		if (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+		const bool_t bSprite = Element.SourceRecipe.strRendererShape == "sprite";
+		const bool_t bDecal = Element.SourceRecipe.strRendererShape == "decal";
+		const bool_t bFamilyValid =
+			(Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				(bMesh || bSprite)) ||
+			(Element.eKind == EFFECT_ELEMENT_KIND::DECAL && bDecal);
+		if (!bFamilyValid ||
 			Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
 			Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END ||
 			!Element.SourceRecipe.bEnabled ||
-			(!bMesh && Element.SourceRecipe.strRendererShape != "sprite") ||
 			(bMesh ? iMeshBindingCount != 1u : iMeshBindingCount != 0u) ||
-			Element.SourceRecipe.fEmitterDelaySeconds != 0.f ||
+			!std::isfinite(Element.SourceRecipe.fEmitterDelaySeconds) ||
+			Element.SourceRecipe.fEmitterDelaySeconds < 0.f ||
+			Element.SourceRecipe.fEmitterDelaySeconds > 300.f ||
 			Element.SourceRecipe.Modules.empty())
 		{
 			strOutError =
-				"Portable authored particle carrier identity, Family, or flattened delay is invalid.";
+				"Portable authored emitter carrier identity, Family, or schedule is invalid.";
 			return false;
 		}
 
@@ -9813,15 +10725,18 @@ namespace
 		std::unordered_map<std::string, size_t> ModuleClassCounts;
 		size_t iRequiredCount = 0u;
 		size_t iMeshTypeDataCount = 0u;
+		size_t iDecalTypeDataCount = 0u;
 		for (const EFFECT_SOURCE_MODULE_DESC& Module :
 			Element.SourceRecipe.Modules)
 		{
 			const std::string_view NormalizedClass =
 				NormalizePortableParticleModuleClass(Module.strClassName);
-			if (std::ranges::find(
+			const bool_t bAdmittedDecalTypeData = bDecal &&
+				NormalizedClass == "particlemoduletypedatadecal";
+			if ((!bAdmittedDecalTypeData && std::ranges::find(
 					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES,
 					NormalizedClass) ==
-					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES.end() ||
+					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES.end()) ||
 				Module.strStableId.empty() ||
 				!ModuleIds.insert(Module.strStableId).second ||
 				(NormalizedClass == "particlemodulerequired" &&
@@ -9829,7 +10744,9 @@ namespace
 				(NormalizedClass == "particlemodulespawn" &&
 				 Module.strClassName != "particlemodulespawn") ||
 				(NormalizedClass == "particlemoduletypedatamesh" &&
-				 Module.strClassName != "particlemoduletypedatamesh"))
+				 Module.strClassName != "particlemoduletypedatamesh") ||
+				(NormalizedClass == "particlemoduletypedatadecal" &&
+				 Module.strClassName != "efparticlemoduletypedatadecal"))
 			{
 				strOutError =
 					"Portable authored particle carrier has an unsupported or duplicate module: " +
@@ -9845,6 +10762,8 @@ namespace
 				NormalizedClass == "particlemodulerequired" ? 1u : 0u;
 			iMeshTypeDataCount +=
 				NormalizedClass == "particlemoduletypedatamesh" ? 1u : 0u;
+			iDecalTypeDataCount +=
+				NormalizedClass == "particlemoduletypedatadecal" ? 1u : 0u;
 			++ModuleClassCounts[std::string(NormalizedClass)];
 			std::unordered_set<std::string> PropertyPaths;
 			for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
@@ -9940,6 +10859,8 @@ namespace
 			   renderer-Family discriminator. */
 			const bool_t bMeshOnly =
 				ClassName == "particlemoduletypedatamesh";
+			const bool_t bDecalOnly =
+				ClassName == "particlemoduletypedatadecal";
 			const bool_t bSpriteOnly =
 				ClassName == "particlemodulerotationratemultiplylife" ||
 				ClassName == "particlemodulesubuv";
@@ -9952,7 +10873,8 @@ namespace
 			const size_t iMaximum =
 				Maximum == PORTABLE_AUTHORED_PARTICLE_MODULE_MAX_COUNTS.end() ?
 				1u : Maximum->second;
-			if ((bMeshOnly && !bMesh) || (bSpriteOnly && bMesh) ||
+			if ((bMeshOnly && !bMesh) || (bDecalOnly && !bDecal) ||
+				(bSpriteOnly && !bSprite) ||
 				Count > iMaximum)
 			{
 				strOutError =
@@ -9961,13 +10883,22 @@ namespace
 				return false;
 			}
 		}
-		if (iRequiredCount != 1u ||
-			CountClass("particlemodulelifetime") == 0u ||
-			CountClass("particlemodulespawn") != 1u ||
-			(bMesh ? iMeshTypeDataCount != 1u : iMeshTypeDataCount != 0u))
+		const bool_t bParticleCardinalityValid =
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			iRequiredCount == 1u &&
+			CountClass("particlemodulelifetime") != 0u &&
+			CountClass("particlemodulespawn") == 1u &&
+			(bMesh ? iMeshTypeDataCount == 1u : iMeshTypeDataCount == 0u) &&
+			iDecalTypeDataCount == 0u;
+		const bool_t bDecalCardinalityValid =
+			bDecal && iRequiredCount == 1u &&
+			CountClass("particlemodulelifetime") <= 1u &&
+			CountClass("particlemodulespawn") <= 1u &&
+			iMeshTypeDataCount == 0u && iDecalTypeDataCount == 1u;
+		if (!bParticleCardinalityValid && !bDecalCardinalityValid)
 		{
 			strOutError =
-				"Portable authored particle carrier Required/Lifetime/TypeDataMesh cardinality is invalid.";
+				"Portable authored emitter carrier Required/Lifetime/Spawn/TypeData cardinality is invalid.";
 			return false;
 		}
 		const size_t iLocalVectorFieldCount =
@@ -10005,12 +10936,16 @@ namespace
 			if (!Element.bVisible ||
 				!Is_EffectAuthoringExecutionTarget(
 					Element.Material.Execution) ||
-				Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+				(Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
+				 Element.eKind != EFFECT_ELEMENT_KIND::DECAL) ||
 				Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
 				Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END ||
 				!Element.SourceRecipe.bEnabled ||
-				(Element.SourceRecipe.strRendererShape != "mesh" &&
-				 Element.SourceRecipe.strRendererShape != "sprite"))
+				((Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				  Element.SourceRecipe.strRendererShape != "mesh" &&
+				  Element.SourceRecipe.strRendererShape != "sprite") ||
+				 (Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+				  Element.SourceRecipe.strRendererShape != "decal")))
 			{
 				continue;
 			}
@@ -10146,20 +11081,343 @@ namespace
 	}
 }
 
+namespace
+{
+	bool_t ApplyPortableAuthoredEmitterRuntimeCarrier(
+		const Client::EFFECT_ELEMENT_DESC& SourceElement,
+		Client::EFFECT_ELEMENT_DESC& InOutElement,
+		const Client::EFFECT_ELEMENT_KIND eExpectedKind,
+		const std::string_view strExpectedShape,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (SourceElement.eKind != eExpectedKind ||
+			InOutElement.eKind != eExpectedKind ||
+			!SourceElement.SourceRecipe.bEnabled ||
+			SourceElement.SourceRecipe.strRendererShape != strExpectedShape)
+		{
+			strOutError =
+				"Portable authored emitter carrier source/target Family does not match.";
+			return false;
+		}
+
+		/* Legacy v13 sourceRecipe is the portable, already-interpreted runtime
+		   carrier. Constructing a fresh descriptor guarantees that native-v14
+		   contract hashes, compiler evidence, authority receipts, geometry
+		   admission, and local-reference closure cannot cross this seam. */
+		EFFECT_CASCADE_RECIPE_DESC Portable;
+		Portable.bEnabled = true;
+		Portable.strRendererShape = SourceElement.SourceRecipe.strRendererShape;
+		/* Generic occurrence import samples/bakes its starting state before this
+		   helper and therefore needs a flattened zero delay. Saved Element reuse
+		   restores the source delay explicitly after this carrier is admitted. */
+		Portable.fEmitterDelaySeconds = 0.f;
+		Portable.fEmitterDurationSeconds =
+			SourceElement.SourceRecipe.fEmitterDurationSeconds;
+		Portable.iEmitterLoopCount =
+			SourceElement.SourceRecipe.iEmitterLoopCount;
+		Portable.Bursts = SourceElement.SourceRecipe.Bursts;
+		Portable.Modules = SourceElement.SourceRecipe.Modules;
+		for (EFFECT_SOURCE_MODULE_DESC& Module : Portable.Modules)
+		{
+			const std::string_view NormalizedClass =
+				NormalizePortableParticleModuleClass(Module.strClassName);
+			const bool_t bAdmittedDecalTypeData =
+				eExpectedKind == EFFECT_ELEMENT_KIND::DECAL &&
+				strExpectedShape == "decal" &&
+				NormalizedClass == "particlemoduletypedatadecal";
+			if ((!bAdmittedDecalTypeData && std::ranges::find(
+					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES,
+					NormalizedClass) ==
+					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES.end()) ||
+				(NormalizedClass == "particlemodulespawn" &&
+				 Module.strClassName != "particlemodulespawn"))
+			{
+				strOutError =
+					"Portable authored emitter carrier has an unsupported module class: " +
+					Module.strClassName + ".";
+				return false;
+			}
+			for (EFFECT_DISTRIBUTION_DESC& Distribution : Module.Distributions)
+			{
+				if (Distribution.eParameterBinding !=
+						EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
+					!Distribution.strParameterName.empty())
+				{
+					strOutError =
+						"Portable authored emitter carrier cannot erase an ActionCue parameter binding: " +
+						Module.strClassName + "/" +
+						Distribution.strPropertyPath + ".";
+					return false;
+				}
+				Distribution.strReferenceId.clear();
+				Distribution.strOccurrenceId.clear();
+				Distribution.strPayloadStatus.clear();
+				Distribution.strFidelity.clear();
+				Distribution.ExecutionAdmission = {};
+				Distribution.strParameterName.clear();
+				Distribution.eParameterBinding =
+					EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE;
+			}
+		}
+		EFFECT_ELEMENT_DESC Staged = InOutElement;
+		Staged.SourceRecipe = std::move(Portable);
+		if (!ValidatePortableAuthoredParticleRuntimeCarrier(
+				Staged, strOutError))
+		{
+			return false;
+		}
+		if (!HasPortableAuthoredAutonomousEmission(Staged))
+		{
+			/* SpawnPerUnit and source events are multi-occurrence/history
+			   contracts.  A single copied Element must own a positive burst or a
+			   concretely evaluable positive Rate; otherwise a valid document can
+			   stage successfully while emitting no drawable at a static preview
+			   root. */
+			strOutError =
+				"Portable authored emitter carrier has no autonomous positive Burst or Rate; SpawnPerUnit/event/history-only emitters require the complete Effect.";
+			return false;
+		}
+		InOutElement.SourceRecipe = std::move(Staged.SourceRecipe);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_AuthoredRuntimeExtensions(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		const bool_t bRuntimeExtensionDocument =
+			Document.iLoadedFormatVersion ==
+				EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION;
+		if (!bRuntimeExtensionDocument)
+		{
+			if (Document.RuntimeExtensions.iFormatVersion !=
+					EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION ||
+				!Document.RuntimeExtensions.Is_Empty() ||
+				std::any_of(Document.Elements.begin(), Document.Elements.end(),
+					[](const EFFECT_ELEMENT_DESC& Element)
+					{
+						return Element.RuntimeCarrier.iFormatVersion !=
+								EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION ||
+							!Element.RuntimeCarrier.Is_Empty();
+					}))
+			{
+				strOutError =
+					"Only authored-v15 Effect documents may carry runtimeExtensions/runtimeCarrier data.";
+				return false;
+			}
+			return true;
+		}
+
+		if (Document.RuntimeExtensions.iFormatVersion !=
+				EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION ||
+			Document.RuntimeExtensions.BakedEdgeHistories.size() >
+				MAX_AUTHORED_RUNTIME_EDGE_HISTORIES)
+		{
+			strOutError = "Authored runtimeExtensions version/size is invalid.";
+			return false;
+		}
+
+		std::unordered_map<std::string,
+			const EFFECT_AUTHORED_RUNTIME_EDGE_HISTORY_DESC*> HistoriesById;
+		std::string strPreviousHistoryId;
+		size_t iTotalSampleCount = 0u;
+		for (const EFFECT_AUTHORED_RUNTIME_EDGE_HISTORY_DESC& History :
+			Document.RuntimeExtensions.BakedEdgeHistories)
+		{
+			if (!Is_StableId(History.strHistoryId) ||
+				(!strPreviousHistoryId.empty() &&
+				 History.strHistoryId <= strPreviousHistoryId) ||
+				History.eCoordinateBasis !=
+					EFFECT_AUTHORED_RUNTIME_COORDINATE_BASIS::
+						UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS ||
+				!std::isfinite(History.fSourceEndTimeSeconds) ||
+				History.fSourceEndTimeSeconds <= 0.f ||
+				History.fSourceEndTimeSeconds >
+					MAX_AUTHORED_RUNTIME_EDGE_TIME_SECONDS ||
+				!std::isfinite(History.fPlaybackClampSeconds) ||
+				History.fPlaybackClampSeconds <= 0.f ||
+				History.fPlaybackClampSeconds >
+					History.fSourceEndTimeSeconds ||
+				History.Samples.size() < 2u ||
+				History.Samples.size() >
+					MAX_AUTHORED_RUNTIME_EDGE_SAMPLES_PER_HISTORY ||
+				!HistoriesById.emplace(
+					History.strHistoryId, &History).second)
+			{
+				strOutError =
+					"Authored baked-edge history identity/timing is invalid.";
+				return false;
+			}
+			strPreviousHistoryId = History.strHistoryId;
+			iTotalSampleCount += History.Samples.size();
+			if (iTotalSampleCount > MAX_AUTHORED_RUNTIME_EDGE_SAMPLES_TOTAL)
+			{
+				strOutError =
+					"Authored baked-edge history sample budget is exceeded.";
+				return false;
+			}
+
+			f32_t fPreviousTime = -1.f;
+			for (const EFFECT_AUTHORED_RUNTIME_EDGE_SAMPLE_DESC& Sample :
+				History.Samples)
+			{
+				const auto CoordinatesBounded = [](const float3_t& Coordinates)
+				{
+					return Is_Finite(Coordinates) &&
+						std::abs(Coordinates.x) <=
+							MAX_AUTHORED_RUNTIME_EDGE_COORDINATE_UE3_CM &&
+						std::abs(Coordinates.y) <=
+							MAX_AUTHORED_RUNTIME_EDGE_COORDINATE_UE3_CM &&
+						std::abs(Coordinates.z) <=
+							MAX_AUTHORED_RUNTIME_EDGE_COORDINATE_UE3_CM;
+				};
+				if (!std::isfinite(Sample.fRelativeTimeSeconds) ||
+					Sample.fRelativeTimeSeconds <= fPreviousTime ||
+					Sample.fRelativeTimeSeconds < 0.f ||
+					Sample.fRelativeTimeSeconds >
+						History.fSourceEndTimeSeconds + 5.0e-5f ||
+					!CoordinatesBounded(Sample.vFirstEdgeUE3Cm) ||
+					!CoordinatesBounded(Sample.vControlPointUE3Cm) ||
+					!CoordinatesBounded(Sample.vSecondEdgeUE3Cm))
+				{
+					strOutError = "Authored baked-edge sample is invalid.";
+					return false;
+				}
+				fPreviousTime = Sample.fRelativeTimeSeconds;
+			}
+			if (std::abs(History.Samples.front().fRelativeTimeSeconds) >
+					1.0e-6f ||
+				std::abs(History.Samples.back().fRelativeTimeSeconds -
+					History.fSourceEndTimeSeconds) > 5.0e-5f)
+			{
+				strOutError =
+					"Authored baked-edge history does not close at its declared source interval.";
+				return false;
+			}
+		}
+
+		std::unordered_set<std::string> ReferencedHistoryIds;
+		for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			const EFFECT_AUTHORED_RUNTIME_CARRIER_DESC& Carrier =
+				Element.RuntimeCarrier;
+			if (Carrier.Is_Empty())
+				continue;
+			if (Carrier.iFormatVersion !=
+					EFFECT_AUTHORED_RUNTIME_EXTENSION_PAYLOAD_VERSION ||
+				Carrier.eKind >= EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::END ||
+				Carrier.eAdmission !=
+					EFFECT_AUTHORED_RUNTIME_CARRIER_ADMISSION::BOUNDED ||
+				!Element.bVisible ||
+				(!Is_EffectAuthoringExecutionTarget(Element.Material.Execution) &&
+				 !Is_EffectPresentationExecutionTarget(Element)))
+			{
+				strOutError =
+					"Authored runtimeCarrier target is not a visible bounded drawable.";
+				return false;
+			}
+
+			switch (Carrier.eKind)
+			{
+			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1:
+			{
+				if (Element.eKind != EFFECT_ELEMENT_KIND::TRAIL ||
+					!Carrier.strHistoryId.empty() ||
+					Carrier.eEdgeLane !=
+						EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE::END ||
+					Carrier.strTypeDataModuleStableId.empty() ||
+					Carrier.strTypeDataModuleStableId.size() > 256u ||
+					!Has_VisibleCharacter(
+						Carrier.strTypeDataModuleStableId) ||
+					!Element.SourceRecipe.bEnabled ||
+					Element.SourceRecipe.strRendererShape != "ribbon")
+				{
+					strOutError =
+						"Authored Cascade runtimeCarrier target/shape is invalid.";
+					return false;
+				}
+				size_t iTypeDataMatchCount = 0u;
+				for (const EFFECT_SOURCE_MODULE_DESC& Module :
+					Element.SourceRecipe.Modules)
+				{
+					if (Module.strStableId !=
+						Carrier.strTypeDataModuleStableId)
+					{
+						continue;
+					}
+					++iTypeDataMatchCount;
+					if (Normalize_SourceModuleClass(Module.strClassName) !=
+						"particlemoduletypedataribbon")
+					{
+						strOutError =
+							"Authored Cascade runtimeCarrier joins a non-Ribbon TypeData module.";
+						return false;
+					}
+				}
+				if (1u != iTypeDataMatchCount)
+				{
+					strOutError =
+						"Authored Cascade runtimeCarrier TypeData stable join is missing or ambiguous.";
+					return false;
+				}
+				break;
+			}
+			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::
+				ANIMATION_TRAIL_BAKED_EDGE_V1:
+				if (Element.eKind != EFFECT_ELEMENT_KIND::TRAIL ||
+					!Carrier.strTypeDataModuleStableId.empty() ||
+					Carrier.eEdgeLane !=
+						EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE::END ||
+					!Is_StableId(Carrier.strHistoryId) ||
+					!HistoriesById.contains(Carrier.strHistoryId))
+				{
+					strOutError =
+						"Authored Animation Trail runtimeCarrier history join is invalid.";
+					return false;
+				}
+				ReferencedHistoryIds.insert(Carrier.strHistoryId);
+				break;
+			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::
+				LIGHT_BAKED_EDGE_ATTACHMENT_V1:
+				if (Element.eKind != EFFECT_ELEMENT_KIND::LIGHT ||
+					!Carrier.strTypeDataModuleStableId.empty() ||
+					Carrier.eEdgeLane !=
+						EFFECT_AUTHORED_RUNTIME_BAKED_EDGE_LANE::FIRST_EDGE ||
+					!Is_StableId(Carrier.strHistoryId) ||
+					!HistoriesById.contains(Carrier.strHistoryId) ||
+					!Element.Detail.Light.bEnabled)
+				{
+					strOutError =
+						"Authored Light runtimeCarrier history/lane target is invalid.";
+					return false;
+				}
+				ReferencedHistoryIds.insert(Carrier.strHistoryId);
+				break;
+			default:
+				strOutError = "Authored runtimeCarrier kind is invalid.";
+				return false;
+			}
+		}
+
+		if (ReferencedHistoryIds.size() != HistoriesById.size())
+		{
+			strOutError =
+				"Authored runtimeExtensions contain an unreferenced baked-edge history.";
+			return false;
+		}
+		return true;
+	}
+}
+
 bool_t Client::CEffectDocumentCodec::
 	Apply_PortableAuthoredParticleRuntimeCarrier(
 	const EFFECT_ELEMENT_DESC& SourceElement,
 	EFFECT_ELEMENT_DESC& InOutElement,
 	std::string& strOutError)
 {
-	if (EFFECT_ELEMENT_KIND::PARTICLE != SourceElement.eKind ||
-		EFFECT_ELEMENT_KIND::PARTICLE != InOutElement.eKind ||
-		!SourceElement.SourceRecipe.bEnabled)
-	{
-		strOutError =
-			"Portable authored particle carrier requires an enabled source particle recipe.";
-		return false;
-	}
 	const bool_t bTargetMeshParticle = std::any_of(
 		InOutElement.ResourceBindings.begin(),
 		InOutElement.ResourceBindings.end(),
@@ -10167,78 +11425,19 @@ bool_t Client::CEffectDocumentCodec::
 		{
 			return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
 		});
-	const std::string_view strExpectedShape =
-		bTargetMeshParticle ? "mesh" : "sprite";
-	if (SourceElement.SourceRecipe.strRendererShape != strExpectedShape)
-	{
-		strOutError =
-			"Portable authored particle carrier renderer shape does not match its target Family.";
-		return false;
-	}
+	return ApplyPortableAuthoredEmitterRuntimeCarrier(SourceElement,
+		InOutElement, EFFECT_ELEMENT_KIND::PARTICLE,
+		bTargetMeshParticle ? "mesh" : "sprite", strOutError);
+}
 
-	/* Legacy v13 sourceRecipe is the portable, already-interpreted runtime
-	   carrier. Copy only executable timing/module values. Constructing a new
-	   descriptor (rather than copying the entire native-v14 recipe) guarantees
-	   that source-contract hashes, compiler evidence, authority receipts,
-	   geometry admission, and local-reference closure cannot leak into an
-	   ordinary authored document. */
-	EFFECT_CASCADE_RECIPE_DESC Portable;
-	Portable.bEnabled = true;
-	Portable.strRendererShape = SourceElement.SourceRecipe.strRendererShape;
-	/* Build_GenericAuthoredElementStartingCopy already flattens the source
-	   schedule plus emitter delay into Detail.Timing.fStartDelaySeconds.  The
-	   portable carrier starts at that authored boundary and must not apply the
-	   emitter delay a second time. */
-	Portable.fEmitterDelaySeconds = 0.f;
-	Portable.fEmitterDurationSeconds =
-		SourceElement.SourceRecipe.fEmitterDurationSeconds;
-	Portable.iEmitterLoopCount = SourceElement.SourceRecipe.iEmitterLoopCount;
-	Portable.Bursts = SourceElement.SourceRecipe.Bursts;
-	Portable.Modules = SourceElement.SourceRecipe.Modules;
-	for (EFFECT_SOURCE_MODULE_DESC& Module : Portable.Modules)
-	{
-		const std::string_view NormalizedClass =
-			NormalizePortableParticleModuleClass(Module.strClassName);
-		if (std::ranges::find(
-				PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES, NormalizedClass) ==
-				PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES.end() ||
-			(NormalizedClass == "particlemodulespawn" &&
-			 Module.strClassName != "particlemodulespawn"))
-		{
-			strOutError =
-				"Portable authored particle carrier has an unsupported module class: " +
-				Module.strClassName + ".";
-			return false;
-		}
-		for (EFFECT_DISTRIBUTION_DESC& Distribution : Module.Distributions)
-		{
-			if (Distribution.eParameterBinding !=
-					EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
-				!Distribution.strParameterName.empty())
-			{
-				strOutError =
-					"Portable authored particle carrier cannot erase an ActionCue parameter binding: " +
-					Module.strClassName + "/" +
-					Distribution.strPropertyPath + ".";
-				return false;
-			}
-			Distribution.strReferenceId.clear();
-			Distribution.strOccurrenceId.clear();
-			Distribution.strPayloadStatus.clear();
-			Distribution.strFidelity.clear();
-			Distribution.ExecutionAdmission = {};
-			Distribution.strParameterName.clear();
-			Distribution.eParameterBinding =
-				EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE;
-		}
-	}
-	EFFECT_ELEMENT_DESC Staged = InOutElement;
-	Staged.SourceRecipe = std::move(Portable);
-	if (!ValidatePortableAuthoredParticleRuntimeCarrier(Staged, strOutError))
-		return false;
-	InOutElement.SourceRecipe = std::move(Staged.SourceRecipe);
-	strOutError.clear();
-	return true;
+bool_t Client::CEffectDocumentCodec::
+	Apply_PortableAuthoredDecalRuntimeCarrier(
+	const EFFECT_ELEMENT_DESC& SourceElement,
+	EFFECT_ELEMENT_DESC& InOutElement,
+	std::string& strOutError)
+{
+	return ApplyPortableAuthoredEmitterRuntimeCarrier(SourceElement,
+		InOutElement, EFFECT_ELEMENT_KIND::DECAL, "decal", strOutError);
 }
 
 bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementImportStage(
@@ -11620,6 +12819,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	const DATA_JSON_VALUE* pAssetId = Root.Find("effectAssetId");
 	const DATA_JSON_VALUE* pDisplayName = Root.Find("displayName");
 	const DATA_JSON_VALUE* pPurpose = Root.Find("purpose");
+	const DATA_JSON_VALUE* pRuntimeExtensions = Root.Find("runtimeExtensions");
 	const DATA_JSON_VALUE* pElements = Root.Find("elements");
 	if ((nullptr != pSchema && (!pSchema->Is_String() || pSchema->Get_String() != EFFECT_DOCUMENT_SCHEMA)) ||
 		nullptr == pVersion || !pVersion->Is_Number() ||
@@ -11633,7 +12833,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	const double Version = pVersion->Get_Number();
 	if (!std::isfinite(Version) || Version != std::floor(Version) ||
 		Version < EFFECT_AUTHORING_MIN_SUPPORTED_VERSION ||
-		Version > EFFECT_SOURCE_CONTRACT_FORMAT_VERSION)
+		Version > EFFECT_AUTHORING_MAX_SUPPORTED_VERSION)
 	{
 		strOutError = "Effect document version is not supported.";
 		return false;
@@ -11641,6 +12841,8 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	const uint32_t iSourceVersion = static_cast<uint32_t>(Version);
 	const bool_t bSourceContract =
 		iSourceVersion == EFFECT_SOURCE_CONTRACT_FORMAT_VERSION;
+	const bool_t bRuntimeExtensionDocument =
+		iSourceVersion == EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION;
 	if (bSourceContract)
 	{
 		if (nullptr == pSchema || !pSchema->Is_String() ||
@@ -11657,9 +12859,32 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			return false;
 		}
 	}
+	else if (bRuntimeExtensionDocument)
+	{
+		if (nullptr == pSchema || !pSchema->Is_String() ||
+			pSchema->Get_String() != EFFECT_DOCUMENT_SCHEMA ||
+			nullptr != pPurpose || nullptr == pRuntimeExtensions ||
+			!pRuntimeExtensions->Is_Object() ||
+			!Validate_ExactFields(Root,
+				{ "schema", "version", "effectAssetId", "displayName",
+					"particleSystem", "modelCues", "runtimeExtensions",
+					"elements" },
+				"Effect authored-v15 document", strOutError))
+		{
+			if (strOutError.empty())
+				strOutError = "Effect authored-v15 root is invalid.";
+			return false;
+		}
+	}
 	else if (nullptr != pPurpose)
 	{
 		strOutError = "Legacy Effect documents cannot declare source-contract purpose.";
+		return false;
+	}
+	else if (nullptr != pRuntimeExtensions)
+	{
+		strOutError =
+			"Effect runtimeExtensions require authored document version 15.";
 		return false;
 	}
 
@@ -11669,6 +12894,12 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	Staged.bSourceContract = bSourceContract;
 	Staged.strEffectAssetId = pAssetId->Get_String();
 	Staged.strDisplayName = pDisplayName->Get_String();
+	if (bRuntimeExtensionDocument &&
+		!Read_AuthoredRuntimeExtensions(
+			*pRuntimeExtensions, Staged.RuntimeExtensions, strOutError))
+	{
+		return false;
+	}
 	if (iSourceVersion >= 8u)
 	{
 		const DATA_JSON_VALUE* pParticleSystem = Root.Find("particleSystem");
@@ -11774,7 +13005,14 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					"material",
 					"actionCueAttachment", "transformInheritance", "detail",
 					"sourceRecipe", "sourcePresentation" },
-				"Effect source-contract Element", strOutError)))
+				"Effect source-contract Element", strOutError)) ||
+			(bRuntimeExtensionDocument && !Validate_ExactFields(ElementValue,
+				{ "id", "displayName", "groupId", "sourceNode", "visible",
+					"kind", "runtimeCarrier", "compositionLayer", "resources",
+					"unboundResources", "material", "actionCueAttachment",
+					"transformInheritance", "detail", "sourceRecipe",
+					"sourcePresentation", "authoringOverrides" },
+				"Effect authored-v15 Element", strOutError)))
 		{
 			strOutError = "Effect Element must be an object.";
 			return false;
@@ -11791,7 +13029,33 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			strOutError = "Effect Element identity, kind, resources, or material is invalid.";
 			return false;
 		}
+		if (const DATA_JSON_VALUE* pCompositionLayer =
+			ElementValue.Find("compositionLayer"))
+		{
+			if (!pCompositionLayer->Is_String() ||
+				!Parse_Token(pCompositionLayer->Get_String(),
+					COMPOSITION_LAYER_TOKENS,
+					std::size(COMPOSITION_LAYER_TOKENS),
+					Element.eCompositionLayer))
+			{
+				strOutError = "Effect Element compositionLayer is invalid.";
+				return false;
+			}
+		}
 		Element.strElementId = pId->Get_String();
+		if (const DATA_JSON_VALUE* pRuntimeCarrier =
+			ElementValue.Find("runtimeCarrier"))
+		{
+			if (!bRuntimeExtensionDocument || !pRuntimeCarrier->Is_Object() ||
+				!Read_AuthoredRuntimeCarrier(
+					*pRuntimeCarrier, Element.RuntimeCarrier, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Effect runtimeCarrier is valid only in authored-v15 documents.";
+				return false;
+			}
+		}
 		if (bSourceContract)
 		{
 			const DATA_JSON_VALUE* pRenderer = ElementValue.Find("renderer");
@@ -12107,8 +13371,57 @@ std::string Client::CEffectDocumentCodec::Serialize(
 	}
 	if (!Document.ModelCues.empty())
 		Output << '\n';
-	Output << "  ],\n"
-		<< "  \"elements\": [";
+	Output << "  ],\n";
+	if (iSerializedVersion ==
+		EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION)
+	{
+		Output << "  \"runtimeExtensions\": {\n"
+			<< "    \"formatVersion\": "
+			<< Document.RuntimeExtensions.iFormatVersion << ",\n"
+			<< "    \"bakedEdgeHistories\": [";
+		for (size_t iHistory = 0u;
+			iHistory < Document.RuntimeExtensions.BakedEdgeHistories.size();
+			++iHistory)
+		{
+			const EFFECT_AUTHORED_RUNTIME_EDGE_HISTORY_DESC& History =
+				Document.RuntimeExtensions.BakedEdgeHistories[iHistory];
+			Output << (0u == iHistory ? "\n" : ",\n")
+				<< "      {\n"
+				<< "        \"historyId\": \""
+				<< CDataJson::Escape(History.strHistoryId) << "\",\n"
+				<< "        \"coordinateBasis\": \""
+				<< AUTHORED_RUNTIME_COORDINATE_BASIS_TOKENS[
+					static_cast<size_t>(History.eCoordinateBasis)] << "\",\n"
+				<< "        \"sourceEndTimeSeconds\": "
+				<< History.fSourceEndTimeSeconds << ",\n"
+				<< "        \"playbackClampSeconds\": "
+				<< History.fPlaybackClampSeconds << ",\n"
+				<< "        \"samples\": [";
+			for (size_t iSample = 0u; iSample < History.Samples.size();
+				++iSample)
+			{
+				const EFFECT_AUTHORED_RUNTIME_EDGE_SAMPLE_DESC& Sample =
+					History.Samples[iSample];
+				Output << (0u == iSample ? "\n" : ",\n")
+					<< "          { \"relativeTimeSeconds\": "
+					<< Sample.fRelativeTimeSeconds
+					<< ", \"firstEdgeUE3Cm\": ";
+				Write_Float3(Output, Sample.vFirstEdgeUE3Cm);
+				Output << ", \"controlPointUE3Cm\": ";
+				Write_Float3(Output, Sample.vControlPointUE3Cm);
+				Output << ", \"secondEdgeUE3Cm\": ";
+				Write_Float3(Output, Sample.vSecondEdgeUE3Cm);
+				Output << " }";
+			}
+			if (!History.Samples.empty())
+				Output << '\n';
+			Output << "        ]\n      }";
+		}
+		if (!Document.RuntimeExtensions.BakedEdgeHistories.empty())
+			Output << '\n';
+		Output << "    ]\n  },\n";
+	}
+	Output << "  \"elements\": [";
 	for (size_t iElement = 0u; iElement < Document.Elements.size(); ++iElement)
 	{
 		const EFFECT_ELEMENT_DESC& Element = Document.Elements[iElement];
@@ -12119,6 +13432,50 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< "      \"sourceNode\": \"" << CDataJson::Escape(Element.strSourceNode) << "\",\n"
 			<< "      \"visible\": " << (Element.bVisible ? "true" : "false") << ",\n"
 			<< "      \"kind\": \"" << To_Token(Element.eKind) << "\",\n";
+		if (iSerializedVersion ==
+				EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION &&
+			!Element.RuntimeCarrier.Is_Empty())
+		{
+			const EFFECT_AUTHORED_RUNTIME_CARRIER_DESC& Carrier =
+				Element.RuntimeCarrier;
+			Output << "      \"runtimeCarrier\": { \"formatVersion\": "
+				<< Carrier.iFormatVersion << ", \"kind\": \""
+				<< AUTHORED_RUNTIME_CARRIER_KIND_TOKENS[
+					static_cast<size_t>(Carrier.eKind)]
+				<< "\", \"admission\": \""
+				<< AUTHORED_RUNTIME_CARRIER_ADMISSION_TOKENS[
+					static_cast<size_t>(Carrier.eAdmission)] << "\"";
+			switch (Carrier.eKind)
+			{
+			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1:
+				Output << ", \"typeDataModuleStableId\": \""
+					<< CDataJson::Escape(Carrier.strTypeDataModuleStableId)
+					<< "\"";
+				break;
+			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::
+				ANIMATION_TRAIL_BAKED_EDGE_V1:
+				Output << ", \"historyId\": \""
+					<< CDataJson::Escape(Carrier.strHistoryId) << "\"";
+				break;
+			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::
+				LIGHT_BAKED_EDGE_ATTACHMENT_V1:
+				Output << ", \"historyId\": \""
+					<< CDataJson::Escape(Carrier.strHistoryId)
+					<< "\", \"edgeLane\": \""
+					<< AUTHORED_RUNTIME_BAKED_EDGE_LANE_TOKENS[
+						static_cast<size_t>(Carrier.eEdgeLane)] << "\"";
+				break;
+			default:
+				break;
+			}
+			Output << " },\n";
+		}
+		if (Element.eCompositionLayer != EFFECT_COMPOSITION_LAYER::NORMAL)
+		{
+			Output << "      \"compositionLayer\": \""
+				<< COMPOSITION_LAYER_TOKENS[static_cast<size_t>(
+					Element.eCompositionLayer)] << "\",\n";
+		}
 		if (bSourceContract)
 			Write_Renderer(Output, Element.Renderer);
 		Output << "      \"resources\": [";

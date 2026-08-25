@@ -1,6 +1,6 @@
 {
   "schema": "lostark.effect-authoring",
-  "version": 13,
+  "version": 15,
   "effectAssetId": "effect.artist.skill.31950.unified",
   "displayName": "effect.artist.skill.31950.unified",
   "particleSystem": {
@@ -10,6 +10,10 @@
     "initialSpeedMultiplier": 1.0
   },
   "modelCues": [],
+  "runtimeExtensions": {
+    "formatVersion": 1,
+    "bakedEdgeHistories": []
+  },
   "elements": [
     {
       "id": "authored.source-particle.7606224ebaa4f96edc4c5d7b",
@@ -16539,6 +16543,12 @@
       "sourceNode": "authored-source-particle:effect.artist.skill.31950.unified|source:effect.artist.skill.31950.imported|element:fx_pc_sdm_01.par_t_sdm_dragonrising_00_wpcast_01.particlespriteemitter_2",
       "visible": true,
       "kind": "trail",
+      "runtimeCarrier": {
+        "formatVersion": 1,
+        "kind": "cascadeRibbonV1",
+        "admission": "bounded",
+        "typeDataModuleStableId": "FX_PC_SDM_01:export:1495@ref:6"
+      },
       "resources": [
         {
           "slotId": "base",

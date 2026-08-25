@@ -6,11 +6,14 @@
 #include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
+#include "Effect_MaterialTemplate.h"
 #include "Effect_MaterialProgramRegistry.h"
 #include "Effect_Object.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_Playback.h"
 #include "Effect_ReconstructedExecution.h"
+#include "Effect_RuntimeAuthority.h"
+#include "Effect_ScreenOverlayPresentation.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Level.h"
@@ -20,13 +23,19 @@
 #include <bit>
 #include <cctype>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <optional>
+#include <set>
+#include <sstream>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -35,6 +44,7 @@
 #include <vector>
 
 #include <Windows.h>
+#include <DirectXPackedVector.h>
 
 namespace
 {
@@ -42,6 +52,17 @@ namespace
 		"effect.artist.skill.31470";
 	constexpr std::string_view ARTIST_UNIFIED_EFFECT_ID =
 		"effect.artist.skill.31470.unified";
+	constexpr std::string_view ARTIST_E_CRANE_EFFECT_ID =
+		"effect.artist.skill.31480.unified";
+	constexpr std::string_view ARTIST_E_CRANE_CUE_ID =
+		"artist_31480_crane_projectile";
+	constexpr std::string_view ARTIST_E_CRANE_MODEL_ASSET_ID =
+		"Effect/Artist/Meshes/SK_SDM_RCC_00_SK_FX_01/"
+		"SK_SDM_RCC_00_SK_FX_01.wmodel";
+	constexpr std::string_view ARTIST_E_CRANE_CLIP_NAME =
+		"rcc_sk_flyinheaven";
+	constexpr std::string_view ARTIST_E_CRANE_WITNESS_BONE =
+		"b_l_wing_01";
 	constexpr std::string_view ARTIST_CANARY_ELEMENT_ID =
 		"sprite.2b3dc6842507e910";
 	constexpr std::string_view ARTIST_CANARY_PROGRAM_ID =
@@ -70,6 +91,24 @@ namespace
 		"effect.lancemaster.skill.34010.ba1";
 	constexpr std::string_view LANCE_BA1_OCCURRENCE_ID =
 		"authored.approx.s002.mesh01";
+	struct ARTIST_PARTICLE_MASTER_STAGE_DESC final
+	{
+		uint32_t iStageNumber = 0u;
+		std::string_view strEffectAssetId;
+		std::string_view strElementId;
+	};
+
+	constexpr std::array<ARTIST_PARTICLE_MASTER_STAGE_DESC, 4u>
+		ARTIST_PARTICLE_MASTER_STAGES = {{
+		{ 1u, "effect.artist.skill.31000.ba1.unified",
+			"authored.source-particle.a41eed26b6f8b7f9df8233da" },
+		{ 2u, "effect.artist.skill.31000.ba2.unified",
+			"authored.source-particle.25e72dfb5a9a416facc02888" },
+		{ 3u, "effect.artist.skill.31000.ba3.unified",
+			"authored.source-particle.65e208f117586003f28a3e91" },
+		{ 4u, "effect.artist.skill.31000.ba4.unified",
+			"authored.source-particle.50c7b1854919386dc3630e1e" }
+	}};
 	constexpr size_t REPRESENTATIVE_V1_BINDING_COUNT = 131u;
 	constexpr size_t REPRESENTATIVE_V1_TOTAL_BINDING_COUNT = 134u;
 	constexpr size_t REPRESENTATIVE_V1_REGISTRY_ADAPTER_COUNT = 7u;
@@ -93,10 +132,15 @@ namespace
 			LostArk::Shared::INVALID_SKILL_ID;
 	};
 
-	constexpr std::array<DIRECT_AUTHORED_INDEX_PROBE_DESC, 10u>
+	constexpr std::array<DIRECT_AUTHORED_INDEX_PROBE_DESC, 13u>
 		DIRECT_AUTHORED_INDEX_PROBES = {{
 		{
 			"effect.artist.skill.31460.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+			31460u
+		},
+		{
+			"effect.artist.skill.31460.linear-reveal.unified",
 			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
 			31460u
 		},
@@ -124,6 +168,16 @@ namespace
 			"effect.lancemaster.skill.34110.v1.unified",
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
 			34110u
+		},
+		{
+			"effect.lancemaster.skill.34040.clip1.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+			34040u
+		},
+		{
+			"effect.lancemaster.skill.34040.clip2.unified",
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+			34040u
 		},
 		{
 			"effect.warlord.skill.17110.clip2.unified",
@@ -213,10 +267,119 @@ namespace
 	constexpr uint32_t WINDOW_HEIGHT = 180u;
 	constexpr wchar_t WINDOW_CLASS_NAME[] =
 		L"LostArkEffectRenderContractHarness";
+	constexpr std::string_view VALTAN_COMBAT_OBJECT_SWEEP_MODE =
+		"--write-valtan-combat-object-runtime-sweep";
+	constexpr std::array<std::string_view, 5u> VALTAN_SKY_AXE_ELEMENTS = {{
+		"mesh.valtan.sky-axe.descent",
+		"particle.valtan.sky-axe.impact",
+		"sky-axe-target-inner-fill",
+		"authored.copy.sky-axe-target-inner-fill.1",
+		"sky-axe-flight-line"
+	}};
+	constexpr std::array<std::string_view, 5u> VALTAN_RED_BLADE_ELEMENTS = {{
+		"source.055adf57f38ac8f25be3",
+		"source.5cb81ed1867daa4c331a",
+		"source.5d987e41721843a8d390",
+		"source.94fe8920096dda4a4e73",
+		"source.f997148180378f188150"
+	}};
+	constexpr f32_t VALTAN_SKY_AXE_OWNER_LIFETIME_SECONDS = 6.f;
 
 	void Write_Progress(const std::string_view strStage)
 	{
 		std::cerr << "[effect-render-contract] stage=" << strStage << '\n';
+	}
+
+	bool_t Validate_ArtistECraneCloneAnimationContract(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		Client::EFFECT_MODEL_CUE_ANIMATION_PROBE& OutProbe,
+		std::string& strOutError)
+	{
+		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> RuntimeDocument =
+			Client::CEffectCatalog::Find(std::string(ARTIST_E_CRANE_EFFECT_ID));
+		if (nullptr == RuntimeDocument)
+		{
+			strOutError =
+				"Artist E crane Authored Product document failed to load.";
+			return false;
+		}
+		const Client::EFFECT_DOCUMENT_DESC& SourceDocument = *RuntimeDocument;
+		const auto Crane = std::find_if(SourceDocument.ModelCues.begin(),
+			SourceDocument.ModelCues.end(),
+			[](const Client::EFFECT_MODEL_CUE_DESC& Cue)
+			{
+				return Cue.strCueId == ARTIST_E_CRANE_CUE_ID;
+			});
+		if (SourceDocument.strEffectAssetId != ARTIST_E_CRANE_EFFECT_ID ||
+			SourceDocument.ModelCues.size() != 1u ||
+			Crane == SourceDocument.ModelCues.end() ||
+			Crane->strModelAssetId != ARTIST_E_CRANE_MODEL_ASSET_ID ||
+			Crane->strClipName != ARTIST_E_CRANE_CLIP_NAME ||
+			!Crane->bVisible || !Crane->bHoldLastFrame ||
+			std::abs(Crane->fStartDelaySeconds - 1.f) > 0.0001f ||
+			Crane->fDurationSeconds <= 1.f ||
+			std::abs(Crane->LocalTransform.vVelocityPerSecond.x) > 0.0001f ||
+			std::abs(Crane->LocalTransform.vVelocityPerSecond.y) > 0.0001f ||
+			std::abs(Crane->LocalTransform.vVelocityPerSecond.z - 9.f) > 0.0001f)
+		{
+			strOutError = "Artist E crane runtime Model Cue identity drifted.";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC ModelCueOnly = SourceDocument;
+		ModelCueOnly.Elements.clear();
+		ModelCueOnly.ModelCues = { *Crane };
+		ModelCueOnly.ModelCues.front().LocalTransform.vVelocityPerSecond = {};
+		ModelCueOnly.ModelCues.front().LocalTransform.
+			vRevolutionDegreesPerSecond = {};
+		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Fixture =
+			std::make_shared<Client::EFFECT_DOCUMENT_DESC>(std::move(ModelCueOnly));
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			Prepared;
+		if (!Client::CEffectDocumentRenderer::
+				Prepare_UnboundMaterialProgramDocumentForTests(
+					pDevice, pContext, Fixture, nullptr, Prepared, strOutError) ||
+			nullptr == Prepared ||
+			!Client::CEffectDocumentRenderer::
+				Probe_ModelCueCloneAnimationForTests(
+					pDevice, pContext, Prepared, ARTIST_E_CRANE_CUE_ID,
+					ARTIST_E_CRANE_WITNESS_BONE, OutProbe, strOutError))
+		{
+			strOutError = "Artist E crane clone animation probe failed: " +
+				strOutError;
+			return false;
+		}
+		if (OutProbe.fPrototypeDurationSeconds < 1.05f ||
+			OutProbe.fPrototypeDurationSeconds > 1.08f ||
+			std::abs(OutProbe.fCloneDurationSeconds -
+				OutProbe.fPrototypeDurationSeconds) > 0.00001f ||
+			OutProbe.fMidTrackPositionTicks < 15.9f ||
+			OutProbe.fMidTrackPositionTicks > 16.1f ||
+			OutProbe.fTrackDurationTicks < 31.9f ||
+			OutProbe.fTrackDurationTicks > 32.1f ||
+			std::abs(OutProbe.fTailTrackPositionTicks -
+				OutProbe.fTrackDurationTicks) > 0.001f ||
+			OutProbe.fWitnessBoneMaximumDelta <= 0.0001f)
+		{
+			strOutError =
+				"Artist E crane clone timing or wing animation evidence drifted.";
+			return false;
+		}
+
+		Client::EFFECT_MODEL_CUE_ANIMATION_PROBE InvalidProbe;
+		std::string Rejection;
+		if (Client::CEffectDocumentRenderer::
+				Probe_ModelCueCloneAnimationForTests(
+					pDevice, pContext, Prepared, "missing.artist-e.crane-cue",
+					ARTIST_E_CRANE_WITNESS_BONE, InvalidProbe, Rejection) ||
+			Rejection.empty())
+		{
+			strOutError = "Unknown Artist E crane cue did not fail closed.";
+			return false;
+		}
+		strOutError.clear();
+		return true;
 	}
 
 	struct AGGREGATE_STATS final
@@ -252,6 +415,7 @@ namespace
 		uint64_t iDrawSelectionCount = 0u;
 		uint64_t iCompiledAdapterPipelineValidationCount = 0u;
 		uint32_t iSelectedPassIndex = UINT32_MAX;
+		uint32_t iSourceMaterialProfile = UINT32_MAX;
 		Client::EFFECT_GPU_RENDER_CARRIER eCarrier =
 			Client::EFFECT_GPU_RENDER_CARRIER::END;
 		bool_t bDrawSelectionDiverged = false;
@@ -270,6 +434,11 @@ namespace
 		AGGREGATE_STATS Aggregate;
 		std::optional<OCCURRENCE_EVIDENCE> Occurrence;
 		bool_t bBoundAdapterActualPipelineValidated = false;
+		bool_t bSceneHdrReadback = false;
+		f32_t fSceneHdrBloomThreshold = 0.f;
+		f32_t fSceneHdrPeak = 0.f;
+		float4_t vSceneHdrPeakPixel{};
+		uint64_t iSceneHdrPixelsAboveThreshold = 0u;
 	};
 
 	struct REPRESENTATIVE_V1_PREPARED_TARGET final
@@ -418,9 +587,23 @@ namespace
 		ComPtr<ID3D11Device> Get_Device() const { return m_pDevice; }
 		ComPtr<ID3D11DeviceContext> Get_Context() const { return m_pContext; }
 
+		bool_t Begin_Frame(std::string& strOutError) const
+		{
+			const float4_t ClearColor(0.f, 0.f, 0.f, 0.f);
+			if (!m_bEngineInitialized ||
+				FAILED(Engine::CGameInstance::Get().Render_Begin(&ClearColor)))
+			{
+				strOutError = "production Render_Begin failed";
+				return false;
+			}
+			strOutError.clear();
+			return true;
+		}
+
 		bool_t Render_Frame(const std::shared_ptr<Client::CEffectObject>& pObject,
 			const f32_t fSampleTimeSeconds, FRAME_EVIDENCE& OutEvidence,
-			std::string& strOutError) const
+			std::string& strOutError,
+			const std::optional<f32_t> SceneHdrBloomThreshold = std::nullopt) const
 		{
 			if (!m_bEngineInitialized || nullptr == pObject)
 			{
@@ -470,11 +653,108 @@ namespace
 					pObject->Get_Status();
 				return false;
 			}
+			if (SceneHdrBloomThreshold.has_value() &&
+				!Read_SceneHdr(*SceneHdrBloomThreshold, OutEvidence, strOutError))
+			{
+				return false;
+			}
 			strOutError.clear();
 			return true;
 		}
 
 	private:
+		bool_t Read_SceneHdr(const f32_t fBloomThreshold,
+			FRAME_EVIDENCE& OutEvidence, std::string& strOutError) const
+		{
+			const ComPtr<ID3D11ShaderResourceView> SceneHdr =
+				Engine::CGameInstance::Get().Get_RT_SRV(L"Target_SceneHDR");
+			ComPtr<ID3D11Resource> Resource;
+			ComPtr<ID3D11Texture2D> Texture;
+			if (nullptr == SceneHdr ||
+				(SceneHdr->GetResource(Resource.GetAddressOf()), nullptr == Resource) ||
+				FAILED(Resource.As(&Texture)) || nullptr == Texture)
+			{
+				strOutError = "Target_SceneHDR resource is unavailable";
+				return false;
+			}
+
+			D3D11_TEXTURE2D_DESC Desc{};
+			Texture->GetDesc(&Desc);
+			if (Desc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT ||
+				Desc.MipLevels != 1u || Desc.ArraySize != 1u ||
+				Desc.SampleDesc.Count != 1u)
+			{
+				strOutError = "Target_SceneHDR readback format changed";
+				return false;
+			}
+			Desc.Usage = D3D11_USAGE_STAGING;
+			Desc.BindFlags = 0u;
+			Desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			Desc.MiscFlags = 0u;
+			ComPtr<ID3D11Texture2D> Readback;
+			if (FAILED(m_pDevice->CreateTexture2D(
+					&Desc, nullptr, Readback.GetAddressOf())) ||
+				nullptr == Readback ||
+				FAILED(Engine::CGameInstance::Get().Copy_RT_Resource(
+					L"Target_SceneHDR", Readback)))
+			{
+				strOutError = "Target_SceneHDR staging copy failed";
+				return false;
+			}
+
+			D3D11_MAPPED_SUBRESOURCE Mapped{};
+			if (FAILED(m_pContext->Map(
+				Readback.Get(), 0u, D3D11_MAP_READ, 0u, &Mapped)))
+			{
+				strOutError = "Target_SceneHDR staging map failed";
+				return false;
+			}
+			f32_t fPeak = 0.f;
+			float4_t PeakPixel{};
+			uint64_t iPixelsAboveThreshold = 0u;
+			for (uint32_t y = 0u; y < Desc.Height; ++y)
+			{
+				const uint16_t* const pRow = reinterpret_cast<const uint16_t*>(
+					static_cast<const std::byte*>(Mapped.pData) +
+					static_cast<size_t>(y) * Mapped.RowPitch);
+				for (uint32_t x = 0u; x < Desc.Width; ++x)
+				{
+					const uint16_t* const pPixel = pRow + x * 4u;
+					const float4_t Pixel(
+						DirectX::PackedVector::XMConvertHalfToFloat(pPixel[0]),
+						DirectX::PackedVector::XMConvertHalfToFloat(pPixel[1]),
+						DirectX::PackedVector::XMConvertHalfToFloat(pPixel[2]),
+						DirectX::PackedVector::XMConvertHalfToFloat(pPixel[3]));
+					if (!std::isfinite(Pixel.x) || !std::isfinite(Pixel.y) ||
+						!std::isfinite(Pixel.z) || !std::isfinite(Pixel.w))
+					{
+						m_pContext->Unmap(Readback.Get(), 0u);
+						strOutError =
+							"Target_SceneHDR readback contains a non-finite pixel";
+						return false;
+					}
+					const f32_t fPixelPeak = (std::max)(Pixel.x,
+						(std::max)(Pixel.y, Pixel.z));
+					if (fPixelPeak > fPeak)
+					{
+						fPeak = fPixelPeak;
+						PeakPixel = Pixel;
+					}
+					if (fPixelPeak > fBloomThreshold)
+						++iPixelsAboveThreshold;
+				}
+			}
+			m_pContext->Unmap(Readback.Get(), 0u);
+
+			OutEvidence.bSceneHdrReadback = true;
+			OutEvidence.fSceneHdrBloomThreshold = fBloomThreshold;
+			OutEvidence.fSceneHdrPeak = fPeak;
+			OutEvidence.vSceneHdrPeakPixel = PeakPixel;
+			OutEvidence.iSceneHdrPixelsAboveThreshold = iPixelsAboveThreshold;
+			strOutError.clear();
+			return true;
+		}
+
 		HINSTANCE m_hInstance = nullptr;
 		HWND m_hWnd = nullptr;
 		ATOM m_ClassAtom = 0u;
@@ -547,6 +827,7 @@ namespace
 		Result.iCompiledAdapterPipelineValidationCount =
 			Iterator->iCompiledAdapterPipelineValidationCount;
 		Result.iSelectedPassIndex = Iterator->iSelectedPassIndex;
+		Result.iSourceMaterialProfile = Iterator->iSourceMaterialProfile;
 		Result.eCarrier = Iterator->eCarrier;
 		Result.bDrawSelectionDiverged = Iterator->bDrawSelectionDiverged;
 		Result.bHasFirstSubmittedWorld =
@@ -608,21 +889,20 @@ namespace
 		return true;
 	}
 
-	struct TEMP_RUNTIME_CATALOG_FIXTURE final
+	struct TEMP_SOURCE_CATALOG_FIXTURE final
 	{
-		TEMP_RUNTIME_CATALOG_FIXTURE() = default;
-		TEMP_RUNTIME_CATALOG_FIXTURE(const TEMP_RUNTIME_CATALOG_FIXTURE&) = delete;
-		TEMP_RUNTIME_CATALOG_FIXTURE& operator=(
-			const TEMP_RUNTIME_CATALOG_FIXTURE&) = delete;
-		TEMP_RUNTIME_CATALOG_FIXTURE(
-			TEMP_RUNTIME_CATALOG_FIXTURE&&) noexcept = default;
-		TEMP_RUNTIME_CATALOG_FIXTURE& operator=(
-			TEMP_RUNTIME_CATALOG_FIXTURE&&) noexcept = default;
+		TEMP_SOURCE_CATALOG_FIXTURE() = default;
+		TEMP_SOURCE_CATALOG_FIXTURE(const TEMP_SOURCE_CATALOG_FIXTURE&) = delete;
+		TEMP_SOURCE_CATALOG_FIXTURE& operator=(
+			const TEMP_SOURCE_CATALOG_FIXTURE&) = delete;
+		TEMP_SOURCE_CATALOG_FIXTURE(
+			TEMP_SOURCE_CATALOG_FIXTURE&&) noexcept = default;
+		TEMP_SOURCE_CATALOG_FIXTURE& operator=(
+			TEMP_SOURCE_CATALOG_FIXTURE&&) noexcept = default;
 		std::filesystem::path Root;
 		std::filesystem::path CatalogPath;
-		std::filesystem::path AuthoredDocumentPath;
 
-		~TEMP_RUNTIME_CATALOG_FIXTURE()
+		~TEMP_SOURCE_CATALOG_FIXTURE()
 		{
 			if (!Root.empty())
 			{
@@ -631,262 +911,6 @@ namespace
 			}
 		}
 	};
-
-	bool_t Is_SealedDirectAuthoredCatalogPath(
-		const std::string_view strEffectAssetId,
-		const std::string_view strRelativePath)
-	{
-		if (strEffectAssetId.empty() || strEffectAssetId.size() > 256u ||
-			!std::isalnum(static_cast<unsigned char>(strEffectAssetId.front())) ||
-			!std::isalnum(static_cast<unsigned char>(strEffectAssetId.back())) ||
-			strEffectAssetId.find("..") != std::string_view::npos ||
-			!std::all_of(strEffectAssetId.begin(), strEffectAssetId.end(),
-				[](const unsigned char Character)
-				{
-					return (Character >= 'a' && Character <= 'z') ||
-					(Character >= '0' && Character <= '9') ||
-					Character == '.' || Character == '_' || Character == '-';
-				}))
-			return false;
-		if (strRelativePath.empty() || strRelativePath.size() > 1024u ||
-			strRelativePath.find('\\') != std::string_view::npos ||
-			strRelativePath.find(':') != std::string_view::npos ||
-			strRelativePath.find("//") != std::string_view::npos)
-		{
-			return false;
-		}
-		const std::string Prefix =
-			"Authored/" + std::string(strEffectAssetId) + ".";
-		constexpr std::string_view SUFFIX = ".effect.json";
-		if (strRelativePath.size() != Prefix.size() + 64u + SUFFIX.size() ||
-			0u != strRelativePath.compare(0u, Prefix.size(), Prefix) ||
-			0u != strRelativePath.compare(
-				strRelativePath.size() - SUFFIX.size(), SUFFIX.size(), SUFFIX))
-		{
-			return false;
-		}
-		const std::filesystem::path RelativePath(strRelativePath);
-		auto Component = RelativePath.begin();
-		if (RelativePath.is_absolute() || RelativePath.has_root_name() ||
-			RelativePath.has_root_directory() || Component == RelativePath.end() ||
-			Component->generic_string() != "Authored" ||
-			++Component == RelativePath.end())
-		{
-			return false;
-		}
-		const std::string ExpectedFileName =
-			std::string(strRelativePath.substr(std::string_view("Authored/").size()));
-		if (Component->generic_string() != ExpectedFileName ||
-			++Component != RelativePath.end())
-		{
-			return false;
-		}
-		const std::string_view Hash = strRelativePath.substr(Prefix.size(), 64u);
-		return std::all_of(Hash.begin(), Hash.end(),
-			[](const char Character)
-			{
-				return (Character >= '0' && Character <= '9') ||
-					(Character >= 'a' && Character <= 'f');
-			});
-	}
-
-	bool_t Resolve_ContainedCatalogPath(
-		const std::filesystem::path& Root,
-		const std::string_view strRelativePath,
-		std::filesystem::path& OutPath)
-	{
-		OutPath.clear();
-		std::error_code Error;
-		const std::filesystem::path CanonicalRoot =
-			std::filesystem::weakly_canonical(Root, Error);
-		if (Error || CanonicalRoot.empty())
-			return false;
-		const std::filesystem::path Candidate = std::filesystem::weakly_canonical(
-			CanonicalRoot / std::filesystem::path(strRelativePath), Error);
-		if (Error || Candidate.empty() || Candidate == CanonicalRoot)
-			return false;
-		const auto Mismatch = std::mismatch(CanonicalRoot.begin(), CanonicalRoot.end(),
-			Candidate.begin(), Candidate.end());
-		if (Mismatch.first != CanonicalRoot.end())
-			return false;
-		OutPath = Candidate;
-		return true;
-	}
-
-	bool_t Read_DirectAuthoredCatalogPaths(
-		const std::filesystem::path& SourceCatalog,
-		std::vector<std::pair<std::string, std::string>>& OutRows,
-		std::string& strOutError)
-	{
-		OutRows.clear();
-		std::ifstream Input(SourceCatalog, std::ios::binary);
-		if (!Input)
-		{
-			strOutError = "runtime catalog transaction fixture catalog is missing";
-			return false;
-		}
-		const std::string Text{
-			std::istreambuf_iterator<char>(Input),
-			std::istreambuf_iterator<char>() };
-		Client::DATA_JSON_VALUE Root;
-		Client::DATA_JSON_PARSE_LIMITS Limits;
-		Limits.iMaximumBytes = 256u * 1024u * 1024u;
-		Limits.iMaximumDepth = 64u;
-		Limits.iMaximumValues = 3'000'000u;
-		if (!Client::CDataJson::Parse(Text, Root, strOutError, Limits) ||
-			!Root.Is_Object())
-		{
-			strOutError =
-				"runtime catalog transaction fixture catalog parse failed: " +
-				strOutError;
-			return false;
-		}
-		const Client::DATA_JSON_VALUE* pEffects = Root.Find("effects");
-		if (nullptr == pEffects || !pEffects->Is_Array())
-		{
-			strOutError = "runtime catalog transaction fixture effects are invalid";
-			return false;
-		}
-
-		std::unordered_set<std::string> EffectAssetIds;
-		std::unordered_set<std::string> AuthoredPaths;
-		for (const Client::DATA_JSON_VALUE& Entry : pEffects->Get_Array())
-		{
-			if (!Entry.Is_Object())
-			{
-				strOutError =
-					"runtime catalog transaction fixture effect entry is invalid";
-				return false;
-			}
-			const Client::DATA_JSON_VALUE* pPayloadKind = Entry.Find("payloadKind");
-			if (nullptr == pPayloadKind || !pPayloadKind->Is_String())
-			{
-				strOutError =
-					"runtime catalog transaction fixture effect entry is invalid";
-				return false;
-			}
-			if (pPayloadKind->Get_String() != "DIRECT_AUTHORED_DOCUMENT_V13")
-				continue;
-			const Client::DATA_JSON_VALUE* pEffectAssetId =
-				Entry.Find("effectAssetId");
-			const Client::DATA_JSON_VALUE* pAuthoredDocumentPath =
-				Entry.Find("authoredDocumentPath");
-			if (nullptr == pEffectAssetId || !pEffectAssetId->Is_String() ||
-				nullptr == pAuthoredDocumentPath ||
-				!pAuthoredDocumentPath->Is_String() ||
-				!Is_SealedDirectAuthoredCatalogPath(
-					pEffectAssetId->Get_String(),
-					pAuthoredDocumentPath->Get_String()) ||
-				!EffectAssetIds.emplace(pEffectAssetId->Get_String()).second ||
-				!AuthoredPaths.emplace(pAuthoredDocumentPath->Get_String()).second)
-			{
-				strOutError =
-					"runtime catalog transaction fixture authored identity is invalid";
-				return false;
-			}
-			OutRows.emplace_back(
-				pEffectAssetId->Get_String(), pAuthoredDocumentPath->Get_String());
-		}
-		if (OutRows.empty())
-		{
-			strOutError =
-				"runtime catalog transaction fixture has no direct authored rows";
-			return false;
-		}
-		strOutError.clear();
-		return true;
-	}
-
-	bool_t Stage_RuntimeCatalogTransactionFixture(
-		const std::filesystem::path& SourceCatalog,
-		TEMP_RUNTIME_CATALOG_FIXTURE& OutFixture,
-		std::string& strOutError)
-	{
-		OutFixture = {};
-		std::error_code Error;
-		const std::filesystem::path SourceRoot = SourceCatalog.parent_path();
-		const std::filesystem::path SourceSidecar =
-			SourceRoot / L"EffectVisualPrograms.runtime.json";
-		std::vector<std::pair<std::string, std::string>> DirectAuthoredRows;
-		if (!Read_DirectAuthoredCatalogPaths(
-				SourceCatalog, DirectAuthoredRows, strOutError) ||
-			!std::filesystem::is_regular_file(SourceSidecar, Error) || Error)
-		{
-			if (strOutError.empty())
-				strOutError =
-					"runtime catalog transaction fixture source is incomplete";
-			return false;
-		}
-		TEMP_RUNTIME_CATALOG_FIXTURE Staged;
-		Error.clear();
-		Staged.Root = std::filesystem::temp_directory_path(Error) /
-			("LostArkEffectRenderContract-" +
-			 std::to_string(static_cast<uint64_t>(GetCurrentProcessId())) + "-" +
-			 std::to_string(static_cast<uint64_t>(GetTickCount64())));
-		if (Error || !std::filesystem::create_directories(Staged.Root, Error) || Error)
-		{
-			strOutError = "runtime catalog transaction fixture directory failed";
-			return false;
-		}
-		Staged.CatalogPath = Staged.Root / SourceCatalog.filename();
-		Error.clear();
-		if (!std::filesystem::copy_file(SourceCatalog, Staged.CatalogPath,
-				std::filesystem::copy_options::overwrite_existing, Error) || Error ||
-			!std::filesystem::copy_file(SourceSidecar,
-				Staged.Root / SourceSidecar.filename(),
-				std::filesystem::copy_options::overwrite_existing, Error) || Error)
-		{
-			strOutError = "runtime catalog transaction fixture copy failed";
-			return false;
-		}
-		for (const auto& [EffectAssetId, RelativePath] : DirectAuthoredRows)
-		{
-			std::filesystem::path SourcePath;
-			std::filesystem::path StagedPath;
-			if (!Resolve_ContainedCatalogPath(
-					SourceRoot, RelativePath, SourcePath) ||
-				!Resolve_ContainedCatalogPath(
-					Staged.Root, RelativePath, StagedPath))
-			{
-				strOutError =
-					"runtime catalog transaction fixture authored path escaped its root";
-				return false;
-			}
-			Error.clear();
-			if (!std::filesystem::is_regular_file(SourcePath, Error) || Error ||
-				0u == std::filesystem::file_size(SourcePath, Error) || Error ||
-				(!std::filesystem::exists(StagedPath.parent_path(), Error) &&
-				 (!std::filesystem::create_directories(
-					 StagedPath.parent_path(), Error) || Error)) ||
-				!std::filesystem::copy_file(SourcePath, StagedPath,
-					std::filesystem::copy_options::overwrite_existing, Error) || Error)
-			{
-				strOutError =
-					"runtime catalog transaction fixture authored copy failed for " +
-					EffectAssetId;
-				return false;
-			}
-			if (EffectAssetId == ARTIST_UNIFIED_EFFECT_ID)
-			{
-				if (!Staged.AuthoredDocumentPath.empty())
-				{
-					strOutError =
-						"runtime catalog transaction fixture has duplicate Artist F rows";
-					return false;
-				}
-				Staged.AuthoredDocumentPath = StagedPath;
-			}
-		}
-		if (Staged.AuthoredDocumentPath.empty())
-		{
-			strOutError =
-				"runtime catalog transaction fixture has no Artist F row";
-			return false;
-		}
-		OutFixture = std::move(Staged);
-		strOutError.clear();
-		return true;
-	}
 
 	bool_t Validate_DirectAuthoredAuditionSourceIndex(
 		const std::filesystem::path& RepositoryRoot,
@@ -956,7 +980,35 @@ namespace
 			}
 		}
 
-		TEMP_RUNTIME_CATALOG_FIXTURE MalformedFixture;
+		/* Product-owner metadata is not editor admission. Simulate a globally
+		   unavailable owner catalog and require every exact source probe to remain
+		   openable while its Product join is isolated. */
+		Client::EFFECT_DIRECT_AUTHORED_SOURCE_INDEX EditorOnlyIndex;
+		Status.clear();
+		if (!Client::CEffectDirectAuthoredSourceIndex::Build(
+				CatalogPath, AuthoredRoot, ScannedFiles, {}, {}, {},
+				EditorOnlyIndex, Status) ||
+			EditorOnlyIndex.Entries.size() !=
+				DIRECT_AUTHORED_INDEX_PROBES.size() ||
+			EditorOnlyIndex.iOwnerJoinUnavailableCount <
+				DIRECT_AUTHORED_INDEX_PROBES.size() ||
+			EditorOnlyIndex.strFirstOwnerJoinUnavailable.empty() ||
+			!std::all_of(EditorOnlyIndex.Entries.begin(),
+				EditorOnlyIndex.Entries.end(),
+				[](const Client::EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Entry)
+				{
+					return !Entry.Path.empty() &&
+						Entry.eOwnerKind == Client::
+							EFFECT_DIRECT_AUTHORED_OWNER_KIND::END;
+				}))
+		{
+			strOutError =
+				"direct-authored editor admission was coupled to Product owners: " +
+				Status;
+			return false;
+		}
+
+		TEMP_SOURCE_CATALOG_FIXTURE MalformedFixture;
 		std::error_code FileError;
 		MalformedFixture.Root = std::filesystem::temp_directory_path(FileError) /
 			("LostArkDirectAuthoredIndex-" +
@@ -974,7 +1026,7 @@ namespace
 		{
 			std::ofstream Output(MalformedFixture.CatalogPath,
 				std::ios::binary | std::ios::trunc);
-			Output << R"({"formatVersion":1,"effects":[{"effectAssetId":"effect.artist.skill.31460.v1.unified","payloadKind":"DIRECT_AUTHORED_DOCUMENT_V13","authoringPath":"Effects/Authored/effect.artist.skill.31460.v1.unified.effect.json","runtimeAdmission":"REGISTRY_BOUND_AUDITION_ONLY"}]})";
+			Output << R"({"formatVersion":1,"effects":[{"effectAssetId":"effect.artist.skill.31460.unified","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.artist.skill.31460.unified.effect.json"},{"effectAssetId":"effect.artist.skill.31460.unified","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.artist.skill.31460.unified.effect.json"},{"effectAssetId":"effect.artist.skill.31460.linear-reveal.unified","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.artist.skill.31460.linear-reveal.unified.effect.json"},{"effectAssetId":"effect.artist.skill.31460.v1.unified","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.artist.skill.31460.v1.unified.effect.json","runtimeAdmission":"REGISTRY_BOUND_AUDITION_ONLY"}]})";
 			if (!Output)
 			{
 				strOutError =
@@ -983,26 +1035,21 @@ namespace
 			}
 		}
 
-		Client::EFFECT_DIRECT_AUTHORED_SOURCE_INDEX Preserved;
-		Preserved.iCatalogDirectCount = 41u;
-		Preserved.iUnavailableCount = 7u;
-		Preserved.strFirstUnavailable = "sentinel-unavailable";
-		Client::EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Sentinel;
-		Sentinel.strEffectAssetId = "sentinel.effect";
-		Preserved.Entries.push_back(std::move(Sentinel));
+		Client::EFFECT_DIRECT_AUTHORED_SOURCE_INDEX Isolated;
 		Status.clear();
-		if (Client::CEffectDirectAuthoredSourceIndex::Build(
+		if (!Client::CEffectDirectAuthoredSourceIndex::Build(
 				MalformedFixture.CatalogPath, AuthoredRoot, ScannedFiles,
-				ValidOwners, {}, {}, Preserved, Status) ||
-			Status.find("malformed direct-authored row") == std::string::npos ||
-			Preserved.iCatalogDirectCount != 41u ||
-			Preserved.iUnavailableCount != 7u ||
-			Preserved.strFirstUnavailable != "sentinel-unavailable" ||
-			Preserved.Entries.size() != 1u ||
-			Preserved.Entries.front().strEffectAssetId != "sentinel.effect")
+				ValidOwners, {}, {}, Isolated, Status) ||
+			Isolated.iCatalogDirectCount != 4u ||
+			Isolated.iUnavailableCount != 3u ||
+			Isolated.Entries.size() != 1u ||
+			Isolated.Entries.front().strEffectAssetId !=
+				"effect.artist.skill.31460.linear-reveal.unified" ||
+			Status.find("duplicate Effect ID") == std::string::npos ||
+			Status.find("Isolated 3 unavailable rows") == std::string::npos)
 		{
 			strOutError =
-				"partial audition metadata did not fail closed and preserve the index";
+				"malformed/duplicate direct-authored rows were not isolated from valid editors";
 			return false;
 		}
 
@@ -1010,116 +1057,287 @@ namespace
 		return true;
 	}
 
-	bool_t Validate_BindingCarrierProfileReloadRollback(
-		const std::filesystem::path& AuthoredDocumentPath,
+	bool_t Validate_SourceScreenOverlayParserContract(
+		const std::filesystem::path& RepositoryRoot,
 		std::string& strOutError)
 	{
-		Client::EFFECT_DOCUMENT_DESC Baseline;
-		if (!Client::CEffectDocumentCodec::Load(
-				AuthoredDocumentPath, Baseline, strOutError))
+		const std::filesystem::path SourcePath = RepositoryRoot / L"Data" /
+			L"Effects" / L"ScreenOverlays" /
+			L"effect.dimensionmaster.skill.2050230.unified.screen-overlay.json";
+		std::ifstream Input(SourcePath, std::ios::binary);
+		if (!Input)
 		{
+			strOutError = "Screen-overlay parser source could not be opened";
 			return false;
 		}
-		const uint64_t RevisionBefore =
-			Client::CEffectCatalog::Get_RuntimeRevision();
-		const std::shared_ptr<const Client::CEffectMaterialProgramRegistry>
-			RegistryBefore =
-				Client::CEffectCatalog::Acquire_MaterialProgramRegistry();
-		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> DocumentBefore =
-			Client::CEffectCatalog::Find(std::string(ARTIST_UNIFIED_EFFECT_ID));
-		const std::shared_ptr<const Client::EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>
-			BindingBefore = nullptr == RegistryBefore ? nullptr :
-				RegistryBefore->Resolve(
-					ARTIST_UNIFIED_EFFECT_ID, ARTIST_MESH_CANARY_ELEMENT_ID);
-		if (nullptr == RegistryBefore || nullptr == DocumentBefore ||
-			nullptr == BindingBefore)
+		const std::string Source{
+			std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>() };
+		Client::CEffectScreenOverlayPresentation::SOURCE_DOCUMENT_MANIFEST
+			Manifest;
+		if (!Client::CEffectScreenOverlayPresentation::Parse_SourceDocument(
+				Source, Manifest, strOutError) ||
+			Manifest.strPresentationId !=
+				"effect.dimensionmaster.skill.2050230.unified.screen-overlay" ||
+			Manifest.TextureAssetIds != std::vector<std::string>{
+				"Effect/DimensionMaster/Textures/FX_TEX_02/"
+				"fx_d_fragment_005.dds" })
 		{
-			strOutError = "valid catalog state was absent before rollback probe";
+			strOutError = strOutError.empty() ?
+				"Screen-overlay source manifest identity drifted" : strOutError;
 			return false;
 		}
-		const size_t BindingCountBefore = RegistryBefore->Get_BindingCount();
-		const auto StateUnchanged = [&]()
+
+		const auto ExpectRejectedWithoutMutation = [&Manifest, &strOutError](
+			const std::string& Candidate,
+			const std::string_view Label)
 		{
-			const auto RegistryAfter =
-				Client::CEffectCatalog::Acquire_MaterialProgramRegistry();
-			return nullptr != RegistryAfter &&
-				Client::CEffectCatalog::Get_RuntimeRevision() == RevisionBefore &&
-				RegistryAfter.get() == RegistryBefore.get() &&
-				RegistryAfter->Get_BindingCount() == BindingCountBefore &&
-				Client::CEffectCatalog::Find(
-					std::string(ARTIST_UNIFIED_EFFECT_ID)).get() ==
-					DocumentBefore.get() &&
-				RegistryAfter->Resolve(
-					ARTIST_UNIFIED_EFFECT_ID,
-					ARTIST_MESH_CANARY_ELEMENT_ID).get() == BindingBefore.get();
-		};
-		const auto RejectCandidate = [&](const Client::EFFECT_DOCUMENT_DESC& Candidate,
-			const std::string_view strLabel)
-		{
-			std::string SaveError;
-			if (!Client::CEffectDocumentCodec::Save_Atomic(
-					AuthoredDocumentPath, Candidate, SaveError))
+			const auto Before = Manifest;
+			std::string Error;
+			if (Client::CEffectScreenOverlayPresentation::Parse_SourceDocument(
+					Candidate, Manifest, Error) || Error.empty() ||
+				Manifest.strPresentationId != Before.strPresentationId ||
+				Manifest.TextureAssetIds != Before.TextureAssetIds)
 			{
-				strOutError = std::string(strLabel) +
-					" rollback fixture save failed: " + SaveError;
-				return false;
-			}
-			std::string ReloadStatus;
-			if (Client::CEffectCatalog::Load(ReloadStatus) ||
-				ReloadStatus.find(
-					"material-program Binding carrier/profile mismatched") ==
-					std::string::npos || !StateUnchanged())
-			{
-				strOutError = std::string(strLabel) +
-					" corrupt reload did not fail at the carrier/profile gate or roll back: " +
-					ReloadStatus;
+				strOutError =
+					"Screen-overlay parser did not fail transactionally: " +
+					std::string(Label);
 				return false;
 			}
 			return true;
 		};
-
-		Client::EFFECT_DOCUMENT_DESC CarrierDrift = Baseline;
-		auto MeshElement = std::find_if(
-			CarrierDrift.Elements.begin(), CarrierDrift.Elements.end(),
-			[](const Client::EFFECT_ELEMENT_DESC& Element)
-			{
-				return Element.strElementId == ARTIST_MESH_CANARY_ELEMENT_ID;
-			});
-		if (MeshElement == CarrierDrift.Elements.end())
+		std::string WrongVersion = Source;
+		const size_t Version = WrongVersion.find("\"formatVersion\": 1");
+		if (Version == std::string::npos)
 		{
-			strOutError = "rollback fixture lost the Artist F Mesh occurrence";
+			strOutError = "Screen-overlay version witness is absent";
 			return false;
 		}
-		MeshElement->SourceRecipe.strRendererShape = "sprite";
-		std::erase_if(MeshElement->ResourceBindings,
-			[](const Client::EFFECT_RESOURCE_BINDING_DESC& Binding)
-			{
-				return Binding.strSlotId == Client::EFFECT_MESH_SHAPE_SLOT_ID;
-			});
-		std::erase_if(MeshElement->SourceRecipe.Modules,
-			[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
-			{
-				return Module.strClassName == "particlemoduletypedatamesh";
-			});
-		if (!RejectCandidate(CarrierDrift, "carrier drift"))
+		WrongVersion.replace(Version, std::string("\"formatVersion\": 1").size(),
+			"\"formatVersion\": 2");
+		std::string EscapedTexture = Source;
+		const size_t Texture = EscapedTexture.find("Effect/DimensionMaster/");
+		if (Texture == std::string::npos)
+		{
+			strOutError = "Screen-overlay texture witness is absent";
 			return false;
-
-		Client::EFFECT_DOCUMENT_DESC ProfileDrift = Baseline;
-		MeshElement = std::find_if(
-			ProfileDrift.Elements.begin(), ProfileDrift.Elements.end(),
-			[](const Client::EFFECT_ELEMENT_DESC& Element)
-			{
-				return Element.strElementId == ARTIST_MESH_CANARY_ELEMENT_ID;
-			});
-		MeshElement->Material.eRenderProfile =
-			Client::EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ;
-		if (!RejectCandidate(ProfileDrift, "renderProfile drift"))
-			return false;
-		if (!Client::CEffectDocumentCodec::Save_Atomic(
-				AuthoredDocumentPath, Baseline, strOutError))
+		}
+		EscapedTexture.replace(Texture,
+			std::string("Effect/DimensionMaster/").size(),
+			"../Effect/DimensionMaster/");
+		if (!ExpectRejectedWithoutMutation(WrongVersion, "wrong version") ||
+			!ExpectRejectedWithoutMutation(EscapedTexture, "escaping texture"))
 		{
 			return false;
 		}
+
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_SourceDirectProductIdentity(
+		const std::filesystem::path& RepositoryRoot,
+		std::string& strOutError)
+	{
+		constexpr std::array<std::string_view, 7u> PRODUCT_WITNESSES{
+			"effect.artist.skill.31200.unified",
+			"effect.artist.skill.31460.unified",
+			"effect.artist.skill.31460.linear-reveal.unified",
+			"effect.lancemaster.skill.34110.unified",
+			"effect.artist.skill.31950.unified",
+			"effect.valtan.pattern.420633.active",
+			"effect.dimensionmaster.skill.2050230.unified"
+		};
+		const std::filesystem::path AuthoredRoot =
+			RepositoryRoot / L"Data" / L"Effects" / L"Authored";
+		std::map<std::string, Client::EFFECT_DOCUMENT_DESC, std::less<>>
+			SourceDocuments;
+		for (const std::string_view EffectAssetId : PRODUCT_WITNESSES)
+		{
+			const std::string Id(EffectAssetId);
+			Client::EFFECT_DOCUMENT_DESC Source;
+			const std::filesystem::path SourcePath =
+				AuthoredRoot / std::filesystem::path(Id + ".effect.json");
+			const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Product =
+				Client::CEffectCatalog::Find(Id);
+			const std::shared_ptr<const
+				Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> Projection =
+				Client::CEffectCatalog::Find_VisualProjection(Id);
+			if (!Client::CEffectDocumentCodec::Load(
+					SourcePath, Source, strOutError) || nullptr == Product ||
+				!Client::CEffectCatalog::Is_DirectAuthoredDocument(Id) ||
+				Client::CEffectDocumentCodec::Serialize(Source) !=
+					Client::CEffectDocumentCodec::Serialize(*Product) ||
+				((Source.iLoadedFormatVersion ==
+					Client::EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION) !=
+					(nullptr != Projection)) ||
+				(nullptr != Projection &&
+					(!Projection->Is_Valid() ||
+					 Projection->Get_ProjectionKind() != Client::
+						EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 ||
+					 Projection->Get_DocumentShared().get() != Product.get())))
+			{
+				strOutError =
+					"Product does not consume the exact direct-authored source: " +
+					Id + (strOutError.empty() ? std::string{} :
+						std::string("; ") + strOutError);
+				return false;
+			}
+			SourceDocuments.emplace(Id, std::move(Source));
+		}
+
+		const std::shared_ptr<const
+			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> ArtistT =
+			Client::CEffectCatalog::Find_VisualProjection(
+				"effect.artist.skill.31950.unified");
+		const std::shared_ptr<const
+			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> ValtanWhirlwind =
+			Client::CEffectCatalog::Find_VisualProjection(
+				"effect.valtan.pattern.420633.active");
+		if (nullptr == ArtistT || nullptr == ValtanWhirlwind ||
+			ArtistT->Get_AdmittedSupplementalElements().size() != 1u ||
+			!ArtistT->Get_BakedEdgeHistories().empty() ||
+			ArtistT->Get_AdmittedSupplementalElements().front().
+				TargetIdentity.strTargetElementId !=
+					"authored.source-particle.29868adeb040d5a35e2f213c" ||
+			!ArtistT->Get_AdmittedSupplementalElements().front().
+				CascadeRibbonPacket.has_value() ||
+			ValtanWhirlwind->Get_AdmittedSupplementalElements().size() != 4u ||
+			ValtanWhirlwind->Get_BakedEdgeHistories().size() != 1u ||
+			ValtanWhirlwind->Get_BakedEdgeHistories().front().iSampleCount != 409u ||
+			ValtanWhirlwind->Get_BakedEdgeHistories().front().Samples.size() != 409u)
+		{
+			strOutError =
+				"Source-owned Artist/Valtan carrier projection count regressed";
+			return false;
+		}
+		std::set<std::string> WhirlwindTrailTargets;
+		std::set<std::string> WhirlwindLightTargets;
+		for (const Client::EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental :
+			ValtanWhirlwind->Get_AdmittedSupplementalElements())
+		{
+			if (Supplemental.AnimationTrailPacket.has_value() &&
+				!Supplemental.CascadeRibbonPacket.has_value() &&
+				!Supplemental.BakedEdgeLightPacket.has_value())
+			{
+				WhirlwindTrailTargets.emplace(
+					Supplemental.TargetIdentity.strTargetElementId);
+			}
+			else if (Supplemental.BakedEdgeLightPacket.has_value() &&
+				!Supplemental.CascadeRibbonPacket.has_value() &&
+				!Supplemental.AnimationTrailPacket.has_value())
+			{
+				WhirlwindLightTargets.emplace(
+					Supplemental.TargetIdentity.strTargetElementId);
+			}
+		}
+		const std::set<std::string> ExpectedWhirlwindTrailTargets{
+			"valtan.420633.notify004.emitter5258",
+			"valtan.420633.notify004.emitter5259",
+			"valtan.420633.notify004.emitter5260" };
+		const std::set<std::string> ExpectedWhirlwindLightTargets{
+			"valtan.420633.notify009.emitter6823" };
+		if (WhirlwindTrailTargets != ExpectedWhirlwindTrailTargets ||
+			WhirlwindLightTargets != ExpectedWhirlwindLightTargets)
+		{
+			strOutError =
+				"Source-owned Valtan carrier target identities regressed";
+			return false;
+		}
+
+		const auto FindElement = [&SourceDocuments](
+			const std::string_view EffectAssetId,
+			const std::string_view ElementId)
+			-> const Client::EFFECT_ELEMENT_DESC*
+		{
+			const auto Document =
+				SourceDocuments.find(std::string(EffectAssetId));
+			if (Document == SourceDocuments.end())
+				return nullptr;
+			const auto Element = std::find_if(
+				Document->second.Elements.begin(), Document->second.Elements.end(),
+				[ElementId](const Client::EFFECT_ELEMENT_DESC& Candidate)
+				{
+					return Candidate.strElementId == ElementId;
+				});
+			return Element == Document->second.Elements.end() ?
+				nullptr : &*Element;
+		};
+		const auto RotationIs = [](const Client::EFFECT_ELEMENT_DESC* pElement,
+			const float fX, const float fY, const float fZ)
+		{
+			return nullptr != pElement &&
+				std::abs(pElement->Detail.Transform.vRotationDegrees.x - fX) <
+					1.0e-6f &&
+				std::abs(pElement->Detail.Transform.vRotationDegrees.y - fY) <
+					1.0e-6f &&
+				std::abs(pElement->Detail.Transform.vRotationDegrees.z - fZ) <
+					1.0e-6f;
+		};
+		if (!RotationIs(FindElement("effect.artist.skill.31200.unified",
+				"authored.source-decal.45800d0c0054acd91f11cfb4"),
+				0.f, -4.75f, 0.f) ||
+			!RotationIs(FindElement("effect.artist.skill.31200.unified",
+				"authored.copy.authored.source-decal.45800d0c0054acd91f11cfb4.1"),
+				0.f, -2.f, 0.f) ||
+			!RotationIs(FindElement("effect.artist.skill.31460.unified",
+				"authored.source-decal.2f8ebdae3ea1e2a30fc91123"),
+				0.f, 0.f, 0.f) ||
+			!RotationIs(FindElement("effect.artist.skill.31460.unified",
+				"authored.source-decal.7139d7fc84cfc2aee0b40621"),
+				0.f, 0.f, 0.f) ||
+			!RotationIs(FindElement(
+				"effect.artist.skill.31460.linear-reveal.unified",
+				"particle.artist.31460.grass-linear-reveal.hit1.v1"),
+				90.f, 0.f, 0.f) ||
+			!RotationIs(FindElement(
+				"effect.artist.skill.31460.linear-reveal.unified",
+				"particle.artist.31460.grass-linear-reveal.hit2.v1"),
+				90.f, 0.f, 0.f))
+		{
+			strOutError =
+				"Artist Q/A canonical decal/linear-reveal orientation regressed";
+			return false;
+		}
+
+		const std::shared_ptr<const Client::CEffectMaterialProgramRegistry>
+			Registry = Client::CEffectCatalog::Acquire_MaterialProgramRegistry();
+		const std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_CORPUS>
+			VisualCorpus = Client::CEffectCatalog::Find_VisualProgramCorpus();
+		if (nullptr == Registry || 0u != Registry->Get_BindingCount() ||
+			nullptr == VisualCorpus || !VisualCorpus->Programs.empty())
+		{
+			strOutError =
+				"Direct-authored Product was coupled to a derived material/visual override";
+			return false;
+		}
+
+		const std::filesystem::path OverlayPath = RepositoryRoot / L"Data" /
+			L"Effects" / L"ScreenOverlays" /
+			L"effect.dimensionmaster.skill.2050230.unified.screen-overlay.json";
+		std::ifstream OverlayInput(OverlayPath, std::ios::binary);
+		if (!OverlayInput)
+		{
+			strOutError = "Screen-overlay source sidecar could not be opened";
+			return false;
+		}
+		const std::string OverlayText{
+			std::istreambuf_iterator<char>(OverlayInput),
+			std::istreambuf_iterator<char>() };
+		const std::shared_ptr<const
+			Client::EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING> Overlay =
+			Client::CEffectCatalog::Find_ScreenOverlayProductBinding(
+				"effect.dimensionmaster.skill.2050230.unified");
+		if (nullptr == Overlay ||
+			Overlay->strUtf8Json != OverlayText ||
+			Overlay->strPresentationId !=
+				"effect.dimensionmaster.skill.2050230.unified.screen-overlay")
+		{
+			strOutError =
+				"Screen-overlay Product does not consume the exact source sidecar";
+			return false;
+		}
+
 		strOutError.clear();
 		return true;
 	}
@@ -1233,6 +1451,139 @@ namespace
 			strOutError =
 				"source playback Life x did not extend the declared preview tail";
 			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_ArtistParticleMasterHdrEmissiveContract(
+		const std::filesystem::path& RepositoryRoot,
+		std::string& strOutError)
+	{
+		const std::filesystem::path AuthoredRoot = RepositoryRoot / L"Data" /
+			L"Effects" / L"Authored";
+		for (const ARTIST_PARTICLE_MASTER_STAGE_DESC& Stage :
+			ARTIST_PARTICLE_MASTER_STAGES)
+		{
+			Client::EFFECT_DOCUMENT_DESC Document;
+			const std::filesystem::path DocumentPath = AuthoredRoot /
+				(std::string(Stage.strEffectAssetId) + ".effect.json");
+			if (!Client::CEffectDocumentCodec::Load(
+					DocumentPath, Document, strOutError))
+			{
+				strOutError = "Artist BA" + std::to_string(Stage.iStageNumber) +
+					" ParticleMaster HDR fixture failed to load: " + strOutError;
+				return false;
+			}
+			const auto Element = std::find_if(Document.Elements.begin(),
+				Document.Elements.end(), [&Stage](
+					const Client::EFFECT_ELEMENT_DESC& Candidate)
+				{
+					return Candidate.strElementId == Stage.strElementId;
+				});
+			if (Document.strEffectAssetId != Stage.strEffectAssetId ||
+				Element == Document.Elements.end() ||
+				Client::Resolve_EffectStrictTypedSourceProfile(
+					Element->Material.strSourceMaterialPath,
+					Element->Material.SourceMaterial) !=
+					Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLE_MASTER_01)
+			{
+				strOutError = "Artist BA" + std::to_string(Stage.iStageNumber) +
+					" ParticleMaster exact source identity drifted";
+				return false;
+			}
+
+			const Client::EFFECT_NAMED_TEXTURE_DESC* const pAlphaGroupB =
+				Client::Find_EffectUniqueNamedTexture(
+					Element->Material.SourceMaterial, "11.map_b");
+			const Client::EFFECT_NAMED_TEXTURE_DESC* const pEmissionE =
+				Client::Find_EffectUniqueNamedTexture(
+					Element->Material.SourceMaterial, "02.map_e");
+			const auto GenericEmissive = std::find_if(
+				Element->ResourceBindings.begin(), Element->ResourceBindings.end(),
+				[](const Client::EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == "emissive";
+				});
+			if (nullptr == pAlphaGroupB || nullptr == pEmissionE ||
+				GenericEmissive == Element->ResourceBindings.end() ||
+				GenericEmissive->strAssetId != pAlphaGroupB->strAssetId ||
+				GenericEmissive->strAssetId == pEmissionE->strAssetId)
+			{
+				strOutError = "Artist BA" + std::to_string(Stage.iStageNumber) +
+					" ParticleMaster generic Emissive was confused with named E emission";
+				return false;
+			}
+
+		}
+
+		const std::filesystem::path ShaderPath = RepositoryRoot / L"Client" /
+			L"Bin" / L"ShaderFiles" / L"Shader_EffectCommon.hlsli";
+		std::ifstream ShaderInput(ShaderPath, std::ios::binary);
+		const std::string ShaderSource{
+			std::istreambuf_iterator<char>(ShaderInput),
+			std::istreambuf_iterator<char>()};
+		const size_t PreStage = ShaderSource.find(
+			"19 == g_SourceMaterialProfile ? 1.f : g_EmissiveIntensity");
+		const size_t AuthoredTintCarrier = ShaderSource.find(
+			"g_AuthoredColorMultiply + g_ColorOffset");
+		const size_t SharedCompression = ShaderSource.find(
+			"if ((g_SourceMaterialProfile >= 19 && g_SourceMaterialProfile <= 32)");
+		const size_t PostStageCondition = SharedCompression == std::string::npos ?
+			std::string::npos : ShaderSource.find(
+				"if (19 == g_SourceMaterialProfile)", SharedCompression);
+		const size_t PostStage = PostStageCondition == std::string::npos ?
+			std::string::npos : ShaderSource.find(
+				"output.SceneColor.rgb *= g_EmissiveIntensity;",
+				PostStageCondition);
+		if (!ShaderInput.is_open() || ShaderInput.bad() ||
+			PreStage == std::string::npos ||
+			AuthoredTintCarrier == std::string::npos ||
+			SharedCompression == std::string::npos || PostStage == std::string::npos ||
+			!(PreStage < SharedCompression && SharedCompression < PostStage))
+		{
+			strOutError =
+				"ParticleMaster shader no longer applies authored HDR after compression";
+			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_ArtistParticleMasterSourceHdrEmissiveContract(
+		std::string& strOutError)
+	{
+		for (const ARTIST_PARTICLE_MASTER_STAGE_DESC& Stage :
+			ARTIST_PARTICLE_MASTER_STAGES)
+		{
+			const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Document =
+				Client::CEffectCatalog::Find(std::string(Stage.strEffectAssetId));
+			if (nullptr == Document)
+			{
+				strOutError = "Artist BA" + std::to_string(Stage.iStageNumber) +
+					" ParticleMaster source document is unavailable: " +
+					Client::CEffectCatalog::Get_Status();
+				return false;
+			}
+			const auto Element = std::find_if(Document->Elements.begin(),
+				Document->Elements.end(), [&Stage](
+					const Client::EFFECT_ELEMENT_DESC& Candidate)
+				{
+					return Candidate.strElementId == Stage.strElementId;
+				});
+			if (Element == Document->Elements.end() ||
+				Client::Resolve_EffectStrictTypedSourceProfile(
+					Element->Material.strSourceMaterialPath,
+					Element->Material.SourceMaterial) !=
+					Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLE_MASTER_01)
+			{
+				strOutError = "Artist BA" + std::to_string(Stage.iStageNumber) +
+					" ParticleMaster source identity drifted";
+				return false;
+			}
+
 		}
 
 		strOutError.clear();
@@ -1482,14 +1833,566 @@ namespace
 			return false;
 		}
 		Client::EFFECT_ELEMENT_DESC& Particle = ParticleDocument.Elements.front();
+		if (!ParticleSource.Elements.front().SourceRecipe.bEnabled ||
+			ParticleSource.Elements.front().Detail.Particle.
+				fSpawnRatePerSecond != 0.f ||
+			0u != ParticleSource.Elements.front().Detail.Particle.iBurstCount ||
+			Particle.SourceRecipe.bEnabled ||
+			Particle.Detail.Particle.fSpawnRatePerSecond != 0.f ||
+			1u != Particle.Detail.Particle.iBurstCount ||
+			Particle.Detail.Particle.iMaxParticles < 1u)
+		{
+			strOutError =
+				"generic Mesh Particle copy lost its bounded direct emission authority";
+			return false;
+		}
+		const Client::EFFECT_PARTICLE_DESC& SourceParticleDetail =
+			ParticleSource.Elements.front().Detail.Particle;
+		if (std::abs(Particle.Detail.Mesh.fModelPreScale - 0.01f) > 1.0e-6f ||
+			std::abs(SourceParticleDetail.vStartSize.x - 0.09f) > 1.0e-5f ||
+			std::abs(SourceParticleDetail.vStartSize.y - 0.06f) > 1.0e-5f ||
+			std::abs(Particle.Detail.Particle.vStartSize.x - 9.f) > 1.0e-4f ||
+			std::abs(Particle.Detail.Particle.vStartSize.y - 6.f) > 1.0e-4f)
+		{
+			strOutError =
+				"generic Mesh Particle copy retained a geometry-scaled direct StartSize";
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC AlreadyDimensionlessSource = ParticleSource;
+		AlreadyDimensionlessSource.Elements.front().Detail.Particle.vStartSize =
+			{ 9.f, 6.f };
+		AlreadyDimensionlessSource.Elements.front().Detail.Particle.vEndSize =
+			{ 4.5f, 3.f };
+		Client::EFFECT_DOCUMENT_DESC AlreadyDimensionlessCopy;
+		if (!Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				AlreadyDimensionlessSource,
+				AlreadyDimensionlessSource.Elements.front().strElementId,
+				"effect.contract.transform-motion.mesh-particle-dimensionless",
+				AlreadyDimensionlessCopy, strOutError) ||
+			AlreadyDimensionlessCopy.Elements.size() != 1u ||
+			std::abs(AlreadyDimensionlessCopy.Elements.front().Detail.Particle.
+				vStartSize.x - 9.f) > 1.0e-4f ||
+			std::abs(AlreadyDimensionlessCopy.Elements.front().Detail.Particle.
+				vStartSize.y - 6.f) > 1.0e-4f ||
+			std::abs(AlreadyDimensionlessCopy.Elements.front().Detail.Particle.
+				vEndSize.x - 4.5f) > 1.0e-4f ||
+			std::abs(AlreadyDimensionlessCopy.Elements.front().Detail.Particle.
+				vEndSize.y - 3.f) > 1.0e-4f)
+		{
+			strOutError =
+				"generic Mesh Particle copy rescaled an already-dimensionless StartSize";
+			return false;
+		}
+		const auto VerifyGenericMeshParticleSizeCopy = [&AuthoredRoot, &strOutError](
+			const std::filesystem::path& RelativePath,
+			const std::string_view ElementId,
+			const std::string_view TargetEffectId,
+			const float2_t ExpectedStart,
+			const float2_t ExpectedEnd)
+		{
+			Client::EFFECT_DOCUMENT_DESC Source;
+			if (!Client::CEffectDocumentCodec::Load(
+					AuthoredRoot / RelativePath, Source, strOutError))
+			{
+				strOutError = "generic Mesh Particle size fixture failed to load: " +
+					strOutError;
+				return false;
+			}
+			Client::EFFECT_DOCUMENT_DESC Copy;
+			if (!Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+					Source, ElementId, TargetEffectId, Copy, strOutError) ||
+				Copy.Elements.size() != 1u)
+			{
+				strOutError = "generic Mesh Particle size fixture failed to copy: " +
+					strOutError;
+				return false;
+			}
+			const auto MatchesExpected = [&ExpectedStart, &ExpectedEnd](
+				const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				const Client::EFFECT_PARTICLE_DESC& Detail = Element.Detail.Particle;
+				return !Element.SourceRecipe.bEnabled &&
+					std::abs(Detail.vStartSize.x - ExpectedStart.x) <= 1.0e-4f &&
+					std::abs(Detail.vStartSize.y - ExpectedStart.y) <= 1.0e-4f &&
+					std::abs(Detail.vEndSize.x - ExpectedEnd.x) <= 1.0e-4f &&
+					std::abs(Detail.vEndSize.y - ExpectedEnd.y) <= 1.0e-4f &&
+					std::abs(Detail.SourceScale.fSize - 1.f) <= 1.0e-6f;
+			};
+			if (!MatchesExpected(Copy.Elements.front()))
+			{
+				strOutError =
+					"generic Mesh Particle size normalization or SourceScale bake drifted";
+				return false;
+			}
+			Client::EFFECT_DOCUMENT_DESC RoundTrip;
+			if (!Client::CEffectDocumentCodec::Parse(
+					Client::CEffectDocumentCodec::Serialize(Copy),
+					RoundTrip, strOutError) || RoundTrip.Elements.size() != 1u ||
+				!MatchesExpected(RoundTrip.Elements.front()))
+			{
+				strOutError =
+					"generic Mesh Particle normalized size did not survive codec round-trip";
+				return false;
+			}
+			return true;
+		};
+		if (!VerifyGenericMeshParticleSizeCopy(
+				L"effect.lancemaster.skill.34010.ba1.unified.effect.json",
+				"authored.source-particle.ce43b71ae7ca3379dfe8529d",
+				"effect.contract.saved-element.lance-ba1",
+				{ 2.97f, 2.97f }, { 3.861f, 3.861f }) ||
+			!VerifyGenericMeshParticleSizeCopy(
+				L"effect.lancemaster.skill.34010.ba2.unified.effect.json",
+				"authored.source-particle.7c74ff64061154626dddbca2",
+				"effect.contract.saved-element.lance-ba2",
+				{ 2.7f, 2.7f }, { 3.51f, 3.51f }) ||
+			!VerifyGenericMeshParticleSizeCopy(
+				L"effect.artist.skill.31470.unified.effect.json",
+				"mesh.8165115d36cd1a8a",
+				"effect.contract.saved-element.artist-dimensionless",
+				{ 3.8f, 3.8f }, { 0.f, 0.f }) ||
+			!VerifyGenericMeshParticleSizeCopy(
+				L"effect.artist.skill.31470.unified.effect.json",
+				"mesh.cc04feee8a36940b",
+				"effect.contract.saved-element.artist-source-scale",
+				{ 1.6f, 1.6f }, { 2.0288f, 2.2976f }))
+		{
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC SavedParticleSource;
+		constexpr std::string_view SavedParticleElementId =
+			"authored.source-particle.ce43b71ae7ca3379dfe8529d";
+		if (!Client::CEffectDocumentCodec::Load(
+				AuthoredRoot /
+					L"effect.lancemaster.skill.34010.ba1.unified.effect.json",
+				SavedParticleSource, strOutError))
+		{
+			strOutError = "saved Mesh Particle portable fixture failed to load: " +
+				strOutError;
+			return false;
+		}
+		const auto SavedParticleSourceElement = std::find_if(
+			SavedParticleSource.Elements.begin(), SavedParticleSource.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == SavedParticleElementId;
+			});
+		if (SavedParticleSourceElement == SavedParticleSource.Elements.end())
+		{
+			strOutError =
+				"saved Mesh Particle portable fixture lost its source Element";
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC SavedParticleFallbackCopy;
+		if (!Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				SavedParticleSource, SavedParticleElementId,
+				"effect.contract.saved-element.lance-ba1-fallback",
+				SavedParticleFallbackCopy, strOutError) ||
+			SavedParticleFallbackCopy.Elements.size() != 1u)
+		{
+			strOutError = "saved Mesh Particle generic stage failed: " +
+				strOutError;
+			return false;
+		}
+		const Client::EFFECT_ELEMENT_DESC& SavedParticleFallback =
+			SavedParticleFallbackCopy.Elements.front();
+		if (SavedParticleFallback.SourceRecipe.bEnabled ||
+			std::abs(SavedParticleFallback.Detail.Particle.SourceScale.fSize - 1.f) >
+				1.0e-6f ||
+			std::abs(SavedParticleFallback.Detail.Particle.vStartSize.x - 2.97f) >
+				1.0e-4f ||
+			std::abs(SavedParticleFallback.Detail.Particle.vEndSize.x - 3.861f) >
+				1.0e-4f ||
+			SavedParticleFallback.Detail.Particle.iBurstCount != 1u)
+		{
+			strOutError =
+				"saved Mesh Particle generic stage did not expose its expected direct fallback";
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC SavedParticleCopy;
+		if (!Client::CEffectDocumentCodec::
+			Build_PortableAuthoredElementStartingCopy(
+				SavedParticleSource, SavedParticleElementId,
+				"effect.lancemaster.contract.saved-element.ba1-portable",
+				SavedParticleCopy, strOutError) ||
+			SavedParticleCopy.Elements.size() != 1u)
+		{
+			strOutError = "saved Mesh Particle portable copy failed: " +
+				strOutError;
+			return false;
+		}
+		const Client::EFFECT_ELEMENT_DESC& SavedParticle =
+			SavedParticleCopy.Elements.front();
+		static constexpr std::array<std::string_view, 13u>
+			EXPECTED_SAVED_PARTICLE_MODULE_CLASSES = {{
+				"particlemodulerequired",
+				"particlemodulelifetime",
+				"particlemodulesize",
+				"particlemodulecolor",
+				"particlemodulecolorscaleoverlife",
+				"particlemoduleparameterdynamic",
+				"particlemodulemeshrotation",
+				"particlemodulesizemultiplylife",
+				"particlemodulelocation",
+				"particlemodulemeshrotationrate",
+				"particlemodulemeshrotationratemultiplylife",
+				"particlemoduletypedatamesh",
+				"particlemodulespawn"
+			}};
+		const auto MatchesPortableSavedParticle =
+			[&SavedParticleSourceElement](
+				const Client::EFFECT_ELEMENT_DESC& Element)
+		{
+			const Client::EFFECT_CASCADE_RECIPE_DESC& Recipe =
+				Element.SourceRecipe;
+			const Client::EFFECT_PARTICLE_SOURCE_SCALE_DESC& SourceScale =
+				Element.Detail.Particle.SourceScale;
+			if (!Recipe.bEnabled || Recipe.strRendererShape != "mesh" ||
+				Recipe.fEmitterDelaySeconds != 0.f ||
+				std::abs(Recipe.fEmitterDurationSeconds - 5.f) > 1.0e-6f ||
+				Recipe.iEmitterLoopCount != 1u || Recipe.Bursts.size() != 1u ||
+				Recipe.Bursts.front().fTimeSeconds != 0.f ||
+				Recipe.Bursts.front().iCountMinimum != 1u ||
+				Recipe.Bursts.front().iCountMaximum != 1u ||
+				Recipe.Modules.size() !=
+					EXPECTED_SAVED_PARTICLE_MODULE_CLASSES.size() ||
+				std::abs(SourceScale.fCount - 1.58f) > 1.0e-4f ||
+				std::abs(SourceScale.fSize - 1.1f) > 1.0e-4f ||
+				std::abs(Element.Detail.Particle.vStartSize.x - 0.027f) >
+					1.0e-6f ||
+				std::abs(Element.Detail.Particle.vEndSize.x - 0.0351f) >
+					1.0e-6f ||
+				std::abs(Element.Detail.Mesh.fModelPreScale - 0.01f) >
+					1.0e-7f ||
+				Element.Detail.Mesh.vSourceTypeDataRotationDegrees.x !=
+					SavedParticleSourceElement->Detail.Mesh.
+						vSourceTypeDataRotationDegrees.x ||
+				Element.strSourceNode !=
+					"authored-copy:" + SavedParticleSourceElement->strElementId ||
+				Element.Material.strSourceMaterialPath !=
+					SavedParticleSourceElement->Material.strSourceMaterialPath ||
+				Element.Material.SourceMaterial.strProfileId !=
+					SavedParticleSourceElement->Material.SourceMaterial.strProfileId ||
+				Element.Material.SourceMaterial.strRuntimeShaderProfileId !=
+					SavedParticleSourceElement->Material.SourceMaterial.
+						strRuntimeShaderProfileId ||
+				Element.ResourceBindings.size() !=
+					SavedParticleSourceElement->ResourceBindings.size())
+			{
+				return false;
+			}
+			for (size_t iModule = 0u;
+				iModule < EXPECTED_SAVED_PARTICLE_MODULE_CLASSES.size();
+				++iModule)
+			{
+				if (Recipe.Modules[iModule].strClassName !=
+					EXPECTED_SAVED_PARTICLE_MODULE_CLASSES[iModule])
+				{
+					return false;
+				}
+			}
+			for (size_t iBinding = 0u;
+				iBinding < Element.ResourceBindings.size(); ++iBinding)
+			{
+				if (Element.ResourceBindings[iBinding].strSlotId !=
+						SavedParticleSourceElement->ResourceBindings[iBinding].strSlotId ||
+					Element.ResourceBindings[iBinding].strAssetId !=
+						SavedParticleSourceElement->ResourceBindings[iBinding].strAssetId)
+				{
+					return false;
+				}
+			}
+			return true;
+		};
+		if (!MatchesPortableSavedParticle(SavedParticle))
+		{
+			strOutError =
+				"saved Mesh Particle portable carrier lost shader or module identity";
+			return false;
+		}
+		SavedParticleCopy.Elements.front().strElementId =
+			"authored.copy.contract.saved-mesh-particle.1";
+		Client::EFFECT_DOCUMENT_DESC SavedParticleRoundTrip;
+		if (!Client::CEffectDocumentCodec::Parse(
+				Client::CEffectDocumentCodec::Serialize(SavedParticleCopy),
+				SavedParticleRoundTrip, strOutError) ||
+			SavedParticleRoundTrip.Elements.size() != 1u ||
+			!MatchesPortableSavedParticle(SavedParticleRoundTrip.Elements.front()))
+		{
+			strOutError =
+				"saved Mesh Particle portable carrier did not survive codec round-trip";
+			return false;
+		}
+
+		const auto VerifyPortableSavedElement =
+			[&AuthoredRoot, &strOutError](
+				const std::filesystem::path& RelativePath,
+				const std::string_view ElementId,
+				const std::string_view TargetEffectId,
+				const Client::EFFECT_ELEMENT_KIND ExpectedKind,
+				const std::string_view ExpectedRecipeShape,
+				const bool_t bExpectedAttachment,
+				const bool_t bExpectedFollow,
+				const std::string_view ExpectedSourceNode)
+		{
+			Client::EFFECT_DOCUMENT_DESC SourceDocument;
+			if (!Client::CEffectDocumentCodec::Load(
+					AuthoredRoot / RelativePath, SourceDocument, strOutError))
+			{
+				strOutError = "portable Saved Element family fixture failed to load: " +
+					RelativePath.generic_string() + ": " + strOutError;
+				return false;
+			}
+			const auto Source = std::find_if(SourceDocument.Elements.begin(),
+				SourceDocument.Elements.end(),
+				[ElementId](const Client::EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == ElementId;
+				});
+			const bool_t bExpectedRecipe = !ExpectedRecipeShape.empty();
+			if (Source == SourceDocument.Elements.end() ||
+				std::find_if(std::next(Source), SourceDocument.Elements.end(),
+					[ElementId](const Client::EFFECT_ELEMENT_DESC& Element)
+					{
+						return Element.strElementId == ElementId;
+					}) != SourceDocument.Elements.end() ||
+				Source->eKind != ExpectedKind ||
+				Source->Renderer.eType != Client::EFFECT_RENDERER_TYPE::END ||
+				Source->Renderer.eSourceSpace != Client::EFFECT_SOURCE_SPACE::END ||
+				Source->TransformInheritance.bEnabled ||
+				Source->SourcePresentation.bEnabled ||
+				Source->SourceRecipe.bEnabled != bExpectedRecipe ||
+				Source->SourceRecipe.strRendererShape != ExpectedRecipeShape ||
+				Source->ActionCueAttachment.bEnabled != bExpectedAttachment ||
+				Source->ActionCueAttachment.bFollow != bExpectedFollow ||
+				!Client::Is_EffectAuthoringExecutionTarget(
+					Source->Material.Execution))
+			{
+				strOutError =
+					"portable Saved Element source Family or ownership gate drifted: " +
+					std::string(ElementId);
+				return false;
+			}
+
+			Client::EFFECT_DOCUMENT_DESC PortableCopy;
+			if (!Client::CEffectDocumentCodec::
+					Build_PortableAuthoredElementStartingCopy(
+						SourceDocument, ElementId, TargetEffectId,
+						PortableCopy, strOutError) ||
+				PortableCopy.Elements.size() != 1u)
+			{
+				strOutError = "portable Saved Element family copy failed: " +
+					std::string(ElementId) + ": " + strOutError;
+				return false;
+			}
+			const Client::EFFECT_ELEMENT_DESC& Portable =
+				PortableCopy.Elements.front();
+			if (Portable.strElementId != ElementId ||
+				Portable.strGroupId != "manual.authoring" ||
+				Portable.strSourceNode != ExpectedSourceNode ||
+				Portable.eKind != ExpectedKind ||
+				Portable.Renderer.eType != Client::EFFECT_RENDERER_TYPE::END ||
+				Portable.Renderer.eSourceSpace != Client::EFFECT_SOURCE_SPACE::END ||
+				Portable.TransformInheritance.bEnabled ||
+				Portable.SourcePresentation.bEnabled ||
+				Portable.SourceRecipe.bEnabled != bExpectedRecipe ||
+				Portable.SourceRecipe.strRendererShape != ExpectedRecipeShape ||
+				Portable.ActionCueAttachment.bEnabled != bExpectedAttachment ||
+				Portable.ActionCueAttachment.bFollow != bExpectedFollow)
+			{
+				strOutError =
+					"portable Saved Element copied Family or provenance drifted: " +
+					std::string(ElementId);
+				return false;
+			}
+
+			/* Canonical whole-Element comparison intentionally normalizes only
+			   portable provenance/ownership fields. This covers the complete Detail,
+			   Material, ResourceBindings, AuthoringOverrides, attachment, and recipe
+			   payload without a partial field list that can miss future fields. */
+			Client::EFFECT_DOCUMENT_DESC Expected = PortableCopy;
+			Expected.Elements.front() = *Source;
+			Client::EFFECT_ELEMENT_DESC& ExpectedElement =
+				Expected.Elements.front();
+			ExpectedElement.strGroupId = Portable.strGroupId;
+			ExpectedElement.strSourceNode = std::string(ExpectedSourceNode);
+			ExpectedElement.Renderer = {};
+			ExpectedElement.TransformInheritance = {};
+			ExpectedElement.SourcePresentation = {};
+			const std::string RuntimeElementId =
+				"authored.copy.contract.saved-element.1";
+			PortableCopy.Elements.front().strElementId = RuntimeElementId;
+			Expected.Elements.front().strElementId = RuntimeElementId;
+			const std::string PortableJson =
+				Client::CEffectDocumentCodec::Serialize(PortableCopy);
+			if (Client::CEffectDocumentCodec::Serialize(Expected) != PortableJson)
+			{
+				strOutError =
+					"portable Saved Element lost an editable source field: " +
+					std::string(ElementId);
+				return false;
+			}
+
+			Client::EFFECT_DOCUMENT_DESC RoundTrip;
+			if (!Client::CEffectDocumentCodec::Parse(
+					PortableJson, RoundTrip, strOutError) ||
+				!Client::CEffectDocumentCodec::Validate(RoundTrip, strOutError) ||
+				RoundTrip.Elements.size() != 1u ||
+				Client::CEffectDocumentCodec::Serialize(RoundTrip) != PortableJson)
+			{
+				strOutError =
+					"portable Saved Element family did not survive codec round-trip: " +
+					std::string(ElementId) + ": " + strOutError;
+				return false;
+			}
+			return true;
+		};
+
+		if (!VerifyPortableSavedElement(
+				L"effect.artist.skill.31460.v1.unified.effect.json",
+				"authored.source-particle.cb346af47371feedccf9b652",
+				"effect.artist.contract.saved-element.standard-color-sprite",
+				Client::EFFECT_ELEMENT_KIND::PARTICLE, "sprite", false, false,
+				"authored-copy:authored.source-particle.cb346af47371feedccf9b652") ||
+			!VerifyPortableSavedElement(
+				L"effect.artist.skill.31200.unified.effect.json",
+				"authored.source-decal.45800d0c0054acd91f11cfb4",
+				"effect.artist.contract.saved-element.recipe-decal",
+				Client::EFFECT_ELEMENT_KIND::DECAL, "decal", true, false,
+				"authored-copy:authored.source-decal.45800d0c0054acd91f11cfb4") ||
+			!VerifyPortableSavedElement(
+				L"effect.artist.skill.31200.unified.effect.json",
+				"authored.copy.authored.source-decal.45800d0c0054acd91f11cfb4.1",
+				"effect.artist.contract.saved-element.recipe-decal-chain",
+				Client::EFFECT_ELEMENT_KIND::DECAL, "decal", true, false,
+				"authored-copy:authored.source-decal.45800d0c0054acd91f11cfb4") ||
+			!VerifyPortableSavedElement(
+				L"effect.test.winters.effect.json", "sprite_1",
+				"effect.test.contract.saved-element.sprite",
+				Client::EFFECT_ELEMENT_KIND::SPRITE, {}, false, false,
+				"authored-copy:sprite_1") ||
+			!VerifyPortableSavedElement(
+				L"effect.artist.skill.31470.unified.effect.json",
+				"decal.f3b5c3b63b4a7e34",
+				"effect.artist.contract.saved-element.direct-decal",
+				Client::EFFECT_ELEMENT_KIND::DECAL, {}, false, false,
+				"authored-copy:decal.f3b5c3b63b4a7e34"))
+		{
+			return false;
+		}
+
+		const auto ExpectPortableSavedElementReject = [&strOutError](
+			const Client::EFFECT_DOCUMENT_DESC& SourceDocument,
+			const std::string_view ElementId,
+			const std::string_view ExpectedError)
+		{
+			Client::EFFECT_DOCUMENT_DESC Rejected;
+			std::string Error;
+			if (Client::CEffectDocumentCodec::
+					Build_PortableAuthoredElementStartingCopy(
+						SourceDocument, ElementId,
+						"effect.contract.saved-element.expected-reject",
+						Rejected, Error) ||
+				Error.find(ExpectedError) == std::string::npos)
+			{
+				strOutError =
+					"portable Saved Element fail-close gate drifted for " +
+					std::string(ElementId) + ": " + Error;
+				return false;
+			}
+			return true;
+		};
+		Client::EFFECT_DOCUMENT_DESC InvisibleSavedParticleSource =
+			SavedParticleSource;
+		auto InvisibleSavedParticle = std::find_if(
+			InvisibleSavedParticleSource.Elements.begin(),
+			InvisibleSavedParticleSource.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == SavedParticleElementId;
+			});
+		InvisibleSavedParticle->bVisible = false;
+		Client::EFFECT_DOCUMENT_DESC FollowSavedParticleSource =
+			SavedParticleSource;
+		auto FollowSavedParticle = std::find_if(
+			FollowSavedParticleSource.Elements.begin(),
+			FollowSavedParticleSource.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == SavedParticleElementId;
+			});
+		FollowSavedParticle->ActionCueAttachment.bEnabled = true;
+		FollowSavedParticle->ActionCueAttachment.bFollow = true;
+		FollowSavedParticle->ActionCueAttachment.strSourceAnchorSlotId =
+			"weapon";
+		FollowSavedParticle->ActionCueAttachment.strRuntimeAnchorSlotId =
+			"weapon";
+		FollowSavedParticle->ActionCueAttachment.strRuntimeBoneName =
+			"b_weapon_rhand";
+		Client::EFFECT_DOCUMENT_DESC HistoryOnlySavedParticleSource =
+			SavedParticleSource;
+		auto HistoryOnlySavedParticle = std::find_if(
+			HistoryOnlySavedParticleSource.Elements.begin(),
+			HistoryOnlySavedParticleSource.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == SavedParticleElementId;
+			});
+		HistoryOnlySavedParticle->SourceRecipe.Bursts.clear();
+		Client::EFFECT_DOCUMENT_DESC TrailSource;
+		if (!Client::CEffectDocumentCodec::Load(
+				AuthoredRoot / L"effect.artist.skill.31470.unified.effect.json",
+				TrailSource, strOutError) ||
+			!ExpectPortableSavedElementReject(
+				InvisibleSavedParticleSource, SavedParticleElementId,
+				"invisible source Element") ||
+			!ExpectPortableSavedElementReject(
+				FollowSavedParticleSource, SavedParticleElementId,
+				"FOLLOW attachment") ||
+			!ExpectPortableSavedElementReject(
+				HistoryOnlySavedParticleSource, SavedParticleElementId,
+				"no autonomous positive Burst or Rate") ||
+			!ExpectPortableSavedElementReject(
+				TrailSource, "ribbon.a6fe27caa16b2630",
+				"Trail transform history"))
+		{
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC DelayedSavedParticleSource =
+			SavedParticleSource;
+		auto DelayedSavedParticle = std::find_if(
+			DelayedSavedParticleSource.Elements.begin(),
+			DelayedSavedParticleSource.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == SavedParticleElementId;
+			});
+		DelayedSavedParticle->SourceRecipe.fEmitterDelaySeconds = 0.125f;
+		Client::EFFECT_DOCUMENT_DESC DelayedSavedParticleCopy;
+		if (!Client::CEffectDocumentCodec::
+				Build_PortableAuthoredElementStartingCopy(
+					DelayedSavedParticleSource, SavedParticleElementId,
+					"effect.lancemaster.contract.saved-element.ba1-delayed",
+					DelayedSavedParticleCopy, strOutError) ||
+			DelayedSavedParticleCopy.Elements.size() != 1u ||
+			std::abs(DelayedSavedParticleCopy.Elements.front().SourceRecipe.
+				fEmitterDelaySeconds - 0.125f) > 1.0e-6f ||
+			DelayedSavedParticleCopy.Elements.front().Detail.Timing.
+				fStartDelaySeconds !=
+					SavedParticleSourceElement->Detail.Timing.fStartDelaySeconds)
+		{
+			strOutError =
+				"saved Particle portable copy did not preserve independent Detail and emitter delays";
+			return false;
+		}
 		Particle.Detail.Timing.fStartDelaySeconds = 0.f;
 		Particle.Detail.Timing.fLifeTimeSeconds = 3.f;
 		Particle.Detail.Timing.fTransformMotionDurationSeconds = 1.f;
 		Particle.Detail.Transform.vPosition = {};
 		Particle.Detail.Transform.vVelocityPerSecond = { 2.f, 0.f, 0.f };
 		Particle.Detail.LinearLerp = {};
-		Particle.Detail.Particle.iMaxParticles = 1u;
-		Particle.Detail.Particle.iBurstCount = 1u;
 		Particle.Detail.Particle.fSpawnRatePerSecond = 0.f;
 		Particle.Detail.Particle.vLifeTimeSeconds = { 3.f, 3.f };
 		Particle.Detail.Particle.vInitialPositionMin = {};
@@ -2230,6 +3133,490 @@ namespace
 		return true;
 	}
 
+	bool_t Validate_GenericSpriteLinearRevealContract(
+		std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>&
+			OutRevealDocument,
+		std::string& strOutError)
+	{
+		const auto Reject = [&strOutError](
+			const Client::EFFECT_DOCUMENT_DESC& Candidate,
+			const std::string_view strLabel)
+		{
+			std::string ValidationError;
+			if (Client::CEffectDocumentCodec::Validate(
+					Candidate, ValidationError))
+			{
+				strOutError = std::string(strLabel) + " was accepted";
+				return false;
+			}
+			return true;
+		};
+
+		Client::EFFECT_DOCUMENT_DESC DefaultDocument =
+			Build_ManualParticleContractDocument(
+				"effect.contract.sprite-linear-reveal.default",
+				"particle.sprite-linear-reveal.default", false);
+		Client::EFFECT_ELEMENT_DESC& DefaultElement =
+			DefaultDocument.Elements.front();
+		DefaultElement.Detail.Particle.iMaxParticles = 1u;
+		DefaultElement.Detail.Particle.iBurstCount = 1u;
+		const std::string DefaultJson =
+			Client::CEffectDocumentCodec::Serialize(DefaultDocument);
+		Client::EFFECT_DOCUMENT_DESC DefaultRoundTrip;
+		if (DefaultJson.find("\"linearReveal\"") != std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				DefaultJson, DefaultRoundTrip, strOutError) ||
+			DefaultRoundTrip.Elements.size() != 1u ||
+			!DefaultRoundTrip.Elements.front().Detail.Sprite.LinearReveal.
+				Is_Default())
+		{
+			strOutError =
+				"legacy Sprite Linear Reveal omission did not round-trip";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC RevealDocument = DefaultRoundTrip;
+		RevealDocument.strEffectAssetId =
+			"effect.contract.sprite-linear-reveal.explicit";
+		RevealDocument.strDisplayName = RevealDocument.strEffectAssetId;
+		Client::EFFECT_ELEMENT_DESC& RevealElement =
+			RevealDocument.Elements.front();
+		RevealElement.strElementId = "particle.sprite-linear-reveal.explicit";
+		RevealElement.strDisplayName = RevealElement.strElementId;
+		Client::EFFECT_LINEAR_REVEAL_DESC& Reveal =
+			RevealElement.Detail.Sprite.LinearReveal;
+		Reveal.bEnabled = true;
+		Reveal.eAxis = Client::EFFECT_LINEAR_REVEAL_AXIS::V;
+		Reveal.bInvert = true;
+		Reveal.fStartSeconds = 0.1f;
+		Reveal.fDurationSeconds = 0.55f;
+		Reveal.fEdgeWidth = 0.045f;
+		Reveal.fSoftness = 0.03f;
+		Reveal.vEdgeColor = { 0.8f, 0.6f, 1.f, 1.f };
+		Reveal.fEdgeEmissive = 7.f;
+		RevealElement.Detail.Timing.fLifeTimeSeconds = 2.f;
+		RevealElement.Detail.Particle.vLifeTimeSeconds = { 2.f, 2.f };
+
+		const std::string RevealJson =
+			Client::CEffectDocumentCodec::Serialize(RevealDocument);
+		Client::EFFECT_DOCUMENT_DESC RevealRoundTrip;
+		if (RevealJson.find("\"linearReveal\"") == std::string::npos ||
+			RevealJson.find("\"durationSeconds\": 0.55") ==
+				std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				RevealJson, RevealRoundTrip, strOutError) ||
+			RevealRoundTrip.Elements.size() != 1u)
+		{
+			strOutError =
+				"explicit Sprite Linear Reveal did not survive codec round-trip";
+			return false;
+		}
+		const Client::EFFECT_LINEAR_REVEAL_DESC& ParsedReveal =
+			RevealRoundTrip.Elements.front().Detail.Sprite.LinearReveal;
+		std::string ValidationError;
+		if (!ParsedReveal.bEnabled ||
+			ParsedReveal.eAxis != Client::EFFECT_LINEAR_REVEAL_AXIS::V ||
+			!ParsedReveal.bInvert || ParsedReveal.fStartSeconds != 0.1f ||
+			ParsedReveal.fDurationSeconds != 0.55f ||
+			ParsedReveal.fEdgeWidth != 0.045f ||
+			ParsedReveal.fSoftness != 0.03f ||
+			ParsedReveal.vEdgeColor.x != 0.8f ||
+			ParsedReveal.vEdgeColor.y != 0.6f ||
+			ParsedReveal.vEdgeColor.z != 1.f ||
+			ParsedReveal.vEdgeColor.w != 1.f ||
+			ParsedReveal.fEdgeEmissive != 7.f ||
+			!Client::CEffectDocumentCodec::Validate(
+				RevealRoundTrip, ValidationError))
+		{
+			strOutError = "valid Sprite Linear Reveal was rejected or changed: " +
+				ValidationError;
+			return false;
+		}
+
+		std::vector<Client::EFFECT_EVALUATED_PARTICLE> DefaultParticles;
+		std::vector<Client::EFFECT_EVALUATED_PARTICLE> RevealParticles;
+		if (!Evaluate_ManualParticleContractDocument(
+				DefaultRoundTrip, 1.5f, DefaultParticles, strOutError) ||
+			!Evaluate_ManualParticleContractDocument(
+				RevealRoundTrip, 1.5f, RevealParticles, strOutError) ||
+			DefaultParticles.size() != 1u || RevealParticles.size() != 1u ||
+			DefaultParticles.front().Color.w >= 0.3f ||
+			RevealParticles.front().Color.w < 0.999f)
+		{
+			strOutError =
+				"Sprite Linear Reveal did not own alpha independently of the legacy Particle fade";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC StandaloneSprite = RevealRoundTrip;
+		StandaloneSprite.Elements.front().eKind =
+			Client::EFFECT_ELEMENT_KIND::SPRITE;
+		if (!Client::CEffectDocumentCodec::Validate(
+				StandaloneSprite, ValidationError))
+		{
+			strOutError =
+				"standalone Sprite Linear Reveal was rejected: " + ValidationError;
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC Invalid = RevealRoundTrip;
+		Invalid.Elements.front().Detail.Sprite.LinearReveal.eAxis =
+			Client::EFFECT_LINEAR_REVEAL_AXIS::END;
+		if (!Reject(Invalid, "invalid Sprite Linear Reveal axis"))
+			return false;
+		Invalid = RevealRoundTrip;
+		Invalid.Elements.front().Detail.Sprite.LinearReveal.fDurationSeconds = 0.f;
+		if (!Reject(Invalid, "zero Sprite Linear Reveal duration"))
+			return false;
+		Invalid = RevealRoundTrip;
+		Invalid.Elements.front().Detail.Sprite.LinearReveal.fSoftness = 0.46f;
+		if (!Reject(Invalid, "overflow Sprite Linear Reveal edge band"))
+			return false;
+		Invalid = RevealRoundTrip;
+		Invalid.Elements.front().Detail.Particle.vLifeTimeSeconds = { 1.f, 2.f };
+		if (!Reject(Invalid, "random Sprite Linear Reveal Particle lifetime"))
+			return false;
+		Invalid = RevealRoundTrip;
+		Invalid.Elements.front().Detail.Sprite.LinearReveal.bEnabled = false;
+		if (!Reject(Invalid, "disabled non-default Sprite Linear Reveal"))
+			return false;
+		Invalid = RevealRoundTrip;
+		Invalid.Elements.front().Material.eRenderProfile =
+			Client::EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
+		if (!Reject(Invalid, "Opaque Sprite Linear Reveal"))
+			return false;
+		Invalid = RevealRoundTrip;
+		Invalid.Elements.front().ResourceBindings.push_back({
+			"meshModel",
+			"Effect/Warlord/Meshes/FX_SM_00/fm_d_ring_008.wmodel"
+		});
+		if (!Reject(Invalid, "Mesh Particle Sprite Linear Reveal"))
+			return false;
+
+		OutRevealDocument =
+			std::make_shared<Client::EFFECT_DOCUMENT_DESC>(
+				std::move(RevealRoundTrip));
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_WorldMarkCompositionContract(
+		const std::filesystem::path& RepositoryRoot,
+		std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>&
+			OutWorldMarkDocument,
+		std::string& strOutError)
+	{
+		const auto Reject = [&strOutError](
+			const Client::EFFECT_DOCUMENT_DESC& Candidate,
+			const std::string_view strLabel)
+		{
+			std::string ValidationError;
+			if (Client::CEffectDocumentCodec::Validate(
+					Candidate, ValidationError))
+			{
+				strOutError = std::string(strLabel) + " was accepted";
+				return false;
+			}
+			return true;
+		};
+
+		Client::EFFECT_DOCUMENT_DESC DefaultDocument =
+			Build_ManualParticleContractDocument(
+				"effect.contract.world-mark.default",
+				"particle.world-mark.default", false);
+		Client::EFFECT_ELEMENT_DESC& DefaultElement =
+			DefaultDocument.Elements.front();
+		DefaultElement.Detail.Particle.iMaxParticles = 1u;
+		DefaultElement.Detail.Particle.iBurstCount = 1u;
+		const std::string DefaultJson =
+			Client::CEffectDocumentCodec::Serialize(DefaultDocument);
+		Client::EFFECT_DOCUMENT_DESC DefaultRoundTrip;
+		if (DefaultJson.find("\"compositionLayer\"") != std::string::npos ||
+			DefaultJson.find("\"receiverMode\"") != std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				DefaultJson, DefaultRoundTrip, strOutError) ||
+			DefaultRoundTrip.Elements.size() != 1u ||
+			DefaultRoundTrip.Elements.front().eCompositionLayer !=
+				Client::EFFECT_COMPOSITION_LAYER::NORMAL ||
+			!DefaultRoundTrip.Elements.front().Detail.Decal.
+				Is_ReceiverDefault())
+		{
+			strOutError =
+				"legacy World Mark/Decal receiver omission did not round-trip";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC WorldMarkDocument = DefaultRoundTrip;
+		WorldMarkDocument.strEffectAssetId =
+			"effect.contract.world-mark.explicit";
+		WorldMarkDocument.strDisplayName =
+			WorldMarkDocument.strEffectAssetId;
+		Client::EFFECT_ELEMENT_DESC NormalElement =
+			WorldMarkDocument.Elements.front();
+		NormalElement.strElementId = "particle.world-mark.normal";
+		NormalElement.strDisplayName = NormalElement.strElementId;
+		NormalElement.eCompositionLayer =
+			Client::EFFECT_COMPOSITION_LAYER::NORMAL;
+		Client::EFFECT_ELEMENT_DESC MarkElement = NormalElement;
+		MarkElement.strElementId = "particle.world-mark.ground";
+		MarkElement.strDisplayName = MarkElement.strElementId;
+		MarkElement.eCompositionLayer =
+			Client::EFFECT_COMPOSITION_LAYER::WORLD_MARK;
+		/* Keep NORMAL first in document order.  The WARP receipt below must
+		   still prove that WORLD_MARK issued its draw first. */
+		WorldMarkDocument.Elements = { NormalElement, MarkElement };
+		std::string ValidationError;
+		if (!Client::CEffectDocumentCodec::Validate(
+				WorldMarkDocument, ValidationError))
+		{
+			strOutError = "valid World Mark document was rejected: " +
+				ValidationError;
+			return false;
+		}
+		const std::string WorldMarkJson =
+			Client::CEffectDocumentCodec::Serialize(WorldMarkDocument);
+		Client::EFFECT_DOCUMENT_DESC WorldMarkRoundTrip;
+		if (WorldMarkJson.find(
+				"\"compositionLayer\": \"worldMark\"") ==
+				std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				WorldMarkJson, WorldMarkRoundTrip, strOutError) ||
+			WorldMarkRoundTrip.Elements.size() != 2u ||
+			WorldMarkRoundTrip.Elements[0].eCompositionLayer !=
+				Client::EFFECT_COMPOSITION_LAYER::NORMAL ||
+			WorldMarkRoundTrip.Elements[1].eCompositionLayer !=
+				Client::EFFECT_COMPOSITION_LAYER::WORLD_MARK)
+		{
+			strOutError =
+				"explicit World Mark did not survive codec round-trip";
+			return false;
+		}
+
+		Client::EFFECT_ELEMENT_DESC Applied = NormalElement;
+		Client::Apply_EffectElementDetailDraft(
+			Applied, WorldMarkRoundTrip.Elements[1]);
+		if (Applied.eCompositionLayer !=
+			Client::EFFECT_COMPOSITION_LAYER::WORLD_MARK)
+		{
+			strOutError =
+				"Element detail draft did not preserve World Mark composition";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC Invalid = WorldMarkRoundTrip;
+		Invalid.Elements[1].eCompositionLayer =
+			Client::EFFECT_COMPOSITION_LAYER::END;
+		if (!Reject(Invalid, "invalid World Mark enum"))
+			return false;
+		Invalid = WorldMarkRoundTrip;
+		Invalid.Elements[1].Material.eRenderProfile =
+			Client::EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
+		if (!Reject(Invalid, "Opaque World Mark"))
+			return false;
+		Invalid = WorldMarkRoundTrip;
+		Invalid.Elements[1].strSourceNode =
+			"authored-source-particle:world-mark-contract";
+		if (!Reject(Invalid, "source Sprite Particle World Mark"))
+			return false;
+		Invalid = WorldMarkRoundTrip;
+		Invalid.Elements[1].ResourceBindings.push_back({
+			"meshModel",
+			"Effect/Warlord/Meshes/FX_SM_00/fm_d_ring_008.wmodel"
+		});
+		if (!Reject(Invalid, "Mesh Particle World Mark"))
+			return false;
+		std::string InvalidTokenJson = WorldMarkJson;
+		const size_t iWorldMarkToken =
+			InvalidTokenJson.find("\"worldMark\"");
+		if (std::string::npos == iWorldMarkToken)
+		{
+			strOutError = "World Mark invalid-token fixture is missing";
+			return false;
+		}
+		InvalidTokenJson.replace(
+			iWorldMarkToken, std::string_view("\"worldMark\"").size(),
+			"\"invalidWorldMark\"");
+		Client::EFFECT_DOCUMENT_DESC InvalidTokenDocument;
+		if (Client::CEffectDocumentCodec::Parse(
+				InvalidTokenJson, InvalidTokenDocument, ValidationError))
+		{
+			strOutError = "unknown World Mark token was accepted";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC DecalDocument = DefaultRoundTrip;
+		DecalDocument.strEffectAssetId =
+			"effect.contract.world-mark.decal";
+		DecalDocument.strDisplayName = DecalDocument.strEffectAssetId;
+		Client::EFFECT_ELEMENT_DESC& DecalElement =
+			DecalDocument.Elements.front();
+		DecalElement.strElementId = "decal.world-mark.ground";
+		DecalElement.strDisplayName = DecalElement.strElementId;
+		DecalElement.strSourceNode =
+			"authored-source-decal:world-mark-contract";
+		DecalElement.eKind = Client::EFFECT_ELEMENT_KIND::DECAL;
+		DecalElement.eCompositionLayer =
+			Client::EFFECT_COMPOSITION_LAYER::WORLD_MARK;
+		DecalElement.Detail.Decal.vSize = { 3.f, 4.f };
+		DecalElement.Detail.Decal.fDepth = 0.25f;
+		DecalElement.Detail.Decal.eReceiverMode =
+			Client::EFFECT_DECAL_RECEIVER_MODE::UPWARD_SURFACES;
+		DecalElement.Detail.Decal.fNormalCutoff = 0.75f;
+		DecalElement.Detail.Decal.fEdgeFade = 0.05f;
+		if (!Client::CEffectDocumentCodec::Validate(
+				DecalDocument, ValidationError))
+		{
+			strOutError = "valid World Mark Decal was rejected: " +
+				ValidationError;
+			return false;
+		}
+		const std::string DecalJson =
+			Client::CEffectDocumentCodec::Serialize(DecalDocument);
+		Client::EFFECT_DOCUMENT_DESC DecalRoundTrip;
+		if (DecalJson.find(
+				"\"receiverMode\": \"upwardSurfaces\"") ==
+				std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(
+				DecalJson, DecalRoundTrip, strOutError) ||
+			DecalRoundTrip.Elements.front().Detail.Decal.fNormalCutoff !=
+				0.75f ||
+			DecalRoundTrip.Elements.front().Detail.Decal.fEdgeFade != 0.05f)
+		{
+			strOutError =
+				"World Mark Decal receiver did not survive codec round-trip";
+			return false;
+		}
+		Client::EFFECT_EVALUATED_ELEMENT EvaluatedDecal{};
+		EvaluatedDecal.pElement = &DecalRoundTrip.Elements.front();
+		XMStoreFloat4x4(&EvaluatedDecal.World, XMMatrixIdentity());
+		Client::EFFECT_DECAL_SHADER_PROJECTION_DESC Projection;
+		if (!Client::CEffectDocumentRenderer::Resolve_DecalShaderProjection(
+				EvaluatedDecal, Projection) ||
+			Projection.vSize.x != 3.f || Projection.vSize.y != 4.f ||
+			Projection.fDepth != 0.25f ||
+			Projection.fNormalCutoff != 0.75f ||
+			Projection.fEdgeFade != 0.05f ||
+			Projection.vUp.x != 0.f || Projection.vUp.y != 1.f ||
+			Projection.vUp.z != 0.f)
+		{
+			strOutError =
+				"World Mark Decal receiver changed at the shader projection seam";
+			return false;
+		}
+		Invalid = DecalRoundTrip;
+		Invalid.Elements.front().Detail.Decal.eReceiverMode =
+			Client::EFFECT_DECAL_RECEIVER_MODE::ALL_OPAQUE;
+		if (!Reject(Invalid, "all-opaque Decal with upward cutoff"))
+			return false;
+		Invalid = DecalRoundTrip;
+		Invalid.Elements.front().Detail.Decal.fEdgeFade = 1.001f;
+		if (!Reject(Invalid, "Decal edge fade overflow"))
+			return false;
+		Invalid = WorldMarkRoundTrip;
+		Invalid.Elements.front().Detail.Decal.eReceiverMode =
+			Client::EFFECT_DECAL_RECEIVER_MODE::UPWARD_SURFACES;
+		Invalid.Elements.front().Detail.Decal.fNormalCutoff = 0.75f;
+		if (!Reject(Invalid, "Sprite Particle Decal receiver"))
+			return false;
+
+		const std::filesystem::path AuthoredRoot =
+			RepositoryRoot / L"Data" / L"Effects" / L"Authored";
+		struct AUTHORED_WORLD_MARK_EXPECTATION final
+		{
+			const wchar_t* pFileName;
+			std::vector<std::string_view> ElementIds;
+		};
+		const std::array<AUTHORED_WORLD_MARK_EXPECTATION, 3u> Expectations = {{
+			{
+				L"effect.warlord.skill.17240.ba3.unified.effect.json",
+				{ "sprite_particle_13",
+				  "authored.copy.sprite_particle_13.1" }
+			},
+			{
+				L"effect.warlord.skill.17110.clip2.unified.effect.json",
+				{ "sprite_particle_3" }
+			},
+			{
+				L"effect.warlord.skill.17110.clip3.unified.effect.json",
+				{ "authored.source-decal.f11325615bf47eea65604126",
+				  "sprite_particle_3" }
+			}
+		}};
+		for (const AUTHORED_WORLD_MARK_EXPECTATION& Expectation :
+			Expectations)
+		{
+			Client::EFFECT_DOCUMENT_DESC Authored;
+			if (!Client::CEffectDocumentCodec::Load(
+					AuthoredRoot / Expectation.pFileName,
+					Authored, strOutError))
+			{
+				strOutError =
+					"Warlord World Mark authored fixture failed to load: " +
+					strOutError;
+				return false;
+			}
+			const size_t iWorldMarkCount = static_cast<size_t>(std::count_if(
+				Authored.Elements.begin(), Authored.Elements.end(),
+				[](const Client::EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.eCompositionLayer ==
+						Client::EFFECT_COMPOSITION_LAYER::WORLD_MARK;
+				}));
+			if (iWorldMarkCount != Expectation.ElementIds.size())
+			{
+				strOutError =
+					"Warlord authored World Mark denominator changed";
+				return false;
+			}
+			for (const std::string_view strElementId :
+				Expectation.ElementIds)
+			{
+				const auto Element = std::find_if(
+					Authored.Elements.begin(), Authored.Elements.end(),
+					[strElementId](const Client::EFFECT_ELEMENT_DESC& Candidate)
+					{
+						return Candidate.strElementId == strElementId;
+					});
+				if (Element == Authored.Elements.end() ||
+					Element->eCompositionLayer !=
+						Client::EFFECT_COMPOSITION_LAYER::WORLD_MARK)
+				{
+					strOutError =
+						"Warlord authored World Mark stable ID is missing";
+					return false;
+				}
+			}
+			if (std::wstring_view(Expectation.pFileName).find(L"clip3") !=
+				std::wstring_view::npos)
+			{
+				const auto SourceDecal = std::find_if(
+					Authored.Elements.begin(), Authored.Elements.end(),
+					[](const Client::EFFECT_ELEMENT_DESC& Element)
+					{
+						return Element.strElementId ==
+							"authored.source-decal.f11325615bf47eea65604126";
+					});
+				if (SourceDecal == Authored.Elements.end() ||
+					SourceDecal->Detail.Decal.eReceiverMode !=
+						Client::EFFECT_DECAL_RECEIVER_MODE::UPWARD_SURFACES ||
+					SourceDecal->Detail.Decal.fNormalCutoff != 0.75f ||
+					SourceDecal->Detail.Decal.fEdgeFade != 0.05f ||
+					SourceDecal->Detail.Decal.fDepth != 0.25f)
+				{
+					strOutError =
+						"Warlord R source Decal receiver contract changed";
+					return false;
+				}
+			}
+		}
+
+		OutWorldMarkDocument =
+			std::make_shared<Client::EFFECT_DOCUMENT_DESC>(
+				std::move(WorldMarkRoundTrip));
+		strOutError.clear();
+		return true;
+	}
+
 	std::shared_ptr<Client::CEffectObject> Add_EffectObject(
 		const wchar_t* pPrototypeTag, const wchar_t* pLayerTag,
 		Client::CEffectObject::EFFECT_OBJECT_DESC& Desc)
@@ -2297,6 +3684,7 @@ namespace
 					Row.iCompiledAdapterPipelineValidationCount <<
 				",\"carrier\":\"" << Carrier_Token(Row.eCarrier) <<
 				"\",\"passIndex\":" << Row.iSelectedPassIndex <<
+				",\"sourceMaterialProfile\":" << Row.iSourceMaterialProfile <<
 				",\"firstSubmittedWorldFnv1a64\":" <<
 					Row.iFirstSubmittedWorldHash <<
 				",\"hasFirstSubmittedWorld\":" <<
@@ -2306,6 +3694,18 @@ namespace
 		}
 		std::cout << ",\"boundAdapterActualPipelineValidated\":" <<
 			(Frame.bBoundAdapterActualPipelineValidated ? "true" : "false");
+		if (Frame.bSceneHdrReadback)
+		{
+			std::cout << ",\"sceneHdr\":{\"bloomThreshold\":" <<
+				Frame.fSceneHdrBloomThreshold << ",\"peak\":" <<
+				Frame.fSceneHdrPeak << ",\"peakPixel\":[" <<
+				Frame.vSceneHdrPeakPixel.x << ',' <<
+				Frame.vSceneHdrPeakPixel.y << ',' <<
+				Frame.vSceneHdrPeakPixel.z << ',' <<
+				Frame.vSceneHdrPeakPixel.w <<
+				"],\"pixelsAboveThreshold\":" <<
+				Frame.iSceneHdrPixelsAboveThreshold << '}';
+		}
 		std::cout << "}";
 	}
 
@@ -3057,6 +4457,838 @@ namespace
 		return true;
 	}
 
+	struct VALTAN_COMBAT_OBJECT_DRAW_ROW final
+	{
+		std::string strElementId;
+		std::string strFamily;
+		uint64_t iConfigured = 0u;
+		uint64_t iAttempted = 0u;
+		uint64_t iSubmitted = 0u;
+		uint64_t iCommitted = 0u;
+		uint64_t iSuppressed = 0u;
+		uint64_t iFailed = 0u;
+		float3_t vPositionMin{};
+		float3_t vPositionMax{};
+		bool_t bHasSubmittedPosition = false;
+	};
+
+	struct VALTAN_COMBAT_OBJECT_DRAW_SAMPLE final
+	{
+		std::string strLabel;
+		f32_t fRequestedSeconds = 0.f;
+		f32_t fEvaluatedSeconds = 0.f;
+		float3_t vRootPosition{};
+		std::vector<VALTAN_COMBAT_OBJECT_DRAW_ROW> Rows;
+		float3_t vSubmittedPositionMin{};
+		float3_t vSubmittedPositionMax{};
+		bool_t bHasSubmittedBounds = false;
+		bool_t bTransactionCommitted = false;
+	};
+
+	struct VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL final
+	{
+		std::string strElementId;
+		std::string strFamily;
+		uint64_t iPreparedSamples = 0u;
+		uint64_t iAttemptedSamples = 0u;
+		uint64_t iSubmittedDraws = 0u;
+		uint64_t iCommittedDraws = 0u;
+		uint64_t iSuppressedDraws = 0u;
+		uint64_t iFailedDraws = 0u;
+	};
+
+	struct VALTAN_COMBAT_OBJECT_TARGET_PROOF final
+	{
+		std::string strCombatObjectArchetypeId;
+		std::string strClientVisualId;
+		std::string strEffectAssetId;
+		std::filesystem::path DocumentPath;
+		std::string strDocumentRawSha256;
+		std::string strDocumentTypedCodecSha256;
+		std::string strRootPolicy;
+		f32_t fEffectDurationSeconds = 0.f;
+		uint32_t iRootWorldDistinctCount = 0u;
+		uint32_t iSubmittedBoundsDistinctCount = 0u;
+		uint64_t iUnauditedSubmittedDraws = 0u;
+		std::vector<std::string> AuditedElementIds;
+		std::vector<VALTAN_COMBAT_OBJECT_DRAW_SAMPLE> Samples;
+		std::vector<VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL> ElementTotals;
+	};
+
+	const char* Get_ValtanCombatObjectProofFamilyLabel(
+		const Client::EFFECT_GPU_RENDER_FAMILY eFamily)
+	{
+		switch (eFamily)
+		{
+		case Client::EFFECT_GPU_RENDER_FAMILY::MESH:
+			return "MESH";
+		case Client::EFFECT_GPU_RENDER_FAMILY::SPRITE:
+			return "SPRITE";
+		case Client::EFFECT_GPU_RENDER_FAMILY::DECAL:
+			return "DECAL";
+		case Client::EFFECT_GPU_RENDER_FAMILY::RIBBON:
+			return "RIBBON";
+		default:
+			return "END";
+		}
+	}
+
+	bool_t Is_FiniteValtanCombatObjectProofVector(const float3_t& Value)
+	{
+		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
+			std::isfinite(Value.z);
+	}
+
+	bool_t Is_FiniteValtanCombatObjectProofFrame(
+		const Client::EFFECT_EVALUATED_FRAME& Frame)
+	{
+		const f32_t* pRoot = &Frame.RootWorld._11;
+		if (!std::isfinite(Frame.fSampleTimeSeconds) ||
+			!std::all_of(pRoot, pRoot + 16u,
+				[](const f32_t Value) { return std::isfinite(Value); }))
+		{
+			return false;
+		}
+		for (const Client::EFFECT_EVALUATED_ELEMENT& Element : Frame.Elements)
+		{
+			const f32_t* pWorld = &Element.World._11;
+			if (nullptr == Element.pElement ||
+				!std::all_of(pWorld, pWorld + 16u,
+					[](const f32_t Value) { return std::isfinite(Value); }) ||
+				!std::isfinite(Element.fLocalTimeSeconds) ||
+				!std::isfinite(Element.fNormalizedLife))
+			{
+				return false;
+			}
+		}
+		for (const Client::EFFECT_EVALUATED_PARTICLE& Particle : Frame.Particles)
+		{
+			const f32_t* pWorld = &Particle.World._11;
+			if (nullptr == Particle.pElement ||
+				!std::all_of(pWorld, pWorld + 16u,
+					[](const f32_t Value) { return std::isfinite(Value); }) ||
+				!Is_FiniteValtanCombatObjectProofVector(
+					Particle.vWorldVelocity) ||
+				!std::isfinite(Particle.fNormalizedLife))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Read_ValtanProofFile(const std::filesystem::path& Path,
+		std::string& OutBytes, std::string& strOutSha256,
+		std::string& strOutError)
+	{
+		std::ifstream Input(Path, std::ios::binary);
+		if (!Input)
+		{
+			strOutError = "Valtan combat-object proof input is unavailable: " +
+				Path.string();
+			return false;
+		}
+		OutBytes.assign(std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>());
+		if (OutBytes.empty())
+		{
+			strOutError = "Valtan combat-object proof input is empty: " +
+				Path.string();
+			return false;
+		}
+		strOutSha256 = Client::CEffectRuntimeAuthorityCodec::
+			Compute_Sha256Hex(OutBytes);
+		if (strOutSha256.size() != 64u)
+		{
+			strOutError = "Valtan combat-object proof input hash failed: " +
+				Path.string();
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Read_ValtanSkyAxeOwnerLifetimeSeconds(
+		const std::string_view CombatObjectCatalogJson,
+		f32_t& fOutSeconds, std::string& strOutError)
+	{
+		Client::DATA_JSON_VALUE Root;
+		Client::DATA_JSON_PARSE_LIMITS Limits;
+		Limits.iMaximumBytes = 4u * 1024u * 1024u;
+		Limits.iMaximumDepth = 32u;
+		Limits.iMaximumValues = 100'000u;
+		if (!Client::CDataJson::Parse(
+				CombatObjectCatalogJson, Root, strOutError, Limits) ||
+			!Root.Is_Object())
+		{
+			strOutError = "Valtan combat-object owner catalog parse failed: " +
+				strOutError;
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* pObjects = Root.Find("objects");
+		if (nullptr == pObjects || !pObjects->Is_Array())
+		{
+			strOutError = "Valtan combat-object owner catalog objects are invalid";
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* pMatch = nullptr;
+		for (const Client::DATA_JSON_VALUE& Object : pObjects->Get_Array())
+		{
+			const Client::DATA_JSON_VALUE* pId = Object.Find(
+				"combatObjectArchetypeId");
+			if (Object.Is_Object() && nullptr != pId && pId->Is_String() &&
+				pId->Get_String() ==
+					"combatobject.valtan.high-jump.target-axe")
+			{
+				if (nullptr != pMatch)
+				{
+					strOutError = "Valtan sky-axe Product owner is duplicated";
+					return false;
+				}
+				pMatch = &Object;
+			}
+		}
+		const Client::DATA_JSON_VALUE* pLifeMs = nullptr == pMatch ? nullptr :
+			pMatch->Find("lifeMs");
+		if (nullptr == pLifeMs || !pLifeMs->Is_Number() ||
+			pLifeMs->Was_FloatingPointToken() ||
+			pLifeMs->Get_Number() != 6000.0)
+		{
+			strOutError = "Valtan sky-axe Product owner lifeMs is not 6000";
+			return false;
+		}
+		fOutSeconds = static_cast<f32_t>(pLifeMs->Get_Number() / 1000.0);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Write_ValtanCombatObjectRuntimeSweep(
+		const std::filesystem::path& OutputPath,
+		const std::filesystem::path& ResourceRoot,
+		const std::filesystem::path& RuntimeCatalogPath,
+		const std::string_view strRuntimeCatalogRawSha256,
+		const std::filesystem::path& BossCatalogPath,
+		const std::string_view strBossCatalogRawSha256,
+		const std::filesystem::path& CombatObjectCatalogPath,
+		const std::string_view strCombatObjectCatalogRawSha256,
+		const f32_t fOwnerLifetimeSeconds,
+		const std::vector<VALTAN_COMBAT_OBJECT_TARGET_PROOF>& Targets,
+		std::string& strOutError)
+	{
+		const auto WriteVector = [](std::ostringstream& Json,
+			const float3_t& Value)
+		{
+			Json << '[' << std::setprecision(
+				std::numeric_limits<float>::max_digits10) << Value.x << ", " <<
+				Value.y << ", " << Value.z << ']';
+		};
+		std::ostringstream Json;
+		Json << "{\n"
+			<< "  \"schema\": \"lostark.valtan-combat-object-runtime-sweep\",\n"
+			<< "  \"formatVersion\": 1,\n"
+			<< "  \"bossArchetypeId\": \"BOSS_VALTAN\",\n"
+			<< "  \"renderer\": {\"driver\": \"D3D_DRIVER_TYPE_WARP\", "
+				"\"vendorId\": 5140, \"deviceId\": 140},\n"
+			<< "  \"resourceRoot\": \"" << Client::CDataJson::Escape(
+				ResourceRoot.generic_string()) << "\",\n"
+			<< "  \"runtimeCatalog\": {\"path\": \"" <<
+				Client::CDataJson::Escape(RuntimeCatalogPath.generic_string()) <<
+				"\", \"rawSha256\": \"" << strRuntimeCatalogRawSha256 << "\"},\n"
+			<< "  \"bossCatalog\": {\"path\": \"" <<
+				Client::CDataJson::Escape(BossCatalogPath.generic_string()) <<
+				"\", \"rawSha256\": \"" << strBossCatalogRawSha256 << "\"},\n"
+			<< "  \"combatObjectCatalog\": {\"path\": \"" <<
+				Client::CDataJson::Escape(
+					CombatObjectCatalogPath.generic_string()) <<
+				"\", \"rawSha256\": \"" <<
+				strCombatObjectCatalogRawSha256 << "\"},\n"
+			<< "  \"producerHarness\": {\n"
+			<< "    \"mode\": \"" << VALTAN_COMBAT_OBJECT_SWEEP_MODE << "\",\n"
+			<< "    \"runtimeCatalogVerified\": true,\n"
+			<< "    \"auditedTargetCount\": 2,\n"
+			<< "    \"auditedElementCount\": 10,\n"
+			<< "    \"failureCount\": 0\n"
+			<< "  },\n"
+			<< "  \"targets\": [\n";
+		for (size_t iTarget = 0u; iTarget < Targets.size(); ++iTarget)
+		{
+			const VALTAN_COMBAT_OBJECT_TARGET_PROOF& Target = Targets[iTarget];
+			Json << "    {\n"
+				<< "      \"combatObjectArchetypeId\": \"" <<
+					Client::CDataJson::Escape(
+						Target.strCombatObjectArchetypeId) << "\",\n"
+				<< "      \"clientVisualId\": \"" <<
+					Client::CDataJson::Escape(Target.strClientVisualId) << "\",\n"
+				<< "      \"effectAssetId\": \"" <<
+					Client::CDataJson::Escape(Target.strEffectAssetId) << "\",\n"
+				<< "      \"documentPath\": \"" <<
+					Client::CDataJson::Escape(
+						Target.DocumentPath.generic_string()) << "\",\n"
+				<< "      \"documentRawSha256\": \"" <<
+					Target.strDocumentRawSha256 << "\",\n"
+				<< "      \"documentTypedCodecSha256\": \"" <<
+					Target.strDocumentTypedCodecSha256 << "\",\n"
+				<< "      \"rootPolicy\": \"" << Target.strRootPolicy << "\",\n"
+				<< "      \"effectDurationSeconds\": " <<
+					std::setprecision(std::numeric_limits<float>::max_digits10) <<
+					Target.fEffectDurationSeconds << ",\n"
+				<< "      \"rootWorldDistinctCount\": " <<
+					Target.iRootWorldDistinctCount << ",\n"
+				<< "      \"submittedBoundsDistinctCount\": " <<
+					Target.iSubmittedBoundsDistinctCount << ",\n"
+				<< "      \"unauditedSubmittedDraws\": " <<
+					Target.iUnauditedSubmittedDraws << ",\n"
+				<< "      \"auditedElementIds\": [";
+			for (size_t iElement = 0u;
+				iElement < Target.AuditedElementIds.size(); ++iElement)
+			{
+				Json << '"' << Client::CDataJson::Escape(
+					Target.AuditedElementIds[iElement]) << '"' <<
+					(iElement + 1u < Target.AuditedElementIds.size() ? ", " : "");
+			}
+			Json << "],\n      \"samples\": [\n";
+			for (size_t iSample = 0u; iSample < Target.Samples.size(); ++iSample)
+			{
+				const VALTAN_COMBAT_OBJECT_DRAW_SAMPLE& Sample =
+					Target.Samples[iSample];
+				Json << "        {\n"
+					<< "          \"label\": \"" <<
+						Client::CDataJson::Escape(Sample.strLabel) << "\",\n"
+					<< "          \"requestedSeconds\": " <<
+						std::setprecision(
+							std::numeric_limits<float>::max_digits10) <<
+						Sample.fRequestedSeconds << ",\n"
+					<< "          \"evaluatedSeconds\": " <<
+						Sample.fEvaluatedSeconds << ",\n"
+					<< "          \"rootPosition\": ";
+				WriteVector(Json, Sample.vRootPosition);
+				Json << ",\n          \"hasSubmittedBounds\": " <<
+					(Sample.bHasSubmittedBounds ? "true" : "false") <<
+					",\n          \"submittedPositionMin\": ";
+				WriteVector(Json, Sample.vSubmittedPositionMin);
+				Json << ",\n          \"submittedPositionMax\": ";
+				WriteVector(Json, Sample.vSubmittedPositionMax);
+				Json << ",\n          \"transactionCommitted\": " <<
+					(Sample.bTransactionCommitted ? "true" : "false") <<
+					",\n          \"rows\": [\n";
+				for (size_t iRow = 0u; iRow < Sample.Rows.size(); ++iRow)
+				{
+					const VALTAN_COMBAT_OBJECT_DRAW_ROW& Row = Sample.Rows[iRow];
+					Json << "            {\"elementId\": \"" <<
+						Client::CDataJson::Escape(Row.strElementId) <<
+						"\", \"family\": \"" << Row.strFamily <<
+						"\", \"configured\": " << Row.iConfigured <<
+						", \"attempted\": " << Row.iAttempted <<
+						", \"submitted\": " << Row.iSubmitted <<
+						", \"committed\": " << Row.iCommitted <<
+						", \"suppressed\": " << Row.iSuppressed <<
+						", \"failed\": " << Row.iFailed <<
+						", \"hasSubmittedPosition\": " <<
+						(Row.bHasSubmittedPosition ? "true" : "false") <<
+						", \"positionMin\": ";
+					WriteVector(Json, Row.vPositionMin);
+					Json << ", \"positionMax\": ";
+					WriteVector(Json, Row.vPositionMax);
+					Json << '}' << (iRow + 1u < Sample.Rows.size() ? "," : "") <<
+						'\n';
+				}
+				Json << "          ]\n        }" <<
+					(iSample + 1u < Target.Samples.size() ? "," : "") << '\n';
+			}
+			Json << "      ],\n      \"elementTotals\": [\n";
+			for (size_t iElement = 0u;
+				iElement < Target.ElementTotals.size(); ++iElement)
+			{
+				const VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL& Element =
+					Target.ElementTotals[iElement];
+				Json << "        {\"elementId\": \"" <<
+					Client::CDataJson::Escape(Element.strElementId) <<
+					"\", \"family\": \"" << Element.strFamily <<
+					"\", \"preparedSamples\": " << Element.iPreparedSamples <<
+					", \"attemptedSamples\": " << Element.iAttemptedSamples <<
+					", \"submittedDraws\": " << Element.iSubmittedDraws <<
+					", \"committedDraws\": " << Element.iCommittedDraws <<
+					", \"suppressedDraws\": " << Element.iSuppressedDraws <<
+					", \"failedDraws\": " << Element.iFailedDraws << '}' <<
+					(iElement + 1u < Target.ElementTotals.size() ? "," : "") <<
+					'\n';
+			}
+			Json << "      ]\n    }" <<
+				(iTarget + 1u < Targets.size() ? "," : "") << '\n';
+		}
+		Json << "  ],\n"
+			<< "  \"ownerLifetimeBoundary\": {\n"
+			<< "    \"combatObjectArchetypeId\": "
+				"\"combatobject.valtan.high-jump.target-axe\",\n"
+			<< "    \"seconds\": " << fOwnerLifetimeSeconds << ",\n"
+			<< "    \"rendererSampleAttempted\": false,\n"
+			<< "    \"productOwnerDurationVerified\": true\n"
+			<< "  },\n"
+			<< "  \"disposition\": \"DRAWABLE_PROOF_PASS\"\n"
+			<< "}\n";
+
+		std::error_code Error;
+		const std::filesystem::path AbsoluteOutput = std::filesystem::absolute(
+			OutputPath, Error).lexically_normal();
+		if (Error || !AbsoluteOutput.is_absolute() ||
+			!std::filesystem::is_directory(AbsoluteOutput.parent_path(), Error) ||
+			Error)
+		{
+			strOutError = "Valtan combat-object sweep output parent is invalid";
+			return false;
+		}
+		std::filesystem::path StagingPath = AbsoluteOutput;
+		StagingPath += L".staging." + std::to_wstring(GetCurrentProcessId());
+		std::filesystem::remove(StagingPath, Error);
+		Error.clear();
+		{
+			std::ofstream Stream(StagingPath, std::ios::binary | std::ios::trunc);
+			if (!Stream)
+			{
+				strOutError =
+					"unable to create Valtan combat-object sweep staging file";
+				return false;
+			}
+			const std::string Payload = Json.str();
+			Stream.write(Payload.data(),
+				static_cast<std::streamsize>(Payload.size()));
+			Stream.flush();
+			if (!Stream)
+			{
+				Stream.close();
+				std::filesystem::remove(StagingPath, Error);
+				strOutError =
+					"unable to flush Valtan combat-object sweep staging file";
+				return false;
+			}
+		}
+		if (!MoveFileExW(StagingPath.c_str(), AbsoluteOutput.c_str(),
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{
+			std::filesystem::remove(StagingPath, Error);
+			strOutError =
+				"unable to atomically commit Valtan combat-object runtime sweep";
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Produce_ValtanCombatObjectRuntimeSweep(
+		const std::filesystem::path& RepositoryRoot,
+		const std::filesystem::path& RuntimeCatalogPath,
+		const std::filesystem::path& ResourceRoot,
+		const std::filesystem::path& OutputPath,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		struct SAMPLE_CONFIG final
+		{
+			const char* pLabel = nullptr;
+			f32_t fRequestedSeconds = 0.f;
+			float3_t vRootPosition{};
+		};
+		const std::array<SAMPLE_CONFIG, 5u> SkySamples = {{
+			{ "warning-midlife", 0.5f, { 2.f, 0.f, 4.f } },
+			{ "descent-flight", 1.05f, { 2.f, 0.f, 4.f } },
+			{ "impact-start", 1.2f, { 2.f, 0.f, 4.f } },
+			{ "impact-midlife", 1.5f, { 2.f, 0.f, 4.f } },
+			{ "effect-tail-end", 2.8f, { 2.f, 0.f, 4.f } }
+		}};
+		constexpr f32_t RED_SPEED_METRES_PER_SECOND = 24.444445f;
+		const std::array<SAMPLE_CONFIG, 4u> RedSamples = {{
+			{ "spawn-zero-step", 0.f, { 0.f, 0.f, 4.f } },
+			{ "first-fixed-step", 1.f / 60.f,
+				{ RED_SPEED_METRES_PER_SECOND / 60.f, 0.f, 4.f } },
+			{ "late-initial-seek-mid-flight", 0.45f,
+				{ RED_SPEED_METRES_PER_SECOND * 0.45f, 0.f, 4.f } },
+			{ "pre-despawn", 0.899f,
+				{ RED_SPEED_METRES_PER_SECOND * 0.899f, 0.f, 4.f } }
+		}};
+
+		const std::filesystem::path BossCatalogPath =
+			std::filesystem::absolute(RepositoryRoot /
+				L"Data/Actors/BossCatalog.json").lexically_normal();
+		const std::filesystem::path CombatObjectCatalogPath =
+			std::filesystem::absolute(RepositoryRoot /
+				L"Data/Encounters/Valtan/ValtanCombatObjects.json").lexically_normal();
+		std::string RuntimeCatalogRaw;
+		std::string RuntimeCatalogRawSha256;
+		std::string BossCatalogRaw;
+		std::string BossCatalogRawSha256;
+		std::string CombatObjectCatalogRaw;
+		std::string CombatObjectCatalogRawSha256;
+		f32_t fOwnerLifetimeSeconds = 0.f;
+		if (!Read_ValtanProofFile(RuntimeCatalogPath, RuntimeCatalogRaw,
+				RuntimeCatalogRawSha256, strOutError) ||
+			!Read_ValtanProofFile(BossCatalogPath, BossCatalogRaw,
+				BossCatalogRawSha256, strOutError) ||
+			!Read_ValtanProofFile(CombatObjectCatalogPath, CombatObjectCatalogRaw,
+				CombatObjectCatalogRawSha256, strOutError) ||
+			!Read_ValtanSkyAxeOwnerLifetimeSeconds(
+				CombatObjectCatalogRaw, fOwnerLifetimeSeconds, strOutError) ||
+			std::abs(fOwnerLifetimeSeconds -
+				VALTAN_SKY_AXE_OWNER_LIFETIME_SECONDS) > 0.0001f)
+		{
+			return false;
+		}
+
+		HEADLESS_ENGINE_SCOPE EngineScope;
+		if (!EngineScope.Initialize(strOutError))
+			return false;
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+
+		const auto BuildTarget = [&](const std::string_view strArchetypeId,
+			const std::string_view strVisualId,
+			const std::string_view strEffectAssetId,
+			const std::filesystem::path& DocumentPath,
+			const std::span<const std::string_view> ElementIds,
+			const std::span<const SAMPLE_CONFIG> Samples,
+			const std::string_view strRootPolicy,
+			VALTAN_COMBAT_OBJECT_TARGET_PROOF& OutProof) -> bool_t
+		{
+			EFFECT_DOCUMENT_DESC AuthoredDocument;
+			const std::shared_ptr<const EFFECT_DOCUMENT_DESC> RuntimeDocument =
+				CEffectCatalog::Find(std::string(strEffectAssetId));
+			if (!CEffectDocumentCodec::Load(
+					DocumentPath, AuthoredDocument, strOutError) ||
+				!CEffectDocumentCodec::Validate_Drawable(
+					AuthoredDocument, strOutError) ||
+				nullptr == RuntimeDocument ||
+				AuthoredDocument.strEffectAssetId != strEffectAssetId ||
+				RuntimeDocument->strEffectAssetId != strEffectAssetId)
+			{
+				strOutError = DocumentPath.string() + ": " + strOutError;
+				return false;
+			}
+			std::string Raw;
+			std::string RawSha256;
+			std::string TypedStatus;
+			const std::string AuthoredTypedSha256 =
+				CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+					AuthoredDocument, TypedStatus);
+			const std::string RuntimeTypedSha256 =
+				CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+					*RuntimeDocument, TypedStatus);
+			if (!Read_ValtanProofFile(
+					DocumentPath, Raw, RawSha256, strOutError) ||
+				AuthoredTypedSha256.size() != 64u ||
+				RuntimeTypedSha256 != AuthoredTypedSha256 ||
+				RuntimeDocument->Elements.size() != ElementIds.size() ||
+				AuthoredDocument.Elements.size() != ElementIds.size())
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Product Effect is not the current Authored source document";
+				return false;
+			}
+			std::unordered_set<std::string> ExpectedElements;
+			for (size_t iElement = 0u; iElement < ElementIds.size(); ++iElement)
+			{
+				if (RuntimeDocument->Elements[iElement].strElementId !=
+						ElementIds[iElement] ||
+					AuthoredDocument.Elements[iElement].strElementId !=
+						ElementIds[iElement] ||
+					!ExpectedElements.emplace(ElementIds[iElement]).second)
+				{
+					strOutError =
+						"Valtan combat-object current element denominator changed";
+					return false;
+				}
+			}
+
+			CEffectPlayback Playback;
+			CEffectDocumentRenderer Renderer(Device, Context);
+			if (FAILED(Renderer.Initialize()) ||
+				!Playback.Stage_Document(*RuntimeDocument, strOutError) ||
+				!Renderer.Stage_Document(*RuntimeDocument, strOutError))
+			{
+				strOutError = DocumentPath.string() + ": " + strOutError;
+				return false;
+			}
+			OutProof = {};
+			OutProof.strCombatObjectArchetypeId = strArchetypeId;
+			OutProof.strClientVisualId = strVisualId;
+			OutProof.strEffectAssetId = strEffectAssetId;
+			OutProof.DocumentPath = std::filesystem::absolute(
+				DocumentPath).lexically_normal();
+			OutProof.strDocumentRawSha256 = RawSha256;
+			OutProof.strDocumentTypedCodecSha256 = AuthoredTypedSha256;
+			OutProof.strRootPolicy = strRootPolicy;
+			OutProof.fEffectDurationSeconds = Playback.Get_DurationSeconds();
+			for (const std::string_view ElementId : ElementIds)
+			{
+				OutProof.AuditedElementIds.emplace_back(ElementId);
+				VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL Total;
+				Total.strElementId = ElementId;
+				OutProof.ElementTotals.push_back(std::move(Total));
+			}
+			std::vector<float3_t> DistinctRoots;
+			std::vector<std::pair<float3_t, float3_t>> DistinctBounds;
+			for (const SAMPLE_CONFIG& Config : Samples)
+			{
+				float4x4_t RootWorld{};
+				XMStoreFloat4x4(&RootWorld, XMMatrixTranslation(
+					Config.vRootPosition.x, Config.vRootPosition.y,
+					Config.vRootPosition.z));
+				Playback.Seek(Config.fRequestedSeconds, RootWorld);
+				const EFFECT_EVALUATED_FRAME& Frame = Playback.Get_Frame();
+				if (!Is_FiniteValtanCombatObjectProofFrame(Frame) ||
+					!EngineScope.Begin_Frame(strOutError))
+				{
+					return false;
+				}
+				const HRESULT RenderResult = Renderer.Render(Frame);
+				Context->Flush();
+				const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+					Renderer.Get_LastRenderSubmissionStats();
+				if (FAILED(RenderResult) ||
+					S_OK != Device->GetDeviceRemovedReason() ||
+					!Stats.bCompleted || !Stats.bCommitted)
+				{
+					strOutError =
+						"Valtan combat-object renderer transaction did not commit";
+					return false;
+				}
+
+				VALTAN_COMBAT_OBJECT_DRAW_SAMPLE Sample;
+				Sample.strLabel = Config.pLabel;
+				Sample.fRequestedSeconds = Config.fRequestedSeconds;
+				Sample.fEvaluatedSeconds = Frame.fSampleTimeSeconds;
+				Sample.vRootPosition = Config.vRootPosition;
+				Sample.bTransactionCommitted = true;
+				const bool_t bRootAlreadyCounted = std::any_of(
+					DistinctRoots.begin(), DistinctRoots.end(),
+					[&Config](const float3_t& Root)
+					{
+						return XMVectorGetX(XMVector3LengthSq(
+							XMLoadFloat3(&Root) -
+							XMLoadFloat3(&Config.vRootPosition))) <= 1.0e-10f;
+					});
+				if (!bRootAlreadyCounted)
+					DistinctRoots.push_back(Config.vRootPosition);
+				for (const std::string_view ElementId : ElementIds)
+				{
+					const auto Row = std::find_if(Stats.Occurrences.begin(),
+						Stats.Occurrences.end(), [ElementId](
+							const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Candidate)
+						{
+							return Candidate.strElementId == ElementId;
+						});
+					if (Row == Stats.Occurrences.end())
+					{
+						strOutError =
+							"Valtan combat-object renderer omitted an occurrence";
+						return false;
+					}
+					VALTAN_COMBAT_OBJECT_DRAW_ROW Draw;
+					Draw.strElementId = ElementId;
+					Draw.strFamily =
+						Get_ValtanCombatObjectProofFamilyLabel(Row->eFamily);
+					Draw.iConfigured = Row->iConfigured;
+					Draw.iAttempted = Row->iAttempted;
+					Draw.iSubmitted = Row->iSubmitted;
+					Draw.iCommitted = Row->iIssuedDrawCallCount;
+					Draw.iSuppressed = Row->iSuppressed;
+					Draw.iFailed = Row->iFailed;
+					Draw.vPositionMin = Row->vSubmittedPositionMin;
+					Draw.vPositionMax = Row->vSubmittedPositionMax;
+					Draw.bHasSubmittedPosition = Row->bHasSubmittedPosition;
+					if (Draw.strFamily == "END" || 0u != Draw.iFailed ||
+						((0u < Draw.iSubmitted || 0u < Draw.iCommitted) &&
+						 (UINT32_MAX == Row->iSelectedPassIndex ||
+						  Row->bSourceMaterialFallbackBlocked ||
+						  Row->bDrawSelectionDiverged ||
+						  !Draw.bHasSubmittedPosition ||
+						  !Is_FiniteValtanCombatObjectProofVector(
+							  Draw.vPositionMin) ||
+						  !Is_FiniteValtanCombatObjectProofVector(
+							  Draw.vPositionMax))))
+					{
+						strOutError =
+							"Valtan combat-object renderer selected an invalid draw";
+						return false;
+					}
+					VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL& Total =
+						OutProof.ElementTotals[Sample.Rows.size()];
+					if (0u < Draw.iConfigured)
+						++Total.iPreparedSamples;
+					if (0u < Draw.iAttempted)
+						++Total.iAttemptedSamples;
+					Total.strFamily = Draw.strFamily;
+					Total.iSubmittedDraws += Draw.iSubmitted;
+					Total.iCommittedDraws += Draw.iCommitted;
+					Total.iSuppressedDraws += Draw.iSuppressed;
+					Total.iFailedDraws += Draw.iFailed;
+					if (Draw.bHasSubmittedPosition)
+					{
+						if (!Sample.bHasSubmittedBounds)
+						{
+							Sample.vSubmittedPositionMin = Draw.vPositionMin;
+							Sample.vSubmittedPositionMax = Draw.vPositionMax;
+							Sample.bHasSubmittedBounds = true;
+						}
+						else
+						{
+							Sample.vSubmittedPositionMin.x = (std::min)(
+								Sample.vSubmittedPositionMin.x, Draw.vPositionMin.x);
+							Sample.vSubmittedPositionMin.y = (std::min)(
+								Sample.vSubmittedPositionMin.y, Draw.vPositionMin.y);
+							Sample.vSubmittedPositionMin.z = (std::min)(
+								Sample.vSubmittedPositionMin.z, Draw.vPositionMin.z);
+							Sample.vSubmittedPositionMax.x = (std::max)(
+								Sample.vSubmittedPositionMax.x, Draw.vPositionMax.x);
+							Sample.vSubmittedPositionMax.y = (std::max)(
+								Sample.vSubmittedPositionMax.y, Draw.vPositionMax.y);
+							Sample.vSubmittedPositionMax.z = (std::max)(
+								Sample.vSubmittedPositionMax.z, Draw.vPositionMax.z);
+						}
+					}
+					Sample.Rows.push_back(std::move(Draw));
+				}
+				for (const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row :
+					Stats.Occurrences)
+				{
+					if (!ExpectedElements.contains(Row.strElementId))
+						OutProof.iUnauditedSubmittedDraws += Row.iSubmitted;
+				}
+				if (Sample.bHasSubmittedBounds)
+				{
+					const bool_t bKnown = std::any_of(DistinctBounds.begin(),
+						DistinctBounds.end(), [&Sample](const auto& Bounds)
+						{
+							const float3_t DeltaMin(
+								Bounds.first.x - Sample.vSubmittedPositionMin.x,
+								Bounds.first.y - Sample.vSubmittedPositionMin.y,
+								Bounds.first.z - Sample.vSubmittedPositionMin.z);
+							const float3_t DeltaMax(
+								Bounds.second.x - Sample.vSubmittedPositionMax.x,
+								Bounds.second.y - Sample.vSubmittedPositionMax.y,
+								Bounds.second.z - Sample.vSubmittedPositionMax.z);
+							return XMVectorGetX(XMVector3LengthSq(
+								XMLoadFloat3(&DeltaMin))) <= 1.0e-10f &&
+								XMVectorGetX(XMVector3LengthSq(
+									XMLoadFloat3(&DeltaMax))) <= 1.0e-10f;
+						});
+					if (!bKnown)
+						DistinctBounds.emplace_back(
+							Sample.vSubmittedPositionMin,
+							Sample.vSubmittedPositionMax);
+				}
+				OutProof.Samples.push_back(std::move(Sample));
+			}
+			OutProof.iRootWorldDistinctCount =
+				static_cast<uint32_t>(DistinctRoots.size());
+			OutProof.iSubmittedBoundsDistinctCount =
+				static_cast<uint32_t>(DistinctBounds.size());
+			return true;
+		};
+
+		const std::filesystem::path SkyPath = RepositoryRoot /
+			L"Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json";
+		const std::filesystem::path RedPath = RepositoryRoot /
+			L"Data/Effects/Authored/effect.valtan.red-blade-wave.active.effect.json";
+		std::vector<VALTAN_COMBAT_OBJECT_TARGET_PROOF> Targets(2u);
+		if (!BuildTarget("combatobject.valtan.high-jump.target-axe",
+				"combatobject.visual.valtan.high-jump.target-axe.v1",
+				"effect.valtan.sky-axe.active", SkyPath,
+				VALTAN_SKY_AXE_ELEMENTS, SkySamples, "FIXED_WORLD_ROOT",
+				Targets[0u]) ||
+			!BuildTarget("combatobject.valtan.red-blade-wave.projectile",
+				"combatobject.visual.valtan.red-blade-wave.projectile.v1",
+				"effect.valtan.red-blade-wave.active", RedPath,
+				VALTAN_RED_BLADE_ELEMENTS, RedSamples, "MOVING_WORLD_ROOT",
+				Targets[1u]))
+		{
+			return false;
+		}
+
+		const auto HasDraw = [](const VALTAN_COMBAT_OBJECT_DRAW_SAMPLE& Sample,
+			const std::string_view ElementId)
+		{
+			const auto Row = std::find_if(Sample.Rows.begin(), Sample.Rows.end(),
+				[ElementId](const VALTAN_COMBAT_OBJECT_DRAW_ROW& Candidate)
+				{
+					return Candidate.strElementId == ElementId;
+				});
+			return Row != Sample.Rows.end() && 0u < Row->iAttempted &&
+				0u < Row->iSubmitted && 0u < Row->iCommitted &&
+				0u == Row->iFailed && Row->bHasSubmittedPosition;
+		};
+		const auto HasNoDraw = [](const VALTAN_COMBAT_OBJECT_DRAW_SAMPLE& Sample,
+			const std::string_view ElementId)
+		{
+			const auto Row = std::find_if(Sample.Rows.begin(), Sample.Rows.end(),
+				[ElementId](const VALTAN_COMBAT_OBJECT_DRAW_ROW& Candidate)
+				{
+					return Candidate.strElementId == ElementId;
+				});
+			return Row != Sample.Rows.end() && 0u == Row->iSubmitted &&
+				0u == Row->iCommitted && 0u == Row->iFailed;
+		};
+		const VALTAN_COMBAT_OBJECT_TARGET_PROOF& Sky = Targets[0u];
+		const VALTAN_COMBAT_OBJECT_TARGET_PROOF& Red = Targets[1u];
+		bool_t bSkyExact = Sky.Samples.size() == 5u &&
+			Sky.iRootWorldDistinctCount == 1u &&
+			HasDraw(Sky.Samples[0u], VALTAN_SKY_AXE_ELEMENTS[2u]) &&
+			HasDraw(Sky.Samples[0u], VALTAN_SKY_AXE_ELEMENTS[3u]) &&
+			HasDraw(Sky.Samples[1u], VALTAN_SKY_AXE_ELEMENTS[0u]) &&
+			HasDraw(Sky.Samples[1u], VALTAN_SKY_AXE_ELEMENTS[4u]) &&
+			HasDraw(Sky.Samples[2u], VALTAN_SKY_AXE_ELEMENTS[1u]);
+		for (const std::string_view ElementId : VALTAN_SKY_AXE_ELEMENTS)
+			bSkyExact = bSkyExact && HasNoDraw(Sky.Samples[4u], ElementId);
+		for (const VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL& Total : Sky.ElementTotals)
+		{
+			bSkyExact = bSkyExact && 0u < Total.iPreparedSamples &&
+				0u < Total.iAttemptedSamples && 0u < Total.iSubmittedDraws &&
+				0u < Total.iCommittedDraws && 0u == Total.iFailedDraws;
+		}
+		bool_t bRedExact = Red.Samples.size() == 4u &&
+			Red.iRootWorldDistinctCount == 4u &&
+			Red.iSubmittedBoundsDistinctCount >= 2u;
+		for (size_t iElement = 0u;
+			iElement < VALTAN_RED_BLADE_ELEMENTS.size(); ++iElement)
+		{
+			const VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL& Total =
+				Red.ElementTotals[iElement];
+			bRedExact = bRedExact && Total.strFamily == "SPRITE" &&
+				0u < Total.iPreparedSamples && 0u < Total.iAttemptedSamples &&
+				0u < Total.iSubmittedDraws && 0u < Total.iCommittedDraws &&
+				0u == Total.iFailedDraws &&
+				HasNoDraw(Red.Samples[0u], VALTAN_RED_BLADE_ELEMENTS[iElement]) &&
+				HasDraw(Red.Samples[2u], VALTAN_RED_BLADE_ELEMENTS[iElement]);
+		}
+		if (!bSkyExact || !bRedExact)
+		{
+			std::ostringstream Detail;
+			Detail << "Valtan current combat-object WARP proof did not close"
+				<< " sky=" << bSkyExact << " red=" << bRedExact;
+			for (const VALTAN_COMBAT_OBJECT_TARGET_PROOF* pTarget : { &Sky, &Red })
+			{
+				for (const VALTAN_COMBAT_OBJECT_DRAW_SAMPLE& Sample : pTarget->Samples)
+				{
+					Detail << " | " << Sample.strLabel << '@' <<
+						Sample.fEvaluatedSeconds;
+					for (const VALTAN_COMBAT_OBJECT_DRAW_ROW& Row : Sample.Rows)
+					{
+						Detail << ' ' << Row.strElementId << "=(" << Row.strFamily <<
+							",a" << Row.iAttempted << ",s" << Row.iSubmitted <<
+							",c" << Row.iCommitted << ",f" << Row.iFailed << ')';
+					}
+				}
+			}
+			strOutError = Detail.str();
+			return false;
+		}
+
+		return Write_ValtanCombatObjectRuntimeSweep(OutputPath, ResourceRoot,
+			RuntimeCatalogPath, RuntimeCatalogRawSha256, BossCatalogPath,
+			BossCatalogRawSha256, CombatObjectCatalogPath,
+			CombatObjectCatalogRawSha256, fOwnerLifetimeSeconds, Targets,
+			strOutError);
+	}
+
 	bool_t Is_ExactLanceFloor(const AGGREGATE_STATS& Stats)
 	{
 		return Stats.iConfigured == 1u && Stats.iEvaluated == 1u &&
@@ -3079,43 +5311,19 @@ namespace
 int wmain(const int argc, wchar_t** argv)
 {
 	std::cout << std::unitbuf;
-	if (argc != 4 || nullptr == argv[1] || nullptr == argv[2] ||
-		nullptr == argv[3])
+	if (argc != 2 || nullptr == argv[1])
 	{
-		std::cerr << "usage: EffectRenderContractHarness <repo-root> "
-			"<expected-binding-count> <runtime-catalog>\n";
+		std::cerr << "usage: EffectRenderContractHarness <repo-root>\n";
 		return 2;
 	}
 
-	wchar_t* pEnd = nullptr;
-	const unsigned long ExpectedBindingCount = wcstoul(argv[2], &pEnd, 10);
-	if (nullptr == pEnd || L'\0' != *pEnd ||
-		ExpectedBindingCount > 65'536u)
-	{
-		std::cerr << "expected binding count must be in [0, 65536]\n";
-		return 2;
-	}
-	if (ExpectedBindingCount == 1u || ExpectedBindingCount == 2u)
-	{
-		std::cerr <<
-			"non-empty compiled adapter fixture requires the golden S/M/D set\n";
-		return 2;
-	}
-	if (ExpectedBindingCount > 3u &&
-		ExpectedBindingCount < REPRESENTATIVE_V1_TOTAL_BINDING_COUNT)
-	{
-		std::cerr <<
-			"representative V1 registry cannot be admitted as a partial binding set\n";
-		return 2;
-	}
+	constexpr unsigned long ExpectedBindingCount = 0u;
 
 	std::error_code FileError;
 	const std::filesystem::path RepositoryRoot =
 		std::filesystem::weakly_canonical(argv[1], FileError);
 	const std::filesystem::path ClientWorkingDirectory =
 		RepositoryRoot / L"Client" / L"Default";
-	const std::filesystem::path RuntimeCatalogPath =
-		std::filesystem::weakly_canonical(argv[3], FileError);
 	const std::filesystem::path ArtistFullCandidatePath =
 		RepositoryRoot / L"Data" / L"Effects" / L"Imported" / L"Artist" /
 			L"Candidates" /
@@ -3124,7 +5332,6 @@ int wmain(const int argc, wchar_t** argv)
 		RepositoryRoot / L"Client" / L"Bin" / L"Resources";
 	if (FileError ||
 		!std::filesystem::is_directory(ClientWorkingDirectory, FileError) ||
-		FileError || !std::filesystem::is_regular_file(RuntimeCatalogPath, FileError) ||
 		FileError || !std::filesystem::is_regular_file(
 			ArtistFullCandidatePath, FileError) ||
 		FileError || !std::filesystem::is_directory(ResourceRoot, FileError) ||
@@ -3142,17 +5349,15 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("direct-authored-index.complete");
-
-	TEMP_RUNTIME_CATALOG_FIXTURE RuntimeCatalogFixture;
-	if (!Stage_RuntimeCatalogTransactionFixture(
-			RuntimeCatalogPath, RuntimeCatalogFixture, Status))
+	Write_Progress("source-screen-overlay-parser.begin");
+	if (!Validate_SourceScreenOverlayParserContract(RepositoryRoot, Status))
 	{
 		std::cerr << Status << '\n';
-		return 2;
+		return 1;
 	}
-	if (!Set_EnvironmentPath(L"LOSTARK_EFFECT_RUNTIME_CATALOG_FIXTURE",
-			RuntimeCatalogFixture.CatalogPath, Status) ||
-		!Set_EnvironmentPath(L"LOSTARK_RESOURCE_ROOT", ResourceRoot, Status) ||
+	Write_Progress("source-screen-overlay-parser.complete");
+
+	if (!Set_EnvironmentPath(L"LOSTARK_RESOURCE_ROOT", ResourceRoot, Status) ||
 		!Set_EnvironmentPath(L"LOSTARK_PROJECT_DATA_ROOT",
 			RepositoryRoot / L"Data", Status))
 	{
@@ -3173,6 +5378,14 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("source-playback-tuning.complete");
+	Write_Progress("artist-particlemaster-hdr-emissive.begin");
+	if (!Validate_ArtistParticleMasterHdrEmissiveContract(
+			RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("artist-particlemaster-hdr-emissive.complete");
 	Write_Progress("transform-motion-hold.begin");
 	if (!Validate_TransformMotionHoldContract(RepositoryRoot, Status))
 	{
@@ -3196,6 +5409,26 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("even-ring-orientation-ring-fill.complete");
+	std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>
+		LinearRevealContractDocument;
+	Write_Progress("generic-sprite-linear-reveal.begin");
+	if (!Validate_GenericSpriteLinearRevealContract(
+			LinearRevealContractDocument, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("generic-sprite-linear-reveal.complete");
+	std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>
+		WorldMarkContractDocument;
+	Write_Progress("world-mark-composition.begin");
+	if (!Validate_WorldMarkCompositionContract(
+			RepositoryRoot, WorldMarkContractDocument, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("world-mark-composition.complete");
 
 	Engine::Set_NonInteractiveErrorMode(true);
 	Client::CEffectDocumentRenderer::Clear_Prepared_Catalog();
@@ -3207,6 +5440,20 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("catalog-load.complete");
+	Write_Progress("source-direct-product-identity.begin");
+	if (!Validate_SourceDirectProductIdentity(RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("source-direct-product-identity.complete");
+	Write_Progress("artist-particlemaster-source-hdr-emissive.begin");
+	if (!Validate_ArtistParticleMasterSourceHdrEmissiveContract(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("artist-particlemaster-source-hdr-emissive.complete");
 
 	const uint64_t CatalogRevision = Client::CEffectCatalog::Get_RuntimeRevision();
 	const std::shared_ptr<const Client::CEffectMaterialProgramRegistry> Registry =
@@ -3338,19 +5585,6 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	bool_t bCatalogBindingRollbackValidated = false;
-	if (bExpectedCanaryBinding)
-	{
-		Write_Progress("catalog-binding-rollback.begin");
-		if (!Validate_BindingCarrierProfileReloadRollback(
-				RuntimeCatalogFixture.AuthoredDocumentPath, Status))
-		{
-			std::cerr << "catalog Binding carrier/profile rollback failed: " <<
-				Status << '\n';
-			return 1;
-		}
-		bCatalogBindingRollbackValidated = true;
-		Write_Progress("catalog-binding-rollback.complete");
-	}
 
 	FULL35_FIXED_STEP_DISPOSITION Full35Disposition;
 	Write_Progress("full35.begin");
@@ -3379,6 +5613,8 @@ int wmain(const int argc, wchar_t** argv)
 	size_t iActualCompiledAdapterDrawCount = 0u;
 
 	Client::EFFECT_RENDER_PREWARM_PROBE PrewarmProbe{};
+	Client::EFFECT_MODEL_CUE_ANIMATION_PROBE ArtistECraneProbe{};
+	bool_t bArtistECraneCloneAnimationValidated = false;
 	{
 		HEADLESS_ENGINE_SCOPE EngineScope;
 		Write_Progress("warp-engine-initialize.begin");
@@ -3390,6 +5626,15 @@ int wmain(const int argc, wchar_t** argv)
 		Write_Progress("warp-engine-initialize.complete");
 		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
 		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		Write_Progress("artist-e-crane-clone-animation.begin");
+		if (!Validate_ArtistECraneCloneAnimationContract(
+				Device, Context, ArtistECraneProbe, Status))
+		{
+			std::cerr << Status << '\n';
+			return 1;
+		}
+		bArtistECraneCloneAnimationValidated = true;
+		Write_Progress("artist-e-crane-clone-animation.complete");
 		constexpr const wchar_t* PrototypeTag =
 			L"Prototype_GameObject_EffectRenderContract";
 		constexpr const wchar_t* LayerTag = L"Layer_EffectRenderContract";
@@ -3402,6 +5647,156 @@ int wmain(const int argc, wchar_t** argv)
 		}
 		float4x4_t Identity{};
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+
+		constexpr f32_t ARTIST_CHARACTER_SELECT_BLOOM_THRESHOLD = 2.74f;
+		constexpr std::array<f32_t, 5u> ARTIST_PARTICLE_MASTER_SAMPLE_OFFSETS =
+			{ 0.02f, 0.06f, 0.12f, 0.20f, 0.28f };
+		std::vector<std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>>
+			ArtistParticleMasterFixtures;
+		std::vector<std::shared_ptr<const
+			Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>>
+			ArtistParticleMasterPreparedDocuments;
+		std::vector<std::shared_ptr<Client::CEffectObject>>
+			ArtistParticleMasterObjects;
+		for (const ARTIST_PARTICLE_MASTER_STAGE_DESC& Stage :
+			ARTIST_PARTICLE_MASTER_STAGES)
+		{
+			const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Published =
+				Client::CEffectCatalog::Find(std::string(Stage.strEffectAssetId));
+			if (nullptr == Published)
+			{
+				std::cerr << "Artist BA" << Stage.iStageNumber <<
+					" ParticleMaster WARP fixture is unavailable\n";
+				return 1;
+			}
+			const auto SourceElement = std::find_if(Published->Elements.begin(),
+				Published->Elements.end(), [&Stage](
+					const Client::EFFECT_ELEMENT_DESC& Candidate)
+				{
+					return Candidate.strElementId == Stage.strElementId;
+				});
+			if (SourceElement == Published->Elements.end())
+			{
+				std::cerr << "Artist BA" << Stage.iStageNumber <<
+					" ParticleMaster WARP occurrence is unavailable\n";
+				return 1;
+			}
+
+			Client::EFFECT_ELEMENT_DESC TunedElement = *SourceElement;
+			TunedElement.Detail.Color.vColorOffset = { 0.f, 0.f, 0.f, 0.f };
+			TunedElement.Detail.Color.vColorMultiply = { 1.f, 0.2f, 1.5f, 1.f };
+			TunedElement.Detail.Color.fEmissiveIntensity = 5.f;
+			TunedElement.Detail.LinearLerp.bColorOffset = false;
+			TunedElement.Detail.LinearLerp.bColorMultiply = false;
+			TunedElement.Detail.LinearLerp.bEmissiveIntensity = false;
+			Client::EFFECT_DOCUMENT_DESC TunedDocument = *Published;
+			TunedDocument.ModelCues.clear();
+			TunedDocument.Elements.assign(1u, TunedElement);
+			const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Fixture =
+				std::make_shared<Client::EFFECT_DOCUMENT_DESC>(
+					std::move(TunedDocument));
+			std::shared_ptr<const
+				Client::CEffectDocumentRenderer::PREPARED_DOCUMENT> Prepared;
+			Write_Progress("artist-particlemaster-warp-prewarm.begin");
+			if (!Client::CEffectDocumentRenderer::
+					Prepare_UnboundMaterialProgramDocumentForTests(
+						Device, Context, Fixture, nullptr, Prepared, Status) ||
+				nullptr == Prepared)
+			{
+				std::cerr << "Artist BA" << Stage.iStageNumber <<
+					" ParticleMaster WARP prewarm failed: " << Status << '\n';
+				return 1;
+			}
+			Write_Progress("artist-particlemaster-warp-prewarm.complete");
+			Client::CEffectObject::EFFECT_OBJECT_DESC Desc{};
+			Desc.pDocument = Fixture.get();
+			Desc.pPreparedResources = Prepared;
+			XMStoreFloat4x4(&Desc.RootWorld,
+				XMMatrixTranslation(0.f, -2.1f, 0.f));
+			Desc.bAutoPlay = false;
+			Desc.bRequirePreparedResources = true;
+			const std::shared_ptr<Client::CEffectObject> Object =
+				Add_EffectObject(PrototypeTag, LayerTag, Desc);
+			if (nullptr == Object)
+			{
+				std::cerr << "Artist BA" << Stage.iStageNumber <<
+					" ParticleMaster WARP object staging failed\n";
+				return 1;
+			}
+			ArtistParticleMasterFixtures.emplace_back(Fixture);
+			ArtistParticleMasterPreparedDocuments.emplace_back(Prepared);
+			ArtistParticleMasterObjects.emplace_back(Object);
+
+			const f32_t fSourceBurstTime = TunedElement.SourceRecipe.Bursts.empty() ?
+				0.f : TunedElement.SourceRecipe.Bursts.front().fTimeSeconds;
+			const f32_t fSampleOrigin =
+				TunedElement.Detail.Timing.fStartDelaySeconds + fSourceBurstTime;
+			bool_t bActualDraw = false;
+			bool_t bCrossedBloomThreshold = false;
+			bool_t bPurplePeak = false;
+			f32_t fPeak = 0.f;
+			float4_t PeakPixel{};
+			uint64_t iPixelsAboveThreshold = 0u;
+			for (const f32_t fSampleOffset :
+				ARTIST_PARTICLE_MASTER_SAMPLE_OFFSETS)
+			{
+				const f32_t fSampleTime = fSampleOrigin + fSampleOffset;
+				FRAME_EVIDENCE Frame;
+				Frame.strScenarioId = "artist-ba" +
+					std::to_string(Stage.iStageNumber) +
+					"-particlemaster-hdr-" + std::to_string(fSampleTime) + "s";
+				Frame.strContract =
+					"GAMEINSTANCE_WARP_MRT_SCENE_HDR_HARD_THRESHOLD";
+				Write_Progress("artist-particlemaster-warp-render.begin");
+				if (!EngineScope.Render_Frame(Object, fSampleTime, Frame, Status,
+						ARTIST_CHARACTER_SELECT_BLOOM_THRESHOLD))
+				{
+					std::cerr << "Artist BA" << Stage.iStageNumber <<
+						" ParticleMaster WARP render failed: " << Status << '\n';
+					return 1;
+				}
+				Write_Progress("artist-particlemaster-warp-render.complete");
+				Frame.Occurrence = Find_OccurrenceEvidence(
+					Object->Get_LastRenderSubmissionStats(), Stage.strElementId);
+				const bool_t bFrameActualDraw = Frame.Occurrence.has_value() &&
+					Frame.Occurrence->iSubmitted > 0u &&
+					Frame.Occurrence->iFailed == 0u &&
+					Frame.Occurrence->iMaterialBindCount > 0u &&
+					Frame.Occurrence->iShaderPassApplyCount > 0u &&
+					Frame.Occurrence->iIssuedDrawCallCount > 0u &&
+					Frame.Occurrence->eCarrier ==
+						Client::EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL &&
+					Frame.Occurrence->iSelectedPassIndex == 1u &&
+					!Frame.Occurrence->bDrawSelectionDiverged;
+				bActualDraw |= bFrameActualDraw;
+				const bool_t bFrameCrossedThreshold = bFrameActualDraw &&
+					Frame.bSceneHdrReadback &&
+					Frame.fSceneHdrPeak > ARTIST_CHARACTER_SELECT_BLOOM_THRESHOLD &&
+					Frame.iSceneHdrPixelsAboveThreshold > 0u;
+				bCrossedBloomThreshold |= bFrameCrossedThreshold;
+				const float4_t& FramePeakPixel = Frame.vSceneHdrPeakPixel;
+				bPurplePeak |= bFrameCrossedThreshold &&
+					FramePeakPixel.x >= 2.f * FramePeakPixel.y &&
+					FramePeakPixel.z >= 1.25f * FramePeakPixel.x;
+				if (Frame.fSceneHdrPeak > fPeak)
+				{
+					fPeak = Frame.fSceneHdrPeak;
+					PeakPixel = FramePeakPixel;
+					iPixelsAboveThreshold = Frame.iSceneHdrPixelsAboveThreshold;
+				}
+				Frames.emplace_back(std::move(Frame));
+			}
+			if (!bActualDraw || !bCrossedBloomThreshold || !bPurplePeak)
+			{
+				std::cerr << "Artist BA" << Stage.iStageNumber <<
+					" ParticleMaster HDR pixel contract failed [draw=" <<
+					(bActualDraw ? "true" : "false") << ", peak=" << fPeak <<
+					", peakPixel=[" << PeakPixel.x << ',' << PeakPixel.y << ',' <<
+					PeakPixel.z << ',' << PeakPixel.w <<
+					"], pixelsAboveThreshold=" << iPixelsAboveThreshold << "]\n";
+				return 1;
+			}
+		}
 
 		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			RingFillPrepared;
@@ -3569,6 +5964,161 @@ int wmain(const int argc, wchar_t** argv)
 			return 1;
 		}
 		Frames.emplace_back(std::move(RingFillFrame));
+
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			LinearRevealPrepared;
+		Write_Progress("sprite-linear-reveal-warp-prewarm.begin");
+		if (nullptr == LinearRevealContractDocument ||
+			!Client::CEffectDocumentRenderer::
+				Prepare_UnboundMaterialProgramDocumentForTests(
+					Device, Context, LinearRevealContractDocument, nullptr,
+					LinearRevealPrepared, Status))
+		{
+			std::cerr << "Sprite Linear Reveal WARP prewarm failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		Write_Progress("sprite-linear-reveal-warp-prewarm.complete");
+		Client::CEffectObject::EFFECT_OBJECT_DESC LinearRevealDesc{};
+		LinearRevealDesc.pDocument = LinearRevealContractDocument.get();
+		LinearRevealDesc.pPreparedResources = LinearRevealPrepared;
+		LinearRevealDesc.RootWorld = Identity;
+		LinearRevealDesc.bAutoPlay = false;
+		LinearRevealDesc.bRequirePreparedResources = true;
+		const std::shared_ptr<Client::CEffectObject> LinearRevealObject =
+			Add_EffectObject(PrototypeTag, LayerTag, LinearRevealDesc);
+		if (nullptr == LinearRevealObject)
+		{
+			std::cerr << "Sprite Linear Reveal WARP object staging failed\n";
+			return 1;
+		}
+		FRAME_EVIDENCE LinearRevealFrame;
+		LinearRevealFrame.strScenarioId =
+			"generic-sprite-particle-linear-reveal-0.375s";
+		LinearRevealFrame.strContract = "GAMEINSTANCE_WARP_MRT_SCENE_HDR";
+		Write_Progress("sprite-linear-reveal-warp-render.begin");
+		if (!EngineScope.Render_Frame(
+				LinearRevealObject, 0.375f, LinearRevealFrame, Status))
+		{
+			std::cerr << "Sprite Linear Reveal WARP render failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		Write_Progress("sprite-linear-reveal-warp-render.complete");
+		LinearRevealFrame.Occurrence = Find_OccurrenceEvidence(
+			LinearRevealObject->Get_LastRenderSubmissionStats(),
+			LinearRevealContractDocument->Elements.front().strElementId);
+		const bool_t bLinearRevealActualDraw =
+			LinearRevealFrame.Occurrence.has_value() &&
+			LinearRevealFrame.Occurrence->iActive == 1u &&
+			LinearRevealFrame.Occurrence->iCandidate == 1u &&
+			LinearRevealFrame.Occurrence->iAttempted == 1u &&
+			LinearRevealFrame.Occurrence->iSubmitted == 1u &&
+			LinearRevealFrame.Occurrence->iSuppressed == 0u &&
+			LinearRevealFrame.Occurrence->iFailed == 0u &&
+			LinearRevealFrame.Occurrence->iMaterialBindCount >= 1u &&
+			LinearRevealFrame.Occurrence->iShaderPassApplyCount >= 1u &&
+			LinearRevealFrame.Occurrence->iVIBufferBindCount >= 1u &&
+			LinearRevealFrame.Occurrence->iVIBufferDrawCount >= 1u &&
+			LinearRevealFrame.Occurrence->iIssuedDrawCallCount >= 1u &&
+			LinearRevealFrame.Occurrence->eCarrier ==
+				Client::EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE &&
+			!LinearRevealFrame.Occurrence->bDrawSelectionDiverged;
+		if (!bLinearRevealActualDraw)
+		{
+			std::cerr <<
+				"Sprite Linear Reveal did not complete an actual WARP shader-bound draw\n";
+			return 1;
+		}
+		Frames.emplace_back(std::move(LinearRevealFrame));
+
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			WorldMarkPrepared;
+		Write_Progress("world-mark-warp-prewarm.begin");
+		if (nullptr == WorldMarkContractDocument ||
+			!Client::CEffectDocumentRenderer::
+				Prepare_UnboundMaterialProgramDocumentForTests(
+					Device, Context, WorldMarkContractDocument, nullptr,
+					WorldMarkPrepared, Status))
+		{
+			std::cerr << "World Mark WARP prewarm failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		Write_Progress("world-mark-warp-prewarm.complete");
+		Client::CEffectObject::EFFECT_OBJECT_DESC WorldMarkDesc{};
+		WorldMarkDesc.pDocument = WorldMarkContractDocument.get();
+		WorldMarkDesc.pPreparedResources = WorldMarkPrepared;
+		WorldMarkDesc.RootWorld = Identity;
+		WorldMarkDesc.bAutoPlay = false;
+		WorldMarkDesc.bRequirePreparedResources = true;
+		const std::shared_ptr<Client::CEffectObject> WorldMarkObject =
+			Add_EffectObject(PrototypeTag, LayerTag, WorldMarkDesc);
+		if (nullptr == WorldMarkObject)
+		{
+			std::cerr << "World Mark WARP object staging failed\n";
+			return 1;
+		}
+		FRAME_EVIDENCE WorldMarkFrame;
+		WorldMarkFrame.strScenarioId =
+			"world-mark-precedes-normal-translucency-0.5s";
+		WorldMarkFrame.strContract = "GAMEINSTANCE_WARP_MRT_SCENE_HDR";
+		Write_Progress("world-mark-warp-render.begin");
+		if (!EngineScope.Render_Frame(
+				WorldMarkObject, 0.5f, WorldMarkFrame, Status))
+		{
+			std::cerr << "World Mark WARP render failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		Write_Progress("world-mark-warp-render.complete");
+		const Client::EFFECT_GPU_RENDER_SUBMISSION_STATS&
+			WorldMarkStats =
+				WorldMarkObject->Get_LastRenderSubmissionStats();
+		const auto FindWorldMarkOccurrence =
+			[&WorldMarkStats](const std::string_view strElementId)
+			-> const Client::EFFECT_GPU_RENDER_OCCURRENCE_STATS*
+			{
+				const auto Occurrence = std::find_if(
+					WorldMarkStats.Occurrences.begin(),
+					WorldMarkStats.Occurrences.end(),
+					[strElementId](
+						const Client::EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row)
+					{
+						return Row.strElementId == strElementId;
+					});
+				return Occurrence == WorldMarkStats.Occurrences.end() ?
+					nullptr : &*Occurrence;
+			};
+		const Client::EFFECT_GPU_RENDER_OCCURRENCE_STATS*
+			pNormalOccurrence =
+				FindWorldMarkOccurrence("particle.world-mark.normal");
+		const Client::EFFECT_GPU_RENDER_OCCURRENCE_STATS*
+			pWorldMarkOccurrence =
+				FindWorldMarkOccurrence("particle.world-mark.ground");
+		if (nullptr == pNormalOccurrence ||
+			nullptr == pWorldMarkOccurrence ||
+			pNormalOccurrence->eCompositionLayer !=
+				Client::EFFECT_COMPOSITION_LAYER::NORMAL ||
+			pWorldMarkOccurrence->eCompositionLayer !=
+				Client::EFFECT_COMPOSITION_LAYER::WORLD_MARK ||
+			pWorldMarkOccurrence->iFirstIssuedDrawOrdinal ==
+				UINT64_MAX ||
+			pNormalOccurrence->iFirstIssuedDrawOrdinal ==
+				UINT64_MAX ||
+			pWorldMarkOccurrence->iFirstIssuedDrawOrdinal >=
+				pNormalOccurrence->iFirstIssuedDrawOrdinal ||
+			pWorldMarkOccurrence->iSubmitted != 1u ||
+			pNormalOccurrence->iSubmitted != 1u ||
+			!WorldMarkStats.bCompleted || !WorldMarkStats.bCommitted)
+		{
+			std::cerr <<
+				"World Mark did not issue before document-earlier normal translucency\n";
+			return 1;
+		}
+		WorldMarkFrame.Occurrence = Find_OccurrenceEvidence(
+			WorldMarkStats, "particle.world-mark.ground");
+		Frames.emplace_back(std::move(WorldMarkFrame));
 
 		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> CanaryDocument =
 			Client::CEffectCatalog::Find(std::string(ARTIST_UNIFIED_EFFECT_ID));
@@ -4080,150 +6630,341 @@ int wmain(const int argc, wchar_t** argv)
 			}
 		}
 
-		const std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_CORPUS>
-			VisualProgramCorpus = Client::CEffectCatalog::Find_VisualProgramCorpus();
-		Client::EFFECT_DOCUMENT_DESC LanceBaseDocument;
-		std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-			LanceProjection;
-		const std::filesystem::path LanceBaseDocumentPath =
+		constexpr std::string_view LANCE_PORTABLE_EFFECT_ID =
+			"effect.lancemaster.contract.saved-element.ba1-portable-warp";
+		constexpr std::string_view LANCE_PORTABLE_SOURCE_ELEMENT_ID =
+			"authored.source-particle.ce43b71ae7ca3379dfe8529d";
+		constexpr std::string_view LANCE_PORTABLE_RUNTIME_ELEMENT_ID =
+			"authored.copy.contract.lance-ba1-portable.1";
+		Client::EFFECT_DOCUMENT_DESC LancePortableSource;
+		Client::EFFECT_DOCUMENT_DESC LancePortableCopy;
+		const std::filesystem::path LancePortableSourcePath =
 			RepositoryRoot / L"Data" / L"Effects" / L"Authored" /
-				L"effect.lancemaster.skill.34010.ba1.effect.json";
-		Write_Progress("lance-ba1-projection.begin");
-		if (nullptr == VisualProgramCorpus ||
-			!Client::CEffectDocumentCodec::Load(
-				LanceBaseDocumentPath, LanceBaseDocument, Status) ||
-			!Client::CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
-				*VisualProgramCorpus, LanceBaseDocument, LanceProjection, Status) ||
-			nullptr == LanceProjection || !LanceProjection->Is_Valid() ||
-			LanceProjection->Get_EffectAssetId() != LANCE_EFFECT_ID)
+				L"effect.lancemaster.skill.34010.ba1.unified.effect.json";
+		Write_Progress("lance-ba1-portable-copy.begin");
+		if (!Client::CEffectDocumentCodec::Load(
+				LancePortableSourcePath, LancePortableSource, Status) ||
+			!Client::CEffectDocumentCodec::
+				Build_PortableAuthoredElementStartingCopy(
+					LancePortableSource, LANCE_PORTABLE_SOURCE_ELEMENT_ID,
+					LANCE_PORTABLE_EFFECT_ID, LancePortableCopy, Status) ||
+			LancePortableCopy.Elements.size() != 1u ||
+			LancePortableCopy.Elements.front().strElementId !=
+				LANCE_PORTABLE_SOURCE_ELEMENT_ID)
 		{
-			std::cerr << "Lance BA1 production projection failed: " <<
+			std::cerr << "Lance BA1 portable authored copy failed: " <<
 				Status << '\n';
 			return 1;
 		}
-		Write_Progress("lance-ba1-projection.complete");
-		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> LanceDocument =
-			LanceProjection->Get_DocumentShared();
-		Client::EFFECT_RENDER_PREWARM_TARGET LanceTarget;
-		LanceTarget.strEffectAssetId = LANCE_EFFECT_ID;
-		LanceTarget.pDocument = LanceDocument;
-		LanceTarget.pVisualProgramProjection = LanceProjection;
-		LanceTarget.pMaterialProgramRegistry = Registry;
-		Write_Progress("lance-ba1-prewarm.begin");
-		if (nullptr == LanceDocument ||
-			!Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
-				Device, Context, CatalogRevision, LanceTarget, Status))
+		LancePortableCopy.Elements.front().strElementId =
+			std::string(LANCE_PORTABLE_RUNTIME_ELEMENT_ID);
+		const std::string LancePortableJson =
+			Client::CEffectDocumentCodec::Serialize(LancePortableCopy);
+		Client::EFFECT_DOCUMENT_DESC LancePortableRoundTrip;
+		if (!Client::CEffectDocumentCodec::Parse(
+				LancePortableJson, LancePortableRoundTrip, Status) ||
+			!Client::CEffectDocumentCodec::Validate(
+				LancePortableRoundTrip, Status) ||
+			Client::CEffectDocumentCodec::Serialize(LancePortableRoundTrip) !=
+				LancePortableJson)
 		{
-			std::cerr << "Lance BA1 Product prewarm failed: " << Status << '\n';
+			std::cerr << "Lance BA1 renamed portable round-trip failed: " <<
+				Status << '\n';
 			return 1;
 		}
-		Write_Progress("lance-ba1-prewarm.complete");
-		const auto LancePrepared = Client::CEffectDocumentRenderer::Find_Prepared(
-			CatalogRevision, std::string(LANCE_EFFECT_ID), *LanceDocument,
-			LanceProjection, Registry);
-		Client::CEffectObject::EFFECT_OBJECT_DESC LanceDesc{};
-		LanceDesc.pDocument = LanceDocument.get();
-		LanceDesc.pPreparedResources = LancePrepared;
-		LanceDesc.pVisualProgramProjection = LanceProjection;
-		LanceDesc.RootWorld = Identity;
-		LanceDesc.bAutoPlay = false;
-		LanceDesc.bRequirePreparedResources = true;
-		if (nullptr != LanceProjection)
-			LanceDesc.pDocument = nullptr;
-		Write_Progress("lance-ba1-stage.begin");
-		const std::shared_ptr<Client::CEffectObject> LanceObject =
-			Add_EffectObject(PrototypeTag, LayerTag, LanceDesc);
-		if (nullptr == LancePrepared || nullptr == LanceObject)
+		LancePortableCopy = std::move(LancePortableRoundTrip);
+		Write_Progress("lance-ba1-portable-copy.complete");
+		/* Data Files exposes the direct-authored .unified document as the saved
+		   BA1 source; the v12 non-unified document above is only the separate
+		   legacy/rollback projection smoke.  Render this exact source before its
+		   portable copy so the copy is compared with its real shader oracle rather
+		   than with the legacy grouped-translucent carrier. */
+		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>
+			LanceUnifiedSourceDocument =
+				std::make_shared<Client::EFFECT_DOCUMENT_DESC>(
+					LancePortableSource);
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			LanceUnifiedSourcePrepared;
+		Write_Progress("lance-ba1-unified-source-prewarm.begin");
+		if (!Client::CEffectDocumentRenderer::
+				Prepare_UnboundMaterialProgramDocumentForTests(
+					Device, Context, LanceUnifiedSourceDocument, nullptr,
+					LanceUnifiedSourcePrepared, Status))
 		{
-			std::cerr << "Lance BA1 stage failed\n";
+			std::cerr << "Lance BA1 unified source WARP prewarm failed: " <<
+				Status << '\n';
 			return 1;
 		}
-		Write_Progress("lance-ba1-stage.complete");
+		Write_Progress("lance-ba1-unified-source-prewarm.complete");
+		Client::CEffectObject::EFFECT_OBJECT_DESC LanceUnifiedSourceDesc{};
+		LanceUnifiedSourceDesc.pDocument = LanceUnifiedSourceDocument.get();
+		LanceUnifiedSourceDesc.pPreparedResources = LanceUnifiedSourcePrepared;
+		LanceUnifiedSourceDesc.RootWorld = Identity;
+		LanceUnifiedSourceDesc.bAutoPlay = false;
+		LanceUnifiedSourceDesc.bRequirePreparedResources = true;
+		Write_Progress("lance-ba1-unified-source-stage.begin");
+		const std::shared_ptr<Client::CEffectObject> LanceUnifiedSourceObject =
+			Add_EffectObject(PrototypeTag, LayerTag, LanceUnifiedSourceDesc);
+		if (nullptr == LanceUnifiedSourcePrepared ||
+			nullptr == LanceUnifiedSourceObject)
+		{
+			std::cerr << "Lance BA1 unified source WARP stage failed\n";
+			return 1;
+		}
+		Write_Progress("lance-ba1-unified-source-stage.complete");
 
-		FRAME_EVIDENCE LanceFloorFrame;
-		LanceFloorFrame.strScenarioId = "lance-ba1-floor-0.5207s";
-		LanceFloorFrame.strContract = "GAMEINSTANCE_WARP_MRT_SCENE_HDR";
-		Write_Progress("lance-ba1-floor-render.begin");
+		FRAME_EVIDENCE LanceUnifiedSourceTick32Frame;
+		LanceUnifiedSourceTick32Frame.strScenarioId =
+			"lance-ba1-unified-source-tick32";
+		LanceUnifiedSourceTick32Frame.strContract =
+			"GAMEINSTANCE_WARP_MRT_SCENE_HDR";
+		Write_Progress("lance-ba1-unified-source-render.begin");
 		if (!EngineScope.Render_Frame(
-				LanceObject, 0.5207f, LanceFloorFrame, Status))
+				LanceUnifiedSourceObject, 32.f / 60.f,
+				LanceUnifiedSourceTick32Frame, Status))
 		{
-			std::cerr << "Lance BA1 floor render failed: " << Status << '\n';
+			std::cerr << "Lance BA1 unified source WARP render failed: " <<
+				Status << '\n';
 			return 1;
 		}
-		Write_Progress("lance-ba1-floor-render.complete");
-		LanceFloorFrame.Aggregate = Read_FamilyStats(
-			LanceObject->Get_LastRenderSubmissionStats(),
+		Write_Progress("lance-ba1-unified-source-render.complete");
+		LanceUnifiedSourceTick32Frame.Aggregate = Read_FamilyStats(
+			LanceUnifiedSourceObject->Get_LastRenderSubmissionStats(),
 			Client::EFFECT_GPU_RENDER_FAMILY::MESH);
-		LanceFloorFrame.Occurrence = Find_UniqueOccurrenceEvidence(
-			LanceObject->Get_LastRenderSubmissionStats(),
-			Client::EFFECT_GPU_RENDER_FAMILY::MESH);
-		const bool_t bLanceFloorOccurrenceExact =
-			LanceFloorFrame.Occurrence.has_value() &&
-			LanceFloorFrame.Occurrence->strElementId == LANCE_BA1_OCCURRENCE_ID &&
-			LanceFloorFrame.Occurrence->iActive == 1u &&
-			LanceFloorFrame.Occurrence->iCandidate == 0u &&
-			LanceFloorFrame.Occurrence->iAttempted == 1u &&
-			LanceFloorFrame.Occurrence->iSubmitted == 0u &&
-			LanceFloorFrame.Occurrence->iSuppressed == 1u &&
-			LanceFloorFrame.Occurrence->iFailed == 0u;
-		if (!Is_ExactLanceFloor(LanceFloorFrame.Aggregate) ||
-			!bLanceFloorOccurrenceExact)
+		LanceUnifiedSourceTick32Frame.Occurrence = Find_OccurrenceEvidence(
+			LanceUnifiedSourceObject->Get_LastRenderSubmissionStats(),
+			LANCE_PORTABLE_SOURCE_ELEMENT_ID);
+		if (!Is_ExactLanceTick32(LanceUnifiedSourceTick32Frame.Aggregate) ||
+			!LanceUnifiedSourceTick32Frame.Occurrence.has_value() ||
+			LanceUnifiedSourceTick32Frame.Occurrence->strElementId !=
+				LANCE_PORTABLE_SOURCE_ELEMENT_ID ||
+			LanceUnifiedSourceTick32Frame.Occurrence->iSourceMaterialProfile !=
+				15u)
 		{
-			std::cerr << "Lance BA1 floor occurrence stats mismatched\n";
+			std::cerr <<
+				"Lance BA1 canonical unified source did not admit effective profile 15";
+			if (LanceUnifiedSourceTick32Frame.Occurrence.has_value())
+			{
+				const OCCURRENCE_EVIDENCE& Row =
+					*LanceUnifiedSourceTick32Frame.Occurrence;
+				std::cerr << " [profile=" << Row.iSourceMaterialProfile <<
+					", carrier=" << Carrier_Token(Row.eCarrier) <<
+					", pass=" << Row.iSelectedPassIndex <<
+					", srv=" << Row.iTextureSrvBindCount <<
+					", submitted=" << Row.iSubmitted <<
+					", failed=" << Row.iFailed << ']';
+			}
+			std::cerr << '\n';
 			return 1;
 		}
-		const std::string LanceOccurrenceId =
-			LanceFloorFrame.Occurrence->strElementId;
-		Frames.emplace_back(std::move(LanceFloorFrame));
+		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>
+			LancePortableDocument =
+				std::make_shared<Client::EFFECT_DOCUMENT_DESC>(
+					std::move(LancePortableCopy));
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			LancePortablePrepared;
+		Write_Progress("lance-ba1-portable-prewarm.begin");
+		if (!Client::CEffectDocumentRenderer::
+				Prepare_UnboundMaterialProgramDocumentForTests(
+					Device, Context, LancePortableDocument, nullptr,
+					LancePortablePrepared, Status))
+		{
+			std::cerr << "Lance BA1 portable WARP prewarm failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		Write_Progress("lance-ba1-portable-prewarm.complete");
+		Client::CEffectObject::EFFECT_OBJECT_DESC LancePortableDesc{};
+		LancePortableDesc.pDocument = LancePortableDocument.get();
+		LancePortableDesc.pPreparedResources = LancePortablePrepared;
+		LancePortableDesc.RootWorld = Identity;
+		LancePortableDesc.bAutoPlay = false;
+		LancePortableDesc.bRequirePreparedResources = true;
+		Write_Progress("lance-ba1-portable-stage.begin");
+		const std::shared_ptr<Client::CEffectObject> LancePortableObject =
+			Add_EffectObject(PrototypeTag, LayerTag, LancePortableDesc);
+		if (nullptr == LancePortablePrepared || nullptr == LancePortableObject)
+		{
+			std::cerr << "Lance BA1 portable WARP stage failed\n";
+			return 1;
+		}
+		Write_Progress("lance-ba1-portable-stage.complete");
 
-		FRAME_EVIDENCE LanceTick32Frame;
-		LanceTick32Frame.strScenarioId = "lance-ba1-tick32";
-		LanceTick32Frame.strContract = "GAMEINSTANCE_WARP_MRT_SCENE_HDR";
-		Write_Progress("lance-ba1-tick32-render.begin");
+		FRAME_EVIDENCE LancePortableTick32Frame;
+		LancePortableTick32Frame.strScenarioId =
+			"lance-ba1-portable-saved-element-tick32";
+		LancePortableTick32Frame.strContract =
+			"GAMEINSTANCE_WARP_MRT_SCENE_HDR";
+		Write_Progress("lance-ba1-portable-render.begin");
 		if (!EngineScope.Render_Frame(
-				LanceObject, 32.f / 60.f, LanceTick32Frame, Status))
+				LancePortableObject, 32.f / 60.f,
+				LancePortableTick32Frame, Status))
 		{
-			std::cerr << "Lance BA1 tick32 render failed: " << Status << '\n';
+			std::cerr << "Lance BA1 portable WARP render failed: " <<
+				Status << '\n';
 			return 1;
 		}
-		Write_Progress("lance-ba1-tick32-render.complete");
-		LanceTick32Frame.Aggregate = Read_FamilyStats(
-			LanceObject->Get_LastRenderSubmissionStats(),
+		Write_Progress("lance-ba1-portable-render.complete");
+		LancePortableTick32Frame.Aggregate = Read_FamilyStats(
+			LancePortableObject->Get_LastRenderSubmissionStats(),
 			Client::EFFECT_GPU_RENDER_FAMILY::MESH);
-		LanceTick32Frame.Occurrence = Find_UniqueOccurrenceEvidence(
-			LanceObject->Get_LastRenderSubmissionStats(),
-			Client::EFFECT_GPU_RENDER_FAMILY::MESH);
-		const bool_t bLanceTick32OccurrenceExact =
-			LanceTick32Frame.Occurrence.has_value() &&
-			LanceOccurrenceId == LANCE_BA1_OCCURRENCE_ID &&
-			LanceTick32Frame.Occurrence->strElementId == LANCE_BA1_OCCURRENCE_ID &&
-			LanceTick32Frame.Occurrence->iActive == 1u &&
-			LanceTick32Frame.Occurrence->iCandidate == 1u &&
-			LanceTick32Frame.Occurrence->iAttempted == 1u &&
-			LanceTick32Frame.Occurrence->iSubmitted == 1u &&
-			LanceTick32Frame.Occurrence->iSuppressed == 0u &&
-			LanceTick32Frame.Occurrence->iFailed == 0u &&
-			LanceTick32Frame.Occurrence->iMaterialBindCount == 1u &&
-			LanceTick32Frame.Occurrence->iTextureSrvBindCount == 12u &&
-			LanceTick32Frame.Occurrence->iSamplerBindCount == 1u &&
-			LanceTick32Frame.Occurrence->iShaderPassApplyCount == 1u &&
-			LanceTick32Frame.Occurrence->iVIBufferBindCount == 1u &&
-			LanceTick32Frame.Occurrence->iVIBufferDrawCount == 1u &&
-			LanceTick32Frame.Occurrence->iIssuedDrawCallCount == 1u &&
-			LanceTick32Frame.Occurrence->iDrawSelectionCount == 1u &&
-			LanceTick32Frame.Occurrence->
-				iCompiledAdapterPipelineValidationCount == 0u &&
-			LanceTick32Frame.Occurrence->eCarrier ==
-				Client::EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL &&
-			LanceTick32Frame.Occurrence->iSelectedPassIndex == 1u &&
-			!LanceTick32Frame.Occurrence->bDrawSelectionDiverged;
-		if (!Is_ExactLanceTick32(LanceTick32Frame.Aggregate) ||
-			!bLanceTick32OccurrenceExact)
+		LancePortableTick32Frame.Occurrence = Find_OccurrenceEvidence(
+			LancePortableObject->Get_LastRenderSubmissionStats(),
+			LANCE_PORTABLE_RUNTIME_ELEMENT_ID);
+		if (!LancePortableTick32Frame.Occurrence.has_value())
 		{
-			std::cerr << "Lance BA1 tick32 carrier/pass/draw evidence mismatched\n";
+			std::cerr <<
+				"Lance BA1 portable source/copy comparison lost the portable occurrence\n";
 			return 1;
 		}
-		Frames.emplace_back(std::move(LanceTick32Frame));
+
+		const AGGREGATE_STATS& ExpectedAggregate =
+			LanceUnifiedSourceTick32Frame.Aggregate;
+		const AGGREGATE_STATS& ActualAggregate =
+			LancePortableTick32Frame.Aggregate;
+		const OCCURRENCE_EVIDENCE& ExpectedOccurrence =
+			*LanceUnifiedSourceTick32Frame.Occurrence;
+		const OCCURRENCE_EVIDENCE& ActualOccurrence =
+			*LancePortableTick32Frame.Occurrence;
+		bool_t bPortableMatchesUnifiedSource = true;
+		const auto CompareU64 = [&bPortableMatchesUnifiedSource](
+			const char* pField, const uint64_t iExpected,
+			const uint64_t iActual)
+		{
+			if (iExpected == iActual)
+				return;
+			bPortableMatchesUnifiedSource = false;
+			std::cerr << "  " << pField << ": source=" << iExpected <<
+				", portable=" << iActual << '\n';
+		};
+		const auto CompareU32 = [&bPortableMatchesUnifiedSource](
+			const char* pField, const uint32_t iExpected,
+			const uint32_t iActual)
+		{
+			if (iExpected == iActual)
+				return;
+			bPortableMatchesUnifiedSource = false;
+			std::cerr << "  " << pField << ": source=" << iExpected <<
+				", portable=" << iActual << '\n';
+		};
+		const auto CompareBool = [&bPortableMatchesUnifiedSource](
+			const char* pField, const bool_t bExpected,
+			const bool_t bActual)
+		{
+			if (bExpected == bActual)
+				return;
+			bPortableMatchesUnifiedSource = false;
+			std::cerr << "  " << pField << ": source=" <<
+				(bExpected ? "true" : "false") << ", portable=" <<
+				(bActual ? "true" : "false") << '\n';
+		};
+
+		if (ActualOccurrence.strElementId != LANCE_PORTABLE_RUNTIME_ELEMENT_ID)
+		{
+			bPortableMatchesUnifiedSource = false;
+			std::cerr << "  occurrence.elementId: source=" <<
+				ExpectedOccurrence.strElementId << ", portable=" <<
+				ActualOccurrence.strElementId << ", expectedPortable=" <<
+				LANCE_PORTABLE_RUNTIME_ELEMENT_ID << '\n';
+		}
+		CompareU64("aggregate.configured", ExpectedAggregate.iConfigured,
+			ActualAggregate.iConfigured);
+		CompareU64("aggregate.evaluated", ExpectedAggregate.iEvaluated,
+			ActualAggregate.iEvaluated);
+		CompareU64("aggregate.active", ExpectedAggregate.iActive,
+			ActualAggregate.iActive);
+		CompareU64("aggregate.candidate", ExpectedAggregate.iCandidate,
+			ActualAggregate.iCandidate);
+		CompareU64("aggregate.attempted", ExpectedAggregate.iAttempted,
+			ActualAggregate.iAttempted);
+		CompareU64("aggregate.submitted", ExpectedAggregate.iSubmitted,
+			ActualAggregate.iSubmitted);
+		CompareU64("aggregate.suppressed", ExpectedAggregate.iSuppressed,
+			ActualAggregate.iSuppressed);
+		CompareU64("aggregate.failed", ExpectedAggregate.iFailed,
+			ActualAggregate.iFailed);
+		CompareBool("aggregate.completed", ExpectedAggregate.bCompleted,
+			ActualAggregate.bCompleted);
+		CompareBool("aggregate.committed", ExpectedAggregate.bCommitted,
+			ActualAggregate.bCommitted);
+		CompareU64("occurrence.active", ExpectedOccurrence.iActive,
+			ActualOccurrence.iActive);
+		CompareU64("occurrence.candidate", ExpectedOccurrence.iCandidate,
+			ActualOccurrence.iCandidate);
+		CompareU64("occurrence.attempted", ExpectedOccurrence.iAttempted,
+			ActualOccurrence.iAttempted);
+		CompareU64("occurrence.submitted", ExpectedOccurrence.iSubmitted,
+			ActualOccurrence.iSubmitted);
+		CompareU64("occurrence.suppressed", ExpectedOccurrence.iSuppressed,
+			ActualOccurrence.iSuppressed);
+		CompareU64("occurrence.failed", ExpectedOccurrence.iFailed,
+			ActualOccurrence.iFailed);
+		CompareU64("occurrence.materialBinds",
+			ExpectedOccurrence.iMaterialBindCount,
+			ActualOccurrence.iMaterialBindCount);
+		CompareU64("occurrence.textureSrvBinds",
+			ExpectedOccurrence.iTextureSrvBindCount,
+			ActualOccurrence.iTextureSrvBindCount);
+		CompareU64("occurrence.samplerBinds",
+			ExpectedOccurrence.iSamplerBindCount,
+			ActualOccurrence.iSamplerBindCount);
+		CompareU64("occurrence.shaderPassApplies",
+			ExpectedOccurrence.iShaderPassApplyCount,
+			ActualOccurrence.iShaderPassApplyCount);
+		CompareU64("occurrence.viBufferBinds",
+			ExpectedOccurrence.iVIBufferBindCount,
+			ActualOccurrence.iVIBufferBindCount);
+		CompareU64("occurrence.viBufferDraws",
+			ExpectedOccurrence.iVIBufferDrawCount,
+			ActualOccurrence.iVIBufferDrawCount);
+		CompareU64("occurrence.issuedDrawCalls",
+			ExpectedOccurrence.iIssuedDrawCallCount,
+			ActualOccurrence.iIssuedDrawCallCount);
+		CompareU64("occurrence.drawSelections",
+			ExpectedOccurrence.iDrawSelectionCount,
+			ActualOccurrence.iDrawSelectionCount);
+		CompareU64("occurrence.compiledAdapterPipelineValidations",
+			ExpectedOccurrence.iCompiledAdapterPipelineValidationCount,
+			ActualOccurrence.iCompiledAdapterPipelineValidationCount);
+		CompareU32("occurrence.passIndex",
+			ExpectedOccurrence.iSelectedPassIndex,
+			ActualOccurrence.iSelectedPassIndex);
+		CompareU32("occurrence.sourceMaterialProfile",
+			ExpectedOccurrence.iSourceMaterialProfile,
+			ActualOccurrence.iSourceMaterialProfile);
+		if (ExpectedOccurrence.eCarrier != ActualOccurrence.eCarrier)
+		{
+			bPortableMatchesUnifiedSource = false;
+			std::cerr << "  occurrence.carrier: source=" <<
+				Carrier_Token(ExpectedOccurrence.eCarrier) << ", portable=" <<
+				Carrier_Token(ActualOccurrence.eCarrier) << '\n';
+		}
+		CompareBool("occurrence.drawSelectionDiverged",
+			ExpectedOccurrence.bDrawSelectionDiverged,
+			ActualOccurrence.bDrawSelectionDiverged);
+		CompareU64("occurrence.firstSubmittedWorldFnv1a64",
+			ExpectedOccurrence.iFirstSubmittedWorldHash,
+			ActualOccurrence.iFirstSubmittedWorldHash);
+		CompareBool("occurrence.hasFirstSubmittedWorld",
+			ExpectedOccurrence.bHasFirstSubmittedWorld,
+			ActualOccurrence.bHasFirstSubmittedWorld);
+		if (ExpectedOccurrence.iSourceMaterialProfile != 15u ||
+			ActualOccurrence.iSourceMaterialProfile != 15u)
+		{
+			bPortableMatchesUnifiedSource = false;
+			std::cerr <<
+				"  occurrence.sourceMaterialProfile contract: source=" <<
+				ExpectedOccurrence.iSourceMaterialProfile << ", portable=" <<
+				ActualOccurrence.iSourceMaterialProfile << ", required=15\n";
+		}
+		if (!bPortableMatchesUnifiedSource)
+		{
+			std::cerr <<
+				"Lance BA1 portable copy diverged from its canonical unified source\n";
+			return 1;
+		}
+		Frames.emplace_back(std::move(LanceUnifiedSourceTick32Frame));
+		Frames.emplace_back(std::move(LancePortableTick32Frame));
 
 		PrewarmProbe = Client::CEffectDocumentRenderer::Get_PrewarmProbe();
 		if (PrewarmProbe.iCatalogRevision != CatalogRevision ||
@@ -4265,6 +7006,20 @@ int wmain(const int argc, wchar_t** argv)
 			iRepresentativeV1ActualDrawCount <<
 		",\"catalogBindingCarrierProfileRollbackValidated\":" <<
 			(bCatalogBindingRollbackValidated ? "true" : "false") <<
+		",\"artistECraneCloneAnimationValidated\":" <<
+			(bArtistECraneCloneAnimationValidated ? "true" : "false") <<
+		",\"artistECraneCloneAnimation\":{\"prototypeDurationSeconds\":" <<
+			ArtistECraneProbe.fPrototypeDurationSeconds <<
+		",\"cloneDurationSeconds\":" <<
+			ArtistECraneProbe.fCloneDurationSeconds <<
+		",\"midTrackPositionTicks\":" <<
+			ArtistECraneProbe.fMidTrackPositionTicks <<
+		",\"tailTrackPositionTicks\":" <<
+			ArtistECraneProbe.fTailTrackPositionTicks <<
+		",\"trackDurationTicks\":" <<
+			ArtistECraneProbe.fTrackDurationTicks <<
+		",\"witnessBoneMaximumDelta\":" <<
+			ArtistECraneProbe.fWitnessBoneMaximumDelta << "}" <<
 		",\"prewarm\":{\"catalogRevision\":" <<
 			PrewarmProbe.iCatalogRevision <<
 		",\"registryGeneration\":" <<

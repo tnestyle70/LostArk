@@ -218,6 +218,8 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 	Staged.Entries.reserve(pEffects->Get_Array().size());
 	std::unordered_set<std::string> DirectAssetIds;
 	DirectAssetIds.reserve(pEffects->Get_Array().size());
+	std::unordered_set<std::string> DuplicateAssetIds;
+	DuplicateAssetIds.reserve(pEffects->Get_Array().size());
 	std::unordered_set<std::string> NonAuditionDirectAssetIds;
 	NonAuditionDirectAssetIds.reserve(pEffects->Get_Array().size());
 	for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())
@@ -228,7 +230,7 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		const DATA_JSON_VALUE* pAssetId = CatalogEntry.Find("effectAssetId");
 		if (nullptr != pPayloadKind &&
 			pPayloadKind->Get_Type() == DATA_JSON_TYPE::STRING &&
-			pPayloadKind->Get_String() == "DIRECT_AUTHORED_DOCUMENT_V13" &&
+			pPayloadKind->Get_String() == "DIRECT_AUTHORED_DOCUMENT" &&
 			nullptr != pAssetId &&
 			pAssetId->Get_Type() == DATA_JSON_TYPE::STRING &&
 			!pAssetId->Get_String().empty() &&
@@ -243,23 +245,30 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		if (Staged.strFirstUnavailable.empty())
 			Staged.strFirstUnavailable = std::move(Status);
 	};
+	const auto RecordOwnerJoinUnavailable = [&Staged](std::string Status)
+	{
+		++Staged.iOwnerJoinUnavailableCount;
+		if (Staged.strFirstOwnerJoinUnavailable.empty())
+			Staged.strFirstOwnerJoinUnavailable = std::move(Status);
+	};
 
 	for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())
 	{
 		if (!CatalogEntry.Is_Object())
 		{
-			strOutStatus = "EffectCatalog.json contains a non-object row.";
-			return false;
+			RecordUnavailable("EffectCatalog.json contains a non-object row.");
+			continue;
 		}
 		const DATA_JSON_VALUE* pPayloadKind = CatalogEntry.Find("payloadKind");
 		if (nullptr == pPayloadKind)
 			continue;
 		if (pPayloadKind->Get_Type() != DATA_JSON_TYPE::STRING)
 		{
-			strOutStatus = "EffectCatalog.json contains a non-string payloadKind.";
-			return false;
+			RecordUnavailable(
+				"EffectCatalog.json contains a non-string payloadKind.");
+			continue;
 		}
-		if (pPayloadKind->Get_String() != "DIRECT_AUTHORED_DOCUMENT_V13")
+		if (pPayloadKind->Get_String() != "DIRECT_AUTHORED_DOCUMENT")
 			continue;
 		++Staged.iCatalogDirectCount;
 		const DATA_JSON_VALUE* pAssetId = CatalogEntry.Find("effectAssetId");
@@ -311,16 +320,22 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 			pAuthoringPath->Get_String().empty() ||
 			!bOptionalScreenOverlayPathValid || !bAuditionIdentityValid)
 		{
-			strOutStatus =
-				"EffectCatalog.json contains a malformed direct-authored row.";
-			return false;
+			RecordUnavailable(
+				"EffectCatalog.json contains a malformed direct-authored row.");
+			continue;
 		}
 		const std::string strAssetId = pAssetId->Get_String();
 		if (!DirectAssetIds.insert(strAssetId).second)
 		{
-			strOutStatus = "EffectCatalog.json contains duplicate Effect ID: " +
-				strAssetId;
-			return false;
+			if (DuplicateAssetIds.emplace(strAssetId).second)
+			{
+				RecordUnavailable(
+					"EffectCatalog.json invalidated the first direct-authored row for duplicate Effect ID: " +
+					strAssetId);
+			}
+			RecordUnavailable(
+				"EffectCatalog.json contains duplicate Effect ID: " + strAssetId);
+			continue;
 		}
 
 		EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Entry;
@@ -328,14 +343,17 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		if (Try_ParsePlayerOwner(
 				strAssetId, Entry.eCharacterClass, Entry.iSkillId))
 		{
-			Entry.eOwnerKind = EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL;
-			if (!ValidOwners.contains(
+			if (ValidOwners.contains(
 					std::make_pair(Entry.eCharacterClass, Entry.iSkillId)))
 			{
-				RecordUnavailable(
+				Entry.eOwnerKind =
+					EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL;
+			}
+			else
+			{
+				RecordOwnerJoinUnavailable(
 					"direct authored Effect ID has no PlayerSkills owner: " +
 					strAssetId);
-				continue;
 			}
 		}
 		else
@@ -349,12 +367,11 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 				ValidBossCombatObjectOwners.end() != CombatObjectOwner;
 			if (hasBossPatternOwner && hasBossCombatObjectOwner)
 			{
-				RecordUnavailable(
+				RecordOwnerJoinUnavailable(
 					"direct authored Effect ID has ambiguous boss-pattern and boss-combat-object owners: " +
 					strAssetId);
-				continue;
 			}
-			if (hasBossPatternOwner &&
+			else if (hasBossPatternOwner &&
 				!BossOwner->second.strOwnerArchetypeId.empty() &&
 				!BossOwner->second.strPatternId.empty() &&
 				!BossOwner->second.strStageId.empty() &&
@@ -383,13 +400,13 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 			}
 			else
 			{
-				RecordUnavailable(
+				RecordOwnerJoinUnavailable(
 					"direct authored Effect ID has no stable player-skill, boss-pattern, or boss-combat-object owner: " +
 					strAssetId);
-				continue;
 			}
 		}
-		if (bAuditionShape)
+		if (bAuditionShape &&
+			EFFECT_DIRECT_AUTHORED_OWNER_KIND::END != Entry.eOwnerKind)
 		{
 			const std::string& strSourceEffectAssetId =
 				pSourceEffectAssetId->Get_String();
@@ -435,10 +452,16 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 			}
 			if (!bSameOwner)
 			{
-				RecordUnavailable(
+				RecordOwnerJoinUnavailable(
 					"registry-bound audition source owner mismatch: " +
 					strAssetId);
-				continue;
+				Entry.eOwnerKind = EFFECT_DIRECT_AUTHORED_OWNER_KIND::END;
+				Entry.strOwnerArchetypeId.clear();
+				Entry.strPatternId.clear();
+				Entry.strStageId.clear();
+				Entry.strActionId.clear();
+				Entry.strCombatObjectArchetypeId.clear();
+				Entry.strClientVisualId.clear();
 			}
 		}
 
@@ -538,6 +561,11 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		Staged.Entries.push_back(std::move(Entry));
 	}
 
+	std::erase_if(Staged.Entries,
+		[&DuplicateAssetIds](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Entry)
+		{
+			return DuplicateAssetIds.contains(Entry.strEffectAssetId);
+		});
 	std::sort(Staged.Entries.begin(), Staged.Entries.end(),
 		[](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Left,
 			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Right)
@@ -557,12 +585,19 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 	strOutStatus = "Direct authored source index admitted " +
 		std::to_string(Staged.Entries.size()) + " / " +
 		std::to_string(Staged.iCatalogDirectCount) +
-		" DIRECT_AUTHORED_DOCUMENT_V13 source paths.";
+		" DIRECT_AUTHORED_DOCUMENT source paths.";
 	if (0u != Staged.iUnavailableCount)
 	{
 		strOutStatus += " Isolated " +
 			std::to_string(Staged.iUnavailableCount) +
 			" unavailable rows; first: " + Staged.strFirstUnavailable;
+	}
+	if (0u != Staged.iOwnerJoinUnavailableCount)
+	{
+		strOutStatus += " Product owner join isolated for " +
+			std::to_string(Staged.iOwnerJoinUnavailableCount) +
+			" editor-ready rows; first: " +
+			Staged.strFirstOwnerJoinUnavailable;
 	}
 	InOutIndex = std::move(Staged);
 	return true;

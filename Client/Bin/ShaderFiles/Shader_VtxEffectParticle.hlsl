@@ -114,14 +114,15 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         input.uv, input.localUV, float3(1.f, 1.f, 1.f), input.color,
         input.dynamicParameter);
     const float blend = saturate(input.particleData.y);
-    if (blend <= 0.f)
-        return current;
-    const EFFECT_PS_OUT next = Shade_EffectParticleUV(
-        input.uvNext, input.localUV, float3(1.f, 1.f, 1.f), input.color,
-        input.dynamicParameter);
-    current.SceneColor = lerp(current.SceneColor, next.SceneColor, blend);
-    current.Distortion = lerp(current.Distortion, next.Distortion, blend);
-    return current;
+    if (blend > 0.f)
+    {
+        const EFFECT_PS_OUT next = Shade_EffectParticleUV(
+            input.uvNext, input.localUV, float3(1.f, 1.f, 1.f), input.color,
+            input.dynamicParameter);
+        current.SceneColor = lerp(current.SceneColor, next.SceneColor, blend);
+        current.Distortion = lerp(current.Distortion, next.Distortion, blend);
+    }
+    return Apply_GenericLinearReveal(current, input.runtimeLocalUV);
 }
 
 technique11 DefaultTechnique

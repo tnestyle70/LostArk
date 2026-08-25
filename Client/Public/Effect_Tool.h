@@ -426,6 +426,10 @@ private:
 		std::string strEffectAssetId;
 		std::string strLegacyProductEffectAssetId;
 		std::filesystem::path Path;
+		/* The asset ID supplies a stable editor grouping even when the current
+		   PlayerSkills Product join is unavailable. Only Product Play consumes
+		   this flag; exact-source Open Editor never does. */
+		bool_t bProductOwnerJoined = false;
 	};
 
 	enum class ARTIST_F_PREPARATION_STATE : uint8_t
@@ -571,11 +575,18 @@ private:
 		const VALTAN_PRODUCT_PREVIEW& Preview,
 		bool_t bQueuePlayCompleteAfterLoad = false);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
+	void Render_CompositionDetail(
+		EFFECT_ELEMENT_DESC& Element,
+		bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_ColorDetail(
         EFFECT_DETAIL_DESC& Detail,
         bool_t& bChanged,
-        bool_t bHasEmissiveTexture);
+        bool_t bHasEmissiveRadianceInput,
+        bool_t bParticleMasterNamedEmission);
+	void Render_LinearRevealDetail(
+		EFFECT_ELEMENT_DESC& Element,
+		bool_t& bChanged);
     void Render_UVDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_UVKeyframes(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
 	void Render_TimingDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);

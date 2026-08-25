@@ -140,6 +140,16 @@ public:
 		std::string_view strTargetEffectAssetId,
 		EFFECT_DOCUMENT_DESC& InOutDocument,
 		std::string& strOutError);
+	/* Builds the self-contained Saved Element reuse form.  Source compiler and
+	   occurrence ownership stay outside the target document, while authored
+	   Detail, attachment, resources/material execution, and the admitted
+	   portable emitter carrier survive an ordinary v13 round trip exactly. */
+	static bool_t Build_PortableAuthoredElementStartingCopy(
+		const EFFECT_DOCUMENT_DESC& SourceDocument,
+		std::string_view strElementId,
+		std::string_view strTargetEffectAssetId,
+		EFFECT_DOCUMENT_DESC& InOutDocument,
+		std::string& strOutError);
 	static bool_t Bake_GenericAuthoredElementStartingState(
 		const EFFECT_ELEMENT_DESC& LoweredElement,
 		const EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST& Request,
@@ -156,6 +166,10 @@ public:
 	   authored Transform/Visible/resources/material execution remain owned by
 	   the target Element. */
 	static bool_t Apply_PortableAuthoredParticleRuntimeCarrier(
+		const EFFECT_ELEMENT_DESC& SourceElement,
+		EFFECT_ELEMENT_DESC& InOutElement,
+		std::string& strOutError);
+	static bool_t Apply_PortableAuthoredDecalRuntimeCarrier(
 		const EFFECT_ELEMENT_DESC& SourceElement,
 		EFFECT_ELEMENT_DESC& InOutElement,
 		std::string& strOutError);

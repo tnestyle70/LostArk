@@ -8,8 +8,12 @@ float4x4 g_ViewMatrixInverse;
 float4x4 g_ProjMatrixInverse;
 float4x4 g_DecalWorldInverse;
 Texture2D g_DepthTexture;
+Texture2D g_NormalTexture;
 float2 g_DecalSize = float2(1.f, 1.f);
 float g_DecalDepth = 1.f;
+float g_DecalEdgeFade = 0.f;
+float3 g_DecalUp = float3(0.f, 1.f, 0.f);
+float g_DecalNormalCutoff = -1.f;
 
 struct VS_IN
 {
@@ -33,7 +37,9 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
-    const float4 depth = g_DepthTexture.Sample(LinearSampler, input.uv);
+    const float4 depth = g_DepthTexture.Sample(PointSampler, input.uv);
+    clip(0.99999f - depth.x);
+    clip(0.99999f - depth.y);
     const float viewZ = depth.y * 1000.f;
     float4 worldPosition;
     worldPosition.x = input.uv.x * 2.f - 1.f;
@@ -45,43 +51,68 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     worldPosition = mul(worldPosition, g_ViewMatrixInverse);
 
     const float3 local = mul(worldPosition, g_DecalWorldInverse).xyz;
-    const float2 halfSize = g_DecalSize * 0.5f;
+    const float2 halfSize = max(g_DecalSize, float2(0.0001f, 0.0001f)) * 0.5f;
+    const float halfDepth = max(g_DecalDepth, 0.0001f) * 0.5f;
     clip(halfSize.x - abs(local.x));
     clip(halfSize.y - abs(local.z));
-    clip(g_DecalDepth * 0.5f - abs(local.y));
+    clip(halfDepth - abs(local.y));
+    if (g_DecalNormalCutoff > -1.f)
+    {
+        const float3 sceneNormal =
+            g_NormalTexture.Sample(PointSampler, input.uv).xyz * 2.f - 1.f;
+        clip(dot(normalize(sceneNormal), normalize(g_DecalUp)) -
+            g_DecalNormalCutoff);
+    }
 
     const float2 decalUV = float2(
-        local.x / g_DecalSize.x + 0.5f,
-        0.5f - local.z / g_DecalSize.y);
+        local.x / (halfSize.x * 2.f) + 0.5f,
+        0.5f - local.z / (halfSize.y * 2.f));
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
     if (0u != g_StandardColorV1Enabled)
     {
-        return Shade_EffectStandardColorV1(
+        output = Shade_EffectStandardColorV1(
             decalUV * g_UVScale + g_UVOffset,
             float4(1.f, 1.f, 1.f, 1.f));
     }
-    if (0u != g_RuntimeMaterialV2Enabled)
+    else if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==
             RUNTIME_MATERIAL_V2_ACTIVE022_DECAL)
         {
-            return Shade_Artist31470RuntimeMaterialV2Active022Decal(
+            output = Shade_Artist31470RuntimeMaterialV2Active022Decal(
                 decalUV * g_UVScale + g_UVOffset,
                 g_ColorMultiply + g_ColorOffset);
         }
-        if (g_RuntimeMaterialV2Opcode ==
+        else if (g_RuntimeMaterialV2Opcode ==
             EFFECT_RUNTIME_ADAPTER_LOCAL_DECAL_RT0_SIX_SRV_V1)
         {
-            return Shade_EffectLocalDecalRt0SixSrvV1(decalUV);
+            output = Shade_EffectLocalDecalRt0SixSrvV1(decalUV);
         }
-
-        EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
-        clip(-1.f);
-        return output;
+        else
+        {
+            clip(-1.f);
+        }
     }
-    return Shade_Effect(
-        decalUV * g_UVScale + g_UVOffset,
-        float3(1.f, 1.f, 1.f),
-        float4(1.f, 1.f, 1.f, 1.f));
+    else
+    {
+        output = Shade_Effect(
+            decalUV * g_UVScale + g_UVOffset,
+            float3(1.f, 1.f, 1.f),
+            float4(1.f, 1.f, 1.f, 1.f));
+    }
+    if (g_DecalEdgeFade > 0.f)
+    {
+        const float3 normalized = float3(
+            abs(local.x) / halfSize.x,
+            abs(local.y) / halfDepth,
+            abs(local.z) / halfSize.y);
+        const float edge = 1.f - max(
+            normalized.x, max(normalized.y, normalized.z));
+        const float fade = saturate(edge / g_DecalEdgeFade);
+        output.SceneColor.a *= fade;
+        output.Distortion *= fade;
+    }
+    return output;
 }
 
 technique11 DefaultTechnique

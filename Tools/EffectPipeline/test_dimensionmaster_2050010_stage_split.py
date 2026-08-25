@@ -136,8 +136,10 @@ class DimensionMaster2050010AutomaticSequenceTests(unittest.TestCase):
                 f"effect.dimensionmaster.skill.2050010.ba{stage}.unified.effect.json"
             )
             self.assertIn(effect_asset_id, rows)
-            self.assertEqual(rows[effect_asset_id]["payloadKind"],
-                             "DIRECT_AUTHORED_DOCUMENT_V13")
+            self.assertEqual(
+                rows[effect_asset_id]["payloadKind"],
+                "DIRECT_AUTHORED_DOCUMENT",
+            )
             self.assertEqual(rows[effect_asset_id]["authoringPath"], authoring_path)
 
             effect = self.load_effect(stage)

@@ -12,6 +12,12 @@ import unittest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 EFFECT_TOOL_CPP = REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
 EFFECT_TOOL_HEADER = REPOSITORY_ROOT / "Client/Public/Effect_Tool.h"
+DIRECT_AUTHORED_INDEX_CPP = (
+    REPOSITORY_ROOT / "Client/Private/Effect_DirectAuthoredSourceIndex.cpp"
+)
+DIRECT_AUTHORED_INDEX_HEADER = (
+    REPOSITORY_ROOT / "Client/Public/Effect_DirectAuthoredSourceIndex.h"
+)
 VALTAN_PATTERN_TREE_CPP = REPOSITORY_ROOT / "Client/Private/ValtanPatternTree.cpp"
 VALTAN_PATTERN_TREE_HEADER = REPOSITORY_ROOT / "Client/Public/ValtanPatternTree.h"
 ENCOUNTER_PATH = (
@@ -36,70 +42,23 @@ BOSS_CATALOG_PATH = REPOSITORY_ROOT / "Data/Actors/BossCatalog.json"
 VALTAN_MASTER_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.pattern.json"
 AUTHORED_ROOT = REPOSITORY_ROOT / "Data/Effects/Authored"
 SOURCE_CATALOG_PATH = REPOSITORY_ROOT / "Data/Effects/EffectCatalog.json"
-RUNTIME_CATALOG_PATH = (
-    REPOSITORY_ROOT / "Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json"
-)
 RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
     "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01": frozenset({
-        "source.09837531929147b2c735",
-        "source.0a0fd45f5f5a43cac37a",
-        "source.0e2c496db903785e468f",
-        "source.0f94c3c2e7360f64a4b4",
-        "source.1afcf717a3747d3474db",
-        "source.203f133964614442de86",
-        "source.2f5b3010a12a98b8125f",
-        "source.30e485d1767abb573cce",
-        "source.4787e8102516f8a272fc",
-        "source.4ae99780674e12131241",
-        "source.4fc3b75bf5e197a27979",
         "source.816ecdd06b33943dd185",
-        "source.83a55bcbd440d7e3d11a",
-        "source.8d431d8c3bf38ece65f9",
-        "source.9d63f5607fdf51f557c3",
-        "source.b819383a3f79ab87ec1d",
-        "source.b8fdc5c0154c0eb5ddb7",
-        "source.cd6f972fe48bd7074be3",
-        "source.d290be8444262f5c42c0",
-        "source.fa8711bdd5ec2cb977a4",
         "donut.telegraph.outer.red",
         "sprite_particle_6",
         "donut.telegraph.inner.grow",
         "donut.impact.wave.black",
     }),
     "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01": frozenset({
-        "source.d380f17792f1c67e9dc2",
-        "source.ece7ae1d1376d407ef1d",
         "source.f4617c98d44349eec51d",
     }),
     "effect.valtan.carrier-v1.attack.high-jump.land.clip-01": frozenset({
-        "source.02a08172b8b42f2e7447",
-        "source.152f0042214bbc7d7798",
-        "source.211f476bb3c8adb60930",
-        "source.376ac01b5ea8ae7ddfd6",
-        "source.427dc449c6069d654a73",
-        "source.4589aa1922ad69610e9d",
-        "source.624a586d9edd1b2ef416",
-        "source.6adb32347d26a9d79a66",
-        "source.6bd1741668d9309740e0",
-        "source.6df0e58123e693f50f14",
-        "source.7660fb560f05124e17c2",
-        "source.78f866e4629cf9cf9860",
         "source.7b7b7c81b12e9dd59483",
-        "source.7be05e8b261aa56368b0",
-        "source.7c6a67389e1e698ef5a6",
-        "source.a520ae0f9019b499ab0c",
-        "source.a5da306351c5373b7e38",
-        "source.a6504522856bc7469dca",
-        "source.b1cef03c33fe3619f560",
-        "source.b62b3f3edbee532cd8cb",
-        "source.bad75466d9a006ff462f",
-        "source.be3ff3cc7c557a9d51bf",
-        "source.e3ef118ecfa0fabe9406",
         "high-jump-landing-wave",
     }),
     "effect.valtan.sky-axe.active": frozenset({
         "mesh.valtan.sky-axe.descent",
-        "decal.valtan.sky-axe.target",
         "particle.valtan.sky-axe.impact",
         "sky-axe-target-inner-fill",
         "authored.copy.sky-axe-target-inner-fill.1",
@@ -228,7 +187,7 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
         "CombatObjectStages",
         "std::erase_if(SavedRows",
         '"[PRODUCT] "',
-        'ImGui::SmallButton("Open Saved Effect")',
+        'ImGui::SmallButton("Open Editor")',
         'ImGui::SmallButton("Play Saved Effect")',
         "Try_OpenValtanAuthoredEffect",
         "Try_PlayValtanSavedUnifiedEffect",
@@ -243,6 +202,85 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
             raise AssertionError(f"Valtan Saved row contract lost: {token}")
     if "Try_PlaySavedUnifiedEffect(" in pattern:
         raise AssertionError("Valtan must not use the Player-only saved play path")
+
+
+def validate_editor_admission_isolation_contract(
+    effect_tool_cpp: str, index_cpp: str, index_header: str
+) -> None:
+    refresh = function_slice(
+        effect_tool_cpp,
+        "bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(",
+        "const std::filesystem::path*\nClient::CEffect_Tool::Resolve_DirectAuthoredEditablePath(",
+    )
+    required_refresh = (
+        "Player Product joins were isolated while exact authored documents remained editor-eligible",
+        "Valtan saved rows were isolated while Player saved rows remained available",
+        "SourceIndex.iOwnerJoinUnavailableCount",
+        "without removing Open Editor",
+        "m_DirectAuthoredEditableEntries = std::move(StagedEntries)",
+        "stable player source identity is sufficient to keep the",
+        "Binding.bProductOwnerJoined",
+        "Saved 0",
+    )
+    for token in required_refresh:
+        if token not in refresh:
+            raise AssertionError(f"editor admission isolation lost: {token}")
+    if re.search(
+        r"if \(!Ensure_PlayerSkillCatalog\([^)]*\)\)\s*\{\s*return PreservePrevious",
+        refresh,
+        flags=re.DOTALL,
+    ):
+        raise AssertionError(
+            "Player Product-owner loading must not globally reject exact authored sources"
+        )
+    boss_failure = refresh.index(
+        "Valtan saved rows were isolated while Player saved rows remained available"
+    )
+    if "return PreservePrevious" in refresh[boss_failure : boss_failure + 300]:
+        raise AssertionError(
+            "Valtan Product-owner loading must isolate its rows instead of replacing the editor index"
+        )
+
+    for token in (
+        "iOwnerJoinUnavailableCount",
+        "strFirstOwnerJoinUnavailable",
+        "owner failure leaves eOwnerKind == END",
+    ):
+        if token not in index_header:
+            raise AssertionError(f"typed editor/owner split contract lost: {token}")
+    for message in (
+        "direct authored Effect ID has no PlayerSkills owner",
+        "direct authored Effect ID has ambiguous boss-pattern and boss-combat-object owners",
+        "direct authored Effect ID has no stable player-skill, boss-pattern, or boss-combat-object owner",
+        "registry-bound audition source owner mismatch",
+    ):
+        position = index_cpp.index(message)
+        prefix = index_cpp[max(0, position - 80) : position]
+        if "RecordOwnerJoinUnavailable(" not in prefix:
+            raise AssertionError(
+                f"Product-owner failure was promoted back into editor admission: {message}"
+            )
+
+    catalog_rows = index_cpp[
+        index_cpp.index(
+            "for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())",
+            index_cpp.index("RecordOwnerJoinUnavailable"),
+        ) : index_cpp.index("std::sort(Staged.Entries.begin()")
+    ]
+    if "return false;" in catalog_rows:
+        raise AssertionError(
+            "one malformed direct-authored catalog row must not reject every editor-ready document"
+        )
+    for token in (
+        'RecordUnavailable("EffectCatalog.json contains a non-object row.")',
+        "EffectCatalog.json contains a malformed direct-authored row.",
+        "DuplicateAssetIds.emplace(strAssetId)",
+        "std::erase_if(Staged.Entries",
+    ):
+        if token not in index_cpp:
+            raise AssertionError(
+                f"direct-authored row isolation contract lost: {token}"
+            )
 
 
 def validate_v1_alias_projection_contract(
@@ -358,7 +396,6 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
 
     for name, helper, commit_token in (
         ("play", play_helper, "Is_UnifiedEffectActive(Cache)"),
-        ("reference", reference_helper, "Try_LoadDocumentPath("),
     ):
         refresh = helper.find("Refresh_UnifiedEffectCache(")
         valid = helper.find("!Cache.bValid")
@@ -370,6 +407,27 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
             raise AssertionError(
                 f"{name} helper must reject invalid/non-drawable data before preview mutation"
             )
+
+    reference_refresh = reference_helper.find("Refresh_UnifiedEffectCache(")
+    reference_valid = reference_helper.find("!Cache.bValid")
+    reference_play_drawable = reference_helper.find(
+        "bQueuePlayCompleteAfterLoad && !Cache.bDrawable"
+    )
+    reference_commit = reference_helper.find("Try_LoadDocumentPath(")
+    if min(
+        reference_refresh,
+        reference_valid,
+        reference_play_drawable,
+        reference_commit,
+    ) < 0 or not (
+        reference_refresh
+        < reference_valid
+        < reference_play_drawable
+        < reference_commit
+    ):
+        raise AssertionError(
+            "reference Open must admit structural partial documents while Play alone requires drawable readiness"
+        )
 
     refresh = product_helper.find("Refresh_UnifiedEffectCache(")
     valid = product_helper.find("!Cache.bValid")
@@ -395,7 +453,7 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
         "void Client::CEffect_Tool::Render_ValtanPatternNode(",
         "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
     )
-    open_button = pattern.find('ImGui::SmallButton("Open Saved Effect")')
+    open_button = pattern.find('ImGui::SmallButton("Open Editor")')
     play_button = pattern.find('ImGui::SmallButton("Play Saved Effect")')
     refreshed_lookup = pattern.find("const auto RefreshedCache =", play_button)
     if min(open_button, play_button, refreshed_lookup) < 0 or not (
@@ -410,16 +468,91 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
         )
     open_guard = pattern[pattern.rfind("ImGui::BeginDisabled(", 0, open_button):open_button]
     play_guard = pattern[pattern.rfind("ImGui::BeginDisabled(", 0, play_button):play_button]
-    if "bKnownNonDrawable" in open_guard:
-        raise AssertionError("empty Product drafts must remain openable for authoring")
-    if "bKnownInvalid" not in open_guard:
-        raise AssertionError("known-invalid Product documents must remain open-locked")
+    forbidden_open_gates = (
+        "bKnownNonDrawable",
+        "bKnownInvalid",
+        "bHasExactPlaybackOwner",
+        "bAmbiguousOccurrence",
+    )
+    if any(token in open_guard for token in forbidden_open_gates):
+        raise AssertionError(
+            "Open Editor must depend only on the exact source path, not Product or preview readiness"
+        )
+    open_action = pattern[open_button:play_button]
+    if not all(
+        token in open_action
+        for token in ("ProductPlaybackPreview.has_value()", "Try_LoadDocumentPath(")
+    ):
+        raise AssertionError(
+            "Open Editor must preserve exact Product context when available and fall back to source-only editing"
+        )
     if not all(
         token in play_guard for token in ("bKnownInvalid", "bKnownNonDrawable")
     ):
         raise AssertionError(
             "invalid and non-drawable Product documents must remain play-locked"
         )
+
+    independent = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
+        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+    )
+    independent_open = independent.find('ImGui::SmallButton("Open Editor")')
+    independent_play = independent.find(
+        'ImGui::SmallButton("Play Independent Effect")'
+    )
+    if min(independent_open, independent_play) < 0 or not (
+        independent_open < independent_play
+    ):
+        raise AssertionError("independent exact source lost its Open Editor entry")
+    independent_guard = independent[
+        independent.rfind("ImGui::BeginDisabled(", 0, independent_open):
+        independent_open
+    ]
+    for forbidden in ("bIndependentTimelineReady", "bKnownInvalid", "bKnownNonDrawable"):
+        if forbidden in independent_guard:
+            raise AssertionError(
+                f"independent Open Editor was coupled back to Play state: {forbidden}"
+            )
+    independent_action = independent[independent_open:independent_play]
+    if "Try_LoadDocumentPath(" not in independent_action:
+        raise AssertionError(
+            "independent Open Editor must fall back to the exact source without an owner timeline"
+        )
+
+    all_effects = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_AllEffectsWindow()",
+        "void Client::CEffect_Tool::Render_LoadedEffectContents()",
+    )
+    product_identity = all_effects.find(
+        "const std::string strUnifiedCandidateId ="
+    )
+    product_resolve = all_effects.find(
+        "Resolve_DirectAuthoredEditablePath(", product_identity
+    )
+    product_open = all_effects.find(
+        'ImGui::SmallButton("Open Editor")', product_resolve
+    )
+    product_preview = all_effects.find(
+        "Refresh_UnifiedEffectCache(", product_open
+    )
+    if min(product_identity, product_resolve, product_open, product_preview) < 0 or not (
+        product_identity < product_resolve < product_open < product_preview
+    ):
+        raise AssertionError(
+            "Product cue Open Editor must resolve the exact source before any Product cache/preview gate"
+        )
+    for token in (
+        "EDITOR-ONLY EXACT SOURCES",
+        "PlayerSkills Product ownership is unavailable",
+        "Product preview tree unavailable",
+    ):
+        if token not in all_effects:
+            raise AssertionError(
+                f"owner-less exact source discoverability contract lost: {token}"
+            )
 
     save_helper = function_slice(
         cpp_text,
@@ -752,9 +885,9 @@ def validate_full_valtan_product_timeline_contract(
             "saved Valtan owner ambiguity must cover Product duplicates, "
             "mixed Product/non-Product provenance, and non-Product duplicates"
         )
-    if pattern_node.count("bAmbiguousOccurrence ||") < 2:
+    if pattern_node.count("bAmbiguousOccurrence ||") != 1:
         raise AssertionError(
-            "both saved Effect Open and Play guards must reject ambiguous owners"
+            "only Product Play may reject ambiguous owners; Open Editor is source-owned"
         )
 
     legacy_start = pattern_node.index(
@@ -1031,6 +1164,13 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             EFFECT_TOOL_HEADER.read_text(encoding="utf-8"),
         )
 
+    def test_editor_admission_is_independent_from_product_and_preview_joins(self) -> None:
+        validate_editor_admission_isolation_contract(
+            EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
+            DIRECT_AUTHORED_INDEX_CPP.read_text(encoding="utf-8"),
+            DIRECT_AUTHORED_INDEX_HEADER.read_text(encoding="utf-8"),
+        )
+
     def test_failed_valtan_tree_cold_load_retries_only_on_explicit_refresh(self) -> None:
         cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
@@ -1127,7 +1267,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         for token in (
             '"INDEPENDENT EFFECT", ImGuiTreeNodeFlags_OpenOnArrow',
-            'ImGui::SmallButton("Open Independent Effect")',
+            'ImGui::SmallButton("Open Editor")',
             'ImGui::SmallButton("Play Independent Effect")',
             'ImGui::SeparatorText("Independent Effect References")',
             "return bIndependent ||",
@@ -1694,24 +1834,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             trail["actionCueAttachment"],
         )
 
-        runtime_catalog = {
-            row["effectAssetId"]: row
-            for row in json.loads(
-                RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
-            )["effects"]
-        }
-        runtime_path = (
-            REPOSITORY_ROOT
-            / "Client/Bin/DataFiles/Effect"
-            / runtime_catalog[effect_id]["authoredDocumentPath"]
+        self.assertEqual(
+            "DIRECT_AUTHORED_DOCUMENT",
+            source_catalog[effect_id]["payloadKind"],
         )
-        runtime_bytes = runtime_path.read_bytes()
-        hash_match = re.search(
-            r"\.([0-9a-f]{64})\.effect\.json$", runtime_path.name
-        )
-        self.assertIsNotNone(hash_match)
-        self.assertEqual(hash_match.group(1), hashlib.sha256(runtime_bytes).hexdigest())
-        self.assertEqual(source_document, json.loads(runtime_bytes.decode("utf-8")))
 
         cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         model_view = function_slice(
@@ -1925,12 +2051,6 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
             )["effects"]
         }
-        runtime_catalog = {
-            row["effectAssetId"]: row
-            for row in json.loads(
-                RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
-            )["effects"]
-        }
         windup_id = "effect.valtan.project-tuned.dash-charge.windup-telegraph"
         active_id = "effect.valtan.project-tuned.dash-charge.active-shield"
         windup = json.loads(
@@ -1981,35 +2101,21 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             (windup_id, windup),
             (active_id, active),
         ):
-            runtime_entry = runtime_catalog[effect_id]
             self.assertEqual(
-                "DIRECT_AUTHORED_DOCUMENT_V13",
-                runtime_entry["payloadKind"],
-            )
-            runtime_path = (
-                REPOSITORY_ROOT
-                / "Client/Bin/DataFiles/Effect"
-                / runtime_entry["authoredDocumentPath"]
-            )
-            runtime_bytes = runtime_path.read_bytes()
-            hash_match = re.search(
-                r"\.([0-9a-f]{64})\.effect\.json$", runtime_path.name
-            )
-            self.assertIsNotNone(hash_match, effect_id)
-            self.assertEqual(
-                hash_match.group(1), hashlib.sha256(runtime_bytes).hexdigest()
+                "DIRECT_AUTHORED_DOCUMENT",
+                catalog[effect_id]["payloadKind"],
             )
             self.assertEqual(
-                source_document,
-                json.loads(runtime_bytes.decode("utf-8")),
-                effect_id,
+                f"Effects/Authored/{effect_id}.effect.json",
+                catalog[effect_id]["authoringPath"],
             )
+            self.assertEqual(effect_id, source_document["effectAssetId"])
 
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
         self.assertEqual(33, len(projected))
-        self.assertEqual(57, raw_links)
-        self.assertEqual(57, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(56, raw_links)
+        self.assertEqual(56, sum(len(rows) for rows in projected.values()))
         self.assertEqual(2, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(1, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertNotIn("VALTAN_TRIPLE_SLASH", projected)
@@ -2069,13 +2175,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual(54, nonempty_candidates)
         self.assertEqual(53, empty_shells)
 
-    def test_all_declared_v0_product_cues_remain_published_and_nonempty(self) -> None:
+    def test_all_declared_v0_product_cues_remain_canonical_and_nonempty(self) -> None:
         cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
         source_catalog = json.loads(
             SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
-        )["effects"]
-        runtime_catalog = json.loads(
-            RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
         )["effects"]
         project_tuned_ids = {
             "effect.valtan.project-tuned.dash-charge.active-shield",
@@ -2105,12 +2208,18 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             source_matches = [
                 row for row in source_catalog if row["effectAssetId"] == effect_id
             ]
-            runtime_matches = [
-                row for row in runtime_catalog if row["effectAssetId"] == effect_id
-            ]
             self.assertEqual(1, len(source_matches), effect_id)
-            self.assertEqual(1, len(runtime_matches), effect_id)
             source_entry = source_matches[0]
+            self.assertEqual(
+                "DIRECT_AUTHORED_DOCUMENT",
+                source_entry.get("payloadKind"),
+                effect_id,
+            )
+            self.assertEqual(
+                f"Effects/Authored/{effect_id}.effect.json",
+                source_entry["authoringPath"],
+                effect_id,
+            )
             source_path = REPOSITORY_ROOT / "Data" / source_entry["authoringPath"]
             source_document = json.loads(source_path.read_text(encoding="utf-8"))
             self.assertEqual(effect_id, source_document["effectAssetId"])
@@ -2134,44 +2243,23 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 ) or source_document.get("modelCues"),
                 effect_id,
             )
-            runtime_entry = runtime_matches[0]
-            runtime_path = (
-                REPOSITORY_ROOT
-                / "Client/Bin/DataFiles/Effect"
-                / runtime_entry["authoredDocumentPath"]
-            )
-            self.assertTrue(runtime_path.is_file(), effect_id)
-            runtime_bytes = runtime_path.read_bytes()
-            hash_match = re.search(
-                r"\.([0-9a-f]{64})\.effect\.json$", runtime_path.name
-            )
-            self.assertIsNotNone(hash_match, effect_id)
-            self.assertEqual(
-                hash_match.group(1), hashlib.sha256(runtime_bytes).hexdigest()
-            )
-            runtime_document = json.loads(runtime_bytes.decode("utf-8"))
-            self.assertEqual(source_document, runtime_document, effect_id)
-        # The recovered stable-ID union adds four donut rows and one landing
-        # row. The separate FOUR_PILLARS layer adds 26 visible exact carriers.
-        # Sky Axe is combat-object owned, so its added rows are covered below.
-        self.assertEqual(679, visible_elements)
-        self.assertEqual(5, hidden_elements)
+        # The reviewed tuning keeps four authored donut rows and one landing
+        # row while intentionally excluding 43 visible legacy cue rows. The
+        # separate FOUR_PILLARS layer still adds 26 visible exact carriers.
+        # Authored v15 also exposes three bounded trail carriers and one
+        # bounded light carrier on the reviewed Whirlwind source.
+        # Sky Axe is combat-object owned, so its deletion is covered below.
+        self.assertEqual(640, visible_elements)
+        self.assertEqual(1, hidden_elements)
         self.assertEqual(0, model_cues)
 
-    def test_recovered_valtan_effects_have_exact_stable_id_union(self) -> None:
+    def test_recovered_valtan_effects_have_exact_reviewed_tuning_set(self) -> None:
         source_catalog = {
             row["effectAssetId"]: row
             for row in json.loads(
                 SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
             )["effects"]
         }
-        runtime_catalog = {
-            row["effectAssetId"]: row
-            for row in json.loads(
-                RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
-            )["effects"]
-        }
-
         for effect_id, expected_ids in RECOVERED_VALTAN_EFFECT_ELEMENT_IDS.items():
             with self.subTest(effect_id=effect_id):
                 source_entry = source_catalog[effect_id]
@@ -2182,14 +2270,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 self.assertEqual(len(element_ids), len(set(element_ids)))
                 self.assertEqual(expected_ids, frozenset(element_ids))
 
-                runtime_entry = runtime_catalog[effect_id]
-                runtime_path = (
-                    REPOSITORY_ROOT
-                    / "Client/Bin/DataFiles/Effect"
-                    / runtime_entry["authoredDocumentPath"]
+                self.assertEqual(
+                    "DIRECT_AUTHORED_DOCUMENT",
+                    source_entry["payloadKind"],
                 )
-                runtime_document = json.loads(runtime_path.read_text(encoding="utf-8"))
-                self.assertEqual(source_document, runtime_document)
 
     def test_v1_alias_sidecar_is_exactly_six_valid_pairs(self) -> None:
         aliases = json.loads(V1_ALIAS_PATH.read_text(encoding="utf-8"))["aliases"]
@@ -2203,11 +2287,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
             )["effects"]
         }
-        runtime_ids = {
-            row["effectAssetId"]
-            for row in json.loads(
-                RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
-            )["effects"]
+        direct_ids = {
+            effect_id
+            for effect_id, row in source_catalog.items()
+            if row.get("payloadKind") == "DIRECT_AUTHORED_DOCUMENT"
         }
         self.assertEqual(6, len(aliases))
         self.assertEqual(6, len({row["effectAssetId"] for row in aliases}))
@@ -2216,7 +2299,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             self.assertIn(row["effectAssetId"], cue_ids)
             self.assertIn(row["effectAssetId"], source_catalog)
             self.assertIn(row["v1EffectAssetId"], source_catalog)
-            self.assertIn(row["v1EffectAssetId"], runtime_ids)
+            self.assertIn(row["v1EffectAssetId"], direct_ids)
             self.assertTrue(row["v1EffectAssetId"].endswith(".v1.unified"))
             v1_path = (
                 REPOSITORY_ROOT
@@ -2235,7 +2318,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         mutations = (
             cpp_text.replace("Clip.ProductCues", "Clip.RemovedCues"),
             cpp_text.replace("Stage.Effects", "Stage.RemovedEffects"),
-            cpp_text.replace("Open Saved Effect", "Open Effect"),
+            cpp_text.replace("Open Editor", "Open Effect"),
             cpp_text.replace(
                 "Try_PlayValtanSavedUnifiedEffect",
                 "Try_PlaySavedUnifiedEffect",

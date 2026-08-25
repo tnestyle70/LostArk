@@ -48,7 +48,7 @@
     <TargetName>EffectRenderContractHarness</TargetName>
     <EffectHarnessRepositoryRoot>$([System.IO.Path]::GetFullPath('$(ProjectDir)..\..\..'))</EffectHarnessRepositoryRoot>
     <LocalDebuggerWorkingDirectory>$(EffectHarnessRepositoryRoot)\Client\Default</LocalDebuggerWorkingDirectory>
-    <LocalDebuggerCommandArguments>&quot;$(EffectHarnessRepositoryRoot)&quot; 0 &quot;$(EffectHarnessRepositoryRoot)\Client\Bin\DataFiles\Effect\EffectCatalog.runtime.json&quot;</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>&quot;$(EffectHarnessRepositoryRoot)&quot;</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

@@ -203,7 +203,7 @@ character-specific `snapshotRootSourceBasisYawDegrees`를 정확히 한 번 합�
 - 다른 character에 Artist의 `-90°`를 복사하지 않는다. 근거가 없으면 identity `0°`다.
 - follow occurrence에 snapshot basis를 다시 적용하거나, Mesh geometry pitch/scale로 방향 오류를 숨기지
   않는다.
-- codec/publisher/runtime은 attachment mode, basis 값, transform composition order를 함께 validate하고
+- codec/source validator/runtime은 attachment mode, basis 값, transform composition order를 함께 validate하고
   unknown/non-finite 값은 stage 전에 거부한다.
 - 위치뿐 아니라 orientation covariance, fixed-step snapshot 불변성, invalid follow fail-closed를 harness로
   검증한다.
@@ -236,12 +236,19 @@ Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만
 
 제품 Effect 선택 정본은 `PlayerSkills.inputSlot -> skillId -> skillbindings clip`에서
 `clip-local animevent effectref=asset -> Effect catalog/prewarm`으로 이어지는 경로다. `PlayerSkills.effectId`를 복원 결과로 바꾸거나
-다른 class/skill 문서를 fallback으로 복사하지 않는다. 현재 Product target 정본은 publisher가 네 class
-animevent의 `effectref=asset` 집합으로 선택해 runtime catalog에 commit한 ID membership이다.
-Debug Effect Tool, selected Save Hot Reload, Product cue approval/admission token과 두 sidecar는 제거되었다.
-authoring-only 문서는 runtime membership이 없으므로 Character Select 준비 대상이 아니다. 제품 Effect는
-source `EffectCatalog.json`의 Product row와 clip-local `effectref=asset` cue를 명시적 전체 publisher가
-runtime catalog로 만든 결과만 재생한다.
+다른 class/skill 문서를 fallback으로 복사하지 않는다. Product membership은 source
+`Data/Effects/EffectCatalog.json`의 direct row와 clip-local `effectref=asset` cue가 결정한다. Catalog row가
+가리키는 `Data/Effects/Authored/<EffectAssetId>.effect.json`이 제품 element, Transform, lifetime과 v15 typed
+runtime carrier의 단일 정본이다. authoring-only 문서 중 Catalog row가 없는 ID는 Character Select 준비 대상이
+아니다. generated runtime catalog, hash seal, VisualPrograms sidecar와 Effect publish 단계는 사용하지 않는다.
+
+Debug Effect Tool의 Save는 해당 source 문서를 원자 저장하고 새 Product target을 parse → validate → GPU stage →
+commit한다. 성공 뒤 다음 cue spawn은 새 document를, 이미 재생 중인 occurrence는 기존 immutable document를
+사용한다. 중간 실패는 저장 파일을 compare-and-swap으로 이전 bytes로 복원하고 기존 prepared target을 유지한다.
+다음 Client 실행도 같은 source 문서를 읽으므로 별도 publish나 재시작 적용 절차가 없다. 전체 source 검증은
+`Tools/EffectPipeline/Validate-EffectSources.ps1`로 수행한다.
+V1 Product source가 실제 참조하는 DDS/WModel dependency closure는 같은 Resources-relative 경로로 Git/LFS에
+선별 추적한다. 팀원은 pull 뒤 `git lfs pull`을 수행하며, 전체 Resources pack과 미참조 파일은 포함하지 않는다.
 
 Character는 cue/anchor/HIT metadata를 먼저 commit하고 Product ID만 revision별 queue에 등록한다.
 등록 frame에는 resource 작업을 하지 않으며 다음 frame부터 main thread가 target 하나씩 parse,
@@ -251,7 +258,7 @@ priority queue에 놓아 map/model loading과 준비를 겹친다. activation은
 확인하고 unrelated background pending을 기다리지 않는다. prepared Product attach는 catalog
 revision/document identity와 shared immutable document를 재사용한다.
 
-Source Trim `rotation`은 source module이 만든 initial sprite/source-mesh rotation과 source rotation-rate에 정확히 한 번 적용한다. authoring/codec/publisher 범위는 finite `[-360, 360]`이며 authored billboard roll lane은 별도 값으로 유지한다.
+Source Trim `rotation`은 source module이 만든 initial sprite/source-mesh rotation과 source rotation-rate에 정확히 한 번 적용한다. authoring/codec/source validator 범위는 finite `[-360, 360]`이며 authored billboard roll lane은 별도 값으로 유지한다.
 
 Character Select 내부 class 변경은 Server snapshot의 stable entity/class generation을 stage하고 새 class
 Product target이 settle된 뒤에만 presentation을 교체한다. 준비 중 입력은 차단되고 기존
@@ -513,7 +520,7 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
    반대로 source/imported 문서를 제품 재생 대상으로 승격하지 않는다.
    다중 clip stage도 첫 clip의 재생률로 하나의 Effect 문서를 진행하지 않는다. 시각 요소가 있는
    각 clip이 clip-local Product cue를 소유하고 기존 Character의 `playMs`, `playRate`, loop와
-   authoritative late-catch-up을 소비한다. Character gameplay 준비는 이 runtime-published cue target
+   authoritative late-catch-up을 소비한다. Character gameplay 준비는 이 source-admitted cue target
    집합을 metadata-only로 등록하고 첫 화면 frame을 양보한 뒤 target 하나/frame으로 준비한다. 성공한
    target만 catalog revision 단위 prepared set에 들어가며, 전투 Update의 Product Spawn은 cache-only
    document lookup과 prepared bundle만 붙인다. prepared miss에서 JSON/shader/model/DDS/vector-field
@@ -529,7 +536,7 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
 
 `Client/Bin/Resources`는 `Fonts, Character, Deploy, Effect, Map, UI` 여섯 root만 허용한다. asset ID는 Resources 상대 경로이며 절대 경로, drive-qualified 경로, `..` 탈출을 금지한다.
 
-runtime payload는 팀장이 `Client/Bin/Resources` 물리 폴더로 관리한다. AssetPacks lock, immutable manifest, ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
+runtime payload는 기본적으로 팀장이 `Client/Bin/Resources` 물리 폴더로 관리한다. pull-only 재현이 명시된 feature는 Product가 실제 참조하는 최소 dependency closure만 Git/LFS에 포함할 수 있다. AssetPacks lock, immutable manifest, ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
 
 팀원이 branch를 pull한 뒤 최초 실행하는 순서는 다음과 같다.
 
@@ -549,7 +556,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release
 ```
 
-자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → balance/world/navigation/effect/rendering publisher validate → 변경 domain의 실행형 harness이다. 실제 Level 흐름은 `Framework.slnLaunch`로 Server와 Client를 함께 실행해 검증한다.
+자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → balance/world/navigation/rendering publisher validate + Effect source validate → 변경 domain의 실행형 harness이다. 실제 Level 흐름은 `Framework.slnLaunch`로 Server와 Client를 함께 실행해 검증한다.
 
 최소 성공 증거:
 
@@ -558,7 +565,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Debug/Release Client와 Server 빌드 성공
 - 실제 Server+Client에서 Lobby → Character Select 승인 진입 → class 연속 변경/스킬 → Lobby → Bern/Valtan 진입 확인
 - 연결 실패 시 Lobby 유지와 제품 Level disconnect 후 Lobby 복귀 확인
-- 변경 domain의 publisher Validate와 실행형 harness 성공
+- 변경 domain의 publisher 또는 source validator와 실행형 harness 성공
 - `git diff --check` 성공
 - 잔류 Client/Server/7777 listener 없음
 

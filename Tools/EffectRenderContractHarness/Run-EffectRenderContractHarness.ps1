@@ -1,16 +1,10 @@
 param(
     [ValidateSet('Debug', 'Release')]
-    [string]$Configuration = 'Debug',
-
-    [Parameter(Mandatory = $true)]
-    [ValidateRange(0, 65536)]
-    [int]$ExpectedBindingCount
+    [string]$Configuration = 'Debug'
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$productCatalog = Join-Path $repoRoot `
-    'Client\Bin\DataFiles\Effect\EffectCatalog.runtime.json'
 $executable = Join-Path $PSScriptRoot `
     "Bin\$Configuration\EffectRenderContractHarness.exe"
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
@@ -29,17 +23,11 @@ foreach ($directory in $runtimeDirectories) {
     }
 }
 
-foreach ($inputFile in @($productCatalog)) {
-    if (-not (Test-Path -LiteralPath $inputFile -PathType Leaf)) {
-        throw "Effect render harness input is missing: $inputFile"
-    }
-}
-
 $previousPath = $env:PATH
 try {
     $env:PATH = ($runtimeDirectories -join ';') + ';' + $previousPath
 
-    & $executable $repoRoot $ExpectedBindingCount $productCatalog
+    & $executable $repoRoot
     if ($LASTEXITCODE -ne 0) {
         throw "EffectRenderContractHarness failed with exit code $LASTEXITCODE"
     }

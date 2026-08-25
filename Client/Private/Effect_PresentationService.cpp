@@ -9,6 +9,7 @@
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Profiler.h"
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Valtan.h"
@@ -512,7 +513,7 @@ namespace
 		if (0u == iCatalogRevision)
 		{
 			strOutStatus =
-				"Animation Effect cue registration has no runtime catalog revision.";
+				"Animation Effect cue registration has no source catalog revision.";
 			return false;
 		}
 
@@ -862,7 +863,7 @@ namespace
             if (nullptr == Document)
             {
                 strOutStatus =
-                    "Animation Effect target is absent from the runtime catalog: " +
+                    "Animation Effect target is absent from the source catalog: " +
                     EffectId;
                 return false;
             }
@@ -2101,6 +2102,8 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Prewarm.Advance");
 	const std::shared_ptr<const CEffectMaterialProgramRegistry>
 		MaterialProgramRegistry =
 			CEffectCatalog::Acquire_MaterialProgramRegistry();
@@ -3354,6 +3357,8 @@ void Client::CEffectPresentationService::Stop_WorldRoot(
 
 void Client::CEffectPresentationService::Commit_PendingSpawns()
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Spawn.Commit");
 	if (g_PendingEffectSpawns.empty())
 		return;
 
@@ -3586,6 +3591,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 
 void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Service.Update");
     const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
     for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
     {
@@ -3684,6 +3691,8 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 
 void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.FollowAnchors.Update");
     const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
     for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
     {

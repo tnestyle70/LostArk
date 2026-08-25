@@ -19,7 +19,7 @@ DOCUMENT_PATH = REPOSITORY_ROOT / (
     "Data/Effects/Authored/effect.artist.skill.31910.unified.effect.json"
 )
 DONOR_PATH = REPOSITORY_ROOT / (
-    "Client/Bin/DataFiles/Effect/Authored/"
+    "Data/Effects/Imported/LegacyRuntimeDonors/"
     "effect.artist.skill.31910.unified."
     "3fa387259fabe72d6855c02239850784f1ce4cabb2ff4bc4b4d34382a5449bee."
     "effect.json"

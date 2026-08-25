@@ -206,12 +206,12 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=127.0.0.1`로 갱신한
 - `main`에 직접 작업하지 않는다. 사람 작업 브랜치는 팀 명명 규칙을 따르고 Codex 작업 브랜치는 `codex/<topic>`을 사용한다.
 - 작업을 시작할 때 `git status --short`로 다른 담당자의 변경과 생성물을 구분한다. 소유권이 불명확한 대규모 dirty worktree에서는 자동 stage/commit하지 않는다.
 - 하나의 커밋은 하나의 검증 가능한 계약만 담는다. 코드, 그 코드가 소비하는 JSON/schema, 필요한 project/filter 등록, 대응 harness, PLAN/RESULT 갱신은 같은 변경 단위로 묶는다.
-- `Client/Bin/Resources`는 팀장이 직접 관리하는 runtime 입력이다. immutable pack, lock, manifest, hash publish를 완료 조건으로 두지 않는다. build/intermediate 산출물은 커밋하지 않는다.
+- `Client/Bin/Resources`는 기본적으로 팀장이 직접 관리하는 runtime 입력이다. 사용자가 Git pull만으로의 재현을 명시적으로 요구한 기능은 현재 Product 문서가 실제 참조하는 최소 dependency closure만 feature PR에 추적할 수 있다. 전체 물리 팩, 추출 원본, 미참조 자산과 build/intermediate 산출물은 커밋하지 않으며 immutable pack, lock, 별도 manifest, hash publish를 완료 조건으로 만들지 않는다.
 - 계획/결과 문서는 `.md/GB/<MM-DD>/`에 보관한다. `.md/계획서작성규칙.local.md`와 local gotcha는 개인 파일이므로 커밋하지 않는다.
 - 완료 보고 전에 `git diff --check`, JSON/XML parse, 관련 harness, 정본 build/regression을 실행한다. Release에서 의도적으로 제외된 Development tool smoke를 PASS로 기록하지 않는다.
 - 문서에 적었다는 이유로 구현을 완료 처리하지 않는다. 구현 상태, 자동 검증 상태, 수동 검증 상태, 다음 단계 항목을 분리해 기록한다.
 - 비평 에이전트의 지적은 그대로 결론으로 복사하지 않는다. 실제 코드와 데이터로 재현한 뒤 가능한 항목은 domain validator, protocol harness, smoke의 실행 계약으로 바꾼다.
-- 팀원 인계에는 필요한 `Client/Bin/Resources` 상대 asset ID와 물리 폴더 위치를 함께 적는다. ZIP hash나 Hydrate/Verify 결과를 요구하지 않는다.
+- 팀원 인계에는 필요한 `Client/Bin/Resources` 상대 asset ID와 물리 폴더 위치, Git dependency closure 포함 여부를 함께 적는다. ZIP hash나 Hydrate/Verify 결과를 요구하지 않는다.
 
 ## 빌드·검증
 
