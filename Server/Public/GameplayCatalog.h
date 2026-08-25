@@ -214,9 +214,9 @@ namespace LostArk::Server
 		STRIPPED
 	};
 
-	/* Which phase a weighted pattern is offered in. The boss advances to phase
-	two on its authored HP threshold, which the encounter lines up with the
-	health bar its transition mechanic fires on. */
+	/* Which gameplay phase a weighted pattern is offered in. The boss profile
+	chooses whether phase changes come from a health-percent threshold or from a
+	validated authored pattern-stage event. */
 	enum class BOSS_PATTERN_PHASE_REQUIREMENT
 	{
 		ANY,
@@ -521,9 +521,9 @@ namespace LostArk::Server
 
 	enum class BOSS_PATTERN_ROTATION_SELECTION_MODE : std::uint8_t
 	{
-		/* Managed windows own an explicit enabled/weight candidate set. Pattern
-		   definitions continue to own range, phase, armour, cooldown and
-		   maximum-consecutive-use tuning, but not this window's roll weight. */
+		/* Managed v19 rotations use Candidates as the complete pool and keep each
+		   selection-set weight/enabled override there. Pattern definitions still
+		   own range, phase, armour, cooldown and maximum-consecutive-use gates. */
 		WEIGHTED_POOL,
 		/* Legacy authored lists introduce each step once, then hand back to the
 		   encounter-wide weighted selector. */

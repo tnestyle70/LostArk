@@ -450,9 +450,9 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			BOSS_COMBAT_OBJECT_KIND::MISSILE == definition.eKind ?
 			definition.fMaximumDistanceM : 0.f;
 		object.fRemainingMilliseconds = static_cast<float>(definition.iLifeMs);
-		/* A legacy single locked-target object follows until its first pulse.
-		A per-alive-player volley samples every target exactly at STAGE_ENTER;
-		later movement must not drag or collapse the staged radial positions. */
+		/* Both locked-origin policies follow their resolved player until the first
+		timed pulse. A typed radial volley keeps its stable ordinal offset while
+		following that player. */
 		if (BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_UNTIL_FIRST_PULSE ==
 				definition.eOriginPolicy ||
 			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
@@ -469,9 +469,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 				return false;
 			}
 			object.iLockedTargetNetEntityId = lockedTarget->iNetEntityId;
-			object.bTrackLockedTargetUntilFirstPulse =
-				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
-					LOCKED_TARGET_UNTIL_FIRST_PULSE == definition.eOriginPolicy;
+			object.bTrackLockedTargetUntilFirstPulse = true;
 			if (nullptr != volley &&
 				BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL == volley->eLayout)
 			{

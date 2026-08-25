@@ -506,9 +506,9 @@ namespace
 			return "boss.gauge.shield" == targetId;
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE:
 			return isSet && "boss.phase.gameplay" == targetId &&
-				value >= 2u && value <= 3u;
+				2u == value;
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT:
-			return isSet && value >= 1u && value <= 8u && IsStableId(targetId);
+			return isSet && 1u == value && IsStableId(targetId);
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY:
 			return false;
 		}
@@ -3044,6 +3044,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
 		std::size_t gameplayPhaseActionCount = 0u;
 		bool hasExactValtanArenaBreakPhaseAction = false;
+		bool hasExactValtanHighJumpTypedVolley = false;
+		std::size_t valtanHighJumpTypedVolleyCount = 0u;
 		std::unordered_set<std::uint64_t> healthMechanicOrderKeys;
 		for (const BOSS_PATTERN_DEFINITION& pattern : foundPatterns->second)
 		{
@@ -3256,6 +3258,23 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						const bool isVolley =
 							BOSS_PATTERN_STAGE_ACTION_KIND::
 								SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind;
+						if (isVolley && "BOSS_VALTAN" == archetypeId &&
+							"ENCOUNTER_VALTAN" == boss.strEncounterId &&
+							"VALTAN_HIGH_JUMP" == pattern.strPatternId)
+						{
+							++valtanHighJumpTypedVolleyCount;
+						}
+						if (isVolley && "BOSS_VALTAN" == archetypeId &&
+							"ENCOUNTER_VALTAN" == boss.strEncounterId &&
+							"VALTAN_HIGH_JUMP" == pattern.strPatternId &&
+							"AIRBORNE" == stage.strStageId &&
+							"valtan.attack.high-jump.airborne" == stage.strActionId &&
+							!stage.Actions.empty() && &action == &stage.Actions.front() &&
+							"combatobject.valtan.high-jump.target-axe" ==
+								action.strTargetId)
+						{
+							hasExactValtanHighJumpTypedVolley = true;
+						}
 						if (m_BossCombatObjects.end() == combatObject ||
 							combatObject->second.strEncounterId != pattern.strEncounterId ||
 							combatObject->second.strOwnerPatternId != pattern.strPatternId ||
@@ -3367,6 +3386,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		{
 			m_strStatus =
 				"Valtan authored phase action is not the 109 IMPACT ENTER edge";
+			return false;
+		}
+		if (expectsAuthoredPhaseAction && "BOSS_VALTAN" == archetypeId &&
+			"ENCOUNTER_VALTAN" == boss.strEncounterId &&
+			(1u != valtanHighJumpTypedVolleyCount ||
+			 !hasExactValtanHighJumpTypedVolley))
+		{
+			m_strStatus =
+				"Valtan high jump does not own the typed AIRBORNE volley";
 			return false;
 		}
 	}
@@ -3565,6 +3593,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	const auto valtanRotations =
 		m_BossPatternRotations.find("ENCOUNTER_VALTAN");
 	const auto valtanPatterns = m_BossPatterns.find("ENCOUNTER_VALTAN");
+	const auto valtanBoss = m_Bosses.find("BOSS_VALTAN");
+	const bool expectsAuthoredValtanTopology =
+		m_Bosses.end() != valtanBoss &&
+		"ENCOUNTER_VALTAN" == valtanBoss->second.strEncounterId &&
+		BOSS_PHASE_POLICY_KIND::AUTHORED_PATTERN_EVENT ==
+			valtanBoss->second.PhasePolicy.eKind;
+	if (expectsAuthoredValtanTopology &&
+		(m_BossPatternRotations.end() == valtanRotations ||
+		 m_BossPatterns.end() == valtanPatterns))
+	{
+		m_strStatus = "Valtan authored phase topology has no pattern rotations";
+		return false;
+	}
 	if (m_BossPatternRotations.end() != valtanRotations &&
 		m_BossPatterns.end() != valtanPatterns)
 	{

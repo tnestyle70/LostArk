@@ -28,6 +28,8 @@ Client/Server build는 투영 결과를 수정하지 않고 drift를 fail-closed
 - Valtan 실제 model clip 이름을 사용하는 idle/run/presentation fallback
 - Valtan Arena debug rotation의 v3 `candidates[].patternId/enabled` 소비
 - high-jump volley의 target axe -> `effect.valtan.sky-axe.active` occurrence 검증
+- main PR #220의 first-pulse target tracking, per-target radial spacing, v19 strict admission 보존
+- `mappingBasis`를 합의된 6개 vocabulary로 제한하고 occurrence/cue 오타를 fail-closed 거부
 
 ## 2. 범위 분리
 
@@ -46,15 +48,18 @@ Client/Server build는 투영 결과를 수정하지 않고 drift를 fail-closed
 | `test_valtan_balance_tool_contract.py` | PASS 22/22 |
 | `test_effect_tool_valtan_saved_rows.py` | PASS 28/28 |
 | `test_animation_tool_valtan_pattern_master.py` | PASS 7/7 |
+| `test_valtan_pattern_master_v2.py` | PASS 33/33 |
 | `Publish-GameplayBalance.ps1 -Mode Validate` | PASS |
 | `Project-ValtanPatternMaster.ps1 -Mode PublishV2` 2회 | PASS; 첫 투영 뒤 `changed=0`, idempotent |
 | `Project-ValtanPatternMaster.ps1 -Mode Validate` | PASS |
 | legacy `Project-ValtanPatternMaster.ps1 -Mode Publish` | PASS; 의도한 retirement 오류로 거부 |
 | `Test-ValtanTuningRuntimeSet.ps1` | PASS 32/32 |
 | `ActionPresentationTimelineHarness` Release | BUILD PASS / RUN PASS |
-| Client x64 Debug | 실행 중; 최종 commit 전 결과 갱신 |
-| Server x64 Debug / `--contract-test` | Client 검증 뒤 실행 |
-| `git diff --check` | PASS; 최종 commit 전 재실행 |
+| Client x64 Debug | BUILD PASS; main 결합 뒤 Client effective source 동일 |
+| Server x64 Debug | BUILD PASS; main PR #220 conflict resolution 포함 |
+| `--dimensionmaster-ground-target-contract` | PASS, `failures : 0` |
+| `--contract-test` | stack overflow 해소 및 끝까지 실행; 별도 실행 중인 Debug Server가 process mutex를 점유해 single-owner 항목 1건만 환경 실패 |
+| `git diff --check` | PASS |
 
 ## 4. 남은 수동 경계
 
