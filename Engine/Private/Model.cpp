@@ -837,10 +837,20 @@ HRESULT CModel::Ready_BinaryModel(
 	const MODEL_ASSET_LOAD_DESC& loadDesc)
 {
 	MODEL_ASSET_DATA asset{};
-	if (!CModelDecoderRegistry::Get().Decode(loadDesc, asset) ||
-		asset.meshes.empty() ||
+	if (!CModelDecoderRegistry::Get().Decode(loadDesc, asset))
+	{
+		const MODEL_DECODE_REPORT report = CModelDecoderRegistry::Get().Get_LastReport();
+		OutputDebugStringA(("[CModel] Binary decode failed for " +
+			loadDesc.meshPath.string() + ": " + report.error + "\n").c_str());
+		return E_FAIL;
+	}
+	if (asset.meshes.empty() ||
 		((MODEL::ANIM == m_eType) != asset.hasSkeleton))
 	{
+		OutputDebugStringA(("[CModel] Binary decode produced an unusable asset for " +
+			loadDesc.meshPath.string() + " (meshes=" +
+			std::to_string(asset.meshes.size()) + ", hasSkeleton=" +
+			(asset.hasSkeleton ? "true" : "false") + ").\n").c_str());
 		return E_FAIL;
 	}
 	m_iSkeletonHash = asset.hasSkeleton ? asset.skeleton.skeletonHash : 0;
