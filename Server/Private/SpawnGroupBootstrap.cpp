@@ -9,6 +9,7 @@
 #include <fstream>
 #include <string_view>
 #include <unordered_set>
+#include <vector>
 
 namespace
 {
@@ -29,18 +30,17 @@ namespace
 
 	std::filesystem::path Resolve_DataRoot()
 	{
-		wchar_t configured[32768]{};
+		std::vector<wchar_t> pathBuffer(32768u);
 		const DWORD configuredLength = GetEnvironmentVariableW(
-			L"LOSTARK_SERVER_DATA_ROOT", configured,
-			static_cast<DWORD>(std::size(configured)));
-		if (0u != configuredLength && configuredLength < std::size(configured))
-			return std::filesystem::path(configured).lexically_normal();
-		wchar_t modulePath[32768]{};
+			L"LOSTARK_SERVER_DATA_ROOT", pathBuffer.data(),
+			static_cast<DWORD>(pathBuffer.size()));
+		if (0u != configuredLength && configuredLength < pathBuffer.size())
+			return std::filesystem::path(pathBuffer.data()).lexically_normal();
 		const DWORD moduleLength = GetModuleFileNameW(
-			nullptr, modulePath, static_cast<DWORD>(std::size(modulePath)));
-		if (0u == moduleLength || moduleLength >= std::size(modulePath))
+			nullptr, pathBuffer.data(), static_cast<DWORD>(pathBuffer.size()));
+		if (0u == moduleLength || moduleLength >= pathBuffer.size())
 			return {};
-		return std::filesystem::path(modulePath).parent_path().parent_path() /
+		return std::filesystem::path(pathBuffer.data()).parent_path().parent_path() /
 			L"DataFiles";
 	}
 

@@ -24,14 +24,17 @@ namespace LostArk::Server
 
 	struct SERVER_NAVIGATION_CONDITION_STAGE final
 	{
+		struct CELL_DELTA final
+		{
+			std::uint32_t iCellIndex = 0u;
+			std::int32_t iBlockDelta = 0;
+			std::int32_t iVoidDelta = 0;
+		};
+
 		std::uint64_t iBaseRevision = 0u;
 		std::uint64_t iNextRevision = 0u;
 		std::map<std::string, bool> ConditionValues;
-		std::vector<std::uint16_t> BlockCounts;
-		/* Parallel to BlockCounts and staged in the same transaction: how many
-		active regions removed the ground under this cell, as opposed to putting
-		an obstacle on it. */
-		std::vector<std::uint16_t> VoidCounts;
+		std::vector<CELL_DELTA> CellDeltas;
 		bool bChanged = false;
 	};
 
@@ -102,6 +105,12 @@ namespace LostArk::Server
 			std::vector<std::uint32_t> CellIndices;
 		};
 
+		struct PATH_OPEN_NODE final
+		{
+			float fScore = 0.f;
+			std::uint32_t iIndex = 0u;
+		};
+
 		bool Resolve_Cell(float x, float z, std::uint32_t& outIndex) const;
 		SERVER_NAV_POINT Cell_ToPoint(std::uint32_t index) const;
 		bool Is_CellWalkable(std::uint32_t index) const;
@@ -124,5 +133,12 @@ namespace LostArk::Server
 		std::vector<std::uint16_t> m_VoidCounts;
 		std::uint64_t m_iRevision = 0u;
 		std::string m_strStatus;
+		mutable std::vector<float> m_PathCosts;
+		mutable std::vector<std::uint32_t> m_PathParents;
+		mutable std::vector<std::uint32_t> m_PathVisitedGeneration;
+		mutable std::vector<std::uint32_t> m_PathClosedGeneration;
+		mutable std::vector<PATH_OPEN_NODE> m_PathOpen;
+		mutable std::vector<std::uint32_t> m_PathReverse;
+		mutable std::uint32_t m_iPathGeneration = 0u;
 	};
 }

@@ -8,26 +8,25 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
-#include <queue>
 #include <set>
+#include <vector>
 
 namespace
 {
 	std::filesystem::path Resolve_DataRoot()
 	{
-		wchar_t configured[32768]{};
+		std::vector<wchar_t> pathBuffer(32768u);
 		const DWORD configuredLength = GetEnvironmentVariableW(
-			L"LOSTARK_SERVER_DATA_ROOT", configured,
-			static_cast<DWORD>(std::size(configured)));
-		if (0u != configuredLength && configuredLength < std::size(configured))
-			return std::filesystem::path(configured).lexically_normal();
+			L"LOSTARK_SERVER_DATA_ROOT", pathBuffer.data(),
+			static_cast<DWORD>(pathBuffer.size()));
+		if (0u != configuredLength && configuredLength < pathBuffer.size())
+			return std::filesystem::path(pathBuffer.data()).lexically_normal();
 
-		wchar_t modulePath[32768]{};
 		const DWORD moduleLength = GetModuleFileNameW(
-			nullptr, modulePath, static_cast<DWORD>(std::size(modulePath)));
-		if (0u == moduleLength || moduleLength >= std::size(modulePath))
+			nullptr, pathBuffer.data(), static_cast<DWORD>(pathBuffer.size()));
+		if (0u == moduleLength || moduleLength >= pathBuffer.size())
 			return {};
-		return std::filesystem::path(modulePath).parent_path().parent_path() /
+		return std::filesystem::path(pathBuffer.data()).parent_path().parent_path() /
 			L"DataFiles";
 	}
 
@@ -51,7 +50,15 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 	m_RuntimeBlockerRegions.clear();
 	m_ConditionValues.clear();
 	m_BlockCounts.clear();
+	m_VoidCounts.clear();
 	m_iRevision = 0u;
+	m_PathCosts.clear();
+	m_PathParents.clear();
+	m_PathVisitedGeneration.clear();
+	m_PathClosedGeneration.clear();
+	m_PathOpen.clear();
+	m_PathReverse.clear();
+	m_iPathGeneration = 0u;
 
 	const std::filesystem::path path = Resolve_DataRoot() / L"Navigation" /
 		std::filesystem::path(areaId + ".navgrid");
@@ -402,7 +409,7 @@ bool LostArk::Server::CServerNavigation::Sample_Position(
 	}
 	const std::uint32_t index = static_cast<std::uint32_t>(
 		cellZ * static_cast<int>(m_iWidth) + cellX);
-	if (0u == m_Walkable[index])
+	if (!Is_CellWalkable(index))
 		return false;
 	outPoint = { x, m_Heights[index], z };
 	return true;
@@ -422,23 +429,71 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	{
 		return false;
 	}
+	const auto resolveExactCell = [this](
+		const float x,
+		const float z,
+		int& outCellX,
+		int& outCellZ)
+	{
+		outCellX = static_cast<int>(
+			std::floor((x - m_fOriginX) / m_fCellSize));
+		outCellZ = static_cast<int>(
+			std::floor((z - m_fOriginZ) / m_fCellSize));
+		if (outCellX < 0 || outCellZ < 0 ||
+			outCellX >= static_cast<int>(m_iWidth) ||
+			outCellZ >= static_cast<int>(m_iHeight))
+		{
+			return false;
+		}
+		const std::uint32_t index = static_cast<std::uint32_t>(
+			outCellZ * static_cast<int>(m_iWidth) + outCellX);
+		return Is_CellWalkable(index);
+	};
+	int previousCellX = 0;
+	int previousCellZ = 0;
+	if (!resolveExactCell(
+		startX, startZ, previousCellX, previousCellZ))
+	{
+		return false;
+	}
 	const float deltaX = endX - startX;
 	const float deltaZ = endZ - startZ;
 	const float distance = std::hypot(deltaX, deltaZ);
 	const int stepCount =
 		1 + static_cast<int>(distance / (m_fCellSize * 0.25f));
-	for (int step = 1; step < stepCount; ++step)
+	for (int step = 1; step <= stepCount; ++step)
 	{
 		const float ratio =
 			static_cast<float>(step) / static_cast<float>(stepCount);
+		const float sampleX = startX + deltaX * ratio;
+		const float sampleZ = startZ + deltaZ * ratio;
 		SERVER_NAV_POINT samplePoint{};
-		if (!Sample_Position(
-			startX + deltaX * ratio,
-			startZ + deltaZ * ratio,
-			samplePoint))
+		if (!Sample_Position(sampleX, sampleZ, samplePoint))
 		{
 			return false;
 		}
+		int sampleCellX = 0;
+		int sampleCellZ = 0;
+		if (!resolveExactCell(
+			sampleX, sampleZ, sampleCellX, sampleCellZ))
+		{
+			return false;
+		}
+		const int cellDeltaX = sampleCellX - previousCellX;
+		const int cellDeltaZ = sampleCellZ - previousCellZ;
+		if (std::abs(cellDeltaX) > 1 || std::abs(cellDeltaZ) > 1)
+			return false;
+		if (0 != cellDeltaX && 0 != cellDeltaZ)
+		{
+			const std::uint32_t sideA = static_cast<std::uint32_t>(
+				previousCellZ * static_cast<int>(m_iWidth) + sampleCellX);
+			const std::uint32_t sideB = static_cast<std::uint32_t>(
+				sampleCellZ * static_cast<int>(m_iWidth) + previousCellX);
+			if (!Is_CellWalkable(sideA) || !Is_CellWalkable(sideB))
+				return false;
+		}
+		previousCellX = sampleCellX;
+		previousCellZ = sampleCellZ;
 		const float expectedHeight =
 			startPoint.y + (endPoint.y - startPoint.y) * ratio;
 		if (std::abs(samplePoint.y - expectedHeight) > LOS_HEIGHT_TOLERANCE)
@@ -467,18 +522,38 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 		outPath.push_back(Cell_ToPoint(goal));
 		return true;
 	}
-
-	struct OPEN_NODE
+	const SERVER_NAV_POINT directGoal = Cell_ToPoint(goal);
+	if (Has_LineOfSight(startX, startZ, directGoal.x, directGoal.z))
 	{
-		float score = 0.f;
-		std::uint32_t index = 0;
-		bool operator<(const OPEN_NODE& other) const { return score > other.score; }
-	};
+		outPath.push_back(directGoal);
+		return true;
+	}
+
 	const std::size_t count = m_Walkable.size();
-	std::vector<float> costs(count, (std::numeric_limits<float>::max)());
-	std::vector<std::uint32_t> parents(count, (std::numeric_limits<std::uint32_t>::max)());
-	std::vector<std::uint8_t> closed(count, 0u);
-	std::priority_queue<OPEN_NODE> open;
+	if (m_PathCosts.size() != count)
+	{
+		m_PathCosts.resize(count);
+		m_PathParents.resize(count);
+		m_PathVisitedGeneration.assign(count, 0u);
+		m_PathClosedGeneration.assign(count, 0u);
+		m_iPathGeneration = 0u;
+	}
+	if ((std::numeric_limits<std::uint32_t>::max)() == m_iPathGeneration)
+	{
+		std::fill(m_PathVisitedGeneration.begin(),
+			m_PathVisitedGeneration.end(), 0u);
+		std::fill(m_PathClosedGeneration.begin(),
+			m_PathClosedGeneration.end(), 0u);
+		m_iPathGeneration = 0u;
+	}
+	const std::uint32_t generation = ++m_iPathGeneration;
+	m_PathOpen.clear();
+	m_PathReverse.clear();
+	const auto openCompare = [](const PATH_OPEN_NODE& left,
+		const PATH_OPEN_NODE& right)
+	{
+		return left.fScore > right.fScore;
+	};
 	const auto heuristic = [this, goal](const std::uint32_t index)
 	{
 		const int x = static_cast<int>(index % m_iWidth);
@@ -488,19 +563,23 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 		return std::hypot(static_cast<float>(goalX - x),
 			static_cast<float>(goalZ - z));
 	};
-	costs[start] = 0.f;
-	open.push({ heuristic(start), start });
+	m_PathVisitedGeneration[start] = generation;
+	m_PathCosts[start] = 0.f;
+	m_PathParents[start] = (std::numeric_limits<std::uint32_t>::max)();
+	m_PathOpen.push_back({ heuristic(start), start });
+	std::push_heap(m_PathOpen.begin(), m_PathOpen.end(), openCompare);
 	constexpr int DIRECTIONS[8][2] = {
 		{-1,0},{1,0},{0,-1},{0,1},{-1,-1},{1,-1},{-1,1},{1,1}
 	};
 	bool found = false;
-	while (!open.empty())
+	while (!m_PathOpen.empty())
 	{
-		const std::uint32_t current = open.top().index;
-		open.pop();
-		if (closed[current])
+		std::pop_heap(m_PathOpen.begin(), m_PathOpen.end(), openCompare);
+		const std::uint32_t current = m_PathOpen.back().iIndex;
+		m_PathOpen.pop_back();
+		if (m_PathClosedGeneration[current] == generation)
 			continue;
-		closed[current] = 1u;
+		m_PathClosedGeneration[current] = generation;
 		if (current == goal)
 		{
 			found = true;
@@ -519,7 +598,8 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 			}
 			const std::uint32_t next = static_cast<std::uint32_t>(
 				nextZ * static_cast<int>(m_iWidth) + nextX);
-			if (!Is_CellWalkable(next) || closed[next])
+			if (!Is_CellWalkable(next) ||
+				m_PathClosedGeneration[next] == generation)
 				continue;
 			const bool diagonal = 0 != direction[0] && 0 != direction[1];
 			if (diagonal)
@@ -531,31 +611,39 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 				if (!Is_CellWalkable(sideA) || !Is_CellWalkable(sideB))
 					continue;
 			}
-			const float candidate = costs[current] + (diagonal ? 1.41421356f : 1.f);
-			if (candidate >= costs[next])
+			const float candidate = m_PathCosts[current] +
+				(diagonal ? 1.41421356f : 1.f);
+			if (m_PathVisitedGeneration[next] == generation &&
+				candidate >= m_PathCosts[next])
 				continue;
-			costs[next] = candidate;
-			parents[next] = current;
-			open.push({ candidate + heuristic(next), next });
+			m_PathVisitedGeneration[next] = generation;
+			m_PathCosts[next] = candidate;
+			m_PathParents[next] = current;
+			m_PathOpen.push_back({ candidate + heuristic(next), next });
+			std::push_heap(m_PathOpen.begin(), m_PathOpen.end(), openCompare);
 		}
 	}
 	if (!found)
 		return false;
 
-	std::vector<std::uint32_t> reversePath;
-	for (std::uint32_t current = goal; current != start; current = parents[current])
+	for (std::uint32_t current = goal; current != start;
+		current = m_PathParents[current])
 	{
-		if (current >= parents.size() ||
-			parents[current] == (std::numeric_limits<std::uint32_t>::max)())
+		if (current >= m_PathParents.size() ||
+			m_PathVisitedGeneration[current] != generation ||
+			m_PathParents[current] ==
+				(std::numeric_limits<std::uint32_t>::max)())
 		{
 			return false;
 		}
-		reversePath.push_back(current);
+		m_PathReverse.push_back(current);
 	}
-	std::reverse(reversePath.begin(), reversePath.end());
-	outPath.reserve(reversePath.size());
-	for (const std::uint32_t index : reversePath)
-		outPath.push_back(Cell_ToPoint(index));
+	outPath.reserve(m_PathReverse.size());
+	for (auto iter = m_PathReverse.rbegin();
+		iter != m_PathReverse.rend(); ++iter)
+	{
+		outPath.push_back(Cell_ToPoint(*iter));
+	}
 	return !outPath.empty();
 }
 
@@ -568,8 +656,6 @@ bool LostArk::Server::CServerNavigation::Prepare_ConditionChanges(
 	outStage.iBaseRevision = m_iRevision;
 	outStage.iNextRevision = m_iRevision;
 	outStage.ConditionValues = m_ConditionValues;
-	outStage.BlockCounts = m_BlockCounts;
-	outStage.VoidCounts = m_VoidCounts;
 	std::set<std::string> changedIds;
 	for (const SERVER_NAVIGATION_CONDITION_CHANGE& change : changes)
 	{
@@ -598,30 +684,11 @@ bool LostArk::Server::CServerNavigation::Prepare_ConditionChanges(
 				m_VoidConditionIds.contains(region.strConditionId);
 			for (const std::uint32_t cellIndex : region.CellIndices)
 			{
-				std::uint16_t& count = outStage.BlockCounts[cellIndex];
-				std::uint16_t& voidCount = outStage.VoidCounts[cellIndex];
-				if (willBeActive)
-				{
-					if (count == (std::numeric_limits<std::uint16_t>::max)())
-					{
-						outStatus = "Navigation blocker count overflow";
-						return false;
-					}
-					++count;
-					if (isVoid)
-						++voidCount;
-				}
-				else
-				{
-					if (0u == count || (isVoid && 0u == voidCount))
-					{
-						outStatus = "Navigation blocker count underflow";
-						return false;
-					}
-					--count;
-					if (isVoid)
-						--voidCount;
-				}
+				const std::int32_t delta = willBeActive ? 1 : -1;
+				outStage.CellDeltas.push_back({
+					cellIndex,
+					delta,
+					isVoid ? delta : 0 });
 			}
 		}
 		current->second = change.bValue;
@@ -635,6 +702,60 @@ bool LostArk::Server::CServerNavigation::Prepare_ConditionChanges(
 			return false;
 		}
 		outStage.iNextRevision = m_iRevision + 1u;
+
+		std::sort(outStage.CellDeltas.begin(), outStage.CellDeltas.end(),
+			[](const SERVER_NAVIGATION_CONDITION_STAGE::CELL_DELTA& left,
+				const SERVER_NAVIGATION_CONDITION_STAGE::CELL_DELTA& right)
+			{
+				return left.iCellIndex < right.iCellIndex;
+			});
+		std::size_t writeIndex = 0u;
+		for (const SERVER_NAVIGATION_CONDITION_STAGE::CELL_DELTA& delta :
+			outStage.CellDeltas)
+		{
+			if (0u != writeIndex &&
+				outStage.CellDeltas[writeIndex - 1u].iCellIndex ==
+					delta.iCellIndex)
+			{
+				outStage.CellDeltas[writeIndex - 1u].iBlockDelta +=
+					delta.iBlockDelta;
+				outStage.CellDeltas[writeIndex - 1u].iVoidDelta +=
+					delta.iVoidDelta;
+				continue;
+			}
+			outStage.CellDeltas[writeIndex++] = delta;
+		}
+		outStage.CellDeltas.resize(writeIndex);
+		for (const SERVER_NAVIGATION_CONDITION_STAGE::CELL_DELTA& delta :
+			outStage.CellDeltas)
+		{
+			if (delta.iCellIndex >= m_BlockCounts.size() ||
+				delta.iCellIndex >= m_VoidCounts.size())
+			{
+				outStatus = "Navigation condition cell is outside the grid";
+				return false;
+			}
+			const std::int64_t nextBlock =
+				static_cast<std::int64_t>(m_BlockCounts[delta.iCellIndex]) +
+				delta.iBlockDelta;
+			const std::int64_t nextVoid =
+				static_cast<std::int64_t>(m_VoidCounts[delta.iCellIndex]) +
+				delta.iVoidDelta;
+			if (nextBlock < 0 || nextVoid < 0)
+			{
+				outStatus = "Navigation blocker count underflow";
+				return false;
+			}
+			if (nextBlock >
+					(std::numeric_limits<std::uint16_t>::max)() ||
+				nextVoid >
+					(std::numeric_limits<std::uint16_t>::max)() ||
+				nextVoid > nextBlock)
+			{
+				outStatus = "Navigation blocker count overflow";
+				return false;
+			}
+		}
 	}
 	outStatus = outStage.bChanged ?
 		"Navigation condition changes staged" :
@@ -645,11 +766,19 @@ bool LostArk::Server::CServerNavigation::Prepare_ConditionChanges(
 void LostArk::Server::CServerNavigation::Commit_ConditionChanges(
 	SERVER_NAVIGATION_CONDITION_STAGE&& stage) noexcept
 {
-	if (!stage.bChanged)
+	if (!stage.bChanged || stage.iBaseRevision != m_iRevision)
 		return;
 	m_ConditionValues = std::move(stage.ConditionValues);
-	m_BlockCounts = std::move(stage.BlockCounts);
-	m_VoidCounts = std::move(stage.VoidCounts);
+	for (const SERVER_NAVIGATION_CONDITION_STAGE::CELL_DELTA& delta :
+		stage.CellDeltas)
+	{
+		m_BlockCounts[delta.iCellIndex] = static_cast<std::uint16_t>(
+			static_cast<std::int64_t>(m_BlockCounts[delta.iCellIndex]) +
+			delta.iBlockDelta);
+		m_VoidCounts[delta.iCellIndex] = static_cast<std::uint16_t>(
+			static_cast<std::int64_t>(m_VoidCounts[delta.iCellIndex]) +
+			delta.iVoidDelta);
+	}
 	m_iRevision = stage.iNextRevision;
 }
 
