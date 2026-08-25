@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "Network/PacketMessages.h"
+#include "ValtanPatternTree.h"
 
 #include <cstdint>
 #include <memory>
@@ -13,6 +14,7 @@
 NS_BEGIN(Client)
 
 class IPlayerCommandSink;
+class DATA_JSON_VALUE;
 
 class CBalanceTool final
 {
@@ -104,7 +106,23 @@ private:
 		double collisionRadius = 0.0;
 		double engageDistance = 0.0;
 		double moveSpeed = 0.0;
-		std::uint32_t phaseTwoHpPercent = 0;
+		std::string phasePolicyKind;
+		std::uint32_t phasePolicyThresholdPercent = 0;
+	};
+
+	struct VALTAN_AXE_VOLLEY_EDIT final
+	{
+		std::string patternId = "VALTAN_HIGH_JUMP";
+		std::string stageId = "AIRBORNE";
+		std::string eventId =
+			"event.valtan.high-jump.airborne.spawn-target-axe";
+		std::uint32_t countPerResolvedTarget = 1u;
+		std::string layoutKind = "TARGET_CENTER";
+		double radiusM = 0.0;
+		double startAngleDegrees = 0.0;
+		double angleStepDegrees = 0.0;
+		bool allowOverlap = false;
+		std::uint32_t maximumTotalObjects = 32u;
 	};
 
 	struct PATTERN_STAGE_EDIT
@@ -173,16 +191,86 @@ private:
 		bool hasNext = false;
 	};
 
+	struct LEGACY_PATTERN_SUMMARY final
+	{
+		std::string patternId;
+		std::string displayName;
+		std::string actionId;
+		std::string selectionMode;
+		std::string phaseRequirement;
+		std::uint32_t selectionWeight = 0u;
+		std::uint32_t stageCount = 0u;
+	};
+
+	enum class VALTAN_SOURCE_JOIN_STATE : std::uint8_t
+	{
+		SPLIT_SOURCE_INCOMPLETE,
+		SPLIT_SOURCE_UNVERIFIED,
+		JOINED_VALIDATED,
+		END
+	};
+
+	/* The two authoring lanes have different owners even while the transition
+	   pipeline still projects them through one internal v2 document.  Keep the
+	   physical source identities and the admitted joined closure separate so
+	   the UI can never report a hash-only source manifest as a successful join. */
+	struct VALTAN_SOURCE_JOIN_STATUS final
+	{
+		std::string gameplaySourcePath =
+			"Data/Valtan/Valtan.gameplay.json";
+		std::string presentationSourcePath =
+			"Data/Valtan/Valtan.presentation.json";
+		std::string gameplayRevision;
+		std::string presentationRevision;
+		std::string joinedRevision;
+		std::string diagnostic;
+		VALTAN_SOURCE_JOIN_STATE state =
+			VALTAN_SOURCE_JOIN_STATE::SPLIT_SOURCE_INCOMPLETE;
+	};
+
 	bool Reload();
 	bool Save(SERIALIZED_DRAFT_DOCUMENTS* readOnlyCapture = nullptr);
 	bool ValidateDraft(std::string& status) const;
 	static void NormalizePatternStageForShape(PATTERN_STAGE_EDIT& stage);
 	static void NormalizePatternStagePush(PATTERN_STAGE_EDIT& stage);
 	bool RunPipeline(const wchar_t* scriptName, const wchar_t* arguments,
+		std::string& status, std::string* capturedOutput = nullptr) const;
+	bool QueryValtanSourceRevision(
+		std::string& sourceRevision,
+		std::string& authoringRevision,
+		VALTAN_SOURCE_JOIN_STATUS& sourceJoin,
 		std::string& status) const;
+	bool BuildValtanDraftPatch(std::string& output, std::string& status) const;
+	bool RunValtanDraftCommand(const wchar_t* mode, std::string& status);
+	bool RequestValtanHotReload(std::string& status);
+	bool RequestValtanDecisionTrace(
+		std::uint32_t serverTick,
+		bool force,
+		std::string* status = nullptr);
 	void RenderPlayerEditor();
 	void RenderBossEditor();
+	void RenderValtanPatternAuthoring();
+	void RenderValtanSourceJoinStatus() const;
+	void RenderValtanManagedPattern(
+		VALTAN_PATTERN_VIEW& pattern,
+		const char* groupLabel,
+		std::size_t stableIndex);
+	bool ReloadValtanPatternAuthoring(
+		const DATA_JSON_VALUE& encounterRoot,
+		VALTAN_PATTERN_TREE_VIEW& patternTree,
+		std::vector<LEGACY_PATTERN_SUMMARY>& legacyPatterns,
+		std::string& patternStatus,
+		std::string& status);
+	bool RestoreValtanSavedAuthoring(
+		std::vector<DAMAGE_EDIT>& damageProfiles,
+		std::vector<BOSS_EDIT>& bosses,
+		VALTAN_PATTERN_TREE_VIEW& patternTree,
+		VALTAN_AXE_VOLLEY_EDIT& axeVolley,
+		const std::string& sourceRevision,
+		const std::string& authoringRevision,
+		std::string& status) const;
 	void RenderLiveVerification();
+	void RenderValtanDecisionTrace(std::uint32_t serverTick);
 	void RenderBasis(const std::string& document, const std::string& targetId,
 		const std::string& field) const;
 	std::uint32_t* FindDamageRate(const std::string& damageProfileId);
@@ -195,6 +283,20 @@ private:
 	std::vector<BOSS_EDIT> m_bosses;
 	std::vector<PATTERN_EDIT> m_patterns;
 	std::vector<ENCOUNTER_STATE_EDIT> m_encounterStates;
+	VALTAN_PATTERN_TREE_VIEW m_valtanPatternTree;
+	std::vector<DAMAGE_EDIT> m_loadedDamageProfiles;
+	std::vector<BOSS_EDIT> m_loadedBosses;
+	VALTAN_PATTERN_TREE_VIEW m_loadedValtanPatternTree;
+	VALTAN_AXE_VOLLEY_EDIT m_valtanAxeVolley;
+	VALTAN_AXE_VOLLEY_EDIT m_loadedValtanAxeVolley;
+	std::vector<LEGACY_PATTERN_SUMMARY> m_legacyPatterns;
+	std::string m_valtanPatternStatus;
+	std::string m_valtanSourceRevision;
+	std::string m_valtanAuthoringRevision;
+	std::string m_valtanCandidateRevision;
+	std::string m_valtanCandidateApplyClass;
+	VALTAN_SOURCE_JOIN_STATUS m_valtanSourceJoin;
+	bool m_valtanDraftValidated = false;
 	std::string m_encounterId;
 	std::string m_encounterBossArchetypeId;
 	std::string m_encounterAuthority;
@@ -205,10 +307,14 @@ private:
 	std::size_t m_selectedBoss = 0;
 	bool m_showPlayers = true;
 	bool m_dirty = false;
+	bool m_reloadConfirmationOpen = false;
 	bool m_open = true;
 	std::string m_status;
 	std::shared_ptr<IPlayerCommandSink> m_commandSink;
 	std::uint32_t m_reviveSequence = 0u;
+	std::uint32_t m_valtanRevisionTransactionSequence = 0u;
+	std::uint32_t m_valtanDecisionTraceRequestSequence = 0u;
+	std::uint32_t m_valtanDecisionLastQueryServerTick = 0u;
 };
 
 NS_END

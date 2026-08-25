@@ -61,6 +61,24 @@ namespace
 		return true;
 	}
 
+	bool Parse_DocumentPath(
+		const std::filesystem::path& Path,
+		DATA_JSON_VALUE& OutRoot,
+		std::string& strOutError)
+	{
+		std::string Text;
+		if (!Read_TextDocument(Path, Text, strOutError))
+			return false;
+		std::string ParseError;
+		if (!Client::CDataJson::Parse(Text, OutRoot, ParseError) ||
+			!OutRoot.Is_Object())
+		{
+			strOutError = Path.generic_string() + ": " + ParseError;
+			return false;
+		}
+		return true;
+	}
+
 	std::string Read_String(
 		const DATA_JSON_VALUE& Object, const std::string_view Key)
 	{
@@ -220,6 +238,40 @@ namespace
 			return false;
 		for (const DATA_JSON_VALUE& Value : pValue->Get_Array())
 		{
+			if ("SPAWN_COMBAT_OBJECT_VOLLEY" == Read_String(Value, "kind"))
+			{
+				const DATA_JSON_VALUE* pTargeting = Required(
+					Value, "targetingPolicy", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* pLayout = Required(
+					Value, "layout", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* pAllowOverlap = Required(
+					Value, "allowOverlap", DATA_JSON_TYPE::BOOLEAN);
+				if (!Has_ExactProperties(Value,
+						{ "trigger", "kind", "targetId", "targetingPolicy",
+						  "countPerResolvedTarget", "layout", "radiusM",
+						  "startAngleDegrees", "angleStepDegrees", "allowOverlap",
+						  "maximumTotalObjects" }) ||
+					nullptr == Required(Value, "trigger", DATA_JSON_TYPE::STRING) ||
+					nullptr == Required(Value, "targetId", DATA_JSON_TYPE::STRING) ||
+					nullptr == pTargeting || nullptr == pLayout ||
+					("SINGLE" != pLayout->Get_String() &&
+					 "RADIAL" != pLayout->Get_String()) ||
+					!Is_NonNegativeInteger(Value.Find("countPerResolvedTarget")) ||
+					0.0 == Value.Find("countPerResolvedTarget")->Get_Number() ||
+					!Is_FiniteNumber(Value.Find("radiusM")) ||
+					!Is_FiniteNumber(Value.Find("startAngleDegrees")) ||
+					!Is_FiniteNumber(Value.Find("angleStepDegrees")) ||
+					nullptr == pAllowOverlap ||
+					!Is_NonNegativeInteger(Value.Find("maximumTotalObjects")) ||
+					0.0 == Value.Find("maximumTotalObjects")->Get_Number())
+				{
+					return false;
+				}
+				/* The expanded volley is validated and joined separately as a
+				   combat-object owner. It is not lossy-packed into the legacy
+				   five-field stage-action display view. */
+				continue;
+			}
 			if (!Has_ExactProperties(Value,
 					{ "trigger", "kind", "targetId", "value", "durationMs" }))
 			{
@@ -390,6 +442,7 @@ namespace
 		std::vector<Client::VALTAN_STAGE_ACTION_VIEW> Actions;
 		std::vector<Client::VALTAN_STAGE_BRANCH_VIEW> Branches;
 		std::vector<Client::VALTAN_CLIP_OCCURRENCE_VIEW> Occurrences;
+		std::vector<Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW> AuthoredCues;
 		std::vector<MASTER_EFFECT_REFERENCE> EffectReferences;
 	};
 
@@ -430,6 +483,9 @@ namespace
 	{
 		std::vector<std::string> RetiredPatternIds;
 		Client::VALTAN_NORMAL_SELECTION_VIEW NormalSelection;
+		std::vector<Client::VALTAN_SELECTION_SET_VIEW> SelectionSets;
+		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW> SelectionWindows;
+		std::vector<Client::VALTAN_MECHANIC_VIEW> Mechanics;
 		std::vector<Client::VALTAN_COUNTER_REACTION_LAYER_VIEW>
 			CounterReactionLayers;
 		std::vector<Client::VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;
@@ -1381,7 +1437,7 @@ namespace
 			"PHASE_ONE" != Required(
 				Root, "scope", DATA_JSON_TYPE::STRING)->Get_String())
 		{
-			strOutError = "Valtan.pattern.json root contract is invalid";
+			strOutError = "joined authoring compatibility root is invalid";
 			return false;
 		}
 		const DATA_JSON_VALUE* pPreviewPaths = Required(
@@ -1392,7 +1448,7 @@ namespace
 				  "damageProfiles", "cinematicCamera", "worldEvents",
 				  "patternRotations", "sourceClipSequences" }))
 		{
-			strOutError = "Valtan.pattern.json previewPaths contract is invalid";
+			strOutError = "joined authoring compatibility previewPaths contract is invalid";
 			return false;
 		}
 		for (const auto& [Name, Value] : pPreviewPaths->Get_Object())
@@ -1400,7 +1456,7 @@ namespace
 			(void)Name;
 			if (!Value.Is_String() || !Value.Get_String().starts_with("Data/"))
 			{
-				strOutError = "Valtan.pattern.json preview path is invalid";
+				strOutError = "joined authoring compatibility preview path is invalid";
 				return false;
 			}
 		}
@@ -1421,7 +1477,7 @@ namespace
 			nullptr == pPatterns || pIndependent->Get_Array().empty() ||
 			pPatterns->Get_Array().empty())
 		{
-			strOutError = "Valtan.pattern.json inventories are invalid";
+			strOutError = "joined authoring compatibility inventories are invalid";
 			return false;
 		}
 
@@ -1621,6 +1677,38 @@ namespace
 			Product.iPlayMs == Master.iPlayMs &&
 			std::abs(Product.fPlayRate - Master.fPlayRate) <= 0.000001f &&
 			Product.bLoop == Master.bLoop;
+	}
+
+	bool_t Equal_AuthoredCue(
+		const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& Product,
+		const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& Authored)
+	{
+		return Product.strBindingId == Authored.strBindingId &&
+			Product.strOccurrenceId == Authored.strOccurrenceId &&
+			Product.strPatternId == Authored.strPatternId &&
+			Product.strStageId == Authored.strStageId &&
+			Product.strActionId == Authored.strActionId &&
+			Product.strClipOccurrenceId == Authored.strClipOccurrenceId &&
+			Product.strEffectAssetId == Authored.strEffectAssetId &&
+			Product.strAnchorSlotId == Authored.strAnchorSlotId &&
+			Product.eFollowPolicy == Authored.eFollowPolicy &&
+			Product.eStopPolicy == Authored.eStopPolicy &&
+			Product.strRepeatPolicy == Authored.strRepeatPolicy &&
+			Product.iSourceStartMs == Authored.iSourceStartMs &&
+			Product.iSourceEndMs == Authored.iSourceEndMs &&
+			Product.bHasSourceEnd == Authored.bHasSourceEnd &&
+			Product.LocalTransform.vPosition.x == Authored.LocalTransform.vPosition.x &&
+			Product.LocalTransform.vPosition.y == Authored.LocalTransform.vPosition.y &&
+			Product.LocalTransform.vPosition.z == Authored.LocalTransform.vPosition.z &&
+			Product.LocalTransform.vRotationDegrees.x ==
+				Authored.LocalTransform.vRotationDegrees.x &&
+			Product.LocalTransform.vRotationDegrees.y ==
+				Authored.LocalTransform.vRotationDegrees.y &&
+			Product.LocalTransform.vRotationDegrees.z ==
+				Authored.LocalTransform.vRotationDegrees.z &&
+			Product.LocalTransform.vScale.x == Authored.LocalTransform.vScale.x &&
+			Product.LocalTransform.vScale.y == Authored.LocalTransform.vScale.y &&
+			Product.LocalTransform.vScale.z == Authored.LocalTransform.vScale.z;
 	}
 
 	bool_t Equal_StageMotion(
@@ -1867,12 +1955,1662 @@ namespace
 		return true;
 	}
 
+	struct SPLIT_MECHANIC final
+	{
+		uint32_t iHealthBar = 0u;
+		uint32_t iTriggerOrder = 0u;
+	};
+
+	struct SPLIT_CUE_OWNER final
+	{
+		std::string strPatternId;
+		std::string strStageId;
+		const DATA_JSON_VALUE* pCue = nullptr;
+	};
+
+	struct SPLIT_SPAWN_OWNER final
+	{
+		std::string strPatternId;
+		std::string strStageId;
+		std::string strCombatObjectArchetypeId;
+	};
+
+	struct SPLIT_INDEPENDENT_DECLARATION final
+	{
+		std::string strIndependentEffectId;
+		std::string strDisplayName;
+		std::string strOwnership;
+		std::string strReferenceId;
+	};
+
+	DATA_JSON_VALUE Build_StringArray(
+		const std::vector<std::string>& Values)
+	{
+		DATA_JSON_VALUE::ARRAY Result;
+		Result.reserve(Values.size());
+		for (const std::string& Value : Values)
+			Result.push_back(DATA_JSON_VALUE::String(Value));
+		return DATA_JSON_VALUE::Array(std::move(Result));
+	}
+
+	bool_t Validate_SplitRootIdentity(
+		const DATA_JSON_VALUE& Gameplay,
+		const DATA_JSON_VALUE& Presentation,
+		std::string& strOutError)
+	{
+		if (!Has_ExactProperties(Gameplay,
+				{ "schema", "formatVersion", "bossArchetypeId", "encounterId",
+				  "scope", "previewPaths", "retiredPatternIds", "decisionModel",
+				  "counterReactionLayers", "patterns" }) ||
+			!Has_ExactProperties(Presentation,
+				{ "schema", "formatVersion", "bossArchetypeId", "encounterId",
+				  "scope", "patterns", "independentEffects" }))
+		{
+			strOutError = "split authoring root has unexpected properties";
+			return false;
+		}
+		const DATA_JSON_VALUE* pGameplaySchema = Required(
+			Gameplay, "schema", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pPresentationSchema = Required(
+			Presentation, "schema", DATA_JSON_TYPE::STRING);
+		if (nullptr == pGameplaySchema ||
+			"lostark.valtan-gameplay-authoring" != pGameplaySchema->Get_String() ||
+			nullptr == pPresentationSchema ||
+			"lostark.valtan-pattern-presentation-authoring" !=
+				pPresentationSchema->Get_String() ||
+			!Is_NonNegativeInteger(Gameplay.Find("formatVersion")) ||
+			1.0 != Gameplay.Find("formatVersion")->Get_Number() ||
+			!Is_NonNegativeInteger(Presentation.Find("formatVersion")) ||
+			1.0 != Presentation.Find("formatVersion")->Get_Number())
+		{
+			strOutError = "split authoring schema/version is invalid";
+			return false;
+		}
+		for (const std::string_view Field :
+			{ "bossArchetypeId", "encounterId", "scope" })
+		{
+			const DATA_JSON_VALUE* pGameplayValue = Required(
+				Gameplay, Field, DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pPresentationValue = Required(
+				Presentation, Field, DATA_JSON_TYPE::STRING);
+			if (nullptr == pGameplayValue || nullptr == pPresentationValue ||
+				pGameplayValue->Get_String() != pPresentationValue->Get_String())
+			{
+				strOutError = "split authoring root identity mismatch: " +
+					std::string(Field);
+				return false;
+			}
+		}
+		if ("BOSS_VALTAN" != Read_String(Gameplay, "bossArchetypeId") ||
+			"ENCOUNTER_VALTAN" != Read_String(Gameplay, "encounterId") ||
+			"PHASE_ONE" != Read_String(Gameplay, "scope"))
+		{
+			strOutError = "split authoring root identity is not Valtan Phase One";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_SplitCue(
+		const DATA_JSON_VALUE& Cue,
+		std::string& strOutError)
+	{
+		if (!Has_ExactProperties(Cue,
+				{ "cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId",
+				  "sourceStartMs", "sourceEndMs", "anchorSlotId", "followPolicy",
+				  "stopPolicy", "repeatPolicy", "localTransform",
+				  "mappingBasis" }))
+		{
+			strOutError = "split presentation cue has unexpected properties";
+			return false;
+		}
+		for (const std::string_view Field :
+			{ "cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId",
+			  "anchorSlotId" })
+		{
+			const DATA_JSON_VALUE* pValue = Required(
+				Cue, Field, DATA_JSON_TYPE::STRING);
+			if (nullptr == pValue || !Is_StableToken(pValue->Get_String()))
+			{
+				strOutError = "split presentation cue identity is invalid: " +
+					std::string(Field);
+				return false;
+			}
+		}
+		const DATA_JSON_VALUE* pSourceEnd = Cue.Find("sourceEndMs");
+		if (!Is_NonNegativeInteger(Cue.Find("sourceStartMs")) ||
+			nullptr == pSourceEnd ||
+			(!pSourceEnd->Is_Null() && !Is_NonNegativeInteger(pSourceEnd)) ||
+			(!pSourceEnd->Is_Null() && pSourceEnd->Get_Number() <
+				Cue.Find("sourceStartMs")->Get_Number()) ||
+			Read_String(Cue, "mappingBasis").empty() ||
+			("follow" != Read_String(Cue, "followPolicy") &&
+			 "snapshot" != Read_String(Cue, "followPolicy")) ||
+			("natural" != Read_String(Cue, "stopPolicy") &&
+			 "cue_end" != Read_String(Cue, "stopPolicy")) ||
+			("once" != Read_String(Cue, "repeatPolicy") &&
+			 "each_loop" != Read_String(Cue, "repeatPolicy")))
+		{
+			strOutError = "split presentation cue timing/policy is invalid";
+			return false;
+		}
+		const DATA_JSON_VALUE* pTransform = Required(
+			Cue, "localTransform", DATA_JSON_TYPE::OBJECT);
+		if (nullptr == pTransform || !Has_ExactProperties(*pTransform,
+				{ "position", "rotationDegrees", "scale" }))
+		{
+			strOutError = "split presentation cue transform is invalid";
+			return false;
+		}
+		for (const std::string_view Field :
+			{ "position", "rotationDegrees", "scale" })
+		{
+			const DATA_JSON_VALUE* pValues = Required(
+				*pTransform, Field, DATA_JSON_TYPE::ARRAY);
+			if (nullptr == pValues || 3u != pValues->Get_Array().size() ||
+				std::any_of(pValues->Get_Array().begin(),
+					pValues->Get_Array().end(),
+					[](const DATA_JSON_VALUE& Value)
+					{
+						return !Is_FiniteNumber(&Value);
+					}))
+			{
+				strOutError = "split presentation cue transform vector is invalid";
+				return false;
+			}
+		}
+		return true;
+	}
+
+	Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW Build_SplitCueView(
+		const DATA_JSON_VALUE& Cue,
+		const std::string& strPatternId,
+		const std::string& strStageId,
+		const std::string& strActionId,
+		const uint32_t iStageDurationMs)
+	{
+		Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW View;
+		View.strBindingId = Read_String(Cue, "cueId");
+		View.strOccurrenceId = Read_String(Cue, "occurrenceId");
+		View.strPatternId = strPatternId;
+		View.strStageId = strStageId;
+		View.strActionId = strActionId;
+		View.strClipOccurrenceId = Read_String(Cue, "clipOccurrenceId");
+		View.strEffectAssetId = Read_String(Cue, "effectAssetId");
+		View.strAnchorSlotId = Read_String(Cue, "anchorSlotId");
+		View.strFollowPolicy = Read_String(Cue, "followPolicy");
+		View.strStopPolicy = Read_String(Cue, "stopPolicy");
+		View.strRepeatPolicy = Read_String(Cue, "repeatPolicy");
+		View.eFollowPolicy = "snapshot" == View.strFollowPolicy ?
+			Client::EFFECT_FOLLOW_POLICY::SNAPSHOT :
+			Client::EFFECT_FOLLOW_POLICY::FOLLOW;
+		View.eStopPolicy = "cue_end" == View.strStopPolicy ?
+			Client::EFFECT_STOP_POLICY::CUE_END :
+			Client::EFFECT_STOP_POLICY::NATURAL;
+		View.iSourceStartMs = static_cast<uint32_t>(
+			Cue.Find("sourceStartMs")->Get_Number());
+		View.bHasSourceEnd = !Cue.Find("sourceEndMs")->Is_Null();
+		View.iSourceEndMs = View.bHasSourceEnd ? static_cast<uint32_t>(
+			Cue.Find("sourceEndMs")->Get_Number()) : 0u;
+		View.iStageDurationMs = iStageDurationMs;
+		const DATA_JSON_VALUE& Transform = *Cue.Find("localTransform");
+		const DATA_JSON_VALUE::ARRAY& Position =
+			Transform.Find("position")->Get_Array();
+		const DATA_JSON_VALUE::ARRAY& Rotation =
+			Transform.Find("rotationDegrees")->Get_Array();
+		const DATA_JSON_VALUE::ARRAY& Scale =
+			Transform.Find("scale")->Get_Array();
+		View.LocalTransform.vPosition = {
+			static_cast<f32_t>(Position[0].Get_Number()),
+			static_cast<f32_t>(Position[1].Get_Number()),
+			static_cast<f32_t>(Position[2].Get_Number()) };
+		View.LocalTransform.vRotationDegrees = {
+			static_cast<f32_t>(Rotation[0].Get_Number()),
+			static_cast<f32_t>(Rotation[1].Get_Number()),
+			static_cast<f32_t>(Rotation[2].Get_Number()) };
+		View.LocalTransform.vScale = {
+			static_cast<f32_t>(Scale[0].Get_Number()),
+			static_cast<f32_t>(Scale[1].Get_Number()),
+			static_cast<f32_t>(Scale[2].Get_Number()) };
+		return View;
+	}
+
+	bool_t Build_SplitHitProjection(
+		const DATA_JSON_VALUE& Hit,
+		DATA_JSON_VALUE::OBJECT& OutStage,
+		std::string& strOutError)
+	{
+		const DATA_JSON_VALUE* pShape = Required(
+			Hit, "shape", DATA_JSON_TYPE::OBJECT);
+		const std::string strKind = nullptr == pShape ? std::string{} :
+			Read_String(*pShape, "kind");
+		if (nullptr == pShape || strKind.empty())
+		{
+			strOutError = "split gameplay hit shape is invalid";
+			return false;
+		}
+		auto PutNumber = [&OutStage](const std::string& Name, const double Value)
+		{
+			OutStage.emplace(Name, DATA_JSON_VALUE::Number(Value, true));
+		};
+		OutStage.emplace("hitShape", DATA_JSON_VALUE::String(strKind));
+		for (const std::string& Name :
+			{ "hitOuterRadius", "hitInnerRadius", "hitAngleDegrees",
+			  "hitLength", "hitHalfWidth" })
+		{
+			PutNumber(Name, 0.0);
+		}
+
+		const auto RequireShape = [pShape, &strOutError](
+			const std::initializer_list<std::string_view> Fields)
+		{
+			if (!Has_ExactProperties(*pShape, Fields))
+			{
+				strOutError = "split gameplay hit shape has unexpected properties";
+				return false;
+			}
+			return true;
+		};
+		const auto ReadShapeNumber = [pShape, &OutStage, &strOutError](
+			const std::string_view Source, const std::string& Target)
+		{
+			const DATA_JSON_VALUE* pValue = pShape->Find(Source);
+			if (!Is_FiniteNumber(pValue) || pValue->Get_Number() < 0.0)
+			{
+				strOutError = "split gameplay hit shape numeric value is invalid";
+				return false;
+			}
+			OutStage[Target] = *pValue;
+			return true;
+		};
+		if ("NONE" == strKind)
+		{
+			if (!RequireShape({ "kind" }) ||
+				!Has_ExactProperties(Hit, { "shape" }))
+				return false;
+			OutStage.emplace("hitCount", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("hitIntervalMs", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("hitDelayMs", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("hitOffsetsMs", DATA_JSON_VALUE::Array({}));
+			OutStage.emplace("serverDamageProfileId", DATA_JSON_VALUE::String(""));
+			PutNumber("pushRangeM", 0.0);
+			OutStage.emplace("pushMs", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("knockdown", DATA_JSON_VALUE::Boolean(false));
+			OutStage.emplace("downMs", DATA_JSON_VALUE::Number(0));
+			return true;
+		}
+
+		if (!Has_ExactProperties(Hit,
+				{ "shape", "schedule", "serverDamageProfileId", "pushRangeM",
+				  "pushMs", "knockdown", "downMs" }))
+		{
+			strOutError = "split gameplay hit has unexpected properties";
+			return false;
+		}
+		if ("CIRCLE" == strKind)
+		{
+			if (!RequireShape({ "kind", "outerRadiusM" }) ||
+				!ReadShapeNumber("outerRadiusM", "hitOuterRadius"))
+				return false;
+		}
+		else if ("RING" == strKind)
+		{
+			if (!RequireShape({ "kind", "innerRadiusM", "outerRadiusM" }) ||
+				!ReadShapeNumber("innerRadiusM", "hitInnerRadius") ||
+				!ReadShapeNumber("outerRadiusM", "hitOuterRadius"))
+				return false;
+		}
+		else if ("CONE" == strKind)
+		{
+			if (!RequireShape({ "kind", "angleDegrees", "lengthM" }) ||
+				!ReadShapeNumber("angleDegrees", "hitAngleDegrees") ||
+				!ReadShapeNumber("lengthM", "hitLength"))
+				return false;
+		}
+		else if ("BOX" == strKind || "CROSS" == strKind ||
+			"SIX_DIRECTIONS" == strKind)
+		{
+			if (!RequireShape({ "kind", "lengthM", "halfWidthM" }) ||
+				!ReadShapeNumber("lengthM", "hitLength") ||
+				!ReadShapeNumber("halfWidthM", "hitHalfWidth"))
+				return false;
+		}
+		else
+		{
+			strOutError = "split gameplay hit shape kind is unsupported";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* pSchedule = Required(
+			Hit, "schedule", DATA_JSON_TYPE::OBJECT);
+		const std::string strSchedule = nullptr == pSchedule ? std::string{} :
+			Read_String(*pSchedule, "kind");
+		if ("INTERVAL" == strSchedule && Has_ExactProperties(*pSchedule,
+				{ "kind", "count", "firstOffsetMs", "intervalMs" }) &&
+			Is_NonNegativeInteger(pSchedule->Find("count")) &&
+			Is_NonNegativeInteger(pSchedule->Find("firstOffsetMs")) &&
+			Is_NonNegativeInteger(pSchedule->Find("intervalMs")))
+		{
+			OutStage.emplace("hitCount", *pSchedule->Find("count"));
+			OutStage.emplace("hitIntervalMs", *pSchedule->Find("intervalMs"));
+			OutStage.emplace("hitDelayMs", *pSchedule->Find("firstOffsetMs"));
+			OutStage.emplace("hitOffsetsMs", DATA_JSON_VALUE::Array({}));
+		}
+		else if ("EXPLICIT_OFFSETS" == strSchedule &&
+			Has_ExactProperties(*pSchedule, { "kind", "offsetsMs" }))
+		{
+			const DATA_JSON_VALUE* pOffsets = Required(
+				*pSchedule, "offsetsMs", DATA_JSON_TYPE::ARRAY);
+			if (nullptr == pOffsets || pOffsets->Get_Array().empty())
+			{
+				strOutError = "split gameplay explicit hit schedule is invalid";
+				return false;
+			}
+			uint32_t iPrevious = 0u;
+			for (size_t i = 0u; i < pOffsets->Get_Array().size(); ++i)
+			{
+				const DATA_JSON_VALUE& Offset = pOffsets->Get_Array()[i];
+				if (!Is_NonNegativeInteger(&Offset) ||
+					(0u != i && Offset.Get_Number() <= iPrevious))
+				{
+					strOutError = "split gameplay explicit hit offsets are invalid";
+					return false;
+				}
+				iPrevious = static_cast<uint32_t>(Offset.Get_Number());
+			}
+			OutStage.emplace("hitCount", DATA_JSON_VALUE::Number(
+				static_cast<double>(pOffsets->Get_Array().size())));
+			OutStage.emplace("hitIntervalMs", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("hitDelayMs", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("hitOffsetsMs", *pOffsets);
+		}
+		else
+		{
+			strOutError = "split gameplay hit schedule is invalid";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* pDamage = Required(
+			Hit, "serverDamageProfileId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pKnockdown = Required(
+			Hit, "knockdown", DATA_JSON_TYPE::BOOLEAN);
+		if (nullptr == pDamage || !Is_StableToken(pDamage->Get_String()) ||
+			nullptr == pKnockdown || !Is_FiniteNumber(Hit.Find("pushRangeM")) ||
+			!Is_NonNegativeInteger(Hit.Find("pushMs")) ||
+			!Is_NonNegativeInteger(Hit.Find("downMs")))
+		{
+			strOutError = "split gameplay hit payload is invalid";
+			return false;
+		}
+		OutStage.emplace("serverDamageProfileId", *pDamage);
+		OutStage.emplace("pushRangeM", *Hit.Find("pushRangeM"));
+		OutStage.emplace("pushMs", *Hit.Find("pushMs"));
+		OutStage.emplace("knockdown", *pKnockdown);
+		OutStage.emplace("downMs", *Hit.Find("downMs"));
+		return true;
+	}
+
+	bool_t Build_SplitDecisionProjection(
+		const DATA_JSON_VALUE& Decision,
+		DATA_JSON_VALUE& OutNormalSelection,
+		std::vector<Client::VALTAN_SELECTION_SET_VIEW>& OutSelectionSets,
+		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW>& OutSelectionWindows,
+		std::vector<Client::VALTAN_MECHANIC_VIEW>& OutMechanicViews,
+		std::map<std::string, SPLIT_MECHANIC, std::less<>>& OutMechanics,
+		std::string& strOutError)
+	{
+		if (!Has_ExactProperties(Decision,
+				{ "selectionSets", "selectionWindows", "mechanics" }))
+		{
+			strOutError = "split gameplay decisionModel has unexpected properties";
+			return false;
+		}
+		const DATA_JSON_VALUE* pSets = Required(
+			Decision, "selectionSets", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pWindows = Required(
+			Decision, "selectionWindows", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pMechanics = Required(
+			Decision, "mechanics", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pSets || pSets->Get_Array().empty() ||
+			nullptr == pWindows || pWindows->Get_Array().empty() ||
+			nullptr == pMechanics)
+		{
+			strOutError = "split gameplay decisionModel inventories are invalid";
+			return false;
+		}
+
+		std::map<std::string, std::vector<std::string>, std::less<>>
+			PatternsBySet;
+		for (const DATA_JSON_VALUE& Set : pSets->Get_Array())
+		{
+			if (!Has_ExactProperties(Set,
+					{ "selectionSetId", "mode", "candidates" }) ||
+				"WEIGHTED_POOL" != Read_String(Set, "mode"))
+			{
+				strOutError = "split gameplay selection set is invalid";
+				return false;
+			}
+			const std::string strSetId = Read_String(Set, "selectionSetId");
+			const DATA_JSON_VALUE* pCandidates = Required(
+				Set, "candidates", DATA_JSON_TYPE::ARRAY);
+			if (!Is_StableToken(strSetId) || nullptr == pCandidates ||
+				pCandidates->Get_Array().empty() ||
+				PatternsBySet.contains(strSetId))
+			{
+				strOutError = "split gameplay selection set identity is invalid or duplicated";
+				return false;
+			}
+			std::vector<std::string> PatternIds;
+			std::set<std::string, std::less<>> UniquePatterns;
+			Client::VALTAN_SELECTION_SET_VIEW SetView;
+			SetView.strSelectionSetId = strSetId;
+			SetView.strMode = Read_String(Set, "mode");
+			uint32_t iEnabledCount = 0u;
+			for (const DATA_JSON_VALUE& Candidate : pCandidates->Get_Array())
+			{
+				const DATA_JSON_VALUE* pEnabled = Required(
+					Candidate, "enabled", DATA_JSON_TYPE::BOOLEAN);
+				const std::string strPatternId = Read_String(
+					Candidate, "patternId");
+				if (!Has_ExactProperties(Candidate,
+						{ "patternId", "weight", "enabled" }) ||
+					!Is_StableToken(strPatternId) ||
+					!Is_NonNegativeInteger(Candidate.Find("weight")) ||
+					0.0 == Candidate.Find("weight")->Get_Number() ||
+					Candidate.Find("weight")->Get_Number() > 100000.0 ||
+					nullptr == pEnabled ||
+					!UniquePatterns.insert(strPatternId).second)
+				{
+					strOutError = "split gameplay selection candidate is invalid or duplicated";
+					return false;
+				}
+				const uint32_t iWeight = static_cast<uint32_t>(
+					Candidate.Find("weight")->Get_Number());
+				Client::VALTAN_SELECTION_CANDIDATE_VIEW CandidateView;
+				CandidateView.strPatternId = strPatternId;
+				CandidateView.iWeight = iWeight;
+				CandidateView.bEnabled = pEnabled->Get_Boolean();
+				if (CandidateView.bEnabled)
+					++iEnabledCount;
+				SetView.Candidates.push_back(std::move(CandidateView));
+				PatternIds.push_back(strPatternId);
+			}
+			if (0u == iEnabledCount)
+			{
+				strOutError = "split gameplay weighted selection set has no enabled candidate";
+				return false;
+			}
+			PatternsBySet.emplace(strSetId, std::move(PatternIds));
+			OutSelectionSets.push_back(std::move(SetView));
+		}
+
+		DATA_JSON_VALUE::ARRAY Ranges;
+		std::vector<std::string> NormalPatternIds;
+		std::set<std::string, std::less<>> NormalPatternSet;
+		std::set<std::string, std::less<>> WindowIds;
+		std::set<std::string, std::less<>> RotationIds;
+		std::set<std::string, std::less<>> WindowSetIds;
+		std::map<uint32_t, uint32_t> PreviousMinimumByPhase;
+		for (const DATA_JSON_VALUE& Window : pWindows->Get_Array())
+		{
+			if (!Has_ExactProperties(Window,
+					{ "windowId", "gameplayPhase", "maximumHealthBarInclusive",
+					  "minimumHealthBarExclusive", "selectionSetId",
+					  "compatibilityRotationId" }) ||
+				!Is_StableToken(Read_String(Window, "windowId")) ||
+				!Is_StableToken(Read_String(Window, "compatibilityRotationId")) ||
+				!Is_NonNegativeInteger(Window.Find("gameplayPhase")) ||
+				0.0 == Window.Find("gameplayPhase")->Get_Number() ||
+				Window.Find("gameplayPhase")->Get_Number() > 3.0 ||
+				!Is_NonNegativeInteger(
+					Window.Find("maximumHealthBarInclusive")) ||
+				!Is_NonNegativeInteger(
+					Window.Find("minimumHealthBarExclusive")))
+			{
+				strOutError = "split gameplay selection window is invalid";
+				return false;
+			}
+			const std::string strWindowId = Read_String(Window, "windowId");
+			const std::string strRotationId = Read_String(
+				Window, "compatibilityRotationId");
+			const std::string strSetId = Read_String(Window, "selectionSetId");
+			const auto Patterns = PatternsBySet.find(strSetId);
+			const uint32_t iPhase = static_cast<uint32_t>(
+				Window.Find("gameplayPhase")->Get_Number());
+			const uint32_t iMaximum = static_cast<uint32_t>(
+				Window.Find("maximumHealthBarInclusive")->Get_Number());
+			const uint32_t iMinimum = static_cast<uint32_t>(
+				Window.Find("minimumHealthBarExclusive")->Get_Number());
+			const auto Previous = PreviousMinimumByPhase.find(iPhase);
+			if (Patterns == PatternsBySet.end() || iMaximum <= iMinimum ||
+				(Previous != PreviousMinimumByPhase.end() &&
+				 Previous->second != iMaximum) ||
+				!WindowIds.insert(strWindowId).second ||
+				!RotationIds.insert(strRotationId).second ||
+				!WindowSetIds.insert(strSetId).second)
+			{
+				strOutError = "split gameplay selection window order/closure is invalid";
+				return false;
+			}
+			PreviousMinimumByPhase[iPhase] = iMinimum;
+			for (const std::string& strPatternId : Patterns->second)
+			{
+				if (NormalPatternSet.insert(strPatternId).second)
+					NormalPatternIds.push_back(strPatternId);
+			}
+			Client::VALTAN_SELECTION_WINDOW_VIEW WindowView;
+			WindowView.strWindowId = strWindowId;
+			WindowView.iGameplayPhase = iPhase;
+			WindowView.iMaximumHealthBarInclusive = iMaximum;
+			WindowView.iMinimumHealthBarExclusive = iMinimum;
+			WindowView.strSelectionSetId = strSetId;
+			WindowView.strCompatibilityRotationId = strRotationId;
+			OutSelectionWindows.push_back(std::move(WindowView));
+			DATA_JSON_VALUE::OBJECT Range;
+			Range.emplace("rotationId", DATA_JSON_VALUE::String(
+				strRotationId));
+			Range.emplace("fromHealthBar",
+				*Window.Find("maximumHealthBarInclusive"));
+			Range.emplace("toHealthBar",
+				*Window.Find("minimumHealthBarExclusive"));
+			Ranges.push_back(DATA_JSON_VALUE::Object(std::move(Range)));
+		}
+		if (WindowSetIds.size() != PatternsBySet.size())
+		{
+			strOutError = "split gameplay selection windows do not cover every set";
+			return false;
+		}
+
+		std::set<std::string, std::less<>> MechanicIds;
+		std::set<std::pair<uint32_t, uint32_t>> MechanicTriggers;
+		uint32_t iPreviousHealthBar = (std::numeric_limits<uint32_t>::max)();
+		uint32_t iPreviousOrder = 0u;
+		for (const DATA_JSON_VALUE& Mechanic : pMechanics->Get_Array())
+		{
+			if (!Has_ExactProperties(Mechanic,
+					{ "mechanicId", "patternId", "trigger", "triggerOrder",
+					  "oncePerEncounter", "failurePolicy" }) ||
+				!Is_StableToken(Read_String(Mechanic, "mechanicId")) ||
+				!Is_StableToken(Read_String(Mechanic, "patternId")) ||
+				!Is_NonNegativeInteger(Mechanic.Find("triggerOrder")) ||
+				nullptr == Required(
+					Mechanic, "oncePerEncounter", DATA_JSON_TYPE::BOOLEAN) ||
+				!Required(Mechanic, "oncePerEncounter",
+					DATA_JSON_TYPE::BOOLEAN)->Get_Boolean() ||
+				"ABORT_ENCOUNTER_REQUIRE_RESET" !=
+					Read_String(Mechanic, "failurePolicy"))
+			{
+				strOutError = "split gameplay mechanic is invalid";
+				return false;
+			}
+			const DATA_JSON_VALUE* pTrigger = Required(
+				Mechanic, "trigger", DATA_JSON_TYPE::OBJECT);
+			if (nullptr == pTrigger || !Has_ExactProperties(
+					*pTrigger, { "kind", "healthBar" }) ||
+				"HEALTH_BAR_CROSSING" != Read_String(*pTrigger, "kind") ||
+				!Is_NonNegativeInteger(pTrigger->Find("healthBar")) ||
+				0.0 == pTrigger->Find("healthBar")->Get_Number() ||
+				0.0 == Mechanic.Find("triggerOrder")->Get_Number())
+			{
+				strOutError = "split gameplay mechanic trigger is invalid";
+				return false;
+			}
+			SPLIT_MECHANIC Projection;
+			Projection.iHealthBar = static_cast<uint32_t>(
+				pTrigger->Find("healthBar")->Get_Number());
+			Projection.iTriggerOrder = static_cast<uint32_t>(
+				Mechanic.Find("triggerOrder")->Get_Number());
+			const std::string strMechanicId = Read_String(
+				Mechanic, "mechanicId");
+			const std::string strPatternId = Read_String(
+				Mechanic, "patternId");
+			if (!MechanicIds.insert(strMechanicId).second ||
+				!MechanicTriggers.insert({ Projection.iHealthBar,
+					Projection.iTriggerOrder }).second ||
+				Projection.iHealthBar > iPreviousHealthBar ||
+				(Projection.iHealthBar == iPreviousHealthBar &&
+				 Projection.iTriggerOrder <= iPreviousOrder) ||
+				!OutMechanics.emplace(strPatternId, Projection).second)
+			{
+				strOutError = "split gameplay mechanic identity/order is invalid";
+				return false;
+			}
+			iPreviousHealthBar = Projection.iHealthBar;
+			iPreviousOrder = Projection.iTriggerOrder;
+			Client::VALTAN_MECHANIC_VIEW MechanicView;
+			MechanicView.strMechanicId = strMechanicId;
+			MechanicView.strPatternId = strPatternId;
+			MechanicView.strTriggerKind = Read_String(*pTrigger, "kind");
+			MechanicView.iHealthBar = Projection.iHealthBar;
+			MechanicView.iTriggerOrder = Projection.iTriggerOrder;
+			MechanicView.bOncePerEncounter = true;
+			MechanicView.strFailurePolicy = Read_String(
+				Mechanic, "failurePolicy");
+			OutMechanicViews.push_back(std::move(MechanicView));
+		}
+		const auto ArenaBreak = OutMechanics.find("VALTAN_ARENA_BREAK_109");
+		uint32_t iPhaseOneBoundary = 0u;
+		for (const Client::VALTAN_SELECTION_WINDOW_VIEW& Window :
+			OutSelectionWindows)
+		{
+			if (1u == Window.iGameplayPhase)
+				iPhaseOneBoundary = Window.iMinimumHealthBarExclusive;
+		}
+		if (0u == iPhaseOneBoundary || ArenaBreak == OutMechanics.end() ||
+			ArenaBreak->second.iHealthBar != iPhaseOneBoundary)
+		{
+			strOutError =
+				"VALTAN_ARENA_BREAK_109 health bar must match the final phase-1 window boundary";
+			return false;
+		}
+
+		DATA_JSON_VALUE::OBJECT Normal;
+		Normal.emplace("selectionMode",
+			DATA_JSON_VALUE::String("WEIGHTED_POOL"));
+		Normal.emplace("ranges", DATA_JSON_VALUE::Array(std::move(Ranges)));
+		Normal.emplace("patternIds", Build_StringArray(NormalPatternIds));
+		OutNormalSelection = DATA_JSON_VALUE::Object(std::move(Normal));
+		return true;
+	}
+
+	bool_t Validate_SplitCameraInvocation(
+		const DATA_JSON_VALUE& Invocation,
+		const uint32_t iStageDurationMs,
+		std::string& strOutCameraCueId,
+		std::string& strOutError)
+	{
+		if (!Has_ExactProperties(Invocation,
+				{ "cameraInvocationId", "cameraCueId", "trigger",
+				  "startOffsetMs", "durationPolicy", "durationMs" }) ||
+			!Is_StableToken(Read_String(
+				Invocation, "cameraInvocationId")) ||
+			!Is_StableToken(Read_String(Invocation, "cameraCueId")) ||
+			"ENTER" != Read_String(Invocation, "trigger") ||
+			"EXPLICIT" != Read_String(Invocation, "durationPolicy") ||
+			!Is_NonNegativeInteger(Invocation.Find("startOffsetMs")) ||
+			!Is_NonNegativeInteger(Invocation.Find("durationMs")))
+		{
+			strOutError = "split presentation camera invocation is invalid";
+			return false;
+		}
+		const uint64_t iEnd = static_cast<uint64_t>(
+			Invocation.Find("startOffsetMs")->Get_Number()) +
+			static_cast<uint64_t>(Invocation.Find("durationMs")->Get_Number());
+		if (iEnd > iStageDurationMs)
+		{
+			strOutError = "split presentation camera invocation leaves its Server stage";
+			return false;
+		}
+		strOutCameraCueId = Read_String(Invocation, "cameraCueId");
+		return true;
+	}
+
+	bool_t Build_SplitEventProjection(
+		const DATA_JSON_VALUE& Event,
+		DATA_JSON_VALUE* pOutAction,
+		std::string& strOutSpawnArchetypeId,
+		bool_t& bOutWorldEvent,
+		std::string& strOutError)
+	{
+		*pOutAction = DATA_JSON_VALUE::Null();
+		strOutSpawnArchetypeId.clear();
+		bOutWorldEvent = false;
+		const std::string strEventId = Read_String(Event, "eventId");
+		const std::string strTrigger = Read_String(Event, "trigger");
+		const std::string strKind = Read_String(Event, "kind");
+		if (!Is_StableToken(strEventId) || !Is_StableToken(strTrigger) ||
+			!Is_StableToken(strKind))
+		{
+			strOutError = "split gameplay event identity is invalid";
+			return false;
+		}
+		DATA_JSON_VALUE::OBJECT Action;
+		if ("SET_BOSS_FLAG" == strKind)
+		{
+			const DATA_JSON_VALUE* pEnabled = Required(
+				Event, "enabled", DATA_JSON_TYPE::BOOLEAN);
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind", "flagId", "enabled" }) ||
+				!Is_StableToken(Read_String(Event, "flagId")) ||
+				nullptr == pEnabled)
+			{
+				strOutError = "split gameplay SET_BOSS_FLAG event is invalid";
+				return false;
+			}
+			Action.emplace("targetId", DATA_JSON_VALUE::String(
+				Read_String(Event, "flagId")));
+			Action.emplace("value", DATA_JSON_VALUE::Number(
+				pEnabled->Get_Boolean() ? 1.0 : 0.0));
+		}
+		else if ("SET_GAMEPLAY_PHASE" == strKind)
+		{
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind", "gameplayPhase" }) ||
+				!Is_NonNegativeInteger(Event.Find("gameplayPhase")))
+			{
+				strOutError = "split gameplay SET_GAMEPLAY_PHASE event is invalid";
+				return false;
+			}
+			Action.emplace("targetId",
+				DATA_JSON_VALUE::String("boss.phase.gameplay"));
+			Action.emplace("value", *Event.Find("gameplayPhase"));
+		}
+		else if ("TRIGGER_WORLD_EVENT_SET" == strKind)
+		{
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind", "worldEventSetId" }) ||
+				!Is_StableToken(Read_String(Event, "worldEventSetId")))
+			{
+				strOutError = "split gameplay world event is invalid";
+				return false;
+			}
+			bOutWorldEvent = true;
+			return true;
+		}
+		else if ("SPAWN_COMBAT_OBJECT_VOLLEY" == strKind)
+		{
+			const DATA_JSON_VALUE* pLayout = Required(
+				Event, "layout", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* pAllowOverlap = Required(
+				Event, "allowOverlap", DATA_JSON_TYPE::BOOLEAN);
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind", "combatObjectArchetypeId",
+					  "volleyPolicy", "countPerResolvedTarget", "layout",
+					  "allowOverlap", "maximumTotalObjects" }) ||
+				!Is_StableToken(Read_String(
+					Event, "combatObjectArchetypeId")) ||
+				!Is_StableToken(Read_String(Event, "volleyPolicy")) ||
+				!Is_NonNegativeInteger(Event.Find("countPerResolvedTarget")) ||
+				0.0 == Event.Find("countPerResolvedTarget")->Get_Number() ||
+				!Is_NonNegativeInteger(Event.Find("maximumTotalObjects")) ||
+				0.0 == Event.Find("maximumTotalObjects")->Get_Number() ||
+				nullptr == pAllowOverlap || nullptr == pLayout)
+			{
+				strOutError = "split gameplay combat-object volley is invalid";
+				return false;
+			}
+			const std::string strLayoutKind = Read_String(*pLayout, "kind");
+			const bool_t bTargetCenter = "TARGET_CENTER" == strLayoutKind &&
+				Has_ExactProperties(*pLayout, { "kind" });
+			const bool_t bRadial = "RADIAL_AROUND_TARGET" == strLayoutKind &&
+				Has_ExactProperties(*pLayout,
+					{ "kind", "radiusM", "startAngleDegrees",
+					  "angleStepDegrees" }) &&
+				Is_FiniteNumber(pLayout->Find("radiusM")) &&
+				Is_FiniteNumber(pLayout->Find("startAngleDegrees")) &&
+				Is_FiniteNumber(pLayout->Find("angleStepDegrees"));
+			if (!bTargetCenter && !bRadial)
+			{
+				strOutError = "split gameplay combat-object volley layout is invalid";
+				return false;
+			}
+			strOutSpawnArchetypeId = Read_String(
+				Event, "combatObjectArchetypeId");
+			return true;
+		}
+		else
+		{
+			strOutError = "split gameplay event kind is unsupported: " + strKind;
+			return false;
+		}
+		Action.emplace("trigger", DATA_JSON_VALUE::String(strTrigger));
+		Action.emplace("kind", DATA_JSON_VALUE::String(strKind));
+		Action.emplace("durationMs", DATA_JSON_VALUE::Number(0));
+		*pOutAction = DATA_JSON_VALUE::Object(std::move(Action));
+		return true;
+	}
+
+	bool_t Parse_SplitMasterDocument(
+		const DATA_JSON_VALUE& Gameplay,
+		const DATA_JSON_VALUE& Presentation,
+		MASTER_DOCUMENT& Out,
+		std::string& strOutError)
+	{
+		if (!Validate_SplitRootIdentity(Gameplay, Presentation, strOutError))
+			return false;
+
+		const DATA_JSON_VALUE* pPreviewPaths = Required(
+			Gameplay, "previewPaths", DATA_JSON_TYPE::OBJECT);
+		const std::initializer_list<std::string_view> PreviewFields = {
+			"encounter", "animationBindings", "effectCues", "combatObjects",
+			"bossCatalog", "effectCatalog", "damageProfiles", "cinematicCamera",
+			"worldEvents", "patternRotations", "sourceClipSequences",
+			"combatObjectAuthoring", "worldEventSets", "legacyCompatibility" };
+		if (nullptr == pPreviewPaths ||
+			!Has_ExactProperties(*pPreviewPaths, PreviewFields))
+		{
+			strOutError = "split gameplay previewPaths contract is invalid";
+			return false;
+		}
+		for (const auto& [Name, Value] : pPreviewPaths->Get_Object())
+		{
+			(void)Name;
+			if (!Value.Is_String() || !Value.Get_String().starts_with("Data/"))
+			{
+				strOutError = "split gameplay preview path is invalid";
+				return false;
+			}
+		}
+
+		DATA_JSON_VALUE NormalSelection;
+		std::vector<Client::VALTAN_SELECTION_SET_VIEW> SelectionSets;
+		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW> SelectionWindows;
+		std::vector<Client::VALTAN_MECHANIC_VIEW> MechanicViews;
+		std::map<std::string, SPLIT_MECHANIC, std::less<>> Mechanics;
+		const DATA_JSON_VALUE* pDecision = Required(
+			Gameplay, "decisionModel", DATA_JSON_TYPE::OBJECT);
+		if (nullptr == pDecision || !Build_SplitDecisionProjection(
+				*pDecision, NormalSelection, SelectionSets, SelectionWindows,
+				MechanicViews, Mechanics, strOutError))
+		{
+			return false;
+		}
+		std::set<std::string, std::less<>> CandidatePatterns;
+		for (const Client::VALTAN_SELECTION_SET_VIEW& Set : SelectionSets)
+		{
+			for (const Client::VALTAN_SELECTION_CANDIDATE_VIEW& Candidate :
+				Set.Candidates)
+			{
+				CandidatePatterns.insert(Candidate.strPatternId);
+			}
+		}
+
+		const DATA_JSON_VALUE* pIndependent = Required(
+			Presentation, "independentEffects", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pIndependent || pIndependent->Get_Array().empty())
+		{
+			strOutError = "split presentation independent Effect inventory is invalid";
+			return false;
+		}
+		std::map<std::string, SPLIT_INDEPENDENT_DECLARATION, std::less<>>
+			IndependentById;
+		std::map<std::string, std::string, std::less<>>
+			IndependentByCue;
+		std::map<std::string, std::string, std::less<>>
+			IndependentBySpawnEvent;
+		for (const DATA_JSON_VALUE& Value : pIndependent->Get_Array())
+		{
+			SPLIT_INDEPENDENT_DECLARATION Declaration;
+			Declaration.strIndependentEffectId = Read_String(
+				Value, "independentEffectId");
+			Declaration.strDisplayName = Read_String(Value, "displayName");
+			Declaration.strOwnership = Read_String(Value, "ownership");
+			const bool_t bPatternStage =
+				"SERVER_PATTERN_STAGE" == Declaration.strOwnership;
+			const bool_t bCombatObject =
+				"SERVER_COMBAT_OBJECT" == Declaration.strOwnership;
+			if ((!bPatternStage && !bCombatObject) ||
+				!Is_StableToken(Declaration.strIndependentEffectId) ||
+				Declaration.strDisplayName.empty() ||
+				!Has_ExactProperties(Value,
+					bPatternStage ?
+						std::initializer_list<std::string_view>{
+							"independentEffectId", "displayName", "ownership", "cueId" } :
+						std::initializer_list<std::string_view>{
+							"independentEffectId", "displayName", "ownership", "spawnEventId" }))
+			{
+				strOutError = "split presentation independent Effect is invalid";
+				return false;
+			}
+			Declaration.strReferenceId = Read_String(
+				Value, bPatternStage ? "cueId" : "spawnEventId");
+			if (!Is_StableToken(Declaration.strReferenceId) ||
+				!IndependentById.emplace(
+					Declaration.strIndependentEffectId, Declaration).second)
+			{
+				strOutError = "split presentation independent Effect identity is duplicated";
+				return false;
+			}
+			auto& ReferenceMap = bPatternStage ?
+				IndependentByCue : IndependentBySpawnEvent;
+			if (!ReferenceMap.emplace(
+					Declaration.strReferenceId,
+					Declaration.strIndependentEffectId).second)
+			{
+				strOutError = "split presentation independent Effect owner reference is duplicated";
+				return false;
+			}
+		}
+
+		const DATA_JSON_VALUE* pGameplayPatterns = Required(
+			Gameplay, "patterns", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pPresentationPatterns = Required(
+			Presentation, "patterns", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pGameplayPatterns || nullptr == pPresentationPatterns ||
+			pGameplayPatterns->Get_Array().empty() ||
+			pGameplayPatterns->Get_Array().size() !=
+				pPresentationPatterns->Get_Array().size())
+		{
+			strOutError = "split authoring patternId closure mismatch";
+			return false;
+		}
+
+		std::map<std::string, SPLIT_CUE_OWNER, std::less<>> CueOwners;
+		std::map<std::string, SPLIT_SPAWN_OWNER, std::less<>> SpawnOwners;
+		std::set<std::string, std::less<>> CueOccurrenceIds;
+		std::set<std::string, std::less<>> EventIds;
+		std::set<std::string, std::less<>> CameraInvocationIds;
+		DATA_JSON_VALUE::ARRAY LegacyPatterns;
+		for (size_t iPattern = 0u;
+			iPattern < pGameplayPatterns->Get_Array().size(); ++iPattern)
+		{
+			const DATA_JSON_VALUE& GameplayPattern =
+				pGameplayPatterns->Get_Array()[iPattern];
+			const DATA_JSON_VALUE& PresentationPattern =
+				pPresentationPatterns->Get_Array()[iPattern];
+			if (!Has_ExactProperties(GameplayPattern,
+					{ "patternId", "displayName", "category",
+					  "compatibilitySelectionWeight", "actionId",
+					  "entryActionId", "targetPolicy", "aimPolicy", "eligibility",
+					  "invulnerableWhileRunning", "sourceActionIds", "serverMotion",
+					  "reactions", "stages" }) ||
+				!Has_ExactProperties(PresentationPattern,
+					{ "patternId", "sourceSequenceIndex", "presentationSources",
+					  "stages" }))
+			{
+				strOutError = "split authoring pattern has unexpected properties";
+				return false;
+			}
+			const std::string strPatternId = Read_String(
+				GameplayPattern, "patternId");
+			if (!Is_StableToken(strPatternId) || strPatternId !=
+				Read_String(PresentationPattern, "patternId"))
+			{
+				strOutError = "split authoring patternId order/identity mismatch";
+				return false;
+			}
+
+			const DATA_JSON_VALUE* pGameplayStages = Required(
+				GameplayPattern, "stages", DATA_JSON_TYPE::ARRAY);
+			const DATA_JSON_VALUE* pPresentationStages = Required(
+				PresentationPattern, "stages", DATA_JSON_TYPE::ARRAY);
+			if (nullptr == pGameplayStages || nullptr == pPresentationStages ||
+				pGameplayStages->Get_Array().empty() ||
+				pGameplayStages->Get_Array().size() !=
+					pPresentationStages->Get_Array().size())
+			{
+				strOutError = "split authoring stageId closure mismatch: " +
+					strPatternId;
+				return false;
+			}
+			std::set<std::string, std::less<>> StageIds;
+			std::set<std::string, std::less<>> StageActionIds;
+			for (const DATA_JSON_VALUE& Stage : pGameplayStages->Get_Array())
+			{
+				const std::string strStageId = Read_String(Stage, "stageId");
+				const std::string strActionId = Read_String(Stage, "actionId");
+				if (!Is_StableToken(strStageId) || !Is_StableToken(strActionId) ||
+					!StageIds.insert(strStageId).second ||
+					!StageActionIds.insert(strActionId).second)
+				{
+					strOutError = "split gameplay stage identity is invalid or duplicated: " +
+						strPatternId;
+					return false;
+				}
+			}
+			const std::string strEntryActionId = Read_String(
+				GameplayPattern, "entryActionId");
+			if (!StageActionIds.contains(strEntryActionId) ||
+				strEntryActionId != Read_String(
+					pGameplayStages->Get_Array().front(), "actionId"))
+			{
+				strOutError = "split gameplay entryActionId is not the first joined stage: " +
+					strPatternId;
+				return false;
+			}
+
+			DATA_JSON_VALUE::ARRAY LegacyStages;
+			DATA_JSON_VALUE::ARRAY WorldReferences;
+			std::vector<std::string> CameraCueIds;
+			std::set<std::string, std::less<>> PatternCameraCueIds;
+			for (size_t iStage = 0u;
+				iStage < pGameplayStages->Get_Array().size(); ++iStage)
+			{
+				const DATA_JSON_VALUE& GameplayStage =
+					pGameplayStages->Get_Array()[iStage];
+				const DATA_JSON_VALUE& PresentationStage =
+					pPresentationStages->Get_Array()[iStage];
+				if (!Has_ExactProperties(GameplayStage,
+						{ "stageId", "actionId", "stageKind", "durationMs",
+						  "defaultNextActionId", "hit", "motion", "events",
+						  "branches" }) ||
+					!Has_ExactProperties(PresentationStage,
+						{ "stageId", "actionId", "sequenceRole", "animation",
+						  "effectCues", "cameraInvocations" }))
+				{
+					strOutError = "split authoring stage has unexpected properties: " +
+						strPatternId;
+					return false;
+				}
+				const std::string strStageId = Read_String(
+					GameplayStage, "stageId");
+				const std::string strActionId = Read_String(
+					GameplayStage, "actionId");
+				if (strStageId != Read_String(PresentationStage, "stageId") ||
+					strActionId != Read_String(PresentationStage, "actionId"))
+				{
+					strOutError = "split authoring stageId/actionId mismatch: " +
+						strPatternId + "/" + strStageId;
+					return false;
+				}
+				const DATA_JSON_VALUE* pDuration = GameplayStage.Find("durationMs");
+				if (!Is_NonNegativeInteger(pDuration) ||
+					0.0 == pDuration->Get_Number())
+				{
+					strOutError = "split gameplay stage duration is invalid: " +
+						strPatternId + "/" + strStageId;
+					return false;
+				}
+
+				std::vector<Client::VALTAN_STAGE_BRANCH_VIEW> BranchViews;
+				const DATA_JSON_VALUE* pBranches = Required(
+					GameplayStage, "branches", DATA_JSON_TYPE::ARRAY);
+				if (nullptr == pBranches ||
+					!Read_StageBranches(pBranches, BranchViews))
+				{
+					strOutError = "split gameplay stage branches are invalid: " +
+						strPatternId + "/" + strStageId;
+					return false;
+				}
+				std::optional<std::string> ExpectedDefault;
+				const auto Timeout = std::find_if(
+					BranchViews.begin(), BranchViews.end(),
+					[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+					{
+						return "TIMEOUT" == Branch.strOutcome;
+					});
+				if (Timeout != BranchViews.end())
+					ExpectedDefault = Timeout->strNextActionId;
+				else if (iStage + 1u < pGameplayStages->Get_Array().size())
+					ExpectedDefault = Read_String(
+						pGameplayStages->Get_Array()[iStage + 1u], "actionId");
+				std::string strDefault;
+				if (!Read_NullableStableToken(
+						GameplayStage, "defaultNextActionId", strDefault) ||
+					ExpectedDefault.has_value() != !strDefault.empty() ||
+					(ExpectedDefault.has_value() &&
+					 *ExpectedDefault != strDefault))
+				{
+					strOutError = "split gameplay defaultNextActionId drifted: " +
+						strPatternId + "/" + strStageId;
+					return false;
+				}
+				for (const Client::VALTAN_STAGE_BRANCH_VIEW& Branch : BranchViews)
+				{
+					if (Branch.strNextActionId.has_value() &&
+						!StageActionIds.contains(*Branch.strNextActionId))
+					{
+						strOutError = "split gameplay branch targets an unknown action: " +
+							*Branch.strNextActionId;
+						return false;
+					}
+				}
+
+				DATA_JSON_VALUE::OBJECT LegacyStage;
+				LegacyStage.emplace("stageId", DATA_JSON_VALUE::String(strStageId));
+				LegacyStage.emplace("sequenceRole", DATA_JSON_VALUE::String(
+					Read_String(PresentationStage, "sequenceRole")));
+				LegacyStage.emplace("actionId", DATA_JSON_VALUE::String(strActionId));
+				LegacyStage.emplace("stageKind", *GameplayStage.Find("stageKind"));
+				LegacyStage.emplace("durationMs", *pDuration);
+				const DATA_JSON_VALUE* pHit = Required(
+					GameplayStage, "hit", DATA_JSON_TYPE::OBJECT);
+				if (nullptr == pHit || !Build_SplitHitProjection(
+						*pHit, LegacyStage, strOutError))
+					return false;
+				const DATA_JSON_VALUE* pMotion = GameplayStage.Find("motion");
+				if (nullptr == pMotion ||
+					(!pMotion->Is_Null() && !pMotion->Is_Object()))
+				{
+					strOutError = "split gameplay stage motion is invalid";
+					return false;
+				}
+				LegacyStage.emplace("motion", *pMotion);
+
+				DATA_JSON_VALUE::ARRAY Actions;
+				DATA_JSON_VALUE::ARRAY EffectReferences;
+				const DATA_JSON_VALUE* pEvents = Required(
+					GameplayStage, "events", DATA_JSON_TYPE::ARRAY);
+				if (nullptr == pEvents)
+				{
+					strOutError = "split gameplay stage events are invalid";
+					return false;
+				}
+				for (const DATA_JSON_VALUE& Event : pEvents->Get_Array())
+				{
+					const std::string strEventId = Read_String(Event, "eventId");
+					if (!EventIds.insert(strEventId).second)
+					{
+						strOutError = "split gameplay eventId is duplicated: " + strEventId;
+						return false;
+					}
+					DATA_JSON_VALUE Action;
+					std::string strSpawnArchetypeId;
+					bool_t bWorldEvent = false;
+					if (!Build_SplitEventProjection(Event, &Action,
+							strSpawnArchetypeId, bWorldEvent, strOutError))
+						return false;
+					if (!Action.Is_Null())
+						Actions.push_back(std::move(Action));
+					if (!strSpawnArchetypeId.empty())
+					{
+						SPLIT_SPAWN_OWNER Owner;
+						Owner.strPatternId = strPatternId;
+						Owner.strStageId = strStageId;
+						Owner.strCombatObjectArchetypeId = strSpawnArchetypeId;
+						if (!SpawnOwners.emplace(strEventId, std::move(Owner)).second)
+						{
+							strOutError = "split gameplay spawn event owner is duplicated";
+							return false;
+						}
+						const auto Independent = IndependentBySpawnEvent.find(strEventId);
+						if (Independent != IndependentBySpawnEvent.end())
+						{
+							DATA_JSON_VALUE::OBJECT Reference;
+							Reference.emplace("refType",
+								DATA_JSON_VALUE::String("INDEPENDENT_EFFECT"));
+							Reference.emplace("refId",
+								DATA_JSON_VALUE::String(Independent->second));
+							EffectReferences.push_back(
+								DATA_JSON_VALUE::Object(std::move(Reference)));
+						}
+					}
+					if (bWorldEvent)
+					{
+						if ("ENTER" != Read_String(Event, "trigger"))
+						{
+							strOutError = "split gameplay world event trigger is unsupported";
+							return false;
+						}
+						DATA_JSON_VALUE::OBJECT Reference;
+						Reference.emplace("patternId",
+							DATA_JSON_VALUE::String(strPatternId));
+						Reference.emplace("stageId",
+							DATA_JSON_VALUE::String(strStageId));
+						Reference.emplace("triggerKind",
+							DATA_JSON_VALUE::String("STAGE_ENTER"));
+						WorldReferences.push_back(
+							DATA_JSON_VALUE::Object(std::move(Reference)));
+					}
+				}
+				LegacyStage.emplace("actions", DATA_JSON_VALUE::Array(std::move(Actions)));
+				LegacyStage.emplace("branches", *pBranches);
+
+				const DATA_JSON_VALUE* pCues = Required(
+					PresentationStage, "effectCues", DATA_JSON_TYPE::ARRAY);
+				if (nullptr == pCues)
+				{
+					strOutError = "split presentation effectCues is invalid";
+					return false;
+				}
+				for (const DATA_JSON_VALUE& Cue : pCues->Get_Array())
+				{
+					if (!Validate_SplitCue(Cue, strOutError))
+						return false;
+					const DATA_JSON_VALUE* pAnimation = Required(
+						PresentationStage, "animation", DATA_JSON_TYPE::OBJECT);
+					const DATA_JSON_VALUE* pOccurrences = nullptr == pAnimation ?
+						nullptr : Required(
+							*pAnimation, "occurrences", DATA_JSON_TYPE::ARRAY);
+					const DATA_JSON_VALUE* pCueOccurrence = nullptr;
+					if (nullptr != pOccurrences)
+					{
+						for (const DATA_JSON_VALUE& Occurrence :
+							pOccurrences->Get_Array())
+						{
+							if (Read_String(Occurrence, "clipOccurrenceId") !=
+								Read_String(Cue, "clipOccurrenceId"))
+							{
+								continue;
+							}
+							if (nullptr != pCueOccurrence)
+							{
+								strOutError =
+									"split cue clip occurrence is duplicated in its stage";
+								return false;
+							}
+							pCueOccurrence = &Occurrence;
+						}
+					}
+					if (nullptr == pCueOccurrence ||
+						Read_String(*pCueOccurrence, "mappingBasis") !=
+							Read_String(Cue, "mappingBasis") ||
+						!Is_NonNegativeInteger(
+							pCueOccurrence->Find("sourceStartMs")) ||
+						Cue.Find("sourceStartMs")->Get_Number() <
+							pCueOccurrence->Find("sourceStartMs")->Get_Number())
+					{
+						strOutError =
+							"split cue did not join its saved animation occurrence";
+						return false;
+					}
+					const std::string strCueId = Read_String(Cue, "cueId");
+					const std::string strOccurrenceId = Read_String(
+						Cue, "occurrenceId");
+					SPLIT_CUE_OWNER CueOwner;
+					CueOwner.strPatternId = strPatternId;
+					CueOwner.strStageId = strStageId;
+					CueOwner.pCue = &Cue;
+					if (!CueOwners.emplace(strCueId, std::move(CueOwner)).second ||
+						!CueOccurrenceIds.insert(strOccurrenceId).second)
+					{
+						strOutError = "split presentation cue identity is duplicated";
+						return false;
+					}
+					DATA_JSON_VALUE::OBJECT Reference;
+					const auto Independent = IndependentByCue.find(strCueId);
+					if (Independent != IndependentByCue.end())
+					{
+						Reference.emplace("refType",
+							DATA_JSON_VALUE::String("INDEPENDENT_EFFECT"));
+						Reference.emplace("refId",
+							DATA_JSON_VALUE::String(Independent->second));
+					}
+					else
+					{
+						Reference.emplace("refType",
+							DATA_JSON_VALUE::String("CUE_BINDING"));
+						Reference.emplace("refId", DATA_JSON_VALUE::String(strCueId));
+						DATA_JSON_VALUE::OBJECT Projection;
+						Projection.emplace("clipOccurrenceId",
+							*Cue.Find("clipOccurrenceId"));
+						Projection.emplace("sourceStartMs", *Cue.Find("sourceStartMs"));
+						Projection.emplace("sourceEndMs", *Cue.Find("sourceEndMs"));
+						Projection.emplace("mappingBasis", *Cue.Find("mappingBasis"));
+						Reference.emplace("cueProjection",
+							DATA_JSON_VALUE::Object(std::move(Projection)));
+					}
+					EffectReferences.push_back(
+						DATA_JSON_VALUE::Object(std::move(Reference)));
+				}
+				LegacyStage.emplace("animation", *PresentationStage.Find("animation"));
+				LegacyStage.emplace("effectRefs",
+					DATA_JSON_VALUE::Array(std::move(EffectReferences)));
+
+				const DATA_JSON_VALUE* pCamera = Required(
+					PresentationStage, "cameraInvocations", DATA_JSON_TYPE::ARRAY);
+				if (nullptr == pCamera)
+				{
+					strOutError = "split presentation cameraInvocations is invalid";
+					return false;
+				}
+				for (const DATA_JSON_VALUE& Invocation : pCamera->Get_Array())
+				{
+					std::string strCameraCueId;
+					if (!Validate_SplitCameraInvocation(Invocation,
+							static_cast<uint32_t>(pDuration->Get_Number()),
+							strCameraCueId, strOutError) ||
+						!CameraInvocationIds.insert(Read_String(
+							Invocation, "cameraInvocationId")).second ||
+						!PatternCameraCueIds.insert(strCameraCueId).second)
+					{
+						if (strOutError.empty())
+							strOutError = "split presentation camera identity is duplicated";
+						return false;
+					}
+					CameraCueIds.push_back(std::move(strCameraCueId));
+				}
+				LegacyStages.push_back(
+					DATA_JSON_VALUE::Object(std::move(LegacyStage)));
+			}
+
+			const DATA_JSON_VALUE* pEligibility = Required(
+				GameplayPattern, "eligibility", DATA_JSON_TYPE::OBJECT);
+			if (nullptr == pEligibility || !Has_ExactProperties(*pEligibility,
+					{ "armorRequirement", "phaseRequirement", "minimumGameplayPhase",
+					  "maximumGameplayPhase", "minimumHealthBarInclusive",
+					  "maximumHealthBarInclusive", "minimumRangeM", "maximumRangeM",
+					  "cooldownPolicy", "selectionCooldownMs", "cooldownGroupId",
+					  "repeatPolicy" }))
+			{
+				strOutError = "split gameplay pattern eligibility is invalid: " +
+					strPatternId;
+				return false;
+			}
+			const DATA_JSON_VALUE* pRepeatPolicy = Required(
+				*pEligibility, "repeatPolicy", DATA_JSON_TYPE::OBJECT);
+			if (nullptr == pRepeatPolicy || !Has_ExactProperties(
+					*pRepeatPolicy, { "kind", "limit" }) ||
+				"SOFT_AVOID_UNLESS_ONLY_ELIGIBLE" !=
+					Read_String(*pRepeatPolicy, "kind") ||
+				!Is_NonNegativeInteger(pRepeatPolicy->Find("limit")) ||
+				"DERIVED_SOURCE_ACTION" !=
+					Read_String(*pEligibility, "cooldownPolicy") ||
+				nullptr == pEligibility->Find("selectionCooldownMs") ||
+				!pEligibility->Find("selectionCooldownMs")->Is_Null() ||
+				nullptr == pEligibility->Find("cooldownGroupId") ||
+				!pEligibility->Find("cooldownGroupId")->Is_Null())
+			{
+				strOutError = "split gameplay eligibility policy is invalid: " +
+					strPatternId;
+				return false;
+			}
+			for (const std::string_view Field :
+				{ "minimumGameplayPhase", "maximumGameplayPhase",
+				  "minimumHealthBarInclusive", "maximumHealthBarInclusive" })
+			{
+				if (!Is_NonNegativeInteger(pEligibility->Find(Field)))
+				{
+					strOutError = "split gameplay eligibility integer is invalid";
+					return false;
+				}
+			}
+			if (!Is_FiniteNumber(pEligibility->Find("minimumRangeM")) ||
+				!Is_FiniteNumber(pEligibility->Find("maximumRangeM")))
+			{
+				strOutError = "split gameplay eligibility range is invalid";
+				return false;
+			}
+
+			const auto Mechanic = Mechanics.find(strPatternId);
+			const bool_t bMechanic = Mechanic != Mechanics.end();
+			const bool_t bCandidate = CandidatePatterns.contains(strPatternId);
+			const DATA_JSON_VALUE* pCompatibilityWeight =
+				GameplayPattern.Find("compatibilitySelectionWeight");
+			if (bMechanic == bCandidate ||
+				!Is_NonNegativeInteger(pCompatibilityWeight) ||
+				(bMechanic && 0.0 != pCompatibilityWeight->Get_Number()) ||
+				(!bMechanic && 0.0 == pCompatibilityWeight->Get_Number()))
+			{
+				strOutError = "split gameplay pattern is neither exactly normal nor mechanic: " +
+					strPatternId;
+				return false;
+			}
+			DATA_JSON_VALUE::OBJECT LegacyPattern;
+			LegacyPattern.emplace("patternId", DATA_JSON_VALUE::String(strPatternId));
+			for (const std::string& Field :
+				{ "category", "targetPolicy", "aimPolicy", "displayName",
+				  "actionId", "sourceActionIds", "serverMotion", "reactions" })
+			{
+				const DATA_JSON_VALUE* pValue = GameplayPattern.Find(Field);
+				if (nullptr == pValue)
+				{
+					strOutError = "split gameplay pattern field is missing: " + Field;
+					return false;
+				}
+				LegacyPattern.emplace(Field, *pValue);
+			}
+			LegacyPattern.emplace("minimumPhase",
+				*pEligibility->Find("minimumGameplayPhase"));
+			LegacyPattern.emplace("maximumPhase",
+				*pEligibility->Find("maximumGameplayPhase"));
+			LegacyPattern.emplace("sourceSequenceIndex",
+				*PresentationPattern.Find("sourceSequenceIndex"));
+			LegacyPattern.emplace("presentationSources",
+				*PresentationPattern.Find("presentationSources"));
+			LegacyPattern.emplace("selectionMode",
+				DATA_JSON_VALUE::String(bMechanic ? "HEALTH_BAR" : "NORMAL"));
+			LegacyPattern.emplace("minimumHealthBar",
+				*pEligibility->Find("minimumHealthBarInclusive"));
+			LegacyPattern.emplace("maximumHealthBar",
+				*pEligibility->Find("maximumHealthBarInclusive"));
+			LegacyPattern.emplace("triggerHealthBar", DATA_JSON_VALUE::Number(
+				bMechanic ? Mechanic->second.iHealthBar : 0u));
+			LegacyPattern.emplace("triggerOrder", DATA_JSON_VALUE::Number(
+				bMechanic ? Mechanic->second.iTriggerOrder : 0u));
+			LegacyPattern.emplace("armorRequirement",
+				*pEligibility->Find("armorRequirement"));
+			LegacyPattern.emplace("phaseRequirement",
+				*pEligibility->Find("phaseRequirement"));
+			LegacyPattern.emplace("invulnerableWhileRunning",
+				*GameplayPattern.Find("invulnerableWhileRunning"));
+			LegacyPattern.emplace("selectionWeight", DATA_JSON_VALUE::Number(
+				pCompatibilityWeight->Get_Number()));
+			LegacyPattern.emplace("maximumConsecutiveUses",
+				*pRepeatPolicy->Find("limit"));
+			LegacyPattern.emplace("minimumRange",
+				*pEligibility->Find("minimumRangeM"));
+			LegacyPattern.emplace("maximumRange",
+				*pEligibility->Find("maximumRangeM"));
+			LegacyPattern.emplace("cameraCueIds", Build_StringArray(CameraCueIds));
+			LegacyPattern.emplace("worldEventTriggerRefs",
+				DATA_JSON_VALUE::Array(std::move(WorldReferences)));
+			LegacyPattern.emplace("stages",
+				DATA_JSON_VALUE::Array(std::move(LegacyStages)));
+			LegacyPatterns.push_back(
+				DATA_JSON_VALUE::Object(std::move(LegacyPattern)));
+		}
+
+		DATA_JSON_VALUE::ARRAY LegacyIndependent;
+		for (const auto& [IndependentId, Declaration] : IndependentById)
+		{
+			DATA_JSON_VALUE::OBJECT Legacy;
+			Legacy.emplace("independentEffectId",
+				DATA_JSON_VALUE::String(IndependentId));
+			Legacy.emplace("displayName",
+				DATA_JSON_VALUE::String(Declaration.strDisplayName));
+			Legacy.emplace("ownership",
+				DATA_JSON_VALUE::String(Declaration.strOwnership));
+			if ("SERVER_PATTERN_STAGE" == Declaration.strOwnership)
+			{
+				const auto Owner = CueOwners.find(Declaration.strReferenceId);
+				if (Owner == CueOwners.end() || nullptr == Owner->second.pCue)
+				{
+					strOutError = "split independent Effect cue did not resolve exactly: " +
+						IndependentId;
+					return false;
+				}
+				const DATA_JSON_VALUE& Cue = *Owner->second.pCue;
+				Legacy.emplace("effectAssetId", *Cue.Find("effectAssetId"));
+				Legacy.emplace("ownerPatternId",
+					DATA_JSON_VALUE::String(Owner->second.strPatternId));
+				Legacy.emplace("ownerStageId",
+					DATA_JSON_VALUE::String(Owner->second.strStageId));
+				Legacy.emplace("triggerPolicy",
+					DATA_JSON_VALUE::String("PATTERN_TIMELINE"));
+				Legacy.emplace("combatObjectArchetypeId", DATA_JSON_VALUE::Null());
+				Legacy.emplace("clientVisualId", DATA_JSON_VALUE::Null());
+				Legacy.emplace("effectCueBindingId",
+					DATA_JSON_VALUE::String(Declaration.strReferenceId));
+				DATA_JSON_VALUE::OBJECT Projection;
+				Projection.emplace("clipOccurrenceId", *Cue.Find("clipOccurrenceId"));
+				Projection.emplace("sourceStartMs", *Cue.Find("sourceStartMs"));
+				Projection.emplace("sourceEndMs", *Cue.Find("sourceEndMs"));
+				Projection.emplace("mappingBasis", *Cue.Find("mappingBasis"));
+				Legacy.emplace("cueProjection",
+					DATA_JSON_VALUE::Object(std::move(Projection)));
+			}
+			else
+			{
+				const auto Owner = SpawnOwners.find(Declaration.strReferenceId);
+				if (Owner == SpawnOwners.end())
+				{
+					strOutError = "split independent Effect spawn did not resolve exactly: " +
+						IndependentId;
+					return false;
+				}
+				Legacy.emplace("effectAssetId", DATA_JSON_VALUE::String(
+					"pending.effect." + IndependentId));
+				Legacy.emplace("ownerPatternId",
+					DATA_JSON_VALUE::String(Owner->second.strPatternId));
+				Legacy.emplace("ownerStageId",
+					DATA_JSON_VALUE::String(Owner->second.strStageId));
+				Legacy.emplace("triggerPolicy",
+					DATA_JSON_VALUE::String("STAGE_ENTER_PER_ALIVE_PLAYER"));
+				Legacy.emplace("combatObjectArchetypeId",
+					DATA_JSON_VALUE::String(
+						Owner->second.strCombatObjectArchetypeId));
+				Legacy.emplace("clientVisualId", DATA_JSON_VALUE::String(
+					"pending.visual." + IndependentId));
+				Legacy.emplace("effectCueBindingId", DATA_JSON_VALUE::Null());
+				Legacy.emplace("cueProjection", DATA_JSON_VALUE::Null());
+			}
+			LegacyIndependent.push_back(
+				DATA_JSON_VALUE::Object(std::move(Legacy)));
+		}
+
+		DATA_JSON_VALUE::OBJECT LegacyPreview;
+		for (const std::string& Field :
+			{ "encounter", "animationBindings", "effectCues", "combatObjects",
+			  "bossCatalog", "effectCatalog", "damageProfiles", "cinematicCamera",
+			  "worldEvents", "patternRotations", "sourceClipSequences" })
+		{
+			LegacyPreview.emplace(Field, *pPreviewPaths->Find(Field));
+		}
+		DATA_JSON_VALUE::OBJECT LegacyRoot;
+		LegacyRoot.emplace("schema",
+			DATA_JSON_VALUE::String("lostark.valtan-pattern-master"));
+		LegacyRoot.emplace("formatVersion", DATA_JSON_VALUE::Number(1));
+		LegacyRoot.emplace("bossArchetypeId", *Gameplay.Find("bossArchetypeId"));
+		LegacyRoot.emplace("encounterId", *Gameplay.Find("encounterId"));
+		LegacyRoot.emplace("scope", *Gameplay.Find("scope"));
+		LegacyRoot.emplace("previewPaths",
+			DATA_JSON_VALUE::Object(std::move(LegacyPreview)));
+		LegacyRoot.emplace("retiredPatternIds", *Gameplay.Find("retiredPatternIds"));
+		LegacyRoot.emplace("normalSelection", std::move(NormalSelection));
+		LegacyRoot.emplace("counterReactionLayers",
+			*Gameplay.Find("counterReactionLayers"));
+		LegacyRoot.emplace("independentEffects",
+			DATA_JSON_VALUE::Array(std::move(LegacyIndependent)));
+		LegacyRoot.emplace("patterns",
+			DATA_JSON_VALUE::Array(std::move(LegacyPatterns)));
+		if (!Parse_MasterDocument(
+				DATA_JSON_VALUE::Object(std::move(LegacyRoot)), Out, strOutError))
+		{
+			return false;
+		}
+		Out.SelectionSets = std::move(SelectionSets);
+		Out.SelectionWindows = std::move(SelectionWindows);
+		Out.Mechanics = std::move(MechanicViews);
+		for (size_t iPattern = 0u; iPattern < Out.Patterns.size(); ++iPattern)
+		{
+			MASTER_PATTERN& Pattern = Out.Patterns[iPattern];
+			const DATA_JSON_VALUE& PresentationPattern =
+				pPresentationPatterns->Get_Array()[iPattern];
+			const DATA_JSON_VALUE& GameplayPattern =
+				pGameplayPatterns->Get_Array()[iPattern];
+			const DATA_JSON_VALUE& PresentationStages =
+				*PresentationPattern.Find("stages");
+			const DATA_JSON_VALUE& GameplayStages =
+				*GameplayPattern.Find("stages");
+			for (size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
+			{
+				MASTER_STAGE& Stage = Pattern.Stages[iStage];
+				const DATA_JSON_VALUE& PresentationStage =
+					PresentationStages.Get_Array()[iStage];
+				const DATA_JSON_VALUE& GameplayStage =
+					GameplayStages.Get_Array()[iStage];
+				const DATA_JSON_VALUE& Cues =
+					*PresentationStage.Find("effectCues");
+				for (const DATA_JSON_VALUE& Cue : Cues.Get_Array())
+				{
+					Stage.AuthoredCues.push_back(Build_SplitCueView(
+						Cue,
+						Pattern.strPatternId,
+						Stage.strStageId,
+						Stage.strActionId,
+						static_cast<uint32_t>(GameplayStage.Find(
+							"durationMs")->Get_Number())));
+				}
+			}
+		}
+		for (const MASTER_PATTERN& Pattern : Out.Patterns)
+		{
+			for (const MASTER_STAGE& SourceStage : Pattern.Stages)
+			{
+				Client::VALTAN_STAGE_VIEW Stage;
+				Stage.strActionId = SourceStage.strActionId;
+				Stage.iDurationMs = SourceStage.iDurationMs;
+				Stage.strAnimationEndPolicy = SourceStage.strAnimationEndPolicy;
+				Stage.ClipOccurrences = SourceStage.Occurrences;
+				if (!Assign_MasterWallBudgets(Stage, strOutError))
+				{
+					strOutError = "split presentation/Server stage wall join failed: " +
+						strOutError;
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	bool_t Has_StableRestoreTopology(
+		const Client::VALTAN_PATTERN_VIEW& Product,
+		const MASTER_PATTERN& Master)
+	{
+		return Product.strPatternId == Master.strPatternId &&
+			Product.strActionId == Master.strActionId &&
+			Product.SourceActionIds == Master.SourceActionIds &&
+			Product.Is_Gimmick() == (0 != Master.iTriggerHealthBar) &&
+			Product.strSelectionMode == Master.strSelectionMode &&
+			Product.Stages.size() == Master.Stages.size() &&
+			std::equal(Product.Stages.begin(), Product.Stages.end(),
+				Master.Stages.begin(),
+				[](const Client::VALTAN_STAGE_VIEW& ProductStage,
+					const MASTER_STAGE& MasterStage)
+				{
+					return ProductStage.strStageId == MasterStage.strStageId &&
+						ProductStage.strActionId == MasterStage.strActionId;
+				});
+	}
+
+	void Overlay_MasterGameplay(
+		const MASTER_PATTERN& Master,
+		Client::VALTAN_PATTERN_VIEW& Out)
+	{
+		Out.strCategory = Master.strCategory;
+		Out.iMinimumPhase = Master.iMinimumPhase;
+		Out.iMaximumPhase = Master.iMaximumPhase;
+		Out.strTargetPolicy = Master.strTargetPolicy;
+		Out.strAimPolicy = Master.strAimPolicy;
+		Out.strDisplayName = Master.strDisplayName;
+		Out.iMinimumHealthBar = Master.iMinimumHealthBar;
+		Out.iMaximumHealthBar = Master.iMaximumHealthBar;
+		Out.iTriggerHealthBar = Master.iTriggerHealthBar;
+		Out.iTriggerOrder = Master.iTriggerOrder;
+		Out.strArmorRequirement = Master.strArmorRequirement;
+		Out.strPhaseRequirement = Master.strPhaseRequirement;
+		Out.bInvulnerableWhileRunning = Master.bInvulnerableWhileRunning;
+		Out.iSelectionWeight = Master.iSelectionWeight;
+		Out.iMaximumConsecutiveUses = Master.iMaximumConsecutiveUses;
+		Out.fMinimumRange = Master.fMinimumRange;
+		Out.fMaximumRange = Master.fMaximumRange;
+		Out.ServerMotion = Master.ServerMotion;
+		for (size_t iStage = 0u; iStage < Master.Stages.size(); ++iStage)
+		{
+			const MASTER_STAGE& Source = Master.Stages[iStage];
+			Client::VALTAN_STAGE_VIEW& Stage = Out.Stages[iStage];
+			Stage.strStageKind = Source.strStageKind;
+			Stage.iDurationMs = Source.iDurationMs;
+			Stage.strHitShape = Source.strHitShape;
+			Stage.fHitOuterRadius = Source.fHitOuterRadius;
+			Stage.fHitInnerRadius = Source.fHitInnerRadius;
+			Stage.fHitAngleDegrees = Source.fHitAngleDegrees;
+			Stage.fHitLength = Source.fHitLength;
+			Stage.fHitHalfWidth = Source.fHitHalfWidth;
+			Stage.iHitCount = Source.iHitCount;
+			Stage.iHitIntervalMs = Source.iHitIntervalMs;
+			Stage.iHitDelayMs = Source.iHitDelayMs;
+			Stage.HitOffsetsMs = Source.HitOffsetsMs;
+			Stage.strServerDamageProfileId = Source.strServerDamageProfileId;
+			Stage.fPushRangeM = Source.fPushRangeM;
+			Stage.iPushMs = Source.iPushMs;
+			Stage.bKnockdown = Source.bKnockdown;
+			Stage.iDownMs = Source.iDownMs;
+			Stage.Motion = Source.Motion;
+			Stage.Actions = Source.Actions;
+			Stage.Branches = Source.Branches;
+		}
+	}
+
 	bool_t Apply_MasterDocument(
 		const MASTER_DOCUMENT& Master,
 		const DATA_JSON_VALUE& PatternRotations,
 		Client::VALTAN_PATTERN_TREE_VIEW& View,
-		std::string& strOutError)
+		std::string& strOutError,
+		const Client::VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy)
 	{
+		if (Client::VALTAN_PATTERN_TREE_LOAD_POLICY::
+				REQUIRE_ACTIVE_PRODUCT_PARITY != ePolicy &&
+			Client::VALTAN_PATTERN_TREE_LOAD_POLICY::
+				RESTORE_AUTHORING_SNAPSHOT != ePolicy)
+		{
+			strOutError = "Valtan pattern-tree load policy is invalid";
+			return false;
+		}
+		const bool_t bRequireProductParity =
+			Client::VALTAN_PATTERN_TREE_LOAD_POLICY::
+				REQUIRE_ACTIVE_PRODUCT_PARITY == ePolicy;
 		for (const std::string& strRetiredPatternId : Master.RetiredPatternIds)
 		{
 			if (nullptr != Find_Pattern(View, strRetiredPatternId))
@@ -1899,13 +3637,20 @@ namespace
 			Client::VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(
 				View, MasterPattern.strPatternId);
 			if (nullptr == pPattern ||
-				!Equal_MasterPatternGameplay(*pPattern, MasterPattern) ||
-				pPattern->Stages.size() != MasterPattern.Stages.size())
+				(bRequireProductParity &&
+				 !Equal_MasterPatternGameplay(*pPattern, MasterPattern)) ||
+				(!bRequireProductParity &&
+				 !Has_StableRestoreTopology(*pPattern, MasterPattern)))
 			{
-				strOutError = "master/Product pattern projection changed: " +
+				strOutError = bRequireProductParity ?
+					"master/Product pattern projection changed: " +
+						MasterPattern.strPatternId :
+					"saved authoring pattern topology changed: " +
 					MasterPattern.strPatternId;
 				return false;
 			}
+			if (!bRequireProductParity)
+				Overlay_MasterGameplay(MasterPattern, *pPattern);
 
 			pPattern->iSourceSequenceIndex =
 				MasterPattern.iSourceSequenceIndex;
@@ -1920,25 +3665,74 @@ namespace
 			{
 				const MASTER_STAGE& MasterStage = MasterPattern.Stages[iStage];
 				Client::VALTAN_STAGE_VIEW& Stage = pPattern->Stages[iStage];
-				if (!Equal_MasterStageGameplay(Stage, MasterStage) ||
-					Stage.ClipOccurrences.size() !=
-						MasterStage.Occurrences.size())
+				if (bRequireProductParity &&
+					(!Equal_MasterStageGameplay(Stage, MasterStage) ||
+					 Stage.ClipOccurrences.size() !=
+						MasterStage.Occurrences.size() ||
+					 Stage.ProductCues.size() != MasterStage.AuthoredCues.size()))
 				{
 					strOutError = "master/Product stage projection changed: " +
 						MasterPattern.strPatternId + "/" + MasterStage.strStageId;
 					return false;
 				}
-				for (size_t iClip = 0u;
-					iClip < MasterStage.Occurrences.size(); ++iClip)
+				if (bRequireProductParity)
 				{
-					if (!Equal_MasterOccurrence(
-							Stage.ClipOccurrences[iClip],
-							MasterStage.Occurrences[iClip]))
+					for (size_t iClip = 0u;
+						iClip < MasterStage.Occurrences.size(); ++iClip)
 					{
-						strOutError =
-							"master/Product animation occurrence changed: " +
-							MasterStage.Occurrences[iClip].strClipOccurrenceId;
-						return false;
+						if (!Equal_MasterOccurrence(
+								Stage.ClipOccurrences[iClip],
+								MasterStage.Occurrences[iClip]))
+						{
+							strOutError =
+								"master/Product animation occurrence changed: " +
+								MasterStage.Occurrences[iClip].strClipOccurrenceId;
+							return false;
+						}
+					}
+					for (size_t iCue = 0u;
+						iCue < MasterStage.AuthoredCues.size(); ++iCue)
+					{
+						if (!Equal_AuthoredCue(
+								Stage.ProductCues[iCue],
+								MasterStage.AuthoredCues[iCue]))
+						{
+							strOutError =
+								"master/Product Effect cue changed: " +
+								MasterStage.AuthoredCues[iCue].strBindingId;
+							return false;
+						}
+					}
+				}
+				else
+				{
+					Stage.ClipOccurrences = MasterStage.Occurrences;
+					Stage.RuntimeClipNames.clear();
+					for (const Client::VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence :
+						Stage.ClipOccurrences)
+					{
+						Stage.RuntimeClipNames.push_back(Occurrence.strClipName);
+					}
+					Stage.strRuntimeClipName = Stage.RuntimeClipNames.empty() ?
+						std::string{} : Stage.RuntimeClipNames.front();
+					Stage.ProductCues = MasterStage.AuthoredCues;
+					Stage.ProductCue = Stage.ProductCues.empty() ?
+						std::optional<Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW>{} :
+						std::optional<Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW>{
+							Stage.ProductCues.front() };
+					for (Client::VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence :
+						Stage.ClipOccurrences)
+					{
+						Occurrence.ProductCues.clear();
+						for (const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue :
+							Stage.ProductCues)
+						{
+							if (Cue.strClipOccurrenceId ==
+								Occurrence.strClipOccurrenceId)
+							{
+								Occurrence.ProductCues.push_back(Cue);
+							}
+						}
 					}
 				}
 				Stage.strSequenceRole = MasterStage.strSequenceRole;
@@ -2001,70 +3795,187 @@ namespace
 			"lostark.valtan-pattern-rotations" != Required(
 				PatternRotations, "schema", DATA_JSON_TYPE::STRING)->Get_String() ||
 			!Is_NonNegativeInteger(PatternRotations.Find("formatVersion")) ||
-			2.0 != PatternRotations.Find("formatVersion")->Get_Number() ||
+			3.0 != PatternRotations.Find("formatVersion")->Get_Number() ||
 			nullptr == pRotationRows)
 		{
-			strOutError = "Valtan normal-selection Product is invalid";
+			strOutError = "Valtan selection-window Product v3 is invalid";
 			return false;
 		}
-		for (const Client::VALTAN_NORMAL_SELECTION_RANGE_VIEW& Range :
-			Master.NormalSelection.Ranges)
+		std::map<std::string, const Client::VALTAN_SELECTION_WINDOW_VIEW*,
+			std::less<>> WindowByRotation;
+		for (const Client::VALTAN_SELECTION_WINDOW_VIEW& Window :
+			Master.SelectionWindows)
 		{
-			const DATA_JSON_VALUE* pFound = nullptr;
-			for (const DATA_JSON_VALUE& Row : pRotationRows->Get_Array())
+			WindowByRotation.emplace(Window.strCompatibilityRotationId, &Window);
+		}
+		std::map<std::string, const Client::VALTAN_SELECTION_SET_VIEW*,
+			std::less<>> SetById;
+		for (const Client::VALTAN_SELECTION_SET_VIEW& Set : Master.SelectionSets)
+			SetById.emplace(Set.strSelectionSetId, &Set);
+		struct LEGACY_ROTATION_IDENTITY
+		{
+			std::string_view strRotationId;
+			uint32_t iFromHealthBar;
+			uint32_t iToHealthBar;
+		};
+		static constexpr LEGACY_ROTATION_IDENTITY LegacyRotationOrder[] = {
+			{ "rotation.valtan.109.100", 108u, 100u },
+			{ "rotation.valtan.100.84", 99u, 84u },
+			{ "rotation.valtan.84.73", 83u, 73u },
+			{ "rotation.valtan.73.62", 72u, 62u },
+			{ "rotation.valtan.62.30", 61u, 30u },
+			{ "rotation.valtan.28.14", 29u, 14u },
+		};
+		static constexpr size_t iLegacyRotationCount =
+			sizeof(LegacyRotationOrder) / sizeof(LegacyRotationOrder[0]);
+		std::set<std::string, std::less<>> ProductRotationIds;
+		std::set<std::string, std::less<>> SeenManagedRotations;
+		size_t iManagedRotationOrdinal = 0u;
+		size_t iLegacyRotationOrdinal = 0u;
+		View.LegacyRotations.clear();
+		for (const DATA_JSON_VALUE& Row : pRotationRows->Get_Array())
+		{
+			const std::string strRotationId = Read_String(Row, "rotationId");
+			if (!Is_StableToken(strRotationId) ||
+				!ProductRotationIds.insert(strRotationId).second)
 			{
-				const DATA_JSON_VALUE* pId = Required(
-					Row, "rotationId", DATA_JSON_TYPE::STRING);
-				if (nullptr != pId && pId->Get_String() == Range.strRotationId)
-				{
-					if (nullptr != pFound)
-					{
-						strOutError =
-							"Valtan normal-selection range is duplicated in Product";
-						return false;
-					}
-					pFound = &Row;
-				}
-			}
-			const DATA_JSON_VALUE* pMode = nullptr == pFound ? nullptr :
-				Required(*pFound, "selectionMode", DATA_JSON_TYPE::STRING);
-			const DATA_JSON_VALUE* pFrom = nullptr == pFound ? nullptr :
-				pFound->Find("fromHealthBar");
-			const DATA_JSON_VALUE* pTo = nullptr == pFound ? nullptr :
-				pFound->Find("toHealthBar");
-			const DATA_JSON_VALUE* pPatternIds = nullptr == pFound ? nullptr :
-				Required(*pFound, "patternIds", DATA_JSON_TYPE::ARRAY);
-			if (nullptr == pFound || !Has_ExactProperties(*pFound,
-					{ "rotationId", "selectionMode", "fromHealthBar",
-					  "toHealthBar", "patternIds" }) ||
-				nullptr == pMode ||
-				Master.NormalSelection.strSelectionMode != pMode->Get_String() ||
-				!Is_NonNegativeInteger(pFrom) || !Is_NonNegativeInteger(pTo) ||
-				Range.iFromHealthBar != static_cast<uint32_t>(pFrom->Get_Number()) ||
-				Range.iToHealthBar != static_cast<uint32_t>(pTo->Get_Number()) ||
-				nullptr == pPatternIds ||
-				pPatternIds->Get_Array().size() !=
-					Master.NormalSelection.PatternIds.size())
-			{
-				strOutError =
-					"Valtan normal-selection range drifted from master: " +
-					Range.strRotationId;
+				strOutError = "Valtan Product rotation identity is invalid/duplicated";
 				return false;
 			}
-			for (size_t iPattern = 0u;
-				iPattern < Master.NormalSelection.PatternIds.size(); ++iPattern)
+			const auto Managed = WindowByRotation.find(strRotationId);
+			if (Managed != WindowByRotation.end())
 			{
-				const DATA_JSON_VALUE& PatternId =
-					pPatternIds->Get_Array()[iPattern];
-				if (!PatternId.Is_String() || PatternId.Get_String() !=
-					Master.NormalSelection.PatternIds[iPattern])
+				if (0u != iLegacyRotationOrdinal ||
+					iManagedRotationOrdinal >= Master.SelectionWindows.size() ||
+					strRotationId != Master.SelectionWindows[
+						iManagedRotationOrdinal].strCompatibilityRotationId)
 				{
 					strOutError =
-						"Valtan normal-selection Product pool order changed";
+						"Valtan managed Product rotation order drifted";
 					return false;
 				}
+				++iManagedRotationOrdinal;
+				if (!Has_ExactProperties(Row,
+						{ "rotationId", "selectionMode", "fromHealthBar",
+						  "toHealthBar", "windowId", "gameplayPhase",
+						  "selectionSetId", "candidates" }))
+				{
+					strOutError = "Valtan managed Product row is not the v3 tagged shape";
+					return false;
+				}
+				SeenManagedRotations.insert(strRotationId);
+				if (!bRequireProductParity)
+					continue;
+				const Client::VALTAN_SELECTION_WINDOW_VIEW& Window =
+					*Managed->second;
+				const auto Set = SetById.find(Window.strSelectionSetId);
+				const DATA_JSON_VALUE* pCandidates = Required(
+					Row, "candidates", DATA_JSON_TYPE::ARRAY);
+				if (Set == SetById.end() ||
+					Read_String(Row, "selectionMode") != Set->second->strMode ||
+					Read_String(Row, "windowId") != Window.strWindowId ||
+					Read_String(Row, "selectionSetId") != Window.strSelectionSetId ||
+					!Is_NonNegativeInteger(Row.Find("gameplayPhase")) ||
+					!Is_NonNegativeInteger(Row.Find("fromHealthBar")) ||
+					!Is_NonNegativeInteger(Row.Find("toHealthBar")) ||
+					Window.iGameplayPhase != static_cast<uint32_t>(
+						Row.Find("gameplayPhase")->Get_Number()) ||
+					Window.iMaximumHealthBarInclusive != static_cast<uint32_t>(
+						Row.Find("fromHealthBar")->Get_Number()) ||
+					Window.iMinimumHealthBarExclusive != static_cast<uint32_t>(
+						Row.Find("toHealthBar")->Get_Number()) ||
+					nullptr == pCandidates || pCandidates->Get_Array().size() !=
+						Set->second->Candidates.size())
+				{
+					strOutError = "Valtan managed Product window/set projection drifted: " +
+						strRotationId;
+					return false;
+				}
+				for (size_t i = 0u; i < Set->second->Candidates.size(); ++i)
+				{
+					const DATA_JSON_VALUE& ProductCandidate =
+						pCandidates->Get_Array()[i];
+					const Client::VALTAN_SELECTION_CANDIDATE_VIEW& Candidate =
+						Set->second->Candidates[i];
+					const DATA_JSON_VALUE* pEnabled = Required(
+						ProductCandidate, "enabled", DATA_JSON_TYPE::BOOLEAN);
+					if (!Has_ExactProperties(ProductCandidate,
+							{ "patternId", "weight", "enabled" }) ||
+						Read_String(ProductCandidate, "patternId") !=
+							Candidate.strPatternId ||
+						!Is_NonNegativeInteger(ProductCandidate.Find("weight")) ||
+						Candidate.iWeight != static_cast<uint32_t>(
+							ProductCandidate.Find("weight")->Get_Number()) ||
+						nullptr == pEnabled ||
+						Candidate.bEnabled != pEnabled->Get_Boolean())
+					{
+						strOutError = "Valtan managed Product candidate projection drifted: " +
+							strRotationId;
+						return false;
+					}
+				}
+				continue;
 			}
+
+			if (iManagedRotationOrdinal != Master.SelectionWindows.size() ||
+				iLegacyRotationOrdinal >= iLegacyRotationCount ||
+				strRotationId != LegacyRotationOrder[
+					iLegacyRotationOrdinal].strRotationId)
+			{
+				strOutError = "Valtan legacy Product rotation order/identity drifted";
+				return false;
+			}
+			const LEGACY_ROTATION_IDENTITY& ExpectedLegacy =
+				LegacyRotationOrder[iLegacyRotationOrdinal];
+			const DATA_JSON_VALUE* pPatternIds = Required(
+				Row, "patternIds", DATA_JSON_TYPE::ARRAY);
+			if (!Has_ExactProperties(Row,
+					{ "rotationId", "selectionMode", "fromHealthBar",
+					  "toHealthBar", "patternIds" }) ||
+				!Is_NonNegativeInteger(Row.Find("fromHealthBar")) ||
+				!Is_NonNegativeInteger(Row.Find("toHealthBar")) ||
+				nullptr == pPatternIds || pPatternIds->Get_Array().empty() ||
+				"ORDERED_INTRO_THEN_WEIGHTED" != Read_String(Row, "selectionMode") ||
+				ExpectedLegacy.iFromHealthBar != static_cast<uint32_t>(
+					Row.Find("fromHealthBar")->Get_Number()) ||
+				ExpectedLegacy.iToHealthBar != static_cast<uint32_t>(
+					Row.Find("toHealthBar")->Get_Number()))
+			{
+				strOutError = "Valtan legacy Product rotation shape is invalid";
+				return false;
+			}
+			Client::VALTAN_LEGACY_ROTATION_VIEW Legacy;
+			Legacy.strRotationId = strRotationId;
+			Legacy.strSelectionMode = Read_String(Row, "selectionMode");
+			Legacy.iFromHealthBar = static_cast<uint32_t>(
+				Row.Find("fromHealthBar")->Get_Number());
+			Legacy.iToHealthBar = static_cast<uint32_t>(
+				Row.Find("toHealthBar")->Get_Number());
+			for (const DATA_JSON_VALUE& PatternId : pPatternIds->Get_Array())
+			{
+				if (!PatternId.Is_String() ||
+					!Is_StableToken(PatternId.Get_String()) ||
+					nullptr == Find_Pattern(View, PatternId.Get_String()))
+				{
+					strOutError = "Valtan legacy Product rotation patternId is invalid";
+					return false;
+				}
+				Legacy.PatternIds.push_back(PatternId.Get_String());
+			}
+			View.LegacyRotations.push_back(std::move(Legacy));
+			++iLegacyRotationOrdinal;
 		}
+		if (SeenManagedRotations.size() != Master.SelectionWindows.size() ||
+			iManagedRotationOrdinal != Master.SelectionWindows.size() ||
+			iLegacyRotationOrdinal != iLegacyRotationCount)
+		{
+			strOutError =
+				"Valtan Product selection-window/legacy rotation coverage is incomplete";
+			return false;
+		}
+		View.SelectionSets = Master.SelectionSets;
+		View.SelectionWindows = Master.SelectionWindows;
+		View.Mechanics = Master.Mechanics;
 		View.NormalSelection = Master.NormalSelection;
 		for (const std::string& PatternId : View.NormalSelection.PatternIds)
 		{
@@ -2623,8 +4534,33 @@ bool_t Client::CValtanPatternTree::Load(
 	VALTAN_PATTERN_TREE_VIEW& OutView,
 	std::string& strOutStatus)
 {
+	return Load_FromAuthoringPaths(
+		CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Valtan") / L"Valtan.gameplay.json"),
+		CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Valtan") / L"Valtan.presentation.json"),
+		OutView,
+		strOutStatus,
+		VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY);
+}
+
+bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
+	const std::filesystem::path& GameplayPath,
+	const std::filesystem::path& PresentationPath,
+	VALTAN_PATTERN_TREE_VIEW& OutView,
+	std::string& strOutStatus,
+	const VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy)
+{
+	if (VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY !=
+			ePolicy &&
+		VALTAN_PATTERN_TREE_LOAD_POLICY::RESTORE_AUTHORING_SNAPSHOT != ePolicy)
+	{
+		strOutStatus = "Valtan pattern-tree load policy is invalid.";
+		return false;
+	}
 	DATA_JSON_VALUE Encounter;
-	DATA_JSON_VALUE MasterRoot;
+	DATA_JSON_VALUE GameplayRoot;
+	DATA_JSON_VALUE PresentationRoot;
 	DATA_JSON_VALUE PatternRotations;
 	std::string Error;
 	const std::filesystem::path EncounterRelative =
@@ -2638,10 +4574,15 @@ bool_t Client::CValtanPatternTree::Load(
 		strOutStatus = "Valtan encounter load failed: " + Error;
 		return false;
 	}
-	if (!Parse_Document(std::filesystem::path(L"Valtan") /
-			L"Valtan.pattern.json", MasterRoot, Error))
+	if (!Parse_DocumentPath(GameplayPath, GameplayRoot, Error))
 	{
-		strOutStatus = "Valtan authoring master load failed: " + Error;
+		strOutStatus = "Valtan split gameplay authoring load failed: " + Error;
+		return false;
+	}
+	if (!Parse_DocumentPath(PresentationPath, PresentationRoot, Error))
+	{
+		strOutStatus =
+			"Valtan split presentation authoring load failed: " + Error;
 		return false;
 	}
 	if (!Parse_Document(std::filesystem::path(L"Encounters") / L"Valtan" /
@@ -2651,9 +4592,10 @@ bool_t Client::CValtanPatternTree::Load(
 		return false;
 	}
 	MASTER_DOCUMENT MasterDocument;
-	if (!Parse_MasterDocument(MasterRoot, MasterDocument, Error))
+	if (!Parse_SplitMasterDocument(
+			GameplayRoot, PresentationRoot, MasterDocument, Error))
 	{
-		strOutStatus = "Valtan authoring master validation failed: " + Error;
+		strOutStatus = "Valtan split authoring strict join failed: " + Error;
 		return false;
 	}
 
@@ -2792,6 +4734,25 @@ bool_t Client::CValtanPatternTree::Load(
 		strOutStatus =
 			"BossCatalog combat-object Effect visual has no Valtan owner row.";
 		return false;
+	}
+	for (VALTAN_INDEPENDENT_EFFECT_VIEW& Independent :
+		MasterDocument.IndependentEffects)
+	{
+		if ("SERVER_COMBAT_OBJECT" != Independent.strOwnership)
+			continue;
+		const auto Product = CombatObjectEffectsByArchetype.find(
+			Independent.strCombatObjectArchetypeId);
+		if (Product == CombatObjectEffectsByArchetype.end() ||
+			Product->second.strOwnerPatternId != Independent.strOwnerPatternId ||
+			Product->second.strOwnerStageActionId.empty())
+		{
+			strOutStatus =
+				"Valtan split combat-object independent Effect owner changed: " +
+				Independent.strIndependentEffectId;
+			return false;
+		}
+		Independent.strClientVisualId = Product->second.strClientVisualId;
+		Independent.strEffectAssetId = Product->second.strEffectAssetId;
 	}
 
 	/* Effect bindings are optional: a freshly seeded stage document is not in
@@ -3064,9 +5025,11 @@ bool_t Client::CValtanPatternTree::Load(
 				{
 					for (const DATA_JSON_VALUE& Action : pActions->Get_Array())
 					{
+						const std::string strSpawnKind =
+							Read_String(Action, "kind");
 						if (!Action.Is_Object() ||
-							Read_String(Action, "kind") !=
-								"SPAWN_COMBAT_OBJECT")
+							("SPAWN_COMBAT_OBJECT" != strSpawnKind &&
+							 "SPAWN_COMBAT_OBJECT_VOLLEY" != strSpawnKind))
 						{
 							continue;
 						}
@@ -3074,7 +5037,10 @@ bool_t Client::CValtanPatternTree::Load(
 							Action, "targetId");
 						const auto Reference =
 							CombatObjectEffectsByArchetype.find(strTargetId);
-						const double SpawnValue = Read_Number(Action, "value");
+						const double SpawnValue =
+							"SPAWN_COMBAT_OBJECT_VOLLEY" == strSpawnKind ?
+								Read_Number(Action, "countPerResolvedTarget") :
+								Read_Number(Action, "value");
 						if (Reference == CombatObjectEffectsByArchetype.end() ||
 							Reference->second.strOwnerPatternId !=
 								Pattern.strPatternId ||
@@ -3246,9 +5212,9 @@ bool_t Client::CValtanPatternTree::Load(
 		return false;
 	}
 	if (!Apply_MasterDocument(
-			MasterDocument, PatternRotations, Staged, Error))
+			MasterDocument, PatternRotations, Staged, Error, ePolicy))
 	{
-		strOutStatus = "Valtan authoring master join failed: " + Error;
+		strOutStatus = "Valtan split authoring/Product join failed: " + Error;
 		return false;
 	}
 	if (Staged.Gimmicks.empty() && Staged.Rotation.empty())

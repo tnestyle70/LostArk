@@ -44,6 +44,7 @@
 #include "MapTool.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProfilerCaptureIO.h"
+#include "ValtanPatternAuditionService.h"
 #endif
 
 #include <algorithm>
@@ -455,6 +456,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		worldLeftMouseConsumed);
 
 	CNetworkManager::Get().Update();
+#ifdef _DEBUG
+	/* PLAY_PATTERN_ID has one process-wide verdict/lifecycle queue shared by
+	   Balance Tool and Effect Tool. Drain it once per frame here, independent
+	   of which panel is visible or which tree row is expanded. */
+	CValtanPatternAuditionService::Get().Update();
+#endif
 	CGameInstance::Get().Update_Engine(fTimeDelta);
 	CEffectPresentationService::Advance_ProductCuePreparation(
 		m_pDevice, m_pContext);

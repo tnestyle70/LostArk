@@ -3,6 +3,7 @@
 #include "Network/PacketMessages.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -163,7 +164,11 @@ namespace LostArk::Server
 
 	enum class BOSS_PHASE_POLICY_KIND : std::uint8_t
 	{
+		/* Compatibility policy for encounters whose phase is still an HP rule.
+		The threshold is carried by BOSS_PHASE_POLICY::iThresholdPercent. */
 		HEALTH_PERCENT_THRESHOLD,
+		/* The profile deliberately carries no pattern/stage echo. One typed
+		SET_GAMEPLAY_PHASE stage action is the sole authored transition edge. */
 		AUTHORED_PATTERN_EVENT
 	};
 
@@ -558,6 +563,8 @@ namespace LostArk::Server
 		std::uint32_t iFromHealthBar = 0;
 		std::uint32_t iToHealthBar = 0;
 		std::uint32_t iExpectedStepCount = 0;
+		/* Strict v19 tagged union: managed WEIGHTED_POOL rows use Window and
+		Candidates only; legacy ORDERED rows use PatternIds only. */
 		BOSS_PATTERN_ROTATION_WINDOW Window;
 		std::vector<BOSS_PATTERN_ROTATION_CANDIDATE> Candidates;
 		std::vector<std::string> PatternIds;
@@ -716,7 +723,13 @@ namespace LostArk::Server
 	{
 	public:
 		bool Load();
-
+		/* Load one immutable candidate artifact by its exact canonical path. The
+		content hash is checked before parsing/commit; a successful load exposes
+		the verified parent manifest revision, not the child bootstrap hash. */
+		bool Load_FromBootstrap(
+			const std::filesystem::path& bootstrapPath,
+			const LostArk::Shared::GameplayDataRevision& expectedBootstrapRevision,
+			const LostArk::Shared::GameplayDataRevision& parentRevision);
 		const PLAYER_SKILL_DEFINITION* Find_Skill(
 			LostArk::Shared::SKILL_ID skillId) const;
 		const BOSS_RUNTIME_PROFILE* Find_Boss(
@@ -760,9 +773,18 @@ namespace LostArk::Server
 		static std::uint32_t Apply_Defense(
 			std::uint32_t rawDamage, std::uint32_t defense);
 
+		[[nodiscard]] const LostArk::Shared::GameplayDataRevision&
+			Get_ActiveRevision() const noexcept
+		{
+			return m_ActiveRevision;
+		}
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
+		bool Load_BootstrapPath(
+			const std::filesystem::path& bootstrapPath,
+			const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
+			const LostArk::Shared::GameplayDataRevision* parentRevision);
 		/* Shared by the per-skill and per-stage rows so both read one packed
 		encoding and one ordering rule. Reports its own failure into m_strStatus. */
 		bool Parse_RootMotionSamples(
@@ -808,6 +830,7 @@ namespace LostArk::Server
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
+		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};
 		std::string m_strStatus;
 	};
 }

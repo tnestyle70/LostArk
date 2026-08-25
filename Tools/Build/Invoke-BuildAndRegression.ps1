@@ -116,14 +116,14 @@ try {
 
 	$LASTEXITCODE = 0
 	& '.\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1' `
-		-Mode Validate
+		-Mode ValidateV2
 	if ($LASTEXITCODE -ne 0) {
-		throw 'Valtan pattern master validation failed.'
+		throw 'Valtan split pattern master validation failed.'
 	}
 	$LASTEXITCODE = 0
 	& '.\Tools\ValtanPipeline\Test-ValtanPatternMaster.ps1'
 	if ($LASTEXITCODE -ne 0) {
-		throw 'Valtan pattern master focused harness failed.'
+		throw 'Valtan split pattern master focused harness failed.'
 	}
 	Invoke-PythonGate `
 		'Valtan Animation Tool master timeline gate' `

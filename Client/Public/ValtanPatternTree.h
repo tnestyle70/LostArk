@@ -207,6 +207,57 @@ struct VALTAN_WORLD_EVENT_TRIGGER_REF_VIEW final
 	std::string strTriggerKind;
 };
 
+/* Canonical decision authoring. Candidate order is stable and weight belongs
+   to this selection set only; it must never be copied to another health
+   window or to the legacy/global fallback on VALTAN_PATTERN_VIEW. */
+struct VALTAN_SELECTION_CANDIDATE_VIEW final
+{
+	std::string strPatternId;
+	uint32_t iWeight = 1u;
+	bool_t bEnabled = true;
+};
+
+struct VALTAN_SELECTION_SET_VIEW final
+{
+	std::string strSelectionSetId;
+	std::string strMode;
+	std::vector<VALTAN_SELECTION_CANDIDATE_VIEW> Candidates;
+};
+
+struct VALTAN_SELECTION_WINDOW_VIEW final
+{
+	std::string strWindowId;
+	uint32_t iGameplayPhase = 0u;
+	uint32_t iMaximumHealthBarInclusive = 0u;
+	uint32_t iMinimumHealthBarExclusive = 0u;
+	std::string strSelectionSetId;
+	std::string strCompatibilityRotationId;
+};
+
+struct VALTAN_MECHANIC_VIEW final
+{
+	std::string strMechanicId;
+	std::string strPatternId;
+	std::string strTriggerKind;
+	uint32_t iHealthBar = 0u;
+	/* Tie-breaker only when mechanics share iHealthBar. Health descending is
+	   the primary crossing order. */
+	uint32_t iTriggerOrder = 0u;
+	bool_t bOncePerEncounter = false;
+	std::string strFailurePolicy;
+};
+
+/* Post-109 rotations are still legacy Product rows without stable authored
+   selection-set identities. They remain visible but read-only until promoted. */
+struct VALTAN_LEGACY_ROTATION_VIEW final
+{
+	std::string strRotationId;
+	std::string strSelectionMode;
+	uint32_t iFromHealthBar = 0u;
+	uint32_t iToHealthBar = 0u;
+	std::vector<std::string> PatternIds;
+};
+
 struct VALTAN_NORMAL_SELECTION_RANGE_VIEW final
 {
 	std::string strRotationId;
@@ -290,6 +341,18 @@ enum class VALTAN_PATTERN_PREVIEW_PATH : uint8_t
 	END
 };
 
+enum class VALTAN_PATTERN_TREE_LOAD_POLICY : uint8_t
+{
+	/* Repository admission: both physical authoring sources must project
+	   byte-semantically to the active generated Product view. */
+	REQUIRE_ACTIVE_PRODUCT_PARITY,
+	/* Immutable revision restore: stable pattern/stage/action topology and
+	   presentation references remain exact, while saved gameplay values are
+	   overlaid into the staged view instead of compared to today's Product. */
+	RESTORE_AUTHORING_SNAPSHOT,
+	END
+};
+
 /* One authoring identity for a reusable Effect whose trigger is owned by the
    Server pattern/combat-object lane. It appears once at the root of All
    Effects; owner pattern rows only show a read-only reference. */
@@ -342,6 +405,10 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	std::vector<VALTAN_PATTERN_VIEW> Gimmicks;
 	std::vector<VALTAN_PATTERN_VIEW> Rotation;
 	std::vector<VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;
+	std::vector<VALTAN_SELECTION_SET_VIEW> SelectionSets;
+	std::vector<VALTAN_SELECTION_WINDOW_VIEW> SelectionWindows;
+	std::vector<VALTAN_MECHANIC_VIEW> Mechanics;
+	std::vector<VALTAN_LEGACY_ROTATION_VIEW> LegacyRotations;
 	VALTAN_NORMAL_SELECTION_VIEW NormalSelection;
 	std::vector<VALTAN_COUNTER_REACTION_LAYER_VIEW> CounterReactionLayers;
 	std::vector<VALTAN_PHASE_VIEW> Phases;
@@ -362,15 +429,24 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	size_t Get_CombatObjectEffectCount() const;
 };
 
-/* Read-only join of ValtanEncounter.json, Valtan.patternbindings.json and
-   Valtan.patterneffects.json. The Effect Tool renders the result; nothing
-   here writes, because the encounter document is Server authority. */
+/* Read-only strict join of the physical Valtan gameplay/presentation
+   authoring sources with their generated Encounter, animation binding and
+   Effect cue Products. The Tools render the result; nothing here writes. */
 class CValtanPatternTree final
 {
 public:
 	static bool_t Load(
 		VALTAN_PATTERN_TREE_VIEW& OutView,
 		std::string& strOutStatus);
+	/* Authoring paths may be absolute. Active project Product data still owns
+	   actor/combat-object capability. The explicit policy decides whether its
+	   authored values must also match or a strict saved snapshot is overlaid. */
+	static bool_t Load_FromAuthoringPaths(
+		const std::filesystem::path& GameplayPath,
+		const std::filesystem::path& PresentationPath,
+		VALTAN_PATTERN_TREE_VIEW& OutView,
+		std::string& strOutStatus,
+		VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy);
 	/* effect.valtan.<pattern-slug>.<stage-slug>, the same rule
 	   Tools/EffectPipeline/build_valtan_stage_effects.py emits. */
 	static std::string Build_StageEffectAssetId(

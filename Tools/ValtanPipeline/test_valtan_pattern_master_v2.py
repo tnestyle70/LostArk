@@ -496,6 +496,56 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 set(pipeline.MANAGED_PATTERN_IDS),
             )
 
+    def test_mapping_basis_vocabulary_rejects_occurrence_and_cue_typos(self) -> None:
+        self.assertEqual(
+            frozenset(
+                {
+                    "CURRENT_PRODUCT_BASELINE",
+                    "PATTERN_PR_REFERENCE",
+                    "ANIMATION_PR_127",
+                    "SOURCE_REVIEWED_DELTA",
+                    "PROJECT_AUTHORED",
+                    "LEGACY_V1_MIGRATION",
+                }
+            ),
+            pipeline.ALLOWED_MAPPING_BASES,
+        )
+        invalid_occurrence = self.migrate()
+        occurrence = next(
+            occurrence
+            for pattern in invalid_occurrence["patterns"]
+            for stage in pattern["stages"]
+            for occurrence in stage["animation"]["occurrences"]
+        )
+        occurrence["mappingBasis"] = "PROJECT_AUTHORDE"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "mappingBasis vocabulary",
+        ):
+            pipeline.validate_v2_master(
+                invalid_occurrence,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        invalid_cue = self.migrate()
+        cue = next(
+            cue
+            for pattern in invalid_cue["patterns"]
+            for stage in pattern["stages"]
+            for cue in stage["effectCues"]
+        )
+        cue["mappingBasis"] = "PROJECT_AUTHORDE"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "mappingBasis vocabulary",
+        ):
+            pipeline.validate_v2_master(
+                invalid_cue,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
     def test_source_hash_precondition_and_revision_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             candidate_root = Path(temporary) / "candidates"

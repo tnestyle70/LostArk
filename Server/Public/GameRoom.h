@@ -34,6 +34,79 @@ namespace LostArk::Server
 {
 	class CClientSession;
 
+	/* A room never mutates an admitted gameplay catalog. The facade preserves
+	   the established lookup surface while retaining immutable old generations
+	   until every replicated occurrence releases its revision pin. */
+	class CGameplayCatalogGenerations final
+	{
+	public:
+		static constexpr std::size_t MAX_GENERATION_COUNT = 16u;
+
+		CGameplayCatalogGenerations();
+		bool Load();
+		bool Initialize(
+			const std::shared_ptr<const CGameplayCatalog>& initialGeneration);
+		bool Stage(
+			std::uint32_t transactionSequence,
+			const LostArk::Shared::GameplayDataRevision& baseRevision,
+			const std::shared_ptr<const CGameplayCatalog>& candidateGeneration,
+			std::string& status);
+		bool Commit(std::uint32_t transactionSequence) noexcept;
+		void Abort(std::uint32_t transactionSequence) noexcept;
+		void Collect_Garbage(
+			const std::vector<LostArk::Shared::GameplayDataRevision>& livePins);
+
+		[[nodiscard]] const CGameplayCatalog* Resolve(
+			const LostArk::Shared::GameplayDataRevision& revision) const noexcept;
+		[[nodiscard]] const CGameplayCatalog& Active() const noexcept;
+		[[nodiscard]] std::shared_ptr<const CGameplayCatalog>
+			Get_ActiveGeneration() const noexcept { return m_pActiveGeneration; }
+		[[nodiscard]] std::size_t Get_GenerationCount() const noexcept
+		{
+			return m_Generations.size();
+		}
+		[[nodiscard]] std::uint16_t Get_ActiveGenerationEpoch() const noexcept
+		{
+			return m_iActiveGenerationEpoch;
+		}
+
+		const PLAYER_SKILL_DEFINITION* Find_Skill(
+			LostArk::Shared::SKILL_ID skillId) const;
+		const BOSS_RUNTIME_PROFILE* Find_Boss(
+			const std::string& archetypeId) const;
+		const std::vector<BOSS_PART_DEFINITION>* Find_BossParts(
+			const std::string& archetypeId) const;
+		const std::vector<BOSS_PATTERN_DEFINITION>* Find_BossPatterns(
+			const std::string& encounterId) const;
+		const BOSS_COMBAT_OBJECT_DEFINITION* Find_BossCombatObject(
+			const std::string& archetypeId) const;
+		const VALTAN_TIMELINE_DEFINITION* Find_ValtanTimeline(
+			const std::string& encounterId) const;
+		const VALTAN_TIMELINE_ROW* Find_ValtanTimelineRow(
+			const std::string& encounterId, std::uint32_t commandId) const;
+		const BOSS_PATTERN_ROTATION_DEFINITION* Find_BossPatternRotation(
+			const std::string& encounterId, std::uint32_t gameplayPhase,
+			std::uint32_t healthBar) const;
+		const std::string& Find_IntroPatternId(
+			const std::string& encounterId) const;
+		const PLAYER_RUNTIME_PROFILE* Find_Player(
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass) const;
+		std::uint32_t Find_DamageRatePercent(
+			const std::string& damageProfileId) const;
+		[[nodiscard]] const LostArk::Shared::GameplayDataRevision&
+			Get_ActiveRevision() const noexcept;
+		[[nodiscard]] const std::string& Get_Status() const noexcept;
+		operator const CGameplayCatalog&() const noexcept { return Active(); }
+
+	private:
+		std::shared_ptr<const CGameplayCatalog> m_pActiveGeneration;
+		std::shared_ptr<const CGameplayCatalog> m_pStagedGeneration;
+		std::uint32_t m_iStagedTransactionSequence = 0u;
+		std::uint16_t m_iActiveGenerationEpoch = 0u;
+		std::vector<std::shared_ptr<const CGameplayCatalog>> m_Generations;
+		std::string m_strStatus;
+	};
+
 	struct SERVER_ROOM_PERFORMANCE_METRICS final
 	{
 		std::uint64_t iTickCount = 0;
@@ -66,7 +139,9 @@ namespace LostArk::Server
 	{
 		friend int Run_ServerGameplayContractTests(bool);
 	public:
-		explicit CGameRoom(LostArk::Shared::WORLD_ID worldId);
+		explicit CGameRoom(
+			LostArk::Shared::WORLD_ID worldId,
+			std::shared_ptr<const CGameplayCatalog> initialGameplayGeneration = {});
 
 		bool Enqueue(ROOM_COMMAND command);
 		void Tick(float fixedDeltaSeconds);
@@ -83,6 +158,33 @@ namespace LostArk::Server
 		{
 			return m_strStatus;
 		}
+		/* Room-thread only. Stage is allowed to fail before publication; Commit
+		   is a bounded pointer swap after every process room has staged. */
+		bool Stage_GameplayGeneration(
+			std::uint32_t transactionSequence,
+			const LostArk::Shared::GameplayDataRevision& baseRevision,
+			const std::shared_ptr<const CGameplayCatalog>& candidateGeneration,
+			std::string& status);
+		bool Commit_GameplayGeneration(
+			std::uint32_t transactionSequence) noexcept;
+		void Abort_GameplayGeneration(
+			std::uint32_t transactionSequence) noexcept;
+		[[nodiscard]] std::shared_ptr<const CGameplayCatalog>
+			Get_ActiveGameplayGeneration() const noexcept
+		{
+			return m_GameplayCatalog.Get_ActiveGeneration();
+		}
+		[[nodiscard]] const CGameplayCatalog* Resolve_GameplayGeneration(
+			const LostArk::Shared::GameplayDataRevision& revision) const noexcept
+		{
+			return m_GameplayCatalog.Resolve(revision);
+		}
+		/* Room-thread only. Decision observability reads the same authoritative
+		   brain and immutable selector generation as the Valtan simulation. */
+		bool Build_ValtanDecisionTraceResponse(
+			const LostArk::Shared::C2S_VALTAN_DECISION_TRACE_QUERY& request,
+			LostArk::Shared::S2C_VALTAN_DECISION_TRACE_RESPONSE& outResponse,
+			std::string& status) const;
 		[[nodiscard]] SERVER_ROOM_PERFORMANCE_METRICS
 			Get_PerformanceMetrics() const;
 
@@ -185,11 +287,18 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
 				LostArk::Shared::INVALID_NET_ENTITY_ID;
 			std::uint32_t iExpectedPatternSequence = 0u;
+			std::uint32_t iRequestSequence = 0u;
+			std::uint32_t iRoomAuditionEpoch = 0u;
 			std::string strBossPlacementId;
 			std::string strPatternId;
+			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 		};
 
 		bool Refresh_ValtanPatternIdAuditionState();
+		void Queue_ValtanPatternIdAuditionLifecycle(
+			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
+			std::string reason = {});
+		bool Flush_ValtanPatternIdAuditionLifecycle();
 
 		enum class VALTAN_TIMELINE_AUDITION_PHASE : std::uint8_t
 		{
@@ -219,6 +328,7 @@ namespace LostArk::Server
 			std::uint32_t iHeldBossHp = 0u;
 			std::uint32_t iHeldBossHealthBar = 0u;
 			bool bAllowProductPropBreak = false;
+			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 			std::string strExpectedPatternId;
 			std::vector<std::string> ExpectedGoneGroupIds;
 		};
@@ -252,6 +362,14 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t updateTick);
 #endif
+		struct VALTAN_DECISION_TRACE_REVISION_STATE final
+		{
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::string strBossPlacementId;
+			std::uint64_t iTraceSequence = 0u;
+			LostArk::Shared::GameplayDataRevision DefinitionRevision{};
+		};
 		// Debug-only. Validates the item against the loaded catalog and
 		// stacks it into the player's inventory, capped at maxStack.
 		void Handle_DebugGiveItem(
@@ -308,6 +426,11 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
 			LostArk::Shared::VALTAN_AUDITION_RESULT result,
 			std::uint32_t currentHealthBar);
+		bool Build_RequiredPinnedGameplayRevisions(
+			std::vector<LostArk::Shared::GameplayDataRevision>&
+				outRevisions) const;
+		[[nodiscard]] const CGameplayCatalog* Resolve_ValtanGameplayCatalog(
+			const SERVER_WORLD_ENTITY& boss) const noexcept;
 		bool Send_CharacterClassChangeResult(
 			const std::shared_ptr<CClientSession>& session,
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request,
@@ -374,9 +497,13 @@ namespace LostArk::Server
 			const std::string& previousActionId,
 			const std::string& nextPatternId,
 			const std::string& nextActionId,
+			const LostArk::Shared::GameplayDataRevision&
+				previousDefinitionRevision,
+			const LostArk::Shared::GameplayDataRevision& nextDefinitionRevision,
 			std::uint32_t serverTick);
 		bool Stage_BossPatternStageActions(
 			const SERVER_WORLD_ENTITY& boss,
+			const CGameplayCatalog& catalog,
 			const std::string& patternId,
 			const std::string& actionId,
 			BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
@@ -524,7 +651,7 @@ namespace LostArk::Server
 
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;
-		CGameplayCatalog m_GameplayCatalog;
+		CGameplayCatalogGenerations m_GameplayCatalog;
 		CItemCatalog m_ItemCatalog;
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;
@@ -535,6 +662,7 @@ namespace LostArk::Server
 		CCombatObjectRuntime m_CombatObjectRuntime;
 		CMonsterBrain m_MonsterBrain;
 		CValtanBrain m_ValtanBrain;
+		VALTAN_DECISION_TRACE_REVISION_STATE m_ValtanDecisionTraceRevision;
 		CEstherSkillSystem m_EstherSkillSystem;
 		CWorldDestructionBootstrap m_WorldDestructionBootstrap;
 		CWorldDestructionRuntime m_WorldDestructionRuntime;
@@ -573,6 +701,14 @@ namespace LostArk::Server
 		std::unordered_map<SESSION_ID, std::uint32_t>
 			m_ValtanPatternIdAuditionSequenceBySessionId;
 #ifdef _DEBUG
+		struct TARGETED_VALTAN_AUDITION_LIFECYCLE final
+		{
+			SESSION_ID iSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE Message;
+		};
+		std::uint32_t m_iNextValtanAuditionEpoch = 1u;
+		std::vector<TARGETED_VALTAN_AUDITION_LIFECYCLE>
+			m_PendingValtanAuditionLifecycle;
 		VALTAN_PATTERN_ID_AUDITION_STATE m_ValtanPatternIdAudition;
 		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
 #endif

@@ -1,16 +1,21 @@
 #include "GameplayCatalog.h"
 
 #include <Windows.h>
+#include <bcrypt.h>
 
 #include <algorithm>
 #include <charconv>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <limits>
+#include <sstream>
 #include <string_view>
 #include <unordered_set>
 #include <vector>
+
+#pragma comment(lib, "bcrypt.lib")
 
 namespace
 {
@@ -21,6 +26,58 @@ namespace
 	snapshot can carry. The publisher rejects a larger authored count. */
 	constexpr std::size_t MAXIMUM_BOSS_ARMOR_PLATES =
 		LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES;
+
+	bool Calculate_GameplayDataRevision(
+		const std::string_view payload,
+		LostArk::Shared::GameplayDataRevision& outRevision)
+	{
+		if (payload.size() > (std::numeric_limits<ULONG>::max)())
+			return false;
+
+		BCRYPT_ALG_HANDLE algorithm = nullptr;
+		BCRYPT_HASH_HANDLE hash = nullptr;
+		DWORD hashObjectSize = 0u;
+		DWORD bytesWritten = 0u;
+		DWORD hashSize = 0u;
+		std::vector<unsigned char> hashObject;
+		LostArk::Shared::GameplayDataRevision revision{};
+		bool succeeded = false;
+		if (0 <= BCryptOpenAlgorithmProvider(
+				&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0u) &&
+			0 <= BCryptGetProperty(
+				algorithm, BCRYPT_OBJECT_LENGTH,
+				reinterpret_cast<PUCHAR>(&hashObjectSize),
+				sizeof(hashObjectSize), &bytesWritten, 0u) &&
+			0 <= BCryptGetProperty(
+				algorithm, BCRYPT_HASH_LENGTH,
+				reinterpret_cast<PUCHAR>(&hashSize),
+				sizeof(hashSize), &bytesWritten, 0u) &&
+			hashSize == revision.Bytes.size())
+		{
+			hashObject.resize(hashObjectSize);
+			if (0 <= BCryptCreateHash(
+					algorithm, &hash, hashObject.data(), hashObjectSize,
+					nullptr, 0u, 0u) &&
+				0 <= BCryptHashData(
+					hash,
+					reinterpret_cast<PUCHAR>(
+						const_cast<char*>(payload.data())),
+					static_cast<ULONG>(payload.size()), 0u) &&
+				0 <= BCryptFinishHash(
+					hash, revision.Bytes.data(), hashSize, 0u) &&
+				revision.Is_Valid())
+			{
+				succeeded = true;
+			}
+		}
+		if (nullptr != hash)
+			BCryptDestroyHash(hash);
+		if (nullptr != algorithm)
+			BCryptCloseAlgorithmProvider(algorithm, 0u);
+		if (succeeded)
+			outRevision = revision;
+		return succeeded;
+	}
 
 	std::filesystem::path Resolve_DataRoot()
 	{
@@ -832,6 +889,60 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillProjectile(
 
 bool LostArk::Server::CGameplayCatalog::Load()
 {
+	const std::filesystem::path dataRoot = Resolve_DataRoot();
+	if (dataRoot.empty())
+	{
+		m_strStatus = "Gameplay data root could not be resolved";
+		return false;
+	}
+	return Load_BootstrapPath(
+		dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr);
+}
+
+bool LostArk::Server::CGameplayCatalog::Load_FromBootstrap(
+	const std::filesystem::path& bootstrapPath,
+	const LostArk::Shared::GameplayDataRevision& expectedBootstrapRevision,
+	const LostArk::Shared::GameplayDataRevision& parentRevision)
+{
+	if (!expectedBootstrapRevision.Is_Valid() || !parentRevision.Is_Valid() ||
+		bootstrapPath.empty() || !bootstrapPath.is_absolute())
+	{
+		m_strStatus = "Staged gameplay bootstrap admission input is invalid";
+		return false;
+	}
+
+	std::error_code error;
+	const std::filesystem::path normalized = bootstrapPath.lexically_normal();
+	if (normalized != bootstrapPath)
+	{
+		m_strStatus = "Staged gameplay bootstrap path is not canonical";
+		return false;
+	}
+	const std::filesystem::file_status linkStatus =
+		std::filesystem::symlink_status(normalized, error);
+	if (error || !std::filesystem::is_regular_file(linkStatus) ||
+		normalized.filename() != L"Gameplay.bootstrap")
+	{
+		m_strStatus = "Staged gameplay bootstrap is not a regular canonical artifact";
+		return false;
+	}
+	const std::filesystem::path canonical =
+		std::filesystem::canonical(normalized, error);
+	if (error || canonical != normalized)
+	{
+		m_strStatus = "Staged gameplay bootstrap path is not canonical";
+		return false;
+	}
+
+	return Load_BootstrapPath(
+		canonical, &expectedBootstrapRevision, &parentRevision);
+}
+
+bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
+	const std::filesystem::path& path,
+	const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
+	const LostArk::Shared::GameplayDataRevision* parentRevision)
+{
 	using SKILL_MAP = decltype(m_Skills);
 	using BOSS_MAP = decltype(m_Bosses);
 	using BOSS_PART_MAP = decltype(m_BossParts);
@@ -932,14 +1043,33 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	m_Players.clear();
 	m_DamageRatePercentByProfileId.clear();
 
-	const std::filesystem::path dataRoot = Resolve_DataRoot();
-	const std::filesystem::path path = dataRoot / L"Gameplay" / L"Gameplay.bootstrap";
-	std::ifstream input(path, std::ios::binary);
-	if (dataRoot.empty() || !input)
+	std::ifstream bootstrapFile(path, std::ios::binary);
+	if (!bootstrapFile)
 	{
 		m_strStatus = "Missing gameplay bootstrap: " + path.string();
 		return false;
 	}
+	const std::string bootstrapBytes{
+		std::istreambuf_iterator<char>{ bootstrapFile },
+		std::istreambuf_iterator<char>{} };
+	if (bootstrapFile.bad())
+	{
+		m_strStatus = "Gameplay bootstrap could not be read";
+		return false;
+	}
+	LostArk::Shared::GameplayDataRevision admittedRevision{};
+	if (!Calculate_GameplayDataRevision(bootstrapBytes, admittedRevision))
+	{
+		m_strStatus = "Gameplay bootstrap revision could not be calculated";
+		return false;
+	}
+	if (nullptr != expectedBootstrapRevision &&
+		admittedRevision != *expectedBootstrapRevision)
+	{
+		m_strStatus = "Staged gameplay bootstrap content revision mismatch";
+		return false;
+	}
+	std::istringstream input{ bootstrapBytes };
 
 	std::string line;
 	if (!std::getline(input, line))
@@ -2008,6 +2138,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			staged.iExpectedStepCount = stepCount;
 			rotations.push_back(std::move(staged));
 		}
+		/* Managed v19 weighted rows own their weight and enabled state. They are
+		strictly ordinal, unique, and may only attach to WEIGHTED_POOL. */
 		else if (!fields.empty() &&
 			"PATTERNROTATIONCANDIDATE" == fields[0])
 		{
@@ -3422,6 +3554,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!rotation.Candidates.empty() ||
 				rotation.PatternIds.size() != rotation.iExpectedStepCount)
 			{
+				/* Legacy order intentionally preserves duplicate steps. Only the
+				tagged shape and exact ordinal count are constrained. */
 				m_strStatus =
 					"Boss legacy ordered rotation tagged shape is incomplete";
 				return false;
@@ -3452,6 +3586,10 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		}
 	}
 
+	/* Phase-boundary edits are not an independent HOT_RELOAD domain. Until one
+	atomic SET_PHASE_BOUNDARY transaction owns the mechanic and both adjacent
+	rotation partitions, direct bootstrap admission must prove the published
+	Valtan topology is coherent. */
 	const auto valtanRotations =
 		m_BossPatternRotations.find("ENCOUNTER_VALTAN");
 	const auto valtanPatterns = m_BossPatterns.find("ENCOUNTER_VALTAN");
@@ -3523,7 +3661,11 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	}
 
 	rollback.committed = true;
-	m_strStatus = "Loaded gameplay bootstrap";
+	m_ActiveRevision = nullptr == parentRevision ?
+		admittedRevision : *parentRevision;
+	m_strStatus = nullptr == parentRevision ?
+		"Loaded gameplay bootstrap" :
+		"Loaded staged gameplay parent revision";
 	return true;
 }
 
@@ -3614,6 +3756,9 @@ LostArk::Server::CGameplayCatalog::Find_BossPatternRotation(
 		return nullptr;
 	for (const BOSS_PATTERN_ROTATION_DEFINITION& rotation : iter->second)
 	{
+		/* Managed windows are phase-owned. Legacy ORDERED rows predate that
+		contract and remain phase-agnostic so the post-109 phase-two script keeps
+		its authored order. */
 		if (BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
 			rotation.eSelectionMode && rotation.Window.iGameplayPhase !=
 			gameplayPhase)

@@ -41,6 +41,9 @@ namespace
 	constexpr float PLAYER_TURN_DEGREES_PER_SECOND = 540.f;
 	constexpr float DIRECT_BEARING_DISTANCE = 1.5f;
 	constexpr float VOLLEY_SPACING_EPSILON = 0.0001f;
+	// The caster's Esther call converted to fixed 30 Hz room ticks.
+	constexpr std::uint32_t ESTHER_CAST_TICKS =
+		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
 
 	float Resolve_VolleyMinimumSpacing(
 		const BOSS_COMBAT_OBJECT_DEFINITION& definition)
@@ -71,6 +74,40 @@ namespace
 			maximumExtent = (std::max)(maximumExtent, extent);
 		}
 		return maximumExtent * 2.f;
+	}
+
+	void Build_WorldDestructionStateChanges(
+		const WORLD_DESTRUCTION_TRANSACTION& transaction,
+		std::vector<SERVER_COLLISION_STATE_CHANGE>& collisionChanges,
+		std::vector<SERVER_NAVIGATION_CONDITION_CHANGE>& navigationChanges)
+	{
+		collisionChanges.clear();
+		navigationChanges.clear();
+		for (const WORLD_DESTRUCTION_STATE_TRANSITION& transition :
+			transaction.Transitions)
+		{
+			if (!transition.strCollisionStateId.empty())
+			{
+				SERVER_COLLISION_STATE_CHANGE change{};
+				change.strPlacementId = transition.strCollisionStateId;
+				change.bPlayerBlocking =
+					WORLD_DESTRUCTION_STATE::INTACT == transition.eNextState ||
+					WORLD_DESTRUCTION_STATE::BREAKING == transition.eNextState;
+				change.bImpactReceiverEnabled =
+					WORLD_DESTRUCTION_STATE::INTACT == transition.eNextState;
+				collisionChanges.push_back(std::move(change));
+			}
+			if (transition.bApplyPersistentMutation &&
+				!transition.strNavigationStateId.empty())
+			{
+				SERVER_NAVIGATION_CONDITION_CHANGE change{};
+				change.strConditionId = transition.strNavigationStateId;
+				change.bValue =
+					WORLD_DESTRUCTION_STATE::FRACTURED == transition.eNextState ||
+					WORLD_DESTRUCTION_STATE::DESPAWNED == transition.eNextState;
+				navigationChanges.push_back(std::move(change));
+			}
+		}
 	}
 
 	std::uint64_t To_Microseconds(
@@ -184,9 +221,6 @@ namespace
 		return currentTick == targetTick ||
 			static_cast<std::int32_t>(currentTick - targetTick) > 0;
 	}
-	// The product tick releases an Esther caster in every build configuration.
-	constexpr std::uint32_t ESTHER_CAST_TICKS =
-		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
 #ifdef _DEBUG
 	constexpr std::uint32_t CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS = 90u;
 	constexpr const char* VALTAN_ARENA_AUDITION_PLACEMENT_ID =
@@ -441,8 +475,282 @@ namespace
 	}
 }
 
+LostArk::Server::CGameplayCatalogGenerations::CGameplayCatalogGenerations()
+{
+	m_Generations.reserve(MAX_GENERATION_COUNT);
+}
+
+bool LostArk::Server::CGameplayCatalogGenerations::Load()
+{
+	auto initial = std::make_shared<CGameplayCatalog>();
+	if (nullptr == initial || !initial->Load())
+	{
+		m_strStatus = nullptr == initial ?
+			"Gameplay catalog allocation failed" : initial->Get_Status();
+		return false;
+	}
+	return Initialize(std::move(initial));
+}
+
+bool LostArk::Server::CGameplayCatalogGenerations::Initialize(
+	const std::shared_ptr<const CGameplayCatalog>& initialGeneration)
+{
+	if (nullptr == initialGeneration ||
+		!initialGeneration->Get_ActiveRevision().Is_Valid())
+	{
+		m_strStatus = "Initial gameplay generation is invalid";
+		return false;
+	}
+	m_Generations.clear();
+	m_Generations.push_back(initialGeneration);
+	m_pActiveGeneration = initialGeneration;
+	m_pStagedGeneration.reset();
+	m_iStagedTransactionSequence = 0u;
+	m_iActiveGenerationEpoch = 1u;
+	m_strStatus = "Initialized immutable gameplay generation";
+	return true;
+}
+
+bool LostArk::Server::CGameplayCatalogGenerations::Stage(
+	const std::uint32_t transactionSequence,
+	const LostArk::Shared::GameplayDataRevision& baseRevision,
+	const std::shared_ptr<const CGameplayCatalog>& candidateGeneration,
+	std::string& status)
+{
+	if (0u == transactionSequence || nullptr == m_pActiveGeneration ||
+		(std::numeric_limits<std::uint16_t>::max)() ==
+			m_iActiveGenerationEpoch ||
+		m_pActiveGeneration->Get_ActiveRevision() != baseRevision ||
+		nullptr == candidateGeneration ||
+		!candidateGeneration->Get_ActiveRevision().Is_Valid() ||
+		candidateGeneration->Get_ActiveRevision() == baseRevision)
+	{
+		status = "Room gameplay generation stage identity is invalid";
+		return false;
+	}
+	if (nullptr != m_pStagedGeneration)
+	{
+		if (m_iStagedTransactionSequence == transactionSequence &&
+			m_pStagedGeneration->Get_ActiveRevision() ==
+				candidateGeneration->Get_ActiveRevision())
+		{
+			return true;
+		}
+		status = "Room already owns a different staged gameplay generation";
+		return false;
+	}
+	const bool alreadyRetained = nullptr != Resolve(
+		candidateGeneration->Get_ActiveRevision());
+	if (!alreadyRetained && m_Generations.size() >= MAX_GENERATION_COUNT)
+	{
+		status = "Room gameplay generation capacity is exhausted";
+		return false;
+	}
+	m_pStagedGeneration = alreadyRetained ?
+		std::shared_ptr<const CGameplayCatalog>{} : candidateGeneration;
+	if (alreadyRetained)
+	{
+		for (const auto& generation : m_Generations)
+		{
+			if (nullptr != generation && generation->Get_ActiveRevision() ==
+				candidateGeneration->Get_ActiveRevision())
+			{
+				m_pStagedGeneration = generation;
+				break;
+			}
+		}
+	}
+	m_iStagedTransactionSequence = transactionSequence;
+	status.clear();
+	return nullptr != m_pStagedGeneration;
+}
+
+bool LostArk::Server::CGameplayCatalogGenerations::Commit(
+	const std::uint32_t transactionSequence) noexcept
+{
+	if (0u == transactionSequence ||
+		transactionSequence != m_iStagedTransactionSequence ||
+		nullptr == m_pStagedGeneration)
+	{
+		return false;
+	}
+	const bool alreadyRetained = std::any_of(
+		m_Generations.begin(), m_Generations.end(),
+		[this](const std::shared_ptr<const CGameplayCatalog>& generation)
+		{
+			return nullptr != generation &&
+				generation->Get_ActiveRevision() ==
+				m_pStagedGeneration->Get_ActiveRevision();
+		});
+	if (!alreadyRetained)
+	{
+		if (m_Generations.size() >= m_Generations.capacity())
+			return false;
+		m_Generations.push_back(m_pStagedGeneration);
+	}
+	m_pActiveGeneration = std::move(m_pStagedGeneration);
+	m_iStagedTransactionSequence = 0u;
+	++m_iActiveGenerationEpoch;
+	m_strStatus = "Committed immutable gameplay generation";
+	return true;
+}
+
+void LostArk::Server::CGameplayCatalogGenerations::Abort(
+	const std::uint32_t transactionSequence) noexcept
+{
+	if (0u != transactionSequence &&
+		transactionSequence != m_iStagedTransactionSequence)
+	{
+		return;
+	}
+	m_pStagedGeneration.reset();
+	m_iStagedTransactionSequence = 0u;
+}
+
+void LostArk::Server::CGameplayCatalogGenerations::Collect_Garbage(
+	const std::vector<LostArk::Shared::GameplayDataRevision>& livePins)
+{
+	m_Generations.erase(
+		std::remove_if(
+			m_Generations.begin(), m_Generations.end(),
+			[this, &livePins](
+				const std::shared_ptr<const CGameplayCatalog>& generation)
+			{
+				if (nullptr == generation || generation == m_pActiveGeneration ||
+					generation == m_pStagedGeneration)
+				{
+					return false;
+				}
+				return livePins.end() == std::find(
+					livePins.begin(), livePins.end(),
+					generation->Get_ActiveRevision());
+			}),
+		m_Generations.end());
+}
+
+const LostArk::Server::CGameplayCatalog*
+LostArk::Server::CGameplayCatalogGenerations::Resolve(
+	const LostArk::Shared::GameplayDataRevision& revision) const noexcept
+{
+	if (!revision.Is_Valid())
+		return nullptr;
+	for (const auto& generation : m_Generations)
+	{
+		if (nullptr != generation &&
+			generation->Get_ActiveRevision() == revision)
+		{
+			return generation.get();
+		}
+	}
+	if (nullptr != m_pStagedGeneration &&
+		m_pStagedGeneration->Get_ActiveRevision() == revision)
+	{
+		return m_pStagedGeneration.get();
+	}
+	return nullptr;
+}
+
+const LostArk::Server::CGameplayCatalog&
+LostArk::Server::CGameplayCatalogGenerations::Active() const noexcept
+{
+	static const CGameplayCatalog EMPTY_CATALOG{};
+	return nullptr == m_pActiveGeneration ? EMPTY_CATALOG : *m_pActiveGeneration;
+}
+
+const LostArk::Server::PLAYER_SKILL_DEFINITION*
+LostArk::Server::CGameplayCatalogGenerations::Find_Skill(
+	const LostArk::Shared::SKILL_ID skillId) const
+{
+	return Active().Find_Skill(skillId);
+}
+
+const LostArk::Server::BOSS_RUNTIME_PROFILE*
+LostArk::Server::CGameplayCatalogGenerations::Find_Boss(
+	const std::string& archetypeId) const
+{
+	return Active().Find_Boss(archetypeId);
+}
+
+const std::vector<LostArk::Server::BOSS_PART_DEFINITION>*
+LostArk::Server::CGameplayCatalogGenerations::Find_BossParts(
+	const std::string& archetypeId) const
+{
+	return Active().Find_BossParts(archetypeId);
+}
+
+const std::vector<LostArk::Server::BOSS_PATTERN_DEFINITION>*
+LostArk::Server::CGameplayCatalogGenerations::Find_BossPatterns(
+	const std::string& encounterId) const
+{
+	return Active().Find_BossPatterns(encounterId);
+}
+
+const LostArk::Server::BOSS_COMBAT_OBJECT_DEFINITION*
+LostArk::Server::CGameplayCatalogGenerations::Find_BossCombatObject(
+	const std::string& archetypeId) const
+{
+	return Active().Find_BossCombatObject(archetypeId);
+}
+
+const LostArk::Server::VALTAN_TIMELINE_DEFINITION*
+LostArk::Server::CGameplayCatalogGenerations::Find_ValtanTimeline(
+	const std::string& encounterId) const
+{
+	return Active().Find_ValtanTimeline(encounterId);
+}
+
+const LostArk::Server::VALTAN_TIMELINE_ROW*
+LostArk::Server::CGameplayCatalogGenerations::Find_ValtanTimelineRow(
+	const std::string& encounterId, const std::uint32_t commandId) const
+{
+	return Active().Find_ValtanTimelineRow(encounterId, commandId);
+}
+
+const LostArk::Server::BOSS_PATTERN_ROTATION_DEFINITION*
+LostArk::Server::CGameplayCatalogGenerations::Find_BossPatternRotation(
+	const std::string& encounterId, const std::uint32_t gameplayPhase,
+	const std::uint32_t healthBar) const
+{
+	return Active().Find_BossPatternRotation(
+		encounterId, gameplayPhase, healthBar);
+}
+
+const std::string&
+LostArk::Server::CGameplayCatalogGenerations::Find_IntroPatternId(
+	const std::string& encounterId) const
+{
+	return Active().Find_IntroPatternId(encounterId);
+}
+
+const LostArk::Server::PLAYER_RUNTIME_PROFILE*
+LostArk::Server::CGameplayCatalogGenerations::Find_Player(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const
+{
+	return Active().Find_Player(characterClass);
+}
+
+std::uint32_t
+LostArk::Server::CGameplayCatalogGenerations::Find_DamageRatePercent(
+	const std::string& damageProfileId) const
+{
+	return Active().Find_DamageRatePercent(damageProfileId);
+}
+
+const LostArk::Shared::GameplayDataRevision&
+LostArk::Server::CGameplayCatalogGenerations::Get_ActiveRevision() const noexcept
+{
+	return Active().Get_ActiveRevision();
+}
+
+const std::string&
+LostArk::Server::CGameplayCatalogGenerations::Get_Status() const noexcept
+{
+	return m_strStatus.empty() ? Active().Get_Status() : m_strStatus;
+}
+
 LostArk::Server::CGameRoom::CGameRoom(
-	const LostArk::Shared::WORLD_ID worldId)
+	const LostArk::Shared::WORLD_ID worldId,
+	std::shared_ptr<const CGameplayCatalog> initialGameplayGeneration)
 	: m_eWorldId(worldId)
 {
 	if (!LostArk::Shared::Is_Known_World_Id(worldId))
@@ -455,7 +763,9 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_WorldBootstrap.Get_Status();
 		return;
 	}
-	if (!m_GameplayCatalog.Load())
+	if ((nullptr != initialGameplayGeneration &&
+			!m_GameplayCatalog.Initialize(initialGameplayGeneration)) ||
+		(nullptr == initialGameplayGeneration && !m_GameplayCatalog.Load()))
 	{
 		m_strStatus = m_GameplayCatalog.Get_Status();
 		return;
@@ -637,6 +947,273 @@ LostArk::Server::CGameRoom::Get_PerformanceMetrics() const
 {
 	std::scoped_lock lock{ m_CommandMutex };
 	return m_PerformanceMetrics;
+}
+
+bool LostArk::Server::CGameRoom::Build_ValtanDecisionTraceResponse(
+	const LostArk::Shared::C2S_VALTAN_DECISION_TRACE_QUERY& request,
+	LostArk::Shared::S2C_VALTAN_DECISION_TRACE_RESPONSE& outResponse,
+	std::string& status) const
+{
+	using namespace LostArk::Shared;
+	S2C_VALTAN_DECISION_TRACE_RESPONSE staged{};
+	staged.iRequestSequence = request.iRequestSequence;
+	staged.strBossPlacementId = request.strBossPlacementId;
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId)
+	{
+		staged.eResult =
+			VALTAN_DECISION_TRACE_QUERY_RESULT::REJECTED_WRONG_WORLD;
+		outResponse = std::move(staged);
+		status.clear();
+		return true;
+	}
+
+	const auto bossIter = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[&request](const SERVER_WORLD_ENTITY& entity)
+		{
+			return WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind &&
+				request.strBossPlacementId == entity.strPlacementId &&
+				"BOSS_VALTAN" == entity.strArchetypeId &&
+				"ENCOUNTER_VALTAN" == entity.strEncounterId;
+		});
+	if (m_WorldEntities.end() == bossIter)
+	{
+		staged.eResult = VALTAN_DECISION_TRACE_QUERY_RESULT::REJECTED_NO_BOSS;
+		outResponse = std::move(staged);
+		status.clear();
+		return true;
+	}
+
+	const VALTAN_DECISION_TRACE* trace =
+		m_ValtanBrain.Get_LatestDecisionTrace();
+	if (nullptr == trace)
+	{
+		staged.eResult = VALTAN_DECISION_TRACE_QUERY_RESULT::NO_TRACE;
+		outResponse = std::move(staged);
+		status.clear();
+		return true;
+	}
+	if (trace->iTraceSequence <= request.iAfterTraceSequence)
+	{
+		staged.eResult = VALTAN_DECISION_TRACE_QUERY_RESULT::UNCHANGED;
+		outResponse = std::move(staged);
+		status.clear();
+		return true;
+	}
+	if (trace->Candidates.size() > MAX_VALTAN_DECISION_TRACE_CANDIDATES ||
+		m_ValtanDecisionTraceRevision.iBossEntityId != bossIter->iNetEntityId ||
+		m_ValtanDecisionTraceRevision.strBossPlacementId !=
+			bossIter->strPlacementId ||
+		m_ValtanDecisionTraceRevision.iTraceSequence != trace->iTraceSequence ||
+		!m_ValtanDecisionTraceRevision.DefinitionRevision.Is_Valid())
+	{
+		/* The trace is a self-contained immutable decision envelope. Its
+		   DefinitionRevision is an identity for observability, not a live
+		   gameplay lookup pin; keep the latest trace queryable after that old
+		   generation is collected. */
+		status = "Valtan decision trace revision metadata is invalid";
+		return false;
+	}
+
+	const auto mapSource = [](const VALTAN_DECISION_SOURCE source,
+		VALTAN_DECISION_TRACE_SOURCE& wire)
+	{
+		switch (source)
+		{
+		case VALTAN_DECISION_SOURCE::NONE:
+			wire = VALTAN_DECISION_TRACE_SOURCE::NONE; return true;
+		case VALTAN_DECISION_SOURCE::INTRO:
+			wire = VALTAN_DECISION_TRACE_SOURCE::INTRO; return true;
+		case VALTAN_DECISION_SOURCE::FORCED_HEALTH_BAR:
+			wire = VALTAN_DECISION_TRACE_SOURCE::FORCED_HEALTH_BAR; return true;
+		case VALTAN_DECISION_SOURCE::FORCED_AUDITION:
+			wire = VALTAN_DECISION_TRACE_SOURCE::FORCED_AUDITION; return true;
+		case VALTAN_DECISION_SOURCE::ORDERED:
+			wire = VALTAN_DECISION_TRACE_SOURCE::ORDERED; return true;
+		case VALTAN_DECISION_SOURCE::WEIGHTED:
+			wire = VALTAN_DECISION_TRACE_SOURCE::WEIGHTED; return true;
+		case VALTAN_DECISION_SOURCE::GLOBAL:
+			wire = VALTAN_DECISION_TRACE_SOURCE::GLOBAL; return true;
+		default:
+			return false;
+		}
+	};
+	const auto mapResult = [](const VALTAN_DECISION_RESULT result,
+		VALTAN_DECISION_TRACE_RESULT& wire)
+	{
+		switch (result)
+		{
+		case VALTAN_DECISION_RESULT::SELECTED:
+			wire = VALTAN_DECISION_TRACE_RESULT::SELECTED; return true;
+		case VALTAN_DECISION_RESULT::WAITING_FOR_INTRO_RANGE:
+			wire = VALTAN_DECISION_TRACE_RESULT::WAITING_FOR_INTRO_RANGE;
+			return true;
+		case VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN:
+			wire = VALTAN_DECISION_TRACE_RESULT::NO_ELIGIBLE_PATTERN;
+			return true;
+		case VALTAN_DECISION_RESULT::NO_VALID_TARGET:
+			wire = VALTAN_DECISION_TRACE_RESULT::NO_VALID_TARGET; return true;
+		case VALTAN_DECISION_RESULT::CATALOG_UNAVAILABLE:
+			wire = VALTAN_DECISION_TRACE_RESULT::CATALOG_UNAVAILABLE;
+			return true;
+		case VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED:
+			wire = VALTAN_DECISION_TRACE_RESULT::MECHANIC_RESET_REQUIRED;
+			return true;
+		default:
+			return false;
+		}
+	};
+	const auto mapExclusions = [](const std::uint32_t source,
+		std::uint32_t& wire)
+	{
+		struct BIT_MAP final { std::uint32_t Source; std::uint32_t Wire; };
+		static constexpr BIT_MAP MAP[] =
+		{
+			{ VALTAN_EXCLUDE_WRONG_SELECTION_KIND,
+				VALTAN_DECISION_TRACE_EXCLUDE_WRONG_SELECTION_KIND },
+			{ VALTAN_EXCLUDE_INTRO_ROW,
+				VALTAN_DECISION_TRACE_EXCLUDE_INTRO_ROW },
+			{ VALTAN_EXCLUDE_NOT_IN_SELECTION_SET,
+				VALTAN_DECISION_TRACE_EXCLUDE_NOT_IN_SELECTION_SET },
+			{ VALTAN_EXCLUDE_ARMOR_MISMATCH,
+				VALTAN_DECISION_TRACE_EXCLUDE_ARMOR_MISMATCH },
+			{ VALTAN_EXCLUDE_PHASE_REQUIREMENT,
+				VALTAN_DECISION_TRACE_EXCLUDE_PHASE_REQUIREMENT },
+			{ VALTAN_EXCLUDE_PHASE_RANGE,
+				VALTAN_DECISION_TRACE_EXCLUDE_PHASE_RANGE },
+			{ VALTAN_EXCLUDE_HEALTH_BAR_RANGE,
+				VALTAN_DECISION_TRACE_EXCLUDE_HEALTH_BAR_RANGE },
+			{ VALTAN_EXCLUDE_NO_TARGET,
+				VALTAN_DECISION_TRACE_EXCLUDE_NO_TARGET },
+			{ VALTAN_EXCLUDE_BELOW_MINIMUM_RANGE,
+				VALTAN_DECISION_TRACE_EXCLUDE_BELOW_MINIMUM_RANGE },
+			{ VALTAN_EXCLUDE_ABOVE_MAXIMUM_RANGE,
+				VALTAN_DECISION_TRACE_EXCLUDE_ABOVE_MAXIMUM_RANGE },
+			{ VALTAN_EXCLUDE_COOLDOWN,
+				VALTAN_DECISION_TRACE_EXCLUDE_COOLDOWN },
+			{ VALTAN_EXCLUDE_SOFT_REPEAT_BLOCKED,
+				VALTAN_DECISION_TRACE_EXCLUDE_SOFT_REPEAT_BLOCKED },
+			{ VALTAN_EXCLUDE_SOFT_REPEAT_RELAXED,
+				VALTAN_DECISION_TRACE_EXCLUDE_SOFT_REPEAT_RELAXED },
+			{ VALTAN_EXCLUDE_DISABLED,
+				VALTAN_DECISION_TRACE_EXCLUDE_DISABLED },
+			{ VALTAN_EXCLUDE_UNRESOLVED_DEFINITION,
+				VALTAN_DECISION_TRACE_EXCLUDE_UNRESOLVED_DEFINITION }
+		};
+		std::uint32_t known = 0u;
+		wire = VALTAN_DECISION_TRACE_EXCLUDE_NONE;
+		for (const BIT_MAP& bit : MAP)
+		{
+			known |= bit.Source;
+			if (0u != (source & bit.Source))
+				wire |= bit.Wire;
+		}
+		return 0u == (source & ~known) &&
+			0u == (wire & ~VALTAN_DECISION_TRACE_KNOWN_EXCLUSION_MASK);
+	};
+
+	VALTAN_DECISION_TRACE_WIRE& wire = staged.Trace;
+	wire.iTraceSequence = trace->iTraceSequence;
+	wire.iServerTick = trace->iServerTick;
+	wire.iPatternSequenceBeforeDecision =
+		trace->iPatternSequenceBeforeDecision;
+	wire.iExpectedPatternSequence = trace->iExpectedPatternSequence;
+	wire.iCurrentHp = trace->iCurrentHp;
+	wire.iMaximumHp = trace->iMaximumHp;
+	wire.iHealthBar = trace->iHealthBar;
+	wire.iGameplayPhase = trace->iGameplayPhase;
+	wire.iTargetNetEntityId = trace->iTargetNetEntityId;
+	wire.fTargetDistance = trace->fTargetDistance;
+	wire.isIntroPatternConsumed = trace->bIntroPatternConsumed;
+	wire.iRotationStepIndex = trace->iRotationStepIndex;
+	wire.strRotationId = trace->strRotationId;
+	wire.strPendingPatternId = trace->strPendingPatternId;
+	wire.strSelectedPatternId = trace->strSelectedPatternId;
+	wire.iRawRandomInput = trace->iRawRandomInput;
+	wire.iMixedRandomValue = trace->iMixedRandomValue;
+	wire.iTotalWeight = trace->iTotalWeight;
+	wire.iRandomTicket = trace->iRandomTicket;
+	wire.isMaximumConsecutiveRelaxed = trace->bMaximumConsecutiveRelaxed;
+	wire.areCandidatesTruncated = trace->bCandidatesTruncated;
+	if (!mapSource(trace->eSource, wire.eSource) ||
+		!mapSource(trace->ePendingSource, wire.ePendingSource) ||
+		!mapResult(trace->eResult, wire.eResult))
+	{
+		status = "Valtan decision trace contains an unknown selector enum";
+		return false;
+	}
+	wire.Candidates.reserve(trace->Candidates.size());
+	for (const VALTAN_DECISION_CANDIDATE_TRACE& source : trace->Candidates)
+	{
+		VALTAN_DECISION_TRACE_CANDIDATE_WIRE candidate{};
+		candidate.strPatternId = source.strPatternId;
+		if (!mapExclusions(source.iExclusionMask, candidate.iExclusionMask))
+		{
+			status = "Valtan decision trace contains an unknown exclusion bit";
+			return false;
+		}
+		candidate.iAuthoredWeight = source.iAuthoredWeight;
+		candidate.iEffectiveWeight = source.iEffectiveWeight;
+		candidate.iCooldownRemainingTicks = source.iCooldownRemainingTicks;
+		candidate.iConsecutiveUses = source.iConsecutiveUses;
+		candidate.iMaximumConsecutiveUses = source.iMaximumConsecutiveUses;
+		candidate.iWeightBeginInclusive = source.iWeightBeginInclusive;
+		candidate.iWeightEndExclusive = source.iWeightEndExclusive;
+		candidate.isSelected = source.bSelected;
+		wire.Candidates.push_back(std::move(candidate));
+	}
+	staged.DefinitionRevision =
+		m_ValtanDecisionTraceRevision.DefinitionRevision;
+	staged.eResult = VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE;
+	outResponse = std::move(staged);
+	status.clear();
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Stage_GameplayGeneration(
+	const std::uint32_t transactionSequence,
+	const LostArk::Shared::GameplayDataRevision& baseRevision,
+	const std::shared_ptr<const CGameplayCatalog>& candidateGeneration,
+	std::string& status)
+{
+	std::vector<LostArk::Shared::GameplayDataRevision> livePins;
+	if (!Build_RequiredPinnedGameplayRevisions(livePins))
+	{
+		status = "Room required gameplay revision pins are invalid";
+		return false;
+	}
+	m_GameplayCatalog.Collect_Garbage(livePins);
+	return m_GameplayCatalog.Stage(
+		transactionSequence, baseRevision, candidateGeneration, status);
+}
+
+bool LostArk::Server::CGameRoom::Commit_GameplayGeneration(
+	const std::uint32_t transactionSequence) noexcept
+{
+	if (!m_GameplayCatalog.Commit(transactionSequence))
+		return false;
+	const LostArk::Shared::GameplayDataRevision& activeRevision =
+		m_GameplayCatalog.Get_ActiveRevision();
+	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		/* A boss keeps the last generation its brain evaluated until the first
+		   tick that evaluates the new active catalog. That one-tick identity handoff
+		   is what lets the brain reconcile a newly introduced or raised health
+		   threshold after the boss is already below it. Running occurrences keep
+		   the same pin for their full lifetime; definition-self-contained entities
+		   can publish the new active identity immediately. */
+		if (WORLD_BOOTSTRAP_KIND::BOSS != entity.eKind)
+		{
+			entity.PinnedDefinitionRevision = activeRevision;
+		}
+	}
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Abort_GameplayGeneration(
+	const std::uint32_t transactionSequence) noexcept
+{
+	m_GameplayCatalog.Abort(transactionSequence);
 }
 
 bool LostArk::Server::CGameRoom::Try_SealPrivateArenaForRetirement()
@@ -892,6 +1469,15 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		return;
 	}
 	Drain_BossCombatEvents();
+#ifdef _DEBUG
+	if (!Flush_ValtanPatternIdAuditionLifecycle())
+	{
+		m_strStatus = "Valtan audition lifecycle serialization failed";
+		m_isReady = false;
+		recordTickDuration();
+		return;
+	}
+#endif
 	if (!Broadcast_CombatObjectLifecycle())
 	{
 		m_isReady = false;
@@ -901,6 +1487,15 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	m_iServerTick = updateTick;
 	if (!m_Players.empty())
 		Broadcast_WorldSnapshot();
+	std::vector<LostArk::Shared::GameplayDataRevision> liveGenerationPins;
+	if (!Build_RequiredPinnedGameplayRevisions(liveGenerationPins))
+	{
+		m_strStatus = "Gameplay generation pin set exceeded its wire bound";
+		m_isReady = false;
+		recordTickDuration();
+		return;
+	}
+	m_GameplayCatalog.Collect_Garbage(liveGenerationPins);
 	recordTickDuration();
 	if (!m_Players.empty() && 0u == (m_iServerTick % 300u))
 	{
@@ -1762,6 +2357,10 @@ bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
 	staged.iActionStartTick = startTick;
 	staged.iCurrentHp = 1u;
 	staged.iMaximumHp = 1u;
+	staged.PinnedDefinitionRevision =
+		m_GameplayCatalog.Get_ActiveRevision();
+	if (!staged.PinnedDefinitionRevision.Is_Valid())
+		return false;
 
 	++m_iNextNetEntityId;
 	m_WorldEntities.push_back(std::move(staged));
@@ -2307,6 +2906,57 @@ bool LostArk::Server::CGameRoom::Has_EngagedAuditionPlayer(
 }
 
 #ifdef _DEBUG
+void LostArk::Server::CGameRoom::Queue_ValtanPatternIdAuditionLifecycle(
+	const LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
+	std::string reason)
+{
+	using namespace LostArk::Shared;
+	if (VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE ==
+			m_ValtanPatternIdAudition.ePhase ||
+		INVALID_SESSION_ID == m_ValtanPatternIdAudition.iOwnerSessionId)
+	{
+		return;
+	}
+	S2C_VALTAN_AUDITION_LIFECYCLE message{};
+	message.iRequestSequence =
+		m_ValtanPatternIdAudition.iRequestSequence;
+	message.iRoomAuditionEpoch =
+		m_ValtanPatternIdAudition.iRoomAuditionEpoch;
+	message.iPatternSequence =
+		m_ValtanPatternIdAudition.iExpectedPatternSequence;
+	message.strPatternId = m_ValtanPatternIdAudition.strPatternId;
+	message.eState = state;
+	message.PinnedDefinitionRevision =
+		m_ValtanPatternIdAudition.PinnedDefinitionRevision;
+	message.strReason = std::move(reason);
+	m_PendingValtanAuditionLifecycle.push_back({
+		m_ValtanPatternIdAudition.iOwnerSessionId, std::move(message) });
+}
+
+bool LostArk::Server::CGameRoom::Flush_ValtanPatternIdAuditionLifecycle()
+{
+	using namespace LostArk::Shared;
+	auto pending = std::move(m_PendingValtanAuditionLifecycle);
+	m_PendingValtanAuditionLifecycle.clear();
+	for (const TARGETED_VALTAN_AUDITION_LIFECYCLE& targeted : pending)
+	{
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(targeted.iSessionId);
+		if (nullptr == session)
+			continue;
+		CPacketWriter writer;
+		if (!Write_Message(writer, targeted.Message))
+			return false;
+		if (!session->Send_Frame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_LIFECYCLE,
+			writer.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
+	return true;
+}
+
 bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 {
 	if (VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE ==
@@ -2330,6 +2980,9 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 	if (m_WorldEntities.end() == boss || 0u == boss->iCurrentHp ||
 		SERVER_ENTITY_ACTION::DEAD == boss->eAction)
 	{
+		Queue_ValtanPatternIdAuditionLifecycle(
+			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED,
+			"Valtan audition boss became unavailable");
 		m_ValtanPatternIdAudition = {};
 		return false;
 	}
@@ -2338,8 +2991,24 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 			m_ValtanPatternIdAudition.iExpectedPatternSequence &&
 		boss->strPatternId == m_ValtanPatternIdAudition.strPatternId)
 	{
-		m_ValtanPatternIdAudition.ePhase =
-			VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE;
+		if (VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE !=
+			m_ValtanPatternIdAudition.ePhase)
+		{
+			if (!boss->PinnedDefinitionRevision.Is_Valid() ||
+				boss->PinnedDefinitionRevision !=
+					m_ValtanPatternIdAudition.PinnedDefinitionRevision)
+			{
+				Queue_ValtanPatternIdAuditionLifecycle(
+					LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED,
+					"Valtan audition definition revision changed before start");
+				m_ValtanPatternIdAudition = {};
+				return false;
+			}
+			m_ValtanPatternIdAudition.ePhase =
+				VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE;
+			Queue_ValtanPatternIdAuditionLifecycle(
+				LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE);
+		}
 		return true;
 	}
 	if (boss->PendingPatternIds.end() != std::find(
@@ -2354,6 +3023,21 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 	/* The selected occurrence finished, was removed by another authoritative
 	   reset, or no longer owns the expected sequence. A naturally running boss
 	   pattern was never registered here, so it cannot block the first request. */
+	if (VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
+			m_ValtanPatternIdAudition.ePhase &&
+		boss->iPatternSequence ==
+			m_ValtanPatternIdAudition.iExpectedPatternSequence &&
+		boss->strPatternId.empty())
+	{
+		Queue_ValtanPatternIdAuditionLifecycle(
+			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED);
+	}
+	else
+	{
+		Queue_ValtanPatternIdAuditionLifecycle(
+			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED,
+			"Valtan audition occurrence was discarded or replaced");
+	}
 	m_ValtanPatternIdAudition = {};
 	return false;
 }
@@ -2917,6 +3601,8 @@ bool LostArk::Server::CGameRoom::Start_ValtanTimelineRow(
 	m_ValtanTimelineAudition.iRowIndex = row.iOrdinal - 1u;
 	m_ValtanTimelineAudition.iHeldBossHp = boss.iCurrentHp;
 	m_ValtanTimelineAudition.iHeldBossHealthBar = row.iSectionHealthBar;
+	m_ValtanTimelineAudition.PinnedDefinitionRevision =
+		m_GameplayCatalog.Get_ActiveRevision();
 	m_ValtanTimelineAudition.iEnvironmentDeadlineTick =
 		Add_ServerTicksSkippingReservedZero(startTick, 300u);
 	m_ValtanTimelineAudition.bAllowProductPropBreak = spawnPillars;
@@ -3001,8 +3687,10 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineRowBeforeBrain(
 		fail("Valtan timeline lost its boss");
 		return false;
 	}
-	const VALTAN_TIMELINE_DEFINITION* definition =
-		m_GameplayCatalog.Find_ValtanTimeline(boss.strEncounterId);
+	const CGameplayCatalog* timelineCatalog = m_GameplayCatalog.Resolve(
+		m_ValtanTimelineAudition.PinnedDefinitionRevision);
+	const VALTAN_TIMELINE_DEFINITION* definition = nullptr == timelineCatalog ?
+		nullptr : timelineCatalog->Find_ValtanTimeline(boss.strEncounterId);
 	if (nullptr == definition ||
 		m_ValtanTimelineAudition.iRowIndex >= definition->Rows.size())
 	{
@@ -3161,8 +3849,10 @@ void LostArk::Server::CGameRoom::Restore_ValtanTimelineRowAfterBrain(
 	{
 		return;
 	}
-	const VALTAN_TIMELINE_DEFINITION* definition =
-		m_GameplayCatalog.Find_ValtanTimeline(boss.strEncounterId);
+	const CGameplayCatalog* timelineCatalog = m_GameplayCatalog.Resolve(
+		m_ValtanTimelineAudition.PinnedDefinitionRevision);
+	const VALTAN_TIMELINE_DEFINITION* definition = nullptr == timelineCatalog ?
+		nullptr : timelineCatalog->Find_ValtanTimeline(boss.strEncounterId);
 	const auto owner = m_Players.find(m_ValtanTimelineAudition.iOwnerPlayerId);
 	if (nullptr == definition ||
 		m_ValtanTimelineAudition.iRowIndex >= definition->Rows.size() ||
@@ -3423,6 +4113,18 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			m_ValtanPatternIdAudition.strBossPlacementId =
 				boss->strPlacementId;
 			m_ValtanPatternIdAudition.strPatternId = request.strPatternId;
+			m_ValtanPatternIdAudition.iRequestSequence =
+				request.iRequestSequence;
+			m_ValtanPatternIdAudition.iRoomAuditionEpoch =
+				m_iNextValtanAuditionEpoch;
+			m_iNextValtanAuditionEpoch =
+				(std::numeric_limits<std::uint32_t>::max)() ==
+					m_iNextValtanAuditionEpoch ?
+				1u : m_iNextValtanAuditionEpoch + 1u;
+			m_ValtanPatternIdAudition.PinnedDefinitionRevision =
+				m_GameplayCatalog.Get_ActiveRevision();
+			Queue_ValtanPatternIdAuditionLifecycle(
+				VALTAN_AUDITION_LIFECYCLE_STATE::PENDING);
 			m_iValtanAuditionArmedHealthBar = 0u;
 			currentHealthBar = CValtanBrain::Calculate_HealthBar(*boss);
 			m_strStatus = "Valtan pattern ID audition queued: " +
@@ -4040,6 +4742,143 @@ void LostArk::Server::CGameRoom::Handle_ValtanAudition(
 	}
 }
 
+bool LostArk::Server::CGameRoom::Build_RequiredPinnedGameplayRevisions(
+	std::vector<LostArk::Shared::GameplayDataRevision>& outRevisions) const
+{
+	using LostArk::Shared::GameplayDataRevision;
+	outRevisions.clear();
+	const GameplayDataRevision& active =
+		m_GameplayCatalog.Get_ActiveRevision();
+	if (!active.Is_Valid())
+		return false;
+
+	const auto append = [&outRevisions, &active](
+		const GameplayDataRevision& revision)
+		{
+			if (!revision.Is_Valid())
+				return false;
+			if (revision == active || outRevisions.end() != std::find(
+				outRevisions.begin(), outRevisions.end(), revision))
+			{
+				return true;
+			}
+			if (outRevisions.size() >=
+				LostArk::Shared::MAX_REQUIRED_PINNED_GAMEPLAY_REVISIONS)
+			{
+				return false;
+			}
+			outRevisions.push_back(revision);
+			return true;
+		};
+
+	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		if (!append(entity.PinnedDefinitionRevision))
+		{
+			outRevisions.clear();
+			return false;
+		}
+		for (const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence :
+			entity.MechanicOccurrences)
+		{
+			if ((SERVER_BOSS_MECHANIC_STATE::QUEUED == occurrence.eState ||
+				SERVER_BOSS_MECHANIC_STATE::ACTIVE == occurrence.eState) &&
+				!append(occurrence.PinnedDefinitionRevision))
+			{
+				outRevisions.clear();
+				return false;
+			}
+		}
+	}
+	for (const SERVER_COMBAT_OBJECT& object :
+		m_CombatObjectRuntime.Get_LiveObjects())
+	{
+		if (object.bReplicated && !append(object.PinnedDefinitionRevision))
+		{
+			outRevisions.clear();
+			return false;
+		}
+	}
+#ifdef _DEBUG
+	if (VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE !=
+			m_ValtanPatternIdAudition.ePhase &&
+		!append(m_ValtanPatternIdAudition.PinnedDefinitionRevision))
+	{
+		outRevisions.clear();
+		return false;
+	}
+	if (VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
+			m_ValtanTimelineAudition.ePhase &&
+		!append(m_ValtanTimelineAudition.PinnedDefinitionRevision))
+	{
+		outRevisions.clear();
+		return false;
+	}
+#endif
+	std::sort(outRevisions.begin(), outRevisions.end(),
+		[](const GameplayDataRevision& left,
+			const GameplayDataRevision& right)
+		{
+			return left.Bytes < right.Bytes;
+		});
+	return true;
+}
+
+const LostArk::Server::CGameplayCatalog*
+LostArk::Server::CGameRoom::Resolve_ValtanGameplayCatalog(
+	const SERVER_WORLD_ENTITY& boss) const noexcept
+{
+	/* An idle boss makes its next decision from the process-active generation.
+	   Once BeginPattern publishes a stable pattern id, every later stage lookup
+	   resolves the occurrence pin until that pattern is completely retired. */
+	#ifdef _DEBUG
+	if (VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
+			m_ValtanTimelineAudition.ePhase &&
+		boss.iNetEntityId == m_ValtanTimelineAudition.iBossEntityId)
+	{
+		return m_GameplayCatalog.Resolve(
+			m_ValtanTimelineAudition.PinnedDefinitionRevision);
+	}
+	if (VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE !=
+			m_ValtanPatternIdAudition.ePhase &&
+		boss.iNetEntityId == m_ValtanPatternIdAudition.iBossEntityId)
+	{
+		return m_GameplayCatalog.Resolve(
+			m_ValtanPatternIdAudition.PinnedDefinitionRevision);
+	}
+	#endif
+	if (boss.strPatternId.empty())
+	{
+		/* The active generation owns ordinary decisions, but the oldest queued
+		   health mechanic already became an occurrence under its captured
+		   generation. Resolve that catalog before SelectPattern consumes its ID;
+		   BeginPattern then publishes the same revision on the running boss. */
+		if (!boss.PendingPatternIds.empty())
+		{
+			const std::string& pendingPatternId =
+				boss.PendingPatternIds.front();
+			const auto pendingOccurrence = std::find_if(
+				boss.MechanicOccurrences.begin(),
+				boss.MechanicOccurrences.end(),
+				[&pendingPatternId](
+					const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+				{
+					return occurrence.strPatternId == pendingPatternId &&
+						SERVER_BOSS_MECHANIC_STATE::QUEUED ==
+							occurrence.eState;
+				});
+			if (boss.MechanicOccurrences.end() != pendingOccurrence &&
+				pendingOccurrence->PinnedDefinitionRevision.Is_Valid())
+			{
+				return m_GameplayCatalog.Resolve(
+					pendingOccurrence->PinnedDefinitionRevision);
+			}
+		}
+		return &m_GameplayCatalog.Active();
+	}
+	return m_GameplayCatalog.Resolve(boss.PinnedDefinitionRevision);
+}
+
 bool LostArk::Server::CGameRoom::Send_Accepted(
 	const std::shared_ptr<CClientSession>& session,
 	const SERVER_PLAYER& player)
@@ -4050,6 +4889,13 @@ bool LostArk::Server::CGameRoom::Send_Accepted(
 	message.eWorldId = m_eWorldId;
 	message.iPlayerId = player.iPlayerId;
 	message.iNetEntityId = player.iNetEntityId;
+	message.ActiveGameplayRevision =
+		m_GameplayCatalog.Get_ActiveRevision();
+	if (!Build_RequiredPinnedGameplayRevisions(
+		message.RequiredPinnedGameplayRevisions))
+	{
+		return false;
+	}
 	CPacketWriter writer;
 	return nullptr != session && Write_Message(writer, message) &&
 		session->Send_Frame(PACKET_TYPE::S2C_ENTER_ACCEPTED, writer.Get_Buffer());
@@ -4416,6 +5262,14 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 	message.eWorldId = m_eWorldId;
 	message.iEstherGauge = m_EstherSkillSystem.Get_Gauge();
 	message.iEstherGaugeMaximum = m_EstherSkillSystem.Get_GaugeMaximum();
+	message.ActiveGameplayRevision =
+		m_GameplayCatalog.Get_ActiveRevision();
+	if (!Build_RequiredPinnedGameplayRevisions(
+		message.RequiredPinnedGameplayRevisions))
+	{
+		m_strStatus = "Live gameplay revision pins are invalid or exceed wire bounds";
+		return;
+	}
 	message.Players.reserve(m_Players.size());
 	message.Entities.reserve(m_WorldEntities.size());
 	for (const auto& [playerId, player] : m_Players)
@@ -4492,6 +5346,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iCurrentHp = entity.iCurrentHp;
 		snapshot.iMaximumHp = entity.iMaximumHp;
 		snapshot.iPhase = entity.iPhase;
+		snapshot.PinnedDefinitionRevision =
+			entity.PinnedDefinitionRevision;
 		/* Presentation only needs to know which plates came off, not how much
 		durability is left, so the wire carries one bit per authored plate. */
 		for (const SERVER_BOSS_ARMOR_PLATE_STATE& plate : entity.ArmorPlates)
@@ -4682,6 +5538,13 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 
 	SERVER_WORLD_ENTITY staged{};
 	staged.iNetEntityId = netEntityId;
+	staged.PinnedDefinitionRevision =
+		m_GameplayCatalog.Get_ActiveRevision();
+	if (!staged.PinnedDefinitionRevision.Is_Valid())
+	{
+		m_strStatus = "Active gameplay revision is unavailable";
+		return false;
+	}
 	staged.strPlacementId = placement.strPlacementId;
 	staged.strArchetypeId = placement.strArchetypeId;
 	staged.strEncounterId = placement.strEncounterId;
@@ -4723,10 +5586,8 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 		staged.fCollisionRadius = profile->fCollisionRadius;
 		staged.fEngageDistance = profile->fEngageDistance;
 		staged.fMoveSpeed = profile->fMoveSpeed;
-		staged.iPhaseTwoHpPercent =
-			BOSS_PHASE_POLICY_KIND::HEALTH_PERCENT_THRESHOLD ==
-				profile->PhasePolicy.eKind ?
-					profile->PhasePolicy.iThresholdPercent : 0u;
+		staged.PhasePolicy = profile->PhasePolicy;
+		staged.iPhaseTwoHpPercent = profile->PhasePolicy.iThresholdPercent;
 		/* Every plate starts intact. A boss with no authored plates keeps an
 		empty list and therefore no mitigation, which is the pre-armour rule. */
 		staged.ArmorPlates.clear();
@@ -4897,8 +5758,15 @@ bool LostArk::Server::CGameRoom::Apply_EncounterPropStageEntry(
 	   pattern that raised it. The stage edge names the pair it breaks, so the
 	   pair that goes leaves the opposite pair standing as the cover the raid
 	   moves to. */
+	const CGameplayCatalog* occurrenceCatalog =
+		Resolve_ValtanGameplayCatalog(boss);
+	if (nullptr == occurrenceCatalog)
+	{
+		m_strStatus = "Encounter prop pinned gameplay generation is missing";
+		return false;
+	}
 	if (const std::vector<BOSS_PATTERN_DEFINITION>* propBreakPatterns =
-		m_GameplayCatalog.Find_BossPatterns(boss.strEncounterId))
+		occurrenceCatalog->Find_BossPatterns(boss.strEncounterId))
 	{
 		const auto propBreakPattern = std::find_if(
 			propBreakPatterns->begin(), propBreakPatterns->end(),
@@ -5005,19 +5873,32 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageActions(
 	const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
 	const std::uint32_t serverTick)
 {
+	const CGameplayCatalog* occurrenceCatalog =
+		Resolve_ValtanGameplayCatalog(boss);
+	if (nullptr == occurrenceCatalog)
+	{
+		m_strStatus = "Boss stage action pinned gameplay generation is missing";
+		return false;
+	}
 	SERVER_BOSS_COMBAT_STATE stagedCombat = boss.BossCombat;
 	std::uint8_t stagedGameplayPhase = boss.iPhase;
 	SERVER_COMBAT_OBJECT_TRANSACTION transaction =
 		m_CombatObjectRuntime.Begin_Transaction();
 	if (!Stage_BossPatternStageActions(
-		boss, patternId, actionId, trigger, serverTick,
+		boss, *occurrenceCatalog, patternId, actionId, trigger, serverTick,
 		stagedCombat, stagedGameplayPhase, transaction))
 	{
+		CValtanBrain::Fail_Mechanic(
+			boss, patternId,
+			SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_PREFLIGHT, serverTick);
 		return false;
 	}
 	if (!m_CombatObjectRuntime.Commit(std::move(transaction)))
 	{
 		m_strStatus = "Boss stage combat object transaction changed";
+		CValtanBrain::Fail_Mechanic(
+			boss, patternId,
+			SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_COMMIT, serverTick);
 		return false;
 	}
 	boss.BossCombat = std::move(stagedCombat);
@@ -5031,35 +5912,133 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageTransition(
 	const std::string& previousActionId,
 	const std::string& nextPatternId,
 	const std::string& nextActionId,
+	const LostArk::Shared::GameplayDataRevision& previousDefinitionRevision,
+	const LostArk::Shared::GameplayDataRevision& nextDefinitionRevision,
 	const std::uint32_t serverTick)
 {
+	const std::string& failurePatternId =
+		nextPatternId.empty() ? previousPatternId : nextPatternId;
 	SERVER_BOSS_COMBAT_STATE stagedCombat = boss.BossCombat;
 	std::uint8_t stagedGameplayPhase = boss.iPhase;
 	SERVER_COMBAT_OBJECT_TRANSACTION transaction =
 		m_CombatObjectRuntime.Begin_Transaction();
+	const CGameplayCatalog* previousCatalog = previousPatternId.empty() ?
+		&m_GameplayCatalog.Active() :
+		m_GameplayCatalog.Resolve(previousDefinitionRevision);
+	const CGameplayCatalog* nextCatalog = nextPatternId.empty() ?
+		&m_GameplayCatalog.Active() :
+		m_GameplayCatalog.Resolve(nextDefinitionRevision);
+	if (nullptr == previousCatalog || nullptr == nextCatalog)
+	{
+		m_strStatus = "Boss stage transition pinned gameplay generation is missing";
+		return false;
+	}
 	if (!Stage_BossPatternStageActions(
-		boss, previousPatternId, previousActionId,
+		boss, *previousCatalog, previousPatternId, previousActionId,
 		BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT, serverTick,
 		stagedCombat, stagedGameplayPhase, transaction) ||
 		!Stage_BossPatternStageActions(
-			boss, nextPatternId, nextActionId,
+			boss, *nextCatalog, nextPatternId, nextActionId,
 			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, serverTick,
 			stagedCombat, stagedGameplayPhase, transaction))
 	{
+		CValtanBrain::Fail_Mechanic(
+			boss, failurePatternId,
+			SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_PREFLIGHT, serverTick);
 		return false;
+	}
+	WORLD_DESTRUCTION_TRANSACTION worldTransaction{};
+	std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE> worldEvents;
+	bool hasWorldTransaction = false;
+	if (m_WorldDestructionRuntime.Is_Initialized() &&
+		0u != boss.iNetEntityId && 0u != boss.iPatternSequence &&
+		!boss.strPatternId.empty() && !boss.strPatternStageId.empty() &&
+		!boss.strActionId.empty())
+	{
+		WORLD_DESTRUCTION_ACTION_TUPLE worldAction{};
+		worldAction.strPatternId = boss.strPatternId;
+		worldAction.strStageId = boss.strPatternStageId;
+		worldAction.strActionId = boss.strActionId;
+		worldAction.iStageIndex = boss.iPatternStageIndex;
+		std::string worldStatus;
+		const WORLD_DESTRUCTION_PREPARE_RESULT worldResult =
+			m_WorldDestructionRuntime.Prepare_StageTrigger(
+				worldAction, boss.iNetEntityId, boss.iPatternSequence,
+				serverTick, worldTransaction, worldStatus);
+		if (WORLD_DESTRUCTION_PREPARE_RESULT::READY == worldResult)
+		{
+			std::vector<SERVER_COLLISION_STATE_CHANGE> collisionChanges;
+			std::vector<SERVER_NAVIGATION_CONDITION_CHANGE> navigationChanges;
+			SERVER_COLLISION_STATE_STAGE collisionStage{};
+			SERVER_NAVIGATION_CONDITION_STAGE navigationStage{};
+			Build_WorldDestructionStateChanges(
+				worldTransaction, collisionChanges, navigationChanges);
+			if (!Build_WorldDestructionLiveEvents(
+					worldTransaction, boss, worldEvents, worldStatus) ||
+				!m_ServerCollisionSystem.Prepare_StateChanges(
+					collisionChanges, collisionStage, worldStatus) ||
+				!m_ServerNavigation.Prepare_ConditionChanges(
+					navigationChanges, navigationStage, worldStatus))
+			{
+				m_strStatus = std::move(worldStatus);
+				CValtanBrain::Fail_Mechanic(
+					boss, failurePatternId,
+					SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_PREFLIGHT,
+					serverTick);
+				return false;
+			}
+			hasWorldTransaction = true;
+		}
+		else if (WORLD_DESTRUCTION_PREPARE_RESULT::NO_MATCH != worldResult &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST != worldResult &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::NO_CHANGE != worldResult)
+		{
+			m_strStatus = std::move(worldStatus);
+			CValtanBrain::Fail_Mechanic(
+				boss, failurePatternId,
+				SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_PREFLIGHT,
+				serverTick);
+			return false;
+		}
 	}
 	if (!m_CombatObjectRuntime.Commit(std::move(transaction)))
 	{
 		m_strStatus = "Boss stage transition combat object transaction changed";
+		CValtanBrain::Fail_Mechanic(
+			boss, failurePatternId,
+			SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_COMMIT, serverTick);
 		return false;
 	}
 	boss.BossCombat = std::move(stagedCombat);
 	boss.iPhase = stagedGameplayPhase;
+	if (hasWorldTransaction)
+	{
+		std::string worldStatus;
+		if (!Commit_WorldDestructionTransaction(
+			worldTransaction, worldEvents, serverTick, worldStatus))
+		{
+			m_strStatus = std::move(worldStatus);
+			CValtanBrain::Fail_Mechanic(
+				boss, failurePatternId,
+				SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_COMMIT,
+				serverTick);
+			return false;
+		}
+		if (!worldEvents.empty())
+		{
+			const std::uint64_t lastSequence =
+				worldEvents.back().iEventSequence;
+			m_iNextWorldDestructionEventSequence =
+				(std::numeric_limits<std::uint64_t>::max)() == lastSequence ?
+					0u : lastSequence + 1u;
+		}
+	}
 	return true;
 }
 
 bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 	const SERVER_WORLD_ENTITY& boss,
+	const CGameplayCatalog& catalog,
 	const std::string& patternId,
 	const std::string& actionId,
 	const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
@@ -5070,8 +6049,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 {
 	if (patternId.empty() || actionId.empty())
 		return true;
-	const auto* patterns =
-		m_GameplayCatalog.Find_BossPatterns(boss.strEncounterId);
+	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	if (nullptr == patterns)
 	{
 		m_strStatus = "Boss stage action encounter is missing";
@@ -5157,7 +6135,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE:
 		{
 			const BOSS_RUNTIME_PROFILE* profile =
-				m_GameplayCatalog.Find_Boss(boss.strArchetypeId);
+				catalog.Find_Boss(boss.strArchetypeId);
 			const bool isValtan = "BOSS_VALTAN" == boss.strArchetypeId &&
 				"ENCOUNTER_VALTAN" == boss.strEncounterId;
 			if (nullptr == profile ||
@@ -5191,7 +6169,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY ==
 					action.eKind;
 			const BOSS_COMBAT_OBJECT_DEFINITION* definition =
-				m_GameplayCatalog.Find_BossCombatObject(action.strTargetId);
+				catalog.Find_BossCombatObject(action.strTargetId);
 			if (nullptr == definition ||
 				definition->strEncounterId != boss.strEncounterId ||
 				definition->strOwnerPatternId != patternId ||
@@ -5267,6 +6245,9 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 						"Multi-object per-player spawn requires typed volley layout";
 					return false;
 				}
+				/* The volley is dealt once: every player alive at this edge gets
+				one object locked to where they stand, and the whole set shares the
+				staging transaction so a single failure drops all of it. */
 				std::vector<const SERVER_PLAYER*> aliveTargets;
 				for (const auto& [volleyPlayerId, volleyPlayer] : m_Players)
 				{
@@ -5385,16 +6366,18 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					if (!m_CombatObjectRuntime.Stage_BossCombatObject(
 						combatObjectTransaction, boss, &volleyTarget, *definition,
 						isTypedVolley ? &action.Volley : nullptr,
-						m_GameplayCatalog, countPerTarget, serverTick, m_strStatus))
+						catalog, countPerTarget, serverTick, m_strStatus))
 					{
 						return false;
 					}
 				}
+				/* An empty arena spawns nothing rather than falling back to the
+				boss position, which would drop an axe on the boss itself. */
 				break;
 			}
 			if (!m_CombatObjectRuntime.Stage_BossCombatObject(
 				combatObjectTransaction, boss, resolvedLockedTarget, *definition,
-				nullptr, m_GameplayCatalog, action.iValue, serverTick, m_strStatus))
+				nullptr, catalog, action.iValue, serverTick, m_strStatus))
 			{
 				return false;
 			}
@@ -5846,31 +6829,8 @@ bool LostArk::Server::CGameRoom::Commit_WorldDestructionTransaction(
 {
 	std::vector<SERVER_COLLISION_STATE_CHANGE> collisionChanges;
 	std::vector<SERVER_NAVIGATION_CONDITION_CHANGE> navigationChanges;
-	for (const WORLD_DESTRUCTION_STATE_TRANSITION& transition :
-		transaction.Transitions)
-	{
-		if (!transition.strCollisionStateId.empty())
-		{
-			SERVER_COLLISION_STATE_CHANGE change{};
-			change.strPlacementId = transition.strCollisionStateId;
-			change.bPlayerBlocking =
-				WORLD_DESTRUCTION_STATE::INTACT == transition.eNextState ||
-				WORLD_DESTRUCTION_STATE::BREAKING == transition.eNextState;
-			change.bImpactReceiverEnabled =
-				WORLD_DESTRUCTION_STATE::INTACT == transition.eNextState;
-			collisionChanges.push_back(std::move(change));
-		}
-		if (transition.bApplyPersistentMutation &&
-			!transition.strNavigationStateId.empty())
-		{
-			SERVER_NAVIGATION_CONDITION_CHANGE change{};
-			change.strConditionId = transition.strNavigationStateId;
-			change.bValue =
-				WORLD_DESTRUCTION_STATE::FRACTURED == transition.eNextState ||
-				WORLD_DESTRUCTION_STATE::DESPAWNED == transition.eNextState;
-			navigationChanges.push_back(std::move(change));
-		}
-	}
+	Build_WorldDestructionStateChanges(
+		transaction, collisionChanges, navigationChanges);
 
 	SERVER_COLLISION_STATE_STAGE collisionStage{};
 	SERVER_NAVIGATION_CONDITION_STAGE navigationStage{};
@@ -6144,6 +7104,10 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.iAttackPushMs = profile.iAttackPushMs;
 	staged.bAttackKnockdown = profile.bAttackKnockdown;
 	staged.iAttackDownMs = profile.iAttackDownMs;
+	staged.PinnedDefinitionRevision =
+		m_GameplayCatalog.Get_ActiveRevision();
+	if (!staged.PinnedDefinitionRevision.Is_Valid())
+		return false;
 
 	++m_iNextNetEntityId;
 	m_WorldEntities.push_back(std::move(staged));
@@ -6570,6 +7534,15 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		if (entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
 			m_ServerNavigation.Is_Loaded())
 		{
+			const CGameplayCatalog* occurrenceCatalog =
+				Resolve_ValtanGameplayCatalog(entity);
+			if (nullptr == occurrenceCatalog)
+			{
+				m_strStatus =
+					"Valtan occurrence pinned gameplay generation is missing";
+				m_isReady = false;
+				return;
+			}
 			const std::uint32_t previousPatternSequence =
 				entity.iPatternSequence;
 			const std::uint32_t previousStageIndex =
@@ -6581,6 +7554,13 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			const std::string previousPatternId = entity.strPatternId;
 			const std::string previousStageId = entity.strPatternStageId;
 			const std::string previousActionId = entity.strActionId;
+			const LostArk::Shared::GameplayDataRevision
+				previousDefinitionRevision = entity.PinnedDefinitionRevision;
+			/* The Brain resolves the next stage into the boss value first. Keep the
+			old value detached until every EXIT/ENTER action has passed preflight;
+			on failure the stage graph rolls back while the typed mechanic ledger
+			retains FAILED_REQUIRES_RESET. */
+			const SERVER_WORLD_ENTITY bossBeforeBrain = entity;
 			/* Where the body was before the brain moved it. The segment between
 			the two is what actually touched a wall this tick, in any pattern and
 			while idle, so a fast charge cannot step over a slab. */
@@ -6618,12 +7598,29 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_ValtanBrain.Update(
 					entity,
 					m_Players,
-					m_GameplayCatalog,
+					*occurrenceCatalog,
 					m_ServerNavigation,
 					fixedDeltaSeconds,
 					updateTick,
 					coverCircles,
-					m_TickDamageEvents);
+					m_TickDamageEvents,
+					&m_GameplayCatalog.Active(),
+					m_GameplayCatalog.Get_ActiveGenerationEpoch());
+				const VALTAN_DECISION_TRACE* latestTrace =
+					m_ValtanBrain.Get_LatestDecisionTrace();
+				if (nullptr != latestTrace &&
+					latestTrace->iTraceSequence !=
+						m_ValtanDecisionTraceRevision.iTraceSequence)
+				{
+					m_ValtanDecisionTraceRevision.iBossEntityId =
+						entity.iNetEntityId;
+					m_ValtanDecisionTraceRevision.strBossPlacementId =
+						entity.strPlacementId;
+					m_ValtanDecisionTraceRevision.iTraceSequence =
+						latestTrace->iTraceSequence;
+					m_ValtanDecisionTraceRevision.DefinitionRevision =
+						occurrenceCatalog->Get_ActiveRevision();
+				}
 			}
 			const bool stageChanged =
 				previousPatternSequence != entity.iPatternSequence ||
@@ -6640,8 +7637,23 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			if (stageIdentityChanged &&
 				!Apply_BossPatternStageTransition(
 					entity, previousPatternId, previousActionId,
-					entity.strPatternId, entity.strActionId, updateTick))
+					entity.strPatternId, entity.strActionId,
+					previousDefinitionRevision,
+					entity.PinnedDefinitionRevision, updateTick))
 			{
+				auto mechanicOccurrences = std::move(entity.MechanicOccurrences);
+				auto pendingPatternIds = std::move(entity.PendingPatternIds);
+				auto triggeredPatternIds = std::move(entity.TriggeredPatternIds);
+				const bool mechanicResetRequired =
+					entity.bMechanicLedgerRequiresReset;
+				const std::uint32_t lastEvaluatedHealthBar =
+					entity.iLastEvaluatedHealthBar;
+				entity = bossBeforeBrain;
+				entity.MechanicOccurrences = std::move(mechanicOccurrences);
+				entity.PendingPatternIds = std::move(pendingPatternIds);
+				entity.TriggeredPatternIds = std::move(triggeredPatternIds);
+				entity.bMechanicLedgerRequiresReset = mechanicResetRequired;
+				entity.iLastEvaluatedHealthBar = lastEvaluatedHealthBar;
 				m_isReady = false;
 				return;
 			}
@@ -6716,10 +7728,31 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					/* The stun follows the collision, not the wall. A charge into a
 					   receiver whose wall is already gone, or that no destruction
 					   binding claims, still stops the boss dead. */
-					if (!m_ValtanBrain.Complete_ImpactStage(
-						entity, m_GameplayCatalog, updateTick) ||
+					const SERVER_WORLD_ENTITY bossBeforeImpactTransition = entity;
+					const std::string impactPreviousPatternId = entity.strPatternId;
+					const std::string impactPreviousActionId = entity.strActionId;
+					const CGameplayCatalog* impactCatalog =
+						m_GameplayCatalog.Resolve(entity.PinnedDefinitionRevision);
+					if (nullptr == impactCatalog ||
+						!m_ValtanBrain.Complete_ImpactStage(
+							entity, *impactCatalog, updateTick) ||
+						!Apply_BossPatternStageTransition(
+							entity, impactPreviousPatternId,
+							impactPreviousActionId, entity.strPatternId,
+							entity.strActionId,
+							bossBeforeImpactTransition.PinnedDefinitionRevision,
+							entity.PinnedDefinitionRevision, updateTick) ||
 						!Apply_WorldDestructionStageEntry(entity, updateTick))
 					{
+						auto mechanicOccurrences =
+							std::move(entity.MechanicOccurrences);
+						const bool mechanicResetRequired =
+							entity.bMechanicLedgerRequiresReset;
+						entity = bossBeforeImpactTransition;
+						entity.MechanicOccurrences =
+							std::move(mechanicOccurrences);
+						entity.bMechanicLedgerRequiresReset =
+							mechanicResetRequired;
 						m_strStatus =
 							"Valtan impact stage transition failed";
 						m_isReady = false;
@@ -6737,6 +7770,16 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			if (updateValtanBrain)
 				Restore_ValtanTimelineRowAfterBrain(entity, updateTick);
 #endif
+			if (entity.strPatternId.empty() &&
+				occurrenceCatalog->Get_ActiveRevision() ==
+					m_GameplayCatalog.Get_ActiveRevision())
+			{
+				/* Publish the active identity only after the brain has observed it.
+				If an old occurrence finished on this tick, retaining its pin for one
+				more boundary makes the next active-catalog evaluation detectable. */
+				entity.PinnedDefinitionRevision =
+					m_GameplayCatalog.Get_ActiveRevision();
+			}
 		}
 		else if (entity.eKind == WORLD_BOOTSTRAP_KIND::MONSTER &&
 			m_ServerNavigation.Is_Loaded())

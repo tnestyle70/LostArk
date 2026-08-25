@@ -116,8 +116,11 @@ namespace LostArk::Server
 		std::uint32_t iSpawnTick = 0u;
 		std::string strCombatObjectArchetypeId;
 		std::string strClientVisualId;
+		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 		bool bReplicated = false;
 		bool bTrackLockedTargetUntilFirstPulse = false;
+		/* A radial volley tracks the same locked player without collapsing every
+		ordinal back onto that player's centre before the first pulse. */
 		float fLockedTargetOffsetX = 0.f;
 		float fLockedTargetOffsetZ = 0.f;
 		SERVER_COMBAT_OBJECT_LIVE_STATE LiveState;
@@ -138,6 +141,9 @@ namespace LostArk::Server
 		LostArk::Shared::COMBAT_OBJECT_ID iNextCombatObjectId =
 			LostArk::Shared::INVALID_COMBAT_OBJECT_ID;
 		std::vector<SERVER_COMBAT_OBJECT> Objects;
+		/* Lifecycle messages are built while the transaction is still detached.
+		Commit only moves prebuilt values after both live vectors reserve, so a
+		failed allocation cannot expose a prefix of a volley. */
 		std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED> Spawned;
 	};
 

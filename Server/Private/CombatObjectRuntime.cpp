@@ -431,6 +431,12 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		object.strCombatObjectArchetypeId =
 			definition.strCombatObjectArchetypeId;
 		object.strClientVisualId = definition.strClientVisualId;
+		object.PinnedDefinitionRevision = boss.PinnedDefinitionRevision;
+		if (!object.PinnedDefinitionRevision.Is_Valid())
+		{
+			status = "Boss combat object definition revision is unavailable";
+			return false;
+		}
 		object.bReplicated = true;
 		object.LiveState.iOwnerPatternSequence = boss.iPatternSequence;
 		object.LiveState.strOwnerPatternId = definition.strOwnerPatternId;
@@ -901,6 +907,7 @@ LostArk::Server::CCombatObjectRuntime::To_SpawnedMessage(
 	message.fPositionY = object.LiveState.CurrentPose.fPositionY;
 	message.fPositionZ = object.LiveState.CurrentPose.fPositionZ;
 	message.fYawDegrees = object.LiveState.CurrentPose.fYawDegrees;
+	message.PinnedDefinitionRevision = object.PinnedDefinitionRevision;
 	return message;
 }
 
@@ -950,6 +957,7 @@ bool LostArk::Server::CCombatObjectRuntime::Build_Snapshots(
 		snapshot.fPositionY = object.LiveState.CurrentPose.fPositionY;
 		snapshot.fPositionZ = object.LiveState.CurrentPose.fPositionZ;
 		snapshot.fYawDegrees = object.LiveState.CurrentPose.fYawDegrees;
+		snapshot.PinnedDefinitionRevision = object.PinnedDefinitionRevision;
 		outSnapshots.push_back(snapshot);
 	}
 	std::sort(outSnapshots.begin(), outSnapshots.end(),

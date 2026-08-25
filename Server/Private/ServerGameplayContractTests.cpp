@@ -8,8 +8,10 @@
 #include "GameRoom.h"
 #include "PlayerSkillSystem.h"
 #include "Network/PacketReader.h"
+#include "Network/PacketWriter.h"
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
+#include "ServerApp.h"
 #include "ServerTriggerSystem.h"
 #include "SpawnGroupBootstrap.h"
 #include "SpawnGroupRuntime.h"
@@ -20,6 +22,7 @@
 #include "WorldDestructionBootstrapContractTests.h"
 
 #include <Windows.h>
+#include <process.h>
 
 #include <algorithm>
 #include <array>
@@ -30,6 +33,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <memory>
@@ -69,6 +73,61 @@ namespace
 		}
 		int failures = 0;
 		bool groundTargetOnly = false;
+	};
+
+	struct CONTRACT_STACK_WORK final
+	{
+		void (*pFunction)(void*) = nullptr;
+		void* pContext = nullptr;
+	};
+
+	unsigned __stdcall Run_ContractStackWork(void* opaque) noexcept
+	{
+		const CONTRACT_STACK_WORK* work =
+			static_cast<const CONTRACT_STACK_WORK*>(opaque);
+		if (nullptr == work || nullptr == work->pFunction) return 1u;
+		work->pFunction(work->pContext);
+		return 0u;
+	}
+
+	bool Run_WithContractWorkerStack(
+		void (*function)(void*), void* context)
+	{
+		/* Synthetic catalog generations run deep parse/validate call trees. Give
+		the worker an explicit reserve without weakening Server.exe's normal 1 MiB
+		main-thread stack contract or hiding oversized locals in the driver. */
+		constexpr unsigned CONTRACT_WORKER_STACK_RESERVE = 2u * 1024u * 1024u;
+		CONTRACT_STACK_WORK work{ function, context };
+		const uintptr_t rawHandle = _beginthreadex(
+			nullptr, CONTRACT_WORKER_STACK_RESERVE, Run_ContractStackWork,
+			&work, STACK_SIZE_PARAM_IS_A_RESERVATION, nullptr);
+		if (0u == rawHandle) return false;
+		const HANDLE handle = reinterpret_cast<HANDLE>(rawHandle);
+		const DWORD waitResult = ::WaitForSingleObject(handle, INFINITE);
+		DWORD exitCode = 1u;
+		const bool completed = WAIT_OBJECT_0 == waitResult &&
+			FALSE != ::GetExitCodeThread(handle, &exitCode) && 0u == exitCode;
+		::CloseHandle(handle);
+		return completed;
+	}
+
+	/* Run_ServerGameplayContractTests is intentionally one broad executable
+	contract and is already close to the Windows default stack budget. Keep the
+	hot-reload occurrence simulation on the heap so extending that contract does
+	not make test startup depend on compiler stack-slot reuse. */
+	struct PINNED_MECHANIC_GENERATION_FIXTURE final
+	{
+		LostArk::Server::SERVER_WORLD_ENTITY Boss;
+		LostArk::Server::SERVER_WORLD_ENTITY ReconcileBoss;
+		LostArk::Server::SERVER_WORLD_ENTITY ThresholdBoss;
+		std::map<LostArk::Shared::PLAYER_ID,
+			LostArk::Server::SERVER_PLAYER> Players;
+		std::map<LostArk::Shared::PLAYER_ID,
+			LostArk::Server::SERVER_PLAYER> ReconcilePlayers;
+		LostArk::Server::SERVER_PLAYER Target;
+		LostArk::Server::CValtanBrain Brain;
+		std::vector<LostArk::Shared::DAMAGE_EVENT> DamageEvents;
+		std::vector<LostArk::Shared::GameplayDataRevision> RequiredPins;
 	};
 
 	constexpr std::uint32_t VALID_VALTAN_TIMELINE_ROW_COUNT = 3u;
@@ -532,17 +591,1653 @@ namespace
 int LostArk::Server::Run_ServerGameplayContractTests(
 	const bool dimensionMasterGroundTargetOnly)
 {
+	struct CONTRACT_TEST_RUN_CONTEXT final
+	{
+		bool dimensionMasterGroundTargetOnly = false;
+		int result = 1;
+	};
+
+	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, 1 };
+	const auto runContract = [](void* opaque)
+	{
+		CONTRACT_TEST_RUN_CONTEXT& context =
+			*static_cast<CONTRACT_TEST_RUN_CONTEXT*>(opaque);
+		const bool dimensionMasterGroundTargetOnly =
+			context.dimensionMasterGroundTargetOnly;
+		context.result = [&]() -> int
+		{
 	using namespace LostArk::Shared;
 	TESTS tests{ dimensionMasterGroundTargetOnly };
 	CGameplayCatalog catalog;
 	const bool catalogLoaded = catalog.Load();
 	if (!catalogLoaded)
+	{
 		std::cout << "[STATUS] " << catalog.Get_Status() << std::endl;
+		if (dimensionMasterGroundTargetOnly)
+			tests.Require_GroundTarget(
+				false, "Load gameplay balance bootstrap for DimensionMaster T");
+		else
+			tests.Require(false, "Load gameplay balance bootstrap");
+		std::cout << "failures : " << tests.failures << '\n';
+		return 1;
+	}
 	if (dimensionMasterGroundTargetOnly)
 		tests.Require_GroundTarget(
 			catalogLoaded, "Load gameplay balance bootstrap for DimensionMaster T");
 	else
 		tests.Require(catalogLoaded, "Load gameplay balance bootstrap");
+	tests.Require(
+		catalog.Get_ActiveRevision().Is_Valid(),
+		"Derive a nonzero gameplay data revision from admitted bootstrap bytes");
+	{
+		namespace fs = std::filesystem;
+		CGameplayCatalog stagedCatalog;
+		const bool stagedLoaded = stagedCatalog.Load();
+		const GameplayDataRevision bootstrapRevision =
+			stagedCatalog.Get_ActiveRevision();
+		GameplayDataRevision parentRevision = bootstrapRevision;
+		parentRevision.Bytes[0] ^= 0x40u;
+		if (!parentRevision.Is_Valid() || parentRevision == bootstrapRevision)
+			parentRevision.Bytes[1] ^= 1u;
+		GameplayDataRevision wrongBootstrapRevision = bootstrapRevision;
+		wrongBootstrapRevision.Bytes[1] ^= 0x20u;
+		if (!wrongBootstrapRevision.Is_Valid() ||
+			wrongBootstrapRevision == bootstrapRevision)
+		{
+			wrongBootstrapRevision.Bytes[2] ^= 1u;
+		}
+		std::vector<wchar_t> pathBuffer(32768u);
+		fs::path dataRoot;
+		const DWORD configuredLength = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", pathBuffer.data(),
+			static_cast<DWORD>(pathBuffer.size()));
+		if (0u != configuredLength && configuredLength < pathBuffer.size())
+			dataRoot = fs::path(pathBuffer.data()).lexically_normal();
+		else
+		{
+			const DWORD moduleLength = GetModuleFileNameW(
+				nullptr, pathBuffer.data(), static_cast<DWORD>(pathBuffer.size()));
+			if (0u != moduleLength && moduleLength < pathBuffer.size())
+			{
+				dataRoot = fs::path(pathBuffer.data()).parent_path().parent_path() /
+					L"DataFiles";
+			}
+		}
+		std::error_code pathError;
+		const fs::path bootstrapPath = fs::canonical(
+			dataRoot / L"Gameplay" / L"Gameplay.bootstrap", pathError);
+		const bool rejectedWrongContent = stagedLoaded && !pathError &&
+			!stagedCatalog.Load_FromBootstrap(
+				bootstrapPath, wrongBootstrapRevision, parentRevision) &&
+			bootstrapRevision == stagedCatalog.Get_ActiveRevision();
+		const GameplayDataRevision invalidRevision{};
+		const bool rejectedInvalidParent = !stagedCatalog.Load_FromBootstrap(
+			bootstrapPath, bootstrapRevision, invalidRevision) &&
+			bootstrapRevision == stagedCatalog.Get_ActiveRevision();
+		const fs::path nonCanonicalPath = bootstrapPath.parent_path() /
+			L".." / L"Gameplay" / L"Gameplay.bootstrap";
+		const bool rejectedNonCanonicalPath =
+			!stagedCatalog.Load_FromBootstrap(
+				nonCanonicalPath, bootstrapRevision, parentRevision) &&
+			bootstrapRevision == stagedCatalog.Get_ActiveRevision();
+		const bool admittedParent = stagedCatalog.Load_FromBootstrap(
+			bootstrapPath, bootstrapRevision, parentRevision) &&
+			parentRevision == stagedCatalog.Get_ActiveRevision();
+		tests.Require(
+			rejectedWrongContent && rejectedInvalidParent &&
+			rejectedNonCanonicalPath && admittedParent,
+			"Load an immutable staged bootstrap and expose its verified parent revision only");
+	}
+	{
+		const BOSS_RUNTIME_PROFILE* activeValtan =
+			catalog.Find_Boss("BOSS_VALTAN");
+		std::string compatibilityStatus;
+		const auto rejectsResetField =
+			[activeValtan, &compatibilityStatus](const auto& mutate)
+		{
+			if (nullptr == activeValtan) return false;
+			BOSS_RUNTIME_PROFILE candidate = *activeValtan;
+			mutate(candidate);
+			compatibilityStatus.clear();
+			return !CServerApp::Validate_ValtanHotReloadBaseProfile(
+				activeValtan, &candidate, compatibilityStatus) &&
+				std::string::npos !=
+					compatibilityStatus.find("ENCOUNTER_RESET required");
+		};
+		BOSS_RUNTIME_PROFILE unchanged = nullptr == activeValtan ?
+			BOSS_RUNTIME_PROFILE{} : *activeValtan;
+		const bool acceptsUnchanged = nullptr != activeValtan &&
+			CServerApp::Validate_ValtanHotReloadBaseProfile(
+				activeValtan, &unchanged, compatibilityStatus) &&
+			compatibilityStatus.empty();
+		const bool rejectsEveryResetField =
+			rejectsResetField([](BOSS_RUNTIME_PROFILE& value)
+				{ ++value.iMaximumHp; }) &&
+			rejectsResetField([](BOSS_RUNTIME_PROFILE& value)
+				{ ++value.iMaximumHealthBars; }) &&
+			rejectsResetField([](BOSS_RUNTIME_PROFILE& value)
+				{ ++value.iAttackPower; }) &&
+			rejectsResetField([](BOSS_RUNTIME_PROFILE& value)
+				{ value.fCollisionRadius += 0.25f; }) &&
+			rejectsResetField([](BOSS_RUNTIME_PROFILE& value)
+				{ value.fEngageDistance += 0.25f; }) &&
+			rejectsResetField([](BOSS_RUNTIME_PROFILE& value)
+				{ value.fMoveSpeed += 0.25f; }) &&
+			!CServerApp::Validate_ValtanHotReloadBaseProfile(
+				activeValtan, nullptr, compatibilityStatus);
+		tests.Require(
+			acceptsUnchanged && rejectsEveryResetField,
+			"Reject every live Valtan base-field change as ENCOUNTER_RESET instead of falsely committing HOT_RELOAD");
+	}
+	{
+		auto revisionRoomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& revisionRoom = *revisionRoomStorage;
+		const GameplayDataRevision activeRevision =
+			revisionRoom.m_GameplayCatalog.Get_ActiveRevision();
+		GameplayDataRevision candidateRevision = activeRevision;
+		candidateRevision.Bytes[0] ^= 0x80u;
+		if (!candidateRevision.Is_Valid() ||
+			candidateRevision == activeRevision)
+		{
+			candidateRevision.Bytes[0] = 1u;
+		}
+
+		constexpr SESSION_ID ACCEPTED_SESSION = 71001u;
+		auto acceptedSession = std::make_shared<CClientSession>(
+			ACCEPTED_SESSION, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		acceptedSession->m_isSendRunning.store(true);
+		SERVER_PLAYER acceptedPlayer{};
+		acceptedPlayer.iPlayerId = 71001u;
+		acceptedPlayer.iNetEntityId = 71001u;
+		SERVER_WORLD_ENTITY requiredPinEntity{};
+		requiredPinEntity.PinnedDefinitionRevision = candidateRevision;
+		revisionRoom.m_WorldEntities.push_back(requiredPinEntity);
+		const bool sentAccepted = revisionRoom.Send_Accepted(
+			acceptedSession, acceptedPlayer);
+		S2C_ENTER_ACCEPTED decodedAccepted{};
+		bool acceptedPins = false;
+		if (sentAccepted && 1u == acceptedSession->m_OutboundFrames.size())
+		{
+			const auto& bytes =
+				acceptedSession->m_OutboundFrames.front().Bytes;
+			PACKET_HEADER header{};
+			if (Read_Packet_Header(bytes, header) &&
+				PACKET_TYPE::S2C_ENTER_ACCEPTED == header.ePacketType)
+			{
+				CPacketReader reader{ std::span<const std::uint8_t>(
+					bytes.data() + PACKET_HEADER_BYTES,
+					bytes.size() - PACKET_HEADER_BYTES) };
+				acceptedPins = Read_Message(reader, decodedAccepted) &&
+					0u == reader.Get_RemainingSize() &&
+					activeRevision == decodedAccepted.ActiveGameplayRevision &&
+					1u == decodedAccepted.RequiredPinnedGameplayRevisions.size() &&
+					candidateRevision ==
+						decodedAccepted.RequiredPinnedGameplayRevisions.front();
+			}
+		}
+		revisionRoom.m_WorldEntities.pop_back();
+		acceptedSession->Request_Close();
+		tests.Require(acceptedPins,
+			"Publish active and required gameplay revision identities on enter accepted");
+
+		namespace fs = std::filesystem;
+		std::vector<wchar_t> pathBuffer(32768u);
+		fs::path dataRoot;
+		const DWORD configuredLength = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", pathBuffer.data(),
+			static_cast<DWORD>(pathBuffer.size()));
+		if (0u != configuredLength && configuredLength < pathBuffer.size())
+			dataRoot = fs::path(pathBuffer.data()).lexically_normal();
+		else
+		{
+			const DWORD moduleLength = GetModuleFileNameW(nullptr,
+				pathBuffer.data(), static_cast<DWORD>(pathBuffer.size()));
+			if (0u != moduleLength && moduleLength < pathBuffer.size())
+				dataRoot = fs::path(pathBuffer.data()).parent_path().parent_path() /
+					L"DataFiles";
+		}
+		std::error_code pathError;
+		const fs::path bootstrapPath = fs::canonical(
+			dataRoot / L"Gameplay" / L"Gameplay.bootstrap", pathError);
+		const fs::path domainHashRoot = fs::temp_directory_path() /
+			(L"LostArkValtanDomainHashContract-" +
+				std::to_wstring(GetCurrentProcessId()));
+		std::error_code domainHashError;
+		fs::remove_all(domainHashRoot, domainHashError);
+		fs::create_directories(domainHashRoot, domainHashError);
+		std::string bootstrapText;
+		if (!pathError && !domainHashError)
+		{
+			std::ifstream source(bootstrapPath, std::ios::binary);
+			bootstrapText.assign(std::istreambuf_iterator<char>(source),
+				std::istreambuf_iterator<char>());
+		}
+		std::string valtanOnlyText = bootstrapText;
+		std::string nonValtanText = bootstrapText;
+		const std::string valtanNeedle =
+			"DAMAGE\tdamage.valtan.swing\t220";
+		const std::string nonValtanNeedle =
+			"DAMAGE\tdamage.player.17000\t100";
+		const std::size_t valtanNeedleAt = valtanOnlyText.find(valtanNeedle);
+		const std::size_t nonValtanNeedleAt =
+			nonValtanText.find(nonValtanNeedle);
+		if (std::string::npos != valtanNeedleAt)
+			valtanOnlyText.replace(
+				valtanNeedleAt, valtanNeedle.size(),
+				"DAMAGE\tdamage.valtan.swing\t221");
+		if (std::string::npos != nonValtanNeedleAt)
+			nonValtanText.replace(
+				nonValtanNeedleAt, nonValtanNeedle.size(),
+				"DAMAGE\tdamage.player.17000\t101");
+		const fs::path valtanOnlyBootstrap =
+			domainHashRoot / L"ValtanOnly.bootstrap";
+		const fs::path nonValtanBootstrap =
+			domainHashRoot / L"NonValtan.bootstrap";
+		if (!bootstrapText.empty())
+		{
+			std::ofstream valtanOnly(
+				valtanOnlyBootstrap, std::ios::binary | std::ios::trunc);
+			valtanOnly.write(
+				valtanOnlyText.data(),
+				static_cast<std::streamsize>(valtanOnlyText.size()));
+			std::ofstream nonValtan(
+				nonValtanBootstrap, std::ios::binary | std::ios::trunc);
+			nonValtan.write(
+				nonValtanText.data(),
+				static_cast<std::streamsize>(nonValtanText.size()));
+		}
+		GameplayDataRevision baseNonValtanRevision{};
+		GameplayDataRevision valtanOnlyNonValtanRevision{};
+		GameplayDataRevision changedNonValtanRevision{};
+		std::string domainHashStatus;
+		const bool domainHashContract =
+			std::string::npos != valtanNeedleAt &&
+			std::string::npos != nonValtanNeedleAt &&
+			CServerApp::Build_NonValtanGameplayRevisionForAdmission(
+				bootstrapPath, baseNonValtanRevision, domainHashStatus) &&
+			CServerApp::Build_NonValtanGameplayRevisionForAdmission(
+				valtanOnlyBootstrap, valtanOnlyNonValtanRevision,
+				domainHashStatus) &&
+			CServerApp::Build_NonValtanGameplayRevisionForAdmission(
+				nonValtanBootstrap, changedNonValtanRevision,
+				domainHashStatus) &&
+			baseNonValtanRevision == valtanOnlyNonValtanRevision &&
+			baseNonValtanRevision != changedNonValtanRevision;
+		tests.Require(domainHashContract,
+			"Allow repeated Valtan-only bootstrap changes while rejecting stale non-Valtan gameplay drift");
+		fs::remove_all(domainHashRoot, domainHashError);
+		auto baseGeneration = revisionRoom.Get_ActiveGameplayGeneration();
+		auto candidateGeneration = std::make_shared<CGameplayCatalog>();
+		const bool candidateLoaded = nullptr != baseGeneration && !pathError &&
+			candidateGeneration->Load_FromBootstrap(
+				bootstrapPath, activeRevision, candidateRevision);
+
+		auto valtanRoom = std::make_shared<CGameRoom>(
+			WORLD_ID::VALTAN_ARENA, baseGeneration);
+		auto privateRoom = std::make_shared<CGameRoom>(
+			WORLD_ID::CHARACTER_SELECT_ARENA, baseGeneration);
+		auto pinFixture =
+			std::make_unique<PINNED_MECHANIC_GENERATION_FIXTURE>();
+		pinFixture->Boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		pinFixture->Boss.strArchetypeId = "BOSS_VALTAN";
+		pinFixture->Boss.strEncounterId = "ENCOUNTER_VALTAN";
+		pinFixture->Boss.iCurrentHp = 49125u;
+		pinFixture->Boss.iMaximumHp = 60000u;
+		pinFixture->Boss.iMaximumHealthBars = 160u;
+		pinFixture->Boss.iLastEvaluatedHealthBar = 131u;
+		pinFixture->Boss.iPhase = 1u;
+		pinFixture->Boss.fPositionX = 151.f;
+		pinFixture->Boss.fPositionY = 22.97f;
+		pinFixture->Boss.fPositionZ = -122.f;
+		pinFixture->Boss.fEngageDistance = 35.f;
+		pinFixture->Boss.fMoveSpeed = 3.f;
+		pinFixture->Boss.bIntroPatternConsumed = true;
+		pinFixture->Boss.PinnedDefinitionRevision = activeRevision;
+		pinFixture->Target.iPlayerId = 71004u;
+		pinFixture->Target.iNetEntityId = 71004u;
+		pinFixture->Target.iCurrentHp = 10000u;
+		pinFixture->Target.iMaximumHp = 10000u;
+		pinFixture->Target.fPositionX = 151.f;
+		pinFixture->Target.fPositionY = 22.97f;
+		pinFixture->Target.fPositionZ = -128.f;
+		pinFixture->Target.isCombatReady = true;
+		pinFixture->Players.emplace(
+			pinFixture->Target.iPlayerId, pinFixture->Target);
+		pinFixture->Brain.Update(
+			pinFixture->Boss, pinFixture->Players, *baseGeneration,
+			valtanRoom->m_ServerNavigation, 1.f / 30.f, 10u, {},
+			pinFixture->DamageEvents);
+		pinFixture->Boss.iCurrentHp = 48750u;
+		pinFixture->Brain.Update(
+			pinFixture->Boss, pinFixture->Players, *baseGeneration,
+			valtanRoom->m_ServerNavigation, 1.f / 30.f, 11u, {},
+			pinFixture->DamageEvents);
+		const auto queuedUnderActive = std::find_if(
+			pinFixture->Boss.MechanicOccurrences.begin(),
+			pinFixture->Boss.MechanicOccurrences.end(),
+			[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+			{
+				return "VALTAN_FLOOR_WIPE_130" == occurrence.strPatternId;
+			});
+		const bool capturedQueuedOccurrenceGeneration =
+			pinFixture->Boss.MechanicOccurrences.end() != queuedUnderActive &&
+			activeRevision == queuedUnderActive->PinnedDefinitionRevision &&
+			SERVER_BOSS_MECHANIC_STATE::QUEUED == queuedUnderActive->eState &&
+			!pinFixture->Boss.strPatternId.empty();
+		valtanRoom->m_WorldEntities.push_back(pinFixture->Boss);
+
+		const fs::path runtimePersistenceRoot =
+			fs::temp_directory_path() /
+			(L"lostark-server-runtime-active-contract-" +
+			 std::to_wstring(::GetCurrentProcessId()));
+		std::error_code runtimePersistenceError;
+		fs::remove_all(runtimePersistenceRoot, runtimePersistenceError);
+		auto appStorage = std::make_unique<CServerApp>();
+		CServerApp& app = *appStorage;
+		app.m_RuntimeActiveGameplayRootOverride = runtimePersistenceRoot;
+		app.m_isRuntimeActivePersistenceEnabled = true;
+		app.m_pActiveGameplayGeneration = baseGeneration;
+		app.m_ActiveGameplayBootstrapContentRevision = activeRevision;
+		app.m_ActiveNonValtanGameplayRevision = activeRevision;
+		app.m_SharedGameRooms.emplace(WORLD_ID::VALTAN_ARENA, valtanRoom);
+		constexpr SESSION_ID REQUESTER_SESSION = 71002u;
+		constexpr SESSION_ID PARTICIPANT_SESSION = 71003u;
+		auto requester = std::make_shared<CClientSession>(
+			REQUESTER_SESSION, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		auto participant = std::make_shared<CClientSession>(
+			PARTICIPANT_SESSION, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		requester->m_isSendRunning.store(true);
+		participant->m_isSendRunning.store(true);
+		app.m_Sessions.emplace(REQUESTER_SESSION, requester);
+		app.m_Sessions.emplace(PARTICIPANT_SESSION, participant);
+		CServerApp::SESSION_GAMEPLAY_BINDING requesterBinding{};
+		requesterBinding.eWorldId = WORLD_ID::VALTAN_ARENA;
+		requesterBinding.pSimulation = valtanRoom;
+		CServerApp::SESSION_GAMEPLAY_BINDING participantBinding{};
+		participantBinding.eWorldId = WORLD_ID::CHARACTER_SELECT_ARENA;
+		participantBinding.iPrivateArenaOwnerSessionId = PARTICIPANT_SESSION;
+		participantBinding.pSimulation = privateRoom;
+		app.m_GameplayBindingBySessionId.emplace(
+			REQUESTER_SESSION, requesterBinding);
+		app.m_GameplayBindingBySessionId.emplace(
+			PARTICIPANT_SESSION, participantBinding);
+		app.m_CharacterSelectArenas.emplace(PARTICIPANT_SESSION, privateRoom);
+
+		C2S_DATA_REVISION_PREPARE_REQUEST request{};
+		request.iTransactionSequence = 71u;
+		request.BaseRevision = activeRevision;
+		request.CandidateRevision = candidateRevision;
+		request.iRequiredPresentationLaneMask =
+			GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK;
+		CServerApp::SERVER_CONTROL_EVENT begin{};
+		begin.eKind =
+			CServerApp::SERVER_CONTROL_EVENT_KIND::DATA_REVISION_REQUEST;
+		begin.iSessionId = REQUESTER_SESSION;
+		begin.RevisionRequest = request;
+		begin.pCandidateGeneration = candidateGeneration;
+		begin.BaseBootstrapContentRevision = activeRevision;
+		begin.CandidateBootstrapContentRevision = activeRevision;
+		begin.BaseNonValtanGameplayRevision = activeRevision;
+		begin.CandidateNonValtanGameplayRevision = activeRevision;
+		const bool queuedBegin = app.Queue_ServerControlEvent(std::move(begin));
+		app.Advance_ServerControlTransactions();
+		const bool preparedEveryClient = queuedBegin && candidateLoaded &&
+			app.m_DataRevisionTransaction.Is_Active() &&
+			1u == requester->m_OutboundFrames.size() &&
+			1u == participant->m_OutboundFrames.size();
+
+		const auto queueReady = [&app, &request](const SESSION_ID sessionId)
+		{
+			CServerApp::SERVER_CONTROL_EVENT event{};
+			event.eKind =
+				CServerApp::SERVER_CONTROL_EVENT_KIND::DATA_REVISION_RESPONSE;
+			event.iSessionId = sessionId;
+			event.RevisionResponse.iTransactionSequence =
+				request.iTransactionSequence;
+			event.RevisionResponse.CandidateRevision =
+				request.CandidateRevision;
+			event.RevisionResponse.eStatus =
+				DATA_REVISION_PREPARE_STATUS::READY;
+			event.RevisionResponse.iRequiredPresentationLaneMask =
+				request.iRequiredPresentationLaneMask;
+			event.RevisionResponse.iPreparedPresentationLaneMask =
+				request.iRequiredPresentationLaneMask;
+			return app.Queue_ServerControlEvent(std::move(event));
+		};
+		const bool queuedReady = queueReady(REQUESTER_SESSION) &&
+			queueReady(PARTICIPANT_SESSION);
+		app.Advance_ServerControlTransactions();
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION packagedRuntime{};
+		packagedRuntime.eSource =
+			RUNTIME_GAMEPLAY_GENERATION_SOURCE::PACKAGED_BASELINE;
+		packagedRuntime.Revision = activeRevision;
+		packagedRuntime.BootstrapContentRevision = activeRevision;
+		packagedRuntime.NonValtanGameplayRevision = activeRevision;
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION interruptedCandidateRuntime{};
+		interruptedCandidateRuntime.eSource =
+			RUNTIME_GAMEPLAY_GENERATION_SOURCE::CANDIDATE;
+		interruptedCandidateRuntime.Revision = candidateRevision;
+		interruptedCandidateRuntime.BootstrapContentRevision = activeRevision;
+		interruptedCandidateRuntime.NonValtanGameplayRevision = activeRevision;
+		const fs::path interruptedRuntimeRoot = fs::temp_directory_path() /
+			(L"lostark-server-runtime-interrupted-contract-" +
+			 std::to_wstring(::GetCurrentProcessId()));
+		std::error_code interruptedRuntimeError;
+		fs::remove_all(interruptedRuntimeRoot, interruptedRuntimeError);
+		std::string interruptedRuntimeStatus;
+		const bool persistedBeforeJournalCleanup =
+			CServerApp::Persist_RuntimeGameplayActivation(
+				interruptedRuntimeRoot, 7001u, packagedRuntime,
+				interruptedCandidateRuntime, interruptedRuntimeStatus);
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION recoveredInterruptedRuntime{};
+		bool recoveredInterruptedPointer = false;
+		const bool recoveredPromotedPointerWithJournal =
+			persistedBeforeJournalCleanup &&
+			CServerApp::Recover_RuntimeActiveGameplayPointer(
+				interruptedRuntimeRoot, packagedRuntime,
+				recoveredInterruptedRuntime, recoveredInterruptedPointer,
+				interruptedRuntimeStatus) &&
+			recoveredInterruptedPointer &&
+			candidateRevision == recoveredInterruptedRuntime.Revision;
+		CServerApp::Complete_RuntimeGameplayActivation(interruptedRuntimeRoot);
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION recoveredAfterJournalCleanup{};
+		bool recoveredAfterJournalCleanupPointer = false;
+		const bool recoveredCandidateAfterRestartCleanup =
+			CServerApp::Recover_RuntimeActiveGameplayPointer(
+				interruptedRuntimeRoot, packagedRuntime,
+				recoveredAfterJournalCleanup,
+				recoveredAfterJournalCleanupPointer,
+				interruptedRuntimeStatus) &&
+			recoveredAfterJournalCleanupPointer &&
+			candidateRevision == recoveredAfterJournalCleanup.Revision;
+		fs::remove_all(interruptedRuntimeRoot, interruptedRuntimeError);
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION recoveredRuntime{};
+		bool recoveredPointer = false;
+		std::string runtimeRecoveryStatus;
+		const bool recoveredCommittedCandidate =
+			CServerApp::Recover_RuntimeActiveGameplayPointer(
+				runtimePersistenceRoot, packagedRuntime, recoveredRuntime,
+				recoveredPointer, runtimeRecoveryStatus) && recoveredPointer &&
+			RUNTIME_GAMEPLAY_GENERATION_SOURCE::CANDIDATE ==
+				recoveredRuntime.eSource &&
+			candidateRevision == recoveredRuntime.Revision &&
+			activeRevision == recoveredRuntime.BootstrapContentRevision &&
+			activeRevision == recoveredRuntime.NonValtanGameplayRevision;
+		const bool committedEveryRoom = queuedReady &&
+			!app.m_DataRevisionTransaction.Is_Active() &&
+			candidateRevision ==
+				app.m_pActiveGameplayGeneration->Get_ActiveRevision() &&
+			candidateRevision == valtanRoom->Get_ActiveGameplayGeneration()->
+				Get_ActiveRevision() &&
+			candidateRevision == privateRoom->Get_ActiveGameplayGeneration()->
+				Get_ActiveRevision() &&
+			nullptr != valtanRoom->Resolve_GameplayGeneration(activeRevision) &&
+			2u == requester->m_OutboundFrames.size() &&
+			2u == participant->m_OutboundFrames.size();
+		tests.Require(
+			capturedQueuedOccurrenceGeneration && preparedEveryClient &&
+			committedEveryRoom && recoveredCommittedCandidate &&
+			recoveredPromotedPointerWithJournal &&
+			recoveredCandidateAfterRestartCleanup,
+			"Commit one candidate across every room and durable restart pointer only after every bound client READY");
+
+		/* Model an A occurrence that held the boss at 158 bars while the process
+		committed B. The first idle B evaluation must reconcile the untriggered
+		159 mechanic even though there can no longer be a 160 -> 159 crossing.
+		No target deliberately delays consumption for one tick, proving the queued
+		occurrence itself, rather than the idle boss pin, owns B. */
+		SERVER_WORLD_ENTITY& reconcileBoss = pinFixture->ReconcileBoss;
+		reconcileBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		reconcileBoss.strArchetypeId = "BOSS_VALTAN";
+		reconcileBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		reconcileBoss.iCurrentHp = 59250u;
+		reconcileBoss.iMaximumHp = 60000u;
+		reconcileBoss.iMaximumHealthBars = 160u;
+		reconcileBoss.iLastEvaluatedHealthBar = 158u;
+		reconcileBoss.iLastHealthMechanicGenerationEpoch = 1u;
+		reconcileBoss.iPhase = 1u;
+		reconcileBoss.fPositionX = 151.f;
+		reconcileBoss.fPositionY = 22.97f;
+		reconcileBoss.fPositionZ = -122.f;
+		reconcileBoss.fEngageDistance = 35.f;
+		reconcileBoss.fMoveSpeed = 3.f;
+		reconcileBoss.bIntroPatternConsumed = true;
+		reconcileBoss.PinnedDefinitionRevision = activeRevision;
+		pinFixture->Brain.Update(
+			reconcileBoss, pinFixture->ReconcilePlayers, *candidateGeneration,
+			valtanRoom->m_ServerNavigation, 1.f / 30.f, 20u, {},
+			pinFixture->DamageEvents, candidateGeneration.get(), 2u);
+		const auto reconciledOccurrence = std::find_if(
+			reconcileBoss.MechanicOccurrences.begin(),
+			reconcileBoss.MechanicOccurrences.end(),
+			[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+			{
+				return "VALTAN_ARMOR_BREAK_OPENING" == occurrence.strPatternId;
+			});
+		const bool reconciledBelowThresholdWithoutTarget =
+			reconcileBoss.MechanicOccurrences.end() != reconciledOccurrence &&
+			SERVER_BOSS_MECHANIC_STATE::QUEUED ==
+				reconciledOccurrence->eState &&
+			candidateRevision ==
+				reconciledOccurrence->PinnedDefinitionRevision &&
+			reconcileBoss.strPatternId.empty();
+		pinFixture->ReconcilePlayers.emplace(
+			pinFixture->Target.iPlayerId, pinFixture->Target);
+		pinFixture->Brain.Update(
+			reconcileBoss, pinFixture->ReconcilePlayers, *candidateGeneration,
+			valtanRoom->m_ServerNavigation, 1.f / 30.f, 21u, {},
+			pinFixture->DamageEvents, candidateGeneration.get(), 2u);
+		const bool delayedReconciledOccurrenceUsesCandidate =
+			reconcileBoss.MechanicOccurrences.end() != reconciledOccurrence &&
+			SERVER_BOSS_MECHANIC_STATE::ACTIVE ==
+				reconciledOccurrence->eState &&
+			"VALTAN_ARMOR_BREAK_OPENING" == reconcileBoss.strPatternId &&
+			candidateRevision == reconcileBoss.PinnedDefinitionRevision;
+		tests.Require(
+			reconciledBelowThresholdWithoutTarget &&
+			delayedReconciledOccurrenceUsesCandidate,
+			"Reconcile an untriggered threshold below current HP on generation change and pin delayed consumption to the evaluating catalog");
+
+		/* Keep occurrence execution on A while changing the non-transition armour
+		break from 159 to 158 in B. Falling to 159 must not be interpreted by A's
+		threshold table; the exact 158 crossing must queue one B occurrence and
+		pin B. The 109 phase boundary is independently topology-locked below. */
+		const fs::path thresholdRoot = fs::temp_directory_path() /
+			(L"LostArkValtanThresholdGenerationContract-" +
+			 std::to_wstring(GetCurrentProcessId()));
+		std::error_code thresholdError;
+		fs::remove_all(thresholdRoot, thresholdError);
+		fs::create_directories(thresholdRoot, thresholdError);
+		std::string thresholdBootstrapText = bootstrapText;
+		const std::string thresholdA =
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_ARMOR_BREAK_OPENING\tvaltan.mechanic.armor-break-opening\tHEALTH_BAR\t0\t0\t159\t1\t0\t0\t0\t100\t4\tANY\tANY\t0";
+		const std::string thresholdB =
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_ARMOR_BREAK_OPENING\tvaltan.mechanic.armor-break-opening\tHEALTH_BAR\t0\t0\t158\t1\t0\t0\t0\t100\t4\tANY\tANY\t0";
+		const std::size_t thresholdRowAt =
+			thresholdBootstrapText.find(thresholdA);
+		if (std::string::npos != thresholdRowAt)
+			thresholdBootstrapText.replace(
+				thresholdRowAt, thresholdA.size(), thresholdB);
+		const fs::path thresholdBootstrap =
+			thresholdRoot / L"Gameplay.bootstrap";
+		if (!thresholdError && std::string::npos != thresholdRowAt)
+		{
+			std::ofstream stream(
+				thresholdBootstrap, std::ios::binary | std::ios::trunc);
+			stream.write(thresholdBootstrapText.data(),
+				static_cast<std::streamsize>(thresholdBootstrapText.size()));
+		}
+		GameplayDataRevision thresholdBootstrapRevision{};
+		GameplayDataRevision thresholdDefinitionRevision = candidateRevision;
+		thresholdDefinitionRevision.Bytes[8] ^= 0x40u;
+		if (!thresholdDefinitionRevision.Is_Valid() ||
+			thresholdDefinitionRevision == activeRevision ||
+			thresholdDefinitionRevision == candidateRevision)
+		{
+			thresholdDefinitionRevision.Bytes[9] ^= 1u;
+		}
+		std::string thresholdStatus;
+		auto thresholdGeneration = std::make_shared<CGameplayCatalog>();
+		const bool thresholdAdmissionInputsReady = !thresholdError &&
+			std::string::npos != thresholdRowAt;
+		bool thresholdGenerationLoaded = false;
+		if (thresholdAdmissionInputsReady)
+		{
+			// Hashing and catalog validation have sizeable but bounded call trees. Keep
+			// this synthetic second generation off the already-large contract-test
+			// driver frame so the executable remains valid on the default 1 MiB
+			// Windows thread stack used by production Server.exe.
+			struct THRESHOLD_GENERATION_LOAD_CONTEXT final
+			{
+				std::shared_ptr<CGameplayCatalog>* pGeneration = nullptr;
+				const fs::path* pBootstrap = nullptr;
+				GameplayDataRevision* pBootstrapRevision = nullptr;
+				const GameplayDataRevision* pDefinitionRevision = nullptr;
+				std::string* pStatus = nullptr;
+				bool isLoaded = false;
+			};
+			THRESHOLD_GENERATION_LOAD_CONTEXT loadContext{
+				&thresholdGeneration, &thresholdBootstrap,
+				&thresholdBootstrapRevision, &thresholdDefinitionRevision,
+				&thresholdStatus, false };
+			const auto loadThresholdGeneration = [](void* opaque)
+			{
+				THRESHOLD_GENERATION_LOAD_CONTEXT& context =
+					*static_cast<THRESHOLD_GENERATION_LOAD_CONTEXT*>(opaque);
+				context.isLoaded =
+					CServerApp::Hash_GameplayFileForAdmission(
+						*context.pBootstrap, *context.pBootstrapRevision,
+						*context.pStatus) &&
+					(*context.pGeneration)->Load_FromBootstrap(
+						*context.pBootstrap, *context.pBootstrapRevision,
+						*context.pDefinitionRevision);
+			};
+			thresholdGenerationLoaded = Run_WithContractWorkerStack(
+				loadThresholdGeneration, &loadContext) && loadContext.isLoaded;
+		}
+		const auto findHealthThreshold = [](const CGameplayCatalog& source,
+			const std::string_view patternId)
+		{
+			const auto* definitions =
+				source.Find_BossPatterns("ENCOUNTER_VALTAN");
+			if (nullptr == definitions) return std::uint32_t{ 0u };
+			const auto found = std::find_if(
+				definitions->begin(), definitions->end(),
+				[patternId](const BOSS_PATTERN_DEFINITION& definition)
+				{
+					return definition.strPatternId == patternId;
+				});
+			return definitions->end() == found ?
+				std::uint32_t{ 0u } : found->iTriggerHealthBar;
+		};
+		tests.Require(
+			thresholdGenerationLoaded &&
+			159u == findHealthThreshold(*baseGeneration,
+				"VALTAN_ARMOR_BREAK_OPENING") &&
+			158u == findHealthThreshold(*thresholdGeneration,
+				"VALTAN_ARMOR_BREAK_OPENING"),
+			"Stage exact A159 and B158 non-transition threshold generations for routing");
+		SERVER_WORLD_ENTITY& thresholdBoss = pinFixture->ThresholdBoss;
+		thresholdBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		thresholdBoss.strArchetypeId = "BOSS_VALTAN";
+		thresholdBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		thresholdBoss.iCurrentHp = 59625u;
+		thresholdBoss.iMaximumHp = 60000u;
+		thresholdBoss.iMaximumHealthBars = 160u;
+		thresholdBoss.iLastEvaluatedHealthBar = 160u;
+		thresholdBoss.iLastHealthMechanicGenerationEpoch = 1u;
+		thresholdBoss.iPhase = 1u;
+		thresholdBoss.fPositionX = 151.f;
+		thresholdBoss.fPositionY = 22.97f;
+		thresholdBoss.fPositionZ = -122.f;
+		thresholdBoss.fEngageDistance = 35.f;
+		thresholdBoss.fMoveSpeed = 3.f;
+		thresholdBoss.bIntroPatternConsumed = true;
+		thresholdBoss.PinnedDefinitionRevision = activeRevision;
+		pinFixture->ReconcilePlayers.clear();
+		if (thresholdGenerationLoaded)
+		{
+			const auto* definitions = thresholdGeneration->Find_BossPatterns(
+				"ENCOUNTER_VALTAN");
+			if (nullptr != definitions)
+			{
+				for (const BOSS_PATTERN_DEFINITION& definition : *definitions)
+				{
+					if (BOSS_PATTERN_SELECTION::HEALTH_BAR !=
+						definition.eSelection ||
+						"VALTAN_ARMOR_BREAK_OPENING" == definition.strPatternId)
+						continue;
+					SERVER_BOSS_MECHANIC_OCCURRENCE completed{};
+					completed.strPatternId = definition.strPatternId;
+					completed.PinnedDefinitionRevision =
+						thresholdDefinitionRevision;
+					completed.eState =
+						SERVER_BOSS_MECHANIC_STATE::COMPLETED;
+					completed.iTriggerHealthBar =
+						definition.iTriggerHealthBar;
+					thresholdBoss.MechanicOccurrences.push_back(
+						std::move(completed));
+				}
+			}
+			pinFixture->Brain.Update(
+				thresholdBoss, pinFixture->ReconcilePlayers, *baseGeneration,
+				valtanRoom->m_ServerNavigation, 1.f / 30.f, 30u, {},
+				pinFixture->DamageEvents, thresholdGeneration.get(), 2u);
+		}
+		const auto countThresholdOccurrence = [&thresholdBoss]()
+		{
+			return static_cast<std::size_t>(std::count_if(
+				thresholdBoss.MechanicOccurrences.begin(),
+				thresholdBoss.MechanicOccurrences.end(),
+				[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+				{
+					return "VALTAN_ARMOR_BREAK_OPENING" ==
+						occurrence.strPatternId;
+				}));
+		};
+		const bool oldOnlyCrossingDidNotQueue =
+			thresholdGenerationLoaded && 0u == countThresholdOccurrence() &&
+			159u == thresholdBoss.iLastEvaluatedHealthBar &&
+			2u == thresholdBoss.iLastHealthMechanicGenerationEpoch;
+		tests.Require(oldOnlyCrossingDidNotQueue,
+			"Ignore the old A159-only crossing while active B owns threshold evaluation");
+		thresholdBoss.iCurrentHp = 59250u;
+		if (thresholdGenerationLoaded)
+		{
+			pinFixture->Brain.Update(
+				thresholdBoss, pinFixture->ReconcilePlayers, *baseGeneration,
+				valtanRoom->m_ServerNavigation, 1.f / 30.f, 31u, {},
+				pinFixture->DamageEvents, thresholdGeneration.get(), 2u);
+		}
+		const auto thresholdOccurrence = std::find_if(
+			thresholdBoss.MechanicOccurrences.begin(),
+			thresholdBoss.MechanicOccurrences.end(),
+			[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+			{
+				return "VALTAN_ARMOR_BREAK_OPENING" == occurrence.strPatternId;
+			});
+		const bool activeCrossingQueuedExactCandidate =
+			1u == countThresholdOccurrence() &&
+			thresholdBoss.MechanicOccurrences.end() != thresholdOccurrence &&
+			158u == thresholdOccurrence->iTriggerHealthBar &&
+			thresholdDefinitionRevision ==
+				thresholdOccurrence->PinnedDefinitionRevision;
+		tests.Require(
+			activeCrossingQueuedExactCandidate,
+			"Evaluate new threshold crossings from active B while an old A occurrence catalog advances independently");
+		fs::remove_all(thresholdRoot, thresholdError);
+
+		const auto replaceBootstrapRow = [](
+			std::string& text, const std::string_view before,
+			const std::string_view after)
+		{
+			const std::size_t at = text.find(before);
+			if (std::string::npos == at || std::string::npos !=
+				text.find(before, at + before.size()))
+			{
+				return false;
+			}
+			text.replace(at, before.size(), after);
+			return true;
+		};
+		const auto loadBootstrapVariant = [&candidateRevision](
+			const std::wstring_view suffix,
+			const std::string& bytes)
+			-> std::shared_ptr<CGameplayCatalog>
+		{
+			const fs::path root = fs::temp_directory_path() /
+				(L"LostArkGameplayV19Variant-" +
+				 std::to_wstring(GetCurrentProcessId()) + L"-" +
+				 std::wstring(suffix));
+			std::error_code error;
+			fs::remove_all(root, error);
+			error.clear();
+			fs::create_directories(root, error);
+			const fs::path bootstrap = root / L"Gameplay.bootstrap";
+			if (!error)
+			{
+				std::ofstream stream(
+					bootstrap, std::ios::binary | std::ios::trunc);
+				stream.write(bytes.data(),
+					static_cast<std::streamsize>(bytes.size()));
+				if (!stream.good()) error = std::make_error_code(
+					std::errc::io_error);
+			}
+			const fs::path canonical = error ? fs::path{} :
+				fs::canonical(bootstrap, error);
+			auto generation = std::make_shared<CGameplayCatalog>();
+			GameplayDataRevision bootstrapRevision{};
+			std::string status;
+			struct VARIANT_LOAD_CONTEXT final
+			{
+				std::shared_ptr<CGameplayCatalog>* pGeneration = nullptr;
+				const fs::path* pBootstrap = nullptr;
+				GameplayDataRevision* pBootstrapRevision = nullptr;
+				const GameplayDataRevision* pDefinitionRevision = nullptr;
+				std::string* pStatus = nullptr;
+				bool isLoaded = false;
+			};
+			VARIANT_LOAD_CONTEXT context{
+				&generation, &canonical, &bootstrapRevision,
+				&candidateRevision, &status, false };
+			const auto load = [](void* opaque)
+			{
+				VARIANT_LOAD_CONTEXT& context =
+					*static_cast<VARIANT_LOAD_CONTEXT*>(opaque);
+				context.isLoaded =
+					CServerApp::Hash_GameplayFileForAdmission(
+						*context.pBootstrap, *context.pBootstrapRevision,
+						*context.pStatus) &&
+					(*context.pGeneration)->Load_FromBootstrap(
+						*context.pBootstrap, *context.pBootstrapRevision,
+						*context.pDefinitionRevision);
+			};
+			const bool loaded = !error && nullptr != generation &&
+				Run_WithContractWorkerStack(load, &context) && context.isLoaded;
+			fs::remove_all(root, error);
+			return loaded ? generation : nullptr;
+		};
+
+		std::string mixedTaggedRows = bootstrapText;
+		const bool madeMixedTaggedRows = replaceBootstrapRow(
+			mixedTaggedRows,
+			"PATTERNROTATIONSTEP\tENCOUNTER_VALTAN\trotation.valtan.28.14\t0\tVALTAN_WHIRLWIND",
+			"PATTERNROTATIONSTEP\tENCOUNTER_VALTAN\trotation.valtan.160.130\t0\tVALTAN_WHIRLWIND");
+		std::string duplicateManagedCandidate = bootstrapText;
+		const bool madeDuplicateManagedCandidate = replaceBootstrapRow(
+			duplicateManagedCandidate,
+			"PATTERNROTATIONCANDIDATE\tENCOUNTER_VALTAN\trotation.valtan.160.130\t1\tVALTAN_DASH_CHARGE\t30\t1",
+			"PATTERNROTATIONCANDIDATE\tENCOUNTER_VALTAN\trotation.valtan.160.130\t1\tVALTAN_WHIRLWIND\t30\t1");
+		std::string missingManagedOrdinal = bootstrapText;
+		const bool madeMissingManagedOrdinal = replaceBootstrapRow(
+			missingManagedOrdinal,
+			"PATTERNROTATIONCANDIDATE\tENCOUNTER_VALTAN\trotation.valtan.160.130\t4\tVALTAN_HIGH_JUMP\t14\t1",
+			"PATTERNROTATIONCANDIDATE\tENCOUNTER_VALTAN\trotation.valtan.160.130\t5\tVALTAN_HIGH_JUMP\t14\t1");
+		std::string mismatchedManagedWindow = bootstrapText;
+		const bool madeMismatchedManagedWindow = replaceBootstrapRow(
+			mismatchedManagedWindow,
+			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t160\t130\t5",
+			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t159\t130\t5");
+		std::string invalidManagedPhase = bootstrapText;
+		const bool madeInvalidManagedPhase = replaceBootstrapRow(
+			invalidManagedPhase,
+			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t160\t130\t5",
+			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t4\tselectionset.valtan.160.130\t160\t130\t5");
+		std::string collidingHealthMechanic = bootstrapText;
+		const bool madeCollidingHealthMechanic = replaceBootstrapRow(
+			collidingHealthMechanic,
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_FOUR_PILLARS_105\tvaltan.mechanic.four-pillars-105\tHEALTH_BAR\t0\t0\t100\t1\t0\t0\t0\t100\t4\tANY\tANY\t0",
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_FOUR_PILLARS_105\tvaltan.mechanic.four-pillars-105\tHEALTH_BAR\t0\t0\t84\t1\t0\t0\t0\t100\t4\tANY\tANY\t0");
+		std::string divergentPhaseTopology = bootstrapText;
+		const bool madeDivergentPhaseTopology = replaceBootstrapRow(
+			divergentPhaseTopology,
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_ARENA_BREAK_109\tvaltan.mechanic.arena-break-109\tHEALTH_BAR\t0\t0\t109\t1\t0\t0\t0\t100\t6\tANY\tANY\t0",
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_ARENA_BREAK_109\tvaltan.mechanic.arena-break-109\tHEALTH_BAR\t0\t0\t100\t2\t0\t0\t0\t100\t6\tANY\tANY\t0");
+		tests.Require(
+			madeMixedTaggedRows && madeDuplicateManagedCandidate &&
+			madeMissingManagedOrdinal && madeMismatchedManagedWindow &&
+			madeInvalidManagedPhase && madeCollidingHealthMechanic &&
+			madeDivergentPhaseTopology &&
+			nullptr == loadBootstrapVariant(L"mixed", mixedTaggedRows) &&
+			nullptr == loadBootstrapVariant(
+				L"duplicate", duplicateManagedCandidate) &&
+			nullptr == loadBootstrapVariant(
+				L"missing", missingManagedOrdinal) &&
+			nullptr == loadBootstrapVariant(
+				L"window-mismatch", mismatchedManagedWindow) &&
+			nullptr == loadBootstrapVariant(
+				L"phase-four", invalidManagedPhase) &&
+			nullptr == loadBootstrapVariant(
+				L"health-order-collision", collidingHealthMechanic) &&
+			nullptr == loadBootstrapVariant(
+				L"phase-topology", divergentPhaseTopology),
+			"Reject v19 mixed tags, malformed managed windows, duplicate health mechanic order, and divergent phase-transition topology");
+
+		std::string managedWeightVariant = bootstrapText;
+		bool managedWeightRowsReady = replaceBootstrapRow(
+			managedWeightVariant,
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_FIST_IN_OUT\tvaltan.attack.fist-in-out\tNORMAL\t1\t130\t0\t0\t14\t1\t0\t16\t4\tANY\tANY\t0",
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_FIST_IN_OUT\tvaltan.attack.fist-in-out\tNORMAL\t1\t160\t0\t0\t14\t1\t0\t16\t4\tANY\tANY\t0");
+		const auto tuneManagedCandidate = [&managedWeightVariant,
+			&replaceBootstrapRow, &managedWeightRowsReady](
+			const std::string_view rotationId, const std::uint32_t ordinal,
+			const std::string_view patternId, const std::uint32_t oldWeight,
+			const std::uint32_t newWeight, const bool enabled)
+		{
+			const std::string before =
+				"PATTERNROTATIONCANDIDATE\tENCOUNTER_VALTAN\t" +
+				std::string(rotationId) + "\t" + std::to_string(ordinal) + "\t" +
+				std::string(patternId) + "\t" + std::to_string(oldWeight) + "\t1";
+			const std::string after =
+				"PATTERNROTATIONCANDIDATE\tENCOUNTER_VALTAN\t" +
+				std::string(rotationId) + "\t" + std::to_string(ordinal) + "\t" +
+				std::string(patternId) + "\t" + std::to_string(newWeight) +
+				"\t" + (enabled ? "1" : "0");
+			managedWeightRowsReady = managedWeightRowsReady &&
+				replaceBootstrapRow(managedWeightVariant, before, after);
+		};
+		tuneManagedCandidate(
+			"rotation.valtan.160.130", 0u, "VALTAN_WHIRLWIND", 20u, 100u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.160.130", 1u, "VALTAN_DASH_CHARGE", 30u, 1u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.160.130", 2u, "VALTAN_FOUR_SLASH", 12u, 1u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.160.130", 3u, "VALTAN_FIST_IN_OUT", 14u, 1u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.160.130", 4u, "VALTAN_HIGH_JUMP", 14u, 1u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.130.109", 0u, "VALTAN_WHIRLWIND", 20u, 1u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.130.109", 1u, "VALTAN_DASH_CHARGE", 30u, 100u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.130.109", 2u, "VALTAN_FOUR_SLASH", 12u, 1u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.130.109", 3u, "VALTAN_FIST_IN_OUT", 14u, 2u, true);
+		tuneManagedCandidate(
+			"rotation.valtan.130.109", 4u, "VALTAN_HIGH_JUMP", 14u, 1u, false);
+		const std::shared_ptr<CGameplayCatalog> managedWeightCatalog =
+			managedWeightRowsReady ?
+				loadBootstrapVariant(L"managed-window-weights",
+					managedWeightVariant) : nullptr;
+
+		struct MANAGED_WEIGHT_TRACE_FIXTURE final
+		{
+			VALTAN_DECISION_TRACE TicketZero;
+			VALTAN_DECISION_TRACE TicketBoundary;
+			VALTAN_DECISION_TRACE OpeningDifference;
+			VALTAN_DECISION_TRACE SecondDifference;
+			bool hasTicketZero = false;
+			bool hasTicketBoundary = false;
+			bool hasWindowDifference = false;
+		};
+		auto managedTraceFixture =
+			std::make_unique<MANAGED_WEIGHT_TRACE_FIXTURE>();
+		const auto evaluateManagedWindow = [&managedWeightCatalog,
+			&valtanRoom, &pinFixture](
+			const std::uint32_t healthBar, const std::uint32_t serverTick,
+			VALTAN_DECISION_TRACE& outTrace)
+		{
+			if (nullptr == managedWeightCatalog) return false;
+			auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
+			boss->iNetEntityId = 74001u;
+			boss->eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			boss->eAction = SERVER_ENTITY_ACTION::IDLE;
+			boss->strArchetypeId = "BOSS_VALTAN";
+			boss->strEncounterId = "ENCOUNTER_VALTAN";
+			boss->iMaximumHp = 60000u;
+			boss->iMaximumHealthBars = 160u;
+			boss->iCurrentHp = CValtanBrain::Resolve_HealthBarHp(
+				*boss, healthBar);
+			boss->iLastEvaluatedHealthBar = healthBar;
+			boss->iLastHealthMechanicGenerationEpoch = 1u;
+			boss->iPhase = 1u;
+			boss->fPositionX = 151.f;
+			boss->fPositionY = 22.97f;
+			boss->fPositionZ = -122.f;
+			boss->fCollisionRadius = 2.6f;
+			boss->fEngageDistance = 35.f;
+			boss->fMoveSpeed = 3.f;
+			boss->bIntroPatternConsumed = true;
+			boss->PinnedDefinitionRevision =
+				managedWeightCatalog->Get_ActiveRevision();
+			boss->ArmorPlates.push_back({ 0u, 4000u, 50u });
+			boss->ArmorPlates.push_back({ 1u, 4000u, 50u });
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			SERVER_PLAYER player = pinFixture->Target;
+			player.iCurrentHp = (std::max)(player.iCurrentHp, 1u);
+			player.isCombatReady = true;
+			player.fPositionX = boss->fPositionX + 6.f;
+			player.fPositionY = boss->fPositionY;
+			player.fPositionZ = boss->fPositionZ;
+			players.emplace(player.iPlayerId, std::move(player));
+			auto brain = std::make_unique<CValtanBrain>();
+			std::vector<DAMAGE_EVENT> damageEvents;
+			brain->Update(
+				*boss, players, *managedWeightCatalog,
+				valtanRoom->m_ServerNavigation, 1.f / 30.f, serverTick, {},
+				damageEvents, managedWeightCatalog.get(), 1u);
+			const VALTAN_DECISION_TRACE* trace =
+				brain->Get_LatestDecisionTrace();
+			if (nullptr == trace ||
+				VALTAN_DECISION_SOURCE::WEIGHTED != trace->eSource ||
+				VALTAN_DECISION_RESULT::SELECTED != trace->eResult)
+			{
+				return false;
+			}
+			outTrace = *trace;
+			return true;
+		};
+		if (nullptr != managedWeightCatalog)
+		{
+			for (std::uint32_t tick = 1u; tick <= 20000u &&
+				(!managedTraceFixture->hasTicketZero ||
+				 !managedTraceFixture->hasTicketBoundary ||
+				 !managedTraceFixture->hasWindowDifference); ++tick)
+			{
+				VALTAN_DECISION_TRACE opening{};
+				if (!evaluateManagedWindow(159u, tick, opening) ||
+					104u != opening.iTotalWeight)
+				{
+					continue;
+				}
+				if (!managedTraceFixture->hasTicketZero &&
+					0u == opening.iRandomTicket)
+				{
+					managedTraceFixture->TicketZero = opening;
+					managedTraceFixture->hasTicketZero = true;
+				}
+				if (!managedTraceFixture->hasTicketBoundary &&
+					100u == opening.iRandomTicket)
+				{
+					managedTraceFixture->TicketBoundary = opening;
+					managedTraceFixture->hasTicketBoundary = true;
+				}
+				if (!managedTraceFixture->hasWindowDifference &&
+					opening.iRandomTicket >= 1u &&
+					opening.iRandomTicket < 100u)
+				{
+					VALTAN_DECISION_TRACE second{};
+					if (evaluateManagedWindow(129u, tick, second) &&
+						104u == second.iTotalWeight &&
+						opening.iRandomTicket == second.iRandomTicket)
+					{
+						managedTraceFixture->OpeningDifference = opening;
+						managedTraceFixture->SecondDifference = second;
+						managedTraceFixture->hasWindowDifference = true;
+					}
+				}
+			}
+		}
+		const auto findTraceCandidate = [](
+			const VALTAN_DECISION_TRACE& trace,
+			const std::string_view patternId)
+			-> const VALTAN_DECISION_CANDIDATE_TRACE*
+		{
+			const auto found = std::find_if(
+				trace.Candidates.begin(), trace.Candidates.end(),
+				[patternId](const VALTAN_DECISION_CANDIDATE_TRACE& candidate)
+				{ return candidate.strPatternId == patternId; });
+			return trace.Candidates.end() == found ? nullptr : &*found;
+		};
+		const VALTAN_DECISION_CANDIDATE_TRACE* zeroWhirlwind =
+			findTraceCandidate(
+				managedTraceFixture->TicketZero, "VALTAN_WHIRLWIND");
+		const VALTAN_DECISION_CANDIDATE_TRACE* boundaryDash =
+			findTraceCandidate(
+				managedTraceFixture->TicketBoundary, "VALTAN_DASH_CHARGE");
+		const VALTAN_DECISION_CANDIDATE_TRACE* openingWhirlwind =
+			findTraceCandidate(
+				managedTraceFixture->OpeningDifference, "VALTAN_WHIRLWIND");
+		const VALTAN_DECISION_CANDIDATE_TRACE* openingDash =
+			findTraceCandidate(
+				managedTraceFixture->OpeningDifference, "VALTAN_DASH_CHARGE");
+		const VALTAN_DECISION_CANDIDATE_TRACE* secondWhirlwind =
+			findTraceCandidate(
+				managedTraceFixture->SecondDifference, "VALTAN_WHIRLWIND");
+		const VALTAN_DECISION_CANDIDATE_TRACE* secondDash =
+			findTraceCandidate(
+				managedTraceFixture->SecondDifference, "VALTAN_DASH_CHARGE");
+		const VALTAN_DECISION_CANDIDATE_TRACE* secondHighJump =
+			findTraceCandidate(
+				managedTraceFixture->SecondDifference, "VALTAN_HIGH_JUMP");
+		const auto* managedPatterns = nullptr == managedWeightCatalog ? nullptr :
+			managedWeightCatalog->Find_BossPatterns("ENCOUNTER_VALTAN");
+		const auto findCompatibilityWeight = [managedPatterns](
+			const std::string_view patternId)
+		{
+			if (nullptr == managedPatterns) return std::uint32_t{ 0u };
+			const auto found = std::find_if(
+				managedPatterns->begin(), managedPatterns->end(),
+				[patternId](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == patternId; });
+			return managedPatterns->end() == found ?
+				std::uint32_t{ 0u } : found->iSelectionWeight;
+		};
+		const std::array<std::string_view, 5u> expectedCandidateOrder{
+			"VALTAN_WHIRLWIND", "VALTAN_DASH_CHARGE", "VALTAN_FOUR_SLASH",
+			"VALTAN_FIST_IN_OUT", "VALTAN_HIGH_JUMP" };
+		bool exactManagedCandidateOrder =
+			managedTraceFixture->OpeningDifference.Candidates.size() >=
+				expectedCandidateOrder.size();
+		for (std::size_t index = 0u;
+			exactManagedCandidateOrder && index < expectedCandidateOrder.size();
+			++index)
+		{
+			exactManagedCandidateOrder = expectedCandidateOrder[index] ==
+				managedTraceFixture->OpeningDifference.Candidates[index].strPatternId;
+		}
+		tests.Require(
+			managedWeightRowsReady && nullptr != managedWeightCatalog &&
+			managedTraceFixture->hasTicketZero &&
+			managedTraceFixture->hasTicketBoundary &&
+			managedTraceFixture->hasWindowDifference &&
+			exactManagedCandidateOrder && nullptr != zeroWhirlwind &&
+			nullptr != boundaryDash && nullptr != openingWhirlwind &&
+			nullptr != openingDash && nullptr != secondWhirlwind &&
+			nullptr != secondDash && nullptr != secondHighJump &&
+			"VALTAN_WHIRLWIND" ==
+				managedTraceFixture->TicketZero.strSelectedPatternId &&
+			zeroWhirlwind->bSelected && 100u == zeroWhirlwind->iAuthoredWeight &&
+			0u == zeroWhirlwind->iWeightBeginInclusive &&
+			100u == zeroWhirlwind->iWeightEndExclusive &&
+			"VALTAN_DASH_CHARGE" ==
+				managedTraceFixture->TicketBoundary.strSelectedPatternId &&
+			boundaryDash->bSelected &&
+			100u == boundaryDash->iWeightBeginInclusive &&
+			101u == boundaryDash->iWeightEndExclusive &&
+			"VALTAN_WHIRLWIND" ==
+				managedTraceFixture->OpeningDifference.strSelectedPatternId &&
+			"VALTAN_DASH_CHARGE" ==
+				managedTraceFixture->SecondDifference.strSelectedPatternId &&
+			100u == openingWhirlwind->iAuthoredWeight &&
+			100u == openingWhirlwind->iEffectiveWeight &&
+			1u == openingDash->iAuthoredWeight &&
+			1u == secondWhirlwind->iAuthoredWeight &&
+			100u == secondDash->iAuthoredWeight &&
+			0u == secondWhirlwind->iWeightBeginInclusive &&
+			1u == secondWhirlwind->iWeightEndExclusive &&
+			1u == secondDash->iWeightBeginInclusive &&
+			101u == secondDash->iWeightEndExclusive &&
+			0u != (secondHighJump->iExclusionMask &
+				VALTAN_EXCLUDE_DISABLED) &&
+			1u == secondHighJump->iAuthoredWeight &&
+			0u == secondHighJump->iEffectiveWeight &&
+			20u == findCompatibilityWeight("VALTAN_WHIRLWIND") &&
+			30u == findCompatibilityWeight("VALTAN_DASH_CHARGE"),
+			"Consume strict v19 managed candidate ordinal, per-window weight/enabled overrides, exact ticket boundaries, and truthful trace intervals without mutating compatibility weights");
+
+		SERVER_WORLD_ENTITY& forcedOccurrenceBoss =
+			valtanRoom->m_WorldEntities.back();
+		const bool runningOldPatternStayedPinned =
+			activeRevision == forcedOccurrenceBoss.PinnedDefinitionRevision;
+		/* Model the ordinary end-of-tick retirement of the pattern that crossed
+		   130 bars. The room may publish B on the idle entity, but the queued
+		   occurrence itself must keep A live and select from A next tick. */
+		forcedOccurrenceBoss.strPatternId.clear();
+		forcedOccurrenceBoss.strPatternStageId.clear();
+		forcedOccurrenceBoss.strActionId.clear();
+		forcedOccurrenceBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		forcedOccurrenceBoss.PinnedDefinitionRevision = candidateRevision;
+		const CGameplayCatalog* forcedOccurrenceCatalog =
+			valtanRoom->Resolve_ValtanGameplayCatalog(forcedOccurrenceBoss);
+		const bool queuedOldGenerationStayedLive =
+			valtanRoom->Build_RequiredPinnedGameplayRevisions(
+				pinFixture->RequiredPins) &&
+			pinFixture->RequiredPins.end() != std::find(
+				pinFixture->RequiredPins.begin(),
+				pinFixture->RequiredPins.end(), activeRevision) &&
+			nullptr != forcedOccurrenceCatalog &&
+			activeRevision == forcedOccurrenceCatalog->Get_ActiveRevision();
+		if (nullptr != forcedOccurrenceCatalog)
+		{
+			pinFixture->Brain.Update(
+				forcedOccurrenceBoss, pinFixture->Players,
+				*forcedOccurrenceCatalog,
+				valtanRoom->m_ServerNavigation, 1.f / 30.f, 12u, {},
+				pinFixture->DamageEvents);
+		}
+		const auto forcedOccurrence = std::find_if(
+			forcedOccurrenceBoss.MechanicOccurrences.begin(),
+			forcedOccurrenceBoss.MechanicOccurrences.end(),
+			[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+			{
+				return "VALTAN_FLOOR_WIPE_130" == occurrence.strPatternId;
+			});
+		const bool forcedMechanicStartedFromOldGeneration =
+			forcedOccurrenceBoss.MechanicOccurrences.end() != forcedOccurrence &&
+			SERVER_BOSS_MECHANIC_STATE::ACTIVE == forcedOccurrence->eState &&
+			"VALTAN_FLOOR_WIPE_130" == forcedOccurrenceBoss.strPatternId &&
+			activeRevision == forcedOccurrenceBoss.PinnedDefinitionRevision;
+		if (forcedOccurrenceBoss.MechanicOccurrences.end() != forcedOccurrence)
+			forcedOccurrence->eState = SERVER_BOSS_MECHANIC_STATE::COMPLETED;
+		forcedOccurrenceBoss.strPatternId.clear();
+		forcedOccurrenceBoss.strPatternStageId.clear();
+		forcedOccurrenceBoss.strActionId.clear();
+		forcedOccurrenceBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		forcedOccurrenceBoss.PinnedDefinitionRevision = candidateRevision;
+		const CGameplayCatalog* nextNormalCatalog =
+			valtanRoom->Resolve_ValtanGameplayCatalog(forcedOccurrenceBoss);
+		const bool laterNormalUsesNewGeneration =
+			nullptr != nextNormalCatalog && candidateRevision ==
+				nextNormalCatalog->Get_ActiveRevision();
+		tests.Require(
+			runningOldPatternStayedPinned && queuedOldGenerationStayedLive &&
+			forcedMechanicStartedFromOldGeneration &&
+			laterNormalUsesNewGeneration,
+			"Run a threshold mechanic from its queued old generation after commit, then return normal selection to the new generation");
+
+		GameplayDataRevision secondCandidateRevision = candidateRevision;
+		secondCandidateRevision.Bytes[2] ^= 0x20u;
+		if (!secondCandidateRevision.Is_Valid() ||
+			secondCandidateRevision == candidateRevision ||
+			secondCandidateRevision == activeRevision)
+			secondCandidateRevision.Bytes[3] ^= 1u;
+		auto secondCandidate = std::make_shared<CGameplayCatalog>();
+		const bool secondCandidateLoaded = secondCandidate->Load_FromBootstrap(
+			bootstrapPath, activeRevision, secondCandidateRevision);
+		C2S_DATA_REVISION_PREPARE_REQUEST abortRequest{};
+		abortRequest.iTransactionSequence = 72u;
+		abortRequest.BaseRevision = candidateRevision;
+		abortRequest.CandidateRevision = secondCandidateRevision;
+		abortRequest.iRequiredPresentationLaneMask =
+			GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK;
+		CServerApp::SERVER_CONTROL_EVENT abortBegin{};
+		abortBegin.eKind =
+			CServerApp::SERVER_CONTROL_EVENT_KIND::DATA_REVISION_REQUEST;
+		abortBegin.iSessionId = REQUESTER_SESSION;
+		abortBegin.RevisionRequest = abortRequest;
+		abortBegin.pCandidateGeneration = secondCandidate;
+		abortBegin.BaseBootstrapContentRevision = activeRevision;
+		abortBegin.CandidateBootstrapContentRevision = activeRevision;
+		abortBegin.BaseNonValtanGameplayRevision = activeRevision;
+		abortBegin.CandidateNonValtanGameplayRevision = activeRevision;
+		(void)app.Queue_ServerControlEvent(std::move(abortBegin));
+		app.Advance_ServerControlTransactions();
+		CServerApp::SERVER_CONTROL_EVENT nack{};
+		nack.eKind =
+			CServerApp::SERVER_CONTROL_EVENT_KIND::DATA_REVISION_RESPONSE;
+		nack.iSessionId = REQUESTER_SESSION;
+		nack.RevisionResponse.iTransactionSequence =
+			abortRequest.iTransactionSequence;
+		nack.RevisionResponse.CandidateRevision = secondCandidateRevision;
+		nack.RevisionResponse.eStatus = DATA_REVISION_PREPARE_STATUS::NACK;
+		nack.RevisionResponse.iRequiredPresentationLaneMask =
+			abortRequest.iRequiredPresentationLaneMask;
+		nack.RevisionResponse.strReason = "contract NACK";
+		CServerApp::SERVER_CONTROL_EVENT innocentReady{};
+		innocentReady.eKind =
+			CServerApp::SERVER_CONTROL_EVENT_KIND::DATA_REVISION_RESPONSE;
+		innocentReady.iSessionId = PARTICIPANT_SESSION;
+		innocentReady.RevisionResponse.iTransactionSequence =
+			abortRequest.iTransactionSequence;
+		innocentReady.RevisionResponse.CandidateRevision =
+			secondCandidateRevision;
+		innocentReady.RevisionResponse.eStatus =
+			DATA_REVISION_PREPARE_STATUS::READY;
+		innocentReady.RevisionResponse.iRequiredPresentationLaneMask =
+			abortRequest.iRequiredPresentationLaneMask;
+		innocentReady.RevisionResponse.iPreparedPresentationLaneMask =
+			abortRequest.iRequiredPresentationLaneMask;
+		(void)app.Queue_ServerControlEvent(std::move(nack));
+		app.Advance_ServerControlTransactions();
+		const bool abortedBeforeLateReady =
+			!app.m_DataRevisionTransaction.Is_Active();
+		(void)app.Queue_ServerControlEvent(std::move(innocentReady));
+		app.Advance_ServerControlTransactions();
+		const bool rolledBackWithoutClosingInnocent = secondCandidateLoaded &&
+			abortedBeforeLateReady &&
+			!app.m_DataRevisionTransaction.Is_Active() &&
+			candidateRevision ==
+				app.m_pActiveGameplayGeneration->Get_ActiveRevision() &&
+			candidateRevision == valtanRoom->Get_ActiveGameplayGeneration()->
+				Get_ActiveRevision() && participant->m_isSendRunning.load();
+		tests.Require(
+			rolledBackWithoutClosingInnocent,
+			"Abort every room on NACK and ignore an innocent next-drain READY for the exact aborted transaction");
+
+		C2S_DATA_REVISION_PREPARE_REQUEST staleBootstrapRequest =
+			abortRequest;
+		staleBootstrapRequest.iTransactionSequence = 73u;
+		GameplayDataRevision staleBootstrapBaseline = activeRevision;
+		staleBootstrapBaseline.Bytes[6] ^= 0x40u;
+		if (!staleBootstrapBaseline.Is_Valid() ||
+			staleBootstrapBaseline == activeRevision)
+		{
+			staleBootstrapBaseline.Bytes[7] ^= 1u;
+		}
+		CServerApp::SERVER_CONTROL_EVENT staleBootstrap{};
+		staleBootstrap.eKind =
+			CServerApp::SERVER_CONTROL_EVENT_KIND::DATA_REVISION_REQUEST;
+		staleBootstrap.iSessionId = REQUESTER_SESSION;
+		staleBootstrap.RevisionRequest = staleBootstrapRequest;
+		staleBootstrap.pCandidateGeneration = secondCandidate;
+		staleBootstrap.BaseBootstrapContentRevision = activeRevision;
+		staleBootstrap.CandidateBootstrapContentRevision = activeRevision;
+		staleBootstrap.BaseNonValtanGameplayRevision = activeRevision;
+		staleBootstrap.CandidateNonValtanGameplayRevision =
+			staleBootstrapBaseline;
+		const std::size_t beforeStaleBootstrapResult =
+			requester->m_OutboundFrames.size();
+		(void)app.Queue_ServerControlEvent(std::move(staleBootstrap));
+		app.Advance_ServerControlTransactions();
+		tests.Require(
+			!app.m_DataRevisionTransaction.Is_Active() &&
+			requester->m_isSendRunning.load() &&
+			requester->m_OutboundFrames.size() ==
+				beforeStaleBootstrapResult + 1u &&
+			candidateRevision ==
+				app.m_pActiveGameplayGeneration->Get_ActiveRevision() &&
+			activeRevision ==
+				app.m_ActiveGameplayBootstrapContentRevision &&
+			activeRevision == app.m_ActiveNonValtanGameplayRevision,
+			"Reject a stale full-bootstrap candidate baseline before PREPARE can roll back non-Valtan rows");
+
+		const auto makeFrame = [](const C2S_DATA_REVISION_PREPARE_REQUEST& value)
+		{
+			CPacketWriter writer;
+			PACKET_FRAME frame{};
+			frame.ePacketType =
+				PACKET_TYPE::C2S_DATA_REVISION_PREPARE_REQUEST;
+			if (Write_Message(writer, value))
+			{
+				const auto payload = writer.Get_Buffer();
+				frame.Payload.assign(payload.begin(), payload.end());
+			}
+			return frame;
+		};
+		const std::size_t beforeIdempotent =
+			requester->m_OutboundFrames.size();
+		app.On_SessionFrame(REQUESTER_SESSION, makeFrame(request));
+		S2C_DATA_REVISION_RESULT idempotentResult{};
+		bool decodedIdempotentResult = false;
+		if (requester->m_OutboundFrames.size() == beforeIdempotent + 1u)
+		{
+			const auto& bytes = requester->m_OutboundFrames.back().Bytes;
+			PACKET_HEADER header{};
+			if (Read_Packet_Header(bytes, header) &&
+				PACKET_TYPE::S2C_DATA_REVISION_RESULT == header.ePacketType)
+			{
+				CPacketReader resultReader{ std::span<const std::uint8_t>(
+					bytes.data() + PACKET_HEADER_BYTES,
+					bytes.size() - PACKET_HEADER_BYTES) };
+				decodedIdempotentResult =
+					Read_Message(resultReader, idempotentResult) &&
+					0u == resultReader.Get_RemainingSize();
+			}
+		}
+		const bool idempotentVerdict = decodedIdempotentResult &&
+			DATA_REVISION_RESULT::COMMITTED == idempotentResult.eResult &&
+			candidateRevision == idempotentResult.ActiveRevision;
+		const char* idempotentContract =
+			"Answer an already-active retry with the only truthful typed COMMITTED terminal state";
+		tests.Require(
+			requester->m_isSendRunning.load() && idempotentVerdict,
+			idempotentContract);
+
+		C2S_DATA_REVISION_PREPARE_REQUEST repeatedRequest = abortRequest;
+		repeatedRequest.iTransactionSequence = 74u;
+		CServerApp::SERVER_CONTROL_EVENT repeatedBegin{};
+		repeatedBegin.eKind =
+			CServerApp::SERVER_CONTROL_EVENT_KIND::DATA_REVISION_REQUEST;
+		repeatedBegin.iSessionId = REQUESTER_SESSION;
+		repeatedBegin.RevisionRequest = repeatedRequest;
+		repeatedBegin.pCandidateGeneration = secondCandidate;
+		repeatedBegin.BaseBootstrapContentRevision = activeRevision;
+		repeatedBegin.CandidateBootstrapContentRevision = activeRevision;
+		repeatedBegin.BaseNonValtanGameplayRevision = activeRevision;
+		repeatedBegin.CandidateNonValtanGameplayRevision = activeRevision;
+		(void)app.Queue_ServerControlEvent(std::move(repeatedBegin));
+		app.Advance_ServerControlTransactions();
+		const bool repeatedPrepared =
+			app.m_DataRevisionTransaction.Is_Active();
+		const auto queueRepeatedReady =
+			[&app, &repeatedRequest](const SESSION_ID sessionId)
+		{
+			CServerApp::SERVER_CONTROL_EVENT event{};
+			event.eKind =
+				CServerApp::SERVER_CONTROL_EVENT_KIND::DATA_REVISION_RESPONSE;
+			event.iSessionId = sessionId;
+			event.RevisionResponse.iTransactionSequence =
+				repeatedRequest.iTransactionSequence;
+			event.RevisionResponse.CandidateRevision =
+				repeatedRequest.CandidateRevision;
+			event.RevisionResponse.eStatus =
+				DATA_REVISION_PREPARE_STATUS::READY;
+			event.RevisionResponse.iRequiredPresentationLaneMask =
+				repeatedRequest.iRequiredPresentationLaneMask;
+			event.RevisionResponse.iPreparedPresentationLaneMask =
+				repeatedRequest.iRequiredPresentationLaneMask;
+			return app.Queue_ServerControlEvent(std::move(event));
+		};
+		const bool repeatedReady =
+			queueRepeatedReady(REQUESTER_SESSION) &&
+			queueRepeatedReady(PARTICIPANT_SESSION);
+		app.Advance_ServerControlTransactions();
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION recoveredSecondRuntime{};
+		bool recoveredSecondPointer = false;
+		runtimeRecoveryStatus.clear();
+		const bool recoveredSecondCommit =
+			CServerApp::Recover_RuntimeActiveGameplayPointer(
+				runtimePersistenceRoot, packagedRuntime,
+				recoveredSecondRuntime, recoveredSecondPointer,
+				runtimeRecoveryStatus) && recoveredSecondPointer &&
+			secondCandidateRevision == recoveredSecondRuntime.Revision;
+		tests.Require(
+			repeatedPrepared && repeatedReady &&
+			!app.m_DataRevisionTransaction.Is_Active() &&
+			secondCandidateRevision ==
+				app.m_pActiveGameplayGeneration->Get_ActiveRevision() &&
+			secondCandidateRevision ==
+				valtanRoom->Get_ActiveGameplayGeneration()->
+					Get_ActiveRevision() &&
+			secondCandidateRevision ==
+				privateRoom->Get_ActiveGameplayGeneration()->
+					Get_ActiveRevision() &&
+			activeRevision == app.m_ActiveNonValtanGameplayRevision &&
+			recoveredSecondCommit,
+			"Commit a second Valtan-only candidate in the same Server process without requiring the packaged bootstrap baseline");
+
+		std::string resetStatus;
+		const bool resetEscapesMissingOrRetiredDurableCandidate =
+			CServerApp::Reset_RuntimeGameplayActivationToPackaged(
+				runtimePersistenceRoot, packagedRuntime, resetStatus) &&
+			CServerApp::Reset_RuntimeGameplayActivationToPackaged(
+				runtimePersistenceRoot, packagedRuntime, resetStatus);
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION packagedAfterCandidateReset{};
+		bool packagedPointerAfterCandidateReset = false;
+		const bool candidateResetSelectedPackaged =
+			resetEscapesMissingOrRetiredDurableCandidate &&
+			CServerApp::Recover_RuntimeActiveGameplayPointer(
+				runtimePersistenceRoot, packagedRuntime,
+				packagedAfterCandidateReset,
+				packagedPointerAfterCandidateReset, resetStatus) &&
+			packagedPointerAfterCandidateReset &&
+			RUNTIME_GAMEPLAY_GENERATION_SOURCE::PACKAGED_BASELINE ==
+				packagedAfterCandidateReset.eSource &&
+			packagedRuntime.Revision == packagedAfterCandidateReset.Revision &&
+			packagedRuntime.BootstrapContentRevision ==
+				packagedAfterCandidateReset.BootstrapContentRevision &&
+			packagedRuntime.NonValtanGameplayRevision ==
+				packagedAfterCandidateReset.NonValtanGameplayRevision;
+
+		const fs::path packagedResetRoot = fs::temp_directory_path() /
+			(L"lostark-server-runtime-packaged-reset-contract-" +
+			 std::to_wstring(::GetCurrentProcessId()));
+		std::error_code packagedResetError;
+		fs::remove_all(packagedResetRoot, packagedResetError);
+		fs::create_directories(packagedResetRoot, packagedResetError);
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION oldPackaged = packagedRuntime;
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION newPackaged = packagedRuntime;
+		newPackaged.Revision.Bytes[16] ^= 0x20u;
+		newPackaged.BootstrapContentRevision.Bytes[17] ^= 0x40u;
+		newPackaged.NonValtanGameplayRevision.Bytes[18] ^= 0x80u;
+		const bool wroteOldPackagedPointer = !packagedResetError &&
+			CServerApp::Rollback_RuntimeGameplayActivation(
+				packagedResetRoot, oldPackaged, resetStatus);
+		const bool resetAcrossPackagedDrift = wroteOldPackagedPointer &&
+			CServerApp::Reset_RuntimeGameplayActivationToPackaged(
+				packagedResetRoot, newPackaged, resetStatus) &&
+			CServerApp::Reset_RuntimeGameplayActivationToPackaged(
+				packagedResetRoot, newPackaged, resetStatus);
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION recoveredNewPackaged{};
+		bool recoveredNewPackagedPointer = false;
+		const bool recoveredResetPackage = resetAcrossPackagedDrift &&
+			CServerApp::Recover_RuntimeActiveGameplayPointer(
+				packagedResetRoot, newPackaged, recoveredNewPackaged,
+				recoveredNewPackagedPointer, resetStatus) &&
+			recoveredNewPackagedPointer &&
+			RUNTIME_GAMEPLAY_GENERATION_SOURCE::PACKAGED_BASELINE ==
+				recoveredNewPackaged.eSource &&
+			newPackaged.Revision == recoveredNewPackaged.Revision &&
+			newPackaged.BootstrapContentRevision ==
+				recoveredNewPackaged.BootstrapContentRevision &&
+			newPackaged.NonValtanGameplayRevision ==
+				recoveredNewPackaged.NonValtanGameplayRevision;
+
+		const bool restoredOldPointerForCorruptJournal =
+			CServerApp::Rollback_RuntimeGameplayActivation(
+				packagedResetRoot, oldPackaged, resetStatus);
+		bool wroteCorruptJournal = false;
+		if (restoredOldPointerForCorruptJournal)
+		{
+			std::ofstream journal(
+				packagedResetRoot / L"active-generation.journal.json",
+				std::ios::binary | std::ios::trunc);
+			constexpr std::string_view corruptJournal =
+				"{\"schema\":\"corrupt-runtime-journal\"}";
+			journal.write(corruptJournal.data(),
+				static_cast<std::streamsize>(corruptJournal.size()));
+			wroteCorruptJournal = journal.good();
+		}
+		const bool corruptJournalResetRejected = wroteCorruptJournal &&
+			!CServerApp::Reset_RuntimeGameplayActivationToPackaged(
+				packagedResetRoot, newPackaged, resetStatus);
+		std::error_code corruptJournalRemoveError;
+		fs::remove(packagedResetRoot / L"active-generation.journal.json",
+			corruptJournalRemoveError);
+		RUNTIME_ACTIVE_GAMEPLAY_GENERATION pointerAfterCorruptJournal{};
+		bool pointerAfterCorruptJournalPresent = false;
+		const bool corruptJournalPreservedOldPointer =
+			corruptJournalResetRejected && !corruptJournalRemoveError &&
+			CServerApp::Recover_RuntimeActiveGameplayPointer(
+				packagedResetRoot, oldPackaged, pointerAfterCorruptJournal,
+				pointerAfterCorruptJournalPresent, resetStatus) &&
+			pointerAfterCorruptJournalPresent &&
+			oldPackaged.Revision == pointerAfterCorruptJournal.Revision;
+
+		bool wroteCorruptPointer = false;
+		{
+			std::ofstream pointer(
+				packagedResetRoot / L"active-generation.json",
+				std::ios::binary | std::ios::trunc);
+			constexpr std::string_view corruptPointer =
+				"{\"schema\":\"corrupt-runtime-pointer\"}";
+			pointer.write(corruptPointer.data(),
+				static_cast<std::streamsize>(corruptPointer.size()));
+			wroteCorruptPointer = pointer.good();
+		}
+		const bool corruptPointerResetRejected = wroteCorruptPointer &&
+			!CServerApp::Reset_RuntimeGameplayActivationToPackaged(
+				packagedResetRoot, newPackaged, resetStatus);
+		fs::remove_all(packagedResetRoot, packagedResetError);
+
+		void* ownerMutex = nullptr;
+		std::string mutexStatus;
+		const bool acquiredOwnerMutex =
+			CServerApp::Acquire_RuntimeGameplayProcessMutex(
+				ownerMutex, mutexStatus);
+		std::atomic_bool secondThreadWasRefused{ false };
+		std::thread competingResetThread([&secondThreadWasRefused]()
+		{
+			void* competingMutex = nullptr;
+			std::string competingStatus;
+			secondThreadWasRefused.store(
+				!CServerApp::Acquire_RuntimeGameplayProcessMutex(
+					competingMutex, competingStatus));
+			CServerApp::Release_RuntimeGameplayProcessMutex(competingMutex);
+		});
+		competingResetThread.join();
+		CServerApp::Release_RuntimeGameplayProcessMutex(ownerMutex);
+		tests.Require(
+			candidateResetSelectedPackaged && recoveredResetPackage &&
+			corruptJournalPreservedOldPointer &&
+			corruptPointerResetRejected && acquiredOwnerMutex &&
+			secondThreadWasRefused.load(),
+			"Reset a missing or retired candidate to packaged idempotently, reject corrupt durable state without mutation, and refuse a concurrent Server owner");
+		fs::remove_all(runtimePersistenceRoot, runtimePersistenceError);
+
+		valtanRoom->m_WorldEntities.pop_back();
+		valtanRoom->m_GameplayCatalog.Collect_Garbage({ candidateRevision });
+		tests.Require(
+			nullptr == valtanRoom->Resolve_GameplayGeneration(activeRevision),
+			"Collect an old immutable gameplay generation after its final occurrence pin is released");
+		auto capacityRoomStorage = std::make_unique<CGameRoom>(
+			WORLD_ID::TRAINING_GROUND, baseGeneration);
+		CGameRoom& capacityRoom = *capacityRoomStorage;
+		SERVER_WORLD_ENTITY capacityBasePin{};
+		capacityBasePin.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		capacityBasePin.strPatternId = "VALTAN_GENERATION_CAPACITY_PIN";
+		capacityBasePin.PinnedDefinitionRevision = activeRevision;
+		capacityRoom.m_WorldEntities.push_back(capacityBasePin);
+		bool filledGenerationCapacity = capacityRoom.Is_Ready();
+		GameplayDataRevision capacityActive = activeRevision;
+		for (std::uint32_t ordinal = 1u;
+			filledGenerationCapacity && ordinal <
+				CGameplayCatalogGenerations::MAX_GENERATION_COUNT;
+			++ordinal)
+		{
+			GameplayDataRevision generationRevision = activeRevision;
+			generationRevision.Bytes[28] ^= 0x5au;
+			generationRevision.Bytes[29] =
+				static_cast<std::uint8_t>(ordinal);
+			auto generation = std::make_shared<CGameplayCatalog>();
+			std::string capacityStatus;
+			filledGenerationCapacity = generation->Load_FromBootstrap(
+				bootstrapPath, activeRevision, generationRevision) &&
+				capacityRoom.Stage_GameplayGeneration(
+					100u + ordinal, capacityActive, generation, capacityStatus) &&
+				capacityRoom.Commit_GameplayGeneration(100u + ordinal);
+			if (!filledGenerationCapacity) break;
+			SERVER_WORLD_ENTITY pin = capacityBasePin;
+			pin.PinnedDefinitionRevision = generationRevision;
+			capacityRoom.m_WorldEntities.push_back(std::move(pin));
+			capacityActive = generationRevision;
+		}
+		GameplayDataRevision overflowRevision = activeRevision;
+		overflowRevision.Bytes[28] ^= 0xa5u;
+		overflowRevision.Bytes[29] ^= 0xffu;
+		auto overflowGeneration = std::make_shared<CGameplayCatalog>();
+		std::string overflowStatus;
+		const bool rejectedGenerationOverflow = filledGenerationCapacity &&
+			CGameplayCatalogGenerations::MAX_GENERATION_COUNT ==
+				capacityRoom.m_GameplayCatalog.Get_GenerationCount() &&
+			overflowGeneration->Load_FromBootstrap(
+				bootstrapPath, activeRevision, overflowRevision) &&
+			!capacityRoom.Stage_GameplayGeneration(
+				999u, capacityActive, overflowGeneration, overflowStatus) &&
+			overflowStatus.find("capacity") != std::string::npos;
+		if (!rejectedGenerationOverflow)
+		{
+			std::cout << "[STATUS] generation capacity count=" <<
+				capacityRoom.m_GameplayCatalog.Get_GenerationCount() <<
+				", filled=" << filledGenerationCapacity <<
+				", status=" << overflowStatus << '\n';
+		}
+		tests.Require(rejectedGenerationOverflow,
+			"Fail-close the seventeenth immutable gameplay generation while sixteen occurrence revisions remain pinned");
+
+		const fs::path pathContractRoot = fs::temp_directory_path() /
+			(L"LostArkCandidatePathContract-" +
+				std::to_wstring(GetCurrentProcessId()));
+		const fs::path siblingRoot = fs::path(
+			pathContractRoot.native() + L"Evil");
+		std::error_code pathContractError;
+		fs::remove_all(pathContractRoot, pathContractError);
+		pathContractError.clear();
+		fs::remove_all(siblingRoot, pathContractError);
+		fs::create_directories(pathContractRoot / L"nested", pathContractError);
+		fs::create_directories(siblingRoot, pathContractError);
+		{
+			std::ofstream validFile(pathContractRoot / L"nested" / L"payload.bin",
+				std::ios::binary | std::ios::trunc);
+			validFile << "candidate-path-contract";
+			std::ofstream siblingFile(siblingRoot / L"payload.bin",
+				std::ios::binary | std::ios::trunc);
+			siblingFile << "sibling-prefix-contract";
+		}
+		const fs::path canonicalContractRoot =
+			fs::canonical(pathContractRoot, pathContractError);
+		fs::path resolvedArtifact;
+		std::string pathContractStatus;
+		const bool admittedNested = !pathContractError &&
+			CServerApp::Resolve_CandidateArtifactForAdmission(
+				canonicalContractRoot, "nested/payload.bin",
+				resolvedArtifact, pathContractStatus);
+		const bool rejectedDriveQualified =
+			!CServerApp::Resolve_CandidateArtifactForAdmission(
+				canonicalContractRoot, "C:/Windows/System32/kernel32.dll",
+				resolvedArtifact, pathContractStatus);
+		const bool rejectedParent =
+			!CServerApp::Resolve_CandidateArtifactForAdmission(
+				canonicalContractRoot, "../LostArkCandidatePathContract-" +
+					std::to_string(GetCurrentProcessId()) + "Evil/payload.bin",
+				resolvedArtifact, pathContractStatus);
+		const bool rejectedSiblingAbsolute =
+			!CServerApp::Resolve_CandidateArtifactForAdmission(
+				canonicalContractRoot, siblingRoot.string() + "/payload.bin",
+				resolvedArtifact, pathContractStatus);
+		bool rejectedParentLink = true;
+		pathContractError.clear();
+		fs::create_directory_symlink(
+			siblingRoot, pathContractRoot / L"parent-link", pathContractError);
+		if (!pathContractError)
+		{
+			rejectedParentLink =
+				!CServerApp::Resolve_CandidateArtifactForAdmission(
+					canonicalContractRoot, "parent-link/payload.bin",
+					resolvedArtifact, pathContractStatus);
+		}
+		tests.Require(
+			admittedNested && rejectedDriveQualified && rejectedParent &&
+			rejectedSiblingAbsolute && rejectedParentLink,
+			"Admit only canonical descendant candidate files and reject drive, sibling-prefix, parent, and parent-link escapes");
+		pathContractError.clear();
+		fs::remove_all(pathContractRoot, pathContractError);
+		pathContractError.clear();
+		fs::remove_all(siblingRoot, pathContractError);
+		requester->Request_Close();
+		participant->Request_Close();
+		app.m_Sessions.clear();
+		app.m_GameplayBindingBySessionId.clear();
+		app.m_CharacterSelectArenas.clear();
+		app.m_SharedGameRooms.clear();
+		app.m_pActiveGameplayGeneration.reset();
+	}
 	{
 		const VALTAN_TIMELINE_DEFINITION* timeline =
 			catalog.Find_ValtanTimeline("ENCOUNTER_VALTAN");
@@ -2071,7 +3766,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 						replicated->hasSkillTarget &&
 						std::fabs(replicated->fSkillTargetX - approvedTarget.x) < 0.0001f &&
 						std::fabs(replicated->fSkillTargetY - approvedTarget.y) < 0.0001f &&
-						std::fabs(replicated->fSkillTargetZ - approvedTarget.z) < 0.0001f;
+						std::fabs(replicated->fSkillTargetZ - approvedTarget.z) < 0.0001f &&
+						decodedSnapshot.ActiveGameplayRevision ==
+							snapshotRoom.m_GameplayCatalog.Get_ActiveRevision() &&
+						decodedSnapshot.RequiredPinnedGameplayRevisions.empty() &&
+						std::all_of(
+							decodedSnapshot.Entities.begin(),
+							decodedSnapshot.Entities.end(),
+							[&decodedSnapshot](const WORLD_ENTITY_SNAPSHOT& entity)
+							{
+								return entity.PinnedDefinitionRevision ==
+									decodedSnapshot.ActiveGameplayRevision;
+							});
 				}
 			}
 		}
@@ -3795,6 +5501,247 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			!brokenBoss.bPatternGroggy,
 			"Break one plate per groggy window, close it, and queue the part-break reaction");
 	}
+	{
+		/* Make one otherwise-eligible row the only row not on cooldown, then
+		mark it at its repeat limit. The same weighted evaluator must relax only
+		the soft repeat reason and expose the original block plus the relaxation. */
+		const auto* repeatPatterns =
+			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const BOSS_PATTERN_DEFINITION* repeatPattern = nullptr;
+		if (nullptr != repeatPatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& candidate : *repeatPatterns)
+			{
+				if (BOSS_PATTERN_SELECTION::NORMAL != candidate.eSelection ||
+					"VALTAN_ENTRANCE_WHIRLWIND" == candidate.strPatternId ||
+					candidate.iMinimumPhase > 1u || candidate.iMaximumPhase < 1u ||
+					candidate.iMinimumHealthBar > 160u ||
+					candidate.iMaximumHealthBar < 160u ||
+					BOSS_PATTERN_ARMOR_REQUIREMENT::ARMORED ==
+						candidate.eArmorRequirement ||
+					BOSS_PATTERN_PHASE_REQUIREMENT::PHASE_TWO ==
+						candidate.ePhaseRequirement ||
+					0u == candidate.iMaximumConsecutiveUses)
+				{
+					continue;
+				}
+				const std::size_t sourceFamilyCount =
+					static_cast<std::size_t>(std::count_if(
+						repeatPatterns->begin(), repeatPatterns->end(),
+						[&candidate](const BOSS_PATTERN_DEFINITION& other)
+						{
+							return BOSS_PATTERN_SELECTION::NORMAL ==
+								other.eSelection &&
+								other.iSourcePrimaryActionId ==
+									candidate.iSourcePrimaryActionId;
+						}));
+				if (1u == sourceFamilyCount)
+				{
+					repeatPattern = &candidate;
+					break;
+				}
+			}
+		}
+		std::map<PLAYER_ID, SERVER_PLAYER> repeatPlayers;
+		SERVER_PLAYER repeatTarget{};
+		repeatTarget.iPlayerId = 7001u;
+		repeatTarget.iNetEntityId = 7002u;
+		repeatTarget.iCurrentHp = 1000000u;
+		repeatTarget.iMaximumHp = 1000000u;
+		repeatTarget.isCombatReady = true;
+		if (nullptr != repeatPattern)
+			repeatTarget.fPositionX = (repeatPattern->fMinimumRange +
+				repeatPattern->fMaximumRange) * 0.5f;
+		repeatPlayers.emplace(repeatTarget.iPlayerId, repeatTarget);
+		SERVER_WORLD_ENTITY repeatBoss{};
+		repeatBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		repeatBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		repeatBoss.strArchetypeId = "BOSS_VALTAN";
+		repeatBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		repeatBoss.iCurrentHp = 60000u;
+		repeatBoss.iMaximumHp = 60000u;
+		repeatBoss.iMaximumHealthBars = 160u;
+		repeatBoss.iLastEvaluatedHealthBar = 160u;
+		repeatBoss.iPhase = 1u;
+		repeatBoss.fEngageDistance = 1000.f;
+		repeatBoss.bIntroPatternConsumed = true;
+		repeatBoss.bScriptedPatternPlayback = true;
+		if (nullptr != repeatPattern && nullptr != repeatPatterns)
+		{
+			repeatBoss.strLastPatternId = repeatPattern->strPatternId;
+			repeatBoss.iConsecutivePatternUses =
+				repeatPattern->iMaximumConsecutiveUses;
+			for (const BOSS_PATTERN_DEFINITION& candidate : *repeatPatterns)
+			{
+				if (BOSS_PATTERN_SELECTION::NORMAL != candidate.eSelection ||
+					candidate.strPatternId == repeatPattern->strPatternId)
+				{
+					continue;
+				}
+				SERVER_BOSS_PATTERN_COOLDOWN cooldown{};
+				cooldown.iSourcePrimaryActionId =
+					candidate.iSourcePrimaryActionId;
+				cooldown.iReadyTick = 22000u;
+				repeatBoss.PatternCooldowns.push_back(std::move(cooldown));
+			}
+		}
+		std::vector<DAMAGE_EVENT> repeatDamageEvents;
+		auto repeatBrainStorage = std::make_unique<CValtanBrain>();
+		CValtanBrain& repeatBrain = *repeatBrainStorage;
+		repeatBrain.Update(
+			repeatBoss, repeatPlayers, catalog, navigation,
+			1.f / 30.f, 21000u, {}, repeatDamageEvents);
+		const VALTAN_DECISION_TRACE* repeatTrace =
+			repeatBrain.Get_LatestDecisionTrace();
+		const auto repeatCandidate = nullptr == repeatTrace ||
+			nullptr == repeatPattern ?
+				VALTAN_DECISION_CANDIDATE_TRACE{} :
+				[repeatTrace, repeatPattern]()
+				{
+					const auto found = std::find_if(
+						repeatTrace->Candidates.begin(),
+						repeatTrace->Candidates.end(),
+						[repeatPattern](
+							const VALTAN_DECISION_CANDIDATE_TRACE& candidate)
+						{
+							return candidate.strPatternId ==
+								repeatPattern->strPatternId;
+						});
+					return repeatTrace->Candidates.end() == found ?
+						VALTAN_DECISION_CANDIDATE_TRACE{} : *found;
+				}();
+		bool weightIntervalsPartition = nullptr != repeatTrace;
+		std::uint64_t nextWeightBegin = 0u;
+		std::size_t effectiveCandidateCount = 0u;
+		if (nullptr != repeatTrace)
+		{
+			for (const VALTAN_DECISION_CANDIDATE_TRACE& candidate :
+				repeatTrace->Candidates)
+			{
+				if (0u == candidate.iEffectiveWeight) continue;
+				++effectiveCandidateCount;
+				weightIntervalsPartition = weightIntervalsPartition &&
+					candidate.iWeightBeginInclusive == nextWeightBegin &&
+					candidate.iWeightEndExclusive >
+						candidate.iWeightBeginInclusive &&
+					candidate.iWeightEndExclusive -
+						candidate.iWeightBeginInclusive ==
+						candidate.iEffectiveWeight &&
+					candidate.iWeightEndExclusive <= repeatTrace->iTotalWeight &&
+					(!candidate.bSelected ||
+						(repeatTrace->iRandomTicket >=
+							candidate.iWeightBeginInclusive &&
+						 repeatTrace->iRandomTicket <
+							candidate.iWeightEndExclusive));
+				nextWeightBegin = candidate.iWeightEndExclusive;
+			}
+			weightIntervalsPartition = weightIntervalsPartition &&
+				0u != effectiveCandidateCount &&
+				nextWeightBegin == repeatTrace->iTotalWeight;
+		}
+		tests.Require(
+			nullptr != repeatPattern && nullptr != repeatTrace &&
+			weightIntervalsPartition &&
+			repeatTrace->bMaximumConsecutiveRelaxed &&
+			VALTAN_DECISION_RESULT::SELECTED == repeatTrace->eResult &&
+			repeatPattern->strPatternId == repeatTrace->strSelectedPatternId &&
+			repeatCandidate.bSoftRepeatBlocked &&
+			repeatCandidate.bSoftRepeatRelaxed && repeatCandidate.bSelected &&
+			0u != (repeatCandidate.iExclusionMask &
+				VALTAN_EXCLUDE_SOFT_REPEAT_BLOCKED) &&
+			0u != (repeatCandidate.iExclusionMask &
+				VALTAN_EXCLUDE_SOFT_REPEAT_RELAXED),
+			"Relax soft repeat avoidance and partition every effective decision weight interval before selection");
+
+		auto traceRoomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& traceRoom = *traceRoomStorage;
+		SERVER_WORLD_ENTITY traceBoss = repeatBoss;
+		traceBoss.iNetEntityId = 79991u;
+		traceBoss.strPlacementId = "boss.valtan.decision-trace-contract";
+		traceBoss.PinnedDefinitionRevision =
+			traceRoom.m_GameplayCatalog.Get_ActiveRevision();
+		traceRoom.m_WorldEntities.push_back(traceBoss);
+		traceRoom.m_ValtanBrain = repeatBrain;
+		if (nullptr != repeatTrace)
+		{
+			traceRoom.m_ValtanDecisionTraceRevision.iBossEntityId =
+				traceBoss.iNetEntityId;
+			traceRoom.m_ValtanDecisionTraceRevision.strBossPlacementId =
+				traceBoss.strPlacementId;
+			traceRoom.m_ValtanDecisionTraceRevision.iTraceSequence =
+				repeatTrace->iTraceSequence;
+			traceRoom.m_ValtanDecisionTraceRevision.DefinitionRevision =
+				traceBoss.PinnedDefinitionRevision;
+		}
+		C2S_VALTAN_DECISION_TRACE_QUERY traceQuery{};
+		traceQuery.iRequestSequence = 91u;
+		traceQuery.strBossPlacementId = traceBoss.strPlacementId;
+		S2C_VALTAN_DECISION_TRACE_RESPONSE traceResponse{};
+		std::string traceStatus;
+		CPacketWriter traceWriter;
+		const bool mappedTrace = nullptr != repeatTrace &&
+			traceRoom.Build_ValtanDecisionTraceResponse(
+				traceQuery, traceResponse, traceStatus) &&
+			VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE == traceResponse.eResult &&
+			traceBoss.PinnedDefinitionRevision ==
+				traceResponse.DefinitionRevision &&
+			repeatTrace->iTraceSequence == traceResponse.Trace.iTraceSequence &&
+			repeatTrace->Candidates.size() == traceResponse.Trace.Candidates.size() &&
+			Write_Message(traceWriter, traceResponse);
+		C2S_VALTAN_DECISION_TRACE_QUERY unchangedQuery = traceQuery;
+		unchangedQuery.iRequestSequence = 92u;
+		unchangedQuery.iAfterTraceSequence = nullptr == repeatTrace ? 0u :
+			repeatTrace->iTraceSequence;
+		S2C_VALTAN_DECISION_TRACE_RESPONSE unchangedResponse{};
+		const bool mappedUnchanged =
+			traceRoom.Build_ValtanDecisionTraceResponse(
+				unchangedQuery, unchangedResponse, traceStatus) &&
+			VALTAN_DECISION_TRACE_QUERY_RESULT::UNCHANGED ==
+				unchangedResponse.eResult &&
+			!unchangedResponse.DefinitionRevision.Is_Valid() &&
+			0u == unchangedResponse.Trace.iTraceSequence;
+		GameplayDataRevision collectedSelectorRevision =
+			traceBoss.PinnedDefinitionRevision;
+		collectedSelectorRevision.Bytes[7] ^= 0x80u;
+		if (!collectedSelectorRevision.Is_Valid() ||
+			collectedSelectorRevision == traceBoss.PinnedDefinitionRevision)
+		{
+			collectedSelectorRevision.Bytes[8] ^= 1u;
+		}
+		traceRoom.m_ValtanDecisionTraceRevision.DefinitionRevision =
+			collectedSelectorRevision;
+		S2C_VALTAN_DECISION_TRACE_RESPONSE collectedTraceResponse{};
+		const bool mappedCollectedTrace =
+			nullptr == traceRoom.Resolve_GameplayGeneration(
+				collectedSelectorRevision) &&
+			traceRoom.Build_ValtanDecisionTraceResponse(
+				traceQuery, collectedTraceResponse, traceStatus) &&
+			VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE ==
+				collectedTraceResponse.eResult &&
+			collectedSelectorRevision ==
+				collectedTraceResponse.DefinitionRevision;
+		traceRoom.m_ValtanDecisionTraceRevision.DefinitionRevision =
+			traceBoss.PinnedDefinitionRevision;
+		bool rejectedUnknownExclusion = true;
+		VALTAN_DECISION_TRACE* mutableTrace = const_cast<VALTAN_DECISION_TRACE*>(
+			traceRoom.m_ValtanBrain.Get_LatestDecisionTrace());
+		if (nullptr != mutableTrace && !mutableTrace->Candidates.empty())
+		{
+			const std::uint32_t originalMask =
+				mutableTrace->Candidates.front().iExclusionMask;
+			mutableTrace->Candidates.front().iExclusionMask |= 0x80000000u;
+			S2C_VALTAN_DECISION_TRACE_RESPONSE invalidResponse{};
+			rejectedUnknownExclusion =
+				!traceRoom.Build_ValtanDecisionTraceResponse(
+					traceQuery, invalidResponse, traceStatus);
+			mutableTrace->Candidates.front().iExclusionMask = originalMask;
+		}
+		tests.Require(
+			mappedTrace && mappedUnchanged && mappedCollectedTrace &&
+			rejectedUnknownExclusion,
+			"Map the authoritative Valtan decision trace after selector-generation GC and fail-close unknown exclusion bits");
+	}
 
 	{
 		/* The charge is authored per stage now, so the opening mechanic and the
@@ -4091,14 +6038,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				phaseTwoBoss, PHASE_REQUIREMENT::ANY),
 			"Offer a phase-gated pattern only in the phase it names");
 
-		/* Valtan does not infer phase two from HP. The authored 109 mechanic owns
-		the one IMPACT ENTER phase edge that advances the runtime. */
+		/* Valtan carries no duplicate percent threshold. Exactly one typed edge
+		on the 109 central IMPACT owns the phase-two transition. */
 		const BOSS_RUNTIME_PROFILE* thresholdProfile =
 			catalog.Find_Boss("BOSS_VALTAN");
 		const auto* thresholdPatterns =
 			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
 		std::uint32_t transitionBar = 0u;
-		bool hasImpactPhaseAction = false;
+		std::size_t phaseActionCount = 0u;
+		bool exactPhaseAction = false;
 		if (nullptr != thresholdPatterns)
 		{
 			for (const BOSS_PATTERN_DEFINITION& pattern : *thresholdPatterns)
@@ -4108,16 +6056,21 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					transitionBar = pattern.iTriggerHealthBar;
 					for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
 					{
-						if (stage.strStageId != "IMPACT")
-							continue;
 						for (const BOSS_PATTERN_STAGE_ACTION& action : stage.Actions)
 						{
-							hasImpactPhaseAction = hasImpactPhaseAction ||
-								BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE ==
-									action.eKind &&
+							if (BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE !=
+								action.eKind)
+							{
+								continue;
+							}
+							++phaseActionCount;
+							exactPhaseAction = "IMPACT" == stage.strStageId &&
+								"valtan.mechanic.arena-break-109.impact" ==
+									stage.strActionId &&
 								BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
 									action.eTrigger &&
-								2u == action.iValue;
+								"boss.phase.gameplay" == action.strTargetId &&
+								2u == action.iValue && 0u == action.iDurationMs;
 						}
 					}
 				}
@@ -4128,8 +6081,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			BOSS_PHASE_POLICY_KIND::AUTHORED_PATTERN_EVENT ==
 				thresholdProfile->PhasePolicy.eKind &&
 			0u == thresholdProfile->PhasePolicy.iThresholdPercent &&
-			109u == transitionBar && hasImpactPhaseAction,
-			"Advance to phase two only on the authored 109 IMPACT edge");
+			109u == transitionBar && 1u == phaseActionCount && exactPhaseAction,
+			"Advance Valtan to phase two only on 109 IMPACT ENTER");
 
 		/* The wipe is the one mechanic the raid has to answer instead of racing
 		down, so it is the only pattern authored invulnerable and it fires on the
@@ -4758,6 +6711,22 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		1000u == players.begin()->second.iCurrentHp &&
 		valtanDamageEvents.empty(),
 		"Protect Valtan entrant until first accepted gameplay intent");
+	const VALTAN_DECISION_TRACE* noTargetTrace =
+		brain.Get_LatestDecisionTrace();
+	const bool tracedNoTargetCandidates = nullptr != noTargetTrace &&
+		std::any_of(
+			noTargetTrace->Candidates.begin(), noTargetTrace->Candidates.end(),
+			[](const VALTAN_DECISION_CANDIDATE_TRACE& candidate)
+			{
+				return 0u != (candidate.iExclusionMask &
+					VALTAN_EXCLUDE_NO_TARGET);
+			});
+	tests.Require(
+		nullptr != noTargetTrace &&
+		VALTAN_DECISION_RESULT::NO_VALID_TARGET == noTargetTrace->eResult &&
+		VALTAN_DECISION_SOURCE::NONE == noTargetTrace->eSource &&
+		tracedNoTargetCandidates,
+		"Record no-target candidate exclusions in the selector decision envelope");
 	players.begin()->second.isCombatReady = true;
 	for (std::uint32_t tick = 100; tick < 170 && valtanDamageEvents.empty(); ++tick)
 		brain.Update(valtan, players, catalog, navigation, 1.f / 30.f, tick,
@@ -4778,11 +6747,58 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		1u == valtan.iPatternSequence &&
 		1u == valtan.iPatternStageIndex,
 		"Queue and advance the staged 130-bar scripted mechanic");
+	const VALTAN_DECISION_TRACE* forcedHealthTrace =
+		brain.Get_LatestDecisionTrace();
+	const auto floorWipeOccurrence = std::find_if(
+		valtan.MechanicOccurrences.begin(), valtan.MechanicOccurrences.end(),
+		[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+		{
+			return "VALTAN_FLOOR_WIPE_130" == occurrence.strPatternId;
+		});
+	tests.Require(
+		nullptr != forcedHealthTrace &&
+		VALTAN_DECISION_SOURCE::FORCED_HEALTH_BAR ==
+			forcedHealthTrace->eSource &&
+		VALTAN_DECISION_RESULT::SELECTED == forcedHealthTrace->eResult &&
+		"VALTAN_FLOOR_WIPE_130" ==
+			forcedHealthTrace->strSelectedPatternId &&
+		"VALTAN_FLOOR_WIPE_130" ==
+			forcedHealthTrace->strPendingPatternId &&
+		1u == forcedHealthTrace->iExpectedPatternSequence &&
+		valtan.MechanicOccurrences.end() != floorWipeOccurrence &&
+		SERVER_BOSS_MECHANIC_STATE::ACTIVE == floorWipeOccurrence->eState &&
+		1u == floorWipeOccurrence->iPatternSequence,
+		"Trace forced health selection and advance its stable ledger occurrence");
 	valtan.iCurrentHp = 30000;
 	brain.Update(valtan, players, catalog, navigation, 1.f / 30.f, 171,
 		{}, valtanDamageEvents);
 	tests.Require(1u == valtan.iPhase,
 		"Keep Valtan phase one until the authored 109 IMPACT ENTER edge");
+	CValtanBrain::Fail_Mechanic(
+		valtan, "VALTAN_FLOOR_WIPE_130",
+		SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_PREFLIGHT, 172u);
+	const std::uint32_t failedMechanicSequence = valtan.iPatternSequence;
+	brain.Update(valtan, players, catalog, navigation, 1.f / 30.f, 173u,
+		{}, valtanDamageEvents);
+	const VALTAN_DECISION_TRACE* resetRequiredTrace =
+		brain.Get_LatestDecisionTrace();
+	const auto failedFloorWipeOccurrence = std::find_if(
+		valtan.MechanicOccurrences.begin(), valtan.MechanicOccurrences.end(),
+		[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+		{
+			return "VALTAN_FLOOR_WIPE_130" == occurrence.strPatternId;
+		});
+	tests.Require(
+		valtan.bMechanicLedgerRequiresReset &&
+		valtan.MechanicOccurrences.end() != failedFloorWipeOccurrence &&
+		SERVER_BOSS_MECHANIC_STATE::FAILED_REQUIRES_RESET ==
+			failedFloorWipeOccurrence->eState &&
+		failedMechanicSequence == valtan.iPatternSequence &&
+		SERVER_ENTITY_ACTION::IDLE == valtan.eAction &&
+		nullptr != resetRequiredTrace &&
+		VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED ==
+			resetRequiredTrace->eResult,
+		"Fail a critical mechanic closed until an encounter reset replaces its ledger");
 
 	{
 		/* Source cooldowns are selection gates, not display-only metadata. Run a
@@ -4823,6 +6839,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		bool observedFourSlash = false;
 		bool observedIndependentSource = false;
 		bool replayedIntro = false;
+		bool observedDeterministicDecisionTrace = false;
+		bool observedCooldownExclusionTrace = false;
 		std::vector<DAMAGE_EVENT> cooldownDamageEvents;
 		const std::vector<BOSS_PATTERN_DEFINITION>* cooldownPatterns =
 			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
@@ -4838,6 +6856,39 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			if (cooldownBoss.iPatternSequence == previousSequence)
 				continue;
 			previousSequence = cooldownBoss.iPatternSequence;
+			if (const VALTAN_DECISION_TRACE* trace =
+				brain.Get_LatestDecisionTrace())
+			{
+				const auto selectedCandidate = std::find_if(
+					trace->Candidates.begin(), trace->Candidates.end(),
+					[trace](const VALTAN_DECISION_CANDIDATE_TRACE& candidate)
+					{
+						return candidate.strPatternId ==
+							trace->strSelectedPatternId;
+					});
+				observedDeterministicDecisionTrace =
+					observedDeterministicDecisionTrace ||
+					(VALTAN_DECISION_RESULT::SELECTED == trace->eResult &&
+					 0u != trace->iRawRandomInput &&
+					 trace->iMixedRandomValue >= trace->iRandomTicket &&
+					 trace->iTotalWeight > trace->iRandomTicket &&
+					 trace->Candidates.end() != selectedCandidate &&
+					 selectedCandidate->bSelected &&
+					 selectedCandidate->iEffectiveWeight > 0u &&
+					 trace->iRandomTicket >=
+						selectedCandidate->iWeightBeginInclusive &&
+					 trace->iRandomTicket <
+						selectedCandidate->iWeightEndExclusive);
+				observedCooldownExclusionTrace =
+					observedCooldownExclusionTrace || std::any_of(
+						trace->Candidates.begin(), trace->Candidates.end(),
+						[](const VALTAN_DECISION_CANDIDATE_TRACE& candidate)
+						{
+							return candidate.iCooldownRemainingTicks > 0u &&
+								0u != (candidate.iExclusionMask &
+									VALTAN_EXCLUDE_COOLDOWN);
+						});
+			}
 			replayedIntro = replayedIntro ||
 				cooldownBoss.strPatternId == "VALTAN_ENTRANCE_WHIRLWIND";
 			if (nullptr == cooldownPatterns)
@@ -4886,7 +6937,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			respectedCooldowns && observedPositiveCooldownRepeat &&
 			observedFourSlash && observedIndependentSource &&
 			1u == fourSlashCooldownCount &&
-			hasIndependentCooldown && !replayedIntro,
+			hasIndependentCooldown && !replayedIntro &&
+			observedDeterministicDecisionTrace &&
+			observedCooldownExclusionTrace,
 			"Gate normal Valtan reselection by four-slash source-action cooldown, keep other sources independent, and never reroll the intro");
 	}
 
@@ -5129,6 +7182,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		stageBoss.strPatternStageId = "RECOVERY";
 		stageBoss.iPatternStageIndex = 3u;
 		stageBoss.iPatternSequence = 1u;
+		stageBoss.PinnedDefinitionRevision =
+			pillarRoom.m_GameplayCatalog.Get_ActiveRevision();
 		const bool roomReady = pillarRoom.Is_Ready() &&
 			pillarRoom.m_EncounterPropRuntime.Is_Initialized();
 		const bool entered =
@@ -5314,7 +7369,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"ENCOUNTER_VALTAN", 1u, 108u) &&
 			nullptr == catalog.Find_BossPatternRotation(
 				"ENCOUNTER_VALTAN", 1u, 1u),
-			"Use phase-owned managed pools while preserving post-109 legacy order");
+			"Use phase-owned managed pools while preserving phase-agnostic post-109 legacy order");
 		SERVER_WORLD_ENTITY scriptedBoss = makeEntranceBoss();
 		scriptedBoss.bScriptedPatternPlayback = true;
 		observeOrder(scriptedBoss, 400u);
@@ -5351,6 +7406,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		volleyEntity.iPatternSequence = 1u;
 		volleyEntity.strPatternId = "VALTAN_HIGH_JUMP";
 		volleyEntity.strActionId = "valtan.attack.high-jump.airborne";
+		volleyEntity.PinnedDefinitionRevision =
+			volleyRoom.m_GameplayCatalog.Get_ActiveRevision();
 		volleyRoom.m_WorldEntities.push_back(volleyEntity);
 		SERVER_WORLD_ENTITY* volleyBoss = &volleyRoom.m_WorldEntities.back();
 		for (std::uint32_t index = 0u; index < 4u; ++index)
@@ -5377,12 +7434,43 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const auto& liveObjects =
 			volleyRoom.m_CombatObjectRuntime.Get_LiveObjects();
 		std::set<std::uint32_t> lockedTargets;
+		std::vector<std::uint32_t> lockedTargetOrder;
 		for (const SERVER_COMBAT_OBJECT& object : liveObjects)
+		{
 			lockedTargets.insert(object.iLockedTargetNetEntityId);
+			lockedTargetOrder.push_back(
+				static_cast<std::uint32_t>(object.iLockedTargetNetEntityId));
+		}
+		std::vector<S2C_COMBAT_OBJECT_SPAWNED> initialSpawned;
+		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> initialDespawned;
+		volleyRoom.m_CombatObjectRuntime.Drain_Lifecycle(
+			initialSpawned, initialDespawned);
+		std::vector<COMBAT_OBJECT_SNAPSHOT> initialSnapshots;
+		const bool builtInitialSnapshots =
+			volleyRoom.m_CombatObjectRuntime.Build_Snapshots(initialSnapshots);
+		const GameplayDataRevision volleyRevision =
+			volleyRoom.m_GameplayCatalog.Get_ActiveRevision();
+		const bool reliableAndSnapshotPins =
+			3u == initialSpawned.size() && initialDespawned.empty() &&
+			3u == initialSnapshots.size() &&
+			std::all_of(initialSpawned.begin(), initialSpawned.end(),
+				[&volleyRevision](const S2C_COMBAT_OBJECT_SPAWNED& message)
+				{
+					CPacketWriter writer;
+					return message.PinnedDefinitionRevision == volleyRevision &&
+						Write_Message(writer, message);
+				}) &&
+			std::all_of(initialSnapshots.begin(), initialSnapshots.end(),
+				[&volleyRevision](const COMBAT_OBJECT_SNAPSHOT& snapshot)
+				{
+					return snapshot.PinnedDefinitionRevision == volleyRevision;
+				});
 		tests.Require(
 			staged && 3u == liveObjects.size() &&
 			3u == lockedTargets.size() &&
-			0u == lockedTargets.count(8203u),
+			0u == lockedTargets.count(8203u) &&
+			lockedTargetOrder == std::vector<std::uint32_t>{ 8200u, 8201u, 8202u } &&
+			builtInitialSnapshots && reliableAndSnapshotPins,
 			"Deal one sky axe to every living raider and none to the dead");
 		for (auto& [raiderId, raider] : volleyRoom.m_Players)
 		{
@@ -5443,17 +7531,300 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 		tests.Require(fixedAfterFirstPulse,
 			"Freeze each sky axe at its first timed-pulse position");
-		const std::uint32_t phaseRevisionBefore =
-			volleyBoss->BossCombat.iStateRevision;
-		const bool committedAuthoredPhase =
-			volleyRoom.Apply_BossPatternStageActions(
-				*volleyBoss, "VALTAN_ARENA_BREAK_109",
-				"valtan.mechanic.arena-break-109.impact",
-				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 938u);
+
+		auto* mutableVolleyPatterns = const_cast<
+			std::vector<BOSS_PATTERN_DEFINITION>*>(
+				volleyRoom.m_GameplayCatalog.Find_BossPatterns(
+					"ENCOUNTER_VALTAN"));
+		BOSS_PATTERN_STAGE_ACTION* typedVolleyAction = nullptr;
+		if (nullptr != mutableVolleyPatterns)
+		{
+			for (BOSS_PATTERN_DEFINITION& pattern : *mutableVolleyPatterns)
+			{
+				if ("VALTAN_HIGH_JUMP" != pattern.strPatternId)
+					continue;
+				for (BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+				{
+					if ("valtan.attack.high-jump.airborne" != stage.strActionId)
+						continue;
+					for (BOSS_PATTERN_STAGE_ACTION& action : stage.Actions)
+					{
+						if (BOSS_PATTERN_STAGE_ACTION_KIND::
+							SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind)
+						{
+							typedVolleyAction = &action;
+						}
+					}
+				}
+			}
+		}
+		tests.Require(nullptr != typedVolleyAction,
+			"Publish HIGH_JUMP as a typed per-alive-player volley action");
+		if (nullptr != typedVolleyAction && nullptr != volleyBoss)
+		{
+			const BOSS_PATTERN_STAGE_ACTION originalVolleyAction =
+				*typedVolleyAction;
+			volleyRoom.m_CombatObjectRuntime.Reset();
+			for (auto& [raiderId, raider] : volleyRoom.m_Players)
+			{
+				raider.iCurrentHp = 8100u == raiderId ? 5000u : 0u;
+				raider.eAction = 8100u == raiderId ?
+					PLAYER_ACTION_STATE::NONE : PLAYER_ACTION_STATE::DEAD;
+			}
+			SERVER_PLAYER& radialTarget = volleyRoom.m_Players.at(8100u);
+			radialTarget.fPositionX = 137.f;
+			radialTarget.fPositionY = volleyBoss->fPositionY;
+			radialTarget.fPositionZ = -105.5f;
+			typedVolleyAction->iValue = 8u;
+			typedVolleyAction->Volley.iCountPerResolvedTarget = 8u;
+			typedVolleyAction->Volley.eLayout =
+				BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL;
+			typedVolleyAction->Volley.fRadiusM = 12.f;
+			typedVolleyAction->Volley.fStartAngleDegrees = 0.f;
+			typedVolleyAction->Volley.fAngleStepDegrees = 45.f;
+			typedVolleyAction->Volley.bAllowOverlap = false;
+			typedVolleyAction->Volley.iMaximumTotalObjects = 32u;
+			const auto radialFirstCombatObjectId =
+				volleyRoom.m_CombatObjectRuntime.Begin_Transaction().
+					iNextCombatObjectId;
+			const bool radialStaged =
+				volleyRoom.Apply_BossPatternStageActions(
+					*volleyBoss, "VALTAN_HIGH_JUMP",
+					"valtan.attack.high-jump.airborne",
+					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 910u);
+			const auto& radialObjects =
+				volleyRoom.m_CombatObjectRuntime.Get_LiveObjects();
+			std::set<std::pair<int, int>> quantizedRadialPositions;
+			bool radialIdentityIsStable = radialObjects.size() == 8u;
+			for (std::size_t ordinal = 0u;
+				radialIdentityIsStable && ordinal < radialObjects.size(); ++ordinal)
+			{
+				const SERVER_COMBAT_OBJECT& object = radialObjects[ordinal];
+				radialIdentityIsStable =
+					object.iCombatObjectId ==
+						radialFirstCombatObjectId + ordinal &&
+					object.iLockedTargetNetEntityId == radialTarget.iNetEntityId &&
+					910u == object.iSpawnTick;
+				quantizedRadialPositions.emplace(
+					static_cast<int>(std::lround(
+						object.LiveState.CurrentPose.fPositionX * 1000.f)),
+					static_cast<int>(std::lround(
+						object.LiveState.CurrentPose.fPositionZ * 1000.f)));
+			}
+			tests.Require(
+				radialStaged && radialIdentityIsStable &&
+				8u == quantizedRadialPositions.size(),
+				"Spawn all eight radial ordinals in deterministic identity order on one tick");
+
+			volleyRoom.m_CombatObjectRuntime.Reset();
+			for (auto& [raiderId, raider] : volleyRoom.m_Players)
+			{
+				(void)raiderId;
+				raider.iCurrentHp = 5000u;
+				raider.eAction = PLAYER_ACTION_STATE::NONE;
+			}
+			SERVER_PLAYER fifthRaider = radialTarget;
+			fifthRaider.iPlayerId = 8104u;
+			fifthRaider.iNetEntityId = 8204u;
+			volleyRoom.m_Players.emplace(fifthRaider.iPlayerId, fifthRaider);
+			const bool overTotalAccepted =
+				volleyRoom.Apply_BossPatternStageActions(
+					*volleyBoss, "VALTAN_HIGH_JUMP",
+					"valtan.attack.high-jump.airborne",
+					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 920u);
+			tests.Require(
+				!overTotalAccepted &&
+				volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().empty(),
+				"Reject a five-player eight-axe volley above the total-32 bound with zero spawn");
+
+			volleyRoom.m_CombatObjectRuntime.Reset();
+			for (auto& [raiderId, raider] : volleyRoom.m_Players)
+			{
+				raider.iCurrentHp = raiderId <= 8101u ? 5000u : 0u;
+				raider.eAction = raiderId <= 8101u ?
+					PLAYER_ACTION_STATE::NONE : PLAYER_ACTION_STATE::DEAD;
+			}
+			volleyRoom.m_Players.at(8100u).fPositionX = 137.f;
+			volleyRoom.m_Players.at(8100u).fPositionZ = -105.5f;
+			volleyRoom.m_Players.at(8101u).fPositionX = 138.f;
+			volleyRoom.m_Players.at(8101u).fPositionZ = -105.5f;
+			typedVolleyAction->iValue = 1u;
+			typedVolleyAction->Volley.iCountPerResolvedTarget = 1u;
+			typedVolleyAction->Volley.eLayout =
+				BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE;
+			typedVolleyAction->Volley.fRadiusM = 0.f;
+			typedVolleyAction->Volley.fStartAngleDegrees = 0.f;
+			typedVolleyAction->Volley.fAngleStepDegrees = 0.f;
+			const bool overlappingAccepted =
+				volleyRoom.Apply_BossPatternStageActions(
+					*volleyBoss, "VALTAN_HIGH_JUMP",
+					"valtan.attack.high-jump.airborne",
+					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 930u);
+			tests.Require(
+				overlappingAccepted &&
+				2u == volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().size(),
+				"Allow different players' resolved volley positions to overlap");
+
+			volleyRoom.m_CombatObjectRuntime.Reset();
+			volleyRoom.m_Players.at(8101u).iCurrentHp = 0u;
+			volleyRoom.m_Players.at(8101u).eAction = PLAYER_ACTION_STATE::DEAD;
+			volleyRoom.m_Players.at(8100u).fPositionX = 100000.f;
+			volleyRoom.m_Players.at(8100u).fPositionZ = 100000.f;
+			const bool outsideNavigationAccepted =
+				volleyRoom.Apply_BossPatternStageActions(
+					*volleyBoss, "VALTAN_HIGH_JUMP",
+					"valtan.attack.high-jump.airborne",
+					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 940u);
+			tests.Require(
+				!outsideNavigationAccepted &&
+				volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().empty(),
+				"Reject a target-center volley outside navigation with zero spawn");
+
+			volleyRoom.m_CombatObjectRuntime.Reset();
+			const BOSS_COMBAT_OBJECT_DEFINITION* volleyDefinition =
+				volleyRoom.m_GameplayCatalog.Find_BossCombatObject(
+					"combatobject.valtan.high-jump.target-axe");
+			SERVER_COMBAT_OBJECT_LOCKED_TARGET capacityTarget{};
+			capacityTarget.iNetEntityId = radialTarget.iNetEntityId;
+			capacityTarget.fPositionX = volleyBoss->fPositionX;
+			capacityTarget.fPositionY = volleyBoss->fPositionY;
+			capacityTarget.fPositionZ = volleyBoss->fPositionZ;
+			BOSS_COMBAT_OBJECT_VOLLEY capacityVolley{};
+			capacityVolley.ePolicy =
+				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER;
+			capacityVolley.iCountPerResolvedTarget = 8u;
+			capacityVolley.eLayout =
+				BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL;
+			capacityVolley.fRadiusM = 12.f;
+			capacityVolley.fAngleStepDegrees = 45.f;
+			capacityVolley.iMaximumTotalObjects = 32u;
+			bool filledSnapshotCapacity = nullptr != volleyDefinition;
+			for (std::uint32_t batch = 0u;
+				filledSnapshotCapacity && batch < 16u; ++batch)
+			{
+				SERVER_COMBAT_OBJECT_TRANSACTION transaction =
+					volleyRoom.m_CombatObjectRuntime.Begin_Transaction();
+				std::string capacityStatus;
+				filledSnapshotCapacity =
+					volleyRoom.m_CombatObjectRuntime.Stage_BossCombatObject(
+						transaction, *volleyBoss, &capacityTarget,
+						*volleyDefinition, &capacityVolley,
+						volleyRoom.m_GameplayCatalog, 8u, 950u + batch,
+						capacityStatus) &&
+					volleyRoom.m_CombatObjectRuntime.Commit(
+						std::move(transaction));
+			}
+			volleyRoom.m_CombatObjectRuntime.Discard_PendingLifecycle();
+			BOSS_COMBAT_OBJECT_VOLLEY oneMoreVolley{};
+			oneMoreVolley.ePolicy =
+				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER;
+			oneMoreVolley.iCountPerResolvedTarget = 1u;
+			oneMoreVolley.eLayout =
+				BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE;
+			oneMoreVolley.iMaximumTotalObjects = 32u;
+			SERVER_COMBAT_OBJECT_TRANSACTION rejectedTransaction =
+				volleyRoom.m_CombatObjectRuntime.Begin_Transaction();
+			std::string capacityStatus;
+			const bool acceptedOverSnapshot = nullptr != volleyDefinition &&
+				volleyRoom.m_CombatObjectRuntime.Stage_BossCombatObject(
+					rejectedTransaction, *volleyBoss, &capacityTarget,
+					*volleyDefinition, &oneMoreVolley,
+					volleyRoom.m_GameplayCatalog, 1u, 999u, capacityStatus);
+			std::vector<S2C_COMBAT_OBJECT_SPAWNED> pendingAfterFailure;
+			std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawnedAfterFailure;
+			volleyRoom.m_CombatObjectRuntime.Drain_Lifecycle(
+				pendingAfterFailure, despawnedAfterFailure);
+			tests.Require(
+				filledSnapshotCapacity &&
+				128u == volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().size() &&
+				!acceptedOverSnapshot && rejectedTransaction.Objects.empty() &&
+				pendingAfterFailure.empty(),
+				"Reject object 129 before allocation and emit no partial lifecycle edge");
+			*typedVolleyAction = originalVolleyAction;
+		}
+	}
+	{
+		auto phaseRoomStorage = std::make_unique<CGameRoom>(
+			LostArk::Shared::WORLD_ID::VALTAN_ARENA);
+		CGameRoom& phaseRoom = *phaseRoomStorage;
+		SERVER_WORLD_ENTITY phaseBoss{};
+		phaseBoss.iNetEntityId = 8400u;
+		phaseBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		phaseBoss.strArchetypeId = "BOSS_VALTAN";
+		phaseBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		phaseBoss.strPatternId = "VALTAN_ARENA_BREAK_109";
+		phaseBoss.strPatternStageId = "IMPACT";
+		phaseBoss.strActionId =
+			"valtan.mechanic.arena-break-109.impact";
+		phaseBoss.iPatternStageIndex = 2u;
+		phaseBoss.iPatternSequence = 1u;
+		phaseBoss.iPhase = 1u;
+		phaseBoss.BossCombat.iStateRevision = 10u;
+		phaseBoss.PinnedDefinitionRevision =
+			phaseRoom.m_GameplayCatalog.Get_ActiveRevision();
+		const bool phaseCommitted =
+			phaseRoom.Apply_BossPatternStageActions(
+				phaseBoss, phaseBoss.strPatternId, phaseBoss.strActionId,
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 1000u);
+		const std::uint32_t phaseRevision =
+			phaseBoss.BossCombat.iStateRevision;
+		const bool duplicatePhaseCommitted =
+			phaseRoom.Apply_BossPatternStageActions(
+				phaseBoss, phaseBoss.strPatternId, phaseBoss.strActionId,
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 1001u);
 		tests.Require(
-			committedAuthoredPhase && 2u == volleyBoss->iPhase &&
-			phaseRevisionBefore < volleyBoss->BossCombat.iStateRevision,
-			"Commit phase two atomically on the authored 109 IMPACT ENTER edge");
+			phaseCommitted && duplicatePhaseCommitted &&
+			2u == phaseBoss.iPhase && 11u == phaseRevision &&
+			phaseRevision == phaseBoss.BossCombat.iStateRevision,
+			"Commit phase two exactly once at 109 IMPACT ENTER");
+
+		auto* mutablePhasePatterns = const_cast<
+			std::vector<BOSS_PATTERN_DEFINITION>*>(
+				phaseRoom.m_GameplayCatalog.Find_BossPatterns(
+					"ENCOUNTER_VALTAN"));
+		BOSS_PATTERN_STAGE_DEFINITION* impactStage = nullptr;
+		if (nullptr != mutablePhasePatterns)
+		{
+			for (BOSS_PATTERN_DEFINITION& pattern : *mutablePhasePatterns)
+			{
+				if ("VALTAN_ARENA_BREAK_109" != pattern.strPatternId)
+					continue;
+				for (BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+				{
+					if ("IMPACT" == stage.strStageId)
+						impactStage = &stage;
+				}
+			}
+		}
+		if (nullptr != impactStage)
+		{
+			BOSS_PATTERN_STAGE_ACTION invalidAction{};
+			invalidAction.eTrigger =
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER;
+			invalidAction.eKind =
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG;
+			invalidAction.strTargetId = "boss.flag.unresolved";
+			invalidAction.iValue = 1u;
+			impactStage->Actions.push_back(invalidAction);
+		}
+		phaseBoss.iPhase = 1u;
+		phaseBoss.BossCombat.iStateRevision = 20u;
+		phaseBoss.BossCombat.iFlags = 0u;
+		const std::size_t objectCountBeforeRejectedPhase =
+			phaseRoom.m_CombatObjectRuntime.Get_LiveObjects().size();
+		const bool partialPhaseAccepted = nullptr != impactStage &&
+			phaseRoom.Apply_BossPatternStageActions(
+				phaseBoss, phaseBoss.strPatternId, phaseBoss.strActionId,
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 1002u);
+		if (nullptr != impactStage)
+			impactStage->Actions.pop_back();
+		tests.Require(
+			!partialPhaseAccepted && 1u == phaseBoss.iPhase &&
+			20u == phaseBoss.BossCombat.iStateRevision &&
+			0u == phaseBoss.BossCombat.iFlags &&
+			objectCountBeforeRejectedPhase ==
+				phaseRoom.m_CombatObjectRuntime.Get_LiveObjects().size(),
+			"Reject an invalid second stage action without partial phase, flag, or object commit");
 	}
 
 	SERVER_WORLD_ENTITY openingChargeBoss{};
@@ -8198,6 +10569,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		room.m_PlayerIdBySessionId.emplace(SECOND_SESSION, SECOND_PLAYER);
 		room.m_PlayerIdByEntityId.emplace(first.iNetEntityId, FIRST_PLAYER);
 		room.m_PlayerIdByEntityId.emplace(second.iNetEntityId, SECOND_PLAYER);
+		auto lifecycleSession = std::make_shared<CClientSession>(
+			FIRST_SESSION, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		lifecycleSession->m_isSendRunning.store(true);
+		room.m_Sessions.emplace(FIRST_SESSION, lifecycleSession);
 
 		C2S_VALTAN_AUDITION_REQUEST firstRequest{};
 		firstRequest.iRequestSequence = 1u;
@@ -8240,10 +10616,93 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			FIRST_SESSION ==
 				room.m_ValtanPatternIdAudition.iOwnerSessionId,
 			"Keep the first shared-room stable-ID pattern when two sessions request different patterns before the fixed tick");
+
+		if (nullptr != boss)
+		{
+			boss->strPatternId.clear();
+			boss->strPatternStageId.clear();
+			boss->strActionId.clear();
+			boss->eAction = SERVER_ENTITY_ACTION::IDLE;
+		}
+		const bool completedDetected =
+			!room.Refresh_ValtanPatternIdAuditionState() &&
+			room.Flush_ValtanPatternIdAuditionLifecycle();
+
+		C2S_VALTAN_AUDITION_REQUEST abortedRequest = firstRequest;
+		abortedRequest.iRequestSequence = 2u;
+		abortedRequest.strPatternId = "VALTAN_WHIRLWIND";
+		const VALTAN_AUDITION_RESULT secondQueued =
+			room.Evaluate_ValtanAudition(
+				FIRST_SESSION, abortedRequest, reportedBar);
+		boss = room.Find_AuditionBoss();
+		if (nullptr != boss)
+		{
+			boss->iCurrentHp = 0u;
+			boss->eAction = SERVER_ENTITY_ACTION::DEAD;
+		}
+		const bool abortedDetected =
+			!room.Refresh_ValtanPatternIdAuditionState() &&
+			room.Flush_ValtanPatternIdAuditionLifecycle();
+
+		std::vector<S2C_VALTAN_AUDITION_LIFECYCLE> lifecycleMessages;
+		for (const auto& outbound : lifecycleSession->m_OutboundFrames)
+		{
+			PACKET_HEADER header{};
+			if (!Read_Packet_Header(outbound.Bytes, header) ||
+				PACKET_TYPE::S2C_VALTAN_AUDITION_LIFECYCLE !=
+					header.ePacketType)
+			{
+				continue;
+			}
+			CPacketReader reader{ std::span<const std::uint8_t>(
+				outbound.Bytes.data() + PACKET_HEADER_BYTES,
+				outbound.Bytes.size() - PACKET_HEADER_BYTES) };
+			S2C_VALTAN_AUDITION_LIFECYCLE decoded{};
+			if (Read_Message(reader, decoded) &&
+				0u == reader.Get_RemainingSize())
+			{
+				lifecycleMessages.push_back(std::move(decoded));
+			}
+		}
+		const GameplayDataRevision lifecycleRevision =
+			room.m_GameplayCatalog.Get_ActiveRevision();
+		const bool completeLifecycle = 5u == lifecycleMessages.size() &&
+			VALTAN_AUDITION_LIFECYCLE_STATE::PENDING ==
+				lifecycleMessages[0].eState &&
+			VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE ==
+				lifecycleMessages[1].eState &&
+			VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED ==
+				lifecycleMessages[2].eState &&
+			VALTAN_AUDITION_LIFECYCLE_STATE::PENDING ==
+				lifecycleMessages[3].eState &&
+			VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED ==
+				lifecycleMessages[4].eState &&
+			1u == lifecycleMessages[0].iRequestSequence &&
+			1u == lifecycleMessages[0].iRoomAuditionEpoch &&
+			1u == lifecycleMessages[0].iPatternSequence &&
+			2u == lifecycleMessages[3].iRequestSequence &&
+			2u == lifecycleMessages[3].iRoomAuditionEpoch &&
+			2u == lifecycleMessages[3].iPatternSequence &&
+			!lifecycleMessages[4].strReason.empty() &&
+			std::all_of(lifecycleMessages.begin(), lifecycleMessages.end(),
+				[&lifecycleRevision](
+					const S2C_VALTAN_AUDITION_LIFECYCLE& lifecycle)
+				{
+					return lifecycle.PinnedDefinitionRevision ==
+						lifecycleRevision;
+				});
+		tests.Require(
+			completedDetected &&
+			VALTAN_AUDITION_RESULT::QUEUED == secondQueued &&
+			abortedDetected && completeLifecycle,
+			"Emit correlated PENDING/ACTIVE/COMPLETED/ABORTED Valtan audition lifecycle edges with pinned revision");
+		lifecycleSession->Request_Close();
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4252u;
 		constexpr PLAYER_ID PLAYER = 87u;
 		SERVER_PLAYER player{};
@@ -10105,4 +12564,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.failures += Run_WorldDestructionBootstrapContractTests();
 	std::cout << "failures : " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;
+		}();
+	};
+	if (!Run_WithContractWorkerStack(runContract, &context))
+	{
+		std::cerr << "[FAILURE] Server gameplay contract worker did not complete\n";
+		return 1;
+	}
+	return context.result;
 }

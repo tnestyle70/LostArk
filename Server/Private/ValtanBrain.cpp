@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 namespace
 {
@@ -136,6 +137,83 @@ namespace
 		return ids.end() != std::find(ids.begin(), ids.end(), patternId);
 	}
 
+	SERVER_BOSS_MECHANIC_OCCURRENCE* FindMechanicOccurrence(
+		SERVER_WORLD_ENTITY& boss,
+		const std::string& patternId)
+	{
+		const auto found = std::find_if(
+			boss.MechanicOccurrences.begin(), boss.MechanicOccurrences.end(),
+			[&patternId](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+			{ return occurrence.strPatternId == patternId; });
+		return boss.MechanicOccurrences.end() == found ? nullptr : &*found;
+	}
+
+	const SERVER_BOSS_MECHANIC_OCCURRENCE* FindMechanicOccurrence(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::string& patternId)
+	{
+		const auto found = std::find_if(
+			boss.MechanicOccurrences.begin(), boss.MechanicOccurrences.end(),
+			[&patternId](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+			{ return occurrence.strPatternId == patternId; });
+		return boss.MechanicOccurrences.end() == found ? nullptr : &*found;
+	}
+
+	void MarkMechanicActive(
+		SERVER_WORLD_ENTITY& boss,
+		const std::string& patternId,
+		const std::uint32_t serverTick)
+	{
+		SERVER_BOSS_MECHANIC_OCCURRENCE* occurrence =
+			FindMechanicOccurrence(boss, patternId);
+		if (nullptr == occurrence ||
+			SERVER_BOSS_MECHANIC_STATE::QUEUED != occurrence->eState)
+		{
+			return;
+		}
+		occurrence->eState = SERVER_BOSS_MECHANIC_STATE::ACTIVE;
+		occurrence->iStartedTick = serverTick;
+		occurrence->iPatternSequence = boss.iPatternSequence;
+	}
+
+	void CompleteActiveMechanic(
+		SERVER_WORLD_ENTITY& boss,
+		const std::string& patternId,
+		const std::uint32_t serverTick)
+	{
+		SERVER_BOSS_MECHANIC_OCCURRENCE* occurrence =
+			FindMechanicOccurrence(boss, patternId);
+		if (nullptr == occurrence ||
+			SERVER_BOSS_MECHANIC_STATE::ACTIVE != occurrence->eState ||
+			occurrence->iPatternSequence != boss.iPatternSequence)
+		{
+			return;
+		}
+		occurrence->eState = SERVER_BOSS_MECHANIC_STATE::COMPLETED;
+		occurrence->eFailure = SERVER_BOSS_MECHANIC_FAILURE::NONE;
+		occurrence->iFinishedTick = serverTick;
+	}
+
+	void FailMechanic(
+		SERVER_WORLD_ENTITY& boss,
+		const std::string& patternId,
+		const SERVER_BOSS_MECHANIC_FAILURE failure,
+		const std::uint32_t serverTick)
+	{
+		SERVER_BOSS_MECHANIC_OCCURRENCE* occurrence =
+			FindMechanicOccurrence(boss, patternId);
+		if (nullptr == occurrence ||
+			SERVER_BOSS_MECHANIC_STATE::FAILED_REQUIRES_RESET == occurrence->eState)
+		{
+			return;
+		}
+		occurrence->eState =
+			SERVER_BOSS_MECHANIC_STATE::FAILED_REQUIRES_RESET;
+		occurrence->eFailure = failure;
+		occurrence->iFinishedTick = serverTick;
+		boss.bMechanicLedgerRequiresReset = true;
+	}
+
 	bool IsSamePatternCooldownFamily(
 		const SERVER_BOSS_PATTERN_COOLDOWN& cooldown,
 		const BOSS_PATTERN_DEFINITION& pattern)
@@ -149,7 +227,7 @@ namespace
 			cooldown.strPatternId == pattern.strPatternId;
 	}
 
-	bool IsPatternCooldownReady(
+	std::uint32_t PatternCooldownRemainingTicks(
 		const SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
 		const std::uint32_t serverTick)
@@ -158,8 +236,12 @@ namespace
 			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
 			[&pattern](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
 			{ return IsSamePatternCooldownFamily(cooldown, pattern); });
-		return boss.PatternCooldowns.end() == found ||
-			static_cast<std::int32_t>(serverTick - found->iReadyTick) >= 0;
+		if (boss.PatternCooldowns.end() == found ||
+			static_cast<std::int32_t>(serverTick - found->iReadyTick) >= 0)
+		{
+			return 0u;
+		}
+		return found->iReadyTick - serverTick;
 	}
 
 	void StartPatternCooldown(
@@ -355,16 +437,29 @@ namespace
 	void QueueCrossedHealthBarPatterns(
 		SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
-		const std::uint32_t currentHealthBar)
+		const std::uint32_t currentHealthBar,
+		const LostArk::Shared::GameplayDataRevision& definitionRevision,
+		const std::uint16_t definitionGenerationEpoch,
+		const std::uint32_t serverTick)
 	{
+		if (!definitionRevision.Is_Valid() || 0u == definitionGenerationEpoch)
+		{
+			boss.bMechanicLedgerRequiresReset = true;
+			return;
+		}
+		const bool definitionGenerationChanged =
+			0u != boss.iLastHealthMechanicGenerationEpoch &&
+			boss.iLastHealthMechanicGenerationEpoch !=
+				definitionGenerationEpoch;
 		std::vector<const BOSS_PATTERN_DEFINITION*> crossed;
 		for (const BOSS_PATTERN_DEFINITION& pattern : patterns)
 		{
 			if (BOSS_PATTERN_SELECTION::HEALTH_BAR != pattern.eSelection ||
 				boss.iPhase < pattern.iMinimumPhase ||
 				boss.iPhase > pattern.iMaximumPhase ||
-				ContainsPatternId(boss.TriggeredPatternIds, pattern.strPatternId) ||
-				boss.iLastEvaluatedHealthBar <= pattern.iTriggerHealthBar ||
+				nullptr != FindMechanicOccurrence(boss, pattern.strPatternId) ||
+				(!definitionGenerationChanged &&
+				 boss.iLastEvaluatedHealthBar <= pattern.iTriggerHealthBar) ||
 				currentHealthBar > pattern.iTriggerHealthBar)
 			{
 				continue;
@@ -383,98 +478,315 @@ namespace
 			});
 		for (const BOSS_PATTERN_DEFINITION* pattern : crossed)
 		{
+			if (boss.MechanicOccurrences.size() >=
+				CValtanBrain::MAX_MECHANIC_OCCURRENCE_COUNT)
+			{
+				boss.bMechanicLedgerRequiresReset = true;
+				continue;
+			}
+			SERVER_BOSS_MECHANIC_OCCURRENCE occurrence{};
+			occurrence.strPatternId = pattern->strPatternId;
+			/* Capture the catalog that performed this threshold evaluation. The
+			boss may still publish an older running occurrence revision while the
+			process-active generation is being reconciled. */
+			occurrence.PinnedDefinitionRevision = definitionRevision;
+			occurrence.iTriggerHealthBar = pattern->iTriggerHealthBar;
+			occurrence.iQueuedTick = serverTick;
+			boss.MechanicOccurrences.push_back(std::move(occurrence));
 			boss.PendingPatternIds.push_back(pattern->strPatternId);
 			boss.TriggeredPatternIds.push_back(pattern->strPatternId);
 		}
 		boss.iLastEvaluatedHealthBar = currentHealthBar;
+		boss.iLastHealthMechanicGenerationEpoch =
+			definitionGenerationEpoch;
 	}
 
-	const BOSS_PATTERN_DEFINITION* SelectNormalPattern(
+	struct VALTAN_PATTERN_SELECTION_RESULT final
+	{
+		const BOSS_PATTERN_DEFINITION* pPattern = nullptr;
+		VALTAN_DECISION_TRACE Trace;
+	};
+
+	std::uint64_t MixDecisionRandom(std::uint64_t value)
+	{
+		value ^= value >> 30u;
+		value *= 0xbf58476d1ce4e5b9ull;
+		value ^= value >> 27u;
+		value *= 0x94d049bb133111ebull;
+		value ^= value >> 31u;
+		return value;
+	}
+
+	VALTAN_DECISION_TRACE MakeDecisionTraceHeader(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t serverTick,
+		const std::uint32_t currentHealthBar)
+	{
+		VALTAN_DECISION_TRACE trace{};
+		trace.iServerTick = serverTick;
+		trace.iPatternSequenceBeforeDecision = boss.iPatternSequence;
+		trace.iExpectedPatternSequence =
+			(std::numeric_limits<std::uint32_t>::max)() ==
+				boss.iPatternSequence ? 1u : boss.iPatternSequence + 1u;
+		trace.iCurrentHp = boss.iCurrentHp;
+		trace.iMaximumHp = boss.iMaximumHp;
+		trace.iHealthBar = currentHealthBar;
+		trace.iGameplayPhase = boss.iPhase;
+		trace.iTargetNetEntityId = boss.iTargetEntityId;
+		trace.bIntroPatternConsumed = boss.bIntroPatternConsumed;
+		trace.strRotationId = boss.strRotationId;
+		trace.iRotationStepIndex = boss.iRotationStepIndex;
+		if (!boss.PendingPatternIds.empty())
+		{
+			trace.strPendingPatternId = boss.PendingPatternIds.front();
+			const SERVER_BOSS_MECHANIC_OCCURRENCE* occurrence =
+				FindMechanicOccurrence(boss, trace.strPendingPatternId);
+			trace.ePendingSource = nullptr != occurrence &&
+				SERVER_BOSS_MECHANIC_STATE::QUEUED == occurrence->eState ?
+					VALTAN_DECISION_SOURCE::FORCED_HEALTH_BAR :
+					VALTAN_DECISION_SOURCE::FORCED_AUDITION;
+		}
+		return trace;
+	}
+
+	VALTAN_PATTERN_SELECTION_RESULT SelectNormalPattern(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
 		const std::string& introPatternId,
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
 		const std::uint32_t serverTick,
-		const BOSS_PATTERN_ROTATION_DEFINITION* managedRotation = nullptr)
+		VALTAN_DECISION_TRACE trace,
+		const VALTAN_DECISION_SOURCE source,
+		const BOSS_PATTERN_ROTATION_DEFINITION* managedRotation = nullptr,
+		const bool hasValidTarget = true)
 	{
-		struct WEIGHTED_PATTERN final
+		struct WEIGHTED_PATTERN_VIEW final
 		{
 			const BOSS_PATTERN_DEFINITION* pPattern = nullptr;
-			std::uint32_t iWeight = 0u;
+			std::uint32_t iSelectionWeight = 0u;
 		};
-		std::vector<WEIGHTED_PATTERN> eligible;
-		std::vector<WEIGHTED_PATTERN> repeatAllowed;
-		std::vector<WEIGHTED_PATTERN> authoredOrder;
-		if (nullptr != managedRotation)
+		const bool hasManagedSelectionSet = nullptr != managedRotation &&
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
+				managedRotation->eSelectionMode;
+		std::vector<WEIGHTED_PATTERN_VIEW> eligible;
+		std::vector<WEIGHTED_PATTERN_VIEW> repeatAllowed;
+		std::vector<const BOSS_PATTERN_DEFINITION*> evaluationOrder;
+		evaluationOrder.reserve(patterns.size());
+		if (hasManagedSelectionSet)
 		{
-			authoredOrder.reserve(managedRotation->Candidates.size());
+			/* Ticket intervals are an authored contract, so managed candidates are
+			evaluated in their explicit ordinal order rather than Encounter PATTERN
+			row order. Out-of-set definitions follow only so the trace can explain
+			their exclusion; they never enter the roll. */
 			for (const BOSS_PATTERN_ROTATION_CANDIDATE& candidate :
 				managedRotation->Candidates)
 			{
-				if (!candidate.bEnabled)
-					continue;
-				const BOSS_PATTERN_DEFINITION* pattern =
-					FindPattern(patterns, candidate.strPatternId);
-				if (nullptr != pattern)
-					authoredOrder.push_back({ pattern, candidate.iSelectionWeight });
+				const auto definition = std::find_if(
+					patterns.begin(), patterns.end(),
+					[&candidate](const BOSS_PATTERN_DEFINITION& pattern)
+					{ return pattern.strPatternId == candidate.strPatternId; });
+				if (patterns.end() != definition)
+					evaluationOrder.push_back(&*definition);
+			}
+			for (const BOSS_PATTERN_DEFINITION& pattern : patterns)
+			{
+				const bool belongsToManagedSet =
+					managedRotation->Candidates.end() != std::find_if(
+						managedRotation->Candidates.begin(),
+						managedRotation->Candidates.end(),
+						[&pattern](
+							const BOSS_PATTERN_ROTATION_CANDIDATE& candidate)
+						{ return candidate.strPatternId == pattern.strPatternId; });
+				if (!belongsToManagedSet) evaluationOrder.push_back(&pattern);
 			}
 		}
 		else
 		{
-			authoredOrder.reserve(patterns.size());
 			for (const BOSS_PATTERN_DEFINITION& pattern : patterns)
-				authoredOrder.push_back({ &pattern, pattern.iSelectionWeight });
+				evaluationOrder.push_back(&pattern);
 		}
-		for (const WEIGHTED_PATTERN& weighted : authoredOrder)
+		for (const BOSS_PATTERN_DEFINITION* patternDefinition : evaluationOrder)
 		{
-			const BOSS_PATTERN_DEFINITION& pattern = *weighted.pPattern;
-			if (BOSS_PATTERN_SELECTION::NORMAL != pattern.eSelection ||
-				pattern.strPatternId == introPatternId ||
-				!CValtanBrain::Is_ArmorRequirementMet(
-					boss, pattern.eArmorRequirement) ||
-				!CValtanBrain::Is_PhaseRequirementMet(
-					boss, pattern.ePhaseRequirement) ||
-				boss.iPhase < pattern.iMinimumPhase ||
-				boss.iPhase > pattern.iMaximumPhase ||
-				currentHealthBar < pattern.iMinimumHealthBar ||
-				currentHealthBar > pattern.iMaximumHealthBar ||
-				targetDistance < pattern.fMinimumRange ||
-				targetDistance > pattern.fMaximumRange ||
-				!IsPatternCooldownReady(boss, pattern, serverTick))
+			const BOSS_PATTERN_DEFINITION& pattern = *patternDefinition;
+			const BOSS_PATTERN_ROTATION_CANDIDATE* managedCandidate = nullptr;
+			if (hasManagedSelectionSet)
 			{
-				continue;
+				const auto candidate = std::find_if(
+					managedRotation->Candidates.begin(),
+					managedRotation->Candidates.end(),
+					[&pattern](
+						const BOSS_PATTERN_ROTATION_CANDIDATE& row)
+					{ return row.strPatternId == pattern.strPatternId; });
+				if (managedRotation->Candidates.end() != candidate)
+					managedCandidate = &*candidate;
 			}
-			eligible.push_back(weighted);
-			if (pattern.strPatternId != boss.strLastPatternId ||
-				boss.iConsecutivePatternUses < pattern.iMaximumConsecutiveUses)
+			const std::uint32_t authoredSelectionWeight =
+				nullptr == managedCandidate ? pattern.iSelectionWeight :
+					managedCandidate->iSelectionWeight;
+			std::uint32_t exclusionMask = VALTAN_EXCLUDE_NONE;
+			if (BOSS_PATTERN_SELECTION::NORMAL != pattern.eSelection)
+				exclusionMask |= VALTAN_EXCLUDE_WRONG_SELECTION_KIND;
+			if (pattern.strPatternId == introPatternId)
+				exclusionMask |= VALTAN_EXCLUDE_INTRO_ROW;
+			if (hasManagedSelectionSet && nullptr == managedCandidate)
 			{
-				repeatAllowed.push_back(weighted);
+				exclusionMask |= VALTAN_EXCLUDE_NOT_IN_SELECTION_SET;
+			}
+			if (!CValtanBrain::Is_ArmorRequirementMet(
+				boss, pattern.eArmorRequirement))
+				exclusionMask |= VALTAN_EXCLUDE_ARMOR_MISMATCH;
+			if (!CValtanBrain::Is_PhaseRequirementMet(
+				boss, pattern.ePhaseRequirement))
+				exclusionMask |= VALTAN_EXCLUDE_PHASE_REQUIREMENT;
+			if (boss.iPhase < pattern.iMinimumPhase ||
+				boss.iPhase > pattern.iMaximumPhase)
+				exclusionMask |= VALTAN_EXCLUDE_PHASE_RANGE;
+			if (currentHealthBar < pattern.iMinimumHealthBar ||
+				currentHealthBar > pattern.iMaximumHealthBar)
+				exclusionMask |= VALTAN_EXCLUDE_HEALTH_BAR_RANGE;
+			if (!hasValidTarget)
+				exclusionMask |= VALTAN_EXCLUDE_NO_TARGET;
+			else
+			{
+				if (targetDistance < pattern.fMinimumRange)
+					exclusionMask |= VALTAN_EXCLUDE_BELOW_MINIMUM_RANGE;
+				if (targetDistance > pattern.fMaximumRange)
+					exclusionMask |= VALTAN_EXCLUDE_ABOVE_MAXIMUM_RANGE;
+			}
+			const std::uint32_t cooldownRemaining =
+				PatternCooldownRemainingTicks(boss, pattern, serverTick);
+			if (0u != cooldownRemaining)
+				exclusionMask |= VALTAN_EXCLUDE_COOLDOWN;
+			const bool maximumConsecutiveRejected =
+				BOSS_PATTERN_SELECTION::NORMAL == pattern.eSelection &&
+				pattern.iMaximumConsecutiveUses > 0u &&
+				pattern.strPatternId == boss.strLastPatternId &&
+				boss.iConsecutivePatternUses >= pattern.iMaximumConsecutiveUses;
+			if (maximumConsecutiveRejected)
+				exclusionMask |= VALTAN_EXCLUDE_SOFT_REPEAT_BLOCKED;
+			if (BOSS_PATTERN_SELECTION::NORMAL == pattern.eSelection &&
+				((nullptr != managedCandidate && !managedCandidate->bEnabled) ||
+				 (nullptr == managedCandidate && 0u == authoredSelectionWeight)))
+				exclusionMask |= VALTAN_EXCLUDE_DISABLED;
+
+			if (trace.Candidates.size() <
+				CValtanBrain::MAX_DECISION_CANDIDATE_COUNT)
+			{
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = pattern.strPatternId;
+				candidate.iExclusionMask = exclusionMask;
+				candidate.iAuthoredWeight = authoredSelectionWeight;
+				candidate.iCooldownRemainingTicks = cooldownRemaining;
+				candidate.iConsecutiveUses =
+					pattern.strPatternId == boss.strLastPatternId ?
+						boss.iConsecutivePatternUses : 0u;
+				candidate.iMaximumConsecutiveUses =
+					pattern.iMaximumConsecutiveUses;
+				candidate.bSoftRepeatBlocked = maximumConsecutiveRejected;
+				trace.Candidates.push_back(std::move(candidate));
+			}
+			else
+			{
+				trace.bCandidatesTruncated = true;
+			}
+
+			const std::uint32_t hardMask = exclusionMask &
+				~VALTAN_EXCLUDE_SOFT_REPEAT_BLOCKED;
+			if (VALTAN_EXCLUDE_NONE != hardMask)
+				continue;
+			eligible.push_back({ &pattern, authoredSelectionWeight });
+			if (!maximumConsecutiveRejected)
+				repeatAllowed.push_back({ &pattern, authoredSelectionWeight });
+		}
+		const bool relaxMaximumConsecutive =
+			repeatAllowed.empty() && !eligible.empty();
+		trace.bMaximumConsecutiveRelaxed = relaxMaximumConsecutive;
+		const auto& candidates = relaxMaximumConsecutive ? eligible : repeatAllowed;
+		if (relaxMaximumConsecutive)
+		{
+			for (VALTAN_DECISION_CANDIDATE_TRACE& candidate : trace.Candidates)
+			{
+				if (0u == (candidate.iExclusionMask &
+					VALTAN_EXCLUDE_SOFT_REPEAT_BLOCKED))
+				{
+					continue;
+				}
+				const std::uint32_t hardMask = candidate.iExclusionMask &
+					~VALTAN_EXCLUDE_SOFT_REPEAT_BLOCKED;
+				if (VALTAN_EXCLUDE_NONE != hardMask)
+					continue;
+				candidate.iExclusionMask |=
+					VALTAN_EXCLUDE_SOFT_REPEAT_RELAXED;
+				candidate.bSoftRepeatRelaxed = true;
 			}
 		}
-		const auto& candidates = repeatAllowed.empty() ? eligible : repeatAllowed;
 		std::uint64_t totalWeight = 0u;
-		for (const WEIGHTED_PATTERN& pattern : candidates)
-			totalWeight += pattern.iWeight;
+		for (const WEIGHTED_PATTERN_VIEW& pattern : candidates)
+			totalWeight += pattern.iSelectionWeight;
+		trace.eSource = source;
+		trace.iTotalWeight = totalWeight;
 		if (0u == totalWeight)
-			return nullptr;
+		{
+			trace.eResult = VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN;
+			return { nullptr, std::move(trace) };
+		}
 
-		std::uint64_t random =
+		const std::uint64_t rawRandomInput =
 			(static_cast<std::uint64_t>(serverTick) << 32u) |
 			static_cast<std::uint64_t>(boss.iPatternSequence + 1u);
-		random ^= random >> 30u;
-		random *= 0xbf58476d1ce4e5b9ull;
-		random ^= random >> 27u;
-		random *= 0x94d049bb133111ebull;
-		random ^= random >> 31u;
-		std::uint64_t ticket = random % totalWeight;
-		for (const WEIGHTED_PATTERN& pattern : candidates)
+		const std::uint64_t random = MixDecisionRandom(rawRandomInput);
+		trace.iRawRandomInput = rawRandomInput;
+		trace.iMixedRandomValue = random;
+		const std::uint64_t selectedTicket = random % totalWeight;
+		trace.iRandomTicket = selectedTicket;
+		std::uint64_t weightBegin = 0u;
+		const BOSS_PATTERN_DEFINITION* selectedPattern = nullptr;
+		for (const WEIGHTED_PATTERN_VIEW& weighted : candidates)
 		{
-			if (ticket < pattern.iWeight)
-				return pattern.pPattern;
-			ticket -= pattern.iWeight;
+			const BOSS_PATTERN_DEFINITION* pattern = weighted.pPattern;
+			const std::uint64_t weightEnd =
+				weightBegin + weighted.iSelectionWeight;
+			auto traced = std::find_if(
+				trace.Candidates.begin(), trace.Candidates.end(),
+				[pattern](const VALTAN_DECISION_CANDIDATE_TRACE& candidate)
+				{ return candidate.strPatternId == pattern->strPatternId; });
+			if (trace.Candidates.end() != traced)
+			{
+				traced->iEffectiveWeight = weighted.iSelectionWeight;
+				traced->iWeightBeginInclusive = weightBegin;
+				traced->iWeightEndExclusive = weightEnd;
+			}
+			if (nullptr == selectedPattern &&
+				selectedTicket >= weightBegin && selectedTicket < weightEnd)
+			{
+				selectedPattern = pattern;
+				if (trace.Candidates.end() != traced)
+					traced->bSelected = true;
+			}
+			weightBegin = weightEnd;
 		}
-		return candidates.back().pPattern;
+		if (nullptr != selectedPattern)
+		{
+			trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+			trace.strSelectedPatternId = selectedPattern->strPatternId;
+			return { selectedPattern, std::move(trace) };
+		}
+		/* Validation guarantees positive candidate weights and selectedTicket is
+		   modulo totalWeight. Keep this defensive fallback, but only after every
+		   candidate received its complete interval for the Balance Tool trace. */
+		trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+		trace.strSelectedPatternId = candidates.back().pPattern->strPatternId;
+		for (VALTAN_DECISION_CANDIDATE_TRACE& candidate : trace.Candidates)
+		{
+			if (candidate.strPatternId ==
+				candidates.back().pPattern->strPatternId)
+			{
+				candidate.bSelected = true;
+				break;
+			}
+		}
+		return { candidates.back().pPattern, std::move(trace) };
 	}
 
 	const BOSS_PATTERN_DEFINITION* SelectPattern(
@@ -484,7 +796,8 @@ namespace
 		const BOSS_PATTERN_ROTATION_DEFINITION* rotation,
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
-		const std::uint32_t serverTick)
+		const std::uint32_t serverTick,
+		VALTAN_DECISION_TRACE& trace)
 	{
 		/* The first appearance runs before the health-bar queue and before any
 		weighted roll, so the entrance sweep can never come up again later. It
@@ -499,12 +812,27 @@ namespace
 				nullptr : FindPattern(patterns, introPatternId);
 			if (nullptr == intro)
 			{
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = introPatternId;
+				candidate.iExclusionMask =
+					VALTAN_EXCLUDE_MISSING_DEFINITION;
+				trace.Candidates.push_back(std::move(candidate));
 				boss.bIntroPatternConsumed = true;
 			}
 			else if (targetDistance >= intro->fMinimumRange &&
 				targetDistance <= intro->fMaximumRange)
 			{
 				boss.bIntroPatternConsumed = true;
+				trace.eSource = VALTAN_DECISION_SOURCE::INTRO;
+				trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+				trace.strSelectedPatternId = intro->strPatternId;
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = intro->strPatternId;
+				candidate.iAuthoredWeight = 1u;
+				candidate.iEffectiveWeight = 1u;
+				candidate.iWeightEndExclusive = 1u;
+				candidate.bSelected = true;
+				trace.Candidates.push_back(std::move(candidate));
 				return intro;
 			}
 			else if (boss.iCurrentHp < boss.iMaximumHp)
@@ -517,6 +845,13 @@ namespace
 			{
 				/* Nothing may run ahead of the entrance, so the pending intro
 				owns this tick even though it selected no pattern. */
+				trace.eSource = VALTAN_DECISION_SOURCE::INTRO;
+				trace.eResult =
+					VALTAN_DECISION_RESULT::WAITING_FOR_INTRO_RANGE;
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = intro->strPatternId;
+				candidate.iExclusionMask = VALTAN_EXCLUDE_RANGE;
+				trace.Candidates.push_back(std::move(candidate));
 				return nullptr;
 			}
 		}
@@ -524,25 +859,69 @@ namespace
 		{
 			const std::string patternId = boss.PendingPatternIds.front();
 			boss.PendingPatternIds.erase(boss.PendingPatternIds.begin());
+			const SERVER_BOSS_MECHANIC_OCCURRENCE* occurrence =
+				FindMechanicOccurrence(boss, patternId);
+			const VALTAN_DECISION_SOURCE pendingSource =
+				nullptr != occurrence &&
+				SERVER_BOSS_MECHANIC_STATE::QUEUED == occurrence->eState ?
+					VALTAN_DECISION_SOURCE::FORCED_HEALTH_BAR :
+					VALTAN_DECISION_SOURCE::FORCED_AUDITION;
+			trace.strPendingPatternId = patternId;
+			trace.ePendingSource = pendingSource;
 			if (const BOSS_PATTERN_DEFINITION* pattern =
 				FindPattern(patterns, patternId))
 			{
+				trace.eSource = pendingSource;
+				trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+				trace.strSelectedPatternId = pattern->strPatternId;
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = pattern->strPatternId;
+				candidate.iAuthoredWeight = 1u;
+				candidate.iEffectiveWeight = 1u;
+				candidate.iWeightEndExclusive = 1u;
+				candidate.bSelected = true;
+				trace.Candidates.push_back(std::move(candidate));
 				return pattern;
 			}
+			FailMechanic(
+				boss, patternId,
+				SERVER_BOSS_MECHANIC_FAILURE::MISSING_PATTERN_DEFINITION,
+				serverTick);
+			if (trace.Candidates.size() <
+				CValtanBrain::MAX_DECISION_CANDIDATE_COUNT)
+			{
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = patternId;
+				candidate.iExclusionMask =
+					VALTAN_EXCLUDE_UNRESOLVED_DEFINITION;
+				trace.Candidates.push_back(std::move(candidate));
+			}
+			if (boss.bMechanicLedgerRequiresReset)
+			{
+				trace.eSource = pendingSource;
+				trace.eResult =
+					VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
+				return nullptr;
+			}
 		}
-		/* Phase-one managed ranges are weighted from their first normal choice.
-		Candidates own the window-local whitelist, weight and enabled state; each
-		pattern continues to own range, phase, armour, cooldown and consecutive-use
-		conditions. Scripted health-bar mechanics already returned above. */
+		/* Managed ranges are weighted from their first normal choice. The window's
+		candidate rows own enabled/weight while each pattern continues to own range,
+		phase, armour, cooldown, and consecutive-use conditions. Scripted health-bar
+		mechanics already returned from the queue above. */
 		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
 			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
 				rotation->eSelectionMode)
 		{
 			boss.strRotationId = rotation->strRotationId;
 			boss.iRotationStepIndex = 0u;
-			return SelectNormalPattern(
+			trace.strRotationId = rotation->strRotationId;
+			VALTAN_PATTERN_SELECTION_RESULT result = SelectNormalPattern(
 				boss, patterns, introPatternId, currentHealthBar,
-				targetDistance, serverTick, rotation);
+				targetDistance, serverTick, std::move(trace),
+				VALTAN_DECISION_SOURCE::WEIGHTED,
+				rotation);
+			trace = std::move(result.Trace);
+			return result.pPattern;
 		}
 		/* The authored list introduces the band rather than looping it. Every
 		pattern the band brings is shown once, in order, so nothing the encounter
@@ -555,6 +934,7 @@ namespace
 				ORDERED_INTRO_THEN_WEIGHTED == rotation->eSelectionMode &&
 			!rotation->PatternIds.empty())
 		{
+			trace.strRotationId = rotation->strRotationId;
 			if (boss.strRotationId != rotation->strRotationId)
 			{
 				boss.strRotationId = rotation->strRotationId;
@@ -568,15 +948,37 @@ namespace
 				if (const BOSS_PATTERN_DEFINITION* step =
 					FindPattern(patterns, rotation->PatternIds[stepIndex]))
 				{
+					trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
+					trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+					trace.strSelectedPatternId = step->strPatternId;
+					VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+					candidate.strPatternId = step->strPatternId;
+					candidate.iAuthoredWeight = 1u;
+					candidate.iEffectiveWeight = 1u;
+					candidate.iWeightEndExclusive = 1u;
+					candidate.bSelected = true;
+					trace.Candidates.push_back(std::move(candidate));
 					return step;
 				}
 				/* A step the catalog cannot resolve is skipped rather than
 				stalling the introduction, and the weighted roll covers the gap. */
+				if (trace.Candidates.size() <
+					CValtanBrain::MAX_DECISION_CANDIDATE_COUNT)
+				{
+					VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+					candidate.strPatternId = rotation->PatternIds[stepIndex];
+					candidate.iExclusionMask =
+						VALTAN_EXCLUDE_UNRESOLVED_DEFINITION;
+					trace.Candidates.push_back(std::move(candidate));
+				}
 			}
 		}
-		return SelectNormalPattern(
+		VALTAN_PATTERN_SELECTION_RESULT result = SelectNormalPattern(
 			boss, patterns, introPatternId,
-			currentHealthBar, targetDistance, serverTick);
+			currentHealthBar, targetDistance, serverTick, std::move(trace),
+			VALTAN_DECISION_SOURCE::GLOBAL);
+		trace = std::move(result.Trace);
+		return result.pPattern;
 	}
 
 	/* A GROGGY stage is the stun a charge earns by meeting a wall, so only an
@@ -704,8 +1106,10 @@ namespace
 		const BOSS_PATTERN_DEFINITION& pattern,
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 		SERVER_PLAYER* nearestTarget,
+		const LostArk::Shared::GameplayDataRevision& definitionRevision,
 		const std::uint32_t serverTick)
 	{
+		boss.PinnedDefinitionRevision = definitionRevision;
 		boss.strPatternId = pattern.strPatternId;
 		boss.bPatternInvulnerable = pattern.bInvulnerableWhileRunning;
 		boss.fPatternMinimumRange = pattern.fMinimumRange;
@@ -714,6 +1118,7 @@ namespace
 		boss.iPatternSequence = boss.iPatternSequence ==
 			(std::numeric_limits<std::uint32_t>::max)() ?
 			1u : boss.iPatternSequence + 1u;
+		MarkMechanicActive(boss, pattern.strPatternId, serverTick);
 		if (boss.strLastPatternId == pattern.strPatternId)
 			++boss.iConsecutivePatternUses;
 		else
@@ -802,8 +1207,15 @@ namespace
 
 	void FinishPattern(
 		SERVER_WORLD_ENTITY& boss,
-		const std::uint32_t serverTick)
+		const std::uint32_t serverTick,
+		const bool completed = true,
+		const SERVER_BOSS_MECHANIC_FAILURE failure =
+			SERVER_BOSS_MECHANIC_FAILURE::NONE)
 	{
+		if (completed)
+			CompleteActiveMechanic(boss, boss.strPatternId, serverTick);
+		else
+			FailMechanic(boss, boss.strPatternId, failure, serverTick);
 		if (boss.fLeapApexHeight > 0.f)
 		{
 			/* An aborted leap must not leave the boss standing in mid-air, so
@@ -863,7 +1275,9 @@ namespace
 		{
 			/* The publisher rejects this graph, but a corrupt bootstrap must not
 			leave the room in a stage that can never finish. */
-			FinishPattern(boss, serverTick);
+			FinishPattern(
+				boss, serverTick, false,
+				SERVER_BOSS_MECHANIC_FAILURE::INVALID_RUNNING_DEFINITION);
 			return true;
 		}
 		EnterPatternStage(boss, *next, nextStageIndex, serverTick);
@@ -1136,12 +1550,17 @@ void LostArk::Server::CValtanBrain::Update(
 	const std::uint32_t serverTick,
 	const std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>&
 		coverCircles,
-	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+	const CGameplayCatalog* activeThresholdCatalog,
+	const std::uint16_t activeThresholdGenerationEpoch) const
 {
 	if (WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind)
 		return;
 	if (0u == boss.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss.eAction)
 	{
+		FailMechanic(
+			boss, boss.strPatternId,
+			SERVER_BOSS_MECHANIC_FAILURE::BOSS_DIED, serverTick);
 		boss.iCurrentHp = 0u;
 		boss.strPatternId.clear();
 		boss.strPatternStageId.clear();
@@ -1154,7 +1573,13 @@ void LostArk::Server::CValtanBrain::Update(
 		catalog.Find_Boss(boss.strArchetypeId);
 	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	if (nullptr == bossProfile || nullptr == patterns || patterns->empty())
+	{
+		VALTAN_DECISION_TRACE trace = MakeDecisionTraceHeader(
+			boss, serverTick, Calculate_HealthBar(boss));
+		trace.eResult = VALTAN_DECISION_RESULT::CATALOG_UNAVAILABLE;
+		Record_DecisionTrace(std::move(trace));
 		return;
+	}
 	if (BOSS_PHASE_POLICY_KIND::HEALTH_PERCENT_THRESHOLD ==
 		bossProfile->PhasePolicy.eKind && boss.iMaximumHp > 0u &&
 		bossProfile->PhasePolicy.iThresholdPercent > 0u &&
@@ -1168,7 +1593,33 @@ void LostArk::Server::CValtanBrain::Update(
 		(void)CBossCombatRuntime::Set_GameplayPhase(boss, 2u);
 	}
 	const std::uint32_t currentHealthBar = Calculate_HealthBar(boss);
-	QueueCrossedHealthBarPatterns(boss, *patterns, currentHealthBar);
+	const CGameplayCatalog& thresholdCatalog =
+		nullptr == activeThresholdCatalog ? catalog : *activeThresholdCatalog;
+	const auto* thresholdPatterns =
+		thresholdCatalog.Find_BossPatterns(boss.strEncounterId);
+	if (nullptr == thresholdPatterns)
+	{
+		boss.bMechanicLedgerRequiresReset = true;
+	}
+	else
+	{
+		QueueCrossedHealthBarPatterns(
+			boss, *thresholdPatterns, currentHealthBar,
+			thresholdCatalog.Get_ActiveRevision(),
+			activeThresholdGenerationEpoch, serverTick);
+	}
+	if (boss.bMechanicLedgerRequiresReset)
+	{
+		VALTAN_DECISION_TRACE trace = MakeDecisionTraceHeader(
+			boss, serverTick, currentHealthBar);
+		trace.eResult = VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
+		trace.eSource = trace.ePendingSource;
+		Record_DecisionTrace(std::move(trace));
+		boss.iTargetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		boss.MovePath.clear();
+		Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
+		return;
+	}
 
 	SERVER_PLAYER* target = nullptr;
 	float targetDistanceSquared = (std::numeric_limits<float>::max)();
@@ -1194,7 +1645,33 @@ void LostArk::Server::CValtanBrain::Update(
 		boss.fEngageDistance, MaximumPatternRange(*patterns));
 	if (nullptr == target || targetDistanceSquared > engageDistance * engageDistance)
 	{
-		FinishPattern(boss, serverTick);
+		VALTAN_DECISION_TRACE trace = MakeDecisionTraceHeader(
+			boss, serverTick, currentHealthBar);
+		trace.Candidates.reserve((std::min)(
+			patterns->size(), MAX_DECISION_CANDIDATE_COUNT));
+		const BOSS_PATTERN_ROTATION_DEFINITION* noTargetRotation =
+			catalog.Find_BossPatternRotation(
+				boss.strEncounterId, boss.iPhase, currentHealthBar);
+		const BOSS_PATTERN_ROTATION_DEFINITION* managedNoTargetRotation =
+			nullptr != noTargetRotation &&
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
+				noTargetRotation->eSelectionMode ? noTargetRotation : nullptr;
+		VALTAN_PATTERN_SELECTION_RESULT evaluated = SelectNormalPattern(
+			boss, *patterns, catalog.Find_IntroPatternId(boss.strEncounterId),
+			currentHealthBar, 0.f, serverTick, std::move(trace),
+			VALTAN_DECISION_SOURCE::NONE, managedNoTargetRotation, false);
+		trace = std::move(evaluated.Trace);
+		trace.eSource = VALTAN_DECISION_SOURCE::NONE;
+		trace.eResult = VALTAN_DECISION_RESULT::NO_VALID_TARGET;
+		trace.strSelectedPatternId.clear();
+		trace.iTotalWeight = 0u;
+		trace.iRawRandomInput = 0u;
+		trace.iMixedRandomValue = 0u;
+		trace.iRandomTicket = 0u;
+		Record_DecisionTrace(std::move(trace));
+		FinishPattern(
+			boss, serverTick, false,
+			SERVER_BOSS_MECHANIC_FAILURE::NO_VALID_TARGET);
 		boss.iTargetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 		boss.MovePath.clear();
 		return;
@@ -1205,13 +1682,26 @@ void LostArk::Server::CValtanBrain::Update(
 	if (SERVER_ENTITY_ACTION::IDLE == boss.eAction ||
 		SERVER_ENTITY_ACTION::CHASE == boss.eAction)
 	{
+		VALTAN_DECISION_TRACE trace = MakeDecisionTraceHeader(
+			boss, serverTick, currentHealthBar);
+		trace.iTargetNetEntityId = target->iNetEntityId;
+		trace.fTargetDistance = distance;
+		trace.Candidates.reserve((std::min)(
+			patterns->size(), MAX_DECISION_CANDIDATE_COUNT));
 		const BOSS_PATTERN_DEFINITION* selected = SelectPattern(
 			boss, *patterns, catalog.Find_IntroPatternId(boss.strEncounterId),
 			catalog.Find_BossPatternRotation(
 				boss.strEncounterId, boss.iPhase, currentHealthBar),
-			currentHealthBar, distance, serverTick);
+			currentHealthBar, distance, serverTick, trace);
+		Record_DecisionTrace(std::move(trace));
 		if (nullptr == selected)
 		{
+			if (boss.bMechanicLedgerRequiresReset)
+			{
+				Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
+				boss.MovePath.clear();
+				return;
+			}
 			if (!boss.bIntroPatternConsumed)
 			{
 				/* The entrance is authored around the spawn point, so the boss holds
@@ -1245,7 +1735,9 @@ void LostArk::Server::CValtanBrain::Update(
 		const float deltaX = target->fPositionX - boss.fPositionX;
 		const float deltaZ = target->fPositionZ - boss.fPositionZ;
 		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
-		BeginPattern(boss, *selected, players, target, serverTick);
+		BeginPattern(
+			boss, *selected, players, target,
+			catalog.Get_ActiveRevision(), serverTick);
 		if (boss.bPatternChargeImpact && 0u != boss.iPatternStageDurationMs)
 		{
 			const float durationSeconds =
@@ -1265,7 +1757,9 @@ void LostArk::Server::CValtanBrain::Update(
 	if (nullptr == currentPattern ||
 		boss.iPatternStageIndex >= currentPattern->Stages.size())
 	{
-		FinishPattern(boss, serverTick);
+		FinishPattern(
+			boss, serverTick, false,
+			SERVER_BOSS_MECHANIC_FAILURE::INVALID_RUNNING_DEFINITION);
 		return;
 	}
 	UpdatePatternTargetAndAim(boss, *currentPattern, players, target);
@@ -1377,6 +1871,57 @@ bool LostArk::Server::CValtanBrain::Is_PhaseRequirementMet(
 		return boss.iPhase >= 2u;
 	}
 	return false;
+}
+
+void LostArk::Server::CValtanBrain::Fail_ActiveMechanic(
+	SERVER_WORLD_ENTITY& boss,
+	const SERVER_BOSS_MECHANIC_FAILURE failure,
+	const std::uint32_t serverTick)
+{
+	FailMechanic(boss, boss.strPatternId, failure, serverTick);
+}
+
+void LostArk::Server::CValtanBrain::Fail_Mechanic(
+	SERVER_WORLD_ENTITY& boss,
+	const std::string& patternId,
+	const SERVER_BOSS_MECHANIC_FAILURE failure,
+	const std::uint32_t serverTick)
+{
+	FailMechanic(boss, patternId, failure, serverTick);
+}
+
+const LostArk::Server::VALTAN_DECISION_TRACE*
+LostArk::Server::CValtanBrain::Get_DecisionTrace(
+	const std::size_t age) const noexcept
+{
+	if (age >= m_iDecisionTraceCount)
+		return nullptr;
+	const std::size_t oldest =
+		(m_iDecisionTraceWriteIndex + MAX_DECISION_TRACE_COUNT -
+			m_iDecisionTraceCount) % MAX_DECISION_TRACE_COUNT;
+	return &m_DecisionTraces[(oldest + age) % MAX_DECISION_TRACE_COUNT];
+}
+
+const LostArk::Server::VALTAN_DECISION_TRACE*
+LostArk::Server::CValtanBrain::Get_LatestDecisionTrace() const noexcept
+{
+	return 0u == m_iDecisionTraceCount ? nullptr :
+		Get_DecisionTrace(m_iDecisionTraceCount - 1u);
+}
+
+void LostArk::Server::CValtanBrain::Record_DecisionTrace(
+	VALTAN_DECISION_TRACE&& trace) const
+{
+	trace.iTraceSequence = m_iNextDecisionTraceSequence;
+	m_iNextDecisionTraceSequence =
+		(std::numeric_limits<std::uint64_t>::max)() ==
+			m_iNextDecisionTraceSequence ? 1u :
+			m_iNextDecisionTraceSequence + 1u;
+	m_DecisionTraces[m_iDecisionTraceWriteIndex] = std::move(trace);
+	m_iDecisionTraceWriteIndex =
+		(m_iDecisionTraceWriteIndex + 1u) % MAX_DECISION_TRACE_COUNT;
+	m_iDecisionTraceCount = (std::min)(
+		m_iDecisionTraceCount + 1u, MAX_DECISION_TRACE_COUNT);
 }
 
 bool LostArk::Server::CValtanBrain::Try_BuildImpactMotion(

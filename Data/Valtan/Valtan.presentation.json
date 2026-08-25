@@ -86,7 +86,7 @@
                   1
                 ]
               },
-              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
+              "mappingBasis": "PROJECT_AUTHORED"
             },
             {
               "cueId": "cue.valtan.whirlwind.active",
@@ -116,7 +116,7 @@
                   1
                 ]
               },
-              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
+              "mappingBasis": "PROJECT_AUTHORED"
             }
           ],
           "cameraInvocations": []
@@ -227,7 +227,7 @@
                   1
                 ]
               },
-              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
+              "mappingBasis": "PROJECT_AUTHORED"
             }
           ],
           "cameraInvocations": []
@@ -280,7 +280,7 @@
                   1
                 ]
               },
-              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
+              "mappingBasis": "PROJECT_AUTHORED"
             }
           ],
           "cameraInvocations": []
@@ -434,7 +434,7 @@
                   1
                 ]
               },
-              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
+              "mappingBasis": "ANIMATION_PR_127"
             }
           ],
           "cameraInvocations": []
@@ -487,7 +487,7 @@
                   1
                 ]
               },
-              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
+              "mappingBasis": "ANIMATION_PR_127"
             }
           ],
           "cameraInvocations": []
@@ -540,7 +540,7 @@
                   1
                 ]
               },
-              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
+              "mappingBasis": "ANIMATION_PR_127"
             }
           ],
           "cameraInvocations": []

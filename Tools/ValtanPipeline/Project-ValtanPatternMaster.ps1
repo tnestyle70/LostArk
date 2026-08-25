@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'Publish', 'ValidateV2', 'MigrateV2Preview')]
+    [ValidateSet('Validate', 'Publish', 'ValidateV2', 'PublishV2', 'MigrateV2Preview')]
     [string]$Mode = 'Validate',
     [string]$MasterPath = 'Data/Valtan/Valtan.pattern.json',
     [string]$ReceiptPath = '',
@@ -24,13 +24,18 @@ else {
 if (-not [IO.Directory]::Exists($repoRoot)) {
     throw "RepositoryRoot does not exist: $repoRoot"
 }
-if ($Mode -in @('ValidateV2', 'MigrateV2Preview')) {
+if ($Mode -eq 'Publish') {
+    throw ('Legacy Valtan.pattern.json projection Publish is retired because it cannot ' +
+        'represent the canonical split decision model or rotation v3 Product. Use ' +
+        'Publish-ValtanTuningRuntimeSet.ps1 SaveAuthoring/PublishCandidate instead.')
+}
+if ($Mode -in @('Validate', 'ValidateV2', 'MigrateV2Preview')) {
     $pipeline = Join-Path $PSScriptRoot 'valtan_tuning_pipeline.py'
     if (-not [IO.File]::Exists($pipeline)) {
         throw "Missing Valtan v2 tuning pipeline: $pipeline"
     }
     $command = @($pipeline, '--repository-root', $repoRoot)
-    if ($Mode -eq 'ValidateV2') {
+    if ($Mode -in @('Validate', 'ValidateV2')) {
         $command += 'validate'
     }
     else {
@@ -520,6 +525,133 @@ function Commit-StagedDocuments([object[]]$Entries) {
             }
         }
     }
+}
+
+function Get-Sha256Hex([string]$Path) {
+    $stream = [IO.File]::OpenRead($Path)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = $sha256.ComputeHash($stream)
+        return ([BitConverter]::ToString($hash) -replace '-', '')
+    }
+    finally {
+        $sha256.Dispose()
+        $stream.Dispose()
+    }
+}
+
+if ($Mode -eq 'PublishV2') {
+    $pipeline = Join-Path $PSScriptRoot 'valtan_tuning_pipeline.py'
+    if (-not [IO.File]::Exists($pipeline)) {
+        throw "Missing Valtan v2 tuning pipeline: $pipeline"
+    }
+    $projectionParent = [IO.Path]::GetFullPath((Join-Path $repoRoot `
+        'Intermediate\ValtanProductProjection'))
+    [IO.Directory]::CreateDirectory($projectionParent) | Out-Null
+    $projectionRoot = [IO.Path]::GetFullPath((Join-Path $projectionParent `
+        ([Guid]::NewGuid().ToString('N'))))
+    [IO.Directory]::CreateDirectory($projectionRoot) | Out-Null
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $mutexHash = $sha256.ComputeHash(
+            [Text.Encoding]::UTF8.GetBytes($repoRoot.ToUpperInvariant()))
+    }
+    finally {
+        $sha256.Dispose()
+    }
+    $mutexName = 'LostArk_ValtanV2ProductPublish_' +
+        (([BitConverter]::ToString($mutexHash) -replace '-', '').Substring(0, 24))
+    $mutex = [Threading.Mutex]::new($false, $mutexName)
+    $mutexHeld = $false
+    try {
+        try {
+            $mutexHeld = $mutex.WaitOne([TimeSpan]::FromSeconds(30))
+        }
+        catch [Threading.AbandonedMutexException] {
+            $mutexHeld = $true
+        }
+        if (-not $mutexHeld) {
+            throw 'Timed out waiting for the Valtan split Product publisher.'
+        }
+
+        $projectCommand = @($pipeline, '--repository-root', $repoRoot,
+            'project-products', '--output-root', $projectionRoot)
+        $projectText = (& python @projectCommand | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($projectText)) {
+            throw "Valtan v2 Product projection failed with exit code $LASTEXITCODE."
+        }
+        $projectResult = $projectText | ConvertFrom-Json
+        if (-not [bool]$projectResult.ok -or
+            [string]$projectResult.command -cne 'PROJECT_PRODUCTS') {
+            throw 'Valtan v2 Product projection returned an invalid result.'
+        }
+
+        [string[]]$expectedRelativePaths = @(
+            'Data/Encounters/Valtan/ValtanEncounter.json',
+            'Data/Encounters/Valtan/ValtanPatternRotations.json',
+            'Data/Encounters/Valtan/ValtanCombatObjects.json',
+            'Data/Encounters/Valtan/ValtanWorldEvents.json',
+            'Data/Animation/Authored/Valtan/Valtan.patternbindings.json',
+            'Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json',
+            'Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json'
+        )
+        [string[]]$actualRelativePaths = @(
+            $projectResult.payload.files | ForEach-Object { [string]$_.path })
+        [Array]::Sort($expectedRelativePaths, [StringComparer]::Ordinal)
+        [Array]::Sort($actualRelativePaths, [StringComparer]::Ordinal)
+        if (($expectedRelativePaths -join "`n") -cne
+            ($actualRelativePaths -join "`n")) {
+            throw 'Valtan v2 Product projection artifact set is invalid.'
+        }
+
+        $manifestCommand = @($pipeline, '--repository-root', $repoRoot,
+            'source-manifest', '--authoring-root',
+            (Join-Path $repoRoot 'Intermediate\ValtanTuningAuthoring'))
+        $manifestText = (& python @manifestCommand | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($manifestText)) {
+            throw 'Valtan source CAS query failed before Product commit.'
+        }
+        $manifestResult = $manifestText | ConvertFrom-Json
+        if (-not [bool]$manifestResult.ok -or
+            [string]$manifestResult.payload.sourceManifestId -cne
+                [string]$projectResult.payload.sourceManifestId) {
+            throw 'Valtan sources changed before Product commit.'
+        }
+
+        $stagedEntries = [Collections.Generic.List[object]]::new()
+        foreach ($relativePath in $expectedRelativePaths) {
+            $projectedPath = [IO.Path]::GetFullPath(
+                (Join-Path $projectionRoot $relativePath))
+            $targetPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
+            if (-not [IO.File]::Exists($projectedPath) -or
+                -not [IO.File]::Exists($targetPath)) {
+                throw "Valtan v2 Product target is missing: $relativePath"
+            }
+            $projectedHash = Get-Sha256Hex $projectedPath
+            $targetHash = Get-Sha256Hex $targetPath
+            if ($projectedHash -ceq $targetHash) { continue }
+            $projectedText = [IO.File]::ReadAllText($projectedPath, $utf8Strict)
+            $stagedEntries.Add((Stage-JsonTextDocument $projectedText $targetPath `
+                "Valtan v2 Product $relativePath"))
+        }
+        if ($stagedEntries.Count -gt 0) {
+            Commit-StagedDocuments @($stagedEntries)
+        }
+        Write-Host ("Valtan split Products committed: changed={0} artifacts={1}" -f `
+            $stagedEntries.Count, $expectedRelativePaths.Count)
+    }
+    finally {
+        if ($mutexHeld) { $mutex.ReleaseMutex() }
+        $mutex.Dispose()
+        $projectionPrefix = $projectionParent.TrimEnd('\', '/') +
+            [IO.Path]::DirectorySeparatorChar
+        if ([IO.Directory]::Exists($projectionRoot) -and
+            $projectionRoot.StartsWith($projectionPrefix,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            [IO.Directory]::Delete($projectionRoot, $true)
+        }
+    }
+    return
 }
 
 $masterFile = Resolve-InputPath $MasterPath 'Valtan pattern master'

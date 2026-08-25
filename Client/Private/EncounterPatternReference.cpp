@@ -303,6 +303,8 @@ namespace
 				const std::string actionKey = trigger + "\n" + targetId;
 				if (!actionKeys.insert(actionKey).second)
 					return false;
+				/* A volley is a one-shot Server action. It does not open a
+				   cross-stage lifetime in this read-only Client reference. */
 				continue;
 			}
 

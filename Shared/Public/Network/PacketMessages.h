@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameplayDataRevision.h"
 #include "Network/PacketType.h"
 #include "NetworkIds.h"
 
@@ -9,6 +10,8 @@
 //character의 class와 nickname용 packet
 namespace LostArk::Shared
 {
+	inline constexpr std::size_t MAX_REQUIRED_PINNED_GAMEPLAY_REVISIONS = 16u;
+
 	//harness가 직접 write u8, write string을 호출하기 때문에, client와 server가 같은 함수를 쓰도록,
 	//shared로 옮긴다.
 
@@ -49,6 +52,9 @@ namespace LostArk::Shared
 
 		NET_ENTITY_ID iNetEntityId =
 			INVALID_NET_ENTITY_ID;
+
+		GameplayDataRevision ActiveGameplayRevision{};
+		std::vector<GameplayDataRevision> RequiredPinnedGameplayRevisions;
 	};
 
 	bool Write_Message(
@@ -214,6 +220,7 @@ namespace LostArk::Shared
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
 		float fYawDegrees = 0.f;
+		GameplayDataRevision PinnedDefinitionRevision{};
 	};
 
 	bool Write_Message(
@@ -590,6 +597,8 @@ namespace LostArk::Shared
 		// boss payload on every NPC/monster while preserving one typed contract.
 		bool hasBossCombatState = false;
 		BOSS_COMBAT_SNAPSHOT BossCombat;
+		// The immutable definition generation pinned when this occurrence began.
+		GameplayDataRevision PinnedDefinitionRevision{};
 	};
 	// One resolved hit. HP in the snapshots above is a level, so a client that
 	// only sees levels cannot tell 500 damage from two 250s inside one tick, and
@@ -636,6 +645,7 @@ namespace LostArk::Shared
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
 		float fYawDegrees = 0.f;
+		GameplayDataRevision PinnedDefinitionRevision{};
 	};
 
 	//player snapshot을 vector 구조체로 들고, servertick을 들고있다?
@@ -654,6 +664,8 @@ namespace LostArk::Shared
 		// Esther roster and the HUD then has nothing to draw.
 		std::uint32_t iEstherGauge = 0;
 		std::uint32_t iEstherGaugeMaximum = 0;
+		GameplayDataRevision ActiveGameplayRevision{};
+		std::vector<GameplayDataRevision> RequiredPinnedGameplayRevisions;
 	};
 
 	bool Write_Message(
@@ -920,6 +932,298 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_VALTAN_AUDITION_RESULT& message);
+
+	inline constexpr std::size_t MAX_VALTAN_AUDITION_LIFECYCLE_REASON_BYTES =
+		192u;
+
+	enum class VALTAN_AUDITION_LIFECYCLE_STATE : std::uint8_t
+	{
+		PENDING,
+		ACTIVE,
+		COMPLETED,
+		ABORTED,
+		END
+	};
+
+	struct S2C_VALTAN_AUDITION_LIFECYCLE
+	{
+		std::uint32_t iRequestSequence = 0;
+		// Server room identity. This is deliberately unrelated to a Client-local
+		// inbound generation and advances whenever the room starts a new audition.
+		std::uint32_t iRoomAuditionEpoch = 0;
+		std::uint32_t iPatternSequence = 0;
+		std::string strPatternId;
+		VALTAN_AUDITION_LIFECYCLE_STATE eState =
+			VALTAN_AUDITION_LIFECYCLE_STATE::PENDING;
+		GameplayDataRevision PinnedDefinitionRevision{};
+		// Empty except for ABORTED, where it is a bounded diagnostic reason.
+		std::string strReason;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_VALTAN_AUDITION_LIFECYCLE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_VALTAN_AUDITION_LIFECYCLE& message);
+
+	// One response carries at most one retained Server decision and at most the
+	// same 64 candidates CValtanBrain admits into its bounded trace. The query's
+	// after-sequence makes unchanged polling a small typed response instead of
+	// repeatedly shipping the full candidate table.
+	inline constexpr std::size_t MAX_VALTAN_DECISION_TRACE_CANDIDATES = 64u;
+
+	enum class VALTAN_DECISION_TRACE_SOURCE : std::uint8_t
+	{
+		NONE,
+		INTRO,
+		FORCED_HEALTH_BAR,
+		FORCED_AUDITION,
+		ORDERED,
+		WEIGHTED,
+		GLOBAL,
+		END
+	};
+
+	enum class VALTAN_DECISION_TRACE_RESULT : std::uint8_t
+	{
+		SELECTED,
+		WAITING_FOR_INTRO_RANGE,
+		NO_ELIGIBLE_PATTERN,
+		NO_VALID_TARGET,
+		CATALOG_UNAVAILABLE,
+		MECHANIC_RESET_REQUIRED,
+		END
+	};
+
+	enum VALTAN_DECISION_TRACE_EXCLUSION : std::uint32_t
+	{
+		VALTAN_DECISION_TRACE_EXCLUDE_NONE = 0u,
+		VALTAN_DECISION_TRACE_EXCLUDE_WRONG_SELECTION_KIND = 1u << 0u,
+		VALTAN_DECISION_TRACE_EXCLUDE_INTRO_ROW = 1u << 1u,
+		VALTAN_DECISION_TRACE_EXCLUDE_NOT_IN_SELECTION_SET = 1u << 2u,
+		VALTAN_DECISION_TRACE_EXCLUDE_ARMOR_MISMATCH = 1u << 3u,
+		VALTAN_DECISION_TRACE_EXCLUDE_PHASE_REQUIREMENT = 1u << 4u,
+		VALTAN_DECISION_TRACE_EXCLUDE_PHASE_RANGE = 1u << 5u,
+		VALTAN_DECISION_TRACE_EXCLUDE_HEALTH_BAR_RANGE = 1u << 6u,
+		VALTAN_DECISION_TRACE_EXCLUDE_NO_TARGET = 1u << 7u,
+		VALTAN_DECISION_TRACE_EXCLUDE_BELOW_MINIMUM_RANGE = 1u << 8u,
+		VALTAN_DECISION_TRACE_EXCLUDE_ABOVE_MAXIMUM_RANGE = 1u << 9u,
+		VALTAN_DECISION_TRACE_EXCLUDE_COOLDOWN = 1u << 10u,
+		VALTAN_DECISION_TRACE_EXCLUDE_SOFT_REPEAT_BLOCKED = 1u << 11u,
+		VALTAN_DECISION_TRACE_EXCLUDE_SOFT_REPEAT_RELAXED = 1u << 12u,
+		VALTAN_DECISION_TRACE_EXCLUDE_DISABLED = 1u << 13u,
+		VALTAN_DECISION_TRACE_EXCLUDE_UNRESOLVED_DEFINITION = 1u << 14u
+	};
+
+	inline constexpr std::uint32_t
+		VALTAN_DECISION_TRACE_KNOWN_EXCLUSION_MASK =
+		VALTAN_DECISION_TRACE_EXCLUDE_WRONG_SELECTION_KIND |
+		VALTAN_DECISION_TRACE_EXCLUDE_INTRO_ROW |
+		VALTAN_DECISION_TRACE_EXCLUDE_NOT_IN_SELECTION_SET |
+		VALTAN_DECISION_TRACE_EXCLUDE_ARMOR_MISMATCH |
+		VALTAN_DECISION_TRACE_EXCLUDE_PHASE_REQUIREMENT |
+		VALTAN_DECISION_TRACE_EXCLUDE_PHASE_RANGE |
+		VALTAN_DECISION_TRACE_EXCLUDE_HEALTH_BAR_RANGE |
+		VALTAN_DECISION_TRACE_EXCLUDE_NO_TARGET |
+		VALTAN_DECISION_TRACE_EXCLUDE_BELOW_MINIMUM_RANGE |
+		VALTAN_DECISION_TRACE_EXCLUDE_ABOVE_MAXIMUM_RANGE |
+		VALTAN_DECISION_TRACE_EXCLUDE_COOLDOWN |
+		VALTAN_DECISION_TRACE_EXCLUDE_SOFT_REPEAT_BLOCKED |
+		VALTAN_DECISION_TRACE_EXCLUDE_SOFT_REPEAT_RELAXED |
+		VALTAN_DECISION_TRACE_EXCLUDE_DISABLED |
+		VALTAN_DECISION_TRACE_EXCLUDE_UNRESOLVED_DEFINITION;
+
+	struct VALTAN_DECISION_TRACE_CANDIDATE_WIRE
+	{
+		std::string strPatternId;
+		std::uint32_t iExclusionMask =
+			VALTAN_DECISION_TRACE_EXCLUDE_NONE;
+		std::uint32_t iAuthoredWeight = 0u;
+		std::uint32_t iEffectiveWeight = 0u;
+		std::uint32_t iCooldownRemainingTicks = 0u;
+		std::uint32_t iConsecutiveUses = 0u;
+		std::uint32_t iMaximumConsecutiveUses = 0u;
+		std::uint64_t iWeightBeginInclusive = 0u;
+		std::uint64_t iWeightEndExclusive = 0u;
+		bool isSelected = false;
+	};
+
+	struct VALTAN_DECISION_TRACE_WIRE
+	{
+		std::uint64_t iTraceSequence = 0u;
+		std::uint32_t iServerTick = 0u;
+		std::uint32_t iPatternSequenceBeforeDecision = 0u;
+		std::uint32_t iExpectedPatternSequence = 0u;
+		std::uint32_t iCurrentHp = 0u;
+		std::uint32_t iMaximumHp = 0u;
+		std::uint32_t iHealthBar = 0u;
+		std::uint8_t iGameplayPhase = 1u;
+		NET_ENTITY_ID iTargetNetEntityId = INVALID_NET_ENTITY_ID;
+		float fTargetDistance = 0.f;
+		bool isIntroPatternConsumed = false;
+		std::uint32_t iRotationStepIndex = 0u;
+		VALTAN_DECISION_TRACE_SOURCE eSource =
+			VALTAN_DECISION_TRACE_SOURCE::NONE;
+		VALTAN_DECISION_TRACE_RESULT eResult =
+			VALTAN_DECISION_TRACE_RESULT::NO_ELIGIBLE_PATTERN;
+		std::string strRotationId;
+		std::string strPendingPatternId;
+		VALTAN_DECISION_TRACE_SOURCE ePendingSource =
+			VALTAN_DECISION_TRACE_SOURCE::NONE;
+		std::string strSelectedPatternId;
+		std::uint64_t iRawRandomInput = 0u;
+		std::uint64_t iMixedRandomValue = 0u;
+		std::uint64_t iTotalWeight = 0u;
+		std::uint64_t iRandomTicket = 0u;
+		bool isMaximumConsecutiveRelaxed = false;
+		bool areCandidatesTruncated = false;
+		std::vector<VALTAN_DECISION_TRACE_CANDIDATE_WIRE> Candidates;
+	};
+
+	struct C2S_VALTAN_DECISION_TRACE_QUERY
+	{
+		std::uint32_t iRequestSequence = 0u;
+		std::string strBossPlacementId;
+		std::uint64_t iAfterTraceSequence = 0u;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_VALTAN_DECISION_TRACE_QUERY& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_VALTAN_DECISION_TRACE_QUERY& message);
+
+	enum class VALTAN_DECISION_TRACE_QUERY_RESULT : std::uint8_t
+	{
+		TRACE,
+		UNCHANGED,
+		REJECTED_RELEASE_BUILD,
+		REJECTED_WRONG_WORLD,
+		REJECTED_NO_BOSS,
+		NO_TRACE,
+		END
+	};
+
+	struct S2C_VALTAN_DECISION_TRACE_RESPONSE
+	{
+		std::uint32_t iRequestSequence = 0u;
+		std::string strBossPlacementId;
+		VALTAN_DECISION_TRACE_QUERY_RESULT eResult =
+			VALTAN_DECISION_TRACE_QUERY_RESULT::NO_TRACE;
+		// Present only for TRACE. It is the immutable definition generation used
+		// for the selector lookup that produced Trace.
+		GameplayDataRevision DefinitionRevision{};
+		VALTAN_DECISION_TRACE_WIRE Trace{};
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_VALTAN_DECISION_TRACE_RESPONSE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_VALTAN_DECISION_TRACE_RESPONSE& message);
+
+	// Presentation lanes are a bitset, not an enum value. Unknown bits are a
+	// protocol error so old peers cannot silently call a new required lane ready.
+	enum class GAMEPLAY_PRESENTATION_LANE : std::uint32_t
+	{
+		ANIMATION = 1u << 0u,
+		EFFECT = 1u << 1u,
+		COMBAT_VISUAL = 1u << 2u,
+		CAMERA = 1u << 3u,
+		WORLD_EVENT_SET = 1u << 4u
+	};
+
+	inline constexpr std::uint32_t GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK =
+		static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::ANIMATION) |
+		static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::EFFECT) |
+		static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::COMBAT_VISUAL) |
+		static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::CAMERA) |
+		static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::WORLD_EVENT_SET);
+
+	inline constexpr std::size_t MAX_DATA_REVISION_REASON_BYTES = 256u;
+
+	struct C2S_DATA_REVISION_PREPARE_REQUEST
+	{
+		std::uint32_t iTransactionSequence = 0;
+		GameplayDataRevision BaseRevision{};
+		GameplayDataRevision CandidateRevision{};
+		std::uint32_t iRequiredPresentationLaneMask = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DATA_REVISION_PREPARE_REQUEST& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DATA_REVISION_PREPARE_REQUEST& message);
+
+	struct S2C_DATA_REVISION_PREPARE
+	{
+		std::uint32_t iTransactionSequence = 0;
+		GameplayDataRevision BaseRevision{};
+		GameplayDataRevision CandidateRevision{};
+		std::uint32_t iRequiredPresentationLaneMask = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_DATA_REVISION_PREPARE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_DATA_REVISION_PREPARE& message);
+
+	enum class DATA_REVISION_PREPARE_STATUS : std::uint8_t
+	{
+		READY,
+		READY_DEGRADED,
+		NACK,
+		END
+	};
+
+	struct C2S_DATA_REVISION_PREPARE_RESPONSE
+	{
+		std::uint32_t iTransactionSequence = 0;
+		GameplayDataRevision CandidateRevision{};
+		DATA_REVISION_PREPARE_STATUS eStatus =
+			DATA_REVISION_PREPARE_STATUS::NACK;
+		std::uint32_t iRequiredPresentationLaneMask = 0;
+		std::uint32_t iPreparedPresentationLaneMask = 0;
+		std::uint32_t iFailedPresentationLaneMask = 0;
+		std::string strReason;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DATA_REVISION_PREPARE_RESPONSE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DATA_REVISION_PREPARE_RESPONSE& message);
+
+	enum class DATA_REVISION_RESULT : std::uint8_t
+	{
+		COMMITTED,
+		ABORTED,
+		END
+	};
+
+	struct S2C_DATA_REVISION_RESULT
+	{
+		std::uint32_t iTransactionSequence = 0;
+		GameplayDataRevision CandidateRevision{};
+		GameplayDataRevision ActiveRevision{};
+		DATA_REVISION_RESULT eResult = DATA_REVISION_RESULT::ABORTED;
+		std::string strReason;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_DATA_REVISION_RESULT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_DATA_REVISION_RESULT& message);
 
 	// Debug-only inventory slice. itemId is a stable catalog ID, not a display
 	// string, so it shares the same bound a UI label never needs.
