@@ -182,6 +182,11 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw 'Rendering profile validation failed.'
     }
+    $LASTEXITCODE = 0
+    & '.\Tools\RenderingPipeline\Test-RenderingProfiles.ps1'
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Rendering profile focused pipeline test failed.'
+    }
 
     $protocolHarness = Join-Path $repoRoot `
         "Tools\NetworkProtocolHarness\Bin\$Configuration\NetworkProtocolHarness.exe"

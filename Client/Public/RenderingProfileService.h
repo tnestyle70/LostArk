@@ -54,6 +54,7 @@ public:
 #ifdef _DEBUG
 	bool_t Save_Authored(string& strOutStatus);
 	bool_t Publish_Runtime(string& strOutStatus) const;
+	bool_t Save_Publish_Reload(string& strOutStatus);
 #endif
 
 private:

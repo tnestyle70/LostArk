@@ -3762,8 +3762,26 @@ void CMainApp::RenderRenderingWorkbench()
 		m_strRenderingStatus = "Drafts reloaded from the active profile service.";
 	}
 
+	const auto refreshRenderingDrafts = [this]()
+	{
+		m_RenderQualityDraft = m_RenderingProfiles.Get_GlobalQuality();
+		if (const SCENE_RENDERING_PROFILE* pProfile =
+			m_RenderingProfiles.Get_ActiveProfile())
+		{
+			m_SceneRenderingDraft = *pProfile;
+			m_strRenderingDraftProfileId = pProfile->strProfileId;
+		}
+	};
+
 	ImGui::SeparatorText("Authoring Pipeline");
-	if (ImGui::Button("Save Authored"))
+	if (ImGui::Button("Save + Publish + Reload"))
+	{
+		if (m_RenderingProfiles.Save_Publish_Reload(m_strRenderingStatus))
+			refreshRenderingDrafts();
+	}
+	ImGui::TextDisabled(
+		"Primary apply path: Authored -> validated Runtime -> active EXE state.");
+	if (ImGui::Button("Save Authored Only"))
 		m_RenderingProfiles.Save_Authored(m_strRenderingStatus);
 	ImGui::SameLine();
 	if (ImGui::Button("Publish Runtime"))
@@ -3772,19 +3790,11 @@ void CMainApp::RenderRenderingWorkbench()
 	if (ImGui::Button("Reload Runtime"))
 	{
 		if (m_RenderingProfiles.Reload_Runtime(m_strRenderingStatus))
-		{
-			m_RenderQualityDraft = m_RenderingProfiles.Get_GlobalQuality();
-			if (const SCENE_RENDERING_PROFILE* pProfile =
-				m_RenderingProfiles.Get_ActiveProfile())
-			{
-				m_SceneRenderingDraft = *pProfile;
-				m_strRenderingDraftProfileId = pProfile->strProfileId;
-			}
-		}
+			refreshRenderingDrafts();
 	}
 	ImGui::TextWrapped("%s", m_strRenderingStatus.c_str());
 	ImGui::TextDisabled(
-		"Save changes Authored only; Publish validates/promotes Runtime; Reload commits atomically.");
+		"Stage buttons are recovery controls; Save alone never changes the EXE Runtime.");
 	ImGui::End();
 }
 

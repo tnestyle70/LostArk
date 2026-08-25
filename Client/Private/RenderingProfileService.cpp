@@ -5,6 +5,7 @@
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -675,6 +676,81 @@ bool_t CRenderingProfileService::Commit_Resolved(
 }
 
 #ifdef _DEBUG
+static string Describe_Win32Error(const DWORD errorCode)
+{
+	LPSTR pMessage = nullptr;
+	const DWORD length = FormatMessageA(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		nullptr,
+		errorCode,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		reinterpret_cast<LPSTR>(&pMessage),
+		0u,
+		nullptr);
+	string description = "Win32 error " + to_string(errorCode);
+	if (0u != length && nullptr != pMessage)
+	{
+		description += ": ";
+		description.append(pMessage, length);
+	}
+	if (nullptr != pMessage)
+		LocalFree(pMessage);
+	while (!description.empty() && isspace(
+		static_cast<unsigned char>(description.back())))
+	{
+		description.pop_back();
+	}
+	return description;
+}
+
+static string Normalize_ProcessOutput(const string& output)
+{
+	string normalized;
+	normalized.reserve((min)(output.size(), size_t{ 1024u }));
+	bool_t previousWasSpace = false;
+	for (const unsigned char character : output)
+	{
+		const bool_t isSpace = 0 != isspace(character);
+		if (isSpace)
+		{
+			if (!normalized.empty() && !previousWasSpace)
+				normalized.push_back(' ');
+		}
+		else
+		{
+			normalized.push_back(static_cast<char_t>(character));
+		}
+		previousWasSpace = isSpace;
+		if (normalized.size() >= 1024u)
+		{
+			normalized += "...";
+			break;
+		}
+	}
+	while (!normalized.empty() && ' ' == normalized.back())
+		normalized.pop_back();
+	return normalized;
+}
+
+static string Read_ProcessOutput(const filesystem::path& path)
+{
+	ifstream input(path, ios::binary);
+	if (!input)
+		return {};
+	const string output{
+		istreambuf_iterator<char>(input), istreambuf_iterator<char>() };
+	return Normalize_ProcessOutput(output);
+}
+
+static string Append_ProcessOutput(string status, const string& output)
+{
+	if (!output.empty())
+		status += " Publisher output: " + output;
+	return status;
+}
+
 string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 {
 	ostringstream output;
@@ -755,13 +831,6 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 
 bool_t CRenderingProfileService::Save_Authored(string& strOutStatus)
 {
-	CATALOG staged = m_Catalog;
-	if (UINT32_MAX == staged.iRevision)
-	{
-		strOutStatus = "Rendering profile revision cannot be incremented.";
-		return false;
-	}
-	++staged.iRevision;
 	const filesystem::path path = CProjectDataRoot::Resolve(
 		L"Rendering/Authored/RenderingProfiles.json");
 	if (path.empty())
@@ -776,14 +845,63 @@ bool_t CRenderingProfileService::Save_Authored(string& strOutStatus)
 		strOutStatus = "Could not create the authored rendering directory.";
 		return false;
 	}
+
+	filesystem::path lockPath = path;
+	lockPath += L".save.lock";
+	const HANDLE rawSaveLock = CreateFileW(
+		lockPath.c_str(),
+		GENERIC_READ | GENERIC_WRITE,
+		0u,
+		nullptr,
+		CREATE_NEW,
+		FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
+		nullptr);
+	if (INVALID_HANDLE_VALUE == rawSaveLock)
+	{
+		strOutStatus = "Authored save is already in progress or its lock could not be created: " +
+			Describe_Win32Error(GetLastError()) + ".";
+		return false;
+	}
+	const unique_ptr<void, decltype(&CloseHandle)> saveLock(
+		rawSaveLock, &CloseHandle);
+
+	if (filesystem::is_regular_file(path))
+	{
+		CATALOG existing;
+		string existingStatus;
+		if (!Parse_Catalog(path, existing, existingStatus))
+		{
+			strOutStatus = "Save rejected because the existing Authored catalog is invalid; "
+				"the file was preserved. " + existingStatus;
+			return false;
+		}
+		if (existing.iRevision != m_Catalog.iRevision)
+		{
+			strOutStatus = "Save rejected because Authored revision " +
+				to_string(existing.iRevision) + " differs from the loaded revision " +
+				to_string(m_Catalog.iRevision) +
+				". Publish and Reload the existing Authored catalog before saving again.";
+			return false;
+		}
+	}
+
+	CATALOG staged = m_Catalog;
+	if (UINT32_MAX == staged.iRevision)
+	{
+		strOutStatus = "Rendering profile revision cannot be incremented.";
+		return false;
+	}
+	++staged.iRevision;
 	filesystem::path temporary = path;
-	temporary += L".tmp";
+	temporary += L".tmp." + to_wstring(GetCurrentProcessId()) + L"." +
+		to_wstring(GetTickCount64());
+	const string document = Serialize_Catalog(staged);
 	{
 		ofstream output(temporary, ios::binary | ios::trunc);
-		const string document = Serialize_Catalog(staged);
 		output.write(document.data(), static_cast<streamsize>(document.size()));
 		if (!output)
 		{
+			filesystem::remove(temporary, error);
 			strOutStatus = "Could not write the staged authored rendering profile.";
 			return false;
 		}
@@ -794,6 +912,13 @@ bool_t CRenderingProfileService::Save_Authored(string& strOutStatus)
 		filesystem::remove(temporary, error);
 		return false;
 	}
+	if (Serialize_Catalog(roundTrip) != document)
+	{
+		filesystem::remove(temporary, error);
+		strOutStatus = "Staged Authored rendering values changed during JSON round-trip; "
+			"the existing file was preserved.";
+		return false;
+	}
 	if (!MoveFileExW(
 		temporary.c_str(), path.c_str(),
 		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
@@ -802,9 +927,9 @@ bool_t CRenderingProfileService::Save_Authored(string& strOutStatus)
 		strOutStatus = "Could not atomically promote the authored rendering profile.";
 		return false;
 	}
-	m_Catalog.iRevision = staged.iRevision;
+	m_Catalog = move(roundTrip);
 	strOutStatus = "Authored rendering profiles saved at revision " +
-		to_string(staged.iRevision) + ".";
+		to_string(m_Catalog.iRevision) + ".";
 	return true;
 }
 
@@ -822,32 +947,160 @@ bool_t CRenderingProfileService::Publish_Runtime(string& strOutStatus) const
 		script.wstring() + L"\" -Mode Publish";
 	vector<wchar_t> mutableCommand(command.begin(), command.end());
 	mutableCommand.push_back(L'\0');
+	error_code pathError;
+	const filesystem::path temporaryDirectory =
+		filesystem::temp_directory_path(pathError);
+	if (pathError)
+	{
+		strOutStatus = "Could not resolve a temporary directory for publisher output: " +
+			pathError.message() + ".";
+		return false;
+	}
+	const filesystem::path outputPath = temporaryDirectory /
+		(L"LostArk.RenderingPublisher." + to_wstring(GetCurrentProcessId()) +
+			L"." + to_wstring(GetTickCount64()) + L".log");
+	SECURITY_ATTRIBUTES security{};
+	security.nLength = sizeof(security);
+	security.bInheritHandle = TRUE;
+	const HANDLE outputHandle = CreateFileW(
+		outputPath.c_str(),
+		GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_DELETE,
+		&security,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_TEMPORARY,
+		nullptr);
+	if (INVALID_HANDLE_VALUE == outputHandle)
+	{
+		strOutStatus = "Could not create publisher output capture: " +
+			Describe_Win32Error(GetLastError()) + ".";
+		return false;
+	}
+	const HANDLE inputHandle = CreateFileW(
+		L"NUL",
+		GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE,
+		&security,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		nullptr);
+	if (INVALID_HANDLE_VALUE == inputHandle)
+	{
+		const DWORD inputError = GetLastError();
+		CloseHandle(outputHandle);
+		filesystem::remove(outputPath, pathError);
+		strOutStatus = "Could not create publisher input handle: " +
+			Describe_Win32Error(inputError) + ".";
+		return false;
+	}
 	STARTUPINFOW startup{};
 	startup.cb = sizeof(startup);
+	startup.dwFlags = STARTF_USESTDHANDLES;
+	startup.hStdInput = inputHandle;
+	startup.hStdOutput = outputHandle;
+	startup.hStdError = outputHandle;
 	PROCESS_INFORMATION process{};
-	if (!CreateProcessW(nullptr, mutableCommand.data(), nullptr, nullptr, FALSE,
-		CREATE_NO_WINDOW, nullptr, projectRoot.c_str(), &startup, &process))
+	const BOOL created = CreateProcessW(
+		nullptr, mutableCommand.data(), nullptr, nullptr, TRUE,
+		CREATE_NO_WINDOW, nullptr, projectRoot.c_str(), &startup, &process);
+	const DWORD createError = created ? ERROR_SUCCESS : GetLastError();
+	CloseHandle(inputHandle);
+	CloseHandle(outputHandle);
+	if (!created)
 	{
-		strOutStatus = "Could not start the rendering profile publisher.";
+		filesystem::remove(outputPath, pathError);
+		strOutStatus = "Could not start the rendering profile publisher: " +
+			Describe_Win32Error(createError) + ".";
 		return false;
 	}
 	CloseHandle(process.hThread);
 	const DWORD wait = WaitForSingleObject(process.hProcess, 120000u);
 	if (WAIT_TIMEOUT == wait)
 	{
-		TerminateProcess(process.hProcess, 124u);
-		WaitForSingleObject(process.hProcess, 5000u);
+		const BOOL terminated = TerminateProcess(process.hProcess, 124u);
+		const DWORD terminateError = terminated ? ERROR_SUCCESS : GetLastError();
+		const DWORD terminateWait = terminated ?
+			WaitForSingleObject(process.hProcess, 5000u) : WAIT_FAILED;
 		CloseHandle(process.hProcess);
-		strOutStatus = "Rendering publisher timed out and its owned process was terminated.";
+		const string output = Read_ProcessOutput(outputPath);
+		filesystem::remove(outputPath, pathError);
+		if (!terminated)
+		{
+			strOutStatus = Append_ProcessOutput(
+				"Rendering publisher timed out and its owned process could not be terminated: " +
+				Describe_Win32Error(terminateError) + ".", output);
+		}
+		else if (WAIT_OBJECT_0 != terminateWait)
+		{
+			strOutStatus = Append_ProcessOutput(
+				"Rendering publisher timed out; termination was requested but process exit "
+				"was not confirmed.", output);
+		}
+		else
+		{
+			strOutStatus = Append_ProcessOutput(
+				"Rendering publisher timed out and its owned process was terminated.", output);
+		}
+		return false;
+	}
+	if (WAIT_FAILED == wait)
+	{
+		const DWORD waitError = GetLastError();
+		CloseHandle(process.hProcess);
+		const string output = Read_ProcessOutput(outputPath);
+		filesystem::remove(outputPath, pathError);
+		strOutStatus = Append_ProcessOutput(
+			"Could not wait for the rendering publisher: " +
+			Describe_Win32Error(waitError) + ".", output);
 		return false;
 	}
 	DWORD exitCode = 1u;
-	const bool_t succeeded = WAIT_OBJECT_0 == wait &&
-		GetExitCodeProcess(process.hProcess, &exitCode) && 0u == exitCode;
+	const BOOL readExitCode = GetExitCodeProcess(process.hProcess, &exitCode);
+	const DWORD exitCodeError = readExitCode ? ERROR_SUCCESS : GetLastError();
 	CloseHandle(process.hProcess);
-	strOutStatus = succeeded ? "Rendering runtime profile published." :
-		"Rendering publisher failed with exit code " + to_string(exitCode) + ".";
-	return succeeded;
+	const string output = Read_ProcessOutput(outputPath);
+	filesystem::remove(outputPath, pathError);
+	if (!readExitCode)
+	{
+		strOutStatus = Append_ProcessOutput(
+			"Could not read the rendering publisher exit code: " +
+			Describe_Win32Error(exitCodeError) + ".", output);
+		return false;
+	}
+	if (0u != exitCode)
+	{
+		strOutStatus = Append_ProcessOutput(
+			"Rendering publisher failed with exit code " +
+			to_string(exitCode) + ".", output);
+		return false;
+	}
+	strOutStatus = "Rendering runtime profile published.";
+	return true;
+}
+
+bool_t CRenderingProfileService::Save_Publish_Reload(string& strOutStatus)
+{
+	string stageStatus;
+	if (!Save_Authored(stageStatus))
+	{
+		strOutStatus = "Save Authored failed; Authored and Runtime files were preserved. " +
+			stageStatus;
+		return false;
+	}
+	if (!Publish_Runtime(stageStatus))
+	{
+		strOutStatus = "Authored was saved, but Runtime publish failed; the previous Runtime "
+			"and live EXE state were preserved. " + stageStatus;
+		return false;
+	}
+	if (!Reload_Runtime(stageStatus))
+	{
+		strOutStatus = "Authored and Runtime files were updated, but live EXE reload failed; "
+			"the previous live state was preserved. " + stageStatus;
+		return false;
+	}
+	strOutStatus = "Authored saved, Runtime published, and the active EXE state reloaded.";
+	return true;
 }
 #endif
 

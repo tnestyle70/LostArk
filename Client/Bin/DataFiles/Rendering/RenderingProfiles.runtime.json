@@ -1,315 +1,315 @@
 {
-    "schema":  "lostark.rendering-profiles",
-    "formatVersion":  1,
-    "revision":  9,
-    "globalQuality":  {
-                          "ssaoEnabled":  true,
-                          "ssaoRadius":  0.0399999991,
-                          "ssaoBias":  0,
-                          "ssaoIntensity":  0.689999998,
-                          "ssaoPower":  2.0999999,
-                          "ssaoDistanceFade":  132.5,
-                          "bloomEnabled":  true,
-                          "bloomThreshold":  2.74000001,
-                          "bloomSoftKnee":  1,
-                          "bloomIntensity":  2.6099999,
-                          "bloomScatter":  2.75999999,
-                          "exposure":  0.730000019,
-                          "whitePoint":  1,
-                          "gamma":  1.90499997,
-                          "fxaaEnabled":  true,
-                          "fxaaSubpixel":  0,
-                          "fxaaEdgeThreshold":  0.0312,
-                          "fxaaEdgeThresholdMin":  0.0183000006
-                      },
-    "profiles":  [
-                     {
-                         "profileId":  "scene.bern.neutral-day.v1",
-                         "exposureMultiplier":  1,
-                         "bloomIntensityMultiplier":  1,
-                         "light":  {
-                                       "type":  "directional",
-                                       "direction":  [
-                                                         0.5,
-                                                         -1,
-                                                         0.5,
-                                                         0
-                                                     ],
-                                       "diffuse":  [
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       1
-                                                   ],
-                                       "ambient":  [
-                                                       0.25,
-                                                       0.25,
-                                                       0.25,
-                                                       1
-                                                   ],
-                                       "specular":  [
-                                                        0.5,
-                                                        0.5,
-                                                        0.5,
-                                                        1
-                                                    ]
-                                   },
-                         "shadow":  {
-                                        "enabled":  false,
-                                        "focus":  [
-                                                      0,
-                                                      0,
-                                                      0
-                                                  ],
-                                        "distance":  100,
-                                        "orthographicWidth":  120,
-                                        "orthographicHeight":  120,
-                                        "near":  0.5,
-                                        "far":  250,
-                                        "depthBias":  0.00150000001,
-                                        "normalBias":  0.0299999993,
-                                        "strength":  0.699999988
-                                    }
-                     },
-                     {
-                         "profileId":  "scene.character-select.warm-high-key.v1",
-                         "exposureMultiplier":  0.870000005,
-                         "bloomIntensityMultiplier":  0.85,
-                         "light":  {
-                                       "type":  "directional",
-                                       "direction":  [
-                                                         0.5,
-                                                         -1,
-                                                         0.5,
-                                                         0
-                                                     ],
-                                       "diffuse":  [
-                                                       0.714999974,
-                                                       0.779999971,
-                                                       0.980000019,
-                                                       1
-                                                   ],
-                                       "ambient":  [
-                                                       0.280000001,
-                                                       0.270000011,
-                                                       0.25999999,
-                                                       1
-                                                   ],
-                                       "specular":  [
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        1
-                                                    ]
-                                   },
-                         "shadow":  {
-                                        "enabled":  true,
-                                        "focus":  [
-                                                      -772.017029,
-                                                      -141.5,
-                                                      197.537994
-                                                  ],
-                                        "distance":  27.1000004,
-                                        "orthographicWidth":  24,
-                                        "orthographicHeight":  24,
-                                        "near":  0.100000001,
-                                        "far":  80,
-                                        "depthBias":  0.00150000001,
-                                        "normalBias":  0.0250000004,
-                                        "strength":  0.75
-                                    }
-                     },
-                     {
-                         "profileId":  "scene.development.neutral.v1",
-                         "exposureMultiplier":  1,
-                         "bloomIntensityMultiplier":  1,
-                         "light":  {
-                                       "type":  "directional",
-                                       "direction":  [
-                                                         0.5,
-                                                         -1,
-                                                         0.5,
-                                                         0
-                                                     ],
-                                       "diffuse":  [
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       1
-                                                   ],
-                                       "ambient":  [
-                                                       0.25,
-                                                       0.25,
-                                                       0.25,
-                                                       1
-                                                   ],
-                                       "specular":  [
-                                                        0.5,
-                                                        0.5,
-                                                        0.5,
-                                                        1
-                                                    ]
-                                   },
-                         "shadow":  {
-                                        "enabled":  false,
-                                        "focus":  [
-                                                      0,
-                                                      0,
-                                                      0
-                                                  ],
-                                        "distance":  80,
-                                        "orthographicWidth":  64,
-                                        "orthographicHeight":  64,
-                                        "near":  0.100000001,
-                                        "far":  180,
-                                        "depthBias":  0.00150000001,
-                                        "normalBias":  0.0250000004,
-                                        "strength":  0.699999988
-                                    }
-                     },
-                     {
-                         "profileId":  "scene.loading.neutral.v1",
-                         "exposureMultiplier":  1,
-                         "bloomIntensityMultiplier":  1,
-                         "light":  {
-                                       "type":  "directional",
-                                       "direction":  [
-                                                         0.5,
-                                                         -1,
-                                                         0.5,
-                                                         0
-                                                     ],
-                                       "diffuse":  [
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       0
-                                                   ],
-                                       "ambient":  [
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       0
-                                                   ],
-                                       "specular":  [
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0
-                                                    ]
-                                   },
-                         "shadow":  {
-                                        "enabled":  false,
-                                        "focus":  [
-                                                      0,
-                                                      0,
-                                                      0
-                                                  ],
-                                        "distance":  40,
-                                        "orthographicWidth":  40,
-                                        "orthographicHeight":  40,
-                                        "near":  0.100000001,
-                                        "far":  150,
-                                        "depthBias":  0.00150000001,
-                                        "normalBias":  0.0199999996,
-                                        "strength":  0.699999988
-                                    }
-                     },
-                     {
-                         "profileId":  "scene.lobby.neutral.v1",
-                         "exposureMultiplier":  1,
-                         "bloomIntensityMultiplier":  1,
-                         "light":  {
-                                       "type":  "directional",
-                                       "direction":  [
-                                                         0.5,
-                                                         -1,
-                                                         0.5,
-                                                         0
-                                                     ],
-                                       "diffuse":  [
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       0
-                                                   ],
-                                       "ambient":  [
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       0
-                                                   ],
-                                       "specular":  [
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0
-                                                    ]
-                                   },
-                         "shadow":  {
-                                        "enabled":  false,
-                                        "focus":  [
-                                                      0,
-                                                      0,
-                                                      0
-                                                  ],
-                                        "distance":  40,
-                                        "orthographicWidth":  40,
-                                        "orthographicHeight":  40,
-                                        "near":  0.100000001,
-                                        "far":  150,
-                                        "depthBias":  0.00150000001,
-                                        "normalBias":  0.0199999996,
-                                        "strength":  0.699999988
-                                    }
-                     },
-                     {
-                         "profileId":  "scene.valtan.cool-low-key.v1",
-                         "exposureMultiplier":  1.55,
-                         "bloomIntensityMultiplier":  0.85,
-                         "light":  {
-                                       "type":  "directional",
-                                       "direction":  [
-                                                         0.35,
-                                                         -1,
-                                                         0.25,
-                                                         0
-                                                     ],
-                                       "diffuse":  [
-                                                       0.24,
-                                                       0.28,
-                                                       0.34,
-                                                       1
-                                                   ],
-                                       "ambient":  [
-                                                       0.16,
-                                                       0.21,
-                                                       0.28,
-                                                       1
-                                                   ],
-                                       "specular":  [
-                                                        0.12,
-                                                        0.15,
-                                                        0.2,
-                                                        1
-                                                    ]
-                                   },
-                         "shadow":  {
-                                        "enabled":  true,
-                                        "focus":  [
-                                                      156,
-                                                      24,
-                                                      -122
-                                                  ],
-                                        "distance":  220,
-                                        "orthographicWidth":  260,
-                                        "orthographicHeight":  260,
-                                        "near":  0.5,
-                                        "far":  520,
-                                        "depthBias":  0.00260000001,
-                                        "normalBias":  0.0340000018,
-                                        "strength":  0.86
-                                    }
-                     }
-                 ]
+  "schema": "lostark.rendering-profiles",
+  "formatVersion": 1,
+  "revision": 10,
+  "globalQuality": {
+    "ssaoEnabled": true,
+    "ssaoRadius": 0.0399999991,
+    "ssaoBias": 0,
+    "ssaoIntensity": 0.689999998,
+    "ssaoPower": 2.0999999,
+    "ssaoDistanceFade": 132.5,
+    "bloomEnabled": true,
+    "bloomThreshold": 2.74000001,
+    "bloomSoftKnee": 1,
+    "bloomIntensity": 2.6099999,
+    "bloomScatter": 1,
+    "exposure": 0.730000019,
+    "whitePoint": 1,
+    "gamma": 1.90499997,
+    "fxaaEnabled": true,
+    "fxaaSubpixel": 0,
+    "fxaaEdgeThreshold": 0.0311999992,
+    "fxaaEdgeThresholdMin": 0.0183000006
+  },
+  "profiles": [
+    {
+      "profileId": "scene.bern.neutral-day.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [
+          0.5,
+          -1,
+          0.5,
+          0
+        ],
+        "diffuse": [
+          0.800000012,
+          0.800000012,
+          0.800000012,
+          1
+        ],
+        "ambient": [
+          0.25,
+          0.25,
+          0.25,
+          1
+        ],
+        "specular": [
+          0.5,
+          0.5,
+          0.5,
+          1
+        ]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "distance": 100,
+        "orthographicWidth": 120,
+        "orthographicHeight": 120,
+        "near": 0.5,
+        "far": 250,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0299999993,
+        "strength": 0.699999988
+      }
+    },
+    {
+      "profileId": "scene.character-select.warm-high-key.v1",
+      "exposureMultiplier": 0.870000005,
+      "bloomIntensityMultiplier": 0.850000024,
+      "light": {
+        "type": "directional",
+        "direction": [
+          0.5,
+          -1,
+          0.5,
+          0
+        ],
+        "diffuse": [
+          0.714999974,
+          0.779999971,
+          0.980000019,
+          1
+        ],
+        "ambient": [
+          0.280000001,
+          0.270000011,
+          0.25999999,
+          1
+        ],
+        "specular": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "shadow": {
+        "enabled": true,
+        "focus": [
+          -772.017029,
+          -141.5,
+          197.537994
+        ],
+        "distance": 27.1000004,
+        "orthographicWidth": 24,
+        "orthographicHeight": 24,
+        "near": 0.100000001,
+        "far": 80,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.75
+      }
+    },
+    {
+      "profileId": "scene.development.neutral.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [
+          0.5,
+          -1,
+          0.5,
+          0
+        ],
+        "diffuse": [
+          0.800000012,
+          0.800000012,
+          0.800000012,
+          1
+        ],
+        "ambient": [
+          0.25,
+          0.25,
+          0.25,
+          1
+        ],
+        "specular": [
+          0.5,
+          0.5,
+          0.5,
+          1
+        ]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "distance": 80,
+        "orthographicWidth": 64,
+        "orthographicHeight": 64,
+        "near": 0.100000001,
+        "far": 180,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.699999988
+      }
+    },
+    {
+      "profileId": "scene.loading.neutral.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [
+          0.5,
+          -1,
+          0.5,
+          0
+        ],
+        "diffuse": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ambient": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "specular": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "distance": 40,
+        "orthographicWidth": 40,
+        "orthographicHeight": 40,
+        "near": 0.100000001,
+        "far": 150,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0199999996,
+        "strength": 0.699999988
+      }
+    },
+    {
+      "profileId": "scene.lobby.neutral.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [
+          0.5,
+          -1,
+          0.5,
+          0
+        ],
+        "diffuse": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ambient": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "specular": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "distance": 40,
+        "orthographicWidth": 40,
+        "orthographicHeight": 40,
+        "near": 0.100000001,
+        "far": 150,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0199999996,
+        "strength": 0.699999988
+      }
+    },
+    {
+      "profileId": "scene.valtan.cool-low-key.v1",
+      "exposureMultiplier": 1.54999995,
+      "bloomIntensityMultiplier": 0.850000024,
+      "light": {
+        "type": "directional",
+        "direction": [
+          0.349999994,
+          -1,
+          0.25,
+          0
+        ],
+        "diffuse": [
+          0.239999995,
+          0.280000001,
+          0.340000004,
+          1
+        ],
+        "ambient": [
+          0.159999996,
+          0.209999993,
+          0.280000001,
+          1
+        ],
+        "specular": [
+          0.119999997,
+          0.150000006,
+          0.200000003,
+          1
+        ]
+      },
+      "shadow": {
+        "enabled": true,
+        "focus": [
+          156,
+          24,
+          -122
+        ],
+        "distance": 220,
+        "orthographicWidth": 260,
+        "orthographicHeight": 260,
+        "near": 0.5,
+        "far": 520,
+        "depthBias": 0.00260000001,
+        "normalBias": 0.0340000018,
+        "strength": 0.860000014
+      }
+    }
+  ]
 }
