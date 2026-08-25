@@ -1006,6 +1006,16 @@
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.floor-wipe-130",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.high-jump.center-landing.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.high-jump.center-landing.active.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.pattern.420633.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.pattern.420633.active.effect.json"

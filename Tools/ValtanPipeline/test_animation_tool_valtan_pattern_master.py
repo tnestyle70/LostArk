@@ -11,6 +11,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CPP_PATH = REPOSITORY_ROOT / "Client/Private/Animation_Tool.cpp"
 HEADER_PATH = REPOSITORY_ROOT / "Client/Public/Animation_Tool.h"
 MASTER_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.pattern.json"
+PRESENTATION_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.presentation.json"
 
 EXPECTED_PATTERN_ORDER = (
     "VALTAN_WHIRLWIND",
@@ -35,6 +36,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
         cls.cpp = CPP_PATH.read_text(encoding="utf-8")
         cls.header = HEADER_PATH.read_text(encoding="utf-8")
         cls.master = json.loads(MASTER_PATH.read_text(encoding="utf-8"))
+        cls.presentation = json.loads(PRESENTATION_PATH.read_text(encoding="utf-8"))
 
     def test_master_contains_the_seven_animation_tool_patterns(self) -> None:
         self.assertEqual("lostark.valtan-pattern-master", self.master["schema"])
@@ -53,9 +55,48 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             "bAuthoringMasterManaged",
             "expected exactly 7 managed patterns",
             '"Valtan Pattern Master (Authoritative)"',
-            "Data/Valtan/Valtan.pattern.json",
+            "Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json",
         ):
             self.assertIn(token, combined)
+
+    def test_recovered_floor_wipe_and_arena_break_sequences_are_exact(self) -> None:
+        patterns = {
+            row["patternId"]: row
+            for row in self.presentation["patterns"]
+        }
+        floor = patterns["VALTAN_FLOOR_WIPE_130"]
+        self.assertEqual(
+            [
+                "mesh_att_battle_5_02_loop",
+                "mesh_att_battle_5_02_end",
+                "mesh_att_battle_5_02_loop",
+                "mesh_att_battle_5_02_end",
+                "mesh_att_battle_15_04",
+            ],
+            [
+                occurrence["clip"]
+                for stage in floor["stages"]
+                for occurrence in stage["animation"]["occurrences"]
+            ],
+        )
+        arena_break = patterns["VALTAN_ARENA_BREAK_109"]
+        wide_reveal = next(
+            stage
+            for stage in arena_break["stages"]
+            if stage["stageId"] == "WIDE_REVEAL"
+        )
+        self.assertEqual("ROAR_SEQUENCE", wide_reveal["sequenceRole"])
+        self.assertEqual(
+            [
+                "mesh_att_battle_12_03",
+                "mesh_evt1_att_battle_5_01_start",
+                "mesh_evt1_att_battle_5_01_loop",
+            ],
+            [
+                occurrence["clip"]
+                for occurrence in wide_reveal["animation"]["occurrences"]
+            ],
+        )
 
     def test_complete_timeline_uses_server_wall_and_source_clocks(self) -> None:
         build = function_slice(

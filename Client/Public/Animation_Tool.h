@@ -23,9 +23,10 @@ class CCharacter;
 class CAnimation_Tool final
 {
 private:
-	/* One exact occurrence on the admitted Valtan.pattern.json wall-clock.
-	   Source time remains independent: sourceStart/playMs/playRate select the
-	   pose, while authoringWallMs decides when the Server stage advances. */
+	/* One exact occurrence on the admitted split Valtan gameplay/presentation
+	   wall-clock. Source time remains independent: sourceStart/playMs/playRate
+	   select the pose, while authoringWallMs decides when the Server stage
+	   advances. */
 	struct VALTAN_PATTERN_MASTER_PLAY_ITEM final
 	{
 		std::string strPatternId;

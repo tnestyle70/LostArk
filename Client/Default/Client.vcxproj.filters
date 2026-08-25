@@ -3453,6 +3453,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.recovery.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.first-smash.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3535,6 +3538,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.airborne.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.center-landing.active.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.land.effect.json">

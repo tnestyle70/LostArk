@@ -685,7 +685,9 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             self.master, self.gameplay, self.encounter, self.bindings, reordered
         ))
 
-    def test_v4_action_validator_admits_authored_volley_and_phase_transition(self) -> None:
+    def test_v4_action_validator_admits_authored_combat_objects_and_phase_transition(
+        self,
+    ) -> None:
         actions = [
             action
             for pattern in self.encounter["patterns"]
@@ -726,8 +728,13 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             'kind == "SET_GAMEPLAY_PHASE"',
             'targetingPolicy != "PER_ALIVE_PLAYER"',
             'targetId == "boss.phase.gameplay" && 2u == value',
+            'else if ("SPAWN_COMBAT_OBJECT" == strKind)',
+            '"split gameplay combat-object spawn is invalid"',
         ):
-            self.assertIn(marker, self.encounter_reference_cpp)
+            self.assertIn(
+                marker,
+                self.encounter_reference_cpp + self.cpp,
+            )
 
     def test_gameplay_and_branch_mutations_fail_closed(self) -> None:
         mutations = (
