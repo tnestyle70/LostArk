@@ -414,6 +414,9 @@ LostArk::Server::CGameRoom::CGameRoom(
 	const LostArk::Shared::WORLD_ID worldId)
 	: m_eWorldId(worldId)
 {
+	m_TickCommands.reserve(MAX_COMMANDS_DRAINED_PER_TICK);
+	m_PerformanceSamples.resize(PERFORMANCE_SAMPLE_CAPACITY);
+	m_PerformancePercentileScratch.resize(PERFORMANCE_SAMPLE_CAPACITY);
 	if (!LostArk::Shared::Is_Known_World_Id(worldId))
 	{
 		m_strStatus = "Unknown room world ID";
@@ -608,6 +611,52 @@ LostArk::Server::CGameRoom::Get_PerformanceMetrics() const
 	return m_PerformanceMetrics;
 }
 
+void LostArk::Server::CGameRoom::Finalize_DisconnectedSession(
+	const SESSION_ID sessionId,
+	const CLIENT_SESSION_OUTBOUND_METRICS& metrics)
+{
+	if (INVALID_SESSION_ID == sessionId)
+		return;
+
+	/* REGISTER_SESSION is the only command that can own a session. Move that
+	owner out before erasing stale commands so a defensive last-owner destructor
+	(and its close callback) can never run while m_CommandMutex is held. */
+	std::vector<std::shared_ptr<CClientSession>> deferredSessionOwners;
+	{
+		std::scoped_lock lock{ m_CommandMutex };
+		if (m_FinalizedOutboundMetricSessionIds.insert(sessionId).second)
+		{
+			m_RetiredSessionOutboundMetrics.iQueuedFrameHighWatermark = (std::max)(
+				m_RetiredSessionOutboundMetrics.iQueuedFrameHighWatermark,
+				metrics.iQueuedFrameHighWatermark);
+			m_RetiredSessionOutboundMetrics.iSnapshotCoalescedFrameCount +=
+				metrics.iSnapshotCoalescedFrameCount;
+			m_RetiredSessionOutboundMetrics.iSnapshotDroppedFrameCount +=
+				metrics.iSnapshotDroppedFrameCount;
+			m_RetiredSessionOutboundMetrics.iReliableRejectedFrameCount +=
+				metrics.iReliableRejectedFrameCount;
+			m_RetiredSessionOutboundMetrics.iSendFailureCount +=
+				metrics.iSendFailureCount;
+			m_RetiredSessionOutboundMetrics.iMaximumFrameSendMicroseconds =
+				(std::max)(
+					m_RetiredSessionOutboundMetrics.iMaximumFrameSendMicroseconds,
+					metrics.iMaximumFrameSendMicroseconds);
+		}
+
+		m_PendingDisconnectedSessionIds.insert(sessionId);
+		for (ROOM_COMMAND& command : m_InboundCommands)
+		{
+			if (command.iSessionId == sessionId && nullptr != command.pSession)
+				deferredSessionOwners.push_back(std::move(command.pSession));
+		}
+		std::erase_if(m_InboundCommands,
+			[sessionId](const ROOM_COMMAND& command)
+			{
+				return command.iSessionId == sessionId;
+			});
+	}
+}
+
 bool LostArk::Server::CGameRoom::Try_SealPrivateArenaForRetirement()
 {
 	using LostArk::Shared::WORLD_ID;
@@ -620,6 +669,7 @@ bool LostArk::Server::CGameRoom::Try_SealPrivateArenaForRetirement()
 	if (!m_acceptsCommands)
 		return true;
 	if (!m_InboundCommands.empty() ||
+		!m_PendingDisconnectedSessionIds.empty() ||
 		!m_PendingWorldTransfers.empty() ||
 		!m_Sessions.empty() ||
 		!m_Players.empty() ||
@@ -659,22 +709,194 @@ bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
 
 void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 {
+	/* Disconnect cleanup is not part of bounded gameplay ingress. Keep the ID
+	in the set until Leave starts so duplicate close notifications cannot queue
+	the same cleanup while the room thread is between selection and execution.
+	Cleanup also has to survive a room-level gameplay failure so a private arena
+	can still release its players and retire. */
+	for (;;)
+	{
+		SESSION_ID disconnectedSessionId = INVALID_SESSION_ID;
+		{
+			std::scoped_lock lock{ m_CommandMutex };
+			if (m_PendingDisconnectedSessionIds.empty())
+				break;
+			disconnectedSessionId =
+				*m_PendingDisconnectedSessionIds.begin();
+		}
+		Leave(disconnectedSessionId,
+			LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED);
+	}
+
 	if (!m_isReady)
 		return;
 	const auto tickStart = std::chrono::steady_clock::now();
-	const auto recordTickDuration = [this, tickStart]()
+	const std::uint64_t cadenceMicroseconds =
+		m_PreviousTickStart == std::chrono::steady_clock::time_point{} ? 0u :
+		To_Microseconds(tickStart - m_PreviousTickStart);
+	m_PreviousTickStart = tickStart;
+	auto commandDrainEnd = tickStart;
+	auto commandApplyEnd = tickStart;
+	auto simulationEnd = tickStart;
+	const auto recordTickDuration = [this, tickStart, cadenceMicroseconds,
+		&commandDrainEnd, &commandApplyEnd, &simulationEnd]()
 		{
-			const std::uint64_t elapsedMicroseconds = To_Microseconds(
-				std::chrono::steady_clock::now() - tickStart);
-			std::scoped_lock lock{ m_CommandMutex };
-			++m_PerformanceMetrics.iTickCount;
-			m_PerformanceMetrics.iLastTickMicroseconds = elapsedMicroseconds;
-			m_PerformanceMetrics.iMaximumTickMicroseconds = (std::max)(
-				m_PerformanceMetrics.iMaximumTickMicroseconds,
-				elapsedMicroseconds);
+			const auto tickEnd = std::chrono::steady_clock::now();
+			const std::uint64_t elapsedMicroseconds =
+				To_Microseconds(tickEnd - tickStart);
+			const std::uint64_t commandDrainMicroseconds =
+				To_Microseconds(commandDrainEnd - tickStart);
+			const std::uint64_t commandApplyMicroseconds =
+				To_Microseconds(commandApplyEnd - commandDrainEnd);
+			const std::uint64_t simulationMicroseconds =
+				To_Microseconds(simulationEnd - commandApplyEnd);
+			const std::uint64_t snapshotWorkMicroseconds =
+				To_Microseconds(tickEnd - simulationEnd);
+			if (4u == m_Players.size())
+				++m_iFourPlayerContinuousTicks;
+			else
+				m_iFourPlayerContinuousTicks = 0u;
+
+			std::uint64_t tickCount = 0u;
+			{
+				std::scoped_lock lock{ m_CommandMutex };
+				tickCount = ++m_PerformanceMetrics.iTickCount;
+				m_PerformanceMetrics.iLastTickMicroseconds = elapsedMicroseconds;
+				m_PerformanceMetrics.iMaximumTickMicroseconds = (std::max)(
+					m_PerformanceMetrics.iMaximumTickMicroseconds,
+					elapsedMicroseconds);
+				m_PerformanceMetrics.iLastCadenceMicroseconds =
+					cadenceMicroseconds;
+				m_PerformanceMetrics.iMaximumCadenceMicroseconds = (std::max)(
+					m_PerformanceMetrics.iMaximumCadenceMicroseconds,
+					cadenceMicroseconds);
+				if (cadenceMicroseconds > 50000u)
+					++m_PerformanceMetrics.iCadenceOver50MillisecondCount;
+				m_PerformanceMetrics.iFourPlayerContinuousTicks =
+					m_iFourPlayerContinuousTicks;
+				m_PerformanceMetrics.iLastCommandDrainMicroseconds =
+					commandDrainMicroseconds;
+				m_PerformanceMetrics.iMaximumCommandDrainMicroseconds = (std::max)(
+					m_PerformanceMetrics.iMaximumCommandDrainMicroseconds,
+					commandDrainMicroseconds);
+				m_PerformanceMetrics.iLastCommandApplyMicroseconds =
+					commandApplyMicroseconds;
+				m_PerformanceMetrics.iMaximumCommandApplyMicroseconds = (std::max)(
+					m_PerformanceMetrics.iMaximumCommandApplyMicroseconds,
+					commandApplyMicroseconds);
+				m_PerformanceMetrics.iLastSimulationMicroseconds =
+					simulationMicroseconds;
+				m_PerformanceMetrics.iMaximumSimulationMicroseconds = (std::max)(
+					m_PerformanceMetrics.iMaximumSimulationMicroseconds,
+					simulationMicroseconds);
+				m_PerformanceMetrics.iLastSnapshotWorkMicroseconds =
+					snapshotWorkMicroseconds;
+				m_PerformanceMetrics.iMaximumSnapshotWorkMicroseconds = (std::max)(
+					m_PerformanceMetrics.iMaximumSnapshotWorkMicroseconds,
+					snapshotWorkMicroseconds);
+			}
+
+			ROOM_PERFORMANCE_SAMPLE& sample =
+				m_PerformanceSamples[m_iPerformanceSampleWriteIndex];
+			sample.iTickMicroseconds = elapsedMicroseconds;
+			sample.iCadenceMicroseconds = cadenceMicroseconds;
+			sample.iCommandMicroseconds =
+				commandDrainMicroseconds + commandApplyMicroseconds;
+			sample.iSimulationMicroseconds = simulationMicroseconds;
+			sample.iSnapshotWorkMicroseconds = snapshotWorkMicroseconds;
+			m_iPerformanceSampleWriteIndex =
+				(m_iPerformanceSampleWriteIndex + 1u) %
+				PERFORMANCE_SAMPLE_CAPACITY;
+			m_iPerformanceSampleCount = (std::min)(
+				m_iPerformanceSampleCount + 1u,
+				PERFORMANCE_SAMPLE_CAPACITY);
+			std::uint64_t cadenceP95Microseconds = 0u;
+			std::uint64_t cadenceP99Microseconds = 0u;
+			std::uint64_t tickP50Microseconds = 0u;
+			std::uint64_t tickP95Microseconds = 0u;
+			std::uint64_t tickP99Microseconds = 0u;
+			std::uint64_t commandP95Microseconds = 0u;
+			std::uint64_t simulationP95Microseconds = 0u;
+			std::uint64_t simulationP99Microseconds = 0u;
+			std::uint64_t snapshotP95Microseconds = 0u;
+			std::uint64_t snapshotP99Microseconds = 0u;
+			const bool isFourPlayerAdmissionSample =
+				m_iFourPlayerContinuousTicks >= 1800u &&
+				0u == (m_iFourPlayerContinuousTicks % 1800u);
+			const bool publishPercentiles = 0u != m_iPerformanceSampleCount &&
+				(0u == (tickCount % 300u) || isFourPlayerAdmissionSample);
+			if (publishPercentiles)
+			{
+				auto& scratch = m_PerformancePercentileScratch;
+				const auto percentile = [this, &scratch](
+					auto selectValue, const std::size_t percentileValue)
+				{
+					for (std::size_t index = 0u;
+						index < m_iPerformanceSampleCount; ++index)
+					{
+						scratch[index] =
+							selectValue(m_PerformanceSamples[index]);
+					}
+					const std::size_t rank =
+						((m_iPerformanceSampleCount - 1u) * percentileValue) /
+						100u;
+					std::nth_element(
+						scratch.begin(), scratch.begin() + rank,
+						scratch.begin() + m_iPerformanceSampleCount);
+					return scratch[rank];
+				};
+				const auto tickValue = [](const ROOM_PERFORMANCE_SAMPLE& value)
+					{ return value.iTickMicroseconds; };
+				const auto cadenceValue = [](const ROOM_PERFORMANCE_SAMPLE& value)
+					{ return value.iCadenceMicroseconds; };
+				const auto commandValue = [](const ROOM_PERFORMANCE_SAMPLE& value)
+					{ return value.iCommandMicroseconds; };
+				const auto simulationValue = [](const ROOM_PERFORMANCE_SAMPLE& value)
+					{ return value.iSimulationMicroseconds; };
+				const auto snapshotValue = [](const ROOM_PERFORMANCE_SAMPLE& value)
+					{ return value.iSnapshotWorkMicroseconds; };
+				cadenceP95Microseconds = percentile(cadenceValue, 95u);
+				cadenceP99Microseconds = percentile(cadenceValue, 99u);
+				tickP50Microseconds = percentile(tickValue, 50u);
+				tickP95Microseconds = percentile(tickValue, 95u);
+				tickP99Microseconds = percentile(tickValue, 99u);
+				commandP95Microseconds = percentile(commandValue, 95u);
+				simulationP95Microseconds = percentile(simulationValue, 95u);
+				simulationP99Microseconds = percentile(simulationValue, 99u);
+				snapshotP95Microseconds = percentile(snapshotValue, 95u);
+				snapshotP99Microseconds = percentile(snapshotValue, 99u);
+			}
+			{
+				std::scoped_lock lock{ m_CommandMutex };
+				m_PerformanceMetrics.iRollingSampleCount =
+					m_iPerformanceSampleCount;
+				if (publishPercentiles)
+				{
+					m_PerformanceMetrics.iRollingCadenceP95Microseconds =
+						cadenceP95Microseconds;
+					m_PerformanceMetrics.iRollingCadenceP99Microseconds =
+						cadenceP99Microseconds;
+					m_PerformanceMetrics.iRollingTickP50Microseconds =
+						tickP50Microseconds;
+					m_PerformanceMetrics.iRollingTickP95Microseconds =
+						tickP95Microseconds;
+					m_PerformanceMetrics.iRollingTickP99Microseconds =
+						tickP99Microseconds;
+					m_PerformanceMetrics.iRollingCommandP95Microseconds =
+						commandP95Microseconds;
+					m_PerformanceMetrics.iRollingSimulationP95Microseconds =
+						simulationP95Microseconds;
+					m_PerformanceMetrics.iRollingSimulationP99Microseconds =
+						simulationP99Microseconds;
+					m_PerformanceMetrics.iRollingSnapshotWorkP95Microseconds =
+						snapshotP95Microseconds;
+					m_PerformanceMetrics.iRollingSnapshotWorkP99Microseconds =
+						snapshotP99Microseconds;
+				}
+			}
 		};
 
-	std::deque<ROOM_COMMAND> commands;
+	m_TickCommands.clear();
 	{
 		std::scoped_lock lock{ m_CommandMutex };
 		const std::size_t ingressDepth = m_InboundCommands.size();
@@ -682,7 +904,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			ingressDepth, MAX_COMMANDS_DRAINED_PER_TICK);
 		for (std::size_t index = 0u; index < drainCount; ++index)
 		{
-			commands.push_back(std::move(m_InboundCommands.front()));
+			m_TickCommands.push_back(std::move(m_InboundCommands.front()));
 			m_InboundCommands.pop_front();
 		}
 		m_PerformanceMetrics.iLastIngressDepth = ingressDepth;
@@ -692,8 +914,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		if (!m_InboundCommands.empty())
 			++m_PerformanceMetrics.iDrainLimitedTickCount;
 	}
+	commandDrainEnd = std::chrono::steady_clock::now();
 
-	for (ROOM_COMMAND& command : commands)
+	for (ROOM_COMMAND& command : m_TickCommands)
 	{
 		switch (command.eType)
 		{
@@ -754,9 +977,11 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			break;
 		}
 	}
+	commandApplyEnd = std::chrono::steady_clock::now();
 
 	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
 	{
+		simulationEnd = commandApplyEnd;
 		recordTickDuration();
 		return;
 	}
@@ -850,6 +1075,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	Update_WorldEntities(fixedDeltaSeconds);
 	if (!m_isReady)
 	{
+		simulationEnd = std::chrono::steady_clock::now();
 		recordTickDuration();
 		return;
 	}
@@ -857,6 +1083,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	if (!Commit_DueWorldDestruction(updateTick))
 	{
 		m_isReady = false;
+		simulationEnd = std::chrono::steady_clock::now();
 		recordTickDuration();
 		return;
 	}
@@ -864,27 +1091,44 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	if (!Broadcast_CombatObjectLifecycle())
 	{
 		m_isReady = false;
+		simulationEnd = std::chrono::steady_clock::now();
 		recordTickDuration();
 		return;
 	}
 	m_iServerTick = updateTick;
+	simulationEnd = std::chrono::steady_clock::now();
 	if (!m_Players.empty())
 		Broadcast_WorldSnapshot();
 	recordTickDuration();
-	if (!m_Players.empty() && 0u == (m_iServerTick % 300u))
+	if (0u == (m_iServerTick % 300u))
 	{
 		const SERVER_ROOM_PERFORMANCE_METRICS metrics =
 			Get_PerformanceMetrics();
+		RETIRED_SESSION_OUTBOUND_METRICS retiredOutboundMetrics{};
+		std::set<SESSION_ID> finalizedOutboundMetricSessionIds;
+		{
+			std::scoped_lock lock{ m_CommandMutex };
+			retiredOutboundMetrics = m_RetiredSessionOutboundMetrics;
+			finalizedOutboundMetricSessionIds =
+				m_FinalizedOutboundMetricSessionIds;
+		}
 		std::size_t maximumCurrentOutboundFrames = 0u;
-		std::size_t maximumOutboundFrameHighWatermark = 0u;
-		std::uint64_t snapshotCoalescedCount = 0u;
-		std::uint64_t snapshotDroppedCount = 0u;
-		std::uint64_t reliableRejectedCount = 0u;
-		std::uint64_t sendFailureCount = 0u;
-		std::uint64_t maximumWireSendMicroseconds = 0u;
+		std::size_t maximumOutboundFrameHighWatermark =
+			retiredOutboundMetrics.iQueuedFrameHighWatermark;
+		std::uint64_t snapshotCoalescedCount =
+			retiredOutboundMetrics.iSnapshotCoalescedFrameCount;
+		std::uint64_t snapshotDroppedCount =
+			retiredOutboundMetrics.iSnapshotDroppedFrameCount;
+		std::uint64_t reliableRejectedCount =
+			retiredOutboundMetrics.iReliableRejectedFrameCount;
+		std::uint64_t sendFailureCount =
+			retiredOutboundMetrics.iSendFailureCount;
+		std::uint64_t maximumWireSendMicroseconds =
+			retiredOutboundMetrics.iMaximumFrameSendMicroseconds;
 		for (const auto& [sessionId, weakSession] : m_Sessions)
 		{
-			(void)sessionId;
+			if (finalizedOutboundMetricSessionIds.contains(sessionId))
+				continue;
 			const std::shared_ptr<CClientSession> session = weakSession.lock();
 			if (nullptr == session)
 				continue;
@@ -924,7 +1168,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			reliableRejectedCount > m_iLastRoomPerfReliableRejectedCount ||
 			sendFailureCount > m_iLastRoomPerfWireSendFailureCount;
 		const bool hasCurrentPressure =
+			metrics.iLastCadenceMicroseconds > 50000u ||
+			metrics.iRollingCadenceP99Microseconds > 40000u ||
 			metrics.iLastTickMicroseconds >= 33333u ||
+			metrics.iRollingTickP99Microseconds > 10000u ||
 			(metrics.iMaximumTickMicroseconds >= 33333u &&
 				metrics.iMaximumTickMicroseconds >
 					m_LastRoomPerfLogSample.iMaximumTickMicroseconds) ||
@@ -933,7 +1180,13 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			(maximumOutboundFrameHighWatermark >= 64u &&
 				maximumOutboundFrameHighWatermark >
 					m_iLastRoomPerfOutboundHighWatermark);
-		const bool isHeartbeat = 0u == (m_iServerTick % 1800u);
+		const bool isFourPlayerAdmissionHeartbeat =
+			4u == m_Players.size() &&
+			metrics.iFourPlayerContinuousTicks >= 1800u &&
+			0u == (metrics.iFourPlayerContinuousTicks % 1800u);
+		const bool isHeartbeat = !m_Players.empty() &&
+			(0u == (m_iServerTick % 1800u) ||
+				isFourPlayerAdmissionHeartbeat);
 		m_LastRoomPerfLogSample = metrics;
 		m_iLastRoomPerfSnapshotDroppedCount = snapshotDroppedCount;
 		m_iLastRoomPerfReliableRejectedCount = reliableRejectedCount;
@@ -946,9 +1199,40 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		std::cout << "[RoomPerf] Kind="
 			<< (hasNewFailure || hasCurrentPressure ? "anomaly" : "heartbeat")
 			<< " World=" << static_cast<unsigned>(m_eWorldId)
+			<< " Players=" << m_Players.size()
 			<< " Tick=" << m_iServerTick
+			<< " FourPlayerContinuousTicks="
+			<< metrics.iFourPlayerContinuousTicks
+			<< " CadenceUs=" << metrics.iLastCadenceMicroseconds
+			<< " CadenceMaxUs=" << metrics.iMaximumCadenceMicroseconds
+			<< " CadenceP95Us="
+			<< metrics.iRollingCadenceP95Microseconds
+			<< " CadenceP99Us="
+			<< metrics.iRollingCadenceP99Microseconds
+			<< " CadenceOver50ms="
+			<< metrics.iCadenceOver50MillisecondCount
 			<< " TickUs=" << metrics.iLastTickMicroseconds
 			<< " TickMaxUs=" << metrics.iMaximumTickMicroseconds
+			<< " WindowSamples=" << metrics.iRollingSampleCount
+			<< " TickP50Us=" << metrics.iRollingTickP50Microseconds
+			<< " TickP95Us=" << metrics.iRollingTickP95Microseconds
+			<< " TickP99Us=" << metrics.iRollingTickP99Microseconds
+			<< " CommandUs="
+			<< (metrics.iLastCommandDrainMicroseconds +
+				metrics.iLastCommandApplyMicroseconds)
+			<< " CommandP95Us="
+			<< metrics.iRollingCommandP95Microseconds
+			<< " SimulationUs=" << metrics.iLastSimulationMicroseconds
+			<< " SimulationP95Us="
+			<< metrics.iRollingSimulationP95Microseconds
+			<< " SimulationP99Us="
+			<< metrics.iRollingSimulationP99Microseconds
+			<< " SnapshotWorkUs="
+			<< metrics.iLastSnapshotWorkMicroseconds
+			<< " SnapshotWorkP95Us="
+			<< metrics.iRollingSnapshotWorkP95Microseconds
+			<< " SnapshotWorkP99Us="
+			<< metrics.iRollingSnapshotWorkP99Microseconds
 			<< " Ingress=" << metrics.iLastIngressDepth
 			<< " IngressHigh=" << metrics.iIngressHighWatermark
 			<< " Drained=" << metrics.iLastDrainedCommandCount
@@ -1165,6 +1449,11 @@ void LostArk::Server::CGameRoom::Leave(
 	const LostArk::Shared::PLAYER_DESPAWN_REASON reason)
 {
 	using namespace LostArk::Shared;
+	{
+		std::scoped_lock lock{ m_CommandMutex };
+		m_FinalizedOutboundMetricSessionIds.erase(sessionId);
+		m_PendingDisconnectedSessionIds.erase(sessionId);
+	}
 
 #ifdef _DEBUG
 	if (sessionId == m_ValtanTimelineAudition.iOwnerSessionId &&

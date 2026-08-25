@@ -1365,7 +1365,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Isolate a sender socket failure to its session and notify close exactly once");
 	}
 	{
-		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		auto roomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& room = *roomStorage;
 		auto moveCommand = [](const SESSION_ID sessionId,
 			const std::uint32_t sequence)
 			{
@@ -1435,7 +1437,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Coalesce only same-stream movement and aim without crossing a same-session reliable barrier");
 	}
 	{
-		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		auto roomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& room = *roomStorage;
 		bool admittedBestEffort = room.Is_Ready();
 		for (std::size_t index = 0u;
 			index < CGameRoom::MAX_BEST_EFFORT_COMMAND_COUNT; ++index)
@@ -1514,9 +1518,70 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			CGameRoom::MAX_INBOUND_COMMAND_COUNT ==
 				metrics.iIngressHighWatermark,
 			"Bound ingress, reserve reliable and cleanup capacity, and preserve the queue on overflow");
+
+		/* A network close is owner cleanup, not gameplay ingress. Even at the
+		hard cap it must discard stale commands for that session, retain one final
+		metric contribution, and run Leave before the remaining ingress batch. */
+		constexpr SESSION_ID DISCONNECTED_SESSION = 1u;
+		constexpr PLAYER_ID DISCONNECTED_PLAYER = 70001u;
+		constexpr NET_ENTITY_ID DISCONNECTED_ENTITY = 70002u;
+		SERVER_PLAYER disconnectedPlayer{};
+		disconnectedPlayer.iSessionId = DISCONNECTED_SESSION;
+		disconnectedPlayer.iPlayerId = DISCONNECTED_PLAYER;
+		disconnectedPlayer.iNetEntityId = DISCONNECTED_ENTITY;
+		room.m_Players.emplace(DISCONNECTED_PLAYER, disconnectedPlayer);
+		room.m_PlayerIdBySessionId.emplace(
+			DISCONNECTED_SESSION, DISCONNECTED_PLAYER);
+		room.m_PlayerIdByEntityId.emplace(
+			DISCONNECTED_ENTITY, DISCONNECTED_PLAYER);
+		CLIENT_SESSION_OUTBOUND_METRICS finalOutbound{};
+		finalOutbound.iQueuedFrameHighWatermark = 7u;
+		finalOutbound.iSnapshotDroppedFrameCount = 3u;
+		finalOutbound.iReliableRejectedFrameCount = 2u;
+		finalOutbound.iSendFailureCount = 1u;
+		finalOutbound.iMaximumFrameSendMicroseconds = 900u;
+		room.Finalize_DisconnectedSession(
+			DISCONNECTED_SESSION, finalOutbound);
+		room.Finalize_DisconnectedSession(
+			DISCONNECTED_SESSION, finalOutbound);
+		const bool durableCleanupQueuedOnce =
+			1u == room.m_PendingDisconnectedSessionIds.size() &&
+			room.m_PendingDisconnectedSessionIds.contains(
+				DISCONNECTED_SESSION) &&
+			room.m_FinalizedOutboundMetricSessionIds.contains(
+				DISCONNECTED_SESSION) &&
+			7u == room.m_RetiredSessionOutboundMetrics.
+				iQueuedFrameHighWatermark &&
+			3u == room.m_RetiredSessionOutboundMetrics.
+				iSnapshotDroppedFrameCount &&
+			2u == room.m_RetiredSessionOutboundMetrics.
+				iReliableRejectedFrameCount &&
+			1u == room.m_RetiredSessionOutboundMetrics.iSendFailureCount &&
+			900u == room.m_RetiredSessionOutboundMetrics.
+				iMaximumFrameSendMicroseconds &&
+			std::none_of(
+				room.m_InboundCommands.begin(), room.m_InboundCommands.end(),
+				[](const ROOM_COMMAND& command)
+				{
+					return command.iSessionId == DISCONNECTED_SESSION;
+				});
+		room.Tick(1.f / 30.f);
+		const bool durableCleanupConsumed =
+			!room.m_PendingDisconnectedSessionIds.contains(
+				DISCONNECTED_SESSION) &&
+			!room.m_FinalizedOutboundMetricSessionIds.contains(
+				DISCONNECTED_SESSION) &&
+			!room.m_PlayerIdBySessionId.contains(DISCONNECTED_SESSION) &&
+			!room.m_PlayerIdByEntityId.contains(DISCONNECTED_ENTITY) &&
+			!room.m_Players.contains(DISCONNECTED_PLAYER);
+		tests.Require(
+			durableCleanupQueuedOnce && durableCleanupConsumed,
+			"Bypass saturated gameplay ingress with one durable disconnected-session cleanup");
 	}
 	{
-		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		auto roomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& room = *roomStorage;
 		const std::size_t commandCount =
 			CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK + 5u;
 		bool enqueued = room.Is_Ready();
@@ -1688,7 +1753,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Ignore protected players and acquire the same player after combat admission");
 	}
 	{
-		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& room = *roomStorage;
 		tests.Require(room.Is_Ready(),
 			"Initialize Character Select room for class changes");
 		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
@@ -1789,7 +1855,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				0u != player.iCurrentHp,
 				"Change dead player class and respawn at projected original spawn");
 
-			CGameRoom bernRoom{ WORLD_ID::BERN };
+			auto bernRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+			CGameRoom& bernRoom = *bernRoomStorage;
 			const SERVER_PLAYER beforeWrongWorld = player;
 			request.iClientSequence = 3u;
 			request.eCharacterClass = CHARACTER_CLASS_ID::SLAYER;
@@ -2011,7 +2078,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		tests.Require_GroundTarget(approvedTargetPreserved && duplicateRejected,
 			"Commit approved T target/cost once and reject duplicate sequence without mutation");
 
-		CGameRoom snapshotRoom{ WORLD_ID::TRAINING_GROUND };
+		auto snapshotRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& snapshotRoom = *snapshotRoomStorage;
 		constexpr SESSION_ID SNAPSHOT_SESSION = 91001u;
 		constexpr PLAYER_ID SNAPSHOT_PLAYER = 91001u;
 		auto snapshotSession = std::make_shared<CClientSession>(
@@ -2630,7 +2698,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Clear pending explicit command on forced movement");
 	}
 	{
-		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& room = *roomStorage;
 		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
 			room.Is_Ready() ? room.Find_AvailablePlayerSpawn() : nullptr;
 		bool stagedAndCommittedMove = false;
@@ -5092,7 +5161,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* The stage edge the Brain reaches still has to reach the prop runtime.
 		This is the room-side half of the raise: the same pattern and stage the
 		previous test proved reachable, handed to the entry the room tick calls. */
-		CGameRoom pillarRoom{ WORLD_ID::VALTAN_ARENA };
+		auto pillarRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& pillarRoom = *pillarRoomStorage;
 		SERVER_WORLD_ENTITY stageBoss{};
 		stageBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
 		stageBoss.strArchetypeId = "BOSS_VALTAN";
@@ -5273,7 +5343,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* The sky axe volley deals one falling area per living raider, each
 		locked to the player it was dealt, so a four-player arena receives four
 		independent objects and a dead player receives none. */
-		CGameRoom volleyRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
+		auto volleyRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
+		CGameRoom& volleyRoom = *volleyRoomStorage;
 		tests.Require(volleyRoom.Initialize_WorldEntities(),
 			"Initialize the Valtan room for the sky axe volley");
 		/* The arena authors Valtan as a disabled Debug spawn, so the room owns
@@ -5426,9 +5497,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			};
 		writeTriggerBootstrap(1.f);
 
-		wchar_t previousRoot[32768]{};
+		std::vector<wchar_t> previousRoot(32768u);
 		const DWORD previousLength = GetEnvironmentVariableW(
-			L"LOSTARK_SERVER_DATA_ROOT", previousRoot,
+			L"LOSTARK_SERVER_DATA_ROOT", previousRoot.data(),
 			static_cast<DWORD>(std::size(previousRoot)));
 		SetEnvironmentVariableW(
 			L"LOSTARK_SERVER_DATA_ROOT", triggerRoot.c_str());
@@ -5452,7 +5523,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Reject invalid trigger bootstrap without replacing committed world");
 		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 			0u == previousLength || previousLength >= std::size(previousRoot) ?
-				nullptr : previousRoot);
+				nullptr : previousRoot.data());
 		std::error_code cleanupError;
 		fs::remove_all(triggerRoot, cleanupError);
 	}
@@ -5817,9 +5888,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"SKILLCOMBATTRAITS\t34120\t0\t0\t0\n";
 			Write_ValidValtanTimelineRows(bootstrap);
 		}
-		wchar_t previousRoot[32768]{};
+		std::vector<wchar_t> previousRoot(32768u);
 		const DWORD previousLength = GetEnvironmentVariableW(
-			L"LOSTARK_SERVER_DATA_ROOT", previousRoot,
+			L"LOSTARK_SERVER_DATA_ROOT", previousRoot.data(),
 			static_cast<DWORD>(std::size(previousRoot)));
 		CGameplayCatalog rollbackCatalog;
 		tests.Require(rollbackCatalog.Load(),
@@ -5858,7 +5929,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Preserve the committed catalog after a corrupt replacement fails");
 		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 			0u == previousLength || previousLength >= std::size(previousRoot) ?
-				nullptr : previousRoot);
+				nullptr : previousRoot.data());
 		std::error_code cleanupError;
 		fs::remove_all(overCostRoot, cleanupError);
 	}
@@ -5906,9 +5977,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"SKILLCOMBATTRAITS\t34020\t0\t0\t0\n";
 				Write_TestValtanTimelineRows(bootstrap, timelineVariant);
 			}
-			wchar_t previous[32768]{};
+			std::vector<wchar_t> previous(32768u);
 			const DWORD previousLength = GetEnvironmentVariableW(
-				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				L"LOSTARK_SERVER_DATA_ROOT", previous.data(),
 				static_cast<DWORD>(std::size(previous)));
 			SetEnvironmentVariableW(
 				L"LOSTARK_SERVER_DATA_ROOT", noDamageRoot.c_str());
@@ -5916,7 +5987,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			const bool loaded = catalog.Load();
 			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 				0u == previousLength || previousLength >= std::size(previous) ?
-					nullptr : previous);
+					nullptr : previous.data());
 			return loaded;
 		};
 		tests.Require(loadWithMovementSkill(
@@ -5991,9 +6062,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					bootstrap << row << '\n';
 				Write_ValidValtanTimelineRows(bootstrap);
 			}
-			wchar_t previous[32768]{};
+			std::vector<wchar_t> previous(32768u);
 			const DWORD previousLength = GetEnvironmentVariableW(
-				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				L"LOSTARK_SERVER_DATA_ROOT", previous.data(),
 				static_cast<DWORD>(std::size(previous)));
 			SetEnvironmentVariableW(
 				L"LOSTARK_SERVER_DATA_ROOT", wallContactRoot.c_str());
@@ -6001,7 +6072,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			const bool loaded = wallCatalog.Load();
 			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 				0u == previousLength || previousLength >= std::size(previous) ?
-					nullptr : previous);
+					nullptr : previous.data());
 			return loaded;
 		};
 		const std::string validWallRow =
@@ -6070,9 +6141,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"SKILLCOMBATTRAITS\t34020\t0\t0\t0\n";
 				Write_ValidValtanTimelineRows(bootstrap);
 			}
-			wchar_t previous[32768]{};
+			std::vector<wchar_t> previous(32768u);
 			const DWORD previousLength = GetEnvironmentVariableW(
-				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				L"LOSTARK_SERVER_DATA_ROOT", previous.data(),
 				static_cast<DWORD>(std::size(previous)));
 			SetEnvironmentVariableW(
 				L"LOSTARK_SERVER_DATA_ROOT", wallContactRoot.c_str());
@@ -6080,7 +6151,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			const bool loaded = stageCatalog.Load();
 			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 				0u == previousLength || previousLength >= std::size(previous) ?
-					nullptr : previous);
+					nullptr : previous.data());
 			return loaded;
 		};
 		const bool acceptedContactDelay = loadWithPatternStageRows(
@@ -6226,9 +6297,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"\t2\t0:0:0,1600:1.5:0\n";
 				Write_ValidValtanTimelineRows(bootstrap);
 			}
-			wchar_t previous[32768]{};
+			std::vector<wchar_t> previous(32768u);
 			const DWORD previousLength = GetEnvironmentVariableW(
-				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				L"LOSTARK_SERVER_DATA_ROOT", previous.data(),
 				static_cast<DWORD>(std::size(previous)));
 			SetEnvironmentVariableW(
 				L"LOSTARK_SERVER_DATA_ROOT", stageRoot.c_str());
@@ -6236,7 +6307,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			const bool loaded = stageCatalog.Load();
 			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 				0u == previousLength || previousLength >= std::size(previous) ?
-					nullptr : previous);
+					nullptr : previous.data());
 			return loaded;
 		};
 		tests.Require(loadWithStageRow("0", "470"),
@@ -6648,7 +6719,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			2u == scheduledByGroup[0] + scheduledByGroup[1],
 			"Schedule exactly two Character Select callbacks in the first update");
 
-		CGameRoom resetRoom{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		auto resetRoomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& resetRoom = *resetRoomStorage;
 		SERVER_PLAYER resetPlayer{};
 		resetPlayer.iSessionId = 501u;
 		resetPlayer.iPlayerId = 502u;
@@ -6695,7 +6768,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"spawn.character-select.monster"),
 			"Reset Character Select dynamic entities and spawn groups after the room becomes empty");
 
-		CGameRoom retirementRoom{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		auto retirementRoomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& retirementRoom = *retirementRoomStorage;
 		ROOM_COMMAND queuedLeave{};
 		queuedLeave.eType = ROOM_COMMAND_TYPE::LEAVE;
 		queuedLeave.iSessionId = 601u;
@@ -6707,6 +6782,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		retirementRoom.Tick(1.f / 30.f);
 		const bool sealedAfterDrain =
 			retirementRoom.Try_SealPrivateArenaForRetirement();
+		auto disconnectRetirementRoomStorage =
+			std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& disconnectRetirementRoom =
+			*disconnectRetirementRoomStorage;
+		CLIENT_SESSION_OUTBOUND_METRICS emptyFinalOutbound{};
+		disconnectRetirementRoom.Finalize_DisconnectedSession(
+			603u, emptyFinalOutbound);
+		const bool sealedBeforeDisconnectCleanup =
+			disconnectRetirementRoom.Try_SealPrivateArenaForRetirement();
+		disconnectRetirementRoom.Tick(1.f / 30.f);
+		const bool sealedAfterDisconnectCleanup =
+			disconnectRetirementRoom.Try_SealPrivateArenaForRetirement();
 
 		ROOM_COMMAND commandAfterSeal{};
 		commandAfterSeal.eType = ROOM_COMMAND_TYPE::LEAVE;
@@ -6715,18 +6802,21 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			PLAYER_DESPAWN_REASON::DISCONNECTED;
 		tests.Require(
 			queuedBeforeRetirement && !sealedBeforeDrain &&
-			sealedAfterDrain &&
+			sealedAfterDrain && !sealedBeforeDisconnectCleanup &&
+			sealedAfterDisconnectCleanup &&
 			!retirementRoom.Enqueue(std::move(commandAfterSeal)),
-			"Retire a private Character Select arena only after queued leave work drains");
+			"Retire a private Character Select arena only after queued or durable disconnect cleanup drains");
 
-		CGameRoom sharedRoom{ WORLD_ID::BERN };
+		auto sharedRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+		CGameRoom& sharedRoom = *sharedRoomStorage;
 		tests.Require(
 			!sharedRoom.Try_SealPrivateArenaForRetirement(),
 			"Never seal a shared world through the private arena retirement path");
 	}
 
 	{
-		CGameRoom raidRoom{ WORLD_ID::VALTAN_ARENA };
+		auto raidRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& raidRoom = *raidRoomStorage;
 		const auto& placements = raidRoom.m_WorldBootstrap.Get_Placements();
 		std::vector<const WORLD_BOOTSTRAP_PLACEMENT*> playerSpawns;
 		for (const WORLD_BOOTSTRAP_PLACEMENT& placement : placements)
@@ -7190,7 +7280,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7001u;
 		boss.strPatternId = "VALTAN_ARENA_BREAK_109";
@@ -7324,7 +7415,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		floor would otherwise leave the boss standing inside a wall's own
 		navigation blocker, which nothing can then path out of without being
 		projected first. */
-		CGameRoom navigableStepRoom{ WORLD_ID::VALTAN_ARENA };
+		auto navigableStepRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& navigableStepRoom = *navigableStepRoomStorage;
 		constexpr float STEP_FROM_Z = -120.2f;
 		constexpr float STEP_TARGET_Z = -117.9778f;
 		float reachedX = 0.f;
@@ -7444,7 +7536,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7002u;
 		boss.strPatternId = "VALTAN_ARMOR_BREAK_OPENING";
@@ -7508,7 +7601,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7003u;
 		/* Stand in front of the wall instead of inside it.  These are the exact
@@ -7579,7 +7673,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		that dropping straight onto a low bar crosses every threshold above it,
 		so this checks the single-crossing property against the real encounter
 		patterns rather than a synthetic pair. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID AUDITION_SESSION = 4242u;
 		constexpr PLAYER_ID AUDITION_PLAYER = 77u;
 		constexpr std::uint32_t TARGET_BAR = 109u;
@@ -7920,7 +8015,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* Effect Tool names the already-spawned private-room boss and pattern by
 		stable ID. The request resets only that boss, then CValtanBrain starts the
 		exact product pattern on the following fixed tick. */
-		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID TOOL_SESSION = 4343u;
 		constexpr PLAYER_ID TOOL_PLAYER = 79u;
 		constexpr NET_ENTITY_ID TOOL_PLAYER_ENTITY = 902u;
@@ -8023,7 +8119,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* A shared Valtan room can receive commands from two sessions in one
 		   command-drain tick. The first stable-ID request owns its pending/active
 		   occurrence; the second verdict is consumed but cannot reset it away. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID FIRST_SESSION = 4344u;
 		constexpr SESSION_ID SECOND_SESSION = 4345u;
 		constexpr PLAYER_ID FIRST_PLAYER = 81u;
@@ -8103,7 +8200,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4252u;
 		constexpr PLAYER_ID PLAYER = 87u;
 		SERVER_PLAYER player{};
@@ -8140,7 +8238,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		const bool activated =
 			room.Activate_Encounter("boss.valtan.center");
 		SERVER_WORLD_ENTITY* boss = room.Find_AuditionBoss();
@@ -8179,7 +8278,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		damage the boss across the authored 100-bar boundary and let the real
 		tick loop queue, select and run the mechanic. The raise only counts if
 		the four slots reach INTACT through that path. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4319u;
 		constexpr PLAYER_ID PLAYER = 97u;
 		constexpr std::uint32_t PILLAR_TRIGGER_BAR = 100u;
@@ -8254,7 +8354,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* The 100-bar cinematic is still Server movement even while the Client
 		camera looks away. Drive the product room path so clip root motion cannot
 		quietly add a second planar step after the leap arc has written its pose. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4320u;
 		constexpr PLAYER_ID PLAYER = 197u;
 		constexpr std::uint32_t MAX_CINEMATIC_TICKS = 450u;
@@ -8401,7 +8502,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		real tick loop can show the four slots reaching INTACT from it. The body
 		is kept alive because a dead target parks the boss and strands the queue,
 		which is exactly how this mechanic goes missing in a live session. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4321u;
 		constexpr PLAYER_ID PLAYER = 98u;
 		constexpr std::uint32_t MAX_CYCLE_TICKS = 900u;
@@ -8466,7 +8568,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* A selected normal row is one isolated product pattern. Invalid
 		replacements preserve the active row; a valid replacement resets it, and
 		STOP resets an already-running boss immediately. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4401u;
 		constexpr PLAYER_ID PLAYER = 201u;
 		constexpr PLAYER_ID SPECTATOR = 202u;
@@ -8585,7 +8688,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* The wire owns the semantic row key, not its present chronological
 		position. Simulate an authoring reorder and prove the original key still
 		selects the original product pattern. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4408u;
 		constexpr PLAYER_ID PLAYER = 208u;
 		SERVER_PLAYER player{};
@@ -8635,7 +8739,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* Row 20 starts the 109 mechanic after only the 69 ordinary walls are
 		gone. The 30 pattern-owned outer walls and six floor groups must still be
 		intact on the pattern start edge. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4403u;
 		constexpr PLAYER_ID PLAYER = 203u;
 		SERVER_PLAYER player{};
@@ -8686,7 +8791,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* Row 35 owns one HIGH_JUMP action with repeat=2 and the 84-floor
 		precondition. It must start twice, leave only the three 30-floor groups
 		intact, then hold instead of advancing to another timeline row. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4404u;
 		constexpr PLAYER_ID PLAYER = 204u;
 		SERVER_PLAYER player{};
@@ -8756,7 +8862,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* Row 29 composes MAGIC_CHOICE then RED_BLADE_WAVE over four staged
 		pillars. The scripted runner allows only this explicitly prepared product
 		prop-break path, so the real wave retires both pairs. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4405u;
 		constexpr PLAYER_ID PLAYER = 205u;
 		SERVER_PLAYER player{};
@@ -8827,7 +8934,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		/* An invalid second action is rejected during staging, before boss
 		activation, wall reset or pillar spawn. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4406u;
 		constexpr PLAYER_ID PLAYER = 206u;
 		SERVER_PLAYER player{};
@@ -8889,7 +8997,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		/* Row 43 is after both floor collapses and asks for four intact pillars.
 		Every destruction group must be gone before its first action starts. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4407u;
 		constexpr PLAYER_ID PLAYER = 207u;
 		SERVER_PLAYER player{};
@@ -8952,7 +9061,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		away from a player, and it kills. Navigation owns where the hole is; the
 		room owns the descent and the death tick. This runs in both configurations
 		because a fall is product gameplay, not a Debug audition. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr PLAYER_ID FALL_PLAYER = 79u;
 		constexpr SESSION_ID FALL_SESSION = 4243u;
 		/* Exclusively inside navregion.valtan.floor30.rail.7000000000000000001:
@@ -9098,7 +9208,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		the arc itself is Server state and has to be checked as authority, not
 		as presentation: it must leave the ground during TAKEOFF and land back
 		exactly on the authored placement by IMPACT. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr PLAYER_ID LEAP_PLAYER = 78u;
 		const bool activated = room.Is_Ready() &&
 			room.Activate_Encounter("boss.valtan.center");
@@ -9385,7 +9496,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		arena through Stage_Boss_ArenaEntry instead, and the 159 wall's own
 		passage is proved inside the ring by the FRACTURED collision test above.
 		All bearings here were measured against the published navgrid. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr float ARENA_CENTER_X = 156.03f;
 		constexpr float ARENA_CENTER_Z = -122.06f;
 		/* 131 degrees used to be the mouth of the walk-in corridor, back when
@@ -9717,8 +9829,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom valtanRoom{ WORLD_ID::VALTAN_ARENA };
-		CGameRoom bernRoom{ WORLD_ID::BERN };
+		auto valtanRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& valtanRoom = *valtanRoomStorage;
+		auto bernRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+		CGameRoom& bernRoom = *bernRoomStorage;
 		tests.Require(
 			valtanRoom.Is_Ready() && bernRoom.Is_Ready() &&
 			valtanRoom.m_EstherSkillSystem.Is_Enabled() &&

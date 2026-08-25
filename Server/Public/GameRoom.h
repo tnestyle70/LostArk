@@ -22,10 +22,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <chrono>
 #include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -33,12 +35,36 @@
 namespace LostArk::Server
 {
 	class CClientSession;
+	struct CLIENT_SESSION_OUTBOUND_METRICS;
 
 	struct SERVER_ROOM_PERFORMANCE_METRICS final
 	{
 		std::uint64_t iTickCount = 0;
 		std::uint64_t iLastTickMicroseconds = 0;
 		std::uint64_t iMaximumTickMicroseconds = 0;
+		std::uint64_t iLastCadenceMicroseconds = 0;
+		std::uint64_t iMaximumCadenceMicroseconds = 0;
+		std::uint64_t iRollingCadenceP95Microseconds = 0;
+		std::uint64_t iRollingCadenceP99Microseconds = 0;
+		std::uint64_t iCadenceOver50MillisecondCount = 0;
+		std::uint64_t iFourPlayerContinuousTicks = 0;
+		std::uint64_t iLastCommandDrainMicroseconds = 0;
+		std::uint64_t iMaximumCommandDrainMicroseconds = 0;
+		std::uint64_t iLastCommandApplyMicroseconds = 0;
+		std::uint64_t iMaximumCommandApplyMicroseconds = 0;
+		std::uint64_t iLastSimulationMicroseconds = 0;
+		std::uint64_t iMaximumSimulationMicroseconds = 0;
+		std::uint64_t iLastSnapshotWorkMicroseconds = 0;
+		std::uint64_t iMaximumSnapshotWorkMicroseconds = 0;
+		std::size_t iRollingSampleCount = 0;
+		std::uint64_t iRollingTickP50Microseconds = 0;
+		std::uint64_t iRollingTickP95Microseconds = 0;
+		std::uint64_t iRollingTickP99Microseconds = 0;
+		std::uint64_t iRollingCommandP95Microseconds = 0;
+		std::uint64_t iRollingSimulationP95Microseconds = 0;
+		std::uint64_t iRollingSimulationP99Microseconds = 0;
+		std::uint64_t iRollingSnapshotWorkP95Microseconds = 0;
+		std::uint64_t iRollingSnapshotWorkP99Microseconds = 0;
 		std::size_t iLastIngressDepth = 0;
 		std::size_t iIngressHighWatermark = 0;
 		std::size_t iLastDrainedCommandCount = 0;
@@ -85,6 +111,13 @@ namespace LostArk::Server
 		}
 		[[nodiscard]] SERVER_ROOM_PERFORMANCE_METRICS
 			Get_PerformanceMetrics() const;
+		/* A closed session leaves the live weak-session set before the next
+		RoomPerf heartbeat. Preserve its final cumulative outbound counters and
+		queue a deduplicated cleanup outside the bounded gameplay ingress so a
+		hard-cap queue cannot strand a disconnected player in the room. */
+		void Finalize_DisconnectedSession(
+			SESSION_ID sessionId,
+			const CLIENT_SESSION_OUTBOUND_METRICS& metrics);
 
 		// Room thread only. A sealed private arena rejects every later command.
 		[[nodiscard]] bool Try_SealPrivateArenaForRetirement();
@@ -492,10 +525,43 @@ namespace LostArk::Server
 		static constexpr std::size_t MAX_BEST_EFFORT_COMMAND_COUNT = 768u;
 		static constexpr std::size_t MAX_RELIABLE_COMMAND_COUNT = 960u;
 		static constexpr std::size_t MAX_COMMANDS_DRAINED_PER_TICK = 256u;
+		static constexpr std::size_t PERFORMANCE_SAMPLE_CAPACITY = 1800u;
+
+		struct ROOM_PERFORMANCE_SAMPLE final
+		{
+			std::uint64_t iTickMicroseconds = 0;
+			std::uint64_t iCadenceMicroseconds = 0;
+			std::uint64_t iCommandMicroseconds = 0;
+			std::uint64_t iSimulationMicroseconds = 0;
+			std::uint64_t iSnapshotWorkMicroseconds = 0;
+		};
+
+		struct RETIRED_SESSION_OUTBOUND_METRICS final
+		{
+			std::size_t iQueuedFrameHighWatermark = 0u;
+			std::uint64_t iSnapshotCoalescedFrameCount = 0u;
+			std::uint64_t iSnapshotDroppedFrameCount = 0u;
+			std::uint64_t iReliableRejectedFrameCount = 0u;
+			std::uint64_t iSendFailureCount = 0u;
+			std::uint64_t iMaximumFrameSendMicroseconds = 0u;
+		};
 
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
+		std::vector<ROOM_COMMAND> m_TickCommands;
 		SERVER_ROOM_PERFORMANCE_METRICS m_PerformanceMetrics;
+		/* Rooms are frequently created as local contract-test fixtures. Keep the
+		1,800-sample rolling window off the call stack while retaining contiguous
+		storage and allocation-free room ticks. */
+		std::vector<ROOM_PERFORMANCE_SAMPLE> m_PerformanceSamples;
+		std::vector<std::uint64_t> m_PerformancePercentileScratch;
+		RETIRED_SESSION_OUTBOUND_METRICS m_RetiredSessionOutboundMetrics;
+		std::set<SESSION_ID> m_FinalizedOutboundMetricSessionIds;
+		std::set<SESSION_ID> m_PendingDisconnectedSessionIds;
+		std::size_t m_iPerformanceSampleWriteIndex = 0u;
+		std::size_t m_iPerformanceSampleCount = 0u;
+		std::chrono::steady_clock::time_point m_PreviousTickStart{};
+		std::uint64_t m_iFourPlayerContinuousTicks = 0u;
 		SERVER_ROOM_PERFORMANCE_METRICS m_LastRoomPerfLogSample;
 		std::uint64_t m_iLastRoomPerfSnapshotDroppedCount = 0;
 		std::uint64_t m_iLastRoomPerfReliableRejectedCount = 0;

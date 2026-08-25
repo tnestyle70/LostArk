@@ -91,7 +91,10 @@ int LostArk::Server::CServerApp::Run(
 		return 1;
 	}
 
+	m_isSessionReaperStopping.store(false);
 	m_isRunning.store(true);
+	m_SessionReaperThread =
+		std::thread(&CServerApp::Session_Reaper_Loop, this);
 	m_RoomThread = std::thread(&CServerApp::Room_Loop, this);
 	m_AcceptThread = std::thread(&CServerApp::Accept_Loop, this);
 	const bool useHeadlessMode = headless ||
@@ -183,13 +186,58 @@ void LostArk::Server::CServerApp::Room_Loop()
 	{
 		nextTick += fixedStep;
 		Tick_GameplaySimulations(FIXED_DELTA_SECONDS);
-		Reap_ClosedSessions();
 		std::this_thread::sleep_until(nextTick);
 		if (steady_clock::now() > nextTick + fixedStep)
 			nextTick = steady_clock::now();
 	}
 	Tick_GameplaySimulations(FIXED_DELTA_SECONDS);
-	Reap_ClosedSessions();
+}
+
+void LostArk::Server::CServerApp::Session_Reaper_Loop()
+{
+	while (true)
+	{
+		{
+			std::unique_lock lock{ m_ClosedSessionMutex };
+			m_ClosedSessionCondition.wait(
+				lock,
+				[this]()
+				{
+					return !m_ClosedSessionIds.empty() ||
+						m_isSessionReaperStopping.load();
+				});
+		}
+
+		Reap_ClosedSessions();
+		if (!m_isSessionReaperStopping.load())
+			continue;
+
+		// Shutdown owns every session still in the map, including connections
+		// whose receive callback did not have time to enqueue a closed id.
+		std::vector<std::shared_ptr<CClientSession>> remainingSessions;
+		{
+			std::scoped_lock lock{ m_SessionsMutex };
+			remainingSessions.reserve(m_Sessions.size());
+			for (auto& [sessionId, session] : m_Sessions)
+			{
+				(void)sessionId;
+				remainingSessions.push_back(std::move(session));
+			}
+			m_Sessions.clear();
+			m_GameplayBindingBySessionId.clear();
+		}
+		for (const auto& session : remainingSessions)
+		{
+			if (nullptr != session)
+				session->Request_Close();
+		}
+		for (const auto& session : remainingSessions)
+		{
+			if (nullptr != session)
+				session->Stop();
+		}
+		return;
+	}
 }
 
 void LostArk::Server::CServerApp::On_SessionFrame(
@@ -417,30 +465,41 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 
 void LostArk::Server::CServerApp::On_SessionClosed(const SESSION_ID sessionId)
 {
+	/* Keep binding removal atomic with publishing the room-owned cleanup.
+	Retire_QuiescentCharacterSelectArenas uses the same sessions -> room lock
+	order, so it cannot seal an arena in the gap. The map's strong owner is also
+	retained locally while stale REGISTER_SESSION commands are discarded. */
+	std::shared_ptr<CClientSession> closedSession;
 	{
 		std::scoped_lock lock{ m_SessionsMutex };
+		const auto sessionIter = m_Sessions.find(sessionId);
+		if (sessionIter != m_Sessions.end())
+			closedSession = sessionIter->second;
 		const auto bindingIter =
 			m_GameplayBindingBySessionId.find(sessionId);
 		if (bindingIter != m_GameplayBindingBySessionId.end())
 		{
 			if (nullptr != bindingIter->second.pSimulation)
 			{
-				ROOM_COMMAND command{};
-				command.eType = ROOM_COMMAND_TYPE::LEAVE;
-				command.iSessionId = sessionId;
-				command.eLeaveReason =
-					LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;
-				(void)bindingIter->second.pSimulation->Enqueue(
-					std::move(command));
+				const CLIENT_SESSION_OUTBOUND_METRICS outboundMetrics =
+					nullptr == closedSession ?
+						CLIENT_SESSION_OUTBOUND_METRICS{} :
+						closedSession->Get_OutboundMetrics();
+				bindingIter->second.pSimulation->
+					Finalize_DisconnectedSession(
+						sessionId, outboundMetrics);
 			}
 			m_GameplayBindingBySessionId.erase(bindingIter);
 		}
 	}
 
-	// A private Character Select simulation owns the queued LEAVE until the
-	// room thread consumes it, seals the empty queue, and retires the arena.
-	std::scoped_lock lock{ m_ClosedSessionMutex };
-	m_ClosedSessionIds.push_back(sessionId);
+	// A private Character Select simulation owns the durable disconnect cleanup
+	// until the room thread consumes it, seals the empty queue, and retires it.
+	{
+		std::scoped_lock lock{ m_ClosedSessionMutex };
+		m_ClosedSessionIds.push_back(sessionId);
+	}
+	m_ClosedSessionCondition.notify_one();
 }
 
 void LostArk::Server::CServerApp::Request_SessionClose(const SESSION_ID sessionId)
@@ -614,28 +673,28 @@ bool LostArk::Server::CServerApp::Enqueue_AssignedCommand(
 void LostArk::Server::CServerApp::Tick_GameplaySimulations(
 	const float fixedDeltaSeconds)
 {
-	std::vector<std::shared_ptr<CGameRoom>> simulations;
+	m_TickSimulations.clear();
 	{
 		std::scoped_lock lock{ m_SessionsMutex };
-		simulations.reserve(
+		m_TickSimulations.reserve(
 			m_SharedGameRooms.size() + m_CharacterSelectArenas.size());
 		for (const auto& [worldId, simulation] : m_SharedGameRooms)
 		{
 			(void)worldId;
 			if (nullptr != simulation)
-				simulations.push_back(simulation);
+				m_TickSimulations.push_back(simulation);
 		}
 		for (const auto& [sessionId, simulation] : m_CharacterSelectArenas)
 		{
 			(void)sessionId;
 			if (nullptr != simulation)
-				simulations.push_back(simulation);
+				m_TickSimulations.push_back(simulation);
 		}
 	}
 
 	// The room thread is the only writer of gameplay state. The mutex is
 	// released before Tick so receive and session threads never wait on a tick.
-	for (const std::shared_ptr<CGameRoom>& simulation : simulations)
+	for (const std::shared_ptr<CGameRoom>& simulation : m_TickSimulations)
 	{
 		simulation->Tick(fixedDeltaSeconds);
 		Handle_WorldTransfers(simulation);
@@ -792,28 +851,10 @@ void LostArk::Server::CServerApp::Shutdown()
 		m_AcceptThread.join();
 	if (m_RoomThread.joinable())
 		m_RoomThread.join();
-
-	std::vector<std::shared_ptr<CClientSession>> sessions;
-	{
-		std::scoped_lock lock{ m_SessionsMutex };
-		for (auto& [sessionId, session] : m_Sessions)
-		{
-			(void)sessionId;
-			sessions.push_back(std::move(session));
-		}
-		m_Sessions.clear();
-		m_GameplayBindingBySessionId.clear();
-	}
-	for (const auto& session : sessions)
-	{
-		if (nullptr != session)
-			session->Request_Close();
-	}
-	for (const auto& session : sessions)
-	{
-		if (nullptr != session)
-			session->Stop();
-	}
+	m_isSessionReaperStopping.store(true);
+	m_ClosedSessionCondition.notify_all();
+	if (m_SessionReaperThread.joinable())
+		m_SessionReaperThread.join();
 
 	// Receive callbacks and the room thread are stopped before simulations are
 	// destroyed, so no producer can enqueue into an unowned room.

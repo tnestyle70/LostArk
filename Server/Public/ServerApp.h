@@ -21,8 +21,10 @@
 #include <unordered_map>
 //session map과 종료 queue 보호
 #include <mutex>
+#include <condition_variable>
 //종료된 sessionid 순서 보관
 #include <deque>
+#include <vector>
 #include <map>
 #include <cstdint>
 #include <string_view>
@@ -55,6 +57,8 @@ namespace LostArk::Server
 		void Accept_Loop();
 		//GameRoom을 일정한 간격으로 tick한다. 초기 30Hz
 		void Room_Loop();
+		//socket worker join은 room fixed tick과 분리된 전용 owner가 수행한다.
+		void Session_Reaper_Loop();
 		//session receive thread가 완성된 frame을 전달하는 callback이다
 		void On_SessionFrame(
 			SESSION_ID sessionId,
@@ -112,13 +116,18 @@ namespace LostArk::Server
 		std::unordered_map<
 			SESSION_ID,
 			std::shared_ptr<CGameRoom>> m_CharacterSelectArenas;
+		/* Room-thread scratch. Reuse capacity so the fixed 30 Hz path does not
+		allocate once per tick while still releasing m_SessionsMutex before Tick. */
+		std::vector<std::shared_ptr<CGameRoom>> m_TickSimulations;
 		//실행 상태 - 여러 스레드가 읽고 쓰기 때문에 atomic을 사용한다.
 		std::atomic_bool m_isRunning{ false };
+		std::atomic_bool m_isSessionReaperStopping{ false };
 		std::atomic<SESSION_ID> m_iNextSessionId{ 1 };
 
 		//thread
 		std::thread m_AcceptThread;
 		std::thread m_RoomThread;
+		std::thread m_SessionReaperThread;
 
 		//session owner map - sessionid의 유일한 장기 강한 owner
 		//gameroom은 같은 session을 weak_ptr로만 참조
@@ -132,6 +141,7 @@ namespace LostArk::Server
 			SESSION_GAMEPLAY_BINDING> m_GameplayBindingBySessionId;
 		//종료 대기 Queue
 		std::mutex m_ClosedSessionMutex;
+		std::condition_variable m_ClosedSessionCondition;
 		std::deque<SESSION_ID> m_ClosedSessionIds;
 	};
 }
