@@ -46,6 +46,7 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 	m_fCellSize = 0.f;
 	m_fOriginX = 0.f;
 	m_fOriginZ = 0.f;
+	m_fMaximumTraversalStepHeight = 0.f;
 	m_Walkable.clear();
 	m_Heights.clear();
 	m_RuntimeBlockerRegions.clear();
@@ -101,11 +102,53 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 
 	m_Walkable = std::move(walkable);
 	m_Heights = std::move(heights);
-	if (!Load_RuntimeBlockers(areaId))
+	if (!Load_RuntimePolicy(areaId) || !Load_RuntimeBlockers(areaId))
+	{
+		// Loading is transactional: a malformed sidecar must never leave a
+		// partially usable grid behind for callers that inspect Is_Loaded().
+		m_Walkable.clear();
+		m_Heights.clear();
+		m_RuntimeBlockerRegions.clear();
+		m_ConditionValues.clear();
+		m_BlockCounts.clear();
+		m_VoidCounts.clear();
+		m_fMaximumTraversalStepHeight = 0.f;
 		return false;
+	}
 	m_strStatus = "Loaded server navigation: " + std::to_string(m_iWidth) +
 		"x" + std::to_string(m_iHeight) + ", runtime blockers=" +
 		std::to_string(m_RuntimeBlockerRegions.size());
+	return true;
+}
+
+bool LostArk::Server::CServerNavigation::Load_RuntimePolicy(
+	const std::string& areaId)
+{
+	const std::filesystem::path path = Resolve_DataRoot() / L"Navigation" /
+		std::filesystem::path(areaId + ".navpolicy");
+	std::ifstream input(path);
+	std::string magic;
+	std::string stagedAreaId;
+	std::uint32_t version = 0u;
+	float maximumTraversalStepHeight = 0.f;
+	if (!(input >> magic >> version >> std::quoted(stagedAreaId) >>
+		maximumTraversalStepHeight) ||
+		magic != "LOSTARK_NAVIGATION_POLICY" || 1u != version ||
+		stagedAreaId != areaId ||
+		!std::isfinite(maximumTraversalStepHeight) ||
+		maximumTraversalStepHeight < 0.f)
+	{
+		m_strStatus = "Server navigation policy is invalid: " + path.string();
+		return false;
+	}
+	input >> std::ws;
+	if (!input.eof())
+	{
+		m_strStatus = "Server navigation policy has trailing data: " +
+			path.string();
+		return false;
+	}
+	m_fMaximumTraversalStepHeight = maximumTraversalStepHeight;
 	return true;
 }
 
@@ -234,6 +277,28 @@ bool LostArk::Server::CServerNavigation::Is_CellWalkable(
 {
 	return index < m_Walkable.size() && 0u != m_Walkable[index] &&
 		index < m_BlockCounts.size() && 0u == m_BlockCounts[index];
+}
+
+bool LostArk::Server::CServerNavigation::Is_HeightTransitionAllowed(
+	const float fromY,
+	const float toY) const
+{
+	if (!std::isfinite(fromY) || !std::isfinite(toY))
+		return false;
+	return m_fMaximumTraversalStepHeight <= 0.f ||
+		std::abs(toY - fromY) <=
+			m_fMaximumTraversalStepHeight + 0.000001f;
+}
+
+bool LostArk::Server::CServerNavigation::Is_CellTraversalAllowed(
+	const std::uint32_t fromIndex,
+	const std::uint32_t toIndex) const
+{
+	return Is_CellWalkable(fromIndex) && Is_CellWalkable(toIndex) &&
+		fromIndex < m_Heights.size() && toIndex < m_Heights.size() &&
+		Is_HeightTransitionAllowed(
+			m_Heights[fromIndex],
+			m_Heights[toIndex]);
 }
 
 bool LostArk::Server::CServerNavigation::Resolve_Cell(
@@ -408,6 +473,25 @@ bool LostArk::Server::CServerNavigation::Sample_Position(
 	return true;
 }
 
+bool LostArk::Server::CServerNavigation::Resolve_TraversalStep(
+	const float fromX,
+	const float fromZ,
+	const float toX,
+	const float toZ,
+	SERVER_NAV_POINT& outPoint) const
+{
+	SERVER_NAV_POINT fromGround{};
+	SERVER_NAV_POINT toGround{};
+	if (!Sample_Position(fromX, fromZ, fromGround) ||
+		!Sample_Position(toX, toZ, toGround) ||
+		!Is_HeightTransitionAllowed(fromGround.y, toGround.y))
+	{
+		return false;
+	}
+	outPoint = toGround;
+	return true;
+}
+
 bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	const float startX,
 	const float startZ,
@@ -519,7 +603,7 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 			}
 			const std::uint32_t next = static_cast<std::uint32_t>(
 				nextZ * static_cast<int>(m_iWidth) + nextX);
-			if (!Is_CellWalkable(next) || closed[next])
+			if (!Is_CellTraversalAllowed(current, next) || closed[next])
 				continue;
 			const bool diagonal = 0 != direction[0] && 0 != direction[1];
 			if (diagonal)
@@ -528,7 +612,10 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 					currentZ * static_cast<int>(m_iWidth) + nextX);
 				const std::uint32_t sideB = static_cast<std::uint32_t>(
 					nextZ * static_cast<int>(m_iWidth) + currentX);
-				if (!Is_CellWalkable(sideA) || !Is_CellWalkable(sideB))
+				if (!Is_CellTraversalAllowed(current, sideA) ||
+					!Is_CellTraversalAllowed(current, sideB) ||
+					!Is_CellTraversalAllowed(sideA, next) ||
+					!Is_CellTraversalAllowed(sideB, next))
 					continue;
 			}
 			const float candidate = costs[current] + (diagonal ? 1.41421356f : 1.f);

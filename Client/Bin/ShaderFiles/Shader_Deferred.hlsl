@@ -113,6 +113,25 @@ sampler ShadowSampler = sampler_state
 
 vector      g_vCamPosition;
 
+/* Height fog. The combine step already owns the depth target, so one screen
+   space term covers terrain, buildings and characters at once. */
+uint        g_iHeightFogEnabled = 0u;
+float4      g_vHeightFogColor = float4(0.55f, 0.62f, 0.72f, 1.f);
+float       g_fHeightFogDensity = 0.35f;
+float       g_fHeightFogFalloff = 0.08f;
+float       g_fHeightFogTopHeight = 24.f;
+float       g_fHeightFogStartDistance = 0.f;
+float       g_fHeightFogMaximumOpacity = 0.9f;
+float       g_fHeightFogDriftSpeed = 0.f;
+float       g_fHeightFogDriftHeight = 0.f;
+float       g_fHeightFogDriftDensity = 0.f;
+float       g_fPresentationClock = 0.f;
+float       g_fFogCoverage = 1.f;
+float2      g_vFogWindDirection = float2(1.f, 0.f);
+float       g_fFogWindSpeed = 0.f;
+float       g_fFogPatchScale = 0.01f;
+float       g_fFogPatchSoftness = 0.15f;
+
 
 
 vector      g_vLightDir;
@@ -547,6 +566,102 @@ PS_OUT_BACKBUFFER PS_MAIN_SSAO_BLUR(PS_IN In)
     return Out;
 }
 
+/* The ceiling is the world height the fog fades out at, and the exponential
+   term thickens it the deeper a surface sits below that line. Distance is
+   folded in so nearby ground stays readable while the valley reads solid.
+   Emissive is added after this call so glowing sources survive the fog. */
+/* Value noise keeps the cloud banks procedural, so no extra texture has to
+   be authored, streamed or kept in sync with an Area. */
+float Fog_Hash(float2 vPoint)
+{
+    vPoint = frac(vPoint * float2(127.1f, 311.7f));
+    vPoint += dot(vPoint, vPoint + 34.23f);
+    return frac(vPoint.x * vPoint.y);
+}
+
+float Fog_ValueNoise(float2 vPoint)
+{
+    const float2 vCell = floor(vPoint);
+    const float2 vLocal = frac(vPoint);
+    const float2 vWeight = vLocal * vLocal * (3.f - 2.f * vLocal);
+    const float fA = Fog_Hash(vCell);
+    const float fB = Fog_Hash(vCell + float2(1.f, 0.f));
+    const float fC = Fog_Hash(vCell + float2(0.f, 1.f));
+    const float fD = Fog_Hash(vCell + float2(1.f, 1.f));
+    return lerp(lerp(fA, fB, vWeight.x), lerp(fC, fD, vWeight.x), vWeight.y);
+}
+
+/* Three octaves read as cloud rather than as a grid and stay cheap enough for
+   a full screen pass. */
+float Fog_PatchNoise(float2 vPoint)
+{
+    float fValue = 0.f;
+    float fAmplitude = 0.5f;
+    [unroll]
+    for (int i = 0; i < 3; ++i)
+    {
+        fValue += Fog_ValueNoise(vPoint) * fAmplitude;
+        vPoint *= 2.03f;
+        fAmplitude *= 0.5f;
+    }
+    return saturate(fValue / 0.875f);
+}
+
+float3 Resolve_HeightFog(float3 vLitColor, float2 vTexcoord)
+{
+    if (0u == g_iHeightFogEnabled)
+        return vLitColor;
+
+    const vector vDepthDesc = g_DepthTexture.Sample(LinearSampler, vTexcoord);
+    /* An untouched depth texel is empty background, not a fogged surface. */
+    if (vDepthDesc.y <= 0.f)
+        return vLitColor;
+
+    const float fViewZ = vDepthDesc.y * 1000.f;
+    vector vWorldPos;
+    vWorldPos.x = vTexcoord.x * 2.f - 1.f;
+    vWorldPos.y = vTexcoord.y * -2.f + 1.f;
+    vWorldPos.z = vDepthDesc.x;
+    vWorldPos.w = 1.f;
+    vWorldPos = vWorldPos * fViewZ;
+    vWorldPos = mul(vWorldPos, g_ProjMatrixInverse);
+    vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
+
+    const float fDrift = sin(g_fPresentationClock * g_fHeightFogDriftSpeed);
+    const float fCeiling =
+        g_fHeightFogTopHeight + fDrift * g_fHeightFogDriftHeight;
+    const float fDensity = max(0.f,
+        g_fHeightFogDensity + fDrift * g_fHeightFogDriftDensity);
+
+    const float fBelowCeiling = max(0.f, fCeiling - vWorldPos.y);
+    const float fHeightTerm =
+        1.f - exp(-fBelowCeiling * g_fHeightFogFalloff);
+
+    const float fDistance = max(0.f,
+        length(vWorldPos.xyz - g_vCamPosition.xyz) - g_fHeightFogStartDistance);
+    const float fDistanceTerm = 1.f - exp(-fDistance * fDensity * 0.02f);
+
+    /* Coverage thins the blanket into banks whose share of the map matches
+       the authored percentage, and the wind vector walks the pattern through
+       world XZ so the banks travel on the same clock the drift uses. */
+    float fCoverage = 1.f;
+    if (g_fFogCoverage < 0.999f)
+    {
+        const float fWindLength = max(length(g_vFogWindDirection), 0.0001f);
+        const float2 vTravel = (g_vFogWindDirection / fWindLength) *
+            (g_fPresentationClock * g_fFogWindSpeed);
+        const float fNoise = Fog_PatchNoise(
+            (vWorldPos.xz + vTravel) * g_fFogPatchScale);
+        const float fThreshold = 1.f - g_fFogCoverage;
+        fCoverage = smoothstep(fThreshold - g_fFogPatchSoftness,
+            fThreshold + g_fFogPatchSoftness, fNoise);
+    }
+
+    const float fFog = saturate(fHeightTerm * fDistanceTerm * fCoverage) *
+        g_fHeightFogMaximumOpacity;
+    return lerp(vLitColor, g_vHeightFogColor.rgb, fFog);
+}
+
 PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
 {
     PS_OUT_BACKBUFFER Out;
@@ -562,6 +677,7 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
     
     
     vector vLitColor = vDiffuse * vShade + vSpecular;
+    vLitColor.rgb = Resolve_HeightFog(vLitColor.rgb, In.vTexcoord);
     /* Emissive and Effect HDR energy are light sources, not receivers.  They
        must remain available to bloom even when the carrier is in shadow. */
     Out.vBackBuffer = vLitColor + vEmissive;

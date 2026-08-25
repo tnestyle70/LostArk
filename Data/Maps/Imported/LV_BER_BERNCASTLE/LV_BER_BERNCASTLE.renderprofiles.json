@@ -7,7 +7,45 @@
       "renderMode": "Sky",
       "cullMode": "None",
       "colorTint": [0.12, 0.14, 0.18, 1.0]
+    },
+    {
+      "assetId": "MAP_03CF6EAF4119_BG_OCN_STONE_MOUNTAINS02_SM_KBW",
+      "renderMode": "Alpha",
+      "cullMode": "Back"
+    },
+    {
+      "assetId": "MAP_1006063CE6D0_BG_OCN_STONE_MOUNTAINS01_SM_KBW",
+      "renderMode": "Alpha",
+      "cullMode": "Back"
+    },
+    {
+      "assetId": "MAP_09EF0D8A5013_LV_SHS_FROZENCL_SNOWDECO01_SM",
+      "renderMode": "Alpha",
+      "cullMode": "Back"
     }
   ],
-  "visibilityOverrides": []
+  "visibilityOverrides": [
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:6015", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:6595", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:6596", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:6597", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:7564", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:7573", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:7604", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:7922", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL02:export:7633", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL09:export:5190", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL09:export:5248", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL09:export:6278", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL09:export:6353", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL09:export:6358", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_PS:export:1550", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_PS:export:1551", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:5410", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL00:export:5413", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL02:export:5935", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL02:export:8784", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL02:export:8785", "visible": false },
+    { "sourcePlacementId": "LV_BER_BERNCASTLE_T_SL05:export:1681", "visible": false }
+  ]
 }

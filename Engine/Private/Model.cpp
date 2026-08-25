@@ -913,30 +913,14 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
 	{
 		if (MODEL::NONANIM == m_eType)
 		{
-			if (mesh.embeddedBounds.present)
+			/* Runtime culling bounds are derived from every decoded vertex. The
+			   embedded AABB is validated import metadata, but it must not be the
+			   sole authority for a placement disappearing at the camera edge. */
+			for (const VTXMESH& vertex : mesh.vertices)
 			{
-				const float3_t& minimum = mesh.embeddedBounds.minimum;
-				const float3_t& maximum = mesh.embeddedBounds.maximum;
-				for (uint32_t corner = 0; corner < 8; ++corner)
-				{
-					const float3_t position = {
-						0 != (corner & 1) ? maximum.x : minimum.x,
-						0 != (corner & 2) ? maximum.y : minimum.y,
-						0 != (corner & 4) ? maximum.z : minimum.z,
-					};
-					Include_LocalPosition(XMVector3TransformCoord(
-						XMLoadFloat3(&position),
-						XMLoadFloat4x4(&m_PreTransformMatrix)));
-				}
-			}
-			else
-			{
-				for (const VTXMESH& vertex : mesh.vertices)
-				{
-					Include_LocalPosition(XMVector3TransformCoord(
-						XMLoadFloat3(&vertex.vPosition),
-						XMLoadFloat4x4(&m_PreTransformMatrix)));
-				}
+				Include_LocalPosition(XMVector3TransformCoord(
+					XMLoadFloat3(&vertex.vPosition),
+					XMLoadFloat4x4(&m_PreTransformMatrix)));
 			}
 		}
 

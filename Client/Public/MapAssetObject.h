@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "GameObject.h"
 #include "MapAssetCatalog.h"
+#include "MapLoadScope.h"
 
 NS_BEGIN(Engine)
 class CModel;
@@ -30,6 +31,7 @@ public:
 		uint32_t prototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
 		uint64_t placementId = {};
 		std::string assetId;
+		std::string assetGroupId;
 		std::wstring modelPrototypeTag;
 		float3_t position = {};
 		float4_t rotationQuaternion = float4_t(0.f, 0.f, 0.f, 1.f);
@@ -37,6 +39,7 @@ public:
 		bool_t applyBottomCenter = false;
 		bool_t visible = true;
 		MAP_ASSET_RENDER_PROFILE renderProfile;
+		MAP_FRUSTUM_CULLING_POLICY frustumCulling{};
 	};
 
 private:
@@ -71,6 +74,7 @@ public:
 private:
 	uint64_t m_iPlacementId = {};
 	std::string m_AssetId;
+	std::string m_AssetGroupId;
 	float3_t m_vPlacementPosition = {};
 	float4_t m_vRotationQuaternion = float4_t(0.f, 0.f, 0.f, 1.f);
 	float3_t m_vSignedScale = float3_t(1.f, 1.f, 1.f);
@@ -85,6 +89,8 @@ private:
 	f32_t m_fLocalCullRadius = {};
 	float3_t m_vWorldCullCenter = {};
 	f32_t m_fWorldCullRadius = {};
+	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
+	MAP_FRUSTUM_RUNTIME_STATE m_FrustumState{};
 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
 	/* Runtime presentation may fade a placement without mutating the authored
@@ -101,7 +107,8 @@ private:
 private:
 	HRESULT Ready_Components(uint32_t prototypeLevelIndex,
 		const std::wstring& modelPrototypeTag);
-	HRESULT Bind_ShaderResources();
+	HRESULT Bind_ShaderResources(
+		const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
 	HRESULT Bind_ShadowShaderResources();
 	HRESULT Bind_PresentationVortexShaderResources(
 		PRESENTATION_VORTEX_PROFILE profile,

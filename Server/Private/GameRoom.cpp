@@ -7402,6 +7402,27 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				(targetY - player.fPositionY) * moveRatio;
 			proposedZ = player.fPositionZ + stepZ;
 		}
+		/* A smoothed path can skip many authored cells. Never interpolate Y toward
+		the distant waypoint: doing so raises the player while XZ is still on the
+		lower deck and lets a later height check see an already-raised player.
+		Resolve both XZ positions against navigation and take only its ground Y. */
+		if (m_ServerNavigation.Is_Loaded())
+		{
+			SERVER_NAV_POINT proposedGround{};
+			if (!m_ServerNavigation.Resolve_TraversalStep(
+				player.fPositionX,
+				player.fPositionZ,
+				proposedX,
+				proposedZ,
+				proposedGround))
+			{
+				player.hasMoveGoal = false;
+				player.MovePath.clear();
+				player.iMovePathIndex = 0u;
+				continue;
+			}
+			proposedY = proposedGround.y;
+		}
 
 		float resolvedX = player.fPositionX;
 		float resolvedY = player.fPositionY;
@@ -7421,6 +7442,26 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.MovePath.clear();
 			player.iMovePathIndex = 0;
 			continue;
+		}
+		/* Body collision may slide XZ away from the point checked above. Validate
+		the final slide destination too and ground it before committing any
+		authoritative coordinate. */
+		if (m_ServerNavigation.Is_Loaded())
+		{
+			SERVER_NAV_POINT resolvedGround{};
+			if (!m_ServerNavigation.Resolve_TraversalStep(
+				player.fPositionX,
+				player.fPositionZ,
+				resolvedX,
+				resolvedZ,
+				resolvedGround))
+			{
+				player.hasMoveGoal = false;
+				player.MovePath.clear();
+				player.iMovePathIndex = 0u;
+				continue;
+			}
+			resolvedY = resolvedGround.y;
 		}
 		player.fPositionX = resolvedX;
 		player.fPositionY = resolvedY;

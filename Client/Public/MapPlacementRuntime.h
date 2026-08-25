@@ -83,14 +83,16 @@ public:
 		uint32_t levelIndex,
 		const CMapAssetCatalog& catalog,
 		const MAP_PLACEMENT_RECORD& record,
-		MAP_RUNTIME_PLACED_ENTRY& outEntry);
+		MAP_RUNTIME_PLACED_ENTRY& outEntry,
+		const MAP_FRUSTUM_CULLING_POLICY& frustumCulling = {});
 
 	static bool_t Stage_PlacementRuntime(
 		uint32_t levelIndex,
 		const CMapAssetCatalog& catalog,
 		const std::vector<MAP_PLACEMENT_RECORD>& records,
 		std::vector<MAP_RUNTIME_PLACED_ENTRY>& outPlacements,
-		std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& outBatches);
+		std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& outBatches,
+		const MAP_FRUSTUM_CULLING_POLICY& frustumCulling = {});
 
 	static void Remove_PlacementRuntime(
 		uint32_t levelIndex,

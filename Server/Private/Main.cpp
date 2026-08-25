@@ -23,6 +23,11 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::Run_ServerGameplayContractTests();
 	}
 	if (2 == argumentCount &&
+		std::string_view(arguments[1]) == "--navigation-contract-test")
+	{
+		return LostArk::Server::Run_ServerNavigationContractTests();
+	}
+	if (2 == argumentCount &&
 		std::string_view(arguments[1]) ==
 			"--dimensionmaster-ground-target-contract")
 	{
@@ -114,6 +119,7 @@ int main(const int argumentCount, char** arguments)
 		}
 
 		std::cerr << "Usage: Server [--contract-test | "
+			"--navigation-contract-test | "
 			"--dimensionmaster-ground-target-contract | "
 			"--reset-valtan-runtime-to-packaged | "
 			"--bind-address IPv4] [--port 1..65535] "

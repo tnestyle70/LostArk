@@ -33,6 +33,22 @@ namespace
 		return scope;
 	}
 
+	MAP_LOAD_SCOPE MakeBernMapScope()
+	{
+		MAP_LOAD_SCOPE scope = MakeFullMapScope();
+		/* Bern keeps the diagnostic bypass on until the camera-only repro is
+		   accepted by the user. The conservative policy remains useful after
+		   bypass is turned off for the final product check. */
+		scope.frustumCulling.bypass = true;
+		scope.frustumCulling.diagnostics = true;
+		scope.frustumCulling.baseMargin = 0.25f;
+		scope.frustumCulling.largeObjectRadiusThreshold = 4.f;
+		scope.frustumCulling.largeObjectAbsoluteMargin = 2.f;
+		scope.frustumCulling.largeObjectRelativeMargin = 0.12f;
+		scope.frustumCulling.rejectHysteresisFrames = 3u;
+		return scope;
+	}
+
 	unique_ptr<CLevel> CreateLobby(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -106,7 +122,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			// void everywhere else. The Map Editor keeps its own reversible
 			// "Show Bern Landscape" toggle for authoring; the product level loads
 			// the full area.
-			MakeFullMapScope(),
+			MakeBernMapScope(),
 			CreateBern,
 			&CLoader::Ready_For_Bern
 		},

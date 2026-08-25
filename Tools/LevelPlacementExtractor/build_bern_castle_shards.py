@@ -744,6 +744,7 @@ def write_child_manifests(
 def load_render_profile_source(
     path: Path | None,
     known_asset_ids: set[str],
+    known_source_ids: set[str],
 ) -> dict[str, Any] | None:
     if path is None:
         return None
@@ -762,6 +763,25 @@ def load_render_profile_source(
     if unknown:
         raise ShardBuildError(
             f"render profiles reference unknown Bern assets: {sorted(unknown)}"
+        )
+    overrides = document.get("visibilityOverrides", [])
+    if not isinstance(overrides, list):
+        raise ShardBuildError("visibilityOverrides must be an array")
+    override_ids: list[str] = []
+    for override in overrides:
+        if not isinstance(override, dict):
+            raise ShardBuildError("visibility override must be an object")
+        source_id = str(override.get("sourcePlacementId", ""))
+        if not source_id or type(override.get("visible")) is not bool:
+            raise ShardBuildError("visibility override requires sourcePlacementId and bool visible")
+        override_ids.append(source_id)
+    if len(set(override_ids)) != len(override_ids):
+        raise ShardBuildError("duplicate visibility override sourcePlacementId")
+    unknown_sources = set(override_ids) - known_source_ids
+    if unknown_sources:
+        raise ShardBuildError(
+            "visibility overrides reference unknown Bern placements: "
+            f"{sorted(unknown_sources)}"
         )
     return document
 
@@ -784,13 +804,30 @@ def write_child_render_profile_manifest(
             if str(profile.get("assetId", "")) in shard_asset_ids
         ]
     )
-    overrides = [
-        {
-            "sourcePlacementId": str(row["placementId"]),
-            "visible": False,
-        }
+    overrides_by_source = {
+        str(row["placementId"]): False
         for row in static_group["rows"]
         if str(row.get("levelPackage", "")) in hidden_levels
+    }
+    shard_source_ids = set(static_group["sourceIds"]) | set(overlay_group["sourceIds"])
+    if render_profile_source is not None:
+        for override in render_profile_source.get("visibilityOverrides", []):
+            source_id = str(override["sourcePlacementId"])
+            if source_id not in shard_source_ids:
+                continue
+            visible = bool(override["visible"])
+            previous = overrides_by_source.get(source_id)
+            if previous is not None and previous != visible:
+                raise ShardBuildError(
+                    f"visibility override conflicts with default-hidden placement: {source_id}"
+                )
+            overrides_by_source[source_id] = visible
+    overrides = [
+        {
+            "sourcePlacementId": source_id,
+            "visible": visible,
+        }
+        for source_id, visible in sorted(overrides_by_source.items())
     ]
     if not profiles and not overrides:
         return None
@@ -1135,10 +1172,12 @@ def build_shards(args: argparse.Namespace) -> dict[str, Any]:
     )
     render_profile_manifest = getattr(args, "render_profile_manifest", None)
     known_asset_ids = set(static_inventory["assetIds"])
+    known_source_ids = set(static_inventory["sourceIds"])
     if overlay_inventory is not None:
         known_asset_ids.update(overlay_inventory["assetIds"])
+        known_source_ids.update(overlay_inventory["sourceIds"])
     render_profile_source = load_render_profile_source(
-        render_profile_manifest, known_asset_ids
+        render_profile_manifest, known_asset_ids, known_source_ids
     )
     if (
         overlay_inventory is not None

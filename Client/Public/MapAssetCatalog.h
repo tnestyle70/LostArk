@@ -43,6 +43,12 @@ struct MAP_ASSET_RENDER_PROFILE
 	float specularIntensity = 1.f;
 	float specularPower = 50.f;
 	float4_t colorTint = float4_t(1.f, 1.f, 1.f, 1.f);
+	/* Landscape heightfield tiles bake a top-down atlas whose UV is a pure
+	   XZ projection, so a near-vertical cliff face smears one texel column
+	   over the whole height. A positive value enables the triplanar blend
+	   and converts world height into the texel density the authored UV
+	   already uses on flat ground. Zero keeps the authored mapping. */
+	float triplanarHeightScale = 0.f;
 };
 
 struct MAP_ASSET_ENTRY

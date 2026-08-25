@@ -191,7 +191,7 @@ function Assert-RenderingProfileDocument([object]$Document) {
     foreach ($profile in $profiles) {
         Assert-ExactProperties $profile @(
             'profileId', 'exposureMultiplier', 'bloomIntensityMultiplier',
-            'light', 'shadow') `
+            'light', 'shadow', 'fog') `
             'profile'
 		if ($profile.profileId -isnot [string]) {
 			throw 'profile.profileId must be a string.'
@@ -256,6 +256,33 @@ function Assert-RenderingProfileDocument([object]$Document) {
             "$profileId.shadow.normalBias"
         Assert-FiniteRange $shadow.strength 0.0 1.0 `
             "$profileId.shadow.strength"
+
+        $fog = $profile.fog
+        Assert-ExactProperties $fog @(
+            'enabled', 'color', 'density', 'heightFalloff',
+            'topHeight', 'startDistance', 'maximumOpacity',
+            'driftSpeed', 'driftHeightAmplitude',
+            'driftDensityAmplitude') "$profileId.fog"
+        if ($fog.enabled -isnot [bool]) {
+            throw "$profileId.fog.enabled must be boolean."
+        }
+        Assert-Color $fog.color "$profileId.fog.color"
+        Assert-FiniteRange $fog.density 0.0 8.0 `
+            "$profileId.fog.density"
+        Assert-FiniteRange $fog.heightFalloff 0.0001 4.0 `
+            "$profileId.fog.heightFalloff"
+        Assert-FiniteRange $fog.topHeight -10000.0 10000.0 `
+            "$profileId.fog.topHeight"
+        Assert-FiniteRange $fog.startDistance 0.0 100000.0 `
+            "$profileId.fog.startDistance"
+        Assert-FiniteRange $fog.maximumOpacity 0.0 1.0 `
+            "$profileId.fog.maximumOpacity"
+        Assert-FiniteRange $fog.driftSpeed 0.0 8.0 `
+            "$profileId.fog.driftSpeed"
+        Assert-FiniteRange $fog.driftHeightAmplitude 0.0 1000.0 `
+            "$profileId.fog.driftHeightAmplitude"
+        Assert-FiniteRange $fog.driftDensityAmplitude 0.0 8.0 `
+            "$profileId.fog.driftDensityAmplitude"
 
         $effectiveExposure = [double]$global.exposure *
             [double]$profile.exposureMultiplier

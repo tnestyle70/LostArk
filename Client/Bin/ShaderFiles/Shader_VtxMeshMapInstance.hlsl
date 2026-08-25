@@ -17,6 +17,7 @@ uint g_HasOpacityTexture = 0;
 float g_EmissiveIntensity = 1.f;
 float g_SpecularIntensity = 1.f;
 float g_SpecularPower = 50.f;
+float g_TriplanarHeightScale = 0.f;
 
 float2 g_UVScale = float2(1.f, 1.f);
 float2 g_UVOffset = float2(0.f, 0.f);
@@ -158,14 +159,44 @@ struct PS_OUT
     float4 vEmissive : SV_TARGET4;
 };
 
+/* The landscape atlas is authored as a top-down XZ projection, so a
+   near-vertical heightfield face stretches a single texel column over the
+   whole cliff. Substituting world height for the compressed axis restores
+   the authored texel density, and the normal weighted blend leaves flat
+   ground on the authored mapping exactly. */
+float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
+{
+    /* Heightfield vertex normals are averaged between the flat top and the
+       vertical wall that share an edge, so the interpolated normal still
+       reads as up across most of a cliff face. The screen space derivative
+       of world position gives the true facing of the shaded triangle, and
+       it is taken before the uniform early out so the quad stays valid. */
+    const float3 faceNormal =
+        normalize(cross(ddx(worldPos), ddy(worldPos)));
+
+    const float4 topDown = g_DiffuseTexture.Sample(LinearSampler, texcoord);
+    if (g_TriplanarHeightScale <= 0.f)
+        return topDown;
+
+    const float heightCoord = worldPos.y * g_TriplanarHeightScale;
+    const float4 sideX =
+        g_DiffuseTexture.Sample(LinearSampler, float2(texcoord.y, heightCoord));
+    const float4 sideZ =
+        g_DiffuseTexture.Sample(LinearSampler, float2(texcoord.x, heightCoord));
+
+    float3 weight = pow(abs(faceNormal), 8.f);
+    weight /= max(weight.x + weight.y + weight.z, 1e-5f);
+    return sideX * weight.x + topDown * weight.y + sideZ * weight.z;
+}
+
 PS_OUT PS_MAIN(VS_OUT input)
 {
     PS_OUT output;
 
     float4 diffuse =
-		g_DiffuseTexture.Sample(
-			LinearSampler,
-			input.vTexcoord);
+		SampleMapDiffuse(
+			input.vTexcoord,
+			input.vWorldPos.xyz);
 
     diffuse *= g_ColorTint;
 

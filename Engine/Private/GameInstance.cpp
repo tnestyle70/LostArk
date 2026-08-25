@@ -155,6 +155,10 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<I
 
 void CGameInstance::Update_Engine(f32_t fTimeDelta)
 {
+	/* The deferred fog drifts on a renderer owned clock, advanced once per
+	   frame so no screen pass has to be handed a time value. */
+	m_pRenderer->Advance_PresentationClock(fTimeDelta);
+
 	m_pPicking->Update();
 
 	m_pInput_Device->Update();
@@ -411,6 +415,17 @@ HRESULT CGameInstance::Apply_RenderQualitySettings(
 	const RENDER_QUALITY_SETTINGS& Settings)
 {
 	return m_pRenderer->Apply_RenderQualitySettings(Settings);
+}
+
+HEIGHT_FOG_SETTINGS CGameInstance::Get_HeightFogSettings() const
+{
+	return m_pRenderer->Get_HeightFogSettings();
+}
+
+HRESULT CGameInstance::Apply_HeightFog(
+	const HEIGHT_FOG_SETTINGS& Settings)
+{
+	return m_pRenderer->Apply_HeightFog(Settings);
 }
 
 #ifdef _DEBUG

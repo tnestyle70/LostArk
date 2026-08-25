@@ -469,7 +469,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
 	{
 		if (!Has_ExactFields(value,
 			{ "profileId", "exposureMultiplier",
-			  "bloomIntensityMultiplier", "light", "shadow" }))
+			  "bloomIntensityMultiplier", "light", "shadow", "fog" }))
 		{
 			strOutStatus = "Scene profile has missing or unsupported fields.";
 			return false;
@@ -480,14 +480,24 @@ bool_t CRenderingProfileService::Parse_Catalog(
 			value, "light", DATA_JSON_TYPE::OBJECT);
 		const DATA_JSON_VALUE* pShadow = Required(
 			value, "shadow", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* pFog = Required(
+			value, "fog", DATA_JSON_TYPE::OBJECT);
 		SCENE_RENDERING_PROFILE profile;
 		if (nullptr == pId || nullptr == pLight || nullptr == pShadow ||
+			nullptr == pFog ||
 			!Has_ExactFields(*pLight,
 				{ "type", "direction", "diffuse", "ambient", "specular" }) ||
 			!Has_ExactFields(*pShadow,
 				{ "enabled", "focus", "distance", "orthographicWidth",
 				  "orthographicHeight", "near", "far", "depthBias",
-				  "normalBias", "strength" }))
+				  "normalBias", "strength" }) ||
+			!Has_ExactFields(*pFog,
+				{ "enabled", "color", "density", "heightFalloff",
+				  "topHeight", "startDistance", "maximumOpacity",
+				  "driftSpeed", "driftHeightAmplitude",
+				  "driftDensityAmplitude", "coveragePercent",
+				  "windDirectionX", "windDirectionZ", "windSpeed",
+				  "patchScale", "patchSoftness" }))
 		{
 			strOutStatus = "Scene profile light contract is invalid.";
 			return false;
@@ -497,6 +507,8 @@ bool_t CRenderingProfileService::Parse_Catalog(
 			*pLight, "type", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* pShadowEnabled = Required(
 			*pShadow, "enabled", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* pFogEnabled = Required(
+			*pFog, "enabled", DATA_JSON_TYPE::BOOLEAN);
 		if (nullptr == pType || "directional" != pType->Get_String() ||
 			nullptr == pShadowEnabled ||
 			!Read_Float(value, "exposureMultiplier", 0.1f, 4.f,
@@ -523,7 +535,37 @@ bool_t CRenderingProfileService::Parse_Catalog(
 			!Read_Float(*pShadow, "normalBias", 0.f, 10.f,
 				profile.ShadowSettings.fNormalBias) ||
 			!Read_Float(*pShadow, "strength", 0.f, 1.f,
-				profile.ShadowSettings.fStrength))
+				profile.ShadowSettings.fStrength) ||
+			nullptr == pFogEnabled ||
+			!Read_Float4(*pFog, "color", profile.Fog.vColor) ||
+			!Read_Float(*pFog, "density", 0.f, 8.f,
+				profile.Fog.fDensity) ||
+			!Read_Float(*pFog, "heightFalloff", 0.0001f, 4.f,
+				profile.Fog.fHeightFalloff) ||
+			!Read_Float(*pFog, "topHeight", -10000.f, 10000.f,
+				profile.Fog.fTopHeight) ||
+			!Read_Float(*pFog, "startDistance", 0.f, 100000.f,
+				profile.Fog.fStartDistance) ||
+			!Read_Float(*pFog, "maximumOpacity", 0.f, 1.f,
+				profile.Fog.fMaximumOpacity) ||
+			!Read_Float(*pFog, "driftSpeed", 0.f, 8.f,
+				profile.Fog.fDriftSpeed) ||
+			!Read_Float(*pFog, "driftHeightAmplitude", 0.f, 1000.f,
+				profile.Fog.fDriftHeightAmplitude) ||
+			!Read_Float(*pFog, "driftDensityAmplitude", 0.f, 8.f,
+				profile.Fog.fDriftDensityAmplitude) ||
+			!Read_Float(*pFog, "coveragePercent", 0.f, 1.f,
+				profile.Fog.fCoveragePercent) ||
+			!Read_Float(*pFog, "windDirectionX", -1.f, 1.f,
+				profile.Fog.fWindDirectionX) ||
+			!Read_Float(*pFog, "windDirectionZ", -1.f, 1.f,
+				profile.Fog.fWindDirectionZ) ||
+			!Read_Float(*pFog, "windSpeed", 0.f, 200.f,
+				profile.Fog.fWindSpeed) ||
+			!Read_Float(*pFog, "patchScale", 0.0001f, 1.f,
+				profile.Fog.fPatchScale) ||
+			!Read_Float(*pFog, "patchSoftness", 0.001f, 0.5f,
+				profile.Fog.fPatchSoftness))
 		{
 			strOutStatus = "Scene profile contains an invalid light or multiplier.";
 			return false;
@@ -532,6 +574,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		profile.Light.fRange = 1.f;
 		profile.ShadowSettings.bEnabled =
 			pShadowEnabled->Get_Boolean();
+		profile.Fog.bEnabled = pFogEnabled->Get_Boolean();
 		if (!Validate_Profile(profile, strOutStatus))
 		{
 			return false;
@@ -647,6 +690,8 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		CGameInstance::Get().Get_RenderQualitySettings();
 	const SHADOW_LIGHT_DESC previousShadow =
 		CGameInstance::Get().Get_ShadowLightDesc();
+	const HEIGHT_FOG_SETTINGS previousFog =
+		CGameInstance::Get().Get_HeightFogSettings();
 	SHADOW_LIGHT_DESC stagedShadow{};
 	if (!Build_ShadowDesc(Profile, stagedShadow))
 	{
@@ -664,8 +709,18 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		strOutStatus = "Shadow service rejected the staged scene shadow; active state preserved.";
 		return false;
 	}
+	/* Fog is committed before the light so a rejected fog value leaves the
+	   previously active scene completely untouched. */
+	if (FAILED(CGameInstance::Get().Apply_HeightFog(Profile.Fog)))
+	{
+		CGameInstance::Get().Apply_Shadow_Light(previousShadow);
+		CGameInstance::Get().Apply_RenderQualitySettings(previous);
+		strOutStatus = "Renderer rejected the staged height fog; active state preserved.";
+		return false;
+	}
 	if (FAILED(CGameInstance::Get().Add_Light(Profile.Light)))
 	{
+		CGameInstance::Get().Apply_HeightFog(previousFog);
 		CGameInstance::Get().Apply_Shadow_Light(previousShadow);
 		CGameInstance::Get().Apply_RenderQualitySettings(previous);
 		strOutStatus = "Light manager rejected the staged scene light; active state preserved.";
@@ -746,6 +801,35 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 			profile.ShadowSettings.fNormalBias << ",\n"
 			"        \"strength\": " <<
 			profile.ShadowSettings.fStrength << "\n"
+			"      },\n"
+			"      \"fog\": {\n"
+			"        \"enabled\": " <<
+			(profile.Fog.bEnabled ? "true" : "false") << ",\n"
+			"        \"color\": ";
+		Write_Float4(output, profile.Fog.vColor);
+		output << ",\n"
+			"        \"density\": " << profile.Fog.fDensity << ",\n"
+			"        \"heightFalloff\": " <<
+			profile.Fog.fHeightFalloff << ",\n"
+			"        \"topHeight\": " << profile.Fog.fTopHeight << ",\n"
+			"        \"startDistance\": " <<
+			profile.Fog.fStartDistance << ",\n"
+			"        \"maximumOpacity\": " <<
+			profile.Fog.fMaximumOpacity << ",\n"
+			"        \"driftSpeed\": " << profile.Fog.fDriftSpeed << ",\n"
+			"        \"driftHeightAmplitude\": " <<
+			profile.Fog.fDriftHeightAmplitude << ",\n"
+			"        \"driftDensityAmplitude\": " <<
+			profile.Fog.fDriftDensityAmplitude << ",\n"
+			"        \"coveragePercent\": " <<
+			profile.Fog.fCoveragePercent << ",\n"
+			"        \"windDirectionX\": " <<
+			profile.Fog.fWindDirectionX << ",\n"
+			"        \"windDirectionZ\": " <<
+			profile.Fog.fWindDirectionZ << ",\n"
+			"        \"windSpeed\": " << profile.Fog.fWindSpeed << ",\n"
+			"        \"patchScale\": " << profile.Fog.fPatchScale << ",\n"
+			"        \"patchSoftness\": " << profile.Fog.fPatchSoftness << "\n"
 			"      }\n    }" <<
 			(++index == Catalog.Profiles.size() ? "\n" : ",\n");
 	}

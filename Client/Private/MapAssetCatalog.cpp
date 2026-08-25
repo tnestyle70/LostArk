@@ -29,6 +29,10 @@ namespace
 	constexpr size_t MAX_GROUP_LABEL_LENGTH = 128;
 	constexpr size_t MAX_EVIDENCE_LENGTH = 512;
 	constexpr size_t MAX_SHARD_FILENAME_LENGTH = 260;
+	/* One landscape component spans 39.68 world units and its baked atlas
+	   maps to that footprint, so world height must advance the substituted
+	   texture axis at the same rate the authored UV advances across it. */
+	constexpr float LANDSCAPE_TRIPLANAR_HEIGHT_SCALE = 1.f / 39.68f;
 
 	struct PARSED_MAP_ASSET_ROW
 	{
@@ -104,6 +108,8 @@ namespace
 			finite(profile.specularIntensity) &&
 			profile.specularIntensity >= 0.f &&
 			finite(profile.specularPower) && profile.specularPower >= 1.f &&
+			finite(profile.triplanarHeightScale) &&
+			profile.triplanarHeightScale >= 0.f &&
 			finite(profile.colorTint.x) && finite(profile.colorTint.y) &&
 			finite(profile.colorTint.z) && finite(profile.colorTint.w) &&
 			profile.colorTint.x >= 0.f && profile.colorTint.y >= 0.f &&
@@ -564,6 +570,15 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 		{
 			m_Status = "Unknown cull mode for " + entry.id;
 			return false;
+		}
+
+		/* The landscape group is the only catalog kind whose mesh is a
+		   heightfield with authored top-down UV, so it is also the only one
+		   whose cliff faces need the substituted height axis. */
+		if ("landscape" == entry.groupId)
+		{
+			entry.renderProfile.triplanarHeightScale =
+				LANDSCAPE_TRIPLANAR_HEIGHT_SCALE;
 		}
 
 		if (entry.id.empty() || entry.label.empty() || entry.prototypeTag.empty() ||

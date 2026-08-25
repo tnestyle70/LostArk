@@ -18,6 +18,9 @@ struct SCENE_RENDERING_PROFILE final
 	float3_t vShadowFocus{};
 	f32_t fShadowDistance = 40.f;
 	SHADOW_SETTINGS ShadowSettings{};
+	/* Fog belongs to the scene profile because it is a per Level mood value
+	   that the F1 tool already saves, publishes and reloads. */
+	HEIGHT_FOG_SETTINGS Fog{};
 };
 
 class CRenderingProfileService final

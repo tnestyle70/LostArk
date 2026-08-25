@@ -9,7 +9,10 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 
 function New-UniformNavigationGrid {
-    param([string]$RelativeAuthoringPath)
+    param(
+        [string]$RelativeAuthoringPath,
+        [single]$RuntimeMaximumStepHeight = 0.0
+    )
 
     $path = Join-Path $repoRoot $RelativeAuthoringPath
     $source = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -28,7 +31,10 @@ function New-UniformNavigationGrid {
         [double]::IsInfinity([double]$source.cellSize) -or
         [double]::IsNaN([double]$source.originX) -or
         [double]::IsNaN([double]$source.originZ) -or
-        [double]::IsNaN([double]$source.defaultHeight)) {
+        [double]::IsNaN([double]$source.defaultHeight) -or
+        [single]::IsNaN($RuntimeMaximumStepHeight) -or
+        [single]::IsInfinity($RuntimeMaximumStepHeight) -or
+        $RuntimeMaximumStepHeight -lt 0.0) {
         throw "Training navigation authoring contract is invalid: $RelativeAuthoringPath"
     }
 
@@ -52,6 +58,7 @@ function New-UniformNavigationGrid {
             AreaId = [string]$source.areaId
             Bytes = $stream.ToArray()
             WorldPath = "Data/Worlds/$($source.areaId)/Gameplay.world.json"
+            RuntimeMaximumStepHeight = $RuntimeMaximumStepHeight
         }
     }
     finally {
@@ -140,11 +147,27 @@ function Convert-NavigationRuntimeBlockers {
     return [string[]]$normalized.ToArray()
 }
 
+function Convert-NavigationRuntimePolicy {
+    param([object]$Grid)
+
+    $maximumStep = [single]$Grid.RuntimeMaximumStepHeight
+    if ([single]::IsNaN($maximumStep) -or
+        [single]::IsInfinity($maximumStep) -or
+        $maximumStep -lt 0.0) {
+        throw "Navigation runtime policy is invalid: $($Grid.AreaId)"
+    }
+    $maximumStepText = $maximumStep.ToString(
+        'R', [Globalization.CultureInfo]::InvariantCulture)
+    return [string[]]@(
+        "LOSTARK_NAVIGATION_POLICY 1 `"$($Grid.AreaId)`" $maximumStepText")
+}
+
 function Convert-NavigationAuthoringGrid {
     param(
         [string]$RelativeSourcePath,
         [string]$RelativePaintPath,
         [single]$MaximumStepHeight = 0.0,
+        [single]$RuntimeMaximumStepHeight = 0.0,
         [switch]$RequireSingleComponent,
         [string]$AuthoringRoot = $repoRoot
     )
@@ -187,7 +210,10 @@ function Convert-NavigationAuthoringGrid {
         $declaredCellCount -ne $cellCount -or
         $lines.Count -ne 1 + $cellCount -or
         [single]::IsNaN($cellSize) -or [single]::IsInfinity($cellSize) -or
-        $cellSize -le 0) {
+        $cellSize -le 0 -or
+        [single]::IsNaN($RuntimeMaximumStepHeight) -or
+        [single]::IsInfinity($RuntimeMaximumStepHeight) -or
+        $RuntimeMaximumStepHeight -lt 0.0) {
         throw "Navigation authoring dimensions are invalid: $sourcePath"
     }
 
@@ -227,6 +253,7 @@ function Convert-NavigationAuthoringGrid {
 
     # 0 = inherit baked state, 1 = force blocked, 2 = force walkable.
     $overrides = [byte[]]::new([int]$cellCount)
+    $paintSeen = [byte[]]::new([int]$cellCount)
     # A pinhole close reads the baked surface, never a value an earlier
     # paint row already healed, so the published grid does not depend on
     # the order the override rows happen to appear in.
@@ -242,7 +269,7 @@ function Convert-NavigationAuthoringGrid {
         $paintHeader = @(Split-NavigationTokens $paintLines[0])
         if ($paintHeader.Count -ne 9 -or
             $paintHeader[0] -ne 'LOSTARK_NAVGRID_PAINT' -or
-            $paintHeader[1] -notin @('1', '2') -or
+            $paintHeader[1] -notin @('1', '2', '3') -or
             $paintHeader[2] -ne $areaId -or
             [uint32]$paintHeader[3] -ne $width -or
             [uint32]$paintHeader[4] -ne $height -or
@@ -259,8 +286,12 @@ function Convert-NavigationAuthoringGrid {
         }
         for ($row = 0; $row -lt $overrideCount; ++$row) {
             $tokens = @(Split-NavigationTokens $paintLines[$row + 1])
-            $expectedPaintRowCount = if ($paintVersion -eq 1) { 2 } else { 3 }
-            if ($tokens.Count -ne $expectedPaintRowCount) {
+            $minimumPaintRowCount = if ($paintVersion -eq 1) { 2 } else { 3 }
+            $maximumPaintRowCount = if ($paintVersion -eq 3) { 4 } else {
+                $minimumPaintRowCount
+            }
+            if ($tokens.Count -lt $minimumPaintRowCount -or
+                $tokens.Count -gt $maximumPaintRowCount) {
                 throw "Navigation paint row is invalid: $paintPath"
             }
             $cellX = [int32]::Parse($tokens[0], $culture)
@@ -270,9 +301,10 @@ function Convert-NavigationAuthoringGrid {
                 throw "Navigation paint cell is outside the grid: $paintPath"
             }
             $index = $cellZ * $width + $cellX
-            if ($overrides[$index] -ne 0) {
+            if ($paintSeen[$index] -ne 0) {
                 throw "Navigation paint has duplicate cells: $paintPath"
             }
+            $paintSeen[$index] = 1
             # A bake ray that slips through a floor crack leaves the cell it
             # crossed either with no surface at all or with the height of
             # whatever it finally hit far below. WALKABLE paint declares such
@@ -288,9 +320,32 @@ function Convert-NavigationAuthoringGrid {
             # ramp, a ledge, a stair - never qualifies and is published
             # exactly as the bake found it. Reading the baked snapshot keeps
             # the result independent of the order the override rows appear in.
-            $isWalkablePaint = $paintVersion -ne 1 -and $tokens[2] -eq 'WALKABLE'
+            $paintState = if ($paintVersion -eq 1) { 'BLOCKED' } else { $tokens[2] }
+            if ($paintState -notin @('BLOCKED', 'WALKABLE') -and
+                -not ($paintVersion -eq 3 -and $paintState -eq 'HEIGHT')) {
+                throw "Navigation paint override is invalid: $paintPath"
+            }
+            $hasExplicitHeight = $paintVersion -eq 3 -and $tokens.Count -eq 4
+            if ($paintState -eq 'HEIGHT' -and -not $hasExplicitHeight) {
+                throw "Navigation HEIGHT row is missing its height: $paintPath"
+            }
+            $explicitHeight = [single]0
+            if ($hasExplicitHeight) {
+                if (-not [single]::TryParse(
+                    $tokens[3],
+                    [Globalization.NumberStyles]::Float,
+                    $culture,
+                    [ref]$explicitHeight) -or
+                    [single]::IsNaN($explicitHeight) -or
+                    [single]::IsInfinity($explicitHeight) -or
+                    $resolved[$index] -eq 0) {
+                    throw "Navigation paint height override is invalid: $paintPath"
+                }
+            }
+            $isWalkablePaint = $paintState -eq 'WALKABLE'
             $seamHeight = $null
-            if ($isWalkablePaint -and $cellX -gt 0 -and $cellZ -gt 0 -and
+            if ($isWalkablePaint -and -not $hasExplicitHeight -and
+                $cellX -gt 0 -and $cellZ -gt 0 -and
                 $cellX -lt $width - 1 -and $cellZ -lt $height - 1) {
                 $ringHeights = [Collections.Generic.List[single]]::new()
                 foreach ($offsetZ in -1, 0, 1) {
@@ -324,7 +379,10 @@ function Convert-NavigationAuthoringGrid {
                     }
                 }
             }
-            if ($resolved[$index] -eq 0) {
+            if ($hasExplicitHeight) {
+                $heights[$index] = $explicitHeight
+            }
+            elseif ($resolved[$index] -eq 0) {
                 if ($null -eq $seamHeight) {
                     throw "Navigation paint targets an unresolved cell: $paintPath"
                 }
@@ -336,14 +394,11 @@ function Convert-NavigationAuthoringGrid {
                 [double]$seamHeightTolerance) {
                 $heights[$index] = $seamHeight
             }
-            if ($paintVersion -eq 1 -or $tokens[2] -eq 'BLOCKED') {
+            if ($paintState -eq 'BLOCKED') {
                 $overrides[$index] = 1
             }
-            elseif ($tokens[2] -eq 'WALKABLE') {
+            elseif ($paintState -eq 'WALKABLE') {
                 $overrides[$index] = 2
-            }
-            else {
-                throw "Navigation paint override is invalid: $paintPath"
             }
         }
     }
@@ -378,6 +433,7 @@ function Convert-NavigationAuthoringGrid {
             Bytes = $stream.ToArray()
             WorldPath = "Data/Worlds/$areaId/Gameplay.world.json"
             MaximumStepHeight = $MaximumStepHeight
+            RuntimeMaximumStepHeight = $RuntimeMaximumStepHeight
             RequireSingleComponent = [bool]$RequireSingleComponent
         }
     }
@@ -529,6 +585,29 @@ function Invoke-NavigationPaintContractTest {
             throw 'Navigation paint v2 did not override baked walkability'
         }
 
+        $heightPaint = @(
+            'LOSTARK_NAVGRID_PAINT 3 "TEST_NAV_PAINT" 2 1 1 0 0 2',
+            '0 0 WALKABLE -0.25',
+            '1 0 WALKABLE 0.5'
+        ) -join "`n"
+        [IO.File]::WriteAllText($paintPath, $heightPaint, [Text.Encoding]::UTF8)
+        $heightGrid = Convert-NavigationAuthoringGrid `
+            -RelativeSourcePath 'Data/Navigation/TEST_NAV_PAINT.navsource' `
+            -RelativePaintPath 'Data/Navigation/TEST_NAV_PAINT.navpaint' `
+            -RuntimeMaximumStepHeight 0.75 `
+            -AuthoringRoot $fixtureRoot
+        $heightOffset = 22
+        if ($heightGrid.Bytes[20] -ne 1 -or $heightGrid.Bytes[21] -ne 1 -or
+            [BitConverter]::ToSingle($heightGrid.Bytes, $heightOffset) -ne -0.25 -or
+            [BitConverter]::ToSingle($heightGrid.Bytes, $heightOffset + 4) -ne 0.5) {
+            throw 'Navigation paint v3 did not publish explicit cell heights'
+        }
+        $policy = @(Convert-NavigationRuntimePolicy -Grid $heightGrid)
+        if ($policy.Count -ne 1 -or
+            $policy[0] -ne 'LOSTARK_NAVIGATION_POLICY 1 "TEST_NAV_PAINT" 0.75') {
+            throw 'Navigation runtime step policy was not emitted canonically'
+        }
+
         $validBlocker = @(
             'LOSTARK_NAVGRID_BLOCKERS 1 "TEST_NAV_PAINT" 2 1 1 0 0 1',
             'REGION "navregion.test.wall" "condition.test.wall.destroyed" 0 1',
@@ -579,7 +658,7 @@ function Invoke-NavigationPaintContractTest {
 
         $invalidCases = @(
             @(
-                'LOSTARK_NAVGRID_PAINT 3 "TEST_NAV_PAINT" 2 1 1 0 0 1',
+                'LOSTARK_NAVGRID_PAINT 4 "TEST_NAV_PAINT" 2 1 1 0 0 1',
                 '0 0 WALKABLE'),
             @(
                 'LOSTARK_NAVGRID_PAINT 2 "TEST_NAV_PAINT" 2 1 1 0 0 2',
@@ -587,7 +666,13 @@ function Invoke-NavigationPaintContractTest {
                 '0 0 BLOCKED'),
             @(
                 'LOSTARK_NAVGRID_PAINT 2 "WRONG_AREA" 2 1 1 0 0 1',
-                '0 0 WALKABLE')
+                '0 0 WALKABLE'),
+            @(
+                'LOSTARK_NAVGRID_PAINT 3 "TEST_NAV_PAINT" 2 1 1 0 0 1',
+                '0 0 HEIGHT'),
+            @(
+                'LOSTARK_NAVGRID_PAINT 3 "TEST_NAV_PAINT" 2 1 1 0 0 1',
+                '0 0 WALKABLE not-a-height')
         )
         foreach ($invalidCase in $invalidCases) {
             [IO.File]::WriteAllText(
@@ -627,22 +712,22 @@ $grids = @(
         -RelativeSourcePath 'Data/Navigation/LV_LUT_HEARTRB_ED.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_LUT_HEARTRB_ED.navpaint'),
     (New-UniformNavigationGrid `
-		-RelativeAuthoringPath 'Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json'),
+		-RelativeAuthoringPath 'Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json' `
+        -RuntimeMaximumStepHeight 0.6),
     (Convert-NavigationAuthoringGrid `
         -RelativeSourcePath 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint' `
         -MaximumStepHeight 0.6 `
+        -RuntimeMaximumStepHeight 0.6 `
         -RequireSingleComponent),
-    # Bern bakes a single height per XZ cell over a multi-level castle: bridges,
-    # terraces and archways sit above the ground walkway, so adjacent cells differ
-    # by up to 17.03 where two levels meet. That is authored geometry, not an
-    # unsafe step, and the walkable set is 107 disjoint regions. Neither guard can
-    # express that, so both stay off here and the staircase heights are published
-    # as baked. See the 08-14 Bern navigation RESULT for the ridge cells that still
-    # need re-authoring in MapTool.
+    # Bern's single-height XZ bake sees bridges, terraces and archways above the
+    # ground walkway. Version 3 paint corrects the three admitted corridor ridges
+    # to their ground-deck heights. The runtime 1 m edge guard then separates the
+    # remaining overlapping decks while preserving the authored staircase.
     (Convert-NavigationAuthoringGrid `
         -RelativeSourcePath 'Data/Navigation/LV_BER_BERNCASTLE.navsource' `
-        -RelativePaintPath 'Data/Navigation/LV_BER_BERNCASTLE.navpaint')
+        -RelativePaintPath 'Data/Navigation/LV_BER_BERNCASTLE.navpaint' `
+        -RuntimeMaximumStepHeight 1.0)
 )
 
 $validated = foreach ($grid in $grids) {
@@ -651,6 +736,7 @@ $validated = foreach ($grid in $grids) {
         Detail = Assert-NavigationGrid $grid
         BlockerLines = @(Convert-NavigationRuntimeBlockers `
             -AreaId $grid.AreaId -GridBytes ([byte[]]$grid.Bytes))
+        PolicyLines = @(Convert-NavigationRuntimePolicy -Grid $grid)
     }
 }
 
@@ -664,8 +750,10 @@ if ($Mode -eq 'Publish') {
         $targets = @(
             @{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navgrid"); Bytes=[byte[]]$entry.Grid.Bytes },
             @{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navblockers"); Lines=[string[]]$entry.BlockerLines },
+            @{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navpolicy"); Lines=[string[]]$entry.PolicyLines },
             @{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navgrid"); Bytes=[byte[]]$entry.Grid.Bytes },
-            @{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navblockers"); Lines=[string[]]$entry.BlockerLines }
+            @{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navblockers"); Lines=[string[]]$entry.BlockerLines },
+            @{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navpolicy"); Lines=[string[]]$entry.PolicyLines }
         )
         $promotions = [Collections.Generic.List[object]]::new()
         try {

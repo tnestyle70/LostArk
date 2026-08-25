@@ -12501,3 +12501,174 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	std::cout << "failures : " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;
 }
+
+int LostArk::Server::Run_ServerNavigationContractTests()
+{
+	TESTS tests;
+	CServerNavigation bernNavigation;
+	const bool loaded = bernNavigation.Load("LV_BER_BERNCASTLE");
+	tests.Require(
+		loaded &&
+		std::abs(
+			bernNavigation.Get_MaximumTraversalStepHeight() - 1.f) < 0.001f &&
+		bernNavigation.Is_HeightTransitionAllowed(47.f, 47.9f) &&
+		!bernNavigation.Is_HeightTransitionAllowed(47.f, 53.f),
+		"Load Bern navigation with a one-metre deck-step guard");
+
+	SERVER_NAV_POINT lockedGround{};
+	SERVER_NAV_POINT sampledGround{};
+	const bool lockedWalkStep = loaded &&
+		bernNavigation.Sample_Position(
+			138.238007f, -110.188004f, sampledGround) &&
+		bernNavigation.Resolve_TraversalStep(
+			138.238007f,
+			-110.188004f,
+			138.300003f,
+			-110.099998f,
+			lockedGround);
+	tests.Require(
+		lockedWalkStep &&
+		std::abs(lockedGround.y - sampledGround.y) < 0.000001f,
+		"Lock a live Bern walk step to the destination navigation ground");
+
+	SERVER_NAV_POINT rejectedDeckJump{};
+	tests.Require(
+		loaded && !bernNavigation.Resolve_TraversalStep(
+			125.238007f,
+			-170.688004f,
+			125.238007f,
+			-170.188004f,
+			rejectedDeckJump),
+		"Reject the real Bern 17-metre adjacent deck jump at live movement time");
+
+	SERVER_NAV_POINT clampedDeckStep{
+		125.238007f, 39.04832f, -170.688004f };
+	bool deckStepClamped = false;
+	if (loaded)
+	{
+		CPlayerSkillSystem::Clamp_StepToWalkable(
+			bernNavigation,
+			125.238007f,
+			-170.688004f,
+			125.238007f,
+			-170.188004f,
+			clampedDeckStep,
+			deckStepClamped);
+	}
+	tests.Require(
+		loaded && deckStepClamped && clampedDeckStep.y < 40.f &&
+		clampedDeckStep.z < -170.438004f,
+		"Clamp Bern skill and knockback movement before the upper deck");
+
+	std::vector<SERVER_NAV_POINT> stairPath;
+	const bool stairPathFound = loaded && bernNavigation.Find_Path(
+		137.586334f,
+		-22.4640217f,
+		137.238007f,
+		-116.688004f,
+		stairPath);
+	bool transitionsSafe = stairPathFound && stairPath.size() > 100u;
+	float maximumPathStep = 0.f;
+	for (std::size_t index = 1u; index < stairPath.size(); ++index)
+	{
+		const float step = std::abs(
+			stairPath[index].y - stairPath[index - 1u].y);
+		maximumPathStep = (std::max)(maximumPathStep, step);
+		transitionsSafe = transitionsSafe &&
+			bernNavigation.Is_HeightTransitionAllowed(
+				stairPath[index - 1u].y, stairPath[index].y);
+	}
+	tests.Require(
+		transitionsSafe && maximumPathStep <= 1.000001f &&
+		!stairPath.empty() && stairPath.back().y > 49.f &&
+		stairPath.back().y - stairPath.front().y > 6.f,
+		"Reach the Bern stairs without crossing an arch-roof height jump");
+
+	SERVER_NAV_POINT firstRidge{};
+	SERVER_NAV_POINT secondRidge{};
+	SERVER_NAV_POINT thirdRidge{};
+	tests.Require(
+		loaded &&
+		bernNavigation.Sample_Position(
+			138.238007f, -110.188004f, firstRidge) &&
+		bernNavigation.Sample_Position(
+			138.238007f, -97.688004f, secondRidge) &&
+		bernNavigation.Sample_Position(
+			137.738007f, -67.688004f, thirdRidge) &&
+		firstRidge.y < 48.f && secondRidge.y < 48.f && thirdRidge.y < 44.f,
+		"Publish all three repaired Bern corridor ridges on the ground deck");
+
+	namespace fs = std::filesystem;
+	std::vector<wchar_t> pathBuffer(32768u);
+	const DWORD configuredLength = GetEnvironmentVariableW(
+		L"LOSTARK_SERVER_DATA_ROOT",
+		pathBuffer.data(),
+		static_cast<DWORD>(pathBuffer.size()));
+	const bool hadConfiguredRoot =
+		0u != configuredLength && configuredLength < pathBuffer.size();
+	fs::path packagedDataRoot;
+	if (hadConfiguredRoot)
+	{
+		packagedDataRoot = fs::path(pathBuffer.data()).lexically_normal();
+	}
+	else
+	{
+		const DWORD moduleLength = GetModuleFileNameW(
+			nullptr,
+			pathBuffer.data(),
+			static_cast<DWORD>(pathBuffer.size()));
+		if (0u != moduleLength && moduleLength < pathBuffer.size())
+		{
+			packagedDataRoot = fs::path(pathBuffer.data()).parent_path().
+				parent_path() / L"DataFiles";
+		}
+	}
+	const fs::path invalidPolicyRoot = fs::temp_directory_path() /
+		(L"LostArkNavigationPolicyContractTest-" +
+			std::to_wstring(_getpid()));
+	std::error_code fixtureError;
+	fs::remove_all(invalidPolicyRoot, fixtureError);
+	fixtureError.clear();
+	fs::create_directories(
+		invalidPolicyRoot / L"Navigation", fixtureError);
+	if (!fixtureError)
+	{
+		fs::copy_file(
+			packagedDataRoot / L"Navigation" /
+				L"LV_BER_BERNCASTLE.navgrid",
+			invalidPolicyRoot / L"Navigation" /
+				L"LV_BER_BERNCASTLE.navgrid",
+			fs::copy_options::overwrite_existing,
+			fixtureError);
+	}
+	if (!fixtureError)
+	{
+		std::ofstream invalidPolicy(
+			invalidPolicyRoot / L"Navigation" /
+				L"LV_BER_BERNCASTLE.navpolicy",
+			std::ios::binary | std::ios::trunc);
+		invalidPolicy <<
+			"LOSTARK_NAVIGATION_POLICY 1 \"WRONG_AREA\" 1\n";
+		if (!invalidPolicy.good())
+			fixtureError = std::make_error_code(std::errc::io_error);
+	}
+	bool rejectedInvalidPolicyTransactionally = false;
+	if (!fixtureError && SetEnvironmentVariableW(
+		L"LOSTARK_SERVER_DATA_ROOT", invalidPolicyRoot.c_str()))
+	{
+		CServerNavigation rejectedNavigation;
+		rejectedInvalidPolicyTransactionally =
+			!rejectedNavigation.Load("LV_BER_BERNCASTLE") &&
+			!rejectedNavigation.Is_Loaded();
+		SetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT",
+			hadConfiguredRoot ? pathBuffer.data() : nullptr);
+	}
+	fs::remove_all(invalidPolicyRoot, fixtureError);
+	tests.Require(
+		rejectedInvalidPolicyTransactionally,
+		"Roll back Bern navigation when its runtime policy is invalid");
+
+	std::cout << "navigation failures : " << tests.failures << '\n';
+	return 0 == tests.failures ? 0 : 1;
+}

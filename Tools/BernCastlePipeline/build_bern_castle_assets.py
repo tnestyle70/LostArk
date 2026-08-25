@@ -31,8 +31,11 @@ TEXTURE_PARAMETER_TO_SWITCH = {
     "diffuse": "--material-remap",
     "texture_basecolor": "--material-remap",
     "texture_albedo": "--material-remap",
+    "layer01_diffuse": "--material-remap",
     "texture_normal": "--normal-remap",
     "normal": "--normal-remap",
+    "normalmap": "--normal-remap",
+    "layer01_normal": "--normal-remap",
     "texture_specular": "--specular-remap",
     "specular": "--specular-remap",
     "texture_emissive": "--emissive-remap",
@@ -48,6 +51,21 @@ TEXTURE_PARAMETER_TO_SWITCH = {
     "texture_ao": "--ao-remap",
     "ao": "--ao-remap",
 }
+VERTEX_BLEND_TEXTURE_PARAMETER_TO_SWITCH = {
+    "a_texture_diffuse": "--material-remap",
+    "b_texture_diffuse": "--material-remap",
+    "g_texture_diffuse": "--material-remap",
+    "r_texture_diffuse": "--material-remap",
+    "a_texture_normal": "--normal-remap",
+    "b_texture_normal": "--normal-remap",
+    "g_texture_normal": "--normal-remap",
+    "r_texture_normal": "--normal-remap",
+    "a_texture_specular": "--specular-remap",
+    "b_texture_specular": "--specular-remap",
+    "g_texture_specular": "--specular-remap",
+    "r_texture_specular": "--specular-remap",
+}
+VERTEX_BLEND_CHANNEL_PRIORITY = {"a": 0, "b": 1, "g": 2, "r": 3}
 REQUIRED_WMODEL_MAGICS = {b"WINT", b"WMOD"}
 PRINT_LOCK = threading.Lock()
 
@@ -397,6 +415,38 @@ def material_texture_roles(
     return visit(material_name), used
 
 
+def select_supported_texture_parameters(
+    parameters: dict[str, str],
+) -> dict[str, tuple[str, str]]:
+    """Select one runtime texture per converter lane.
+
+    The current CMaterial path has one diffuse/normal/specular lane and cannot
+    reproduce UE3's four-channel vertex-blend shader.  Prefer an ordinary
+    parameter when present.  For channel-only materials, select the red lane,
+    then green, blue and alpha.  Bern's large tree meshes store their bark in
+    the red lane; keeping this policy explicit avoids the former accidental
+    opaque-gray fallback.
+    """
+
+    selected: dict[str, tuple[int, str, str]] = {}
+    for parameter, texture_name in parameters.items():
+        switch = TEXTURE_PARAMETER_TO_SWITCH.get(parameter)
+        priority = 100
+        if switch is None:
+            switch = VERTEX_BLEND_TEXTURE_PARAMETER_TO_SWITCH.get(parameter)
+            if switch is None:
+                continue
+            priority = VERTEX_BLEND_CHANNEL_PRIORITY[parameter[0]]
+        previous = selected.get(switch)
+        candidate = (priority, parameter, texture_name)
+        if previous is None or candidate[:2] > previous[:2]:
+            selected[switch] = candidate
+    return {
+        switch: (parameter, texture_name)
+        for switch, (_, parameter, texture_name) in selected.items()
+    }
+
+
 def find_texture(export_root: Path, texture_name: str) -> Path:
     candidates = [
         path for path in export_root.rglob("*")
@@ -490,10 +540,9 @@ def export_one(
                     shutil.copy2(source_props, destination_props)
                 copied_props[props_hash] = destination_props
             roles: dict[str, dict[str, str]] = {}
-            for parameter, texture_name in sorted(parameters.items()):
-                switch = TEXTURE_PARAMETER_TO_SWITCH.get(parameter)
-                if switch is None:
-                    continue
+            for switch, (parameter, texture_name) in sorted(
+                select_supported_texture_parameters(parameters).items()
+            ):
                 source_texture = find_texture(export_root, texture_name)
                 texture_key = source_texture.name.casefold()
                 destination_texture = pack / "textures" / source_texture.name

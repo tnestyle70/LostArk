@@ -3723,6 +3723,70 @@ void CMainApp::RenderRenderingWorkbench()
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
 		"Shadow uses a fixed 2048 depth map with 3x3 PCF; light eye is derived from focus and scene direction.");
+
+	ImGui::SeparatorText("Height Fog");
+	sceneChanged |= ImGui::Checkbox(
+		"Height Fog Enabled", &m_SceneRenderingDraft.Fog.bEnabled);
+	ImGui::BeginDisabled(!m_SceneRenderingDraft.Fog.bEnabled);
+	sceneChanged |= ImGui::ColorEdit3(
+		"Fog Color", &m_SceneRenderingDraft.Fog.vColor.x);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Top Height", &m_SceneRenderingDraft.Fog.fTopHeight,
+		0.25f, -10000.f, 10000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Height Falloff", &m_SceneRenderingDraft.Fog.fHeightFalloff,
+		0.002f, 0.0001f, 4.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Density", &m_SceneRenderingDraft.Fog.fDensity,
+		0.01f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Start Distance", &m_SceneRenderingDraft.Fog.fStartDistance,
+		0.25f, 0.f, 100000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Maximum Opacity", &m_SceneRenderingDraft.Fog.fMaximumOpacity,
+		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Drift Speed", &m_SceneRenderingDraft.Fog.fDriftSpeed,
+		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Drift Height", &m_SceneRenderingDraft.Fog.fDriftHeightAmplitude,
+		0.05f, 0.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Drift Density", &m_SceneRenderingDraft.Fog.fDriftDensityAmplitude,
+		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+
+	ImGui::SeparatorText("Cloud Banks");
+	/* The authored value is a fraction; the slider speaks percent because that
+	   is how the map coverage is judged by eye. */
+	f32_t fFogCoveragePercent =
+		m_SceneRenderingDraft.Fog.fCoveragePercent * 100.f;
+	if (ImGui::DragFloat("Map Coverage", &fFogCoveragePercent,
+		0.5f, 0.f, 100.f, "%.0f%%", ImGuiSliderFlags_AlwaysClamp))
+	{
+		m_SceneRenderingDraft.Fog.fCoveragePercent =
+			fFogCoveragePercent * 0.01f;
+		sceneChanged = true;
+	}
+	sceneChanged |= ImGui::DragFloat(
+		"Wind Direction X", &m_SceneRenderingDraft.Fog.fWindDirectionX,
+		0.01f, -1.f, 1.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Wind Direction Z", &m_SceneRenderingDraft.Fog.fWindDirectionZ,
+		0.01f, -1.f, 1.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Wind Speed", &m_SceneRenderingDraft.Fog.fWindSpeed,
+		0.05f, 0.f, 200.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Patch Scale", &m_SceneRenderingDraft.Fog.fPatchScale,
+		0.0005f, 0.0001f, 1.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Patch Softness", &m_SceneRenderingDraft.Fog.fPatchSoftness,
+		0.005f, 0.001f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::TextDisabled(
+		"Coverage 100%% is one blanket. Lower it and the fog breaks into banks that the wind walks across world XZ; Patch Scale sets their size.");
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Fog fills below Top Height and is applied in the deferred combine, so effects and the blend group stay clear of it.");
 	if (sceneChanged)
 	{
 		m_SceneRenderingDraft.Light.vDirection.w = 0.f;

@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 9,
+  "revision": 10,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -45,6 +45,24 @@
         "depthBias": 0.00150000001,
         "normalBias": 0.0299999993,
         "strength": 0.699999988
+      },
+      "fog": {
+        "enabled": true,
+        "color": [0.62, 0.7, 0.8, 1],
+        "density": 0.5,
+        "heightFalloff": 0.08,
+        "topHeight": 24,
+        "startDistance": 8,
+        "maximumOpacity": 0.92,
+        "driftSpeed": 0.12,
+        "driftHeightAmplitude": 1.5,
+        "driftDensityAmplitude": 0.06,
+        "coveragePercent": 0.45,
+        "windDirectionX": 0.8,
+        "windDirectionZ": 0.6,
+        "windSpeed": 1.5,
+        "patchScale": 0.012,
+        "patchSoftness": 0.18
       }
     },
     {
@@ -69,6 +87,24 @@
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
         "strength": 0.75
+      },
+      "fog": {
+        "enabled": false,
+        "color": [0.55, 0.62, 0.72, 1],
+        "density": 0.35,
+        "heightFalloff": 0.08,
+        "topHeight": 0,
+        "startDistance": 0,
+        "maximumOpacity": 0.9,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.01,
+        "patchSoftness": 0.15
       }
     },
     {
@@ -93,6 +129,24 @@
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
         "strength": 0.699999988
+      },
+      "fog": {
+        "enabled": false,
+        "color": [0.55, 0.62, 0.72, 1],
+        "density": 0.35,
+        "heightFalloff": 0.08,
+        "topHeight": 0,
+        "startDistance": 0,
+        "maximumOpacity": 0.9,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.01,
+        "patchSoftness": 0.15
       }
     },
     {
@@ -117,6 +171,24 @@
         "depthBias": 0.00150000001,
         "normalBias": 0.0199999996,
         "strength": 0.699999988
+      },
+      "fog": {
+        "enabled": false,
+        "color": [0.55, 0.62, 0.72, 1],
+        "density": 0.35,
+        "heightFalloff": 0.08,
+        "topHeight": 0,
+        "startDistance": 0,
+        "maximumOpacity": 0.9,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.01,
+        "patchSoftness": 0.15
       }
     },
     {
@@ -141,6 +213,24 @@
         "depthBias": 0.00150000001,
         "normalBias": 0.0199999996,
         "strength": 0.699999988
+      },
+      "fog": {
+        "enabled": false,
+        "color": [0.55, 0.62, 0.72, 1],
+        "density": 0.35,
+        "heightFalloff": 0.08,
+        "topHeight": 0,
+        "startDistance": 0,
+        "maximumOpacity": 0.9,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.01,
+        "patchSoftness": 0.15
       }
     },
     {
@@ -165,6 +255,24 @@
         "depthBias": 0.00260000001,
         "normalBias": 0.0340000018,
         "strength": 0.86
+      },
+      "fog": {
+        "enabled": false,
+        "color": [0.45, 0.52, 0.66, 1],
+        "density": 0.4,
+        "heightFalloff": 0.08,
+        "topHeight": 0,
+        "startDistance": 8,
+        "maximumOpacity": 0.85,
+        "driftSpeed": 0.1,
+        "driftHeightAmplitude": 1.0,
+        "driftDensityAmplitude": 0.05,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.01,
+        "patchSoftness": 0.15
       }
     }
   ]
