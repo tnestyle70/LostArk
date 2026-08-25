@@ -9226,8 +9226,8 @@ Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
 	if (Iterator == m_DirectAuthoredEditableEntries.end())
 	{
 		strOutStatus =
-			"Open is unavailable: this Effect is not an exact writable "
-			"DIRECT_AUTHORED_DOCUMENT_V13 source path.";
+			"Direct-authored source is unavailable: this Effect is not an exact writable "
+			"DIRECT_AUTHORED_DOCUMENT source path.";
 		return nullptr;
 	}
 	DIRECT_AUTHORED_EDITABLE_ENTRY& Entry = Iterator->second;
@@ -9245,7 +9245,7 @@ Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
 		Entry.bIdentityObserved = true;
 		Entry.bIdentityValid = false;
 		Entry.strStatus =
-			"Open is unavailable: the direct authored file cannot be inspected: " +
+			"Direct-authored source is unavailable: the file cannot be inspected: " +
 			FileError.message();
 		strOutStatus = Entry.strStatus;
 		return nullptr;
@@ -9264,25 +9264,24 @@ Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
 		std::string Error;
 		Entry.bIdentityValid = CEffectDocumentCodec::Load(
 			Entry.Path, Document, Error) &&
-			Document.iLoadedFormatVersion == EFFECT_AUTHORING_FORMAT_VERSION &&
 			Document.strEffectAssetId == strEffectAssetId;
 		Entry.bIdentityObserved = true;
 		if (Entry.bIdentityValid)
 		{
 			Entry.strStatus =
-				"Open the writable Data/Effects/Authored version 13 document. "
+				"Validated the writable Data/Effects/Authored document. "
 				"Save commits this file as the canonical Product source when the exact ID is mapped by a gameplay cue. The next spawn uses it immediately; a failed activation restores the previous disk and prepared target.";
 		}
 		else if (!Error.empty())
 		{
 			Entry.strStatus =
-				"Open is unavailable: direct authored validation failed: " +
+				"Direct-authored source validation failed: " +
 				Error;
 		}
 		else
 		{
 			Entry.strStatus =
-				"Open is unavailable: the direct authored version/embedded Effect ID disagrees with EffectCatalog.json.";
+				"Direct-authored source is unavailable: the embedded Effect ID disagrees with EffectCatalog.json.";
 		}
 	}
 	strOutStatus = Entry.strStatus;

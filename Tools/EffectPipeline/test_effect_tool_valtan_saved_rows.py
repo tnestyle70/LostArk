@@ -244,6 +244,55 @@ def validate_editor_admission_isolation_contract(
             "Valtan Product-owner loading must isolate its rows instead of replacing the editor index"
         )
 
+    resolve = function_slice(
+        effect_tool_cpp,
+        "const std::filesystem::path*\nClient::CEffect_Tool::Resolve_DirectAuthoredEditablePath(",
+        "bool_t Client::CEffect_Tool::Is_UnifiedEffectActive(",
+    )
+    for token in (
+        "CEffectDocumentCodec::Load(",
+        "Document.strEffectAssetId == strEffectAssetId",
+        "DIRECT_AUTHORED_DOCUMENT source path",
+        "Validated the writable Data/Effects/Authored document",
+    ):
+        if token not in resolve:
+            raise AssertionError(
+                f"version-neutral direct-authored Play gate lost: {token}"
+            )
+    for token in (
+        "DIRECT_AUTHORED_DOCUMENT_V13",
+        "Document.iLoadedFormatVersion",
+        "version 13 document",
+    ):
+        if token in resolve:
+            raise AssertionError(
+                f"All Effects duplicated the codec version contract: {token}"
+            )
+
+    play = function_slice(
+        effect_tool_cpp,
+        "bool_t Client::CEffect_Tool::Try_PlayUnifiedEffect(",
+        "bool_t Client::CEffect_Tool::Try_PlaySavedUnifiedEffect(",
+    )
+    for token in (
+        "Resolve_DirectAuthoredEditablePath(",
+        "if (nullptr == pEditablePath)",
+    ):
+        if token not in play:
+            raise AssertionError(
+                f"unified Play lost its direct-authored identity gate: {token}"
+            )
+
+    valtan_play = function_slice(
+        effect_tool_cpp,
+        "bool_t Client::CEffect_Tool::Try_PlayValtanSavedUnifiedEffect(",
+        "bool_t Client::CEffect_Tool::Try_SnapshotValtanWorldPreviewRoot(",
+    )
+    if "return bTargetReady && Try_PlayUnifiedEffect(Cache);" not in valtan_play:
+        raise AssertionError(
+            "Valtan Play no longer reaches the version-neutral unified Play gate"
+        )
+
     for token in (
         "iOwnerJoinUnavailableCount",
         "strFirstOwnerJoinUnavailable",
@@ -1183,6 +1232,23 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             DIRECT_AUTHORED_INDEX_CPP.read_text(encoding="utf-8"),
             DIRECT_AUTHORED_INDEX_HEADER.read_text(encoding="utf-8"),
         )
+
+        catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        effect_id = "effect.valtan.pattern.420633.active"
+        row = catalog[effect_id]
+        self.assertEqual("DIRECT_AUTHORED_DOCUMENT", row["payloadKind"])
+        document = json.loads(
+            (REPOSITORY_ROOT / "Data" / row["authoringPath"]).read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(15, document["version"])
+        self.assertEqual(effect_id, document["effectAssetId"])
 
     def test_failed_valtan_tree_cold_load_retries_only_on_explicit_refresh(self) -> None:
         cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
