@@ -112,6 +112,11 @@
 # encounter, authored Effect, imported-candidate, and catalog layers. Keep the
 # whole joined input/output slice LF-stable so a core.autocrlf=true checkout
 # cannot invalidate its candidate/proof/application SHA chain.
+/Data/Valtan/*.json text eol=lf
+/Data/Actors/BossCatalog.json text eol=lf
+/Data/Balance/BossProfiles.json text eol=lf
+/Data/Balance/DamageProfiles.json text eol=lf
+/Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json text eol=lf
 /Data/Animation/Authored/Valtan/*.json text eol=lf
 /Data/Animation/Authored/Valtan/Valtan.patterneffects.json text eol=crlf
 /Data/Animation/Reference/Valtan/Valtan.clipseq text eol=lf

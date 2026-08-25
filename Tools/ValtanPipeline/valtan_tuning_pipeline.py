@@ -251,6 +251,15 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def source_text_identity(path: Path) -> tuple[str, int]:
+    """Hash source JSON with platform line endings normalized to canonical LF."""
+
+    normalized = (
+        read_text(path).replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+    )
+    return sha256_bytes(normalized), len(normalized)
+
+
 def canonical_hash(value: Any) -> str:
     return sha256_bytes(canonical_bytes(value))
 
@@ -3317,15 +3326,19 @@ def source_manifest(root: Path) -> dict[str, Any]:
         EFFECT_CATALOG_REL,
         PROVENANCE_REL,
     )
+
     def snapshot_entries() -> list[dict[str, Any]]:
-        return [
-            {
-                "path": relative,
-                "sha256": sha256_file(repo_path(root, relative)),
-                "bytes": repo_path(root, relative).stat().st_size,
-            }
-            for relative in sorted(paths)
-        ]
+        entries = []
+        for relative in sorted(paths):
+            sha256, byte_count = source_text_identity(repo_path(root, relative))
+            entries.append(
+                {
+                    "path": relative,
+                    "sha256": sha256,
+                    "bytes": byte_count,
+                }
+            )
+        return entries
 
     entries = snapshot_entries()
     split_documents = require_documents(
