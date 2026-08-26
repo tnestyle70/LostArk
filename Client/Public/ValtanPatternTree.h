@@ -252,6 +252,17 @@ struct VALTAN_MECHANIC_VIEW final
 	std::string strFailurePolicy;
 };
 
+/* Animation-first patterns are Product rows so the existing Server audition
+   path and All Effects tree can consume them, but they are not rotation or
+   health-bar candidates until gameplay authoring explicitly promotes them. */
+struct VALTAN_MANUAL_AUDITION_VIEW final
+{
+	std::string strPatternId;
+	std::string strSourceChainId;
+	uint32_t iAuthoringPhase = 0u;
+	std::string strAdmissionState;
+};
+
 /* Post-109 rotations are still legacy Product rows without stable authored
    selection-set identities. They remain visible but read-only until promoted. */
 struct VALTAN_LEGACY_ROTATION_VIEW final
@@ -331,6 +342,10 @@ struct VALTAN_PATTERN_VIEW final
 	std::vector<std::string> CameraCueIds;
 	std::vector<VALTAN_WORLD_EVENT_TRIGGER_REF_VIEW> WorldEventTriggerRefs;
 	bool_t bAuthoringMasterManaged = false;
+	bool_t bManualServerAudition = false;
+	std::string strSourceAnimationChainId;
+	uint32_t iAuthoringPhase = 0u;
+	std::string strAdmissionState;
 	std::vector<VALTAN_STAGE_VIEW> Stages;
 
 	/* A pattern pinned to one health bar is a scripted gimmick; the rest are
@@ -413,6 +428,7 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	std::vector<VALTAN_SELECTION_SET_VIEW> SelectionSets;
 	std::vector<VALTAN_SELECTION_WINDOW_VIEW> SelectionWindows;
 	std::vector<VALTAN_MECHANIC_VIEW> Mechanics;
+	std::vector<VALTAN_MANUAL_AUDITION_VIEW> ManualAuditions;
 	std::vector<VALTAN_LEGACY_ROTATION_VIEW> LegacyRotations;
 	VALTAN_NORMAL_SELECTION_VIEW NormalSelection;
 	std::vector<VALTAN_COUNTER_REACTION_LAYER_VIEW> CounterReactionLayers;

@@ -89,6 +89,8 @@ MANAGED_PATTERN_IDS = (
 MANAGED_ROTATION_IDS = frozenset(
     ("rotation.valtan.160.130", "rotation.valtan.130.109")
 )
+MANUAL_SERVER_AUDITION = "MANUAL_SERVER_AUDITION"
+AUDITION_ONLY = "AUDITION_ONLY"
 ALLOWED_MAPPING_BASES = frozenset(
     (
         "CURRENT_PRODUCT_BASELINE",
@@ -942,6 +944,11 @@ def build_legacy_manifest(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
     master = docs[MASTER_REL]
     managed = {row["patternId"] for row in master["patterns"]}
     encounter = docs[ENCOUNTER_REL]
+    managed.update(
+        row["patternId"]
+        for row in encounter["patterns"]
+        if row.get("selectionMode") == AUDITION_ONLY
+    )
     bindings = docs[BINDINGS_REL]
     cues = docs[CUES_REL]
     rotations = docs[ROTATIONS_REL]
@@ -1167,15 +1174,29 @@ def validate_legacy_products(
 ) -> None:
     """Prove the sealed unmanaged rows still match the current transitional Products."""
 
-    validate_legacy_manifest(document, managed)
     encounter_rows = docs[ENCOUNTER_REL]["patterns"]
+    product_managed = set(managed)
+    product_audition_ids = {
+        stable_id(row.get("patternId"), "Product AUDITION_ONLY patternId")
+        for row in encounter_rows
+        if row.get("selectionMode") == AUDITION_ONLY
+    }
+    stale_audition_ids = product_audition_ids - product_managed
+    if stale_audition_ids:
+        raise PipelineError(
+            "Product AUDITION_ONLY ownership drift: "
+            + ", ".join(sorted(stale_audition_ids))
+        )
+    validate_legacy_manifest(document, product_managed)
     binding_rows = docs[BINDINGS_REL]["bindings"]
     cue_rows = docs[CUES_REL]["cues"]
     rotation_rows = docs[ROTATIONS_REL]["rotations"]
     combat_rows = docs[COMBAT_PRODUCT_REL]["objects"]
     sealed_legacy_ids = {row["patternId"] for row in document["patternEntries"]}
     actual_legacy_ids = {
-        row["patternId"] for row in encounter_rows if row["patternId"] not in managed
+        row["patternId"]
+        for row in encounter_rows
+        if row["patternId"] not in product_managed
     }
     if sealed_legacy_ids != actual_legacy_ids:
         raise PipelineError("legacy compatibility pattern ownership drift")
@@ -1425,7 +1446,16 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
     managed = {pattern["patternId"] for pattern in master["patterns"]}
     if managed != set(MANAGED_PATTERN_IDS):
         raise PipelineError("initial v1 migration fixture does not contain the seven managed patterns")
-    validate_legacy_products(docs[LEGACY_REL], docs, managed)
+    # The frozen v1 migration fixture predates split manualAuditions. Current
+    # Product audition rows are later managed additions, not legacy seal rows.
+    migration_product_managed = managed | {
+        row["patternId"]
+        for row in docs[ENCOUNTER_REL]["patterns"]
+        if row.get("selectionMode") == AUDITION_ONLY
+    }
+    validate_legacy_products(
+        docs[LEGACY_REL], docs, migration_product_managed
+    )
     cue_by_id = unique_index(docs[CUES_REL]["cues"], "bindingId", "effect cues")
     camera_by_id = unique_index(docs[CAMERA_REL]["cues"], "cueId", "camera cues")
     set_candidates = []
@@ -1653,6 +1683,7 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
             "selectionSets": selection_sets,
             "selectionWindows": selection_windows,
             "mechanics": mechanics,
+            "manualAuditions": [],
         },
         "counterReactionLayers": copy.deepcopy(master["counterReactionLayers"]),
         "independentEffects": independent_effects,
@@ -1671,6 +1702,47 @@ def _event_fields(kind: str) -> tuple[str, ...]:
         "SET_GAMEPLAY_PHASE": common + ("gameplayPhase",),
         "TRIGGER_WORLD_EVENT_SET": common + ("worldEventSetId",),
     }.get(kind, ())
+
+
+def _validate_manual_auditions(
+    decision_model: dict[str, Any],
+    pattern_by_id: Mapping[str, dict[str, Any]],
+) -> set[str]:
+    rows = decision_model.get("manualAuditions")
+    if not isinstance(rows, list):
+        raise PipelineError("decisionModel.manualAuditions must be an array")
+
+    pattern_ids: set[str] = set()
+    source_chain_ids: set[str] = set()
+    for ordinal, row in enumerate(rows):
+        context = f"manualAuditions[{ordinal}]"
+        if not isinstance(row, dict):
+            raise PipelineError(f"{context} must be an object")
+        exact(
+            row,
+            ("patternId", "sourceChainId", "authoringPhase", "admissionState"),
+            context,
+        )
+        pattern_id = stable_id(row["patternId"], f"{context}.patternId")
+        source_chain_id = stable_id(
+            row["sourceChainId"], f"{context}.sourceChainId"
+        )
+        integer(row["authoringPhase"], f"{context}.authoringPhase", 1, 3)
+        if row["admissionState"] != MANUAL_SERVER_AUDITION:
+            raise PipelineError(
+                f"{context}.admissionState must be {MANUAL_SERVER_AUDITION}"
+            )
+        if pattern_id not in pattern_by_id:
+            raise PipelineError(f"manual audition pattern is missing: {pattern_id}")
+        if pattern_id in pattern_ids:
+            raise PipelineError(f"manual audition pattern is duplicated: {pattern_id}")
+        if source_chain_id in source_chain_ids:
+            raise PipelineError(
+                f"manual audition sourceChainId is duplicated: {source_chain_id}"
+            )
+        pattern_ids.add(pattern_id)
+        source_chain_ids.add(source_chain_id)
+    return pattern_ids
 
 
 def validate_v2_master(
@@ -1692,8 +1764,15 @@ def validate_v2_master(
     for name, relative in master["previewPaths"].items():
         if not isinstance(name, str) or not isinstance(relative, str) or not relative or "\\" in relative or relative.startswith("/") or ".." in relative.split("/"):
             raise PipelineError(f"v2 preview path is illegal: {name}={relative!r}")
-    exact(master["decisionModel"], ("selectionSets", "selectionWindows", "mechanics"), "decisionModel")
+    exact(
+        master["decisionModel"],
+        ("selectionSets", "selectionWindows", "mechanics", "manualAuditions"),
+        "decisionModel",
+    )
     pattern_by_id = unique_index(master["patterns"], "patternId", "v2 patterns")
+    manual_patterns = _validate_manual_auditions(
+        master["decisionModel"], pattern_by_id
+    )
     set_ids: set[str] = set()
     candidate_patterns: set[str] = set()
     for set_ordinal, selection_set in enumerate(master["decisionModel"]["selectionSets"]):
@@ -1838,9 +1917,17 @@ def validate_v2_master(
             "VALTAN_ARENA_BREAK_109 healthBar must equal the final phase-1 "
             "selection-window boundary; use a future atomic phase-boundary operation"
         )
-    if candidate_patterns & mechanic_patterns:
-        raise PipelineError("selection candidate and mechanic pattern ownership overlap")
-    if candidate_patterns | mechanic_patterns != set(pattern_by_id):
+    ownership_overlap = (
+        (candidate_patterns & mechanic_patterns)
+        | (candidate_patterns & manual_patterns)
+        | (mechanic_patterns & manual_patterns)
+    )
+    if ownership_overlap:
+        raise PipelineError(
+            "decision model pattern ownership overlaps: "
+            + ", ".join(sorted(ownership_overlap))
+        )
+    if candidate_patterns | mechanic_patterns | manual_patterns != set(pattern_by_id):
         raise PipelineError("decision model does not cover every managed pattern exactly once")
     event_ids: set[str] = set()
     cue_ids: set[str] = set()
@@ -1861,9 +1948,11 @@ def validate_v2_master(
             0,
             100000,
         )
-        is_mechanic = pattern_id in mechanic_patterns
-        if (is_mechanic and compatibility_weight != 0) or (
-            not is_mechanic and compatibility_weight == 0
+        is_non_rotation = (
+            pattern_id in mechanic_patterns or pattern_id in manual_patterns
+        )
+        if (is_non_rotation and compatibility_weight != 0) or (
+            not is_non_rotation and compatibility_weight == 0
         ):
             raise PipelineError(
                 "compatibilitySelectionWeight must be positive only for normal "
@@ -2174,7 +2263,14 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
     ):
         raise PipelineError("Valtan gameplay authoring header mismatch")
     patterns = unique_index(document["patterns"], "patternId", "gameplay patterns")
-    mechanics = document.get("decisionModel", {}).get("mechanics")
+    decision_model = document.get("decisionModel")
+    exact(
+        decision_model,
+        ("selectionSets", "selectionWindows", "mechanics", "manualAuditions"),
+        "Valtan gameplay decisionModel",
+    )
+    manual_patterns = _validate_manual_auditions(decision_model, patterns)
+    mechanics = decision_model.get("mechanics")
     if not isinstance(mechanics, list):
         raise PipelineError("Valtan gameplay decisionModel.mechanics must be an array")
     mechanic_patterns = {
@@ -2211,9 +2307,11 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
             0,
             100000,
         )
-        is_mechanic = pattern_id in mechanic_patterns
-        if (is_mechanic and compatibility_weight != 0) or (
-            not is_mechanic and compatibility_weight == 0
+        is_non_rotation = (
+            pattern_id in mechanic_patterns or pattern_id in manual_patterns
+        )
+        if (is_non_rotation and compatibility_weight != 0) or (
+            not is_non_rotation and compatibility_weight == 0
         ):
             raise PipelineError(
                 "compatibilitySelectionWeight must be positive only for normal "
@@ -2730,8 +2828,12 @@ def compile_pattern_product(
     mechanic_by_pattern = {
         row["patternId"]: row for row in master["decisionModel"]["mechanics"]
     }
+    manual_pattern_ids = {
+        row["patternId"] for row in master["decisionModel"]["manualAuditions"]
+    }
     eligibility = pattern["eligibility"]
     mechanic = mechanic_by_pattern.get(pattern["patternId"])
+    is_manual_audition = pattern["patternId"] in manual_pattern_ids
     projected_stages = []
     for stage in pattern["stages"]:
         projected = {
@@ -2760,35 +2862,69 @@ def compile_pattern_product(
         if stage["branches"]:
             projected["branches"] = copy.deepcopy(stage["branches"])
         projected_stages.append(projected)
+    if is_manual_audition:
+        selection_fields = {
+            "selectionMode": AUDITION_ONLY,
+            "minimumPhase": eligibility["minimumGameplayPhase"],
+            "maximumPhase": eligibility["maximumGameplayPhase"],
+            "minimumHealthBar": 0,
+            "maximumHealthBar": 0,
+            "triggerHealthBar": 0,
+            "triggerOrder": 0,
+            "armorRequirement": "ANY",
+            "phaseRequirement": "ANY",
+            "selectionWeight": 0,
+            "maximumConsecutiveUses": 0,
+            "minimumRange": eligibility["minimumRangeM"],
+            "maximumRange": eligibility["maximumRangeM"],
+        }
+    else:
+        selection_fields = {
+            "selectionMode": "HEALTH_BAR" if mechanic else "NORMAL",
+            "minimumPhase": eligibility["minimumGameplayPhase"],
+            "maximumPhase": eligibility["maximumGameplayPhase"],
+            "minimumHealthBar": eligibility["minimumHealthBarInclusive"],
+            "maximumHealthBar": eligibility["maximumHealthBarInclusive"],
+            "triggerHealthBar": mechanic["trigger"]["healthBar"] if mechanic else 0,
+            "triggerOrder": mechanic["triggerOrder"] if mechanic else 0,
+            "armorRequirement": eligibility["armorRequirement"],
+            "phaseRequirement": eligibility["phaseRequirement"],
+            # Encounter v4's flat weight remains an explicit legacy/global fallback.
+            # Per-window authoring must never rewrite it through an arbitrary set.
+            "selectionWeight": 0
+            if mechanic
+            else integer(
+                pattern["compatibilitySelectionWeight"],
+                f"compatibility selection weight {pattern['patternId']}",
+                1,
+                100000,
+            ),
+            "maximumConsecutiveUses": eligibility["repeatPolicy"]["limit"],
+            "minimumRange": eligibility["minimumRangeM"],
+            "maximumRange": eligibility["maximumRangeM"],
+        }
     result = {
         "patternId": pattern["patternId"],
         "category": pattern["category"],
-        "minimumPhase": eligibility["minimumGameplayPhase"],
-        "maximumPhase": eligibility["maximumGameplayPhase"],
+        "minimumPhase": selection_fields["minimumPhase"],
+        "maximumPhase": selection_fields["maximumPhase"],
         "targetPolicy": pattern["targetPolicy"],
         "aimPolicy": pattern["aimPolicy"],
         "displayName": pattern["displayName"],
         "actionId": pattern["actionId"],
         "sourceActionIds": copy.deepcopy(pattern["sourceActionIds"]),
-        "selectionMode": "HEALTH_BAR" if mechanic else "NORMAL",
-        "minimumHealthBar": eligibility["minimumHealthBarInclusive"],
-        "maximumHealthBar": eligibility["maximumHealthBarInclusive"],
-        "triggerHealthBar": mechanic["trigger"]["healthBar"] if mechanic else 0,
-        "triggerOrder": mechanic["triggerOrder"] if mechanic else 0,
-        "armorRequirement": eligibility["armorRequirement"],
-        "phaseRequirement": eligibility["phaseRequirement"],
+        "selectionMode": selection_fields["selectionMode"],
+        "minimumHealthBar": selection_fields["minimumHealthBar"],
+        "maximumHealthBar": selection_fields["maximumHealthBar"],
+        "triggerHealthBar": selection_fields["triggerHealthBar"],
+        "triggerOrder": selection_fields["triggerOrder"],
+        "armorRequirement": selection_fields["armorRequirement"],
+        "phaseRequirement": selection_fields["phaseRequirement"],
         "invulnerableWhileRunning": pattern["invulnerableWhileRunning"],
-        # Encounter v4's flat weight remains an explicit legacy/global fallback.
-        # Per-window authoring must never rewrite it through an arbitrary set.
-        "selectionWeight": 0 if mechanic else integer(
-            pattern["compatibilitySelectionWeight"],
-            f"compatibility selection weight {pattern['patternId']}",
-            1,
-            100000,
-        ),
-        "maximumConsecutiveUses": eligibility["repeatPolicy"]["limit"],
-        "minimumRange": eligibility["minimumRangeM"],
-        "maximumRange": eligibility["maximumRangeM"],
+        "selectionWeight": selection_fields["selectionWeight"],
+        "maximumConsecutiveUses": selection_fields["maximumConsecutiveUses"],
+        "minimumRange": selection_fields["minimumRange"],
+        "maximumRange": selection_fields["maximumRange"],
     }
     if pattern["serverMotion"] is not None:
         result["serverMotion"] = copy.deepcopy(pattern["serverMotion"])
@@ -2909,6 +3045,76 @@ def replace_rows_same_ordinal(
     projected_rows = projected[array_key]
     if [row[id_key] for row in projected_rows] != current_ids:
         raise PipelineError(f"{array_key} stable ID/ordinal sequence changed")
+    return output
+
+
+def replace_or_append_rows(
+    text: str,
+    array_key: str,
+    id_key: str,
+    replacements: Mapping[str, dict[str, Any]],
+) -> str:
+    """Replace known rows in place and append newly managed rows deterministically.
+
+    Existing stable-ID ordinals and raw bytes outside replaced managed rows remain
+    untouched. Mapping insertion order is the canonical append order, which is
+    supplied by the joined pattern/stage authoring order.
+    """
+
+    _, _, spans = _array_span(text, array_key)
+    parsed_rows = [
+        json.loads(text[start:end], object_pairs_hook=_reject_duplicate_pairs)
+        for start, end in spans
+    ]
+    current_ids = [row.get(id_key) for row in parsed_rows]
+    if len(current_ids) != len(set(current_ids)):
+        raise PipelineError(f"{array_key} contains duplicate {id_key} values")
+    for identity, replacement in replacements.items():
+        if replacement.get(id_key) != identity:
+            raise PipelineError(
+                f"{array_key} replacement identity mismatch: {identity}"
+            )
+
+    output = text
+    for (start, end), row in reversed(list(zip(spans, parsed_rows))):
+        identity = row.get(id_key)
+        if identity not in replacements:
+            continue
+        line_start = output.rfind("\n", 0, start) + 1
+        prefix = output[line_start:start]
+        replacement = json.dumps(replacements[identity], ensure_ascii=False, indent=2)
+        replacement = replacement.replace("\n", "\n" + prefix)
+        output = output[:start] + replacement + output[end:]
+
+    missing_ids = [identity for identity in replacements if identity not in current_ids]
+    if missing_ids:
+        _, _, projected_spans = _array_span(output, array_key)
+        newline = "\r\n" if "\r\n" in output else "\n"
+        if not projected_spans:
+            raise PipelineError(
+                f"{array_key} cannot establish append indentation from an empty Product array"
+            )
+        last_start, last_end = projected_spans[-1]
+        line_start = output.rfind("\n", 0, last_start) + 1
+        prefix = output[line_start:last_start]
+        appended_rows = []
+        for identity in missing_ids:
+            serialized = json.dumps(
+                replacements[identity], ensure_ascii=False, indent=2
+            )
+            appended_rows.append(serialized.replace("\n", newline + prefix))
+        insertion = "," + newline + prefix + ("," + newline + prefix).join(
+            appended_rows
+        )
+        output = output[:last_end] + insertion + output[last_end:]
+
+    projected = json.loads(output, object_pairs_hook=_reject_duplicate_pairs)
+    projected_ids = [row[id_key] for row in projected[array_key]]
+    expected_ids = current_ids + missing_ids
+    if projected_ids != expected_ids:
+        raise PipelineError(
+            f"{array_key} existing stable-ID ordinals or deterministic append order changed"
+        )
     return output
 
 
@@ -3179,13 +3385,29 @@ def validate_full_product_mechanic_trigger_closure(encounter: dict[str, Any]) ->
         seen[key] = pattern_id
 
 
-def project_v2_products(root: Path, docs: dict[str, Any], master: dict[str, Any]) -> dict[str, str]:
+def project_v2_products(
+    root: Path,
+    docs: dict[str, Any],
+    master: dict[str, Any],
+    *,
+    migration_fixture: bool = False,
+) -> dict[str, str]:
     validate_v2_master(master, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL])
     validate_decision_model_against_boss_profiles(
         master, docs[BOSS_PROFILES_REL]
     )
+    managed_pattern_ids = {row["patternId"] for row in master["patterns"]}
+    fixture_audition_ids = (
+        {
+            row["patternId"]
+            for row in docs[ENCOUNTER_REL]["patterns"]
+            if row.get("selectionMode") == AUDITION_ONLY
+        }
+        if migration_fixture
+        else set()
+    )
     validate_legacy_products(
-        docs[LEGACY_REL], docs, {row["patternId"] for row in master["patterns"]}
+        docs[LEGACY_REL], docs, managed_pattern_ids | fixture_audition_ids
     )
     source_patterns = {
         row["patternId"]: row for row in docs[ENCOUNTER_REL]["patterns"]
@@ -3195,7 +3417,11 @@ def project_v2_products(root: Path, docs: dict[str, Any], master: dict[str, Any]
         for row in master["patterns"]
     }
     managed_patterns = {
-        identity: _preserve_equal_json_values(source_patterns[identity], row)
+        identity: (
+            _preserve_equal_json_values(source_patterns[identity], row)
+            if identity in source_patterns
+            else row
+        )
         for identity, row in managed_patterns.items()
     }
     managed_bindings = {
@@ -3265,10 +3491,10 @@ def project_v2_products(root: Path, docs: dict[str, Any], master: dict[str, Any]
     )
     rotation_document["formatVersion"] = 3
     outputs = {
-        ENCOUNTER_REL: replace_rows_same_ordinal(
+        ENCOUNTER_REL: replace_or_append_rows(
             source_texts[ENCOUNTER_REL], "patterns", "patternId", managed_patterns
         ),
-        BINDINGS_REL: replace_rows_same_ordinal(
+        BINDINGS_REL: replace_or_append_rows(
             source_texts[BINDINGS_REL], "bindings", "actionId", managed_bindings
         ),
         CUES_REL: replace_root_format_version(
@@ -3290,8 +3516,39 @@ def project_v2_products(root: Path, docs: dict[str, Any], master: dict[str, Any]
             source_texts[WORLD_PRODUCT_REL], "bindings", "bindingId", world_replacements
         ),
     }
+    projected_encounter = json.loads(
+        outputs[ENCOUNTER_REL], object_pairs_hook=_reject_duplicate_pairs
+    )
+    projected_audition_ids = {
+        row["patternId"]
+        for row in projected_encounter["patterns"]
+        if row.get("selectionMode") == AUDITION_ONLY
+    }
+    manual_audition_ids = {
+        row["patternId"] for row in master["decisionModel"]["manualAuditions"]
+    }
+    expected_audition_ids = manual_audition_ids | fixture_audition_ids
+    if projected_audition_ids != expected_audition_ids:
+        raise PipelineError(
+            "projected Product AUDITION_ONLY ownership does not exact-join "
+            "decisionModel.manualAuditions"
+        )
     validate_full_product_mechanic_trigger_closure(
         json.loads(outputs[ENCOUNTER_REL], object_pairs_hook=_reject_duplicate_pairs)
+    )
+    _assert_unmanaged_raw_rows_preserved(
+        source_texts[ENCOUNTER_REL],
+        outputs[ENCOUNTER_REL],
+        "patterns",
+        "patternId",
+        set(managed_patterns),
+    )
+    _assert_unmanaged_raw_rows_preserved(
+        source_texts[BINDINGS_REL],
+        outputs[BINDINGS_REL],
+        "bindings",
+        "actionId",
+        set(managed_bindings),
     )
     _assert_unmanaged_raw_rows_preserved(
         source_texts[WORLD_PRODUCT_REL],
@@ -3396,6 +3653,26 @@ def stage_repository_product_projection(
     }
 
 
+def _upgrade_pre_manual_audition_split(documents: dict[str, Any]) -> None:
+    """Admit the checked-in pre-promotion split as an empty manual-audition set.
+
+    The promotion transaction writes the field explicitly. This narrow in-memory
+    bridge keeps the clean origin/main source valid before Apply without admitting
+    any other decisionModel schema drift.
+    """
+
+    gameplay = documents.get(GAMEPLAY_AUTHORING_REL)
+    if not isinstance(gameplay, dict):
+        return
+    decision_model = gameplay.get("decisionModel")
+    if isinstance(decision_model, dict) and set(decision_model) == {
+        "selectionSets",
+        "selectionWindows",
+        "mechanics",
+    }:
+        decision_model["manualAuditions"] = []
+
+
 def load_pipeline_documents(
     root: Path,
     *,
@@ -3422,7 +3699,9 @@ def load_pipeline_documents(
         relatives.extend((GAMEPLAY_AUTHORING_REL, PRESENTATION_AUTHORING_REL))
     if include_companions:
         relatives.extend((COMBAT_AUTHORING_REL, WORLD_SET_REL, LEGACY_REL))
-    return require_documents(root, relatives)
+    documents = require_documents(root, relatives)
+    _upgrade_pre_manual_audition_split(documents)
+    return documents
 
 
 def source_manifest(root: Path) -> dict[str, Any]:
@@ -3469,6 +3748,7 @@ def source_manifest(root: Path) -> dict[str, Any]:
             COMBAT_AUTHORING_REL,
         ),
     )
+    _upgrade_pre_manual_audition_split(split_documents)
     joined = join_v2_authoring(
         split_documents[GAMEPLAY_AUTHORING_REL],
         split_documents[PRESENTATION_AUTHORING_REL],

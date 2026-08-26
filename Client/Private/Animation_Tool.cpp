@@ -1015,15 +1015,31 @@ std::vector<const Client::VALTAN_PATTERN_VIEW*>
 Client::CAnimation_Tool::Collect_ValtanPatternMasterPatterns() const
 {
 	std::vector<const VALTAN_PATTERN_VIEW*> Patterns;
-	Patterns.reserve(VALTAN_PATTERN_MASTER_ORDER.size());
+	Patterns.reserve(m_ValtanPatternMasterView.Get_PatternCount());
+	std::unordered_set<std::string> Collected;
 	for (const std::string_view strPatternId : VALTAN_PATTERN_MASTER_ORDER)
 	{
 		if (const VALTAN_PATTERN_VIEW* pPattern = Find_ValtanPatternMaster(
 			m_ValtanPatternMasterView, strPatternId))
 		{
 			Patterns.push_back(pPattern);
+			Collected.insert(pPattern->strPatternId);
 		}
 	}
+	const auto AppendManaged = [&Patterns, &Collected](
+		const std::vector<VALTAN_PATTERN_VIEW>& Source)
+	{
+		for (const VALTAN_PATTERN_VIEW& Pattern : Source)
+		{
+			if (Pattern.bAuthoringMasterManaged &&
+				Collected.insert(Pattern.strPatternId).second)
+			{
+				Patterns.push_back(&Pattern);
+			}
+		}
+	};
+	AppendManaged(m_ValtanPatternMasterView.Rotation);
+	AppendManaged(m_ValtanPatternMasterView.Gimmicks);
 	return Patterns;
 }
 
@@ -1051,10 +1067,10 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 	};
 	CountManaged(Staged.Rotation);
 	CountManaged(Staged.Gimmicks);
-	if (VALTAN_PATTERN_MASTER_ORDER.size() != iManagedPatternCount)
+	if (iManagedPatternCount < VALTAN_PATTERN_MASTER_ORDER.size())
 	{
 		m_strValtanPatternMasterStatus =
-			"Valtan Pattern Master reload rejected; expected exactly 7 managed patterns, found " +
+			"Valtan Pattern Master reload rejected; expected the 7 baseline managed patterns, found " +
 			std::to_string(iManagedPatternCount) +
 			". Current admitted view and pose preserved.";
 		return false;
@@ -1072,11 +1088,14 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 	}
 
 	m_ValtanPatternMasterView = std::move(Staged);
+	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
+		Collect_ValtanPatternMasterPatterns();
 	m_iValtanPatternMasterSelected = std::clamp(
 		m_iValtanPatternMasterSelected, 0,
-		static_cast<int32_t>(VALTAN_PATTERN_MASTER_ORDER.size() - 1u));
+		static_cast<int32_t>(Patterns.size() - 1u));
 	m_strValtanPatternMasterStatus =
-		"Valtan Pattern Master admitted: 7 patterns from "
+		"Valtan Pattern Master admitted: " +
+		std::to_string(iManagedPatternCount) + " patterns from "
 		"Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json. " +
 		Status;
 	return true;
@@ -1547,7 +1566,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		Reload_ValtanPatternMaster();
 	ImGui::EndDisabled();
 
-	/* Opened ahead of the seven-pattern admission below: assembling a chain by
+	/* Opened ahead of the baseline admission below: assembling a chain by
 	   hand must stay possible even when the master itself refuses to load. */
 	if (ImGui::SmallButton("Open Custom Chain Window"))
 		m_bShowValtanCustomChainWindow = true;
@@ -1557,11 +1576,11 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
 		Collect_ValtanPatternMasterPatterns();
 	const bool_t bReady =
-		VALTAN_PATTERN_MASTER_ORDER.size() == Patterns.size();
+		Patterns.size() >= VALTAN_PATTERN_MASTER_ORDER.size();
 	if (!bReady)
 	{
 		ImGui::TextDisabled(
-			"No admitted seven-pattern master is available; current model is untouched.");
+			"No admitted Valtan pattern master is available; current model is untouched.");
 		if (!m_strValtanPatternMasterStatus.empty())
 			ImGui::TextWrapped("%s", m_strValtanPatternMasterStatus.c_str());
 		return;
@@ -1572,6 +1591,13 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		static_cast<int32_t>(Patterns.size() - 1u));
 	const VALTAN_PATTERN_VIEW* pSelected =
 		Patterns[static_cast<size_t>(m_iValtanPatternMasterSelected)];
+	if (pSelected->bManualServerAudition)
+	{
+		ImGui::TextDisabled(
+			"Manual Server audition | phase %u | source chain %s | automatic rotation disabled",
+			pSelected->iAuthoringPhase,
+			pSelected->strSourceAnimationChainId.c_str());
+	}
 	ImGui::BeginDisabled(m_bValtanPatternMasterPlaying);
 	if (ImGui::BeginCombo(
 		"Pattern##ValtanPatternMaster",

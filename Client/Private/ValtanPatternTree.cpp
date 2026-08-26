@@ -476,6 +476,10 @@ namespace
 		std::vector<std::string> CameraCueIds;
 		std::vector<Client::VALTAN_WORLD_EVENT_TRIGGER_REF_VIEW>
 			WorldEventTriggerRefs;
+		bool_t bManualServerAudition = false;
+		std::string strSourceAnimationChainId;
+		uint32_t iAuthoringPhase = 0u;
+		std::string strAdmissionState;
 		std::vector<MASTER_STAGE> Stages;
 	};
 
@@ -486,6 +490,7 @@ namespace
 		std::vector<Client::VALTAN_SELECTION_SET_VIEW> SelectionSets;
 		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW> SelectionWindows;
 		std::vector<Client::VALTAN_MECHANIC_VIEW> Mechanics;
+		std::vector<Client::VALTAN_MANUAL_AUDITION_VIEW> ManualAuditions;
 		std::vector<Client::VALTAN_COUNTER_REACTION_LAYER_VIEW>
 			CounterReactionLayers;
 		std::vector<Client::VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;
@@ -2423,10 +2428,14 @@ namespace
 		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW>& OutSelectionWindows,
 		std::vector<Client::VALTAN_MECHANIC_VIEW>& OutMechanicViews,
 		std::map<std::string, SPLIT_MECHANIC, std::less<>>& OutMechanics,
+		std::vector<Client::VALTAN_MANUAL_AUDITION_VIEW>& OutManualViews,
+		std::map<std::string, Client::VALTAN_MANUAL_AUDITION_VIEW,
+			std::less<>>& OutManualAuditions,
 		std::string& strOutError)
 	{
 		if (!Has_ExactProperties(Decision,
-				{ "selectionSets", "selectionWindows", "mechanics" }))
+				{ "selectionSets", "selectionWindows", "mechanics",
+				  "manualAuditions" }))
 		{
 			strOutError = "split gameplay decisionModel has unexpected properties";
 			return false;
@@ -2437,9 +2446,11 @@ namespace
 			Decision, "selectionWindows", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pMechanics = Required(
 			Decision, "mechanics", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pManualAuditions = Required(
+			Decision, "manualAuditions", DATA_JSON_TYPE::ARRAY);
 		if (nullptr == pSets || pSets->Get_Array().empty() ||
 			nullptr == pWindows || pWindows->Get_Array().empty() ||
-			nullptr == pMechanics)
+			nullptr == pMechanics || nullptr == pManualAuditions)
 		{
 			strOutError = "split gameplay decisionModel inventories are invalid";
 			return false;
@@ -2653,6 +2664,42 @@ namespace
 			MechanicView.strFailurePolicy = Read_String(
 				Mechanic, "failurePolicy");
 			OutMechanicViews.push_back(std::move(MechanicView));
+		}
+
+		std::set<std::string, std::less<>> ManualSourceChainIds;
+		for (const DATA_JSON_VALUE& Manual : pManualAuditions->Get_Array())
+		{
+			if (!Has_ExactProperties(Manual,
+					{ "patternId", "sourceChainId", "authoringPhase",
+					  "admissionState" }) ||
+				!Is_StableToken(Read_String(Manual, "patternId")) ||
+				!Is_StableToken(Read_String(Manual, "sourceChainId")) ||
+				!Is_NonNegativeInteger(Manual.Find("authoringPhase")) ||
+				0.0 == Manual.Find("authoringPhase")->Get_Number() ||
+				Manual.Find("authoringPhase")->Get_Number() > 3.0 ||
+				"MANUAL_SERVER_AUDITION" !=
+					Read_String(Manual, "admissionState"))
+			{
+				strOutError = "split gameplay manual audition is invalid";
+				return false;
+			}
+			Client::VALTAN_MANUAL_AUDITION_VIEW View;
+			View.strPatternId = Read_String(Manual, "patternId");
+			View.strSourceChainId = Read_String(Manual, "sourceChainId");
+			View.iAuthoringPhase = static_cast<uint32_t>(
+				Manual.Find("authoringPhase")->Get_Number());
+			View.strAdmissionState = Read_String(Manual, "admissionState");
+			if (NormalPatternSet.contains(View.strPatternId) ||
+				OutMechanics.contains(View.strPatternId) ||
+				!ManualSourceChainIds.insert(View.strSourceChainId).second ||
+				!OutManualAuditions.emplace(
+					View.strPatternId, View).second)
+			{
+				strOutError =
+					"split gameplay manual audition ownership is duplicated or overlaps";
+				return false;
+			}
+			OutManualViews.push_back(std::move(View));
 		}
 		const auto ArenaBreak = OutMechanics.find("VALTAN_ARENA_BREAK_109");
 		uint32_t iPhaseOneBoundary = 0u;
@@ -2881,11 +2928,15 @@ namespace
 		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW> SelectionWindows;
 		std::vector<Client::VALTAN_MECHANIC_VIEW> MechanicViews;
 		std::map<std::string, SPLIT_MECHANIC, std::less<>> Mechanics;
+		std::vector<Client::VALTAN_MANUAL_AUDITION_VIEW> ManualViews;
+		std::map<std::string, Client::VALTAN_MANUAL_AUDITION_VIEW,
+			std::less<>> ManualAuditions;
 		const DATA_JSON_VALUE* pDecision = Required(
 			Gameplay, "decisionModel", DATA_JSON_TYPE::OBJECT);
 		if (nullptr == pDecision || !Build_SplitDecisionProjection(
 				*pDecision, NormalSelection, SelectionSets, SelectionWindows,
-				MechanicViews, Mechanics, strOutError))
+				MechanicViews, Mechanics, ManualViews, ManualAuditions,
+				strOutError))
 		{
 			return false;
 		}
@@ -3389,14 +3440,20 @@ namespace
 			const auto Mechanic = Mechanics.find(strPatternId);
 			const bool_t bMechanic = Mechanic != Mechanics.end();
 			const bool_t bCandidate = CandidatePatterns.contains(strPatternId);
+			const auto Manual = ManualAuditions.find(strPatternId);
+			const bool_t bManual = Manual != ManualAuditions.end();
 			const DATA_JSON_VALUE* pCompatibilityWeight =
 				GameplayPattern.Find("compatibilitySelectionWeight");
-			if (bMechanic == bCandidate ||
+			const uint32_t iOwnerCount =
+				(bMechanic ? 1u : 0u) + (bCandidate ? 1u : 0u) +
+				(bManual ? 1u : 0u);
+			if (1u != iOwnerCount ||
 				!Is_NonNegativeInteger(pCompatibilityWeight) ||
-				(bMechanic && 0.0 != pCompatibilityWeight->Get_Number()) ||
-				(!bMechanic && 0.0 == pCompatibilityWeight->Get_Number()))
+				((bMechanic || bManual) &&
+				 0.0 != pCompatibilityWeight->Get_Number()) ||
+				(bCandidate && 0.0 == pCompatibilityWeight->Get_Number()))
 			{
-				strOutError = "split gameplay pattern is neither exactly normal nor mechanic: " +
+				strOutError = "split gameplay pattern does not have exactly one decision owner: " +
 					strPatternId;
 				return false;
 			}
@@ -3423,7 +3480,8 @@ namespace
 			LegacyPattern.emplace("presentationSources",
 				*PresentationPattern.Find("presentationSources"));
 			LegacyPattern.emplace("selectionMode",
-				DATA_JSON_VALUE::String(bMechanic ? "HEALTH_BAR" : "NORMAL"));
+				DATA_JSON_VALUE::String(bMechanic ? "HEALTH_BAR" :
+					(bManual ? "AUDITION_ONLY" : "NORMAL")));
 			LegacyPattern.emplace("minimumHealthBar",
 				*pEligibility->Find("minimumHealthBarInclusive"));
 			LegacyPattern.emplace("maximumHealthBar",
@@ -3556,9 +3614,20 @@ namespace
 		Out.SelectionSets = std::move(SelectionSets);
 		Out.SelectionWindows = std::move(SelectionWindows);
 		Out.Mechanics = std::move(MechanicViews);
+		Out.ManualAuditions = std::move(ManualViews);
 		for (size_t iPattern = 0u; iPattern < Out.Patterns.size(); ++iPattern)
 		{
 			MASTER_PATTERN& Pattern = Out.Patterns[iPattern];
+			const auto Manual = ManualAuditions.find(Pattern.strPatternId);
+			if (Manual != ManualAuditions.end())
+			{
+				Pattern.bManualServerAudition = true;
+				Pattern.strSourceAnimationChainId =
+					Manual->second.strSourceChainId;
+				Pattern.iAuthoringPhase = Manual->second.iAuthoringPhase;
+				Pattern.strAdmissionState =
+					Manual->second.strAdmissionState;
+			}
 			const DATA_JSON_VALUE& PresentationPattern =
 				pPresentationPatterns->Get_Array()[iPattern];
 			const DATA_JSON_VALUE& GameplayPattern =
@@ -3744,6 +3813,12 @@ namespace
 			pPattern->WorldEventTriggerRefs =
 				MasterPattern.WorldEventTriggerRefs;
 			pPattern->bAuthoringMasterManaged = true;
+			pPattern->bManualServerAudition =
+				MasterPattern.bManualServerAudition;
+			pPattern->strSourceAnimationChainId =
+				MasterPattern.strSourceAnimationChainId;
+			pPattern->iAuthoringPhase = MasterPattern.iAuthoringPhase;
+			pPattern->strAdmissionState = MasterPattern.strAdmissionState;
 			for (size_t iStage = 0u; iStage < MasterPattern.Stages.size();
 				++iStage)
 			{
@@ -4060,6 +4135,7 @@ namespace
 		View.SelectionSets = Master.SelectionSets;
 		View.SelectionWindows = Master.SelectionWindows;
 		View.Mechanics = Master.Mechanics;
+		View.ManualAuditions = Master.ManualAuditions;
 		View.NormalSelection = Master.NormalSelection;
 		for (const std::string& PatternId : View.NormalSelection.PatternIds)
 		{
@@ -4070,6 +4146,24 @@ namespace
 				strOutError =
 					"Valtan normal-selection pool left the managed normal set: " +
 					PatternId;
+				return false;
+			}
+		}
+		for (const Client::VALTAN_MANUAL_AUDITION_VIEW& Manual :
+			View.ManualAuditions)
+		{
+			Client::VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(
+				View, Manual.strPatternId);
+			if (nullptr == pPattern || !pPattern->bAuthoringMasterManaged ||
+				!pPattern->bManualServerAudition ||
+				"AUDITION_ONLY" != pPattern->strSelectionMode ||
+				pPattern->strSourceAnimationChainId != Manual.strSourceChainId ||
+				pPattern->iAuthoringPhase != Manual.iAuthoringPhase ||
+				pPattern->strAdmissionState != Manual.strAdmissionState)
+			{
+				strOutError =
+					"Valtan manual audition left its managed Product pattern: " +
+					Manual.strPatternId;
 				return false;
 			}
 		}

@@ -389,6 +389,8 @@
 	<None Include="..\..\Data\Valtan\Valtan.gameplay.json" />
 	<None Include="..\..\Data\Valtan\Valtan.presentation.json" />
 	<None Include="..\..\Data\Valtan\Valtan.presentation.debug.json" />
+	<None Include="..\..\Data\Valtan\Valtan.animation-chain-promotions.json" />
+	<None Include="..\..\Data\Valtan\Valtan.animation-chain-promotion.receipt.json" />
 	<None Include="..\..\Data\Valtan\Valtan.combatobjects.json" />
 	<None Include="..\..\Data\Valtan\Valtan.worldeventsets.json" />
 	<None Include="..\..\Data\Valtan\Valtan.legacy-compatibility.json" />

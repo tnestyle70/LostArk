@@ -130,6 +130,128 @@
         "oncePerEncounter": true,
         "failurePolicy": "ABORT_ENCOUNTER_REQUIRE_RESET"
       }
+    ],
+    "manualAuditions": [
+      {
+        "patternId": "VALTAN_SEQUENCE_CENTER_SIX_PIZZA_CHARGE",
+        "sourceChainId": "center-six-pizza-charge",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_ATTACK_WHIRLWIND",
+        "sourceChainId": "attack-whirlwind",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_CHARGE",
+        "sourceChainId": "charge",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_FOUR",
+        "sourceChainId": "four",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_ROAR_CHARGE",
+        "sourceChainId": "roar-charge",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_RUSH",
+        "sourceChainId": "rush",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_THREE",
+        "sourceChainId": "three",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_JUMP_WHIRLWIND_ROAR_ROAR_CHARGE",
+        "sourceChainId": "jump-whirlwind-roar-roar-charge",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
+        "sourceChainId": "front-back-front",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_WARP",
+        "sourceChainId": "warp",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_TWOHAND",
+        "sourceChainId": "twohand",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_WHIRLWIND",
+        "sourceChainId": "whirlwind",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_CENTER_TRASH_RUSH_IF",
+        "sourceChainId": "center-trash-rush-if",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_RUSH_SUCCESS",
+        "sourceChainId": "rush-success",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_RUSH_FAIL",
+        "sourceChainId": "rush-fail",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_RUSH_IF",
+        "sourceChainId": "rush-if",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_CATCH_BREATH",
+        "sourceChainId": "catch-breath",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_COUNTER",
+        "sourceChainId": "counter",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_CHARGE2",
+        "sourceChainId": "charge2",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
+        "patternId": "VALTAN_SEQUENCE_WARP_JUMP_FOUR_HAND_TWOHAND_ROAR_ROAR_DEAD",
+        "sourceChainId": "warp-jump-four-hand-twohand-roar-roar-dead",
+        "authoringPhase": 3,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      }
     ]
   },
   "counterReactionLayers": [
@@ -1098,6 +1220,2149 @@
           "actionId": "valtan.mechanic.arena-break-109.recovery",
           "stageKind": "RECOVERY",
           "durationMs": 870,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_CENTER_SIX_PIZZA_CHARGE",
+      "displayName": "[P2 Animation] center-six-pizza-charge",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.center-six-pizza-charge",
+      "entryActionId": "valtan.sequence.center-six-pizza-charge.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420612,
+        420629,
+        420619,
+        420656,
+        420620,
+        420636,
+        420657
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 2800,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-05",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_05",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-05",
+          "stageKind": "ACTIVE",
+          "durationMs": 5000,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-06",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_06",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-06",
+          "stageKind": "ACTIVE",
+          "durationMs": 8000,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-07",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_07",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-07",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-08",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_08",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-08",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-09",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_09",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-09",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-10",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_10",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-10",
+          "stageKind": "ACTIVE",
+          "durationMs": 6000,
+          "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-11",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_11",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-11",
+          "stageKind": "ACTIVE",
+          "durationMs": 1300,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_ATTACK_WHIRLWIND",
+      "displayName": "[P2 Animation] attack-whirlwind",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.attack-whirlwind",
+      "entryActionId": "valtan.sequence.attack-whirlwind.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420621,
+        420616
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.attack-whirlwind.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 2500,
+          "defaultNextActionId": "valtan.sequence.attack-whirlwind.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.attack-whirlwind.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1333,
+          "defaultNextActionId": "valtan.sequence.attack-whirlwind.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.attack-whirlwind.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 700,
+          "defaultNextActionId": "valtan.sequence.attack-whirlwind.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.attack-whirlwind.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 1467,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_CHARGE",
+      "displayName": "[P2 Animation] charge",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.charge",
+      "entryActionId": "valtan.sequence.charge.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420606,
+        400433
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.charge.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1700,
+          "defaultNextActionId": "valtan.sequence.charge.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.charge.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1133,
+          "defaultNextActionId": "valtan.sequence.charge.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.charge.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 1067,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_FOUR",
+      "displayName": "[P2 Animation] four",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.four",
+      "entryActionId": "valtan.sequence.four.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420609
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.four.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 3500,
+          "defaultNextActionId": "valtan.sequence.four.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.four.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 3167,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_ROAR_CHARGE",
+      "displayName": "[P2 Animation] roar-charge",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.roar-charge",
+      "entryActionId": "valtan.sequence.roar-charge.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420603,
+        420624,
+        420608,
+        420630
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.roar-charge.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1400,
+          "defaultNextActionId": "valtan.sequence.roar-charge.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.roar-charge.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.roar-charge.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.roar-charge.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 4433,
+          "defaultNextActionId": "valtan.sequence.roar-charge.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.roar-charge.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 1400,
+          "defaultNextActionId": "valtan.sequence.roar-charge.step-05",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_05",
+          "actionId": "valtan.sequence.roar-charge.step-05",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": "valtan.sequence.roar-charge.step-06",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_06",
+          "actionId": "valtan.sequence.roar-charge.step-06",
+          "stageKind": "ACTIVE",
+          "durationMs": 1500,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_RUSH",
+      "displayName": "[P2 Animation] rush",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.rush",
+      "entryActionId": "valtan.sequence.rush.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420604
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.rush.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1500,
+          "defaultNextActionId": "valtan.sequence.rush.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.rush.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1500,
+          "defaultNextActionId": "valtan.sequence.rush.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.rush.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 4733,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_THREE",
+      "displayName": "[P2 Animation] three",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.three",
+      "entryActionId": "valtan.sequence.three.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420602,
+        420661
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.three.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1800,
+          "defaultNextActionId": "valtan.sequence.three.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.three.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.three.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.three.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 2067,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_JUMP_WHIRLWIND_ROAR_ROAR_CHARGE",
+      "displayName": "[P2 Animation] jump-whirlwind-roar-roar-charge",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge",
+      "entryActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420612,
+        420629,
+        420621,
+        420616,
+        420622,
+        420603,
+        420624,
+        420606,
+        400433
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 4000,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 1333,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-05",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_05",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-05",
+          "stageKind": "ACTIVE",
+          "durationMs": 700,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-06",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_06",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-06",
+          "stageKind": "ACTIVE",
+          "durationMs": 1467,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-07",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_07",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-07",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-08",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_08",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-08",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-09",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_09",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-09",
+          "stageKind": "ACTIVE",
+          "durationMs": 1400,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_10",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-11",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_11",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-11",
+          "stageKind": "ACTIVE",
+          "durationMs": 4433,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-12",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_12",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-12",
+          "stageKind": "ACTIVE",
+          "durationMs": 1700,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-13",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_13",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-13",
+          "stageKind": "ACTIVE",
+          "durationMs": 5000,
+          "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-14",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_14",
+          "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-14",
+          "stageKind": "ACTIVE",
+          "durationMs": 1067,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
+      "displayName": "[P2 Animation] front-back-front",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.front-back-front",
+      "entryActionId": "valtan.sequence.front-back-front.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420624,
+        420661
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.front-back-front.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 2700,
+          "defaultNextActionId": "valtan.sequence.front-back-front.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.front-back-front.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 2067,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_WARP",
+      "displayName": "[P2 Animation] warp",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.warp",
+      "entryActionId": "valtan.sequence.warp.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420624,
+        420622
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.warp.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "defaultNextActionId": "valtan.sequence.warp.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.warp.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.warp.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.warp.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.warp.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.warp.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.warp.step-05",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_05",
+          "actionId": "valtan.sequence.warp.step-05",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.warp.step-06",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_06",
+          "actionId": "valtan.sequence.warp.step-06",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.warp.step-07",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_07",
+          "actionId": "valtan.sequence.warp.step-07",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.warp.step-08",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_08",
+          "actionId": "valtan.sequence.warp.step-08",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.warp.step-09",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_09",
+          "actionId": "valtan.sequence.warp.step-09",
+          "stageKind": "ACTIVE",
+          "durationMs": 900,
+          "defaultNextActionId": "valtan.sequence.warp.step-10",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_10",
+          "actionId": "valtan.sequence.warp.step-10",
+          "stageKind": "ACTIVE",
+          "durationMs": 1667,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_TWOHAND",
+      "displayName": "[P2 Animation] twohand",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.twohand",
+      "entryActionId": "valtan.sequence.twohand.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420624
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.twohand.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1500,
+          "defaultNextActionId": "valtan.sequence.twohand.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.twohand.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 2600,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_WHIRLWIND",
+      "displayName": "[P2 Animation] whirlwind",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.whirlwind",
+      "entryActionId": "valtan.sequence.whirlwind.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420621,
+        420616
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.whirlwind.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1333,
+          "defaultNextActionId": "valtan.sequence.whirlwind.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.whirlwind.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 533,
+          "defaultNextActionId": "valtan.sequence.whirlwind.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.whirlwind.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 1467,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_CENTER_TRASH_RUSH_IF",
+      "displayName": "[P2 Animation] center-trash-rush-if",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.center-trash-rush-if",
+      "entryActionId": "valtan.sequence.center-trash-rush-if.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420612,
+        420629,
+        420623,
+        420613
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.center-trash-rush-if.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": "valtan.sequence.center-trash-rush-if.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 1200,
+          "defaultNextActionId": "valtan.sequence.center-trash-rush-if.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 2333,
+          "defaultNextActionId": "valtan.sequence.center-trash-rush-if.step-05",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_05",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-05",
+          "stageKind": "ACTIVE",
+          "durationMs": 667,
+          "defaultNextActionId": "valtan.sequence.center-trash-rush-if.step-06",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_06",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-06",
+          "stageKind": "ACTIVE",
+          "durationMs": 4100,
+          "defaultNextActionId": "valtan.sequence.center-trash-rush-if.step-07",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_07",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-07",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": "valtan.sequence.center-trash-rush-if.step-08",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_08",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-08",
+          "stageKind": "ACTIVE",
+          "durationMs": 667,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_RUSH_SUCCESS",
+      "displayName": "[P2 Animation] rush-success",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.rush-success",
+      "entryActionId": "valtan.sequence.rush-success.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420613
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.rush-success.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "defaultNextActionId": "valtan.sequence.rush-success.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.rush-success.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_RUSH_FAIL",
+      "displayName": "[P2 Animation] rush-fail",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.rush-fail",
+      "entryActionId": "valtan.sequence.rush-fail.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420613
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.rush-fail.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_RUSH_IF",
+      "displayName": "[P2 Animation] rush-if",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.rush-if",
+      "entryActionId": "valtan.sequence.rush-if.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420613,
+        420623
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.rush-if.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": "valtan.sequence.rush-if.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.rush-if.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 667,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_CATCH_BREATH",
+      "displayName": "[P2 Animation] catch-breath",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.catch-breath",
+      "entryActionId": "valtan.sequence.catch-breath.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420623,
+        420632
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.catch-breath.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "defaultNextActionId": "valtan.sequence.catch-breath.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.catch-breath.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 500,
+          "defaultNextActionId": "valtan.sequence.catch-breath.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.catch-breath.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 4000,
+          "defaultNextActionId": "valtan.sequence.catch-breath.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.catch-breath.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_COUNTER",
+      "displayName": "[P2 Animation] counter",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.counter",
+      "entryActionId": "valtan.sequence.counter.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420642,
+        420643,
+        420644
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.counter.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "defaultNextActionId": "valtan.sequence.counter.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.counter.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1800,
+          "defaultNextActionId": "valtan.sequence.counter.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.counter.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 1667,
+          "defaultNextActionId": "valtan.sequence.counter.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.counter.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_CHARGE2",
+      "displayName": "[P2 Animation] charge2",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.charge2",
+      "entryActionId": "valtan.sequence.charge2.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420606,
+        400433,
+        420607
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.charge2.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 1700,
+          "defaultNextActionId": "valtan.sequence.charge2.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.charge2.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 1133,
+          "defaultNextActionId": "valtan.sequence.charge2.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.charge2.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 1600,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_WARP_JUMP_FOUR_HAND_TWOHAND_ROAR_ROAR_DEAD",
+      "displayName": "[P3 Candidate] warp-jump-four-hand-twohand-roar-roar-dead",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead",
+      "entryActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420624,
+        420622
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-02",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_02",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-02",
+          "stageKind": "ACTIVE",
+          "durationMs": 500,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-03",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_03",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-03",
+          "stageKind": "ACTIVE",
+          "durationMs": 1667,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_04",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04",
+          "stageKind": "ACTIVE",
+          "durationMs": 5000,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-05",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_05",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-05",
+          "stageKind": "ACTIVE",
+          "durationMs": 1500,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_06",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06",
+          "stageKind": "ACTIVE",
+          "durationMs": 667,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_07",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
+          "stageKind": "ACTIVE",
+          "durationMs": 2600,
           "defaultNextActionId": null,
           "hit": {
             "shape": {
