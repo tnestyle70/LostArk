@@ -7031,6 +7031,72 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			resetRequiredTrace->eResult,
 		"Fail a critical mechanic closed until an encounter reset replaces its ledger");
 
+	/* A party wipe is the one mechanic failure this encounter recovers from on
+	its own, because nothing else ever clears the ledger latch. It must stay
+	closed while the party is down and while the failure was anything else, then
+	release once a revived player is back in the fight. */
+	const auto findFloorWipeOccurrence =
+		[&valtan]() -> SERVER_BOSS_MECHANIC_OCCURRENCE*
+		{
+			const auto found = std::find_if(
+				valtan.MechanicOccurrences.begin(),
+				valtan.MechanicOccurrences.end(),
+				[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+				{
+					return "VALTAN_FLOOR_WIPE_130" == occurrence.strPatternId;
+				});
+			return valtan.MechanicOccurrences.end() == found ? nullptr : &*found;
+		};
+	tests.Require(
+		valtan.bMechanicLedgerRequiresReset &&
+		SERVER_ENTITY_ACTION::IDLE == valtan.eAction,
+		"Hold a non-wipe mechanic failure latched even while a player is alive");
+	SERVER_BOSS_MECHANIC_OCCURRENCE* wipedOccurrence = findFloorWipeOccurrence();
+	tests.Require(nullptr != wipedOccurrence,
+		"Keep the 130-bar occurrence addressable by its stable pattern ID");
+	wipedOccurrence->eState =
+		SERVER_BOSS_MECHANIC_STATE::FAILED_REQUIRES_RESET;
+	wipedOccurrence->eFailure =
+		SERVER_BOSS_MECHANIC_FAILURE::NO_VALID_TARGET;
+	valtan.bMechanicLedgerRequiresReset = true;
+	const LostArk::Shared::PLAYER_ACTION_STATE aliveAction =
+		players.begin()->second.eAction;
+	const std::uint32_t aliveHp = players.begin()->second.iCurrentHp;
+	players.begin()->second.eAction =
+		LostArk::Shared::PLAYER_ACTION_STATE::DEAD;
+	brain.Update(valtan, players, catalog, navigation, 1.f / 30.f, 174u,
+		{}, valtanDamageEvents);
+	wipedOccurrence = findFloorWipeOccurrence();
+	tests.Require(
+		valtan.bMechanicLedgerRequiresReset &&
+		nullptr != wipedOccurrence &&
+		SERVER_BOSS_MECHANIC_STATE::FAILED_REQUIRES_RESET ==
+			wipedOccurrence->eState &&
+		SERVER_ENTITY_ACTION::IDLE == valtan.eAction,
+		"Hold the wiped mechanic ledger latched while every player is dead");
+	players.begin()->second.eAction = aliveAction;
+	players.begin()->second.iCurrentHp = 0u == aliveHp ? 781u : aliveHp;
+	players.begin()->second.isCombatReady = true;
+	brain.Update(valtan, players, catalog, navigation, 1.f / 30.f, 175u,
+		{}, valtanDamageEvents);
+	const VALTAN_DECISION_TRACE* revivedTrace = brain.Get_LatestDecisionTrace();
+	wipedOccurrence = findFloorWipeOccurrence();
+	tests.Require(
+		!valtan.bMechanicLedgerRequiresReset &&
+		nullptr != wipedOccurrence &&
+		SERVER_BOSS_MECHANIC_STATE::COMPLETED == wipedOccurrence->eState &&
+		SERVER_BOSS_MECHANIC_FAILURE::NO_VALID_TARGET ==
+			wipedOccurrence->eFailure &&
+		nullptr != revivedTrace &&
+		VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED !=
+			revivedTrace->eResult,
+		"Resume the Valtan rotation once a revived player ends the party wipe");
+	tests.Require(
+		valtan.PendingPatternIds.end() == std::find(
+			valtan.PendingPatternIds.begin(), valtan.PendingPatternIds.end(),
+			std::string("VALTAN_FLOOR_WIPE_130")),
+		"Never re-arm a spent health-bar mechanic when the wipe latch releases");
+
 	{
 		/* Source cooldowns are selection gates, not display-only metadata. Run a
 		deterministic normal-pattern simulation long enough to see positive-

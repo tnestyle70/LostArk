@@ -214,6 +214,80 @@ namespace
 		boss.bMechanicLedgerRequiresReset = true;
 	}
 
+	/* The target loop and the wipe recovery must agree on what "alive and in
+	the fight" means. If they drifted apart the released ledger would fail again
+	on the very next tick. */
+	bool IsEngageablePlayer(const SERVER_PLAYER& player)
+	{
+		return 0u != player.iCurrentHp && player.isCombatReady &&
+			LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction &&
+			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction;
+	}
+
+	/* A party wipe leaves the running mechanic with no target, so it lands in
+	the ledger as FAILED_REQUIRES_RESET and latches the boss into IDLE. That one
+	failure is a gameplay outcome rather than a corrupted ledger: the mechanic
+	already resolved and the party died to it. Once a revived player is back in
+	the fight, settle those occurrences as terminal and release the latch so the
+	rotation continues. The occurrence is deliberately not re-armed, because a
+	single health-bar crossing must not fire its mechanic twice and re-wiping the
+	party the instant it stands up is not a resumed encounter. Every other
+	failure reason still keeps the encounter closed. */
+	bool SettlePartyWipeMechanicFailures(
+		SERVER_WORLD_ENTITY& boss,
+		const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+		const std::uint32_t serverTick)
+	{
+		if (!boss.bMechanicLedgerRequiresReset)
+			return false;
+		std::size_t wipedCount = 0u;
+		for (const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence :
+			boss.MechanicOccurrences)
+		{
+			if (SERVER_BOSS_MECHANIC_STATE::FAILED_REQUIRES_RESET !=
+				occurrence.eState)
+			{
+				continue;
+			}
+			if (SERVER_BOSS_MECHANIC_FAILURE::NO_VALID_TARGET !=
+				occurrence.eFailure)
+			{
+				return false;
+			}
+			++wipedCount;
+		}
+		/* Without a wiped occurrence the latch came from a catalog or ledger
+		capacity condition, which re-asserts itself on its own each tick. */
+		if (0u == wipedCount)
+			return false;
+		bool engageable = false;
+		for (const auto& [playerId, player] : players)
+		{
+			(void)playerId;
+			if (!IsEngageablePlayer(player))
+				continue;
+			engageable = true;
+			break;
+		}
+		if (!engageable)
+			return false;
+		for (SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence :
+			boss.MechanicOccurrences)
+		{
+			if (SERVER_BOSS_MECHANIC_STATE::FAILED_REQUIRES_RESET !=
+				occurrence.eState)
+			{
+				continue;
+			}
+			/* Keep eFailure so the ledger still reports why the occurrence
+			ended, and only move it out of the retry-blocking state. */
+			occurrence.eState = SERVER_BOSS_MECHANIC_STATE::COMPLETED;
+			occurrence.iFinishedTick = serverTick;
+		}
+		boss.bMechanicLedgerRequiresReset = false;
+		return true;
+	}
+
 	bool IsSamePatternCooldownFamily(
 		const SERVER_BOSS_PATTERN_COOLDOWN& cooldown,
 		const BOSS_PATTERN_DEFINITION& pattern)
@@ -1606,6 +1680,9 @@ void LostArk::Server::CValtanBrain::Update(
 		here. */
 		(void)CBossCombatRuntime::Set_GameplayPhase(boss, 2u);
 	}
+	/* Release a party-wipe latch before the health-bar evaluation, so a
+	genuinely broken catalog can still re-latch the ledger in this same tick. */
+	(void)SettlePartyWipeMechanicFailures(boss, players, serverTick);
 	const std::uint32_t currentHealthBar = Calculate_HealthBar(boss);
 	const CGameplayCatalog& thresholdCatalog =
 		nullptr == activeThresholdCatalog ? catalog : *activeThresholdCatalog;
@@ -1640,12 +1717,8 @@ void LostArk::Server::CValtanBrain::Update(
 	for (auto& [playerId, player] : players)
 	{
 		(void)playerId;
-		if (0u == player.iCurrentHp || !player.isCombatReady ||
-			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction ||
-			LostArk::Shared::PLAYER_ACTION_STATE::FALLING == player.eAction)
-		{
+		if (!IsEngageablePlayer(player))
 			continue;
-		}
 		const float deltaX = player.fPositionX - boss.fPositionX;
 		const float deltaZ = player.fPositionZ - boss.fPositionZ;
 		const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
