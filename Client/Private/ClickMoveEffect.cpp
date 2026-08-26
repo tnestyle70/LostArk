@@ -43,9 +43,14 @@ namespace
 
 	/* Native shapeBounds ratio: ring (shapeId 3) 2080x2060 twips, glow
 	   (shapeId 6) 760x740 twips -- glow's native size is 0.365x the ring's.
-	   Ring base diameter matches this project's own ground-target "point"
-	   marker scale (PlayerSkillTargeting.json targetPreview.diameter=6.0). */
-	constexpr f32_t RING_BASE_DIAMETER = 6.f;
+	   cursoreffect.gfx itself gives no world-scale reference (it was a 2D
+	   mouseX/mouseY screen overlay in the original game, pixels only, not a
+	   world-space decal), so there is no "real" diameter to recover here --
+	   this is a visual-scale placeholder, tune by eye in-client and change
+	   this one number directly. (First pass wrongly borrowed a skill-preview
+	   diameter that happened to make the marker as wide as Valtan's whole
+	   body -- reported too big, corrected here.) */
+	constexpr f32_t RING_BASE_DIAMETER = 1.2f;
 	constexpr f32_t GLOW_BASE_DIAMETER = RING_BASE_DIAMETER * 0.365f;
 	constexpr f32_t TOTAL_DURATION_SECONDS =
 		g_Keyframes.back().fTimeSeconds;
