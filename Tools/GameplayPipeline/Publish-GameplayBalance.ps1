@@ -440,9 +440,12 @@ function Assert-BalanceProvenance(
             Add-Expected 'Data/Encounters/Valtan/ValtanEncounter.json' $encounterTarget "states[$index].$($property.Name)" $property.Value
         }
     }
+    $liveEncounterPatterns = @($encounter.patterns | Where-Object {
+        [string]$_.selectionMode -cne 'AUDITION_ONLY'
+    })
     Add-Expected 'Data/Encounters/Valtan/ValtanEncounter.json' $encounterTarget 'patterns.length' @($encounter.patterns).Count
-    for ($index = 0; $index -lt @($encounter.patterns).Count; $index++) {
-        $pattern = $encounter.patterns[$index]
+    for ($index = 0; $index -lt $liveEncounterPatterns.Count; $index++) {
+        $pattern = $liveEncounterPatterns[$index]
         foreach ($property in $pattern.PSObject.Properties) {
             Add-Expected 'Data/Encounters/Valtan/ValtanEncounter.json' "pattern:$($pattern.patternId)" "patterns[$index].$($property.Name)" $property.Value
         }
@@ -462,7 +465,7 @@ function Assert-BalanceProvenance(
         [uint32]$receipt.coverage.bossProfileCount -ne @($BossDocument.bosses).Count -or
         [uint32]$receipt.coverage.bossPartCount -ne @($BossPartDocument.parts).Count -or
         [uint32]$receipt.coverage.bossCombatObjectCount -ne @($CombatObjectDocument.objects).Count -or
-        [uint32]$receipt.coverage.encounterPatternCount -ne @($encounter.patterns).Count) {
+        [uint32]$receipt.coverage.encounterPatternCount -ne $liveEncounterPatterns.Count) {
         throw 'Balance provenance object coverage is stale.'
     }
 }
@@ -1425,6 +1428,19 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			throw "Health-bar pattern trigger tuple is duplicated: $triggerKey"
 		}
 	}
+	elseif ($selectionMode -eq 'AUDITION_ONLY') {
+		if ([uint32]$pattern.minimumHealthBar -ne 0 -or
+			[uint32]$pattern.maximumHealthBar -ne 0 -or
+			[uint32]$pattern.triggerHealthBar -ne 0 -or
+			[uint32]$pattern.triggerOrder -ne 0 -or
+			[uint32]$pattern.selectionWeight -ne 0 -or
+			[uint32]$pattern.maximumConsecutiveUses -ne 0) {
+			throw "Audition-only pattern selection fields must be zero: $($pattern.patternId)"
+		}
+		if ($category -ceq 'MECHANIC') {
+			throw "Audition-only pattern cannot use the MECHANIC category: $($pattern.patternId)"
+		}
+	}
 	else { throw "Unknown pattern selection mode: $($pattern.patternId)" }
 	$patternRows.Add((@(
 		'PATTERN', $encounterDocument.encounterId, $pattern.patternId, $pattern.actionId, $selectionMode,
@@ -1972,11 +1988,14 @@ if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
 # action and branch, which still passed the generic optional-field validator.
 # Keep the exact compiled row set here so Validate fails before such a partial
 # encounter can be published again.
+$liveEncounterPatterns = @($encounterDocument.patterns | Where-Object {
+	[string]$_.selectionMode -cne 'AUDITION_ONLY'
+})
 $authoredStageCount = 0
 $authoredStageActionCount = 0
 $authoredStageBranchCount = 0
 $authoredStageMotionCount = 0
-foreach ($pattern in @($encounterDocument.patterns)) {
+foreach ($pattern in $liveEncounterPatterns) {
 	foreach ($stage in @($pattern.stages)) {
 		++$authoredStageCount
 		$actionsProperty = $stage.PSObject.Properties['actions']
@@ -1993,13 +2012,13 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		}
 	}
 }
-if (@($encounterDocument.patterns).Count -ne 33 -or
+if ($liveEncounterPatterns.Count -ne 33 -or
 	$authoredStageCount -ne 131 -or
 	$authoredStageActionCount -ne 25 -or
 	$authoredStageBranchCount -ne 24 -or
 	$authoredStageMotionCount -ne 2) {
 	throw ('Valtan reactive stage topology count drifted: ' +
-		"patterns=$(@($encounterDocument.patterns).Count) " +
+		"livePatterns=$($liveEncounterPatterns.Count) " +
 		"stages=$authoredStageCount actions=$authoredStageActionCount " +
 		"branches=$authoredStageBranchCount motions=$authoredStageMotionCount")
 }

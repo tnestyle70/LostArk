@@ -229,6 +229,17 @@ MISSING_ACTION_BINDING_POLICIES = {
         "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW"
     ),
 }
+
+
+def live_encounter_patterns(encounter: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return patterns eligible for automatic encounter topology/coverage."""
+    return [
+        pattern
+        for pattern in encounter.get("patterns", [])
+        if pattern.get("selectionMode") != "AUDITION_ONLY"
+    ]
+
+
 ARENA84_BINDING_GAP_PROPOSALS = [
     {
         "patternId": "VALTAN_ARENA_BREAK_84",
@@ -648,7 +659,7 @@ def product_clip_occurrences(
         by_action[action_id] = clips
 
     result: dict[str, list[dict[str, Any]]] = {}
-    for pattern in encounter.get("patterns", []):
+    for pattern in live_encounter_patterns(encounter):
         pattern_id = str(pattern.get("patternId") or "")
         ordered: list[dict[str, Any]] = []
         for stage_ordinal, stage in enumerate(pattern.get("stages", [])):
@@ -2634,10 +2645,14 @@ def build_inventory(
     catalog = catalog or read_json(SOURCE_CATALOG_PATH)
 
     patterns = action_bindings.get("patterns", [])
+    live_patterns = live_encounter_patterns(encounter)
+    live_pattern_ids = {
+        str(pattern.get("patternId") or "") for pattern in live_patterns
+    }
     coverage, missing = pattern_coverage(encounter, action_bindings)
-    if len(encounter.get("patterns", [])) != EXPECTED_PATTERN_COUNT:
+    if len(live_patterns) != EXPECTED_PATTERN_COUNT:
         raise InventoryError(
-            f"Valtan encounter pattern count is not {EXPECTED_PATTERN_COUNT}"
+            f"Valtan live encounter pattern count is not {EXPECTED_PATTERN_COUNT}"
         )
     if {row["patternId"] for row in missing} != set(
         MISSING_ACTION_BINDING_POLICIES
@@ -2883,8 +2898,11 @@ def build_inventory(
         "sourceSystems": [source_systems[key] for key in sorted(source_systems)],
         "occurrences": occurrences,
         "summary": {
-            "encounterPatternCount": len(encounter.get("patterns", [])),
-            "actionBindingPatternCount": len(patterns),
+            "encounterPatternCount": len(live_patterns),
+            "actionBindingPatternCount": sum(
+                str(pattern.get("patternId") or "") in live_pattern_ids
+                for pattern in patterns
+            ),
             "missingActionBindingPatternCount": len(missing),
             "branchCandidateCount": len(branches),
             "sourceSequenceCandidateCount": len(branches),

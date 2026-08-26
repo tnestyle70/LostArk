@@ -53,7 +53,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             "VALTAN_PATTERN_TREE_VIEW m_ValtanPatternMasterView;",
             "CValtanPatternTree::Load(Staged, Status)",
             "bAuthoringMasterManaged",
-            "expected exactly 7 managed patterns",
+            "expected the 7 baseline managed patterns",
             '"Valtan Pattern Master (Authoritative)"',
             "Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json",
         ):
