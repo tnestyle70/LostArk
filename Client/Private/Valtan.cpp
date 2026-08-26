@@ -1353,15 +1353,46 @@ bool_t CValtan::Apply_BossCombatState(
 			return Is_SameBossCombatState(state, m_BossCombatState);
 	}
 
-	for (const auto& [stateMask, partTag] : m_ArmorPartTagsByStateMask)
-	{
-		(void)partTag;
-		Set_ArmorPartVisible(
-			stateMask, 0u != (state.iAlivePartMask & stateMask));
-	}
 	m_BossCombatState = state;
 	m_hasBossCombatState = true;
+	Refresh_ArmorPartVisibility();
 	return true;
+}
+
+bool_t CValtan::Apply_BrokenArmorMask(const uint8_t iBrokenArmorMask)
+{
+	if (!m_isServerAuthoritative)
+		return false;
+	if (iBrokenArmorMask == m_iBrokenArmorMask)
+		return true;
+
+	m_iBrokenArmorMask = iBrokenArmorMask;
+	Refresh_ArmorPartVisibility();
+	return true;
+}
+
+void CValtan::Refresh_ArmorPartVisibility()
+{
+	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss("BOSS_VALTAN");
+	if (nullptr == pActor)
+		return;
+
+	/* Two server systems can retire the same plate: the world entity armour
+	   durability reports it as a broken bit by authored plate index, and the
+	   boss combat state clears its alive mask. The plate is worn only while
+	   both still say so, so whichever system breaks it first hides the part
+	   and neither can put it back on behind the other. */
+	uint32_t plateIndex = 0u;
+	for (const BOSS_ARMOR_PART_ENTRY& armorPart : pActor->armorParts)
+	{
+		const bool_t brokenByDurability =
+			0u != (m_iBrokenArmorMask & (1u << plateIndex));
+		const bool_t aliveInCombatState = !m_hasBossCombatState ||
+			0u != (m_BossCombatState.iAlivePartMask & armorPart.stateMask);
+		Set_ArmorPartVisible(armorPart.stateMask,
+			aliveInCombatState && !brokenByDurability);
+		++plateIndex;
+	}
 }
 
 bool_t CValtan::Apply_BossCombatEvent(

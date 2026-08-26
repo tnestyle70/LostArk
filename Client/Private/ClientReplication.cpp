@@ -1457,7 +1457,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				entity.iActionStartTick,
 				entity.iPatternSequence,
 				entity.iPatternStageIndex) ||
-				!valtan->Apply_BossCombatState(entity.BossCombat))
+				!valtan->Apply_BossCombatState(entity.BossCombat) ||
+				!valtan->Apply_BrokenArmorMask(entity.iBrokenArmorMask))
 			{
 				allSucceeded = false;
 			}
