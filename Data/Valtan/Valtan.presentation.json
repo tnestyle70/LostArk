@@ -1461,7 +1461,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CENTER_SIX_PIZZA_CHARGE",
+      "patternId": "VALTAN_SIX_PIZZA_106",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -1746,7 +1746,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_ATTACK_WHIRLWIND",
+      "patternId": "VALTAN_ATTACK_WHIRLWIND",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -1852,7 +1852,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CHARGE",
+      "patternId": "VALTAN_CHARGE",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -1993,7 +1993,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_ROAR_CHARGE",
+      "patternId": "VALTAN_ROAR_CHARGE",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -2232,7 +2232,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_THREE",
+      "patternId": "VALTAN_THREE",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -2316,7 +2316,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_JUMP_WHIRLWIND_ROAR_ROAR_CHARGE",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -2739,7 +2739,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_WARP",
+      "patternId": "VALTAN_WARP",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3118,7 +3118,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CENTER_TRASH_RUSH_IF",
+      "patternId": "VALTAN_TRASH",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3322,7 +3322,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_RUSH_SUCCESS",
+      "patternId": "VALTAN_TRASH_CATCH_SUCCESS",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3379,7 +3379,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_RUSH_FAIL",
+      "patternId": "VALTAN_TRASH_CATCH_FAIL",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3414,7 +3414,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_RUSH_IF",
+      "patternId": "VALTAN_TRASH_CATCH_IF",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3476,7 +3476,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CATCH_BREATH",
+      "patternId": "VALTAN_CATCH_BREATH",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3582,7 +3582,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_COUNTER",
+      "patternId": "VALTAN_COUNTER",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3693,7 +3693,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CHARGE2",
+      "patternId": "VALTAN_CHARGE_2",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3782,7 +3782,7 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_WARP_JUMP_FOUR_HAND_TWOHAND_ROAR_ROAR_DEAD",
+      "patternId": "VALTAN_STRUGGLING",
       "sourceSequenceIndex": 1,
       "presentationSources": [
         {
@@ -3792,6 +3792,11 @@
         },
         {
           "sourceActionId": 420622,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
+        },
+        {
+          "sourceActionId": 420603,
           "sequenceIndex": 1,
           "role": "REFERENCE"
         }
@@ -3912,7 +3917,7 @@
           "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06",
           "sequenceRole": "STEP",
           "animation": {
-            "endPolicy": "EXACT",
+            "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
             "occurrences": [
               {
@@ -3920,9 +3925,9 @@
                 "clip": "mesh_att_battle_19_03",
                 "mappingBasis": "PROJECT_AUTHORED",
                 "sourceStartMs": 0,
-                "playMs": 667,
+                "playMs": 0,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": false
+                "repeatUntilStageEnd": true
               }
             ]
           },
@@ -3943,6 +3948,116 @@
                 "mappingBasis": "PROJECT_AUTHORED",
                 "sourceStartMs": 0,
                 "playMs": 2600,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "STEP_08",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08.clip-01",
+                "clip": "mesh_att_battle_5_01_start",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1400,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "STEP_09",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-09",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-09.clip-01",
+                "clip": "mesh_att_battle_5_01_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "STEP_10",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10.clip-01",
+                "clip": "mesh_att_battle_5_01_end",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 4433,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "STEP_11",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-11",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-11.clip-01",
+                "clip": "mesh_att_battle_19_05",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 2333,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "STEP_12",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-12",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-12.clip-01",
+                "clip": "mesh_att_battle_19_06",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 333,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
               }

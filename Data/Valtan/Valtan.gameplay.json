@@ -133,19 +133,19 @@
     ],
     "manualAuditions": [
       {
-        "patternId": "VALTAN_SEQUENCE_CENTER_SIX_PIZZA_CHARGE",
+        "patternId": "VALTAN_SIX_PIZZA_106",
         "sourceChainId": "center-six-pizza-charge",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_ATTACK_WHIRLWIND",
+        "patternId": "VALTAN_ATTACK_WHIRLWIND",
         "sourceChainId": "attack-whirlwind",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_CHARGE",
+        "patternId": "VALTAN_CHARGE",
         "sourceChainId": "charge",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
@@ -157,7 +157,7 @@
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_ROAR_CHARGE",
+        "patternId": "VALTAN_ROAR_CHARGE",
         "sourceChainId": "roar-charge",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
@@ -169,13 +169,13 @@
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_THREE",
+        "patternId": "VALTAN_THREE",
         "sourceChainId": "three",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_JUMP_WHIRLWIND_ROAR_ROAR_CHARGE",
+        "patternId": "VALTAN_TERRAIN_DESTRUCTION",
         "sourceChainId": "jump-whirlwind-roar-roar-charge",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
@@ -187,7 +187,7 @@
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_WARP",
+        "patternId": "VALTAN_WARP",
         "sourceChainId": "warp",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
@@ -205,49 +205,49 @@
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_CENTER_TRASH_RUSH_IF",
+        "patternId": "VALTAN_TRASH",
         "sourceChainId": "center-trash-rush-if",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_RUSH_SUCCESS",
+        "patternId": "VALTAN_TRASH_CATCH_SUCCESS",
         "sourceChainId": "rush-success",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_RUSH_FAIL",
+        "patternId": "VALTAN_TRASH_CATCH_FAIL",
         "sourceChainId": "rush-fail",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_RUSH_IF",
+        "patternId": "VALTAN_TRASH_CATCH_IF",
         "sourceChainId": "rush-if",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_CATCH_BREATH",
+        "patternId": "VALTAN_CATCH_BREATH",
         "sourceChainId": "catch-breath",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_COUNTER",
+        "patternId": "VALTAN_COUNTER",
         "sourceChainId": "counter",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_CHARGE2",
+        "patternId": "VALTAN_CHARGE_2",
         "sourceChainId": "charge2",
         "authoringPhase": 2,
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_SEQUENCE_WARP_JUMP_FOUR_HAND_TWOHAND_ROAR_ROAR_DEAD",
+        "patternId": "VALTAN_STRUGGLING",
         "sourceChainId": "warp-jump-four-hand-twohand-roar-roar-dead",
         "authoringPhase": 3,
         "admissionState": "MANUAL_SERVER_AUDITION"
@@ -1254,8 +1254,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CENTER_SIX_PIZZA_CHARGE",
-      "displayName": "[P2 Animation] center-six-pizza-charge",
+      "patternId": "VALTAN_SIX_PIZZA_106",
+      "displayName": "중앙이동 후 6방향 공격 후 피자 패턴",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.center-six-pizza-charge",
@@ -1460,8 +1460,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_ATTACK_WHIRLWIND",
-      "displayName": "[P2 Animation] attack-whirlwind",
+      "patternId": "VALTAN_ATTACK_WHIRLWIND",
+      "displayName": "점프찍기 후 휠윈드",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.attack-whirlwind",
@@ -1556,8 +1556,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CHARGE",
-      "displayName": "[P2 Animation] charge",
+      "patternId": "VALTAN_CHARGE",
+      "displayName": "모아치기",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.charge",
@@ -1702,8 +1702,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_ROAR_CHARGE",
-      "displayName": "[P2 Animation] roar-charge",
+      "patternId": "VALTAN_ROAR_CHARGE",
+      "displayName": "사자후 후 위로 모아치기",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.roar-charge",
@@ -1910,8 +1910,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_THREE",
-      "displayName": "[P2 Animation] three",
+      "patternId": "VALTAN_THREE",
+      "displayName": "3연속 내려치기",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.three",
@@ -1991,8 +1991,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_JUMP_WHIRLWIND_ROAR_ROAR_CHARGE",
-      "displayName": "[P2 Animation] jump-whirlwind-roar-roar-charge",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+      "displayName": "2페이즈 지형파괴 패턴",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge",
@@ -2310,8 +2310,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_WARP",
-      "displayName": "[P2 Animation] warp",
+      "patternId": "VALTAN_WARP",
+      "displayName": "워프 패턴",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.warp",
@@ -2642,8 +2642,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CENTER_TRASH_RUSH_IF",
-      "displayName": "[P2 Animation] center-trash-rush-if",
+      "patternId": "VALTAN_TRASH",
+      "displayName": "버러지 패턴",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.center-trash-rush-if",
@@ -2800,8 +2800,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_RUSH_SUCCESS",
-      "displayName": "[P2 Animation] rush-success",
+      "patternId": "VALTAN_TRASH_CATCH_SUCCESS",
+      "displayName": "버러지 패턴 잡기 성공",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.rush-success",
@@ -2865,8 +2865,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_RUSH_FAIL",
-      "displayName": "[P2 Animation] rush-fail",
+      "patternId": "VALTAN_TRASH_CATCH_FAIL",
+      "displayName": "버러지 패턴 잡기 실패",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.rush-fail",
@@ -2915,8 +2915,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_RUSH_IF",
-      "displayName": "[P2 Animation] rush-if",
+      "patternId": "VALTAN_TRASH_CATCH_IF",
+      "displayName": "버러지 패턴 잡기 분기",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.rush-if",
@@ -2981,8 +2981,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CATCH_BREATH",
-      "displayName": "[P2 Animation] catch-breath",
+      "patternId": "VALTAN_CATCH_BREATH",
+      "displayName": "잡아채서 불어 날리기",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.catch-breath",
@@ -3077,8 +3077,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_COUNTER",
-      "displayName": "[P2 Animation] counter",
+      "patternId": "VALTAN_COUNTER",
+      "displayName": "카운터 쳐야 하는 내려치기",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.counter",
@@ -3174,8 +3174,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_CHARGE2",
-      "displayName": "[P2 Animation] charge2",
+      "patternId": "VALTAN_CHARGE_2",
+      "displayName": "모아치기 2",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.charge2",
@@ -3256,8 +3256,8 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_WARP_JUMP_FOUR_HAND_TWOHAND_ROAR_ROAR_DEAD",
-      "displayName": "[P3 Candidate] warp-jump-four-hand-twohand-roar-roar-dead",
+      "patternId": "VALTAN_STRUGGLING",
+      "displayName": "3페이즈 전 발악패턴",
       "category": "NORMAL",
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead",
@@ -3284,7 +3284,8 @@
       "invulnerableWhileRunning": false,
       "sourceActionIds": [
         420624,
-        420622
+        420622,
+        420603
       ],
       "serverMotion": null,
       "reactions": [],
@@ -3368,7 +3369,7 @@
           "stageId": "STEP_06",
           "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06",
           "stageKind": "ACTIVE",
-          "durationMs": 667,
+          "durationMs": 3000,
           "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
           "hit": {
             "shape": {
@@ -3384,6 +3385,81 @@
           "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
           "stageKind": "ACTIVE",
           "durationMs": 2600,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_08",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08",
+          "stageKind": "ACTIVE",
+          "durationMs": 1400,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-09",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_09",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-09",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_10",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10",
+          "stageKind": "ACTIVE",
+          "durationMs": 4433,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-11",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_11",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-11",
+          "stageKind": "ACTIVE",
+          "durationMs": 2333,
+          "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-12",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "STEP_12",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-12",
+          "stageKind": "ACTIVE",
+          "durationMs": 333,
           "defaultNextActionId": null,
           "hit": {
             "shape": {

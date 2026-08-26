@@ -1002,7 +1002,7 @@
       "targetStageId": "",
       "animation": {
         "endPolicy": "NATIVE_CLIP_LENGTHS",
-        "repeatCount": 7,
+        "repeatCount": 12,
         "occurrences": [
           {
             "clipOccurrenceId": "valtan.debug.warp-jump-four-hand-twohand-roar-roar-dead.clip.01",
@@ -1054,13 +1054,58 @@
             "clip": "mesh_att_battle_19_03",
             "mappingBasis": "PROJECT_AUTHORED",
             "sourceStartMs": 0,
-            "playMs": 0,
+            "playMs": 3000,
             "playRate": 1.0,
             "repeatUntilStageEnd": false
           },
           {
             "clipOccurrenceId": "valtan.debug.warp-jump-four-hand-twohand-roar-roar-dead.clip.07",
             "clip": "mesh_att_battle_19_04",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 0,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          },
+          {
+            "clipOccurrenceId": "valtan.debug.warp-jump-four-hand-twohand-roar-roar-dead.clip.08",
+            "clip": "mesh_att_battle_5_01_start",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 0,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          },
+          {
+            "clipOccurrenceId": "valtan.debug.warp-jump-four-hand-twohand-roar-roar-dead.clip.09",
+            "clip": "mesh_att_battle_5_01_loop",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 3000,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          },
+          {
+            "clipOccurrenceId": "valtan.debug.warp-jump-four-hand-twohand-roar-roar-dead.clip.10",
+            "clip": "mesh_att_battle_5_01_end",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 0,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          },
+          {
+            "clipOccurrenceId": "valtan.debug.warp-jump-four-hand-twohand-roar-roar-dead.clip.11",
+            "clip": "mesh_att_battle_19_05",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 0,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          },
+          {
+            "clipOccurrenceId": "valtan.debug.warp-jump-four-hand-twohand-roar-roar-dead.clip.12",
+            "clip": "mesh_att_battle_19_06",
             "mappingBasis": "PROJECT_AUTHORED",
             "sourceStartMs": 0,
             "playMs": 0,

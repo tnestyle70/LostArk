@@ -373,7 +373,10 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 				const bool_t requestedBasicAttack =
 					requestedSkillId == m_iHeldBasicAttackSkillId;
 				if (requestedBasicAttack)
-					m_BasicAttackPressEdgeGate.Commit_Submission();
+				{
+					m_BasicAttackPressEdgeGate.Commit_Submission(
+						std::chrono::steady_clock::now());
+				}
 				/* Poll_BasicAttack has already observed this frame.  Suppress only
 				when an explicit skill won while LMB is physically still held. */
 				const bool_t isBasicAttackPhysicallyHeld =
@@ -556,6 +559,8 @@ void Client::CPlayerController::Poll_BasicAttack(
 	LostArk::Shared::SKILL_ID& outSkillId,
 	const bool_t commandSuppressed)
 {
+	const std::chrono::steady_clock::time_point now =
+		std::chrono::steady_clock::now();
 	const bool_t isPhysicallyDown =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
 	const bool_t isGameplayDown =
@@ -564,7 +569,7 @@ void Client::CPlayerController::Poll_BasicAttack(
 		m_BasicAttackResendGate.Observe_Button(isPhysicallyDown);
 	if (!isPhysicallyDown)
 	{
-		(void)m_BasicAttackPressEdgeGate.Should_Submit(false, false);
+		(void)m_BasicAttackPressEdgeGate.Should_Submit(false, false, now);
 		m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
 		return;
 	}
@@ -579,7 +584,7 @@ void Client::CPlayerController::Poll_BasicAttack(
 		isGameplayDown && !commandSuppressed && !resendSuppressed && nullptr != pSkill &&
 		LostArk::Shared::INVALID_SKILL_ID == outSkillId;
 	if (!m_BasicAttackPressEdgeGate.Should_Submit(
-			isPhysicallyDown, commandEligible))
+			isPhysicallyDown, commandEligible, now))
 	{
 		return;
 	}

@@ -4,7 +4,7 @@
   "players": [
     {
       "characterClass": "LANCE_MASTER",
-      "maximumHp": 5500,
+      "maximumHp": 50000,
       "maximumResource": 1000,
       "resourceRegenPerSecond": 500,
       "attackPower": 100,
@@ -52,7 +52,7 @@
     },
     {
       "characterClass": "ARTIST",
-      "maximumHp": 5000,
+      "maximumHp": 50000,
       "maximumResource": 1000,
       "resourceRegenPerSecond": 500,
       "attackPower": 100,
@@ -68,7 +68,7 @@
     },
     {
       "characterClass": "DIMENSIONMASTER",
-      "maximumHp": 5250,
+      "maximumHp": 50000,
       "maximumResource": 1000,
       "resourceRegenPerSecond": 500,
       "attackPower": 100,
@@ -84,7 +84,7 @@
     },
     {
       "characterClass": "WARLORD",
-      "maximumHp": 6500,
+      "maximumHp": 50000,
       "maximumResource": 1000,
       "resourceRegenPerSecond": 500,
       "attackPower": 100,

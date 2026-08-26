@@ -30,20 +30,20 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         self.assertEqual(27, len(gameplay["patterns"]))
         self.assertEqual(27, len(presentation["patterns"]))
         self.assertEqual(20, receipt["patternCount"])
-        self.assertEqual(94, receipt["stageCount"])
+        self.assertEqual(99, receipt["stageCount"])
         self.assertEqual(
-            94,
+            99,
             sum(len(pattern["occurrences"]) for pattern in receipt["patterns"]),
         )
         first = receipt["patterns"][0]
-        self.assertEqual("VALTAN_SEQUENCE_CENTER_SIX_PIZZA_CHARGE", first["patternId"])
+        self.assertEqual("VALTAN_SIX_PIZZA_106", first["patternId"])
         self.assertEqual("STEP_01", first["occurrences"][0]["targetStageId"])
         self.assertEqual(
             "valtan.sequence.center-six-pizza-charge.step-01.clip-01",
             first["occurrences"][0]["targetClipOccurrenceId"],
         )
         self.assertEqual(
-            "VALTAN_SEQUENCE_WARP_JUMP_FOUR_HAND_TWOHAND_ROAR_ROAR_DEAD",
+            "VALTAN_STRUGGLING",
             receipt["patterns"][-1]["patternId"],
         )
 
@@ -150,7 +150,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         before = {relative: sha256(self.root / relative) for relative in tracked}
         result = promotion.run(self.root, "Validate")
         self.assertEqual(20, result["patternCount"])
-        self.assertEqual(94, result["stageCount"])
+        self.assertEqual(99, result["stageCount"])
         self.assertEqual(before, {relative: sha256(self.root / relative) for relative in tracked})
 
 
