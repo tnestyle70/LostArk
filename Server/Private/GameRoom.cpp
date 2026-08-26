@@ -222,7 +222,6 @@ namespace
 			static_cast<std::int32_t>(currentTick - targetTick) > 0;
 	}
 #ifdef _DEBUG
-	constexpr std::uint32_t CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS = 90u;
 	constexpr const char* VALTAN_ARENA_AUDITION_PLACEMENT_ID =
 		"boss.valtan.center";
 	constexpr const char* CHARACTER_SELECT_AUDITION_PLACEMENT_ID =
@@ -2023,11 +2022,11 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
 #ifdef _DEBUG
-	/* Character Select Server Arena is the presentation audition room.  Keep
-	its retries Server-authoritative with a fixed three-second audition cooldown
-	and full resources; action-running, sequence, class, aim and snapshot gates
-	remain in CPlayerSkillSystem::Try_Start.  Release rooms retain authored
-	balance. */
+	/* Character Select Server Arena is the presentation audition room.  Keep its
+	retries Server-authoritative with full resources so a class can be auditioned
+	without farming its gauge; cooldowns stay on the authored balance so an
+	audition shows the real rotation.  Action-running, sequence, class, aim and
+	snapshot gates remain in CPlayerSkillSystem::Try_Start. */
 	if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId)
 	{
 		playerIter->second.iCurrentResource =
@@ -2051,16 +2050,6 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		actionStartTick,
 		&m_ServerNavigation))
 	{
-#ifdef _DEBUG
-		if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId)
-		{
-			playerIter->second.CooldownEndTickBySkillId.insert_or_assign(
-				useSkill.iSkillId,
-				Add_ServerTicksSkippingReservedZero(
-					actionStartTick,
-					CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS));
-		}
-#endif
 		playerIter->second.isCombatReady = true;
 	}
 }
