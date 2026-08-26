@@ -953,12 +953,12 @@ HRESULT CDeployPropObject::Render_DeferredEmissiveOverlay()
 {
 	/* The arena stone owns the joints between its slabs and the rubble layer
 	   owns the loose crack pieces lying on it. Both are drawn here against the
-	   one authored emissive mask the model carries, because pass 15 selects by
+	   one authored emissive mask the model carries, because pass 18 selects by
 	   surface direction rather than by texture: the slab tops stay dark and the
 	   joint walls light. Only the rubble material owns the mask itself. */
 	constexpr uint32_t EMISSIVE_MESH_INDICES[] = { 0u, 1u };
 	constexpr uint32_t EMISSIVE_MESH_INDEX = 1u;
-	constexpr uint32_t DEFERRED_EMISSIVE_OVERLAY_PASS = 15u;
+	constexpr uint32_t DEFERRED_EMISSIVE_OVERLAY_PASS = 18u;
 	if (nullptr == m_pIntactModelCom || nullptr == m_pShaderCom ||
 		m_pIntactModelCom->Get_NumMeshes() <= EMISSIVE_MESH_INDEX ||
 		!m_pIntactModelCom->Has_MaterialTexture(

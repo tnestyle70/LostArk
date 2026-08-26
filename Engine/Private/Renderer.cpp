@@ -287,6 +287,60 @@ HRESULT CRenderer::Apply_RenderQualitySettings(
 	return S_OK;
 }
 
+namespace
+{
+	bool_t IsValidHeightFogSettings(const HEIGHT_FOG_SETTINGS& Settings)
+	{
+		const auto finite = [](const f32_t value) { return std::isfinite(value); };
+		return finite(Settings.vColor.x) && finite(Settings.vColor.y) &&
+			finite(Settings.vColor.z) && finite(Settings.vColor.w) &&
+			Settings.vColor.x >= 0.f && Settings.vColor.y >= 0.f &&
+			Settings.vColor.z >= 0.f &&
+			finite(Settings.fDensity) && Settings.fDensity >= 0.f &&
+			finite(Settings.fHeightFalloff) && Settings.fHeightFalloff > 0.f &&
+			finite(Settings.fTopHeight) &&
+			finite(Settings.fStartDistance) && Settings.fStartDistance >= 0.f &&
+			finite(Settings.fMaximumOpacity) &&
+			Settings.fMaximumOpacity >= 0.f && Settings.fMaximumOpacity <= 1.f &&
+			finite(Settings.fDriftSpeed) && Settings.fDriftSpeed >= 0.f &&
+			finite(Settings.fDriftHeightAmplitude) &&
+			Settings.fDriftHeightAmplitude >= 0.f &&
+			finite(Settings.fDriftDensityAmplitude) &&
+			Settings.fDriftDensityAmplitude >= 0.f &&
+			finite(Settings.fCoveragePercent) &&
+			Settings.fCoveragePercent >= 0.f &&
+			Settings.fCoveragePercent <= 1.f &&
+			finite(Settings.fWindDirectionX) &&
+			finite(Settings.fWindDirectionZ) &&
+			finite(Settings.fWindSpeed) && Settings.fWindSpeed >= 0.f &&
+			finite(Settings.fPatchScale) && Settings.fPatchScale > 0.f &&
+			finite(Settings.fPatchSoftness) &&
+			Settings.fPatchSoftness > 0.f &&
+			Settings.fPatchSoftness <= 0.5f;
+	}
+}
+
+HRESULT CRenderer::Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings)
+{
+	if (!IsValidHeightFogSettings(Settings))
+		return E_INVALIDARG;
+
+	m_HeightFogSettings = Settings;
+	return S_OK;
+}
+
+void CRenderer::Advance_PresentationClock(f32_t fTimeDelta)
+{
+	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+		return;
+
+	/* Wrapping keeps the drift phase exact after long sessions instead of
+	   letting float precision quantise the sine input. */
+	constexpr f32_t CLOCK_WRAP_SECONDS = 3600.f;
+	m_fPresentationClock = fmodf(
+		m_fPresentationClock + fTimeDelta, CLOCK_WRAP_SECONDS);
+}
+
 HRESULT CRenderer::Draw()
 {
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
@@ -653,6 +707,58 @@ HRESULT CRenderer::Render_Combined()
 		return E_FAIL;
 	if (FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)))
 		return E_FAIL;
+
+	/* Height fog reuses the world position the combine step can rebuild from
+	   the depth target, so it needs the same inverse matrices and camera the
+	   lighting pass already binds. */
+	const uint32_t iFogEnabled = m_HeightFogSettings.bEnabled ? 1u : 0u;
+	const float2_t vFogWind(
+		m_HeightFogSettings.fWindDirectionX,
+		m_HeightFogSettings.fWindDirectionZ);
+	if (FAILED(CGameInstance::Get().Bind_RT_SRV(
+			TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
+		FAILED(m_pShader->Bind_Matrix("g_ViewMatrixInverse",
+			CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW))) ||
+		FAILED(m_pShader->Bind_Matrix("g_ProjMatrixInverse",
+			CGameInstance::Get().Get_InverseTransform(D3DTS::PROJ))) ||
+		FAILED(m_pShader->Bind_RawValue("g_vCamPosition",
+			CGameInstance::Get().Get_CamPosition(), sizeof(float4_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_iHeightFogEnabled",
+			&iFogEnabled, sizeof(iFogEnabled))) ||
+		FAILED(m_pShader->Bind_RawValue("g_vHeightFogColor",
+			&m_HeightFogSettings.vColor, sizeof(float4_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fHeightFogDensity",
+			&m_HeightFogSettings.fDensity, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fHeightFogFalloff",
+			&m_HeightFogSettings.fHeightFalloff, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fHeightFogTopHeight",
+			&m_HeightFogSettings.fTopHeight, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fHeightFogStartDistance",
+			&m_HeightFogSettings.fStartDistance, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fHeightFogMaximumOpacity",
+			&m_HeightFogSettings.fMaximumOpacity, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fHeightFogDriftSpeed",
+			&m_HeightFogSettings.fDriftSpeed, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fHeightFogDriftHeight",
+			&m_HeightFogSettings.fDriftHeightAmplitude, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fHeightFogDriftDensity",
+			&m_HeightFogSettings.fDriftDensityAmplitude, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fFogCoverage",
+			&m_HeightFogSettings.fCoveragePercent, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_vFogWindDirection",
+			&vFogWind, sizeof(vFogWind))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fFogWindSpeed",
+			&m_HeightFogSettings.fWindSpeed, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fFogPatchScale",
+			&m_HeightFogSettings.fPatchScale, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fFogPatchSoftness",
+			&m_HeightFogSettings.fPatchSoftness, sizeof(f32_t))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fPresentationClock",
+			&m_fPresentationClock, sizeof(m_fPresentationClock))))
+	{
+		return E_FAIL;
+	}
+
 	if (FAILED(m_pShader->Begin(ETOUI(DEFERRED::COMBINED))))
 		return E_FAIL;
 

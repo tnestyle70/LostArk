@@ -73,6 +73,37 @@ namespace Engine
 		f32_t	fFXAAEdgeThresholdMin = 0.0833f;
 	}RENDER_QUALITY_SETTINGS;
 
+	/* Height fog is a screen space term applied where the deferred combine
+	   already reconstructs world position, so terrain, buildings and
+	   characters all receive it from one place. The blend group and effects
+	   draw after that pass and stay clear of the fog on purpose.
+	   fTopHeight is the world height the fog fades out at; fHeightFalloff is
+	   the exponential rate below it. The drift fields let the fog breathe
+	   without any per frame CPU work. */
+	typedef struct tagHeightFogSettings
+	{
+		bool_t		bEnabled = false;
+		float4_t	vColor = float4_t(0.55f, 0.62f, 0.72f, 1.f);
+		f32_t		fDensity = 0.35f;
+		f32_t		fHeightFalloff = 0.08f;
+		f32_t		fTopHeight = 24.f;
+		f32_t		fStartDistance = 0.f;
+		f32_t		fMaximumOpacity = 0.9f;
+		f32_t		fDriftSpeed = 0.f;
+		f32_t		fDriftHeightAmplitude = 0.f;
+		f32_t		fDriftDensityAmplitude = 0.f;
+		/* Coverage turns the blanket into drifting cloud banks. 1 keeps the
+		   whole map fogged; lower values thin it to patches whose total area
+		   matches the fraction. The wind vector moves the pattern through
+		   world XZ, so the banks travel without any CPU simulation. */
+		f32_t		fCoveragePercent = 1.f;
+		f32_t		fWindDirectionX = 1.f;
+		f32_t		fWindDirectionZ = 0.f;
+		f32_t		fWindSpeed = 0.f;
+		f32_t		fPatchScale = 0.01f;
+		f32_t		fPatchSoftness = 0.15f;
+	}HEIGHT_FOG_SETTINGS;
+
 	typedef struct tagKeyFrame
 	{
 		XMFLOAT3	vScale;

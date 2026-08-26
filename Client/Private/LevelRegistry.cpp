@@ -33,6 +33,24 @@ namespace
 		return scope;
 	}
 
+	MAP_LOAD_SCOPE MakeBernMapScope()
+	{
+		MAP_LOAD_SCOPE scope = MakeFullMapScope();
+		/* The Bern-only bypass proved that the camera-dependent popping came
+		   from false frustum rejection. Product rendering now uses normal
+		   culling again, with final-render camera snapshots, rebuilt bounds and
+		   conservative rejection below. Keep the switches explicit so the same
+		   diagnostic can be staged again without changing other levels. */
+		scope.frustumCulling.bypass = false;
+		scope.frustumCulling.diagnostics = false;
+		scope.frustumCulling.baseMargin = 0.25f;
+		scope.frustumCulling.largeObjectRadiusThreshold = 4.f;
+		scope.frustumCulling.largeObjectAbsoluteMargin = 2.f;
+		scope.frustumCulling.largeObjectRelativeMargin = 0.12f;
+		scope.frustumCulling.rejectHysteresisFrames = 3u;
+		return scope;
+	}
+
 	unique_ptr<CLevel> CreateLobby(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -106,7 +124,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			// void everywhere else. The Map Editor keeps its own reversible
 			// "Show Bern Landscape" toggle for authoring; the product level loads
 			// the full area.
-			MakeFullMapScope(),
+			MakeBernMapScope(),
 			CreateBern,
 			&CLoader::Ready_For_Bern
 		},

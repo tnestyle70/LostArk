@@ -90,14 +90,20 @@ public:
 	uint32_t Get_CellCount() const;
 	uint32_t Get_BlockedCount() const;
 	uint32_t Get_ForcedWalkableCount() const;
+	uint32_t Get_HeightOverrideCount() const;
 	uint32_t Get_ResolvedHeightCount() const;
 	const NAVGRID_AUTHORING_DESC& Get_Desc() const { return m_Desc; }
 	const NAVGRID_BAKE_DESC& Get_BakeDesc() const { return m_Desc.bake; }
 
 private:
 	NAVGRID_AUTHORING_DESC m_Desc;
+	std::vector<NAV_SOURCE_CELL> m_BakedSourceCells;
 	std::vector<NAV_SOURCE_CELL> m_SourceCells;
 	std::vector<NAVGRID_PAINT_OVERRIDE> m_CellOverrides;
+	/* NaN means that the bake owns the height. A finite value is an authored
+	height correction for a resolved surface whose upper overlapping mesh was
+	selected by the single-layer bake. */
+	std::vector<f32_t> m_CellHeightOverrides;
 	std::vector<f32_t> m_OverlayHeights;
 	bool_t m_isReady = false;
 	bool_t m_isDirty = false;

@@ -78,12 +78,12 @@
       "sourceValue": [
         {
           "plateIndex": 0,
-          "durability": 4000,
+          "durability": 20,
           "defense": 50
         },
         {
           "plateIndex": 1,
-          "durability": 4000,
+          "durability": 20,
           "defense": 50
         }
       ],
@@ -91,16 +91,16 @@
       "resultValue": [
         {
           "plateIndex": 0,
-          "durability": 4000,
+          "durability": 20,
           "defense": 50
         },
         {
           "plateIndex": 1,
-          "durability": 4000,
+          "durability": 20,
           "defense": 50
         }
       ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/BossProfiles.json",

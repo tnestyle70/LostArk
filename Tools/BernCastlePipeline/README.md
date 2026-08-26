@@ -11,6 +11,9 @@
 - 같은 이름이 다른 패키지에 있는 glTF는 대체품으로 인정하지 않는다.
 - 머티리얼 슬롯은 glTF 재질명과 UModel `.props.txt`의
   `TextureParameterValues`를 연결한다. 파일명 접미사를 보고 추측하지 않는다.
+- 일반 diffuse/normal 이름이 없는 UE3 vertex-blend material은 채널 parameter를 읽고,
+  현재 단일 texture lane 런타임에서는 red -> green -> blue -> alpha 순으로 선택한다.
+  일반 parameter가 있으면 언제나 channel fallback보다 우선한다.
 - 정적 glTF는 `--pretransform --scale 100`으로 조리한다.
 - 각 단계는 임시 디렉터리에서 검증한 뒤 asset 단위로 commit한다. 중간 실패는
   이미 검증된 asset pack을 망가뜨리지 않는다.
@@ -46,6 +49,13 @@ source placement    32,324
 
 `LV_BER_BERNCASTLE_FAV_*` 326건은 별도 변형 레벨이라 기본 범위에서 빠진다.
 그 7개 asset은 본편 950종 안에 모두 포함된다.
+
+visible placement가 diffuse/emissive 없는 WModel을 참조해 불투명 회색 fallback을 쓰는지
+검사하려면 다음 focused audit를 실행한다.
+
+```powershell
+& $Python Tools\BernCastlePipeline\audit_bern_runtime_materials.py
+```
 
 ## 단계별 실행
 

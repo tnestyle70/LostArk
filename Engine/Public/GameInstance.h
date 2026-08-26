@@ -85,6 +85,8 @@ public: /* Renderer */
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<class CGameObject> pRenderObject);
 	RENDER_QUALITY_SETTINGS Get_RenderQualitySettings() const;
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
+	HEIGHT_FOG_SETTINGS Get_HeightFogSettings() const;
+	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
 #ifdef _DEBUG
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
 #endif

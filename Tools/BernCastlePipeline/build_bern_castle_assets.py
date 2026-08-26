@@ -31,9 +31,12 @@ TEXTURE_PARAMETER_TO_SWITCH = {
     "diffuse": "--material-remap",
     "texture_basecolor": "--material-remap",
     "texture_albedo": "--material-remap",
+    "layer01_diffuse": "--material-remap",
     "texture_cloud_mask": "--material-remap",
     "texture_normal": "--normal-remap",
     "normal": "--normal-remap",
+    "normalmap": "--normal-remap",
+    "layer01_normal": "--normal-remap",
     "texture_specular": "--specular-remap",
     "specular": "--specular-remap",
     "texture_emissive": "--emissive-remap",
@@ -49,6 +52,21 @@ TEXTURE_PARAMETER_TO_SWITCH = {
     "texture_ao": "--ao-remap",
     "ao": "--ao-remap",
 }
+VERTEX_BLEND_TEXTURE_PARAMETER_TO_SWITCH = {
+    "a_texture_diffuse": "--material-remap",
+    "b_texture_diffuse": "--material-remap",
+    "g_texture_diffuse": "--material-remap",
+    "r_texture_diffuse": "--material-remap",
+    "a_texture_normal": "--normal-remap",
+    "b_texture_normal": "--normal-remap",
+    "g_texture_normal": "--normal-remap",
+    "r_texture_normal": "--normal-remap",
+    "a_texture_specular": "--specular-remap",
+    "b_texture_specular": "--specular-remap",
+    "g_texture_specular": "--specular-remap",
+    "r_texture_specular": "--specular-remap",
+}
+VERTEX_BLEND_CHANNEL_PRIORITY = {"a": 0, "b": 1, "g": 2, "r": 3}
 # Texture roles the cooked .wmodel has no slot for. MATERIAL_ENTRY_V2/V3 carry
 # baseColor/normal/specular/emissive/opacity (+orm/metallic/roughness/ao/mask),
 # so a water reflection or a second scrolling normal cannot be remapped into a
@@ -533,6 +551,36 @@ def material_contract(
     return visit(material_name), used
 
 
+def select_supported_texture_parameters(
+    parameters: dict[str, str],
+) -> dict[str, tuple[str, str]]:
+    """Select one runtime texture per converter lane.
+
+    The current CMaterial path has one diffuse/normal/specular lane and cannot
+    reproduce UE3's four-channel vertex-blend shader.  Prefer an ordinary
+    parameter when present.  For channel-only materials, select the red lane,
+    then green, blue and alpha.  Bern's large tree meshes store their bark in
+    the red lane; keeping this policy explicit avoids the former accidental
+    opaque-gray fallback.
+    """
+
+    selected: dict[str, tuple[int, str, str]] = {}
+    for parameter, texture_name in parameters.items():
+        switch = TEXTURE_PARAMETER_TO_SWITCH.get(parameter)
+        priority = 100
+        if switch is None:
+            switch = VERTEX_BLEND_TEXTURE_PARAMETER_TO_SWITCH.get(parameter)
+            if switch is None:
+                continue
+            priority = VERTEX_BLEND_CHANNEL_PRIORITY[parameter[0]]
+        previous = selected.get(switch)
+        candidate = (priority, parameter, texture_name)
+        if previous is None or candidate[:2] > previous[:2]:
+            selected[switch] = candidate
+    return {
+        switch: (parameter, texture_name)
+        for switch, (_, parameter, texture_name) in selected.items()
+    }
 def material_texture_roles(
     material_name: str, index: dict[str, list[Path]], logical_package: str,
 ) -> tuple[dict[str, str], list[Path]]:
@@ -658,27 +706,41 @@ def export_one(
             roles: dict[str, dict[str, str]] = {}
             auxiliary: dict[str, dict[str, str]] = {}
             missing: list[dict[str, str]] = []
-            for parameter, texture_name in sorted(parameters.items()):
-                switch = TEXTURE_PARAMETER_TO_SWITCH.get(parameter)
-                role = AUXILIARY_TEXTURE_PARAMETERS.get(parameter)
-                if switch is None and role is None:
-                    continue
+            # Vertex-blend materials expose r_/g_/b_/a_ lanes that the single
+            # lane CMaterial path cannot reproduce, so exactly one parameter per
+            # converter switch is elected before anything is copied.
+            for switch, (parameter, texture_name) in sorted(
+                select_supported_texture_parameters(parameters).items()
+            ):
                 try:
                     copied = copy_referenced_texture(texture_name)
                 except PipelineError as error:
-                    # The model still cooks without it; only the water look is
-                    # short. Recording the gap keeps it visible instead of
-                    # letting a silently absent role look like an authored one.
+                    # The model still cooks without it; recording the gap keeps it
+                    # visible instead of letting a silently absent role look like
+                    # an authored one.
                     missing.append({
                         "parameter": parameter,
                         "texture": texture_name,
                         "reason": str(error),
                     })
                     continue
-                if switch is not None:
-                    roles[switch] = {"parameter": parameter, **copied}
-                else:
-                    auxiliary[role] = {"parameter": parameter, **copied}
+                roles[switch] = {"parameter": parameter, **copied}
+            # Auxiliary roles have no wmodel slot, so they are copied beside the
+            # model for a later runtime instead of being remapped into one.
+            for parameter, texture_name in sorted(parameters.items()):
+                role = AUXILIARY_TEXTURE_PARAMETERS.get(parameter)
+                if role is None:
+                    continue
+                try:
+                    copied = copy_referenced_texture(texture_name)
+                except PipelineError as error:
+                    missing.append({
+                        "parameter": parameter,
+                        "texture": texture_name,
+                        "reason": str(error),
+                    })
+                    continue
+                auxiliary[role] = {"parameter": parameter, **copied}
             material_receipt: dict[str, Any] = {"name": material, "roles": roles}
             if auxiliary:
                 material_receipt["auxiliaryTextures"] = auxiliary

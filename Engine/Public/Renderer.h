@@ -22,6 +22,11 @@ public:
 	HRESULT Draw();
 	const RENDER_QUALITY_SETTINGS& Get_RenderQualitySettings() const { return m_RenderQualitySettings; }
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
+	const HEIGHT_FOG_SETTINGS& Get_HeightFogSettings() const { return m_HeightFogSettings; }
+	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
+	/* The renderer owns the clock the deferred fog drifts on so no caller
+	   has to feed a time value into every screen pass. */
+	void Advance_PresentationClock(f32_t fTimeDelta);
 
 #ifdef _DEBUG
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
@@ -56,6 +61,8 @@ private:
 	uint32_t								m_iScenePostHeight = {};
 	uint32_t								m_iScenePostFinalTarget = {};
 	RENDER_QUALITY_SETTINGS				m_RenderQualitySettings = {};
+	HEIGHT_FOG_SETTINGS				m_HeightFogSettings = {};
+	f32_t							m_fPresentationClock = 0.f;
 
 #ifdef _DEBUG
 	list<shared_ptr<CComponent>>			m_DebugComponent;

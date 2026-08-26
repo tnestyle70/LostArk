@@ -832,7 +832,12 @@ void LostArk::Server::CPlayerSkillSystem::Clamp_StepToWalkable(
 		const float sampleX = isLastSample ? desiredX : startX + deltaX * ratio;
 		const float sampleZ = isLastSample ? desiredZ : startZ + deltaZ * ratio;
 		SERVER_NAV_POINT sampled{};
-		if (!navigation.Sample_Position(sampleX, sampleZ, sampled))
+		if (!navigation.Resolve_TraversalStep(
+			reachable.x,
+			reachable.z,
+			sampleX,
+			sampleZ,
+			sampled))
 		{
 			blockedRatio = ratio;
 			wasBlocked = true;
@@ -856,8 +861,12 @@ void LostArk::Server::CPlayerSkillSystem::Clamp_StepToWalkable(
 	{
 		const float midRatio = (reachableRatio + blockedRatio) * 0.5f;
 		SERVER_NAV_POINT sampled{};
-		if (navigation.Sample_Position(
-			startX + deltaX * midRatio, startZ + deltaZ * midRatio, sampled))
+		if (navigation.Resolve_TraversalStep(
+			reachable.x,
+			reachable.z,
+			startX + deltaX * midRatio,
+			startZ + deltaZ * midRatio,
+			sampled))
 		{
 			reachableRatio = midRatio;
 			reachable = sampled;

@@ -83,14 +83,30 @@ namespace LostArk::Server
 			float x,
 			float z,
 			SERVER_NAV_POINT& outPoint) const;
+		/* Resolves one live walking step against the ground under both XZ
+		positions. The returned Y always comes from the destination cell; callers
+		must not interpolate toward a distant smoothed-waypoint Y. */
+		bool Resolve_TraversalStep(
+			float fromX,
+			float fromZ,
+			float toX,
+			float toZ,
+			SERVER_NAV_POINT& outPoint) const;
 		bool Has_LineOfSight(
 			float startX,
 			float startZ,
 			float endX,
 			float endZ) const;
+		/* Runtime-authored deck guard. Zero disables the guard for maps whose
+		single-layer grid intentionally joins large encounter height changes. */
+		bool Is_HeightTransitionAllowed(float fromY, float toY) const;
 
 		bool Is_Loaded() const { return !m_Walkable.empty(); }
 		float Get_CellSize() const { return m_fCellSize; }
+		float Get_MaximumTraversalStepHeight() const
+		{
+			return m_fMaximumTraversalStepHeight;
+		}
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
@@ -105,7 +121,11 @@ namespace LostArk::Server
 		bool Resolve_Cell(float x, float z, std::uint32_t& outIndex) const;
 		SERVER_NAV_POINT Cell_ToPoint(std::uint32_t index) const;
 		bool Is_CellWalkable(std::uint32_t index) const;
+		bool Is_CellTraversalAllowed(
+			std::uint32_t fromIndex,
+			std::uint32_t toIndex) const;
 		bool Is_CellVoid(std::uint32_t index) const;
+		bool Load_RuntimePolicy(const std::string& areaId);
 		bool Load_RuntimeBlockers(const std::string& areaId);
 		void Rebuild_InitialRuntimeBlockers() noexcept;
 
@@ -115,6 +135,7 @@ namespace LostArk::Server
 		float m_fCellSize = 0.f;
 		float m_fOriginX = 0.f;
 		float m_fOriginZ = 0.f;
+		float m_fMaximumTraversalStepHeight = 0.f;
 		std::vector<std::uint8_t> m_Walkable;
 		std::vector<float> m_Heights;
 		std::vector<RUNTIME_BLOCKER_REGION> m_RuntimeBlockerRegions;

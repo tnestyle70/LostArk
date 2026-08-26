@@ -77,6 +77,51 @@ class BernCastlePipelineTests(unittest.TestCase):
             self.assertEqual(parent, "base.parent_mi")
             self.assertEqual(values["texture_diffuse"], "sample_d")
 
+    def test_vertex_blend_texture_roles_prefer_red_channel(self):
+        selected = pipeline.select_supported_texture_parameters(
+            {
+                "a_texture_diffuse": "grass_d",
+                "r_texture_diffuse": "bark_d",
+                "r_texture_normal": "bark_n",
+            }
+        )
+        self.assertEqual(
+            selected["--material-remap"],
+            ("r_texture_diffuse", "bark_d"),
+        )
+        self.assertEqual(
+            selected["--normal-remap"],
+            ("r_texture_normal", "bark_n"),
+        )
+
+    def test_regular_texture_role_wins_over_vertex_blend_fallback(self):
+        selected = pipeline.select_supported_texture_parameters(
+            {
+                "texture_diffuse": "authored_d",
+                "r_texture_diffuse": "fallback_d",
+            }
+        )
+        self.assertEqual(
+            selected["--material-remap"],
+            ("texture_diffuse", "authored_d"),
+        )
+
+    def test_legacy_layer_texture_roles_are_supported(self):
+        selected = pipeline.select_supported_texture_parameters(
+            {
+                "layer01_diffuse": "mountain_d",
+                "normalmap": "mountain_n",
+            }
+        )
+        self.assertEqual(
+            selected["--material-remap"],
+            ("layer01_diffuse", "mountain_d"),
+        )
+        self.assertEqual(
+            selected["--normal-remap"],
+            ("normalmap", "mountain_n"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

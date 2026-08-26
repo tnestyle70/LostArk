@@ -326,13 +326,13 @@ class ValtanFloorEmissiveContractTests(unittest.TestCase):
         self.assertNotIn(-1, positions)
         self.assertEqual(sorted(positions), positions)
 
-    def test_shader_pass_15_writes_only_emissive_with_read_only_depth(self) -> None:
+    def test_shader_pass_18_writes_only_emissive_with_read_only_depth(self) -> None:
         shader = read_source("Client/Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl")
         pass_marker = "pass DeferredEmissiveOverlayPass"
         pass_position = shader.find(pass_marker)
         self.assertGreaterEqual(pass_position, 0)
         passes_before = re.findall(r"(?m)^\s*pass\s+\w+", shader[:pass_position])
-        self.assertEqual(15, len(passes_before))
+        self.assertEqual(18, len(passes_before))
 
         shader_pass = braced_block(shader, pass_marker)
         self.assertIn("SetRasterizerState(RS_DeferredEmissiveOverlay)", shader_pass)
@@ -449,7 +449,7 @@ class ValtanFloorEmissiveContractTests(unittest.TestCase):
             mesh_indices,
         )
         self.assertIn("EMISSIVE_MESH_INDEX = 1u", overlay_render)
-        self.assertIn("DEFERRED_EMISSIVE_OVERLAY_PASS = 15u", overlay_render)
+        self.assertIn("DEFERRED_EMISSIVE_OVERLAY_PASS = 18u", overlay_render)
         self.assertRegex(
             overlay_render,
             r"Get_NumMeshes\(\)\s*<=\s*EMISSIVE_MESH_INDEX",

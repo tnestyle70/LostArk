@@ -16,8 +16,8 @@
         "kind": "AUTHORED_PATTERN_EVENT"
       },
       "armorPlates": [
-        { "plateIndex": 0, "durability": 4000, "defense": 50 },
-        { "plateIndex": 1, "durability": 4000, "defense": 50 }
+        { "plateIndex": 0, "durability": 20, "defense": 50 },
+        { "plateIndex": 1, "durability": 20, "defense": 50 }
       ]
     }
   ]

@@ -217,6 +217,7 @@ class BernCastleShardBuilderTests(unittest.TestCase):
         root: Path,
         arguments: argparse.Namespace,
         asset_id: str = "asset_base_ps",
+        visibility_overrides=None,
     ) -> None:
         manifest = root / "bern.renderprofiles.json"
         self.write_json(
@@ -232,7 +233,7 @@ class BernCastleShardBuilderTests(unittest.TestCase):
                         "colorTint": [0.12, 0.14, 0.18, 1.0],
                     }
                 ],
-                "visibilityOverrides": [],
+                "visibilityOverrides": [] if visibility_overrides is None else visibility_overrides,
             },
         )
         arguments.render_profile_manifest = manifest
@@ -440,6 +441,48 @@ class BernCastleShardBuilderTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ShardBuildError, "render profiles reference unknown Bern assets"
+            ):
+                build_shards(arguments)
+            self.assertEqual(existing.read_bytes(), b"existing-catalog")
+
+    def test_stable_visibility_override_survives_shard_regeneration(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            arguments = self.create_fixture(root)
+            self.attach_render_profile(
+                root,
+                arguments,
+                visibility_overrides=[
+                    {"sourcePlacementId": "source_sl00", "visible": False}
+                ],
+            )
+
+            build_shards(arguments)
+
+            placements = parse_placements(
+                arguments.output_dir / shard_file_name("SL00", "mapplacements"),
+                {"asset_sl00"},
+            )
+            self.assertEqual(len(placements["rows"]), 1)
+            self.assertFalse(placements["rows"][0]["visible"])
+
+    def test_unknown_visibility_override_fails_without_replacing_outputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            arguments = self.create_fixture(root)
+            self.attach_render_profile(
+                root,
+                arguments,
+                visibility_overrides=[
+                    {"sourcePlacementId": "missing_placement", "visible": False}
+                ],
+            )
+            arguments.output_dir.mkdir()
+            existing = arguments.output_dir / shard_file_name("BASE", "mapassets")
+            existing.write_bytes(b"existing-catalog")
+
+            with self.assertRaisesRegex(
+                ShardBuildError, "visibility overrides reference unknown Bern placements"
             ):
                 build_shards(arguments)
             self.assertEqual(existing.read_bytes(), b"existing-catalog")

@@ -51,9 +51,11 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 
 	m_iPlacementId = desc.placementId;
 	m_AssetId = desc.assetId;
+	m_AssetGroupId = desc.assetGroupId;
 	m_bApplyBottomCenter = desc.applyBottomCenter;
 	m_bVisible = desc.visible;
 	m_RenderProfile = desc.renderProfile;
+	m_FrustumCulling = desc.frustumCulling;
 	m_bHasWaterProfile = desc.hasWaterProfile;
 	m_WaterProfile = desc.waterProfile;
 	m_fPresentationOpacityMultiplier = 1.f;
@@ -112,26 +114,6 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 			RENDERGROUP::SHADOW,
 			static_pointer_cast<CGameObject>(shared_from_this()));
 	}
-	//해당 Asset이 Background인지 여부 체크, sky background는 카메라를 따라 움직이기 때문에,
-	//Frustum Culling에서 제외
-	const bool_t bBackground =
-		effectiveProfile.renderMode ==
-		MAP_ASSET_RENDER_MODE::BACKGROUND;
-
-	//Sky/BackGround는 카메라를 따라 움직이므로 일반적인 world-space Frustum 대상에서 제외
-	//bounds가 없는 모델은 fail-open으로 렌더
-	if (!bBackground && m_bHasWorldCullBounds &&
-		!CGameInstance::Get().isIn_Frustum_InWorldSpace(
-			XMLoadFloat3(&m_vWorldCullCenter), m_fWorldCullRadius))
-		return;
-
-	//Profiler에 Visible Instance 추가
-	if (nullptr != pProfiler)
-	{
-		pProfiler->Add_Counter(
-			Engine::EProfilerCounter::MapVisibleInstances);
-	}
-
 	RENDERGROUP renderGroup = RENDERGROUP::NONBLEND;
 
 	if (effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::TRANSLUCENT ||
@@ -153,7 +135,39 @@ HRESULT CMapAssetObject::Render()
 	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f)
 		return S_OK;
 
-	HRESULT renderResult = Bind_ShaderResources();
+	MAP_CAMERA_CULL_SNAPSHOT cameraSnapshot{};
+	const bool_t hasCameraSnapshot =
+		CMapAssetRenderUtils::Capture_CameraCullSnapshot(cameraSnapshot);
+	const MAP_ASSET_RENDER_PROFILE effectiveProfile =
+		Get_EffectiveRenderProfile();
+	const bool_t background = MAP_ASSET_RENDER_MODE::BACKGROUND ==
+		effectiveProfile.renderMode;
+	MAP_FRUSTUM_CULL_DECISION cullDecision{};
+	if (!background && m_bHasWorldCullBounds && hasCameraSnapshot &&
+		CMapAssetRenderUtils::Evaluate_FrustumVisibility(
+			m_FrustumCulling,
+			cameraSnapshot,
+			m_AssetId,
+			m_AssetGroupId,
+			m_iPlacementId,
+			m_vWorldCullCenter,
+			m_fWorldCullRadius,
+			m_FrustumState,
+			cullDecision) &&
+		!cullDecision.shouldRender)
+	{
+		return S_OK;
+	}
+
+	if (Engine::CProfiler* profiler =
+		CGameInstance::Get().Get_Profiler())
+	{
+		profiler->Add_Counter(
+			Engine::EProfilerCounter::MapVisibleInstances);
+	}
+
+	HRESULT renderResult = Bind_ShaderResources(
+		hasCameraSnapshot ? &cameraSnapshot : nullptr);
 	if (SUCCEEDED(renderResult))
 	{
 		MAP_ASSET_RENDER_PROFILE presentationProfile =
@@ -337,6 +351,7 @@ void CMapAssetObject::Set_PlacementTransform(const float3_t& position,
 
 	//bottom-center 보정을 포함한 최종 world 행렬을 사용해야 실제 렌더 위치와 bounds가 일치한다.
 	Update_WorldCullBounds();
+	m_FrustumState = {};
 }
 
 HRESULT CMapAssetObject::Ready_Components(
@@ -355,7 +370,8 @@ HRESULT CMapAssetObject::Ready_Components(
 	return S_OK;
 }
 
-HRESULT CMapAssetObject::Bind_ShaderResources()
+HRESULT CMapAssetObject::Bind_ShaderResources(
+	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
 {
 	matrix_t world = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
 	world.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
@@ -367,10 +383,14 @@ HRESULT CMapAssetObject::Bind_ShaderResources()
 		m_pShaderCom, "g_WorldMatrix")) ||
 		FAILED(m_pShaderCom->Bind_Matrix(
 			"g_WorldInvTransposeMatrix", &storedInverseTranspose)) ||
-		FAILED(CGameInstance::Get().Bind_Transform(
-			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
-		FAILED(CGameInstance::Get().Bind_Transform(
-			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)) ||
+		FAILED(nullptr != cameraSnapshot ?
+			CMapAssetRenderUtils::Bind_CameraCullSnapshot(
+				m_pShaderCom, *cameraSnapshot) :
+			(FAILED(CGameInstance::Get().Bind_Transform(
+				m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+			 FAILED(CGameInstance::Get().Bind_Transform(
+				m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)) ?
+			 E_FAIL : S_OK)) ||
 		FAILED(Bind_PresentationVortexShaderResources(
 			m_ePresentationVortexProfile,
 			m_fPresentationVortexStrength)))

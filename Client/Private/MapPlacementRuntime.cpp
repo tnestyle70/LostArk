@@ -2,6 +2,7 @@
 
 #include "GameInstance.h"
 #include "MapAssetObject.h"
+#include "MapAssetRenderUtils.h"
 #include "Model.h"
 
 #include <algorithm>
@@ -41,7 +42,18 @@ namespace
 			left.minimumZ == right.minimumZ &&
 			left.maximumX == right.maximumX &&
 			left.maximumZ == right.maximumZ &&
-			left.excludedAssetGroupId == right.excludedAssetGroupId;
+			left.excludedAssetGroupId == right.excludedAssetGroupId &&
+			left.frustumCulling.bypass == right.frustumCulling.bypass &&
+			left.frustumCulling.diagnostics == right.frustumCulling.diagnostics &&
+			left.frustumCulling.baseMargin == right.frustumCulling.baseMargin &&
+			left.frustumCulling.largeObjectRadiusThreshold ==
+				right.frustumCulling.largeObjectRadiusThreshold &&
+			left.frustumCulling.largeObjectAbsoluteMargin ==
+				right.frustumCulling.largeObjectAbsoluteMargin &&
+			left.frustumCulling.largeObjectRelativeMargin ==
+				right.frustumCulling.largeObjectRelativeMargin &&
+			left.frustumCulling.rejectHysteresisFrames ==
+				right.frustumCulling.rejectHysteresisFrames;
 	}
 
 	bool_t IsFinite(const float3_t& value)
@@ -91,12 +103,15 @@ bool_t CMapPlacementRuntime::Load_Area(
 
 	std::vector<MAP_RUNTIME_PLACED_ENTRY> stagedPlacements;
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY> stagedBatches;
+	CMapAssetRenderUtils::Begin_FrustumDiagnostics(
+		areaId, loadScope.frustumCulling);
 	if (!Stage_PlacementRuntime(
 		levelIndex,
 		stagedCatalog,
 		document,
 		stagedPlacements,
-		stagedBatches))
+		stagedBatches,
+		loadScope.frustumCulling))
 	{
 		Remove_PlacementRuntime(
 			levelIndex, stagedPlacements, stagedBatches);
@@ -346,7 +361,8 @@ bool_t CMapPlacementRuntime::Create_Placement(
 	uint32_t levelIndex,
 	const CMapAssetCatalog& catalog,
 	const MAP_PLACEMENT_RECORD& record,
-	MAP_RUNTIME_PLACED_ENTRY& outEntry)
+	MAP_RUNTIME_PLACED_ENTRY& outEntry,
+	const MAP_FRUSTUM_CULLING_POLICY& frustumCulling)
 {
 	const MAP_ASSET_ENTRY* asset = catalog.Find(record.assetId);
 	if (nullptr == asset ||
@@ -360,6 +376,7 @@ bool_t CMapPlacementRuntime::Create_Placement(
 	desc.prototypeLevelIndex = levelIndex;
 	desc.placementId = record.placementId;
 	desc.assetId = asset->id;
+	desc.assetGroupId = asset->groupId;
 	desc.modelPrototypeTag = asset->prototypeTag;
 	desc.position = record.position;
 	desc.rotationQuaternion = record.rotationQuaternion;
@@ -368,6 +385,7 @@ bool_t CMapPlacementRuntime::Create_Placement(
 		MAP_ASSET_ANCHOR::BOTTOM_CENTER == asset->anchor;
 	desc.visible = record.visible;
 	desc.renderProfile = asset->renderProfile;
+	desc.frustumCulling = frustumCulling;
 	if (const MAP_ASSET_WATER_PROFILE* water = catalog.Find_Water(asset->id))
 	{
 		desc.hasWaterProfile = true;
@@ -407,7 +425,8 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 	const CMapAssetCatalog& catalog,
 	const std::vector<MAP_PLACEMENT_RECORD>& records,
 	std::vector<MAP_RUNTIME_PLACED_ENTRY>& outPlacements,
-	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& outBatches)
+	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& outBatches,
+	const MAP_FRUSTUM_CULLING_POLICY& frustumCulling)
 {
 	using BATCH_KEY = std::pair<std::string, bool_t>;
 	std::map<BATCH_KEY, std::vector<const MAP_PLACEMENT_RECORD*>> groups;
@@ -448,8 +467,10 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 		CMapStaticBatchObject::DESC desc{};
 		desc.PrototypeLevelIndex = levelIndex;
 		desc.AssetId = asset->id;
+		desc.AssetGroupId = asset->groupId;
 		desc.ModelPrototypeTag = asset->prototypeTag;
 		desc.RenderProfile = asset->renderProfile;
+		desc.FrustumCulling = frustumCulling;
 		desc.Mirrored = key.second;
 		desc.Instances.reserve(placements.size());
 
@@ -515,7 +536,8 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 		}
 
 		MAP_RUNTIME_PLACED_ENTRY fallback{};
-		if (!Create_Placement(levelIndex, catalog, record, fallback))
+		if (!Create_Placement(
+			levelIndex, catalog, record, fallback, frustumCulling))
 			return false;
 		outPlacements.push_back(std::move(fallback));
 	}

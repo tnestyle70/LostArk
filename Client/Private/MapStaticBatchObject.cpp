@@ -6,6 +6,7 @@
 #include "Profiler.h"
 #include "Shader.h"
 
+#include <algorithm>
 #include <cstring>
 #include <limits>
 
@@ -49,7 +50,9 @@ HRESULT CMapStaticBatchObject::Initialize(void* pArg)
 		return E_FAIL;
 
 	m_AssetId = desc.AssetId;
+	m_AssetGroupId = desc.AssetGroupId;
 	m_RenderProfile = desc.RenderProfile;
+	m_FrustumCulling = desc.FrustumCulling;
 	m_bMirrored = desc.Mirrored;
 	m_Instances = desc.Instances;
 
@@ -92,8 +95,13 @@ void CMapStaticBatchObject::Late_Update(
 			Engine::EProfilerCounter::MapBatchCount);
 	}
 
-	const HRESULT hVisibleResult = Upload_VisibleInstances();
-	if (SUCCEEDED(hVisibleResult) && !m_VisibleInstances.empty())
+	const bool_t hasAuthoredVisible = std::any_of(
+		m_Instances.begin(), m_Instances.end(),
+		[](const FMapStaticInstance& instance)
+		{
+			return instance.Visible;
+		});
+	if (hasAuthoredVisible)
 	{
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::NONBLEND,
@@ -114,18 +122,25 @@ void CMapStaticBatchObject::Late_Update(
 
 HRESULT CMapStaticBatchObject::Render()
 {
+	MAP_CAMERA_CULL_SNAPSHOT cameraSnapshot{};
+	const bool_t hasCameraSnapshot =
+		CMapAssetRenderUtils::Capture_CameraCullSnapshot(cameraSnapshot);
+	if (FAILED(Upload_VisibleInstances(
+		hasCameraSnapshot ? &cameraSnapshot : nullptr)))
+	{
+		return E_FAIL;
+	}
 	if (m_VisibleInstances.empty())
 		return S_OK;
 
-	if (FAILED(CGameInstance::Get().Bind_Transform(
-		m_pShaderCom,
-		"g_ViewMatrix",
-		D3DTS::VIEW)) ||
-
-		FAILED(CGameInstance::Get().Bind_Transform(
-			m_pShaderCom,
-			"g_ProjMatrix",
-			D3DTS::PROJ)))
+	const HRESULT cameraBindResult = hasCameraSnapshot ?
+		CMapAssetRenderUtils::Bind_CameraCullSnapshot(
+			m_pShaderCom, cameraSnapshot) :
+		(FAILED(CGameInstance::Get().Bind_Transform(
+			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+		 FAILED(CGameInstance::Get().Bind_Transform(
+			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)) ? E_FAIL : S_OK);
+	if (FAILED(cameraBindResult))
 	{
 		return E_FAIL;
 	}
@@ -370,21 +385,30 @@ HRESULT CMapStaticBatchObject::Ensure_ShadowInstanceCapacity(
 	return S_OK;
 }
 
-HRESULT CMapStaticBatchObject::Upload_VisibleInstances()
+HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
+	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
 {
 	m_VisibleInstances.clear();
 
-	for (const FMapStaticInstance& instance :
+	for (FMapStaticInstance& instance :
 		m_Instances)
 	{
 		if (!instance.Visible)
 			continue;
 
-		if (!CGameInstance::Get().
-			isIn_Frustum_InWorldSpace(
-				XMLoadFloat3(
-					&instance.WorldBoundsCenter),
-				instance.WorldBoundsRadius))
+		MAP_FRUSTUM_CULL_DECISION decision{};
+		if (nullptr != cameraSnapshot &&
+			CMapAssetRenderUtils::Evaluate_FrustumVisibility(
+				m_FrustumCulling,
+				*cameraSnapshot,
+				m_AssetId,
+				m_AssetGroupId,
+				instance.PlacementId,
+				instance.WorldBoundsCenter,
+				instance.WorldBoundsRadius,
+				instance.FrustumState,
+				decision) &&
+			!decision.shouldRender)
 		{
 			continue;
 		}

@@ -241,6 +241,10 @@ public:
 	   socketed weapon consumes: Valtan body local (-90 degree source-axis
 	   correction) composed with the owning actor world transform. */
 	bool_t Try_Get_PresentationRootMatrix(float4x4_t* pOut) const;
+	/* The world entity snapshot reports a plate that lost its durability as
+	   one bit per authored plate index, and presentation only has to hide
+	   the part wearing that index. */
+	bool_t Apply_BrokenArmorMask(uint8_t iBrokenArmorMask);
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees,
@@ -294,6 +298,7 @@ private:
 	std::unordered_map<uint32_t, wstring_t> m_ArmorPartTagsByStateMask;
 	LostArk::Shared::BOSS_COMBAT_SNAPSHOT m_BossCombatState;
 	bool_t m_hasBossCombatState = false;
+	uint8_t m_iBrokenArmorMask = 0u;
 	std::uint64_t m_iLastBossCombatEventSequence = 0u;
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
@@ -367,6 +372,7 @@ private:
 	/* Hides exactly the plates the Server reports broken. Presentation never
 	decides this: a plate comes off because durability reached zero. */
 	void Set_ArmorPartVisible(uint32_t iStateMask, bool_t isVisible);
+	void Refresh_ArmorPartVisibility();
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
 	void Load_PatternEffectCues();

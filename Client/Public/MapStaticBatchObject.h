@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "GameObject.h"
 #include "MapAssetCatalog.h"
+#include "MapLoadScope.h"
 
 #include <cstdint>
 #include <string>
@@ -26,6 +27,7 @@ struct FMapStaticInstance final
 	float3_t WorldBoundsCenter = {};
 	f32_t WorldBoundsRadius = {};
 	bool_t Visible = true;
+	MAP_FRUSTUM_RUNTIME_STATE FrustumState{};
 };
 
 class CMapStaticBatchObject final : public CGameObject
@@ -35,8 +37,10 @@ public:
 	{
 		uint32_t PrototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
 		std::string AssetId;
+		std::string AssetGroupId;
 		std::wstring ModelPrototypeTag;
 		MAP_ASSET_RENDER_PROFILE RenderProfile;
+		MAP_FRUSTUM_CULLING_POLICY FrustumCulling{};
 		bool_t Mirrored = false;
 		std::vector<FMapStaticInstance> Instances;
 	};
@@ -101,15 +105,18 @@ private:
 	HRESULT Ensure_ShadowInstanceCapacity(
 		uint32_t requiredCount);
 
-	HRESULT Upload_VisibleInstances();
+	HRESULT Upload_VisibleInstances(
+		const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
 	HRESULT Upload_ShadowInstances();
 	HRESULT Rebuild_PlacementLookup();
 
 private:
 	//배치하는 에셋의 ID
 	std::string m_AssetId;
+	std::string m_AssetGroupId;
 	//BatckObject의 Render Profile 정보 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
+	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
 
 	bool_t m_bMirrored = false;
 	bool_t m_bShadowInstancesDirty = true;

@@ -24,7 +24,7 @@ LevelCatalog scenario
 
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
-| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | MapTool source/paint bootstrap 허용, Server 제품 navgrid 없음 | NPC/trigger/collision authoring, boss 없음 |
+| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | 50×333 source/paint, Server navgrid + 1m deck-step policy | NPC/trigger/collision authoring, boss 없음 |
 | `LV_LUT_HEARTRB_ED` | 275 assets / 13,186 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
@@ -40,7 +40,7 @@ LevelCatalog scenario
 | deploy | `.deployassets`와 `.deployplacements`가 모두 없으면 skip | 둘 중 하나만 있으면 오류 |
 | point-light presentation | `sourceLights`와 `lights`가 모두 없으면 skip | 둘 중 하나만 있거나 문서 검증이 실패하면 publish/load 실패 |
 | NPC/boss placement | 해당 kind 행이 없으면 spawn하지 않음 | unknown archetype/encounter는 publish 실패 |
-| navigation | 현재 Bern처럼 Server nav를 사용하지 않는 world는 생략 가능 | nav를 요구하는 Valtan/Training/Character Select Arena는 누락·손상 시 room 기동 실패 |
+| navigation | navigationRuntime을 선언하지 않은 world만 생략 가능 | Bern/Valtan/Training/Character Select Arena는 grid/policy 누락·손상 시 room 기동 실패 |
 | balance definition | 사용하지 않는 actor/skill 정의는 runtime state를 만들지 않음 | placement/action이 없는 stable ID를 참조하면 publish 또는 Server load 실패 |
 
 `Gameplay.world.json` 자체는 Server가 여는 world마다 필요하다. 접속 가능한 world는 최소 하나의 활성 `playerSpawn`이 필요하므로, 빈 placements 문서를 제품 world의 정상값으로 취급하지 않는다.
@@ -74,18 +74,20 @@ MapTool의 저장 대상은 Data 원본뿐이다.
 - gameplay: Character Select/Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
 - navigation: 정책이 허용한 `Data/Navigation/*.navsource/.navpaint/.navblockers`
 
-Bern bootstrap은 `Place Nav Bounds`로 실제 렌더 바닥을 고른 뒤 Bottom Y와 Height from Bottom으로
-세로 범위를 제한해 bake한다. source가 생성되기 전에는 authoring 준비 상태일 뿐이며 Server 제품
-navigation이 활성화된 것이 아니다. Bern runtime publish와 Server room admission은 실제 bake 결과,
-player spawn/trigger 연결성, cell 통계를 검증하는 별도 변경 단위에서 수행한다.
+Bern은 `Place Nav Bounds`로 실제 렌더 바닥을 고른 뒤 Bottom Y와 Height from Bottom으로 세로 범위를
+제한해 bake한다. 제품 runtime은 이미 활성화되어 있으므로 source/paint/policy가 누락되거나 손상되면
+Server room admission이 실패한다. publisher는 실제 bake 결과, player spawn/trigger 연결성, cell
+통계와 Area별 step policy를 함께 검증한다.
 
 Navigation `Walkability` 브러시는 높이가 해석된 셀에 대해 `Block`, `Force Walkable`,
 `Reset` 세 명령을 제공한다. `Block`과 `Force Walkable`은 bake 결과보다 우선하는 수동
-override이며 `Reset`은 해당 셀을 bake 결과 상속으로 되돌린다. `.navpaint` version 2는
-각 행을 `x z BLOCKED|WALKABLE`로 저장하고, 기존 version 1의 `x z` 행은 `BLOCKED`로
-호환 로드한다. 높이가 없는 `NO_SURFACE` 셀은 강제로 이동 가능하게 만들 수 없다.
+override이며 `Reset`은 해당 셀의 walkability와 명시적 높이를 bake 결과 상속으로 되돌린다.
+`.navpaint` version 3은 `x z BLOCKED|WALKABLE [height]` 또는 `x z HEIGHT height`를 저장한다.
+명시적 높이는 bake가 surface를 해석한 셀에만 허용된다. 기존 version 2의
+`x z BLOCKED|WALKABLE`과 version 1의 `x z`(`BLOCKED`)도 호환 로드한다. 높이가 없는
+`NO_SURFACE` 셀은 강제로 이동 가능하게 만들 수 없다.
 
-MapTool은 Client `.navgrid`를 export하거나 제품 Navigation runtime blocker를 등록하지 않는다.
+MapTool은 Client `.navgrid`/`.navpolicy`를 export하거나 제품 Navigation runtime blocker를 등록하지 않는다.
 Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 `Publish-WorldGameplay.ps1`, Server navigation은 `Publish-ServerNavigation.ps1`만 교체한다.
 `ACTIVE.maparea`도 selector 변경 때 자동 저장하지 않는다.
