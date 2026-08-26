@@ -1,0 +1,103 @@
+{
+ "schema": "lostark.ui-layout",
+ "formatVersion": 1,
+ "resolution": {
+  "width": 1280,
+  "height": 720
+ },
+ "classes": [
+  "Default"
+ ],
+ "slots": [
+  {
+   "id": "DeadScene_PanelBg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 780,
+    "y": 140,
+    "width": 420,
+    "height": 204
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 0
+   },
+   "layers": [
+    {
+     "path": "UI/DeadScene/DeadScene_PanelBg.png",
+     "hoverPath": null,
+     "tint": {
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+     },
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "DeadScene_ReviveButton",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 935,
+    "y": 284,
+    "width": 110,
+    "height": 38
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 0
+   },
+   "layers": [
+    {
+     "path": "UI/DeadScene/DeadScene_ReviveButton_Normal.png",
+     "hoverPath": "UI/DeadScene/DeadScene_ReviveButton_Hover.png",
+     "tint": {
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+     },
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  }
+ ]
+}

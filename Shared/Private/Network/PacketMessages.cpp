@@ -1754,6 +1754,30 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
+	const C2S_DEBUG_KILL_SELF& message)
+{
+	if (0u == message.iClientSequence)
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DEBUG_KILL_SELF& message)
+{
+	C2S_DEBUG_KILL_SELF decoded{};
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		0u == decoded.iClientSequence)
+	{
+		return false;
+	}
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
 	const C2S_CHANGE_CHARACTER_CLASS& message)
 {
 	if (0u == message.iClientSequence ||

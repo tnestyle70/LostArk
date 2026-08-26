@@ -1,14 +1,16 @@
 /* imgui.h defines its own placement-new helper and has to precede the project
-headers, which is the same order Level_CharacterSelect.cpp uses. */
-#ifdef _DEBUG
+headers, which is the same order Level_CharacterSelect.cpp uses. Previously
+_DEBUG-only (the audition panel was its only user); the death-screen overlay
+below is a real Release-build feature, so the include is no longer guarded. */
 #include "imgui.h"
-#endif
 
 #include "Level_ValtanArena.h"
 
 #include "Camera_Free.h"
 #include "Character.h"
+#include "CombatHUDViewModel.h"
 #include "GameInstance.h"
+#include "HUDRuntimeView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
@@ -290,6 +292,9 @@ HRESULT CLevel_ValtanArena::Initialize()
 			"Ground-target preview object could not be initialized");
 	}
 
+	m_pDeadSceneView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext, L"UI/DeadScene/DeadSceneUI.json");
+
 	return S_OK;
 }
 
@@ -413,6 +418,10 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		!m_bReferenceCameraApplied;
 #endif
 	m_PlayerController.Update(cameraAcceptsGameplay);
+	Update_DeadScene();
+#ifdef _DEBUG
+	Update_DebugKillSelfKey();
+#endif
 }
 
 #ifdef _DEBUG
@@ -2781,12 +2790,82 @@ HRESULT CLevel_ValtanArena::Render()
 
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
+	Render_DeadScene();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
 #endif
 
 	return S_OK;
+}
+
+void CLevel_ValtanArena::Update_DeadScene()
+{
+	if (nullptr == m_pDeadSceneView)
+		return;
+
+	using LostArk::Shared::PLAYER_ACTION_STATE;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t isDead = player.isValid &&
+		PLAYER_ACTION_STATE::DEAD == player.eAction;
+
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveButton", isDead);
+	if (!isDead)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
+	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pDeadSceneView->Get_SlotRect(
+		"DeadScene_ReviveButton", fX, fY, fWidth, fHeight))
+	{
+		return;
+	}
+	const ImVec2 vMin(
+		pViewport->WorkPos.x + fX * fScaleX,
+		pViewport->WorkPos.y + fY * fScaleY);
+	const ImVec2 vMax(vMin.x + fWidth * fScaleX, vMin.y + fHeight * fScaleY);
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+		vMouse.y >= vMin.y && vMouse.y < vMax.y;
+	if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		m_PlayerController.Request_Revive();
+}
+
+#ifdef _DEBUG
+void CLevel_ValtanArena::Update_DebugKillSelfKey()
+{
+	if (ImGui::GetIO().WantTextInput)
+		return;
+	const HWND hForeground = GetForegroundWindow();
+	DWORD foregroundProcessId = {};
+	const bool_t windowFocused = nullptr != hForeground &&
+		0 != GetWindowThreadProcessId(hForeground, &foregroundProcessId) &&
+		GetCurrentProcessId() == foregroundProcessId;
+	const bool_t oDown = windowFocused &&
+		0 != (GetAsyncKeyState(0x4F /* VK_O */) & 0x8000);
+	if (oDown && !m_bDebugKillSelfKeyDown)
+		m_PlayerController.Request_DebugKillSelf();
+	m_bDebugKillSelfKeyDown = oDown;
+}
+#endif
+
+void CLevel_ValtanArena::Render_DeadScene()
+{
+	if (nullptr == m_pDeadSceneView)
+		return;
+
+	/* Title/button-label text is drawn by CMainApp::RenderDeadSceneText(),
+	called after CImGuiLayer::EndFrame() -- same reason as
+	RenderItemUpgradeGaugePercentText/RenderBossHealthBarText: this Render()
+	call's own panel/button images only composite later, inside EndFrame(),
+	and would otherwise bury text submitted here. */
+	m_pDeadSceneView->Render("Default", 0);
 }
 
 HRESULT CLevel_ValtanArena::Ready_Layer_Camera(

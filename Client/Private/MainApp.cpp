@@ -628,6 +628,7 @@ HRESULT CMainApp::Render()
 	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
 	RenderCombatHUDText();
 	RenderBossHealthBarText();
+	RenderDeadSceneText();
 	RenderDamageNumbers();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
@@ -2554,6 +2555,49 @@ void CMainApp::RenderBossHealthBarText()
 				Colors::White, 0.f, float2_t(0.5f, 0.5f), fCountScale * textUiScale);
 		}
 	}
+}
+
+void CMainApp::RenderDeadSceneText()
+{
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid ||
+		LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction)
+	{
+		return;
+	}
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	// Matches Data/UI/DeadScene/DeadSceneUI.json's DeadScene_PanelBg/_ReviveButton rects exactly.
+	constexpr f32_t PANEL_X = 780.f, PANEL_Y = 140.f, PANEL_W = 420.f;
+	constexpr f32_t BUTTON_X = 935.f, BUTTON_Y = 284.f, BUTTON_W = 110.f, BUTTON_H = 38.f;
+	constexpr f32_t TITLE_AREA_HEIGHT = 75.f;
+
+	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다
+	const float2_t vTitleMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
+	const f32_t fTitleScale =
+		(vTitleMeasured.y > 0.f) ? (TITLE_AREA_HEIGHT / vTitleMeasured.y) : 1.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
+		float2_t((PANEL_X + PANEL_W * 0.5f) * textScaleX,
+			(PANEL_Y + TITLE_AREA_HEIGHT * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
+
+	const wstring strButtonLabel = L"\xBD80\xD65C"; // 부활
+	const float2_t vButtonMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strButtonLabel.c_str());
+	const f32_t fButtonScale =
+		(vButtonMeasured.y > 0.f) ? (BUTTON_H * 0.55f / vButtonMeasured.y) : 1.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strButtonLabel.c_str(),
+		float2_t((BUTTON_X + BUTTON_W * 0.5f) * textScaleX,
+			(BUTTON_Y + BUTTON_H * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fButtonScale * textUiScale);
 }
 
 void CMainApp::RenderEstherGauge()

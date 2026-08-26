@@ -626,6 +626,32 @@ void Client::CPlayerController::Set_CommandSink(
 	m_pCommandSink = commandSink;
 }
 
+bool_t Client::CPlayerController::Request_Revive()
+{
+	if (nullptr == m_pCommandSink)
+		return false;
+	if (!m_pCommandSink->Request_RevivePlayer(m_iNextActionSequence))
+		return false;
+	++m_iNextActionSequence;
+	if (0u == m_iNextActionSequence)
+		m_iNextActionSequence = 1u;
+	return true;
+}
+
+#ifdef _DEBUG
+bool_t Client::CPlayerController::Request_DebugKillSelf()
+{
+	if (nullptr == m_pCommandSink)
+		return false;
+	if (!m_pCommandSink->Request_DebugKillSelf(m_iNextActionSequence))
+		return false;
+	++m_iNextActionSequence;
+	if (0u == m_iNextActionSequence)
+		m_iNextActionSequence = 1u;
+	return true;
+}
+#endif
+
 bool_t Client::CPlayerController::Initialize_TargetingPreview(
 	const uint32_t levelIndex)
 {

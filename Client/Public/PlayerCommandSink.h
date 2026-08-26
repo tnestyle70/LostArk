@@ -47,6 +47,11 @@ public:
 		float aimZ) = 0;
 	virtual bool Request_RevivePlayer(
 		std::uint32_t clientSequence) = 0;
+#ifdef _DEBUG
+	// Debug/Development-build test aid only -- see PACKET_TYPE::C2S_DEBUG_KILL_SELF.
+	virtual bool Request_DebugKillSelf(
+		std::uint32_t clientSequence) = 0;
+#endif
 	// Raid Esther roster slot (1..3), aimed at a world-space point. The slot
 	// is positional; the server owns which archetype it summons.
 	virtual bool Request_EstherSkill(

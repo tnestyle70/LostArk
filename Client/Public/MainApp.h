@@ -136,6 +136,14 @@ private:
 	inside the Begin/EndFrame block let the ImGui-composited opaque fill bury this text underneath
 	it every frame. */
 	void RenderBossHealthBarText();
+	/* "사망하였습니다" title + "부활" button label over Valtan's death-screen panel
+	(CLevel_ValtanArena owns the panel/button images and the click hit-test; this only draws the
+	Korean text). Called after CImGuiLayer::EndFrame(), same reason as RenderBossHealthBarText --
+	CGameInstance::Draw_Text paints immediately, but the panel/button images composite later inside
+	EndFrame() and would otherwise bury text drawn earlier in the frame. Rect values match
+	Data/UI/DeadScene/DeadSceneUI.json's DeadScene_PanelBg/DeadScene_ReviveButton exactly; there is
+	no cross-class Get_SlotRect call because CLevel_ValtanArena's view is private to that Level. */
+	void RenderDeadSceneText();
 	/* Room-shared raid Esther gauge bar. Draws nothing when the snapshot says
 	the world has no Esther roster (maximum 0). */
 	void RenderEstherGauge();
