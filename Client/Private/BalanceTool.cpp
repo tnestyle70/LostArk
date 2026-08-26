@@ -658,6 +658,22 @@ namespace
 		return nullptr;
 	}
 
+	std::size_t CountManagedValtanPatterns(
+		const VALTAN_PATTERN_TREE_VIEW& tree)
+	{
+		std::size_t count = 0u;
+		for (const auto* group : { &tree.Gimmicks, &tree.Rotation })
+		{
+			count += static_cast<std::size_t>(std::count_if(
+				group->begin(), group->end(),
+				[](const VALTAN_PATTERN_VIEW& pattern)
+				{
+					return pattern.bAuthoringMasterManaged;
+				}));
+		}
+		return count;
+	}
+
 	const VALTAN_STAGE_VIEW* FindValtanStage(
 		const VALTAN_PATTERN_VIEW& pattern, const std::string& stageId)
 	{
@@ -1205,7 +1221,10 @@ bool Client::CBalanceTool::ReloadValtanPatternAuthoring(
 	for (const auto* group : { &stagedTree.Gimmicks, &stagedTree.Rotation })
 	{
 		for (const VALTAN_PATTERN_VIEW& pattern : *group)
-			managedPatternIds.insert(pattern.strPatternId);
+		{
+			if (pattern.bAuthoringMasterManaged)
+				managedPatternIds.insert(pattern.strPatternId);
+		}
 	}
 
 	std::vector<LEGACY_PATTERN_SUMMARY> stagedLegacy;
@@ -1250,7 +1269,7 @@ bool Client::CBalanceTool::ReloadValtanPatternAuthoring(
 	patternTree = std::move(stagedTree);
 	legacyPatterns = std::move(stagedLegacy);
 	patternStatus = treeStatus + " | managed=" +
-		std::to_string(patternTree.Get_PatternCount()) +
+		std::to_string(CountManagedValtanPatterns(patternTree)) +
 		", legacy read-only=" + std::to_string(legacyPatterns.size()) + ".";
 	return true;
 }
@@ -1584,7 +1603,8 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 	const DATA_JSON_VALUE* patternArray =
 		Field(gameplayRoot, "patterns", DATA_JSON_TYPE::ARRAY);
 	if (nullptr == decisionModel || nullptr == patternArray ||
-		patternArray->Get_Array().size() != patternTree.Get_PatternCount())
+		patternArray->Get_Array().size() !=
+			CountManagedValtanPatterns(patternTree))
 	{
 		status = "Saved Valtan gameplay arrays do not match the strict joined tree.";
 		return false;
@@ -1613,6 +1633,7 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 		VALTAN_PATTERN_VIEW* targetPattern =
 			FindValtanPattern(patternTree, patternId);
 		if (nullptr == targetPattern ||
+			!targetPattern->bAuthoringMasterManaged ||
 			stages->Get_Array().size() != targetPattern->Stages.size())
 		{
 			status = "Saved Valtan pattern is unknown or changed its stable stage set: " +
@@ -1904,7 +1925,7 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 			}
 		}
 	}
-	if (savedPatternIds.size() != patternTree.Get_PatternCount())
+	if (savedPatternIds.size() != CountManagedValtanPatterns(patternTree))
 	{
 		status = "Saved Valtan pattern stable-ID set is incomplete.";
 		return false;
@@ -2266,12 +2287,23 @@ void Client::CBalanceTool::RenderBossEditor()
 				sourceActions << pattern.sourceActionIds[sourceIndex];
 			}
 			ImGui::TextWrapped("Original Actions: %s", sourceActions.str().c_str());
-			int selectionMode = pattern.selectionMode == "HEALTH_BAR" ? 1 : 0;
-			if (ImGui::Combo("Selection mode", &selectionMode,
-				"Normal pool\0Health bar trigger\0"))
+			const bool manualAudition =
+				pattern.selectionMode == "AUDITION_ONLY";
+			if (manualAudition)
 			{
-				pattern.selectionMode = 0 == selectionMode ? "NORMAL" : "HEALTH_BAR";
-				m_dirty = true;
+				ImGui::TextDisabled(
+					"Selection: Manual Server audition (automatic rotation disabled)");
+			}
+			else
+			{
+				int selectionMode = pattern.selectionMode == "HEALTH_BAR" ? 1 : 0;
+				if (ImGui::Combo("Selection mode", &selectionMode,
+					"Normal pool\0Health bar trigger\0"))
+				{
+					pattern.selectionMode =
+						0 == selectionMode ? "NORMAL" : "HEALTH_BAR";
+					m_dirty = true;
+				}
 			}
 			if (pattern.selectionMode == "NORMAL")
 			{
@@ -2303,7 +2335,7 @@ void Client::CBalanceTool::RenderBossEditor()
 							static_cast<double>(eligibleWeight) : 0.0);
 				}
 			}
-			else
+			else if (pattern.selectionMode == "HEALTH_BAR")
 			{
 				MarkDirty(EditU32("Trigger health bar", pattern.triggerHealthBar, 1u,
 					boss.maximumHealthBars));
@@ -2313,10 +2345,13 @@ void Client::CBalanceTool::RenderBossEditor()
 						liveHealthBar > pattern.triggerHealthBar ? "ARMED" : "REACHED",
 						pattern.triggerOrder);
 			}
-			MarkDirty(EditDouble("Minimum range", pattern.minimumRange,
-				0.1f, 0.0, 1000.0));
-			MarkDirty(EditDouble("Maximum range", pattern.maximumRange,
-				0.1f, 0.0, 1000.0));
+			if (!manualAudition)
+			{
+				MarkDirty(EditDouble("Minimum range", pattern.minimumRange,
+					0.1f, 0.0, 1000.0));
+				MarkDirty(EditDouble("Maximum range", pattern.maximumRange,
+					0.1f, 0.0, 1000.0));
+			}
 			ImGui::SeparatorText("Server stages");
 			for (std::size_t stageIndex = 0;
 				stageIndex < pattern.stages.size(); ++stageIndex)
@@ -2433,9 +2468,19 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 			auditionService.Get_Snapshot();
 		const bool inValtanArena = ETOUI(LEVEL::VALTAN_ARENA) ==
 			CGameInstance::Get().Get_CurrentLevelID();
+		const bool_t bManualAudition = pattern.bManualServerAudition;
 		ImGui::TextDisabled("MANAGED | %s | %s", groupLabel,
 			pattern.strPatternId.c_str());
-		ImGui::SeparatorText("Server Gameplay canonical (editable)");
+		if (bManualAudition)
+		{
+			ImGui::TextDisabled(
+				"Manual Server audition | phase %u | source chain %s | automatic selection disabled",
+				pattern.iAuthoringPhase,
+				pattern.strSourceAnimationChainId.c_str());
+		}
+		ImGui::SeparatorText(bManualAudition ?
+			"Server Gameplay manual audition (hit authoring)" :
+			"Server Gameplay canonical (editable)");
 		ImGui::TextDisabled("Source: %s",
 			m_valtanSourceJoin.gameplaySourcePath.c_str());
 		ImGui::TextWrapped("Action %s | category %s | phase %u..%u",
@@ -2452,19 +2497,32 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 		ImGui::TextWrapped("Target %s | aim %s | invulnerable %s",
 			pattern.strTargetPolicy.c_str(), pattern.strAimPolicy.c_str(),
 			pattern.bInvulnerableWhileRunning ? "YES" : "NO");
-		ImGui::SeparatorText("Server decision tuning");
-		if ("NORMAL" == pattern.strSelectionMode)
+		ImGui::SeparatorText(bManualAudition ?
+			"Server decision contract (locked)" : "Server decision tuning");
+		if (bManualAudition)
+		{
 			ImGui::TextDisabled(
-				"Compatibility fallback is read-only and independent of window weights above.");
-		MarkDirty(EditU32("Soft repeat avoidance limit",
-			pattern.iMaximumConsecutiveUses, 0u, 64u));
-		MarkDirty(EditFloat("Minimum target range m", pattern.fMinimumRange,
-			0.1f, 0.f, 1000.f));
-		MarkDirty(EditFloat("Maximum target range m", pattern.fMaximumRange,
-			0.1f, 0.f, 1000.f));
-		if (pattern.fMinimumRange > pattern.fMaximumRange)
-			ImGui::TextColored(ImVec4(1.f, 0.45f, 0.3f, 1.f),
-				"Invalid draft: minimum range exceeds maximum range.");
+				"AUDITION_ONLY keeps selection, repeat, and target range read-only until explicit rotation promotion.");
+		}
+		else
+		{
+			if ("NORMAL" == pattern.strSelectionMode)
+			{
+				ImGui::TextDisabled(
+					"Compatibility fallback is read-only and independent of window weights above.");
+			}
+			MarkDirty(EditU32("Soft repeat avoidance limit",
+				pattern.iMaximumConsecutiveUses, 0u, 64u));
+			MarkDirty(EditFloat("Minimum target range m", pattern.fMinimumRange,
+				0.1f, 0.f, 1000.f));
+			MarkDirty(EditFloat("Maximum target range m", pattern.fMaximumRange,
+				0.1f, 0.f, 1000.f));
+			if (pattern.fMinimumRange > pattern.fMaximumRange)
+			{
+				ImGui::TextColored(ImVec4(1.f, 0.45f, 0.3f, 1.f),
+					"Invalid draft: minimum range exceeds maximum range.");
+			}
+		}
 
 		ImGui::BeginDisabled(!inValtanArena || audition.Is_InFlight());
 		if (ImGui::Button("Play Server Pattern"))
@@ -2533,7 +2591,9 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 				ImGui::BulletText("%s", cueId.c_str());
 		}
 
-		ImGui::SeparatorText("Server Gameplay canonical stage timeline (editable)");
+		ImGui::SeparatorText(bManualAudition ?
+			"Server Gameplay stage timeline (wall-clock locked; hit authoring)" :
+			"Server Gameplay canonical stage timeline (editable)");
 		for (std::size_t stageIndex = 0u;
 			stageIndex < pattern.Stages.size(); ++stageIndex)
 		{
@@ -2543,7 +2603,17 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 				stage.strActionId + "##stage";
 			if (ImGui::TreeNode(stageLabel.c_str()))
 			{
-				MarkDirty(EditU32("Duration ms", stage.iDurationMs, 1u, 600000u));
+				if (bManualAudition)
+				{
+					ImGui::TextDisabled(
+						"Duration %u ms | locked to the promoted animation occurrence wall-clock",
+						stage.iDurationMs);
+				}
+				else
+				{
+					MarkDirty(EditU32(
+						"Duration ms", stage.iDurationMs, 1u, 600000u));
+				}
 				ImGui::TextWrapped("%s | %u ms | role %s | repeat %u | animation end %s",
 					stage.strStageKind.c_str(), stage.iDurationMs,
 					stage.strSequenceRole.c_str(), stage.iAuthoringRepeatCount,
@@ -2958,15 +3028,36 @@ void Client::CBalanceTool::RenderValtanPatternAuthoring()
 	for (std::size_t index = 0u;
 		index < m_valtanPatternTree.Gimmicks.size(); ++index)
 	{
+		if (!m_valtanPatternTree.Gimmicks[index].bAuthoringMasterManaged)
+			continue;
 		RenderValtanManagedPattern(
 			m_valtanPatternTree.Gimmicks[index], "MECHANIC", index);
+	}
+	ImGui::SeparatorText("Managed manual Server auditions");
+	for (std::size_t index = 0u;
+		index < m_valtanPatternTree.Rotation.size(); ++index)
+	{
+		VALTAN_PATTERN_VIEW& pattern = m_valtanPatternTree.Rotation[index];
+		if (!pattern.bAuthoringMasterManaged ||
+			!pattern.bManualServerAudition)
+		{
+			continue;
+		}
+		RenderValtanManagedPattern(
+			pattern, "MANUAL AUDITION", index);
 	}
 	ImGui::SeparatorText("Managed rotation");
 	for (std::size_t index = 0u;
 		index < m_valtanPatternTree.Rotation.size(); ++index)
 	{
+		VALTAN_PATTERN_VIEW& pattern = m_valtanPatternTree.Rotation[index];
+		if (!pattern.bAuthoringMasterManaged ||
+			pattern.bManualServerAudition)
+		{
+			continue;
+		}
 		RenderValtanManagedPattern(
-			m_valtanPatternTree.Rotation[index], "ROTATION", index);
+			pattern, "ROTATION", index);
 	}
 
 	ImGui::SeparatorText("Independent presentation");
@@ -3261,7 +3352,8 @@ void Client::CBalanceTool::RenderLiveVerification()
 			boss.iPatternSequence, boss.iPatternStageIndex,
 			boss.strActionId.empty() ? "-" : boss.strActionId.c_str());
 		if (const VALTAN_PATTERN_VIEW* selected =
-				FindValtanPattern(m_valtanPatternTree, boss.strPatternId))
+				FindValtanPattern(m_valtanPatternTree, boss.strPatternId);
+			nullptr != selected && selected->bAuthoringMasterManaged)
 		{
 			ImGui::Text("Selected managed pattern: %s (%s)",
 				selected->strDisplayName.c_str(), selected->strSelectionMode.c_str());
@@ -3300,9 +3392,14 @@ void Client::CBalanceTool::RenderLiveVerification()
 
 bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 {
+	const std::size_t livePatternCount = static_cast<std::size_t>(std::count_if(
+		m_patterns.begin(), m_patterns.end(), [](const PATTERN_EDIT& pattern)
+		{
+			return pattern.selectionMode != "AUDITION_ONLY";
+		}));
 	if (m_players.size() != 6u || m_skills.size() != 94u ||
 		m_damageProfiles.size() != 108u || m_bosses.size() != 1u ||
-		m_patterns.size() != 33u)
+		livePatternCount != 33u || m_patterns.size() < livePatternCount)
 	{
 		status = "Draft object counts are incomplete.";
 		return false;
@@ -3489,20 +3586,26 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	for (const PATTERN_EDIT& pattern : m_patterns)
 	{
 		foundIntroPattern = foundIntroPattern ||
-			pattern.patternId == m_encounterIntroPatternId;
+			(pattern.patternId == m_encounterIntroPatternId &&
+			 pattern.selectionMode == "NORMAL");
 		const bool normal = pattern.selectionMode == "NORMAL";
 		const bool healthBar = pattern.selectionMode == "HEALTH_BAR";
+		const bool manualAudition = pattern.selectionMode == "AUDITION_ONLY";
 		const bool validSelection = normal ?
 			(pattern.minimumHealthBar >= 1u &&
 				pattern.maximumHealthBar >= pattern.minimumHealthBar &&
 				pattern.maximumHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
 				0u == pattern.triggerHealthBar && 0u == pattern.triggerOrder &&
 				pattern.selectionWeight > 0u && pattern.maximumConsecutiveUses > 0u) :
-			(healthBar && 0u == pattern.minimumHealthBar &&
+			(healthBar ? (0u == pattern.minimumHealthBar &&
 				0u == pattern.maximumHealthBar && pattern.triggerHealthBar >= 1u &&
 				pattern.triggerHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
 				pattern.triggerOrder > 0u && 0u == pattern.selectionWeight &&
-				0u == pattern.maximumConsecutiveUses);
+				0u == pattern.maximumConsecutiveUses) :
+			(manualAudition && 0u == pattern.minimumHealthBar &&
+				0u == pattern.maximumHealthBar && 0u == pattern.triggerHealthBar &&
+				0u == pattern.triggerOrder && 0u == pattern.selectionWeight &&
+				0u == pattern.maximumConsecutiveUses));
 		if (pattern.patternId.empty() ||
 			!patternIds.insert(pattern.patternId).second ||
 			pattern.displayName.empty() ||
@@ -3888,10 +3991,32 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 		m_valtanPatternTree.SelectionWindows.size() !=
 		m_loadedValtanPatternTree.SelectionWindows.size() ||
 		m_valtanPatternTree.Mechanics.size() !=
-		m_loadedValtanPatternTree.Mechanics.size())
+		m_loadedValtanPatternTree.Mechanics.size() ||
+		m_valtanPatternTree.ManualAuditions.size() !=
+		m_loadedValtanPatternTree.ManualAuditions.size())
 	{
 		status = "Valtan decision-model stable inventory changed during editing.";
 		return false;
+	}
+	for (const VALTAN_MANUAL_AUDITION_VIEW& manual :
+		m_valtanPatternTree.ManualAuditions)
+	{
+		const auto loaded = std::find_if(
+			m_loadedValtanPatternTree.ManualAuditions.begin(),
+			m_loadedValtanPatternTree.ManualAuditions.end(),
+			[&manual](const VALTAN_MANUAL_AUDITION_VIEW& candidate)
+			{
+				return candidate.strPatternId == manual.strPatternId;
+			});
+		if (m_loadedValtanPatternTree.ManualAuditions.end() == loaded ||
+			loaded->strSourceChainId != manual.strSourceChainId ||
+			loaded->iAuthoringPhase != manual.iAuthoringPhase ||
+			loaded->strAdmissionState != manual.strAdmissionState)
+		{
+			status = "Loaded Valtan manual audition identity changed: " +
+				manual.strPatternId;
+			return false;
+		}
 	}
 	for (const VALTAN_SELECTION_SET_VIEW& selectionSet :
 		m_valtanPatternTree.SelectionSets)
@@ -3976,11 +4101,32 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 	{
 		for (const VALTAN_PATTERN_VIEW& pattern : *group)
 		{
+			if (!pattern.bAuthoringMasterManaged)
+				continue;
 			const VALTAN_PATTERN_VIEW* loaded =
 				FindValtanPattern(m_loadedValtanPatternTree, pattern.strPatternId);
-			if (nullptr == loaded)
+			if (nullptr == loaded || !loaded->bAuthoringMasterManaged ||
+				pattern.bManualServerAudition !=
+					loaded->bManualServerAudition)
 			{
 				status = "Loaded pattern snapshot is missing " + pattern.strPatternId + ".";
+				return false;
+			}
+			const bool_t bManualAudition = pattern.bManualServerAudition;
+			if (bManualAudition &&
+				(pattern.strSelectionMode != loaded->strSelectionMode ||
+				 pattern.iMinimumHealthBar != loaded->iMinimumHealthBar ||
+				 pattern.iMaximumHealthBar != loaded->iMaximumHealthBar ||
+				 pattern.iTriggerHealthBar != loaded->iTriggerHealthBar ||
+				 pattern.iTriggerOrder != loaded->iTriggerOrder ||
+				 pattern.iSelectionWeight != loaded->iSelectionWeight ||
+				 pattern.iMaximumConsecutiveUses !=
+					loaded->iMaximumConsecutiveUses ||
+				 pattern.fMinimumRange != loaded->fMinimumRange ||
+				 pattern.fMaximumRange != loaded->fMaximumRange))
+			{
+				status = "Manual Server audition selection/repeat/range is locked: " +
+					pattern.strPatternId + ".";
 				return false;
 			}
 			if (pattern.iMaximumConsecutiveUses != loaded->iMaximumConsecutiveUses)
@@ -4011,6 +4157,13 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 				{
 					status = "Loaded stage snapshot is missing " + pattern.strPatternId +
 						"/" + stage.strStageId + ".";
+					return false;
+				}
+				if (bManualAudition &&
+					stage.iDurationMs != loadedStage->iDurationMs)
+				{
+					status = "Manual Server audition stage duration is locked to the animation wall-clock: " +
+						pattern.strPatternId + "/" + stage.strStageId + ".";
 					return false;
 				}
 				if (stage.iDurationMs != loadedStage->iDurationMs)
@@ -4689,11 +4842,17 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 				safetyTool.m_status;
 			return false;
 		}
-		if (7u != safetyTool.m_valtanPatternTree.Get_PatternCount() ||
+		const std::size_t expectedManagedPatternCount =
+			safetyTool.m_valtanPatternTree.NormalSelection.PatternIds.size() +
+			safetyTool.m_valtanPatternTree.Mechanics.size() +
+			safetyTool.m_valtanPatternTree.ManualAuditions.size();
+		const std::size_t managedPatternCount =
+			CountManagedValtanPatterns(safetyTool.m_valtanPatternTree);
+		if (expectedManagedPatternCount != managedPatternCount ||
 			26u != safetyTool.m_legacyPatterns.size())
 		{
-			status = "Balance Tool did not expose the 7 managed / 26 legacy "
-				"Valtan baseline.";
+			status = "Balance Tool did not preserve the dynamic managed / 26 legacy "
+				"Valtan boundary.";
 			return false;
 		}
 		const std::filesystem::path productPath = CProjectDataRoot::Resolve(
@@ -4716,8 +4875,9 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 			status = "Rejected Save still changed generated Encounter bytes.";
 			return false;
 		}
-		status = "Balance Tool admitted Encounter v4, exposed 7 managed / 26 "
-			"legacy Valtan patterns, and rejected the lossy generated Product Save.";
+		status = "Balance Tool admitted Encounter v4, exposed " +
+			std::to_string(managedPatternCount) +
+			" managed / 26 legacy Valtan patterns, and rejected the lossy generated Product Save.";
 		return true;
 	}
 
@@ -4834,9 +4994,22 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 		Field(skillRoot, "skills", DATA_JSON_TYPE::ARRAY);
 	const DATA_JSON_VALUE* patterns =
 		Field(encounterRoot, "patterns", DATA_JSON_TYPE::ARRAY);
+	std::size_t livePatternCount = 0u;
+	if (nullptr != patterns)
+	{
+		for (const DATA_JSON_VALUE& pattern : patterns->Get_Array())
+		{
+			std::string selectionMode;
+			if (!ReadString(pattern, "selectionMode", selectionMode) ||
+				selectionMode != "AUDITION_ONLY")
+				++livePatternCount;
+		}
+	}
 	if (nullptr == players || players->Get_Array().size() != 6u ||
 		nullptr == skills || skills->Get_Array().size() != 94u ||
-		nullptr == patterns || patterns->Get_Array().size() != 33u)
+		nullptr == patterns ||
+		patterns->Get_Array().size() != tool.m_patterns.size() ||
+		33u != livePatternCount)
 	{
 		status = "Balance Tool round-trip changed current object counts.";
 		return false;
@@ -5178,7 +5351,7 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 	}
 
 	status = "Balance Tool read-only round-trip preserved 6 players, 94 skills, "
-		"108 damage profiles, 1 boss, 33 patterns, identityCost, all skill kinds, "
+		"108 damage profiles, 1 boss, 33 live patterns plus manual auditions, identityCost, all skill kinds, "
 		"comboAdvanceMs, introPatternId, and serverMotion.";
 	return true;
 }

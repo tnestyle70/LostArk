@@ -210,6 +210,8 @@ namespace
 			output = BOSS_PATTERN_SELECTION::NORMAL;
 		else if ("HEALTH_BAR" == value)
 			output = BOSS_PATTERN_SELECTION::HEALTH_BAR;
+		else if ("AUDITION_ONLY" == value)
+			output = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
 		else
 			return false;
 		return true;
@@ -3051,22 +3053,40 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		{
 			const std::string patternPolicyKey =
 				pattern.strEncounterId + "\n" + pattern.strPatternId;
-			const bool isNormal = BOSS_PATTERN_SELECTION::NORMAL == pattern.eSelection;
-			const bool validSelection = isNormal ?
-				(pattern.iMinimumHealthBar >= 1u &&
-					pattern.iMaximumHealthBar >= pattern.iMinimumHealthBar &&
-					pattern.iMaximumHealthBar <= boss.iMaximumHealthBars &&
-					0u == pattern.iTriggerHealthBar && 0u == pattern.iTriggerOrder &&
-					pattern.iSelectionWeight > 0u &&
-					pattern.iMaximumConsecutiveUses > 0u) :
-				(0u == pattern.iMinimumHealthBar && 0u == pattern.iMaximumHealthBar &&
-					pattern.iTriggerHealthBar >= 1u &&
-					pattern.iTriggerHealthBar <= boss.iMaximumHealthBars &&
-					pattern.iTriggerOrder > 0u && 0u == pattern.iSelectionWeight &&
-					0u == pattern.iMaximumConsecutiveUses);
+			const bool isNormal =
+				BOSS_PATTERN_SELECTION::NORMAL == pattern.eSelection;
+			const bool isHealthMechanic =
+				BOSS_PATTERN_SELECTION::HEALTH_BAR == pattern.eSelection;
+			const bool isAuditionOnly =
+				BOSS_PATTERN_SELECTION::AUDITION_ONLY == pattern.eSelection;
+			const bool validNormalSelection = isNormal &&
+				pattern.iMinimumHealthBar >= 1u &&
+				pattern.iMaximumHealthBar >= pattern.iMinimumHealthBar &&
+				pattern.iMaximumHealthBar <= boss.iMaximumHealthBars &&
+				0u == pattern.iTriggerHealthBar && 0u == pattern.iTriggerOrder &&
+				pattern.iSelectionWeight > 0u &&
+				pattern.iMaximumConsecutiveUses > 0u;
+			const bool validHealthSelection = isHealthMechanic &&
+				0u == pattern.iMinimumHealthBar &&
+				0u == pattern.iMaximumHealthBar &&
+				pattern.iTriggerHealthBar >= 1u &&
+				pattern.iTriggerHealthBar <= boss.iMaximumHealthBars &&
+				pattern.iTriggerOrder > 0u &&
+				0u == pattern.iSelectionWeight &&
+				0u == pattern.iMaximumConsecutiveUses;
+			const bool validAuditionSelection = isAuditionOnly &&
+				0u == pattern.iMinimumHealthBar &&
+				0u == pattern.iMaximumHealthBar &&
+				0u == pattern.iTriggerHealthBar &&
+				0u == pattern.iTriggerOrder &&
+				0u == pattern.iSelectionWeight &&
+				0u == pattern.iMaximumConsecutiveUses &&
+				BOSS_PATTERN_CATEGORY::MECHANIC != pattern.eCategory;
+			const bool validSelection = validNormalSelection ||
+				validHealthSelection || validAuditionSelection;
 			if (!validSelection ||
 				!patternPolicyOwners.contains(patternPolicyKey) ||
-				(BOSS_PATTERN_SELECTION::HEALTH_BAR == pattern.eSelection &&
+				(isHealthMechanic &&
 				 BOSS_PATTERN_CATEGORY::MECHANIC != pattern.eCategory) ||
 				(BOSS_PATTERN_AIM_POLICY::FACE_MOTION_ANCHOR ==
 					pattern.eAimPolicy &&
@@ -3504,6 +3524,27 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					return false;
 				}
 			}
+		}
+	}
+
+	/* The intro is the only automatic selector edge not represented by a
+	rotation row. Keep it normal-only so an AUDITION_ONLY stable ID can never be
+	promoted into combat by changing ENCOUNTERINTRO alone. */
+	for (const auto& [encounterId, introPatternId] :
+		m_IntroPatternIdByEncounter)
+	{
+		const auto patterns = m_BossPatterns.find(encounterId);
+		if (m_BossPatterns.end() == patterns ||
+			patterns->second.end() == std::find_if(
+				patterns->second.begin(), patterns->second.end(),
+				[&introPatternId](const BOSS_PATTERN_DEFINITION& pattern)
+				{
+					return pattern.strPatternId == introPatternId &&
+						BOSS_PATTERN_SELECTION::NORMAL == pattern.eSelection;
+				}))
+		{
+			m_strStatus = "Encounter intro names no normal pattern";
+			return false;
 		}
 	}
 

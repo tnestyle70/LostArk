@@ -819,6 +819,17 @@ namespace
 				trace.Candidates.push_back(std::move(candidate));
 				boss.bIntroPatternConsumed = true;
 			}
+			else if (BOSS_PATTERN_SELECTION::NORMAL != intro->eSelection)
+			{
+				/* Catalog admission rejects this. Keep the runtime edge fail-closed
+				if a future caller ever supplies an unvalidated definition set. */
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = intro->strPatternId;
+				candidate.iExclusionMask =
+					VALTAN_EXCLUDE_WRONG_SELECTION_KIND;
+				trace.Candidates.push_back(std::move(candidate));
+				boss.bIntroPatternConsumed = true;
+			}
 			else if (targetDistance >= intro->fMinimumRange &&
 				targetDistance <= intro->fMaximumRange)
 			{
@@ -945,8 +956,10 @@ namespace
 			{
 				const std::size_t stepIndex = boss.iRotationStepIndex;
 				++boss.iRotationStepIndex;
-				if (const BOSS_PATTERN_DEFINITION* step =
-					FindPattern(patterns, rotation->PatternIds[stepIndex]))
+				const BOSS_PATTERN_DEFINITION* step =
+					FindPattern(patterns, rotation->PatternIds[stepIndex]);
+				if (nullptr != step &&
+					BOSS_PATTERN_SELECTION::NORMAL == step->eSelection)
 				{
 					trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
 					trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
@@ -960,15 +973,16 @@ namespace
 					trace.Candidates.push_back(std::move(candidate));
 					return step;
 				}
-				/* A step the catalog cannot resolve is skipped rather than
-				stalling the introduction, and the weighted roll covers the gap. */
+				/* An unresolved or non-normal step is skipped rather than stalling
+				the introduction, and the weighted roll covers the gap. */
 				if (trace.Candidates.size() <
 					CValtanBrain::MAX_DECISION_CANDIDATE_COUNT)
 				{
 					VALTAN_DECISION_CANDIDATE_TRACE candidate{};
 					candidate.strPatternId = rotation->PatternIds[stepIndex];
-					candidate.iExclusionMask =
-						VALTAN_EXCLUDE_UNRESOLVED_DEFINITION;
+					candidate.iExclusionMask = nullptr == step ?
+						VALTAN_EXCLUDE_UNRESOLVED_DEFINITION :
+						VALTAN_EXCLUDE_WRONG_SELECTION_KIND;
 					trace.Candidates.push_back(std::move(candidate));
 				}
 			}

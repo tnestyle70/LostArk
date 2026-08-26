@@ -201,7 +201,11 @@ namespace LostArk::Server
 	enum class BOSS_PATTERN_SELECTION
 	{
 		NORMAL,
-		HEALTH_BAR
+		HEALTH_BAR,
+		/* Product-authored animation/presentation pattern that may only enter
+		through the stable-ID PendingPatternIds audition queue. It owns no health
+		trigger or automatic-selection weight. */
+		AUDITION_ONLY
 	};
 
 	/* Which armour state a weighted pattern is offered in. A boss that wears no

@@ -37,6 +37,108 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.root, copy.deepcopy(self.migration_docs)
         )
 
+    def with_manual_audition(
+        self,
+        master: dict | None = None,
+        *,
+        pattern_id: str = "VALTAN_ANIMATION_PHASE2_PIPELINE_TEST",
+        source_chain_id: str = "pipeline-test-chain",
+    ) -> dict:
+        if master is None:
+            gameplay = copy.deepcopy(self.docs[pipeline.GAMEPLAY_AUTHORING_REL])
+            gameplay["decisionModel"].setdefault("manualAuditions", [])
+            staged = pipeline.join_v2_authoring(
+                gameplay,
+                self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+        else:
+            staged = copy.deepcopy(master)
+        action_root = "valtan.animation.phase2." + source_chain_id
+        action_id = action_root + ".step-01"
+        staged["patterns"].append(
+            {
+                "patternId": pattern_id,
+                "displayName": "[P2 Animation] " + source_chain_id,
+                "category": "NORMAL",
+                "compatibilitySelectionWeight": 0,
+                "actionId": action_root,
+                "entryActionId": action_id,
+                "targetPolicy": "NONE",
+                "aimPolicy": "NONE",
+                "eligibility": {
+                    "armorRequirement": "ANY",
+                    "phaseRequirement": "ANY",
+                    "minimumGameplayPhase": 1,
+                    "maximumGameplayPhase": 3,
+                    "minimumHealthBarInclusive": 1,
+                    "maximumHealthBarInclusive": 160,
+                    "minimumRangeM": 0.0,
+                    "maximumRangeM": 1.0,
+                    "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+                    "selectionCooldownMs": None,
+                    "cooldownGroupId": None,
+                    "repeatPolicy": {
+                        "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+                        "limit": 4,
+                    },
+                },
+                "invulnerableWhileRunning": False,
+                "sourceActionIds": [420633],
+                "sourceSequenceIndex": 0,
+                "presentationSources": [
+                    {
+                        "sourceActionId": 420633,
+                        "sequenceIndex": 0,
+                        "role": "PRIMARY",
+                    }
+                ],
+                "serverMotion": None,
+                "reactions": [],
+                "stages": [
+                    {
+                        "stageId": "STEP_01",
+                        "sequenceRole": "ACTIVE",
+                        "actionId": action_id,
+                        "stageKind": "ACTIVE",
+                        "durationMs": 1000,
+                        "defaultNextActionId": None,
+                        "hit": {"shape": {"kind": "NONE"}},
+                        "motion": None,
+                        "events": [],
+                        "branches": [],
+                        "animation": {
+                            "endPolicy": "EXACT",
+                            "repeatCount": 1,
+                            "occurrences": [
+                                {
+                                    "clipOccurrenceId": action_id + ".clip.01",
+                                    "clip": "mesh_idle_battle_1",
+                                    "mappingBasis": "PROJECT_AUTHORED",
+                                    "sourceStartMs": 0,
+                                    "playMs": 1000,
+                                    "playRate": 1.0,
+                                    "repeatUntilStageEnd": False,
+                                }
+                            ],
+                        },
+                        "effectCues": [],
+                        "cameraInvocations": [],
+                    }
+                ],
+            }
+        )
+        staged["decisionModel"]["manualAuditions"].append(
+            {
+                "patternId": pattern_id,
+                "sourceChainId": source_chain_id,
+                "authoringPhase": 2,
+                "admissionState": pipeline.MANUAL_SERVER_AUDITION,
+            }
+        )
+        return staged
+
     def create_directory_reparse(self, link: Path, target: Path) -> None:
         if os.name == "nt":
             completed = subprocess.run(
@@ -186,7 +288,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ],
             phase_events,
         )
-        projected = pipeline.project_v2_products(self.root, self.docs, migrated)
+        projected = pipeline.project_v2_products(
+            self.root, self.docs, migrated, migration_fixture=True
+        )
         for relative, text in projected.items():
             if relative in (pipeline.ENCOUNTER_REL, pipeline.BINDINGS_REL):
                 continue
@@ -476,7 +580,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         }
         self.assertTrue(all(set(member) == member_fields for member in event_set["members"]))
         migrated = self.migrate()
-        projected_text = pipeline.project_v2_products(self.root, self.docs, migrated)[
+        projected_text = pipeline.project_v2_products(
+            self.root, self.docs, migrated, migration_fixture=True
+        )[
             pipeline.WORLD_PRODUCT_REL
         ]
         source_text = pipeline.read_text(self.root / pipeline.WORLD_PRODUCT_REL)
@@ -1298,6 +1404,195 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 self.root, self.docs, coordinated_but_unpromoted
             )
 
+    def test_manual_audition_rows_are_strict_disjoint_and_compile_fail_closed(self) -> None:
+        staged = self.with_manual_audition()
+        pipeline.validate_v2_master(
+            staged,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        manual_pattern = staged["patterns"][-1]
+        product = pipeline.compile_pattern_product(staged, manual_pattern)
+        self.assertEqual(pipeline.AUDITION_ONLY, product["selectionMode"])
+        self.assertEqual("ANY", product["armorRequirement"])
+        self.assertEqual("ANY", product["phaseRequirement"])
+        for field in (
+            "minimumHealthBar",
+            "maximumHealthBar",
+            "triggerHealthBar",
+            "triggerOrder",
+            "selectionWeight",
+            "maximumConsecutiveUses",
+        ):
+            self.assertEqual(0, product[field], field)
+        self.assertEqual(1, product["minimumPhase"])
+        self.assertEqual(3, product["maximumPhase"])
+        self.assertEqual(0.0, product["minimumRange"])
+        self.assertEqual(1.0, product["maximumRange"])
+
+        invalid_masters = []
+
+        unknown_field = copy.deepcopy(staged)
+        unknown_field["decisionModel"]["manualAuditions"][0]["note"] = "draft"
+        invalid_masters.append(unknown_field)
+
+        missing_pattern = copy.deepcopy(staged)
+        missing_pattern["decisionModel"]["manualAuditions"][0][
+            "patternId"
+        ] = "VALTAN_ANIMATION_PHASE2_MISSING"
+        invalid_masters.append(missing_pattern)
+
+        invalid_phase = copy.deepcopy(staged)
+        invalid_phase["decisionModel"]["manualAuditions"][0]["authoringPhase"] = 0
+        invalid_masters.append(invalid_phase)
+
+        invalid_admission = copy.deepcopy(staged)
+        invalid_admission["decisionModel"]["manualAuditions"][0][
+            "admissionState"
+        ] = "PRODUCT_ROTATION"
+        invalid_masters.append(invalid_admission)
+
+        overlap = copy.deepcopy(staged)
+        overlap["decisionModel"]["selectionSets"][0]["candidates"].append(
+            {
+                "patternId": manual_pattern["patternId"],
+                "weight": 1,
+                "enabled": True,
+            }
+        )
+        invalid_masters.append(overlap)
+
+        duplicate = copy.deepcopy(staged)
+        duplicate["decisionModel"]["manualAuditions"].append(
+            copy.deepcopy(duplicate["decisionModel"]["manualAuditions"][0])
+        )
+        invalid_masters.append(duplicate)
+
+        duplicate_source_chain = self.with_manual_audition(
+            staged,
+            pattern_id="VALTAN_ANIMATION_PHASE2_PIPELINE_TEST_SECOND",
+            source_chain_id="pipeline-test-chain-second",
+        )
+        duplicate_source_chain["decisionModel"]["manualAuditions"][-1][
+            "sourceChainId"
+        ] = "pipeline-test-chain"
+        invalid_masters.append(duplicate_source_chain)
+
+        for invalid in invalid_masters:
+            with self.subTest(invalid=invalid["decisionModel"]["manualAuditions"]), self.assertRaises(
+                pipeline.PipelineError
+            ):
+                pipeline.validate_v2_master(
+                    invalid,
+                    self.docs[pipeline.WORLD_SET_REL],
+                    self.docs[pipeline.COMBAT_AUTHORING_REL],
+                )
+
+    def test_manual_audition_projection_appends_after_existing_product_ordinals(self) -> None:
+        staged = self.with_manual_audition()
+        managed_pattern_ids = {row["patternId"] for row in staged["patterns"]}
+        pipeline.validate_legacy_products(
+            self.docs[pipeline.LEGACY_REL], self.docs, managed_pattern_ids
+        )
+
+        encounter_before_text = pipeline.read_text(
+            self.root / pipeline.ENCOUNTER_REL
+        )
+        bindings_before_text = pipeline.read_text(self.root / pipeline.BINDINGS_REL)
+        encounter_before = self.docs[pipeline.ENCOUNTER_REL]
+        bindings_before = self.docs[pipeline.BINDINGS_REL]
+
+        first = pipeline.project_v2_products(self.root, self.docs, staged)
+        second = pipeline.project_v2_products(self.root, self.docs, staged)
+        self.assertEqual(first, second)
+
+        encounter_after = json.loads(
+            first[pipeline.ENCOUNTER_REL],
+            object_pairs_hook=pipeline._reject_duplicate_pairs,
+        )
+        bindings_after = json.loads(
+            first[pipeline.BINDINGS_REL],
+            object_pairs_hook=pipeline._reject_duplicate_pairs,
+        )
+        self.assertEqual(
+            [row["patternId"] for row in encounter_before["patterns"]],
+            [row["patternId"] for row in encounter_after["patterns"][:-1]],
+        )
+        self.assertEqual(
+            "VALTAN_ANIMATION_PHASE2_PIPELINE_TEST",
+            encounter_after["patterns"][-1]["patternId"],
+        )
+        self.assertEqual(
+            [row["actionId"] for row in bindings_before["bindings"]],
+            [row["actionId"] for row in bindings_after["bindings"][:-1]],
+        )
+        self.assertEqual(
+            "valtan.animation.phase2.pipeline-test-chain.step-01",
+            bindings_after["bindings"][-1]["actionId"],
+        )
+        self.assertEqual(
+            pipeline.AUDITION_ONLY,
+            encounter_after["patterns"][-1]["selectionMode"],
+        )
+
+        pipeline._assert_unmanaged_raw_rows_preserved(
+            encounter_before_text,
+            first[pipeline.ENCOUNTER_REL],
+            "patterns",
+            "patternId",
+            managed_pattern_ids,
+        )
+        managed_action_ids = {
+            stage["actionId"]
+            for pattern in staged["patterns"]
+            for stage in pattern["stages"]
+        }
+        pipeline._assert_unmanaged_raw_rows_preserved(
+            bindings_before_text,
+            first[pipeline.BINDINGS_REL],
+            "bindings",
+            "actionId",
+            managed_action_ids,
+        )
+
+        projected_docs = copy.deepcopy(self.docs)
+        projected_docs[pipeline.ENCOUNTER_REL] = encounter_after
+        projected_docs[pipeline.BINDINGS_REL] = bindings_after
+        pipeline.validate_legacy_products(
+            projected_docs[pipeline.LEGACY_REL],
+            projected_docs,
+            managed_pattern_ids,
+        )
+
+    def test_removed_manual_audition_fails_closed_before_stale_product_projection(self) -> None:
+        staged = self.with_manual_audition()
+        projected = pipeline.project_v2_products(self.root, self.docs, staged)
+        projected_docs = copy.deepcopy(self.docs)
+        projected_docs[pipeline.ENCOUNTER_REL] = json.loads(
+            projected[pipeline.ENCOUNTER_REL],
+            object_pairs_hook=pipeline._reject_duplicate_pairs,
+        )
+        projected_docs[pipeline.BINDINGS_REL] = json.loads(
+            projected[pipeline.BINDINGS_REL],
+            object_pairs_hook=pipeline._reject_duplicate_pairs,
+        )
+
+        removed_id = staged["decisionModel"]["manualAuditions"][-1]["patternId"]
+        staged["decisionModel"]["manualAuditions"] = [
+            row
+            for row in staged["decisionModel"]["manualAuditions"]
+            if row["patternId"] != removed_id
+        ]
+        staged["patterns"] = [
+            row for row in staged["patterns"] if row["patternId"] != removed_id
+        ]
+
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "Product AUDITION_ONLY ownership drift.*" + removed_id,
+        ):
+            pipeline.project_v2_products(self.root, projected_docs, staged)
+
     def test_gameplay_publisher_rejects_partial_phase_boundary_product(self) -> None:
         encounter = copy.deepcopy(self.docs[pipeline.ENCOUNTER_REL])
         arena_break = next(
@@ -1383,7 +1678,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
-        projected = pipeline.project_v2_products(self.root, self.docs, staged)
+        projected = pipeline.project_v2_products(
+            self.root, self.docs, staged, migration_fixture=True
+        )
         encounter = json.loads(projected[pipeline.ENCOUNTER_REL])
         high_jump = next(
             row for row in encounter["patterns"]

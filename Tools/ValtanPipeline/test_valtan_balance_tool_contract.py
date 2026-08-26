@@ -73,6 +73,72 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn("VALTAN_PATTERN_TREE_VIEW m_valtanPatternTree", self.balance_h)
         self.assertIn("std::vector<LEGACY_PATTERN_SUMMARY>", self.balance_h)
 
+        reload_authoring = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::ReloadValtanPatternAuthoring(",
+        )
+        self.assertIn("if (pattern.bAuthoringMasterManaged)", reload_authoring)
+        self.assertIn("CountManagedValtanPatterns(patternTree)", reload_authoring)
+
+        restore_authoring = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::RestoreValtanSavedAuthoring(",
+        )
+        self.assertIn("!targetPattern->bAuthoringMasterManaged", restore_authoring)
+        self.assertIn("CountManagedValtanPatterns(patternTree)", restore_authoring)
+
+        render_authoring = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::RenderValtanPatternAuthoring()",
+        )
+        self.assertIn("Managed manual Server auditions", render_authoring)
+        self.assertIn("!pattern.bAuthoringMasterManaged", render_authoring)
+        self.assertIn('pattern, "MANUAL AUDITION", index', render_authoring)
+
+        live_verification = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::RenderLiveVerification()",
+        )
+        self.assertIn(
+            "nullptr != selected && selected->bAuthoringMasterManaged",
+            live_verification,
+        )
+        self.assertIn("Selected legacy pattern", live_verification)
+
+        draft = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::BuildValtanDraftPatch(",
+        )
+        self.assertIn("if (!pattern.bAuthoringMasterManaged)", draft)
+
+    def test_manual_audition_actual_valtan_path_locks_selection_and_wall_clock(self) -> None:
+        managed_render = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::RenderValtanManagedPattern(",
+        )
+        for marker in (
+            "const bool_t bManualAudition = pattern.bManualServerAudition",
+            "Manual Server audition | phase %u | source chain %s",
+            "automatic selection disabled",
+            "AUDITION_ONLY keeps selection, repeat, and target range read-only",
+            "locked to the promoted animation occurrence wall-clock",
+            'ImGui::Button("Play Server Pattern")',
+            'EditFloat("Hit outer radius m"',
+            "Pattern Presentation references (read-only)",
+        ):
+            self.assertIn(marker, managed_render)
+
+        draft = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::BuildValtanDraftPatch(",
+        )
+        for marker in (
+            "Manual Server audition selection/repeat/range is locked",
+            "Manual Server audition stage duration is locked to the animation wall-clock",
+            "SET_STAGE_HIT",
+        ):
+            self.assertIn(marker, draft)
+
     def test_gameplay_and_presentation_source_roles_are_explicit_and_fail_closed(self) -> None:
         for marker in (
             "Data/Valtan/Valtan.gameplay.json",

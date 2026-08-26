@@ -1402,6 +1402,233 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			return loaded ? generation : nullptr;
 		};
 
+		constexpr std::string_view AUDITION_PATTERN_ID =
+			"VALTAN_TEST_ANIMATION_AUDITION";
+		constexpr std::string_view AUDITION_STAGE_ACTION_ID =
+			"valtan.test.animation-audition.step-01";
+		const auto appendAuditionPattern = [](
+			std::string text,
+			const std::string_view patternRow,
+			const std::string_view category)
+		{
+			const std::size_t headerEnd = text.find('\n');
+			if (std::string::npos == headerEnd)
+				return std::string{};
+			const std::size_t rowCountTab = text.rfind('\t', headerEnd);
+			std::size_t rowCountEnd = headerEnd;
+			if (0u != rowCountEnd && '\r' == text[rowCountEnd - 1u])
+				--rowCountEnd;
+			if (std::string::npos == rowCountTab ||
+				rowCountTab + 1u >= rowCountEnd)
+			{
+				return std::string{};
+			}
+			const unsigned long rowCount = std::stoul(text.substr(
+				rowCountTab + 1u, rowCountEnd - rowCountTab - 1u));
+			text.replace(
+				rowCountTab + 1u, rowCountEnd - rowCountTab - 1u,
+				std::to_string(rowCount + 5u));
+			if (!text.empty() && '\n' != text.back()) text.push_back('\n');
+			text.append(patternRow);
+			text.append(
+				"\nPATTERNPOLICY\tENCOUNTER_VALTAN\t"
+				"VALTAN_TEST_ANIMATION_AUDITION\t");
+			text.append(category);
+			text.append(
+				"\t1\t3\tNONE\tNONE"
+				"\nPATTERNSOURCE\tENCOUNTER_VALTAN\t"
+				"VALTAN_TEST_ANIMATION_AUDITION\t420638\t0\t0\t0\t0\t0\t0"
+				"\nPATTERNSTAGE\tENCOUNTER_VALTAN\t"
+				"VALTAN_TEST_ANIMATION_AUDITION\t0\tSTEP_01\t"
+				"valtan.test.animation-audition.step-01\tACTIVE\t100\tNONE\t"
+				"0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0"
+				"\nPATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\t"
+				"VALTAN_TEST_ANIMATION_AUDITION\t"
+				"valtan.test.animation-audition.step-01\tTIMEOUT\t-\n");
+			return text;
+		};
+		const std::string validAuditionRow =
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST_ANIMATION_AUDITION\t"
+			"valtan.test.animation-audition\tAUDITION_ONLY\t"
+			"0\t0\t0\t0\t0\t0\t0\t1\t1\tANY\tANY\t0";
+		const std::string validAuditionBootstrap = appendAuditionPattern(
+			bootstrapText, validAuditionRow, "NORMAL");
+		const std::shared_ptr<CGameplayCatalog> auditionCatalog =
+			loadBootstrapVariant(L"audition-only", validAuditionBootstrap);
+		const std::string invalidAuditionHealthBootstrap = appendAuditionPattern(
+			bootstrapText,
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST_ANIMATION_AUDITION\t"
+			"valtan.test.animation-audition\tAUDITION_ONLY\t"
+			"1\t160\t0\t0\t0\t0\t0\t1\t1\tANY\tANY\t0",
+			"NORMAL");
+		const std::string invalidAuditionTriggerBootstrap = appendAuditionPattern(
+			bootstrapText,
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST_ANIMATION_AUDITION\t"
+			"valtan.test.animation-audition\tAUDITION_ONLY\t"
+			"0\t0\t100\t1\t0\t0\t0\t1\t1\tANY\tANY\t0",
+			"NORMAL");
+		const std::string invalidAuditionWeightBootstrap = appendAuditionPattern(
+			bootstrapText,
+			"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST_ANIMATION_AUDITION\t"
+			"valtan.test.animation-audition\tAUDITION_ONLY\t"
+			"0\t0\t0\t0\t1\t1\t0\t1\t1\tANY\tANY\t0",
+			"NORMAL");
+		const std::string invalidAuditionMechanicBootstrap =
+			appendAuditionPattern(
+				bootstrapText, validAuditionRow, "MECHANIC");
+		std::string invalidAuditionIntroBootstrap = validAuditionBootstrap;
+		const bool madeAuditionIntro = replaceBootstrapRow(
+			invalidAuditionIntroBootstrap,
+			"ENCOUNTERINTRO\tENCOUNTER_VALTAN\tVALTAN_ENTRANCE_WHIRLWIND",
+			"ENCOUNTERINTRO\tENCOUNTER_VALTAN\t"
+			"VALTAN_TEST_ANIMATION_AUDITION");
+		const std::shared_ptr<CGameplayCatalog> invalidAuditionHealthCatalog =
+			loadBootstrapVariant(
+				L"audition-health-fields", invalidAuditionHealthBootstrap);
+		const std::shared_ptr<CGameplayCatalog> invalidAuditionTriggerCatalog =
+			loadBootstrapVariant(
+				L"audition-trigger-fields", invalidAuditionTriggerBootstrap);
+		const std::shared_ptr<CGameplayCatalog> invalidAuditionWeightCatalog =
+			loadBootstrapVariant(
+				L"audition-weight-fields", invalidAuditionWeightBootstrap);
+		const std::shared_ptr<CGameplayCatalog> invalidAuditionMechanicCatalog =
+			loadBootstrapVariant(
+				L"audition-mechanic", invalidAuditionMechanicBootstrap);
+		const std::shared_ptr<CGameplayCatalog> invalidAuditionIntroCatalog =
+			madeAuditionIntro ? loadBootstrapVariant(
+				L"audition-intro", invalidAuditionIntroBootstrap) : nullptr;
+		const std::vector<BOSS_PATTERN_DEFINITION>* auditionPatterns =
+			nullptr == auditionCatalog ? nullptr :
+				auditionCatalog->Find_BossPatterns("ENCOUNTER_VALTAN");
+		const auto auditionPattern = nullptr == auditionPatterns ?
+			std::vector<BOSS_PATTERN_DEFINITION>::const_iterator{} :
+			std::find_if(
+				auditionPatterns->begin(), auditionPatterns->end(),
+				[](const BOSS_PATTERN_DEFINITION& pattern)
+				{
+					return "VALTAN_TEST_ANIMATION_AUDITION" ==
+						pattern.strPatternId;
+				});
+		const bool loadedAuditionOnly = nullptr != auditionPatterns &&
+			auditionPatterns->end() != auditionPattern &&
+			BOSS_PATTERN_SELECTION::AUDITION_ONLY ==
+				auditionPattern->eSelection &&
+			0u == auditionPattern->iMinimumHealthBar &&
+			0u == auditionPattern->iMaximumHealthBar &&
+			0u == auditionPattern->iTriggerHealthBar &&
+			0u == auditionPattern->iTriggerOrder &&
+			0u == auditionPattern->iSelectionWeight &&
+			0u == auditionPattern->iMaximumConsecutiveUses;
+		tests.Require(
+			loadedAuditionOnly && madeAuditionIntro &&
+			nullptr == invalidAuditionHealthCatalog &&
+			nullptr == invalidAuditionTriggerCatalog &&
+			nullptr == invalidAuditionWeightCatalog &&
+			nullptr == invalidAuditionMechanicCatalog &&
+			nullptr == invalidAuditionIntroCatalog,
+			"Admit zero-gated audition-only patterns and reject health, trigger, weight, mechanic, or intro promotion fields");
+
+		if (loadedAuditionOnly)
+		{
+			std::map<PLAYER_ID, SERVER_PLAYER> auditionPlayers;
+			SERVER_PLAYER auditionTarget{};
+			auditionTarget.iPlayerId = 74002u;
+			auditionTarget.iNetEntityId = 74002u;
+			auditionTarget.iCurrentHp = 10000u;
+			auditionTarget.iMaximumHp = 10000u;
+			auditionTarget.fPositionX = 151.f;
+			auditionTarget.fPositionY = 22.97f;
+			auditionTarget.fPositionZ = -128.f;
+			auditionTarget.isCombatReady = true;
+			auditionPlayers.emplace(
+				auditionTarget.iPlayerId, auditionTarget);
+			const auto makeAuditionBoss = [&auditionCatalog]()
+			{
+				SERVER_WORLD_ENTITY boss{};
+				boss.iNetEntityId = 74003u;
+				boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+				boss.eAction = SERVER_ENTITY_ACTION::IDLE;
+				boss.strArchetypeId = "BOSS_VALTAN";
+				boss.strEncounterId = "ENCOUNTER_VALTAN";
+				boss.iCurrentHp = 60000u;
+				boss.iMaximumHp = 60000u;
+				boss.iMaximumHealthBars = 160u;
+				boss.iLastEvaluatedHealthBar = 160u;
+				boss.iLastHealthMechanicGenerationEpoch = 1u;
+				boss.iPhase = 1u;
+				boss.fPositionX = 151.f;
+				boss.fPositionY = 22.97f;
+				boss.fPositionZ = -122.f;
+				boss.fEngageDistance = 35.f;
+				boss.fMoveSpeed = 3.f;
+				boss.bIntroPatternConsumed = true;
+				boss.bScriptedPatternPlayback = true;
+				boss.PinnedDefinitionRevision =
+					auditionCatalog->Get_ActiveRevision();
+				return boss;
+			};
+			SERVER_WORLD_ENTITY automaticBoss = makeAuditionBoss();
+			CValtanBrain automaticBrain;
+			std::vector<DAMAGE_EVENT> auditionDamageEvents;
+			automaticBrain.Update(
+				automaticBoss, auditionPlayers, *auditionCatalog,
+				valtanRoom->m_ServerNavigation, 1.f / 30.f, 22000u, {},
+				auditionDamageEvents);
+			const VALTAN_DECISION_TRACE* automaticTrace =
+				automaticBrain.Get_LatestDecisionTrace();
+			const auto automaticCandidate = nullptr == automaticTrace ?
+				std::vector<VALTAN_DECISION_CANDIDATE_TRACE>::const_iterator{} :
+				std::find_if(
+					automaticTrace->Candidates.begin(),
+					automaticTrace->Candidates.end(),
+					[](const VALTAN_DECISION_CANDIDATE_TRACE& candidate)
+					{
+						return "VALTAN_TEST_ANIMATION_AUDITION" ==
+							candidate.strPatternId;
+					});
+			const bool excludedFromAutomaticSelection =
+				nullptr != automaticTrace &&
+				automaticTrace->Candidates.end() != automaticCandidate &&
+				0u != (automaticCandidate->iExclusionMask &
+					VALTAN_EXCLUDE_WRONG_SELECTION_KIND) &&
+				0u == automaticCandidate->iEffectiveWeight &&
+				!automaticCandidate->bSelected &&
+				AUDITION_PATTERN_ID != automaticBoss.strPatternId &&
+				AUDITION_PATTERN_ID != automaticTrace->strSelectedPatternId;
+
+			SERVER_WORLD_ENTITY forcedBoss = makeAuditionBoss();
+			forcedBoss.iNetEntityId = 74004u;
+			forcedBoss.PendingPatternIds.emplace_back(AUDITION_PATTERN_ID);
+			CValtanBrain forcedBrain;
+			auditionDamageEvents.clear();
+			const std::uint32_t targetHpBefore =
+				auditionPlayers.begin()->second.iCurrentHp;
+			forcedBrain.Update(
+				forcedBoss, auditionPlayers, *auditionCatalog,
+				valtanRoom->m_ServerNavigation, 1.f / 30.f, 22001u, {},
+				auditionDamageEvents);
+			const VALTAN_DECISION_TRACE* forcedTrace =
+				forcedBrain.Get_LatestDecisionTrace();
+			const bool forcedStableIdExecuted =
+				AUDITION_PATTERN_ID == forcedBoss.strPatternId &&
+				AUDITION_STAGE_ACTION_ID == forcedBoss.strActionId &&
+				SERVER_ENTITY_ACTION::PATTERN_ACTIVE == forcedBoss.eAction &&
+				1u == forcedBoss.iPatternSequence &&
+				forcedBoss.PendingPatternIds.empty() &&
+				forcedBoss.TriggeredPatternIds.empty() &&
+				forcedBoss.MechanicOccurrences.empty() &&
+				nullptr != forcedTrace &&
+				VALTAN_DECISION_SOURCE::FORCED_AUDITION == forcedTrace->eSource &&
+				VALTAN_DECISION_RESULT::SELECTED == forcedTrace->eResult &&
+				AUDITION_PATTERN_ID == forcedTrace->strPendingPatternId &&
+				AUDITION_PATTERN_ID == forcedTrace->strSelectedPatternId &&
+				auditionDamageEvents.empty() &&
+				targetHpBefore == auditionPlayers.begin()->second.iCurrentHp;
+			tests.Require(
+				excludedFromAutomaticSelection && forcedStableIdExecuted,
+				"Exclude audition-only from every automatic weight roll and execute it only through its pending stable ID");
+		}
+
 		std::string mixedTaggedRows = bootstrapText;
 		const bool madeMixedTaggedRows = replaceBootstrapRow(
 			mixedTaggedRows,
@@ -2274,7 +2501,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"VALTAN_RED_BLADE_WAVE" ==
 				timeline->Rows[28].PatternActions[1].strPatternId &&
 			2u == timeline->Rows[2].PatternActions.size() &&
-			2u == timeline->Rows[15].PatternActions.size() &&
+			1u == timeline->Rows[15].PatternActions.size() &&
 			2u == timeline->Rows[31].PatternActions.size(),
 			"Load the 52-row Valtan timeline with pattern-before-row bootstrap ordering");
 	}
@@ -2384,6 +2611,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
 					targetId, 0u);
 		};
+		std::size_t valtanLivePatternCount = 0u;
 		std::size_t valtanStageCount = 0u;
 		std::size_t valtanStageActionCount = 0u;
 		std::size_t valtanRuntimeBranchCount = 0u;
@@ -2392,6 +2620,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 			for (const BOSS_PATTERN_DEFINITION& pattern : *patterns)
 			{
+				if (BOSS_PATTERN_SELECTION::AUDITION_ONLY == pattern.eSelection)
+					continue;
+				++valtanLivePatternCount;
 				valtanStageCount += pattern.Stages.size();
 				for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
 				{
@@ -2429,7 +2660,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const BOSS_PATTERN_STAGE_DEFINITION* centerCounter =
 			findStage("VALTAN_CENTER_GRAB_COUNTER_64", "COUNTER_WINDOW");
 		const bool reactiveTopologyExact = nullptr != patterns &&
-			33u == patterns->size() && 131u == valtanStageCount &&
+			33u == valtanLivePatternCount && 131u == valtanStageCount &&
 			25u == valtanStageActionCount &&
 			141u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&

@@ -1253,7 +1253,13 @@
 	  <Filter>96.DataFiles\Valtan</Filter>
 	</None>
 	<None Include="..\..\Data\Valtan\Valtan.presentation.debug.json">
-	  <Filter>96.DataFiles\Valtan</Filter>
+		<Filter>96.DataFiles\Valtan</Filter>
+	</None>
+	<None Include="..\..\Data\Valtan\Valtan.animation-chain-promotions.json">
+		<Filter>96.DataFiles\Valtan</Filter>
+	</None>
+	<None Include="..\..\Data\Valtan\Valtan.animation-chain-promotion.receipt.json">
+		<Filter>96.DataFiles\Valtan</Filter>
 	</None>
 	<None Include="..\..\Data\Valtan\Valtan.combatobjects.json">
 	  <Filter>96.DataFiles\Valtan</Filter>

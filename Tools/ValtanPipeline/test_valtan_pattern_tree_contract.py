@@ -20,10 +20,17 @@ TREE_CPP = ROOT / "Client/Private/ValtanPatternTree.cpp"
 TREE_HEADER = ROOT / "Client/Public/ValtanPatternTree.h"
 EFFECT_CUE_CPP = ROOT / "Client/Private/ValtanPatternEffectCueDocument.cpp"
 EFFECT_SERVICE_CPP = ROOT / "Client/Private/Effect_PresentationService.cpp"
+EFFECT_TOOL_CPP = ROOT / "Client/Private/Effect_Tool.cpp"
 ENCOUNTER_REFERENCE_CPP = ROOT / "Client/Private/EncounterPatternReference.cpp"
 VALTAN_LEVEL_CPP = ROOT / "Client/Private/Level_ValtanArena.cpp"
 WORLD_SETS_PATH = ROOT / "Data/Valtan/Valtan.worldeventsets.json"
 COMBAT_AUTHORING_PATH = ROOT / "Data/Valtan/Valtan.combatobjects.json"
+PROMOTION_MANIFEST_PATH = (
+    ROOT / "Data/Valtan/Valtan.animation-chain-promotions.json"
+)
+PROMOTION_RECEIPT_PATH = (
+    ROOT / "Data/Valtan/Valtan.animation-chain-promotion.receipt.json"
+)
 
 sys.path.insert(0, str(ROOT / "Tools/ValtanPipeline"))
 import valtan_tuning_pipeline as tuning_pipeline  # noqa: E402
@@ -169,6 +176,10 @@ def split_policy_accepts(
     mechanics = {
         row["patternId"] for row in joined["decisionModel"]["mechanics"]
     }
+    manual_auditions = {
+        row["patternId"]
+        for row in joined["decisionModel"]["manualAuditions"]
+    }
     for pattern in joined["patterns"]:
         product = products.get(pattern["patternId"])
         if product is None:
@@ -183,8 +194,13 @@ def split_policy_accepts(
             source_stage_topology != product_stage_topology
             or pattern["actionId"] != product["actionId"]
             or pattern["sourceActionIds"] != product["sourceActionIds"]
-            or (pattern["patternId"] in mechanics)
-            != (product["selectionMode"] == "HEALTH_BAR")
+            or product["selectionMode"] != (
+                "HEALTH_BAR"
+                if pattern["patternId"] in mechanics
+                else "AUDITION_ONLY"
+                if pattern["patternId"] in manual_auditions
+                else "NORMAL"
+            )
         ):
             return False
         if require_product_parity and (
@@ -358,6 +374,8 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         cls.presentation = load(PRESENTATION_PATH)
         cls.world_sets = load(WORLD_SETS_PATH)
         cls.combat_authoring = load(COMBAT_AUTHORING_PATH)
+        cls.promotion_manifest = load(PROMOTION_MANIFEST_PATH)
+        cls.promotion_receipt = load(PROMOTION_RECEIPT_PATH)
         cls.encounter = load(ENCOUNTER_PATH)
         cls.bindings = load(BINDINGS_PATH)
         cls.rotations = load(ROTATIONS_PATH)
@@ -365,6 +383,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         cls.header = TREE_HEADER.read_text(encoding="utf-8")
         cls.effect_cue_cpp = EFFECT_CUE_CPP.read_text(encoding="utf-8")
         cls.effect_service_cpp = EFFECT_SERVICE_CPP.read_text(encoding="utf-8")
+        cls.effect_tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         cls.encounter_reference_cpp = ENCOUNTER_REFERENCE_CPP.read_text(
             encoding="utf-8"
         )
@@ -618,6 +637,60 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
 
     def test_current_master_only_contracts_are_admissible(self) -> None:
         self.assertTrue(master_only_contract_valid(self.master))
+
+    def test_animation_chain_promotions_are_manual_only_product_patterns(self) -> None:
+        manual_rows = self.gameplay["decisionModel"]["manualAuditions"]
+        self.assertEqual(20, len(manual_rows))
+        self.assertEqual(
+            [row["patternId"] for row in self.promotion_manifest["patterns"]],
+            [row["patternId"] for row in manual_rows],
+        )
+        self.assertEqual(20, self.promotion_receipt["patternCount"])
+        self.assertEqual(94, self.promotion_receipt["stageCount"])
+
+        products = {
+            row["patternId"]: row for row in self.encounter["patterns"]
+        }
+        for manual in manual_rows:
+            product = products[manual["patternId"]]
+            self.assertEqual("AUDITION_ONLY", product["selectionMode"])
+            self.assertNotEqual("MECHANIC", product["category"])
+            self.assertEqual(
+                (0, 0, 0, 0, 0, 0),
+                (
+                    product["minimumHealthBar"],
+                    product["maximumHealthBar"],
+                    product["triggerHealthBar"],
+                    product["triggerOrder"],
+                    product["selectionWeight"],
+                    product["maximumConsecutiveUses"],
+                ),
+            )
+            self.assertTrue(product["stages"])
+            for stage in product["stages"]:
+                self.assertEqual("NONE", stage["hitShape"])
+                self.assertEqual("", stage["serverDamageProfileId"])
+                self.assertNotIn("motion", stage)
+                self.assertNotIn("actions", stage)
+                self.assertNotIn("branches", stage)
+
+        self.assertEqual(
+            3,
+            self.promotion_manifest["patterns"][-1]["authoringPhase"],
+        )
+        for token in (
+            "VALTAN_MANUAL_AUDITION_VIEW",
+            '"manualAuditions"',
+            '"AUDITION_ONLY"',
+            "bManualServerAudition",
+            "strSourceAnimationChainId",
+        ):
+            self.assertIn(token, self.cpp + self.header)
+        for token in (
+            '"Manual Audition | P"',
+            '"Animation-first manual audition | phase %u | source chain %s | automatic rotation disabled"',
+        ):
+            self.assertIn(token, self.effect_tool_cpp)
 
     def test_counter_reaction_and_weighted_selection_are_exact_product_joins(self) -> None:
         self.assertTrue(shared_reaction_and_selection_contract_valid(

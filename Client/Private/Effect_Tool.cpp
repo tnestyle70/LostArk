@@ -11384,6 +11384,13 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		{
 			ImGui::TextDisabled(
 				"Server timing: Data/Valtan/Valtan.gameplay.json | Presentation: Data/Valtan/Valtan.presentation.json");
+			if (Pattern.bManualServerAudition)
+			{
+				ImGui::TextDisabled(
+					"Animation-first manual audition | phase %u | source chain %s | automatic rotation disabled",
+					Pattern.iAuthoringPhase,
+					Pattern.strSourceAnimationChainId.c_str());
+			}
 			for (const VALTAN_PRESENTATION_SOURCE_VIEW& Source :
 				Pattern.PresentationSources)
 			{
@@ -12096,8 +12103,12 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	{
 		if (iRotation == m_ValtanPatternTree.iIntroRotationIndex)
 			continue;
-		Render_ValtanPatternNode(
-			m_ValtanPatternTree.Rotation[iRotation], "Rotation", strSearch);
+		const VALTAN_PATTERN_VIEW& Pattern =
+			m_ValtanPatternTree.Rotation[iRotation];
+		const std::string strGroupLabel = Pattern.bManualServerAudition ?
+			"Manual Audition | P" + std::to_string(Pattern.iAuthoringPhase) :
+			"Rotation";
+		Render_ValtanPatternNode(Pattern, strGroupLabel.c_str(), strSearch);
 	}
 }
 
