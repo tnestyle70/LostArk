@@ -12,6 +12,7 @@ CPP_PATH = REPOSITORY_ROOT / "Client/Private/Animation_Tool.cpp"
 HEADER_PATH = REPOSITORY_ROOT / "Client/Public/Animation_Tool.h"
 MASTER_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.pattern.json"
 PRESENTATION_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.presentation.json"
+GAMEPLAY_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.gameplay.json"
 
 EXPECTED_PATTERN_ORDER = (
     "VALTAN_WHIRLWIND",
@@ -37,6 +38,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
         cls.header = HEADER_PATH.read_text(encoding="utf-8")
         cls.master = json.loads(MASTER_PATH.read_text(encoding="utf-8"))
         cls.presentation = json.loads(PRESENTATION_PATH.read_text(encoding="utf-8"))
+        cls.gameplay = json.loads(GAMEPLAY_PATH.read_text(encoding="utf-8"))
 
     def test_master_contains_the_seven_animation_tool_patterns(self) -> None:
         self.assertEqual("lostark.valtan-pattern-master", self.master["schema"])
@@ -69,8 +71,9 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             [
                 "mesh_att_battle_5_02_loop",
                 "mesh_att_battle_5_02_end",
-                "mesh_att_battle_5_02_loop",
-                "mesh_att_battle_5_02_end",
+                "mesh_att_battle_5_04",
+                "mesh_att_battle_15_02",
+                "mesh_att_battle_15_03",
                 "mesh_att_battle_15_04",
             ],
             [
@@ -79,7 +82,119 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
                 for occurrence in stage["animation"]["occurrences"]
             ],
         )
+        floor_stages = {
+            stage["stageId"]: stage
+            for stage in floor["stages"]
+        }
+        self.assertEqual(
+            ("HOLD_LAST_POSE", [("mesh_att_battle_5_02_end", 534, False)]),
+            (
+                floor_stages["FIRST_SMASH"]["animation"]["endPolicy"],
+                [
+                    (
+                        occurrence["clip"],
+                        occurrence["playMs"],
+                        occurrence["repeatUntilStageEnd"],
+                    )
+                    for occurrence in floor_stages["FIRST_SMASH"]["animation"]["occurrences"]
+                ],
+            ),
+        )
+        self.assertEqual(
+            (
+                "HOLD_LAST_POSE",
+                [
+                    ("mesh_att_battle_5_04", 500, False),
+                    ("mesh_att_battle_15_02", 1000, False),
+                ],
+            ),
+            (
+                floor_stages["INTERVAL"]["animation"]["endPolicy"],
+                [
+                    (
+                        occurrence["clip"],
+                        occurrence["playMs"],
+                        occurrence["repeatUntilStageEnd"],
+                    )
+                    for occurrence in floor_stages["INTERVAL"]["animation"]["occurrences"]
+                ],
+            ),
+        )
+        self.assertEqual(
+            ("EXACT", [("mesh_att_battle_15_03", 500, False)]),
+            (
+                floor_stages["SECOND_SMASH"]["animation"]["endPolicy"],
+                [
+                    (
+                        occurrence["clip"],
+                        occurrence["playMs"],
+                        occurrence["repeatUntilStageEnd"],
+                    )
+                    for occurrence in floor_stages["SECOND_SMASH"]["animation"]["occurrences"]
+                ],
+            ),
+        )
         arena_break = patterns["VALTAN_ARENA_BREAK_109"]
+        arena_gameplay = next(
+            pattern
+            for pattern in self.gameplay["patterns"]
+            if pattern["patternId"] == "VALTAN_ARENA_BREAK_109"
+        )
+        self.assertEqual(
+            {
+                "kind": "LEAP_TO_ANCHOR",
+                "anchorId": "anchor.valtan.arena-break-109.landing",
+                "landingPosition": [156.03, 22.99751, -122.06],
+                "apexHeight": 12.0,
+                "travelStageId": "DROP",
+                "takeoffStartMs": 0,
+                "takeoffEndMs": 900,
+                "travelStartMs": 0,
+                "travelEndMs": 700,
+            },
+            arena_gameplay["serverMotion"],
+        )
+        self.assertEqual(
+            [
+                ("TAKEOFF", "valtan.mechanic.arena-break-109.takeoff", 900),
+                ("DROP", "valtan.mechanic.arena-break-109.drop", 700),
+                ("IMPACT", "valtan.mechanic.arena-break-109.impact", 400),
+                (
+                    "IMPACT_HOLD",
+                    "valtan.mechanic.arena-break-109.impact-hold",
+                    1100,
+                ),
+                (
+                    "WIDE_REVEAL",
+                    "valtan.mechanic.arena-break-109.wide-reveal",
+                    2300,
+                ),
+                ("RECOVERY", "valtan.mechanic.arena-break-109.recovery", 870),
+            ],
+            [
+                (stage["stageId"], stage["actionId"], stage["durationMs"])
+                for stage in arena_gameplay["stages"]
+            ],
+        )
+        self.assertEqual(
+            [
+                "mesh_att_battle_12_01",
+                "mesh_att_battle_12_01",
+                "mesh_att_battle_12_02",
+                "mesh_att_battle_12_02",
+                "mesh_att_battle_12_02",
+                "mesh_att_battle_12_03",
+                "mesh_att_battle_12_03",
+                "mesh_evt1_att_battle_5_01_start",
+                "mesh_evt1_att_battle_5_01_loop",
+                "mesh_evt1_att_battle_5_01_end",
+            ],
+            [
+                occurrence["clip"]
+                for stage in arena_break["stages"]
+                for occurrence in stage["animation"]["occurrences"]
+            ],
+        )
         wide_reveal = next(
             stage
             for stage in arena_break["stages"]

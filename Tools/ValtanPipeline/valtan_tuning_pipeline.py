@@ -32,6 +32,7 @@ from typing import Any, Iterable, Mapping, Sequence
 MASTER_REL = "Data/Valtan/Valtan.pattern.json"
 GAMEPLAY_AUTHORING_REL = "Data/Valtan/Valtan.gameplay.json"
 PRESENTATION_AUTHORING_REL = "Data/Valtan/Valtan.presentation.json"
+DEBUG_PRESENTATION_REL = "Data/Valtan/Valtan.presentation.debug.json"
 COMBAT_AUTHORING_REL = "Data/Valtan/Valtan.combatobjects.json"
 WORLD_SET_REL = "Data/Valtan/Valtan.worldeventsets.json"
 LEGACY_REL = "Data/Valtan/Valtan.legacy-compatibility.json"
@@ -48,7 +49,7 @@ DAMAGE_REL = "Data/Balance/DamageProfiles.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 19
+GAMEPLAY_BOOTSTRAP_VERSION = 21
 
 REPOSITORY_PRODUCT_ARTIFACTS = (
     ENCOUNTER_REL,
@@ -1378,8 +1379,21 @@ def _migrate_action(
             "volleyPolicy": "PER_ALIVE_PLAYER",
             "countPerResolvedTarget": action["value"],
             "layout": {"kind": "TARGET_CENTER"},
+            "spawnSchedule": {
+                "kind": "INTERVAL",
+                "count": 3,
+                "firstOffsetMs": 0,
+                "intervalMs": 1333,
+            },
+            "arenaRandom": {
+                "kind": "RANDOM_NAVIGABLE_CIRCLE",
+                "anchor": "BOSS_SPAWN_POSITION",
+                "count": 4,
+                "radiusM": 14.0,
+                "heightToleranceM": 1.0,
+            },
             "allowOverlap": False,
-            "maximumTotalObjects": 32,
+            "maximumTotalObjects": 36,
         }
     raise PipelineError(f"v1 action has no v2 migration: {action['kind']}")
 
@@ -1573,7 +1587,12 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
                     "sequenceRole": stage["sequenceRole"],
                     "actionId": stage["actionId"],
                     "stageKind": stage["stageKind"],
-                    "durationMs": stage["durationMs"],
+                    "durationMs": (
+                        4000
+                        if pattern_id == "VALTAN_HIGH_JUMP"
+                        and stage["stageId"] == "AIRBORNE"
+                        else stage["durationMs"]
+                    ),
                     "defaultNextActionId": default_next,
                     "hit": _migrate_hit(stage),
                     "motion": copy.deepcopy(stage["motion"]),
@@ -1698,10 +1717,76 @@ def _event_fields(kind: str) -> tuple[str, ...]:
     return {
         "SET_BOSS_FLAG": common + ("flagId", "enabled"),
         "SPAWN_COMBAT_OBJECT_VOLLEY": common
-        + ("combatObjectArchetypeId", "volleyPolicy", "countPerResolvedTarget", "layout", "allowOverlap", "maximumTotalObjects"),
+        + (
+            "combatObjectArchetypeId",
+            "volleyPolicy",
+            "countPerResolvedTarget",
+            "layout",
+            "spawnSchedule",
+            "arenaRandom",
+            "allowOverlap",
+            "maximumTotalObjects",
+        ),
         "SET_GAMEPLAY_PHASE": common + ("gameplayPhase",),
         "TRIGGER_WORLD_EVENT_SET": common + ("worldEventSetId",),
     }.get(kind, ())
+
+
+def _validate_volley_spawn_schedule(
+    schedule: Any, stage_duration_ms: int, event_id: str
+) -> tuple[int, int]:
+    context = f"event {event_id}.spawnSchedule"
+    if not isinstance(schedule, dict):
+        raise PipelineError(f"{context} must be an object")
+    exact(schedule, ("kind", "count", "firstOffsetMs", "intervalMs"), context)
+    if schedule["kind"] != "INTERVAL":
+        raise PipelineError(f"unsupported volley spawn schedule: {event_id}")
+    count = integer(schedule["count"], f"{context}.count", 1, 8)
+    first_offset_ms = integer(
+        schedule["firstOffsetMs"], f"{context}.firstOffsetMs", 0, 600000
+    )
+    interval_ms = integer(
+        schedule["intervalMs"], f"{context}.intervalMs", 0, 600000
+    )
+    if first_offset_ms != 0:
+        raise PipelineError(f"volley spawn schedule must start at stage ENTER: {event_id}")
+    if count > 1 and interval_ms == 0:
+        raise PipelineError(f"repeating volley spawn schedule has zero interval: {event_id}")
+    if count == 1 and interval_ms != 0:
+        raise PipelineError(
+            f"single volley spawn schedule has non-zero interval: {event_id}"
+        )
+    final_offset_ms = first_offset_ms + (count - 1) * interval_ms
+    if final_offset_ms >= stage_duration_ms:
+        raise PipelineError(
+            f"volley spawn schedule exceeds its stage duration: {event_id}"
+        )
+    return count, interval_ms
+
+
+def _validate_volley_arena_random(arena_random: Any, event_id: str) -> int:
+    context = f"event {event_id}.arenaRandom"
+    if not isinstance(arena_random, dict):
+        raise PipelineError(f"{context} must be an object")
+    exact(
+        arena_random,
+        ("kind", "anchor", "count", "radiusM", "heightToleranceM"),
+        context,
+    )
+    if (
+        arena_random["kind"] != "RANDOM_NAVIGABLE_CIRCLE"
+        or arena_random["anchor"] != "BOSS_SPAWN_POSITION"
+    ):
+        raise PipelineError(f"unsupported volley arena-random policy: {event_id}")
+    count = integer(arena_random["count"], f"{context}.count", 1, 32)
+    number(arena_random["radiusM"], f"{context}.radiusM", 0.01, 1000)
+    number(
+        arena_random["heightToleranceM"],
+        f"{context}.heightToleranceM",
+        0.01,
+        1000,
+    )
+    return count
 
 
 def _validate_manual_auditions(
@@ -1743,6 +1828,149 @@ def _validate_manual_auditions(
         pattern_ids.add(pattern_id)
         source_chain_ids.add(source_chain_id)
     return pattern_ids
+
+
+def validate_manual_audition_animation_lineage(
+    master: dict[str, Any], debug_presentation: dict[str, Any]
+) -> None:
+    """Keep phase-2/3 Server auditions on the reviewed animation intake.
+
+    Debug intake may leave target IDs and native clip lengths unresolved, but a
+    promoted MANUAL_SERVER_AUDITION must preserve the exact clip order, source
+    offsets, mapping basis, and playback rates.  The joined Product remains the
+    owner of explicit stage walls and loop/hold policy.
+    """
+
+    exact(
+        debug_presentation,
+        (
+            "schema",
+            "formatVersion",
+            "bossArchetypeId",
+            "encounterId",
+            "chains",
+        ),
+        "Valtan debug presentation root",
+    )
+    if (
+        debug_presentation["schema"]
+        != "lostark.valtan-pattern-presentation-debug"
+        or debug_presentation["formatVersion"] != 1
+        or debug_presentation["bossArchetypeId"] != master["bossArchetypeId"]
+        or debug_presentation["encounterId"] != master["encounterId"]
+    ):
+        raise PipelineError("Valtan debug presentation header mismatch")
+
+    chains = unique_index(
+        debug_presentation["chains"], "chainId", "Valtan debug chains"
+    )
+    patterns = unique_index(master["patterns"], "patternId", "v2 patterns")
+    manual_rows = master["decisionModel"]["manualAuditions"]
+    manual_chain_ids = {row["sourceChainId"] for row in manual_rows}
+    if manual_chain_ids != set(chains):
+        raise PipelineError(
+            "phase-2/3 animation intake must exact-join manualAuditions: "
+            f"manual={sorted(manual_chain_ids)} debug={sorted(chains)}"
+        )
+
+    def product_clip_name(value: str) -> str:
+        return "mesh_" + value if value.startswith("att_") else value
+
+    for row in manual_rows:
+        pattern_id = row["patternId"]
+        chain_id = row["sourceChainId"]
+        pattern = patterns[pattern_id]
+        chain = chains[chain_id]
+        context = f"manual audition {pattern_id}/{chain_id}"
+        exact(
+            chain,
+            ("chainId", "targetPatternId", "targetStageId", "animation"),
+            context,
+        )
+        target_pattern_id = chain["targetPatternId"]
+        target_stage_id = chain["targetStageId"]
+        if not isinstance(target_pattern_id, str) or not isinstance(
+            target_stage_id, str
+        ):
+            raise PipelineError(f"{context} target IDs must be strings")
+        if bool(target_pattern_id) != bool(target_stage_id):
+            raise PipelineError(f"{context} target IDs must be empty or paired")
+        if target_pattern_id:
+            stage_ids = {stage["stageId"] for stage in pattern["stages"]}
+            if target_pattern_id != pattern_id or target_stage_id not in stage_ids:
+                raise PipelineError(f"{context} target IDs do not join Product")
+
+        animation = chain["animation"]
+        exact(
+            animation,
+            ("endPolicy", "repeatCount", "occurrences"),
+            f"{context}.animation",
+        )
+        if animation["endPolicy"] != "NATIVE_CLIP_LENGTHS":
+            raise PipelineError(f"{context} debug endPolicy is unsupported")
+        occurrences = animation["occurrences"]
+        repeat_count = integer(
+            animation["repeatCount"], f"{context}.repeatCount", 1, 256
+        )
+        if not isinstance(occurrences, list) or repeat_count != len(occurrences):
+            raise PipelineError(f"{context} debug occurrence count drift")
+
+        product_occurrences = [
+            occurrence
+            for stage in pattern["stages"]
+            for occurrence in stage["animation"]["occurrences"]
+        ]
+        if len(product_occurrences) != len(occurrences):
+            raise PipelineError(f"{context} Product occurrence count drift")
+        for ordinal, (source, product) in enumerate(
+            zip(occurrences, product_occurrences)
+        ):
+            occurrence_context = f"{context}.occurrences[{ordinal}]"
+            exact(
+                source,
+                (
+                    "clipOccurrenceId",
+                    "clip",
+                    "mappingBasis",
+                    "sourceStartMs",
+                    "playMs",
+                    "playRate",
+                    "repeatUntilStageEnd",
+                ),
+                occurrence_context,
+            )
+            source_clip = stable_id(source["clip"], f"{occurrence_context}.clip")
+            mapping_basis(
+                source["mappingBasis"], f"{occurrence_context}.mappingBasis"
+            )
+            source_start_ms = integer(
+                source["sourceStartMs"],
+                f"{occurrence_context}.sourceStartMs",
+                0,
+                600000,
+            )
+            integer(
+                source["playMs"], f"{occurrence_context}.playMs", 0, 600000
+            )
+            play_rate = number(
+                source["playRate"],
+                f"{occurrence_context}.playRate",
+                0.000001,
+                1000,
+            )
+            boolean(
+                source["repeatUntilStageEnd"],
+                f"{occurrence_context}.repeatUntilStageEnd",
+            )
+            if (
+                product_clip_name(source_clip) != product["clip"]
+                or source["mappingBasis"] != product["mappingBasis"]
+                or source_start_ms != product["sourceStartMs"]
+                or play_rate != product["playRate"]
+            ):
+                raise PipelineError(
+                    f"{occurrence_context} no longer matches joined Product"
+                )
 
 
 def validate_v2_master(
@@ -2115,7 +2343,24 @@ def validate_v2_master(
                         raise PipelineError(f"spawn event has unresolved/unsupported archetype: {event_id}")
                     count = integer(event["countPerResolvedTarget"], f"event {event_id}.count", 1, 8)
                     boolean(event["allowOverlap"], f"event {event_id}.allowOverlap")
-                    integer(event["maximumTotalObjects"], f"event {event_id}.maximumTotalObjects", 1, 32)
+                    spawn_count, _ = _validate_volley_spawn_schedule(
+                        event["spawnSchedule"], duration, event_id
+                    )
+                    arena_random_count = _validate_volley_arena_random(
+                        event["arenaRandom"], event_id
+                    )
+                    maximum_total_objects = integer(
+                        event["maximumTotalObjects"],
+                        f"event {event_id}.maximumTotalObjects",
+                        1,
+                        64,
+                    )
+                    minimum_total_objects = count + arena_random_count
+                    if maximum_total_objects < minimum_total_objects:
+                        raise PipelineError(
+                            "volley maximumTotalObjects cannot admit one wave with "
+                            f"one resolved target plus its arena-random objects: {event_id}"
+                        )
                     if not isinstance(event["layout"], dict):
                         raise PipelineError(f"volley layout must be an object: {event_id}")
                     if event["allowOverlap"] is not False:
@@ -2327,6 +2572,108 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
         if len(source_action_ids) != len(set(source_action_ids)):
             raise PipelineError(f"gameplay pattern sourceActionIds is duplicate: {pattern_id}")
         stages = unique_index(pattern["stages"], "stageId", f"gameplay pattern {pattern_id} stages")
+        server_motion = pattern["serverMotion"]
+        if server_motion is not None:
+            exact(
+                server_motion,
+                (
+                    "kind",
+                    "anchorId",
+                    "landingPosition",
+                    "apexHeight",
+                    "travelStageId",
+                    "takeoffStartMs",
+                    "takeoffEndMs",
+                    "travelStartMs",
+                    "travelEndMs",
+                ),
+                f"gameplay pattern {pattern_id}.serverMotion",
+            )
+            if server_motion["kind"] not in {"LEAP_TO_ANCHOR", "LEAP_TO_TARGET"}:
+                raise PipelineError(
+                    f"unsupported serverMotion kind: {pattern_id}"
+                )
+            stable_id(
+                server_motion["anchorId"],
+                f"gameplay pattern {pattern_id}.serverMotion.anchorId",
+            )
+            travel_stage_id = stable_id(
+                server_motion["travelStageId"],
+                f"gameplay pattern {pattern_id}.serverMotion.travelStageId",
+            )
+            if travel_stage_id not in stages or not pattern["stages"]:
+                raise PipelineError(
+                    f"serverMotion travel stage is missing: {pattern_id}/{travel_stage_id}"
+                )
+            if pattern["stages"][0].get("stageId") != "TAKEOFF":
+                raise PipelineError(
+                    f"serverMotion first stage must be TAKEOFF: {pattern_id}"
+                )
+            travel_stage_index = next(
+                (
+                    index
+                    for index, stage in enumerate(pattern["stages"])
+                    if stage.get("stageId") == travel_stage_id
+                ),
+                -1,
+            )
+            if travel_stage_index <= 0:
+                raise PipelineError(
+                    f"serverMotion travel stage must follow TAKEOFF: "
+                    f"{pattern_id}/{travel_stage_id}"
+                )
+            landing = server_motion["landingPosition"]
+            if not isinstance(landing, list) or len(landing) != 3:
+                raise PipelineError(
+                    f"serverMotion landingPosition is invalid: {pattern_id}"
+                )
+            for coordinate in landing:
+                number(coordinate, f"gameplay pattern {pattern_id}.landingPosition", -100000, 100000)
+            number(
+                server_motion["apexHeight"],
+                f"gameplay pattern {pattern_id}.apexHeight",
+                0.000001,
+                200,
+            )
+            takeoff_start = integer(
+                server_motion["takeoffStartMs"],
+                f"gameplay pattern {pattern_id}.takeoffStartMs",
+                0,
+            )
+            takeoff_end = integer(
+                server_motion["takeoffEndMs"],
+                f"gameplay pattern {pattern_id}.takeoffEndMs",
+                1,
+            )
+            travel_start = integer(
+                server_motion["travelStartMs"],
+                f"gameplay pattern {pattern_id}.travelStartMs",
+                0,
+            )
+            travel_end = integer(
+                server_motion["travelEndMs"],
+                f"gameplay pattern {pattern_id}.travelEndMs",
+                1,
+            )
+            takeoff_duration = integer(
+                pattern["stages"][0]["durationMs"],
+                f"gameplay pattern {pattern_id} TAKEOFF durationMs",
+                1,
+            )
+            travel_duration = integer(
+                stages[travel_stage_id]["durationMs"],
+                f"gameplay pattern {pattern_id} travel durationMs",
+                1,
+            )
+            if (
+                takeoff_start >= takeoff_end
+                or takeoff_end > takeoff_duration
+                or travel_start >= travel_end
+                or travel_end > travel_duration
+            ):
+                raise PipelineError(
+                    f"serverMotion travel window is outside its stage: {pattern_id}"
+                )
         action_ids: set[str] = set()
         for stage_id, stage in stages.items():
             exact(
@@ -2482,7 +2829,8 @@ def _validate_gameplay_only_events(gameplay: dict[str, Any]) -> None:
         )
     ]:
         raise PipelineError(
-            "Valtan gameplay authoring must own exactly one HIGH_JUMP/AIRBORNE axe volley: "
+            "Valtan gameplay authoring must own exactly one "
+            "HIGH_JUMP/AIRBORNE mixed axe volley: "
             f"{volley_owners}"
         )
     if phase_owners != [(WORLD_PATTERN_ID, WORLD_STAGE_ID, "ENTER", 2)]:
@@ -2781,6 +3129,8 @@ def _compile_event(
         }
     if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY":
         layout = event["layout"]
+        spawn_schedule = event["spawnSchedule"]
+        arena_random = event["arenaRandom"]
         if layout["kind"] == "TARGET_CENTER":
             product_layout = "SINGLE"
             radius_m = 0
@@ -2807,6 +3157,12 @@ def _compile_event(
             "angleStepDegrees": angle_step_degrees,
             "allowOverlap": event["allowOverlap"],
             "maximumTotalObjects": event["maximumTotalObjects"],
+            "spawnCount": spawn_schedule["count"],
+            "spawnIntervalMs": spawn_schedule["intervalMs"],
+            "arenaRandomCount": arena_random["count"],
+            "arenaRandomRadiusM": arena_random["radiusM"],
+            "arenaHeightToleranceM": arena_random["heightToleranceM"],
+            "arenaAnchorPolicy": arena_random["anchor"],
         }
     if event["kind"] == "SET_GAMEPLAY_PHASE":
         return {
@@ -3057,7 +3413,7 @@ def replace_or_append_rows(
     """Replace known rows in place and append newly managed rows deterministically.
 
     Existing stable-ID ordinals and raw bytes outside replaced managed rows remain
-    untouched. Mapping insertion order is the canonical append order, which is
+    untouched.  Mapping insertion order is the canonical append order, which is
     supplied by the joined pattern/stage authoring order.
     """
 
@@ -3567,12 +3923,12 @@ def project_v2_products(
         raise PipelineError("world groups/mutations/provenance changed during transitional projection")
     before_bindings = before_world["bindings"]
     after_bindings = after_world["bindings"]
-    if len(before_bindings) != 184 or len(after_bindings) != 184:
-        raise PipelineError("initial world projection fixture must remain 184 bindings")
+    if len(before_bindings) != 194 or len(after_bindings) != 194:
+        raise PipelineError("initial world projection fixture must remain 194 bindings")
     unmanaged_before = [row for row in before_bindings if row["bindingId"] not in world_replacements]
     unmanaged_after = [row for row in after_bindings if row["bindingId"] not in world_replacements]
-    if len(unmanaged_before) != 154 or unmanaged_before != unmanaged_after:
-        raise PipelineError("the 154 World/Map-owned bindings changed")
+    if len(unmanaged_before) != 164 or unmanaged_before != unmanaged_after:
+        raise PipelineError("the 164 World/Map-owned bindings changed")
     for relative, text in outputs.items():
         try:
             json.loads(text, object_pairs_hook=_reject_duplicate_pairs)
@@ -3597,6 +3953,9 @@ def build_repository_product_projection(
         docs[PRESENTATION_AUTHORING_REL],
         docs[WORLD_SET_REL],
         docs[COMBAT_AUTHORING_REL],
+    )
+    validate_manual_audition_animation_lineage(
+        joined, read_json(repo_path(root, DEBUG_PRESENTATION_REL))
     )
     managed = {row["patternId"] for row in joined["patterns"]}
     validate_legacy_manifest(docs[LEGACY_REL], managed)
@@ -3653,26 +4012,6 @@ def stage_repository_product_projection(
     }
 
 
-def _upgrade_pre_manual_audition_split(documents: dict[str, Any]) -> None:
-    """Admit the checked-in pre-promotion split as an empty manual-audition set.
-
-    The promotion transaction writes the field explicitly. This narrow in-memory
-    bridge keeps the clean origin/main source valid before Apply without admitting
-    any other decisionModel schema drift.
-    """
-
-    gameplay = documents.get(GAMEPLAY_AUTHORING_REL)
-    if not isinstance(gameplay, dict):
-        return
-    decision_model = gameplay.get("decisionModel")
-    if isinstance(decision_model, dict) and set(decision_model) == {
-        "selectionSets",
-        "selectionWindows",
-        "mechanics",
-    }:
-        decision_model["manualAuditions"] = []
-
-
 def load_pipeline_documents(
     root: Path,
     *,
@@ -3699,9 +4038,7 @@ def load_pipeline_documents(
         relatives.extend((GAMEPLAY_AUTHORING_REL, PRESENTATION_AUTHORING_REL))
     if include_companions:
         relatives.extend((COMBAT_AUTHORING_REL, WORLD_SET_REL, LEGACY_REL))
-    documents = require_documents(root, relatives)
-    _upgrade_pre_manual_audition_split(documents)
-    return documents
+    return require_documents(root, relatives)
 
 
 def source_manifest(root: Path) -> dict[str, Any]:
@@ -3722,6 +4059,7 @@ def source_manifest(root: Path) -> dict[str, Any]:
         BOSS_PROFILES_REL,
         DAMAGE_REL,
         EFFECT_CATALOG_REL,
+        DEBUG_PRESENTATION_REL,
         PROVENANCE_REL,
     )
 
@@ -3748,7 +4086,6 @@ def source_manifest(root: Path) -> dict[str, Any]:
             COMBAT_AUTHORING_REL,
         ),
     )
-    _upgrade_pre_manual_audition_split(split_documents)
     joined = join_v2_authoring(
         split_documents[GAMEPLAY_AUTHORING_REL],
         split_documents[PRESENTATION_AUTHORING_REL],
@@ -3798,6 +4135,8 @@ DRAFT_PATCH_OPERATIONS = {
         "eventId",
         "countPerResolvedTarget",
         "layout",
+        "spawnSchedule",
+        "arenaRandom",
         "allowOverlap",
         "maximumTotalObjects",
     ),
@@ -4210,6 +4549,30 @@ def apply_draft_patch(
             event["layout"] = _validate_volley_layout(
                 operation["layout"], count, f"operations[{ordinal}].layout"
             )
+            try:
+                _validate_volley_spawn_schedule(
+                    operation["spawnSchedule"], stage["durationMs"], event_id
+                )
+            except PipelineError as exc:
+                raise _draft_error(
+                    str(exc),
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="spawnSchedule",
+                ) from exc
+            event["spawnSchedule"] = copy.deepcopy(operation["spawnSchedule"])
+            try:
+                _validate_volley_arena_random(operation["arenaRandom"], event_id)
+            except PipelineError as exc:
+                raise _draft_error(
+                    str(exc),
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="arenaRandom",
+                ) from exc
+            event["arenaRandom"] = copy.deepcopy(operation["arenaRandom"])
             event["allowOverlap"] = boolean(
                 operation["allowOverlap"], f"operations[{ordinal}].allowOverlap"
             )
@@ -4224,8 +4587,8 @@ def apply_draft_patch(
             event["maximumTotalObjects"] = integer(
                 operation["maximumTotalObjects"],
                 f"operations[{ordinal}].maximumTotalObjects",
-                count,
-                32,
+                count + event["arenaRandom"]["count"],
+                64,
             )
         elif kind == "SET_BOSS_BASE_FIELD":
             boss_id = stable_id(operation["bossArchetypeId"], f"operations[{ordinal}].bossArchetypeId")
@@ -6054,7 +6417,7 @@ def publish_candidate(
             )
         _failure(fail_at, "after_stage")
         staged_world = read_json(stage / WORLD_PRODUCT_REL)
-        if len(staged_world["groups"]) != 105 or len(staged_world["mutations"]) != 105 or len(staged_world["bindings"]) != 184:
+        if len(staged_world["groups"]) != 105 or len(staged_world["mutations"]) != 105 or len(staged_world["bindings"]) != 194:
             raise PipelineError("staged world Product count/closure drift")
         baseline_runtime_root = candidate_root / (".baseline." + transaction_id)
         _assert_transaction_path(

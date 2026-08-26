@@ -130,7 +130,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 	require(
 		105u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
 		105u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
-		117u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
+		127u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
 		143u == publishedMemberCount &&
 		30u == publishedOuterGroupCount &&
 		60u == publishedOuterMemberCount &&

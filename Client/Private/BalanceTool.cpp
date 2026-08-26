@@ -985,9 +985,21 @@ bool Client::CBalanceTool::Reload()
 			const DATA_JSON_VALUE* landingPosition =
 				Field(*serverMotion, "landingPosition", DATA_JSON_TYPE::ARRAY);
 			if (!IsExactObject(*serverMotion,
-				{ "kind", "anchorId", "landingPosition", "apexHeight" }) ||
+				{ "kind", "anchorId", "landingPosition", "apexHeight",
+				  "travelStageId", "takeoffStartMs", "takeoffEndMs",
+				  "travelStartMs", "travelEndMs" }) ||
 				!ReadString(*serverMotion, "kind", row.serverMotion.kind) ||
 				!ReadString(*serverMotion, "anchorId", row.serverMotion.anchorId) ||
+				!ReadString(*serverMotion, "travelStageId",
+					row.serverMotion.travelStageId) ||
+				!ReadU32(*serverMotion, "takeoffStartMs",
+					row.serverMotion.takeoffStartMs) ||
+				!ReadU32(*serverMotion, "takeoffEndMs",
+					row.serverMotion.takeoffEndMs) ||
+				!ReadU32(*serverMotion, "travelStartMs",
+					row.serverMotion.travelStartMs) ||
+				!ReadU32(*serverMotion, "travelEndMs",
+					row.serverMotion.travelEndMs) ||
 				nullptr == landingPosition ||
 				3u != landingPosition->Get_Array().size() ||
 				!landingPosition->Get_Array()[0].Is_Number() ||
@@ -1617,6 +1629,7 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 
 	std::unordered_set<std::string> savedPatternIds;
 	const DATA_JSON_VALUE* savedAxeEvent = nullptr;
+	std::uint32_t savedAxeStageDurationMs = 0u;
 	for (const DATA_JSON_VALUE& value : patternArray->Get_Array())
 	{
 		std::string patternId;
@@ -1901,6 +1914,7 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 
 			if (patternId == axeVolley.patternId && stageId == axeVolley.stageId)
 			{
+				savedAxeStageDurationMs = durationMs;
 				const DATA_JSON_VALUE* events =
 					Field(stageValue, "events", DATA_JSON_TYPE::ARRAY);
 				if (nullptr == events)
@@ -1933,7 +1947,8 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 	if (nullptr == savedAxeEvent ||
 		!IsExactObject(*savedAxeEvent, { "eventId", "trigger", "kind",
 			"combatObjectArchetypeId", "volleyPolicy", "countPerResolvedTarget",
-			"layout", "allowOverlap", "maximumTotalObjects" }))
+			"layout", "allowOverlap", "maximumTotalObjects", "spawnSchedule",
+			"arenaRandom" }))
 	{
 		status = "Saved Valtan axe-volley event is missing or has hidden fields.";
 		return false;
@@ -1948,6 +1963,10 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 	bool axeOverlap = true;
 	const DATA_JSON_VALUE* layout =
 		Field(*savedAxeEvent, "layout", DATA_JSON_TYPE::OBJECT);
+	const DATA_JSON_VALUE* spawnSchedule =
+		Field(*savedAxeEvent, "spawnSchedule", DATA_JSON_TYPE::OBJECT);
+	const DATA_JSON_VALUE* arenaRandom =
+		Field(*savedAxeEvent, "arenaRandom", DATA_JSON_TYPE::OBJECT);
 	if (!ReadString(*savedAxeEvent, "eventId", axeEventId) ||
 		axeEventId != axeVolley.eventId ||
 		!ReadString(*savedAxeEvent, "trigger", axeTrigger) || axeTrigger != "ENTER" ||
@@ -1957,10 +1976,11 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 		axeArchetype != "combatobject.valtan.high-jump.target-axe" ||
 		!ReadString(*savedAxeEvent, "volleyPolicy", axePolicy) ||
 		axePolicy != "PER_ALIVE_PLAYER" || nullptr == layout ||
+		nullptr == spawnSchedule || nullptr == arenaRandom ||
 		!readBoundedU32(*savedAxeEvent, "countPerResolvedTarget", 1u, 8u,
 			axeCount) ||
 		!ReadBoolean(*savedAxeEvent, "allowOverlap", axeOverlap) || axeOverlap ||
-		!readBoundedU32(*savedAxeEvent, "maximumTotalObjects", axeCount, 32u,
+		!readBoundedU32(*savedAxeEvent, "maximumTotalObjects", 1u, 64u,
 			axeMaximum))
 	{
 		if (status.empty())
@@ -2006,6 +2026,56 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 		status = "Saved Valtan axe-volley layout kind is unsupported.";
 		return false;
 	}
+	std::string spawnScheduleKind;
+	std::uint32_t spawnCount = 0u;
+	std::uint32_t spawnFirstOffsetMs = 0u;
+	std::uint32_t spawnIntervalMs = 0u;
+	if (0u == savedAxeStageDurationMs ||
+		!IsExactObject(*spawnSchedule,
+			{ "kind", "count", "firstOffsetMs", "intervalMs" }) ||
+		!ReadString(*spawnSchedule, "kind", spawnScheduleKind) ||
+		spawnScheduleKind != "INTERVAL" ||
+		!readBoundedU32(*spawnSchedule, "count", 1u, 8u, spawnCount) ||
+		!readBoundedU32(*spawnSchedule, "firstOffsetMs", 0u,
+			savedAxeStageDurationMs - 1u, spawnFirstOffsetMs) ||
+		0u != spawnFirstOffsetMs ||
+		!readBoundedU32(*spawnSchedule, "intervalMs", 0u,
+			savedAxeStageDurationMs, spawnIntervalMs) ||
+		(spawnCount > 1u && 0u == spawnIntervalMs) ||
+		(1u == spawnCount && 0u != spawnIntervalMs) ||
+		static_cast<std::uint64_t>(spawnCount - 1u) * spawnIntervalMs >=
+			savedAxeStageDurationMs ||
+		3u != spawnCount || 1333u != spawnIntervalMs)
+	{
+		if (status.empty())
+			status = "Saved Valtan axe-volley spawn schedule is invalid.";
+		return false;
+	}
+	std::string arenaRandomKind;
+	std::string arenaAnchor;
+	std::uint32_t arenaRandomCount = 0u;
+	double arenaRandomRadiusM = 0.0;
+	double arenaHeightToleranceM = 0.0;
+	if (!IsExactObject(*arenaRandom,
+			{ "kind", "anchor", "count", "radiusM", "heightToleranceM" }) ||
+		!ReadString(*arenaRandom, "kind", arenaRandomKind) ||
+		arenaRandomKind != "RANDOM_NAVIGABLE_CIRCLE" ||
+		!ReadString(*arenaRandom, "anchor", arenaAnchor) ||
+		arenaAnchor != "BOSS_SPAWN_POSITION" ||
+		!readBoundedU32(*arenaRandom, "count", 1u, 32u,
+			arenaRandomCount) ||
+		!readBoundedDouble(*arenaRandom, "radiusM", 0.01, 1000.0,
+			arenaRandomRadiusM) ||
+		!readBoundedDouble(*arenaRandom, "heightToleranceM", 0.0, 1000.0,
+			arenaHeightToleranceM) ||
+		axeMaximum < axeCount + arenaRandomCount ||
+		4u != arenaRandomCount || 14.0 != arenaRandomRadiusM ||
+		1.0 != arenaHeightToleranceM)
+	{
+		if (status.empty())
+			status = "Saved Valtan axe-volley arena random contract is invalid.";
+		return false;
+	}
 	axeVolley.countPerResolvedTarget = axeCount;
 	axeVolley.layoutKind = std::move(layoutKind);
 	axeVolley.radiusM = radiusM;
@@ -2013,6 +2083,15 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 	axeVolley.angleStepDegrees = angleStepDegrees;
 	axeVolley.allowOverlap = false;
 	axeVolley.maximumTotalObjects = axeMaximum;
+	axeVolley.spawnScheduleKind = std::move(spawnScheduleKind);
+	axeVolley.spawnCount = spawnCount;
+	axeVolley.spawnFirstOffsetMs = spawnFirstOffsetMs;
+	axeVolley.spawnIntervalMs = spawnIntervalMs;
+	axeVolley.arenaRandomKind = std::move(arenaRandomKind);
+	axeVolley.arenaAnchor = std::move(arenaAnchor);
+	axeVolley.arenaRandomCount = arenaRandomCount;
+	axeVolley.arenaRandomRadiusM = arenaRandomRadiusM;
+	axeVolley.arenaHeightToleranceM = arenaHeightToleranceM;
 	if (VALTAN_PATTERN_VIEW* highJump =
 			FindValtanPattern(patternTree, axeVolley.patternId))
 	{
@@ -2566,11 +2645,13 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 		{
 			const VALTAN_PATTERN_SERVER_MOTION_VIEW& motion = *pattern.ServerMotion;
 			ImGui::TextWrapped(
-				"Server motion %s | anchor %s | landing [%.3f, %.3f, %.3f] | apex %.2f | travel stage %s",
+				"Server motion %s | anchor %s | landing [%.3f, %.3f, %.3f] | apex %.2f | TAKEOFF %u..%u ms | %s %u..%u ms",
 				motion.strKind.c_str(), motion.strAnchorId.c_str(),
 				motion.LandingPosition[0], motion.LandingPosition[1],
 				motion.LandingPosition[2], motion.fApexHeight,
-				motion.strTravelStageId.c_str());
+				motion.iTakeoffStartMs, motion.iTakeoffEndMs,
+				motion.strTravelStageId.c_str(),
+				motion.iTravelStartMs, motion.iTravelEndMs);
 		}
 		if (!pattern.WorldEventTriggerRefs.empty())
 		{
@@ -2728,7 +2809,8 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 							}
 							m_valtanAxeVolley.maximumTotalObjects = (std::max)(
 								m_valtanAxeVolley.maximumTotalObjects,
-								m_valtanAxeVolley.countPerResolvedTarget);
+								m_valtanAxeVolley.countPerResolvedTarget +
+									m_valtanAxeVolley.arenaRandomCount);
 							MarkDirty(true);
 						}
 						if (m_valtanAxeVolley.countPerResolvedTarget > 1u)
@@ -2744,7 +2826,8 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 						}
 						MarkDirty(EditU32("Maximum total axe objects",
 							m_valtanAxeVolley.maximumTotalObjects,
-							m_valtanAxeVolley.countPerResolvedTarget, 32u));
+							m_valtanAxeVolley.countPerResolvedTarget +
+								m_valtanAxeVolley.arenaRandomCount, 64u));
 						ImGui::TextDisabled(
 							"PER_ALIVE_PLAYER | overlap forbidden | atomic Server preflight");
 					}
@@ -3619,8 +3702,10 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			return false;
 		}
 		if (pattern.serverMotion.enabled &&
-			("LEAP_TO_ANCHOR" != pattern.serverMotion.kind ||
+			(("LEAP_TO_ANCHOR" != pattern.serverMotion.kind &&
+			  "LEAP_TO_TARGET" != pattern.serverMotion.kind) ||
 			 pattern.serverMotion.anchorId.empty() ||
+			 pattern.serverMotion.travelStageId.empty() ||
 			 !serverMotionAnchorIds.insert(
 				 pattern.serverMotion.anchorId).second ||
 			 !std::isfinite(pattern.serverMotion.landingX) ||
@@ -3631,11 +3716,36 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			 std::abs(pattern.serverMotion.landingZ) > 100000.f ||
 			 !std::isfinite(pattern.serverMotion.apexHeight) ||
 			 pattern.serverMotion.apexHeight <= 0.f ||
-			 pattern.serverMotion.apexHeight > 200.f))
+			 pattern.serverMotion.apexHeight > 200.f ||
+			 pattern.serverMotion.takeoffStartMs >=
+				pattern.serverMotion.takeoffEndMs ||
+			 pattern.serverMotion.travelStartMs >=
+				pattern.serverMotion.travelEndMs))
 		{
 			status = "Pattern server motion draft is invalid: " +
 				pattern.patternId;
 			return false;
+		}
+		if (pattern.serverMotion.enabled)
+		{
+			const auto travelStage = std::find_if(
+				pattern.stages.begin(), pattern.stages.end(),
+				[&pattern](const PATTERN_STAGE_EDIT& stage)
+				{
+					return stage.stageId ==
+						pattern.serverMotion.travelStageId;
+				});
+			if ("TAKEOFF" != pattern.stages.front().stageId ||
+				travelStage == pattern.stages.begin() ||
+				pattern.stages.front().durationMs <
+					pattern.serverMotion.takeoffEndMs ||
+				travelStage == pattern.stages.end() ||
+				travelStage->durationMs < pattern.serverMotion.travelEndMs)
+			{
+				status = "Pattern server motion window is outside its stage: " +
+					pattern.patternId;
+				return false;
+			}
 		}
 		for (const PATTERN_STAGE_EDIT& stage : pattern.stages)
 		{
@@ -4256,7 +4366,23 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 			m_loadedValtanAxeVolley.angleStepDegrees ||
 		m_valtanAxeVolley.allowOverlap != m_loadedValtanAxeVolley.allowOverlap ||
 		m_valtanAxeVolley.maximumTotalObjects !=
-			m_loadedValtanAxeVolley.maximumTotalObjects;
+			m_loadedValtanAxeVolley.maximumTotalObjects ||
+		m_valtanAxeVolley.spawnScheduleKind !=
+			m_loadedValtanAxeVolley.spawnScheduleKind ||
+		m_valtanAxeVolley.spawnCount != m_loadedValtanAxeVolley.spawnCount ||
+		m_valtanAxeVolley.spawnFirstOffsetMs !=
+			m_loadedValtanAxeVolley.spawnFirstOffsetMs ||
+		m_valtanAxeVolley.spawnIntervalMs !=
+			m_loadedValtanAxeVolley.spawnIntervalMs ||
+		m_valtanAxeVolley.arenaRandomKind !=
+			m_loadedValtanAxeVolley.arenaRandomKind ||
+		m_valtanAxeVolley.arenaAnchor != m_loadedValtanAxeVolley.arenaAnchor ||
+		m_valtanAxeVolley.arenaRandomCount !=
+			m_loadedValtanAxeVolley.arenaRandomCount ||
+		m_valtanAxeVolley.arenaRandomRadiusM !=
+			m_loadedValtanAxeVolley.arenaRandomRadiusM ||
+		m_valtanAxeVolley.arenaHeightToleranceM !=
+			m_loadedValtanAxeVolley.arenaHeightToleranceM;
 	if (volleyChanged)
 	{
 		std::ostringstream operation;
@@ -4279,7 +4405,22 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 		operation << " }, \"allowOverlap\": "
 			<< (m_valtanAxeVolley.allowOverlap ? "true" : "false")
 			<< ", \"maximumTotalObjects\": "
-			<< m_valtanAxeVolley.maximumTotalObjects << " }";
+			<< m_valtanAxeVolley.maximumTotalObjects
+			<< ", \"spawnSchedule\": { \"kind\": "
+			<< Quote(m_valtanAxeVolley.spawnScheduleKind)
+			<< ", \"count\": " << m_valtanAxeVolley.spawnCount
+			<< ", \"firstOffsetMs\": "
+			<< m_valtanAxeVolley.spawnFirstOffsetMs
+			<< ", \"intervalMs\": " << m_valtanAxeVolley.spawnIntervalMs
+			<< " }, \"arenaRandom\": { \"kind\": "
+			<< Quote(m_valtanAxeVolley.arenaRandomKind)
+			<< ", \"anchor\": " << Quote(m_valtanAxeVolley.arenaAnchor)
+			<< ", \"count\": " << m_valtanAxeVolley.arenaRandomCount
+			<< ", \"radiusM\": "
+			<< FormatJsonNumber(m_valtanAxeVolley.arenaRandomRadiusM)
+			<< ", \"heightToleranceM\": "
+			<< FormatJsonNumber(m_valtanAxeVolley.arenaHeightToleranceM)
+			<< " } }";
 		append(operation);
 	}
 
@@ -4687,6 +4828,16 @@ bool Client::CBalanceTool::Save(
 				<< FormatJsonNumber(p.serverMotion.landingZ)
 				<< "],\n        \"apexHeight\": "
 				<< FormatJsonNumber(p.serverMotion.apexHeight)
+				<< ",\n        \"travelStageId\": "
+				<< Quote(p.serverMotion.travelStageId)
+				<< ",\n        \"takeoffStartMs\": "
+				<< p.serverMotion.takeoffStartMs
+				<< ",\n        \"takeoffEndMs\": "
+				<< p.serverMotion.takeoffEndMs
+				<< ",\n        \"travelStartMs\": "
+				<< p.serverMotion.travelStartMs
+				<< ",\n        \"travelEndMs\": "
+				<< p.serverMotion.travelEndMs
 				<< "\n      }";
 		}
 		encounter << ",\n      \"stages\": [\n";
@@ -5119,7 +5270,12 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 			}
 			std::string kind;
 			std::string anchorId;
+			std::string travelStageId;
 			double apexHeight = 0.0;
+			std::uint32_t takeoffStartMs = 0u;
+			std::uint32_t takeoffEndMs = 0u;
+			std::uint32_t travelStartMs = 0u;
+			std::uint32_t travelEndMs = 0u;
 			const DATA_JSON_VALUE* landing =
 				Field(*motion, "landingPosition", DATA_JSON_TYPE::ARRAY);
 			const bool exactLanding = nullptr != landing &&
@@ -5132,10 +5288,20 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 				landing->Get_Array()[2].Get_Number() == expected.serverMotion.landingZ;
 			if (!ReadString(*motion, "kind", kind) ||
 				!ReadString(*motion, "anchorId", anchorId) ||
+				!ReadString(*motion, "travelStageId", travelStageId) ||
+				!ReadU32(*motion, "takeoffStartMs", takeoffStartMs) ||
+				!ReadU32(*motion, "takeoffEndMs", takeoffEndMs) ||
+				!ReadU32(*motion, "travelStartMs", travelStartMs) ||
+				!ReadU32(*motion, "travelEndMs", travelEndMs) ||
 				!ReadDouble(*motion, "apexHeight", apexHeight) ||
 				!exactLanding ||
 				kind != expected.serverMotion.kind ||
 				anchorId != expected.serverMotion.anchorId ||
+				travelStageId != expected.serverMotion.travelStageId ||
+				takeoffStartMs != expected.serverMotion.takeoffStartMs ||
+				takeoffEndMs != expected.serverMotion.takeoffEndMs ||
+				travelStartMs != expected.serverMotion.travelStartMs ||
+				travelEndMs != expected.serverMotion.travelEndMs ||
 				apexHeight != expected.serverMotion.apexHeight)
 			{
 				status = "Balance Tool round-trip changed serverMotion.";
@@ -5148,9 +5314,9 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 			return false;
 		}
 	}
-	if (1u != serverMotionCount)
+	if (3u != serverMotionCount)
 	{
-		status = "Balance Tool did not preserve the one authored serverMotion.";
+		status = "Balance Tool did not preserve all three authored serverMotion rows.";
 		return false;
 	}
 

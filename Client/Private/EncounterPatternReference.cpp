@@ -17,6 +17,7 @@ namespace
 	constexpr const char_t* SCHEMA = "lostark.encounter-profile";
 	constexpr uint32_t FORMAT_VERSION = 4u;
 	constexpr size_t MAX_STAGE_AUXILIARY_COUNT = 8u;
+	constexpr uint32_t MAX_REFERENCE_STAGE_DURATION_MS = 60000u;
 
 	bool_t Read_TextFile(
 		const std::filesystem::path& path,
@@ -241,6 +242,12 @@ namespace
 		{
 			return false;
 		}
+		uint32_t stageDurationMs = 0u;
+		if (!Read_Unsigned(stage, "durationMs", MAX_REFERENCE_STAGE_DURATION_MS,
+				stageDurationMs) || 0u == stageDurationMs)
+		{
+			return false;
+		}
 
 		std::unordered_set<std::string> actionKeys;
 		for (const DATA_JSON_VALUE& action : actions->Get_Array())
@@ -254,13 +261,19 @@ namespace
 				std::string targetId;
 				std::string targetingPolicy;
 				std::string layout;
+				std::string arenaAnchorPolicy;
 				uint32_t countPerResolvedTarget = 0u;
 				uint32_t maximumTotalObjects = 0u;
+				uint32_t spawnCount = 0u;
+				uint32_t spawnIntervalMs = 0u;
+				uint32_t arenaRandomCount = 0u;
 				if (!Is_ExactObject(action,
 						{ "trigger", "kind", "targetId", "targetingPolicy",
 						  "countPerResolvedTarget", "layout", "radiusM",
 						  "startAngleDegrees", "angleStepDegrees", "allowOverlap",
-						  "maximumTotalObjects" }) ||
+						  "maximumTotalObjects", "spawnCount", "spawnIntervalMs",
+						  "arenaRandomCount", "arenaRandomRadiusM",
+						  "arenaHeightToleranceM", "arenaAnchorPolicy" }) ||
 					!Read_String(action, "trigger", false, trigger) ||
 					trigger != "ENTER" ||
 					!Read_String(action, "targetId", false, targetId) ||
@@ -272,13 +285,38 @@ namespace
 					!Read_Unsigned(action, "countPerResolvedTarget", 8u,
 						countPerResolvedTarget) ||
 					0u == countPerResolvedTarget ||
-					!Read_Unsigned(action, "maximumTotalObjects", 32u,
+					!Read_Unsigned(action, "maximumTotalObjects", 64u,
 						maximumTotalObjects) ||
-					maximumTotalObjects < countPerResolvedTarget ||
+					!Read_Unsigned(action, "spawnCount", 64u, spawnCount) ||
+					0u == spawnCount ||
+					!Read_Unsigned(action, "spawnIntervalMs",
+						MAX_REFERENCE_STAGE_DURATION_MS, spawnIntervalMs) ||
+					(spawnCount > 1u && 0u == spawnIntervalMs) ||
+					(1u == spawnCount && 0u != spawnIntervalMs) ||
+					static_cast<uint64_t>(spawnCount - 1u) * spawnIntervalMs >=
+						static_cast<uint64_t>(stageDurationMs) ||
+					!Read_Unsigned(action, "arenaRandomCount", 32u,
+						arenaRandomCount) ||
+					0u == arenaRandomCount ||
+					maximumTotalObjects <
+						countPerResolvedTarget + arenaRandomCount ||
 					!Is_FiniteNumber(action, "radiusM") ||
 					!Is_FiniteNumber(action, "startAngleDegrees") ||
 					!Is_FiniteNumber(action, "angleStepDegrees") ||
-					!Is_Boolean(action, "allowOverlap"))
+					!Is_Boolean(action, "allowOverlap") ||
+					!Is_FiniteNumber(action, "arenaRandomRadiusM") ||
+					action.Find("arenaRandomRadiusM")->Get_Number() <= 0.0 ||
+					action.Find("arenaRandomRadiusM")->Get_Number() > 1000.0 ||
+					!Is_FiniteNumber(action, "arenaHeightToleranceM") ||
+					action.Find("arenaHeightToleranceM")->Get_Number() < 0.0 ||
+					action.Find("arenaHeightToleranceM")->Get_Number() > 1000.0 ||
+					!Read_String(action, "arenaAnchorPolicy", false,
+						arenaAnchorPolicy) ||
+					arenaAnchorPolicy != "BOSS_SPAWN_POSITION" ||
+					3u != spawnCount || 1333u != spawnIntervalMs ||
+					4u != arenaRandomCount ||
+					14.0 != action.Find("arenaRandomRadiusM")->Get_Number() ||
+					1.0 != action.Find("arenaHeightToleranceM")->Get_Number())
 				{
 					return false;
 				}
@@ -303,8 +341,8 @@ namespace
 				const std::string actionKey = trigger + "\n" + targetId;
 				if (!actionKeys.insert(actionKey).second)
 					return false;
-				/* A volley is a one-shot Server action. It does not open a
-				   cross-stage lifetime in this read-only Client reference. */
+				/* A scheduled volley is still owned by one Server stage action.
+				   Its repeated spawns do not open a cross-stage lifetime here. */
 				continue;
 			}
 

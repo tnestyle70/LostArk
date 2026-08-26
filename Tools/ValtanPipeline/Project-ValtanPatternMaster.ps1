@@ -993,17 +993,25 @@ foreach ($pattern in @($master.patterns)) {
     }
     if ($null -ne $pattern.serverMotion) {
         [string[]]$motionFields = @($pattern.serverMotion.PSObject.Properties.Name)
-        foreach ($requiredMotionField in @('kind','anchorId','landingPosition','apexHeight')) {
+        foreach ($requiredMotionField in @(
+            'kind','anchorId','landingPosition','apexHeight','travelStageId',
+            'takeoffStartMs','takeoffEndMs','travelStartMs','travelEndMs')) {
             if ($requiredMotionField -notin $motionFields) {
                 throw "pattern $patternId serverMotion is missing $requiredMotionField."
             }
         }
         foreach ($unknownMotionField in @($motionFields | Where-Object {
-            $_ -notin @('kind','anchorId','landingPosition','apexHeight','travelStageId')
+            $_ -notin @(
+                'kind','anchorId','landingPosition','apexHeight','travelStageId',
+                'takeoffStartMs','takeoffEndMs','travelStartMs','travelEndMs')
         })) {
             throw "pattern $patternId serverMotion has unknown field $unknownMotionField."
         }
         Assert-StableId $pattern.serverMotion.anchorId "pattern $patternId serverMotion.anchorId"
+        if ([string]$pattern.serverMotion.kind -cne 'LEAP_TO_ANCHOR' -and
+            [string]$pattern.serverMotion.kind -cne 'LEAP_TO_TARGET') {
+            throw "pattern $patternId serverMotion.kind is unsupported."
+        }
         if (@($pattern.serverMotion.landingPosition).Count -ne 3) {
             throw "pattern $patternId serverMotion.landingPosition must have three numbers."
         }
@@ -1011,8 +1019,11 @@ foreach ($pattern in @($master.patterns)) {
             Assert-JsonNumber $coordinate "pattern $patternId serverMotion.landingPosition" -100000 100000
         }
         Assert-JsonNumber $pattern.serverMotion.apexHeight "pattern $patternId serverMotion.apexHeight" 0 1000
-        if ($null -ne $pattern.serverMotion.PSObject.Properties['travelStageId']) {
-            Assert-StableId $pattern.serverMotion.travelStageId "pattern $patternId serverMotion.travelStageId"
+        Assert-StableId $pattern.serverMotion.travelStageId "pattern $patternId serverMotion.travelStageId"
+        foreach ($windowField in @(
+            'takeoffStartMs','takeoffEndMs','travelStartMs','travelEndMs')) {
+            Assert-JsonInteger $pattern.serverMotion.$windowField `
+                "pattern $patternId serverMotion.$windowField" 0 600000
         }
     }
 
@@ -1196,10 +1207,25 @@ foreach ($pattern in @($master.patterns)) {
             }
         }
     }
-    if ($null -ne $pattern.serverMotion -and
-        $null -ne $pattern.serverMotion.PSObject.Properties['travelStageId'] -and
-        @(Get-PatternStage $pattern ([string]$pattern.serverMotion.travelStageId)).Count -ne 1) {
-        throw "pattern $patternId serverMotion.travelStageId references a missing stage."
+    if ($null -ne $pattern.serverMotion) {
+        $travelStages = @(
+            Get-PatternStage $pattern ([string]$pattern.serverMotion.travelStageId)
+        )
+        if ($travelStages.Count -ne 1 -or
+            [string]$pattern.serverMotion.travelStageId -ceq 'TAKEOFF') {
+            throw "pattern $patternId serverMotion.travelStageId references a missing stage."
+        }
+        $takeoffStage = @($pattern.stages)[0]
+        if ([string]$takeoffStage.stageId -cne 'TAKEOFF' -or
+            [int]$pattern.serverMotion.takeoffStartMs -ge
+                [int]$pattern.serverMotion.takeoffEndMs -or
+            [int]$pattern.serverMotion.takeoffEndMs -gt [int]$takeoffStage.durationMs -or
+            [int]$pattern.serverMotion.travelStartMs -ge
+                [int]$pattern.serverMotion.travelEndMs -or
+            [int]$pattern.serverMotion.travelEndMs -gt
+                [int]$travelStages[0].durationMs) {
+            throw "pattern $patternId serverMotion window is outside its authored stage."
+        }
     }
     foreach ($cameraCueId in @($pattern.cameraCueIds)) {
         Assert-StableId $cameraCueId "pattern $patternId cameraCueId"

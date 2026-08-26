@@ -88,8 +88,9 @@ namespace LostArk::Server
 		SERVER_COMBAT_OBJECT_POSE CurrentPose;
 	};
 
-	/* The room resolves either the still-live locked player or the boss's last
-	valid locked-target position before preparing a boss object. */
+	/* A boss action resolves the exact world pose before staging. Snapshot is the
+	default: only an explicit LOCKED_TARGET_UNTIL_FIRST_PULSE definition may turn
+	the optional entity association into live tracking. */
 	struct SERVER_COMBAT_OBJECT_LOCKED_TARGET final
 	{
 		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
@@ -97,6 +98,7 @@ namespace LostArk::Server
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
+		bool bTrackUntilFirstPulse = false;
 	};
 
 	struct SERVER_COMBAT_OBJECT final

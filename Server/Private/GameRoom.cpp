@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <new>
 #include <set>
 #include <utility>
 
@@ -41,6 +42,9 @@ namespace
 	constexpr float PLAYER_TURN_DEGREES_PER_SECOND = 540.f;
 	constexpr float DIRECT_BEARING_DISTANCE = 1.5f;
 	constexpr float VOLLEY_SPACING_EPSILON = 0.0001f;
+	constexpr std::uint32_t SERVER_TICK_HZ = 30u;
+	constexpr std::uint32_t ARENA_RANDOM_MAXIMUM_ATTEMPTS = 512u;
+	constexpr float TWO_PI = 6.28318530717958647692f;
 	// The caster's Esther call converted to fixed 30 Hz room ticks.
 	constexpr std::uint32_t ESTHER_CAST_TICKS =
 		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
@@ -74,6 +78,31 @@ namespace
 			maximumExtent = (std::max)(maximumExtent, extent);
 		}
 		return maximumExtent * 2.f;
+	}
+
+	std::uint64_t Mix_DeterministicRandom(std::uint64_t value)
+	{
+		value += 0x9e3779b97f4a7c15ull;
+		value = (value ^ (value >> 30u)) * 0xbf58476d1ce4e5b9ull;
+		value = (value ^ (value >> 27u)) * 0x94d049bb133111ebull;
+		return value ^ (value >> 31u);
+	}
+
+	std::uint64_t Hash_StableId(const std::string& value)
+	{
+		std::uint64_t hash = 1469598103934665603ull;
+		for (const unsigned char character : value)
+		{
+			hash ^= character;
+			hash *= 1099511628211ull;
+		}
+		return hash;
+	}
+
+	float DeterministicUnitFloat(const std::uint64_t value)
+	{
+		return static_cast<float>((Mix_DeterministicRandom(value) >> 40u) &
+			0xffffffull) / 16777216.f;
 	}
 
 	void Build_WorldDestructionStateChanges(
@@ -188,6 +217,19 @@ namespace
 		return static_cast<std::uint32_t>(
 			((static_cast<std::uint64_t>(startTick - 1u) + elapsedTicks) %
 				SERVER_TICK_CARDINALITY) + 1u);
+	}
+
+	std::uint64_t Elapsed_ServerTicksSkippingReservedZero(
+		const std::uint32_t startTick,
+		const std::uint32_t currentTick)
+	{
+		if (0u == startTick || 0u == currentTick)
+			return 0u;
+		return currentTick >= startTick ?
+			static_cast<std::uint64_t>(currentTick - startTick) :
+			static_cast<std::uint64_t>(
+				(std::numeric_limits<std::uint32_t>::max)() - startTick) +
+				currentTick;
 	}
 
 	static_assert(91u == Add_ServerTicksSkippingReservedZero(1u, 90u));
@@ -5871,7 +5913,8 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageActions(
 	const std::string& patternId,
 	const std::string& actionId,
 	const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
-	const std::uint32_t serverTick)
+	const std::uint32_t serverTick,
+	const std::uint32_t spawnWaveOrdinal)
 {
 	const CGameplayCatalog* occurrenceCatalog =
 		Resolve_ValtanGameplayCatalog(boss);
@@ -5886,7 +5929,7 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageActions(
 		m_CombatObjectRuntime.Begin_Transaction();
 	if (!Stage_BossPatternStageActions(
 		boss, *occurrenceCatalog, patternId, actionId, trigger, serverTick,
-		stagedCombat, stagedGameplayPhase, transaction))
+		stagedCombat, stagedGameplayPhase, transaction, spawnWaveOrdinal))
 	{
 		CValtanBrain::Fail_Mechanic(
 			boss, patternId,
@@ -5903,6 +5946,216 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageActions(
 	}
 	boss.BossCombat = std::move(stagedCombat);
 	boss.iPhase = stagedGameplayPhase;
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Resolve_ArenaRandomVolleyOrigins(
+	const SERVER_WORLD_ENTITY& boss,
+	const BOSS_PATTERN_STAGE_ACTION& action,
+	const BOSS_COMBAT_OBJECT_DEFINITION& definition,
+	const std::uint32_t spawnWaveOrdinal,
+	std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET>& outOrigins)
+{
+	outOrigins.clear();
+	const BOSS_COMBAT_OBJECT_VOLLEY& volley = action.Volley;
+	if (0u == volley.iArenaRandomCount)
+		return true;
+	if (!m_ServerNavigation.Is_Loaded() ||
+		BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::BOSS_SPAWN_POSITION !=
+			volley.eArenaAnchorPolicy ||
+		0u == boss.iNetEntityId || 0u == boss.iPatternSequence ||
+		!std::isfinite(boss.fSpawnPositionX) ||
+		!std::isfinite(boss.fSpawnPositionY) ||
+		!std::isfinite(boss.fSpawnPositionZ) ||
+		!std::isfinite(volley.fArenaRandomRadiusM) ||
+		volley.fArenaRandomRadiusM <= 0.f ||
+		!std::isfinite(volley.fArenaHeightToleranceM) ||
+		volley.fArenaHeightToleranceM <= 0.f)
+	{
+		m_strStatus = "Boss arena-random volley contract is invalid";
+		return false;
+	}
+
+	const float minimumSpacing = Resolve_VolleyMinimumSpacing(definition);
+	if (!std::isfinite(minimumSpacing) || minimumSpacing <= 0.f)
+	{
+		m_strStatus = "Boss arena-random volley spacing is invalid";
+		return false;
+	}
+	const float minimumSpacingSquared = minimumSpacing * minimumSpacing;
+	/* Arena-random authoring defines a valid origin, not a guarantee that every
+	   cell under the 3.5m damage circle is walkable. The Valtan nav paint has
+	   intentional seams inside the arena, so admission pins the exact centre to
+	   authoritative navigation/height and keeps whole circles apart by their
+	   damage diameter. */
+	const auto IsSpawnPointWalkable =
+		[this, &boss, &volley](
+			const float centerX, const float centerZ, float& outY)
+		{
+			SERVER_NAV_POINT center{};
+			if (!m_ServerNavigation.Is_PointWalkableExact(centerX, centerZ) ||
+				!m_ServerNavigation.Sample_Position(centerX, centerZ, center) ||
+				std::abs(center.y - boss.fSpawnPositionY) >
+					volley.fArenaHeightToleranceM)
+			{
+				return false;
+			}
+			outY = center.y;
+			return true;
+		};
+
+	try
+	{
+		outOrigins.reserve(volley.iArenaRandomCount);
+	}
+	catch (const std::bad_alloc&)
+	{
+		m_strStatus = "Boss arena-random volley allocation failed";
+		return false;
+	}
+	const std::uint64_t baseSeed = Mix_DeterministicRandom(
+		Hash_StableId(action.strTargetId) ^
+		(static_cast<std::uint64_t>(boss.iNetEntityId) << 32u) ^
+		static_cast<std::uint64_t>(boss.iPatternSequence) ^
+		(static_cast<std::uint64_t>(spawnWaveOrdinal) << 48u));
+	for (std::uint32_t attempt = 0u;
+		attempt < ARENA_RANDOM_MAXIMUM_ATTEMPTS &&
+		outOrigins.size() < volley.iArenaRandomCount;
+		++attempt)
+	{
+		const std::uint64_t attemptSeed = baseSeed ^
+			(static_cast<std::uint64_t>(attempt + 1u) *
+				0xd6e8feb86659fd93ull);
+		const float radius = std::sqrt(
+			DeterministicUnitFloat(attemptSeed)) *
+			volley.fArenaRandomRadiusM;
+		const float angle = DeterministicUnitFloat(
+			attemptSeed ^ 0xa0761d6478bd642full) * TWO_PI;
+		const float x = boss.fSpawnPositionX + std::cos(angle) * radius;
+		const float z = boss.fSpawnPositionZ + std::sin(angle) * radius;
+		float y = 0.f;
+		if (!IsSpawnPointWalkable(x, z, y))
+			continue;
+		const bool overlaps = std::any_of(
+			outOrigins.begin(), outOrigins.end(),
+			[x, z, minimumSpacingSquared](
+				const SERVER_COMBAT_OBJECT_LOCKED_TARGET& existing)
+			{
+				const float deltaX = x - existing.fPositionX;
+				const float deltaZ = z - existing.fPositionZ;
+				return deltaX * deltaX + deltaZ * deltaZ +
+					VOLLEY_SPACING_EPSILON < minimumSpacingSquared;
+			});
+		if (overlaps)
+			continue;
+		SERVER_COMBAT_OBJECT_LOCKED_TARGET origin{};
+		origin.fPositionX = x;
+		origin.fPositionY = y;
+		origin.fPositionZ = z;
+		origin.bTrackUntilFirstPulse = false;
+		outOrigins.push_back(origin);
+	}
+	if (outOrigins.size() != volley.iArenaRandomCount)
+	{
+		outOrigins.clear();
+		m_strStatus = "Boss arena-random volley has no valid point set";
+		return false;
+	}
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Apply_BossPatternScheduledSpawnWave(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t serverTick)
+{
+	if (boss.strPatternId.empty() || boss.strActionId.empty() ||
+		0u == boss.iActionStartTick)
+	{
+		return true;
+	}
+	const CGameplayCatalog* catalog = Resolve_ValtanGameplayCatalog(boss);
+	if (nullptr == catalog)
+	{
+		m_strStatus = "Boss scheduled volley pinned gameplay generation is missing";
+		return false;
+	}
+	const auto* patterns = catalog->Find_BossPatterns(boss.strEncounterId);
+	if (nullptr == patterns)
+	{
+		m_strStatus = "Boss scheduled volley encounter is missing";
+		return false;
+	}
+	const auto pattern = std::find_if(
+		patterns->begin(), patterns->end(),
+		[&boss](const BOSS_PATTERN_DEFINITION& candidate)
+		{ return candidate.strPatternId == boss.strPatternId; });
+	if (patterns->end() == pattern)
+	{
+		m_strStatus = "Boss scheduled volley pattern is missing";
+		return false;
+	}
+	const auto stage = std::find_if(
+		pattern->Stages.begin(), pattern->Stages.end(),
+		[&boss](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+		{ return candidate.strActionId == boss.strActionId; });
+	if (pattern->Stages.end() == stage)
+	{
+		m_strStatus = "Boss scheduled volley stage is missing";
+		return false;
+	}
+	const BOSS_PATTERN_STAGE_ACTION* scheduledAction = nullptr;
+	for (const BOSS_PATTERN_STAGE_ACTION& action : stage->Actions)
+	{
+		if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != action.eTrigger ||
+			BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY !=
+				action.eKind ||
+			action.Volley.iSpawnCount <= 1u)
+		{
+			continue;
+		}
+		if (nullptr != scheduledAction &&
+			(scheduledAction->Volley.iSpawnCount != action.Volley.iSpawnCount ||
+			 scheduledAction->Volley.iSpawnIntervalMs !=
+				action.Volley.iSpawnIntervalMs))
+		{
+			m_strStatus = "Boss scheduled volleys do not share one clock";
+			return false;
+		}
+		scheduledAction = &action;
+	}
+	if (nullptr == scheduledAction)
+		return true;
+	if (0u == boss.iAppliedPatternStageSpawnWaveCount)
+	{
+		m_strStatus = "Boss scheduled volley ENTER wave was not committed";
+		return false;
+	}
+	if (boss.iAppliedPatternStageSpawnWaveCount >=
+		scheduledAction->Volley.iSpawnCount)
+	{
+		return true;
+	}
+	const std::uint32_t waveOrdinal =
+		boss.iAppliedPatternStageSpawnWaveCount;
+	const std::uint64_t dueMilliseconds =
+		static_cast<std::uint64_t>(waveOrdinal) *
+		scheduledAction->Volley.iSpawnIntervalMs;
+	const std::uint64_t elapsedTicks =
+		Elapsed_ServerTicksSkippingReservedZero(
+			boss.iActionStartTick, serverTick);
+	if (elapsedTicks * 1000ull <
+		dueMilliseconds * static_cast<std::uint64_t>(SERVER_TICK_HZ))
+	{
+		return true;
+	}
+	if (!Apply_BossPatternStageActions(
+		boss, boss.strPatternId, boss.strActionId,
+		BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+		serverTick, waveOrdinal))
+	{
+		return false;
+	}
+	++boss.iAppliedPatternStageSpawnWaveCount;
 	return true;
 }
 
@@ -6011,6 +6264,11 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageTransition(
 	}
 	boss.BossCombat = std::move(stagedCombat);
 	boss.iPhase = stagedGameplayPhase;
+	/* EnterPatternStage reset the counter before this transaction. A non-empty
+	next stage has now committed its ENTER actions atomically, which is wave zero
+	for every scheduled volley owned by that stage. */
+	boss.iAppliedPatternStageSpawnWaveCount =
+		nextActionId.empty() ? 0u : 1u;
 	if (hasWorldTransaction)
 	{
 		std::string worldStatus;
@@ -6045,7 +6303,8 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 	const std::uint32_t serverTick,
 	SERVER_BOSS_COMBAT_STATE& stagedCombat,
 	std::uint8_t& stagedGameplayPhase,
-	SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction)
+	SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction,
+	const std::uint32_t spawnWaveOrdinal)
 {
 	if (patternId.empty() || actionId.empty())
 		return true;
@@ -6080,6 +6339,16 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 	{
 		if (action.eTrigger != trigger)
 			continue;
+		const bool isScheduledVolley =
+			BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY ==
+				action.eKind;
+		if (spawnWaveOrdinal > 0u &&
+			(!isScheduledVolley ||
+			 BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != trigger ||
+			 spawnWaveOrdinal >= action.Volley.iSpawnCount))
+		{
+			continue;
+		}
 		if (0u != action.iDurationMs)
 		{
 			m_strStatus = "Unsupported boss stage action: " + action.strTargetId;
@@ -6183,7 +6452,10 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				(BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER !=
 					definition->eOriginPolicy ||
 				 BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER !=
-					action.Volley.ePolicy))
+					action.Volley.ePolicy ||
+				 action.Volley.iSpawnCount < 1u ||
+				 spawnWaveOrdinal >= action.Volley.iSpawnCount ||
+				 action.Volley.iMaximumTotalObjects > 64u))
 			{
 				m_strStatus = "Boss combat object volley policy is invalid: " +
 					action.strTargetId;
@@ -6275,9 +6547,10 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				const std::uint32_t maximumTotal = isTypedVolley ?
 					action.Volley.iMaximumTotalObjects : 32u;
 				const std::uint64_t requestedTotal =
-					static_cast<std::uint64_t>(aliveTargets.size()) * countPerTarget;
+					static_cast<std::uint64_t>(aliveTargets.size()) * countPerTarget +
+					(isTypedVolley ? action.Volley.iArenaRandomCount : 0u);
 				if (maximumTotal < countPerTarget ||
-					requestedTotal > maximumTotal || requestedTotal > 32u)
+					requestedTotal > maximumTotal || requestedTotal > 64u)
 				{
 					m_strStatus = "Boss combat object volley total is out of range";
 					return false;
@@ -6356,6 +6629,14 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 						}
 					}
 				}
+				std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET> arenaOrigins;
+				if (isTypedVolley &&
+					!Resolve_ArenaRandomVolleyOrigins(
+						boss, action, *definition, spawnWaveOrdinal,
+						arenaOrigins))
+				{
+					return false;
+				}
 				for (const SERVER_PLAYER* volleyPlayer : aliveTargets)
 				{
 					SERVER_COMBAT_OBJECT_LOCKED_TARGET volleyTarget{};
@@ -6363,6 +6644,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					volleyTarget.fPositionX = volleyPlayer->fPositionX;
 					volleyTarget.fPositionY = volleyPlayer->fPositionY;
 					volleyTarget.fPositionZ = volleyPlayer->fPositionZ;
+					volleyTarget.bTrackUntilFirstPulse = false;
 					if (!m_CombatObjectRuntime.Stage_BossCombatObject(
 						combatObjectTransaction, boss, &volleyTarget, *definition,
 						isTypedVolley ? &action.Volley : nullptr,
@@ -6371,8 +6653,19 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 						return false;
 					}
 				}
+				for (const SERVER_COMBAT_OBJECT_LOCKED_TARGET& arenaOrigin :
+					arenaOrigins)
+				{
+					if (!m_CombatObjectRuntime.Stage_BossCombatObject(
+						combatObjectTransaction, boss, &arenaOrigin, *definition,
+						nullptr, catalog, 1u, serverTick, m_strStatus))
+					{
+						return false;
+					}
+				}
 				/* An empty arena spawns nothing rather than falling back to the
-				boss position, which would drop an axe on the boss itself. */
+				boss position. The authored arena supplement remains independent of
+				the player count. */
 				break;
 			}
 			if (!m_CombatObjectRuntime.Stage_BossCombatObject(
@@ -7698,6 +7991,12 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_isReady = false;
 				return;
 			}
+			if (!stageChanged && updateValtanBrain &&
+				!Apply_BossPatternScheduledSpawnWave(entity, updateTick))
+			{
+				m_isReady = false;
+				return;
+			}
 			if (stageChanged)
 				(void)Apply_EncounterPropStageEntry(entity, updateTick);
 			if (stageChanged && !Apply_WorldDestructionStageEntry(
@@ -7706,7 +8005,11 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_isReady = false;
 				return;
 			}
-			if (!Apply_WorldDestructionBodyContact(
+			/* A charge owns one swept impact receiver transaction below. Letting the
+			   stationary body-contact pass run first can break every overlapping wall
+			   box before the exact receiver chooses its single mutation. */
+			if (!entity.bPatternChargeImpact &&
+				!Apply_WorldDestructionBodyContact(
 				entity, contactStartX, contactStartY, contactStartZ,
 				updateTick))
 			{
@@ -7766,41 +8069,48 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 						m_isReady = false;
 						return;
 					}
-					/* The stun follows the collision, not the wall. A charge into a
-					   receiver whose wall is already gone, or that no destruction
-					   binding claims, still stops the boss dead. */
-					const SERVER_WORLD_ENTITY bossBeforeImpactTransition = entity;
-					const std::string impactPreviousPatternId = entity.strPatternId;
-					const std::string impactPreviousActionId = entity.strActionId;
-					const CGameplayCatalog* impactCatalog =
-						m_GameplayCatalog.Resolve(entity.PinnedDefinitionRevision);
-					if (nullptr == impactCatalog ||
-						!m_ValtanBrain.Complete_ImpactStage(
-							entity, *impactCatalog, updateTick) ||
-						!Apply_BossPatternStageTransition(
-							entity, impactPreviousPatternId,
-							impactPreviousActionId, entity.strPatternId,
-							entity.strActionId,
-							bossBeforeImpactTransition.PinnedDefinitionRevision,
-							entity.PinnedDefinitionRevision, updateTick) ||
-						!Apply_WorldDestructionStageEntry(entity, updateTick))
+					/* Geometry always stops the body, but only an exact, newly applied
+					   destruction binding owns WALL_CONTACT. An unbound or consumed
+					   receiver must not manufacture a GROGGY transition. */
+					if (!triggered)
 					{
-						auto mechanicOccurrences =
-							std::move(entity.MechanicOccurrences);
-						const bool mechanicResetRequired =
-							entity.bMechanicLedgerRequiresReset;
-						entity = bossBeforeImpactTransition;
-						entity.MechanicOccurrences =
-							std::move(mechanicOccurrences);
-						entity.bMechanicLedgerRequiresReset =
-							mechanicResetRequired;
-						m_strStatus =
-							"Valtan impact stage transition failed";
-						m_isReady = false;
-						return;
+						entity.fPatternForcedMotionSpeed = 0.f;
 					}
-					/* Complete_ImpactStage resolves the authored WALL_CONTACT branch;
-					   GameRoom only owns collision/world-destruction transaction order. */
+					else
+					{
+						const SERVER_WORLD_ENTITY bossBeforeImpactTransition = entity;
+						const std::string impactPreviousPatternId = entity.strPatternId;
+						const std::string impactPreviousActionId = entity.strActionId;
+						const CGameplayCatalog* impactCatalog =
+							m_GameplayCatalog.Resolve(entity.PinnedDefinitionRevision);
+						if (nullptr == impactCatalog ||
+							!m_ValtanBrain.Complete_ImpactStage(
+								entity, *impactCatalog, updateTick) ||
+							!Apply_BossPatternStageTransition(
+								entity, impactPreviousPatternId,
+								impactPreviousActionId, entity.strPatternId,
+								entity.strActionId,
+								bossBeforeImpactTransition.PinnedDefinitionRevision,
+								entity.PinnedDefinitionRevision, updateTick) ||
+							!Apply_WorldDestructionStageEntry(entity, updateTick))
+						{
+							auto mechanicOccurrences =
+								std::move(entity.MechanicOccurrences);
+							const bool mechanicResetRequired =
+								entity.bMechanicLedgerRequiresReset;
+							entity = bossBeforeImpactTransition;
+							entity.MechanicOccurrences =
+								std::move(mechanicOccurrences);
+							entity.bMechanicLedgerRequiresReset =
+								mechanicResetRequired;
+							m_strStatus =
+								"Valtan impact stage transition failed";
+							m_isReady = false;
+							return;
+						}
+						/* Complete_ImpactStage resolves the authored WALL_CONTACT branch;
+						   GameRoom only owns collision/world-destruction transaction order. */
+					}
 				}
 				else
 				{

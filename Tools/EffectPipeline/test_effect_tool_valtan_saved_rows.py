@@ -1524,7 +1524,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         stages = {stage["stageId"]: stage for stage in high_jump["stages"]}
         self.assertEqual(1933, stages["TAKEOFF"]["durationMs"])
-        self.assertEqual(6000, stages["AIRBORNE"]["durationMs"])
+        self.assertEqual(4000, stages["AIRBORNE"]["durationMs"])
         self.assertEqual(3200, stages["LAND"]["durationMs"])
         self.assertEqual(400, stages["RECOVERY"]["durationMs"])
         self.assertEqual("LAND", high_jump["serverMotion"]["travelStageId"])
@@ -1541,7 +1541,13 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     "startAngleDegrees": 0,
                     "angleStepDegrees": 0,
                     "allowOverlap": False,
-                    "maximumTotalObjects": 32,
+                    "maximumTotalObjects": 36,
+                    "spawnCount": 3,
+                    "spawnIntervalMs": 1333,
+                    "arenaRandomCount": 4,
+                    "arenaRandomRadiusM": 14.0,
+                    "arenaHeightToleranceM": 1.0,
+                    "arenaAnchorPolicy": "BOSS_SPAWN_POSITION",
                 }
             ],
             stages["AIRBORNE"]["actions"],
@@ -1556,7 +1562,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             if row["combatObjectArchetypeId"]
             == "combatobject.valtan.high-jump.target-axe"
         )
-        self.assertEqual(6000, target_axe["lifeMs"])
+        self.assertEqual(4000, target_axe["lifeMs"])
         self.assertEqual(1, len(target_axe["hits"]))
         self.assertEqual(1200, target_axe["hits"][0]["atMs"])
         self.assertEqual(1, target_axe["hits"][0]["repeatCount"])
@@ -2052,7 +2058,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual(3650, stages["WINDUP"]["durationMs"])
         self.assertEqual("NONE", stages["WINDUP"]["hitShape"])
         self.assertEqual(0, stages["WINDUP"]["hitCount"])
-        self.assertEqual(500, stages["CHARGE"]["durationMs"])
+        self.assertEqual(1500, stages["CHARGE"]["durationMs"])
         self.assertEqual("BOX", stages["CHARGE"]["hitShape"])
         self.assertEqual(1, stages["CHARGE"]["hitCount"])
         self.assertEqual(
@@ -2111,7 +2117,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     "mappingBasis": "PROJECT_AUTHORED",
                     "sourceStartMs": 2450,
                     "playMs": 900,
-                    "playRate": 1.8,
+                    "playRate": 0.6,
                     "loop": False,
                 }
             ],
@@ -2237,9 +2243,9 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
 
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
-        self.assertEqual(33, len(projected))
-        self.assertEqual(57, raw_links)
-        self.assertEqual(57, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(53, len(projected))
+        self.assertEqual(61, raw_links)
+        self.assertEqual(61, sum(len(rows) for rows in projected.values()))
         self.assertEqual(2, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(1, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertNotIn("VALTAN_TRIPLE_SLASH", projected)
@@ -2274,6 +2280,52 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             len(set(projected["VALTAN_WHIRLWIND"])),
         )
 
+    def test_entrance_whirlwind_has_two_exact_product_cues(self) -> None:
+        cue_document = json.loads(CUE_PATH.read_text(encoding="utf-8"))
+        entrance_cues = [
+            cue for cue in cue_document["cues"]
+            if cue["patternId"] == "VALTAN_ENTRANCE_WHIRLWIND"
+        ]
+        self.assertEqual(
+            [
+                (
+                    "cue.valtan.entrance-whirlwind.sweep.carrier-v1",
+                    "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+                ),
+                (
+                    "cue.valtan.entrance-whirlwind.sweep.active",
+                    "effect.valtan.pattern.420633.active",
+                ),
+            ],
+            [
+                (cue["bindingId"], cue["effectAssetId"])
+                for cue in entrance_cues
+            ],
+        )
+        for cue in entrance_cues:
+            self.assertEqual("SWEEP", cue["stageId"])
+            self.assertEqual(
+                "valtan.mechanic.entrance-whirlwind.sweep",
+                cue["actionId"],
+            )
+            self.assertEqual(
+                "valtan.mechanic.entrance-whirlwind.sweep.clip.01",
+                cue["clipOccurrenceId"],
+            )
+            self.assertEqual("root", cue["anchorSlotId"])
+            self.assertEqual("follow", cue["followPolicy"])
+            self.assertEqual("natural", cue["stopPolicy"])
+            self.assertEqual("once", cue["repeatPolicy"])
+            self.assertEqual(0, cue["sourceStartMs"])
+            self.assertIsNone(cue["sourceEndMs"])
+            self.assertEqual(
+                {
+                    "kind": "GAMEPLAY_FOOTPRINT",
+                    "worldScale": [1.5, 1.5, 1.5],
+                },
+                cue["scalePolicy"],
+            )
+
     def test_base_saved_projection_inventory_requires_explicit_migration(self) -> None:
         # Reference-only shells remain a source inventory even though the active
         # Saved Unified Effects surface intentionally hides them.
@@ -2281,8 +2333,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             include_v1_aliases=False,
             include_reference_only=True,
         )
-        self.assertEqual(108, raw_links)
-        self.assertEqual(107, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(109, raw_links)
+        self.assertEqual(108, sum(len(rows) for rows in projected.values()))
         catalog = {
             row["effectAssetId"]: row
             for row in json.loads(
@@ -2342,10 +2394,11 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             cue for cue in cues if cue["effectAssetId"] not in project_tuned_ids
         ]
         effect_ids = [cue["effectAssetId"] for cue in sealed_cues]
-        self.assertEqual(47, len(effect_ids))
+        self.assertEqual(49, len(effect_ids))
         # Arena-break recovery intentionally reuses the reviewed ledge-roar
         # recovery asset. The separate FOUR_PILLARS additive layer contributes
-        # two exact owners, so 47 links resolve to 46 documents.
+        # two exact owners. Entrance Whirlwind adds two exact links and reuses
+        # already reviewed effect documents.
         self.assertEqual(46, len(set(effect_ids)))
         visible_elements = 0
         hidden_elements = 0
@@ -2429,6 +2482,16 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     "DIRECT_AUTHORED_DOCUMENT",
                     source_entry["payloadKind"],
                 )
+
+    def test_sky_axe_does_not_reuse_donut_impact_rows(self) -> None:
+        sky_axe_path = AUTHORED_ROOT / "effect.valtan.sky-axe.active.effect.json"
+        sky_axe = json.loads(sky_axe_path.read_text(encoding="utf-8"))
+        self.assertFalse(
+            any(
+                "donut.impact.wave.black" in row["id"]
+                for row in sky_axe["elements"]
+            )
+        )
 
     def test_recovered_floor_wipe_and_center_landing_sources_are_catalogued(
         self,

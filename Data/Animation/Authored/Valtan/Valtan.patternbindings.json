@@ -179,7 +179,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 2450,
           "playMs": 900,
-          "playRate": 1.8,
+          "playRate": 0.6,
           "loop": false
         }
       ]

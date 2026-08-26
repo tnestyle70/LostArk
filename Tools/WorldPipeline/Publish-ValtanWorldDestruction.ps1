@@ -36,6 +36,11 @@ $impactPatternId = 'VALTAN_ARMOR_BREAK_OPENING'
 $impactStageId = 'WALL_CHARGE'
 $impactActionId = 'valtan.mechanic.armor-break-opening.charge'
 $impactStageIndex = 0
+$dashImpactPatternId = 'VALTAN_DASH_CHARGE'
+$dashImpactStageId = 'CHARGE'
+$dashImpactActionId = 'valtan.attack.dash-charge.active'
+$dashImpactStageIndex = 1
+$expectedDashImpactGroupCount = 10
 # The first-appearance sweep owns two single-wall groups of its own, so it can
 # never share a group, a member or a receiver with the 159 charge wall.
 $entranceGroupIdPrefix = 'destroyable.group.valtan.entrance.'
@@ -819,10 +824,14 @@ function Compile-ValtanWorldDestruction {
             [uint32]$resolvedStage.StageIndex -eq [uint32]$entranceStageIndex
         } elseif ($isImpactBinding) {
             $isImpactGroup -and
-            $binding.patternId -ceq $impactPatternId -and
-            $binding.stageId -ceq $impactStageId -and
-            $resolvedStage.ActionId -ceq $impactActionId -and
-            [uint32]$resolvedStage.StageIndex -eq [uint32]$impactStageIndex
+            (($binding.patternId -ceq $impactPatternId -and
+              $binding.stageId -ceq $impactStageId -and
+              $resolvedStage.ActionId -ceq $impactActionId -and
+              [uint32]$resolvedStage.StageIndex -eq [uint32]$impactStageIndex) -or
+             ($binding.patternId -ceq $dashImpactPatternId -and
+              $binding.stageId -ceq $dashImpactStageId -and
+              $resolvedStage.ActionId -ceq $dashImpactActionId -and
+              [uint32]$resolvedStage.StageIndex -eq [uint32]$dashImpactStageIndex))
         } else {
             $binding.triggerKind -ceq 'STAGE_ENTER' -and
             $binding.patternId -ceq $firstPatternId -and
@@ -991,6 +1000,13 @@ function Compile-ValtanWorldDestruction {
         $_.ActionId -ceq $impactActionId -and [uint32]$_.StageIndex -eq [uint32]$impactStageIndex -and
         $_.TriggerKind -ceq 'BOSS_IMPACT' -and $_.ReceiverId -cne '-'
     })
+    $dashImpactBindings = @($serverBindings | Where-Object {
+        $_.PatternId -ceq $dashImpactPatternId -and
+        $_.StageId -ceq $dashImpactStageId -and
+        $_.ActionId -ceq $dashImpactActionId -and
+        [uint32]$_.StageIndex -eq [uint32]$dashImpactStageIndex -and
+        $_.TriggerKind -ceq 'BOSS_IMPACT' -and $_.ReceiverId -cne '-'
+    })
     $entranceBindings = @($serverBindings | Where-Object {
         $_.PatternId -ceq $entrancePatternId -and $_.StageId -ceq $entranceStageId -and
         $_.ActionId -ceq $entranceActionId -and
@@ -1134,9 +1150,10 @@ function Compile-ValtanWorldDestruction {
 
     if ($isProductCandidate) {
         if ($arenaBreakBindings.Count + $impactBindings.Count +
+            $dashImpactBindings.Count +
             $entranceBindings.Count + $contactBindings.Count +
             $floorBindings.Count -ne $enabledBindings.Count) {
-            throw 'Every enabled destruction binding must belong to the contact, entrance, 109 stage, 159 impact or floor collapse contract.'
+            throw 'Every enabled destruction binding must belong to the contact, entrance, 109 stage, one of the exact 159 charge impacts, or floor collapse contract.'
         }
         if ($floorBindings.Count -gt 0) {
             if ($floorStageGroupIds[$floorStageAGroupIdPrefix].Count -ne $expectedFloorStageAGroupCount) {
@@ -1184,7 +1201,23 @@ function Compile-ValtanWorldDestruction {
         if ($impactBindings.Count -ne $expectedImpactGroupCount -or
             $impactGroupIds.Count -ne $expectedImpactGroupCount -or
             $impactReceiverIds.Count -ne $expectedImpactGroupCount) {
-            throw "The destruction schedule must contain exactly $expectedImpactGroupCount independent 159 wall-charge bindings."
+            throw "The opening destruction schedule must contain exactly $expectedImpactGroupCount independent 159 wall-charge bindings."
+        }
+        $dashImpactGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $dashImpactReceiverIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($dashImpactBinding in $dashImpactBindings) {
+            $dashImpactReachedGroupId = [string]$mutationById[[string]$dashImpactBinding.MutationId].groupId
+            if (-not $dashImpactReachedGroupId.StartsWith(
+                $impactGroupIdPrefix, [StringComparison]::Ordinal) -or
+                -not $dashImpactGroupIds.Add($dashImpactReachedGroupId) -or
+                -not $dashImpactReceiverIds.Add([string]$dashImpactBinding.ReceiverId)) {
+                throw "The general dash impact walls must own unique groups and receivers: $($dashImpactBinding.BindingId)"
+            }
+        }
+        if ($dashImpactBindings.Count -ne $expectedDashImpactGroupCount -or
+            $dashImpactGroupIds.Count -ne $expectedDashImpactGroupCount -or
+            $dashImpactReceiverIds.Count -ne $expectedDashImpactGroupCount) {
+            throw "The general dash destruction schedule must contain exactly $expectedDashImpactGroupCount independent 159 wall-charge bindings."
         }
         $expectedContactBindingCount = $expectedIndependentContactWallCount
         if ($contactBindings.Count -ne $expectedContactBindingCount -or
@@ -1440,6 +1473,7 @@ function Compile-ValtanWorldDestruction {
         OuterFragmentActorCount = $outerFragmentActorCount
         Interior109BindingCount = $interior109BindingCount
         ImpactBindingCount = $impactBindings.Count
+        DashImpactBindingCount = $dashImpactBindings.Count
         ContactBindingCount = $contactBindings.Count
         FloorBindingCount = $floorBindings.Count
         FloorStageAGroupCount = $floorStageGroupIds[$floorStageAGroupIdPrefix].Count
@@ -1531,15 +1565,16 @@ function Invoke-ContractTests {
         $expectedOuterEmitterCount * $expectedFragmentsPerEmitter
     # Every source wall is an independent group. The sixty-nine ordinary walls
     # own contact bindings; the thirty 109 source groups and their thirty visual
-    # fillers are stage-only. The graph also carries ten 159 impact bindings and
-    # two first-appearance bindings.
+    # fillers are stage-only. The graph also carries ten opening and ten general
+    # dash 159 impact bindings plus two first-appearance bindings.
     $expectedFloorGroupCount =
         $expectedFloorStageAGroupCount + $expectedFloorStageBGroupCount
     $expectedCanonicalGroupCount =
         $expectedProductGroupCount + $expectedFloorGroupCount
     $expectedCanonicalBindingCount =
         $expectedIndependentContactWallCount + $expectedOuterGroupCount +
-        $expectedImpactGroupCount + $expectedEntranceGroupCount +
+        $expectedImpactGroupCount + $expectedDashImpactGroupCount +
+        $expectedEntranceGroupCount +
         $expectedFloorGroupCount
     if ($canonical.OuterGroupCount -ne $expectedOuterGroupCount -or
         $canonical.OuterMemberCount -ne $expectedOuterMemberCount -or
@@ -1549,6 +1584,7 @@ function Invoke-ContractTests {
         $canonical.OuterFragmentActorCount -ne $expectedFragmentActorCount -or
         $canonical.Interior109BindingCount -ne 0 -or
         $canonical.ImpactBindingCount -ne $expectedImpactGroupCount -or
+        $canonical.DashImpactBindingCount -ne $expectedDashImpactGroupCount -or
         $canonical.ContactBindingCount -ne $expectedIndependentContactWallCount -or
         $canonical.FloorBindingCount -ne $expectedFloorGroupCount -or
         $canonical.FloorStageAGroupCount -ne $expectedFloorStageAGroupCount -or
@@ -1865,4 +1901,4 @@ $result = Compile-ValtanWorldDestruction $worldEvents $encounter $simulation
 if ($Mode -eq 'Publish') {
     Publish-CompiledArtifacts $result $ServerOutputRoot $ClientOutputRoot $FailureAfterPromote
 }
-Write-Host "Valtan world destruction $Mode succeeded. groups=$($result.GroupCount) bindings=$($result.BindingCount) emitters=$($result.EmitterCount) outer109=$($result.OuterGroupCount)groups/$($result.OuterMemberCount)placements/$($result.OuterEmitterCount)emitters/$($result.OuterSuppressionAliasCount)aliases/$($result.OuterFragmentActorCount)fragments interior109=$($result.Interior109BindingCount) impact159=$($result.ImpactBindingCount) contacts=$($result.ContactBindingCount) revision=$($result.Revision)"
+Write-Host "Valtan world destruction $Mode succeeded. groups=$($result.GroupCount) bindings=$($result.BindingCount) emitters=$($result.EmitterCount) outer109=$($result.OuterGroupCount)groups/$($result.OuterMemberCount)placements/$($result.OuterEmitterCount)emitters/$($result.OuterSuppressionAliasCount)aliases/$($result.OuterFragmentActorCount)fragments interior109=$($result.Interior109BindingCount) openingImpact159=$($result.ImpactBindingCount) dashImpact159=$($result.DashImpactBindingCount) contacts=$($result.ContactBindingCount) revision=$($result.Revision)"

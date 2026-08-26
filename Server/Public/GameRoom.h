@@ -490,6 +490,10 @@ namespace LostArk::Server
 			const std::string& patternId,
 			const std::string& actionId,
 			BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+			std::uint32_t serverTick,
+			std::uint32_t spawnWaveOrdinal = 0u);
+		bool Apply_BossPatternScheduledSpawnWave(
+			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
 		bool Apply_BossPatternStageTransition(
 			SERVER_WORLD_ENTITY& boss,
@@ -510,7 +514,14 @@ namespace LostArk::Server
 			std::uint32_t serverTick,
 			SERVER_BOSS_COMBAT_STATE& stagedCombat,
 			std::uint8_t& stagedGameplayPhase,
-			SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction);
+			SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction,
+			std::uint32_t spawnWaveOrdinal = 0u);
+		bool Resolve_ArenaRandomVolleyOrigins(
+			const SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_STAGE_ACTION& action,
+			const BOSS_COMBAT_OBJECT_DEFINITION& definition,
+			std::uint32_t spawnWaveOrdinal,
+			std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET>& outOrigins);
 		bool Broadcast_CombatObjectLifecycle();
 		void Drain_BossCombatEvents();
 		bool Apply_WorldDestructionStageEntry(
@@ -551,10 +562,9 @@ namespace LostArk::Server
 		bool Send_EncounterPropSync(
 			const std::shared_ptr<CClientSession>& session);
 		void Broadcast_EncounterPropSync();
-		/* Break whatever the boss body physically reached between its previous
-		and current position. No pattern, stage or receiver whitelist gates it;
-		only geometry decides, which is what makes an ordinary charge or even a
-		walk into a wall bring that one wall down. */
+		/* Break whatever a non-impact boss body physically reached between its
+		previous and current position. A charge-impact stage bypasses this generic
+		pass and owns one exact swept receiver transaction instead. */
 		bool Apply_WorldDestructionBodyContact(
 			SERVER_WORLD_ENTITY& boss,
 			float previousX,

@@ -35,8 +35,14 @@ namespace
 	constexpr f32_t VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS = 1.f / 120.f;
 	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
 	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
+	constexpr f32_t NETWORK_INTERPOLATION_DELAY_TICKS = 2.f;
+	constexpr f32_t NETWORK_PLAYBACK_SNAP_TICKS = 6.f;
+	constexpr f32_t NETWORK_PLAYBACK_DRIFT_GAIN = 4.f;
+	constexpr f32_t NETWORK_TELEPORT_DISTANCE_SQ = 100.f;
+	constexpr f32_t NETWORK_TURN_DEGREES_PER_SECOND = 720.f;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
+	constexpr int32_t ROOT_MOTION_LOCK_ALL_AXES = -1;
 #ifdef _DEBUG
 	std::atomic_bool g_bPatternEffectV1AuditionEnabled = false;
 #endif
@@ -1033,6 +1039,7 @@ void CValtan::Update(f32_t fTimeDelta)
 	}
 	if (m_isServerAuthoritative)
 	{
+		Update_NetworkTransform(fTimeDelta);
 		__super::Update(fTimeDelta);
 		return;
 	}
@@ -1176,13 +1183,14 @@ HRESULT CValtan::Ready_PartObjects()
 		nullptr == m_pBodyVisualRootCom)
 		return E_FAIL;
 
-	/* The authored clips carry baked b_root travel, so drawing them unchanged
-	would slide the mesh away from the server transform that already moves this
-	boss. The body owns the skeleton every socketed part follows, so suppressing
-	the horizontal channel here is enough; local Z stays free because the pose
-	itself carries the leap. This mirrors the player contract in CCharacter. */
+	/* Product Valtan receives X/Y/Z from the Server, so its authored b_root must
+	not add a second horizontal or vertical displacement. Tool/non-network
+	previews keep local Z because that authored fast jump remains their timing
+	oracle. The body owns the skeleton every socketed part follows. */
 	m_pBodyModelCom->Enable_RootMotionSuppression(
-		ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
+		ROOT_MOTION_BONE,
+		m_isServerAuthoritative ?
+			ROOT_MOTION_LOCK_ALL_AXES : ROOT_MOTION_VERTICAL_AXIS);
 
 	CPart_Equipment::PART_EQUIPMENT_DESC weaponDesc{};
 
@@ -1327,6 +1335,151 @@ void CValtan::Set_ChaseState(bool_t isChasing)
 	}
 }
 
+void CValtan::Queue_NetworkTransformSample(
+	const float3_t& position,
+	const f32_t yawDegrees,
+	const uint32_t iServerTick)
+{
+	bool_t reset =
+		!m_hasNetworkTransformState || 0u == m_iNetworkSampleCount;
+	if (!reset)
+	{
+		const NETWORK_TRANSFORM_SAMPLE& newest =
+			m_NetworkSamples[m_iNetworkSampleCount - 1u];
+		const f32_t dx = position.x - newest.vPosition.x;
+		const f32_t dy = position.y - newest.vPosition.y;
+		const f32_t dz = position.z - newest.vPosition.z;
+		if (dx * dx + dy * dy + dz * dz >
+				NETWORK_TELEPORT_DISTANCE_SQ ||
+			(iServerTick < newest.iServerTick &&
+			 CActionPresentationTimeline::Is_ForwardTick(
+				iServerTick, newest.iServerTick)))
+		{
+			reset = true;
+		}
+	}
+
+	if (reset)
+	{
+		m_iNetworkSampleCount = 0u;
+		m_fPresentationYawDegrees = yawDegrees;
+		m_fPlaybackServerTick = static_cast<f32_t>(iServerTick) -
+			NETWORK_INTERPOLATION_DELAY_TICKS;
+	}
+
+	if (m_iNetworkSampleCount > 0u &&
+		m_NetworkSamples[m_iNetworkSampleCount - 1u].iServerTick ==
+			iServerTick)
+	{
+		NETWORK_TRANSFORM_SAMPLE& newest =
+			m_NetworkSamples[m_iNetworkSampleCount - 1u];
+		newest.vPosition = position;
+		newest.fYawDegrees = yawDegrees;
+	}
+	else
+	{
+		if (NETWORK_SAMPLE_CAPACITY == m_iNetworkSampleCount)
+		{
+			for (std::size_t i = 1u; i < NETWORK_SAMPLE_CAPACITY; ++i)
+				m_NetworkSamples[i - 1u] = m_NetworkSamples[i];
+			--m_iNetworkSampleCount;
+		}
+		NETWORK_TRANSFORM_SAMPLE& sample =
+			m_NetworkSamples[m_iNetworkSampleCount++];
+		sample.iServerTick = iServerTick;
+		sample.vPosition = position;
+		sample.fYawDegrees = yawDegrees;
+	}
+	m_hasNetworkTransformState = true;
+}
+
+void CValtan::Update_NetworkTransform(const f32_t fTimeDelta)
+{
+	if (!m_hasNetworkTransformState || nullptr == m_pTransformCom ||
+		0u == m_iNetworkSampleCount || !std::isfinite(fTimeDelta) ||
+		fTimeDelta < 0.f)
+	{
+		return;
+	}
+
+	const f32_t oldestTick =
+		static_cast<f32_t>(m_NetworkSamples[0].iServerTick);
+	const f32_t newestTick = static_cast<f32_t>(
+		m_NetworkSamples[m_iNetworkSampleCount - 1u].iServerTick);
+	m_fPlaybackServerTick += fTimeDelta * VALTAN_SERVER_TICK_HZ;
+
+	const f32_t targetTick =
+		newestTick - NETWORK_INTERPOLATION_DELAY_TICKS;
+	const f32_t drift = targetTick - m_fPlaybackServerTick;
+	if (fabsf(drift) > NETWORK_PLAYBACK_SNAP_TICKS)
+	{
+		m_fPlaybackServerTick = targetTick;
+	}
+	else
+	{
+		m_fPlaybackServerTick += drift * (std::min)(
+			1.f, NETWORK_PLAYBACK_DRIFT_GAIN * fTimeDelta);
+	}
+	m_fPlaybackServerTick = (std::max)(
+		oldestTick,
+		(std::min)(newestTick, m_fPlaybackServerTick));
+
+	std::size_t older = m_iNetworkSampleCount - 1u;
+	for (std::size_t i = 0u; i + 1u < m_iNetworkSampleCount; ++i)
+	{
+		if (m_fPlaybackServerTick <=
+			static_cast<f32_t>(m_NetworkSamples[i + 1u].iServerTick))
+		{
+			older = i;
+			break;
+		}
+	}
+
+	const NETWORK_TRANSFORM_SAMPLE& from = m_NetworkSamples[older];
+	const NETWORK_TRANSFORM_SAMPLE& to = m_NetworkSamples[
+		(std::min)(older + 1u, m_iNetworkSampleCount - 1u)];
+	vector_t nextPosition = XMVectorSet(
+		to.vPosition.x, to.vPosition.y, to.vPosition.z, 1.f);
+	f32_t targetYawDegrees = to.fYawDegrees;
+	if (to.iServerTick > from.iServerTick)
+	{
+		const f32_t ratio =
+			(m_fPlaybackServerTick - static_cast<f32_t>(from.iServerTick)) /
+			static_cast<f32_t>(to.iServerTick - from.iServerTick);
+		const vector_t fromPosition = XMVectorSet(
+			from.vPosition.x, from.vPosition.y, from.vPosition.z, 1.f);
+		nextPosition = XMVectorLerp(fromPosition, nextPosition, ratio);
+
+		f32_t yawSpan = to.fYawDegrees - from.fYawDegrees;
+		while (yawSpan > 180.f)
+			yawSpan -= 360.f;
+		while (yawSpan < -180.f)
+			yawSpan += 360.f;
+		targetYawDegrees = from.fYawDegrees + yawSpan * ratio;
+	}
+
+	m_pTransformCom->Set_State(
+		STATE::POSITION, XMVectorSetW(nextPosition, 1.f));
+	f32_t yawDifference = targetYawDegrees - m_fPresentationYawDegrees;
+	while (yawDifference > 180.f)
+		yawDifference -= 360.f;
+	while (yawDifference < -180.f)
+		yawDifference += 360.f;
+	const f32_t yawStep = NETWORK_TURN_DEGREES_PER_SECOND * fTimeDelta;
+	if (fabsf(yawDifference) <= yawStep)
+		m_fPresentationYawDegrees = targetYawDegrees;
+	else
+		m_fPresentationYawDegrees +=
+			yawDifference > 0.f ? yawStep : -yawStep;
+	m_pTransformCom->Rotation(0.f, m_fPresentationYawDegrees, 0.f);
+
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
+}
+
 void CValtan::Set_ArmorPartVisible(
 	const uint32_t iStateMask,
 	const bool_t isVisible)
@@ -1464,10 +1617,11 @@ bool_t CValtan::Apply_NetworkState(
 		VALTAN_STATE::PATTERN_WINDUP == nextState ||
 		VALTAN_STATE::PATTERN_ACTIVE == nextState ||
 		VALTAN_STATE::PATTERN_RECOVERY == nextState;
-	if (0u != iServerTick && 0u != m_iLastServerTick &&
-		iServerTick != m_iLastServerTick &&
-		!Client::CActionPresentationTimeline::Is_ForwardTick(
-			iServerTick, m_iLastServerTick))
+	if (0u != m_iLastServerTick &&
+		(0u == iServerTick ||
+		 (iServerTick != m_iLastServerTick &&
+		  !Client::CActionPresentationTimeline::Is_ForwardTick(
+			  iServerTick, m_iLastServerTick))))
 	{
 		return false;
 	}
@@ -1655,15 +1809,7 @@ bool_t CValtan::Apply_NetworkState(
 			iPreviousActionStartTick);
 	}
 
-	m_pTransformCom->Set_State(
-		STATE::POSITION,
-		XMVectorSet(position.x, position.y, position.z, 1.f));
-	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
-	if (nullptr != m_pColliderCom)
-	{
-		m_pColliderCom->Update(XMMatrixTranslationFromVector(
-			m_pTransformCom->Get_State(STATE::POSITION)));
-	}
+	Queue_NetworkTransformSample(position, yawDegrees, iServerTick);
 	m_strServerActionId.assign(actionId);
 	m_iState = nextState;
 	if (0u != iServerTick)

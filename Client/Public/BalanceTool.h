@@ -87,6 +87,11 @@ private:
 		double landingY = 0.0;
 		double landingZ = 0.0;
 		double apexHeight = 0.0;
+		std::string travelStageId;
+		std::uint32_t takeoffStartMs = 0;
+		std::uint32_t takeoffEndMs = 0;
+		std::uint32_t travelStartMs = 0;
+		std::uint32_t travelEndMs = 0;
 	};
 
 	struct DAMAGE_EDIT
@@ -122,7 +127,16 @@ private:
 		double startAngleDegrees = 0.0;
 		double angleStepDegrees = 0.0;
 		bool allowOverlap = false;
-		std::uint32_t maximumTotalObjects = 32u;
+		std::uint32_t maximumTotalObjects = 36u;
+		std::string spawnScheduleKind = "INTERVAL";
+		std::uint32_t spawnCount = 3u;
+		std::uint32_t spawnFirstOffsetMs = 0u;
+		std::uint32_t spawnIntervalMs = 1333u;
+		std::string arenaRandomKind = "RANDOM_NAVIGABLE_CIRCLE";
+		std::string arenaAnchor = "BOSS_SPAWN_POSITION";
+		std::uint32_t arenaRandomCount = 4u;
+		double arenaRandomRadiusM = 14.0;
+		double arenaHeightToleranceM = 1.0;
 	};
 
 	struct PATTERN_STAGE_EDIT

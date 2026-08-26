@@ -2473,6 +2473,106 @@
                          "enabled":  true
                      },
                      {
+                         "bindingId":  "binding.valtan.wall159.10619331645164562008.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.10619331645164562008.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.10619331645164562008.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.10758879797263276529.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.10758879797263276529.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.10758879797263276529.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.11047903315509031966.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.11047903315509031966.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.11047903315509031966.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.12385961325933108240.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.12385961325933108240.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.12385961325933108240.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.15221142224278623810.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.15221142224278623810.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.15221142224278623810.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.15719065619666776634.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.15719065619666776634.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.15719065619666776634.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.16891123250307634887.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.16891123250307634887.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.16891123250307634887.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.17769051189408857662.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.17769051189408857662.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.17769051189408857662.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.18064647264029106986.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.18064647264029106986.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.18064647264029106986.receiver",
+                         "enabled":  true
+                     },
+                     {
+                         "bindingId":  "binding.valtan.wall159.18095941116451824308.dash-charge-impact",
+                         "mutationId":  "mutation.valtan.wall159.18095941116451824308.despawn",
+                         "patternId":  "VALTAN_DASH_CHARGE",
+                         "stageId":  "CHARGE",
+                         "triggerKind":  "COLLISION_IMPACT",
+                         "offsetMs":  0,
+                         "receiverCollisionId":  "collision.valtan.wallgroup.11047903315509031966.18095941116451824308.receiver",
+                         "enabled":  true
+                     },
+                     {
                          "bindingId":  "binding.valtan.wall.9335938568718910930.preview",
                          "mutationId":  "mutation.valtan.wall.9335938568718910930.despawn",
                          "patternId":  "VALTAN_ARENA_BREAK_109",

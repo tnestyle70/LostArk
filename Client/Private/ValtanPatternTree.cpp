@@ -229,6 +229,7 @@ namespace
 
 	bool_t Read_StageActions(
 		const DATA_JSON_VALUE* pValue,
+		const uint32_t iStageDurationMs,
 		std::vector<Client::VALTAN_STAGE_ACTION_VIEW>& Out)
 	{
 		Out.clear();
@@ -246,24 +247,82 @@ namespace
 					Value, "layout", DATA_JSON_TYPE::STRING);
 				const DATA_JSON_VALUE* pAllowOverlap = Required(
 					Value, "allowOverlap", DATA_JSON_TYPE::BOOLEAN);
+				const DATA_JSON_VALUE* pArenaAnchor = Required(
+					Value, "arenaAnchorPolicy", DATA_JSON_TYPE::STRING);
 				if (!Has_ExactProperties(Value,
 						{ "trigger", "kind", "targetId", "targetingPolicy",
 						  "countPerResolvedTarget", "layout", "radiusM",
 						  "startAngleDegrees", "angleStepDegrees", "allowOverlap",
-						  "maximumTotalObjects" }) ||
+						  "maximumTotalObjects", "spawnCount", "spawnIntervalMs",
+						  "arenaRandomCount", "arenaRandomRadiusM",
+						  "arenaHeightToleranceM", "arenaAnchorPolicy" }) ||
 					nullptr == Required(Value, "trigger", DATA_JSON_TYPE::STRING) ||
 					nullptr == Required(Value, "targetId", DATA_JSON_TYPE::STRING) ||
-					nullptr == pTargeting || nullptr == pLayout ||
+					nullptr == pTargeting ||
+					"PER_ALIVE_PLAYER" != pTargeting->Get_String() ||
+					nullptr == pLayout ||
 					("SINGLE" != pLayout->Get_String() &&
 					 "RADIAL" != pLayout->Get_String()) ||
 					!Is_NonNegativeInteger(Value.Find("countPerResolvedTarget")) ||
 					0.0 == Value.Find("countPerResolvedTarget")->Get_Number() ||
+					Value.Find("countPerResolvedTarget")->Get_Number() > 8.0 ||
 					!Is_FiniteNumber(Value.Find("radiusM")) ||
 					!Is_FiniteNumber(Value.Find("startAngleDegrees")) ||
 					!Is_FiniteNumber(Value.Find("angleStepDegrees")) ||
 					nullptr == pAllowOverlap ||
 					!Is_NonNegativeInteger(Value.Find("maximumTotalObjects")) ||
-					0.0 == Value.Find("maximumTotalObjects")->Get_Number())
+					0.0 == Value.Find("maximumTotalObjects")->Get_Number() ||
+					Value.Find("maximumTotalObjects")->Get_Number() > 64.0 ||
+					!Is_NonNegativeInteger(Value.Find("spawnCount")) ||
+					0.0 == Value.Find("spawnCount")->Get_Number() ||
+					Value.Find("spawnCount")->Get_Number() > 8.0 ||
+					!Is_NonNegativeInteger(Value.Find("spawnIntervalMs")) ||
+					Value.Find("spawnIntervalMs")->Get_Number() >
+						static_cast<double>(iStageDurationMs) ||
+					(Value.Find("spawnCount")->Get_Number() > 1.0 &&
+					 0.0 == Value.Find("spawnIntervalMs")->Get_Number()) ||
+					(Value.Find("spawnCount")->Get_Number() == 1.0 &&
+					 0.0 != Value.Find("spawnIntervalMs")->Get_Number()) ||
+					(Value.Find("spawnCount")->Get_Number() - 1.0) *
+						Value.Find("spawnIntervalMs")->Get_Number() >=
+						static_cast<double>(iStageDurationMs) ||
+					!Is_NonNegativeInteger(Value.Find("arenaRandomCount")) ||
+					0.0 == Value.Find("arenaRandomCount")->Get_Number() ||
+					Value.Find("arenaRandomCount")->Get_Number() > 32.0 ||
+					!Is_FiniteNumber(Value.Find("arenaRandomRadiusM")) ||
+					Value.Find("arenaRandomRadiusM")->Get_Number() <= 0.0 ||
+					Value.Find("arenaRandomRadiusM")->Get_Number() > 1000.0 ||
+					!Is_FiniteNumber(Value.Find("arenaHeightToleranceM")) ||
+					Value.Find("arenaHeightToleranceM")->Get_Number() < 0.0 ||
+					Value.Find("arenaHeightToleranceM")->Get_Number() > 1000.0 ||
+					nullptr == pArenaAnchor ||
+					"BOSS_SPAWN_POSITION" != pArenaAnchor->Get_String() ||
+					Value.Find("maximumTotalObjects")->Get_Number() <
+						Value.Find("countPerResolvedTarget")->Get_Number() +
+						Value.Find("arenaRandomCount")->Get_Number() ||
+					3.0 != Value.Find("spawnCount")->Get_Number() ||
+					1333.0 != Value.Find("spawnIntervalMs")->Get_Number() ||
+					4.0 != Value.Find("arenaRandomCount")->Get_Number() ||
+					14.0 != Value.Find("arenaRandomRadiusM")->Get_Number() ||
+					1.0 != Value.Find("arenaHeightToleranceM")->Get_Number())
+				{
+					return false;
+				}
+				const double fCount =
+					Value.Find("countPerResolvedTarget")->Get_Number();
+				const double fRadius = Value.Find("radiusM")->Get_Number();
+				const double fStartAngle =
+					Value.Find("startAngleDegrees")->Get_Number();
+				const double fAngleStep =
+					Value.Find("angleStepDegrees")->Get_Number();
+				const bool_t bSingle = 1.0 == fCount;
+				if ((bSingle && ("SINGLE" != pLayout->Get_String() ||
+						0.0 != fRadius || 0.0 != fStartAngle ||
+						0.0 != fAngleStep || pAllowOverlap->Get_Boolean())) ||
+					(!bSingle && ("RADIAL" != pLayout->Get_String() ||
+						fRadius <= 0.0 || fAngleStep <= 0.0 ||
+						fAngleStep * fCount > 360.000001 ||
+						pAllowOverlap->Get_Boolean())))
 				{
 					return false;
 				}
@@ -364,7 +423,8 @@ namespace
 			return true;
 		if (!Has_ExactProperties(*pValue,
 				{ "kind", "anchorId", "landingPosition", "apexHeight",
-				  "travelStageId" }))
+				  "travelStageId", "takeoffStartMs", "takeoffEndMs",
+				  "travelStartMs", "travelEndMs" }))
 		{
 			return false;
 		}
@@ -378,10 +438,17 @@ namespace
 			*pValue, "landingPosition", DATA_JSON_TYPE::ARRAY);
 		Client::VALTAN_PATTERN_SERVER_MOTION_VIEW Motion;
 		if (nullptr == pKind || nullptr == pAnchor || nullptr == pTravel ||
-			pKind->Get_String().empty() || pAnchor->Get_String().empty() ||
-			pTravel->Get_String().empty() || nullptr == pLanding ||
+			("LEAP_TO_ANCHOR" != pKind->Get_String() &&
+			 "LEAP_TO_TARGET" != pKind->Get_String()) ||
+			!Is_StableToken(pAnchor->Get_String()) ||
+			!Is_StableToken(pTravel->Get_String()) || nullptr == pLanding ||
 			3u != pLanding->Get_Array().size() ||
-			!Read_RequiredFiniteFloat(*pValue, "apexHeight", Motion.fApexHeight))
+			!Is_NonNegativeInteger(pValue->Find("takeoffStartMs")) ||
+			!Is_NonNegativeInteger(pValue->Find("takeoffEndMs")) ||
+			!Is_NonNegativeInteger(pValue->Find("travelStartMs")) ||
+			!Is_NonNegativeInteger(pValue->Find("travelEndMs")) ||
+			!Read_RequiredFiniteFloat(*pValue, "apexHeight", Motion.fApexHeight) ||
+			Motion.fApexHeight <= 0.f || Motion.fApexHeight > 200.f)
 		{
 			return false;
 		}
@@ -399,6 +466,19 @@ namespace
 		Motion.strKind = pKind->Get_String();
 		Motion.strAnchorId = pAnchor->Get_String();
 		Motion.strTravelStageId = pTravel->Get_String();
+		Motion.iTakeoffStartMs = static_cast<uint32_t>(
+			pValue->Find("takeoffStartMs")->Get_Number());
+		Motion.iTakeoffEndMs = static_cast<uint32_t>(
+			pValue->Find("takeoffEndMs")->Get_Number());
+		Motion.iTravelStartMs = static_cast<uint32_t>(
+			pValue->Find("travelStartMs")->Get_Number());
+		Motion.iTravelEndMs = static_cast<uint32_t>(
+			pValue->Find("travelEndMs")->Get_Number());
+		if (Motion.iTakeoffStartMs >= Motion.iTakeoffEndMs ||
+			Motion.iTravelStartMs >= Motion.iTravelEndMs)
+		{
+			return false;
+		}
 		Out = std::move(Motion);
 		return true;
 	}
@@ -445,6 +525,28 @@ namespace
 		std::vector<Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW> AuthoredCues;
 		std::vector<MASTER_EFFECT_REFERENCE> EffectReferences;
 	};
+
+	template <typename TStage>
+	bool_t Validate_PatternServerMotionStageWindows(
+		const std::optional<Client::VALTAN_PATTERN_SERVER_MOTION_VIEW>& Motion,
+		const std::vector<TStage>& Stages)
+	{
+		if (!Motion.has_value())
+			return true;
+		if (Stages.empty() || "TAKEOFF" != Stages.front().strStageId ||
+			Motion->iTakeoffStartMs >= Motion->iTakeoffEndMs ||
+			Motion->iTakeoffEndMs > Stages.front().iDurationMs ||
+			Motion->iTravelStartMs >= Motion->iTravelEndMs)
+		{
+			return false;
+		}
+		const auto Travel = std::find_if(
+			Stages.begin() + 1u, Stages.end(),
+			[&Motion](const TStage& Stage)
+			{ return Stage.strStageId == Motion->strTravelStageId; });
+		return Stages.end() != Travel &&
+			Motion->iTravelEndMs <= Travel->iDurationMs;
+	}
 
 	struct MASTER_PATTERN final
 	{
@@ -708,7 +810,8 @@ namespace
 			!Read_RequiredUInt32(Value, "pushMs", Out.iPushMs) ||
 			!Read_RequiredUInt32(Value, "downMs", Out.iDownMs) ||
 			!Read_StageMotion(Value.Find("motion"), Out.Motion) ||
-			!Read_StageActions(Value.Find("actions"), Out.Actions) ||
+			!Read_StageActions(
+				Value.Find("actions"), Out.iDurationMs, Out.Actions) ||
 			!Read_StageBranches(pBranches, Out.Branches))
 		{
 			strOutError = "master stage gameplay values are invalid";
@@ -849,12 +952,17 @@ namespace
 			return true;
 		if (!Has_ExactProperties(*pMotion,
 				{ "kind", "anchorId", "landingPosition", "apexHeight",
-				  "travelStageId" }) ||
+				  "travelStageId", "takeoffStartMs", "takeoffEndMs",
+				  "travelStartMs", "travelEndMs" }) ||
 			nullptr == Required(*pMotion, "kind", DATA_JSON_TYPE::STRING) ||
 			nullptr == Required(*pMotion, "anchorId", DATA_JSON_TYPE::STRING) ||
 			nullptr == Required(
 				*pMotion, "travelStageId", DATA_JSON_TYPE::STRING) ||
-			!Is_FiniteNumber(pMotion->Find("apexHeight")))
+			!Is_FiniteNumber(pMotion->Find("apexHeight")) ||
+			!Is_NonNegativeInteger(pMotion->Find("takeoffStartMs")) ||
+			!Is_NonNegativeInteger(pMotion->Find("takeoffEndMs")) ||
+			!Is_NonNegativeInteger(pMotion->Find("travelStartMs")) ||
+			!Is_NonNegativeInteger(pMotion->Find("travelEndMs")))
 		{
 			strOutError = "master serverMotion is invalid";
 			return false;
@@ -1173,6 +1281,12 @@ namespace
 					Reference.strPatternId + "/" + Reference.strStageId;
 				return false;
 			}
+		}
+		if (!Validate_PatternServerMotionStageWindows(
+				Out.ServerMotion, Out.Stages))
+		{
+			strOutError = "master serverMotion window is outside its authored stage";
+			return false;
 		}
 		return true;
 	}
@@ -1812,7 +1926,11 @@ namespace
 			 Left->strAnchorId == Right->strAnchorId &&
 			 Left->LandingPosition == Right->LandingPosition &&
 			 Left->fApexHeight == Right->fApexHeight &&
-			 Left->strTravelStageId == Right->strTravelStageId);
+			 Left->strTravelStageId == Right->strTravelStageId &&
+			 Left->iTakeoffStartMs == Right->iTakeoffStartMs &&
+			 Left->iTakeoffEndMs == Right->iTakeoffEndMs &&
+			 Left->iTravelStartMs == Right->iTravelStartMs &&
+			 Left->iTravelEndMs == Right->iTravelEndMs);
 	}
 
 	bool_t Equal_MasterPatternGameplay(
@@ -2824,20 +2942,30 @@ namespace
 		{
 			const DATA_JSON_VALUE* pLayout = Required(
 				Event, "layout", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* pSpawnSchedule = Required(
+				Event, "spawnSchedule", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* pArenaRandom = Required(
+				Event, "arenaRandom", DATA_JSON_TYPE::OBJECT);
 			const DATA_JSON_VALUE* pAllowOverlap = Required(
 				Event, "allowOverlap", DATA_JSON_TYPE::BOOLEAN);
 			if (!Has_ExactProperties(Event,
 					{ "eventId", "trigger", "kind", "combatObjectArchetypeId",
 					  "volleyPolicy", "countPerResolvedTarget", "layout",
-					  "allowOverlap", "maximumTotalObjects" }) ||
+					  "allowOverlap", "maximumTotalObjects", "spawnSchedule",
+					  "arenaRandom" }) ||
+				"ENTER" != strTrigger ||
 				!Is_StableToken(Read_String(
 					Event, "combatObjectArchetypeId")) ||
-				!Is_StableToken(Read_String(Event, "volleyPolicy")) ||
+				"PER_ALIVE_PLAYER" != Read_String(Event, "volleyPolicy") ||
 				!Is_NonNegativeInteger(Event.Find("countPerResolvedTarget")) ||
 				0.0 == Event.Find("countPerResolvedTarget")->Get_Number() ||
+				Event.Find("countPerResolvedTarget")->Get_Number() > 8.0 ||
 				!Is_NonNegativeInteger(Event.Find("maximumTotalObjects")) ||
 				0.0 == Event.Find("maximumTotalObjects")->Get_Number() ||
-				nullptr == pAllowOverlap || nullptr == pLayout)
+				Event.Find("maximumTotalObjects")->Get_Number() > 64.0 ||
+				nullptr == pAllowOverlap || pAllowOverlap->Get_Boolean() ||
+				nullptr == pLayout || nullptr == pSpawnSchedule ||
+				nullptr == pArenaRandom)
 			{
 				strOutError = "split gameplay combat-object volley is invalid";
 				return false;
@@ -2852,9 +2980,68 @@ namespace
 				Is_FiniteNumber(pLayout->Find("radiusM")) &&
 				Is_FiniteNumber(pLayout->Find("startAngleDegrees")) &&
 				Is_FiniteNumber(pLayout->Find("angleStepDegrees"));
+			const double fCount =
+				Event.Find("countPerResolvedTarget")->Get_Number();
 			if (!bTargetCenter && !bRadial)
 			{
 				strOutError = "split gameplay combat-object volley layout is invalid";
+				return false;
+			}
+			if ((bTargetCenter && 1.0 != fCount) ||
+				(bRadial && (fCount < 2.0 ||
+					pLayout->Find("radiusM")->Get_Number() <= 0.0 ||
+					pLayout->Find("angleStepDegrees")->Get_Number() <= 0.0 ||
+					pLayout->Find("angleStepDegrees")->Get_Number() * fCount >
+						360.000001)))
+			{
+				strOutError =
+					"split gameplay combat-object volley layout/count is invalid";
+				return false;
+			}
+			if (!Has_ExactProperties(*pSpawnSchedule,
+					{ "kind", "count", "firstOffsetMs", "intervalMs" }) ||
+				"INTERVAL" != Read_String(*pSpawnSchedule, "kind") ||
+				!Is_NonNegativeInteger(pSpawnSchedule->Find("count")) ||
+				0.0 == pSpawnSchedule->Find("count")->Get_Number() ||
+				pSpawnSchedule->Find("count")->Get_Number() > 8.0 ||
+				!Is_NonNegativeInteger(pSpawnSchedule->Find("firstOffsetMs")) ||
+				0.0 != pSpawnSchedule->Find("firstOffsetMs")->Get_Number() ||
+				!Is_NonNegativeInteger(pSpawnSchedule->Find("intervalMs")) ||
+				(pSpawnSchedule->Find("count")->Get_Number() > 1.0 &&
+				 0.0 == pSpawnSchedule->Find("intervalMs")->Get_Number()) ||
+				(pSpawnSchedule->Find("count")->Get_Number() == 1.0 &&
+				 0.0 != pSpawnSchedule->Find("intervalMs")->Get_Number()))
+			{
+				strOutError =
+					"split gameplay combat-object volley spawn schedule is invalid";
+				return false;
+			}
+			if (!Has_ExactProperties(*pArenaRandom,
+					{ "kind", "anchor", "count", "radiusM",
+					  "heightToleranceM" }) ||
+				"RANDOM_NAVIGABLE_CIRCLE" !=
+					Read_String(*pArenaRandom, "kind") ||
+				"BOSS_SPAWN_POSITION" != Read_String(*pArenaRandom, "anchor") ||
+				!Is_NonNegativeInteger(pArenaRandom->Find("count")) ||
+				0.0 == pArenaRandom->Find("count")->Get_Number() ||
+				pArenaRandom->Find("count")->Get_Number() > 32.0 ||
+				!Is_FiniteNumber(pArenaRandom->Find("radiusM")) ||
+				pArenaRandom->Find("radiusM")->Get_Number() <= 0.0 ||
+				pArenaRandom->Find("radiusM")->Get_Number() > 1000.0 ||
+				!Is_FiniteNumber(pArenaRandom->Find("heightToleranceM")) ||
+				pArenaRandom->Find("heightToleranceM")->Get_Number() < 0.0 ||
+				pArenaRandom->Find("heightToleranceM")->Get_Number() > 1000.0 ||
+				Event.Find("maximumTotalObjects")->Get_Number() <
+					Event.Find("countPerResolvedTarget")->Get_Number() +
+					pArenaRandom->Find("count")->Get_Number() ||
+				3.0 != pSpawnSchedule->Find("count")->Get_Number() ||
+				1333.0 != pSpawnSchedule->Find("intervalMs")->Get_Number() ||
+				4.0 != pArenaRandom->Find("count")->Get_Number() ||
+				14.0 != pArenaRandom->Find("radiusM")->Get_Number() ||
+				1.0 != pArenaRandom->Find("heightToleranceM")->Get_Number())
+			{
+				strOutError =
+					"split gameplay combat-object volley arena random contract is invalid";
 				return false;
 			}
 			strOutSpawnArchetypeId = Read_String(
@@ -5183,7 +5370,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					!Read_RequiredUInt32(
 						StageValue, "downMs", Stage.iDownMs) ||
 					!Read_StageMotion(StageValue.Find("motion"), Stage.Motion) ||
-					!Read_StageActions(StageValue.Find("actions"), Stage.Actions) ||
+					!Read_StageActions(StageValue.Find("actions"),
+						Stage.iDurationMs, Stage.Actions) ||
 					!Read_StageBranches(StageValue.Find("branches"), Stage.Branches))
 				{
 					strOutStatus =
@@ -5387,6 +5575,14 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				}
 				Pattern.Stages.push_back(std::move(Stage));
 			}
+		}
+		if (!Validate_PatternServerMotionStageWindows(
+				Pattern.ServerMotion, Pattern.Stages))
+		{
+			strOutStatus =
+				"Valtan encounter serverMotion window is outside its authored stage: " +
+				Pattern.strPatternId;
+			return false;
 		}
 		if (Pattern.Is_Gimmick())
 			Staged.Gimmicks.push_back(std::move(Pattern));

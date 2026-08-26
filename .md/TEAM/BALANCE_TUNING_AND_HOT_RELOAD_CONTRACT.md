@@ -38,7 +38,7 @@ pipeline과 `CValtanPatternTree`는 gameplay/presentation의 `patternId/stageId/
 `compatibilitySelectionWeight`는 아직 managed window가 소유하지 않는 legacy/global fallback 전용 값이므로
 selection-set weight 편집으로 함께 바꾸지 않는다. projector는 이 계약을
 `ValtanPatternRotations.json` formatVersion 3의 `WINDOW + CANDIDATE` 행으로 내보내고, Server gameplay bootstrap
-formatVersion 19가 후보 ordinal 그대로 소비한다. post-109 legacy rotation 여섯 개는 `STEP` 순서와 의도적 중복을
+formatVersion 21이 후보 ordinal 그대로 소비한다. post-109 legacy rotation 여섯 개는 `STEP` 순서와 의도적 중복을
 보존하는 read-only Product다.
 
 ## 3. 현재 활성화한 Hot Reload 범위
@@ -122,8 +122,8 @@ Server/Bin/Debug/Server.exe --reset-valtan-runtime-to-packaged
 
 이 명령은 verified packaged bootstrap을 새 pointer로 원자 기록한다. 없어진 예전 candidate에서 빠져나오는 운영
 escape hatch일 뿐, 손상되거나 모호한 pointer/journal을 추측해 덮지 않는다. Release Server는 이 명령과 Hot Reload를
-명시적으로 거부한다. canonical Product는 rotation v3/bootstrap v19이며, v18은 offline migration fixture일 뿐
-v19 Server의 live admission 대상이 아니다.
+명시적으로 거부한다. canonical Product는 rotation v3/bootstrap v21이며, v18은 offline migration fixture일 뿐
+v21 Server의 live admission 대상이 아니다.
 
 실제 사용은 Server와 Debug Client를 사용자가 직접 시작한 뒤
 `Valtan Arena -> F1 -> Balance Tool -> Bosses -> Valtan`에서

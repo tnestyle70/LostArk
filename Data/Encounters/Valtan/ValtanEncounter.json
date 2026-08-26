@@ -137,7 +137,7 @@
           "stageId": "CHARGE",
           "actionId": "valtan.attack.dash-charge.active",
           "stageKind": "ACTIVE",
-          "durationMs": 500,
+          "durationMs": 1500,
           "hitShape": "BOX",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -490,7 +490,11 @@
           -122.06
         ],
         "apexHeight": 9.0,
-        "travelStageId": "LAND"
+        "travelStageId": "LAND",
+        "takeoffStartMs": 1133,
+        "takeoffEndMs": 1500,
+        "travelStartMs": 0,
+        "travelEndMs": 267
       },
       "stages": [
         {
@@ -517,7 +521,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 6000,
+          "durationMs": 4000,
           "hitShape": "NONE",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -544,7 +548,13 @@
               "startAngleDegrees": 0,
               "angleStepDegrees": 0,
               "allowOverlap": false,
-              "maximumTotalObjects": 32
+              "maximumTotalObjects": 36,
+              "spawnCount": 3,
+              "spawnIntervalMs": 1333,
+              "arenaRandomCount": 4,
+              "arenaRandomRadiusM": 14.0,
+              "arenaHeightToleranceM": 1.0,
+              "arenaAnchorPolicy": "BOSS_SPAWN_POSITION"
             }
           ]
         },
@@ -1099,7 +1109,7 @@
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
-        { "stageId": "WALL_CHARGE", "actionId": "valtan.mechanic.armor-break-opening.charge", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0, "motion": { "kind": "FORWARD", "distance": 100.0 }, "branches": [ { "outcome": "WALL_CONTACT", "nextActionId": "valtan.mechanic.armor-break-opening.groggy" }, { "outcome": "TIMEOUT", "nextActionId": null } ] },
+        { "stageId": "WALL_CHARGE", "actionId": "valtan.mechanic.armor-break-opening.charge", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0, "motion": { "kind": "FORWARD", "distance": 20.0 }, "branches": [ { "outcome": "WALL_CONTACT", "nextActionId": "valtan.mechanic.armor-break-opening.groggy" }, { "outcome": "TIMEOUT", "nextActionId": null } ] },
         { "stageId": "GROGGY", "actionId": "valtan.mechanic.armor-break-opening.groggy", "stageKind": "GROGGY", "durationMs": 5000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0, "actions": [ { "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.groggy", "value": 1, "durationMs": 0 }, { "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.groggy", "value": 0, "durationMs": 0 } ], "branches": [ { "outcome": "PART_DESTROYED", "nextActionId": "valtan.mechanic.armor-break-opening.recovery" }, { "outcome": "TIMEOUT", "nextActionId": "valtan.mechanic.armor-break-opening.recovery" } ] },
         { "stageId": "RECOVERY", "actionId": "valtan.mechanic.armor-break-opening.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
         { "stageId": "PART_BREAK", "actionId": "valtan.mechanic.armor-break-opening.part-break", "stageKind": "PART_BREAK", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
@@ -1250,7 +1260,7 @@
       "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
-      "serverMotion": { "kind": "LEAP_TO_TARGET", "anchorId": "anchor.valtan.four-pillars-105.landing", "landingPosition": [156.03, 22.99751, -122.06], "apexHeight": 46.0, "travelStageId": "YELLOW_ZONE" },
+      "serverMotion": { "kind": "LEAP_TO_TARGET", "anchorId": "anchor.valtan.four-pillars-105.landing", "landingPosition": [156.03, 22.99751, -122.06], "apexHeight": 46.0, "travelStageId": "YELLOW_ZONE", "takeoffStartMs": 0, "takeoffEndMs": 1933, "travelStartMs": 0, "travelEndMs": 5500 },
       "stages": [
         { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.four-pillars-105.takeoff", "stageKind": "WINDUP", "durationMs": 1933, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
         { "stageId": "YELLOW_ZONE", "actionId": "valtan.mechanic.four-pillars-105.yellow-zone", "stageKind": "ACTIVE", "durationMs": 5500, "hitShape": "RING", "hitOuterRadius": 100.0, "hitInnerRadius": 4.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105", "pushRangeM": 1.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
@@ -1315,7 +1325,11 @@
           -122.06
         ],
         "apexHeight": 12.0,
-        "travelStageId": "DROP"
+        "travelStageId": "DROP",
+        "takeoffStartMs": 0,
+        "takeoffEndMs": 900,
+        "travelStartMs": 0,
+        "travelEndMs": 700
       },
       "stages": [
         {

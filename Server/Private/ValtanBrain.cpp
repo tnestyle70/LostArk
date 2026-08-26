@@ -79,19 +79,23 @@ namespace
 				boss.iPatternLeapTravelStageIndex == boss.iPatternStageIndex);
 	}
 
-	/* Stage progress in [0,1]. A zero-length stage reads as finished so the
-	arc never divides by it. */
-	float StageRatio(const SERVER_WORLD_ENTITY& boss)
+	/* Progress through one authored subwindow in [0,1]. The publisher proves
+	the bounds against the owning stage, while this remains defensive for a
+	manually constructed contract-test entity. */
+	float StageWindowRatio(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t startMs,
+		const std::uint32_t endMs)
 	{
-		if (0u == boss.iPatternStageDurationMs)
+		if (startMs >= endMs)
 			return 1.f;
-		const float duration =
-			static_cast<float>(boss.iPatternStageDurationMs) *
-			MILLISECONDS_TO_SECONDS;
-		if (!std::isfinite(boss.fActionElapsedSeconds) || duration <= 0.f)
+		if (!std::isfinite(boss.fActionElapsedSeconds))
 			return 1.f;
+		const float elapsedMs = (std::max)(0.f,
+			boss.fActionElapsedSeconds * MILLISECONDS_PER_SECOND);
 		return (std::min)(1.f, (std::max)(0.f,
-			boss.fActionElapsedSeconds / duration));
+			(elapsedMs - static_cast<float>(startMs)) /
+			static_cast<float>(endMs - startMs)));
 	}
 
 	/* TAKEOFF rises in place; DROP carries the boss to the pattern's compiled
@@ -101,15 +105,20 @@ namespace
 	{
 		if (!Is_LeapArcStage(boss))
 			return;
-		const float ratio = StageRatio(boss);
 		const float apex = boss.fLeapApexHeight;
 		if (LEAP_TAKEOFF_STAGE_INDEX == boss.iPatternStageIndex)
 		{
+			const float ratio = StageWindowRatio(
+				boss, boss.iPatternLeapTakeoffStartMs,
+				boss.iPatternLeapTakeoffEndMs);
 			boss.fPositionX = boss.fLeapOriginX;
 			boss.fPositionZ = boss.fLeapOriginZ;
 			boss.fPositionY = boss.fLeapOriginY + apex * ratio;
 			return;
 		}
+		const float ratio = StageWindowRatio(
+			boss, boss.iPatternLeapTravelStartMs,
+			boss.iPatternLeapTravelEndMs);
 		boss.fPositionX = boss.fLeapOriginX +
 			(boss.fLeapLandingX - boss.fLeapOriginX) * ratio;
 		boss.fPositionZ = boss.fLeapOriginZ +
@@ -352,6 +361,37 @@ namespace
 			[&patternId](const BOSS_PATTERN_DEFINITION& pattern)
 			{ return pattern.strPatternId == patternId; });
 		return patterns.end() == found ? nullptr : &*found;
+	}
+
+	bool CanContinueTargetlessScheduledArenaStage(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::vector<BOSS_PATTERN_DEFINITION>& patterns)
+	{
+		if (SERVER_ENTITY_ACTION::IDLE == boss.eAction ||
+			SERVER_ENTITY_ACTION::CHASE == boss.eAction ||
+			0u == boss.iActionStartTick ||
+			0u == boss.iAppliedPatternStageSpawnWaveCount)
+		{
+			return false;
+		}
+		const BOSS_PATTERN_DEFINITION* pattern =
+			FindPattern(patterns, boss.strPatternId);
+		if (nullptr == pattern || boss.iPatternStageIndex >= pattern->Stages.size())
+			return false;
+		const BOSS_PATTERN_STAGE_DEFINITION& stage =
+			pattern->Stages[boss.iPatternStageIndex];
+		if (stage.strActionId != boss.strActionId)
+			return false;
+		return stage.Actions.end() != std::find_if(
+			stage.Actions.begin(), stage.Actions.end(),
+			[](const BOSS_PATTERN_STAGE_ACTION& action)
+			{
+				return BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == action.eTrigger &&
+					BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY ==
+						action.eKind &&
+					action.Volley.iSpawnCount > 1u &&
+					action.Volley.iArenaRandomCount > 0u;
+			});
 	}
 
 	const BOSS_PATTERN_STAGE_DEFINITION* FindStageByActionId(
@@ -1125,6 +1165,7 @@ namespace
 		boss.iPatternStageDurationMs = stage.iDurationMs;
 		boss.iPatternStageFirstEvaluationTick = evaluatesOnEntryTick ?
 			serverTick : NextServerTickSkippingReservedZero(serverTick);
+		boss.iAppliedPatternStageSpawnWaveCount = 0u;
 		boss.ePatternStageMotionKind = stage.Motion.eKind;
 		boss.strActionId = stage.strActionId;
 		boss.strDamageProfileId = stage.strDamageProfileId;
@@ -1230,6 +1271,14 @@ namespace
 			boss.fPatternLeapApexHeight = pattern.Motion.fApexHeight;
 			boss.iPatternLeapTravelStageIndex =
 				pattern.Motion.iTravelStageIndex;
+			boss.iPatternLeapTakeoffStartMs =
+				pattern.Motion.iTakeoffStartMs;
+			boss.iPatternLeapTakeoffEndMs =
+				pattern.Motion.iTakeoffEndMs;
+			boss.iPatternLeapTravelStartMs =
+				pattern.Motion.iTravelStartMs;
+			boss.iPatternLeapTravelEndMs =
+				pattern.Motion.iTravelEndMs;
 		}
 		else if (Is_LeapPattern(pattern))
 		{
@@ -1239,6 +1288,14 @@ namespace
 			boss.fPatternLeapApexHeight = pattern.Motion.fApexHeight;
 			boss.iPatternLeapTravelStageIndex =
 				pattern.Motion.iTravelStageIndex;
+			boss.iPatternLeapTakeoffStartMs =
+				pattern.Motion.iTakeoffStartMs;
+			boss.iPatternLeapTakeoffEndMs =
+				pattern.Motion.iTakeoffEndMs;
+			boss.iPatternLeapTravelStartMs =
+				pattern.Motion.iTravelStartMs;
+			boss.iPatternLeapTravelEndMs =
+				pattern.Motion.iTravelEndMs;
 		}
 		else
 		{
@@ -1247,6 +1304,10 @@ namespace
 			boss.fLeapLandingZ = boss.fSpawnPositionZ;
 			boss.fPatternLeapApexHeight = 0.f;
 			boss.iPatternLeapTravelStageIndex = 1u;
+			boss.iPatternLeapTakeoffStartMs = 0u;
+			boss.iPatternLeapTakeoffEndMs = 0u;
+			boss.iPatternLeapTravelStartMs = 0u;
+			boss.iPatternLeapTravelEndMs = 0u;
 		}
 		/* BeginPattern continues through Update below, so the first stage consumes
 		this entry tick. Every other stage entry returns or happens at the end of
@@ -1730,7 +1791,12 @@ void LostArk::Server::CValtanBrain::Update(
 	}
 	const float engageDistance = (std::max)(
 		boss.fEngageDistance, MaximumPatternRange(*patterns));
-	if (nullptr == target || targetDistanceSquared > engageDistance * engageDistance)
+	const bool continueTargetlessScheduledArenaStage =
+		nullptr == target &&
+		CanContinueTargetlessScheduledArenaStage(boss, *patterns);
+	if ((!continueTargetlessScheduledArenaStage && nullptr == target) ||
+		(nullptr != target &&
+		 targetDistanceSquared > engageDistance * engageDistance))
 	{
 		VALTAN_DECISION_TRACE trace = MakeDecisionTraceHeader(
 			boss, serverTick, currentHealthBar);
@@ -1763,8 +1829,17 @@ void LostArk::Server::CValtanBrain::Update(
 		boss.MovePath.clear();
 		return;
 	}
-	boss.iTargetEntityId = target->iNetEntityId;
-	const float distance = std::sqrt(targetDistanceSquared);
+	if (nullptr == target)
+	{
+		boss.iTargetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		boss.MovePath.clear();
+	}
+	else
+	{
+		boss.iTargetEntityId = target->iNetEntityId;
+	}
+	const float distance = nullptr == target ?
+		0.f : std::sqrt(targetDistanceSquared);
 
 	if (SERVER_ENTITY_ACTION::IDLE == boss.eAction ||
 		SERVER_ENTITY_ACTION::CHASE == boss.eAction)
@@ -1825,18 +1900,6 @@ void LostArk::Server::CValtanBrain::Update(
 		BeginPattern(
 			boss, *selected, players, target,
 			catalog.Get_ActiveRevision(), serverTick);
-		if (boss.bPatternChargeImpact && 0u != boss.iPatternStageDurationMs)
-		{
-			const float durationSeconds =
-				static_cast<float>(boss.iPatternStageDurationMs) *
-				MILLISECONDS_TO_SECONDS;
-			/* The target locks the charge heading, but Valtan must continue past
-			   that player until it reaches a receiver. The encounter's authored
-			   maximumRange is therefore the travel distance; using target distance
-			   would stop at the bait player before the wall. */
-			boss.fPatternForcedMotionSpeed = durationSeconds > 0.f ?
-				boss.fPatternMaximumRange / durationSeconds : 0.f;
-		}
 	}
 
 	const BOSS_PATTERN_DEFINITION* currentPattern =
