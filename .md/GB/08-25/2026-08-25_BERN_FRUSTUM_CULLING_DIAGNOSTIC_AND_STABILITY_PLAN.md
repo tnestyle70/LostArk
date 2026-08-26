@@ -7,7 +7,7 @@ F6 자유 시점에서 플레이어가 멈춰 있어도 카메라 방향만으�
 ## 구현 계약
 
 1. `MAP_LOAD_SCOPE`가 Area별 `MAP_FRUSTUM_CULLING_POLICY`를 소유한다.
-2. 베른 descriptor만 `bypass + diagnostics`를 활성화한다. 다른 Level과 MapTool 기본값은 기존 컬링 정책을 유지한다.
+2. 진단 단계에서는 베른 descriptor만 `bypass + diagnostics`를 활성화한다. 사용자 확인과 로그 분석 뒤 제품 기본값은 둘 다 끄고 정상 컬링으로 복귀한다. 다른 Level과 MapTool 기본값은 건드리지 않는다.
 3. 맵 렌더 직전에 View/Projection을 한 번 복사하고 그 복사본에서 프러스텀 여섯 평면을 만든다.
 4. 같은 복사본을 실제 셰이더 View/Projection에도 바인딩한다.
 5. 인스턴스 배치와 fallback 배치 모두 `Late_Update`에서는 authored-visible 객체를 큐에 넣고 최종 `Render`에서 판정한다.
@@ -41,3 +41,4 @@ F6 자유 시점에서 플레이어가 멈춰 있어도 카메라 방향만으�
 5. `git diff --check` PASS.
 6. 사용자가 Lobby → Character Select → Bern 진입 후 F6으로 동일 위치를 바라보며 깜빡임 소멸 여부를 판정한다.
 7. 발생 시 `Client/Bin/Debug/Diagnostics/BernFrustumCulling.log`를 다음 수정 입력으로 사용한다.
+8. 우회 상태에서 깜빡임이 사라지면 로그로 오판 경로를 확정하고, `bypass=false`, `diagnostics=false`에서 동일 위치를 다시 확인한다.

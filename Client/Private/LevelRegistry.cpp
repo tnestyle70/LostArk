@@ -36,11 +36,13 @@ namespace
 	MAP_LOAD_SCOPE MakeBernMapScope()
 	{
 		MAP_LOAD_SCOPE scope = MakeFullMapScope();
-		/* Bern keeps the diagnostic bypass on until the camera-only repro is
-		   accepted by the user. The conservative policy remains useful after
-		   bypass is turned off for the final product check. */
-		scope.frustumCulling.bypass = true;
-		scope.frustumCulling.diagnostics = true;
+		/* The Bern-only bypass proved that the camera-dependent popping came
+		   from false frustum rejection. Product rendering now uses normal
+		   culling again, with final-render camera snapshots, rebuilt bounds and
+		   conservative rejection below. Keep the switches explicit so the same
+		   diagnostic can be staged again without changing other levels. */
+		scope.frustumCulling.bypass = false;
+		scope.frustumCulling.diagnostics = false;
 		scope.frustumCulling.baseMargin = 0.25f;
 		scope.frustumCulling.largeObjectRadiusThreshold = 4.f;
 		scope.frustumCulling.largeObjectAbsoluteMargin = 2.f;

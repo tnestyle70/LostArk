@@ -26,10 +26,10 @@ $mapObject = Read-RequiredFile 'Client\Private\MapAssetObject.cpp'
 $mapBatch = Read-RequiredFile 'Client\Private\MapStaticBatchObject.cpp'
 $model = Read-RequiredFile 'Engine\Private\Model.cpp'
 
-Require-Text $registry 'MakeBernMapScope[\s\S]*frustumCulling\.bypass\s*=\s*true' `
-    'Bern frustum bypass is not enabled.'
-Require-Text $registry 'frustumCulling\.diagnostics\s*=\s*true' `
-    'Bern frustum diagnostics are not enabled.'
+Require-Text $registry 'MakeBernMapScope[\s\S]*frustumCulling\.bypass\s*=\s*false' `
+    'Bern product frustum culling is not enabled.'
+Require-Text $registry 'frustumCulling\.diagnostics\s*=\s*false' `
+    'Bern product diagnostics are still enabled.'
 Require-Text $mapUtils 'planeDistances\[index\]' `
     'Six-plane diagnostic distances are not recorded.'
 Require-Text $mapUtils 'placementId=' `
