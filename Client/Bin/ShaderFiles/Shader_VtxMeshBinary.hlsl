@@ -32,6 +32,29 @@ float4 g_ColorTint = 1.f;
    state per draw and restores profile 0/strength 0 before returning. */
 uint g_PresentationVortexProfile = 0;
 float g_PresentationVortexStrength = 0.f;
+/* Fallback map objects own every translucent and water placement. Keep this
+   contract in the VTXMESH shader that CMapAssetObject actually clones; the
+   instanced shader is only consumed by deferred static batches. */
+Texture2D g_DetailNormalTexture;
+Texture2D g_ReflectionTexture;
+vector g_vCamPosition;
+float g_ElapsedTime = 0.f;
+uint g_HasDetailNormalTexture = 0;
+uint g_HasReflectionTexture = 0;
+float g_WaterOpacity = 1.f;
+float g_WaterOpacityPower = 1.f;
+float g_WaterFresnelIntensity = 0.f;
+float g_WaterFresnelPower = 1.f;
+float g_WaterScreenDistortionIntensity = 0.f;
+float g_WaterNormalIntensity = 0.f;
+float g_WaterDetailNormalIntensity = 0.f;
+float g_WaterReflectionIntensity = 0.f;
+float g_WaterDiffuseTiling = 1.f;
+float4 g_WaterDiffuseColor = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_WaterReflectionColor = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_WaterNormalTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
+float4 g_WaterDetailNormalTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
+float4 g_WaterReflectionTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
 /* The source game's dye contract: the mask's channels select colour regions
 of a mostly achromatic diffuse and each region multiplies its tint in. */
 Texture2D g_DyeMaskTexture;
@@ -355,6 +378,102 @@ PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
     return output;
 }
 
+/* MRT_SceneHDR binds scene colour at RT0 and distortion at RT1. The deferred
+   final pass consumes the second target as a bounded screen-space UV offset. */
+struct PS_OUT_WATER
+{
+    float4 vColor : SV_TARGET0;
+    float4 vDistortion : SV_TARGET1;
+};
+
+float2 Water_PannedUV(float2 baseUV, float4 tilingPanning)
+{
+    return baseUV * tilingPanning.xy + tilingPanning.zw * g_ElapsedTime;
+}
+
+float3 Water_SampleNormal(
+    Texture2D normalTexture,
+    float2 baseUV,
+    float4 tilingPanning,
+    float intensity)
+{
+    const float3 packed = normalTexture.Sample(
+        LinearSampler,
+        Water_PannedUV(baseUV, tilingPanning)).xyz * 2.f - 1.f;
+    return float3(packed.xy * intensity, 1.f);
+}
+
+PS_OUT_WATER PS_MAIN_WATER(VS_OUT input)
+{
+    PS_OUT_WATER output;
+    float3 tangentNormal = float3(0.f, 0.f, 1.f);
+
+    if (0 != g_HasNormalTexture)
+    {
+        tangentNormal = Water_SampleNormal(
+            g_NormalTexture,
+            input.vTexcoord,
+            g_WaterNormalTilingPanning,
+            g_WaterNormalIntensity);
+    }
+    if (0 != g_HasDetailNormalTexture)
+    {
+        const float3 detail = Water_SampleNormal(
+            g_DetailNormalTexture,
+            input.vTexcoord,
+            g_WaterDetailNormalTilingPanning,
+            g_WaterDetailNormalIntensity);
+        tangentNormal = float3(tangentNormal.xy + detail.xy, 1.f);
+    }
+    tangentNormal = normalize(tangentNormal);
+
+    const float3x3 tangentBasis = float3x3(
+        normalize(input.vTangent.xyz),
+        normalize(input.vBinormal.xyz),
+        normalize(input.vNormal.xyz));
+    const float3 worldNormal = normalize(mul(tangentNormal, tangentBasis));
+    const float3 viewDirection = normalize(
+        g_vCamPosition.xyz - input.vWorldPos.xyz);
+    const float fresnel = saturate(pow(
+        saturate(1.f - saturate(dot(worldNormal, viewDirection))),
+        max(g_WaterFresnelPower, 0.0001f)) *
+        g_WaterFresnelIntensity);
+
+    float4 color = g_DiffuseTexture.Sample(
+        LinearSampler,
+        input.vTexcoord * g_WaterDiffuseTiling);
+    color.rgb *= g_WaterDiffuseColor.rgb * g_ColorTint.rgb;
+
+    if (0 != g_HasReflectionTexture)
+    {
+        const float3 reflection = g_ReflectionTexture.Sample(
+            LinearSampler,
+            Water_PannedUV(
+                input.vTexcoord + tangentNormal.xy,
+                g_WaterReflectionTilingPanning)).rgb;
+        color.rgb += reflection *
+            g_WaterReflectionColor.rgb *
+            g_WaterReflectionIntensity *
+            fresnel;
+    }
+
+    float alpha = saturate(pow(
+        saturate(g_WaterOpacity),
+        max(g_WaterOpacityPower, 0.0001f)));
+    alpha = saturate(alpha + (1.f - alpha) * fresnel);
+    alpha *= g_ColorTint.a;
+    if (alpha < 0.001f)
+        discard;
+
+    output.vColor = float4(color.rgb, alpha);
+    output.vDistortion = float4(
+        tangentNormal.xy *
+            g_WaterScreenDistortionIntensity * 0.05f,
+        0.f,
+        alpha);
+    return output;
+}
+
 PS_OUT_FORWARD PS_MAIN_SKY(VS_OUT input)
 {
     PS_OUT_FORWARD output;
@@ -567,6 +686,33 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+    }
+    pass WaterBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_WATER();
+    }
+    pass WaterFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_WATER();
+    }
+    pass WaterTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_WATER();
     }
     pass DeferredEmissiveOverlayPass
     {

@@ -11,6 +11,14 @@ Area: `LV_BER_BERNCASTLE`
 버린 것이며, 이번 작업은 그 계약을 보존하도록 파이프라인을 고치고, 회수한 값을 별도 물 표현 문서로
 publish해, 전용 Water pass가 그 값으로 그리게 연결했다.
 
+### 2026-08-26 런타임 계약 교정
+
+최초 구현은 `CMapAssetObject`가 실제로 복제하는 `Shader_VtxMeshBinary.hlsl`이 아니라
+정적 배치 전용 `Shader_VtxMeshMapInstance.hlsl`에만 물 변수와 pass를 추가했다. 그 결과 베른과
+발탄 진입 후 첫 BLEND map object가 존재하지 않는 물 변수를 bind하면서 `E_FAIL`을 반환했고
+Client main loop가 종료됐다. 교정 내용과 검증 증거는
+`../08-26/2026-08-26_MAP_WATER_RENDER_CONTRACT_CRASH_FIX_RESULT.md`가 정본이다.
+
 ## 2. 진단에서 실측으로 확정한 사실
 
 `Data/Maps/Imported/LV_BER_BERNCASTLE/*.mapassets`와 원본 `.props.txt` 체인을 직접 대조한 결과다.
