@@ -250,6 +250,16 @@ private:
 	bool_t Start_ValtanCustomChainPreview(
 		const shared_ptr<Engine::CModel>& pModel);
 	std::filesystem::path Get_CustomChainFilePath() const;
+	/* One reader for every chain document, so an imported file and a reloaded
+	   one are admitted by exactly the same rules. */
+	bool_t Parse_CustomChainDocument(
+		const std::string& text,
+		std::vector<CUSTOM_CHAIN_ENTRY>& Out,
+		std::string& strOutError) const;
+	bool_t Read_CustomChainDocument(
+		const std::filesystem::path& source,
+		std::vector<CUSTOM_CHAIN_ENTRY>& Out,
+		std::string& strOutError) const;
 	bool_t Load_CustomChainLibrary();
 	/* Whole-file atomic replace. A rejected write leaves the previous library
 	   on disk and in memory so a failed save never costs saved chains. */

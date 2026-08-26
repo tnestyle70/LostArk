@@ -78,6 +78,9 @@ public:
 
 private:
 	bool_t Select_Asset(const ANIMATION_PREVIEW_ASSET& asset);
+	/* True when the asset declares a complete socketed weapon. A partially
+	   declared one is a data error, so it is reported instead of previewed. */
+	static bool_t Declares_Weapon(const ANIMATION_PREVIEW_ASSET& asset);
 
 private:
 	ComPtr<ID3D11Device> m_pDevice;
@@ -85,6 +88,10 @@ private:
 	/* Playable targets hold a complete CCharacter, Valtan holds its complete
 	   product CValtan composition, and preview-only props hold CPart_Body. */
 	weak_ptr<Engine::CGameObject> m_pPreviewObject;
+	/* The optional socketed weapon of a CPart_Body preview. It is a sibling in
+	   the same layer rather than a child, so it is released with the body it
+	   rides; an empty slot simply means the target declares no weapon. */
+	weak_ptr<Engine::CGameObject> m_pPreviewWeaponObject;
 	const ANIMATION_PREVIEW_ASSET* m_pPreviewAsset = nullptr;
 	uint32_t m_iPreviewLevelIndex = UINT32_MAX;
 	/* Generic CPart_Body previews retain a raw parent pointer. The inactive slot

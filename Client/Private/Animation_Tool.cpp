@@ -43,6 +43,61 @@ namespace
 	/* Used when a clip carries no usable rate, which would otherwise make the
 	frame <-> millisecond conversion divide by zero. */
 	constexpr f32_t DEFAULT_TICK_RATE = 30.f;
+	/* Both Valtan bodies author into one document. That is only true because
+	Tools/ModelAssetConverter/bake_ghost_valtan_animset.py puts the product clip
+	vocabulary on the ghost rig, so a chain written on either body names clips
+	the other also owns, and promote_valtan_animation_chains.py still joins this
+	one document to the one presentation model it pins.
+
+	The ghost body also keeps its own rpbf_02.ao_* clips, which the product body
+	does not have. Authoring one of those into this shared document would make
+	that promotion reject a clip the product model cannot play, so the clip list
+	only offers the vocabulary both bodies share. */
+	constexpr const char_t* CUSTOM_CHAIN_CLIP_PREFIX = "mesh_";
+
+	struct CUSTOM_CHAIN_PROFILE
+	{
+		const char_t* pAssetName;
+		const wchar_t* pFileName;
+		const char_t* pFileLabel;
+		const char_t* pOccurrencePrefix;
+		const char_t* pWindowTitle;
+		/* The clip a finished chain returns to. Both bodies answer to the same
+		name once the donor is attached; naming a clip the body does not have
+		leaves it frozen on its last pose instead of idling. */
+		const char_t* pIdleClip;
+	};
+
+	constexpr std::array<CUSTOM_CHAIN_PROFILE, 2u> CUSTOM_CHAIN_PROFILES = {
+		CUSTOM_CHAIN_PROFILE{
+			"Valtan",
+			L"Valtan.presentation.debug.json",
+			"Data/Valtan/Valtan.presentation.debug.json",
+			"valtan.debug",
+			"Valtan Custom Chain",
+			"mesh_idle_battle_1"
+		},
+		CUSTOM_CHAIN_PROFILE{
+			"Valtan_Ghost_MN_RPBF_02",
+			L"Valtan.presentation.debug.json",
+			"Data/Valtan/Valtan.presentation.debug.json",
+			"valtan.debug",
+			"Valtan Custom Chain (Ghost body)",
+			"mesh_idle_battle_1"
+		}
+	};
+
+	const CUSTOM_CHAIN_PROFILE* Find_CustomChainProfile(
+		const std::string& strAssetName)
+	{
+		for (const CUSTOM_CHAIN_PROFILE& Profile : CUSTOM_CHAIN_PROFILES)
+		{
+			if (strAssetName == Profile.pAssetName)
+				return &Profile;
+		}
+		return nullptr;
+	}
+
 	constexpr std::array<std::string_view, 7u>
 		VALTAN_PATTERN_MASTER_ORDER = {
 			"VALTAN_WHIRLWIND",
@@ -465,6 +520,18 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_ValtanEncounterReference.Clear();
 	m_bValtanEncounterReferenceLoadAttempted = false;
 	m_fValtanPatternHitTimelineBaseSeconds = 0.f;
+	/* Chain steps name clips of the body they were built from and the library
+	is one authoring body's document, so both are dropped with the target. Kept
+	across a switch they would be saved into the next body's file. */
+	m_CustomChainSteps.clear();
+	m_CustomChainLibrary.clear();
+	m_bCustomChainLibraryLoadAttempted = false;
+	m_bShowValtanCustomChainWindow = false;
+	m_CustomChainFilter[0] = '\0';
+	m_CustomChainId[0] = '\0';
+	m_CustomChainTargetPatternId[0] = '\0';
+	m_CustomChainTargetStageId[0] = '\0';
+	m_strCustomChainStatus.clear();
 }
 
 void Client::CAnimation_Tool::Render_TargetConflict()
@@ -764,7 +831,27 @@ void Client::CAnimation_Tool::Render()
 		Render_Playback(pModel);
 		ImGui::EndDisabled();
 		if ("Valtan" == m_AssetName)
+		{
 			Render_ValtanPatternPreview(pModel);
+		}
+		else if (nullptr != Find_CustomChainProfile(m_AssetName))
+		{
+			/* This body owns no admitted pattern master, so only the
+			   hand-assembled chain workflow opens for it. Playback reuses the
+			   same transport window the source sequences use, which reads the
+			   playlist rather than any Valtan document. */
+			ImGui::SeparatorText("Custom Chain");
+			ImGui::TextWrapped(
+				"No pattern master is admitted for this body. Chains assembled "
+				"here are saved to its own debug document and are not promoted "
+				"with the product Valtan chains.");
+			if (ImGui::SmallButton("Open Custom Chain Window"))
+				m_bShowValtanCustomChainWindow = true;
+			if (m_bShowValtanCustomChainWindow)
+				Render_ValtanCustomChainWindow(pModel);
+			if (m_bShowValtanSourceReferenceWindow)
+				Render_ValtanPatternReferenceWindow(pModel);
+		}
 		ImGui::BeginDisabled(
 			m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying);
 		/* The source chain rows are not drawn for Valtan: the Custom Chain
@@ -2297,27 +2384,23 @@ bool_t Client::CAnimation_Tool::Start_ValtanSequencePreview(
 
 std::filesystem::path Client::CAnimation_Tool::Get_CustomChainFilePath() const
 {
+	const CUSTOM_CHAIN_PROFILE* pProfile =
+		Find_CustomChainProfile(m_AssetName);
+	if (nullptr == pProfile)
+		return std::filesystem::path{};
 	return CProjectDataRoot::Resolve(
-		std::filesystem::path(L"Valtan") / L"Valtan.presentation.debug.json");
+		std::filesystem::path(L"Valtan") / pProfile->pFileName);
 }
 
-bool_t Client::CAnimation_Tool::Load_CustomChainLibrary()
+bool_t Client::CAnimation_Tool::Read_CustomChainDocument(
+	const std::filesystem::path& source,
+	std::vector<CUSTOM_CHAIN_ENTRY>& Out,
+	std::string& strOutError) const
 {
-	const std::filesystem::path source = Get_CustomChainFilePath();
-	std::error_code existsError;
-	if (!std::filesystem::exists(source, existsError) || existsError)
-	{
-		/* Nothing saved yet is the normal first state, not a failure. */
-		m_CustomChainLibrary.clear();
-		m_strCustomChainStatus.clear();
-		return true;
-	}
-
 	FILE* file = nullptr;
 	if (0 != _wfopen_s(&file, source.c_str(), L"rb") || nullptr == file)
 	{
-		m_strCustomChainStatus =
-			"Could not open the debug chain file; saved chains preserved.";
+		strOutError = "could not open " + source.filename().string();
 		return false;
 	}
 	std::string text;
@@ -2326,24 +2409,29 @@ bool_t Client::CAnimation_Tool::Load_CustomChainLibrary()
 	while (0u < (read = fread(buffer, 1u, sizeof(buffer), file)))
 		text.append(buffer, read);
 	fclose(file);
+	return Parse_CustomChainDocument(text, Out, strOutError);
+}
 
+bool_t Client::CAnimation_Tool::Parse_CustomChainDocument(
+	const std::string& text,
+	std::vector<CUSTOM_CHAIN_ENTRY>& Out,
+	std::string& strOutError) const
+{
 	DATA_JSON_VALUE root;
 	std::string error;
 	if (!CDataJson::Parse(text, root, error) || !root.Is_Object())
 	{
-		m_strCustomChainStatus =
-			"Debug chain file is unreadable; saved chains preserved: " + error;
+		strOutError = "document is unreadable: " + error;
 		return false;
 	}
 	const DATA_JSON_VALUE* pChains = root.Find("chains");
 	if (nullptr == pChains || !pChains->Is_Array())
 	{
-		m_strCustomChainStatus =
-			"Debug chain file has no chain array; saved chains preserved.";
+		strOutError = "document has no chain array";
 		return false;
 	}
 
-	/* Staged first so a malformed row leaves the previous library intact. */
+	/* Staged first so a malformed row leaves the caller's library intact. */
 	std::vector<CUSTOM_CHAIN_ENTRY> staged;
 	for (const DATA_JSON_VALUE& Chain : pChains->Get_Array())
 	{
@@ -2393,6 +2481,38 @@ bool_t Client::CAnimation_Tool::Load_CustomChainLibrary()
 			staged.push_back(std::move(Entry));
 	}
 
+	Out = std::move(staged);
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Load_CustomChainLibrary()
+{
+	const std::filesystem::path source = Get_CustomChainFilePath();
+	if (source.empty())
+	{
+		m_CustomChainLibrary.clear();
+		m_strCustomChainStatus =
+			"Custom chains are not admitted for this target.";
+		return false;
+	}
+	std::error_code existsError;
+	if (!std::filesystem::exists(source, existsError) || existsError)
+	{
+		/* Nothing saved yet is the normal first state, not a failure. */
+		m_CustomChainLibrary.clear();
+		m_strCustomChainStatus.clear();
+		return true;
+	}
+
+	std::vector<CUSTOM_CHAIN_ENTRY> staged;
+	std::string error;
+	if (!Read_CustomChainDocument(source, staged, error))
+	{
+		m_strCustomChainStatus =
+			"Debug chain file rejected; saved chains preserved: " + error;
+		return false;
+	}
+
 	m_CustomChainLibrary = std::move(staged);
 	m_strCustomChainStatus = "Loaded " +
 		std::to_string(m_CustomChainLibrary.size()) + " saved chains.";
@@ -2402,6 +2522,14 @@ bool_t Client::CAnimation_Tool::Load_CustomChainLibrary()
 bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 {
 	const std::filesystem::path destination = Get_CustomChainFilePath();
+	const CUSTOM_CHAIN_PROFILE* pProfile =
+		Find_CustomChainProfile(m_AssetName);
+	if (destination.empty() || nullptr == pProfile)
+	{
+		m_strCustomChainStatus =
+			"Save rejected: custom chains are not admitted for this target.";
+		return false;
+	}
 	std::error_code directoryError;
 	std::filesystem::create_directories(
 		destination.parent_path(), directoryError);
@@ -2466,7 +2594,7 @@ bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 				std::lround(Step.fDurationSeconds * 1000.f));
 			bWritten = bWritten && 0 <= fprintf(file,
 				"          {\n"
-				"            \"clipOccurrenceId\": \"valtan.debug.%s.clip.%02zu\",\n"
+				"            \"clipOccurrenceId\": \"%s.%s.clip.%02zu\",\n"
 				"            \"clip\": \"%s\",\n"
 				"            \"mappingBasis\": \"PROJECT_AUTHORED\",\n"
 				"            \"sourceStartMs\": 0,\n"
@@ -2474,6 +2602,7 @@ bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 				"            \"playRate\": 1.0,\n"
 				"            \"repeatUntilStageEnd\": false\n"
 				"          }%s\n",
+				pProfile->pOccurrencePrefix,
 				CDataJson::Escape(Entry.chainId).c_str(),
 				iStep + 1u,
 				CDataJson::Escape(Step.clipName).c_str(),
@@ -2523,7 +2652,16 @@ bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 	const shared_ptr<Engine::CModel>& pModel)
 {
-	if (!ImGui::Begin("Valtan Custom Chain", &m_bShowValtanCustomChainWindow))
+	const CUSTOM_CHAIN_PROFILE* pProfile =
+		Find_CustomChainProfile(m_AssetName);
+	if (nullptr == pProfile)
+	{
+		m_bShowValtanCustomChainWindow = false;
+		return;
+	}
+
+	if (!ImGui::Begin(
+		pProfile->pWindowTitle, &m_bShowValtanCustomChainWindow))
 	{
 		ImGui::End();
 		return;
@@ -2569,7 +2707,7 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 	}
 
 	ImGui::SeparatorText("Saved chains");
-	ImGui::TextDisabled("Data/Valtan/Valtan.presentation.debug.json");
+	ImGui::TextDisabled("%s", pProfile->pFileLabel);
 	ImGui::BeginDisabled(bBusy);
 	ImGui::SetNextItemWidth(160.f);
 	ImGui::InputTextWithHint("##chainid", "chain name",
@@ -2743,6 +2881,10 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 	}
 
 	ImGui::SeparatorText("Clips");
+	ImGui::TextDisabled(
+		"Only %s* clips are listed: both Valtan bodies share that vocabulary, "
+		"so a chain authored here plays on either.",
+		CUSTOM_CHAIN_CLIP_PREFIX);
 	ImGui::SetNextItemWidth(-1.f);
 	ImGui::InputTextWithHint(
 		"##customchainfilter",
@@ -2763,6 +2905,17 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 			const char_t* pName = pModel->Get_AnimationName(iAnimation);
 			if (nullptr == pName ||
 				!Contains_NoCase(pName, m_CustomChainFilter))
+			{
+				continue;
+			}
+			/* The ghost body carries its own rpbf_02.ao_* clips on top of the
+			   shared vocabulary. They play, but the product body has no clip of
+			   that name, so authoring one into this shared document would break
+			   the promotion that pins the product model. */
+			if (0 != std::strncmp(
+				pName,
+				CUSTOM_CHAIN_CLIP_PREFIX,
+				std::strlen(CUSTOM_CHAIN_CLIP_PREFIX)))
 			{
 				continue;
 			}
@@ -3072,7 +3225,13 @@ void Client::CAnimation_Tool::Stop_ValtanPatternPreview(
 	{
 		m_bLoop = true;
 		pModel->Set_AnimationSpeed(1.f);
-		if (!pModel->Start_Animation("mesh_idle_battle_1", true))
+		/* Each authoring body names its own idle; an unknown target keeps the
+		   product clip so the existing Valtan paths are unchanged. */
+		const CUSTOM_CHAIN_PROFILE* pProfile =
+			Find_CustomChainProfile(m_AssetName);
+		const char_t* pIdleClip = nullptr != pProfile ?
+			pProfile->pIdleClip : "mesh_idle_battle_1";
+		if (!pModel->Start_Animation(pIdleClip, true))
 			pModel->Set_AnimPaused(true);
 	}
 	Reset_ValtanPatternPreviewState(status);

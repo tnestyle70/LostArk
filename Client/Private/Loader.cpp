@@ -980,6 +980,27 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 			previewTransform);
 		if (nullptr == model)
 			continue;
+		/* A preview-only body may declare its own donor. The attach is the same
+		   contract the product boss uses, so a donor built against another rig
+		   fails here instead of previewing a torn mesh. */
+		if (nullptr != asset.pAnimationSetAssetId)
+		{
+			const filesystem::path donorPath =
+				CRuntimeAssetRoot::Resolve(asset.pAnimationSetAssetId);
+			if (donorPath.empty() || !filesystem::is_regular_file(donorPath))
+				return E_FAIL;
+			const unique_ptr<CModel> donor = CModel::Create(
+				m_pDevice,
+				m_pContext,
+				MODEL::ANIM,
+				donorPath.string().c_str(),
+				previewTransform);
+			if (nullptr == donor ||
+				FAILED(model->Attach_AnimationSet(*donor)))
+			{
+				return E_FAIL;
+			}
+		}
 		if (nullptr != pBoss)
 		{
 			const filesystem::path animSetPath =
@@ -1004,6 +1025,40 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 				iLevelIndex,
 				asset.pPrototypeTag,
 				move(model))))
+		{
+			return E_FAIL;
+		}
+
+		/* An optional socketed weapon is prepared with its body so Development
+		   and Character Select stage the same composition. It is a static mesh
+		   riding one bone, so only the unit ratio to the body is applied: the
+		   socket bone matrix already carries the preview scale and yaw. */
+		const bool_t bDeclaresWeapon =
+			nullptr != asset.pWeaponModelAssetId &&
+			nullptr != asset.pWeaponPrototypeTag &&
+			nullptr != asset.pWeaponSocketBone;
+		if (!bDeclaresWeapon)
+			continue;
+		if (!std::isfinite(asset.fWeaponScale) || asset.fWeaponScale <= 0.f)
+			return E_FAIL;
+		const filesystem::path weaponPath =
+			CRuntimeAssetRoot::Resolve(asset.pWeaponModelAssetId);
+		if (weaponPath.empty() || !filesystem::is_regular_file(weaponPath))
+			continue;
+		unique_ptr<CModel> weaponModel = CModel::Create(
+			m_pDevice,
+			m_pContext,
+			MODEL::NONANIM,
+			weaponPath.string().c_str(),
+			XMMatrixScaling(
+				asset.fWeaponScale,
+				asset.fWeaponScale,
+				asset.fWeaponScale));
+		if (nullptr == weaponModel ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				iLevelIndex,
+				asset.pWeaponPrototypeTag,
+				move(weaponModel))))
 		{
 			return E_FAIL;
 		}
