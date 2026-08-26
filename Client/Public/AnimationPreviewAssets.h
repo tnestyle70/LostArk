@@ -17,6 +17,25 @@ struct ANIMATION_PREVIEW_ASSET final
 	float fPreviewYawDegrees = -90.f;
 	bool bPlaybackOnly = false;
 	const char* pBossArchetypeId = nullptr;
+
+	/* Optional animation donor merged into this body's clip table through
+	CModel::Attach_AnimationSet. It must be built against this body's rig: the
+	attach is refused when the skeleton hash differs, and refused again when a
+	clip name is already present, so a mismatched donor fails loudly. */
+	const char* pAnimationSetAssetId = nullptr;
+
+	/* Optional socketed weapon for a preview-only body. The piece rides one bone
+	of the body's own skeleton, so it carries no animation and no clip list. All
+	four fields are declared together or none of them are: a half-declared weapon
+	is rejected rather than silently previewed without its piece. */
+	const char* pWeaponModelAssetId = nullptr;
+	const wchar_t* pWeaponPrototypeTag = nullptr;
+	const char* pWeaponSocketBone = nullptr;
+	/* Converts the weapon's authored units into the body's, and nothing else.
+	This is not the preview scale: the socket bone matrix already carries the
+	body's pre-transform, so the preview scale cancels out of the ratio. */
+	float fWeaponScale = 1.f;
+	const char* pWeaponMaterialProfileId = nullptr;
 };
 
 // Debug authoring targets reuse the same CModel path as the playable
@@ -165,7 +184,26 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		false,
 		0.01f,
 		-90.f,
-		true
+		true,
+		nullptr,
+		/* Baked by Tools/ModelAssetConverter/bake_ghost_valtan_animset.py from
+		the product AnimSet: the same 146 clips retagged onto this rig and
+		rescaled to its units, keeping the product mesh_* names. With it
+		attached both Valtan bodies answer to one clip vocabulary, so a chain
+		authored on either plays on the other with no rename step. */
+		"Character/Valtan/Ghost/MN_RPBF_02_AnimSet.wmodel",
+		/* The ghost body carries the same 87-bone rig and the same b_wp_r_01
+		hand socket as the product body, so it holds the product axe rather than
+		a second authored asset. MN_RPBF_02 is authored 100x smaller than
+		MN_RPBF_01 (b_wp_r_01 bind translation 0.34437 against 34.43719), which
+		is why its preview scale is 0.01 against the product's 0.0001. Both
+		bodies therefore render at one size, and the axe that needs 100 against
+		the product body needs 1 here. */
+		"Character/Valtan/ValtanWeapon.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Boss_Valtan_Ghost_Weapon",
+		"b_wp_r_01",
+		1.f,
+		"material.valtan.monster-base.v1"
 	}
 };
 

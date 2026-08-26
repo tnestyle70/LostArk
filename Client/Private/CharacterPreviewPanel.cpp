@@ -9,6 +9,7 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Part_Body.h"
+#include "Part_Equipment.h"
 #include "PlayableCharacterAssetService.h"
 #include "PlayableCharacterPreviewContract.h"
 #include "RuntimeAssetRoot.h"
@@ -17,6 +18,7 @@
 #include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <utility>
 
@@ -113,9 +115,32 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 	return Select_Asset(*asset);
 }
 
+bool_t Client::CCharacterPreviewPanel::Declares_Weapon(
+	const ANIMATION_PREVIEW_ASSET& asset)
+{
+	return nullptr != asset.pWeaponModelAssetId &&
+		nullptr != asset.pWeaponPrototypeTag &&
+		nullptr != asset.pWeaponSocketBone;
+}
+
 void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 {
 	const shared_ptr<CGameObject> previewObject = m_pPreviewObject.lock();
+	const shared_ptr<CGameObject> previewWeapon =
+		m_pPreviewWeaponObject.lock();
+	/* The weapon rides the body's bone, so it is dropped whenever the body is,
+	   including the early return where the body already expired on its own. */
+	if (nullptr != previewWeapon &&
+		removeFromLayer &&
+		m_iPreviewLevelIndex == CGameInstance::Get().Get_CurrentLevelID())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_iPreviewLevelIndex,
+			TEXT("Layer_AnimationPreview"),
+			previewWeapon);
+	}
+	m_pPreviewWeaponObject.reset();
+
 	if (nullptr == previewObject)
 	{
 		if (nullptr != m_pPreviewAsset || UINT32_MAX != m_iPreviewLevelIndex)
@@ -178,6 +203,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 		XMMatrixTranslationFromVector(previewPosition));
 
 	shared_ptr<CGameObject> stagedObject;
+	shared_ptr<CGameObject> stagedWeapon;
 	shared_ptr<CCharacter> stagedCharacter;
 	shared_ptr<CValtan> stagedValtan;
 	shared_ptr<CPart_Body> stagedBody;
@@ -343,8 +369,38 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 					modelPath.string().c_str(),
 					previewTransform);
 			}
-			if (nullptr == model ||
-				FAILED(CGameInstance::Get().Add_Prototype(
+			if (nullptr == model)
+			{
+				m_Status = string("Preview asset failed to prepare: ") +
+					asset.pModelAssetId;
+				return false;
+			}
+			/* Merged before the prototype is published so the clip table this
+			   level hands to the tools is complete on its first read. */
+			if (nullptr != asset.pAnimationSetAssetId)
+			{
+				const std::filesystem::path donorPath =
+					CRuntimeAssetRoot::Resolve(asset.pAnimationSetAssetId);
+				unique_ptr<CModel> donor;
+				if (!donorPath.empty() &&
+					std::filesystem::is_regular_file(donorPath))
+				{
+					donor = CModel::Create(
+						m_pDevice,
+						m_pContext,
+						MODEL::ANIM,
+						donorPath.string().c_str(),
+						previewTransform);
+				}
+				if (nullptr == donor ||
+					FAILED(model->Attach_AnimationSet(*donor)))
+				{
+					m_Status = string("Preview animation set is not admitted: ") +
+						asset.pAnimationSetAssetId;
+					return false;
+				}
+			}
+			if (FAILED(CGameInstance::Get().Add_Prototype(
 					currentLevel,
 					asset.pPrototypeTag,
 					std::move(model))))
@@ -352,6 +408,42 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 				m_Status = string("Preview asset failed to prepare: ") +
 					asset.pModelAssetId;
 				return false;
+			}
+
+			/* The weapon is a static mesh riding one bone, so it takes no
+			   animation and no preview yaw of its own: the socket bone matrix
+			   already carries both. Only the unit ratio between the two
+			   authored assets belongs here. */
+			if (Declares_Weapon(asset))
+			{
+				const std::filesystem::path weaponPath =
+					CRuntimeAssetRoot::Resolve(asset.pWeaponModelAssetId);
+				unique_ptr<CModel> weaponModel;
+				if (!weaponPath.empty() &&
+					std::filesystem::is_regular_file(weaponPath) &&
+					std::isfinite(asset.fWeaponScale) &&
+					asset.fWeaponScale > 0.f)
+				{
+					weaponModel = CModel::Create(
+						m_pDevice,
+						m_pContext,
+						MODEL::NONANIM,
+						weaponPath.string().c_str(),
+						XMMatrixScaling(
+							asset.fWeaponScale,
+							asset.fWeaponScale,
+							asset.fWeaponScale));
+				}
+				if (nullptr == weaponModel ||
+					FAILED(CGameInstance::Get().Add_Prototype(
+						currentLevel,
+						asset.pWeaponPrototypeTag,
+						std::move(weaponModel))))
+				{
+					m_Status = string("Preview weapon failed to prepare: ") +
+						asset.pWeaponModelAssetId;
+					return false;
+				}
 			}
 			m_PreparedGenericPreviewAssetIds.insert(asset.pId);
 		}
@@ -386,6 +478,54 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			m_Status = "Preview body did not expose an animated CModel.";
 			return false;
 		}
+
+		if (Declares_Weapon(asset))
+		{
+			const shared_ptr<CTransform> bodyRoot =
+				dynamic_pointer_cast<CTransform>(
+					stagedBody->Get_Component(g_strTransformComTag));
+			if (nullptr == bodyRoot)
+			{
+				CGameInstance::Get().Remove_GameObject_from_Layer(
+					currentLevel,
+					TEXT("Layer_AnimationPreview"),
+					stagedObject);
+				m_Status = "Preview body did not expose its visual root.";
+				return false;
+			}
+
+			CPart_Equipment::PART_EQUIPMENT_DESC weaponDesc{};
+			weaponDesc.pParentMatrix = &stagedParentMatrix;
+			weaponDesc.iPrototypeLevelIndex = currentLevel;
+			weaponDesc.strModelTag = asset.pWeaponPrototypeTag;
+			weaponDesc.strShaderTag =
+				TEXT("Prototype_Component_Shader_VtxMeshBinary");
+			weaponDesc.pSkeletonModel = stagedBody->Get_Model();
+			weaponDesc.pSocketBoneName = asset.pWeaponSocketBone;
+			weaponDesc.pSocketRootMatrix = bodyRoot->Get_WorldMatrixPtr();
+			if (nullptr != asset.pWeaponMaterialProfileId)
+				weaponDesc.strMaterialProfileId = asset.pWeaponMaterialProfileId;
+
+			/* A missing socket bone is reported by CPart_Equipment rather than
+			   guessed at, so a rig without the hand bone loses the whole
+			   selection instead of previewing a weapon stuck at the origin. */
+			if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+					currentLevel,
+					TEXT("Prototype_GameObject_Part_Equipment"),
+					currentLevel,
+					TEXT("Layer_AnimationPreview"),
+					&weaponDesc,
+					&stagedWeapon)))
+			{
+				CGameInstance::Get().Remove_GameObject_from_Layer(
+					currentLevel,
+					TEXT("Layer_AnimationPreview"),
+					stagedObject);
+				m_Status = string("Preview weapon is not admitted on ") +
+					asset.pWeaponSocketBone + ": " + asset.pWeaponModelAssetId;
+				return false;
+			}
+		}
 	}
 
 	/* The new body is staged before the old one is dropped, so a failure above
@@ -393,6 +533,9 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	Release(true);
 	m_iPreviewParentMatrixIndex = stagedParentMatrixIndex;
 	m_pPreviewObject = stagedObject;
+	/* Published after Release so the drop of the previous selection cannot take
+	   the weapon that was just staged for this one. */
+	m_pPreviewWeaponObject = stagedWeapon;
 	m_pPreviewAsset = &asset;
 	m_iPreviewLevelIndex = currentLevel;
 	if (nullptr != stagedCharacter)
@@ -418,6 +561,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			asset.pAssetName,
 			stagedParentMatrix);
 		m_Status = string("Previewing ") + asset.pLabel +
+			(nullptr != stagedWeapon ? " and its socketed weapon" : "") +
 			" 2.5 m to the right of the scene character.";
 	}
 	return true;
