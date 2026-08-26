@@ -40,23 +40,37 @@ namespace Client
 		bool_t m_suppressUntilRelease = false;
 	};
 
-	/* One physical LMB press submits at most one successful basic-attack command.
+	/* A tap submits only its first command. A physical hold waits long enough for
+	a normal click to finish before the first automatic continuation, then repeats
+	faster than every authored combo window, so holding LMB chains the combo
+	instead of asking for one click per stage. The Server owns the combo window and
+	never tells the Client when it opens, so the held press is repeated at a fixed
+	rate instead of being predicted.
+
 	A press that begins while gameplay input is blocked belongs to the blocker and
-	must not turn into a delayed attack when capture clears. An eligible press is
-	only consumed after the command sink accepts it, so a transient send failure
-	can retry while the same physical press remains held. */
+	must not turn into a delayed attack when capture clears; a press blocked partway
+	through stays blocked until the raw physical up edge rearms it. An eligible
+	press is only consumed after the command sink accepts it, so a transient send
+	failure can retry while the same physical press remains held. */
 	class CBASIC_ATTACK_PRESS_EDGE_GATE final
 	{
 	public:
+		static constexpr std::chrono::milliseconds INITIAL_HOLD_DELAY{ 180 };
+		static constexpr std::chrono::milliseconds REPEAT_INTERVAL{ 100 };
+
 		constexpr void Reset()
 		{
 			m_isCurrentPressActive = false;
 			m_isCurrentPressConsumed = false;
+			m_isCurrentPressBlocked = false;
+			m_hasSubmittedAutoRepeat = false;
+			m_LastSubmittedAt = {};
 		}
 
 		constexpr bool_t Should_Submit(
 			const bool_t isPhysicallyDown,
-			const bool_t isCommandEligible)
+			const bool_t isCommandEligible,
+			const std::chrono::steady_clock::time_point now)
 		{
 			if (!isPhysicallyDown)
 			{
@@ -67,25 +81,45 @@ namespace Client
 			if (!m_isCurrentPressActive)
 			{
 				m_isCurrentPressActive = true;
-				m_isCurrentPressConsumed = !isCommandEligible;
+				m_isCurrentPressBlocked = !isCommandEligible;
+				m_isCurrentPressConsumed = m_isCurrentPressBlocked;
 			}
 			else if (!isCommandEligible)
 			{
+				m_isCurrentPressBlocked = true;
 				m_isCurrentPressConsumed = true;
 			}
 
-			return isCommandEligible && !m_isCurrentPressConsumed;
+			if (!isCommandEligible || m_isCurrentPressBlocked)
+				return false;
+			if (!m_isCurrentPressConsumed)
+				return true;
+
+			const std::chrono::milliseconds interval =
+				m_hasSubmittedAutoRepeat ? REPEAT_INTERVAL : INITIAL_HOLD_DELAY;
+			if (now - m_LastSubmittedAt < interval)
+				return false;
+
+			m_hasSubmittedAutoRepeat = true;
+			m_isCurrentPressConsumed = false;
+			return true;
 		}
 
-		constexpr void Commit_Submission()
+		constexpr void Commit_Submission(
+			const std::chrono::steady_clock::time_point now)
 		{
-			if (m_isCurrentPressActive)
-				m_isCurrentPressConsumed = true;
+			if (!m_isCurrentPressActive)
+				return;
+			m_isCurrentPressConsumed = true;
+			m_LastSubmittedAt = now;
 		}
 
 	private:
 		bool_t m_isCurrentPressActive = false;
 		bool_t m_isCurrentPressConsumed = false;
+		bool_t m_isCurrentPressBlocked = false;
+		bool_t m_hasSubmittedAutoRepeat = false;
+		std::chrono::steady_clock::time_point m_LastSubmittedAt{};
 	};
 
 	/* The request callback is the narrow fake-sink boundary used by the compile-time
@@ -113,26 +147,79 @@ namespace Client
 
 		constexpr bool_t Validate_BasicAttackPressTransitions()
 		{
+			using GATE = CBASIC_ATTACK_PRESS_EDGE_GATE;
+			constexpr std::chrono::steady_clock::time_point START{};
+			constexpr std::chrono::milliseconds ONE_FRAME_SHORT{ 1 };
 			CBASIC_ATTACK_PRESS_EDGE_GATE gate{};
 
-			/* A press owned by UI/capture remains consumed until raw release. */
-			if (gate.Should_Submit(true, false) || gate.Should_Submit(true, true))
-				return false;
-			if (gate.Should_Submit(false, false))
-				return false;
-
-			/* A failed sink call does not commit, so the same held press retries. */
-			if (!gate.Should_Submit(true, true) ||
-				!gate.Should_Submit(true, true))
+			/* A press owned by UI/capture stays blocked until raw release, however
+			long it is held. */
+			if (gate.Should_Submit(true, false, START) ||
+				gate.Should_Submit(
+					true, true, START + GATE::INITIAL_HOLD_DELAY) ||
+				gate.Should_Submit(false, false, START))
 			{
 				return false;
 			}
 
-			/* Acceptance consumes the press; release alone rearms the next one. */
-			gate.Commit_Submission();
-			if (gate.Should_Submit(true, true) ||
-				gate.Should_Submit(false, false) ||
-				!gate.Should_Submit(true, true))
+			/* A failed sink call does not commit, so the same held press retries. */
+			if (!gate.Should_Submit(true, true, START) ||
+				!gate.Should_Submit(true, true, START))
+			{
+				return false;
+			}
+
+			/* Acceptance consumes the press until the hold outlives a normal click. */
+			gate.Commit_Submission(START);
+			if (gate.Should_Submit(true, true, START) ||
+				gate.Should_Submit(
+					true,
+					true,
+					START + GATE::INITIAL_HOLD_DELAY - ONE_FRAME_SHORT))
+			{
+				return false;
+			}
+
+			/* The held press then continues the combo on its own. */
+			constexpr std::chrono::steady_clock::time_point FIRST_REPEAT =
+				START + GATE::INITIAL_HOLD_DELAY;
+			if (!gate.Should_Submit(true, true, FIRST_REPEAT))
+				return false;
+			gate.Commit_Submission(FIRST_REPEAT);
+
+			/* Later continuations repeat on the shorter interval. */
+			if (gate.Should_Submit(
+					true,
+					true,
+					FIRST_REPEAT + GATE::REPEAT_INTERVAL - ONE_FRAME_SHORT))
+			{
+				return false;
+			}
+			if (!gate.Should_Submit(
+					true, true, FIRST_REPEAT + GATE::REPEAT_INTERVAL))
+			{
+				return false;
+			}
+
+			/* A blocked frame owns the rest of the press even after it started
+			eligible. */
+			gate.Commit_Submission(FIRST_REPEAT + GATE::REPEAT_INTERVAL);
+			if (gate.Should_Submit(
+					true,
+					false,
+					FIRST_REPEAT + GATE::REPEAT_INTERVAL) ||
+				gate.Should_Submit(
+					true,
+					true,
+					FIRST_REPEAT + GATE::REPEAT_INTERVAL +
+						GATE::INITIAL_HOLD_DELAY))
+			{
+				return false;
+			}
+
+			/* Release rearms an immediate first command for the next press. */
+			if (gate.Should_Submit(false, false, START) ||
+				!gate.Should_Submit(true, true, START))
 			{
 				return false;
 			}
@@ -356,9 +443,9 @@ namespace Client
 		uint8_t m_byHeldKeyCode = 0;
 		std::chrono::steady_clock::time_point m_LastSkillAimSentAt{};
 		float3_t m_LastSentSkillAim{};
-		/* The Server owns the combo stage/window. The Client submits exactly one
-		command for each physical LMB press and never predicts a continuation from
-		a held button. */
+		/* A held basic attack has to keep asking: the combo buffer only takes a
+		press inside a window the server owns and the client is not told about, so
+		the press is repeated at a fixed rate instead of being predicted. */
 		LostArk::Shared::SKILL_ID m_iHeldBasicAttackSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		CBASIC_ATTACK_PRESS_EDGE_GATE m_BasicAttackPressEdgeGate;
