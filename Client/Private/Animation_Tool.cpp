@@ -1392,11 +1392,16 @@ bool_t Client::CAnimation_Tool::Activate_ValtanPatternMasterItem(
 		m_ValtanPatternMasterPlaylist[iItem];
 	const f32_t fDurationSeconds =
 		static_cast<f32_t>(Item.iAuthoringWallMs) * 0.001f;
+	/* The master timeline drives the pose itself: it holds the model paused and
+	writes the authored source time every frame.  A blend cannot finish on that
+	path -- CModel::Play_Animation feeds Update_AnimBlend a zero delta while the
+	model is paused, so m_fBlendElapsed never advances and every bone is pulled
+	back to the captured blend-from pose at ratio zero.  Start the occurrence
+	without a blend; the very next Apply_ValtanPatternMasterPose owns the pose. */
 	if (!std::isfinite(fLocalWallSeconds) || fLocalWallSeconds < 0.f ||
 		fLocalWallSeconds > fDurationSeconds + 0.000001f ||
 		!Start_PreviewClip(
-			pModel, Item.strClipName.c_str(), Item.bRepeatUntilStageEnd,
-			m_fPreviewBlendSeconds))
+			pModel, Item.strClipName.c_str(), Item.bRepeatUntilStageEnd, 0.f))
 	{
 		return false;
 	}
