@@ -25,6 +25,7 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 	const float3 skinnedNormal = mul(float4(input.vNormal, 0.f), boneMatrix).xyz;
 	const float4 worldPosition = mul(skinnedPosition, g_WorldMatrix);
 	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
+	output.vProjPos = output.vPosition;
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = normalize(mul(skinnedNormal, (float3x3)g_WorldMatrix));
 	output.vWorldPosition = worldPosition.xyz;
@@ -46,6 +47,7 @@ PS_EFFECT_IN VS_OUTLINE(VS_IN input)
 	const float3 worldNormal = normalize(mul(skinnedNormal, (float3x3)g_WorldMatrix));
 	worldPosition.xyz += worldNormal * g_OutlineWidth;
 	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
+	output.vProjPos = output.vPosition;
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = worldNormal;
 	output.vWorldPosition = worldPosition.xyz;

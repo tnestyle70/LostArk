@@ -2323,6 +2323,16 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::SameLine();
 		ImGui::Checkbox("Billboard", &P.bBillboard);
 	}
+	ImGui::BeginDisabled(CEffectV2Object::SHAPE::DECAL == eShape);
+	ImGui::DragFloat("Soft Fade (world units, 0 = off)",
+		&P.fSoftFadeDistance, 0.01f, 0.f, 10.f, "%.2f");
+	ImGui::EndDisabled();
+	if (CEffectV2Object::SHAPE::DECAL == eShape)
+		ImGui::TextDisabled("Decals fade through Decal Projection > Edge Fade instead.");
+	else if (0.f < P.fSoftFadeDistance && !P.bDepthTest)
+		ImGui::TextDisabled(
+			"Depth Test is off, but Soft Fade still reads scene depth: "
+			"this effect now dims behind geometry.");
 
 	ImGui::SeparatorText("Playback");
 	ImGui::DragFloat("Lifetime (s, 0 = infinite)", &P.fLifetime, 0.05f, 0.f, 600.f);

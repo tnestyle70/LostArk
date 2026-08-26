@@ -216,6 +216,7 @@ public:
 		BLEND_MODE eBlend = BLEND_MODE::ADDITIVE;
 		bool_t bBillboard = true;
 		bool_t bDepthTest = true;
+		f32_t fSoftFadeDistance = 0.f;
 		f32_t fLifetime = 0.f;
 		bool_t bLoop = true;
 		f32_t fPlayRate = 1.f;

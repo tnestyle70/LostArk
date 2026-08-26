@@ -366,6 +366,7 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		!Read_Enum(*pParams, "blend", BLEND_KEYS, _countof(BLEND_KEYS), iBlend, strOutError) ||
 		!Read_Bool(*pParams, "billboard", P.bBillboard, strOutError) ||
 		!Read_Bool(*pParams, "depthTest", P.bDepthTest, strOutError) ||
+		!Read_Number(*pParams, "softFadeDistance", P.fSoftFadeDistance, strOutError) ||
 		!Read_Number(*pParams, "lifetime", P.fLifetime, strOutError) ||
 		!Read_Bool(*pParams, "loop", P.bLoop, strOutError) ||
 		!Read_Number(*pParams, "playRate", P.fPlayRate, strOutError) ||
@@ -380,6 +381,11 @@ bool_t Client::CEffectV2Document::Parse_Document(
 	if (P.fMeshPreScale <= 0.f || P.fLifetime < 0.f || P.fPlayRate < 0.f)
 	{
 		strOutError = "params.meshPreScale/lifetime/playRate out of range.";
+		return false;
+	}
+	if (P.fSoftFadeDistance < 0.f)
+	{
+		strOutError = "params.softFadeDistance must be >= 0.";
 		return false;
 	}
 	if (const DATA_JSON_VALUE* pClip = pParams->Find("animationClip"))
@@ -702,6 +708,7 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"blend\": " + Json_String(BLEND_KEYS[static_cast<size_t>(P.eBlend)]) + ",\n";
 	Text += std::string("    \"billboard\": ") + Json_Bool(P.bBillboard) + ",\n";
 	Text += std::string("    \"depthTest\": ") + Json_Bool(P.bDepthTest) + ",\n";
+	Text += "    \"softFadeDistance\": " + Json_Number(P.fSoftFadeDistance) + ",\n";
 	Text += "    \"lifetime\": " + Json_Number(P.fLifetime) + ",\n";
 	Text += std::string("    \"loop\": ") + Json_Bool(P.bLoop) + ",\n";
 	Text += "    \"playRate\": " + Json_Number(P.fPlayRate) + ",\n";

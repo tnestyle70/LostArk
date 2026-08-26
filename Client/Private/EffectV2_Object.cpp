@@ -1164,10 +1164,14 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 		FAILED(pShader->Bind_RawValue("g_NoiseScale", &P.fNoiseScale, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_NoisePan", &P.vNoisePan, sizeof(P.vNoisePan))) ||
 		FAILED(pShader->Bind_RawValue("g_DissolveAmount", &fDissolveAmount, sizeof(f32_t))) ||
-		FAILED(pShader->Bind_RawValue("g_DissolveSoftness", &P.fDissolveSoftness, sizeof(f32_t))))
+		FAILED(pShader->Bind_RawValue("g_DissolveSoftness", &P.fDissolveSoftness, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_SoftFadeDistance", &P.fSoftFadeDistance, sizeof(f32_t))))
 	{
 		return E_FAIL;
 	}
+	if (0.f < P.fSoftFadeDistance &&
+		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Depth"), pShader, "g_DepthTexture")))
+		return E_FAIL;
 	for (size_t iInput = 0u; iInput < m_Textures.size(); ++iInput)
 	{
 		const uint32_t iHas = nullptr != m_Textures[iInput] ? 1u : 0u;
