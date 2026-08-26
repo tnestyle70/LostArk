@@ -4396,7 +4396,7 @@
     {
       "patternId": "VALTAN_ARMOR_BREAK_OPENING",
       "encounterOrdinal": 23,
-      "encounterRowSha256": "071cc7bbbc6aef14b0cd389aebecfbc027bcc7025296324f7eeb47bb6132a07b",
+      "encounterRowSha256": "ba9e56cf799767206477692a985bf765703005358912ff84ff4cb2721a8e6954",
       "runtimePattern": {
         "patternId": "VALTAN_ARMOR_BREAK_OPENING",
         "category": "MECHANIC",
@@ -4446,7 +4446,7 @@
             "downMs": 0,
             "motion": {
               "kind": "FORWARD",
-              "distance": 100.0
+              "distance": 20.0
             },
             "branches": [
               {
@@ -4663,7 +4663,7 @@
     {
       "patternId": "VALTAN_FOUR_PILLARS_105",
       "encounterOrdinal": 25,
-      "encounterRowSha256": "fcf8922e6615a939b6e2d75591896486003740691f58dd20ca19eb4bee8e5b2b",
+      "encounterRowSha256": "516cc51b65d65f1d236fd49d7dc6e9583dbc2273b347a1892d65f05fb5d12bcc",
       "runtimePattern": {
         "patternId": "VALTAN_FOUR_PILLARS_105",
         "category": "MECHANIC",
@@ -4697,7 +4697,11 @@
             -122.06
           ],
           "apexHeight": 46.0,
-          "travelStageId": "YELLOW_ZONE"
+          "travelStageId": "YELLOW_ZONE",
+          "takeoffStartMs": 0,
+          "takeoffEndMs": 1933,
+          "travelStartMs": 0,
+          "travelEndMs": 5500
         },
         "stages": [
           {
@@ -5078,7 +5082,64 @@
           }
         }
       ],
-      "effectCues": []
+      "effectCues": [
+        {
+          "cueOrdinal": 49,
+          "cueRowSha256": "95844ceb197cf74a0e30958ccf5bad2aa8f279e18e72c255cc530a671dc67d4a",
+          "runtimeCue": {
+            "bindingId": "cue.valtan.entrance-whirlwind.sweep.carrier-v1",
+            "occurrenceId": "cue.valtan.entrance-whirlwind.sweep.carrier-v1.occurrence.01",
+            "patternId": "VALTAN_ENTRANCE_WHIRLWIND",
+            "stageId": "SWEEP",
+            "actionId": "valtan.mechanic.entrance-whirlwind.sweep",
+            "clipOccurrenceId": "valtan.mechanic.entrance-whirlwind.sweep.clip.01",
+            "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [0, 0, 0],
+              "rotationDegrees": [0, 0, 0],
+              "scale": [1, 1, 1]
+            },
+            "scalePolicy": {
+              "kind": "GAMEPLAY_FOOTPRINT",
+              "worldScale": [1.5, 1.5, 1.5]
+            }
+          }
+        },
+        {
+          "cueOrdinal": 50,
+          "cueRowSha256": "8213210603581764391030911c2ed848a3086a257cfdd199145f91040c2aa3da",
+          "runtimeCue": {
+            "bindingId": "cue.valtan.entrance-whirlwind.sweep.active",
+            "occurrenceId": "cue.valtan.entrance-whirlwind.sweep.active.occurrence.01",
+            "patternId": "VALTAN_ENTRANCE_WHIRLWIND",
+            "stageId": "SWEEP",
+            "actionId": "valtan.mechanic.entrance-whirlwind.sweep",
+            "clipOccurrenceId": "valtan.mechanic.entrance-whirlwind.sweep.clip.01",
+            "effectAssetId": "effect.valtan.pattern.420633.active",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": null,
+            "localTransform": {
+              "position": [0, 0, 0],
+              "rotationDegrees": [0, 0, 0],
+              "scale": [1, 1, 1]
+            },
+            "scalePolicy": {
+              "kind": "GAMEPLAY_FOOTPRINT",
+              "worldScale": [1.5, 1.5, 1.5]
+            }
+          }
+        }
+      ]
     },
     {
       "patternId": "VALTAN_ARENA_BREAK_84",

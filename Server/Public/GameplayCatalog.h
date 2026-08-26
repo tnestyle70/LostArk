@@ -13,7 +13,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 19u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 21u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -402,6 +402,14 @@ namespace LostArk::Server
 		RADIAL
 	};
 
+	enum class BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY : std::uint8_t
+	{
+		NONE,
+		/* The placement pose projected during room admission. Unlike the live
+		boss pose, this remains the authored arena centre while a pattern moves. */
+		BOSS_SPAWN_POSITION
+	};
+
 	struct BOSS_COMBAT_OBJECT_VOLLEY final
 	{
 		BOSS_COMBAT_OBJECT_VOLLEY_POLICY ePolicy =
@@ -414,6 +422,15 @@ namespace LostArk::Server
 		float fAngleStepDegrees = 0.f;
 		bool bAllowOverlap = false;
 		std::uint32_t iMaximumTotalObjects = 1u;
+		/* Total waves, including the stage ENTER edge. Later waves are fixed-tick
+		stage-relative repeats; one means the legacy single ENTER spawn. */
+		std::uint32_t iSpawnCount = 1u;
+		std::uint32_t iSpawnIntervalMs = 0u;
+		std::uint32_t iArenaRandomCount = 0u;
+		float fArenaRandomRadiusM = 0.f;
+		float fArenaHeightToleranceM = 0.f;
+		BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY eArenaAnchorPolicy =
+			BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::NONE;
 	};
 
 	struct BOSS_PATTERN_STAGE_ACTION final
@@ -521,11 +538,18 @@ namespace LostArk::Server
 		/* The authored stage that owns the descent. Stages between TAKEOFF and
 		   this index hold the boss at the apex. */
 		std::uint32_t iTravelStageIndex = 1u;
+		/* Authored subwindows inside TAKEOFF and the travel stage. Long clip
+		   budgets may contain anticipation or recovery that must not stretch the
+		   authoritative leap itself. */
+		std::uint32_t iTakeoffStartMs = 0u;
+		std::uint32_t iTakeoffEndMs = 0u;
+		std::uint32_t iTravelStartMs = 0u;
+		std::uint32_t iTravelEndMs = 0u;
 	};
 
 	enum class BOSS_PATTERN_ROTATION_SELECTION_MODE : std::uint8_t
 	{
-		/* Managed v19 rotations use Candidates as the complete pool and keep each
+		/* Managed v21 rotations use Candidates as the complete pool and keep each
 		   selection-set weight/enabled override there. Pattern definitions still
 		   own range, phase, armour, cooldown and maximum-consecutive-use gates. */
 		WEIGHTED_POOL,
@@ -567,7 +591,7 @@ namespace LostArk::Server
 		std::uint32_t iFromHealthBar = 0;
 		std::uint32_t iToHealthBar = 0;
 		std::uint32_t iExpectedStepCount = 0;
-		/* Strict v19 tagged union: managed WEIGHTED_POOL rows use Window and
+		/* Strict v20 tagged union: managed WEIGHTED_POOL rows use Window and
 		Candidates only; legacy ORDERED rows use PatternIds only. */
 		BOSS_PATTERN_ROTATION_WINDOW Window;
 		std::vector<BOSS_PATTERN_ROTATION_CANDIDATE> Candidates;

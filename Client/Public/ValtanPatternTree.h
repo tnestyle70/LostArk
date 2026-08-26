@@ -190,6 +190,10 @@ struct VALTAN_PATTERN_SERVER_MOTION_VIEW final
 	std::array<f32_t, 3u> LandingPosition{};
 	f32_t fApexHeight = 0.f;
 	std::string strTravelStageId;
+	uint32_t iTakeoffStartMs = 0u;
+	uint32_t iTakeoffEndMs = 0u;
+	uint32_t iTravelStartMs = 0u;
+	uint32_t iTravelEndMs = 0u;
 };
 
 struct VALTAN_PRESENTATION_SOURCE_VIEW final

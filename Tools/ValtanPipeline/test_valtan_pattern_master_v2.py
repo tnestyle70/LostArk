@@ -31,6 +31,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             include_migration_fixture=True,
         )
         cls.source_manifest = pipeline.source_manifest(cls.root)
+        cls.debug_presentation = pipeline.read_json(
+            cls.root / pipeline.DEBUG_PRESENTATION_REL
+        )
 
     def migrate(self):
         return pipeline.migrate_v1_to_v2(
@@ -44,17 +47,16 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         pattern_id: str = "VALTAN_ANIMATION_PHASE2_PIPELINE_TEST",
         source_chain_id: str = "pipeline-test-chain",
     ) -> dict:
-        if master is None:
-            gameplay = copy.deepcopy(self.docs[pipeline.GAMEPLAY_AUTHORING_REL])
-            gameplay["decisionModel"].setdefault("manualAuditions", [])
-            staged = pipeline.join_v2_authoring(
-                gameplay,
+        staged = copy.deepcopy(
+            master
+            if master is not None
+            else pipeline.join_v2_authoring(
+                self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
                 self.docs[pipeline.PRESENTATION_AUTHORING_REL],
                 self.docs[pipeline.WORLD_SET_REL],
                 self.docs[pipeline.COMBAT_AUTHORING_REL],
             )
-        else:
-            staged = copy.deepcopy(master)
+        )
         action_root = "valtan.animation.phase2." + source_chain_id
         action_id = action_root + ".step-01"
         staged["patterns"].append(
@@ -239,8 +241,21 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     "eventId": "event.valtan.high-jump.airborne.spawn-target-axe",
                     "countPerResolvedTarget": 1,
                     "layout": {"kind": "TARGET_CENTER"},
+                    "spawnSchedule": {
+                        "kind": "INTERVAL",
+                        "count": 3,
+                        "firstOffsetMs": 0,
+                        "intervalMs": 1333,
+                    },
+                    "arenaRandom": {
+                        "kind": "RANDOM_NAVIGABLE_CIRCLE",
+                        "anchor": "BOSS_SPAWN_POSITION",
+                        "count": 4,
+                        "radiusM": 14.0,
+                        "heightToleranceM": 1.0,
+                    },
                     "allowOverlap": False,
-                    "maximumTotalObjects": 32,
+                    "maximumTotalObjects": 36,
                 },
                 {
                     "op": "SET_BOSS_BASE_FIELD",
@@ -311,12 +326,13 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         )
         self.assertEqual("LAND", migrated_high_jump["serverMotion"]["travelStageId"])
         self.assertEqual("LAND", current_high_jump["serverMotion"]["travelStageId"])
-        self.assertEqual(
+        self.assertNotEqual(
             self.docs[pipeline.ENCOUNTER_REL],
             json.loads(
                 projected[pipeline.ENCOUNTER_REL],
                 object_pairs_hook=pipeline._reject_duplicate_pairs,
             ),
+            "the frozen v1 migration fixture must not impersonate current split authoring",
         )
         self.assertNotEqual(
             self.docs[pipeline.BINDINGS_REL],
@@ -503,6 +519,122 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 self.docs[pipeline.COMBAT_AUTHORING_REL],
             )
 
+        wrong_schedule = copy.deepcopy(gameplay)
+        wrong_event = next(
+            event
+            for pattern in wrong_schedule["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        wrong_event["spawnSchedule"]["firstOffsetMs"] = 1
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "must start at stage ENTER"
+        ):
+            pipeline.join_v2_authoring(
+                wrong_schedule,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        single_schedule = copy.deepcopy(gameplay)
+        single_event = next(
+            event
+            for pattern in single_schedule["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        single_event["spawnSchedule"]["count"] = 1
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "single volley spawn schedule has non-zero interval"
+        ):
+            pipeline.join_v2_authoring(
+                single_schedule,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        per_wave_capacity = copy.deepcopy(gameplay)
+        capacity_event = next(
+            event
+            for pattern in per_wave_capacity["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        capacity_event["maximumTotalObjects"] = 5
+        pipeline.join_v2_authoring(
+            per_wave_capacity,
+            copy.deepcopy(presentation),
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        capacity_event["maximumTotalObjects"] = 4
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "cannot admit one wave"
+        ):
+            pipeline.join_v2_authoring(
+                per_wave_capacity,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        wrong_arena_random = copy.deepcopy(gameplay)
+        wrong_event = next(
+            event
+            for pattern in wrong_arena_random["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        wrong_event["arenaRandom"]["kind"] = "RANDOM_CIRCLE"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "unsupported volley arena-random policy"
+        ):
+            pipeline.join_v2_authoring(
+                wrong_arena_random,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        overflowing_schedule = pipeline.join_v2_authoring(
+            copy.deepcopy(gameplay),
+            copy.deepcopy(presentation),
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        overflowing_event = next(
+            event
+            for pattern in overflowing_schedule["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        overflowing_event["spawnSchedule"]["intervalMs"] = 2000
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "schedule exceeds its stage duration"
+        ):
+            pipeline.validate_v2_master(
+                overflowing_schedule,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
         missing_phase = copy.deepcopy(gameplay)
         impact = next(
             stage
@@ -588,12 +720,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         source_text = pipeline.read_text(self.root / pipeline.WORLD_PRODUCT_REL)
         source = self.docs[pipeline.WORLD_PRODUCT_REL]
         projected = json.loads(projected_text)
-        self.assertEqual((105, 105, 184), (len(projected["groups"]), len(projected["mutations"]), len(projected["bindings"])))
+        self.assertEqual((105, 105, 194), (len(projected["groups"]), len(projected["mutations"]), len(projected["bindings"])))
         managed_ids = {member["bindingId"] for member in event_set["members"]}
         self.assertEqual(30, len(managed_ids))
         source_other = [row for row in source["bindings"] if row["bindingId"] not in managed_ids]
         projected_other = [row for row in projected["bindings"] if row["bindingId"] not in managed_ids]
-        self.assertEqual(154, len(source_other))
+        self.assertEqual(164, len(source_other))
         self.assertEqual(source_other, projected_other)
         self.assertEqual(source["groups"], projected["groups"])
         self.assertEqual(source["mutations"], projected["mutations"])
@@ -672,7 +804,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             pipeline.validate_legacy_products(
                 self.docs[pipeline.LEGACY_REL],
                 drifted_docs,
-                set(pipeline.MANAGED_PATTERN_IDS),
+                {
+                    row["patternId"]
+                    for row in pipeline.join_v2_authoring(
+                        self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+                        self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+                        self.docs[pipeline.WORLD_SET_REL],
+                        self.docs[pipeline.COMBAT_AUTHORING_REL],
+                    )["patterns"]
+                },
             )
 
     def test_mapping_basis_vocabulary_rejects_occurrence_and_cue_typos(self) -> None:
@@ -725,6 +865,66 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 self.docs[pipeline.COMBAT_AUTHORING_REL],
             )
 
+    def test_server_motion_rejects_stage_order_and_window_drift(self) -> None:
+        def high_jump(document: dict) -> dict:
+            return next(
+                pattern
+                for pattern in document["patterns"]
+                if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            )
+
+        travel_takeoff = copy.deepcopy(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
+        )
+        high_jump(travel_takeoff)["serverMotion"]["travelStageId"] = "TAKEOFF"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "travel stage must follow TAKEOFF",
+        ):
+            pipeline.validate_gameplay_authoring(travel_takeoff)
+
+        takeoff_overrun = copy.deepcopy(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
+        )
+        takeoff_pattern = high_jump(takeoff_overrun)
+        takeoff_pattern["serverMotion"]["takeoffEndMs"] = (
+            takeoff_pattern["stages"][0]["durationMs"] + 1
+        )
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "travel window is outside its stage",
+        ):
+            pipeline.validate_gameplay_authoring(takeoff_overrun)
+
+        travel_overrun = copy.deepcopy(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
+        )
+        travel_pattern = high_jump(travel_overrun)
+        travel_stage_id = travel_pattern["serverMotion"]["travelStageId"]
+        travel_stage = next(
+            stage
+            for stage in travel_pattern["stages"]
+            if stage["stageId"] == travel_stage_id
+        )
+        travel_pattern["serverMotion"]["travelEndMs"] = (
+            travel_stage["durationMs"] + 1
+        )
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "travel window is outside its stage",
+        ):
+            pipeline.validate_gameplay_authoring(travel_overrun)
+
+        missing_window = copy.deepcopy(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
+        )
+        del high_jump(missing_window)["serverMotion"]["travelEndMs"]
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "serverMotion fields mismatch",
+        ):
+            pipeline.validate_gameplay_authoring(missing_window)
+
     def test_high_jump_clock_and_motion_project_losslessly(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
         presentation = self.docs[pipeline.PRESENTATION_AUTHORING_REL]
@@ -739,6 +939,39 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             if pattern["patternId"] == "VALTAN_HIGH_JUMP"
         )
         self.assertEqual("LAND", gameplay_pattern["serverMotion"]["travelStageId"])
+        gameplay_airborne = next(
+            stage
+            for stage in gameplay_pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+        )
+        self.assertEqual(4000, gameplay_airborne["durationMs"])
+        self.assertEqual(
+            {
+                "eventId": "event.valtan.high-jump.airborne.spawn-target-axe",
+                "trigger": "ENTER",
+                "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
+                "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+                "volleyPolicy": "PER_ALIVE_PLAYER",
+                "countPerResolvedTarget": 1,
+                "layout": {"kind": "TARGET_CENTER"},
+                "spawnSchedule": {
+                    "kind": "INTERVAL",
+                    "count": 3,
+                    "firstOffsetMs": 0,
+                    "intervalMs": 1333,
+                },
+                "arenaRandom": {
+                    "kind": "RANDOM_NAVIGABLE_CIRCLE",
+                    "anchor": "BOSS_SPAWN_POSITION",
+                    "count": 4,
+                    "radiusM": 14.0,
+                    "heightToleranceM": 1.0,
+                },
+                "allowOverlap": False,
+                "maximumTotalObjects": 36,
+            },
+            gameplay_airborne["events"][0],
+        )
         self.assertEqual(
             [
                 ("TAKEOFF", "EXACT", "mesh_att_battle_8_01_start", 1933, False),
@@ -771,6 +1004,33 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         )
         self.assertEqual("LAND", joined_pattern["serverMotion"]["travelStageId"])
         self.assertEqual("LAND", product_pattern["serverMotion"]["travelStageId"])
+        product_airborne = next(
+            stage
+            for stage in product_pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+        )
+        self.assertEqual(4000, product_airborne["durationMs"])
+        self.assertEqual(
+            {
+                "spawnCount": 3,
+                "spawnIntervalMs": 1333,
+                "arenaRandomCount": 4,
+                "arenaRandomRadiusM": 14.0,
+                "arenaHeightToleranceM": 1.0,
+                "arenaAnchorPolicy": "BOSS_SPAWN_POSITION",
+            },
+            {
+                field: product_airborne["actions"][0][field]
+                for field in (
+                    "spawnCount",
+                    "spawnIntervalMs",
+                    "arenaRandomCount",
+                    "arenaRandomRadiusM",
+                    "arenaHeightToleranceM",
+                    "arenaAnchorPolicy",
+                )
+            },
+        )
         bindings = json.loads(outputs[pipeline.BINDINGS_REL])
         binding_by_action = {row["actionId"]: row for row in bindings["bindings"]}
         for stage in presentation_pattern["stages"]:
@@ -814,8 +1074,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 projected_by_id[cue["cueId"]]["scalePolicy"],
             )
         self.assertEqual(
-            15,
+            17,
             sum(1 for cue in projected["cues"] if "scalePolicy" in cue),
+            "15 managed cues plus the two sealed Entrance Whirlwind cues",
         )
         self.assertEqual(
             15,
@@ -881,6 +1142,48 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
+
+    def test_dash_charge_uses_one_visible_server_and_presentation_clock(self) -> None:
+        gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
+        presentation = self.docs[pipeline.PRESENTATION_AUTHORING_REL]
+        dash_gameplay = next(
+            pattern
+            for pattern in gameplay["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        charge_gameplay = next(
+            stage
+            for stage in dash_gameplay["stages"]
+            if stage["stageId"] == "CHARGE"
+        )
+        dash_presentation = next(
+            pattern
+            for pattern in presentation["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        charge_presentation = next(
+            stage
+            for stage in dash_presentation["stages"]
+            if stage["stageId"] == "CHARGE"
+        )
+        occurrences = charge_presentation["animation"]["occurrences"]
+        presentation_wall_ms = sum(
+            occurrence["playMs"] / occurrence["playRate"]
+            for occurrence in occurrences
+        )
+
+        self.assertEqual(1500, charge_gameplay["durationMs"])
+        self.assertEqual(
+            {"kind": "FORWARD", "distance": 20.0},
+            charge_gameplay["motion"],
+        )
+        self.assertEqual(1, len(occurrences))
+        self.assertEqual(2450, occurrences[0]["sourceStartMs"])
+        self.assertEqual(900, occurrences[0]["playMs"])
+        self.assertEqual(0.6, occurrences[0]["playRate"])
+        self.assertAlmostEqual(
+            charge_gameplay["durationMs"], presentation_wall_ms, delta=2.0
+        )
 
     def test_source_hash_precondition_and_revision_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1258,12 +1561,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.assertEqual(rotations, candidate_rotations)
             manifest = pipeline.read_json(revision_root / "revision-manifest.json")
             self.assertEqual("HOT_RELOAD", manifest["applyClass"])
-            self.assertEqual(19, manifest["serverGameplayBootstrap"]["formatVersion"])
+            self.assertEqual(
+                pipeline.GAMEPLAY_BOOTSTRAP_VERSION,
+                manifest["serverGameplayBootstrap"]["formatVersion"],
+            )
             bootstrap_lines = (
                 revision_root / pipeline.GAMEPLAY_BOOTSTRAP_REL
             ).read_text(encoding="utf-8").splitlines()
             self.assertTrue(bootstrap_lines[0].startswith(
-                "LOSTARK_GAMEPLAY_BOOTSTRAP\t19\t"
+                f"LOSTARK_GAMEPLAY_BOOTSTRAP\t{pipeline.GAMEPLAY_BOOTSTRAP_VERSION}\t"
             ))
             self.assertIn(
                 "PATTERNROTATIONCANDIDATE\tENCOUNTER_VALTAN\t"
@@ -1473,7 +1779,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             pattern_id="VALTAN_ANIMATION_PHASE2_PIPELINE_TEST_SECOND",
             source_chain_id="pipeline-test-chain-second",
         )
-        duplicate_source_chain["decisionModel"]["manualAuditions"][-1][
+        duplicate_source_chain["decisionModel"]["manualAuditions"][1][
             "sourceChainId"
         ] = "pipeline-test-chain"
         invalid_masters.append(duplicate_source_chain)
@@ -1487,6 +1793,43 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
+
+    def test_phase_two_and_three_animation_intake_exact_joins_manual_product(self) -> None:
+        joined = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        pipeline.validate_manual_audition_animation_lineage(
+            joined, self.debug_presentation
+        )
+
+        wrong_clip = copy.deepcopy(self.debug_presentation)
+        wrong_clip["chains"][0]["animation"]["occurrences"][0]["clip"] = (
+            "mesh_att_battle_invalid"
+        )
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "no longer matches joined Product"
+        ):
+            pipeline.validate_manual_audition_animation_lineage(joined, wrong_clip)
+
+        half_targeted = copy.deepcopy(self.debug_presentation)
+        half_targeted["chains"][0]["targetPatternId"] = (
+            joined["decisionModel"]["manualAuditions"][0]["patternId"]
+        )
+        with self.assertRaisesRegex(pipeline.PipelineError, "empty or paired"):
+            pipeline.validate_manual_audition_animation_lineage(
+                joined, half_targeted
+            )
+
+        unmapped = copy.deepcopy(self.debug_presentation)
+        unmapped["chains"].append(copy.deepcopy(unmapped["chains"][0]))
+        unmapped["chains"][-1]["chainId"] = "new-phase-three-intake"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "must exact-join manualAuditions"
+        ):
+            pipeline.validate_manual_audition_animation_lineage(joined, unmapped)
 
     def test_manual_audition_projection_appends_after_existing_product_ordinals(self) -> None:
         staged = self.with_manual_audition()
@@ -1565,18 +1908,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         )
 
     def test_removed_manual_audition_fails_closed_before_stale_product_projection(self) -> None:
-        staged = self.with_manual_audition()
-        projected = pipeline.project_v2_products(self.root, self.docs, staged)
-        projected_docs = copy.deepcopy(self.docs)
-        projected_docs[pipeline.ENCOUNTER_REL] = json.loads(
-            projected[pipeline.ENCOUNTER_REL],
-            object_pairs_hook=pipeline._reject_duplicate_pairs,
+        staged = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
-        projected_docs[pipeline.BINDINGS_REL] = json.loads(
-            projected[pipeline.BINDINGS_REL],
-            object_pairs_hook=pipeline._reject_duplicate_pairs,
-        )
-
         removed_id = staged["decisionModel"]["manualAuditions"][-1]["patternId"]
         staged["decisionModel"]["manualAuditions"] = [
             row
@@ -1591,7 +1928,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             pipeline.PipelineError,
             "Product AUDITION_ONLY ownership drift.*" + removed_id,
         ):
-            pipeline.project_v2_products(self.root, projected_docs, staged)
+            pipeline.project_v2_products(self.root, self.docs, staged)
 
     def test_gameplay_publisher_rejects_partial_phase_boundary_product(self) -> None:
         encounter = copy.deepcopy(self.docs[pipeline.ENCOUNTER_REL])
@@ -1678,6 +2015,35 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
+        staged_volley = next(
+            event
+            for pattern in staged["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["eventId"]
+            == "event.valtan.high-jump.airborne.spawn-target-axe"
+        )
+        self.assertEqual(
+            {
+                "kind": "INTERVAL",
+                "count": 3,
+                "firstOffsetMs": 0,
+                "intervalMs": 1333,
+            },
+            staged_volley["spawnSchedule"],
+        )
+        self.assertEqual(
+            {
+                "kind": "RANDOM_NAVIGABLE_CIRCLE",
+                "anchor": "BOSS_SPAWN_POSITION",
+                "count": 4,
+                "radiusM": 14.0,
+                "heightToleranceM": 1.0,
+            },
+            staged_volley["arenaRandom"],
+        )
         projected = pipeline.project_v2_products(
             self.root, self.docs, staged, migration_fixture=True
         )
@@ -1701,7 +2067,13 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "startAngleDegrees": 0.0,
                 "angleStepDegrees": 120.0,
                 "allowOverlap": False,
-                "maximumTotalObjects": 32,
+                "maximumTotalObjects": 36,
+                "spawnCount": 3,
+                "spawnIntervalMs": 1333,
+                "arenaRandomCount": 4,
+                "arenaRandomRadiusM": 14.0,
+                "arenaHeightToleranceM": 1.0,
+                "arenaAnchorPolicy": "BOSS_SPAWN_POSITION",
             },
             airborne["actions"][0],
         )

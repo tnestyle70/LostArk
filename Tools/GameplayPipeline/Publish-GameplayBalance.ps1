@@ -1471,7 +1471,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		# three can drift into its own copy of the coordinate.
 		$motion = $pattern.serverMotion
 		Assert-ExactProperties $motion @(
-			'kind','anchorId','landingPosition','apexHeight','travelStageId') "pattern $($pattern.patternId) serverMotion"
+			'kind','anchorId','landingPosition','apexHeight','travelStageId',
+			'takeoffStartMs','takeoffEndMs','travelStartMs','travelEndMs') "pattern $($pattern.patternId) serverMotion"
 		Assert-JsonString $motion.kind "pattern $($pattern.patternId) serverMotion kind"
 		Assert-StableId $motion.anchorId "pattern $($pattern.patternId) serverMotion anchorId"
 		Assert-JsonString $motion.travelStageId "pattern $($pattern.patternId) serverMotion travelStageId"
@@ -1510,8 +1511,24 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				break
 			}
 		}
+		if ([string]$pattern.stages[0].stageId -cne 'TAKEOFF') {
+			throw "serverMotion first stage must be TAKEOFF: $($pattern.patternId)"
+		}
 		if ($travelStageIndex -le 0) {
 			throw "serverMotion travelStageId must resolve after TAKEOFF: $($pattern.patternId)/$($motion.travelStageId)"
+		}
+		foreach ($timingField in @(
+			'takeoffStartMs','takeoffEndMs','travelStartMs','travelEndMs')) {
+			Assert-JsonInteger $motion.$timingField `
+				"pattern $($pattern.patternId) serverMotion $timingField" 0 ([uint32]::MaxValue)
+		}
+		$takeoffDurationMs = [uint32]$pattern.stages[0].durationMs
+		$travelDurationMs = [uint32]$pattern.stages[$travelStageIndex].durationMs
+		if ([uint32]$motion.takeoffStartMs -ge [uint32]$motion.takeoffEndMs -or
+			[uint32]$motion.takeoffEndMs -gt $takeoffDurationMs -or
+			[uint32]$motion.travelStartMs -ge [uint32]$motion.travelEndMs -or
+			[uint32]$motion.travelEndMs -gt $travelDurationMs) {
+			throw "serverMotion travel window is outside its authored stage: $($pattern.patternId)"
 		}
 		$serverMotionByPatternId[[string]$pattern.patternId] = [pscustomobject]@{
 			Kind = [string]$motion.kind
@@ -1527,7 +1544,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			(Format-InvariantSignedFloat $motion.landingPosition[1] 'serverMotion landing y'),
 			(Format-InvariantSignedFloat $motion.landingPosition[2] 'serverMotion landing z'),
 			(Format-InvariantFloat $motion.apexHeight 'serverMotion apexHeight'),
-			[uint32]$travelStageIndex) -join "`t"))
+			[uint32]$travelStageIndex,
+			[uint32]$motion.takeoffStartMs, [uint32]$motion.takeoffEndMs,
+			[uint32]$motion.travelStartMs, [uint32]$motion.travelEndMs) -join "`t"))
 	}
 	if ($aimPolicy -eq 'FACE_MOTION_ANCHOR' -and -not $hasServerMotion) {
 		throw "FACE_MOTION_ANCHOR requires serverMotion: $($pattern.patternId)"
@@ -1720,9 +1739,13 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						'trigger','kind','targetId','targetingPolicy',
 						'countPerResolvedTarget','layout','radiusM',
 						'startAngleDegrees','angleStepDegrees','allowOverlap',
-						'maximumTotalObjects') 'encounter pattern stage volley'
+						'maximumTotalObjects','spawnCount','spawnIntervalMs',
+						'arenaRandomCount','arenaRandomRadiusM',
+						'arenaHeightToleranceM','arenaAnchorPolicy') `
+						'encounter pattern stage volley'
 					foreach ($field in @(
-						'trigger','targetId','targetingPolicy','layout')) {
+						'trigger','targetId','targetingPolicy','layout',
+						'arenaAnchorPolicy')) {
 						Assert-JsonString $stageAction.$field `
 							"pattern $($pattern.patternId) stage $stageIndex volley $field"
 					}
@@ -1731,9 +1754,16 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					Assert-JsonInteger $stageAction.countPerResolvedTarget `
 						'pattern stage volley countPerResolvedTarget' 1 8
 					Assert-JsonInteger $stageAction.maximumTotalObjects `
-						'pattern stage volley maximumTotalObjects' 1 32
+						'pattern stage volley maximumTotalObjects' 1 64
+					Assert-JsonInteger $stageAction.spawnCount `
+						'pattern stage volley spawnCount' 1 8
+					Assert-JsonInteger $stageAction.spawnIntervalMs `
+						'pattern stage volley spawnIntervalMs' 0 ([uint32]::MaxValue)
+					Assert-JsonInteger $stageAction.arenaRandomCount `
+						'pattern stage volley arenaRandomCount' 0 32
 					foreach ($field in @(
-						'radiusM','startAngleDegrees','angleStepDegrees')) {
+						'radiusM','startAngleDegrees','angleStepDegrees',
+						'arenaRandomRadiusM','arenaHeightToleranceM')) {
 						Assert-JsonNumber $stageAction.$field `
 							"pattern stage volley $field"
 					}
@@ -1749,17 +1779,33 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					$startAngleDegrees = [double]$stageAction.startAngleDegrees
 					$angleStepDegrees = [double]$stageAction.angleStepDegrees
 					$allowOverlap = [bool]$stageAction.allowOverlap
+					$spawnCount = [uint32]$stageAction.spawnCount
+					$spawnIntervalMs = [uint32]$stageAction.spawnIntervalMs
+					$arenaRandomCount = [uint32]$stageAction.arenaRandomCount
+					$arenaRandomRadiusM = [double]$stageAction.arenaRandomRadiusM
+					$arenaHeightToleranceM = [double]$stageAction.arenaHeightToleranceM
+					$arenaAnchorPolicy = [string]$stageAction.arenaAnchorPolicy
+					$lastSpawnOffsetMs =
+						[uint64]($spawnCount - 1) * [uint64]$spawnIntervalMs
 					$isSingle = [uint32]1 -eq $countPerTarget
 					if ($actionTrigger -cne 'ENTER' -or
 						[string]$stageAction.targetingPolicy -cne 'PER_ALIVE_PLAYER' -or
-						$maximumTotalObjects -lt $countPerTarget -or
+						[uint64]$maximumTotalObjects -lt
+							([uint64]$countPerTarget + [uint64]$arenaRandomCount) -or
 						$radiusM -lt 0.0 -or
 						($isSingle -and ($layout -cne 'SINGLE' -or
 							$radiusM -ne 0.0 -or $startAngleDegrees -ne 0.0 -or
 							$angleStepDegrees -ne 0.0 -or $allowOverlap)) -or
 						(-not $isSingle -and ($layout -cne 'RADIAL' -or
 							$radiusM -le 0.0 -or $angleStepDegrees -eq 0.0 -or
-							$allowOverlap))) {
+							$allowOverlap)) -or
+						($spawnCount -eq 1 -and $spawnIntervalMs -ne 0) -or
+						($spawnCount -gt 1 -and $spawnIntervalMs -eq 0) -or
+						$arenaRandomCount -eq 0 -or
+						$arenaRandomRadiusM -le 0.0 -or
+						$arenaHeightToleranceM -le 0.0 -or
+						$arenaAnchorPolicy -cne 'BOSS_SPAWN_POSITION' -or
+						$lastSpawnOffsetMs -ge [uint64][uint32]$stage.durationMs) {
 						throw "Pattern stage volley contract is invalid: $($pattern.patternId) stage $stageIndex"
 					}
 					$actionKey = "$actionTrigger/$actionTargetId"
@@ -1779,7 +1825,14 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 							[string]$stage.stageId -ceq 'AIRBORNE' -and
 							[string]$stage.actionId -ceq `
 								'valtan.attack.high-jump.airborne' -and
-							$actionIndex -eq 0
+							$actionIndex -eq 0 -and
+							[uint32]$stage.durationMs -eq 4000 -and
+							$spawnCount -eq 3 -and
+							$spawnIntervalMs -eq 1333 -and
+							$arenaRandomCount -eq 4 -and
+							$arenaRandomRadiusM -eq 14.0 -and
+							$arenaHeightToleranceM -eq 1.0 -and
+							$arenaAnchorPolicy -ceq 'BOSS_SPAWN_POSITION'
 					}
 					$hasSpawnCombatObjectAction = $true
 					$patternRows.Add((@(
@@ -1793,7 +1846,13 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						(Format-InvariantSignedFloat $angleStepDegrees `
 							'pattern stage volley angleStepDegrees'),
 						$(if ($allowOverlap) { 1 } else { 0 }),
-						$maximumTotalObjects) -join "`t"))
+						$maximumTotalObjects, $spawnCount, $spawnIntervalMs,
+						$arenaRandomCount,
+						(Format-InvariantFloat $arenaRandomRadiusM `
+							'pattern stage volley arenaRandomRadiusM'),
+						(Format-InvariantFloat $arenaHeightToleranceM `
+							'pattern stage volley arenaHeightToleranceM'),
+						$arenaAnchorPolicy) -join "`t"))
 					continue
 				}
 
@@ -2075,7 +2134,7 @@ $requiredReactiveRows = @(
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.groggy`tTIMEOUT`tvaltan.mechanic.magic-orb-stagger-76.recovery",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tCOUNTER_HIT`tvaltan.mechanic.center-grab-counter-64.recovery",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tTIMEOUT`tvaltan.mechanic.center-grab-counter-64.failed-charge",
-	"PATTERNSTAGEMOTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tFORWARD`t100"
+	"PATTERNSTAGEMOTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tFORWARD`t20"
 )
 $missingReactiveRows = @($requiredReactiveRows | Where-Object {
 	-not $patternRows.Contains([string]$_)
@@ -2710,7 +2769,7 @@ foreach ($propBreak in @($propBreakDocument.actions)) {
 # authoring window/set identities and each candidate's weight/enabled state.
 # Legacy ORDERED_INTRO_THEN_WEIGHTED rows retain their ordered patternIds,
 # including intentional duplicates. Version 2 remains a repository migration
-# input only; a v3 overlay emits bootstrap v19 rows for the new Server consumer.
+# input only; a v3 overlay emits bootstrap v21 rows for the Server consumer.
 $rotationDocument = Read-JsonDocument `
 	'Data/Encounters/Valtan/ValtanPatternRotations.json'
 Assert-ExactProperties $rotationDocument @(
@@ -3624,7 +3683,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 3) { 19 } else { 18 }
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {

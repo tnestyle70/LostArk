@@ -442,11 +442,11 @@
           "events": [],
           "branches": []
         },
-        {
-          "stageId": "CHARGE",
-          "actionId": "valtan.attack.dash-charge.active",
-          "stageKind": "ACTIVE",
-          "durationMs": 500,
+      {
+        "stageId": "CHARGE",
+        "actionId": "valtan.attack.dash-charge.active",
+        "stageKind": "ACTIVE",
+        "durationMs": 1500,
           "defaultNextActionId": "valtan.attack.dash-charge.recovery",
           "hit": {
             "shape": {
@@ -845,7 +845,11 @@
           -122.06
         ],
         "apexHeight": 9.0,
-        "travelStageId": "LAND"
+        "travelStageId": "LAND",
+        "takeoffStartMs": 1133,
+        "takeoffEndMs": 1500,
+        "travelStartMs": 0,
+        "travelEndMs": 267
       },
       "reactions": [],
       "stages": [
@@ -868,7 +872,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 6000,
+          "durationMs": 4000,
           "defaultNextActionId": "valtan.attack.high-jump.land",
           "hit": {
             "shape": {
@@ -887,8 +891,21 @@
               "layout": {
                 "kind": "TARGET_CENTER"
               },
+              "spawnSchedule": {
+                "kind": "INTERVAL",
+                "count": 3,
+                "firstOffsetMs": 0,
+                "intervalMs": 1333
+              },
+              "arenaRandom": {
+                "kind": "RANDOM_NAVIGABLE_CIRCLE",
+                "anchor": "BOSS_SPAWN_POSITION",
+                "count": 4,
+                "radiusM": 14.0,
+                "heightToleranceM": 1.0
+              },
               "allowOverlap": false,
-              "maximumTotalObjects": 32
+              "maximumTotalObjects": 36
             }
           ],
           "branches": []
@@ -1111,7 +1128,11 @@
           -122.06
         ],
         "apexHeight": 12.0,
-        "travelStageId": "DROP"
+        "travelStageId": "DROP",
+        "takeoffStartMs": 0,
+        "takeoffEndMs": 900,
+        "travelStartMs": 0,
+        "travelEndMs": 700
       },
       "reactions": [],
       "stages": [

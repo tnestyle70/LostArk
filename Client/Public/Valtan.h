@@ -305,6 +305,20 @@ private:
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;
+	/* Presentation-only snapshot buffer. Apply_NetworkState commits the Server
+	pattern/action clock immediately; Update consumes only these transforms. */
+	struct NETWORK_TRANSFORM_SAMPLE
+	{
+		uint32_t iServerTick = 0u;
+		float3_t vPosition = {};
+		f32_t fYawDegrees = 0.f;
+	};
+	static constexpr std::size_t NETWORK_SAMPLE_CAPACITY = 8u;
+	NETWORK_TRANSFORM_SAMPLE m_NetworkSamples[NETWORK_SAMPLE_CAPACITY] = {};
+	std::size_t m_iNetworkSampleCount = 0u;
+	f32_t m_fPlaybackServerTick = 0.f;
+	f32_t m_fPresentationYawDegrees = 0.f;
+	bool_t m_hasNetworkTransformState = false;
 	std::string m_strServerPatternId;
 	std::string m_strServerActionId;
 	uint32_t m_iLastServerTick = 0u;
@@ -385,6 +399,11 @@ private:
 #endif
 	PATH_RESULT_CODE Request_PathToTarget(fvector_t vGoalPosition);
 	void Set_ChaseState(bool_t isChasing);
+	void Queue_NetworkTransformSample(
+		const float3_t& position,
+		f32_t yawDegrees,
+		uint32_t iServerTick);
+	void Update_NetworkTransform(f32_t fTimeDelta);
 
 public:
 	static unique_ptr<CValtan> Create(ComPtr<ID3D11Device> pDevice,

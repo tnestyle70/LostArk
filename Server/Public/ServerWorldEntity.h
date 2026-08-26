@@ -135,6 +135,13 @@ namespace LostArk::Server
 		/* Compiled serverMotion travel stage. A leap may hold at its apex in
 		   authored stages between TAKEOFF and this descent stage. */
 		std::uint32_t iPatternLeapTravelStageIndex = 1u;
+		/* The clip may spend most of a stage anticipating or recovering. These
+		   authored subwindows keep the Server transform on the actual lift/drop
+		   interval instead of stretching the leap across the whole stage. */
+		std::uint32_t iPatternLeapTakeoffStartMs = 0u;
+		std::uint32_t iPatternLeapTakeoffEndMs = 0u;
+		std::uint32_t iPatternLeapTravelStartMs = 0u;
+		std::uint32_t iPatternLeapTravelEndMs = 0u;
 		/* The encounter's intro pattern runs once per encounter epoch, on the
 		first engage. A late joiner never replays it, and only a room-empty or
 		Debug reset clears the ledger. */
@@ -155,6 +162,10 @@ namespace LostArk::Server
 		/* First nonzero Server tick on which this stage is evaluated. Tick zero is
 		the process-wide reserved sentinel, so wrap advances UINT32_MAX -> 1. */
 		std::uint32_t iPatternStageFirstEvaluationTick = 0;
+		/* Number of stage-owned spawn waves committed for the current action.
+		The ENTER edge commits wave zero and later fixed ticks advance this only
+		after the whole mixed volley transaction succeeds. */
+		std::uint32_t iAppliedPatternStageSpawnWaveCount = 0;
 		BOSS_PATTERN_STAGE_MOTION_KIND ePatternStageMotionKind =
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		BOSS_PATTERN_HIT_SHAPE ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;

@@ -1113,7 +1113,11 @@
         "anchorId": "anchor.valtan.high-jump.landing",
         "landingPosition": [156.03, 22.99751, -122.06],
         "apexHeight": 9.0,
-        "travelStageId": "LAND"
+        "travelStageId": "LAND",
+        "takeoffStartMs": 1133,
+        "takeoffEndMs": 1500,
+        "travelStartMs": 0,
+        "travelEndMs": 267
       },
       "reactions": [],
       "cameraCueIds": [],
@@ -1624,7 +1628,11 @@
         "anchorId": "anchor.valtan.arena-break-109.landing",
         "landingPosition": [156.03, 22.99751, -122.06],
         "apexHeight": 12.0,
-        "travelStageId": "DROP"
+        "travelStageId": "DROP",
+        "takeoffStartMs": 0,
+        "takeoffEndMs": 900,
+        "travelStartMs": 0,
+        "travelEndMs": 700
       },
       "reactions": [],
       "cameraCueIds": [

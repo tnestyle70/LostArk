@@ -18,6 +18,7 @@ BINDINGS_PATH = ROOT / "Data/Animation/Authored/Valtan/Valtan.patternbindings.js
 ROTATIONS_PATH = ROOT / "Data/Encounters/Valtan/ValtanPatternRotations.json"
 TREE_CPP = ROOT / "Client/Private/ValtanPatternTree.cpp"
 TREE_HEADER = ROOT / "Client/Public/ValtanPatternTree.h"
+BALANCE_TOOL_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 EFFECT_CUE_CPP = ROOT / "Client/Private/ValtanPatternEffectCueDocument.cpp"
 EFFECT_SERVICE_CPP = ROOT / "Client/Private/Effect_PresentationService.cpp"
 EFFECT_TOOL_CPP = ROOT / "Client/Private/Effect_Tool.cpp"
@@ -381,6 +382,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         cls.rotations = load(ROTATIONS_PATH)
         cls.cpp = TREE_CPP.read_text(encoding="utf-8")
         cls.header = TREE_HEADER.read_text(encoding="utf-8")
+        cls.balance_tool_cpp = BALANCE_TOOL_CPP.read_text(encoding="utf-8")
         cls.effect_cue_cpp = EFFECT_CUE_CPP.read_text(encoding="utf-8")
         cls.effect_service_cpp = EFFECT_SERVICE_CPP.read_text(encoding="utf-8")
         cls.effect_tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
@@ -782,13 +784,53 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 "trigger", "kind", "targetId", "targetingPolicy",
                 "countPerResolvedTarget", "layout", "radiusM",
                 "startAngleDegrees", "angleStepDegrees", "allowOverlap",
-                "maximumTotalObjects",
+                "maximumTotalObjects", "spawnCount", "spawnIntervalMs",
+                "arenaRandomCount", "arenaRandomRadiusM",
+                "arenaHeightToleranceM", "arenaAnchorPolicy",
             }, set(volley))
             self.assertEqual("ENTER", volley["trigger"])
             self.assertEqual("PER_ALIVE_PLAYER", volley["targetingPolicy"])
-            self.assertGreaterEqual(
-                volley["maximumTotalObjects"], volley["countPerResolvedTarget"]
+            self.assertEqual(3, volley["spawnCount"])
+            self.assertEqual(1333, volley["spawnIntervalMs"])
+            self.assertEqual(4, volley["arenaRandomCount"])
+            self.assertEqual(14.0, volley["arenaRandomRadiusM"])
+            self.assertEqual(1.0, volley["arenaHeightToleranceM"])
+            self.assertEqual(
+                "BOSS_SPAWN_POSITION", volley["arenaAnchorPolicy"]
             )
+            self.assertEqual(36, volley["maximumTotalObjects"])
+            self.assertGreaterEqual(
+                volley["maximumTotalObjects"],
+                volley["countPerResolvedTarget"] + volley["arenaRandomCount"],
+            )
+
+        axe_source = next(
+            event
+            for pattern in self.gameplay["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["eventId"]
+            == "event.valtan.high-jump.airborne.spawn-target-axe"
+        )
+        self.assertEqual({
+            "eventId", "trigger", "kind", "combatObjectArchetypeId",
+            "volleyPolicy", "countPerResolvedTarget", "layout",
+            "spawnSchedule", "arenaRandom", "allowOverlap",
+            "maximumTotalObjects",
+        }, set(axe_source))
+        self.assertEqual(
+            {"kind": "INTERVAL", "count": 3, "firstOffsetMs": 0,
+             "intervalMs": 1333},
+            axe_source["spawnSchedule"],
+        )
+        self.assertEqual(
+            {"kind": "RANDOM_NAVIGABLE_CIRCLE",
+             "anchor": "BOSS_SPAWN_POSITION", "count": 4,
+             "radiusM": 14.0, "heightToleranceM": 1.0},
+            axe_source["arenaRandom"],
+        )
         self.assertEqual({
             "trigger": "ENTER",
             "kind": "SET_GAMEPLAY_PHASE",
@@ -803,10 +845,15 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             'targetId == "boss.phase.gameplay" && 2u == value',
             'else if ("SPAWN_COMBAT_OBJECT" == strKind)',
             '"split gameplay combat-object spawn is invalid"',
+            '"spawnSchedule"',
+            '"arenaRandom"',
+            '"arenaRandomCount", "arenaRandomRadiusM"',
+            '"RANDOM_NAVIGABLE_CIRCLE"',
+            '"BOSS_SPAWN_POSITION"',
         ):
             self.assertIn(
                 marker,
-                self.encounter_reference_cpp + self.cpp,
+                self.encounter_reference_cpp + self.cpp + self.balance_tool_cpp,
             )
 
     def test_gameplay_and_branch_mutations_fail_closed(self) -> None:

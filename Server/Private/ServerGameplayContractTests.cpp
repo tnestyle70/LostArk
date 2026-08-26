@@ -1346,7 +1346,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		};
 		const auto loadBootstrapVariant = [&candidateRevision](
 			const std::wstring_view suffix,
-			const std::string& bytes)
+			const std::string& bytes,
+			std::shared_ptr<CGameplayCatalog> generation = nullptr)
 			-> std::shared_ptr<CGameplayCatalog>
 		{
 			const fs::path root = fs::temp_directory_path() /
@@ -1369,7 +1370,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 			const fs::path canonical = error ? fs::path{} :
 				fs::canonical(bootstrap, error);
-			auto generation = std::make_shared<CGameplayCatalog>();
+			if (nullptr == generation)
+				generation = std::make_shared<CGameplayCatalog>();
 			GameplayDataRevision bootstrapRevision{};
 			std::string status;
 			struct VARIANT_LOAD_CONTEXT final
@@ -1401,6 +1403,49 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			fs::remove_all(root, error);
 			return loaded ? generation : nullptr;
 		};
+		std::string truncatedMotionBootstrap = bootstrapText;
+		const std::string motionRowPrefix =
+			"PATTERNMOTION\tENCOUNTER_VALTAN\tVALTAN_HIGH_JUMP\t";
+		const std::size_t motionRowAt =
+			truncatedMotionBootstrap.find(motionRowPrefix);
+		const std::size_t motionRowEnd = std::string::npos == motionRowAt ?
+			std::string::npos :
+			truncatedMotionBootstrap.find('\n', motionRowAt);
+		std::size_t tenthMotionTab = motionRowAt;
+		for (std::uint32_t tabIndex = 0u;
+			tabIndex < 10u && std::string::npos != tenthMotionTab;
+			++tabIndex)
+		{
+			tenthMotionTab = truncatedMotionBootstrap.find(
+				'\t', 0u == tabIndex ? tenthMotionTab : tenthMotionTab + 1u);
+		}
+		const bool madeTruncatedMotionRow =
+			std::string::npos != motionRowAt &&
+			std::string::npos != motionRowEnd &&
+			std::string::npos != tenthMotionTab &&
+			tenthMotionTab < motionRowEnd;
+		if (madeTruncatedMotionRow)
+		{
+			truncatedMotionBootstrap.erase(
+				tenthMotionTab, motionRowEnd - tenthMotionTab);
+		}
+		auto motionRollbackCatalog = std::make_shared<CGameplayCatalog>();
+		const bool motionRollbackBaselineLoaded =
+			motionRollbackCatalog->Load();
+		const GameplayDataRevision motionRollbackRevision =
+			motionRollbackCatalog->Get_ActiveRevision();
+		const bool rejectedTruncatedMotionRow =
+			madeTruncatedMotionRow && motionRollbackBaselineLoaded &&
+			nullptr == loadBootstrapVariant(
+				L"truncated-pattern-motion", truncatedMotionBootstrap,
+				motionRollbackCatalog) &&
+			motionRollbackRevision ==
+				motionRollbackCatalog->Get_ActiveRevision() &&
+			std::string::npos != motionRollbackCatalog->Get_Status().find(
+				"Boss pattern motion row is invalid");
+		tests.Require(
+			rejectedTruncatedMotionRow,
+			"Reject a truncated PATTERNMOTION row and preserve the active gameplay generation");
 
 		constexpr std::string_view AUDITION_PATTERN_ID =
 			"VALTAN_TEST_ANIMATION_AUDITION";
@@ -1682,7 +1727,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				L"health-order-collision", collidingHealthMechanic) &&
 			nullptr == loadBootstrapVariant(
 				L"phase-topology", divergentPhaseTopology),
-			"Reject v19 mixed tags, malformed managed windows, duplicate health mechanic order, and divergent phase-transition topology");
+			"Reject v20 mixed tags, malformed managed windows, duplicate health mechanic order, and divergent phase-transition topology");
 
 		std::string managedWeightVariant = bootstrapText;
 		bool managedWeightRowsReady = replaceBootstrapRow(
@@ -1936,7 +1981,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			0u == secondHighJump->iEffectiveWeight &&
 			20u == findCompatibilityWeight("VALTAN_WHIRLWIND") &&
 			30u == findCompatibilityWeight("VALTAN_DASH_CHARGE"),
-			"Consume strict v19 managed candidate ordinal, per-window weight/enabled overrides, exact ticket boundaries, and truthful trace intervals without mutating compatibility weights");
+			"Consume strict v20 managed candidate ordinal, per-window weight/enabled overrides, exact ticket boundaries, and truthful trace intervals without mutating compatibility weights");
 
 		SERVER_WORLD_ENTITY& forcedOccurrenceBoss =
 			valtanRoom->m_WorldEntities.back();
@@ -2703,7 +2748,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"valtan.reactive.triple-counter.third-fail") &&
 			nullptr != armorCharge &&
 			BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD == armorCharge->Motion.eKind &&
-			std::abs(armorCharge->Motion.fDistance - 100.f) < 1.0e-6f &&
+			std::abs(armorCharge->Motion.fDistance - 20.f) < 1.0e-6f &&
 			2u == armorCharge->Branches.size() &&
 			hasBranch(armorCharge, BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT,
 				"valtan.mechanic.armor-break-opening.groggy") &&
@@ -2786,18 +2831,27 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			0.f == highJumpAirborne->Actions.front().Volley.fStartAngleDegrees &&
 			0.f == highJumpAirborne->Actions.front().Volley.fAngleStepDegrees &&
 			!highJumpAirborne->Actions.front().Volley.bAllowOverlap &&
-			32u == highJumpAirborne->Actions.front().Volley.iMaximumTotalObjects;
+			36u == highJumpAirborne->Actions.front().Volley.iMaximumTotalObjects &&
+			3u == highJumpAirborne->Actions.front().Volley.iSpawnCount &&
+			1333u == highJumpAirborne->Actions.front().Volley.iSpawnIntervalMs &&
+			4u == highJumpAirborne->Actions.front().Volley.iArenaRandomCount &&
+			std::abs(highJumpAirborne->Actions.front().Volley.
+				fArenaRandomRadiusM - 14.f) < 1.0e-6f &&
+			std::abs(highJumpAirborne->Actions.front().Volley.
+				fArenaHeightToleranceM - 1.f) < 1.0e-6f &&
+			BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::BOSS_SPAWN_POSITION ==
+				highJumpAirborne->Actions.front().Volley.eArenaAnchorPolicy;
 		tests.Require(
 			nullptr != highJumpTakeoff &&
 			1933u == highJumpTakeoff->iDurationMs &&
 			nullptr != highJumpAirborne &&
-			6000u == highJumpAirborne->iDurationMs &&
+			4000u == highJumpAirborne->iDurationMs &&
 			hasExactHighJumpVolley &&
 			nullptr != highJumpLand && 3200u == highJumpLand->iDurationMs &&
 			nullptr != highJumpRecovery &&
 			400u == highJumpRecovery->iDurationMs &&
 			nullptr != highJumpTargetAxe &&
-			6000u == highJumpTargetAxe->iLifeMs &&
+			4000u == highJumpTargetAxe->iLifeMs &&
 			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
 				highJumpTargetAxe->eOriginPolicy &&
 			1u == highJumpTargetAxe->Hits.size() &&
@@ -2805,7 +2859,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				highJumpTargetAxe->Hits.front().eTrigger &&
 			1200u == highJumpTargetAxe->Hits.front().iAtMs &&
 			1u == highJumpTargetAxe->Hits.front().iRepeatCount,
-			"Keep one target axe owner per living player through the 6-second AIRBORNE hold, hit once at 1.2 seconds, and leave LAND at 3.2 seconds");
+			"Keep three mixed target-axe waves inside the 4-second AIRBORNE hold, hit each at 1.2 seconds, and leave LAND at 3.2 seconds");
 		tests.Require(
 			nullptr != fourSlashPattern && nullptr != swingPattern &&
 			420609u == fourSlashPattern->iSourcePrimaryActionId &&
@@ -5616,8 +5670,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			2u == armorProfile->ArmorPlates.size() &&
 			0u == armorProfile->ArmorPlates[0].iPlateIndex &&
 			1u == armorProfile->ArmorPlates[1].iPlateIndex &&
-			4000u == armorProfile->ArmorPlates[0].iDurability &&
-			4000u == armorProfile->ArmorPlates[1].iDurability &&
+			20u == armorProfile->ArmorPlates[0].iDurability &&
+			20u == armorProfile->ArmorPlates[1].iDurability &&
 			50u == armorProfile->ArmorPlates[0].iDefense &&
 			50u == armorProfile->ArmorPlates[1].iDefense,
 			"Load Valtan's two authored armour plates from the gameplay bootstrap");
@@ -6075,7 +6129,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			0u == dashPattern->Stages[0].iHitCount &&
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE ==
 				dashPattern->Stages[0].Motion.eKind &&
-			500u == dashCharge->iDurationMs &&
+			1500u == dashCharge->iDurationMs &&
 			BOSS_PATTERN_HIT_SHAPE::BOX == dashCharge->eHitShape &&
 			std::abs(dashCharge->fHitLength - 10.f) < 1.0e-6f &&
 			std::abs(dashCharge->fHitHalfWidth - 2.5f) < 1.0e-6f &&
@@ -6096,7 +6150,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			0u == dashPattern->Stages[3].iHitCount &&
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE ==
 				dashPattern->Stages[3].Motion.eKind,
-			"Keep Dash Charge as a 3650 ms damage-free triple-prep windup followed by the existing 500 ms one-hit 20 m Server charge and 900 ms recovery");
+			"Keep Dash Charge as a 3650 ms damage-free triple-prep windup followed by a 1500 ms one-hit 20 m Server charge and 900 ms recovery");
 		tests.Require(
 			nullptr != dashPattern &&
 			2u == dashPattern->Stages[1].Branches.size() &&
@@ -7676,9 +7730,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Leave the rotation cursor untouched while scripted playback drives the boss");
 	}
 	{
-		/* The sky axe volley deals one falling area per living raider, each
-		locked to the player it was dealt, so a four-player arena receives four
-		independent objects and a dead player receives none. */
+		/* Each high-jump wave snapshots one axe per living raider and four static
+		deterministic points around the authored arena centre. */
 		CGameRoom volleyRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
 		tests.Require(volleyRoom.Initialize_WorldEntities(),
 			"Initialize the Valtan room for the sky axe volley");
@@ -7698,6 +7751,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		volleyEntity.fPositionX = 156.03f;
 		volleyEntity.fPositionY = 22.99751f;
 		volleyEntity.fPositionZ = -122.06f;
+		volleyEntity.fSpawnPositionX = volleyEntity.fPositionX;
+		volleyEntity.fSpawnPositionY = volleyEntity.fPositionY;
+		volleyEntity.fSpawnPositionZ = volleyEntity.fPositionZ;
 		/* A combat object belongs to a running pattern occurrence, so the boss
 		must already have begun one. */
 		volleyEntity.iPatternSequence = 1u;
@@ -7747,9 +7803,39 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			volleyRoom.m_CombatObjectRuntime.Build_Snapshots(initialSnapshots);
 		const GameplayDataRevision volleyRevision =
 			volleyRoom.m_GameplayCatalog.Get_ActiveRevision();
+		bool arenaRandomValid = nullptr != volleyBoss && 7u == liveObjects.size();
+		for (std::size_t left = 3u;
+			arenaRandomValid && left < liveObjects.size(); ++left)
+		{
+			const SERVER_COMBAT_OBJECT& object = liveObjects[left];
+			const float centerDeltaX =
+				object.LiveState.CurrentPose.fPositionX -
+				volleyBoss->fSpawnPositionX;
+			const float centerDeltaZ =
+				object.LiveState.CurrentPose.fPositionZ -
+				volleyBoss->fSpawnPositionZ;
+			arenaRandomValid =
+				!object.bTrackLockedTargetUntilFirstPulse &&
+				INVALID_NET_ENTITY_ID == object.iLockedTargetNetEntityId &&
+				centerDeltaX * centerDeltaX + centerDeltaZ * centerDeltaZ <=
+					14.f * 14.f + 0.001f &&
+				volleyRoom.m_ServerNavigation.Is_PointWalkableExact(
+					object.LiveState.CurrentPose.fPositionX,
+					object.LiveState.CurrentPose.fPositionZ);
+			for (std::size_t right = left + 1u;
+				arenaRandomValid && right < liveObjects.size(); ++right)
+			{
+				const float deltaX = object.LiveState.CurrentPose.fPositionX -
+					liveObjects[right].LiveState.CurrentPose.fPositionX;
+				const float deltaZ = object.LiveState.CurrentPose.fPositionZ -
+					liveObjects[right].LiveState.CurrentPose.fPositionZ;
+				arenaRandomValid = deltaX * deltaX + deltaZ * deltaZ +
+					0.0001f >= 49.f;
+			}
+		}
 		const bool reliableAndSnapshotPins =
-			3u == initialSpawned.size() && initialDespawned.empty() &&
-			3u == initialSnapshots.size() &&
+			7u == initialSpawned.size() && initialDespawned.empty() &&
+			7u == initialSnapshots.size() &&
 			std::all_of(initialSpawned.begin(), initialSpawned.end(),
 				[&volleyRevision](const S2C_COMBAT_OBJECT_SPAWNED& message)
 				{
@@ -7763,12 +7849,20 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					return snapshot.PinnedDefinitionRevision == volleyRevision;
 				});
 		tests.Require(
-			staged && 3u == liveObjects.size() &&
-			3u == lockedTargets.size() &&
+			staged && 7u == liveObjects.size() &&
+			4u == lockedTargets.size() &&
 			0u == lockedTargets.count(8203u) &&
-			lockedTargetOrder == std::vector<std::uint32_t>{ 8200u, 8201u, 8202u } &&
-			builtInitialSnapshots && reliableAndSnapshotPins,
-			"Deal one sky axe to every living raider and none to the dead");
+			lockedTargetOrder == std::vector<std::uint32_t>{
+				8200u, 8201u, 8202u,
+				static_cast<std::uint32_t>(INVALID_NET_ENTITY_ID),
+				static_cast<std::uint32_t>(INVALID_NET_ENTITY_ID),
+				static_cast<std::uint32_t>(INVALID_NET_ENTITY_ID),
+				static_cast<std::uint32_t>(INVALID_NET_ENTITY_ID) } &&
+			arenaRandomValid && builtInitialSnapshots && reliableAndSnapshotPins,
+			"Deal spawn-position axes to living raiders plus four static arena axes");
+		std::vector<SERVER_COMBAT_OBJECT_POSE> spawnPoses;
+		for (const SERVER_COMBAT_OBJECT& object : liveObjects)
+			spawnPoses.push_back(object.LiveState.CurrentPose);
 		for (auto& [raiderId, raider] : volleyRoom.m_Players)
 		{
 			(void)raiderId;
@@ -7780,22 +7874,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			volleyRoom.m_Players, volleyRoom.m_WorldEntities,
 			volleyRoom.m_GameplayCatalog, 1.f / 30.f, 901u,
 			volleyDamageEvents);
-		const auto followsResolvedTarget = [&volleyRoom](
-			const SERVER_COMBAT_OBJECT& object)
+		bool fixedAtSpawn = spawnPoses.size() == liveObjects.size();
+		for (std::size_t index = 0u;
+			fixedAtSpawn && index < liveObjects.size(); ++index)
 		{
-			const auto target = std::find_if(
-				volleyRoom.m_Players.begin(), volleyRoom.m_Players.end(),
-				[&object](const auto& entry)
-				{ return entry.second.iNetEntityId == object.iLockedTargetNetEntityId; });
-			return volleyRoom.m_Players.end() != target &&
-				std::abs(object.LiveState.CurrentPose.fPositionX -
-					target->second.fPositionX) < 0.001f &&
-				std::abs(object.LiveState.CurrentPose.fPositionZ -
-					target->second.fPositionZ) < 0.001f;
-		};
-		tests.Require(std::all_of(
-			liveObjects.begin(), liveObjects.end(), followsResolvedTarget),
-			"Follow each resolved sky-axe target until its first timed pulse");
+			fixedAtSpawn =
+				!liveObjects[index].bTrackLockedTargetUntilFirstPulse &&
+				std::abs(spawnPoses[index].fPositionX -
+					liveObjects[index].LiveState.CurrentPose.fPositionX) < 0.001f &&
+				std::abs(spawnPoses[index].fPositionZ -
+					liveObjects[index].LiveState.CurrentPose.fPositionZ) < 0.001f;
+		}
+		tests.Require(fixedAtSpawn,
+			"Keep every sky axe at the pose resolved when its wave spawned");
 		for (std::uint32_t tick = 902u; tick <= 936u; ++tick)
 		{
 			volleyRoom.m_CombatObjectRuntime.Update(
@@ -7827,7 +7918,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					liveObjects[index].LiveState.CurrentPose.fPositionZ) < 0.001f;
 		}
 		tests.Require(fixedAfterFirstPulse,
-			"Freeze each sky axe at its first timed-pulse position");
+			"Keep each snapshotted sky axe fixed after its first timed pulse");
 
 		auto* mutableVolleyPatterns = const_cast<
 			std::vector<BOSS_PATTERN_DEFINITION>*>(
@@ -7862,6 +7953,152 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			const BOSS_PATTERN_STAGE_ACTION originalVolleyAction =
 				*typedVolleyAction;
 			volleyRoom.m_CombatObjectRuntime.Reset();
+			volleyBoss->iActionStartTick = 1000u;
+			volleyBoss->iAppliedPatternStageSpawnWaveCount = 0u;
+			for (auto& [raiderId, raider] : volleyRoom.m_Players)
+			{
+				raider.iCurrentHp = raiderId <= 8101u ? 5000u : 0u;
+				raider.eAction = raiderId <= 8101u ?
+					PLAYER_ACTION_STATE::NONE : PLAYER_ACTION_STATE::DEAD;
+				raider.fPositionX = 151.f +
+					static_cast<float>(raiderId - 8100u) * 2.f;
+				raider.fPositionY = volleyBoss->fSpawnPositionY;
+				raider.fPositionZ = -122.f;
+			}
+			const bool firstWaveCommitted =
+				volleyRoom.Apply_BossPatternStageActions(
+					*volleyBoss, "VALTAN_HIGH_JUMP",
+					"valtan.attack.high-jump.airborne",
+					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 1000u);
+			volleyBoss->iAppliedPatternStageSpawnWaveCount =
+				firstWaveCommitted ? 1u : 0u;
+			const bool earlySecondWaveAccepted =
+				volleyRoom.Apply_BossPatternScheduledSpawnWave(
+					*volleyBoss, 1039u);
+			const std::size_t beforeSecondWave =
+				volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().size();
+			volleyRoom.m_Players.at(8101u).iCurrentHp = 0u;
+			volleyRoom.m_Players.at(8101u).eAction =
+				PLAYER_ACTION_STATE::DEAD;
+			const bool secondWaveCommitted =
+				volleyRoom.Apply_BossPatternScheduledSpawnWave(
+					*volleyBoss, 1040u);
+			volleyRoom.m_Players.at(8101u).iCurrentHp = 5000u;
+			volleyRoom.m_Players.at(8101u).eAction =
+				PLAYER_ACTION_STATE::NONE;
+			volleyRoom.m_Players.at(8102u).iCurrentHp = 5000u;
+			volleyRoom.m_Players.at(8102u).eAction =
+				PLAYER_ACTION_STATE::NONE;
+			const bool thirdWaveCommitted =
+				volleyRoom.Apply_BossPatternScheduledSpawnWave(
+					*volleyBoss, 1080u);
+			const bool duplicateThirdWaveAccepted =
+				volleyRoom.Apply_BossPatternScheduledSpawnWave(
+					*volleyBoss, 1081u);
+			std::array<std::size_t, 3u> playerAxesByWave{};
+			std::array<std::size_t, 3u> arenaAxesByWave{};
+			std::size_t trackingAxisCount = 0u;
+			for (const SERVER_COMBAT_OBJECT& object :
+				volleyRoom.m_CombatObjectRuntime.Get_LiveObjects())
+			{
+				std::size_t wave = 3u;
+				if (1000u == object.iSpawnTick) wave = 0u;
+				else if (1040u == object.iSpawnTick) wave = 1u;
+				else if (1080u == object.iSpawnTick) wave = 2u;
+				if (wave >= 3u) continue;
+				if (object.bTrackLockedTargetUntilFirstPulse)
+					++trackingAxisCount;
+				if (INVALID_NET_ENTITY_ID != object.iLockedTargetNetEntityId)
+					++playerAxesByWave[wave];
+				else
+					++arenaAxesByWave[wave];
+			}
+			std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET> deterministicA;
+			std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET> deterministicB;
+			const BOSS_COMBAT_OBJECT_DEFINITION* scheduledDefinition =
+				volleyRoom.m_GameplayCatalog.Find_BossCombatObject(
+					"combatobject.valtan.high-jump.target-axe");
+			const bool deterministicResolved = nullptr != scheduledDefinition &&
+				volleyRoom.Resolve_ArenaRandomVolleyOrigins(
+					*volleyBoss, *typedVolleyAction, *scheduledDefinition,
+					2u, deterministicA) &&
+				volleyRoom.Resolve_ArenaRandomVolleyOrigins(
+					*volleyBoss, *typedVolleyAction, *scheduledDefinition,
+					2u, deterministicB);
+			bool deterministicSame = deterministicResolved &&
+				deterministicA.size() == deterministicB.size();
+			for (std::size_t index = 0u;
+				deterministicSame && index < deterministicA.size(); ++index)
+			{
+				deterministicSame =
+					deterministicA[index].fPositionX ==
+						deterministicB[index].fPositionX &&
+					deterministicA[index].fPositionY ==
+						deterministicB[index].fPositionY &&
+					deterministicA[index].fPositionZ ==
+						deterministicB[index].fPositionZ;
+			}
+			tests.Require(
+				firstWaveCommitted && earlySecondWaveAccepted &&
+				6u == beforeSecondWave && secondWaveCommitted &&
+				thirdWaveCommitted && duplicateThirdWaveAccepted &&
+				18u == volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().size() &&
+				3u == volleyBoss->iAppliedPatternStageSpawnWaveCount &&
+				0u == trackingAxisCount &&
+				playerAxesByWave == std::array<std::size_t, 3u>{ 2u, 1u, 3u } &&
+				arenaAxesByWave == std::array<std::size_t, 3u>{ 4u, 4u, 4u } &&
+					deterministicSame,
+				"Commit snapshot-at-spawn player/random sky-axe waves at 0/40/80 ticks");
+
+			/* Exercise the real room-tick order after every raider dies. The brain
+			must keep the target-independent AIRBORNE stage alive long enough for
+			the scheduler to commit its remaining arena-only waves. */
+			volleyRoom.m_CombatObjectRuntime.Reset();
+			*volleyBoss = volleyEntity;
+			volleyBoss->eAction = SERVER_ENTITY_ACTION::PATTERN_WINDUP;
+			volleyBoss->strPatternStageId = "AIRBORNE";
+			volleyBoss->iPatternStageIndex = 1u;
+			volleyBoss->iPatternStageDurationMs = 4000u;
+			volleyBoss->iActionStartTick = 1000u;
+			volleyBoss->iPatternStageFirstEvaluationTick = 1000u;
+			volleyBoss->iAppliedPatternStageSpawnWaveCount = 0u;
+			for (auto& [raiderId, raider] : volleyRoom.m_Players)
+			{
+				raider.iCurrentHp = 8100u == raiderId ? 5000u : 0u;
+				raider.isCombatReady = true;
+				raider.eAction = 8100u == raiderId ?
+					PLAYER_ACTION_STATE::NONE : PLAYER_ACTION_STATE::DEAD;
+			}
+			const bool roomTickFirstWave =
+				volleyRoom.Apply_BossPatternStageActions(
+					*volleyBoss, "VALTAN_HIGH_JUMP",
+					"valtan.attack.high-jump.airborne",
+					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 1000u);
+			volleyBoss->iAppliedPatternStageSpawnWaveCount =
+				roomTickFirstWave ? 1u : 0u;
+			for (auto& [raiderId, raider] : volleyRoom.m_Players)
+			{
+				(void)raiderId;
+				raider.iCurrentHp = 0u;
+				raider.eAction = PLAYER_ACTION_STATE::DEAD;
+			}
+			volleyRoom.m_iServerTick = 1039u;
+			volleyRoom.Update_WorldEntities(1.f / 30.f);
+			const bool secondArenaOnlyWave =
+				volleyRoom.m_isReady &&
+				"VALTAN_HIGH_JUMP" == volleyBoss->strPatternId &&
+				2u == volleyBoss->iAppliedPatternStageSpawnWaveCount &&
+				9u == volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().size();
+			volleyRoom.m_iServerTick = 1079u;
+			volleyRoom.Update_WorldEntities(1.f / 30.f);
+			tests.Require(
+				roomTickFirstWave && secondArenaOnlyWave && volleyRoom.m_isReady &&
+				"VALTAN_HIGH_JUMP" == volleyBoss->strPatternId &&
+				3u == volleyBoss->iAppliedPatternStageSpawnWaveCount &&
+				13u == volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().size(),
+				"Keep HIGH_JUMP alive across a party wipe and commit both arena-only room-tick waves");
+
+			volleyRoom.m_CombatObjectRuntime.Reset();
 			for (auto& [raiderId, raider] : volleyRoom.m_Players)
 			{
 				raider.iCurrentHp = 8100u == raiderId ? 5000u : 0u;
@@ -7881,6 +8118,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			typedVolleyAction->Volley.fAngleStepDegrees = 45.f;
 			typedVolleyAction->Volley.bAllowOverlap = false;
 			typedVolleyAction->Volley.iMaximumTotalObjects = 32u;
+			typedVolleyAction->Volley.iArenaRandomCount = 0u;
+			typedVolleyAction->Volley.fArenaRandomRadiusM = 0.f;
+			typedVolleyAction->Volley.fArenaHeightToleranceM = 0.f;
+			typedVolleyAction->Volley.eArenaAnchorPolicy =
+				BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::NONE;
 			const auto radialFirstCombatObjectId =
 				volleyRoom.m_CombatObjectRuntime.Begin_Transaction().
 					iNextCombatObjectId;
@@ -8150,8 +8392,42 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		openingChargeBoss.strActionId ==
 			"valtan.mechanic.armor-break-opening.charge" &&
 		std::abs(openingChargeBoss.fPatternForcedMotionSpeed -
-			(100.f / 1.5f)) <= 0.001f,
-		"Use authored charge maximum range instead of stopping at the bait player");
+			(20.f / 1.5f)) <= 0.001f,
+		"Use the opening stage's authored arena charge distance");
+	SERVER_WORLD_ENTITY continuousOpeningCharge = openingChargeBoss;
+	const float openingStartX = continuousOpeningCharge.fPositionX;
+	const float openingStartZ = continuousOpeningCharge.fPositionZ;
+	const float openingStepDistance = (20.f / 1.5f) / 30.f;
+	bool openingStepsContinuous = true;
+	for (std::uint32_t tick = 0u; tick < 15u; ++tick)
+	{
+		float proposedX = 0.f;
+		float proposedZ = 0.f;
+		if (!brain.Try_BuildStageMotion(
+				continuousOpeningCharge, 1.f / 30.f,
+				proposedX, proposedZ))
+		{
+			openingStepsContinuous = false;
+			break;
+		}
+		const float stepX = proposedX - continuousOpeningCharge.fPositionX;
+		const float stepZ = proposedZ - continuousOpeningCharge.fPositionZ;
+		openingStepsContinuous = openingStepsContinuous &&
+			std::abs(std::sqrt(stepX * stepX + stepZ * stepZ) -
+				openingStepDistance) <= 0.001f;
+		continuousOpeningCharge.fPositionX = proposedX;
+		continuousOpeningCharge.fPositionZ = proposedZ;
+	}
+	const float openingTravelX =
+		continuousOpeningCharge.fPositionX - openingStartX;
+	const float openingTravelZ =
+		continuousOpeningCharge.fPositionZ - openingStartZ;
+	tests.Require(
+		openingStepsContinuous &&
+		std::abs(std::sqrt(
+			openingTravelX * openingTravelX + openingTravelZ * openingTravelZ) -
+			openingStepDistance * 15.f) <= 0.002f,
+		"Advance the opening charge through continuous fixed-tick intermediate positions");
 
 	{
 		SERVER_PLAYER meleePlayer{};
@@ -10316,6 +10592,207 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
+		/* Exercise the room's real fixed-tick ordering. The charge body first
+		moves to the swept contact margin, then commits the exact destruction
+		binding, and only that successful binding may publish WALL_CONTACT. */
+		const auto stageDashCharge = [](
+			CGameRoom& room,
+			const float startX,
+			const float startY,
+			const float startZ,
+			const float yawDegrees,
+			const std::uint32_t startTick,
+			const std::uint32_t patternSequence) -> SERVER_WORLD_ENTITY&
+		{
+			const BOSS_RUNTIME_PROFILE* profile =
+				room.m_GameplayCatalog.Find_Boss("BOSS_VALTAN");
+			room.m_WorldEntities.clear();
+			room.m_Players.clear();
+			SERVER_PLAYER target{};
+			target.iPlayerId = 99001u;
+			target.iNetEntityId = 99002u;
+			target.iCurrentHp = 1000u;
+			target.iMaximumHp = 1000u;
+			target.isCombatReady = true;
+			const float yawRadians = yawDegrees *
+				3.14159265358979323846f / 180.f;
+			target.fPositionX = startX + std::sin(yawRadians) * 2.f;
+			target.fPositionY = startY;
+			target.fPositionZ = startZ + std::cos(yawRadians) * 2.f;
+			room.m_Players.emplace(target.iPlayerId, target);
+
+			SERVER_WORLD_ENTITY boss{};
+			boss.iNetEntityId = 99003u;
+			boss.strPlacementId = "boss.valtan.dash-contract";
+			boss.strArchetypeId = "BOSS_VALTAN";
+			boss.strEncounterId = "ENCOUNTER_VALTAN";
+			boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			boss.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+			boss.fPositionX = startX;
+			boss.fPositionY = startY;
+			boss.fPositionZ = startZ;
+			boss.fSpawnPositionX = startX;
+			boss.fSpawnPositionY = startY;
+			boss.fSpawnPositionZ = startZ;
+			boss.fYawDegrees = yawDegrees;
+			boss.iCurrentHp = nullptr == profile ? 60000u : profile->iMaximumHp;
+			boss.iMaximumHp = boss.iCurrentHp;
+			boss.iMaximumHealthBars =
+				nullptr == profile ? 160u : profile->iMaximumHealthBars;
+			boss.iLastEvaluatedHealthBar = boss.iMaximumHealthBars;
+			boss.iLastHealthMechanicGenerationEpoch =
+				room.m_GameplayCatalog.Get_ActiveGenerationEpoch();
+			boss.iPhase = 1u;
+			boss.PhasePolicy = nullptr == profile ?
+				BOSS_PHASE_POLICY{} : profile->PhasePolicy;
+			boss.fCollisionRadius =
+				nullptr == profile ? 3.f : profile->fCollisionRadius;
+			boss.fEngageDistance =
+				nullptr == profile ? 20.f : profile->fEngageDistance;
+			boss.fMoveSpeed = nullptr == profile ? 2.6f : profile->fMoveSpeed;
+			boss.bIntroPatternConsumed = true;
+			boss.strPatternId = "VALTAN_DASH_CHARGE";
+			boss.strPatternStageId = "CHARGE";
+			boss.strActionId = "valtan.attack.dash-charge.active";
+			boss.iPatternSequence = patternSequence;
+			boss.iPatternStageIndex = 1u;
+			boss.iPatternStageDurationMs = 1500u;
+			boss.iPatternStageFirstEvaluationTick = startTick;
+			boss.ePatternStageMotionKind =
+				BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD;
+			boss.fPatternForcedMotionSpeed = 20.f / 1.5f;
+			boss.fPatternMinimumRange = 5.f;
+			boss.fPatternMaximumRange = 20.f;
+			boss.bPatternChargeImpact = true;
+			boss.iActionStartTick = startTick;
+			boss.iPatternTargetEntityId = target.iNetEntityId;
+			boss.bHasPatternTargetLastPosition = true;
+			boss.fPatternTargetLastPositionX = target.fPositionX;
+			boss.fPatternTargetLastPositionY = target.fPositionY;
+			boss.fPatternTargetLastPositionZ = target.fPositionZ;
+			boss.PinnedDefinitionRevision =
+				room.m_GameplayCatalog.Get_ActiveRevision();
+			boss.BossCombat.iStateRevision = 1u;
+			room.m_WorldEntities.push_back(std::move(boss));
+			room.m_iServerTick = startTick;
+			return room.m_WorldEntities.back();
+		};
+
+		CGameRoom boundRoom{ WORLD_ID::VALTAN_ARENA };
+		/* The 109 transition ring has its own stage-only receivers in front of
+		   the ten 159 charge walls. Disable only those impact channels here so
+		   this fixture exercises the exact Dash -> 159 mutation join while the
+		   separate unbound fixture below continues to cover the 109 safe stop. */
+		std::vector<SERVER_COLLISION_STATE_CHANGE> outerReceiverChanges;
+		for (const WORLD_BOOTSTRAP_PLACEMENT& placement :
+			boundRoom.m_WorldBootstrap.Get_Placements())
+		{
+			if (0u == placement.strPlacementId.rfind(
+					"collision.valtan.wallgroup.sector", 0u) &&
+				placement.strPlacementId.ends_with(".receiver"))
+			{
+				outerReceiverChanges.push_back(
+					{ placement.strPlacementId, true, false });
+			}
+		}
+		SERVER_COLLISION_STATE_STAGE isolatedReceiverStage{};
+		std::string isolatedReceiverStatus;
+		const bool isolatedBoundReceiver = 30u == outerReceiverChanges.size() &&
+			boundRoom.m_ServerCollisionSystem.Prepare_StateChanges(
+				outerReceiverChanges, isolatedReceiverStage,
+				isolatedReceiverStatus);
+		if (isolatedBoundReceiver)
+			boundRoom.m_ServerCollisionSystem.Commit_StateChanges(
+				std::move(isolatedReceiverStage));
+		SERVER_BOSS_RECEIVER_HIT boundContact{};
+		const bool foundBoundContact = boundRoom.Is_Ready() &&
+			isolatedBoundReceiver &&
+			boundRoom.m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
+				145.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+				175.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+				3.f, boundContact) &&
+			0u == boundContact.strReceiverPlacementId.rfind(
+				"collision.valtan.wallgroup.11047903315509031966.", 0u);
+		const float boundContactX =
+			145.f + 30.f * boundContact.fHitRatio;
+		SERVER_WORLD_ENTITY& boundBoss = stageDashCharge(
+			boundRoom, boundContactX - 0.2f, VALTAN_WALL_CENTER_Y,
+			VALTAN_WALL_CENTER_Z, 90.f, 500u, 701u);
+		const float boundStartX = boundBoss.fPositionX;
+		const SERVER_WORLD_ENTITY consumedCharge = boundBoss;
+		boundRoom.Update_WorldEntities(1.f / 30.f);
+		const auto boundStates =
+			boundRoom.m_WorldDestructionRuntime.Get_GroupStates();
+		const std::size_t breakingCount = static_cast<std::size_t>(std::count_if(
+			boundStates.begin(), boundStates.end(),
+			[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+			{
+				return WORLD_DESTRUCTION_STATE::BREAKING == state.eState;
+			}));
+		const SERVER_WORLD_ENTITY& groggyBoss = boundRoom.m_WorldEntities.front();
+		tests.Require(
+			foundBoundContact && boundRoom.m_isReady && 1u == breakingCount &&
+			groggyBoss.fPositionX >= boundStartX &&
+			groggyBoss.fPositionX < boundContactX &&
+			"VALTAN_DASH_CHARGE" == groggyBoss.strPatternId &&
+			"GROGGY" == groggyBoss.strPatternStageId &&
+			groggyBoss.bPatternGroggy && !groggyBoss.bPatternChargeImpact &&
+			CBossCombatRuntime::Has_Flag(
+				groggyBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY),
+			"Commit BREAKING and GROGGY on the exact swept dash collision tick");
+
+		SERVER_WORLD_ENTITY consumedProbe = consumedCharge;
+		consumedProbe.iNetEntityId = 99004u;
+		consumedProbe.iPatternSequence = 702u;
+		bool consumedTriggered = true;
+		const bool consumedAccepted = boundRoom.Apply_WorldDestructionImpact(
+			consumedProbe, boundContact.strReceiverPlacementId,
+			502u, consumedTriggered);
+		tests.Require(
+			consumedAccepted && !consumedTriggered &&
+			"CHARGE" == consumedProbe.strPatternStageId &&
+			!consumedProbe.bPatternGroggy,
+			"Refuse a consumed dash receiver without manufacturing GROGGY");
+
+		CGameRoom unboundRoom{ WORLD_ID::VALTAN_ARENA };
+		SERVER_BOSS_RECEIVER_HIT unboundContact{};
+		const bool foundUnboundContact = unboundRoom.Is_Ready() &&
+			unboundRoom.m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
+				135.f, 23.9185f, -115.034299f,
+				155.f, 23.9185f, -115.034299f,
+				3.f, unboundContact) &&
+			0u == unboundContact.strReceiverPlacementId.rfind(
+				"collision.valtan.wallgroup.sector", 0u);
+		const float unboundContactX =
+			135.f + 20.f * unboundContact.fHitRatio;
+		SERVER_WORLD_ENTITY& unboundBoss = stageDashCharge(
+			unboundRoom, unboundContactX - 0.2f, 23.9185f,
+			-115.034299f, 90.f, 600u, 801u);
+		const float unboundStartX = unboundBoss.fPositionX;
+		unboundRoom.Update_WorldEntities(1.f / 30.f);
+		const SERVER_WORLD_ENTITY& stoppedBoss =
+			unboundRoom.m_WorldEntities.front();
+		const auto unboundStates =
+			unboundRoom.m_WorldDestructionRuntime.Get_GroupStates();
+		const bool everyUnboundGroupIntact = std::all_of(
+			unboundStates.begin(), unboundStates.end(),
+			[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+			{
+				return WORLD_DESTRUCTION_STATE::INTACT == state.eState;
+			});
+		tests.Require(
+			foundUnboundContact && unboundRoom.m_isReady &&
+			everyUnboundGroupIntact && stoppedBoss.fPositionX >= unboundStartX &&
+			stoppedBoss.fPositionX < unboundContactX &&
+			"CHARGE" == stoppedBoss.strPatternStageId &&
+			!stoppedBoss.bPatternGroggy && stoppedBoss.bPatternChargeImpact &&
+			0.f == stoppedBoss.fPatternForcedMotionSpeed &&
+			!CBossCombatRuntime::Has_Flag(
+				stoppedBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY),
+			"Stop safely at an unbound receiver without breaking a wall or entering GROGGY");
+	}
+
+	{
 		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7003u;
@@ -11990,10 +12467,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Keep a revived player standing instead of falling again");
 	}
 	{
-		/* The 109 leap. No jump clip exists in the converted Valtan model, so
-		the arc itself is Server state and has to be checked as authority, not
-		as presentation: it must leave the ground during TAKEOFF and land back
-		exactly on the authored placement by IMPACT. */
+		/* The 109 leap and roar now have exact Product clips, but their world arc
+		remains Server state. The authoritative subwindows must carry the body
+		from TAKEOFF through DROP to the authored placement before the joined
+		IMPACT -> WIDE_REVEAL roar sequence can begin. */
 		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
 		constexpr PLAYER_ID LEAP_PLAYER = 78u;
 		const bool activated = room.Is_Ready() &&
@@ -12045,6 +12522,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == leapMotion->eKind &&
 			"anchor.valtan.arena-break-109.landing" == leapMotion->strAnchorId &&
 			leapMotion->fApexHeight > 0.f &&
+			0u == leapMotion->iTakeoffStartMs &&
+			900u == leapMotion->iTakeoffEndMs &&
+			0u == leapMotion->iTravelStartMs &&
+			700u == leapMotion->iTravelEndMs &&
 			std::abs(anchorX - 156.03f) < 0.01f &&
 			std::abs(anchorZ + 122.06f) < 0.01f,
 			"Compile the 109 landing anchor on the authored outer-ring centre");
@@ -12198,11 +12679,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		tests.Require(
 			nullptr != highJump &&
 			BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET == highJump->Motion.eKind &&
+			1133u == highJump->Motion.iTakeoffStartMs &&
+			1500u == highJump->Motion.iTakeoffEndMs &&
+			0u == highJump->Motion.iTravelStartMs &&
+			267u == highJump->Motion.iTravelEndMs &&
 			startedTheJump && landsOnTheTarget && leftItsOwnFeet &&
 			leapArcBoss.fPatternLeapApexHeight == highJump->Motion.fApexHeight,
-			"Land the high jump on the player it locked instead of its own feet");
+			"Land the high jump on its locked player with the authored fast lift/drop windows");
 
 		std::uint32_t leapArcTick = 901u;
+		float heightAtOneSecond = leapArcBoss.fPositionY;
+		float heightAtTwelveHundredMs = leapArcBoss.fPositionY;
+		float heightAtFifteenHundredMs = leapArcBoss.fPositionY;
 		for (std::uint32_t tick = 0u;
 			tick < 70u && "TAKEOFF" == leapArcBoss.strPatternStageId; ++tick)
 		{
@@ -12210,10 +12698,22 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			leapArcBrain.Update(
 				leapArcBoss, leapArcPlayers, catalog, navigation,
 				1.f / 30.f, leapArcTick++, {}, leapArcDamage);
+			if (29u == tick)
+				heightAtOneSecond = leapArcBoss.fPositionY;
+			else if (35u == tick)
+				heightAtTwelveHundredMs = leapArcBoss.fPositionY;
+			else if (44u == tick)
+				heightAtFifteenHundredMs = leapArcBoss.fPositionY;
 		}
 		const float expectedApexY =
 			leapArcBoss.fLeapOriginY +
 			(nullptr == highJump ? 0.f : highJump->Motion.fApexHeight);
+		tests.Require(
+			std::abs(heightAtOneSecond - leapArcBoss.fLeapOriginY) < 0.01f &&
+			heightAtTwelveHundredMs > leapArcBoss.fLeapOriginY + 1.f &&
+			heightAtTwelveHundredMs < expectedApexY - 1.f &&
+			std::abs(heightAtFifteenHundredMs - expectedApexY) < 0.1f,
+			"Keep the high-jump anticipation grounded, then reach the apex in the authored short lift window");
 		bool heldAtApex = "AIRBORNE" == leapArcBoss.strPatternStageId;
 		bool enteredLand = false;
 		for (std::uint32_t tick = 0u;
@@ -12235,6 +12735,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			enteredLand = "LAND" == leapArcBoss.strPatternStageId;
 		}
 		bool enteredRecovery = false;
+		bool landedInsideFastWindow = false;
 		for (std::uint32_t tick = 0u;
 			tick < 110u && !enteredRecovery; ++tick)
 		{
@@ -12242,15 +12743,22 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			leapArcBrain.Update(
 				leapArcBoss, leapArcPlayers, catalog, navigation,
 				1.f / 30.f, leapArcTick++, {}, leapArcDamage);
+			if (8u == tick)
+			{
+				landedInsideFastWindow =
+					std::abs(leapArcBoss.fPositionX - leapArcTarget.fPositionX) < 0.01f &&
+					std::abs(leapArcBoss.fPositionY - leapArcTarget.fPositionY) < 0.01f &&
+					std::abs(leapArcBoss.fPositionZ - leapArcTarget.fPositionZ) < 0.01f;
+			}
 			enteredRecovery = "RECOVERY" == leapArcBoss.strPatternStageId;
 		}
 		tests.Require(
-			heldAtApex && enteredLand && enteredRecovery &&
+			heldAtApex && enteredLand && landedInsideFastWindow && enteredRecovery &&
 			2u == leapArcBoss.iPatternLeapTravelStageIndex &&
 			std::abs(leapArcBoss.fPositionX - leapArcTarget.fPositionX) < 0.01f &&
 			std::abs(leapArcBoss.fPositionY - leapArcTarget.fPositionY) < 0.01f &&
 			std::abs(leapArcBoss.fPositionZ - leapArcTarget.fPositionZ) < 0.01f,
-			"Hold the high jump at its apex for AIRBORNE and descend only during LAND");
+			"Hold the high jump at its apex for AIRBORNE and finish the drop in LAND's authored fast window");
 
 		/* With nobody to lock, the arc still needs a real destination or the
 		boss would drop through an uninitialised landing. */

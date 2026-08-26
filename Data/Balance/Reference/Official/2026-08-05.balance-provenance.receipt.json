@@ -35292,9 +35292,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6000,
+      "sourceValue": 4000,
       "transform": "Balance Tool authored override",
-      "resultValue": 6000,
+      "resultValue": 4000,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -36249,7 +36249,11 @@
           -122.06
         ],
         "apexHeight": 12.0,
-        "travelStageId": "DROP"
+        "travelStageId": "DROP",
+        "takeoffStartMs": 0,
+        "takeoffEndMs": 900,
+        "travelStartMs": 0,
+        "travelEndMs": 700
       },
       "transform": "Balance Tool authored override",
       "resultValue": {
@@ -36261,7 +36265,11 @@
           -122.06
         ],
         "apexHeight": 12.0,
-        "travelStageId": "DROP"
+        "travelStageId": "DROP",
+        "takeoffStartMs": 0,
+        "takeoffEndMs": 900,
+        "travelStartMs": 0,
+        "travelEndMs": 700
       },
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
@@ -37800,7 +37808,7 @@
           "downMs": 0,
           "motion": {
             "kind": "FORWARD",
-            "distance": 100.0
+            "distance": 20.0
           },
           "branches": [
             {
@@ -37923,7 +37931,7 @@
           "downMs": 0,
           "motion": {
             "kind": "FORWARD",
-            "distance": 100.0
+            "distance": 20.0
           },
           "branches": [
             {
@@ -40317,7 +40325,7 @@
           "stageId": "CHARGE",
           "actionId": "valtan.attack.dash-charge.active",
           "stageKind": "ACTIVE",
-          "durationMs": 500,
+          "durationMs": 1500,
           "hitShape": "BOX",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -40472,7 +40480,7 @@
           "stageId": "CHARGE",
           "actionId": "valtan.attack.dash-charge.active",
           "stageKind": "ACTIVE",
-          "durationMs": 500,
+          "durationMs": 1500,
           "hitShape": "BOX",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -43235,7 +43243,11 @@
           -122.06
         ],
         "apexHeight": 46.0,
-        "travelStageId": "YELLOW_ZONE"
+        "travelStageId": "YELLOW_ZONE",
+        "takeoffStartMs": 0,
+        "takeoffEndMs": 1933,
+        "travelStartMs": 0,
+        "travelEndMs": 5500
       },
       "transform": "Balance Tool authored override",
       "resultValue": {
@@ -43247,9 +43259,13 @@
           -122.06
         ],
         "apexHeight": 46.0,
-        "travelStageId": "YELLOW_ZONE"
+        "travelStageId": "YELLOW_ZONE",
+        "takeoffStartMs": 0,
+        "takeoffEndMs": 1933,
+        "travelStartMs": 0,
+        "travelEndMs": 5500
       },
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -45717,7 +45733,11 @@
           -122.06
         ],
         "apexHeight": 9.0,
-        "travelStageId": "LAND"
+        "travelStageId": "LAND",
+        "takeoffStartMs": 1133,
+        "takeoffEndMs": 1500,
+        "travelStartMs": 0,
+        "travelEndMs": 267
       },
       "transform": "Balance Tool authored override",
       "resultValue": {
@@ -45729,7 +45749,11 @@
           -122.06
         ],
         "apexHeight": 9.0,
-        "travelStageId": "LAND"
+        "travelStageId": "LAND",
+        "takeoffStartMs": 1133,
+        "takeoffEndMs": 1500,
+        "travelStartMs": 0,
+        "travelEndMs": 267
       },
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
@@ -45785,7 +45809,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 6000,
+          "durationMs": 4000,
           "hitShape": "NONE",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -45812,7 +45836,13 @@
               "startAngleDegrees": 0,
               "angleStepDegrees": 0,
               "allowOverlap": false,
-              "maximumTotalObjects": 32
+              "maximumTotalObjects": 36,
+              "spawnCount": 3,
+              "spawnIntervalMs": 1333,
+              "arenaRandomCount": 4,
+              "arenaRandomRadiusM": 14.0,
+              "arenaHeightToleranceM": 1.0,
+              "arenaAnchorPolicy": "BOSS_SPAWN_POSITION"
             }
           ]
         },
@@ -45883,7 +45913,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 6000,
+          "durationMs": 4000,
           "hitShape": "NONE",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -45910,7 +45940,13 @@
               "startAngleDegrees": 0,
               "angleStepDegrees": 0,
               "allowOverlap": false,
-              "maximumTotalObjects": 32
+              "maximumTotalObjects": 36,
+              "spawnCount": 3,
+              "spawnIntervalMs": 1333,
+              "arenaRandomCount": 4,
+              "arenaRandomRadiusM": 14.0,
+              "arenaHeightToleranceM": 1.0,
+              "arenaAnchorPolicy": "BOSS_SPAWN_POSITION"
             }
           ]
         },

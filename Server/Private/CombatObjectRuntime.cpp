@@ -389,11 +389,29 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		if (BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER !=
 				volley->ePolicy ||
 			count != volley->iCountPerResolvedTarget || count < 1u || count > 8u ||
-			volley->iMaximumTotalObjects < count ||
-			volley->iMaximumTotalObjects > 32u ||
+			static_cast<std::uint64_t>(volley->iMaximumTotalObjects) <
+				static_cast<std::uint64_t>(count) +
+				static_cast<std::uint64_t>(volley->iArenaRandomCount) ||
+			volley->iMaximumTotalObjects > 64u ||
+			volley->iSpawnCount < 1u || volley->iSpawnCount > 8u ||
+			(1u == volley->iSpawnCount ?
+				0u != volley->iSpawnIntervalMs :
+				0u == volley->iSpawnIntervalMs) ||
+			volley->iArenaRandomCount > 32u ||
 			!std::isfinite(volley->fRadiusM) || volley->fRadiusM < 0.f ||
 			!std::isfinite(volley->fStartAngleDegrees) ||
 			!std::isfinite(volley->fAngleStepDegrees) ||
+			!std::isfinite(volley->fArenaRandomRadiusM) ||
+			!std::isfinite(volley->fArenaHeightToleranceM) ||
+			(0u == volley->iArenaRandomCount ?
+				(BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::NONE !=
+					volley->eArenaAnchorPolicy ||
+				 volley->fArenaRandomRadiusM != 0.f ||
+				 volley->fArenaHeightToleranceM != 0.f) :
+				(BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::BOSS_SPAWN_POSITION !=
+					volley->eArenaAnchorPolicy ||
+				 volley->fArenaRandomRadiusM <= 0.f ||
+				 volley->fArenaHeightToleranceM <= 0.f)) ||
 			(count > 1u && (!radial || volley->fRadiusM <= 0.f ||
 				0.f == volley->fAngleStepDegrees || volley->bAllowOverlap)) ||
 			(1u == count && (!single || 0.f != volley->fRadiusM ||
@@ -450,26 +468,32 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			BOSS_COMBAT_OBJECT_KIND::MISSILE == definition.eKind ?
 			definition.fMaximumDistanceM : 0.f;
 		object.fRemainingMilliseconds = static_cast<float>(definition.iLifeMs);
-		/* Both locked-origin policies follow their resolved player until the first
-		timed pulse. A typed radial volley keeps its stable ordinal offset while
-		following that player. */
+		/* Both resolved-origin policies start at the pose supplied by the room.
+		Player instances optionally follow their entity until the first timed
+		pulse; arena-random instances deliberately keep the same pose. */
 		if (BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_UNTIL_FIRST_PULSE ==
 				definition.eOriginPolicy ||
 			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
 				definition.eOriginPolicy)
 		{
+			const bool shouldTrackUntilFirstPulse =
+				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_UNTIL_FIRST_PULSE ==
+					definition.eOriginPolicy ||
+				(nullptr != lockedTarget && lockedTarget->bTrackUntilFirstPulse);
 			if (nullptr == lockedTarget ||
-				LostArk::Shared::INVALID_NET_ENTITY_ID ==
-					lockedTarget->iNetEntityId ||
 				!std::isfinite(lockedTarget->fPositionX) ||
 				!std::isfinite(lockedTarget->fPositionY) ||
-				!std::isfinite(lockedTarget->fPositionZ))
+				!std::isfinite(lockedTarget->fPositionZ) ||
+				(shouldTrackUntilFirstPulse &&
+				 LostArk::Shared::INVALID_NET_ENTITY_ID ==
+					lockedTarget->iNetEntityId))
 			{
-				status = "Boss combat object locked target is unavailable";
+				status = "Boss combat object resolved origin is unavailable";
 				return false;
 			}
 			object.iLockedTargetNetEntityId = lockedTarget->iNetEntityId;
-			object.bTrackLockedTargetUntilFirstPulse = true;
+			object.bTrackLockedTargetUntilFirstPulse =
+				shouldTrackUntilFirstPulse;
 			if (nullptr != volley &&
 				BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL == volley->eLayout)
 			{
