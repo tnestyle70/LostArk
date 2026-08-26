@@ -3616,19 +3616,15 @@
       "targetDocument": "Data/Balance/PlayerProfiles.json",
       "targetId": "player:ARTIST",
       "targetField": "maximumHp",
-      "basis": "OFFICIAL_SCALED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_PC.db",
-        "databaseSha256": "13af0f1f52a6afd512a8d6201a510ac6f3e2f526492278aa3233450d950407a2",
-        "table": "PC",
-        "primaryKey": 602,
-        "secondaryKey": 0,
-        "column": "MaxHpCon"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 2.0,
-      "transform": "round(MaxHpCon * projectBaselineCon[2500])",
-      "resultValue": 5000
+      "sourceValue": 50000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 50000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -3818,19 +3814,15 @@
       "targetDocument": "Data/Balance/PlayerProfiles.json",
       "targetId": "player:DIMENSIONMASTER",
       "targetField": "maximumHp",
-      "basis": "OFFICIAL_SCALED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_PC.db",
-        "databaseSha256": "13af0f1f52a6afd512a8d6201a510ac6f3e2f526492278aa3233450d950407a2",
-        "table": "PC",
-        "primaryKey": 612,
-        "secondaryKey": 0,
-        "column": "MaxHpCon"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 2.1,
-      "transform": "round(MaxHpCon * projectBaselineCon[2500])",
-      "resultValue": 5250
+      "sourceValue": 50000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 50000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -4222,19 +4214,15 @@
       "targetDocument": "Data/Balance/PlayerProfiles.json",
       "targetId": "player:LANCE_MASTER",
       "targetField": "maximumHp",
-      "basis": "OFFICIAL_SCALED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_PC.db",
-        "databaseSha256": "13af0f1f52a6afd512a8d6201a510ac6f3e2f526492278aa3233450d950407a2",
-        "table": "PC",
-        "primaryKey": 305,
-        "secondaryKey": 0,
-        "column": "MaxHpCon"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 2.2,
-      "transform": "round(MaxHpCon * projectBaselineCon[2500])",
-      "resultValue": 5500
+      "sourceValue": 50000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 50000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -4619,11 +4607,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "project-player-survivability-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6500,
-      "transform": "identity",
-      "resultValue": 6500
+      "sourceValue": 50000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 50000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
