@@ -16,7 +16,10 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.world-gameplay";
-	constexpr uint32_t FORMAT_VERSION = 5;
+	constexpr uint32_t FORMAT_VERSION = 6;
+	constexpr uint32_t MAX_NPC_WAYPOINT_COUNT = 64;
+	constexpr uint32_t MAX_NPC_ACTION_COUNT = 32;
+	constexpr uint32_t MAX_NPC_TIME_MS = 600000;
 
 	bool_t Is_IntegerNumber(const DATA_JSON_VALUE* value)
 	{
@@ -82,6 +85,173 @@ namespace
 				return 0 != std::isalnum(character) || character == '_' ||
 					character == '-' || character == '.';
 			});
+	}
+
+	bool_t Is_ValidClipName(const std::string& value)
+	{
+		return !value.empty() && value.size() <= 64u &&
+			std::all_of(value.begin(), value.end(), [](const unsigned char character)
+			{
+				return (character >= 'A' && character <= 'Z') ||
+					(character >= 'a' && character <= 'z') ||
+					(character >= '0' && character <= '9') || character == '_' ||
+					character == '~' || character == '.' || character == '-';
+			});
+	}
+
+	bool_t Read_Uint32(
+		const DATA_JSON_VALUE* value,
+		uint32_t& outValue,
+		const uint32_t maximum = UINT32_MAX)
+	{
+		if (!Is_IntegerNumber(value) || value->Get_Number() < 0.0 ||
+			value->Get_Number() > maximum)
+		{
+			return false;
+		}
+		outValue = static_cast<uint32_t>(value->Get_Number());
+		return true;
+	}
+
+	bool_t Read_FiniteFloat(const DATA_JSON_VALUE* value, f32_t& outValue)
+	{
+		if (nullptr == value || !value->Is_Number() ||
+			!std::isfinite(value->Get_Number()))
+		{
+			return false;
+		}
+		outValue = static_cast<f32_t>(value->Get_Number());
+		return std::isfinite(outValue);
+	}
+
+	bool_t Read_NpcBehavior(
+		const DATA_JSON_VALUE* value,
+		std::optional<WORLD_NPC_BEHAVIOR>& outBehavior)
+	{
+		if (nullptr == value)
+			return false;
+		if (value->Is_Null())
+		{
+			outBehavior.reset();
+			return true;
+		}
+		if (!Is_ExactObject(*value,
+			{ "mode", "routeMode", "actionSelection", "walkClip",
+			  "moveSpeed", "wanderRadius", "randomSeed", "startDelayMs",
+			  "idleMinMs", "idleMaxMs", "lookTargetPlacementId",
+			  "waypoints", "actions" }))
+		{
+			return false;
+		}
+
+		WORLD_NPC_BEHAVIOR behavior;
+		const DATA_JSON_VALUE* mode = value->Find("mode");
+		const DATA_JSON_VALUE* routeMode = value->Find("routeMode");
+		const DATA_JSON_VALUE* actionSelection = value->Find("actionSelection");
+		const DATA_JSON_VALUE* walkClip = value->Find("walkClip");
+		const DATA_JSON_VALUE* lookTarget = value->Find("lookTargetPlacementId");
+		const DATA_JSON_VALUE* waypoints = value->Find("waypoints");
+		const DATA_JSON_VALUE* actions = value->Find("actions");
+		if (nullptr == mode || !mode->Is_String() ||
+			!CWorldGameplayDocument::Try_ParseNpcBehaviorMode(
+				mode->Get_String(), behavior.eMode) ||
+			nullptr == routeMode || !routeMode->Is_String() ||
+			!CWorldGameplayDocument::Try_ParseNpcRouteMode(
+				routeMode->Get_String(), behavior.eRouteMode) ||
+			nullptr == actionSelection || !actionSelection->Is_String() ||
+			!CWorldGameplayDocument::Try_ParseNpcActionSelection(
+				actionSelection->Get_String(), behavior.eActionSelection) ||
+			nullptr == walkClip ||
+			(!walkClip->Is_Null() && !walkClip->Is_String()) ||
+			nullptr == lookTarget ||
+			(!lookTarget->Is_Null() && !lookTarget->Is_String()) ||
+			nullptr == waypoints || !waypoints->Is_Array() ||
+			waypoints->Get_Array().size() > MAX_NPC_WAYPOINT_COUNT ||
+			nullptr == actions || !actions->Is_Array() ||
+			actions->Get_Array().size() > MAX_NPC_ACTION_COUNT ||
+			!Read_FiniteFloat(value->Find("moveSpeed"), behavior.moveSpeed) ||
+			!Read_FiniteFloat(value->Find("wanderRadius"), behavior.wanderRadius) ||
+			!Read_Uint32(value->Find("randomSeed"), behavior.randomSeed) ||
+			!Read_Uint32(value->Find("startDelayMs"), behavior.startDelayMs,
+				MAX_NPC_TIME_MS) ||
+			!Read_Uint32(value->Find("idleMinMs"), behavior.idleMinMs,
+				MAX_NPC_TIME_MS) ||
+			!Read_Uint32(value->Find("idleMaxMs"), behavior.idleMaxMs,
+				MAX_NPC_TIME_MS))
+		{
+			return false;
+		}
+		behavior.walkClip = walkClip->Is_String() ?
+			walkClip->Get_String() : std::string{};
+		behavior.lookTargetPlacementId = lookTarget->Is_String() ?
+			lookTarget->Get_String() : std::string{};
+
+		for (const DATA_JSON_VALUE& waypointValue : waypoints->Get_Array())
+		{
+			if (!Is_ExactObject(waypointValue,
+				{ "waypointId", "position", "waitMs", "lookYawDegrees" }))
+			{
+				return false;
+			}
+			WORLD_NPC_WAYPOINT waypoint;
+			const DATA_JSON_VALUE* waypointId = waypointValue.Find("waypointId");
+			const DATA_JSON_VALUE* lookYaw = waypointValue.Find("lookYawDegrees");
+			if (nullptr == waypointId || !waypointId->Is_String() ||
+				!Read_Position(waypointValue.Find("position"), waypoint.position) ||
+				!Read_Uint32(waypointValue.Find("waitMs"), waypoint.waitMs,
+					MAX_NPC_TIME_MS) ||
+				nullptr == lookYaw ||
+				(!lookYaw->Is_Null() && !lookYaw->Is_Number()))
+			{
+				return false;
+			}
+			waypoint.waypointId = waypointId->Get_String();
+			if (lookYaw->Is_Number())
+			{
+				f32_t parsedYaw = 0.f;
+				if (!Read_FiniteFloat(lookYaw, parsedYaw))
+					return false;
+				waypoint.lookYawDegrees = parsedYaw;
+			}
+			behavior.waypoints.push_back(std::move(waypoint));
+		}
+
+		for (const DATA_JSON_VALUE& actionValue : actions->Get_Array())
+		{
+			if (!Is_ExactObject(actionValue,
+				{ "actionId", "clipName", "loop", "durationMs",
+				  "waitAfterMs", "weight", "playbackRate", "blendSeconds" }))
+			{
+				return false;
+			}
+			WORLD_NPC_ACTION action;
+			const DATA_JSON_VALUE* actionId = actionValue.Find("actionId");
+			const DATA_JSON_VALUE* clipName = actionValue.Find("clipName");
+			const DATA_JSON_VALUE* loop = actionValue.Find("loop");
+			if (nullptr == actionId || !actionId->Is_String() ||
+				nullptr == clipName || !clipName->Is_String() ||
+				nullptr == loop || !loop->Is_Boolean() ||
+				!Read_Uint32(actionValue.Find("durationMs"), action.durationMs,
+					MAX_NPC_TIME_MS) ||
+				!Read_Uint32(actionValue.Find("waitAfterMs"), action.waitAfterMs,
+					MAX_NPC_TIME_MS) ||
+				!Read_Uint32(actionValue.Find("weight"), action.weight, 100000u) ||
+				!Read_FiniteFloat(actionValue.Find("playbackRate"),
+					action.playbackRate) ||
+				!Read_FiniteFloat(actionValue.Find("blendSeconds"),
+					action.blendSeconds))
+			{
+				return false;
+			}
+			action.actionId = actionId->Get_String();
+			action.clipName = clipName->Get_String();
+			action.loop = loop->Get_Boolean();
+			behavior.actions.push_back(std::move(action));
+		}
+		if (!CWorldGameplayDocument::Is_ValidNpcBehavior(behavior))
+			return false;
+		outBehavior = std::move(behavior);
+		return true;
 	}
 
 	bool_t CommitTemporaryFile(
@@ -185,7 +355,7 @@ bool_t Client::CWorldGameplayDocument::Load(
 			WORLD_PLACEMENT_KIND::NPC == record.eKind;
 		if ((npcPlacement && !Is_ExactObject(value,
 			{ "placementId", "kind", "archetypeId", "encounterId",
-			  "position", "yawDegrees", "enabled", "idleClip" })) ||
+			  "position", "yawDegrees", "enabled", "idleClip", "behavior" })) ||
 			(actorPlacement && !npcPlacement && !Is_ExactObject(value,
 			{ "placementId", "kind", "archetypeId", "encounterId",
 			  "position", "yawDegrees", "enabled" })) ||
@@ -236,14 +406,18 @@ bool_t Client::CWorldGameplayDocument::Load(
 				if (nullptr == idleClip ||
 					(!idleClip->Is_Null() && !idleClip->Is_String()) ||
 					(idleClip->Is_String() &&
-						(idleClip->Get_String().empty() ||
-							idleClip->Get_String().size() > 64u)))
+						!Is_ValidClipName(idleClip->Get_String())))
 				{
 					outStatus = "Gameplay npc idleClip is invalid";
 					return false;
 				}
 				record.npcIdleClip = idleClip->Is_String() ?
 					idleClip->Get_String() : std::string{};
+				if (!Read_NpcBehavior(value.Find("behavior"), record.npcBehavior))
+				{
+					outStatus = "Gameplay npc behavior is invalid";
+					return false;
+				}
 			}
 		}
 		else if (triggerPlacement)
@@ -401,6 +575,26 @@ bool_t Client::CWorldGameplayDocument::Load(
 	}
 	for (const WORLD_GAMEPLAY_PLACEMENT& placement : staged)
 	{
+		if (WORLD_PLACEMENT_KIND::NPC == placement.eKind &&
+			placement.npcBehavior.has_value() &&
+			!placement.npcBehavior->lookTargetPlacementId.empty())
+		{
+			const auto target = std::find_if(staged.begin(), staged.end(),
+				[&](const WORLD_GAMEPLAY_PLACEMENT& value)
+				{
+					return value.placementId ==
+						placement.npcBehavior->lookTargetPlacementId;
+				});
+			if (staged.end() == target ||
+				WORLD_PLACEMENT_KIND::NPC != target->eKind ||
+				!target->isEnabled ||
+				target->placementId == placement.placementId)
+			{
+				outStatus = "NPC behavior references an unknown NPC: " +
+					placement.npcBehavior->lookTargetPlacementId;
+				return false;
+			}
+		}
 		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind)
 			continue;
 		for (const WORLD_TRIGGER_EVENT& event : placement.triggerEvents)
@@ -462,6 +656,26 @@ bool_t Client::CWorldGameplayDocument::Save(
 		{
 			outStatus = "Gameplay save rejected duplicate deploy runtime binding";
 			return false;
+		}
+		if (WORLD_PLACEMENT_KIND::NPC == placement.eKind &&
+			placement.npcBehavior.has_value() &&
+			!placement.npcBehavior->lookTargetPlacementId.empty())
+		{
+			const auto target = std::find_if(sorted.begin(), sorted.end(),
+				[&](const WORLD_GAMEPLAY_PLACEMENT& value)
+				{
+					return value.placementId ==
+						placement.npcBehavior->lookTargetPlacementId;
+				});
+			if (sorted.end() == target ||
+				WORLD_PLACEMENT_KIND::NPC != target->eKind ||
+				!target->isEnabled ||
+				target->placementId == placement.placementId)
+			{
+				outStatus = "NPC behavior target is not another NPC: " +
+					placement.npcBehavior->lookTargetPlacementId;
+				return false;
+			}
 		}
 		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind)
 			continue;
@@ -535,6 +749,74 @@ bool_t Client::CWorldGameplayDocument::Save(
 				if (record.npcIdleClip.empty()) output << "null";
 				else output << '"' <<
 					CDataJson::Escape(record.npcIdleClip) << '"';
+				output << ",\n      \"behavior\": ";
+				if (!record.npcBehavior.has_value())
+				{
+					output << "null";
+				}
+				else
+				{
+					const WORLD_NPC_BEHAVIOR& behavior = *record.npcBehavior;
+					output << "{\n"
+						<< "        \"mode\": \"" <<
+							NpcBehaviorMode_ToString(behavior.eMode) << "\",\n"
+						<< "        \"routeMode\": \"" <<
+							NpcRouteMode_ToString(behavior.eRouteMode) << "\",\n"
+						<< "        \"actionSelection\": \"" <<
+							NpcActionSelection_ToString(behavior.eActionSelection) << "\",\n"
+						<< "        \"walkClip\": ";
+					if (behavior.walkClip.empty()) output << "null";
+					else output << '"' << CDataJson::Escape(behavior.walkClip) << '"';
+					output << ",\n"
+						<< "        \"moveSpeed\": " << behavior.moveSpeed << ",\n"
+						<< "        \"wanderRadius\": " << behavior.wanderRadius << ",\n"
+						<< "        \"randomSeed\": " << behavior.randomSeed << ",\n"
+						<< "        \"startDelayMs\": " << behavior.startDelayMs << ",\n"
+						<< "        \"idleMinMs\": " << behavior.idleMinMs << ",\n"
+						<< "        \"idleMaxMs\": " << behavior.idleMaxMs << ",\n"
+						<< "        \"lookTargetPlacementId\": ";
+					if (behavior.lookTargetPlacementId.empty()) output << "null";
+					else output << '"' <<
+						CDataJson::Escape(behavior.lookTargetPlacementId) << '"';
+					output << ",\n        \"waypoints\": [";
+					for (size_t waypointIndex = 0;
+						waypointIndex < behavior.waypoints.size(); ++waypointIndex)
+					{
+						const WORLD_NPC_WAYPOINT& waypoint =
+							behavior.waypoints[waypointIndex];
+						output << (0u == waypointIndex ? "\n" : ",\n")
+							<< "          { \"waypointId\": \"" <<
+								CDataJson::Escape(waypoint.waypointId) << "\", "
+							<< "\"position\": [" << waypoint.position.x << ", " <<
+								waypoint.position.y << ", " << waypoint.position.z << "], "
+							<< "\"waitMs\": " << waypoint.waitMs << ", "
+							<< "\"lookYawDegrees\": ";
+						if (waypoint.lookYawDegrees.has_value())
+							output << *waypoint.lookYawDegrees;
+						else
+							output << "null";
+						output << " }";
+					}
+					output << (behavior.waypoints.empty() ? "],\n" : "\n        ],\n")
+						<< "        \"actions\": [";
+					for (size_t actionIndex = 0;
+						actionIndex < behavior.actions.size(); ++actionIndex)
+					{
+						const WORLD_NPC_ACTION& action = behavior.actions[actionIndex];
+						output << (0u == actionIndex ? "\n" : ",\n")
+							<< "          { \"actionId\": \"" <<
+								CDataJson::Escape(action.actionId) << "\", "
+							<< "\"clipName\": \"" << CDataJson::Escape(action.clipName) << "\", "
+							<< "\"loop\": " << (action.loop ? "true" : "false") << ", "
+							<< "\"durationMs\": " << action.durationMs << ", "
+							<< "\"waitAfterMs\": " << action.waitAfterMs << ", "
+							<< "\"weight\": " << action.weight << ", "
+							<< "\"playbackRate\": " << action.playbackRate << ", "
+							<< "\"blendSeconds\": " << action.blendSeconds << " }";
+					}
+					output << (behavior.actions.empty() ? "]\n" : "\n        ]\n")
+						<< "      }";
+				}
 			}
 			output << ",\n";
 		}
@@ -754,10 +1036,20 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 		WORLD_PLACEMENT_KIND::DESTROYABLE != placement.eKind ||
 		(0u != placement.deployRuntimePlacementId &&
 			WORLD_DESTROYABLE_STATE::END != placement.eInitialState);
+	const bool_t hasValidNpcBehavior =
+		WORLD_PLACEMENT_KIND::NPC == placement.eKind ?
+			(!placement.npcBehavior.has_value() ||
+				Is_ValidNpcBehavior(*placement.npcBehavior)) :
+			!placement.npcBehavior.has_value();
+	const bool_t hasValidNpcIdleClip =
+		WORLD_PLACEMENT_KIND::NPC == placement.eKind ?
+			(placement.npcIdleClip.empty() ||
+				Is_ValidClipName(placement.npcIdleClip)) :
+			placement.npcIdleClip.empty();
 	return WORLD_PLACEMENT_KIND::END != placement.eKind &&
 		Is_ValidStableId(placement.placementId) &&
 		hasValidActorReference && hasValidTrigger && hasValidCollision &&
-		hasValidDestroyable &&
+		hasValidDestroyable && hasValidNpcBehavior && hasValidNpcIdleClip &&
 		(!actorPlacement || placement.encounterId.empty() ||
 			Is_ValidStableId(placement.encounterId)) &&
 		std::isfinite(placement.position.x) &&
@@ -768,6 +1060,95 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 		std::abs(placement.position.y) <= 100000.f &&
 		std::abs(placement.position.z) <= 100000.f &&
 		std::abs(placement.yawDegrees) <= 360000.f;
+}
+
+bool_t Client::CWorldGameplayDocument::Is_ValidNpcBehavior(
+	const WORLD_NPC_BEHAVIOR& behavior)
+{
+	const bool_t validRouteMode =
+		WORLD_NPC_ROUTE_MODE::LOOP == behavior.eRouteMode ||
+		WORLD_NPC_ROUTE_MODE::PING_PONG == behavior.eRouteMode ||
+		WORLD_NPC_ROUTE_MODE::ONCE == behavior.eRouteMode;
+	const bool_t validActionSelection =
+		WORLD_NPC_ACTION_SELECTION::SEQUENCE == behavior.eActionSelection ||
+		WORLD_NPC_ACTION_SELECTION::WEIGHTED == behavior.eActionSelection;
+	if (WORLD_NPC_BEHAVIOR_MODE::END == behavior.eMode ||
+		!validRouteMode || !validActionSelection ||
+		!std::isfinite(behavior.moveSpeed) || behavior.moveSpeed < 0.1f ||
+		behavior.moveSpeed > 10.f || !std::isfinite(behavior.wanderRadius) ||
+		0u == behavior.randomSeed || behavior.startDelayMs > MAX_NPC_TIME_MS ||
+		behavior.idleMinMs > behavior.idleMaxMs ||
+		behavior.idleMaxMs > MAX_NPC_TIME_MS ||
+		behavior.waypoints.size() > MAX_NPC_WAYPOINT_COUNT ||
+		behavior.actions.size() > MAX_NPC_ACTION_COUNT ||
+		(!behavior.walkClip.empty() && !Is_ValidClipName(behavior.walkClip)) ||
+		(!behavior.lookTargetPlacementId.empty() &&
+			!Is_ValidStableId(behavior.lookTargetPlacementId)))
+	{
+		return false;
+	}
+
+	if (WORLD_NPC_BEHAVIOR_MODE::STATIONARY == behavior.eMode)
+	{
+		if (!behavior.waypoints.empty() || 0.f != behavior.wanderRadius)
+			return false;
+	}
+	else if (WORLD_NPC_BEHAVIOR_MODE::PATROL == behavior.eMode)
+	{
+		if (behavior.waypoints.size() < 2u || 0.f != behavior.wanderRadius ||
+			behavior.walkClip.empty())
+			return false;
+	}
+	else if (WORLD_NPC_BEHAVIOR_MODE::WANDER == behavior.eMode)
+	{
+		if (!behavior.waypoints.empty() || behavior.walkClip.empty() ||
+			behavior.wanderRadius < 0.5f || behavior.wanderRadius > 100.f)
+			return false;
+	}
+	else
+	{
+		return false;
+	}
+
+	std::unordered_set<std::string> waypointIds;
+	for (const WORLD_NPC_WAYPOINT& waypoint : behavior.waypoints)
+	{
+		if (!Is_ValidStableId(waypoint.waypointId) ||
+			!waypointIds.insert(waypoint.waypointId).second ||
+			waypoint.waitMs > MAX_NPC_TIME_MS ||
+			!std::isfinite(waypoint.position.x) ||
+			!std::isfinite(waypoint.position.y) ||
+			!std::isfinite(waypoint.position.z) ||
+			std::abs(waypoint.position.x) > 100000.f ||
+			std::abs(waypoint.position.y) > 100000.f ||
+			std::abs(waypoint.position.z) > 100000.f ||
+			(waypoint.lookYawDegrees.has_value() &&
+				(!std::isfinite(*waypoint.lookYawDegrees) ||
+					std::abs(*waypoint.lookYawDegrees) > 360.f)))
+		{
+			return false;
+		}
+	}
+
+	std::unordered_set<std::string> actionIds;
+	for (const WORLD_NPC_ACTION& action : behavior.actions)
+	{
+		if (!Is_ValidStableId(action.actionId) ||
+			action.actionId == "npc.idle" ||
+			action.actionId == "npc.move.walk" ||
+			!actionIds.insert(action.actionId).second ||
+			!Is_ValidClipName(action.clipName) || 0u == action.durationMs ||
+			action.durationMs > MAX_NPC_TIME_MS ||
+			action.waitAfterMs > MAX_NPC_TIME_MS ||
+			0u == action.weight || action.weight > 100000u ||
+			!std::isfinite(action.playbackRate) || action.playbackRate < 0.1f ||
+			action.playbackRate > 4.f || !std::isfinite(action.blendSeconds) ||
+			action.blendSeconds < 0.f || action.blendSeconds > 2.f)
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 const char_t* Client::CWorldGameplayDocument::Kind_ToString(
@@ -888,6 +1269,81 @@ bool_t Client::CWorldGameplayDocument::Try_ParseDestroyableState(
 		outState = WORLD_DESTROYABLE_STATE::FRACTURED;
 	else if ("DESPAWNED" == value)
 		outState = WORLD_DESTROYABLE_STATE::DESPAWNED;
+	else
+		return false;
+	return true;
+}
+
+const char_t* Client::CWorldGameplayDocument::NpcBehaviorMode_ToString(
+	const WORLD_NPC_BEHAVIOR_MODE mode)
+{
+	switch (mode)
+	{
+	case WORLD_NPC_BEHAVIOR_MODE::STATIONARY: return "stationary";
+	case WORLD_NPC_BEHAVIOR_MODE::PATROL: return "patrol";
+	case WORLD_NPC_BEHAVIOR_MODE::WANDER: return "wander";
+	default: return "invalid";
+	}
+}
+
+bool_t Client::CWorldGameplayDocument::Try_ParseNpcBehaviorMode(
+	const std::string& value, WORLD_NPC_BEHAVIOR_MODE& outMode)
+{
+	if ("stationary" == value)
+		outMode = WORLD_NPC_BEHAVIOR_MODE::STATIONARY;
+	else if ("patrol" == value)
+		outMode = WORLD_NPC_BEHAVIOR_MODE::PATROL;
+	else if ("wander" == value)
+		outMode = WORLD_NPC_BEHAVIOR_MODE::WANDER;
+	else
+		return false;
+	return true;
+}
+
+const char_t* Client::CWorldGameplayDocument::NpcRouteMode_ToString(
+	const WORLD_NPC_ROUTE_MODE mode)
+{
+	switch (mode)
+	{
+	case WORLD_NPC_ROUTE_MODE::LOOP: return "loop";
+	case WORLD_NPC_ROUTE_MODE::PING_PONG: return "pingPong";
+	case WORLD_NPC_ROUTE_MODE::ONCE: return "once";
+	default: return "invalid";
+	}
+}
+
+bool_t Client::CWorldGameplayDocument::Try_ParseNpcRouteMode(
+	const std::string& value, WORLD_NPC_ROUTE_MODE& outMode)
+{
+	if ("loop" == value)
+		outMode = WORLD_NPC_ROUTE_MODE::LOOP;
+	else if ("pingPong" == value)
+		outMode = WORLD_NPC_ROUTE_MODE::PING_PONG;
+	else if ("once" == value)
+		outMode = WORLD_NPC_ROUTE_MODE::ONCE;
+	else
+		return false;
+	return true;
+}
+
+const char_t* Client::CWorldGameplayDocument::NpcActionSelection_ToString(
+	const WORLD_NPC_ACTION_SELECTION selection)
+{
+	switch (selection)
+	{
+	case WORLD_NPC_ACTION_SELECTION::SEQUENCE: return "sequence";
+	case WORLD_NPC_ACTION_SELECTION::WEIGHTED: return "weighted";
+	default: return "invalid";
+	}
+}
+
+bool_t Client::CWorldGameplayDocument::Try_ParseNpcActionSelection(
+	const std::string& value, WORLD_NPC_ACTION_SELECTION& outSelection)
+{
+	if ("sequence" == value)
+		outSelection = WORLD_NPC_ACTION_SELECTION::SEQUENCE;
+	else if ("weighted" == value)
+		outSelection = WORLD_NPC_ACTION_SELECTION::WEIGHTED;
 	else
 		return false;
 	return true;

@@ -39,8 +39,9 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 10. Effect family/runtime ABI 복원 경계: `EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md`
 11. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
 12. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
-13. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
-14. 최근 통합 검증 증거: `../GB/08-07/2026-08-07_VALTAN_WORLD_DESTRUCTION_RESULT.md`
+13. NPC 배치·상호작용 작업법: `NPC_OWNER_HANDOFF.md`
+14. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
+15. 최근 통합 검증 증거: `../GB/08-07/2026-08-07_VALTAN_WORLD_DESTRUCTION_RESULT.md`
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 
@@ -63,6 +64,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 | `EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md` | Effect element→pixel 구조, family/program/descriptor/adapter 경계와 source-exact admission 공정이 바뀔 때 |
 | `AREA_DATA_LAYER_GUIDE.md` | Area 등록, optional layer, publisher, MapTool 지원 범위가 바뀔 때 |
 | `MAP_DESTRUCTION_PHYSX_HANDOFF.md` | MapTool 파괴 preview의 Mesh Emitter, PhysX, trigger/effect 연결 절차가 바뀔 때 |
+| `NPC_OWNER_HANDOFF.md` | NPC catalog/placement/publish/runtime 계층, 쿠킹 절차, 상호작용 계약이 바뀔 때 |
 | `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md` | 수치 정본, 튜닝 절차, runtime reload 정책이 바뀔 때 |
 | `Tools/Network/TeamLanEndpoint.json` | 임시 팀 Server 주소나 만료일이 바뀔 때 |
 | 날짜별 `*_RESULT.md` | 실행한 검증과 당시 완료/미완료 증거를 남길 때 |

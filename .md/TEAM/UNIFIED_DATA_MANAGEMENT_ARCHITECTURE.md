@@ -694,17 +694,17 @@ flowchart TD
 
 ### 14.2 현재 gameplay kind
 
-현재 `lostark.world-gameplay` authoring은 formatVersion 4다. 제품 publisher/runtime admission은
+현재 `lostark.world-gameplay` authoring은 formatVersion 6이다. 제품 publisher/runtime admission은
 `playerSpawn`, `npc`, `boss`, 단일 typed action의 `triggerBox`, 정적 `collisionBox`를 지원하며 Valtan은 별도 `SpawnGroups.world.json`을 함께 소비한다.
 
 - `playerSpawn`: class-neutral transform, `archetypeId: null`, `encounterId: null`
-- `npc`: NpcCatalog archetype 참조. 현재 `NPC_BEDA` 한 presentation 지원
+- `npc`: NpcCatalog의 supported archetype 75종 참조. optional `behavior`로 stationary/patrol/wander와 semantic ambient action을 저작
 - `boss`: BossCatalog/BossProfile/Encounter 참조
 - disabled boss placement는 Character Select lazy Valtan template처럼 Server 명령으로 활성화 가능
 
 ### 14.3 승인된 target: triggerBox, collisionBox와 destroyable
 
-별도 trigger/collision 파일을 만들지 않고 `Gameplay.world.json` formatVersion 4의 authoring 구조로 kind를 확장한다.
+별도 trigger/collision 파일을 만들지 않고 `Gameplay.world.json` formatVersion 6의 authoring 구조로 kind를 확장한다.
 
 | kind | 핵심 필드 | authority |
 |---|---|---|
@@ -732,8 +732,8 @@ ACTIVATE_ENCOUNTER(targetPlacementId)
 참조하는 gameplay field 이름이다. 기존 08-05 TARGET PLAN의 `deployPlacementId` 명칭은 구현 전에 이 이름으로
 교정해 `placementId` domain과 혼동을 없앤다.
 
-`CWorldGameplayDocument`는 formatVersion 4의 `triggerBox`, `collisionBox`, `destroyable`을 strict parse/validate/atomic
-save할 수 있고 네 Area authoring 문서도 v4로 이관됐다. uint64 deploy identity는 JSON double 손실을
+`CWorldGameplayDocument`는 formatVersion 6의 NPC `behavior`, `triggerBox`, `collisionBox`, `destroyable`을 strict parse/validate/atomic
+save할 수 있고 네 Area authoring 문서도 v6으로 이관됐다. uint64 deploy identity는 JSON double 손실을
 막기 위해 decimal string으로 저장한다. Debug Development MapTool은 action이 없는 `triggerBox`를
 disabled draft로 배치·선택·크기 편집·저장/재로드하며 3D wire OBB로 표시한다. 다만 publisher,
 Server trigger authority까지 닫힌 `triggerBox`와 Server 이동 차단까지 닫힌 `collisionBox`만 제품

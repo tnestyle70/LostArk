@@ -98,6 +98,49 @@ namespace
 		return true;
 	}
 
+	bool ParseNpcBehaviorMode(
+		const std::string_view value,
+		NPC_BEHAVIOR_MODE& outMode)
+	{
+		if ("stationary" == value)
+			outMode = NPC_BEHAVIOR_MODE::STATIONARY;
+		else if ("patrol" == value)
+			outMode = NPC_BEHAVIOR_MODE::PATROL;
+		else if ("wander" == value)
+			outMode = NPC_BEHAVIOR_MODE::WANDER;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseNpcRouteMode(
+		const std::string_view value,
+		NPC_ROUTE_MODE& outMode)
+	{
+		if ("loop" == value)
+			outMode = NPC_ROUTE_MODE::LOOP;
+		else if ("pingPong" == value)
+			outMode = NPC_ROUTE_MODE::PING_PONG;
+		else if ("once" == value)
+			outMode = NPC_ROUTE_MODE::ONCE;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseNpcActionSelection(
+		const std::string_view value,
+		NPC_ACTION_SELECTION& outSelection)
+	{
+		if ("sequence" == value)
+			outSelection = NPC_ACTION_SELECTION::SEQUENCE;
+		else if ("weighted" == value)
+			outSelection = NPC_ACTION_SELECTION::WEIGHTED;
+		else
+			return false;
+		return true;
+	}
+
 	bool ParseTriggerTargetWorld(
 		const std::string_view value,
 		WORLD_ID& outWorldId)
@@ -159,7 +202,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t count = 0;
 	if (6u != header.size() ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 6u != version ||
+		!ParseNumber(header[1], version) || 7u != version ||
 		header[2] != worldName || !IsStableId(header[3]) ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], count) || count > 4096u)
@@ -340,11 +383,198 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		}
 		else
 		{
-			if (9u != fields.size())
+			if (WORLD_BOOTSTRAP_KIND::NPC != placement.eKind)
 			{
-				m_strStatus = "World actor placement is invalid at row " +
-					std::to_string(index);
-				return false;
+				if (9u != fields.size())
+				{
+					m_strStatus = "World actor placement is invalid at row " +
+						std::to_string(index);
+					return false;
+				}
+			}
+			else
+			{
+				int hasBehavior = 0;
+				if (fields.size() < 10u ||
+					!ParseNumber(fields[9], hasBehavior) ||
+					(0 != hasBehavior && 1 != hasBehavior))
+				{
+					m_strStatus = "World NPC behavior presence is invalid at row " +
+						std::to_string(index);
+					return false;
+				}
+				placement.bHasNpcBehavior = 1 == hasBehavior;
+				if (!placement.bHasNpcBehavior)
+				{
+					if (10u != fields.size())
+					{
+						m_strStatus = "Static world NPC has trailing behavior fields at row " +
+							std::to_string(index);
+						return false;
+					}
+				}
+				else
+				{
+					WORLD_NPC_BEHAVIOR_DESCRIPTOR& behavior =
+						placement.NpcBehavior;
+					std::uint32_t waypointCount = 0u;
+					if (fields.size() < 22u ||
+						!ParseNpcBehaviorMode(fields[10], behavior.eMode) ||
+						!ParseNpcRouteMode(fields[11], behavior.eRouteMode) ||
+						!ParseNpcActionSelection(
+							fields[12], behavior.eActionSelection) ||
+						!ParseNumber(fields[13], behavior.fMoveSpeed) ||
+						!ParseNumber(fields[14], behavior.fWanderRadius) ||
+						!ParseNumber(fields[15], behavior.iRandomSeed) ||
+						!ParseNumber(fields[16], behavior.iStartDelayMs) ||
+						!ParseNumber(fields[17], behavior.iIdleMinMs) ||
+						!ParseNumber(fields[18], behavior.iIdleMaxMs) ||
+						("-" != fields[19] && !IsStableId(fields[19])) ||
+						!ParseNumber(fields[20], waypointCount) ||
+						waypointCount > 64u ||
+						!std::isfinite(behavior.fMoveSpeed) ||
+						!std::isfinite(behavior.fWanderRadius) ||
+						behavior.fMoveSpeed < 0.1f ||
+						behavior.fMoveSpeed > 10.f ||
+						behavior.fWanderRadius < 0.f ||
+						behavior.fWanderRadius > 100.f ||
+						0u == behavior.iRandomSeed ||
+						behavior.iStartDelayMs > 600000u ||
+						behavior.iIdleMinMs > 600000u ||
+						behavior.iIdleMaxMs > 600000u ||
+						behavior.iIdleMinMs > behavior.iIdleMaxMs)
+					{
+						m_strStatus = "World NPC behavior header is invalid at row " +
+							std::to_string(index);
+						return false;
+					}
+					behavior.strLookTargetPlacementId =
+						"-" == fields[19] ? "" : std::string(fields[19]);
+					std::size_t cursor = 21u;
+					std::unordered_set<std::string> waypointIds;
+					behavior.Waypoints.reserve(waypointCount);
+					for (std::uint32_t waypointIndex = 0u;
+						waypointIndex < waypointCount; ++waypointIndex)
+					{
+						if (cursor + 7u > fields.size())
+						{
+							m_strStatus = "World NPC waypoint row is truncated at row " +
+								std::to_string(index);
+							return false;
+						}
+						WORLD_NPC_BEHAVIOR_WAYPOINT waypoint{};
+						int hasLookYaw = 0;
+						if (!IsStableId(fields[cursor]) ||
+							!ParseNumber(fields[cursor + 1u], waypoint.fPositionX) ||
+							!ParseNumber(fields[cursor + 2u], waypoint.fPositionY) ||
+							!ParseNumber(fields[cursor + 3u], waypoint.fPositionZ) ||
+							!ParseNumber(fields[cursor + 4u], waypoint.iWaitMs) ||
+							!ParseNumber(fields[cursor + 5u], hasLookYaw) ||
+							(0 != hasLookYaw && 1 != hasLookYaw) ||
+							!ParseNumber(fields[cursor + 6u], waypoint.fLookYawDegrees) ||
+							!std::isfinite(waypoint.fPositionX) ||
+							!std::isfinite(waypoint.fPositionY) ||
+							!std::isfinite(waypoint.fPositionZ) ||
+							!std::isfinite(waypoint.fLookYawDegrees) ||
+							(1 == hasLookYaw &&
+								(waypoint.fLookYawDegrees < -360.f ||
+								 waypoint.fLookYawDegrees > 360.f)) ||
+							std::abs(waypoint.fPositionX) > 100000.f ||
+							std::abs(waypoint.fPositionY) > 100000.f ||
+							std::abs(waypoint.fPositionZ) > 100000.f ||
+							waypoint.iWaitMs > 600000u)
+						{
+							m_strStatus = "World NPC waypoint is invalid at row " +
+								std::to_string(index);
+							return false;
+						}
+						waypoint.strWaypointId = fields[cursor];
+						waypoint.bHasLookYaw = 1 == hasLookYaw;
+						if (!waypoint.bHasLookYaw &&
+							std::abs(waypoint.fLookYawDegrees) > 0.000001f)
+						{
+							m_strStatus = "World NPC waypoint absent yaw must be zero at row " +
+								std::to_string(index);
+							return false;
+						}
+						if (!waypointIds.insert(waypoint.strWaypointId).second)
+						{
+							m_strStatus = "Duplicate world NPC waypoint ID at row " +
+								std::to_string(index);
+							return false;
+						}
+						behavior.Waypoints.push_back(std::move(waypoint));
+						cursor += 7u;
+					}
+					std::uint32_t actionCount = 0u;
+					if (cursor >= fields.size() ||
+						!ParseNumber(fields[cursor], actionCount) ||
+						actionCount > 32u)
+					{
+						m_strStatus = "World NPC action count is invalid at row " +
+							std::to_string(index);
+						return false;
+					}
+					++cursor;
+					std::unordered_set<std::string> actionIds;
+					behavior.Actions.reserve(actionCount);
+					for (std::uint32_t actionIndex = 0u;
+						actionIndex < actionCount; ++actionIndex)
+					{
+						if (cursor + 4u > fields.size())
+						{
+							m_strStatus = "World NPC action row is truncated at row " +
+								std::to_string(index);
+							return false;
+						}
+						WORLD_NPC_BEHAVIOR_ACTION action{};
+						if (!IsStableId(fields[cursor]) ||
+							!ParseNumber(fields[cursor + 1u], action.iDurationMs) ||
+							!ParseNumber(fields[cursor + 2u], action.iWaitAfterMs) ||
+							!ParseNumber(fields[cursor + 3u], action.iWeight) ||
+							0u == action.iDurationMs ||
+							action.iDurationMs > 600000u ||
+							action.iWaitAfterMs > 600000u ||
+							0u == action.iWeight || action.iWeight > 100000u)
+						{
+							m_strStatus = "World NPC action is invalid at row " +
+								std::to_string(index);
+							return false;
+						}
+						action.strActionId = fields[cursor];
+						if ("npc.idle" == action.strActionId ||
+							"npc.move.walk" == action.strActionId)
+						{
+							m_strStatus =
+								"World NPC action ID is reserved by runtime at row " +
+								std::to_string(index);
+							return false;
+						}
+						if (!actionIds.insert(action.strActionId).second)
+						{
+							m_strStatus = "Duplicate world NPC action ID at row " +
+								std::to_string(index);
+							return false;
+						}
+						behavior.Actions.push_back(std::move(action));
+						cursor += 4u;
+					}
+					if (cursor != fields.size() ||
+						(NPC_BEHAVIOR_MODE::STATIONARY == behavior.eMode &&
+							(!behavior.Waypoints.empty() ||
+							 behavior.fWanderRadius != 0.f)) ||
+						(NPC_BEHAVIOR_MODE::PATROL == behavior.eMode &&
+							(behavior.Waypoints.size() < 2u ||
+							 behavior.fWanderRadius != 0.f)) ||
+						(NPC_BEHAVIOR_MODE::WANDER == behavior.eMode &&
+							(!behavior.Waypoints.empty() ||
+							 behavior.fWanderRadius < 0.5f)))
+					{
+						m_strStatus = "World NPC behavior shape is invalid at row " +
+							std::to_string(index);
+						return false;
+					}
+				}
 			}
 			placement.strArchetypeId =
 				"-" == fields[2] ? "" : std::string(fields[2]);
@@ -384,6 +614,30 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	{
 		m_strStatus = "World bootstrap has trailing rows";
 		return false;
+	}
+	for (const WORLD_BOOTSTRAP_PLACEMENT& placement : staged)
+	{
+		if (!placement.bHasNpcBehavior ||
+			placement.NpcBehavior.strLookTargetPlacementId.empty())
+		{
+			continue;
+		}
+		const auto target = std::find_if(
+			staged.begin(), staged.end(),
+			[&placement](const WORLD_BOOTSTRAP_PLACEMENT& candidate)
+			{
+				return candidate.strPlacementId ==
+					placement.NpcBehavior.strLookTargetPlacementId;
+			});
+		if (target == staged.end() ||
+			target->eKind != WORLD_BOOTSTRAP_KIND::NPC ||
+			!target->isEnabled ||
+			target->strPlacementId == placement.strPlacementId)
+		{
+			m_strStatus = "World NPC look target reference is invalid: " +
+				placement.strPlacementId;
+			return false;
+		}
 	}
 
 	m_Placements = std::move(staged);

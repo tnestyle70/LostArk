@@ -666,7 +666,7 @@ bool_t CMapAssetCatalog::Load_WaterPresentation(const std::string& areaId)
 		m_SourceCatalogOverride.empty() ?
 		Get_MapDataRoot() /
 			(std::filesystem::path(areaId).wstring() + L".mapwater.json") :
-		Get_MapAuthoringRoot() / areaId /
+		Get_MapAuthoringRoot() / L"Authoring" / areaId /
 			(std::filesystem::path(areaId).wstring() + L".mapwater.json");
 
 	std::error_code existsError;

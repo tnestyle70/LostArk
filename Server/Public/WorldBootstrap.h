@@ -29,6 +29,68 @@ namespace LostArk::Server
 		END
 	};
 
+	enum class NPC_BEHAVIOR_MODE : std::uint8_t
+	{
+		STATIONARY,
+		PATROL,
+		WANDER,
+		END
+	};
+
+	enum class NPC_ROUTE_MODE : std::uint8_t
+	{
+		LOOP,
+		PING_PONG,
+		ONCE,
+		END
+	};
+
+	enum class NPC_ACTION_SELECTION : std::uint8_t
+	{
+		SEQUENCE,
+		WEIGHTED,
+		END
+	};
+
+	struct WORLD_NPC_BEHAVIOR_WAYPOINT final
+	{
+		std::string strWaypointId;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+		std::uint32_t iWaitMs = 0u;
+		bool bHasLookYaw = false;
+		float fLookYawDegrees = 0.f;
+	};
+
+	struct WORLD_NPC_BEHAVIOR_ACTION final
+	{
+		std::string strActionId;
+		std::uint32_t iDurationMs = 0u;
+		std::uint32_t iWaitAfterMs = 0u;
+		std::uint32_t iWeight = 1u;
+	};
+
+	/* Server-only logical behavior compiled from Gameplay.world.json. Actual
+	clip names, loop flags, playback rates and blend values belong to the Client
+	presentation document and must never cross this descriptor. */
+	struct WORLD_NPC_BEHAVIOR_DESCRIPTOR final
+	{
+		NPC_BEHAVIOR_MODE eMode = NPC_BEHAVIOR_MODE::STATIONARY;
+		NPC_ROUTE_MODE eRouteMode = NPC_ROUTE_MODE::LOOP;
+		NPC_ACTION_SELECTION eActionSelection =
+			NPC_ACTION_SELECTION::SEQUENCE;
+		float fMoveSpeed = 1.f;
+		float fWanderRadius = 0.f;
+		std::uint32_t iRandomSeed = 1u;
+		std::uint32_t iStartDelayMs = 0u;
+		std::uint32_t iIdleMinMs = 0u;
+		std::uint32_t iIdleMaxMs = 0u;
+		std::string strLookTargetPlacementId;
+		std::vector<WORLD_NPC_BEHAVIOR_WAYPOINT> Waypoints;
+		std::vector<WORLD_NPC_BEHAVIOR_ACTION> Actions;
+	};
+
 	struct WORLD_TRIGGER_ACTION
 	{
 		WORLD_TRIGGER_ACTION_KIND eKind = WORLD_TRIGGER_ACTION_KIND::END;
@@ -57,6 +119,8 @@ namespace LostArk::Server
 		float fHalfExtentZ = 0.f;
 		bool isTriggerOnce = true;
 		std::vector<WORLD_TRIGGER_ACTION> TriggerActions;
+		bool bHasNpcBehavior = false;
+		WORLD_NPC_BEHAVIOR_DESCRIPTOR NpcBehavior;
 		bool isEnabled = true;
 	};
 

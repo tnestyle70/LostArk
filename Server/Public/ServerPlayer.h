@@ -156,6 +156,19 @@ namespace LostArk::Server
 		float fKnockbackDirectionZ = 0.f;
 		float fKnockbackSpeed = 0.f;
 		float fKnockbackRemainingSeconds = 0.f;
+		/* The catch-breath sequence is the only boss action that owns a player
+		transform across several stages. The stable boss entity and occurrence
+		sequence prevent a later pattern from releasing or throwing an old grab. */
+		LostArk::Shared::NET_ENTITY_ID iValtanGrabOwnerEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t iValtanGrabPatternSequence = 0u;
+		/* STEP_04 launches without navigation/collision clamping so the body can
+		leave the authored arena. At the end of this fixed window it enters the
+		existing Server FALLING life cycle. */
+		float fValtanThrowDirectionX = 0.f;
+		float fValtanThrowDirectionZ = 0.f;
+		float fValtanThrowSpeed = 0.f;
+		float fValtanThrowRemainingSeconds = 0.f;
 		/* KNOCKDOWN holds until this tick; move and skill commands are rejected
 		while it runs and the action returns to NONE when it expires. */
 		std::uint32_t iKnockdownEndTick = 0;

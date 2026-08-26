@@ -475,6 +475,10 @@ namespace LostArk::Shared
 		duration; the state carries no skill id because the summon is a roster
 		slot, not a balance skill. Appended last, same wire rule as FALLING. */
 		ESTHER_CAST,
+		/* A Server-authored boss sequence owns the player's transform and input.
+		The boss snapshot identifies the owner/target; this action only locks the
+		player and gives late joiners a stable presentation edge. */
+		GRABBED,
 		END
 	};
 
@@ -580,6 +584,9 @@ namespace LostArk::Shared
 		std::string strActionId;
 		std::uint32_t iPatternSequence = 0;
 		std::uint32_t iPatternStageIndex = 0;
+		// Server-selected player locked by the running boss pattern. Non-boss
+		// entities must leave this invalid; Client presentation never reselects it.
+		NET_ENTITY_ID iPatternTargetNetEntityId = INVALID_NET_ENTITY_ID;
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
@@ -860,6 +867,10 @@ namespace LostArk::Shared
 		// authored vector position: the request names both the already-spawned
 		// boss placement and the pattern owned by its encounter.
 		PLAY_PATTERN_ID,
+		// Starts normal Server-authoritative encounter playback at one reviewed
+		// page boundary. iTargetHealthBar carries that boundary timeline row's
+		// stable command ID; only the four product page rows are admitted.
+		START_FIGHT_PAGE,
 		END
 	};
 
@@ -893,8 +904,9 @@ namespace LostArk::Shared
 		VALTAN_AUDITION_OPERATION eOperation =
 			VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
 		// Usually an authored health bar. PLAY_PATTERN reuses it as a one-based
-		// encounter-pattern index, while PLAY_TIMELINE_ROW reuses it as the
-		// selected row's stable command ID. STOP_TIMELINE_ROW carries 0.
+		// encounter-pattern index, while PLAY_TIMELINE_ROW and START_FIGHT_PAGE
+		// reuse it as a timeline row's stable command ID. STOP_TIMELINE_ROW
+		// carries 0.
 		std::uint32_t iTargetHealthBar = 0;
 		// Present only on the PLAY_PATTERN_ID wire shape. Every older operation
 		// requires both fields to stay empty and therefore keeps its byte layout.

@@ -429,11 +429,11 @@ function Convert-WorldDocument {
     $document = Read-ProjectJson $relativePath
     Assert-ExactProperties $document @('schema','formatVersion','areaId','revision','placements') $relativePath
 	Assert-JsonString $document.schema "$relativePath schema"
-	Assert-JsonInteger $document.formatVersion "$relativePath formatVersion" 5 5
+	Assert-JsonInteger $document.formatVersion "$relativePath formatVersion" 6 6
 	Assert-JsonString $document.areaId "$relativePath areaId"
 	Assert-JsonInteger $document.revision "$relativePath revision" 1 ([uint32]::MaxValue)
     if ($document.schema -ne 'lostark.world-gameplay' -or
-		$document.formatVersion -ne 5 -or
+		$document.formatVersion -ne 6 -or
         $document.areaId -ne $AreaId -or
         $document.revision -lt 1) {
         throw "World gameplay header is invalid: $relativePath"
@@ -441,6 +441,7 @@ function Convert-WorldDocument {
 
     $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	$npcPresentationEntries = [Collections.Generic.List[object]]::new()
+	$enabledWorldEntityCount = 0
 	$placementIndex = @{}
 	foreach ($placement in @($document.placements)) {
 		if ($null -ne $placement.placementId) {
@@ -593,18 +594,187 @@ function Convert-WorldDocument {
 		if ($placement.kind -eq 'npc') {
 			Assert-ExactProperties $placement @(
 				'placementId','kind','archetypeId','encounterId',
-				'idleClip','position','yawDegrees','enabled') "$relativePath placement"
+				'idleClip','behavior','position','yawDegrees','enabled') "$relativePath placement"
+			$presentationEntry = [ordered]@{
+				placementId = [string]$placement.placementId
+				idleClip = $null
+				walkClip = $null
+				actions = @()
+			}
 			if ($null -ne $placement.idleClip) {
 				Assert-JsonString $placement.idleClip "$relativePath idleClip"
 				$clip = [string]$placement.idleClip
 				if ($clip -notmatch '^[A-Za-z0-9_~.-]{1,64}$') {
 					throw "NPC idleClip is not a stable clip name: $($placement.placementId)"
 				}
-				$npcPresentationEntries.Add(@{
-					placementId = [string]$placement.placementId
-					idleClip = $clip
-				})
+				$presentationEntry.idleClip = $clip
 			}
+
+			$behaviorFields = @('0')
+			if ($null -ne $placement.behavior) {
+				$behavior = $placement.behavior
+				Assert-ExactProperties -Value $behavior -Expected @(
+					'mode','routeMode','actionSelection','walkClip','moveSpeed',
+					'wanderRadius','randomSeed','startDelayMs','idleMinMs',
+					'idleMaxMs','lookTargetPlacementId','waypoints','actions') `
+					-Context "$relativePath NPC behavior"
+				Assert-JsonString $behavior.mode "$relativePath behavior mode"
+				Assert-JsonString $behavior.routeMode "$relativePath behavior routeMode"
+				Assert-JsonString $behavior.actionSelection "$relativePath behavior actionSelection"
+				Assert-JsonString $behavior.walkClip "$relativePath behavior walkClip" -AllowNull
+				Assert-JsonNumber $behavior.moveSpeed "$relativePath behavior moveSpeed"
+				Assert-JsonNumber $behavior.wanderRadius "$relativePath behavior wanderRadius"
+				Assert-JsonInteger $behavior.randomSeed "$relativePath behavior randomSeed" 1 ([uint32]::MaxValue)
+				Assert-JsonInteger $behavior.startDelayMs "$relativePath behavior startDelayMs" 0 600000
+				Assert-JsonInteger $behavior.idleMinMs "$relativePath behavior idleMinMs" 0 600000
+				Assert-JsonInteger $behavior.idleMaxMs "$relativePath behavior idleMaxMs" 0 600000
+				Assert-JsonString $behavior.lookTargetPlacementId "$relativePath behavior lookTargetPlacementId" -AllowNull
+				if ($behavior.mode -notin @('stationary','patrol','wander') -or
+					$behavior.routeMode -notin @('loop','pingPong','once') -or
+					$behavior.actionSelection -notin @('sequence','weighted')) {
+					throw "NPC behavior enum is invalid: $($placement.placementId)"
+				}
+				$moveSpeed = [double]$behavior.moveSpeed
+				$wanderRadius = [double]$behavior.wanderRadius
+				if ($moveSpeed -lt 0.1 -or $moveSpeed -gt 10.0 -or
+					$wanderRadius -lt 0.0 -or $wanderRadius -gt 100.0 -or
+					[uint32]$behavior.idleMinMs -gt [uint32]$behavior.idleMaxMs) {
+					throw "NPC behavior range is invalid: $($placement.placementId)"
+				}
+				$walkClip = $null
+				if ($null -ne $behavior.walkClip) {
+					$walkClip = [string]$behavior.walkClip
+					if ($walkClip -notmatch '^[A-Za-z0-9_~.-]{1,64}$') {
+						throw "NPC walkClip is not a stable clip name: $($placement.placementId)"
+					}
+				}
+				$waypoints = @($behavior.waypoints)
+				$actions = @($behavior.actions)
+				if ($waypoints.Count -gt 64 -or $actions.Count -gt 32 -or
+					($behavior.mode -eq 'stationary' -and
+						($waypoints.Count -ne 0 -or $wanderRadius -ne 0.0)) -or
+					($behavior.mode -eq 'patrol' -and
+						($waypoints.Count -lt 2 -or $wanderRadius -ne 0.0 -or $null -eq $walkClip)) -or
+					($behavior.mode -eq 'wander' -and
+						($waypoints.Count -ne 0 -or $wanderRadius -lt 0.5 -or $null -eq $walkClip))) {
+					throw "NPC behavior shape is invalid: $($placement.placementId)"
+				}
+				$lookTarget = '-'
+				if ($null -ne $behavior.lookTargetPlacementId) {
+					Assert-StableId $behavior.lookTargetPlacementId "$relativePath lookTargetPlacementId"
+					$lookTargetPlacement = $placementIndex[[string]$behavior.lookTargetPlacementId]
+					if ($null -eq $lookTargetPlacement -or
+						$lookTargetPlacement.kind -ne 'npc' -or
+						$lookTargetPlacement.enabled -ne $true -or
+						[string]$lookTargetPlacement.placementId -eq [string]$placement.placementId) {
+						throw "NPC look target must reference another enabled NPC placement: $($placement.placementId)"
+					}
+					$lookTarget = [string]$behavior.lookTargetPlacementId
+				}
+
+				$waypointFields = [Collections.Generic.List[string]]::new()
+				$waypointIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+				foreach ($waypoint in $waypoints) {
+					Assert-ExactProperties -Value $waypoint -Expected @(
+						'waypointId','position','waitMs','lookYawDegrees') `
+						-Context "$relativePath NPC waypoint"
+					Assert-StableId $waypoint.waypointId "$relativePath waypointId"
+					if (-not $waypointIds.Add([string]$waypoint.waypointId) -or
+						@($waypoint.position).Count -ne 3) {
+						throw "NPC waypoint ID or position is invalid: $($placement.placementId)"
+					}
+					for ($coordinateIndex = 0; $coordinateIndex -lt 3; $coordinateIndex++) {
+						Assert-JsonNumber $waypoint.position[$coordinateIndex] "$relativePath waypoint position[$coordinateIndex]"
+					}
+					Assert-JsonInteger $waypoint.waitMs "$relativePath waypoint waitMs" 0 600000
+					if ($null -ne $waypoint.lookYawDegrees) {
+						Assert-JsonNumber $waypoint.lookYawDegrees "$relativePath waypoint lookYawDegrees"
+						$lookYaw = [double]$waypoint.lookYawDegrees
+						if ($lookYaw -lt -360.0 -or $lookYaw -gt 360.0) {
+							throw "NPC waypoint look yaw is invalid: $($waypoint.waypointId)"
+						}
+						$hasLookYaw = '1'
+					}
+					else {
+						$lookYaw = 0.0
+						$hasLookYaw = '0'
+					}
+					foreach ($field in @(
+						[string]$waypoint.waypointId,
+						(Format-InvariantFloat $waypoint.position[0]),
+						(Format-InvariantFloat $waypoint.position[1]),
+						(Format-InvariantFloat $waypoint.position[2]),
+						[string][uint32]$waypoint.waitMs,
+						$hasLookYaw,
+						(Format-InvariantFloat $lookYaw))) {
+						$waypointFields.Add($field)
+					}
+				}
+
+				$actionFields = [Collections.Generic.List[string]]::new()
+				$actionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+				$presentationActions = [Collections.Generic.List[object]]::new()
+				foreach ($action in $actions) {
+					Assert-ExactProperties -Value $action -Expected @(
+						'actionId','clipName','loop','durationMs','waitAfterMs',
+						'weight','playbackRate','blendSeconds') `
+						-Context "$relativePath NPC action"
+					Assert-StableId $action.actionId "$relativePath NPC actionId"
+					Assert-JsonString $action.clipName "$relativePath NPC action clipName"
+					if (-not $actionIds.Add([string]$action.actionId) -or
+						[string]$action.actionId -in @('npc.idle','npc.move.walk') -or
+						[string]$action.clipName -notmatch '^[A-Za-z0-9_~.-]{1,64}$' -or
+						$action.loop -isnot [bool]) {
+						throw "NPC action identity or clip is invalid: $($placement.placementId)"
+					}
+					Assert-JsonInteger $action.durationMs "$relativePath NPC action durationMs" 1 600000
+					Assert-JsonInteger $action.waitAfterMs "$relativePath NPC action waitAfterMs" 0 600000
+					Assert-JsonInteger $action.weight "$relativePath NPC action weight" 1 100000
+					Assert-JsonNumber $action.playbackRate "$relativePath NPC action playbackRate"
+					Assert-JsonNumber $action.blendSeconds "$relativePath NPC action blendSeconds"
+					$playbackRate = [double]$action.playbackRate
+					$blendSeconds = [double]$action.blendSeconds
+					if ($playbackRate -lt 0.1 -or $playbackRate -gt 4.0 -or
+						$blendSeconds -lt 0.0 -or $blendSeconds -gt 2.0) {
+						throw "NPC action presentation range is invalid: $($action.actionId)"
+					}
+					foreach ($field in @(
+						[string]$action.actionId,
+						[string][uint32]$action.durationMs,
+						[string][uint32]$action.waitAfterMs,
+						[string][uint32]$action.weight)) {
+						$actionFields.Add($field)
+					}
+					$presentationActions.Add([ordered]@{
+						actionId = [string]$action.actionId
+						clipName = [string]$action.clipName
+						loop = [bool]$action.loop
+						playbackRate = $playbackRate
+						blendSeconds = $blendSeconds
+					})
+				}
+
+				$presentationEntry.walkClip = $walkClip
+				$presentationEntry.actions = @($presentationActions)
+				$behaviorFields = @(
+					'1', [string]$behavior.mode, [string]$behavior.routeMode,
+					[string]$behavior.actionSelection,
+					(Format-InvariantFloat $moveSpeed),
+					(Format-InvariantFloat $wanderRadius),
+					[string][uint32]$behavior.randomSeed,
+					[string][uint32]$behavior.startDelayMs,
+					[string][uint32]$behavior.idleMinMs,
+					[string][uint32]$behavior.idleMaxMs,
+					$lookTarget,
+					[string]$waypoints.Count) +
+					@($waypointFields) +
+					@([string]$actions.Count) +
+					@($actionFields)
+			}
+			if ($null -ne $placement.idleClip -or $null -ne $placement.behavior) {
+				$npcPresentationEntries.Add($presentationEntry)
+			}
+			$commonFields += $behaviorFields
 		}
 		else {
 			Assert-ExactProperties $placement @(
@@ -652,15 +822,21 @@ function Convert-WorldDocument {
 		$commonFields[2] = $serializedArchetypeId
 		$commonFields[3] = $serializedEncounterId
 		$rowFields = $commonFields
-        $rows.Add(($rowFields -join "`t"))
+		$rows.Add(($rowFields -join "`t"))
+		if ($placement.enabled -and $placement.kind -in @('npc','boss')) {
+			++$enabledWorldEntityCount
+		}
     }
+	if ($enabledWorldEntityCount -gt 256) {
+		throw "World enabled persistent entity count exceeds snapshot capacity 256: $enabledWorldEntityCount"
+	}
 	if ($WorldId -eq 'VALTAN_ARENA' -and $enabledPlayerSpawnCount -ne 4) {
 		throw "Valtan Arena requires exactly four enabled player spawns; got $enabledPlayerSpawnCount."
 	}
 
     $sortedRows = @($rows | Sort-Object)
     $lines = [Collections.Generic.List[string]]::new()
-	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t6`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t7`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }
@@ -876,7 +1052,7 @@ if ($Mode -eq 'Publish') {
 			$jsonLines = [Collections.Generic.List[string]]::new()
 			$jsonLines.Add('{')
 			$jsonLines.Add('  "schema": "lostark.npc-placement-presentation",')
-			$jsonLines.Add('  "formatVersion": 1,')
+			$jsonLines.Add('  "formatVersion": 2,')
 			$jsonLines.Add("  `"worldId`": `"$($world.WorldId)`",")
 			$entries = @($world.NpcPresentation | Sort-Object { [string]$_.placementId })
 			if ($entries.Count -eq 0) {
@@ -885,8 +1061,39 @@ if ($Mode -eq 'Publish') {
 			else {
 				$jsonLines.Add('  "entries": [')
 				for ($entryIndex = 0; $entryIndex -lt $entries.Count; $entryIndex++) {
-					$suffix = if ($entryIndex -lt $entries.Count - 1) { ',' } else { '' }
-					$jsonLines.Add("    { `"placementId`": `"$($entries[$entryIndex].placementId)`", `"idleClip`": `"$($entries[$entryIndex].idleClip)`" }$suffix")
+					$entry = $entries[$entryIndex]
+					$jsonLines.Add('    {')
+					$jsonLines.Add("      `"placementId`": `"$($entry.placementId)`",")
+					if ($null -eq $entry.idleClip) {
+						$jsonLines.Add('      "idleClip": null,')
+					}
+					else {
+						$jsonLines.Add("      `"idleClip`": `"$($entry.idleClip)`",")
+					}
+					if ($null -eq $entry.walkClip) {
+						$jsonLines.Add('      "walkClip": null,')
+					}
+					else {
+						$jsonLines.Add("      `"walkClip`": `"$($entry.walkClip)`",")
+					}
+					$actions = @($entry.actions)
+					if ($actions.Count -eq 0) {
+						$jsonLines.Add('      "actions": []')
+					}
+					else {
+						$jsonLines.Add('      "actions": [')
+						for ($actionIndex = 0; $actionIndex -lt $actions.Count; $actionIndex++) {
+							$action = $actions[$actionIndex]
+							$actionSuffix = if ($actionIndex -lt $actions.Count - 1) { ',' } else { '' }
+							$loopText = if ($action.loop) { 'true' } else { 'false' }
+							$playbackText = Format-InvariantFloat $action.playbackRate
+							$blendText = Format-InvariantFloat $action.blendSeconds
+							$jsonLines.Add("        { `"actionId`": `"$($action.actionId)`", `"clipName`": `"$($action.clipName)`", `"loop`": $loopText, `"playbackRate`": $playbackText, `"blendSeconds`": $blendText }$actionSuffix")
+						}
+						$jsonLines.Add('      ]')
+					}
+					$entrySuffix = if ($entryIndex -lt $entries.Count - 1) { ',' } else { '' }
+					$jsonLines.Add("    }$entrySuffix")
 				}
 				$jsonLines.Add('  ]')
 			}
@@ -917,10 +1124,20 @@ if ($Mode -eq 'Publish') {
 		}
 
 		foreach ($promotion in $promotions) {
-			if ([IO.File]::Exists($promotion.Rollback)) {
-				[IO.File]::Delete($promotion.Rollback)
-			}
 			Write-Output "Published $($promotion.World.WorldId): $($promotion.World.Count) placements -> $($promotion.Destination)"
+		}
+		# Every destination is committed at this point. Backup cleanup must never
+		# enter the rollback catch after an earlier backup was already deleted,
+		# because that could remove both the committed output and its old copy.
+		foreach ($promotion in $promotions) {
+			try {
+				if ([IO.File]::Exists($promotion.Rollback)) {
+					[IO.File]::Delete($promotion.Rollback)
+				}
+			}
+			catch {
+				Write-Warning "Published output is committed, but rollback backup cleanup was deferred: $($promotion.Rollback): $($_.Exception.Message)"
+			}
 		}
 	}
 	catch {

@@ -5,6 +5,7 @@
 #include "Network/PacketType.h"
 
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -40,6 +41,67 @@ enum class WORLD_DESTROYABLE_STATE
 	END
 };
 
+enum class WORLD_NPC_BEHAVIOR_MODE
+{
+	STATIONARY,
+	PATROL,
+	WANDER,
+	END
+};
+
+enum class WORLD_NPC_ROUTE_MODE
+{
+	LOOP,
+	PING_PONG,
+	ONCE,
+	END
+};
+
+enum class WORLD_NPC_ACTION_SELECTION
+{
+	SEQUENCE,
+	WEIGHTED,
+	END
+};
+
+struct WORLD_NPC_WAYPOINT
+{
+	std::string waypointId;
+	float3_t position = {};
+	uint32_t waitMs = 0;
+	std::optional<f32_t> lookYawDegrees;
+};
+
+struct WORLD_NPC_ACTION
+{
+	std::string actionId;
+	std::string clipName;
+	bool_t loop = false;
+	uint32_t durationMs = 0;
+	uint32_t waitAfterMs = 0;
+	uint32_t weight = 1;
+	f32_t playbackRate = 1.f;
+	f32_t blendSeconds = 0.15f;
+};
+
+struct WORLD_NPC_BEHAVIOR
+{
+	WORLD_NPC_BEHAVIOR_MODE eMode = WORLD_NPC_BEHAVIOR_MODE::STATIONARY;
+	WORLD_NPC_ROUTE_MODE eRouteMode = WORLD_NPC_ROUTE_MODE::LOOP;
+	WORLD_NPC_ACTION_SELECTION eActionSelection =
+		WORLD_NPC_ACTION_SELECTION::SEQUENCE;
+	std::string walkClip;
+	f32_t moveSpeed = 1.5f;
+	f32_t wanderRadius = 0.f;
+	uint32_t randomSeed = 1;
+	uint32_t startDelayMs = 0;
+	uint32_t idleMinMs = 1000;
+	uint32_t idleMaxMs = 3000;
+	std::string lookTargetPlacementId;
+	std::vector<WORLD_NPC_WAYPOINT> waypoints;
+	std::vector<WORLD_NPC_ACTION> actions;
+};
+
 struct WORLD_TRIGGER_EVENT
 {
 	WORLD_TRIGGER_EVENT_KIND eKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
@@ -60,6 +122,7 @@ struct WORLD_GAMEPLAY_PLACEMENT
 	std::string archetypeId;
 	std::string encounterId;
 	std::string npcIdleClip;
+	std::optional<WORLD_NPC_BEHAVIOR> npcBehavior;
 	float3_t position = {};
 	f32_t yawDegrees = {};
 	bool_t isEnabled = true;
@@ -117,6 +180,17 @@ public:
 	static const char_t* DestroyableState_ToString(WORLD_DESTROYABLE_STATE state);
 	static bool_t Try_ParseDestroyableState(const std::string& value,
 		WORLD_DESTROYABLE_STATE& outState);
+	static const char_t* NpcBehaviorMode_ToString(WORLD_NPC_BEHAVIOR_MODE mode);
+	static bool_t Try_ParseNpcBehaviorMode(const std::string& value,
+		WORLD_NPC_BEHAVIOR_MODE& outMode);
+	static const char_t* NpcRouteMode_ToString(WORLD_NPC_ROUTE_MODE mode);
+	static bool_t Try_ParseNpcRouteMode(const std::string& value,
+		WORLD_NPC_ROUTE_MODE& outMode);
+	static const char_t* NpcActionSelection_ToString(
+		WORLD_NPC_ACTION_SELECTION selection);
+	static bool_t Try_ParseNpcActionSelection(const std::string& value,
+		WORLD_NPC_ACTION_SELECTION& outSelection);
+	static bool_t Is_ValidNpcBehavior(const WORLD_NPC_BEHAVIOR& behavior);
 
 private:
 	std::vector<WORLD_GAMEPLAY_PLACEMENT> m_Placements;

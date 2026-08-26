@@ -1,6 +1,6 @@
 {
   "schema": "lostark.world-gameplay",
-  "formatVersion": 5,
+  "formatVersion": 6,
   "areaId": "LV_DEV_TRAINING_GROUND",
   "revision": 2,
   "placements": [

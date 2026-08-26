@@ -267,6 +267,22 @@
       "runtimeStatus": "supported"
     },
     {
+      "archetypeId": "NPC_25001",
+      "clientPresentationId": "npc.25001.client.v1",
+      "modelAssetId": "Character/NPC/Npc_25001/Npc_25001.wmodel",
+      "animationSetId": null,
+      "idleClip": "npc_idle_normal_1",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "NPC_25002",
+      "clientPresentationId": "npc.25002.client.v1",
+      "modelAssetId": "Character/NPC/Npc_25002/Npc_25002.wmodel",
+      "animationSetId": null,
+      "idleClip": "npc_idle_normal_1",
+      "runtimeStatus": "supported"
+    },
+    {
       "archetypeId": "NPC_25008",
       "clientPresentationId": "npc.25008.client.v1",
       "modelAssetId": "Character/NPC/Npc_25008/Npc_25008.wmodel",
@@ -279,6 +295,30 @@
       "clientPresentationId": "npc.25016.client.v1",
       "modelAssetId": "Character/NPC/Npc_25016/Npc_25016.wmodel",
       "animationSetId": "Character/NPC/AnimSets/HM_FE03/HM_FE03.wmodel",
+      "idleClip": "npc_idle_normal_1",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "NPC_25029",
+      "clientPresentationId": "npc.25029.client.v1",
+      "modelAssetId": "Character/NPC/Npc_25029/Npc_25029.wmodel",
+      "animationSetId": null,
+      "idleClip": "npc_idle_normal_1",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "NPC_25184",
+      "clientPresentationId": "npc.25184.client.v1",
+      "modelAssetId": "Character/NPC/Npc_25184/Npc_25184.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/HM_MA02/HM_MA02.wmodel",
+      "idleClip": "npc_idle_normal_1",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "NPC_25287",
+      "clientPresentationId": "npc.25287.client.v1",
+      "modelAssetId": "Character/NPC/Npc_25287/Npc_25287.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/HM_MA02/HM_MA02.wmodel",
       "idleClip": "npc_idle_normal_1",
       "runtimeStatus": "supported"
     },

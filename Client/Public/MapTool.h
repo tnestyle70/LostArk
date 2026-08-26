@@ -80,6 +80,22 @@ private:
 		bool_t allowNavigationBootstrap = false;
 	};
 
+	/* An Area switch admits every model of the target Area before it stages a
+	   single placement. Bern alone is 1003 prototypes over 1.8 GB, so that
+	   admission runs on a per-frame budget and the editor keeps drawing its
+	   progress instead of stalling inside one frame. */
+	struct EDITOR_AREA_PRELOAD_STATE final
+	{
+		size_t iDescriptorIndex = SIZE_MAX;
+		CMapAssetCatalog Catalog;
+		size_t iNextEntry = 0;
+
+		bool_t Is_Active() const noexcept
+		{
+			return SIZE_MAX != iDescriptorIndex;
+		}
+	};
+
 	enum class NAVIGATION_MODE
 	{
 		BAKE,
@@ -158,6 +174,8 @@ private:
 
 	/* Frame Render */
 	void Render_WorldOverlay(bool_t isAssetTest);
+	void Render_WorldNpcRouteOverlay();
+	void Render_WorldNpcBatchOverlay();
 	void Render_WorkspaceBar(bool_t isAssetTest);
 	void Render_ActiveMode(bool_t isAssetTest);
 	void Render_MapAssetsPanel(bool_t isAssetTest);
@@ -225,10 +243,14 @@ private:
 	/* Map Asset Document and Runtime */
 	bool_t Ensure_AuthoringPrototypes();
 	bool_t Ensure_AuthoringPrototypes(const CMapAssetCatalog& catalog);
+	bool_t Admit_AuthoringPrototype(const MAP_ASSET_ENTRY& asset);
 	bool_t Ensure_DeployAuthoringPrototypes(
 		const CDeployPropCatalog& catalog);
 	bool_t Ensure_DestructionDebrisAuthoringPrototypes();
 	bool_t Load_EditorAreaRegistry();
+	bool_t Begin_EditorAreaSwitch(size_t descriptorIndex);
+	void Update_EditorAreaPreload();
+	void Report_EditorAreaPreloadProgress();
 	bool_t Switch_EditorArea(size_t descriptorIndex);
 	bool_t Save_AllAuthoring();
 	bool_t Has_UnsavedAuthoring() const;
@@ -266,7 +288,21 @@ private:
 	bool_t Load_WorldGameplay();
 	bool_t Save_WorldGameplay();
 	bool_t Try_PlaceWorldGameplay();
+	std::string Allocate_WorldNpcPlacementId(
+		const std::string& archetypeId) const;
 	bool_t Try_PickWorldTriggerTarget();
+	bool_t Try_PickWorldNpcWaypoint();
+	bool_t Try_PickWorldNpcBatchCenter();
+	bool_t Place_WorldNpcBatch();
+	bool_t Commit_WorldNpcBatch();
+	void Sync_WorldNpcBehaviorDraft(
+		const WORLD_GAMEPLAY_PLACEMENT& placement);
+	bool_t Apply_WorldNpcBehaviorDraft();
+	bool_t Validate_WorldNpcBehaviorNavigation(
+		const WORLD_GAMEPLAY_PLACEMENT& placement,
+		const CNavGridPaintDocument& navigation,
+		const CNavRuntimeBlockerDocument& blockers,
+		std::string& outStatus) const;
 	bool_t Try_PlaceSpawnAnchor();
 	bool_t Load_SpawnGroups();
 	bool_t Save_SpawnGroups();
@@ -279,9 +315,10 @@ private:
 	void Remove_WorldTriggerBoxes(vector<TRIGGER_BOX_ENTRY>& entries);
 	bool_t Stage_WorldNpcPreviews(
 		const CWorldGameplayDocument& document,
-		vector<NPC_PREVIEW_ENTRY>& outEntries);
+		vector<NPC_PREVIEW_ENTRY>& outEntries,
+		const CNavGridPaintDocument* pNavigation = nullptr,
+		const CNavRuntimeBlockerDocument* pBlockers = nullptr);
 	void Remove_WorldNpcPreviews(vector<NPC_PREVIEW_ENTRY>& entries);
-	void Sync_WorldNpcPreviews();
 	void Update_WorldTriggerBoxPresentation(bool_t isVisible);
 	std::filesystem::path Get_WorldGameplayPath() const;
 	std::filesystem::path Get_SpawnGroupsPath() const;
@@ -354,6 +391,7 @@ private:
 	size_t m_iPendingEditorArea = SIZE_MAX;
 	bool_t m_isEditorAreaSwitchPending = false;
 	bool_t m_isEditorExitPending = false;
+	EDITOR_AREA_PRELOAD_STATE m_EditorAreaPreload;
 	std::unordered_map<std::wstring, std::filesystem::path>
 		m_PrototypeModelPaths;
 
@@ -393,6 +431,8 @@ private:
 	bool_t m_bSpawnGroupsDirty = false;
 	bool_t m_bWorldGameplayPlacementArmed = false;
 	bool_t m_bWorldTriggerTargetPickArmed = false;
+	bool_t m_bWorldNpcWaypointPickArmed = false;
+	bool_t m_bWorldNpcBatchCenterPickArmed = false;
 	bool_t m_bSpawnAnchorPlacementArmed = false;
 	WORLD_PLACEMENT_KIND m_eWorldPlacementKind =
 		WORLD_PLACEMENT_KIND::PLAYER_SPAWN;
@@ -417,6 +457,26 @@ private:
 	float3_t m_WorldPlacementPositionDelta = {};
 	float3_t m_WorldTriggerHalfExtents = float3_t(2.f, 1.f, 2.f);
 	bool_t m_bWorldTriggerOnce = true;
+	std::string m_WorldNpcBehaviorDraftPlacementId;
+	std::optional<WORLD_NPC_BEHAVIOR> m_WorldNpcBehaviorDraft;
+	bool_t m_bWorldNpcBehaviorDraftDirty = false;
+	bool_t m_bWorldNpcContinuousPlacement = false;
+	bool_t m_bWorldNpcBrushRandomYaw = true;
+	std::optional<WORLD_GAMEPLAY_PLACEMENT> m_WorldNpcBrushPreset;
+	f32_t m_fWorldNpcQuickWanderRadius = 5.f;
+	f32_t m_fWorldNpcQuickMoveSpeed = 1.2f;
+	float3_t m_WorldNpcBatchCenter = {};
+	bool_t m_bWorldNpcBatchCenterValid = false;
+	f32_t m_fWorldNpcBatchRadius = 10.f;
+	f32_t m_fWorldNpcBatchMinimumSpacing = 1.5f;
+	uint32_t m_iWorldNpcBatchCount = 8;
+	uint32_t m_iWorldNpcBatchSeed = 1;
+	bool_t m_bWorldNpcBatchRandomYaw = true;
+	bool_t m_bWorldNpcBatchCopySelectedBehavior = false;
+	char m_WorldNpcBatchIdPrefix[128] = "npc.batch";
+	std::unordered_set<std::string> m_WorldNpcBatchArchetypePool;
+	std::vector<WORLD_GAMEPLAY_PLACEMENT> m_WorldNpcBatchDraft;
+	uint32_t m_iWorldNpcBatchDraftBaseRevision = 0;
 
 	/* World Destruction State */
 	CEncounterPatternReference m_EncounterReference;

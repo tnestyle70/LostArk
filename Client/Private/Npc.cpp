@@ -8,12 +8,15 @@
 #include "Shader.h"
 #include "Transform.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace
 {
 	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
 	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
+	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
+	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
 }
 
 CNpc::CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -48,18 +51,11 @@ HRESULT CNpc::Initialize(void* pArg)
 	if (FAILED(Ready_Components(pDesc)))
 		return E_FAIL;
 
-	m_pTransformCom->Set_State(STATE::POSITION,
-		XMVectorSet(pDesc->vPosition.x, pDesc->vPosition.y, pDesc->vPosition.z, 1.f));
-	if (0.f != pDesc->fYawDegree)
-		m_pTransformCom->Rotation(0.f, pDesc->fYawDegree, 0.f);
-	if (nullptr != m_pColliderCom)
-	{
-		m_pColliderCom->Update(XMMatrixTranslationFromVector(
-			m_pTransformCom->Get_State(STATE::POSITION)));
-	}
+	Apply_ImmediateTransform(pDesc->vPosition, pDesc->fYawDegree);
 
 	m_fOutlineWidth = pDesc->fOutlineWidth;
 	m_vOutlineColor = pDesc->vOutlineColor;
+	m_bSuppressRootMotion = pDesc->bSuppressRootMotion;
 
 	/* With no animation set the bone palette is never filled, so every vertex
 	collapses onto the origin and the NPC simply vanishes -- a wrong clip name
@@ -72,6 +68,21 @@ HRESULT CNpc::Initialize(void* pArg)
 			return E_FAIL;
 		m_pModelCom->Set_Animation(0u, pDesc->isLoop);
 	}
+	const char_t* pResolvedIdle = m_pModelCom->Get_AnimationName(
+		m_pModelCom->Get_CurrentAnimIndex());
+	if (nullptr == pResolvedIdle || '\0' == pResolvedIdle[0])
+		return E_FAIL;
+	m_strDefaultIdleClip = pResolvedIdle;
+	m_pModelCom->Set_AnimationSpeed(1.f);
+	/* Authored town placements are Server-transform authoritative. Their clips
+	may pose translated root keys but must not move presentation away from the
+	replicated transform. Esther leaves suppression disabled because its existing
+	action chains intentionally use authored root motion. */
+	if (m_bSuppressRootMotion)
+	{
+		m_pModelCom->Enable_RootMotionSuppression(
+			ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
+	}
 
 	return S_OK;
 }
@@ -80,6 +91,7 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
 	if (nullptr == pClipName || nullptr == m_pModelCom)
 		return false;
+	m_pModelCom->Set_AnimationSpeed(1.f);
 	if (!m_pModelCom->Set_Animation(pClipName, isLoop))
 		return false;
 	CEffectV2Runtime::Notify_NpcClip(
@@ -87,9 +99,44 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	return true;
 }
 
+bool_t CNpc::Play_NetworkAction(
+	const char_t* pClipName,
+	const bool_t isLoop,
+	const f32_t fPlaybackRate,
+	const f32_t fBlendSeconds)
+{
+	if (nullptr == pClipName || '\0' == pClipName[0] ||
+		nullptr == m_pModelCom || !std::isfinite(fPlaybackRate) ||
+		fPlaybackRate < 0.1f || fPlaybackRate > 4.f ||
+		!std::isfinite(fBlendSeconds) ||
+		fBlendSeconds < 0.f || fBlendSeconds > 2.f ||
+		!m_pModelCom->Set_Animation(pClipName, isLoop, fBlendSeconds))
+	{
+		return false;
+	}
+	m_pModelCom->Set_AnimationSpeed(fPlaybackRate);
+	if (!m_pModelCom->Start_Animation(
+			m_pModelCom->Get_CurrentAnimIndex(), isLoop))
+	{
+		return false;
+	}
+	/* Keep the existing NPC effect/cutin hook on every semantic action edge,
+	including a restart that resolves to the same clip name. */
+	CEffectV2Runtime::Notify_NpcClip(
+		static_pointer_cast<CNpc>(shared_from_this()), pClipName);
+	return true;
+}
+
+bool_t CNpc::Play_DefaultIdle(const f32_t fBlendSeconds)
+{
+	return !m_strDefaultIdleClip.empty() && Play_NetworkAction(
+		m_strDefaultIdleClip.c_str(), true, 1.f, fBlendSeconds);
+}
+
 bool_t CNpc::Apply_NetworkState(
 	const float3_t& position,
-	const f32_t yawDegrees)
+	const f32_t yawDegrees,
+	const std::uint32_t iServerTick)
 {
 	if (nullptr == m_pTransformCom ||
 		!std::isfinite(position.x) ||
@@ -99,16 +146,21 @@ bool_t CNpc::Apply_NetworkState(
 	{
 		return false;
 	}
-	m_pTransformCom->Set_State(
-		STATE::POSITION,
-		XMVectorSet(position.x, position.y, position.z, 1.f));
-	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
-	if (nullptr != m_pColliderCom)
+	if (!m_bSuppressRootMotion)
 	{
-		m_pColliderCom->Update(XMMatrixTranslationFromVector(
-			m_pTransformCom->Get_State(STATE::POSITION)));
+		Apply_ImmediateTransform(position, yawDegrees);
+		return true;
 	}
-	return true;
+	/* Spawn messages carry no simulation tick. They place the object exactly;
+	interpolation begins with the first world snapshot that has a tick. */
+	if (0u == iServerTick)
+	{
+		m_NetworkTransformInterpolator.Reset();
+		Apply_ImmediateTransform(position, yawDegrees);
+		return true;
+	}
+	return m_NetworkTransformInterpolator.Push(
+		position, yawDegrees, iServerTick);
 }
 
 void CNpc::Trigger_HitFlash()
@@ -126,7 +178,20 @@ void CNpc::Priority_Update(f32_t fTimeDelta)
 
 void CNpc::Update(f32_t fTimeDelta)
 {
-	m_pModelCom->Play_Animation(fTimeDelta);
+	if (m_bSuppressRootMotion)
+	{
+		Update_NetworkTransform(fTimeDelta);
+		m_pModelCom->Update_Animation(fTimeDelta);
+	}
+	else
+	{
+		m_pModelCom->Play_Animation(fTimeDelta);
+	}
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMLoadFloat4x4(
+			m_pTransformCom->Get_WorldMatrixPtr()));
+	}
 	CEffectV2Runtime::Tick_Npc(
 		static_pointer_cast<CNpc>(shared_from_this()), m_pDevice, m_pContext);
 	if (m_fHitFlashRemainingSeconds > 0.f)
@@ -143,6 +208,35 @@ void CNpc::Update(f32_t fTimeDelta)
 				(m_fHitFlashRemainingSeconds / HIT_FLASH_DURATION_SECONDS);
 		}
 	}
+}
+
+void CNpc::Apply_ImmediateTransform(
+	const float3_t& position,
+	const f32_t yawDegrees)
+{
+	m_pTransformCom->Set_State(STATE::POSITION,
+		XMVectorSet(position.x, position.y, position.z, 1.f));
+	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMLoadFloat4x4(
+			m_pTransformCom->Get_WorldMatrixPtr()));
+	}
+}
+
+void CNpc::Update_NetworkTransform(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pTransformCom)
+		return;
+	NPC_NETWORK_TRANSFORM_FRAME frame{};
+	if (!m_NetworkTransformInterpolator.Advance(fTimeDelta, frame))
+		return;
+	m_pTransformCom->Set_State(STATE::POSITION, XMVectorSet(
+		frame.vPosition.x,
+		frame.vPosition.y,
+		frame.vPosition.z,
+		1.f));
+	m_pTransformCom->Rotation(0.f, frame.fYawDegrees, 0.f);
 }
 
 void CNpc::Late_Update(f32_t fTimeDelta)

@@ -392,6 +392,12 @@ Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFile
 
 제품 발탄의 transform, target, action, phase, HP, damage는 Server authority다.
 
+실행 중 boss pattern이 한 플레이어를 잠그면 Server의 stable `NetEntityId`가
+`WORLD_ENTITY_SNAPSHOT::iPatternTargetNetEntityId`로 복제된다. 일반 NPC와 monster는 이
+필드를 반드시 invalid로 둔다. Client는 대상을 다시 고르지 않으며, 62줄 잡기 표현은 이 ID로
+찾은 Character만 `bip001-l-hand` animated socket에 붙였다가 success/recovery 또는 패턴 종료 시
+Server snapshot transform으로 돌려놓는다.
+
 ```text
 CGameRoom::Tick
 -> CValtanBrain::Update
@@ -449,6 +455,7 @@ combat body와 공격 footprint는 `Shared/Public/Gameplay/CombatCollisionContra
 - navigation authoring: `Data/Navigation/<AreaId>.navsource/.navpaint/.navblockers` 또는 uniform `<AreaId>.navgrid.json`
 - Client map/navigation 생성물: `Client/Bin/DataFiles/Map`, `Client/Bin/DataFiles/Navigation`
 - Server world 생성물: `Server/Bin/DataFiles/World/*.worldbootstrap`, `*.spawngroupsbootstrap`
+- Client NPC 표현 생성물: `Client/Bin/DataFiles/World/*.npcpresentation.json`
 
 `Data`만 사람이 편집하거나 재추출 결과를 반영하는 정본이다. Client/Server `Bin/DataFiles`는
 publisher 출력이며 source로 다시 읽어 authoring을 갱신하지 않는다. Visual Studio의
@@ -476,14 +483,22 @@ Nav Bounds bootstrap만 허용하며 실제 bake 검증 전에는 Server 제품 
 않는다. 원본 Training Map은 navigation 문서를 추측 생성하지 않는다. Valtan DeployProp과 World
 Destruction은 Debug authoring/preview로 편집할 수 있지만 제품 destroyable publisher gate와는 분리한다.
 
-gameplay authoring은 formatVersion 4다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`,
+gameplay authoring은 formatVersion 6이다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`,
 단일 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter` action을 가진 `triggerBox`, 정적 `collisionBox`를 admission한다.
 placement에는 stable placement ID, kind, encounter ID, position, yaw, enabled를 저장한다.
 NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`와 `encounterId`는 `null`이며 실제 class는
 session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를
 저장하지 않는다.
 
-v4 `CWorldGameplayDocument`에서 `triggerBox`는 half extents, once 정책, typed event를 소유하고
+v6 `CWorldGameplayDocument`에서 NPC는 optional `behavior`로 stationary/patrol/wander,
+waypoint, 속도, timing과 semantic action을 저작한다. `behavior: null`은 기존 정적 idle과 같다.
+publisher는 같은 transaction에서 Server `worldbootstrap` v7에는 이동·행동 의미만,
+Client `npcpresentation` v2에는 placement별 idle/walk/action clip만 생성한다. Server가 30 Hz
+transform/action을 확정하고 Client는 `(actionId, actionStartTick)` edge와 snapshot 보간으로 표현한다.
+Map Tool 변경은 `Apply NPC Behavior -> Save Gameplay -> Publish-WorldGameplay -> Server restart`
+전에는 실행 중 제품 room에 반영되지 않는다.
+
+같은 v6 문서에서 `triggerBox`는 half extents, once 정책, typed event를 소유하고
 `collisionBox`는 transform, half extents, enabled만 소유한다.
 제품 event는 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter`다. movePlayer는 `targetPosition`, `durationSeconds`, `arcHeight`를 저장한다. `activateSpawnGroup`은 `SpawnGroups.world.json`의 stable group ID, `activateEncounter`는 같은 gameplay 문서의 disabled boss placement ID만 저장한다.
 Server는 yaw OBB enter edge를 판정하고 일반 이동/스킬을 중단한 뒤 30 Hz 직선·포물선 이동을 확정한다.
@@ -504,7 +519,10 @@ MapTool `Spawn Groups` panel은 anchor, group, prerequisite, maxAlive, wave, ent
 
 같은 panel의 `Collision Box` option은 표면 pick, position, yaw, half extents, enabled, 목록 선택과
 delete를 제공한다. 파란 wire OBB는 저작 표시일 뿐이며 실제 차단은 Server bootstrap을 읽은 뒤 적용된다.
-`NPC_BEDA`는 `NpcCatalog.json` → Server world entity → Client replication → `CNpc` 경로로 표시한다.
+`NpcCatalog.json`의 supported archetype은 현재 75종이다. Bern authoring은 전체 placement 16개 중
+NPC 10개를 보존하며 초기 v6 migration에서는 모두 `behavior: null`이다. 특정 Aylara/Beda
+placement를 pre-authored 행동 샘플로 전제하지 않는다. enabled NPC는
+`NpcCatalog.json -> Server world entity -> Client replication -> CNpc` 경로로 표시한다.
 
 Valtan `Destruction Model View`의 Debug 경계는 다음과 같다.
 

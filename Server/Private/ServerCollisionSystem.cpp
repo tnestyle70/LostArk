@@ -369,26 +369,69 @@ void LostArk::Server::CServerCollisionSystem::Set_BlockingBodies(
 	for (const SERVER_BLOCKING_BODY& body : bodies)
 	{
 		if (std::isfinite(body.fX) && std::isfinite(body.fZ) &&
-			std::isfinite(body.fRadius) && body.fRadius > 0.f)
+			std::isfinite(body.fRadius) && body.fRadius > 0.f &&
+			std::isfinite(body.fCenterY) &&
+			std::isfinite(body.fHalfHeight) && body.fHalfHeight > 0.f)
 		{
 			m_BlockingBodies.push_back(body);
 		}
 	}
 }
 
-bool LostArk::Server::CServerCollisionSystem::Sweep_PlayerAgainstBody(
-	const SERVER_PLAYER& player,
+bool LostArk::Server::CServerCollisionSystem::Update_BlockingBody(
+	const LostArk::Shared::NET_ENTITY_ID netEntityId,
+	const float x,
+	const float centerY,
+	const float z) noexcept
+{
+	if (LostArk::Shared::INVALID_NET_ENTITY_ID == netEntityId ||
+		!std::isfinite(x) || !std::isfinite(centerY) || !std::isfinite(z))
+	{
+		return false;
+	}
+	const auto body = std::find_if(
+		m_BlockingBodies.begin(), m_BlockingBodies.end(),
+		[netEntityId](const SERVER_BLOCKING_BODY& candidate)
+		{
+			return candidate.iNetEntityId == netEntityId;
+		});
+	if (body == m_BlockingBodies.end())
+		return false;
+	body->fX = x;
+	body->fCenterY = centerY;
+	body->fZ = z;
+	return true;
+}
+
+bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBody(
+	const float startX,
+	const float startY,
+	const float startZ,
 	const float proposedX,
+	const float proposedY,
 	const float proposedZ,
+	const float radius,
+	const float halfHeight,
+	const float centerOffsetY,
 	const SERVER_BLOCKING_BODY& body,
 	float& outHitRatio)
 {
-	using namespace LostArk::Shared::WorldCollision;
-	const float combinedRadius = body.fRadius + PLAYER_HALF_EXTENT_X;
-	const float toBodyX = body.fX - player.fPositionX;
-	const float toBodyZ = body.fZ - player.fPositionZ;
-	const float deltaX = proposedX - player.fPositionX;
-	const float deltaZ = proposedZ - player.fPositionZ;
+	const float startCenterY = startY + centerOffsetY;
+	const float endCenterY = proposedY + centerOffsetY;
+	const float movingMinimumY =
+		(std::min)(startCenterY, endCenterY) - halfHeight;
+	const float movingMaximumY =
+		(std::max)(startCenterY, endCenterY) + halfHeight;
+	if (movingMaximumY < body.fCenterY - body.fHalfHeight ||
+		movingMinimumY > body.fCenterY + body.fHalfHeight)
+	{
+		return false;
+	}
+	const float combinedRadius = body.fRadius + radius;
+	const float toBodyX = body.fX - startX;
+	const float toBodyZ = body.fZ - startZ;
+	const float deltaX = proposedX - startX;
+	const float deltaZ = proposedZ - startZ;
 	const float startDistanceSquared = toBodyX * toBodyX + toBodyZ * toBodyZ;
 	if (startDistanceSquared < combinedRadius * combinedRadius)
 	{
@@ -426,12 +469,51 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 	float& outZ,
 	bool& outWasBlocked) const
 {
-	if (!std::isfinite(player.fPositionX) ||
-		!std::isfinite(player.fPositionY) ||
-		!std::isfinite(player.fPositionZ) ||
+	using namespace LostArk::Shared::WorldCollision;
+	return Resolve_CircleMove(
+		player.fPositionX,
+		player.fPositionY,
+		player.fPositionZ,
+		proposedX,
+		proposedY,
+		proposedZ,
+		PLAYER_HALF_EXTENT_X,
+		PLAYER_HALF_EXTENT_Y,
+		PLAYER_CENTER_OFFSET_Y,
+		outX,
+		outY,
+		outZ,
+		outWasBlocked);
+}
+
+bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
+	const float startX,
+	const float startY,
+	const float startZ,
+	const float proposedX,
+	const float proposedY,
+	const float proposedZ,
+	const float radius,
+	const float halfHeight,
+	const float centerOffsetY,
+	float& outX,
+	float& outY,
+	float& outZ,
+	bool& outWasBlocked,
+	const LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const
+{
+	if (!std::isfinite(startX) ||
+		!std::isfinite(startY) ||
+		!std::isfinite(startZ) ||
 		!std::isfinite(proposedX) ||
 		!std::isfinite(proposedY) ||
-		!std::isfinite(proposedZ))
+		!std::isfinite(proposedZ) ||
+		!std::isfinite(radius) ||
+		!std::isfinite(halfHeight) ||
+		!std::isfinite(centerOffsetY) ||
+		radius <= 0.f || radius > 1000.f ||
+		halfHeight <= 0.f || halfHeight > 1000.f ||
+		centerOffsetY < 0.f || centerOffsetY > 1000.f)
 	{
 		return false;
 	}
@@ -444,8 +526,10 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 			continue;
 		const WORLD_BOOTSTRAP_PLACEMENT& box = m_CollisionBoxes[index];
 		float hitRatio = 0.f;
-		if (Sweep_PlayerAgainstBox(
-			player, proposedX, proposedY, proposedZ, box, hitRatio))
+		if (Sweep_MovingBodyAgainstBox(
+			startX, startY, startZ,
+			proposedX, proposedY, proposedZ,
+			radius, halfHeight, centerOffsetY, box, hitRatio))
 		{
 			earliestBoxHit = (std::min)(earliestBoxHit, hitRatio);
 		}
@@ -454,8 +538,16 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 	const SERVER_BLOCKING_BODY* hitBody = nullptr;
 	for (const SERVER_BLOCKING_BODY& body : m_BlockingBodies)
 	{
+		if (LostArk::Shared::INVALID_NET_ENTITY_ID != ignoredBodyId &&
+			body.iNetEntityId == ignoredBodyId)
+		{
+			continue;
+		}
 		float hitRatio = 0.f;
-		if (Sweep_PlayerAgainstBody(player, proposedX, proposedZ, body, hitRatio) &&
+		if (Sweep_CircleAgainstBody(
+			startX, startY, startZ,
+			proposedX, proposedY, proposedZ,
+			radius, halfHeight, centerOffsetY, body, hitRatio) &&
 			hitRatio < earliestBodyHit)
 		{
 			earliestBodyHit = hitRatio;
@@ -473,17 +565,17 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 		return true;
 	}
 
-	const float deltaX = proposedX - player.fPositionX;
-	const float deltaY = proposedY - player.fPositionY;
-	const float deltaZ = proposedZ - player.fPositionZ;
+	const float deltaX = proposedX - startX;
+	const float deltaY = proposedY - startY;
+	const float deltaZ = proposedZ - startZ;
 	const float distance = std::sqrt(
 		deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 	const float marginRatio = distance > SWEEP_EPSILON ?
 		CONTACT_MARGIN / distance : 0.f;
 	const float safeRatio = (std::max)(0.f, earliestHit - marginRatio);
-	outX = player.fPositionX + deltaX * safeRatio;
-	outY = player.fPositionY + deltaY * safeRatio;
-	outZ = player.fPositionZ + deltaZ * safeRatio;
+	outX = startX + deltaX * safeRatio;
+	outY = startY + deltaY * safeRatio;
+	outZ = startZ + deltaZ * safeRatio;
 	outWasBlocked = true;
 
 	/* A wall stops the step outright (its own contract and tests). A body
@@ -519,10 +611,6 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 	const float slideZ = tangentZ * side * remainingLength;
 	const float slideLength = remainingLength;
 
-	SERVER_PLAYER contact = player;
-	contact.fPositionX = outX;
-	contact.fPositionY = outY;
-	contact.fPositionZ = outZ;
 	const float slideTargetX = outX + slideX;
 	const float slideTargetZ = outZ + slideZ;
 	float earliestSlideHit = NO_HIT;
@@ -531,8 +619,10 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index])
 			continue;
 		float hitRatio = 0.f;
-		if (Sweep_PlayerAgainstBox(
-			contact, slideTargetX, outY, slideTargetZ,
+		if (Sweep_MovingBodyAgainstBox(
+			outX, outY, outZ,
+			slideTargetX, outY, slideTargetZ,
+			radius, halfHeight, centerOffsetY,
 			m_CollisionBoxes[index], hitRatio))
 		{
 			earliestSlideHit = (std::min)(earliestSlideHit, hitRatio);
@@ -540,13 +630,20 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 	}
 	for (const SERVER_BLOCKING_BODY& body : m_BlockingBodies)
 	{
+		if (LostArk::Shared::INVALID_NET_ENTITY_ID != ignoredBodyId &&
+			body.iNetEntityId == ignoredBodyId)
+		{
+			continue;
+		}
 		/* Tangent motion never re-enters the circle it slides on; testing it
 		again would only trip on rounding at the contact point. */
 		if (&body == hitBody)
 			continue;
 		float hitRatio = 0.f;
-		if (Sweep_PlayerAgainstBody(
-			contact, slideTargetX, slideTargetZ, body, hitRatio))
+		if (Sweep_CircleAgainstBody(
+			outX, outY, outZ,
+			slideTargetX, outY, slideTargetZ,
+			radius, halfHeight, centerOffsetY, body, hitRatio))
 		{
 			earliestSlideHit = (std::min)(earliestSlideHit, hitRatio);
 		}
@@ -932,29 +1029,32 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerCenterInsideExpandedBox(
 		std::abs(local.z) <= box.fHalfExtentZ + PLAYER_HALF_EXTENT_Z;
 }
 
-bool LostArk::Server::CServerCollisionSystem::Sweep_PlayerAgainstBox(
-	const SERVER_PLAYER& player,
+bool LostArk::Server::CServerCollisionSystem::Sweep_MovingBodyAgainstBox(
+	const float startX,
+	const float startY,
+	const float startZ,
 	const float proposedX,
 	const float proposedY,
 	const float proposedZ,
+	const float radius,
+	const float halfHeight,
+	const float centerOffsetY,
 	const WORLD_BOOTSTRAP_PLACEMENT& box,
 	float& outHitRatio)
 {
-	using namespace LostArk::Shared::WorldCollision;
-	const float startCenterY = player.fPositionY + PLAYER_CENTER_OFFSET_Y;
-	const float endCenterY = proposedY + PLAYER_CENTER_OFFSET_Y;
-	const float expandedY = box.fHalfExtentY + PLAYER_HALF_EXTENT_Y;
+	const float startCenterY = startY + centerOffsetY;
+	const float endCenterY = proposedY + centerOffsetY;
+	const float expandedY = box.fHalfExtentY + halfHeight;
 	if ((std::max)(startCenterY, endCenterY) < box.fPositionY - expandedY ||
 		(std::min)(startCenterY, endCenterY) > box.fPositionY + expandedY)
 	{
 		return false;
 	}
 
-	const LOCAL_POINT start = To_BoxLocal(
-		player.fPositionX, player.fPositionZ, box);
+	const LOCAL_POINT start = To_BoxLocal(startX, startZ, box);
 	const LOCAL_POINT end = To_BoxLocal(proposedX, proposedZ, box);
-	const float expandedX = box.fHalfExtentX + PLAYER_HALF_EXTENT_X;
-	const float expandedZ = box.fHalfExtentZ + PLAYER_HALF_EXTENT_Z;
+	const float expandedX = box.fHalfExtentX + radius;
+	const float expandedZ = box.fHalfExtentZ + radius;
 	if (std::abs(start.x) < expandedX - CONTACT_MARGIN &&
 		std::abs(start.z) < expandedZ - CONTACT_MARGIN)
 	{

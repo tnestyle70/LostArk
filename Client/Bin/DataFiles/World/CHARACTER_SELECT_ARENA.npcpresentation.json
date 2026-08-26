@@ -1,6 +1,6 @@
 {
   "schema": "lostark.npc-placement-presentation",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "worldId": "CHARACTER_SELECT_ARENA",
   "entries": []
 }

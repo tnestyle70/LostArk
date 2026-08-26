@@ -6,6 +6,7 @@
 #include "Gameplay/WorldCollisionContract.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
+#include "NpcBehaviorRuntime.h"
 #include "PlayerSkillSystem.h"
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
@@ -3797,6 +3798,99 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"Reject class change outside Character Select without mutation");
 		}
 	}
+	{
+		auto bernEntryRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+		CGameRoom& bernEntryRoom = *bernEntryRoomStorage;
+		const auto& bernEntryPlacements =
+			bernEntryRoom.m_WorldBootstrap.Get_Placements();
+		const std::size_t expectedNpcCount = static_cast<std::size_t>(
+			std::count_if(
+				bernEntryPlacements.begin(), bernEntryPlacements.end(),
+				[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+				{
+					return placement.isEnabled &&
+						WORLD_BOOTSTRAP_KIND::NPC == placement.eKind;
+				}));
+		std::size_t serializedNpcCount = 0u;
+		bool allWorldSpawnsSerializable = bernEntryRoom.Is_Ready();
+		SERVER_WORLD_ENTITY invalidNpc{};
+		bool foundNpc = false;
+		for (const SERVER_WORLD_ENTITY& entity : bernEntryRoom.m_WorldEntities)
+		{
+			std::vector<std::uint8_t> payload;
+			S2C_WORLD_ENTITY_SPAWNED decoded{};
+			if (!CGameRoom::Build_WorldEntitySpawnedPayload(entity, payload))
+			{
+				allWorldSpawnsSerializable = false;
+				continue;
+			}
+			CPacketReader reader{ payload };
+			if (!Read_Message(reader, decoded) ||
+				0u != reader.Get_RemainingSize() ||
+				decoded.iNetEntityId != entity.iNetEntityId ||
+				decoded.strPlacementId != entity.strPlacementId)
+			{
+				allWorldSpawnsSerializable = false;
+				continue;
+			}
+			if (WORLD_BOOTSTRAP_KIND::NPC == entity.eKind)
+			{
+				++serializedNpcCount;
+				allWorldSpawnsSerializable = allWorldSpawnsSerializable &&
+					WORLD_ENTITY_KIND::NPC == decoded.eKind &&
+					0.f == entity.fCollisionRadius &&
+					0.f == decoded.fCollisionRadius;
+				if (!foundNpc)
+				{
+					invalidNpc = entity;
+					foundNpc = true;
+				}
+			}
+		}
+		std::vector<std::uint8_t> unchangedPayload{ 0x7fu };
+		if (foundNpc)
+		{
+			invalidNpc.fCollisionRadius =
+				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X;
+			allWorldSpawnsSerializable = allWorldSpawnsSerializable &&
+				!CGameRoom::Build_WorldEntitySpawnedPayload(
+					invalidNpc, unchangedPayload) &&
+				1u == unchangedPayload.size() && 0x7fu == unchangedPayload.front();
+		}
+		tests.Require(
+			allWorldSpawnsSerializable && foundNpc &&
+			0u != expectedNpcCount && expectedNpcCount == serializedNpcCount,
+			"Preflight every Bern world spawn and keep town NPC wire radius zero");
+
+		constexpr SESSION_ID BERN_ENTRY_SESSION = 73001u;
+		auto bernEntrySession = std::make_shared<CClientSession>(
+			BERN_ENTRY_SESSION, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		bernEntrySession->m_isSendRunning.store(true);
+		bernEntryRoom.m_Sessions.insert_or_assign(
+			BERN_ENTRY_SESSION, bernEntrySession);
+		C2S_ENTER_WORLD bernEnter{};
+		bernEnter.eWorldId = WORLD_ID::BERN;
+		bernEnter.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		bernEnter.strNickName = "BernEntryContract";
+		const bool joinedBern = bernEntryRoom.Join(
+			BERN_ENTRY_SESSION, bernEnter);
+		std::size_t worldSpawnFrameCount = 0u;
+		bool sawLocalPlayerSpawn = false;
+		for (const CClientSession::OUTBOUND_FRAME& frame :
+			bernEntrySession->m_OutboundFrames)
+		{
+			if (PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED == frame.ePacketType)
+				++worldSpawnFrameCount;
+			else if (PACKET_TYPE::S2C_PLAYER_SPAWNED == frame.ePacketType)
+				sawLocalPlayerSpawn = true;
+		}
+		const bool completeBernEntryStream = joinedBern && sawLocalPlayerSpawn &&
+			worldSpawnFrameCount == bernEntryRoom.m_WorldEntities.size();
+		bernEntrySession->Request_Close();
+		tests.Require(completeBernEntryStream,
+			"Join Bern with every world spawn and the local player spawn queued");
+	}
 	CServerNavigation groundTargetNavigation;
 	const bool groundTargetNavigationLoaded =
 		groundTargetNavigation.Load("LV_LUT_HEARTRB_ED");
@@ -5184,17 +5278,168 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 			return placement.strPlacementId == "npc.bern.aylara";
 		});
+	const auto bernPlayerEntrySpawn = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "player_1";
+		});
+	const auto bernLeftGuardPatrol = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "npc.bern.25287";
+		});
+	const auto bernRightGuardPatrol = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "npc.bern.25287.2";
+		});
+	std::set<std::string> bernPlazaArchetypeIds;
+	std::set<std::string> bernPlazaActionIds;
+	std::array<std::size_t, 4u> bernPlazaClusterCounts{};
+	std::size_t bernPlazaNpcCount = 0u;
+	std::size_t bernPlazaLookTargetCount = 0u;
+	bool bernPlazaNpcContractValid = true;
+	for (const WORLD_BOOTSTRAP_PLACEMENT& placement : bernPlacements)
+	{
+		if (0u != placement.strPlacementId.rfind("npc.bern.plaza.", 0u))
+			continue;
+		++bernPlazaNpcCount;
+		bool belongsToAuthoredCluster = false;
+		if (placement.fPositionX >= 130.5f &&
+			placement.fPositionX <= 134.5f &&
+			placement.fPositionZ >= -86.f &&
+			placement.fPositionZ <= -81.5f)
+		{
+			++bernPlazaClusterCounts[0u];
+			belongsToAuthoredCluster = true;
+		}
+		else if (placement.fPositionX >= 138.f &&
+			placement.fPositionX <= 141.f &&
+			placement.fPositionZ >= -86.5f &&
+			placement.fPositionZ <= -83.4f)
+		{
+			++bernPlazaClusterCounts[1u];
+			belongsToAuthoredCluster = true;
+		}
+		else if (placement.fPositionX >= 142.f &&
+			placement.fPositionX <= 144.5f &&
+			placement.fPositionZ >= -82.5f &&
+			placement.fPositionZ <= -76.5f)
+		{
+			++bernPlazaClusterCounts[2u];
+			belongsToAuthoredCluster = true;
+		}
+		else if (placement.fPositionX >= 131.5f &&
+			placement.fPositionX <= 134.5f &&
+			placement.fPositionZ >= -75.5f &&
+			placement.fPositionZ <= -73.4f)
+		{
+			++bernPlazaClusterCounts[3u];
+			belongsToAuthoredCluster = true;
+		}
+		bernPlazaNpcContractValid = bernPlazaNpcContractValid &&
+			placement.isEnabled &&
+			WORLD_BOOTSTRAP_KIND::NPC == placement.eKind &&
+			belongsToAuthoredCluster &&
+			placement.bHasNpcBehavior &&
+			NPC_BEHAVIOR_MODE::STATIONARY == placement.NpcBehavior.eMode &&
+			placement.NpcBehavior.Waypoints.empty() &&
+			0.f == placement.NpcBehavior.fWanderRadius &&
+			1u == placement.NpcBehavior.Actions.size() &&
+			600000u == placement.NpcBehavior.Actions.front().iDurationMs &&
+			0u == placement.NpcBehavior.Actions.front().iWaitAfterMs;
+		bernPlazaArchetypeIds.insert(placement.strArchetypeId);
+		if (!placement.NpcBehavior.Actions.empty())
+		{
+			bernPlazaActionIds.insert(
+				placement.NpcBehavior.Actions.front().strActionId);
+		}
+		if (!placement.NpcBehavior.strLookTargetPlacementId.empty())
+			++bernPlazaLookTargetCount;
+	}
+	bool bernGuardPatrolsHeadToPlayerEntry = false;
+	if (bernLeftGuardPatrol != bernPlacements.end() &&
+		bernRightGuardPatrol != bernPlacements.end() &&
+		bernPlayerEntrySpawn != bernPlacements.end() &&
+		bernLeftGuardPatrol->bHasNpcBehavior &&
+		bernRightGuardPatrol->bHasNpcBehavior &&
+		2u == bernLeftGuardPatrol->NpcBehavior.Waypoints.size() &&
+		2u == bernRightGuardPatrol->NpcBehavior.Waypoints.size())
+	{
+		const auto& leftWaypoints =
+			bernLeftGuardPatrol->NpcBehavior.Waypoints;
+		const auto& rightWaypoints =
+			bernRightGuardPatrol->NpcBehavior.Waypoints;
+		const float leftLaneX = leftWaypoints[0u].fPositionX;
+		const float rightLaneX = rightWaypoints[0u].fPositionX;
+		const float corridorMinZ = (std::min)(
+			leftWaypoints[0u].fPositionZ,
+			leftWaypoints[1u].fPositionZ);
+		const float corridorMaxZ = (std::max)(
+			leftWaypoints[0u].fPositionZ,
+			leftWaypoints[1u].fPositionZ);
+		constexpr float requiredNpcLaneClearance =
+			LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X * 2.f + 0.05f;
+		const bool routesAreParallelAndSeparated =
+			std::abs(leftWaypoints[0u].fPositionX -
+				leftWaypoints[1u].fPositionX) < 0.001f &&
+			std::abs(rightWaypoints[0u].fPositionX -
+				rightWaypoints[1u].fPositionX) < 0.001f &&
+			std::abs(leftWaypoints[0u].fPositionZ -
+				rightWaypoints[0u].fPositionZ) < 0.001f &&
+			std::abs(leftWaypoints[1u].fPositionZ -
+				rightWaypoints[1u].fPositionZ) < 0.001f &&
+			std::abs(rightLaneX - leftLaneX) >= requiredNpcLaneClearance &&
+			std::abs(leftWaypoints[1u].fPositionZ -
+				leftWaypoints[0u].fPositionZ) >= 30.f;
+		const auto distanceSquaredFromPlayerEntry =
+			[&bernPlayerEntrySpawn](
+				const WORLD_NPC_BEHAVIOR_WAYPOINT& waypoint)
+			{
+				const float dx = waypoint.fPositionX -
+					bernPlayerEntrySpawn->fPositionX;
+				const float dz = waypoint.fPositionZ -
+					bernPlayerEntrySpawn->fPositionZ;
+				return dx * dx + dz * dz;
+			};
+		const bool routesHeadTowardPlayerEntry =
+			leftWaypoints[1u].fPositionZ > leftWaypoints[0u].fPositionZ &&
+			rightWaypoints[1u].fPositionZ > rightWaypoints[0u].fPositionZ &&
+			distanceSquaredFromPlayerEntry(leftWaypoints[1u]) <
+				distanceSquaredFromPlayerEntry(leftWaypoints[0u]) &&
+			distanceSquaredFromPlayerEntry(rightWaypoints[1u]) <
+				distanceSquaredFromPlayerEntry(rightWaypoints[0u]);
+		bernGuardPatrolsHeadToPlayerEntry =
+			routesAreParallelAndSeparated && routesHeadTowardPlayerEntry &&
+			std::all_of(
+				bernPlacements.begin(), bernPlacements.end(),
+				[leftLaneX, rightLaneX, corridorMinZ, corridorMaxZ,
+				 requiredNpcLaneClearance](
+					const WORLD_BOOTSTRAP_PLACEMENT& placement)
+				{
+					if (WORLD_BOOTSTRAP_KIND::NPC != placement.eKind ||
+						!placement.isEnabled ||
+						placement.strPlacementId == "npc.bern.25287" ||
+						placement.strPlacementId == "npc.bern.25287.2" ||
+						placement.fPositionZ < corridorMinZ ||
+						placement.fPositionZ > corridorMaxZ)
+					{
+						return true;
+					}
+					return (std::min)(
+						std::abs(placement.fPositionX - rightLaneX),
+						std::abs(placement.fPositionX - leftLaneX)) >=
+						requiredNpcLaneClearance;
+				});
+	}
 	const auto bernValtanTrigger = std::find_if(
 		bernPlacements.begin(), bernPlacements.end(),
 		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
 		{
 			return placement.strPlacementId == "valtan";
-		});
-	const auto bernEntryTrigger = std::find_if(
-		bernPlacements.begin(), bernPlacements.end(),
-		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
-		{
-			return placement.strPlacementId == "trigger.bern.to-valtan";
 		});
 	const auto bernCollision = std::find_if(
 		bernPlacements.begin(), bernPlacements.end(),
@@ -5204,12 +5449,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"collision.bern.editor-proof";
 		});
 	tests.Require(
-		bernLoaded && bernPlacements.size() == 9u &&
+		bernLoaded && bernPlacements.size() == 35u &&
 		4u == static_cast<size_t>(std::count_if(
 			bernPlacements.begin(), bernPlacements.end(),
 			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
 			{
 				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+					placement.isEnabled;
+			})) &&
+		29u == static_cast<size_t>(std::count_if(
+			bernPlacements.begin(), bernPlacements.end(),
+			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+			{
+				return WORLD_BOOTSTRAP_KIND::NPC == placement.eKind &&
 					placement.isEnabled;
 			})) &&
 		bernNpc != bernPlacements.end() &&
@@ -5219,17 +5471,38 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		WORLD_BOOTSTRAP_KIND::NPC == bernAylara->eKind &&
 		bernAylara->strArchetypeId == "NPC_AYLARA" &&
 		bernAylara->isEnabled &&
+		bernPlayerEntrySpawn != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == bernPlayerEntrySpawn->eKind &&
+		bernLeftGuardPatrol != bernPlacements.end() &&
+		bernLeftGuardPatrol->bHasNpcBehavior &&
+		NPC_BEHAVIOR_MODE::PATROL == bernLeftGuardPatrol->NpcBehavior.eMode &&
+		NPC_ROUTE_MODE::PING_PONG ==
+			bernLeftGuardPatrol->NpcBehavior.eRouteMode &&
+		2u == bernLeftGuardPatrol->NpcBehavior.Waypoints.size() &&
+		std::abs(bernLeftGuardPatrol->NpcBehavior.fMoveSpeed - 1.5f) < 0.001f &&
+		bernRightGuardPatrol != bernPlacements.end() &&
+		bernRightGuardPatrol->bHasNpcBehavior &&
+		NPC_BEHAVIOR_MODE::PATROL == bernRightGuardPatrol->NpcBehavior.eMode &&
+		NPC_ROUTE_MODE::PING_PONG ==
+			bernRightGuardPatrol->NpcBehavior.eRouteMode &&
+		2u == bernRightGuardPatrol->NpcBehavior.Waypoints.size() &&
+		std::abs(bernRightGuardPatrol->NpcBehavior.fMoveSpeed - 1.5f) < 0.001f &&
+		bernGuardPatrolsHeadToPlayerEntry &&
+		20u == bernPlazaNpcCount && bernPlazaNpcContractValid &&
+		8u == bernPlazaClusterCounts[0u] &&
+		3u == bernPlazaClusterCounts[1u] &&
+		5u == bernPlazaClusterCounts[2u] &&
+		4u == bernPlazaClusterCounts[3u] &&
+		20u == bernPlazaArchetypeIds.size() &&
+		20u == bernPlazaActionIds.size() &&
+		19u == bernPlazaLookTargetCount &&
 		bernValtanTrigger != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == bernValtanTrigger->eKind &&
-		bernValtanTrigger->isEnabled &&
+		!bernValtanTrigger->isEnabled &&
 		1u == bernValtanTrigger->TriggerActions.size() &&
-		bernEntryTrigger != bernPlacements.end() &&
-		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == bernEntryTrigger->eKind &&
-		bernEntryTrigger->isEnabled &&
-		1u == bernEntryTrigger->TriggerActions.size() &&
 		bernCollision != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind,
-		"Load Bern spawns, both NPCs, both triggers, and collision box");
+		"Load Bern spawns, four irregular stationary plaza crowds, two guard ping-pong patrols toward the player entry, disabled legacy trigger, and collision box");
 	CServerCollisionSystem bernCollisionSystem;
 	std::string bernCollisionStatus;
 	tests.Require(
@@ -5359,38 +5632,57 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
 				placement.isEnabled;
 		});
-	std::vector<SERVER_NAV_POINT> bernEntryPath;
-	const bool bernEntryReachable =
-		bernFirstSpawn != bernPlacements.end() &&
-		bernEntryTrigger != bernPlacements.end() &&
-		bernNavigation.Find_Path(
-			bernFirstSpawn->fPositionX,
-			bernFirstSpawn->fPositionZ,
-			bernEntryTrigger->fPositionX,
-			bernEntryTrigger->fPositionZ,
-			bernEntryPath) &&
-		!bernEntryPath.empty();
-	bool bernEntryPathEndsInsideTrigger = false;
-	if (bernEntryReachable)
+	const auto hasReachableGuideApproach =
+		[&bernNavigation, &bernFirstSpawn, &bernPlacements](
+			const WORLD_BOOTSTRAP_PLACEMENT& guide)
 	{
-		const SERVER_NAV_POINT& endpoint = bernEntryPath.back();
-		bernEntryPathEndsInsideTrigger =
-			std::abs(endpoint.x - bernEntryTrigger->fPositionX) <=
-				bernEntryTrigger->fHalfExtentX +
-				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X &&
-			std::abs(endpoint.z - bernEntryTrigger->fPositionZ) <=
-				bernEntryTrigger->fHalfExtentZ +
-				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Z &&
-			std::abs(
-				endpoint.y +
-					LostArk::Shared::WorldCollision::PLAYER_CENTER_OFFSET_Y -
-				bernEntryTrigger->fPositionY) <=
-				bernEntryTrigger->fHalfExtentY +
-				LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Y;
-	}
+		if (bernFirstSpawn == bernPlacements.end())
+			return false;
+		constexpr float INTERACTION_RADIUS = 3.f;
+		constexpr float CANDIDATE_STEP = 0.5f;
+		constexpr int CANDIDATE_RADIUS_STEPS = 6;
+		for (int zStep = -CANDIDATE_RADIUS_STEPS;
+			zStep <= CANDIDATE_RADIUS_STEPS; ++zStep)
+		{
+			for (int xStep = -CANDIDATE_RADIUS_STEPS;
+				xStep <= CANDIDATE_RADIUS_STEPS; ++xStep)
+			{
+				const float offsetX = static_cast<float>(xStep) * CANDIDATE_STEP;
+				const float offsetZ = static_cast<float>(zStep) * CANDIDATE_STEP;
+				if (offsetX * offsetX + offsetZ * offsetZ >
+					INTERACTION_RADIUS * INTERACTION_RADIUS)
+				{
+					continue;
+				}
+				std::vector<SERVER_NAV_POINT> path;
+				if (!bernNavigation.Find_Path(
+					bernFirstSpawn->fPositionX,
+					bernFirstSpawn->fPositionZ,
+					guide.fPositionX + offsetX,
+					guide.fPositionZ + offsetZ,
+					path) || path.empty())
+				{
+					continue;
+				}
+				const SERVER_NAV_POINT& endpoint = path.back();
+				if (std::hypot(
+					endpoint.x - guide.fPositionX,
+					endpoint.z - guide.fPositionZ) <= INTERACTION_RADIUS)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	};
+	const bool bernGuideReachable =
+		(bernNpc != bernPlacements.end() &&
+			hasReachableGuideApproach(*bernNpc)) ||
+		(bernAylara != bernPlacements.end() &&
+			hasReachableGuideApproach(*bernAylara));
 	tests.Require(
-		bernEntryReachable && bernEntryPathEndsInsideTrigger,
-		"Reach the Bern-to-Valtan trigger through authoritative navigation");
+		bernGuideReachable,
+		"Reach the Bern Valtan-entry guide NPC through authoritative navigation");
 	bool bernSpawnsOnNavigation = bernLoaded;
 	for (const WORLD_BOOTSTRAP_PLACEMENT& spawn : bernPlacements)
 	{
@@ -8479,18 +8771,40 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const fs::path bootstrapPath =
 			triggerRoot / L"World" / L"VALTAN_ARENA.worldbootstrap";
 		const auto writeTriggerBootstrap =
-			[&bootstrapPath](const float durationSeconds)
+			[&bootstrapPath](
+				const float durationSeconds,
+				const std::uint32_t npcActionDurationMs = 100u,
+				const float npcLookYawDegrees = 90.f,
+				const std::uint32_t npcActionWeight = 1u,
+				const bool referenceDisabledNpc = false,
+				const char* npcActionId = "npc.ambient.look")
 			{
 				std::ofstream bootstrap(bootstrapPath, std::ios::binary);
 				bootstrap <<
-					"LOSTARK_WORLD_BOOTSTRAP\t6\tVALTAN_ARENA"
-					"\tLV_LUT_HEARTRB_ED\t3\t3\n"
+					"LOSTARK_WORLD_BOOTSTRAP\t7\tVALTAN_ARENA"
+					"\tLV_LUT_HEARTRB_ED\t3\t" <<
+					(referenceDisabledNpc ? 5 : 4) << "\n"
 					"player.spawn.contract\tplayerSpawn\t-\t-\t0\t0\t0\t0\t1\n"
 					"trigger.contract.jump\ttriggerBox\t-\t-\t0\t0\t0\t0\t1"
 					"\t2\t2\t2\t0\t1\tmovePlayer\t5\t10\t0\t0\t"
 					<< durationSeconds << "\t13\n"
 					"collision.contract.wall\tcollisionBox\t-\t-\t4\t1\t0\t0\t1"
-					"\t0.5\t1\t2\n";
+					"\t0.5\t1\t2\n"
+					"npc.contract.ambient\tnpc\tNPC_BEDA\t-\t1\t0\t1\t0\t1"
+					"\t1\tpatrol\tloop\tsequence\t1\t0\t7\t0\t0\t0\t" <<
+					(referenceDisabledNpc ? "npc.contract.disabled-target" : "-") <<
+					"\t2"
+					"\tnpc.contract.wp.0\t1\t0\t1\t0\t1\t" <<
+					npcLookYawDegrees <<
+					"\tnpc.contract.wp.1\t2\t0\t1\t0\t0\t0"
+					"\t1\t" << npcActionId << "\t" << npcActionDurationMs <<
+					"\t0\t" << npcActionWeight << "\n";
+				if (referenceDisabledNpc)
+				{
+					bootstrap <<
+						"npc.contract.disabled-target\tnpc\tNPC_BEDA\t-"
+						"\t3\t0\t1\t0\t0\t0\n";
+				}
 			};
 		writeTriggerBootstrap(1.f);
 
@@ -8505,24 +8819,552 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			WORLD_ID::VALTAN_ARENA);
 		tests.Require(
 			loadedTriggerBootstrap &&
-			3u == triggerBootstrap.Get_Placements().size() &&
+			4u == triggerBootstrap.Get_Placements().size() &&
 			WORLD_BOOTSTRAP_KIND::TRIGGER_BOX ==
 				triggerBootstrap.Get_Placements()[1].eKind &&
 			WORLD_BOOTSTRAP_KIND::COLLISION_BOX ==
 				triggerBootstrap.Get_Placements()[2].eKind &&
-			1u == triggerBootstrap.Get_Placements()[1].TriggerActions.size(),
-			"Parse trigger and collision box from world bootstrap v6");
+			1u == triggerBootstrap.Get_Placements()[1].TriggerActions.size() &&
+			triggerBootstrap.Get_Placements()[3].bHasNpcBehavior &&
+			2u == triggerBootstrap.Get_Placements()[3].NpcBehavior.Waypoints.size() &&
+			1u == triggerBootstrap.Get_Placements()[3].NpcBehavior.Actions.size(),
+			"Parse trigger, collision and logical NPC behavior from world bootstrap v7");
+
+		writeTriggerBootstrap(1.f, 0u);
+		tests.Require(
+			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			4u == triggerBootstrap.Get_Placements().size(),
+			"Reject a zero-duration NPC action without replacing committed world");
+
+		writeTriggerBootstrap(1.f, 100u, 360.01f);
+		tests.Require(
+			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			4u == triggerBootstrap.Get_Placements().size(),
+			"Reject an NPC waypoint look yaw outside minus 360 to 360 degrees");
+
+		writeTriggerBootstrap(1.f, 100u, 90.f, 100001u);
+		tests.Require(
+			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			4u == triggerBootstrap.Get_Placements().size(),
+			"Reject an NPC action weight above the 100000 contract maximum");
+
+		writeTriggerBootstrap(1.f, 100u, 90.f, 1u, true);
+		tests.Require(
+			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			4u == triggerBootstrap.Get_Placements().size(),
+			"Reject a logical NPC look target that is disabled");
+
+		writeTriggerBootstrap(
+			1.f, 100u, 90.f, 1u, false,
+			CNpcBehaviorRuntime::IDLE_ACTION_ID);
+		tests.Require(
+			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			4u == triggerBootstrap.Get_Placements().size(),
+			"Reject authored npc.idle because the Server runtime owns that action ID");
+
+		writeTriggerBootstrap(
+			1.f, 100u, 90.f, 1u, false,
+			CNpcBehaviorRuntime::WALK_ACTION_ID);
+		tests.Require(
+			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			4u == triggerBootstrap.Get_Placements().size(),
+			"Reject authored npc.move.walk because the Server runtime owns that action ID");
 
 		writeTriggerBootstrap(-1.f);
 		tests.Require(
 			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
-			3u == triggerBootstrap.Get_Placements().size(),
+			4u == triggerBootstrap.Get_Placements().size(),
 			"Reject invalid trigger bootstrap without replacing committed world");
 		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 			0u == previousLength || previousLength >= std::size(previousRoot) ?
 				nullptr : previousRoot);
 		std::error_code cleanupError;
 		fs::remove_all(triggerRoot, cleanupError);
+	}
+
+	{
+		CServerNavigation npcNavigation;
+		SERVER_NAV_POINT patrolStart{};
+		SERVER_NAV_POINT patrolEnd{};
+		std::vector<SERVER_NAV_POINT> candidatePath;
+		bool foundPatrolSegment =
+			npcNavigation.Load("LV_BER_BERNCASTLE") &&
+			npcNavigation.Project_Point(
+				137.586334f, -22.4640217f, patrolStart);
+		if (foundPatrolSegment)
+		{
+			foundPatrolSegment = false;
+			for (int radius = 2; radius <= 20 && !foundPatrolSegment; ++radius)
+			{
+				for (int dz = -radius; dz <= radius && !foundPatrolSegment; ++dz)
+				{
+					for (int dx = -radius; dx <= radius; ++dx)
+					{
+						if (std::abs(dx) != radius && std::abs(dz) != radius)
+							continue;
+						SERVER_NAV_POINT projected{};
+						if (!npcNavigation.Project_Point(
+							patrolStart.x + static_cast<float>(dx) * 0.5f,
+							patrolStart.z + static_cast<float>(dz) * 0.5f,
+							projected))
+						{
+							continue;
+						}
+						const float distance = std::hypot(
+							projected.x - patrolStart.x,
+							projected.z - patrolStart.z);
+						if (distance >= 1.f && npcNavigation.Find_Path(
+							patrolStart.x, patrolStart.z,
+							projected.x, projected.z, candidatePath))
+						{
+							patrolEnd = projected;
+							foundPatrolSegment = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		tests.Require(
+			foundPatrolSegment,
+			"Find a reachable Bern navigation segment for NPC behavior contracts");
+
+		WORLD_BOOTSTRAP_PLACEMENT patrol{};
+		patrol.strPlacementId = "npc.contract.patrol";
+		patrol.strArchetypeId = "NPC_AYLARA";
+		patrol.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+		patrol.isEnabled = true;
+		patrol.bHasNpcBehavior = true;
+		patrol.fPositionX = patrolStart.x;
+		patrol.fPositionY = patrolStart.y;
+		patrol.fPositionZ = patrolStart.z;
+		patrol.NpcBehavior.eMode = NPC_BEHAVIOR_MODE::PATROL;
+		patrol.NpcBehavior.eRouteMode = NPC_ROUTE_MODE::ONCE;
+		patrol.NpcBehavior.eActionSelection = NPC_ACTION_SELECTION::SEQUENCE;
+		patrol.NpcBehavior.fMoveSpeed = 4.f;
+		patrol.NpcBehavior.iRandomSeed = 17u;
+		patrol.NpcBehavior.Waypoints = {
+			{ "npc.contract.wp.0", patrolStart.x, patrolStart.y,
+				patrolStart.z, 0u, false, 0.f },
+			{ "npc.contract.wp.1", patrolEnd.x, patrolEnd.y,
+				patrolEnd.z, 0u, true, 90.f }
+		};
+
+		CNpcBehaviorRuntime npcRuntime;
+		std::string npcStatus;
+		CServerCollisionSystem npcCollision;
+		const bool npcCollisionInitialized =
+			npcCollision.Initialize({}, npcStatus);
+		std::vector<WORLD_BOOTSTRAP_PLACEMENT> patrolPlacements{ patrol };
+		SERVER_WORLD_ENTITY patrolEntity{};
+		patrolEntity.strPlacementId = patrol.strPlacementId;
+		patrolEntity.strArchetypeId = patrol.strArchetypeId;
+		patrolEntity.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+		patrolEntity.fPositionX = patrol.fPositionX;
+		patrolEntity.fPositionY = patrol.fPositionY;
+		patrolEntity.fPositionZ = patrol.fPositionZ;
+		bool patrolAdvanced = foundPatrolSegment && npcCollisionInitialized &&
+			npcRuntime.Validate_Admission(
+				patrolPlacements, npcNavigation, npcStatus) &&
+			npcRuntime.Initialize(
+				patrol, npcNavigation, 1u, patrolEntity, npcStatus);
+		bool sawPatrolWalk = false;
+		for (std::uint32_t tick = 2u;
+			patrolAdvanced && tick < 2000u &&
+			patrolEntity.NpcBehavior.ePhase !=
+				SERVER_NPC_BEHAVIOR_PHASE::COMPLETE;
+			++tick)
+		{
+			patrolAdvanced = npcRuntime.Update(
+				patrol, nullptr, npcNavigation, npcCollision, 1.f / 30.f,
+				tick, patrolEntity, npcStatus);
+			sawPatrolWalk = sawPatrolWalk ||
+				patrolEntity.strActionId == CNpcBehaviorRuntime::WALK_ACTION_ID;
+		}
+		tests.Require(
+			patrolAdvanced && sawPatrolWalk &&
+			patrolEntity.NpcBehavior.ePhase ==
+				SERVER_NPC_BEHAVIOR_PHASE::COMPLETE &&
+			std::hypot(
+				patrolEntity.fPositionX - patrolEnd.x,
+				patrolEntity.fPositionZ - patrolEnd.z) < 0.01f &&
+			std::abs(patrolEntity.fYawDegrees - 90.f) < 0.01f,
+			"Advance an authored once patrol through walk, arrival yaw and completion");
+
+		WORLD_BOOTSTRAP_PLACEMENT loopPatrol = patrol;
+		loopPatrol.strPlacementId = "npc.contract.loop";
+		loopPatrol.NpcBehavior.eRouteMode = NPC_ROUTE_MODE::LOOP;
+		loopPatrol.NpcBehavior.fMoveSpeed = 12.f;
+		loopPatrol.NpcBehavior.Waypoints[0].iWaitMs = 100u;
+		loopPatrol.NpcBehavior.Waypoints[1].iWaitMs = 0u;
+		SERVER_WORLD_ENTITY loopEntity{};
+		loopEntity.iNetEntityId = 7101u;
+		loopEntity.strPlacementId = loopPatrol.strPlacementId;
+		loopEntity.strArchetypeId = loopPatrol.strArchetypeId;
+		loopEntity.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+		loopEntity.fPositionX = loopPatrol.fPositionX;
+		loopEntity.fPositionY = loopPatrol.fPositionY;
+		loopEntity.fPositionZ = loopPatrol.fPositionZ;
+		bool loopAdvanced = npcRuntime.Initialize(
+			loopPatrol, npcNavigation, 1u, loopEntity, npcStatus);
+		std::vector<std::size_t> loopArrivalNextIndices;
+		std::uint32_t firstLoopArrivalTick = 0u;
+		std::uint32_t firstLoopWaitUntilTick = 0u;
+		bool walkedBeforeWaitDeadline = false;
+		bool walkedOnWaitDeadline = false;
+		for (std::uint32_t tick = 2u;
+			loopAdvanced && tick < 2000u &&
+			loopArrivalNextIndices.size() < 3u; ++tick)
+		{
+			loopAdvanced = npcRuntime.Update(
+				loopPatrol, nullptr, npcNavigation, npcCollision,
+				1.f / 30.f, tick, loopEntity, npcStatus);
+			if (0u != firstLoopArrivalTick &&
+				tick < firstLoopWaitUntilTick &&
+				loopEntity.strActionId == CNpcBehaviorRuntime::WALK_ACTION_ID)
+			{
+				walkedBeforeWaitDeadline = true;
+			}
+			if (0u != firstLoopArrivalTick &&
+				tick == firstLoopWaitUntilTick &&
+				loopEntity.strActionId == CNpcBehaviorRuntime::WALK_ACTION_ID)
+			{
+				walkedOnWaitDeadline = true;
+			}
+			if (loopEntity.NpcBehavior.ePhase ==
+					SERVER_NPC_BEHAVIOR_PHASE::IDLE_WAIT &&
+				loopEntity.strActionId == CNpcBehaviorRuntime::IDLE_ACTION_ID &&
+				loopEntity.iActionStartTick == tick)
+			{
+				loopArrivalNextIndices.push_back(
+					loopEntity.NpcBehavior.iWaypointIndex);
+				if (0u == firstLoopArrivalTick)
+				{
+					firstLoopArrivalTick = tick;
+					firstLoopWaitUntilTick =
+						loopEntity.NpcBehavior.iWaitUntilTick;
+				}
+			}
+		}
+		tests.Require(
+			loopAdvanced && loopArrivalNextIndices.size() == 3u &&
+			loopArrivalNextIndices[0] == 1u &&
+			loopArrivalNextIndices[1] == 0u &&
+			loopArrivalNextIndices[2] == 1u &&
+			firstLoopWaitUntilTick == firstLoopArrivalTick + 3u &&
+			!walkedBeforeWaitDeadline && walkedOnWaitDeadline,
+			"Loop patrol wraps waypoint indices and honors a 100ms wait for exactly three 30Hz ticks");
+
+		WORLD_BOOTSTRAP_PLACEMENT pingPongPatrol = loopPatrol;
+		pingPongPatrol.strPlacementId = "npc.contract.ping-pong";
+		pingPongPatrol.NpcBehavior.eRouteMode = NPC_ROUTE_MODE::PING_PONG;
+		pingPongPatrol.NpcBehavior.Waypoints = {
+			{ "npc.contract.ping.0", patrolStart.x, patrolStart.y,
+				patrolStart.z, 0u, false, 0.f },
+			{ "npc.contract.ping.1", patrolEnd.x, patrolEnd.y,
+				patrolEnd.z, 0u, false, 0.f },
+			{ "npc.contract.ping.2", patrolStart.x, patrolStart.y,
+				patrolStart.z, 0u, false, 0.f }
+		};
+		SERVER_WORLD_ENTITY pingPongEntity{};
+		pingPongEntity.iNetEntityId = 7102u;
+		pingPongEntity.strPlacementId = pingPongPatrol.strPlacementId;
+		pingPongEntity.strArchetypeId = pingPongPatrol.strArchetypeId;
+		pingPongEntity.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+		pingPongEntity.fPositionX = pingPongPatrol.fPositionX;
+		pingPongEntity.fPositionY = pingPongPatrol.fPositionY;
+		pingPongEntity.fPositionZ = pingPongPatrol.fPositionZ;
+		bool pingPongAdvanced = npcRuntime.Initialize(
+			pingPongPatrol, npcNavigation, 1u, pingPongEntity, npcStatus);
+		std::vector<std::size_t> pingPongNextIndices;
+		for (std::uint32_t tick = 2u;
+			pingPongAdvanced && tick < 3000u &&
+			pingPongNextIndices.size() < 4u; ++tick)
+		{
+			pingPongAdvanced = npcRuntime.Update(
+				pingPongPatrol, nullptr, npcNavigation, npcCollision,
+				1.f / 30.f, tick, pingPongEntity, npcStatus);
+			if (pingPongEntity.NpcBehavior.ePhase ==
+					SERVER_NPC_BEHAVIOR_PHASE::IDLE_WAIT &&
+				pingPongEntity.strActionId == CNpcBehaviorRuntime::IDLE_ACTION_ID &&
+				pingPongEntity.iActionStartTick == tick)
+			{
+				pingPongNextIndices.push_back(
+					pingPongEntity.NpcBehavior.iWaypointIndex);
+			}
+		}
+		tests.Require(
+			pingPongAdvanced && pingPongNextIndices.size() == 4u &&
+			pingPongNextIndices[0] == 1u &&
+			pingPongNextIndices[1] == 2u &&
+			pingPongNextIndices[2] == 1u &&
+			pingPongNextIndices[3] == 0u &&
+			!pingPongEntity.NpcBehavior.bRouteForward,
+			"Ping-pong patrol reverses at the authored end instead of wrapping");
+
+		using namespace LostArk::Shared::WorldCollision;
+		const float segmentMiddleX = (patrolStart.x + patrolEnd.x) * 0.5f;
+		const float segmentMiddleY = (patrolStart.y + patrolEnd.y) * 0.5f;
+		const float segmentMiddleZ = (patrolStart.z + patrolEnd.z) * 0.5f;
+		CServerCollisionSystem npcBodyCollision;
+		const bool bodyCollisionInitialized =
+			npcBodyCollision.Initialize({}, npcStatus);
+		npcBodyCollision.Set_BlockingBodies({ SERVER_BLOCKING_BODY{
+			segmentMiddleX, segmentMiddleZ, PLAYER_HALF_EXTENT_X,
+			segmentMiddleY + PLAYER_CENTER_OFFSET_Y,
+			PLAYER_HALF_EXTENT_Y, 7202u } });
+		float bodyResolvedX = patrolStart.x;
+		float bodyResolvedY = patrolStart.y;
+		float bodyResolvedZ = patrolStart.z;
+		bool bodyWasBlocked = false;
+		const bool sameFloorBodyResolved = bodyCollisionInitialized &&
+			npcBodyCollision.Resolve_CircleMove(
+				patrolStart.x, patrolStart.y, patrolStart.z,
+				patrolEnd.x, patrolEnd.y, patrolEnd.z,
+				PLAYER_HALF_EXTENT_X, PLAYER_HALF_EXTENT_Y,
+				PLAYER_CENTER_OFFSET_Y,
+				bodyResolvedX, bodyResolvedY, bodyResolvedZ,
+				bodyWasBlocked, 7201u);
+		tests.Require(
+			sameFloorBodyResolved &&
+			std::hypot(
+				bodyResolvedX - segmentMiddleX,
+				bodyResolvedZ - segmentMiddleZ) >=
+				PLAYER_HALF_EXTENT_X * 2.f - 0.002f,
+			"Resolve a same-floor NPC circle without entering another living NPC body");
+
+		npcBodyCollision.Set_BlockingBodies({ SERVER_BLOCKING_BODY{
+			segmentMiddleX, segmentMiddleZ, PLAYER_HALF_EXTENT_X,
+			segmentMiddleY + PLAYER_CENTER_OFFSET_Y + 20.f,
+			PLAYER_HALF_EXTENT_Y, 7202u } });
+		bodyResolvedX = patrolStart.x;
+		bodyResolvedY = patrolStart.y;
+		bodyResolvedZ = patrolStart.z;
+		bodyWasBlocked = false;
+		const bool otherFloorIgnored = npcBodyCollision.Resolve_CircleMove(
+			patrolStart.x, patrolStart.y, patrolStart.z,
+			patrolEnd.x, patrolEnd.y, patrolEnd.z,
+			PLAYER_HALF_EXTENT_X, PLAYER_HALF_EXTENT_Y,
+			PLAYER_CENTER_OFFSET_Y,
+			bodyResolvedX, bodyResolvedY, bodyResolvedZ,
+			bodyWasBlocked, 7201u) &&
+			!bodyWasBlocked &&
+			std::hypot(
+				bodyResolvedX - patrolEnd.x,
+				bodyResolvedZ - patrolEnd.z) < 0.001f;
+		tests.Require(
+			otherFloorIgnored,
+			"Do not collide NPC bodies whose authoritative vertical spans are on different floors");
+
+		npcBodyCollision.Set_BlockingBodies({ SERVER_BLOCKING_BODY{
+			segmentMiddleX, segmentMiddleZ, PLAYER_HALF_EXTENT_X,
+			segmentMiddleY + PLAYER_CENTER_OFFSET_Y,
+			PLAYER_HALF_EXTENT_Y, 7201u } });
+		bodyResolvedX = patrolStart.x;
+		bodyResolvedY = patrolStart.y;
+		bodyResolvedZ = patrolStart.z;
+		bodyWasBlocked = false;
+		tests.Require(
+			npcBodyCollision.Resolve_CircleMove(
+				patrolStart.x, patrolStart.y, patrolStart.z,
+				patrolEnd.x, patrolEnd.y, patrolEnd.z,
+				PLAYER_HALF_EXTENT_X, PLAYER_HALF_EXTENT_Y,
+				PLAYER_CENTER_OFFSET_Y,
+				bodyResolvedX, bodyResolvedY, bodyResolvedZ,
+				bodyWasBlocked, 7201u) &&
+			!bodyWasBlocked &&
+			std::hypot(
+				bodyResolvedX - patrolEnd.x,
+				bodyResolvedZ - patrolEnd.z) < 0.001f,
+			"Exclude the moving NPC from dynamic bodies by stable NetEntityId");
+
+		WORLD_BOOTSTRAP_PLACEMENT npcWall{};
+		npcWall.strPlacementId = "collision.contract.npc-wall";
+		npcWall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
+		npcWall.isEnabled = true;
+		npcWall.fPositionX = segmentMiddleX;
+		npcWall.fPositionY = segmentMiddleY + PLAYER_CENTER_OFFSET_Y;
+		npcWall.fPositionZ = segmentMiddleZ;
+		npcWall.fHalfExtentX = 0.1f;
+		npcWall.fHalfExtentY = 2.f;
+		npcWall.fHalfExtentZ = 0.1f;
+		CServerCollisionSystem npcWallCollision;
+		const bool wallCollisionInitialized =
+			npcWallCollision.Initialize({ npcWall }, npcStatus);
+		float wallResolvedX = patrolStart.x;
+		float wallResolvedY = patrolStart.y;
+		float wallResolvedZ = patrolStart.z;
+		bool wallWasBlocked = false;
+		tests.Require(
+			wallCollisionInitialized &&
+			npcWallCollision.Resolve_CircleMove(
+				patrolStart.x, patrolStart.y, patrolStart.z,
+				patrolEnd.x, patrolEnd.y, patrolEnd.z,
+				PLAYER_HALF_EXTENT_X, PLAYER_HALF_EXTENT_Y,
+				PLAYER_CENTER_OFFSET_Y,
+				wallResolvedX, wallResolvedY, wallResolvedZ,
+				wallWasBlocked, 7201u) && wallWasBlocked &&
+			std::hypot(
+				wallResolvedX - patrolEnd.x,
+				wallResolvedZ - patrolEnd.z) > 0.01f,
+			"Stop an NPC circle at an authoritative collisionBox instead of crossing it");
+
+		WORLD_BOOTSTRAP_PLACEMENT unreachable = patrol;
+		unreachable.strPlacementId = "npc.contract.unreachable";
+		unreachable.NpcBehavior.Waypoints[1].fPositionX = 100000.f;
+		tests.Require(
+			!npcRuntime.Validate_Admission(
+				std::vector<WORLD_BOOTSTRAP_PLACEMENT>{ unreachable },
+				npcNavigation, npcStatus),
+			"Reject an NPC patrol waypoint outside authoritative navigation");
+
+		WORLD_BOOTSTRAP_PLACEMENT ambient = patrol;
+		ambient.strPlacementId = "npc.contract.ambient-runtime";
+		ambient.NpcBehavior.eMode = NPC_BEHAVIOR_MODE::STATIONARY;
+		ambient.NpcBehavior.eRouteMode = NPC_ROUTE_MODE::LOOP;
+		ambient.NpcBehavior.Waypoints.clear();
+		ambient.NpcBehavior.Actions = {
+			{ "npc.ambient.look", 34u, 0u, 1u },
+			{ "npc.ambient.greet", 34u, 0u, 1u }
+		};
+		CServerNavigation unloadedNpcNavigation;
+		tests.Require(
+			npcRuntime.Validate_Admission(
+				std::vector<WORLD_BOOTSTRAP_PLACEMENT>{ ambient },
+				unloadedNpcNavigation, npcStatus) &&
+			!npcRuntime.Validate_Admission(
+				std::vector<WORLD_BOOTSTRAP_PLACEMENT>{ patrol },
+				unloadedNpcNavigation, npcStatus),
+			"Allow stationary ambient NPCs without navigation but reject moving behaviors");
+		SERVER_WORLD_ENTITY ambientEntity{};
+		ambientEntity.strPlacementId = ambient.strPlacementId;
+		ambientEntity.strArchetypeId = ambient.strArchetypeId;
+		ambientEntity.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+		ambientEntity.fPositionX = ambient.fPositionX;
+		ambientEntity.fPositionY = ambient.fPositionY;
+		ambientEntity.fPositionZ = ambient.fPositionZ;
+		bool ambientAdvanced = npcRuntime.Initialize(
+			ambient, npcNavigation, 1u, ambientEntity, npcStatus);
+		bool sawLook = false;
+		bool sawGreet = false;
+		std::uint32_t firstLookTick = 0u;
+		std::uint32_t repeatedLookTick = 0u;
+		for (std::uint32_t tick = 2u; ambientAdvanced && tick < 40u; ++tick)
+		{
+			ambientAdvanced = npcRuntime.Update(
+				ambient, nullptr, npcNavigation, npcCollision, 1.f / 30.f,
+				tick, ambientEntity, npcStatus);
+			if (ambientEntity.strActionId == "npc.ambient.look")
+			{
+				sawLook = true;
+				if (0u == firstLookTick)
+					firstLookTick = ambientEntity.iActionStartTick;
+				else if (firstLookTick != ambientEntity.iActionStartTick)
+					repeatedLookTick = ambientEntity.iActionStartTick;
+			}
+			if (ambientEntity.strActionId == "npc.ambient.greet")
+				sawGreet = true;
+		}
+		tests.Require(
+			ambientAdvanced && sawLook && sawGreet &&
+			0u != repeatedLookTick,
+			"Sequence ambient actions and restart the same clip through actionStartTick edges");
+
+		WORLD_BOOTSTRAP_PLACEMENT wander = ambient;
+		wander.strPlacementId = "npc.contract.wander";
+		wander.NpcBehavior.eMode = NPC_BEHAVIOR_MODE::WANDER;
+		wander.NpcBehavior.eActionSelection = NPC_ACTION_SELECTION::WEIGHTED;
+		wander.NpcBehavior.fWanderRadius = 3.f;
+		wander.NpcBehavior.iRandomSeed = 991u;
+		wander.NpcBehavior.Actions.clear();
+		std::vector<SERVER_NAV_POINT> boundedWanderPath;
+		const bool foundBoundedWanderPath =
+			npcNavigation.Find_PathToReachablePointWithinRadius(
+				patrolStart.x, patrolStart.z,
+				patrolStart.x, patrolStart.z, 3.f, 0.05f,
+				boundedWanderPath);
+		const bool boundedWanderPathStayedInside =
+			foundBoundedWanderPath && !boundedWanderPath.empty() &&
+			std::all_of(
+				boundedWanderPath.begin(), boundedWanderPath.end(),
+				[&patrolStart](const SERVER_NAV_POINT& point)
+				{
+					return std::hypot(
+						point.x - patrolStart.x,
+						point.z - patrolStart.z) <= 3.001f;
+				});
+		tests.Require(
+			boundedWanderPathStayedInside,
+			"Find a deterministic nontrivial wander path whose every cell stays inside the authored radius");
+		SERVER_WORLD_ENTITY wanderA{};
+		wanderA.strPlacementId = wander.strPlacementId;
+		wanderA.strArchetypeId = wander.strArchetypeId;
+		wanderA.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+		wanderA.fPositionX = wander.fPositionX;
+		wanderA.fPositionY = wander.fPositionY;
+		wanderA.fPositionZ = wander.fPositionZ;
+		SERVER_WORLD_ENTITY wanderB = wanderA;
+		bool deterministicWander = npcRuntime.Initialize(
+			wander, npcNavigation, 1u, wanderA, npcStatus) &&
+			npcRuntime.Initialize(
+				wander, npcNavigation, 1u, wanderB, npcStatus);
+		bool sawWanderWalk = false;
+		float maximumWanderDisplacement = 0.f;
+		for (std::uint32_t tick = 2u;
+			deterministicWander && tick < 300u; ++tick)
+		{
+				deterministicWander = npcRuntime.Update(
+				wander, nullptr, npcNavigation, npcCollision, 1.f / 30.f,
+				tick, wanderA, npcStatus) &&
+				npcRuntime.Update(
+					wander, nullptr, npcNavigation, npcCollision, 1.f / 30.f,
+					tick, wanderB, npcStatus) &&
+				wanderA.fPositionX == wanderB.fPositionX &&
+				wanderA.fPositionZ == wanderB.fPositionZ &&
+				std::hypot(
+					wanderA.fPositionX - wanderA.fSpawnPositionX,
+					wanderA.fPositionZ - wanderA.fSpawnPositionZ) <= 3.001f;
+			sawWanderWalk = sawWanderWalk ||
+				wanderA.strActionId == CNpcBehaviorRuntime::WALK_ACTION_ID;
+			maximumWanderDisplacement = (std::max)(
+				maximumWanderDisplacement,
+				std::hypot(
+					wanderA.fPositionX - wanderA.fSpawnPositionX,
+					wanderA.fPositionZ - wanderA.fSpawnPositionZ));
+		}
+		tests.Require(
+			deterministicWander && sawWanderWalk &&
+			maximumWanderDisplacement > 0.1f,
+			"Keep seeded NPC wander deterministic, walking, displaced and inside its authored radius");
+
+		WORLD_BOOTSTRAP_PLACEMENT trivialWander = wander;
+		trivialWander.strPlacementId = "npc.contract.wander-trivial";
+		trivialWander.NpcBehavior.fWanderRadius = 0.001f;
+		tests.Require(
+			!npcRuntime.Validate_Admission(
+				std::vector<WORLD_BOOTSTRAP_PLACEMENT>{ trivialWander },
+				npcNavigation, npcStatus),
+			"Reject wander admission when no nontrivial reachable destination exists");
+
+		SERVER_WORLD_ENTITY exhaustedWander{};
+		exhaustedWander.iNetEntityId = 7103u;
+		exhaustedWander.strPlacementId = wander.strPlacementId;
+		exhaustedWander.strArchetypeId = wander.strArchetypeId;
+		exhaustedWander.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+		exhaustedWander.fPositionX = wander.fPositionX;
+		exhaustedWander.fPositionY = wander.fPositionY;
+		exhaustedWander.fPositionZ = wander.fPositionZ;
+		const bool initializedExhaustedWander = npcRuntime.Initialize(
+			wander, npcNavigation, 1u, exhaustedWander, npcStatus);
+		WORLD_BOOTSTRAP_PLACEMENT exhaustedDescriptor = wander;
+		exhaustedDescriptor.NpcBehavior.fWanderRadius = 0.001f;
+		tests.Require(
+			initializedExhaustedWander &&
+			!npcRuntime.Update(
+				exhaustedDescriptor, nullptr, npcNavigation, npcCollision,
+				1.f / 30.f, 2u, exhaustedWander, npcStatus) &&
+			npcStatus.find("destination became unavailable") != std::string::npos,
+			"Surface exhausted wander destination search instead of reporting a successful permanent idle");
 	}
 
 	{
@@ -12318,7 +13160,229 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Prepare both 84 and 30 floor collapses plus four pillars before a late timeline row");
 	}
 
+	{
+		/* These four buttons are not isolated row playback. Each one installs the
+		completed one-shot mechanics above its boundary, stages the matching arena,
+		then releases the ordinary Brain so the boundary and later rotations keep
+		running. */
+		struct PAGE_CASE final
+		{
+			const char* pRowId;
+			std::uint32_t iHealthBar;
+			std::uint8_t iInitialPhase;
+			const char* pExpectedPatternId;
+		};
+		const std::array<PAGE_CASE, 4u> cases{
+			PAGE_CASE{ "valtan.timeline.160-entrance-whirlwind", 160u, 1u,
+				"VALTAN_ENTRANCE_WHIRLWIND" },
+			PAGE_CASE{ "valtan.timeline.109-arena-break", 109u, 1u,
+				"VALTAN_ARENA_BREAK_109" },
+			PAGE_CASE{ "valtan.timeline.62-center-grab-counter", 62u, 2u,
+				"VALTAN_CENTER_GRAB_COUNTER_64" },
+			PAGE_CASE{ "valtan.timeline.14-ghost-transition", 14u, 2u,
+				"VALTAN_GHOST_TRANSITION_15" } };
+		bool allPagesStarted = true;
+		for (std::size_t index = 0u; index < cases.size(); ++index)
+		{
+			const PAGE_CASE& page = cases[index];
+			CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+			const SESSION_ID session =
+				4500u + static_cast<SESSION_ID>(index);
+			const PLAYER_ID playerId =
+				300u + static_cast<PLAYER_ID>(index);
+			SERVER_PLAYER player{};
+			player.iSessionId = session;
+			player.iPlayerId = playerId;
+			player.iNetEntityId =
+				1300u + static_cast<NET_ENTITY_ID>(index);
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.iCurrentHp = 100000000u;
+			player.iMaximumHp = 100000000u;
+			player.iCurrentResource = 1000u;
+			player.iMaximumResource = 1000u;
+			player.isCombatReady = true;
+			player.strSpawnPlacementId = "player_1";
+			room.m_Players.emplace(playerId, player);
+			room.m_PlayerIdBySessionId.emplace(session, playerId);
+
+			C2S_VALTAN_AUDITION_REQUEST request{};
+			request.iRequestSequence = 1u;
+			request.eOperation = VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE;
+			request.iTargetHealthBar =
+				Calculate_TestTimelineCommandId(page.pRowId);
+			std::uint32_t reportedBar = 0u;
+			const VALTAN_AUDITION_RESULT result =
+				room.Evaluate_ValtanAudition(session, request, reportedBar);
+			SERVER_WORLD_ENTITY* boss = room.Find_AuditionBoss();
+			const std::vector<BOSS_PATTERN_DEFINITION>* patterns = nullptr == boss ?
+				nullptr : room.m_GameplayCatalog.Find_BossPatterns(
+					boss->strEncounterId);
+			std::size_t expectedCompletedCount = 0u;
+			if (nullptr != patterns)
+			{
+				expectedCompletedCount = static_cast<std::size_t>(std::count_if(
+					patterns->begin(), patterns->end(),
+					[&page](const BOSS_PATTERN_DEFINITION& pattern)
+					{
+						return BOSS_PATTERN_SELECTION::HEALTH_BAR ==
+								pattern.eSelection &&
+							pattern.iTriggerHealthBar > page.iHealthBar;
+					}));
+			}
+			const bool staged = VALTAN_AUDITION_RESULT::QUEUED == result &&
+				page.iHealthBar == reportedBar && nullptr != boss &&
+				page.iInitialPhase == boss->iPhase &&
+				expectedCompletedCount == boss->MechanicOccurrences.size() &&
+				std::all_of(
+					boss->MechanicOccurrences.begin(),
+					boss->MechanicOccurrences.end(),
+					[](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
+					{
+						return SERVER_BOSS_MECHANIC_STATE::COMPLETED ==
+							occurrence.eState;
+					});
+
+			bool started = false;
+			for (std::uint32_t tick = 0u; tick < 120u && !started; ++tick)
+			{
+				room.Tick(1.f / 30.f);
+				SERVER_PLAYER& livePlayer = room.m_Players.at(playerId);
+				livePlayer.iCurrentHp = livePlayer.iMaximumHp;
+				boss = room.Find_AuditionBoss();
+				started = nullptr != boss &&
+					page.pExpectedPatternId == boss->strPatternId;
+			}
+			allPagesStarted = allPagesStarted && staged && started &&
+				nullptr != boss && !boss->bScriptedPatternPlayback &&
+				!room.m_ValtanFightPageStart.Is_Active() &&
+				CGameRoom::VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE ==
+					room.m_ValtanTimelineAudition.ePhase;
+		}
+		tests.Require(
+			allPagesStarted,
+			"Start all four Valtan fight pages with completed prior mechanics and release normal Brain playback");
+	}
+
+	{
+		/* The wire key must resolve to one of the four reviewed mechanic rows. A
+		normal 130-bar timeline row cannot become an accidental fifth page. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr SESSION_ID SESSION = 4510u;
+		constexpr PLAYER_ID PLAYER = 310u;
+		SERVER_PLAYER player{};
+		player.iSessionId = SESSION;
+		player.iPlayerId = PLAYER;
+		player.iNetEntityId = 1310u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = 5500u;
+		player.iMaximumHp = 5500u;
+		player.isCombatReady = true;
+		player.strSpawnPlacementId = "player_1";
+		room.m_Players.emplace(PLAYER, player);
+		room.m_PlayerIdBySessionId.emplace(SESSION, PLAYER);
+		C2S_VALTAN_AUDITION_REQUEST request{};
+		request.iRequestSequence = 1u;
+		request.eOperation = VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE;
+		request.iTargetHealthBar = Calculate_TestTimelineCommandId(
+			"valtan.timeline.130-whirlwind-wall-break");
+		std::uint32_t reportedBar = 0u;
+		const VALTAN_AUDITION_RESULT result =
+			room.Evaluate_ValtanAudition(SESSION, request, reportedBar);
+		tests.Require(
+			VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE == result &&
+			nullptr == room.Find_AuditionBoss() &&
+			!room.m_ValtanFightPageStart.Is_Active(),
+			"Reject a non-boundary timeline row as a Valtan fight page start");
+	}
+
 #endif
+
+	{
+		/* A product revive is the authoritative signal that the only dead player
+		is back in the raid. Drive the real room handler and tick instead of
+		setting isCombatReady by hand, because the latter used to let the Brain
+		test pass while the live room kept Valtan latched in IDLE. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr PLAYER_ID REVIVED_PLAYER = 211u;
+		constexpr SESSION_ID REVIVED_SESSION = 4411u;
+		constexpr NET_ENTITY_ID REVIVED_ENTITY = 1211u;
+		const bool activated = room.Is_Ready() &&
+			room.Activate_Encounter("boss.valtan.center");
+		SERVER_WORLD_ENTITY* boss = room.Find_AuditionBoss();
+
+		SERVER_PLAYER player{};
+		player.iSessionId = REVIVED_SESSION;
+		player.iPlayerId = REVIVED_PLAYER;
+		player.iNetEntityId = REVIVED_ENTITY;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.strNickName = "PartyWipeRevive";
+		player.strSpawnPlacementId = "player_1";
+		player.iCurrentHp = 0u;
+		player.iMaximumHp = 5500u;
+		player.iCurrentResource = 0u;
+		player.iMaximumResource = 1000u;
+		player.eAction = PLAYER_ACTION_STATE::DEAD;
+		player.isCombatReady = false;
+		if (nullptr != boss)
+		{
+			player.fPositionX = boss->fPositionX + 2.f;
+			player.fPositionY = boss->fPositionY;
+			player.fPositionZ = boss->fPositionZ;
+		}
+		room.m_Players.emplace(REVIVED_PLAYER, player);
+		room.m_PlayerIdBySessionId.emplace(REVIVED_SESSION, REVIVED_PLAYER);
+		room.m_PlayerIdByEntityId.emplace(REVIVED_ENTITY, REVIVED_PLAYER);
+
+		if (nullptr != boss)
+		{
+			boss->bIntroPatternConsumed = true;
+			boss->eAction = SERVER_ENTITY_ACTION::IDLE;
+			boss->strPatternId.clear();
+			boss->strPatternStageId.clear();
+			boss->strActionId.clear();
+			boss->PendingPatternIds.clear();
+			boss->TriggeredPatternIds.push_back("VALTAN_FLOOR_WIPE_130");
+			SERVER_BOSS_MECHANIC_OCCURRENCE wiped{};
+			wiped.strPatternId = "VALTAN_FLOOR_WIPE_130";
+			wiped.PinnedDefinitionRevision =
+				room.m_GameplayCatalog.Get_ActiveRevision();
+			wiped.eState =
+				SERVER_BOSS_MECHANIC_STATE::FAILED_REQUIRES_RESET;
+			wiped.eFailure = SERVER_BOSS_MECHANIC_FAILURE::NO_VALID_TARGET;
+			wiped.iTriggerHealthBar = 130u;
+			wiped.iQueuedTick = 10u;
+			wiped.iStartedTick = 11u;
+			wiped.iFinishedTick = 12u;
+			wiped.iPatternSequence = 1u;
+			boss->MechanicOccurrences.push_back(std::move(wiped));
+			boss->bMechanicLedgerRequiresReset = true;
+		}
+
+		C2S_REVIVE_PLAYER revive{};
+		revive.iClientSequence = 1u;
+		room.Handle_RevivePlayer(REVIVED_SESSION, revive);
+		const bool admittedOnRevive =
+			room.m_Players.at(REVIVED_PLAYER).isCombatReady;
+		room.Tick(1.f / 30.f);
+		boss = room.Find_AuditionBoss();
+		const auto occurrence = nullptr == boss ?
+			std::vector<SERVER_BOSS_MECHANIC_OCCURRENCE>::const_iterator{} :
+			std::find_if(
+				boss->MechanicOccurrences.cbegin(),
+				boss->MechanicOccurrences.cend(),
+				[](const SERVER_BOSS_MECHANIC_OCCURRENCE& value)
+				{
+					return "VALTAN_FLOOR_WIPE_130" == value.strPatternId;
+				});
+		const bool occurrenceCompleted = nullptr != boss &&
+			boss->MechanicOccurrences.cend() != occurrence &&
+			SERVER_BOSS_MECHANIC_STATE::COMPLETED == occurrence->eState;
+		tests.Require(
+			activated && nullptr != boss && admittedOnRevive &&
+			!boss->bMechanicLedgerRequiresReset && occurrenceCompleted &&
+			SERVER_ENTITY_ACTION::IDLE != boss->eAction,
+			"Resume the product Valtan rotation on the authoritative revive tick after a party wipe");
+	}
 
 	{
 		/* The arena floor collapse is the only authored thing that takes ground
@@ -12465,6 +13529,112 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			PLAYER_ACTION_STATE::NONE ==
 				room.m_Players.at(FALL_PLAYER).eAction,
 			"Keep a revived player standing instead of falling again");
+	}
+	{
+		/* catch-breath owns one player from the STEP_01 grab notify through the
+		STEP_04 shot notify, then bypasses navigation for the remaining firing
+		clip. Pin the whole sequence independently of visual bone placement. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr PLAYER_ID GRAB_PLAYER = 79u;
+		constexpr NET_ENTITY_ID GRAB_PLAYER_ENTITY = 903u;
+		SERVER_WORLD_ENTITY boss{};
+		boss.iNetEntityId = 904u;
+		boss.iPatternSequence = 41u;
+		boss.iPatternTargetEntityId = GRAB_PLAYER_ENTITY;
+		boss.fPositionX = 156.03f;
+		boss.fPositionY = 22.99751f;
+		boss.fPositionZ = -122.06f;
+		boss.fYawDegrees = 0.f;
+		boss.strPatternId = "VALTAN_SEQUENCE_CATCH_BREATH";
+		boss.strActionId = "valtan.sequence.catch-breath.step-01";
+		boss.iActionStartTick = 1u;
+		SERVER_PLAYER player{};
+		player.iPlayerId = GRAB_PLAYER;
+		player.iNetEntityId = GRAB_PLAYER_ENTITY;
+		player.iCurrentHp = 1000u;
+		player.iMaximumHp = 1000u;
+		player.isCombatReady = true;
+		room.m_Players.emplace(GRAB_PLAYER, player);
+		room.m_PlayerIdByEntityId.emplace(
+			GRAB_PLAYER_ENTITY, GRAB_PLAYER);
+
+		room.Apply_ValtanCatchBreathStageTransition(
+			boss, {}, {}, "VALTAN_SEQUENCE_CATCH_BREATH",
+			"valtan.sequence.catch-breath.step-01", 1u);
+		const SERVER_PLAYER& armed = room.m_Players.at(GRAB_PLAYER);
+		tests.Require(
+			PLAYER_ACTION_STATE::GRABBED != armed.eAction &&
+			armed.iValtanGrabOwnerEntityId == boss.iNetEntityId &&
+			armed.iValtanGrabPatternSequence == boss.iPatternSequence,
+			"Lock the catch-breath target without grabbing before the notify");
+		room.Maintain_ValtanCatchBreathGrab(boss, 42u);
+		tests.Require(
+			PLAYER_ACTION_STATE::GRABBED !=
+				room.m_Players.at(GRAB_PLAYER).eAction,
+			"Keep STEP_01 detached before the original 1.400 second HIT notify");
+		room.Maintain_ValtanCatchBreathGrab(boss, 43u);
+		const SERVER_PLAYER& grabbed = room.m_Players.at(GRAB_PLAYER);
+		tests.Require(
+			PLAYER_ACTION_STATE::GRABBED == grabbed.eAction &&
+			grabbed.fPositionX == boss.fPositionX &&
+			grabbed.fPositionZ == boss.fPositionZ && grabbed.isCombatReady,
+			"Interrupt the locked target on the STEP_01 grab notify");
+
+		boss.strActionId = "valtan.sequence.catch-breath.step-02";
+		boss.iActionStartTick = 61u;
+		room.Apply_ValtanCatchBreathStageTransition(
+			boss, "VALTAN_SEQUENCE_CATCH_BREATH",
+			"valtan.sequence.catch-breath.step-01",
+			"VALTAN_SEQUENCE_CATCH_BREATH",
+			"valtan.sequence.catch-breath.step-02", 61u);
+		boss.strActionId = "valtan.sequence.catch-breath.step-03";
+		boss.iActionStartTick = 76u;
+		room.Apply_ValtanCatchBreathStageTransition(
+			boss, "VALTAN_SEQUENCE_CATCH_BREATH",
+			"valtan.sequence.catch-breath.step-02",
+			"VALTAN_SEQUENCE_CATCH_BREATH",
+			"valtan.sequence.catch-breath.step-03", 76u);
+		tests.Require(
+			PLAYER_ACTION_STATE::GRABBED ==
+				room.m_Players.at(GRAB_PLAYER).eAction &&
+			room.m_Players.at(GRAB_PLAYER).iValtanGrabPatternSequence == 41u,
+			"Keep the same catch-breath target through turn and four-second hold");
+
+		boss.strActionId = "valtan.sequence.catch-breath.step-04";
+		boss.iActionStartTick = 196u;
+		room.Apply_ValtanCatchBreathStageTransition(
+			boss, "VALTAN_SEQUENCE_CATCH_BREATH",
+			"valtan.sequence.catch-breath.step-03",
+			"VALTAN_SEQUENCE_CATCH_BREATH",
+			"valtan.sequence.catch-breath.step-04", 196u);
+		room.Maintain_ValtanCatchBreathGrab(boss, 215u);
+		tests.Require(
+			PLAYER_ACTION_STATE::GRABBED ==
+				room.m_Players.at(GRAB_PLAYER).eAction,
+			"Keep STEP_04 attached before the original 0.650 second shot notify");
+		room.Maintain_ValtanCatchBreathGrab(boss, 216u);
+		const SERVER_PLAYER& launched = room.m_Players.at(GRAB_PLAYER);
+		tests.Require(
+			PLAYER_ACTION_STATE::KNOCKDOWN == launched.eAction &&
+			0u == launched.iValtanGrabPatternSequence &&
+			std::abs(launched.fValtanThrowDirectionX) < 0.0001f &&
+			std::abs(launched.fValtanThrowDirectionZ + 1.f) < 0.0001f &&
+			std::abs(launched.fValtanThrowRemainingSeconds - 1.35f) < 0.0001f,
+			"Release catch-breath on the STEP_04 shot notify and arm the turned launch");
+
+		for (std::uint32_t tick = 0u; tick < 41u; ++tick)
+		{
+			(void)room.Advance_ValtanCatchBreathThrow(
+				room.m_Players.at(GRAB_PLAYER), 1.f / 30.f, 217u + tick);
+		}
+		const SERVER_PLAYER& ejected = room.m_Players.at(GRAB_PLAYER);
+		tests.Require(
+			PLAYER_ACTION_STATE::FALLING == ejected.eAction &&
+			!ejected.isCombatReady &&
+			0.f == ejected.fValtanThrowRemainingSeconds &&
+			ejected.fPositionZ < boss.fPositionZ - 59.f &&
+			0u != ejected.iFallDeathTick,
+			"Throw through the remaining firing clip then begin fall death");
 	}
 	{
 		/* The 109 leap and roar now have exact Product clips, but their world arc

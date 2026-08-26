@@ -124,7 +124,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	using namespace LostArk::Shared;
 	if (0u == target.iCurrentHp || !target.isCombatReady ||
 		PLAYER_ACTION_STATE::DEAD == target.eAction ||
-		PLAYER_ACTION_STATE::FALLING == target.eAction)
+		PLAYER_ACTION_STATE::FALLING == target.eAction ||
+		PLAYER_ACTION_STATE::GRABBED == target.eAction)
 	{
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	}

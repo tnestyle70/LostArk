@@ -34,14 +34,21 @@ namespace LostArk::Server
 		float fHitRatio = 1.f;
 	};
 
-	/* One living world entity body, on the XZ plane, that a player cannot
-	walk or root-motion into. The room rebuilds the list every tick from its
-	entities; the collision system never learns what the body belongs to. */
+	/* One living world entity body. XZ owns the circular footprint and the
+	vertical span prevents entities on separate floors from blocking each other.
+	The stable NetEntityId lets a generic mover exclude itself. */
 	struct SERVER_BLOCKING_BODY final
 	{
 		float fX = 0.f;
 		float fZ = 0.f;
 		float fRadius = 0.f;
+		/* Legacy three-field bodies intentionally keep an unbounded vertical
+		span. Product world entities fill an actual centre/half-height so NPCs
+		on different castle floors do not block one another. */
+		float fCenterY = 0.f;
+		float fHalfHeight = 100000.f;
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
 	};
 
 	class CServerCollisionSystem final
@@ -53,6 +60,30 @@ namespace LostArk::Server
 		bool Is_PlayerSpawnClear(
 			const WORLD_BOOTSTRAP_PLACEMENT& spawn) const;
 		void Set_BlockingBodies(std::vector<SERVER_BLOCKING_BODY> bodies);
+		bool Update_BlockingBody(
+			LostArk::Shared::NET_ENTITY_ID netEntityId,
+			float x,
+			float centerY,
+			float z) noexcept;
+		/* Shared authoritative mover for any upright circular body. Collision
+		boxes use the supplied vertical centre/half-height, while dynamic bodies
+		use their authored vertical spans and XZ circles. */
+		bool Resolve_CircleMove(
+			float startX,
+			float startY,
+			float startZ,
+			float proposedX,
+			float proposedY,
+			float proposedZ,
+			float radius,
+			float halfHeight,
+			float centerOffsetY,
+			float& outX,
+			float& outY,
+			float& outZ,
+			bool& outWasBlocked,
+			LostArk::Shared::NET_ENTITY_ID ignoredBodyId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID) const;
 		bool Resolve_PlayerMove(
 			const SERVER_PLAYER& player,
 			float proposedX,
@@ -135,11 +166,16 @@ namespace LostArk::Server
 			float playerY,
 			float playerZ,
 			const WORLD_BOOTSTRAP_PLACEMENT& box);
-		static bool Sweep_PlayerAgainstBox(
-			const SERVER_PLAYER& player,
+		static bool Sweep_MovingBodyAgainstBox(
+			float startX,
+			float startY,
+			float startZ,
 			float proposedX,
 			float proposedY,
 			float proposedZ,
+			float radius,
+			float halfHeight,
+			float centerOffsetY,
 			const WORLD_BOOTSTRAP_PLACEMENT& box,
 			float& outHitRatio);
 		static bool Sweep_CircleAgainstBox(
@@ -154,13 +190,19 @@ namespace LostArk::Server
 			float& outHitRatio);
 		static bool Is_ImpactReceiverPlacementId(
 			std::string_view placementId) noexcept;
-		/* XZ sweep of the player's body circle against one entity body. A
+		/* XZ sweep of one upright body circle against another. A
 		start already inside the combined radius only blocks motion toward the
-		body's centre, so a player a boss landed on can always step out. */
-		static bool Sweep_PlayerAgainstBody(
-			const SERVER_PLAYER& player,
+		body's centre, so a mover can always step out of a pre-existing overlap. */
+		static bool Sweep_CircleAgainstBody(
+			float startX,
+			float startY,
+			float startZ,
 			float proposedX,
+			float proposedY,
 			float proposedZ,
+			float radius,
+			float halfHeight,
+			float centerOffsetY,
 			const SERVER_BLOCKING_BODY& body,
 			float& outHitRatio);
 

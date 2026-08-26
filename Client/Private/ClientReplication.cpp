@@ -21,9 +21,45 @@
 #include "DeployPropRuntime.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace
 {
+	constexpr std::string_view VALTAN_CATCH_BREATH_PATTERN_ID =
+		"VALTAN_SEQUENCE_CATCH_BREATH";
+	constexpr std::string_view VALTAN_CATCH_BREATH_STEP_01_ACTION_ID =
+		"valtan.sequence.catch-breath.step-01";
+	constexpr std::string_view VALTAN_CATCH_BREATH_STEP_02_ACTION_ID =
+		"valtan.sequence.catch-breath.step-02";
+	constexpr std::string_view VALTAN_CATCH_BREATH_STEP_03_ACTION_ID =
+		"valtan.sequence.catch-breath.step-03";
+	constexpr std::string_view VALTAN_CATCH_BREATH_STEP_04_ACTION_ID =
+		"valtan.sequence.catch-breath.step-04";
+	constexpr char VALTAN_LEFT_HAND_BONE_NAME[] = "bip001-l-hand";
+
+	bool Is_ValtanGrabAttachmentAction(const std::string_view actionId)
+	{
+		return actionId == VALTAN_CATCH_BREATH_STEP_01_ACTION_ID ||
+			actionId == VALTAN_CATCH_BREATH_STEP_02_ACTION_ID ||
+			actionId == VALTAN_CATCH_BREATH_STEP_03_ACTION_ID ||
+			actionId == VALTAN_CATCH_BREATH_STEP_04_ACTION_ID;
+	}
+
+	bool Is_FiniteMatrix(const matrix_t& value)
+	{
+		float4x4_t stored{};
+		DirectX::XMStoreFloat4x4(&stored, value);
+		for (std::size_t row = 0u; row < 4u; ++row)
+		{
+			for (std::size_t column = 0u; column < 4u; ++column)
+			{
+				if (!std::isfinite(stored.m[row][column]))
+					return false;
+			}
+		}
+		return true;
+	}
+
 	Client::NET_PLAYER_RECORD Make_Record(
 		const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned)
 	{
@@ -112,13 +148,13 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 	m_strLocalPlayerNavigationPrototypeTag =
 		std::move(navigationContract.prototypeTag);
 	m_isInitialized = true;
-	m_hasPendingConnectionLoss = false;
+	m_wasConnected =
+		CNetworkManager::Get().Is_Connected();
+	m_hasPendingConnectionLoss = !m_wasConnected;
 	m_hasFatalWorldDestructionFailure = false;
 	m_WorldDestructionProjectionRuntime.Reset();
 	Clear_DeferredLocalCharacterClassReplacement();
 	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
-	m_wasConnected =
-		CNetworkManager::Get().Is_Connected();
 
 	return true;
 }
@@ -223,6 +259,7 @@ bool Client::CClientReplication::Update()
 		}
 	}
 
+	Update_ValtanGrabAttachment();
 	return allSucceeded;
 }
 
@@ -336,6 +373,172 @@ void Client::CClientReplication::Reset()
 	Reset_World();
 	m_wasConnected = false;
 	m_hasPendingConnectionLoss = false;
+}
+
+void Client::CClientReplication::Update_ValtanGrabAttachment()
+{
+	const VALTAN_PRESENTATION_STATE& state = m_ValtanPresentationState;
+	if (!state.isValid ||
+		state.strPatternId != VALTAN_CATCH_BREATH_PATTERN_ID ||
+		!Is_ValtanGrabAttachmentAction(state.strActionId) ||
+		state.iPatternTargetNetEntityId ==
+			LostArk::Shared::INVALID_NET_ENTITY_ID)
+	{
+		Clear_ValtanGrabAttachment();
+		return;
+	}
+	const auto bossPresentation =
+		m_WorldEntities.find(state.iNetEntityId);
+	OBJECT_HANDLE targetHandle{};
+	if (bossPresentation == m_WorldEntities.end() ||
+		LostArk::Shared::WORLD_ENTITY_KIND::BOSS !=
+			bossPresentation->second.eKind ||
+		!m_Registry.Find_Handle(
+			state.iPatternTargetNetEntityId, targetHandle))
+	{
+		Clear_ValtanGrabAttachment();
+		Report_ValtanGrabAttachmentFailure(
+			state.iPatternSequence,
+			"boss or target presentation is unavailable");
+		return;
+	}
+
+	const std::shared_ptr<CValtan> valtan =
+		bossPresentation->second.pValtan.lock();
+	const std::shared_ptr<CCharacter> targetCharacter =
+		m_Registry.Resolve(targetHandle);
+	if (nullptr == valtan || nullptr == targetCharacter)
+	{
+		Clear_ValtanGrabAttachment();
+		Report_ValtanGrabAttachmentFailure(
+			state.iPatternSequence,
+			"boss or target object expired");
+		return;
+	}
+	LostArk::Shared::PLAYER_ACTION_STATE targetAction =
+		LostArk::Shared::PLAYER_ACTION_STATE::END;
+	if (!targetCharacter->Try_Get_NetworkActionState(targetAction) ||
+		LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != targetAction)
+	{
+		/* STEP_01 before its 1.400s grab notify and STEP_04 after its 0.650s
+		   shot notify are normal detached windows, not presentation failures. */
+		Clear_ValtanGrabAttachment();
+		return;
+	}
+
+	const std::shared_ptr<Engine::CModel> valtanModel =
+		valtan->Get_BodyModel();
+	const std::shared_ptr<Engine::CTransform> targetTransform =
+		targetCharacter->Get_Transform();
+	float4x4_t valtanRoot{};
+	if (nullptr == valtanModel || nullptr == targetTransform ||
+		!valtanModel->Has_Bone(VALTAN_LEFT_HAND_BONE_NAME) ||
+		!valtan->Try_Get_PresentationRootMatrix(&valtanRoot))
+	{
+		Clear_ValtanGrabAttachment();
+		Report_ValtanGrabAttachmentFailure(
+			state.iPatternSequence,
+			"Valtan left-hand bone or presentation root is unavailable");
+		return;
+	}
+
+	const matrix_t leftHandWorld =
+		valtanModel->Get_BoneMatrix(VALTAN_LEFT_HAND_BONE_NAME) *
+		DirectX::XMLoadFloat4x4(&valtanRoot);
+	if (!Is_FiniteMatrix(leftHandWorld))
+	{
+		Clear_ValtanGrabAttachment();
+		Report_ValtanGrabAttachmentFailure(
+			state.iPatternSequence,
+			"Valtan left-hand world matrix is not finite");
+		return;
+	}
+
+	const std::shared_ptr<CCharacter> attachedCharacter =
+		m_ValtanGrabAttachment.pCharacter.lock();
+	const bool_t needsOffsetCapture =
+		!m_ValtanGrabAttachment.isActive ||
+		m_ValtanGrabAttachment.iPatternSequence != state.iPatternSequence ||
+		m_ValtanGrabAttachment.iTargetNetEntityId !=
+			state.iPatternTargetNetEntityId ||
+		attachedCharacter.get() != targetCharacter.get();
+	if (needsOffsetCapture)
+	{
+		vector_t determinant{};
+		const matrix_t inverseHandWorld =
+			DirectX::XMMatrixInverse(&determinant, leftHandWorld);
+		if (!std::isfinite(DirectX::XMVectorGetX(determinant)) ||
+			std::abs(DirectX::XMVectorGetX(determinant)) <= 1.0e-6f ||
+			!Is_FiniteMatrix(inverseHandWorld))
+		{
+			Clear_ValtanGrabAttachment();
+			Report_ValtanGrabAttachmentFailure(
+				state.iPatternSequence,
+				"Valtan left-hand matrix is not invertible");
+			return;
+		}
+
+		matrix_t offset =
+			DirectX::XMLoadFloat4x4(targetTransform->Get_WorldMatrixPtr()) *
+			inverseHandWorld;
+		/* Keep the player's relative rotation and scale, but replace the old
+		   world-space distance with the hand-local grip origin so an arbitrary
+		   selected player actually moves into Valtan's hand. */
+		offset.r[3] = DirectX::XMVectorSet(0.f, 0.f, 0.f, 1.f);
+		if (!Is_FiniteMatrix(offset))
+		{
+			Clear_ValtanGrabAttachment();
+			Report_ValtanGrabAttachmentFailure(
+				state.iPatternSequence,
+				"captured player grip offset is not finite");
+			return;
+		}
+
+		m_ValtanGrabAttachment.isActive = true;
+		m_ValtanGrabAttachment.iTargetNetEntityId =
+			state.iPatternTargetNetEntityId;
+		m_ValtanGrabAttachment.iPatternSequence = state.iPatternSequence;
+		m_ValtanGrabAttachment.pCharacter = targetCharacter;
+		DirectX::XMStoreFloat4x4(
+			&m_ValtanGrabAttachment.Offset, offset);
+	}
+
+	const matrix_t attachedWorld =
+		DirectX::XMLoadFloat4x4(&m_ValtanGrabAttachment.Offset) *
+		leftHandWorld;
+	if (!Is_FiniteMatrix(attachedWorld))
+	{
+		Clear_ValtanGrabAttachment();
+		Report_ValtanGrabAttachmentFailure(
+			state.iPatternSequence,
+			"attached player world matrix is not finite");
+		return;
+	}
+
+	targetTransform->Set_State(Engine::STATE::RIGHT, attachedWorld.r[0]);
+	targetTransform->Set_State(Engine::STATE::UP, attachedWorld.r[1]);
+	targetTransform->Set_State(Engine::STATE::LOOK, attachedWorld.r[2]);
+	targetTransform->Set_State(Engine::STATE::POSITION, attachedWorld.r[3]);
+}
+
+void Client::CClientReplication::Clear_ValtanGrabAttachment()
+{
+	m_ValtanGrabAttachment = {};
+}
+
+void Client::CClientReplication::Report_ValtanGrabAttachmentFailure(
+	const std::uint32_t patternSequence,
+	const std::string_view reason)
+{
+	if (0u == patternSequence ||
+		m_iValtanGrabAttachmentFailurePatternSequence == patternSequence)
+	{
+		return;
+	}
+	m_iValtanGrabAttachmentFailurePatternSequence = patternSequence;
+	OutputDebugStringA((
+		"Valtan catch-breath grab attachment was isolated: " +
+		std::string(reason) + "\n").c_str());
 }
 
 bool Client::CClientReplication::Has_WorldEntity(
@@ -770,11 +973,20 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.strShaderTag = actor->shaderProfile == "esther" ?
 			TEXT("Prototype_Component_Shader_VtxEstherNpc") :
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
-		const std::string* pIdleClipOverride =
-			CNpcPlacementPresentationService::Find_IdleClip(
-				m_Desc.iPrototypeLevelIndex, spawned.strPlacementId);
-		desc.pIdleClip = nullptr != pIdleClipOverride ?
-			pIdleClipOverride->c_str() : actor->idleClip.c_str();
+		NPC_PLACEMENT_PRESENTATION_ENTRY placementPresentation;
+		const bool_t hasPlacementPresentation =
+			CNpcPlacementPresentationService::Try_Get_Presentation(
+				m_Desc.iPrototypeLevelIndex,
+				spawned.strPlacementId,
+				placementPresentation);
+		const std::string& resolvedIdle =
+			hasPlacementPresentation &&
+			!placementPresentation.strIdleClip.empty() ?
+				placementPresentation.strIdleClip : actor->idleClip;
+		desc.pIdleClip = resolvedIdle.c_str();
+		/* Only authored placement behavior suppresses root motion. Esther
+		summons have no placement document and retain their action-chain travel. */
+		desc.bSuppressRootMotion = hasPlacementPresentation;
 		desc.vPosition = float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -811,6 +1023,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.eKind = spawned.eKind;
 		presentation.strArchetypeId = spawned.strArchetypeId;
 		presentation.strEncounterId = spawned.strEncounterId;
+		presentation.strCurrentClip = resolvedIdle;
+		presentation.strResolvedIdleClip = resolvedIdle;
+		presentation.NpcPresentation = std::move(placementPresentation);
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.pNpc = npc;
 		/* An entity that spawns mid-action (a raid Esther summon) must show
@@ -833,6 +1048,31 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			}
 			CCombatHUDViewModel::Get().Apply_EstherCutinAction(
 				spawned.strArchetypeId, spawnActionClip->second);
+		}
+		else if (hasPlacementPresentation)
+		{
+			const NPC_ACTION_PLAYBACK_REQUEST request =
+				CNpcActionPresentationRuntime::Resolve_Playback(
+					spawned.strActionId,
+					presentation.strResolvedIdleClip,
+					presentation.NpcPresentation,
+					nullptr);
+			CNpcActionPresentationRuntime::Apply_Playback(
+				request,
+				presentation.strResolvedIdleClip,
+				[&npc](const NPC_ACTION_PLAYBACK_REQUEST& playback)
+				{
+					return npc->Play_NetworkAction(
+						playback.strClipName.c_str(),
+						playback.isLoop,
+						playback.fPlaybackRate,
+						playback.fBlendSeconds);
+				},
+				[&npc](const f32_t blendSeconds)
+				{
+					return npc->Play_DefaultIdle(blendSeconds);
+				},
+				presentation.strCurrentClip);
 		}
 #ifdef _DEBUG
 		npc->Set_CombatColliderDebugVisible(
@@ -1322,73 +1562,106 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		{
 			const std::shared_ptr<CNpc> npc = iter->second.pNpc.lock();
 			if (nullptr == npc ||
-				!npc->Apply_NetworkState(position, entity.fYawDegrees))
+				!npc->Apply_NetworkState(
+					position, entity.fYawDegrees, snapshot.iServerTick))
 			{
 				allSucceeded = false;
 				continue;
 			}
-			/* Server-driven NPC actions (raid Esther summons). An action the
-			catalog maps plays its clip chain once, each clip starting when the
-			previous finishes; anything else stands in the idle clip, so a
-			plain placement NPC without actionClips never switches at all. */
+			/* Raid Esther actions retain their catalog-authored multi-clip chains.
+			Town placement actions are resolved separately from the published
+			placement presentation binding below. */
 			const NPC_ACTOR_ENTRY* actor =
 				CActorCatalog::Find_Npc(iter->second.strArchetypeId);
-			if (nullptr == actor || actor->actionClips.empty())
+			if (nullptr == actor)
+			{
+				allSucceeded = false;
 				continue;
+			}
 			const auto actionClip =
 				actor->actionClips.find(entity.strActionId);
-			if (actionClip == actor->actionClips.end())
+			if (actionClip != actor->actionClips.end())
 			{
-				iter->second.strActiveActionId.clear();
-				iter->second.iActionClipIndex = 0u;
-				if (iter->second.strCurrentClip != actor->idleClip)
+				const std::vector<std::string>& chain = actionClip->second;
+				if (iter->second.strActiveActionId != entity.strActionId)
 				{
-					if (!npc->Set_Animation(actor->idleClip.c_str(), true))
+					if (!npc->Set_Animation(chain.front().c_str(), false))
+					{
 						allSucceeded = false;
-					else
-						iter->second.strCurrentClip = actor->idleClip;
+						continue;
+					}
+					iter->second.strActiveActionId = entity.strActionId;
+					iter->second.iActionClipIndex = 0u;
+					iter->second.strCurrentClip = chain.front();
+					CCombatHUDViewModel::Get().Apply_EstherCutinAction(
+						iter->second.strArchetypeId, chain);
+				}
+				else if (iter->second.iActionClipIndex + 1u < chain.size())
+				{
+					const std::shared_ptr<Engine::CModel> model =
+						npc->Get_Model();
+					f32_t position = 0.f;
+					f32_t duration = 0.f;
+					if (nullptr != model &&
+						model->Get_AnimationProgress(
+							model->Get_CurrentAnimIndex(),
+							position, duration) &&
+						duration > 0.f && position >= duration)
+					{
+						const std::string& next =
+							chain[iter->second.iActionClipIndex + 1u];
+						if (!npc->Set_Animation(next.c_str(), false))
+						{
+							allSucceeded = false;
+						}
+						else
+						{
+							++iter->second.iActionClipIndex;
+							iter->second.strCurrentClip = next;
+						}
+					}
 				}
 				continue;
 			}
-			const std::vector<std::string>& chain = actionClip->second;
-			if (iter->second.strActiveActionId != entity.strActionId)
+
+			/* Placement-authored behavior uses one validated semantic-action
+			binding. It is deliberately separate from the Esther chain above:
+			flattening an Esther chain here would lose its cutin and root motion. */
+			iter->second.strActiveActionId.clear();
+			iter->second.iActionClipIndex = 0u;
+			if (!CNpcActionPresentationRuntime::Is_NewActionEdge(
+					iter->second.NpcActionEdge,
+					entity.strActionId,
+					entity.iActionStartTick))
 			{
-				if (!npc->Set_Animation(chain.front().c_str(), false))
-				{
-					allSucceeded = false;
-					continue;
-				}
-				iter->second.strActiveActionId = entity.strActionId;
-				iter->second.iActionClipIndex = 0u;
-				iter->second.strCurrentClip = chain.front();
-				CCombatHUDViewModel::Get().Apply_EstherCutinAction(
-					iter->second.strArchetypeId, chain);
+				continue;
 			}
-			else if (iter->second.iActionClipIndex + 1u < chain.size())
-			{
-				const std::shared_ptr<Engine::CModel> model =
-					npc->Get_Model();
-				f32_t position = 0.f;
-				f32_t duration = 0.f;
-				if (nullptr != model &&
-					model->Get_AnimationProgress(
-						model->Get_CurrentAnimIndex(),
-						position, duration) &&
-					duration > 0.f && position >= duration)
+			const NPC_ACTION_PLAYBACK_REQUEST request =
+				CNpcActionPresentationRuntime::Resolve_Playback(
+					entity.strActionId,
+					iter->second.strResolvedIdleClip,
+					iter->second.NpcPresentation,
+					nullptr);
+			CNpcActionPresentationRuntime::Apply_Playback(
+				request,
+				iter->second.strResolvedIdleClip,
+				[&npc](const NPC_ACTION_PLAYBACK_REQUEST& playback)
 				{
-					const std::string& next =
-						chain[iter->second.iActionClipIndex + 1u];
-					if (!npc->Set_Animation(next.c_str(), false))
-					{
-						allSucceeded = false;
-					}
-					else
-					{
-						++iter->second.iActionClipIndex;
-						iter->second.strCurrentClip = next;
-					}
-				}
-			}
+					return npc->Play_NetworkAction(
+						playback.strClipName.c_str(),
+						playback.isLoop,
+						playback.fPlaybackRate,
+						playback.fBlendSeconds);
+				},
+				[&npc](const f32_t blendSeconds)
+				{
+					return npc->Play_DefaultIdle(blendSeconds);
+				},
+				iter->second.strCurrentClip);
+			CNpcActionPresentationRuntime::Commit_ActionEdge(
+				iter->second.NpcActionEdge,
+				entity.strActionId,
+				entity.iActionStartTick);
 		}
 		else if (WORLD_ENTITY_KIND::MONSTER == iter->second.eKind)
 		{
@@ -1396,7 +1669,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			const MONSTER_ACTOR_ENTRY* actor =
 				CActorCatalog::Find_Monster(iter->second.strArchetypeId);
 			if (nullptr == monster || nullptr == actor ||
-				!monster->Apply_NetworkState(position, entity.fYawDegrees))
+				!monster->Apply_NetworkState(
+					position, entity.fYawDegrees, snapshot.iServerTick))
 			{
 				allSucceeded = false;
 				continue;
@@ -1440,6 +1714,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			latest.strActionId = entity.strActionId;
 			latest.iPatternSequence = entity.iPatternSequence;
 			latest.iPatternStageIndex = entity.iPatternStageIndex;
+			latest.iPatternTargetNetEntityId =
+				entity.iPatternTargetNetEntityId;
 			latest.iActionStartTick = entity.iActionStartTick;
 			latest.BossCombat = entity.BossCombat;
 			latest.vPosition = position;
@@ -1684,6 +1960,8 @@ void Client::CClientReplication::Reset_World()
 	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 	m_iLastServerTick = 0;
 	m_ValtanPresentationState = {};
+	Clear_ValtanGrabAttachment();
+	m_iValtanGrabAttachmentFailurePatternSequence = 0u;
 	m_WorldDestructionProjectionRuntime.Reset();
 	m_WorldDestructionLiveEvents.clear();
 	m_EncounterPropState = {};

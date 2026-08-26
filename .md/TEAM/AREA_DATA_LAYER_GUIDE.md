@@ -15,7 +15,7 @@ LevelCatalog scenario
      -> visual asset admission / placement
      -> optional deploy asset / placement pair
      -> optional point-light presentation source / runtime pair
-     -> Gameplay.world.json formatVersion 4 (actor placement + gated trigger/destroyable authoring)
+     -> Gameplay.world.json formatVersion 6 (actor/NPC behavior + gated trigger/destroyable authoring)
      -> navigation authoring -> runtime navgrid
      -> stable actor / encounter / balance ID 참조
 ```
@@ -24,7 +24,7 @@ LevelCatalog scenario
 
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
-| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | 50×333 source/paint, Server navgrid + 1m deck-step policy | NPC/trigger/collision authoring, boss 없음 |
+| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×333 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음 |
 | `LV_LUT_HEARTRB_ED` | 275 assets / 13,186 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
@@ -120,8 +120,11 @@ collision, navigation, Server 상태는 바꾸지 않는다. A/B가 붕괴 상�
 `bg_rad_valtan_crack_floor01_em_reconstruction.png`이며 원본 MIC에는 authored emissive가 없어서
 `VIDEO_MATCH_RECONSTRUCTION`으로 관리한다.
 
-Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이 오래 응답하지 않을 수
-있다. 중복 선택은 하지 말고 status가 commit될 때까지 기다린다.
+Bern Area 전환은 모델 admission을 프레임 예산으로 나눠 수행한다. Area를 고르면 workspace status가
+`Preparing Bern: N / 1003 model prototypes` 진행률을 표시하고 그동안 Area 콤보와 world 편집
+입력은 잠긴다. 1003개 prototype 1.8 GB를 한 프레임에 올리던 정지 구간은 사라졌지만, admission이 끝난 뒤 실행되는
+50,017 placement의 parse/stage/commit 트랜잭션은 여전히 한 프레임이므로 마지막에 짧은 멈춤이 남는다. 진행률이
+끝나고 status가 commit될 때까지 기다린다.
 
 Valtan 외곽의 기존 다섯 철탑은 새 조립물이 아니다. 13,186개 source baseline에 보존된 SL04 exact
 반복 구조이며, 각 철탑 core는 같은 9개 asset의 106개 placement로 이루어진다. 다섯 station을 rigid
@@ -170,12 +173,22 @@ PointLight는 주변 조명만 만든다. 원작 화면의 visible fire/sprite �
 발광 불꽃이나 slot geometry 복구와 동일시하지 않으며, 해당 표현이 실제 추출·cook·runtime smoke를
 통과하기 전에는 원작 철탑 연출 완성으로 판정하지 않는다.
 
-`NpcCatalog.json`은 현재 `NPC_BEDA` 한 archetype을 지원한다. Bern의 enabled NPC placement는
-Server world entity로 생성되고 `CClientReplication`이 catalog → on-demand model prototype → `CNpc`
-경로로 표현한다. 다른 NPC model은 catalog row와 검증을 추가하기 전까지 fail-closed다.
+`NpcCatalog.json`은 `runtimeStatus=supported` archetype을 모두 지원하며 현재 75종이다.
+Area의 enabled NPC placement는 Server world entity로 생성되고 `CClientReplication`이
+catalog → on-demand model prototype/animation set → `CNpc` 경로로 표현한다.
+catalog에 없거나 `runtimeStatus`가 `supported`가 아닌 archetype은 publisher가 거부한다.
+NPC placement는 Gameplay formatVersion 6의 optional `behavior`로 stationary/patrol/wander,
+waypoint, timing과 semantic action을 소유한다. publisher는 이를 Server `worldbootstrap` v7의
+이동·행동 의미와 Client `npcpresentation` v2의 실제 clip binding으로 분리한다.
+
+현재 Bern authoring은 전체 placement 16개 중 NPC 10개이며, 기존 placement/revision/transform을
+보존한 초기 v6 이관에서는 모두 `behavior: null`이다. 이는 기존 정적 idle과 같은 의미이며 특정
+Aylara/Beda 행동 샘플이 미리 들어 있다는 뜻이 아니다. 행동 변경은 Map Tool에서
+`Apply NPC Behavior -> Save Gameplay -> Publish-WorldGameplay -> Server restart` 순서로 반영한다.
+배치·쿠킹·상호작용 작업 절차는 `NPC_OWNER_HANDOFF.md`가 정본이다.
 
 Valtan 일반 몬스터와 spawn wave는 `Data/Worlds/LV_LUT_HEARTRB_ED/SpawnGroups.world.json`이 정본이다. Character Select의 즉시 audition은 `Data/Worlds/LV_LOBBY_CLASSSELECT_SL00/SpawnGroups.world.json`에 일반 몬스터와 `MINIBOSS_LUGARU`를 각각 zero-delay 단일 wave로 저장한다. Character Select Debug ImGui는 이 stable group ID 또는 disabled Valtan placement ID만 Server에 제출하며 transform/archetype을 보내거나 Client object를 직접 만들지 않는다. `triggerBox`는
-world formatVersion 4의 strict parse/save 구조와 Debug Development MapTool 배치·선택·크기·목적지
+world formatVersion 6의 strict parse/save 구조와 Debug Development MapTool 배치·선택·크기·목적지
 편집·저장/재로드 UI를 제공한다. typed action이 없는 draft는 `enabled: false`, `events: []`로만 저장한다.
 제품 publisher/runtime가 admission하는 action은 정확히 하나의 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter`다. movePlayer는
 `targetPosition[3]`, `durationSeconds(0.05..10)`, `arcHeight(0..1000)`를 소유하며 Server가 yaw가 적용된
