@@ -18,6 +18,7 @@ namespace Client
 	class CCharacter;
 	class IPlayerCommandSink;
 	class CSkillGroundTargetPreview;
+	class CClickMoveEffect;
 	struct CHARACTER_SPEC;
 
 	/* Explicit movement/skill commands take ownership at the next server action
@@ -288,6 +289,7 @@ namespace Client
 		void Set_CommandSink(
 			const shared_ptr<IPlayerCommandSink>& commandSink);
 		bool_t Initialize_TargetingPreview(uint32_t levelIndex);
+		bool_t Initialize_ClickMoveEffect(uint32_t levelIndex);
 		void Set_AllowCapturedKeyboardInput(bool_t allow)
 		{
 			m_allowCapturedKeyboardInput = allow;
@@ -378,6 +380,7 @@ namespace Client
 		std::array<bool_t, 3> m_wasEstherKeyDown{};
 		CGROUND_TARGETING_STATE m_GroundTargeting;
 		shared_ptr<CSkillGroundTargetPreview> m_pGroundTargetPreview;
+		shared_ptr<CClickMoveEffect> m_pClickMoveEffect;
 		bool_t m_wasTargetingLeftMouseDown = false;
 		bool_t m_wasTargetingRightMouseDown = false;
 	};

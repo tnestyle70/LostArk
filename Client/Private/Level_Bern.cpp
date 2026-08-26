@@ -87,6 +87,8 @@ HRESULT CLevel_Bern::Initialize()
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
 	if (!m_PlayerController.Initialize_TargetingPreview(ETOUI(LEVEL::BERN)))
 		return E_FAIL;
+	if (!m_PlayerController.Initialize_ClickMoveEffect(ETOUI(LEVEL::BERN)))
+		return E_FAIL;
 
 	if (!Ready_ValtanEntryNpcs(pEntry->pMapAreaId))
 	{
