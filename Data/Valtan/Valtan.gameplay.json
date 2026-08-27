@@ -442,11 +442,11 @@
           "events": [],
           "branches": []
         },
-      {
-        "stageId": "CHARGE",
-        "actionId": "valtan.attack.dash-charge.active",
-        "stageKind": "ACTIVE",
-        "durationMs": 1500,
+        {
+          "stageId": "CHARGE",
+          "actionId": "valtan.attack.dash-charge.active",
+          "stageKind": "ACTIVE",
+          "durationMs": 1500,
           "defaultNextActionId": "valtan.attack.dash-charge.recovery",
           "hit": {
             "shape": {
@@ -2987,8 +2987,8 @@
       "compatibilitySelectionWeight": 0,
       "actionId": "valtan.sequence.catch-breath",
       "entryActionId": "valtan.sequence.catch-breath.step-01",
-      "targetPolicy": "NONE",
-      "aimPolicy": "NONE",
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "eligibility": {
         "armorRequirement": "ANY",
         "phaseRequirement": "ANY",

@@ -14,6 +14,7 @@
 #include "SpawnGroupBootstrap.h"
 #include "SpawnGroupRuntime.h"
 #include "MonsterBrain.h"
+#include "NpcBehaviorRuntime.h"
 #include "ValtanBrain.h"
 #include "EncounterPropRuntime.h"
 #include "EstherSkillSystem.h"
@@ -333,6 +334,23 @@ namespace LostArk::Server
 			std::vector<std::string> ExpectedGoneGroupIds;
 		};
 
+		/* A page start differs from a one-row timeline audition: it stages the
+		already-destroyed arena, releases the real Brain at that page boundary,
+		and then leaves the encounter running normally. */
+		struct VALTAN_FIGHT_PAGE_START_STATE final
+		{
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iCommandId = 0u;
+			std::uint32_t iEnvironmentDeadlineTick = 0u;
+			std::vector<std::string> ExpectedGoneGroupIds;
+
+			bool Is_Active() const noexcept
+			{
+				return LostArk::Shared::INVALID_NET_ENTITY_ID != iBossEntityId;
+			}
+		};
+
 		bool Prepare_ValtanTimelineArenaState(
 			const CWorldDestructionRuntime& runtime,
 			const SERVER_WORLD_ENTITY& boss,
@@ -359,6 +377,15 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t updateTick);
 		void Restore_ValtanTimelineRowAfterBrain(
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t updateTick);
+		bool Start_ValtanFightPage(
+			SESSION_ID sessionId,
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t commandId,
+			std::uint32_t startTick,
+			std::string& status);
+		bool Prepare_ValtanFightPageBeforeBrain(
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t updateTick);
 #endif
@@ -407,6 +434,9 @@ namespace LostArk::Server
 		bool Send_Spawned(
 			const std::shared_ptr<CClientSession>& session,
 			const SERVER_PLAYER& player);
+		static bool Build_WorldEntitySpawnedPayload(
+			const SERVER_WORLD_ENTITY& entity,
+			std::vector<std::uint8_t>& outPayload);
 		bool Send_WorldEntitySpawned(
 			const std::shared_ptr<CClientSession>& session,
 			const SERVER_WORLD_ENTITY& entity);
@@ -504,6 +534,28 @@ namespace LostArk::Server
 			const LostArk::Shared::GameplayDataRevision&
 				previousDefinitionRevision,
 			const LostArk::Shared::GameplayDataRevision& nextDefinitionRevision,
+			std::uint32_t serverTick);
+		/* catch-breath is a four-stage boss sequence whose middle stages own one
+		player transform. The ordinary stage transaction remains responsible for
+		combat/world actions; this companion commits the grab/release edge after
+		that transaction succeeds. */
+		void Apply_ValtanCatchBreathStageTransition(
+			const SERVER_WORLD_ENTITY& boss,
+			const std::string& previousPatternId,
+			const std::string& previousActionId,
+			const std::string& nextPatternId,
+			const std::string& nextActionId,
+			std::uint32_t serverTick);
+		void Begin_ValtanCatchBreathGrab(
+			SERVER_PLAYER& player,
+			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t serverTick);
+		void Begin_ValtanCatchBreathThrow(
+			SERVER_PLAYER& player,
+			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t serverTick);
+		void Maintain_ValtanCatchBreathGrab(
+			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
 		bool Stage_BossPatternStageActions(
 			const SERVER_WORLD_ENTITY& boss,
@@ -616,6 +668,14 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			float fixedDeltaSeconds,
 			std::uint32_t updateTick);
+		void Begin_PlayerFall(
+			SERVER_PLAYER& player,
+			float fixedDeltaSeconds,
+			std::uint32_t updateTick);
+		bool Advance_ValtanCatchBreathThrow(
+			SERVER_PLAYER& player,
+			float fixedDeltaSeconds,
+			std::uint32_t updateTick);
 		void Update_Players(float fixedDeltaSeconds);
 		/* Slides a hit player along the armed knockback window, clamped to
 		walkable floor and blocking bodies; a wall ends the window early. */
@@ -671,6 +731,7 @@ namespace LostArk::Server
 		CPlayerSkillSystem m_PlayerSkillSystem;
 		CCombatObjectRuntime m_CombatObjectRuntime;
 		CMonsterBrain m_MonsterBrain;
+		CNpcBehaviorRuntime m_NpcBehaviorRuntime;
 		CValtanBrain m_ValtanBrain;
 		VALTAN_DECISION_TRACE_REVISION_STATE m_ValtanDecisionTraceRevision;
 		CEstherSkillSystem m_EstherSkillSystem;
@@ -721,6 +782,7 @@ namespace LostArk::Server
 			m_PendingValtanAuditionLifecycle;
 		VALTAN_PATTERN_ID_AUDITION_STATE m_ValtanPatternIdAudition;
 		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
+		VALTAN_FIGHT_PAGE_START_STATE m_ValtanFightPageStart;
 #endif
 	};
 }

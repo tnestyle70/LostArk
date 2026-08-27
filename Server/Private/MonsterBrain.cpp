@@ -56,7 +56,9 @@ void LostArk::Server::CMonsterBrain::Update(
 	{
 		(void)playerId;
 		if (0u == player.iCurrentHp || !player.isCombatReady ||
-			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
+			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction ||
+			LostArk::Shared::PLAYER_ACTION_STATE::FALLING == player.eAction ||
+			LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == player.eAction)
 			continue;
 		const float deltaX = player.fPositionX - monster.fPositionX;
 		const float deltaZ = player.fPositionZ - monster.fPositionZ;

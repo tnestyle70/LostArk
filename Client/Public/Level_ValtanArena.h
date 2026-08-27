@@ -75,7 +75,8 @@ private:
 	void Render_AuditionPanel();
 	void Update_AuditionTransaction();
 	bool_t Submit_Audition(
-		LostArk::Shared::VALTAN_AUDITION_OPERATION operation);
+		LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
+		uint32_t explicitCommandPayload = 0u);
 	bool_t Load_AuditionTimeline();
 	struct AUDITION_PENDING_REQUEST final
 	{

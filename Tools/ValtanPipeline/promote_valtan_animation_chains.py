@@ -73,6 +73,26 @@ def _exact(value: Mapping[str, Any], fields: tuple[str, ...], context: str) -> N
         )
 
 
+def _required_with_optional(
+    value: Mapping[str, Any],
+    required: tuple[str, ...],
+    optional: tuple[str, ...],
+    context: str,
+) -> None:
+    if not isinstance(value, dict):
+        raise PromotionError(
+            f"{context} properties mismatch: expected object actual={type(value).__name__}"
+        )
+    actual = set(value)
+    required_set = set(required)
+    allowed = required_set | set(optional)
+    if not required_set.issubset(actual) or not actual.issubset(allowed):
+        raise PromotionError(
+            f"{context} properties mismatch: required={list(required)} "
+            f"optional={list(optional)} actual={sorted(actual)}"
+        )
+
+
 def _stable(value: Any, context: str) -> str:
     if not isinstance(value, str) or STABLE_ID.fullmatch(value) is None:
         raise PromotionError(f"{context} is not a stable ID: {value!r}")
@@ -255,8 +275,8 @@ def _manual_gameplay_pattern(
         "compatibilitySelectionWeight": 0,
         "actionId": f"valtan.sequence.{chain_id}",
         "entryActionId": stages[0]["actionId"],
-        "targetPolicy": "NONE",
-        "aimPolicy": "NONE",
+        "targetPolicy": promotion.get("targetPolicy", "NONE"),
+        "aimPolicy": promotion.get("aimPolicy", "NONE"),
         "eligibility": {
             "armorRequirement": "ANY",
             "phaseRequirement": "ANY",
@@ -358,7 +378,7 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
     promotion_ids: set[str] = set()
     pattern_ids: set[str] = set()
     for ordinal, promotion in enumerate(promotions):
-        _exact(
+        _required_with_optional(
             promotion,
             (
                 "sourceChainId",
@@ -367,6 +387,7 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
                 "authoringPhase",
                 "admissionState",
             ),
+            ("targetPolicy", "aimPolicy"),
             f"promotion[{ordinal}]",
         )
         chain_id = _stable(promotion["sourceChainId"], f"promotion[{ordinal}].sourceChainId")
@@ -383,6 +404,21 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
             or promotion["admissionState"] != "MANUAL_SERVER_AUDITION"
         ):
             raise PromotionError(f"promotion metadata is invalid: {chain_id}")
+        target_policy = promotion.get("targetPolicy", "NONE")
+        aim_policy = promotion.get("aimPolicy", "NONE")
+        if target_policy not in {
+            "NONE",
+            "LOCK_NEAREST_ON_START",
+            "LOCK_RANDOM_ALIVE_ON_START",
+        } or aim_policy not in {
+            "NONE",
+            "LOCK_FACING_ON_START",
+        }:
+            raise PromotionError(f"promotion targeting is invalid: {chain_id}")
+        if (target_policy == "NONE") != (aim_policy == "NONE"):
+            raise PromotionError(
+                f"promotion target and aim policies must be authored together: {chain_id}"
+            )
 
     chain_ids = [
         _stable(chain.get("chainId"), f"debug chain[{ordinal}].chainId")

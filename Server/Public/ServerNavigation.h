@@ -45,6 +45,17 @@ namespace LostArk::Server
 			float goalX,
 			float goalZ,
 			std::vector<SERVER_NAV_POINT>& outPath) const;
+		/* Deterministic bounded BFS used by wander admission and its runtime
+		fallback. Every returned cell centre stays inside the spawn circle, so a
+		reachable destination whose only route leaves the radius is rejected. */
+		bool Find_PathToReachablePointWithinRadius(
+			float startX,
+			float startZ,
+			float centerX,
+			float centerZ,
+			float radius,
+			float minimumDestinationDistance,
+			std::vector<SERVER_NAV_POINT>& outPath) const;
 		bool Project_Point(
 			float x,
 			float z,

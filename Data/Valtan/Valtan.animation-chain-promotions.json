@@ -139,7 +139,9 @@
       "patternId": "VALTAN_CATCH_BREATH",
       "displayName": "잡아채서 불어 날리기",
       "authoringPhase": 2,
-      "admissionState": "MANUAL_SERVER_AUDITION"
+      "admissionState": "MANUAL_SERVER_AUDITION",
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START"
     },
     {
       "sourceChainId": "counter",

@@ -1208,6 +1208,31 @@ bool_t CCharacter::Apply_NetworkAction(
 		}
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
+	else if (PLAYER_ACTION_STATE::GRABBED == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		m_pChain = nullptr;
+		m_iChainStage = 0;
+		m_iChainStep = 0;
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+		m_fActionPresentationSeconds = 0.f;
+		Commit_PendingClipChains();
+		/* Valtan's left-hand matrix owns the body pose and translation while the
+		Server reports GRABBED. A neutral loop avoids player root motion fighting
+		the attachment every frame. */
+		Set_Animation(CHARACTER_ANIM::IDLE, true);
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
 	else if (PLAYER_ACTION_STATE::FALLING == action)
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
@@ -1302,7 +1327,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
 	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
-		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction)
+		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction)
 	{
 		m_pChain = nullptr;
 		m_iChainStage = 0;

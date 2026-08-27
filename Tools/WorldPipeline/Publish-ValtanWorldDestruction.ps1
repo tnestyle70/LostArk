@@ -625,7 +625,7 @@ function Compile-ValtanWorldDestruction {
     }
 
     if ($Gameplay.schema -cne 'lostark.world-gameplay' -or
-        [int]$Gameplay.formatVersion -ne 5 -or
+        [int]$Gameplay.formatVersion -ne 6 -or
         $Gameplay.areaId -cne $expectedAreaId) {
         throw 'Gameplay world identity is invalid for destruction publishing.'
     }

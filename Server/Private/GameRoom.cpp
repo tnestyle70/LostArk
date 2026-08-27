@@ -4,6 +4,7 @@
 
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
+#include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
 #include <array>
@@ -206,6 +207,41 @@ namespace
 	only presents a death the collapse already decided. */
 	constexpr float FALL_GRAVITY_METERS_PER_SECOND_SQUARED = 9.8f;
 	constexpr std::uint32_t FALL_DEATH_TICKS = 45u;
+	constexpr const char* VALTAN_CATCH_BREATH_PATTERN_ID =
+		"VALTAN_SEQUENCE_CATCH_BREATH";
+	constexpr const char* VALTAN_CATCH_BREATH_STEP_01_ACTION_ID =
+		"valtan.sequence.catch-breath.step-01";
+	constexpr const char* VALTAN_CATCH_BREATH_STEP_02_ACTION_ID =
+		"valtan.sequence.catch-breath.step-02";
+	constexpr const char* VALTAN_CATCH_BREATH_STEP_03_ACTION_ID =
+		"valtan.sequence.catch-breath.step-03";
+	constexpr const char* VALTAN_CATCH_BREATH_STEP_04_ACTION_ID =
+		"valtan.sequence.catch-breath.step-04";
+	/* Original action 420623 notifies the grab at 1.400s in 21_01 and the shot
+		at 0.650s in 21_04. The remaining 1.35s of the firing clip carries the
+		body just over sixty metres, outside the authored arena. */
+	constexpr std::uint32_t VALTAN_CATCH_BREATH_GRAB_NOTIFY_MS = 1400u;
+	constexpr std::uint32_t VALTAN_CATCH_BREATH_THROW_NOTIFY_MS = 650u;
+	constexpr float VALTAN_CATCH_BREATH_THROW_SPEED_METERS_PER_SECOND = 45.f;
+	constexpr float VALTAN_CATCH_BREATH_THROW_SECONDS = 1.35f;
+
+	bool Is_ValtanCatchBreathHeldAction(const std::string_view actionId)
+	{
+		return actionId == VALTAN_CATCH_BREATH_STEP_01_ACTION_ID ||
+			actionId == VALTAN_CATCH_BREATH_STEP_02_ACTION_ID ||
+			actionId == VALTAN_CATCH_BREATH_STEP_03_ACTION_ID ||
+			actionId == VALTAN_CATCH_BREATH_STEP_04_ACTION_ID;
+	}
+
+	void Clear_ValtanCatchBreathControl(SERVER_PLAYER& player)
+	{
+		player.iValtanGrabOwnerEntityId = INVALID_NET_ENTITY_ID;
+		player.iValtanGrabPatternSequence = 0u;
+		player.fValtanThrowDirectionX = 0.f;
+		player.fValtanThrowDirectionZ = 0.f;
+		player.fValtanThrowSpeed = 0.f;
+		player.fValtanThrowRemainingSeconds = 0.f;
+	}
 
 	constexpr std::uint32_t Add_ServerTicksSkippingReservedZero(
 		const std::uint32_t startTick,
@@ -230,6 +266,16 @@ namespace
 			static_cast<std::uint64_t>(
 				(std::numeric_limits<std::uint32_t>::max)() - startTick) +
 				currentTick;
+	}
+
+	bool Has_ValtanCatchBreathNotifyElapsed(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t serverTick,
+		const std::uint32_t notifyMs)
+	{
+		return Elapsed_ServerTicksSkippingReservedZero(
+			boss.iActionStartTick, serverTick) * 1000u >=
+			static_cast<std::uint64_t>(notifyMs) * SERVER_TICK_HZ;
 	}
 
 	static_assert(91u == Add_ServerTicksSkippingReservedZero(1u, 90u));
@@ -309,6 +355,39 @@ namespace
 	constexpr const char* FINAL_ARENA_FLOOR_B_ACTION_ID =
 		"valtan.mechanic.arena-break-33.landing";
 	constexpr std::uint32_t FINAL_ARENA_FLOOR_B_STAGE_INDEX = 1u;
+	struct VALTAN_FIGHT_PAGE_POLICY final
+	{
+		const char* pTimelineRowId;
+		std::uint8_t iInitialGameplayPhase;
+		bool bPlayEntrance;
+	};
+
+	/* Each key is an authored mechanic row, not a mutable list ordinal. The
+	boundary mechanic is allowed to cross normally; all earlier mechanics are
+	installed as completed ledger entries by Start_ValtanFightPage. */
+	constexpr std::array<VALTAN_FIGHT_PAGE_POLICY, 4u>
+		VALTAN_FIGHT_PAGE_POLICIES{
+			VALTAN_FIGHT_PAGE_POLICY{
+				"valtan.timeline.160-entrance-whirlwind", 1u, true },
+			VALTAN_FIGHT_PAGE_POLICY{
+				"valtan.timeline.109-arena-break", 1u, false },
+			VALTAN_FIGHT_PAGE_POLICY{
+				"valtan.timeline.62-center-grab-counter", 2u, false },
+			VALTAN_FIGHT_PAGE_POLICY{
+				"valtan.timeline.14-ghost-transition", 2u, false } };
+
+	const VALTAN_FIGHT_PAGE_POLICY* Find_ValtanFightPagePolicy(
+		const std::string& rowId)
+	{
+		const auto found = std::find_if(
+			VALTAN_FIGHT_PAGE_POLICIES.begin(),
+			VALTAN_FIGHT_PAGE_POLICIES.end(),
+			[&rowId](const VALTAN_FIGHT_PAGE_POLICY& policy)
+			{
+				return rowId == policy.pTimelineRowId;
+			});
+		return VALTAN_FIGHT_PAGE_POLICIES.end() == found ? nullptr : &*found;
+	}
 	/* A known ordinary wall used only by the Debug attack audition. The boss is
 	   kept six metres outside its centre so body contact cannot pre-empt the
 	   DOWN_SMASH hit pulse, while the player is projected onto the inner side. */
@@ -346,6 +425,7 @@ namespace
 		player.hasMoveGoal = false;
 		player.MovePath.clear();
 		player.iMovePathIndex = 0u;
+		Clear_ValtanCatchBreathControl(player);
 		player.isCombatReady = false;
 	}
 
@@ -835,6 +915,11 @@ LostArk::Server::CGameRoom::CGameRoom(
 		!m_ServerNavigation.Load(m_WorldBootstrap.Get_AreaId()))
 	{
 		m_strStatus = m_ServerNavigation.Get_Status();
+		return;
+	}
+	if (!m_NpcBehaviorRuntime.Validate_Admission(
+		m_WorldBootstrap.Get_Placements(), m_ServerNavigation, m_strStatus))
+	{
 		return;
 	}
 	if (!m_ServerTriggerSystem.Initialize(
@@ -1749,6 +1834,24 @@ bool LostArk::Server::CGameRoom::Join(
 		player.Inventory.push_back(std::move(seeded));
 	}
 
+	/* Validate every current world spawn before ENTER_ACCEPTED can be queued.
+	A malformed bootstrap entity must reject the admission atomically instead of
+	letting the Client change level and then losing the connection mid-stream. */
+	std::vector<std::vector<std::uint8_t>> worldEntitySpawnPayloads;
+	worldEntitySpawnPayloads.reserve(m_WorldEntities.size());
+	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		std::vector<std::uint8_t> payload;
+		if (!Build_WorldEntitySpawnedPayload(entity, payload))
+		{
+			m_strStatus = "World entity spawn payload preflight failed: " +
+				entity.strPlacementId;
+			session->Request_Close();
+			return false;
+		}
+		worldEntitySpawnPayloads.push_back(std::move(payload));
+	}
+
 	++m_iNextPlayerId;
 	++m_iNextNetEntityId;
 	m_Players.emplace(player.iPlayerId, player);
@@ -1778,9 +1881,10 @@ bool LostArk::Server::CGameRoom::Join(
 		session->Request_Close();
 		return false;
 	}
-	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	for (const std::vector<std::uint8_t>& payload : worldEntitySpawnPayloads)
 	{
-		if (!Send_WorldEntitySpawned(session, entity))
+		if (!session->Send_Frame(
+			PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED, payload))
 		{
 			Rollback_Join(sessionId);
 			session->Request_Close();
@@ -2194,7 +2298,10 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.fKnockbackSpeed = 0.f;
 	player.iKnockdownEndTick = 0u;
 	player.iHitReactionGraceEndTick = 0u;
-	player.isCombatReady = false;
+	Clear_ValtanCatchBreathControl(player);
+	// A successful authoritative revive immediately makes the player a valid
+	// combat participant again so party-wipe recovery can resume the encounter.
+	player.isCombatReady = true;
 	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
 }
 
@@ -2481,6 +2588,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.fKnockbackSpeed = 0.f;
 	staged.iKnockdownEndTick = 0u;
 	staged.iHitReactionGraceEndTick = 0u;
+	Clear_ValtanCatchBreathControl(staged);
 	staged.fActionElapsedSeconds = 0.f;
 	staged.fSkillAimDirectionX = 0.f;
 	staged.fSkillAimDirectionZ = 1.f;
@@ -3147,6 +3255,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanBossOnlyAuditionState(
 #ifdef _DEBUG
 	m_ValtanPatternIdAudition = {};
 	m_ValtanTimelineAudition = {};
+	m_ValtanFightPageStart = {};
 #endif
 	status = "Valtan boss-only audition reset completed";
 	return true;
@@ -3198,6 +3307,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 #ifdef _DEBUG
 	m_ValtanPatternIdAudition = {};
 	m_ValtanTimelineAudition = {};
+	m_ValtanFightPageStart = {};
 #endif
 	/* The reset put every floor sector back, so a body that was still falling
 	has solid ground under its own XZ again. */
@@ -3640,6 +3750,231 @@ bool LostArk::Server::CGameRoom::Start_ValtanTimelineRow(
 	m_ValtanTimelineAudition.ExpectedGoneGroupIds =
 		std::move(expectedGoneGroupIds);
 	status = "Valtan timeline row " + std::to_string(row.iOrdinal) + " queued";
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Start_ValtanFightPage(
+	const SESSION_ID sessionId,
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t commandId,
+	const std::uint32_t startTick,
+	std::string& status)
+{
+	using namespace LostArk::Shared;
+	const VALTAN_TIMELINE_ROW* selectedRow =
+		m_GameplayCatalog.Find_ValtanTimelineRow(
+			boss.strEncounterId, commandId);
+	const VALTAN_FIGHT_PAGE_POLICY* policy = nullptr == selectedRow ?
+		nullptr : Find_ValtanFightPagePolicy(selectedRow->strRowId);
+	if (nullptr == selectedRow || nullptr == policy ||
+		VALTAN_TIMELINE_ENTRY_TYPE::MECHANIC != selectedRow->eEntryType ||
+		VALTAN_TIMELINE_PROP_STATE::HIDDEN != selectedRow->ePropState)
+	{
+		status = "Valtan fight page command is not an authored page boundary";
+		return false;
+	}
+
+	/* Reuse the row runner's complete parse/catalog/environment preflight. A
+	valid page replaces an active isolated-row audition, but an invalid page
+	must leave that existing audition untouched. */
+	SERVER_PLAYER stagedOwner{};
+	if (!Stage_ValtanTimelineRowStart(
+		sessionId, boss, commandId, startTick, stagedOwner, status))
+	{
+		return false;
+	}
+	if (VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
+		m_ValtanTimelineAudition.ePhase)
+	{
+		Stop_ValtanTimelineRow();
+	}
+
+	if (!Reset_ValtanAuditionState(boss, startTick, status))
+		return false;
+	selectedRow = m_GameplayCatalog.Find_ValtanTimelineRow(
+		boss.strEncounterId, commandId);
+	policy = nullptr == selectedRow ? nullptr :
+		Find_ValtanFightPagePolicy(selectedRow->strRowId);
+	if (nullptr == selectedRow || nullptr == policy)
+	{
+		status = "Valtan fight page disappeared during commit";
+		return false;
+	}
+	const VALTAN_TIMELINE_ROW& row = *selectedRow;
+	const std::vector<BOSS_PATTERN_DEFINITION>* patterns =
+		m_GameplayCatalog.Find_BossPatterns(boss.strEncounterId);
+	const std::uint32_t targetHp =
+		CValtanBrain::Resolve_HealthBarHp(boss, row.iSectionHealthBar);
+	if (nullptr == patterns || 0u == targetHp)
+	{
+		status = "Valtan fight page mechanic ledger is unavailable";
+		return false;
+	}
+	const std::size_t completedMechanicCount = static_cast<std::size_t>(
+		std::count_if(
+			patterns->begin(), patterns->end(),
+			[&row](const BOSS_PATTERN_DEFINITION& pattern)
+			{
+				return BOSS_PATTERN_SELECTION::HEALTH_BAR == pattern.eSelection &&
+					pattern.iTriggerHealthBar > row.iSectionHealthBar;
+			}));
+	if (completedMechanicCount > CValtanBrain::MAX_MECHANIC_OCCURRENCE_COUNT)
+	{
+		status = "Valtan fight page completed mechanic ledger overflow";
+		return false;
+	}
+
+	WORLD_DESTRUCTION_TRANSACTION destructionTransaction{};
+	std::vector<std::string> expectedGoneGroupIds;
+	if (!Prepare_ValtanTimelineArenaState(
+		m_WorldDestructionRuntime, boss, row.eArenaState, startTick,
+		destructionTransaction, expectedGoneGroupIds, status))
+	{
+		return false;
+	}
+
+	/* A page start is a raid restart point, so every connected party member is
+	revived and placed at the authored bait point. Stage all copies first to
+	avoid a partial party reset if the map no longer provides that point. */
+	std::map<PLAYER_ID, SERVER_PLAYER> stagedPlayers = m_Players;
+	for (auto& [playerId, player] : stagedPlayers)
+	{
+		(void)playerId;
+		Prepare_TimelineAuditionPlayer(player, startTick);
+		if (!m_ServerTriggerSystem.Place_PlayerAtValtanAuditionBait(
+			player, startTick))
+		{
+			status = "Valtan fight page party placement is unavailable";
+			return false;
+		}
+	}
+	if (stagedPlayers.empty())
+	{
+		status = "Valtan fight page has no party player";
+		return false;
+	}
+
+	if (!destructionTransaction.Transitions.empty() &&
+		!Commit_WorldDestructionTransaction(
+			destructionTransaction, {}, startTick, status))
+	{
+		const std::string failure = status;
+		std::string rollbackStatus;
+		(void)Reset_ValtanAuditionState(boss, startTick, rollbackStatus);
+		status = "Valtan fight page environment commit rolled back: " + failure;
+		return false;
+	}
+	m_Players = std::move(stagedPlayers);
+	for (const auto& [playerId, player] : m_Players)
+	{
+		(void)player;
+		m_ServerTriggerSystem.Remove_Player(playerId);
+	}
+
+	boss.iCurrentHp = targetHp;
+	boss.iLastEvaluatedHealthBar =
+		row.iSectionHealthBar >= boss.iMaximumHealthBars ?
+			boss.iMaximumHealthBars : row.iSectionHealthBar + 1u;
+	(void)CBossCombatRuntime::Set_GameplayPhase(
+		boss, policy->iInitialGameplayPhase);
+	boss.bIntroPatternConsumed = !policy->bPlayEntrance;
+	boss.PendingPatternIds.clear();
+	boss.TriggeredPatternIds.clear();
+	boss.MechanicOccurrences.clear();
+	boss.bMechanicLedgerRequiresReset = false;
+	boss.iLastHealthMechanicGenerationEpoch =
+		m_GameplayCatalog.Get_ActiveGenerationEpoch();
+	boss.strRotationId.clear();
+	boss.iRotationStepIndex = 0u;
+	boss.iConsecutivePatternUses = 0u;
+	boss.PatternCooldowns.clear();
+
+	/* Completed occurrences are the authoritative one-shot record. Merely
+	populating TriggeredPatternIds is insufficient because current crossing
+	logic consults the occurrence ledger. Do not add the selected boundary: the
+	next Brain tick must cross and queue that mechanic itself. */
+	const GameplayDataRevision revision =
+		m_GameplayCatalog.Get_ActiveRevision();
+	for (const BOSS_PATTERN_DEFINITION& pattern : *patterns)
+	{
+		if (BOSS_PATTERN_SELECTION::HEALTH_BAR != pattern.eSelection ||
+			pattern.iTriggerHealthBar <= row.iSectionHealthBar)
+		{
+			continue;
+		}
+		SERVER_BOSS_MECHANIC_OCCURRENCE occurrence{};
+		occurrence.strPatternId = pattern.strPatternId;
+		occurrence.PinnedDefinitionRevision = revision;
+		occurrence.eState = SERVER_BOSS_MECHANIC_STATE::COMPLETED;
+		occurrence.iTriggerHealthBar = pattern.iTriggerHealthBar;
+		occurrence.iQueuedTick = startTick;
+		occurrence.iStartedTick = startTick;
+		occurrence.iFinishedTick = startTick;
+		boss.MechanicOccurrences.push_back(std::move(occurrence));
+		boss.TriggeredPatternIds.push_back(pattern.strPatternId);
+	}
+
+	m_iValtanAuditionArmedHealthBar = 0u;
+	m_ValtanFightPageStart = {};
+	if (!expectedGoneGroupIds.empty())
+	{
+		boss.bScriptedPatternPlayback = true;
+		m_ValtanFightPageStart.iBossEntityId = boss.iNetEntityId;
+		m_ValtanFightPageStart.iCommandId = commandId;
+		m_ValtanFightPageStart.iEnvironmentDeadlineTick =
+			Add_ServerTicksSkippingReservedZero(startTick, 300u);
+		m_ValtanFightPageStart.ExpectedGoneGroupIds =
+			std::move(expectedGoneGroupIds);
+	}
+	else
+	{
+		boss.bScriptedPatternPlayback = false;
+	}
+	status = "Valtan fight page queued from " + row.strRowId;
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Prepare_ValtanFightPageBeforeBrain(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t updateTick)
+{
+	if (!m_ValtanFightPageStart.Is_Active())
+		return true;
+	if (boss.iNetEntityId != m_ValtanFightPageStart.iBossEntityId ||
+		0u == boss.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss.eAction)
+	{
+		m_strStatus = "Valtan fight page lost its boss before release";
+		return false;
+	}
+
+	bool environmentReady = true;
+	for (const std::string& groupId :
+		m_ValtanFightPageStart.ExpectedGoneGroupIds)
+	{
+		WORLD_DESTRUCTION_GROUP_STATE state{};
+		if (!m_WorldDestructionRuntime.Find_GroupState(groupId, state))
+		{
+			m_strStatus = "Valtan fight page lost a staged arena group";
+			return false;
+		}
+		environmentReady = environmentReady &&
+			WORLD_DESTRUCTION_STATE::DESPAWNED == state.eState;
+	}
+	if (!environmentReady)
+	{
+		if (Has_ReachedServerTick(
+			updateTick, m_ValtanFightPageStart.iEnvironmentDeadlineTick))
+		{
+			m_strStatus = "Valtan fight page arena precondition timed out";
+		}
+		return false;
+	}
+
+	boss.bScriptedPatternPlayback = false;
+	const std::uint32_t commandId = m_ValtanFightPageStart.iCommandId;
+	m_ValtanFightPageStart = {};
+	m_strStatus = "Valtan fight page environment ready: " +
+		std::to_string(commandId);
 	return true;
 }
 
@@ -4182,9 +4517,11 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW == request.eOperation;
 		const bool isTimelineStop =
 			VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW == request.eOperation;
+		const bool isFightPageStart =
+			VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE == request.eOperation;
 		if (VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 				m_ValtanTimelineAudition.ePhase &&
-			!isTimelineStop && !isTimelinePlay)
+			!isTimelineStop && !isTimelinePlay && !isFightPageStart)
 		{
 			m_strStatus =
 				"Stop the active Valtan timeline row before another operation";
@@ -4196,8 +4533,14 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				VALTAN_AUDITION_RESULT::QUEUED :
 				VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
 		}
+		if (m_ValtanFightPageStart.Is_Active() && !isFightPageStart)
+		{
+			m_strStatus =
+				"Wait for the active Valtan fight page environment to finish";
+			return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+		}
 		SERVER_WORLD_ENTITY* boss = Find_AuditionBoss();
-		if (nullptr == boss && isTimelinePlay)
+		if (nullptr == boss && (isTimelinePlay || isFightPageStart))
 		{
 			const WORLD_BOOTSTRAP_PLACEMENT* placement =
 				Find_Placement("boss.valtan.center");
@@ -4218,12 +4561,23 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 					m_strStatus = std::move(preflightStatus);
 				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
 			}
+			if (isFightPageStart)
+			{
+				const VALTAN_TIMELINE_ROW* row =
+					m_GameplayCatalog.Find_ValtanTimelineRow(
+						stagedBoss.strEncounterId, request.iTargetHealthBar);
+				if (nullptr == row ||
+					nullptr == Find_ValtanFightPagePolicy(row->strRowId))
+				{
+					return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+				}
+			}
 		}
 		if (nullptr == boss &&
 			(VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR == request.eOperation ||
 				 VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE == request.eOperation ||
 				 isPillarCyclePlay || isWallAttackPlay || isArenaStagingView ||
-				 isPatternPlay || isTimelinePlay))
+				 isPatternPlay || isTimelinePlay || isFightPageStart))
 		{
 			(void)Activate_Encounter("boss.valtan.center");
 			boss = Find_AuditionBoss();
@@ -4236,6 +4590,22 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			const std::uint32_t startTick =
 				0u == m_iServerTick ? 1u : m_iServerTick;
 			if (!Start_ValtanTimelineRow(
+				sessionId, *boss, request.iTargetHealthBar,
+				startTick, startStatus))
+			{
+				m_strStatus = std::move(startStatus);
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			m_strStatus = std::move(startStatus);
+			currentHealthBar = CValtanBrain::Calculate_HealthBar(*boss);
+			return VALTAN_AUDITION_RESULT::QUEUED;
+		}
+		if (isFightPageStart)
+		{
+			std::string startStatus;
+			const std::uint32_t startTick =
+				0u == m_iServerTick ? 1u : m_iServerTick;
+			if (!Start_ValtanFightPage(
 				sessionId, *boss, request.iTargetHealthBar,
 				startTick, startStatus))
 			{
@@ -4569,6 +4939,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			player->second.fKnockbackSpeed = 0.f;
 			player->second.iKnockdownEndTick = 0u;
 			player->second.iHitReactionGraceEndTick = 0u;
+			Clear_ValtanCatchBreathControl(player->second);
 			if (!Has_EngagedAuditionPlayer(*boss))
 			{
 				boss->PendingPatternIds.clear();
@@ -4969,6 +5340,17 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawned(
 	const std::shared_ptr<CClientSession>& session,
 	const SERVER_WORLD_ENTITY& entity)
 {
+	std::vector<std::uint8_t> payload;
+	return nullptr != session &&
+		Build_WorldEntitySpawnedPayload(entity, payload) &&
+		session->Send_Frame(
+			LostArk::Shared::PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED, payload);
+}
+
+bool LostArk::Server::CGameRoom::Build_WorldEntitySpawnedPayload(
+	const SERVER_WORLD_ENTITY& entity,
+	std::vector<std::uint8_t>& outPayload)
+{
 	using namespace LostArk::Shared;
 	S2C_WORLD_ENTITY_SPAWNED message{};
 	message.iNetEntityId = entity.iNetEntityId;
@@ -4983,9 +5365,10 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawned(
 	message.fYawDegrees = entity.fYawDegrees;
 	message.fCollisionRadius = entity.fCollisionRadius;
 	CPacketWriter writer;
-	return nullptr != session && Write_Message(writer, message) &&
-		session->Send_Frame(
-			PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED, writer.Get_Buffer());
+	if (!Write_Message(writer, message))
+		return false;
+	outPayload = writer.Get_Buffer();
+	return true;
 }
 
 bool LostArk::Server::CGameRoom::Send_WorldEntityDespawned(
@@ -5361,7 +5744,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iNetEntityId = entity.iNetEntityId;
 		snapshot.eAction = To_NetworkAction(entity.eAction);
 		snapshot.strPatternId = entity.strPatternId;
-		if (entity.eAction == SERVER_ENTITY_ACTION::PATTERN_WINDUP ||
+		if (entity.eKind == WORLD_BOOTSTRAP_KIND::NPC ||
+			entity.eAction == SERVER_ENTITY_ACTION::PATTERN_WINDUP ||
 			entity.eAction == SERVER_ENTITY_ACTION::PATTERN_ACTIVE ||
 			entity.eAction == SERVER_ENTITY_ACTION::PATTERN_RECOVERY)
 		{
@@ -5393,6 +5777,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		}
 		if (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind)
 		{
+			snapshot.iPatternTargetNetEntityId =
+				entity.iPatternTargetEntityId;
 			snapshot.hasBossCombatState = true;
 			snapshot.BossCombat.iStateRevision =
 				entity.BossCombat.iStateRevision;
@@ -5584,6 +5970,25 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 	staged.fPositionY = placement.fPositionY;
 	staged.fPositionZ = placement.fPositionZ;
 	staged.fYawDegrees = placement.fYawDegrees;
+	if (WORLD_BOOTSTRAP_KIND::NPC == staged.eKind)
+	{
+		/* NPCs are non-combat living bodies. Keep their liveness explicit so
+		the body rebuild cannot silently drop them through a zero HP default.
+		Their wire collision radius stays zero by Shared contract; the Server's
+		blocking-body rebuild owns the separate player-sized NPC body. */
+		staged.iCurrentHp = 1u;
+		staged.iMaximumHp = 1u;
+		staged.fCollisionRadius = 0.f;
+		staged.strActionId = CNpcBehaviorRuntime::IDLE_ACTION_ID;
+		staged.iActionStartTick = 0u == m_iServerTick ? 1u : m_iServerTick;
+		if (placement.bHasNpcBehavior &&
+			!m_NpcBehaviorRuntime.Initialize(
+				placement, m_ServerNavigation,
+				staged.iActionStartTick, staged, m_strStatus))
+		{
+			return false;
+		}
+	}
 	if (WORLD_BOOTSTRAP_KIND::BOSS == staged.eKind)
 	{
 		const BOSS_RUNTIME_PROFILE* profile =
@@ -5715,6 +6120,7 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	m_ValtanPatternIdAuditionSequenceBySessionId.clear();
 #ifdef _DEBUG
 	m_ValtanPatternIdAudition = {};
+	m_ValtanFightPageStart = {};
 #endif
 	m_strStatus = "Replayable arena reset after the room became empty";
 	return true;
@@ -5738,6 +6144,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	m_bPillarAuditionCycleArmed = false;
 #ifdef _DEBUG
 	m_ValtanTimelineAudition = {};
+	m_ValtanFightPageStart = {};
 #endif
 	if (m_EncounterPropRuntime.Is_Initialized() &&
 		!m_EncounterPropRuntime.Reset(resetStatus, resetTick))
@@ -6281,6 +6688,224 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageTransition(
 		}
 	}
 	return true;
+}
+
+void LostArk::Server::CGameRoom::Apply_ValtanCatchBreathStageTransition(
+	const SERVER_WORLD_ENTITY& boss,
+	const std::string& previousPatternId,
+	const std::string& previousActionId,
+	const std::string& nextPatternId,
+	const std::string& nextActionId,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	const bool wasHolding =
+		previousPatternId == VALTAN_CATCH_BREATH_PATTERN_ID &&
+		Is_ValtanCatchBreathHeldAction(previousActionId);
+	const bool startsGrab =
+		nextPatternId == VALTAN_CATCH_BREATH_PATTERN_ID &&
+		nextActionId == VALTAN_CATCH_BREATH_STEP_01_ACTION_ID;
+
+	if (startsGrab)
+	{
+		const auto owner = m_PlayerIdByEntityId.find(
+			boss.iPatternTargetEntityId);
+		if (owner == m_PlayerIdByEntityId.end())
+			return;
+		const auto target = m_Players.find(owner->second);
+		if (target == m_Players.end() || 0u == target->second.iCurrentHp ||
+			!target->second.isCombatReady ||
+			PLAYER_ACTION_STATE::DEAD == target->second.eAction ||
+			PLAYER_ACTION_STATE::FALLING == target->second.eAction)
+		{
+			return;
+		}
+
+		SERVER_PLAYER& player = target->second;
+		Clear_ValtanCatchBreathControl(player);
+		/* Lock the occurrence now, but do not interrupt the player until the
+		original 21_01 HIT notify at 1.400s. */
+		player.iValtanGrabOwnerEntityId = boss.iNetEntityId;
+		player.iValtanGrabPatternSequence = boss.iPatternSequence;
+		return;
+	}
+
+	SERVER_PLAYER* controlled = nullptr;
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		if (player.iValtanGrabOwnerEntityId == boss.iNetEntityId &&
+			player.iValtanGrabPatternSequence == boss.iPatternSequence)
+		{
+			controlled = &player;
+			break;
+		}
+	}
+	if (nullptr == controlled)
+		return;
+	if (nextPatternId == VALTAN_CATCH_BREATH_PATTERN_ID &&
+		Is_ValtanCatchBreathHeldAction(nextActionId))
+	{
+		return;
+	}
+
+	if (wasHolding)
+	{
+		/* A reset, failed stage or Debug replacement can stop before STEP_04.
+		Release the exact occurrence owner instead of leaving input permanently
+		locked. The normal STEP_03 -> STEP_04 edge returned above. */
+		SERVER_PLAYER& player = *controlled;
+		Clear_ValtanCatchBreathControl(player);
+		if (0u != player.iCurrentHp &&
+			PLAYER_ACTION_STATE::GRABBED == player.eAction)
+		{
+			player.eAction = PLAYER_ACTION_STATE::NONE;
+			player.iActionStartTick = 0u;
+			player.iKnockdownEndTick = 0u;
+			player.isCombatReady = true;
+		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Begin_ValtanCatchBreathGrab(
+	SERVER_PLAYER& player,
+	const SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	/* The notify is an authoritative interrupt. Nothing the player was doing
+	may resume after the shot, and no old projectile may continue from the held
+	body. */
+	player.eAction = PLAYER_ACTION_STATE::GRABBED;
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+	player.fActionElapsedSeconds = 0.f;
+	player.hasAppliedSkillDamage = false;
+	player.iAppliedHitMask = 0u;
+	player.iSpawnedProjectileMask = 0u;
+	player.Projectiles.clear();
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
+	player.hasReleasedHold = false;
+	player.TriggerMove = {};
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	player.fKnockbackDirectionX = 0.f;
+	player.fKnockbackDirectionZ = 0.f;
+	player.fKnockbackSpeed = 0.f;
+	player.fKnockbackRemainingSeconds = 0.f;
+	player.iKnockdownEndTick = 0u;
+	player.fFallVelocityY = 0.f;
+	player.iFallDeathTick = 0u;
+	Clear_ValtanCatchBreathControl(player);
+	player.iValtanGrabOwnerEntityId = boss.iNetEntityId;
+	player.iValtanGrabPatternSequence = boss.iPatternSequence;
+	player.fPositionX = boss.fPositionX;
+	player.fPositionY = boss.fPositionY;
+	player.fPositionZ = boss.fPositionZ;
+	player.fYawDegrees = boss.fYawDegrees;
+	/* Keep the solo encounter engaged while Valtan owns the player. Damage
+	filters explicitly reject GRABBED instead of abusing this acquisition bit. */
+	player.isCombatReady = true;
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+}
+
+void LostArk::Server::CGameRoom::Begin_ValtanCatchBreathThrow(
+	SERVER_PLAYER& player,
+	const SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+	/* mesh_att_battle_21_02 turns the body around. That skeletal turn does not
+	rotate the authoritative root, so the shot uses the opposite of the locked
+	start facing. */
+	const float throwDirectionX = -std::sin(yawRadians);
+	const float throwDirectionZ = -std::cos(yawRadians);
+	Clear_ValtanCatchBreathControl(player);
+	player.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+	player.fActionElapsedSeconds = 0.f;
+	player.fValtanThrowDirectionX = throwDirectionX;
+	player.fValtanThrowDirectionZ = throwDirectionZ;
+	player.fValtanThrowSpeed =
+		VALTAN_CATCH_BREATH_THROW_SPEED_METERS_PER_SECOND;
+	player.fValtanThrowRemainingSeconds =
+		VALTAN_CATCH_BREATH_THROW_SECONDS;
+	player.iKnockdownEndTick = Add_ServerTicksSkippingReservedZero(
+		player.iActionStartTick,
+		static_cast<std::uint32_t>(std::ceil(
+			VALTAN_CATCH_BREATH_THROW_SECONDS * SERVER_TICK_HZ)) +
+		FALL_DEATH_TICKS);
+	player.fYawDegrees = Wrap_Degrees(boss.fYawDegrees + 180.f);
+	player.isCombatReady = true;
+}
+
+void LostArk::Server::CGameRoom::Maintain_ValtanCatchBreathGrab(
+	const SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t serverTick)
+{
+	if (boss.strPatternId != VALTAN_CATCH_BREATH_PATTERN_ID ||
+		!Is_ValtanCatchBreathHeldAction(boss.strActionId))
+	{
+		return;
+	}
+	const auto owner = m_PlayerIdByEntityId.find(
+		boss.iPatternTargetEntityId);
+	if (owner == m_PlayerIdByEntityId.end())
+		return;
+	const auto target = m_Players.find(owner->second);
+	if (target == m_Players.end())
+		return;
+	SERVER_PLAYER& player = target->second;
+	if (player.iValtanGrabOwnerEntityId != boss.iNetEntityId ||
+		player.iValtanGrabPatternSequence != boss.iPatternSequence)
+	{
+		return;
+	}
+	if (boss.strActionId == VALTAN_CATCH_BREATH_STEP_01_ACTION_ID &&
+		LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction)
+	{
+		if (!Has_ValtanCatchBreathNotifyElapsed(
+			boss, serverTick, VALTAN_CATCH_BREATH_GRAB_NOTIFY_MS))
+		{
+			return;
+		}
+		if (0u == player.iCurrentHp || !player.isCombatReady ||
+			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction ||
+			LostArk::Shared::PLAYER_ACTION_STATE::FALLING == player.eAction)
+		{
+			Clear_ValtanCatchBreathControl(player);
+			return;
+		}
+		Begin_ValtanCatchBreathGrab(player, boss, serverTick);
+	}
+	if (boss.strActionId == VALTAN_CATCH_BREATH_STEP_04_ACTION_ID &&
+		LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == player.eAction &&
+		Has_ValtanCatchBreathNotifyElapsed(
+			boss, serverTick, VALTAN_CATCH_BREATH_THROW_NOTIFY_MS))
+	{
+		Begin_ValtanCatchBreathThrow(player, boss, serverTick);
+		return;
+	}
+	if (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction)
+		return;
+	/* The Server proxy stays at the boss root for acquisition and late-join
+	state. Client presentation replaces it with left-hand-bone * local offset
+	every frame from the STEP_01 grab notify through the STEP_04 shot notify. */
+	player.fPositionX = boss.fPositionX;
+	player.fPositionY = boss.fPositionY;
+	player.fPositionZ = boss.fPositionZ;
+	player.fYawDegrees = boss.fYawDegrees;
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
 }
 
 bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
@@ -7431,13 +8056,17 @@ void LostArk::Server::CGameRoom::Refresh_PlayerBlockingBodies()
 	{
 		if (entity.isEstherSummon ||
 			SERVER_ENTITY_ACTION::DEAD == entity.eAction ||
-			0u == entity.iCurrentHp)
+			(WORLD_BOOTSTRAP_KIND::NPC != entity.eKind &&
+			 0u == entity.iCurrentHp))
 		{
 			continue;
 		}
 		/* Same body the skill hit test uses: monsters carry their profile
-		radius, the boss reads its profile. */
+		radius, the boss reads its profile, and town NPCs use the shared upright
+		player-sized body until the catalog owns a dedicated gameplay radius. */
 		float radius = entity.fCollisionRadius;
+		float centerY = entity.fPositionY + radius;
+		float halfHeight = radius;
 		if (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind)
 		{
 			if (const BOSS_RUNTIME_PROFILE* bossProfile =
@@ -7446,16 +8075,112 @@ void LostArk::Server::CGameRoom::Refresh_PlayerBlockingBodies()
 				radius = bossProfile->fCollisionRadius;
 			}
 		}
+		else if (WORLD_BOOTSTRAP_KIND::NPC == entity.eKind)
+		{
+			using namespace LostArk::Shared::WorldCollision;
+			radius = PLAYER_HALF_EXTENT_X;
+			centerY = entity.fPositionY + PLAYER_CENTER_OFFSET_Y;
+			halfHeight = PLAYER_HALF_EXTENT_Y;
+		}
 		else if (WORLD_BOOTSTRAP_KIND::MONSTER != entity.eKind)
 		{
 			continue;
 		}
 		if (radius <= 0.f)
 			continue;
+		if (WORLD_BOOTSTRAP_KIND::NPC != entity.eKind)
+		{
+			centerY = entity.fPositionY + radius;
+			halfHeight = radius;
+		}
 		bodies.push_back(SERVER_BLOCKING_BODY{
-			entity.fPositionX, entity.fPositionZ, radius });
+			entity.fPositionX, entity.fPositionZ, radius,
+			centerY, halfHeight, entity.iNetEntityId });
 	}
 	m_ServerCollisionSystem.Set_BlockingBodies(std::move(bodies));
+}
+
+void LostArk::Server::CGameRoom::Begin_PlayerFall(
+	SERVER_PLAYER& player,
+	const float fixedDeltaSeconds,
+	const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	player.eAction = PLAYER_ACTION_STATE::FALLING;
+	player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
+	player.iFallDeathTick = Add_ServerTicksSkippingReservedZero(
+		player.iActionStartTick, FALL_DEATH_TICKS);
+	player.fFallVelocityY = 0.f;
+	/* Everything the fall interrupts is cleared here instead of inside each
+	system, so no half-finished action can resume when the body lands dead. */
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.fActionElapsedSeconds = 0.f;
+	player.hasAppliedSkillDamage = false;
+	player.iAppliedHitMask = 0;
+	player.iSpawnedProjectileMask = 0;
+	player.Projectiles.clear();
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
+	player.hasReleasedHold = false;
+	player.TriggerMove = {};
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	player.fKnockbackDirectionX = 0.f;
+	player.fKnockbackDirectionZ = 0.f;
+	player.fKnockbackSpeed = 0.f;
+	player.fKnockbackRemainingSeconds = 0.f;
+	player.iKnockdownEndTick = 0u;
+	Clear_ValtanCatchBreathControl(player);
+	/* Every boss and monster gate already refuses a player that is not combat
+	ready, so this one flag removes the falling body from acquisition and from
+	area damage without editing four separate target filters. */
+	player.isCombatReady = false;
+	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+	/* The edge that opens the hole is also the first tick of the descent, so
+	the body integrates here instead of hanging one tick at the old height and
+	broadcasting a FALLING snapshot that has not moved. The deadline was just
+	set a full FALL_DEATH_TICKS away, so it cannot be due on this tick. */
+	player.fFallVelocityY -=
+		FALL_GRAVITY_METERS_PER_SECOND_SQUARED * fixedDeltaSeconds;
+	player.fPositionY += player.fFallVelocityY * fixedDeltaSeconds;
+}
+
+bool LostArk::Server::CGameRoom::Advance_ValtanCatchBreathThrow(
+	SERVER_PLAYER& player,
+	const float fixedDeltaSeconds,
+	const std::uint32_t updateTick)
+{
+	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f ||
+		player.fValtanThrowRemainingSeconds <= 0.f)
+	{
+		return false;
+	}
+	if (0u == player.iCurrentHp ||
+		LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
+	{
+		Clear_ValtanCatchBreathControl(player);
+		return false;
+	}
+	const float step = (std::min)(
+		fixedDeltaSeconds, player.fValtanThrowRemainingSeconds);
+	/* This is the authored forced-ejection leg, not player navigation. Clamping
+	it to the arena grid or wall collision would make STEP_04 stop at the edge
+	instead of throwing the target out of bounds. */
+	player.fPositionX += player.fValtanThrowDirectionX *
+		player.fValtanThrowSpeed * step;
+	player.fPositionZ += player.fValtanThrowDirectionZ *
+		player.fValtanThrowSpeed * step;
+	player.fValtanThrowRemainingSeconds -= step;
+	if (player.fValtanThrowRemainingSeconds <= 0.000001f)
+	{
+		player.fValtanThrowRemainingSeconds = 0.f;
+		Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
+	}
+	return true;
 }
 
 /* Owns the whole falling life cycle of one player inside one tick: it starts
@@ -7499,41 +8224,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 		return false;
 	}
 
-	player.eAction = PLAYER_ACTION_STATE::FALLING;
-	player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
-	const std::uint32_t deadline = player.iActionStartTick + FALL_DEATH_TICKS;
-	player.iFallDeathTick = 0u == deadline ? 1u : deadline;
-	player.fFallVelocityY = 0.f;
-	/* Everything the fall interrupts is cleared here instead of inside each
-	system, so no half-finished action can resume when the body lands dead. */
-	player.iCurrentSkillId = INVALID_SKILL_ID;
-	player.Clear_SkillTarget();
-	player.fActionElapsedSeconds = 0.f;
-	player.hasAppliedSkillDamage = false;
-	player.iAppliedHitMask = 0;
-	player.iSpawnedProjectileMask = 0;
-	player.Projectiles.clear();
-	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
-	player.iComboStage = 0u;
-	player.hasBufferedComboInput = false;
-	player.PendingCommand.Clear();
-	player.hasReleasedHold = false;
-	player.TriggerMove = {};
-	player.hasMoveGoal = false;
-	player.MovePath.clear();
-	player.iMovePathIndex = 0u;
-	/* Every boss and monster gate already refuses a player that is not combat
-	ready, so this one flag removes the falling body from acquisition and from
-	area damage without editing four separate target filters. */
-	player.isCombatReady = false;
-	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
-	/* The edge that opens the hole is also the first tick of the descent, so
-	the body integrates here instead of hanging one tick at the old height and
-	broadcasting a FALLING snapshot that has not moved. The deadline was just
-	set a full FALL_DEATH_TICKS away, so it cannot be due on this tick. */
-	player.fFallVelocityY -=
-		FALL_GRAVITY_METERS_PER_SECOND_SQUARED * fixedDeltaSeconds;
-	player.fPositionY += player.fFallVelocityY * fixedDeltaSeconds;
+	Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
 	return true;
 }
 
@@ -7562,6 +8253,13 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			}
 		}
 #endif
+		if (Advance_ValtanCatchBreathThrow(
+			player, fixedDeltaSeconds, updateTick))
+		{
+			continue;
+		}
+		if (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == player.eAction)
+			continue;
 		if (Update_PlayerFall(player, fixedDeltaSeconds, updateTick))
 			continue;
 		if (m_ServerTriggerSystem.Update_PlayerMotion(
@@ -7854,6 +8552,54 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			entity.fActionElapsedSeconds += fixedDeltaSeconds;
 			continue;
 		}
+		if (entity.eKind == WORLD_BOOTSTRAP_KIND::NPC)
+		{
+			const WORLD_BOOTSTRAP_PLACEMENT* placement =
+				Find_Placement(entity.strPlacementId);
+			if (nullptr == placement)
+			{
+				m_strStatus = "NPC runtime placement disappeared: " +
+					entity.strPlacementId;
+				m_isReady = false;
+				return;
+			}
+			if (!placement->bHasNpcBehavior)
+				continue;
+			const SERVER_WORLD_ENTITY* lookTarget = nullptr;
+			if (!placement->NpcBehavior.strLookTargetPlacementId.empty())
+			{
+				const auto target = std::find_if(
+					m_WorldEntities.begin(), m_WorldEntities.end(),
+					[placement](const SERVER_WORLD_ENTITY& candidate)
+					{
+						return candidate.strPlacementId ==
+							placement->NpcBehavior.strLookTargetPlacementId;
+					});
+				if (target != m_WorldEntities.end())
+					lookTarget = &*target;
+			}
+			if (!m_NpcBehaviorRuntime.Update(
+				*placement, lookTarget, m_ServerNavigation,
+				m_ServerCollisionSystem,
+				fixedDeltaSeconds, updateTick, entity, m_strStatus))
+			{
+				m_isReady = false;
+				return;
+			}
+			if (!m_ServerCollisionSystem.Update_BlockingBody(
+				entity.iNetEntityId,
+				entity.fPositionX,
+				entity.fPositionY +
+					LostArk::Shared::WorldCollision::PLAYER_CENTER_OFFSET_Y,
+				entity.fPositionZ))
+			{
+				m_strStatus = "NPC blocking body disappeared: " +
+					entity.strPlacementId;
+				m_isReady = false;
+				return;
+			}
+			continue;
+		}
 		if (entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
 			m_ServerNavigation.Is_Loaded())
 		{
@@ -7892,8 +8638,13 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			const float contactStartZ = entity.fPositionZ;
 			bool updateValtanBrain = true;
 #ifdef _DEBUG
-			updateValtanBrain = Prepare_ValtanTimelineRowBeforeBrain(
+			updateValtanBrain = Prepare_ValtanFightPageBeforeBrain(
 				entity, updateTick);
+			if (updateValtanBrain)
+			{
+				updateValtanBrain = Prepare_ValtanTimelineRowBeforeBrain(
+					entity, updateTick);
+			}
 #endif
 			if (updateValtanBrain)
 			{
@@ -7980,6 +8731,13 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_isReady = false;
 				return;
 			}
+			if (stageIdentityChanged)
+			{
+				Apply_ValtanCatchBreathStageTransition(
+					entity, previousPatternId, previousActionId,
+					entity.strPatternId, entity.strActionId, updateTick);
+			}
+			Maintain_ValtanCatchBreathGrab(entity, updateTick);
 			if (!stageChanged && updateValtanBrain &&
 				!Apply_BossPatternScheduledSpawnWave(entity, updateTick))
 			{

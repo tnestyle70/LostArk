@@ -102,6 +102,41 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         self.assertEqual("EXACT", exact["endPolicy"])
         self.assertGreater(exact["productPlayMs"], 0)
 
+    def test_catch_breath_freezes_nearest_target_and_exact_four_stage_sequence(self) -> None:
+        gameplay, presentation, _receipt = promotion.build_candidates(self.root)
+        gameplay_pattern = next(
+            pattern
+            for pattern in gameplay["patterns"]
+            if pattern["patternId"] == "VALTAN_SEQUENCE_CATCH_BREATH"
+        )
+        self.assertEqual("LOCK_NEAREST_ON_START", gameplay_pattern["targetPolicy"])
+        self.assertEqual("LOCK_FACING_ON_START", gameplay_pattern["aimPolicy"])
+        self.assertEqual(
+            [2000, 500, 4000, 2000],
+            [stage["durationMs"] for stage in gameplay_pattern["stages"]],
+        )
+
+        presentation_pattern = next(
+            pattern
+            for pattern in presentation["patterns"]
+            if pattern["patternId"] == "VALTAN_SEQUENCE_CATCH_BREATH"
+        )
+        occurrences = [
+            stage["animation"]["occurrences"][0]
+            for stage in presentation_pattern["stages"]
+        ]
+        self.assertEqual(
+            [
+                "mesh_att_battle_21_01",
+                "mesh_att_battle_21_02",
+                "mesh_att_battle_21_03",
+                "mesh_att_battle_21_04",
+            ],
+            [occurrence["clip"] for occurrence in occurrences],
+        )
+        self.assertTrue(occurrences[2]["repeatUntilStageEnd"])
+        self.assertEqual(0, occurrences[2]["playMs"])
+
     def test_all_six_reviewed_clip_aliases_are_explicit(self) -> None:
         _gameplay, _presentation, receipt = promotion.build_candidates(self.root)
         aliases = {

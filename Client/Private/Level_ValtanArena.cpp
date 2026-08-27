@@ -1038,7 +1038,8 @@ bool_t CLevel_ValtanArena::Load_AuditionTimeline()
 }
 
 bool_t CLevel_ValtanArena::Submit_Audition(
-	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation)
+	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
+	const uint32_t explicitCommandPayload)
 {
 	if (nullptr == m_Replication.Get_LocalCharacter())
 	{
@@ -1070,6 +1071,9 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 	const bool_t isTimelinePlay =
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW ==
 			operation;
+	const bool_t isFightPageStart =
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE ==
+			operation;
 	/* The pattern browser addresses the authored pattern order instead, and
 	sends a one-based index so the wire never carries the zero that means
 	"no bar". */
@@ -1088,9 +1092,15 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 		m_strAuditionStatus = "No chronological fight row is selected.";
 		return false;
 	}
+	if (isFightPageStart && 0u == explicitCommandPayload)
+	{
+		m_strAuditionStatus = "No authored fight page is selected.";
+		return false;
+	}
 	const std::vector<uint32_t> bars =
 		Collect_AuditionHealthBars(m_ValtanEncounterReference);
 	if (!isBarless && !isPatternPlay && !isTimelinePlay &&
+		!isFightPageStart &&
 		m_iSelectedAuditionBarIndex >= bars.size())
 	{
 		m_strAuditionStatus = "No authored health-bar pattern is selected.";
@@ -1099,12 +1109,13 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 
 	const uint32_t sequence = 0u == m_iNextAuditionRequestSequence ?
 		1u : m_iNextAuditionRequestSequence;
-	const uint32_t commandPayload = isPatternPlay ?
+	const uint32_t commandPayload = isFightPageStart ?
+		explicitCommandPayload : (isPatternPlay ?
 		static_cast<uint32_t>(m_iSelectedAuditionPatternIndex + 1u) :
 		(isTimelinePlay ?
 			m_AuditionTimelineRows[
 				m_iSelectedAuditionTimelineRowIndex].iCommandId :
-			(isBarless ? 0u : bars[m_iSelectedAuditionBarIndex]));
+			(isBarless ? 0u : bars[m_iSelectedAuditionBarIndex])));
 	if (!CNetworkManager::Get().Send_ValtanAudition(
 		sequence, operation, commandPayload))
 	{
@@ -1344,6 +1355,52 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	ImGui::TextDisabled(
 		"No jump clip exists in this model, so the Server owns the 109 leap as an authored arc.");
 
+	ImGui::SeparatorText("Fight page start");
+	ImGui::TextDisabled(
+		"Starts the real encounter flow at that page; patterns continue normally after the boundary mechanic.");
+	const auto submitFightPage = [this](const char_t* rowId)
+	{
+		const auto found = std::find_if(
+			m_AuditionTimelineRows.begin(), m_AuditionTimelineRows.end(),
+			[rowId](const AUDITION_TIMELINE_ROW& row)
+			{
+				return row.strRowId == rowId;
+			});
+		if (m_AuditionTimelineRows.end() == found)
+		{
+			m_strAuditionStatus =
+				"The authored fight-page boundary is missing from the timeline.";
+			return;
+		}
+		(void)Submit_Audition(
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE,
+			found->iCommandId);
+	};
+	ImGui::BeginDisabled(focusedControlsDisabled);
+	if (ImGui::Button(
+		"1\xED\x8E\x98\xEC\x9D\xB4\xEC\xA7\x80 "
+		"\xEC\x8B\x9C\xEC\x9E\x91 (160\xEC\xA4\x84)",
+		ImVec2(220.f, 0.f)))
+		submitFightPage("valtan.timeline.160-entrance-whirlwind");
+	ImGui::SameLine();
+	if (ImGui::Button(
+		"2\xED\x8E\x98\xEC\x9D\xB4\xEC\xA7\x80 "
+		"\xEC\x8B\x9C\xEC\x9E\x91 (109\xEC\xA4\x84)",
+		ImVec2(220.f, 0.f)))
+		submitFightPage("valtan.timeline.109-arena-break");
+	if (ImGui::Button(
+		"3\xED\x8E\x98\xEC\x9D\xB4\xEC\xA7\x80 "
+		"\xEC\x8B\x9C\xEC\x9E\x91 (62\xEC\xA4\x84)",
+		ImVec2(220.f, 0.f)))
+		submitFightPage("valtan.timeline.62-center-grab-counter");
+	ImGui::SameLine();
+	if (ImGui::Button(
+		"\xEB\xA7\x9D\xEB\xA0\xB9\xED\x99\x94 "
+		"\xEC\x8B\x9C\xEC\x9E\x91 (14\xEC\xA4\x84)",
+		ImVec2(220.f, 0.f)))
+		submitFightPage("valtan.timeline.14-ghost-transition");
+	ImGui::EndDisabled();
+
 	ImGui::SeparatorText("Chronological fight pattern selection");
 	if (m_AuditionTimelineRows.empty())
 	{
@@ -1357,7 +1414,7 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 			m_iSelectedAuditionTimelineRowIndex,
 			m_AuditionTimelineRows.size() - 1u);
 		ImGui::TextDisabled(
-			"HP mechanics and the normal patterns between them are listed in actual fight order.");
+			"Click a row to reset the arena and immediately run that row's complete authored pattern sequence.");
 		ImGui::BeginChild(
 			"##ValtanChronologicalFightRows", ImVec2(0.f, 360.f),
 			ImGuiChildFlags_Borders);
@@ -1398,6 +1455,12 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 				ImGuiSelectableFlags_None, ImVec2(rowWidth, rowHeight)))
 			{
 				m_iSelectedAuditionTimelineRowIndex = index;
+				if (!focusedControlsDisabled)
+				{
+					(void)Submit_Audition(
+						LostArk::Shared::VALTAN_AUDITION_OPERATION::
+							PLAY_TIMELINE_ROW);
+				}
 			}
 			const ImVec2 nextRow = ImGui::GetCursorScreenPos();
 			ImGui::SetCursorScreenPos(ImVec2(
@@ -1425,7 +1488,7 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 			selectedRow.iOrdinal, selectedRow.strDisplayLabel.c_str());
 		ImGui::BeginDisabled(focusedControlsDisabled);
 		if (ImGui::Button(
-			"Play Selected Fight Row", ImVec2(300.f, 0.f)))
+			"Replay Selected Fight Row", ImVec2(300.f, 0.f)))
 		{
 			Submit_Audition(
 				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW);
@@ -1438,7 +1501,7 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		}
 		ImGui::EndDisabled();
 		ImGui::TextDisabled(
-			"Play resets and prepares that row's walls, floor and pillars, then runs only its authored pattern sequence.");
+			"A row click or Replay resets and prepares its walls, floor and pillars, then runs only its complete authored pattern sequence.");
 	}
 
 	ImGui::SeparatorText("Reference Views (Debug presentation only)");

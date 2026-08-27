@@ -5,6 +5,7 @@
 #include "GameplayCatalog.h"
 #include "WorldBootstrap.h"
 #include "ServerNavigation.h"
+#include "NpcBehaviorRuntime.h"
 
 #include <cstdint>
 #include <string>
@@ -282,5 +283,6 @@ namespace LostArk::Server
 		float fLastPathGoalZ = 0.f;
 		std::vector<SERVER_NAV_POINT> MovePath;
 		std::size_t iMovePathIndex = 0;
+		SERVER_NPC_BEHAVIOR_STATE NpcBehavior;
 	};
 }

@@ -646,6 +646,127 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 	return !outPath.empty();
 }
 
+bool LostArk::Server::CServerNavigation::Find_PathToReachablePointWithinRadius(
+	const float startX,
+	const float startZ,
+	const float centerX,
+	const float centerZ,
+	const float radius,
+	const float minimumDestinationDistance,
+	std::vector<SERVER_NAV_POINT>& outPath) const
+{
+	outPath.clear();
+	if (!Is_Loaded() || !std::isfinite(startX) || !std::isfinite(startZ) ||
+		!std::isfinite(centerX) || !std::isfinite(centerZ) ||
+		!std::isfinite(radius) || !std::isfinite(minimumDestinationDistance) ||
+		radius <= 0.f || minimumDestinationDistance <= 0.f)
+	{
+		return false;
+	}
+	std::uint32_t start = 0u;
+	if (!Resolve_Cell(startX, startZ, start))
+		return false;
+	const float radiusSquared = radius * radius;
+	const float minimumDistanceSquared =
+		minimumDestinationDistance * minimumDestinationDistance;
+	const auto isInsideRadius =
+		[this, centerX, centerZ, radiusSquared](const std::uint32_t index)
+		{
+			const SERVER_NAV_POINT point = Cell_ToPoint(index);
+			const float deltaX = point.x - centerX;
+			const float deltaZ = point.z - centerZ;
+			return deltaX * deltaX + deltaZ * deltaZ <=
+				radiusSquared + 0.001f;
+		};
+	if (!isInsideRadius(start))
+		return false;
+
+	const std::size_t count = m_Walkable.size();
+	const std::uint32_t noParent =
+		(std::numeric_limits<std::uint32_t>::max)();
+	std::vector<std::uint8_t> visited(count, 0u);
+	std::vector<std::uint32_t> parents(count, noParent);
+	std::vector<std::uint32_t> frontier;
+	frontier.reserve(count);
+	visited[start] = 1u;
+	frontier.push_back(start);
+	std::uint32_t goal = noParent;
+	constexpr int DIRECTIONS[8][2] = {
+		{-1,0},{1,0},{0,-1},{0,1},{-1,-1},{1,-1},{-1,1},{1,1}
+	};
+	for (std::size_t cursor = 0u;
+		cursor < frontier.size() && noParent == goal; ++cursor)
+	{
+		const std::uint32_t current = frontier[cursor];
+		const int currentX = static_cast<int>(current % m_iWidth);
+		const int currentZ = static_cast<int>(current / m_iWidth);
+		for (const auto& direction : DIRECTIONS)
+		{
+			const int nextX = currentX + direction[0];
+			const int nextZ = currentZ + direction[1];
+			if (nextX < 0 || nextZ < 0 ||
+				nextX >= static_cast<int>(m_iWidth) ||
+				nextZ >= static_cast<int>(m_iHeight))
+			{
+				continue;
+			}
+			const std::uint32_t next = static_cast<std::uint32_t>(
+				nextZ * static_cast<int>(m_iWidth) + nextX);
+			if (visited[next] || !isInsideRadius(next) ||
+				!Is_CellTraversalAllowed(current, next))
+			{
+				continue;
+			}
+			const bool diagonal = 0 != direction[0] && 0 != direction[1];
+			if (diagonal)
+			{
+				const std::uint32_t sideA = static_cast<std::uint32_t>(
+					currentZ * static_cast<int>(m_iWidth) + nextX);
+				const std::uint32_t sideB = static_cast<std::uint32_t>(
+					nextZ * static_cast<int>(m_iWidth) + currentX);
+				if (!Is_CellTraversalAllowed(current, sideA) ||
+					!Is_CellTraversalAllowed(current, sideB) ||
+					!Is_CellTraversalAllowed(sideA, next) ||
+					!Is_CellTraversalAllowed(sideB, next))
+				{
+					continue;
+				}
+			}
+			visited[next] = 1u;
+			parents[next] = current;
+			frontier.push_back(next);
+			const SERVER_NAV_POINT point = Cell_ToPoint(next);
+			const float deltaX = point.x - startX;
+			const float deltaZ = point.z - startZ;
+			if (deltaX * deltaX + deltaZ * deltaZ >=
+				minimumDistanceSquared)
+			{
+				goal = next;
+				break;
+			}
+		}
+	}
+	if (noParent == goal)
+		return false;
+
+	std::vector<std::uint32_t> reversePath;
+	for (std::uint32_t current = goal; current != start;
+		current = parents[current])
+	{
+		if (current >= parents.size() || noParent == parents[current])
+		{
+			outPath.clear();
+			return false;
+		}
+		reversePath.push_back(current);
+	}
+	std::reverse(reversePath.begin(), reversePath.end());
+	outPath.reserve(reversePath.size());
+	for (const std::uint32_t index : reversePath)
+		outPath.push_back(Cell_ToPoint(index));
+	return !outPath.empty();
+}
+
 bool LostArk::Server::CServerNavigation::Prepare_ConditionChanges(
 	const std::vector<SERVER_NAVIGATION_CONDITION_CHANGE>& changes,
 	SERVER_NAVIGATION_CONDITION_STAGE& outStage,

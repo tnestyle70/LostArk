@@ -124,11 +124,15 @@ namespace
 			 (LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == snapshot.eAction &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
+			 (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == snapshot.eAction &&
+				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
+				0 != snapshot.iActionStartTick) ||
 			 ((LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::FALLING != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN != snapshot.eAction &&
-				LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST != snapshot.eAction) &&
+				LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != snapshot.eAction) &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID));
     }
 
@@ -331,6 +335,9 @@ namespace
 			0 != snapshot.iPhase &&
 			snapshot.iBrokenArmorMask <
 				(1u << LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES) &&
+			(snapshot.hasBossCombatState ||
+			 snapshot.iPatternTargetNetEntityId ==
+				LostArk::Shared::INVALID_NET_ENTITY_ID) &&
 			(snapshot.hasBossCombatState ?
 				(Is_Valid_BossCombatSnapshot(snapshot.BossCombat) &&
 				 snapshot.iPhase == snapshot.BossCombat.iGameplayPhase) :
@@ -1961,6 +1968,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(entity.iActionStartTick);
 		writer.Write_U32(entity.iPatternSequence);
 		writer.Write_U32(entity.iPatternStageIndex);
+		writer.Write_U32(entity.iPatternTargetNetEntityId);
 		writer.Write_U32(entity.iCurrentHp);
 		writer.Write_U32(entity.iMaximumHp);
 		writer.Write_U8(entity.iPhase);
@@ -2159,6 +2167,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(entity.iActionStartTick) ||
 			!reader.Read_U32(entity.iPatternSequence) ||
 			!reader.Read_U32(entity.iPatternStageIndex) ||
+			!reader.Read_U32(entity.iPatternTargetNetEntityId) ||
 			!reader.Read_U32(entity.iCurrentHp) ||
 			!reader.Read_U32(entity.iMaximumHp) ||
 			!reader.Read_U8(entity.iPhase) ||
@@ -2542,6 +2551,11 @@ namespace
 		// STOP names no row and therefore carries exactly zero.
 		if (static_cast<std::uint8_t>(
 				VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW) == rawOperation)
+		{
+			return 0u != targetHealthBar;
+		}
+		if (static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE) == rawOperation)
 		{
 			return 0u != targetHealthBar;
 		}

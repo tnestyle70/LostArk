@@ -56,7 +56,7 @@ HRESULT CLevel_Bern::Initialize()
 	}
 
 	if (FAILED(Ready_Layer_Camera(
-			TEXT("Layer_Camera"))))
+			TEXT("Layer_Camera"), pEntry->pMapAreaId)))
 	{
 		return E_FAIL;
 	}
@@ -147,10 +147,10 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	m_PlayerController.Set_LocalCharacter(
 		localCharacter);
 
-	// Valtan-entry NPC confirm window shelved for now -- trigger.bern.to-valtan /
-	// valtan are back to auto-firing on OBB entry (Data/Worlds/LV_BER_BERNCASTLE/
-	// Gameplay.world.json). Re-enable by uncommenting this call.
-	// Update_ValtanEntryInteraction();
+	/* Valtan entry is confirmed at a guide NPC instead of by walking into a
+	changeLevel triggerBox. Runs before the controller update so the click that
+	opens the confirm window is not also spent as that frame's move command. */
+	Update_ValtanEntryInteraction();
 
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
@@ -165,8 +165,10 @@ HRESULT CLevel_Bern::Render()
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
 
-	// Valtan-entry confirm window shelved for now -- see the matching comment in Update().
-	// Render_ValtanEntryModal();
+	/* The ImGui popup draws the panel and button art; the LOA font pass that
+	labels them has to follow it inside this same Render call. */
+	Render_ValtanEntryModal();
+	Render_ValtanEntryModalText();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
@@ -177,7 +179,8 @@ HRESULT CLevel_Bern::Render()
 }
 
 HRESULT CLevel_Bern::Ready_Layer_Camera(
-	const wstring_t& strLayerTag)
+	const wstring_t& strLayerTag,
+	const std::string& areaId)
 {
 	float3_t minimum{};
 	float3_t maximum{};
@@ -211,28 +214,55 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 		focus.y + distance * 0.65f,
 		focus.z - distance);
 	float3_t initialAt = focus;
+	const auto applyPlayerFraming = [&initialEye, &initialAt](
+		const float3_t& position)
+	{
+		initialEye = float3_t(
+			position.x + 0.4f,
+			position.y + 7.5f,
+			position.z + 4.5f);
+		initialAt = float3_t(
+			position.x,
+			position.y + 1.2f,
+			position.z);
+	};
 	LostArk::Shared::S2C_PLAYER_SPAWNED approvedSpawn{};
 	if (CNetworkManager::Get().Try_Get_LocalSpawn(approvedSpawn))
 	{
-		const float3_t approvedPosition(
+		applyPlayerFraming(float3_t(
 			approvedSpawn.fPositionX,
 			approvedSpawn.fPositionY,
-			approvedSpawn.fPositionZ);
-		initialEye = float3_t(
-			approvedPosition.x + 0.4f,
-			approvedPosition.y + 7.5f,
-			approvedPosition.z + 4.5f);
-		initialAt = float3_t(
-			approvedPosition.x,
-			approvedPosition.y + 1.2f,
-			approvedPosition.z);
+			approvedSpawn.fPositionZ));
+	}
+	else
+	{
+		/* ENTER_ACCEPTED can activate Bern before the later player spawn frame is
+		consumed. Frame that short window from the same authored spawn document
+		the Server publishes instead of from the 50,000-placement map bounds. */
+		const std::filesystem::path documentPath = CProjectDataRoot::Resolve(
+			std::filesystem::path("Worlds") / areaId / "Gameplay.world.json");
+		CWorldGameplayDocument document;
+		std::string status;
+		if (!documentPath.empty() && document.Load(documentPath, areaId, status))
+		{
+			const auto& placements = document.Get_Placements();
+			const auto authoredSpawn = std::find_if(
+				placements.begin(), placements.end(),
+				[](const WORLD_GAMEPLAY_PLACEMENT& placement)
+				{
+					return placement.isEnabled &&
+						WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind;
+				});
+			if (placements.end() != authoredSpawn)
+				applyPlayerFraming(authoredSpawn->position);
+		}
 	}
 
 	CCamera_Free::CAMERA_FREE_DESC cameraDesc{};
 
 	/*
-	 * Server spawn이 이미 도착했으면 첫 Bern 렌더부터 player framing을 사용한다.
-	 * 아직 도착하지 않은 경우에만 map bounds를 임시 fallback으로 유지한다.
+	 * Server spawn이 이미 도착했으면 그 위치를 사용하고, 아직이면 authored
+	 * player spawn을 사용한다. map bounds는 문서도 없을 때의 마지막 fallback이다.
 	 */
 	cameraDesc.vEye = initialEye;
 

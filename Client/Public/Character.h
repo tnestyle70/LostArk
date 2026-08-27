@@ -109,6 +109,14 @@ public:
 		std::uint8_t comboStage = 0,
 		bool_t hasSkillTarget = false,
 		const float3_t& skillTarget = {});
+	bool_t Try_Get_NetworkActionState(
+		LostArk::Shared::PLAYER_ACTION_STATE& outAction) const
+	{
+		if (!m_hasNetworkState)
+			return false;
+		outAction = m_eNetworkAction;
+		return true;
+	}
 	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	/* A Model View clone may mirror the live scene stance, but only after that

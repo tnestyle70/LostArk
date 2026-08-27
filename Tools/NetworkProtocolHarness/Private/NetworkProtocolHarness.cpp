@@ -1974,6 +1974,7 @@ namespace
 		entity.strActionId = "valtan.attack.swing.active";
 		entity.iPatternSequence = 7u;
 		entity.iPatternStageIndex = 1u;
+		entity.iPatternTargetNetEntityId = first.iNetEntityId;
 		entity.fPositionX = 150.f;
 		entity.fPositionY = 22.97f;
 		entity.fPositionZ = -122.f;
@@ -2034,7 +2035,7 @@ namespace
 		snapshot the flag guards. */
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
-			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1 + 1 + 1 +
+			entity.strActionId.size() + (4 * 4) + (4 * 6) + 1 + 1 + 1 +
 			4 + 4 + 2 + (4 * 4) + 1 + GAMEPLAY_DATA_REVISION_BYTES;
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
@@ -2142,6 +2143,8 @@ namespace
 			decoded.Entities[0].strActionId == entity.strActionId &&
 			decoded.Entities[0].iPatternSequence == 7u &&
 			decoded.Entities[0].iPatternStageIndex == 1u &&
+			decoded.Entities[0].iPatternTargetNetEntityId ==
+				first.iNetEntityId &&
 			decoded.Entities[0].fPositionX == 150.f &&
 			decoded.Entities[0].iCurrentHp == 9500 &&
 			decoded.Entities[0].iMaximumHp == 10000 &&
@@ -2165,6 +2168,14 @@ namespace
 		testRunner.Require(
 			!Write_Message(overArmouredWriter, overArmoured),
 			"Reject A Broken Armour Mask That Names An Unsupported Plate");
+
+		S2C_WORLD_SNAPSHOT nonBossTarget = source;
+		nonBossTarget.Entities[0].hasBossCombatState = false;
+		nonBossTarget.Entities[0].BossCombat = {};
+		CPacketWriter nonBossTargetWriter;
+		testRunner.Require(
+			!Write_Message(nonBossTargetWriter, nonBossTarget),
+			"Reject A Pattern Target On A Non-Boss World Entity");
 
 		S2C_WORLD_SNAPSHOT zeroEntityRevision = source;
 		zeroEntityRevision.Entities[0].PinnedDefinitionRevision = {};
@@ -2365,6 +2376,44 @@ namespace
 				!Write_Message(
 					estherCastWithoutTickWriter, estherCastWithoutTick),
 				"Reject An Esther Cast Without A Start Tick");
+
+			/* GRABBED is the stable late-join edge for a Server-owned boss
+			attachment. Like other control states it has no player skill and must
+			carry the occurrence start tick. */
+			S2C_WORLD_SNAPSHOT grabbed = source;
+			grabbed.Players[1].eAction = PLAYER_ACTION_STATE::GRABBED;
+			grabbed.Players[1].iSkillId = INVALID_SKILL_ID;
+			grabbed.Players[1].iActionStartTick = 88;
+			std::vector<std::uint8_t> grabbedPayload;
+			S2C_WORLD_SNAPSHOT decodedGrabbed{};
+			bool grabbedRoundTrip =
+				Build_WorldSnapshotPayload(grabbed, grabbedPayload);
+			if (grabbedRoundTrip)
+			{
+				CPacketReader grabbedReader{ grabbedPayload };
+				grabbedRoundTrip = Read_Message(grabbedReader, decodedGrabbed);
+			}
+			testRunner.Require(
+				grabbedRoundTrip && 2u == decodedGrabbed.Players.size() &&
+				decodedGrabbed.Players[1].eAction ==
+					PLAYER_ACTION_STATE::GRABBED &&
+				decodedGrabbed.Players[1].iSkillId == INVALID_SKILL_ID &&
+				decodedGrabbed.Players[1].iActionStartTick == 88,
+				"Grabbed Player Snapshot Round Trip");
+
+			S2C_WORLD_SNAPSHOT grabbedWithSkill = grabbed;
+			grabbedWithSkill.Players[1].iSkillId = 34010;
+			CPacketWriter grabbedWithSkillWriter;
+			testRunner.Require(
+				!Write_Message(grabbedWithSkillWriter, grabbedWithSkill),
+				"Reject A Grabbed Snapshot That Carries A Skill");
+
+			S2C_WORLD_SNAPSHOT grabbedWithoutTick = grabbed;
+			grabbedWithoutTick.Players[1].iActionStartTick = 0u;
+			CPacketWriter grabbedWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(grabbedWithoutTickWriter, grabbedWithoutTick),
+				"Reject A Grabbed Snapshot Without A Start Tick");
 
 			S2C_WORLD_SNAPSHOT phaseMismatch = source;
 			phaseMismatch.Entities[0].BossCombat.iGameplayPhase = 2u;
@@ -3015,7 +3064,11 @@ namespace
 				9u == static_cast<std::uint8_t>(
 					VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW) &&
 				10u == static_cast<std::uint8_t>(
-					VALTAN_AUDITION_OPERATION::PLAY_PATTERN),
+					VALTAN_AUDITION_OPERATION::PLAY_PATTERN) &&
+				11u == static_cast<std::uint8_t>(
+					VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) &&
+				12u == static_cast<std::uint8_t>(
+					VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE),
 				"Valtan Timeline Operations Preserve Existing Wire Ordinals");
 
 			C2S_VALTAN_AUDITION_REQUEST timelinePlay{};
@@ -3092,6 +3145,30 @@ namespace
 					decodedTimelineResult.eResult &&
 				109u == decodedTimelineResult.iCurrentHealthBar,
 				"Valtan Timeline Result Echoes The Selected Command Id");
+
+			C2S_VALTAN_AUDITION_REQUEST pageStart{};
+			pageStart.iRequestSequence = 27u;
+			pageStart.eOperation =
+				VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE;
+			pageStart.iTargetHealthBar = TIMELINE_COMMAND_ID;
+			CPacketWriter pageWriter;
+			C2S_VALTAN_AUDITION_REQUEST decodedPage{};
+			const bool wrotePage = Write_Message(pageWriter, pageStart);
+			CPacketReader pageReader{ pageWriter.Get_Buffer() };
+			testRunner.Require(
+				wrotePage && Read_Message(pageReader, decodedPage) &&
+				0u == pageReader.Get_RemainingSize() &&
+				VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE ==
+					decodedPage.eOperation &&
+				TIMELINE_COMMAND_ID == decodedPage.iTargetHealthBar,
+				"Valtan Fight Page Start Round Trips Its Stable Row Id");
+
+			C2S_VALTAN_AUDITION_REQUEST zeroPage = pageStart;
+			zeroPage.iTargetHealthBar = 0u;
+			CPacketWriter zeroPageWriter;
+			testRunner.Require(
+				!Write_Message(zeroPageWriter, zeroPage),
+				"Reject A Valtan Fight Page Start Without A Stable Row Id");
 		}
 
 		{

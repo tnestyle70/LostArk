@@ -5,15 +5,18 @@
 #include "ClientReplicationEvent.h"
 #include "CombatObjectProjectionRuntime.h"
 #include "NetObjectRegistry.h"
+#include "NpcPlacementPresentationService.h"
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldDestructionProjectionRuntime.h"
 
 #include <cstdint>
 #include <deque>
+#include <map>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 //Network Event瑜??ㅼ젣 Engine GameObject ?앹꽦 ?쒓굅濡?踰덉뿭?섎뒗 ???섎굹??main-thread 寃쎄퀎
@@ -71,10 +74,130 @@ namespace Client
 		std::string strActionId;
 		std::uint32_t iPatternSequence = 0u;
 		std::uint32_t iPatternStageIndex = 0u;
+		LostArk::Shared::NET_ENTITY_ID iPatternTargetNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		std::uint32_t iActionStartTick = 0u;
 		LostArk::Shared::BOSS_COMBAT_SNAPSHOT BossCombat;
 		float3_t vPosition = {};
 		f32_t fYawDegrees = 0.f;
+	};
+
+	struct NPC_ACTION_EDGE_STATE final
+	{
+		std::string strLastActionId;
+		std::uint32_t iLastActionStartTick = 0u;
+		bool_t hasAppliedActionEdge = false;
+	};
+
+	struct NPC_ACTION_PLAYBACK_REQUEST final
+	{
+		std::string strClipName;
+		bool_t isLoop = true;
+		f32_t fPlaybackRate = 1.f;
+		f32_t fBlendSeconds = 0.12f;
+	};
+
+	struct NPC_ACTION_PLAYBACK_RESULT final
+	{
+		bool_t isPrimaryPlayed = false;
+		bool_t isIdleFallbackAttempted = false;
+		bool_t isIdleFallbackPlayed = false;
+	};
+
+	/* Pure action-edge projection shared by product replication and its focused
+	contract harness. Model playback stays injected so one bad optional binding
+	falls back only that NPC to idle. Esther chains remain in the existing
+	replication branch and are never flattened through this helper. */
+	class CNpcActionPresentationRuntime final
+	{
+	public:
+		static bool_t Is_NewActionEdge(
+			const NPC_ACTION_EDGE_STATE& state,
+			const std::string_view actionId,
+			const std::uint32_t iActionStartTick)
+		{
+			return !state.hasAppliedActionEdge ||
+				state.strLastActionId != actionId ||
+				state.iLastActionStartTick != iActionStartTick;
+		}
+
+		static NPC_ACTION_PLAYBACK_REQUEST Resolve_Playback(
+			const std::string_view actionId,
+			const std::string& resolvedIdleClip,
+			const NPC_PLACEMENT_PRESENTATION_ENTRY& placement,
+			const std::map<
+				std::string,
+				std::vector<std::string>,
+				std::less<>>* pLegacyActionClips)
+		{
+			NPC_ACTION_PLAYBACK_REQUEST request{};
+			if (actionId.empty() || actionId == "npc.idle")
+			{
+				request.strClipName = resolvedIdleClip;
+				return request;
+			}
+			if (actionId == "npc.move.walk")
+			{
+				request.strClipName = !placement.strWalkClip.empty() ?
+					placement.strWalkClip : resolvedIdleClip;
+				return request;
+			}
+
+			const auto authored = placement.ActionBindings.find(actionId);
+			if (authored != placement.ActionBindings.end())
+			{
+				request.strClipName = authored->second.strClipName;
+				request.isLoop = authored->second.isLoop;
+				request.fPlaybackRate = authored->second.fPlaybackRate;
+				request.fBlendSeconds = authored->second.fBlendSeconds;
+				return request;
+			}
+			if (nullptr != pLegacyActionClips)
+			{
+				const auto legacy = pLegacyActionClips->find(actionId);
+				if (legacy != pLegacyActionClips->end() &&
+					!legacy->second.empty())
+				{
+					request.strClipName = legacy->second.front();
+					request.isLoop = false;
+				}
+			}
+			return request;
+		}
+
+		template <typename TRY_PLAY_ACTION, typename TRY_PLAY_IDLE>
+		static NPC_ACTION_PLAYBACK_RESULT Apply_Playback(
+			const NPC_ACTION_PLAYBACK_REQUEST& request,
+			const std::string& resolvedIdleClip,
+			TRY_PLAY_ACTION&& tryPlayAction,
+			TRY_PLAY_IDLE&& tryPlayIdle,
+			std::string& inOutCurrentClip)
+		{
+			NPC_ACTION_PLAYBACK_RESULT result{};
+			result.isPrimaryPlayed = !request.strClipName.empty() &&
+				std::forward<TRY_PLAY_ACTION>(tryPlayAction)(request);
+			if (result.isPrimaryPlayed)
+			{
+				inOutCurrentClip = request.strClipName;
+				return result;
+			}
+
+			result.isIdleFallbackAttempted = true;
+			result.isIdleFallbackPlayed =
+				std::forward<TRY_PLAY_IDLE>(tryPlayIdle)(0.12f);
+			inOutCurrentClip = resolvedIdleClip;
+			return result;
+		}
+
+		static void Commit_ActionEdge(
+			NPC_ACTION_EDGE_STATE& state,
+			const std::string_view actionId,
+			const std::uint32_t iActionStartTick)
+		{
+			state.strLastActionId.assign(actionId);
+			state.iLastActionStartTick = iActionStartTick;
+			state.hasAppliedActionEdge = true;
+		}
 	};
 
 	class CClientReplication final
@@ -215,6 +338,11 @@ namespace Client
 			const LostArk::Shared::PLAYER_SNAPSHOT& Snapshot,
 			std::uint32_t iServerTick);
 		void Clear_DeferredLocalCharacterClassReplacement();
+		void Update_ValtanGrabAttachment();
+		void Clear_ValtanGrabAttachment();
+		void Report_ValtanGrabAttachmentFailure(
+			std::uint32_t patternSequence,
+			std::string_view reason);
 
 		void Reset_World();
 		bool Spawn_CombatObjectPresentation(
@@ -274,6 +402,16 @@ namespace Client
 		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
+		struct VALTAN_GRAB_ATTACHMENT_STATE final
+		{
+			bool_t isActive = false;
+			LostArk::Shared::NET_ENTITY_ID iTargetNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iPatternSequence = 0u;
+			std::weak_ptr<CCharacter> pCharacter;
+			float4x4_t Offset{};
+		} m_ValtanGrabAttachment;
+		std::uint32_t m_iValtanGrabAttachmentFailurePatternSequence = 0u;
 		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
 		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;
 		std::deque<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>
@@ -295,6 +433,11 @@ namespace Client
 			std::string strArchetypeId;
 			std::string strEncounterId;
 			std::string strCurrentClip;
+			/* Copied at spawn so a live entity keeps one validated placement
+			binding for its entire presentation lifetime. */
+			std::string strResolvedIdleClip;
+			NPC_PLACEMENT_PRESENTATION_ENTRY NpcPresentation;
+			NPC_ACTION_EDGE_STATE NpcActionEdge;
 			std::string strActiveActionId;
 			std::size_t iActionClipIndex = 0u;
 			f32_t fCollisionRadius = 0.f;

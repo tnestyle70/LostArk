@@ -3576,8 +3576,8 @@
       "category": "NORMAL",
       "minimumPhase": 1,
       "maximumPhase": 3,
-      "targetPolicy": "NONE",
-      "aimPolicy": "NONE",
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "잡아채서 불어 날리기",
       "actionId": "valtan.sequence.catch-breath",
       "sourceActionIds": [

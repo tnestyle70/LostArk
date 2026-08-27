@@ -42,7 +42,8 @@ public:
 
 private:
 	HRESULT Ready_Layer_Camera(
-		const wstring_t& strLayerTag);
+		const wstring_t& strLayerTag,
+		const std::string& areaId);
 
 	bool_t Bind_CameraToLocalCharacter();
 
