@@ -554,41 +554,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
-              "scalePolicy": {
-                "kind": "OWNER_RELATIVE"
-              },
-              "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
-              "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
-              "sourceStartMs": 0,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0,
-                  0,
-                  0
-                ],
-                "rotationDegrees": [
-                  0,
-                  0,
-                  0
-                ],
-                "scale": [
-                  1,
-                  1,
-                  1
-                ]
-              },
-              "mappingBasis": "ANIMATION_PR_127"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": []
         }
       ]

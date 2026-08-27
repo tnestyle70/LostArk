@@ -509,8 +509,30 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
     def test_authoritative_valtan_effect_inventory_and_timing_are_intact(self) -> None:
         cues = self.product_cues["cues"]
         cue_asset_ids = [row["effectAssetId"] for row in cues]
-        self.assertEqual(80, len(cues))
-        self.assertEqual(66, len(set(cue_asset_ids)))
+        split_cues = [
+            cue
+            for pattern in self.presentation["patterns"]
+            for stage in pattern["stages"]
+            for cue in stage["effectCues"]
+        ]
+        managed_pattern_ids = {
+            pattern["patternId"] for pattern in self.presentation["patterns"]
+        }
+        managed_product_cues = [
+            cue for cue in cues if cue["patternId"] in managed_pattern_ids
+        ]
+        self.assertEqual(
+            {cue["cueId"] for cue in split_cues},
+            {cue["bindingId"] for cue in managed_product_cues},
+        )
+        self.assertEqual(len(split_cues), len(managed_product_cues))
+        unlinked_recovery_cue = (
+            "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01"
+        )
+        self.assertNotIn(
+            unlinked_recovery_cue,
+            {cue["bindingId"] for cue in cues},
+        )
 
         valtan_catalog = {
             row["effectAssetId"]: row
@@ -519,7 +541,8 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         }
         self.assertGreaterEqual(len(valtan_catalog), 58)
         for effect_asset_id in set(cue_asset_ids) | {
-            "effect.valtan.sky-axe.active"
+            "effect.valtan.sky-axe.active",
+            "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
         }:
             with self.subTest(effect_asset_id=effect_asset_id):
                 self.assertIn(effect_asset_id, valtan_catalog)

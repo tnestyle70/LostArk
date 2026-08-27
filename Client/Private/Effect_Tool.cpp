@@ -3047,6 +3047,182 @@ Client::CEffect_Tool::~CEffect_Tool()
     Release_WorldPreview(true);
 }
 
+bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
+	const EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& Request)
+{
+	const auto Reject = [this](std::string Reason)
+	{
+		m_strValtanPatternEffectStatus =
+			"Boss Tool Product Effect open rejected: " + std::move(Reason);
+		m_strPreviewStatus = m_strValtanPatternEffectStatus;
+		return false;
+	};
+
+	m_bAllEffectsValtanBossSelected = true;
+	if (Request.strPatternId.empty() || Request.strStageId.empty() ||
+		Request.strCueOccurrenceId.empty() ||
+		Request.strEffectAssetId.empty())
+	{
+		return Reject("the stable Product identity is incomplete.");
+	}
+
+	/* Boss Tool and Effect Tool deliberately own separate staged views. Refresh
+	   both Effect-owned inputs, then resolve the stable tuple again instead of
+	   trusting a pointer, path, or Product row copied from the Boss window. */
+	if (!Refresh_DataFiles())
+		return Reject("the direct-authored Effect index could not be refreshed.");
+	if (!Refresh_ValtanPatternTree())
+		return Reject(m_strValtanPatternTreeStatus.empty() ?
+			"the joined Valtan tree could not be refreshed." :
+			m_strValtanPatternTreeStatus);
+
+	const VALTAN_PATTERN_VIEW* pPattern =
+		Find_ValtanPattern(Request.strPatternId);
+	if (nullptr == pPattern || !Is_ValtanAllEffectsPattern(*pPattern))
+	{
+		return Reject("pattern '" + Request.strPatternId +
+			"' is not in the exact Boss/All Effects inventory.");
+	}
+
+	const VALTAN_STAGE_VIEW* pStage = nullptr;
+	size_t iStageMatchCount = 0u;
+	for (const VALTAN_STAGE_VIEW& Candidate : pPattern->Stages)
+	{
+		if (Candidate.strStageId != Request.strStageId)
+			continue;
+		pStage = &Candidate;
+		++iStageMatchCount;
+	}
+	if (1u != iStageMatchCount || nullptr == pStage)
+	{
+		return Reject("stage '" + Request.strStageId +
+			"' did not resolve exactly once.");
+	}
+
+	const VALTAN_PRODUCT_EFFECT_CUE_VIEW* pCue = nullptr;
+	size_t iCueMatchCount = 0u;
+	for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Candidate :
+		pStage->ProductCues)
+	{
+		if (Candidate.strOccurrenceId != Request.strCueOccurrenceId)
+			continue;
+		pCue = &Candidate;
+		++iCueMatchCount;
+	}
+	if (1u != iCueMatchCount || nullptr == pCue)
+	{
+		return Reject("cue occurrence '" + Request.strCueOccurrenceId +
+			"' did not resolve exactly once in the selected stage.");
+	}
+	if (pCue->strPatternId != pPattern->strPatternId ||
+		pCue->strStageId != pStage->strStageId ||
+		pCue->strActionId != pStage->strActionId ||
+		pCue->strEffectAssetId != Request.strEffectAssetId)
+	{
+		return Reject(
+			"the pattern/stage/action/cue/Effect tuple changed after selection.");
+	}
+
+	std::string PathStatus;
+	const std::filesystem::path* pPath =
+		Resolve_DirectAuthoredEditablePath(
+			Request.strEffectAssetId, PathStatus);
+	if (nullptr == pPath)
+		return Reject(std::move(PathStatus));
+
+	m_strSelectedValtanPatternId = pPattern->strPatternId;
+	m_SelectedValtanPatternEffect.reset();
+	Copy_Buffer(m_AllEffectsSearch.data(), m_AllEffectsSearch.size(),
+		std::string{});
+
+	bool_t bOpened = false;
+	if (pCue->bUsesStageClock)
+	{
+		/* A STAGE_CLOCK cue intentionally has no body occurrence. Keep that
+		   authoring contract explicit instead of inventing a Model View clip. */
+		bOpened = Try_OpenValtanStandaloneEffect(
+			*pPath, Request.strEffectAssetId);
+	}
+	else
+	{
+		const VALTAN_CLIP_OCCURRENCE_VIEW* pClip = nullptr;
+		size_t iClipMatchCount = 0u;
+		for (const VALTAN_CLIP_OCCURRENCE_VIEW& Candidate :
+			pStage->ClipOccurrences)
+		{
+			if (Candidate.strClipOccurrenceId !=
+				pCue->strClipOccurrenceId)
+			{
+				continue;
+			}
+			pClip = &Candidate;
+			++iClipMatchCount;
+		}
+		if (1u != iClipMatchCount || nullptr == pClip)
+		{
+			return Reject("clip occurrence '" + pCue->strClipOccurrenceId +
+				"' did not resolve exactly once in its semantic stage.");
+		}
+
+		VALTAN_PRODUCT_EFFECT_CUE_VIEW PlaybackCue = *pCue;
+		PlaybackCue.strEffectAssetId = Request.strEffectAssetId;
+		VALTAN_PRODUCT_PREVIEW Preview;
+		std::string PreviewError;
+		bool_t bPreviewReady = false;
+		if (pPattern->bAuthoringMasterManaged)
+		{
+			constexpr std::array<VALTAN_PATTERN_PREVIEW_PATH, 3u>
+				PreviewPaths = {
+					VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+					VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
+					VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK };
+			for (const VALTAN_PATTERN_PREVIEW_PATH ePath : PreviewPaths)
+			{
+				if (Build_ValtanProductPreview(
+						*pPattern, ePath, *pClip, PlaybackCue,
+						Preview, PreviewError))
+				{
+					bPreviewReady = true;
+					break;
+				}
+			}
+		}
+		else
+		{
+			/* Legacy/manual Product rows retain their exact semantic stage-local
+			   occurrence, matching the existing All Effects fallback. */
+			Preview.Clip = *pClip;
+			Preview.Cue = std::move(PlaybackCue);
+			VALTAN_CLIP_OCCURRENCE_VIEW TimelineClip = *pClip;
+			TimelineClip.iAuthoringWallMs = pStage->iDurationMs;
+			Preview.TimelineClips = { std::move(TimelineClip) };
+			Preview.iTimelineDurationMs = pStage->iDurationMs;
+			bPreviewReady = 0u != pStage->iDurationMs;
+			if (!bPreviewReady)
+				PreviewError = "the Product stage has no authoring wall.";
+		}
+		if (!bPreviewReady)
+			return Reject(std::move(PreviewError));
+		bOpened = Try_OpenValtanAuthoredEffect(
+			*pPath, Request.strEffectAssetId, Preview, false);
+	}
+
+	if (bOpened)
+	{
+		m_strValtanPatternEffectStatus =
+			"Opened exact Boss Product occurrence in Effect Tool: " +
+			Request.strPatternId + " / " + Request.strStageId + " / " +
+			Request.strCueOccurrenceId;
+	}
+	else if (m_PendingDocumentLoad.has_value() &&
+		m_PendingDocumentLoad->Path == *pPath)
+	{
+		m_strValtanPatternEffectStatus =
+			"Exact Boss Product occurrence is waiting for the current Effect Save/Discard decision.";
+	}
+	return bOpened;
+}
+
 void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 {
     ++m_iFrameNumber;

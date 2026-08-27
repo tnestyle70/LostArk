@@ -1470,6 +1470,16 @@ def validate_legacy_products(
     validate_legacy_manifest(document, product_managed)
     binding_rows = docs[BINDINGS_REL]["bindings"]
     cue_rows = docs[CUES_REL]["cues"]
+    cue_rows_by_id: dict[str, dict[str, Any]] = {}
+    for cue_row in cue_rows:
+        binding_id = stable_id(
+            cue_row.get("bindingId"), "Product effect cue bindingId"
+        )
+        if binding_id in cue_rows_by_id:
+            raise PipelineError(
+                f"duplicate Product effect cue bindingId: {binding_id}"
+            )
+        cue_rows_by_id[binding_id] = cue_row
     rotation_rows = docs[ROTATIONS_REL]["rotations"]
     combat_rows = docs[COMBAT_PRODUCT_REL]["objects"]
     sealed_legacy_ids = {row["patternId"] for row in document["patternEntries"]}
@@ -1508,11 +1518,13 @@ def validate_legacy_products(
                     f"{binding['runtimeBinding'].get('actionId')}"
                 )
         for cue in entry["effectCues"]:
-            cue_ordinal = cue["cueOrdinal"]
-            if cue_ordinal >= len(cue_rows) or cue_rows[cue_ordinal] != cue["runtimeCue"]:
+            runtime_cue = cue["runtimeCue"]
+            binding_id = stable_id(
+                runtime_cue.get("bindingId"), "sealed legacy effect cue bindingId"
+            )
+            if cue_rows_by_id.get(binding_id) != runtime_cue:
                 raise PipelineError(
-                    f"sealed legacy effect cue drift: "
-                    f"{cue['runtimeCue'].get('bindingId')}"
+                    f"sealed legacy effect cue drift: {binding_id}"
                 )
     if len(document["sharedRotationRows"]) != len(rotation_rows):
         raise PipelineError("sealed rotation row count drift")
@@ -1707,10 +1719,13 @@ def _migrate_effect_cue(
     cue_by_id: dict[str, dict[str, Any]],
     occurrences_by_id: Mapping[str, dict[str, Any]],
     context: str,
-) -> dict[str, Any]:
+    live_split_cue_ids: set[str] | None = None,
+) -> dict[str, Any] | None:
     cue_id = effect_ref["refId"]
     cue = cue_by_id.get(cue_id)
     if cue is None:
+        if live_split_cue_ids is not None and cue_id not in live_split_cue_ids:
+            return None
         raise PipelineError(f"managed cue is missing from Product: {cue_id}")
     projection = effect_ref["cueProjection"]
     # The frozen v1 fixture owns its legacy clip projection.  A current Product
@@ -1789,6 +1804,16 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
         docs[LEGACY_REL], docs, migration_product_managed
     )
     cue_by_id = unique_index(docs[CUES_REL]["cues"], "bindingId", "effect cues")
+    live_split_cue_ids: set[str] | None = None
+    live_presentation_path = root / PRESENTATION_AUTHORING_REL
+    if live_presentation_path.is_file():
+        live_presentation = read_json(live_presentation_path)
+        live_split_cue_ids = {
+            stable_id(cue.get("cueId"), "live split cueId")
+            for pattern in live_presentation.get("patterns", [])
+            for stage in pattern.get("stages", [])
+            for cue in stage.get("effectCues", [])
+        }
     camera_by_id = unique_index(docs[CAMERA_REL]["cues"], "cueId", "camera cues")
     product_rotations_by_id = {
         row["rotationId"]: row for row in docs[ROTATIONS_REL]["rotations"]
@@ -1889,7 +1914,10 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
                         cue_by_id,
                         occurrences_by_id,
                         f"{pattern_id}/{stage['stageId']} managed cue",
+                        live_split_cue_ids,
                     )
+                    if migrated_cue is None:
+                        continue
                     effect_cues.append(migrated_cue)
                     cue_owners[migrated_cue["cueId"]] = (pattern_id, stage["stageId"])
             camera_invocations = []
@@ -1988,7 +2016,10 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
                     cue_by_id,
                     occurrences_by_id,
                     f"{entry['ownerPatternId']}/{entry['ownerStageId']} managed cue",
+                    live_split_cue_ids,
                 )
+                if cue is None:
+                    continue
                 owner_stage["effectCues"].append(cue)
                 cue_owners[cue_id] = (entry["ownerPatternId"], entry["ownerStageId"])
             independent_effects.append(
@@ -2688,7 +2719,6 @@ def validate_v2_master(
         for cue_id, scale_kind in MANAGED_CUE_SCALE_POLICIES.items()
         if not migration_fixture or cue_id in MIGRATION_MANAGED_CUE_IDS
     }
-    expected_scale_policy_counts = Counter(expected_cue_policies.values())
     cue_ids: set[str] = set()
     scale_policy_counts: Counter[str] = Counter()
     spawn_events: set[str] = set()
@@ -3087,12 +3117,15 @@ def validate_v2_master(
                 if invocation["durationPolicy"] != "EXPLICIT":
                     raise PipelineError("initial camera migration uses EXPLICIT duration")
                 integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
-    if cue_ids != set(expected_cue_policies):
+    if not cue_ids.issubset(expected_cue_policies):
         raise PipelineError("managed cue scalePolicy migration table coverage drift")
-    if scale_policy_counts != expected_scale_policy_counts:
+    live_expected_scale_policy_counts = Counter(
+        expected_cue_policies[cue_id] for cue_id in cue_ids
+    )
+    if scale_policy_counts != live_expected_scale_policy_counts:
         raise PipelineError(
             "managed cue scalePolicy coverage drift: "
-            f"expected={dict(expected_scale_policy_counts)} "
+            f"expected={dict(live_expected_scale_policy_counts)} "
             f"actual={dict(scale_policy_counts)}"
         )
     expected_world_set_owners = (

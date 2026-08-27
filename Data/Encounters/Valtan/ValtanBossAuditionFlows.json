@@ -4,9 +4,10 @@
   "flows": [
     {
       "flowId": "flow.valtan.boss-tool.default",
-      "nextSlotOrdinal": 29,
+      "nextSlotOrdinal": 30,
       "interStepPursuitMs": 1000,
       "slots": [
+        { "slotId": "flow.valtan.boss-tool.default.slot.000029", "patternId": "VALTAN_FLOOR_WIPE_130" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000001", "patternId": "VALTAN_WHIRLWIND" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000002", "patternId": "VALTAN_FOUR_SLASH" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000003", "patternId": "VALTAN_HIGH_JUMP" },
@@ -19,6 +20,7 @@
         { "slotId": "flow.valtan.boss-tool.default.slot.000010", "patternId": "VALTAN_ATTACK_WHIRLWIND" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000011", "patternId": "VALTAN_CHARGE" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000012", "patternId": "VALTAN_SEQUENCE_FOUR" },
+        { "slotId": "flow.valtan.boss-tool.default.slot.000026", "patternId": "VALTAN_COUNTER" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000013", "patternId": "VALTAN_ROAR_CHARGE" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000014", "patternId": "VALTAN_SEQUENCE_RUSH" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000015", "patternId": "VALTAN_THREE" },
@@ -32,7 +34,6 @@
         { "slotId": "flow.valtan.boss-tool.default.slot.000023", "patternId": "VALTAN_TRASH_CATCH_FAIL" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000024", "patternId": "VALTAN_TRASH_CATCH_IF" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000025", "patternId": "VALTAN_CATCH_BREATH" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000026", "patternId": "VALTAN_COUNTER" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000027", "patternId": "VALTAN_CHARGE_2" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000028", "patternId": "VALTAN_STRUGGLING" }
       ]

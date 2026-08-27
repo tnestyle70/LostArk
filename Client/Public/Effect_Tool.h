@@ -134,6 +134,17 @@ inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 7u>
 			"Valtan" }
 	}};
 
+/* Boss Tool transfers only stable Product identity. Effect Tool re-resolves
+   the current joined tree and exact writable source; no pointers, paths, or
+   display ordinals cross the Tool boundary. */
+struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST final
+{
+	std::string strPatternId;
+	std::string strStageId;
+	std::string strCueOccurrenceId;
+	std::string strEffectAssetId;
+};
+
 enum class EFFECT_AUTHORING_FAMILY : uint8_t
 {
 	MESH,
@@ -503,6 +514,8 @@ public:
 
     void Update(f32_t fTimeDelta);
     void Render();
+	bool_t Open_ValtanProductEffect(
+		const EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& Request);
 
 private:
     void Render_EffectToolWindow();

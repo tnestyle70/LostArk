@@ -543,6 +543,19 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				(void)m_pCameraTool->Open_Cue(cameraRequest);
 			}
 		}
+		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
+		if (m_pBossTool->Consume_EffectToolOpenRequest(effectRequest))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
+				nullptr != m_pEffectTool)
+			{
+				const bool_t bOpened =
+					m_pEffectTool->Open_ValtanProductEffect(effectRequest);
+				m_strToolStatus = bOpened ?
+					"Opened the exact Valtan Product Effect in Effect Tool." :
+					"Effect Tool opened, but the exact Product occurrence needs attention.";
+			}
+		}
 	}
 	if (nullptr != m_pCameraTool)
 	{
