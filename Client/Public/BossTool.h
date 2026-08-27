@@ -18,6 +18,7 @@
 NS_BEGIN(Client)
 
 class IPlayerCommandSink;
+struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
 
 /* A thin observer/controller over the existing Valtan product path.
    It never samples clips, spawns Effects, or mutates gameplay locally. */
@@ -57,6 +58,8 @@ public:
 	void Render();
 	bool_t Consume_CameraToolOpenRequest(
 		CAMERA_TOOL_OPEN_REQUEST& outRequest);
+	bool_t Consume_EffectToolOpenRequest(
+		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& outRequest);
 
 private:
 	bool_t Reload_Graph();
@@ -155,6 +158,11 @@ private:
 	bool_t m_bConfirmDiscardDirtyFlow = false;
 	bool_t m_hasCameraToolOpenRequest = false;
 	CAMERA_TOOL_OPEN_REQUEST m_CameraToolOpenRequest;
+	bool_t m_hasEffectToolOpenRequest = false;
+	std::string m_strEffectToolOpenPatternId;
+	std::string m_strEffectToolOpenStageId;
+	std::string m_strEffectToolOpenCueOccurrenceId;
+	std::string m_strEffectToolOpenEffectAssetId;
 };
 
 NS_END

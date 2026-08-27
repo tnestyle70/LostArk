@@ -482,18 +482,18 @@ try {
             'Valtan Pattern Effect unlink source commit' `
             ([ref]$sourceCommitted) ([ref]$sourceCommitBackupPath)
 
-        Invoke-ValtanProjector 'ValidateV2'
-        Assert-CurrentBytes $presentationPath $candidateBytes `
-            'Valtan Pattern Effect unlink post-validation'
-        Assert-TargetEffectSnapshotUnchanged $effectSnapshot `
-            'Valtan Pattern Effect unlink post-validation'
-
         $publishAttempted = $true
         Invoke-ValtanProjector 'PublishV2'
         Assert-CurrentBytes $presentationPath $candidateBytes `
             'Valtan Pattern Effect unlink post-publish'
         Assert-TargetEffectSnapshotUnchanged $effectSnapshot `
             'Valtan Pattern Effect unlink post-publish'
+
+        Invoke-ValtanProjector 'ValidateV2'
+        Assert-CurrentBytes $presentationPath $candidateBytes `
+            'Valtan Pattern Effect unlink post-validation'
+        Assert-TargetEffectSnapshotUnchanged $effectSnapshot `
+            'Valtan Pattern Effect unlink post-validation'
         $sourceCommitted = $false
         Write-Host (("Valtan Pattern Effect link removed: pattern={0} effect={1} " +
             "cues={2}; shared Effect asset and catalog were preserved.") -f

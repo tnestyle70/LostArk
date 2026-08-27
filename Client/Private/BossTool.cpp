@@ -5,6 +5,7 @@
 #include "CombatHUDViewModel.h"
 #include "Effect_Catalog.h"
 #include "Effect_DocumentCodec.h"
+#include "Effect_Tool.h"
 #include "NetworkManager.h"
 #include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
@@ -1548,6 +1549,31 @@ void Client::CBossTool::Render_ConnectionSummary(
 	}
 	Render_ConnectionRow("Next", Join(Next));
 	ImGui::EndTable();
+	for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue : Stage.ProductCues)
+	{
+		ImGui::PushID(Cue.strOccurrenceId.c_str());
+		if (ImGui::Button("Edit Linked Effect"))
+		{
+			m_strEffectToolOpenPatternId = Pattern.strPatternId;
+			m_strEffectToolOpenStageId = Stage.strStageId;
+			m_strEffectToolOpenCueOccurrenceId = Cue.strOccurrenceId;
+			m_strEffectToolOpenEffectAssetId = Cue.strEffectAssetId;
+			m_hasEffectToolOpenRequest = true;
+			m_strActionFeedback =
+				"Opening exact Product Effect: " + Cue.strEffectAssetId;
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"%s\n%s\n%s",
+				Cue.strEffectAssetId.c_str(),
+				Cue.strOccurrenceId.c_str(),
+				Cue.bUsesStageClock ?
+					"Stage-clock cue: Effect Tool opens a static Valtan target with no animation timeline." :
+					"Clip-bound cue: Effect Tool opens the complete synchronized Product timeline.");
+		}
+		ImGui::PopID();
+	}
 	for (const VALTAN_CAMERA_INVOCATION_VIEW& Invocation :
 		Stage.CameraInvocations)
 	{
@@ -1575,6 +1601,25 @@ bool_t Client::CBossTool::Consume_CameraToolOpenRequest(
 	outRequest = std::move(m_CameraToolOpenRequest);
 	m_CameraToolOpenRequest = CAMERA_TOOL_OPEN_REQUEST{};
 	m_hasCameraToolOpenRequest = false;
+	return true;
+}
+
+bool_t Client::CBossTool::Consume_EffectToolOpenRequest(
+	EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& outRequest)
+{
+	if (!m_hasEffectToolOpenRequest)
+		return false;
+	outRequest.strPatternId = std::move(m_strEffectToolOpenPatternId);
+	outRequest.strStageId = std::move(m_strEffectToolOpenStageId);
+	outRequest.strCueOccurrenceId =
+		std::move(m_strEffectToolOpenCueOccurrenceId);
+	outRequest.strEffectAssetId =
+		std::move(m_strEffectToolOpenEffectAssetId);
+	m_strEffectToolOpenPatternId.clear();
+	m_strEffectToolOpenStageId.clear();
+	m_strEffectToolOpenCueOccurrenceId.clear();
+	m_strEffectToolOpenEffectAssetId.clear();
+	m_hasEffectToolOpenRequest = false;
 	return true;
 }
 

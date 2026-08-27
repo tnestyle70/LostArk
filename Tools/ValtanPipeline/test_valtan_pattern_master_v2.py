@@ -1035,6 +1035,55 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             [ref["ownership"] for ref in mixed["patternRefs"]],
         )
 
+    def test_legacy_effect_cue_validation_uses_stable_binding_identity(self) -> None:
+        drifted_docs = copy.deepcopy(self.docs)
+        sealed_cue = next(
+            cue
+            for entry in drifted_docs[pipeline.LEGACY_REL]["patternEntries"]
+            for cue in entry["effectCues"]
+        )
+        sealed_binding_id = sealed_cue["runtimeCue"]["bindingId"]
+        cue_rows = drifted_docs[pipeline.CUES_REL]["cues"]
+        sealed_ordinal = next(
+            ordinal
+            for ordinal, cue in enumerate(cue_rows)
+            if cue["bindingId"] == sealed_binding_id
+        )
+        managed_pattern_ids = {
+            pattern["patternId"]
+            for pattern in pipeline.join_v2_authoring(
+                self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+                self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )["patterns"]
+        }
+        managed_ordinal = next(
+            ordinal
+            for ordinal, cue in enumerate(cue_rows[:sealed_ordinal])
+            if cue["patternId"] in managed_pattern_ids
+        )
+        del cue_rows[managed_ordinal]
+        pipeline.validate_legacy_products(
+            drifted_docs[pipeline.LEGACY_REL],
+            drifted_docs,
+            managed_pattern_ids,
+        )
+
+        sealed_row = next(
+            cue for cue in cue_rows if cue["bindingId"] == sealed_binding_id
+        )
+        sealed_row["effectAssetId"] += ".drift"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "sealed legacy effect cue drift.*" + sealed_binding_id,
+        ):
+            pipeline.validate_legacy_products(
+                drifted_docs[pipeline.LEGACY_REL],
+                drifted_docs,
+                managed_pattern_ids,
+            )
+
     def test_strict_negative_fixtures(self) -> None:
         world_sets = copy.deepcopy(self.docs[pipeline.WORLD_SET_REL])
         world_sets["sets"][0]["members"][0]["patternId"] = pipeline.WORLD_PATTERN_ID
@@ -1479,15 +1528,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in pattern["stages"]
             for cue in stage["effectCues"]
         ]
+        managed_cues_by_id = {cue["cueId"]: cue for cue in managed_cues}
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES), len(managed_cues)
+            len(managed_cues), len(managed_cues_by_id)
+        )
+        self.assertTrue(
+            set(managed_cues_by_id).issubset(pipeline.MANAGED_CUE_SCALE_POLICIES)
         )
         self.assertEqual(
-            dict(pipeline.EXPECTED_MANAGED_SCALE_POLICY_COUNTS),
+            dict(
+                Counter(
+                    pipeline.MANAGED_CUE_SCALE_POLICIES[cue_id]
+                    for cue_id in managed_cues_by_id
+                )
+            ),
             dict(Counter(cue["scalePolicy"]["kind"] for cue in managed_cues)),
         )
         self.assertEqual(
-            pipeline.MANAGED_CUE_SCALE_POLICIES,
+            {
+                cue_id: pipeline.MANAGED_CUE_SCALE_POLICIES[cue_id]
+                for cue_id in managed_cues_by_id
+            },
             {cue["cueId"]: cue["scalePolicy"]["kind"] for cue in managed_cues},
         )
         for cue in managed_cues:
@@ -1507,12 +1568,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 projected_by_id[cue["cueId"]]["scalePolicy"],
             )
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES) + 2,
+            len(managed_cues) + 2,
             sum(1 for cue in projected["cues"] if "scalePolicy" in cue),
             "managed cues plus the two sealed Entrance Whirlwind cues",
         )
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES),
+            len(managed_cues),
             sum(
                 len(stage["effectCues"])
                 for pattern in joined["patterns"]

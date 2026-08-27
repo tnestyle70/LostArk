@@ -347,41 +347,6 @@
       }
     },
     {
-      "bindingId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
-      "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01",
-      "patternId": "VALTAN_FOUR_SLASH",
-      "stageId": "RECOVERY",
-      "actionId": "valtan.attack.four-slash.recovery",
-      "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
-      "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
-      "anchorSlotId": "root",
-      "followPolicy": "follow",
-      "stopPolicy": "natural",
-      "repeatPolicy": "once",
-      "sourceStartMs": 0,
-      "sourceEndMs": null,
-      "localTransform": {
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotationDegrees": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      "scalePolicy": {
-        "kind": "OWNER_RELATIVE"
-      }
-    },
-    {
       "bindingId": "cue.valtan.carrier-v1.attack.front-back-front.active.clip-01",
       "occurrenceId": "cue.valtan.carrier-v1.attack.front-back-front.active.clip-01.occurrence.01",
       "patternId": "VALTAN_FRONT_BACK_FRONT",
