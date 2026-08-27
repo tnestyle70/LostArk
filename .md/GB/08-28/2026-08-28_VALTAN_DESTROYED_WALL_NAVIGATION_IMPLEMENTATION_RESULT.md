@@ -6,7 +6,8 @@
 통합 시점 publisher chain과 최신 Client·Server Debug/Release 빌드·Server 계약은 통과했다.
 Client Release의 첫 LNK2001/LNK1120은 최신 소스 재빌드로 해소했고,
 점프찍기→휠윈드 조기 회전 수정도 실제 Server tick 회귀를 두 구성에서 통과했다.
-정본 D/R 전체 자동화는 실행 중이며, 사용자 시각 판정은 별도로 남아 있다.
+UI PR #252/기능 PR #253 병합 뒤 정본 Release 전체 자동화는 exit 0이다. Debug 빌드·계약·native도
+통과했으며, 실행 중인 사용자 세션 보호로 Debug 전체 live 재실행과 시각 판정은 별도로 남아 있다.
 
 계획은 [벽·Nav PLAN](C:/Users/user/Desktop/LostArk/.md/GB/08-28/2026-08-28_VALTAN_DESTROYED_WALL_NAVIGATION_IMPLEMENTATION_PLAN.md),
 전체 빌드·다른 작업 통합·사용자 대기는
@@ -118,7 +119,7 @@ body가 작아지면 player hit 접점·miss와 wall sweep 접점은 달라지�
 | WorldDestruction publish | exit 0; 위 revision 유지 |
 | Navigation publish | exit 0; Valtan grid 392×312, cell 0.5m, walkable 21524개 |
 | Gameplay balance·world/item runtime set Validate·Publish | exit 0; body radius 1.4m 유지, Encounter 53 patterns/234 stages |
-| 최신 통합 전체 Debug/Release regression | 진행 중; 최신 Client·Server D/R 재빌드와 회전 native 회귀는 통과했고 정본 전체 자동화 실행 중 |
+| 최신 통합 Debug/Release regression | UI 병합 후 Release 정본 전체 exit 0, Debug Client 빌드 오류 0 및 Protocol/Next/Server/Action/Effect/PointLight exit 0. Debug 전체 live 재실행은 사용자 실행 중이므로 보류 |
 | 사용자 시각 판정 | 미실행; visual PASS 없음 |
 
 현재 통합 데이터는 split 29개, 공용 Tool inventory 27개다. 통합 당시 Flow는 FBF의
@@ -193,7 +194,7 @@ LNK1120/exit 1을 남겼다. 함수 정의 존재와 이전 Timeline.obj·새 Ef
 ## 현재 통합·사용자 확인 경계
 
 Server 06:52:32·Client 06:57:55의 사용자 Debug 링크·배포 확인은 이전 시점의 기록이다.
-사용자 Server/Client 종료 뒤 최신 source로 D/R 빌드를 완료했다. 정본 전체 D/R 자동화는 실행 중이며
+사용자 Server/Client 종료 뒤 최신 source로 D/R 빌드를 완료했다. 이후 UI 병합본 Release 전체 검증까지 완료했으며
 사용자 Client/UI를 자율 실행하지 않았다. 사용자 visual PASS는 선언하지 않는다.
 
 ### 최신 Desktop D/R 빌드 및 후속 수정
@@ -208,3 +209,6 @@ Six Pizza 카메라 제거와 다른 작업의 빈 발악 Draft·사자후/3시 
 최종 `Invoke-BuildAndRegression.ps1 -Configuration Debug/Release -SkipBuild`는 별도 구성별 로그로
 진행 중이다. `-SkipBuild`는 이미 실제로 완료한 최신 D/R 빌드를 다시 반복하지 않기 위한 옵션이며
 빌드 실패를 우회한 것이 아니다. 전체 종료 결과는 통합 RESULT와 같은 상태로 갱신한다.
+
+최종 PR #253/main `eec64f8d` 통합 및 08:49 Release 전체 완료 증거, 이후 사용자 저장값과 Debug 실행 경계는
+`2026-08-28_VALTAN_BOSS_TOOL_RESETLESS_NEXT_PATTERN_IMPLEMENTATION_RESULT.md`의 G07을 따른다.

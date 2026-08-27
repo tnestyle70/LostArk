@@ -20,7 +20,8 @@ Desktop 통합 시점의 projection·root motion·receipt·벽 파괴·navigatio
 Release live 회귀, Next service와 native 검증도 아래 로그 범위에서 통과했다.
 Client Release 첫 빌드의 LNK2001/LNK1120은 최신 소스 재빌드로 해소했다.
 최신 Client·Server D/R 빌드와 점프찍기→휠윈드 방향 수정의 실제 Server tick 회귀도 통과했다.
-정본 Debug/Release 전체 자동화는 실행 중이며, 사용자 시각 판정은 별도로 남아 있다.
+UI PR #252/기능 PR #253 병합 뒤 정본 Release 전체 자동화는 exit 0이다. Debug 빌드·계약·native도
+통과했으며, 사용자 실행 중인 Debug 전체 live 재실행과 시각 판정은 별도로 남아 있다.
 
 관련 정본은 [Trash 구현 계획](C:/Users/user/Desktop/LostArk/.md/GB/08-27/2026-08-27_VALTAN_TRASH_CAPTURE_COUNTER_SERVER_FLOW_IMPLEMENTATION_PLAN.md)과
 [Next Pattern 구현 계획](C:/Users/user/Desktop/LostArk/.md/GB/08-28/2026-08-28_VALTAN_BOSS_TOOL_RESETLESS_NEXT_PATTERN_IMPLEMENTATION_PLAN.md)이다.
@@ -36,7 +37,7 @@ Client Release 첫 빌드의 LNK2001/LNK1120은 최신 소스 재빌드로 해�
 | Client GRABBED 입력 및 물리 release gate | Desktop 적용 완료. static_assert·최신 Client D/R 빌드 PASS; 사용자 입력 관측은 미실행 |
 | Desktop 통합 시점 publisher chain | 모두 exit 0; 아래 통합 로그 기준 |
 | Python master·native harness | FOUR 복구 후 Master V2 53 tests PASS, Action의 Trash parser 15개 회귀 D/R PASS. 후속 변경 전체 검증과는 구분 |
-| 최신 Debug/Release 전체 regression | 최신 Client·Server D/R 빌드 및 방향 수정 계약 PASS. 최종 정본 전체 자동화 실행 중 |
+| 최신 Debug/Release regression | UI 병합 후 Release 정본 전체 exit 0, Debug Client 빌드 오류 0 및 Protocol/Next/Server/Action/Effect/PointLight exit 0. Debug 전체 live 재실행은 사용자 세션 보호로 보류 |
 | Client 실행·시각 판정 | 사용자 확인 대기; 에이전트 실행·조작·캡처 없음 |
 
 ## G02. 구현한 계약
@@ -200,7 +201,7 @@ LNK2001과 최종 LNK1120/exit 1이다. 통합 담당의 소스·산출물 대�
 ## 현재 통합·사용자 확인 경계
 
 Server 06:52:32·Client 06:57:55의 사용자 Debug 링크·배포 확인은 이전 시점의 기록이다.
-사용자 Server/Client 종료 뒤 최신 source로 D/R 빌드를 완료했다. 정본 전체 D/R 자동화는 실행 중이며
+사용자 Server/Client 종료 뒤 최신 source로 D/R 빌드를 완료했다. 이후 UI 병합본 Release 전체 검증까지 완료했으며
 사용자 Client/UI를 자율 실행하지 않았다. 사용자 visual PASS는 선언하지 않는다.
 
 ### 최신 Desktop D/R 빌드 및 후속 수정
@@ -215,3 +216,6 @@ Six Pizza 카메라 제거와 다른 작업의 빈 발악 Draft·사자후/3시 
 최종 `Invoke-BuildAndRegression.ps1 -Configuration Debug/Release -SkipBuild`는 별도 구성별 로그로
 진행 중이다. `-SkipBuild`는 이미 실제로 완료한 최신 D/R 빌드를 다시 반복하지 않기 위한 옵션이며
 빌드 실패를 우회한 것이 아니다. 전체 종료 결과는 통합 RESULT와 같은 상태로 갱신한다.
+
+최종 PR #253/main `eec64f8d` 통합 및 08:49 Release 전체 완료 증거, 이후 사용자 저장값과 Debug 실행 경계는
+`../08-28/2026-08-28_VALTAN_BOSS_TOOL_RESETLESS_NEXT_PATTERN_IMPLEMENTATION_RESULT.md`의 G07을 따른다.

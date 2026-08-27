@@ -10,17 +10,16 @@ Desktop의 Server Release와 모든 검증용 실행 파일의 Debug/Release 빌
 Server 계약은 두 구성 모두 failures 0이며, Release 4인 접속·격리·2인/4인 파티 이동도 통과했다.
 Client Release 첫 링크의 old/new object 혼재 오류를 최신 소스 재빌드로 해소했다.
 최신 Client·Server Debug/Release 빌드와 회전 수정의 실제 Server tick 회귀는 모두 통과했다.
-정본 전체 Debug 자동화는 08:14 exit 0으로 완료했다. 뒤이어 실행한 Release 전체 검사는
-사용자가 저장한 Effect element 삭제와 기존 고정 fixture의 불일치에서 중단됐다.
-저장값은 유지하고 fixture를 수정한 뒤 아래 104개 focused 검사를 통과했다.
-UI PR #252 통합 뒤의 전체 Release 재검증은 아직 완료하지 않았다.
+UI PR #252와 이 기능의 PR #253 통합 뒤 Desktop 정본 Release 빌드·전체 회귀를 exit 0으로 완료했다.
+사용자 Debug Client 빌드와 후속 Debug 계약·native도 통과했다. 사용자 Server/Client가 실행 중이므로
+Debug 전체 live 재실행은 보류했으며, 08:14의 전체 Debug PASS 이력과 구분한다. 자세한 최종 증거는 G07을 따른다.
 사용자 시각 검증은 대신 완료 처리하지 않는다.
 
 | 항목 | 실제 상태 |
 |---|---|
 | 최종 솔루션 | `C:/Users/user/Desktop/LostArk/Framework.sln` |
 | 현재 브랜치 | `codex/valtan-arena-next-desktop` |
-| 현재 기준 HEAD | `a6871a2fddd2a9e1c06091cb4e8cfdde77d6b024`, PR #251 병합 main |
+| 검증한 구현 HEAD | `eec64f8dcdcd2e2d62671a4f0c8d02a259832042`, UI PR #252 + 기능 PR #253 병합 main |
 | main 직접 수정 | 하지 않음. main 기반 별도 브랜치에서 작업 |
 | 이전 구현 worktree | `C:/w/valtan-arena-next`, `codex/valtan-arena-navigation-next` |
 | 다른 작업 구현 | `C:/w/valtan-half-ring-clock`의 동결된 60개 구현·데이터·하네스·DDS 파일 통합 |
@@ -169,7 +168,7 @@ Desktop 최종 완료 여부는 다음 표를 따른다.
 | Desktop Release Engine / UpdateLib / Shared / Protocol / NextService / FourPlayer / Isolation 빌드 | PASS, 각 exit 0 |
 | Desktop Action / Effect / PointLight 하네스 Debug·Release 빌드 | PASS, 각 exit 0 |
 | Desktop Server Release 빌드 | PASS, exit 0 |
-| Desktop Client Debug·Release 최신 재빌드 | PASS, 각 exit 0. 등록 정렬 수정 뒤 08:05 재확인에서도 3363개 입력 hash 동일; `desktop-final-client-Debug.log` / `desktop-final-client-Release.log` |
+| Desktop Client Debug·Release 최신 빌드 | PASS. UI 병합 후 Debug는 사용자 08:44 링크 로그의 오류 0을 확인했고, Release는 G07 정본 빌드에서 exit 0 |
 | Desktop Protocol / NextService Debug·Release 실행 | PASS, protocol failures 0 / NextService 14개 모두 통과 |
 | Desktop Server 계약 Debug·Release 실행 | PASS, 최신 회전 수정 포함 두 구성 모두 failures 0 |
 | Desktop Release FourPlayer / Core / Party2 / Party4 live 실행 | PASS, 사용자 Debug Server와 다른 격리 포트 사용 |
@@ -182,8 +181,8 @@ Desktop 최종 완료 여부는 다음 표를 따른다.
 | Boss / Flow / Tree / Balance Python | PASS, 각각 21 / 23 / 25 / 25 tests |
 | Master V2 Python, FOUR 복구 고정 후 재실행 | PASS, 53 tests. 복구 중 source 변경으로 실패한 앞선 실행은 최종 증거에서 제외 |
 | Animation-chain promotion / Saved Flow 최신 Python | PASS, 15 + 23 = 38 tests. Trash14 보존 및 휠윈드 방향 영속 회귀 포함 |
-| Desktop 전체 Debug 정본 자동 회귀 | PASS, 08:05:45~08:14:23, exit 0. 검사 전후 3363개 입력 hash 동일 |
-| Desktop 전체 Release 정본 자동 회귀 | 08:14~08:20 실행 exit 1. 실행 중 floor-wipe 19→18개 등 사용자 저장이 발생해 기존 saved-rows fixture와 불일치. 최신 저장값을 보존한 focused 회귀는 아래에서 재확인; 전체 Release 완료 아님 |
+| Desktop 전체 Debug 정본 자동 회귀 | 통합 전 이력: 08:05:45~08:14:23 exit 0, 3363개 입력 hash 동일. UI 병합 후 Debug 빌드·계약·native는 G07; 전체 live는 사용자 실행 세션 보호로 재실행하지 않음 |
+| Desktop 전체 Release 정본 자동 회귀 | PASS, UI 병합 후 08:40~08:49 실제 exit 0. 이전 08:20 saved-rows 불일치는 사용자 저장값 보존 및 fixture 수정으로 해소. 추가 저장값 재검증은 G07 |
 | Client/UI 실행·화면 캡처·visual PASS | 에이전트가 수행하지 않음; 사용자 판정 필요 |
 
 자동 빌드 중지의 exit 4294967295는 사용자 빌드와 겹치지 않도록
@@ -260,14 +259,14 @@ PowerShell 경로로 지정한 재실행에서 Debug/Release shader·resource ro
 - `effect-project-registration/applied-receipt.json`, `check.log`: FOUR 등록 위치만 이동·정본 검사
 - `desktop-final-client-Debug.log`, `desktop-final-client-Release.log`: 등록 정렬 수정 후 재빌드
 
-## G05. 남은 검증과 문서
+## G05. 실행·수동 검증 경계
 
 다른 작업의 최신 Effect 시작 기준·빈 발악 Draft와 이번 점프찍기 휠윈드 방향 수정을 포함해
-영향받은 대상을 D/R로 재빌드했다. Desktop 정본 전체 Debug는 통과했고, 이후 사용자 저장 변경을
-반영한 전체 Release 및 UI PR #252 통합 후 빌드·회귀는 별도 확인이 필요하다.
+영향받은 대상을 D/R로 재빌드했다. UI PR #252 통합 후 전체 Release와 후속 Debug native 결과는
+G07에 기록했다. 사용자 실행 중인 Debug 전체 live 재실행과 시각 검증은 별도다.
 사용자는 08:13에 정본 Debug Server/Client를 다시 실행했다. 이 사용자 process는 그대로 두고,
 자동 live 검증은 별도 구성·격리 포트와 에이전트 소유 process로만 수행한다.
-완료되지 않은 Release 전체 검사와 사용자 시각 검증을 PASS로 기록하지 않는다.
+Release 전체 검사는 완료했지만 Debug 전체 live 재실행과 사용자 시각 검증을 대신 PASS로 기록하지 않는다.
 
 - [Next PLAN](C:/Users/user/Desktop/LostArk/.md/GB/08-28/2026-08-28_VALTAN_BOSS_TOOL_RESETLESS_NEXT_PATTERN_IMPLEMENTATION_PLAN.md)
 - [벽·Nav RESULT](C:/Users/user/Desktop/LostArk/.md/GB/08-28/2026-08-28_VALTAN_DESTROYED_WALL_NAVIGATION_IMPLEMENTATION_RESULT.md)
@@ -284,8 +283,55 @@ PowerShell 경로로 지정한 재실행에서 Debug/Release shader·resource ro
 - Effect project registration: files 2398 / filters 219, exit 0.
 - 변경 파일 JSON 40 / XML 6 / Python 17 구문 검사 통과.
 - 사용자 half-ring Start Delay 1.36초를 보존했다. native 검사 시점을 고정 0.5초 대신
-  실제 첫 birth 이후 유효 수명 안으로 계산하도록 보완했으며, 이 최신 native fixture의 재빌드는 아직 별도다.
+  실제 첫 birth 이후 유효 수명 안으로 계산하도록 보완했다. 이 시점의 미실행 native 재빌드·검증은 이후 G07에서 통과했다.
 
 로그: `_work/valtan-arena-next/desktop-git-ready-focused-tests.log`,
 `desktop-git-ready-source-validation.log`, `conflict-preflight-20260828-083117/result.json`.
 이 결과는 UI PR #252 통합 후 전체 빌드나 사용자 육안 검증을 대신하지 않는다.
+
+## G07. PR #253 병합과 정본 Release 완료
+
+구현 커밋 `2bbf7322`에 현재 저장된 131파일을 담고, UI PR #252의 main `c813f5b8`을
+`35558ffa`로 자동 병합했다. 실제 충돌은 0건이다. PR #253은 `eec64f8d`로 main에 병합됐고,
+08:38 Desktop에서 `git pull --ff-only origin main` 후 HEAD와 origin/main이 일치했다.
+main이 다른 로컬 worktree에 checkout되어 있어 Desktop의 `codex/valtan-arena-next-desktop`
+브랜치는 유지했다. 다른 worktree나 기존 safety stash는 변경하지 않았다.
+
+실제 merge tree에서 우리 전용 129파일은 구현 부모, UI 전용 10파일은 UI 부모와 blob·mode가
+같다. 공통 project/filter에는 RaidClear layout과 신규 Effect 문서 3개가 각각 한 번 등록됐다.
+P1 FOUR 7+2 / P2 FOUR 21 분리, Six Pizza camera 0 / 다른 camera 11 보존,
+9시 TAKEOFF 첫 clip 0초와 당시 저장된 -180도 회전도 부모 커밋과 동일하다.
+
+| 검사 | 실제 결과 |
+|---|---|
+| Desktop 정본 Release 전체 build/regression | 08:40:21~08:49:51, 실제 PowerShell child exit 0 |
+| Release 빌드 | Engine → UpdateLib → Shared/Protocol/Next/FourPlayer/Isolation/Action → Server/Client → Effect/PointLight 모두 통과 |
+| Release 자동 회귀 | Master 53, Animation 11, Saved rows 33(skip 7), domain publishers, protocol/Next/Server 계약, FourPlayer/Core/Party2/Party4 live, Action/Effect/PointLight 모두 통과 |
+| 사용자 Desktop Debug Client 빌드 | 08:44:17 링크·배포 완료, compiler/link errors 0. HUDLayoutTool/HUDRuntimeView/Level_ValtanArena/MainApp 재컴파일 로그 확인 |
+| 후속 Debug 검증 | Protocol, Next service, Server `--contract-test`, Action, Effect, PointLight 모두 exit 0 |
+| 최신 Effect native | Debug fixture 재빌드 및 Debug/Release 실제 실행 모두 exit 0 |
+| 08:49 이후 추가 저장된 9시 문서 | 104개 focused tests(기존 skip 7)·Effect source 검사 통과. 검사 전후 SHA256 동일 |
+| Debug 전체 live 재실행 | 사용자 Debug Server/Client가 실행 중이므로 이번에는 실행하지 않음. 08:14 전체 Debug 통과 이력과 구분 |
+
+Release 검증 중 08:49:07에 9시 Effect의 landing delay(3.5→3.4000001)와 반원 yaw(-180→0)가
+추가 저장됐다. 이는 PR 병합 이후 로컬 편집 1파일이며 이 문서 커밋에 함께 넣거나 되돌리지 않는다.
+전체 Release 실행 전후 모든 입력이 동일했다고 주장하지 않는다. 후속 focused 검사와 Effect native
+D/R에서 현재 저장값을 다시 확인했고, 이 세션은 해당 회전/Element 값을 직접 수정하지 않았다.
+
+08:49 사용자 Debug Server PID 76684와 Client PID 78808은 그대로 유지했다.
+Release child의 실제 exit 0을 관찰한 뒤 에이전트의 순차 실행 driver만 종료해, 이어질 Debug 빌드가
+사용 중인 출력물을 덮어쓰려 하지 않도록 했다. 이 driver의 종료 exit 1은 컴파일·Release 실패가 아니다.
+후속 Debug Server 검사는 listener를 열지 않는 `--contract-test` 경로만 사용했다.
+
+UI PR의 RaidClear 이미지 370개와 사운드 1개는 Git에 들어 있지 않고 Desktop에도 없다.
+사용자가 별도로 받겠다고 확인했으므로 임의 대체 자산을 만들거나 이번 Valtan 소스 PR에
+추측한 파일을 추가하지 않았다. UI 실행·시각 판정은 여전히 사용자 소유다.
+
+검증 로그는 Desktop `_work/valtan-arena-next/` 아래에 있다.
+
+- `desktop-main-sync.result.json`: PR #253 이후 main pull, ahead/behind 0/0.
+- `desktop-postmerge-canonical-Release.log`, `desktop-postmerge-release-observer.json`: 정본 전체 Release와 실제 exit 관찰.
+- `desktop-postmerge-debug-focused.result.json`: 사용자 Server와 겹치지 않은 Debug 계약·native 결과.
+- `desktop-postmerge-effect-native.result.json`: 최신 fixture Debug 빌드와 D/R native 실행.
+- `desktop-postmerge-latest-save-focused.result.json`: 후속 9시 저장값 검사와 전후 hash.
+- `desktop-raid-clear-resource-presence.json`: UI 미전달 resource 목록.
