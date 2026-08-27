@@ -291,6 +291,12 @@ HRESULT CLevel_ValtanArena::Initialize()
 		return Report_InitFailure("[Level_ValtanArena][TargetingPreview]",
 			"Ground-target preview object could not be initialized");
 	}
+	if (!m_PlayerController.Initialize_ClickMoveEffect(
+			ETOUI(LEVEL::VALTAN_ARENA)))
+	{
+		return Report_InitFailure("[Level_ValtanArena][ClickMoveEffect]",
+			"Click-move effect object could not be initialized");
+	}
 
 	m_pDeadSceneView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/DeadScene/DeadSceneUI.json");

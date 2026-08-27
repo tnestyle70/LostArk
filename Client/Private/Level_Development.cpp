@@ -102,6 +102,11 @@ HRESULT CLevel_Development::Initialize()
 	{
 		return E_FAIL;
 	}
+	if (!m_PlayerController.Initialize_ClickMoveEffect(
+			ETOUI(LEVEL::DEVELOPMENT)))
+	{
+		return E_FAIL;
+	}
 	return S_OK;
 }
 

@@ -555,6 +555,9 @@
 	<ClCompile Include="..\Private\SkillGroundTargetPreview.cpp">
 	  <Filter>04. Network\00. PlayerController</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\ClickMoveEffect.cpp">
+	  <Filter>04. Network\00. PlayerController</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\ItemCatalog.cpp">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
@@ -917,6 +920,9 @@
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\SkillGroundTargetPreview.h">
+	  <Filter>04. Network\00. PlayerController</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\ClickMoveEffect.h">
 	  <Filter>04. Network\00. PlayerController</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\ItemCatalog.h">
@@ -1567,6 +1573,9 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
 	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxSkillGroundTargetPreview.hlsl">
+	  <Filter>97.ShaderFiles</Filter>
+	</FxCompile>
+	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxClickMoveGlow.hlsl">
 	  <Filter>97.ShaderFiles</Filter>
 	</FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl">
