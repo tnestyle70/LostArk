@@ -205,20 +205,11 @@
       "targetStageId": "",
       "animation": {
         "endPolicy": "NATIVE_CLIP_LENGTHS",
-        "repeatCount": 2,
+        "repeatCount": 1,
         "occurrences": [
           {
             "clipOccurrenceId": "valtan.debug.four.clip.01",
-            "clip": "mesh_att_battle_10_01",
-            "mappingBasis": "PROJECT_AUTHORED",
-            "sourceStartMs": 0,
-            "playMs": 0,
-            "playRate": 1.0,
-            "repeatUntilStageEnd": false
-          },
-          {
-            "clipOccurrenceId": "valtan.debug.four.clip.02",
-            "clip": "mesh_att_battle_10_02",
+            "clip": "mesh_att_battle_19_01",
             "mappingBasis": "PROJECT_AUTHORED",
             "sourceStartMs": 0,
             "playMs": 0,

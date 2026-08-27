@@ -2175,10 +2175,10 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.sequence.four.step-01.clip-01",
-          "clip": "mesh_att_battle_10_01",
+          "clip": "mesh_att_battle_19_01",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 3500,
+          "playMs": 5000,
           "playRate": 1.0,
           "loop": false
         }
@@ -2186,17 +2186,8 @@
     },
     {
       "actionId": "valtan.sequence.four.step-02",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.sequence.four.step-02.clip-01",
-          "clip": "mesh_att_battle_10_02",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 3167,
-          "playRate": 1.0,
-          "loop": false
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.sequence.roar-charge.step-01",
