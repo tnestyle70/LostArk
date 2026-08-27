@@ -4,10 +4,12 @@
 
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
+#include "RuntimeAssetRoot.h"
 #include "UITextureCache.h"
 
 #include <cstdio>
 #include <ctime>
+#include <filesystem>
 #include <imm.h>
 
 #pragma comment(lib, "imm32.lib")
@@ -268,6 +270,10 @@ void Client::CChatWindowView::Render()
 			}
 			else
 			{
+				const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+					L"Sound/UI/System/sys_chat_text_enter1__926892930.wav");
+				CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+
 				/* Local echo only -- Shared's C2S_CHAT/S2C_CHAT packet types are declared but
 				have no Server relay behind them yet, so this does not leave the process.
 				Keeps the input open and refocused so a chat session can send several lines

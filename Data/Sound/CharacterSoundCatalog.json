@@ -4917,6 +4917,68 @@
    "G_Voltan1_Attack1_ShotVox1": [
     "Sound/Valtan/g_voltan1_attack1_shotvox1__1009086246.wav",
     "Sound/Valtan/g_voltan1_attack1_shotvox1__544313861.wav"
+   ],
+   "G_Voltan2_Attack06_Shot2": [
+    "Sound/Valtan/g_voltan2_attack06_shot2__411020145.wav"
+   ],
+   "G_Voltan2_Attack06_ShotVox2": [
+    "Sound/Valtan/g_voltan2_attack06_shotvox2__1068889951.wav",
+    "Sound/Valtan/g_voltan2_attack06_shotvox2__338015342.wav",
+    "Sound/Valtan/g_voltan2_attack06_shotvox2__483284436.wav"
+   ],
+   "G_Voltan2_Attack11_Cast4": [
+    "Sound/Valtan/g_voltan2_attack11_cast4__404503935.wav"
+   ],
+   "G_Voltan2_Attack11_Shot5": [
+    "Sound/Valtan/g_voltan2_attack11_shot5__275687761.wav"
+   ],
+   "G_Voltan2_Attack11_ShotVox4": [
+    "Sound/Valtan/g_voltan2_attack11_shotvox4__295883219.wav",
+    "Sound/Valtan/g_voltan2_attack11_shotvox4__479550205.wav",
+    "Sound/Valtan/g_voltan2_attack11_shotvox4__493827566.wav",
+    "Sound/Valtan/g_voltan2_attack11_shotvox4__749467994.wav",
+    "Sound/Valtan/g_voltan2_attack11_shotvox4__897939821.wav"
+   ],
+   "G_Voltan2_Attack12_Cast1": [
+    "Sound/Valtan/g_voltan2_attack12_cast1__86528742.wav"
+   ],
+   "G_Voltan2_Attack12_Shot2": [
+    "Sound/Valtan/g_voltan2_attack12_shot2__473238218.wav"
+   ],
+   "G_Voltan2_Attack12_Shot3": [
+    "Sound/Valtan/g_voltan2_attack12_shot3__382941727.wav"
+   ],
+   "G_Voltan2_Attack13_Cast1": [
+    "Sound/Valtan/g_voltan2_attack13_cast1__754101507.wav"
+   ],
+   "G_Voltan2_Attack13_Cast2": [
+    "Sound/Valtan/g_voltan2_attack13_cast2__1004267828.wav"
+   ],
+   "G_Voltan2_Attack13_CastVox1": [
+    "Sound/Valtan/g_voltan2_attack13_castvox1__520745441.wav",
+    "Sound/Valtan/g_voltan2_attack13_castvox1__709394160.wav",
+    "Sound/Valtan/g_voltan2_attack13_castvox1__845822546.wav"
+   ],
+   "G_Voltan2_Attack13_Shot1": [
+    "Sound/Valtan/g_voltan2_attack13_shot1__69590796.wav"
+   ],
+   "G_Voltan2_Attack18_Shot4": [
+    "Sound/Valtan/g_voltan2_attack18_shot4__165809185.wav",
+    "Sound/Valtan/g_voltan2_attack18_shot4__367028706.wav",
+    "Sound/Valtan/g_voltan2_attack18_shot4__731874782.wav",
+    "Sound/Valtan/g_voltan2_attack18_shot4__980185843.wav"
+   ],
+   "G_Voltan2_Attack18_Shot8": [
+    "Sound/Valtan/g_voltan2_attack18_shot8__175530312.wav"
+   ],
+   "G_Voltan2_Attack20_Shot1": [
+    "Sound/Valtan/g_voltan2_attack20_shot1__139640209.wav"
+   ],
+   "G_Voltan2_Attack25_Cast3": [
+    "Sound/Valtan/g_voltan2_attack25_cast3__640891529.wav"
+   ],
+   "G_Voltan2_DownM1": [
+    "Sound/Valtan/g_voltan2_downm1__134755858.wav"
    ]
   }
  }

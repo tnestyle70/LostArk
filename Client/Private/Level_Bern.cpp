@@ -558,6 +558,7 @@ void CLevel_Bern::Render_ValtanEntryModal()
 		}
 		if (isHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		{
+			CMainApp::Play_UIButtonClickSound();
 			if (button.isConfirm)
 				confirmClicked = true;
 			else
