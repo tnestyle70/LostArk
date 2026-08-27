@@ -2383,6 +2383,20 @@ namespace
 				35.f == decodedGrabbed.Players[1].fAttachmentYawOffsetDegrees,
 				"Grabbed Player Attachment Round Trip");
 
+			S2C_WORLD_SNAPSHOT grabbedWithSkill = grabbed;
+			grabbedWithSkill.Players[1].iSkillId = 34010;
+			CPacketWriter grabbedWithSkillWriter;
+			testRunner.Require(
+				!Write_Message(grabbedWithSkillWriter, grabbedWithSkill),
+				"Reject A Grabbed Snapshot That Carries A Skill");
+
+			S2C_WORLD_SNAPSHOT grabbedWithoutTick = grabbed;
+			grabbedWithoutTick.Players[1].iActionStartTick = 0u;
+			CPacketWriter grabbedWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(grabbedWithoutTickWriter, grabbedWithoutTick),
+				"Reject A Grabbed Snapshot Without A Start Tick");
+
 			S2C_WORLD_SNAPSHOT grabbedNonFiniteOffset = grabbed;
 			grabbedNonFiniteOffset.Players[1].fAttachmentLocalOffsetX =
 				(std::numeric_limits<float>::quiet_NaN)();
@@ -2501,44 +2515,6 @@ namespace
 				!Write_Message(
 					estherCastWithoutTickWriter, estherCastWithoutTick),
 				"Reject An Esther Cast Without A Start Tick");
-
-			/* GRABBED is the stable late-join edge for a Server-owned boss
-			attachment. Like other control states it has no player skill and must
-			carry the occurrence start tick. */
-			S2C_WORLD_SNAPSHOT grabbed = source;
-			grabbed.Players[1].eAction = PLAYER_ACTION_STATE::GRABBED;
-			grabbed.Players[1].iSkillId = INVALID_SKILL_ID;
-			grabbed.Players[1].iActionStartTick = 88;
-			std::vector<std::uint8_t> grabbedPayload;
-			S2C_WORLD_SNAPSHOT decodedGrabbed{};
-			bool grabbedRoundTrip =
-				Build_WorldSnapshotPayload(grabbed, grabbedPayload);
-			if (grabbedRoundTrip)
-			{
-				CPacketReader grabbedReader{ grabbedPayload };
-				grabbedRoundTrip = Read_Message(grabbedReader, decodedGrabbed);
-			}
-			testRunner.Require(
-				grabbedRoundTrip && 2u == decodedGrabbed.Players.size() &&
-				decodedGrabbed.Players[1].eAction ==
-					PLAYER_ACTION_STATE::GRABBED &&
-				decodedGrabbed.Players[1].iSkillId == INVALID_SKILL_ID &&
-				decodedGrabbed.Players[1].iActionStartTick == 88,
-				"Grabbed Player Snapshot Round Trip");
-
-			S2C_WORLD_SNAPSHOT grabbedWithSkill = grabbed;
-			grabbedWithSkill.Players[1].iSkillId = 34010;
-			CPacketWriter grabbedWithSkillWriter;
-			testRunner.Require(
-				!Write_Message(grabbedWithSkillWriter, grabbedWithSkill),
-				"Reject A Grabbed Snapshot That Carries A Skill");
-
-			S2C_WORLD_SNAPSHOT grabbedWithoutTick = grabbed;
-			grabbedWithoutTick.Players[1].iActionStartTick = 0u;
-			CPacketWriter grabbedWithoutTickWriter;
-			testRunner.Require(
-				!Write_Message(grabbedWithoutTickWriter, grabbedWithoutTick),
-				"Reject A Grabbed Snapshot Without A Start Tick");
 
 			S2C_WORLD_SNAPSHOT phaseMismatch = source;
 			phaseMismatch.Entities[0].BossCombat.iGameplayPhase = 2u;
