@@ -1,4484 +1,1187 @@
 {
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
-  "resolution": {
-    "width": 1280,
-    "height": 720
-  },
-  "classes": [
-    "Default"
-  ],
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
   "slots": [
     {
       "id": "ItemUpgrade_SuccessModalBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 191.809723,
-        "y": 98.5712891,
-        "width": 948,
-        "height": 489.333313
-      },
+      "rect": { "x": 191.809723, "y": 98.5712891, "width": 948, "height": 489.333313 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_result_modal_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_result_modal_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_PanelBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 409.657043,
-        "y": 98.7238617,
-        "width": 442,
-        "height": 485.333313
-      },
+      "rect": { "x": 409.657043, "y": 98.7238617, "width": 442, "height": 485.333313 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_panel_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_panel_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeIconBgExample",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 532.111389,
-        "y": 419.285614,
-        "width": 60,
-        "height": 68
-      },
+      "rect": { "x": 532.111389, "y": 419.285614, "width": 60, "height": 68 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeMaterial0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 545.111389,
-        "y": 436.285614,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 545.111389, "y": 436.285614, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/recipe_material_blue.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/recipe_material_blue.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeAmount0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 527.1114,
-        "y": 472.2856,
-        "width": 70.0,
-        "height": 14.0
-      },
+      "rect": { "x": 527.111389, "y": 472.285614, "width": 70, "height": 14 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeIconBg1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 599.075439,
-        "y": 419.285614,
-        "width": 60,
-        "height": 68
-      },
+      "rect": { "x": 599.075439, "y": 419.285614, "width": 60, "height": 68 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeMaterial1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 612.075012,
-        "y": 434.286011,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 612.075012, "y": 434.286011, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/recipe_material0.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/recipe_material0.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeAmount1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 594.075,
-        "y": 470.286,
-        "width": 70.0,
-        "height": 14.0
-      },
+      "rect": { "x": 594.075012, "y": 470.286011, "width": 70, "height": 14 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeIconBg2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 664.918335,
-        "y": 419.285614,
-        "width": 60,
-        "height": 68
-      },
+      "rect": { "x": 664.918335, "y": 419.285614, "width": 60, "height": 68 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeMaterial2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 677.918335,
-        "y": 436.285614,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 677.918335, "y": 436.285614, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/recipe_material1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/recipe_material1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RecipeAmount2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 659.9183,
-        "y": 472.2856,
-        "width": 70.0,
-        "height": 14.0
-      },
+      "rect": { "x": 659.918274, "y": 472.285614, "width": 70, "height": 14 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_DecoIcon",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 601.594299,
-        "y": 135.577774,
-        "width": 57.3333015,
-        "height": 57.3333015
-      },
+      "rect": { "x": 601.594299, "y": 135.577774, "width": 57.3333015, "height": 57.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_deco_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_deco_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_LevelUpMotion2Big",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 403.632935,
-        "y": 157.114197,
-        "width": 456,
-        "height": 260.666687
-      },
+      "rect": { "x": 403.632935, "y": 157.114197, "width": 456, "height": 260.666687 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_levelupmotion2_big.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_levelupmotion2_big.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GaugeFill",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 594.571472,
-        "y": 260.817963,
-        "width": 71.3332977,
-        "height": 70.6667023
-      },
+      "rect": { "x": 594.571472, "y": 260.817963, "width": 71.3332977, "height": 70.6667023 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 45,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_000.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_001.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_002.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_003.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_004.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_005.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_006.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_007.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_008.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_009.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_010.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_011.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_012.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_013.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_014.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_015.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_016.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_017.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_018.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_019.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_020.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_021.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_022.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_023.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_024.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_025.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_026.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_027.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_028.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_029.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_030.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_031.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_032.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_033.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_034.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_035.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_036.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_037.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_038.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_039.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_040.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_041.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_042.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_043.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_044.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_045.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_046.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_047.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_048.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_049.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_050.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_051.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_052.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_053.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_054.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_055.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_056.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_057.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_058.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_059.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_060.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_061.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_062.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_063.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_064.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_065.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_066.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_067.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_068.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_069.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_070.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_071.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_072.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_073.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_074.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_075.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_076.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_077.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_078.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_079.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_080.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_081.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_082.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_083.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_084.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_085.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_086.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_087.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_088.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_089.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_090.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_091.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_092.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_093.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_094.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_095.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_096.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_097.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_098.png",
-          "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_099.png"
-        ],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 45, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/GaugeFillPercent/GaugeFill_000.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_001.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_002.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_003.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_004.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_005.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_006.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_007.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_008.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_009.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_010.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_011.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_012.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_013.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_014.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_015.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_016.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_017.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_018.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_019.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_020.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_021.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_022.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_023.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_024.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_025.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_026.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_027.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_028.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_029.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_030.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_031.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_032.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_033.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_034.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_035.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_036.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_037.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_038.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_039.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_040.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_041.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_042.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_043.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_044.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_045.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_046.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_047.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_048.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_049.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_050.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_051.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_052.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_053.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_054.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_055.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_056.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_057.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_058.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_059.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_060.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_061.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_062.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_063.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_064.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_065.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_066.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_067.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_068.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_069.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_070.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_071.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_072.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_073.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_074.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_075.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_076.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_077.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_078.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_079.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_080.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_081.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_082.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_083.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_084.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_085.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_086.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_087.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_088.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_089.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_090.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_091.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_092.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_093.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_094.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_095.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_096.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_097.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_098.png", "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_099.png"], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_WingedRingGold",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 512.703857,
-        "y": 222.05217,
-        "width": 236,
-        "height": 162.666702
-      },
+      "rect": { "x": 512.703857, "y": 222.05217, "width": 236, "height": 162.666702 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_winged_ring_gold.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_winged_ring_gold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SelectedItemIconBounds",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 601.594299,
-        "y": 135.577774,
-        "width": 57.3333015,
-        "height": 57.3333015
-      },
+      "rect": { "x": 601.594299, "y": 135.577774, "width": 57.3333015, "height": 57.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_LevelUpBtn",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 594.516174,
-        "y": 351.697144,
-        "width": 71.3332977,
-        "height": 26.6667004
-      },
+      "rect": { "x": 594.516174, "y": 351.697144, "width": 71.3332977, "height": 26.6667004 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_levelup_btn_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_levelup_btn_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_EquipExpPageLine",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 524.452087,
-        "y": 409.423767,
-        "width": 211.333298,
-        "height": 8
-      },
+      "rect": { "x": 524.452087, "y": 409.423767, "width": 211.333298, "height": 8 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_equipexppage_line.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_equipexppage_line.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SmeltGlow",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 580.237976,
-        "y": 246.151276,
-        "width": 100,
-        "height": 100
-      },
+      "rect": { "x": 580.237976, "y": 246.151276, "width": 100, "height": 100 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 20,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_001.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_002.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_003.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_004.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_005.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_006.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_007.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_008.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_009.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_010.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_011.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_012.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_013.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_014.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_015.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_016.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_017.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_018.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_019.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_020.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_021.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_022.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_023.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_024.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_025.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_026.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_027.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_028.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_029.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_030.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_031.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_032.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_033.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_034.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_035.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_036.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_037.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_038.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_039.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_040.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_041.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_042.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_043.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_044.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_045.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_046.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_047.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_048.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_049.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_050.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_051.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_052.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_053.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_054.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_055.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_056.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_057.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_058.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_059.png",
-          "UI/ItemUpgrade/SmeltGlow/SmeltGlow_060.png"
-        ],
-        "loop": true,
-        "additive": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 20, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/SmeltGlow/SmeltGlow_001.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_002.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_003.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_004.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_005.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_006.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_007.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_008.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_009.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_010.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_011.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_012.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_013.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_014.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_015.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_016.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_017.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_018.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_019.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_020.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_021.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_022.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_023.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_024.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_025.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_026.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_027.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_028.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_029.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_030.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_031.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_032.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_033.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_034.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_035.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_036.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_037.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_038.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_039.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_040.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_041.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_042.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_043.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_044.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_045.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_046.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_047.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_048.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_049.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_050.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_051.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_052.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_053.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_054.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_055.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_056.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_057.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_058.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_059.png", "UI/ItemUpgrade/SmeltGlow/SmeltGlow_060.png"], "loop": true, "additive": true }
     },
     {
       "id": "ItemUpgrade_CoreFlash",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 531.246399,
-        "y": 197.160248,
-        "width": 197.981796,
-        "height": 197.981796
-      },
+      "rect": { "x": 531.246399, "y": 197.160248, "width": 197.981796, "height": 197.981796 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 20,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_001.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_002.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_003.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_004.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_005.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_006.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_007.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_008.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_009.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_010.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_011.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_012.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_013.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_014.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_015.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_016.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_017.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_018.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_019.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_020.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_021.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_022.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_023.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_024.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_025.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_026.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_027.png",
-          "UI/ItemUpgrade/CoreFlash/CoreFlash_028.png"
-        ],
-        "loop": false,
-        "additive": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 20, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/CoreFlash/CoreFlash_001.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_002.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_003.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_004.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_005.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_006.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_007.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_008.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_009.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_010.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_011.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_012.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_013.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_014.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_015.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_016.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_017.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_018.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_019.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_020.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_021.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_022.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_023.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_024.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_025.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_026.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_027.png", "UI/ItemUpgrade/CoreFlash/CoreFlash_028.png"], "loop": false, "additive": true }
     },
     {
       "id": "ItemUpgrade_ShockwaveRing",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 563.570862,
-        "y": 229.48436,
-        "width": 133.333298,
-        "height": 133.333298
-      },
+      "rect": { "x": 563.570862, "y": 229.48436, "width": 133.333298, "height": 133.333298 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 20,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_001.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_002.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_003.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_004.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_005.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_006.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_007.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_008.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_009.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_010.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_011.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_012.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_013.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_014.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_015.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_016.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_017.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_018.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_019.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_020.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_021.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_022.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_023.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_024.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_025.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_026.png",
-          "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_027.png"
-        ],
-        "loop": false,
-        "additive": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 20, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_001.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_002.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_003.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_004.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_005.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_006.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_007.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_008.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_009.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_010.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_011.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_012.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_013.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_014.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_015.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_016.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_017.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_018.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_019.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_020.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_021.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_022.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_023.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_024.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_025.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_026.png", "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_027.png"], "loop": false, "additive": true }
     },
     {
       "id": "ItemUpgrade_CompleteEffect",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 580.237976,
-        "y": 246.151276,
-        "width": 100,
-        "height": 100
-      },
+      "rect": { "x": 580.237976, "y": 246.151276, "width": 100, "height": 100 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 20,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/CompleteEffect/complete_0121.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0123.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0125.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0127.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0129.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0131.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0133.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0135.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0137.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0139.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0141.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0143.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0145.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0147.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0149.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0151.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0153.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0155.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0157.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0159.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0161.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0163.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0165.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0167.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0169.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0171.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0173.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0175.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0177.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0179.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0181.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0183.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0185.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0187.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0189.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0191.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0193.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0195.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0197.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0199.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0201.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0203.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0205.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0207.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0209.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0211.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0213.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0215.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0217.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0219.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0221.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0223.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0225.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0227.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0229.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0231.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0233.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0235.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0237.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0239.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0241.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0243.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0245.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0247.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0249.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0251.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0253.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0255.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0257.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0259.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0261.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0263.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0265.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0267.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0269.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0271.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0273.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0275.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0277.png",
-          "UI/ItemUpgrade/CompleteEffect/complete_0279.png"
-        ],
-        "loop": true,
-        "additive": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 20, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/CompleteEffect/complete_0121.png", "UI/ItemUpgrade/CompleteEffect/complete_0123.png", "UI/ItemUpgrade/CompleteEffect/complete_0125.png", "UI/ItemUpgrade/CompleteEffect/complete_0127.png", "UI/ItemUpgrade/CompleteEffect/complete_0129.png", "UI/ItemUpgrade/CompleteEffect/complete_0131.png", "UI/ItemUpgrade/CompleteEffect/complete_0133.png", "UI/ItemUpgrade/CompleteEffect/complete_0135.png", "UI/ItemUpgrade/CompleteEffect/complete_0137.png", "UI/ItemUpgrade/CompleteEffect/complete_0139.png", "UI/ItemUpgrade/CompleteEffect/complete_0141.png", "UI/ItemUpgrade/CompleteEffect/complete_0143.png", "UI/ItemUpgrade/CompleteEffect/complete_0145.png", "UI/ItemUpgrade/CompleteEffect/complete_0147.png", "UI/ItemUpgrade/CompleteEffect/complete_0149.png", "UI/ItemUpgrade/CompleteEffect/complete_0151.png", "UI/ItemUpgrade/CompleteEffect/complete_0153.png", "UI/ItemUpgrade/CompleteEffect/complete_0155.png", "UI/ItemUpgrade/CompleteEffect/complete_0157.png", "UI/ItemUpgrade/CompleteEffect/complete_0159.png", "UI/ItemUpgrade/CompleteEffect/complete_0161.png", "UI/ItemUpgrade/CompleteEffect/complete_0163.png", "UI/ItemUpgrade/CompleteEffect/complete_0165.png", "UI/ItemUpgrade/CompleteEffect/complete_0167.png", "UI/ItemUpgrade/CompleteEffect/complete_0169.png", "UI/ItemUpgrade/CompleteEffect/complete_0171.png", "UI/ItemUpgrade/CompleteEffect/complete_0173.png", "UI/ItemUpgrade/CompleteEffect/complete_0175.png", "UI/ItemUpgrade/CompleteEffect/complete_0177.png", "UI/ItemUpgrade/CompleteEffect/complete_0179.png", "UI/ItemUpgrade/CompleteEffect/complete_0181.png", "UI/ItemUpgrade/CompleteEffect/complete_0183.png", "UI/ItemUpgrade/CompleteEffect/complete_0185.png", "UI/ItemUpgrade/CompleteEffect/complete_0187.png", "UI/ItemUpgrade/CompleteEffect/complete_0189.png", "UI/ItemUpgrade/CompleteEffect/complete_0191.png", "UI/ItemUpgrade/CompleteEffect/complete_0193.png", "UI/ItemUpgrade/CompleteEffect/complete_0195.png", "UI/ItemUpgrade/CompleteEffect/complete_0197.png", "UI/ItemUpgrade/CompleteEffect/complete_0199.png", "UI/ItemUpgrade/CompleteEffect/complete_0201.png", "UI/ItemUpgrade/CompleteEffect/complete_0203.png", "UI/ItemUpgrade/CompleteEffect/complete_0205.png", "UI/ItemUpgrade/CompleteEffect/complete_0207.png", "UI/ItemUpgrade/CompleteEffect/complete_0209.png", "UI/ItemUpgrade/CompleteEffect/complete_0211.png", "UI/ItemUpgrade/CompleteEffect/complete_0213.png", "UI/ItemUpgrade/CompleteEffect/complete_0215.png", "UI/ItemUpgrade/CompleteEffect/complete_0217.png", "UI/ItemUpgrade/CompleteEffect/complete_0219.png", "UI/ItemUpgrade/CompleteEffect/complete_0221.png", "UI/ItemUpgrade/CompleteEffect/complete_0223.png", "UI/ItemUpgrade/CompleteEffect/complete_0225.png", "UI/ItemUpgrade/CompleteEffect/complete_0227.png", "UI/ItemUpgrade/CompleteEffect/complete_0229.png", "UI/ItemUpgrade/CompleteEffect/complete_0231.png", "UI/ItemUpgrade/CompleteEffect/complete_0233.png", "UI/ItemUpgrade/CompleteEffect/complete_0235.png", "UI/ItemUpgrade/CompleteEffect/complete_0237.png", "UI/ItemUpgrade/CompleteEffect/complete_0239.png", "UI/ItemUpgrade/CompleteEffect/complete_0241.png", "UI/ItemUpgrade/CompleteEffect/complete_0243.png", "UI/ItemUpgrade/CompleteEffect/complete_0245.png", "UI/ItemUpgrade/CompleteEffect/complete_0247.png", "UI/ItemUpgrade/CompleteEffect/complete_0249.png", "UI/ItemUpgrade/CompleteEffect/complete_0251.png", "UI/ItemUpgrade/CompleteEffect/complete_0253.png", "UI/ItemUpgrade/CompleteEffect/complete_0255.png", "UI/ItemUpgrade/CompleteEffect/complete_0257.png", "UI/ItemUpgrade/CompleteEffect/complete_0259.png", "UI/ItemUpgrade/CompleteEffect/complete_0261.png", "UI/ItemUpgrade/CompleteEffect/complete_0263.png", "UI/ItemUpgrade/CompleteEffect/complete_0265.png", "UI/ItemUpgrade/CompleteEffect/complete_0267.png", "UI/ItemUpgrade/CompleteEffect/complete_0269.png", "UI/ItemUpgrade/CompleteEffect/complete_0271.png", "UI/ItemUpgrade/CompleteEffect/complete_0273.png", "UI/ItemUpgrade/CompleteEffect/complete_0275.png", "UI/ItemUpgrade/CompleteEffect/complete_0277.png", "UI/ItemUpgrade/CompleteEffect/complete_0279.png"], "loop": true, "additive": true }
     },
     {
       "id": "ItemUpgrade_WingDecoFade",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 385.611572,
-        "y": 125.517891,
-        "width": 441.333313,
-        "height": 329.333313
-      },
+      "rect": { "x": 385.611572, "y": 125.517891, "width": 441.333313, "height": 329.333313 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 20,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_001.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_002.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_003.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_004.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_005.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_006.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_007.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_008.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_009.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_010.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_011.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_012.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_013.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_014.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_015.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_016.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_017.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_018.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_019.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_020.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_021.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_022.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_023.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_024.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_025.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_026.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_027.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_028.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_029.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_030.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_031.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_032.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_033.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_034.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_035.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_036.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_037.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_038.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_039.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_040.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_041.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_042.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_043.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_044.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_045.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_046.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_047.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_048.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_049.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_050.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_051.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_052.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_053.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_054.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_055.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_056.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_057.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_058.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_059.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_060.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_061.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_062.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_063.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_064.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_065.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_066.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_067.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_068.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_069.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_070.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_071.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_072.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_073.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_074.png",
-          "UI/ItemUpgrade/WingDecoFade/WingDecoFade_075.png"
-        ],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 20, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/WingDecoFade/WingDecoFade_001.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_002.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_003.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_004.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_005.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_006.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_007.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_008.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_009.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_010.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_011.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_012.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_013.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_014.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_015.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_016.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_017.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_018.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_019.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_020.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_021.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_022.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_023.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_024.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_025.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_026.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_027.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_028.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_029.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_030.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_031.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_032.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_033.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_034.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_035.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_036.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_037.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_038.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_039.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_040.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_041.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_042.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_043.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_044.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_045.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_046.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_047.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_048.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_049.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_050.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_051.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_052.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_053.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_054.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_055.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_056.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_057.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_058.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_059.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_060.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_061.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_062.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_063.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_064.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_065.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_066.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_067.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_068.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_069.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_070.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_071.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_072.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_073.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_074.png", "UI/ItemUpgrade/WingDecoFade/WingDecoFade_075.png"], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_LeftListBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 191.833359,
-        "y": 99.842804,
-        "width": 261.914001,
-        "height": 488.963989
-      },
+      "rect": { "x": 191.833359, "y": 99.842804, "width": 261.914001, "height": 488.963989 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_speciallistpage_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_speciallistpage_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListGradeBg0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 198.369202,
-        "y": 143.134705,
-        "width": 103.984001,
-        "height": 33.6267014
-      },
+      "rect": { "x": 198.369202, "y": 143.134705, "width": 103.984001, "height": 33.6267014 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SelectedItemGradeBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 610.785645,
-        "y": 144.211975,
-        "width": 40,
-        "height": 40
-      },
+      "rect": { "x": 610.785645, "y": 144.211975, "width": 40, "height": 40 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SelectedItemIcon",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 610.50708,
-        "y": 144.212067,
-        "width": 40,
-        "height": 40
-      },
+      "rect": { "x": 610.50708, "y": 144.212067, "width": 40, "height": 40 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_top_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ItemNameLabel",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 571.683716,
-        "y": 198.749695,
-        "width": 120,
-        "height": 19.2000008
-      },
+      "rect": { "x": 571.683716, "y": 198.749695, "width": 120, "height": 19.2000008 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_CurLevelLabel",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 548.484253,
-        "y": 220,
-        "width": 60,
-        "height": 15
-      },
+      "rect": { "x": 548.484253, "y": 220, "width": 60, "height": 15 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_NextLevelLabel",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 646.082886,
-        "y": 220,
-        "width": 60,
-        "height": 15
-      },
+      "rect": { "x": 646.082886, "y": 220, "width": 60, "height": 15 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListGradeBg1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 198.369202,
-        "y": 179.801407,
-        "width": 103.984001,
-        "height": 33.6267014
-      },
+      "rect": { "x": 198.369202, "y": 179.801407, "width": 103.984001, "height": 33.6267014 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListGradeBg2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 198.369202,
-        "y": 216.468002,
-        "width": 103.984001,
-        "height": 33.6267014
-      },
+      "rect": { "x": 198.369202, "y": 216.468002, "width": 103.984001, "height": 33.6267014 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListGradeBg3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 198.369202,
-        "y": 253.134705,
-        "width": 103.984001,
-        "height": 33.6267014
-      },
+      "rect": { "x": 198.369202, "y": 253.134705, "width": 103.984001, "height": 33.6267014 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_RightGradeListBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.333252,
-        "y": 98.5714188,
-        "width": 295.914001,
-        "height": 483.963989
-      },
+      "rect": { "x": 845.333252, "y": 98.5714188, "width": 295.914001, "height": 483.963989 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_speciallistpage_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_speciallistpage_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowEmblem0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 848.190308,
-        "y": 110.5714,
-        "width": 240,
-        "height": 61.3333015
-      },
+      "rect": { "x": 848.190308, "y": 110.571404, "width": 240, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_graderow_emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowEmblem1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 848.190308,
-        "y": 171.9049,
-        "width": 240,
-        "height": 61.3333015
-      },
+      "rect": { "x": 848.190308, "y": 171.904907, "width": 240, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_graderow_emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowEmblem2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 848.190308,
-        "y": 233.2384,
-        "width": 240,
-        "height": 61.3333015
-      },
+      "rect": { "x": 848.190308, "y": 233.238403, "width": 240, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_graderow_emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowEmblem3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 848.190308,
-        "y": 294.5719,
-        "width": 240,
-        "height": 61.3333015
-      },
+      "rect": { "x": 848.190308, "y": 294.571899, "width": 240, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_graderow_emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowEmblem4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 848.190308,
-        "y": 355.9054,
-        "width": 240,
-        "height": 61.3333015
-      },
+      "rect": { "x": 848.190308, "y": 355.905396, "width": 240, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_graderow_emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowEmblem5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 848.190308,
-        "y": 417.2389,
-        "width": 240,
-        "height": 61.3333015
-      },
+      "rect": { "x": 848.190308, "y": 417.238892, "width": 240, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_graderow_emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowEmblem6",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 848.190308,
-        "y": 478.5724,
-        "width": 240,
-        "height": 61.3333015
-      },
+      "rect": { "x": 848.190308, "y": 478.572388, "width": 240, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_graderow_emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeStripB0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.523621,
-        "y": 110.5714,
-        "width": 2.66669989,
-        "height": 61.3333015
-      },
+      "rect": { "x": 845.523621, "y": 110.571404, "width": 2.66669989, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_grade_strip_b.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeStripB1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.523621,
-        "y": 171.9049,
-        "width": 2.66669989,
-        "height": 61.3333015
-      },
+      "rect": { "x": 845.523621, "y": 171.904907, "width": 2.66669989, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_grade_strip_b.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListSelectedExample",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 197.702545,
-        "y": 215.801407,
-        "width": 257,
-        "height": 39.6669998
-      },
+      "rect": { "x": 197.702545, "y": 215.801407, "width": 257, "height": 39.6669998 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_list_selected.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_list_selected.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeStripB2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.523621,
-        "y": 233.2384,
-        "width": 2.66669989,
-        "height": 61.3333015
-      },
+      "rect": { "x": 845.523621, "y": 233.238403, "width": 2.66669989, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_grade_strip_b.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeStripB6",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.523621,
-        "y": 478.5724,
-        "width": 2.66669989,
-        "height": 61.3333015
-      },
+      "rect": { "x": 845.523621, "y": 478.572388, "width": 2.66669989, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_grade_strip_b.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeStripB5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.523621,
-        "y": 417.2389,
-        "width": 2.66669989,
-        "height": 61.3333015
-      },
+      "rect": { "x": 845.523621, "y": 417.238892, "width": 2.66669989, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_grade_strip_b.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeStripB4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.523621,
-        "y": 355.9054,
-        "width": 2.66669989,
-        "height": 61.3333015
-      },
+      "rect": { "x": 845.523621, "y": 355.905396, "width": 2.66669989, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_grade_strip_b.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeStripB3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.523621,
-        "y": 294.5719,
-        "width": 2.66669989,
-        "height": 61.3333015
-      },
+      "rect": { "x": 845.523621, "y": 294.571899, "width": 2.66669989, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_grade_strip_b.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeSelectedExample",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 845.368958,
-        "y": 478.2903,
-        "width": 240,
-        "height": 61.3333015
-      },
+      "rect": { "x": 845.368958, "y": 478.290314, "width": 240, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_grade_selected.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_grade_selected.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemIcon0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 197.601593,
-        "y": 144.015701,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 197.601593, "y": 144.015701, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_head_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_head_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ReforgeButton",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 552.481628,
-        "y": 539.500305,
-        "width": 150,
-        "height": 36
-      },
+      "rect": { "x": 552.481628, "y": 539.500305, "width": 150, "height": 36 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Lobby/create_character_button.png",
-          "hoverPath": "UI/Lobby/create_character_button_hover.png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Lobby/create_character_button.png", "hoverPath": "UI/Lobby/create_character_button_hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListLevel0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 254.6016,
-        "y": 145.0157,
-        "width": 200,
-        "height": 15.0
-      },
+      "rect": { "x": 254.601593, "y": 145.015701, "width": 200, "height": 15 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemName0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 243.6016,
-        "y": 160.0157,
-        "width": 210,
-        "height": 17.0
-      },
+      "rect": { "x": 243.601593, "y": 160.015701, "width": 210, "height": 17 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListLevel1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 254.6016,
-        "y": 181.6824,
-        "width": 200,
-        "height": 15.0
-      },
+      "rect": { "x": 254.601593, "y": 181.682404, "width": 200, "height": 15 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemName1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 243.6016,
-        "y": 196.6824,
-        "width": 210,
-        "height": 17.0
-      },
+      "rect": { "x": 243.601593, "y": 196.682404, "width": 210, "height": 17 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListLevel2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 254.6016,
-        "y": 218.349,
-        "width": 200,
-        "height": 15.0
-      },
+      "rect": { "x": 254.601593, "y": 218.348999, "width": 200, "height": 15 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemName2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 243.6016,
-        "y": 233.349,
-        "width": 210,
-        "height": 17.0
-      },
+      "rect": { "x": 243.601593, "y": 233.348999, "width": 210, "height": 17 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListLevel3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 254.6016,
-        "y": 255.0157,
-        "width": 200,
-        "height": 15.0
-      },
+      "rect": { "x": 254.601593, "y": 255.015701, "width": 200, "height": 15 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemName3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 243.6016,
-        "y": 270.0157,
-        "width": 210,
-        "height": 17.0
-      },
+      "rect": { "x": 243.601593, "y": 270.015686, "width": 210, "height": 17 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListLevel4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 254.6016,
-        "y": 291.6824,
-        "width": 200,
-        "height": 15.0
-      },
+      "rect": { "x": 254.601593, "y": 291.682404, "width": 200, "height": 15 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemName4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 243.6016,
-        "y": 306.6824,
-        "width": 210,
-        "height": 17.0
-      },
+      "rect": { "x": 243.601593, "y": 306.682404, "width": 210, "height": 17 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListLevel5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 254.6016,
-        "y": 328.349,
-        "width": 200,
-        "height": 15.0
-      },
+      "rect": { "x": 254.601593, "y": 328.348999, "width": 200, "height": 15 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemName5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 243.6016,
-        "y": 343.349,
-        "width": 210,
-        "height": 17.0
-      },
+      "rect": { "x": 243.601593, "y": 343.348999, "width": 210, "height": 17 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowText6",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 862.1903,
-        "y": 478.5724,
-        "width": 269.057,
-        "height": 61.3333015
-      },
+      "rect": { "x": 862.190308, "y": 478.572388, "width": 269.057007, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowText0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 862.1903,
-        "y": 110.5714,
-        "width": 269.057,
-        "height": 61.3333
-      },
+      "rect": { "x": 862.190308, "y": 110.571404, "width": 269.057007, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowText5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 862.1903,
-        "y": 417.2389,
-        "width": 269.057,
-        "height": 61.3333015
-      },
+      "rect": { "x": 862.190308, "y": 417.238892, "width": 269.057007, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowText1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 862.1903,
-        "y": 171.9049,
-        "width": 269.057,
-        "height": 61.3333
-      },
+      "rect": { "x": 862.190308, "y": 171.904907, "width": 269.057007, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowText4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 862.1903,
-        "y": 355.9054,
-        "width": 269.057,
-        "height": 61.3333015
-      },
+      "rect": { "x": 862.190308, "y": 355.905396, "width": 269.057007, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowText2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 862.1903,
-        "y": 233.2384,
-        "width": 269.057,
-        "height": 61.3333
-      },
+      "rect": { "x": 862.190308, "y": 233.238403, "width": 269.057007, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_GradeRowText3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 862.1903,
-        "y": 294.5719,
-        "width": 269.057,
-        "height": 61.3333
-      },
+      "rect": { "x": 862.190308, "y": 294.571899, "width": 269.057007, "height": 61.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemIcon1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 197.601593,
-        "y": 180.682404,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 197.601593, "y": 180.682404, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_shoulder_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_shoulder_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemIcon2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 197.601593,
-        "y": 217.348999,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 197.601593, "y": 217.348999, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_top_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemIcon3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 197.601593,
-        "y": 254.015701,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 197.601593, "y": 254.015701, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_bottom_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_bottom_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemIcon4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 197.601593,
-        "y": 290.682404,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 197.601593, "y": 290.682404, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_glove_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_glove_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListGradeBg4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 198.369202,
-        "y": 289.801392,
-        "width": 103.984001,
-        "height": 33.6267014
-      },
+      "rect": { "x": 198.369202, "y": 289.801392, "width": 103.984001, "height": 33.6267014 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListGradeBg5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 198.369202,
-        "y": 326.467987,
-        "width": 103.984001,
-        "height": 33.6267014
-      },
+      "rect": { "x": 198.369202, "y": 326.467987, "width": 103.984001, "height": 33.6267014 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_LevelArrowBase",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 588.860474,
-        "y": 205.133255,
-        "width": 77.6169968,
-        "height": 44
-      },
+      "rect": { "x": 588.860474, "y": 205.133255, "width": 77.6169968, "height": 44 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/LevelArrow_Base.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/LevelArrow_Base.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_LevelArrow",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 581.207458,
-        "y": 216.133698,
-        "width": 80,
-        "height": 44
-      },
+      "rect": { "x": 581.207458, "y": 216.133698, "width": 80, "height": 44 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 40,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_001.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_002.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_003.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_004.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_005.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_006.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_007.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_008.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_009.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_010.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_011.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_012.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_013.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_014.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_015.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_016.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_017.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_018.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_019.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_020.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_021.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_022.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_023.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_024.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_025.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_026.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_027.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_028.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_029.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_030.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_031.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_032.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_033.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_034.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_035.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_036.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_037.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_038.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_039.png",
-          "UI/ItemUpgrade/LevelArrow/LevelArrow_040.png"
-        ],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 40, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/LevelArrow/LevelArrow_001.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_002.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_003.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_004.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_005.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_006.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_007.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_008.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_009.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_010.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_011.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_012.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_013.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_014.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_015.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_016.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_017.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_018.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_019.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_020.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_021.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_022.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_023.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_024.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_025.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_026.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_027.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_028.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_029.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_030.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_031.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_032.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_033.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_034.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_035.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_036.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_037.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_038.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_039.png", "UI/ItemUpgrade/LevelArrow/LevelArrow_040.png"], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ListItemIcon5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 197.601593,
-        "y": 327.348999,
-        "width": 34,
-        "height": 34
-      },
+      "rect": { "x": 197.601593, "y": 327.348999, "width": 34, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_weapon_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_weapon_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_FailModalBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 191.809723,
-        "y": 98.5712891,
-        "width": 948,
-        "height": 489.333313
-      },
+      "rect": { "x": 191.809723, "y": 98.5712891, "width": 948, "height": 489.333313 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_result_modal_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_result_modal_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ResultWaitBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 191.809723,
-        "y": 98.5712891,
-        "width": 948,
-        "height": 489.333313
-      },
+      "rect": { "x": 191.809723, "y": 98.5712891, "width": 948, "height": 489.333313 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_result_wait_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_result_wait_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_ResultWaitEmblem",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 192.47666666666663,
-        "y": 99.24000000000001,
-        "width": 946.6666666666666,
-        "height": 488.0
-      },
+      "rect": { "x": 192.476669, "y": 99.2399979, "width": 946.666687, "height": 488 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 30,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0000.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0001.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0002.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0003.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0004.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0005.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0006.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0007.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0008.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0009.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0010.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0011.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0012.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0013.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0014.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0015.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0016.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0017.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0018.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0019.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0020.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0021.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0022.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0023.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0024.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0025.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0026.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0027.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0028.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0029.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0030.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0031.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0032.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0033.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0034.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0035.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0036.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0037.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0038.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0039.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0040.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0041.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0042.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0043.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0044.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0045.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0046.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0047.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0048.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0049.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0050.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0051.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0052.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0053.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0054.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0055.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0056.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0057.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0058.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0059.png",
-          "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0060.png"
-        ],
-        "loop": true,
-        "additive": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 30, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/SmeltLoding/SmeltLoding_0000.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0001.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0002.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0003.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0004.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0005.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0006.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0007.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0008.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0009.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0010.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0011.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0012.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0013.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0014.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0015.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0016.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0017.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0018.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0019.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0020.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0021.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0022.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0023.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0024.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0025.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0026.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0027.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0028.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0029.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0030.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0031.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0032.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0033.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0034.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0035.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0036.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0037.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0038.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0039.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0040.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0041.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0042.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0043.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0044.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0045.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0046.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0047.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0048.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0049.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0050.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0051.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0052.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0053.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0054.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0055.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0056.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0057.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0058.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0059.png", "UI/ItemUpgrade/SmeltLoding/SmeltLoding_0060.png"], "loop": true, "additive": true }
     },
     {
       "id": "ItemUpgrade_SuccessEffect",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 192.47666666666663,
-        "y": 99.24000000000001,
-        "width": 946.6666666666666,
-        "height": 488.0
-      },
+      "rect": { "x": 192.476669, "y": 99.2399979, "width": 946.666687, "height": 488 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 30,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0000.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0001.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0002.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0003.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0004.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0005.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0006.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0007.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0008.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0009.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0010.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0011.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0012.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0013.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0014.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0015.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0016.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0017.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0018.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0019.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0020.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0021.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0022.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0023.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0024.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0025.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0026.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0027.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0028.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0029.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0030.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0031.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0032.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0033.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0034.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0035.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0036.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0037.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0038.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0039.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0040.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0041.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0042.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0043.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0044.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0045.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0046.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0047.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0048.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0049.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0050.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0051.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0052.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0053.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0054.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0055.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0056.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0057.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0058.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0059.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0060.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0061.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0062.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0063.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0064.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0065.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0066.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0067.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0068.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0069.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0070.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0071.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0072.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0073.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0074.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0075.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0076.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0077.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0078.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0079.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0080.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0081.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0082.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0083.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0084.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0085.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0086.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0087.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0088.png",
-          "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0089.png"
-        ],
-        "loop": false,
-        "additive": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 30, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0000.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0001.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0002.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0003.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0004.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0005.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0006.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0007.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0008.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0009.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0010.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0011.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0012.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0013.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0014.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0015.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0016.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0017.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0018.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0019.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0020.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0021.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0022.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0023.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0024.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0025.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0026.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0027.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0028.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0029.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0030.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0031.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0032.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0033.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0034.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0035.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0036.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0037.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0038.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0039.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0040.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0041.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0042.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0043.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0044.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0045.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0046.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0047.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0048.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0049.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0050.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0051.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0052.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0053.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0054.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0055.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0056.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0057.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0058.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0059.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0060.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0061.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0062.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0063.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0064.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0065.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0066.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0067.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0068.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0069.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0070.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0071.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0072.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0073.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0074.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0075.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0076.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0077.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0078.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0079.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0080.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0081.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0082.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0083.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0084.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0085.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0086.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0087.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0088.png", "UI/ItemUpgrade/SmeltSuccess/SmeltSuccess_0089.png"], "loop": false, "additive": true }
     },
     {
       "id": "ItemUpgrade_FailEffect",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 192.47666666666663,
-        "y": 99.24000000000001,
-        "width": 946.6666666666666,
-        "height": 488.0
-      },
+      "rect": { "x": 192.476669, "y": 99.2399979, "width": 946.666687, "height": 488 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 30,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0000.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0001.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0002.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0003.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0004.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0005.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0006.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0007.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0008.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0009.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0010.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0011.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0012.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0013.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0014.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0015.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0016.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0017.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0018.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0019.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0020.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0021.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0022.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0023.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0024.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0025.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0026.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0027.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0028.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0029.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0030.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0031.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0032.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0033.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0034.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0035.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0036.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0037.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0038.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0039.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0040.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0041.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0042.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0043.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0044.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0045.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0046.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0047.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0048.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0049.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0050.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0051.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0052.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0053.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0054.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0055.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0056.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0057.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0058.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0059.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0060.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0061.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0062.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0063.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0064.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0065.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0066.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0067.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0068.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0069.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0070.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0071.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0072.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0073.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0074.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0075.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0076.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0077.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0078.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0079.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0080.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0081.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0082.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0083.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0084.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0085.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0086.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0087.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0088.png",
-          "UI/ItemUpgrade/SmeltFail/SmeltFail_0089.png"
-        ],
-        "loop": false,
-        "additive": true
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 30, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/ItemUpgrade/SmeltFail/SmeltFail_0000.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0001.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0002.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0003.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0004.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0005.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0006.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0007.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0008.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0009.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0010.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0011.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0012.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0013.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0014.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0015.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0016.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0017.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0018.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0019.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0020.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0021.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0022.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0023.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0024.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0025.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0026.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0027.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0028.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0029.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0030.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0031.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0032.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0033.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0034.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0035.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0036.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0037.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0038.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0039.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0040.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0041.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0042.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0043.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0044.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0045.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0046.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0047.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0048.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0049.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0050.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0051.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0052.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0053.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0054.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0055.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0056.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0057.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0058.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0059.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0060.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0061.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0062.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0063.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0064.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0065.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0066.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0067.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0068.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0069.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0070.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0071.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0072.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0073.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0074.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0075.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0076.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0077.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0078.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0079.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0080.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0081.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0082.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0083.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0084.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0085.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0086.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0087.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0088.png", "UI/ItemUpgrade/SmeltFail/SmeltFail_0089.png"], "loop": false, "additive": true }
     },
     {
       "id": "ItemUpgrade_SuccessDiamondWinged",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 495.143056,
-        "y": 106.571289,
-        "width": 277.333333,
-        "height": 125.333333
-      },
+      "rect": { "x": 495.143066, "y": 106.571289, "width": 277.333344, "height": 125.333336 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/SuccessDiamondWinged.png",
-          "hoverPath": null,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/SuccessDiamondWinged.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SuccessDiamondFrame",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 631.8667135,
-        "y": 134.571289,
-        "width": 68.0,
-        "height": 68.0
-      },
+      "rect": { "x": 631.866699, "y": 134.571289, "width": 68, "height": 68 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/SuccessDiamondFrame.png",
-          "hoverPath": null,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/SuccessDiamondFrame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SuccessItemIconMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 643.8667135,
-        "y": 146.571289,
-        "width": 45.346,
-        "height": 45.346
-      },
+      "rect": { "x": 643.866699, "y": 146.571289, "width": 45.3460007, "height": 45.3460007 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_top_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SuccessItemNameMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 516.5397135,
-        "y": 200.0,
-        "width": 300.0,
-        "height": 19.2000008
-      },
+      "rect": { "x": 516.539734, "y": 200, "width": 300, "height": 19.2000008 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SuccessGradeMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 566.5397135,
-        "y": 227.2000008,
-        "width": 200.0,
-        "height": 20.0
-      },
+      "rect": { "x": 566.539734, "y": 227.199997, "width": 200, "height": 20 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SuccessStatusMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 546.5397135,
-        "y": 255.2000008,
-        "width": 240.0,
-        "height": 24.0
-      },
+      "rect": { "x": 546.539734, "y": 255.199997, "width": 240, "height": 24 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_FailDiamondFrame",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 601.143056,
-        "y": 134.571289,
-        "width": 57.333333,
-        "height": 57.333333
-      },
+      "rect": { "x": 601.143066, "y": 134.571289, "width": 57.3333321, "height": 57.3333321 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/FailDiamondFrame.png",
-          "hoverPath": null,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/FailDiamondFrame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_FailItemIconMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 643.8667135,
-        "y": 145.904622,
-        "width": 45.346,
-        "height": 45.346
-      },
+      "rect": { "x": 643.866699, "y": 145.904617, "width": 45.3460007, "height": 45.3460007 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_top_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_FailItemNameMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 516.5397135,
-        "y": 200.0,
-        "width": 300.0,
-        "height": 19.2000008
-      },
+      "rect": { "x": 516.539734, "y": 200, "width": 300, "height": 19.2000008 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_FailStatusMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 546.5397135,
-        "y": 227.2000008,
-        "width": 240.0,
-        "height": 24.0
-      },
+      "rect": { "x": 546.539734, "y": 227.199997, "width": 240, "height": 24 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_SuccessOkBtn",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 597.7763335,
-        "y": 480.0,
-        "width": 137.52676,
-        "height": 48.196988
-      },
+      "rect": { "x": 597.776306, "y": 480, "width": 137.526764, "height": 48.1969872 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_button_normal.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_button_normal.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ItemUpgrade_FailOkBtn",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 597.7763335,
-        "y": 480.0,
-        "width": 137.52676,
-        "height": 48.196988
-      },
+      "rect": { "x": 597.776306, "y": 480, "width": 137.526764, "height": 48.1969872 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 0
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/buildup_button_normal.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/buildup_button_normal.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }
