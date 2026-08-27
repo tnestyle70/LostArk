@@ -2004,7 +2004,7 @@
           "stageId": "STEP_01",
           "actionId": "valtan.sequence.four.step-01",
           "stageKind": "ACTIVE",
-          "durationMs": 3500,
+          "durationMs": 5000,
           "hitShape": "CONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -2018,29 +2018,6 @@
             1790,
             2560,
             3330
-          ],
-          "serverDamageProfileId": "damage.valtan.four-slash",
-          "pushRangeM": 2.0,
-          "pushMs": 150,
-          "knockdown": true,
-          "downMs": 1200
-        },
-        {
-          "stageId": "STEP_02",
-          "actionId": "valtan.sequence.four.step-02",
-          "stageKind": "ACTIVE",
-          "durationMs": 3167,
-          "hitShape": "CONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 110.0,
-          "hitLength": 9.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 1,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "hitOffsetsMs": [
-            600
           ],
           "serverDamageProfileId": "damage.valtan.four-slash",
           "pushRangeM": 2.0,

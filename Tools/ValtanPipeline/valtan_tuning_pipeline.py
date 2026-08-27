@@ -181,7 +181,6 @@ MANAGED_CUE_SCALE_POLICIES = {
     "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01": ARENA_ABSOLUTE,
     "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01": OWNER_RELATIVE,
     "cue.valtan.phase2.four.slashes": GAMEPLAY_FOOTPRINT,
-    "cue.valtan.phase2.four.spin": GAMEPLAY_FOOTPRINT,
     **{
         f"cue.valtan.phase2.warp.step-{leg:02d}.composite": OWNER_RELATIVE
         for leg in range(2, 10)
