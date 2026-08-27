@@ -82,7 +82,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 `origin/main` commit과 생성 데이터를 맞춘다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v40 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다.
+Server PC와 Client PC는 먼저 같은 `origin/main` commit과 생성 데이터를 맞춘다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v41 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. v40의 벽 붕괴 전용/파티 전용 빌드는 통합 v41과 호환되지 않는다.
 
 ```powershell
 git switch main
@@ -116,7 +116,7 @@ Client capture는 실행 파일 옆 `Diagnostics/client-session-<pid>.jsonl`, Se
 `Diagnostics/server-session-<pid>.jsonl`이다. 기본 Debug 실행이면 각각
 `Client/Bin/Debug/Diagnostics`, `Server/Bin/Debug/Diagnostics` 아래에 생긴다. gameplay payload와 nickname은
 기록하지 않는다. Client의 `localEndpoint`는 실제 IP와 ephemeral port이고 direct LAN에서는 Server line의
-`peerAddress:peerPort`와 정확히 일치한다. protocol v40에서 이미 끊어진 TCP는 Server-only 원인을 Lobby로
+`peerAddress:peerPort`와 정확히 일치한다. protocol v41에서 이미 끊어진 TCP는 Server-only 원인을 Lobby로
 되돌려 보낼 수 없으므로 이 endpoint와 terminal UTC, player/entity를 함께 대조한다.
 
 `ROOM_FULL`이면 Server line의 context에서 `candidateSessionId`,
@@ -168,6 +168,25 @@ Test-NetConnection 192.168.0.20 -Port 7777
 ```
 
 `Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
+
+### 1.2 같은 방 파티와 Bern → Valtan 이동
+
+Bern/Valtan에서 다른 플레이어를 우클릭해 초대하고 상대가 수락하면 최대 4인의
+Server-owned 파티가 된다. `IPlayerCommandSink`가 typed invite/respond를 제출하고
+`S2C_PARTY_ROSTER`의 배열 첫 member가 leader다. nickname은 표시용이며 초대·roster는
+현재 방의 NetEntityId로 식별한다. 옛 초대 응답은 교체된 새 초대를 소비하지 않는다.
+
+Bern의 발탄 안내 NPC entry는 leader만 전체 파티를 요청할 수 있다. Server는 모든
+member의 source session/binding, 목적지 자리·profile·navigation 및 초기 reliable
+송신 준비를 검증한 뒤 한 batch로 이동한다. 이 준비 중 실패하면 기존 파티와 위치·HP를
+유지하고 `S2C_PARTY_TRANSFER_RESULT`로 이유를 알린다. 실패를 Lobby admission 거절로
+처리하지 않는다. 성공은 기존 `S2C_ENTER_ACCEPTED`만 사용하며 새 방의 NetEntityId로
+roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종료는 일반 disconnect
+정리 경로를 따른다. 전역 영구 Party ID나 재접속 복구 계약은 아니다.
+
+파티 HP는 같은 world snapshot에서 NetEntityId로 연결한 값만 표시한다. 아직 HP를
+받지 못했으면 이름은 유지하되 체력을 100%로 꾸미지 않는다. 파티/NPC 메뉴에서 소비한
+마우스 버튼은 물리적으로 놓을 때까지 이동·공격 입력으로 다시 해석하지 않는다.
 
 ## 2. 팀원이 먼저 읽을 파일
 
@@ -317,6 +336,17 @@ commit한다. 성공 뒤 다음 cue spawn은 새 document를, 이미 재생 중�
 사용한다. 중간 실패는 저장 파일을 compare-and-swap으로 이전 bytes로 복원하고 기존 prepared target을 유지한다.
 다음 Client 실행도 같은 source 문서를 읽으므로 별도 publish나 재시작 적용 절차가 없다. 전체 source 검증은
 `Tools/EffectPipeline/Validate-EffectSources.ps1`로 수행한다.
+
+Valtan 연결 Effect의 편집 진입은 `F1 → Boss Tool → Boss Verification → Pattern →
+Stage → Edit Linked Effect`다. `patternId/stageId/cueOccurrenceId/effectAssetId`의
+exact tuple을 현재 Product tree와 다시 대조해 문서를 연다. clip-bound cue는 기존
+전체 Pattern timeline의 t=0 pause로, `STAGE_CLOCK`은 static Valtan target으로 연결한다.
+자동 Play나 Server 명령은 보내지 않는다. 사용자는 Model View Timeline의 `Play` 또는
+`Restart + Play`로 재생한다. 미저장 문서는 기존 Save/Discard/Cancel을 거치며 unlink
+진행 중에는 이 deep-link도 잠긴다. 연결은 `Valtan.presentation.json`, Effect 내용은
+해당 `Authored/*.effect.json`이 각각 소유한다. unlink는 cue 연결만 지우며 사용자 Effect
+파일과 catalog를 자동 삭제하지 않는다.
+
 V1 Product source가 실제 참조하는 DDS/WModel dependency closure는 같은 Resources-relative 경로로 Git/LFS에
 선별 추적한다. 팀원은 pull 뒤 `git lfs pull`을 수행하며, 전체 Resources pack과 미참조 파일은 포함하지 않는다.
 Valtan actor Product가 직접 참조하는 body, Parts1/Parts2, AnimSet과 weapon 다섯 WModel, 그리고 그 material

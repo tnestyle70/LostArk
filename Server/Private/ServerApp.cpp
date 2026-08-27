@@ -4359,8 +4359,10 @@ void LostArk::Server::CServerApp::Tick_GameplaySimulations(
 	// The room thread is the only writer of gameplay state. The mutex is
 	// released before Tick so receive and session threads never wait on a tick.
 	for (const std::shared_ptr<CGameRoom>& simulation : simulations)
-	{
 		simulation->Tick(fixedDeltaSeconds);
+	// Admit transfers only after this tick's already queued entries have run.
+	for (const std::shared_ptr<CGameRoom>& simulation : simulations)
+	{
 		Handle_WorldTransfers(simulation);
 	}
 	Retire_QuiescentCharacterSelectArenas();
@@ -4404,6 +4406,14 @@ void LostArk::Server::CServerApp::Handle_WorldTransfers(
 		SESSION_WORLD_TRANSFER_FAILURE failure{};
 		if (!Transfer_SessionWorld(sourceSimulation, transfer, failure))
 		{
+			if (!transfer.PartyBatchSessionIds.empty())
+			{
+				std::cerr << "Party transfer rejected without source departure: "
+					<< failure.strContext << '\n';
+				sourceSimulation->Notify_PartyTransferFailure(transfer.iSessionId,
+					transfer.iPartyRequestSequence, transfer.eTargetWorldId, failure.ePartyResult);
+				continue;
+			}
 			Request_SessionClose(
 				transfer.iSessionId,
 				failure.eReason,
@@ -4500,6 +4510,44 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 			"source-session-terminal-recheck");
 		return false;
 	}
+	if (!transfer.PartyBatchSessionIds.empty())
+	{
+		if (transfer.PartyBatchSessionIds.front() != transfer.iSessionId)
+		{
+			setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+				WSAEINVAL, "party-leader-identity");
+			return false;
+		}
+		for (const SESSION_ID memberId : transfer.PartyBatchSessionIds)
+		{
+			const auto member = m_Sessions.find(memberId);
+			const auto binding = m_GameplayBindingBySessionId.find(memberId);
+			if (member == m_Sessions.end() || nullptr == member->second ||
+				member->second->Is_Closing() || binding == m_GameplayBindingBySessionId.end() ||
+				binding->second.eWorldId != sourceWorldId || binding->second.pSimulation != sourceSimulation)
+			{
+				setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+					WSAENOTCONN, "party-member-binding");
+				return false;
+			}
+		}
+		std::string status;
+		if (!sourceSimulation->Transfer_PartyTo(*targetSimulation,
+			transfer.PartyBatchSessionIds, outFailure.ePartyResult, status))
+		{
+			setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED,
+				WSAEINVAL, status);
+			return false;
+		}
+		for (const SESSION_ID memberId : transfer.PartyBatchSessionIds)
+		{
+			auto& binding = m_GameplayBindingBySessionId.at(memberId);
+			binding.eWorldId = transfer.eTargetWorldId;
+			binding.iPrivateArenaOwnerSessionId = INVALID_SESSION_ID;
+			binding.pSimulation = targetSimulation;
+		}
+		return true;
+	}
 
 	ROOM_COMMAND registerCommand{};
 	registerCommand.eType = ROOM_COMMAND_TYPE::REGISTER_SESSION;
@@ -4523,7 +4571,6 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
 	enterCommand.iSessionId = transfer.iSessionId;
 	enterCommand.EnterWorld = std::move(enterWorld);
-	enterCommand.PartyBatchSessionIds = transfer.PartyBatchSessionIds;
 	if (!targetSimulation->Enqueue(std::move(enterCommand)))
 	{
 		ROOM_COMMAND targetRollback{};

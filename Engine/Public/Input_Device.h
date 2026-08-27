@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include "MouseButtonReleaseGate.h"
 
 NS_BEGIN(Engine)
 
@@ -45,12 +46,28 @@ public:
 	int8_t	Get_DIMouseState(DIM eMouse)
 	{
 		const uint32_t index = ETOUI(eMouse);
-		if (m_bMouseBlocked ||
-			index >= ETOUI(DIM::END) ||
-			m_MouseButtonBlocked[index])
+		if (index >= ETOUI(DIM::END))
+			return 0;
+		if (!m_MouseReleaseGates[index].Observe(
+			0 != (Get_DIMouseStateRaw(eMouse) & 0x80),
+			m_bMouseBlocked || m_MouseButtonBlocked[index]))
 			return 0;
 
 		return m_tMouseState.rgbButtons[index];
+	}
+
+	int8_t Get_DIMouseStateRaw(DIM eMouse) const
+	{
+		int virtualKey = 0;
+		switch (eMouse)
+		{
+		case DIM::LB: virtualKey = VK_LBUTTON; break;
+		case DIM::RB: virtualKey = VK_RBUTTON; break;
+		case DIM::WHEEL: virtualKey = VK_MBUTTON; break;
+		default: return 0;
+		}
+		return 0 != (GetAsyncKeyState(virtualKey) & 0x8000) ?
+			static_cast<int8_t>(0x80) : 0;
 	}
 
 	// 현재 마우스의 특정 축 좌표를 반환
@@ -76,13 +93,24 @@ public:
 	{
 		m_bKeyboardBlocked = bKeyboardBlocked;
 		m_bMouseBlocked = bMouseBlocked;
+		for (uint32_t index = 0u; index < ETOUI(DIM::END); ++index)
+		{
+			(void)m_MouseReleaseGates[index].Observe(
+				0 != (Get_DIMouseStateRaw(static_cast<DIM>(index)) & 0x80),
+				bMouseBlocked);
+		}
 	}
 
 	void SetMouseButtonBlocked(DIM eMouse, bool_t blocked)
 	{
 		const uint32_t index = ETOUI(eMouse);
 		if (index < ETOUI(DIM::END))
+		{
 			m_MouseButtonBlocked[index] = blocked;
+			(void)m_MouseReleaseGates[index].Observe(
+				0 != (Get_DIMouseStateRaw(eMouse) & 0x80),
+				blocked);
+		}
 	}
 
 	bool_t IsKeyboardInputBlocked() const
@@ -112,6 +140,7 @@ private:
 	bool_t m_bKeyboardBlocked = false;
 	bool_t m_bMouseBlocked = false;
 	bool_t m_MouseButtonBlocked[ETOUI(DIM::END)] = {};
+	CMouseButtonReleaseGate m_MouseReleaseGates[ETOUI(DIM::END)] = {};
 
 public:
 	static unique_ptr<CInput_Device> Create(HINSTANCE hInst, HWND hWnd);

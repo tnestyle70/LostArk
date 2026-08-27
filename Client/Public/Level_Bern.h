@@ -48,6 +48,10 @@ public:
 	{
 		return m_Replication.Get_PartyRoster();
 	}
+	const CReplicatedPlayerHealth& Get_PlayerHealth() const
+	{
+		return m_Replication.Get_PlayerHealth();
+	}
 	const shared_ptr<IPlayerCommandSink>& Get_PlayerCommandSink() const
 	{
 		return m_pPlayerCommandSink;

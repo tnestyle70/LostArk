@@ -1923,6 +1923,46 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
+			testRunner.Require(41u == NETWORK_PROTOCOL_VERSION,
+				"Party And Expanded Destruction Use A Fresh Protocol 41");
+			C2S_ENTER_WORLD oldPeer{};
+			oldPeer.iProtocolVersion = 40u;
+			oldPeer.eWorldId = WORLD_ID::BERN;
+			oldPeer.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			oldPeer.strNickName = "OldPeer";
+			CPacketWriter oldWriter;
+			testRunner.Require(!Write_Message(oldWriter, oldPeer),
+				"Reject Both Independently Shipped Protocol 40 Peers");
+			S2C_PARTY_TRANSFER_RESULT failure{};
+			failure.iRequestSequence = 12u;
+			failure.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+			failure.eResult = PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL;
+			CPacketWriter writer;
+			const bool encoded = Write_Message(writer, failure);
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_PARTY_TRANSFER_RESULT decoded{};
+			testRunner.Require(encoded && Read_Message(reader, decoded) &&
+				12u == decoded.iRequestSequence &&
+				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL == decoded.eResult &&
+				0u == reader.Get_RemainingSize(), "Party Transfer Failure Round Trip");
+			for (std::size_t size = 0; size < writer.Get_Buffer().size(); ++size)
+			{
+				CPacketReader truncated{ std::span<const std::uint8_t>{ writer.Get_Buffer().data(), size } };
+				S2C_PARTY_TRANSFER_RESULT unchanged = failure;
+				testRunner.Require(!Read_Message(truncated, unchanged) &&
+					unchanged.iRequestSequence == failure.iRequestSequence &&
+					unchanged.eResult == failure.eResult,
+					"Reject Truncated Party Failure Without Mutation");
+			}
+			CPacketWriter unknown;
+			unknown.Write_U32(12u);
+			unknown.Write_U16(static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA));
+			unknown.Write_U8(255u);
+			CPacketReader unknownReader{ unknown.Get_Buffer() };
+			testRunner.Require(!Read_Message(unknownReader, decoded),
+				"Reject Unknown Party Transfer Failure Result");
+		}
+		{
 			C2S_PARTY_INVITE source{};
 			source.iRequestSequence = 7u;
 			source.iTargetNetEntityId = 42u;
@@ -4126,8 +4166,8 @@ namespace
 		}
 
 		testRunner.Require(
-			40u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Protocol Version 40");
+			41u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 41");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -4154,8 +4194,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			40u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Pattern Flow Contract Uses Protocol 40");
+			41u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Pattern Flow Contract Uses Protocol 41");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

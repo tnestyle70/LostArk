@@ -194,21 +194,28 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	m_PlayerController.Set_LocalCharacter(
 		localCharacter);
 
-	/* Valtan entry is confirmed at a guide NPC instead of by walking into a
-	changeLevel triggerBox. Runs before the controller update so the click that
-	opens the confirm window is not also spent as that frame's move command. */
-	Update_ValtanEntryInteraction();
-	Advance_ValtanEntryWalk();
-
-	/* Same reasoning as Update_ValtanEntryInteraction -- has to run before
-	m_PlayerController.Update() so a right-click that hits another player is
-	not also spent as that frame's move command. Needs this frame's replicated
-	player list, so Collect_PlayerViews moves here instead of Render(). */
+	/* Popup ownership is added before either world picking or gameplay input.
+	Never clear another consumer's block (for example MapTool's LMB owner). */
+	if (m_isValtanEntryModalOpen)
+	{
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	}
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	if (m_PartyInteraction.Update(
-		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers))
+		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
+		!m_isValtanEntryModalOpen &&
+			nullptr != m_pCamera && m_pCamera->Is_FollowEnabled()))
 	{
-		m_PlayerController.Suppress_MoveClickThisFrame();
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	}
+	Update_ValtanEntryInteraction();
+	Advance_ValtanEntryWalk();
+	if (m_isValtanEntryModalOpen)
+	{
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
 
 	m_PlayerController.Update(
@@ -482,8 +489,7 @@ bool_t CLevel_Bern::Ready_ValtanEntryNpcs(const std::string& areaId)
 void CLevel_Bern::Update_ValtanEntryInteraction()
 {
 	const bool_t isRightMouseDown =
-		!CGameInstance::Get().IsMouseInputBlocked() &&
-		0 != (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
 	const bool_t isRightMousePressed =
 		isRightMouseDown && !m_wasRightMouseDownForNpcInteract;
 	m_wasRightMouseDownForNpcInteract = isRightMouseDown;
@@ -491,6 +497,7 @@ void CLevel_Bern::Update_ValtanEntryInteraction()
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
 	if (m_isValtanEntryModalOpen || !isRightMousePressed ||
+		0 == (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80) ||
 		m_ValtanEntryNpcs.empty() || nullptr == localCharacter ||
 		nullptr == m_pCamera || !m_pCamera->Is_FollowEnabled())
 	{
@@ -538,6 +545,7 @@ void CLevel_Bern::Update_ValtanEntryInteraction()
 		return;
 
 	m_PlayerController.Suppress_MoveClickThisFrame();
+	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	m_strValtanEntryNpcPlacementId = pHit->strPlacementId;
 	m_isWalkingToValtanEntryNpc = true;
 

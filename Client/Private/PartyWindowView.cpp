@@ -3,6 +3,7 @@
 #include "PartyWindowView.h"
 
 #include "UITextureCache.h"
+#include "ReplicatedPlayerHealth.h"
 
 namespace
 {
@@ -38,7 +39,8 @@ Client::CPartyWindowView::~CPartyWindowView()
 }
 
 void Client::CPartyWindowView::Sync_From_Roster(
-	const LostArk::Shared::S2C_PARTY_ROSTER& Roster)
+	const LostArk::Shared::S2C_PARTY_ROSTER& Roster,
+	const CReplicatedPlayerHealth& Health)
 {
 	m_Members.clear();
 	m_Members.reserve(Roster.Members.size());
@@ -46,11 +48,13 @@ void Client::CPartyWindowView::Sync_From_Roster(
 	{
 		const LostArk::Shared::PARTY_ROSTER_MEMBER& Member = Roster.Members[index];
 		const char_t* pFolderName = Get_ClassSelectFolderName(Member.eCharacterClass);
+		const REPLICATED_PLAYER_HEALTH health = Health.Find(Member.iNetEntityId);
 		m_Members.push_back(PARTY_MEMBER{
 			Member.strNickname,
 			nullptr != pFolderName ?
 				string("UI/ClassSelect/") + pFolderName + "/IdentitySymbol.png" : string{},
-			1.f,
+			health.Get_Ratio(),
+			health.hasSnapshot,
 			0 == index });
 	}
 }
@@ -148,7 +152,7 @@ void Client::CPartyWindowView::Render()
 			vBarMin.y + HP_BAR_HEIGHT * fScaleY);
 		if (nullptr != pHpBgSRV)
 			pDrawList->AddImage(pHpBgSRV, vBarMin, vBarMax);
-		if (nullptr != pHpFillSRV)
+		if (Member.hasHealthSnapshot && nullptr != pHpFillSRV)
 		{
 			const f32_t fHpRatio = (std::min)(1.f, (std::max)(0.f, Member.fHpRatio));
 			const ImVec2 vFillMin(

@@ -1498,8 +1498,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_Register(command.pSession);
 			break;
 		case ROOM_COMMAND_TYPE::ENTER_WORLD:
-			Join(command.iSessionId, command.EnterWorld,
-				command.PartyBatchSessionIds);
+			Join(command.iSessionId, command.EnterWorld);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -1575,6 +1574,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		}
 	}
 
+	Flush_PartyTransferResults();
 	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
 	{
 		recordTickDuration();
@@ -1850,10 +1850,219 @@ void LostArk::Server::CGameRoom::Handle_Register(
 	m_Sessions.insert_or_assign(session->Get_SessionId(), session);
 }
 
+bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
+	const std::shared_ptr<CClientSession>& session,
+	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
+	const std::span<const STAGED_PLAYER_ENTRY> precedingEntries,
+	STAGED_PLAYER_ENTRY& staged,
+	LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status)
+{
+	using namespace LostArk::Shared;
+	outReason = SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED;
+	status.clear();
+	const auto reject = [&outReason, &status](
+		const SESSION_DIAGNOSTIC_REASON reason, const char* detail)
+	{
+		outReason = reason;
+		status = detail;
+		return false;
+	};
+	const std::size_t offset = precedingEntries.size();
+	if (!m_isReady || nullptr == session || session->Is_Closing() ||
+		INVALID_SESSION_ID == session->Get_SessionId() ||
+		!Is_Valid_EnterWorld(enterWorld) || enterWorld.eWorldId != m_eWorldId ||
+		m_PlayerIdBySessionId.contains(session->Get_SessionId()) ||
+		m_Players.size() + offset >= MAX_WORLD_SNAPSHOT_PLAYERS ||
+		INVALID_PLAYER_ID == m_iNextPlayerId ||
+		INVALID_NET_ENTITY_ID == m_iNextNetEntityId ||
+		offset > (std::numeric_limits<PLAYER_ID>::max)() - m_iNextPlayerId ||
+		offset > (std::numeric_limits<NET_ENTITY_ID>::max)() - m_iNextNetEntityId)
+	{
+		return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+			"player entry room/session/identity validation failed");
+	}
+	const WORLD_BOOTSTRAP_PLACEMENT* spawn = nullptr;
+	for (const auto& candidate : m_WorldBootstrap.Get_Placements())
+	{
+		if (!candidate.isEnabled || WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != candidate.eKind)
+			continue;
+		const bool occupied = std::any_of(m_Players.begin(), m_Players.end(),
+			[&candidate](const auto& value)
+			{ return value.second.strSpawnPlacementId == candidate.strPlacementId; });
+		const bool reserved = std::any_of(precedingEntries.begin(), precedingEntries.end(),
+			[&candidate](const auto& value)
+			{ return value.Player.strSpawnPlacementId == candidate.strPlacementId; });
+		if (!occupied && !reserved) { spawn = &candidate; break; }
+	}
+	if (nullptr == spawn)
+		return reject(SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL,
+			"target room has fewer free player spawns than the transfer batch");
+	STAGED_PLAYER_ENTRY candidate{};
+	candidate.pSession = session;
+	SERVER_PLAYER& player = candidate.Player;
+	player.iSessionId = session->Get_SessionId();
+	player.iPlayerId = m_iNextPlayerId + static_cast<PLAYER_ID>(offset);
+	player.iNetEntityId = m_iNextNetEntityId + static_cast<NET_ENTITY_ID>(offset);
+	player.eCharacterClass = enterWorld.eCharacterClass;
+	player.strNickName = enterWorld.strNickName;
+	player.strSpawnPlacementId = spawn->strPlacementId;
+	player.fPositionX = spawn->fPositionX;
+	player.fPositionY = spawn->fPositionY;
+	player.fPositionZ = spawn->fPositionZ;
+	player.fYawDegrees = spawn->fYawDegrees;
+	const PLAYER_RUNTIME_PROFILE* profile = m_GameplayCatalog.Find_Player(player.eCharacterClass);
+	if (nullptr == profile)
+		return reject(SESSION_DIAGNOSTIC_REASON::SERVER_PROFILE_MISSING,
+			"selected character class has no runtime profile");
+	player.eStance = profile->eDefaultStance;
+	player.iCurrentHp = player.iMaximumHp = profile->iMaximumHp;
+	player.iCurrentResource = player.iMaximumResource = profile->iMaximumResource;
+	player.fMoveSpeed = profile->fMoveSpeed;
+	player.iCurrentIdentity = player.iMaximumIdentity = profile->iMaximumIdentity;
+	player.isCombatReady = WORLD_ID::VALTAN_ARENA != m_eWorldId;
+	if (m_ServerNavigation.Is_Loaded())
+	{
+		SERVER_NAV_POINT projected{};
+		if (!m_ServerNavigation.Project_Point(player.fPositionX, player.fPositionZ, projected))
+			return reject(SESSION_DIAGNOSTIC_REASON::SERVER_NAVIGATION_FAILED,
+				"player spawn could not project onto Server navigation");
+		player.fPositionX = projected.x;
+		player.fPositionY = projected.y;
+		player.fPositionZ = projected.z;
+	}
+	for (const char* potionId : { "POTION_HP_SMALL", "POTION_HP_MEDIUM", "POTION_HP_LARGE" })
+	{
+		const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(potionId);
+		if (nullptr == definition) continue;
+		INVENTORY_ITEM_SNAPSHOT item{};
+		item.strItemId = potionId;
+		item.iQuantity = (std::min)(500u, definition->iMaxStack);
+		player.Inventory.push_back(std::move(item));
+	}
+	staged = std::move(candidate);
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
+	STAGED_PLAYER_ENTRY& entry, const std::span<const STAGED_PLAYER_ENTRY> batch,
+	std::string& status)
+{
+	using namespace LostArk::Shared;
+	std::vector<PACKET_FRAME> frames;
+	const auto append = [&frames, &status](const PACKET_TYPE type, const auto& message)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+		{
+			status = "initial entry payload failed validation, packet=" +
+				std::to_string(static_cast<std::uint16_t>(type));
+			return false;
+		}
+		frames.push_back({ type, writer.Get_Buffer() });
+		return true;
+	};
+	S2C_ENTER_ACCEPTED accepted{};
+	accepted.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+	accepted.eWorldId = m_eWorldId;
+	accepted.iPlayerId = entry.Player.iPlayerId;
+	accepted.iNetEntityId = entry.Player.iNetEntityId;
+	accepted.ActiveGameplayRevision = m_GameplayCatalog.Get_ActiveRevision();
+	if (!Build_RequiredPinnedGameplayRevisions(accepted.RequiredPinnedGameplayRevisions))
+	{
+		status = "initial entry pinned gameplay revisions failed validation";
+		return false;
+	}
+	if (!append(PACKET_TYPE::S2C_ENTER_ACCEPTED, accepted)) return false;
+	S2C_INVENTORY_SNAPSHOT inventory{};
+	inventory.Items = entry.Player.Inventory;
+	if (!append(PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, inventory)) return false;
+	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
+	{
+		if (!m_WorldDestructionRuntime.Is_Initialized())
+		{
+			status = "initial world destruction runtime is not initialized";
+			return false;
+		}
+		S2C_WORLD_DESTRUCTION_FULL_SYNC fullSync{};
+		fullSync.strCombatRuntimeRevision = m_WorldDestructionBootstrap.Get_CombatRuntimeRevision();
+		fullSync.iServerTick = 0u == m_iServerTick ? 1u : m_iServerTick;
+		fullSync.iEncounterEpoch = m_WorldDestructionRuntime.Get_EncounterEpoch();
+		for (const auto& state : m_WorldDestructionRuntime.Get_GroupStates())
+			fullSync.GroupStates.push_back(To_NetworkDestructionState(state));
+		fullSync.Diagnostics = Build_WorldDestructionDiagnostics();
+		if (!append(PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC, fullSync)) return false;
+	}
+	if (m_EncounterPropRuntime.Is_Initialized())
+	{
+		S2C_ENCOUNTER_PROP_SYNC props{};
+		props.strPropSetId = m_EncounterPropRuntime.Get_PropSetId();
+		props.iServerTick = 0u == m_iServerTick ? 1u : m_iServerTick;
+		props.iEncounterEpoch = m_EncounterPropRuntime.Get_EncounterEpoch();
+		for (const auto& slot : m_EncounterPropRuntime.Get_SlotStates())
+		{
+			ENCOUNTER_PROP_SLOT_WIRE wire{};
+			wire.strSlotId = slot.strSlotId;
+			wire.eState = slot.eState;
+			wire.iStateVersion = slot.iStateVersion;
+			wire.iStateStartTick = slot.iStateStartTick;
+			wire.iOccurrenceSequence = slot.iOccurrenceSequence;
+			props.Slots.push_back(std::move(wire));
+		}
+		if (!append(PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC, props)) return false;
+	}
+	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		std::vector<std::uint8_t> payload;
+		if (!Build_WorldEntitySpawnedPayload(entity, payload))
+		{
+			status = "World entity spawn payload preflight failed: " + entity.strPlacementId;
+			return false;
+		}
+		frames.push_back({ PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED, std::move(payload) });
+	}
+	std::vector<S2C_COMBAT_OBJECT_SPAWNED> combatObjects;
+	m_CombatObjectRuntime.Build_LiveSpawnMessages(0u == m_iServerTick ? 1u : m_iServerTick, combatObjects);
+	for (const auto& object : combatObjects)
+		if (!append(PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED, object)) return false;
+	const auto appendPlayer = [&append](const SERVER_PLAYER& player)
+	{
+		S2C_PLAYER_SPAWNED message{};
+		message.iPlayerId = player.iPlayerId;
+		message.iNetEntityId = player.iNetEntityId;
+		message.eCharacterClass = player.eCharacterClass;
+		message.strNickName = player.strNickName;
+		message.fPositionX = player.fPositionX;
+		message.fPositionY = player.fPositionY;
+		message.fPositionZ = player.fPositionZ;
+		message.fYawDegrees = player.fYawDegrees;
+		return append(PACKET_TYPE::S2C_PLAYER_SPAWNED, message);
+	};
+	for (const auto& [id, player] : m_Players)
+	{
+		(void)id;
+		if (!appendPlayer(player)) return false;
+	}
+	for (const auto& staged : batch)
+		if (!appendPlayer(staged.Player)) return false;
+	entry.Frames = std::move(frames);
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry)
+{
+	const SERVER_PLAYER& player = entry.Player;
+	m_Sessions.insert_or_assign(player.iSessionId, entry.pSession);
+	m_Players.emplace(player.iPlayerId, player);
+	m_PlayerIdBySessionId.emplace(player.iSessionId, player.iPlayerId);
+	m_PlayerIdByEntityId.emplace(player.iNetEntityId, player.iPlayerId);
+	++m_iNextPlayerId;
+	++m_iNextNetEntityId;
+	entry.pSession->Bind_PlayerId(player.iPlayerId);
+}
+
 bool LostArk::Server::CGameRoom::Join(
 	const SESSION_ID sessionId,
-	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
-	const std::vector<SESSION_ID>& partyBatchSessionIds)
+	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld)
 {
 	using namespace LostArk::Shared;
 
@@ -1966,209 +2175,39 @@ bool LostArk::Server::CGameRoom::Join(
 		}
 		return false;
 	}
-	const WORLD_BOOTSTRAP_PLACEMENT* spawn = Find_AvailablePlayerSpawn();
-	if (nullptr == spawn)
+	STAGED_PLAYER_ENTRY entry{};
+	SESSION_DIAGNOSTIC_REASON reason{};
+	std::string status;
+	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status))
 	{
-		session->Request_Close(
-			SESSION_DIAGNOSTIC_REASON::SERVER_SPAWN_EXHAUSTED,
-			0,
-			"no available player spawn placement");
+		session->Request_Close(reason, WSAEINVAL, status);
 		return false;
 	}
-
-	SERVER_PLAYER player{};
-	player.iSessionId = sessionId;
-	player.iPlayerId = m_iNextPlayerId;
-	player.iNetEntityId = m_iNextNetEntityId;
-	player.eCharacterClass = enterWorld.eCharacterClass;
-	player.strNickName = enterWorld.strNickName;
-	player.strSpawnPlacementId = spawn->strPlacementId;
-	player.fPositionX = spawn->fPositionX;
-	player.fPositionY = spawn->fPositionY;
-	player.fPositionZ = spawn->fPositionZ;
-	player.fYawDegrees = spawn->fYawDegrees;
-	const PLAYER_RUNTIME_PROFILE* playerProfile =
-		m_GameplayCatalog.Find_Player(player.eCharacterClass);
-	if (nullptr == playerProfile)
+	if (!Build_PlayerEntryFrames(entry, std::span<const STAGED_PLAYER_ENTRY>{ &entry, 1u }, status))
 	{
-		session->Request_Close(
-			SESSION_DIAGNOSTIC_REASON::SERVER_PROFILE_MISSING,
-			0,
-			"selected character class has no runtime profile");
+		m_strStatus = status;
+		session->Request_Close(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED, 0, status);
 		return false;
 	}
-	player.eStance = playerProfile->eDefaultStance;
-	player.iCurrentHp = playerProfile->iMaximumHp;
-	player.iMaximumHp = playerProfile->iMaximumHp;
-	player.iCurrentResource = playerProfile->iMaximumResource;
-	player.iMaximumResource = playerProfile->iMaximumResource;
-	player.fMoveSpeed = playerProfile->fMoveSpeed;
-	// A gauge starts full: the stance it pays for is available on entry, and a
-	// class without one keeps both at 0 so nothing ever drains.
-	player.iMaximumIdentity = playerProfile->iMaximumIdentity;
-	player.iCurrentIdentity = playerProfile->iMaximumIdentity;
-	player.isCombatReady = WORLD_ID::VALTAN_ARENA != m_eWorldId;
-	if (m_ServerNavigation.Is_Loaded())
+	CClientSession::RELIABLE_BATCH_TRANSACTION outbound;
+	if (!outbound.Prepare({ { session, entry.Frames } }, status))
 	{
-		SERVER_NAV_POINT projected{};
-		if (!m_ServerNavigation.Project_Point(
-			player.fPositionX, player.fPositionZ, projected))
-		{
-			session->Request_Close(
-				SESSION_DIAGNOSTIC_REASON::SERVER_NAVIGATION_FAILED,
-				0,
-				"player spawn could not project onto Server navigation");
-			return false;
-		}
-		player.fPositionX = projected.x;
-		player.fPositionY = projected.y;
-		player.fPositionZ = projected.z;
-	}
-
-	// Debug/testing seed: every entering player starts with 500 of each HP
-	// potion tier, per explicit request, so trying the heal-on-use path
-	// doesn't need 500 separate F1 Give Item clicks first.
-	for (const char* potionId :
-		{ "POTION_HP_SMALL", "POTION_HP_MEDIUM", "POTION_HP_LARGE" })
-	{
-		const SERVER_ITEM_DEFINITION* potionDefinition =
-			m_ItemCatalog.Find_Item(potionId);
-		if (nullptr == potionDefinition)
-			continue;
-		INVENTORY_ITEM_SNAPSHOT seeded{};
-		seeded.strItemId = potionId;
-		seeded.iQuantity = (std::min)(500u, potionDefinition->iMaxStack);
-		player.Inventory.push_back(std::move(seeded));
-	}
-
-	/* Validate every current world spawn before ENTER_ACCEPTED can be queued.
-	A malformed bootstrap entity must reject the admission atomically instead of
-	letting the Client change level and then losing the connection mid-stream. */
-	std::vector<std::vector<std::uint8_t>> worldEntitySpawnPayloads;
-	worldEntitySpawnPayloads.reserve(m_WorldEntities.size());
-	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
-	{
-		std::vector<std::uint8_t> payload;
-		if (!Build_WorldEntitySpawnedPayload(entity, payload))
-		{
-			m_strStatus = "World entity spawn payload preflight failed: " +
-				entity.strPlacementId;
-			session->Request_Close(
-				SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED,
-				0,
-				m_strStatus);
-			return false;
-		}
-		worldEntitySpawnPayloads.push_back(std::move(payload));
-	}
-
-	++m_iNextPlayerId;
-	++m_iNextNetEntityId;
-	m_Players.emplace(player.iPlayerId, player);
-	m_PlayerIdBySessionId.emplace(sessionId, player.iPlayerId);
-	m_PlayerIdByEntityId.emplace(player.iNetEntityId, player.iPlayerId);
-	session->Bind_PlayerId(player.iPlayerId);
-
-	if (!Send_Accepted(session, player))
-	{
-		Rollback_Join(sessionId);
-		session->Request_Close(
-			SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
-			0,
-			"S2C_ENTER_ACCEPTED enqueue failed");
+		session->Request_Close(SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED, 0, status);
 		return false;
 	}
-	// A re-entering session sees its existing inventory without needing to
-	// give itself an item first. iRequestSequence 0 marks this as the
-	// unsolicited entry snapshot rather than an answer to a give request.
-	if (!Send_InventorySnapshot(session, 0u, player.Inventory))
-	{
-		Rollback_Join(sessionId);
-		session->Request_Close(
-			SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
-			0,
-			"initial inventory snapshot enqueue failed");
-		return false;
-	}
-	if (!Send_WorldDestructionFullSync(session) ||
-		!Send_EncounterPropSync(session))
-	{
-		Rollback_Join(sessionId);
-		session->Request_Close(
-			SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
-			0,
-			"initial world-state sync enqueue failed");
-		return false;
-	}
-	for (const std::vector<std::uint8_t>& payload : worldEntitySpawnPayloads)
-	{
-		if (!session->Send_Frame(
-			PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED, payload))
-		{
-			Rollback_Join(sessionId);
-			session->Request_Close(
-				SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
-				0,
-				"initial world entity spawn enqueue failed");
-			return false;
-		}
-	}
-	std::vector<S2C_COMBAT_OBJECT_SPAWNED> liveCombatObjects;
-	m_CombatObjectRuntime.Build_LiveSpawnMessages(
-		0u == m_iServerTick ? 1u : m_iServerTick, liveCombatObjects);
-	for (const S2C_COMBAT_OBJECT_SPAWNED& combatObject : liveCombatObjects)
-	{
-		if (!Send_CombatObjectSpawned(session, combatObject))
-		{
-			Rollback_Join(sessionId);
-			session->Request_Close(
-				SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
-				0,
-				"initial combat object spawn enqueue failed");
-			return false;
-		}
-	}
-	for (const auto& [existingPlayerId, existingPlayer] : m_Players)
-	{
-		(void)existingPlayerId;
-		if (existingPlayer.iSessionId == sessionId)
-			continue;
-		if (!Send_Spawned(session, existingPlayer))
-		{
-			Rollback_Join(sessionId);
-			session->Request_Close(
-				SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
-				0,
-				"existing player spawn enqueue failed");
-			return false;
-		}
-	}
-	if (!Send_Spawned(session, player))
-	{
-		Rollback_Join(sessionId);
-		session->Request_Close(
-			SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
-			0,
-			"joining player spawn enqueue failed");
-		return false;
-	}
-	Broadcast_Spawned(player, sessionId);
-
-	if (!partyBatchSessionIds.empty())
-		Register_PartyBatch(partyBatchSessionIds);
-	Try_JoinPendingPartyBatch(sessionId, player.iPlayerId);
-
+	Commit_PlayerEntry(entry);
+	outbound.Commit();
+	Broadcast_Spawned(entry.Player, sessionId);
 	std::cout << "Player joined. World=" << static_cast<unsigned>(m_eWorldId)
-		<< ", SessionId=" << sessionId
-		<< ", PlayerId=" << player.iPlayerId
-		<< ", Spawn=" << player.strSpawnPlacementId
+		<< ", SessionId=" << sessionId << ", PlayerId=" << entry.Player.iPlayerId
+		<< ", Spawn=" << entry.Player.strSpawnPlacementId
 		<< ", RoomPlayers=" << m_Players.size() << '\n';
 	return true;
 }
 
 void LostArk::Server::CGameRoom::Leave(
 	const SESSION_ID sessionId,
-	const LostArk::Shared::PLAYER_DESPAWN_REASON reason)
+	const LostArk::Shared::PLAYER_DESPAWN_REASON reason, const bool publishDeparture)
 {
 	using namespace LostArk::Shared;
 
@@ -2191,6 +2230,7 @@ void LostArk::Server::CGameRoom::Leave(
 	m_ValtanPatternIdAuditionSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternFlowStartSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternFlowControlSequenceBySessionId.erase(sessionId);
+	m_PendingPartyTransferResults.erase(sessionId);
 	const auto sessionPlayerIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionPlayerIter == m_PlayerIdBySessionId.end())
 	{
@@ -2214,10 +2254,13 @@ void LostArk::Server::CGameRoom::Leave(
 	m_PlayerIdByEntityId.erase(netEntityId);
 	m_PlayerIdBySessionId.erase(sessionPlayerIter);
 	m_PendingPartyInviteByTargetPlayerId.erase(playerId);
+	std::erase_if(m_PendingPartyInviteByTargetPlayerId,
+		[playerId](const auto& invite) { return invite.second == playerId; });
 	Remove_FromParty(playerId);
 	m_Players.erase(playerIter);
 	m_Sessions.erase(sessionId);
-	Broadcast_Despawned(netEntityId, reason);
+	if (publishDeparture)
+		Broadcast_Despawned(netEntityId, reason);
 
 	std::cout << "Player left. World=" << static_cast<unsigned>(m_eWorldId)
 		<< ", SessionId=" << sessionId
@@ -3216,7 +3259,9 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 			m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
 			[sid](const SERVER_WORLD_TRANSFER_REQUEST& pending)
 			{
-				return pending.iSessionId == sid;
+				return pending.iSessionId == sid ||
+					std::find(pending.PartyBatchSessionIds.begin(),
+						pending.PartyBatchSessionIds.end(), sid) != pending.PartyBatchSessionIds.end();
 			});
 	};
 	if (isAlreadyStaged(player.iSessionId))
@@ -3237,13 +3282,21 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 			membersIter->second.size() > 1)
 		{
 			if (membersIter->second.front() != playerIter->first)
+			{
+				Notify_PartyTransferFailure(sessionId, request.iRequestSequence,
+					guideIter->eTargetWorldId, PARTY_TRANSFER_RESULT::REJECTED_NOT_LEADER);
 				return;
+			}
 			batchMemberIds = membersIter->second;
 		}
 	}
 
-	std::vector<SERVER_WORLD_TRANSFER_REQUEST> batchTransfers;
-	batchTransfers.reserve(batchMemberIds.size());
+	SERVER_WORLD_TRANSFER_REQUEST transfer{};
+	transfer.iSessionId = player.iSessionId;
+	transfer.eTargetWorldId = guideIter->eTargetWorldId;
+	transfer.eCharacterClass = player.eCharacterClass;
+	transfer.strNickName = player.strNickName;
+	transfer.iPartyRequestSequence = request.iRequestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)
 	{
 		const auto memberIter = m_Players.find(memberId);
@@ -3252,30 +3305,14 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 			memberIter->second.strNickName.empty() ||
 			isAlreadyStaged(memberIter->second.iSessionId))
 		{
-			continue;
+			Notify_PartyTransferFailure(sessionId, request.iRequestSequence,
+				guideIter->eTargetWorldId, PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE);
+			return;
 		}
-		SERVER_WORLD_TRANSFER_REQUEST transfer{};
-		transfer.iSessionId = memberIter->second.iSessionId;
-		transfer.eTargetWorldId = guideIter->eTargetWorldId;
-		transfer.eCharacterClass = memberIter->second.eCharacterClass;
-		transfer.strNickName = memberIter->second.strNickName;
-		batchTransfers.push_back(std::move(transfer));
+		if (batchMemberIds.size() > 1u)
+			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
 	}
-	if (batchTransfers.empty())
-		return;
-
-	// batchTransfers.front() is always the confirming/leader player -- their
-	// own validity was already checked above, before batchMemberIds was built.
-	if (batchTransfers.size() > 1)
-	{
-		std::vector<SESSION_ID> batchSessionIds;
-		batchSessionIds.reserve(batchTransfers.size());
-		for (const SERVER_WORLD_TRANSFER_REQUEST& transfer : batchTransfers)
-			batchSessionIds.push_back(transfer.iSessionId);
-		batchTransfers.front().PartyBatchSessionIds = std::move(batchSessionIds);
-	}
-	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : batchTransfers)
-		m_PendingWorldTransfers.push_back(std::move(transfer));
+	m_PendingWorldTransfers.push_back(std::move(transfer));
 }
 
 void LostArk::Server::CGameRoom::Handle_PartyInvite(
@@ -3363,17 +3400,15 @@ void LostArk::Server::CGameRoom::Handle_PartyInviteRespond(
 	if (pendingIter == m_PendingPartyInviteByTargetPlayerId.end())
 		return;
 	const PLAYER_ID inviterId = pendingIter->second;
-	// Consumed either way -- accepting or declining both answer the one
-	// pending invite, and a stale second response has nothing left to act on.
-	m_PendingPartyInviteByTargetPlayerId.erase(pendingIter);
-
-	if (!request.bAccepted)
-		return;
-
 	const auto inviterIter = m_Players.find(inviterId);
 	if (inviterIter == m_Players.end())
 		return;
 	if (inviterIter->second.iNetEntityId != request.iFromNetEntityId)
+		return;
+	// A response to a replaced invite must not consume the current invite,
+	// regardless of whether that stale response accepts or declines.
+	m_PendingPartyInviteByTargetPlayerId.erase(pendingIter);
+	if (!request.bAccepted)
 		return;
 	if (m_Players.find(responderId) == m_Players.end())
 		return;
@@ -3465,62 +3500,220 @@ void LostArk::Server::CGameRoom::Remove_FromParty(
 	Broadcast_PartyRoster(partyId);
 }
 
-void LostArk::Server::CGameRoom::Register_PartyBatch(
-	const std::vector<SESSION_ID>& sessionIds)
+bool LostArk::Server::CGameRoom::Transfer_PartyTo(
+	CGameRoom& target, const std::vector<SESSION_ID>& leaderFirstSessionIds,
+	LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status)
 {
-	if (sessionIds.size() < 2)
-		return;
-	m_PendingPartyBatches.push_back(sessionIds);
+	using namespace LostArk::Shared;
+	outResult = PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE;
+	const auto reject = [&outResult, &status](const PARTY_TRANSFER_RESULT reason, const char* detail)
+	{
+		outResult = reason;
+		status = detail;
+		return false;
+	};
+	if (!m_isReady || !target.m_isReady || WORLD_ID::BERN != m_eWorldId ||
+		WORLD_ID::VALTAN_ARENA != target.m_eWorldId ||
+		leaderFirstSessionIds.size() < 2u || leaderFirstSessionIds.size() > MAX_PARTY_MEMBERS)
+		return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "invalid party transfer world/batch");
+	const auto leader = m_PlayerIdBySessionId.find(leaderFirstSessionIds.front());
+	if (leader == m_PlayerIdBySessionId.end())
+		return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "party leader is no longer present");
+	const auto sourceParty = m_PartyIdByPlayerId.find(leader->second);
+	if (sourceParty == m_PartyIdByPlayerId.end())
+		return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "source party no longer exists");
+	const auto sourceMembers = m_PartyMembersByPartyId.find(sourceParty->second);
+	if (sourceMembers == m_PartyMembersByPartyId.end() ||
+		sourceMembers->second.size() != leaderFirstSessionIds.size() ||
+		sourceMembers->second.front() != leader->second)
+		return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "source party changed before transfer");
+	if (0u == target.m_iNextPartyId || target.m_PartyMembersByPartyId.contains(target.m_iNextPartyId))
+		return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "target party identity is exhausted");
+
+	std::vector<STAGED_PLAYER_ENTRY> entries;
+	std::vector<NET_ENTITY_ID> departingEntities;
+	entries.reserve(leaderFirstSessionIds.size());
+	departingEntities.reserve(leaderFirstSessionIds.size());
+	for (std::size_t index = 0; index < leaderFirstSessionIds.size(); ++index)
+	{
+		const auto member = m_Players.find(sourceMembers->second[index]);
+		if (member == m_Players.end() ||
+			member->second.iSessionId != leaderFirstSessionIds[index] ||
+			std::find(leaderFirstSessionIds.begin(), leaderFirstSessionIds.begin() + index,
+				leaderFirstSessionIds[index]) != leaderFirstSessionIds.begin() + index)
+			return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "source party member identity changed");
+		const auto session = Find_Session(member->second.iSessionId);
+		if (nullptr == session || session->Is_Closing())
+			return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "party member session is terminal");
+		C2S_ENTER_WORLD enter{};
+		enter.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		enter.eWorldId = target.m_eWorldId;
+		enter.eCharacterClass = member->second.eCharacterClass;
+		enter.strNickName = member->second.strNickName;
+		STAGED_PLAYER_ENTRY entry{};
+		SESSION_DIAGNOSTIC_REASON reason{};
+		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status))
+		{
+			outResult = SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL == reason ?
+				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL : PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;
+			return false;
+		}
+		entries.push_back(std::move(entry));
+		departingEntities.push_back(member->second.iNetEntityId);
+	}
+	std::vector<CLIENT_SESSION_RELIABLE_BATCH> outboundBatches;
+	S2C_PARTY_ROSTER roster{};
+	for (const auto& entry : entries)
+		roster.Members.push_back({ entry.Player.iNetEntityId, entry.Player.strNickName,
+			entry.Player.eCharacterClass });
+	CPacketWriter rosterWriter;
+	if (!Write_Message(rosterWriter, roster))
+		return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "target party roster failed encoding");
+	for (auto& entry : entries)
+	{
+		if (!target.Build_PlayerEntryFrames(entry, entries, status))
+		{
+			outResult = PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;
+			return false;
+		}
+		entry.Frames.push_back({ PACKET_TYPE::S2C_PARTY_ROSTER, rosterWriter.Get_Buffer() });
+		outboundBatches.push_back({ entry.pSession, entry.Frames });
+	}
+	// Include observer notifications in the same bounded FIFO reservation;
+	// neither a slow member nor a slow spectator can cause a partial commit.
+	for (const auto& [id, player] : m_Players)
+	{
+		(void)id;
+		if (std::find(leaderFirstSessionIds.begin(), leaderFirstSessionIds.end(),
+			player.iSessionId) != leaderFirstSessionIds.end()) continue;
+		CLIENT_SESSION_RELIABLE_BATCH observer{ Find_Session(player.iSessionId), {} };
+		for (const NET_ENTITY_ID entityId : departingEntities)
+		{
+			S2C_PLAYER_DESPAWNED message{};
+			message.iNetEntityId = entityId;
+			message.eReason = PLAYER_DESPAWN_REASON::LEVEL_CHANGED;
+			CPacketWriter writer;
+			if (!Write_Message(writer, message))
+				return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "source departure payload failed encoding");
+			observer.Frames.push_back({ PACKET_TYPE::S2C_PLAYER_DESPAWNED, writer.Get_Buffer() });
+		}
+		outboundBatches.push_back(std::move(observer));
+	}
+	for (const auto& [id, player] : target.m_Players)
+	{
+		(void)id;
+		CLIENT_SESSION_RELIABLE_BATCH observer{ target.Find_Session(player.iSessionId), {} };
+		for (const auto& entry : entries)
+		{
+			S2C_PLAYER_SPAWNED message{};
+			message.iPlayerId = entry.Player.iPlayerId;
+			message.iNetEntityId = entry.Player.iNetEntityId;
+			message.eCharacterClass = entry.Player.eCharacterClass;
+			message.strNickName = entry.Player.strNickName;
+			message.fPositionX = entry.Player.fPositionX;
+			message.fPositionY = entry.Player.fPositionY;
+			message.fPositionZ = entry.Player.fPositionZ;
+			message.fYawDegrees = entry.Player.fYawDegrees;
+			CPacketWriter writer;
+			if (!Write_Message(writer, message))
+				return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "target spawn payload failed encoding");
+			observer.Frames.push_back({ PACKET_TYPE::S2C_PLAYER_SPAWNED, writer.Get_Buffer() });
+		}
+		outboundBatches.push_back(std::move(observer));
+	}
+
+	// All allocating membership work is staged before taking outbound locks.
+	// Commit below contains only erases, swaps and atomic player-id stores.
+	auto targetPlayers = target.m_Players;
+	auto targetSessionPlayers = target.m_PlayerIdBySessionId;
+	auto targetEntityPlayers = target.m_PlayerIdByEntityId;
+	auto targetSessions = target.m_Sessions;
+	auto targetPartyIds = target.m_PartyIdByPlayerId;
+	auto targetParties = target.m_PartyMembersByPartyId;
+	std::vector<PLAYER_ID> targetMembers;
+	targetMembers.reserve(entries.size());
+	for (const auto& entry : entries)
+	{
+		const SERVER_PLAYER& player = entry.Player;
+		targetPlayers.emplace(player.iPlayerId, player);
+		targetSessionPlayers.emplace(player.iSessionId, player.iPlayerId);
+		targetEntityPlayers.emplace(player.iNetEntityId, player.iPlayerId);
+		targetSessions.insert_or_assign(player.iSessionId, entry.pSession);
+		targetPartyIds.emplace(player.iPlayerId, target.m_iNextPartyId);
+		targetMembers.push_back(player.iPlayerId);
+	}
+	targetParties.emplace(target.m_iNextPartyId, std::move(targetMembers));
+	CClientSession::RELIABLE_BATCH_TRANSACTION outbound;
+	if (!outbound.Prepare(outboundBatches, status))
+	{
+		outResult = PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY;
+		return false;
+	}
+	// No callback here may send to the locked queues. Whole-party removal has
+	// no intermediate roster; all departures/arrivals were staged above.
+	for (const PLAYER_ID memberId : sourceMembers->second)
+		m_PartyIdByPlayerId.erase(memberId);
+	m_PartyMembersByPartyId.erase(sourceMembers);
+	for (const SESSION_ID sessionId : leaderFirstSessionIds)
+		Leave(sessionId, PLAYER_DESPAWN_REASON::LEVEL_CHANGED, false);
+	target.m_Players.swap(targetPlayers);
+	target.m_PlayerIdBySessionId.swap(targetSessionPlayers);
+	target.m_PlayerIdByEntityId.swap(targetEntityPlayers);
+	target.m_Sessions.swap(targetSessions);
+	target.m_PartyIdByPlayerId.swap(targetPartyIds);
+	target.m_PartyMembersByPartyId.swap(targetParties);
+	target.m_iNextPlayerId += static_cast<PLAYER_ID>(entries.size());
+	target.m_iNextNetEntityId += static_cast<NET_ENTITY_ID>(entries.size());
+	++target.m_iNextPartyId;
+	for (const auto& entry : entries)
+		entry.pSession->Bind_PlayerId(entry.Player.iPlayerId);
+	outbound.Commit();
+	status = "party transfer committed";
+	return true;
 }
 
-void LostArk::Server::CGameRoom::Try_JoinPendingPartyBatch(
-	const SESSION_ID sessionId, const LostArk::Shared::PLAYER_ID playerId)
+void LostArk::Server::CGameRoom::Notify_PartyTransferFailure(
+	const SESSION_ID sessionId, const std::uint32_t requestSequence,
+	const LostArk::Shared::WORLD_ID targetWorldId,
+	const LostArk::Shared::PARTY_TRANSFER_RESULT result)
 {
-	for (auto batchIter = m_PendingPartyBatches.begin();
-		batchIter != m_PendingPartyBatches.end(); ++batchIter)
+	if (0u == requestSequence || !m_PlayerIdBySessionId.contains(sessionId)) return;
+	LostArk::Shared::S2C_PARTY_TRANSFER_RESULT message{};
+	message.iRequestSequence = requestSequence;
+	message.eTargetWorldId = targetWorldId;
+	message.eResult = result;
+	m_PendingPartyTransferResults.insert_or_assign(sessionId, message);
+	Flush_PartyTransferResults();
+}
+
+void LostArk::Server::CGameRoom::Flush_PartyTransferResults()
+{
+	using namespace LostArk::Shared;
+	for (auto iter = m_PendingPartyTransferResults.begin(); iter != m_PendingPartyTransferResults.end();)
 	{
-		std::vector<SESSION_ID>& batch = *batchIter;
-		const auto sessionPos = std::find(batch.begin(), batch.end(), sessionId);
-		if (batch.end() == sessionPos)
-			continue;
-
-		/* batch.front() is always the party leader: Handle_ConfirmNpcEntry
-		   builds the batch leader-first, and the source room dequeues/
-		   enqueues every member of one batch in that same order, so the
-		   leader's own Join() (which registers the batch) always lands before
-		   any follower's. */
-		if (sessionId != batch.front())
+		const auto session = Find_Session(iter->first);
+		if (nullptr == session || session->Is_Closing())
 		{
-			const auto leaderSessionIter =
-				m_PlayerIdBySessionId.find(batch.front());
-			if (leaderSessionIter != m_PlayerIdBySessionId.end())
-			{
-				const LostArk::Shared::PLAYER_ID leaderPlayerId =
-					leaderSessionIter->second;
-				auto leaderPartyIter = m_PartyIdByPlayerId.find(leaderPlayerId);
-				std::uint32_t partyId =
-					leaderPartyIter != m_PartyIdByPlayerId.end() ?
-						leaderPartyIter->second : 0u;
-				if (0u == partyId)
-				{
-					partyId = m_iNextPartyId++;
-					m_PartyMembersByPartyId[partyId] = { leaderPlayerId };
-					m_PartyIdByPlayerId[leaderPlayerId] = partyId;
-				}
-				if (m_PartyMembersByPartyId[partyId].size() <
-					LostArk::Shared::MAX_PARTY_MEMBERS)
-				{
-					m_PartyMembersByPartyId[partyId].push_back(playerId);
-					m_PartyIdByPlayerId[playerId] = partyId;
-					Broadcast_PartyRoster(partyId);
-				}
-			}
+			iter = m_PendingPartyTransferResults.erase(iter);
+			continue;
 		}
-
-		batch.erase(sessionPos);
-		if (batch.empty())
-			m_PendingPartyBatches.erase(batchIter);
-		break;
+		CPacketWriter writer;
+		if (!Write_Message(writer, iter->second))
+		{
+			m_strStatus = "party transfer failure notice failed validation";
+			iter = m_PendingPartyTransferResults.erase(iter);
+			continue;
+		}
+		CClientSession::RELIABLE_BATCH_TRANSACTION outbound;
+		std::string status;
+		if (!outbound.Prepare({ { session, {
+			{ PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT, writer.Get_Buffer() } } } }, status))
+		{
+			++iter;
+			continue;
+		}
+		outbound.Commit();
+		iter = m_PendingPartyTransferResults.erase(iter);
 	}
 }
 

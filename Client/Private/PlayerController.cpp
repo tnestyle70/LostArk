@@ -219,7 +219,8 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 					caster, m_GroundTargeting.Get_TargetPosition(),
 					m_GroundTargeting.Can_Confirm());
 
-				const bool_t cancelEdge = isRightMousePhysicallyDown &&
+				const bool_t cancelEdge = isRightMouseDown &&
+					isRightMousePhysicallyDown &&
 					!m_wasTargetingRightMouseDown;
 				const bool_t confirmEdge =
 					!CGameInstance::Get().IsMouseInputBlocked() &&

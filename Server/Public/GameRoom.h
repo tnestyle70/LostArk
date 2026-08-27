@@ -20,6 +20,8 @@
 #include "EstherSkillSystem.h"
 #include "WorldDestructionBootstrap.h"
 #include "WorldDestructionRuntime.h"
+#include "Network/PacketFrame.h"
+#include "Network/SessionDiagnostic.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -27,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -202,16 +205,37 @@ namespace LostArk::Server
 		// Room thread only. Removes the source player before the target room can
 		// process its queued ENTER_WORLD and bind the same session again.
 		[[nodiscard]] bool Commit_WorldTransferDeparture(SESSION_ID sessionId);
+		// Room-thread only, while ServerApp holds its session-binding mutex.
+		bool Transfer_PartyTo(CGameRoom& target,
+			const std::vector<SESSION_ID>& leaderFirstSessionIds,
+			LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status);
+		void Notify_PartyTransferFailure(SESSION_ID sessionId,
+			std::uint32_t requestSequence, LostArk::Shared::WORLD_ID targetWorldId,
+			LostArk::Shared::PARTY_TRANSFER_RESULT result);
 
 	private:
+		struct STAGED_PLAYER_ENTRY final
+		{
+			std::shared_ptr<CClientSession> pSession;
+			SERVER_PLAYER Player;
+			std::vector<LostArk::Shared::PACKET_FRAME> Frames;
+		};
+		bool Stage_PlayerEntry(const std::shared_ptr<CClientSession>& session,
+			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
+			std::span<const STAGED_PLAYER_ENTRY> precedingEntries,
+			STAGED_PLAYER_ENTRY& staged,
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status);
+		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
+			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
+		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
+		void Flush_PartyTransferResults();
 		void Handle_Register(const std::shared_ptr<CClientSession>& session);
 		bool Join(
 			SESSION_ID sessionId,
-			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
-			const std::vector<SESSION_ID>& partyBatchSessionIds);
+			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld);
 		void Leave(
 			SESSION_ID sessionId,
-			LostArk::Shared::PLAYER_DESPAWN_REASON reason);
+			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
 		void Close_SessionForBindingFailure(
 			SESSION_ID sessionId,
 			std::string_view packetName,
@@ -532,22 +556,6 @@ namespace LostArk::Server
 		/* Leave() calls this so a disconnecting player does not linger as a
 		   ghost roster entry for whoever they partied with. */
 		void Remove_FromParty(LostArk::Shared::PLAYER_ID playerId);
-		/* Called once, from the party leader's own Join() (see
-		   ROOM_COMMAND::PartyBatchSessionIds), when their ENTER_WORLD carries a
-		   non-empty batch. Stores it in m_PendingPartyBatches for
-		   Try_JoinPendingPartyBatch to match against as the rest of the batch's
-		   Join() calls land in the same FIFO order. */
-		void Register_PartyBatch(const std::vector<SESSION_ID>& sessionIds);
-		/* Called from every successful Join(), leader or follower. If sessionId
-		   is a follower in a pending batch, joins it to the leader's party in
-		   this room (creating one if the leader doesn't have one here yet) --
-		   the same bookkeeping Handle_PartyInviteRespond uses for a
-		   client-driven accept, just server-triggered. A lone leader whose
-		   followers never landed here (e.g. every one of them failed to
-		   transfer) is simply removed from its batch without ever forming a
-		   party. */
-		void Try_JoinPendingPartyBatch(
-			SESSION_ID sessionId, LostArk::Shared::PLAYER_ID playerId);
 		/* Same room-scoped broadcast Broadcast_PartyRoster already uses --
 		   every current session in this room receives the relayed line,
 		   including the sender (its own head bubble is driven off the same
@@ -879,7 +887,7 @@ namespace LostArk::Server
 		   ID. Invite/accept/join only; leave/kick/leader promotion is a
 		   separate follow-up.
 		   A party-leader-triggered group Valtan entry (Handle_ConfirmNpcEntry
-		   -> Register_PartyBatch/Try_JoinPendingPartyBatch) is the one case
+		   -> Transfer_PartyTo) is the one case
 		   that does survive a room change: every member transfers together in
 		   one batch and gets re-grouped into a fresh room-local party in the
 		   target room, so the party itself is never actually split across two
@@ -894,11 +902,10 @@ namespace LostArk::Server
 		// replaces whatever that target's last unanswered invite was.
 		std::unordered_map<LostArk::Shared::PLAYER_ID, LostArk::Shared::PLAYER_ID>
 			m_PendingPartyInviteByTargetPlayerId;
-		/* Cross-room party continuity for a leader-triggered group Valtan
-		   entry -- each entry is one batch of session ids (leader first)
-		   waiting for the rest of its members' Join() calls to land in this
-		   room. See Register_PartyBatch/Try_JoinPendingPartyBatch. */
-		std::vector<std::vector<SESSION_ID>> m_PendingPartyBatches;
+		// At most one latest failure per present player. A full reliable queue
+		// delays the notice instead of disconnecting a rejected source party.
+		std::unordered_map<SESSION_ID, LostArk::Shared::S2C_PARTY_TRANSFER_RESULT>
+			m_PendingPartyTransferResults;
 
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;

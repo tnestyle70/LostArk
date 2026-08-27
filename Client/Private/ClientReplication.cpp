@@ -245,6 +245,11 @@ bool Client::CClientReplication::Update()
 			Apply_PartyRoster(event.PartyRoster);
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_TRANSFER_RESULT:
+			m_PendingPartyTransferResult = event.PartyTransferResult;
+			m_hasPendingPartyTransferResult = true;
+			break;
+
 		case CLIENT_REPLICATION_EVENT_TYPE::CHAT_RECEIVED:
 			Apply_ChatReceived(event.ChatReceived);
 			break;
@@ -338,6 +343,16 @@ void Client::CClientReplication::Apply_PartyRoster(
 	// Apply_EncounterPropSync -- the Server always sends the whole current
 	// membership, never a delta.
 	m_PartyRoster = roster;
+}
+
+bool Client::CClientReplication::Try_Consume_PartyTransferResult(
+	LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult)
+{
+	if (!m_hasPendingPartyTransferResult)
+		return false;
+	outResult = m_PendingPartyTransferResult;
+	m_hasPendingPartyTransferResult = false;
+	return true;
 }
 
 void Client::CClientReplication::Apply_ChatReceived(
@@ -766,6 +781,7 @@ bool Client::CClientReplication::Apply_Spawn(
 bool Client::CClientReplication::Apply_Despawn(
 	const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned)
 {
+	m_PlayerHealth.Erase(despawned.iNetEntityId);
 	OBJECT_HANDLE handle{};
 
 	if (!m_Registry.Find_Handle(
@@ -1454,6 +1470,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	if (!CActionPresentationTimeline::Is_ForwardTick(
 		snapshot.iServerTick, m_iLastServerTick))
 		return true;
+	if (!m_PlayerHealth.Apply_Snapshot(snapshot))
+		return false;
 
 	bool allSucceeded = true;
 
@@ -2024,6 +2042,13 @@ void Client::CClientReplication::Reset_World()
 	m_WorldDestructionLiveEvents.clear();
 	m_EncounterPropState = {};
 	m_InventoryState = {};
+	m_PlayerHealth.Reset();
+	m_PartyRoster = {};
+	m_hasPendingPartyInvite = false;
+	m_PendingPartyInvite = {};
+	m_hasPendingPartyTransferResult = false;
+	m_PendingPartyTransferResult = {};
+	m_ChatBubblesByNetEntityId.clear();
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)
 		++m_iWorldDestructionPresentationGeneration;

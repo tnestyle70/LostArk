@@ -21,16 +21,10 @@ namespace LostArk::Server
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::string strNickName;
-		/* Non-empty only when this transfer is one member of a party moving
-		   together (see CGameRoom::Handle_ConfirmNpcEntry's party-leader
-		   branch) -- lists every session id in the batch, leader first. Only
-		   the leader's own request carries this; CServerApp::Transfer_SessionWorld
-		   forwards it once into the target room's ENTER_WORLD room command,
-		   which registers the batch there (CGameRoom::Register_PartyBatch) so
-		   the target room can re-form the same party as each member's own
-		   transfer lands, since a fresh PLAYER_ID/party id is allocated per
-		   room ("same-room party state" in GameRoom.h). */
+		/* One immutable leader-first batch, not independent transfers. The
+		   room thread stages all target admissions before any source departure. */
 		std::vector<SESSION_ID> PartyBatchSessionIds;
+		std::uint32_t iPartyRequestSequence = 0u;
 	};
 
 	class CServerTriggerSystem final

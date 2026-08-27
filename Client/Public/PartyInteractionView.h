@@ -25,13 +25,14 @@ class CPartyInteractionView final
 public:
 	void Initialize(
 		ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
-	/* Returns true exactly on the frame a right-click just opened the context
-	   menu against another player -- callers suppress that same click's move
-	   command when this is true (see CPlayerController::Suppress_MoveClickThisFrame). */
+	/* True while either popup owns the mouse, including its opening frame.
+	   Callers add LB/RB blocks before gameplay polling; Engine holds each
+	   consumed physical press until release, even after the popup closes. */
 	bool_t Update(
 		CClientReplication& Replication,
 		const std::shared_ptr<IPlayerCommandSink>& pCommandSink,
-		const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers);
+		const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
+		bool_t worldInteractionAllowed);
 	void Render(const std::shared_ptr<IPlayerCommandSink>& pCommandSink);
 	/* CGameInstance::Draw_Text submits immediately (SpriteBatch), but
 	   Render_InvitePopup's popup art composites later inside
@@ -42,7 +43,8 @@ public:
 
 private:
 	bool_t Update_ContextMenuTrigger(
-		const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers);
+		const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
+		bool_t worldInteractionAllowed);
 	void Render_ContextMenu(
 		const std::shared_ptr<IPlayerCommandSink>& pCommandSink);
 	void Render_InvitePopup(
@@ -65,6 +67,8 @@ private:
 	bool_t m_isInvitePopupOpen = false;
 	bool_t m_hasInvitePopupJustOpened = false;
 	LostArk::Shared::S2C_PARTY_INVITE_RECEIVED m_PendingInvite{};
+	std::wstring m_strTransferFailureNotice;
+	std::chrono::steady_clock::time_point m_TransferNoticeExpiresAt{};
 };
 
 NS_END

@@ -27,6 +27,7 @@ namespace Client
 		INVENTORY_SNAPSHOT,
 		PARTY_INVITE_RECEIVED,
 		PARTY_ROSTER,
+		PARTY_TRANSFER_RESULT,
 		CHAT_RECEIVED
 	};
 
@@ -71,6 +72,7 @@ namespace Client
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT InventorySnapshot;
 		LostArk::Shared::S2C_PARTY_INVITE_RECEIVED PartyInviteReceived;
 		LostArk::Shared::S2C_PARTY_ROSTER PartyRoster;
+		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT PartyTransferResult;
 		LostArk::Shared::S2C_CHAT ChatReceived;
 	};
 }

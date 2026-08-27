@@ -1603,4 +1603,24 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_CHAT& message);
+
+	enum class PARTY_TRANSFER_RESULT : std::uint8_t
+	{
+		REJECTED_NOT_LEADER = 1,
+		REJECTED_ROOM_FULL,
+		REJECTED_MEMBER_UNAVAILABLE,
+		REJECTED_ADMISSION_FAILED,
+		REJECTED_OUTBOUND_BUSY
+	};
+
+	// Failure only: every member remains in the source world. Successful
+	// admission uses S2C_ENTER_ACCEPTED, never a second success authority.
+	struct S2C_PARTY_TRANSFER_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eTargetWorldId = WORLD_ID::END;
+		PARTY_TRANSFER_RESULT eResult = PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_PARTY_TRANSFER_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_PARTY_TRANSFER_RESULT& message);
 }

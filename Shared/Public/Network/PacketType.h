@@ -188,7 +188,8 @@ namespace LostArk::Shared
 		C2S_PARTY_INVITE,
 		S2C_PARTY_INVITE_RECEIVED,
 		C2S_PARTY_INVITE_RESPOND,
-		S2C_PARTY_ROSTER
+		S2C_PARTY_ROSTER,
+		S2C_PARTY_TRANSFER_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -256,6 +257,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
 		case PACKET_TYPE::C2S_PARTY_INVITE_RESPOND:
 		case PACKET_TYPE::S2C_PARTY_ROSTER:
+		case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
 			return true;
 		default:
 			return  false;

@@ -1309,9 +1309,12 @@ namespace
 	}
 }
 
+bool VerifyClientPartyRegression(const std::filesystem::path& root);
+
 int main()
 {
 	if (!VerifyAdjacentExplicitSourceWindows() ||
+		!VerifyClientPartyRegression(std::filesystem::current_path()) ||
 		!VerifyLegacyNaturalEndCompatibility() ||
 		!VerifyClipOccurrenceTransitions() ||
 		!VerifyCompletedAnimationClockRelease() ||

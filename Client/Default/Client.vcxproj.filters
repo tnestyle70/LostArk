@@ -949,6 +949,12 @@
     <ClInclude Include="..\Public\PartyWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ReplicatedPlayerHealth.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PartyTransferNotice.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
@@ -1580,6 +1586,12 @@
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\Party\PartyContextMenu_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json">

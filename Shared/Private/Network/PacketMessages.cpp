@@ -4265,3 +4265,33 @@ bool LostArk::Shared::Read_Message(
 	message = std::move(decoded);
 	return true;
 }
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_PARTY_TRANSFER_RESULT& message)
+{
+	const auto result = static_cast<std::uint8_t>(message.eResult);
+	if (0u == message.iRequestSequence ||
+		WORLD_ID::VALTAN_ARENA != message.eTargetWorldId || result < 1u || result > 5u)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eTargetWorldId));
+	writer.Write_U8(result);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_PARTY_TRANSFER_RESULT& message)
+{
+	S2C_PARTY_TRANSFER_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result) || 0u == decoded.iRequestSequence ||
+		static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA) != world ||
+		result < 1u || result > 5u)
+		return false;
+	decoded.eTargetWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<PARTY_TRANSFER_RESULT>(result);
+	message = decoded;
+	return true;
+}

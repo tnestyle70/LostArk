@@ -3315,6 +3315,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		std::size_t valtanLivePatternCount = 0u;
 		std::size_t valtanStageCount = 0u;
 		std::size_t valtanStageActionCount = 0u;
+		std::size_t valtanStageVolleyActionCount = 0u;
 		std::size_t valtanRuntimeBranchCount = 0u;
 		std::size_t valtanMotionCount = 0u;
 		if (nullptr != patterns)
@@ -3328,6 +3329,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
 				{
 					valtanStageActionCount += stage.Actions.size();
+					valtanStageVolleyActionCount += static_cast<std::size_t>(std::count_if(
+						stage.Actions.begin(), stage.Actions.end(), [](const BOSS_PATTERN_STAGE_ACTION& action)
+						{ return BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind; }));
 					valtanRuntimeBranchCount += stage.Branches.size();
 					if (BOSS_PATTERN_STAGE_MOTION_KIND::NONE != stage.Motion.eKind)
 						++valtanMotionCount;
@@ -3393,7 +3397,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 		const bool reactiveTopologyExact = nullptr != patterns &&
 			34u == valtanLivePatternCount && 132u == valtanStageCount &&
-			24u == valtanStageActionCount &&
+			// PATTERNSTAGEVOLLEY also materializes in Actions, in addition to
+			// the 24 PATTERNSTAGEACTION rows in the published bootstrap.
+			25u == valtanStageActionCount && 1u == valtanStageVolleyActionCount &&
 			142u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&
 			2u == parryStance->Branches.size() &&
@@ -3487,7 +3493,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr != counterSlam && 1u == counterSlam->Branches.size() &&
 			hasBranch(counterSlam, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
 		tests.Require(reactiveTopologyExact,
-			"Load all 132 current Valtan stages with the exact 24 actions, 142 runtime branches, two stage motions, and terminal counter slam");
+			"Load all 132 current Valtan stages with exactly 25 runtime actions (including one volley), 142 branches, two stage motions, and terminal counter slam");
+		if (!reactiveTopologyExact)
+		{
+			std::cout << "[STATUS] Valtan topology counts: patterns=" << valtanLivePatternCount
+				<< ", stages=" << valtanStageCount << ", actions=" << valtanStageActionCount
+				<< ", volleys=" << valtanStageVolleyActionCount << ", branches=" << valtanRuntimeBranchCount
+				<< ", motions=" << valtanMotionCount << '\n';
+		}
 		tests.Require(
 			nullptr != fourSlashes && 3u == fourSlashes->iHitCount &&
 			0u == fourSlashes->iHitDelayMs &&
@@ -5312,7 +5325,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		bernEnter.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
 		bernEnter.strNickName = "BernEntryContract";
 		const bool joinedBern = bernEntryRoom.Join(
-			BERN_ENTRY_SESSION, bernEnter, {});
+			BERN_ENTRY_SESSION, bernEnter);
 		std::size_t worldSpawnFrameCount = 0u;
 		bool sawLocalPlayerSpawn = false;
 		for (const CClientSession::OUTBOUND_FRAME& frame :
@@ -5328,6 +5341,318 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		bernEntrySession->Request_Close();
 		tests.Require(completeBernEntryStream,
 			"Join Bern with every world spawn and the local player spawn queued");
+	}
+	{
+		struct PARTY_FIXTURE final
+		{
+			std::unique_ptr<CServerApp> App = std::make_unique<CServerApp>();
+			std::shared_ptr<CGameRoom> Source = std::make_shared<CGameRoom>(WORLD_ID::BERN);
+			std::shared_ptr<CGameRoom> Target = std::make_shared<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+			std::vector<std::shared_ptr<CClientSession>> Sessions;
+			SERVER_WORLD_TRANSFER_REQUEST Request;
+			bool Ready = false;
+		};
+		const auto clearOutbound = [](CClientSession& session)
+		{
+			session.m_OutboundFrames.clear();
+			session.m_iQueuedOutboundBytes = 0u;
+			session.m_OutboundMetrics.iCurrentQueuedByteCount = 0u;
+			session.m_OutboundMetrics.iCurrentQueuedFrameCount = 0u;
+		};
+		{
+			auto first = std::make_shared<CClientSession>(95991u, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			auto second = std::make_shared<CClientSession>(95992u, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			first->m_isSendRunning.store(true);
+			second->m_isSendRunning.store(true);
+			// Reproduce the close interval after terminal diagnostic publication,
+			// before Request_Close has changed running flags or cleared its queue.
+			second->Record_TerminalDiagnostic(SESSION_DIAGNOSTIC_REASON::SERVER_PEER_CLOSED,
+				0, "contract terminal admission race");
+			S2C_PARTY_TRANSFER_RESULT notice{ 81u, WORLD_ID::VALTAN_ARENA,
+				PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE };
+			CPacketWriter writer;
+			const bool encoded = Write_Message(writer, notice);
+			const PACKET_FRAME frame{ PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT, writer.Get_Buffer() };
+			CClientSession::RELIABLE_BATCH_TRANSACTION admission;
+			std::string status;
+			tests.Require(encoded && !admission.Prepare({ { first, { frame } }, { second, { frame } } }, status) &&
+				second->m_isSendRunning.load() && first->m_OutboundFrames.empty() &&
+				second->m_OutboundFrames.empty() && !status.empty(),
+				"Reject terminal-in-progress admission and release every staged participant unchanged");
+		}
+		const auto makeParty = [&clearOutbound](const std::size_t count, const bool formParty)
+		{
+			auto fixture = std::make_unique<PARTY_FIXTURE>();
+			fixture->Ready = fixture->Source->Is_Ready() && fixture->Target->Is_Ready();
+			fixture->App->m_SharedGameRooms.emplace(WORLD_ID::BERN, fixture->Source);
+			fixture->App->m_SharedGameRooms.emplace(WORLD_ID::VALTAN_ARENA, fixture->Target);
+			const CHARACTER_CLASS_ID classes[] = { CHARACTER_CLASS_ID::LANCE_MASTER,
+				CHARACTER_CLASS_ID::ARTIST, CHARACTER_CLASS_ID::WARLORD,
+				CHARACTER_CLASS_ID::DIMENSIONMASTER };
+			for (std::size_t index = 0; index < count && fixture->Ready; ++index)
+			{
+				const SESSION_ID id = 96001u + index;
+				auto session = std::make_shared<CClientSession>(id, INVALID_SOCKET,
+					CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+				session->m_isSendRunning.store(true);
+				fixture->Source->Handle_Register(session);
+				C2S_ENTER_WORLD enter{};
+				enter.eWorldId = WORLD_ID::BERN;
+				enter.eCharacterClass = classes[index];
+				enter.strNickName = "PartyContract" + std::to_string(index);
+				fixture->Ready = fixture->Source->Join(id, enter);
+				fixture->Sessions.push_back(session);
+				fixture->App->m_Sessions.emplace(id, session);
+				CServerApp::SESSION_GAMEPLAY_BINDING binding{};
+				binding.eWorldId = WORLD_ID::BERN;
+				binding.pSimulation = fixture->Source;
+				fixture->App->m_GameplayBindingBySessionId.emplace(id, binding);
+				for (const auto& active : fixture->Sessions) clearOutbound(*active);
+			}
+			if (!fixture->Ready) return fixture;
+			const auto& leader = fixture->Source->m_Players.at(fixture->Sessions.front()->Get_PlayerId());
+			fixture->Request.iSessionId = leader.iSessionId;
+			fixture->Request.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+			fixture->Request.eCharacterClass = leader.eCharacterClass;
+			fixture->Request.strNickName = leader.strNickName;
+			fixture->Request.iPartyRequestSequence = 81u;
+			for (const auto& session : fixture->Sessions)
+				fixture->Request.PartyBatchSessionIds.push_back(session->Get_SessionId());
+			if (formParty)
+			{
+				for (std::size_t index = 1; index < count; ++index)
+				{
+					C2S_PARTY_INVITE invite{};
+					invite.iRequestSequence = static_cast<std::uint32_t>(index);
+					invite.iTargetNetEntityId = fixture->Source->m_Players.at(
+						fixture->Sessions[index]->Get_PlayerId()).iNetEntityId;
+					fixture->Source->Handle_PartyInvite(leader.iSessionId, invite);
+					C2S_PARTY_INVITE_RESPOND respond{};
+					respond.iRequestSequence = static_cast<std::uint32_t>(index);
+					respond.iFromNetEntityId = leader.iNetEntityId;
+					respond.bAccepted = true;
+					fixture->Source->Handle_PartyInviteRespond(
+						fixture->Sessions[index]->Get_SessionId(), respond);
+				}
+				fixture->Ready = 1u == fixture->Source->m_PartyMembersByPartyId.size() &&
+					count == fixture->Source->m_PartyMembersByPartyId.begin()->second.size();
+			}
+			for (const auto& active : fixture->Sessions) clearOutbound(*active);
+			return fixture;
+		};
+		for (const std::size_t count : { 2u, 4u })
+		{
+			auto fixture = makeParty(count, true);
+			tests.Require(fixture->Ready, "Create a real two/four-player invited party fixture");
+			if (!fixture->Ready) continue;
+			const auto guide = std::find_if(fixture->Source->m_WorldEntities.begin(),
+				fixture->Source->m_WorldEntities.end(), [](const SERVER_WORLD_ENTITY& entity)
+				{ return "npc.bern.beda.guide" == entity.strPlacementId; });
+			bool leaderBatch = guide != fixture->Source->m_WorldEntities.end();
+			if (leaderBatch)
+			{
+				for (const auto& session : fixture->Sessions)
+				{
+					auto& player = fixture->Source->m_Players.at(session->Get_PlayerId());
+					player.fPositionX = guide->fPositionX;
+					player.fPositionZ = guide->fPositionZ;
+				}
+				C2S_CONFIRM_NPC_ENTRY confirm{};
+				confirm.iRequestSequence = 81u;
+				confirm.strNpcPlacementId = guide->strPlacementId;
+				fixture->Source->Handle_ConfirmNpcEntry(
+					fixture->Sessions[1]->Get_SessionId(), confirm);
+				bool hasFailureNotice = false;
+				for (const auto& frame : fixture->Sessions[1]->m_OutboundFrames)
+				{
+					if (PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT != frame.ePacketType) continue;
+					CPacketReader reader{ std::span<const std::uint8_t>{ frame.Bytes }.subspan(PACKET_HEADER_BYTES) };
+					S2C_PARTY_TRANSFER_RESULT result{};
+					hasFailureNotice = Read_Message(reader, result) &&
+						PARTY_TRANSFER_RESULT::REJECTED_NOT_LEADER == result.eResult;
+				}
+				tests.Require(fixture->Source->m_PendingWorldTransfers.empty() && hasFailureNotice,
+					"Reject a non-leader NPC entry without splitting or silently ignoring the party");
+				for (const auto& session : fixture->Sessions) clearOutbound(*session);
+				fixture->Source->Handle_ConfirmNpcEntry(
+					fixture->Sessions.front()->Get_SessionId(), confirm);
+				leaderBatch = 1u == fixture->Source->m_PendingWorldTransfers.size() &&
+					fixture->Source->Try_DequeueWorldTransfer(fixture->Request) &&
+					count == fixture->Request.PartyBatchSessionIds.size();
+			}
+			CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure{};
+			const bool committed = leaderBatch && fixture->App->Transfer_SessionWorld(
+				fixture->Source, fixture->Request, failure);
+			bool exactRoster = committed && fixture->Source->m_Players.empty() &&
+				fixture->Source->m_PartyMembersByPartyId.empty() &&
+				count == fixture->Target->m_Players.size() &&
+				1u == fixture->Target->m_PartyMembersByPartyId.size();
+			for (const auto& session : fixture->Sessions)
+			{
+				std::size_t accepted = 0u;
+				S2C_PARTY_ROSTER roster{};
+				for (const auto& frame : session->m_OutboundFrames)
+				{
+					if (PACKET_TYPE::S2C_ENTER_ACCEPTED == frame.ePacketType) ++accepted;
+					if (PACKET_TYPE::S2C_PARTY_ROSTER != frame.ePacketType) continue;
+					CPacketReader reader{ std::span<const std::uint8_t>{ frame.Bytes }.subspan(PACKET_HEADER_BYTES) };
+					exactRoster = Read_Message(reader, roster) && exactRoster;
+				}
+				exactRoster = exactRoster && 1u == accepted && count == roster.Members.size() &&
+					WORLD_ID::VALTAN_ARENA == fixture->App->m_GameplayBindingBySessionId.at(
+						session->Get_SessionId()).eWorldId;
+				for (std::size_t index = 0; index < roster.Members.size(); ++index)
+					exactRoster = exactRoster && roster.Members[index].strNickname ==
+						"PartyContract" + std::to_string(index);
+			}
+			tests.Require(exactRoster,
+				"Atomically transfer the full party and preserve leader-first roster for every member");
+		}
+		{
+			auto fixture = makeParty(2u, true);
+			tests.Require(fixture->Ready, "Create party transfer rollback fixture");
+			if (fixture->Ready)
+			{
+				for (auto& [id, player] : fixture->Source->m_Players)
+				{
+					(void)id;
+					player.iCurrentHp = 37u;
+					player.fPositionX += 0.25f;
+				}
+				const auto sourcePlayers = fixture->Source->m_Players;
+				const auto sourceParties = fixture->Source->m_PartyMembersByPartyId;
+				const auto originalCatalog = fixture->Target->m_GameplayCatalog;
+				const auto originalWorldEntities = fixture->Target->m_WorldEntities;
+				auto& placements = const_cast<std::vector<WORLD_BOOTSTRAP_PLACEMENT>&>(
+					fixture->Target->m_WorldBootstrap.Get_Placements());
+				std::vector<WORLD_BOOTSTRAP_PLACEMENT*> spawns;
+				for (auto& placement : placements)
+					if (placement.isEnabled && WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind)
+						spawns.push_back(&placement);
+				const char* names[] = { "Reject full target without source departure",
+					"Reject missing target profile without source departure",
+					"Rollback a second-member navigation failure without source departure",
+					"Reject a terminal party member without moving the leader",
+					"Rollback a second-member reliable queue failure without publishing acceptance",
+					"Reject malformed initial world payload before moving any party member" };
+				for (std::size_t scenario = 0; scenario < 6u; ++scenario)
+				{
+					if (spawns.size() < 3u) { tests.Require(false, names[scenario]); continue; }
+					const float secondSpawnX = spawns[1]->fPositionX;
+					if (0u == scenario)
+					{
+						for (std::size_t index = 0; index < 3u; ++index)
+						{
+							SERVER_PLAYER occupied{};
+							occupied.iPlayerId = static_cast<PLAYER_ID>(98000u + index);
+							occupied.strSpawnPlacementId = spawns[index]->strPlacementId;
+							fixture->Target->m_Players.emplace(occupied.iPlayerId, occupied);
+						}
+					}
+					else if (1u == scenario) fixture->Target->m_GameplayCatalog = CGameplayCatalogGenerations{};
+					else if (2u == scenario) spawns[1]->fPositionX = std::numeric_limits<float>::quiet_NaN();
+					else if (3u == scenario) fixture->Sessions[1]->Request_Close();
+					else if (4u == scenario)
+					{
+						const std::array<std::uint8_t, 1> payload{ 1u };
+						for (std::size_t index = 0; index < CClientSession::MAX_OUTBOUND_FRAME_COUNT; ++index)
+							(void)fixture->Sessions[1]->Send_Frame(PACKET_TYPE::S2C_CHAT, payload);
+					}
+					else if (5u == scenario)
+					{
+						// Valtan can start with no enabled actors. Always insert the
+						// malformed payload instead of silently skipping fault injection.
+						SERVER_WORLD_ENTITY malformed{};
+						malformed.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+						malformed.strArchetypeId = "npc.contract.invalid";
+						malformed.strPlacementId = "contract.party.malformed";
+						malformed.iNetEntityId = INVALID_NET_ENTITY_ID;
+						fixture->Target->m_WorldEntities.push_back(std::move(malformed));
+					}
+					const std::size_t targetCount = fixture->Target->m_Players.size();
+					const auto targetNextId = fixture->Target->m_iNextPlayerId;
+					CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure{};
+					bool preserved = !fixture->App->Transfer_SessionWorld(fixture->Source,
+						fixture->Request, failure) && !failure.strContext.empty() &&
+						fixture->Source->m_Players.size() == sourcePlayers.size() &&
+						fixture->Source->m_PartyMembersByPartyId == sourceParties &&
+						fixture->Target->m_Players.size() == targetCount &&
+						fixture->Target->m_iNextPlayerId == targetNextId;
+					for (std::size_t index = 0; index < fixture->Sessions.size(); ++index)
+					{
+						const auto& session = fixture->Sessions[index];
+						const auto found = fixture->Source->m_Players.find(session->Get_PlayerId());
+						preserved = preserved && found != fixture->Source->m_Players.end() &&
+							WORLD_ID::BERN == fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId()).eWorldId &&
+							fixture->Source == fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId()).pSimulation;
+						if (found != fixture->Source->m_Players.end())
+						{
+							const auto& before = sourcePlayers.at(found->first);
+							preserved = preserved && before.iCurrentHp == found->second.iCurrentHp &&
+								before.fPositionX == found->second.fPositionX && before.fPositionZ == found->second.fPositionZ;
+						}
+						for (const auto& frame : session->m_OutboundFrames)
+							preserved = preserved && PACKET_TYPE::S2C_ENTER_ACCEPTED != frame.ePacketType;
+						if (3u != scenario || 1u != index) preserved = preserved && !session->Is_Closing();
+					}
+					tests.Require(preserved, names[scenario]);
+					fixture->Target->m_Players.clear();
+					fixture->Target->m_GameplayCatalog = originalCatalog;
+					spawns[1]->fPositionX = secondSpawnX;
+					fixture->Target->m_WorldEntities = originalWorldEntities;
+					fixture->Sessions[1]->m_CloseDiagnostic = {};
+					fixture->Sessions[1]->m_isSendRunning.store(true);
+					for (const auto& session : fixture->Sessions) clearOutbound(*session);
+				}
+				const std::array<std::uint8_t, 1> payload{ 1u };
+				for (std::size_t index = 0; index < CClientSession::MAX_OUTBOUND_FRAME_COUNT; ++index)
+					(void)fixture->Sessions[0]->Send_Frame(PACKET_TYPE::S2C_CHAT, payload);
+				fixture->Source->Notify_PartyTransferFailure(fixture->Sessions[0]->Get_SessionId(),
+					81u, WORLD_ID::VALTAN_ARENA, PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY);
+				const bool pendingNotice = !fixture->Sessions[0]->Is_Closing() &&
+					1u == fixture->Source->m_PendingPartyTransferResults.size();
+				clearOutbound(*fixture->Sessions[0]);
+				fixture->Source->Flush_PartyTransferResults();
+				tests.Require(pendingNotice && fixture->Source->m_PendingPartyTransferResults.empty() &&
+					1u == fixture->Sessions[0]->m_OutboundFrames.size() &&
+					PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT == fixture->Sessions[0]->m_OutboundFrames.front().ePacketType,
+					"Delay a busy-queue failure notice without disconnecting the preserved source party");
+			}
+		}
+		{
+			auto fixture = makeParty(3u, false);
+			tests.Require(fixture->Ready, "Create replaced-invitation identity fixture");
+			if (fixture->Ready)
+			{
+				const auto firstId = fixture->Sessions[0]->Get_PlayerId();
+				const auto secondId = fixture->Sessions[1]->Get_PlayerId();
+				const auto targetId = fixture->Sessions[2]->Get_PlayerId();
+				C2S_PARTY_INVITE invite{};
+				invite.iRequestSequence = 1u;
+				invite.iTargetNetEntityId = fixture->Source->m_Players.at(targetId).iNetEntityId;
+				fixture->Source->Handle_PartyInvite(fixture->Sessions[0]->Get_SessionId(), invite);
+				fixture->Source->Handle_PartyInvite(fixture->Sessions[1]->Get_SessionId(), invite);
+				C2S_PARTY_INVITE_RESPOND respond{};
+				respond.iRequestSequence = 2u;
+				respond.iFromNetEntityId = fixture->Source->m_Players.at(firstId).iNetEntityId;
+				bool preserved = true;
+				for (const bool accepted : { false, true })
+				{
+					respond.bAccepted = accepted;
+					fixture->Source->Handle_PartyInviteRespond(fixture->Sessions[2]->Get_SessionId(), respond);
+					const auto pending = fixture->Source->m_PendingPartyInviteByTargetPlayerId.find(targetId);
+					preserved = preserved && pending != fixture->Source->m_PendingPartyInviteByTargetPlayerId.end() &&
+						pending->second == secondId && fixture->Source->m_PartyMembersByPartyId.empty();
+				}
+				respond.iFromNetEntityId = fixture->Source->m_Players.at(secondId).iNetEntityId;
+				fixture->Source->Handle_PartyInviteRespond(fixture->Sessions[2]->Get_SessionId(), respond);
+				tests.Require(preserved && fixture->Source->m_PendingPartyInviteByTargetPlayerId.empty() &&
+					1u == fixture->Source->m_PartyMembersByPartyId.size(),
+					"Stale accept and decline preserve a replacement invite until its exact inviter is answered");
+			}
+		}
 	}
 	CServerNavigation groundTargetNavigation;
 	const bool groundTargetNavigationLoaded =

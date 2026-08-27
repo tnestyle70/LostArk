@@ -500,7 +500,17 @@ class ValtanFloorEmissiveContractTests(unittest.TestCase):
             r"Get_NumMeshes\(\)\s*<=\s*EMISSIVE_MESH_INDEX",
         )
         self.assertIn("aiTextureType_EMISSIVE", overlay_render)
-        self.assertIn('"g_EmissiveIntensity", &m_fEmissiveIntensity', overlay_render)
+        # Surface transitions own the live color/intensity. Binding the original
+        # catalog scalar would discard floor phase/transition presentation.
+        self.assertRegex(
+            overlay_render,
+            r"const f32_t emissiveIntensity\s*=\s*"
+            r"m_SurfacePresentation\.fEmissiveIntensity\s*\*\s*"
+            r"m_SurfacePresentation\.fTransitionMultiplier\s*;",
+        )
+        self.assertIn('"g_EmissiveIntensity", &emissiveIntensity', overlay_render)
+        self.assertIn('"g_EmissiveColor", &emissiveColor', overlay_render)
+        self.assertIn('"g_EmissiveMaskPower", &emissiveMaskPower', overlay_render)
         self.assertIn(
             "for (const uint32_t meshIndex : EMISSIVE_MESH_INDICES)",
             overlay_render,

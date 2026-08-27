@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <span>
 #include <string>
@@ -24,6 +25,14 @@
 
 namespace LostArk::Server
 {
+	class CClientSession;
+
+	struct CLIENT_SESSION_RELIABLE_BATCH final
+	{
+		std::shared_ptr<CClientSession> pSession;
+		std::vector<LostArk::Shared::PACKET_FRAME> Frames;
+	};
+
 	struct CLIENT_SESSION_OUTBOUND_METRICS final
 	{
 		std::size_t iCurrentQueuedFrameCount = 0;
@@ -74,6 +83,25 @@ namespace LostArk::Server
 		// 연결 종료를 ServerApp에 한 번만 알리는 계약이다.
 		using CLOSED_HANDLER = std::function<void(
 			SESSION_ID)>;
+
+		/* A room-thread admission prepares every participant's reliable FIFO
+		   before changing gameplay state. Destruction without Commit releases
+		   the locks without publishing even one frame. No socket I/O occurs. */
+		class RELIABLE_BATCH_TRANSACTION final
+		{
+		public:
+			RELIABLE_BATCH_TRANSACTION();
+			~RELIABLE_BATCH_TRANSACTION();
+			RELIABLE_BATCH_TRANSACTION(const RELIABLE_BATCH_TRANSACTION&) = delete;
+			RELIABLE_BATCH_TRANSACTION& operator=(const RELIABLE_BATCH_TRANSACTION&) = delete;
+			bool Prepare(
+				const std::vector<CLIENT_SESSION_RELIABLE_BATCH>& batches,
+				std::string& status);
+			void Commit() noexcept;
+		private:
+			struct LOCKED_QUEUE;
+			std::vector<std::unique_ptr<LOCKED_QUEUE>> m_Queues;
+		};
 
 	public:
 		CClientSession(

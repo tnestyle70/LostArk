@@ -238,6 +238,7 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 	std::unordered_set<std::string> OccurrenceIds;
 	std::unordered_set<std::string> ActionClipOccurrenceTuples;
 	size_t iSkippedUnimplementedPatternCount = 0u;
+	size_t iSkippedSuppressedAnimationCount = 0u;
 	for (const DATA_JSON_VALUE& CueValue : pCues->Get_Array())
 	{
 		if (!Is_ExactObject(CueValue,
@@ -270,41 +271,46 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 			return false;
 		}
 
-		/* An action's animation binding can be swapped or emptied (playbackMode
-		NONE, clips: []) by a later animation-side change without the
-		sound-cue side being re-authored in the same change -- e.g.
-		valtan.sequence.four.step-02 lost its clip-01 occurrence when its
-		animation was swapped out. That is stale cross-layer content, not a
-		corrupt document; skip only this cue instead of fail-closing every
-		other real cue in the same document (same reasoning as the
-		not-yet-implemented-pattern skip below). */
+		/* Only an explicitly suppressed, known action (NONE + []) can leave a
+		stale sound occurrence behind. Typos/unknown actions and broken active
+		clip joins remain corrupt data and must preserve the previous document. */
 		const BOSS_PATTERN_ANIMATION_BINDING* pAnimationBinding =
 			Find_ActionBinding(AnimationBindings, Cue.strActionId);
 		if (nullptr == pAnimationBinding)
 		{
-			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
-				"action has no animation binding: " + Cue.strActionId + "\n").c_str());
-			++iSkippedUnimplementedPatternCount;
+			strOutStatus = "Valtan pattern Sound cue action has no animation binding: " +
+				Cue.strActionId;
+			return false;
+		}
+		const bool_t isSuppressedAnimation =
+			pAnimationBinding->bSuppressAnimation && pAnimationBinding->Clips.empty();
+		if (pAnimationBinding->bSuppressAnimation && !pAnimationBinding->Clips.empty())
+		{
+			strOutStatus = "Valtan suppressed animation binding unexpectedly declares clips: " +
+				Cue.strActionId;
+			return false;
+		}
+		// Explicit NONE retires the entire animation tuple: its old encounter
+		// stage can also have been removed (sequence.four.step-02).
+		if (isSuppressedAnimation)
+		{
+			++iSkippedSuppressedAnimationCount;
 			continue;
 		}
 		const BOSS_PATTERN_ANIMATION_CLIP* pAnimationClip =
 			Find_ClipOccurrence(*pAnimationBinding, Cue.strClipOccurrenceId);
 		if (nullptr == pAnimationClip)
 		{
-			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
-				"clip occurrence not owned by its action: " +
-				Cue.strOccurrenceId + "\n").c_str());
-			++iSkippedUnimplementedPatternCount;
-			continue;
+			strOutStatus = "Valtan pattern Sound cue clip occurrence is not owned by its action: " +
+				Cue.strOccurrenceId;
+			return false;
 		}
 		if (VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP ==
 				Cue.eRepeatPolicy && !pAnimationClip->bLoop)
 		{
-			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
-				"each_loop cue references a non-loop clip: " +
-				Cue.strOccurrenceId + "\n").c_str());
-			++iSkippedUnimplementedPatternCount;
-			continue;
+			strOutStatus = "Valtan pattern Sound each_loop cue references a non-loop clip: " +
+				Cue.strOccurrenceId;
+			return false;
 		}
 
 		/* A pattern authored at the animation/sound-cue layer but not yet wired into
@@ -329,10 +335,8 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 		if (pPattern->stages.end() == Stage ||
 			Stage->actionId != Cue.strActionId || 0u == Stage->iDurationMs)
 		{
-			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
-				"encounter tuple is invalid: " + Cue.strBindingId + "\n").c_str());
-			++iSkippedUnimplementedPatternCount;
-			continue;
+			strOutStatus = "Valtan pattern Sound cue encounter tuple is invalid: " + Cue.strBindingId;
+			return false;
 		}
 		Cue.iStageIndex = static_cast<uint32_t>(Stage - pPattern->stages.begin());
 		Cue.iStageDurationMs = Stage->iDurationMs;
@@ -374,7 +378,9 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 	strOutStatus = "Parsed " + std::to_string(InOutDocument.Cues.size()) +
 		" clip-occurrence-qualified Valtan pattern Sound cue(s), skipped " +
 		std::to_string(iSkippedUnimplementedPatternCount) +
-		" not-yet-implemented-pattern cue(s).";
+		" not-yet-implemented-pattern cue(s), " +
+		std::to_string(iSkippedSuppressedAnimationCount) +
+		" explicitly suppressed-animation cue(s).";
 	return true;
 }
 

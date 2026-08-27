@@ -3013,6 +3013,23 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
+	case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
+	{
+		S2C_PARTY_TRANSFER_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT,
+				"S2C_PARTY_TRANSFER_RESULT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PARTY_TRANSFER_RESULT;
+		event.PartyTransferResult = result;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
 	case PACKET_TYPE::S2C_CHAT:
 	{
 		S2C_CHAT chat{};

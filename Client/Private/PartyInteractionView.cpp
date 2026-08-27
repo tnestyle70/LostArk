@@ -8,6 +8,7 @@
 #include "MainApp.h"
 #include "PlayerCommandSink.h"
 #include "PlayerController.h"
+#include "PartyTransferNotice.h"
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
 
@@ -32,9 +33,18 @@ void Client::CPartyInteractionView::Initialize(
 bool_t Client::CPartyInteractionView::Update(
 	CClientReplication& Replication,
 	const std::shared_ptr<IPlayerCommandSink>& pCommandSink,
-	const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers)
+	const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
+	const bool_t worldInteractionAllowed)
 {
 	UNREFERENCED_PARAMETER(pCommandSink);
+	LostArk::Shared::S2C_PARTY_TRANSFER_RESULT transferResult{};
+	if (Replication.Try_Consume_PartyTransferResult(transferResult))
+	{
+		const wchar_t* notice = Get_PartyTransferFailureText(transferResult.eResult);
+		m_strTransferFailureNotice = nullptr != notice ? notice : L"";
+		m_TransferNoticeExpiresAt = std::chrono::steady_clock::now() +
+			std::chrono::seconds(8);
+	}
 
 	LostArk::Shared::S2C_PARTY_INVITE_RECEIVED received{};
 	if (Replication.Try_Consume_PartyInviteReceived(received))
@@ -48,20 +58,23 @@ bool_t Client::CPartyInteractionView::Update(
 		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 	}
 
-	return Update_ContextMenuTrigger(OtherPlayers);
+	(void)Update_ContextMenuTrigger(OtherPlayers, worldInteractionAllowed);
+	return m_hasContextMenuTarget || m_isInvitePopupOpen;
 }
 
 bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
-	const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers)
+	const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
+	const bool_t worldInteractionAllowed)
 {
 	const bool_t isRightMouseDown =
-		!CGameInstance::Get().IsMouseInputBlocked() &&
-		0 != (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
 	const bool_t isRightMousePressed =
 		isRightMouseDown && !m_wasRightMouseDown;
 	m_wasRightMouseDown = isRightMouseDown;
 
-	if (!isRightMousePressed || m_hasContextMenuTarget || m_isInvitePopupOpen)
+	if (!worldInteractionAllowed || !isRightMousePressed ||
+		m_hasContextMenuTarget || m_isInvitePopupOpen ||
+		0 == (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80))
 		return false;
 
 	vector_t rayOrigin{}, rayDirection{};
@@ -442,6 +455,14 @@ void Client::CPartyInteractionView::Render_InvitePopup(
 
 void Client::CPartyInteractionView::Render_InvitePopupText()
 {
+	if (!m_strTransferFailureNotice.empty() &&
+		std::chrono::steady_clock::now() < m_TransferNoticeExpiresAt)
+	{
+		const float2_t viewport = CGameInstance::Get().Get_ViewportSize();
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"),
+			m_strTransferFailureNotice.c_str(), float2_t(viewport.x * 0.5f, viewport.y * 0.2f),
+			Colors::Orange, 0.f, float2_t(0.5f, 0.5f), viewport.y / 1080.f);
+	}
 	if (!m_isInvitePopupOpen || nullptr == m_pInviteView)
 		return;
 

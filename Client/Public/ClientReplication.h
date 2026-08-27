@@ -9,6 +9,7 @@
 #include "MonsterPresentationContract.h"
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldDestructionProjectionRuntime.h"
+#include "ReplicatedPlayerHealth.h"
 
 #include <chrono>
 #include <cstdint>
@@ -318,6 +319,9 @@ namespace Client
 		{
 			return m_PartyRoster;
 		}
+		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
+		bool Try_Consume_PartyTransferResult(
+			LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult);
 		/* Head-bubble text for whoever last chatted, while their line is still
 		   within CHAT_BUBBLE_DURATION of arriving -- false (text left
 		   untouched) once it has aged out, so the renderer only ever draws a
@@ -462,6 +466,9 @@ namespace Client
 		bool m_hasPendingPartyInvite = false;
 		LostArk::Shared::S2C_PARTY_INVITE_RECEIVED m_PendingPartyInvite{};
 		LostArk::Shared::S2C_PARTY_ROSTER m_PartyRoster{};
+		CReplicatedPlayerHealth m_PlayerHealth;
+		bool m_hasPendingPartyTransferResult = false;
+		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT m_PendingPartyTransferResult{};
 
 		struct CHAT_BUBBLE_ENTRY
 		{

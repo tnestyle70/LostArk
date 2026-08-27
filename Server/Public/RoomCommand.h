@@ -4,7 +4,6 @@
 #include "Network/PacketMessages.h"
 
 #include <memory>
-#include <vector>
 
 namespace LostArk::Server
 {
@@ -48,11 +47,6 @@ namespace LostArk::Server
 		std::shared_ptr<CClientSession> pSession;
 
 		LostArk::Shared::C2S_ENTER_WORLD EnterWorld;
-		/* Non-empty only on a party-leader-triggered group Valtan entry (see
-		   CGameRoom::Handle_ConfirmNpcEntry) -- lists every session id moving
-		   together as one batch, leader first. Server-internal only, not part
-		   of the wire C2S_ENTER_WORLD payload. */
-		std::vector<SESSION_ID> PartyBatchSessionIds;
 
 		LostArk::Shared::C2S_MOVE Move;
 

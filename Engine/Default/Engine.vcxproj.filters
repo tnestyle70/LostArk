@@ -321,6 +321,9 @@
     <ClInclude Include="..\Public\Input_Device.h">
       <Filter>01.System\01.Device\Input</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\MouseButtonReleaseGate.h">
+      <Filter>01.System\01.Device\Input</Filter>
+    </ClInclude>
     <ClInclude Include="..\public\Model.h">
       <Filter>02.Utility\04.Component\Model</Filter>
     </ClInclude>
@@ -454,6 +457,9 @@
       <Filter>02.Utility\04.Component\Navigation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Sound\Sound_Manager.h">
+      <Filter>02.Utility\15. Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Sound\TrackedSoundChannel.h">
       <Filter>02.Utility\15. Sound</Filter>
     </ClInclude>
   </ItemGroup>

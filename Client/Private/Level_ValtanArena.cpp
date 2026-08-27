@@ -537,9 +537,11 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	instead of Render(). */
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	if (m_PartyInteraction.Update(
-		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers))
+		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
+		cameraAcceptsGameplay))
 	{
-		m_PlayerController.Suppress_MoveClickThisFrame();
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
 	m_PlayerController.Update(cameraAcceptsGameplay);
 	Update_DeadScene();
