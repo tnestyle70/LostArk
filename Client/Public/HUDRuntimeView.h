@@ -182,6 +182,11 @@ private:
 		TEXTURE_LAYER::bAdditive's own meaning but scoped to the whole animation since a flipbook
 		slot's Layers stays empty (see AnimationFrames comment above). */
 		bool_t					bAnimationAdditive = false;
+		/* Runtime alpha override for a flipbook slot (Set_SlotAlpha's AnimationFrames counterpart
+		-- that call only ever touched Layers[0], a no-op for a slot whose Layers stays empty). For
+		a burst/glow flipbook that should fade in/out on a real event instead of always drawing at
+		full opacity. */
+		f32_t					fAnimationAlpha = 1.f;
 		/* Sentinel: unset until this slot's first Render() call, which stamps it with
 		ImGui::GetTime() so playback starts from frame 0 the first time this slot is actually
 		drawn -- using the raw (app-launch-relative) clock directly would let engine/asset init

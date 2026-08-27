@@ -173,6 +173,16 @@ namespace
 		asset find -- Panel/HoverHighlight starting rects are arbitrary, real
 		placement is done in this Tool. */
 		{ "Party Context Menu", "UI/Party/PartyContextMenu_Layout.json", "UI/Party/", false },
+		/* Valtan clear celebration overlay -- real trace of EFUI_EPICGATECOMMONCLEAR's
+		epicgatecommonclear.gfx (driver class ark.ui.epicGateCommonClear.EpicGateCommonClearFrame,
+		result_101/"EpicGateCommonClearSuccessSet101" variant -- the one entry in that document not
+		named "epicGateCommanderClearSuccess_SetNN", matching this package's own "COMMON" clear
+		naming rather than a specific commander's own art). RaidClear_TitleTextBox is a
+		position-only marker (no bitmap in the source either) for CMainApp::RenderRaidClearText()'s
+		real "[$]commander.dungeon_clear" ("던전 클리어") headline, same split as Dead Scene's own
+		TitleTextMarker/RenderDeadSceneText. BgFlash/Emblem are real crops from
+		epicgatecommonclear_i6a.dds. */
+		{ "Raid Clear",     "UI/RaidClear/RaidClear_Layout.json", "UI/RaidClear/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));

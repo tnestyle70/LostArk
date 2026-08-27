@@ -739,6 +739,7 @@ HRESULT CMainApp::Render()
 	RenderBossHealthBarText();
 	RenderChargeGaugeText();
 	RenderDeadSceneText();
+	RenderRaidClearText();
 	RenderDamageNumbers();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
@@ -3071,6 +3072,34 @@ void CMainApp::RenderDeadSceneText()
 		float2_t((rects.fMessageX + rects.fMessageWidth * 0.5f) * textScaleX,
 			(rects.fMessageY + rects.fMessageHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fMessageScale * textUiScale);
+}
+
+void CMainApp::RenderRaidClearText()
+{
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+
+	const HUD_RAIDCLEAR_TEXT_RECTS& rects = CCombatHUDViewModel::Get().Get_RaidClearTextRects();
+	if (!rects.isValid)
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	/* Real loc key traced from epicgatecommonclear.gfx's clearTF field (fontClass=$YoonGasiIIM,
+	white, initialText="[$]commander.dungeon_clear") -- this project has no loc-key table, so the
+	real Korean string it resolves to in the reference screenshot is used directly. */
+	const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어
+	const float2_t vTitleMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
+	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
+		(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
+		float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
+			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
 }
 
 void CMainApp::RenderChargeGauge()
