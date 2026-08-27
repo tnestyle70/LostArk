@@ -3,7 +3,6 @@
 float4x4 g_ViewMatrixInverse;
 float4x4 g_ProjMatrixInverse;
 float4x4 g_DecalWorldInverse;
-Texture2D g_DepthTexture;
 Texture2D g_NormalTexture;
 float2 g_DecalSize = float2(1.f, 1.f);
 float g_DecalDepth = 1.f;
@@ -65,6 +64,7 @@ PS_EFFECT_OUT PS_MAIN(VS_OUT input)
 	effectInput.vWorldNormal = float3(0.f, 0.f, 0.f);
 	effectInput.vWorldPosition = worldPosition.xyz;
 	effectInput.vInstanceColor = float4(1.f, 1.f, 1.f, 1.f);
+	effectInput.vProjPos = float4(0.f, 0.f, 0.f, 0.f);
 	PS_EFFECT_OUT output = PS_EFFECT_V2(effectInput);
 
 	if (g_DecalEdgeFade > 0.f)

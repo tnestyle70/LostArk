@@ -26,12 +26,14 @@ float g_DissolveAmount = 0.f;
 float g_DissolveSoftness = 0.1f;
 float g_OutlineWidth = 0.f;
 float4 g_OutlineColor = float4(1.f, 1.f, 1.f, 1.f);
+float g_SoftFadeDistance = 0.f;
 
 Texture2D g_BaseTexture;
 Texture2D g_NoiseTexture;
 Texture2D g_MaskTexture;
 Texture2D g_EmissiveTexture;
 Texture2D g_DissolveTexture;
+Texture2D g_DepthTexture;
 uint g_HasBase = 0;
 uint g_HasNoise = 0;
 uint g_HasMask = 0;
@@ -185,6 +187,7 @@ struct PS_EFFECT_IN
 	float3 vWorldNormal : NORMAL;
 	float3 vWorldPosition : TEXCOORD1;
 	float4 vInstanceColor : COLOR0;
+	float4 vProjPos : TEXCOORD2;
 };
 
 struct PS_EFFECT_OUT
@@ -240,6 +243,14 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	color.a = saturate(base.a * mask * dissolve * g_ColorMul.a * input.vInstanceColor.a +
 		g_ColorOffset.a);
 	color.a *= lerp(1.f, fresnel, saturate(g_GhostAlpha));
+	if (g_SoftFadeDistance > 0.f && input.vProjPos.w > 0.f)
+	{
+		const float2 screenUV =
+			input.vProjPos.xy / input.vProjPos.w * float2(0.5f, -0.5f) + 0.5f;
+		const float sceneViewZ =
+			g_DepthTexture.Sample(PointSampler, screenUV).y * 1000.f;
+		color.a *= saturate((sceneViewZ - input.vProjPos.w) / g_SoftFadeDistance);
+	}
 	if (color.a <= 0.001f)
 		discard;
 	const float clipValue = (0 == g_ColorClipChannel) ?

@@ -2255,13 +2255,22 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 
 	ImGui::SeparatorText("Dissolve");
 	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE));
+	ImGui::SliderFloat("Dissolve In End (life 0-1, 0 = off)", &P.fDissolveInEnd, 0.f, 1.f);
 	ImGui::SliderFloat("Dissolve Start (life 0-1)", &P.fDissolveStart, 0.f, 1.f);
 	ImGui::SliderFloat("Dissolve Softness", &P.fDissolveSoftness, 0.f, 0.5f);
 	ImGui::EndDisabled();
 	if (pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE))
+	{
 		ImGui::TextDisabled("Dissolve amount now %.2f", pPreview->Dissolve_Amount());
+		if (P.fLifetime <= 0.f)
+			ImGui::TextDisabled("Lifetime is infinite, so Dissolve stays at 0.");
+		else if (0.f < P.fDissolveInEnd && P.fDissolveStart < P.fDissolveInEnd)
+			ImGui::TextDisabled(
+				"Dissolve Start clamped to %.2f so the reveal finishes first.",
+				P.fDissolveInEnd);
+	}
 	else
-		ImGui::TextDisabled("Bind a Dissolve texture to use Dissolve Start.");
+		ImGui::TextDisabled("Bind a Dissolve texture to use Dissolve In End and Start.");
 
 	if (CEffectV2Object::SHAPE::MESH == pPreview->Shape() && 0u < pPreview->Part_Count())
 	{
@@ -2323,6 +2332,16 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::SameLine();
 		ImGui::Checkbox("Billboard", &P.bBillboard);
 	}
+	ImGui::BeginDisabled(CEffectV2Object::SHAPE::DECAL == eShape);
+	ImGui::DragFloat("Soft Fade (world units, 0 = off)",
+		&P.fSoftFadeDistance, 0.01f, 0.f, 10.f, "%.2f");
+	ImGui::EndDisabled();
+	if (CEffectV2Object::SHAPE::DECAL == eShape)
+		ImGui::TextDisabled("Decals fade through Decal Projection > Edge Fade instead.");
+	else if (0.f < P.fSoftFadeDistance && !P.bDepthTest)
+		ImGui::TextDisabled(
+			"Depth Test is off, but Soft Fade still reads scene depth: "
+			"this effect now dims behind geometry.");
 
 	ImGui::SeparatorText("Playback");
 	ImGui::DragFloat("Lifetime (s, 0 = infinite)", &P.fLifetime, 0.05f, 0.f, 600.f);

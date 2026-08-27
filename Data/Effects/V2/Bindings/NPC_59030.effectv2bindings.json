@@ -35,6 +35,17 @@
     { "effectId": "esther.thirain.blade_14", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 3133, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
     { "effectId": "esther.thirain.blade_16", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 3133, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
     { "effectId": "esther.thirain.blade_15", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 3133, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
-    { "effectId": "esther.thirain.blade_17", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 3133, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false }
+    { "effectId": "esther.thirain.blade_17", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 3133, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.point_1", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.point_2", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.point_3", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.point_4", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.point_5", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.lumen_1", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.lumen_2", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.lumen_3", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.lumen_4", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.lumen_5", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.thirain.blur_2", "clip": "npc_evt1_sk_swordofchampion_bk", "startMs": 4333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false }
   ]
 }

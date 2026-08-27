@@ -22,6 +22,7 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 		input.vRight, input.vUp, input.vLook, input.vTranslation);
 	const float4 worldPosition = mul(float4(input.vPosition, 1.f), instanceWorld);
 	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
+	output.vProjPos = output.vPosition;
 	output.vTexcoord = input.vTexcoord * input.vUVTransform.xy + input.vUVTransform.zw;
 	output.vWorldNormal = float3(0.f, 0.f, 0.f);
 	output.vWorldPosition = worldPosition.xyz;

@@ -529,10 +529,16 @@ f32_t Client::CEffectV2Object::Life_Ratio() const
 
 f32_t Client::CEffectV2Object::Dissolve_Amount() const
 {
-	const f32_t fStart = Saturate(m_Params.fDissolveStart);
+	if (m_Params.fLifetime <= 0.f)
+		return 0.f;
+	const f32_t fRatio = Life_Ratio();
+	const f32_t fInEnd = Saturate(m_Params.fDissolveInEnd);
+	if (0.f < fInEnd && fRatio < fInEnd)
+		return Saturate(1.f - fRatio / fInEnd);
+	const f32_t fStart = (std::max)(Saturate(m_Params.fDissolveStart), fInEnd);
 	if (fStart >= 1.f)
 		return 0.f;
-	return Saturate((Life_Ratio() - fStart) / (1.f - fStart));
+	return Saturate((fRatio - fStart) / (1.f - fStart));
 }
 
 void Client::CEffectV2Object::Set_FollowTarget(
@@ -1164,10 +1170,14 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 		FAILED(pShader->Bind_RawValue("g_NoiseScale", &P.fNoiseScale, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_NoisePan", &P.vNoisePan, sizeof(P.vNoisePan))) ||
 		FAILED(pShader->Bind_RawValue("g_DissolveAmount", &fDissolveAmount, sizeof(f32_t))) ||
-		FAILED(pShader->Bind_RawValue("g_DissolveSoftness", &P.fDissolveSoftness, sizeof(f32_t))))
+		FAILED(pShader->Bind_RawValue("g_DissolveSoftness", &P.fDissolveSoftness, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_SoftFadeDistance", &P.fSoftFadeDistance, sizeof(f32_t))))
 	{
 		return E_FAIL;
 	}
+	if (0.f < P.fSoftFadeDistance &&
+		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Depth"), pShader, "g_DepthTexture")))
+		return E_FAIL;
 	for (size_t iInput = 0u; iInput < m_Textures.size(); ++iInput)
 	{
 		const uint32_t iHas = nullptr != m_Textures[iInput] ? 1u : 0u;

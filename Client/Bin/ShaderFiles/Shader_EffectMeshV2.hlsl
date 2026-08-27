@@ -14,6 +14,7 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 	PS_EFFECT_IN output;
 	const float4 worldPosition = mul(float4(input.vPosition, 1.f), g_WorldMatrix);
 	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
+	output.vProjPos = output.vPosition;
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = normalize(mul(input.vNormal, (float3x3)g_WorldMatrix));
 	output.vWorldPosition = worldPosition.xyz;
@@ -28,6 +29,7 @@ PS_EFFECT_IN VS_OUTLINE(VS_IN input)
 	const float3 worldNormal = normalize(mul(input.vNormal, (float3x3)g_WorldMatrix));
 	worldPosition.xyz += worldNormal * g_OutlineWidth;
 	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
+	output.vProjPos = output.vPosition;
 	output.vTexcoord = input.vTexcoord;
 	output.vWorldNormal = worldNormal;
 	output.vWorldPosition = worldPosition.xyz;
