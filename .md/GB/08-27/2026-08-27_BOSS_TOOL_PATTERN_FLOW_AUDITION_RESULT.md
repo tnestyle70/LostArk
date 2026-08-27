@@ -1,5 +1,11 @@
 # Boss Tool Pattern Flow 저작·서버 검증 결과
 
+> 2026-08-28 추가: editable 저장본을 초기 seed와 동일하게 강제하던 Python 회귀를 교정했다.
+> 현재 저장본을 보존한 채 Flow 22개 + 관련 51개 = 73 tests, V2 validation이 통과했다.
+> 7가지 저장본 형태를 메모리에서 주입하여 각각 전체 22개 Flow 테스트가 통과했다.
+> [추가 수정·검증·통합 경계](C:/Users/user/Desktop/LostArk/.md/GB/08-28/2026-08-28_VALTAN_SAVED_FLOW_JSON_REVIEW_RESULT.md)를 따른다.
+> 이 추가 검증은 새 C++ 빌드나 사용자 visual PASS가 아니다.
+
 ## 0. 결론
 
 구현과 자동 검증은 완료했다. 사용자 육안 검증은 아직 끝나지 않았으므로 visual PASS는 아니다.
