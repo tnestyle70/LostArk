@@ -212,6 +212,7 @@ public:
 		f32_t fNoiseScale = 1.f;
 		float2_t vNoisePan = { 0.f, 0.f };
 		f32_t fDissolveStart = 0.f;
+		f32_t fDissolveInEnd = 0.f;
 		f32_t fDissolveSoftness = 0.1f;
 		BLEND_MODE eBlend = BLEND_MODE::ADDITIVE;
 		bool_t bBillboard = true;

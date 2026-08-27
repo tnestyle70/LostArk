@@ -2255,13 +2255,22 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 
 	ImGui::SeparatorText("Dissolve");
 	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE));
+	ImGui::SliderFloat("Dissolve In End (life 0-1, 0 = off)", &P.fDissolveInEnd, 0.f, 1.f);
 	ImGui::SliderFloat("Dissolve Start (life 0-1)", &P.fDissolveStart, 0.f, 1.f);
 	ImGui::SliderFloat("Dissolve Softness", &P.fDissolveSoftness, 0.f, 0.5f);
 	ImGui::EndDisabled();
 	if (pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE))
+	{
 		ImGui::TextDisabled("Dissolve amount now %.2f", pPreview->Dissolve_Amount());
+		if (P.fLifetime <= 0.f)
+			ImGui::TextDisabled("Lifetime is infinite, so Dissolve stays at 0.");
+		else if (0.f < P.fDissolveInEnd && P.fDissolveStart < P.fDissolveInEnd)
+			ImGui::TextDisabled(
+				"Dissolve Start clamped to %.2f so the reveal finishes first.",
+				P.fDissolveInEnd);
+	}
 	else
-		ImGui::TextDisabled("Bind a Dissolve texture to use Dissolve Start.");
+		ImGui::TextDisabled("Bind a Dissolve texture to use Dissolve In End and Start.");
 
 	if (CEffectV2Object::SHAPE::MESH == pPreview->Shape() && 0u < pPreview->Part_Count())
 	{

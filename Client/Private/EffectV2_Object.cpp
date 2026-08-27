@@ -529,10 +529,16 @@ f32_t Client::CEffectV2Object::Life_Ratio() const
 
 f32_t Client::CEffectV2Object::Dissolve_Amount() const
 {
-	const f32_t fStart = Saturate(m_Params.fDissolveStart);
+	if (m_Params.fLifetime <= 0.f)
+		return 0.f;
+	const f32_t fRatio = Life_Ratio();
+	const f32_t fInEnd = Saturate(m_Params.fDissolveInEnd);
+	if (0.f < fInEnd && fRatio < fInEnd)
+		return Saturate(1.f - fRatio / fInEnd);
+	const f32_t fStart = (std::max)(Saturate(m_Params.fDissolveStart), fInEnd);
 	if (fStart >= 1.f)
 		return 0.f;
-	return Saturate((Life_Ratio() - fStart) / (1.f - fStart));
+	return Saturate((fRatio - fStart) / (1.f - fStart));
 }
 
 void Client::CEffectV2Object::Set_FollowTarget(
