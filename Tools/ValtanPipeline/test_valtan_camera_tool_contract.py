@@ -309,14 +309,11 @@ require(recovery.get("trackingMode") == "PLAYER_BOSS_FRAME" and
         recovery.get("transitionInMs") == 400 and
         recovery.get("transitionOutMs") == 400,
         "109 recovery is not a bounded player/boss-frame transition")
-pizza = cues.get("camera.valtan.six-pizza-106.landing")
-require(pizza is not None and pizza.get("patternId") == "VALTAN_SIX_PIZZA_106" and
-        pizza.get("stageId") == "STEP_03" and
-        pizza.get("trackingMode") == "PLAYER_BOSS_FRAME" and
-        pizza.get("durationMs") == 1200 and
-        "transitionInMs" not in pizza and
-        "transitionOutMs" not in pizza,
-        "six-pizza STEP_03 landing camera cue tuple/frame is invalid")
+require(not any(
+    row.get("patternId") == "VALTAN_SIX_PIZZA_106" or
+    row["cueId"].startswith("camera.valtan.six-pizza-106.")
+    for row in all_cues
+), "six-pizza must not own a cinematic camera cue")
 
 presentation = json.loads(read("Data/Valtan/Valtan.presentation.json"))
 gameplay = json.loads(read("Data/Valtan/Valtan.gameplay.json"))
@@ -432,14 +429,9 @@ landing = next(row for row in six_pizza["stages"]
 require(landing["actionId"] ==
         "valtan.sequence.center-six-pizza-charge.step-03",
         "six-pizza landing action tuple drifted")
-require(landing["cameraInvocations"] == [{
-    "cameraInvocationId": "camera.valtan.six-pizza-106.landing.invocation",
-    "cameraCueId": "camera.valtan.six-pizza-106.landing",
-    "trigger": "ENTER",
-    "startOffsetMs": 0,
-    "durationPolicy": "EXPLICIT",
-    "durationMs": 1200,
-}], "six-pizza landing presentation invocation is not exact")
+require(all(stage["cameraInvocations"] == []
+            for stage in six_pizza["stages"]),
+        "every six-pizza stage must have no camera invocation")
 
 overlay = json.loads(read(
     "Tools/LevelPlacementExtractor/heartrb_valtan_core_overlay.json"))

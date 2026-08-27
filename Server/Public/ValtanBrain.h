@@ -138,12 +138,32 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
 	};
 
+	enum class SERVER_BOSS_GRAB_CLASSIFICATION : std::uint8_t
+	{
+		NONE,
+		PARTIAL,
+		ALL
+	};
+
+	struct SERVER_BOSS_GRAB_ROSTER final
+	{
+		std::size_t iAliveCount = 0u;
+		std::size_t iGrabbedCount = 0u;
+		bool bHasInvalidAttachment = false;
+		SERVER_BOSS_GRAB_CLASSIFICATION eClassification =
+			SERVER_BOSS_GRAB_CLASSIFICATION::NONE;
+	};
+
 	class CValtanBrain final
 	{
 	public:
 		static constexpr std::size_t MAX_DECISION_TRACE_COUNT = 32u;
 		static constexpr std::size_t MAX_DECISION_CANDIDATE_COUNT = 64u;
 		static constexpr std::size_t MAX_MECHANIC_OCCURRENCE_COUNT = 64u;
+
+		[[nodiscard]] static SERVER_BOSS_GRAB_ROSTER Classify_GrabbedPlayers(
+			const SERVER_WORLD_ENTITY& boss,
+			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
 
 		/* The bar the boss currently sits on, counting down from
 		iMaximumHealthBars. Rounded up so surviving HP always shows a bar, which

@@ -1175,6 +1175,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.charge.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.charge2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.counter.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.four.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.front-back-front.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.roar-charge.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.six-pizza-106.effect.json" />
@@ -1194,7 +1195,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.front-back-front.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.roar-charge.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.rush.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.twohand.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.whirlwind.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sky-axe.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.recovery.effect.json" />

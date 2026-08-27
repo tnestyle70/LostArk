@@ -122,11 +122,12 @@
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
-                                       "policyId":  "project-boss-collision-radius-v1"
+                                       "policyId":  "project-boss-collision-radius-v2"
                                    },
-                        "sourceValue":  3.0,
-                        "transform":  "identity",
-                        "resultValue":  3.0
+                        "sourceValue":  1.3781,
+                        "transform":  "project body fit rounded up to 1.4m",
+                        "resultValue":  1.4,
+                        "note":  "Measured torso/leg skin vertices across 99 idle/run frames at presentationScale 1.0; weapon, horns and attack reach remain separate. Verified by test_valtan_model_view_composition.py."
                     },
                     {
                         "targetDocument":  "Data/Balance/BossProfiles.json",
@@ -35414,9 +35415,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  54,
+                        "sourceValue":  53,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  54,
+                        "resultValue":  53,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {

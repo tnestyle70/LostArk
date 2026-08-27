@@ -175,7 +175,215 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertIn("if (bAnimationReady && !bQueuePlayCompleteAfterLoad)", helper)
         self.assertIn("Set_SynchronizedAnimationPaused(true);", helper)
 
-    def test_exact_two_plus_twenty_eight_inventory_is_explicit(self) -> None:
+    def test_preview_labels_distinguish_effect_time_and_animation_time(self) -> None:
+        self.assertIn("Timeline %.3f / %.3f s", self.cpp)
+        self.assertIn("Effect local: %.3f s | Effect 0 = Timeline %.3f s", self.cpp)
+        timing = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_TimingDetail(",
+            "void Client::CEffect_Tool::Render_SizeDetail(",
+        )
+        for token in (
+            "Start Delay is relative to Effect 0",
+            "SourceRecipe.fEmitterDelaySeconds",
+            "Detail.Timing.fStartDelaySeconds + fNativeEmitterDelay",
+            "Resolve_EffectTimelineTime(fEmitterStart)",
+            "Native emitter delay: +%.3f s",
+            "Scaling Lerp finishes before the native emitter starts",
+            "Particle lifetime: %.3f - %.3f s after spawn",
+        ):
+            self.assertIn(token, timing)
+        self.assertNotIn("Start Delay positions this Element in the clip", timing)
+
+    def test_valtan_preview_duration_includes_natural_cue_tail(self) -> None:
+        duration = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Recalculate_PreviewDuration(\n    const EFFECT_DOCUMENT_DESC& Document)",
+            "bool_t Client::CEffect_Tool::Has_UnsavedWork() const",
+        )
+        valtan = source_section(
+            duration,
+            "else if (m_ValtanProductPreview.has_value())",
+            "else if (0u != m_iValtanWorldOwnerStageDurationMs)",
+        )
+        for token in (
+            "CActionPresentationTimeline::Resolve_CuePreviewDuration(",
+            "m_ValtanProductPreview->iOwningClipTimelineOffsetMs",
+            "m_ValtanProductPreview->Cue.bHasSourceEnd",
+            "m_fPreviewDurationSeconds, fEffectDurationSeconds",
+            "m_fPreviewDurationSeconds = fCuePreviewDuration",
+            "rejected invalid cue timing",
+        ):
+            self.assertIn(token, valtan)
+
+    def test_lerp_restart_waits_for_successful_draft_staging(self) -> None:
+        lerp = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_LerpDetail(",
+            "void Client::CEffect_Tool::Render_AssemblyHierarchy(",
+        )
+        self.assertIn("m_bDetailDraftPreviewRestartRequested = true;", lerp)
+        self.assertNotIn("m_fPreviewTimeSeconds =", lerp)
+        self.assertNotIn("m_bPreviewPlaying =", lerp)
+
+        stage = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Stage_DetailDraftPreview()",
+            "bool_t Client::CEffect_Tool::Stage_ModelCueDraftPreview()",
+        )
+        failure = source_section(
+            stage,
+            "if (!Stage_WorldPreview(Staged))",
+            "if (m_bDetailDraftPreviewRestartRequested)",
+        )
+        for token in (
+            "m_fPreviewDurationSeconds = fPreviousDuration;",
+            "m_fPreviewTimeSeconds = fPreviousTime;",
+            "return false;",
+        ):
+            self.assertIn(token, failure)
+        self.assertNotIn("Start_WorldPreviewFromBeginning", failure)
+        self.assertLess(
+            stage.index("m_bDetailDraftPreviewRestartRequested = false;"),
+            stage.index("Start_WorldPreviewFromBeginning();"),
+        )
+        detail = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_EffectDetailWindow()",
+            "void Client::CEffect_Tool::Render_SelectedVisualProgramEvidence()",
+        )
+        self.assertLess(
+            detail.index("Render_Detail(*m_DetailDraft, bChanged);"),
+            detail.index("Stage_DetailDraftPreview();"),
+        )
+        reset = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Reset_DetailDraft()",
+            "void Client::CEffect_Tool::Recalculate_PreviewDuration()",
+        )
+        self.assertIn("m_bDetailDraftPreviewRestartRequested = false;", reset)
+        revert = source_section(
+            detail, 'if (ImGui::Button("Revert Detail"))', "ImGui::EndDisabled();"
+        )
+        self.assertIn("m_bDetailDraftPreviewRestartRequested = false;", revert)
+
+        restart = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()",
+            "void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()",
+        )
+        self.assertIn("m_fPreviewTimeSeconds = 0.f;", restart)
+        self.assertIn("Restart_SynchronizedAnimationSequence();", restart)
+        self.assertIn("Resolve_EffectSampleTime(m_fPreviewTimeSeconds)", restart)
+
+    def test_particle_audition_restarts_animation_only_after_staging(self) -> None:
+        audition = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_AuditionParticleSystem()",
+            "bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()",
+        )
+        failure = source_section(
+            audition,
+            "if (!Stage_WorldPreview(Staged))",
+            "Restart_SynchronizedAnimationSequence();",
+        )
+        for token in (
+            "m_ePreviewFilter = ePreviousFilter;",
+            "m_fPreviewTimeSeconds = fPreviousTime;",
+            "m_fPreviewDurationSeconds = fPreviousDuration;",
+            "m_bPreviewPlaying = bPreviousPlaying;",
+            "return false;",
+        ):
+            self.assertIn(token, failure)
+        self.assertLess(
+            audition.index("Restart_SynchronizedAnimationSequence();"),
+            audition.index("pObject->Reset();"),
+        )
+        self.assertIn("Resolve_EffectSampleTime(m_fPreviewTimeSeconds)", audition)
+        self.assertIn("Set_SynchronizedAnimationPaused(true);", audition)
+        animation_restart = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Restart_SynchronizedAnimationSequence()",
+            "void Client::CEffect_Tool::Seek_SynchronizedAnimationSequence(",
+        )
+        self.assertIn("m_iSynchronizedAnimationClipIndex = 0u;", animation_restart)
+        self.assertIn("m_iSynchronizedAnimationLoopEpoch = 0u;", animation_restart)
+        self.assertIn("Start_SynchronizedAnimationClip(0u, false)", animation_restart)
+
+    def test_uv_keyframe_restart_keeps_the_previous_pause_intent(self) -> None:
+        uv = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_UVKeyframes(",
+            "void Client::CEffect_Tool::Render_TimingDetail(",
+        )
+        committed = uv[uv.index("if (bCommitted)"):]
+        self.assertLess(
+            uv.index("Try_CommitDocument(std::move(Staged))"),
+            uv.index("Start_WorldPreviewFromBeginning();"),
+        )
+        self.assertLess(
+            committed.index("const bool_t bWasPlaying = m_bPreviewPlaying;"),
+            committed.index("Start_WorldPreviewFromBeginning();"),
+        )
+        paused = committed[committed.index("if (!bWasPlaying)"):]
+        self.assertIn("m_bPreviewPlaying = false;", paused)
+        self.assertIn("Set_SynchronizedAnimationPaused(true);", paused)
+        self.assertNotIn("m_fPreviewTimeSeconds =", uv)
+
+    def test_selected_audition_commits_play_intent_before_animation_seek(self) -> None:
+        audition = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()",
+            "bool_t Client::CEffect_Tool::Refresh_ResourceCatalog()",
+        )
+        failure = source_section(
+            audition,
+            "if (!Stage_WorldPreview(AuditionDocument))",
+            "m_bPreviewPlaying = true;",
+        )
+        for token in (
+            "m_fPreviewTimeSeconds = fPreviousTime;",
+            "m_bPreviewPlaying = bPreviousPlaying;",
+            "return false;",
+        ):
+            self.assertIn(token, failure)
+        seek = "Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);"
+        self.assertLess(audition.index("m_bPreviewPlaying = true;"), audition.index(seek))
+        self.assertEqual(1, audition.count("m_bPreviewPlaying = true;"))
+        self.assertIn("Resolve_EffectTimelineTime(", audition)
+        self.assertIn("Resolve_EffectSampleTime(m_fPreviewTimeSeconds)", audition)
+        self.assertIn("Set_SynchronizedAnimationPaused(true);", audition)
+        sampler = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Seek_SynchronizedAnimationSequence(",
+            "void Client::CEffect_Tool::Set_SynchronizedAnimationPaused(",
+        )
+        self.assertIn("iClip, bHoldingEndPose || !m_bPreviewPlaying", sampler)
+        self.assertIn("Set_AnimPaused(bHoldingEndPose || !m_bPreviewPlaying)", sampler)
+
+    def test_source_size_help_matches_the_existing_positive_scaling_controls(self) -> None:
+        size_start = self.cpp.index("void Client::CEffect_Tool::Render_SizeDetail(")
+        size_end = self.cpp.index("void Client::CEffect_Tool::", size_start + 1)
+        size = self.cpp[size_start:size_end]
+        self.assertRegex(
+            size,
+            r'DragFloat\("Size x", &Tuning\.fSize,\s*0\.01f, 0\.01f, 16\.f',
+        )
+        self.assertIn("Size x is a constant source multiplier", size)
+        self.assertIn("zero is invalid", size)
+        self.assertIn("editor minimum 0.001", size)
+        self.assertIn("Linear Lerp > Lerp Scaling", size)
+        self.assertIn("longer than the native emitter delay", size)
+        transform = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_TransformDetail(",
+            "void Client::CEffect_Tool::Render_ColorDetail(",
+        )
+        self.assertIn('"Scaling", Detail.Transform.vScale, 0.01f, 0.001f, 100.f', transform)
+        self.assertIn('RenderLerpToggle("Lerp Scaling", Lerp.bScale);', self.cpp)
+        self.assertIn('"Scaling End", Lerp.vEndScale, 0.01f, 0.001f, 100.f', self.cpp)
+
+    def test_exact_two_plus_twenty_seven_inventory_is_explicit(self) -> None:
         self.assertEqual(
             EXPECTED_INDEPENDENT_IDS,
             string_array(
@@ -190,9 +398,9 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             ),
         )
         manual = self.gameplay["decisionModel"]["manualAuditions"]
-        self.assertEqual(20, len(manual))
+        self.assertEqual(19, len(manual))
         manual_ids = [row["patternId"] for row in manual]
-        self.assertEqual(20, len(set(manual_ids)))
+        self.assertEqual(19, len(set(manual_ids)))
         self.assertTrue(set(EXPECTED_CORE_PATTERN_IDS).isdisjoint(manual_ids))
 
         independent = {
@@ -221,7 +429,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "m_ValtanToolAuditionInventory.CorePatternIds",
             "m_ValtanToolAuditionInventory.AnimatorPatternIds",
             "CORE SERVER PATTERNS (8)",
-            "ANIMATOR PATTERNS (20)",
+            "ANIMATOR PATTERNS (19)",
             "INDEPENDENT EFFECT (2)",
             "TOTAL_PATTERN_COUNT !=",
             "no legacy or replacement row was substituted",
@@ -370,11 +578,16 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "Try_PlayActiveUnifiedEffect()",
         ):
             self.assertIn(token, pending)
+        pending_continuations = pending[
+            pending.index("const auto CompleteValtanPreviewPartial"):
+        ]
         self.assertLess(
-            pending.index(
+            pending_continuations.index(
                 "EFFECT_DOCUMENT_PREVIEW_INTENT::VALTAN_PATTERN_DRAFT"
             ),
-            pending.index("EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT"),
+            pending_continuations.index(
+                "EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT"
+            ),
         )
         self.assertIn(
             "Prepare_ActiveValtanPatternDraftTimeline(false)", restart
@@ -442,7 +655,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             play + update,
         )
 
-    def test_all_twenty_eight_visible_pattern_names_are_canonical_korean(self) -> None:
+    def test_all_twenty_seven_visible_pattern_names_are_canonical_korean(self) -> None:
         patterns = {
             row["patternId"]: row for row in self.gameplay["patterns"]
         }
@@ -450,8 +663,8 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             row["patternId"]
             for row in self.gameplay["decisionModel"]["manualAuditions"]
         ]
-        self.assertEqual(28, len(visible_pattern_ids))
-        self.assertEqual(28, len(set(visible_pattern_ids)))
+        self.assertEqual(27, len(visible_pattern_ids))
+        self.assertEqual(27, len(set(visible_pattern_ids)))
         for pattern_id in visible_pattern_ids:
             display_name = patterns[pattern_id]["displayName"]
             with self.subTest(pattern_id=pattern_id):
@@ -724,6 +937,159 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "CValtanPatternAuditionService",
         ):
             self.assertNotIn(forbidden, create)
+
+    def test_existing_aggregate_is_opened_without_duplicate_creation(self) -> None:
+        pattern = next(
+            row for row in self.gameplay["patterns"]
+            if row["patternId"] == "VALTAN_STRUGGLING"
+        )
+        aggregate_id = "effect." + pattern["actionId"]
+        registered = next(
+            row for row in self.effect_catalog["effects"]
+            if row["effectAssetId"] == aggregate_id
+        )
+        preserved_path = REPOSITORY_ROOT / "Data" / registered["authoringPath"]
+        preserved = json.loads(preserved_path.read_text(encoding="utf-8"))
+        self.assertEqual(aggregate_id, preserved["effectAssetId"])
+        ownership = json.loads(OWNERSHIP_JSON.read_text(encoding="utf-8"))
+        self.assertTrue(any(
+            row["patternId"] == pattern["patternId"]
+            and row["effectAssetId"] == aggregate_id
+            and row["state"] == "DRAFT_ATTACHED"
+            for row in ownership["bindings"]
+        ))
+
+        tree = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+            "void Client::CEffect_Tool::Render_AllEffectsWindow()",
+        )
+        for token in (
+            "std::filesystem::exists(AggregateEffectPath, AggregatePathError)",
+            "CEffectCatalog::Contains(Aggregate.strEffectAssetId)",
+            "m_DirectAuthoredEditableEntries.contains(Aggregate.strEffectAssetId)",
+            "!Has_UnsavedWork() && !bExistingAggregate",
+            "!AggregateEffectPath.empty() && !AggregatePathError",
+            'ImGui::Button("Open Existing Effect")',
+            "Try_OpenExistingValtanPatternEffect(*pSelectedPattern)",
+        ):
+            self.assertIn(token, tree)
+        after_open = tree[tree.index("Try_OpenExistingValtanPatternEffect("):]
+        self.assertLess(
+            after_open.index("if (bOpenExistingRequested)\n\t\t\treturn;"),
+            after_open.index("Can_DeleteSelectedValtanPatternEffect"),
+            "Product Open refreshes the tree; the frame must stop using its old pointers",
+        )
+
+    def test_selected_pattern_identity_uses_the_shared_tree_summary(self) -> None:
+        tree = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+            "void Client::CEffect_Tool::Render_AllEffectsWindow()",
+        )
+        selected = tree[
+            tree.index('ImGui::SeparatorText("Pattern Authoring")'):
+            tree.index("std::filesystem::path AggregateEffectPath")
+        ]
+        self.assertIn("pSelectedPattern->strDisplayName.c_str()", selected)
+        self.assertIn(
+            "CValtanPatternTree::Build_PatternIdentitySummary(*pSelectedPattern)",
+            selected,
+        )
+        self.assertNotIn("VALTAN_STRUGGLING", selected)
+        self.assertNotIn("VALTAN_FRONT_BACK_FRONT", selected)
+
+    def test_existing_open_validates_before_product_or_authoring_only_open(self) -> None:
+        existing = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_OpenExistingValtanPatternEffect(",
+            "bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(",
+        )
+        for token in (
+            "m_ValtanPatternProductUnlinkOperation.has_value()",
+            "m_strSelectedValtanPatternId != Pattern.strPatternId",
+            "Path.lexically_normal()",
+            "CEffectDocumentCodec::Load(Path, ExistingDocument, Error)",
+            "ExistingDocument.strEffectAssetId != Aggregate.strEffectAssetId",
+            "if (iProductCueCount > 1u)",
+            "if (1u == iProductCueCount)",
+            "Request.strStageId = Stage.strStageId",
+            "Request.strCueOccurrenceId = Cue.strOccurrenceId",
+            "return Open_ValtanProductEffect(Request)",
+            "Try_OpenValtanStandaloneEffect(Path, Aggregate.strEffectAssetId)",
+            "This Pattern remains unlinked",
+        ):
+            self.assertIn(token, existing)
+        self.assertLess(
+            existing.index("CEffectDocumentCodec::Load"),
+            existing.index("Open_ValtanProductEffect(Request)"),
+        )
+        self.assertLess(
+            existing.index("ExistingDocument.strEffectAssetId !="),
+            existing.index("Try_OpenValtanStandaloneEffect"),
+        )
+        for forbidden in (
+            "Save_Atomic", "std::filesystem::remove", "New_Effect",
+            "Bindings.push_back", ".authored-copy", "Try_CreateValtanPatternEffect",
+        ):
+            self.assertNotIn(forbidden, existing)
+
+    def test_existing_authoring_open_preserves_failures_and_pending_identity(self) -> None:
+        standalone = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_OpenValtanStandaloneEffect(",
+            "bool_t Client::CEffect_Tool::Try_PlayValtanStandaloneEffect(",
+        )
+        self.assertIn("m_strPreviewStatus = Cache.strStatus", standalone)
+        self.assertIn("m_strPreviewStatus = m_strDocumentStatus", standalone)
+        self.assertIn("m_strPreviewStatus = m_strPreviewAnimationStatus", standalone)
+        staged_load = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(",
+            "bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(",
+        )
+        for precondition in (
+            "Has_UnsavedWork()",
+            "CEffectDocumentCodec::Load(Path, Staged, Error)",
+            "Staged.strEffectAssetId != strSelectionId",
+            "!Prepare_ValtanStandaloneEffectTarget()",
+        ):
+            self.assertLess(
+                staged_load.index(precondition),
+                staged_load.index("m_ActiveDocument = std::move(Staged)"),
+            )
+        existing = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_OpenExistingValtanPatternEffect(",
+            "bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(",
+        )
+        self.assertIn(
+            "m_PendingDocumentLoad->strValtanPatternId = Aggregate.strPatternId",
+            existing,
+        )
+        pending = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(",
+            "bool_t Client::CEffect_Tool::Refresh_DataFiles()",
+        )
+        self.assertLess(
+            pending.index("Open Existing Effect failed; the current Effect is unchanged"),
+            pending.index("const auto CompleteValtanPreviewPartial"),
+        )
+        self.assertIn("m_strSelectedValtanPatternId = Pending.strValtanPatternId", pending)
+        self.assertIn("Product connections were not changed", pending)
+        self.assertNotIn("Save_Atomic", pending)
+        modal = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_PendingDocumentLoadModal()",
+            "void Client::CEffect_Tool::Render_EffectTypeSelector()",
+        )
+        cancel = modal[modal.index('if (ImGui::Button("Cancel"))'):]
+        self.assertLess(
+            cancel.index("Cancelled Open Existing Effect"),
+            cancel.index("m_PendingDocumentLoad.reset()"),
+        )
+        self.assertNotIn("m_ActiveDocument =", cancel)
 
     def test_pattern_draft_recovers_after_model_view_target_replacement(self) -> None:
         update = source_section(

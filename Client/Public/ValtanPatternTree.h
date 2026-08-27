@@ -364,6 +364,9 @@ struct VALTAN_PATTERN_VIEW final
 	std::string strAimPolicy;
 	std::string strDisplayName;
 	std::string strActionId;
+	/* Filled by the strict split join after validating the authored entry
+	   against the first Product stage. Legacy-only rows leave it empty. */
+	std::string strEntryActionId;
 	std::vector<uint32_t> SourceActionIds;
 	std::string strSelectionMode;
 	int32_t iMinimumHealthBar = 0;
@@ -504,7 +507,7 @@ struct VALTAN_PATTERN_TREE_VIEW final
 struct VALTAN_TOOL_AUDITION_INVENTORY final
 {
 	static constexpr size_t CORE_PATTERN_COUNT = 8u;
-	static constexpr size_t ANIMATOR_PATTERN_COUNT = 20u;
+	static constexpr size_t ANIMATOR_PATTERN_COUNT = 19u;
 	static constexpr size_t TOTAL_PATTERN_COUNT =
 		CORE_PATTERN_COUNT + ANIMATOR_PATTERN_COUNT;
 
@@ -533,11 +536,21 @@ public:
 		std::string& strOutStatus,
 		VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy);
 	/* Builds the exact All Effects/Boss Tool selector contract: eight named core
-	   Server patterns followed by the twenty authored manual auditions. */
+	   Server patterns followed by the nineteen authored manual auditions. */
 	static bool_t Build_ToolAuditionInventory(
 		const VALTAN_PATTERN_TREE_VIEW& View,
 		VALTAN_TOOL_AUDITION_INVENTORY& OutInventory,
 		std::string& strOutError);
+	/* Independent from the saved Flow/All Effects selector inventory.
+	   Includes every strictly joined split-owned Product pattern. */
+	static bool_t Build_NextPatternInventory(
+		const VALTAN_PATTERN_TREE_VIEW& View,
+		std::vector<std::string>& OutPatternIds,
+		std::string& strOutError);
+	/* Shared read-only identity and clip-clock text for All Effects and Boss
+	   Tool. Display names remain owned by the joined authoring documents. */
+	static std::string Build_PatternIdentitySummary(
+		const VALTAN_PATTERN_VIEW& Pattern);
 	/* effect.valtan.<pattern-slug>.<stage-slug>, the same rule
 	   Tools/EffectPipeline/build_valtan_stage_effects.py emits. */
 	static std::string Build_StageEffectAssetId(

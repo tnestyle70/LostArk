@@ -226,6 +226,10 @@ public:
 		std::uint32_t requestSequence,
 		std::string_view bossPlacementId,
 		std::string_view patternId);
+	/* Queue/replace/clear carry the complete predecessor and reservation CAS
+	   identity. The shared audition service owns all three stable-ID results. */
+	bool Send_ValtanNextPatternCommand(
+		const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& message);
 	/* Debug Boss Tool ordered Flow. The UI supplies one admitted saved
 	   revision; the Server preflights the full slot list and owns every
 	   occurrence after the single reset. */

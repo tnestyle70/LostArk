@@ -302,7 +302,7 @@
                                                   "1091000000000012"
                                               ],
                        "navigationRegionIds":  [
-                                                   "navregion.valtan.outerwall109.1090000000000012"
+
                                                ],
                        "navPolarity":  "BLOCK_WHILE_INTACT",
                        "initialState":  "INTACT"
@@ -631,7 +631,7 @@
                                                   "15212127038612238715"
                                               ],
                        "navigationRegionIds":  [
-
+                                                   "navregion.valtan.wall.15675921917269125843"
                                                ],
                        "navPolarity":  "BLOCK_WHILE_INTACT",
                        "initialState":  "INTACT"
@@ -643,7 +643,7 @@
                                                   "10358956607506909163"
                                               ],
                        "navigationRegionIds":  [
-
+                                                   "navregion.valtan.wall.13221745590928612509"
                                                ],
                        "navPolarity":  "BLOCK_WHILE_INTACT",
                        "initialState":  "INTACT"

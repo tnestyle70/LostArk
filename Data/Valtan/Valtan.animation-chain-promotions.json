@@ -23,6 +23,12 @@
   },
   "animationIntakeOnly": [
     {
+      "sourceChainId": "front-back-front",
+      "displayName": "2페이즈 전방-후방-전방 연속 공격",
+      "authoringPhase": 2,
+      "admissionState": "ANIMATION_INTAKE_ONLY"
+    },
+    {
       "sourceChainId": "respawn",
       "displayName": "3페이즈 망령화 발탄 부활",
       "authoringPhase": 3,
@@ -60,7 +66,7 @@
     {
       "sourceChainId": "four",
       "patternId": "VALTAN_SEQUENCE_FOUR",
-      "displayName": "2페이즈 4연속 공격",
+      "displayName": "2페이즈 4방향 공격",
       "authoringPhase": 2,
       "admissionState": "MANUAL_SERVER_AUDITION"
     },
@@ -89,13 +95,6 @@
       "sourceChainId": "jump-whirlwind-roar-roar-charge",
       "patternId": "VALTAN_TERRAIN_DESTRUCTION",
       "displayName": "2페이즈 지형파괴 패턴",
-      "authoringPhase": 2,
-      "admissionState": "MANUAL_SERVER_AUDITION"
-    },
-    {
-      "sourceChainId": "front-back-front",
-      "patternId": "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
-      "displayName": "2페이즈 전방-후방-전방 연속 공격",
       "authoringPhase": 2,
       "admissionState": "MANUAL_SERVER_AUDITION"
     },

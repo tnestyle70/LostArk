@@ -204,7 +204,15 @@ def author_existing_patterns(
 
     attack_whirlwind = gameplay_by_id["VALTAN_ATTACK_WHIRLWIND"]
     attack_whirlwind_p = presentation_by_id["VALTAN_ATTACK_WHIRLWIND"]
-    set_tracking(attack_whirlwind)
+    attack_whirlwind["targetPolicy"] = "LOCK_NEAREST_ON_START"
+    attack_whirlwind["aimPolicy"] = "LOCK_FACING_ON_START"
+    stage(attack_whirlwind, "STEP_04")["events"] = [
+        {
+            "eventId": "event.valtan.attack-whirlwind.reaim",
+            "trigger": "ENTER",
+            "kind": "RETARGET_RANDOM_ALIVE",
+        }
+    ]
     stage(attack_whirlwind, "STEP_01")["hit"] = damage_hit(
         {"kind": "CIRCLE", "outerRadiusM": 8.0},
         [1800],
@@ -289,35 +297,16 @@ def author_existing_patterns(
         [1790, 2560, 3330],
         "damage.valtan.four-slash",
     )
-    stage(four, "STEP_02")["hit"] = damage_hit(
-        {"kind": "CONE", "angleDegrees": 110.0, "lengthM": 9.0},
-        [600],
-        "damage.valtan.four-slash",
+    four_stage = stage(four_p, "STEP_01")
+    replace_phase_two_cues(
+        four_stage,
+        [cue(
+            "cue.valtan.phase2.four.slashes",
+            "effect.valtan.project-tuned.sequence.four",
+            four_stage,
+            scale_kind="GAMEPLAY_FOOTPRINT",
+        )],
     )
-    for stage_id, suffix, asset in (
-        (
-            "STEP_01",
-            "slashes",
-            "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
-        ),
-        (
-            "STEP_02",
-            "spin",
-            "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
-        ),
-    ):
-        presentation_stage = stage(four_p, stage_id)
-        replace_phase_two_cues(
-            presentation_stage,
-            [
-                cue(
-                    f"cue.valtan.phase2.four.{suffix}",
-                    asset,
-                    presentation_stage,
-                    scale_kind="GAMEPLAY_FOOTPRINT",
-                )
-            ],
-        )
 
     three = gameplay_by_id["VALTAN_THREE"]
     three_p = presentation_by_id["VALTAN_THREE"]
@@ -343,29 +332,6 @@ def author_existing_patterns(
         ],
     )
     replace_phase_two_cues(stage(three_p, "STEP_03"), [])
-
-    front_back = gameplay_by_id["VALTAN_SEQUENCE_FRONT_BACK_FRONT"]
-    front_back_p = presentation_by_id["VALTAN_SEQUENCE_FRONT_BACK_FRONT"]
-    set_tracking(front_back)
-    stage(front_back, "STEP_01")["hit"] = damage_hit(
-        {"kind": "CROSS", "lengthM": 9.0, "halfWidthM": 2.0},
-        [900, 2000],
-        "damage.valtan.triple-attack",
-        knockdown=False,
-        down_ms=0,
-    )
-    front_active_p = stage(front_back_p, "STEP_01")
-    replace_phase_two_cues(
-        front_active_p,
-        [
-            cue(
-                f"{REQUESTED_CUE_PREFIX}front-back-front.electric-fan",
-                "effect.valtan.sequence.front-back-front",
-                front_active_p,
-                scale_kind="GAMEPLAY_FOOTPRINT",
-            )
-        ],
-    )
 
     warp = gameplay_by_id["VALTAN_WARP"]
     warp_p = presentation_by_id["VALTAN_WARP"]
@@ -522,7 +488,9 @@ def author_existing_patterns(
     )
 
     roar_charge_p = presentation_by_id["VALTAN_ROAR_CHARGE"]
-    roar_p = stage(roar_charge_p, "STEP_03")
+    # The composite's Element delays are authored from pattern zero.
+    replace_phase_two_cues(stage(roar_charge_p, "STEP_03"), [])
+    roar_p = stage(roar_charge_p, "STEP_01")
     replace_phase_two_cues(
         roar_p,
         [
@@ -547,15 +515,6 @@ def author_existing_patterns(
             )
         ],
     )
-
-    trash = gameplay_by_id["VALTAN_TRASH"]
-    trash_counter = stage(trash, "STEP_06")
-    trash_counter["counterProxy"] = {
-        "space": "BOSS_LOCAL",
-        "forwardOffsetM": 1.0,
-        "rightOffsetM": -1.5,
-        "radiusM": 2.25,
-    }
 
     catch_breath = gameplay_by_id["VALTAN_CATCH_BREATH"]
     catch_breath["targetPolicy"] = "LOCK_RANDOM_ALIVE_BEHIND_ON_START"
@@ -598,6 +557,127 @@ def author_existing_patterns(
                 )
             ],
         )
+
+
+def author_trash_capture_flow(
+    gameplay: dict[str, Any], presentation: dict[str, Any]
+) -> None:
+    """Keep user-authored flow slots intact; only this pattern owns its branches."""
+    trash = pattern(gameplay, "VALTAN_TRASH")
+    trash_p = pattern(presentation, "VALTAN_TRASH")
+    action_root = trash["actionId"]
+    base_g = [copy.deepcopy(stage(trash, f"STEP_{i:02d}")) for i in range(1, 9)]
+    base_p = [copy.deepcopy(stage(trash_p, f"STEP_{i:02d}")) for i in range(1, 9)]
+    actions = {
+        key: f"{action_root}.{key.lower().replace('_', '-')}"
+        for key in (
+            "CATCH_COUNTER", "CATCH_PRE_IMPACT", "CATCH_SLAM",
+            "EXECUTE_TAIL", "RUSH_MISS", "GROGGY",
+        )
+    }
+    reaim = base_g[6]["actionId"]
+    rush = base_g[7]["actionId"]
+    for row in base_g[5:]:
+        row["events"] = []
+        row["branches"] = []
+        row.pop("counterProxy", None)
+    base_g[5]["stageKind"] = "WINDUP"
+    base_g[5]["defaultNextActionId"] = reaim
+    base_g[6]["stageKind"] = "WINDUP"
+    base_g[6]["defaultNextActionId"] = rush
+    base_g[6]["events"] = [{
+        "eventId": "event.valtan.trash.reaim",
+        "trigger": "ENTER", "kind": "RETARGET_RANDOM_ALIVE",
+    }]
+    base_g[7]["defaultNextActionId"] = actions["RUSH_MISS"]
+    base_g[7]["branches"] = [
+        {"outcome": "ANY_PLAYER_GRABBED", "nextActionId": actions["CATCH_COUNTER"]},
+        {"outcome": "TIMEOUT", "nextActionId": actions["RUSH_MISS"]},
+    ]
+
+    def flag(flag_id: str, event_root: str) -> list[dict[str, Any]]:
+        return [{
+            "eventId": f"event.valtan.trash.{event_root}.{trigger.lower()}",
+            "trigger": trigger, "kind": "SET_BOSS_FLAG",
+            "flagId": flag_id, "enabled": trigger == "ENTER",
+        } for trigger in ("ENTER", "EXIT")]
+
+    def gameplay_stage(key: str, duration_ms: int, next_action: str | None,
+                       *, kind: str = "ACTIVE", events: list | None = None,
+                       branches: list | None = None) -> dict[str, Any]:
+        return {
+            "stageId": key, "actionId": actions[key], "stageKind": kind,
+            "durationMs": duration_ms, "defaultNextActionId": next_action,
+            "hit": none_hit(), "motion": None, "events": events or [],
+            "branches": branches or [{"outcome": "TIMEOUT", "nextActionId": next_action}],
+        }
+
+    counter = gameplay_stage("CATCH_COUNTER", 200, actions["CATCH_PRE_IMPACT"],
+        kind="WINDUP", events=flag("boss.flag.counterable", "counter-window"),
+        branches=[
+            {"outcome": "COUNTER_HIT", "nextActionId": actions["GROGGY"]},
+            {"outcome": "TIMEOUT", "nextActionId": actions["CATCH_PRE_IMPACT"]},
+        ])
+    counter["counterProxy"] = {
+        "space": "BOSS_LOCAL", "forwardOffsetM": 1.0,
+        "rightOffsetM": -1.5, "radiusM": 2.25,
+    }
+    new_g = [
+        counter,
+        gameplay_stage("CATCH_PRE_IMPACT", 1300, actions["CATCH_SLAM"], branches=[
+            {"outcome": "ALL_PLAYERS_GRABBED", "nextActionId": actions["EXECUTE_TAIL"]},
+            {"outcome": "TIMEOUT", "nextActionId": actions["CATCH_SLAM"]},
+        ]),
+        gameplay_stage("CATCH_SLAM", 1500, reaim, events=[{
+            "eventId": "event.valtan.trash.captured-slam", "trigger": "ENTER",
+            "kind": "DAMAGE_GRABBED_PLAYERS",
+            "damageProfileId": "damage.valtan.charge-grab-roar",
+        }]),
+        gameplay_stage("EXECUTE_TAIL", 1500, None, kind="RECOVERY", events=[{
+            "eventId": "event.valtan.trash.execute-grabbed", "trigger": "ENTER",
+            "kind": "EXECUTE_GRABBED_PLAYERS",
+        }]),
+        gameplay_stage("RUSH_MISS", 1000, reaim, kind="RECOVERY"),
+        gameplay_stage("GROGGY", 4433, None, kind="GROGGY", events=[{
+            "eventId": "event.valtan.trash.counter-release", "trigger": "ENTER",
+            "kind": "RELEASE_GRABBED_PLAYERS", "releaseMode": "HOLD",
+            "speedMps": 0.0, "durationMs": 0,
+        }] + flag("boss.flag.groggy", "groggy")),
+    ]
+
+    def presentation_stage(key: str, clips: list[tuple[str, int, int]]) -> dict[str, Any]:
+        return {
+            "stageId": key, "actionId": actions[key], "sequenceRole": "STEP",
+            "animation": {"endPolicy": "EXACT", "repeatCount": 1, "occurrences": [{
+                "clipOccurrenceId": f"{actions[key]}.clip-{index + 1:02d}",
+                "clip": clip, "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": start, "playMs": duration, "playRate": 1.0,
+                "repeatUntilStageEnd": False,
+            } for index, (clip, start, duration) in enumerate(clips)]},
+            "effectCues": [], "cameraInvocations": [],
+        }
+
+    catch_clip = "mesh_att_battle_13_05-1"
+    new_p = [
+        presentation_stage("CATCH_COUNTER", [(catch_clip, 0, 200)]),
+        presentation_stage("CATCH_PRE_IMPACT", [(catch_clip, 200, 1300)]),
+        presentation_stage("CATCH_SLAM", [(catch_clip, 1500, 1500)]),
+        presentation_stage("EXECUTE_TAIL", [(catch_clip, 1500, 1500)]),
+        presentation_stage("RUSH_MISS", [("mesh_att_battle_13_05-2", 0, 1000)]),
+        presentation_stage("GROGGY", [
+            ("mesh_abn_groggy_1_start", 0, 1833),
+            ("mesh_abn_groggy_1_loop", 0, 600),
+            ("mesh_abn_groggy_1_end", 0, 2000),
+        ]),
+    ]
+    trash["stages"] = base_g + new_g
+    trash_p["stages"] = base_p + new_p
+    if 420631 not in trash["sourceActionIds"]:
+        trash["sourceActionIds"].append(420631)
+    if not any(row["sourceActionId"] == 420631 for row in trash_p["presentationSources"]):
+        trash_p["presentationSources"].append({
+            "sourceActionId": 420631, "sequenceIndex": 1, "role": "REFERENCE",
+        })
 
 
 def renamed_occurrence(
@@ -828,14 +908,13 @@ def build_terrain_pair(
             },
         ],
     }
-    takeoff_p = stage(presentation, "TAKEOFF")
-    takeoff_p["effectCues"] = []
-    impact_p = stage(presentation, "IMPACT")
-    impact_p["effectCues"] = [
+    # Both user-edited composites measure Element Start Delay from pattern zero.
+    effect_owner_p = stage(presentation, "TAKEOFF")
+    effect_owner_p["effectCues"] = [
         cue(
             f"{REQUESTED_CUE_PREFIX}terrain-{suffix}.semicircle",
             f"effect.valtan.project-tuned.terrain-destruction-{suffix}.semicircle",
-            impact_p,
+            effect_owner_p,
             scale_kind="GAMEPLAY_FOOTPRINT",
             follow_policy="snapshot",
         )
@@ -904,11 +983,23 @@ def author_terrain_pairs(
     )
 
 
-def build() -> tuple[dict[str, Any], dict[str, Any]]:
+def build(pattern_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     gameplay = promotion._read_json(GAMEPLAY)
     presentation = promotion._read_json(PRESENTATION)
+    if pattern_id == "VALTAN_TRASH":
+        author_trash_capture_flow(gameplay, presentation)
+        return gameplay, presentation
+    saved_presentation = copy.deepcopy(presentation)
     author_existing_patterns(gameplay, presentation)
+    author_trash_capture_flow(gameplay, presentation)
     author_terrain_pairs(gameplay, presentation)
+    saved_patterns = indexed(saved_presentation["patterns"], "patternId")
+    for authored in presentation["patterns"]:
+        # Seed cues for new patterns, but retain the exact authored cue list
+        # (including Unlink's empty list) once a pattern has been saved.
+        promotion._preserve_manual_presentation_enrichment(
+            authored, saved_patterns.get(authored["patternId"])
+        )
     return gameplay, presentation
 
 
@@ -921,8 +1012,9 @@ def serialized(document: dict[str, Any]) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=("Apply", "Validate"), default="Validate")
+    parser.add_argument("--pattern-id", choices=("VALTAN_TRASH",), default=None)
     args = parser.parse_args()
-    gameplay, presentation = build()
+    gameplay, presentation = build(args.pattern_id)
     outputs = {
         GAMEPLAY: serialized(gameplay),
         PRESENTATION: serialized(presentation),

@@ -393,8 +393,14 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             entry.index("if (!admitEntryRevision"),
             entry.index("Reset_WorldInboundState();"),
         )
+        admission_failure = function_body(entry, "if (!admitEntryRevision(")
+        self.assertIn("Fail_Protocol(", admission_failure)
+        self.assertIn("WSAEINVAL", admission_failure)
+        self.assertIn("CLIENT_ENTRY_PRESENTATION_REVISION_FAILED", admission_failure)
+        self.assertIn("entryAdmissionFailure", admission_failure)
+        self.assertIn("return;", admission_failure)
         self.assertLess(
-            entry.index("Fail_Protocol(WSAEINVAL);"),
+            entry.index("CLIENT_ENTRY_PRESENTATION_REVISION_FAILED"),
             entry.index("m_hasPendingEnterAccepted = true;"),
         )
         self.assertIn("hasOutstandingPrepareRequest", self.network_h)
@@ -415,10 +421,12 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             "case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:", snapshot_start
         )
         snapshot = self.network_cpp[snapshot_start:snapshot_end]
+        revision_failure = function_body(snapshot, "if (snapshot.ActiveGameplayRevision !=")
+        self.assertIn("Fail_Protocol(", revision_failure)
+        self.assertIn("CLIENT_INVALID_SERVER_RESPONSE", revision_failure)
+        self.assertIn("return;", revision_failure)
         self.assertLess(
-            snapshot.index(
-                "snapshot.ActiveGameplayRevision !=\n\t\t\t\tm_GameplayRevisionState.ServerActiveRevision"
-            ),
+            snapshot.index("if (snapshot.ActiveGameplayRevision !="),
             snapshot.index("Record_WorldRevisionSet("),
         )
 

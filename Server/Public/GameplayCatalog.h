@@ -13,7 +13,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 24u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 25u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -365,7 +365,8 @@ namespace LostArk::Server
 		PART_DESTROYED,
 		PROP_DESTROYED,
 		SUMMON_DEAD,
-		ALL_PLAYERS_GRABBED
+		ALL_PLAYERS_GRABBED,
+		ANY_PLAYER_GRABBED
 	};
 
 	struct BOSS_PATTERN_STAGE_BRANCH final
@@ -396,7 +397,9 @@ namespace LostArk::Server
 		RETARGET_RANDOM_ALIVE,
 		/* Release every player attached to this boss. The release policy is typed
 		below so a counter drop cannot accidentally inherit a launch impulse. */
-		RELEASE_GRABBED_PLAYERS
+		RELEASE_GRABBED_PLAYERS,
+		DAMAGE_GRABBED_PLAYERS,
+		EXECUTE_GRABBED_PLAYERS
 	};
 
 	enum class BOSS_GRABBED_RELEASE_MODE : std::uint8_t
@@ -669,6 +672,7 @@ namespace LostArk::Server
 		std::string strEncounterId;
 		std::string strPatternId;
 		std::string strActionId;
+		bool bAuthoringMasterManaged = false;
 		BOSS_PATTERN_MOTION Motion;
 		BOSS_PATTERN_SELECTION eSelection = BOSS_PATTERN_SELECTION::NORMAL;
 		BOSS_PATTERN_ARMOR_REQUIREMENT eArmorRequirement =

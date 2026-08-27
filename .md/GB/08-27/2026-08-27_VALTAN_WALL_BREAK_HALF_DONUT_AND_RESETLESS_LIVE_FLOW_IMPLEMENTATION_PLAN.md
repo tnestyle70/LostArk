@@ -1,5 +1,117 @@
 # 발탄 벽 파괴 반도넛 발판·Boss Tool 무리셋 Live Flow 구현 계획
 
+## 2026-08-28 추가 승인: 9시 점프도 패턴 0초에 연결
+
+사용자가 9시에도 같은 수정을 요청했다. 아래 최초 수정에서 보존했던 9시 IMPACT cue를
+`TAKEOFF` 첫 clip의 `sourceStartMs=0`으로 옮긴다. 현재 사용자가 저장한 반원 Element의
+회전 `[-90, -180, 0]`, Start Delay 1.3초와 착지 Element의 Start Delay 3.5초를 포함해
+Effect 문서 전체 bytes는 변경하지 않는다. 정본 presentation과 생성된 runtime cue,
+생성기 기본값과 기존 회귀 테스트만 변경한다. C++와 exe 재빌드는 필요 없다.
+
+## 2026-08-28 최종 사용자 범위: 빈 발악 Effect와 두 패턴의 0초 기준
+
+최종 요청은 다음 두 항목이다. 아래 과거 계획의 복구·DDS·Live Flow 범위를 다시 실행하지 않는다.
+작업·빌드 대상은 `C:/Users/user/Desktop/LostArk/Framework.sln`이다.
+
+- `VALTAN_STRUGGLING`의 기존 aggregate 문서를 백업한 뒤 Element와 model cue를 비우고,
+  동일 asset ID의 Draft 하나로 연결한다. 사용자가 삭제한 39개 Element나 Product cue를 복원하지 않는다.
+  재생 가능한 Product와 편집 가능한 빈 Draft를 구분하고, 생성기 재실행도 빈 Draft를 보존한다.
+- 사자후 composite는 `STEP_03`에서 `STEP_01`, 지형 파괴 3시 semicircle은 `IMPACT`에서
+  `TAKEOFF`로 옮겨 각각 첫 clip의 `sourceStartMs=0`에 연결한다. 두 Effect의 Start Delay 0이
+  전체 패턴 Timeline 0과 일치하도록 실제 cue 원점을 바꾼다. 아래의 “cue 시점은 바꾸지 않는다”는
+  이전 방침은 이 최종 요청으로 대체한다. Element의 저장된 지연·수명·크기·색은 유지한다.
+
+9시의 IMPACT cue와 native emitter 지연 `0.230894초`, 사용자 DDS와 1·2페이즈 4연속 Effect는
+변경하지 않는다. 전체 Start Delay UI를 다른 시간 단위로 바꾸지 않는다. 기존 공용 Timeline
+변환과 Tool 호출을 연결하고, 실제 authoring에서 생성한 runtime cue에도 동일 변경을 반영한다.
+새 C++ 파일이나 프로젝트 등록은 필요 없다.
+
+검증은 Desktop Debug Client 컴파일·링크, 두 native harness, 관련 Python 계약 테스트와
+Effect/Valtan validator로 수행한다. Client/UI는 실행하거나 조작하지 않으며 최종 화면 확인은
+사용자가 한다. 최종 결과는
+`../08-28/2026-08-28_VALTAN_EMPTY_STRUGGLING_AND_PATTERN_ZERO_RESULT.md`에 기록한다.
+
+## 2026-08-28 후속 승인: 재생 시계와 실제 반원 DDS
+
+사용자가 Start Delay와 애니메이션 0초의 차이, 조기 소멸을 확인한 뒤 수정을 승인했다.
+또한 UV 절반 선택 대신 Warlord의 `FX_TEX_01/fx_c_symbol_003.dds`를 속 빈 반원으로
+만들어 Valtan 텍스처에 추가하고, 그 DDS를 사용하는 Element를 추가하도록 요청했다.
+이 후속 요청이 아래 초기 실행 범위의 절단 방식보다 우선한다. 기존 `diffuse.dds`,
+원본 Warlord DDS, 사용자 추가/튜닝 행은 덮어쓰지 않는다.
+
+### 시간 수정의 소유 경계
+
+- 지형 파괴 3시의 IMPACT 시작은 전체 패턴 3.4초이며, Effect 로컬 0초다. clip trim과
+  cue source start는 모두 0.2초라 두 값을 중복 가산하지 않는다. Server/cue 시점은 바꾸지 않는다.
+- Effect Tool은 전체 timeline, Effect local sample, Effect 0초의 timeline 위치를 함께 표시한다.
+  Element Start Delay는 Effect 로컬 값으로 설명하고 native emitter delay는 별도로 표시한다.
+- 새 도넛 두 행의 Timing Life 5초와 particle life 2초 불일치는 두 행에 한정하여 5/5로 맞춘다.
+  생성기 재실행으로 기존 사용자 튜닝을 덮어쓰지 않는 계약은 유지한다.
+- `CEffectPlayback::Calculate_ElementEndSeconds`를 runtime Stage와 Tool이 함께 사용한다.
+  SourceRecipe/SourcePresentation/SourceVisual이 없는 수동 단발 particle만
+  `Start Delay + particle life`로 종료한다. 연속 방출, 원본 emitter, trail 계약은 보존한다.
+  정확한 종료 시점으로 Seek했을 때 한 fixed tick의 잔상이 남지 않는 실행 검증을 추가한다.
+- `CActionPresentationTimeline::Resolve_CuePreviewDuration`은 기존 source/wall 변환으로
+  NATURAL Effect의 꼬리를 포함한다. 3.4초에 시작한 5초 Effect는 전체 timeline 8.4초까지
+  authoring할 수 있다. CUE_END는 기존 cue end를 넘겨 보이지 않게 한다. 마지막 animation
+  pose에서 wall clock을 풀어 주는 기존 경로를 재사용한다.
+
+기존 C++/header 및 하네스 파일 안에서 구현하며 새 C++ 파일과 프로젝트 등록은 필요 없다.
+수치/실행 검증은 EffectRenderContractHarness와 ActionPresentationTimelineHarness,
+Effect domain validator, 관련 Python 계약 테스트로 수행한다. 실행 중인 Debug Client/Server는
+종료하지 않는다. 새 Client의 컴파일·링크는 별도 출력 디렉터리에서 검증하고, 현재 실행 중인
+Client에 변경이 적용됐다고 보고하지 않는다. 실제 화면과 최종 방향·크기는 사용자 확인으로 남긴다.
+
+## 2026-08-28 현재 요청으로 좁힌 실행 범위
+
+사용자가 실린더 복구를 보류하고 이 세션에서 **점프 후 지형 파괴 3시**의 Element 추가를
+요청했다. 현재 실행은 아래 범위를 따른다. 이후 본문의 3시/9시 동시 교체와 Live Flow는
+원래 계획으로 남기며, 이번 구현 완료에 포함하지 않는다.
+
+| 구분 | 이번 변경 |
+|---|---|
+| 대상 | `effect.valtan.project-tuned.terrain-destruction-3.semicircle` 하나 |
+| 현재 실측 | `requested.20260827.terrain-3.landing.01` 하나, 시작 시간 0초 |
+| 반도넛 1 | `donut.telegraph.outer.red`를 복사한 바깥 테두리 |
+| 반도넛 2 | `donut.telegraph.inner.grow`를 복사한 안쪽 확장 도넛 |
+| 전기 부채꼴 | 사진의 `source.d1bf9016f12267f99040` 복사본에 sector04 마스크 추가 |
+| 보존 | 기존 착지 row 전체, 9시, 원본 Effect, cue/catalog, Boss Tool, gameplay |
+
+두 도넛의 base/mask는 기존 `FX_TEX_05/fx_m_ring_001_cl.dds`를 사용한다. UV는
+`sequence=false`, `1 x 2`, `tileIndex=0`으로 위쪽 절반을 고정 선택하고, particle의
+start/end size를 `[0.75, 0.375]`, initial position을 `[0, 0.1875, 0]`으로 맞춘다.
+양쪽 pitch를 -90도로 맞추고 X/Z 중심 오프셋을 0으로 둔다. 색, 높이, 수명과 안쪽의 기존
+scale 보간은 donor에서 유지한다. UV speed는 기존 0을 유지한다. 이 방식에서 UV pan을
+추가하면 마스크도 함께 이동하므로, 정적 반원 절단과 별도 UV 애니메이션을 혼동하지 않는다.
+
+사진의 전기 원본은 다음 read-only 자료에 남아 있다.
+
+```text
+Data/Effects/Imported/Valtan/ReviewedSourceFamilies/
+  effect.valtan.floor-wipe-130.second-smash.reviewed-source-candidate.effect.json
+source.d1bf9016f12267f99040
+```
+
+이 row는 조사 시 HEAD의 원본 row와 JSON 값이 같았다. base/noise/emissive, emissive 100,
+sourceRecipe의 9개 module, EPAL_Z, billboard, size/color/lifetime, seed와 1x1 UV를 보존한다.
+`FX_TEX_05/fx_o_sector_04.dds`를 mask에 추가하고 billboard roll만 180도로 맞춰
+도넛과 같은 기준 반평면을 향하게 한다. 전기 row에는 도넛의 UV crop이나 pitch를 복사하지 않는다.
+sector04는 위쪽 약 60도 fan이며, 기존 alpha profile에서 mask가 최종 alpha를 제한하므로
+emissive를 포함한 framebuffer 기여도 같은 fan 안으로 제한된다. 절대 월드 3시 방향과
+실제 크기·밝기의 최종 육안 판정은 사용자에게 남긴다.
+
+생성기는 기존 `author_valtan_requested_effect_elements.py`에 `--scope terrain-3-floor`를
+추가한다. 기존 JSON을 요구하고 정확한 이전 sector 3개 ID만 제거하며 새 stable ID 3개를
+없는 경우에만 추가한다. 기존 row와 이후 사용자 튜닝은 유지하고, 같은 CAS/transaction
+경로로 저장한다. 전체 projection도 3시에는 같은 생성 정의를 사용해 과거 sector/landing을
+다시 만들지 않도록 한다. 이번 Apply는 반드시 좁힌 scope만 실행한다.
+
+검증은 기존 테스트 파일에 crop 비율·방향, 원본 전기 설정 보존, 세 row ID, 재실행 튜닝 보존,
+잘못된 version/ID/중복/누락 입력, 저장 직전 변경 감지와 실패 시 무변경을 추가한다.
+Effect source validator와 관련 headless harness를 실행한다. 시작 시 전체 requested suite는
+사용자 삭제·튜닝 때문에 이미 16 tests / 52 failures였으며, 이와 무관한 데이터를 복구해서
+PASS로 만들지 않는다. 실행 중인 Client/Server를 종료하거나 UI를 조작하지 않는다.
+
 ## 0. 작업 결론
 
 이 후속 작업은 선행 세션 PR이 `main`에 반영된 뒤 새 `codex/valtan-half-donut-live-flow` 브랜치에서

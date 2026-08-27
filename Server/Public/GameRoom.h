@@ -29,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -343,7 +344,8 @@ namespace LostArk::Server
 		{
 			INACTIVE,
 			PENDING,
-			ACTIVE
+			ACTIVE,
+			COMPLETED_HOLD
 		};
 
 		struct VALTAN_PATTERN_ID_AUDITION_STATE final
@@ -359,9 +361,56 @@ namespace LostArk::Server
 			std::string strBossPlacementId;
 			std::string strPatternId;
 			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+			bool bResetlessContinuation = false;
+			bool bReportedWaitingForPlayer = false;
 		};
 
+		struct VALTAN_NEXT_PATTERN_RESERVATION final
+		{
+			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iRequestSequence = 0u;
+			std::uint32_t iRoomAuditionEpoch = 0u;
+			std::uint32_t iPredecessorPatternSequence = 0u;
+			std::uint32_t iExpectedPatternSequence = 0u;
+			std::string strBossPlacementId;
+			std::string strPatternId;
+			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+			bool bReportedWaitingForPlayer = false;
+		};
+
+		struct VALTAN_NEXT_PATTERN_COMMAND_RECEIPT final
+		{
+			LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request;
+			LostArk::Shared::VALTAN_AUDITION_RESULT Result =
+				LostArk::Shared::VALTAN_AUDITION_RESULT::REJECTED_STALE_REQUEST;
+			std::uint32_t iCurrentHealthBar = 0u;
+		};
+
+		[[nodiscard]] bool Is_ValtanPatternIdAuditionRunning() const noexcept;
+		LostArk::Shared::VALTAN_AUDITION_RESULT Evaluate_ValtanNextPatternControl(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
+			std::uint32_t& outCurrentHealthBar);
+		void Cancel_ValtanNextPatternReservation(std::string reason);
+		void Cancel_ValtanPatternIdAudition(std::string reason);
+		void Try_PromoteValtanNextPattern(SERVER_WORLD_ENTITY& boss);
+		bool Prepare_ValtanPatternIdAuditionBeforeBrain(SERVER_WORLD_ENTITY& boss);
 		bool Refresh_ValtanPatternIdAuditionState();
+		void Queue_ValtanAuditionLifecycle(
+			SESSION_ID ownerSessionId,
+			std::uint32_t requestSequence,
+			std::uint32_t roomEpoch,
+			std::uint32_t patternSequence,
+			const std::string& patternId,
+			const LostArk::Shared::GameplayDataRevision& pinnedRevision,
+			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
+			std::string reason = {});
+		void Queue_ValtanNextPatternLifecycle(
+			const VALTAN_NEXT_PATTERN_RESERVATION& reservation,
+			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
+			std::string reason = {});
 		void Queue_ValtanPatternIdAuditionLifecycle(
 			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
 			std::string reason = {});
@@ -698,6 +747,13 @@ namespace LostArk::Server
 		/* Runs only after every stage-action preflight transaction commits. These
 		actions own player/target state and therefore cannot be staged inside the
 		boss-combat or combat-object value transactions above. */
+		bool Prepare_GrabbedPlayerImpact(
+			const SERVER_WORLD_ENTITY& boss,
+			const CGameplayCatalog& catalog,
+			const BOSS_PATTERN_STAGE_ACTION& action,
+			std::uint32_t serverTick,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& stagedPlayers,
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& stagedDamageEvents);
 		bool Commit_BossPatternPlayerStageActions(
 			SERVER_WORLD_ENTITY& boss,
 			const CGameplayCatalog& catalog,
@@ -990,6 +1046,9 @@ namespace LostArk::Server
 		std::vector<TARGETED_VALTAN_PATTERN_FLOW_LIFECYCLE>
 			m_PendingValtanPatternFlowLifecycle;
 		VALTAN_PATTERN_ID_AUDITION_STATE m_ValtanPatternIdAudition;
+		std::optional<VALTAN_NEXT_PATTERN_RESERVATION> m_ValtanNextPattern;
+		std::unordered_map<SESSION_ID, VALTAN_NEXT_PATTERN_COMMAND_RECEIPT>
+			m_ValtanNextPatternReceiptBySessionId;
 		VALTAN_PATTERN_FLOW_AUDITION_STATE m_ValtanPatternFlowAudition;
 		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
 		VALTAN_FIGHT_PAGE_START_STATE m_ValtanFightPageStart;

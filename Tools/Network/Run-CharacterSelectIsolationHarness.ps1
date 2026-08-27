@@ -175,7 +175,9 @@ try {
     $harnessTimedOut = -not $harnessProcess.WaitForExit(
         $harnessExternalTimeoutMilliseconds)
     if ($harnessTimedOut) {
-        $harnessProcess.Kill($true)
+        # This owned console harness creates no child processes. The no-arg
+        # overload also works in Windows PowerShell's .NET Framework runtime.
+        $harnessProcess.Kill()
         if (-not $harnessProcess.WaitForExit(5000)) {
             throw 'Character Select isolation harness did not stop after its timeout.'
         }
@@ -210,7 +212,7 @@ finally {
     if ($null -ne $harnessProcess) {
         $harnessProcess.Refresh()
         if (-not $harnessProcess.HasExited) {
-            $harnessProcess.Kill($true)
+            $harnessProcess.Kill()
             $null = $harnessProcess.WaitForExit(5000)
         }
         $harnessProcess.Dispose()

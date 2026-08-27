@@ -1476,7 +1476,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.993956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.2000000476837158,
         "emitterLoopCount": 1,
         "bursts": [
@@ -2494,7 +2494,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.993956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.20000000298023224,
         "emitterLoopCount": 1,
         "bursts": [
@@ -3821,7 +3821,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.993956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.20000000298023224,
         "emitterLoopCount": 1,
         "bursts": [
@@ -5148,7 +5148,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.993956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -6124,7 +6124,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 1.396887,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.5,
         "emitterLoopCount": 1,
         "bursts": [
