@@ -45,6 +45,14 @@ namespace LostArk::Server
 			float goalX,
 			float goalZ,
 			std::vector<SERVER_NAV_POINT>& outPath) const;
+		/* Line-of-sight string pulling shared by player commands and monster AI.
+		The exact projected goal replaces the last cell centre when it is visible. */
+		void Smooth_Path(
+			float startX,
+			float startZ,
+			float goalX,
+			float goalZ,
+			std::vector<SERVER_NAV_POINT>& path) const;
 		/* Deterministic bounded BFS used by wander admission and its runtime
 		fallback. Every returned cell centre stays inside the spawn circle, so a
 		reachable destination whose only route leaves the radius is rejected. */

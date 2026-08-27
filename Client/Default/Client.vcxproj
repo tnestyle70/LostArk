@@ -84,6 +84,7 @@
 	<ClInclude Include="..\Public\NpcPlacementPresentationService.h" />
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h" />
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h" />
+	<ClInclude Include="..\Public\MonsterPresentationContract.h" />
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\CharacterSpec.h" />
@@ -97,7 +98,11 @@
     <ClInclude Include="..\Public\SkillWindowView.h" />
     <ClInclude Include="..\Public\ChatWindowView.h" />
     <ClInclude Include="..\Public\PartyWindowView.h" />
+    <ClInclude Include="..\Public\ReplicatedPlayerHealth.h" />
+    <ClInclude Include="..\Public\PartyTransferNotice.h" />
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h" />
+    <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h" />
+    <ClInclude Include="..\Public\PartyInteractionView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
@@ -245,6 +250,8 @@
     <ClCompile Include="..\Private\ChatWindowView.cpp" />
     <ClCompile Include="..\Private\PartyWindowView.cpp" />
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp" />
+    <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp" />
+    <ClCompile Include="..\Private\PartyInteractionView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
@@ -493,6 +500,8 @@
     <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json" />
+    <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json" />
+    <None Include="..\..\Data\UI\Party\PartyContextMenu_Layout.json" />
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json" />

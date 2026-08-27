@@ -1,5 +1,6 @@
 #include "ActionPresentationTimeline.h"
 #include "EncounterPatternReference.h"
+#include "MonsterPresentationContract.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
 
@@ -248,6 +249,81 @@ namespace
 			"short Product occurrence truncated the full animation preview");
 	}
 
+	bool VerifyMonsterActionOccurrenceProjection()
+	{
+		using Client::CMonsterPresentationContract;
+		using Client::MONSTER_PRESENTATION_ACTION_KIND;
+		using Client::MONSTER_PRESENTATION_ACTION_STATE;
+		using LostArk::Shared::WORLD_ENTITY_ACTION;
+
+		MONSTER_PRESENTATION_ACTION_STATE state{};
+		const auto idle = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::IDLE, 10u, state);
+		const auto idleAgain = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::IDLE, 10u, state);
+		const auto chase = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::CHASE, 20u, state);
+		const auto windup = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::PATTERN_WINDUP, 30u, state);
+		const auto active = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::PATTERN_ACTIVE, 31u, state);
+		const auto recovery = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::PATTERN_RECOVERY, 32u, state);
+		const auto nextWindup = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::PATTERN_WINDUP, 40u, state);
+		const auto dead = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::DEAD, 50u, state);
+
+		MONSTER_PRESENTATION_ACTION_STATE lateJoinState{};
+		const auto lateActive = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::PATTERN_ACTIVE, 70u, lateJoinState);
+		const auto lateRecovery = CMonsterPresentationContract::Project(
+			WORLD_ENTITY_ACTION::PATTERN_RECOVERY, 71u, lateJoinState);
+		const std::size_t firstAttack =
+			CMonsterPresentationContract::Select_AttackPresentation(
+				77u, 30u, 3u);
+		const std::size_t repeatedAttack =
+			CMonsterPresentationContract::Select_AttackPresentation(
+				77u, 30u, 3u);
+		const std::size_t nextAttack =
+			CMonsterPresentationContract::Select_AttackPresentation(
+				77u, 40u, 3u);
+
+		return Require(idle.shouldRestartClip && idle.isLoop &&
+			MONSTER_PRESENTATION_ACTION_KIND::IDLE == idle.eKind,
+			"monster idle edge did not start its loop") &&
+			Require(!idleAgain.shouldRestartClip,
+				"unchanged monster idle snapshot restarted its clip") &&
+			Require(chase.shouldRestartClip && chase.isLoop &&
+				MONSTER_PRESENTATION_ACTION_KIND::CHASE == chase.eKind,
+				"monster chase edge did not start its loop") &&
+			Require(windup.shouldRestartClip && !windup.isLoop &&
+				30u == windup.iOccurrenceStartTick,
+				"monster windup did not start an attack occurrence") &&
+			Require(!active.shouldRestartClip &&
+				30u == active.iOccurrenceStartTick,
+				"monster ACTIVE restarted or replaced the windup occurrence") &&
+			Require(!recovery.shouldRestartClip &&
+				30u == recovery.iOccurrenceStartTick,
+				"monster RECOVERY restarted or replaced the attack occurrence") &&
+			Require(nextWindup.shouldRestartClip &&
+				40u == nextWindup.iOccurrenceStartTick,
+				"next monster windup did not restart the same attack clip") &&
+			Require(dead.shouldRestartClip && !dead.isLoop &&
+				MONSTER_PRESENTATION_ACTION_KIND::DEAD == dead.eKind,
+				"monster dead edge did not start its one-shot clip") &&
+			Require(lateActive.shouldRestartClip &&
+				70u == lateActive.iOccurrenceStartTick &&
+				!lateRecovery.shouldRestartClip &&
+				70u == lateRecovery.iOccurrenceStartTick,
+				"late-join ACTIVE did not start exactly one attack occurrence") &&
+			Require(firstAttack < 3u && firstAttack == repeatedAttack &&
+				firstAttack != nextAttack &&
+				0u == CMonsterPresentationContract::Select_AttackPresentation(
+					77u, 30u, 0u),
+				"monster attack presentation selection was not bounded and deterministic");
+	}
+
 	bool NearlyEqualPosition(
 		const float3_t& Left,
 		const float3_t& Right)
@@ -321,6 +397,7 @@ namespace
 			Left.iDurationMs != Right.iDurationMs ||
 			Left.iTransitionInMs != Right.iTransitionInMs ||
 			Left.iTransitionOutMs != Right.iTransitionOutMs ||
+			Left.eInterpolation != Right.eInterpolation ||
 			Left.eEasing != Right.eEasing ||
 			Left.eTrackingMode != Right.eTrackingMode ||
 			!NearlyEqualPosition(Left.vTrackingOrigin, Right.vTrackingOrigin) ||
@@ -334,7 +411,8 @@ namespace
 		{
 			const auto& A = Left.Keyframes[Index];
 			const auto& B = Right.Keyframes[Index];
-			if (A.iTimeMs != B.iTimeMs ||
+			if (A.strSceneId != B.strSceneId ||
+				A.iTimeMs != B.iTimeMs ||
 				!NearlyEqualPosition(A.vEye, B.vEye) ||
 				!NearlyEqualPosition(A.vLookAt, B.vLookAt) ||
 				!NearlyEqual(A.fFovYDegrees, B.fFovYDegrees))
@@ -378,7 +456,7 @@ namespace
 			!Require(Document.Get_EncounterId() == RoundTripped.Get_EncounterId() &&
 				Document.Get_Cues().size() == RoundTripped.Get_Cues().size() &&
 				Document.Has_DeathCue() == RoundTripped.Has_DeathCue(),
-				"camera v5 root/cue/death shape changed on roundtrip"))
+				"camera v6 root/cue/death shape changed on roundtrip"))
 		{
 			return false;
 		}
@@ -406,22 +484,23 @@ namespace
 			return false;
 		}
 
-		/* v5 is a breaking camera-only migration. A legacy v4 header and the
-		   retired skyCues payload must both fail before replacing a ready target. */
+		/* v6 adds stable scene IDs and product path interpolation. Any older
+		   header and the retired skyCues payload must both fail before replacing
+		   a ready target. */
 		std::string LegacyV4 = Serialized;
-		const size_t VersionOffset = LegacyV4.find("\"formatVersion\": 5");
+		const size_t VersionOffset = LegacyV4.find("\"formatVersion\": 6");
 		if (!Require(std::string::npos != VersionOffset,
-				"camera v5 serialization omitted its version") )
+				"camera v6 serialization omitted its version") )
 		{
 			return false;
 		}
 		LegacyV4.replace(VersionOffset,
-			std::string("\"formatVersion\": 5").size(),
-			"\"formatVersion\": 4");
+			std::string("\"formatVersion\": 6").size(),
+			"\"formatVersion\": 5");
 		const size_t ReadyCueCount = RoundTripped.Get_Cues().size();
 		if (!Require(!Client::CValtanCinematicCameraDocument::Parse_Text(
 				LegacyV4, Encounter, RoundTripped, Status),
-				"legacy camera formatVersion 4 was admitted") ||
+				"legacy camera formatVersion 5 was admitted") ||
 			!Require(RoundTripped.Is_Ready() &&
 				RoundTripped.Get_Cues().size() == ReadyCueCount,
 				"rejected legacy camera document replaced the ready target"))
@@ -429,17 +508,58 @@ namespace
 			return false;
 		}
 
+		std::string FloatingVersion = Serialized;
+		const size_t FloatingVersionOffset =
+			FloatingVersion.find("\"formatVersion\": 6");
+		FloatingVersion.replace(
+			FloatingVersionOffset, std::string("\"formatVersion\": 6").size(),
+			"\"formatVersion\": 6.0");
+		if (!Require(!Client::CValtanCinematicCameraDocument::Parse_Text(
+				FloatingVersion, Encounter, RoundTripped, Status),
+				"floating-point token was admitted for an integer camera field") ||
+			!Require(RoundTripped.Is_Ready() &&
+				RoundTripped.Get_Cues().size() == ReadyCueCount,
+				"rejected floating camera integer replaced the ready target"))
+		{
+			return false;
+		}
+
+		std::string NullDeathCue = Serialized;
+		const size_t NullDeathOffset = NullDeathCue.find("  \"deathCue\":");
+		const size_t NullDeathColon = NullDeathCue.find(':', NullDeathOffset);
+		const size_t NullDeathRootClose = NullDeathCue.rfind("\n}");
+		if (!Require(std::string::npos != NullDeathOffset &&
+				std::string::npos != NullDeathColon &&
+				std::string::npos != NullDeathRootClose &&
+				NullDeathColon < NullDeathRootClose,
+				"camera v6 serialization cannot stage a null deathCue test"))
+		{
+			return false;
+		}
+		NullDeathCue.replace(
+			NullDeathColon + 1u,
+			NullDeathRootClose - (NullDeathColon + 1u), " null");
+		if (!Require(!Client::CValtanCinematicCameraDocument::Parse_Text(
+				NullDeathCue, Encounter, RoundTripped, Status),
+				"null deathCue was admitted instead of an object") ||
+			!Require(RoundTripped.Is_Ready() &&
+				RoundTripped.Get_Cues().size() == ReadyCueCount,
+				"rejected null deathCue replaced the ready camera target"))
+		{
+			return false;
+		}
+
 		std::string RetiredSkyPayload = Serialized;
 		const size_t DeathOffset = RetiredSkyPayload.find("  \"deathCue\":");
 		if (!Require(std::string::npos != DeathOffset,
-				"camera v5 serialization omitted deathCue"))
+				"camera v6 serialization omitted deathCue"))
 		{
 			return false;
 		}
 		RetiredSkyPayload.insert(DeathOffset, "  \"skyCues\": [],\n");
 		if (!Require(!Client::CValtanCinematicCameraDocument::Parse_Text(
 				RetiredSkyPayload, Encounter, RoundTripped, Status),
-				"retired skyCues payload was admitted by camera v5") ||
+				"retired skyCues payload was admitted by camera v6") ||
 			!Require(RoundTripped.Is_Ready() &&
 				RoundTripped.Get_Cues().size() == ReadyCueCount,
 				"rejected sky payload replaced the ready camera target"))
@@ -461,6 +581,34 @@ namespace
 			"unstable camera cue ID was admitted by authoring validation") ||
 			!Require(Document.Is_Ready() && !Document.Get_Cues().empty(),
 				"rejected camera draft replaced the loaded document"))
+		{
+			return false;
+		}
+		std::vector<Client::VALTAN_CINEMATIC_CAMERA_CUE>
+			DuplicateSceneDraft = Document.Get_Cues();
+		DuplicateSceneDraft[1u].Keyframes.front().strSceneId =
+			DuplicateSceneDraft.front().Keyframes.front().strSceneId;
+		if (!Require(!Document.Stage_CameraDraft(
+			DuplicateSceneDraft,
+			Document.Has_DeathCue(),
+			Document.Has_DeathCue() ? *Document.Find_DeathCue() :
+				Client::VALTAN_CINEMATIC_CAMERA_CUE{},
+			Encounter, RejectedDraft, RejectedText, Status),
+			"duplicate stable camera scene ID was admitted") ||
+			!Require(Document.Is_Ready() && !Document.Get_Cues().empty(),
+				"rejected duplicate scene draft replaced the loaded document"))
+		{
+			return false;
+		}
+		Client::VALTAN_CINEMATIC_CAMERA_CUE DuplicateDeathCue =
+			*Document.Find_DeathCue();
+		DuplicateDeathCue.strCueId = Document.Get_Cues().front().strCueId;
+		if (!Require(!Document.Stage_CameraDraft(
+			Document.Get_Cues(), true, DuplicateDeathCue,
+			Encounter, RejectedDraft, RejectedText, Status),
+			"death cue ID duplicated a normal camera cue ID") ||
+			!Require(Document.Is_Ready() && !Document.Get_Cues().empty(),
+				"rejected duplicate death cue replaced the loaded document"))
 		{
 			return false;
 		}
@@ -547,16 +695,27 @@ namespace
 			Document, "camera.valtan.four-pillars-105.takeoff");
 		const Client::VALTAN_CINEMATIC_CAMERA_CUE* WorldCue = FindCueById(
 			Document, "camera.valtan.arena-break-109.takeoff");
+		const Client::VALTAN_CINEMATIC_CAMERA_CUE* SplineCue = FindCueById(
+			Document, "camera.valtan.arena-break-109.drop");
 		const Client::VALTAN_CINEMATIC_CAMERA_CUE* BossFacingCue = FindCueById(
 			Document, "camera.valtan.arena-break-109.wide-reveal");
 		const Client::VALTAN_CINEMATIC_CAMERA_CUE* PlayerBossCue = FindCueById(
 			Document, "camera.valtan.arena-break-109.recovery");
 		const Client::VALTAN_CINEMATIC_CAMERA_CUE* PizzaLandingCue = FindCueById(
 			Document, "camera.valtan.six-pizza-106.landing");
+		const Client::VALTAN_CINEMATIC_CAMERA_CUE* EntranceEstablishCue =
+			FindCueById(Document, "camera.valtan.entrance.establish");
 		if (!Require(nullptr != TrackingCue && nullptr != WorldCue &&
+				nullptr != SplineCue &&
 				nullptr != BossFacingCue && nullptr != PlayerBossCue &&
-				nullptr != PizzaLandingCue,
+				nullptr != PizzaLandingCue && nullptr != EntranceEstablishCue,
 				"required Valtan camera cues are missing") ||
+			!Require(
+				Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM ==
+					EntranceEstablishCue->eInterpolation &&
+				Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR ==
+					EntranceEstablishCue->eEasing,
+				"entrance camera still stops its velocity at every keyframe") ||
 			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ ==
 					TrackingCue->eTrackingMode,
 				"100-bar camera cue is not boss-XZ tracked") ||
@@ -583,6 +742,65 @@ namespace
 				0u == PizzaLandingCue->iTransitionInMs &&
 				0u == PizzaLandingCue->iTransitionOutMs,
 				"pizza landing is not an exact PLAYER_BOSS_FRAME cue"))
+		{
+			return false;
+		}
+
+		Client::VALTAN_CINEMATIC_CAMERA_CUE CatmullCue = *SplineCue;
+		CatmullCue.eInterpolation =
+			Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
+		Client::VALTAN_CINEMATIC_CAMERA_POSE CatmullStart{};
+		Client::VALTAN_CINEMATIC_CAMERA_POSE CatmullMiddle{};
+		Client::VALTAN_CINEMATIC_CAMERA_POSE CatmullEnd{};
+		if (!Require(CatmullCue.Keyframes.size() >= 3u &&
+			Client::CValtanCinematicCameraController::Sample_Cue(
+				CatmullCue, 0.f, CatmullStart) &&
+			Client::CValtanCinematicCameraController::Sample_Cue(
+				CatmullCue, 0.215f, CatmullMiddle) &&
+			Client::CValtanCinematicCameraController::Sample_Cue(
+				CatmullCue,
+				static_cast<f32_t>(CatmullCue.iDurationMs) * 0.001f,
+				CatmullEnd),
+			"Catmull-Rom product sampler rejected a valid camera curve") ||
+			!Require(NearlyEqualPosition(
+				CatmullStart.vEye, CatmullCue.Keyframes.front().vEye) &&
+				NearlyEqualPosition(
+					CatmullStart.vLookAt,
+					CatmullCue.Keyframes.front().vLookAt) &&
+				NearlyEqualPosition(
+					CatmullEnd.vEye, CatmullCue.Keyframes.back().vEye) &&
+				NearlyEqualPosition(
+					CatmullEnd.vLookAt,
+					CatmullCue.Keyframes.back().vLookAt) &&
+				std::isfinite(CatmullMiddle.vEye.x) &&
+				std::isfinite(CatmullMiddle.vLookAt.z),
+				"Catmull-Rom camera endpoints or middle sample drifted"))
+		{
+			return false;
+		}
+
+		Client::VALTAN_CINEMATIC_CAMERA_CUE CrossingSpline{};
+		CrossingSpline.iDurationMs = 3000u;
+		CrossingSpline.eInterpolation =
+			Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
+		CrossingSpline.eEasing =
+			Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
+		CrossingSpline.Keyframes = {
+			{ "camera.test.scene.0", 0u,
+				float3_t(0.f, 0.f, 0.f), float3_t(0.f, 0.f, 1.f), 60.f },
+			{ "camera.test.scene.1", 1000u,
+				float3_t(0.f, 0.f, 0.f), float3_t(0.f, 0.f, 1.f), 60.f },
+			{ "camera.test.scene.2", 2000u,
+				float3_t(0.f, 0.f, 0.f), float3_t(0.f, 0.f, 1.f), 60.f },
+			{ "camera.test.scene.3", 3000u,
+				float3_t(0.f, 0.f, 0.f), float3_t(0.f, 0.f, 17.f), 60.f }
+		};
+		Client::VALTAN_CINEMATIC_CAMERA_POSE CrossingPose{};
+		if (!Require(
+			Client::CValtanCinematicCameraController::Sample_Cue(
+				CrossingSpline, 1.5f, CrossingPose) &&
+			NearlyEqual(CrossingPose.vLookAt.z, 1.f),
+			"invalid Catmull Eye/LookAt crossing did not fall back to its linear segment"))
 		{
 			return false;
 		}
@@ -620,6 +838,41 @@ namespace
 			BuildInput(*TrackingCue, Origin, 300u);
 		const Client::VALTAN_CINEMATIC_CAMERA_INPUT ShiftedInput =
 			BuildInput(*TrackingCue, ShiftedBoss, 300u);
+		/* Product playback advances on every render frame.  A delayed 0.5-second
+		   Server snapshot may correct the clock rate, but must never snap the
+		   camera backwards to that quantized authoritative sample. */
+		Client::CValtanCinematicCameraController ContinuousClockController;
+		Client::VALTAN_CINEMATIC_CAMERA_INPUT ContinuousClockInput =
+			BuildInput(*EntranceEstablishCue,
+				EntranceEstablishCue->vTrackingOrigin, 1000u);
+		Client::VALTAN_CINEMATIC_CAMERA_POSE ContinuousClockPose{};
+		if (!Require(ContinuousClockController.Initialize(
+				&Document, Encounter.Get_FixedTickHz()) &&
+			ContinuousClockController.Update(
+				ContinuousClockInput, 0.f, ContinuousClockPose),
+				"entrance continuous render clock did not initialize"))
+		{
+			return false;
+		}
+		for (uint32_t Frame = 0u; Frame < 40u; ++Frame)
+		{
+			if (!ContinuousClockController.Update(
+				ContinuousClockInput, 0.016f, ContinuousClockPose))
+			{
+				return false;
+			}
+		}
+		const f32_t BeforeDelayedSnapshot =
+			ContinuousClockController.Get_ElapsedSeconds();
+		ContinuousClockInput.iServerTick += Encounter.Get_FixedTickHz() / 2u;
+		if (!Require(ContinuousClockController.Update(
+				ContinuousClockInput, 0.016f, ContinuousClockPose) &&
+			ContinuousClockController.Get_ElapsedSeconds() >
+				BeforeDelayedSnapshot,
+				"a delayed Server snapshot quantized the entrance camera backwards"))
+		{
+			return false;
+		}
 		if (!Require(BaseController.Initialize(
 				&Document, Encounter.Get_FixedTickHz()) &&
 			ShiftedController.Initialize(&Document, Encounter.Get_FixedTickHz()),
@@ -652,6 +905,24 @@ namespace
 				NearlyEqualPosition(ToolSample.vLookAt, ShiftedPose.vLookAt) &&
 				NearlyEqual(ToolSample.fFovYDegrees, ShiftedPose.fFovYDegrees),
 				"Camera Tool actor-tracking sample diverged from product playback"))
+		{
+			return false;
+		}
+		Client::VALTAN_CINEMATIC_CAMERA_POSE BossXzRoundTrip{};
+		if (!Require(Client::CValtanCinematicCameraController::Sample_Cue(
+				*TrackingCue, 0.f, BossXzRoundTrip) &&
+			Client::CValtanCinematicCameraController::Apply_CueTracking(
+				*TrackingCue, ShiftedInput, BossXzRoundTrip) &&
+			Client::CValtanCinematicCameraController::Remove_CueTracking(
+				*TrackingCue, ShiftedInput, BossXzRoundTrip),
+			"BOSS_XZ tracking roundtrip failed") ||
+			!Require(NearlyEqualPosition(
+					BossXzRoundTrip.vEye,
+					TrackingCue->Keyframes.front().vEye) &&
+				NearlyEqualPosition(
+					BossXzRoundTrip.vLookAt,
+					TrackingCue->Keyframes.front().vLookAt),
+				"BOSS_XZ capture inverse did not restore authored coordinates"))
 		{
 			return false;
 		}
@@ -707,6 +978,24 @@ namespace
 		{
 			return false;
 		}
+		Client::VALTAN_CINEMATIC_CAMERA_POSE BossFacingRoundTrip{};
+		if (!Require(Client::CValtanCinematicCameraController::Sample_Cue(
+				*BossFacingCue, 0.f, BossFacingRoundTrip) &&
+			Client::CValtanCinematicCameraController::Apply_CueTracking(
+				*BossFacingCue, FacingRotatedInput, BossFacingRoundTrip) &&
+			Client::CValtanCinematicCameraController::Remove_CueTracking(
+				*BossFacingCue, FacingRotatedInput, BossFacingRoundTrip),
+			"BOSS_FACING tracking roundtrip failed") ||
+			!Require(NearlyEqualPosition(
+					BossFacingRoundTrip.vEye,
+					BossFacingCue->Keyframes.front().vEye) &&
+				NearlyEqualPosition(
+					BossFacingRoundTrip.vLookAt,
+					BossFacingCue->Keyframes.front().vLookAt),
+				"BOSS_FACING capture inverse drifted authored coordinates"))
+		{
+			return false;
+		}
 
 		Client::CValtanCinematicCameraController PlayerBossController;
 		Client::VALTAN_CINEMATIC_CAMERA_POSE PlayerBossPose{};
@@ -723,6 +1012,24 @@ namespace
 				PlayerBossPose.vEye.x < PlayerBossInput.vLocalPlayerPosition.x &&
 				PlayerBossPose.vEye.y > PlayerBossInput.vBossPosition.y,
 				"player-boss frame did not use midpoint, separation, and height"))
+		{
+			return false;
+		}
+		Client::VALTAN_CINEMATIC_CAMERA_POSE PlayerBossRoundTrip{};
+		if (!Require(Client::CValtanCinematicCameraController::Sample_Cue(
+				*PlayerBossCue, 0.f, PlayerBossRoundTrip) &&
+			Client::CValtanCinematicCameraController::Apply_CueTracking(
+				*PlayerBossCue, PlayerBossInput, PlayerBossRoundTrip) &&
+			Client::CValtanCinematicCameraController::Remove_CueTracking(
+				*PlayerBossCue, PlayerBossInput, PlayerBossRoundTrip),
+			"PLAYER_BOSS_FRAME tracking roundtrip failed") ||
+			!Require(NearlyEqualPosition(
+					PlayerBossRoundTrip.vEye,
+					PlayerBossCue->Keyframes.front().vEye) &&
+				NearlyEqualPosition(
+					PlayerBossRoundTrip.vLookAt,
+					PlayerBossCue->Keyframes.front().vLookAt),
+				"PLAYER_BOSS_FRAME capture inverse drifted authored coordinates"))
 		{
 			return false;
 		}
@@ -1002,15 +1309,19 @@ namespace
 	}
 }
 
+bool VerifyClientPartyRegression(const std::filesystem::path& root);
+
 int main()
 {
 	if (!VerifyAdjacentExplicitSourceWindows() ||
+		!VerifyClientPartyRegression(std::filesystem::current_path()) ||
 		!VerifyLegacyNaturalEndCompatibility() ||
 		!VerifyClipOccurrenceTransitions() ||
 		!VerifyCompletedAnimationClockRelease() ||
 		!VerifyProductPreviewClock() ||
 		!VerifyNaturalProductPreviewDurationFloor() ||
 		!VerifyBoundedCameraTransitionSampler() ||
+		!VerifyMonsterActionOccurrenceProjection() ||
 		!VerifyValtanCinematicTracking(std::filesystem::current_path()))
 	{
 		return 1;

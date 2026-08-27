@@ -68,14 +68,18 @@ class CWorldDestructionDebrisPresentationRuntime final
 {
 public:
 	static constexpr uint32_t ACTORS_PER_EMITTER = 12u;
-	/* The 109 phase transition breaks the complete outer ring on one tick:
-	thirty independent wall groups. The budget holds one complete
-	recipe for every slab, because admitting a partial recipe would visibly
-	delete two thirds of a wall instead of fracturing it, and starving later
-	slabs would leave whole ring sectors vanishing with no debris at all. */
+	/* The 109 phase transition breaks the whole arena on one tick: the
+	thirty outer ring slabs and every interior wall still standing. The
+	budget holds one complete recipe for every wall in that batch, because
+	admitting a partial recipe would visibly delete two thirds of a wall
+	instead of fracturing it, and starving later walls would leave whole
+	sectors vanishing with no debris at all. */
 	static constexpr uint32_t OUTER_RING_EMITTERS = 30u;
+	static constexpr uint32_t INTERIOR_WALL_EMITTERS = 67u;
+	static constexpr uint32_t ARENA_COLLAPSE_EMITTERS =
+		OUTER_RING_EMITTERS + INTERIOR_WALL_EMITTERS;
 	static constexpr uint32_t MAX_ACTIVE_ACTORS =
-		OUTER_RING_EMITTERS * ACTORS_PER_EMITTER;
+		ARENA_COLLAPSE_EMITTERS * ACTORS_PER_EMITTER;
 
 public:
 	CWorldDestructionDebrisPresentationRuntime() = default;

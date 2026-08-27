@@ -24,7 +24,7 @@ LevelCatalog scenario
 
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
-| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×333 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음 |
+| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×347 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음 |
 | `LV_LUT_HEARTRB_ED` | 275 assets / 13,186 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |

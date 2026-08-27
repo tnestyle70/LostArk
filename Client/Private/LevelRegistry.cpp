@@ -36,11 +36,10 @@ namespace
 	MAP_LOAD_SCOPE MakeBernMapScope()
 	{
 		MAP_LOAD_SCOPE scope = MakeFullMapScope();
-		/* The Bern-only bypass proved that the camera-dependent popping came
-		   from false frustum rejection. Product rendering now uses normal
-		   culling again, with final-render camera snapshots, rebuilt bounds and
-		   conservative rejection below. Keep the switches explicit so the same
-		   diagnostic can be staged again without changing other levels. */
+		/* The Bern-only bypass proved that camera-dependent popping came from
+		   false frustum rejection. Product rendering uses normal culling with
+		   final-render camera snapshots, rebuilt bounds, conservative margins,
+		   and a short reject grace. Keep the switches explicit for diagnostics. */
 		scope.frustumCulling.bypass = false;
 		scope.frustumCulling.diagnostics = false;
 		scope.frustumCulling.baseMargin = 0.25f;

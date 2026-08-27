@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-client-projection",
     "formatVersion":  3,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "593a55c1eea4b960022e9876bdb62642f2fc83dff831a17e61c9d952f713f3e1",
+    "combatRuntimeRevision":  "a3a624deb8d6e9062047f7b2946939d2f6c1c7e10bf145744106852f860e7a24",
     "groups":  [
                    {
                        "groupId":  "destroyable.group.valtan.entrance.frontwallA",

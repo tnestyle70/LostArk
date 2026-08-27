@@ -317,6 +317,52 @@ namespace
 		return result;
 	}
 
+	std::string Make_MaximumStableNetworkId(
+		const char fill,
+		const std::uint32_t ordinal)
+	{
+		std::string result(MAX_STABLE_NETWORK_ID_BYTES, fill);
+		result[result.size() - 3u] = static_cast<char>(
+			'0' + ordinal / 100u % 10u);
+		result[result.size() - 2u] = static_cast<char>(
+			'0' + ordinal / 10u % 10u);
+		result[result.size() - 1u] = static_cast<char>(
+			'0' + ordinal % 10u);
+		return result;
+	}
+
+	S2C_WORLD_DESTRUCTION_DELTA Make_MaximumSizedDestructionDelta(
+		const std::size_t stateCount,
+		const std::size_t eventCount)
+	{
+		S2C_WORLD_DESTRUCTION_DELTA result{};
+		result.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
+		result.iServerTick = 1u;
+		result.iEncounterEpoch = 1u;
+		result.ChangedStates.reserve(stateCount);
+		for (std::size_t index = 0u; index < stateCount; ++index)
+		{
+			WORLD_DESTRUCTION_STATE_WIRE state{};
+			state.strGroupId = Make_MaximumStableNetworkId(
+				'g', static_cast<std::uint32_t>(index));
+			state.eState = WORLD_DESTRUCTION_RUNTIME_STATE::DESPAWNED;
+			state.iStateVersion = static_cast<std::uint32_t>(index) + 1u;
+			state.iStateStartTick = static_cast<std::uint32_t>(index) + 1u;
+			result.ChangedStates.push_back(std::move(state));
+		}
+		result.LiveEvents.reserve(eventCount);
+		for (std::size_t index = 0u; index < eventCount; ++index)
+		{
+			WORLD_DESTRUCTION_EVENT_WIRE event = Make_DestructionEvent(index + 1u);
+			event.strGroupId = Make_MaximumStableNetworkId('e', 0u);
+			event.strMutationId = Make_MaximumStableNetworkId('m', 0u);
+			event.strBindingId = Make_MaximumStableNetworkId('b', 0u);
+			result.LiveEvents.push_back(std::move(event));
+		}
+		result.Diagnostics.iLastEventSequence = eventCount;
+		return result;
+	}
+
 	//월드 진입에 대한 테스트
 	void Test_EnterWorldRoundTrip(
 		TEST_RUNNER& testRunner)
@@ -1874,6 +1920,200 @@ namespace
 			"Reject Truncated Revive Without Mutation");
 	}
 
+	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
+	{
+		{
+			testRunner.Require(41u == NETWORK_PROTOCOL_VERSION,
+				"Party And Expanded Destruction Use A Fresh Protocol 41");
+			C2S_ENTER_WORLD oldPeer{};
+			oldPeer.iProtocolVersion = 40u;
+			oldPeer.eWorldId = WORLD_ID::BERN;
+			oldPeer.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			oldPeer.strNickName = "OldPeer";
+			CPacketWriter oldWriter;
+			testRunner.Require(!Write_Message(oldWriter, oldPeer),
+				"Reject Both Independently Shipped Protocol 40 Peers");
+			S2C_PARTY_TRANSFER_RESULT failure{};
+			failure.iRequestSequence = 12u;
+			failure.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+			failure.eResult = PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL;
+			CPacketWriter writer;
+			const bool encoded = Write_Message(writer, failure);
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_PARTY_TRANSFER_RESULT decoded{};
+			testRunner.Require(encoded && Read_Message(reader, decoded) &&
+				12u == decoded.iRequestSequence &&
+				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL == decoded.eResult &&
+				0u == reader.Get_RemainingSize(), "Party Transfer Failure Round Trip");
+			for (std::size_t size = 0; size < writer.Get_Buffer().size(); ++size)
+			{
+				CPacketReader truncated{ std::span<const std::uint8_t>{ writer.Get_Buffer().data(), size } };
+				S2C_PARTY_TRANSFER_RESULT unchanged = failure;
+				testRunner.Require(!Read_Message(truncated, unchanged) &&
+					unchanged.iRequestSequence == failure.iRequestSequence &&
+					unchanged.eResult == failure.eResult,
+					"Reject Truncated Party Failure Without Mutation");
+			}
+			CPacketWriter unknown;
+			unknown.Write_U32(12u);
+			unknown.Write_U16(static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA));
+			unknown.Write_U8(255u);
+			CPacketReader unknownReader{ unknown.Get_Buffer() };
+			testRunner.Require(!Read_Message(unknownReader, decoded),
+				"Reject Unknown Party Transfer Failure Result");
+		}
+		{
+			C2S_PARTY_INVITE source{};
+			source.iRequestSequence = 7u;
+			source.iTargetNetEntityId = 42u;
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Party Invite");
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_PARTY_INVITE decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.iRequestSequence == source.iRequestSequence &&
+				decoded.iTargetNetEntityId == source.iTargetNetEntityId &&
+				0u == reader.Get_RemainingSize(),
+				"Party Invite Round Trip");
+
+			C2S_PARTY_INVITE invalid{};
+			CPacketWriter invalidWriter;
+			testRunner.Require(!Write_Message(invalidWriter, invalid),
+				"Reject Zero Party Invite Sequence/Target");
+		}
+		{
+			S2C_PARTY_INVITE_RECEIVED source{};
+			source.iFromNetEntityId = 11u;
+			source.strFromNickname = "Inviter";
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Party Invite Received");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_PARTY_INVITE_RECEIVED decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.iFromNetEntityId == source.iFromNetEntityId &&
+				decoded.strFromNickname == source.strFromNickname &&
+				0u == reader.Get_RemainingSize(),
+				"Party Invite Received Round Trip");
+
+			S2C_PARTY_INVITE_RECEIVED invalid{};
+			invalid.iFromNetEntityId = 11u;
+			invalid.strFromNickname = "";
+			CPacketWriter invalidWriter;
+			testRunner.Require(!Write_Message(invalidWriter, invalid),
+				"Reject Empty Party Invite Nickname");
+		}
+		{
+			C2S_PARTY_INVITE_RESPOND accept{};
+			accept.iRequestSequence = 9u;
+			accept.iFromNetEntityId = 11u;
+			accept.bAccepted = true;
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, accept), "Writer Party Invite Respond");
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_PARTY_INVITE_RESPOND decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.iRequestSequence == accept.iRequestSequence &&
+				decoded.iFromNetEntityId == accept.iFromNetEntityId &&
+				true == decoded.bAccepted &&
+				0u == reader.Get_RemainingSize(),
+				"Party Invite Respond Round Trip");
+		}
+		{
+			S2C_PARTY_ROSTER source{};
+			source.Members.push_back(PARTY_ROSTER_MEMBER{
+				42u, "Leader", CHARACTER_CLASS_ID::LANCE_MASTER });
+			source.Members.push_back(PARTY_ROSTER_MEMBER{
+				11u, "Member", CHARACTER_CLASS_ID::ARTIST });
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Party Roster");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_PARTY_ROSTER decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				2u == decoded.Members.size() &&
+				decoded.Members[0].iNetEntityId == 42u &&
+				decoded.Members[0].strNickname == "Leader" &&
+				decoded.Members[0].eCharacterClass ==
+					CHARACTER_CLASS_ID::LANCE_MASTER &&
+				decoded.Members[1].iNetEntityId == 11u &&
+				0u == reader.Get_RemainingSize(),
+				"Party Roster Round Trip");
+
+			S2C_PARTY_ROSTER tooMany{};
+			for (std::size_t i = 0; i < MAX_PARTY_MEMBERS + 1u; ++i)
+			{
+				tooMany.Members.push_back(PARTY_ROSTER_MEMBER{
+					static_cast<NET_ENTITY_ID>(i + 1u), "N",
+					CHARACTER_CLASS_ID::ARTIST });
+			}
+			CPacketWriter tooManyWriter;
+			testRunner.Require(!Write_Message(tooManyWriter, tooMany),
+				"Reject Oversized Party Roster");
+		}
+	}
+
+	void Test_ChatProtocol(TEST_RUNNER& testRunner)
+	{
+		{
+			C2S_CHAT source{};
+			source.strText = "hello room";
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Chat Send");
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_CHAT decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.strText == source.strText &&
+				0u == reader.Get_RemainingSize(),
+				"Chat Send Round Trip");
+
+			C2S_CHAT empty{};
+			CPacketWriter emptyWriter;
+			testRunner.Require(!Write_Message(emptyWriter, empty),
+				"Reject Empty Chat Send");
+
+			C2S_CHAT tooLong{};
+			tooLong.strText = std::string(MAX_CHAT_TEXT_BYTES + 1u, 'a');
+			CPacketWriter tooLongWriter;
+			testRunner.Require(!Write_Message(tooLongWriter, tooLong),
+				"Reject Oversized Chat Send");
+		}
+		{
+			S2C_CHAT source{};
+			source.iFromNetEntityId = 42u;
+			source.strFromNickname = "Speaker";
+			source.strText = "hello room";
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Chat Received");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_CHAT decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.iFromNetEntityId == source.iFromNetEntityId &&
+				decoded.strFromNickname == source.strFromNickname &&
+				decoded.strText == source.strText &&
+				0u == reader.Get_RemainingSize(),
+				"Chat Received Round Trip");
+
+			S2C_CHAT invalid{};
+			invalid.iFromNetEntityId = 42u;
+			invalid.strFromNickname = "Speaker";
+			invalid.strText = "";
+			CPacketWriter invalidWriter;
+			testRunner.Require(!Write_Message(invalidWriter, invalid),
+				"Reject Empty Chat Received Text");
+		}
+	}
+
 	void Test_CharacterClassChangeRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_CHANGE_CHARACTER_CLASS request{};
@@ -2903,6 +3143,64 @@ namespace
 		}
 
 		{
+			constexpr std::size_t MAXIMUM_DELTA_PAYLOAD_BYTES = 65258u;
+			constexpr std::size_t MAXIMUM_DELTA_FRAME_BYTES = 65264u;
+			const S2C_WORLD_DESTRUCTION_DELTA maximumDelta =
+				Make_MaximumSizedDestructionDelta(
+					MAX_WORLD_DESTRUCTION_CHANGED_STATES,
+					MAX_WORLD_DESTRUCTION_EVENTS);
+			CPacketWriter maximumWriter;
+			std::vector<std::uint8_t> maximumFrame;
+			const bool wroteMaximum = Write_Message(maximumWriter, maximumDelta);
+			const bool framedMaximum = wroteMaximum && Build_Packet_Frame(
+				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA,
+				maximumWriter.Get_Buffer(), maximumFrame);
+			CPacketReader maximumReader{ maximumWriter.Get_Buffer() };
+			S2C_WORLD_DESTRUCTION_DELTA decodedMaximum{};
+			const bool readMaximum = wroteMaximum &&
+				Read_Message(maximumReader, decodedMaximum) &&
+				0u == maximumReader.Get_RemainingSize() &&
+				MAX_WORLD_DESTRUCTION_CHANGED_STATES ==
+					decodedMaximum.ChangedStates.size() &&
+				MAX_WORLD_DESTRUCTION_EVENTS ==
+					decodedMaximum.LiveEvents.size();
+			testRunner.Require(
+				framedMaximum && readMaximum &&
+				MAXIMUM_DELTA_PAYLOAD_BYTES ==
+					maximumWriter.Get_Buffer().size() &&
+				MAXIMUM_DELTA_FRAME_BYTES == maximumFrame.size() &&
+				maximumFrame.size() <= MAX_PACKET_BYTES,
+				"Frame 128 Maximum Destruction States And 106 Maximum Events");
+
+			constexpr std::size_t COLLAPSE_PAYLOAD_BYTES = 56847u;
+			constexpr std::size_t COLLAPSE_FRAME_BYTES = 56853u;
+			const S2C_WORLD_DESTRUCTION_DELTA collapseDelta =
+				Make_MaximumSizedDestructionDelta(97u, 97u);
+			CPacketWriter collapseWriter;
+			std::vector<std::uint8_t> collapseFrame;
+			const bool wroteCollapse = Write_Message(
+				collapseWriter, collapseDelta);
+			const bool framedCollapse = wroteCollapse && Build_Packet_Frame(
+				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA,
+				collapseWriter.Get_Buffer(), collapseFrame);
+			testRunner.Require(
+				framedCollapse &&
+				COLLAPSE_PAYLOAD_BYTES == collapseWriter.Get_Buffer().size() &&
+				COLLAPSE_FRAME_BYTES == collapseFrame.size() &&
+				collapseFrame.size() <= MAX_PACKET_BYTES,
+				"Frame Maximum-Length 97-State 97-Event Collapse Delta");
+
+			const S2C_WORLD_DESTRUCTION_DELTA overflowDelta =
+				Make_MaximumSizedDestructionDelta(
+					MAX_WORLD_DESTRUCTION_CHANGED_STATES,
+					MAX_WORLD_DESTRUCTION_EVENTS + 1u);
+			CPacketWriter overflowWriter;
+			testRunner.Require(
+				!Write_Message(overflowWriter, overflowDelta),
+				"Reject Canonical 107-Event Destruction Delta");
+		}
+
+		{
 			std::vector<std::uint8_t> malformed = validDeltaPayload;
 			malformed.pop_back();
 			CPacketReader reader{ malformed };
@@ -2913,7 +3211,8 @@ namespace
 				"Reject Truncated Destruction Delta Atomically");
 
 			malformed = validDeltaPayload;
-			malformed[76] = 65u;
+			malformed[76] = static_cast<std::uint8_t>(
+				MAX_WORLD_DESTRUCTION_EVENTS + 1u);
 			malformed[77] = 0u;
 			CPacketReader countReader{ malformed };
 			testRunner.Require(!Read_Message(countReader, unchanged),
@@ -3867,8 +4166,8 @@ namespace
 		}
 
 		testRunner.Require(
-			39u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Do Not Change Protocol Version 39");
+			41u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 41");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -3895,8 +4194,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			39u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Pattern Flow Contract Uses Protocol 39");
+			41u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Pattern Flow Contract Uses Protocol 41");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -4727,6 +5026,8 @@ int main()
 	Test_ValtanAuditionLifecycleProtocol(testRunner);
 	Test_ValtanPatternFlowProtocol(testRunner);
 	Test_ValtanDecisionTraceProtocol(testRunner);
+	Test_PartyInviteProtocol(testRunner);
+	Test_ChatProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);
 

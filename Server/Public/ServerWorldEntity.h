@@ -249,7 +249,13 @@ namespace LostArk::Server
 		std::uint16_t iLastHealthMechanicGenerationEpoch = 0u;
 		SERVER_BOSS_COMBAT_STATE BossCombat;
 		float fEngageDistance = 0.f;
+		float fTargetReleaseDistance = 0.f;
 		float fMoveSpeed = 0.f;
+		float fTurnSpeedDegreesPerSecond = 0.f;
+		float fMoveAcceleration = 0.f;
+		float fMoveDeceleration = 0.f;
+		float fArrivalSlowRadius = 0.f;
+		float fCurrentMoveSpeed = 0.f;
 		float fCollisionRadius = 0.f;
 		float fAttackRange = 0.f;
 		std::uint32_t iAttackPower = 0;

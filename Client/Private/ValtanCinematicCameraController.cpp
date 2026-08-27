@@ -7,6 +7,13 @@
 
 namespace
 {
+	constexpr f32_t CAMERA_MAX_FRAME_DELTA_SECONDS = 0.1f;
+	/* Server ticks keep every Client on the same cue, but a newly arrived
+	   snapshot must not quantize the render clock.  Slew at no more than 25%
+	   of render time so ordinary network jitter changes playback speed gently
+	   instead of moving the camera backwards or jumping it forward. */
+	constexpr f32_t CAMERA_CLOCK_CORRECTION_RATE = 0.25f;
+
 	bool_t Is_FinitePosition(const float3_t& value)
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
@@ -70,6 +77,23 @@ namespace
 			bossPosition.z - localX * sine + localZ * cosine);
 	}
 
+	float3_t Remove_BossFacingPoint(
+		const float3_t& resolvedPoint,
+		const float3_t& authoredOrigin,
+		const float3_t& bossPosition,
+		const f32_t bossYawDegrees)
+	{
+		const f32_t radians = XMConvertToRadians(bossYawDegrees);
+		const f32_t sine = std::sin(radians);
+		const f32_t cosine = std::cos(radians);
+		const f32_t deltaX = resolvedPoint.x - bossPosition.x;
+		const f32_t deltaZ = resolvedPoint.z - bossPosition.z;
+		return float3_t(
+			authoredOrigin.x + deltaX * cosine - deltaZ * sine,
+			authoredOrigin.y + resolvedPoint.y - bossPosition.y,
+			authoredOrigin.z + deltaX * sine + deltaZ * cosine);
+	}
+
 	float3_t Resolve_PlayerBossFramePoint(
 		const float3_t& authoredPoint,
 		const float3_t& authoredOrigin,
@@ -112,6 +136,51 @@ namespace
 			frameOrigin.y + localY * verticalScale,
 			frameOrigin.z + rightZ * localX * horizontalScale +
 				forwardZ * localZ * horizontalScale);
+	}
+
+	float3_t Remove_PlayerBossFramePoint(
+		const float3_t& resolvedPoint,
+		const float3_t& authoredOrigin,
+		const Client::VALTAN_CINEMATIC_CAMERA_INPUT& input)
+	{
+		const f32_t separationX =
+			input.vBossPosition.x - input.vLocalPlayerPosition.x;
+		const f32_t separationZ =
+			input.vBossPosition.z - input.vLocalPlayerPosition.z;
+		const f32_t separation = std::sqrt(
+			separationX * separationX + separationZ * separationZ);
+		f32_t forwardX = 0.f;
+		f32_t forwardZ = 1.f;
+		if (separation > 0.001f)
+		{
+			forwardX = separationX / separation;
+			forwardZ = separationZ / separation;
+		}
+		else
+		{
+			const f32_t yawRadians = XMConvertToRadians(input.fBossYawDegrees);
+			forwardX = std::sin(yawRadians);
+			forwardZ = std::cos(yawRadians);
+		}
+		const f32_t rightX = forwardZ;
+		const f32_t rightZ = -forwardX;
+		const f32_t horizontalScale =
+			std::clamp(separation / 10.f, 0.8f, 2.5f);
+		const f32_t verticalScale =
+			std::clamp(0.75f + separation / 24.f, 1.f, 1.6f);
+		const float3_t frameOrigin(
+			(input.vBossPosition.x + input.vLocalPlayerPosition.x) * 0.5f,
+			(std::max)(input.vBossPosition.y, input.vLocalPlayerPosition.y),
+			(input.vBossPosition.z + input.vLocalPlayerPosition.z) * 0.5f);
+		const f32_t deltaX = resolvedPoint.x - frameOrigin.x;
+		const f32_t deltaZ = resolvedPoint.z - frameOrigin.z;
+		return float3_t(
+			authoredOrigin.x +
+				(deltaX * rightX + deltaZ * rightZ) / horizontalScale,
+			authoredOrigin.y +
+				(resolvedPoint.y - frameOrigin.y) / verticalScale,
+			authoredOrigin.z +
+				(deltaX * forwardX + deltaZ * forwardZ) / horizontalScale);
 	}
 
 	void Apply_CueShake(
@@ -157,15 +226,18 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 	{
 		const auto& first = cue.Keyframes.front();
 		outPose = { first.vEye, first.vLookAt, first.fFovYDegrees };
-		return true;
+		return Is_ValidPose(outPose);
 	}
-	const auto& left = *(upper - 1);
+	const size_t rightIndex = static_cast<size_t>(
+		upper - cue.Keyframes.begin());
+	const size_t leftIndex = rightIndex - 1u;
+	const auto& left = cue.Keyframes[leftIndex];
 	if (cue.Keyframes.end() == upper)
 	{
 		outPose = { left.vEye, left.vLookAt, left.fFovYDegrees };
-		return true;
+		return Is_ValidPose(outPose);
 	}
-	const auto& right = *upper;
+	const auto& right = cue.Keyframes[rightIndex];
 	const f32_t span = static_cast<f32_t>(right.iTimeMs - left.iTimeMs);
 	const f32_t rawAlpha = span <= 0.f ? 0.f : (std::clamp)(
 		(elapsedMs - static_cast<f32_t>(left.iTimeMs)) / span, 0.f, 1.f);
@@ -183,14 +255,57 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 	default:
 		return false;
 	}
-	XMStoreFloat3(&outPose.vEye, XMVectorLerp(
-		XMLoadFloat3(&left.vEye), XMLoadFloat3(&right.vEye), alpha));
-	XMStoreFloat3(&outPose.vLookAt, XMVectorLerp(
-		XMLoadFloat3(&left.vLookAt), XMLoadFloat3(&right.vLookAt), alpha));
+	const auto sampleLinearPose = [&]()
+	{
+		XMStoreFloat3(&outPose.vEye, XMVectorLerp(
+			XMLoadFloat3(&left.vEye), XMLoadFloat3(&right.vEye), alpha));
+		XMStoreFloat3(&outPose.vLookAt, XMVectorLerp(
+			XMLoadFloat3(&left.vLookAt),
+			XMLoadFloat3(&right.vLookAt), alpha));
+	};
+	switch (cue.eInterpolation)
+	{
+	case VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR:
+		sampleLinearPose();
+		break;
+	case VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM:
+	{
+		const size_t firstControlIndex = 0u == leftIndex ?
+			leftIndex : leftIndex - 1u;
+		const size_t fourthControlIndex = (std::min)(
+			rightIndex + 1u, cue.Keyframes.size() - 1u);
+		const auto& firstControl = cue.Keyframes[firstControlIndex];
+		const auto& fourthControl = cue.Keyframes[fourthControlIndex];
+		XMStoreFloat3(&outPose.vEye, XMVectorCatmullRom(
+			XMLoadFloat3(&firstControl.vEye), XMLoadFloat3(&left.vEye),
+			XMLoadFloat3(&right.vEye), XMLoadFloat3(&fourthControl.vEye),
+			alpha));
+		XMStoreFloat3(&outPose.vLookAt, XMVectorCatmullRom(
+			XMLoadFloat3(&firstControl.vLookAt),
+			XMLoadFloat3(&left.vLookAt),
+			XMLoadFloat3(&right.vLookAt),
+			XMLoadFloat3(&fourthControl.vLookAt), alpha));
+		break;
+	}
+	default:
+		return false;
+	}
 	outPose.fFovYDegrees = left.fFovYDegrees +
 		(right.fFovYDegrees - left.fFovYDegrees) * alpha;
+	/* Independent Eye and LookAt splines can overshoot into the same point even
+	   when every authored scene is valid. Keep product playback alive by using
+	   the corresponding linear segment for that sample instead of abandoning
+	   camera ownership mid-cue. */
+	if (!Is_ValidPose(outPose) &&
+		VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM ==
+			cue.eInterpolation)
+	{
+		sampleLinearPose();
+	}
+	if (!Is_ValidPose(outPose))
+		return false;
 	Apply_CueShake(cue, elapsedSeconds, outPose);
-	return true;
+	return Is_ValidPose(outPose);
 }
 
 bool_t Client::CValtanCinematicCameraController::Apply_CueTracking(
@@ -231,6 +346,47 @@ bool_t Client::CValtanCinematicCameraController::Apply_CueTracking(
 	default:
 		return false;
 	}
+}
+
+bool_t Client::CValtanCinematicCameraController::Remove_CueTracking(
+	const VALTAN_CINEMATIC_CAMERA_CUE& cue,
+	const VALTAN_CINEMATIC_CAMERA_INPUT& input,
+	VALTAN_CINEMATIC_CAMERA_POSE& inOutPose)
+{
+	if (!Has_RequiredTrackingInput(cue, input) || !Is_ValidPose(inOutPose))
+		return false;
+	switch (cue.eTrackingMode)
+	{
+	case VALTAN_CINEMATIC_TRACKING_MODE::WORLD:
+		return true;
+	case VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ:
+	{
+		const f32_t offsetX = input.vBossPosition.x - cue.vTrackingOrigin.x;
+		const f32_t offsetZ = input.vBossPosition.z - cue.vTrackingOrigin.z;
+		inOutPose.vEye.x -= offsetX;
+		inOutPose.vEye.z -= offsetZ;
+		inOutPose.vLookAt.x -= offsetX;
+		inOutPose.vLookAt.z -= offsetZ;
+		break;
+	}
+	case VALTAN_CINEMATIC_TRACKING_MODE::BOSS_FACING:
+		inOutPose.vEye = Remove_BossFacingPoint(
+			inOutPose.vEye, cue.vTrackingOrigin,
+			input.vBossPosition, input.fBossYawDegrees);
+		inOutPose.vLookAt = Remove_BossFacingPoint(
+			inOutPose.vLookAt, cue.vTrackingOrigin,
+			input.vBossPosition, input.fBossYawDegrees);
+		break;
+	case VALTAN_CINEMATIC_TRACKING_MODE::PLAYER_BOSS_FRAME:
+		inOutPose.vEye = Remove_PlayerBossFramePoint(
+			inOutPose.vEye, cue.vTrackingOrigin, input);
+		inOutPose.vLookAt = Remove_PlayerBossFramePoint(
+			inOutPose.vLookAt, cue.vTrackingOrigin, input);
+		break;
+	default:
+		return false;
+	}
+	return Is_ValidPose(inOutPose);
 }
 
 bool_t Client::CValtanCinematicCameraController::Sample_BoundedTransition(
@@ -355,28 +511,52 @@ bool_t Client::CValtanCinematicCameraController::Update(
 	const bool_t serverAdvanced = cueChanged ||
 		Client::CActionPresentationTimeline::Is_ForwardTick(
 			input.iServerTick, m_iLastServerTick);
-	if (serverAdvanced)
-	{
-		f32_t authoritativeAge = 0.f;
-		if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+	f32_t authoritativeAge = 0.f;
+	if (serverAdvanced &&
+		!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
 			input.iServerTick, input.iActionStartTick,
 			static_cast<f32_t>(m_iFixedTickHz), authoritativeAge))
-		{
-			Cancel_ExitTransition();
-			m_pActiveCue = nullptr;
-			m_strCueId.clear();
-			m_hasCueKey = false;
-			m_isCueFinished = false;
-			m_hasLastOutputPose = false;
-			m_isTransitionActive = false;
-			return false;
-		}
+	{
+		Cancel_ExitTransition();
+		m_pActiveCue = nullptr;
+		m_strCueId.clear();
+		m_hasCueKey = false;
+		m_isCueFinished = false;
+		m_hasLastOutputPose = false;
+		m_isTransitionActive = false;
+		return false;
+	}
+	if (cueChanged)
+	{
+		/* The first observed frame and every Server-owned stage edge must start
+		   at the authoritative age.  Continuity inside one cue is handled below. */
 		m_fElapsedSeconds = authoritativeAge;
 		m_iLastServerTick = input.iServerTick;
 	}
 	else
 	{
-		m_fElapsedSeconds += (std::min)(timeDelta, 0.1f);
+		const f32_t frameDelta =
+			(std::min)(timeDelta, CAMERA_MAX_FRAME_DELTA_SECONDS);
+		m_fElapsedSeconds += frameDelta;
+		if (serverAdvanced)
+		{
+			if (frameDelta <= 0.f)
+			{
+				/* Deterministic harness/offline sampling supplies zero delta and
+				   intentionally asks for the exact Server tick. */
+				m_fElapsedSeconds = authoritativeAge;
+			}
+			else
+			{
+				const f32_t maximumCorrection =
+					frameDelta * CAMERA_CLOCK_CORRECTION_RATE;
+				const f32_t correction = (std::clamp)(
+					authoritativeAge - m_fElapsedSeconds,
+					-maximumCorrection, maximumCorrection);
+				m_fElapsedSeconds += correction;
+			}
+			m_iLastServerTick = input.iServerTick;
+		}
 	}
 	if (cueChanged)
 	{

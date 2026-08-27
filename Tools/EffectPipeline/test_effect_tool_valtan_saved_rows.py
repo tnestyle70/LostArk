@@ -2437,7 +2437,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual(1, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertNotIn("VALTAN_TRIPLE_SLASH", projected)
         self.assertNotIn("VALTAN_ROTATION_SLASH", projected)
-        self.assertEqual(3, len(projected["VALTAN_FOUR_SLASH"]))
+        self.assertEqual(2, len(projected["VALTAN_FOUR_SLASH"]))
         self.assertEqual(
             [
                 "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
@@ -2460,6 +2460,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual(
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
             projected["VALTAN_FOUR_SLASH"][1],
+        )
+        self.assertNotIn(
+            "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+            projected["VALTAN_FOUR_SLASH"],
         )
         self.assertEqual(4, len(projected["VALTAN_WHIRLWIND"]))
         self.assertEqual(

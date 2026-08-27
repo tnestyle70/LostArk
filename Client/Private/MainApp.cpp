@@ -20,6 +20,7 @@
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
 #include "Level_Loading.h"
+#include "Level_ValtanArena.h"
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
 #include "PartyWindowView.h"
@@ -413,7 +414,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			{
 				// Closing mid-wait must not leave the looping wait sound behind with no
 				// screen visible to end it.
-				CGameInstance::Get().Stop_Music();
+				CGameInstance::Get().Stop_LoopingSound();
 			}
 		}
 		m_bPDown = pDown;
@@ -497,6 +498,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CGameInstance::Get().SetMouseButtonBlocked(
 		DIM::LB,
 		worldLeftMouseConsumed);
+	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, false);
 
 	CNetworkManager::Get().Update();
 #ifdef _DEBUG
@@ -541,6 +543,19 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				nullptr != m_pCameraTool)
 			{
 				(void)m_pCameraTool->Open_Cue(cameraRequest);
+			}
+		}
+		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
+		if (m_pBossTool->Consume_EffectToolOpenRequest(effectRequest))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
+				nullptr != m_pEffectTool)
+			{
+				const bool_t bOpened =
+					m_pEffectTool->Open_ValtanProductEffect(effectRequest);
+				m_strToolStatus = bOpened ?
+					"Opened the exact Valtan Product Effect in Effect Tool." :
+					"Effect Tool opened, but the exact Product occurrence needs attention.";
 			}
 		}
 	}
@@ -621,18 +636,41 @@ HRESULT CMainApp::Render()
 		if (nullptr != m_pChatWindowView)
 		{
 			/* Only in actual in-game play (Bern/Valtan), not Character Select -- more levels join
-			this list as real in-game stages are added. */
+			this list as real in-game stages are added. Real send needs the active level's own
+			command sink, same reasoning as the party roster fetch just below. */
 			const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
-			if (ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
-				m_pChatWindowView->Render();
+			if (ETOUI(LEVEL::BERN) == chatLevel)
+			{
+				CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+				m_pChatWindowView->Render(
+					nullptr != pBern ? pBern->Get_PlayerCommandSink() : nullptr);
+			}
+			else if (ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
+			{
+				CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active();
+				m_pChatWindowView->Render(
+					nullptr != pValtanArena ?
+						pValtanArena->Get_PlayerCommandSink() : nullptr);
+			}
 		}
 		if (nullptr != m_pPartyWindowView)
 		{
-			/* Same level set as the chat window. UI-only placeholder roster for now (no party
-			Shared protocol to gate on actual invite-accepted state yet). */
+			/* Same level set as the chat window. Each level owns its own CClientReplication
+			(and therefore its own Server-synced roster), so the active level is asked for its
+			current roster the same way Render_ValtanEntryModalText() reaches CLevel_Bern below. */
 			const uint32_t partyLevel = CGameInstance::Get().Get_CurrentLevelID();
-			if (ETOUI(LEVEL::BERN) == partyLevel || ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
+			if (ETOUI(LEVEL::BERN) == partyLevel)
 			{
+				if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+					m_pPartyWindowView->Sync_From_Roster(
+						pBern->Get_PartyRoster(), pBern->Get_PlayerHealth());
+				m_pPartyWindowView->Render();
+			}
+			else if (ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
+			{
+				if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+					m_pPartyWindowView->Sync_From_Roster(
+						pValtanArena->Get_PartyRoster(), pValtanArena->Get_PlayerHealth());
 				m_pPartyWindowView->Render();
 			}
 		}
@@ -722,7 +760,15 @@ HRESULT CMainApp::Render()
 	if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+		{
 			pBern->Render_ValtanEntryModalText();
+			pBern->Render_PartyInviteText();
+		}
+	}
+	else if (ETOUI(LEVEL::VALTAN_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
+	{
+		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+			pValtanArena->Render_PartyInviteText();
 	}
 
 	return CGameInstance::Get().Render_End();
@@ -1750,13 +1796,10 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", true);
 	m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ResultWaitEmblem");
 
-	/* CSound_Manager has exactly one loop-capable channel (Play_Music/Stop_Music) --
-	Play_Sound is fire-and-forget one-shot only. Reused here for the "화면을 클릭하여
-	결과 즉시 확인" wait loop since there is no separate SFX-loop primitive; this stops
-	whatever BGM was already playing for as long as the wait screen is up. */
+	/* UI owns this loop independently; level/encounter BGM keeps playing. */
 	const filesystem::path waitSoundPath = CRuntimeAssetRoot::Resolve(
 		L"Sound/UI/Enhancement/sys_enhance_3_waiting1__95424590.wav");
-	CGameInstance::Get().Play_Music(waitSoundPath.wstring(), 1.f);
+	CGameInstance::Get().Play_LoopingSound(waitSoundPath.wstring(), 1.f);
 }
 
 void CMainApp::Update_ItemUpgradeResultWaitClick()
@@ -1791,7 +1834,7 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 	else
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_FailEffect");
 
-	CGameInstance::Get().Stop_Music();
+	CGameInstance::Get().Stop_LoopingSound();
 	// Equally-weighted variants (the same real success/fail vox recorded several times),
 	// same pattern CSoundCueCatalog already documents for Character/Valtan cues.
 	static std::mt19937 s_itemUpgradeResultSoundRng{ std::random_device{}() };
@@ -3920,6 +3963,7 @@ HRESULT CMainApp::Start_Level(
 	leaving Character Select with the preview open (e.g. entering Valtan) left its text drawing
 	over the Loading screen and the destination level too. Any real level transition ends it. */
 	m_bItemUpgradePreviewVisible = false;
+	CGameInstance::Get().Stop_LoopingSound();
 
 	const CLIENT_LEVEL_DESCRIPTOR* pTarget =
 		CLevelRegistry::Find(eTargetLevel);
@@ -4952,6 +4996,7 @@ void CMainApp::Free()
 	   post-join cache release below. */
 	CEffectPresentationService::Clear_All();
 	CNetworkManager::Get().Shutdown();
+	CGameInstance::Get().Stop_LoopingSound();
 	CGameInstance::Get().SetInputBlocked(false, false);
 
 #ifdef _DEBUG

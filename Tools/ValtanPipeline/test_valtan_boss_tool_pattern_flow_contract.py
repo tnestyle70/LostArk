@@ -56,6 +56,23 @@ CORE_PATTERN_IDS = [
 ]
 
 
+def make_document(pattern_ids: list[str]) -> dict:
+    """Build test fixtures without depending on the user's saved slot order."""
+    return {
+        "schema": SCHEMA,
+        "formatVersion": 1,
+        "flows": [{
+            "flowId": FLOW_ID,
+            "nextSlotOrdinal": len(pattern_ids) + 1,
+            "interStepPursuitMs": 1000,
+            "slots": [
+                {"slotId": f"{FLOW_ID}.slot.{ordinal:06d}", "patternId": pattern_id}
+                for ordinal, pattern_id in enumerate(pattern_ids, start=1)
+            ],
+        }],
+    }
+
+
 def validate_document(document: object, admitted_pattern_ids: list[str]) -> None:
     if not isinstance(document, dict) or set(document) != {
         "schema", "formatVersion", "flows"
@@ -152,18 +169,24 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         manual = cls.gameplay["decisionModel"]["manualAuditions"]
         cls.inventory = CORE_PATTERN_IDS + [row["patternId"] for row in manual]
 
-    def test_default_document_is_strict_and_starts_from_all_effects_inventory(self) -> None:
+    def test_saved_document_is_strict_without_requiring_the_initial_seed(self) -> None:
+        # This is editable authoring data: reorder, removal, repeated patterns,
+        # and even an empty draft are valid. Only its public schema is fixed.
         validate_document(self.flow, self.inventory)
-        slots = self.flow["flows"][0]["slots"]
+
+    def test_initial_seed_fixture_starts_from_all_effects_inventory(self) -> None:
+        seed = make_document(self.inventory)
+        validate_document(seed, self.inventory)
+        slots = seed["flows"][0]["slots"]
         self.assertEqual(28, len(self.inventory))
         self.assertEqual(self.inventory, [slot["patternId"] for slot in slots])
-        self.assertEqual(29, self.flow["flows"][0]["nextSlotOrdinal"])
+        self.assertEqual(29, seed["flows"][0]["nextSlotOrdinal"])
         self.assertEqual(28, len({slot["slotId"] for slot in slots}))
 
     def test_duplicate_pattern_ids_are_valid_but_duplicate_slot_ids_are_not(self) -> None:
-        duplicate_pattern = copy.deepcopy(self.flow)
+        duplicate_pattern = make_document([self.inventory[0], self.inventory[0]])
         slots = duplicate_pattern["flows"][0]["slots"]
-        slots[-1]["patternId"] = slots[0]["patternId"]
+        self.assertNotEqual(slots[0]["slotId"], slots[1]["slotId"])
         validate_document(duplicate_pattern, self.inventory)
 
         duplicate_slot = copy.deepcopy(duplicate_pattern)
@@ -173,29 +196,100 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "slot id"):
             validate_document(duplicate_slot, self.inventory)
 
+    def test_reordered_slots_and_new_duplicate_pattern_keep_stable_ids(self) -> None:
+        document = make_document(self.inventory)
+        flow = document["flows"][0]
+        slots = flow["slots"]
+        original_slots = {slot["slotId"]: slot["patternId"] for slot in slots}
+
+        # Reproduce the reported edit in memory, not by fixing the live JSON
+        # to these 29 slots. Later user saves may legitimately differ again.
+        new_slot_id = f"{FLOW_ID}.slot.{flow['nextSlotOrdinal']:06d}"
+        slots.insert(0, {
+            "slotId": new_slot_id,
+            "patternId": "VALTAN_FLOOR_WIPE_130",
+        })
+        flow["nextSlotOrdinal"] += 1
+        counter_slot = next(slot for slot in slots if slot["patternId"] == "VALTAN_COUNTER")
+        slots.remove(counter_slot)
+        after_four = next(
+            index for index, slot in enumerate(slots)
+            if slot["patternId"] == "VALTAN_SEQUENCE_FOUR"
+        ) + 1
+        slots.insert(after_four, counter_slot)
+
+        round_trip = json.loads(json.dumps(document, ensure_ascii=False))
+        validate_document(round_trip, self.inventory)
+        self.assertEqual(document, round_trip)
+        self.assertEqual(new_slot_id, slots[0]["slotId"])
+        self.assertEqual(counter_slot, slots[after_four])
+        self.assertEqual(2, sum(
+            slot["patternId"] == "VALTAN_FLOOR_WIPE_130" for slot in slots
+        ))
+        self.assertEqual(original_slots, {
+            slot["slotId"]: slot["patternId"] for slot in slots
+            if slot["slotId"] != new_slot_id
+        })
+        self.assertEqual(30, flow["nextSlotOrdinal"])
+
+    def test_empty_single_and_maximum_slot_documents_are_valid(self) -> None:
+        for count in (0, 1, MAX_SLOTS):
+            with self.subTest(slot_count=count):
+                document = make_document([self.inventory[0]] * count)
+                validate_document(document, self.inventory)
+                self.assertEqual(count, len(document["flows"][0]["slots"]))
+
+    def test_removed_slots_preserve_sparse_ids_and_next_ordinal(self) -> None:
+        document = make_document(self.inventory)
+        flow = document["flows"][0]
+        original_ordinal = flow["nextSlotOrdinal"]
+        flow["slots"] = list(reversed(flow["slots"][::2]))
+        flow["interStepPursuitMs"] = 2500
+        round_trip = json.loads(json.dumps(document))
+        validate_document(round_trip, self.inventory)
+        self.assertEqual(document, round_trip)
+        self.assertEqual(original_ordinal, round_trip["flows"][0]["nextSlotOrdinal"])
+
+        flow["slots"].clear()
+        validate_document(document, self.inventory)
+        self.assertEqual(original_ordinal, flow["nextSlotOrdinal"])
+
+    def test_slot_ordinal_exhaustion_preserves_the_last_issued_id(self) -> None:
+        document = make_document([self.inventory[0]])
+        flow = document["flows"][0]
+        flow["slots"][0]["slotId"] = f"{FLOW_ID}.slot.999999"
+        flow["nextSlotOrdinal"] = 1_000_000
+        validate_document(document, self.inventory)
+
+        for ordinal, reason in ((999_999, "slot reuse"), (1_000_001, "next ordinal")):
+            with self.subTest(next_slot_ordinal=ordinal):
+                flow["nextSlotOrdinal"] = ordinal
+                with self.assertRaisesRegex(ValueError, reason):
+                    validate_document(document, self.inventory)
+
     def test_wrong_version_unknown_property_unknown_pattern_and_overflow_fail(self) -> None:
         mutations = []
-        wrong_version = copy.deepcopy(self.flow)
+        seed = make_document(self.inventory)
+        wrong_version = copy.deepcopy(seed)
         wrong_version["formatVersion"] = 2
-        mutations.append(wrong_version)
-        unknown_property = copy.deepcopy(self.flow)
+        mutations.append(("version", wrong_version))
+        unknown_property = copy.deepcopy(seed)
         unknown_property["flows"][0]["slots"][0]["index"] = 0
-        mutations.append(unknown_property)
-        unknown_pattern = copy.deepcopy(self.flow)
+        mutations.append(("slot properties", unknown_property))
+        unknown_pattern = copy.deepcopy(seed)
         unknown_pattern["flows"][0]["slots"][0]["patternId"] = "UNKNOWN"
-        mutations.append(unknown_pattern)
-        overflow = copy.deepcopy(self.flow)
-        overflow["flows"][0]["slots"].extend(
-            copy.deepcopy(overflow["flows"][0]["slots"][:5])
-        )
-        mutations.append(overflow)
-        float_integer = copy.deepcopy(self.flow)
+        mutations.append(("pattern id", unknown_pattern))
+        # All IDs remain unique so this tests the 32-slot boundary itself,
+        # not an unrelated duplicate-slot rejection.
+        overflow = make_document([self.inventory[0]] * (MAX_SLOTS + 1))
+        mutations.append(("slots", overflow))
+        float_integer = copy.deepcopy(seed)
         float_integer["formatVersion"] = 1.0
-        mutations.append(float_integer)
+        mutations.append(("header types", float_integer))
 
-        for candidate in mutations:
-            with self.subTest(candidate=candidate):
-                with self.assertRaises(ValueError):
+        for reason, candidate in mutations:
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(ValueError, reason):
                     validate_document(candidate, self.inventory)
 
     def test_cpp_codec_stages_before_commit_and_keeps_pattern_tree_out(self) -> None:
@@ -356,7 +450,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.network_header + self.network_source)
 
     def test_protocol_is_typed_bounded_and_covered_by_round_trip_harness(self) -> None:
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 39", self.packet_type)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 41", self.packet_type)
         for marker in (
             "C2S_DEBUG_VALTAN_PATTERN_FLOW_START",
             "S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT",

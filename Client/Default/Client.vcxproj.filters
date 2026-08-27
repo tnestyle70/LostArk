@@ -561,6 +561,12 @@
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\PartyInteractionView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UITextureCache.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -943,7 +949,19 @@
     <ClInclude Include="..\Public\PartyWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ReplicatedPlayerHealth.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PartyTransferNotice.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PartyInteractionView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
@@ -1014,6 +1032,9 @@
 	  <Filter>04. Network</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\MonsterPresentationContract.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
@@ -1565,6 +1586,12 @@
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\Party\PartyContextMenu_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json">

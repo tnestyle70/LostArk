@@ -17,7 +17,12 @@ namespace LostArk::Server
 		std::uint32_t iDefense = 0;
 		float fCollisionRadius = 0.f;
 		float fEngageRange = 0.f;
+		float fTargetReleaseRange = 0.f;
 		float fMoveSpeed = 0.f;
+		float fTurnSpeedDegreesPerSecond = 0.f;
+		float fAcceleration = 0.f;
+		float fDeceleration = 0.f;
+		float fArrivalSlowRadius = 0.f;
 		float fAttackRange = 0.f;
 		std::uint32_t iAttackWindupMs = 0;
 		std::uint32_t iAttackActiveMs = 0;

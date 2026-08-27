@@ -224,9 +224,9 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 ### 서버 권위 월드 파이프라인
 
-MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 optional `*.spawngroupsbootstrap`을 한 transaction으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
+MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 Server pre-build가 이 publish를 강제한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v39 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v41 snapshot으로 보낸다. v41은 확장된 벽 붕괴 delta와 파티 초대·roster·실패 안내를 함께 포함하므로 기존 v40 Server/Client와 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 

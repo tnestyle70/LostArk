@@ -59,6 +59,13 @@ public:
 		const VALTAN_CINEMATIC_CAMERA_CUE& cue,
 		const VALTAN_CINEMATIC_CAMERA_INPUT& input,
 		VALTAN_CINEMATIC_CAMERA_POSE& inOutPose);
+	/* Camera capture starts from the resolved world pose. Authoring must remove
+	   the same replicated tracking frame before saving or the runtime would
+	   apply that transform a second time. */
+	static bool_t Remove_CueTracking(
+		const VALTAN_CINEMATIC_CAMERA_CUE& cue,
+		const VALTAN_CINEMATIC_CAMERA_INPUT& input,
+		VALTAN_CINEMATIC_CAMERA_POSE& inOutPose);
 	/* Entry and gameplay-handoff blends share one bounded sampler. Keeping this
 	   independent of camera ownership lets the Level retain the override until
 	   it has submitted the exact final follow pose. */

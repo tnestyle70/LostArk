@@ -13,11 +13,20 @@
 #include "NetworkPlayerCommandSink.h"
 #include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Trigger_Box.h"
 #include "WorldGameplayDocument.h"
 
 #include <algorithm>
+#include <cfloat>
+#include <filesystem>
+
+namespace
+{
+	constexpr const wchar_t* BERN_CASTLE_BGM_ASSET_ID =
+		L"Sound/BGM/BernCastle/bgm_berntown_mscene01_thecapital.wav";
+}
 
 CLevel_Bern* CLevel_Bern::s_pActiveInstance = nullptr;
 
@@ -31,6 +40,9 @@ CLevel_Bern::CLevel_Bern(
 
 CLevel_Bern::~CLevel_Bern()
 {
+	if (m_bBernBgmStarted)
+		CGameInstance::Get().Stop_Music();
+
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 }
@@ -99,6 +111,18 @@ HRESULT CLevel_Bern::Initialize()
 	m_pValtanEntryView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Bern/BernValtanEntry_Layout.json");
 
+	/* First-ever CGameInstance::Draw_Text call for Font_YoonGasiIIM in this
+	level appeared to render nothing the first time the Valtan-entry popup
+	opened (confirmed determinate rect/measure that frame -- see
+	Render_ValtanEntryModalText), then worked normally every time after.
+	Off-screen warm-up draw so whatever GPU-side lazy init that first call
+	does happens here instead of on the popup's actual first appearance. */
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), L" ",
+		float2_t(-1000.f, -1000.f), Colors::White, 0.f,
+		float2_t(0.5f, 0.5f), 1.f);
+
+	m_PartyInteraction.Initialize(m_pDevice, m_pContext);
+
 #ifdef _DEBUG
 	if (!Ready_DebugLevelChangeTriggers(pEntry->pMapAreaId))
 	{
@@ -106,6 +130,23 @@ HRESULT CLevel_Bern::Initialize()
 			"[Level_Bern] Debug changeLevel Trigger Box presentation failed.\n");
 	}
 #endif
+
+	const std::filesystem::path musicPath =
+		CRuntimeAssetRoot::Resolve(BERN_CASTLE_BGM_ASSET_ID);
+	if (!musicPath.empty() && std::filesystem::is_regular_file(musicPath) &&
+		SUCCEEDED(CGameInstance::Get().Play_Music(
+			musicPath.wstring(), 1.f, true)))
+	{
+		m_bBernBgmStarted = true;
+	}
+	else
+	{
+#ifdef _DEBUG
+		OutputDebugStringA(
+			"[Level_Bern] Bern Castle BGM was isolated because the exact "
+			"runtime WAV could not be played.\n");
+#endif
+	}
 
 	return S_OK;
 }
@@ -153,10 +194,29 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	m_PlayerController.Set_LocalCharacter(
 		localCharacter);
 
-	/* Valtan entry is confirmed at a guide NPC instead of by walking into a
-	changeLevel triggerBox. Runs before the controller update so the click that
-	opens the confirm window is not also spent as that frame's move command. */
+	/* Popup ownership is added before either world picking or gameplay input.
+	Never clear another consumer's block (for example MapTool's LMB owner). */
+	if (m_isValtanEntryModalOpen)
+	{
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	}
+	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	if (m_PartyInteraction.Update(
+		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
+		!m_isValtanEntryModalOpen &&
+			nullptr != m_pCamera && m_pCamera->Is_FollowEnabled()))
+	{
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	}
 	Update_ValtanEntryInteraction();
+	Advance_ValtanEntryWalk();
+	if (m_isValtanEntryModalOpen)
+	{
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	}
 
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
@@ -168,8 +228,9 @@ HRESULT CLevel_Bern::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
+	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+	m_PartyInteraction.Render(m_pPlayerCommandSink);
 
 	/* The ImGui popup draws the panel and button art; the LOA font pass that
 	labels them has to follow it inside this same Render call. */
@@ -428,44 +489,132 @@ bool_t CLevel_Bern::Ready_ValtanEntryNpcs(const std::string& areaId)
 void CLevel_Bern::Update_ValtanEntryInteraction()
 {
 	const bool_t isRightMouseDown =
-		!CGameInstance::Get().IsMouseInputBlocked() &&
-		0 != (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
 	const bool_t isRightMousePressed =
 		isRightMouseDown && !m_wasRightMouseDownForNpcInteract;
 	m_wasRightMouseDownForNpcInteract = isRightMouseDown;
 
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
 	if (m_isValtanEntryModalOpen || !isRightMousePressed ||
-		m_ValtanEntryNpcs.empty() ||
-		nullptr == m_Replication.Get_LocalCharacter() ||
+		0 == (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80) ||
+		m_ValtanEntryNpcs.empty() || nullptr == localCharacter ||
 		nullptr == m_pCamera || !m_pCamera->Is_FollowEnabled())
 	{
 		return;
 	}
 
-	// Same footprint Handle_ConfirmNpcEntry re-validates server-side.
-	constexpr f32_t INTERACTION_RADIUS = 3.f;
-	f32_t fBestDistanceSq = INTERACTION_RADIUS * INTERACTION_RADIUS;
+	/* World-ray-vs-sphere pick against each NPC's real position, the same
+	technique CPartyInteractionView's right-click-a-player pick uses -- the
+	NPC has to be clickable from anywhere on screen, not just while already
+	standing next to it. NPC_CLICK_RADIUS is a generous clickable capsule;
+	INTERACTION_RADIUS (Advance_ValtanEntryWalk, same value
+	Handle_ConfirmNpcEntry re-validates server-side) is the much smaller
+	distance the character actually has to walk into before the window
+	opens. */
+	vector_t rayOrigin{}, rayDirection{};
+	if (!CPlayerController::Try_PickWorldRay(rayOrigin, rayDirection))
+		return;
+	rayDirection = XMVector3Normalize(rayDirection);
+
+	constexpr f32_t NPC_CLICK_RADIUS = 1.5f;
+	f32_t fBestRayParameter = FLT_MAX;
 	const VALTAN_ENTRY_NPC* pHit = nullptr;
 	for (const VALTAN_ENTRY_NPC& npc : m_ValtanEntryNpcs)
 	{
-		float3_t goal{};
-		if (!CPlayerController::Try_PickGroundPlane(npc.vPosition.y, goal))
+		const vector_t vNpcPos = XMLoadFloat3(&npc.vPosition);
+		const f32_t fRayParameter = XMVectorGetX(XMVector3Dot(
+			XMVectorSubtract(vNpcPos, rayOrigin), rayDirection));
+		if (fRayParameter < 0.f)
 			continue;
-		const f32_t deltaX = goal.x - npc.vPosition.x;
-		const f32_t deltaZ = goal.z - npc.vPosition.z;
-		const f32_t distanceSq = deltaX * deltaX + deltaZ * deltaZ;
-		if (distanceSq <= fBestDistanceSq)
+
+		const vector_t vClosestPoint = XMVectorAdd(
+			rayOrigin, XMVectorScale(rayDirection, fRayParameter));
+		const f32_t fDistanceSq = XMVectorGetX(XMVector3LengthSq(
+			XMVectorSubtract(vNpcPos, vClosestPoint)));
+		if (fDistanceSq > NPC_CLICK_RADIUS * NPC_CLICK_RADIUS)
+			continue;
+
+		if (fRayParameter < fBestRayParameter)
 		{
-			fBestDistanceSq = distanceSq;
+			fBestRayParameter = fRayParameter;
 			pHit = &npc;
 		}
 	}
 	if (nullptr == pHit)
 		return;
 
+	m_PlayerController.Suppress_MoveClickThisFrame();
+	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	m_strValtanEntryNpcPlacementId = pHit->strPlacementId;
+	m_isWalkingToValtanEntryNpc = true;
+
+	/* Stop just inside interaction range, on the side the character is
+	already standing, instead of walking exactly onto the NPC's own point. */
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr != transform)
+	{
+		const vector_t vCharacterPos = transform->Get_State(STATE::POSITION);
+		vector_t vTowardCharacter = XMVectorSubtract(vCharacterPos,
+			XMLoadFloat3(&pHit->vPosition));
+		vTowardCharacter = XMVectorSetY(vTowardCharacter, 0.f);
+		constexpr f32_t INTERACTION_RADIUS = 3.f;
+		float3_t goal{};
+		if (XMVectorGetX(XMVector3LengthSq(vTowardCharacter)) < 0.01f)
+		{
+			goal = pHit->vPosition;
+		}
+		else
+		{
+			vTowardCharacter = XMVector3Normalize(vTowardCharacter);
+			XMStoreFloat3(&goal, XMVectorAdd(
+				XMLoadFloat3(&pHit->vPosition),
+				XMVectorScale(vTowardCharacter, INTERACTION_RADIUS * 0.7f)));
+			goal.y = pHit->vPosition.y;
+		}
+		m_PlayerController.Request_MoveToPoint(goal);
+	}
+}
+
+void CLevel_Bern::Advance_ValtanEntryWalk()
+{
+	if (!m_isWalkingToValtanEntryNpc || m_isValtanEntryModalOpen)
+		return;
+
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	const auto npcIt = std::find_if(
+		m_ValtanEntryNpcs.begin(), m_ValtanEntryNpcs.end(),
+		[this](const VALTAN_ENTRY_NPC& npc)
+		{
+			return npc.strPlacementId == m_strValtanEntryNpcPlacementId;
+		});
+	if (nullptr == localCharacter || m_ValtanEntryNpcs.end() == npcIt)
+	{
+		m_isWalkingToValtanEntryNpc = false;
+		return;
+	}
+
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr == transform)
+		return;
+
+	// Same footprint Handle_ConfirmNpcEntry re-validates server-side.
+	constexpr f32_t INTERACTION_RADIUS = 3.f;
+	const vector_t vCharacterPos = transform->Get_State(STATE::POSITION);
+	const vector_t vDelta = XMVectorSubtract(
+		vCharacterPos, XMLoadFloat3(&npcIt->vPosition));
+	const f32_t fDistanceSq = XMVectorGetX(XMVector3LengthSq(
+		XMVectorSetY(vDelta, 0.f)));
+	if (fDistanceSq > INTERACTION_RADIUS * INTERACTION_RADIUS)
+		return;
+
+	m_isWalkingToValtanEntryNpc = false;
 	m_isValtanEntryModalOpen = true;
 	m_hasValtanEntryModalJustOpened = true;
+#ifdef _DEBUG
+	OutputDebugStringA("[Level_Bern][ValtanEntryText] modal opened this frame\n");
+#endif
 }
 
 void CLevel_Bern::Render_ValtanEntryModal()
@@ -492,7 +641,18 @@ void CLevel_Bern::Render_ValtanEntryModal()
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
 		ImGuiWindowFlags_NoSavedSettings;
 
-	if (!ImGui::BeginPopupModal("ValtanEntryConfirm", nullptr, flags))
+	/* BeginPopupModal draws its own full-viewport dim rect before returning,
+	   independent of ImGuiWindowFlags_NoBackground (which only covers the
+	   popup window itself) -- StyleColorsDark's default ModalWindowDimBg is a
+	   light translucent grey, which reads as a wash of white over the game
+	   behind it. Suppressed since this popup only wants its own panel art
+	   visible, not a dimmed backdrop -- same fix as CPartyInteractionView's
+	   two modals. */
+	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.f, 0.f, 0.f, 0.f));
+	const bool_t isModalOpen =
+		ImGui::BeginPopupModal("ValtanEntryConfirm", nullptr, flags);
+	ImGui::PopStyleColor();
+	if (!isModalOpen)
 	{
 		m_isValtanEntryModalOpen = false;
 		return;
@@ -529,6 +689,9 @@ void CLevel_Bern::Render_ValtanEntryModal()
 				Fn_ToScreen(fPanelX + fPanelW, fPanelY + fPanelH));
 		}
 	}
+
+	/* ValtanEntry_TitleTextBox/DescTextBox are position-only markers for
+	   Render_ValtanEntryModalText() -- no background image, text only. */
 
 	struct MODAL_BUTTON
 	{
@@ -567,6 +730,33 @@ void CLevel_Bern::Render_ValtanEntryModal()
 				confirmClicked = true;
 			else
 				cancelClicked = true;
+		}
+	}
+
+	/* Drawn after the buttons (not before) so the button art doesn't paint
+	   over these and hide them. */
+	struct MODAL_ICON_SLOT
+	{
+		const char* pSlotId;
+		const char* pTexturePath;
+	};
+	static constexpr MODAL_ICON_SLOT ICON_SLOTS[2] =
+	{
+		{ "ValtanEntry_AcceptIcon", "UI/Bern/Accept.png" },
+		{ "ValtanEntry_DeclineIcon", "UI/Bern/Decline.png" },
+	};
+	for (const MODAL_ICON_SLOT& icon : ICON_SLOTS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+		if (!m_pValtanEntryView->Get_SlotRect(icon.pSlotId, fX, fY, fW, fH))
+			continue;
+		ID3D11ShaderResourceView* pTexture =
+			m_pValtanEntryView->Load_Texture(icon.pTexturePath);
+		if (nullptr != pTexture)
+		{
+			pDrawList->AddImage(
+				reinterpret_cast<ImTextureID>(pTexture),
+				Fn_ToScreen(fX, fY), Fn_ToScreen(fX + fW, fY + fH));
 		}
 	}
 
@@ -612,29 +802,75 @@ void CLevel_Bern::Render_ValtanEntryModalText()
 			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
-	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
-	if (m_pValtanEntryView->Get_SlotRect(
-		"ValtanEntry_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
+	f32_t fTitleX = 0.f, fTitleY = 0.f, fTitleW = 0.f, fTitleH = 0.f;
+	const bool_t bTitleRectFound = m_pValtanEntryView->Get_SlotRect(
+		"ValtanEntry_TitleTextBox", fTitleX, fTitleY, fTitleW, fTitleH);
+#ifdef _DEBUG
 	{
-		// "발탄 레이드에 입장하시겠습니까?"
-		Fn_DrawCentered(fPanelX + fPanelW * 0.5f, fPanelY - 20.f,
-			L"\xBC1C\xD0C4 \xB808\xC774\xB4DC\xC5D0 \xC785\xC7A5\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?",
-			22.f, Colors::White);
+		const float2_t vMeasuredDebug = CGameInstance::Get().Measure_Text(
+			TEXT("Font_YoonGasiIIM"), L"\xB808\xC774\xB4DC \xC785\xC7A5");
+		OutputDebugStringA((
+			"[Level_Bern][ValtanEntryText] rectFound=" +
+			std::to_string(bTitleRectFound) +
+			" rect=(" + std::to_string(fTitleX) + "," +
+			std::to_string(fTitleY) + "," + std::to_string(fTitleW) + "," +
+			std::to_string(fTitleH) + ") measured=(" +
+			std::to_string(vMeasuredDebug.x) + "," +
+			std::to_string(vMeasuredDebug.y) + ") viewport=(" +
+			std::to_string(CGameInstance::Get().Get_ViewportSize().x) + "," +
+			std::to_string(CGameInstance::Get().Get_ViewportSize().y) +
+			")\n").c_str());
+	}
+#endif
+	if (bTitleRectFound)
+	{
+		// "레이드 입장"
+		Fn_DrawCentered(fTitleX + fTitleW * 0.5f, fTitleY + fTitleH * 0.5f,
+			L"\xB808\xC774\xB4DC \xC785\xC7A5",
+			24.f, Colors::White);
 	}
 
-	struct MODAL_BUTTON_LABEL { const char_t* pSlotId; const wchar_t* pLabel; };
+	f32_t fDescX = 0.f, fDescY = 0.f, fDescW = 0.f, fDescH = 0.f;
+	if (m_pValtanEntryView->Get_SlotRect(
+		"ValtanEntry_DescTextBox", fDescX, fDescY, fDescW, fDescH))
+	{
+		// "부활한 마수의 심장으로 이동하시겠습니까?"
+		Fn_DrawCentered(fDescX + fDescW * 0.5f, fDescY + fDescH * 0.5f,
+			L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5\xC73C\xB85C "
+			L"\xC774\xB3D9\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?",
+			18.f, Colors::White);
+	}
+
+	/* Label sits to the right of the icon inside the same button, not centered
+	   on the whole button -- Get_SlotRect gives both rects so no hardcoded
+	   offset is needed. */
+	struct MODAL_BUTTON_LABEL
+	{
+		const char_t* pButtonSlotId;
+		const char_t* pIconSlotId;
+		const wchar_t* pLabel;
+	};
 	const MODAL_BUTTON_LABEL BUTTON_LABELS[] =
 	{
-		{ "ValtanEntry_ConfirmButton", L"\xC785\xC7A5" }, // "입장"
-		{ "ValtanEntry_CancelButton", L"\xCDE8\xC18C" },  // "취소"
+		{ "ValtanEntry_ConfirmButton", "ValtanEntry_AcceptIcon", L"\xC218\xB77D" }, // "수락"
+		{ "ValtanEntry_CancelButton", "ValtanEntry_DeclineIcon", L"\xAC70\xC808" }, // "거절"
 	};
 	for (const MODAL_BUTTON_LABEL& Label : BUTTON_LABELS)
 	{
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pValtanEntryView->Get_SlotRect(Label.pSlotId, fX, fY, fWidth, fHeight))
+		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonW = 0.f, fButtonH = 0.f;
+		f32_t fIconX = 0.f, fIconY = 0.f, fIconW = 0.f, fIconH = 0.f;
+		if (!m_pValtanEntryView->Get_SlotRect(
+				Label.pButtonSlotId, fButtonX, fButtonY, fButtonW, fButtonH) ||
+			!m_pValtanEntryView->Get_SlotRect(
+				Label.pIconSlotId, fIconX, fIconY, fIconW, fIconH))
+		{
 			continue;
-		Fn_DrawCentered(fX + fWidth * 0.5f, fY + fHeight * 0.5f, Label.pLabel,
-			fHeight * 0.32f, Colors::White);
+		}
+		const f32_t fIconRight = fIconX + fIconW;
+		const f32_t fButtonRight = fButtonX + fButtonW;
+		Fn_DrawCentered(
+			(fIconRight + fButtonRight) * 0.5f, fButtonY + fButtonH * 0.5f,
+			Label.pLabel, fButtonH * 0.48f, Colors::White);
 	}
 }
 

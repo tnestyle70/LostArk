@@ -2173,14 +2173,14 @@
                        "enabled": true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.10619331645164562008.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.10619331645164562008.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.10619331645164562008.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.10619331645164562008.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.10619331645164562008.contact",
@@ -2203,14 +2203,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.10758879797263276529.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.10758879797263276529.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.10758879797263276529.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.10758879797263276529.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.10758879797263276529.contact",
@@ -2233,14 +2233,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.11047903315509031966.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.11047903315509031966.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.11047903315509031966.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.11047903315509031966.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.11047903315509031966.contact",
@@ -2263,14 +2263,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.12385961325933108240.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.12385961325933108240.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.12385961325933108240.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.12385961325933108240.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.12385961325933108240.contact",
@@ -2293,14 +2293,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.15221142224278623810.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.15221142224278623810.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.15221142224278623810.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.15221142224278623810.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.15221142224278623810.contact",
@@ -2323,14 +2323,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.15719065619666776634.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.15719065619666776634.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.15719065619666776634.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.15719065619666776634.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.15719065619666776634.contact",
@@ -2353,14 +2353,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.16891123250307634887.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.16891123250307634887.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.16891123250307634887.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.16891123250307634887.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.16891123250307634887.contact",
@@ -2383,14 +2383,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.17769051189408857662.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.17769051189408857662.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.17769051189408857662.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.17769051189408857662.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.17769051189408857662.contact",
@@ -2413,14 +2413,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.18064647264029106986.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.18064647264029106986.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.18064647264029106986.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.18064647264029106986.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.18064647264029106986.contact",
@@ -2443,14 +2443,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall159.18095941116451824308.arena-break-109",
-                         "mutationId":  "mutation.valtan.wall159.18095941116451824308.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall159.18095941116451824308.arena-break-109",
+                       "mutationId": "mutation.valtan.wall159.18095941116451824308.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall159.18095941116451824308.contact",
@@ -2873,14 +2873,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.9335938568718910930.preview",
-                         "mutationId":  "mutation.valtan.wall.9335938568718910930.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.9335938568718910930.preview",
+                       "mutationId": "mutation.valtan.wall.9335938568718910930.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.9335938568718910930.contact",
@@ -2893,14 +2893,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.9681544306002658031.preview",
-                         "mutationId":  "mutation.valtan.wall.9681544306002658031.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.9681544306002658031.preview",
+                       "mutationId": "mutation.valtan.wall.9681544306002658031.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.9681544306002658031.contact",
@@ -2913,14 +2913,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.12037145985028191659.preview",
-                         "mutationId":  "mutation.valtan.wall.12037145985028191659.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.12037145985028191659.preview",
+                       "mutationId": "mutation.valtan.wall.12037145985028191659.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.12037145985028191659.contact",
@@ -2933,14 +2933,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.17280669848983777578.preview",
-                         "mutationId":  "mutation.valtan.wall.17280669848983777578.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.17280669848983777578.preview",
+                       "mutationId": "mutation.valtan.wall.17280669848983777578.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.17280669848983777578.contact",
@@ -2953,14 +2953,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.18177041425620847396.preview",
-                         "mutationId":  "mutation.valtan.wall.18177041425620847396.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.18177041425620847396.preview",
+                       "mutationId": "mutation.valtan.wall.18177041425620847396.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.18177041425620847396.contact",
@@ -2973,14 +2973,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.17150846598057876717.preview",
-                         "mutationId":  "mutation.valtan.wall.17150846598057876717.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.17150846598057876717.preview",
+                       "mutationId": "mutation.valtan.wall.17150846598057876717.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.17150846598057876717.contact",
@@ -2993,14 +2993,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.9863801195242004116.preview",
-                         "mutationId":  "mutation.valtan.wall.9863801195242004116.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.9863801195242004116.preview",
+                       "mutationId": "mutation.valtan.wall.9863801195242004116.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.9863801195242004116.contact",
@@ -3013,14 +3013,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.11190594702002930167.preview",
-                         "mutationId":  "mutation.valtan.wall.11190594702002930167.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.11190594702002930167.preview",
+                       "mutationId": "mutation.valtan.wall.11190594702002930167.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.11190594702002930167.contact",
@@ -3033,14 +3033,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.13195423984589183291.preview",
-                         "mutationId":  "mutation.valtan.wall.13195423984589183291.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.13195423984589183291.preview",
+                       "mutationId": "mutation.valtan.wall.13195423984589183291.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.13195423984589183291.contact",
@@ -3053,14 +3053,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.9522135662464469029.preview",
-                         "mutationId":  "mutation.valtan.wall.9522135662464469029.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.9522135662464469029.preview",
+                       "mutationId": "mutation.valtan.wall.9522135662464469029.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.9522135662464469029.contact",
@@ -3073,14 +3073,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.11909088500311713272.preview",
-                         "mutationId":  "mutation.valtan.wall.11909088500311713272.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.11909088500311713272.preview",
+                       "mutationId": "mutation.valtan.wall.11909088500311713272.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.11909088500311713272.contact",
@@ -3093,14 +3093,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15675921917269125843.preview",
-                         "mutationId":  "mutation.valtan.wall.15675921917269125843.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15675921917269125843.preview",
+                       "mutationId": "mutation.valtan.wall.15675921917269125843.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15675921917269125843.contact",
@@ -3113,14 +3113,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.13221745590928612509.preview",
-                         "mutationId":  "mutation.valtan.wall.13221745590928612509.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.13221745590928612509.preview",
+                       "mutationId": "mutation.valtan.wall.13221745590928612509.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.13221745590928612509.contact",
@@ -3133,14 +3133,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.9652616057759700150.preview",
-                         "mutationId":  "mutation.valtan.wall.9652616057759700150.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.9652616057759700150.preview",
+                       "mutationId": "mutation.valtan.wall.9652616057759700150.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.9652616057759700150.contact",
@@ -3153,14 +3153,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.13520360247339696445.preview",
-                         "mutationId":  "mutation.valtan.wall.13520360247339696445.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.13520360247339696445.preview",
+                       "mutationId": "mutation.valtan.wall.13520360247339696445.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.13520360247339696445.contact",
@@ -3173,14 +3173,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15495684800954131707.preview",
-                         "mutationId":  "mutation.valtan.wall.15495684800954131707.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15495684800954131707.preview",
+                       "mutationId": "mutation.valtan.wall.15495684800954131707.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15495684800954131707.contact",
@@ -3193,14 +3193,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.14210737191027038638.preview",
-                         "mutationId":  "mutation.valtan.wall.14210737191027038638.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.14210737191027038638.preview",
+                       "mutationId": "mutation.valtan.wall.14210737191027038638.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.14210737191027038638.contact",
@@ -3213,14 +3213,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.14345577340107998055.preview",
-                         "mutationId":  "mutation.valtan.wall.14345577340107998055.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.14345577340107998055.preview",
+                       "mutationId": "mutation.valtan.wall.14345577340107998055.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.14345577340107998055.contact",
@@ -3233,14 +3233,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.14439275443581760904.preview",
-                         "mutationId":  "mutation.valtan.wall.14439275443581760904.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.14439275443581760904.preview",
+                       "mutationId": "mutation.valtan.wall.14439275443581760904.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.14439275443581760904.contact",
@@ -3253,14 +3253,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.18100758183075339831.preview",
-                         "mutationId":  "mutation.valtan.wall.18100758183075339831.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.18100758183075339831.preview",
+                       "mutationId": "mutation.valtan.wall.18100758183075339831.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.18100758183075339831.contact",
@@ -3273,14 +3273,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15423695113667715748.preview",
-                         "mutationId":  "mutation.valtan.wall.15423695113667715748.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15423695113667715748.preview",
+                       "mutationId": "mutation.valtan.wall.15423695113667715748.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15423695113667715748.contact",
@@ -3293,14 +3293,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.12804542616476082944.preview",
-                         "mutationId":  "mutation.valtan.wall.12804542616476082944.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.12804542616476082944.preview",
+                       "mutationId": "mutation.valtan.wall.12804542616476082944.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.12804542616476082944.contact",
@@ -3313,14 +3313,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.9671293252162296055.preview",
-                         "mutationId":  "mutation.valtan.wall.9671293252162296055.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.9671293252162296055.preview",
+                       "mutationId": "mutation.valtan.wall.9671293252162296055.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.9671293252162296055.contact",
@@ -3333,14 +3333,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15358675764127682739.preview",
-                         "mutationId":  "mutation.valtan.wall.15358675764127682739.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15358675764127682739.preview",
+                       "mutationId": "mutation.valtan.wall.15358675764127682739.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15358675764127682739.contact",
@@ -3353,14 +3353,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.13290943434399830027.preview",
-                         "mutationId":  "mutation.valtan.wall.13290943434399830027.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.13290943434399830027.preview",
+                       "mutationId": "mutation.valtan.wall.13290943434399830027.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.13290943434399830027.contact",
@@ -3373,14 +3373,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.12819104299115621849.preview",
-                         "mutationId":  "mutation.valtan.wall.12819104299115621849.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.12819104299115621849.preview",
+                       "mutationId": "mutation.valtan.wall.12819104299115621849.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.12819104299115621849.contact",
@@ -3393,14 +3393,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.17359606121069777624.preview",
-                         "mutationId":  "mutation.valtan.wall.17359606121069777624.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.17359606121069777624.preview",
+                       "mutationId": "mutation.valtan.wall.17359606121069777624.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.17359606121069777624.contact",
@@ -3413,14 +3413,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.14520149530921636720.preview",
-                         "mutationId":  "mutation.valtan.wall.14520149530921636720.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.14520149530921636720.preview",
+                       "mutationId": "mutation.valtan.wall.14520149530921636720.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.14520149530921636720.contact",
@@ -3433,14 +3433,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.11170070275064524686.preview",
-                         "mutationId":  "mutation.valtan.wall.11170070275064524686.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.11170070275064524686.preview",
+                       "mutationId": "mutation.valtan.wall.11170070275064524686.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.11170070275064524686.contact",
@@ -3453,14 +3453,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.13154681496987253568.preview",
-                         "mutationId":  "mutation.valtan.wall.13154681496987253568.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.13154681496987253568.preview",
+                       "mutationId": "mutation.valtan.wall.13154681496987253568.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.13154681496987253568.contact",
@@ -3473,14 +3473,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15393154990485032341.preview",
-                         "mutationId":  "mutation.valtan.wall.15393154990485032341.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15393154990485032341.preview",
+                       "mutationId": "mutation.valtan.wall.15393154990485032341.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15393154990485032341.contact",
@@ -3493,14 +3493,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.17788407538468874008.preview",
-                         "mutationId":  "mutation.valtan.wall.17788407538468874008.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.17788407538468874008.preview",
+                       "mutationId": "mutation.valtan.wall.17788407538468874008.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.17788407538468874008.contact",
@@ -3513,14 +3513,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.10912388091405377926.preview",
-                         "mutationId":  "mutation.valtan.wall.10912388091405377926.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.10912388091405377926.preview",
+                       "mutationId": "mutation.valtan.wall.10912388091405377926.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.10912388091405377926.contact",
@@ -3533,14 +3533,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.18362175117092037953.preview",
-                         "mutationId":  "mutation.valtan.wall.18362175117092037953.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.18362175117092037953.preview",
+                       "mutationId": "mutation.valtan.wall.18362175117092037953.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.18362175117092037953.contact",
@@ -3553,14 +3553,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.13837284136111935898.preview",
-                         "mutationId":  "mutation.valtan.wall.13837284136111935898.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.13837284136111935898.preview",
+                       "mutationId": "mutation.valtan.wall.13837284136111935898.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.13837284136111935898.contact",
@@ -3573,14 +3573,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15148418014021580024.preview",
-                         "mutationId":  "mutation.valtan.wall.15148418014021580024.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15148418014021580024.preview",
+                       "mutationId": "mutation.valtan.wall.15148418014021580024.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15148418014021580024.contact",
@@ -3593,14 +3593,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.10435996578153793381.preview",
-                         "mutationId":  "mutation.valtan.wall.10435996578153793381.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.10435996578153793381.preview",
+                       "mutationId": "mutation.valtan.wall.10435996578153793381.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.10435996578153793381.contact",
@@ -3613,14 +3613,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15736179535184396369.preview",
-                         "mutationId":  "mutation.valtan.wall.15736179535184396369.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15736179535184396369.preview",
+                       "mutationId": "mutation.valtan.wall.15736179535184396369.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15736179535184396369.contact",
@@ -3633,14 +3633,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.17296963925068961735.preview",
-                         "mutationId":  "mutation.valtan.wall.17296963925068961735.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.17296963925068961735.preview",
+                       "mutationId": "mutation.valtan.wall.17296963925068961735.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.17296963925068961735.contact",
@@ -3653,14 +3653,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.17695249952621776147.preview",
-                         "mutationId":  "mutation.valtan.wall.17695249952621776147.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.17695249952621776147.preview",
+                       "mutationId": "mutation.valtan.wall.17695249952621776147.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.17695249952621776147.contact",
@@ -3673,14 +3673,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.10672658406952543185.preview",
-                         "mutationId":  "mutation.valtan.wall.10672658406952543185.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.10672658406952543185.preview",
+                       "mutationId": "mutation.valtan.wall.10672658406952543185.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.10672658406952543185.contact",
@@ -3693,14 +3693,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.9460380659834835619.preview",
-                         "mutationId":  "mutation.valtan.wall.9460380659834835619.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.9460380659834835619.preview",
+                       "mutationId": "mutation.valtan.wall.9460380659834835619.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.9460380659834835619.contact",
@@ -3713,14 +3713,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.14462438123003083514.preview",
-                         "mutationId":  "mutation.valtan.wall.14462438123003083514.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.14462438123003083514.preview",
+                       "mutationId": "mutation.valtan.wall.14462438123003083514.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.14462438123003083514.contact",
@@ -3733,14 +3733,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.14398285027733086155.preview",
-                         "mutationId":  "mutation.valtan.wall.14398285027733086155.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.14398285027733086155.preview",
+                       "mutationId": "mutation.valtan.wall.14398285027733086155.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.14398285027733086155.contact",
@@ -3753,14 +3753,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15451422525499780584.preview",
-                         "mutationId":  "mutation.valtan.wall.15451422525499780584.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15451422525499780584.preview",
+                       "mutationId": "mutation.valtan.wall.15451422525499780584.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15451422525499780584.contact",
@@ -3773,14 +3773,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.12681913253468198394.preview",
-                         "mutationId":  "mutation.valtan.wall.12681913253468198394.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.12681913253468198394.preview",
+                       "mutationId": "mutation.valtan.wall.12681913253468198394.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.12681913253468198394.contact",
@@ -3793,14 +3793,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.12135716830026868823.preview",
-                         "mutationId":  "mutation.valtan.wall.12135716830026868823.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.12135716830026868823.preview",
+                       "mutationId": "mutation.valtan.wall.12135716830026868823.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.12135716830026868823.contact",
@@ -3813,14 +3813,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.12612119053333525111.preview",
-                         "mutationId":  "mutation.valtan.wall.12612119053333525111.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.12612119053333525111.preview",
+                       "mutationId": "mutation.valtan.wall.12612119053333525111.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.12612119053333525111.contact",
@@ -3833,14 +3833,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.18105374220469669789.preview",
-                         "mutationId":  "mutation.valtan.wall.18105374220469669789.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.18105374220469669789.preview",
+                       "mutationId": "mutation.valtan.wall.18105374220469669789.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.18105374220469669789.contact",
@@ -3853,14 +3853,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.10938566942418286882.preview",
-                         "mutationId":  "mutation.valtan.wall.10938566942418286882.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.10938566942418286882.preview",
+                       "mutationId": "mutation.valtan.wall.10938566942418286882.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.10938566942418286882.contact",
@@ -3873,14 +3873,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15590072441712178822.preview",
-                         "mutationId":  "mutation.valtan.wall.15590072441712178822.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15590072441712178822.preview",
+                       "mutationId": "mutation.valtan.wall.15590072441712178822.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15590072441712178822.contact",
@@ -3893,14 +3893,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.13907193421470993692.preview",
-                         "mutationId":  "mutation.valtan.wall.13907193421470993692.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.13907193421470993692.preview",
+                       "mutationId": "mutation.valtan.wall.13907193421470993692.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.13907193421470993692.contact",
@@ -3913,14 +3913,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.12956154234820310428.preview",
-                         "mutationId":  "mutation.valtan.wall.12956154234820310428.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.12956154234820310428.preview",
+                       "mutationId": "mutation.valtan.wall.12956154234820310428.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.12956154234820310428.contact",
@@ -3933,14 +3933,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.18360145892842596691.preview",
-                         "mutationId":  "mutation.valtan.wall.18360145892842596691.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.18360145892842596691.preview",
+                       "mutationId": "mutation.valtan.wall.18360145892842596691.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.18360145892842596691.contact",
@@ -3953,14 +3953,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.15590636842883334976.preview",
-                         "mutationId":  "mutation.valtan.wall.15590636842883334976.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.15590636842883334976.preview",
+                       "mutationId": "mutation.valtan.wall.15590636842883334976.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.15590636842883334976.contact",
@@ -3973,14 +3973,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.16181172586312392552.preview",
-                         "mutationId":  "mutation.valtan.wall.16181172586312392552.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.16181172586312392552.preview",
+                       "mutationId": "mutation.valtan.wall.16181172586312392552.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.16181172586312392552.contact",
@@ -3993,14 +3993,14 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.wall.14754587218800370239.preview",
-                         "mutationId":  "mutation.valtan.wall.14754587218800370239.despawn",
-                         "patternId":  "VALTAN_ARENA_BREAK_109",
-                         "stageId":  "IMPACT",
-                         "triggerKind":  "STAGE_ENTER",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "",
-                         "enabled":  false
+                       "bindingId": "binding.valtan.wall.14754587218800370239.preview",
+                       "mutationId": "mutation.valtan.wall.14754587218800370239.despawn",
+                       "patternId": "VALTAN_ARENA_BREAK_109",
+                       "stageId": "IMPACT",
+                       "triggerKind": "STAGE_ENTER",
+                       "offsetMs": 0,
+                       "receiverCollisionId": "",
+                       "enabled": true
                      },
                      {
                          "bindingId":  "binding.valtan.wall.14754587218800370239.contact",

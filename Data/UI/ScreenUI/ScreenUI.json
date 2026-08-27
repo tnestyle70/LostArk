@@ -15,7 +15,7 @@
         { "path": "UI/ScreenUI/Top Menu/Top HUD bar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Clock",
@@ -28,7 +28,7 @@
         { "path": "UI/ScreenUI/Top Menu/Clock icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Chat",
@@ -41,7 +41,7 @@
         { "path": "UI/ScreenUI/Top Menu/Chat icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_House",
@@ -54,7 +54,7 @@
         { "path": "UI/ScreenUI/Top Menu/House icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Boss",
@@ -67,7 +67,7 @@
         { "path": "UI/ScreenUI/Top Menu/Boss icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Wing",
@@ -80,7 +80,7 @@
         { "path": "UI/ScreenUI/Top Menu/Wing icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Lock",
@@ -93,7 +93,7 @@
         { "path": "UI/ScreenUI/Top Menu/Lock icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Bell",
@@ -106,7 +106,7 @@
         { "path": "UI/ScreenUI/Top Menu/Bell icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Mail",
@@ -119,7 +119,7 @@
         { "path": "UI/ScreenUI/Top Menu/Mail icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Calendar",
@@ -132,7 +132,7 @@
         { "path": "UI/ScreenUI/Top Menu/Calendar icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Stamp",
@@ -145,7 +145,7 @@
         { "path": "UI/ScreenUI/Top Menu/Stamp icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Coupon",
@@ -158,7 +158,7 @@
         { "path": "UI/ScreenUI/Top Menu/Coupon icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_Box",
@@ -171,7 +171,7 @@
         { "path": "UI/ScreenUI/Top Menu/Box icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Top_SecretBox",
@@ -184,7 +184,7 @@
         { "path": "UI/ScreenUI/Top Menu/Secret Box icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Currency_Gold",
@@ -197,7 +197,7 @@
         { "path": "UI/ScreenUI/Currency/Gold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Currency_Silling",
@@ -210,7 +210,7 @@
         { "path": "UI/ScreenUI/Currency/Silling.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Currency_Crystal",
@@ -223,7 +223,7 @@
         { "path": "UI/ScreenUI/Currency/Crystal.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Quick_Shop",
@@ -236,7 +236,7 @@
         { "path": "UI/ScreenUI/QuickMenu/Shop icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Shop icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Quick_Roster",
@@ -249,7 +249,7 @@
         { "path": "UI/ScreenUI/QuickMenu/Roster icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Roster icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Quick_Character",
@@ -262,7 +262,7 @@
         { "path": "UI/ScreenUI/QuickMenu/Character icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Character icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Quick_Explore",
@@ -275,7 +275,7 @@
         { "path": "UI/ScreenUI/QuickMenu/Explore icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Explore icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Quick_Navigation",
@@ -288,7 +288,7 @@
         { "path": "UI/ScreenUI/QuickMenu/Navigation icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Navigation icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Quick_Community",
@@ -301,7 +301,7 @@
         { "path": "UI/ScreenUI/QuickMenu/Community icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Community icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Quick_Settings",
@@ -314,7 +314,7 @@
         { "path": "UI/ScreenUI/QuickMenu/Settings icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Settings icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

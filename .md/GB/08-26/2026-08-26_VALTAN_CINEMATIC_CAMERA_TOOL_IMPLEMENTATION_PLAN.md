@@ -120,3 +120,26 @@ Scrub/Play/Pause/Stop과 카메라 복구 확인
 ```
 
 사용자 관찰 전에는 camera visual PASS를 기록하지 않는다.
+
+## 7. 2026-08-27 장면 저작 확장
+
+기존 camera-only 정본과 제품 sampler를 유지하면서 다음 기능을 같은 수직 슬라이스에 추가한다.
+별도 범용 `CameraCuts.json`이나 두 번째 재생기는 만들지 않는다.
+
+1. camera 문서를 formatVersion 6으로 올리고 모든 keyframe에 stable `sceneId`를 저장한다.
+2. cue에 `interpolation: LINEAR | CATMULL_ROM`을 저장한다. 기존 cue는 LINEAR로 이관해 현재 화면을 보존한다.
+3. 제품 `CValtanCinematicCameraController::Sample_Cue`가 LINEAR와 clamped Catmull-Rom을 모두 처리한다.
+   Eye와 LookAt은 같은 곡선/시간을 사용하고 FOV는 같은 eased alpha로 선형 보간한다.
+4. Camera Tool에 debug-only LookAt Dummy sphere를 제공한다. Dummy는 gameplay collision이나 Server
+   authority에 등록하지 않고 현재 Level의 debug collider prototype을 복제해 위치만 시각화한다.
+5. 선택 scene의 LookAt을 Dummy로 보내거나 Dummy 위치를 scene LookAt으로 적용하고, 현재 pipeline
+   camera의 Eye/FOV와 Dummy LookAt을 한 번에 Capture할 수 있게 한다.
+6. stable scene list에서 선택, 장면 이동, 현재 pose 교체, 장면 삽입과 interior 장면 삭제를 제공한다.
+7. 이동 속도는 authoring-only playback multiplier로 저장하지 않는다. 선택 장면으로 들어오는 구간의
+   Eye 이동거리와 목표 world-unit/sec로 `timeMs`를 재계산해 실제 runtime timing에 반영한다.
+8. Save는 기존 strict stage, source-byte CAS, temporary reparse, atomic replace 계약을 그대로 사용한다.
+
+추가 검증은 format 6 strict property/scene ID uniqueness, LINEAR 회귀 동일성, Catmull-Rom endpoint와
+중간 샘플의 유한성, Tool dummy/capture/speed source contract, publisher Validate와 Debug/Release
+ActionPresentationTimelineHarness 및 Client build다. 최종 카메라 경로와 LookAt framing은 사용자가
+직접 F1 Camera Tool에서 확인한다.

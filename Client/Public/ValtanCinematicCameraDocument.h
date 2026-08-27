@@ -15,10 +15,21 @@ class CEncounterPatternReference;
 
 struct VALTAN_CINEMATIC_CAMERA_KEYFRAME final
 {
+	std::string strSceneId;
 	uint32_t iTimeMs = 0u;
 	float3_t vEye = {};
 	float3_t vLookAt = {};
 	f32_t fFovYDegrees = 60.f;
+};
+
+/* LINEAR preserves the existing authored camera path. CATMULL_ROM connects
+   the same saved scenes with a smooth product-runtime spline; the sampler
+   clamps endpoint control points so no hidden scene is required. */
+enum class VALTAN_CINEMATIC_CAMERA_INTERPOLATION
+{
+	LINEAR,
+	CATMULL_ROM,
+	END
 };
 
 /* Linear alone reads as a dolly running at constant speed. Smoothstep eases
@@ -67,6 +78,8 @@ struct VALTAN_CINEMATIC_CAMERA_CUE final
 	   gameplay follow pose. The presentation owner stays acquired until the
 	   bounded handoff reaches that live follow target. */
 	uint32_t iTransitionOutMs = 0u;
+	VALTAN_CINEMATIC_CAMERA_INTERPOLATION eInterpolation =
+		VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR;
 	VALTAN_CINEMATIC_CAMERA_EASING eEasing =
 		VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
 	VALTAN_CINEMATIC_TRACKING_MODE eTrackingMode =
@@ -92,7 +105,7 @@ public:
 		const CEncounterPatternReference& encounter,
 		CValtanCinematicCameraDocument& outDocument,
 		std::string& outStatus);
-	/* Authoring and runtime share this exact camera-only v5 document. The Tool
+	/* Authoring and runtime share this exact camera-only v6 document. The Tool
 	   stages the camera/death rows into a copy and reparses the serialized text
 	   through Parse_Text before commit. World Effects are authored separately. */
 	bool_t Stage_CameraDraft(

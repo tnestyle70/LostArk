@@ -11,6 +11,7 @@
 #include <array>
 #include <charconv>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <map>
@@ -29,6 +30,8 @@ namespace
 
 	constexpr std::string_view CHARACTER_SELECT_MONSTER_GROUP =
 		"spawn.character-select.monster";
+	constexpr SKILL_ID CHARACTER_SELECT_DAMAGE_PROBE_SKILL_ID = 34110u;
+	constexpr float DAMAGE_PROBE_HIT_REACH_METERS = 3.f;
 
 	struct HARNESS_OPTIONS final
 	{
@@ -253,6 +256,67 @@ namespace
 			return Send_Message(PACKET_TYPE::C2S_MOVE, request, error);
 		}
 
+		bool Send_ConfirmNpcEntry(
+			const std::uint32_t requestSequence,
+			const std::string_view npcPlacementId,
+			std::string& error)
+		{
+			C2S_CONFIRM_NPC_ENTRY request{};
+			request.iRequestSequence = requestSequence;
+			request.strNpcPlacementId = std::string(npcPlacementId);
+			return Send_Message(
+				PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY, request, error);
+		}
+
+		bool Send_PartyInvite(
+			const std::uint32_t requestSequence,
+			const NET_ENTITY_ID targetEntityId,
+			std::string& error)
+		{
+			C2S_PARTY_INVITE request{};
+			request.iRequestSequence = requestSequence;
+			request.iTargetNetEntityId = targetEntityId;
+			return Send_Message(PACKET_TYPE::C2S_PARTY_INVITE, request, error);
+		}
+
+		bool Accept_PartyInvite(
+			const NET_ENTITY_ID inviterEntityId,
+			std::string& error)
+		{
+			C2S_PARTY_INVITE_RESPOND response{};
+			response.iRequestSequence = 1u;
+			response.iFromNetEntityId = inviterEntityId;
+			response.bAccepted = true;
+			return Send_Message(PACKET_TYPE::C2S_PARTY_INVITE_RESPOND, response, error);
+		}
+
+		[[nodiscard]] bool Has_PartyInviteFrom(const NET_ENTITY_ID entityId) const
+		{
+			return entityId == m_iPendingPartyInviter;
+		}
+
+		[[nodiscard]] bool Has_PartyTransferFailure() const
+		{
+			return m_hasPartyTransferFailure;
+		}
+
+		[[nodiscard]] bool Has_ExactPartyRoster(
+			const std::vector<NET_ENTITY_ID>& expected) const
+		{
+			if (m_PartyRoster.Members.size() != expected.size())
+				return false;
+			for (std::size_t index = 0u; index < expected.size(); ++index)
+			{
+				if (m_PartyRoster.Members[index].iNetEntityId != expected[index] ||
+					!Has_ExactSpawnNickname(expected[index],
+						m_PartyRoster.Members[index].strNickname))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
 		bool Poll(std::string& error)
 		{
 			if (INVALID_SOCKET == m_hSocket)
@@ -448,6 +512,17 @@ namespace
 			return true;
 		}
 
+		[[nodiscard]] bool Get_WorldEntityPositionByPlacement(
+			const std::string_view placementId,
+			float& outX,
+			float& outZ) const
+		{
+			const auto entity = m_WorldEntityIdByPlacement.find(
+				std::string(placementId));
+			return entity != m_WorldEntityIdByPlacement.end() &&
+				Get_WorldEntityPosition(entity->second, outX, outZ);
+		}
+
 	private:
 		template<typename MESSAGE>
 		bool Send_Message(
@@ -517,7 +592,11 @@ namespace
 				m_ObservedSpawnedPlayerEntityIds.clear();
 				m_ObservedSpawnedPlayerNicknames.clear();
 				m_ObservedSpawnedWorldEntityIds.clear();
+				m_WorldEntityIdByPlacement.clear();
 				m_OutgoingDamageTargetIds.clear();
+				m_PartyRoster.Members.clear();
+				m_iPendingPartyInviter = INVALID_NET_ENTITY_ID;
+				m_hasPartyTransferFailure = false;
 				m_iLastServerTick = 0;
 				m_hasWorldSnapshot = false;
 				m_hasEnterAccepted = true;
@@ -560,6 +639,11 @@ namespace
 					return false;
 				}
 				m_ObservedSpawnedWorldEntityIds.insert(spawned.iNetEntityId);
+				if (!spawned.strPlacementId.empty())
+				{
+					m_WorldEntityIdByPlacement.insert_or_assign(
+						spawned.strPlacementId, spawned.iNetEntityId);
+				}
 				return true;
 			}
 			if (PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT == frame.ePacketType)
@@ -615,6 +699,39 @@ namespace
 				m_hasWorldSnapshot = true;
 				return true;
 			}
+			if (PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED == frame.ePacketType)
+			{
+				S2C_PARTY_INVITE_RECEIVED invite{};
+				if (!Read_Message(reader, invite) || 0u != reader.Get_RemainingSize())
+				{
+					error = m_strLabel + ": invalid party invite";
+					return false;
+				}
+				m_iPendingPartyInviter = invite.iFromNetEntityId;
+				return true;
+			}
+			if (PACKET_TYPE::S2C_PARTY_ROSTER == frame.ePacketType)
+			{
+				S2C_PARTY_ROSTER roster{};
+				if (!Read_Message(reader, roster) || 0u != reader.Get_RemainingSize())
+				{
+					error = m_strLabel + ": invalid party roster";
+					return false;
+				}
+				m_PartyRoster = std::move(roster);
+				return true;
+			}
+			if (PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT == frame.ePacketType)
+			{
+				S2C_PARTY_TRANSFER_RESULT result{};
+				if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+				{
+					error = m_strLabel + ": invalid party transfer result";
+					return false;
+				}
+				m_hasPartyTransferFailure = true;
+				return true;
+			}
 
 			// Despawn, boss and class-change packets are legal but do not carry an
 			// isolation assertion for this harness.
@@ -638,6 +755,9 @@ namespace
 		WORLD_ID m_eExpectedWorld = WORLD_ID::END;
 		CPacketStreamParser m_StreamParser;
 		S2C_ENTER_ACCEPTED m_EnterAccepted{};
+		S2C_PARTY_ROSTER m_PartyRoster{};
+		NET_ENTITY_ID m_iPendingPartyInviter = INVALID_NET_ENTITY_ID;
+		bool m_hasPartyTransferFailure = false;
 		std::set<NET_ENTITY_ID> m_LatestPlayerEntityIds;
 		std::set<NET_ENTITY_ID> m_LatestWorldEntityIds;
 		std::map<NET_ENTITY_ID, std::pair<float, float>>
@@ -646,6 +766,7 @@ namespace
 		std::map<NET_ENTITY_ID, std::string>
 			m_ObservedSpawnedPlayerNicknames;
 		std::set<NET_ENTITY_ID> m_ObservedSpawnedWorldEntityIds;
+		std::map<std::string, NET_ENTITY_ID> m_WorldEntityIdByPlacement;
 		std::set<NET_ENTITY_ID> m_OutgoingDamageTargetIds;
 		std::map<std::string, WORLD_ENTITY_SPAWN_RESULT> m_SpawnResults;
 		std::uint32_t m_iLastServerTick = 0;
@@ -853,20 +974,38 @@ namespace
 					probeError = "client B observed client A's entity or damage";
 					return PROBE_RESULT::FAIL;
 				}
+				/* The monster now owns a real chase path and can leave its spawn
+				coordinate while the player approaches. Keep the isolation proof
+				bound to the replicated entity instead of waiting at a stale point. */
+				if (!clientA->Get_WorldEntityPosition(
+						clientAMonsterId, monsterX, monsterZ))
+				{
+					probeError = "client A lost the moving monster snapshot";
+					return PROBE_RESULT::FAIL;
+				}
 				const float deltaX = clientA->Get_OwnPositionX() - monsterX;
 				const float deltaZ = clientA->Get_OwnPositionZ() - monsterZ;
-				return deltaX * deltaX + deltaZ * deltaZ <= 4.f ?
-					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+				const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+				if (distanceSquared <= DAMAGE_PROBE_HIT_REACH_METERS *
+					DAMAGE_PROBE_HIT_REACH_METERS)
+				{
+					return PROBE_RESULT::PASS;
+				}
+				probeError = "distance to moving monster is " +
+					std::to_string(std::sqrt(distanceSquared)) + " m";
+				return PROBE_RESULT::WAIT;
 			},
-			"client A approach into 34650 hit reach", error))
+			"client A approach into damage-probe hit reach", error))
 		{
 			return false;
 		}
 		if (!clientA->Send_UseSkill(
-			1u, 34650u, monsterX, monsterZ, error))
+			1u, CHARACTER_SELECT_DAMAGE_PROBE_SKILL_ID,
+			monsterX, monsterZ, error))
 		{
 			return false;
 		}
+		error.clear();
 		std::uint32_t clientADamageTick = 0;
 		if (!Pump_Until(privateClients, timeout,
 			[&](std::string& probeError)
@@ -1084,12 +1223,49 @@ namespace
 		{
 			return false;
 		}
-		/* This is the authored centre of trigger.bern.to-valtan.  The old
-		coordinate at (144.8, -60.3) predates Bern's authoritative navigation:
-		all baked cells inside that trigger were disconnected castle geometry,
-		so a valid C2S_MOVE was correctly rejected without ever entering it. */
-		if (!client->Send_Move(1u, 140.800003f, -60.2999992f, error))
+		constexpr std::string_view VALTAN_GUIDE_PLACEMENT =
+			"npc.bern.beda.guide";
+		float guideX = 0.f;
+		float guideZ = 0.f;
+		if (!client->Get_WorldEntityPositionByPlacement(
+				VALTAN_GUIDE_PLACEMENT, guideX, guideZ))
+		{
+			error = "Bern transfer guide was not replicated";
 			return false;
+		}
+		if (!client->Send_Move(1u, guideX, guideZ, error))
+			return false;
+		if (!Pump_Until(clients, transitionTimeout,
+			[&](std::string& probeError)
+			{
+				if (!client->Get_WorldEntityPositionByPlacement(
+						VALTAN_GUIDE_PLACEMENT, guideX, guideZ))
+				{
+					probeError = "Bern transfer guide disappeared";
+					return PROBE_RESULT::FAIL;
+				}
+				const float deltaX = client->Get_OwnPositionX() - guideX;
+				const float deltaZ = client->Get_OwnPositionZ() - guideZ;
+				const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+				if (distanceSquared <= 8.41f)
+					return PROBE_RESULT::PASS;
+				probeError = "player=(" +
+					std::to_string(client->Get_OwnPositionX()) + "," +
+					std::to_string(client->Get_OwnPositionZ()) +
+					"), guide=(" + std::to_string(guideX) + "," +
+					std::to_string(guideZ) + "), distance=" +
+					std::to_string(std::sqrt(distanceSquared));
+				return PROBE_RESULT::WAIT;
+			},
+			"Bern transfer guide approach", error))
+		{
+			return false;
+		}
+		if (!client->Send_ConfirmNpcEntry(
+				2u, VALTAN_GUIDE_PLACEMENT, error))
+		{
+			return false;
+		}
 
 		if (!Pump_Until(clients, transitionTimeout,
 			[&](std::string& probeError)
@@ -1132,7 +1308,11 @@ namespace
 		const std::uint32_t beforeCommandTick = client->Get_ServerTick();
 		const float beforeCommandX = client->Get_OwnPositionX();
 		const float beforeCommandZ = client->Get_OwnPositionZ();
-		if (!client->Send_Move(2u, 20.f, -30.f, error))
+		/* The current Valtan spawn is on the boss deck. The old (20, -30)
+		approach waypoint is disconnected from that deck, so Find_Path correctly
+		rejects it. Probe a one-metre move on the admitted deck instead. */
+		if (!client->Send_Move(
+				2u, beforeCommandX + 1.f, beforeCommandZ, error))
 			return false;
 		if (!Pump_Until(clients, timeout,
 			[&](std::string& probeError)
@@ -1146,6 +1326,12 @@ namespace
 					client->Get_OwnPositionX() - beforeCommandX;
 				const float deltaZ =
 					client->Get_OwnPositionZ() - beforeCommandZ;
+				probeError = "before=(" + std::to_string(beforeCommandX) +
+					"," + std::to_string(beforeCommandZ) + "), current=(" +
+					std::to_string(client->Get_OwnPositionX()) + "," +
+					std::to_string(client->Get_OwnPositionZ()) + "), tick=" +
+					std::to_string(client->Get_ServerTick()) + ", initialTick=" +
+					std::to_string(beforeCommandTick);
 				return client->Get_ServerTick() > beforeCommandTick + 10u &&
 					deltaX * deltaX + deltaZ * deltaZ > 0.01f &&
 					client->Has_OwnOnlyPlayerSnapshot() ?
@@ -1159,6 +1345,172 @@ namespace
 		std::cout << "[PASS] Bern-to-Valtan transfer retained the live session "
 			"for post-transfer gameplay commands\n";
 		client->Close();
+		return true;
+	}
+
+	bool Run_BernPartyTransferProof(
+		const HARNESS_OPTIONS& options,
+		const std::size_t memberCount,
+		std::string& error)
+	{
+		const auto timeout =
+			std::chrono::milliseconds(options.iTimeoutMilliseconds);
+		const auto transitionTimeout = timeout * 5;
+		const std::array classes{
+			CHARACTER_CLASS_ID::LANCE_MASTER, CHARACTER_CLASS_ID::GUNSLINGER,
+			CHARACTER_CLASS_ID::ARTIST, CHARACTER_CLASS_ID::WARLORD };
+		if (memberCount < 2u || memberCount > classes.size())
+			return false;
+		std::vector<std::unique_ptr<CTestClient>> ownedClients;
+		std::vector<CTestClient*> clients;
+		for (std::size_t index = 0u; index < memberCount; ++index)
+		{
+			auto client = Connect_Client(options,
+				"Party-" + std::to_string(memberCount) + "-" + std::to_string(index),
+				WORLD_ID::BERN, classes[index], error);
+			if (nullptr == client)
+				return false;
+			clients.push_back(client.get());
+			ownedClients.push_back(std::move(client));
+		}
+		if (!Pump_Until(clients, timeout,
+			[&](std::string& probeError)
+			{
+				std::set<NET_ENTITY_ID> expected;
+				for (const CTestClient* client : clients)
+				{
+					if (client->Is_Rejected())
+					{
+						probeError = "party member Bern admission rejected";
+						return PROBE_RESULT::FAIL;
+					}
+					if (!client->Is_Accepted())
+						return PROBE_RESULT::WAIT;
+					expected.insert(client->Get_NetEntityId());
+				}
+				return expected.size() == memberCount &&
+					std::all_of(clients.begin(), clients.end(),
+						[&](const CTestClient* client)
+						{ return client->Has_ExactPlayerSnapshot(expected); }) ?
+					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "party Bern admission", error))
+		{
+			return false;
+		}
+
+		CTestClient* leader = clients.front();
+		std::vector<NET_ENTITY_ID> roster{ leader->Get_NetEntityId() };
+		for (std::size_t index = 1u; index < memberCount; ++index)
+		{
+			if (!leader->Send_PartyInvite(static_cast<std::uint32_t>(index),
+					clients[index]->Get_NetEntityId(), error) ||
+				!Pump_Until(clients, timeout,
+					[&](std::string&)
+					{
+						return clients[index]->Has_PartyInviteFrom(leader->Get_NetEntityId()) ?
+							PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+					}, "party invite delivery", error) ||
+				!clients[index]->Accept_PartyInvite(leader->Get_NetEntityId(), error))
+			{
+				return false;
+			}
+			roster.push_back(clients[index]->Get_NetEntityId());
+			if (!Pump_Until(clients, timeout,
+				[&](std::string&)
+				{
+					for (std::size_t member = 0u; member <= index; ++member)
+					{
+						if (!clients[member]->Has_ExactPartyRoster(roster))
+							return PROBE_RESULT::WAIT;
+					}
+					return PROBE_RESULT::PASS;
+				}, "party roster after accept", error))
+			{
+				return false;
+			}
+		}
+		constexpr std::string_view GUIDE = "npc.bern.beda.guide";
+		float guideX = 0.f;
+		float guideZ = 0.f;
+		if (!leader->Get_WorldEntityPositionByPlacement(GUIDE, guideX, guideZ) ||
+			!leader->Send_Move(1u, guideX, guideZ, error))
+		{
+			error = "party leader could not resolve/approach Bern guide: " + error;
+			return false;
+		}
+		if (!Pump_Until(clients, transitionTimeout,
+			[&](std::string&)
+			{
+				const float dx = leader->Get_OwnPositionX() - guideX;
+				const float dz = leader->Get_OwnPositionZ() - guideZ;
+				return dx * dx + dz * dz <= 8.41f ?
+					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "party leader guide approach", error) ||
+			!leader->Send_ConfirmNpcEntry(1u, GUIDE, error))
+		{
+			return false;
+		}
+		if (!Pump_Until(clients, transitionTimeout,
+			[&](std::string& probeError)
+			{
+				std::vector<NET_ENTITY_ID> targetRoster;
+				for (const CTestClient* client : clients)
+				{
+					if (client->Is_Rejected() || client->Has_PartyTransferFailure())
+					{
+						probeError = "party transfer rejected with available target capacity";
+						return PROBE_RESULT::FAIL;
+					}
+					if (client->Get_AcceptanceCount() != 2u ||
+						client->Get_CurrentWorld() != WORLD_ID::VALTAN_ARENA)
+					{
+						return PROBE_RESULT::WAIT;
+					}
+					targetRoster.push_back(client->Get_NetEntityId());
+				}
+				const std::set<NET_ENTITY_ID> expected(targetRoster.begin(), targetRoster.end());
+				return expected.size() == memberCount &&
+					std::all_of(clients.begin(), clients.end(),
+						[&](const CTestClient* client)
+						{
+							return client->Has_ExactPlayerSnapshot(expected) &&
+								client->Has_ExactPartyRoster(targetRoster);
+						}) ? PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "party Valtan roster and leader preservation", error))
+		{
+			return false;
+		}
+
+		std::vector<std::pair<float, float>> beforePositions;
+		for (CTestClient* client : clients)
+		{
+			beforePositions.emplace_back(client->Get_OwnPositionX(), client->Get_OwnPositionZ());
+			if (!client->Send_Move(2u, client->Get_OwnPositionX() + 1.f,
+					client->Get_OwnPositionZ(), error))
+			{
+				return false;
+			}
+		}
+		if (!Pump_Until(clients, timeout,
+			[&](std::string& probeError)
+			{
+				for (std::size_t index = 0u; index < clients.size(); ++index)
+				{
+					const float dx = clients[index]->Get_OwnPositionX() - beforePositions[index].first;
+					const float dz = clients[index]->Get_OwnPositionZ() - beforePositions[index].second;
+					if (dx * dx + dz * dz <= 0.01f)
+					{
+						probeError = "party member " + std::to_string(index) + " has not moved";
+						return PROBE_RESULT::WAIT;
+					}
+				}
+				return PROBE_RESULT::PASS;
+			}, "post-transfer party gameplay commands", error))
+		{
+			return false;
+		}
+		std::cout << "[PASS] " << memberCount << "-member Bern party retained exact "
+			"roster/leader and live commands after Valtan transfer\n";
 		return true;
 	}
 }
@@ -1183,7 +1535,9 @@ int main(const int argumentCount, char** arguments)
 	if (!Run_CharacterSelectIsolation(options, error) ||
 		!Run_BernSharedProof(options, error) ||
 		(!options.isG02IdentityFast &&
-			!Run_BernToValtanTransferProof(options, error)))
+			(!Run_BernToValtanTransferProof(options, error) ||
+				!Run_BernPartyTransferProof(options, 2u, error) ||
+				!Run_BernPartyTransferProof(options, 4u, error))))
 	{
 		std::cerr << "[FAILURE] " << error << '\n';
 		return 1;

@@ -274,7 +274,7 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         self.assertIn('      "patternId" : "VALTAN_OTHER",', text)
         self.assertIn('      "marker" : "KEEP-EXACT",', text)
         self.assert_shared_product_unchanged()
-        self.assertEqual(["ValidateV2", "PublishV2"], self.projector_modes())
+        self.assertEqual(["PublishV2", "ValidateV2"], self.projector_modes())
         self.assertEqual(
             self.presentation.read_bytes(),
             (self.repo / "Published.presentation.json").read_bytes(),
@@ -294,14 +294,14 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         self.assertEqual(self.original_presentation, published.read_bytes())
         self.assert_shared_product_unchanged()
         self.assertEqual(
-            ["ValidateV2", "PublishV2", "PublishV2"], self.projector_modes()
+            ["PublishV2", "PublishV2"], self.projector_modes()
         )
         leftovers = list(self.presentation.parent.glob("*.stage.*")) + list(
             self.presentation.parent.glob("*.replace-backup.*")
         )
         self.assertEqual([], leftovers)
 
-    def test_validation_failure_rolls_back_before_publish(self) -> None:
+    def test_post_publish_validation_failure_repairs_source_and_product(self) -> None:
         (self.repo / "fail-candidate-validate-once").write_text(
             "fail", encoding="utf-8"
         )
@@ -309,9 +309,14 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn(b"source was restored", result.stdout)
         self.assertEqual(self.original_presentation, self.presentation.read_bytes())
+        self.assertEqual(
+            self.original_presentation,
+            (self.repo / "Published.presentation.json").read_bytes(),
+        )
         self.assert_shared_product_unchanged()
-        self.assertEqual(["ValidateV2"], self.projector_modes())
-        self.assertFalse((self.repo / "Published.presentation.json").exists())
+        self.assertEqual(
+            ["PublishV2", "ValidateV2", "PublishV2"], self.projector_modes()
+        )
 
     def test_post_replace_verification_failure_uses_preserved_backup(self) -> None:
         result = self.run_unlink(
@@ -338,7 +343,7 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         self.assertIn('"scope": "CONCURRENT_EDIT"', concurrent_text)
         self.assertNotEqual(self.original_presentation, self.presentation.read_bytes())
         self.assert_shared_product_unchanged()
-        self.assertEqual(["ValidateV2"], self.projector_modes())
+        self.assertEqual(["PublishV2", "ValidateV2"], self.projector_modes())
 
     def test_utf8_bom_is_rejected_without_writes(self) -> None:
         bom_source = b"\xef\xbb\xbf" + self.original_presentation

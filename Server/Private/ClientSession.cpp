@@ -29,6 +29,123 @@ namespace
 	}
 }
 
+struct LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::LOCKED_QUEUE
+{
+	std::shared_ptr<CClientSession> pSession;
+	std::unique_lock<std::mutex> DiagnosticLock;
+	std::unique_lock<std::mutex> Lock;
+	std::deque<OUTBOUND_FRAME> Frames;
+	std::size_t iQueuedBytes = 0u;
+	std::size_t iAddedFrameCount = 0u;
+};
+
+LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::RELIABLE_BATCH_TRANSACTION() = default;
+LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::~RELIABLE_BATCH_TRANSACTION() = default;
+
+bool LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::Prepare(
+	const std::vector<CLIENT_SESSION_RELIABLE_BATCH>& batches,
+	std::string& status)
+{
+	using namespace LostArk::Shared;
+	m_Queues.clear();
+	status.clear();
+	const auto reject = [this, &status](const char* reason)
+	{
+		status = reason;
+		m_Queues.clear();
+		return false;
+	};
+	if (batches.empty())
+		return reject("reliable admission batch is empty");
+	std::vector<const CLIENT_SESSION_RELIABLE_BATCH*> ordered;
+	ordered.reserve(batches.size());
+	for (const auto& batch : batches)
+	{
+		if (nullptr == batch.pSession ||
+			INVALID_SESSION_ID == batch.pSession->Get_SessionId() ||
+			batch.Frames.empty())
+		{
+			return reject("reliable admission batch has invalid session/frames");
+		}
+		ordered.push_back(&batch);
+	}
+	std::sort(ordered.begin(), ordered.end(), [](const auto* left, const auto* right)
+	{
+		return left->pSession->Get_SessionId() < right->pSession->Get_SessionId();
+	});
+	for (std::size_t index = 0; index < ordered.size(); ++index)
+	{
+		const auto& batch = *ordered[index];
+		if (0u != index && ordered[index - 1u]->pSession->Get_SessionId() ==
+			batch.pSession->Get_SessionId())
+		{
+			return reject("reliable admission batch contains a duplicate session");
+		}
+		auto staged = std::make_unique<LOCKED_QUEUE>();
+		staged->pSession = batch.pSession;
+		// Match Record_TerminalDiagnostic's lock order. A disconnect either
+		// wins before admission (reject) or starts after the whole commit.
+		staged->DiagnosticLock = std::unique_lock{ batch.pSession->m_DiagnosticMutex };
+		staged->Lock = std::unique_lock{ batch.pSession->m_OutboundMutex };
+		CClientSession& session = *batch.pSession;
+		if (!session.m_isSendRunning.load() || session.m_closeAfterOutboundFlush.load() ||
+			SESSION_DIAGNOSTIC_REASON::NONE != session.m_CloseDiagnostic.eReason)
+			return reject("reliable admission participant is terminal");
+		if (batch.Frames.size() > MAX_OUTBOUND_FRAME_COUNT -
+			(std::min)(session.m_OutboundFrames.size(), MAX_OUTBOUND_FRAME_COUNT))
+		{
+			return reject("reliable admission frame capacity is exhausted");
+		}
+		staged->Frames = session.m_OutboundFrames;
+		staged->iQueuedBytes = session.m_iQueuedOutboundBytes;
+		for (const PACKET_FRAME& frame : batch.Frames)
+		{
+			std::vector<std::uint8_t> bytes;
+			if (PACKET_TYPE::S2C_WORLD_SNAPSHOT == frame.ePacketType ||
+				!Build_Packet_Frame(frame.ePacketType, frame.Payload, bytes))
+			{
+				return reject("reliable admission frame failed encoding");
+			}
+			if (bytes.size() > MAX_OUTBOUND_BYTE_COUNT -
+				(std::min)(staged->iQueuedBytes, MAX_OUTBOUND_BYTE_COUNT))
+			{
+				return reject("reliable admission byte capacity is exhausted");
+			}
+			staged->iQueuedBytes += bytes.size();
+			staged->Frames.push_back({ frame.ePacketType, std::move(bytes) });
+		}
+		staged->iAddedFrameCount = batch.Frames.size();
+		m_Queues.push_back(std::move(staged));
+	}
+	return true;
+}
+
+void LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::Commit() noexcept
+{
+	for (const auto& staged : m_Queues)
+	{
+		CClientSession& session = *staged->pSession;
+		session.m_OutboundFrames.swap(staged->Frames);
+		session.m_iQueuedOutboundBytes = staged->iQueuedBytes;
+		auto& metrics = session.m_OutboundMetrics;
+		metrics.iReliableEnqueuedFrameCount += staged->iAddedFrameCount;
+		metrics.iCurrentQueuedFrameCount = session.m_OutboundFrames.size();
+		metrics.iCurrentQueuedByteCount = session.m_iQueuedOutboundBytes;
+		metrics.iQueuedFrameHighWatermark = (std::max)(
+			metrics.iQueuedFrameHighWatermark, metrics.iCurrentQueuedFrameCount);
+		metrics.iQueuedByteHighWatermark = (std::max)(
+			metrics.iQueuedByteHighWatermark, metrics.iCurrentQueuedByteCount);
+	}
+	for (const auto& staged : m_Queues)
+	{
+		staged->Lock.unlock();
+		staged->DiagnosticLock.unlock();
+	}
+	for (const auto& staged : m_Queues)
+		staged->pSession->m_OutboundCondition.notify_one();
+	m_Queues.clear();
+}
+
 LostArk::Server::CClientSession::CClientSession(
 	SESSION_ID sessionId,
 	SOCKET clientSocket,

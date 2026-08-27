@@ -495,7 +495,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.monster-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 1.0 ||
+			pVersion->Get_Number() != 2.0 ||
 			nullptr == pEntries || !pEntries->Is_Array())
 		{
 			return false;
@@ -506,10 +506,11 @@ namespace
 		std::vector<MONSTER_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 7u != value.Get_Object().size())
+			if (!value.Is_Object() || 9u != value.Get_Object().size())
 				return false;
 			MONSTER_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
+			const DATA_JSON_VALUE* pAttacks = value.Find("attackPresentations");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!ReadRequiredString(value, "clientPresentationId",
 					entry.clientPresentationId) ||
@@ -517,25 +518,48 @@ namespace
 				!ReadRequiredNumber(value, "modelScale", entry.modelScale) ||
 				!ReadRequiredNumber(value, "modelYawDegrees",
 					entry.modelYawDegrees) ||
+				!ReadRequiredNumber(value, "hitDurationSeconds",
+					entry.hitDurationSeconds) ||
+				nullptr == pAttacks || !pAttacks->Is_Array() ||
+				pAttacks->Get_Array().empty() ||
+				pAttacks->Get_Array().size() > 8u ||
 				nullptr == pClips || !pClips->Is_Object() ||
 				4u != pClips->Get_Object().size() ||
 				!ReadRequiredString(*pClips, "idle",
 					entry.presentationClips.idle) ||
 				!ReadRequiredString(*pClips, "chase",
 					entry.presentationClips.chase) ||
-				!ReadRequiredString(*pClips, "attack",
-					entry.presentationClips.attack) ||
+				!ReadRequiredString(*pClips, "hit",
+					entry.presentationClips.hit) ||
 				!ReadRequiredString(*pClips, "dead",
 					entry.presentationClips.dead) ||
 				!ReadRequiredString(value, "runtimeStatus", entry.runtimeStatus) ||
 				!IsResourceId(entry.modelAssetId) ||
 				entry.modelScale <= 0.f || entry.modelScale > 100.f ||
 				std::abs(entry.modelYawDegrees) > 360.f ||
+				entry.hitDurationSeconds < 0.05f ||
+				entry.hitDurationSeconds > 2.f ||
 				entry.runtimeStatus != "supported" ||
 				!archetypes.insert(entry.archetypeId).second ||
 				!presentations.insert(entry.clientPresentationId).second)
 			{
 				return false;
+			}
+			std::set<std::string> attackClips;
+			for (const DATA_JSON_VALUE& attack : pAttacks->Get_Array())
+			{
+				MONSTER_ACTOR_ENTRY::ATTACK_PRESENTATION presentation;
+				if (!attack.Is_Object() || 2u != attack.Get_Object().size() ||
+					!ReadRequiredString(attack, "clip", presentation.clip) ||
+					!ReadRequiredNumber(
+						attack, "playbackRate", presentation.playbackRate) ||
+					presentation.playbackRate < 0.1f ||
+					presentation.playbackRate > 4.f ||
+					!attackClips.insert(presentation.clip).second)
+				{
+					return false;
+				}
+				entry.attackPresentations.push_back(std::move(presentation));
 			}
 			staged.push_back(std::move(entry));
 		}
@@ -597,6 +621,13 @@ const Client::MONSTER_ACTOR_ENTRY* Client::CActorCatalog::Find_Monster(
 		if (entry.archetypeId == archetypeId)
 			return &entry;
 	return nullptr;
+}
+
+const std::vector<Client::MONSTER_ACTOR_ENTRY>&
+Client::CActorCatalog::Get_Monsters()
+{
+	Initialize();
+	return g_Monsters;
 }
 
 const Client::CHARACTER_ACTOR_ENTRY* Client::CActorCatalog::Find_Character(

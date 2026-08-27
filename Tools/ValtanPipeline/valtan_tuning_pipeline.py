@@ -126,8 +126,9 @@ ARCHIVED_LEGACY_PATTERN_IDS = frozenset(
 # but the current Product already does.  Treat them as migration-managed while
 # validating legacy preservation so the old 84/33 receipt remains sealed
 # evidence instead of being mistaken for a second live mechanic owner.
-CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS = frozenset(
+CURRENT_MIGRATION_MANAGED_PATTERN_IDS = frozenset(
     (
+        "VALTAN_ENTRANCE_CINEMATIC",
         "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
         "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
     )
@@ -695,11 +696,24 @@ def world_set_source_bindings(
     return result
 
 
+# The 109 collapse owns the outer ring plus the interior walls that are still
+# standing when it fires, so a member ID keeps its own family segment instead of
+# forcing every wall into the outer-ring namespace. wall159 is listed before wall
+# only for readability; the two prefixes cannot both match one group ID.
+WORLD_MEMBER_GROUP_PREFIXES = (
+    "destroyable.group.valtan.outerwall109.",
+    "destroyable.group.valtan.wall159.",
+    "destroyable.group.valtan.wall.",
+)
+_WORLD_GROUP_NAMESPACE = "destroyable.group.valtan."
+
+
 def _world_member_id(group_id: str) -> str:
-    marker = "destroyable.group.valtan.outerwall109."
-    if not group_id.startswith(marker):
-        raise PipelineError(f"109 managed group has unexpected ID: {group_id}")
-    return "worldeventmember.valtan.outerwall109." + group_id[len(marker) :]
+    for marker in WORLD_MEMBER_GROUP_PREFIXES:
+        if group_id.startswith(marker):
+            family = marker[len(_WORLD_GROUP_NAMESPACE) : -1]
+            return f"worldeventmember.valtan.{family}." + group_id[len(marker) :]
+    raise PipelineError(f"109 managed group has unexpected ID: {group_id}")
 
 
 def build_world_event_sets(world: dict[str, Any]) -> dict[str, Any]:
@@ -718,8 +732,8 @@ def build_world_event_sets(world: dict[str, Any]) -> dict[str, Any]:
     groups = unique_index(world["groups"], "groupId", "groups")
     mutations = unique_index(world["mutations"], "mutationId", "mutations")
     managed = world_managed_bindings(world)
-    if len(managed) != 30:
-        raise PipelineError(f"initial 109 migration requires 30 enabled bindings, got {len(managed)}")
+    if len(managed) != 97:
+        raise PipelineError(f"initial 109 migration requires 97 enabled bindings, got {len(managed)}")
     members: list[dict[str, Any]] = []
     placement_ids: set[str] = set()
     for ordinal, binding in enumerate(managed):
@@ -740,8 +754,8 @@ def build_world_event_sets(world: dict[str, Any]) -> dict[str, Any]:
         nav_regions = group.get("navigationRegionIds")
         if not isinstance(group_placements, list) or not group_placements:
             raise PipelineError(f"managed group has no placement closure: {group_id}")
-        if not isinstance(nav_regions, list) or not nav_regions:
-            raise PipelineError(f"managed group has no navigation closure: {group_id}")
+        if not isinstance(nav_regions, list):
+            raise PipelineError(f"managed group navigation closure is not a list: {group_id}")
         for placement_id in group_placements:
             stable_id(placement_id, f"group {group_id} placementId")
             if placement_id in placement_ids:
@@ -758,8 +772,8 @@ def build_world_event_sets(world: dict[str, Any]) -> dict[str, Any]:
                 "enabled": binding["enabled"],
             }
         )
-    if len(placement_ids) != 60:
-        raise PipelineError(f"initial 109 migration requires 60 unique placements, got {len(placement_ids)}")
+    if len(placement_ids) != 135:
+        raise PipelineError(f"initial 109 migration requires 135 unique placements, got {len(placement_ids)}")
     result = {
         "schema": "lostark.valtan-world-event-set-authoring",
         "formatVersion": 1,
@@ -823,7 +837,11 @@ def validate_world_event_sets(
                 raise PipelineError(f"missing group for {member_id}: {group_id}")
             placements = group.get("memberPlacementIds")
             nav_regions = group.get("navigationRegionIds")
-            if not isinstance(placements, list) or not placements or not isinstance(nav_regions, list) or not nav_regions:
+            # A member with no placement has nothing to remove, so that stays
+            # fatal. An empty navigation closure does not: the destruction
+            # publisher authors none for a wall with a cliff behind it, because
+            # breaking that wall must not turn the drop into walkable floor.
+            if not isinstance(placements, list) or not placements or not isinstance(nav_regions, list):
                 raise PipelineError(f"group closure is incomplete for {member_id}")
             for placement_id in placements:
                 if placement_id in placement_ids:
@@ -870,8 +888,8 @@ def validate_world_event_sets(
         raise PipelineError(
             "world event set membership must equal the current managed flat binding IDs"
         )
-    if migration_fixture and (len(binding_ids) != 30 or len(placement_ids) != 60):
-        raise PipelineError("initial 109 migration fixture must close 30 bindings / 60 placements")
+    if migration_fixture and (len(binding_ids) != 97 or len(placement_ids) != 135):
+        raise PipelineError("initial 109 migration fixture must close 97 bindings / 135 placements")
 
 
 def _shape_from_flat(row: dict[str, Any], prefix: str = "hit") -> dict[str, Any]:
@@ -1470,6 +1488,16 @@ def validate_legacy_products(
     validate_legacy_manifest(document, product_managed)
     binding_rows = docs[BINDINGS_REL]["bindings"]
     cue_rows = docs[CUES_REL]["cues"]
+    cue_rows_by_id: dict[str, dict[str, Any]] = {}
+    for cue_row in cue_rows:
+        binding_id = stable_id(
+            cue_row.get("bindingId"), "Product effect cue bindingId"
+        )
+        if binding_id in cue_rows_by_id:
+            raise PipelineError(
+                f"duplicate Product effect cue bindingId: {binding_id}"
+            )
+        cue_rows_by_id[binding_id] = cue_row
     rotation_rows = docs[ROTATIONS_REL]["rotations"]
     combat_rows = docs[COMBAT_PRODUCT_REL]["objects"]
     sealed_legacy_ids = {row["patternId"] for row in document["patternEntries"]}
@@ -1508,11 +1536,13 @@ def validate_legacy_products(
                     f"{binding['runtimeBinding'].get('actionId')}"
                 )
         for cue in entry["effectCues"]:
-            cue_ordinal = cue["cueOrdinal"]
-            if cue_ordinal >= len(cue_rows) or cue_rows[cue_ordinal] != cue["runtimeCue"]:
+            runtime_cue = cue["runtimeCue"]
+            binding_id = stable_id(
+                runtime_cue.get("bindingId"), "sealed legacy effect cue bindingId"
+            )
+            if cue_rows_by_id.get(binding_id) != runtime_cue:
                 raise PipelineError(
-                    f"sealed legacy effect cue drift: "
-                    f"{cue['runtimeCue'].get('bindingId')}"
+                    f"sealed legacy effect cue drift: {binding_id}"
                 )
     if len(document["sharedRotationRows"]) != len(rotation_rows):
         raise PipelineError("sealed rotation row count drift")
@@ -1707,10 +1737,13 @@ def _migrate_effect_cue(
     cue_by_id: dict[str, dict[str, Any]],
     occurrences_by_id: Mapping[str, dict[str, Any]],
     context: str,
-) -> dict[str, Any]:
+    live_split_cue_ids: set[str] | None = None,
+) -> dict[str, Any] | None:
     cue_id = effect_ref["refId"]
     cue = cue_by_id.get(cue_id)
     if cue is None:
+        if live_split_cue_ids is not None and cue_id not in live_split_cue_ids:
+            return None
         raise PipelineError(f"managed cue is missing from Product: {cue_id}")
     projection = effect_ref["cueProjection"]
     # The frozen v1 fixture owns its legacy clip projection.  A current Product
@@ -1778,7 +1811,7 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
     # Product audition rows are later managed additions, not legacy seal rows.
     migration_product_managed = (
         managed
-        | CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS
+        | CURRENT_MIGRATION_MANAGED_PATTERN_IDS
         | {
             row["patternId"]
             for row in docs[ENCOUNTER_REL]["patterns"]
@@ -1789,6 +1822,16 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
         docs[LEGACY_REL], docs, migration_product_managed
     )
     cue_by_id = unique_index(docs[CUES_REL]["cues"], "bindingId", "effect cues")
+    live_split_cue_ids: set[str] | None = None
+    live_presentation_path = root / PRESENTATION_AUTHORING_REL
+    if live_presentation_path.is_file():
+        live_presentation = read_json(live_presentation_path)
+        live_split_cue_ids = {
+            stable_id(cue.get("cueId"), "live split cueId")
+            for pattern in live_presentation.get("patterns", [])
+            for stage in pattern.get("stages", [])
+            for cue in stage.get("effectCues", [])
+        }
     camera_by_id = unique_index(docs[CAMERA_REL]["cues"], "cueId", "camera cues")
     product_rotations_by_id = {
         row["rotationId"]: row for row in docs[ROTATIONS_REL]["rotations"]
@@ -1889,7 +1932,10 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
                         cue_by_id,
                         occurrences_by_id,
                         f"{pattern_id}/{stage['stageId']} managed cue",
+                        live_split_cue_ids,
                     )
+                    if migrated_cue is None:
+                        continue
                     effect_cues.append(migrated_cue)
                     cue_owners[migrated_cue["cueId"]] = (pattern_id, stage["stageId"])
             camera_invocations = []
@@ -1988,7 +2034,10 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
                     cue_by_id,
                     occurrences_by_id,
                     f"{entry['ownerPatternId']}/{entry['ownerStageId']} managed cue",
+                    live_split_cue_ids,
                 )
+                if cue is None:
+                    continue
                 owner_stage["effectCues"].append(cue)
                 cue_owners[cue_id] = (entry["ownerPatternId"], entry["ownerStageId"])
             independent_effects.append(
@@ -2525,7 +2574,9 @@ def validate_v2_master(
     manual_patterns = _validate_manual_auditions(
         master["decisionModel"], pattern_by_id
     )
-    _validate_scripted_sequence(master["decisionModel"], pattern_by_id)
+    scripted_pattern_ids = _validate_scripted_sequence(
+        master["decisionModel"], pattern_by_id
+    )
     set_ids: set[str] = set()
     candidate_patterns: set[str] = set()
     for set_ordinal, selection_set in enumerate(master["decisionModel"]["selectionSets"]):
@@ -2680,15 +2731,29 @@ def validate_v2_master(
             "decision model pattern ownership overlaps: "
             + ", ".join(sorted(ownership_overlap))
         )
-    if candidate_patterns | mechanic_patterns | manual_patterns != set(pattern_by_id):
-        raise PipelineError("decision model does not cover every managed pattern exactly once")
+    decision_owned_patterns = (
+        candidate_patterns | mechanic_patterns | manual_patterns
+    )
+    scripted_entry_only_patterns = (
+        {scripted_pattern_ids[0]}
+        if scripted_pattern_ids and
+        scripted_pattern_ids[0] not in decision_owned_patterns
+        else set()
+    )
+    if (
+        decision_owned_patterns | scripted_entry_only_patterns
+        != set(pattern_by_id)
+    ):
+        raise PipelineError(
+            "decision model must own every managed pattern exactly once; only "
+            "the first scripted sequence pattern may be an entry-only gate"
+        )
     event_ids: set[str] = set()
     expected_cue_policies = {
         cue_id: scale_kind
         for cue_id, scale_kind in MANAGED_CUE_SCALE_POLICIES.items()
         if not migration_fixture or cue_id in MIGRATION_MANAGED_CUE_IDS
     }
-    expected_scale_policy_counts = Counter(expected_cue_policies.values())
     cue_ids: set[str] = set()
     scale_policy_counts: Counter[str] = Counter()
     spawn_events: set[str] = set()
@@ -3087,12 +3152,15 @@ def validate_v2_master(
                 if invocation["durationPolicy"] != "EXPLICIT":
                     raise PipelineError("initial camera migration uses EXPLICIT duration")
                 integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
-    if cue_ids != set(expected_cue_policies):
+    if not cue_ids.issubset(expected_cue_policies):
         raise PipelineError("managed cue scalePolicy migration table coverage drift")
-    if scale_policy_counts != expected_scale_policy_counts:
+    live_expected_scale_policy_counts = Counter(
+        expected_cue_policies[cue_id] for cue_id in cue_ids
+    )
+    if scale_policy_counts != live_expected_scale_policy_counts:
         raise PipelineError(
             "managed cue scalePolicy coverage drift: "
-            f"expected={dict(expected_scale_policy_counts)} "
+            f"expected={dict(live_expected_scale_policy_counts)} "
             f"actual={dict(scale_policy_counts)}"
         )
     expected_world_set_owners = (
@@ -4617,7 +4685,7 @@ def project_v2_products(
         else set()
     )
     fixture_legacy_managed_ids = fixture_audition_ids | (
-        CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS
+        CURRENT_MIGRATION_MANAGED_PATTERN_IDS
         if migration_fixture
         else set()
     )

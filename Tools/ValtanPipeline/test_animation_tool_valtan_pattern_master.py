@@ -108,7 +108,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             pattern["patternId"] for pattern in self.presentation["patterns"]
         }
         self.assertEqual(gameplay_ids, presentation_ids)
-        self.assertEqual(29, len(gameplay_ids))
+        self.assertEqual(30, len(gameplay_ids))
 
         manifest_rows = self.promotion_manifest["patterns"]
         manifest_ids = [row["patternId"] for row in manifest_rows]

@@ -220,6 +220,8 @@ namespace LostArk::Server
 			std::string strContext;
 			bool bRollbackCleanupRequired = false;
 			bool bRollbackCleanupEnqueued = false;
+			LostArk::Shared::PARTY_TRANSFER_RESULT ePartyResult =
+				LostArk::Shared::PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE;
 		};
 		bool Transfer_SessionWorld(
 			const std::shared_ptr<CGameRoom>& sourceSimulation,

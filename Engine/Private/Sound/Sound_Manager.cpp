@@ -27,6 +27,8 @@ CSound_Manager::CSound_Manager()
 
 CSound_Manager::~CSound_Manager()
 {
+	Stop_LoopingSound();
+	Stop_Music();
 	for (auto& SoundPair : m_Sounds)
 	{
 		if (nullptr != SoundPair.second)
@@ -85,39 +87,57 @@ HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVol
 	return S_OK;
 }
 
-HRESULT CSound_Manager::Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume)
+HRESULT CSound_Manager::Play_Music(const wstring_t& strSoundFilePath,
+	f32_t fVolume, const bool_t bLoop)
 {
-	Stop_Music();
+	return Play_TrackedSound(strSoundFilePath, fVolume, bLoop, m_MusicChannel);
+}
 
-	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath, true);
+HRESULT CSound_Manager::Play_LoopingSound(const wstring_t& strSoundFilePath,
+	f32_t fVolume)
+{
+	return Play_TrackedSound(strSoundFilePath, fVolume, true, m_LoopingSoundChannel);
+}
+
+HRESULT CSound_Manager::Play_TrackedSound(const wstring_t& strSoundFilePath,
+	f32_t fVolume, const bool_t bLoop, CTrackedSoundChannel<FMOD::Channel>& channel)
+{
+	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath, bLoop);
 	if (nullptr == pSound)
 		return E_FAIL;
 
-	FMOD_RESULT eResult = m_pSystem->playSound(pSound, nullptr, false, &m_pMusicChannel);
-	if (FMOD_OK != eResult || nullptr == m_pMusicChannel)
-	{
-		Write_FMOD_Error("System::playSound (music)", eResult);
-		m_pMusicChannel = nullptr;
-		return E_FAIL;
-	}
-
-	eResult = m_pMusicChannel->setVolume(fVolume);
-	if (FMOD_OK != eResult)
-	{
-		Write_FMOD_Error("Channel::setVolume (music)", eResult);
-		return E_FAIL;
-	}
-
-	return S_OK;
+	return channel.Try_Replace([&](FMOD::Channel*& staged)
+		{
+			FMOD_RESULT result = m_pSystem->playSound(pSound, nullptr, true, &staged);
+			if (FMOD_OK != result || nullptr == staged)
+			{
+				Write_FMOD_Error("System::playSound (tracked)", result);
+				return false;
+			}
+			result = staged->setVolume(fVolume);
+			if (FMOD_OK != result)
+			{
+				Write_FMOD_Error("Channel::setVolume (tracked)", result);
+				return false;
+			}
+			result = staged->setPaused(false);
+			if (FMOD_OK != result)
+			{
+				Write_FMOD_Error("Channel::setPaused (tracked)", result);
+				return false;
+			}
+			return true;
+		}) ? S_OK : E_FAIL;
 }
 
 void CSound_Manager::Stop_Music()
 {
-	if (nullptr == m_pMusicChannel)
-		return;
+	m_MusicChannel.Stop();
+}
 
-	m_pMusicChannel->stop();
-	m_pMusicChannel = nullptr;
+void CSound_Manager::Stop_LoopingSound()
+{
+	m_LoopingSoundChannel.Stop();
 }
 
 void CSound_Manager::Update()
@@ -132,7 +152,8 @@ void CSound_Manager::Update()
 
 FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath, bool_t bLoop)
 {
-	const auto SoundIter = m_Sounds.find(strSoundFilePath);
+	const pair<wstring_t, bool_t> SoundKey{ strSoundFilePath, bLoop };
+	const auto SoundIter = m_Sounds.find(SoundKey);
 	if (m_Sounds.end() != SoundIter)
 		return SoundIter->second;
 
@@ -160,7 +181,7 @@ FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath
 	if (bLoop)
 		pSound->setLoopCount(-1);
 
-	m_Sounds.emplace(strSoundFilePath, pSound);
+	m_Sounds.emplace(SoundKey, pSound);
 	return pSound;
 }
 

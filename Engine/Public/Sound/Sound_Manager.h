@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include "Sound/TrackedSoundChannel.h"
 
 namespace FMOD
 {
@@ -21,11 +22,15 @@ public:
 
 public:
 	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
+	/* A separately owned looping SFX never replaces level/encounter music. */
+	HRESULT Play_LoopingSound(const wstring_t& strSoundFilePath, f32_t fVolume);
+	void Stop_LoopingSound();
 
-	/* Looping background music -- unlike Play_Sound (fire-and-forget one-shot SFX), only one
-	track plays at a time and the caller can stop it later (e.g. Lobby BGM ending when the level
-	transitions away). Starting a new track stops whatever was already playing first. */
-	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume);
+	/* Unlike Play_Sound (fire-and-forget SFX), music keeps one tracked channel
+	that a level or encounter can replace and stop. Cutscene music is one-shot;
+	ambient/combat music can opt into an infinite loop. */
+	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume,
+		bool_t bLoop = true);
 	void Stop_Music();
 
 	void Update();
@@ -33,11 +38,17 @@ public:
 private:
 	HRESULT Initialize();
 	FMOD::Sound* Find_Or_LoadSound(const wstring_t& strSoundFilePath, bool_t bLoop);
+	HRESULT Play_TrackedSound(const wstring_t& strSoundFilePath, f32_t fVolume,
+		bool_t bLoop, CTrackedSoundChannel<FMOD::Channel>& channel);
 
 private:
 	FMOD::System* m_pSystem = { nullptr };
-	map<wstring_t, FMOD::Sound*> m_Sounds;
-	FMOD::Channel* m_pMusicChannel = { nullptr };
+	/* FMOD loop mode belongs to the Sound, not the Channel. Keep one cached
+	instance per (asset, mode) so an SFX and a music cue cannot mutate each
+	other when they happen to reference the same WAV. */
+	map<pair<wstring_t, bool_t>, FMOD::Sound*> m_Sounds;
+	CTrackedSoundChannel<FMOD::Channel> m_MusicChannel;
+	CTrackedSoundChannel<FMOD::Channel> m_LoopingSoundChannel;
 
 public:
 	static unique_ptr<CSound_Manager> Create();

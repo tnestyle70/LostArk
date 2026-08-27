@@ -394,6 +394,193 @@ namespace
 		return predicate();
 	}
 
+	bool Replace_FirstSpawnAnchorField(
+		std::string& bootstrapText,
+		const std::size_t fieldIndex,
+		const std::string_view replacement)
+	{
+		std::size_t rowStart = bootstrapText.find("ANCHOR\t");
+		while (std::string::npos != rowStart && 0u != rowStart &&
+			'\n' != bootstrapText[rowStart - 1u])
+		{
+			rowStart = bootstrapText.find("ANCHOR\t", rowStart + 1u);
+		}
+		if (std::string::npos == rowStart)
+			return false;
+
+		std::size_t rowEnd = bootstrapText.find('\n', rowStart);
+		if (std::string::npos == rowEnd)
+			rowEnd = bootstrapText.size();
+		std::size_t valueEnd = rowEnd;
+		if (valueEnd > rowStart && '\r' == bootstrapText[valueEnd - 1u])
+			--valueEnd;
+
+		std::size_t fieldStart = rowStart;
+		for (std::size_t index = 0u; index < fieldIndex; ++index)
+		{
+			const std::size_t tab = bootstrapText.find('\t', fieldStart);
+			if (std::string::npos == tab || tab >= valueEnd)
+				return false;
+			fieldStart = tab + 1u;
+		}
+		std::size_t fieldEnd = bootstrapText.find('\t', fieldStart);
+		if (std::string::npos == fieldEnd || fieldEnd > valueEnd)
+			fieldEnd = valueEnd;
+		if (fieldStart >= fieldEnd)
+			return false;
+		bootstrapText.replace(
+			fieldStart, fieldEnd - fieldStart, replacement);
+		return true;
+	}
+
+	bool Reject_CorruptSpawnAnchorReloadTransactionally(
+		LostArk::Server::CSpawnGroupBootstrap& bootstrap)
+	{
+		namespace fs = std::filesystem;
+		using LostArk::Server::SPAWN_GROUP_ANCHOR;
+		using LostArk::Shared::WORLD_ID;
+
+		const auto& groups = bootstrap.Get_Groups();
+		std::string preservedAnchorId;
+		for (const auto& group : groups)
+		{
+			for (const auto& wave : group.Waves)
+			{
+				if (!wave.Entries.empty())
+				{
+					preservedAnchorId = wave.Entries.front().strAnchorId;
+					break;
+				}
+			}
+			if (!preservedAnchorId.empty())
+				break;
+		}
+		const SPAWN_GROUP_ANCHOR* preservedAnchor =
+			bootstrap.Find_Anchor(preservedAnchorId);
+		if (groups.empty() || nullptr == preservedAnchor)
+			return false;
+		const SPAWN_GROUP_ANCHOR expectedAnchor = *preservedAnchor;
+		const std::size_t expectedGroupCount = groups.size();
+		const std::string expectedFirstGroupId =
+			groups.front().strSpawnGroupId;
+		const std::uint32_t expectedRevision = bootstrap.Get_Revision();
+
+		std::vector<wchar_t> environmentBuffer(32768u);
+		const DWORD configuredLength = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", environmentBuffer.data(),
+			static_cast<DWORD>(environmentBuffer.size()));
+		if (configuredLength >= environmentBuffer.size())
+			return false;
+		const bool hadConfiguredRoot = 0u != configuredLength;
+		const std::wstring previousRoot = hadConfiguredRoot ?
+			environmentBuffer.data() : L"";
+		fs::path packagedDataRoot;
+		if (hadConfiguredRoot)
+		{
+			packagedDataRoot = fs::path(previousRoot).lexically_normal();
+		}
+		else
+		{
+			std::vector<wchar_t> moduleBuffer(32768u);
+			const DWORD moduleLength = GetModuleFileNameW(
+				nullptr, moduleBuffer.data(),
+				static_cast<DWORD>(moduleBuffer.size()));
+			if (0u == moduleLength || moduleLength >= moduleBuffer.size())
+				return false;
+			packagedDataRoot = fs::path(moduleBuffer.data()).parent_path().
+				parent_path() / L"DataFiles";
+		}
+
+		std::ifstream input(
+			packagedDataRoot / L"World" /
+				L"VALTAN_ARENA.spawngroupsbootstrap",
+			std::ios::binary);
+		if (!input)
+			return false;
+		const std::string validText{
+			std::istreambuf_iterator<char>(input),
+			std::istreambuf_iterator<char>() };
+		if (validText.empty())
+			return false;
+
+		const fs::path fixtureRoot = fs::temp_directory_path() /
+			(L"LostArkSpawnAnchorContractTest-" +
+				std::to_wstring(GetCurrentProcessId()));
+		std::error_code fixtureError;
+		fs::remove_all(fixtureRoot, fixtureError);
+		if (fixtureError)
+			return false;
+		fs::create_directories(fixtureRoot / L"World", fixtureError);
+		if (fixtureError || !SetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", fixtureRoot.c_str()))
+		{
+			return false;
+		}
+
+		struct ANCHOR_CORRUPTION final
+		{
+			std::size_t fieldIndex = 0u;
+			std::string_view replacement;
+		};
+		constexpr std::array corruptions{
+			ANCHOR_CORRUPTION{ 2u, "100001" },
+			ANCHOR_CORRUPTION{ 3u, "-100001" },
+			ANCHOR_CORRUPTION{ 4u, "1e20" },
+			ANCHOR_CORRUPTION{ 5u, "1e20" },
+			ANCHOR_CORRUPTION{ 2u, "nan" },
+			ANCHOR_CORRUPTION{ 3u, "nan" },
+			ANCHOR_CORRUPTION{ 4u, "nan" },
+			ANCHOR_CORRUPTION{ 5u, "nan" }
+		};
+		bool rejectedAll = true;
+		for (const ANCHOR_CORRUPTION& corruption : corruptions)
+		{
+			std::string corruptText = validText;
+			if (!Replace_FirstSpawnAnchorField(
+				corruptText, corruption.fieldIndex, corruption.replacement))
+			{
+				rejectedAll = false;
+				break;
+			}
+			bool wroteFixture = false;
+			{
+				std::ofstream output(
+					fixtureRoot / L"World" /
+						L"VALTAN_ARENA.spawngroupsbootstrap",
+					std::ios::binary | std::ios::trunc);
+				output.write(corruptText.data(),
+					static_cast<std::streamsize>(corruptText.size()));
+				wroteFixture = output.good();
+			}
+			const bool rejected = wroteFixture &&
+				!bootstrap.Load(WORLD_ID::VALTAN_ARENA);
+			const SPAWN_GROUP_ANCHOR* currentAnchor =
+				bootstrap.Find_Anchor(preservedAnchorId);
+			rejectedAll = rejectedAll && rejected &&
+				bootstrap.Get_Status() ==
+					"Spawn group anchor row is invalid" &&
+				expectedRevision == bootstrap.Get_Revision() &&
+				expectedGroupCount == bootstrap.Get_Groups().size() &&
+				!bootstrap.Get_Groups().empty() &&
+				expectedFirstGroupId ==
+					bootstrap.Get_Groups().front().strSpawnGroupId &&
+				nullptr != currentAnchor &&
+				expectedAnchor.fPositionX == currentAnchor->fPositionX &&
+				expectedAnchor.fPositionY == currentAnchor->fPositionY &&
+				expectedAnchor.fPositionZ == currentAnchor->fPositionZ &&
+				expectedAnchor.fYawDegrees == currentAnchor->fYawDegrees;
+			if (!rejectedAll)
+				break;
+		}
+
+		const bool restoredEnvironment = SetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT",
+			hadConfiguredRoot ? previousRoot.c_str() : nullptr);
+		fixtureError.clear();
+		fs::remove_all(fixtureRoot, fixtureError);
+		return rejectedAll && restoredEnvironment && !fixtureError;
+	}
+
 	struct QUICK_SKILL_CONTRACT final
 	{
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass;
@@ -636,6 +823,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* sequence =
 			catalog.Find_BossPatternSequence("ENCOUNTER_VALTAN");
 		const std::vector<std::string> expectedPatternIds{
+			"VALTAN_ENTRANCE_CINEMATIC",
 			"VALTAN_WHIRLWIND",
 			"VALTAN_FOUR_SLASH",
 			"VALTAN_FIST_IN_OUT",
@@ -671,9 +859,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				sequence->eMode &&
 			1000u == sequence->iInterStepPursuitMs &&
 			30u == sequence->iInterStepPursuitTicks &&
-			28u == sequence->iExpectedStepCount &&
+			29u == sequence->iExpectedStepCount &&
 			sequence->PatternIds == expectedPatternIds,
-			"Load the exact seven-pattern Phase-1 review plus 21 Phase-2 animation sequence from bootstrap v24");
+			"Load the entrance camera gate, seven-pattern Phase-1 review, and 21 Phase-2 animation sequence from bootstrap v24");
 	}
 	{
 		const auto* patterns =
@@ -1764,36 +1952,37 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const std::string sequenceHeader =
 			"PATTERNSEQUENCE\tENCOUNTER_VALTAN\t"
 			"sequence.valtan.server-authored.v1\t"
-			"ORDERED_ONCE_THEN_IDLE\t1000\t28";
+			"ORDERED_ONCE_THEN_IDLE\t1000\t29";
 		const std::vector<std::string> sequenceSteps{
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t0\tVALTAN_WHIRLWIND",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t1\tVALTAN_FOUR_SLASH",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t2\tVALTAN_FIST_IN_OUT",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t3\tVALTAN_HIGH_JUMP",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t4\tVALTAN_FLOOR_WIPE_130",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t5\tVALTAN_DASH_CHARGE",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t6\tVALTAN_ARENA_BREAK_109",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t7\tVALTAN_SIX_PIZZA_106",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t8\tVALTAN_ATTACK_WHIRLWIND",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t9\tVALTAN_CHARGE",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t10\tVALTAN_SEQUENCE_FOUR",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t11\tVALTAN_ROAR_CHARGE",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t12\tVALTAN_SEQUENCE_RUSH",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t13\tVALTAN_THREE",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t14\tVALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t15\tVALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t16\tVALTAN_TERRAIN_DESTRUCTION",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t17\tVALTAN_SEQUENCE_FRONT_BACK_FRONT",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t18\tVALTAN_WARP",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t19\tVALTAN_SEQUENCE_TWOHAND",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t20\tVALTAN_SEQUENCE_WHIRLWIND",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t21\tVALTAN_TRASH",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t22\tVALTAN_TRASH_CATCH_SUCCESS",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t23\tVALTAN_TRASH_CATCH_FAIL",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t24\tVALTAN_TRASH_CATCH_IF",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t25\tVALTAN_CATCH_BREATH",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t26\tVALTAN_COUNTER",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t27\tVALTAN_CHARGE_2" };
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t0\tVALTAN_ENTRANCE_CINEMATIC",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t1\tVALTAN_WHIRLWIND",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t2\tVALTAN_FOUR_SLASH",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t3\tVALTAN_FIST_IN_OUT",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t4\tVALTAN_HIGH_JUMP",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t5\tVALTAN_FLOOR_WIPE_130",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t6\tVALTAN_DASH_CHARGE",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t7\tVALTAN_ARENA_BREAK_109",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t8\tVALTAN_SIX_PIZZA_106",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t9\tVALTAN_ATTACK_WHIRLWIND",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t10\tVALTAN_CHARGE",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t11\tVALTAN_SEQUENCE_FOUR",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t12\tVALTAN_ROAR_CHARGE",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t13\tVALTAN_SEQUENCE_RUSH",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t14\tVALTAN_THREE",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t15\tVALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t16\tVALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t17\tVALTAN_TERRAIN_DESTRUCTION",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t18\tVALTAN_SEQUENCE_FRONT_BACK_FRONT",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t19\tVALTAN_WARP",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t20\tVALTAN_SEQUENCE_TWOHAND",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t21\tVALTAN_SEQUENCE_WHIRLWIND",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t22\tVALTAN_TRASH",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t23\tVALTAN_TRASH_CATCH_SUCCESS",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t24\tVALTAN_TRASH_CATCH_FAIL",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t25\tVALTAN_TRASH_CATCH_IF",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t26\tVALTAN_CATCH_BREATH",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t27\tVALTAN_COUNTER",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t28\tVALTAN_CHARGE_2" };
 		std::string missingSequenceBootstrap = bootstrapText;
 		bool removedSequence = removeBootstrapRow(
 			missingSequenceBootstrap, sequenceHeader);
@@ -1810,12 +1999,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			invalidSequencePursuitBootstrap, sequenceHeader,
 			"PATTERNSEQUENCE\tENCOUNTER_VALTAN\t"
 			"sequence.valtan.server-authored.v1\t"
-			"ORDERED_ONCE_THEN_IDLE\t0\t28");
+			"ORDERED_ONCE_THEN_IDLE\t0\t29");
 		std::string duplicateSequenceStepBootstrap = bootstrapText;
 		const bool madeDuplicateSequenceStep = replaceBootstrapRow(
 			duplicateSequenceStepBootstrap, sequenceSteps[1u],
 			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\t"
-			"sequence.valtan.server-authored.v1\t1\tVALTAN_WHIRLWIND");
+			"sequence.valtan.server-authored.v1\t1\tVALTAN_ENTRANCE_CINEMATIC");
 		std::string nonContiguousSequenceBootstrap = bootstrapText;
 		const bool madeNonContiguousSequence = replaceBootstrapRow(
 			nonContiguousSequenceBootstrap, sequenceSteps[2u],
@@ -3072,6 +3261,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findPattern("VALTAN_HIGH_JUMP");
 		const BOSS_PATTERN_DEFINITION* arenaBreakPattern =
 			findPattern("VALTAN_ARENA_BREAK_109");
+		const BOSS_PATTERN_DEFINITION* entranceCinematic =
+			findPattern("VALTAN_ENTRANCE_CINEMATIC");
+		const BOSS_PATTERN_STAGE_DEFINITION* entranceEstablish =
+			findStage("VALTAN_ENTRANCE_CINEMATIC", "ESTABLISH");
+		const BOSS_PATTERN_STAGE_DEFINITION* entranceArenaReveal =
+			findStage("VALTAN_ENTRANCE_CINEMATIC", "ARENA_REVEAL");
+		const BOSS_PATTERN_STAGE_DEFINITION* entranceHeroHandoff =
+			findStage("VALTAN_ENTRANCE_CINEMATIC", "HERO_HANDOFF");
 		const auto hasAction = [](
 			const BOSS_PATTERN_STAGE_DEFINITION* stage,
 			const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
@@ -3118,6 +3315,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		std::size_t valtanLivePatternCount = 0u;
 		std::size_t valtanStageCount = 0u;
 		std::size_t valtanStageActionCount = 0u;
+		std::size_t valtanStageVolleyActionCount = 0u;
 		std::size_t valtanRuntimeBranchCount = 0u;
 		std::size_t valtanMotionCount = 0u;
 		if (nullptr != patterns)
@@ -3131,6 +3329,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
 				{
 					valtanStageActionCount += stage.Actions.size();
+					valtanStageVolleyActionCount += static_cast<std::size_t>(std::count_if(
+						stage.Actions.begin(), stage.Actions.end(), [](const BOSS_PATTERN_STAGE_ACTION& action)
+						{ return BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind; }));
 					valtanRuntimeBranchCount += stage.Branches.size();
 					if (BOSS_PATTERN_STAGE_MOTION_KIND::NONE != stage.Motion.eKind)
 						++valtanMotionCount;
@@ -3165,10 +3366,41 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findStage("VALTAN_CENTER_GRAB_COUNTER_64", "COUNTER_WINDOW");
 		const BOSS_PATTERN_STAGE_DEFINITION* counterSlam =
 			findStage("VALTAN_COUNTER", "STEP_03");
+		const bool entranceCameraGateExact =
+			nullptr != entranceCinematic &&
+			BOSS_PATTERN_SELECTION::NORMAL == entranceCinematic->eSelection &&
+			entranceCinematic->bInvulnerableWhileRunning &&
+			BOSS_PATTERN_TARGET_POLICY::NONE ==
+				entranceCinematic->eTargetPolicy &&
+			BOSS_PATTERN_AIM_POLICY::NONE == entranceCinematic->eAimPolicy &&
+			3u == entranceCinematic->Stages.size() &&
+			nullptr != entranceEstablish &&
+			8600u == entranceEstablish->iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE == entranceEstablish->eHitShape &&
+			entranceEstablish->Actions.empty() &&
+			hasBranch(entranceEstablish, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.cinematic.entrance.arena-reveal") &&
+			nullptr != entranceArenaReveal &&
+			5800u == entranceArenaReveal->iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE == entranceArenaReveal->eHitShape &&
+			entranceArenaReveal->Actions.empty() &&
+			hasBranch(entranceArenaReveal, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.cinematic.entrance.hero-handoff") &&
+			nullptr != entranceHeroHandoff &&
+			5467u == entranceHeroHandoff->iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE == entranceHeroHandoff->eHitShape &&
+			entranceHeroHandoff->Actions.empty() &&
+			hasBranch(entranceHeroHandoff, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
+		tests.Require(
+			entranceCameraGateExact,
+			"Load the exact invulnerable 19.867-second Valtan entrance camera gate");
+
 		const bool reactiveTopologyExact = nullptr != patterns &&
-			33u == valtanLivePatternCount && 129u == valtanStageCount &&
-			25u == valtanStageActionCount &&
-			139u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
+			34u == valtanLivePatternCount && 132u == valtanStageCount &&
+			// PATTERNSTAGEVOLLEY also materializes in Actions, in addition to
+			// the 24 PATTERNSTAGEACTION rows in the published bootstrap.
+			25u == valtanStageActionCount && 1u == valtanStageVolleyActionCount &&
+			142u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&
 			2u == parryStance->Branches.size() &&
 			hasAction(parryStance,
@@ -3261,7 +3493,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr != counterSlam && 1u == counterSlam->Branches.size() &&
 			hasBranch(counterSlam, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
 		tests.Require(reactiveTopologyExact,
-			"Load all 129 current Valtan stages with the exact 25 actions, 139 runtime branches, and terminal counter slam");
+			"Load all 132 current Valtan stages with exactly 25 runtime actions (including one volley), 142 branches, two stage motions, and terminal counter slam");
+		if (!reactiveTopologyExact)
+		{
+			std::cout << "[STATUS] Valtan topology counts: patterns=" << valtanLivePatternCount
+				<< ", stages=" << valtanStageCount << ", actions=" << valtanStageActionCount
+				<< ", volleys=" << valtanStageVolleyActionCount << ", branches=" << valtanRuntimeBranchCount
+				<< ", motions=" << valtanMotionCount << '\n';
+		}
 		tests.Require(
 			nullptr != fourSlashes && 3u == fourSlashes->iHitCount &&
 			0u == fourSlashes->iHitDelayMs &&
@@ -4793,6 +5032,110 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Ignore protected players and acquire the same player after combat admission");
 	}
 	{
+		CServerNavigation navigation;
+		const bool navigationLoaded =
+			navigation.Load("LV_LOBBY_CLASSSELECT_SL00");
+		SERVER_WORLD_ENTITY monster{};
+		monster.iNetEntityId = 750u;
+		monster.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+		monster.eAction = SERVER_ENTITY_ACTION::CHASE;
+		monster.iCurrentHp = 100u;
+		monster.iMaximumHp = 100u;
+		monster.iTargetEntityId = 752u;
+		monster.iNextPathReplanTick = 100u;
+		monster.fYawDegrees = 1e20f;
+		monster.fCollisionRadius = 0.1f;
+		monster.fAttackRange = 0.01f;
+		monster.fEngageDistance = 10.f;
+		monster.fTargetReleaseDistance = 14.f;
+		monster.fMoveSpeed = 2.f;
+		monster.fTurnSpeedDegreesPerSecond = 180.f;
+		monster.fMoveAcceleration = 4.f;
+		monster.fMoveDeceleration = 6.f;
+		monster.fArrivalSlowRadius = 1.f;
+		monster.MovePath.push_back({ 2.f, 0.f, 0.f });
+
+		SERVER_PLAYER player{};
+		player.iPlayerId = 751u;
+		player.iNetEntityId = 752u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = 100u;
+		player.iMaximumHp = 100u;
+		player.fPositionX = 5.f;
+		player.isCombatReady = true;
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		players.emplace(player.iPlayerId, player);
+		std::vector<DAMAGE_EVENT> damageEvents;
+		CMonsterBrain monsterBrain;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 10u, damageEvents);
+		tests.Require(
+			navigationLoaded && std::isfinite(monster.fYawDegrees) &&
+			std::fabs(monster.fYawDegrees) <= 180.f,
+			"Normalize an extreme monster yaw in bounded time");
+	}
+	{
+		CServerNavigation navigation;
+		const bool navigationLoaded =
+			navigation.Load("LV_LOBBY_CLASSSELECT_SL00");
+		SERVER_WORLD_ENTITY monster{};
+		monster.iNetEntityId = 800u;
+		monster.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+		monster.iCurrentHp = 100u;
+		monster.iMaximumHp = 100u;
+		monster.fCollisionRadius = 0.1f;
+		monster.fAttackRange = 0.01f;
+		monster.fEngageDistance = 10.f;
+		monster.fTargetReleaseDistance = 14.f;
+		monster.fMoveSpeed = 2.f;
+		monster.fTurnSpeedDegreesPerSecond = 180.f;
+		monster.fMoveAcceleration = 4.f;
+		monster.fMoveDeceleration = 6.f;
+		monster.fArrivalSlowRadius = 1.f;
+		monster.iPatternTelegraphMs = 1000u;
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		for (std::uint32_t index = 0u; index < 2u; ++index)
+		{
+			SERVER_PLAYER player{};
+			player.iPlayerId = 810u + index;
+			player.iNetEntityId = 820u + index;
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.iCurrentHp = 100u;
+			player.iMaximumHp = 100u;
+			player.fPositionX = 5.f + static_cast<float>(index);
+			player.isCombatReady = true;
+			players.emplace(player.iPlayerId, player);
+		}
+		std::vector<DAMAGE_EVENT> damageEvents;
+		CMonsterBrain monsterBrain;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 10u, damageEvents);
+		const NET_ENTITY_ID firstTarget = monster.iTargetEntityId;
+		players.find(811u)->second.fPositionX = 4.f;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 11u, damageEvents);
+		const bool retainedTarget = firstTarget == monster.iTargetEntityId;
+		players.find(810u)->second.fPositionX = 20.f;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 12u, damageEvents);
+		const bool releasedAndRetargeted =
+			821u == monster.iTargetEntityId;
+		monster.eAction = SERVER_ENTITY_ACTION::PATTERN_WINDUP;
+		monster.fActionElapsedSeconds = 0.f;
+		players.find(810u)->second.fPositionX = 0.5f;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 13u, damageEvents);
+		tests.Require(
+			navigationLoaded && 820u == firstTarget && retainedTarget &&
+			releasedAndRetargeted && 821u == monster.iTargetEntityId,
+			"Retain a valid monster target, release it at hysteresis range, and lock the replacement through windup");
+	}
+	{
 		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
 		tests.Require(room.Is_Ready(),
 			"Initialize Character Select room for class changes");
@@ -4998,6 +5341,318 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		bernEntrySession->Request_Close();
 		tests.Require(completeBernEntryStream,
 			"Join Bern with every world spawn and the local player spawn queued");
+	}
+	{
+		struct PARTY_FIXTURE final
+		{
+			std::unique_ptr<CServerApp> App = std::make_unique<CServerApp>();
+			std::shared_ptr<CGameRoom> Source = std::make_shared<CGameRoom>(WORLD_ID::BERN);
+			std::shared_ptr<CGameRoom> Target = std::make_shared<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+			std::vector<std::shared_ptr<CClientSession>> Sessions;
+			SERVER_WORLD_TRANSFER_REQUEST Request;
+			bool Ready = false;
+		};
+		const auto clearOutbound = [](CClientSession& session)
+		{
+			session.m_OutboundFrames.clear();
+			session.m_iQueuedOutboundBytes = 0u;
+			session.m_OutboundMetrics.iCurrentQueuedByteCount = 0u;
+			session.m_OutboundMetrics.iCurrentQueuedFrameCount = 0u;
+		};
+		{
+			auto first = std::make_shared<CClientSession>(95991u, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			auto second = std::make_shared<CClientSession>(95992u, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			first->m_isSendRunning.store(true);
+			second->m_isSendRunning.store(true);
+			// Reproduce the close interval after terminal diagnostic publication,
+			// before Request_Close has changed running flags or cleared its queue.
+			second->Record_TerminalDiagnostic(SESSION_DIAGNOSTIC_REASON::SERVER_PEER_CLOSED,
+				0, "contract terminal admission race");
+			S2C_PARTY_TRANSFER_RESULT notice{ 81u, WORLD_ID::VALTAN_ARENA,
+				PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE };
+			CPacketWriter writer;
+			const bool encoded = Write_Message(writer, notice);
+			const PACKET_FRAME frame{ PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT, writer.Get_Buffer() };
+			CClientSession::RELIABLE_BATCH_TRANSACTION admission;
+			std::string status;
+			tests.Require(encoded && !admission.Prepare({ { first, { frame } }, { second, { frame } } }, status) &&
+				second->m_isSendRunning.load() && first->m_OutboundFrames.empty() &&
+				second->m_OutboundFrames.empty() && !status.empty(),
+				"Reject terminal-in-progress admission and release every staged participant unchanged");
+		}
+		const auto makeParty = [&clearOutbound](const std::size_t count, const bool formParty)
+		{
+			auto fixture = std::make_unique<PARTY_FIXTURE>();
+			fixture->Ready = fixture->Source->Is_Ready() && fixture->Target->Is_Ready();
+			fixture->App->m_SharedGameRooms.emplace(WORLD_ID::BERN, fixture->Source);
+			fixture->App->m_SharedGameRooms.emplace(WORLD_ID::VALTAN_ARENA, fixture->Target);
+			const CHARACTER_CLASS_ID classes[] = { CHARACTER_CLASS_ID::LANCE_MASTER,
+				CHARACTER_CLASS_ID::ARTIST, CHARACTER_CLASS_ID::WARLORD,
+				CHARACTER_CLASS_ID::DIMENSIONMASTER };
+			for (std::size_t index = 0; index < count && fixture->Ready; ++index)
+			{
+				const SESSION_ID id = 96001u + index;
+				auto session = std::make_shared<CClientSession>(id, INVALID_SOCKET,
+					CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+				session->m_isSendRunning.store(true);
+				fixture->Source->Handle_Register(session);
+				C2S_ENTER_WORLD enter{};
+				enter.eWorldId = WORLD_ID::BERN;
+				enter.eCharacterClass = classes[index];
+				enter.strNickName = "PartyContract" + std::to_string(index);
+				fixture->Ready = fixture->Source->Join(id, enter);
+				fixture->Sessions.push_back(session);
+				fixture->App->m_Sessions.emplace(id, session);
+				CServerApp::SESSION_GAMEPLAY_BINDING binding{};
+				binding.eWorldId = WORLD_ID::BERN;
+				binding.pSimulation = fixture->Source;
+				fixture->App->m_GameplayBindingBySessionId.emplace(id, binding);
+				for (const auto& active : fixture->Sessions) clearOutbound(*active);
+			}
+			if (!fixture->Ready) return fixture;
+			const auto& leader = fixture->Source->m_Players.at(fixture->Sessions.front()->Get_PlayerId());
+			fixture->Request.iSessionId = leader.iSessionId;
+			fixture->Request.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+			fixture->Request.eCharacterClass = leader.eCharacterClass;
+			fixture->Request.strNickName = leader.strNickName;
+			fixture->Request.iPartyRequestSequence = 81u;
+			for (const auto& session : fixture->Sessions)
+				fixture->Request.PartyBatchSessionIds.push_back(session->Get_SessionId());
+			if (formParty)
+			{
+				for (std::size_t index = 1; index < count; ++index)
+				{
+					C2S_PARTY_INVITE invite{};
+					invite.iRequestSequence = static_cast<std::uint32_t>(index);
+					invite.iTargetNetEntityId = fixture->Source->m_Players.at(
+						fixture->Sessions[index]->Get_PlayerId()).iNetEntityId;
+					fixture->Source->Handle_PartyInvite(leader.iSessionId, invite);
+					C2S_PARTY_INVITE_RESPOND respond{};
+					respond.iRequestSequence = static_cast<std::uint32_t>(index);
+					respond.iFromNetEntityId = leader.iNetEntityId;
+					respond.bAccepted = true;
+					fixture->Source->Handle_PartyInviteRespond(
+						fixture->Sessions[index]->Get_SessionId(), respond);
+				}
+				fixture->Ready = 1u == fixture->Source->m_PartyMembersByPartyId.size() &&
+					count == fixture->Source->m_PartyMembersByPartyId.begin()->second.size();
+			}
+			for (const auto& active : fixture->Sessions) clearOutbound(*active);
+			return fixture;
+		};
+		for (const std::size_t count : { 2u, 4u })
+		{
+			auto fixture = makeParty(count, true);
+			tests.Require(fixture->Ready, "Create a real two/four-player invited party fixture");
+			if (!fixture->Ready) continue;
+			const auto guide = std::find_if(fixture->Source->m_WorldEntities.begin(),
+				fixture->Source->m_WorldEntities.end(), [](const SERVER_WORLD_ENTITY& entity)
+				{ return "npc.bern.beda.guide" == entity.strPlacementId; });
+			bool leaderBatch = guide != fixture->Source->m_WorldEntities.end();
+			if (leaderBatch)
+			{
+				for (const auto& session : fixture->Sessions)
+				{
+					auto& player = fixture->Source->m_Players.at(session->Get_PlayerId());
+					player.fPositionX = guide->fPositionX;
+					player.fPositionZ = guide->fPositionZ;
+				}
+				C2S_CONFIRM_NPC_ENTRY confirm{};
+				confirm.iRequestSequence = 81u;
+				confirm.strNpcPlacementId = guide->strPlacementId;
+				fixture->Source->Handle_ConfirmNpcEntry(
+					fixture->Sessions[1]->Get_SessionId(), confirm);
+				bool hasFailureNotice = false;
+				for (const auto& frame : fixture->Sessions[1]->m_OutboundFrames)
+				{
+					if (PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT != frame.ePacketType) continue;
+					CPacketReader reader{ std::span<const std::uint8_t>{ frame.Bytes }.subspan(PACKET_HEADER_BYTES) };
+					S2C_PARTY_TRANSFER_RESULT result{};
+					hasFailureNotice = Read_Message(reader, result) &&
+						PARTY_TRANSFER_RESULT::REJECTED_NOT_LEADER == result.eResult;
+				}
+				tests.Require(fixture->Source->m_PendingWorldTransfers.empty() && hasFailureNotice,
+					"Reject a non-leader NPC entry without splitting or silently ignoring the party");
+				for (const auto& session : fixture->Sessions) clearOutbound(*session);
+				fixture->Source->Handle_ConfirmNpcEntry(
+					fixture->Sessions.front()->Get_SessionId(), confirm);
+				leaderBatch = 1u == fixture->Source->m_PendingWorldTransfers.size() &&
+					fixture->Source->Try_DequeueWorldTransfer(fixture->Request) &&
+					count == fixture->Request.PartyBatchSessionIds.size();
+			}
+			CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure{};
+			const bool committed = leaderBatch && fixture->App->Transfer_SessionWorld(
+				fixture->Source, fixture->Request, failure);
+			bool exactRoster = committed && fixture->Source->m_Players.empty() &&
+				fixture->Source->m_PartyMembersByPartyId.empty() &&
+				count == fixture->Target->m_Players.size() &&
+				1u == fixture->Target->m_PartyMembersByPartyId.size();
+			for (const auto& session : fixture->Sessions)
+			{
+				std::size_t accepted = 0u;
+				S2C_PARTY_ROSTER roster{};
+				for (const auto& frame : session->m_OutboundFrames)
+				{
+					if (PACKET_TYPE::S2C_ENTER_ACCEPTED == frame.ePacketType) ++accepted;
+					if (PACKET_TYPE::S2C_PARTY_ROSTER != frame.ePacketType) continue;
+					CPacketReader reader{ std::span<const std::uint8_t>{ frame.Bytes }.subspan(PACKET_HEADER_BYTES) };
+					exactRoster = Read_Message(reader, roster) && exactRoster;
+				}
+				exactRoster = exactRoster && 1u == accepted && count == roster.Members.size() &&
+					WORLD_ID::VALTAN_ARENA == fixture->App->m_GameplayBindingBySessionId.at(
+						session->Get_SessionId()).eWorldId;
+				for (std::size_t index = 0; index < roster.Members.size(); ++index)
+					exactRoster = exactRoster && roster.Members[index].strNickname ==
+						"PartyContract" + std::to_string(index);
+			}
+			tests.Require(exactRoster,
+				"Atomically transfer the full party and preserve leader-first roster for every member");
+		}
+		{
+			auto fixture = makeParty(2u, true);
+			tests.Require(fixture->Ready, "Create party transfer rollback fixture");
+			if (fixture->Ready)
+			{
+				for (auto& [id, player] : fixture->Source->m_Players)
+				{
+					(void)id;
+					player.iCurrentHp = 37u;
+					player.fPositionX += 0.25f;
+				}
+				const auto sourcePlayers = fixture->Source->m_Players;
+				const auto sourceParties = fixture->Source->m_PartyMembersByPartyId;
+				const auto originalCatalog = fixture->Target->m_GameplayCatalog;
+				const auto originalWorldEntities = fixture->Target->m_WorldEntities;
+				auto& placements = const_cast<std::vector<WORLD_BOOTSTRAP_PLACEMENT>&>(
+					fixture->Target->m_WorldBootstrap.Get_Placements());
+				std::vector<WORLD_BOOTSTRAP_PLACEMENT*> spawns;
+				for (auto& placement : placements)
+					if (placement.isEnabled && WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind)
+						spawns.push_back(&placement);
+				const char* names[] = { "Reject full target without source departure",
+					"Reject missing target profile without source departure",
+					"Rollback a second-member navigation failure without source departure",
+					"Reject a terminal party member without moving the leader",
+					"Rollback a second-member reliable queue failure without publishing acceptance",
+					"Reject malformed initial world payload before moving any party member" };
+				for (std::size_t scenario = 0; scenario < 6u; ++scenario)
+				{
+					if (spawns.size() < 3u) { tests.Require(false, names[scenario]); continue; }
+					const float secondSpawnX = spawns[1]->fPositionX;
+					if (0u == scenario)
+					{
+						for (std::size_t index = 0; index < 3u; ++index)
+						{
+							SERVER_PLAYER occupied{};
+							occupied.iPlayerId = static_cast<PLAYER_ID>(98000u + index);
+							occupied.strSpawnPlacementId = spawns[index]->strPlacementId;
+							fixture->Target->m_Players.emplace(occupied.iPlayerId, occupied);
+						}
+					}
+					else if (1u == scenario) fixture->Target->m_GameplayCatalog = CGameplayCatalogGenerations{};
+					else if (2u == scenario) spawns[1]->fPositionX = std::numeric_limits<float>::quiet_NaN();
+					else if (3u == scenario) fixture->Sessions[1]->Request_Close();
+					else if (4u == scenario)
+					{
+						const std::array<std::uint8_t, 1> payload{ 1u };
+						for (std::size_t index = 0; index < CClientSession::MAX_OUTBOUND_FRAME_COUNT; ++index)
+							(void)fixture->Sessions[1]->Send_Frame(PACKET_TYPE::S2C_CHAT, payload);
+					}
+					else if (5u == scenario)
+					{
+						// Valtan can start with no enabled actors. Always insert the
+						// malformed payload instead of silently skipping fault injection.
+						SERVER_WORLD_ENTITY malformed{};
+						malformed.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+						malformed.strArchetypeId = "npc.contract.invalid";
+						malformed.strPlacementId = "contract.party.malformed";
+						malformed.iNetEntityId = INVALID_NET_ENTITY_ID;
+						fixture->Target->m_WorldEntities.push_back(std::move(malformed));
+					}
+					const std::size_t targetCount = fixture->Target->m_Players.size();
+					const auto targetNextId = fixture->Target->m_iNextPlayerId;
+					CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure{};
+					bool preserved = !fixture->App->Transfer_SessionWorld(fixture->Source,
+						fixture->Request, failure) && !failure.strContext.empty() &&
+						fixture->Source->m_Players.size() == sourcePlayers.size() &&
+						fixture->Source->m_PartyMembersByPartyId == sourceParties &&
+						fixture->Target->m_Players.size() == targetCount &&
+						fixture->Target->m_iNextPlayerId == targetNextId;
+					for (std::size_t index = 0; index < fixture->Sessions.size(); ++index)
+					{
+						const auto& session = fixture->Sessions[index];
+						const auto found = fixture->Source->m_Players.find(session->Get_PlayerId());
+						preserved = preserved && found != fixture->Source->m_Players.end() &&
+							WORLD_ID::BERN == fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId()).eWorldId &&
+							fixture->Source == fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId()).pSimulation;
+						if (found != fixture->Source->m_Players.end())
+						{
+							const auto& before = sourcePlayers.at(found->first);
+							preserved = preserved && before.iCurrentHp == found->second.iCurrentHp &&
+								before.fPositionX == found->second.fPositionX && before.fPositionZ == found->second.fPositionZ;
+						}
+						for (const auto& frame : session->m_OutboundFrames)
+							preserved = preserved && PACKET_TYPE::S2C_ENTER_ACCEPTED != frame.ePacketType;
+						if (3u != scenario || 1u != index) preserved = preserved && !session->Is_Closing();
+					}
+					tests.Require(preserved, names[scenario]);
+					fixture->Target->m_Players.clear();
+					fixture->Target->m_GameplayCatalog = originalCatalog;
+					spawns[1]->fPositionX = secondSpawnX;
+					fixture->Target->m_WorldEntities = originalWorldEntities;
+					fixture->Sessions[1]->m_CloseDiagnostic = {};
+					fixture->Sessions[1]->m_isSendRunning.store(true);
+					for (const auto& session : fixture->Sessions) clearOutbound(*session);
+				}
+				const std::array<std::uint8_t, 1> payload{ 1u };
+				for (std::size_t index = 0; index < CClientSession::MAX_OUTBOUND_FRAME_COUNT; ++index)
+					(void)fixture->Sessions[0]->Send_Frame(PACKET_TYPE::S2C_CHAT, payload);
+				fixture->Source->Notify_PartyTransferFailure(fixture->Sessions[0]->Get_SessionId(),
+					81u, WORLD_ID::VALTAN_ARENA, PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY);
+				const bool pendingNotice = !fixture->Sessions[0]->Is_Closing() &&
+					1u == fixture->Source->m_PendingPartyTransferResults.size();
+				clearOutbound(*fixture->Sessions[0]);
+				fixture->Source->Flush_PartyTransferResults();
+				tests.Require(pendingNotice && fixture->Source->m_PendingPartyTransferResults.empty() &&
+					1u == fixture->Sessions[0]->m_OutboundFrames.size() &&
+					PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT == fixture->Sessions[0]->m_OutboundFrames.front().ePacketType,
+					"Delay a busy-queue failure notice without disconnecting the preserved source party");
+			}
+		}
+		{
+			auto fixture = makeParty(3u, false);
+			tests.Require(fixture->Ready, "Create replaced-invitation identity fixture");
+			if (fixture->Ready)
+			{
+				const auto firstId = fixture->Sessions[0]->Get_PlayerId();
+				const auto secondId = fixture->Sessions[1]->Get_PlayerId();
+				const auto targetId = fixture->Sessions[2]->Get_PlayerId();
+				C2S_PARTY_INVITE invite{};
+				invite.iRequestSequence = 1u;
+				invite.iTargetNetEntityId = fixture->Source->m_Players.at(targetId).iNetEntityId;
+				fixture->Source->Handle_PartyInvite(fixture->Sessions[0]->Get_SessionId(), invite);
+				fixture->Source->Handle_PartyInvite(fixture->Sessions[1]->Get_SessionId(), invite);
+				C2S_PARTY_INVITE_RESPOND respond{};
+				respond.iRequestSequence = 2u;
+				respond.iFromNetEntityId = fixture->Source->m_Players.at(firstId).iNetEntityId;
+				bool preserved = true;
+				for (const bool accepted : { false, true })
+				{
+					respond.bAccepted = accepted;
+					fixture->Source->Handle_PartyInviteRespond(fixture->Sessions[2]->Get_SessionId(), respond);
+					const auto pending = fixture->Source->m_PendingPartyInviteByTargetPlayerId.find(targetId);
+					preserved = preserved && pending != fixture->Source->m_PendingPartyInviteByTargetPlayerId.end() &&
+						pending->second == secondId && fixture->Source->m_PartyMembersByPartyId.empty();
+				}
+				respond.iFromNetEntityId = fixture->Source->m_Players.at(secondId).iNetEntityId;
+				fixture->Source->Handle_PartyInviteRespond(fixture->Sessions[2]->Get_SessionId(), respond);
+				tests.Require(preserved && fixture->Source->m_PendingPartyInviteByTargetPlayerId.empty() &&
+					1u == fixture->Source->m_PartyMembersByPartyId.size(),
+					"Stale accept and decline preserve a replacement invite until its exact inviter is answered");
+			}
+		}
 	}
 	CServerNavigation groundTargetNavigation;
 	const bool groundTargetNavigationLoaded =
@@ -6427,6 +7082,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 			return placement.strPlacementId == "npc.bern.aylara";
 		});
+	const auto bernSchmidt = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "npc.bern.schmidt";
+		});
 	const auto bernPlayerEntrySpawn = std::find_if(
 		bernPlacements.begin(), bernPlacements.end(),
 		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -6598,7 +7259,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"collision.bern.editor-proof";
 		});
 	tests.Require(
-		bernLoaded && bernPlacements.size() == 35u &&
+		bernLoaded && bernPlacements.size() == 36u &&
 		4u == static_cast<size_t>(std::count_if(
 			bernPlacements.begin(), bernPlacements.end(),
 			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -6606,7 +7267,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
 					placement.isEnabled;
 			})) &&
-		29u == static_cast<size_t>(std::count_if(
+		30u == static_cast<size_t>(std::count_if(
 			bernPlacements.begin(), bernPlacements.end(),
 			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
 			{
@@ -6620,6 +7281,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		WORLD_BOOTSTRAP_KIND::NPC == bernAylara->eKind &&
 		bernAylara->strArchetypeId == "NPC_AYLARA" &&
 		bernAylara->isEnabled &&
+		bernSchmidt != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::NPC == bernSchmidt->eKind &&
+		bernSchmidt->strArchetypeId == "NPC_SCHMIDT" &&
+		bernSchmidt->isEnabled &&
 		bernPlayerEntrySpawn != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == bernPlayerEntrySpawn->eKind &&
 		bernLeftGuardPatrol != bernPlacements.end() &&
@@ -6651,7 +7316,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		1u == bernValtanTrigger->TriggerActions.size() &&
 		bernCollision != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind,
-		"Load Bern spawns, four irregular stationary plaza crowds, two guard ping-pong patrols toward the player entry, disabled legacy trigger, and collision box");
+		"Load Bern spawns, Schmidt, four irregular stationary plaza crowds, two guard ping-pong patrols toward the player entry, disabled legacy trigger, and collision box");
 	CServerCollisionSystem bernCollisionSystem;
 	std::string bernCollisionStatus;
 	tests.Require(
@@ -6826,12 +7491,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	};
 	const bool bernGuideReachable =
 		(bernNpc != bernPlacements.end() &&
-			hasReachableGuideApproach(*bernNpc)) ||
+			hasReachableGuideApproach(*bernNpc)) &&
 		(bernAylara != bernPlacements.end() &&
 			hasReachableGuideApproach(*bernAylara));
 	tests.Require(
 		bernGuideReachable,
-		"Reach the Bern Valtan-entry guide NPC through authoritative navigation");
+		"Reach every Bern Valtan-entry guide NPC through authoritative navigation");
 	bool bernSpawnsOnNavigation = bernLoaded;
 	for (const WORLD_BOOTSTRAP_PLACEMENT& spawn : bernPlacements)
 	{
@@ -6849,6 +7514,32 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.Require(
 		bernSpawnsOnNavigation,
 		"Project all Bern player spawns to baked navigation");
+	/* The visible north-entry stair continues beyond the former z=-9.438004
+	navigation boundary. Its authored final stair placement is centered at
+	(136.86001, -3.30000488), so this exact world position must remain connected
+	to the Bern spawn instead of being clipped by the grid extent. */
+	constexpr float BERN_NORTH_ENTRY_X = 136.86001f;
+	constexpr float BERN_NORTH_ENTRY_Z = -3.30000488f;
+	SERVER_NAV_POINT bernNorthEntryGround{};
+	std::vector<SERVER_NAV_POINT> bernNorthEntryPath;
+	const bool bernNorthEntryReachable =
+		bernNavigation.Sample_Position(
+			BERN_NORTH_ENTRY_X,
+			BERN_NORTH_ENTRY_Z,
+			bernNorthEntryGround) &&
+		bernNavigation.Find_Path(
+			137.586334f,
+			-22.4640217f,
+			BERN_NORTH_ENTRY_X,
+			BERN_NORTH_ENTRY_Z,
+			bernNorthEntryPath) &&
+		!bernNorthEntryPath.empty();
+	tests.Require(
+		bernNorthEntryReachable &&
+		std::abs(bernNorthEntryGround.y - 42.2766418f) <= 0.25f &&
+		std::abs(bernNorthEntryPath.back().x - 136.738007f) <= 0.26f &&
+		std::abs(bernNorthEntryPath.back().z - (-3.1880035f)) <= 0.26f,
+		"Reach the visible Bern north-entry stair through authoritative navigation");
 	/* The castle approach is why Bern needs a grid at all: without one the room
 	keeps the spawn height for the whole session and straight-line movement walks
 	through the staircase. The authoritative path from the spawn to the top of the
@@ -8087,8 +8778,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			terrainThreePattern->bInvulnerableWhileRunning &&
 			nullptr != terrainNinePattern &&
 			terrainNinePattern->bInvulnerableWhileRunning &&
-			130u == wipePattern->iTriggerHealthBar && 3u == invulnerableCount,
-			"Fire the invulnerable wipe on bar 130 and protect both terrain-destruction auditions");
+			130u == wipePattern->iTriggerHealthBar && 4u == invulnerableCount,
+			"Protect the entrance camera gate, 130-bar wipe, and both terrain-destruction auditions");
 
 		/* Its second smash is arena wide and lethal to any authored player pool,
 		which is what makes it a wipe rather than a large hit. */
@@ -9353,15 +10044,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			pizzaSecondTarget.iPlayerId, pizzaSecondTarget);
 		SERVER_WORLD_ENTITY pacingBoss = makeEntranceBoss();
 		pacingBoss.strRotationId = "sequence.valtan.server-authored.v1";
-		pacingBoss.iRotationStepIndex = 6u;
+		pacingBoss.iRotationStepIndex = 7u;
 		pacingBoss.iAutomaticPatternSequenceInterStepPursuitTicks = 30u;
 		for (std::uint32_t tick = 0u;
-			tick < 300u && 6u == pacingBoss.iRotationStepIndex; ++tick)
+			tick < 300u && 7u == pacingBoss.iRotationStepIndex; ++tick)
 		{
 			advanceBoss(pacingBoss, 1u);
 		}
 		const bool pursuitArmedAfterArenaBreak =
-			7u == pacingBoss.iRotationStepIndex &&
+			8u == pacingBoss.iRotationStepIndex &&
 			30u == pacingBoss.iAutomaticPatternSequencePursuitTicksRemaining &&
 			pacingBoss.strPatternId.empty();
 		const float pursuitStartX = pacingBoss.fPositionX;
@@ -9497,15 +10188,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			observedFloorWipeDeath = 0u == player.iCurrentHp &&
 				PLAYER_ACTION_STATE::DEAD == player.eAction &&
 				"VALTAN_FLOOR_WIPE_130" == automaticBoss.strPatternId &&
-				4u == automaticBoss.iRotationStepIndex &&
+				5u == automaticBoss.iRotationStepIndex &&
 				automaticBoss.bAutomaticPatternSequenceStepRunning;
 		}
 		for (std::uint32_t tick = 0u;
-			tick < 300u && automaticBoss.iRotationStepIndex < 5u; ++tick)
+			tick < 300u && automaticBoss.iRotationStepIndex < 6u; ++tick)
 		{
 			advanceBoss(automaticBoss, 1u, &observedOrder);
 		}
 		const std::vector<std::string> phaseOneThroughWipe{
+			"VALTAN_ENTRANCE_CINEMATIC",
 			"VALTAN_WHIRLWIND",
 			"VALTAN_FOUR_SLASH",
 			"VALTAN_FIST_IN_OUT",
@@ -9513,7 +10205,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"VALTAN_FLOOR_WIPE_130" };
 		const bool heldDashCursorWhileDead =
 			observedFloorWipeDeath && observedOrder == phaseOneThroughWipe &&
-			5u == automaticBoss.iRotationStepIndex &&
+			6u == automaticBoss.iRotationStepIndex &&
 			30u == automaticBoss.iAutomaticPatternSequencePursuitTicksRemaining &&
 			!automaticBoss.bAutomaticPatternSequenceStepRunning &&
 			!automaticBoss.bMechanicLedgerRequiresReset &&
@@ -9523,7 +10215,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		advanceBoss(automaticBoss, 60u, &observedOrder);
 		const bool stayedAtDashCursorUntilRevive =
 			observedOrder == phaseOneThroughWipe &&
-			5u == automaticBoss.iRotationStepIndex &&
+			6u == automaticBoss.iRotationStepIndex &&
 			30u == automaticBoss.iAutomaticPatternSequencePursuitTicksRemaining &&
 			!automaticBoss.bAutomaticPatternSequenceStepRunning &&
 			!automaticBoss.bMechanicLedgerRequiresReset &&
@@ -9535,7 +10227,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		revivedPlayer.isCombatReady = true;
 		advanceBoss(automaticBoss, 1u, &observedOrder);
 		const bool resumedPursuitImmediatelyAfterRevive =
-			5u == automaticBoss.iRotationStepIndex &&
+			6u == automaticBoss.iRotationStepIndex &&
 			29u == automaticBoss.iAutomaticPatternSequencePursuitTicksRemaining &&
 			automaticBoss.strPatternId.empty() &&
 			SERVER_ENTITY_ACTION::CHASE == automaticBoss.eAction;
@@ -9561,6 +10253,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			advanceBoss(automaticBoss, 1u, &observedOrder);
 		}
 		const std::vector<std::string> expectedOrder{
+			"VALTAN_ENTRANCE_CINEMATIC",
 			"VALTAN_WHIRLWIND",
 			"VALTAN_FOUR_SLASH",
 			"VALTAN_FIST_IN_OUT",
@@ -9593,7 +10286,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			publishedTrashCounter && observedOrder == expectedOrder &&
 			"sequence.valtan.server-authored.v1" ==
 				automaticBoss.strRotationId &&
-			28u == automaticBoss.iRotationStepIndex &&
+			29u == automaticBoss.iRotationStepIndex &&
 			entrancePlayers.begin()->second.iCurrentHp > 0u &&
 			!automaticBoss.bAutomaticPatternSequenceStepRunning &&
 			automaticBoss.strPatternId.empty() &&
@@ -9625,7 +10318,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		pausePlayer.isCombatReady = false;
 		advanceBoss(pausedBoss, 60u, &pausedOrder);
 		const bool heldOrderedStepWhileDead =
-			pausedOrder == std::vector<std::string>{ "VALTAN_WHIRLWIND" } &&
+			pausedOrder == std::vector<std::string>{ "VALTAN_ENTRANCE_CINEMATIC" } &&
 			0u == pausedBoss.iRotationStepIndex &&
 			pausedBoss.bAutomaticPatternSequenceStepRunning &&
 			pausedBoss.bAutomaticPatternSequencePausedForRevive &&
@@ -9670,7 +10363,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		advanceBoss(disconnectedBoss, 1u, &disconnectedOrder);
 		const bool emptyRoomFailedClosed =
 			disconnectedOrder ==
-				std::vector<std::string>{ "VALTAN_WHIRLWIND" } &&
+				std::vector<std::string>{ "VALTAN_ENTRANCE_CINEMATIC" } &&
 			0u == disconnectedBoss.iRotationStepIndex &&
 			!disconnectedBoss.bAutomaticPatternSequenceStepRunning &&
 			!disconnectedBoss.bAutomaticPatternSequencePausedForRevive &&
@@ -12154,6 +12847,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Read the published hit knockback scale for the monster and the miniboss");
 		tests.Require(
 			nullptr != monsterProfile && nullptr != minibossProfile &&
+			std::fabs(monsterProfile->fTargetReleaseRange - 24.f) < 0.0001f &&
+			std::fabs(monsterProfile->fTurnSpeedDegreesPerSecond - 420.f) < 0.0001f &&
+			std::fabs(monsterProfile->fAcceleration - 12.f) < 0.0001f &&
+			std::fabs(monsterProfile->fDeceleration - 16.f) < 0.0001f &&
+			std::fabs(monsterProfile->fArrivalSlowRadius - 1.6f) < 0.0001f &&
+			std::fabs(minibossProfile->fTargetReleaseRange - 36.f) < 0.0001f,
+			"Read monster target hysteresis, turn, acceleration, deceleration, and arrival slowdown from bootstrap v4");
+		tests.Require(
+			nullptr != monsterProfile && nullptr != minibossProfile &&
 			std::fabs(monsterProfile->fAttackPushRangeM - 0.5f) < 0.0001f &&
 			150u == monsterProfile->iAttackPushMs &&
 			!monsterProfile->bAttackKnockdown &&
@@ -12626,10 +13328,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 	{
 		CSpawnGroupBootstrap spawnBootstrap;
+		const bool loaded = spawnBootstrap.Load(WORLD_ID::VALTAN_ARENA);
 		tests.Require(
-			spawnBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
-			3u == spawnBootstrap.Get_Groups().size(),
+			loaded && 3u == spawnBootstrap.Get_Groups().size(),
 			"Load three authored Valtan spawn groups");
+		tests.Require(
+			loaded && Reject_CorruptSpawnAnchorReloadTransactionally(
+				spawnBootstrap),
+			"Reject nonfinite or out-of-range spawn anchors and preserve the admitted bootstrap");
 		CSpawnGroupRuntime spawnRuntime;
 		std::string spawnStatus;
 		tests.Require(
@@ -12897,20 +13603,37 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				{
 					return WORLD_DESTRUCTION_STATE::BREAKING == state.eState;
 				}));
-		/* The 109 batch is thirty independent outer ring walls. Interior groups
-		are authored but dormant, so none of them may break on this edge. */
+		/* The 109 batch is the thirty outer ring walls plus every interior
+		wall still standing, so the cutscene leaves no wall behind. A floor
+		sector or an entrance wall leaving INTACT on this edge would take the
+		arena's footing away a whole health-bar chain too early. */
 		const std::size_t interiorBreakingCount = static_cast<std::size_t>(
 			std::count_if(breakingStates.begin(), breakingStates.end(),
 				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
 				{
 					return WORLD_DESTRUCTION_STATE::INTACT != state.eState &&
+						(0u == state.strGroupId.rfind(
+							"destroyable.group.valtan.wall159.", 0u) ||
+						0u == state.strGroupId.rfind(
+							"destroyable.group.valtan.wall.", 0u));
+				}));
+		const std::size_t outsideBreakingCount = static_cast<std::size_t>(
+			std::count_if(breakingStates.begin(), breakingStates.end(),
+				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+				{
+					return WORLD_DESTRUCTION_STATE::INTACT != state.eState &&
 						0u != state.strGroupId.rfind(
-							"destroyable.group.valtan.outerwall109.", 0u);
+							"destroyable.group.valtan.outerwall109.", 0u) &&
+						0u != state.strGroupId.rfind(
+							"destroyable.group.valtan.wall159.", 0u) &&
+						0u != state.strGroupId.rfind(
+							"destroyable.group.valtan.wall.", 0u);
 				}));
 		tests.Require(
-			applied && 30u == breakingCount && 0u == interiorBreakingCount &&
-			31u == room.m_iNextWorldDestructionEventSequence,
-			"Emit one monotonically sequenced live event for every independent 109-bar wall");
+			applied && 97u == breakingCount && 67u == interiorBreakingCount &&
+			0u == outsideBreakingCount &&
+			98u == room.m_iNextWorldDestructionEventSequence,
+			"Emit one monotonically sequenced live event for every 109-bar wall");
 
 		const std::uint64_t sequenceAfterFirstEdge =
 			room.m_iNextWorldDestructionEventSequence;
@@ -12948,10 +13671,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				transaction, boss, repeatedEvents, status);
 		room.m_WorldDestructionRuntime = std::move(activeRuntime);
 		tests.Require(
-			builtFirst && builtRepeated && 30u == firstEvents.size() &&
+			builtFirst && builtRepeated && 97u == firstEvents.size() &&
 			firstEvents.size() == repeatedEvents.size() &&
 			1u == firstEvents.front().iEventSequence &&
-			30u == firstEvents.back().iEventSequence &&
+			97u == firstEvents.back().iEventSequence &&
 			firstEvents.front().iRandomSeed ==
 				repeatedEvents.front().iRandomSeed &&
 			firstEvents.front().fImpactOriginX == boss.fPositionX &&
@@ -13844,8 +14567,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				[&partialStatesBeforeArenaBreak](
 					const WORLD_DESTRUCTION_GROUP_STATE& after)
 				{
+					/* The 109 batch owns the outer ring and the interior walls, so
+					only they may move here. What must survive the collapse is the
+					floor, which its own 84/30 patterns drop later, and the entrance
+					walls the first-appearance sweep already owns. */
 					if (0u == after.strGroupId.rfind(
-							"destroyable.group.valtan.outerwall109.", 0u))
+							"destroyable.group.valtan.outerwall109.", 0u) ||
+					0u == after.strGroupId.rfind(
+							"destroyable.group.valtan.wall159.", 0u) ||
+					0u == after.strGroupId.rfind(
+							"destroyable.group.valtan.wall.", 0u))
 					{
 						return true;
 					}
@@ -13877,7 +14608,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Keep one consumed outer wall DESPAWNED and commit only the other twenty-nine to BREAKING");
 		tests.Require(
 			partialUnrelatedGroupsUnchanged,
-			"Leave every non-outer destruction group unchanged across the Release-safe partial 109 batch");
+			"Leave every floor sector and entrance wall unchanged across the Release-safe partial 109 batch");
 		const bool committedPartialArena = appliedPartialArenaBreak &&
 			partialOuterRoom.Commit_DueWorldDestruction(
 				partialArenaCommitTick);

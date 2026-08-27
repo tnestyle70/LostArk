@@ -193,14 +193,16 @@ function Get-MonsterProfiles {
     $document = Read-ProjectJson 'Data/Balance/MonsterProfiles.json'
     Assert-ExactProperties $document @('schema','formatVersion','basis','profiles') 'monster profiles'
     if ($document.schema -ne 'lostark.monster-profiles' -or
-        $document.formatVersion -ne 1 -or $document.basis -ne 'PROJECT_TUNED') {
+        $document.formatVersion -ne 2 -or $document.basis -ne 'PROJECT_TUNED') {
         throw 'Monster profile header is invalid.'
     }
     $profiles = @{}
     foreach ($profile in @($document.profiles)) {
         $profileProperties = @(
             'archetypeId','maxHp','attackPower','defense','collisionRadius',
-            'engageRange','moveSpeed','attackRange','attackWindupMs',
+            'engageRange','targetReleaseRange','moveSpeed',
+            'turnSpeedDegreesPerSecond','acceleration','deceleration',
+            'arrivalSlowRadius','attackRange','attackWindupMs',
             'attackActiveMs','attackRecoveryMs','deadDespawnMs',
             'hitKnockbackScale','attackPushRangeM','attackPushMs',
             'attackKnockdown','attackDownMs')
@@ -209,11 +211,18 @@ function Get-MonsterProfiles {
         Assert-JsonInteger $profile.maxHp "$($profile.archetypeId) maxHp" 1 2000000000
         Assert-JsonInteger $profile.attackPower "$($profile.archetypeId) attackPower" 1 2000000000
         Assert-JsonInteger $profile.defense "$($profile.archetypeId) defense" 0 2000000000
-        foreach ($field in @('collisionRadius','engageRange','moveSpeed','attackRange')) {
+        foreach ($field in @(
+            'collisionRadius','engageRange','targetReleaseRange','moveSpeed',
+            'turnSpeedDegreesPerSecond','acceleration','deceleration',
+            'arrivalSlowRadius','attackRange')) {
             Assert-JsonNumber $profile.$field "$($profile.archetypeId) $field"
             if ([double]$profile.$field -le 0.0 -or [double]$profile.$field -gt 1000.0) {
                 throw "Monster profile $field is out of range: $($profile.archetypeId)"
             }
+        }
+        if ([double]$profile.targetReleaseRange -lt [double]$profile.engageRange -or
+            [double]$profile.arrivalSlowRadius -lt [double]$profile.collisionRadius) {
+            throw "Monster target release or arrival radius is invalid: $($profile.archetypeId)"
         }
         foreach ($field in @('attackWindupMs','attackActiveMs','attackRecoveryMs','deadDespawnMs')) {
             Assert-JsonInteger $profile.$field "$($profile.archetypeId) $field" 1 600000
@@ -403,10 +412,15 @@ function Convert-SpawnGroupsDocument {
             (Format-InvariantFloat $profile.attackPushRangeM),
             [string][uint32]$profile.attackPushMs,
             $(if ([bool]$profile.attackKnockdown) { '1' } else { '0' }),
-            [string][uint32]$profile.attackDownMs) -join "`t"))
+            [string][uint32]$profile.attackDownMs,
+            (Format-InvariantFloat $profile.targetReleaseRange),
+            (Format-InvariantFloat $profile.turnSpeedDegreesPerSecond),
+            (Format-InvariantFloat $profile.acceleration),
+            (Format-InvariantFloat $profile.deceleration),
+            (Format-InvariantFloat $profile.arrivalSlowRadius)) -join "`t"))
     }
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t3`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
+    $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t4`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
     foreach ($row in @($profileRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in @($anchorRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in $groupRows) { $lines.Add($row) }

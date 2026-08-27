@@ -236,6 +236,23 @@ bool Client::CClientReplication::Update()
 			allSucceeded = Apply_InventorySnapshot(
 				event.InventorySnapshot) && allSucceeded;
 			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_INVITE_RECEIVED:
+			Apply_PartyInviteReceived(event.PartyInviteReceived);
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_ROSTER:
+			Apply_PartyRoster(event.PartyRoster);
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_TRANSFER_RESULT:
+			m_PendingPartyTransferResult = event.PartyTransferResult;
+			m_hasPendingPartyTransferResult = true;
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::CHAT_RECEIVED:
+			Apply_ChatReceived(event.ChatReceived);
+			break;
 		}
 	}
 
@@ -297,6 +314,66 @@ bool Client::CClientReplication::Apply_InventorySnapshot(
 	   already reads through (CMainApp owns no per-level CClientReplication of
 	   its own), the same role it plays for Apply_LocalPlayer above. */
 	CCombatHUDViewModel::Get().Apply_Inventory(snapshot);
+	return true;
+}
+
+void Client::CClientReplication::Apply_PartyInviteReceived(
+	const LostArk::Shared::S2C_PARTY_INVITE_RECEIVED& received)
+{
+	// A newer invite silently replaces an unconsumed older one, mirroring
+	// the Server's own one-pending-invite-per-target replacement rule.
+	m_PendingPartyInvite = received;
+	m_hasPendingPartyInvite = true;
+}
+
+bool Client::CClientReplication::Try_Consume_PartyInviteReceived(
+	LostArk::Shared::S2C_PARTY_INVITE_RECEIVED& outInvite)
+{
+	if (!m_hasPendingPartyInvite)
+		return false;
+	outInvite = m_PendingPartyInvite;
+	m_hasPendingPartyInvite = false;
+	return true;
+}
+
+void Client::CClientReplication::Apply_PartyRoster(
+	const LostArk::Shared::S2C_PARTY_ROSTER& roster)
+{
+	// Replace-in-full, same shape as Apply_InventorySnapshot/
+	// Apply_EncounterPropSync -- the Server always sends the whole current
+	// membership, never a delta.
+	m_PartyRoster = roster;
+}
+
+bool Client::CClientReplication::Try_Consume_PartyTransferResult(
+	LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult)
+{
+	if (!m_hasPendingPartyTransferResult)
+		return false;
+	outResult = m_PendingPartyTransferResult;
+	m_hasPendingPartyTransferResult = false;
+	return true;
+}
+
+void Client::CClientReplication::Apply_ChatReceived(
+	const LostArk::Shared::S2C_CHAT& received)
+{
+	m_ChatBubblesByNetEntityId[received.iFromNetEntityId] = CHAT_BUBBLE_ENTRY{
+		received.strText,
+		std::chrono::steady_clock::now() + CHAT_BUBBLE_DURATION };
+}
+
+bool Client::CClientReplication::Try_Get_ActiveChatBubble(
+	const LostArk::Shared::NET_ENTITY_ID netEntityId,
+	std::string& outText) const
+{
+	const auto found = m_ChatBubblesByNetEntityId.find(netEntityId);
+	if (m_ChatBubblesByNetEntityId.end() == found ||
+		std::chrono::steady_clock::now() >= found->second.ExpireAt)
+	{
+		return false;
+	}
+	outText = found->second.strText;
 	return true;
 }
 
@@ -704,6 +781,7 @@ bool Client::CClientReplication::Apply_Spawn(
 bool Client::CClientReplication::Apply_Despawn(
 	const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned)
 {
+	m_PlayerHealth.Erase(despawned.iNetEntityId);
 	OBJECT_HANDLE handle{};
 
 	if (!m_Registry.Find_Handle(
@@ -802,6 +880,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		/* Only authored placement behavior suppresses root motion. Esther
 		summons have no placement document and retain their action-chain travel. */
 		desc.bSuppressRootMotion = hasPlacementPresentation;
+		desc.bInterpolateNetworkTransform = hasPlacementPresentation;
 		desc.vPosition = float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -836,6 +915,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 		WORLD_ENTITY_PRESENTATION presentation{};
 		presentation.eKind = spawned.eKind;
+		presentation.strPlacementId = spawned.strPlacementId;
 		presentation.strArchetypeId = spawned.strArchetypeId;
 		presentation.strEncounterId = spawned.strEncounterId;
 		presentation.strCurrentClip = resolvedIdle;
@@ -929,6 +1009,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.strShaderTag =
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
 		desc.pIdleClip = actor->presentationClips.idle.c_str();
+		desc.bSuppressRootMotion = true;
+		desc.bInterpolateNetworkTransform = true;
 		desc.vPosition = float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -961,6 +1043,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 		WORLD_ENTITY_PRESENTATION presentation{};
 		presentation.eKind = spawned.eKind;
+		presentation.strPlacementId = spawned.strPlacementId;
 		presentation.strArchetypeId = spawned.strArchetypeId;
 		presentation.strEncounterId = spawned.strEncounterId;
 		presentation.strCurrentClip = actor->presentationClips.idle;
@@ -1036,6 +1119,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 	WORLD_ENTITY_PRESENTATION presentation{};
 	presentation.eKind = spawned.eKind;
+	presentation.strPlacementId = spawned.strPlacementId;
 	presentation.strArchetypeId = spawned.strArchetypeId;
 	presentation.strEncounterId = spawned.strEncounterId;
 	presentation.fCollisionRadius = spawned.fCollisionRadius;
@@ -1103,6 +1187,12 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	explicitly here instead of leaving stale HP on screen. */
 	if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
 		CCombatHUDViewModel::Get().Clear_Boss();
+	if (m_Desc.onWorldEntityDespawned)
+	{
+		m_Desc.onWorldEntityDespawned(
+			iter->second.strPlacementId,
+			iter->second.strArchetypeId);
+	}
 	m_WorldEntities.erase(iter);
 	return true;
 }
@@ -1380,6 +1470,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	if (!CActionPresentationTimeline::Is_ForwardTick(
 		snapshot.iServerTick, m_iLastServerTick))
 		return true;
+	if (!m_PlayerHealth.Apply_Snapshot(snapshot))
+		return false;
 
 	bool allSucceeded = true;
 
@@ -1620,30 +1712,51 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				continue;
 			}
 
+			const MONSTER_PRESENTATION_ACTION_FRAME frame =
+				CMonsterPresentationContract::Project(
+					entity.eAction,
+					entity.iActionStartTick,
+					iter->second.MonsterActionState);
+			if (!frame.shouldRestartClip)
+				continue;
+
 			const std::string* clip = &actor->presentationClips.idle;
-			bool_t loop = true;
-			if (WORLD_ENTITY_ACTION::CHASE == entity.eAction)
+			f32_t playbackRate = 1.f;
+			switch (frame.eKind)
 			{
+			case MONSTER_PRESENTATION_ACTION_KIND::CHASE:
 				clip = &actor->presentationClips.chase;
-			}
-			else if (WORLD_ENTITY_ACTION::PATTERN_WINDUP == entity.eAction ||
-				WORLD_ENTITY_ACTION::PATTERN_ACTIVE == entity.eAction ||
-				WORLD_ENTITY_ACTION::PATTERN_RECOVERY == entity.eAction)
-			{
-				clip = &actor->presentationClips.attack;
-				loop = false;
-			}
-			else if (WORLD_ENTITY_ACTION::DEAD == entity.eAction)
-			{
+				break;
+			case MONSTER_PRESENTATION_ACTION_KIND::ATTACK:
+				if (!actor->attackPresentations.empty())
+				{
+					const std::size_t attackIndex =
+						CMonsterPresentationContract::Select_AttackPresentation(
+							entity.iNetEntityId,
+							frame.iOccurrenceStartTick,
+							actor->attackPresentations.size());
+					clip = &actor->attackPresentations[attackIndex].clip;
+					playbackRate =
+						actor->attackPresentations[attackIndex].playbackRate;
+				}
+				break;
+			case MONSTER_PRESENTATION_ACTION_KIND::DEAD:
 				clip = &actor->presentationClips.dead;
-				loop = false;
+				break;
+			default:
+				break;
 			}
-			if (iter->second.strCurrentClip != *clip)
+			if (monster->Play_NetworkAction(
+					clip->c_str(), frame.isLoop, playbackRate, 0.12f))
 			{
-				if (!monster->Set_Animation(clip->c_str(), loop))
-					allSucceeded = false;
-				else
-					iter->second.strCurrentClip = *clip;
+				iter->second.strCurrentClip = *clip;
+			}
+			else
+			{
+				/* A missing optional action clip isolates only this presentation.
+				The Server entity and the rest of the snapshot remain valid. */
+				monster->Play_DefaultIdle(0.12f);
+				iter->second.strCurrentClip = actor->presentationClips.idle;
 			}
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
@@ -1737,6 +1850,25 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				hitEntity->second.pNpc.lock())
 			{
 				monster->Trigger_HitFlash();
+				const MONSTER_ACTOR_ENTRY* actor = CActorCatalog::Find_Monster(
+					hitEntity->second.strArchetypeId);
+				const MONSTER_PRESENTATION_ACTION_KIND actionKind =
+					hitEntity->second.MonsterActionState.eLastKind;
+				if (nullptr != actor &&
+					(MONSTER_PRESENTATION_ACTION_KIND::IDLE == actionKind ||
+					 MONSTER_PRESENTATION_ACTION_KIND::CHASE == actionKind))
+				{
+					const std::string& returnClip =
+						MONSTER_PRESENTATION_ACTION_KIND::CHASE == actionKind ?
+						actor->presentationClips.chase :
+						actor->presentationClips.idle;
+					(void)monster->Play_TransientNetworkAction(
+						actor->presentationClips.hit.c_str(),
+						1.f,
+						actor->hitDurationSeconds,
+						returnClip.c_str(),
+						true);
+				}
 			}
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == hitEntity->second.eKind)
@@ -1910,6 +2042,13 @@ void Client::CClientReplication::Reset_World()
 	m_WorldDestructionLiveEvents.clear();
 	m_EncounterPropState = {};
 	m_InventoryState = {};
+	m_PlayerHealth.Reset();
+	m_PartyRoster = {};
+	m_hasPendingPartyInvite = false;
+	m_PendingPartyInvite = {};
+	m_hasPendingPartyTransferResult = false;
+	m_PendingPartyTransferResult = {};
+	m_ChatBubblesByNetEntityId.clear();
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)
 		++m_iWorldDestructionPresentationGeneration;

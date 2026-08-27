@@ -6,6 +6,112 @@
   "scope": "PHASE_ONE",
   "patterns": [
     {
+      "patternId": "VALTAN_ENTRANCE_CINEMATIC",
+      "sourceSequenceIndex": 4,
+      "presentationSources": [
+        {
+          "sourceActionId": 420633,
+          "sequenceIndex": 4,
+          "role": "PRIMARY"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "ESTABLISH",
+          "actionId": "valtan.cinematic.entrance.establish",
+          "sequenceRole": "ESTABLISH",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.cinematic.entrance.establish.clip.01",
+                "clip": "mesh_att_battle_20_02",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.entrance.establish.invocation",
+              "cameraCueId": "camera.valtan.entrance.establish",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 8600
+            }
+          ]
+        },
+        {
+          "stageId": "ARENA_REVEAL",
+          "actionId": "valtan.cinematic.entrance.arena-reveal",
+          "sequenceRole": "ARENA_REVEAL",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.cinematic.entrance.arena-reveal.clip.01",
+                "clip": "mesh_att_battle_20_03",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.entrance.arena-reveal.invocation",
+              "cameraCueId": "camera.valtan.entrance.arena-reveal",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 5800
+            }
+          ]
+        },
+        {
+          "stageId": "HERO_HANDOFF",
+          "actionId": "valtan.cinematic.entrance.hero-handoff",
+          "sequenceRole": "HERO_HANDOFF",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.cinematic.entrance.hero-handoff.clip.01",
+                "clip": "mesh_att_battle_20_04",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.entrance.hero-handoff.invocation",
+              "cameraCueId": "camera.valtan.entrance.hero-handoff",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 4467
+            }
+          ]
+        }
+      ]
+    },
+    {
       "patternId": "VALTAN_WHIRLWIND",
       "sourceSequenceIndex": 4,
       "presentationSources": [
@@ -554,41 +660,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
-              "scalePolicy": {
-                "kind": "OWNER_RELATIVE"
-              },
-              "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
-              "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
-              "sourceStartMs": 0,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0,
-                  0,
-                  0
-                ],
-                "rotationDegrees": [
-                  0,
-                  0,
-                  0
-                ],
-                "scale": [
-                  1,
-                  1,
-                  1
-                ]
-              },
-              "mappingBasis": "ANIMATION_PR_127"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": []
         }
       ]

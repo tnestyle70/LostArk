@@ -654,6 +654,22 @@ HRESULT CLoader::Ready_For_ValtanArena()
 	{
 		return E_FAIL;
 	}
+	Set_Status(TEXT("VALTAN: monster presentation warmup"));
+	for (const MONSTER_ACTOR_ENTRY& monster : CActorCatalog::Get_Monsters())
+	{
+		if (monster.runtimeStatus != "supported")
+			continue;
+		if (FAILED(CMonsterPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			ETOUI(LEVEL::VALTAN_ARENA),
+			monster.archetypeId)))
+		{
+			OutputDebugStringA((
+				"[Loader][MonsterPresentation] unavailable archetype: " +
+				monster.archetypeId + "\n").c_str());
+		}
+	}
 	/* The raid Esther summons spawn mid-fight, so their models must already be
 	prototypes when the arena opens: the lazy admission on first spawn stalls
 	the frame the caster presses the key. This list mirrors the server's

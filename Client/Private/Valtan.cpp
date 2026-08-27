@@ -43,6 +43,27 @@ namespace
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
 	constexpr int32_t ROOT_MOTION_LOCK_ALL_AXES = -1;
+	constexpr const char_t* VALTAN_ENTRANCE_PATTERN_ID =
+		"VALTAN_ENTRANCE_WHIRLWIND";
+	constexpr const char_t* VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC";
+	constexpr const char_t* VALTAN_GHOST_TRANSITION_PATTERN_ID =
+		"VALTAN_GHOST_TRANSITION_15";
+	constexpr const char_t* VALTAN_GHOST_PHASE_ACTION_ID =
+		"valtan.mechanic.ghost-transition-15.ghost";
+	constexpr const wchar_t* VALTAN_BGM_M05_ASSET_ID =
+		L"Sound/BGM/Valtan/EventMixes/"
+		L"bgm_heartrb_ed_m05_mscene_valtanrevive.wav";
+	constexpr const wchar_t* VALTAN_BGM_M06_ASSET_ID =
+		L"Sound/BGM/Valtan/EventMixes/"
+		L"bgm_heartrb_ed_m06_battle_valtan_1stphase_out.wav";
+	constexpr const wchar_t* VALTAN_BGM_M07_ASSET_ID =
+		L"Sound/BGM/Valtan/M07_FakeDead__477456395.wav";
+	constexpr const wchar_t* VALTAN_BGM_M08_ASSET_ID =
+		L"Sound/BGM/Valtan/M08_ValtanPhase2__575767475.wav";
+	constexpr const wchar_t* VALTAN_BGM_M09_ASSET_ID =
+		L"Sound/BGM/Valtan/EventMixes/"
+		L"bgm_heartrb_ed_m09_mscene_valtandead.wav";
 #ifdef _DEBUG
 	std::atomic_bool g_bPatternEffectV1AuditionEnabled = false;
 #endif
@@ -205,6 +226,8 @@ CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 
 CValtan::~CValtan()
 {
+	if (m_isRaidBgmEnabled && RAID_BGM_STATE::NONE != m_eRaidBgmState)
+		CGameInstance::Get().Stop_Music();
 }
 
 HRESULT CValtan::Initialize_Prototype()
@@ -230,6 +253,8 @@ HRESULT CValtan::Initialize(void* pArg)
 	m_fMoveSpeed = desc.fSpeedPerSec;
 	m_iPrototypeLevelIndex = desc.iPrototypeLevelIndex;
 	m_isServerAuthoritative = desc.isServerAuthoritative;
+	m_isRaidBgmEnabled = m_isServerAuthoritative &&
+		ETOUI(LEVEL::VALTAN_ARENA) == m_iPrototypeLevelIndex;
 	m_pTargetTransform = desc.pTargetTransform;
 
 	if (nullptr != desc.pNavigationPrototypeTag)
@@ -1766,6 +1791,135 @@ bool_t CValtan::Apply_BossCombatEvent(
 	return true;
 }
 
+void CValtan::Transition_RaidBgm(const RAID_BGM_STATE nextState)
+{
+	if (!m_isRaidBgmEnabled || m_eRaidBgmState == nextState)
+		return;
+
+	const wchar_t* pAssetId = nullptr;
+	bool_t bLoop = false;
+	switch (nextState)
+	{
+	case RAID_BGM_STATE::M05_INTRO:
+		pAssetId = VALTAN_BGM_M05_ASSET_ID;
+		break;
+	case RAID_BGM_STATE::M06_PHASE_ONE:
+		pAssetId = VALTAN_BGM_M06_ASSET_ID;
+		bLoop = true;
+		break;
+	case RAID_BGM_STATE::M07_GHOST_TRANSITION:
+		pAssetId = VALTAN_BGM_M07_ASSET_ID;
+		break;
+	case RAID_BGM_STATE::M08_GHOST_PHASE:
+		pAssetId = VALTAN_BGM_M08_ASSET_ID;
+		bLoop = true;
+		break;
+	case RAID_BGM_STATE::M09_DEATH:
+		pAssetId = VALTAN_BGM_M09_ASSET_ID;
+		break;
+	case RAID_BGM_STATE::NONE:
+		CGameInstance::Get().Stop_Music();
+		m_eRaidBgmState = nextState;
+		return;
+	default:
+		return;
+	}
+
+	/* Commit the presentation edge even when the local resource is missing.
+	The Server snapshot remains authoritative, and a missing WAV must not turn
+	every following snapshot into a 30 Hz load retry. */
+	m_eRaidBgmState = nextState;
+	const filesystem::path MusicPath = CRuntimeAssetRoot::Resolve(pAssetId);
+	if (MusicPath.empty() || !filesystem::is_regular_file(MusicPath) ||
+		FAILED(CGameInstance::Get().Play_Music(
+			MusicPath.wstring(), 1.f, bLoop)))
+	{
+#ifdef _DEBUG
+		OutputDebugStringA(
+			"[Client][Valtan] raid BGM transition was isolated because the "
+			"runtime WAV could not be played.\n");
+#endif
+	}
+}
+
+void CValtan::Update_RaidBgm(
+	const LostArk::Shared::WORLD_ENTITY_ACTION action,
+	const std::string_view patternId,
+	const std::string_view actionId)
+{
+	if (!m_isRaidBgmEnabled)
+		return;
+
+	const bool_t isEntrancePattern =
+		VALTAN_ENTRANCE_PATTERN_ID == patternId;
+	const bool_t isCinematicEntrancePattern =
+		VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID == patternId;
+	const bool_t isGhostTransition =
+		VALTAN_GHOST_TRANSITION_PATTERN_ID == patternId;
+	const bool_t isGhostPhaseEdge = isGhostTransition &&
+		VALTAN_GHOST_PHASE_ACTION_ID == actionId;
+
+	if (LostArk::Shared::WORLD_ENTITY_ACTION::DEAD == action)
+	{
+		Transition_RaidBgm(RAID_BGM_STATE::M09_DEATH);
+		return;
+	}
+	if (isGhostPhaseEdge)
+	{
+		Transition_RaidBgm(RAID_BGM_STATE::M08_GHOST_PHASE);
+		return;
+	}
+	if (isGhostTransition)
+	{
+		if (RAID_BGM_STATE::M08_GHOST_PHASE != m_eRaidBgmState)
+			Transition_RaidBgm(RAID_BGM_STATE::M07_GHOST_TRANSITION);
+		return;
+	}
+	/* A packet can skip the final transition stage. Leaving M07 still proves
+	the Server completed the 14-bar transition, so recover directly into M08. */
+	if (RAID_BGM_STATE::M07_GHOST_TRANSITION == m_eRaidBgmState)
+	{
+		Transition_RaidBgm(RAID_BGM_STATE::M08_GHOST_PHASE);
+		return;
+	}
+	/* This camera-only entrance gate deliberately adds no BGM edge. Keep
+	   the Level-owned M04 track until VALTAN_ENTRANCE_WHIRLWIND starts M05,
+	   and do not classify its non-idle snapshots as a late join. */
+	if (isCinematicEntrancePattern)
+		return;
+	if (isEntrancePattern)
+	{
+		m_hasObservedEntrancePattern = true;
+		Transition_RaidBgm(RAID_BGM_STATE::M05_INTRO);
+		return;
+	}
+
+	if (RAID_BGM_STATE::NONE == m_eRaidBgmState ||
+		RAID_BGM_STATE::M09_DEATH == m_eRaidBgmState)
+	{
+		/* Do not start M05 while the authored entrance boss is still waiting
+		in IDLE. The exact cutscene edge is the entrance pattern handled
+		above. A non-IDLE first snapshot means this Client joined after the
+		intro or an audition deliberately started inside phase one. */
+		if (LostArk::Shared::WORLD_ENTITY_ACTION::IDLE != action)
+		{
+			m_hasObservedEntrancePattern = false;
+			Transition_RaidBgm(RAID_BGM_STATE::M06_PHASE_ONE);
+		}
+		return;
+	}
+
+	/* M05 stays intact through the full entrance whirlwind. M06 begins on
+	the first accepted post-intro snapshot, including an IDLE boundary before
+	the Server selects the first normal pattern. */
+	if (RAID_BGM_STATE::M05_INTRO == m_eRaidBgmState &&
+		(m_hasObservedEntrancePattern ||
+		 LostArk::Shared::WORLD_ENTITY_ACTION::IDLE != action))
+	{
+		Transition_RaidBgm(RAID_BGM_STATE::M06_PHASE_ONE);
+	}
+}
+
 bool_t CValtan::Apply_NetworkState(
 	const float3_t& position,
 	const f32_t yawDegrees,
@@ -1968,6 +2122,7 @@ bool_t CValtan::Apply_NetworkState(
 		CEffectPresentationService::Stop_BossOwner(
 			std::static_pointer_cast<CValtan>(shared_from_this()));
 	}
+	Update_RaidBgm(action, patternId, actionId);
 	return true;
 }
 

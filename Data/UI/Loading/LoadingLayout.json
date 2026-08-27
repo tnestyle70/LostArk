@@ -15,7 +15,7 @@
         { "path": "UI/Loading/Loading_Background.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Vignette_Top",
@@ -28,7 +28,7 @@
         { "path": "UI/Loading/loading_i24_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Vignette_Bottom",
@@ -41,7 +41,7 @@
         { "path": "UI/Loading/loading_i25_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "TopDivider",
@@ -54,7 +54,7 @@
         { "path": "UI/Loading/loading_i23_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ScenarioBanner",
@@ -67,7 +67,7 @@
         { "path": "UI/Loading/loading_i21_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ProgressTrack",
@@ -80,7 +80,7 @@
         { "path": "UI/Loading/loading_ib_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ProgressFill",
@@ -93,7 +93,7 @@
         { "path": "UI/Loading/loading_ia_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ProgressGlow",
@@ -106,7 +106,7 @@
         { "path": "UI/Loading/loading_i9_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "TitleText",
@@ -117,7 +117,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ScenarioLabel",
@@ -128,7 +128,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "TipText",
@@ -139,7 +139,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

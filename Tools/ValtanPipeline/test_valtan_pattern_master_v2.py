@@ -25,6 +25,7 @@ EXPECTED_SCRIPTED_SEQUENCE = {
     "mode": "ORDERED_ONCE_THEN_IDLE",
     "interStepPursuitMs": 1000,
     "patternIds": [
+        "VALTAN_ENTRANCE_CINEMATIC",
         "VALTAN_WHIRLWIND",
         "VALTAN_FOUR_SLASH",
         "VALTAN_FIST_IN_OUT",
@@ -321,6 +322,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(2, migrated["formatVersion"])
         self.assertEqual(7, len(migrated["patterns"]))
         self.assertIsNone(migrated["decisionModel"]["scriptedSequence"])
+        unlinked_cue = "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01"
+        for document in (migrated, self.docs[pipeline.PRESENTATION_AUTHORING_REL]):
+            self.assertNotIn(
+                unlinked_cue,
+                {
+                    cue["cueId"]
+                    for pattern in document["patterns"]
+                    for stage in pattern["stages"]
+                    for cue in stage["effectCues"]
+                },
+                "V1 migration must not restore an intentionally unlinked Product cue",
+            )
         self.assertEqual(before, pipeline.sha256_file(source_path))
         phase_events = [
             (pattern["patternId"], stage["stageId"], event)
@@ -945,7 +958,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             row["worldEventSetId"]: row for row in companion["sets"]
         }
         self.assertEqual(set(pipeline.WORLD_SET_OWNERS), set(event_sets))
-        self.assertEqual(30, len(event_sets[pipeline.WORLD_SET_ID]["members"]))
+        self.assertEqual(97, len(event_sets[pipeline.WORLD_SET_ID]["members"]))
+        groups = {
+            group["groupId"]: group
+            for group in self.docs[pipeline.WORLD_PRODUCT_REL]["groups"]
+        }
+        placement_ids = [
+            placement_id
+            for member in event_sets[pipeline.WORLD_SET_ID]["members"]
+            for placement_id in groups[member["groupId"]]["memberPlacementIds"]
+        ]
+        self.assertEqual(135, len(placement_ids))
+        self.assertEqual(135, len(set(placement_ids)))
         self.assertEqual(
             3,
             len(
@@ -992,10 +1016,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             member["bindingId"]
             for member in event_sets[pipeline.WORLD_SET_ID]["members"]
         }
-        self.assertEqual(30, len(managed_ids))
+        self.assertEqual(97, len(managed_ids))
         source_other = [row for row in source["bindings"] if row["bindingId"] not in managed_ids]
         projected_other = [row for row in projected["bindings"] if row["bindingId"] not in managed_ids]
-        self.assertEqual(194, len(source_other))
+        self.assertEqual(127, len(source_other))
         self.assertEqual(source_other, projected_other)
         self.assertEqual(source["groups"], projected["groups"])
         self.assertEqual(source["mutations"], projected["mutations"])
@@ -1033,6 +1057,55 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ["LEGACY", "LEGACY", "MANAGED", "LEGACY", "MANAGED"],
             [ref["ownership"] for ref in mixed["patternRefs"]],
         )
+
+    def test_legacy_effect_cue_validation_uses_stable_binding_identity(self) -> None:
+        drifted_docs = copy.deepcopy(self.docs)
+        sealed_cue = next(
+            cue
+            for entry in drifted_docs[pipeline.LEGACY_REL]["patternEntries"]
+            for cue in entry["effectCues"]
+        )
+        sealed_binding_id = sealed_cue["runtimeCue"]["bindingId"]
+        cue_rows = drifted_docs[pipeline.CUES_REL]["cues"]
+        sealed_ordinal = next(
+            ordinal
+            for ordinal, cue in enumerate(cue_rows)
+            if cue["bindingId"] == sealed_binding_id
+        )
+        managed_pattern_ids = {
+            pattern["patternId"]
+            for pattern in pipeline.join_v2_authoring(
+                self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+                self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )["patterns"]
+        }
+        managed_ordinal = next(
+            ordinal
+            for ordinal, cue in enumerate(cue_rows[:sealed_ordinal])
+            if cue["patternId"] in managed_pattern_ids
+        )
+        del cue_rows[managed_ordinal]
+        pipeline.validate_legacy_products(
+            drifted_docs[pipeline.LEGACY_REL],
+            drifted_docs,
+            managed_pattern_ids,
+        )
+
+        sealed_row = next(
+            cue for cue in cue_rows if cue["bindingId"] == sealed_binding_id
+        )
+        sealed_row["effectAssetId"] += ".drift"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "sealed legacy effect cue drift.*" + sealed_binding_id,
+        ):
+            pipeline.validate_legacy_products(
+                drifted_docs[pipeline.LEGACY_REL],
+                drifted_docs,
+                managed_pattern_ids,
+            )
 
     def test_strict_negative_fixtures(self) -> None:
         world_sets = copy.deepcopy(self.docs[pipeline.WORLD_SET_REL])
@@ -1478,15 +1551,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in pattern["stages"]
             for cue in stage["effectCues"]
         ]
+        managed_cues_by_id = {cue["cueId"]: cue for cue in managed_cues}
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES), len(managed_cues)
+            len(managed_cues), len(managed_cues_by_id)
+        )
+        self.assertTrue(
+            set(managed_cues_by_id).issubset(pipeline.MANAGED_CUE_SCALE_POLICIES)
         )
         self.assertEqual(
-            dict(pipeline.EXPECTED_MANAGED_SCALE_POLICY_COUNTS),
+            dict(
+                Counter(
+                    pipeline.MANAGED_CUE_SCALE_POLICIES[cue_id]
+                    for cue_id in managed_cues_by_id
+                )
+            ),
             dict(Counter(cue["scalePolicy"]["kind"] for cue in managed_cues)),
         )
         self.assertEqual(
-            pipeline.MANAGED_CUE_SCALE_POLICIES,
+            {
+                cue_id: pipeline.MANAGED_CUE_SCALE_POLICIES[cue_id]
+                for cue_id in managed_cues_by_id
+            },
             {cue["cueId"]: cue["scalePolicy"]["kind"] for cue in managed_cues},
         )
         for cue in managed_cues:
@@ -1506,12 +1591,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 projected_by_id[cue["cueId"]]["scalePolicy"],
             )
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES) + 2,
+            len(managed_cues) + 2,
             sum(1 for cue in projected["cues"] if "scalePolicy" in cue),
             "managed cues plus the two sealed Entrance Whirlwind cues",
         )
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES),
+            len(managed_cues),
             sum(
                 len(stage["effectCues"])
                 for pattern in joined["patterns"]
@@ -2167,6 +2252,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(19, len(phase_two_ids))
         self.assertEqual(
             [
+                "VALTAN_ENTRANCE_CINEMATIC",
                 "VALTAN_WHIRLWIND",
                 "VALTAN_FOUR_SLASH",
                 "VALTAN_FIST_IN_OUT",
@@ -2180,7 +2266,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 *phase_two_ids[7:],
             ],
             staged["decisionModel"]["scriptedSequence"]["patternIds"],
-            "the automatic visual-review sequence must preserve the seven Phase-1 review patterns and then every Phase-2 authoring row",
+            "the automatic visual-review sequence must begin with the entrance camera gate, preserve the seven Phase-1 review patterns, and then run every Phase-2 authoring row",
         )
         self.assertNotIn(
             "VALTAN_STRUGGLING",
@@ -2560,6 +2646,50 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
+
+    def test_only_first_scripted_pattern_may_be_an_entry_only_gate(self) -> None:
+        joined = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        sequence = joined["decisionModel"]["scriptedSequence"]["patternIds"]
+        self.assertEqual("VALTAN_ENTRANCE_CINEMATIC", sequence[0])
+        owned = {
+            candidate["patternId"]
+            for selection_set in joined["decisionModel"]["selectionSets"]
+            for candidate in selection_set["candidates"]
+        } | {
+            mechanic["patternId"]
+            for mechanic in joined["decisionModel"]["mechanics"]
+        } | {
+            audition["patternId"]
+            for audition in joined["decisionModel"]["manualAuditions"]
+        }
+        self.assertNotIn("VALTAN_ENTRANCE_CINEMATIC", owned)
+        pipeline.validate_v2_master(
+            joined,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+
+        invalid = copy.deepcopy(joined)
+        for selection_set in invalid["decisionModel"]["selectionSets"]:
+            selection_set["candidates"] = [
+                candidate
+                for candidate in selection_set["candidates"]
+                if candidate["patternId"] != "VALTAN_WHIRLWIND"
+            ]
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "only the first scripted sequence pattern may be an entry-only gate",
+        ):
+            pipeline.validate_v2_master(
+                invalid,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
 
     def test_phase_two_and_three_animation_intake_exact_joins_manual_product(self) -> None:
         joined = pipeline.join_v2_authoring(
@@ -4162,7 +4292,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "--draft-patch",
                 str(patch_path),
             ]
-            completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", check=False)
+            completed = subprocess.run(
+                command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
+            )
             self.assertEqual(0, completed.returncode, completed.stderr)
             result = json.loads(completed.stdout)
             self.assertEqual(
@@ -4179,7 +4312,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             bad = self.draft_patch()
             bad["sourceRevision"] = "0" * 64
             pipeline._write_fsync(patch_path, pipeline.json_text(bad).encode("utf-8"))
-            completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", check=False)
+            completed = subprocess.run(
+                command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
+            )
             self.assertEqual(1, completed.returncode)
             result = json.loads(completed.stderr)
             self.assertFalse(result["ok"])
@@ -4198,7 +4334,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 str(preview_path),
             ]
             completed = subprocess.run(
-                migrate_command, capture_output=True, text=True, encoding="utf-8", check=False
+                migrate_command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
             result = json.loads(completed.stdout)
@@ -4209,7 +4346,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             source_before = pipeline.sha256_file(self.root / pipeline.MASTER_REL)
             migrate_command[-1] = str(self.root / pipeline.MASTER_REL)
             completed = subprocess.run(
-                migrate_command, capture_output=True, text=True, encoding="utf-8", check=False
+                migrate_command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
             )
             self.assertEqual(1, completed.returncode)
             result = json.loads(completed.stderr)
@@ -4232,7 +4370,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 str(patch_path),
             ]
             completed = subprocess.run(
-                save_command, capture_output=True, text=True, encoding="utf-8", check=False
+                save_command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
             result = json.loads(completed.stdout)
@@ -4256,7 +4395,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 authoring_revision,
             ]
             completed = subprocess.run(
-                publish_command, capture_output=True, text=True, encoding="utf-8", check=False
+                publish_command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
             result = json.loads(completed.stdout)

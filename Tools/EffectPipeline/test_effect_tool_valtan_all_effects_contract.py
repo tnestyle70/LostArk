@@ -93,6 +93,88 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             EFFECT_CATALOG_JSON.read_text(encoding="utf-8")
         )
 
+    def test_boss_product_open_obeys_the_existing_unlink_lock(self) -> None:
+        opening = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Open_ValtanProductEffect(",
+            "void Client::CEffect_Tool::Update(",
+        )
+        guard = source_section(
+            opening,
+            "if (m_ValtanPatternProductUnlinkOperation.has_value())",
+            "m_bAllEffectsValtanBossSelected = true;",
+        )
+        self.assertIn("return Reject(", guard)
+        self.assertIn("unlink transaction", guard)
+        self.assertLess(opening.index(guard), opening.index("Refresh_DataFiles()"))
+        self.assertLess(opening.index(guard), opening.index("Refresh_ValtanPatternTree()"))
+
+    def test_boss_product_open_revalidates_identity_before_loading(self) -> None:
+        opening = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Open_ValtanProductEffect(",
+            "void Client::CEffect_Tool::Update(",
+        )
+        for field in ("PatternId", "StageId", "CueOccurrenceId", "EffectAssetId"):
+            self.assertIn(f"Request.str{field}.empty()", opening)
+        for failure in (
+            "if (!Refresh_DataFiles())",
+            "if (!Refresh_ValtanPatternTree())",
+            "!Is_ValtanAllEffectsPattern(*pPattern)",
+            "1u != iStageMatchCount",
+            "1u != iCueMatchCount",
+            "pCue->strPatternId != pPattern->strPatternId",
+            "pCue->strStageId != pStage->strStageId",
+            "pCue->strActionId != pStage->strActionId",
+            "pCue->strEffectAssetId != Request.strEffectAssetId",
+        ):
+            self.assertIn(failure, opening)
+            self.assertLess(
+                opening.index(failure),
+                opening.index("Resolve_DirectAuthoredEditablePath("),
+            )
+        self.assertIn("if (nullptr == pPath)", opening)
+        self.assertIn("return Reject(std::move(PathStatus));", opening)
+        self.assertIn("m_PendingDocumentLoad->Path == *pPath", opening)
+        for forbidden in (
+            "Discard_ActiveDocument(", "Try_SaveDocument(",
+            "m_ActiveDocument =", "strV1EffectAssetId",
+        ):
+            self.assertNotIn(forbidden, opening)
+
+    def test_boss_product_open_keeps_stage_clock_and_clip_preview_distinct(self) -> None:
+        opening = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Open_ValtanProductEffect(",
+            "void Client::CEffect_Tool::Update(",
+        )
+        standalone = source_section(opening, "if (pCue->bUsesStageClock)", "\n\telse\n")
+        self.assertIn("Try_OpenValtanStandaloneEffect(", standalone)
+        self.assertNotIn("Build_ValtanProductPreview(", standalone)
+        self.assertIn("1u != iClipMatchCount", opening)
+        for preview_path in ("NORMAL", "WALL_GROGGY", "PART_BREAK"):
+            self.assertIn(f"VALTAN_PATTERN_PREVIEW_PATH::{preview_path}", opening)
+        self.assertIn("Build_ValtanProductPreview(", opening)
+        self.assertIn("return Reject(std::move(PreviewError));", opening)
+        self.assertIn(
+            "Try_OpenValtanAuthoredEffect(*pPath,Request.strEffectAssetId,Preview,false)",
+            re.sub(r"\s+", "", opening),
+        )
+        for forbidden in ("Try_Play", "Stage_WorldPreview(", "Play_ValtanStageSequence("):
+            self.assertNotIn(forbidden, opening)
+        helper = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(\n"
+            "\tconst std::filesystem::path& Path,\n"
+            "\tconst std::string& strEffectAssetId,\n"
+            "\tconst VALTAN_PRODUCT_PREVIEW& Preview,",
+            "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()",
+        )
+        self.assertIn("m_PendingDocumentLoad->ValtanProductPreview = Preview;", helper)
+        self.assertLess(helper.index("Try_LoadDocumentPath("), helper.index("Play_ValtanProductCue(Preview)"))
+        self.assertIn("if (bAnimationReady && !bQueuePlayCompleteAfterLoad)", helper)
+        self.assertIn("Set_SynchronizedAnimationPaused(true);", helper)
+
     def test_exact_two_plus_twenty_eight_inventory_is_explicit(self) -> None:
         self.assertEqual(
             EXPECTED_INDEPENDENT_IDS,
@@ -509,8 +591,30 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
     def test_authoritative_valtan_effect_inventory_and_timing_are_intact(self) -> None:
         cues = self.product_cues["cues"]
         cue_asset_ids = [row["effectAssetId"] for row in cues]
-        self.assertEqual(80, len(cues))
-        self.assertEqual(66, len(set(cue_asset_ids)))
+        split_cues = [
+            cue
+            for pattern in self.presentation["patterns"]
+            for stage in pattern["stages"]
+            for cue in stage["effectCues"]
+        ]
+        managed_pattern_ids = {
+            pattern["patternId"] for pattern in self.presentation["patterns"]
+        }
+        managed_product_cues = [
+            cue for cue in cues if cue["patternId"] in managed_pattern_ids
+        ]
+        self.assertEqual(
+            {cue["cueId"] for cue in split_cues},
+            {cue["bindingId"] for cue in managed_product_cues},
+        )
+        self.assertEqual(len(split_cues), len(managed_product_cues))
+        unlinked_recovery_cue = (
+            "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01"
+        )
+        self.assertNotIn(
+            unlinked_recovery_cue,
+            {cue["bindingId"] for cue in cues},
+        )
 
         valtan_catalog = {
             row["effectAssetId"]: row
@@ -519,7 +623,8 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         }
         self.assertGreaterEqual(len(valtan_catalog), 58)
         for effect_asset_id in set(cue_asset_ids) | {
-            "effect.valtan.sky-axe.active"
+            "effect.valtan.sky-axe.active",
+            "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
         }:
             with self.subTest(effect_asset_id=effect_asset_id):
                 self.assertIn(effect_asset_id, valtan_catalog)

@@ -4,20 +4,22 @@
 #include "Engine_Defines.h"
 
 #include <chrono>
+#include <memory>
 #include <string>
 #include <vector>
 
 NS_BEGIN(Client)
 
 class CUITextureCache;
+class IPlayerCommandSink;
 
-/* Release-safe local chat overlay: a scrollback log over the extracted semi-transparent panel
-art (UI/Chat/LogPanelBg.png) and an always-visible input bar, both of which fade out together
-after HIDE_AFTER_SECONDS of no chat activity (no message sent and not actively focused) and
-reappear on the next Enter/submit/focus. UI-only for now -- Enter appends the typed line to
-the local log and clears the box, it does not send anything over the network yet. Shared's
-C2S_CHAT/S2C_CHAT packet types exist but have no Server/Client wiring behind them; that relay
-is a separate follow-up, not this pass. */
+/* Release-safe chat overlay: a scrollback log over the extracted semi-transparent panel art
+(UI/Chat/LogPanelBg.png) and an always-visible input bar, both of which fade out together after
+HIDE_AFTER_SECONDS of no chat activity (no message sent and not actively focused) and reappear
+on the next Enter/submit/focus. Enter appends the typed line to the local log immediately (no
+round trip needed for your own scrollback) and, on a real non-empty send, also submits it via
+IPlayerCommandSink::Request_SendChat so the Server relays it to the rest of the room -- that
+relay is what CWorldPlayerChatBubbleView reads to show a bubble above senders' heads. */
 class CChatWindowView final
 {
 public:
@@ -45,7 +47,7 @@ public:
 	timestamps it, appends it to the log, clears the buffer, refreshes the fade timer, and
 	keeps focus for the next line -- Escape drops focus via Close_Input() without hiding the
 	window early (the fade timer still governs that). */
-	void Render();
+	void Render(const std::shared_ptr<IPlayerCommandSink>& pCommandSink);
 
 private:
 	struct CHAT_LOG_LINE

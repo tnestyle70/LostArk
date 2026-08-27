@@ -32,6 +32,7 @@
       "mode": "ORDERED_ONCE_THEN_IDLE",
       "interStepPursuitMs": 1000,
       "patternIds": [
+        "VALTAN_ENTRANCE_CINEMATIC",
         "VALTAN_WHIRLWIND",
         "VALTAN_FOUR_SLASH",
         "VALTAN_FIST_IN_OUT",
@@ -352,6 +353,86 @@
     }
   ],
   "patterns": [
+    {
+      "patternId": "VALTAN_ENTRANCE_CINEMATIC",
+      "displayName": "발탄 등장 컷신",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 1,
+      "actionId": "valtan.cinematic.entrance",
+      "entryActionId": "valtan.cinematic.entrance.establish",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 1,
+        "maximumHealthBarInclusive": 160,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 100.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 1
+        }
+      },
+      "invulnerableWhileRunning": true,
+      "sourceActionIds": [
+        420633
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "ESTABLISH",
+          "actionId": "valtan.cinematic.entrance.establish",
+          "stageKind": "WINDUP",
+          "durationMs": 8600,
+          "defaultNextActionId": "valtan.cinematic.entrance.arena-reveal",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "ARENA_REVEAL",
+          "actionId": "valtan.cinematic.entrance.arena-reveal",
+          "stageKind": "ACTIVE",
+          "durationMs": 5800,
+          "defaultNextActionId": "valtan.cinematic.entrance.hero-handoff",
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        },
+        {
+          "stageId": "HERO_HANDOFF",
+          "actionId": "valtan.cinematic.entrance.hero-handoff",
+          "stageKind": "RECOVERY",
+          "durationMs": 5467,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
+    },
     {
       "patternId": "VALTAN_WHIRLWIND",
       "displayName": "휠윈드 1.2초",

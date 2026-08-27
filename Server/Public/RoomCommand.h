@@ -31,6 +31,9 @@ namespace LostArk::Server
 		USE_ITEM,
 		DESPAWN_ALL_WORLD_ENTITIES,
 		CONFIRM_NPC_ENTRY,
+		PARTY_INVITE,
+		PARTY_INVITE_RESPOND,
+		CHAT,
 		LEAVE
 	};
 
@@ -68,6 +71,9 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_USE_ITEM UseItem;
 		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
+		LostArk::Shared::C2S_PARTY_INVITE PartyInvite;
+		LostArk::Shared::C2S_PARTY_INVITE_RESPOND PartyInviteRespond;
+		LostArk::Shared::C2S_CHAT Chat;
 
 		LostArk::Shared::PLAYER_DESPAWN_REASON eLeaveReason =
 			LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;
