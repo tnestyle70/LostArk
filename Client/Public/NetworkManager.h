@@ -4,6 +4,7 @@
 #include <WS2tcpip.h>
 
 #include "ClientReplicationEvent.h"
+#include "ClientSessionDiagnostic.h"
 
 #include "Network/PacketFrame.h"
 #include "Network/PacketMessages.h"
@@ -265,6 +266,23 @@ public:
 		return m_iWorldInboundGeneration;
 	}
 	[[nodiscard]] int Get_LastErrorCode() const;
+	[[nodiscard]] Client::CLIENT_SESSION_DIAGNOSTIC_SNAPSHOT
+		Get_SessionDiagnosticSnapshot() const
+	{
+		return m_SessionDiagnostic.Get_Snapshot();
+	}
+	void Record_SessionEvent(
+		std::string_view eventName,
+		std::string_view detail = {});
+	void Record_SessionRecovery(
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+		std::string_view source,
+		std::string_view detail);
+	bool Record_SessionTerminal(
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+		int wsaError,
+		LostArk::Shared::PACKET_TYPE triggeringPacket,
+		std::string_view detail);
 	[[nodiscard]] LostArk::Shared::PLAYER_ID Get_LocalPlayerId() const;
 	[[nodiscard]] LostArk::Shared::NET_ENTITY_ID Get_LocalEntityId() const;
 	[[nodiscard]] LostArk::Shared::CHARACTER_CLASS_ID
@@ -295,10 +313,20 @@ public:
 
 
 private:
-	bool Send_All(std::span<const std::uint8_t> bytes);
+	bool Send_All(
+		std::span<const std::uint8_t> bytes,
+		LostArk::Shared::PACKET_TYPE triggeringPacket =
+			LostArk::Shared::PACKET_TYPE::INVALID);
 	bool Enqueue_ReplicationEvent(
 		Client::CLIENT_REPLICATION_EVENT&& event);
-	void Fail_Protocol(int errorCode);
+	void Fail_Protocol(
+		int errorCode,
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason =
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_INVALID_SERVER_RESPONSE,
+		LostArk::Shared::PACKET_TYPE triggeringPacket =
+			LostArk::Shared::PACKET_TYPE::INVALID,
+		std::string_view detail = "Protocol validation failed.");
 	void Reset_WorldInboundState();
 	void Record_WorldRevisionSet(
 		const LostArk::Shared::GameplayDataRevision& activeRevision,
@@ -364,6 +392,7 @@ private:
 
 	std::atomic_bool m_isReceiveRunning{ false };
 	std::atomic_bool m_hasProtocolFailure{ false };
+	Client::CClientSessionDiagnostic m_SessionDiagnostic;
 
 	LostArk::Shared::CPacketStreamParser m_StreamParser;
 

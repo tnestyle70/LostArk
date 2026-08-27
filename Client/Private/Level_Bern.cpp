@@ -126,6 +126,10 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	}
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
+		CLevelTransitionService::Report_NetworkRecovery(
+			"level-bern.network-connection-lost",
+			"Bern replication observed a disconnected Server session.");
+		CNetworkManager::Get().Close_ServerConnection();
 		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
 			"network.connection-lost"))

@@ -236,6 +236,13 @@ Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` si
 
 2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `10.207.18.151:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
+Lobby fallback은 Client의 first-terminal reason과 semantic recovery를 실행 파일 옆 process별 JSONL에
+보존하고 Lobby에 표시한다. direct LAN의 한 connection은 Client `localEndpoint`와 Server
+`peerAddress:peerPort`로 대조하며 Server도 session close reason, world/player, packet/error와 outbound
+지표를 JSONL/stdout에 기록한다. Server room의 LEAVE는 일반 ingress cap과 분리된 deduplicated priority
+cleanup으로 처리해 queue 포화와 close/entry race가 player slot을 남기지 않게 한다. capture 위치와 4인
+`ROOM_FULL` 판정 절차는 팀 handbook의 `Lobby fallback 진단과 4인 대조`를 따른다.
+
 - visual admission: `LV_DEV_TRAINING_GROUND.mapassets`의 RCArena 10종만 로드
 - visual placement: authoring 18개를 publisher가 runtime placement로 승격
 - gameplay: 클래스 중립 `playerSpawn` 4개만 저장하며 `archetypeId`는 `null`

@@ -36,6 +36,9 @@
     <ClInclude Include="..\Public\Network\PacketMessages.h">
       <Filter>Public\Network</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Network\SessionDiagnostic.h">
+      <Filter>Public\Network</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Network\PacketReader.h">
       <Filter>Public\Network</Filter>
     </ClInclude>

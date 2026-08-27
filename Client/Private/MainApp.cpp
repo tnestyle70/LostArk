@@ -3928,6 +3928,12 @@ HRESULT CMainApp::Start_Level(
 		!m_RenderingProfiles.Has_Profile(
 			CRenderingProfileService::LOADING_PROFILE_ID))
 	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_PROFILE_MISSING,
+			"main-app.start-level-profile",
+			"Target or Loading rendering profile is not registered.",
+			E_INVALIDARG);
 		return E_INVALIDARG;
 	}
 
@@ -3938,7 +3944,15 @@ HRESULT CMainApp::Start_Level(
 			eTargetLevel,
 			lobbyCommandToken);
 	if (nullptr == loading)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_LOADING_START_FAILED,
+			"main-app.loading-level-create",
+			"CLevel_Loading::Create returned null.",
+			E_FAIL);
 		return E_FAIL;
+	}
 
 	const string previousProfileId =
 		m_RenderingProfiles.Get_ActiveProfileId();
@@ -3946,6 +3960,12 @@ HRESULT CMainApp::Start_Level(
 	if (!m_RenderingProfiles.Activate_Profile(
 		CRenderingProfileService::LOADING_PROFILE_ID, status))
 	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_PROFILE_FAILED,
+			"main-app.loading-profile-activation",
+			status,
+			E_FAIL);
 		return E_FAIL;
 	}
 	const HRESULT hChange = CGameInstance::Get().Change_Level(
@@ -3953,6 +3973,12 @@ HRESULT CMainApp::Start_Level(
 		move(loading));
 	if (FAILED(hChange))
 	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_LOADING_START_FAILED,
+			"main-app.loading-change-level",
+			"Change_Level(LOADING) failed.",
+			hChange);
 		if (!previousProfileId.empty())
 		{
 			string rollbackStatus;
@@ -3991,7 +4017,16 @@ void CMainApp::Apply_LevelRequest()
 					request.iLobbyCommandToken,
 					"target level loading could not start");
 			}
-			CLevelTransitionService::Report_LoadFailure(result);
+			CLevelTransitionService::Report_Recovery(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_LOADING_START_FAILED,
+				"main-app.start-level-request",
+				request.strSource,
+				result);
+			// Admission already consumed a Server room slot. Reclaim it here so
+			// the next Lobby click starts a fresh diagnostic generation instead
+			// of reusing a bound session whose loading transition failed.
+			CNetworkManager::Get().Close_ServerConnection();
 		}
 		else
 		{
@@ -4015,6 +4050,7 @@ void CMainApp::Apply_LevelRequest()
 			request.eTargetLevel,
 			m_pDevice,
 			m_pContext) : nullptr;
+	const bool_t levelCreated = nullptr != nextLevel;
 	if (hasTargetProfile && nullptr == nextLevel)
 	{
 		OutputDebugStringA(
@@ -4053,7 +4089,12 @@ void CMainApp::Apply_LevelRequest()
 			OutputDebugStringA(
 				"[MainApp] Bern identity commit invariant failed.\n");
 			CNetworkManager::Get().Close_ServerConnection();
-			CLevelTransitionService::Report_LoadFailure(E_FAIL);
+			CLevelTransitionService::Report_Recovery(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_IDENTITY_COMMIT_FAILED,
+				"main-app.identity-commit",
+				"Bern pending identity commit invariant failed.",
+				E_FAIL);
 			if (!CLevelTransitionService::Request_Load(
 				LEVEL::LOBBY,
 				"main-app.identity-commit-failure"))
@@ -4085,8 +4126,43 @@ void CMainApp::Apply_LevelRequest()
 			"target level activation failed");
 	}
 	CGameInstance::Get().Clear_Resources(ETOUI(request.eTargetLevel));
+	if (!hasTargetProfile)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_PROFILE_MISSING,
+			"main-app.target-profile-missing",
+			request.strSource,
+			E_FAIL);
+	}
+	else if (!levelCreated)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_LEVEL_CREATE_FAILED,
+			"main-app.target-level-create",
+			request.strSource,
+			E_FAIL);
+	}
+	else if (!profileActivated)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_PROFILE_FAILED,
+			"main-app.target-profile-activation",
+			profileStatus,
+			E_FAIL);
+	}
+	else
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_CHANGE_LEVEL_FAILED,
+			"main-app.target-change-level",
+			request.strSource,
+			E_FAIL);
+	}
 	CNetworkManager::Get().Close_ServerConnection();
-	CLevelTransitionService::Report_LoadFailure(E_FAIL);
 	if (!CLevelTransitionService::Request_Load(
 		LEVEL::LOBBY,
 		"main-app.activation-failure"))

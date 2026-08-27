@@ -3,6 +3,7 @@
 #include "LevelRegistry.h"
 #include "NetworkManager.h"
 
+#include <chrono>
 #include <mutex>
 #include <optional>
 
@@ -10,12 +11,15 @@ namespace
 {
 	std::mutex g_TransitionMutex;
 	std::optional<Client::LEVEL_TRANSITION_REQUEST> g_PendingRequest;
-	std::optional<HRESULT> g_LoadFailure;
-	/* The stage that actually refused, kept next to the HRESULT. A bare
-	   E_FAIL cannot tell a missing map model from a rejected encounter
-	   document, and the Lobby is the only place the user ever sees it. */
-	std::string g_LoadFailureDetail;
+	std::optional<Client::CLIENT_RECOVERY_DIAGNOSTIC> g_RecoveryDiagnostic;
 	std::string g_Status = "No level transition is pending.";
+
+	std::uint64_t Get_UnixMilliseconds() noexcept
+	{
+		using namespace std::chrono;
+		return static_cast<std::uint64_t>(duration_cast<milliseconds>(
+			system_clock::now().time_since_epoch()).count());
+	}
 }
 
 bool_t Client::CLevelTransitionService::Request_Load(
@@ -71,17 +75,96 @@ void Client::CLevelTransitionService::Report_LoadFailure(
 	const HRESULT result,
 	const std::string_view detail)
 {
-	std::scoped_lock lock{ g_TransitionMutex };
-	g_LoadFailure = result;
-	/* The stage that refused reports first and the generic activation failure
-	   follows it, so a later empty report must not erase the only line that
-	   names what went wrong. */
+	Report_Recovery(
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOAD_FAILED,
+		"level.loading",
+		detail,
+		result);
+}
+
+void Client::CLevelTransitionService::Report_Recovery(
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const std::string_view source,
+	const std::string_view detail,
+	const HRESULT result)
+{
+	if (!LostArk::Shared::Is_Known_SessionDiagnosticReason(reason) ||
+		source.empty())
+	{
+		return;
+	}
+
+	std::string terminalDetail{ source };
 	if (!detail.empty())
-		g_LoadFailureDetail.assign(detail);
-	g_Status = "Level loading failed with HRESULT " +
-		std::to_string(static_cast<long>(result)) + ".";
-	if (!g_LoadFailureDetail.empty())
-		g_Status += " " + g_LoadFailureDetail;
+		terminalDetail += ": " + std::string{ detail };
+	CNetworkManager& network = CNetworkManager::Get();
+	network.Record_SessionTerminal(
+		reason,
+		0,
+		LostArk::Shared::PACKET_TYPE::INVALID,
+		terminalDetail);
+	CLIENT_SESSION_DIAGNOSTIC_SNAPSHOT session =
+		network.Get_SessionDiagnosticSnapshot();
+	// The process trace keeps every typed recovery edge even when the Lobby UI
+	// already owns an earlier first-recovery snapshot for this generation.
+	network.Record_SessionRecovery(reason, source, detail);
+
+	{
+		std::scoped_lock lock{ g_TransitionMutex };
+		// The earliest terminal producer owns the root cause. Generic activation
+		// cleanup may report later, but cannot erase a loader/transport detail.
+		if (g_RecoveryDiagnostic.has_value())
+			return;
+
+		CLIENT_RECOVERY_DIAGNOSTIC recovery{};
+		/* A validated ROOM_FULL frame is stronger than the flush-close FIN that may
+		   race ahead on the receive worker. Keep the transport terminal in Session,
+		   but expose the validated semantic result as the Lobby recovery reason. */
+		recovery.eReason =
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_EXPECTED_ROOM_FULL ==
+				reason ? reason :
+			(LostArk::Shared::Is_Known_SessionDiagnosticReason(session.eReason) ?
+				session.eReason : reason);
+		recovery.hResult = result;
+		recovery.strSource.assign(source);
+		recovery.strDetail.assign(detail);
+		recovery.iOccurredUnixMs = 0u != session.iTerminalUnixMs ?
+			session.iTerminalUnixMs : Get_UnixMilliseconds();
+		recovery.Session = std::move(session);
+		g_RecoveryDiagnostic = std::move(recovery);
+		g_Status = "Lobby recovery recorded by " + std::string{ source } + ".";
+	}
+}
+
+void Client::CLevelTransitionService::Report_NetworkRecovery(
+	const std::string_view source,
+	const std::string_view detail)
+{
+	const CLIENT_SESSION_DIAGNOSTIC_SNAPSHOT session =
+		CNetworkManager::Get().Get_SessionDiagnosticSnapshot();
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason =
+		LostArk::Shared::Is_Known_SessionDiagnosticReason(session.eReason) ?
+			session.eReason :
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECTION_LOST;
+	Report_Recovery(reason, source, detail);
+}
+
+bool_t Client::CLevelTransitionService::Try_ConsumeRecovery(
+	CLIENT_RECOVERY_DIAGNOSTIC& outDiagnostic)
+{
+	const CLIENT_SESSION_DIAGNOSTIC_SNAPSHOT latestSession =
+		CNetworkManager::Get().Get_SessionDiagnosticSnapshot();
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (!g_RecoveryDiagnostic.has_value())
+		return false;
+	if (latestSession.iConnectionGeneration ==
+		g_RecoveryDiagnostic->Session.iConnectionGeneration)
+	{
+		g_RecoveryDiagnostic->Session = latestSession;
+	}
+	outDiagnostic = std::move(*g_RecoveryDiagnostic);
+	g_RecoveryDiagnostic.reset();
+	return true;
 }
 
 bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
@@ -89,13 +172,13 @@ bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
 	std::string& outDetail)
 {
 	std::scoped_lock lock{ g_TransitionMutex };
-	if (!g_LoadFailure.has_value())
+	if (!g_RecoveryDiagnostic.has_value() ||
+		!FAILED(g_RecoveryDiagnostic->hResult))
 		return false;
 
-	outResult = *g_LoadFailure;
-	outDetail = std::move(g_LoadFailureDetail);
-	g_LoadFailureDetail.clear();
-	g_LoadFailure.reset();
+	outResult = g_RecoveryDiagnostic->hResult;
+	outDetail = std::move(g_RecoveryDiagnostic->strDetail);
+	g_RecoveryDiagnostic.reset();
 	return true;
 }
 
@@ -133,6 +216,10 @@ Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 		return SERVER_WORLD_TRANSFER_PUMP_RESULT::REQUESTED;
 	}
 
+	Report_Recovery(
+		SESSION_DIAGNOSTIC_REASON::CLIENT_WORLD_TRANSFER_FAILED,
+		"server.trigger.change-level-recovery",
+		"Accepted transfer target was invalid, unchanged, or could not be staged.");
 	networkManager.Close_ServerConnection();
 	Request_Load(LEVEL::LOBBY, "server.trigger.change-level-recovery");
 	return SERVER_WORLD_TRANSFER_PUMP_RESULT::RECOVERY_REQUESTED;
@@ -177,8 +264,7 @@ bool_t Client::CLevelTransitionService::Request(
 	if (LEVEL_TRANSITION_PHASE::LOAD == ePhase &&
 		LEVEL::LOBBY != eTargetLevel)
 	{
-		g_LoadFailure.reset();
-		g_LoadFailureDetail.clear();
+		g_RecoveryDiagnostic.reset();
 	}
 	g_Status = "Level transition request staged by " +
 		g_PendingRequest->strSource + ".";

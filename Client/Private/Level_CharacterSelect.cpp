@@ -686,22 +686,34 @@ void CLevel_CharacterSelect::Update_Connecting()
 	CNetworkManager& network = CNetworkManager::Get();
 	if (!network.Is_Connected())
 	{
-		Fail_ServerArena("Server disconnected before arena admission.");
+		Fail_ServerArena(
+			"Server disconnected before arena admission.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_CONNECTION_LOST);
 		return;
 	}
 	if (!m_Replication.Update())
 	{
-		Fail_ServerArena("Arena replication failed while staging the character.");
+		Fail_ServerArena(
+			"Arena replication failed while staging the character.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED);
 		return;
 	}
 	if (nullptr != m_Replication.Get_LocalCharacter())
 	{
 		if (!Commit_ServerArena())
-			Fail_ServerArena("Replicated character could not bind to Server Arena.");
+			Fail_ServerArena(
+				"Replicated character could not bind to Server Arena.",
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_REPLICATION_FAILED);
 		return;
 	}
 	if (std::chrono::steady_clock::now() >= m_ConnectionDeadline)
-		Fail_ServerArena("Server arena admission timed out after 5 seconds.");
+		Fail_ServerArena(
+			"Server arena admission timed out after 5 seconds.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_APPROVAL_TIMEOUT);
 }
 
 bool_t CLevel_CharacterSelect::Commit_ServerArena()
@@ -772,12 +784,18 @@ void CLevel_CharacterSelect::Update_ServerArena()
 	}
 	if (!m_Replication.Update())
 	{
-		Fail_ServerArena("Server presentation failed.");
+		Fail_ServerArena(
+			"Server presentation failed.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED);
 		return;
 	}
 	if (!Advance_DeferredClassPresentation())
 	{
-		Fail_ServerArena("Deferred Server class presentation failed.");
+		Fail_ServerArena(
+			"Deferred Server class presentation failed.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED);
 		return;
 	}
 	string presentationFailure;
@@ -786,13 +804,19 @@ void CLevel_CharacterSelect::Update_ServerArena()
 	if (m_Replication.Has_PendingConnectionLoss() ||
 		!CNetworkManager::Get().Is_Connected())
 	{
-		Fail_ServerArena("Server disconnected.");
+		Fail_ServerArena(
+			"Server disconnected.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_CONNECTION_LOST);
 		return;
 	}
 
 	if (!Synchronize_LocalCharacter())
 	{
-		Fail_ServerArena("The replicated local character is unavailable.");
+		Fail_ServerArena(
+			"The replicated local character is unavailable.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED);
 		return;
 	}
 	if (!m_isCreateCharacterModalOpen &&
@@ -836,7 +860,27 @@ void CLevel_CharacterSelect::Update_ServerArena()
 	}
 }
 
-void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
+void CLevel_CharacterSelect::Fail_ServerArena(
+	const string& reason,
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON diagnosticReason)
+{
+	CLevelTransitionService::Report_Recovery(
+		diagnosticReason,
+		"character-select.server-arena-failure",
+		reason);
+	Return_ServerArenaToLobby(
+		reason, "character-select.server-disconnect");
+}
+
+void CLevel_CharacterSelect::Leave_ServerArena()
+{
+	Return_ServerArenaToLobby(
+		"Leaving Server Arena.", "character-select.back");
+}
+
+void CLevel_CharacterSelect::Return_ServerArenaToLobby(
+	const string& reason,
+	const char_t* pTransitionSource)
 {
 	CAnimationTargetService::Unbind(m_pActiveCharacter);
 	m_pActiveCharacter.reset();
@@ -852,7 +896,7 @@ void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 	m_strStatus = reason + " Returning to Lobby; local gameplay fallback is disabled.";
 	if (!CLevelTransitionService::Request_Load(
 		LEVEL::LOBBY,
-		"character-select.server-disconnect"))
+		pTransitionSource))
 	{
 		m_strStatus += " " + CLevelTransitionService::Get_Status();
 	}
@@ -1454,7 +1498,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		Enter_Stage(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
 	if (ImGui::Button("Back"))
-		Fail_ServerArena("Leaving Server Arena.");
+		Leave_ServerArena();
 	ImGui::EndDisabled();
 
 	ImGui::TextDisabled(
@@ -1933,7 +1977,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		}
 	}
 
-	/* Back: same Fail_ServerArena() the ImGui "Back" button already calls. Not gated by
+	/* Back: same expected Leave_ServerArena() the ImGui "Back" button already calls. Not gated by
 	bInteractable -- an escape hatch should stay clickable through pending/preparing states, only
 	guarded against firing again mid-transition. */
 	{
@@ -1954,7 +1998,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 			if (bHovered && bClicked)
 			{
 				CMainApp::Play_UIButtonClickSound();
-				Fail_ServerArena("Leaving Server Arena.");
+				Leave_ServerArena();
 			}
 		}
 	}

@@ -3409,6 +3409,457 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Resolve all 66 Valtan hit stages and 102 pulses through project-tuned damage profiles");
 	}
 	{
+		CClientSession session{ 90000u, INVALID_SOCKET, {}, {} };
+		session.Record_InboundPacket(PACKET_TYPE::C2S_MOVE);
+		session.Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_RECEIVE_ERROR,
+			WSAECONNRESET,
+			"first terminal cause");
+		session.Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_APPLICATION_CLOSE,
+			WSAEINVAL,
+			"later cleanup must not overwrite");
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC diagnostic =
+			session.Get_CloseDiagnostic();
+		tests.Require(
+			SESSION_DIAGNOSTIC_REASON::SERVER_RECEIVE_ERROR ==
+				diagnostic.eReason &&
+			PACKET_TYPE::C2S_MOVE == diagnostic.eLastInboundPacket &&
+			WSAECONNRESET == diagnostic.iNativeErrorCode &&
+			"first terminal cause" == diagnostic.strContext &&
+			0u != diagnostic.iLastInboundUnixMilliseconds &&
+			diagnostic.iLastInboundUnixMilliseconds ==
+				session.Get_LastInboundUnixMilliseconds() &&
+			0u != diagnostic.iOccurredUnixMilliseconds,
+			"Preserve the first typed session terminal cause across later cleanup");
+	}
+	{
+		auto app = std::make_unique<CServerApp>();
+		auto protocolSession = std::make_shared<CClientSession>(
+			89995u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		auto malformedSession = std::make_shared<CClientSession>(
+			89996u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		auto unknownSession = std::make_shared<CClientSession>(
+			89997u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		app->m_Sessions.emplace(89995u, protocolSession);
+		app->m_Sessions.emplace(89996u, malformedSession);
+		app->m_Sessions.emplace(89997u, unknownSession);
+
+		PACKET_FRAME protocolFrame{};
+		protocolFrame.ePacketType = PACKET_TYPE::C2S_ENTER_WORLD;
+		protocolFrame.Payload = { 0xffu, 0xffu, 1u, 0u };
+		protocolSession->Record_InboundPacket(protocolFrame.ePacketType);
+		app->On_SessionFrame(89995u, protocolFrame);
+
+		PACKET_FRAME malformedFrame{};
+		malformedFrame.ePacketType = PACKET_TYPE::C2S_MOVE;
+		malformedSession->Record_InboundPacket(malformedFrame.ePacketType);
+		app->On_SessionFrame(89996u, malformedFrame);
+
+		PACKET_FRAME unknownFrame{};
+		unknownFrame.ePacketType = static_cast<PACKET_TYPE>(0xffffu);
+		unknownSession->Record_InboundPacket(unknownFrame.ePacketType);
+		app->On_SessionFrame(89997u, unknownFrame);
+
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC protocolDiagnostic =
+			protocolSession->Get_CloseDiagnostic();
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC malformedDiagnostic =
+			malformedSession->Get_CloseDiagnostic();
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC unknownDiagnostic =
+			unknownSession->Get_CloseDiagnostic();
+		tests.Require(
+			SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_MESSAGE_DECODE_FAILED ==
+				protocolDiagnostic.eReason &&
+			WSAEPROTONOSUPPORT == protocolDiagnostic.iNativeErrorCode &&
+			std::string::npos !=
+				protocolDiagnostic.strContext.find("protocol mismatch") &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_MESSAGE_DECODE_FAILED ==
+				malformedDiagnostic.eReason &&
+			WSAEINVAL == malformedDiagnostic.iNativeErrorCode &&
+			std::string::npos != malformedDiagnostic.strContext.find("C2S_MOVE") &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_UNKNOWN_PACKET ==
+				unknownDiagnostic.eReason &&
+			WSAEPROTONOSUPPORT == unknownDiagnostic.iNativeErrorCode,
+			"Classify protocol mismatch, malformed message, and unknown packet separately");
+	}
+	{
+		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		auto missingSkillBindingSession = std::make_shared<CClientSession>(
+			89979u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		auto missingBindingSession = std::make_shared<CClientSession>(
+			89980u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		auto staleSession = std::make_shared<CClientSession>(
+			89981u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		auto nonFiniteSession = std::make_shared<CClientSession>(
+			89982u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		auto outOfRangeSession = std::make_shared<CClientSession>(
+			89983u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		room.m_Sessions.emplace(89979u, missingSkillBindingSession);
+		room.m_Sessions.emplace(89980u, missingBindingSession);
+		room.m_Sessions.emplace(89981u, staleSession);
+		room.m_Sessions.emplace(89982u, nonFiniteSession);
+		room.m_Sessions.emplace(89983u, outOfRangeSession);
+		const auto addPlayer = [&room](
+			const SESSION_ID sessionId,
+			const PLAYER_ID playerId,
+			const std::uint32_t lastMoveSequence)
+			{
+				SERVER_PLAYER player{};
+				player.iSessionId = sessionId;
+				player.iPlayerId = playerId;
+				player.iNetEntityId = playerId;
+				player.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+				player.iLastMoveSequence = lastMoveSequence;
+				player.iCurrentHp = 100u;
+				player.iMaximumHp = 100u;
+				room.m_Players.emplace(playerId, player);
+				room.m_PlayerIdBySessionId.emplace(sessionId, playerId);
+				room.m_PlayerIdByEntityId.emplace(playerId, playerId);
+			};
+		addPlayer(89981u, 89981u, 10u);
+		addPlayer(89982u, 89982u, 0u);
+		addPlayer(89983u, 89983u, 0u);
+
+		C2S_USE_SKILL missingSkillBinding{};
+		missingSkillBinding.iClientSequence = 1u;
+		missingSkillBinding.iSkillId = 34010u;
+		missingSkillBindingSession->Record_InboundPacket(
+			PACKET_TYPE::C2S_USE_SKILL);
+		room.Handle_UseSkill(89979u, missingSkillBinding);
+		C2S_MOVE missingBindingMove{};
+		missingBindingMove.iClientSequence = 1u;
+		missingBindingSession->Record_InboundPacket(PACKET_TYPE::C2S_MOVE);
+		room.Handle_Move(89980u, missingBindingMove);
+		C2S_MOVE staleMove{};
+		staleMove.iClientSequence = 10u;
+		staleSession->Record_InboundPacket(PACKET_TYPE::C2S_MOVE);
+		room.Handle_Move(89981u, staleMove);
+		C2S_MOVE nonFiniteMove{};
+		nonFiniteMove.iClientSequence = 1u;
+		nonFiniteMove.fGoalX =
+			(std::numeric_limits<float>::quiet_NaN)();
+		nonFiniteSession->Record_InboundPacket(PACKET_TYPE::C2S_MOVE);
+		room.Handle_Move(89982u, nonFiniteMove);
+		C2S_MOVE outOfRangeMove{};
+		outOfRangeMove.iClientSequence = 1u;
+		outOfRangeMove.fGoalX = 10001.f;
+		outOfRangeSession->Record_InboundPacket(PACKET_TYPE::C2S_MOVE);
+		room.Handle_Move(89983u, outOfRangeMove);
+
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC missingSkillBindingDiagnostic =
+			missingSkillBindingSession->Get_CloseDiagnostic();
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC missingBindingDiagnostic =
+			missingBindingSession->Get_CloseDiagnostic();
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC staleDiagnostic =
+			staleSession->Get_CloseDiagnostic();
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC nonFiniteDiagnostic =
+			nonFiniteSession->Get_CloseDiagnostic();
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC outOfRangeDiagnostic =
+			outOfRangeSession->Get_CloseDiagnostic();
+		tests.Require(
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED ==
+				missingSkillBindingDiagnostic.eReason &&
+			std::string::npos != missingSkillBindingDiagnostic.strContext.find(
+				"packet=C2S_USE_SKILL validation=missing-player-binding") &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED ==
+				missingBindingDiagnostic.eReason &&
+			WSAENOTCONN == missingBindingDiagnostic.iNativeErrorCode &&
+			std::string::npos != missingBindingDiagnostic.strContext.find(
+				"validation=missing-player-binding") &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_COMMAND_VALIDATION_FAILED ==
+				staleDiagnostic.eReason &&
+			WSAEINVAL == staleDiagnostic.iNativeErrorCode &&
+			std::string::npos != staleDiagnostic.strContext.find(
+				"validation=stale-sequence") &&
+			std::string::npos != staleDiagnostic.strContext.find(
+				"receivedSequence=10 lastSequence=10") &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_COMMAND_VALIDATION_FAILED ==
+				nonFiniteDiagnostic.eReason &&
+			std::string::npos != nonFiniteDiagnostic.strContext.find(
+				"validation=non-finite-goal") &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_COMMAND_VALIDATION_FAILED ==
+				outOfRangeDiagnostic.eReason &&
+			std::string::npos != outOfRangeDiagnostic.strContext.find(
+				"validation=out-of-range-goal") &&
+			PACKET_TYPE::C2S_MOVE == staleDiagnostic.eLastInboundPacket,
+			"Classify decoded C2S_MOVE binding and command validation failures exactly");
+	}
+	{
+		CServerApp app;
+		auto simulation = std::make_shared<CGameRoom>(
+			WORLD_ID::TRAINING_GROUND);
+		app.m_SharedGameRooms.emplace(WORLD_ID::TRAINING_GROUND, simulation);
+		app.m_pActiveGameplayGeneration =
+			simulation->Get_ActiveGameplayGeneration();
+		constexpr SESSION_ID cleanupFirstSessionId = 89984u;
+		auto cleanupFirstSession = std::make_shared<CClientSession>(
+			cleanupFirstSessionId, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		app.m_Sessions.emplace(cleanupFirstSessionId, cleanupFirstSession);
+		ROOM_COMMAND cleanupFirst{};
+		cleanupFirst.eType = ROOM_COMMAND_TYPE::LEAVE;
+		cleanupFirst.iSessionId = cleanupFirstSessionId;
+		cleanupFirst.eLeaveReason = PLAYER_DESPAWN_REASON::DISCONNECTED;
+		const bool cleanupQueued =
+			simulation->Enqueue(std::move(cleanupFirst));
+		C2S_ENTER_WORLD enterWorld{};
+		enterWorld.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		enterWorld.eWorldId = WORLD_ID::TRAINING_GROUND;
+		enterWorld.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		enterWorld.strNickName = "CleanupFirstFixture";
+		SESSION_DIAGNOSTIC_REASON cleanupFirstReason =
+			SESSION_DIAGNOSTIC_REASON::NONE;
+		int cleanupFirstNativeError = 0;
+		std::string cleanupFirstContext;
+		const bool entryRejectedBehindCleanup =
+			!app.Bind_AndEnqueueEntry(
+				cleanupFirstSessionId,
+				WORLD_ID::TRAINING_GROUND,
+				simulation,
+				enterWorld,
+				cleanupFirstReason,
+				cleanupFirstNativeError,
+				cleanupFirstContext);
+		const bool noEntryCommittedBehindCleanup =
+			!app.m_GameplayBindingBySessionId.contains(cleanupFirstSessionId) &&
+			simulation->m_InboundCommands.empty() &&
+			1u == simulation->m_CleanupCommands.size();
+		simulation->Tick(1.f / 30.f);
+
+		constexpr SESSION_ID alreadyClosingSessionId = 89985u;
+		auto alreadyClosingSession = std::make_shared<CClientSession>(
+			alreadyClosingSessionId, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		alreadyClosingSession->Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_PEER_CLOSED,
+			0,
+			"entry race fixture closed first");
+		app.m_Sessions.emplace(alreadyClosingSessionId, alreadyClosingSession);
+		enterWorld.strNickName = "AlreadyClosingFixture";
+		SESSION_DIAGNOSTIC_REASON alreadyClosingReason =
+			SESSION_DIAGNOSTIC_REASON::NONE;
+		int alreadyClosingNativeError = 0;
+		std::string alreadyClosingContext;
+		const bool terminalRecheckRejectedEntry =
+			!app.Bind_AndEnqueueEntry(
+				alreadyClosingSessionId,
+				WORLD_ID::TRAINING_GROUND,
+				simulation,
+				enterWorld,
+				alreadyClosingReason,
+				alreadyClosingNativeError,
+				alreadyClosingContext);
+		tests.Require(
+			cleanupQueued && entryRejectedBehindCleanup &&
+			noEntryCommittedBehindCleanup &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW ==
+				cleanupFirstReason &&
+			WSAENOBUFS == cleanupFirstNativeError &&
+			std::string::npos != cleanupFirstContext.find(
+				"stage=register-ingress") &&
+			simulation->m_CleanupCommands.empty() &&
+			simulation->m_QueuedCleanupSessionIds.empty() &&
+			terminalRecheckRejectedEntry &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED ==
+				alreadyClosingReason &&
+			WSAESHUTDOWN == alreadyClosingNativeError &&
+			std::string::npos != alreadyClosingContext.find(
+				"stage=terminal-recheck") &&
+			!app.m_GameplayBindingBySessionId.contains(
+				alreadyClosingSessionId) &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_PEER_CLOSED ==
+				alreadyClosingSession->Get_CloseDiagnostic().eReason,
+			"Reject REGISTER and ENTER behind queued or terminal session cleanup");
+	}
+	{
+		std::array<wchar_t, 32768u> modulePath{};
+		const DWORD moduleLength = ::GetModuleFileNameW(
+			nullptr, modulePath.data(), static_cast<DWORD>(modulePath.size()));
+		const std::filesystem::path diagnosticPath =
+			0u == moduleLength || moduleLength >= modulePath.size() ?
+			std::filesystem::path{} :
+			std::filesystem::path{ modulePath.data() }.parent_path() /
+				L"Diagnostics" /
+				(L"server-session-" +
+					std::to_wstring(::GetCurrentProcessId()) + L".jsonl");
+		std::error_code removeError;
+		if (!diagnosticPath.empty())
+			std::filesystem::remove(diagnosticPath, removeError);
+
+		auto app = std::make_unique<CServerApp>();
+		auto session = std::make_shared<CClientSession>(
+			89994u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		constexpr PLAYER_ID diagnosticPlayerId = 90094u;
+		constexpr NET_ENTITY_ID diagnosticEntityId = 90194u;
+		session->Bind_PlayerId(diagnosticPlayerId);
+		session->Record_InboundPacket(PACKET_TYPE::C2S_MOVE);
+		session->Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_RECEIVE_ERROR,
+			WSAECONNRESET,
+			"JSON schema contract fixture");
+		auto simulation = std::make_shared<CGameRoom>(
+			WORLD_ID::TRAINING_GROUND);
+		SERVER_PLAYER diagnosticPlayer{};
+		diagnosticPlayer.iSessionId = 89994u;
+		diagnosticPlayer.iPlayerId = diagnosticPlayerId;
+		diagnosticPlayer.iNetEntityId = diagnosticEntityId;
+		diagnosticPlayer.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		diagnosticPlayer.iCurrentHp = 100u;
+		diagnosticPlayer.iMaximumHp = 100u;
+		simulation->m_Sessions.emplace(89994u, session);
+		simulation->m_Players.emplace(diagnosticPlayerId, diagnosticPlayer);
+		simulation->m_PlayerIdBySessionId.emplace(
+			89994u, diagnosticPlayerId);
+		simulation->m_PlayerIdByEntityId.emplace(
+			diagnosticEntityId, diagnosticPlayerId);
+		CServerApp::SESSION_GAMEPLAY_BINDING binding{};
+		binding.eWorldId = WORLD_ID::TRAINING_GROUND;
+		binding.pSimulation = simulation;
+		app->m_Sessions.emplace(89994u, session);
+		app->m_GameplayBindingBySessionId.emplace(89994u, binding);
+		app->On_SessionClosed(89994u);
+		const bool cleanupGuaranteedForBoundClose =
+			!app->m_GameplayBindingBySessionId.contains(89994u) &&
+			1u == simulation->m_CleanupCommands.size() &&
+			1u == simulation->m_QueuedCleanupSessionIds.size();
+
+		std::string jsonLine;
+		if (!diagnosticPath.empty())
+		{
+			std::ifstream log{ diagnosticPath, std::ios::binary };
+			(void)std::getline(log, jsonLine);
+		}
+		std::string jsonStatus;
+		const bool parsed = CServerApp::Validate_ServerSessionDiagnosticJson(
+			jsonLine, jsonStatus);
+		const bool schemaExact = std::string::npos != jsonLine.find(
+			"\"schema\":\"lostark.server-session-diagnostic\"") &&
+			std::string::npos != jsonLine.find("\"formatVersion\":1") &&
+			std::string::npos == jsonLine.find("\"schemaVersion\"") &&
+			std::string::npos != jsonLine.find("\"wasBound\":true") &&
+			std::string::npos != jsonLine.find("\"leaveEnqueued\":true");
+		simulation->Tick(1.f / 30.f);
+		const bool cleanupReleasedBoundPlayer =
+			simulation->m_CleanupCommands.empty() &&
+			simulation->m_QueuedCleanupSessionIds.empty() &&
+			!simulation->m_Sessions.contains(89994u) &&
+			!simulation->m_Players.contains(diagnosticPlayerId) &&
+			!simulation->m_PlayerIdBySessionId.contains(89994u) &&
+			!simulation->m_PlayerIdByEntityId.contains(diagnosticEntityId) &&
+			INVALID_PLAYER_ID == session->Get_PlayerId();
+		if (!diagnosticPath.empty())
+			std::filesystem::remove(diagnosticPath, removeError);
+		tests.Require(
+			!diagnosticPath.empty() && parsed && schemaExact &&
+			jsonStatus.empty() && cleanupGuaranteedForBoundClose &&
+			cleanupReleasedBoundPlayer,
+			"Write the versioned diagnostic and guarantee cleanup for a bound close");
+	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET;
+		SOCKET peerSocket = INVALID_SOCKET;
+		const bool socketReady = winSock.Initialize() &&
+			Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		std::atomic_uint32_t closedCount{ 0u };
+		std::unique_ptr<CClientSession> session;
+		if (socketReady)
+		{
+			session = std::make_unique<CClientSession>(
+				89998u,
+				sessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&closedCount](const SESSION_ID) { ++closedCount; });
+			sessionSocket = INVALID_SOCKET;
+		}
+		const bool started = socketReady && session->Start();
+		CLIENT_SESSION_PEER_ENDPOINT peerEndpoint{};
+		if (started)
+		{
+			peerEndpoint = session->Get_PeerEndpoint();
+			Close_TestSocket(peerSocket);
+			(void)Wait_Until(
+				std::chrono::milliseconds(1500),
+				[&closedCount]() { return 1u == closedCount.load(); });
+		}
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC diagnostic =
+			nullptr == session ? CLIENT_SESSION_CLOSE_DIAGNOSTIC{} :
+			session->Get_CloseDiagnostic();
+		if (session)
+			session->Stop();
+		session.reset();
+		Close_TestSocket(sessionSocket);
+		Close_TestSocket(peerSocket);
+		tests.Require(
+			started && 1u == closedCount.load() &&
+			"127.0.0.1" == peerEndpoint.strAddress &&
+			0u != peerEndpoint.iPort &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_PEER_CLOSED ==
+				diagnostic.eReason &&
+			0 == diagnostic.iNativeErrorCode,
+			"Capture immutable peer endpoint and an orderly peer-close reason");
+	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET;
+		SOCKET peerSocket = INVALID_SOCKET;
+		const bool socketReady = winSock.Initialize() &&
+			Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		std::atomic_uint32_t closedCount{ 0u };
+		std::unique_ptr<CClientSession> session;
+		if (socketReady)
+		{
+			session = std::make_unique<CClientSession>(
+				89999u,
+				sessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&closedCount](const SESSION_ID) { ++closedCount; });
+			sessionSocket = INVALID_SOCKET;
+		}
+		const bool started = socketReady && session->Start();
+		bool invalidFrameSent = false;
+		if (started)
+		{
+			const std::array<std::uint8_t, PACKET_HEADER_BYTES> invalidFrame
+			{
+				5u, 0u, 0u, 0u,
+				static_cast<std::uint8_t>(PACKET_TYPE::C2S_ENTER_WORLD), 0u
+			};
+			invalidFrameSent = static_cast<int>(invalidFrame.size()) == ::send(
+				peerSocket,
+				reinterpret_cast<const char*>(invalidFrame.data()),
+				static_cast<int>(invalidFrame.size()),
+				0);
+			(void)Wait_Until(
+				std::chrono::milliseconds(1500),
+				[&closedCount]() { return 1u == closedCount.load(); });
+		}
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC diagnostic =
+			nullptr == session ? CLIENT_SESSION_CLOSE_DIAGNOSTIC{} :
+			session->Get_CloseDiagnostic();
+		if (session)
+			session->Stop();
+		session.reset();
+		Close_TestSocket(sessionSocket);
+		Close_TestSocket(peerSocket);
+		tests.Require(
+			started && invalidFrameSent && 1u == closedCount.load() &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_INVALID_FRAME ==
+				diagnostic.eReason &&
+			WSAEPROTONOSUPPORT == diagnostic.iNativeErrorCode &&
+			PACKET_TYPE::INVALID == diagnostic.eLastInboundPacket,
+			"Classify an invalid TCP frame before closing only its session");
+	}
+	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
 		session.m_isSendRunning.store(true);
 		const auto firstSnapshot = session.Queue_OutboundFrame(
@@ -3483,6 +3934,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			!session.Send_Frame(PACKET_TYPE::S2C_CHAT, payload) &&
 			!session.m_isSendRunning.load() &&
 			session.m_OutboundFrames.empty();
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC closeDiagnostic =
+			session.Get_CloseDiagnostic();
 		const CLIENT_SESSION_OUTBOUND_METRICS metrics =
 			session.Get_OutboundMetrics();
 		tests.Require(
@@ -3492,6 +3945,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			CClientSession::OUTBOUND_ENQUEUE_RESULT::RELIABLE_OVERFLOW ==
 				overflow &&
 			queuePreservedOnOverflow && publicOverflowFailedClosed &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_RELIABLE_OUTBOUND_OVERFLOW ==
+				closeDiagnostic.eReason &&
+			WSAENOBUFS == closeDiagnostic.iNativeErrorCode &&
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT ==
+				closeDiagnostic.iQueuedFrameCountAtClose &&
 			1u == metrics.iSnapshotDroppedFrameCount &&
 			2u == metrics.iReliableRejectedFrameCount &&
 			CClientSession::MAX_OUTBOUND_FRAME_COUNT ==
@@ -3665,6 +4123,79 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		CWinSockContext winSock;
 		SOCKET sessionSocket = INVALID_SOCKET;
 		SOCKET peerSocket = INVALID_SOCKET;
+		bool socketReady = winSock.Initialize() &&
+			Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		if (socketReady)
+		{
+			const int smallBufferBytes = 1024;
+			socketReady = SOCKET_ERROR != ::setsockopt(
+				sessionSocket, SOL_SOCKET, SO_SNDBUF,
+				reinterpret_cast<const char*>(&smallBufferBytes),
+				static_cast<int>(sizeof(smallBufferBytes))) &&
+				SOCKET_ERROR != ::setsockopt(
+					peerSocket, SOL_SOCKET, SO_RCVBUF,
+					reinterpret_cast<const char*>(&smallBufferBytes),
+					static_cast<int>(sizeof(smallBufferBytes)));
+		}
+		std::unique_ptr<CClientSession> session;
+		bool sendTimeoutConfigured = false;
+		if (socketReady)
+		{
+			session = std::make_unique<CClientSession>(
+				90008u,
+				sessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				CClientSession::CLOSED_HANDLER{});
+			sessionSocket = INVALID_SOCKET;
+			sendTimeoutConfigured = session->Configure_SendTimeout();
+		}
+
+		bool slowReaderTimedOut = false;
+		bool shutdownWasBounded = false;
+		if (sendTimeoutConfigured)
+		{
+			session->m_isSendRunning.store(true);
+			std::vector<std::uint8_t> bytes(
+				static_cast<std::size_t>(MAX_PACKET_BYTES), 0x5au);
+			bool sendFailed = false;
+			for (std::uint32_t index = 0u; index < 64u; ++index)
+			{
+				bytes.front() = static_cast<std::uint8_t>(index);
+				if (!session->Send_All(bytes))
+				{
+					sendFailed = true;
+					break;
+				}
+			}
+			const CLIENT_SESSION_CLOSE_DIAGNOSTIC diagnostic =
+				session->Get_CloseDiagnostic();
+			slowReaderTimedOut = sendFailed &&
+				SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT ==
+					diagnostic.eReason &&
+				0 != diagnostic.iNativeErrorCode;
+			const auto shutdownStart = std::chrono::steady_clock::now();
+			session->Stop();
+			shutdownWasBounded =
+				std::chrono::steady_clock::now() - shutdownStart <
+				std::chrono::milliseconds(3000);
+		}
+		else if (session)
+		{
+			session->Stop();
+		}
+
+		session.reset();
+		Close_TestSocket(sessionSocket);
+		Close_TestSocket(peerSocket);
+		tests.Require(
+			socketReady && sendTimeoutConfigured && slowReaderTimedOut &&
+			shutdownWasBounded,
+			"Classify a non-draining peer as an isolated bounded send timeout");
+	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET;
+		SOCKET peerSocket = INVALID_SOCKET;
 		const bool socketReady = winSock.Initialize() &&
 			Create_LoopbackSocketPair(sessionSocket, peerSocket);
 		std::atomic_uint32_t closedCount{ 0u };
@@ -3789,6 +4320,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 
 		bool sendFailureWasIsolated = false;
+		bool sendFailureWasClassified = false;
 		bool shutdownWasBounded = false;
 		if (senderStarted)
 		{
@@ -3804,6 +4336,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					1u == closedCount.load() &&
 					!session->m_isSendRunning.load();
 				});
+			const CLIENT_SESSION_CLOSE_DIAGNOSTIC diagnostic =
+				session->Get_CloseDiagnostic();
+			sendFailureWasClassified =
+				SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT ==
+					diagnostic.eReason &&
+				0 != diagnostic.iNativeErrorCode &&
+				!diagnostic.strContext.empty();
 			const auto shutdownStart = std::chrono::steady_clock::now();
 			session->Stop();
 			shutdownWasBounded =
@@ -3820,6 +4359,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		Close_TestSocket(peerSocket);
 		tests.Require(
 			socketReady && senderStarted && sendFailureWasIsolated &&
+			sendFailureWasClassified &&
 			shutdownWasBounded && 1u == closedCount.load(),
 			"Isolate a sender socket failure to its session and notify close exactly once");
 	}
@@ -3941,38 +4481,144 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			CGameRoom::MAX_RELIABLE_COMMAND_COUNT ==
 				room.m_InboundCommands.size();
 
-		bool admittedCleanupReserve = true;
-		while (room.m_InboundCommands.size() <
-			CGameRoom::MAX_INBOUND_COMMAND_COUNT)
-		{
-			ROOM_COMMAND command{};
-			command.eType = ROOM_COMMAND_TYPE::LEAVE;
-			command.iSessionId = static_cast<SESSION_ID>(
-				room.m_InboundCommands.size() + 20000u);
-			const bool accepted = room.Enqueue(std::move(command));
-			admittedCleanupReserve = admittedCleanupReserve && accepted;
-			if (!accepted)
-				break;
-		}
-		ROOM_COMMAND rejectedCleanup{};
-		rejectedCleanup.eType = ROOM_COMMAND_TYPE::LEAVE;
-		rejectedCleanup.iSessionId = 40000u;
-		const bool cleanupRejectedAtHardCap =
-			!room.Enqueue(std::move(rejectedCleanup)) &&
-			CGameRoom::MAX_INBOUND_COMMAND_COUNT ==
-				room.m_InboundCommands.size();
+		SERVER_PLAYER cleanupPlayer{};
+		cleanupPlayer.iSessionId = 40000u;
+		cleanupPlayer.iPlayerId = 40000u;
+		cleanupPlayer.iNetEntityId = 40000u;
+		cleanupPlayer.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		cleanupPlayer.iCurrentHp = 100u;
+		cleanupPlayer.iMaximumHp = 100u;
+		room.m_Players.emplace(cleanupPlayer.iPlayerId, cleanupPlayer);
+		room.m_PlayerIdBySessionId.emplace(
+			cleanupPlayer.iSessionId, cleanupPlayer.iPlayerId);
+		room.m_PlayerIdByEntityId.emplace(
+			cleanupPlayer.iNetEntityId, cleanupPlayer.iPlayerId);
+
+		ROOM_COMMAND cleanup{};
+		cleanup.eType = ROOM_COMMAND_TYPE::LEAVE;
+		cleanup.iSessionId = cleanupPlayer.iSessionId;
+		cleanup.eLeaveReason = PLAYER_DESPAWN_REASON::DISCONNECTED;
+		const bool cleanupAcceptedAtReliableHardCap =
+			room.Enqueue(std::move(cleanup));
+		ROOM_COMMAND duplicateCleanup{};
+		duplicateCleanup.eType = ROOM_COMMAND_TYPE::LEAVE;
+		duplicateCleanup.iSessionId = cleanupPlayer.iSessionId;
+		duplicateCleanup.eLeaveReason = PLAYER_DESPAWN_REASON::LEVEL_CHANGED;
+		const bool duplicateCleanupDeduplicated =
+			room.Enqueue(std::move(duplicateCleanup));
+		const bool cleanupWasSeparated =
+			CGameRoom::MAX_RELIABLE_COMMAND_COUNT ==
+				room.m_InboundCommands.size() &&
+			1u == room.m_CleanupCommands.size() &&
+			1u == room.m_QueuedCleanupSessionIds.size();
+		room.Tick(1.f / 30.f);
 		const SERVER_ROOM_PERFORMANCE_METRICS metrics =
 			room.Get_PerformanceMetrics();
+		const bool cleanupDrainedBeforeBoundedIngress =
+			!room.m_Players.contains(cleanupPlayer.iPlayerId) &&
+			!room.m_PlayerIdBySessionId.contains(cleanupPlayer.iSessionId) &&
+			!room.m_PlayerIdByEntityId.contains(cleanupPlayer.iNetEntityId) &&
+			room.m_CleanupCommands.empty() &&
+			room.m_QueuedCleanupSessionIds.empty() &&
+			CGameRoom::MAX_RELIABLE_COMMAND_COUNT -
+				CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK ==
+				room.m_InboundCommands.size();
 		tests.Require(
 			admittedBestEffort && bestEffortDropWasNonFatal &&
 			admittedReliableReserve && reliableRejectedWithoutMutation &&
-			admittedCleanupReserve && cleanupRejectedAtHardCap &&
+			cleanupAcceptedAtReliableHardCap &&
+			duplicateCleanupDeduplicated && cleanupWasSeparated &&
+			cleanupDrainedBeforeBoundedIngress &&
 			1u == metrics.iDroppedBestEffortCommandCount &&
 			1u == metrics.iRejectedReliableCommandCount &&
-			1u == metrics.iRejectedCleanupCommandCount &&
-			CGameRoom::MAX_INBOUND_COMMAND_COUNT ==
+			0u == metrics.iRejectedCleanupCommandCount &&
+			1u == metrics.iDeduplicatedCleanupCommandCount &&
+			1u == metrics.iCleanupIngressHighWatermark &&
+			1u == metrics.iLastCleanupIngressDepth &&
+			1u == metrics.iLastDrainedCleanupCommandCount &&
+			0u == metrics.iLastRemainingCleanupCommandCount &&
+			CGameRoom::MAX_RELIABLE_COMMAND_COUNT ==
 				metrics.iIngressHighWatermark,
-			"Bound ingress, reserve reliable and cleanup capacity, and preserve the queue on overflow");
+			"Keep reliable ingress bounded while accepting, deduplicating, and priority-draining cleanup at hard cap");
+	}
+	{
+		CServerApp app;
+		auto sourceSimulation = std::make_shared<CGameRoom>(WORLD_ID::BERN);
+		auto targetSimulation =
+			std::make_shared<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		constexpr SESSION_ID transferSessionId = 41000u;
+		auto session = std::make_shared<CClientSession>(
+			transferSessionId, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		app.m_Sessions.emplace(transferSessionId, session);
+		app.m_SharedGameRooms.emplace(WORLD_ID::BERN, sourceSimulation);
+		app.m_SharedGameRooms.emplace(WORLD_ID::VALTAN_ARENA, targetSimulation);
+		CServerApp::SESSION_GAMEPLAY_BINDING binding{};
+		binding.eWorldId = WORLD_ID::BERN;
+		binding.pSimulation = sourceSimulation;
+		app.m_GameplayBindingBySessionId.emplace(transferSessionId, binding);
+
+		bool filledTargetIngress = targetSimulation->Is_Ready();
+		for (std::size_t index = 0u;
+			index + 1u < CGameRoom::MAX_RELIABLE_COMMAND_COUNT; ++index)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+			command.iSessionId = static_cast<SESSION_ID>(50000u + index);
+			command.UseSkill.iClientSequence = 1u;
+			command.UseSkill.iSkillId = 34010u;
+			filledTargetIngress = filledTargetIngress &&
+				targetSimulation->Enqueue(std::move(command));
+		}
+		SERVER_WORLD_TRANSFER_REQUEST transfer{};
+		transfer.iSessionId = transferSessionId;
+		transfer.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+		transfer.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		transfer.strNickName = "TransferRollbackFixture";
+		sourceSimulation->m_PendingWorldTransfers.push_back(transfer);
+		app.Handle_WorldTransfers(sourceSimulation);
+
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC diagnostic =
+			session->Get_CloseDiagnostic();
+		const bool rollbackGuaranteed =
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW ==
+				diagnostic.eReason &&
+			WSAENOBUFS == diagnostic.iNativeErrorCode &&
+			std::string::npos != diagnostic.strContext.find(
+				"stage=target-enter-ingress") &&
+			std::string::npos != diagnostic.strContext.find(
+				"rollbackCleanupRequired=true") &&
+			std::string::npos != diagnostic.strContext.find(
+				"rollbackCleanupEnqueued=true") &&
+			1u == targetSimulation->m_CleanupCommands.size() &&
+			transferSessionId ==
+				targetSimulation->m_CleanupCommands.front().iSessionId &&
+			PLAYER_DESPAWN_REASON::LEVEL_CHANGED ==
+				targetSimulation->m_CleanupCommands.front().eLeaveReason &&
+			std::none_of(
+				targetSimulation->m_InboundCommands.begin(),
+				targetSimulation->m_InboundCommands.end(),
+				[](const ROOM_COMMAND& command)
+				{
+					return transferSessionId == command.iSessionId;
+				});
+		ROOM_COMMAND commandAfterCleanup{};
+		commandAfterCleanup.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+		commandAfterCleanup.iSessionId = transferSessionId;
+		commandAfterCleanup.UseSkill.iClientSequence = 2u;
+		commandAfterCleanup.UseSkill.iSkillId = 34010u;
+		const bool commandRejectedBehindCleanup =
+			!targetSimulation->Enqueue(std::move(commandAfterCleanup));
+		targetSimulation->Tick(1.f / 30.f);
+		tests.Require(
+			filledTargetIngress && rollbackGuaranteed &&
+			commandRejectedBehindCleanup &&
+			targetSimulation->m_CleanupCommands.empty() &&
+			targetSimulation->m_QueuedCleanupSessionIds.empty() &&
+			app.m_GameplayBindingBySessionId.contains(transferSessionId) &&
+			app.m_GameplayBindingBySessionId.at(transferSessionId).pSimulation ==
+				sourceSimulation,
+			"Classify transfer ingress failure and guarantee target rollback cleanup");
 	}
 	{
 		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
@@ -11769,6 +12415,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					*playerSpawns[index]);
 			}
 		}
+		std::vector<std::shared_ptr<CClientSession>> registeredSessions;
+		for (SESSION_ID sessionId = 1001u; sessionId <= 1005u; ++sessionId)
+		{
+			auto session = std::make_shared<CClientSession>(
+				sessionId, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			session->m_isSendRunning.store(true);
+			raidRoom.Handle_Register(session);
+			registeredSessions.push_back(std::move(session));
+		}
 		const PLAYER_ID allocatorBeforeFull = raidRoom.m_iNextPlayerId;
 		const NET_ENTITY_ID entityAllocatorBeforeFull = raidRoom.m_iNextNetEntityId;
 		const std::size_t playersBeforeFull = raidRoom.m_Players.size();
@@ -11776,16 +12432,47 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.m_PlayerIdBySessionId.size();
 		const std::size_t entityOwnersBeforeFull =
 			raidRoom.m_PlayerIdByEntityId.size();
+		C2S_ENTER_WORLD fifthEntry{};
+		fifthEntry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		fifthEntry.eWorldId = WORLD_ID::VALTAN_ARENA;
+		fifthEntry.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		fifthEntry.strNickName = "FifthRaidFixture";
+		const bool fifthRejected = !raidRoom.Join(1005u, fifthEntry);
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC fifthDiagnostic =
+			registeredSessions.back()->Get_CloseDiagnostic();
 		tests.Require(
 			raidRoom.Is_Ready() && 4u == playerSpawns.size() &&
 			raidRoom.Is_PlayerAdmissionFull() &&
 			nullptr == raidRoom.Find_AvailablePlayerSpawn() &&
+			fifthRejected &&
+			SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL ==
+				fifthDiagnostic.eReason &&
+			std::string::npos !=
+				fifthDiagnostic.strContext.find("activePlayers=4") &&
+			std::string::npos !=
+				fifthDiagnostic.strContext.find(
+					"registeredSessionsIncludingCandidate=5") &&
+			std::string::npos !=
+				fifthDiagnostic.strContext.find("candidateSessionId=1005") &&
+			std::string::npos !=
+				fifthDiagnostic.strContext.find("candidateRegistered=true") &&
+			std::string::npos !=
+				fifthDiagnostic.strContext.find("enabledPlayerSpawns=4") &&
+			std::string::npos !=
+				fifthDiagnostic.strContext.find("sessionId=1001") &&
+			std::string::npos !=
+				fifthDiagnostic.strContext.find("playerId=2001") &&
+			std::string::npos !=
+				fifthDiagnostic.strContext.find("peer=unknown:0") &&
+			fifthDiagnostic.strContext.size() <= 1024u &&
 			allocatorBeforeFull == raidRoom.m_iNextPlayerId &&
 			entityAllocatorBeforeFull == raidRoom.m_iNextNetEntityId &&
 			playersBeforeFull == raidRoom.m_Players.size() &&
 			sessionOwnersBeforeFull == raidRoom.m_PlayerIdBySessionId.size() &&
 			entityOwnersBeforeFull == raidRoom.m_PlayerIdByEntityId.size(),
 			"Reject a fifth Valtan admission as room full without mutating room ownership or allocators");
+		registeredSessions.back()->Request_Close();
+		raidRoom.m_Sessions.erase(1005u);
 
 		const std::string releasedSpawnId =
 			playerSpawns.size() < 2u ? std::string{} :
