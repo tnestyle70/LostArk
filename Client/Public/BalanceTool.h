@@ -6,20 +6,19 @@
 #include "ValtanPatternTree.h"
 
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Client)
 
-class IPlayerCommandSink;
 class DATA_JSON_VALUE;
 
 class CBalanceTool final
 {
 public:
-	explicit CBalanceTool(std::shared_ptr<IPlayerCommandSink> commandSink);
+	CBalanceTool();
+	void Open();
 	void Render();
 	/* Loads the tracked authoring documents and exercises the same serializer
 	used by Save without touching disk or launching the publisher. */
@@ -323,9 +322,8 @@ private:
 	bool m_dirty = false;
 	bool m_reloadConfirmationOpen = false;
 	bool m_open = true;
+	bool m_focusPending = false;
 	std::string m_status;
-	std::shared_ptr<IPlayerCommandSink> m_commandSink;
-	std::uint32_t m_reviveSequence = 0u;
 	std::uint32_t m_valtanRevisionTransactionSequence = 0u;
 	std::uint32_t m_valtanDecisionTraceRequestSequence = 0u;
 	std::uint32_t m_valtanDecisionLastQueryServerTick = 0u;

@@ -271,6 +271,7 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 }
 
 void Client::CCombatHUDViewModel::Apply_Boss(
+	const std::uint32_t serverTick,
 	const std::string& archetypeId,
 	const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& snapshot)
 {
@@ -292,11 +293,14 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	m_Boss.iMaximumStagger = snapshot.BossCombat.iMaximumStagger;
 	m_Boss.iCurrentShield = snapshot.BossCombat.iCurrentShield;
 	m_Boss.iMaximumShield = snapshot.BossCombat.iMaximumShield;
+	m_Boss.iServerTick = serverTick;
 	m_Boss.eAction = snapshot.eAction;
 	m_Boss.strActionId = snapshot.strActionId;
 	m_Boss.strPatternId = snapshot.strPatternId;
 	m_Boss.iPatternSequence = snapshot.iPatternSequence;
 	m_Boss.iPatternStageIndex = snapshot.iPatternStageIndex;
+	m_Boss.iActionStartTick = snapshot.iActionStartTick;
+	m_Boss.PinnedDefinitionRevision = snapshot.PinnedDefinitionRevision;
 }
 
 void Client::CCombatHUDViewModel::Debug_Set_Boss_Preview(const bool enable)
@@ -323,11 +327,14 @@ void Client::CCombatHUDViewModel::Debug_Set_Boss_Preview(const bool enable)
 	m_Boss.iMaximumStagger = 1000u;
 	m_Boss.iCurrentShield = 0u;
 	m_Boss.iMaximumShield = 0u;
+	m_Boss.iServerTick = 0u;
 	m_Boss.eAction = LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;
 	m_Boss.strActionId.clear();
 	m_Boss.strPatternId.clear();
 	m_Boss.iPatternSequence = 0u;
 	m_Boss.iPatternStageIndex = 0u;
+	m_Boss.iActionStartTick = 0u;
+	m_Boss.PinnedDefinitionRevision = {};
 }
 
 void Client::CCombatHUDViewModel::Debug_Set_Esther_Preview(const bool enable)

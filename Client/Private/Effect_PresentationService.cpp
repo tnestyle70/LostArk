@@ -60,10 +60,36 @@ namespace
 	constexpr f32_t SOURCE_BONE_AFFINE_TOLERANCE = 0.00001f;
 	constexpr f32_t SOURCE_BONE_MINIMUM_BASIS_LENGTH = 0.00000001f;
 	constexpr f32_t SOURCE_BONE_MINIMUM_NORMALIZED_DETERMINANT = 0.0001f;
-	constexpr f32_t CUE_OWNER_UNIFORM_SCALE_TOLERANCE = 0.0001f;
+	/* GAMEPLAY_FOOTPRINT removes the owner's presentation scale, but it must
+	   only absorb the sub-percent drift observed on the live Valtan root.  A
+	   genuinely anisotropic owner transform is still an invalid cue anchor. */
+	constexpr f32_t CUE_OWNER_MAXIMUM_SCALE_DRIFT_RATIO = 0.005f;
 	constexpr f32_t CUE_OWNER_ORTHOGONAL_TOLERANCE = 0.001f;
 	constexpr f32_t CUE_OWNER_MINIMUM_SIGNED_DETERMINANT = 0.999f;
 	constexpr f32_t CUE_MAXIMUM_AUTHORED_WORLD_SCALE = 1000.f;
+
+	constexpr bool_t Is_CueOwnerScaleDriftWithinLimit(
+		const f32_t fScaleX,
+		const f32_t fScaleY,
+		const f32_t fScaleZ)
+	{
+		const f32_t fMaximumScale = (std::max)(
+			fScaleX, (std::max)(fScaleY, fScaleZ));
+		const f32_t fMinimumScale = (std::min)(
+			fScaleX, (std::min)(fScaleY, fScaleZ));
+		return 0.f < fMaximumScale &&
+			fMaximumScale - fMinimumScale <=
+				fMaximumScale * CUE_OWNER_MAXIMUM_SCALE_DRIFT_RATIO;
+	}
+
+	static_assert(Is_CueOwnerScaleDriftWithinLimit(
+		0.997025f, 1.f, 0.997025f));
+	static_assert(Is_CueOwnerScaleDriftWithinLimit(
+		0.99501f, 1.f, 1.f));
+	static_assert(!Is_CueOwnerScaleDriftWithinLimit(
+		0.99499f, 1.f, 1.f));
+	static_assert(!Is_CueOwnerScaleDriftWithinLimit(
+		0.99f, 1.f, 1.f));
 
     struct SOURCE_ANCHOR_REQUEST final
     {
@@ -97,10 +123,15 @@ namespace
 	{
 		std::shared_ptr<Client::CCharacter> pCharacter;
 		std::shared_ptr<Client::CValtan> pBoss;
+		uint32_t iLevelIndex = ETOUI(Client::LEVEL::END);
 
 		bool_t Is_Valid() const
 		{
-			return (nullptr != pCharacter) != (nullptr != pBoss);
+			const uint32_t ownerCount =
+				(nullptr != pCharacter ? 1u : 0u) +
+				(nullptr != pBoss ? 1u : 0u) +
+				(iLevelIndex < ETOUI(Client::LEVEL::END) ? 1u : 0u);
+			return 1u == ownerCount;
 		}
 
 		bool_t Try_Get_PresentationRoot(float4x4_t& Out) const
@@ -159,24 +190,34 @@ namespace
 		Client::EFFECT_SCENE_BUDGET_COST AdmissionCost;
 		uint64_t iWorldRootHandle = 0u;
 		float4x4_t WorldRoot{};
+		bool_t bLevelOwned = false;
+		bool_t bExternallySampled = false;
+		std::string strLevelPlacementId;
     };
 
 	EFFECT_OWNER_VIEW Resolve_Owner(
 		const Client::EFFECT_SPAWN_DESC& Desc)
 	{
-		return { Desc.pOwner.lock(), Desc.pBossOwner.lock() };
+		return {
+			Desc.pOwner.lock(), Desc.pBossOwner.lock(),
+			Desc.bLevelOwned ? Desc.iLevelOwnerIndex : ETOUI(Client::LEVEL::END)
+		};
 	}
 
 	EFFECT_OWNER_VIEW Resolve_Owner(const ACTIVE_EFFECT& Effect)
 	{
-		return { Effect.pOwner.lock(), Effect.pBossOwner.lock() };
+		return {
+			Effect.pOwner.lock(), Effect.pBossOwner.lock(),
+			Effect.bLevelOwned ? Effect.iLevelIndex : ETOUI(Client::LEVEL::END)
+		};
 	}
 
 	bool_t Same_Owner(
 		const EFFECT_OWNER_VIEW& Left,
 		const EFFECT_OWNER_VIEW& Right)
 	{
-		return Left.pCharacter == Right.pCharacter && Left.pBoss == Right.pBoss;
+		return Left.pCharacter == Right.pCharacter && Left.pBoss == Right.pBoss &&
+			Left.iLevelIndex == Right.iLevelIndex;
 	}
 
 	struct RECONSTRUCTED_SOURCE_RUNTIME_CACHE final
@@ -836,16 +877,11 @@ namespace
 		const f32_t fScaleZ = Basis_Length(
 			SampledOwnerAnchor._31, SampledOwnerAnchor._32,
 			SampledOwnerAnchor._33);
-		const f32_t fMaximumScale =
-			(std::max)({ fScaleX, fScaleY, fScaleZ });
-		const f32_t fMinimumScale =
-			(std::min)({ fScaleX, fScaleY, fScaleZ });
-		if (fMaximumScale - fMinimumScale >
-			fMaximumScale * CUE_OWNER_UNIFORM_SCALE_TOLERANCE)
+		if (!Is_CueOwnerScaleDriftWithinLimit(
+			fScaleX, fScaleY, fScaleZ))
 		{
 			return false;
 		}
-
 		const f32_t fXY = std::abs(Basis_Dot(
 			SampledOwnerAnchor._11, SampledOwnerAnchor._12,
 			SampledOwnerAnchor._13, SampledOwnerAnchor._21,
@@ -3352,7 +3388,12 @@ bool_t Client::CEffectPresentationService::Spawn(
 		(Desc.bUseWorldRoot ?
 			(0u != Desc.iWorldRootHandle &&
 			 Is_NonDegenerateAffineMatrix(Desc.WorldRoot)) :
-			0u == Desc.iWorldRootHandle);
+			0u == Desc.iWorldRootHandle) &&
+		(!Desc.bLevelOwned ||
+			(Desc.bUseWorldRoot &&
+			 Desc.iLevelOwnerIndex == CGameInstance::Get().Get_CurrentLevelID() &&
+			 !Desc.strLevelPlacementId.empty())) &&
+		(!Desc.bExternallySampled || Desc.bLevelOwned);
 	if (!bDescriptorValid)
 	{
 		strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
@@ -3409,7 +3450,8 @@ bool_t Client::CEffectPresentationService::Spawn(
 	const auto SameEdge = [&Desc, &Owner](const auto& Effect)
 	{
 		return Same_Owner(Resolve_Owner(Effect.Desc), Owner) &&
-			Effect.Desc.iActionStartTick == Desc.iActionStartTick &&
+			(Desc.bLevelOwned ||
+			 Effect.Desc.iActionStartTick == Desc.iActionStartTick) &&
 			Effect.Desc.strOccurrenceId == Desc.strOccurrenceId;
 	};
 	const bool_t bActiveDuplicate = std::any_of(
@@ -3417,7 +3459,8 @@ bool_t Client::CEffectPresentationService::Spawn(
 		[&Desc, &Owner](const ACTIVE_EFFECT& Effect)
 		{
 			return Same_Owner(Resolve_Owner(Effect), Owner) &&
-				Effect.iActionStartTick == Desc.iActionStartTick &&
+				(Desc.bLevelOwned ||
+				 Effect.iActionStartTick == Desc.iActionStartTick) &&
 				Effect.strOccurrenceId == Desc.strOccurrenceId;
 		});
 	if (bActiveDuplicate ||
@@ -3478,6 +3521,48 @@ bool_t Client::CEffectPresentationService::Spawn_WorldRoot(
 	return true;
 }
 
+bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
+	const EFFECT_LEVEL_PLACEMENT_SPAWN_DESC& Desc,
+	EFFECT_WORLD_ROOT_HANDLE& OutHandle,
+	std::string& strOutStatus)
+{
+	OutHandle = {};
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (Desc.iLevelIndex >= ETOUI(LEVEL::END) ||
+		Desc.iLevelIndex != currentLevel || Desc.strPlacementId.empty() ||
+		Desc.strEffectAssetId.empty() ||
+		!Is_NonDegenerateAffineMatrix(Desc.RootWorld) ||
+		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
+		Desc.fInitialSampleTimeSeconds < 0.f)
+	{
+		strOutStatus = "Level-placement Effect spawn descriptor is invalid.";
+		return false;
+	}
+
+	EFFECT_SPAWN_DESC spawn;
+	spawn.strEffectAssetId = Desc.strEffectAssetId;
+	spawn.strAnchorSlotId = "level-placement";
+	spawn.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	spawn.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+	spawn.iActionStartTick = Desc.iSpawnTick;
+	spawn.strOccurrenceId = Desc.strPlacementId;
+	spawn.fInitialSampleTimeSeconds = Desc.fInitialSampleTimeSeconds;
+	spawn.bUseWorldRoot = true;
+	spawn.iWorldRootHandle = g_iNextWorldRootHandle;
+	spawn.WorldRoot = Desc.RootWorld;
+	spawn.bLevelOwned = true;
+	spawn.iLevelOwnerIndex = Desc.iLevelIndex;
+	spawn.bExternallySampled = Desc.bExternallySampled;
+	spawn.strLevelPlacementId = Desc.strPlacementId;
+	if (!Spawn(spawn, strOutStatus))
+		return false;
+
+	OutHandle.iValue = g_iNextWorldRootHandle++;
+	if (0u == g_iNextWorldRootHandle)
+		g_iNextWorldRootHandle = 1u;
+	return true;
+}
+
 bool_t Client::CEffectPresentationService::Update_WorldRoot(
 	const EFFECT_WORLD_ROOT_HANDLE Handle,
 	const float4x4_t& RootWorld)
@@ -3499,6 +3584,36 @@ bool_t Client::CEffectPresentationService::Update_WorldRoot(
 		{
 			Effect.WorldRoot = RootWorld;
 			Effect.pObject->Set_RootWorldForNextUpdate(RootWorld);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool_t Client::CEffectPresentationService::Seek_WorldRoot(
+	const EFFECT_WORLD_ROOT_HANDLE Handle,
+	const f32_t fSampleTimeSeconds)
+{
+	if (!Handle.Is_Valid() || !std::isfinite(fSampleTimeSeconds) ||
+		fSampleTimeSeconds < 0.f)
+	{
+		return false;
+	}
+	for (PENDING_EFFECT_SPAWN& pending : g_PendingEffectSpawns)
+	{
+		if (pending.Desc.iWorldRootHandle == Handle.iValue)
+		{
+			pending.Desc.fInitialSampleTimeSeconds = fSampleTimeSeconds;
+			return true;
+		}
+	}
+	for (ACTIVE_EFFECT& effect : g_ActiveEffects)
+	{
+		if (effect.iWorldRootHandle == Handle.iValue && nullptr != effect.pObject)
+		{
+			effect.fPendingInitialSampleTimeSeconds = fSampleTimeSeconds;
+			effect.fElapsedCueTimeSeconds = fSampleTimeSeconds;
+			effect.bPendingInitialSeek = true;
 			return true;
 		}
 	}
@@ -3552,6 +3667,61 @@ void Client::CEffectPresentationService::Commit_PendingSpawns()
 	}
 }
 
+void Client::CEffectPresentationService::Commit_PendingWorldRootSpawns(
+	const std::vector<EFFECT_WORLD_ROOT_HANDLE>& Handles)
+{
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Spawn.CommitWorldRoots");
+	if (Handles.empty() || g_PendingEffectSpawns.empty())
+		return;
+
+	std::unordered_set<uint64_t> requestedHandles;
+	requestedHandles.reserve(Handles.size());
+	for (const EFFECT_WORLD_ROOT_HANDLE Handle : Handles)
+	{
+		if (Handle.Is_Valid())
+			requestedHandles.insert(Handle.iValue);
+	}
+	if (requestedHandles.empty())
+		return;
+
+	std::vector<PENDING_EFFECT_SPAWN> selected;
+	std::vector<PENDING_EFFECT_SPAWN> retained;
+	selected.reserve(requestedHandles.size());
+	retained.reserve(g_PendingEffectSpawns.size());
+	for (PENDING_EFFECT_SPAWN& Request : g_PendingEffectSpawns)
+	{
+		if (requestedHandles.end() != requestedHandles.find(
+				Request.Desc.iWorldRootHandle))
+		{
+			selected.push_back(std::move(Request));
+		}
+		else
+		{
+			retained.push_back(std::move(Request));
+		}
+	}
+	g_PendingEffectSpawns = std::move(retained);
+
+	const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	for (PENDING_EFFECT_SPAWN& Request : selected)
+	{
+		if (Request.iLevelIndex != iCurrentLevel)
+		{
+			g_strStatus =
+				"Discarded queued world-root Effect because its source level changed.";
+			continue;
+		}
+		std::string Status;
+		if (!Spawn_Immediate(Request.Desc, Status))
+		{
+			OutputDebugStringA((
+				"Scoped world-root Effect spawn failed after admission: " +
+				Status + "\n").c_str());
+		}
+	}
+}
+
 bool_t Client::CEffectPresentationService::Spawn_Immediate(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
@@ -3581,7 +3751,12 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		(Desc.bUseWorldRoot ?
 			(0u == Desc.iWorldRootHandle ||
 			 !Is_NonDegenerateAffineMatrix(Desc.WorldRoot)) :
-			0u != Desc.iWorldRootHandle))
+			0u != Desc.iWorldRootHandle) ||
+		(Desc.bLevelOwned &&
+			(!Desc.bUseWorldRoot || Desc.iLevelOwnerIndex !=
+			 CGameInstance::Get().Get_CurrentLevelID() ||
+			 Desc.strLevelPlacementId.empty())) ||
+		(Desc.bExternallySampled && !Desc.bLevelOwned))
     {
         strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
         g_strStatus = strOutStatus;
@@ -3639,7 +3814,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		[&Desc, &Owner](const ACTIVE_EFFECT& Effect)
         {
 			return Same_Owner(Resolve_Owner(Effect), Owner) &&
-                Effect.iActionStartTick == Desc.iActionStartTick &&
+				(Desc.bLevelOwned ||
+				 Effect.iActionStartTick == Desc.iActionStartTick) &&
 				Effect.strOccurrenceId == Desc.strOccurrenceId;
         });
     if (Duplicate)
@@ -3757,6 +3933,9 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.AdmissionCost = Budget->second;
 	Active.iWorldRootHandle = Desc.iWorldRootHandle;
 	Active.WorldRoot = Desc.WorldRoot;
+	Active.bLevelOwned = Desc.bLevelOwned;
+	Active.bExternallySampled = Desc.bExternallySampled;
+	Active.strLevelPlacementId = Desc.strLevelPlacementId;
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;
@@ -3843,7 +4022,8 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 				Effect.fPendingInitialSampleTimeSeconds);
 			Effect.bPendingInitialSeek = false;
 		}
-		else if (nullptr != Effect.pObject && !Effect.bFollowAnchorMissing)
+		else if (nullptr != Effect.pObject && !Effect.bFollowAnchorMissing &&
+			!Effect.bExternallySampled)
 		{
 			const f32_t fCueDelta =
 				(std::max)(0.f, fTimeDelta) * Effect.fPlaybackRate;
@@ -3934,6 +4114,8 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 void Client::CEffectPresentationService::Stop_Owner(
     const std::shared_ptr<CCharacter>& pOwner)
 {
+	if (nullptr == pOwner)
+		return;
 	g_PendingEffectSpawns.erase(std::remove_if(
 		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
 		[&pOwner](const PENDING_EFFECT_SPAWN& Pending)
@@ -3991,6 +4173,8 @@ Client::CEffectPresentationService::Stop_BossAction(
 void Client::CEffectPresentationService::Stop_BossOwner(
 	const std::shared_ptr<CValtan>& pOwner)
 {
+	if (nullptr == pOwner)
+		return;
 	g_PendingEffectSpawns.erase(std::remove_if(
 		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
 		[&pOwner](const PENDING_EFFECT_SPAWN& Pending)

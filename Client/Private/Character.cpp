@@ -1253,6 +1253,32 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
+	else if (PLAYER_ACTION_STATE::GRABBED == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		m_pChain = nullptr;
+		m_iChainStage = 0;
+		m_iChainStep = 0;
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+		m_fActionPresentationSeconds = 0.f;
+		Commit_PendingClipChains();
+		/* The hand attachment owns the transform. Until a dedicated caught pose
+		is authored, hold the existing class hit loop instead of allowing
+		locomotion to run while the body is carried. */
+		if (!Set_Animation(CHARACTER_ANIM::HIT, true))
+			Set_Animation(CHARACTER_ANIM::IDLE, true);
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
 	else if (PLAYER_ACTION_STATE::ESTHER_CAST == action)
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
@@ -1342,6 +1368,14 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_iEffectActionStartTick = 0u;
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
+	}
+	else if (PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction)
+	{
+		m_fActionPresentationSeconds = 0.f;
+		Set_Animation(
+			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
+		m_iLastNetworkActionStartTick = 0u;
 	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction)
 	{

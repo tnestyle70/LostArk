@@ -11,6 +11,23 @@ NS_END
 
 NS_BEGIN(Client)
 
+/* One bounded presentation packet is shared by Area surface authoring and
+   authoritative destruction transitions.  The packet never changes authored
+   placement/state or gameplay collision.  Area presentation owns the absolute
+   emissive fields, while destruction owns the transition fields; callers read
+   the current packet, replace only their lane, then submit it transactionally
+   through CDeployPropRuntime. */
+struct DEPLOY_SURFACE_PRESENTATION_PACKET final
+{
+	f32_t fEmissiveIntensity = 1.f;
+	float4_t vEmissiveColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	f32_t fEmissiveMaskPower = 1.f;
+	f32_t fTransitionMultiplier = 1.f;
+	float3_t vRootOffset{};
+	float4_t vRootRotationOffset = float4_t(0.f, 0.f, 0.f, 1.f);
+	f32_t fOpacity = 1.f;
+};
+
 class CDeployPropObject final : public CGameObject
 {
 public:
@@ -75,6 +92,12 @@ public:
 
 	bool_t Set_State(DEPLOY_PROP_STATE state);
 	DEPLOY_PROP_STATE Get_State() const { return m_State; }
+	bool_t Apply_SurfacePresentation(
+		const DEPLOY_SURFACE_PRESENTATION_PACKET& packet);
+	const DEPLOY_SURFACE_PRESENTATION_PACKET& Get_SurfacePresentation() const
+	{
+		return m_SurfacePresentation;
+	}
 	uint64_t Get_RuntimePlacementId() const { return m_Placement.runtimePlacementId; }
 	uint32_t Get_DeployActorId() const { return m_Placement.deployActorId; }
 	bool_t Is_Destructible() const { return m_Placement.destructible; }
@@ -232,7 +255,7 @@ private:
 	DEPLOY_PROP_PLACEMENT m_Placement;
 	DEPLOY_PROP_MODEL_KIND m_ModelKind = DEPLOY_PROP_MODEL_KIND::STATIC;
 	DEPLOY_PROP_STATE m_State = DEPLOY_PROP_STATE::INTACT;
-	f32_t m_fEmissiveIntensity = 1.f;
+	DEPLOY_SURFACE_PRESENTATION_PACKET m_SurfacePresentation{};
 	bool_t m_bDeferredEmissiveOverlay = false;
 	DEPLOY_PROP_STATE m_PrePhysicsPreviewState = DEPLOY_PROP_STATE::INTACT;
 	uint32_t m_iPrePhysicsPreviewAnimationIndex = UINT32_MAX;

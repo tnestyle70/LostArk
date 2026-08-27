@@ -203,6 +203,28 @@ namespace LostArk::Server
 		LostArk::Shared::SKILL_ID iCurrentSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
+		/* GRABBED is Server authority. The slot is a Shared typed identity, while
+		these offsets are only a gameplay fallback relative to the boss root; the
+		Client may present the same attachment on the admitted left-hand bone. */
+		LostArk::Shared::NET_ENTITY_ID iAttachmentOwnerNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot =
+			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+		float fAttachmentLocalOffsetX = 0.f;
+		float fAttachmentLocalOffsetY = 0.f;
+		float fAttachmentLocalOffsetZ = 0.f;
+		float fAttachmentYawOffsetDegrees = 0.f;
+
+		void Clear_Attachment()
+		{
+			iAttachmentOwnerNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+			fAttachmentLocalOffsetX = 0.f;
+			fAttachmentLocalOffsetY = 0.f;
+			fAttachmentLocalOffsetZ = 0.f;
+			fAttachmentYawOffsetDegrees = 0.f;
+		}
 		/* Live only while eAction is FALLING. The velocity integrates downward
 		from zero at the tick the ground disappeared, and the death tick is the
 		deadline that same tick scheduled. Neither is replicated: the client

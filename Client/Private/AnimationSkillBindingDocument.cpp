@@ -715,7 +715,7 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 	{
 		const double number = version->Get_Number();
 		if (std::isfinite(number) && std::floor(number) == number &&
-			(number == 1.0 || number == 2.0))
+			(number == 1.0 || number == 2.0 || number == 3.0))
 		{
 			formatVersion = static_cast<uint32_t>(number);
 		}
@@ -737,10 +737,18 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 	for (const DATA_JSON_VALUE& value : bindings->Get_Array())
 	{
 		const bool isLegacy = 1u == formatVersion;
+		const bool supportsPlaybackMode = 3u == formatVersion;
+		const bool hasPlaybackMode =
+			nullptr != value.Find("playbackMode");
 		if ((isLegacy &&
 			!Has_ExactProperties(value, { "actionId", "clip" })) ||
 			(!isLegacy &&
-			!Has_ExactProperties(value, { "actionId", "clips" })))
+			 ((!supportsPlaybackMode && hasPlaybackMode) ||
+			  (!hasPlaybackMode &&
+			   !Has_ExactProperties(value, { "actionId", "clips" })) ||
+			  (hasPlaybackMode &&
+			   !Has_ExactProperties(value,
+				   { "actionId", "playbackMode", "clips" })))))
 		{
 			outStatus = "Boss pattern binding row has an unexpected field set.";
 			return false;
@@ -805,12 +813,37 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 		}
 		else
 		{
+			const DATA_JSON_VALUE* playbackMode =
+				value.Find("playbackMode");
+			if (nullptr != playbackMode)
+			{
+				if (!playbackMode->Is_String())
+				{
+					outStatus =
+						"Boss pattern binding playback mode is invalid.";
+					return false;
+				}
+				if ("NONE" == playbackMode->Get_String())
+					stagedBinding.bSuppressAnimation = true;
+				else if ("CLIP_SEQUENCE" != playbackMode->Get_String())
+				{
+					outStatus =
+						"Boss pattern binding playback mode is unsupported.";
+					return false;
+				}
+			}
 			const DATA_JSON_VALUE* clips = Required(
 				value, "clips", DATA_JSON_TYPE::ARRAY);
-			if (nullptr == clips || clips->Get_Array().empty() ||
-				clips->Get_Array().size() > MAX_BOSS_PATTERN_CHAIN_CLIPS)
+			if (nullptr == clips ||
+				(stagedBinding.bSuppressAnimation ?
+					!clips->Get_Array().empty() :
+					(clips->Get_Array().empty() ||
+					 clips->Get_Array().size() >
+						 MAX_BOSS_PATTERN_CHAIN_CLIPS)))
 			{
-				outStatus = "Boss pattern binding v2 clip chain is invalid.";
+				outStatus = stagedBinding.bSuppressAnimation ?
+					"Boss pattern NONE binding must have an empty clip chain." :
+					"Boss pattern binding v2 clip chain is invalid.";
 				return false;
 			}
 			stagedBinding.Clips.reserve(clips->Get_Array().size());
@@ -875,7 +908,8 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 {
 	if (!Is_StableToken(expectedBossArchetypeId) ||
 		document.strBossArchetypeId != expectedBossArchetypeId ||
-		(document.iFormatVersion != 1u && document.iFormatVersion != 2u) ||
+		(document.iFormatVersion != 1u && document.iFormatVersion != 2u &&
+		 document.iFormatVersion != 3u) ||
 		document.Bindings.empty() || document.Bindings.size() > 512u)
 	{
 		outStatus = "Boss pattern binding owner does not match the target boss.";
@@ -885,12 +919,15 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 	std::unordered_set<std::string> claimedOccurrences;
 	for (const BOSS_PATTERN_ANIMATION_BINDING& binding : document.Bindings)
 	{
+		const bool_t bValidPlaybackContract = binding.bSuppressAnimation ?
+			(3u == document.iFormatVersion && binding.Clips.empty()) :
+			(!binding.Clips.empty() && binding.Clips.size() <= 16u);
 		if (!Is_StableToken(binding.strActionId) ||
-			binding.Clips.empty() || binding.Clips.size() > 16u ||
+			!bValidPlaybackContract ||
 			!claimedActions.insert(binding.strActionId).second)
 		{
 			outStatus =
-				"Boss pattern binding has a duplicate action or missing model clip.";
+				"Boss pattern binding has a duplicate action or invalid playback contract.";
 			return false;
 		}
 		for (std::size_t clipIndex = 0u;

@@ -31,8 +31,9 @@ Effect Tool이나 local preview에서 맞춘 결과가 그대로 Arena에 나타
 - `travelStartMs`, `travelEndMs`
 
 publisher, Client parser, Balance Tool, Server bootstrap과 `CValtanBrain`은 이 네 값을 exact field로 소비한다.
-첫 stage는 `TAKEOFF`, travel stage는 그 뒤에 있어야 하며 각 window가 소유 stage duration을 벗어나면 publish를
-거부한다.
+takeoff window의 소유자는 이름이 `TAKEOFF`인 stage가 아니라 `entryActionId`와 일치하는 첫 ordered stage다.
+travel stage는 그 뒤의 고유 stable stage여야 하며 각 window가 소유 stage duration을 벗어나면 publish를 거부한다.
+따라서 `VALTAN_SIX_PIZZA_106/STEP_01`처럼 의미가 이미 봉인된 stable stage ID를 validator 때문에 개명하지 않는다.
 
 ### 2.2 Server world transform과 skeleton root가 위치를 중복 소유했다
 

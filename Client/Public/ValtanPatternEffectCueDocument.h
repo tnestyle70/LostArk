@@ -58,6 +58,9 @@ struct VALTAN_PATTERN_EFFECT_CUE final
 	uint32_t iEndMs = 0u;
 	bool_t bHasSourceEnd = false;
 	bool_t bUsesLegacyStageWallTime = false;
+	/* Explicit Product timing for an Effect-only stage whose animation binding
+	   uses playbackMode NONE. iStartMs stores its stageOffsetMs. */
+	bool_t bUsesStageClock = false;
 	uint32_t iStageIndex = 0u;
 	uint32_t iStageDurationMs = 0u;
 };
@@ -69,12 +72,10 @@ struct VALTAN_PATTERN_EFFECT_CUE_DOCUMENT final
 	std::vector<VALTAN_PATTERN_EFFECT_CUE> Cues;
 };
 
-/* Action- and clip-occurrence-qualified Product presentation cues for Valtan.
-   The document joins each cue to the authoritative encounter tuple and to one
-   stable occurrence in the action's animation binding.  Multiple actions may
-   intentionally share a model clip while retaining distinct occurrence IDs.
-   Every public load stages into a temporary document and only replaces the
-   caller's output after the entire contract has validated. */
+/* Product presentation cues for Valtan. Clip-driven rows join to one stable
+   occurrence in the action binding; STAGE_CLOCK rows join to an explicit NONE
+   action and carry no clip identity. Every public load stages into a temporary
+   document and only replaces the caller's output after full validation. */
 class CValtanPatternEffectCueDocument final
 {
 public:

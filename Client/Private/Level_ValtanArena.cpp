@@ -7,6 +7,9 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "Level_ValtanArena.h"
 
 #include "Camera_Free.h"
+#ifdef _DEBUG
+#include "CameraTool.h"
+#endif
 #include "Character.h"
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
@@ -14,7 +17,6 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
-#include "MapAssetObject.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProjectDataRoot.h"
@@ -51,6 +53,8 @@ namespace
 	constexpr f32_t VALTAN_PILLAR_BURST_SPEED_METERS_PER_SECOND = 7.f;
 	constexpr f32_t VALTAN_PILLAR_BURST_GRAVITY_SCALE = 2.f;
 	constexpr f32_t VALTAN_PILLAR_BURST_LIFETIME_SECONDS = 4.f;
+	constexpr f32_t VALTAN_GAMEPLAY_FOLLOW_LOOK_HEIGHT = 1.2f;
+	constexpr f32_t VALTAN_GAMEPLAY_FOV_Y_DEGREES = 60.f;
 	constexpr std::array<uint64_t, 4> VALTAN_PILLAR_SLOT_PLACEMENT_IDS = {
 		14226635865317864635ull,
 		14753860598629869201ull,
@@ -116,10 +120,12 @@ CLevel_ValtanArena::CLevel_ValtanArena(
 CLevel_ValtanArena::~CLevel_ValtanArena()
 {
 #ifdef _DEBUG
+	CCameraTool::Clear_ActorPreviewContext(
+		ETOUI(LEVEL::VALTAN_ARENA));
 	End_ReferenceCamera(false);
 #endif
 	End_CinematicCamera();
-	Clear_ValtanSkyPresentation();
+	m_MapEffectPresentationRuntime.Clear();
 	m_Replication.Reset();
 	m_WorldDestructionDebrisPresentationRuntime.Clear();
 	m_WorldDestructionDebrisPresentationDocument.Clear();
@@ -230,6 +236,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 	m_pMapLightPresentation = std::move(mapLightPresentation);
 	if (!Ready_CinematicCamera())
 	{
+		m_MapEffectPresentationRuntime.Clear();
 		m_pMapLightPresentation->Clear();
 		m_pMapLightPresentation.reset();
 		m_WorldDestructionDebrisPresentationRuntime.Clear();
@@ -242,7 +249,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 
 	if (FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
 	{
-		Clear_ValtanSkyPresentation();
+		m_MapEffectPresentationRuntime.Clear();
 		m_pMapLightPresentation->Clear();
 		m_pMapLightPresentation.reset();
 		m_WorldDestructionDebrisPresentationRuntime.Clear();
@@ -271,7 +278,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 		&m_WorldDestructionProjectionDocument;
 	if (!m_Replication.Initialize(replicationDesc))
 	{
-		Clear_ValtanSkyPresentation();
+		m_MapEffectPresentationRuntime.Clear();
 		m_pMapLightPresentation->Clear();
 		m_pMapLightPresentation.reset();
 		m_WorldDestructionDebrisPresentationRuntime.Clear();
@@ -397,7 +404,10 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 
 #ifdef _DEBUG
 	Update_AuditionTransaction();
-	Render_AuditionPanel();
+	/* Boss Tool owns the full replay/inspection workflow; Effect Tool may submit
+	   the same typed one-shot audition as a nearby authoring shortcut. Keep the
+	   bounded transaction/timeline state alive for an already-started legacy run,
+	   but do not draw the duplicate Arena mutation panel. */
 	/* Driven outside the panel body so a collapsed window cannot stall a
 	chapter run that is already in flight. */
 	{
@@ -440,7 +450,7 @@ namespace
 	constexpr uint64_t VALTAN_REFERENCE_CAMERA_OWNER_ID =
 		0x56414C54414E5246ull;
 	constexpr std::string_view VALTAN_REFERENCE_PHASE_SOURCE_LEVEL =
-		"VALTAN_PHASE_SPACEHOLE";
+		"DEBUG_REFERENCE_VALTAN_PHASE_SPACEHOLE";
 	constexpr size_t VALTAN_REFERENCE_PHASE_PLACEMENT_COUNT = 3u;
 
 	struct VALTAN_REFERENCE_CAMERA_POSE final
@@ -698,7 +708,8 @@ bool_t CLevel_ValtanArena::Begin_ReferenceCamera(
 		but suspend follow while the fixed presentation pose is active. */
 		m_pCamera->Set_FollowEnabled(false);
 		if (!m_pCamera->Begin_PresentationOverride(
-			VALTAN_REFERENCE_CAMERA_OWNER_ID))
+			VALTAN_REFERENCE_CAMERA_OWNER_ID,
+			CCamera::PRESENTATION_PRIORITY::REFERENCE_AUDITION))
 		{
 			m_pCamera->Set_FollowTarget(
 				m_pReferenceCameraRestoreTarget.lock());
@@ -735,7 +746,7 @@ bool_t CLevel_ValtanArena::Set_ReferencePhaseProxyVisible(
 	if (!applied)
 	{
 		OutputDebugStringA(
-			"[Level_ValtanArena][ReferenceCamera] SpaceHole proxy visibility failed.\n");
+			"[Level_ValtanArena][ReferenceCamera] Debug-only SpaceHole proxy visibility failed.\n");
 		return false;
 	}
 	m_bReferenceSpaceHoleVisible = visible;
@@ -1545,7 +1556,7 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	ImGui::EndDisabled();
 	ImGui::Text("Reference view: %s", Get_ReferenceCameraViewName());
 	ImGui::SameLine();
-	ImGui::TextDisabled("SpaceHole proxy: %s",
+	ImGui::TextDisabled("Debug-only SpaceHole reference proxy: %s",
 		m_bReferenceSpaceHoleVisible ? "visible" : "authored baseline");
 	ImGui::TextDisabled(
 		"F6 exits this view and toggles follow/free; a Server cinematic always takes priority.");
@@ -1724,23 +1735,8 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	ImGui::Text("Nav revision: %llu   Last destruction event: %llu",
 		static_cast<unsigned long long>(diagnostics.iNavigationRevision),
 		static_cast<unsigned long long>(diagnostics.iLastEventSequence));
-	ImGui::Text("Camera cue: %s   Sky cue: %s",
-		m_ValtanCinematicCameraController.Is_Active() ? "ACTIVE" : "none",
-		m_ValtanSkyState.isActive ?
-			m_ValtanSkyState.strCueId.c_str() : "none");
-	if (m_ValtanSkyState.isActive)
-	{
-		ImGui::Text("  cloud opacity %.2f   aperture %.2f   spin %.1f deg",
-			m_ValtanSkyState.fCloudOpacity,
-			m_ValtanSkyState.fApertureScale,
-			m_ValtanSkyState.fCloudRotationDegrees);
-		if (m_ValtanSkyState.strRedCloudAssetId.empty() &&
-			m_ValtanSkyState.strBlackApertureAssetId.empty())
-		{
-			ImGui::TextDisabled(
-				"  sky layer asset IDs were not resolved");
-		}
-	}
+	ImGui::Text("Camera cue: %s",
+		m_ValtanCinematicCameraController.Is_Active() ? "ACTIVE" : "none");
 	/* The pillars are the one repeatable encounter prop, so the panel reports
 	the live slot states and the occurrence they belong to. */
 	const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC& props =
@@ -2061,8 +2057,39 @@ void CLevel_ValtanArena::Update_WorldDestructionPresentation(
 		m_Replication.Get_WorldDestructionPresentationGeneration();
 	if (generation != m_iObservedWorldDestructionPresentationGeneration)
 	{
-		m_WorldDestructionDebrisPresentationRuntime.Reset_Presentation();
+		if (!m_WorldDestructionDebrisPresentationRuntime.Reset_Presentation())
+		{
+			OutputDebugStringA((
+				"[Level_ValtanArena][DestructionTransition] " +
+				m_WorldDestructionDebrisPresentationRuntime.Get_Status() +
+				"\n").c_str());
+			/* Keep the observed generation unchanged so teardown is retried next
+			   frame. No packet from the replacement generation is sampled until
+			   the previous transition lane has been restored atomically. */
+			return;
+		}
 		m_iObservedWorldDestructionPresentationGeneration = generation;
+	}
+	if (m_Replication.Is_WorldDestructionSynchronized())
+	{
+		std::string transitionStatus;
+		if (!m_WorldDestructionDebrisPresentationRuntime.
+			Update_SourceTransitions(
+				m_WorldDestructionProjectionDocument,
+				m_WorldDestructionDebrisPresentationDocument,
+				m_Replication.Get_WorldDestructionGroupStates(),
+				m_Replication.Get_WorldDestructionServerTick(),
+				m_ValtanEncounterReference.Get_FixedTickHz(),
+				fTimeDelta,
+				transitionStatus))
+		{
+			/* This layer is cosmetic. Persistent Deploy state, collision,
+			   navigation and falling were already committed by replication and
+			   must survive a failed root/fade sample. */
+			OutputDebugStringA((
+				"[Level_ValtanArena][DestructionTransition] " +
+				transitionStatus + "\n").c_str());
+		}
 	}
 
 	/* The 109 impact drains every group's cue on one frame. They are collected
@@ -2088,6 +2115,16 @@ void CLevel_ValtanArena::Update_WorldDestructionPresentation(
 				"Ignored a cue whose group/mutation does not match the published presentation.\n");
 			continue;
 		}
+		const WORLD_DESTRUCTION_PROJECTION_GROUP* projectionGroup =
+			m_WorldDestructionProjectionDocument.Find_Group(event.strGroupId);
+		if (nullptr == projectionGroup ||
+			projectionGroup->strMutationId != event.strMutationId)
+		{
+			OutputDebugStringA(
+				"[Level_ValtanArena][DestructionDebris] "
+				"Ignored a cue with no joined projection group.\n");
+			continue;
+		}
 
 		WORLD_DESTRUCTION_DEBRIS_CUE cue;
 		cue.groupId = profile->strGroupId;
@@ -2108,6 +2145,7 @@ void CLevel_ValtanArena::Update_WorldDestructionPresentation(
 				emitter.fSpeedMetersPerSecond;
 			emitterCue.gravityScale = emitter.fGravityScale;
 			emitterCue.lifetimeSeconds = emitter.fLifetimeSeconds;
+			emitterCue.suppressSource = !projectionGroup->bRemovesGround;
 			cue.emitters.push_back(std::move(emitterCue));
 		}
 
@@ -2314,270 +2352,28 @@ bool_t CLevel_ValtanArena::Ready_CinematicCamera()
 			&m_ValtanCinematicCameraDocument,
 			m_ValtanEncounterReference.Get_FixedTickHz()))
 	{
-		Clear_ValtanSkyPresentation();
 		m_ValtanCinematicCameraDocument.Clear();
 		m_ValtanEncounterReference.Clear();
 		(void)Report_InitFailure(
 			"[Level_ValtanArena][CinematicCamera]", status);
 		return false;
 	}
-	if (!Ready_ValtanSkyPresentation(status))
+	if (!m_MapEffectPresentationRuntime.Load_Area(
+			ETOUI(LEVEL::VALTAN_ARENA),
+			m_WorldDestructionProjectionDocument.Get_AreaId(),
+			m_DeployRuntime,
+			m_WorldDestructionProjectionDocument,
+			m_ValtanEncounterReference,
+			status))
 	{
-		Clear_ValtanSkyPresentation();
+		m_MapEffectPresentationRuntime.Clear();
 		m_ValtanCinematicCameraController.Reset();
 		m_ValtanCinematicCameraDocument.Clear();
 		m_ValtanEncounterReference.Clear();
 		(void)Report_InitFailure(
-			"[Level_ValtanArena][CinematicSky]", status);
+			"[Level_ValtanArena][MapEffectPresentation]", status);
 		return false;
 	}
-	return true;
-}
-
-bool_t CLevel_ValtanArena::Ready_ValtanSkyPresentation(
-	std::string& outStatus)
-{
-	using SKY_LAYER_ARRAY = std::array<
-		VALTAN_SKY_PRESENTATION_LAYER, VALTAN_SKY_LAYER_COUNT>;
-	const std::vector<VALTAN_CINEMATIC_SKY_CUE>& cues =
-		m_ValtanCinematicCameraDocument.Get_SkyCues();
-	if (cues.empty())
-	{
-		outStatus = "Cinematic sky document has no presentation cue";
-		return false;
-	}
-
-	const std::string redCloudSeed = cues.front().strRedCloudAssetId;
-	const std::string blackApertureSeed =
-		cues.front().strBlackApertureAssetId;
-	if (redCloudSeed.empty() || blackApertureSeed.empty() ||
-		redCloudSeed == blackApertureSeed)
-	{
-		outStatus = "Cinematic sky seed asset IDs are missing or ambiguous";
-		return false;
-	}
-	for (const VALTAN_CINEMATIC_SKY_CUE& cue : cues)
-	{
-		if (cue.strRedCloudAssetId != redCloudSeed ||
-			cue.strBlackApertureAssetId != blackApertureSeed)
-		{
-			outStatus = "Cinematic sky cues do not share one stable asset pair";
-			return false;
-		}
-	}
-
-	const std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements =
-		m_MapRuntime.Get_Placements();
-	auto stageGroup = [&placements, &outStatus](
-		const std::string& seedAssetId,
-		const char_t* groupLabel,
-		SKY_LAYER_ARRAY& outLayers,
-		std::string& outSourceLevel)
-	{
-		const MAP_RUNTIME_PLACED_ENTRY* pSeed = nullptr;
-		for (const MAP_RUNTIME_PLACED_ENTRY& entry : placements)
-		{
-			if (entry.record.assetId != seedAssetId)
-				continue;
-			if (nullptr != pSeed)
-			{
-				outStatus = std::string(groupLabel) +
-					" sky seed resolves to multiple placements: " + seedAssetId;
-				return false;
-			}
-			pSeed = &entry;
-		}
-		if (nullptr == pSeed || pSeed->record.sourceLevel.empty() ||
-			nullptr == pSeed->object || nullptr != pSeed->batch)
-		{
-			outStatus = std::string(groupLabel) +
-				" sky seed is missing or not a non-batched map object: " +
-				seedAssetId;
-			return false;
-		}
-		outSourceLevel = pSeed->record.sourceLevel;
-
-		size_t layerCount = 0u;
-		for (const MAP_RUNTIME_PLACED_ENTRY& entry : placements)
-		{
-			if (entry.record.sourceLevel != outSourceLevel)
-				continue;
-			if (layerCount >= outLayers.size() || nullptr == entry.object ||
-				nullptr != entry.batch || 0u == entry.record.placementId)
-			{
-				outStatus = std::string(groupLabel) +
-					" sky source group must contain exactly three non-batched objects: " +
-					outSourceLevel;
-				return false;
-			}
-			VALTAN_SKY_PRESENTATION_LAYER& layer = outLayers[layerCount++];
-			layer.pObject = entry.object;
-			layer.strAssetId = entry.record.assetId;
-			layer.iPlacementId = entry.record.placementId;
-			layer.vBasePosition = entry.record.position;
-			layer.vBaseRotationQuaternion = entry.record.rotationQuaternion;
-			layer.vBaseSignedScale = entry.record.signedScale;
-			layer.bBaseVisible = entry.object->Is_Visible();
-		}
-		if (outLayers.size() != layerCount)
-		{
-			outStatus = std::string(groupLabel) +
-				" sky source group does not contain three objects: " +
-				outSourceLevel;
-			return false;
-		}
-		std::sort(outLayers.begin(), outLayers.end(),
-			[](const VALTAN_SKY_PRESENTATION_LAYER& left,
-				const VALTAN_SKY_PRESENTATION_LAYER& right)
-			{
-				return left.iPlacementId < right.iPlacementId;
-			});
-		for (size_t left = 0u; left < outLayers.size(); ++left)
-		{
-			for (size_t right = left + 1u; right < outLayers.size(); ++right)
-			{
-				if (outLayers[left].iPlacementId ==
-						outLayers[right].iPlacementId ||
-					outLayers[left].pObject == outLayers[right].pObject)
-				{
-					outStatus = std::string(groupLabel) +
-						" sky source group contains a duplicate object";
-					return false;
-				}
-			}
-		}
-		return true;
-	};
-
-	SKY_LAYER_ARRAY stagedRedCloudLayers{};
-	SKY_LAYER_ARRAY stagedBlackApertureLayers{};
-	std::string redCloudSourceLevel;
-	std::string blackApertureSourceLevel;
-	if (!stageGroup(redCloudSeed, "Red cloud", stagedRedCloudLayers,
-			redCloudSourceLevel) ||
-		!stageGroup(blackApertureSeed, "Black aperture",
-			stagedBlackApertureLayers, blackApertureSourceLevel))
-	{
-		return false;
-	}
-	if (redCloudSourceLevel == blackApertureSourceLevel)
-	{
-		outStatus = "Cinematic sky seeds resolve to the same source group";
-		return false;
-	}
-	for (const VALTAN_SKY_PRESENTATION_LAYER& redLayer :
-		stagedRedCloudLayers)
-	{
-		for (const VALTAN_SKY_PRESENTATION_LAYER& apertureLayer :
-			stagedBlackApertureLayers)
-		{
-			if (redLayer.iPlacementId == apertureLayer.iPlacementId ||
-				redLayer.pObject == apertureLayer.pObject)
-			{
-				outStatus = "Cinematic sky source groups overlap";
-				return false;
-			}
-		}
-	}
-	const auto hasExactAssetSet = [](const SKY_LAYER_ARRAY& layers,
-		const std::array<std::string_view, VALTAN_SKY_LAYER_COUNT>& expected)
-	{
-		return std::all_of(expected.begin(), expected.end(),
-			[&layers](const std::string_view assetId)
-			{
-				return 1u == static_cast<size_t>(std::count_if(
-					layers.begin(), layers.end(),
-					[assetId](const VALTAN_SKY_PRESENTATION_LAYER& layer)
-					{
-						return std::string_view(layer.strAssetId) == assetId;
-					}));
-			});
-	};
-	constexpr std::array<std::string_view, VALTAN_SKY_LAYER_COUNT>
-		RED_CLOUD_ASSET_IDS = {
-			"VALTAN_PHASE_CHAOS_CLOUD",
-			"VALTAN_PHASE_CHAOS_ELECTRIC",
-			"VALTAN_PHASE_CHAOS_RING"
-		};
-	constexpr std::array<std::string_view, VALTAN_SKY_LAYER_COUNT>
-		BLACK_APERTURE_ASSET_IDS = {
-			"VALTAN_PHASE_SPACEHOLE_CLOUD",
-			"VALTAN_PHASE_SPACEHOLE_CORE",
-			"VALTAN_PHASE_SPACEHOLE_STREAK"
-		};
-	if (!hasExactAssetSet(stagedRedCloudLayers, RED_CLOUD_ASSET_IDS) ||
-		!hasExactAssetSet(stagedBlackApertureLayers,
-			BLACK_APERTURE_ASSET_IDS))
-	{
-		outStatus = "Cinematic sky source groups do not contain the exact six Valtan phase assets";
-		return false;
-	}
-
-	size_t visiblePolicyCount = 0u;
-	auto attachPolicies = [&outStatus, &visiblePolicyCount](auto& layers)
-	{
-		for (VALTAN_SKY_PRESENTATION_LAYER& layer : layers)
-		{
-			const VALTAN_CINEMATIC_SKY_LAYER_POLICY* pPolicy =
-				CValtanCinematicCameraController::Find_SkyLayerPolicy(
-					layer.strAssetId);
-			if (nullptr == pPolicy || pPolicy->strAssetId != layer.strAssetId ||
-				!std::isfinite(pPolicy->fAbsoluteUniformScale) ||
-				!std::isfinite(pPolicy->fOpacityMultiplier) ||
-				!std::isfinite(pPolicy->fRotationMultiplier) ||
-				pPolicy->fAbsoluteUniformScale <
-					CValtanCinematicCameraController::
-						SKY_MIN_ABSOLUTE_UNIFORM_SCALE ||
-				pPolicy->fAbsoluteUniformScale >
-					CValtanCinematicCameraController::
-						SKY_MAX_ABSOLUTE_UNIFORM_SCALE ||
-				pPolicy->fOpacityMultiplier < 0.f ||
-				pPolicy->fOpacityMultiplier > 1.f ||
-				pPolicy->eProfile >=
-					VALTAN_CINEMATIC_SKY_LAYER_PROFILE::END ||
-				pPolicy->isPresentationVisible !=
-					(VALTAN_CINEMATIC_SKY_LAYER_PROFILE::NONE !=
-						pPolicy->eProfile))
-			{
-				outStatus = "Cinematic sky layer policy is missing or invalid: " +
-					layer.strAssetId;
-				return false;
-			}
-			layer.Policy = *pPolicy;
-			if (pPolicy->isPresentationVisible)
-				++visiblePolicyCount;
-		}
-		return true;
-	};
-	if (!attachPolicies(stagedRedCloudLayers) ||
-		!attachPolicies(stagedBlackApertureLayers) ||
-		4u != visiblePolicyCount)
-	{
-		if (outStatus.empty())
-			outStatus = "Cinematic sky policy must expose exactly four radial layers";
-		return false;
-	}
-	const VALTAN_CINEMATIC_SKY_LAYER_POLICY* pElectricPolicy =
-		CValtanCinematicCameraController::Find_SkyLayerPolicy(
-			"VALTAN_PHASE_CHAOS_ELECTRIC");
-	const VALTAN_CINEMATIC_SKY_LAYER_POLICY* pStreakPolicy =
-		CValtanCinematicCameraController::Find_SkyLayerPolicy(
-			"VALTAN_PHASE_SPACEHOLE_STREAK");
-	if (nullptr == pElectricPolicy || pElectricPolicy->isPresentationVisible ||
-		nullptr == pStreakPolicy || pStreakPolicy->isPresentationVisible)
-	{
-		outStatus = "Cinematic sky raw electric and streak layers must stay hidden";
-		return false;
-	}
-
-	/* Resolve every dependency before changing the currently committed set. */
-	Clear_ValtanSkyPresentation();
-	m_ValtanRedCloudLayers = std::move(stagedRedCloudLayers);
-	m_ValtanBlackApertureLayers = std::move(stagedBlackApertureLayers);
-	m_strValtanRedCloudSeedAssetId = redCloudSeed;
-	m_strValtanBlackApertureSeedAssetId = blackApertureSeed;
-	Reset_ValtanSkyPresentation();
-	outStatus = "Cinematic sky presentation cached four masked radial layers";
 	return true;
 }
 
@@ -2600,13 +2396,37 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	input.iStageIndex = boss.iPatternStageIndex;
 	input.iActionStartTick = boss.iActionStartTick;
 	input.vBossPosition = boss.vPosition;
+	input.fBossYawDegrees = boss.fYawDegrees;
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (nullptr != localCharacter)
+	{
+		const shared_ptr<CTransform> localTransform =
+			localCharacter->Get_Transform();
+		if (nullptr != localTransform)
+		{
+			XMStoreFloat3(
+				&input.vLocalPlayerPosition,
+				localTransform->Get_State(STATE::POSITION));
+			input.hasLocalPlayerPosition = true;
+		}
+	}
 
-	/* One authoritative tuple drives both layers, so the sky can never run on a
-	   clock of its own. It is resolved before the camera early-outs because the
-	   sky is authored on stages that carry no camera cue. */
-	m_ValtanSkyState = m_ValtanCinematicCameraController.Resolve_SkyState(
-		input, fTimeDelta);
-	Apply_ValtanSkyPresentation(m_ValtanSkyState);
+#ifdef _DEBUG
+	CAMERA_TOOL_ACTOR_PREVIEW_CONTEXT previewContext{};
+	previewContext.isValid = input.isValid;
+	previewContext.iLevelIndex = ETOUI(LEVEL::VALTAN_ARENA);
+	previewContext.vBossPosition = input.vBossPosition;
+	previewContext.fBossYawDegrees = input.fBossYawDegrees;
+	previewContext.hasLocalPlayerPosition = input.hasLocalPlayerPosition;
+	previewContext.vLocalPlayerPosition = input.vLocalPlayerPosition;
+	CCameraTool::Publish_ActorPreviewContext(previewContext);
+#endif
+
+	/* The level-owned Map Effect consumer samples the same authoritative tuple
+	   even when this stage has no camera cue.  It owns neither boss gameplay nor
+	   camera state and therefore remains active across camera-tool auditions. */
+	m_MapEffectPresentationRuntime.Update_ServerPresentation(boss, fTimeDelta);
 	if (nullptr == m_pCamera)
 	{
 		End_CinematicCameraOverride();
@@ -2616,8 +2436,12 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};
 	if (!m_ValtanCinematicCameraController.Update(input, fTimeDelta, pose))
 	{
-		/* A sky-authored stage is allowed to have no camera cue. Restore only
-		   the camera and leave the independently resolved sky state intact. */
+		/* A cue-authored exit handoff retains the same Server cinematic owner
+		   until its final submitted pose exactly matches live gameplay follow. */
+		if (Update_CinematicCameraExitTransition(fTimeDelta))
+			return;
+		/* Map Effects have an independent level-owned clock, so a stage without
+		   a camera cue restores only the camera presentation owner. */
 		End_CinematicCameraOverride();
 		return;
 	}
@@ -2635,7 +2459,8 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 		m_pCamera->Set_FollowEnabled(false);
 		m_pCamera->Set_FollowTarget(nullptr);
 		if (!m_pCamera->Begin_PresentationOverride(
-			static_cast<uint64_t>(boss.iNetEntityId)))
+			static_cast<uint64_t>(boss.iNetEntityId),
+			CCamera::PRESENTATION_PRIORITY::SERVER_CINEMATIC))
 		{
 			m_pCamera->Set_FollowTarget(m_pCinematicRestoreTarget.lock());
 			m_pCamera->Set_FollowEnabled(
@@ -2668,164 +2493,45 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	}
 }
 
-void CLevel_ValtanArena::Apply_ValtanSkyPresentation(
-	const VALTAN_CINEMATIC_SKY_STATE& state)
+bool_t CLevel_ValtanArena::Update_CinematicCameraExitTransition(
+	const f32_t fTimeDelta)
 {
-	if (!state.isActive || state.strCueId.empty() ||
-		state.strRedCloudAssetId != m_strValtanRedCloudSeedAssetId ||
-		state.strBlackApertureAssetId !=
-			m_strValtanBlackApertureSeedAssetId ||
-		!std::isfinite(state.fCloudOpacity) ||
-		!std::isfinite(state.fApertureScale) ||
-		!std::isfinite(state.fCloudRotationDegrees) ||
-		!std::isfinite(state.vAnchor.x) ||
-		!std::isfinite(state.vAnchor.y) ||
-		!std::isfinite(state.vAnchor.z))
+	if (!m_bCinematicCameraApplied || nullptr == m_pCamera ||
+		0u == m_iCinematicCameraOwnerId ||
+		!m_bCinematicRestoreFollowRequested ||
+		!m_ValtanCinematicCameraController.Is_ExitTransitionActive())
 	{
-		Reset_ValtanSkyPresentation();
-		return;
+		return false;
 	}
+	const shared_ptr<CTransform> followTarget =
+		m_pCinematicRestoreTarget.lock();
+	if (nullptr == followTarget)
+		return false;
 
-	const f32_t cloudOpacity =
-		(std::clamp)(state.fCloudOpacity, 0.f, 1.f);
-	const f32_t apertureScale =
-		(std::clamp)(state.fApertureScale, 0.f, 1.1f);
-	const f32_t apertureOpacity =
-		(std::clamp)(apertureScale, 0.f, 1.f);
-	constexpr f32_t VISIBLE_EPSILON = 0.001f;
-	const VALTAN_CINEMATIC_SKY_PRESENTATION_FRAME& frame =
-		CValtanCinematicCameraController::Get_SkyPresentationFrame();
+	const vector_t targetPosition = followTarget->Get_State(STATE::POSITION);
+	const float3_t positionOffset = m_pCamera->Get_PositionOffset();
+	VALTAN_CINEMATIC_CAMERA_POSE followPose{};
+	XMStoreFloat3(&followPose.vEye, XMVectorSetW(
+		targetPosition + XMLoadFloat3(&positionOffset), 1.f));
+	XMStoreFloat3(&followPose.vLookAt, XMVectorSetW(
+		targetPosition + XMVectorSet(
+			0.f, VALTAN_GAMEPLAY_FOLLOW_LOOK_HEIGHT, 0.f, 0.f), 1.f));
+	followPose.fFovYDegrees = VALTAN_GAMEPLAY_FOV_Y_DEGREES;
 
-	const auto toMapProfile = [](
-		const VALTAN_CINEMATIC_SKY_LAYER_PROFILE profile)
+	VALTAN_CINEMATIC_CAMERA_POSE transitionPose{};
+	if (!m_ValtanCinematicCameraController.Update_ExitTransition(
+		followPose, fTimeDelta, transitionPose) ||
+		!m_pCamera->Apply_PresentationPose(
+			m_iCinematicCameraOwnerId,
+			transitionPose.vEye,
+			transitionPose.vLookAt,
+			transitionPose.fFovYDegrees))
 	{
-		switch (profile)
-		{
-		case VALTAN_CINEMATIC_SKY_LAYER_PROFILE::DARK_APERTURE:
-			return CMapAssetObject::PRESENTATION_VORTEX_PROFILE::DARK_APERTURE;
-		case VALTAN_CINEMATIC_SKY_LAYER_PROFILE::RED_RING:
-			return CMapAssetObject::PRESENTATION_VORTEX_PROFILE::RED_RING;
-		case VALTAN_CINEMATIC_SKY_LAYER_PROFILE::RED_CLOUD_DISC:
-			return CMapAssetObject::PRESENTATION_VORTEX_PROFILE::RED_CLOUD_DISC;
-		default:
-			return CMapAssetObject::PRESENTATION_VORTEX_PROFILE::NONE;
-		}
-	};
-
-	auto applyGroup = [
-		&frame, &toMapProfile, anchor = state.vAnchor,
-		cloudOpacity, apertureOpacity, apertureScale,
-		visibleEpsilon = VISIBLE_EPSILON,
-		rotationDegrees = state.fCloudRotationDegrees](auto& layers)
-	{
-		for (VALTAN_SKY_PRESENTATION_LAYER& layer : layers)
-		{
-			if (nullptr == layer.pObject)
-				continue;
-
-			const VALTAN_CINEMATIC_SKY_LAYER_POLICY& policy = layer.Policy;
-			const CMapAssetObject::PRESENTATION_VORTEX_PROFILE mapProfile =
-				toMapProfile(policy.eProfile);
-			const f32_t sourceOpacity =
-				VALTAN_CINEMATIC_SKY_LAYER_PROFILE::DARK_APERTURE ==
-					policy.eProfile ? apertureOpacity : cloudOpacity;
-			const f32_t opacity = (std::clamp)(
-				sourceOpacity * policy.fOpacityMultiplier, 0.f, 1.f);
-			const bool_t visible = policy.isPresentationVisible &&
-				CMapAssetObject::PRESENTATION_VORTEX_PROFILE::NONE !=
-					mapProfile &&
-				opacity > visibleEpsilon;
-			if (!visible)
-			{
-				layer.pObject->Set_Visible(false);
-				layer.pObject->Set_PresentationOpacityMultiplier(1.f);
-				layer.pObject->Set_PresentationVortexProfile(
-					CMapAssetObject::PRESENTATION_VORTEX_PROFILE::NONE,
-					0.f);
-				layer.pObject->Set_PlacementTransform(
-					layer.vBasePosition,
-					layer.vBaseRotationQuaternion,
-					layer.vBaseSignedScale);
-				continue;
-			}
-
-			const vector_t facingQuaternion =
-				XMLoadFloat4(&frame.vFacingQuaternion);
-			const vector_t yawQuaternion = XMQuaternionRotationRollPitchYaw(
-				0.f,
-				XMConvertToRadians(
-					rotationDegrees * policy.fRotationMultiplier),
-				0.f);
-			float4_t presentationQuaternion{};
-			/* DirectXMath defines Multiply(Q1, Q2) as Q2*Q1: face every
-			   plane toward the camera first, then rotate it around world Y. */
-			XMStoreFloat4(&presentationQuaternion,
-				XMQuaternionMultiply(facingQuaternion, yawQuaternion));
-
-			f32_t uniformScale = policy.fAbsoluteUniformScale;
-			if (policy.scalesWithAperture)
-			{
-				/* Keep the dark centre readable during the TAKEOFF fade while
-				   preserving the authored aperture growth through DROP. */
-				uniformScale *= 0.5f + 0.5f * apertureScale;
-			}
-			uniformScale = (std::clamp)(uniformScale,
-				CValtanCinematicCameraController::
-					SKY_MIN_ABSOLUTE_UNIFORM_SCALE,
-				CValtanCinematicCameraController::
-					SKY_MAX_ABSOLUTE_UNIFORM_SCALE);
-			const float3_t presentationScale(
-				uniformScale, uniformScale, uniformScale);
-			const float3_t presentationPosition(
-				anchor.x,
-				anchor.y,
-				anchor.z);
-			layer.pObject->Set_PresentationVortexProfile(mapProfile, 1.f);
-			layer.pObject->Set_PlacementTransform(
-				presentationPosition,
-				presentationQuaternion,
-				presentationScale);
-			layer.pObject->Set_PresentationOpacityMultiplier(opacity);
-			layer.pObject->Set_Visible(true);
-		}
-	};
-
-	applyGroup(m_ValtanRedCloudLayers);
-	applyGroup(m_ValtanBlackApertureLayers);
-}
-
-void CLevel_ValtanArena::Reset_ValtanSkyPresentation()
-{
-	auto resetGroup = [](auto& layers)
-	{
-		for (VALTAN_SKY_PRESENTATION_LAYER& layer : layers)
-		{
-			if (nullptr == layer.pObject)
-				continue;
-			/* Hide first: an object already queued by Late_Update must fail its
-			   Render re-check before its base transform is restored. */
-			layer.pObject->Set_Visible(false);
-			layer.pObject->Set_PresentationOpacityMultiplier(1.f);
-			layer.pObject->Set_PresentationVortexProfile(
-				CMapAssetObject::PRESENTATION_VORTEX_PROFILE::NONE, 0.f);
-			layer.pObject->Set_PlacementTransform(
-				layer.vBasePosition,
-				layer.vBaseRotationQuaternion,
-				layer.vBaseSignedScale);
-			layer.pObject->Set_Visible(layer.bBaseVisible);
-		}
-	};
-	resetGroup(m_ValtanRedCloudLayers);
-	resetGroup(m_ValtanBlackApertureLayers);
-}
-
-void CLevel_ValtanArena::Clear_ValtanSkyPresentation()
-{
-	Reset_ValtanSkyPresentation();
-	m_ValtanRedCloudLayers = {};
-	m_ValtanBlackApertureLayers = {};
-	m_strValtanRedCloudSeedAssetId.clear();
-	m_strValtanBlackApertureSeedAssetId.clear();
+		return false;
+	}
+	if (!m_ValtanCinematicCameraController.Is_ExitTransitionActive())
+		End_CinematicCameraOverride();
+	return true;
 }
 
 void CLevel_ValtanArena::End_CinematicCameraOverride()
@@ -2841,14 +2547,13 @@ void CLevel_ValtanArena::End_CinematicCameraOverride()
 	m_bCinematicRestoreFollowRequested = false;
 	m_bCinematicCameraApplied = false;
 	m_iCinematicCameraOwnerId = 0u;
+	m_ValtanCinematicCameraController.Cancel_ExitTransition();
 }
 
 void CLevel_ValtanArena::End_CinematicCamera()
 {
-	/* Disconnect, presentation abort and level exit all restore the cached map
-	   layers. Ordinary camera-cue completion uses the narrower helper above. */
-	m_ValtanSkyState = VALTAN_CINEMATIC_SKY_STATE{};
-	Reset_ValtanSkyPresentation();
+	/* Map Effects have their own level lifetime. Camera completion must not
+	   cancel a stage-owned world Effect or restore unrelated Deploy surfaces. */
 	End_CinematicCameraOverride();
 }
 

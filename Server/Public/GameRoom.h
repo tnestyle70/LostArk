@@ -262,6 +262,28 @@ namespace LostArk::Server
 		void Handle_ValtanAudition(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request);
+		LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT
+			Evaluate_ValtanPatternFlowStart(
+				SESSION_ID sessionId,
+				const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& request,
+				std::uint32_t& outRoomFlowEpoch,
+				LostArk::Shared::GameplayDataRevision& outPinnedRevision,
+				std::string& outReason);
+		LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT
+			Evaluate_ValtanPatternFlowStopAfterCurrent(
+				SESSION_ID sessionId,
+				const LostArk::Shared::
+					C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& request,
+				std::uint32_t& outRoomFlowEpoch,
+				LostArk::Shared::GameplayDataRevision& outPinnedRevision,
+				std::string& outReason);
+		void Handle_ValtanPatternFlowStart(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& request);
+		void Handle_ValtanPatternFlowStopAfterCurrent(
+			SESSION_ID sessionId,
+			const LostArk::Shared::
+				C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& request);
 		SERVER_WORLD_ENTITY* Find_AuditionBoss();
 		SERVER_WORLD_ENTITY* Find_AuditionBoss(
 			const std::string& placementId);
@@ -307,6 +329,57 @@ namespace LostArk::Server
 			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
 			std::string reason = {});
 		bool Flush_ValtanPatternIdAuditionLifecycle();
+
+		enum class VALTAN_PATTERN_FLOW_AUDITION_PHASE : std::uint8_t
+		{
+			INACTIVE,
+			PENDING,
+			ACTIVE
+		};
+
+		struct VALTAN_PATTERN_FLOW_AUDITION_STATE final
+		{
+			VALTAN_PATTERN_FLOW_AUDITION_PHASE ePhase =
+				VALTAN_PATTERN_FLOW_AUDITION_PHASE::INACTIVE;
+			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::PLAYER_ID iOwnerPlayerId =
+				LostArk::Shared::INVALID_PLAYER_ID;
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iRequestSequence = 0u;
+			std::uint32_t iRoomFlowEpoch = 0u;
+			std::uint32_t iFirstPatternSequence = 0u;
+			std::size_t iStartSlotIndex = 0u;
+			std::size_t iReportedSequenceIndex =
+				(static_cast<std::size_t>(-1));
+			bool bReportedPausedForRevive = false;
+			bool bStopAfterCurrent = false;
+			std::string strBossPlacementId;
+			std::string strFlowId;
+			std::string strFlowRevision;
+			std::string strStartSlotId;
+			std::vector<LostArk::Shared::VALTAN_PATTERN_FLOW_SLOT_WIRE> Slots;
+			BOSS_PATTERN_SEQUENCE_DEFINITION Sequence;
+			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+		};
+
+		[[nodiscard]] bool Is_ValtanPatternFlowRunning() const noexcept;
+		[[nodiscard]] const BOSS_PATTERN_SEQUENCE_DEFINITION*
+			Resolve_ValtanPatternFlowSequence(
+				const SERVER_WORLD_ENTITY& boss) const noexcept;
+		void Refresh_ValtanPatternFlowState(SERVER_WORLD_ENTITY& boss);
+		void Finish_ValtanPatternFlow(
+			SERVER_WORLD_ENTITY& boss,
+			LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE terminalState,
+			std::string reason = {});
+		void Abort_ValtanPatternFlowForOwner(
+			SESSION_ID sessionId,
+			std::string reason);
+		void Queue_ValtanPatternFlowLifecycle(
+			LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE state,
+			const SERVER_WORLD_ENTITY* boss,
+			std::string reason = {});
+		bool Flush_ValtanPatternFlowLifecycle();
 
 		enum class VALTAN_TIMELINE_AUDITION_PHASE : std::uint8_t
 		{
@@ -463,6 +536,16 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
 			LostArk::Shared::VALTAN_AUDITION_RESULT result,
 			std::uint32_t currentHealthBar);
+		bool Send_ValtanPatternFlowResult(
+			const std::shared_ptr<CClientSession>& session,
+			std::uint32_t commandSequence,
+			LostArk::Shared::VALTAN_PATTERN_FLOW_COMMAND command,
+			LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT result,
+			const std::string& flowId,
+			const std::string& flowRevision,
+			std::uint32_t roomFlowEpoch,
+			const LostArk::Shared::GameplayDataRevision& pinnedRevision,
+			const std::string& reason);
 		bool Build_RequiredPinnedGameplayRevisions(
 			std::vector<LostArk::Shared::GameplayDataRevision>&
 				outRevisions) const;
@@ -542,28 +625,6 @@ namespace LostArk::Server
 				previousDefinitionRevision,
 			const LostArk::Shared::GameplayDataRevision& nextDefinitionRevision,
 			std::uint32_t serverTick);
-		/* catch-breath is a four-stage boss sequence whose middle stages own one
-		player transform. The ordinary stage transaction remains responsible for
-		combat/world actions; this companion commits the grab/release edge after
-		that transaction succeeds. */
-		void Apply_ValtanCatchBreathStageTransition(
-			const SERVER_WORLD_ENTITY& boss,
-			const std::string& previousPatternId,
-			const std::string& previousActionId,
-			const std::string& nextPatternId,
-			const std::string& nextActionId,
-			std::uint32_t serverTick);
-		void Begin_ValtanCatchBreathGrab(
-			SERVER_PLAYER& player,
-			const SERVER_WORLD_ENTITY& boss,
-			std::uint32_t serverTick);
-		void Begin_ValtanCatchBreathThrow(
-			SERVER_PLAYER& player,
-			const SERVER_WORLD_ENTITY& boss,
-			std::uint32_t serverTick);
-		void Maintain_ValtanCatchBreathGrab(
-			const SERVER_WORLD_ENTITY& boss,
-			std::uint32_t serverTick);
 		bool Stage_BossPatternStageActions(
 			const SERVER_WORLD_ENTITY& boss,
 			const CGameplayCatalog& catalog,
@@ -574,6 +635,17 @@ namespace LostArk::Server
 			SERVER_BOSS_COMBAT_STATE& stagedCombat,
 			std::uint8_t& stagedGameplayPhase,
 			SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction,
+			std::uint32_t spawnWaveOrdinal = 0u);
+		/* Runs only after every stage-action preflight transaction commits. These
+		actions own player/target state and therefore cannot be staged inside the
+		boss-combat or combat-object value transactions above. */
+		bool Commit_BossPatternPlayerStageActions(
+			SERVER_WORLD_ENTITY& boss,
+			const CGameplayCatalog& catalog,
+			const std::string& patternId,
+			const std::string& actionId,
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+			std::uint32_t serverTick,
 			std::uint32_t spawnWaveOrdinal = 0u);
 		bool Resolve_ArenaRandomVolleyOrigins(
 			const SERVER_WORLD_ENTITY& boss,
@@ -679,10 +751,32 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			float fixedDeltaSeconds,
 			std::uint32_t updateTick);
-		bool Advance_ValtanCatchBreathThrow(
+		/* Product boss-pattern adapters call these with replicated identities. The
+		room owns interruption, fixed-tick fallback motion and release reaction so
+		no pattern can leave half of a grabbed player state behind. */
+		bool Capture_PlayerAttachment(
+			LostArk::Shared::NET_ENTITY_ID playerEntityId,
+			LostArk::Shared::NET_ENTITY_ID ownerEntityId,
+			LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+			std::uint32_t serverTick);
+		bool Update_PlayerAttachment(
 			SERVER_PLAYER& player,
-			float fixedDeltaSeconds,
-			std::uint32_t updateTick);
+			std::uint32_t serverTick);
+		bool Release_PlayerAttachment(
+			SERVER_PLAYER& player,
+			LostArk::Shared::NET_ENTITY_ID ownerEntityId,
+			float pushRangeM,
+			std::uint32_t pushMs,
+			bool knockdown,
+			std::uint32_t downMs,
+			std::uint32_t serverTick);
+		std::size_t Release_PlayerAttachments(
+			LostArk::Shared::NET_ENTITY_ID ownerEntityId,
+			float pushRangeM,
+			std::uint32_t pushMs,
+			bool knockdown,
+			std::uint32_t downMs,
+			std::uint32_t serverTick);
 		void Update_Players(float fixedDeltaSeconds);
 		/* Slides a hit player along the armed knockback window, clamped to
 		walkable floor and blocking bodies; a wall ends the window early. */
@@ -778,6 +872,19 @@ namespace LostArk::Server
 			m_ValtanAuditionSequenceBySessionId;
 		std::unordered_map<SESSION_ID, std::uint32_t>
 			m_ValtanPatternIdAuditionSequenceBySessionId;
+		struct VALTAN_PATTERN_FLOW_COMMAND_RECEIPT final
+		{
+			std::uint32_t iSequence = 0u;
+			std::uint32_t iRoomFlowEpoch = 0u;
+			std::string strFlowId;
+			std::string strFlowRevision;
+			std::string strRequestIdentity;
+			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+		};
+		std::unordered_map<SESSION_ID, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT>
+			m_ValtanPatternFlowStartSequenceBySessionId;
+		std::unordered_map<SESSION_ID, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT>
+			m_ValtanPatternFlowControlSequenceBySessionId;
 #ifdef _DEBUG
 		struct TARGETED_VALTAN_AUDITION_LIFECYCLE final
 		{
@@ -787,7 +894,16 @@ namespace LostArk::Server
 		std::uint32_t m_iNextValtanAuditionEpoch = 1u;
 		std::vector<TARGETED_VALTAN_AUDITION_LIFECYCLE>
 			m_PendingValtanAuditionLifecycle;
+		struct TARGETED_VALTAN_PATTERN_FLOW_LIFECYCLE final
+		{
+			SESSION_ID iSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE Message;
+		};
+		std::uint32_t m_iNextValtanPatternFlowEpoch = 1u;
+		std::vector<TARGETED_VALTAN_PATTERN_FLOW_LIFECYCLE>
+			m_PendingValtanPatternFlowLifecycle;
 		VALTAN_PATTERN_ID_AUDITION_STATE m_ValtanPatternIdAudition;
+		VALTAN_PATTERN_FLOW_AUDITION_STATE m_ValtanPatternFlowAudition;
 		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
 		VALTAN_FIGHT_PAGE_START_STATE m_ValtanFightPageStart;
 #endif

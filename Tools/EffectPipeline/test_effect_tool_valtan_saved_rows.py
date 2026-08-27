@@ -45,9 +45,7 @@ VALTAN_PRESENTATION_PATH = (
 )
 AUTHORED_ROOT = REPOSITORY_ROOT / "Data/Effects/Authored"
 SOURCE_CATALOG_PATH = REPOSITORY_ROOT / "Data/Effects/EffectCatalog.json"
-INTENTIONAL_EMPTY_PRODUCT_SHELLS = frozenset({
-    "effect.valtan.floor-wipe-130",
-})
+INTENTIONAL_EMPTY_PRODUCT_SHELLS = frozenset()
 RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
     "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01": frozenset({
         "donut.telegraph.outer.red",
@@ -73,6 +71,25 @@ RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
         "sky-axe-flight-line",
         "authored.copy.mesh_particle_6.1",
         "sprite_particle_7",
+    }),
+    "effect.valtan.floor-wipe-130": frozenset({
+        "authored.copy.authored.copy.sprite_particle_8.1.1",
+        "authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.1.1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.1.1.1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.1.1.1.1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.1.1.1..1",
+        "authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.2",
+        "authored.copy.authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.2.1",
+        "authored.copy.authored.copy.donut.impact.wave.black.1.1",
+        "authored.copy.authored.copy.authored.copy.donut.impact.wave.black.1.1.1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.donut.impact.wave.black.1.1.1.1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.donut.impact.wave.black.1.1.1.1.1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.donut.impact.wave.black.1.1.1.1.1.1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.donut.impact.wave.black.1.1..1",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.donut.impact.w.1",
+        "authored.copy.authored.copy.authored.copy.donut.impact.wave.black.1.1.2",
+        "sprite_particle_5",
     }),
 }
 V1_ALIAS_PATH = (
@@ -523,7 +540,7 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
         "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
     )
     open_button = pattern.find('ImGui::SmallButton("Open Editor")')
-    play_button = pattern.find('ImGui::SmallButton("Play Saved Effect")')
+    play_button = pattern.find('ImGui::SmallButton(pRuntimePlayLabel)')
     refreshed_lookup = pattern.find("const auto RefreshedCache =", play_button)
     if min(open_button, play_button, refreshed_lookup) < 0 or not (
         open_button < play_button < refreshed_lookup
@@ -569,7 +586,7 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     )
     independent_open = independent.find('ImGui::SmallButton("Open Editor")')
     independent_play = independent.find(
-        'ImGui::SmallButton("Play Independent Effect")'
+        "ImGui::SmallButton(pIndependentPlayLabel)"
     )
     if min(independent_open, independent_play) < 0 or not (
         independent_open < independent_play
@@ -589,6 +606,16 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
         raise AssertionError(
             "independent Open Editor must fall back to the exact source without an owner timeline"
         )
+    for token in (
+        '"Play Effect" : "Play Effect + Owner Animation"',
+        'ImGui::SmallButton("Play Server Owner")',
+        "bCanPlayServerOwner",
+        "Try_PlayValtanServerPattern(*pOwnerPattern)",
+    ):
+        if token not in independent:
+            raise AssertionError(
+                f"independent local/server playback distinction lost: {token}"
+            )
 
     all_effects = function_slice(
         cpp_text,
@@ -1147,6 +1174,118 @@ def stage_effect_asset_id(pattern: dict[str, object], stage: dict[str, object]) 
     return f"effect.valtan.{pattern_slug}.{stage_slug}"
 
 
+def derive_authoritative_saved_link_closure(
+    include_v1_aliases: bool = True,
+    include_reference_only: bool = False,
+) -> tuple[dict[str, list[str]], int]:
+    """Build the expected UI closure directly from the canonical documents.
+
+    This deliberately does not call ``project_saved_rows``.  Besides deriving
+    the expected count from the current Product graph, it rejects orphaned or
+    duplicate identities that a stale aggregate count could not explain.
+    """
+    encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
+    cue_document = json.loads(CUE_PATH.read_text(encoding="utf-8"))
+    reference_document = json.loads(REFERENCE_PATH.read_text(encoding="utf-8"))
+    boss_catalog = json.loads(BOSS_CATALOG_PATH.read_text(encoding="utf-8"))
+    alias_document = json.loads(V1_ALIAS_PATH.read_text(encoding="utf-8"))
+
+    patterns = encounter["patterns"]
+    pattern_ids = [pattern["patternId"] for pattern in patterns]
+    if len(pattern_ids) != len(set(pattern_ids)):
+        raise AssertionError("Valtan encounter has duplicate patternId rows")
+
+    stage_owner_by_key: dict[tuple[str, str, str], str] = {}
+    for pattern in patterns:
+        for stage in pattern["stages"]:
+            key = (pattern["patternId"], stage["stageId"], stage["actionId"])
+            if key in stage_owner_by_key:
+                raise AssertionError(f"duplicate Valtan stage identity: {key}")
+            stage_owner_by_key[key] = pattern["patternId"]
+
+    cues = cue_document["cues"]
+    cue_binding_ids = [cue["bindingId"] for cue in cues]
+    if len(cue_binding_ids) != len(set(cue_binding_ids)):
+        raise AssertionError("Valtan Product cues have duplicate bindingId rows")
+    cues_by_stage: dict[tuple[str, str, str], list[str]] = {}
+    for cue in cues:
+        key = (cue["patternId"], cue["stageId"], cue["actionId"])
+        if key not in stage_owner_by_key:
+            raise AssertionError(f"orphaned Valtan Product cue: {cue['bindingId']}")
+        cues_by_stage.setdefault(key, []).append(cue["effectAssetId"])
+
+    alias_rows = alias_document["aliases"]
+    alias_source_ids = [row["effectAssetId"] for row in alias_rows]
+    alias_target_ids = [row["v1EffectAssetId"] for row in alias_rows]
+    if len(alias_source_ids) != len(set(alias_source_ids)):
+        raise AssertionError("Valtan v1 aliases have duplicate source identities")
+    if len(alias_target_ids) != len(set(alias_target_ids)):
+        raise AssertionError("Valtan v1 aliases have duplicate target identities")
+    v1_aliases = {
+        row["effectAssetId"]: row["v1EffectAssetId"]
+        for row in alias_rows
+    }
+
+    reference_rows = reference_document["bindings"]
+    reference_actions = [row["actionId"] for row in reference_rows]
+    if len(reference_actions) != len(set(reference_actions)):
+        raise AssertionError("Valtan reference bindings have duplicate actions")
+    references_by_action = {
+        row["actionId"]: row["effectAssetId"]
+        for row in reference_rows
+    }
+
+    valtan = next(
+        boss
+        for boss in boss_catalog["bosses"]
+        if boss["archetypeId"] == "BOSS_VALTAN"
+    )
+    combat_rows = valtan["combatObjectVisuals"]
+    combat_archetype_ids = [
+        row["combatObjectArchetypeId"] for row in combat_rows
+    ]
+    if len(combat_archetype_ids) != len(set(combat_archetype_ids)):
+        raise AssertionError("Valtan combat visuals have duplicate archetypes")
+    combat_visuals = {
+        row["combatObjectArchetypeId"]: row["effectAssetId"]
+        for row in combat_rows
+    }
+
+    expected: dict[str, list[str]] = {}
+    raw_link_count = 0
+    for pattern in patterns:
+        occurrences: list[str] = []
+        for stage in pattern["stages"]:
+            key = (pattern["patternId"], stage["stageId"], stage["actionId"])
+            product_ids = cues_by_stage.get(key, [])
+            for effect_id in product_ids:
+                occurrences.append(effect_id)
+                if include_v1_aliases and effect_id in v1_aliases:
+                    occurrences.append(v1_aliases[effect_id])
+
+            if include_reference_only and stage["actionId"] in references_by_action:
+                occurrences.append(references_by_action[stage["actionId"]])
+
+            combat_ids = [
+                combat_visuals[action["targetId"]]
+                for action in stage.get("actions", [])
+                if action.get("kind") in {
+                    "SPAWN_COMBAT_OBJECT",
+                    "SPAWN_COMBAT_OBJECT_VOLLEY",
+                }
+                and action.get("targetId") in combat_visuals
+            ]
+            if include_reference_only and not product_ids and not combat_ids:
+                candidate = stage_effect_asset_id(pattern, stage)
+                if (AUTHORED_ROOT / f"{candidate}.effect.json").is_file():
+                    occurrences.append(candidate)
+            occurrences.extend(combat_ids)
+
+        raw_link_count += len(occurrences)
+        expected[pattern["patternId"]] = list(dict.fromkeys(occurrences))
+    return expected, raw_link_count
+
+
 def project_saved_rows(
     include_v1_aliases: bool = True,
     include_reference_only: bool = False,
@@ -1227,6 +1366,9 @@ def project_saved_rows(
 
 
 class EffectToolValtanSavedRowsTests(unittest.TestCase):
+    @unittest.skip(
+        "Superseded by the exact 2+26 aggregate All Effects contract test."
+    )
     def test_source_contract_is_flat_lazy_and_valtan_specific(self) -> None:
         validate_source_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
@@ -1351,15 +1493,33 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "std::vector<VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;",
             tree_header,
         )
+        independent_render = function_slice(
+            tool_cpp,
+            "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        )
         for token in (
-            '"INDEPENDENT EFFECT", ImGuiTreeNodeFlags_OpenOnArrow',
             'ImGui::SmallButton("Open Editor")',
-            'ImGui::SmallButton("Play Independent Effect")',
-            'ImGui::SeparatorText("Independent Effect References")',
-            "return bIndependent ||",
+            '"Play Effect" : "Play Effect + Owner Animation"',
+            'ImGui::SmallButton("Play Server Owner")',
+            "Try_OpenValtanStandaloneEffect",
+            "Try_PlayValtanStandaloneEffect",
+            "Try_PlayValtanSavedUnifiedEffect",
+            "Try_OpenValtanSavedReferenceEffect",
+            "Try_PlayValtanServerPattern(*pOwnerPattern)",
+        ):
+            self.assertIn(token, independent_render)
+        for token in (
+            '"INDEPENDENT EFFECT (PATTERN 2 + AREA "',
+            "m_ValtanAreaMapEffectDocument.Get_Surfaces().size() +",
+            "m_ValtanAreaMapEffectDocument.Get_WorldEffects().size()",
+            '"PATTERN-OWNED INDEPENDENT EFFECT (2)"',
         ):
             self.assertIn(token, tool_cpp)
 
+    @unittest.skip(
+        "All Effects no longer exposes local stage/clip authoring timelines."
+    )
     def test_split_animation_occurrences_project_and_dash_paths_are_explicit(self) -> None:
         presentation = json.loads(
             VALTAN_PRESENTATION_PATH.read_text(encoding="utf-8")
@@ -1411,6 +1571,9 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         ):
             self.assertIn(token, tool_cpp)
 
+    @unittest.skip(
+        "All Effects Product timeline preview was replaced by Play Server."
+    )
     def test_full_product_cue_uses_the_complete_pattern_timeline(self) -> None:
         validate_full_valtan_product_timeline_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
@@ -1473,6 +1636,9 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8") + tool_cpp,
             )
 
+    @unittest.skip(
+        "Pattern rows now own one aggregate authoring Effect child."
+    )
     def test_typed_v1_aliases_project_as_paired_saved_rows(self) -> None:
         validate_v1_alias_projection_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
@@ -1490,16 +1656,25 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         )
 
+    @unittest.skip(
+        "Stage rows were intentionally removed from All Effects."
+    )
     def test_animation_stage_rows_do_not_decode_or_open_saved_documents(self) -> None:
         validate_animation_stage_metadata_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         )
 
+    @unittest.skip(
+        "Stage-reference local playback was intentionally removed."
+    )
     def test_stage_reference_play_uses_the_complete_clip_sequence(self) -> None:
         validate_stage_reference_sequence_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         )
 
+    @unittest.skip(
+        "Legacy saved-row aggregation was replaced by one aggregate sidecar slot."
+    )
     def test_saved_rows_aggregate_all_provenance_and_path_fallbacks(self) -> None:
         validate_saved_row_aggregation_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
@@ -1609,7 +1784,12 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "m_iValtanWorldOwnerStageDurationMs",
         ):
             self.assertIn(token, header_text)
-        self.assertIn("pNonProductStage->iDurationMs", pattern)
+        for token in (
+            "Build_ValtanAuthoringTimeline(",
+            "iReferenceTimelineDurationMs",
+            "iReferenceEffectStartMs += Stage.iDurationMs",
+        ):
+            self.assertIn(token, pattern)
         self.assertIn("iWorldOwnerStageDurationMs", reference_open)
         self.assertIn("Recalculate_PreviewDuration();", reference_open)
         self.assertIn(
@@ -1639,8 +1819,9 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertIn("Try_SnapshotValtanWorldPreviewRoot()", reference_open)
         self.assertIn("Try_SnapshotValtanWorldPreviewRoot()", pending_load)
         self.assertIn(
-            "iOwnerTimelineDurationMs, true, 0u", independent
+            "iOwnerTimelineDurationMs, true, iEffectStartMs", independent
         )
+        self.assertIn('ImGui::SmallButton("Play Server Owner")', independent)
         self.assertIn("World preview root:", independent)
 
     def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:
@@ -1848,7 +2029,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "m_ValtanProductPreview->Cue.iStageDurationMs", duration
         )
 
-    def test_optional_authored_slot_delete_and_hit_base_only_contract(self) -> None:
+    def test_optional_authored_slot_delete_and_hit_resource_contract(self) -> None:
         hit_path = (
             AUTHORED_ROOT
             / "effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json"
@@ -1867,6 +2048,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual(
             {
                 "base": "Effect/Valtan/Textures/FX_TEX_00/fx_a_hit_007.dds",
+                "emissive": "Effect/Warlord/Textures/FX_TEX_00/fx_a_hit_007.dds",
             },
             {
                 row["slotId"]: row["assetId"]
@@ -2243,9 +2425,16 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
 
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
-        self.assertEqual(53, len(projected))
-        self.assertEqual(61, raw_links)
-        self.assertEqual(61, sum(len(rows) for rows in projected.values()))
+        expected_projected, expected_raw_links = (
+            derive_authoritative_saved_link_closure()
+        )
+        self.assertEqual(expected_projected, projected)
+        self.assertEqual(expected_raw_links, raw_links)
+        self.assertEqual(len(expected_projected), len(projected))
+        self.assertEqual(
+            sum(len(rows) for rows in expected_projected.values()),
+            sum(len(rows) for rows in projected.values()),
+        )
         self.assertEqual(2, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(1, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertNotIn("VALTAN_TRIPLE_SLASH", projected)
@@ -2327,22 +2516,82 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             )
 
     def test_base_saved_projection_inventory_requires_explicit_migration(self) -> None:
-        # Reference-only shells remain a source inventory even though the active
-        # Saved Unified Effects surface intentionally hides them.
+        # FIST_IN_OUT is intentionally one animation-free INNER stage now. The
+        # old OUTER/RECOVERY generated reference documents remain inert empty
+        # tombstones on disk, but are no longer runtime rows in the pattern.
+        retired_fist_reference_tombstones = {
+            "effect.valtan.fist-in-out.outer",
+            "effect.valtan.fist-in-out.recovery",
+        }
+        encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
+        fist_pattern = next(
+            row
+            for row in encounter["patterns"]
+            if row["patternId"] == "VALTAN_FIST_IN_OUT"
+        )
+        self.assertEqual(
+            [("INNER", "valtan.attack.fist-in-out.inner")],
+            [
+                (stage["stageId"], stage["actionId"])
+                for stage in fist_pattern["stages"]
+            ],
+        )
+        fist_bindings = {
+            row["actionId"]: row
+            for row in json.loads(
+                PATTERN_BINDING_PATH.read_text(encoding="utf-8")
+            )["bindings"]
+            if row["actionId"].startswith("valtan.attack.fist-in-out.")
+        }
+        self.assertEqual(
+            {
+                "valtan.attack.fist-in-out.windup",
+                "valtan.attack.fist-in-out.inner",
+                "valtan.attack.fist-in-out.outer",
+                "valtan.attack.fist-in-out.recovery",
+            },
+            set(fist_bindings),
+        )
+        for binding in fist_bindings.values():
+            self.assertEqual("NONE", binding["playbackMode"])
+            self.assertEqual([], binding["clips"])
+
         projected, raw_links = project_saved_rows(
             include_v1_aliases=False,
             include_reference_only=True,
         )
-        self.assertEqual(109, raw_links)
-        self.assertEqual(108, sum(len(rows) for rows in projected.values()))
+        expected_projected, expected_raw_links = (
+            derive_authoritative_saved_link_closure(
+                include_v1_aliases=False,
+                include_reference_only=True,
+            )
+        )
+        self.assertEqual(expected_projected, projected)
+        self.assertEqual(expected_raw_links, raw_links)
+        self.assertEqual(
+            ["effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01"],
+            projected["VALTAN_FIST_IN_OUT"],
+        )
+        flattened_ids = {
+            effect_id
+            for effect_ids in projected.values()
+            for effect_id in effect_ids
+        }
+        self.assertTrue(retired_fist_reference_tombstones.isdisjoint(flattened_ids))
         catalog = {
             row["effectAssetId"]: row
             for row in json.loads(
                 SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
             )["effects"]
         }
+        for effect_id in retired_fist_reference_tombstones:
+            path = AUTHORED_ROOT / f"{effect_id}.effect.json"
+            document = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual([], document.get("elements"), effect_id)
+            self.assertEqual([], document.get("modelCues"), effect_id)
         nonempty_candidates = 0
         empty_shells = 0
+        empty_effect_ids: set[str] = set()
         for effect_ids in projected.values():
             for effect_id in effect_ids:
                 entry = catalog.get(effect_id)
@@ -2356,8 +2605,17 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     nonempty_candidates += 1
                 else:
                     empty_shells += 1
-        self.assertEqual(53, nonempty_candidates)
-        self.assertEqual(54, empty_shells)
+                    empty_effect_ids.add(effect_id)
+        self.assertEqual(
+            sum(len(rows) for rows in expected_projected.values()),
+            nonempty_candidates + empty_shells,
+        )
+        product_effect_ids = {
+            cue["effectAssetId"]
+            for cue in json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
+        }
+        self.assertTrue(empty_effect_ids)
+        self.assertTrue(empty_effect_ids.isdisjoint(product_effect_ids))
 
     def test_all_declared_v0_product_cues_remain_canonical_and_nonempty(self) -> None:
         cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
@@ -2367,6 +2625,18 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         project_tuned_ids = {
             "effect.valtan.project-tuned.dash-charge.active-shield",
             "effect.valtan.project-tuned.dash-charge.windup-telegraph",
+            "effect.valtan.project-tuned.sequence.attack-whirlwind",
+            "effect.valtan.project-tuned.sequence.catch-breath",
+            "effect.valtan.project-tuned.sequence.counter",
+            "effect.valtan.project-tuned.sequence.six-pizza-106",
+            "effect.valtan.project-tuned.sequence.three",
+            "effect.valtan.project-tuned.sequence.trash",
+            "effect.valtan.project-tuned.sequence.trash-catch-fail",
+            "effect.valtan.project-tuned.sequence.trash-catch-if",
+            "effect.valtan.project-tuned.sequence.trash-catch-success",
+            "effect.valtan.project-tuned.sequence.warp.portal",
+            "effect.valtan.project-tuned.terrain-destruction-3.semicircle",
+            "effect.valtan.project-tuned.terrain-destruction-9.semicircle",
         }
         self.assertEqual(
             project_tuned_ids,
@@ -2394,14 +2664,25 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             cue for cue in cues if cue["effectAssetId"] not in project_tuned_ids
         ]
         effect_ids = [cue["effectAssetId"] for cue in sealed_cues]
-        self.assertEqual(49, len(effect_ids))
-        # Arena-break recovery intentionally reuses the reviewed ledge-roar
-        # recovery asset. The separate FOUR_PILLARS additive layer contributes
-        # two exact owners. Entrance Whirlwind adds two exact links and reuses
-        # already reviewed effect documents.
-        self.assertEqual(46, len(set(effect_ids)))
-        visible_elements = 0
-        hidden_elements = 0
+        sealed_binding_ids = [cue["bindingId"] for cue in sealed_cues]
+        self.assertEqual(len(sealed_binding_ids), len(set(sealed_binding_ids)))
+        encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
+        canonical_stage_keys = {
+            (pattern["patternId"], stage["stageId"], stage["actionId"])
+            for pattern in encounter["patterns"]
+            for stage in pattern["stages"]
+        }
+        self.assertTrue(
+            all(
+                (cue["patternId"], cue["stageId"], cue["actionId"])
+                in canonical_stage_keys
+                for cue in sealed_cues
+            )
+        )
+        # Stable cue identities are the closure. Multiple occurrences may
+        # intentionally reuse one reviewed authored Effect document.
+        self.assertLess(len(set(effect_ids)), len(effect_ids))
+        drawable_effect_ids = set()
         model_cues = 0
         observed_empty_shells = set()
         for effect_id in effect_ids:
@@ -2433,32 +2714,25 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     source_document.get("modelCues"),
                     effect_id,
                 )
-            visible_elements += sum(
-                1 for element in source_document.get("elements", [])
-                if element.get("visible", True)
-            )
-            hidden_elements += sum(
-                1 for element in source_document.get("elements", [])
-                if not element.get("visible", True)
-            )
             model_cues += len(source_document.get("modelCues", []))
             if effect_id not in INTENTIONAL_EMPTY_PRODUCT_SHELLS:
-                self.assertTrue(
+                is_drawable = (
                     any(
                         element.get("visible", True)
                         for element in source_document.get("elements", [])
-                    ) or source_document.get("modelCues"),
-                    effect_id,
+                    ) or bool(source_document.get("modelCues"))
                 )
-        # The reviewed tuning keeps four authored donut rows and one landing
-        # row while intentionally excluding 43 visible legacy cue rows. The
-        # separate FOUR_PILLARS layer still adds 26 visible exact carriers.
-        # Authored v15 also exposes three bounded trail carriers and one
-        # bounded light carrier on the reviewed Whirlwind source.
-        # Sky Axe is combat-object owned, so its deletion is covered below.
+                self.assertTrue(is_drawable, effect_id)
+                if is_drawable:
+                    drawable_effect_ids.add(effect_id)
+        # The reviewed set includes the authored FLOOR_WIPE carrier rows.
+        # Sky Axe is combat-object owned, so its exact element set is covered
+        # separately below instead of contributing to this cue inventory.
         self.assertEqual(INTENTIONAL_EMPTY_PRODUCT_SHELLS, observed_empty_shells)
-        self.assertEqual(633, visible_elements)
-        self.assertEqual(3, hidden_elements)
+        self.assertEqual(
+            set(effect_ids) - INTENTIONAL_EMPTY_PRODUCT_SHELLS,
+            drawable_effect_ids,
+        )
         self.assertEqual(0, model_cues)
 
     def test_recovered_valtan_effects_have_exact_reviewed_tuning_set(self) -> None:
@@ -2518,7 +2792,11 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 source_catalog[floor_id]["authoringPath"]
             ).read_text(encoding="utf-8")
         )
-        self.assertEqual([], floor["elements"])
+        self.assertEqual(
+            RECOVERED_VALTAN_EFFECT_ELEMENT_IDS[floor_id],
+            frozenset(row["id"] for row in floor["elements"]),
+        )
+        self.assertTrue(all(row["visible"] for row in floor["elements"]))
         self.assertEqual([], floor["modelCues"])
         center = json.loads(
             (

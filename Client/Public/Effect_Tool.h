@@ -9,7 +9,9 @@
 #include "Effect_OccurrenceTuning.h"
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
+#include "MapEffectDocument.h"
 #include "PlayerSkillCatalog.h"
+#include "ValtanPatternAuthoringEffectDocument.h"
 #include "ValtanPatternTree.h"
 
 #include <array>
@@ -331,6 +333,31 @@ private:
 		uint32_t iOwningClipTimelineOffsetMs = 0u;
 	};
 
+	enum class VALTAN_PATTERN_EFFECT_SELECTION_KIND : uint8_t
+	{
+		DRAFT_ATTACHED,
+		PRODUCT_CUE_LINK,
+		END
+	};
+
+	struct VALTAN_PATTERN_EFFECT_SELECTION final
+	{
+		VALTAN_PATTERN_EFFECT_SELECTION_KIND eKind =
+			VALTAN_PATTERN_EFFECT_SELECTION_KIND::END;
+		std::string strPatternId;
+		std::string strEffectAssetId;
+		std::vector<std::string> CueIds;
+		bool_t bV1Alias = false;
+	};
+
+	struct VALTAN_PATTERN_PRODUCT_UNLINK_OPERATION final
+	{
+		HANDLE hProcess = nullptr;
+		uint64_t iStartedTickMs = 0u;
+		bool_t bSlowNoticeShown = false;
+		VALTAN_PATTERN_EFFECT_SELECTION Selection;
+	};
+
     struct EFFECT_DATA_FILE_ENTRY final
     {
         std::string strAssetId;
@@ -341,6 +368,15 @@ private:
 		bool_t bDocumentParseAttempted = false;
 		std::string strDocumentParseStatus;
     };
+
+	enum class EFFECT_DOCUMENT_PREVIEW_INTENT : uint8_t
+	{
+		SYNCHRONIZED_PRODUCT,
+		VALTAN_PATTERN_DRAFT,
+		STANDALONE_EFFECT,
+		STATIC_AREA_PLACEMENT,
+		END
+	};
 
 	struct DIRECT_AUTHORED_EDITABLE_ENTRY final
 	{
@@ -357,8 +393,14 @@ private:
 		std::filesystem::path Path;
 		std::string strSelectionId;
 		EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
+		EFFECT_DOCUMENT_PREVIEW_INTENT ePreviewIntent =
+			EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT;
+		std::string strValtanPatternId;
+		VALTAN_PATTERN_PREVIEW_PATH eValtanPatternPreviewPath =
+			VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
 		std::string strElementSelectionId;
 		std::string strModelCueSelectionId;
+		bool_t bPreviewAtPlacementAfterLoad = false;
 		bool_t bPlayCompleteAfterLoad = false;
 		optional<VALTAN_CLIP_OCCURRENCE_VIEW> ValtanClip;
 		optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ValtanCue;
@@ -487,9 +529,26 @@ private:
         const std::string& strDomainId,
         const std::string& strCategory,
         const std::string& strKindCategory);
-	/* All Effects treats one Valtan pattern like one Character skill: saved
-	   unified Effects first, then the ordered semantic-stage animations. */
+	/* All Effects exposes the exact Valtan authoring inventory. Play Server is a
+	   one-shot shortcut through the shared Server audition service; Boss Tool
+	   keeps repeat/revive/diagnostics. Canonical Product Effects remain editable
+	   and locally replayable with their joined Model View animation. */
 	void Render_ValtanPatternTreeSection(const std::string& strSearch);
+	void Render_ValtanAreaStaticEffectSection(const std::string& strSearch);
+	bool_t Refresh_ValtanAreaStaticEffects();
+	bool_t Discard_ValtanAreaStaticEffectDraft();
+	bool_t Try_ApplyValtanAreaStaticEffectDraft();
+	bool_t Try_SavePublishValtanAreaStaticEffects();
+	bool_t Try_PreviewValtanAreaWorldEffect(
+		const MAP_EFFECT_WORLD_PRESENTATION& presentation,
+		bool_t play);
+	bool_t Try_OpenValtanStaticAreaEffect(
+		const MAP_EFFECT_WORLD_PRESENTATION& presentation,
+		bool_t previewAtPlacement,
+		bool_t play);
+	bool_t Update_StaticAreaPreviewRoot();
+	bool_t Try_CreateStaticAreaWorldEffectDraft();
+	bool_t Try_RegisterStaticAreaWorldEffectDraft();
 	void Render_ValtanPatternNode(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const char_t* pGroupLabel,
@@ -513,6 +572,39 @@ private:
 	bool_t Try_PlayValtanServerPattern(
 		const VALTAN_PATTERN_VIEW& Pattern);
 	void Update_ValtanServerPatternAudition();
+	void Update_ValtanPatternProductEffectUnlink();
+	bool_t Try_CreateValtanPatternEffect(
+		const VALTAN_PATTERN_VIEW& Pattern);
+	bool_t Can_DeleteSelectedValtanPatternEffect(
+		std::string& strOutReason) const;
+	bool_t Try_DeleteSelectedValtanPatternEffect();
+	bool_t Try_DeleteValtanPatternDraftEffect(
+		const VALTAN_PATTERN_EFFECT_SELECTION& Selection);
+	bool_t Try_UnlinkValtanPatternProductEffect(
+		const VALTAN_PATTERN_EFFECT_SELECTION& Selection);
+	bool_t Try_OpenValtanPatternDraftEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId,
+		const VALTAN_PATTERN_VIEW& Pattern,
+		bool_t bPlayAfterOpen);
+	bool_t Prepare_ActiveValtanPatternDraftTimeline(bool_t bPaused);
+	bool_t Try_OpenValtanStandaloneEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId);
+	bool_t Prepare_ValtanStandaloneEffectTarget();
+	bool_t Try_PlayValtanStandaloneEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId);
+	bool_t Refresh_ValtanPatternAuthoringEffects();
+	const VALTAN_PATTERN_AUTHORING_EFFECT_BINDING*
+		Find_ValtanPatternAuthoringEffect(
+			const std::string& strPatternId) const;
+	const VALTAN_PATTERN_VIEW* Find_ValtanPattern(
+		const std::string& strPatternId) const;
+	bool_t Is_ValtanAllEffectsPattern(
+		const VALTAN_PATTERN_VIEW& Pattern) const;
+	std::string Build_ValtanPatternAggregateEffectAssetId(
+		const VALTAN_PATTERN_VIEW& Pattern) const;
 	bool_t Matches_ValtanPatternSearch(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const std::string& strSearch) const;
@@ -656,12 +748,16 @@ private:
     bool_t Try_LoadDocumentPath(
         const std::filesystem::path& Path,
         EFFECT_DOCUMENT_SOURCE eSource,
-        const std::string& strSelectionId);
+        const std::string& strSelectionId,
+		EFFECT_DOCUMENT_PREVIEW_INTENT ePreviewIntent =
+			EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
     bool_t Try_LoadDocumentPathStaged(
         const std::filesystem::path& Path,
         EFFECT_DOCUMENT_SOURCE eSource,
         const std::string& strSelectionId,
-        bool_t bBypassUnsavedGuard);
+        bool_t bBypassUnsavedGuard,
+		EFFECT_DOCUMENT_PREVIEW_INTENT ePreviewIntent =
+			EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanPatternTree();
@@ -984,9 +1080,39 @@ private:
 	/* Session state, rebuilt by Refresh. A failed reload keeps the previous
 	   tree so the window never empties on a transient read error. */
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
+	CMapEffectDocument m_ValtanAreaMapEffectDocument;
+	std::filesystem::path m_ValtanAreaMapEffectPath;
+	std::string m_strValtanAreaMapEffectBaseline;
+	std::string m_strValtanAreaMapEffectStatus;
+	bool_t m_bValtanAreaMapEffectLoadAttempted = false;
+	bool_t m_bValtanAreaMapEffectLastRefreshSucceeded = false;
+	bool_t m_bValtanAreaMapEffectDirty = false;
+	optional<MAP_EFFECT_WORLD_PRESENTATION>
+		m_StaticAreaPreviewPresentation;
+	optional<MAP_EFFECT_WORLD_PRESENTATION>
+		m_UnpublishedStaticAreaWorldDraft;
+	VALTAN_TOOL_AUDITION_INVENTORY m_ValtanToolAuditionInventory;
 	std::string m_strValtanPatternTreeStatus;
 	bool_t m_bValtanPatternTreeLoaded = false;
 	bool_t m_bValtanPatternTreeLoadAttempted = false;
+	bool_t m_bValtanPatternTreeLastRefreshSucceeded = false;
+	VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT
+		m_ValtanPatternAuthoringEffects;
+	std::string m_strValtanPatternAuthoringEffectsBaseline;
+	std::string m_strValtanPatternAuthoringEffectsStatus;
+	bool_t m_bValtanPatternAuthoringEffectsLoaded = false;
+	bool_t m_bValtanPatternAuthoringEffectsLastRefreshSucceeded = false;
+	std::string m_strSelectedValtanPatternId;
+	optional<VALTAN_PATTERN_EFFECT_SELECTION>
+		m_SelectedValtanPatternEffect;
+	optional<VALTAN_PATTERN_EFFECT_SELECTION>
+		m_PendingValtanPatternEffectDeletion;
+	optional<VALTAN_PATTERN_PRODUCT_UNLINK_OPERATION>
+		m_ValtanPatternProductUnlinkOperation;
+	std::string m_strActiveValtanPatternDraftId;
+	VALTAN_PATTERN_PREVIEW_PATH m_eActiveValtanPatternDraftPreviewPath =
+		VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
+	std::string m_strValtanPatternEffectStatus;
 	std::string m_strValtanServerPatternStatusPatternId;
 	std::string m_strValtanServerPatternStatus;
 	VALTAN_PATTERN_PREVIEW_PATH m_eValtanDashAuthoringTimelinePath =
@@ -1009,6 +1135,8 @@ private:
     EFFECT_PREVIEW_FILTER m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     EFFECT_DOCUMENT_SOURCE m_eActiveDocumentSource =
         EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT;
+	EFFECT_DOCUMENT_PREVIEW_INTENT m_eActiveDocumentPreviewIntent =
+		EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT;
     EFFECT_PREVIEW_PIVOT_KIND m_ePreviewPivotKind =
         EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT;
     std::filesystem::path m_ActiveDocumentPath;
@@ -1060,7 +1188,11 @@ private:
     array<char_t, 129> m_NewElementId{};
     array<char_t, 129> m_ResourceFilter{};
     array<char_t, 129> m_ResourceCategory{};
-    array<char_t, 129> m_AllEffectsSearch{};
+	array<char_t, 129> m_AllEffectsSearch{};
+	array<char_t, 129> m_NewStaticAreaEffectAssetId{};
+	array<char_t, 129> m_NewStaticAreaIndependentId{};
+	array<char_t, 129> m_NewStaticAreaPlacementId{};
+	array<char_t, 129> m_NewStaticAreaDisplayName{};
     array<char_t, 129> m_DataFilesSearch{};
     array<char_t, 129> m_AnimationClipFilter{};
     array<char_t, 129> m_PreviewAnchorBuffer{};

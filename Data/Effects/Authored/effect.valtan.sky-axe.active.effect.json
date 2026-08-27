@@ -149,7 +149,7 @@
       "displayName": "sky-axe-flight-line",
       "groupId": "manual.hit1",
       "sourceNode": "",
-      "visible": true,
+      "visible": false,
       "kind": "particle",
       "resources": [
         { "slotId": "meshModel", "assetId": "Effect/Valtan/Meshes/FX_SM_00/fm_c_cylinder_002.wmodel" },
@@ -198,7 +198,7 @@
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
         "transform": { "position": [1.54999995, 5.94000006, 0.419999987], "rotationDegrees": [0, -17.5, 72.25], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [3, 0.280999988, 0.531000018], "velocityPerSecond": [0, 0, 0] },
-        "color": { "offset": [0, 0, 0, 0], "multiply": [0, 0.649999976, 4.57000017, 2.70000005], "clip": 0, "emissiveIntensity": 0.949999988, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
+        "color": { "offset": [0, 0, 0, 0], "multiply": [0, 2.74000001, 4.57000017, 2.70000005], "clip": 0, "emissiveIntensity": 0.949999988, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": false, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
         "timing": { "startDelaySeconds": 1.20000005, "lifeTimeSeconds": 0.550000012, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
         "mesh": { "useModelMaterial": false, "modelPreScale": 0.00999999978, "sourceTypeDataRotationDegrees": [0, 0, 0] },

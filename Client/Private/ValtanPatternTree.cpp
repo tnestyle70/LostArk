@@ -13,11 +13,26 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <string_view>
 
 namespace
 {
 	using Client::DATA_JSON_TYPE;
 	using Client::DATA_JSON_VALUE;
+
+	constexpr std::array<std::string_view,
+		Client::VALTAN_TOOL_AUDITION_INVENTORY::CORE_PATTERN_COUNT>
+		VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS =
+	{
+		"VALTAN_WHIRLWIND",
+		"VALTAN_FOUR_SLASH",
+		"VALTAN_HIGH_JUMP",
+		"VALTAN_DASH_CHARGE",
+		"VALTAN_FLOOR_WIPE_130",
+		"VALTAN_ARENA_BREAK_109",
+		"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+		"VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK"
+	};
 
 	bool Read_TextDocument(
 		const std::filesystem::path& Path,
@@ -153,6 +168,27 @@ namespace
 				return false;
 		}
 		return true;
+	}
+
+	bool_t Has_ExactPropertiesWithOptional(
+		const DATA_JSON_VALUE& Object,
+		const std::initializer_list<std::string_view> RequiredNames,
+		const std::initializer_list<std::string_view> OptionalNames)
+	{
+		if (!Object.Is_Object())
+			return false;
+		for (const std::string_view Name : RequiredNames)
+		{
+			if (nullptr == Object.Find(Name))
+				return false;
+		}
+		size_t iExpectedPropertyCount = RequiredNames.size();
+		for (const std::string_view Name : OptionalNames)
+		{
+			if (nullptr != Object.Find(Name))
+				++iExpectedPropertyCount;
+		}
+		return Object.Get_Object().size() == iExpectedPropertyCount;
 	}
 
 	bool_t Is_StableToken(const std::string_view Value)
@@ -331,6 +367,48 @@ namespace
 				   five-field stage-action display view. */
 				continue;
 			}
+			if ("RELEASE_GRABBED_PLAYERS" == Read_String(Value, "kind"))
+			{
+				const DATA_JSON_VALUE* pTrigger = Required(
+					Value, "trigger", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* pKind = Required(
+					Value, "kind", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* pTarget = Required(
+					Value, "targetId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* pReleaseMode = Required(
+					Value, "releaseMode", DATA_JSON_TYPE::STRING);
+				Client::VALTAN_STAGE_ACTION_VIEW Action;
+				if (!Has_ExactProperties(Value,
+						{ "trigger", "kind", "targetId", "releaseMode",
+						  "speedMps", "durationMs" }) ||
+					nullptr == pTrigger || nullptr == pKind ||
+					nullptr == pTarget || nullptr == pReleaseMode ||
+					("ENTER" != pTrigger->Get_String() &&
+					 "EXIT" != pTrigger->Get_String()) ||
+					"boss.attachment.left-hand" != pTarget->Get_String() ||
+					!Read_RequiredFiniteFloat(
+						Value, "speedMps", Action.fSpeedMps) ||
+					!Read_RequiredUInt32(
+						Value, "durationMs", Action.iDurationMs) ||
+					Action.fSpeedMps < 0.f || Action.fSpeedMps > 50.f ||
+					Action.iDurationMs > 5000u)
+				{
+					return false;
+				}
+				const bool_t bHold = "HOLD" == pReleaseMode->Get_String() &&
+					0.f == Action.fSpeedMps && 0u == Action.iDurationMs;
+				const bool_t bOppositeKnockback =
+					"OPPOSITE_KNOCKBACK" == pReleaseMode->Get_String() &&
+					Action.fSpeedMps > 0.f && Action.iDurationMs > 0u;
+				if (!bHold && !bOppositeKnockback)
+					return false;
+				Action.strTrigger = pTrigger->Get_String();
+				Action.strKind = pKind->Get_String();
+				Action.strTargetId = pTarget->Get_String();
+				Action.strReleaseMode = pReleaseMode->Get_String();
+				Out.push_back(std::move(Action));
+				continue;
+			}
 			if (!Has_ExactProperties(Value,
 					{ "trigger", "kind", "targetId", "value", "durationMs" }))
 			{
@@ -386,6 +464,129 @@ namespace
 			if (!strNextActionId.empty())
 				Branch.strNextActionId = std::move(strNextActionId);
 			Out.push_back(std::move(Branch));
+		}
+		return true;
+	}
+
+	bool_t Has_ClosedSplitStageFlag(
+		const DATA_JSON_VALUE& Stage,
+		const std::string_view strFlagId)
+	{
+		const DATA_JSON_VALUE* pEvents = Required(
+			Stage, "events", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pEvents)
+			return false;
+		bool_t bEntered = false;
+		bool_t bExited = false;
+		for (const DATA_JSON_VALUE& Event : pEvents->Get_Array())
+		{
+			if ("SET_BOSS_FLAG" != Read_String(Event, "kind") ||
+				strFlagId != Read_String(Event, "flagId"))
+			{
+				continue;
+			}
+			const DATA_JSON_VALUE* pEnabled = Required(
+				Event, "enabled", DATA_JSON_TYPE::BOOLEAN);
+			if (nullptr == pEnabled)
+				continue;
+			const std::string strTrigger = Read_String(Event, "trigger");
+			bEntered = bEntered ||
+				("ENTER" == strTrigger && pEnabled->Get_Boolean());
+			bExited = bExited ||
+				("EXIT" == strTrigger && !pEnabled->Get_Boolean());
+		}
+		return bEntered && bExited;
+	}
+
+	bool_t Read_StageGameplayExtensions(
+		const DATA_JSON_VALUE& Stage,
+		std::string& strOutPartDamagePolicy,
+		std::optional<Client::VALTAN_COUNTER_PROXY_VIEW>& OutCounterProxy)
+	{
+		strOutPartDamagePolicy = "NORMAL";
+		OutCounterProxy.reset();
+
+		const DATA_JSON_VALUE* pPartDamagePolicy =
+			Stage.Find("partDamagePolicy");
+		if (nullptr != pPartDamagePolicy)
+		{
+			if (!pPartDamagePolicy->Is_String() ||
+				("NORMAL" != pPartDamagePolicy->Get_String() &&
+				 "DESTROY_FIRST_ELIGIBLE" !=
+					pPartDamagePolicy->Get_String()))
+			{
+				return false;
+			}
+			strOutPartDamagePolicy = pPartDamagePolicy->Get_String();
+		}
+
+		const DATA_JSON_VALUE* pCounterProxy = Stage.Find("counterProxy");
+		if (nullptr == pCounterProxy)
+			return true;
+
+		Client::VALTAN_COUNTER_PROXY_VIEW CounterProxy;
+		if (!Has_ExactProperties(*pCounterProxy,
+				{ "space", "forwardOffsetM", "rightOffsetM", "radiusM" }) ||
+			"BOSS_LOCAL" != Read_String(*pCounterProxy, "space") ||
+			!Read_RequiredFiniteFloat(*pCounterProxy, "forwardOffsetM",
+				CounterProxy.fForwardOffsetM) ||
+			!Read_RequiredFiniteFloat(*pCounterProxy, "rightOffsetM",
+				CounterProxy.fRightOffsetM) ||
+			!Read_RequiredFiniteFloat(*pCounterProxy, "radiusM",
+				CounterProxy.fRadiusM) ||
+			CounterProxy.fForwardOffsetM < -20.f ||
+			CounterProxy.fForwardOffsetM > 20.f ||
+			CounterProxy.fRightOffsetM < -20.f ||
+			CounterProxy.fRightOffsetM > 20.f ||
+			CounterProxy.fRadiusM < 0.1f || CounterProxy.fRadiusM > 20.f)
+		{
+			return false;
+		}
+		CounterProxy.strSpace = "BOSS_LOCAL";
+		OutCounterProxy = std::move(CounterProxy);
+		return true;
+	}
+
+	bool_t Validate_SplitGameplayStageExtensions(
+		const DATA_JSON_VALUE& Stage,
+		const std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Branches,
+		const std::string_view strPatternId,
+		const std::string_view strStageId,
+		std::string& strOutError)
+	{
+		const auto HasBranch = [&Branches](const std::string_view strOutcome)
+		{
+			return Branches.end() != std::find_if(
+				Branches.begin(), Branches.end(),
+				[strOutcome](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+				{ return Branch.strOutcome == strOutcome; });
+		};
+
+		std::string strPartDamagePolicy;
+		std::optional<Client::VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
+		if (!Read_StageGameplayExtensions(
+				Stage, strPartDamagePolicy, CounterProxy))
+		{
+			strOutError = "split gameplay stage extension values are invalid: " +
+				std::string(strPatternId) + "/" + std::string(strStageId);
+			return false;
+		}
+		if ("DESTROY_FIRST_ELIGIBLE" == strPartDamagePolicy &&
+			(!HasBranch("PART_DESTROYED") ||
+			 !Has_ClosedSplitStageFlag(Stage, "boss.flag.groggy")))
+		{
+			strOutError =
+				"split gameplay instant part destruction contract is invalid: " +
+				std::string(strPatternId) + "/" + std::string(strStageId);
+			return false;
+		}
+		if (CounterProxy.has_value() &&
+			(!HasBranch("COUNTER_HIT") ||
+			 !Has_ClosedSplitStageFlag(Stage, "boss.flag.counterable")))
+		{
+			strOutError = "split gameplay counterProxy contract is invalid: " +
+				std::string(strPatternId) + "/" + std::string(strStageId);
+			return false;
 		}
 		return true;
 	}
@@ -503,6 +704,7 @@ namespace
 		uint32_t iDurationMs = 0u;
 		uint32_t iRepeatCount = 0u;
 		std::string strAnimationEndPolicy;
+		bool_t bSuppressAnimation = false;
 		std::string strHitShape;
 		f32_t fHitOuterRadius = 0.f;
 		f32_t fHitInnerRadius = 0.f;
@@ -514,6 +716,10 @@ namespace
 		uint32_t iHitDelayMs = 0u;
 		std::vector<uint32_t> HitOffsetsMs;
 		std::string strServerDamageProfileId;
+		std::string strPlayerResponse = "DAMAGE";
+		std::string strAttachmentSlot = "NONE";
+		std::string strPartDamagePolicy = "NORMAL";
+		std::optional<Client::VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
 		f32_t fPushRangeM = 0.f;
 		uint32_t iPushMs = 0u;
 		bool_t bKnockdown = false;
@@ -524,6 +730,7 @@ namespace
 		std::vector<Client::VALTAN_CLIP_OCCURRENCE_VIEW> Occurrences;
 		std::vector<Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW> AuthoredCues;
 		std::vector<MASTER_EFFECT_REFERENCE> EffectReferences;
+		std::vector<Client::VALTAN_CAMERA_INVOCATION_VIEW> CameraInvocations;
 	};
 
 	template <typename TStage>
@@ -533,7 +740,7 @@ namespace
 	{
 		if (!Motion.has_value())
 			return true;
-		if (Stages.empty() || "TAKEOFF" != Stages.front().strStageId ||
+		if (Stages.empty() ||
 			Motion->iTakeoffStartMs >= Motion->iTakeoffEndMs ||
 			Motion->iTakeoffEndMs > Stages.front().iDurationMs ||
 			Motion->iTravelStartMs >= Motion->iTravelEndMs)
@@ -585,9 +792,18 @@ namespace
 		std::vector<MASTER_STAGE> Stages;
 	};
 
+	struct MASTER_SCRIPTED_SEQUENCE_VIEW final
+	{
+		std::string strSequenceId;
+		std::string strMode;
+		uint32_t iInterStepPursuitMs = 0u;
+		std::vector<std::string> PatternIds;
+	};
+
 	struct MASTER_DOCUMENT final
 	{
 		std::vector<std::string> RetiredPatternIds;
+		MASTER_SCRIPTED_SEQUENCE_VIEW ScriptedSequence;
 		Client::VALTAN_NORMAL_SELECTION_VIEW NormalSelection;
 		std::vector<Client::VALTAN_SELECTION_SET_VIEW> SelectionSets;
 		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW> SelectionWindows;
@@ -668,10 +884,26 @@ namespace
 		const DATA_JSON_VALUE* pMotion = Value.Find("motion");
 		const DATA_JSON_VALUE* pActions = Required(
 			Value, "actions", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pPlayerResponse = Value.Find("playerResponse");
+		const DATA_JSON_VALUE* pAttachmentSlot = Value.Find("attachmentSlot");
 		if (nullptr == pOffsets || nullptr == pKnockdown || nullptr == pMotion ||
-			nullptr == pActions)
+			nullptr == pActions ||
+			(nullptr == pPlayerResponse) != (nullptr == pAttachmentSlot))
 		{
 			strOutError = "master stage gameplay fields are invalid";
+			return false;
+		}
+		if (nullptr != pPlayerResponse &&
+			(!pPlayerResponse->Is_String() || !pAttachmentSlot->Is_String() ||
+			 "CAPTURE" != pPlayerResponse->Get_String() ||
+			 "BOSS_LEFT_HAND" != pAttachmentSlot->Get_String() ||
+			 "NONE" == Read_String(Value, "hitShape") ||
+			 0.0 != Read_Number(Value, "pushRangeM") ||
+			 0.0 != Read_Number(Value, "pushMs") ||
+			 pKnockdown->Get_Boolean() ||
+			 0.0 != Read_Number(Value, "downMs")))
+		{
+			strOutError = "master stage capture hit contract is invalid";
 			return false;
 		}
 		for (const DATA_JSON_VALUE& Offset : pOffsets->Get_Array())
@@ -694,6 +926,25 @@ namespace
 		}
 		for (const DATA_JSON_VALUE& Action : pActions->Get_Array())
 		{
+			if ("RELEASE_GRABBED_PLAYERS" == Read_String(Action, "kind"))
+			{
+				if (!Has_ExactProperties(Action,
+						{ "trigger", "kind", "targetId", "releaseMode",
+						  "speedMps", "durationMs" }) ||
+					nullptr == Required(
+						Action, "trigger", DATA_JSON_TYPE::STRING) ||
+					nullptr == Required(
+						Action, "targetId", DATA_JSON_TYPE::STRING) ||
+					nullptr == Required(
+						Action, "releaseMode", DATA_JSON_TYPE::STRING) ||
+					!Is_FiniteNumber(Action.Find("speedMps")) ||
+					!Is_NonNegativeInteger(Action.Find("durationMs")))
+				{
+					strOutError = "master grabbed-player release action is invalid";
+					return false;
+				}
+				continue;
+			}
 			if (!Has_ExactProperties(Action,
 					{ "trigger", "kind", "targetId", "value", "durationMs" }) ||
 				nullptr == Required(Action, "trigger", DATA_JSON_TYPE::STRING) ||
@@ -709,19 +960,88 @@ namespace
 		return true;
 	}
 
+	bool_t Read_MasterCameraInvocations(
+		const DATA_JSON_VALUE* pValue,
+		const uint32_t iStageDurationMs,
+		std::vector<Client::VALTAN_CAMERA_INVOCATION_VIEW>& Out)
+	{
+		if (nullptr == pValue || !pValue->Is_Array())
+			return false;
+		std::set<std::string, std::less<>> InvocationIds;
+		for (const DATA_JSON_VALUE& Value : pValue->Get_Array())
+		{
+			if (!Has_ExactProperties(Value,
+					{ "cameraInvocationId", "cameraCueId", "trigger",
+					  "startOffsetMs", "durationPolicy", "durationMs" }))
+			{
+				return false;
+			}
+			const DATA_JSON_VALUE* pInvocationId = Required(
+				Value, "cameraInvocationId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pCueId = Required(
+				Value, "cameraCueId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pTrigger = Required(
+				Value, "trigger", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pDurationPolicy = Required(
+				Value, "durationPolicy", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pStartOffset = Value.Find("startOffsetMs");
+			const DATA_JSON_VALUE* pDuration = Value.Find("durationMs");
+			if (nullptr == pInvocationId || nullptr == pCueId ||
+				nullptr == pTrigger || nullptr == pDurationPolicy ||
+				!Is_StableToken(pInvocationId->Get_String()) ||
+				!Is_StableToken(pCueId->Get_String()) ||
+				"ENTER" != pTrigger->Get_String() ||
+				"EXPLICIT" != pDurationPolicy->Get_String() ||
+				!Is_NonNegativeInteger(pStartOffset) ||
+				!Is_NonNegativeInteger(pDuration) ||
+				!InvocationIds.insert(pInvocationId->Get_String()).second)
+			{
+				return false;
+			}
+			const uint64_t iEnd = static_cast<uint64_t>(
+				pStartOffset->Get_Number()) + static_cast<uint64_t>(
+				pDuration->Get_Number());
+			if (iEnd > iStageDurationMs)
+				return false;
+			Client::VALTAN_CAMERA_INVOCATION_VIEW Invocation;
+			Invocation.strCameraInvocationId = pInvocationId->Get_String();
+			Invocation.strCameraCueId = pCueId->Get_String();
+			Invocation.strTrigger = pTrigger->Get_String();
+			Invocation.iStartOffsetMs = static_cast<uint32_t>(
+				pStartOffset->Get_Number());
+			Invocation.strDurationPolicy = pDurationPolicy->Get_String();
+			Invocation.iDurationMs = static_cast<uint32_t>(
+				pDuration->Get_Number());
+			Out.push_back(std::move(Invocation));
+		}
+		return true;
+	}
+
 	bool_t Parse_MasterStage(
 		const DATA_JSON_VALUE& Value,
 		MASTER_STAGE& Out,
 		std::string& strOutError)
 	{
-		if (!Has_ExactProperties(Value,
+		const bool_t bBaseShape = Has_ExactPropertiesWithOptional(Value,
 				{ "stageId", "sequenceRole", "actionId", "stageKind",
 				  "durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
 				  "hitAngleDegrees", "hitLength", "hitHalfWidth", "hitCount",
 				  "hitIntervalMs", "hitDelayMs", "hitOffsetsMs",
 				  "serverDamageProfileId", "pushRangeM", "pushMs", "knockdown",
 				  "downMs", "motion", "actions", "branches", "animation",
-				  "effectRefs" }))
+				  "effectRefs", "cameraInvocations" },
+				{ "partDamagePolicy", "counterProxy" });
+		const bool_t bCaptureShape = Has_ExactPropertiesWithOptional(Value,
+				{ "stageId", "sequenceRole", "actionId", "stageKind",
+				  "durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
+				  "hitAngleDegrees", "hitLength", "hitHalfWidth", "hitCount",
+				  "hitIntervalMs", "hitDelayMs", "hitOffsetsMs",
+				  "serverDamageProfileId", "playerResponse", "attachmentSlot",
+				  "pushRangeM", "pushMs", "knockdown", "downMs", "motion",
+				  "actions", "branches", "animation", "effectRefs",
+				  "cameraInvocations" },
+				{ "partDamagePolicy", "counterProxy" });
+		if (!bBaseShape && !bCaptureShape)
 		{
 			strOutError = "master stage has unexpected properties";
 			return false;
@@ -760,28 +1080,46 @@ namespace
 		if (!Validate_MasterStageGameplayShape(Value, strOutError))
 			return false;
 
-		if (!Has_ExactProperties(
-				*pAnimation, { "repeatCount", "endPolicy", "occurrences" }))
+		const bool_t bSuppressAnimation = Has_ExactProperties(
+			*pAnimation, { "mode" });
+		const DATA_JSON_VALUE* pRepeatCount = nullptr;
+		const DATA_JSON_VALUE* pEndPolicy = nullptr;
+		const DATA_JSON_VALUE* pOccurrences = nullptr;
+		if (bSuppressAnimation)
 		{
-			strOutError = "master stage animation has unexpected properties";
-			return false;
+			const DATA_JSON_VALUE* pMode = Required(
+				*pAnimation, "mode", DATA_JSON_TYPE::STRING);
+			if (nullptr == pMode || "NONE" != pMode->Get_String())
+			{
+				strOutError = "master stage animation mode is invalid";
+				return false;
+			}
 		}
-		const DATA_JSON_VALUE* pRepeatCount = pAnimation->Find("repeatCount");
-		const DATA_JSON_VALUE* pEndPolicy = Required(
-			*pAnimation, "endPolicy", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* pOccurrences = Required(
-			*pAnimation, "occurrences", DATA_JSON_TYPE::ARRAY);
-		if (!Is_NonNegativeInteger(pRepeatCount) ||
-			pRepeatCount->Get_Number() < 1.0 ||
-			pRepeatCount->Get_Number() > 64.0 || nullptr == pOccurrences ||
-			pOccurrences->Get_Array().empty() || nullptr == pEndPolicy ||
-			("EXACT" != pEndPolicy->Get_String() &&
-			 "HOLD_LAST_POSE" != pEndPolicy->Get_String() &&
-			 "LOOP_TO_STAGE_END" != pEndPolicy->Get_String()) ||
-			pOccurrences->Get_Array().size() > 64u)
+		else
 		{
-			strOutError = "master stage repeatCount/occurrences is invalid";
-			return false;
+			if (!Has_ExactProperties(
+					*pAnimation, { "repeatCount", "endPolicy", "occurrences" }))
+			{
+				strOutError = "master stage animation has unexpected properties";
+				return false;
+			}
+			pRepeatCount = pAnimation->Find("repeatCount");
+			pEndPolicy = Required(
+				*pAnimation, "endPolicy", DATA_JSON_TYPE::STRING);
+			pOccurrences = Required(
+				*pAnimation, "occurrences", DATA_JSON_TYPE::ARRAY);
+			if (!Is_NonNegativeInteger(pRepeatCount) ||
+				pRepeatCount->Get_Number() < 1.0 ||
+				pRepeatCount->Get_Number() > 64.0 || nullptr == pOccurrences ||
+				pOccurrences->Get_Array().empty() || nullptr == pEndPolicy ||
+				("EXACT" != pEndPolicy->Get_String() &&
+				 "HOLD_LAST_POSE" != pEndPolicy->Get_String() &&
+				 "LOOP_TO_STAGE_END" != pEndPolicy->Get_String()) ||
+				pOccurrences->Get_Array().size() > 64u)
+			{
+				strOutError = "master stage repeatCount/occurrences is invalid";
+				return false;
+			}
 		}
 
 		Out.strStageId = pStageId->Get_String();
@@ -789,10 +1127,17 @@ namespace
 		Out.strActionId = pAction->Get_String();
 		Out.strStageKind = pKind->Get_String();
 		Out.iDurationMs = static_cast<uint32_t>(pDuration->Get_Number());
-		Out.iRepeatCount = static_cast<uint32_t>(pRepeatCount->Get_Number());
-		Out.strAnimationEndPolicy = pEndPolicy->Get_String();
+		Out.bSuppressAnimation = bSuppressAnimation;
+		Out.iRepeatCount = bSuppressAnimation ? 0u :
+			static_cast<uint32_t>(pRepeatCount->Get_Number());
+		Out.strAnimationEndPolicy = bSuppressAnimation ? "NONE" :
+			pEndPolicy->Get_String();
 		Out.strHitShape = pShape->Get_String();
 		Out.strServerDamageProfileId = pDamage->Get_String();
+		Out.strPlayerResponse = bCaptureShape ?
+			Read_String(Value, "playerResponse") : "DAMAGE";
+		Out.strAttachmentSlot = bCaptureShape ?
+			Read_String(Value, "attachmentSlot") : "NONE";
 		if (!Read_RequiredFiniteFloat(
 				Value, "hitOuterRadius", Out.fHitOuterRadius) ||
 			!Read_RequiredFiniteFloat(
@@ -812,7 +1157,12 @@ namespace
 			!Read_StageMotion(Value.Find("motion"), Out.Motion) ||
 			!Read_StageActions(
 				Value.Find("actions"), Out.iDurationMs, Out.Actions) ||
-			!Read_StageBranches(pBranches, Out.Branches))
+			!Read_StageBranches(pBranches, Out.Branches) ||
+			!Read_StageGameplayExtensions(Value, Out.strPartDamagePolicy,
+				Out.CounterProxy) ||
+			!Read_MasterCameraInvocations(
+				Value.Find("cameraInvocations"), Out.iDurationMs,
+				Out.CameraInvocations))
 		{
 			strOutError = "master stage gameplay values are invalid";
 			return false;
@@ -820,18 +1170,22 @@ namespace
 		Out.bKnockdown = Required(
 			Value, "knockdown", DATA_JSON_TYPE::BOOLEAN)->Get_Boolean();
 		std::set<std::string, std::less<>> OccurrenceIds;
-		for (const DATA_JSON_VALUE& OccurrenceValue : pOccurrences->Get_Array())
+		if (nullptr != pOccurrences)
 		{
-			Client::VALTAN_CLIP_OCCURRENCE_VIEW Occurrence;
-			if (!Parse_MasterOccurrence(
-					OccurrenceValue, Occurrence, strOutError) ||
-				!OccurrenceIds.insert(Occurrence.strClipOccurrenceId).second)
+			for (const DATA_JSON_VALUE& OccurrenceValue :
+				pOccurrences->Get_Array())
 			{
-				if (strOutError.empty())
-					strOutError = "master stage duplicates a clip occurrence";
-				return false;
+				Client::VALTAN_CLIP_OCCURRENCE_VIEW Occurrence;
+				if (!Parse_MasterOccurrence(
+						OccurrenceValue, Occurrence, strOutError) ||
+					!OccurrenceIds.insert(Occurrence.strClipOccurrenceId).second)
+				{
+					if (strOutError.empty())
+						strOutError = "master stage duplicates a clip occurrence";
+					return false;
+				}
+				Out.Occurrences.push_back(std::move(Occurrence));
 			}
-			Out.Occurrences.push_back(std::move(Occurrence));
 		}
 		/* repeatCount is a semantic promise that one authored clip is repeated,
 		   not merely a display label for an arbitrary occurrence list. Keeping
@@ -1285,7 +1639,9 @@ namespace
 		if (!Validate_PatternServerMotionStageWindows(
 				Out.ServerMotion, Out.Stages))
 		{
-			strOutError = "master serverMotion window is outside its authored stage";
+			strOutError =
+				"master serverMotion window is outside its authored stage: " +
+				Out.strPatternId;
 			return false;
 		}
 		return true;
@@ -1375,7 +1731,34 @@ namespace
 			}
 			return true;
 		}
-		if (!pProjection->Is_Object() || !Has_ExactProperties(*pProjection,
+		if (!pProjection->Is_Object())
+		{
+			strOutError =
+				"master pattern-stage Effect cueProjection contract is invalid";
+			return false;
+		}
+		if (Has_ExactProperties(
+				*pProjection, { "timingBasis", "stageOffsetMs" }))
+		{
+			const DATA_JSON_VALUE* pTimingBasis = Required(
+				*pProjection, "timingBasis", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pStageOffset =
+				pProjection->Find("stageOffsetMs");
+			if (nullptr == pTimingBasis ||
+				"STAGE_CLOCK" != pTimingBasis->Get_String() ||
+				!Is_NonNegativeInteger(pStageOffset))
+			{
+				strOutError =
+					"master pattern-stage Effect stage-clock projection is invalid";
+				return false;
+			}
+			Out.bHasCueProjection = true;
+			Out.bUsesCueStageClock = true;
+			Out.iCueStageOffsetMs = static_cast<uint32_t>(
+				pStageOffset->Get_Number());
+			return true;
+		}
+		if (!Has_ExactProperties(*pProjection,
 				{ "clipOccurrenceId", "sourceStartMs", "sourceEndMs",
 				  "mappingBasis" }))
 		{
@@ -1772,6 +2155,25 @@ namespace
 		return nullptr;
 	}
 
+	const Client::VALTAN_PATTERN_VIEW* Find_Pattern(
+		const Client::VALTAN_PATTERN_TREE_VIEW& View,
+		const std::string_view strPatternId)
+	{
+		for (const std::vector<Client::VALTAN_PATTERN_VIEW>* pGroup :
+			{ &View.Gimmicks, &View.Rotation })
+		{
+			const auto Found = std::find_if(
+				pGroup->begin(), pGroup->end(),
+				[strPatternId](const Client::VALTAN_PATTERN_VIEW& Pattern)
+				{
+					return Pattern.strPatternId == strPatternId;
+				});
+			if (Found != pGroup->end())
+				return &*Found;
+		}
+		return nullptr;
+	}
+
 	Client::VALTAN_STAGE_VIEW* Find_Stage(
 		Client::VALTAN_PATTERN_VIEW& Pattern,
 		const std::string_view strStageId)
@@ -1817,6 +2219,8 @@ namespace
 			Product.strScalePolicy == Authored.strScalePolicy &&
 			Product.bHasExplicitScalePolicy ==
 				Authored.bHasExplicitScalePolicy &&
+			Product.bUsesStageClock == Authored.bUsesStageClock &&
+			Product.iStageOffsetMs == Authored.iStageOffsetMs &&
 			Product.vWorldScale.x == Authored.vWorldScale.x &&
 			Product.vWorldScale.y == Authored.vWorldScale.y &&
 			Product.vWorldScale.z == Authored.vWorldScale.z &&
@@ -1861,6 +2265,8 @@ namespace
 				Left[i].strKind != Right[i].strKind ||
 				Left[i].strTargetId != Right[i].strTargetId ||
 				Left[i].fValue != Right[i].fValue ||
+				Left[i].strReleaseMode != Right[i].strReleaseMode ||
+				Left[i].fSpeedMps != Right[i].fSpeedMps ||
 				Left[i].iDurationMs != Right[i].iDurationMs)
 			{
 				return false;
@@ -1886,6 +2292,19 @@ namespace
 		return true;
 	}
 
+	bool_t Equal_CounterProxy(
+		const std::optional<Client::VALTAN_COUNTER_PROXY_VIEW>& Left,
+		const std::optional<Client::VALTAN_COUNTER_PROXY_VIEW>& Right)
+	{
+		if (Left.has_value() != Right.has_value())
+			return false;
+		return !Left.has_value() ||
+			(Left->strSpace == Right->strSpace &&
+			 Left->fForwardOffsetM == Right->fForwardOffsetM &&
+			 Left->fRightOffsetM == Right->fRightOffsetM &&
+			 Left->fRadiusM == Right->fRadiusM);
+	}
+
 	bool_t Equal_MasterStageGameplay(
 		const Client::VALTAN_STAGE_VIEW& Product,
 		const MASTER_STAGE& Master)
@@ -1906,6 +2325,10 @@ namespace
 			Product.HitOffsetsMs == Master.HitOffsetsMs &&
 			Product.strServerDamageProfileId ==
 				Master.strServerDamageProfileId &&
+			Product.strPlayerResponse == Master.strPlayerResponse &&
+			Product.strAttachmentSlot == Master.strAttachmentSlot &&
+			Product.strPartDamagePolicy == Master.strPartDamagePolicy &&
+			Equal_CounterProxy(Product.CounterProxy, Master.CounterProxy) &&
 			Product.fPushRangeM == Master.fPushRangeM &&
 			Product.iPushMs == Master.iPushMs &&
 			Product.bKnockdown == Master.bKnockdown &&
@@ -1967,6 +2390,18 @@ namespace
 		Client::VALTAN_STAGE_VIEW& Stage,
 		std::string& strOutError)
 	{
+		if (Stage.bSuppressAnimation)
+		{
+			if (!Stage.ClipOccurrences.empty() ||
+				"NONE" != Stage.strAnimationEndPolicy)
+			{
+				strOutError =
+					"NONE animation cannot own a clip wall budget: " +
+					Stage.strActionId;
+				return false;
+			}
+			return true;
+		}
 		uint64_t iKnownWallMs = 0u;
 		size_t iUnknownCount = 0u;
 		size_t iUnknownIndex = 0u;
@@ -2186,18 +2621,24 @@ namespace
 		const DATA_JSON_VALUE& Cue,
 		std::string& strOutError)
 	{
-		if (!Has_ExactProperties(Cue,
+		const bool_t bUsesStageClock = nullptr != Cue.Find("timingBasis");
+		const bool_t bValidShape = bUsesStageClock ?
+			Has_ExactProperties(Cue,
+				{ "cueId", "occurrenceId", "effectAssetId", "timingBasis",
+				  "stageOffsetMs", "anchorSlotId", "followPolicy", "stopPolicy",
+				  "repeatPolicy", "localTransform", "scalePolicy" }) :
+			Has_ExactProperties(Cue,
 				{ "cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId",
 				  "sourceStartMs", "sourceEndMs", "anchorSlotId", "followPolicy",
 				  "stopPolicy", "repeatPolicy", "localTransform",
-				  "scalePolicy", "mappingBasis" }))
+				  "scalePolicy", "mappingBasis" });
+		if (!bValidShape)
 		{
 			strOutError = "split presentation cue has unexpected properties";
 			return false;
 		}
 		for (const std::string_view Field :
-			{ "cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId",
-			  "anchorSlotId" })
+			{ "cueId", "occurrenceId", "effectAssetId", "anchorSlotId" })
 		{
 			const DATA_JSON_VALUE* pValue = Required(
 				Cue, Field, DATA_JSON_TYPE::STRING);
@@ -2208,22 +2649,43 @@ namespace
 				return false;
 			}
 		}
-		const DATA_JSON_VALUE* pSourceEnd = Cue.Find("sourceEndMs");
-		if (!Is_NonNegativeInteger(Cue.Find("sourceStartMs")) ||
-			nullptr == pSourceEnd ||
-			(!pSourceEnd->Is_Null() && !Is_NonNegativeInteger(pSourceEnd)) ||
-			(!pSourceEnd->Is_Null() && pSourceEnd->Get_Number() <
-				Cue.Find("sourceStartMs")->Get_Number()) ||
-			Read_String(Cue, "mappingBasis").empty() ||
-			("follow" != Read_String(Cue, "followPolicy") &&
-			 "snapshot" != Read_String(Cue, "followPolicy")) ||
-			("natural" != Read_String(Cue, "stopPolicy") &&
-			 "cue_end" != Read_String(Cue, "stopPolicy")) ||
-			("once" != Read_String(Cue, "repeatPolicy") &&
-			 "each_loop" != Read_String(Cue, "repeatPolicy")))
+		if (bUsesStageClock)
 		{
-			strOutError = "split presentation cue timing/policy is invalid";
-			return false;
+			if ("STAGE_CLOCK" != Read_String(Cue, "timingBasis") ||
+				!Is_NonNegativeInteger(Cue.Find("stageOffsetMs")) ||
+				("follow" != Read_String(Cue, "followPolicy") &&
+				 "snapshot" != Read_String(Cue, "followPolicy")) ||
+				"natural" != Read_String(Cue, "stopPolicy") ||
+				"once" != Read_String(Cue, "repeatPolicy"))
+			{
+				strOutError =
+					"split stage-clock cue timing/policy is invalid";
+				return false;
+			}
+		}
+		else
+		{
+			const DATA_JSON_VALUE* pClipOccurrence = Required(
+				Cue, "clipOccurrenceId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pSourceEnd = Cue.Find("sourceEndMs");
+			if (nullptr == pClipOccurrence ||
+				!Is_StableToken(pClipOccurrence->Get_String()) ||
+				!Is_NonNegativeInteger(Cue.Find("sourceStartMs")) ||
+				nullptr == pSourceEnd ||
+				(!pSourceEnd->Is_Null() && !Is_NonNegativeInteger(pSourceEnd)) ||
+				(!pSourceEnd->Is_Null() && pSourceEnd->Get_Number() <
+					Cue.Find("sourceStartMs")->Get_Number()) ||
+				Read_String(Cue, "mappingBasis").empty() ||
+				("follow" != Read_String(Cue, "followPolicy") &&
+				 "snapshot" != Read_String(Cue, "followPolicy")) ||
+				("natural" != Read_String(Cue, "stopPolicy") &&
+				 "cue_end" != Read_String(Cue, "stopPolicy")) ||
+				("once" != Read_String(Cue, "repeatPolicy") &&
+				 "each_loop" != Read_String(Cue, "repeatPolicy")))
+			{
+				strOutError = "split presentation cue timing/policy is invalid";
+				return false;
+			}
 		}
 		const DATA_JSON_VALUE* pTransform = Required(
 			Cue, "localTransform", DATA_JSON_TYPE::OBJECT);
@@ -2302,7 +2764,9 @@ namespace
 		View.strPatternId = strPatternId;
 		View.strStageId = strStageId;
 		View.strActionId = strActionId;
-		View.strClipOccurrenceId = Read_String(Cue, "clipOccurrenceId");
+		View.bUsesStageClock = nullptr != Cue.Find("timingBasis");
+		View.strClipOccurrenceId = View.bUsesStageClock ? std::string{} :
+			Read_String(Cue, "clipOccurrenceId");
 		View.strEffectAssetId = Read_String(Cue, "effectAssetId");
 		View.strAnchorSlotId = Read_String(Cue, "anchorSlotId");
 		View.strFollowPolicy = Read_String(Cue, "followPolicy");
@@ -2336,11 +2800,22 @@ namespace
 		View.eStopPolicy = "cue_end" == View.strStopPolicy ?
 			Client::EFFECT_STOP_POLICY::CUE_END :
 			Client::EFFECT_STOP_POLICY::NATURAL;
-		View.iSourceStartMs = static_cast<uint32_t>(
-			Cue.Find("sourceStartMs")->Get_Number());
-		View.bHasSourceEnd = !Cue.Find("sourceEndMs")->Is_Null();
-		View.iSourceEndMs = View.bHasSourceEnd ? static_cast<uint32_t>(
-			Cue.Find("sourceEndMs")->Get_Number()) : 0u;
+		if (View.bUsesStageClock)
+		{
+			View.iStageOffsetMs = static_cast<uint32_t>(
+				Cue.Find("stageOffsetMs")->Get_Number());
+			/* Keep the legacy display position meaningful while consumers move to
+			   the explicit tagged field. It is not a clip-source position. */
+			View.iSourceStartMs = View.iStageOffsetMs;
+		}
+		else
+		{
+			View.iSourceStartMs = static_cast<uint32_t>(
+				Cue.Find("sourceStartMs")->Get_Number());
+			View.bHasSourceEnd = !Cue.Find("sourceEndMs")->Is_Null();
+			View.iSourceEndMs = View.bHasSourceEnd ? static_cast<uint32_t>(
+				Cue.Find("sourceEndMs")->Get_Number()) : 0u;
+		}
 		View.iStageDurationMs = iStageDurationMs;
 		const DATA_JSON_VALUE& Transform = *Cue.Find("localTransform");
 		const DATA_JSON_VALUE::ARRAY& Position =
@@ -2429,9 +2904,14 @@ namespace
 			return true;
 		}
 
-		if (!Has_ExactProperties(Hit,
+		const bool_t bBaseHit = Has_ExactProperties(Hit,
 				{ "shape", "schedule", "serverDamageProfileId", "pushRangeM",
-				  "pushMs", "knockdown", "downMs" }))
+				  "pushMs", "knockdown", "downMs" });
+		const bool_t bCaptureHit = Has_ExactProperties(Hit,
+				{ "shape", "schedule", "serverDamageProfileId", "pushRangeM",
+				  "pushMs", "knockdown", "downMs", "playerResponse",
+				  "attachmentSlot" });
+		if (!bBaseHit && !bCaptureHit)
 		{
 			strOutError = "split gameplay hit has unexpected properties";
 			return false;
@@ -2531,7 +3011,23 @@ namespace
 			strOutError = "split gameplay hit payload is invalid";
 			return false;
 		}
+		if (bCaptureHit &&
+			("CAPTURE" != Read_String(Hit, "playerResponse") ||
+			 "BOSS_LEFT_HAND" != Read_String(Hit, "attachmentSlot") ||
+			 0.0 != Hit.Find("pushRangeM")->Get_Number() ||
+			 0.0 != Hit.Find("pushMs")->Get_Number() ||
+			 pKnockdown->Get_Boolean() ||
+			 0.0 != Hit.Find("downMs")->Get_Number()))
+		{
+			strOutError = "split gameplay capture hit contract is invalid";
+			return false;
+		}
 		OutStage.emplace("serverDamageProfileId", *pDamage);
+		if (bCaptureHit)
+		{
+			OutStage.emplace("playerResponse", *Hit.Find("playerResponse"));
+			OutStage.emplace("attachmentSlot", *Hit.Find("attachmentSlot"));
+		}
 		OutStage.emplace("pushRangeM", *Hit.Find("pushRangeM"));
 		OutStage.emplace("pushMs", *Hit.Find("pushMs"));
 		OutStage.emplace("knockdown", *pKnockdown);
@@ -2542,6 +3038,7 @@ namespace
 	bool_t Build_SplitDecisionProjection(
 		const DATA_JSON_VALUE& Decision,
 		DATA_JSON_VALUE& OutNormalSelection,
+		MASTER_SCRIPTED_SEQUENCE_VIEW& OutScriptedSequence,
 		std::vector<Client::VALTAN_SELECTION_SET_VIEW>& OutSelectionSets,
 		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW>& OutSelectionWindows,
 		std::vector<Client::VALTAN_MECHANIC_VIEW>& OutMechanicViews,
@@ -2552,12 +3049,14 @@ namespace
 		std::string& strOutError)
 	{
 		if (!Has_ExactProperties(Decision,
-				{ "selectionSets", "selectionWindows", "mechanics",
-				  "manualAuditions" }))
+				{ "scriptedSequence", "selectionSets", "selectionWindows",
+				  "mechanics", "manualAuditions" }))
 		{
 			strOutError = "split gameplay decisionModel has unexpected properties";
 			return false;
 		}
+		const DATA_JSON_VALUE* pScriptedSequence = Required(
+			Decision, "scriptedSequence", DATA_JSON_TYPE::OBJECT);
 		const DATA_JSON_VALUE* pSets = Required(
 			Decision, "selectionSets", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pWindows = Required(
@@ -2566,6 +3065,45 @@ namespace
 			Decision, "mechanics", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pManualAuditions = Required(
 			Decision, "manualAuditions", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pScriptedPatterns = nullptr == pScriptedSequence ?
+			nullptr : Required(*pScriptedSequence,
+				"patternIds", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pScriptedSequence ||
+			!Has_ExactProperties(*pScriptedSequence,
+				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" }) ||
+			!Is_StableToken(Read_String(*pScriptedSequence, "sequenceId")) ||
+			"ORDERED_ONCE_THEN_IDLE" !=
+				Read_String(*pScriptedSequence, "mode") ||
+			!Is_NonNegativeInteger(
+				pScriptedSequence->Find("interStepPursuitMs")) ||
+			pScriptedSequence->Find("interStepPursuitMs")->Get_Number() < 100.0 ||
+			pScriptedSequence->Find("interStepPursuitMs")->Get_Number() > 10000.0 ||
+			nullptr == pScriptedPatterns ||
+			pScriptedPatterns->Get_Array().empty() ||
+			pScriptedPatterns->Get_Array().size() > 32u)
+		{
+			strOutError = "split gameplay scriptedSequence is invalid";
+			return false;
+		}
+		MASTER_SCRIPTED_SEQUENCE_VIEW ScriptedSequence;
+		ScriptedSequence.strSequenceId = Read_String(
+			*pScriptedSequence, "sequenceId");
+		ScriptedSequence.strMode = Read_String(*pScriptedSequence, "mode");
+		ScriptedSequence.iInterStepPursuitMs = static_cast<uint32_t>(
+			pScriptedSequence->Find("interStepPursuitMs")->Get_Number());
+		std::set<std::string, std::less<>> ScriptedPatternIds;
+		for (const DATA_JSON_VALUE& PatternId : pScriptedPatterns->Get_Array())
+		{
+			if (DATA_JSON_TYPE::STRING != PatternId.Get_Type() ||
+				!Is_StableToken(PatternId.Get_String()) ||
+				!ScriptedPatternIds.insert(PatternId.Get_String()).second)
+			{
+				strOutError =
+					"split gameplay scriptedSequence pattern is invalid or duplicated";
+				return false;
+			}
+			ScriptedSequence.PatternIds.push_back(PatternId.Get_String());
+		}
 		if (nullptr == pSets || pSets->Get_Array().empty() ||
 			nullptr == pWindows || pWindows->Get_Array().empty() ||
 			nullptr == pMechanics || nullptr == pManualAuditions)
@@ -2841,6 +3379,7 @@ namespace
 		Normal.emplace("ranges", DATA_JSON_VALUE::Array(std::move(Ranges)));
 		Normal.emplace("patternIds", Build_StringArray(NormalPatternIds));
 		OutNormalSelection = DATA_JSON_VALUE::Object(std::move(Normal));
+		OutScriptedSequence = std::move(ScriptedSequence);
 		return true;
 	}
 
@@ -2937,6 +3476,58 @@ namespace
 			}
 			bOutWorldEvent = true;
 			return true;
+		}
+		else if ("RETARGET_RANDOM_ALIVE" == strKind)
+		{
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind" }) ||
+				"ENTER" != strTrigger)
+			{
+				strOutError = "split gameplay retarget event is invalid";
+				return false;
+			}
+			Action.emplace("targetId",
+				DATA_JSON_VALUE::String("boss.target.pattern"));
+			Action.emplace("value", DATA_JSON_VALUE::Number(1));
+		}
+		else if ("RELEASE_GRABBED_PLAYERS" == strKind)
+		{
+			const std::string strReleaseMode = Read_String(Event, "releaseMode");
+			const DATA_JSON_VALUE* pSpeedMps = Event.Find("speedMps");
+			const DATA_JSON_VALUE* pDurationMs = Event.Find("durationMs");
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind", "releaseMode",
+					  "speedMps", "durationMs" }) ||
+				("ENTER" != strTrigger && "EXIT" != strTrigger) ||
+				!Is_FiniteNumber(pSpeedMps) ||
+				!Is_NonNegativeInteger(pDurationMs) ||
+				pSpeedMps->Get_Number() < 0.0 ||
+				pSpeedMps->Get_Number() > 50.0 ||
+				pDurationMs->Get_Number() > 5000.0)
+			{
+				strOutError =
+					"split gameplay grabbed-player release event is invalid";
+				return false;
+			}
+			const bool_t bHold = "HOLD" == strReleaseMode &&
+				0.0 == pSpeedMps->Get_Number() &&
+				0.0 == pDurationMs->Get_Number();
+			const bool_t bOppositeKnockback =
+				"OPPOSITE_KNOCKBACK" == strReleaseMode &&
+				pSpeedMps->Get_Number() > 0.0 &&
+				pDurationMs->Get_Number() > 0.0;
+			if (!bHold && !bOppositeKnockback)
+			{
+				strOutError =
+					"split gameplay grabbed-player release policy is invalid";
+				return false;
+			}
+			Action.emplace("targetId",
+				DATA_JSON_VALUE::String("boss.attachment.left-hand"));
+			Action.emplace("releaseMode",
+				DATA_JSON_VALUE::String(strReleaseMode));
+			Action.emplace("speedMps", *pSpeedMps);
+			Action.emplace("durationMs", *pDurationMs);
 		}
 		else if ("SPAWN_COMBAT_OBJECT_VOLLEY" == strKind)
 		{
@@ -3111,6 +3702,7 @@ namespace
 		}
 
 		DATA_JSON_VALUE NormalSelection;
+		MASTER_SCRIPTED_SEQUENCE_VIEW ScriptedSequence;
 		std::vector<Client::VALTAN_SELECTION_SET_VIEW> SelectionSets;
 		std::vector<Client::VALTAN_SELECTION_WINDOW_VIEW> SelectionWindows;
 		std::vector<Client::VALTAN_MECHANIC_VIEW> MechanicViews;
@@ -3121,7 +3713,8 @@ namespace
 		const DATA_JSON_VALUE* pDecision = Required(
 			Gameplay, "decisionModel", DATA_JSON_TYPE::OBJECT);
 		if (nullptr == pDecision || !Build_SplitDecisionProjection(
-				*pDecision, NormalSelection, SelectionSets, SelectionWindows,
+				*pDecision, NormalSelection, ScriptedSequence, SelectionSets,
+				SelectionWindows,
 				MechanicViews, Mechanics, ManualViews, ManualAuditions,
 				strOutError))
 		{
@@ -3292,10 +3885,11 @@ namespace
 					pGameplayStages->Get_Array()[iStage];
 				const DATA_JSON_VALUE& PresentationStage =
 					pPresentationStages->Get_Array()[iStage];
-				if (!Has_ExactProperties(GameplayStage,
+				if (!Has_ExactPropertiesWithOptional(GameplayStage,
 						{ "stageId", "actionId", "stageKind", "durationMs",
 						  "defaultNextActionId", "hit", "motion", "events",
-						  "branches" }) ||
+						  "branches" },
+						{ "partDamagePolicy", "counterProxy" }) ||
 					!Has_ExactProperties(PresentationStage,
 						{ "stageId", "actionId", "sequenceRole", "animation",
 						  "effectCues", "cameraInvocations" }))
@@ -3328,10 +3922,16 @@ namespace
 				const DATA_JSON_VALUE* pBranches = Required(
 					GameplayStage, "branches", DATA_JSON_TYPE::ARRAY);
 				if (nullptr == pBranches ||
-					!Read_StageBranches(pBranches, BranchViews))
+					!Read_StageBranches(pBranches, BranchViews) ||
+					!Validate_SplitGameplayStageExtensions(
+						GameplayStage, BranchViews, strPatternId, strStageId,
+						strOutError))
 				{
-					strOutError = "split gameplay stage branches are invalid: " +
-						strPatternId + "/" + strStageId;
+					if (strOutError.empty())
+					{
+						strOutError = "split gameplay stage branches are invalid: " +
+							strPatternId + "/" + strStageId;
+					}
 					return false;
 				}
 				std::optional<std::string> ExpectedDefault;
@@ -3375,6 +3975,16 @@ namespace
 				LegacyStage.emplace("actionId", DATA_JSON_VALUE::String(strActionId));
 				LegacyStage.emplace("stageKind", *GameplayStage.Find("stageKind"));
 				LegacyStage.emplace("durationMs", *pDuration);
+				if (const DATA_JSON_VALUE* pPartDamagePolicy =
+						GameplayStage.Find("partDamagePolicy"))
+				{
+					LegacyStage.emplace("partDamagePolicy", *pPartDamagePolicy);
+				}
+				if (const DATA_JSON_VALUE* pCounterProxy =
+						GameplayStage.Find("counterProxy"))
+				{
+					LegacyStage.emplace("counterProxy", *pCounterProxy);
+				}
 				const DATA_JSON_VALUE* pHit = Required(
 					GameplayStage, "hit", DATA_JSON_TYPE::OBJECT);
 				if (nullptr == pHit || !Build_SplitHitProjection(
@@ -3469,42 +4079,62 @@ namespace
 				{
 					if (!Validate_SplitCue(Cue, strOutError))
 						return false;
+					const bool_t bUsesStageClock =
+						nullptr != Cue.Find("timingBasis");
 					const DATA_JSON_VALUE* pAnimation = Required(
 						PresentationStage, "animation", DATA_JSON_TYPE::OBJECT);
-					const DATA_JSON_VALUE* pOccurrences = nullptr == pAnimation ?
-						nullptr : Required(
-							*pAnimation, "occurrences", DATA_JSON_TYPE::ARRAY);
-					const DATA_JSON_VALUE* pCueOccurrence = nullptr;
-					if (nullptr != pOccurrences)
+					if (bUsesStageClock)
 					{
-						for (const DATA_JSON_VALUE& Occurrence :
-							pOccurrences->Get_Array())
+						if (nullptr == pAnimation ||
+							!Has_ExactProperties(*pAnimation, { "mode" }) ||
+							"NONE" != Read_String(*pAnimation, "mode") ||
+							Cue.Find("stageOffsetMs")->Get_Number() >=
+								pDuration->Get_Number() ||
+							IndependentByCue.end() == IndependentByCue.find(
+								Read_String(Cue, "cueId")))
 						{
-							if (Read_String(Occurrence, "clipOccurrenceId") !=
-								Read_String(Cue, "clipOccurrenceId"))
-							{
-								continue;
-							}
-							if (nullptr != pCueOccurrence)
-							{
-								strOutError =
-									"split cue clip occurrence is duplicated in its stage";
-								return false;
-							}
-							pCueOccurrence = &Occurrence;
+							strOutError =
+								"split stage-clock cue must be an independent NONE-stage Effect";
+							return false;
 						}
 					}
-					if (nullptr == pCueOccurrence ||
-						Read_String(*pCueOccurrence, "mappingBasis") !=
-							Read_String(Cue, "mappingBasis") ||
-						!Is_NonNegativeInteger(
-							pCueOccurrence->Find("sourceStartMs")) ||
-						Cue.Find("sourceStartMs")->Get_Number() <
-							pCueOccurrence->Find("sourceStartMs")->Get_Number())
+					else
 					{
-						strOutError =
-							"split cue did not join its saved animation occurrence";
-						return false;
+						const DATA_JSON_VALUE* pOccurrences =
+							nullptr == pAnimation ? nullptr : Required(
+								*pAnimation, "occurrences", DATA_JSON_TYPE::ARRAY);
+						const DATA_JSON_VALUE* pCueOccurrence = nullptr;
+						if (nullptr != pOccurrences)
+						{
+							for (const DATA_JSON_VALUE& Occurrence :
+								pOccurrences->Get_Array())
+							{
+								if (Read_String(Occurrence, "clipOccurrenceId") !=
+									Read_String(Cue, "clipOccurrenceId"))
+								{
+									continue;
+								}
+								if (nullptr != pCueOccurrence)
+								{
+									strOutError =
+										"split cue clip occurrence is duplicated in its stage";
+									return false;
+								}
+								pCueOccurrence = &Occurrence;
+							}
+						}
+						if (nullptr == pCueOccurrence ||
+							Read_String(*pCueOccurrence, "mappingBasis") !=
+								Read_String(Cue, "mappingBasis") ||
+							!Is_NonNegativeInteger(
+								pCueOccurrence->Find("sourceStartMs")) ||
+							Cue.Find("sourceStartMs")->Get_Number() <
+								pCueOccurrence->Find("sourceStartMs")->Get_Number())
+						{
+							strOutError =
+								"split cue did not join its saved animation occurrence";
+							return false;
+						}
 					}
 					const std::string strCueId = Read_String(Cue, "cueId");
 					const std::string strOccurrenceId = Read_String(
@@ -3572,6 +4202,7 @@ namespace
 					}
 					CameraCueIds.push_back(std::move(strCameraCueId));
 				}
+				LegacyStage.emplace("cameraInvocations", *pCamera);
 				LegacyStages.push_back(
 					DATA_JSON_VALUE::Object(std::move(LegacyStage)));
 			}
@@ -3732,10 +4363,19 @@ namespace
 				Legacy.emplace("effectCueBindingId",
 					DATA_JSON_VALUE::String(Declaration.strReferenceId));
 				DATA_JSON_VALUE::OBJECT Projection;
-				Projection.emplace("clipOccurrenceId", *Cue.Find("clipOccurrenceId"));
-				Projection.emplace("sourceStartMs", *Cue.Find("sourceStartMs"));
-				Projection.emplace("sourceEndMs", *Cue.Find("sourceEndMs"));
-				Projection.emplace("mappingBasis", *Cue.Find("mappingBasis"));
+				if (nullptr != Cue.Find("timingBasis"))
+				{
+					Projection.emplace("timingBasis", *Cue.Find("timingBasis"));
+					Projection.emplace("stageOffsetMs", *Cue.Find("stageOffsetMs"));
+				}
+				else
+				{
+					Projection.emplace("clipOccurrenceId",
+						*Cue.Find("clipOccurrenceId"));
+					Projection.emplace("sourceStartMs", *Cue.Find("sourceStartMs"));
+					Projection.emplace("sourceEndMs", *Cue.Find("sourceEndMs"));
+					Projection.emplace("mappingBasis", *Cue.Find("mappingBasis"));
+				}
 				Legacy.emplace("cueProjection",
 					DATA_JSON_VALUE::Object(std::move(Projection)));
 			}
@@ -3798,10 +4438,27 @@ namespace
 		{
 			return false;
 		}
+		for (const std::string& strPatternId : ScriptedSequence.PatternIds)
+		{
+			const bool_t bExists = std::any_of(
+				Out.Patterns.begin(), Out.Patterns.end(),
+				[&strPatternId](const MASTER_PATTERN& Pattern)
+				{
+					return Pattern.strPatternId == strPatternId;
+				});
+			if (!bExists)
+			{
+				strOutError =
+					"split gameplay scriptedSequence pattern is missing from Master: " +
+					strPatternId;
+				return false;
+			}
+		}
 		Out.SelectionSets = std::move(SelectionSets);
 		Out.SelectionWindows = std::move(SelectionWindows);
 		Out.Mechanics = std::move(MechanicViews);
 		Out.ManualAuditions = std::move(ManualViews);
+		Out.ScriptedSequence = std::move(ScriptedSequence);
 		for (size_t iPattern = 0u; iPattern < Out.Patterns.size(); ++iPattern)
 		{
 			MASTER_PATTERN& Pattern = Out.Patterns[iPattern];
@@ -3851,6 +4508,7 @@ namespace
 				Client::VALTAN_STAGE_VIEW Stage;
 				Stage.strActionId = SourceStage.strActionId;
 				Stage.iDurationMs = SourceStage.iDurationMs;
+				Stage.bSuppressAnimation = SourceStage.bSuppressAnimation;
 				Stage.strAnimationEndPolicy = SourceStage.strAnimationEndPolicy;
 				Stage.ClipOccurrences = SourceStage.Occurrences;
 				if (!Assign_MasterWallBudgets(Stage, strOutError))
@@ -3923,6 +4581,10 @@ namespace
 			Stage.iHitDelayMs = Source.iHitDelayMs;
 			Stage.HitOffsetsMs = Source.HitOffsetsMs;
 			Stage.strServerDamageProfileId = Source.strServerDamageProfileId;
+			Stage.strPlayerResponse = Source.strPlayerResponse;
+			Stage.strAttachmentSlot = Source.strAttachmentSlot;
+			Stage.strPartDamagePolicy = Source.strPartDamagePolicy;
+			Stage.CounterProxy = Source.CounterProxy;
 			Stage.fPushRangeM = Source.fPushRangeM;
 			Stage.iPushMs = Source.iPushMs;
 			Stage.bKnockdown = Source.bKnockdown;
@@ -4013,6 +4675,8 @@ namespace
 				Client::VALTAN_STAGE_VIEW& Stage = pPattern->Stages[iStage];
 				if (bRequireProductParity &&
 					(!Equal_MasterStageGameplay(Stage, MasterStage) ||
+					 Stage.bSuppressAnimation !=
+						MasterStage.bSuppressAnimation ||
 					 Stage.ClipOccurrences.size() !=
 						MasterStage.Occurrences.size() ||
 					 Stage.ProductCues.size() != MasterStage.AuthoredCues.size()))
@@ -4085,6 +4749,8 @@ namespace
 				Stage.iAuthoringRepeatCount = MasterStage.iRepeatCount;
 				Stage.strAnimationEndPolicy =
 					MasterStage.strAnimationEndPolicy;
+				Stage.bSuppressAnimation = MasterStage.bSuppressAnimation;
+				Stage.CameraInvocations = MasterStage.CameraInvocations;
 				if (!Assign_MasterWallBudgets(Stage, strOutError))
 					return false;
 
@@ -4131,20 +4797,74 @@ namespace
 			}
 		}
 
+		const DATA_JSON_VALUE* pProductScriptedSequence = Required(
+			PatternRotations, "scriptedSequence", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* pProductScriptedPatterns =
+			nullptr == pProductScriptedSequence ? nullptr : Required(
+				*pProductScriptedSequence, "patternIds", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pRotationRows = Required(
 			PatternRotations, "rotations", DATA_JSON_TYPE::ARRAY);
 		if (!Has_ExactProperties(PatternRotations,
 				{ "schema", "formatVersion", "encounterId", "bossArchetypeId",
-				  "rotations" }) ||
+				  "scriptedSequence", "rotations" }) ||
 			nullptr == Required(
 				PatternRotations, "schema", DATA_JSON_TYPE::STRING) ||
 			"lostark.valtan-pattern-rotations" != Required(
 				PatternRotations, "schema", DATA_JSON_TYPE::STRING)->Get_String() ||
 			!Is_NonNegativeInteger(PatternRotations.Find("formatVersion")) ||
-			3.0 != PatternRotations.Find("formatVersion")->Get_Number() ||
+			4.0 != PatternRotations.Find("formatVersion")->Get_Number() ||
+			nullptr == pProductScriptedSequence ||
+			!Has_ExactProperties(*pProductScriptedSequence,
+				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" }) ||
+			!Is_StableToken(Read_String(
+				*pProductScriptedSequence, "sequenceId")) ||
+			"ORDERED_ONCE_THEN_IDLE" != Read_String(
+				*pProductScriptedSequence, "mode") ||
+			!Is_NonNegativeInteger(
+				pProductScriptedSequence->Find("interStepPursuitMs")) ||
+			pProductScriptedSequence->Find(
+				"interStepPursuitMs")->Get_Number() < 100.0 ||
+			pProductScriptedSequence->Find(
+				"interStepPursuitMs")->Get_Number() > 10000.0 ||
+			nullptr == pProductScriptedPatterns ||
+			pProductScriptedPatterns->Get_Array().empty() ||
+			pProductScriptedPatterns->Get_Array().size() > 32u ||
 			nullptr == pRotationRows)
 		{
-			strOutError = "Valtan selection-window Product v3 is invalid";
+			strOutError =
+				"Valtan selection-window/scripted-sequence Product v4 is invalid";
+			return false;
+		}
+		std::vector<std::string> ProductScriptedPatternIds;
+		std::set<std::string, std::less<>> UniqueProductScriptedPatternIds;
+		for (const DATA_JSON_VALUE& PatternId :
+			pProductScriptedPatterns->Get_Array())
+		{
+			const Client::VALTAN_PATTERN_VIEW* pPattern = PatternId.Is_String() ?
+				Find_Pattern(View, PatternId.Get_String()) : nullptr;
+			if (!PatternId.Is_String() ||
+				!Is_StableToken(PatternId.Get_String()) ||
+				!UniqueProductScriptedPatternIds.insert(
+					PatternId.Get_String()).second ||
+				nullptr == pPattern)
+			{
+				strOutError =
+					"Valtan scripted-sequence Product pattern is invalid or duplicated";
+				return false;
+			}
+			ProductScriptedPatternIds.push_back(PatternId.Get_String());
+		}
+		if (bRequireProductParity &&
+			(Read_String(*pProductScriptedSequence, "sequenceId") !=
+				Master.ScriptedSequence.strSequenceId ||
+			 Read_String(*pProductScriptedSequence, "mode") !=
+				Master.ScriptedSequence.strMode ||
+			 static_cast<uint32_t>(pProductScriptedSequence->Find(
+				"interStepPursuitMs")->Get_Number()) !=
+				Master.ScriptedSequence.iInterStepPursuitMs ||
+			 ProductScriptedPatternIds != Master.ScriptedSequence.PatternIds))
+		{
+			strOutError = "Valtan scripted-sequence Product parity drifted";
 			return false;
 		}
 		std::map<std::string, const Client::VALTAN_SELECTION_WINDOW_VIEW*,
@@ -4206,7 +4926,7 @@ namespace
 						  "toHealthBar", "windowId", "gameplayPhase",
 						  "selectionSetId", "candidates" }))
 				{
-					strOutError = "Valtan managed Product row is not the v3 tagged shape";
+					strOutError = "Valtan managed Product row is not the v4 tagged shape";
 					return false;
 				}
 				SeenManagedRotations.insert(strRotationId);
@@ -4361,6 +5081,11 @@ namespace
 		{
 			for (Client::VALTAN_PATTERN_VIEW& Pattern : *pGroup)
 			{
+				/* counterReactionLayers are explicitly REFERENCE_ONLY_LEGACY.
+				   Split-owned counters validate through their authored gameplay
+				   stages and must not expand this legacy exact-cover set. */
+				if (Pattern.bAuthoringMasterManaged)
+					continue;
 				for (Client::VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
 				{
 					const bool_t bCounterable = std::any_of(
@@ -4517,12 +5242,20 @@ namespace
 						return Cue.strEffectAssetId == Independent.strEffectAssetId &&
 							Cue.strBindingId == Independent.strEffectCueBindingId &&
 							Independent.bHasCueProjection &&
-							Cue.strClipOccurrenceId ==
-								Independent.strCueClipOccurrenceId &&
-							Cue.iSourceStartMs == Independent.iCueSourceStartMs &&
-							Cue.bHasSourceEnd == Independent.bHasCueSourceEnd &&
-							(!Independent.bHasCueSourceEnd ||
-							 Cue.iSourceEndMs == Independent.iCueSourceEndMs);
+							(Cue.bUsesStageClock ==
+								Independent.bUsesCueStageClock) &&
+							(Independent.bUsesCueStageClock ?
+								(Cue.iStageOffsetMs ==
+									Independent.iCueStageOffsetMs) :
+								(Cue.strClipOccurrenceId ==
+									Independent.strCueClipOccurrenceId &&
+								 Cue.iSourceStartMs ==
+									Independent.iCueSourceStartMs &&
+								 Cue.bHasSourceEnd ==
+									Independent.bHasCueSourceEnd &&
+								 (!Independent.bHasCueSourceEnd ||
+								  Cue.iSourceEndMs ==
+									Independent.iCueSourceEndMs)));
 					});
 			}
 			const std::filesystem::path EffectDocument =
@@ -4730,6 +5463,81 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_CombatObjectEffectCount() const
 	Count(Gimmicks);
 	Count(Rotation);
 	return iCount;
+}
+
+bool_t Client::VALTAN_TOOL_AUDITION_INVENTORY::Contains(
+	const std::string& strPatternId) const
+{
+	if (strPatternId.empty())
+		return false;
+	const auto ContainsIn = [&strPatternId](
+		const std::vector<std::string>& PatternIds)
+	{
+		return PatternIds.end() != std::find(
+			PatternIds.begin(), PatternIds.end(), strPatternId);
+	};
+	return ContainsIn(CorePatternIds) || ContainsIn(AnimatorPatternIds);
+}
+
+bool_t Client::CValtanPatternTree::Build_ToolAuditionInventory(
+	const VALTAN_PATTERN_TREE_VIEW& View,
+	VALTAN_TOOL_AUDITION_INVENTORY& OutInventory,
+	std::string& strOutError)
+{
+	VALTAN_TOOL_AUDITION_INVENTORY Staged;
+	std::set<std::string, std::less<>> UniquePatternIds;
+	for (const std::string_view strPatternId :
+		VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS)
+	{
+		const VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(View, strPatternId);
+		if (nullptr == pPattern ||
+			!UniquePatternIds.insert(pPattern->strPatternId).second)
+		{
+			strOutError =
+				"Valtan tool audition core Pattern is missing or duplicated: " +
+				std::string(strPatternId);
+			return false;
+		}
+		Staged.CorePatternIds.push_back(pPattern->strPatternId);
+	}
+
+	if (VALTAN_TOOL_AUDITION_INVENTORY::ANIMATOR_PATTERN_COUNT !=
+		View.ManualAuditions.size())
+	{
+		strOutError =
+			"Valtan tool audition inventory requires exactly 20 animator Patterns.";
+		return false;
+	}
+	for (const VALTAN_MANUAL_AUDITION_VIEW& Manual : View.ManualAuditions)
+	{
+		const VALTAN_PATTERN_VIEW* pPattern =
+			Find_Pattern(View, Manual.strPatternId);
+		if (nullptr == pPattern || !pPattern->bManualServerAudition ||
+			!UniquePatternIds.insert(Manual.strPatternId).second)
+		{
+			strOutError =
+				"Valtan tool animator Pattern is missing, invalid, or duplicated: " +
+				Manual.strPatternId;
+			return false;
+		}
+		Staged.AnimatorPatternIds.push_back(Manual.strPatternId);
+	}
+
+	if (VALTAN_TOOL_AUDITION_INVENTORY::CORE_PATTERN_COUNT !=
+			Staged.CorePatternIds.size() ||
+		VALTAN_TOOL_AUDITION_INVENTORY::ANIMATOR_PATTERN_COUNT !=
+			Staged.AnimatorPatternIds.size() ||
+		VALTAN_TOOL_AUDITION_INVENTORY::TOTAL_PATTERN_COUNT !=
+			UniquePatternIds.size())
+	{
+		strOutError =
+			"Valtan tool audition inventory did not close over exactly 28 Patterns.";
+		return false;
+	}
+
+	OutInventory = std::move(Staged);
+	strOutError.clear();
+	return true;
 }
 
 std::string Client::CValtanPatternTree::Build_StageEffectAssetId(
@@ -5162,6 +5970,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 
 	std::map<std::string, std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>, std::less<>>
 		ClipsByAction;
+	std::set<std::string, std::less<>> SuppressedAnimationActions;
 	for (const BOSS_PATTERN_ANIMATION_BINDING& Binding :
 		BindingDocument.Bindings)
 	{
@@ -5170,6 +5979,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		for (const BOSS_PATTERN_ANIMATION_CLIP& Clip : Binding.Clips)
 			Occurrences.push_back(Build_ClipOccurrenceView(Clip));
 		ClipsByAction.emplace(Binding.strActionId, std::move(Occurrences));
+		if (Binding.bSuppressAnimation)
+			SuppressedAnimationActions.insert(Binding.strActionId);
 	}
 
 	std::map<std::string, std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW>,
@@ -5198,6 +6009,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		Cue.strScalePolicy = Describe_ScalePolicy(SourceCue.eScalePolicy);
 		Cue.vWorldScale = SourceCue.vWorldScale;
 		Cue.bHasExplicitScalePolicy = SourceCue.bHasExplicitScalePolicy;
+		Cue.bUsesStageClock = SourceCue.bUsesStageClock;
+		Cue.iStageOffsetMs = SourceCue.bUsesStageClock ?
+			SourceCue.iStartMs : 0u;
 		Cue.iSourceStartMs = SourceCue.iStartMs;
 		Cue.iSourceEndMs = SourceCue.iEndMs;
 		Cue.iStageDurationMs = SourceCue.iStageDurationMs;
@@ -5358,6 +6172,25 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				}
 				Stage.strServerDamageProfileId = Read_String(
 					StageValue, "serverDamageProfileId");
+				const DATA_JSON_VALUE* pPlayerResponse =
+					StageValue.Find("playerResponse");
+				const DATA_JSON_VALUE* pAttachmentSlot =
+					StageValue.Find("attachmentSlot");
+				if ((nullptr == pPlayerResponse) != (nullptr == pAttachmentSlot) ||
+					(nullptr != pPlayerResponse &&
+					 (!pPlayerResponse->Is_String() ||
+					  !pAttachmentSlot->Is_String())))
+				{
+					strOutStatus =
+						"Valtan encounter capture hit fields are invalid: " +
+						Stage.strActionId;
+					return false;
+				}
+				if (nullptr != pPlayerResponse)
+				{
+					Stage.strPlayerResponse = pPlayerResponse->Get_String();
+					Stage.strAttachmentSlot = pAttachmentSlot->Get_String();
+				}
 				const DATA_JSON_VALUE* pKnockdown = Required(
 					StageValue, "knockdown", DATA_JSON_TYPE::BOOLEAN);
 				if (nullptr == Required(StageValue, "serverDamageProfileId",
@@ -5372,7 +6205,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					!Read_StageMotion(StageValue.Find("motion"), Stage.Motion) ||
 					!Read_StageActions(StageValue.Find("actions"),
 						Stage.iDurationMs, Stage.Actions) ||
-					!Read_StageBranches(StageValue.Find("branches"), Stage.Branches))
+					!Read_StageBranches(StageValue.Find("branches"), Stage.Branches) ||
+					!Read_StageGameplayExtensions(StageValue,
+						Stage.strPartDamagePolicy, Stage.CounterProxy))
 				{
 					strOutStatus =
 						"Valtan encounter stage gameplay projection is invalid: " +
@@ -5380,6 +6215,21 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					return false;
 				}
 				Stage.bKnockdown = pKnockdown->Get_Boolean();
+				if (("DAMAGE" == Stage.strPlayerResponse &&
+					 "NONE" != Stage.strAttachmentSlot) ||
+					("CAPTURE" == Stage.strPlayerResponse &&
+					 ("BOSS_LEFT_HAND" != Stage.strAttachmentSlot ||
+					  "NONE" == Stage.strHitShape ||
+					  0.f != Stage.fPushRangeM || 0u != Stage.iPushMs ||
+					  Stage.bKnockdown || 0u != Stage.iDownMs)) ||
+					("DAMAGE" != Stage.strPlayerResponse &&
+					 "CAPTURE" != Stage.strPlayerResponse))
+				{
+					strOutStatus =
+						"Valtan encounter player response contract is invalid: " +
+						Stage.strActionId;
+					return false;
+				}
 
 				const bool_t bHasExplicitOffsets = !Stage.HitOffsetsMs.empty();
 				const bool_t bValidExplicitSchedule = bHasExplicitOffsets &&
@@ -5457,7 +6307,17 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				const auto ClipIterator = ClipsByAction.find(Stage.strActionId);
 				if (ClipIterator != ClipsByAction.end())
 				{
+					Stage.bSuppressAnimation =
+						SuppressedAnimationActions.contains(Stage.strActionId);
 					Stage.ClipOccurrences = ClipIterator->second;
+					if (Stage.bSuppressAnimation &&
+						!Stage.ClipOccurrences.empty())
+					{
+						strOutStatus =
+							"Valtan NONE animation binding unexpectedly owns clips: " +
+							Stage.strActionId;
+						return false;
+					}
 					Stage.RuntimeClipNames.reserve(
 						Stage.ClipOccurrences.size());
 					for (const VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence :
@@ -5466,8 +6326,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						Stage.RuntimeClipNames.push_back(
 							Occurrence.strClipName);
 					}
-					Stage.strRuntimeClipName =
-						Stage.RuntimeClipNames.front();
+					Stage.strRuntimeClipName = Stage.RuntimeClipNames.empty() ?
+						std::string{} : Stage.RuntimeClipNames.front();
 				}
 
 				const auto CueIterator = CueByAction.find(Stage.strActionId);
@@ -5484,22 +6344,38 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 								Stage.strActionId + ".";
 							return false;
 						}
-						const auto Clip = std::find_if(
-							Stage.ClipOccurrences.begin(),
-							Stage.ClipOccurrences.end(),
-							[&Cue](const VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence)
-							{
-								return Occurrence.strClipOccurrenceId ==
-									Cue.strClipOccurrenceId;
-							});
-						if (Clip == Stage.ClipOccurrences.end())
+						if (Cue.bUsesStageClock)
 						{
-							strOutStatus =
-								"Valtan Product Effect cue clip occurrence left its stage: " +
-								Cue.strClipOccurrenceId;
-							return false;
+							if (!Stage.bSuppressAnimation ||
+								!Stage.ClipOccurrences.empty() ||
+								Cue.iStageOffsetMs >= Stage.iDurationMs)
+							{
+								strOutStatus =
+									"Valtan stage-clock Effect cue left its NONE stage: " +
+									Cue.strBindingId;
+								return false;
+							}
 						}
-						Clip->ProductCues.push_back(Cue);
+						else
+						{
+							const auto Clip = std::find_if(
+								Stage.ClipOccurrences.begin(),
+								Stage.ClipOccurrences.end(),
+								[&Cue](
+									const VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence)
+								{
+									return Occurrence.strClipOccurrenceId ==
+										Cue.strClipOccurrenceId;
+								});
+							if (Clip == Stage.ClipOccurrences.end())
+							{
+								strOutStatus =
+									"Valtan Product Effect cue clip occurrence left its stage: " +
+									Cue.strClipOccurrenceId;
+								return false;
+							}
+							Clip->ProductCues.push_back(Cue);
+						}
 						Stage.ProductCues.push_back(Cue);
 						++iResolvedCueCount;
 

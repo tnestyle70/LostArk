@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "DeployPropCatalog.h"
+#include "DeployPropObject.h"
 
 #include <string>
 #include <unordered_map>
@@ -9,8 +10,6 @@
 #include <vector>
 
 NS_BEGIN(Client)
-
-class CDeployPropObject;
 
 struct DEPLOY_RUNTIME_ENTRY
 {
@@ -37,6 +36,13 @@ public:
 	bool_t Set_State(uint64_t runtimePlacementId, DEPLOY_PROP_STATE state);
 	bool_t Set_States(const std::vector<
 		std::pair<uint64_t, DEPLOY_PROP_STATE>>& placementStates);
+	using DEPLOY_SURFACE_PRESENTATION_UPDATE = std::pair<
+		uint64_t, DEPLOY_SURFACE_PRESENTATION_PACKET>;
+	bool_t Set_SurfacePresentations(const std::vector<
+		DEPLOY_SURFACE_PRESENTATION_UPDATE>& updates);
+	bool_t Get_SurfacePresentation(
+		uint64_t runtimePlacementId,
+		DEPLOY_SURFACE_PRESENTATION_PACKET& outPacket) const;
 	bool_t Set_State_All(DEPLOY_PROP_STATE state);
 	shared_ptr<CDeployPropObject> Find(uint64_t runtimePlacementId) const;
 

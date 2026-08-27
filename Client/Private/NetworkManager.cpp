@@ -1384,6 +1384,37 @@ bool CNetworkManager::Send_ValtanPatternAuditionById(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_ValtanPatternFlowStart(
+	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_START,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ValtanPatternFlowStopAfterCurrent(
+	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT&
+		message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_DataRevisionPrepareResponse(
 	const LostArk::Shared::C2S_DATA_REVISION_PREPARE_RESPONSE& message)
 {
@@ -1535,6 +1566,26 @@ bool CNetworkManager::Try_Consume_ValtanAuditionLifecycle(
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_ValtanPatternFlowResult(
+	LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message)
+{
+	if (m_ValtanPatternFlowResults.empty())
+		return false;
+	message = std::move(m_ValtanPatternFlowResults.front());
+	m_ValtanPatternFlowResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ValtanPatternFlowLifecycle(
+	LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE& message)
+{
+	if (m_ValtanPatternFlowLifecycleEvents.empty())
+		return false;
+	message = std::move(m_ValtanPatternFlowLifecycleEvents.front());
+	m_ValtanPatternFlowLifecycleEvents.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Try_Get_LatestValtanDecisionTrace(
 	LostArk::Shared::GameplayDataRevision& outDefinitionRevision,
 	LostArk::Shared::VALTAN_DECISION_TRACE_WIRE& outTrace) const
@@ -1614,6 +1665,8 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_ValtanAuditionResults.clear();
 	m_ValtanPatternAuditionByIdResults.clear();
 	m_ValtanAuditionLifecycleEvents.clear();
+	m_ValtanPatternFlowResults.clear();
+	m_ValtanPatternFlowLifecycleEvents.clear();
 	m_GameplayRevisionState = {};
 	m_ValtanDecisionTraceState = {};
 	m_hasPendingEnterAccepted = false;
@@ -1697,6 +1750,53 @@ bool CNetworkManager::Is_PresentationRevisionAvailable(
 		m_GameplayRevisionState.AvailablePresentationAliases.end(),
 		revision) !=
 		m_GameplayRevisionState.AvailablePresentationAliases.end();
+}
+
+bool CNetworkManager::Is_CurrentPresentationBaselineIntact(
+	std::string& status) const
+{
+#if !defined(_DEBUG)
+	status = "Presentation source baseline comparison is Debug-only.";
+	return false;
+#else
+	if (!m_GameplayRevisionState.hasPresentationArtifactBaseline)
+	{
+		status = "No immutable world-entry presentation baseline is available.";
+		return false;
+	}
+
+	std::vector<PRESENTATION_ARTIFACT_BASELINE> current;
+	if (!CapturePresentationArtifactBaseline(current, status))
+		return false;
+	const std::vector<PRESENTATION_ARTIFACT_BASELINE>& admitted =
+		m_GameplayRevisionState.PresentationArtifactBaseline;
+	if (current.size() != admitted.size())
+	{
+		status = "The current presentation source closure is incomplete.";
+		return false;
+	}
+	for (const PRESENTATION_ARTIFACT_BASELINE& row : current)
+	{
+		const auto baseline = std::find_if(
+			admitted.begin(), admitted.end(),
+			[&row](const PRESENTATION_ARTIFACT_BASELINE& candidate)
+			{
+				return candidate.strRelativePath == row.strRelativePath &&
+					candidate.strLane == row.strLane;
+			});
+		if (baseline == admitted.end() ||
+			baseline->iBytes != row.iBytes ||
+			baseline->strSha256 != row.strSha256)
+		{
+			status = "Workspace presentation changed after world entry: " +
+				row.strRelativePath + ". Restart/publish before visual verification.";
+			return false;
+		}
+	}
+	status =
+		"Current presentation sources match the immutable world-entry baseline.";
+	return true;
+#endif
 }
 
 bool CNetworkManager::Stage_ByteIdenticalPresentationAlias(
@@ -2391,6 +2491,40 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_ValtanAuditionLifecycleEvents.push_back(std::move(lifecycle));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT:
+	{
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_ValtanPatternFlowResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_ValtanPatternFlowResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE:
+	{
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE lifecycle{};
+		if (!Read_Message(reader, lifecycle) ||
+			0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_ValtanPatternFlowLifecycleEvents.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_ValtanPatternFlowLifecycleEvents.push_back(std::move(lifecycle));
 		break;
 	}
 	case PACKET_TYPE::S2C_VALTAN_DECISION_TRACE_RESPONSE:

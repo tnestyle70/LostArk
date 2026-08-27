@@ -201,8 +201,17 @@
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp">
+	  <Filter>03. Tools\03. UI</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp">
+	  <Filter>03. Tools\03. UI</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp">
 	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\ValtanPatternAuthoringEffectDocument.cpp">
+	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
@@ -211,6 +220,12 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\BalanceTool.cpp">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BossTool.cpp">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CameraTool.cpp">
       <Filter>03. Tools\03. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\LobbyCommandService.cpp">
@@ -271,6 +286,12 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\MapAssetCatalog.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapEffectDocument.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapEffectPresentationRuntime.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\MapLightDocument.cpp">
@@ -670,6 +691,12 @@
     <ClInclude Include="..\Public\MapAssetCatalog.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\MapEffectDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapEffectPresentationRuntime.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\MapLightDocument.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
@@ -733,8 +760,17 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h">
+	  <Filter>03. Tools\03. UI</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\ValtanPatternFlowService.h">
+	  <Filter>03. Tools\03. UI</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h">
 	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\ValtanPatternAuthoringEffectDocument.h">
+	  <Filter>03. Tools\02. Effect</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
@@ -743,6 +779,12 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BalanceTool.h">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BossTool.h">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CameraTool.h">
       <Filter>03. Tools\03. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\AnimationPreviewAssets.h">
@@ -1285,6 +1327,9 @@
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json">
 	  <Filter>96.DataFiles\Encounters</Filter>
 	</None>
+	<None Include="..\..\Data\Encounters\Valtan\ValtanBossAuditionFlows.json">
+	  <Filter>96.DataFiles\Encounters</Filter>
+	</None>
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json">
 	  <Filter>96.DataFiles\Encounters</Filter>
 	</None>
@@ -1337,6 +1382,9 @@
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.maplights.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapeffects.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements">
@@ -3459,6 +3507,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.entrance-whirlwind.windup.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.environment.red-vortex-sky.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.inner.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3648,6 +3699,54 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.dash-charge.windup-telegraph.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.attack-whirlwind.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.catch-breath.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.charge.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.charge2.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.counter.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.front-back-front.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.roar-charge.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.six-pizza-106.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.three.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.trash-catch-fail.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.trash-catch-if.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.trash-catch-success.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.trash.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.warp.portal.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.terrain-destruction-3.semicircle.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.terrain-destruction-9.semicircle.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.active.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3655,6 +3754,24 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.charge.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.charge2.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.front-back-front.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.roar-charge.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.rush.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sky-axe.active.effect.json">
@@ -9326,6 +9443,9 @@
     </None>
     <None Include="..\..\Data\Effects\V2\TextureSlotUsage.v1.json">
       <Filter>96.DataFiles\Effects\V2</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ValtanPatternAuthoringEffects.json">
+      <Filter>96.DataFiles\Effects</Filter>
     </None>
   </ItemGroup>
 </Project>

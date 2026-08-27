@@ -1,6 +1,6 @@
 {
   "schema": "lostark.valtan-animation-chain-promotions",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "bossArchetypeId": "BOSS_VALTAN",
   "encounterId": "ENCOUNTER_VALTAN",
   "sourceDocument": {
@@ -21,6 +21,20 @@
     "att_battle_20_03": "mesh_att_battle_20_03",
     "att_battle_20_04": "mesh_att_battle_20_04"
   },
+  "animationIntakeOnly": [
+    {
+      "sourceChainId": "respawn",
+      "displayName": "3페이즈 망령화 발탄 부활",
+      "authoringPhase": 3,
+      "admissionState": "ANIMATION_INTAKE_ONLY"
+    },
+    {
+      "sourceChainId": "dead",
+      "displayName": "3페이즈 발탄 사망",
+      "authoringPhase": 3,
+      "admissionState": "ANIMATION_INTAKE_ONLY"
+    }
+  ],
   "patterns": [
     {
       "sourceChainId": "center-six-pizza-charge",
@@ -46,7 +60,7 @@
     {
       "sourceChainId": "four",
       "patternId": "VALTAN_SEQUENCE_FOUR",
-      "displayName": "[P2 Animation] four",
+      "displayName": "2페이즈 4연속 공격",
       "authoringPhase": 2,
       "admissionState": "MANUAL_SERVER_AUDITION"
     },
@@ -60,7 +74,7 @@
     {
       "sourceChainId": "rush",
       "patternId": "VALTAN_SEQUENCE_RUSH",
-      "displayName": "[P2 Animation] rush",
+      "displayName": "2페이즈 돌진 연계",
       "authoringPhase": 2,
       "admissionState": "MANUAL_SERVER_AUDITION"
     },
@@ -81,7 +95,7 @@
     {
       "sourceChainId": "front-back-front",
       "patternId": "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
-      "displayName": "[P2 Animation] front-back-front",
+      "displayName": "2페이즈 전방-후방-전방 연속 공격",
       "authoringPhase": 2,
       "admissionState": "MANUAL_SERVER_AUDITION"
     },
@@ -95,14 +109,14 @@
     {
       "sourceChainId": "twohand",
       "patternId": "VALTAN_SEQUENCE_TWOHAND",
-      "displayName": "[P2 Animation] twohand",
+      "displayName": "2페이즈 양손 내려치기",
       "authoringPhase": 2,
       "admissionState": "MANUAL_SERVER_AUDITION"
     },
     {
       "sourceChainId": "whirlwind",
       "patternId": "VALTAN_SEQUENCE_WHIRLWIND",
-      "displayName": "[P2 Animation] whirlwind",
+      "displayName": "2페이즈 휠윈드 연계",
       "authoringPhase": 2,
       "admissionState": "MANUAL_SERVER_AUDITION"
     },
@@ -161,20 +175,6 @@
       "sourceChainId": "warp-jump-four-hand-twohand-roar-roar-dead",
       "patternId": "VALTAN_STRUGGLING",
       "displayName": "3페이즈 전 발악패턴",
-      "authoringPhase": 3,
-      "admissionState": "MANUAL_SERVER_AUDITION"
-    },
-    {
-      "sourceChainId": "respawn",
-      "patternId": "VALTAN_RESPAWN",
-      "displayName": "3페이즈 망령화 발탄 부활",
-      "authoringPhase": 3,
-      "admissionState": "MANUAL_SERVER_AUDITION"
-    },
-    {
-      "sourceChainId": "dead",
-      "patternId": "VALTAN_DEAD",
-      "displayName": "3페이즈 발탄 사망",
       "authoringPhase": 3,
       "admissionState": "MANUAL_SERVER_AUDITION"
     }

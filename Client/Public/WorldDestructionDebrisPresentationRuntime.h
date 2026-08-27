@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Network/PacketMessages.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -19,6 +20,8 @@ NS_BEGIN(Client)
 
 class CDeployPropObject;
 class CDeployPropRuntime;
+class CWorldDestructionDebrisPresentationDocument;
+class CWorldDestructionProjectionDocument;
 
 /* Half-angle of the cone the twelve pieces are thrown into. A slab coming
    apart keeps its pieces travelling roughly one way, so the wall default is
@@ -36,6 +39,19 @@ struct WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE final
 	f32_t gravityScale = 1.f;
 	f32_t lifetimeSeconds = 0.f;
 	f32_t spreadDegrees = WALL_DEBRIS_SPREAD_DEGREES;
+	/* Ground-removal groups keep their exact Deploy source visible through the
+	   short BREAKING interval while this same product seam owns the debris.
+	   Walls preserve the historical immediate suppression. */
+	bool_t suppressSource = true;
+};
+
+struct WORLD_DESTRUCTION_SOURCE_TRANSITION_SAMPLE final
+{
+	f32_t normalizedTime = 0.f;
+	float3_t rootOffset{};
+	float4_t rootRotationOffset = float4_t(0.f, 0.f, 0.f, 1.f);
+	f32_t opacity = 1.f;
+	f32_t emissiveMultiplier = 1.f;
 };
 
 /* One transient cue accompanies an authoritative INTACT -> BREAKING edge.
@@ -162,10 +178,31 @@ public:
 	bool_t Post_Physics_Update(
 		f32_t deltaSeconds,
 		std::string& outError);
+	/* Samples only the presentation packet. Persistent state, collision,
+	   navigation and DESPAWNED remain CWorldDestructionProjectionRuntime's
+	   authority. The projection Server tick is the anchor; local dt advances a
+	   bounded fixed-tick interpolation and can never cross commitTick. */
+	bool_t Update_SourceTransitions(
+		const CWorldDestructionProjectionDocument& projection,
+		const CWorldDestructionDebrisPresentationDocument& presentation,
+		const std::vector<LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE>&
+			groupStates,
+		uint32_t serverTick,
+		uint32_t fixedTickHz,
+		f32_t deltaSeconds,
+		std::string& outError);
+	static bool_t Evaluate_GroundTransition(
+		const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& state,
+		uint32_t sampleServerTick,
+		uint32_t fixedTickHz,
+		const WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE& emitter,
+		uint64_t runtimePlacementId,
+		WORLD_DESTRUCTION_SOURCE_TRANSITION_SAMPLE& outSample,
+		std::string& outError);
 	/* FULL_SYNC generation replacement keeps admitted level prototypes and the
 	   Deploy runtime binding, while dropping every transient actor/overlay and
 	   dedupe key from the previous generation. */
-	void Reset_Presentation();
+	bool_t Reset_Presentation();
 	void Clear();
 
 	bool_t Is_Initialized() const { return m_pDeployRuntime != nullptr; }
@@ -204,6 +241,7 @@ private:
 		EMITTER_RUNTIME& outEmitter,
 		std::string& outError);
 	void Release_Emitter(EMITTER_RUNTIME& emitter);
+	bool_t Reset_SourceTransitions(std::string& outError);
 
 private:
 	uint32_t m_LevelId = ETOUI(LEVEL::END);
@@ -212,6 +250,9 @@ private:
 	CDeployPropRuntime* m_pDeployRuntime = nullptr;
 	std::vector<EMITTER_RUNTIME> m_Emitters;
 	std::set<std::pair<std::string, uint64_t>> m_AcceptedCueKeys;
+	std::set<uint64_t> m_SourceTransitionPlacementIds;
+	uint32_t m_iTransitionServerTickAnchor = 0u;
+	f32_t m_fTransitionInterpolationSeconds = 0.f;
 	std::string m_Status = "World destruction debris is not initialized";
 };
 

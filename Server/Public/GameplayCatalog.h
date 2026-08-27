@@ -13,7 +13,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 21u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 24u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -342,7 +342,10 @@ namespace LostArk::Server
 		NONE,
 		NEAREST_EACH_TICK,
 		LOCK_NEAREST_ON_START,
-		LOCK_RANDOM_ALIVE_ON_START
+		LOCK_RANDOM_ALIVE_ON_START,
+		/* Lock one admitted player behind the boss's pre-pattern facing. If no
+		candidate is behind, use the ordinary deterministic random-alive pool. */
+		LOCK_RANDOM_ALIVE_BEHIND_ON_START
 	};
 
 	enum class BOSS_PATTERN_AIM_POLICY : std::uint8_t
@@ -387,7 +390,20 @@ namespace LostArk::Server
 		SET_SHIELD,
 		SET_GAMEPLAY_PHASE,
 		SPAWN_COMBAT_OBJECT,
-		SPAWN_COMBAT_OBJECT_VOLLEY
+		SPAWN_COMBAT_OBJECT_VOLLEY,
+		/* Re-lock the running pattern without creating a second targeting path.
+		The room resolves one admitted player with its deterministic Server seed. */
+		RETARGET_RANDOM_ALIVE,
+		/* Release every player attached to this boss. The release policy is typed
+		below so a counter drop cannot accidentally inherit a launch impulse. */
+		RELEASE_GRABBED_PLAYERS
+	};
+
+	enum class BOSS_GRABBED_RELEASE_MODE : std::uint8_t
+	{
+		NONE,
+		HOLD,
+		OPPOSITE_KNOCKBACK
 	};
 
 	enum class BOSS_COMBAT_OBJECT_VOLLEY_POLICY : std::uint8_t
@@ -442,7 +458,24 @@ namespace LostArk::Server
 		std::string strTargetId;
 		std::uint32_t iValue = 0;
 		std::uint32_t iDurationMs = 0;
+		BOSS_GRABBED_RELEASE_MODE eReleaseMode =
+			BOSS_GRABBED_RELEASE_MODE::NONE;
+		float fReleaseSpeedMps = 0.f;
 		BOSS_COMBAT_OBJECT_VOLLEY Volley;
+	};
+
+	enum class BOSS_PATTERN_PLAYER_RESPONSE : std::uint8_t
+	{
+		DAMAGE,
+		CAPTURE
+	};
+
+	enum class BOSS_PATTERN_PART_DAMAGE_POLICY : std::uint8_t
+	{
+		NORMAL,
+		/* Any nonzero part power destroys the first part whose ordinary authored
+		damage condition is currently eligible. */
+		DESTROY_FIRST_ELIGIBLE
 	};
 
 	enum class BOSS_PATTERN_STAGE_MOTION_KIND : std::uint8_t
@@ -471,6 +504,20 @@ namespace LostArk::Server
 			BOSS_PATTERN_STAGE_KIND::WINDUP;
 		BOSS_PATTERN_HIT_SHAPE eHitShape =
 			BOSS_PATTERN_HIT_SHAPE::NONE;
+		/* DAMAGE is the ordinary hit contract. CAPTURE still resolves the hit,
+		then asks the room to attach a surviving target at this stable slot. */
+		BOSS_PATTERN_PLAYER_RESPONSE ePlayerResponse =
+			BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE;
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot =
+			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+		BOSS_PATTERN_PART_DAMAGE_POLICY ePartDamagePolicy =
+			BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL;
+		/* Optional boss-local hurt proxy used only while this stage is
+		counterable. Offsets are right/forward metres from the gameplay root. */
+		bool bHasCounterProxy = false;
+		float fCounterProxyForwardOffsetM = 0.f;
+		float fCounterProxyRightOffsetM = 0.f;
+		float fCounterProxyRadiusM = 0.f;
 		std::uint32_t iDurationMs = 0;
 		float fHitOuterRadius = 0.f;
 		float fHitInnerRadius = 0.f;
@@ -549,7 +596,7 @@ namespace LostArk::Server
 
 	enum class BOSS_PATTERN_ROTATION_SELECTION_MODE : std::uint8_t
 	{
-		/* Managed v21 rotations use Candidates as the complete pool and keep each
+		/* Managed v24 rotations use Candidates as the complete pool and keep each
 		   selection-set weight/enabled override there. Pattern definitions still
 		   own range, phase, armour, cooldown and maximum-consecutive-use gates. */
 		WEIGHTED_POOL,
@@ -595,6 +642,25 @@ namespace LostArk::Server
 		Candidates only; legacy ORDERED rows use PatternIds only. */
 		BOSS_PATTERN_ROTATION_WINDOW Window;
 		std::vector<BOSS_PATTERN_ROTATION_CANDIDATE> Candidates;
+		std::vector<std::string> PatternIds;
+	};
+
+	enum class BOSS_PATTERN_SEQUENCE_MODE : std::uint8_t
+	{
+		/* Consume every authored step exactly once and leave the boss idle after
+		   the terminal step. No weighted or legacy rotation fallback is allowed. */
+		ORDERED_ONCE_THEN_IDLE
+	};
+
+	struct BOSS_PATTERN_SEQUENCE_DEFINITION final
+	{
+		std::string strEncounterId;
+		std::string strSequenceId;
+		BOSS_PATTERN_SEQUENCE_MODE eMode =
+			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE;
+		std::uint32_t iInterStepPursuitMs = 0u;
+		std::uint32_t iInterStepPursuitTicks = 0u;
+		std::uint32_t iExpectedStepCount = 0u;
 		std::vector<std::string> PatternIds;
 	};
 
@@ -781,6 +847,10 @@ namespace LostArk::Server
 			const std::string& encounterId,
 			std::uint32_t gameplayPhase,
 			std::uint32_t healthBar) const;
+		/* Exclusive automatic program for this encounter. When present, the brain
+		consumes it instead of intro/health-bar/rotation selection. */
+		const BOSS_PATTERN_SEQUENCE_DEFINITION* Find_BossPatternSequence(
+			const std::string& encounterId) const;
 		const std::string& Find_IntroPatternId(
 			const std::string& encounterId) const;
 		const PLAYER_RUNTIME_PROFILE* Find_Player(
@@ -854,6 +924,8 @@ namespace LostArk::Server
 		std::unordered_map<std::string,
 			std::vector<BOSS_PATTERN_ROTATION_DEFINITION>>
 			m_BossPatternRotations;
+		std::unordered_map<std::string, BOSS_PATTERN_SEQUENCE_DEFINITION>
+			m_BossPatternSequences;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>

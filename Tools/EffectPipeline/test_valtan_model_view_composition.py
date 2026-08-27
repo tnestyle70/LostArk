@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -75,7 +76,7 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         self.assertEqual(len(catalog["bosses"]), 1)
         valtan = catalog["bosses"][0]
         self.assertEqual(valtan["archetypeId"], "BOSS_VALTAN")
-        self.assertEqual(valtan["presentationScale"], 0.75)
+        self.assertEqual(valtan["presentationScale"], 1.0)
         self.assertEqual(
             valtan["bodyModel"], "Character/Valtan/MN_RPBF_01.wmodel"
         )
@@ -509,6 +510,108 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             },
             alias_pairs,
         )
+
+    def test_gameplay_footprint_accepts_live_owner_scale_drift(self) -> None:
+        service = (
+            REPOSITORY_ROOT / "Client/Private/Effect_PresentationService.cpp"
+        ).read_text(encoding="utf-8-sig")
+        helper_start = service.index("bool_t Try_BuildCueScalePolicyAnchor(")
+        helper_end = service.index(
+            "bool_t Try_ComposeCueScalePolicyRoot(", helper_start
+        )
+        helper_scope = service[helper_start:helper_end]
+
+        self.assertNotIn("CUE_OWNER_UNIFORM_SCALE_TOLERANCE", service)
+        self.assertIn("CUE_OWNER_MAXIMUM_SCALE_DRIFT_RATIO", helper_scope)
+        self.assertIn("Is_CueOwnerScaleDriftWithinLimit(", service)
+        self.assertIn("static_assert(Is_CueOwnerScaleDriftWithinLimit(", service)
+        self.assertIn("static_assert(!Is_CueOwnerScaleDriftWithinLimit(", service)
+        self.assertIn(
+            "!Is_CueOwnerScaleDriftWithinLimit(", helper_scope
+        )
+        self.assertIn("Is_NonDegenerateAffineMatrix(SampledOwnerAnchor)", helper_scope)
+        self.assertIn("fXY > CUE_OWNER_ORTHOGONAL_TOLERANCE", helper_scope)
+        self.assertIn("fXZ > CUE_OWNER_ORTHOGONAL_TOLERANCE", helper_scope)
+        self.assertIn("fYZ > CUE_OWNER_ORTHOGONAL_TOLERANCE", helper_scope)
+        self.assertIn("fSignedNormalizedDeterminant <", helper_scope)
+        self.assertIn("WorldScale.x / fScaleX", helper_scope)
+        self.assertIn("WorldScale.y / fScaleY", helper_scope)
+        self.assertIn("WorldScale.z / fScaleZ", helper_scope)
+
+        def build_footprint_basis(rows):
+            lengths = tuple(math.sqrt(sum(value * value for value in row))
+                            for row in rows)
+            if not all(math.isfinite(value) and value > 1.0e-8
+                       for value in lengths):
+                return None
+            if ((max(lengths) - min(lengths)) > max(lengths) * 0.005):
+                return None
+
+            normalized_dots = (
+                abs(sum(rows[0][i] * rows[1][i] for i in range(3)) /
+                    (lengths[0] * lengths[1])),
+                abs(sum(rows[0][i] * rows[2][i] for i in range(3)) /
+                    (lengths[0] * lengths[2])),
+                abs(sum(rows[1][i] * rows[2][i] for i in range(3)) /
+                    (lengths[1] * lengths[2])),
+            )
+            determinant = (
+                rows[0][0] *
+                (rows[1][1] * rows[2][2] - rows[1][2] * rows[2][1]) -
+                rows[0][1] *
+                (rows[1][0] * rows[2][2] - rows[1][2] * rows[2][0]) +
+                rows[0][2] *
+                (rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0])
+            )
+            signed_normalized_determinant = determinant / math.prod(lengths)
+            if (not all(value <= 0.001 for value in normalized_dots) or
+                    not math.isfinite(signed_normalized_determinant) or
+                    signed_normalized_determinant < 0.999):
+                return None
+
+            world_scale = (1.5, 1.5, 1.5)
+            return tuple(
+                tuple(component * world_scale[axis] / lengths[axis]
+                      for component in row)
+                for axis, row in enumerate(rows)
+            )
+
+        live_drift = (
+            (0.0, 0.0, 0.997025),
+            (0.0, 1.0, 0.0),
+            (-0.997025, 0.0, 0.0),
+        )
+        self.assertEqual(
+            tuple(math.sqrt(sum(value * value for value in row))
+                  for row in live_drift),
+            (0.997025, 1.0, 0.997025),
+        )
+        normalized = build_footprint_basis(live_drift)
+        self.assertIsNotNone(normalized)
+        self.assertEqual(
+            tuple(round(math.sqrt(sum(value * value for value in row)), 6)
+                  for row in normalized),
+            (1.5, 1.5, 1.5),
+        )
+
+        self.assertIsNone(build_footprint_basis(
+            ((1.0, 0.0, 0.0), (0.02, 1.0, 0.0), (0.0, 0.0, 1.0))
+        ))
+        self.assertIsNone(build_footprint_basis(
+            ((-1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+        ))
+        self.assertIsNone(build_footprint_basis(
+            ((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+        ))
+        self.assertIsNone(build_footprint_basis(
+            ((math.nan, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+        ))
+        self.assertIsNone(build_footprint_basis(
+            ((0.99, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+        ))
+        self.assertIsNone(build_footprint_basis(
+            ((1.0e-7, 0.0, 0.0), (0.0, 1000.0, 0.0), (0.0, 0.0, 1.0))
+        ))
 
     def test_high_jump_recovery_uses_a_non_loop_idle_hold(self) -> None:
         presentation = json.loads(

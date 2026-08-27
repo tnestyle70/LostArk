@@ -6,7 +6,9 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <initializer_list>
+#include <limits>
 #include <sstream>
 #include <unordered_set>
 
@@ -15,7 +17,7 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.encounter-cinematic-camera";
-	constexpr uint32_t FORMAT_VERSION = 4u;
+	constexpr uint32_t FORMAT_VERSION = 5u;
 	constexpr f32_t MAX_SHAKE_AMPLITUDE = 2.f;
 	constexpr uint32_t MAX_SHAKE_DURATION_MS = 1000u;
 	constexpr uint32_t MAX_CUE_COUNT = 32u;
@@ -55,6 +57,26 @@ namespace
 		const bool_t hasOrigin = nullptr != value.Find("trackingOrigin");
 		if (hasMode != hasOrigin ||
 			value.Get_Object().size() != keys.size() + (hasMode ? 2u : 0u))
+		{
+			return false;
+		}
+		return std::all_of(keys.begin(), keys.end(),
+			[&value](const char_t* key) { return nullptr != value.Find(key); });
+	}
+
+	bool_t Is_ExactCameraCueObject(
+		const DATA_JSON_VALUE& value,
+		const std::initializer_list<const char_t*> keys)
+	{
+		if (!value.Is_Object())
+			return false;
+		const bool_t hasMode = nullptr != value.Find("trackingMode");
+		const bool_t hasOrigin = nullptr != value.Find("trackingOrigin");
+		const bool_t hasTransitionIn = nullptr != value.Find("transitionInMs");
+		const bool_t hasTransitionOut = nullptr != value.Find("transitionOutMs");
+		if (hasMode != hasOrigin || value.Get_Object().size() !=
+			keys.size() + (hasMode ? 2u : 0u) +
+			(hasTransitionIn ? 1u : 0u) + (hasTransitionOut ? 1u : 0u))
 		{
 			return false;
 		}
@@ -138,6 +160,31 @@ namespace
 			outCue.iShakeDurationMs <= outCue.iDurationMs;
 	}
 
+	bool_t Read_Transitions(
+		const DATA_JSON_VALUE& parent,
+		VALTAN_CINEMATIC_CAMERA_CUE& outCue)
+	{
+		if (nullptr == parent.Find("transitionInMs"))
+			outCue.iTransitionInMs = 0u;
+		else if (!Read_Unsigned(parent, "transitionInMs",
+			VALTAN_CINEMATIC_CAMERA_CUE::MAX_TRANSITION_IN_MS,
+			outCue.iTransitionInMs) ||
+			outCue.iTransitionInMs > outCue.iDurationMs)
+		{
+			return false;
+		}
+
+		if (nullptr == parent.Find("transitionOutMs"))
+			outCue.iTransitionOutMs = 0u;
+		else if (!Read_Unsigned(parent, "transitionOutMs",
+			VALTAN_CINEMATIC_CAMERA_CUE::MAX_TRANSITION_IN_MS,
+			outCue.iTransitionOutMs))
+		{
+			return false;
+		}
+		return true;
+	}
+
 	bool_t Read_Float3(
 		const DATA_JSON_VALUE& parent,
 		const char_t* key,
@@ -180,12 +227,18 @@ namespace
 		std::string text;
 		if (nullptr == mode || nullptr == origin ||
 			!Read_String(parent, "trackingMode", text) ||
-			"BOSS_XZ" != text ||
 			!Read_Float3(parent, "trackingOrigin", outOrigin))
 		{
 			return false;
 		}
-		outMode = VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ;
+		if ("BOSS_XZ" == text)
+			outMode = VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ;
+		else if ("BOSS_FACING" == text)
+			outMode = VALTAN_CINEMATIC_TRACKING_MODE::BOSS_FACING;
+		else if ("PLAYER_BOSS_FRAME" == text)
+			outMode = VALTAN_CINEMATIC_TRACKING_MODE::PLAYER_BOSS_FRAME;
+		else
+			return false;
 		return true;
 	}
 
@@ -202,6 +255,76 @@ namespace
 		}
 		outValue = static_cast<f32_t>(value->Get_Number());
 		return true;
+	}
+
+	const char_t* Easing_Text(
+		const VALTAN_CINEMATIC_CAMERA_EASING easing)
+	{
+		switch (easing)
+		{
+		case VALTAN_CINEMATIC_CAMERA_EASING::LINEAR: return "LINEAR";
+		case VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP: return "SMOOTHSTEP";
+		case VALTAN_CINEMATIC_CAMERA_EASING::HOLD: return "HOLD";
+		default: return nullptr;
+		}
+	}
+
+	void Write_Float3(
+		std::ostringstream& output,
+		const float3_t& value)
+	{
+		output << '[' << value.x << ", " << value.y << ", " << value.z << ']';
+	}
+
+	bool_t Write_Tracking(
+		std::ostringstream& output,
+		const VALTAN_CINEMATIC_TRACKING_MODE mode,
+		const float3_t& origin)
+	{
+		if (VALTAN_CINEMATIC_TRACKING_MODE::WORLD == mode)
+			return true;
+		const char_t* modeText = nullptr;
+		switch (mode)
+		{
+		case VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ:
+			modeText = "BOSS_XZ";
+			break;
+		case VALTAN_CINEMATIC_TRACKING_MODE::BOSS_FACING:
+			modeText = "BOSS_FACING";
+			break;
+		case VALTAN_CINEMATIC_TRACKING_MODE::PLAYER_BOSS_FRAME:
+			modeText = "PLAYER_BOSS_FRAME";
+			break;
+		default:
+			return false;
+		}
+		output << ",\n      \"trackingMode\": \"" << modeText << "\",\n"
+			"      \"trackingOrigin\": ";
+		Write_Float3(output, origin);
+		return true;
+	}
+
+	void Write_Keyframes(
+		std::ostringstream& output,
+		const std::vector<VALTAN_CINEMATIC_CAMERA_KEYFRAME>& keyframes,
+		const char_t* indent)
+	{
+		output << '[';
+		for (size_t index = 0u; index < keyframes.size(); ++index)
+		{
+			const auto& keyframe = keyframes[index];
+			output << (0u == index ? "\n" : ",\n") << indent << "  {\n"
+				<< indent << "    \"timeMs\": " << keyframe.iTimeMs << ",\n"
+				<< indent << "    \"eye\": ";
+			Write_Float3(output, keyframe.vEye);
+			output << ",\n" << indent << "    \"lookAt\": ";
+			Write_Float3(output, keyframe.vLookAt);
+			output << ",\n" << indent << "    \"fovYDegrees\": "
+				<< keyframe.fFovYDegrees << "\n" << indent << "  }";
+		}
+		if (!keyframes.empty())
+			output << '\n' << indent;
+		output << ']';
 	}
 }
 
@@ -250,7 +373,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 	}
 	if (!Is_ExactObject(root,
 		{ "schema", "formatVersion", "encounterId", "provenance", "cues",
-			"skyCues", "deathCue" }))
+			"deathCue" }))
 	{
 		outStatus = "Cinematic camera root has unexpected properties";
 		return false;
@@ -285,7 +408,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 	std::unordered_set<std::string> tuples;
 	for (const DATA_JSON_VALUE& cueValue : cues->Get_Array())
 	{
-		if (!Is_ExactObjectWithOptionalTracking(cueValue,
+		if (!Is_ExactCameraCueObject(cueValue,
 			{ "cueId", "patternId", "stageId", "durationMs", "easing",
 				"shakeAmplitude", "shakeDurationMs", "keyframes" }))
 		{
@@ -296,9 +419,11 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 		if (!Read_String(cueValue, "cueId", cue.strCueId) ||
 			!Read_String(cueValue, "patternId", cue.strPatternId) ||
 			!Read_String(cueValue, "stageId", cue.strStageId) ||
+			!Is_StablePresentationAssetId(cue.strCueId) ||
 			!Read_Unsigned(cueValue, "durationMs",
 				CEncounterPatternReference::MAX_STAGE_DURATION_MS, cue.iDurationMs) ||
 			0u == cue.iDurationMs || !cueIds.insert(cue.strCueId).second ||
+			!Read_Transitions(cueValue, cue) ||
 			!Read_Easing(cueValue, cue.eEasing) ||
 			!Read_Shake(cueValue, cue) ||
 			!Read_Tracking(cueValue, cue.eTrackingMode, cue.vTrackingOrigin))
@@ -380,118 +505,6 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 		staged.push_back(std::move(cue));
 	}
 
-	const DATA_JSON_VALUE* skyCues = root.Find("skyCues");
-	if (nullptr == skyCues || !skyCues->Is_Array() ||
-		skyCues->Get_Array().size() > MAX_CUE_COUNT)
-	{
-		outStatus = "Cinematic sky cue array is invalid";
-		return false;
-	}
-	std::vector<VALTAN_CINEMATIC_SKY_CUE> stagedSky;
-	std::unordered_set<std::string> skyCueIds;
-	std::unordered_set<std::string> skyTuples;
-	for (const DATA_JSON_VALUE& cueValue : skyCues->Get_Array())
-	{
-		if (!Is_ExactObjectWithOptionalTracking(cueValue,
-			{ "cueId", "patternId", "stageId", "stageLocalStartMs",
-				"stageLocalEndMs", "redCloudAssetId", "blackApertureAssetId",
-				"cloudOpacityStart", "cloudOpacityEnd", "apertureScaleStart",
-				"apertureScaleEnd", "cloudRotationDegreesPerSecond" }))
-		{
-			outStatus = "Cinematic sky cue has unexpected properties";
-			return false;
-		}
-		VALTAN_CINEMATIC_SKY_CUE cue;
-		if (!Read_String(cueValue, "cueId", cue.strCueId) ||
-			!Read_String(cueValue, "patternId", cue.strPatternId) ||
-			!Read_String(cueValue, "stageId", cue.strStageId) ||
-			!skyCueIds.insert(cue.strCueId).second)
-		{
-			outStatus = "Cinematic sky cue identity is invalid";
-			return false;
-		}
-		const ENCOUNTER_PATTERN_REFERENCE* pattern =
-			encounter.Find_Pattern(cue.strPatternId);
-		if (nullptr == pattern)
-		{
-			outStatus = "Cinematic sky pattern is unknown: " + cue.strPatternId;
-			return false;
-		}
-		const auto stage = std::find_if(
-			pattern->stages.begin(), pattern->stages.end(),
-			[&cue](const ENCOUNTER_STAGE_REFERENCE& value)
-			{ return value.stageId == cue.strStageId; });
-		if (pattern->stages.end() == stage)
-		{
-			outStatus = "Cinematic sky stage is unknown: " + cue.strCueId;
-			return false;
-		}
-		cue.iStageIndex = static_cast<uint32_t>(stage - pattern->stages.begin());
-		cue.strStageActionId = stage->actionId;
-		if (!Read_Unsigned(cueValue, "stageLocalStartMs", stage->iDurationMs,
-				cue.iStageLocalStartMs) ||
-			!Read_Unsigned(cueValue, "stageLocalEndMs", stage->iDurationMs,
-				cue.iStageLocalEndMs) ||
-			cue.iStageLocalEndMs <= cue.iStageLocalStartMs)
-		{
-			outStatus = "Cinematic sky window is invalid: " + cue.strCueId;
-			return false;
-		}
-		const std::string tuple = cue.strPatternId + "\n" +
-			std::to_string(cue.iStageIndex) + "\n" + cue.strStageActionId;
-		if (!skyTuples.insert(tuple).second)
-		{
-			outStatus = "Duplicate cinematic sky encounter tuple";
-			return false;
-		}
-		if (!Read_String(cueValue, "redCloudAssetId",
-				cue.strRedCloudAssetId) ||
-			!Read_String(cueValue, "blackApertureAssetId",
-				cue.strBlackApertureAssetId) ||
-			!Is_StablePresentationAssetId(cue.strRedCloudAssetId) ||
-			!Is_StablePresentationAssetId(cue.strBlackApertureAssetId))
-		{
-			outStatus = "Cinematic sky asset IDs must be stable non-path IDs";
-			return false;
-		}
-
-		const auto readUnitScalar = [&cueValue](
-			const char_t* key, const f32_t maximum, f32_t& outValue)
-		{
-			const DATA_JSON_VALUE* value = cueValue.Find(key);
-			if (nullptr == value || !value->Is_Number() ||
-				!std::isfinite(value->Get_Number()) ||
-				value->Get_Number() < 0.0 ||
-				value->Get_Number() > static_cast<double>(maximum))
-			{
-				return false;
-			}
-			outValue = static_cast<f32_t>(value->Get_Number());
-			return true;
-		};
-		const DATA_JSON_VALUE* rotation =
-			cueValue.Find("cloudRotationDegreesPerSecond");
-		if (!readUnitScalar("cloudOpacityStart", 1.f, cue.fCloudOpacityStart) ||
-			!readUnitScalar("cloudOpacityEnd", 1.f, cue.fCloudOpacityEnd) ||
-			!readUnitScalar("apertureScaleStart", 8.f, cue.fApertureScaleStart) ||
-			!readUnitScalar("apertureScaleEnd", 8.f, cue.fApertureScaleEnd) ||
-			nullptr == rotation || !rotation->Is_Number() ||
-			!std::isfinite(rotation->Get_Number()) ||
-			std::abs(rotation->Get_Number()) > 360.0)
-		{
-			outStatus = "Cinematic sky curve is invalid: " + cue.strCueId;
-			return false;
-		}
-		cue.fCloudRotationDegreesPerSecond =
-			static_cast<f32_t>(rotation->Get_Number());
-		if (!Read_Tracking(cueValue, cue.eTrackingMode, cue.vTrackingOrigin))
-		{
-			outStatus = "Cinematic sky tracking is invalid: " + cue.strCueId;
-			return false;
-		}
-		stagedSky.push_back(std::move(cue));
-	}
-
 	/* The clear shot is optional: an empty object means the encounter authors no
 	   death camera and the ordinary follow view simply stays. */
 	VALTAN_CINEMATIC_CAMERA_CUE deathCue;
@@ -512,6 +525,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 			return false;
 		}
 		if (!Read_String(*deathCueValue, "cueId", deathCue.strCueId) ||
+			!Is_StablePresentationAssetId(deathCue.strCueId) ||
 			!Read_Unsigned(*deathCueValue, "durationMs",
 				CEncounterPatternReference::MAX_STAGE_DURATION_MS,
 				deathCue.iDurationMs) ||
@@ -554,6 +568,14 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 				outStatus = "Cinematic death keyframe is invalid";
 				return false;
 			}
+			const vector_t deathEye = XMLoadFloat3(&keyframe.vEye);
+			const vector_t deathLookAt = XMLoadFloat3(&keyframe.vLookAt);
+			if (XMVectorGetX(XMVector3LengthSq(deathLookAt - deathEye)) <=
+				0.000001f)
+			{
+				outStatus = "Cinematic death eye and lookAt must differ";
+				return false;
+			}
 			previousDeathTime = keyframe.iTimeMs;
 			deathCue.Keyframes.push_back(keyframe);
 		}
@@ -568,39 +590,146 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 	CValtanCinematicCameraDocument committed;
 	committed.m_strEncounterId = std::move(encounterId);
 	committed.m_Cues = std::move(staged);
-	committed.m_SkyCues = std::move(stagedSky);
 	committed.m_DeathCue = std::move(deathCue);
 	committed.m_hasDeathCue = hasDeathCue;
 	committed.m_isReady = true;
 	outDocument = std::move(committed);
 	outStatus = "Loaded Valtan cinematic camera cues: " +
-		std::to_string(outDocument.m_Cues.size()) + " and sky cues: " +
-		std::to_string(outDocument.m_SkyCues.size());
+		std::to_string(outDocument.m_Cues.size());
 	return true;
 }
 
-const Client::VALTAN_CINEMATIC_SKY_CUE*
-Client::CValtanCinematicCameraDocument::Find_SkyCue(
-	const std::string_view patternId,
-	const uint32_t stageIndex,
-	const std::string_view stageActionId) const
+bool_t Client::CValtanCinematicCameraDocument::Stage_CameraDraft(
+	const std::vector<VALTAN_CINEMATIC_CAMERA_CUE>& cues,
+	const bool_t hasDeathCue,
+	const VALTAN_CINEMATIC_CAMERA_CUE& deathCue,
+	const CEncounterPatternReference& encounter,
+	CValtanCinematicCameraDocument& outDocument,
+	std::string& outText,
+	std::string& outStatus) const
 {
-	const auto iter = std::find_if(m_SkyCues.begin(), m_SkyCues.end(),
-		[patternId, stageIndex, stageActionId](
-			const VALTAN_CINEMATIC_SKY_CUE& cue)
+	if (!m_isReady)
+	{
+		outStatus = "Cinematic camera authoring requires a loaded source document";
+		return false;
+	}
+	CValtanCinematicCameraDocument staged = *this;
+	staged.m_Cues = cues;
+	staged.m_hasDeathCue = hasDeathCue;
+	staged.m_DeathCue = hasDeathCue ? deathCue : VALTAN_CINEMATIC_CAMERA_CUE{};
+	std::string serialized;
+	if (!staged.Serialize_Text(serialized, outStatus))
+		return false;
+	CValtanCinematicCameraDocument validated;
+	if (!Parse_Text(serialized, encounter, validated, outStatus))
+		return false;
+	outDocument = std::move(validated);
+	outText = std::move(serialized);
+	outStatus = "Validated cinematic camera authoring draft";
+	return true;
+}
+
+bool_t Client::CValtanCinematicCameraDocument::Serialize_Text(
+	std::string& outText,
+	std::string& outStatus) const
+{
+	if (!m_isReady || m_strEncounterId.empty())
+	{
+		outStatus = "Cinematic camera document is not ready to serialize";
+		return false;
+	}
+	std::ostringstream output;
+	output << std::setprecision(std::numeric_limits<f32_t>::max_digits10);
+	output << "{\n"
+		"  \"schema\": \"" << SCHEMA << "\",\n"
+		"  \"formatVersion\": " << FORMAT_VERSION << ",\n"
+		"  \"encounterId\": \"" << CDataJson::Escape(m_strEncounterId) << "\",\n"
+		"  \"provenance\": \"PROJECT_AUTHORED\",\n"
+		"  \"cues\": [";
+	for (size_t index = 0u; index < m_Cues.size(); ++index)
+	{
+		const VALTAN_CINEMATIC_CAMERA_CUE& cue = m_Cues[index];
+		const char_t* easing = Easing_Text(cue.eEasing);
+		if (nullptr == easing)
 		{
-			return cue.strPatternId == patternId &&
-				cue.iStageIndex == stageIndex &&
-				cue.strStageActionId == stageActionId;
-		});
-	return m_SkyCues.end() == iter ? nullptr : &(*iter);
+			outStatus = "Cinematic camera cue has an unsupported easing";
+			return false;
+		}
+		output << (0u == index ? "\n" : ",\n")
+			<< "    {\n"
+			<< "      \"cueId\": \"" << CDataJson::Escape(cue.strCueId) << "\",\n"
+			<< "      \"patternId\": \"" << CDataJson::Escape(cue.strPatternId) << "\",\n"
+			<< "      \"stageId\": \"" << CDataJson::Escape(cue.strStageId) << '"';
+		if (!Write_Tracking(output, cue.eTrackingMode, cue.vTrackingOrigin))
+		{
+			outStatus = "Cinematic camera cue has an unsupported tracking mode";
+			return false;
+		}
+		output << ",\n      \"durationMs\": " << cue.iDurationMs;
+		if (0u != cue.iTransitionInMs)
+		{
+			if (cue.iTransitionInMs > cue.iDurationMs ||
+				cue.iTransitionInMs >
+					VALTAN_CINEMATIC_CAMERA_CUE::MAX_TRANSITION_IN_MS)
+			{
+				outStatus = "Cinematic camera cue transition is out of bounds";
+				return false;
+			}
+			output << ",\n      \"transitionInMs\": " << cue.iTransitionInMs;
+		}
+		if (0u != cue.iTransitionOutMs)
+		{
+			if (cue.iTransitionOutMs >
+				VALTAN_CINEMATIC_CAMERA_CUE::MAX_TRANSITION_IN_MS)
+			{
+				outStatus =
+					"Cinematic camera cue exit transition is out of bounds";
+				return false;
+			}
+			output << ",\n      \"transitionOutMs\": " << cue.iTransitionOutMs;
+		}
+		output << ",\n      \"easing\": \"" << easing << "\",\n"
+			<< "      \"shakeAmplitude\": " << cue.fShakeAmplitude << ",\n"
+			<< "      \"shakeDurationMs\": " << cue.iShakeDurationMs << ",\n"
+			<< "      \"keyframes\": ";
+		Write_Keyframes(output, cue.Keyframes, "      ");
+		output << "\n    }";
+	}
+	if (!m_Cues.empty())
+		output << '\n';
+	output << "  ],\n  \"deathCue\": ";
+	if (!m_hasDeathCue)
+	{
+		output << "{}";
+	}
+	else
+	{
+		const char_t* easing = Easing_Text(m_DeathCue.eEasing);
+		if (nullptr == easing)
+		{
+			outStatus = "Cinematic death cue has an unsupported easing";
+			return false;
+		}
+		output << "{\n"
+			<< "    \"cueId\": \"" << CDataJson::Escape(m_DeathCue.strCueId) << "\",\n"
+			<< "    \"durationMs\": " << m_DeathCue.iDurationMs << ",\n"
+			<< "    \"easing\": \"" << easing << "\",\n"
+			<< "    \"shakeAmplitude\": " << m_DeathCue.fShakeAmplitude << ",\n"
+			<< "    \"shakeDurationMs\": " << m_DeathCue.iShakeDurationMs << ",\n"
+			<< "    \"keyframes\": ";
+		Write_Keyframes(output, m_DeathCue.Keyframes, "    ");
+		output << "\n  }";
+	}
+	output << "\n}\n";
+	outText = output.str();
+	outStatus = "Serialized cinematic camera document";
+	return true;
 }
 
 void Client::CValtanCinematicCameraDocument::Clear()
 {
 	m_strEncounterId.clear();
 	m_Cues.clear();
-	m_SkyCues.clear();
 	m_DeathCue = VALTAN_CINEMATIC_CAMERA_CUE{};
 	m_hasDeathCue = false;
 	m_isReady = false;

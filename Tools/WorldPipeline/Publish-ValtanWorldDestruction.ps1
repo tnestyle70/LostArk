@@ -40,7 +40,7 @@ $dashImpactPatternId = 'VALTAN_DASH_CHARGE'
 $dashImpactStageId = 'CHARGE'
 $dashImpactActionId = 'valtan.attack.dash-charge.active'
 $dashImpactStageIndex = 1
-$expectedDashImpactGroupCount = 10
+$expectedDashImpactGroupCount = 40
 # The first-appearance sweep owns two single-wall groups of its own, so it can
 # never share a group, a member or a receiver with the 159 charge wall.
 $entranceGroupIdPrefix = 'destroyable.group.valtan.entrance.'
@@ -72,14 +72,14 @@ $expectedProductGroupCount = 99
 $floorGroupIdPrefix = 'destroyable.group.valtan.floor'
 $floorStageAGroupIdPrefix = 'destroyable.group.valtan.floor84.'
 $floorStageBGroupIdPrefix = 'destroyable.group.valtan.floor30.'
-$floorStageAPatternId = 'VALTAN_ARENA_BREAK_84'
+$floorStageAPatternId = 'VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK'
 $floorStageAStageId = 'IMPACT'
-$floorStageAActionId = 'valtan.mechanic.arena-floor-84.impact'
-$floorStageAStageIndex = 1
-$floorStageBPatternId = 'VALTAN_ARENA_BREAK_33'
-$floorStageBStageId = 'LANDING'
-$floorStageBActionId = 'valtan.mechanic.arena-break-33.landing'
-$floorStageBStageIndex = 1
+$floorStageAActionId = 'valtan.mechanic.terrain-destruction-3.impact'
+$floorStageAStageIndex = 3
+$floorStageBPatternId = 'VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK'
+$floorStageBStageId = 'IMPACT'
+$floorStageBActionId = 'valtan.mechanic.terrain-destruction-9.impact'
+$floorStageBStageIndex = 3
 $expectedFloorStageAGroupCount = 3
 $expectedFloorStageBGroupCount = 3
 # Each ring source owns one bound visual filler alias. Only the thirty sources
@@ -610,6 +610,43 @@ function Compile-ValtanWorldDestruction {
 			if ($null -ne $stage.PSObject.Properties['hitOffsetsMs']) {
 				$expectedStageProperties += 'hitOffsetsMs'
 			}
+			if ($null -ne $stage.PSObject.Properties['partDamagePolicy']) {
+				$expectedStageProperties += 'partDamagePolicy'
+				if ([string]$stage.partDamagePolicy -cnotin @(
+					'NORMAL','DESTROY_FIRST_ELIGIBLE')) {
+					throw "Encounter partDamagePolicy is invalid: $($pattern.patternId)/$($stage.stageId)"
+				}
+			}
+			if ($null -ne $stage.PSObject.Properties['counterProxy']) {
+				$expectedStageProperties += 'counterProxy'
+				Assert-ExactProperties -Value $stage.counterProxy -Expected @(
+					'space','forwardOffsetM','rightOffsetM','radiusM') `
+					-Context "$($pattern.patternId) counterProxy"
+				if ([string]$stage.counterProxy.space -cne 'BOSS_LOCAL') {
+					throw "Encounter counterProxy space is invalid: $($pattern.patternId)/$($stage.stageId)"
+				}
+				Assert-JsonNumber $stage.counterProxy.forwardOffsetM `
+					"$($pattern.patternId) counterProxy forwardOffsetM" -20.0 20.0
+				Assert-JsonNumber $stage.counterProxy.rightOffsetM `
+					"$($pattern.patternId) counterProxy rightOffsetM" -20.0 20.0
+				Assert-JsonNumber $stage.counterProxy.radiusM `
+					"$($pattern.patternId) counterProxy radiusM" 0.0 20.0 `
+					-MinimumExclusive
+			}
+			$hasPlayerResponse =
+				$null -ne $stage.PSObject.Properties['playerResponse']
+			$hasAttachmentSlot =
+				$null -ne $stage.PSObject.Properties['attachmentSlot']
+			if ($hasPlayerResponse -ne $hasAttachmentSlot) {
+				throw "Encounter capture fields must be authored together: $($pattern.patternId)/$($stage.stageId)"
+			}
+			if ($hasPlayerResponse) {
+				$expectedStageProperties += @('playerResponse','attachmentSlot')
+				if ([string]$stage.playerResponse -cne 'CAPTURE' -or
+					[string]$stage.attachmentSlot -cne 'BOSS_LEFT_HAND') {
+					throw "Encounter capture fields are invalid: $($pattern.patternId)/$($stage.stageId)"
+				}
+			}
             Assert-ExactProperties -Value $stage -Expected $expectedStageProperties -Context "$($pattern.patternId) stage"
             Assert-StableId $stage.stageId "$($pattern.patternId) stageId"
             Assert-StableId $stage.actionId "$($pattern.patternId) actionId"
@@ -781,6 +818,8 @@ function Compile-ValtanWorldDestruction {
         }
         $isImpactGroup = ([string]$group.groupId).StartsWith(
             $impactGroupIdPrefix, [StringComparison]::Ordinal)
+        $isOuterGroup = ([string]$group.groupId).StartsWith(
+            $outerGroupIdPrefix, [StringComparison]::Ordinal)
         $isEntranceGroup = ([string]$group.groupId).StartsWith(
             $entranceGroupIdPrefix, [StringComparison]::Ordinal)
         $isImpactBinding = $binding.triggerKind -ceq 'COLLISION_IMPACT'
@@ -823,12 +862,13 @@ function Compile-ValtanWorldDestruction {
             $resolvedStage.ActionId -ceq $entranceActionId -and
             [uint32]$resolvedStage.StageIndex -eq [uint32]$entranceStageIndex
         } elseif ($isImpactBinding) {
-            $isImpactGroup -and
-            (($binding.patternId -ceq $impactPatternId -and
+            (($isImpactGroup -and
+              $binding.patternId -ceq $impactPatternId -and
               $binding.stageId -ceq $impactStageId -and
               $resolvedStage.ActionId -ceq $impactActionId -and
               [uint32]$resolvedStage.StageIndex -eq [uint32]$impactStageIndex) -or
-             ($binding.patternId -ceq $dashImpactPatternId -and
+             (($isImpactGroup -or $isOuterGroup) -and
+              $binding.patternId -ceq $dashImpactPatternId -and
               $binding.stageId -ceq $dashImpactStageId -and
               $resolvedStage.ActionId -ceq $dashImpactActionId -and
               [uint32]$resolvedStage.StageIndex -eq [uint32]$dashImpactStageIndex))
@@ -892,7 +932,7 @@ function Compile-ValtanWorldDestruction {
                 -not [bool]$collisionById[$expectedReceiverId].enabled) {
                 throw "Entrance destruction binding is missing its own receiver: $($binding.bindingId)"
             }
-        } elseif ($isImpactGroup) {
+        } elseif ($isImpactGroup -or $isOuterGroup) {
             $expectedReceiverId = $collisionStateId + '.receiver'
             $receiverContractValid = if ($isImpactBinding) {
                 [string]$binding.receiverCollisionId -ceq $expectedReceiverId
@@ -988,8 +1028,9 @@ function Compile-ValtanWorldDestruction {
         throw 'The one-group destruction slice must be the exact 3705102 group.'
     }
 
-    # The 109 collapse and the 159 wall charge are two different contracts and
-    # are validated as two disjoint reachable sub-graphs of the enabled bindings.
+    # The 109 stage collapse and charge collision are different triggers. The
+    # outer groups intentionally belong to both: stage entry collapses the whole
+    # ring, while Dash Charge may commit exactly the first swept slab.
     $arenaBreakBindings = @($serverBindings | Where-Object {
         $_.PatternId -ceq $firstPatternId -and $_.StageId -ceq $firstStageId -and
         $_.ActionId -ceq $firstActionId -and [uint32]$_.StageIndex -eq [uint32]$firstStageIndex -and
@@ -1153,7 +1194,7 @@ function Compile-ValtanWorldDestruction {
             $dashImpactBindings.Count +
             $entranceBindings.Count + $contactBindings.Count +
             $floorBindings.Count -ne $enabledBindings.Count) {
-            throw 'Every enabled destruction binding must belong to the contact, entrance, 109 stage, one of the exact 159 charge impacts, or floor collapse contract.'
+            throw 'Every enabled destruction binding must belong to the contact, entrance, 109 stage, one of the exact 159/opening or 159+outer/dash impacts, or floor collapse contract.'
         }
         if ($floorBindings.Count -gt 0) {
             if ($floorStageGroupIds[$floorStageAGroupIdPrefix].Count -ne $expectedFloorStageAGroupCount) {
@@ -1205,19 +1246,56 @@ function Compile-ValtanWorldDestruction {
         }
         $dashImpactGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $dashImpactReceiverIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $dashImpact159GroupCount = 0
+        $dashImpactOuterGroupCount = 0
         foreach ($dashImpactBinding in $dashImpactBindings) {
             $dashImpactReachedGroupId = [string]$mutationById[[string]$dashImpactBinding.MutationId].groupId
-            if (-not $dashImpactReachedGroupId.StartsWith(
-                $impactGroupIdPrefix, [StringComparison]::Ordinal) -or
+            $isDashImpact159Group = $dashImpactReachedGroupId.StartsWith(
+                $impactGroupIdPrefix, [StringComparison]::Ordinal)
+            $isDashImpactOuterGroup = $dashImpactReachedGroupId.StartsWith(
+                $outerGroupIdPrefix, [StringComparison]::Ordinal)
+            if ((-not $isDashImpact159Group -and
+                 -not $isDashImpactOuterGroup) -or
                 -not $dashImpactGroupIds.Add($dashImpactReachedGroupId) -or
                 -not $dashImpactReceiverIds.Add([string]$dashImpactBinding.ReceiverId)) {
                 throw "The general dash impact walls must own unique groups and receivers: $($dashImpactBinding.BindingId)"
             }
+            $dashImpactGroupKey =
+                ($dashImpactReachedGroupId -split '\.')[-1]
+            $dashImpactNamespace = if ($isDashImpact159Group) {
+                'wall159'
+            } else {
+                'outerwall109'
+            }
+            $expectedDashBindingId =
+                "binding.valtan.${dashImpactNamespace}.${dashImpactGroupKey}.dash-charge-impact"
+            $expectedDashMutationId =
+                "mutation.valtan.${dashImpactNamespace}.${dashImpactGroupKey}.despawn"
+            $ownedDashCollisionIds =
+                @($sourceCollisionIdsByGroup[$dashImpactReachedGroupId])
+            $expectedDashReceiverId =
+                if (1 -eq $ownedDashCollisionIds.Count) {
+                    [string]$ownedDashCollisionIds[0] + '.receiver'
+                } else {
+                    ''
+                }
+            if ([string]$dashImpactBinding.BindingId -cne
+                    $expectedDashBindingId -or
+                [string]$dashImpactBinding.MutationId -cne
+                    $expectedDashMutationId -or
+                [string]$dashImpactBinding.ReceiverId -cne
+                    $expectedDashReceiverId) {
+                throw "The general dash impact binding does not exact-join its stable binding/mutation/receiver identity: $($dashImpactBinding.BindingId)"
+            }
+            if ($isDashImpact159Group) { ++$dashImpact159GroupCount }
+            if ($isDashImpactOuterGroup) { ++$dashImpactOuterGroupCount }
         }
         if ($dashImpactBindings.Count -ne $expectedDashImpactGroupCount -or
             $dashImpactGroupIds.Count -ne $expectedDashImpactGroupCount -or
-            $dashImpactReceiverIds.Count -ne $expectedDashImpactGroupCount) {
-            throw "The general dash destruction schedule must contain exactly $expectedDashImpactGroupCount independent 159 wall-charge bindings."
+            $dashImpactReceiverIds.Count -ne $expectedDashImpactGroupCount -or
+            $dashImpact159GroupCount -ne $expectedImpactGroupCount -or
+            $dashImpactOuterGroupCount -ne $expectedOuterGroupCount) {
+            throw "The general dash destruction schedule must contain exactly $expectedImpactGroupCount independent 159 bindings and $expectedOuterGroupCount independent outer-ring bindings."
         }
         $expectedContactBindingCount = $expectedIndependentContactWallCount
         if ($contactBindings.Count -ne $expectedContactBindingCount -or
@@ -1398,6 +1476,11 @@ function Compile-ValtanWorldDestruction {
         }
     }
 
+    $removesGroundByGroupId = @{}
+    foreach ($serverMutation in $serverMutations) {
+        $removesGroundByGroupId[[string]$serverMutation.GroupId] =
+            ([int]$serverMutation.RemovesGround -eq 1)
+    }
     $projectionGroups = @(Sort-OrdinalByProperty @($serverGroups) 'GroupId' | ForEach-Object {
         $profile = $debrisProfileByGroupId[[string]$_.GroupId]
         if ($null -eq $profile) {
@@ -1428,13 +1511,14 @@ function Compile-ValtanWorldDestruction {
         [ordered]@{
             groupId = $_.GroupId
             mutationId = [string]$mutationByGroupId[$_.GroupId]
+            removesGround = [bool]$removesGroundByGroupId[[string]$_.GroupId]
             suppressionAliasPlacementIds = @($aliasIds | Sort-Object { [uint64]$_ })
             memberPlacementIds = @($memberIds)
         }
     })
     $projection = [ordered]@{
         schema = 'lostark.world-destruction-client-projection'
-        formatVersion = 2
+        formatVersion = 3
         areaId = $expectedAreaId
         combatRuntimeRevision = $revision
         groups = $projectionGroups
@@ -1565,8 +1649,9 @@ function Invoke-ContractTests {
         $expectedOuterEmitterCount * $expectedFragmentsPerEmitter
     # Every source wall is an independent group. The sixty-nine ordinary walls
     # own contact bindings; the thirty 109 source groups and their thirty visual
-    # fillers are stage-only. The graph also carries ten opening and ten general
-    # dash 159 impact bindings plus two first-appearance bindings.
+    # fillers share their mutations with one exact Dash receiver binding. The
+    # graph also carries ten opening and forty general Dash impact bindings plus
+    # two first-appearance bindings.
     $expectedFloorGroupCount =
         $expectedFloorStageAGroupCount + $expectedFloorStageBGroupCount
     $expectedCanonicalGroupCount =
@@ -1593,14 +1678,24 @@ function Invoke-ContractTests {
         $canonical.GroupCount -ne $expectedCanonicalGroupCount -or
         $canonical.BindingCount -ne $expectedCanonicalBindingCount -or
         $canonical.Revision -cnotmatch $revisionPattern) {
-        throw "Canonical source did not compile $expectedProductGroupCount independent walls, $expectedIndependentContactWallCount ordinary contact bindings, $expectedFloorGroupCount floor collapse sectors and the exact 109/entrance/159 schedules."
+        throw "Canonical source did not compile $expectedProductGroupCount independent walls, $expectedIndependentContactWallCount ordinary contact bindings, $expectedFloorGroupCount floor collapse sectors and the exact 109/entrance/159+outer charge schedules."
     }
     $canonicalProjection = $canonical.ClientJson | ConvertFrom-Json
 	$canonicalPresentation = $canonical.PresentationJson | ConvertFrom-Json
-    if ($canonicalProjection.formatVersion -ne 2 -or
+    if ($canonicalProjection.formatVersion -ne 3 -or
         @($canonicalProjection.groups).Count -ne $expectedCanonicalGroupCount) {
-        throw 'Canonical projection did not compile the exact formatVersion 2 group contract.'
+        throw 'Canonical projection did not compile the exact formatVersion 3 group contract.'
     }
+	$projectedGroundGroups = @($canonicalProjection.groups | Where-Object {
+		[bool]$_.removesGround
+	})
+	if ($projectedGroundGroups.Count -ne $expectedFloorGroupCount -or
+		@($projectedGroundGroups | Where-Object {
+			-not ([string]$_.groupId).StartsWith(
+				$floorGroupIdPrefix, [StringComparison]::Ordinal)
+		}).Count -ne 0) {
+		throw 'Canonical projection ground-removal owners do not exactly match the six floor sectors.'
+	}
 	$projectionGroupIds = @($canonicalProjection.groups | ForEach-Object { [string]$_.groupId })
 	$presentationGroupIds = @($canonicalPresentation.profiles | ForEach-Object { [string]$_.groupId })
 	$projectionGroupIdSet = [Collections.Generic.HashSet[string]]::new(
@@ -1690,6 +1785,42 @@ function Invoke-ContractTests {
     Assert-Throws {
         Compile-ValtanWorldDestruction $missingSector $encounter $simulation
     } 'missing independent outer ring wall'
+
+    $invalidDashIdentity = Copy-JsonObject $source
+    $invalidDashIdentityBinding = $invalidDashIdentity.bindings |
+        Where-Object {
+            $_.bindingId -CEQ
+                'binding.valtan.outerwall109.1090000000000016.dash-charge-impact'
+        } | Select-Object -First 1
+    $invalidDashIdentityBinding.bindingId =
+        'binding.valtan.outerwall109.1090000000000016.dash-charge-impact-renamed'
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $invalidDashIdentity $encounter $simulation
+    } 'renamed outer-ring Dash impact binding'
+
+    $invalidDashMutation = Copy-JsonObject $source
+    $invalidDashMutationBinding = $invalidDashMutation.bindings |
+        Where-Object {
+            $_.bindingId -CEQ
+                'binding.valtan.outerwall109.1090000000000016.dash-charge-impact'
+        } | Select-Object -First 1
+    $invalidDashMutationBinding.mutationId =
+        'mutation.valtan.outerwall109.1090000000000017.despawn'
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $invalidDashMutation $encounter $simulation
+    } 'misjoined outer-ring Dash impact mutation'
+
+    $invalidDashReceiver = Copy-JsonObject $source
+    $invalidDashReceiverBinding = $invalidDashReceiver.bindings |
+        Where-Object {
+            $_.bindingId -CEQ
+                'binding.valtan.outerwall109.1090000000000016.dash-charge-impact'
+        } | Select-Object -First 1
+    $invalidDashReceiverBinding.receiverCollisionId =
+        'collision.valtan.wallgroup.sector05.1090000000000017.receiver'
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $invalidDashReceiver $encounter $simulation
+    } 'misjoined outer-ring Dash impact receiver'
 
     # Removing one leaf from all three source collections is still a 29-wall
     # ring and must not publish as the product set.
@@ -1901,4 +2032,4 @@ $result = Compile-ValtanWorldDestruction $worldEvents $encounter $simulation
 if ($Mode -eq 'Publish') {
     Publish-CompiledArtifacts $result $ServerOutputRoot $ClientOutputRoot $FailureAfterPromote
 }
-Write-Host "Valtan world destruction $Mode succeeded. groups=$($result.GroupCount) bindings=$($result.BindingCount) emitters=$($result.EmitterCount) outer109=$($result.OuterGroupCount)groups/$($result.OuterMemberCount)placements/$($result.OuterEmitterCount)emitters/$($result.OuterSuppressionAliasCount)aliases/$($result.OuterFragmentActorCount)fragments interior109=$($result.Interior109BindingCount) openingImpact159=$($result.ImpactBindingCount) dashImpact159=$($result.DashImpactBindingCount) contacts=$($result.ContactBindingCount) revision=$($result.Revision)"
+Write-Host "Valtan world destruction $Mode succeeded. groups=$($result.GroupCount) bindings=$($result.BindingCount) emitters=$($result.EmitterCount) outer109=$($result.OuterGroupCount)groups/$($result.OuterMemberCount)placements/$($result.OuterEmitterCount)emitters/$($result.OuterSuppressionAliasCount)aliases/$($result.OuterFragmentActorCount)fragments interior109=$($result.Interior109BindingCount) openingImpact159=$($result.ImpactBindingCount) dashImpact159PlusOuter=$($result.DashImpactBindingCount) contacts=$($result.ContactBindingCount) revision=$($result.Revision)"

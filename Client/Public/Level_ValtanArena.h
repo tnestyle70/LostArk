@@ -6,6 +6,7 @@
 #include "EncounterPatternReference.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
+#include "MapEffectPresentationRuntime.h"
 #include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
 #include "ValtanCinematicCameraController.h"
@@ -46,13 +47,9 @@ public:
 private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	bool_t Ready_CinematicCamera();
-	bool_t Ready_ValtanSkyPresentation(std::string& outStatus);
 	bool_t Bind_CameraToLocalCharacter();
 	void Update_CinematicCamera(f32_t fTimeDelta);
-	void Apply_ValtanSkyPresentation(
-		const VALTAN_CINEMATIC_SKY_STATE& state);
-	void Reset_ValtanSkyPresentation();
-	void Clear_ValtanSkyPresentation();
+	bool_t Update_CinematicCameraExitTransition(f32_t fTimeDelta);
 	void End_CinematicCameraOverride();
 	void End_CinematicCamera();
 	void Update_WorldDestructionPresentation(f32_t fTimeDelta);
@@ -140,6 +137,7 @@ private:
 private:
 	CMapPlacementRuntime m_MapRuntime;
 	CDeployPropRuntime m_DeployRuntime;
+	CMapEffectPresentationRuntime m_MapEffectPresentationRuntime;
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	bool_t m_bMapLightSubmissionFailureReported = false;
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
@@ -151,27 +149,6 @@ private:
 	CEncounterPatternReference m_ValtanEncounterReference;
 	CValtanCinematicCameraDocument m_ValtanCinematicCameraDocument;
 	CValtanCinematicCameraController m_ValtanCinematicCameraController;
-	/* The Server-owned pattern clock only selects this presentation. The six
-	   cached map objects never participate in collision or navigation. */
-	VALTAN_CINEMATIC_SKY_STATE m_ValtanSkyState;
-	struct VALTAN_SKY_PRESENTATION_LAYER final
-	{
-		shared_ptr<CMapAssetObject> pObject;
-		std::string strAssetId;
-		uint64_t iPlacementId = 0u;
-		float3_t vBasePosition = {};
-		float4_t vBaseRotationQuaternion = float4_t(0.f, 0.f, 0.f, 1.f);
-		float3_t vBaseSignedScale = float3_t(1.f, 1.f, 1.f);
-		bool_t bBaseVisible = false;
-		VALTAN_CINEMATIC_SKY_LAYER_POLICY Policy;
-	};
-	static constexpr size_t VALTAN_SKY_LAYER_COUNT = 3u;
-	std::array<VALTAN_SKY_PRESENTATION_LAYER, VALTAN_SKY_LAYER_COUNT>
-		m_ValtanRedCloudLayers{};
-	std::array<VALTAN_SKY_PRESENTATION_LAYER, VALTAN_SKY_LAYER_COUNT>
-		m_ValtanBlackApertureLayers{};
-	std::string m_strValtanRedCloudSeedAssetId;
-	std::string m_strValtanBlackApertureSeedAssetId;
 	CWorldDestructionProjectionDocument m_WorldDestructionProjectionDocument;
 	CWorldDestructionDebrisPresentationDocument
 		m_WorldDestructionDebrisPresentationDocument;

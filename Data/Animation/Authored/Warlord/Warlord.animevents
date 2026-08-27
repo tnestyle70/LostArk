@@ -1699,7 +1699,7 @@ LOSTARK_ANIM_EVENTS 6 "Warlord" 1723
 "wgl_att_battle_1_02" EFFECT startms=0 payload="effect.warlord.skill.17000.ba3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_att_battle_1_03" EFFECT startms=0 payload="effect.warlord.skill.17000.ba3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_bash" EFFECT startms=0 payload="effect.warlord.skill.17040.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"wgl_sk_dashupperfire_01" EFFECT startms=0 payload="effect.warlord.skill.17080.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_dashupperfire_01" EFFECT startms=0 payload="effect.warlord.skill.17080.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_dashupperfire_02" EFFECT startms=0 payload="effect.warlord.skill.17080.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="effect.warlord.skill.17240.ba1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="effect.warlord.skill.17240.ba2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

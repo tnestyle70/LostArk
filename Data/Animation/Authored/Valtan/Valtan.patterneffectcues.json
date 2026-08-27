@@ -1,6 +1,6 @@
 {
   "schema": "lostark.valtan-pattern-effect-cues",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "ownerArchetypeId": "BOSS_VALTAN",
   "cues": [
     {
@@ -233,14 +233,13 @@
       "patternId": "VALTAN_FIST_IN_OUT",
       "stageId": "INNER",
       "actionId": "valtan.attack.fist-in-out.inner",
-      "clipOccurrenceId": "valtan.attack.fist-in-out.inner.clip.01",
+      "timingBasis": "STAGE_CLOCK",
+      "stageOffsetMs": 0,
       "effectAssetId": "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
-      "sourceStartMs": 0,
-      "sourceEndMs": null,
       "localTransform": {
         "position": [
           0,
@@ -1749,6 +1748,1126 @@
           1.5,
           1.5
         ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.four.slashes",
+      "occurrenceId": "cue.valtan.phase2.four.slashes.occurrence.01",
+      "patternId": "VALTAN_SEQUENCE_FOUR",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.four.step-01",
+      "clipOccurrenceId": "valtan.sequence.four.step-01.clip-01",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.four.spin",
+      "occurrenceId": "cue.valtan.phase2.four.spin.occurrence.01",
+      "patternId": "VALTAN_SEQUENCE_FOUR",
+      "stageId": "STEP_02",
+      "actionId": "valtan.sequence.four.step-02",
+      "clipOccurrenceId": "valtan.sequence.four.step-02.clip-01",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.terrain.four-axe.01",
+      "occurrenceId": "cue.valtan.phase2.terrain.four-axe.01.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+      "stageId": "STEP_10",
+      "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10",
+      "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10.clip-01",
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.terrain.four-axe.02",
+      "occurrenceId": "cue.valtan.phase2.terrain.four-axe.02.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+      "stageId": "STEP_10",
+      "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10",
+      "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10.clip-01",
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          90.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.terrain.four-axe.03",
+      "occurrenceId": "cue.valtan.phase2.terrain.four-axe.03.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+      "stageId": "STEP_10",
+      "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10",
+      "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10.clip-01",
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.terrain.four-axe.04",
+      "occurrenceId": "cue.valtan.phase2.terrain.four-axe.04.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+      "stageId": "STEP_10",
+      "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10",
+      "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10.clip-01",
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          270.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.six-pizza.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.six-pizza.composite.occurrence.01",
+      "patternId": "VALTAN_SIX_PIZZA_106",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.center-six-pizza-charge.step-01",
+      "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-01.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.six-pizza-106",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.attack-whirlwind.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.attack-whirlwind.composite.occurrence.01",
+      "patternId": "VALTAN_ATTACK_WHIRLWIND",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.attack-whirlwind.step-01",
+      "clipOccurrenceId": "valtan.sequence.attack-whirlwind.step-01.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.attack-whirlwind",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.charge.axe-follow",
+      "occurrenceId": "cue.valtan.requested.20260827.charge.axe-follow.occurrence.01",
+      "patternId": "VALTAN_CHARGE",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.charge.step-01",
+      "clipOccurrenceId": "valtan.sequence.charge.step-01.clip-01",
+      "effectAssetId": "effect.valtan.sequence.charge",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.roar-charge.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.roar-charge.composite.occurrence.01",
+      "patternId": "VALTAN_ROAR_CHARGE",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.roar-charge.step-03",
+      "clipOccurrenceId": "valtan.sequence.roar-charge.step-03.clip-01",
+      "effectAssetId": "effect.valtan.sequence.roar-charge",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.three.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.three.composite.occurrence.01",
+      "patternId": "VALTAN_THREE",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.three.step-01",
+      "clipOccurrenceId": "valtan.sequence.three.step-01.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.three",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.front-back-front.electric-fan",
+      "occurrenceId": "cue.valtan.requested.20260827.front-back-front.electric-fan.occurrence.01",
+      "patternId": "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.front-back-front.step-01",
+      "clipOccurrenceId": "valtan.sequence.front-back-front.step-01.clip-01",
+      "effectAssetId": "effect.valtan.sequence.front-back-front",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.trash.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.trash.composite.occurrence.01",
+      "patternId": "VALTAN_TRASH",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.center-trash-rush-if.step-01",
+      "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-01.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.trash",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.counter.cyan-roar-ring",
+      "occurrenceId": "cue.valtan.requested.20260827.counter.cyan-roar-ring.occurrence.01",
+      "patternId": "VALTAN_COUNTER",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.counter.step-03",
+      "clipOccurrenceId": "valtan.sequence.counter.step-03.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.counter",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.charge2.red-fan",
+      "occurrenceId": "cue.valtan.requested.20260827.charge2.red-fan.occurrence.01",
+      "patternId": "VALTAN_CHARGE_2",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.charge2.step-03",
+      "clipOccurrenceId": "valtan.sequence.charge2.step-03.clip-01",
+      "effectAssetId": "effect.valtan.sequence.charge2",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.terrain-3.semicircle",
+      "occurrenceId": "cue.valtan.requested.20260827.terrain-3.semicircle.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "IMPACT",
+      "actionId": "valtan.mechanic.terrain-destruction-3.impact",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.impact.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.terrain-destruction-3.semicircle",
+      "anchorSlotId": "root",
+      "followPolicy": "snapshot",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 200,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.terrain-9.semicircle",
+      "occurrenceId": "cue.valtan.requested.20260827.terrain-9.semicircle.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "IMPACT",
+      "actionId": "valtan.mechanic.terrain-destruction-9.impact",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.impact.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.terrain-destruction-9.semicircle",
+      "anchorSlotId": "root",
+      "followPolicy": "snapshot",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 200,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.trash-catch-success.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.trash-catch-success.composite.occurrence.01",
+      "patternId": "VALTAN_TRASH_CATCH_SUCCESS",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.rush-success.step-01",
+      "clipOccurrenceId": "valtan.sequence.rush-success.step-01.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.trash-catch-success",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.trash-catch-fail.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.trash-catch-fail.composite.occurrence.01",
+      "patternId": "VALTAN_TRASH_CATCH_FAIL",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.rush-fail.step-01",
+      "clipOccurrenceId": "valtan.sequence.rush-fail.step-01.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.trash-catch-fail",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.trash-catch-if.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.trash-catch-if.composite.occurrence.01",
+      "patternId": "VALTAN_TRASH_CATCH_IF",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.rush-if.step-01",
+      "clipOccurrenceId": "valtan.sequence.rush-if.step-01.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.trash-catch-if",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.catch-breath.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.catch-breath.composite.occurrence.01",
+      "patternId": "VALTAN_CATCH_BREATH",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.catch-breath.step-01",
+      "clipOccurrenceId": "valtan.sequence.catch-breath.step-01.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.catch-breath",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.requested.20260827.struggling.composite",
+      "occurrenceId": "cue.valtan.requested.20260827.struggling.composite.occurrence.01",
+      "patternId": "VALTAN_STRUGGLING",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-01",
+      "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-01.clip-01",
+      "effectAssetId": "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-02.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-02.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_02",
+      "actionId": "valtan.sequence.warp.step-02",
+      "clipOccurrenceId": "valtan.sequence.warp.step-02.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-03.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-03.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.warp.step-03",
+      "clipOccurrenceId": "valtan.sequence.warp.step-03.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-04.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-04.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_04",
+      "actionId": "valtan.sequence.warp.step-04",
+      "clipOccurrenceId": "valtan.sequence.warp.step-04.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-05.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-05.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_05",
+      "actionId": "valtan.sequence.warp.step-05",
+      "clipOccurrenceId": "valtan.sequence.warp.step-05.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-06.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-06.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_06",
+      "actionId": "valtan.sequence.warp.step-06",
+      "clipOccurrenceId": "valtan.sequence.warp.step-06.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-07.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-07.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_07",
+      "actionId": "valtan.sequence.warp.step-07",
+      "clipOccurrenceId": "valtan.sequence.warp.step-07.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-08.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-08.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_08",
+      "actionId": "valtan.sequence.warp.step-08",
+      "clipOccurrenceId": "valtan.sequence.warp.step-08.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-09.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-09.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_09",
+      "actionId": "valtan.sequence.warp.step-09",
+      "clipOccurrenceId": "valtan.sequence.warp.step-09.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
       }
     }
   ]

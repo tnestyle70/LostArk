@@ -33,6 +33,9 @@ MASTER_REL = "Data/Valtan/Valtan.pattern.json"
 GAMEPLAY_AUTHORING_REL = "Data/Valtan/Valtan.gameplay.json"
 PRESENTATION_AUTHORING_REL = "Data/Valtan/Valtan.presentation.json"
 DEBUG_PRESENTATION_REL = "Data/Valtan/Valtan.presentation.debug.json"
+ANIMATION_PROMOTION_MANIFEST_REL = (
+    "Data/Valtan/Valtan.animation-chain-promotions.json"
+)
 COMBAT_AUTHORING_REL = "Data/Valtan/Valtan.combatobjects.json"
 WORLD_SET_REL = "Data/Valtan/Valtan.worldeventsets.json"
 LEGACY_REL = "Data/Valtan/Valtan.legacy-compatibility.json"
@@ -49,7 +52,14 @@ DAMAGE_REL = "Data/Balance/DamageProfiles.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 21
+GAMEPLAY_BOOTSTRAP_VERSION = 24
+
+SCRIPTED_SEQUENCE_MODE = "ORDERED_ONCE_THEN_IDLE"
+
+ANIMATION_MODE_CLIP_SEQUENCE = "CLIP_SEQUENCE"
+ANIMATION_MODE_NONE = "NONE"
+CUE_TIMING_BASIS_CLIP_OCCURRENCE = "CLIP_OCCURRENCE"
+CUE_TIMING_BASIS_STAGE_CLOCK = "STAGE_CLOCK"
 
 REPOSITORY_PRODUCT_ARTIFACTS = (
     ENCOUNTER_REL,
@@ -77,6 +87,51 @@ WORLD_PATTERN_ID = "VALTAN_ARENA_BREAK_109"
 WORLD_STAGE_ID = "IMPACT"
 WORLD_TRIGGER_KIND = "STAGE_ENTER"
 WORLD_EVENT_ID = "event.valtan.arena-break-109.impact.trigger-outer-wall"
+WORLD_SET_OWNERS = {
+    WORLD_SET_ID: (WORLD_PATTERN_ID, WORLD_STAGE_ID, WORLD_TRIGGER_KIND),
+    "worldeventset.valtan.terrain-destruction-3.floor84": (
+        "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+        "IMPACT",
+        WORLD_TRIGGER_KIND,
+    ),
+    "worldeventset.valtan.terrain-destruction-9.floor30": (
+        "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+        "IMPACT",
+        WORLD_TRIGGER_KIND,
+    ),
+}
+WORLD_SET_LEGACY_OWNERS = {
+    "worldeventset.valtan.terrain-destruction-3.floor84": (
+        "VALTAN_ARENA_BREAK_84",
+        "IMPACT",
+        WORLD_TRIGGER_KIND,
+    ),
+    "worldeventset.valtan.terrain-destruction-9.floor30": (
+        "VALTAN_ARENA_BREAK_33",
+        "LANDING",
+        WORLD_TRIGGER_KIND,
+    ),
+}
+MANAGED_WORLD_SET_OWNERS = dict(WORLD_SET_OWNERS)
+
+# These two sealed v1 rows are retained only as migration evidence after their
+# Product mechanics were replaced by the split-authoring 3/9-o'clock patterns.
+# They must remain byte-identical in the compatibility receipt, but they are no
+# longer expected to exist in the current Encounter Product.
+ARCHIVED_LEGACY_PATTERN_IDS = frozenset(
+    ("VALTAN_ARENA_BREAK_84", "VALTAN_ARENA_BREAK_33")
+)
+
+# The frozen v1 fixture cannot own these later split-authoring replacements,
+# but the current Product already does.  Treat them as migration-managed while
+# validating legacy preservation so the old 84/33 receipt remains sealed
+# evidence instead of being mistaken for a second live mechanic owner.
+CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS = frozenset(
+    (
+        "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+        "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+    )
+)
 
 MANAGED_PATTERN_IDS = (
     "VALTAN_WHIRLWIND",
@@ -91,6 +146,8 @@ MANAGED_ROTATION_IDS = frozenset(
     ("rotation.valtan.160.130", "rotation.valtan.130.109")
 )
 MANUAL_SERVER_AUDITION = "MANUAL_SERVER_AUDITION"
+ANIMATION_INTAKE_ONLY = "ANIMATION_INTAKE_ONLY"
+DERIVED_SERVER_PATTERN = "DERIVED_SERVER_PATTERN"
 AUDITION_ONLY = "AUDITION_ONLY"
 ALLOWED_MAPPING_BASES = frozenset(
     (
@@ -123,9 +180,54 @@ MANAGED_CUE_SCALE_POLICIES = {
     "cue.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01": ARENA_ABSOLUTE,
     "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01": ARENA_ABSOLUTE,
     "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01": OWNER_RELATIVE,
+    "cue.valtan.phase2.four.slashes": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.phase2.four.spin": GAMEPLAY_FOOTPRINT,
+    **{
+        f"cue.valtan.phase2.warp.step-{leg:02d}.composite": OWNER_RELATIVE
+        for leg in range(2, 10)
+    },
+    "cue.valtan.phase2.terrain.four-axe.01": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.phase2.terrain.four-axe.02": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.phase2.terrain.four-axe.03": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.phase2.terrain.four-axe.04": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.terrain-3.semicircle": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.terrain-9.semicircle": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.six-pizza.composite": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.attack-whirlwind.composite": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.charge.axe-follow": OWNER_RELATIVE,
+    "cue.valtan.requested.20260827.charge2.red-fan": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.roar-charge.composite": OWNER_RELATIVE,
+    "cue.valtan.requested.20260827.three.composite": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.front-back-front.electric-fan": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.counter.cyan-roar-ring": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.requested.20260827.trash.composite": OWNER_RELATIVE,
+    "cue.valtan.requested.20260827.trash-catch-success.composite": OWNER_RELATIVE,
+    "cue.valtan.requested.20260827.trash-catch-fail.composite": OWNER_RELATIVE,
+    "cue.valtan.requested.20260827.trash-catch-if.composite": OWNER_RELATIVE,
+    "cue.valtan.requested.20260827.catch-breath.composite": OWNER_RELATIVE,
+    "cue.valtan.requested.20260827.struggling.composite": OWNER_RELATIVE,
 }
+MIGRATION_MANAGED_CUE_IDS = frozenset(
+    (
+        "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
+        "cue.valtan.whirlwind.active",
+        "cue.valtan.project-tuned.attack.dash-charge.windup-telegraph",
+        "cue.valtan.project-tuned.attack.dash-charge.active-shield",
+        "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
+        "cue.valtan.carrier-v1.attack.four-slash.active.clip-02",
+        "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
+        "cue.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+        "cue.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
+        "cue.valtan.carrier-v1.attack.high-jump.land.clip-01",
+        "cue.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01",
+        "cue.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
+        "cue.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01",
+        "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
+        "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01",
+    )
+)
 EXPECTED_MANAGED_SCALE_POLICY_COUNTS = Counter(
-    {OWNER_RELATIVE: 4, GAMEPLAY_FOOTPRINT: 9, ARENA_ABSOLUTE: 2}
+    MANAGED_CUE_SCALE_POLICIES.values()
 )
 
 STABLE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,160}$")
@@ -566,6 +668,34 @@ def world_managed_bindings(world: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def world_set_source_bindings(
+    world: dict[str, Any], set_id: str
+) -> list[dict[str, Any]]:
+    """Resolve the flat rows owned by one typed Valtan event set."""
+
+    if set_id == WORLD_SET_ID:
+        return world_managed_bindings(world)
+    group_marker = {
+        "worldeventset.valtan.terrain-destruction-3.floor84":
+            "destroyable.group.valtan.floor84.",
+        "worldeventset.valtan.terrain-destruction-9.floor30":
+            "destroyable.group.valtan.floor30.",
+    }.get(set_id)
+    if group_marker is None:
+        raise PipelineError(f"unsupported Valtan world event set: {set_id}")
+    mutations = unique_index(world["mutations"], "mutationId", "world mutations")
+    result = []
+    for binding in world["bindings"]:
+        mutation = mutations.get(binding.get("mutationId"))
+        if (
+            binding.get("enabled") is True
+            and mutation is not None
+            and str(mutation.get("groupId", "")).startswith(group_marker)
+        ):
+            result.append(binding)
+    return result
+
+
 def _world_member_id(group_id: str) -> str:
     marker = "destroyable.group.valtan.outerwall109."
     if not group_id.startswith(marker):
@@ -703,6 +833,20 @@ def validate_world_event_sets(
             source = binding_by_id.get(binding_id)
             if source is None:
                 raise PipelineError(f"world event member binding does not exist: {binding_id}")
+            expected_owner = WORLD_SET_OWNERS.get(set_id)
+            source_owner = (
+                source.get("patternId"),
+                source.get("stageId"),
+                source.get("triggerKind"),
+            )
+            accepted_owners = {expected_owner}
+            legacy_owner = WORLD_SET_LEGACY_OWNERS.get(set_id)
+            if legacy_owner is not None and not migration_fixture:
+                accepted_owners.add(legacy_owner)
+            if expected_owner is None or source_owner not in accepted_owners:
+                raise PipelineError(
+                    f"world event member owner drifted from its flat binding: {binding_id}"
+                )
             if (
                 source.get("mutationId") != mutation_id
                 or source.get("offsetMs") != member["offsetMs"]
@@ -710,11 +854,23 @@ def validate_world_event_sets(
                 or source.get("enabled") != member["enabled"]
             ):
                 raise PipelineError(f"world event member drifted from its flat binding: {binding_id}")
-    if set_ids != {WORLD_SET_ID}:
-        raise PipelineError(f"G01 admits only the 109 outer-wall set, got {sorted(set_ids)}")
-    current_ids = {row["bindingId"] for row in world_managed_bindings(world)}
+    expected_set_ids = (
+        {WORLD_SET_ID} if migration_fixture else set(WORLD_SET_OWNERS)
+    )
+    if set_ids != expected_set_ids:
+        raise PipelineError(
+            "Valtan world event set closure drift: "
+            f"expected={sorted(expected_set_ids)} actual={sorted(set_ids)}"
+        )
+    current_ids = {
+        row["bindingId"]
+        for set_id in expected_set_ids
+        for row in world_set_source_bindings(world, set_id)
+    }
     if binding_ids != current_ids:
-        raise PipelineError("world event set membership must equal the current 109 managed binding IDs")
+        raise PipelineError(
+            "world event set membership must equal the current managed flat binding IDs"
+        )
     if migration_fixture and (len(binding_ids) != 30 or len(placement_ids) != 60):
         raise PipelineError("initial 109 migration fixture must close 30 bindings / 60 placements")
 
@@ -863,6 +1019,130 @@ def _validate_shape(shape: dict[str, Any], context: str) -> None:
             number(value, f"{context}.{field}", 0.0, 100000.0)
     if kind == "RING" and shape["innerRadiusM"] >= shape["outerRadiusM"]:
         raise PipelineError(f"{context} ring radii are inverted")
+
+
+def _pattern_stage_fields(stage: Mapping[str, Any], *, joined: bool) -> tuple[str, ...]:
+    fields = (
+        "stageId",
+        "sequenceRole",
+        "actionId",
+        "stageKind",
+        "durationMs",
+        "defaultNextActionId",
+        "hit",
+        "motion",
+        "events",
+        "branches",
+        "animation",
+        "effectCues",
+        "cameraInvocations",
+    ) if joined else (
+        "stageId",
+        "actionId",
+        "stageKind",
+        "durationMs",
+        "defaultNextActionId",
+        "hit",
+        "motion",
+        "events",
+        "branches",
+    )
+    for optional in ("partDamagePolicy", "counterProxy"):
+        if optional in stage:
+            fields += (optional,)
+    return fields
+
+
+def _has_closed_stage_flag(stage: Mapping[str, Any], flag_id: str) -> bool:
+    events = stage.get("events")
+    if not isinstance(events, list):
+        return False
+    return any(
+        event.get("kind") == "SET_BOSS_FLAG"
+        and event.get("trigger") == "ENTER"
+        and event.get("flagId") == flag_id
+        and event.get("enabled") is True
+        for event in events
+        if isinstance(event, dict)
+    ) and any(
+        event.get("kind") == "SET_BOSS_FLAG"
+        and event.get("trigger") == "EXIT"
+        and event.get("flagId") == flag_id
+        and event.get("enabled") is False
+        for event in events
+        if isinstance(event, dict)
+    )
+
+
+def _validate_pattern_stage_extensions(
+    stage: Mapping[str, Any], context: str
+) -> None:
+    part_damage_policy = stage.get("partDamagePolicy", "NORMAL")
+    if part_damage_policy not in ("NORMAL", "DESTROY_FIRST_ELIGIBLE"):
+        raise PipelineError(f"{context}.partDamagePolicy is unsupported")
+    if part_damage_policy == "DESTROY_FIRST_ELIGIBLE":
+        has_destroyed_branch = any(
+            branch.get("outcome") == "PART_DESTROYED"
+            for branch in stage.get("branches", [])
+            if isinstance(branch, dict)
+        )
+        if not has_destroyed_branch or not _has_closed_stage_flag(
+            stage, "boss.flag.groggy"
+        ):
+            raise PipelineError(
+                f"{context} instant part destruction requires a closed groggy "
+                "window and PART_DESTROYED branch"
+            )
+    proxy = stage.get("counterProxy")
+    if proxy is None:
+        return
+    if not isinstance(proxy, dict):
+        raise PipelineError(f"{context}.counterProxy must be an object")
+    exact(
+        proxy,
+        ("space", "forwardOffsetM", "rightOffsetM", "radiusM"),
+        f"{context}.counterProxy",
+    )
+    if proxy["space"] != "BOSS_LOCAL":
+        raise PipelineError(f"{context}.counterProxy space is unsupported")
+    number(proxy["forwardOffsetM"], f"{context}.counterProxy.forwardOffsetM", -20, 20)
+    number(proxy["rightOffsetM"], f"{context}.counterProxy.rightOffsetM", -20, 20)
+    number(proxy["radiusM"], f"{context}.counterProxy.radiusM", 0.1, 20)
+    has_counter_branch = any(
+        branch.get("outcome") == "COUNTER_HIT"
+        for branch in stage.get("branches", [])
+        if isinstance(branch, dict)
+    )
+    if not has_counter_branch or not _has_closed_stage_flag(
+        stage, "boss.flag.counterable"
+    ):
+        raise PipelineError(
+            f"{context} counter proxy requires a closed counterable window and "
+            "COUNTER_HIT branch"
+        )
+
+
+def _validate_pattern_target_aim(pattern: Mapping[str, Any], context: str) -> None:
+    target = pattern.get("targetPolicy")
+    aim = pattern.get("aimPolicy")
+    locked_targets = {
+        "LOCK_NEAREST_ON_START",
+        "LOCK_RANDOM_ALIVE_ON_START",
+        "LOCK_RANDOM_ALIVE_BEHIND_ON_START",
+    }
+    coherent = (
+        (target == "NONE" and aim in ("NONE", "FACE_MOTION_ANCHOR"))
+        or (target == "NEAREST_EACH_TICK" and aim == "TRACK_TARGET_EACH_TICK")
+        or (
+            target in locked_targets
+            and aim in ("LOCK_FACING_ON_START", "TRACK_TARGET_EACH_TICK")
+        )
+    )
+    if not coherent:
+        raise PipelineError(
+            f"{context} target/aim policy is unsupported or incoherent: "
+            f"{target}/{aim}"
+        )
 
 
 def validate_combat_authoring(document: dict[str, Any]) -> None:
@@ -1194,15 +1474,28 @@ def validate_legacy_products(
     rotation_rows = docs[ROTATIONS_REL]["rotations"]
     combat_rows = docs[COMBAT_PRODUCT_REL]["objects"]
     sealed_legacy_ids = {row["patternId"] for row in document["patternEntries"]}
+    if not ARCHIVED_LEGACY_PATTERN_IDS.issubset(sealed_legacy_ids):
+        raise PipelineError("archived legacy terrain mechanics left the sealed receipt")
+    active_sealed_legacy_ids = sealed_legacy_ids - ARCHIVED_LEGACY_PATTERN_IDS
     actual_legacy_ids = {
         row["patternId"]
         for row in encounter_rows
         if row["patternId"] not in product_managed
     }
-    if sealed_legacy_ids != actual_legacy_ids:
+    if active_sealed_legacy_ids != actual_legacy_ids:
         raise PipelineError("legacy compatibility pattern ownership drift")
+    archived_ordinals = sorted(
+        entry["encounterOrdinal"]
+        for entry in document["patternEntries"]
+        if entry["patternId"] in ARCHIVED_LEGACY_PATTERN_IDS
+    )
     for entry in document["patternEntries"]:
-        ordinal = entry["encounterOrdinal"]
+        if entry["patternId"] in ARCHIVED_LEGACY_PATTERN_IDS:
+            continue
+        ordinal = entry["encounterOrdinal"] - sum(
+            archived < entry["encounterOrdinal"]
+            for archived in archived_ordinals
+        )
         if ordinal >= len(encounter_rows) or encounter_rows[ordinal] != entry["runtimePattern"]:
             raise PipelineError(f"sealed legacy encounter row drift: {entry['patternId']}")
         for binding in entry["animationBindings"]:
@@ -1232,19 +1525,31 @@ def validate_legacy_products(
             row["patternId"]: row["selectionWeight"]
             for row in migration_master["patterns"]
         }
-        migration_candidates = [
-            {
-                "patternId": pattern_id,
-                "weight": weights[pattern_id],
-                "enabled": True,
-            }
-            for pattern_id in migration_master["normalSelection"]["patternIds"]
-        ]
         migration_sets = []
         migration_windows = []
         for range_row in migration_master["normalSelection"]["ranges"]:
             suffix = range_row["rotationId"].removeprefix("rotation.valtan.")
             set_id = "selectionset.valtan." + suffix
+            product_rotation = next(
+                (
+                    row
+                    for row in rotation_rows
+                    if row.get("rotationId") == range_row["rotationId"]
+                ),
+                {},
+            )
+            product_enabled = {
+                row.get("patternId"): row.get("enabled")
+                for row in product_rotation.get("candidates", [])
+            }
+            migration_candidates = [
+                {
+                    "patternId": pattern_id,
+                    "weight": weights[pattern_id],
+                    "enabled": product_enabled.get(pattern_id, True),
+                }
+                for pattern_id in migration_master["normalSelection"]["patternIds"]
+            ]
             migration_sets.append(
                 {
                     "selectionSetId": set_id,
@@ -1409,13 +1714,23 @@ def _migrate_effect_cue(
     if cue is None:
         raise PipelineError(f"managed cue is missing from Product: {cue_id}")
     projection = effect_ref["cueProjection"]
-    if (
+    # The frozen v1 fixture owns its legacy clip projection.  A current Product
+    # cue may have intentionally moved to a stage-clock independent Effect, but
+    # that must not rewrite the historical migration input into the new timing
+    # model.  Rehydrate the v1 clip cue from its sealed projection in that case.
+    cue_uses_stage_clock = (
+        cue.get("timingBasis") == CUE_TIMING_BASIS_STAGE_CLOCK
+    )
+    if not cue_uses_stage_clock and (
         cue["clipOccurrenceId"] != projection["clipOccurrenceId"]
         or cue["sourceStartMs"] != projection["sourceStartMs"]
         or cue["sourceEndMs"] != projection["sourceEndMs"]
     ):
         raise PipelineError(f"managed cue owner/source window drift: {cue_id}")
-    occurrence = occurrences_by_id.get(cue["clipOccurrenceId"])
+    clip_occurrence_id = projection["clipOccurrenceId"]
+    source_start_ms = projection["sourceStartMs"]
+    source_end_ms = projection["sourceEndMs"]
+    occurrence = occurrences_by_id.get(clip_occurrence_id)
     if occurrence is None:
         raise PipelineError(
             f"managed cue does not resolve its saved animation occurrence: {cue_id}"
@@ -1433,9 +1748,9 @@ def _migrate_effect_cue(
         "cueId": cue_id,
         "occurrenceId": cue["occurrenceId"],
         "effectAssetId": cue["effectAssetId"],
-        "clipOccurrenceId": cue["clipOccurrenceId"],
-        "sourceStartMs": cue["sourceStartMs"],
-        "sourceEndMs": cue["sourceEndMs"],
+        "clipOccurrenceId": clip_occurrence_id,
+        "sourceStartMs": source_start_ms,
+        "sourceEndMs": source_end_ms,
         "anchorSlotId": cue["anchorSlotId"],
         "followPolicy": cue["followPolicy"],
         "stopPolicy": cue["stopPolicy"],
@@ -1462,27 +1777,45 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
         raise PipelineError("initial v1 migration fixture does not contain the seven managed patterns")
     # The frozen v1 migration fixture predates split manualAuditions. Current
     # Product audition rows are later managed additions, not legacy seal rows.
-    migration_product_managed = managed | {
-        row["patternId"]
-        for row in docs[ENCOUNTER_REL]["patterns"]
-        if row.get("selectionMode") == AUDITION_ONLY
-    }
+    migration_product_managed = (
+        managed
+        | CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS
+        | {
+            row["patternId"]
+            for row in docs[ENCOUNTER_REL]["patterns"]
+            if row.get("selectionMode") == AUDITION_ONLY
+        }
+    )
     validate_legacy_products(
         docs[LEGACY_REL], docs, migration_product_managed
     )
     cue_by_id = unique_index(docs[CUES_REL]["cues"], "bindingId", "effect cues")
     camera_by_id = unique_index(docs[CAMERA_REL]["cues"], "cueId", "camera cues")
-    set_candidates = []
-    for pattern_id in master["normalSelection"]["patternIds"]:
-        pattern = next(row for row in master["patterns"] if row["patternId"] == pattern_id)
-        set_candidates.append(
-            {"patternId": pattern_id, "weight": pattern["selectionWeight"], "enabled": True}
-        )
+    product_rotations_by_id = {
+        row["rotationId"]: row for row in docs[ROTATIONS_REL]["rotations"]
+    }
     selection_sets = []
     selection_windows = []
     for range_row in master["normalSelection"]["ranges"]:
         suffix = range_row["rotationId"][len("rotation.valtan.") :]
         set_id = "selectionset.valtan." + suffix
+        product_enabled = {
+            row["patternId"]: row["enabled"]
+            for row in product_rotations_by_id[range_row["rotationId"]]["candidates"]
+        }
+        set_candidates = []
+        for pattern_id in master["normalSelection"]["patternIds"]:
+            pattern = next(
+                row for row in master["patterns"]
+                if row["patternId"] == pattern_id
+            )
+            set_candidates.append(
+                {
+                    "patternId": pattern_id,
+                    "weight": pattern["selectionWeight"],
+                    "enabled": product_enabled[pattern_id],
+                }
+            )
         selection_sets.append(
             {"selectionSetId": set_id, "mode": "WEIGHTED_POOL", "candidates": copy.deepcopy(set_candidates)}
         )
@@ -1699,6 +2032,7 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
         "previewPaths": preview_paths,
         "retiredPatternIds": copy.deepcopy(master["retiredPatternIds"]),
         "decisionModel": {
+            "scriptedSequence": None,
             "selectionSets": selection_sets,
             "selectionWindows": selection_windows,
             "mechanics": mechanics,
@@ -1708,7 +2042,12 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
         "independentEffects": independent_effects,
         "patterns": migrated_patterns,
     }
-    validate_v2_master(result, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL])
+    validate_v2_master(
+        result,
+        build_world_event_sets(docs[WORLD_PRODUCT_REL]),
+        docs[COMBAT_AUTHORING_REL],
+        migration_fixture=True,
+    )
     return result
 
 
@@ -1729,6 +2068,9 @@ def _event_fields(kind: str) -> tuple[str, ...]:
         ),
         "SET_GAMEPLAY_PHASE": common + ("gameplayPhase",),
         "TRIGGER_WORLD_EVENT_SET": common + ("worldEventSetId",),
+        "RETARGET_RANDOM_ALIVE": common,
+        "RELEASE_GRABBED_PLAYERS": common
+        + ("releaseMode", "speedMps", "durationMs"),
     }.get(kind, ())
 
 
@@ -1813,9 +2155,12 @@ def _validate_manual_auditions(
             row["sourceChainId"], f"{context}.sourceChainId"
         )
         integer(row["authoringPhase"], f"{context}.authoringPhase", 1, 3)
-        if row["admissionState"] != MANUAL_SERVER_AUDITION:
+        if row["admissionState"] not in {
+            MANUAL_SERVER_AUDITION,
+            DERIVED_SERVER_PATTERN,
+        }:
             raise PipelineError(
-                f"{context}.admissionState must be {MANUAL_SERVER_AUDITION}"
+                f"{context}.admissionState is unsupported"
             )
         if pattern_id not in pattern_by_id:
             raise PipelineError(f"manual audition pattern is missing: {pattern_id}")
@@ -1830,8 +2175,51 @@ def _validate_manual_auditions(
     return pattern_ids
 
 
+def _validate_scripted_sequence(
+    decision_model: dict[str, Any],
+    pattern_by_id: Mapping[str, dict[str, Any]],
+) -> tuple[str, ...]:
+    sequence = decision_model.get("scriptedSequence")
+    if sequence is None:
+        return ()
+    if not isinstance(sequence, dict):
+        raise PipelineError("decisionModel.scriptedSequence must be an object or null")
+    exact(
+        sequence,
+        ("sequenceId", "mode", "interStepPursuitMs", "patternIds"),
+        "decisionModel.scriptedSequence",
+    )
+    stable_id(sequence["sequenceId"], "scriptedSequence.sequenceId")
+    if sequence["mode"] != SCRIPTED_SEQUENCE_MODE:
+        raise PipelineError(
+            "scriptedSequence.mode must be ORDERED_ONCE_THEN_IDLE"
+        )
+    integer(
+        sequence["interStepPursuitMs"],
+        "scriptedSequence.interStepPursuitMs",
+        100,
+        10000,
+    )
+    rows = sequence["patternIds"]
+    if not isinstance(rows, list) or not rows or len(rows) > 32:
+        raise PipelineError("scriptedSequence.patternIds count is invalid")
+    pattern_ids = tuple(
+        stable_id(value, "scriptedSequence.patternId") for value in rows
+    )
+    if len(set(pattern_ids)) != len(pattern_ids):
+        raise PipelineError("scriptedSequence.patternIds contains a duplicate")
+    for pattern_id in pattern_ids:
+        if pattern_id not in pattern_by_id:
+            raise PipelineError(
+                f"scriptedSequence names no managed pattern: {pattern_id}"
+            )
+    return pattern_ids
+
+
 def validate_manual_audition_animation_lineage(
-    master: dict[str, Any], debug_presentation: dict[str, Any]
+    master: dict[str, Any],
+    debug_presentation: dict[str, Any],
+    promotion_manifest: dict[str, Any],
 ) -> None:
     """Keep phase-2/3 Server auditions on the reviewed animation intake.
 
@@ -1861,17 +2249,144 @@ def validate_manual_audition_animation_lineage(
     ):
         raise PipelineError("Valtan debug presentation header mismatch")
 
+    exact(
+        promotion_manifest,
+        (
+            "schema",
+            "formatVersion",
+            "bossArchetypeId",
+            "encounterId",
+            "sourceDocument",
+            "presentationProfile",
+            "clipAliases",
+            "animationIntakeOnly",
+            "patterns",
+        ),
+        "Valtan animation promotion manifest root",
+    )
+    if (
+        promotion_manifest["schema"]
+        != "lostark.valtan-animation-chain-promotions"
+        or promotion_manifest["formatVersion"] != 2
+        or promotion_manifest["bossArchetypeId"] != master["bossArchetypeId"]
+        or promotion_manifest["encounterId"] != master["encounterId"]
+    ):
+        raise PipelineError("Valtan animation promotion manifest header mismatch")
+
     chains = unique_index(
         debug_presentation["chains"], "chainId", "Valtan debug chains"
     )
     patterns = unique_index(master["patterns"], "patternId", "v2 patterns")
-    manual_rows = master["decisionModel"]["manualAuditions"]
-    manual_chain_ids = {row["sourceChainId"] for row in manual_rows}
-    if manual_chain_ids != set(chains):
-        raise PipelineError(
-            "phase-2/3 animation intake must exact-join manualAuditions: "
-            f"manual={sorted(manual_chain_ids)} debug={sorted(chains)}"
+    manual_rows = [
+        row
+        for row in master["decisionModel"]["manualAuditions"]
+        if row["admissionState"] == MANUAL_SERVER_AUDITION
+    ]
+
+    promotion_rows = promotion_manifest["patterns"]
+    intake_rows = promotion_manifest["animationIntakeOnly"]
+    if not isinstance(promotion_rows, list) or not promotion_rows:
+        raise PipelineError("Valtan animation promotion patterns must be non-empty")
+    if not isinstance(intake_rows, list):
+        raise PipelineError("Valtan animation intake-only rows must be an array")
+
+    promotion_lineage: list[tuple[str, str, int, str]] = []
+    declared_chain_ids: list[str] = []
+    declared_pattern_ids: set[str] = set()
+    declared_chain_id_set: set[str] = set()
+    promotion_required = {
+        "sourceChainId",
+        "patternId",
+        "displayName",
+        "authoringPhase",
+        "admissionState",
+    }
+    promotion_optional = {"targetPolicy", "aimPolicy"}
+    for ordinal, row in enumerate(promotion_rows):
+        context = f"animation promotion patterns[{ordinal}]"
+        if not isinstance(row, dict):
+            raise PipelineError(f"{context} must be an object")
+        actual_fields = set(row)
+        if (
+            not promotion_required.issubset(actual_fields)
+            or actual_fields - promotion_required - promotion_optional
+        ):
+            raise PipelineError(f"{context} fields mismatch")
+        if ("targetPolicy" in row) != ("aimPolicy" in row):
+            raise PipelineError(f"{context} target/aim policy must be paired")
+        pattern_id = stable_id(row["patternId"], f"{context}.patternId")
+        chain_id = stable_id(row["sourceChainId"], f"{context}.sourceChainId")
+        phase = integer(
+            row["authoringPhase"], f"{context}.authoringPhase", 1, 3
         )
+        if (
+            not isinstance(row["displayName"], str)
+            or not row["displayName"].strip()
+            or row["admissionState"] != MANUAL_SERVER_AUDITION
+        ):
+            raise PipelineError(f"{context} metadata is invalid")
+        if pattern_id in declared_pattern_ids or chain_id in declared_chain_id_set:
+            raise PipelineError(f"{context} identity is duplicated")
+        declared_pattern_ids.add(pattern_id)
+        declared_chain_id_set.add(chain_id)
+        declared_chain_ids.append(chain_id)
+        promotion_lineage.append(
+            (pattern_id, chain_id, phase, row["admissionState"])
+        )
+
+    intake_chain_ids: list[str] = []
+    for ordinal, row in enumerate(intake_rows):
+        context = f"animationIntakeOnly[{ordinal}]"
+        if not isinstance(row, dict):
+            raise PipelineError(f"{context} must be an object")
+        exact(
+            row,
+            ("sourceChainId", "displayName", "authoringPhase", "admissionState"),
+            context,
+        )
+        chain_id = stable_id(row["sourceChainId"], f"{context}.sourceChainId")
+        integer(row["authoringPhase"], f"{context}.authoringPhase", 1, 3)
+        if (
+            not isinstance(row["displayName"], str)
+            or not row["displayName"].strip()
+            or row["admissionState"] != ANIMATION_INTAKE_ONLY
+        ):
+            raise PipelineError(f"{context} metadata is invalid")
+        if chain_id in declared_chain_id_set:
+            raise PipelineError(f"{context} identity is duplicated")
+        declared_chain_id_set.add(chain_id)
+        declared_chain_ids.append(chain_id)
+        intake_chain_ids.append(chain_id)
+
+    debug_chain_ids = [row["chainId"] for row in debug_presentation["chains"]]
+    if declared_chain_ids != debug_chain_ids:
+        raise PipelineError(
+            "phase-2/3 animation intake must exact-join promotion plus "
+            "intake-only declarations: "
+            f"declared={declared_chain_ids} debug={debug_chain_ids}"
+        )
+
+    manual_lineage = [
+        (
+            row["patternId"],
+            row["sourceChainId"],
+            row["authoringPhase"],
+            row["admissionState"],
+        )
+        for row in manual_rows
+    ]
+    if manual_lineage != promotion_lineage:
+        raise PipelineError(
+            "manualAuditions must exact-join promoted animation lineage: "
+            f"manual={manual_lineage} promoted={promotion_lineage}"
+        )
+
+    for chain_id in intake_chain_ids:
+        chain = chains[chain_id]
+        if chain.get("targetPatternId") or chain.get("targetStageId"):
+            raise PipelineError(
+                f"animation intake-only chain targets must remain empty: {chain_id}"
+            )
 
     def product_clip_name(value: str) -> str:
         return "mesh_" + value if value.startswith("att_") else value
@@ -1974,7 +2489,11 @@ def validate_manual_audition_animation_lineage(
 
 
 def validate_v2_master(
-    master: dict[str, Any], world_sets: dict[str, Any], combat_authoring: dict[str, Any]
+    master: dict[str, Any],
+    world_sets: dict[str, Any],
+    combat_authoring: dict[str, Any],
+    *,
+    migration_fixture: bool = False,
 ) -> None:
     exact(
         master,
@@ -1994,13 +2513,20 @@ def validate_v2_master(
             raise PipelineError(f"v2 preview path is illegal: {name}={relative!r}")
     exact(
         master["decisionModel"],
-        ("selectionSets", "selectionWindows", "mechanics", "manualAuditions"),
+        (
+            "scriptedSequence",
+            "selectionSets",
+            "selectionWindows",
+            "mechanics",
+            "manualAuditions",
+        ),
         "decisionModel",
     )
     pattern_by_id = unique_index(master["patterns"], "patternId", "v2 patterns")
     manual_patterns = _validate_manual_auditions(
         master["decisionModel"], pattern_by_id
     )
+    _validate_scripted_sequence(master["decisionModel"], pattern_by_id)
     set_ids: set[str] = set()
     candidate_patterns: set[str] = set()
     for set_ordinal, selection_set in enumerate(master["decisionModel"]["selectionSets"]):
@@ -2158,6 +2684,12 @@ def validate_v2_master(
     if candidate_patterns | mechanic_patterns | manual_patterns != set(pattern_by_id):
         raise PipelineError("decision model does not cover every managed pattern exactly once")
     event_ids: set[str] = set()
+    expected_cue_policies = {
+        cue_id: scale_kind
+        for cue_id, scale_kind in MANAGED_CUE_SCALE_POLICIES.items()
+        if not migration_fixture or cue_id in MIGRATION_MANAGED_CUE_IDS
+    }
+    expected_scale_policy_counts = Counter(expected_cue_policies.values())
     cue_ids: set[str] = set()
     scale_policy_counts: Counter[str] = Counter()
     spawn_events: set[str] = set()
@@ -2170,6 +2702,7 @@ def validate_v2_master(
             ("patternId", "displayName", "category", "compatibilitySelectionWeight", "actionId", "entryActionId", "targetPolicy", "aimPolicy", "eligibility", "invulnerableWhileRunning", "sourceActionIds", "sourceSequenceIndex", "presentationSources", "serverMotion", "reactions", "stages"),
             f"pattern {pattern_id}",
         )
+        _validate_pattern_target_aim(pattern, f"pattern {pattern_id}")
         compatibility_weight = integer(
             pattern["compatibilitySelectionWeight"],
             f"pattern {pattern_id}.compatibilitySelectionWeight",
@@ -2215,8 +2748,11 @@ def validate_v2_master(
         for stage_id, stage in stage_ids.items():
             exact(
                 stage,
-                ("stageId", "sequenceRole", "actionId", "stageKind", "durationMs", "defaultNextActionId", "hit", "motion", "events", "branches", "animation", "effectCues", "cameraInvocations"),
+                _pattern_stage_fields(stage, joined=True),
                 f"pattern {pattern_id} stage {stage_id}",
+            )
+            _validate_pattern_stage_extensions(
+                stage, f"pattern {pattern_id} stage {stage_id}"
             )
             duration = integer(stage["durationMs"], f"{pattern_id}/{stage_id}.durationMs", 1, 600000)
             if stage["defaultNextActionId"] is not None and stage["defaultNextActionId"] not in action_ids:
@@ -2229,9 +2765,23 @@ def validate_v2_master(
             if hit["shape"]["kind"] == "NONE":
                 exact(hit, ("shape",), f"{pattern_id}/{stage_id}.hit")
             else:
+                hit_fields = (
+                    "shape",
+                    "schedule",
+                    "serverDamageProfileId",
+                    "pushRangeM",
+                    "pushMs",
+                    "knockdown",
+                    "downMs",
+                )
+                has_player_response = (
+                    "playerResponse" in hit or "attachmentSlot" in hit
+                )
+                if has_player_response:
+                    hit_fields += ("playerResponse", "attachmentSlot")
                 exact(
                     hit,
-                    ("shape", "schedule", "serverDamageProfileId", "pushRangeM", "pushMs", "knockdown", "downMs"),
+                    hit_fields,
                     f"{pattern_id}/{stage_id}.hit",
                 )
                 schedule = hit["schedule"]
@@ -2275,56 +2825,83 @@ def validate_v2_master(
                 integer(hit["pushMs"], f"{pattern_id}/{stage_id}.pushMs", 0, 600000)
                 boolean(hit["knockdown"], f"{pattern_id}/{stage_id}.knockdown")
                 integer(hit["downMs"], f"{pattern_id}/{stage_id}.downMs", 0, 600000)
+                if has_player_response:
+                    if (
+                        hit["playerResponse"] != "CAPTURE"
+                        or hit["attachmentSlot"] != "BOSS_LEFT_HAND"
+                        or hit["pushRangeM"] != 0
+                        or hit["pushMs"] != 0
+                        or hit["knockdown"] is not False
+                        or hit["downMs"] != 0
+                    ):
+                        raise PipelineError(
+                            "capture hit requires the typed boss-left-hand slot "
+                            f"without push/knockdown: {pattern_id}/{stage_id}"
+                        )
             _validate_shape(hit["shape"], f"{pattern_id}/{stage_id}.shape")
             animation = stage["animation"]
-            exact(animation, ("endPolicy", "repeatCount", "occurrences"), f"{pattern_id}/{stage_id}.animation")
-            if animation["endPolicy"] not in ("EXACT", "HOLD_LAST_POSE", "LOOP_TO_STAGE_END"):
-                raise PipelineError(f"invalid animation end policy: {pattern_id}/{stage_id}")
-            integer(animation["repeatCount"], f"{pattern_id}/{stage_id}.repeatCount", 1, 32)
-            if not animation["occurrences"]:
-                raise PipelineError(f"stage has no animation occurrence: {pattern_id}/{stage_id}")
-            known_wall = 0.0
-            loops = 0
-            zero_play = 0
-            for occurrence in animation["occurrences"]:
-                exact(
-                    occurrence,
-                    ("clipOccurrenceId", "clip", "mappingBasis", "sourceStartMs", "playMs", "playRate", "repeatUntilStageEnd"),
-                    f"{pattern_id}/{stage_id}.occurrence",
+            animation_mode = animation.get(
+                "mode", ANIMATION_MODE_CLIP_SEQUENCE
+            ) if isinstance(animation, dict) else None
+            if animation_mode == ANIMATION_MODE_NONE:
+                exact(animation, ("mode",), f"{pattern_id}/{stage_id}.animation")
+                occurrences_by_id: dict[str, dict[str, Any]] = {}
+            elif animation_mode == ANIMATION_MODE_CLIP_SEQUENCE:
+                animation_fields = ("endPolicy", "repeatCount", "occurrences")
+                if "mode" in animation:
+                    animation_fields = ("mode",) + animation_fields
+                exact(animation, animation_fields, f"{pattern_id}/{stage_id}.animation")
+                if animation["endPolicy"] not in ("EXACT", "HOLD_LAST_POSE", "LOOP_TO_STAGE_END"):
+                    raise PipelineError(f"invalid animation end policy: {pattern_id}/{stage_id}")
+                integer(animation["repeatCount"], f"{pattern_id}/{stage_id}.repeatCount", 1, 32)
+                if not animation["occurrences"]:
+                    raise PipelineError(f"stage has no animation occurrence: {pattern_id}/{stage_id}")
+                known_wall = 0.0
+                loops = 0
+                zero_play = 0
+                for occurrence in animation["occurrences"]:
+                    exact(
+                        occurrence,
+                        ("clipOccurrenceId", "clip", "mappingBasis", "sourceStartMs", "playMs", "playRate", "repeatUntilStageEnd"),
+                        f"{pattern_id}/{stage_id}.occurrence",
+                    )
+                    stable_id(
+                        occurrence["clip"],
+                        f"{pattern_id}/{stage_id}.occurrence.clip",
+                    )
+                    mapping_basis(
+                        occurrence["mappingBasis"],
+                        f"{pattern_id}/{stage_id}.occurrence.mappingBasis",
+                    )
+                    integer(
+                        occurrence["sourceStartMs"],
+                        f"{pattern_id}/{stage_id}.occurrence.sourceStartMs",
+                        0,
+                        600000,
+                    )
+                    play_ms = integer(occurrence["playMs"], "occurrence playMs", 0, 600000)
+                    play_rate = number(occurrence["playRate"], "occurrence playRate", 0.000001, 1000)
+                    if play_ms == 0:
+                        zero_play += 1
+                    else:
+                        known_wall += play_ms / play_rate
+                    if boolean(occurrence["repeatUntilStageEnd"], "repeatUntilStageEnd"):
+                        loops += 1
+                if animation["endPolicy"] == "EXACT" and (zero_play or loops or abs(known_wall - duration) > 2.0):
+                    raise PipelineError(f"EXACT animation budget mismatch: {pattern_id}/{stage_id}")
+                if animation["endPolicy"] == "LOOP_TO_STAGE_END" and (zero_play != 1 or loops != 1 or known_wall >= duration):
+                    raise PipelineError(f"LOOP animation budget mismatch: {pattern_id}/{stage_id}")
+                if animation["endPolicy"] == "HOLD_LAST_POSE" and (loops or known_wall >= duration + 2.0):
+                    raise PipelineError(f"HOLD animation budget mismatch: {pattern_id}/{stage_id}")
+                occurrences_by_id = unique_index(
+                    animation["occurrences"],
+                    "clipOccurrenceId",
+                    f"{pattern_id}/{stage_id} animation occurrences",
                 )
-                stable_id(
-                    occurrence["clip"],
-                    f"{pattern_id}/{stage_id}.occurrence.clip",
+            else:
+                raise PipelineError(
+                    f"unsupported animation mode: {pattern_id}/{stage_id}"
                 )
-                mapping_basis(
-                    occurrence["mappingBasis"],
-                    f"{pattern_id}/{stage_id}.occurrence.mappingBasis",
-                )
-                integer(
-                    occurrence["sourceStartMs"],
-                    f"{pattern_id}/{stage_id}.occurrence.sourceStartMs",
-                    0,
-                    600000,
-                )
-                play_ms = integer(occurrence["playMs"], "occurrence playMs", 0, 600000)
-                play_rate = number(occurrence["playRate"], "occurrence playRate", 0.000001, 1000)
-                if play_ms == 0:
-                    zero_play += 1
-                else:
-                    known_wall += play_ms / play_rate
-                if boolean(occurrence["repeatUntilStageEnd"], "repeatUntilStageEnd"):
-                    loops += 1
-            if animation["endPolicy"] == "EXACT" and (zero_play or loops or abs(known_wall - duration) > 2.0):
-                raise PipelineError(f"EXACT animation budget mismatch: {pattern_id}/{stage_id}")
-            if animation["endPolicy"] == "LOOP_TO_STAGE_END" and (zero_play != 1 or loops != 1 or known_wall >= duration):
-                raise PipelineError(f"LOOP animation budget mismatch: {pattern_id}/{stage_id}")
-            if animation["endPolicy"] == "HOLD_LAST_POSE" and (loops or known_wall >= duration + 2.0):
-                raise PipelineError(f"HOLD animation budget mismatch: {pattern_id}/{stage_id}")
-            occurrences_by_id = unique_index(
-                animation["occurrences"],
-                "clipOccurrenceId",
-                f"{pattern_id}/{stage_id} animation occurrences",
-            )
             for event in stage["events"]:
                 fields = _event_fields(event.get("kind"))
                 if not fields:
@@ -2405,12 +2982,88 @@ def validate_v2_master(
                 elif event["kind"] == "TRIGGER_WORLD_EVENT_SET":
                     stable_id(event["worldEventSetId"], f"event {event_id}.worldEventSetId")
                     world_events.append((pattern_id, stage_id, event["worldEventSetId"]))
+                elif event["kind"] == "RETARGET_RANDOM_ALIVE":
+                    if event["trigger"] != "ENTER":
+                        raise PipelineError(
+                            f"boss retarget event must run on ENTER: {event_id}"
+                        )
+                elif event["kind"] == "RELEASE_GRABBED_PLAYERS":
+                    speed_mps = number(
+                        event["speedMps"], f"event {event_id}.speedMps", 0, 50
+                    )
+                    release_duration_ms = integer(
+                        event["durationMs"],
+                        f"event {event_id}.durationMs",
+                        0,
+                        5000,
+                    )
+                    hold = (
+                        event["releaseMode"] == "HOLD"
+                        and speed_mps == 0
+                        and release_duration_ms == 0
+                    )
+                    knockback = (
+                        event["releaseMode"] == "OPPOSITE_KNOCKBACK"
+                        and speed_mps > 0
+                        and release_duration_ms > 0
+                    )
+                    if event["trigger"] not in ("ENTER", "EXIT") or not (
+                        hold or knockback
+                    ):
+                        raise PipelineError(
+                            f"grabbed-player release event is invalid: {event_id}"
+                        )
             for cue in stage["effectCues"]:
-                exact(
-                    cue,
-                    ("cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId", "sourceStartMs", "sourceEndMs", "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy", "localTransform", "scalePolicy", "mappingBasis"),
-                    f"{pattern_id}/{stage_id}.effectCue",
+                cue_timing_basis = cue.get(
+                    "timingBasis", CUE_TIMING_BASIS_CLIP_OCCURRENCE
+                ) if isinstance(cue, dict) else None
+                cue_common_fields = (
+                    "cueId", "occurrenceId", "effectAssetId",
+                    "anchorSlotId", "followPolicy", "stopPolicy",
+                    "repeatPolicy", "localTransform", "scalePolicy",
                 )
+                if cue_timing_basis == CUE_TIMING_BASIS_STAGE_CLOCK:
+                    exact(
+                        cue,
+                        cue_common_fields + ("timingBasis", "stageOffsetMs"),
+                        f"{pattern_id}/{stage_id}.effectCue",
+                    )
+                    if animation_mode != ANIMATION_MODE_NONE:
+                        raise PipelineError(
+                            "stage-clock cue requires NONE animation mode: "
+                            f"{pattern_id}/{stage_id}"
+                        )
+                    integer(
+                        cue["stageOffsetMs"],
+                        f"{pattern_id}/{stage_id}.effectCue.stageOffsetMs",
+                        0,
+                        duration - 1,
+                    )
+                    if cue["repeatPolicy"] != "once":
+                        raise PipelineError(
+                            f"stage-clock cue must use once repeatPolicy: {pattern_id}/{stage_id}"
+                        )
+                elif cue_timing_basis == CUE_TIMING_BASIS_CLIP_OCCURRENCE:
+                    cue_fields = cue_common_fields + (
+                        "clipOccurrenceId", "sourceStartMs", "sourceEndMs",
+                        "mappingBasis",
+                    )
+                    if "timingBasis" in cue:
+                        cue_fields += ("timingBasis",)
+                    exact(
+                        cue,
+                        cue_fields,
+                        f"{pattern_id}/{stage_id}.effectCue",
+                    )
+                    validate_cue_animation_join(
+                        cue,
+                        occurrences_by_id,
+                        f"{pattern_id}/{stage_id} cue {cue.get('cueId', '')}",
+                    )
+                else:
+                    raise PipelineError(
+                        f"unsupported Effect cue timing basis: {pattern_id}/{stage_id}"
+                    )
                 cue_id = stable_id(cue["cueId"], f"{pattern_id}/{stage_id}.cueId")
                 if cue_id in cue_ids:
                     raise PipelineError(f"duplicate managed cue: {cue_id}")
@@ -2418,21 +3071,14 @@ def validate_v2_master(
                     cue["scalePolicy"],
                     f"{pattern_id}/{stage_id} cue {cue_id}",
                 )
-                expected_scale_kind = MANAGED_CUE_SCALE_POLICIES.get(cue_id)
+                expected_scale_kind = expected_cue_policies.get(cue_id)
                 if scale_kind != expected_scale_kind:
                     raise PipelineError(
                         f"managed cue scalePolicy migration mismatch: {cue_id} "
                         f"expected={expected_scale_kind} actual={scale_kind}"
                     )
                 scale_policy_counts[scale_kind] += 1
-                validate_cue_animation_join(
-                    cue,
-                    occurrences_by_id,
-                    f"{pattern_id}/{stage_id} cue {cue_id}",
-                )
                 cue_ids.add(cue_id)
-                if "stageOffsetMs" in cue:
-                    raise PipelineError(f"derived stage-global cue offset is forbidden: {cue_id}")
             for invocation in stage["cameraInvocations"]:
                 exact(
                     invocation,
@@ -2442,15 +3088,31 @@ def validate_v2_master(
                 if invocation["durationPolicy"] != "EXPLICIT":
                     raise PipelineError("initial camera migration uses EXPLICIT duration")
                 integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
-    if cue_ids != set(MANAGED_CUE_SCALE_POLICIES):
+    if cue_ids != set(expected_cue_policies):
         raise PipelineError("managed cue scalePolicy migration table coverage drift")
-    if scale_policy_counts != EXPECTED_MANAGED_SCALE_POLICY_COUNTS:
+    if scale_policy_counts != expected_scale_policy_counts:
         raise PipelineError(
-            "managed cue scalePolicy coverage must remain OWNER/GAMEPLAY/ARENA "
-            f"4/9/2, got {dict(scale_policy_counts)}"
+            "managed cue scalePolicy coverage drift: "
+            f"expected={dict(expected_scale_policy_counts)} "
+            f"actual={dict(scale_policy_counts)}"
         )
-    if world_events != [(WORLD_PATTERN_ID, WORLD_STAGE_ID, WORLD_SET_ID)]:
-        raise PipelineError(f"v2 master must own exactly one 109 world-set invocation: {world_events}")
+    expected_world_set_owners = (
+        {WORLD_SET_ID: WORLD_SET_OWNERS[WORLD_SET_ID]}
+        if migration_fixture
+        else MANAGED_WORLD_SET_OWNERS
+    )
+    expected_world_events = {
+        (pattern_id, stage_id, set_id)
+        for set_id, (pattern_id, stage_id, _trigger_kind) in
+        expected_world_set_owners.items()
+    }
+    if set(world_events) != expected_world_events or len(world_events) != len(
+        expected_world_events
+    ):
+        raise PipelineError(
+            "v2 master world-set invocation closure drift: "
+            f"expected={sorted(expected_world_events)} actual={sorted(world_events)}"
+        )
     expected_phase_event = [(WORLD_PATTERN_ID, WORLD_STAGE_ID, "ENTER", 2)]
     if gameplay_phase_events != expected_phase_event:
         raise PipelineError(
@@ -2511,10 +3173,17 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
     decision_model = document.get("decisionModel")
     exact(
         decision_model,
-        ("selectionSets", "selectionWindows", "mechanics", "manualAuditions"),
+        (
+            "scriptedSequence",
+            "selectionSets",
+            "selectionWindows",
+            "mechanics",
+            "manualAuditions",
+        ),
         "Valtan gameplay decisionModel",
     )
     manual_patterns = _validate_manual_auditions(decision_model, patterns)
+    _validate_scripted_sequence(decision_model, patterns)
     mechanics = decision_model.get("mechanics")
     if not isinstance(mechanics, list):
         raise PipelineError("Valtan gameplay decisionModel.mechanics must be an array")
@@ -2545,6 +3214,9 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                 "stages",
             ),
             f"gameplay pattern {pattern_id}",
+        )
+        _validate_pattern_target_aim(
+            pattern, f"gameplay pattern {pattern_id}"
         )
         compatibility_weight = integer(
             pattern["compatibilitySelectionWeight"],
@@ -2605,9 +3277,12 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                 raise PipelineError(
                     f"serverMotion travel stage is missing: {pattern_id}/{travel_stage_id}"
                 )
-            if pattern["stages"][0].get("stageId") != "TAKEOFF":
+            if (
+                pattern["stages"][0].get("actionId")
+                != pattern["entryActionId"]
+            ):
                 raise PipelineError(
-                    f"serverMotion first stage must be TAKEOFF: {pattern_id}"
+                    f"serverMotion first stage must own entryActionId: {pattern_id}"
                 )
             travel_stage_index = next(
                 (
@@ -2619,7 +3294,7 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
             )
             if travel_stage_index <= 0:
                 raise PipelineError(
-                    f"serverMotion travel stage must follow TAKEOFF: "
+                    f"serverMotion travel stage must follow the entry stage: "
                     f"{pattern_id}/{travel_stage_id}"
                 )
             landing = server_motion["landingPosition"]
@@ -2678,18 +3353,11 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
         for stage_id, stage in stages.items():
             exact(
                 stage,
-                (
-                    "stageId",
-                    "actionId",
-                    "stageKind",
-                    "durationMs",
-                    "defaultNextActionId",
-                    "hit",
-                    "motion",
-                    "events",
-                    "branches",
-                ),
+                _pattern_stage_fields(stage, joined=False),
                 f"gameplay pattern {pattern_id} stage {stage_id}",
+            )
+            _validate_pattern_stage_extensions(
+                stage, f"gameplay pattern {pattern_id} stage {stage_id}"
             )
             action_id = stable_id(
                 stage["actionId"],
@@ -2700,6 +3368,26 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                     f"gameplay stage actionId is duplicate: {pattern_id}/{action_id}"
                 )
             action_ids.add(action_id)
+            hit = stage["hit"]
+            if not isinstance(hit, dict):
+                raise PipelineError(
+                    f"gameplay stage hit must be an object: {pattern_id}/{stage_id}"
+                )
+            has_player_response = "playerResponse" in hit
+            has_attachment_slot = "attachmentSlot" in hit
+            if has_player_response != has_attachment_slot:
+                raise PipelineError(
+                    "capture hit requires playerResponse and attachmentSlot together: "
+                    f"{pattern_id}/{stage_id}"
+                )
+            if has_player_response and (
+                hit["playerResponse"] != "CAPTURE"
+                or hit["attachmentSlot"] != "BOSS_LEFT_HAND"
+            ):
+                raise PipelineError(
+                    "capture hit requires the typed boss-left-hand slot: "
+                    f"{pattern_id}/{stage_id}"
+                )
 
 
 def validate_presentation_authoring(document: dict[str, Any]) -> None:
@@ -2854,21 +3542,23 @@ def split_v2_authoring(
         gameplay_stages = []
         presentation_stages = []
         for stage in pattern["stages"]:
-            gameplay_stages.append(
-                {
-                    "stageId": stage["stageId"],
-                    "actionId": stage["actionId"],
-                    "stageKind": stage["stageKind"],
-                    "durationMs": stage["durationMs"],
-                    "defaultNextActionId": copy.deepcopy(
-                        stage["defaultNextActionId"]
-                    ),
-                    "hit": copy.deepcopy(stage["hit"]),
-                    "motion": copy.deepcopy(stage["motion"]),
-                    "events": copy.deepcopy(stage["events"]),
-                    "branches": copy.deepcopy(stage["branches"]),
-                }
-            )
+            gameplay_stage = {
+                "stageId": stage["stageId"],
+                "actionId": stage["actionId"],
+                "stageKind": stage["stageKind"],
+                "durationMs": stage["durationMs"],
+                "defaultNextActionId": copy.deepcopy(
+                    stage["defaultNextActionId"]
+                ),
+                "hit": copy.deepcopy(stage["hit"]),
+                "motion": copy.deepcopy(stage["motion"]),
+                "events": copy.deepcopy(stage["events"]),
+                "branches": copy.deepcopy(stage["branches"]),
+            }
+            for optional in ("partDamagePolicy", "counterProxy"):
+                if optional in stage:
+                    gameplay_stage[optional] = copy.deepcopy(stage[optional])
+            gameplay_stages.append(gameplay_stage)
             presentation_stages.append(
                 {
                     "stageId": stage["stageId"],
@@ -2998,29 +3688,33 @@ def join_v2_authoring(
                 raise PipelineError(
                     f"split authoring actionId mismatch: {pattern_id}/{stage_id}"
                 )
-            joined_stages.append(
-                {
-                    "stageId": stage_id,
-                    "sequenceRole": presentation_stage["sequenceRole"],
-                    "actionId": gameplay_stage["actionId"],
-                    "stageKind": gameplay_stage["stageKind"],
-                    "durationMs": gameplay_stage["durationMs"],
-                    "defaultNextActionId": copy.deepcopy(
-                        gameplay_stage["defaultNextActionId"]
-                    ),
-                    "hit": copy.deepcopy(gameplay_stage["hit"]),
-                    "motion": copy.deepcopy(gameplay_stage["motion"]),
-                    "events": copy.deepcopy(gameplay_stage["events"]),
-                    "branches": copy.deepcopy(gameplay_stage["branches"]),
-                    "animation": copy.deepcopy(presentation_stage["animation"]),
-                    "effectCues": copy.deepcopy(
-                        presentation_stage["effectCues"]
-                    ),
-                    "cameraInvocations": copy.deepcopy(
-                        presentation_stage["cameraInvocations"]
-                    ),
-                }
-            )
+            joined_stage = {
+                "stageId": stage_id,
+                "sequenceRole": presentation_stage["sequenceRole"],
+                "actionId": gameplay_stage["actionId"],
+                "stageKind": gameplay_stage["stageKind"],
+                "durationMs": gameplay_stage["durationMs"],
+                "defaultNextActionId": copy.deepcopy(
+                    gameplay_stage["defaultNextActionId"]
+                ),
+                "hit": copy.deepcopy(gameplay_stage["hit"]),
+                "motion": copy.deepcopy(gameplay_stage["motion"]),
+                "events": copy.deepcopy(gameplay_stage["events"]),
+                "branches": copy.deepcopy(gameplay_stage["branches"]),
+                "animation": copy.deepcopy(presentation_stage["animation"]),
+                "effectCues": copy.deepcopy(
+                    presentation_stage["effectCues"]
+                ),
+                "cameraInvocations": copy.deepcopy(
+                    presentation_stage["cameraInvocations"]
+                ),
+            }
+            for optional in ("partDamagePolicy", "counterProxy"):
+                if optional in gameplay_stage:
+                    joined_stage[optional] = copy.deepcopy(
+                        gameplay_stage[optional]
+                    )
+            joined_stages.append(joined_stage)
         joined_patterns.append(
             {
                 "patternId": pattern_id,
@@ -3113,6 +3807,9 @@ def _compile_hit(hit: dict[str, Any]) -> dict[str, Any]:
             "downMs": hit["downMs"],
         }
     )
+    if "playerResponse" in hit:
+        result["playerResponse"] = hit["playerResponse"]
+        result["attachmentSlot"] = hit["attachmentSlot"]
     return result
 
 
@@ -3174,6 +3871,23 @@ def _compile_event(
         }
     if event["kind"] == "TRIGGER_WORLD_EVENT_SET":
         return None
+    if event["kind"] == "RETARGET_RANDOM_ALIVE":
+        return {
+            "trigger": event["trigger"],
+            "kind": "RETARGET_RANDOM_ALIVE",
+            "targetId": "boss.target.pattern",
+            "value": 1,
+            "durationMs": 0,
+        }
+    if event["kind"] == "RELEASE_GRABBED_PLAYERS":
+        return {
+            "trigger": event["trigger"],
+            "kind": "RELEASE_GRABBED_PLAYERS",
+            "targetId": "boss.attachment.left-hand",
+            "releaseMode": event["releaseMode"],
+            "speedMps": event["speedMps"],
+            "durationMs": event["durationMs"],
+        }
     raise PipelineError(f"event cannot compile to current Product: {event['kind']}")
 
 
@@ -3217,6 +3931,9 @@ def compile_pattern_product(
             projected["actions"] = actions
         if stage["branches"]:
             projected["branches"] = copy.deepcopy(stage["branches"])
+        for optional in ("partDamagePolicy", "counterProxy"):
+            if optional in stage:
+                projected[optional] = copy.deepcopy(stage[optional])
         projected_stages.append(projected)
     if is_manual_audition:
         selection_fields = {
@@ -3289,6 +4006,13 @@ def compile_pattern_product(
 
 
 def compile_binding(stage: dict[str, Any]) -> dict[str, Any]:
+    animation = stage["animation"]
+    if animation.get("mode", ANIMATION_MODE_CLIP_SEQUENCE) == ANIMATION_MODE_NONE:
+        return {
+            "actionId": stage["actionId"],
+            "playbackMode": ANIMATION_MODE_NONE,
+            "clips": [],
+        }
     return {
         "actionId": stage["actionId"],
         "clips": [
@@ -3301,12 +4025,31 @@ def compile_binding(stage: dict[str, Any]) -> dict[str, Any]:
                 "playRate": occurrence["playRate"],
                 "loop": occurrence["repeatUntilStageEnd"],
             }
-            for occurrence in stage["animation"]["occurrences"]
+            for occurrence in animation["occurrences"]
         ],
     }
 
 
 def compile_cue(pattern_id: str, stage: dict[str, Any], cue: dict[str, Any]) -> dict[str, Any]:
+    if cue.get(
+        "timingBasis", CUE_TIMING_BASIS_CLIP_OCCURRENCE
+    ) == CUE_TIMING_BASIS_STAGE_CLOCK:
+        return {
+            "bindingId": cue["cueId"],
+            "occurrenceId": cue["occurrenceId"],
+            "patternId": pattern_id,
+            "stageId": stage["stageId"],
+            "actionId": stage["actionId"],
+            "timingBasis": CUE_TIMING_BASIS_STAGE_CLOCK,
+            "stageOffsetMs": cue["stageOffsetMs"],
+            "effectAssetId": cue["effectAssetId"],
+            "anchorSlotId": cue["anchorSlotId"],
+            "followPolicy": cue["followPolicy"],
+            "stopPolicy": cue["stopPolicy"],
+            "repeatPolicy": cue["repeatPolicy"],
+            "localTransform": copy.deepcopy(cue["localTransform"]),
+            "scalePolicy": copy.deepcopy(cue["scalePolicy"]),
+        }
     return {
         "bindingId": cue["cueId"],
         "occurrenceId": cue["occurrenceId"],
@@ -3470,6 +4213,93 @@ def replace_or_append_rows(
     if projected_ids != expected_ids:
         raise PipelineError(
             f"{array_key} existing stable-ID ordinals or deterministic append order changed"
+        )
+    return output
+
+
+def replace_append_or_remove_rows(
+    text: str,
+    array_key: str,
+    id_key: str,
+    replacements: Mapping[str, dict[str, Any]],
+    removed_ids: set[str],
+) -> str:
+    """Replace/append managed rows and retire only explicitly owned old IDs.
+
+    The transitional Products still contain sealed legacy rows.  Rebuilding the
+    whole array would erase their reviewed raw JSON, while plain
+    replace-or-append leaves removed managed stage actions behind.  This helper
+    retains each untouched raw object byte-for-byte and removes only the IDs
+    whose previous managed pattern topology proves ownership for.
+    """
+
+    array_start, array_end, spans = _array_span(text, array_key)
+    if not spans:
+        raise PipelineError(f"{array_key} cannot retire rows from an empty array")
+    parsed_rows = [
+        json.loads(text[start:end], object_pairs_hook=_reject_duplicate_pairs)
+        for start, end in spans
+    ]
+    current_ids = [row.get(id_key) for row in parsed_rows]
+    if len(current_ids) != len(set(current_ids)):
+        raise PipelineError(f"{array_key} contains duplicate {id_key} values")
+    if removed_ids & set(replacements):
+        raise PipelineError(f"{array_key} cannot replace and remove the same ID")
+    unknown_removed = removed_ids - set(current_ids)
+    if unknown_removed:
+        raise PipelineError(
+            f"{array_key} removal names missing IDs: {sorted(unknown_removed)}"
+        )
+    for identity, replacement in replacements.items():
+        if replacement.get(id_key) != identity:
+            raise PipelineError(
+                f"{array_key} replacement identity mismatch: {identity}"
+            )
+
+    first_start, _ = spans[0]
+    _, last_end = spans[-1]
+    leading = text[array_start + 1:first_start]
+    trailing = text[last_end:array_end]
+    separator = (
+        text[spans[0][1]:spans[1][0]]
+        if len(spans) > 1
+        else ",\n"
+    )
+    line_start = text.rfind("\n", 0, first_start) + 1
+    prefix = text[line_start:first_start]
+    current_id_set = set(current_ids)
+    projected_rows: list[str] = []
+    projected_ids: list[str] = []
+    for (start, end), row in zip(spans, parsed_rows):
+        identity = row.get(id_key)
+        if identity in removed_ids:
+            continue
+        if identity in replacements:
+            serialized = json.dumps(
+                replacements[identity], ensure_ascii=False, indent=2
+            )
+            projected_rows.append(serialized.replace("\n", "\n" + prefix))
+        else:
+            projected_rows.append(text[start:end])
+        projected_ids.append(identity)
+    for identity, replacement in replacements.items():
+        if identity in current_id_set:
+            continue
+        serialized = json.dumps(replacement, ensure_ascii=False, indent=2)
+        projected_rows.append(serialized.replace("\n", "\n" + prefix))
+        projected_ids.append(identity)
+
+    output = (
+        text[:array_start + 1]
+        + leading
+        + separator.join(projected_rows)
+        + trailing
+        + text[array_end:]
+    )
+    projected = json.loads(output, object_pairs_hook=_reject_duplicate_pairs)
+    if [row[id_key] for row in projected[array_key]] != projected_ids:
+        raise PipelineError(
+            f"{array_key} managed removal changed an unrelated stable-ID ordinal"
         )
     return output
 
@@ -3684,16 +4514,24 @@ def _compile_combat_products(
     return [row for _, row in sorted(rows, key=lambda item: item[0])]
 
 
-def _world_owner(master: dict[str, Any]) -> tuple[str, str, str]:
+def _world_owner(
+    master: dict[str, Any], world_event_set_id: str
+) -> tuple[str, str, str]:
     owners = []
     for pattern in master["patterns"]:
         for stage in pattern["stages"]:
             for event in stage["events"]:
-                if event["kind"] == "TRIGGER_WORLD_EVENT_SET" and event["worldEventSetId"] == WORLD_SET_ID:
+                if (
+                    event["kind"] == "TRIGGER_WORLD_EVENT_SET"
+                    and event["worldEventSetId"] == world_event_set_id
+                ):
                     owners.append((pattern["patternId"], stage["stageId"], event["trigger"]))
-    if owners != [(WORLD_PATTERN_ID, WORLD_STAGE_ID, "ENTER")]:
-        raise PipelineError(f"world set owner is not exact: {owners}")
-    return WORLD_PATTERN_ID, WORLD_STAGE_ID, WORLD_TRIGGER_KIND
+    expected = MANAGED_WORLD_SET_OWNERS.get(world_event_set_id)
+    if expected is None or owners != [(expected[0], expected[1], "ENTER")]:
+        raise PipelineError(
+            f"world set owner is not exact for {world_event_set_id}: {owners}"
+        )
+    return expected
 
 
 def _preserve_equal_json_values(source: Any, projected: Any) -> Any:
@@ -3748,7 +4586,24 @@ def project_v2_products(
     *,
     migration_fixture: bool = False,
 ) -> dict[str, str]:
-    validate_v2_master(master, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL])
+    projection_world_sets = (
+        build_world_event_sets(docs[WORLD_PRODUCT_REL])
+        if migration_fixture
+        else docs[WORLD_SET_REL]
+    )
+    validate_v2_master(
+        master,
+        projection_world_sets,
+        docs[COMBAT_AUTHORING_REL],
+        migration_fixture=migration_fixture,
+    )
+    if (
+        not migration_fixture
+        and master["decisionModel"]["scriptedSequence"] is None
+    ):
+        raise PipelineError(
+            "current Valtan projection requires decisionModel.scriptedSequence"
+        )
     validate_decision_model_against_boss_profiles(
         master, docs[BOSS_PROFILES_REL]
     )
@@ -3762,12 +4617,21 @@ def project_v2_products(
         if migration_fixture
         else set()
     )
+    fixture_legacy_managed_ids = fixture_audition_ids | (
+        CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS
+        if migration_fixture
+        else set()
+    )
     validate_legacy_products(
-        docs[LEGACY_REL], docs, managed_pattern_ids | fixture_audition_ids
+        docs[LEGACY_REL], docs,
+        managed_pattern_ids | fixture_legacy_managed_ids,
     )
     source_patterns = {
         row["patternId"]: row for row in docs[ENCOUNTER_REL]["patterns"]
     }
+    source_retired_pattern_ids = (
+        set(master["retiredPatternIds"]) & set(source_patterns)
+    )
     managed_patterns = {
         row["patternId"]: compile_pattern_product(master, row)
         for row in master["patterns"]
@@ -3809,11 +4673,11 @@ def project_v2_products(
         )
         for row in combat_rows
     ]
-    world_owner = _world_owner(master)
     world_replacements = {}
-    for event_set in docs[WORLD_SET_REL]["sets"]:
-        if event_set["worldEventSetId"] != WORLD_SET_ID:
+    for event_set in projection_world_sets["sets"]:
+        if event_set["worldEventSetId"] not in MANAGED_WORLD_SET_OWNERS:
             continue
+        world_owner = _world_owner(master, event_set["worldEventSetId"])
         for member in event_set["members"]:
             world_replacements[member["bindingId"]] = {
                 "bindingId": member["bindingId"],
@@ -3836,6 +4700,56 @@ def project_v2_products(
             WORLD_PRODUCT_REL,
         )
     }
+    source_managed_action_ids = {
+        stage["actionId"]
+        for pattern_id, pattern in source_patterns.items()
+        if pattern_id in managed_pattern_ids
+        for stage in pattern["stages"]
+    }
+    removed_managed_action_ids = (
+        source_managed_action_ids - set(managed_bindings)
+    )
+    # Binding ordinals are part of the sealed legacy compatibility receipt.
+    # Removing a managed stage row would shift every later sealed row, so a
+    # retired action becomes an explicit inert NONE tombstone at the same
+    # ordinal. The encounter no longer emits that action and the empty chain also
+    # prevents sound/root-motion projection from treating it as playable.
+    ordinal_safe_bindings = dict(managed_bindings)
+    for action_id in removed_managed_action_ids:
+        ordinal_safe_bindings[action_id] = {
+            "actionId": action_id,
+            "playbackMode": ANIMATION_MODE_NONE,
+            "clips": [],
+        }
+    source_cue_document = json.loads(
+        source_texts[CUES_REL], object_pairs_hook=_reject_duplicate_pairs
+    )
+    source_managed_cue_ids = {
+        row["bindingId"]
+        for row in source_cue_document["cues"]
+        if row.get("patternId") in managed_pattern_ids
+    }
+    removed_managed_cue_ids = source_managed_cue_ids - set(managed_cues)
+    binding_rows_output = replace_append_or_remove_rows(
+        source_texts[BINDINGS_REL],
+        "bindings",
+        "actionId",
+        ordinal_safe_bindings,
+        set(),
+    )
+    cue_rows_output = replace_append_or_remove_rows(
+        source_texts[CUES_REL],
+        "cues",
+        "bindingId",
+        managed_cues,
+        removed_managed_cue_ids,
+    )
+    # The frozen v1 migration is a compatibility proof, not an authority that
+    # may downgrade a current cue Product.  In particular, the live donut cue
+    # is now a v4 stage-clock independent Effect while the fixture still owns
+    # the historical clip projection used to prove that old input migrates.
+    if migration_fixture:
+        cue_rows_output = source_texts[CUES_REL]
     rotation_output = replace_rows_same_ordinal(
         source_texts[ROTATIONS_REL],
         "rotations",
@@ -3845,21 +4759,27 @@ def project_v2_products(
     rotation_document = json.loads(
         rotation_output, object_pairs_hook=_reject_duplicate_pairs
     )
-    rotation_document["formatVersion"] = 3
+    if not migration_fixture:
+        rotation_document["formatVersion"] = 4
+        rotation_document["scriptedSequence"] = copy.deepcopy(
+            master["decisionModel"]["scriptedSequence"]
+        )
     outputs = {
-        ENCOUNTER_REL: replace_or_append_rows(
-            source_texts[ENCOUNTER_REL], "patterns", "patternId", managed_patterns
+        ENCOUNTER_REL: replace_append_or_remove_rows(
+            source_texts[ENCOUNTER_REL], "patterns", "patternId",
+            managed_patterns, source_retired_pattern_ids,
         ),
-        BINDINGS_REL: replace_or_append_rows(
-            source_texts[BINDINGS_REL], "bindings", "actionId", managed_bindings
+        BINDINGS_REL: replace_root_format_version(
+            binding_rows_output,
+            "lostark.valtan-pattern-bindings",
+            {2, 3},
+            2 if migration_fixture else 3,
         ),
         CUES_REL: replace_root_format_version(
-            replace_rows_same_ordinal(
-                source_texts[CUES_REL], "cues", "bindingId", managed_cues
-            ),
+            cue_rows_output,
             "lostark.valtan-pattern-effect-cues",
-            {2, 3},
-            3,
+            {2, 3, 4},
+            4,
         ),
         ROTATIONS_REL: json_text(rotation_document),
         COMBAT_PRODUCT_REL: replace_rows_same_ordinal(
@@ -3897,14 +4817,21 @@ def project_v2_products(
         outputs[ENCOUNTER_REL],
         "patterns",
         "patternId",
-        set(managed_patterns),
+        set(managed_patterns) | source_retired_pattern_ids,
     )
     _assert_unmanaged_raw_rows_preserved(
         source_texts[BINDINGS_REL],
-        outputs[BINDINGS_REL],
+        binding_rows_output,
         "bindings",
         "actionId",
-        set(managed_bindings),
+        set(ordinal_safe_bindings),
+    )
+    _assert_unmanaged_raw_rows_preserved(
+        source_texts[CUES_REL],
+        cue_rows_output,
+        "cues",
+        "bindingId",
+        set(managed_cues) | removed_managed_cue_ids,
     )
     _assert_unmanaged_raw_rows_preserved(
         source_texts[WORLD_PRODUCT_REL],
@@ -3923,12 +4850,12 @@ def project_v2_products(
         raise PipelineError("world groups/mutations/provenance changed during transitional projection")
     before_bindings = before_world["bindings"]
     after_bindings = after_world["bindings"]
-    if len(before_bindings) != 194 or len(after_bindings) != 194:
-        raise PipelineError("initial world projection fixture must remain 194 bindings")
+    if len(before_bindings) != len(after_bindings):
+        raise PipelineError("world projection changed the flat binding count")
     unmanaged_before = [row for row in before_bindings if row["bindingId"] not in world_replacements]
     unmanaged_after = [row for row in after_bindings if row["bindingId"] not in world_replacements]
-    if len(unmanaged_before) != 164 or unmanaged_before != unmanaged_after:
-        raise PipelineError("the 164 World/Map-owned bindings changed")
+    if unmanaged_before != unmanaged_after:
+        raise PipelineError("an unmanaged World/Map binding changed")
     for relative, text in outputs.items():
         try:
             json.loads(text, object_pairs_hook=_reject_duplicate_pairs)
@@ -3944,7 +4871,7 @@ def build_repository_product_projection(
 
     docs = load_pipeline_documents(root)
     validate_world_event_sets(
-        docs[WORLD_SET_REL], docs[WORLD_PRODUCT_REL], migration_fixture=True
+        docs[WORLD_SET_REL], docs[WORLD_PRODUCT_REL], migration_fixture=False
     )
     validate_combat_authoring(docs[COMBAT_AUTHORING_REL])
     validate_balance_documents(docs[BOSS_PROFILES_REL], docs[DAMAGE_REL])
@@ -3955,7 +4882,9 @@ def build_repository_product_projection(
         docs[COMBAT_AUTHORING_REL],
     )
     validate_manual_audition_animation_lineage(
-        joined, read_json(repo_path(root, DEBUG_PRESENTATION_REL))
+        joined,
+        read_json(repo_path(root, DEBUG_PRESENTATION_REL)),
+        read_json(repo_path(root, ANIMATION_PROMOTION_MANIFEST_REL)),
     )
     managed = {row["patternId"] for row in joined["patterns"]}
     validate_legacy_manifest(docs[LEGACY_REL], managed)
@@ -4060,6 +4989,7 @@ def source_manifest(root: Path) -> dict[str, Any]:
         DAMAGE_REL,
         EFFECT_CATALOG_REL,
         DEBUG_PRESENTATION_REL,
+        ANIMATION_PROMOTION_MANIFEST_REL,
         PROVENANCE_REL,
     )
 
@@ -4648,7 +5578,20 @@ def apply_draft_patch(
         touched.add(target)
 
     try:
-        validate_v2_master(patched_master, world_sets, combat_authoring)
+        # Draft patches are also exercised against the frozen v1 migration
+        # fixture.  That fixture intentionally has no current scripted sequence
+        # and owns only MIGRATION_MANAGED_CUE_IDS; validating it as the live
+        # split-authoring master makes later Product cue additions look like
+        # missing migration coverage.
+        migration_fixture = (
+            patched_master["decisionModel"].get("scriptedSequence") is None
+        )
+        validate_v2_master(
+            patched_master,
+            world_sets,
+            combat_authoring,
+            migration_fixture=migration_fixture,
+        )
         validate_balance_documents(patched_bosses, patched_damage)
         validate_decision_model_against_boss_profiles(
             patched_master, patched_bosses
@@ -4744,6 +5687,14 @@ def _receipt_entry_value(document: dict[str, Any], entry: dict[str, Any]) -> Any
     elif target_document == COMBAT_PRODUCT_REL and target_id.startswith("combat-object:"):
         prefix = "combat-object:"
         rows, key = document["objects"], "combatObjectArchetypeId"
+    elif target_document == ENCOUNTER_REL and target_id.startswith("pattern:"):
+        prefix = "pattern:"
+        rows, key = document["patterns"], "patternId"
+        # The receipt keeps the live-pattern ordinal in its human-readable
+        # field label, while the Product may interleave AUDITION_ONLY rows.
+        # Resolve the owner by stable patternId, then address the row-local
+        # property instead of treating that ordinal as a storage identity.
+        target_field = re.sub(r"^patterns\[[0-9]+\]\.", "", target_field)
     else:
         prefix = ""
         rows, key = [], ""
@@ -6320,7 +7271,11 @@ def publish_candidate(
         if expected_source_manifest is not None and current_sources != expected_source_manifest:
             raise PipelineError("source hash precondition failed; authoring changed externally")
         docs = load_pipeline_documents(root)
-        validate_world_event_sets(docs[WORLD_SET_REL], docs[WORLD_PRODUCT_REL], migration_fixture=True)
+        validate_world_event_sets(
+            docs[WORLD_SET_REL],
+            docs[WORLD_PRODUCT_REL],
+            migration_fixture=False,
+        )
         validate_combat_authoring(docs[COMBAT_AUTHORING_REL])
         repository_v2 = join_v2_authoring(
             docs[GAMEPLAY_AUTHORING_REL],
@@ -6417,7 +7372,7 @@ def publish_candidate(
             )
         _failure(fail_at, "after_stage")
         staged_world = read_json(stage / WORLD_PRODUCT_REL)
-        if len(staged_world["groups"]) != 105 or len(staged_world["mutations"]) != 105 or len(staged_world["bindings"]) != 194:
+        if len(staged_world["groups"]) != 105 or len(staged_world["mutations"]) != 105 or len(staged_world["bindings"]) != 224:
             raise PipelineError("staged world Product count/closure drift")
         baseline_runtime_root = candidate_root / (".baseline." + transaction_id)
         _assert_transaction_path(

@@ -76,12 +76,15 @@ namespace Client
 		std::uint32_t iMaximumStagger = 0;
 		std::uint32_t iCurrentShield = 0;
 		std::uint32_t iMaximumShield = 0;
+		std::uint32_t iServerTick = 0;
 		LostArk::Shared::WORLD_ENTITY_ACTION eAction =
 			LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;
 		std::string strActionId;
 		std::string strPatternId;
 		std::uint32_t iPatternSequence = 0;
 		std::uint32_t iPatternStageIndex = 0;
+		std::uint32_t iActionStartTick = 0;
+		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 	};
 
 	struct HUD_DAMAGE_EVENT
@@ -129,6 +132,7 @@ namespace Client
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot);
 		void Apply_Boss(
+			std::uint32_t serverTick,
 			const std::string& archetypeId,
 			const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& snapshot);
 		/* Apply_Boss only runs while a BOSS-kind entity is still present in the current

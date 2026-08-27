@@ -15,6 +15,7 @@ struct WORLD_DESTRUCTION_PROJECTION_GROUP final
 {
 	std::string strGroupId;
 	std::string strMutationId;
+	bool_t bRemovesGround = false;
 	std::vector<uint64_t> MemberPlacementIds;
 	std::vector<uint64_t> SuppressionAliasPlacementIds;
 };

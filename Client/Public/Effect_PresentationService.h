@@ -51,6 +51,12 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bUseWorldRoot = false;
 	uint64_t iWorldRootHandle = 0u;
 	float4x4_t WorldRoot{};
+	/* Set only by Spawn_LevelPlacement.  It is a real level-lifetime owner,
+	   not a null/fake Character or Boss weak pointer. */
+	bool_t bLevelOwned = false;
+	uint32_t iLevelOwnerIndex = ETOUI(LEVEL::END);
+	bool_t bExternallySampled = false;
+	std::string strLevelPlacementId;
 };
 
 struct EFFECT_WORLD_ROOT_HANDLE final
@@ -67,6 +73,17 @@ struct EFFECT_WORLD_ROOT_SPAWN_DESC final
 	std::string strOccurrenceId;
 	uint32_t iSpawnTick = 0u;
 	f32_t fInitialSampleTimeSeconds = 0.f;
+};
+
+struct EFFECT_LEVEL_PLACEMENT_SPAWN_DESC final
+{
+	uint32_t iLevelIndex = ETOUI(LEVEL::END);
+	std::string strPlacementId;
+	std::string strEffectAssetId;
+	float4x4_t RootWorld{};
+	uint32_t iSpawnTick = 0u;
+	f32_t fInitialSampleTimeSeconds = 0.f;
+	bool_t bExternallySampled = false;
 };
 
 struct EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC final
@@ -258,13 +275,25 @@ public:
 		const EFFECT_WORLD_ROOT_SPAWN_DESC& Desc,
 		EFFECT_WORLD_ROOT_HANDLE& OutHandle,
 		std::string& strOutStatus);
+	static bool_t Spawn_LevelPlacement(
+		const EFFECT_LEVEL_PLACEMENT_SPAWN_DESC& Desc,
+		EFFECT_WORLD_ROOT_HANDLE& OutHandle,
+		std::string& strOutStatus);
 	static bool_t Update_WorldRoot(
 		EFFECT_WORLD_ROOT_HANDLE Handle,
 		const float4x4_t& RootWorld);
+	static bool_t Seek_WorldRoot(
+		EFFECT_WORLD_ROOT_HANDLE Handle,
+		f32_t fSampleTimeSeconds);
 	static void Stop_WorldRoot(EFFECT_WORLD_ROOT_HANDLE Handle);
 	/* Product cue requests can originate while Object Manager is iterating its
 	   layer map.  Commit them only after Update_Engine finishes. */
 	static void Commit_PendingSpawns();
+	/* Commits only the listed pending world-root spawns.  This is used by a
+	   staged aggregate admission probe and deliberately leaves every unrelated
+	   gameplay request queued for the normal post-update commit seam. */
+	static void Commit_PendingWorldRootSpawns(
+		const std::vector<EFFECT_WORLD_ROOT_HANDLE>& Handles);
 	static bool_t Prepare_ReconstructedRuntimeProgram(
 		const std::string& strEffectAssetId,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&

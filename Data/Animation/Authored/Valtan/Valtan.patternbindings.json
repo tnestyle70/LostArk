@@ -1,6 +1,6 @@
 {
   "schema": "lostark.valtan-pattern-bindings",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "bossArchetypeId": "BOSS_VALTAN",
   "bindings": [
     {
@@ -1071,59 +1071,23 @@
     },
     {
       "actionId": "valtan.attack.fist-in-out.windup",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.attack.fist-in-out.windup.clip.01",
-          "clip": "mesh_att_battle_19_02",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-          "sourceStartMs": 0,
-          "playMs": 0,
-          "playRate": 1.0,
-          "loop": true
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.attack.fist-in-out.inner",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.attack.fist-in-out.inner.clip.01",
-          "clip": "mesh_att_battle_19_04",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-          "sourceStartMs": 0,
-          "playMs": 0,
-          "playRate": 1.0,
-          "loop": true
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.attack.fist-in-out.outer",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.attack.fist-in-out.outer.clip.01",
-          "clip": "mesh_att_battle_1_01",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 800,
-          "playRate": 1.0,
-          "loop": false
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.attack.fist-in-out.recovery",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.attack.fist-in-out.recovery.clip.01",
-          "clip": "mesh_att_battle_1_01",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 800,
-          "playMs": 800,
-          "playRate": 1.0,
-          "loop": false
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.attack.ledge-roar.windup",
@@ -1343,9 +1307,9 @@
           "clip": "mesh_att_battle_5_02_end",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 534,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
@@ -1354,12 +1318,21 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.interval.clip.01",
-          "clip": "mesh_att_battle_5_02_loop",
+          "clip": "mesh_att_battle_5_04",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 500,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.interval.clip.02",
+          "clip": "mesh_att_battle_15_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1.0,
+          "loop": false
         }
       ]
     },
@@ -1368,12 +1341,12 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
-          "clip": "mesh_att_battle_5_02_end",
+          "clip": "mesh_att_battle_15_03",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 500,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
@@ -3326,6 +3299,118 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 333,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.takeoff",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.takeoff.clip-01",
+          "clip": "mesh_att_battle_12_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1200,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.airborne",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.airborne.clip-01",
+          "clip": "mesh_att_battle_12_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.landing",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.landing.clip-01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 200,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.impact",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.impact.clip-01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 200,
+          "playMs": 1000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.takeoff",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.takeoff.clip-01",
+          "clip": "mesh_att_battle_12_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1200,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.airborne",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.airborne.clip-01",
+          "clip": "mesh_att_battle_12_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.landing",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.landing.clip-01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 200,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.impact",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.impact.clip-01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 200,
+          "playMs": 1000,
           "playRate": 1.0,
           "loop": false
         }

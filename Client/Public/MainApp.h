@@ -19,6 +19,8 @@ class CAnimation_Tool;
 class CHUDLayoutTool;
 class CHUDRuntimeView;
 class CBalanceTool;
+class CBossTool;
+class CCameraTool;
 class CCharacterPreviewPanel;
 class CSkillWindowView;
 class CInventoryView;
@@ -39,7 +41,9 @@ private:
 		EFFECT_V2,
 		RENDERING,
 		UI,
-		BALANCE
+		BALANCE,
+		BOSS,
+		CAMERA
 	};
 #endif
 
@@ -391,6 +395,8 @@ private:
 	shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel = { nullptr };
 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
 	unique_ptr<CBalanceTool> m_pBalanceTool = { nullptr };
+	unique_ptr<CBossTool> m_pBossTool = { nullptr };
+	unique_ptr<CCameraTool> m_pCameraTool = { nullptr };
 	bool_t m_bF1Down = false;
 	bool_t m_bDeveloperToolsVisible = false;
 	bool_t m_bProfilerVisible = false;

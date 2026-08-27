@@ -7,6 +7,8 @@
 #include "Model.h"
 #include "RigidBody.h"
 #include "RuntimeAssetRoot.h"
+#include "WorldDestructionDebrisPresentationDocument.h"
+#include "WorldDestructionProjectionDocument.h"
 
 #include <algorithm>
 #include <cmath>
@@ -485,7 +487,7 @@ bool_t Client::CWorldDestructionDebrisPresentationRuntime::Stage_Emitter(
 	}
 
 	CDeployPropObject::DESTRUCTION_DEBRIS_PRESENTATION_DESC presentation;
-	presentation.suppressSource = true;
+	presentation.suppressSource = emitterCue.suppressSource;
 	presentation.instances.reserve(recipe.size());
 	for (const auto* spec : recipe)
 	{
@@ -518,7 +520,8 @@ bool_t Client::CWorldDestructionDebrisPresentationRuntime::Stage_Emitter(
 
 	for (const auto& alias : staged.aliases)
 	{
-		if (!alias->Begin_TransientDestructionSuppression(outError))
+		if (emitterCue.suppressSource &&
+			!alias->Begin_TransientDestructionSuppression(outError))
 		{
 			rollback();
 			return false;
@@ -620,6 +623,308 @@ bool_t Client::CWorldDestructionDebrisPresentationRuntime::Stage_Emitter(
 }
 
 bool_t Client::CWorldDestructionDebrisPresentationRuntime::
+Evaluate_GroundTransition(
+	const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& state,
+	const uint32_t sampleServerTick,
+	const uint32_t fixedTickHz,
+	const WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE& emitter,
+	const uint64_t runtimePlacementId,
+	WORLD_DESTRUCTION_SOURCE_TRANSITION_SAMPLE& outSample,
+	std::string& outError)
+{
+	outSample = {};
+	outError.clear();
+	if (0u == runtimePlacementId || 0u == fixedTickHz || fixedTickHz > 240u ||
+		0u == state.iStateVersion || 0u == state.iStateStartTick ||
+		!Is_Finite(emitter.direction) || emitter.direction.y > -0.5f ||
+		!std::isfinite(emitter.speedMetersPerSecond) ||
+		emitter.speedMetersPerSecond <= 0.f ||
+		!std::isfinite(emitter.gravityScale) || emitter.gravityScale < 0.f)
+	{
+		outError = "Ground destruction transition input is invalid";
+		return false;
+	}
+	if (LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING !=
+		state.eState)
+	{
+		return true;
+	}
+
+	const uint32_t durationTicks = static_cast<uint32_t>(
+		state.iCommitTick - state.iStateStartTick);
+	if (0u == state.iCommitTick || 0u == durationTicks ||
+		durationTicks >= 0x80000000u)
+	{
+		outError = "Ground destruction transition tick window is invalid";
+		return false;
+	}
+	uint32_t elapsedTicks = static_cast<uint32_t>(
+		sampleServerTick - state.iStateStartTick);
+	if (elapsedTicks >= 0x80000000u)
+		elapsedTicks = 0u;
+	elapsedTicks = (std::min)(elapsedTicks, durationTicks);
+	const f32_t normalized = static_cast<f32_t>(elapsedTicks) /
+		static_cast<f32_t>(durationTicks);
+	const f32_t seconds = static_cast<f32_t>(elapsedTicks) /
+		static_cast<f32_t>(fixedTickHz);
+	const f32_t smooth = normalized * normalized * (3.f - 2.f * normalized);
+
+	outSample.normalizedTime = normalized;
+	outSample.rootOffset = {
+		emitter.direction.x * emitter.speedMetersPerSecond * seconds,
+		emitter.direction.y * emitter.speedMetersPerSecond * seconds -
+			0.5f * 9.81f * emitter.gravityScale * seconds * seconds,
+		emitter.direction.z * emitter.speedMetersPerSecond * seconds
+	};
+	const f32_t pitchSign = 0u != (runtimePlacementId & 1u) ? -1.f : 1.f;
+	const f32_t rollSign = 0u != (runtimePlacementId & 2u) ? -1.f : 1.f;
+	const f32_t pitchRadians = pitchSign * 10.f * PI / 180.f * smooth;
+	const f32_t rollRadians = rollSign * 5.f * PI / 180.f * smooth;
+	XMStoreFloat4(
+		&outSample.rootRotationOffset,
+		XMQuaternionRotationRollPitchYaw(
+			pitchRadians, 0.f, rollRadians));
+	const f32_t fadeTime = (std::clamp)(
+		(normalized - 0.35f) / 0.65f, 0.f, 1.f);
+	const f32_t fade = fadeTime * fadeTime * (3.f - 2.f * fadeTime);
+	outSample.opacity = 1.f - fade;
+	const f32_t flashTime = (std::min)(normalized / 0.5f, 1.f);
+	const f32_t flash = 1.f + 1.25f * std::sin(PI * flashTime);
+	outSample.emissiveMultiplier = flash * (1.f - fade);
+	const f32_t rotationLengthSquared =
+		outSample.rootRotationOffset.x * outSample.rootRotationOffset.x +
+		outSample.rootRotationOffset.y * outSample.rootRotationOffset.y +
+		outSample.rootRotationOffset.z * outSample.rootRotationOffset.z +
+		outSample.rootRotationOffset.w * outSample.rootRotationOffset.w;
+	const bool_t isValid = Is_Finite(outSample.rootOffset) &&
+		std::isfinite(outSample.rootRotationOffset.x) &&
+		std::isfinite(outSample.rootRotationOffset.y) &&
+		std::isfinite(outSample.rootRotationOffset.z) &&
+		std::isfinite(outSample.rootRotationOffset.w) &&
+		std::isfinite(rotationLengthSquared) &&
+		std::abs(rotationLengthSquared - 1.f) <= 0.001f &&
+		std::isfinite(outSample.opacity) &&
+		std::isfinite(outSample.emissiveMultiplier);
+	if (!isValid)
+		outError = "Ground destruction transition produced a non-finite pose";
+	return isValid;
+}
+
+bool_t Client::CWorldDestructionDebrisPresentationRuntime::
+Update_SourceTransitions(
+	const CWorldDestructionProjectionDocument& projection,
+	const CWorldDestructionDebrisPresentationDocument& presentation,
+	const std::vector<LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE>&
+		groupStates,
+	const uint32_t serverTick,
+	const uint32_t fixedTickHz,
+	const f32_t deltaSeconds,
+	std::string& outError)
+{
+	outError.clear();
+	if (!Is_Initialized() || !projection.Is_Ready() ||
+		!presentation.Is_Ready() ||
+		projection.Get_CombatRuntimeRevision() !=
+			presentation.Get_CombatRuntimeRevision() ||
+		groupStates.size() != projection.Get_Groups().size() ||
+		0u == serverTick || 0u == fixedTickHz || fixedTickHz > 240u ||
+		!std::isfinite(deltaSeconds) || deltaSeconds < 0.f)
+	{
+		outError = "World destruction source transition update is invalid";
+		return false;
+	}
+
+	uint32_t maximumActiveBreakingTicks = 0u;
+	for (size_t groupIndex = 0u;
+		groupIndex < projection.Get_Groups().size(); ++groupIndex)
+	{
+		const WORLD_DESTRUCTION_PROJECTION_GROUP& group =
+			projection.Get_Groups()[groupIndex];
+		if (!group.bRemovesGround)
+			continue;
+		const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& state =
+			groupStates[groupIndex];
+		if (state.strGroupId != group.strGroupId)
+		{
+			outError =
+				"Ground transition state order diverged from the projection";
+			return false;
+		}
+		if (LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING ==
+			state.eState)
+		{
+			const uint32_t durationTicks = static_cast<uint32_t>(
+				state.iCommitTick - state.iStateStartTick);
+			if (0u == state.iCommitTick || 0u == durationTicks ||
+				durationTicks >= 0x80000000u)
+			{
+				outError =
+					"Ground transition has an invalid BREAKING window";
+				return false;
+			}
+			maximumActiveBreakingTicks = (std::max)(
+				maximumActiveBreakingTicks, durationTicks);
+		}
+	}
+
+	uint32_t stagedAnchor = m_iTransitionServerTickAnchor;
+	f32_t stagedInterpolation = m_fTransitionInterpolationSeconds;
+	if (serverTick != stagedAnchor)
+	{
+		stagedAnchor = serverTick;
+		stagedInterpolation = 0.f;
+	}
+	else
+	{
+		/* The longest active published BREAKING window bounds the presentation
+		   clock. Every individual group is clamped to commitTick again below. */
+		const f32_t maximumInterpolationSeconds =
+			static_cast<f32_t>(maximumActiveBreakingTicks) /
+			static_cast<f32_t>(fixedTickHz);
+		stagedInterpolation = (std::min)(
+			stagedInterpolation + (std::min)(deltaSeconds, 0.25f),
+			maximumInterpolationSeconds);
+	}
+	const uint64_t interpolatedTickCount = static_cast<uint64_t>(
+		std::floor(static_cast<double>(stagedInterpolation) *
+			static_cast<double>(fixedTickHz)));
+	const uint32_t interpolatedTicks = static_cast<uint32_t>((std::min)(
+		interpolatedTickCount,
+		static_cast<uint64_t>(maximumActiveBreakingTicks)));
+
+	std::vector<CDeployPropRuntime::DEPLOY_SURFACE_PRESENTATION_UPDATE>
+		updates;
+	std::set<uint64_t> stagedPlacementIds;
+	for (size_t groupIndex = 0u;
+		groupIndex < projection.Get_Groups().size(); ++groupIndex)
+	{
+		const WORLD_DESTRUCTION_PROJECTION_GROUP& group =
+			projection.Get_Groups()[groupIndex];
+		if (!group.bRemovesGround)
+			continue;
+		const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& state =
+			groupStates[groupIndex];
+		if (state.strGroupId != group.strGroupId)
+		{
+			outError =
+				"Ground transition state order diverged from the projection";
+			return false;
+		}
+		const WORLD_DESTRUCTION_DEBRIS_PROFILE* profile =
+			presentation.Find_Group(group.strGroupId);
+		if (nullptr == profile || profile->strMutationId != group.strMutationId)
+		{
+			outError = "Ground transition has no joined presentation profile: " +
+				group.strGroupId;
+			return false;
+		}
+
+		uint32_t sampleTick = serverTick;
+		if (LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING ==
+			state.eState)
+		{
+			const uint32_t durationTicks = static_cast<uint32_t>(
+				state.iCommitTick - state.iStateStartTick);
+			uint32_t anchorAge = static_cast<uint32_t>(
+				serverTick - state.iStateStartTick);
+			if (anchorAge >= 0x80000000u)
+				anchorAge = 0u;
+			const uint32_t maximumBreakingAge =
+				0u == durationTicks ? 0u : durationTicks - 1u;
+			const uint64_t interpolatedAge =
+				static_cast<uint64_t>(anchorAge) + interpolatedTicks;
+			const uint32_t sampleAge = static_cast<uint32_t>((std::min)(
+				interpolatedAge,
+				static_cast<uint64_t>(maximumBreakingAge)));
+			sampleTick = state.iStateStartTick + sampleAge;
+		}
+
+		for (const WORLD_DESTRUCTION_DEBRIS_EMITTER& emitter :
+			profile->Emitters)
+		{
+			WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE transitionEmitter{};
+			transitionEmitter.sourceRuntimePlacementId =
+				emitter.iSourceRuntimePlacementId;
+			transitionEmitter.suppressionAliasPlacementIds =
+				emitter.SuppressionAliasPlacementIds;
+			transitionEmitter.direction = emitter.vDirection;
+			transitionEmitter.speedMetersPerSecond =
+				emitter.fSpeedMetersPerSecond;
+			transitionEmitter.gravityScale = emitter.fGravityScale;
+			transitionEmitter.suppressSource = false;
+			std::vector<uint64_t> emitterPlacements = {
+				emitter.iSourceRuntimePlacementId
+			};
+			emitterPlacements.insert(emitterPlacements.end(),
+				emitter.SuppressionAliasPlacementIds.begin(),
+				emitter.SuppressionAliasPlacementIds.end());
+			for (const uint64_t placementId : emitterPlacements)
+			{
+				if (!stagedPlacementIds.emplace(placementId).second)
+				{
+					outError = "Ground transition placement is duplicated";
+					return false;
+				}
+				DEPLOY_SURFACE_PRESENTATION_PACKET packet{};
+				if (!m_pDeployRuntime->Get_SurfacePresentation(
+					placementId, packet))
+				{
+					outError = "Ground transition placement is unavailable: " +
+						std::to_string(placementId);
+					return false;
+				}
+				WORLD_DESTRUCTION_SOURCE_TRANSITION_SAMPLE sample{};
+				if (!Evaluate_GroundTransition(
+					state, sampleTick, fixedTickHz, transitionEmitter,
+					placementId, sample, outError))
+				{
+					return false;
+				}
+				packet.fTransitionMultiplier = sample.emissiveMultiplier;
+				packet.vRootOffset = sample.rootOffset;
+				packet.vRootRotationOffset = sample.rootRotationOffset;
+				packet.fOpacity = sample.opacity;
+				updates.emplace_back(placementId, packet);
+			}
+		}
+	}
+	for (const uint64_t previousPlacementId :
+		m_SourceTransitionPlacementIds)
+	{
+		if (stagedPlacementIds.contains(previousPlacementId))
+			continue;
+		DEPLOY_SURFACE_PRESENTATION_PACKET packet{};
+		if (!m_pDeployRuntime->Get_SurfacePresentation(
+			previousPlacementId, packet))
+		{
+			outError = "Ground transition lost a previously sampled placement: " +
+				std::to_string(previousPlacementId);
+			return false;
+		}
+		packet.fTransitionMultiplier = 1.f;
+		packet.vRootOffset = {};
+		packet.vRootRotationOffset = float4_t(0.f, 0.f, 0.f, 1.f);
+		packet.fOpacity = 1.f;
+		updates.emplace_back(previousPlacementId, packet);
+	}
+
+	if (updates.empty() ||
+		!m_pDeployRuntime->Set_SurfacePresentations(updates))
+	{
+		outError = updates.empty() ?
+			"Ground transition projection produced no placement" :
+			m_pDeployRuntime->Get_Status();
+		return false;
+	}
+	m_SourceTransitionPlacementIds = std::move(stagedPlacementIds);
+	m_iTransitionServerTickAnchor = stagedAnchor;
+	m_fTransitionInterpolationSeconds = stagedInterpolation;
+	m_Status = "World destruction source transition sampled at Server tick " +
+		std::to_string(serverTick);
+	return true;
+}
+
+bool_t Client::CWorldDestructionDebrisPresentationRuntime::
 Post_Physics_Update(const f32_t deltaSeconds, std::string& outError)
 {
 	outError.clear();
@@ -695,9 +1000,63 @@ Release_Emitter(EMITTER_RUNTIME& emitter)
 	emitter.source.reset();
 }
 
+bool_t Client::CWorldDestructionDebrisPresentationRuntime::
+Reset_SourceTransitions(std::string& outError)
+{
+	outError.clear();
+	if (m_SourceTransitionPlacementIds.empty())
+	{
+		m_iTransitionServerTickAnchor = 0u;
+		m_fTransitionInterpolationSeconds = 0.f;
+		return true;
+	}
+	if (!Is_Initialized())
+	{
+		outError = "Ground transition reset has no Deploy runtime";
+		return false;
+	}
+
+	std::vector<CDeployPropRuntime::DEPLOY_SURFACE_PRESENTATION_UPDATE>
+		updates;
+	updates.reserve(m_SourceTransitionPlacementIds.size());
+	for (const uint64_t placementId : m_SourceTransitionPlacementIds)
+	{
+		DEPLOY_SURFACE_PRESENTATION_PACKET packet{};
+		if (!m_pDeployRuntime->Get_SurfacePresentation(placementId, packet))
+		{
+			outError = "Ground transition reset lost placement " +
+				std::to_string(placementId);
+			return false;
+		}
+		packet.fTransitionMultiplier = 1.f;
+		packet.vRootOffset = {};
+		packet.vRootRotationOffset = float4_t(0.f, 0.f, 0.f, 1.f);
+		packet.fOpacity = 1.f;
+		updates.emplace_back(placementId, packet);
+	}
+	if (!m_pDeployRuntime->Set_SurfacePresentations(updates))
+	{
+		outError = m_pDeployRuntime->Get_Status();
+		return false;
+	}
+	m_SourceTransitionPlacementIds.clear();
+	m_iTransitionServerTickAnchor = 0u;
+	m_fTransitionInterpolationSeconds = 0.f;
+	return true;
+}
+
 void Client::CWorldDestructionDebrisPresentationRuntime::Clear()
 {
 	Reset_Presentation();
+	/* Level teardown cannot retain PhysX actors even if the cosmetic packet
+	   reset above failed because the Deploy layer itself is about to go away. */
+	for (EMITTER_RUNTIME& emitter : m_Emitters)
+		Release_Emitter(emitter);
+	m_Emitters.clear();
+	m_AcceptedCueKeys.clear();
+	m_SourceTransitionPlacementIds.clear();
+	m_iTransitionServerTickAnchor = 0u;
+	m_fTransitionInterpolationSeconds = 0.f;
 	m_pDeployRuntime = nullptr;
 	m_LevelId = ETOUI(LEVEL::END);
 	m_Device.Reset();
@@ -705,8 +1064,15 @@ void Client::CWorldDestructionDebrisPresentationRuntime::Clear()
 	m_Status = "World destruction debris is not initialized";
 }
 
-void Client::CWorldDestructionDebrisPresentationRuntime::Reset_Presentation()
+bool_t Client::CWorldDestructionDebrisPresentationRuntime::Reset_Presentation()
 {
+	std::string transitionError;
+	if (!Reset_SourceTransitions(transitionError))
+	{
+		m_Status = "World destruction source transition reset failed: " +
+			transitionError;
+		return false;
+	}
 	for (EMITTER_RUNTIME& emitter : m_Emitters)
 		Release_Emitter(emitter);
 	m_Emitters.clear();
@@ -714,6 +1080,7 @@ void Client::CWorldDestructionDebrisPresentationRuntime::Reset_Presentation()
 	m_Status = Is_Initialized() ?
 		"World destruction debris presentation was reset" :
 		"World destruction debris is not initialized";
+	return true;
 }
 
 uint32_t Client::CWorldDestructionDebrisPresentationRuntime::

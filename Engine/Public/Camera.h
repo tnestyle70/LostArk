@@ -7,6 +7,14 @@ NS_BEGIN(Engine)
 class ENGINE_DLL CCamera abstract : public CGameObject
 {
 public:
+	enum class PRESENTATION_PRIORITY : uint32_t
+	{
+		DEFAULT = 0u,
+		AUTHORING_PREVIEW = 10u,
+		REFERENCE_AUDITION = 20u,
+		SERVER_CINEMATIC = 100u
+	};
+
 	typedef struct tagCameraDesc : public CGameObject::GAMEOBJECT_DESC
 	{
 		float3_t	vEye, vAt;
@@ -27,7 +35,9 @@ public:
 	virtual HRESULT Render() override;
 
 public:
-	bool_t Begin_PresentationOverride(uint64_t iOwnerId);
+	bool_t Begin_PresentationOverride(
+		uint64_t iOwnerId,
+		PRESENTATION_PRIORITY ePriority = PRESENTATION_PRIORITY::DEFAULT);
 	bool_t Apply_PresentationPose(
 		uint64_t iOwnerId,
 		const float3_t& vEye,
@@ -38,6 +48,11 @@ public:
 	{
 		return m_bPresentationOverrideActive;
 	}
+	bool_t Is_PresentationOverrideOwnedBy(uint64_t iOwnerId) const
+	{
+		return m_bPresentationOverrideActive &&
+			0u != iOwnerId && m_iPresentationOverrideOwnerId == iOwnerId;
+	}
 
 protected:
 	f32_t				m_fFovy = {}, m_fAspect = {}, m_fNear = {}, m_fFar = {};
@@ -47,6 +62,8 @@ protected:
 	f32_t				m_fPresentationSavedFovy = 60.f;
 	f32_t				m_fPresentationAppliedFovy = 60.f;
 	uint64_t			m_iPresentationOverrideOwnerId = 0u;
+	PRESENTATION_PRIORITY m_ePresentationOverridePriority =
+		PRESENTATION_PRIORITY::DEFAULT;
 	
 protected:
 	void Update_PipeLine();

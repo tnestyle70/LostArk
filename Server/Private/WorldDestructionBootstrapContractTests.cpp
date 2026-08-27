@@ -130,7 +130,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 	require(
 		105u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
 		105u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
-		127u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
+		157u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
 		143u == publishedMemberCount &&
 		30u == publishedOuterGroupCount &&
 		60u == publishedOuterMemberCount &&
@@ -217,15 +217,15 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 	channel at all. */
 	{
 		const WORLD_DESTRUCTION_ACTION_TUPLE floorStageAAction{
-			"VALTAN_ARENA_BREAK_84",
+			"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
 			"IMPACT",
-			"valtan.mechanic.arena-floor-84.impact",
-			1u };
+			"valtan.mechanic.terrain-destruction-3.impact",
+			3u };
 		const WORLD_DESTRUCTION_ACTION_TUPLE floorStageBAction{
-			"VALTAN_ARENA_BREAK_33",
-			"LANDING",
-			"valtan.mechanic.arena-break-33.landing",
-			1u };
+			"VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+			"IMPACT",
+			"valtan.mechanic.terrain-destruction-9.impact",
+			3u };
 		const auto reachesOnly = [](
 			const WORLD_DESTRUCTION_TRANSACTION& transaction,
 			const char* prefix) -> bool

@@ -25,6 +25,8 @@ namespace LostArk::Server
 		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
 		VALTAN_AUDITION,
+		VALTAN_PATTERN_FLOW_START,
+		VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
 		DEBUG_GIVE_ITEM,
 		USE_ITEM,
 		DESPAWN_ALL_WORLD_ENTITIES,
@@ -57,6 +59,10 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;
 
 		LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST ValtanAudition;
+		LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START
+			ValtanPatternFlowStart;
+		LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT
+			ValtanPatternFlowStopAfterCurrent;
 
 		LostArk::Shared::C2S_DEBUG_GIVE_ITEM DebugGiveItem;
 		LostArk::Shared::C2S_USE_ITEM UseItem;

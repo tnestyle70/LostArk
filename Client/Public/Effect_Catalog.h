@@ -453,6 +453,50 @@ private:
 	std::string m_strPreviousCatalogStatus;
 };
 
+/* Debug authoring registration is the insertion counterpart to replacement.
+   Stage reloads the canonical EffectCatalog source through the ordinary
+   catalog parser and proves that it differs by exactly one direct-authored
+   row. Commit inserts that immutable source/document at the current runtime
+   revision. Restore is valid only while those exact inserted pointers remain
+   current, which lets a failed current-session GPU prewarm roll back without
+   disturbing unrelated Product Effects. */
+class EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION final
+{
+public:
+	const std::string& Get_EffectAssetId() const
+	{
+		return m_strEffectAssetId;
+	}
+	uint64_t Get_RuntimeRevision() const
+	{
+		return m_iRuntimeRevision;
+	}
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& Get_DocumentShared() const
+	{
+		return m_pDocument;
+	}
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		Get_VisualProjection() const
+	{
+		return m_pVisualProjection;
+	}
+
+private:
+	friend class CEffectCatalog;
+	EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION() = default;
+
+private:
+	std::string m_strEffectAssetId;
+	uint64_t m_iRuntimeRevision = 0u;
+	uint32_t m_iStagingThreadId = 0u;
+	std::filesystem::path m_ExpectedAuthoredSourcePath;
+	std::string m_strExpectedSourceCatalogRawBytes;
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> m_pDocument;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		m_pVisualProjection;
+	std::string m_strPreviousCatalogStatus;
+};
+
 class CEffectCatalog final
 {
 public:
@@ -474,6 +518,23 @@ public:
 		std::string& strOutStatus);
 	static bool_t Restore_DebugDirectAuthoredReplacement(
 		const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT>&
+			pCandidate,
+		std::string& strOutStatus);
+	/* Debug/main-thread only. The source Effect and catalog row must already
+	   exist on disk. Stage proves the ordinary source catalog is the currently
+	   loaded catalog plus exactly this one row; it does not mutate runtime state. */
+	static bool_t Stage_DebugDirectAuthoredRegistration(
+		const std::string& strEffectAssetId,
+		const std::filesystem::path& AuthoredPath,
+		std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION>&
+			OutCandidate,
+		std::string& strOutStatus);
+	static bool_t Commit_DebugDirectAuthoredRegistration(
+		const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION>&
+			pCandidate,
+		std::string& strOutStatus);
+	static bool_t Restore_DebugDirectAuthoredRegistration(
+		const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION>&
 			pCandidate,
 		std::string& strOutStatus);
     static std::shared_ptr<const EFFECT_DOCUMENT_DESC> Find(
@@ -511,6 +572,13 @@ public:
 			OutPreparation,
 		std::string& strOutError);
     static bool_t Contains(const std::string& strEffectAssetId);
+	/* Destructive authoring preflight only. Re-parses the canonical source
+	   catalog without mutating the loaded runtime catalog and fails closed when
+	   any source row/path is invalid. */
+	static bool_t Try_ContainsSourceRegistrationFresh(
+		const std::string& strEffectAssetId,
+		bool_t& bOutContains,
+		std::string& strOutStatus);
 	static bool_t Is_DirectAuthoredDocument(
 		const std::string& strEffectAssetId);
 	static bool_t Contains_RuntimeAuthority(

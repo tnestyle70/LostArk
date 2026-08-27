@@ -9,6 +9,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+. (Join-Path $PSScriptRoot 'Publish-FileTransaction.ps1')
 $gameplayPublisher = Join-Path $PSScriptRoot 'Publish-GameplayBalance.ps1'
 $worldPublisher = Join-Path $repoRoot 'Tools\WorldPipeline\Publish-WorldGameplay.ps1'
 $itemPublisher = Join-Path $PSScriptRoot 'Publish-ItemCatalog.ps1'
@@ -36,6 +37,7 @@ $stagedGameplayRoot = Join-Path $stagingRoot 'Gameplay'
 $stagedWorldRoot = Join-Path $stagingRoot 'World'
 $stagedItemsRoot = Join-Path $stagingRoot 'Items'
 $promotions = [Collections.Generic.List[object]]::new()
+$gameplayPublishMutex = $null
 
 try {
     [IO.Directory]::CreateDirectory($stagedGameplayRoot) | Out-Null
@@ -68,12 +70,25 @@ try {
     }
 
     $promotedCount = 0
+	$gameplayDestination = [string]$promotions[0].Destination
+	$gameplayMutexName = Get-PublishDestinationMutexName $gameplayDestination
+	$gameplayPublishMutex = Enter-PublishDestinationMutex $gameplayMutexName
     foreach ($promotion in $promotions) {
         if ([IO.File]::Exists($promotion.Destination)) {
-            [IO.File]::Move($promotion.Destination, $promotion.Rollback)
+			Invoke-PublishFileOperation {
+				[IO.File]::Replace(
+					$promotion.Staged,
+					$promotion.Destination,
+					$promotion.Rollback,
+					$true)
+			} "Balance runtime replacement: $($promotion.Destination)"
             $promotion.HadPrevious = $true
         }
-        [IO.File]::Move($promotion.Staged, $promotion.Destination)
+		else {
+			Invoke-PublishFileOperation {
+				[IO.File]::Move($promotion.Staged, $promotion.Destination)
+			} "Balance runtime promotion: $($promotion.Destination)"
+		}
         $promotion.Promoted = $true
         $promotedCount++
         if ($FailureAfterPromote -eq $promotedCount) {
@@ -116,6 +131,8 @@ catch {
     throw $publishFailure
 }
 finally {
+	Close-PublishDestinationMutex $gameplayPublishMutex `
+		'Balance runtime gameplay publisher mutex'
     if ([IO.Directory]::Exists($stagingRoot)) {
         Remove-Item -LiteralPath $stagingRoot -Recurse -Force
     }

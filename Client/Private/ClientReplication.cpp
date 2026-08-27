@@ -25,41 +25,6 @@
 
 namespace
 {
-	constexpr std::string_view VALTAN_CATCH_BREATH_PATTERN_ID =
-		"VALTAN_SEQUENCE_CATCH_BREATH";
-	constexpr std::string_view VALTAN_CATCH_BREATH_STEP_01_ACTION_ID =
-		"valtan.sequence.catch-breath.step-01";
-	constexpr std::string_view VALTAN_CATCH_BREATH_STEP_02_ACTION_ID =
-		"valtan.sequence.catch-breath.step-02";
-	constexpr std::string_view VALTAN_CATCH_BREATH_STEP_03_ACTION_ID =
-		"valtan.sequence.catch-breath.step-03";
-	constexpr std::string_view VALTAN_CATCH_BREATH_STEP_04_ACTION_ID =
-		"valtan.sequence.catch-breath.step-04";
-	constexpr char VALTAN_LEFT_HAND_BONE_NAME[] = "bip001-l-hand";
-
-	bool Is_ValtanGrabAttachmentAction(const std::string_view actionId)
-	{
-		return actionId == VALTAN_CATCH_BREATH_STEP_01_ACTION_ID ||
-			actionId == VALTAN_CATCH_BREATH_STEP_02_ACTION_ID ||
-			actionId == VALTAN_CATCH_BREATH_STEP_03_ACTION_ID ||
-			actionId == VALTAN_CATCH_BREATH_STEP_04_ACTION_ID;
-	}
-
-	bool Is_FiniteMatrix(const matrix_t& value)
-	{
-		float4x4_t stored{};
-		DirectX::XMStoreFloat4x4(&stored, value);
-		for (std::size_t row = 0u; row < 4u; ++row)
-		{
-			for (std::size_t column = 0u; column < 4u; ++column)
-			{
-				if (!std::isfinite(stored.m[row][column]))
-					return false;
-			}
-		}
-		return true;
-	}
-
 	Client::NET_PLAYER_RECORD Make_Record(
 		const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned)
 	{
@@ -112,6 +77,21 @@ namespace
 			DirectX::XMMatrixTranslation(
 				positionX, positionY, positionZ));
 		return root;
+	}
+
+	constexpr const char* VALTAN_LEFT_HAND_BONE = "bip001-l-hand";
+
+	bool Is_FiniteMatrix(const float4x4_t& matrix)
+	{
+		for (std::size_t row = 0u; row < 4u; ++row)
+		{
+			for (std::size_t column = 0u; column < 4u; ++column)
+			{
+				if (!std::isfinite(matrix.m[row][column]))
+					return false;
+			}
+		}
+		return true;
 	}
 }
 
@@ -259,7 +239,7 @@ bool Client::CClientReplication::Update()
 		}
 	}
 
-	Update_ValtanGrabAttachment();
+	Update_PlayerAttachmentPresentations();
 	return allSucceeded;
 }
 
@@ -373,172 +353,6 @@ void Client::CClientReplication::Reset()
 	Reset_World();
 	m_wasConnected = false;
 	m_hasPendingConnectionLoss = false;
-}
-
-void Client::CClientReplication::Update_ValtanGrabAttachment()
-{
-	const VALTAN_PRESENTATION_STATE& state = m_ValtanPresentationState;
-	if (!state.isValid ||
-		state.strPatternId != VALTAN_CATCH_BREATH_PATTERN_ID ||
-		!Is_ValtanGrabAttachmentAction(state.strActionId) ||
-		state.iPatternTargetNetEntityId ==
-			LostArk::Shared::INVALID_NET_ENTITY_ID)
-	{
-		Clear_ValtanGrabAttachment();
-		return;
-	}
-	const auto bossPresentation =
-		m_WorldEntities.find(state.iNetEntityId);
-	OBJECT_HANDLE targetHandle{};
-	if (bossPresentation == m_WorldEntities.end() ||
-		LostArk::Shared::WORLD_ENTITY_KIND::BOSS !=
-			bossPresentation->second.eKind ||
-		!m_Registry.Find_Handle(
-			state.iPatternTargetNetEntityId, targetHandle))
-	{
-		Clear_ValtanGrabAttachment();
-		Report_ValtanGrabAttachmentFailure(
-			state.iPatternSequence,
-			"boss or target presentation is unavailable");
-		return;
-	}
-
-	const std::shared_ptr<CValtan> valtan =
-		bossPresentation->second.pValtan.lock();
-	const std::shared_ptr<CCharacter> targetCharacter =
-		m_Registry.Resolve(targetHandle);
-	if (nullptr == valtan || nullptr == targetCharacter)
-	{
-		Clear_ValtanGrabAttachment();
-		Report_ValtanGrabAttachmentFailure(
-			state.iPatternSequence,
-			"boss or target object expired");
-		return;
-	}
-	LostArk::Shared::PLAYER_ACTION_STATE targetAction =
-		LostArk::Shared::PLAYER_ACTION_STATE::END;
-	if (!targetCharacter->Try_Get_NetworkActionState(targetAction) ||
-		LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != targetAction)
-	{
-		/* STEP_01 before its 1.400s grab notify and STEP_04 after its 0.650s
-		   shot notify are normal detached windows, not presentation failures. */
-		Clear_ValtanGrabAttachment();
-		return;
-	}
-
-	const std::shared_ptr<Engine::CModel> valtanModel =
-		valtan->Get_BodyModel();
-	const std::shared_ptr<Engine::CTransform> targetTransform =
-		targetCharacter->Get_Transform();
-	float4x4_t valtanRoot{};
-	if (nullptr == valtanModel || nullptr == targetTransform ||
-		!valtanModel->Has_Bone(VALTAN_LEFT_HAND_BONE_NAME) ||
-		!valtan->Try_Get_PresentationRootMatrix(&valtanRoot))
-	{
-		Clear_ValtanGrabAttachment();
-		Report_ValtanGrabAttachmentFailure(
-			state.iPatternSequence,
-			"Valtan left-hand bone or presentation root is unavailable");
-		return;
-	}
-
-	const matrix_t leftHandWorld =
-		valtanModel->Get_BoneMatrix(VALTAN_LEFT_HAND_BONE_NAME) *
-		DirectX::XMLoadFloat4x4(&valtanRoot);
-	if (!Is_FiniteMatrix(leftHandWorld))
-	{
-		Clear_ValtanGrabAttachment();
-		Report_ValtanGrabAttachmentFailure(
-			state.iPatternSequence,
-			"Valtan left-hand world matrix is not finite");
-		return;
-	}
-
-	const std::shared_ptr<CCharacter> attachedCharacter =
-		m_ValtanGrabAttachment.pCharacter.lock();
-	const bool_t needsOffsetCapture =
-		!m_ValtanGrabAttachment.isActive ||
-		m_ValtanGrabAttachment.iPatternSequence != state.iPatternSequence ||
-		m_ValtanGrabAttachment.iTargetNetEntityId !=
-			state.iPatternTargetNetEntityId ||
-		attachedCharacter.get() != targetCharacter.get();
-	if (needsOffsetCapture)
-	{
-		vector_t determinant{};
-		const matrix_t inverseHandWorld =
-			DirectX::XMMatrixInverse(&determinant, leftHandWorld);
-		if (!std::isfinite(DirectX::XMVectorGetX(determinant)) ||
-			std::abs(DirectX::XMVectorGetX(determinant)) <= 1.0e-6f ||
-			!Is_FiniteMatrix(inverseHandWorld))
-		{
-			Clear_ValtanGrabAttachment();
-			Report_ValtanGrabAttachmentFailure(
-				state.iPatternSequence,
-				"Valtan left-hand matrix is not invertible");
-			return;
-		}
-
-		matrix_t offset =
-			DirectX::XMLoadFloat4x4(targetTransform->Get_WorldMatrixPtr()) *
-			inverseHandWorld;
-		/* Keep the player's relative rotation and scale, but replace the old
-		   world-space distance with the hand-local grip origin so an arbitrary
-		   selected player actually moves into Valtan's hand. */
-		offset.r[3] = DirectX::XMVectorSet(0.f, 0.f, 0.f, 1.f);
-		if (!Is_FiniteMatrix(offset))
-		{
-			Clear_ValtanGrabAttachment();
-			Report_ValtanGrabAttachmentFailure(
-				state.iPatternSequence,
-				"captured player grip offset is not finite");
-			return;
-		}
-
-		m_ValtanGrabAttachment.isActive = true;
-		m_ValtanGrabAttachment.iTargetNetEntityId =
-			state.iPatternTargetNetEntityId;
-		m_ValtanGrabAttachment.iPatternSequence = state.iPatternSequence;
-		m_ValtanGrabAttachment.pCharacter = targetCharacter;
-		DirectX::XMStoreFloat4x4(
-			&m_ValtanGrabAttachment.Offset, offset);
-	}
-
-	const matrix_t attachedWorld =
-		DirectX::XMLoadFloat4x4(&m_ValtanGrabAttachment.Offset) *
-		leftHandWorld;
-	if (!Is_FiniteMatrix(attachedWorld))
-	{
-		Clear_ValtanGrabAttachment();
-		Report_ValtanGrabAttachmentFailure(
-			state.iPatternSequence,
-			"attached player world matrix is not finite");
-		return;
-	}
-
-	targetTransform->Set_State(Engine::STATE::RIGHT, attachedWorld.r[0]);
-	targetTransform->Set_State(Engine::STATE::UP, attachedWorld.r[1]);
-	targetTransform->Set_State(Engine::STATE::LOOK, attachedWorld.r[2]);
-	targetTransform->Set_State(Engine::STATE::POSITION, attachedWorld.r[3]);
-}
-
-void Client::CClientReplication::Clear_ValtanGrabAttachment()
-{
-	m_ValtanGrabAttachment = {};
-}
-
-void Client::CClientReplication::Report_ValtanGrabAttachmentFailure(
-	const std::uint32_t patternSequence,
-	const std::string_view reason)
-{
-	if (0u == patternSequence ||
-		m_iValtanGrabAttachmentFailurePatternSequence == patternSequence)
-	{
-		return;
-	}
-	m_iValtanGrabAttachmentFailurePatternSequence = patternSequence;
-	OutputDebugStringA((
-		"Valtan catch-breath grab attachment was isolated: " +
-		std::string(reason) + "\n").c_str());
 }
 
 bool Client::CClientReplication::Has_WorldEntity(
@@ -913,6 +727,7 @@ bool Client::CClientReplication::Apply_Despawn(
 
 	if (!m_Registry.Unregister(despawned.iNetEntityId))
 		return false;
+	m_PlayerAttachments.erase(despawned.iNetEntityId);
 
 	if (m_LocalCharacterHandle.iSlotIndex == handle.iSlotIndex &&
 		m_LocalCharacterHandle.iGeneration == handle.iGeneration)
@@ -1416,6 +1231,134 @@ void Client::CClientReplication::Stop_CombatObjectPresentation(
 	CEffectPresentationService::Stop_WorldRoot(effectHandle);
 }
 
+void Client::CClientReplication::Stage_PlayerAttachmentPresentation(
+	const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_ACTION_STATE::GRABBED != snapshot.eAction)
+	{
+		m_PlayerAttachments.erase(snapshot.iNetEntityId);
+		return;
+	}
+
+	PLAYER_ATTACHMENT_PRESENTATION& presentation =
+		m_PlayerAttachments[snapshot.iNetEntityId];
+	if (presentation.iOwnerNetEntityId !=
+			snapshot.iAttachmentOwnerNetEntityId ||
+		presentation.eSlot != snapshot.eAttachmentSlot)
+	{
+		presentation = {};
+		presentation.iOwnerNetEntityId =
+			snapshot.iAttachmentOwnerNetEntityId;
+		presentation.eSlot = snapshot.eAttachmentSlot;
+		/* The replicated offset is expressed in the boss gameplay-root frame and
+		cannot be composed with a presentation bone. Capture the hand-local matrix
+		once both actual presentation transforms are available below. */
+		presentation.bHasLocalOffset = false;
+	}
+}
+
+void Client::CClientReplication::Update_PlayerAttachmentPresentations()
+{
+	using namespace LostArk::Shared;
+	for (auto attachment = m_PlayerAttachments.begin();
+		attachment != m_PlayerAttachments.end();)
+	{
+		OBJECT_HANDLE playerHandle{};
+		if (!m_Registry.Find_Handle(attachment->first, playerHandle))
+		{
+			attachment = m_PlayerAttachments.erase(attachment);
+			continue;
+		}
+		const std::shared_ptr<CCharacter> character =
+			m_Registry.Resolve(playerHandle);
+		const auto owner =
+			m_WorldEntities.find(attachment->second.iOwnerNetEntityId);
+		if (nullptr == character || nullptr == character->Get_Transform() ||
+			m_WorldEntities.end() == owner ||
+			WORLD_ENTITY_KIND::BOSS != owner->second.eKind ||
+			PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND !=
+				attachment->second.eSlot)
+		{
+			/* Apply_NetworkState already staged the Server fallback transform.
+			Keep the identity so a presentation that spawns later can attach, but
+			never apply a stale matrix while its owner is unavailable. */
+			++attachment;
+			continue;
+		}
+
+		const std::shared_ptr<CValtan> valtan = owner->second.pValtan.lock();
+		const std::shared_ptr<Engine::CModel> body =
+			nullptr == valtan ? nullptr : valtan->Get_BodyModel();
+		float4x4_t presentationRoot{};
+		if (nullptr == valtan || nullptr == body ||
+			!body->Has_Bone(VALTAN_LEFT_HAND_BONE) ||
+			!valtan->Try_Get_PresentationRootMatrix(&presentationRoot) ||
+			!Is_FiniteMatrix(presentationRoot))
+		{
+			++attachment;
+			continue;
+		}
+
+		const matrix_t handWorld = body->Get_BoneMatrix(
+			VALTAN_LEFT_HAND_BONE) * XMLoadFloat4x4(&presentationRoot);
+		float4x4_t handWorldStored{};
+		XMStoreFloat4x4(&handWorldStored, handWorld);
+		if (!Is_FiniteMatrix(handWorldStored))
+		{
+			++attachment;
+			continue;
+		}
+		if (!attachment->second.bHasLocalOffset)
+		{
+			const float determinant = XMVectorGetX(
+				XMMatrixDeterminant(handWorld));
+			const float4x4_t& playerWorldStored =
+				*character->Get_Transform()->Get_WorldMatrixPtr();
+			if (!std::isfinite(determinant) ||
+				std::abs(determinant) <= 1.e-6f ||
+				!Is_FiniteMatrix(playerWorldStored))
+			{
+				++attachment;
+				continue;
+			}
+			const matrix_t handLocal =
+				XMLoadFloat4x4(&playerWorldStored) *
+				XMMatrixInverse(nullptr, handWorld);
+			XMStoreFloat4x4(
+				&attachment->second.LocalOffset, handLocal);
+			attachment->second.bHasLocalOffset =
+				Is_FiniteMatrix(attachment->second.LocalOffset);
+			if (!attachment->second.bHasLocalOffset)
+			{
+				++attachment;
+				continue;
+			}
+		}
+
+		/* One captured hand-local offset per player keeps a multi-capture stable
+		while the animation advances the actual left-hand bone. */
+		const matrix_t attachedWorld =
+			XMLoadFloat4x4(&attachment->second.LocalOffset) * handWorld;
+		float4x4_t attachedStored{};
+		XMStoreFloat4x4(&attachedStored, attachedWorld);
+		if (!Is_FiniteMatrix(attachedStored))
+		{
+			++attachment;
+			continue;
+		}
+
+		const std::shared_ptr<Engine::CTransform> transform =
+			character->Get_Transform();
+		transform->Set_State(STATE::RIGHT, attachedWorld.r[0]);
+		transform->Set_State(STATE::UP, attachedWorld.r[1]);
+		transform->Set_State(STATE::LOOK, attachedWorld.r[2]);
+		transform->Set_State(
+			STATE::POSITION, XMVectorSetW(attachedWorld.r[3], 1.f));
+		++attachment;
+	}
+}
+
 bool Client::CClientReplication::Apply_WorldSnapshot(
 	const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot)
 {
@@ -1521,6 +1464,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		{
 			allSucceeded = false;
 		}
+		Stage_PlayerAttachmentPresentation(player);
 		character->Apply_NetworkStance(player.eStance);
 		if (isLocallyControlled)
 		{
@@ -1742,6 +1686,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			{
 				m_ValtanPresentationState = std::move(latest);
 				CCombatHUDViewModel::Get().Apply_Boss(
+					snapshot.iServerTick,
 					iter->second.strArchetypeId,
 					entity);
 			}
@@ -1955,13 +1900,12 @@ void Client::CClientReplication::Reset_World()
 	}
 	m_WorldEntities.clear();
 	m_Registry.Reset();
+	m_PlayerAttachments.clear();
 	m_LocalCharacterHandle = {};
 	Clear_DeferredLocalCharacterClassReplacement();
 	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 	m_iLastServerTick = 0;
 	m_ValtanPresentationState = {};
-	Clear_ValtanGrabAttachment();
-	m_iValtanGrabAttachmentFailurePatternSequence = 0u;
 	m_WorldDestructionProjectionRuntime.Reset();
 	m_WorldDestructionLiveEvents.clear();
 	m_EncounterPropState = {};

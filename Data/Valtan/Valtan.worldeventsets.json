@@ -278,6 +278,70 @@
           "enabled": true
         }
       ]
+    },
+    {
+      "worldEventSetId": "worldeventset.valtan.terrain-destruction-3.floor84",
+      "members": [
+        {
+          "memberId": "worldeventmember.valtan.terrain3.floor84.rail",
+          "bindingId": "binding.valtan.floor84.rail.7000000000000000005",
+          "groupId": "destroyable.group.valtan.floor84.rail.7000000000000000005",
+          "mutationId": "mutation.valtan.floor84.rail.7000000000000000005.collapse",
+          "offsetMs": 0,
+          "receiverCollisionId": "",
+          "enabled": true
+        },
+        {
+          "memberId": "worldeventmember.valtan.terrain3.floor84.brick.01",
+          "bindingId": "binding.valtan.floor84.brick.7000000000000000006",
+          "groupId": "destroyable.group.valtan.floor84.brick.7000000000000000006",
+          "mutationId": "mutation.valtan.floor84.brick.7000000000000000006.collapse",
+          "offsetMs": 0,
+          "receiverCollisionId": "",
+          "enabled": true
+        },
+        {
+          "memberId": "worldeventmember.valtan.terrain3.floor84.brick.02",
+          "bindingId": "binding.valtan.floor84.brick.7000000000000000007",
+          "groupId": "destroyable.group.valtan.floor84.brick.7000000000000000007",
+          "mutationId": "mutation.valtan.floor84.brick.7000000000000000007.collapse",
+          "offsetMs": 0,
+          "receiverCollisionId": "",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "worldEventSetId": "worldeventset.valtan.terrain-destruction-9.floor30",
+      "members": [
+        {
+          "memberId": "worldeventmember.valtan.terrain9.floor30.rail",
+          "bindingId": "binding.valtan.floor30.rail.7000000000000000001",
+          "groupId": "destroyable.group.valtan.floor30.rail.7000000000000000001",
+          "mutationId": "mutation.valtan.floor30.rail.7000000000000000001.collapse",
+          "offsetMs": 0,
+          "receiverCollisionId": "",
+          "enabled": true
+        },
+        {
+          "memberId": "worldeventmember.valtan.terrain9.floor30.brick.01",
+          "bindingId": "binding.valtan.floor30.brick.7000000000000000002",
+          "groupId": "destroyable.group.valtan.floor30.brick.7000000000000000002",
+          "mutationId": "mutation.valtan.floor30.brick.7000000000000000002.collapse",
+          "offsetMs": 0,
+          "receiverCollisionId": "",
+          "enabled": true
+        },
+        {
+          "memberId": "worldeventmember.valtan.terrain9.floor30.brick.02",
+          "bindingId": "binding.valtan.floor30.brick.7000000000000000003",
+          "groupId": "destroyable.group.valtan.floor30.brick.7000000000000000003",
+          "mutationId": "mutation.valtan.floor30.brick.7000000000000000003.collapse",
+          "offsetMs": 0,
+          "receiverCollisionId": "",
+          "enabled": true
+        }
+      ]
     }
   ]
 }

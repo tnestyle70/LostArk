@@ -243,6 +243,86 @@ bool_t CDeployPropRuntime::Set_States(
 	return true;
 }
 
+bool_t CDeployPropRuntime::Set_SurfacePresentations(
+	const std::vector<DEPLOY_SURFACE_PRESENTATION_UPDATE>& updates)
+{
+	if (updates.empty())
+	{
+		m_Status = "DeployProp surface presentation transaction is empty";
+		return false;
+	}
+
+	struct STAGED_PRESENTATION final
+	{
+		shared_ptr<CDeployPropObject> object;
+		DEPLOY_SURFACE_PRESENTATION_PACKET previous{};
+		DEPLOY_SURFACE_PRESENTATION_PACKET target{};
+	};
+	std::vector<STAGED_PRESENTATION> staged;
+	staged.reserve(updates.size());
+	std::unordered_map<uint64_t, bool_t> uniqueIds;
+	uniqueIds.reserve(updates.size());
+	for (const DEPLOY_SURFACE_PRESENTATION_UPDATE& update : updates)
+	{
+		const uint64_t placementId = update.first;
+		const auto iter = m_EntryIndex.find(placementId);
+		if (0u == placementId || !uniqueIds.emplace(placementId, true).second ||
+			iter == m_EntryIndex.end() || iter->second >= m_Entries.size() ||
+			nullptr == m_Entries[iter->second].object)
+		{
+			m_Status =
+				"DeployProp surface presentation transaction has an unknown member";
+			return false;
+		}
+		const shared_ptr<CDeployPropObject>& object =
+			m_Entries[iter->second].object;
+		staged.push_back({
+			object,
+			object->Get_SurfacePresentation(),
+			update.second
+		});
+	}
+
+	for (size_t index = 0u; index < staged.size(); ++index)
+	{
+		if (staged[index].object->Apply_SurfacePresentation(
+			staged[index].target))
+		{
+			continue;
+		}
+
+		bool_t rollbackSucceeded = true;
+		for (size_t rollback = index; rollback-- > 0u;)
+		{
+			rollbackSucceeded = staged[rollback].object->
+				Apply_SurfacePresentation(staged[rollback].previous) &&
+				rollbackSucceeded;
+		}
+		m_Status = rollbackSucceeded ?
+			"DeployProp surface presentation transaction rolled back" :
+			"DeployProp surface presentation transaction rollback failed";
+		return false;
+	}
+
+	m_Status = "DeployProp surface presentation transaction committed: " +
+		std::to_string(staged.size()) + " placements";
+	return true;
+}
+
+bool_t CDeployPropRuntime::Get_SurfacePresentation(
+	const uint64_t runtimePlacementId,
+	DEPLOY_SURFACE_PRESENTATION_PACKET& outPacket) const
+{
+	const auto iter = m_EntryIndex.find(runtimePlacementId);
+	if (iter == m_EntryIndex.end() || iter->second >= m_Entries.size() ||
+		nullptr == m_Entries[iter->second].object)
+	{
+		return false;
+	}
+	outPacket = m_Entries[iter->second].object->Get_SurfacePresentation();
+	return true;
+}
+
 bool_t CDeployPropRuntime::Set_State_All(const DEPLOY_PROP_STATE state)
 {
 	std::vector<DEPLOY_PROP_STATE> previousStates;

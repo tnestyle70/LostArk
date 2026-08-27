@@ -2026,9 +2026,12 @@ namespace
 
 		constexpr std::size_t snapshotHeaderBytes =
 			4 + 2 + 2 + 2 + 1 + 1 + 1 + 4 + 4;
+		/* Protocol 38 adds one owner id, one typed slot, and four local-frame
+		attachment floats to every player row. */
+		constexpr std::size_t playerAttachmentBytes = 4 + 1 + (4 * 4);
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
-			1 + 1 + 1;
+			1 + 1 + 1 + playerAttachmentBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* Trailing 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
 		hasBossCombatState flag. The block after it is the boss combat
@@ -2337,6 +2340,142 @@ namespace
 				!Write_Message(knockdownWithSkillWriter, knockdownWithSkill),
 				"Reject Knockdown That Carries A Skill");
 
+			/* GRABBED is the only action allowed to carry an attachment owner and
+			typed socket. It remains a timed, skill-less, idle state so a late
+			joiner can enter the same attachment edge without inferring anything. */
+			S2C_WORLD_SNAPSHOT grabbed = source;
+			grabbed.Players[1].eLocomotionState =
+				PLAYER_LOCOMOTION_STATE::IDLE;
+			grabbed.Players[1].eAction = PLAYER_ACTION_STATE::GRABBED;
+			grabbed.Players[1].iSkillId = INVALID_SKILL_ID;
+			grabbed.Players[1].iActionStartTick = 82u;
+			grabbed.Players[1].iAttachmentOwnerNetEntityId =
+				entity.iNetEntityId;
+			grabbed.Players[1].eAttachmentSlot =
+				PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND;
+			grabbed.Players[1].fAttachmentLocalOffsetX = 1.25f;
+			grabbed.Players[1].fAttachmentLocalOffsetY = 2.5f;
+			grabbed.Players[1].fAttachmentLocalOffsetZ = -0.75f;
+			grabbed.Players[1].fAttachmentYawOffsetDegrees = 35.f;
+			grabbed.Players[1].isCombatReady = false;
+			std::vector<std::uint8_t> grabbedPayload;
+			S2C_WORLD_SNAPSHOT decodedGrabbed{};
+			bool grabbedRoundTrip =
+				Build_WorldSnapshotPayload(grabbed, grabbedPayload);
+			if (grabbedRoundTrip)
+			{
+				CPacketReader grabbedReader{ grabbedPayload };
+				grabbedRoundTrip =
+					Read_Message(grabbedReader, decodedGrabbed) &&
+					0u == grabbedReader.Get_RemainingSize();
+			}
+			testRunner.Require(
+				grabbedRoundTrip && 2u == decodedGrabbed.Players.size() &&
+				PLAYER_ACTION_STATE::GRABBED ==
+					decodedGrabbed.Players[1].eAction &&
+				entity.iNetEntityId == decodedGrabbed.Players[1].
+					iAttachmentOwnerNetEntityId &&
+				PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ==
+					decodedGrabbed.Players[1].eAttachmentSlot &&
+				1.25f == decodedGrabbed.Players[1].fAttachmentLocalOffsetX &&
+				2.5f == decodedGrabbed.Players[1].fAttachmentLocalOffsetY &&
+				-0.75f == decodedGrabbed.Players[1].fAttachmentLocalOffsetZ &&
+				35.f == decodedGrabbed.Players[1].fAttachmentYawOffsetDegrees,
+				"Grabbed Player Attachment Round Trip");
+
+			S2C_WORLD_SNAPSHOT grabbedWithSkill = grabbed;
+			grabbedWithSkill.Players[1].iSkillId = 34010;
+			CPacketWriter grabbedWithSkillWriter;
+			testRunner.Require(
+				!Write_Message(grabbedWithSkillWriter, grabbedWithSkill),
+				"Reject A Grabbed Snapshot That Carries A Skill");
+
+			S2C_WORLD_SNAPSHOT grabbedWithoutTick = grabbed;
+			grabbedWithoutTick.Players[1].iActionStartTick = 0u;
+			CPacketWriter grabbedWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(grabbedWithoutTickWriter, grabbedWithoutTick),
+				"Reject A Grabbed Snapshot Without A Start Tick");
+
+			S2C_WORLD_SNAPSHOT grabbedNonFiniteOffset = grabbed;
+			grabbedNonFiniteOffset.Players[1].fAttachmentLocalOffsetX =
+				(std::numeric_limits<float>::quiet_NaN)();
+			CPacketWriter grabbedNonFiniteOffsetWriter;
+			testRunner.Require(
+				!Write_Message(
+					grabbedNonFiniteOffsetWriter, grabbedNonFiniteOffset),
+				"Reject Grabbed Player Non-Finite Attachment Offset");
+
+			S2C_WORLD_SNAPSHOT grabbedWithoutOwner = grabbed;
+			grabbedWithoutOwner.Players[1].iAttachmentOwnerNetEntityId =
+				INVALID_NET_ENTITY_ID;
+			CPacketWriter grabbedWithoutOwnerWriter;
+			testRunner.Require(
+				!Write_Message(grabbedWithoutOwnerWriter, grabbedWithoutOwner),
+				"Reject Grabbed Player Without Attachment Owner");
+
+			S2C_WORLD_SNAPSHOT grabbedWithoutSlot = grabbed;
+			grabbedWithoutSlot.Players[1].eAttachmentSlot =
+				PLAYER_ATTACHMENT_SLOT::NONE;
+			CPacketWriter grabbedWithoutSlotWriter;
+			testRunner.Require(
+				!Write_Message(grabbedWithoutSlotWriter, grabbedWithoutSlot),
+				"Reject Grabbed Player Without Attachment Slot");
+
+			S2C_WORLD_SNAPSHOT grabbedSelfOwned = grabbed;
+			grabbedSelfOwned.Players[1].iAttachmentOwnerNetEntityId =
+				grabbedSelfOwned.Players[1].iNetEntityId;
+			CPacketWriter grabbedSelfOwnedWriter;
+			testRunner.Require(
+				!Write_Message(grabbedSelfOwnedWriter, grabbedSelfOwned),
+				"Reject Self-Owned Player Attachment");
+
+			S2C_WORLD_SNAPSHOT grabbedCombatReady = grabbed;
+			grabbedCombatReady.Players[1].isCombatReady = true;
+			CPacketWriter grabbedCombatReadyWriter;
+			testRunner.Require(
+				!Write_Message(grabbedCombatReadyWriter, grabbedCombatReady),
+				"Reject Combat-Ready Grabbed Player");
+
+			S2C_WORLD_SNAPSHOT attachmentOutsideGrab = source;
+			attachmentOutsideGrab.Players[0].iAttachmentOwnerNetEntityId =
+				entity.iNetEntityId;
+			attachmentOutsideGrab.Players[0].eAttachmentSlot =
+				PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND;
+			attachmentOutsideGrab.Players[0].fAttachmentLocalOffsetX = 1.f;
+			CPacketWriter attachmentOutsideGrabWriter;
+			testRunner.Require(
+				!Write_Message(
+					attachmentOutsideGrabWriter, attachmentOutsideGrab),
+				"Reject Attachment Fields Outside Grabbed Action");
+
+			/* Read-side admission is independent of the writer: mutate only the
+			typed slot byte in an otherwise valid one-player payload. */
+			S2C_WORLD_SNAPSHOT oneGrabbed = grabbed;
+			oneGrabbed.Players = { grabbed.Players[1] };
+			std::vector<std::uint8_t> invalidSlotPayload;
+			bool wroteInvalidSlotFixture =
+				Build_WorldSnapshotPayload(oneGrabbed, invalidSlotPayload);
+			constexpr std::size_t worldSnapshotHeaderBytes =
+				4u + 2u + 2u + 2u + 1u + 1u + 1u + 4u + 4u;
+			constexpr std::size_t playerAttachmentSlotByte =
+				worldSnapshotHeaderBytes +
+				4u + 1u + (4u * 4u) + 1u + 1u + 1u + 4u + 4u + 4u;
+			if (wroteInvalidSlotFixture &&
+				playerAttachmentSlotByte < invalidSlotPayload.size())
+			{
+				invalidSlotPayload[playerAttachmentSlotByte] =
+					static_cast<std::uint8_t>(PLAYER_ATTACHMENT_SLOT::END);
+			}
+			CPacketReader invalidSlotReader{ invalidSlotPayload };
+			S2C_WORLD_SNAPSHOT unchangedInvalidSlot{};
+			unchangedInvalidSlot.iServerTick = 999u;
+			testRunner.Require(
+				wroteInvalidSlotFixture &&
+				!Read_Message(invalidSlotReader, unchangedInvalidSlot) &&
+				999u == unchangedInvalidSlot.iServerTick,
+				"Reject Unknown Attachment Slot On Read Atomically");
+
 			/* The Esther call carries no skill id (the summon is a roster slot)
 			but must carry its start tick, same shape as FALLING/KNOCKDOWN. */
 			S2C_WORLD_SNAPSHOT estherCast = source;
@@ -2376,44 +2515,6 @@ namespace
 				!Write_Message(
 					estherCastWithoutTickWriter, estherCastWithoutTick),
 				"Reject An Esther Cast Without A Start Tick");
-
-			/* GRABBED is the stable late-join edge for a Server-owned boss
-			attachment. Like other control states it has no player skill and must
-			carry the occurrence start tick. */
-			S2C_WORLD_SNAPSHOT grabbed = source;
-			grabbed.Players[1].eAction = PLAYER_ACTION_STATE::GRABBED;
-			grabbed.Players[1].iSkillId = INVALID_SKILL_ID;
-			grabbed.Players[1].iActionStartTick = 88;
-			std::vector<std::uint8_t> grabbedPayload;
-			S2C_WORLD_SNAPSHOT decodedGrabbed{};
-			bool grabbedRoundTrip =
-				Build_WorldSnapshotPayload(grabbed, grabbedPayload);
-			if (grabbedRoundTrip)
-			{
-				CPacketReader grabbedReader{ grabbedPayload };
-				grabbedRoundTrip = Read_Message(grabbedReader, decodedGrabbed);
-			}
-			testRunner.Require(
-				grabbedRoundTrip && 2u == decodedGrabbed.Players.size() &&
-				decodedGrabbed.Players[1].eAction ==
-					PLAYER_ACTION_STATE::GRABBED &&
-				decodedGrabbed.Players[1].iSkillId == INVALID_SKILL_ID &&
-				decodedGrabbed.Players[1].iActionStartTick == 88,
-				"Grabbed Player Snapshot Round Trip");
-
-			S2C_WORLD_SNAPSHOT grabbedWithSkill = grabbed;
-			grabbedWithSkill.Players[1].iSkillId = 34010;
-			CPacketWriter grabbedWithSkillWriter;
-			testRunner.Require(
-				!Write_Message(grabbedWithSkillWriter, grabbedWithSkill),
-				"Reject A Grabbed Snapshot That Carries A Skill");
-
-			S2C_WORLD_SNAPSHOT grabbedWithoutTick = grabbed;
-			grabbedWithoutTick.Players[1].iActionStartTick = 0u;
-			CPacketWriter grabbedWithoutTickWriter;
-			testRunner.Require(
-				!Write_Message(grabbedWithoutTickWriter, grabbedWithoutTick),
-				"Reject A Grabbed Snapshot Without A Start Tick");
 
 			S2C_WORLD_SNAPSHOT phaseMismatch = source;
 			phaseMismatch.Entities[0].BossCombat.iGameplayPhase = 2u;
@@ -3681,8 +3782,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			36u == NETWORK_PROTOCOL_VERSION,
-			"Decision Observatory Contract Uses Protocol 36");
+			39u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Pattern Flow Contract Uses Protocol 39");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -4008,6 +4109,302 @@ namespace
 			"Reject Unknown Valtan Lifecycle State Atomically");
 	}
 
+	void Test_ValtanPatternFlowProtocol(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			Is_Known_Packet_Type(
+				PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_START) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::
+					C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE),
+			"Valtan Pattern Flow Packet Types Are Known");
+
+		const std::string flowRevision(
+			VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES, 'a');
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START start{};
+		start.iRequestSequence = 701u;
+		start.strBossPlacementId = "boss.valtan.center";
+		start.strFlowId = "flow.valtan.boss-tool.default";
+		start.strFlowRevision = flowRevision;
+		start.strStartSlotId =
+			"flow.valtan.boss-tool.default.slot.000001";
+		start.iInterStepPursuitMs = 1000u;
+		start.Slots = {
+			{ "flow.valtan.boss-tool.default.slot.000001",
+				"VALTAN_DASH_CHARGE" },
+			{ "flow.valtan.boss-tool.default.slot.000002",
+				"VALTAN_DASH_CHARGE" }
+		};
+
+		CPacketWriter startWriter;
+		const bool wroteStart = Write_Message(startWriter, start);
+		CPacketReader startReader{ startWriter.Get_Buffer() };
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START decodedStart{};
+		testRunner.Require(
+			wroteStart && Read_Message(startReader, decodedStart) &&
+			0u == startReader.Get_RemainingSize() &&
+			start.iRequestSequence == decodedStart.iRequestSequence &&
+			start.strFlowRevision == decodedStart.strFlowRevision &&
+			start.strStartSlotId == decodedStart.strStartSlotId &&
+			2u == decodedStart.Slots.size() &&
+			decodedStart.Slots[0].strPatternId ==
+				decodedStart.Slots[1].strPatternId,
+			"Valtan Pattern Flow Repeated Pattern Round Trip");
+
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START duplicateSlot = start;
+		duplicateSlot.Slots[1].strSlotId =
+			duplicateSlot.Slots[0].strSlotId;
+		CPacketWriter duplicateSlotWriter;
+		CPacketReader duplicateSlotReader{
+			(Write_Message(duplicateSlotWriter, duplicateSlot),
+				duplicateSlotWriter.Get_Buffer()) };
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START decodedDuplicateSlot{};
+		testRunner.Require(
+			Read_Message(duplicateSlotReader, decodedDuplicateSlot) &&
+			decodedDuplicateSlot.Slots[0].strSlotId ==
+				decodedDuplicateSlot.Slots[1].strSlotId,
+			"Valtan Pattern Flow Leaves Duplicate Slot Rejection To Server");
+
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START maximum = start;
+		maximum.Slots.clear();
+		for (std::size_t index = 0u;
+			index < MAX_VALTAN_PATTERN_FLOW_SLOTS; ++index)
+		{
+			VALTAN_PATTERN_FLOW_SLOT_WIRE slot{};
+			slot.strSlotId = "flow.slot." + std::to_string(index + 1u);
+			slot.strPatternId = "VALTAN_DASH_CHARGE";
+			maximum.Slots.push_back(std::move(slot));
+		}
+		maximum.strStartSlotId = maximum.Slots.back().strSlotId;
+		CPacketWriter maximumWriter;
+		CPacketReader maximumReader{
+			(Write_Message(maximumWriter, maximum),
+				maximumWriter.Get_Buffer()) };
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START decodedMaximum{};
+		testRunner.Require(
+			Read_Message(maximumReader, decodedMaximum) &&
+			MAX_VALTAN_PATTERN_FLOW_SLOTS == decodedMaximum.Slots.size(),
+			"Valtan Pattern Flow 32 Slot Round Trip");
+
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START invalidStart = start;
+		invalidStart.Slots.clear();
+		CPacketWriter invalidStartWriter;
+		testRunner.Require(
+			!Write_Message(invalidStartWriter, invalidStart),
+			"Reject Empty Valtan Pattern Flow Start");
+		invalidStart = maximum;
+		invalidStart.Slots.push_back(
+			{ "flow.slot.33", "VALTAN_DASH_CHARGE" });
+		testRunner.Require(
+			!Write_Message(invalidStartWriter, invalidStart),
+			"Reject 33 Slot Valtan Pattern Flow Start");
+		invalidStart = start;
+		invalidStart.strFlowRevision.front() = 'A';
+		testRunner.Require(
+			!Write_Message(invalidStartWriter, invalidStart),
+			"Reject Non-Lowercase Valtan Pattern Flow Revision");
+
+		std::vector<std::uint8_t> oversizeCount =
+			startWriter.Get_Buffer();
+		const std::size_t slotCountOffset = sizeof(std::uint32_t) +
+			(sizeof(std::uint16_t) + start.strBossPlacementId.size()) +
+			(sizeof(std::uint16_t) + start.strFlowId.size()) +
+			(sizeof(std::uint16_t) + start.strFlowRevision.size()) +
+			(sizeof(std::uint16_t) + start.strStartSlotId.size()) +
+			sizeof(std::uint32_t);
+		if (slotCountOffset < oversizeCount.size())
+		{
+			oversizeCount[slotCountOffset] = static_cast<std::uint8_t>(
+				MAX_VALTAN_PATTERN_FLOW_SLOTS + 1u);
+		}
+		CPacketReader oversizeCountReader{ oversizeCount };
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START unchangedStart{};
+		unchangedStart.iRequestSequence = 999u;
+		unchangedStart.strFlowId = "sentinel";
+		testRunner.Require(
+			!Read_Message(oversizeCountReader, unchangedStart) &&
+			999u == unchangedStart.iRequestSequence &&
+			"sentinel" == unchangedStart.strFlowId,
+			"Reject Oversize Valtan Pattern Flow Slot Count Atomically");
+
+		std::vector<std::uint8_t> truncatedStart =
+			startWriter.Get_Buffer();
+		truncatedStart.pop_back();
+		CPacketReader truncatedStartReader{ truncatedStart };
+		testRunner.Require(
+			!Read_Message(truncatedStartReader, unchangedStart) &&
+			999u == unchangedStart.iRequestSequence &&
+			"sentinel" == unchangedStart.strFlowId,
+			"Reject Truncated Valtan Pattern Flow Start Atomically");
+
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT stop{};
+		stop.iControlSequence = 702u;
+		stop.strFlowId = start.strFlowId;
+		stop.iRoomFlowEpoch = 13u;
+		CPacketWriter stopWriter;
+		CPacketReader stopReader{
+			(Write_Message(stopWriter, stop), stopWriter.Get_Buffer()) };
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT decodedStop{};
+		testRunner.Require(
+			Read_Message(stopReader, decodedStop) &&
+			stop.iControlSequence == decodedStop.iControlSequence &&
+			stop.strFlowId == decodedStop.strFlowId &&
+			stop.iRoomFlowEpoch == decodedStop.iRoomFlowEpoch,
+			"Valtan Pattern Flow Stop Identity Round Trip");
+		stop.iRoomFlowEpoch = 0u;
+		CPacketWriter invalidStopWriter;
+		testRunner.Require(
+			!Write_Message(invalidStopWriter, stop),
+			"Reject Zero Epoch Valtan Pattern Flow Stop");
+
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT result{};
+		result.iCommandSequence = start.iRequestSequence;
+		result.eCommand = VALTAN_PATTERN_FLOW_COMMAND::START;
+		result.eResult = VALTAN_PATTERN_FLOW_RESULT::QUEUED;
+		result.strFlowId = start.strFlowId;
+		result.strFlowRevision = flowRevision;
+		result.iRoomFlowEpoch = 13u;
+		result.PinnedDefinitionRevision = Make_GameplayDataRevision(70u);
+		CPacketWriter resultWriter;
+		CPacketReader resultReader{
+			(Write_Message(resultWriter, result), resultWriter.Get_Buffer()) };
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT decodedResult{};
+		testRunner.Require(
+			Read_Message(resultReader, decodedResult) &&
+			VALTAN_PATTERN_FLOW_RESULT::QUEUED == decodedResult.eResult &&
+			flowRevision == decodedResult.strFlowRevision &&
+			result.PinnedDefinitionRevision ==
+				decodedResult.PinnedDefinitionRevision,
+			"Valtan Pattern Flow Start Result Round Trip");
+
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT staleStop{};
+		staleStop.iCommandSequence = 703u;
+		staleStop.eCommand =
+			VALTAN_PATTERN_FLOW_COMMAND::STOP_AFTER_CURRENT;
+		staleStop.eResult =
+			VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW;
+		staleStop.strFlowId = start.strFlowId;
+		staleStop.iRoomFlowEpoch = 12u;
+		staleStop.strReason = "stale room flow epoch";
+		CPacketWriter staleStopWriter;
+		CPacketReader staleStopReader{
+			(Write_Message(staleStopWriter, staleStop),
+				staleStopWriter.Get_Buffer()) };
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT decodedStaleStop{};
+		testRunner.Require(
+			Read_Message(staleStopReader, decodedStaleStop) &&
+			VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW ==
+				decodedStaleStop.eResult &&
+			decodedStaleStop.strFlowRevision.empty() &&
+			"stale room flow epoch" == decodedStaleStop.strReason,
+			"Valtan Pattern Flow Typed Stop Rejection Round Trip");
+
+		std::vector<std::uint8_t> unknownResult =
+			resultWriter.Get_Buffer();
+		unknownResult[sizeof(std::uint32_t) + sizeof(std::uint8_t)] =
+			static_cast<std::uint8_t>(VALTAN_PATTERN_FLOW_RESULT::END);
+		CPacketReader unknownResultReader{ unknownResult };
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT unchangedResult{};
+		unchangedResult.iCommandSequence = 998u;
+		unchangedResult.strFlowId = "sentinel";
+		testRunner.Require(
+			!Read_Message(unknownResultReader, unchangedResult) &&
+			998u == unchangedResult.iCommandSequence &&
+			"sentinel" == unchangedResult.strFlowId,
+			"Reject Unknown Valtan Pattern Flow Result Atomically");
+
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE lifecycle{};
+		lifecycle.iRequestSequence = start.iRequestSequence;
+		lifecycle.iRoomFlowEpoch = 13u;
+		lifecycle.iPatternSequence = 41u;
+		lifecycle.strBossPlacementId = start.strBossPlacementId;
+		lifecycle.strFlowId = start.strFlowId;
+		lifecycle.strFlowRevision = flowRevision;
+		lifecycle.strStartSlotId = start.strStartSlotId;
+		lifecycle.strCurrentSlotId = start.Slots[1].strSlotId;
+		lifecycle.strCurrentPatternId = start.Slots[1].strPatternId;
+		lifecycle.iCurrentSlotOrdinal = 2u;
+		lifecycle.iSlotCount = 2u;
+		lifecycle.eState = VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ACTIVE;
+		lifecycle.PinnedDefinitionRevision = Make_GameplayDataRevision(70u);
+		CPacketWriter lifecycleWriter;
+		CPacketReader lifecycleReader{
+			(Write_Message(lifecycleWriter, lifecycle),
+				lifecycleWriter.Get_Buffer()) };
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE decodedLifecycle{};
+		testRunner.Require(
+			Read_Message(lifecycleReader, decodedLifecycle) &&
+			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ACTIVE ==
+				decodedLifecycle.eState &&
+			2u == decodedLifecycle.iCurrentSlotOrdinal &&
+			start.Slots[1].strSlotId == decodedLifecycle.strCurrentSlotId &&
+			start.Slots[1].strPatternId ==
+				decodedLifecycle.strCurrentPatternId &&
+			flowRevision == decodedLifecycle.strFlowRevision,
+			"Valtan Pattern Flow Active Lifecycle Round Trip");
+
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE rejected = lifecycle;
+		rejected.iRoomFlowEpoch = 0u;
+		rejected.iPatternSequence = 0u;
+		rejected.strCurrentSlotId.clear();
+		rejected.strCurrentPatternId.clear();
+		rejected.iCurrentSlotOrdinal = 0u;
+		rejected.eState = VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::REJECTED;
+		rejected.PinnedDefinitionRevision = {};
+		rejected.strReason = "unknown pattern definition";
+		CPacketWriter rejectedWriter;
+		CPacketReader rejectedReader{
+			(Write_Message(rejectedWriter, rejected),
+				rejectedWriter.Get_Buffer()) };
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE decodedRejected{};
+		testRunner.Require(
+			Read_Message(rejectedReader, decodedRejected) &&
+			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::REJECTED ==
+				decodedRejected.eState &&
+			!decodedRejected.PinnedDefinitionRevision.Is_Valid() &&
+			"unknown pattern definition" == decodedRejected.strReason,
+			"Valtan Pattern Flow Rejected Lifecycle Round Trip");
+
+		std::vector<std::uint8_t> unknownState =
+			lifecycleWriter.Get_Buffer();
+		const std::size_t lifecycleStateOffset =
+			(sizeof(std::uint32_t) * 3u) +
+			(sizeof(std::uint16_t) + lifecycle.strBossPlacementId.size()) +
+			(sizeof(std::uint16_t) + lifecycle.strFlowId.size()) +
+			(sizeof(std::uint16_t) + lifecycle.strFlowRevision.size()) +
+			(sizeof(std::uint16_t) + lifecycle.strStartSlotId.size()) +
+			(sizeof(std::uint16_t) + lifecycle.strCurrentSlotId.size()) +
+			(sizeof(std::uint16_t) + lifecycle.strCurrentPatternId.size()) +
+			(sizeof(std::uint16_t) * 2u);
+		if (lifecycleStateOffset < unknownState.size())
+		{
+			unknownState[lifecycleStateOffset] = static_cast<std::uint8_t>(
+				VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::END);
+		}
+		CPacketReader unknownStateReader{ unknownState };
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE unchangedLifecycle{};
+		unchangedLifecycle.iRequestSequence = 997u;
+		unchangedLifecycle.strFlowId = "sentinel";
+		testRunner.Require(
+			!Read_Message(unknownStateReader, unchangedLifecycle) &&
+			997u == unchangedLifecycle.iRequestSequence &&
+			"sentinel" == unchangedLifecycle.strFlowId,
+			"Reject Unknown Valtan Pattern Flow State Atomically");
+
+		std::vector<std::uint8_t> truncatedLifecycle =
+			lifecycleWriter.Get_Buffer();
+		truncatedLifecycle.pop_back();
+		CPacketReader truncatedLifecycleReader{ truncatedLifecycle };
+		testRunner.Require(
+			!Read_Message(truncatedLifecycleReader, unchangedLifecycle) &&
+			997u == unchangedLifecycle.iRequestSequence,
+			"Reject Truncated Valtan Pattern Flow Lifecycle Atomically");
+	}
+
 	void Test_ValtanDecisionTraceProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
@@ -4214,6 +4611,7 @@ int main()
 	Test_GameplayDataRevisionContract(testRunner);
 	Test_DataRevisionHotReloadProtocol(testRunner);
 	Test_ValtanAuditionLifecycleProtocol(testRunner);
+	Test_ValtanPatternFlowProtocol(testRunner);
 	Test_ValtanDecisionTraceProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);

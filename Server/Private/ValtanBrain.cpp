@@ -63,6 +63,73 @@ namespace
 		return ageTicks + 1u;
 	}
 
+	std::uint64_t NonzeroServerTickDistance(
+		const std::uint32_t fromTick,
+		const std::uint32_t toTick)
+	{
+		if (0u == fromTick || 0u == toTick)
+			return 0u;
+		return toTick >= fromTick ?
+			static_cast<std::uint64_t>(toTick - fromTick) :
+			static_cast<std::uint64_t>(
+				(std::numeric_limits<std::uint32_t>::max)() - fromTick) +
+				static_cast<std::uint64_t>(toTick);
+	}
+
+	std::uint32_t AdvanceNonzeroServerTick(
+		const std::uint32_t tick,
+		const std::uint64_t deltaTicks)
+	{
+		if (0u == tick || 0u == deltaTicks)
+			return tick;
+		constexpr std::uint64_t NONZERO_TICK_CARDINALITY =
+			static_cast<std::uint64_t>(
+				(std::numeric_limits<std::uint32_t>::max)());
+		const std::uint64_t zeroBased = static_cast<std::uint64_t>(tick - 1u);
+		return static_cast<std::uint32_t>(
+			(zeroBased + deltaTicks) % NONZERO_TICK_CARDINALITY + 1u);
+	}
+
+	void ShiftAutomaticSequenceStageClock(
+		SERVER_WORLD_ENTITY& boss,
+		const std::uint64_t deltaTicks)
+	{
+		boss.iPatternStageFirstEvaluationTick = AdvanceNonzeroServerTick(
+			boss.iPatternStageFirstEvaluationTick, deltaTicks);
+		boss.iActionStartTick = AdvanceNonzeroServerTick(
+			boss.iActionStartTick, deltaTicks);
+	}
+
+	void PauseAutomaticSequenceForRevive(
+		SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t serverTick)
+	{
+		const std::uint64_t pausedTicks =
+			boss.bAutomaticPatternSequencePausedForRevive ?
+				NonzeroServerTickDistance(
+					boss.iAutomaticPatternSequencePauseLastTick, serverTick) :
+				1u;
+		ShiftAutomaticSequenceStageClock(boss, pausedTicks);
+		boss.bAutomaticPatternSequencePausedForRevive = true;
+		boss.iAutomaticPatternSequencePauseLastTick = serverTick;
+		boss.iTargetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		boss.MovePath.clear();
+	}
+
+	void ResumeAutomaticSequenceAfterRevive(
+		SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t serverTick)
+	{
+		if (!boss.bAutomaticPatternSequencePausedForRevive)
+			return;
+		ShiftAutomaticSequenceStageClock(
+			boss,
+			NonzeroServerTickDistance(
+				boss.iAutomaticPatternSequencePauseLastTick, serverTick));
+		boss.bAutomaticPatternSequencePausedForRevive = false;
+		boss.iAutomaticPatternSequencePauseLastTick = 0u;
+	}
+
 	bool HasElapsedMilliseconds(
 		const std::uint64_t elapsedTicks,
 		const std::uint32_t milliseconds)
@@ -233,6 +300,20 @@ namespace
 			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction;
 	}
 
+	bool HasPlayerAwaitingRevive(
+		const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
+	{
+		return std::any_of(
+			players.begin(), players.end(),
+			[](const auto& entry)
+			{
+				const SERVER_PLAYER& player = entry.second;
+				return 0u == player.iCurrentHp ||
+					LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction ||
+					LostArk::Shared::PLAYER_ACTION_STATE::FALLING == player.eAction;
+			});
+	}
+
 	/* A party wipe leaves the running mechanic with no target, so it lands in
 	the ledger as FAILED_REQUIRES_RESET and latches the boss into IDLE. That one
 	failure is a gameplay outcome rather than a corrupted ledger: the mechanic
@@ -394,6 +475,57 @@ namespace
 			});
 	}
 
+	bool PatternOwnsGrabLifecycle(
+		const BOSS_PATTERN_DEFINITION& pattern)
+	{
+		bool hasCapture = false;
+		bool hasRelease = false;
+		for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+		{
+			hasCapture = hasCapture ||
+				BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE ==
+					stage.ePlayerResponse;
+			hasRelease = hasRelease ||
+				stage.Actions.end() != std::find_if(
+					stage.Actions.begin(), stage.Actions.end(),
+					[](const BOSS_PATTERN_STAGE_ACTION& action)
+					{
+						return BOSS_PATTERN_STAGE_ACTION_KIND::
+							RELEASE_GRABBED_PLAYERS == action.eKind;
+					});
+		}
+		return hasCapture && hasRelease;
+	}
+
+	bool CanContinueTargetlessOwnedGrabPattern(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+		const std::vector<BOSS_PATTERN_DEFINITION>& patterns)
+	{
+		using namespace LostArk::Shared;
+		if (boss.strPatternId.empty() ||
+			SERVER_ENTITY_ACTION::IDLE == boss.eAction ||
+			SERVER_ENTITY_ACTION::CHASE == boss.eAction)
+		{
+			return false;
+		}
+		const BOSS_PATTERN_DEFINITION* pattern =
+			FindPattern(patterns, boss.strPatternId);
+		if (nullptr == pattern || !PatternOwnsGrabLifecycle(*pattern))
+			return false;
+		return players.end() != std::find_if(
+			players.begin(), players.end(),
+			[ownerEntityId = boss.iNetEntityId](const auto& entry)
+			{
+				const SERVER_PLAYER& player = entry.second;
+				return 0u != player.iCurrentHp &&
+					PLAYER_ACTION_STATE::GRABBED == player.eAction &&
+					player.iAttachmentOwnerNetEntityId == ownerEntityId &&
+					PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ==
+						player.eAttachmentSlot;
+			});
+	}
+
 	const BOSS_PATTERN_STAGE_DEFINITION* FindStageByActionId(
 		const BOSS_PATTERN_DEFINITION& pattern,
 		const std::string& actionId,
@@ -413,7 +545,8 @@ namespace
 	{
 		return 0u != player.iCurrentHp && player.isCombatReady &&
 			LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction &&
-			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction;
+			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction &&
+			LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction;
 	}
 
 	SERVER_PLAYER* FindPatternTarget(
@@ -456,17 +589,10 @@ namespace
 		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 	}
 
-	SERVER_PLAYER* SelectRandomTarget(
-		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	SERVER_PLAYER* SelectDeterministicRandomTarget(
+		std::vector<SERVER_PLAYER*>& candidates,
 		const std::uint32_t patternSequence)
 	{
-		std::vector<SERVER_PLAYER*> candidates;
-		for (auto& [playerId, player] : players)
-		{
-			(void)playerId;
-			if (IsTargetable(player))
-				candidates.push_back(&player);
-		}
 		if (candidates.empty())
 			return nullptr;
 		std::sort(candidates.begin(), candidates.end(),
@@ -484,6 +610,53 @@ namespace
 		return candidates[static_cast<std::size_t>(random % candidates.size())];
 	}
 
+	SERVER_PLAYER* SelectRandomTarget(
+		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+		const std::uint32_t patternSequence)
+	{
+		std::vector<SERVER_PLAYER*> candidates;
+		for (auto& [playerId, player] : players)
+		{
+			(void)playerId;
+			if (IsTargetable(player))
+				candidates.push_back(&player);
+		}
+		return SelectDeterministicRandomTarget(candidates, patternSequence);
+	}
+
+	SERVER_PLAYER* SelectRandomTargetBehind(
+		const SERVER_WORLD_ENTITY& boss,
+		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+		const std::uint32_t patternSequence)
+	{
+		std::vector<SERVER_PLAYER*> candidates;
+		if (std::isfinite(boss.fYawDegrees) &&
+			std::isfinite(boss.fPositionX) && std::isfinite(boss.fPositionZ))
+		{
+			const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+			const float forwardX = std::sin(yawRadians);
+			const float forwardZ = std::cos(yawRadians);
+			for (auto& [playerId, player] : players)
+			{
+				(void)playerId;
+				if (!IsTargetable(player) ||
+					!std::isfinite(player.fPositionX) ||
+					!std::isfinite(player.fPositionZ))
+				{
+					continue;
+				}
+				const float deltaX = player.fPositionX - boss.fPositionX;
+				const float deltaZ = player.fPositionZ - boss.fPositionZ;
+				if (deltaX * forwardX + deltaZ * forwardZ < 0.f)
+					candidates.push_back(&player);
+			}
+		}
+		SERVER_PLAYER* selected =
+			SelectDeterministicRandomTarget(candidates, patternSequence);
+		return nullptr == selected ?
+			SelectRandomTarget(players, patternSequence) : selected;
+	}
+
 	void BeginPatternTargetAndAim(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -499,6 +672,10 @@ namespace
 			break;
 		case BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_ON_START:
 			selected = SelectRandomTarget(players, boss.iPatternSequence);
+			break;
+		case BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_BEHIND_ON_START:
+			selected = SelectRandomTargetBehind(
+				boss, players, boss.iPatternSequence);
 			break;
 		default:
 			break;
@@ -907,12 +1084,89 @@ namespace
 		SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
 		const std::string& introPatternId,
+		const BOSS_PATTERN_SEQUENCE_DEFINITION* scriptedSequence,
 		const BOSS_PATTERN_ROTATION_DEFINITION* rotation,
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
 		const std::uint32_t serverTick,
 		VALTAN_DECISION_TRACE& trace)
 	{
+		/* An explicit Product sequence is the complete automatic program. It owns
+		the intro slot, may reference normal or health-bar mechanics, and has no
+		weighted fallback after its terminal step. Forced Debug queues and the
+		explicit entrance/health-bar override retain their existing audition path. */
+		if (!boss.bScriptedPatternPlayback &&
+			!boss.bAutomaticPatternSequenceAuditionOverride &&
+			boss.PendingPatternIds.empty() && nullptr != scriptedSequence)
+		{
+			boss.bIntroPatternConsumed = true;
+			trace.bIntroPatternConsumed = true;
+			trace.strRotationId = scriptedSequence->strSequenceId;
+			if (boss.strRotationId != scriptedSequence->strSequenceId)
+			{
+				boss.strRotationId = scriptedSequence->strSequenceId;
+				boss.iRotationStepIndex = 0u;
+				boss.iAutomaticPatternSequenceInterStepPursuitTicks =
+					scriptedSequence->iInterStepPursuitTicks;
+				boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+			}
+			if (boss.iRotationStepIndex >=
+				static_cast<std::uint32_t>(scriptedSequence->PatternIds.size()))
+			{
+				boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+				trace.iRotationStepIndex = boss.iRotationStepIndex;
+				trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
+				trace.eResult = VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN;
+				return nullptr;
+			}
+			if (boss.bAutomaticPatternSequenceStepRunning)
+			{
+				boss.bMechanicLedgerRequiresReset = true;
+				trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
+				trace.eResult =
+					VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
+				return nullptr;
+			}
+			if (boss.iAutomaticPatternSequencePursuitTicksRemaining > 0u)
+			{
+				--boss.iAutomaticPatternSequencePursuitTicksRemaining;
+				trace.iRotationStepIndex = boss.iRotationStepIndex;
+				trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
+				trace.eResult = VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN;
+				return nullptr;
+			}
+			const std::string& patternId =
+				scriptedSequence->PatternIds[boss.iRotationStepIndex];
+			const BOSS_PATTERN_DEFINITION* step = FindPattern(patterns, patternId);
+			if (nullptr == step)
+			{
+				boss.bMechanicLedgerRequiresReset = true;
+				trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
+				trace.eResult =
+					VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = patternId;
+				candidate.iExclusionMask =
+					VALTAN_EXCLUDE_UNRESOLVED_DEFINITION;
+				trace.Candidates.push_back(std::move(candidate));
+				return nullptr;
+			}
+			boss.iAutomaticPatternSequenceInterStepPursuitTicks =
+				scriptedSequence->iInterStepPursuitTicks;
+			boss.bAutomaticPatternSequenceStepRunning = true;
+			trace.iRotationStepIndex = boss.iRotationStepIndex;
+			trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
+			trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+			trace.strSelectedPatternId = step->strPatternId;
+			VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+			candidate.strPatternId = step->strPatternId;
+			candidate.iAuthoredWeight = 1u;
+			candidate.iEffectiveWeight = 1u;
+			candidate.iWeightEndExclusive = 1u;
+			candidate.bSelected = true;
+			trace.Candidates.push_back(std::move(candidate));
+			return step;
+		}
 		/* The first appearance runs before the health-bar queue and before any
 		weighted roll, so the entrance sweep can never come up again later. It
 		waits at the spawn for its own authored range instead of burning on the
@@ -920,7 +1174,9 @@ namespace
 		boss and the entrance is authored around the spawn point. A missing
 		pattern is consumed anyway, so a broken catalog cannot stall the boss on
 		every tick. */
-		if (!boss.bIntroPatternConsumed)
+		if (!boss.bIntroPatternConsumed &&
+			(nullptr == scriptedSequence ||
+			 boss.bAutomaticPatternSequenceAuditionOverride))
 		{
 			const BOSS_PATTERN_DEFINITION* intro = introPatternId.empty() ?
 				nullptr : FindPattern(patterns, introPatternId);
@@ -948,6 +1204,8 @@ namespace
 				targetDistance <= intro->fMaximumRange)
 			{
 				boss.bIntroPatternConsumed = true;
+				boss.bAutomaticPatternSequenceAuditionOverride = false;
+				boss.bAutomaticPatternSequenceAuditionHold = false;
 				trace.eSource = VALTAN_DECISION_SOURCE::INTRO;
 				trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
 				trace.strSelectedPatternId = intro->strPatternId;
@@ -984,6 +1242,11 @@ namespace
 		{
 			const std::string patternId = boss.PendingPatternIds.front();
 			boss.PendingPatternIds.erase(boss.PendingPatternIds.begin());
+			if (boss.PendingPatternIds.empty())
+			{
+				boss.bAutomaticPatternSequenceAuditionOverride = false;
+				boss.bAutomaticPatternSequenceAuditionHold = false;
+			}
 			const SERVER_BOSS_MECHANIC_OCCURRENCE* occurrence =
 				FindMechanicOccurrence(boss, patternId);
 			const VALTAN_DECISION_SOURCE pendingSource =
@@ -1028,6 +1291,15 @@ namespace
 					VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
 				return nullptr;
 			}
+		}
+		if (boss.bAutomaticPatternSequenceAuditionHold &&
+			nullptr != scriptedSequence)
+		{
+			/* ARM_HEALTH_BAR deliberately waits here until the Debug trigger moves
+			the boss across its staged threshold and queues the forced mechanic. */
+			trace.eSource = VALTAN_DECISION_SOURCE::NONE;
+			trace.eResult = VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN;
+			return nullptr;
 		}
 		/* Managed ranges are weighted from their first normal choice. The window's
 		candidate rows own enabled/weight while each pattern continues to own range,
@@ -1170,6 +1442,15 @@ namespace
 		boss.strActionId = stage.strActionId;
 		boss.strDamageProfileId = stage.strDamageProfileId;
 		boss.ePatternHitShape = stage.eHitShape;
+		boss.ePatternPlayerResponse = stage.ePlayerResponse;
+		boss.ePatternAttachmentSlot = stage.eAttachmentSlot;
+		boss.ePatternPartDamagePolicy = stage.ePartDamagePolicy;
+		boss.bPatternHasCounterProxy = stage.bHasCounterProxy;
+		boss.fPatternCounterProxyForwardOffsetM =
+			stage.fCounterProxyForwardOffsetM;
+		boss.fPatternCounterProxyRightOffsetM =
+			stage.fCounterProxyRightOffsetM;
+		boss.fPatternCounterProxyRadiusM = stage.fCounterProxyRadiusM;
 		boss.fPatternHitOuterRadius = stage.fHitOuterRadius;
 		boss.fPatternHitInnerRadius = stage.fHitInnerRadius;
 		boss.fPatternHitAngleDegrees = stage.fHitAngleDegrees;
@@ -1238,6 +1519,8 @@ namespace
 		const LostArk::Shared::GameplayDataRevision& definitionRevision,
 		const std::uint32_t serverTick)
 	{
+		boss.bAutomaticPatternSequencePausedForRevive = false;
+		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		boss.PinnedDefinitionRevision = definitionRevision;
 		boss.strPatternId = pattern.strPatternId;
 		boss.bPatternInvulnerable = pattern.bInvulnerableWhileRunning;
@@ -1361,10 +1644,31 @@ namespace
 		const SERVER_BOSS_MECHANIC_FAILURE failure =
 			SERVER_BOSS_MECHANIC_FAILURE::NONE)
 	{
+		boss.bAutomaticPatternSequencePausedForRevive = false;
+		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		if (completed)
 			CompleteActiveMechanic(boss, boss.strPatternId, serverTick);
 		else
 			FailMechanic(boss, boss.strPatternId, failure, serverTick);
+		if (boss.bAutomaticPatternSequenceStepRunning)
+		{
+			if (completed && !boss.strPatternId.empty() &&
+				boss.iRotationStepIndex <
+					(std::numeric_limits<std::uint32_t>::max)())
+			{
+				++boss.iRotationStepIndex;
+				boss.iAutomaticPatternSequencePursuitTicksRemaining =
+					boss.iAutomaticPatternSequenceInterStepPursuitTicks;
+			}
+			else
+			{
+				/* Exact ordering is safer than skipping a failed stage and presenting
+				the next mechanic as though the sequence completed normally. */
+				boss.bMechanicLedgerRequiresReset = true;
+				boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+			}
+			boss.bAutomaticPatternSequenceStepRunning = false;
+		}
 		if (boss.fLeapApexHeight > 0.f)
 		{
 			/* An aborted leap must not leave the boss standing in mid-air, so
@@ -1386,6 +1690,15 @@ namespace
 		boss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		boss.PatternStageRootMotion.clear();
 		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
+		boss.ePatternPlayerResponse = BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE;
+		boss.ePatternAttachmentSlot =
+			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+		boss.ePatternPartDamagePolicy =
+			BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL;
+		boss.bPatternHasCounterProxy = false;
+		boss.fPatternCounterProxyForwardOffsetM = 0.f;
+		boss.fPatternCounterProxyRightOffsetM = 0.f;
+		boss.fPatternCounterProxyRadiusM = 0.f;
 		boss.iPatternHitCount = 0u;
 		boss.iPatternHitDelayMs = 0u;
 		boss.iAppliedPatternHitCount = 0u;
@@ -1616,7 +1929,8 @@ namespace
 		const std::uint32_t serverTick,
 		const std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>&
 			coverCircles,
-		std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+		std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+		std::vector<SERVER_PLAYER_CAPTURE_REQUEST>* outCaptureRequests)
 	{
 		if (BOSS_PATTERN_HIT_SHAPE::NONE == boss.ePatternHitShape ||
 			boss.strDamageProfileId.empty())
@@ -1636,9 +1950,13 @@ namespace
 			if (0u == player.iCurrentHp || !player.isCombatReady ||
 				!ContainsPatternHit(boss, player) ||
 				(!boss.bPatternPiercesCover &&
-					IsShieldedByCover(boss, player, coverCircles)) ||
-				CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
+					IsShieldedByCover(boss, player, coverCircles)))
 			{
+				continue;
+			}
+			if (CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
+			{
+				(void)CBossCombatRuntime::Try_TriggerCounter(boss, serverTick);
 				continue;
 			}
 			SERVER_WORLD_TO_PLAYER_HIT incoming{};
@@ -1650,8 +1968,19 @@ namespace
 			incoming.bKnockdown = boss.bPatternKnockdown;
 			incoming.iDownMs = boss.iPatternDownMs;
 			incoming.iServerTick = serverTick;
-			(void)CServerCombatHitRuntime::Apply_WorldToPlayer(
-				player, incoming, catalog, outDamageEvents);
+			const SERVER_COMBAT_HIT_RESULT hitResult =
+				CServerCombatHitRuntime::Apply_WorldToPlayer(
+					player, incoming, catalog, outDamageEvents);
+			if (SERVER_COMBAT_HIT_RESULT::LANDED == hitResult &&
+				BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE ==
+					boss.ePatternPlayerResponse &&
+				LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ==
+					boss.ePatternAttachmentSlot &&
+				nullptr != outCaptureRequests)
+			{
+				outCaptureRequests->push_back({
+					player.iNetEntityId, boss.ePatternAttachmentSlot });
+			}
 		}
 	}
 }
@@ -1701,7 +2030,9 @@ void LostArk::Server::CValtanBrain::Update(
 		coverCircles,
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
 	const CGameplayCatalog* activeThresholdCatalog,
-	const std::uint16_t activeThresholdGenerationEpoch) const
+	const std::uint16_t activeThresholdGenerationEpoch,
+	std::vector<SERVER_PLAYER_CAPTURE_REQUEST>* outCaptureRequests,
+	const BOSS_PATTERN_SEQUENCE_DEFINITION* automaticSequenceOverride) const
 {
 	if (WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind)
 		return;
@@ -1712,6 +2043,14 @@ void LostArk::Server::CValtanBrain::Update(
 			SERVER_BOSS_MECHANIC_FAILURE::BOSS_DIED, serverTick);
 		boss.iCurrentHp = 0u;
 		boss.strPatternId.clear();
+		if (boss.bAutomaticPatternSequenceStepRunning)
+		{
+			boss.bAutomaticPatternSequenceStepRunning = false;
+			boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+			boss.bMechanicLedgerRequiresReset = true;
+		}
+		boss.bAutomaticPatternSequencePausedForRevive = false;
+		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		boss.strPatternStageId.clear();
 		boss.strActionId.clear();
 		Transition(boss, SERVER_ENTITY_ACTION::DEAD, serverTick);
@@ -1727,6 +2066,18 @@ void LostArk::Server::CValtanBrain::Update(
 			boss, serverTick, Calculate_HealthBar(boss));
 		trace.eResult = VALTAN_DECISION_RESULT::CATALOG_UNAVAILABLE;
 		Record_DecisionTrace(std::move(trace));
+		return;
+	}
+	/* A completed Debug audition is an authoritative hold. Stop before health
+	   threshold admission or any selector can replace that terminal state with a
+	   Product occurrence on the following fixed tick. */
+	if (boss.bAutomaticPatternSequenceAuditionHold)
+	{
+		boss.bAutomaticPatternSequencePausedForRevive = false;
+		boss.iAutomaticPatternSequencePauseLastTick = 0u;
+		boss.iTargetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		boss.MovePath.clear();
+		Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
 		return;
 	}
 	if (BOSS_PHASE_POLICY_KIND::HEALTH_PERCENT_THRESHOLD ==
@@ -1749,9 +2100,22 @@ void LostArk::Server::CValtanBrain::Update(
 		nullptr == activeThresholdCatalog ? catalog : *activeThresholdCatalog;
 	const auto* thresholdPatterns =
 		thresholdCatalog.Find_BossPatterns(boss.strEncounterId);
+	const BOSS_PATTERN_SEQUENCE_DEFINITION* thresholdSequence =
+		nullptr != automaticSequenceOverride ? automaticSequenceOverride :
+		thresholdCatalog.Find_BossPatternSequence(boss.strEncounterId);
 	if (nullptr == thresholdPatterns)
 	{
 		boss.bMechanicLedgerRequiresReset = true;
+	}
+	else if (nullptr != thresholdSequence &&
+		!boss.bAutomaticPatternSequenceAuditionOverride)
+	{
+		/* An authored sequence has no HP/bar selector. Advancing only the legacy
+		bookkeeping prevents old threshold rows from being replayed after a catalog
+		refresh; no health value can enqueue or reorder an automatic step. */
+		boss.iLastEvaluatedHealthBar = currentHealthBar;
+		boss.iLastHealthMechanicGenerationEpoch =
+			activeThresholdGenerationEpoch;
 	}
 	else
 	{
@@ -1762,6 +2126,8 @@ void LostArk::Server::CValtanBrain::Update(
 	}
 	if (boss.bMechanicLedgerRequiresReset)
 	{
+		boss.bAutomaticPatternSequencePausedForRevive = false;
+		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		VALTAN_DECISION_TRACE trace = MakeDecisionTraceHeader(
 			boss, serverTick, currentHealthBar);
 		trace.eResult = VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
@@ -1791,11 +2157,67 @@ void LostArk::Server::CValtanBrain::Update(
 	}
 	const float engageDistance = (std::max)(
 		boss.fEngageDistance, MaximumPatternRange(*patterns));
+	const BOSS_PATTERN_SEQUENCE_DEFINITION* automaticSequence =
+		nullptr != automaticSequenceOverride ? automaticSequenceOverride :
+		catalog.Find_BossPatternSequence(boss.strEncounterId);
+	const bool sequenceIgnoresEngageDistance =
+		nullptr != automaticSequence && !boss.bScriptedPatternPlayback &&
+		!boss.bAutomaticPatternSequenceAuditionOverride;
 	const bool continueTargetlessScheduledArenaStage =
 		nullptr == target &&
 		CanContinueTargetlessScheduledArenaStage(boss, *patterns);
-	if ((!continueTargetlessScheduledArenaStage && nullptr == target) ||
-		(nullptr != target &&
+	const bool continueTargetlessOwnedGrabPattern =
+		nullptr == target &&
+		CanContinueTargetlessOwnedGrabPattern(boss, players, *patterns);
+	const bool runningAutomaticSequenceStep =
+		nullptr != automaticSequence && !boss.bScriptedPatternPlayback &&
+		!boss.bAutomaticPatternSequenceAuditionOverride &&
+		boss.bAutomaticPatternSequenceStepRunning &&
+		boss.strRotationId == automaticSequence->strSequenceId &&
+		boss.iRotationStepIndex < automaticSequence->PatternIds.size() &&
+		!boss.strPatternId.empty() && boss.strPatternId ==
+			automaticSequence->PatternIds[boss.iRotationStepIndex];
+	const bool floorWipeDamageCommitted =
+		"RECOVERY" == boss.strPatternStageId ||
+		("SECOND_SMASH" == boss.strPatternStageId &&
+			0u != boss.iPatternHitCount &&
+			boss.iAppliedPatternHitCount >= boss.iPatternHitCount);
+	const bool continueTargetlessOrderedFloorWipe =
+		nullptr == target && runningAutomaticSequenceStep &&
+		"VALTAN_FLOOR_WIPE_130" ==
+			automaticSequence->PatternIds[boss.iRotationStepIndex] &&
+		"VALTAN_FLOOR_WIPE_130" == boss.strPatternId && !players.empty() &&
+		floorWipeDamageCommitted;
+	const bool pauseOrderedStepForRevive =
+		nullptr == target && runningAutomaticSequenceStep && !players.empty() &&
+		HasPlayerAwaitingRevive(players) &&
+		!continueTargetlessOwnedGrabPattern &&
+		!continueTargetlessOrderedFloorWipe;
+	if (pauseOrderedStepForRevive)
+	{
+		/* A death during an ordered step is a recoverable operator pause, not an
+		mechanic failure. Move both authoritative clocks by the paused tick count so
+		the same action/stage/hit cursor is sampled until Balance Tool revive makes a
+		player engageable again. Empty rooms never enter this path. */
+		PauseAutomaticSequenceForRevive(boss, serverTick);
+		return;
+	}
+	if (nullptr != target && boss.bAutomaticPatternSequencePausedForRevive)
+	{
+		ResumeAutomaticSequenceAfterRevive(boss, serverTick);
+	}
+	const bool continueTargetlessRunningStage =
+		continueTargetlessScheduledArenaStage ||
+		continueTargetlessOwnedGrabPattern ||
+		continueTargetlessOrderedFloorWipe;
+	/* The ordered review program deliberately lets FLOOR_WIPE finish its
+	   already-started recovery after killing the last player. FinishPattern then
+	   advances exactly once to the arena-break cursor; with no target the boss
+	   holds there until the Balance Tool revive command restores target admission.
+	   Other running ordered steps use the clock-preserving pause above. A true
+	   empty-room/disconnect still follows the fail-closed path. */
+	if ((!continueTargetlessRunningStage && nullptr == target) ||
+		(!sequenceIgnoresEngageDistance && nullptr != target &&
 		 targetDistanceSquared > engageDistance * engageDistance))
 	{
 		VALTAN_DECISION_TRACE trace = MakeDecisionTraceHeader(
@@ -1852,6 +2274,7 @@ void LostArk::Server::CValtanBrain::Update(
 			patterns->size(), MAX_DECISION_CANDIDATE_COUNT));
 		const BOSS_PATTERN_DEFINITION* selected = SelectPattern(
 			boss, *patterns, catalog.Find_IntroPatternId(boss.strEncounterId),
+			automaticSequence,
 			catalog.Find_BossPatternRotation(
 				boss.strEncounterId, boss.iPhase, currentHealthBar),
 			currentHealthBar, distance, serverTick, trace);
@@ -1869,6 +2292,24 @@ void LostArk::Server::CValtanBrain::Update(
 				/* The entrance is authored around the spawn point, so the boss holds
 				there until a player reaches its range instead of walking the arena
 				approach to meet them. */
+				Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
+				boss.MovePath.clear();
+				return;
+			}
+			if (boss.bAutomaticPatternSequenceAuditionHold)
+			{
+				Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
+				boss.MovePath.clear();
+				return;
+			}
+			const BOSS_PATTERN_SEQUENCE_DEFINITION* scriptedSequence =
+				automaticSequence;
+			if (!boss.bScriptedPatternPlayback &&
+				nullptr != scriptedSequence &&
+				boss.strRotationId == scriptedSequence->strSequenceId &&
+				boss.iRotationStepIndex >= static_cast<std::uint32_t>(
+					scriptedSequence->PatternIds.size()))
+			{
 				Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
 				boss.MovePath.clear();
 				return;
@@ -1894,9 +2335,13 @@ void LostArk::Server::CValtanBrain::Update(
 			return;
 		}
 		boss.MovePath.clear();
-		const float deltaX = target->fPositionX - boss.fPositionX;
-		const float deltaZ = target->fPositionZ - boss.fPositionZ;
-		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+		if (BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_BEHIND_ON_START !=
+			selected->eTargetPolicy)
+		{
+			const float deltaX = target->fPositionX - boss.fPositionX;
+			const float deltaZ = target->fPositionZ - boss.fPositionZ;
+			boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+		}
 		BeginPattern(
 			boss, *selected, players, target,
 			catalog.Get_ActiveRevision(), serverTick);
@@ -1963,7 +2408,7 @@ void LostArk::Server::CValtanBrain::Update(
 		}
 		ApplyPatternHit(
 			boss, players, catalog, serverTick, coverCircles,
-			outDamageEvents);
+			outDamageEvents, outCaptureRequests);
 		++boss.iAppliedPatternHitCount;
 	}
 	if (!HasElapsedMilliseconds(

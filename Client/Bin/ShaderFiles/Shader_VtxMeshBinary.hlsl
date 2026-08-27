@@ -12,6 +12,7 @@ uint g_HasSpecularTexture = 0;
 uint g_HasOpacityTexture = 0;
 float g_EmissiveIntensity = 1.f;
 float4 g_EmissiveColor = 1.f;
+float g_EmissiveMaskPower = 1.f;
 uint g_HasFullSurfaceEmissiveOverride = 0;
 float4 g_FullSurfaceEmissiveColor = 1.f;
 float g_FullSurfaceEmissiveIntensity = 0.f;
@@ -160,9 +161,26 @@ float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
     return sideX * weight.x + topDown * weight.y + sideZ * weight.z;
 }
 
+void ApplyPresentationOpacityDither(float4 screenPosition)
+{
+    /* Opaque Deploy props cannot alpha-blend into the G-buffer. A fixed 4x4
+       ordered mask gives their short destruction envelope a deterministic
+       coverage fade while preserving depth/deferred correctness. Opacity 1 is
+       byte-for-byte the legacy draw path and opacity 0 submits no fragment. */
+    static const float thresholds[16] = {
+        0.5f / 16.f,  8.5f / 16.f,  2.5f / 16.f, 10.5f / 16.f,
+       12.5f / 16.f,  4.5f / 16.f, 14.5f / 16.f,  6.5f / 16.f,
+        3.5f / 16.f, 11.5f / 16.f,  1.5f / 16.f,  9.5f / 16.f,
+       15.5f / 16.f,  7.5f / 16.f, 13.5f / 16.f,  5.5f / 16.f
+    };
+    const uint2 pixel = uint2(screenPosition.xy) & 3u;
+    clip(saturate(g_Opacity) - thresholds[pixel.y * 4u + pixel.x]);
+}
+
 PS_OUT PS_MAIN(VS_OUT input)
 {
     PS_OUT output;
+    ApplyPresentationOpacityDither(input.vPosition);
     float4 diffuse = SampleMapDiffuse(
         input.vTexcoord, input.vWorldPos.xyz);
     diffuse *= g_ColorTint;
@@ -484,6 +502,7 @@ PS_OUT_FORWARD PS_MAIN_SKY(VS_OUT input)
 
 void PS_MAIN_SHADOW(VS_OUT input)
 {
+    ApplyPresentationOpacityDither(input.vPosition);
     float4 diffuse =
         g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord) *
         g_ColorTint;
@@ -501,8 +520,10 @@ PS_OUT_DEFERRED_EMISSIVE_OVERLAY PS_MAIN_DEFERRED_EMISSIVE_OVERLAY(
 {
     clip((float)g_HasEmissiveTexture - 0.5f);
 
-    const float3 emissive = g_EmissiveTexture.Sample(
-        LinearSampler, input.vTexcoord).rgb;
+    const float3 emissive = pow(saturate(g_EmissiveTexture.Sample(
+        LinearSampler, input.vTexcoord).rgb),
+        float3(g_EmissiveMaskPower, g_EmissiveMaskPower,
+            g_EmissiveMaskPower));
     clip(max(emissive.r, max(emissive.g, emissive.b)) - (1.f / 255.f));
 
     /* The crack layer shares one UV region between the plate tops and the

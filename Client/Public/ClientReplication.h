@@ -266,6 +266,10 @@ namespace Client
 		{
 			return m_WorldDestructionProjectionRuntime.Get_EncounterEpoch();
 		}
+		uint32_t Get_WorldDestructionServerTick() const
+		{
+			return m_WorldDestructionProjectionRuntime.Get_ServerTick();
+		}
 		const std::vector<LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE>&
 		Get_WorldDestructionGroupStates() const
 		{
@@ -338,11 +342,6 @@ namespace Client
 			const LostArk::Shared::PLAYER_SNAPSHOT& Snapshot,
 			std::uint32_t iServerTick);
 		void Clear_DeferredLocalCharacterClassReplacement();
-		void Update_ValtanGrabAttachment();
-		void Clear_ValtanGrabAttachment();
-		void Report_ValtanGrabAttachmentFailure(
-			std::uint32_t patternSequence,
-			std::string_view reason);
 
 		void Reset_World();
 		bool Spawn_CombatObjectPresentation(
@@ -353,6 +352,9 @@ namespace Client
 			uint64_t handle,
 			const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot);
 		void Stop_CombatObjectPresentation(uint64_t handle);
+		void Stage_PlayerAttachmentPresentation(
+			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot);
+		void Update_PlayerAttachmentPresentations();
 
 		struct COMBAT_OBJECT_PRESENTATION_SINK final
 		{
@@ -401,17 +403,19 @@ namespace Client
 		} m_DeferredLocalCharacterClassReplacement;
 		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
-		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
-		struct VALTAN_GRAB_ATTACHMENT_STATE final
+		struct PLAYER_ATTACHMENT_PRESENTATION final
 		{
-			bool_t isActive = false;
-			LostArk::Shared::NET_ENTITY_ID iTargetNetEntityId =
+			LostArk::Shared::NET_ENTITY_ID iOwnerNetEntityId =
 				LostArk::Shared::INVALID_NET_ENTITY_ID;
-			std::uint32_t iPatternSequence = 0u;
-			std::weak_ptr<CCharacter> pCharacter;
-			float4x4_t Offset{};
-		} m_ValtanGrabAttachment;
-		std::uint32_t m_iValtanGrabAttachmentFailurePatternSequence = 0u;
+			LostArk::Shared::PLAYER_ATTACHMENT_SLOT eSlot =
+				LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+			float4x4_t LocalOffset{};
+			bool_t bHasLocalOffset = false;
+		};
+		std::unordered_map<
+			LostArk::Shared::NET_ENTITY_ID,
+			PLAYER_ATTACHMENT_PRESENTATION> m_PlayerAttachments;
+		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
 		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
 		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;
 		std::deque<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>

@@ -1432,7 +1432,7 @@
       "movementDistance": 0.0,
       "maximumRange": 4.0,
       "serverDamageProfileId": "damage.player.17080",
-      "effectId": "",
+      "effectId": "effect.warlord.skill.17080.clip2.unified",
       "comboStages": [
         {
           "actionDurationMs": 1800,
@@ -1888,7 +1888,7 @@
       "movementDistance": 0.0,
       "maximumRange": 6.0,
       "serverDamageProfileId": "damage.player.31460",
-      "effectId": "",
+      "effectId": "effect.artist.skill.31460.linear-reveal.unified",
       "comboStages": []
     },
     {

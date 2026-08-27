@@ -10,6 +10,51 @@ namespace
 {
 	constexpr float MILLISECONDS_TO_SECONDS = 0.001f;
 
+	std::uint32_t SumIntactLegacyArmorDefense(
+		const LostArk::Server::SERVER_WORLD_ENTITY& target)
+	{
+		std::uint32_t total = 0u;
+		for (const auto& plate : target.ArmorPlates)
+		{
+			if (0u != plate.iRemainingDurability)
+				total += plate.iDefense;
+		}
+		return total;
+	}
+
+	bool ConsumeLegacyArmorDurability(
+		LostArk::Server::SERVER_WORLD_ENTITY& target,
+		const std::uint32_t damage)
+	{
+		if (0u == damage)
+			return false;
+		for (auto& plate : target.ArmorPlates)
+		{
+			if (0u == plate.iRemainingDurability)
+				continue;
+			plate.iRemainingDurability =
+				damage >= plate.iRemainingDurability ?
+					0u : plate.iRemainingDurability - damage;
+			return 0u == plate.iRemainingDurability;
+		}
+		return false;
+	}
+
+	void MirrorTypedPartBreakToLegacyArmor(
+		LostArk::Server::SERVER_WORLD_ENTITY& target,
+		const std::uint32_t destroyedPartMask)
+	{
+		for (auto& plate : target.ArmorPlates)
+		{
+			if (plate.iPlateIndex >= 32u ||
+				0u == (destroyedPartMask & (1u << plate.iPlateIndex)))
+			{
+				continue;
+			}
+			plate.iRemainingDurability = 0u;
+		}
+	}
+
 	bool IsDamageableWorldTarget(
 		const LostArk::Server::SERVER_WORLD_ENTITY& target)
 	{
@@ -57,17 +102,49 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	std::uint32_t damage = 0u;
 	if (WORLD_BOOTSTRAP_KIND::BOSS == target.eKind)
 	{
+		/* Product Valtan still carries the original armour plates because pattern
+		selection and older snapshots consume them.  Resolve that defense exactly
+		once, then tell the typed runtime that the HP amount is already reduced.
+		The typed part state remains the sole part-durability authority whenever
+		it is authored. */
+		if (target.bPatternInvulnerable)
+			return SERVER_COMBAT_HIT_RESULT::ABSORBED;
+		const bool hasLegacyArmor = !target.ArmorPlates.empty();
+		const bool hasTypedParts = !target.BossCombat.Parts.empty();
 		BOSS_INCOMING_HIT incoming{};
 		incoming.iSourcePlayerId = hit.iSourcePlayerId;
 		incoming.iSkillId = hit.iSkillId;
-		incoming.iRawDamage = hit.iRawDamage;
+		incoming.iRawDamage = hasLegacyArmor ?
+			CGameplayCatalog::Apply_Defense(
+				hit.iRawDamage, SumIntactLegacyArmorDefense(target)) :
+			hit.iRawDamage;
 		incoming.iStaggerDamage = hit.iStaggerDamage;
-		incoming.iPartDamage = hit.iPartDamage;
+		incoming.iPartDamage = hasTypedParts ? hit.iPartDamage : 0u;
 		incoming.iCounterPower = hit.iCounterPower;
 		incoming.iServerTick = hit.iServerTick;
+		incoming.bHealthDamagePreResolved = hasLegacyArmor;
 		incoming.fSourceX = hit.fSourceX;
 		incoming.fSourceZ = hit.fSourceZ;
-		damage = CBossCombatRuntime::Apply_PlayerHit(target, incoming).iHealthDamage;
+		const BOSS_HIT_RESULT bossHit =
+			CBossCombatRuntime::Apply_PlayerHit(target, incoming);
+		damage = bossHit.iHealthDamage;
+		if (bossHit.bPartDestroyed)
+		{
+			MirrorTypedPartBreakToLegacyArmor(
+				target, bossHit.iDestroyedPartMask);
+			(void)CBossCombatRuntime::Set_Flag(
+				target.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY, false);
+			target.bPatternGroggy = false;
+			target.bPendingArmorBreakReaction = true;
+		}
+		else if (!hasTypedParts && target.bPatternGroggy &&
+			ConsumeLegacyArmorDurability(target, damage))
+		{
+			/* Compatibility for bosses/fixtures that have not authored typed parts.
+			Product Valtan never enters this branch. */
+			target.bPatternGroggy = false;
+			target.bPendingArmorBreakReaction = true;
+		}
 	}
 	else
 	{

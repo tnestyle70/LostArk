@@ -1441,6 +1441,366 @@ bool_t Client::CEffectCatalog::Restore_DebugDirectAuthoredReplacement(
 #endif
 }
 
+bool_t Client::CEffectCatalog::Stage_DebugDirectAuthoredRegistration(
+	const std::string& strEffectAssetId,
+	const std::filesystem::path& AuthoredPath,
+	std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION>&
+		OutCandidate,
+	std::string& strOutStatus)
+{
+	OutCandidate.reset();
+#if !defined(_DEBUG)
+	(void)strEffectAssetId;
+	(void)AuthoredPath;
+	strOutStatus =
+		"Direct authored runtime registration is available only in a Debug Client.";
+	return false;
+#else
+	if (!Validate_DebugCatalogOwnerThread(strOutStatus) ||
+		0u == g_iRuntimeRevision || !Is_StableId(strEffectAssetId))
+	{
+		if (strOutStatus.empty())
+			strOutStatus = "Effect source catalog is not loaded.";
+		return false;
+	}
+	if (g_DirectAuthoredSources.contains(strEffectAssetId) ||
+		g_Effects.contains(strEffectAssetId) ||
+		g_Assemblies.contains(strEffectAssetId) ||
+		g_Components.contains(strEffectAssetId) ||
+		g_RuntimeAuthorities.contains(strEffectAssetId) ||
+		g_RuntimeProgramEntries.contains(strEffectAssetId) ||
+		g_VisualPrograms.contains(strEffectAssetId) ||
+		g_VisualProjections.contains(strEffectAssetId) ||
+		g_ScreenOverlayProductBindings.contains(strEffectAssetId) ||
+		Is_ReconstructedRuntimeProgramAssetId(strEffectAssetId))
+	{
+		strOutStatus =
+			"Debug direct-authored registration target already exists in the loaded catalog.";
+		return false;
+	}
+
+	std::filesystem::path CanonicalAuthoredPath;
+	if (!Resolve_DebugDirectAuthoredDocumentPath(
+			strEffectAssetId, AuthoredPath, CanonicalAuthoredPath, strOutStatus))
+	{
+		return false;
+	}
+
+	const std::filesystem::path CatalogPath = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Effects") / L"EffectCatalog.json");
+	std::string CatalogRawBefore;
+	std::string Error;
+	if (CatalogPath.empty() || !Read_BoundedSourceFile(
+			CatalogPath, 16u * 1024u * 1024u,
+			CatalogRawBefore, Error))
+	{
+		strOutStatus = "Debug source catalog read failed: " + Error;
+		return false;
+	}
+
+	std::map<std::string,
+		std::shared_ptr<const DIRECT_AUTHORED_RUNTIME_SOURCE>, std::less<>>
+		StagedSources;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>,
+		std::less<>> StagedScreenOverlayBindings;
+	if (!Stage_SourceDirectAuthoredCatalog(
+			StagedSources, StagedScreenOverlayBindings, Error))
+	{
+		strOutStatus =
+			"Debug registration source catalog rejected: " + Error;
+		return false;
+	}
+	std::string CatalogRawAfter;
+	if (!Read_BoundedSourceFile(CatalogPath, 16u * 1024u * 1024u,
+			CatalogRawAfter, Error) || CatalogRawAfter != CatalogRawBefore)
+	{
+		strOutStatus =
+			"EffectCatalog changed while the registration candidate was staged.";
+		return false;
+	}
+	if (StagedSources.size() != g_DirectAuthoredSources.size() + 1u)
+	{
+		strOutStatus =
+			"Debug registration requires EffectCatalog to add exactly one direct-authored row.";
+		return false;
+	}
+	const auto StagedTarget = StagedSources.find(strEffectAssetId);
+	if (StagedTarget == StagedSources.end() ||
+		nullptr == StagedTarget->second ||
+		StagedTarget->second->DocumentPath != CanonicalAuthoredPath)
+	{
+		strOutStatus =
+			"Debug registration target path is not the one staged by EffectCatalog.";
+		return false;
+	}
+	for (const auto& [ExistingId, ExistingSource] :
+		g_DirectAuthoredSources)
+	{
+		const auto CandidateSource = StagedSources.find(ExistingId);
+		if (nullptr == ExistingSource ||
+			CandidateSource == StagedSources.end() ||
+			nullptr == CandidateSource->second ||
+			CandidateSource->second->DocumentPath !=
+				ExistingSource->DocumentPath)
+		{
+			strOutStatus =
+				"Debug registration refuses a changed existing direct-authored row: " +
+				ExistingId;
+			return false;
+		}
+	}
+	const auto ScreenOverlayEquals = [](
+		const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING& Left,
+		const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING& Right)
+	{
+		if (Left.iByteCount != Right.iByteCount ||
+			Left.strEffectAssetId != Right.strEffectAssetId ||
+			Left.strPresentationId != Right.strPresentationId ||
+			Left.strSha256 != Right.strSha256 ||
+			Left.strUtf8Json != Right.strUtf8Json ||
+			Left.Resources.size() != Right.Resources.size())
+		{
+			return false;
+		}
+		for (size_t iResource = 0u;
+			iResource < Left.Resources.size(); ++iResource)
+		{
+			const auto& LeftResource = Left.Resources[iResource];
+			const auto& RightResource = Right.Resources[iResource];
+			if (LeftResource.iByteCount != RightResource.iByteCount ||
+				LeftResource.strAssetId != RightResource.strAssetId ||
+				LeftResource.strSha256 != RightResource.strSha256)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+	if (StagedScreenOverlayBindings.size() !=
+		g_ScreenOverlayProductBindings.size() ||
+		StagedScreenOverlayBindings.contains(strEffectAssetId))
+	{
+		strOutStatus =
+			"Debug registration cannot add or remove screen-overlay ownership.";
+		return false;
+	}
+	for (const auto& [ExistingId, ExistingBinding] :
+		g_ScreenOverlayProductBindings)
+	{
+		const auto CandidateBinding =
+			StagedScreenOverlayBindings.find(ExistingId);
+		if (nullptr == ExistingBinding ||
+			CandidateBinding == StagedScreenOverlayBindings.end() ||
+			nullptr == CandidateBinding->second ||
+			!ScreenOverlayEquals(
+				*ExistingBinding, *CandidateBinding->second))
+		{
+			strOutStatus =
+				"Debug registration refuses changed screen-overlay ownership: " +
+				ExistingId;
+			return false;
+		}
+	}
+
+	EFFECT_DOCUMENT_DESC ParsedDocument;
+	if (!Parse_DirectAuthoredRuntimeDocument(
+			strEffectAssetId, *StagedTarget->second, ParsedDocument, Error))
+	{
+		strOutStatus =
+			"Debug direct-authored registration document rejected: " + Error;
+		return false;
+	}
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> StagedDocument =
+		std::make_shared<const EFFECT_DOCUMENT_DESC>(
+			std::move(ParsedDocument));
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		StagedProjection;
+	if (StagedDocument->iLoadedFormatVersion ==
+		EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION)
+	{
+		if (!CEffectVisualProgramCorpusCodec::
+				Create_DocumentOwnedRuntimeProjection(
+					StagedDocument, StagedProjection, Error) ||
+			nullptr == StagedProjection || !StagedProjection->Is_Valid() ||
+			StagedProjection->Get_EffectAssetId() != strEffectAssetId ||
+			StagedProjection->Get_ProjectionKind() !=
+				EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 ||
+			StagedProjection->Get_DocumentShared().get() !=
+				StagedDocument.get())
+		{
+			strOutStatus =
+				"Debug registration source-owned projection rejected: " +
+				(Error.empty() ? std::string("invalid projection identity") :
+					Error);
+			return false;
+		}
+	}
+
+	std::shared_ptr<EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION> Staged(
+		new EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION());
+	Staged->m_strEffectAssetId = strEffectAssetId;
+	Staged->m_iRuntimeRevision = g_iRuntimeRevision;
+	Staged->m_iStagingThreadId =
+		static_cast<uint32_t>(GetCurrentThreadId());
+	Staged->m_ExpectedAuthoredSourcePath =
+		std::move(CanonicalAuthoredPath);
+	Staged->m_strExpectedSourceCatalogRawBytes =
+		std::move(CatalogRawAfter);
+	Staged->m_pDocument = std::move(StagedDocument);
+	Staged->m_pVisualProjection = std::move(StagedProjection);
+	Staged->m_strPreviousCatalogStatus = g_strStatus;
+	OutCandidate = std::move(Staged);
+	strOutStatus = "Staged one direct-authored catalog registration for " +
+		strEffectAssetId + " at existing catalog revision " +
+		std::to_string(g_iRuntimeRevision) + ".";
+	return true;
+#endif
+}
+
+bool_t Client::CEffectCatalog::Commit_DebugDirectAuthoredRegistration(
+	const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION>&
+		pCandidate,
+	std::string& strOutStatus)
+{
+#if !defined(_DEBUG)
+	(void)pCandidate;
+	strOutStatus =
+		"Direct authored runtime registration is available only in a Debug Client.";
+	return false;
+#else
+	if (!Validate_DebugCatalogOwnerThread(strOutStatus) ||
+		nullptr == pCandidate || nullptr == pCandidate->m_pDocument ||
+		pCandidate->m_strEffectAssetId.empty() ||
+		pCandidate->m_iStagingThreadId !=
+			static_cast<uint32_t>(GetCurrentThreadId()) ||
+		pCandidate->m_iRuntimeRevision != g_iRuntimeRevision ||
+		pCandidate->m_pDocument->strEffectAssetId !=
+			pCandidate->m_strEffectAssetId)
+	{
+		if (strOutStatus.empty())
+			strOutStatus =
+				"Debug direct-authored registration candidate is stale or invalid.";
+		return false;
+	}
+	const std::string& EffectAssetId = pCandidate->m_strEffectAssetId;
+	if (g_DirectAuthoredSources.contains(EffectAssetId) ||
+		g_Effects.contains(EffectAssetId) ||
+		g_Assemblies.contains(EffectAssetId) ||
+		g_Components.contains(EffectAssetId) ||
+		g_RuntimeAuthorities.contains(EffectAssetId) ||
+		g_RuntimeProgramEntries.contains(EffectAssetId) ||
+		g_VisualPrograms.contains(EffectAssetId) ||
+		g_VisualProjections.contains(EffectAssetId) ||
+		g_ScreenOverlayProductBindings.contains(EffectAssetId))
+	{
+		strOutStatus =
+			"Debug direct-authored registration identity became duplicate.";
+		return false;
+	}
+	const std::filesystem::path CatalogPath = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Effects") / L"EffectCatalog.json");
+	std::string CurrentCatalogRaw;
+	std::string Error;
+	if (CatalogPath.empty() || !Read_BoundedSourceFile(
+			CatalogPath, 16u * 1024u * 1024u,
+			CurrentCatalogRaw, Error) ||
+		CurrentCatalogRaw != pCandidate->m_strExpectedSourceCatalogRawBytes)
+	{
+		strOutStatus =
+			"EffectCatalog changed after direct-authored registration staging.";
+		return false;
+	}
+
+	auto Source = std::make_shared<DIRECT_AUTHORED_RUNTIME_SOURCE>();
+	Source->DocumentPath = pCandidate->m_ExpectedAuthoredSourcePath;
+	if (!g_DirectAuthoredSources.emplace(
+			EffectAssetId, std::move(Source)).second)
+	{
+		strOutStatus =
+			"Debug direct-authored source registration became duplicate.";
+		return false;
+	}
+	if (!g_Effects.emplace(EffectAssetId, pCandidate->m_pDocument).second)
+	{
+		g_DirectAuthoredSources.erase(EffectAssetId);
+		strOutStatus =
+			"Debug direct-authored document registration became duplicate.";
+		return false;
+	}
+	if (nullptr != pCandidate->m_pVisualProjection &&
+		!g_VisualProjections.emplace(
+			EffectAssetId, pCandidate->m_pVisualProjection).second)
+	{
+		g_Effects.erase(EffectAssetId);
+		g_DirectAuthoredSources.erase(EffectAssetId);
+		strOutStatus =
+			"Debug direct-authored projection registration became duplicate.";
+		return false;
+	}
+
+	g_strStatus = "Debug registered direct-authored Effect " +
+		EffectAssetId + " at unchanged catalog revision " +
+		std::to_string(g_iRuntimeRevision) +
+		"; current-session Product prewarm is still required.";
+	strOutStatus = g_strStatus;
+	return true;
+#endif
+}
+
+bool_t Client::CEffectCatalog::Restore_DebugDirectAuthoredRegistration(
+	const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REGISTRATION>&
+		pCandidate,
+	std::string& strOutStatus)
+{
+#if !defined(_DEBUG)
+	(void)pCandidate;
+	strOutStatus =
+		"Direct authored runtime registration is available only in a Debug Client.";
+	return false;
+#else
+	if (!Validate_DebugCatalogOwnerThread(strOutStatus) ||
+		nullptr == pCandidate || nullptr == pCandidate->m_pDocument ||
+		pCandidate->m_iStagingThreadId !=
+			static_cast<uint32_t>(GetCurrentThreadId()) ||
+		pCandidate->m_iRuntimeRevision != g_iRuntimeRevision)
+	{
+		if (strOutStatus.empty())
+			strOutStatus =
+				"Debug direct-authored registration restore candidate is stale or invalid.";
+		return false;
+	}
+	const std::string& EffectAssetId = pCandidate->m_strEffectAssetId;
+	const auto Source = g_DirectAuthoredSources.find(EffectAssetId);
+	const auto Document = g_Effects.find(EffectAssetId);
+	const auto Projection = g_VisualProjections.find(EffectAssetId);
+	const bool_t bHasProjection = Projection != g_VisualProjections.end();
+	if (Source == g_DirectAuthoredSources.end() ||
+		nullptr == Source->second ||
+		Source->second->DocumentPath !=
+			pCandidate->m_ExpectedAuthoredSourcePath ||
+		Document == g_Effects.end() ||
+		Document->second.get() != pCandidate->m_pDocument.get() ||
+		bHasProjection != (nullptr != pCandidate->m_pVisualProjection) ||
+		(bHasProjection && Projection->second.get() !=
+			pCandidate->m_pVisualProjection.get()))
+	{
+		strOutStatus =
+			"Debug direct-authored registration cannot remove changed runtime pointers.";
+		return false;
+	}
+	if (bHasProjection)
+		g_VisualProjections.erase(Projection);
+	g_Effects.erase(Document);
+	g_DirectAuthoredSources.erase(Source);
+	g_strStatus = pCandidate->m_strPreviousCatalogStatus;
+	strOutStatus = "Removed the staged direct-authored registration for " +
+		EffectAssetId + " at catalog revision " +
+		std::to_string(g_iRuntimeRevision) + ".";
+	return true;
+#endif
+}
+
 std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>
 Client::CEffectCatalog::Find(const std::string& strEffectAssetId)
 {
@@ -1735,6 +2095,39 @@ bool_t Client::CEffectCatalog::Contains(const std::string& strEffectAssetId)
 		return false;
 	return g_Effects.contains(strEffectAssetId) ||
 		g_DirectAuthoredSources.contains(strEffectAssetId);
+}
+
+bool_t Client::CEffectCatalog::Try_ContainsSourceRegistrationFresh(
+	const std::string& strEffectAssetId,
+	bool_t& bOutContains,
+	std::string& strOutStatus)
+{
+	bOutContains = false;
+	if (strEffectAssetId.empty())
+	{
+		strOutStatus =
+			"Fresh Effect source membership requires one stable Effect ID.";
+		return false;
+	}
+	std::map<std::string,
+		std::shared_ptr<const DIRECT_AUTHORED_RUNTIME_SOURCE>, std::less<>>
+		StagedSources;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>,
+		std::less<>> StagedScreenOverlayBindings;
+	std::string Error;
+	if (!Stage_SourceDirectAuthoredCatalog(
+			StagedSources, StagedScreenOverlayBindings, Error))
+	{
+		strOutStatus =
+			"Fresh Effect source catalog preflight failed: " + Error;
+		return false;
+	}
+	bOutContains = StagedSources.contains(strEffectAssetId);
+	strOutStatus = bOutContains ?
+		("Fresh Effect source catalog contains " + strEffectAssetId + ".") :
+		("Fresh Effect source catalog does not contain " + strEffectAssetId + ".");
+	return true;
 }
 
 bool_t Client::CEffectCatalog::Is_DirectAuthoredDocument(

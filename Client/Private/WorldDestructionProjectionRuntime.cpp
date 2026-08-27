@@ -52,8 +52,13 @@ namespace
 		{
 			return false;
 		}
-		return (WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING == state.eState) ?
-			0u != state.iCommitTick : 0u == state.iCommitTick;
+		if (WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING == state.eState)
+		{
+			const uint32_t span =
+				static_cast<uint32_t>(state.iCommitTick - state.iStateStartTick);
+			return 0u != state.iCommitTick && 0u != span && span < 0x80000000u;
+		}
+		return 0u == state.iCommitTick;
 	}
 
 	bool_t Is_SameState(

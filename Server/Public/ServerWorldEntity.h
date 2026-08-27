@@ -151,6 +151,27 @@ namespace LostArk::Server
 		empty queue between steps, so product pattern follow-ups must not be
 		queued while it drives the boss. */
 		bool bScriptedPatternPlayback = false;
+		/* Debug entrance/health-bar audition temporarily yields the Product
+		automatic sequence without changing the timeline playback contract. The
+		brain holds the boss while an armed health-bar audition waits to cross. */
+		bool bAutomaticPatternSequenceAuditionOverride = false;
+		bool bAutomaticPatternSequenceAuditionHold = false;
+		/* Set only after the Product automatic sequence selects its current step.
+		The cursor advances in FinishPattern, never at selection, so an aborted
+		step cannot be silently skipped. */
+		bool bAutomaticPatternSequenceStepRunning = false;
+		/* A non-empty party with no engageable player pauses an already-running
+		Product sequence step until Debug revive restores a target. This is not a
+		mechanic failure: the stage, hit cursor, and ordered cursor remain owned by
+		the same occurrence. The last tick drives exact clock compensation while
+		the pause is replicated through the unchanged action identity. */
+		bool bAutomaticPatternSequencePausedForRevive = false;
+		std::uint32_t iAutomaticPatternSequencePauseLastTick = 0u;
+		/* Every successful non-terminal step yields a fixed authored pursuit
+		window. During this countdown the normal CHASE path follows the nearest
+		player, but no selector condition may replace or reorder the next step. */
+		std::uint32_t iAutomaticPatternSequenceInterStepPursuitTicks = 0u;
+		std::uint32_t iAutomaticPatternSequencePursuitTicksRemaining = 0u;
 		std::uint32_t iPatternTelegraphMs = 0;
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;
@@ -170,6 +191,16 @@ namespace LostArk::Server
 		BOSS_PATTERN_STAGE_MOTION_KIND ePatternStageMotionKind =
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		BOSS_PATTERN_HIT_SHAPE ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
+		BOSS_PATTERN_PLAYER_RESPONSE ePatternPlayerResponse =
+			BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE;
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT ePatternAttachmentSlot =
+			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+		BOSS_PATTERN_PART_DAMAGE_POLICY ePatternPartDamagePolicy =
+			BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL;
+		bool bPatternHasCounterProxy = false;
+		float fPatternCounterProxyForwardOffsetM = 0.f;
+		float fPatternCounterProxyRightOffsetM = 0.f;
+		float fPatternCounterProxyRadiusM = 0.f;
 		float fPatternHitOuterRadius = 0.f;
 		float fPatternHitInnerRadius = 0.f;
 		float fPatternHitAngleDegrees = 0.f;
@@ -255,9 +286,10 @@ namespace LostArk::Server
 		std::vector<SERVER_BOSS_ARMOR_PLATE_STATE> ArmorPlates;
 		bool hasAppliedPatternDamage = false;
 		std::string strLastPatternId;
-		/* Active normal-selection span plus its one-shot ordered-introduction
-		cursor. WEIGHTED_POOL spans keep the cursor at zero and use only the id
-		for diagnostics; ordered legacy spans reset the cursor on entry. */
+		/* Active automatic program or normal-selection span plus its ordered
+		cursor. Product sequence steps advance only after successful completion;
+		WEIGHTED_POOL spans keep the cursor at zero and use only the id for
+		diagnostics. */
 		std::string strRotationId;
 		std::uint32_t iRotationStepIndex = 0;
 		std::uint32_t iConsecutivePatternUses = 0;

@@ -178,3 +178,34 @@ powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.
 ```
 
 `--check`를 붙이면 문서를 다시 만들지 않고 현재 문서가 source와 어긋났는지만 검사한다.
+
+## 8. 2026-08-26 Client 렌더 회귀 교정
+
+최초 RESULT의 Client 빌드 미검증 경계에서 실제 회귀가 확인됐다. `CMapAssetObject`는
+`Shader_VtxMeshBinary.hlsl`을 소비하지만, Water 변수·pixel shader·pass는 instanced 전용
+`Shader_VtxMeshMapInstance.hlsl`에만 추가돼 있었다. 그 결과 Water가 아닌 발탄 phase proxy도
+identity Water 값을 바인딩하는 첫 draw에서 `E_FAIL`을 반환했고 Client가 level 5에서 종료됐다.
+
+교정 내용:
+
+- Binary shader에 동일한 Water ABI와 `PS_MAIN_WATER`를 추가했다.
+- 기존 pass 0~14를 유지하고 Water pass를 15~17에 배치했다.
+- 기존 `DeferredEmissiveOverlayPass`와 유일한 C++ 소비자를 함께 pass 18로 이동했다.
+- 발탄의 검정 aperture/red ring/burgundy cloud `PresentationVortex` 분기는 변경하지 않았다.
+- source-contract 테스트가 Water 바인딩 이름, pass 15~18 순서, Water base 15,
+  emissive overlay 18, Valtan vortex profile 1~3을 함께 고정한다.
+
+검증:
+
+```text
+fxc /T fx_5_0 Shader_VtxMeshBinary.hlsl                            PASS
+python Tools/LevelPlacementExtractor/test_valtan_floor_emissive_contract.py
+                                                                    7/7 PASS
+MSBuild Client Debug|x64                                            PASS
+MSBuild Client Release|x64                                          PASS
+git diff --check                                                    PASS
+```
+
+Client 자율 실행과 화면 판정은 하지 않았다. 발탄 진입 시 신규 `RendererExit.user.log`가 생기지
+않는지, vortex가 초록/청색 사각 카드 없이 보이는지, 베른 물과 발탄 균열 emissive가 유지되는지는
+사용자 수동 smoke 대상으로 남는다.

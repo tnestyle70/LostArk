@@ -230,7 +230,7 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         valtan_restart = restart[valtan_begin:generic_begin]
         ordered_valtan_restart = (
             "pObject->Reset();",
-            "pObject->Set_SampleTimeWithTransformHistory(",
+            "Seek_ValtanBossPatternTransformHistory(",
             "pObject->Set_Visible(true);",
         )
         for token in ordered_valtan_restart:
@@ -242,6 +242,14 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         self.assertGreater(
             restart.index("Resolve_PreviewRoot(TargetRoot)", generic_begin),
             valtan_begin,
+        )
+        history_seek = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Seek_ValtanBossPatternTransformHistory(",
+            "void Client::CEffect_Tool::Reset_ValtanBossPatternTransformHistory()",
+        )
+        self.assertIn(
+            "pObject->Set_SampleTimeWithTransformHistory(", history_seek
         )
 
     def test_append_stages_complete_scope_and_rebinds_current_document_timeline(self) -> None:

@@ -1,6 +1,7 @@
 #include "PlayerSkillSystem.h"
 
 #include "Gameplay/CombatCollisionContract.h"
+#include "ServerCombatHitRuntime.h"
 
 #include <algorithm>
 #include <cmath>
@@ -48,54 +49,16 @@ namespace
 		outLateral = samples.back().fLateral;
 	}
 
-	/* What a boss's intact plates are worth to Apply_Defense right now. A boss
-	with no plates left, or none authored, returns zero and therefore takes the
-	same raw damage it took before armour existed. */
-	std::uint32_t Sum_IntactArmorDefense(
-		const LostArk::Server::SERVER_WORLD_ENTITY& target)
-	{
-		/* The catalog bounds a boss to four plates of at most 10000 defense each,
-		so this sum cannot leave the 32-bit range the formula takes. */
-		std::uint32_t total = 0u;
-		for (const auto& plate : target.ArmorPlates)
-		{
-			if (0u != plate.iRemainingDurability)
-				total += plate.iDefense;
-		}
-		return total;
-	}
-
-	/* Spends one hit's damage on the front-most plate that is still intact, in
-	authored order. A window breaks at most one plate: the moment a plate comes
-	off the window closes, so stripping the boss costs one opening per plate
-	rather than one burst. */
-	void Consume_ArmorDurability(
-		LostArk::Server::SERVER_WORLD_ENTITY& target,
-		const std::uint32_t damage)
-	{
-		if (0u == damage)
-			return;
-		for (auto& plate : target.ArmorPlates)
-		{
-			if (0u == plate.iRemainingDurability)
-				continue;
-			plate.iRemainingDurability =
-				damage >= plate.iRemainingDurability ?
-				0u : plate.iRemainingDurability - damage;
-			if (0u == plate.iRemainingDurability)
-			{
-				target.bPatternGroggy = false;
-				target.bPendingArmorBreakReaction = true;
-			}
-			return;
-		}
-	}
-
-	/* Lands one resolved hit on a monster or boss: defense, HP, the damage
-	event the snapshot ships, and the authored knockback away from sourceX/Z
-	(the caster for a caster hit, the object for a projectile hit). */
+	/* Lands every caster/projectile hit through the same typed adapter used by
+	combat objects.  HP, damage events, counter/stagger/part power, legacy armour
+	compatibility, death, and knockback are therefore committed once. */
 	void ApplyPlayerHitDamage(
 		LostArk::Server::SERVER_WORLD_ENTITY& target,
+		const LostArk::Shared::PLAYER_ID sourcePlayerId,
+		const LostArk::Shared::SKILL_ID skillId,
+		const std::uint32_t staggerDamage,
+		const std::uint32_t partDamage,
+		const std::uint32_t counterPower,
 		const std::uint32_t rawDamage,
 		const LostArk::Server::PLAYER_SKILL_HIT* pHit,
 		const float sourceX,
@@ -106,74 +69,22 @@ namespace
 		std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 	{
 		using namespace LostArk::Server;
-		/* An invulnerable pattern absorbs the hit whole. Emitting nothing is the
-		point: no HP moves and no damage number appears, so the raid can see the
-		mechanic has to be answered rather than outraced. */
-		if (target.bPatternInvulnerable)
-			return;
-		/* A monster mitigates with its profile defense; a boss mitigates with the
-		plates it is still wearing. Both go through the one server formula. */
-		const std::uint32_t defense =
-			WORLD_BOOTSTRAP_KIND::BOSS == target.eKind ?
-			Sum_IntactArmorDefense(target) : target.iDefense;
-		const std::uint32_t damage =
-			CGameplayCatalog::Apply_Defense(rawDamage, defense);
-		target.iCurrentHp =
-			damage >= target.iCurrentHp ? 0u : target.iCurrentHp - damage;
-		/* Armour only comes apart in the window the boss is stunned in, so a
-		player has to open that window before any damage counts against it. */
-		if (target.bPatternGroggy)
-			Consume_ArmorDurability(target, damage);
-		/* A zero amount is not a hit and the snapshot writer rejects it; the
-		cap keeps one overfull tick from suppressing the whole snapshot. */
-		if (0u != damage &&
-			outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
-		{
-			LostArk::Shared::DAMAGE_EVENT damageEvent{};
-			damageEvent.iTargetNetEntityId = target.iNetEntityId;
-			damageEvent.iAmount = damage;
-			damageEvent.fPositionX = target.fPositionX;
-			damageEvent.fPositionY = target.fPositionY;
-			damageEvent.fPositionZ = target.fPositionZ;
-			damageEvent.isOutgoing = true;
-			outDamageEvents.push_back(damageEvent);
-		}
-		/* Only hits the source authored with a push move the target, scaled by
-		the monster's own weight; 0 scale is super armour. */
-		const float pushDistance = nullptr == pHit || 0u == pHit->iPushMs ?
-			0.f : pHit->fPushRange * target.fHitKnockbackScale;
-		if (0u != damage && WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind &&
-			0.f != pushDistance && 0u != target.iCurrentHp)
-		{
-			/* Push straight away from the source (a negative range pulls it
-			closer); a target standing on the source moves along the aim. */
-			float directionX = target.fPositionX - sourceX;
-			float directionZ = target.fPositionZ - sourceZ;
-			const float length = std::sqrt(
-				directionX * directionX + directionZ * directionZ);
-			if (length < 0.0001f)
-			{
-				directionX = fallbackDirectionX;
-				directionZ = fallbackDirectionZ;
-			}
-			else
-			{
-				directionX /= length;
-				directionZ /= length;
-			}
-			const float durationSeconds =
-				static_cast<float>(pHit->iPushMs) * MILLISECONDS_TO_SECONDS;
-			target.fKnockbackDirectionX = directionX;
-			target.fKnockbackDirectionZ = directionZ;
-			target.fKnockbackSpeed = pushDistance / durationSeconds;
-			target.fKnockbackRemainingSeconds = durationSeconds;
-		}
-		if (0u == target.iCurrentHp)
-		{
-			target.eAction = SERVER_ENTITY_ACTION::DEAD;
-			target.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-			target.MovePath.clear();
-		}
+		SERVER_PLAYER_TO_WORLD_HIT incoming{};
+		incoming.iSourcePlayerId = sourcePlayerId;
+		incoming.iSkillId = skillId;
+		incoming.iRawDamage = rawDamage;
+		incoming.iStaggerDamage = staggerDamage;
+		incoming.iPartDamage = partDamage;
+		incoming.iCounterPower = counterPower;
+		incoming.fSourceX = sourceX;
+		incoming.fSourceZ = sourceZ;
+		incoming.fFallbackDirectionX = fallbackDirectionX;
+		incoming.fFallbackDirectionZ = fallbackDirectionZ;
+		incoming.fPushRangeM = nullptr == pHit ? 0.f : pHit->fPushRange;
+		incoming.iPushMs = nullptr == pHit ? 0u : pHit->iPushMs;
+		incoming.iServerTick = serverTick;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(
+			target, incoming, outDamageEvents);
 	}
 
 	LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ TargetBodyOf(
@@ -722,6 +633,9 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						continue;
 					}
 					ApplyPlayerHitDamage(entity,
+						player.iPlayerId, projectile.iSkillId,
+						skill->iStaggerDamage, skill->iPartDamage,
+						skill->iCounterPower,
 						DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
 							subHitIndex + mark->iAppliedCount),
 						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
@@ -772,6 +686,9 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 				for (auto& [distanceSquared, target] : targets)
 				{
 					ApplyPlayerHitDamage(*target,
+						player.iPlayerId, projectile.iSkillId,
+						skill->iStaggerDamage, skill->iPartDamage,
+						skill->iCounterPower,
 						DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
 							subHitIndex),
 						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
@@ -1066,7 +983,10 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const auto applyDamage = [&](SERVER_WORLD_ENTITY& target,
 		const std::uint32_t rawDamage, const PLAYER_SKILL_HIT* pHit)
 	{
-		ApplyPlayerHitDamage(target, rawDamage, pHit,
+		ApplyPlayerHitDamage(target,
+			player.iPlayerId, skill->iSkillId,
+			skill->iStaggerDamage, skill->iPartDamage, skill->iCounterPower,
+			rawDamage, pHit,
 			player.fPositionX, player.fPositionZ,
 			player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
 			serverTick, outDamageEvents);

@@ -11,7 +11,10 @@
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "LevelTransitionService.h"
+#include "LevelRegistry.h"
 #include "Loader.h"
+#include "MapAssetCatalog.h"
+#include "MapEffectDocument.h"
 #include "NetworkManager.h"
 #include "ProjectDataRoot.h"
 #include "UI_Sprite.h"
@@ -330,6 +333,27 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				pBossActor->combatObjectVisuals)
 			{
 				EffectAssetIds.push_back(Visual.effectAssetId);
+			}
+			/* Area-owned world Effects are Product targets too.  Read only the
+			   published runtime document here; source authoring data never becomes
+			   an in-level fallback.  Registration is part of the same activation
+			   gate as boss cues, so Level entry cannot race an unprepared sky. */
+			const CLIENT_LEVEL_DESCRIPTOR* pLevel =
+				CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
+			CMapEffectDocument MapEffects;
+			if (nullptr == pLevel || nullptr == pLevel->pMapAreaId ||
+				!MapEffects.Load(CMapAssetCatalog::Get_MapDataRoot() /
+					(std::string(pLevel->pMapAreaId) + ".mapeffects.json"),
+					pLevel->pMapAreaId, Status))
+			{
+				return IsolateFailure(nullptr == pLevel ||
+					nullptr == pLevel->pMapAreaId ?
+					"Valtan Level descriptor has no Map Area ID." : Status);
+			}
+			for (const MAP_EFFECT_WORLD_PRESENTATION& World :
+				MapEffects.Get_WorldEffects())
+			{
+				EffectAssetIds.push_back(World.effectAssetId);
 			}
 #ifdef _DEBUG
 			/* V1 is an optional audition lane. Queue it before the required V0
