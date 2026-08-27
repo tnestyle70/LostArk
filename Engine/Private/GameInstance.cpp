@@ -315,9 +315,10 @@ HRESULT CGameInstance::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolu
 	return m_pSound_Manager->Play_Sound(strSoundFilePath, fVolume);
 }
 
-HRESULT CGameInstance::Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume)
+HRESULT CGameInstance::Play_Music(const wstring_t& strSoundFilePath,
+	f32_t fVolume, const bool_t bLoop)
 {
-	return m_pSound_Manager->Play_Music(strSoundFilePath, fVolume);
+	return m_pSound_Manager->Play_Music(strSoundFilePath, fVolume, bLoop);
 }
 
 void CGameInstance::Stop_Music()

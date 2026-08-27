@@ -36,26 +36,55 @@ for required in (
     "Stage_CameraDraft",
     "Validate_Draft",
     "currentText != m_strBaselineText",
-    "Make_TemporaryPath",
+    "Reserve_UniqueSiblingPath",
+    "CREATE_NEW",
+    "ERROR_FILE_EXISTS",
+    "ERROR_ALREADY_EXISTS",
     "FlushFileBuffers",
     "Parse_Text",
-    "MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH",
+    "FILE_FLAG_DELETE_ON_CLOSE",
+    "ReplaceFileW",
+    'L".replaced-backup."',
+    'L".conflict-recovery."',
+    "replacedText != m_strBaselineText",
     "Begin_PresentationOverride",
     "Apply_PresentationPose",
     "End_PresentationOverride",
     "Is_PresentationOverrideOwnedBy",
     "CValtanCinematicCameraController::Sample_Cue",
     "CValtanCinematicCameraController::Apply_CueTracking",
+    "CValtanCinematicCameraController::Remove_CueTracking",
     "g_ActorPreviewContext.iLevelIndex != currentLevel",
     "current replicated actor frame",
     "Tracking_Label",
     '"BOSS_FACING"',
     '"PLAYER_BOSS_FRAME"',
+    "LookAt Dummy Collider",
+    "Capture New Scene",
+    "Apply Segment Speed",
+    "Prototype_Component_Collider_WorldEntity",
+    '"camera.scene.auto."',
+    "std::isfinite(desiredMilliseconds)",
+    "LookAt Dummy was disabled because",
+    "Applied the moving LookAt Dummy",
+    "Disable_LookAtDummy",
+    "MAX_CAMERA_SHAKE_DURATION_MS",
+    "minimumDuration > maximumDuration",
+    "Is_ValidAuthoringPose(pose)",
+    "MIN_LOOK_AT_DUMMY_RADIUS",
+    "MAX_LOOK_AT_DUMMY_RADIUS",
+    "Dummy Radius was rejected because it is not finite.",
+    "std::isfinite(m_fLookAtDummyRadius)",
 ):
     require(required in camera_tool, f"Camera Tool contract missing: {required}")
 
 require(camera_tool.count("currentText != m_strBaselineText") == 2,
         "Save must CAS-check exact source bytes before and immediately before replace")
+require(camera_tool.count("ReplaceFileW(") == 2,
+        "Save must atomically replace with a backup and use the same primitive for rollback")
+require("Remove_Temporary(replacedBackup);" in camera_tool and
+        "Concurrent source bytes were restored" in camera_tool,
+        "Save must verify and recover the exact bytes displaced by atomic replace")
 require("Preview pose was rejected; the prior camera pose was restored." in camera_tool,
         "unexpected preview apply failures must return the Tool-owned override")
 require("NetworkManager" not in camera_tool and "Send_" not in camera_tool,
@@ -78,10 +107,14 @@ for required in (
     "Is_StablePresentationAssetId(deathCue.strCueId)",
     '"BOSS_FACING"', '"PLAYER_BOSS_FRAME"', '"transitionInMs"',
     '"transitionOutMs"',
+    '"sceneId"', '"interpolation"', '"CATMULL_ROM"',
+    "sceneIds.insert(keyframe.strSceneId).second",
+    "cueIds.insert(deathCue.strCueId).second",
     "VALTAN_CINEMATIC_CAMERA_CUE::MAX_TRANSITION_IN_MS",
+    "value->Was_FloatingPointToken()",
 ):
     require(required in camera_document,
-            f"v5 serializer/validator contract missing: {required}")
+            f"v6 serializer/validator contract missing: {required}")
 
 for retired in (
     "skyCues", "VALTAN_CINEMATIC_SKY_CUE", "Resolve_SkyState",
@@ -94,19 +127,34 @@ for retired in (
 
 require("'schema','formatVersion','encounterId','provenance','cues','deathCue'" in
         gameplay_publisher and
-        "[uint32]$cameraDocument.formatVersion -ne 5" in gameplay_publisher and
         "cameraDocument.skyCues" not in gameplay_publisher and
         "$Value.transitionInMs" in gameplay_publisher and
         '"$Context transitionInMs" 0 1000' in gameplay_publisher and
         "$Value.transitionOutMs" in gameplay_publisher and
-        '"$Context transitionOutMs" 0 1000' in gameplay_publisher,
-        "gameplay publisher is not enforcing camera-only formatVersion 5")
+        '"$Context transitionOutMs" 0 1000' in gameplay_publisher and
+        "'sceneId','timeMs','eye','lookAt','fovYDegrees'" in gameplay_publisher and
+        "@('LINEAR','CATMULL_ROM')" in gameplay_publisher and
+        "$cameraCueIds.Add($deathCueId)" in gameplay_publisher and
+        "$deathCue -isnot [pscustomobject]" in gameplay_publisher and
+        "Assert-CinematicCameraCueContract" in gameplay_publisher and
+        "names an unknown pattern" in gameplay_publisher and
+        "names an unknown or ambiguous stage" in gameplay_publisher and
+        "duplicates an encounter stage tuple" in gameplay_publisher and
+        "formatVersion' 6 6" in gameplay_publisher and
+        "@($cameraDocument.cues).Count -gt 32" in gameplay_publisher and
+        "$Context easing" in gameplay_publisher and
+        "$Context shakeAmplitude" in gameplay_publisher and
+        "shake amplitude/duration pair is invalid" in gameplay_publisher and
+        "eye and lookAt must differ" in gameplay_publisher,
+        "gameplay publisher is not enforcing camera-only formatVersion 6")
 
 require("return Sample_Cue(*m_pActiveCue" in camera_controller,
         "product runtime is not consuming the same public sampler as Camera Tool")
 for required in (
     "Resolve_BossFacingPoint",
     "Resolve_PlayerBossFramePoint",
+    "Remove_BossFacingPoint",
+    "Remove_PlayerBossFramePoint",
     "input.fBossYawDegrees",
     "input.vLocalPlayerPosition",
     "Apply_CueTracking(*m_pActiveCue, input, outPose)",
@@ -118,12 +166,15 @@ for required in (
     "Begin_ExitTransition",
     "Update_ExitTransition",
     "m_ExitTransitionFromPose = m_LastOutputPose",
+    "XMVectorCatmullRom",
+    "VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM",
 ):
     require(required in camera_controller,
             f"dynamic camera frame runtime missing: {required}")
 for required in (
     "fBossYawDegrees", "hasLocalPlayerPosition", "vLocalPlayerPosition",
     "static bool_t Apply_CueTracking",
+    "static bool_t Remove_CueTracking",
     "static bool_t Sample_BoundedTransition",
     "bool_t Is_ExitTransitionActive() const",
 ):
@@ -192,15 +243,62 @@ for entry in ("CameraTool.h", "CameraTool.cpp"):
             f"Client project/filter registration missing: {entry}")
 
 data = json.loads(read("Data/Encounters/Valtan/ValtanCinematicCamera.json"))
-require(data.get("formatVersion") == 5, "camera source is not formatVersion 5")
+require(data.get("formatVersion") == 6, "camera source is not formatVersion 6")
 require(set(data) == {
     "schema", "formatVersion", "encounterId", "provenance",
     "cues", "deathCue",
-}, "camera v5 camera-only root shape changed")
+}, "camera v6 camera-only root shape changed")
 require(isinstance(data["deathCue"], dict) and data["deathCue"],
         "existing death cue must be preserved")
 
+all_cues = list(data["cues"]) + [data["deathCue"]]
+scene_ids = []
+for cue in all_cues:
+    require(cue.get("interpolation") in {"LINEAR", "CATMULL_ROM"},
+            f"camera cue interpolation is invalid: {cue.get('cueId')}")
+    for scene in cue.get("keyframes", []):
+        require(set(scene) == {
+            "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees",
+        }, f"camera scene shape is invalid: {cue.get('cueId')}")
+        scene_ids.append(scene["sceneId"])
+require(len(scene_ids) == len(set(scene_ids)),
+        "camera scene IDs must be stable and globally unique")
+
 cues = {row["cueId"]: row for row in data["cues"]}
+entrance_establish = cues.get("camera.valtan.entrance.establish")
+entrance_reveal = cues.get("camera.valtan.entrance.arena-reveal")
+entrance_handoff = cues.get("camera.valtan.entrance.hero-handoff")
+require(
+    entrance_establish is not None and
+    entrance_establish.get("patternId") == "VALTAN_ENTRANCE_CINEMATIC" and
+    entrance_establish.get("stageId") == "ESTABLISH" and
+    entrance_establish.get("trackingMode") == "BOSS_FACING" and
+    entrance_establish.get("durationMs") == 8600 and
+    entrance_establish.get("interpolation") == "CATMULL_ROM" and
+    entrance_establish.get("easing") == "LINEAR",
+    "Valtan entrance establishing camera tuple/timing is invalid",
+)
+require(
+    entrance_reveal is not None and
+    entrance_reveal.get("patternId") == "VALTAN_ENTRANCE_CINEMATIC" and
+    entrance_reveal.get("stageId") == "ARENA_REVEAL" and
+    entrance_reveal.get("trackingMode") == "BOSS_FACING" and
+    entrance_reveal.get("durationMs") == 5800 and
+    entrance_reveal.get("interpolation") == "CATMULL_ROM" and
+    entrance_reveal.get("easing") == "LINEAR",
+    "Valtan entrance arena-reveal camera tuple/timing is invalid",
+)
+require(
+    entrance_handoff is not None and
+    entrance_handoff.get("patternId") == "VALTAN_ENTRANCE_CINEMATIC" and
+    entrance_handoff.get("stageId") == "HERO_HANDOFF" and
+    entrance_handoff.get("trackingMode") == "BOSS_FACING" and
+    entrance_handoff.get("durationMs") == 4467 and
+    entrance_handoff.get("transitionOutMs") == 1000 and
+    entrance_handoff.get("interpolation") == "CATMULL_ROM" and
+    entrance_handoff.get("easing") == "LINEAR",
+    "Valtan entrance hero handoff camera tuple/timing is invalid",
+)
 wide_reveal = cues["camera.valtan.arena-break-109.wide-reveal"]
 require(wide_reveal.get("trackingMode") == "BOSS_FACING" and
         wide_reveal.get("transitionInMs") == 250,
@@ -220,6 +318,46 @@ require(pizza is not None and pizza.get("patternId") == "VALTAN_SIX_PIZZA_106" a
         "six-pizza STEP_03 landing camera cue tuple/frame is invalid")
 
 presentation = json.loads(read("Data/Valtan/Valtan.presentation.json"))
+gameplay = json.loads(read("Data/Valtan/Valtan.gameplay.json"))
+require(
+    gameplay["decisionModel"]["scriptedSequence"]["patternIds"][0] ==
+    "VALTAN_ENTRANCE_CINEMATIC",
+    "Valtan entrance cinematic is not the first Server-authored pattern",
+)
+entrance_gameplay = next(
+    row for row in gameplay["patterns"]
+    if row["patternId"] == "VALTAN_ENTRANCE_CINEMATIC"
+)
+require(
+    entrance_gameplay["invulnerableWhileRunning"] is True and
+    [row["durationMs"] for row in entrance_gameplay["stages"]] ==
+    [8600, 5800, 5467] and
+    all(row["hit"]["shape"]["kind"] == "NONE"
+        for row in entrance_gameplay["stages"]) and
+    sum(row["durationMs"] for row in entrance_gameplay["stages"]) == 19867,
+    "Valtan entrance Server gate is not an invulnerable, non-damaging 19.867s sequence",
+)
+entrance_presentation = next(
+    row for row in presentation["patterns"]
+    if row["patternId"] == "VALTAN_ENTRANCE_CINEMATIC"
+)
+entrance_invocations = [
+    stage["cameraInvocations"][0]
+    for stage in entrance_presentation["stages"]
+]
+require(
+    [row["cameraCueId"] for row in entrance_invocations] == [
+        "camera.valtan.entrance.establish",
+        "camera.valtan.entrance.arena-reveal",
+        "camera.valtan.entrance.hero-handoff",
+    ] and
+    [row["durationMs"] for row in entrance_invocations] ==
+    [8600, 5800, 4467] and
+    entrance_invocations[-1]["durationMs"] +
+    entrance_handoff["transitionOutMs"] ==
+    entrance_gameplay["stages"][-1]["durationMs"],
+    "Valtan entrance camera invocation and final handoff wall do not close exactly",
+)
 six_pizza = next(row for row in presentation["patterns"]
                  if row["patternId"] == "VALTAN_SIX_PIZZA_106")
 landing = next(row for row in six_pizza["stages"]

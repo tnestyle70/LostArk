@@ -56,6 +56,7 @@ HRESULT CNpc::Initialize(void* pArg)
 	m_fOutlineWidth = pDesc->fOutlineWidth;
 	m_vOutlineColor = pDesc->vOutlineColor;
 	m_bSuppressRootMotion = pDesc->bSuppressRootMotion;
+	m_bInterpolateNetworkTransform = pDesc->bInterpolateNetworkTransform;
 
 	/* With no animation set the bone palette is never filled, so every vertex
 	collapses onto the origin and the NPC simply vanishes -- a wrong clip name
@@ -105,6 +106,8 @@ bool_t CNpc::Play_NetworkAction(
 	const f32_t fPlaybackRate,
 	const f32_t fBlendSeconds)
 {
+	m_fTransientActionRemainingSeconds = 0.f;
+	m_strTransientReturnClip.clear();
 	if (nullptr == pClipName || '\0' == pClipName[0] ||
 		nullptr == m_pModelCom || !std::isfinite(fPlaybackRate) ||
 		fPlaybackRate < 0.1f || fPlaybackRate > 4.f ||
@@ -127,6 +130,31 @@ bool_t CNpc::Play_NetworkAction(
 	return true;
 }
 
+bool_t CNpc::Play_TransientNetworkAction(
+	const char_t* pClipName,
+	const f32_t fPlaybackRate,
+	const f32_t fDurationSeconds,
+	const char_t* pReturnClip,
+	const bool_t isReturnLoop,
+	const f32_t fReturnPlaybackRate,
+	const f32_t fBlendSeconds)
+{
+	if (nullptr == pReturnClip || '\0' == pReturnClip[0] ||
+		!std::isfinite(fDurationSeconds) || fDurationSeconds <= 0.f ||
+		fDurationSeconds > 5.f || !std::isfinite(fReturnPlaybackRate) ||
+		fReturnPlaybackRate < 0.1f || fReturnPlaybackRate > 4.f ||
+		!Play_NetworkAction(
+			pClipName, false, fPlaybackRate, fBlendSeconds))
+	{
+		return false;
+	}
+	m_fTransientActionRemainingSeconds = fDurationSeconds;
+	m_strTransientReturnClip = pReturnClip;
+	m_fTransientReturnPlaybackRate = fReturnPlaybackRate;
+	m_isTransientReturnLoop = isReturnLoop;
+	return true;
+}
+
 bool_t CNpc::Play_DefaultIdle(const f32_t fBlendSeconds)
 {
 	return !m_strDefaultIdleClip.empty() && Play_NetworkAction(
@@ -146,7 +174,7 @@ bool_t CNpc::Apply_NetworkState(
 	{
 		return false;
 	}
-	if (!m_bSuppressRootMotion)
+	if (!m_bInterpolateNetworkTransform)
 	{
 		Apply_ImmediateTransform(position, yawDegrees);
 		return true;
@@ -178,9 +206,27 @@ void CNpc::Priority_Update(f32_t fTimeDelta)
 
 void CNpc::Update(f32_t fTimeDelta)
 {
+	if (m_bInterpolateNetworkTransform)
+		Update_NetworkTransform(fTimeDelta);
+	if (m_fTransientActionRemainingSeconds > 0.f)
+	{
+		m_fTransientActionRemainingSeconds -= fTimeDelta;
+		if (m_fTransientActionRemainingSeconds <= 0.f)
+		{
+			const std::string returnClip = m_strTransientReturnClip;
+			const f32_t returnRate = m_fTransientReturnPlaybackRate;
+			const bool_t returnLoop = m_isTransientReturnLoop;
+			m_fTransientActionRemainingSeconds = 0.f;
+			m_strTransientReturnClip.clear();
+			if (!returnClip.empty())
+			{
+				(void)Play_NetworkAction(
+					returnClip.c_str(), returnLoop, returnRate, 0.05f);
+			}
+		}
+	}
 	if (m_bSuppressRootMotion)
 	{
-		Update_NetworkTransform(fTimeDelta);
 		m_pModelCom->Update_Animation(fTimeDelta);
 	}
 	else

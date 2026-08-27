@@ -13,11 +13,19 @@
 #include "NetworkPlayerCommandSink.h"
 #include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Trigger_Box.h"
 #include "WorldGameplayDocument.h"
 
 #include <algorithm>
+#include <filesystem>
+
+namespace
+{
+	constexpr const wchar_t* BERN_CASTLE_BGM_ASSET_ID =
+		L"Sound/BGM/BernCastle/bgm_berntown_mscene01_thecapital.wav";
+}
 
 CLevel_Bern* CLevel_Bern::s_pActiveInstance = nullptr;
 
@@ -31,6 +39,9 @@ CLevel_Bern::CLevel_Bern(
 
 CLevel_Bern::~CLevel_Bern()
 {
+	if (m_bBernBgmStarted)
+		CGameInstance::Get().Stop_Music();
+
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 }
@@ -106,6 +117,23 @@ HRESULT CLevel_Bern::Initialize()
 			"[Level_Bern] Debug changeLevel Trigger Box presentation failed.\n");
 	}
 #endif
+
+	const std::filesystem::path musicPath =
+		CRuntimeAssetRoot::Resolve(BERN_CASTLE_BGM_ASSET_ID);
+	if (!musicPath.empty() && std::filesystem::is_regular_file(musicPath) &&
+		SUCCEEDED(CGameInstance::Get().Play_Music(
+			musicPath.wstring(), 1.f, true)))
+	{
+		m_bBernBgmStarted = true;
+	}
+	else
+	{
+#ifdef _DEBUG
+		OutputDebugStringA(
+			"[Level_Bern] Bern Castle BGM was isolated because the exact "
+			"runtime WAV could not be played.\n");
+#endif
+	}
 
 	return S_OK;
 }

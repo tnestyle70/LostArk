@@ -35,7 +35,7 @@ Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Character Select, Training, Valtan entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 같은 `JusinGame5G`의 `192.168.0.20:7777`이다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.20:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 같은 `JusinGame5G`의 `10.207.18.103:7777`이다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `10.207.18.103:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 ### 1.1 서로 다른 장소에서 Server와 Client 연결
 
@@ -43,7 +43,7 @@ Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디
 
 | 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
 |---|---|---|
-| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.0.20` |
+| 현재 팀 LAN 공유 Server | `0.0.0.0` | `10.207.18.103` |
 | 같은 PC 격리 harness | 명시적 `127.0.0.1` | 명시적 `127.0.0.1` |
 | 서로 다른 장소/네트워크 | `0.0.0.0` | Server PC의 VPN IPv4(권장) 또는 TCP 7777이 포트포워딩된 공인 endpoint |
 
@@ -71,14 +71,14 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 팀 계약을 갈라놓지 않는다.
 
 ```xml
-<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.20</LocalDebuggerEnvironment>
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.103</LocalDebuggerEnvironment>
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.0.20`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `10.207.18.103`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 `origin/main` commit과 생성 데이터를 맞춘다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v39 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다.
+Server PC와 Client PC는 먼저 같은 `origin/main` commit과 생성 데이터를 맞춘다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v40 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다.
 
 ```powershell
 git switch main
@@ -91,12 +91,12 @@ git rev-parse HEAD
 
 두 PC의 `git rev-parse HEAD`가 같아야 한다. `Client/Bin/Resources`의 `Fonts, Character, Deploy, Effect, Map, UI` 여섯 물리 폴더도 팀장이 전달한 같은 runtime 입력이어야 하며, Git에 없는 UI/Character/Map 리소스는 별도 전달을 먼저 완료한다. Debug configuration으로 공유할 때는 두 PC 모두 Debug 정본 빌드를 실행하고, Server를 중지한 상태에서 Server PC가 `Server/Bin/Debug/Server.exe --reset-valtan-runtime-to-packaged`를 한 번 통과시킨다. cross-PC Debug Hot Reload candidate 공유는 지원하지 않는다.
 
-동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.0.20`으로 맞춘다.
+동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `10.207.18.103`으로 맞춘다.
 
 Server가 `Listening on 0.0.0.0:7777`을 출력한 뒤 다른 PC에서 아래 probe가 성공해야 한다. Windows 네트워크가 `공용`이어도 repository sync가 검증하는 firewall rule은 `Profile Any`, `RemoteAddress LocalSubnet`이므로 직접 IPv4 접속에는 문제가 없다.
 
 ```powershell
-Test-NetConnection 192.168.0.20 -Port 7777
+Test-NetConnection 10.207.18.103 -Port 7777
 ```
 
 `TcpTestSucceeded: False`면 Server listener, endpoint 어댑터, TCP 7777 firewall, 공유기의 AP/client isolation 순서로 본다. `True`인데 Lobby에서 거부되거나 끊기면 서로 다른 commit/binary/protocol/gameplay bootstrap을 먼저 확인한다. 승인 뒤 `Stage loading failed`로 Lobby에 남으면 네트워크가 아니라 Client runtime Resources 또는 Loader 문제다. Bern과 Valtan은 player spawn이 네 개라 Server PC의 Client도 입장하면 다른 PC 세 대까지 같은 room에 들어갈 수 있다. Character Select는 session-private이므로 여러 PC가 같은 Server를 써도 서로 보이지 않으며, 동시 플레이 확인은 Bern 또는 Valtan에서 한다.
@@ -119,7 +119,7 @@ Get-NetIPAddress -AddressFamily IPv4 |
 Server\Bin\Debug\Server.exe --bind-address 0.0.0.0 --smoke-timeout-ms 500
 
 # Client PC: VPN/LAN endpoint가 실제로 열렸는지 확인
-Test-NetConnection 192.168.0.20 -Port 7777
+Test-NetConnection 10.207.18.103 -Port 7777
 ```
 
 `Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
@@ -465,7 +465,9 @@ Save 뒤 별도 Effect publish나 사용자 sidecar로 이 값을 다시 선택�
 payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 계약이며
 `CGameplayCatalog::Apply_Defense` 한 곳에서만 계산한다. boss defense/outgoing 감산은 아직 없다.
 
-수업용 `CMonster`와 `astar/Monster`는 제거 대상 레거시다. 제품 일반 몬스터는 실제 4개 Valtan archetype을 `MonsterCatalog.json`과 `MonsterProfiles.json`에 등록하고, Area `SpawnGroups.world.json` → publisher → Server `CSpawnGroupRuntime/CMonsterBrain` → Shared world entity spawn/snapshot/despawn → Client catalog presentation 경로를 사용한다. 레거시 클래스를 이 계약에 다시 연결하지 않는다.
+수업용 `CMonster`와 `astar/Monster`는 제거 대상 레거시다. 제품 일반 몬스터는 Valtan archetype을 `MonsterCatalog.json`과 `MonsterProfiles.json`에 등록하고, Area `SpawnGroups.world.json` → publisher → Server `CSpawnGroupRuntime/CMonsterBrain` → Shared world entity spawn/snapshot/despawn → Client catalog presentation 경로를 사용한다. `MonsterProfiles.json` formatVersion 2의 `targetReleaseRange`, `turnSpeedDegreesPerSecond`, `acceleration`, `deceleration`, `arrivalSlowRadius`가 Server 권위 추적 유지·회전·가감속 정본이며 publisher는 이를 spawn-group bootstrap v4로 투영한다. Brain은 살아 있는 현재 타깃을 release range 안에서 유지하고 WINDUP부터 RECOVERY까지 타깃과 공격 방향을 고정하며, Server navigation 경로 단축과 기존 원형 body sweep/slide를 이동·knockback에 함께 사용한다. 레거시 클래스를 이 계약에 다시 연결하지 않는다.
+
+Client 일반 몬스터 표현은 root-motion 억제와 network-transform 보간을 독립 정책으로 사용한다. Server 권위 몬스터는 기존 2-tick `CNpcNetworkTransformInterpolator`로 표시하고, `WINDUP` occurrence에서 공격 clip을 0초부터 한 번 시작한 뒤 `ACTIVE/RECOVERY` 동안 같은 clip을 이어서 재생한다. 다음 `WINDUP`은 같은 clip이어도 새 occurrence로 다시 시작한다. `MonsterCatalog.json` formatVersion 2의 presentation-only `attackPresentations[]`는 실제 clip과 playback rate를 소유한다. Client는 Server entity ID와 occurrence tick으로 pool을 결정적으로 선택하므로 Server timing과 Client 간 일치성을 바꾸지 않는다. IDLE/CHASE 중 damage event는 catalog hit clip을 짧게 재생한 뒤 이전 locomotion으로 복귀하고 ATTACK/DEAD는 덮어쓰지 않는다. Valtan Loader는 spawn 전에 지원 archetype prototype을 미리 준비하고, 누락 모델/clip은 해당 archetype/action 표현만 격리한다.
 
 combat body와 공격 footprint는 `Shared/Public/Gameplay/CombatCollisionContract.h`와 Server combat-object geometry의 pure XZ primitive로 평가한다. 플레이어 스킬은 target body radius, 일반 몬스터와 Lugaru는 player footprint, Valtan inline stage는 circle/ring/cone/forward-box/cross, 이동 검기는 swept circle과 player footprint의 교차를 Server fixed tick에서 판정한다. HP·damage·counter·death는 같은 typed Server hit resolver 순서를 유지한다. Client `CCollider`와 world-root Effect는 Debug/visual projection일 뿐 damage 판정이나 PhysX 권위가 아니다.
 

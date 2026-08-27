@@ -636,6 +636,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* sequence =
 			catalog.Find_BossPatternSequence("ENCOUNTER_VALTAN");
 		const std::vector<std::string> expectedPatternIds{
+			"VALTAN_ENTRANCE_CINEMATIC",
 			"VALTAN_WHIRLWIND",
 			"VALTAN_FOUR_SLASH",
 			"VALTAN_FIST_IN_OUT",
@@ -671,9 +672,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				sequence->eMode &&
 			1000u == sequence->iInterStepPursuitMs &&
 			30u == sequence->iInterStepPursuitTicks &&
-			28u == sequence->iExpectedStepCount &&
+			29u == sequence->iExpectedStepCount &&
 			sequence->PatternIds == expectedPatternIds,
-			"Load the exact seven-pattern Phase-1 review plus 21 Phase-2 animation sequence from bootstrap v24");
+			"Load the entrance camera gate, seven-pattern Phase-1 review, and 21 Phase-2 animation sequence from bootstrap v24");
 	}
 	{
 		const auto* patterns =
@@ -1764,36 +1765,37 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const std::string sequenceHeader =
 			"PATTERNSEQUENCE\tENCOUNTER_VALTAN\t"
 			"sequence.valtan.server-authored.v1\t"
-			"ORDERED_ONCE_THEN_IDLE\t1000\t28";
+			"ORDERED_ONCE_THEN_IDLE\t1000\t29";
 		const std::vector<std::string> sequenceSteps{
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t0\tVALTAN_WHIRLWIND",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t1\tVALTAN_FOUR_SLASH",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t2\tVALTAN_FIST_IN_OUT",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t3\tVALTAN_HIGH_JUMP",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t4\tVALTAN_FLOOR_WIPE_130",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t5\tVALTAN_DASH_CHARGE",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t6\tVALTAN_ARENA_BREAK_109",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t7\tVALTAN_SIX_PIZZA_106",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t8\tVALTAN_ATTACK_WHIRLWIND",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t9\tVALTAN_CHARGE",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t10\tVALTAN_SEQUENCE_FOUR",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t11\tVALTAN_ROAR_CHARGE",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t12\tVALTAN_SEQUENCE_RUSH",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t13\tVALTAN_THREE",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t14\tVALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t15\tVALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t16\tVALTAN_TERRAIN_DESTRUCTION",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t17\tVALTAN_SEQUENCE_FRONT_BACK_FRONT",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t18\tVALTAN_WARP",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t19\tVALTAN_SEQUENCE_TWOHAND",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t20\tVALTAN_SEQUENCE_WHIRLWIND",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t21\tVALTAN_TRASH",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t22\tVALTAN_TRASH_CATCH_SUCCESS",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t23\tVALTAN_TRASH_CATCH_FAIL",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t24\tVALTAN_TRASH_CATCH_IF",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t25\tVALTAN_CATCH_BREATH",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t26\tVALTAN_COUNTER",
-			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t27\tVALTAN_CHARGE_2" };
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t0\tVALTAN_ENTRANCE_CINEMATIC",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t1\tVALTAN_WHIRLWIND",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t2\tVALTAN_FOUR_SLASH",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t3\tVALTAN_FIST_IN_OUT",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t4\tVALTAN_HIGH_JUMP",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t5\tVALTAN_FLOOR_WIPE_130",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t6\tVALTAN_DASH_CHARGE",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t7\tVALTAN_ARENA_BREAK_109",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t8\tVALTAN_SIX_PIZZA_106",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t9\tVALTAN_ATTACK_WHIRLWIND",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t10\tVALTAN_CHARGE",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t11\tVALTAN_SEQUENCE_FOUR",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t12\tVALTAN_ROAR_CHARGE",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t13\tVALTAN_SEQUENCE_RUSH",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t14\tVALTAN_THREE",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t15\tVALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t16\tVALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t17\tVALTAN_TERRAIN_DESTRUCTION",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t18\tVALTAN_SEQUENCE_FRONT_BACK_FRONT",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t19\tVALTAN_WARP",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t20\tVALTAN_SEQUENCE_TWOHAND",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t21\tVALTAN_SEQUENCE_WHIRLWIND",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t22\tVALTAN_TRASH",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t23\tVALTAN_TRASH_CATCH_SUCCESS",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t24\tVALTAN_TRASH_CATCH_FAIL",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t25\tVALTAN_TRASH_CATCH_IF",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t26\tVALTAN_CATCH_BREATH",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t27\tVALTAN_COUNTER",
+			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.server-authored.v1\t28\tVALTAN_CHARGE_2" };
 		std::string missingSequenceBootstrap = bootstrapText;
 		bool removedSequence = removeBootstrapRow(
 			missingSequenceBootstrap, sequenceHeader);
@@ -1810,12 +1812,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			invalidSequencePursuitBootstrap, sequenceHeader,
 			"PATTERNSEQUENCE\tENCOUNTER_VALTAN\t"
 			"sequence.valtan.server-authored.v1\t"
-			"ORDERED_ONCE_THEN_IDLE\t0\t28");
+			"ORDERED_ONCE_THEN_IDLE\t0\t29");
 		std::string duplicateSequenceStepBootstrap = bootstrapText;
 		const bool madeDuplicateSequenceStep = replaceBootstrapRow(
 			duplicateSequenceStepBootstrap, sequenceSteps[1u],
 			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\t"
-			"sequence.valtan.server-authored.v1\t1\tVALTAN_WHIRLWIND");
+			"sequence.valtan.server-authored.v1\t1\tVALTAN_ENTRANCE_CINEMATIC");
 		std::string nonContiguousSequenceBootstrap = bootstrapText;
 		const bool madeNonContiguousSequence = replaceBootstrapRow(
 			nonContiguousSequenceBootstrap, sequenceSteps[2u],
@@ -3072,6 +3074,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findPattern("VALTAN_HIGH_JUMP");
 		const BOSS_PATTERN_DEFINITION* arenaBreakPattern =
 			findPattern("VALTAN_ARENA_BREAK_109");
+		const BOSS_PATTERN_DEFINITION* entranceCinematic =
+			findPattern("VALTAN_ENTRANCE_CINEMATIC");
+		const BOSS_PATTERN_STAGE_DEFINITION* entranceEstablish =
+			findStage("VALTAN_ENTRANCE_CINEMATIC", "ESTABLISH");
+		const BOSS_PATTERN_STAGE_DEFINITION* entranceArenaReveal =
+			findStage("VALTAN_ENTRANCE_CINEMATIC", "ARENA_REVEAL");
+		const BOSS_PATTERN_STAGE_DEFINITION* entranceHeroHandoff =
+			findStage("VALTAN_ENTRANCE_CINEMATIC", "HERO_HANDOFF");
 		const auto hasAction = [](
 			const BOSS_PATTERN_STAGE_DEFINITION* stage,
 			const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
@@ -3165,10 +3175,39 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findStage("VALTAN_CENTER_GRAB_COUNTER_64", "COUNTER_WINDOW");
 		const BOSS_PATTERN_STAGE_DEFINITION* counterSlam =
 			findStage("VALTAN_COUNTER", "STEP_03");
+		const bool entranceCameraGateExact =
+			nullptr != entranceCinematic &&
+			BOSS_PATTERN_SELECTION::NORMAL == entranceCinematic->eSelection &&
+			entranceCinematic->bInvulnerableWhileRunning &&
+			BOSS_PATTERN_TARGET_POLICY::NONE ==
+				entranceCinematic->eTargetPolicy &&
+			BOSS_PATTERN_AIM_POLICY::NONE == entranceCinematic->eAimPolicy &&
+			3u == entranceCinematic->Stages.size() &&
+			nullptr != entranceEstablish &&
+			8600u == entranceEstablish->iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE == entranceEstablish->eHitShape &&
+			entranceEstablish->Actions.empty() &&
+			hasBranch(entranceEstablish, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.cinematic.entrance.arena-reveal") &&
+			nullptr != entranceArenaReveal &&
+			5800u == entranceArenaReveal->iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE == entranceArenaReveal->eHitShape &&
+			entranceArenaReveal->Actions.empty() &&
+			hasBranch(entranceArenaReveal, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.cinematic.entrance.hero-handoff") &&
+			nullptr != entranceHeroHandoff &&
+			5467u == entranceHeroHandoff->iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE == entranceHeroHandoff->eHitShape &&
+			entranceHeroHandoff->Actions.empty() &&
+			hasBranch(entranceHeroHandoff, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
+		tests.Require(
+			entranceCameraGateExact,
+			"Load the exact invulnerable 19.867-second Valtan entrance camera gate");
+
 		const bool reactiveTopologyExact = nullptr != patterns &&
-			33u == valtanLivePatternCount && 129u == valtanStageCount &&
-			25u == valtanStageActionCount &&
-			139u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
+			34u == valtanLivePatternCount && 132u == valtanStageCount &&
+			24u == valtanStageActionCount &&
+			142u == valtanRuntimeBranchCount && 5u == valtanMotionCount &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&
 			2u == parryStance->Branches.size() &&
 			hasAction(parryStance,
@@ -3261,7 +3300,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr != counterSlam && 1u == counterSlam->Branches.size() &&
 			hasBranch(counterSlam, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
 		tests.Require(reactiveTopologyExact,
-			"Load all 129 current Valtan stages with the exact 25 actions, 139 runtime branches, and terminal counter slam");
+			"Load all 132 current Valtan stages with the exact 24 actions, 142 runtime branches, five motions, and terminal counter slam");
 		tests.Require(
 			nullptr != fourSlashes && 3u == fourSlashes->iHitCount &&
 			0u == fourSlashes->iHitDelayMs &&
@@ -4145,6 +4184,66 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			SERVER_ENTITY_ACTION::PATTERN_WINDUP == monster.eAction &&
 			players.begin()->second.iNetEntityId == monster.iTargetEntityId,
 			"Ignore protected players and acquire the same player after combat admission");
+	}
+	{
+		CServerNavigation navigation;
+		const bool navigationLoaded =
+			navigation.Load("LV_LOBBY_CLASSSELECT_SL00");
+		SERVER_WORLD_ENTITY monster{};
+		monster.iNetEntityId = 800u;
+		monster.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+		monster.iCurrentHp = 100u;
+		monster.iMaximumHp = 100u;
+		monster.fCollisionRadius = 0.1f;
+		monster.fAttackRange = 0.01f;
+		monster.fEngageDistance = 10.f;
+		monster.fTargetReleaseDistance = 14.f;
+		monster.fMoveSpeed = 2.f;
+		monster.fTurnSpeedDegreesPerSecond = 180.f;
+		monster.fMoveAcceleration = 4.f;
+		monster.fMoveDeceleration = 6.f;
+		monster.fArrivalSlowRadius = 1.f;
+		monster.iPatternTelegraphMs = 1000u;
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		for (std::uint32_t index = 0u; index < 2u; ++index)
+		{
+			SERVER_PLAYER player{};
+			player.iPlayerId = 810u + index;
+			player.iNetEntityId = 820u + index;
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.iCurrentHp = 100u;
+			player.iMaximumHp = 100u;
+			player.fPositionX = 5.f + static_cast<float>(index);
+			player.isCombatReady = true;
+			players.emplace(player.iPlayerId, player);
+		}
+		std::vector<DAMAGE_EVENT> damageEvents;
+		CMonsterBrain monsterBrain;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 10u, damageEvents);
+		const NET_ENTITY_ID firstTarget = monster.iTargetEntityId;
+		players.find(811u)->second.fPositionX = 4.f;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 11u, damageEvents);
+		const bool retainedTarget = firstTarget == monster.iTargetEntityId;
+		players.find(810u)->second.fPositionX = 20.f;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 12u, damageEvents);
+		const bool releasedAndRetargeted =
+			821u == monster.iTargetEntityId;
+		monster.eAction = SERVER_ENTITY_ACTION::PATTERN_WINDUP;
+		monster.fActionElapsedSeconds = 0.f;
+		players.find(810u)->second.fPositionX = 0.5f;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 13u, damageEvents);
+		tests.Require(
+			navigationLoaded && 820u == firstTarget && retainedTarget &&
+			releasedAndRetargeted && 821u == monster.iTargetEntityId,
+			"Retain a valid monster target, release it at hysteresis range, and lock the replacement through windup");
 	}
 	{
 		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
@@ -6180,12 +6279,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	};
 	const bool bernGuideReachable =
 		(bernNpc != bernPlacements.end() &&
-			hasReachableGuideApproach(*bernNpc)) ||
+			hasReachableGuideApproach(*bernNpc)) &&
 		(bernAylara != bernPlacements.end() &&
 			hasReachableGuideApproach(*bernAylara));
 	tests.Require(
 		bernGuideReachable,
-		"Reach the Bern Valtan-entry guide NPC through authoritative navigation");
+		"Reach every Bern Valtan-entry guide NPC through authoritative navigation");
 	bool bernSpawnsOnNavigation = bernLoaded;
 	for (const WORLD_BOOTSTRAP_PLACEMENT& spawn : bernPlacements)
 	{
@@ -6203,6 +6302,32 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.Require(
 		bernSpawnsOnNavigation,
 		"Project all Bern player spawns to baked navigation");
+	/* The visible north-entry stair continues beyond the former z=-9.438004
+	navigation boundary. Its authored final stair placement is centered at
+	(136.86001, -3.30000488), so this exact world position must remain connected
+	to the Bern spawn instead of being clipped by the grid extent. */
+	constexpr float BERN_NORTH_ENTRY_X = 136.86001f;
+	constexpr float BERN_NORTH_ENTRY_Z = -3.30000488f;
+	SERVER_NAV_POINT bernNorthEntryGround{};
+	std::vector<SERVER_NAV_POINT> bernNorthEntryPath;
+	const bool bernNorthEntryReachable =
+		bernNavigation.Sample_Position(
+			BERN_NORTH_ENTRY_X,
+			BERN_NORTH_ENTRY_Z,
+			bernNorthEntryGround) &&
+		bernNavigation.Find_Path(
+			137.586334f,
+			-22.4640217f,
+			BERN_NORTH_ENTRY_X,
+			BERN_NORTH_ENTRY_Z,
+			bernNorthEntryPath) &&
+		!bernNorthEntryPath.empty();
+	tests.Require(
+		bernNorthEntryReachable &&
+		std::abs(bernNorthEntryGround.y - 42.2766418f) <= 0.25f &&
+		std::abs(bernNorthEntryPath.back().x - 136.738007f) <= 0.26f &&
+		std::abs(bernNorthEntryPath.back().z - (-3.1880035f)) <= 0.26f,
+		"Reach the visible Bern north-entry stair through authoritative navigation");
 	/* The castle approach is why Bern needs a grid at all: without one the room
 	keeps the spawn height for the whole session and straight-line movement walks
 	through the staircase. The authoritative path from the spawn to the top of the
@@ -7441,8 +7566,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			terrainThreePattern->bInvulnerableWhileRunning &&
 			nullptr != terrainNinePattern &&
 			terrainNinePattern->bInvulnerableWhileRunning &&
-			130u == wipePattern->iTriggerHealthBar && 3u == invulnerableCount,
-			"Fire the invulnerable wipe on bar 130 and protect both terrain-destruction auditions");
+			130u == wipePattern->iTriggerHealthBar && 4u == invulnerableCount,
+			"Protect the entrance camera gate, 130-bar wipe, and both terrain-destruction auditions");
 
 		/* Its second smash is arena wide and lethal to any authored player pool,
 		which is what makes it a wipe rather than a large hit. */
@@ -8707,15 +8832,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			pizzaSecondTarget.iPlayerId, pizzaSecondTarget);
 		SERVER_WORLD_ENTITY pacingBoss = makeEntranceBoss();
 		pacingBoss.strRotationId = "sequence.valtan.server-authored.v1";
-		pacingBoss.iRotationStepIndex = 6u;
+		pacingBoss.iRotationStepIndex = 7u;
 		pacingBoss.iAutomaticPatternSequenceInterStepPursuitTicks = 30u;
 		for (std::uint32_t tick = 0u;
-			tick < 300u && 6u == pacingBoss.iRotationStepIndex; ++tick)
+			tick < 300u && 7u == pacingBoss.iRotationStepIndex; ++tick)
 		{
 			advanceBoss(pacingBoss, 1u);
 		}
 		const bool pursuitArmedAfterArenaBreak =
-			7u == pacingBoss.iRotationStepIndex &&
+			8u == pacingBoss.iRotationStepIndex &&
 			30u == pacingBoss.iAutomaticPatternSequencePursuitTicksRemaining &&
 			pacingBoss.strPatternId.empty();
 		const float pursuitStartX = pacingBoss.fPositionX;
@@ -8851,15 +8976,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			observedFloorWipeDeath = 0u == player.iCurrentHp &&
 				PLAYER_ACTION_STATE::DEAD == player.eAction &&
 				"VALTAN_FLOOR_WIPE_130" == automaticBoss.strPatternId &&
-				4u == automaticBoss.iRotationStepIndex &&
+				5u == automaticBoss.iRotationStepIndex &&
 				automaticBoss.bAutomaticPatternSequenceStepRunning;
 		}
 		for (std::uint32_t tick = 0u;
-			tick < 300u && automaticBoss.iRotationStepIndex < 5u; ++tick)
+			tick < 300u && automaticBoss.iRotationStepIndex < 6u; ++tick)
 		{
 			advanceBoss(automaticBoss, 1u, &observedOrder);
 		}
 		const std::vector<std::string> phaseOneThroughWipe{
+			"VALTAN_ENTRANCE_CINEMATIC",
 			"VALTAN_WHIRLWIND",
 			"VALTAN_FOUR_SLASH",
 			"VALTAN_FIST_IN_OUT",
@@ -8867,7 +8993,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"VALTAN_FLOOR_WIPE_130" };
 		const bool heldDashCursorWhileDead =
 			observedFloorWipeDeath && observedOrder == phaseOneThroughWipe &&
-			5u == automaticBoss.iRotationStepIndex &&
+			6u == automaticBoss.iRotationStepIndex &&
 			30u == automaticBoss.iAutomaticPatternSequencePursuitTicksRemaining &&
 			!automaticBoss.bAutomaticPatternSequenceStepRunning &&
 			!automaticBoss.bMechanicLedgerRequiresReset &&
@@ -8877,7 +9003,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		advanceBoss(automaticBoss, 60u, &observedOrder);
 		const bool stayedAtDashCursorUntilRevive =
 			observedOrder == phaseOneThroughWipe &&
-			5u == automaticBoss.iRotationStepIndex &&
+			6u == automaticBoss.iRotationStepIndex &&
 			30u == automaticBoss.iAutomaticPatternSequencePursuitTicksRemaining &&
 			!automaticBoss.bAutomaticPatternSequenceStepRunning &&
 			!automaticBoss.bMechanicLedgerRequiresReset &&
@@ -8889,7 +9015,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		revivedPlayer.isCombatReady = true;
 		advanceBoss(automaticBoss, 1u, &observedOrder);
 		const bool resumedPursuitImmediatelyAfterRevive =
-			5u == automaticBoss.iRotationStepIndex &&
+			6u == automaticBoss.iRotationStepIndex &&
 			29u == automaticBoss.iAutomaticPatternSequencePursuitTicksRemaining &&
 			automaticBoss.strPatternId.empty() &&
 			SERVER_ENTITY_ACTION::CHASE == automaticBoss.eAction;
@@ -8915,6 +9041,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			advanceBoss(automaticBoss, 1u, &observedOrder);
 		}
 		const std::vector<std::string> expectedOrder{
+			"VALTAN_ENTRANCE_CINEMATIC",
 			"VALTAN_WHIRLWIND",
 			"VALTAN_FOUR_SLASH",
 			"VALTAN_FIST_IN_OUT",
@@ -8947,7 +9074,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			publishedTrashCounter && observedOrder == expectedOrder &&
 			"sequence.valtan.server-authored.v1" ==
 				automaticBoss.strRotationId &&
-			28u == automaticBoss.iRotationStepIndex &&
+			29u == automaticBoss.iRotationStepIndex &&
 			entrancePlayers.begin()->second.iCurrentHp > 0u &&
 			!automaticBoss.bAutomaticPatternSequenceStepRunning &&
 			automaticBoss.strPatternId.empty() &&
@@ -8979,7 +9106,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		pausePlayer.isCombatReady = false;
 		advanceBoss(pausedBoss, 60u, &pausedOrder);
 		const bool heldOrderedStepWhileDead =
-			pausedOrder == std::vector<std::string>{ "VALTAN_WHIRLWIND" } &&
+			pausedOrder == std::vector<std::string>{ "VALTAN_ENTRANCE_CINEMATIC" } &&
 			0u == pausedBoss.iRotationStepIndex &&
 			pausedBoss.bAutomaticPatternSequenceStepRunning &&
 			pausedBoss.bAutomaticPatternSequencePausedForRevive &&
@@ -9024,7 +9151,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		advanceBoss(disconnectedBoss, 1u, &disconnectedOrder);
 		const bool emptyRoomFailedClosed =
 			disconnectedOrder ==
-				std::vector<std::string>{ "VALTAN_WHIRLWIND" } &&
+				std::vector<std::string>{ "VALTAN_ENTRANCE_CINEMATIC" } &&
 			0u == disconnectedBoss.iRotationStepIndex &&
 			!disconnectedBoss.bAutomaticPatternSequenceStepRunning &&
 			!disconnectedBoss.bAutomaticPatternSequencePausedForRevive &&
@@ -11508,6 +11635,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Read the published hit knockback scale for the monster and the miniboss");
 		tests.Require(
 			nullptr != monsterProfile && nullptr != minibossProfile &&
+			std::fabs(monsterProfile->fTargetReleaseRange - 24.f) < 0.0001f &&
+			std::fabs(monsterProfile->fTurnSpeedDegreesPerSecond - 420.f) < 0.0001f &&
+			std::fabs(monsterProfile->fAcceleration - 12.f) < 0.0001f &&
+			std::fabs(monsterProfile->fDeceleration - 16.f) < 0.0001f &&
+			std::fabs(monsterProfile->fArrivalSlowRadius - 1.6f) < 0.0001f &&
+			std::fabs(minibossProfile->fTargetReleaseRange - 36.f) < 0.0001f,
+			"Read monster target hysteresis, turn, acceleration, deceleration, and arrival slowdown from bootstrap v4");
+		tests.Require(
+			nullptr != monsterProfile && nullptr != minibossProfile &&
 			std::fabs(monsterProfile->fAttackPushRangeM - 0.5f) < 0.0001f &&
 			150u == monsterProfile->iAttackPushMs &&
 			!monsterProfile->bAttackKnockdown &&
@@ -12210,20 +12346,37 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				{
 					return WORLD_DESTRUCTION_STATE::BREAKING == state.eState;
 				}));
-		/* The 109 batch is thirty independent outer ring walls. Interior groups
-		are authored but dormant, so none of them may break on this edge. */
+		/* The 109 batch is the thirty outer ring walls plus every interior
+		wall still standing, so the cutscene leaves no wall behind. A floor
+		sector or an entrance wall leaving INTACT on this edge would take the
+		arena's footing away a whole health-bar chain too early. */
 		const std::size_t interiorBreakingCount = static_cast<std::size_t>(
 			std::count_if(breakingStates.begin(), breakingStates.end(),
 				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
 				{
 					return WORLD_DESTRUCTION_STATE::INTACT != state.eState &&
+						(0u == state.strGroupId.rfind(
+							"destroyable.group.valtan.wall159.", 0u) ||
+						0u == state.strGroupId.rfind(
+							"destroyable.group.valtan.wall.", 0u));
+				}));
+		const std::size_t outsideBreakingCount = static_cast<std::size_t>(
+			std::count_if(breakingStates.begin(), breakingStates.end(),
+				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+				{
+					return WORLD_DESTRUCTION_STATE::INTACT != state.eState &&
 						0u != state.strGroupId.rfind(
-							"destroyable.group.valtan.outerwall109.", 0u);
+							"destroyable.group.valtan.outerwall109.", 0u) &&
+						0u != state.strGroupId.rfind(
+							"destroyable.group.valtan.wall159.", 0u) &&
+						0u != state.strGroupId.rfind(
+							"destroyable.group.valtan.wall.", 0u);
 				}));
 		tests.Require(
-			applied && 30u == breakingCount && 0u == interiorBreakingCount &&
-			31u == room.m_iNextWorldDestructionEventSequence,
-			"Emit one monotonically sequenced live event for every independent 109-bar wall");
+			applied && 97u == breakingCount && 67u == interiorBreakingCount &&
+			0u == outsideBreakingCount &&
+			98u == room.m_iNextWorldDestructionEventSequence,
+			"Emit one monotonically sequenced live event for every 109-bar wall");
 
 		const std::uint64_t sequenceAfterFirstEdge =
 			room.m_iNextWorldDestructionEventSequence;
@@ -12261,10 +12414,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				transaction, boss, repeatedEvents, status);
 		room.m_WorldDestructionRuntime = std::move(activeRuntime);
 		tests.Require(
-			builtFirst && builtRepeated && 30u == firstEvents.size() &&
+			builtFirst && builtRepeated && 97u == firstEvents.size() &&
 			firstEvents.size() == repeatedEvents.size() &&
 			1u == firstEvents.front().iEventSequence &&
-			30u == firstEvents.back().iEventSequence &&
+			97u == firstEvents.back().iEventSequence &&
 			firstEvents.front().iRandomSeed ==
 				repeatedEvents.front().iRandomSeed &&
 			firstEvents.front().fImpactOriginX == boss.fPositionX &&
@@ -13157,8 +13310,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				[&partialStatesBeforeArenaBreak](
 					const WORLD_DESTRUCTION_GROUP_STATE& after)
 				{
+					/* The 109 batch owns the outer ring and the interior walls, so
+					only they may move here. What must survive the collapse is the
+					floor, which its own 84/30 patterns drop later, and the entrance
+					walls the first-appearance sweep already owns. */
 					if (0u == after.strGroupId.rfind(
-							"destroyable.group.valtan.outerwall109.", 0u))
+							"destroyable.group.valtan.outerwall109.", 0u) ||
+					0u == after.strGroupId.rfind(
+							"destroyable.group.valtan.wall159.", 0u) ||
+					0u == after.strGroupId.rfind(
+							"destroyable.group.valtan.wall.", 0u))
 					{
 						return true;
 					}
@@ -13190,7 +13351,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Keep one consumed outer wall DESPAWNED and commit only the other twenty-nine to BREAKING");
 		tests.Require(
 			partialUnrelatedGroupsUnchanged,
-			"Leave every non-outer destruction group unchanged across the Release-safe partial 109 batch");
+			"Leave every floor sector and entrance wall unchanged across the Release-safe partial 109 batch");
 		const bool committedPartialArena = appliedPartialArenaBreak &&
 			partialOuterRoom.Commit_DueWorldDestruction(
 				partialArenaCommitTick);

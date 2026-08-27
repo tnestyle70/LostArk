@@ -17,7 +17,7 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.encounter-cinematic-camera";
-	constexpr uint32_t FORMAT_VERSION = 5u;
+	constexpr uint32_t FORMAT_VERSION = 6u;
 	constexpr f32_t MAX_SHAKE_AMPLITUDE = 2.f;
 	constexpr uint32_t MAX_SHAKE_DURATION_MS = 1000u;
 	constexpr uint32_t MAX_CUE_COUNT = 32u;
@@ -103,7 +103,8 @@ namespace
 		uint32_t& outValue)
 	{
 		const DATA_JSON_VALUE* value = parent.Find(key);
-		if (nullptr == value || !value->Is_Number())
+		if (nullptr == value || !value->Is_Number() ||
+			value->Was_FloatingPointToken())
 			return false;
 		const double number = value->Get_Number();
 		if (!std::isfinite(number) || number < 0.0 ||
@@ -128,6 +129,22 @@ namespace
 			outValue = VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP;
 		else if ("HOLD" == text)
 			outValue = VALTAN_CINEMATIC_CAMERA_EASING::HOLD;
+		else
+			return false;
+		return true;
+	}
+
+	bool_t Read_Interpolation(
+		const DATA_JSON_VALUE& parent,
+		VALTAN_CINEMATIC_CAMERA_INTERPOLATION& outValue)
+	{
+		std::string text;
+		if (!Read_String(parent, "interpolation", text))
+			return false;
+		if ("LINEAR" == text)
+			outValue = VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR;
+		else if ("CATMULL_ROM" == text)
+			outValue = VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
 		else
 			return false;
 		return true;
@@ -269,6 +286,20 @@ namespace
 		}
 	}
 
+	const char_t* Interpolation_Text(
+		const VALTAN_CINEMATIC_CAMERA_INTERPOLATION interpolation)
+	{
+		switch (interpolation)
+		{
+		case VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR:
+			return "LINEAR";
+		case VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM:
+			return "CATMULL_ROM";
+		default:
+			return nullptr;
+		}
+	}
+
 	void Write_Float3(
 		std::ostringstream& output,
 		const float3_t& value)
@@ -314,6 +345,8 @@ namespace
 		{
 			const auto& keyframe = keyframes[index];
 			output << (0u == index ? "\n" : ",\n") << indent << "  {\n"
+				<< indent << "    \"sceneId\": \""
+				<< CDataJson::Escape(keyframe.strSceneId) << "\",\n"
 				<< indent << "    \"timeMs\": " << keyframe.iTimeMs << ",\n"
 				<< indent << "    \"eye\": ";
 			Write_Float3(output, keyframe.vEye);
@@ -405,11 +438,12 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 
 	std::vector<VALTAN_CINEMATIC_CAMERA_CUE> staged;
 	std::unordered_set<std::string> cueIds;
+	std::unordered_set<std::string> sceneIds;
 	std::unordered_set<std::string> tuples;
 	for (const DATA_JSON_VALUE& cueValue : cues->Get_Array())
 	{
 		if (!Is_ExactCameraCueObject(cueValue,
-			{ "cueId", "patternId", "stageId", "durationMs", "easing",
+			{ "cueId", "patternId", "stageId", "durationMs", "interpolation", "easing",
 				"shakeAmplitude", "shakeDurationMs", "keyframes" }))
 		{
 			outStatus = "Cinematic camera cue has unexpected properties";
@@ -424,6 +458,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 				CEncounterPatternReference::MAX_STAGE_DURATION_MS, cue.iDurationMs) ||
 			0u == cue.iDurationMs || !cueIds.insert(cue.strCueId).second ||
 			!Read_Transitions(cueValue, cue) ||
+			!Read_Interpolation(cueValue, cue.eInterpolation) ||
 			!Read_Easing(cueValue, cue.eEasing) ||
 			!Read_Shake(cueValue, cue) ||
 			!Read_Tracking(cueValue, cue.eTrackingMode, cue.vTrackingOrigin))
@@ -470,13 +505,16 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 		{
 			const DATA_JSON_VALUE& keyframeValue = keyframes->Get_Array()[index];
 			if (!Is_ExactObject(keyframeValue,
-				{ "timeMs", "eye", "lookAt", "fovYDegrees" }))
+				{ "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" }))
 			{
 				outStatus = "Cinematic camera keyframe has unexpected properties";
 				return false;
 			}
 			VALTAN_CINEMATIC_CAMERA_KEYFRAME keyframe;
-			if (!Read_Unsigned(keyframeValue, "timeMs", cue.iDurationMs,
+			if (!Read_String(keyframeValue, "sceneId", keyframe.strSceneId) ||
+				!Is_StablePresentationAssetId(keyframe.strSceneId) ||
+				!sceneIds.insert(keyframe.strSceneId).second ||
+				!Read_Unsigned(keyframeValue, "timeMs", cue.iDurationMs,
 					keyframe.iTimeMs) ||
 				!Read_Float3(keyframeValue, "eye", keyframe.vEye) ||
 				!Read_Float3(keyframeValue, "lookAt", keyframe.vLookAt) ||
@@ -518,7 +556,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 	if (!deathCueValue->Get_Object().empty())
 	{
 		if (!Is_ExactObject(*deathCueValue,
-			{ "cueId", "durationMs", "easing", "shakeAmplitude",
+			{ "cueId", "durationMs", "interpolation", "easing", "shakeAmplitude",
 				"shakeDurationMs", "keyframes" }))
 		{
 			outStatus = "Cinematic death cue has unexpected properties";
@@ -526,10 +564,12 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 		}
 		if (!Read_String(*deathCueValue, "cueId", deathCue.strCueId) ||
 			!Is_StablePresentationAssetId(deathCue.strCueId) ||
+			!cueIds.insert(deathCue.strCueId).second ||
 			!Read_Unsigned(*deathCueValue, "durationMs",
 				CEncounterPatternReference::MAX_STAGE_DURATION_MS,
 				deathCue.iDurationMs) ||
 			0u == deathCue.iDurationMs ||
+			!Read_Interpolation(*deathCueValue, deathCue.eInterpolation) ||
 			!Read_Easing(*deathCueValue, deathCue.eEasing) ||
 			!Read_Shake(*deathCueValue, deathCue))
 		{
@@ -551,13 +591,16 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 			const DATA_JSON_VALUE& keyframeValue =
 				deathKeyframes->Get_Array()[index];
 			if (!Is_ExactObject(keyframeValue,
-				{ "timeMs", "eye", "lookAt", "fovYDegrees" }))
+				{ "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" }))
 			{
 				outStatus = "Cinematic death keyframe has unexpected properties";
 				return false;
 			}
 			VALTAN_CINEMATIC_CAMERA_KEYFRAME keyframe;
-			if (!Read_Unsigned(keyframeValue, "timeMs", deathCue.iDurationMs,
+			if (!Read_String(keyframeValue, "sceneId", keyframe.strSceneId) ||
+				!Is_StablePresentationAssetId(keyframe.strSceneId) ||
+				!sceneIds.insert(keyframe.strSceneId).second ||
+				!Read_Unsigned(keyframeValue, "timeMs", deathCue.iDurationMs,
 					keyframe.iTimeMs) ||
 				!Read_Float3(keyframeValue, "eye", keyframe.vEye) ||
 				!Read_Float3(keyframeValue, "lookAt", keyframe.vLookAt) ||
@@ -650,9 +693,11 @@ bool_t Client::CValtanCinematicCameraDocument::Serialize_Text(
 	{
 		const VALTAN_CINEMATIC_CAMERA_CUE& cue = m_Cues[index];
 		const char_t* easing = Easing_Text(cue.eEasing);
-		if (nullptr == easing)
+		const char_t* interpolation = Interpolation_Text(cue.eInterpolation);
+		if (nullptr == easing || nullptr == interpolation)
 		{
-			outStatus = "Cinematic camera cue has an unsupported easing";
+			outStatus =
+				"Cinematic camera cue has unsupported interpolation or easing";
 			return false;
 		}
 		output << (0u == index ? "\n" : ",\n")
@@ -688,7 +733,8 @@ bool_t Client::CValtanCinematicCameraDocument::Serialize_Text(
 			}
 			output << ",\n      \"transitionOutMs\": " << cue.iTransitionOutMs;
 		}
-		output << ",\n      \"easing\": \"" << easing << "\",\n"
+		output << ",\n      \"interpolation\": \"" << interpolation << "\",\n"
+			<< "      \"easing\": \"" << easing << "\",\n"
 			<< "      \"shakeAmplitude\": " << cue.fShakeAmplitude << ",\n"
 			<< "      \"shakeDurationMs\": " << cue.iShakeDurationMs << ",\n"
 			<< "      \"keyframes\": ";
@@ -705,14 +751,18 @@ bool_t Client::CValtanCinematicCameraDocument::Serialize_Text(
 	else
 	{
 		const char_t* easing = Easing_Text(m_DeathCue.eEasing);
-		if (nullptr == easing)
+		const char_t* interpolation =
+			Interpolation_Text(m_DeathCue.eInterpolation);
+		if (nullptr == easing || nullptr == interpolation)
 		{
-			outStatus = "Cinematic death cue has an unsupported easing";
+			outStatus =
+				"Cinematic death cue has unsupported interpolation or easing";
 			return false;
 		}
 		output << "{\n"
 			<< "    \"cueId\": \"" << CDataJson::Escape(m_DeathCue.strCueId) << "\",\n"
 			<< "    \"durationMs\": " << m_DeathCue.iDurationMs << ",\n"
+			<< "    \"interpolation\": \"" << interpolation << "\",\n"
 			<< "    \"easing\": \"" << easing << "\",\n"
 			<< "    \"shakeAmplitude\": " << m_DeathCue.fShakeAmplitude << ",\n"
 			<< "    \"shakeDurationMs\": " << m_DeathCue.iShakeDurationMs << ",\n"

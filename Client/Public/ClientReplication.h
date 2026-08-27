@@ -6,11 +6,13 @@
 #include "CombatObjectProjectionRuntime.h"
 #include "NetObjectRegistry.h"
 #include "NpcPlacementPresentationService.h"
+#include "MonsterPresentationContract.h"
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldDestructionProjectionRuntime.h"
 
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -222,6 +224,12 @@ namespace Client
 			const CWorldDestructionProjectionDocument*
 				pWorldDestructionProjection = nullptr;
 			bool_t bDeferLocalCharacterClassReplacement = false;
+			/* Optional main-thread presentation edge. The reliable Server
+			despawn remains authoritative; Levels may attach non-gameplay
+			presentation such as a BGM transition without parsing packets. */
+			std::function<void(
+				std::string_view placementId,
+				std::string_view archetypeId)> onWorldEntityDespawned;
 		};
 
 	public:
@@ -434,6 +442,7 @@ namespace Client
 		{
 			LostArk::Shared::WORLD_ENTITY_KIND eKind =
 				LostArk::Shared::WORLD_ENTITY_KIND::END;
+			std::string strPlacementId;
 			std::string strArchetypeId;
 			std::string strEncounterId;
 			std::string strCurrentClip;
@@ -442,6 +451,7 @@ namespace Client
 			std::string strResolvedIdleClip;
 			NPC_PLACEMENT_PRESENTATION_ENTRY NpcPresentation;
 			NPC_ACTION_EDGE_STATE NpcActionEdge;
+			MONSTER_PRESENTATION_ACTION_STATE MonsterActionState;
 			std::string strActiveActionId;
 			std::size_t iActionClipIndex = 0u;
 			f32_t fCollisionRadius = 0.f;

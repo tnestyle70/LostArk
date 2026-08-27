@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 468,
+  "revision": 547,
   "placements": [
     {
       "placementId": "collision.bern.editor-proof",
@@ -11,546 +11,6 @@
       "yawDegrees": 0,
       "enabled": true,
       "halfExtents": [0.5, 1, 3]
-    },
-    {
-      "placementId": "npc.bern.plaza.01",
-      "kind": "npc",
-      "archetypeId": "NPC_FORMAN",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1001,
-        "startDelayMs": 0,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.02",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.01.cheer", "clipName": "npc_sc_cheer_loop_3", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.0, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [130.738007, 42.577064, -85.188004],
-      "yawDegrees": 108.435,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.02",
-      "kind": "npc",
-      "archetypeId": "NPC_SCHMIDT",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1002,
-        "startDelayMs": 150,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.01",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.02.cheer", "clipName": "npc_sc_cheer_loop_4", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.95, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [132.238007, 42.577061, -85.688004],
-      "yawDegrees": -71.565,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.03",
-      "kind": "npc",
-      "archetypeId": "NPC_11592",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1003,
-        "startDelayMs": 300,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.06",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.03.cheer", "clipName": "npc_sc_cheer_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.05, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [133.738007, 42.577061, -85.188004],
-      "yawDegrees": 18.435,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.04",
-      "kind": "npc",
-      "archetypeId": "NPC_11748",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1004,
-        "startDelayMs": 450,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.05",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.04.talk", "clipName": "npc_sc_talk_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.0, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [131.238007, 42.577061, -83.688004],
-      "yawDegrees": 90.000,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.05",
-      "kind": "npc",
-      "archetypeId": "NPC_11749",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1005,
-        "startDelayMs": 600,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.04",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.05.affirm", "clipName": "npc_sc_affirmation_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.95, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [132.738007, 42.577057, -83.688004],
-      "yawDegrees": -90.000,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.06",
-      "kind": "npc",
-      "archetypeId": "NPC_11752",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1006,
-        "startDelayMs": 750,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.03",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.06.clap", "clipName": "npc_evt2_clap_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.0, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [134.238007, 42.610802, -83.688004],
-      "yawDegrees": -161.565,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.07",
-      "kind": "npc",
-      "archetypeId": "NPC_11816",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1007,
-        "startDelayMs": 900,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.08",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.07.praise", "clipName": "npc_evt2_praise_01", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.05, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [131.738007, 42.610802, -81.688004],
-      "yawDegrees": 90.000,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.08",
-      "kind": "npc",
-      "archetypeId": "NPC_11831",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1008,
-        "startDelayMs": 1050,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.07",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.08.greet", "clipName": "npc_sc_greet_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.0, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [133.238007, 42.841351, -81.688004],
-      "yawDegrees": -90.000,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.09",
-      "kind": "npc",
-      "archetypeId": "NPC_12025",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1009,
-        "startDelayMs": 1200,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.10",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.09.greet", "clipName": "npc_sc_greet_2", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.95, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [139.738007, 42.577061, -86.188004],
-      "yawDegrees": 0.000,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.10",
-      "kind": "npc",
-      "archetypeId": "NPC_12249",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1010,
-        "startDelayMs": 1350,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.09",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.10.laugh", "clipName": "npc_sc_lughing_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.05, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [139.738007, 42.577061, -85.188004],
-      "yawDegrees": 180.000,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.11",
-      "kind": "npc",
-      "archetypeId": "NPC_12250",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1011,
-        "startDelayMs": 1500,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.10",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.11.laugh", "clipName": "npc_sc_laughing_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.0, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [140.738007, 42.577061, -83.688004],
-      "yawDegrees": -146.310,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.12",
-      "kind": "npc",
-      "archetypeId": "NPC_12312",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1012,
-        "startDelayMs": 1650,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": null,
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.12.pray", "clipName": "npc_sc_pray_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.95, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [143.238007, 42.577061, -82.188004],
-      "yawDegrees": -73.820,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.13",
-      "kind": "npc",
-      "archetypeId": "NPC_12905",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1013,
-        "startDelayMs": 1800,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.14",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.13.intimate", "clipName": "npc_sc_intimate_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.05, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [144.238007, 42.585464, -80.688004],
-      "yawDegrees": -33.690,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.14",
-      "kind": "npc",
-      "archetypeId": "NPC_12911",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1014,
-        "startDelayMs": 1950,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.13",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.14.apologize", "clipName": "npc_sc_apologize_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.0, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [143.238007, 42.585464, -79.188004],
-      "yawDegrees": 146.310,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.15",
-      "kind": "npc",
-      "archetypeId": "NPC_12913",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1015,
-        "startDelayMs": 2100,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.16",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.15.win", "clipName": "npc_evt2_win_01", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.95, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [142.238007, 42.577064, -78.188004],
-      "yawDegrees": 45.000,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.16",
-      "kind": "npc",
-      "archetypeId": "NPC_12917",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1016,
-        "startDelayMs": 2250,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.15",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.16.win", "clipName": "npc_evt2_win_02", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.05, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [143.738007, 42.577057, -76.688004],
-      "yawDegrees": -135.000,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.17",
-      "kind": "npc",
-      "archetypeId": "NPC_13203",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1017,
-        "startDelayMs": 2400,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.19",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.17.jeer", "clipName": "npc_sc_jeer_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.0, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [131.738007, 42.577061, -75.188004],
-      "yawDegrees": 68.199,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.18",
-      "kind": "npc",
-      "archetypeId": "NPC_16773",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1018,
-        "startDelayMs": 2550,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.20",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.18.shy", "clipName": "npc_sc_shyness_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.95, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [133.238007, 42.577061, -75.188004],
-      "yawDegrees": -18.435,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.19",
-      "kind": "npc",
-      "archetypeId": "NPC_18394",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1019,
-        "startDelayMs": 2700,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.17",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.19.cheer", "clipName": "npc_sc_cheer_loop_2", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.05, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [134.238007, 42.577061, -74.188004],
-      "yawDegrees": -111.801,
-      "enabled": true
-    },
-    {
-      "placementId": "npc.bern.plaza.20",
-      "kind": "npc",
-      "archetypeId": "NPC_19244",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": {
-        "mode": "stationary",
-        "routeMode": "loop",
-        "actionSelection": "sequence",
-        "walkClip": null,
-        "moveSpeed": 1.0,
-        "wanderRadius": 0,
-        "randomSeed": 1020,
-        "startDelayMs": 2850,
-        "idleMinMs": 0,
-        "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.18",
-        "waypoints": [],
-        "actions": [
-          { "actionId": "npc.ambient.plaza.20.surprise", "clipName": "npc_sc_surprise_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.0, "blendSeconds": 0.2 }
-        ]
-      },
-      "position": [132.738007, 42.577061, -73.688004],
-      "yawDegrees": 161.565,
-      "enabled": true
     },
     {
       "placementId": "npc.bern.25001",
@@ -603,42 +63,24 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": {
-      "mode": "patrol",
-      "routeMode": "pingPong",
-      "actionSelection": "sequence",
-      "walkClip": "npc_walk_normal_1",
-      "moveSpeed": 1.5,
-      "wanderRadius": 0,
-      "randomSeed": 1,
-      "startDelayMs": 0,
-      "idleMinMs": 250,
-      "idleMaxMs": 500,
-      "lookTargetPlacementId": null,
-      "waypoints": [
-        {
-          "waypointId": "npc.bern.25287.patrol.near",
-          "position": [
-            135.738007,
-            42.1963806,
-            -62.688004
-          ],
-          "waitMs": 500,
-          "lookYawDegrees": null
-        },
-        {
-          "waypointId": "npc.bern.25287.patrol.player-entry",
-          "position": [
-            135.738007,
-            42.1963768,
-            -27.688004
-          ],
-          "waitMs": 500,
-          "lookYawDegrees": null
-        }
-      ],
-      "actions": []
+        "mode": "patrol",
+        "routeMode": "pingPong",
+        "actionSelection": "sequence",
+        "walkClip": "npc_walk_normal_1",
+        "moveSpeed": 1.5,
+        "wanderRadius": 0,
+        "randomSeed": 1,
+        "startDelayMs": 0,
+        "idleMinMs": 250,
+        "idleMaxMs": 500,
+        "lookTargetPlacementId": null,
+        "waypoints": [
+          { "waypointId": "npc.bern.25287.patrol.near", "position": [135.738007, 42.1963806, -62.6880035], "waitMs": 500, "lookYawDegrees": null },
+          { "waypointId": "npc.bern.25287.patrol.player-entry", "position": [135.738007, 42.1963768, -27.6880035], "waitMs": 500, "lookYawDegrees": null }
+        ],
+        "actions": []
       },
-      "position": [135.738007, 42.1963806, -62.688004],
+      "position": [135.738007, 42.1963806, -62.6880035],
       "yawDegrees": 0,
       "enabled": true
     },
@@ -649,42 +91,24 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": {
-      "mode": "patrol",
-      "routeMode": "pingPong",
-      "actionSelection": "sequence",
-      "walkClip": "npc_walk_normal_1",
-      "moveSpeed": 1.5,
-      "wanderRadius": 0,
-      "randomSeed": 2,
-      "startDelayMs": 500,
-      "idleMinMs": 250,
-      "idleMaxMs": 500,
-      "lookTargetPlacementId": null,
-      "waypoints": [
-        {
-          "waypointId": "npc.bern.25287.2.patrol.near",
-          "position": [
-            138.238007,
-            42.1963768,
-            -62.688004
-          ],
-          "waitMs": 500,
-          "lookYawDegrees": null
-        },
-        {
-          "waypointId": "npc.bern.25287.2.patrol.player-entry",
-          "position": [
-            138.238007,
-            42.196373,
-            -27.688004
-          ],
-          "waitMs": 500,
-          "lookYawDegrees": null
-        }
-      ],
-      "actions": []
+        "mode": "patrol",
+        "routeMode": "pingPong",
+        "actionSelection": "sequence",
+        "walkClip": "npc_walk_normal_1",
+        "moveSpeed": 1.5,
+        "wanderRadius": 0,
+        "randomSeed": 2,
+        "startDelayMs": 500,
+        "idleMinMs": 250,
+        "idleMaxMs": 500,
+        "lookTargetPlacementId": null,
+        "waypoints": [
+          { "waypointId": "npc.bern.25287.2.patrol.near", "position": [138.238007, 42.1963768, -62.6880035], "waitMs": 500, "lookYawDegrees": null },
+          { "waypointId": "npc.bern.25287.2.patrol.player-entry", "position": [138.238007, 42.196373, -27.6880035], "waitMs": 500, "lookYawDegrees": null }
+        ],
+        "actions": []
       },
-      "position": [138.238007, 42.1963768, -62.688004],
+      "position": [138.238007, 42.1963768, -62.6880035],
       "yawDegrees": 0,
       "enabled": true
     },
@@ -717,8 +141,559 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [149, 42.7000008, -66],
+      "position": [144.238007, 43.8576393, -68.1880035],
       "yawDegrees": 225,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.01",
+      "kind": "npc",
+      "archetypeId": "NPC_FORMAN",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1001,
+        "startDelayMs": 0,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.02",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.01.cheer", "clipName": "npc_sc_cheer_loop_3", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [130.738007, 42.5770645, -85.1880035],
+      "yawDegrees": 108.434998,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.02",
+      "kind": "npc",
+      "archetypeId": "NPC_SCHMIDT",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1002,
+        "startDelayMs": 150,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.01",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.02.cheer", "clipName": "npc_sc_cheer_loop_4", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [132.238007, 42.5770607, -85.6880035],
+      "yawDegrees": -71.5650024,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.03",
+      "kind": "npc",
+      "archetypeId": "NPC_11592",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1003,
+        "startDelayMs": 300,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.06",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.03.cheer", "clipName": "npc_sc_cheer_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [133.738007, 42.5770607, -85.1880035],
+      "yawDegrees": 18.4349995,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.04",
+      "kind": "npc",
+      "archetypeId": "NPC_11748",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1004,
+        "startDelayMs": 450,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.05",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.04.talk", "clipName": "npc_sc_talk_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [131.238007, 42.5770607, -83.6880035],
+      "yawDegrees": 90,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.05",
+      "kind": "npc",
+      "archetypeId": "NPC_11749",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1005,
+        "startDelayMs": 600,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.04",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.05.affirm", "clipName": "npc_sc_affirmation_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [132.738007, 42.5770569, -83.6880035],
+      "yawDegrees": -90,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.06",
+      "kind": "npc",
+      "archetypeId": "NPC_11752",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1006,
+        "startDelayMs": 750,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.03",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.06.clap", "clipName": "npc_evt2_clap_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [134.238007, 42.6108017, -83.6880035],
+      "yawDegrees": -161.565002,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.07",
+      "kind": "npc",
+      "archetypeId": "NPC_11816",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1007,
+        "startDelayMs": 900,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.08",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.07.praise", "clipName": "npc_evt2_praise_01", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [131.738007, 42.6108017, -81.6880035],
+      "yawDegrees": 90,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.08",
+      "kind": "npc",
+      "archetypeId": "NPC_11831",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1008,
+        "startDelayMs": 1050,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.07",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.08.greet", "clipName": "npc_sc_greet_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [133.238007, 42.8413506, -81.6880035],
+      "yawDegrees": -90,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.09",
+      "kind": "npc",
+      "archetypeId": "NPC_12025",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1009,
+        "startDelayMs": 1200,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.10",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.09.greet", "clipName": "npc_sc_greet_2", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [139.738007, 42.5770607, -86.1880035],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.10",
+      "kind": "npc",
+      "archetypeId": "NPC_12249",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1010,
+        "startDelayMs": 1350,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.09",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.10.laugh", "clipName": "npc_sc_lughing_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [139.738007, 42.5770607, -85.1880035],
+      "yawDegrees": 180,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.11",
+      "kind": "npc",
+      "archetypeId": "NPC_12250",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1011,
+        "startDelayMs": 1500,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.10",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.11.laugh", "clipName": "npc_sc_laughing_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [140.738007, 42.5770607, -83.6880035],
+      "yawDegrees": -146.309998,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.12",
+      "kind": "npc",
+      "archetypeId": "NPC_12312",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1012,
+        "startDelayMs": 1650,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": null,
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.12.pray", "clipName": "npc_sc_pray_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [143.238007, 42.5770607, -82.1880035],
+      "yawDegrees": -73.8199997,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.13",
+      "kind": "npc",
+      "archetypeId": "NPC_12905",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1013,
+        "startDelayMs": 1800,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.14",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.13.intimate", "clipName": "npc_sc_intimate_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [144.238007, 42.5854645, -80.6880035],
+      "yawDegrees": -33.6899986,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.14",
+      "kind": "npc",
+      "archetypeId": "NPC_12911",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1014,
+        "startDelayMs": 1950,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.13",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.14.apologize", "clipName": "npc_sc_apologize_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [143.238007, 42.5854645, -79.1880035],
+      "yawDegrees": 146.309998,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.15",
+      "kind": "npc",
+      "archetypeId": "NPC_12913",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1015,
+        "startDelayMs": 2100,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.16",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.15.win", "clipName": "npc_evt2_win_01", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [142.238007, 42.5770645, -78.1880035],
+      "yawDegrees": 45,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.16",
+      "kind": "npc",
+      "archetypeId": "NPC_12917",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1016,
+        "startDelayMs": 2250,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.15",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.16.win", "clipName": "npc_evt2_win_02", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [143.738007, 42.5770569, -76.6880035],
+      "yawDegrees": -135,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.17",
+      "kind": "npc",
+      "archetypeId": "NPC_13203",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1017,
+        "startDelayMs": 2400,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.19",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.17.jeer", "clipName": "npc_sc_jeer_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [131.738007, 42.5770607, -75.1880035],
+      "yawDegrees": 68.1989975,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.18",
+      "kind": "npc",
+      "archetypeId": "NPC_16773",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1018,
+        "startDelayMs": 2550,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.20",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.18.shy", "clipName": "npc_sc_shyness_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [133.238007, 42.5770607, -75.1880035],
+      "yawDegrees": -18.4349995,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.19",
+      "kind": "npc",
+      "archetypeId": "NPC_18394",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1019,
+        "startDelayMs": 2700,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.17",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.19.cheer", "clipName": "npc_sc_cheer_loop_2", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [134.238007, 42.5770607, -74.1880035],
+      "yawDegrees": -111.801003,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.plaza.20",
+      "kind": "npc",
+      "archetypeId": "NPC_19244",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": {
+        "mode": "stationary",
+        "routeMode": "loop",
+        "actionSelection": "sequence",
+        "walkClip": null,
+        "moveSpeed": 1,
+        "wanderRadius": 0,
+        "randomSeed": 1020,
+        "startDelayMs": 2850,
+        "idleMinMs": 0,
+        "idleMaxMs": 0,
+        "lookTargetPlacementId": "npc.bern.plaza.18",
+        "waypoints": [],
+        "actions": [
+          { "actionId": "npc.ambient.plaza.20.surprise", "clipName": "npc_sc_surprise_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
+        ]
+      },
+      "position": [132.738007, 42.5770607, -73.6880035],
+      "yawDegrees": 161.565002,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.schmidt",
+      "kind": "npc",
+      "archetypeId": "NPC_SCHMIDT",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [143.069, 46.8328629, -104.165001],
+      "yawDegrees": -93.5,
       "enabled": true
     },
     {

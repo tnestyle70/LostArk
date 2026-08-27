@@ -1,19 +1,195 @@
 {
     "schema":  "lostark.encounter-cinematic-camera",
-    "formatVersion":  5,
+    "formatVersion":  6,
     "encounterId":  "ENCOUNTER_VALTAN",
     "provenance":  "PROJECT_AUTHORED",
     "cues":  [
+                 {
+                     "cueId":  "camera.valtan.entrance.establish",
+                     "patternId":  "VALTAN_ENTRANCE_CINEMATIC",
+                     "stageId":  "ESTABLISH",
+                     "trackingMode":  "BOSS_FACING",
+                     "trackingOrigin":  [
+                                             156.03,
+                                             22.99751,
+                                             -122.06
+                                         ],
+                     "durationMs":  8600,
+                     "interpolation":  "CATMULL_ROM",
+                     "easing":  "LINEAR",
+                     "shakeAmplitude":  0,
+                     "shakeDurationMs":  0,
+                     "keyframes":  [
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.establish.scene.01",
+                                           "timeMs":  0,
+                                           "eye":  [146.03, 28.99751, -106.06],
+                                           "lookAt":  [156.03, 25.99751, -122.06],
+                                           "fovYDegrees":  62
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.establish.scene.02",
+                                           "timeMs":  1400,
+                                           "eye":  [147.03, 28.49751, -107.06],
+                                           "lookAt":  [156.03, 25.99751, -122.06],
+                                           "fovYDegrees":  58
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.establish.scene.03",
+                                           "timeMs":  3200,
+                                           "eye":  [149.03, 27.79751, -108.56],
+                                           "lookAt":  [156.03, 26.19751, -122.06],
+                                           "fovYDegrees":  54
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.establish.scene.04",
+                                           "timeMs":  5000,
+                                           "eye":  [151.03, 27.19751, -110.56],
+                                           "lookAt":  [156.03, 26.49751, -122.06],
+                                           "fovYDegrees":  50
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.establish.scene.05",
+                                           "timeMs":  6800,
+                                           "eye":  [153.03, 26.79751, -112.56],
+                                           "lookAt":  [156.03, 26.49751, -122.06],
+                                           "fovYDegrees":  46
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.establish.scene.06",
+                                           "timeMs":  7800,
+                                           "eye":  [154.53, 26.49751, -113.86],
+                                           "lookAt":  [156.03, 26.29751, -122.06],
+                                           "fovYDegrees":  43
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.establish.scene.07",
+                                           "timeMs":  8600,
+                                           "eye":  [156.03, 26.19751, -114.56],
+                                           "lookAt":  [156.03, 26.19751, -122.06],
+                                           "fovYDegrees":  42
+                                       }
+                                   ]
+                 },
+                 {
+                     "cueId":  "camera.valtan.entrance.arena-reveal",
+                     "patternId":  "VALTAN_ENTRANCE_CINEMATIC",
+                     "stageId":  "ARENA_REVEAL",
+                     "trackingMode":  "BOSS_FACING",
+                     "trackingOrigin":  [
+                                             156.03,
+                                             22.99751,
+                                             -122.06
+                                         ],
+                     "durationMs":  5800,
+                     "interpolation":  "CATMULL_ROM",
+                     "easing":  "LINEAR",
+                     "shakeAmplitude":  0,
+                     "shakeDurationMs":  0,
+                     "keyframes":  [
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.arena-reveal.scene.01",
+                                           "timeMs":  0,
+                                           "eye":  [156.03, 53.99751, -119.06],
+                                           "lookAt":  [156.03, 23.99751, -122.06],
+                                           "fovYDegrees":  55
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.arena-reveal.scene.02",
+                                           "timeMs":  1200,
+                                           "eye":  [153.03, 55.99751, -120.06],
+                                           "lookAt":  [156.03, 23.99751, -122.06],
+                                           "fovYDegrees":  60
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.arena-reveal.scene.03",
+                                           "timeMs":  2800,
+                                           "eye":  [151.03, 57.99751, -122.06],
+                                           "lookAt":  [156.03, 23.99751, -122.06],
+                                           "fovYDegrees":  64
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.arena-reveal.scene.04",
+                                           "timeMs":  4300,
+                                           "eye":  [153.03, 55.99751, -125.06],
+                                           "lookAt":  [156.03, 23.99751, -122.06],
+                                           "fovYDegrees":  61
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.arena-reveal.scene.05",
+                                           "timeMs":  5800,
+                                           "eye":  [156.03, 53.99751, -127.06],
+                                           "lookAt":  [156.03, 23.99751, -122.06],
+                                           "fovYDegrees":  58
+                                       }
+                                   ]
+                 },
+                 {
+                     "cueId":  "camera.valtan.entrance.hero-handoff",
+                     "patternId":  "VALTAN_ENTRANCE_CINEMATIC",
+                     "stageId":  "HERO_HANDOFF",
+                     "trackingMode":  "BOSS_FACING",
+                     "trackingOrigin":  [
+                                             156.03,
+                                             22.99751,
+                                             -122.06
+                                         ],
+                     "transitionOutMs":  1000,
+                     "durationMs":  4467,
+                     "interpolation":  "CATMULL_ROM",
+                     "easing":  "LINEAR",
+                     "shakeAmplitude":  0,
+                     "shakeDurationMs":  0,
+                     "keyframes":  [
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.hero-handoff.scene.01",
+                                           "timeMs":  0,
+                                           "eye":  [162.03, 27.99751, -113.06],
+                                           "lookAt":  [156.03, 25.99751, -122.06],
+                                           "fovYDegrees":  46
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.hero-handoff.scene.02",
+                                           "timeMs":  1100,
+                                           "eye":  [161.03, 27.79751, -113.26],
+                                           "lookAt":  [156.03, 26.19751, -122.06],
+                                           "fovYDegrees":  45
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.hero-handoff.scene.03",
+                                           "timeMs":  2300,
+                                           "eye":  [159.53, 27.49751, -113.66],
+                                           "lookAt":  [156.03, 26.19751, -122.06],
+                                           "fovYDegrees":  44
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.hero-handoff.scene.04",
+                                           "timeMs":  3400,
+                                           "eye":  [158.03, 27.19751, -114.06],
+                                           "lookAt":  [156.03, 25.99751, -122.06],
+                                           "fovYDegrees":  46
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance.hero-handoff.scene.05",
+                                           "timeMs":  4467,
+                                           "eye":  [156.83, 26.99751, -114.46],
+                                           "lookAt":  [156.03, 25.79751, -122.06],
+                                           "fovYDegrees":  50
+                                       }
+                                   ]
+                 },
                  {
                      "cueId":  "camera.valtan.arena-break-109.takeoff",
                      "patternId":  "VALTAN_ARENA_BREAK_109",
                      "stageId":  "TAKEOFF",
                      "durationMs":  900,
+                     "interpolation":  "LINEAR",
                      "easing":  "SMOOTHSTEP",
                      "shakeAmplitude":  0,
                      "shakeDurationMs":  0,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.takeoff.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        149.53,
@@ -28,6 +204,7 @@
                                            "fovYDegrees":  42
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.takeoff.scene.02",
                                            "timeMs":  900,
                                            "eye":  [
                                                        151.03,
@@ -48,11 +225,13 @@
                      "patternId":  "VALTAN_ARENA_BREAK_109",
                      "stageId":  "DROP",
                      "durationMs":  700,
+                     "interpolation":  "LINEAR",
                      "easing":  "SMOOTHSTEP",
                      "shakeAmplitude":  0,
                      "shakeDurationMs":  0,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.drop.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        151.03,
@@ -67,6 +246,7 @@
                                            "fovYDegrees":  38
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.drop.scene.02",
                                            "timeMs":  430,
                                            "eye":  [
                                                        151.03,
@@ -81,6 +261,7 @@
                                            "fovYDegrees":  40
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.drop.scene.03",
                                            "timeMs":  700,
                                            "eye":  [
                                                        151.03,
@@ -101,11 +282,13 @@
                      "patternId":  "VALTAN_ARENA_BREAK_109",
                      "stageId":  "IMPACT",
                      "durationMs":  400,
+                     "interpolation":  "LINEAR",
                      "easing":  "LINEAR",
                      "shakeAmplitude":  0.45,
                      "shakeDurationMs":  220,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.impact.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        151.03,
@@ -120,6 +303,7 @@
                                            "fovYDegrees":  42
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.impact.scene.02",
                                            "timeMs":  400,
                                            "eye":  [
                                                        156.03,
@@ -140,11 +324,13 @@
                      "patternId":  "VALTAN_ARENA_BREAK_109",
                      "stageId":  "IMPACT_HOLD",
                      "durationMs":  1100,
+                     "interpolation":  "LINEAR",
                      "easing":  "SMOOTHSTEP",
                      "shakeAmplitude":  0,
                      "shakeDurationMs":  0,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.impact-hold.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        156.03,
@@ -159,6 +345,7 @@
                                            "fovYDegrees":  59
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.impact-hold.scene.02",
                                            "timeMs":  1100,
                                            "eye":  [
                                                        156.03,
@@ -185,12 +372,14 @@
                                              -122.06
                                          ],
                      "durationMs":  2300,
+                     "interpolation":  "LINEAR",
                      "transitionInMs":  250,
                      "easing":  "SMOOTHSTEP",
                      "shakeAmplitude":  0,
                      "shakeDurationMs":  0,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.wide-reveal.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        156.03,
@@ -205,6 +394,7 @@
                                            "fovYDegrees":  60
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.wide-reveal.scene.02",
                                            "timeMs":  2300,
                                            "eye":  [
                                                        156.03,
@@ -231,6 +421,7 @@
                                              0
                                          ],
                      "durationMs":  870,
+                     "interpolation":  "LINEAR",
                      "transitionInMs":  400,
                      "transitionOutMs":  400,
                      "easing":  "SMOOTHSTEP",
@@ -238,6 +429,7 @@
                      "shakeDurationMs":  0,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.recovery.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        0,
@@ -252,6 +444,7 @@
                                            "fovYDegrees":  62
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.arena-break-109.recovery.scene.02",
                                            "timeMs":  870,
                                            "eye":  [
                                                        0.4,
@@ -278,11 +471,13 @@
                                              0
                                          ],
                      "durationMs":  1200,
+                     "interpolation":  "LINEAR",
                      "easing":  "SMOOTHSTEP",
                      "shakeAmplitude":  0.2,
                      "shakeDurationMs":  180,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.six-pizza-106.landing.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        0,
@@ -297,6 +492,7 @@
                                            "fovYDegrees":  60
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.six-pizza-106.landing.scene.02",
                                            "timeMs":  1200,
                                            "eye":  [
                                                        0,
@@ -323,11 +519,13 @@
                                              -122.06
                                          ],
                      "durationMs":  1933,
+                     "interpolation":  "LINEAR",
                      "easing":  "SMOOTHSTEP",
                      "shakeAmplitude":  0,
                      "shakeDurationMs":  0,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.four-pillars-105.takeoff.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        149.53,
@@ -342,6 +540,7 @@
                                            "fovYDegrees":  42
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.four-pillars-105.takeoff.scene.02",
                                            "timeMs":  850,
                                            "eye":  [
                                                        156.03,
@@ -356,6 +555,7 @@
                                            "fovYDegrees":  56
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.four-pillars-105.takeoff.scene.03",
                                            "timeMs":  1933,
                                            "eye":  [
                                                        151.03,
@@ -382,11 +582,13 @@
                                              -122.06
                                          ],
                      "durationMs":  5200,
+                     "interpolation":  "LINEAR",
                      "easing":  "SMOOTHSTEP",
                      "shakeAmplitude":  0,
                      "shakeDurationMs":  0,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.four-pillars-105.yellow-zone.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        151.03,
@@ -401,6 +603,7 @@
                                            "fovYDegrees":  38
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.four-pillars-105.yellow-zone.scene.02",
                                            "timeMs":  3800,
                                            "eye":  [
                                                        154.03,
@@ -415,6 +618,7 @@
                                            "fovYDegrees":  32
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.four-pillars-105.yellow-zone.scene.03",
                                            "timeMs":  5200,
                                            "eye":  [
                                                        151.03,
@@ -434,11 +638,13 @@
     "deathCue":  {
                      "cueId":  "camera.valtan.clear.wide",
                      "durationMs":  2090,
+                     "interpolation":  "LINEAR",
                      "easing":  "SMOOTHSTEP",
                      "shakeAmplitude":  0,
                      "shakeDurationMs":  0,
                      "keyframes":  [
                                        {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
                                                        134.03,
@@ -453,6 +659,7 @@
                                            "fovYDegrees":  52
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.02",
                                            "timeMs":  1090,
                                            "eye":  [
                                                        142.03,
@@ -467,6 +674,7 @@
                                            "fovYDegrees":  55
                                        },
                                        {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.03",
                                            "timeMs":  2090,
                                            "eye":  [
                                                        156.03,

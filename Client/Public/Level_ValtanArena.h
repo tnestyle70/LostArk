@@ -52,6 +52,16 @@ private:
 	bool_t Update_CinematicCameraExitTransition(f32_t fTimeDelta);
 	void End_CinematicCameraOverride();
 	void End_CinematicCamera();
+	enum class RAID_PRELUDE_BGM_STATE : uint8_t
+	{
+		NONE,
+		M01_PROGRESS,
+		M04_POST_MINIBOSS
+	};
+	void Transition_RaidPreludeBgm(RAID_PRELUDE_BGM_STATE nextState);
+	void Handle_WorldEntityDespawned(
+		std::string_view placementId,
+		std::string_view archetypeId);
 	void Update_WorldDestructionPresentation(f32_t fTimeDelta);
 	bool_t Apply_EncounterPropPresentation();
 	/* Death-screen overlay: real deadscene.gfx panel art + revive button. Local
@@ -164,6 +174,8 @@ private:
 	std::array<uint32_t, 4> m_FiredEncounterPropBurstVersions = {
 		0u, 0u, 0u, 0u };
 	CClientReplication m_Replication;
+	RAID_PRELUDE_BGM_STATE m_eRaidPreludeBgmState =
+		RAID_PRELUDE_BGM_STATE::NONE;
 	CWorldPlayerNameplateView m_PlayerNameplateView;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;

@@ -126,8 +126,9 @@ ARCHIVED_LEGACY_PATTERN_IDS = frozenset(
 # but the current Product already does.  Treat them as migration-managed while
 # validating legacy preservation so the old 84/33 receipt remains sealed
 # evidence instead of being mistaken for a second live mechanic owner.
-CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS = frozenset(
+CURRENT_MIGRATION_MANAGED_PATTERN_IDS = frozenset(
     (
+        "VALTAN_ENTRANCE_CINEMATIC",
         "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
         "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
     )
@@ -695,11 +696,24 @@ def world_set_source_bindings(
     return result
 
 
+# The 109 collapse owns the outer ring plus the interior walls that are still
+# standing when it fires, so a member ID keeps its own family segment instead of
+# forcing every wall into the outer-ring namespace. wall159 is listed before wall
+# only for readability; the two prefixes cannot both match one group ID.
+WORLD_MEMBER_GROUP_PREFIXES = (
+    "destroyable.group.valtan.outerwall109.",
+    "destroyable.group.valtan.wall159.",
+    "destroyable.group.valtan.wall.",
+)
+_WORLD_GROUP_NAMESPACE = "destroyable.group.valtan."
+
+
 def _world_member_id(group_id: str) -> str:
-    marker = "destroyable.group.valtan.outerwall109."
-    if not group_id.startswith(marker):
-        raise PipelineError(f"109 managed group has unexpected ID: {group_id}")
-    return "worldeventmember.valtan.outerwall109." + group_id[len(marker) :]
+    for marker in WORLD_MEMBER_GROUP_PREFIXES:
+        if group_id.startswith(marker):
+            family = marker[len(_WORLD_GROUP_NAMESPACE) : -1]
+            return f"worldeventmember.valtan.{family}." + group_id[len(marker) :]
+    raise PipelineError(f"109 managed group has unexpected ID: {group_id}")
 
 
 def build_world_event_sets(world: dict[str, Any]) -> dict[str, Any]:
@@ -823,7 +837,11 @@ def validate_world_event_sets(
                 raise PipelineError(f"missing group for {member_id}: {group_id}")
             placements = group.get("memberPlacementIds")
             nav_regions = group.get("navigationRegionIds")
-            if not isinstance(placements, list) or not placements or not isinstance(nav_regions, list) or not nav_regions:
+            # A member with no placement has nothing to remove, so that stays
+            # fatal. An empty navigation closure does not: the destruction
+            # publisher authors none for a wall with a cliff behind it, because
+            # breaking that wall must not turn the drop into walkable floor.
+            if not isinstance(placements, list) or not placements or not isinstance(nav_regions, list):
                 raise PipelineError(f"group closure is incomplete for {member_id}")
             for placement_id in placements:
                 if placement_id in placement_ids:
@@ -1778,7 +1796,7 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
     # Product audition rows are later managed additions, not legacy seal rows.
     migration_product_managed = (
         managed
-        | CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS
+        | CURRENT_MIGRATION_MANAGED_PATTERN_IDS
         | {
             row["patternId"]
             for row in docs[ENCOUNTER_REL]["patterns"]
@@ -2525,7 +2543,9 @@ def validate_v2_master(
     manual_patterns = _validate_manual_auditions(
         master["decisionModel"], pattern_by_id
     )
-    _validate_scripted_sequence(master["decisionModel"], pattern_by_id)
+    scripted_pattern_ids = _validate_scripted_sequence(
+        master["decisionModel"], pattern_by_id
+    )
     set_ids: set[str] = set()
     candidate_patterns: set[str] = set()
     for set_ordinal, selection_set in enumerate(master["decisionModel"]["selectionSets"]):
@@ -2680,8 +2700,23 @@ def validate_v2_master(
             "decision model pattern ownership overlaps: "
             + ", ".join(sorted(ownership_overlap))
         )
-    if candidate_patterns | mechanic_patterns | manual_patterns != set(pattern_by_id):
-        raise PipelineError("decision model does not cover every managed pattern exactly once")
+    decision_owned_patterns = (
+        candidate_patterns | mechanic_patterns | manual_patterns
+    )
+    scripted_entry_only_patterns = (
+        {scripted_pattern_ids[0]}
+        if scripted_pattern_ids and
+        scripted_pattern_ids[0] not in decision_owned_patterns
+        else set()
+    )
+    if (
+        decision_owned_patterns | scripted_entry_only_patterns
+        != set(pattern_by_id)
+    ):
+        raise PipelineError(
+            "decision model must own every managed pattern exactly once; only "
+            "the first scripted sequence pattern may be an entry-only gate"
+        )
     event_ids: set[str] = set()
     expected_cue_policies = {
         cue_id: scale_kind
@@ -4617,7 +4652,7 @@ def project_v2_products(
         else set()
     )
     fixture_legacy_managed_ids = fixture_audition_ids | (
-        CURRENT_HEALTH_BAR_REPLACEMENT_PATTERN_IDS
+        CURRENT_MIGRATION_MANAGED_PATTERN_IDS
         if migration_fixture
         else set()
     )

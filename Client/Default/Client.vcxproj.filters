@@ -1010,6 +1010,9 @@
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\MonsterPresentationContract.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\Trigger_Box.h">

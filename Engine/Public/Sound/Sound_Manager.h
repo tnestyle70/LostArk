@@ -22,10 +22,11 @@ public:
 public:
 	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
 
-	/* Looping background music -- unlike Play_Sound (fire-and-forget one-shot SFX), only one
-	track plays at a time and the caller can stop it later (e.g. Lobby BGM ending when the level
-	transitions away). Starting a new track stops whatever was already playing first. */
-	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume);
+	/* Unlike Play_Sound (fire-and-forget SFX), music keeps one tracked channel
+	that a level or encounter can replace and stop. Cutscene music is one-shot;
+	ambient/combat music can opt into an infinite loop. */
+	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume,
+		bool_t bLoop = true);
 	void Stop_Music();
 
 	void Update();
@@ -36,7 +37,10 @@ private:
 
 private:
 	FMOD::System* m_pSystem = { nullptr };
-	map<wstring_t, FMOD::Sound*> m_Sounds;
+	/* FMOD loop mode belongs to the Sound, not the Channel. Keep one cached
+	instance per (asset, mode) so an SFX and a music cue cannot mutate each
+	other when they happen to reference the same WAV. */
+	map<pair<wstring_t, bool_t>, FMOD::Sound*> m_Sounds;
 	FMOD::Channel* m_pMusicChannel = { nullptr };
 
 public:

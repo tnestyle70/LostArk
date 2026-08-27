@@ -3406,6 +3406,48 @@
           "loop": false
         }
       ]
+    },
+    {
+      "actionId": "valtan.cinematic.entrance.establish",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.cinematic.entrance.establish.clip.01",
+          "clip": "mesh_att_battle_20_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.cinematic.entrance.arena-reveal",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.cinematic.entrance.arena-reveal.clip.01",
+          "clip": "mesh_att_battle_20_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.cinematic.entrance.hero-handoff",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.cinematic.entrance.hero-handoff.clip.01",
+          "clip": "mesh_att_battle_20_04",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     }
   ]
 }

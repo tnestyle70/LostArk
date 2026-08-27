@@ -130,7 +130,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 	require(
 		105u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
 		105u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
-		157u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
+		224u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
 		143u == publishedMemberCount &&
 		30u == publishedOuterGroupCount &&
 		60u == publishedOuterMemberCount &&
@@ -153,21 +153,34 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 			publishedRuntime.Prepare_StageTrigger(
 				arenaBreakAction, 7001u, 80u, 450u,
 				publishedTransaction, publishedRuntimeStatus) &&
-		30u == publishedTransaction.Transitions.size() &&
-		30u == publishedTransaction.BindingApplications.size() &&
+		97u == publishedTransaction.Transitions.size() &&
+		97u == publishedTransaction.BindingApplications.size() &&
 		std::all_of(
 			publishedTransaction.Transitions.begin(),
 			publishedTransaction.Transitions.end(),
 			[](const WORLD_DESTRUCTION_STATE_TRANSITION& transition)
 			{
-				/* The 109 batch is the outer ring alone. An interior group
-				reaching this transaction is the exact regression that made the
-				whole arena collapse at once. */
+				/* The 109 batch takes the outer ring and every interior wall
+				still standing down with it, so the cutscene never leaves a wall
+				behind. A floor sector or an entrance wall reaching this
+				transaction is the regression this shape stops. */
 				return !transition.strCollisionStateId.empty() &&
+					(0u == transition.strGroupId.rfind(
+						"destroyable.group.valtan.outerwall109.", 0u) ||
 					0u == transition.strGroupId.rfind(
-						"destroyable.group.valtan.outerwall109.", 0u);
+						"destroyable.group.valtan.wall159.", 0u) ||
+					0u == transition.strGroupId.rfind(
+						"destroyable.group.valtan.wall.", 0u));
 			}) &&
-		60u == std::accumulate(
+		30u == static_cast<std::size_t>(std::count_if(
+			publishedTransaction.Transitions.begin(),
+			publishedTransaction.Transitions.end(),
+			[](const WORLD_DESTRUCTION_STATE_TRANSITION& transition)
+			{
+				return 0u == transition.strGroupId.rfind(
+					"destroyable.group.valtan.outerwall109.", 0u);
+			})) &&
+		135u == std::accumulate(
 			publishedTransaction.Transitions.begin(),
 			publishedTransaction.Transitions.end(),
 			std::size_t{ 0u },
@@ -178,7 +191,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 			}) &&
 		publishedRuntime.Commit(
 			publishedTransaction, publishedRuntimeStatus),
-		"Prepare and commit thirty 109-bar groups with sixty outer ring placements in one batch");
+		"Prepare and commit the thirty outer ring and sixty-seven interior 109-bar groups with one hundred thirty-five placements in one batch");
 	require(
 		WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==
 			publishedRuntime.Prepare_StageTrigger(
@@ -187,9 +200,9 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		publishedTransaction.Transitions.empty(),
 		"Treat the repeated 109-bar impact edge as one idempotent no-op");
 
-	/* The 109 collapse opens the outer ring only. Every floor sector has to
-	survive it, otherwise the arena would lose its footing one whole health-bar
-	chain too early. */
+	/* The 109 collapse opens the walls, never the ground. Every floor sector
+	has to survive it, otherwise the arena would lose its footing one whole
+	health-bar chain too early. */
 	{
 		std::size_t survivingFloorSectors = 0u;
 		for (const WORLD_DESTRUCTION_GROUP_STATE& state :
@@ -205,7 +218,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		}
 		require(
 			6u == survivingFloorSectors,
-			"Leave every floor sector INTACT when the 109 outer ring collapses");
+			"Leave every floor sector INTACT when the 109 walls collapse");
 	}
 
 	/* Stage A is the screen-right arena half at 84 bars and stage B is the

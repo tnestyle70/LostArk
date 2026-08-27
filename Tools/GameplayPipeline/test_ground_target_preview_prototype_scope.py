@@ -295,7 +295,7 @@ class GroundTargetPreviewPrototypeScopeTests(unittest.TestCase):
             "class CBASIC_ATTACK_PRESS_EDGE_GATE final",
         )
         observe = braced_block(gate, "constexpr bool_t Should_Submit(")
-        commit = braced_block(gate, "constexpr void Commit_Submission()")
+        commit = braced_block(gate, "constexpr void Commit_Submission(")
         contract = braced_block(
             header,
             "constexpr bool_t Validate_BasicAttackPressTransitions()",
@@ -303,29 +303,29 @@ class GroundTargetPreviewPrototypeScopeTests(unittest.TestCase):
 
         self.assertIn("m_isCurrentPressActive = false;", gate)
         self.assertIn("m_isCurrentPressConsumed = false;", gate)
-        self.assertIn(
-            "m_isCurrentPressConsumed = !isCommandEligible;",
-            observe,
-        )
+        self.assertIn("m_isCurrentPressBlocked = !isCommandEligible;", observe)
+        self.assertIn("m_isCurrentPressConsumed = m_isCurrentPressBlocked;", observe)
         self.assertRegex(
             observe,
             r"else if \(!isCommandEligible\)\s*\{\s*"
+            r"m_isCurrentPressBlocked = true;\s*"
             r"m_isCurrentPressConsumed = true;",
         )
-        self.assertIn(
-            "return isCommandEligible && !m_isCurrentPressConsumed;",
-            observe,
-        )
+        self.assertIn("if (!isCommandEligible || m_isCurrentPressBlocked)", observe)
+        self.assertIn("m_hasSubmittedAutoRepeat ? REPEAT_INTERVAL", observe)
+        self.assertIn("m_LastSubmittedAt < interval", observe)
         self.assertNotIn("Commit_Submission", observe)
         self.assertRegex(
             commit,
-            r"m_isCurrentPressActive\)\s*"
-            r"m_isCurrentPressConsumed = true;",
+            r"!m_isCurrentPressActive\)\s*return;\s*"
+            r"m_isCurrentPressConsumed = true;\s*"
+            r"m_LastSubmittedAt = now;",
         )
-        self.assertIn("gate.Should_Submit(true, false)", contract)
-        self.assertGreaterEqual(contract.count("gate.Should_Submit(true, true)"), 5)
-        self.assertIn("gate.Commit_Submission();", contract)
-        self.assertIn("gate.Should_Submit(false, false)", contract)
+        self.assertIn("gate.Should_Submit(true, false, START)", contract)
+        self.assertGreaterEqual(contract.count("gate.Should_Submit("), 10)
+        self.assertIn("gate.Commit_Submission(START);", contract)
+        self.assertIn("gate.Commit_Submission(FIRST_REPEAT);", contract)
+        self.assertIn("gate.Should_Submit(false, false, START)", contract)
         self.assertIn(
             "static_assert(Validate_BasicAttackPressTransitions()", header
         )
@@ -351,11 +351,12 @@ class GroundTargetPreviewPrototypeScopeTests(unittest.TestCase):
         self.assertRegex(
             request,
             r"requestedBasicAttack\)\s*"
-            r"m_BasicAttackPressEdgeGate\.Commit_Submission\(\);",
+            r"\{\s*m_BasicAttackPressEdgeGate\.Commit_Submission\(\s*"
+            r"std::chrono::steady_clock::now\(\)\);",
         )
         self.assertEqual(
             1,
-            controller.count("m_BasicAttackPressEdgeGate.Commit_Submission();"),
+            controller.count("m_BasicAttackPressEdgeGate.Commit_Submission("),
         )
 
 

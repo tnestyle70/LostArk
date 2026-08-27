@@ -86,9 +86,12 @@ function Invoke-PythonGate {
         # surfaces that stream as NativeCommandError when the script-wide
         # preference is Stop, so preserve the process exit code explicitly.
         $ErrorActionPreference = 'Continue'
-        $LASTEXITCODE = 0
+        # Native commands update the global automatic variable. Assigning the
+        # unqualified name here creates a function-local shadow in Windows
+        # PowerShell, which made every failed Python gate look successful.
+        $global:LASTEXITCODE = 0
         & $python -B @Arguments
-        $pythonExitCode = $LASTEXITCODE
+        $pythonExitCode = $global:LASTEXITCODE
     }
     finally {
         $ErrorActionPreference = $previousErrorActionPreference

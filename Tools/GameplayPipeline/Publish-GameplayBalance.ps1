@@ -2239,8 +2239,8 @@ foreach ($pattern in $liveEncounterPatterns) {
 		}
 	}
 }
-if ($liveEncounterPatterns.Count -ne 33 -or
-	$authoredStageCount -ne 129 -or
+if ($liveEncounterPatterns.Count -ne 34 -or
+	$authoredStageCount -ne 132 -or
 	$authoredStageActionCount -ne 25 -or
 	$authoredStageBranchCount -ne 24 -or
 	$authoredStageMotionCount -ne 2) {
@@ -3312,6 +3312,95 @@ function Read-CinematicTracking(
 	}
 }
 
+function Assert-CinematicCameraCueContract(
+	[object]$Cue,
+	[string]$Context,
+	[uint32]$MaximumDurationMs) {
+	Assert-JsonInteger $Cue.durationMs "$Context durationMs" 1 $MaximumDurationMs
+	Assert-JsonString $Cue.interpolation "$Context interpolation"
+	if ([string]$Cue.interpolation -cnotin @('LINEAR','CATMULL_ROM')) {
+		throw "$Context interpolation is invalid."
+	}
+	Assert-JsonString $Cue.easing "$Context easing"
+	if ([string]$Cue.easing -cnotin @('LINEAR','SMOOTHSTEP','HOLD')) {
+		throw "$Context easing is invalid."
+	}
+	Assert-JsonNumber $Cue.shakeAmplitude "$Context shakeAmplitude"
+	$shakeAmplitude = [double]$Cue.shakeAmplitude
+	if ($shakeAmplitude -lt 0.0 -or $shakeAmplitude -gt 2.0) {
+		throw "$Context shakeAmplitude is out of range."
+	}
+	Assert-JsonInteger $Cue.shakeDurationMs "$Context shakeDurationMs" 0 1000
+	$shakeDurationMs = [uint32]$Cue.shakeDurationMs
+	$hasShakeAmplitude = $shakeAmplitude -gt 0.0
+	$hasShakeDuration = $shakeDurationMs -ne 0
+	if ($hasShakeAmplitude -ne $hasShakeDuration -or
+		$shakeDurationMs -gt [uint32]$Cue.durationMs) {
+		throw "$Context shake amplitude/duration pair is invalid."
+	}
+}
+
+function Assert-CinematicCameraKeyframes(
+	[object]$Cue,
+	[string]$Context,
+	[Collections.Generic.HashSet[string]]$SceneIds) {
+	if ($Cue.keyframes -isnot [Array] -or
+		@($Cue.keyframes).Count -lt 2 -or @($Cue.keyframes).Count -gt 64) {
+		throw "$Context keyframe array is invalid."
+	}
+	$previousTime = $null
+	foreach ($keyframe in @($Cue.keyframes)) {
+		Assert-ExactProperties $keyframe @(
+			'sceneId','timeMs','eye','lookAt','fovYDegrees') `
+			"$Context keyframe"
+		Assert-JsonString $keyframe.sceneId "$Context sceneId"
+		$sceneId = [string]$keyframe.sceneId
+		if ($sceneId.Length -gt 128 -or
+			$sceneId -cnotmatch '^[A-Za-z0-9_.-]+$' -or
+			-not $SceneIds.Add($sceneId)) {
+			throw "$Context has an invalid or duplicate sceneId: $sceneId"
+		}
+		Assert-JsonInteger $keyframe.timeMs "$Context timeMs" 0 ([uint32]$Cue.durationMs)
+		$timeMs = [uint32]$keyframe.timeMs
+		if ($null -eq $previousTime) {
+			if ($timeMs -ne 0) { throw "$Context first scene must start at 0 ms." }
+		} elseif ($timeMs -le [uint32]$previousTime) {
+			throw "$Context scene times must be strictly increasing."
+		}
+		foreach ($fieldName in @('eye','lookAt')) {
+			$field = $keyframe.$fieldName
+			if ($field -isnot [Array] -or @($field).Count -ne 3) {
+				throw "$Context $fieldName is malformed."
+			}
+			foreach ($component in @($field)) {
+				Assert-JsonNumber $component "$Context $fieldName"
+				if ([double]::IsNaN([double]$component) -or
+					[double]::IsInfinity([double]$component) -or
+					[Math]::Abs([double]$component) -gt 100000.0) {
+					throw "$Context $fieldName is out of range."
+				}
+			}
+		}
+		$eyeLookDeltaX = [double]$keyframe.eye[0] - [double]$keyframe.lookAt[0]
+		$eyeLookDeltaY = [double]$keyframe.eye[1] - [double]$keyframe.lookAt[1]
+		$eyeLookDeltaZ = [double]$keyframe.eye[2] - [double]$keyframe.lookAt[2]
+		if (($eyeLookDeltaX * $eyeLookDeltaX) +
+			($eyeLookDeltaY * $eyeLookDeltaY) +
+			($eyeLookDeltaZ * $eyeLookDeltaZ) -le 0.000001) {
+			throw "$Context eye and lookAt must differ."
+		}
+		Assert-JsonNumber $keyframe.fovYDegrees "$Context fovYDegrees"
+		if ([double]$keyframe.fovYDegrees -lt 10.0 -or
+			[double]$keyframe.fovYDegrees -gt 120.0) {
+			throw "$Context fovYDegrees is out of range."
+		}
+		$previousTime = $timeMs
+	}
+	if ([uint32]$previousTime -ne [uint32]$Cue.durationMs) {
+		throw "$Context final scene must match durationMs."
+	}
+}
+
 # A pattern that owns a landing anchor also owns every cinematic camera cue
 # bound to it. WORLD cues frame the anchor directly. BOSS_XZ follows the
 # replicated boss horizontally and remains exclusive to target-locked leaps.
@@ -3322,21 +3411,70 @@ if ($serverMotionByPatternId.Count -ne 0) {
 	Assert-ExactProperties $cameraDocument @(
 		'schema','formatVersion','encounterId','provenance','cues','deathCue') `
 		'Valtan cinematic camera document'
+	Assert-JsonInteger $cameraDocument.formatVersion `
+		'Valtan cinematic camera document formatVersion' 6 6
 	if ([string]$cameraDocument.schema -cne 'lostark.encounter-cinematic-camera' -or
-		[uint32]$cameraDocument.formatVersion -ne 5 -or
 		[string]$cameraDocument.encounterId -cne [string]$encounterDocument.encounterId -or
 		[string]$cameraDocument.provenance -cne 'PROJECT_AUTHORED' -or
 		$cameraDocument.cues -isnot [Array] -or
-		@($cameraDocument.cues).Count -eq 0) {
+		@($cameraDocument.cues).Count -eq 0 -or
+		@($cameraDocument.cues).Count -gt 32) {
 		throw 'Valtan cinematic camera document header is invalid.'
 	}
 	$fourPillarsCameraStages =
 		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$cameraSceneIds =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$cameraCueIds =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$cameraCueTuples =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	foreach ($cue in @($cameraDocument.cues)) {
+		$cameraContext = "cinematic camera cue $($cue.cueId)"
+		Assert-JsonString $cue.patternId "$cameraContext patternId"
+		Assert-JsonString $cue.stageId "$cameraContext stageId"
+		$cameraPatternId = [string]$cue.patternId
+		$cameraStageId = [string]$cue.stageId
+		if (-not $patternById.ContainsKey($cameraPatternId)) {
+			throw "$cameraContext names an unknown pattern: $cameraPatternId"
+		}
+		$cameraPatternStages = @($patternById[$cameraPatternId].stages)
+		$cameraStageIndex = -1
+		$cameraStage = $null
+		for ($stageIndex = 0; $stageIndex -lt $cameraPatternStages.Count; ++$stageIndex) {
+			if ([string]$cameraPatternStages[$stageIndex].stageId -cne $cameraStageId) {
+				continue
+			}
+			if ($cameraStageIndex -ne -1) {
+				$cameraStageIndex = -2
+				break
+			}
+			$cameraStageIndex = $stageIndex
+			$cameraStage = $cameraPatternStages[$stageIndex]
+		}
+		if ($cameraStageIndex -lt 0 -or $null -eq $cameraStage) {
+			throw "$cameraContext names an unknown or ambiguous stage: $cameraStageId"
+		}
+		$cameraTuple = $cameraPatternId + "`n" + [string]$cameraStageIndex +
+			"`n" + [string]$cameraStage.actionId
+		if (-not $cameraCueTuples.Add($cameraTuple)) {
+			throw "$cameraContext duplicates an encounter stage tuple."
+		}
+		Assert-CinematicCameraCueContract $cue $cameraContext `
+			([uint32]$cameraStage.durationMs)
 		$tracking = Read-CinematicTracking $cue @(
-			'cueId','patternId','stageId','durationMs','easing',
+			'cueId','patternId','stageId','durationMs','interpolation','easing',
 			'shakeAmplitude','shakeDurationMs','keyframes') `
-			"cinematic camera cue $($cue.cueId)"
+			$cameraContext
+		Assert-JsonString $cue.cueId 'cinematic camera cueId'
+		$cameraCueId = [string]$cue.cueId
+		if ($cameraCueId.Length -gt 128 -or
+			$cameraCueId -cnotmatch '^[A-Za-z0-9_.-]+$' -or
+			-not $cameraCueIds.Add($cameraCueId)) {
+			throw "Cinematic camera cueId is invalid or duplicate: $cameraCueId"
+		}
+		Assert-CinematicCameraKeyframes $cue `
+			$cameraContext $cameraSceneIds
 		$cuePatternId = [string]$cue.patternId
 		$ownsMotion = $serverMotionByPatternId.ContainsKey($cuePatternId)
 		if ($tracking.Mode -ceq 'BOSS_XZ' -and -not $ownsMotion) {
@@ -3370,6 +3508,28 @@ if ($serverMotionByPatternId.Count -ne 0) {
 				throw "Cinematic cue does not look at its pattern landing anchor $($anchor.AnchorId): $($cue.cueId)"
 			}
 		}
+	}
+	$deathCue = $cameraDocument.deathCue
+	if ($null -eq $deathCue -or $deathCue -isnot [pscustomobject]) {
+		throw 'Valtan cinematic death cue must be a JSON object.'
+	}
+	if ($deathCue.PSObject.Properties.Count -eq 0) {
+		# An empty object intentionally means that no encounter-clear shot is authored.
+	} else {
+		Assert-ExactProperties $deathCue @(
+			'cueId','durationMs','interpolation','easing','shakeAmplitude',
+			'shakeDurationMs','keyframes') 'Valtan cinematic death cue'
+		Assert-JsonString $deathCue.cueId 'Valtan cinematic death cueId'
+		$deathCueId = [string]$deathCue.cueId
+		if ($deathCueId.Length -gt 128 -or
+			$deathCueId -cnotmatch '^[A-Za-z0-9_.-]+$' -or
+			-not $cameraCueIds.Add($deathCueId)) {
+			throw "Valtan cinematic death cueId is invalid or duplicate: $deathCueId"
+		}
+		Assert-CinematicCameraCueContract $deathCue `
+			'Valtan cinematic death cue' 60000
+		Assert-CinematicCameraKeyframes $deathCue `
+			'Valtan cinematic death cue' $cameraSceneIds
 	}
 	$expectedFourPillarsCameraStages = @('TAKEOFF','YELLOW_ZONE')
 	if ($fourPillarsCameraStages.Count -ne $expectedFourPillarsCameraStages.Count -or

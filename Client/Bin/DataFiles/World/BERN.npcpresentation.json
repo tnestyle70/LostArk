@@ -20,7 +20,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.01.cheer", "clipName": "npc_sc_cheer_loop_3", "loop": true, "playbackRate": 1, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.01.cheer", "clipName": "npc_sc_cheer_loop_3", "loop": true, "playbackRate": 1, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -28,7 +28,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.02.cheer", "clipName": "npc_sc_cheer_loop_4", "loop": true, "playbackRate": 0.95, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.02.cheer", "clipName": "npc_sc_cheer_loop_4", "loop": true, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -36,7 +36,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.03.cheer", "clipName": "npc_sc_cheer_loop_1", "loop": true, "playbackRate": 1.05, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.03.cheer", "clipName": "npc_sc_cheer_loop_1", "loop": true, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -44,7 +44,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.04.talk", "clipName": "npc_sc_talk_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.04.talk", "clipName": "npc_sc_talk_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -52,7 +52,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.05.affirm", "clipName": "npc_sc_affirmation_loop_1", "loop": true, "playbackRate": 0.95, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.05.affirm", "clipName": "npc_sc_affirmation_loop_1", "loop": true, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -60,7 +60,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.06.clap", "clipName": "npc_evt2_clap_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.06.clap", "clipName": "npc_evt2_clap_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -68,7 +68,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.07.praise", "clipName": "npc_evt2_praise_01", "loop": true, "playbackRate": 1.05, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.07.praise", "clipName": "npc_evt2_praise_01", "loop": true, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -76,7 +76,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.08.greet", "clipName": "npc_sc_greet_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.08.greet", "clipName": "npc_sc_greet_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -84,7 +84,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.09.greet", "clipName": "npc_sc_greet_2", "loop": true, "playbackRate": 0.95, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.09.greet", "clipName": "npc_sc_greet_2", "loop": true, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -92,7 +92,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.10.laugh", "clipName": "npc_sc_lughing_loop_1", "loop": true, "playbackRate": 1.05, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.10.laugh", "clipName": "npc_sc_lughing_loop_1", "loop": true, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -100,7 +100,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.11.laugh", "clipName": "npc_sc_laughing_loop_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.11.laugh", "clipName": "npc_sc_laughing_loop_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -108,7 +108,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.12.pray", "clipName": "npc_sc_pray_loop_1", "loop": true, "playbackRate": 0.95, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.12.pray", "clipName": "npc_sc_pray_loop_1", "loop": true, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -116,7 +116,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.13.intimate", "clipName": "npc_sc_intimate_1", "loop": true, "playbackRate": 1.05, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.13.intimate", "clipName": "npc_sc_intimate_1", "loop": true, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -124,7 +124,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.14.apologize", "clipName": "npc_sc_apologize_loop_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.14.apologize", "clipName": "npc_sc_apologize_loop_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -132,7 +132,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.15.win", "clipName": "npc_evt2_win_01", "loop": true, "playbackRate": 0.95, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.15.win", "clipName": "npc_evt2_win_01", "loop": true, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -140,7 +140,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.16.win", "clipName": "npc_evt2_win_02", "loop": true, "playbackRate": 1.05, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.16.win", "clipName": "npc_evt2_win_02", "loop": true, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -148,7 +148,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.17.jeer", "clipName": "npc_sc_jeer_loop_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.17.jeer", "clipName": "npc_sc_jeer_loop_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -156,7 +156,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.18.shy", "clipName": "npc_sc_shyness_loop_1", "loop": true, "playbackRate": 0.95, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.18.shy", "clipName": "npc_sc_shyness_loop_1", "loop": true, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -164,7 +164,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.19.cheer", "clipName": "npc_sc_cheer_loop_2", "loop": true, "playbackRate": 1.05, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.19.cheer", "clipName": "npc_sc_cheer_loop_2", "loop": true, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
       ]
     },
     {
@@ -172,7 +172,7 @@
       "idleClip": null,
       "walkClip": null,
       "actions": [
-        { "actionId": "npc.ambient.plaza.20.surprise", "clipName": "npc_sc_surprise_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.2 }
+        { "actionId": "npc.ambient.plaza.20.surprise", "clipName": "npc_sc_surprise_1", "loop": true, "playbackRate": 1, "blendSeconds": 0.200000003 }
       ]
     }
   ]

@@ -99,6 +99,7 @@ private:
 	std::string m_strValtanEntryNpcPlacementId;
 	bool_t m_wasRightMouseDownForNpcInteract = false;
 	std::uint32_t m_iNextNpcEntryConfirmSequence = 1u;
+	bool_t m_bBernBgmStarted = false;
 
 #ifdef _DEBUG
 	std::vector<shared_ptr<CTrigger_Box>> m_DebugLevelChangeTriggers;

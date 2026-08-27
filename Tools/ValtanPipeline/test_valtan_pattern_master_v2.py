@@ -25,6 +25,7 @@ EXPECTED_SCRIPTED_SEQUENCE = {
     "mode": "ORDERED_ONCE_THEN_IDLE",
     "interStepPursuitMs": 1000,
     "patternIds": [
+        "VALTAN_ENTRANCE_CINEMATIC",
         "VALTAN_WHIRLWIND",
         "VALTAN_FOUR_SLASH",
         "VALTAN_FIST_IN_OUT",
@@ -2167,6 +2168,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(19, len(phase_two_ids))
         self.assertEqual(
             [
+                "VALTAN_ENTRANCE_CINEMATIC",
                 "VALTAN_WHIRLWIND",
                 "VALTAN_FOUR_SLASH",
                 "VALTAN_FIST_IN_OUT",
@@ -2180,7 +2182,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 *phase_two_ids[7:],
             ],
             staged["decisionModel"]["scriptedSequence"]["patternIds"],
-            "the automatic visual-review sequence must preserve the seven Phase-1 review patterns and then every Phase-2 authoring row",
+            "the automatic visual-review sequence must begin with the entrance camera gate, preserve the seven Phase-1 review patterns, and then run every Phase-2 authoring row",
         )
         self.assertNotIn(
             "VALTAN_STRUGGLING",
@@ -2560,6 +2562,50 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
+
+    def test_only_first_scripted_pattern_may_be_an_entry_only_gate(self) -> None:
+        joined = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        sequence = joined["decisionModel"]["scriptedSequence"]["patternIds"]
+        self.assertEqual("VALTAN_ENTRANCE_CINEMATIC", sequence[0])
+        owned = {
+            candidate["patternId"]
+            for selection_set in joined["decisionModel"]["selectionSets"]
+            for candidate in selection_set["candidates"]
+        } | {
+            mechanic["patternId"]
+            for mechanic in joined["decisionModel"]["mechanics"]
+        } | {
+            audition["patternId"]
+            for audition in joined["decisionModel"]["manualAuditions"]
+        }
+        self.assertNotIn("VALTAN_ENTRANCE_CINEMATIC", owned)
+        pipeline.validate_v2_master(
+            joined,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+
+        invalid = copy.deepcopy(joined)
+        for selection_set in invalid["decisionModel"]["selectionSets"]:
+            selection_set["candidates"] = [
+                candidate
+                for candidate in selection_set["candidates"]
+                if candidate["patternId"] != "VALTAN_WHIRLWIND"
+            ]
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "only the first scripted sequence pattern may be an entry-only gate",
+        ):
+            pipeline.validate_v2_master(
+                invalid,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
 
     def test_phase_two_and_three_animation_intake_exact_joins_manual_product(self) -> None:
         joined = pipeline.join_v2_authoring(
@@ -4162,7 +4208,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "--draft-patch",
                 str(patch_path),
             ]
-            completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", check=False)
+            completed = subprocess.run(
+                command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
+            )
             self.assertEqual(0, completed.returncode, completed.stderr)
             result = json.loads(completed.stdout)
             self.assertEqual(
@@ -4179,7 +4228,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             bad = self.draft_patch()
             bad["sourceRevision"] = "0" * 64
             pipeline._write_fsync(patch_path, pipeline.json_text(bad).encode("utf-8"))
-            completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", check=False)
+            completed = subprocess.run(
+                command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
+            )
             self.assertEqual(1, completed.returncode)
             result = json.loads(completed.stderr)
             self.assertFalse(result["ok"])
@@ -4198,7 +4250,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 str(preview_path),
             ]
             completed = subprocess.run(
-                migrate_command, capture_output=True, text=True, encoding="utf-8", check=False
+                migrate_command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
             result = json.loads(completed.stdout)
@@ -4209,7 +4262,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             source_before = pipeline.sha256_file(self.root / pipeline.MASTER_REL)
             migrate_command[-1] = str(self.root / pipeline.MASTER_REL)
             completed = subprocess.run(
-                migrate_command, capture_output=True, text=True, encoding="utf-8", check=False
+                migrate_command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
             )
             self.assertEqual(1, completed.returncode)
             result = json.loads(completed.stderr)
@@ -4232,7 +4286,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 str(patch_path),
             ]
             completed = subprocess.run(
-                save_command, capture_output=True, text=True, encoding="utf-8", check=False
+                save_command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
             result = json.loads(completed.stdout)
@@ -4256,7 +4311,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 authoring_revision,
             ]
             completed = subprocess.run(
-                publish_command, capture_output=True, text=True, encoding="utf-8", check=False
+                publish_command, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", check=False
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
             result = json.loads(completed.stdout)

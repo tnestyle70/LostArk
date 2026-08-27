@@ -49,14 +49,21 @@ $entranceStageId = 'SWEEP'
 $entranceActionId = 'valtan.mechanic.entrance-whirlwind.sweep'
 $entranceStageIndex = 1
 $expectedEntranceGroupCount = 2
-# The 109 collapse is the outer ring alone. Interior groups stay authored but
-# dormant until the earlier pattern that actually destroys them is identified,
-# so the product contract is expressed as the exact shape of the enabled binding
-# graph rather than as a total row count of the source document.
+# The 109 collapse takes the whole arena with it: the outer ring and every
+# interior wall still standing when the cutscene fires. The product contract is
+# the exact shape of the enabled binding graph rather than a total row count of
+# the source document, so both halves are named and counted separately.
 $outerGroupIdPrefix = 'destroyable.group.valtan.outerwall109.'
 $expectedOuterGroupCount = 30
 $expectedOuterMemberCount = 60
 $expectedOuterEmitterCount = 30
+# Interior walls keep the contact bindings that already break them mid-fight.
+# Destruction is one-way, so a wall a body already took down simply answers
+# NO_CHANGE when the 109 stage reaches it, and the rest go with the ring.
+$interiorGroupIdPrefixes = @(
+    'destroyable.group.valtan.wall.',
+    'destroyable.group.valtan.wall159.')
+$expectedInterior109BindingCount = 67
 $expectedOuterFillerAssetId = 'DEPLOY_ITR_02307'
 $expectedOuterFillerPlacementIdOffset = [uint64]1000000000000
 $expectedOuterRingRadiusMeters = 16.1
@@ -1172,10 +1179,27 @@ function Compile-ValtanWorldDestruction {
     $outerFragmentActorCount = 0
     $outerGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $outerMemberIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $interior109GroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $interior109BindingCount = 0
     foreach ($binding in $arenaBreakBindings) {
         $reachedGroupId = [string]$mutationById[[string]$binding.MutationId].groupId
         if (-not $reachedGroupId.StartsWith($outerGroupIdPrefix, [StringComparison]::Ordinal)) {
+            # Naming the interior families here is what keeps a floor sector or
+            # an entrance wall from riding the collapse just by being non-outer.
+            $isInteriorGroupId = $false
+            foreach ($interiorGroupIdPrefix in $interiorGroupIdPrefixes) {
+                if ($reachedGroupId.StartsWith(
+                    $interiorGroupIdPrefix, [StringComparison]::Ordinal)) {
+                    $isInteriorGroupId = $true
+                    break
+                }
+            }
+            if (-not $isInteriorGroupId) {
+                throw "The 109 collapse reaches a group that is neither the outer ring nor an interior wall: $reachedGroupId"
+            }
+            if (-not $interior109GroupIds.Add($reachedGroupId)) {
+                throw "Two enabled 109 bindings reach the same interior wall: $reachedGroupId"
+            }
             $interior109BindingCount++
             continue
         }
@@ -1219,8 +1243,9 @@ function Compile-ValtanWorldDestruction {
                 throw "An entrance wall is also a 109 ring slab: $entranceMemberId"
             }
         }
-        if ($interior109BindingCount -ne 0) {
-            throw "The 109 collapse must reach the outer ring only, but $interior109BindingCount interior binding(s) are still enabled."
+        if ($interior109BindingCount -ne $expectedInterior109BindingCount -or
+            $interior109GroupIds.Count -ne $expectedInterior109BindingCount) {
+            throw "The 109 collapse must also reach exactly $expectedInterior109BindingCount interior wall groups, not $($interior109GroupIds.Count)."
         }
         if ($outerGroupIds.Count -ne $expectedOuterGroupCount) {
             throw "The 109 collapse must reach exactly $expectedOuterGroupCount outer ring groups, not $($outerGroupIds.Count)."
@@ -1658,6 +1683,7 @@ function Invoke-ContractTests {
         $expectedProductGroupCount + $expectedFloorGroupCount
     $expectedCanonicalBindingCount =
         $expectedIndependentContactWallCount + $expectedOuterGroupCount +
+        $expectedInterior109BindingCount +
         $expectedImpactGroupCount + $expectedDashImpactGroupCount +
         $expectedEntranceGroupCount +
         $expectedFloorGroupCount
@@ -1667,7 +1693,8 @@ function Invoke-ContractTests {
         $canonical.OuterSuppressionAliasCount -ne
             ($expectedOuterEmitterCount * $expectedOuterSuppressionAliasCount) -or
         $canonical.OuterFragmentActorCount -ne $expectedFragmentActorCount -or
-        $canonical.Interior109BindingCount -ne 0 -or
+        $canonical.Interior109BindingCount -ne
+            $expectedInterior109BindingCount -or
         $canonical.ImpactBindingCount -ne $expectedImpactGroupCount -or
         $canonical.DashImpactBindingCount -ne $expectedDashImpactGroupCount -or
         $canonical.ContactBindingCount -ne $expectedIndependentContactWallCount -or
@@ -1766,15 +1793,27 @@ function Invoke-ContractTests {
     $partialBinding.enabled = $true
     Assert-Throws { Compile-ValtanWorldDestruction $partial $encounter $simulation } 'partial product set'
 
-    # An interior group re-joining the 109 batch is the exact regression the
-    # outer-ring contract exists to stop.
-    $interiorRejoin = Copy-JsonObject $source
-    $interiorBinding = $interiorRejoin.bindings | Where-Object {
-        $_.mutationId -CEQ $firstMutationId } | Select-Object -First 1
-    $interiorBinding.enabled = $true
+    # The collapse now takes the interior walls down with the ring, so the
+    # regression to stop is no longer an interior wall joining it. It is a wall
+    # silently dropping out of the batch, or a group that is not a wall at all
+    # riding in on the same stage.
+    $interiorDropout = Copy-JsonObject $source
+    $interiorBinding = $interiorDropout.bindings | Where-Object {
+        $_.mutationId -CEQ $firstMutationId -and
+        $_.triggerKind -CEQ 'STAGE_ENTER' } | Select-Object -First 1
+    $interiorBinding.enabled = $false
     Assert-Throws {
-        Compile-ValtanWorldDestruction $interiorRejoin $encounter $simulation
-    } 'interior group rejoining the 109 batch'
+        Compile-ValtanWorldDestruction $interiorDropout $encounter $simulation
+    } 'interior wall dropping out of the 109 batch'
+
+    $floorRideAlong = Copy-JsonObject $source
+    $floorRideAlongBinding = $floorRideAlong.bindings | Where-Object {
+        $_.patternId -CEQ $floorStageAPatternId } | Select-Object -First 1
+    $floorRideAlongBinding.patternId = $firstPatternId
+    $floorRideAlongBinding.stageId = $firstStageId
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $floorRideAlong $encounter $simulation
+    } 'floor sector riding the 109 collapse'
 
     # A ring wall dropped from the batch leaves a permanent hole in the wall.
     $missingSector = Copy-JsonObject $source

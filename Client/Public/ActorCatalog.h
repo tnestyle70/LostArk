@@ -108,11 +108,17 @@ struct NPC_ACTOR_ENTRY final
 
 struct MONSTER_ACTOR_ENTRY final
 {
+	struct ATTACK_PRESENTATION final
+	{
+		std::string clip;
+		f32_t playbackRate = 1.f;
+	};
+
 	struct PRESENTATION_CLIPS final
 	{
 		std::string idle;
 		std::string chase;
-		std::string attack;
+		std::string hit;
 		std::string dead;
 	};
 
@@ -121,6 +127,8 @@ struct MONSTER_ACTOR_ENTRY final
 	std::string modelAssetId;
 	f32_t modelScale = 1.f;
 	f32_t modelYawDegrees = 0.f;
+	std::vector<ATTACK_PRESENTATION> attackPresentations;
+	f32_t hitDurationSeconds = 0.f;
 	PRESENTATION_CLIPS presentationClips;
 	std::string runtimeStatus;
 };
@@ -141,6 +149,7 @@ public:
 	static const std::vector<NPC_ACTOR_ENTRY>& Get_Npcs();
 	static const MONSTER_ACTOR_ENTRY* Find_Monster(
 		std::string_view archetypeId);
+	static const std::vector<MONSTER_ACTOR_ENTRY>& Get_Monsters();
 	static const std::string& Get_Status();
 };
 

@@ -455,49 +455,6 @@ namespace
 			static_cast<std::int32_t>(candidate - previous) > 0;
 	}
 
-	void Smooth_MovePath(
-		const CServerNavigation& navigation,
-		const float startX,
-		const float startZ,
-		const float goalX,
-		const float goalZ,
-		std::vector<SERVER_NAV_POINT>& path)
-	{
-		if (path.empty())
-			return;
-		SERVER_NAV_POINT exactGoal{};
-		if (navigation.Sample_Position(goalX, goalZ, exactGoal) &&
-			navigation.Has_LineOfSight(
-				path.back().x, path.back().z, goalX, goalZ))
-		{
-			path.back() = exactGoal;
-		}
-		std::vector<SERVER_NAV_POINT> smoothed;
-		smoothed.reserve(path.size());
-		float fromX = startX;
-		float fromZ = startZ;
-		std::size_t index = 0;
-		while (index < path.size())
-		{
-			std::size_t visible = index;
-			for (std::size_t candidate = path.size();
-				candidate > index + 1; --candidate)
-			{
-				const SERVER_NAV_POINT& point = path[candidate - 1];
-				if (navigation.Has_LineOfSight(fromX, fromZ, point.x, point.z))
-				{
-					visible = candidate - 1;
-					break;
-				}
-			}
-			smoothed.push_back(path[visible]);
-			fromX = path[visible].x;
-			fromZ = path[visible].z;
-			index = visible + 1;
-		}
-		path = std::move(smoothed);
-	}
-
 	WORLD_ENTITY_KIND To_NetworkKind(const WORLD_BOOTSTRAP_KIND kind)
 	{
 		switch (kind)
@@ -2105,8 +2062,7 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 			player.hasMoveGoal = false;
 			return false;
 		}
-		Smooth_MovePath(
-			m_ServerNavigation,
+		m_ServerNavigation.Smooth_Path(
 			player.fPositionX,
 			player.fPositionZ,
 			goalX,
@@ -8763,7 +8719,13 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.iDefense = profile.iDefense;
 	staged.fCollisionRadius = profile.fCollisionRadius;
 	staged.fEngageDistance = profile.fEngageRange;
+	staged.fTargetReleaseDistance = profile.fTargetReleaseRange;
 	staged.fMoveSpeed = profile.fMoveSpeed;
+	staged.fTurnSpeedDegreesPerSecond =
+		profile.fTurnSpeedDegreesPerSecond;
+	staged.fMoveAcceleration = profile.fAcceleration;
+	staged.fMoveDeceleration = profile.fDeceleration;
+	staged.fArrivalSlowRadius = profile.fArrivalSlowRadius;
 	staged.fAttackRange = profile.fAttackRange;
 	staged.iPatternTelegraphMs = profile.iAttackWindupMs;
 	staged.iPatternActiveMs = profile.iAttackActiveMs;
@@ -9971,21 +9933,32 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			m_ServerNavigation.Is_Loaded())
 		{
 			if (CMonsterBrain::Advance_Knockback(
-				entity, m_ServerNavigation, fixedDeltaSeconds))
+				entity, m_ServerNavigation, m_ServerCollisionSystem,
+				fixedDeltaSeconds))
 			{
+				(void)m_ServerCollisionSystem.Update_BlockingBody(
+					entity.iNetEntityId,
+					entity.fPositionX,
+					entity.fPositionY + entity.fCollisionRadius,
+					entity.fPositionZ);
 				continue;
 			}
-			/* The brain reads m_WorldEntities to push this monster out of a body
-			it overlaps. It only moves the entity handed to it, so passing the
-			list this loop is walking neither spawns, despawns nor reorders it. */
 			m_MonsterBrain.Update(
 				entity,
 				m_Players,
 				m_GameplayCatalog,
 				m_ServerNavigation,
+				m_ServerCollisionSystem,
 				fixedDeltaSeconds,
 				updateTick,
 				m_TickDamageEvents);
+			/* Later entities in this deterministic vector order collide against
+			the position accepted earlier in the same fixed tick. */
+			(void)m_ServerCollisionSystem.Update_BlockingBody(
+				entity.iNetEntityId,
+				entity.fPositionX,
+				entity.fPositionY + entity.fCollisionRadius,
+				entity.fPositionZ);
 		}
 	}
 

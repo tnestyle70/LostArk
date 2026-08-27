@@ -11,6 +11,7 @@
 #include <array>
 #include <charconv>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <map>
@@ -29,6 +30,8 @@ namespace
 
 	constexpr std::string_view CHARACTER_SELECT_MONSTER_GROUP =
 		"spawn.character-select.monster";
+	constexpr SKILL_ID CHARACTER_SELECT_DAMAGE_PROBE_SKILL_ID = 34110u;
+	constexpr float DAMAGE_PROBE_HIT_REACH_METERS = 3.f;
 
 	struct HARNESS_OPTIONS final
 	{
@@ -253,6 +256,18 @@ namespace
 			return Send_Message(PACKET_TYPE::C2S_MOVE, request, error);
 		}
 
+		bool Send_ConfirmNpcEntry(
+			const std::uint32_t requestSequence,
+			const std::string_view npcPlacementId,
+			std::string& error)
+		{
+			C2S_CONFIRM_NPC_ENTRY request{};
+			request.iRequestSequence = requestSequence;
+			request.strNpcPlacementId = std::string(npcPlacementId);
+			return Send_Message(
+				PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY, request, error);
+		}
+
 		bool Poll(std::string& error)
 		{
 			if (INVALID_SOCKET == m_hSocket)
@@ -448,6 +463,17 @@ namespace
 			return true;
 		}
 
+		[[nodiscard]] bool Get_WorldEntityPositionByPlacement(
+			const std::string_view placementId,
+			float& outX,
+			float& outZ) const
+		{
+			const auto entity = m_WorldEntityIdByPlacement.find(
+				std::string(placementId));
+			return entity != m_WorldEntityIdByPlacement.end() &&
+				Get_WorldEntityPosition(entity->second, outX, outZ);
+		}
+
 	private:
 		template<typename MESSAGE>
 		bool Send_Message(
@@ -517,6 +543,7 @@ namespace
 				m_ObservedSpawnedPlayerEntityIds.clear();
 				m_ObservedSpawnedPlayerNicknames.clear();
 				m_ObservedSpawnedWorldEntityIds.clear();
+				m_WorldEntityIdByPlacement.clear();
 				m_OutgoingDamageTargetIds.clear();
 				m_iLastServerTick = 0;
 				m_hasWorldSnapshot = false;
@@ -560,6 +587,11 @@ namespace
 					return false;
 				}
 				m_ObservedSpawnedWorldEntityIds.insert(spawned.iNetEntityId);
+				if (!spawned.strPlacementId.empty())
+				{
+					m_WorldEntityIdByPlacement.insert_or_assign(
+						spawned.strPlacementId, spawned.iNetEntityId);
+				}
 				return true;
 			}
 			if (PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT == frame.ePacketType)
@@ -646,6 +678,7 @@ namespace
 		std::map<NET_ENTITY_ID, std::string>
 			m_ObservedSpawnedPlayerNicknames;
 		std::set<NET_ENTITY_ID> m_ObservedSpawnedWorldEntityIds;
+		std::map<std::string, NET_ENTITY_ID> m_WorldEntityIdByPlacement;
 		std::set<NET_ENTITY_ID> m_OutgoingDamageTargetIds;
 		std::map<std::string, WORLD_ENTITY_SPAWN_RESULT> m_SpawnResults;
 		std::uint32_t m_iLastServerTick = 0;
@@ -853,20 +886,38 @@ namespace
 					probeError = "client B observed client A's entity or damage";
 					return PROBE_RESULT::FAIL;
 				}
+				/* The monster now owns a real chase path and can leave its spawn
+				coordinate while the player approaches. Keep the isolation proof
+				bound to the replicated entity instead of waiting at a stale point. */
+				if (!clientA->Get_WorldEntityPosition(
+						clientAMonsterId, monsterX, monsterZ))
+				{
+					probeError = "client A lost the moving monster snapshot";
+					return PROBE_RESULT::FAIL;
+				}
 				const float deltaX = clientA->Get_OwnPositionX() - monsterX;
 				const float deltaZ = clientA->Get_OwnPositionZ() - monsterZ;
-				return deltaX * deltaX + deltaZ * deltaZ <= 4.f ?
-					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+				const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+				if (distanceSquared <= DAMAGE_PROBE_HIT_REACH_METERS *
+					DAMAGE_PROBE_HIT_REACH_METERS)
+				{
+					return PROBE_RESULT::PASS;
+				}
+				probeError = "distance to moving monster is " +
+					std::to_string(std::sqrt(distanceSquared)) + " m";
+				return PROBE_RESULT::WAIT;
 			},
-			"client A approach into 34650 hit reach", error))
+			"client A approach into damage-probe hit reach", error))
 		{
 			return false;
 		}
 		if (!clientA->Send_UseSkill(
-			1u, 34650u, monsterX, monsterZ, error))
+			1u, CHARACTER_SELECT_DAMAGE_PROBE_SKILL_ID,
+			monsterX, monsterZ, error))
 		{
 			return false;
 		}
+		error.clear();
 		std::uint32_t clientADamageTick = 0;
 		if (!Pump_Until(privateClients, timeout,
 			[&](std::string& probeError)
@@ -1084,12 +1135,49 @@ namespace
 		{
 			return false;
 		}
-		/* This is the authored centre of trigger.bern.to-valtan.  The old
-		coordinate at (144.8, -60.3) predates Bern's authoritative navigation:
-		all baked cells inside that trigger were disconnected castle geometry,
-		so a valid C2S_MOVE was correctly rejected without ever entering it. */
-		if (!client->Send_Move(1u, 140.800003f, -60.2999992f, error))
+		constexpr std::string_view VALTAN_GUIDE_PLACEMENT =
+			"npc.bern.beda.guide";
+		float guideX = 0.f;
+		float guideZ = 0.f;
+		if (!client->Get_WorldEntityPositionByPlacement(
+				VALTAN_GUIDE_PLACEMENT, guideX, guideZ))
+		{
+			error = "Bern transfer guide was not replicated";
 			return false;
+		}
+		if (!client->Send_Move(1u, guideX, guideZ, error))
+			return false;
+		if (!Pump_Until(clients, transitionTimeout,
+			[&](std::string& probeError)
+			{
+				if (!client->Get_WorldEntityPositionByPlacement(
+						VALTAN_GUIDE_PLACEMENT, guideX, guideZ))
+				{
+					probeError = "Bern transfer guide disappeared";
+					return PROBE_RESULT::FAIL;
+				}
+				const float deltaX = client->Get_OwnPositionX() - guideX;
+				const float deltaZ = client->Get_OwnPositionZ() - guideZ;
+				const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+				if (distanceSquared <= 8.41f)
+					return PROBE_RESULT::PASS;
+				probeError = "player=(" +
+					std::to_string(client->Get_OwnPositionX()) + "," +
+					std::to_string(client->Get_OwnPositionZ()) +
+					"), guide=(" + std::to_string(guideX) + "," +
+					std::to_string(guideZ) + "), distance=" +
+					std::to_string(std::sqrt(distanceSquared));
+				return PROBE_RESULT::WAIT;
+			},
+			"Bern transfer guide approach", error))
+		{
+			return false;
+		}
+		if (!client->Send_ConfirmNpcEntry(
+				2u, VALTAN_GUIDE_PLACEMENT, error))
+		{
+			return false;
+		}
 
 		if (!Pump_Until(clients, transitionTimeout,
 			[&](std::string& probeError)

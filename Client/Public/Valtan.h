@@ -290,6 +290,16 @@ public:
 #endif
 
 private:
+	enum class RAID_BGM_STATE : uint8_t
+	{
+		NONE,
+		M05_INTRO,
+		M06_PHASE_ONE,
+		M07_GHOST_TRANSITION,
+		M08_GHOST_PHASE,
+		M09_DEATH,
+	};
+
 	uint32_t m_iState = { VALTAN_STATE::IDLE };
 	f32_t m_fMoveSpeed = { 3.f };
 	f32_t m_fRepathTime = {};
@@ -314,6 +324,9 @@ private:
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;
+	bool_t m_isRaidBgmEnabled = false;
+	bool_t m_hasObservedEntrancePattern = false;
+	RAID_BGM_STATE m_eRaidBgmState = RAID_BGM_STATE::NONE;
 	/* Presentation-only snapshot buffer. Apply_NetworkState commits the Server
 	pattern/action clock immediately; Update consumes only these transforms. */
 	struct NETWORK_TRANSFORM_SAMPLE
@@ -421,6 +434,11 @@ private:
 		f32_t yawDegrees,
 		uint32_t iServerTick);
 	void Update_NetworkTransform(f32_t fTimeDelta);
+	void Update_RaidBgm(
+		LostArk::Shared::WORLD_ENTITY_ACTION action,
+		std::string_view patternId,
+		std::string_view actionId);
+	void Transition_RaidBgm(RAID_BGM_STATE nextState);
 
 public:
 	static unique_ptr<CValtan> Create(ComPtr<ID3D11Device> pDevice,

@@ -802,6 +802,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		/* Only authored placement behavior suppresses root motion. Esther
 		summons have no placement document and retain their action-chain travel. */
 		desc.bSuppressRootMotion = hasPlacementPresentation;
+		desc.bInterpolateNetworkTransform = hasPlacementPresentation;
 		desc.vPosition = float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -836,6 +837,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 		WORLD_ENTITY_PRESENTATION presentation{};
 		presentation.eKind = spawned.eKind;
+		presentation.strPlacementId = spawned.strPlacementId;
 		presentation.strArchetypeId = spawned.strArchetypeId;
 		presentation.strEncounterId = spawned.strEncounterId;
 		presentation.strCurrentClip = resolvedIdle;
@@ -929,6 +931,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.strShaderTag =
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
 		desc.pIdleClip = actor->presentationClips.idle.c_str();
+		desc.bSuppressRootMotion = true;
+		desc.bInterpolateNetworkTransform = true;
 		desc.vPosition = float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -961,6 +965,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 		WORLD_ENTITY_PRESENTATION presentation{};
 		presentation.eKind = spawned.eKind;
+		presentation.strPlacementId = spawned.strPlacementId;
 		presentation.strArchetypeId = spawned.strArchetypeId;
 		presentation.strEncounterId = spawned.strEncounterId;
 		presentation.strCurrentClip = actor->presentationClips.idle;
@@ -1036,6 +1041,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 	WORLD_ENTITY_PRESENTATION presentation{};
 	presentation.eKind = spawned.eKind;
+	presentation.strPlacementId = spawned.strPlacementId;
 	presentation.strArchetypeId = spawned.strArchetypeId;
 	presentation.strEncounterId = spawned.strEncounterId;
 	presentation.fCollisionRadius = spawned.fCollisionRadius;
@@ -1103,6 +1109,12 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	explicitly here instead of leaving stale HP on screen. */
 	if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
 		CCombatHUDViewModel::Get().Clear_Boss();
+	if (m_Desc.onWorldEntityDespawned)
+	{
+		m_Desc.onWorldEntityDespawned(
+			iter->second.strPlacementId,
+			iter->second.strArchetypeId);
+	}
 	m_WorldEntities.erase(iter);
 	return true;
 }
@@ -1620,30 +1632,51 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				continue;
 			}
 
+			const MONSTER_PRESENTATION_ACTION_FRAME frame =
+				CMonsterPresentationContract::Project(
+					entity.eAction,
+					entity.iActionStartTick,
+					iter->second.MonsterActionState);
+			if (!frame.shouldRestartClip)
+				continue;
+
 			const std::string* clip = &actor->presentationClips.idle;
-			bool_t loop = true;
-			if (WORLD_ENTITY_ACTION::CHASE == entity.eAction)
+			f32_t playbackRate = 1.f;
+			switch (frame.eKind)
 			{
+			case MONSTER_PRESENTATION_ACTION_KIND::CHASE:
 				clip = &actor->presentationClips.chase;
-			}
-			else if (WORLD_ENTITY_ACTION::PATTERN_WINDUP == entity.eAction ||
-				WORLD_ENTITY_ACTION::PATTERN_ACTIVE == entity.eAction ||
-				WORLD_ENTITY_ACTION::PATTERN_RECOVERY == entity.eAction)
-			{
-				clip = &actor->presentationClips.attack;
-				loop = false;
-			}
-			else if (WORLD_ENTITY_ACTION::DEAD == entity.eAction)
-			{
+				break;
+			case MONSTER_PRESENTATION_ACTION_KIND::ATTACK:
+				if (!actor->attackPresentations.empty())
+				{
+					const std::size_t attackIndex =
+						CMonsterPresentationContract::Select_AttackPresentation(
+							entity.iNetEntityId,
+							frame.iOccurrenceStartTick,
+							actor->attackPresentations.size());
+					clip = &actor->attackPresentations[attackIndex].clip;
+					playbackRate =
+						actor->attackPresentations[attackIndex].playbackRate;
+				}
+				break;
+			case MONSTER_PRESENTATION_ACTION_KIND::DEAD:
 				clip = &actor->presentationClips.dead;
-				loop = false;
+				break;
+			default:
+				break;
 			}
-			if (iter->second.strCurrentClip != *clip)
+			if (monster->Play_NetworkAction(
+					clip->c_str(), frame.isLoop, playbackRate, 0.12f))
 			{
-				if (!monster->Set_Animation(clip->c_str(), loop))
-					allSucceeded = false;
-				else
-					iter->second.strCurrentClip = *clip;
+				iter->second.strCurrentClip = *clip;
+			}
+			else
+			{
+				/* A missing optional action clip isolates only this presentation.
+				The Server entity and the rest of the snapshot remain valid. */
+				monster->Play_DefaultIdle(0.12f);
+				iter->second.strCurrentClip = actor->presentationClips.idle;
 			}
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
@@ -1737,6 +1770,25 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				hitEntity->second.pNpc.lock())
 			{
 				monster->Trigger_HitFlash();
+				const MONSTER_ACTOR_ENTRY* actor = CActorCatalog::Find_Monster(
+					hitEntity->second.strArchetypeId);
+				const MONSTER_PRESENTATION_ACTION_KIND actionKind =
+					hitEntity->second.MonsterActionState.eLastKind;
+				if (nullptr != actor &&
+					(MONSTER_PRESENTATION_ACTION_KIND::IDLE == actionKind ||
+					 MONSTER_PRESENTATION_ACTION_KIND::CHASE == actionKind))
+				{
+					const std::string& returnClip =
+						MONSTER_PRESENTATION_ACTION_KIND::CHASE == actionKind ?
+						actor->presentationClips.chase :
+						actor->presentationClips.idle;
+					(void)monster->Play_TransientNetworkAction(
+						actor->presentationClips.hit.c_str(),
+						1.f,
+						actor->hitDurationSeconds,
+						returnClip.c_str(),
+						true);
+				}
 			}
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == hitEntity->second.eKind)

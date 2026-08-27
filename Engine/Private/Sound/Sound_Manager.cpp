@@ -85,11 +85,12 @@ HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVol
 	return S_OK;
 }
 
-HRESULT CSound_Manager::Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume)
+HRESULT CSound_Manager::Play_Music(const wstring_t& strSoundFilePath,
+	f32_t fVolume, const bool_t bLoop)
 {
 	Stop_Music();
 
-	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath, true);
+	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath, bLoop);
 	if (nullptr == pSound)
 		return E_FAIL;
 
@@ -132,7 +133,8 @@ void CSound_Manager::Update()
 
 FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath, bool_t bLoop)
 {
-	const auto SoundIter = m_Sounds.find(strSoundFilePath);
+	const pair<wstring_t, bool_t> SoundKey{ strSoundFilePath, bLoop };
+	const auto SoundIter = m_Sounds.find(SoundKey);
 	if (m_Sounds.end() != SoundIter)
 		return SoundIter->second;
 
@@ -160,7 +162,7 @@ FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath
 	if (bLoop)
 		pSound->setLoopCount(-1);
 
-	m_Sounds.emplace(strSoundFilePath, pSound);
+	m_Sounds.emplace(SoundKey, pSound);
 	return pSound;
 }
 

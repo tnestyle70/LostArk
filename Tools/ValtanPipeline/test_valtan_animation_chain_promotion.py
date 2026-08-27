@@ -27,8 +27,8 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
 
     def test_reviewed_chain_closure_and_stable_ids(self) -> None:
         gameplay, presentation, receipt = promotion.build_candidates(self.root)
-        self.assertEqual(29, len(gameplay["patterns"]))
-        self.assertEqual(29, len(presentation["patterns"]))
+        self.assertEqual(30, len(gameplay["patterns"]))
+        self.assertEqual(30, len(presentation["patterns"]))
         self.assertEqual(20, receipt["patternCount"])
         self.assertEqual(99, receipt["stageCount"])
         self.assertEqual(

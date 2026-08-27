@@ -20,6 +20,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Valtan.h"
 
@@ -42,6 +43,14 @@ namespace
 {
 	constexpr std::string_view VALTAN_PILLAR_SET_ID =
 		"encounterprop.valtan.four-pillars";
+	constexpr std::string_view VALTAN_STAGE_TWO_PLACEMENT_PREFIX =
+		"spawn.valtan.stage02.miniboss.";
+	constexpr std::string_view VALTAN_STAGE_TWO_ARCHETYPE_ID =
+		"MINIBOSS_LUGARU";
+	constexpr const wchar_t* VALTAN_BGM_M01_ASSET_ID =
+		L"Sound/BGM/Valtan/M01_KeepGoing__992459057.wav";
+	constexpr const wchar_t* VALTAN_BGM_M04_ASSET_ID =
+		L"Sound/BGM/Valtan/M04_KeepGoing2__106505321.wav";
 	constexpr std::array<std::string_view, 4> VALTAN_PILLAR_SLOT_IDS = {
 		"pillar.valtan.slot00", "pillar.valtan.slot01",
 		"pillar.valtan.slot02", "pillar.valtan.slot03" };
@@ -126,6 +135,8 @@ CLevel_ValtanArena::~CLevel_ValtanArena()
 #endif
 	End_CinematicCamera();
 	m_MapEffectPresentationRuntime.Clear();
+	if (RAID_PRELUDE_BGM_STATE::NONE != m_eRaidPreludeBgmState)
+		CGameInstance::Get().Stop_Music();
 	m_Replication.Reset();
 	m_WorldDestructionDebrisPresentationRuntime.Clear();
 	m_WorldDestructionDebrisPresentationDocument.Clear();
@@ -276,6 +287,12 @@ HRESULT CLevel_ValtanArena::Initialize()
 	replicationDesc.pDeployPropRuntime = &m_DeployRuntime;
 	replicationDesc.pWorldDestructionProjection =
 		&m_WorldDestructionProjectionDocument;
+	replicationDesc.onWorldEntityDespawned =
+		[this](const std::string_view placementId,
+			const std::string_view archetypeId)
+		{
+			Handle_WorldEntityDespawned(placementId, archetypeId);
+		};
 	if (!m_Replication.Initialize(replicationDesc))
 	{
 		m_MapEffectPresentationRuntime.Clear();
@@ -308,7 +325,65 @@ HRESULT CLevel_ValtanArena::Initialize()
 	m_pDeadSceneView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/DeadScene/DeadSceneUI.json");
 
+	Transition_RaidPreludeBgm(RAID_PRELUDE_BGM_STATE::M01_PROGRESS);
 	return S_OK;
+}
+
+void CLevel_ValtanArena::Transition_RaidPreludeBgm(
+	const RAID_PRELUDE_BGM_STATE nextState)
+{
+	if (m_eRaidPreludeBgmState == nextState)
+		return;
+
+	const wchar_t* pAssetId = nullptr;
+	switch (nextState)
+	{
+	case RAID_PRELUDE_BGM_STATE::M01_PROGRESS:
+		pAssetId = VALTAN_BGM_M01_ASSET_ID;
+		break;
+	case RAID_PRELUDE_BGM_STATE::M04_POST_MINIBOSS:
+		pAssetId = VALTAN_BGM_M04_ASSET_ID;
+		break;
+	case RAID_PRELUDE_BGM_STATE::NONE:
+		CGameInstance::Get().Stop_Music();
+		m_eRaidPreludeBgmState = nextState;
+		return;
+	default:
+		return;
+	}
+
+	m_eRaidPreludeBgmState = nextState;
+	const std::filesystem::path musicPath =
+		CRuntimeAssetRoot::Resolve(pAssetId);
+	if (musicPath.empty() || !std::filesystem::is_regular_file(musicPath) ||
+		FAILED(CGameInstance::Get().Play_Music(
+			musicPath.wstring(), 1.f, true)))
+	{
+#ifdef _DEBUG
+		OutputDebugStringA(
+			"[Level_ValtanArena] Prelude BGM transition was isolated because "
+			"the runtime WAV could not be played.\n");
+#endif
+	}
+}
+
+void CLevel_ValtanArena::Handle_WorldEntityDespawned(
+	const std::string_view placementId,
+	const std::string_view archetypeId)
+{
+	if (RAID_PRELUDE_BGM_STATE::M01_PROGRESS !=
+			m_eRaidPreludeBgmState ||
+		VALTAN_STAGE_TWO_ARCHETYPE_ID != archetypeId ||
+		0u != placementId.rfind(VALTAN_STAGE_TWO_PLACEMENT_PREFIX, 0u))
+	{
+		return;
+	}
+
+	/* stage02.miniboss owns exactly one Lugaru and completes under
+	ALL_WAVES_CLEARED. Its reliable Server despawn is therefore the visible
+	stage-two completion edge; no Client timer or position guess is involved. */
+	Transition_RaidPreludeBgm(
+		RAID_PRELUDE_BGM_STATE::M04_POST_MINIBOSS);
 }
 
 void CLevel_ValtanArena::Update(f32_t fTimeDelta)
@@ -1367,9 +1442,9 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		"No Stage_Boss walk-through and no monster kill is required first.");
 	ImGui::TextColored(
 		ImVec4(1.f, 0.82f, 0.2f, 1.f),
-		"109: completed outer ring only, 30 walls x 12 fragments.");
+		"109: the whole arena, 30 outer ring + 67 interior walls x 12 fragments.");
 	ImGui::TextDisabled(
-		"TAKEOFF -> DROP -> IMPACT breaks the 8 outer sectors; interior groups stay dormant;");
+		"TAKEOFF -> DROP -> IMPACT breaks the outer sectors and every wall still standing;");
 	ImGui::TextDisabled(
 		"collision and nav blockers open on the persistent commit, not on the cue.");
 	ImGui::TextColored(
@@ -1597,9 +1672,9 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		ImGui::TextDisabled("Waiting for the authoritative Valtan snapshot...");
 	}
 
-	/* The 109 collapse owns the outer ring alone, so the panel counts the ring
-	separately from the interior groups that must not react to it. The prefix is
-	the authored group naming contract in ValtanWorldEvents.json. */
+	/* The 109 collapse takes the interior walls with the ring, so the panel
+	counts the ring separately only to show that the ring itself is complete.
+	The prefix is the authored group naming contract in ValtanWorldEvents.json. */
 	static constexpr std::string_view OUTER_RING_GROUP_PREFIX =
 		"destroyable.group.valtan.outerwall109.";
 	size_t outerGroupCount = 0u;
@@ -1616,9 +1691,9 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		outerPlacementCount += group.MemberPlacementIds.size();
 	}
 
-	/* The arena floor collapses on its own health-bar patterns, so its sectors
-	are counted separately instead of being reported as interior walls that
-	reacted to the 109 collapse by mistake. Three groups answer each stage: one
+	/* The arena floor collapses on its own health-bar patterns at 84 and 30,
+	so its sectors are counted separately and must still be INTACT when the 109
+	collapse finishes. Three groups answer each stage: one
 	outer rail and two brick sectors per arena half. The SL00 inner wedge and
 	centre cap are Map placements, so they never appear in either count. */
 	static constexpr std::string_view FLOOR_STAGE_A_GROUP_PREFIX =
@@ -1713,13 +1788,12 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		" stage B the screen-left half. A half is the smallest authored unit: the"
 		" rail submeshes are material layers, not angular slices. The SL00 inner"
 		" wedge and centre cap are Map placements and stay standing either way.");
-	if (0u != interiorReactedCount)
-	{
-		ImGui::TextColored(
-			ImVec4(1.f, 0.35f, 0.35f, 1.f),
-			"Interior groups that left INTACT: %zu (the 109 batch must not touch them)",
-			interiorReactedCount);
-	}
+	/* The 109 batch now takes the interior walls down with the ring, so this
+	is progress rather than a fault. Entrance walls are counted here too:
+	they break at the first-appearance sweep, long before the collapse. */
+	ImGui::Text(
+		"Interior/entrance walls no longer INTACT: %zu",
+		interiorReactedCount);
 	ImGui::Text("Destruction sync: %s  Epoch: %u  Debris actors: %u/%u",
 		m_Replication.Is_WorldDestructionSynchronized() ? "READY" : "WAITING",
 		m_Replication.Get_WorldDestructionEncounterEpoch(),

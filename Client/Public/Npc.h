@@ -231,6 +231,10 @@ public:
 		outside the model. Esther summons leave this false because their authored
 		action chains intentionally carry root motion. */
 		bool_t bSuppressRootMotion = false;
+		/* Independent from root-motion policy. Server-owned town NPCs and
+		monsters interpolate snapshot transforms; local previews and Esther keep
+		their existing immediate-transform behavior. */
+		bool_t bInterpolateNetworkTransform = false;
 		/* Inverted-hull outline in world metres; 0 disables. Only shaders that
 		expose an Outline pass (esther) honour it. */
 		f32_t fOutlineWidth = {};
@@ -265,6 +269,14 @@ public:
 		bool_t isLoop,
 		f32_t fPlaybackRate,
 		f32_t fBlendSeconds);
+	bool_t Play_TransientNetworkAction(
+		const char_t* pClipName,
+		f32_t fPlaybackRate,
+		f32_t fDurationSeconds,
+		const char_t* pReturnClip,
+		bool_t isReturnLoop,
+		f32_t fReturnPlaybackRate = 1.f,
+		f32_t fBlendSeconds = 0.05f);
 	bool_t Play_DefaultIdle(f32_t fBlendSeconds = 0.12f);
 	bool_t Apply_NetworkState(
 		const float3_t& position,
@@ -295,6 +307,11 @@ private:
 	std::string m_strDefaultIdleClip;
 	CNpcNetworkTransformInterpolator m_NetworkTransformInterpolator;
 	bool_t m_bSuppressRootMotion = false;
+	bool_t m_bInterpolateNetworkTransform = false;
+	f32_t m_fTransientActionRemainingSeconds = 0.f;
+	std::string m_strTransientReturnClip;
+	f32_t m_fTransientReturnPlaybackRate = 1.f;
+	bool_t m_isTransientReturnLoop = true;
 	f32_t m_fOutlineWidth = { 0.f };
 	float4_t m_vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
 #ifdef _DEBUG

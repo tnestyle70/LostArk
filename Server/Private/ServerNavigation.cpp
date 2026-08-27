@@ -646,6 +646,47 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 	return !outPath.empty();
 }
 
+void LostArk::Server::CServerNavigation::Smooth_Path(
+	const float startX,
+	const float startZ,
+	const float goalX,
+	const float goalZ,
+	std::vector<SERVER_NAV_POINT>& path) const
+{
+	if (path.empty())
+		return;
+	SERVER_NAV_POINT exactGoal{};
+	if (Sample_Position(goalX, goalZ, exactGoal) &&
+		Has_LineOfSight(path.back().x, path.back().z, goalX, goalZ))
+	{
+		path.back() = exactGoal;
+	}
+	std::vector<SERVER_NAV_POINT> smoothed;
+	smoothed.reserve(path.size());
+	float fromX = startX;
+	float fromZ = startZ;
+	std::size_t index = 0u;
+	while (index < path.size())
+	{
+		std::size_t visible = index;
+		for (std::size_t candidate = path.size(); candidate > index + 1u;
+			--candidate)
+		{
+			const SERVER_NAV_POINT& point = path[candidate - 1u];
+			if (Has_LineOfSight(fromX, fromZ, point.x, point.z))
+			{
+				visible = candidate - 1u;
+				break;
+			}
+		}
+		smoothed.push_back(path[visible]);
+		fromX = path[visible].x;
+		fromZ = path[visible].z;
+		index = visible + 1u;
+	}
+	path = std::move(smoothed);
+}
+
 bool LostArk::Server::CServerNavigation::Find_PathToReachablePointWithinRadius(
 	const float startX,
 	const float startZ,

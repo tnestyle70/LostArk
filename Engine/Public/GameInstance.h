@@ -53,7 +53,8 @@ public: /* For.Input_Device */
 #ifdef _WIN64
 public: /* For.Sound_Manager */
 	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
-	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume);
+	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume,
+		bool_t bLoop = true);
 	void Stop_Music();
 #endif
 

@@ -5,10 +5,11 @@
 
 namespace LostArk::Shared
 {
-	/* 39 adds bounded Debug Valtan pattern-flow authoring playback. 38 adds
-	typed boss-owned player attachments. 36 added the bounded
-	Server-authoritative Valtan decision trace query. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 39;
+	/* 40 raises the world destruction live-event bound so the 109 collapse
+	can carry the outer ring and every interior wall in one delta. 39 adds
+	bounded Debug Valtan pattern-flow authoring playback. 38 adds typed
+	boss-owned player attachments. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 40;
 
 	enum class WORLD_ID : std::uint16_t
 	{
