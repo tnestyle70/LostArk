@@ -159,6 +159,20 @@ namespace
 		lands. DeadScene_ReviveButton reuses the same generic pill-button skin as ItemUpgrade's
 		buildUp/continuously/success-ok/fail-ok buttons (V2btn_normal, real 103x36). */
 		{ "Dead Scene",     "UI/DeadScene/DeadSceneUI.json", "UI/DeadScene/", false },
+		/* Bern's Valtan-entry confirm window (CLevel_Bern::Render_ValtanEntryModal).
+		Panel/Confirm/Cancel currently reuse Class Select's create-character modal
+		assets (UI/ClassSelect/Common/); szTextureRoot points at UI/Bern/ instead so
+		this window's own art (e.g. Accept.png/Decline.png) shows in the palette. */
+		{ "Valtan Entry",   "UI/Bern/BernValtanEntry_Layout.json", "UI/Bern/", false },
+		/* Same-room party invite popup (CPartyInteractionView::Render_InvitePopup).
+		Cloned from Valtan Entry at 0.7x -- see that document's own comment for
+		why Panel/Confirm/Cancel reuse Class Select's create-character modal art. */
+		{ "Party Invite",   "UI/Party/PartyInviteConfirm_Layout.json", "UI/Party/", false },
+		/* Right-click-another-player menu (CPartyInteractionView::Render_ContextMenu).
+		Placeholder art (not extracted from the original game) pending a real
+		asset find -- Panel/HoverHighlight starting rects are arbitrary, real
+		placement is done in this Tool. */
+		{ "Party Context Menu", "UI/Party/PartyContextMenu_Layout.json", "UI/Party/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));

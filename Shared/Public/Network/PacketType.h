@@ -5,11 +5,11 @@
 
 namespace LostArk::Shared
 {
-	/* 40 raises the world destruction live-event bound so the 109 collapse
-	can carry the outer ring and every interior wall in one delta. 39 adds
-	bounded Debug Valtan pattern-flow authoring playback. 38 adds typed
-	boss-owned player attachments. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 40;
+	/* 41 combines same-room party invite/accept and roster sync with the
+	expanded world destruction live-event bound. Each feature independently
+	used 40 before integration, so neither v40 peer is wire-compatible.
+	39 adds bounded Debug Valtan pattern-flow authoring playback. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 41;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -179,7 +179,16 @@ namespace LostArk::Shared
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START,
 		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT,
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
-		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE,
+
+		// Same-room party invite: right-click another player's NetEntityId in the
+		// same CGameRoom, invite, target accepts/declines. No cross-room identity
+		// exists yet (nickname is not a stable lookup key -- see CLAUDE.md), so
+		// this stays scoped to players currently sharing one room.
+		C2S_PARTY_INVITE,
+		S2C_PARTY_INVITE_RECEIVED,
+		C2S_PARTY_INVITE_RESPOND,
+		S2C_PARTY_ROSTER
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -243,6 +252,10 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_USE_ITEM:
 		case PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES:
 		case PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY:
+		case PACKET_TYPE::C2S_PARTY_INVITE:
+		case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
+		case PACKET_TYPE::C2S_PARTY_INVITE_RESPOND:
+		case PACKET_TYPE::S2C_PARTY_ROSTER:
 			return true;
 		default:
 			return  false;
@@ -253,4 +266,12 @@ namespace LostArk::Shared
 	//inline : 이 헤더를 여러 .cpp가 include해도 동일한 변수 정의로 취급한다.
 	//constexpr : 컴파일 타임 시간 상수
 	inline constexpr std::size_t MAX_NICKNAME_BYTES = 32;
+
+	// Same as Character Select Arena's own room cap (see
+	// Run-CharacterSelectIsolationHarness.ps1's 4/4 ROOM_FULL contract).
+	inline constexpr std::size_t MAX_PARTY_MEMBERS = 4;
+
+	// Matches CChatWindowView::INPUT_BUFFER_SIZE (including the terminator),
+	// so a locally-typeable line always round-trips.
+	inline constexpr std::size_t MAX_CHAT_TEXT_BYTES = 256;
 }

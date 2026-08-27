@@ -8,7 +8,9 @@
 #include "MapPlacementRuntime.h"
 #include "MapEffectPresentationRuntime.h"
 #include "MapLightPresentationRuntime.h"
+#include "PartyInteractionView.h"
 #include "PlayerController.h"
+#include "WorldPlayerChatBubbleView.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "WorldDestructionDebrisPresentationDocument.h"
@@ -43,6 +45,20 @@ public:
 	virtual HRESULT Initialize() override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+
+	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
+	/* CGameInstance::Draw_Text submits immediately (SpriteBatch) but the invite
+	   popup's art composites later inside CImGuiLayer::EndFrame() -- see
+	   CPartyInteractionView::Render_InvitePopupText's own comment. */
+	void Render_PartyInviteText() { m_PartyInteraction.Render_InvitePopupText(); }
+	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
+	{
+		return m_Replication.Get_PartyRoster();
+	}
+	const shared_ptr<IPlayerCommandSink>& Get_PlayerCommandSink() const
+	{
+		return m_pPlayerCommandSink;
+	}
 
 private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
@@ -179,6 +195,8 @@ private:
 	CWorldPlayerNameplateView m_PlayerNameplateView;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
+	CPartyInteractionView m_PartyInteraction;
+	CWorldPlayerChatBubbleView m_ChatBubbleView;
 	CPlayerController m_PlayerController;
 	unique_ptr<CHUDRuntimeView> m_pDeadSceneView;
 #ifdef _DEBUG
@@ -207,6 +225,8 @@ private:
 	bool_t m_bEnvironmentTimelineWaiting = false;
 	bool_t m_bEnvironmentTimelinePatternStarted = false;
 #endif
+
+	static CLevel_ValtanArena* s_pActiveInstance;
 
 public:
 	static unique_ptr<CLevel_ValtanArena> Create(

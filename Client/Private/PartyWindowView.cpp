@@ -4,29 +4,55 @@
 
 #include "UITextureCache.h"
 
+namespace
+{
+	/* Same six playable classes CLASS_LIST_ENTRIES in Level_CharacterSelect.cpp maps to their
+	UI/ClassSelect/<Class>/ folder -- kept as its own small table here rather than reusing that
+	file's anonymous-namespace helper, since this is the only thing this view needs from it. */
+	const char_t* Get_ClassSelectFolderName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return "LanceMaster";
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "Gunslinger";
+		case CHARACTER_CLASS_ID::SLAYER: return "Slayer";
+		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DimensionMaster";
+		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+		default: return nullptr;
+		}
+	}
+}
+
 Client::CPartyWindowView::CPartyWindowView(ComPtr<ID3D11Device> pDevice)
 	: m_pTextureCache{ make_unique<CUITextureCache>(pDevice) }
-	/* Placeholder title -- there is no real party name until a Server party system exists. */
-	, m_strPartyTitle{ "\xed\x8c\x8c\xed\x8b\xb0" }
+	// "161기 최후의 4인"
+	, m_strPartyTitle{ "161\xea\xb8\xb0 \xec\xb5\x9c\xed\x9b\x84\xec\x9d\x98 4\xec\x9d\xb8" }
 {
-	/* UI-only seed roster (no party Shared protocol yet) so the layout can be checked against
-	the reference visually. */
-	m_Members.push_back(PARTY_MEMBER{
-		"\xed\x95\x9c\xeb\xb6\x93\xed\x94\xbd\xed\x95\x98\xec\x86\x8c",
-		"UI/ClassSelect/Warlord/IdentitySymbol.png", 1.f, true });
-	m_Members.push_back(PARTY_MEMBER{
-		"A\xea\xb8\x89\xed\x95\x9c\xec\x9a\xb0",
-		"UI/ClassSelect/LanceMaster/IdentitySymbol.png", 1.f, false });
-	m_Members.push_back(PARTY_MEMBER{
-		"\xeb\x8f\x84\xed\x99\x94\xea\xb0\x80\xeb\x8b\x98",
-		"UI/ClassSelect/Artist/IdentitySymbol.png", 1.f, false });
-	m_Members.push_back(PARTY_MEMBER{
-		"\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac\xeb\x8b\x98",
-		"UI/ClassSelect/DimensionMaster/IdentitySymbol.png", 1.f, false });
 }
 
 Client::CPartyWindowView::~CPartyWindowView()
 {
+}
+
+void Client::CPartyWindowView::Sync_From_Roster(
+	const LostArk::Shared::S2C_PARTY_ROSTER& Roster)
+{
+	m_Members.clear();
+	m_Members.reserve(Roster.Members.size());
+	for (size_t index = 0; index < Roster.Members.size(); ++index)
+	{
+		const LostArk::Shared::PARTY_ROSTER_MEMBER& Member = Roster.Members[index];
+		const char_t* pFolderName = Get_ClassSelectFolderName(Member.eCharacterClass);
+		m_Members.push_back(PARTY_MEMBER{
+			Member.strNickname,
+			nullptr != pFolderName ?
+				string("UI/ClassSelect/") + pFolderName + "/IdentitySymbol.png" : string{},
+			1.f,
+			0 == index });
+	}
 }
 
 void Client::CPartyWindowView::Render()

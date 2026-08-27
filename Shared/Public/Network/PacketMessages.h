@@ -1505,4 +1505,102 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		C2S_CONFIRM_NPC_ENTRY& message);
+
+	// Same-room-only party invite: iTargetNetEntityId names another player
+	// currently replicated in this same CGameRoom (right-clicked locally).
+	// There is no cross-room player identity yet, so the Server rejects a
+	// target it cannot find in its own m_Players by NetEntityId.
+	struct C2S_PARTY_INVITE
+	{
+		std::uint32_t iRequestSequence = 0;
+		NET_ENTITY_ID iTargetNetEntityId = INVALID_NET_ENTITY_ID;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_PARTY_INVITE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_PARTY_INVITE& message);
+
+	// Sent only to the invited player. strFromNickname is display text only
+	// (matches every other nameplate-facing nickname use), never an identity
+	// lookup key -- the Respond message below answers by NetEntityId.
+	struct S2C_PARTY_INVITE_RECEIVED
+	{
+		NET_ENTITY_ID iFromNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strFromNickname;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_PARTY_INVITE_RECEIVED& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_PARTY_INVITE_RECEIVED& message);
+
+	struct C2S_PARTY_INVITE_RESPOND
+	{
+		std::uint32_t iRequestSequence = 0;
+		NET_ENTITY_ID iFromNetEntityId = INVALID_NET_ENTITY_ID;
+		bool bAccepted = false;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_PARTY_INVITE_RESPOND& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_PARTY_INVITE_RESPOND& message);
+
+	struct PARTY_ROSTER_MEMBER
+	{
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strNickname;
+		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
+	};
+
+	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC/
+	// S2C_INVENTORY_SNAPSHOT use: broadcast to every current member whenever
+	// membership changes, so a late reader never needs to replay past joins.
+	struct S2C_PARTY_ROSTER
+	{
+		std::vector<PARTY_ROSTER_MEMBER> Members;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_PARTY_ROSTER& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_PARTY_ROSTER& message);
+
+	// Same-room chat: the sender's own client already appends its typed line
+	// to its local scrollback immediately (no round trip needed for that), so
+	// this only exists to (a) let the Server relay it to everyone else in the
+	// room and (b) drive the sender's own head bubble from the same broadcast
+	// every other player's bubble uses, rather than a second local-only path.
+	struct C2S_CHAT
+	{
+		std::string strText;
+	};
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_CHAT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_CHAT& message);
+
+	struct S2C_CHAT
+	{
+		NET_ENTITY_ID iFromNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strFromNickname;
+		std::string strText;
+	};
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_CHAT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_CHAT& message);
 }

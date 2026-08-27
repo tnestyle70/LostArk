@@ -236,6 +236,18 @@ bool Client::CClientReplication::Update()
 			allSucceeded = Apply_InventorySnapshot(
 				event.InventorySnapshot) && allSucceeded;
 			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_INVITE_RECEIVED:
+			Apply_PartyInviteReceived(event.PartyInviteReceived);
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_ROSTER:
+			Apply_PartyRoster(event.PartyRoster);
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::CHAT_RECEIVED:
+			Apply_ChatReceived(event.ChatReceived);
+			break;
 		}
 	}
 
@@ -297,6 +309,56 @@ bool Client::CClientReplication::Apply_InventorySnapshot(
 	   already reads through (CMainApp owns no per-level CClientReplication of
 	   its own), the same role it plays for Apply_LocalPlayer above. */
 	CCombatHUDViewModel::Get().Apply_Inventory(snapshot);
+	return true;
+}
+
+void Client::CClientReplication::Apply_PartyInviteReceived(
+	const LostArk::Shared::S2C_PARTY_INVITE_RECEIVED& received)
+{
+	// A newer invite silently replaces an unconsumed older one, mirroring
+	// the Server's own one-pending-invite-per-target replacement rule.
+	m_PendingPartyInvite = received;
+	m_hasPendingPartyInvite = true;
+}
+
+bool Client::CClientReplication::Try_Consume_PartyInviteReceived(
+	LostArk::Shared::S2C_PARTY_INVITE_RECEIVED& outInvite)
+{
+	if (!m_hasPendingPartyInvite)
+		return false;
+	outInvite = m_PendingPartyInvite;
+	m_hasPendingPartyInvite = false;
+	return true;
+}
+
+void Client::CClientReplication::Apply_PartyRoster(
+	const LostArk::Shared::S2C_PARTY_ROSTER& roster)
+{
+	// Replace-in-full, same shape as Apply_InventorySnapshot/
+	// Apply_EncounterPropSync -- the Server always sends the whole current
+	// membership, never a delta.
+	m_PartyRoster = roster;
+}
+
+void Client::CClientReplication::Apply_ChatReceived(
+	const LostArk::Shared::S2C_CHAT& received)
+{
+	m_ChatBubblesByNetEntityId[received.iFromNetEntityId] = CHAT_BUBBLE_ENTRY{
+		received.strText,
+		std::chrono::steady_clock::now() + CHAT_BUBBLE_DURATION };
+}
+
+bool Client::CClientReplication::Try_Get_ActiveChatBubble(
+	const LostArk::Shared::NET_ENTITY_ID netEntityId,
+	std::string& outText) const
+{
+	const auto found = m_ChatBubblesByNetEntityId.find(netEntityId);
+	if (m_ChatBubblesByNetEntityId.end() == found ||
+		std::chrono::steady_clock::now() >= found->second.ExpireAt)
+	{
+		return false;
+	}
+	outText = found->second.strText;
 	return true;
 }
 

@@ -47,6 +47,19 @@ public:
 		float aimZ) = 0;
 	virtual bool Request_RevivePlayer(
 		std::uint32_t clientSequence) = 0;
+	// Same-room-only party invite -- targetNetEntityId names another player
+	// currently replicated in this room (right-clicked locally).
+	virtual bool Request_PartyInvite(
+		std::uint32_t clientSequence,
+		LostArk::Shared::NET_ENTITY_ID targetNetEntityId) = 0;
+	virtual bool Request_PartyInviteRespond(
+		std::uint32_t clientSequence,
+		LostArk::Shared::NET_ENTITY_ID fromNetEntityId,
+		bool accepted) = 0;
+	// Same-room chat line. The Server relays it to every current room member
+	// (sender included) as S2C_CHAT. Fire-and-forget -- no ack, so no
+	// clientSequence unlike the other Request_* calls above.
+	virtual bool Request_SendChat(const std::string& text) = 0;
 #ifdef _DEBUG
 	// Debug/Development-build test aid only -- see PACKET_TYPE::C2S_DEBUG_KILL_SELF.
 	virtual bool Request_DebugKillSelf(

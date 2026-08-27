@@ -5,7 +5,9 @@
 #include "Level.h"
 #include "MapPlacementRuntime.h"
 
+#include "PartyInteractionView.h"
 #include "PlayerController.h"
+#include "WorldPlayerChatBubbleView.h"
 #include "WorldPlayerNameplateView.h"
 
 NS_BEGIN(Client)
@@ -38,7 +40,18 @@ public:
 	so CMainApp reaches it through Get_Active() instead of a second
 	CHUDRuntimeView of its own. */
 	void Render_ValtanEntryModalText();
+	/* Same reasoning, for CPartyInteractionView's invite-confirm popup text --
+	   see CPartyInteractionView::Render_InvitePopupText's own comment. */
+	void Render_PartyInviteText() { m_PartyInteraction.Render_InvitePopupText(); }
 	static CLevel_Bern* Get_Active() { return s_pActiveInstance; }
+	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
+	{
+		return m_Replication.Get_PartyRoster();
+	}
+	const shared_ptr<IPlayerCommandSink>& Get_PlayerCommandSink() const
+	{
+		return m_pPlayerCommandSink;
+	}
 
 private:
 	HRESULT Ready_Layer_Camera(
@@ -53,13 +66,20 @@ private:
 	Ready_DebugLevelChangeTriggers already does for its own trigger boxes, just
 	not _DEBUG-only since the interaction it drives is a real product path. */
 	bool_t Ready_ValtanEntryNpcs(const std::string& areaId);
-	/* Right-click hit-test against m_ValtanEntryNpcs using the same ground-plane
-	unproject CPlayerController::Try_PickGroundPlane already does for movement --
-	opens the confirm window on a hit instead of forwarding to a move goal. Runs
-	before m_PlayerController.Update() each frame so a click that opens the
-	window also suppresses that frame's move command (gameplayCommandsEnabled
-	already goes false while the window is open). */
+	/* Right-click hit-test against m_ValtanEntryNpcs using a world-ray-vs-sphere
+	pick (CPlayerController::Try_PickWorldRay) so the NPC can be clicked from
+	anywhere on screen, not just while already standing next to it. A hit
+	suppresses that frame's move command and walks the character to the NPC
+	instead (Request_MoveToPoint); Advance_ValtanEntryWalk opens the confirm
+	window once the character actually arrives. Runs before
+	m_PlayerController.Update() each frame for the same suppression-timing
+	reason. */
 	void Update_ValtanEntryInteraction();
+	/* Polled every frame regardless of this frame's click: once
+	m_isWalkingToValtanEntryNpc is set, opens the confirm window as soon as
+	the local character's live position is back within interaction range of
+	the target NPC. */
+	void Advance_ValtanEntryWalk();
 	/* BeginPopupModal + OpenPopup both live in here, in the same call site every
 	frame, so the popup's ID always resolves against the same (no-window)
 	context -- Level_CharacterSelect's Create Character button broke once by
@@ -82,8 +102,10 @@ private:
 
 	CClientReplication m_Replication;
 	CWorldPlayerNameplateView m_PlayerNameplateView;
+	CWorldPlayerChatBubbleView m_ChatBubbleView;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
+	CPartyInteractionView m_PartyInteraction;
 	//PlayerController 추가
 	CPlayerController m_PlayerController;
 
@@ -96,6 +118,7 @@ private:
 	unique_ptr<CHUDRuntimeView> m_pValtanEntryView;
 	bool_t m_isValtanEntryModalOpen = false;
 	bool_t m_hasValtanEntryModalJustOpened = false;
+	bool_t m_isWalkingToValtanEntryNpc = false;
 	std::string m_strValtanEntryNpcPlacementId;
 	bool_t m_wasRightMouseDownForNpcInteract = false;
 	std::uint32_t m_iNextNpcEntryConfirmSequence = 1u;

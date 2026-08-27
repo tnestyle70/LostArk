@@ -20,6 +20,7 @@
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
 #include "Level_Loading.h"
+#include "Level_ValtanArena.h"
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
 #include "PartyWindowView.h"
@@ -621,18 +622,39 @@ HRESULT CMainApp::Render()
 		if (nullptr != m_pChatWindowView)
 		{
 			/* Only in actual in-game play (Bern/Valtan), not Character Select -- more levels join
-			this list as real in-game stages are added. */
+			this list as real in-game stages are added. Real send needs the active level's own
+			command sink, same reasoning as the party roster fetch just below. */
 			const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
-			if (ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
-				m_pChatWindowView->Render();
+			if (ETOUI(LEVEL::BERN) == chatLevel)
+			{
+				CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+				m_pChatWindowView->Render(
+					nullptr != pBern ? pBern->Get_PlayerCommandSink() : nullptr);
+			}
+			else if (ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
+			{
+				CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active();
+				m_pChatWindowView->Render(
+					nullptr != pValtanArena ?
+						pValtanArena->Get_PlayerCommandSink() : nullptr);
+			}
 		}
 		if (nullptr != m_pPartyWindowView)
 		{
-			/* Same level set as the chat window. UI-only placeholder roster for now (no party
-			Shared protocol to gate on actual invite-accepted state yet). */
+			/* Same level set as the chat window. Each level owns its own CClientReplication
+			(and therefore its own Server-synced roster), so the active level is asked for its
+			current roster the same way Render_ValtanEntryModalText() reaches CLevel_Bern below. */
 			const uint32_t partyLevel = CGameInstance::Get().Get_CurrentLevelID();
-			if (ETOUI(LEVEL::BERN) == partyLevel || ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
+			if (ETOUI(LEVEL::BERN) == partyLevel)
 			{
+				if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+					m_pPartyWindowView->Sync_From_Roster(pBern->Get_PartyRoster());
+				m_pPartyWindowView->Render();
+			}
+			else if (ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
+			{
+				if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+					m_pPartyWindowView->Sync_From_Roster(pValtanArena->Get_PartyRoster());
 				m_pPartyWindowView->Render();
 			}
 		}
@@ -722,7 +744,15 @@ HRESULT CMainApp::Render()
 	if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+		{
 			pBern->Render_ValtanEntryModalText();
+			pBern->Render_PartyInviteText();
+		}
+	}
+	else if (ETOUI(LEVEL::VALTAN_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
+	{
+		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+			pValtanArena->Render_PartyInviteText();
 	}
 
 	return CGameInstance::Get().Render_End();

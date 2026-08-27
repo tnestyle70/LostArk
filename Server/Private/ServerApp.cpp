@@ -3080,6 +3080,39 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY;
 		command.ConfirmNpcEntry = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_PARTY_INVITE)
+	{
+		C2S_PARTY_INVITE request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::PARTY_INVITE;
+		command.PartyInvite = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_PARTY_INVITE_RESPOND)
+	{
+		C2S_PARTY_INVITE_RESPOND request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::PARTY_INVITE_RESPOND;
+		command.PartyInviteRespond = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_CHAT)
+	{
+		C2S_CHAT request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::CHAT;
+		command.Chat = request;
+	}
 	else
 	{
 		Request_SessionClose(
@@ -4490,6 +4523,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
 	enterCommand.iSessionId = transfer.iSessionId;
 	enterCommand.EnterWorld = std::move(enterWorld);
+	enterCommand.PartyBatchSessionIds = transfer.PartyBatchSessionIds;
 	if (!targetSimulation->Enqueue(std::move(enterCommand)))
 	{
 		ROOM_COMMAND targetRollback{};

@@ -270,31 +270,41 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 			return false;
 		}
 
+		/* An action's animation binding can be swapped or emptied (playbackMode
+		NONE, clips: []) by a later animation-side change without the
+		sound-cue side being re-authored in the same change -- e.g.
+		valtan.sequence.four.step-02 lost its clip-01 occurrence when its
+		animation was swapped out. That is stale cross-layer content, not a
+		corrupt document; skip only this cue instead of fail-closing every
+		other real cue in the same document (same reasoning as the
+		not-yet-implemented-pattern skip below). */
 		const BOSS_PATTERN_ANIMATION_BINDING* pAnimationBinding =
 			Find_ActionBinding(AnimationBindings, Cue.strActionId);
 		if (nullptr == pAnimationBinding)
 		{
-			strOutStatus =
-				"Valtan pattern Sound cue action has no animation binding: " +
-				Cue.strActionId;
-			return false;
+			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
+				"action has no animation binding: " + Cue.strActionId + "\n").c_str());
+			++iSkippedUnimplementedPatternCount;
+			continue;
 		}
 		const BOSS_PATTERN_ANIMATION_CLIP* pAnimationClip =
 			Find_ClipOccurrence(*pAnimationBinding, Cue.strClipOccurrenceId);
 		if (nullptr == pAnimationClip)
 		{
-			strOutStatus =
-				"Valtan pattern Sound cue clip occurrence is not owned by its action: " +
-				Cue.strOccurrenceId;
-			return false;
+			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
+				"clip occurrence not owned by its action: " +
+				Cue.strOccurrenceId + "\n").c_str());
+			++iSkippedUnimplementedPatternCount;
+			continue;
 		}
 		if (VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP ==
 				Cue.eRepeatPolicy && !pAnimationClip->bLoop)
 		{
-			strOutStatus =
-				"Valtan each_loop Sound cue references a non-loop clip: " +
-				Cue.strOccurrenceId;
-			return false;
+			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
+				"each_loop cue references a non-loop clip: " +
+				Cue.strOccurrenceId + "\n").c_str());
+			++iSkippedUnimplementedPatternCount;
+			continue;
 		}
 
 		/* A pattern authored at the animation/sound-cue layer but not yet wired into
