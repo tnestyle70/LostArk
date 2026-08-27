@@ -97,6 +97,7 @@
     <ClCompile Include="..\..\..\Client\Private\DeferredMaterialRenderUtils.cpp"><Link>Client\DeferredMaterialRenderUtils.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Artist31470ShaderRegistry.cpp"><Link>Client\Effect_Artist31470ShaderRegistry.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp"><Link>Client\Effect_Catalog.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_LoadPreparationJob.cpp"><Link>Client\Effect_LoadPreparationJob.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp"><Link>Client\Effect_CascadeCompiler.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp"><Link>Client\Effect_Distribution.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp"><Link>Client\Effect_DirectAuthoredSourceIndex.cpp</Link></ClCompile>
@@ -107,6 +108,7 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_Object.cpp"><Link>Client\Effect_Object.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_OccurrenceTuning.cpp"><Link>Client\Effect_OccurrenceTuning.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Playback.cpp"><Link>Client\Effect_Playback.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp"><Link>Client\Effect_ProductPrewarmQueue.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_ReconstructedExecution.cpp"><Link>Client\Effect_ReconstructedExecution.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp"><Link>Client\Effect_RuntimeAuthority.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_ScreenOverlayPresentation.cpp"><Link>Client\Effect_ScreenOverlayPresentation.cpp</Link></ClCompile>
@@ -121,6 +123,11 @@
     <ProjectReference Include="..\..\..\Shared\Default\Shared.vcxproj">
       <Project>{F4CCF815-6D51-412F-A76E-84D2F1D05571}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\Client\Default\Client.vcxproj">
+      <Project>{1A5672C6-54B4-4779-99E7-84EF85171388}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemGroup>
 	<ItemGroup>
 		<None Include="..\Run-EffectRenderContractHarness.ps1" />
@@ -129,6 +136,7 @@
   <PropertyGroup>
     <EngineRoot>$(ProjectDir)..\..\..\Engine\</EngineRoot>
     <EngineBinaryRoot>$(EngineRoot)Bin\$(Configuration)\</EngineBinaryRoot>
+    <ClientBinaryRoot>$(ProjectDir)..\..\..\Client\Bin\$(Configuration)\</ClientBinaryRoot>
     <AssimpRuntimeName Condition="'$(Configuration)'=='Debug'">assimp-vc143-mtd.dll</AssimpRuntimeName>
     <AssimpRuntimeName Condition="'$(Configuration)'=='Release'">assimp-vc143-mt.dll</AssimpRuntimeName>
   </PropertyGroup>
@@ -140,8 +148,12 @@
       <EffectHarnessRuntimeDependency Include="$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\PhysX_64.dll" />
       <EffectHarnessRuntimeDependency Include="$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\PhysXCommon_64.dll" />
       <EffectHarnessRuntimeDependency Include="$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\PhysXFoundation_64.dll" />
+      <EffectHarnessCompiledShader Include="$(ClientBinaryRoot)Shader_*.cso" />
     </ItemGroup>
+    <Error Condition="'@(EffectHarnessCompiledShader)'==''" Text="The Client shader producer did not create compiled shaders for $(Configuration) under $(ClientBinaryRoot)." />
+    <Error Condition="!Exists('%(EffectHarnessCompiledShader.Identity)')" Text="Required compiled Effect shader is missing for $(Configuration): %(EffectHarnessCompiledShader.Identity)" />
     <Copy SourceFiles="@(EffectHarnessRuntimeDependency)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EffectHarnessCompiledShader)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
   </Target>
   <ImportGroup Label="ExtensionTargets" />
 </Project>

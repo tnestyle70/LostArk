@@ -507,8 +507,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CValtanPatternFlowService::Get().Update();
 #endif
 	CGameInstance::Get().Update_Engine(fTimeDelta);
-	CEffectPresentationService::Advance_ProductCuePreparation(
-		m_pDevice, m_pContext);
+	if (ETOUI(LEVEL::LOADING) !=
+		CGameInstance::Get().Get_CurrentLevelID())
+	{
+		CEffectPresentationService::Advance_ProductCuePreparation(
+			m_pDevice, m_pContext);
+	}
 	CEffectPresentationService::Commit_PendingSpawns();
 	CEffectPresentationService::Synchronize_FollowAnchors();
 	CEffectPresentationService::Update(fTimeDelta);
@@ -4865,8 +4869,12 @@ unique_ptr<CMainApp> CMainApp::Create()
 
 void CMainApp::Free()
 {
-	CEffectPresentationService::Release_PreparedResources();
-	CEffectCatalog::Clear();
+	/* Active instances must leave ObjectManager while the Engine is alive, but
+	   prepared renderer/catalog globals cannot be cleared until a Loading level
+	   has cancelled and joined its worker.  Release_Engine tears the current
+	   level down first; retained COM references keep the device valid until the
+	   post-join cache release below. */
+	CEffectPresentationService::Clear_All();
 	CNetworkManager::Get().Shutdown();
 	CGameInstance::Get().SetInputBlocked(false, false);
 
@@ -4890,4 +4898,6 @@ void CMainApp::Free()
 		m_pImGuiLayer->Shutdown();
 	m_pImGuiLayer.reset();
 	CGameInstance::Get().Release_Engine();
+	CEffectPresentationService::Release_PreparedResources();
+	CEffectCatalog::Clear();
 }

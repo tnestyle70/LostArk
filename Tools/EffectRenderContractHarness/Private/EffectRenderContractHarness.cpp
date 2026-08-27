@@ -6,20 +6,24 @@
 #include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
+#include "Effect_LoadPreparationJob.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_MaterialProgramRegistry.h"
 #include "Effect_Object.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_Playback.h"
+#include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_RuntimeAuthority.h"
 #include "Effect_ScreenOverlayPresentation.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Level.h"
+#include "Shader.h"
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <bit>
 #include <cctype>
 #include <cmath>
@@ -38,6 +42,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -5290,6 +5295,730 @@ namespace
 			strOutError);
 	}
 
+	Client::EFFECT_LOAD_JOB_RESULT Make_EpochCompleteResult(
+		const uint64_t iEpoch,
+		const uint64_t iCatalogRevision)
+	{
+		Client::EFFECT_LOAD_JOB_RESULT Result;
+		Result.eKind = Client::EFFECT_LOAD_JOB_RESULT_KIND::EPOCH_STAGE_COMPLETE;
+		Result.iJobEpoch = iEpoch;
+		Result.iCatalogRevision = iCatalogRevision;
+		return Result;
+	}
+
+	bool Validate_EffectLoadJobContract(std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr uint64_t InitialEpoch = 4101u;
+		constexpr uint64_t InitialRevision = 5101u;
+		constexpr uint64_t RebasedEpoch = 4102u;
+		constexpr uint64_t RebasedRevision = 5102u;
+
+		CEffectLoadPreparationJob Job;
+		std::string Status;
+		if (!Job.Open(InitialEpoch, InitialRevision, Status))
+		{
+			strOutError = "Effect load job open failed: " + Status;
+			return false;
+		}
+
+		EFFECT_LOAD_PROGRESS_SNAPSHOT Progress;
+		Progress.iJobEpoch = InitialEpoch;
+		Progress.iCatalogRevision = InitialRevision;
+		Progress.ePhase = EFFECT_LOAD_PROGRESS_PHASE::TARGET_STAGE;
+		Progress.bDeterminate = true;
+		Progress.iCompleted = 1u;
+		Progress.iTotal = 2u;
+		Progress.strCurrentId = "effect.contract.a";
+		Progress.strStatus = "contract progress";
+		if (!Job.Publish_Progress(Progress))
+		{
+			strOutError = "Effect load job rejected valid progress.";
+			return false;
+		}
+		EFFECT_LOAD_PROGRESS_SNAPSHOT Regressive = Progress;
+		Regressive.iCompleted = 0u;
+		EFFECT_LOAD_PROGRESS_SNAPSHOT InvalidIndeterminate = Progress;
+		InvalidIndeterminate.bDeterminate = false;
+		if (Job.Publish_Progress(Regressive) ||
+			Job.Publish_Progress(InvalidIndeterminate))
+		{
+			strOutError =
+				"Effect load job admitted regressive or fabricated progress.";
+			return false;
+		}
+
+		const EFFECT_LOAD_JOB_COMMAND CommitAck =
+			EFFECT_LOAD_JOB_COMMAND::Target_CommitAck(
+				InitialEpoch, InitialRevision, "effect.contract.a");
+		EFFECT_LOAD_JOB_COMMAND InvalidEmptyAck =
+			EFFECT_LOAD_JOB_COMMAND::Target_CommitAck(
+				InitialEpoch, InitialRevision, {});
+		EFFECT_LOAD_JOB_COMMAND InvalidMultiAck = CommitAck;
+		InvalidMultiAck.EffectAssetIds.push_back("effect.contract.b");
+		EFFECT_LOAD_JOB_COMMAND InvalidPayloadAck = CommitAck;
+		InvalidPayloadAck.pImmutablePayload =
+			std::make_shared<const uint32_t>(1u);
+		if (!CommitAck.Is_Valid() || InvalidEmptyAck.Is_Valid() ||
+			InvalidMultiAck.Is_Valid() || InvalidPayloadAck.Is_Valid())
+		{
+			strOutError =
+				"Effect load target commit ACK shape contract is invalid.";
+			return false;
+		}
+		std::optional<EFFECT_LOAD_JOB_COMMAND> Displaced;
+		std::atomic_bool AckWaitFinished = false;
+		EFFECT_LOAD_MAILBOX_WAIT_RESULT AckWaitResult =
+			EFFECT_LOAD_MAILBOX_WAIT_RESULT::END;
+		EFFECT_LOAD_JOB_COMMAND ReceivedAck;
+		std::thread AckWaiter([&]()
+		{
+			AckWaitResult = Job.Wait_Pop_Command(ReceivedAck);
+			AckWaitFinished.store(true, std::memory_order_release);
+		});
+		std::this_thread::sleep_for(std::chrono::milliseconds(25));
+		if (AckWaitFinished.load(std::memory_order_acquire))
+		{
+			AckWaiter.join();
+			strOutError =
+				"Effect load target commit ACK wait did not block without a command.";
+			return false;
+		}
+		const EFFECT_LOAD_MAILBOX_POST_RESULT AckPost = Job.Post_Command(
+			CommitAck, Displaced, Status);
+		if (EFFECT_LOAD_MAILBOX_POST_RESULT::POSTED != AckPost)
+		{
+			std::optional<EFFECT_LOAD_JOB_COMMAND> IgnoredDisplaced;
+			std::string IgnoredStatus;
+			(void)Job.Post_Command(
+				EFFECT_LOAD_JOB_COMMAND::Cancel(
+					InitialEpoch, InitialRevision),
+				IgnoredDisplaced, IgnoredStatus);
+			AckWaiter.join();
+			strOutError = "Effect load target commit ACK could not be posted.";
+			return false;
+		}
+		AckWaiter.join();
+		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != AckWaitResult ||
+			EFFECT_LOAD_JOB_COMMAND_KIND::TARGET_COMMIT_ACK !=
+				ReceivedAck.eKind ||
+			ReceivedAck.iJobEpoch != InitialEpoch ||
+			ReceivedAck.iCatalogRevision != InitialRevision ||
+			ReceivedAck.EffectAssetIds != CommitAck.EffectAssetIds)
+		{
+			strOutError =
+				"Effect load target commit ACK identity was not preserved.";
+			return false;
+		}
+
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != Job.Push_Result_Wait(
+				Make_EpochCompleteResult(InitialEpoch, InitialRevision)) ||
+			EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != Job.Push_Result_Wait(
+				Make_EpochCompleteResult(InitialEpoch, InitialRevision)))
+		{
+			strOutError = "Effect load result channel could not reach capacity.";
+			return false;
+		}
+
+		std::atomic_bool ProducerFinished = false;
+		EFFECT_LOAD_RESULT_PUSH_RESULT BlockedResult =
+			EFFECT_LOAD_RESULT_PUSH_RESULT::END;
+		std::thread BlockedProducer([&]()
+		{
+			BlockedResult = Job.Push_Result_Wait(
+				Make_EpochCompleteResult(InitialEpoch, InitialRevision));
+			ProducerFinished.store(true, std::memory_order_release);
+		});
+		std::this_thread::sleep_for(std::chrono::milliseconds(25));
+		if (ProducerFinished.load(std::memory_order_acquire))
+		{
+			BlockedProducer.join();
+			strOutError = "Effect load result channel exceeded its fixed capacity.";
+			return false;
+		}
+
+		auto RebasePayload = std::make_shared<const uint32_t>(7u);
+		const EFFECT_LOAD_MAILBOX_POST_RESULT RebasePost = Job.Post_Command(
+			EFFECT_LOAD_JOB_COMMAND::Rebase(
+				RebasedEpoch, RebasedRevision,
+				{ "effect.contract.rebased" }, RebasePayload),
+			Displaced, Status);
+		BlockedProducer.join();
+		if (EFFECT_LOAD_MAILBOX_POST_RESULT::POSTED != RebasePost ||
+			EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED != BlockedResult ||
+			0u != Job.Get_PendingResultCount() ||
+			Job.Get_CurrentEpoch() != RebasedEpoch ||
+			Job.Get_CurrentCatalogRevision() != RebasedRevision)
+		{
+			strOutError =
+				"Effect load rebase did not clear and wake the bounded channel.";
+			return false;
+		}
+		if (EFFECT_LOAD_MAILBOX_POST_RESULT::INVALID != Job.Post_Command(
+				EFFECT_LOAD_JOB_COMMAND::Target_CommitAck(
+					InitialEpoch, InitialRevision, "effect.contract.a"),
+				Displaced, Status))
+		{
+			strOutError =
+				"Effect load job admitted a stale target commit ACK after rebase.";
+			return false;
+		}
+
+		EFFECT_LOAD_JOB_COMMAND RebaseCommand;
+		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND !=
+				Job.Wait_Pop_Command(RebaseCommand) ||
+			EFFECT_LOAD_JOB_COMMAND_KIND::REBASE != RebaseCommand.eKind)
+		{
+			strOutError = "Effect load rebase mailbox identity was not preserved.";
+			return false;
+		}
+
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != Job.Push_Result_Wait(
+				Make_EpochCompleteResult(RebasedEpoch, RebasedRevision)) ||
+			EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != Job.Push_Result_Wait(
+				Make_EpochCompleteResult(RebasedEpoch, RebasedRevision)))
+		{
+			strOutError = "Rebased Effect load channel could not reach capacity.";
+			return false;
+		}
+		ProducerFinished.store(false, std::memory_order_release);
+		BlockedResult = EFFECT_LOAD_RESULT_PUSH_RESULT::END;
+		std::thread CancelledProducer([&]()
+		{
+			BlockedResult = Job.Push_Result_Wait(
+				Make_EpochCompleteResult(RebasedEpoch, RebasedRevision));
+			ProducerFinished.store(true, std::memory_order_release);
+		});
+		std::this_thread::sleep_for(std::chrono::milliseconds(25));
+		const EFFECT_LOAD_MAILBOX_POST_RESULT CancelPost = Job.Post_Command(
+			EFFECT_LOAD_JOB_COMMAND::Cancel(RebasedEpoch, RebasedRevision),
+			Displaced, Status);
+		CancelledProducer.join();
+		EFFECT_LOAD_JOB_RESULT Unexpected;
+		if (EFFECT_LOAD_MAILBOX_POST_RESULT::POSTED != CancelPost ||
+			EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED != BlockedResult ||
+			!Job.Is_Cancelled() || Job.Try_Pop_Result(Unexpected))
+		{
+			strOutError =
+				"Effect load cancellation did not wake and clear the bounded channel.";
+			return false;
+		}
+
+		EFFECT_LOAD_JOB_RESULT InvalidTarget;
+		InvalidTarget.eKind = EFFECT_LOAD_JOB_RESULT_KIND::TARGET_STAGED;
+		InvalidTarget.iJobEpoch = RebasedEpoch;
+		InvalidTarget.iCatalogRevision = RebasedRevision;
+		InvalidTarget.strEffectAssetId = "effect.contract.invalid";
+		if (InvalidTarget.Is_Valid())
+		{
+			strOutError = "Effect load job admitted an empty target-stage payload.";
+			return false;
+		}
+
+		return true;
+	}
+
+	bool Validate_EffectPrewarmQueueTransaction(std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr uint64_t Revision = 6201u;
+		constexpr uint64_t Epoch = 7201u;
+		CEffectProductPrewarmQueue Queue;
+		Queue.Reset_ForCatalogRevision(Revision);
+		std::string Status;
+		if (!Queue.Enqueue(
+				{ "effect.contract.a", "effect.contract.b", "effect.contract.a" },
+				Status) ||
+			!Queue.Claim_LoadingTargets(
+				Epoch, Revision,
+				{ "effect.contract.a", "effect.contract.b" }, Status))
+		{
+			strOutError = "Effect prewarm queue setup failed: " + Status;
+			return false;
+		}
+
+		std::string Front;
+		if (EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED !=
+				Queue.Begin_LoadingFrame(Epoch, Front) ||
+			EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY !=
+				Queue.Begin_LoadingFrame(Epoch, Front) ||
+			Front != "effect.contract.a")
+		{
+			strOutError = "Effect prewarm Loading FIFO front was not deterministic.";
+			return false;
+		}
+
+		EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN InvalidToken;
+		if (Queue.Prevalidate_Front(
+				"effect.contract.b", Revision, Epoch, true, nullptr,
+				InvalidToken, Status) || InvalidToken.Is_Valid())
+		{
+			strOutError = "Effect prewarm queue admitted a mismatched FIFO front.";
+			return false;
+		}
+
+		EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN PreparedToken;
+		if (!Queue.Prevalidate_Front(
+				"effect.contract.a", Revision, Epoch, true, nullptr,
+				PreparedToken, Status))
+		{
+			strOutError = "Effect prewarm prepared token failed: " + Status;
+			return false;
+		}
+		Queue.Commit_PrevalidatedFront(std::move(PreparedToken));
+		if (!Queue.Is_Prepared("effect.contract.a") ||
+			Queue.Get_LoadingOwnerEpoch("effect.contract.a") != 0u ||
+			Queue.Get_LoadingOwnerEpoch("effect.contract.b") != Epoch)
+		{
+			strOutError = "Effect prewarm prepared commit released the wrong owner.";
+			return false;
+		}
+
+		if (EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY !=
+				Queue.Begin_LoadingFrame(Epoch, Front) ||
+			Front != "effect.contract.b")
+		{
+			strOutError = "Effect prewarm failed target was not the next FIFO front.";
+			return false;
+		}
+		if (Queue.Release_LoadingOwner(
+				Epoch, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::TERMINAL, Status) ||
+			!Queue.Has_LoadingOwner(Epoch) ||
+			Queue.Get_LoadingOwnerEpoch("effect.contract.b") != Epoch)
+		{
+			strOutError =
+				"Effect prewarm admitted terminal release with pending targets.";
+			return false;
+		}
+		if (Queue.Commit_HotReloadPrepared("effect.contract.b", Status) ||
+			!Queue.Has_LoadingOwner(Epoch) ||
+			Queue.Get_LoadingOwnerEpoch("effect.contract.b") != Epoch)
+		{
+			strOutError =
+				"Effect hot reload displaced an active Loading owner.";
+			return false;
+		}
+		EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT Failure;
+		Failure.iCatalogRevision = Revision;
+		Failure.iJobEpoch = Epoch;
+		Failure.strEffectAssetId = Front;
+		Failure.iRootCode = E_FAIL;
+		Failure.strRootMessage = "synthetic isolated target failure";
+		EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN FailedToken;
+		if (!Queue.Prevalidate_Front(
+				Front, Revision, Epoch, false, &Failure, FailedToken, Status))
+		{
+			strOutError = "Effect prewarm failure token failed: " + Status;
+			return false;
+		}
+		Queue.Commit_PrevalidatedFront(std::move(FailedToken));
+		const EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT* pReceipt =
+			Queue.Find_FailureReceipt("effect.contract.b");
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe = Queue.Get_TargetProbe(
+			{ "effect.contract.a", "effect.contract.b" }, Revision);
+		if (nullptr == pReceipt ||
+			pReceipt->strRootMessage != Failure.strRootMessage ||
+			Queue.Has_LoadingOwner(Epoch) ||
+			Probe.iPreparedCount != 1u || Probe.iFailedCount != 1u ||
+			!Is_ProductPrewarmTargetActivationReady(Probe))
+		{
+			strOutError = "Effect prewarm terminal receipt or readiness diverged.";
+			return false;
+		}
+
+		Queue.Reset_ForCatalogRevision(Revision + 1u);
+		if (!Queue.Enqueue({ "effect.contract.cancelled" }, Status) ||
+			!Queue.Claim_LoadingTargets(
+				Epoch + 1u, Revision + 1u,
+				{ "effect.contract.cancelled" }, Status) ||
+			!Queue.Release_LoadingOwner(
+				Epoch + 1u, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::CANCELLED,
+				Status) || Queue.Has_LoadingOwner(Epoch + 1u) ||
+			Queue.Get_LoadingOwnerEpoch("effect.contract.cancelled") != 0u)
+		{
+			strOutError = "Effect prewarm cancellation leaked Loading ownership.";
+			return false;
+		}
+
+		return true;
+	}
+
+	bool Validate_EffectCatalogLoadStageTransaction(std::string& strOutError)
+	{
+		using namespace Client;
+		const std::string EffectId(ARTIST_UNIFIED_EFFECT_ID);
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST Request;
+		std::string Status;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				EffectId, Request, Status) ||
+			nullptr != Request.pExpectedDocument ||
+			nullptr != Request.pExpectedVisualProjection)
+		{
+			strOutError =
+				"Effect catalog did not capture an unloaded direct-authored target: " +
+				Status;
+			return false;
+		}
+
+		/* A worker may finish parsing after the catalog source registration has
+		   changed.  Such a candidate must stage locally but fail the owner-thread
+		   identity CAS without publishing either document or projection. */
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST ForeignRequest = Request;
+		ForeignRequest.pSourceRegistrationIdentity =
+			std::static_pointer_cast<const void>(
+				std::make_shared<const uint32_t>(0xC0DEC0DEu));
+		std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> ForeignStage;
+		if (!CEffectCatalog::Stage_ProductLoadTarget(
+				ForeignRequest, ForeignStage, Status) || nullptr == ForeignStage)
+		{
+			strOutError =
+				"Effect catalog foreign-identity worker stage failed unexpectedly: " +
+				Status;
+			return false;
+		}
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> Document;
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> Projection;
+		if (CEffectCatalog::Commit_ProductLoadStage(
+				ForeignStage, Document, Projection, Status) || nullptr != Document ||
+			nullptr != Projection)
+		{
+			strOutError =
+				"Effect catalog published a stale source-identity candidate.";
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST StillUnloaded;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				EffectId, StillUnloaded, Status) ||
+			nullptr != StillUnloaded.pExpectedDocument ||
+			nullptr != StillUnloaded.pExpectedVisualProjection)
+		{
+			strOutError =
+				"Effect catalog stale candidate mutated global loaded state.";
+			return false;
+		}
+
+		std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> Stage;
+		if (!CEffectCatalog::Stage_ProductLoadTarget(Request, Stage, Status) ||
+			nullptr == Stage || nullptr == Stage->pDocument)
+		{
+			strOutError = "Effect catalog worker stage failed: " + Status;
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST BeforeCommit;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				EffectId, BeforeCommit, Status) ||
+			nullptr != BeforeCommit.pExpectedDocument ||
+			nullptr != BeforeCommit.pExpectedVisualProjection)
+		{
+			strOutError =
+				"Effect catalog worker stage published before owner commit.";
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT StaleReceipt;
+		if (!CEffectCatalog::Commit_ProductLoadStage(
+				Stage, StaleReceipt, Document, Projection, Status) ||
+			Document.get() != Stage->pDocument.get() ||
+			Projection.get() != Stage->pVisualProjection.get() ||
+			!StaleReceipt.Has_NewPublication())
+		{
+			strOutError = "Effect catalog owner commit failed exact identity: " + Status;
+			return false;
+		}
+
+		/* A receipt from an earlier catalog ownership generation must not erase a
+		   newly loaded registration even when the deterministic revision is equal. */
+		CEffectCatalog::Clear();
+		if (!CEffectCatalog::Load(Status))
+		{
+			strOutError =
+				"Effect catalog could not reload for stale rollback validation: " +
+				Status;
+			return false;
+		}
+		std::string StaleRollbackStatus;
+		if (CEffectCatalog::Rollback_ProductLoadStage(
+				std::move(StaleReceipt), StaleRollbackStatus))
+		{
+			strOutError =
+				"Effect catalog stale commit receipt erased a new source identity.";
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST ReloadedRequest;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				EffectId, ReloadedRequest, Status) ||
+			nullptr != ReloadedRequest.pExpectedDocument ||
+			nullptr != ReloadedRequest.pExpectedVisualProjection)
+		{
+			strOutError =
+				"Effect catalog stale rollback mutated the reloaded catalog.";
+			return false;
+		}
+
+		std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> RollbackStage;
+		if (!CEffectCatalog::Stage_ProductLoadTarget(
+				ReloadedRequest, RollbackStage, Status) ||
+			nullptr == RollbackStage || nullptr == RollbackStage->pDocument)
+		{
+			strOutError =
+				"Effect catalog rollback candidate could not stage: " + Status;
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT RollbackReceipt;
+		if (!CEffectCatalog::Commit_ProductLoadStage(
+				RollbackStage, RollbackReceipt, Document, Projection, Status) ||
+			!RollbackReceipt.Has_NewPublication() ||
+			!CEffectCatalog::Rollback_ProductLoadStage(
+				std::move(RollbackReceipt), Status))
+		{
+			strOutError =
+				"Effect catalog exact document/projection rollback failed: " + Status;
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST AfterRollback;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				EffectId, AfterRollback, Status) ||
+			nullptr != AfterRollback.pExpectedDocument ||
+			nullptr != AfterRollback.pExpectedVisualProjection ||
+			CEffectCatalog::Rollback_ProductLoadStage(
+				std::move(RollbackReceipt), Status))
+		{
+			strOutError =
+				"Effect catalog rollback left publication state or admitted a stale token.";
+			return false;
+		}
+
+		std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> FinalStage;
+		if (!CEffectCatalog::Stage_ProductLoadTarget(
+				AfterRollback, FinalStage, Status) || nullptr == FinalStage ||
+			!CEffectCatalog::Commit_ProductLoadStage(
+				FinalStage, Document, Projection, Status) ||
+			Document.get() != FinalStage->pDocument.get() ||
+			Projection.get() != FinalStage->pVisualProjection.get())
+		{
+			strOutError =
+				"Effect catalog final owner commit failed after rollback: " + Status;
+			return false;
+		}
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> DuplicateDocument;
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			DuplicateProjection;
+		if (CEffectCatalog::Commit_ProductLoadStage(
+				FinalStage, DuplicateDocument, DuplicateProjection, Status) ||
+			nullptr != DuplicateDocument || nullptr != DuplicateProjection)
+		{
+			strOutError = "Effect catalog admitted a duplicate staged commit.";
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST Loaded;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				EffectId, Loaded, Status) ||
+			Loaded.pExpectedDocument.get() != Document.get() ||
+			Loaded.pExpectedVisualProjection.get() != Projection.get())
+		{
+			strOutError =
+				"Effect catalog committed identities were not recaptured exactly.";
+			return false;
+		}
+		std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> ReusedStage;
+		EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT ReusedReceipt;
+		if (!CEffectCatalog::Stage_ProductLoadTarget(
+				Loaded, ReusedStage, Status) || nullptr == ReusedStage ||
+			!CEffectCatalog::Commit_ProductLoadStage(
+				ReusedStage, ReusedReceipt, DuplicateDocument,
+				DuplicateProjection, Status) ||
+			ReusedReceipt.Has_NewPublication() ||
+			!CEffectCatalog::Rollback_ProductLoadStage(
+				std::move(ReusedReceipt), Status) ||
+			CEffectCatalog::Find_Loaded(EffectId).get() != Document.get())
+		{
+			strOutError =
+				"Effect catalog rollback removed a reused pre-existing identity.";
+			return false;
+		}
+
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST InvalidRelation = Loaded;
+		InvalidRelation.pExpectedDocument.reset();
+		std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> InvalidStage;
+		if (nullptr != InvalidRelation.pExpectedVisualProjection &&
+			CEffectCatalog::Stage_ProductLoadTarget(
+				InvalidRelation, InvalidStage, Status))
+		{
+			strOutError =
+				"Effect catalog admitted a projection without its loaded document.";
+			return false;
+		}
+
+		/* Version-13 documents legitimately have no visual-program projection.
+		   Exercise the projection half of the receipt with a version-15 Product
+		   document instead of making projection presence a universal invariant. */
+		const std::string ProjectionEffectId(
+			"effect.artist.skill.31950.unified");
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST ProjectionRequest;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				ProjectionEffectId, ProjectionRequest, Status) ||
+			nullptr != ProjectionRequest.pExpectedDocument ||
+			nullptr != ProjectionRequest.pExpectedVisualProjection)
+		{
+			strOutError =
+				"Effect catalog projection rollback target was not unloaded: " +
+				Status;
+			return false;
+		}
+		std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> ProjectionStage;
+		if (!CEffectCatalog::Stage_ProductLoadTarget(
+				ProjectionRequest, ProjectionStage, Status) ||
+			nullptr == ProjectionStage || nullptr == ProjectionStage->pDocument ||
+			nullptr == ProjectionStage->pVisualProjection)
+		{
+			strOutError =
+				"Effect catalog version-15 projection target could not stage: " +
+				Status;
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT ProjectionReceipt;
+		if (!CEffectCatalog::Commit_ProductLoadStage(
+				ProjectionStage, ProjectionReceipt, DuplicateDocument,
+				DuplicateProjection, Status) ||
+			!ProjectionReceipt.Has_NewPublication())
+		{
+			strOutError =
+				"Effect catalog version-15 projection target could not commit: " +
+				Status;
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST LoadedProjection;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				ProjectionEffectId, LoadedProjection, Status) ||
+			LoadedProjection.pExpectedDocument.get() !=
+				ProjectionStage->pDocument.get() ||
+			LoadedProjection.pExpectedVisualProjection.get() !=
+				ProjectionStage->pVisualProjection.get())
+		{
+			strOutError =
+				"Effect catalog version-15 projection identities were not published.";
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST ProjectionWithoutDocument =
+			LoadedProjection;
+		ProjectionWithoutDocument.pExpectedDocument.reset();
+		if (CEffectCatalog::Stage_ProductLoadTarget(
+				ProjectionWithoutDocument, InvalidStage, Status))
+		{
+			strOutError =
+				"Effect catalog admitted a projection without its loaded document.";
+			return false;
+		}
+		if (!CEffectCatalog::Rollback_ProductLoadStage(
+				std::move(ProjectionReceipt), Status))
+		{
+			strOutError =
+				"Effect catalog version-15 document/projection rollback failed: " +
+				Status;
+			return false;
+		}
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST ProjectionAfterRollback;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				ProjectionEffectId, ProjectionAfterRollback, Status) ||
+			nullptr != ProjectionAfterRollback.pExpectedDocument ||
+			nullptr != ProjectionAfterRollback.pExpectedVisualProjection)
+		{
+			strOutError =
+				"Effect catalog version-15 projection rollback left publication state.";
+			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
+	bool Resolve_ModuleDirectory(std::filesystem::path& OutDirectory)
+	{
+		wchar_t ModulePath[32768]{};
+		const DWORD Length = GetModuleFileNameW(
+			nullptr, ModulePath, static_cast<DWORD>(_countof(ModulePath)));
+		if (0u == Length || Length >= _countof(ModulePath))
+			return false;
+		OutDirectory = std::filesystem::path(
+			std::wstring_view(ModulePath, Length)).parent_path();
+		return !OutDirectory.empty();
+	}
+
+	bool Validate_CompiledShaderFastFailure(
+		const ComPtr<ID3D11Device>& Device,
+		const ComPtr<ID3D11DeviceContext>& Context,
+		uint64_t& iOutMaximumFailureMs,
+		std::string& strOutError)
+	{
+		iOutMaximumFailureMs = 0u;
+		if (nullptr == Device || nullptr == Context)
+		{
+			strOutError = "Compiled shader failure probe has no D3D device.";
+			return false;
+		}
+
+		std::filesystem::path ModuleDirectory;
+		if (!Resolve_ModuleDirectory(ModuleDirectory))
+		{
+			strOutError = "Compiled shader failure probe could not resolve module.";
+			return false;
+		}
+		const std::wstring ProbeStem = L"Shader_ContractCorrupt_" +
+			std::to_wstring(GetCurrentProcessId());
+		const std::filesystem::path CorruptPath =
+			ModuleDirectory / (ProbeStem + L".cso");
+		std::error_code FileError;
+		if (std::filesystem::exists(CorruptPath, FileError) || FileError)
+		{
+			strOutError = "Compiled shader corrupt probe path already exists.";
+			return false;
+		}
+		{
+			std::ofstream Output(CorruptPath, std::ios::binary | std::ios::trunc);
+			const std::array<uint8_t, 16u> InvalidBytes = {
+				0x43u, 0x53u, 0x4fu, 0x2du, 0x49u, 0x4eu, 0x56u, 0x41u,
+				0x4cu, 0x49u, 0x44u, 0x2du, 0x30u, 0x30u, 0x30u, 0x31u };
+			Output.write(
+				reinterpret_cast<const char*>(InvalidBytes.data()),
+				static_cast<std::streamsize>(InvalidBytes.size()));
+			if (!Output)
+			{
+				strOutError = "Compiled shader corrupt probe could not be written.";
+				return false;
+			}
+		}
+
+		const D3D11_INPUT_ELEMENT_DESC Element = {
+			"POSITION", 0u, DXGI_FORMAT_R32G32B32_FLOAT, 0u, 0u,
+			D3D11_INPUT_PER_VERTEX_DATA, 0u };
+		const auto ProbeFailure = [&](const std::wstring& LogicalName)
+		{
+			const uint64_t Start = GetTickCount64();
+			const std::unique_ptr<Engine::CShader> Shader = Engine::CShader::Create(
+				Device, Context, LogicalName.c_str(), &Element, 1u);
+			const uint64_t Elapsed = GetTickCount64() - Start;
+			iOutMaximumFailureMs = (max)(iOutMaximumFailureMs, Elapsed);
+			return nullptr == Shader && Elapsed < 2000u;
+		};
+
+		const bool bCorruptFailedFast = ProbeFailure(ProbeStem + L".hlsl");
+		std::filesystem::remove(CorruptPath, FileError);
+		if (FileError)
+		{
+			strOutError = "Compiled shader corrupt probe cleanup failed.";
+			return false;
+		}
+		const std::wstring MissingName = L"Shader_ContractMissing_" +
+			std::to_wstring(GetCurrentProcessId()) + L".hlsl";
+		const bool bMissingFailedFast = ProbeFailure(MissingName);
+		if (!bCorruptFailedFast || !bMissingFailedFast)
+		{
+			strOutError =
+				"Missing or malformed compiled shader did not fail closed within 2 s.";
+			return false;
+		}
+		return true;
+	}
+
 	bool_t Is_ExactLanceFloor(const AGGREGATE_STATS& Stats)
 	{
 		return Stats.iConfigured == 1u && Stats.iEvaluated == 1u &&
@@ -5343,6 +6072,28 @@ int wmain(const int argc, wchar_t** argv)
 	}
 
 	std::string Status;
+	bool bEffectLoadJobContractValidated = false;
+	bool bEffectPrewarmQueueTransactionValidated = false;
+	bool bEffectCatalogLoadStageTransactionValidated = false;
+	bool bEffectRendererStageTransactionValidated = false;
+	bool bCompiledShaderFastFailureValidated = false;
+	uint64_t iCompiledShaderMaximumFailureMs = 0u;
+	Write_Progress("effect-load-job-contract.begin");
+	if (!Validate_EffectLoadJobContract(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	bEffectLoadJobContractValidated = true;
+	Write_Progress("effect-load-job-contract.complete");
+	Write_Progress("effect-prewarm-queue-transaction.begin");
+	if (!Validate_EffectPrewarmQueueTransaction(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	bEffectPrewarmQueueTransactionValidated = true;
+	Write_Progress("effect-prewarm-queue-transaction.complete");
 	Write_Progress("direct-authored-index.begin");
 	if (!Validate_DirectAuthoredAuditionSourceIndex(RepositoryRoot, Status))
 	{
@@ -5441,6 +6192,14 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("catalog-load.complete");
+	Write_Progress("catalog-load-stage-transaction.begin");
+	if (!Validate_EffectCatalogLoadStageTransaction(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	bEffectCatalogLoadStageTransactionValidated = true;
+	Write_Progress("catalog-load-stage-transaction.complete");
 	Write_Progress("source-direct-product-identity.begin");
 	if (!Validate_SourceDirectProductIdentity(RepositoryRoot, Status))
 	{
@@ -5627,6 +6386,15 @@ int wmain(const int argc, wchar_t** argv)
 		Write_Progress("warp-engine-initialize.complete");
 		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
 		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		Write_Progress("compiled-shader-fast-failure.begin");
+		if (!Validate_CompiledShaderFastFailure(
+				Device, Context, iCompiledShaderMaximumFailureMs, Status))
+		{
+			std::cerr << Status << '\n';
+			return 1;
+		}
+		bCompiledShaderFastFailureValidated = true;
+		Write_Progress("compiled-shader-fast-failure.complete");
 		Write_Progress("artist-e-crane-clone-animation.begin");
 		if (!Validate_ArtistECraneCloneAnimationContract(
 				Device, Context, ArtistECraneProbe, Status))
@@ -6132,13 +6900,64 @@ int wmain(const int argc, wchar_t** argv)
 		CanaryTarget.pVisualProgramProjection = CanaryProjection;
 		CanaryTarget.pMaterialProgramRegistry = Registry;
 		Write_Progress("artist-canary-prewarm.begin");
+		std::shared_ptr<Client::CEffectDocumentRenderer::PRODUCT_TARGET_STAGE>
+			CanaryStage;
+		std::shared_ptr<Client::CEffectDocumentRenderer::PRODUCT_TARGET_STAGE>
+			StaleCanaryStage;
 		if (nullptr == CanaryDocument ||
-			!Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
-				Device, Context, CatalogRevision, CanaryTarget, Status))
+			!Client::CEffectDocumentRenderer::Stage_VisualProgramTarget(
+				Device, Context, CatalogRevision, CanaryTarget,
+				CanaryStage, Status) ||
+			!Client::CEffectDocumentRenderer::Stage_VisualProgramTarget(
+				Device, Context, CatalogRevision, CanaryTarget,
+				StaleCanaryStage, Status))
 		{
-			std::cerr << "Artist canary Product prewarm failed: " << Status << '\n';
+			std::cerr << "Artist canary Product staging failed: " << Status << '\n';
 			return 1;
 		}
+		if (nullptr != Client::CEffectDocumentRenderer::Find_Prepared(
+				CatalogRevision, std::string(ARTIST_UNIFIED_EFFECT_ID),
+				*CanaryDocument, CanaryProjection, Registry))
+		{
+			std::cerr <<
+				"Artist canary worker stage published before owner commit\n";
+			return 1;
+		}
+		if (!Client::CEffectDocumentRenderer::Commit_VisualProgramTargetStage(
+				CanaryStage, Status))
+		{
+			std::cerr << "Artist canary Product commit failed: " << Status << '\n';
+			return 1;
+		}
+		std::string StaleCommitStatus;
+		if (Client::CEffectDocumentRenderer::Commit_VisualProgramTargetStage(
+				StaleCanaryStage, StaleCommitStatus))
+		{
+			std::cerr <<
+				"Artist canary stale-generation commit was not rejected\n";
+			return 1;
+		}
+		const Client::EFFECT_RENDER_PREWARM_PROBE TransactionProbe =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+		constexpr uint64_t MAIN_COMMIT_MAXIMUM_MICROSECONDS = 100000u;
+		constexpr uint64_t COMPILED_CORE_MAXIMUM_MICROSECONDS = 10000000u;
+		if (0u == TransactionProbe.iTargetCommitCount ||
+			TransactionProbe.iTargetCommitMaximumMicroseconds >
+				MAIN_COMMIT_MAXIMUM_MICROSECONDS ||
+			0u == TransactionProbe.iCoreBuildCount ||
+			TransactionProbe.iCoreBuildMaximumMicroseconds >
+				COMPILED_CORE_MAXIMUM_MICROSECONDS)
+		{
+			std::cerr <<
+				"Compiled Effect staging exceeded the responsiveness contract: core=" <<
+				TransactionProbe.iCoreBuildMaximumMicroseconds <<
+				"us, commit=" <<
+				TransactionProbe.iTargetCommitMaximumMicroseconds << "us\n";
+			return 1;
+		}
+		bEffectRendererStageTransactionValidated = true;
+		CanaryStage.reset();
+		StaleCanaryStage.reset();
 		Write_Progress("artist-canary-prewarm.complete");
 		const auto CanaryPrepared = Client::CEffectDocumentRenderer::Find_Prepared(
 			CatalogRevision, std::string(ARTIST_UNIFIED_EFFECT_ID),
@@ -6993,7 +7812,19 @@ int wmain(const int argc, wchar_t** argv)
 #else
 		"Release"
 #endif
-		"\",\"expectedBindingCount\":" << ExpectedBindingCount <<
+		"\",\"effectLoadJobContractValidated\":" <<
+			(bEffectLoadJobContractValidated ? "true" : "false") <<
+		",\"effectPrewarmQueueTransactionValidated\":" <<
+			(bEffectPrewarmQueueTransactionValidated ? "true" : "false") <<
+		",\"effectCatalogLoadStageTransactionValidated\":" <<
+			(bEffectCatalogLoadStageTransactionValidated ? "true" : "false") <<
+		",\"effectRendererStageTransactionValidated\":" <<
+			(bEffectRendererStageTransactionValidated ? "true" : "false") <<
+		",\"compiledShaderFastFailureValidated\":" <<
+			(bCompiledShaderFastFailureValidated ? "true" : "false") <<
+		",\"compiledShaderMaximumFailureMs\":" <<
+			iCompiledShaderMaximumFailureMs <<
+		",\"expectedBindingCount\":" << ExpectedBindingCount <<
 		",\"actualBindingCount\":" << Registry->Get_BindingCount() <<
 		",\"catalogRevision\":" << CatalogRevision <<
 		",\"registryGeneration\":" << Registry->Get_GenerationId() <<
@@ -7025,6 +7856,19 @@ int wmain(const int argc, wchar_t** argv)
 			PrewarmProbe.iCatalogRevision <<
 		",\"registryGeneration\":" <<
 			PrewarmProbe.iMaterialProgramRegistryGeneration <<
+		",\"coreBuildCount\":" << PrewarmProbe.iCoreBuildCount <<
+		",\"coreBuildFailureCount\":" <<
+			PrewarmProbe.iCoreBuildFailureCount <<
+		",\"coreBuildMaximumMicroseconds\":" <<
+			PrewarmProbe.iCoreBuildMaximumMicroseconds <<
+		",\"targetPrepareCount\":" <<
+			PrewarmProbe.iTargetPrepareCount <<
+		",\"targetPrepareMaximumMicroseconds\":" <<
+			PrewarmProbe.iTargetPrepareMaximumMicroseconds <<
+		",\"targetCommitCount\":" <<
+			PrewarmProbe.iTargetCommitCount <<
+		",\"targetCommitMaximumMicroseconds\":" <<
+			PrewarmProbe.iTargetCommitMaximumMicroseconds <<
 		",\"bindingCount\":" << PrewarmProbe.iMaterialProgramBindingCount <<
 		",\"resolvedElementCount\":" <<
 			PrewarmProbe.iMaterialProgramResolvedElementCount << "}"

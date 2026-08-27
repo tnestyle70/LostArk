@@ -8,6 +8,8 @@
 #include "CharacterSelectionState.h"
 #include "CharacterSpec.h"
 #include "DataJson.h"
+#include "Effect_Catalog.h"
+#include "Effect_LoadPreparationJob.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "LevelTransitionService.h"
@@ -21,11 +23,14 @@
 #include "ValtanPatternEffectCueDocument.h"
 
 #include <algorithm>
+#include <atomic>
+#include <cmath>
 #include <fstream>
 
 namespace
 {
 	constexpr size_t VALTAN_COMBAT_OBJECT_EFFECT_TARGET_COUNT = 2u;
+	std::atomic<uint64_t> g_iNextEffectLoadJobEpoch = 1u;
 }
 
 CLevel_Loading::CLevel_Loading(
@@ -37,6 +42,11 @@ CLevel_Loading::CLevel_Loading(
 
 CLevel_Loading::~CLevel_Loading()
 {
+	if (m_isEffectLoadJobStarted && nullptr != m_pLoader)
+	{
+		CEffectPresentationService::Cancel_LoadingProductCuePreparation(
+			m_pLoader->Get_EffectLoadJob(), m_iEffectLoadJobEpoch);
+	}
 }
 
 HRESULT CLevel_Loading::Initialize(
@@ -74,15 +84,31 @@ HRESULT CLevel_Loading::Initialize(
 	if (FAILED(Ready_Layer_Chrome()))
 		return E_FAIL;
 
-	m_pLoader = CLoader::Create(m_pDevice, m_pContext, m_eNextLevelID);
+	const bool_t bUsesEffectLoadJob =
+		LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
+		LEVEL::VALTAN_ARENA == m_eNextLevelID;
+	uint64_t iEffectCatalogRevision = 0u;
+	if (bUsesEffectLoadJob)
+	{
+		m_iEffectLoadJobEpoch =
+			g_iNextEffectLoadJobEpoch.fetch_add(1u, std::memory_order_relaxed);
+		if (0u == m_iEffectLoadJobEpoch)
+			return E_FAIL;
+		iEffectCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
+		if (0u == iEffectCatalogRevision)
+			return E_FAIL;
+	}
+	m_pLoader = CLoader::Create(
+		m_pDevice, m_pContext, m_eNextLevelID,
+		m_iEffectLoadJobEpoch, iEffectCatalogRevision);
 	if (nullptr == m_pLoader)
 		return E_FAIL;
 
 	/* The target class/encounter is already fixed at this point and the loader
-	   worker is live. Register its priority Product targets now so the regular
-	   main-frame preparation step overlaps the remaining level load. */
-	if (LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-		LEVEL::VALTAN_ARENA == m_eNextLevelID)
+	   worker is live. Register its priority Product targets now; the command is
+	   consumed after target-level resources finish, while the main frame keeps
+	   pumping the Loading Level and displaying the worker's real progress. */
+	if (bUsesEffectLoadJob)
 	{
 		Advance_TargetEffectPreparation();
 	}
@@ -115,31 +141,96 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 			Advance_TargetEffectPreparation();
 	}
 
-	/* The worker owns the first 90%. Selected Product targets prepare alongside
-	   it and use the remaining 10% only when they outlive the worker. */
-	f32_t fTargetProgress = m_pLoader->Finished() ? 1.f : 0.9f;
-	if (m_pLoader->Finished() && !bTargetPresentationReady)
+	const bool_t bLoaderFinished = m_pLoader->Finished();
+	const CLoader::PROGRESS_SNAPSHOT LoaderProgress =
+		m_pLoader->Get_ProgressSnapshot();
+	EFFECT_LOAD_PROGRESS_SNAPSHOT EffectProgress;
+	bool_t bHasEffectProgress = false;
+	if (const std::shared_ptr<CEffectLoadPreparationJob> Job =
+			m_pLoader->Get_EffectLoadJob(); nullptr != Job)
 	{
-		const uint32_t iSettledCount =
-			m_iEffectPreparationPreparedCount +
-			m_iEffectPreparationFailedCount;
-		const f32_t fPreparationRatio =
-			0u == m_iEffectPreparationTargetCount ? 0.f :
-			static_cast<f32_t>(iSettledCount) /
-			static_cast<f32_t>(m_iEffectPreparationTargetCount);
-		fTargetProgress = 0.9f + 0.09f * (min)(1.f, fPreparationRatio);
+		EffectProgress = Job->Get_Progress();
+		bHasEffectProgress = true;
 	}
-	m_fDisplayProgress += (fTargetProgress - m_fDisplayProgress) * (min)(1.f, fTimeDelta * 2.5f);
+
+	bool_t bProgressDeterminate = false;
+	const auto SetDeterminateProgress =
+		[this, &bProgressDeterminate](
+			const size_t iCompleted,
+			const size_t iTotal)
+	{
+			/* A known lane reaching N/N still has an opaque owner handoff/close
+			   before activation.  Keep the heartbeat indeterminate there; only the
+			   full readiness conjunction above may publish 100 percent. */
+			if (0u == iTotal || iCompleted >= iTotal)
+				return;
+			bProgressDeterminate = true;
+			m_fDisplayProgress = static_cast<f32_t>(iCompleted) /
+				static_cast<f32_t>(iTotal);
+		};
+
+	if (bLoaderFinished && bTargetPresentationReady)
+	{
+		bProgressDeterminate = true;
+		m_fDisplayProgress = 1.f;
+	}
+	else if (bHasEffectProgress &&
+		EFFECT_LOAD_PROGRESS_PHASE::TARGET_STAGE == EffectProgress.ePhase &&
+		EffectProgress.bDeterminate)
+	{
+		/* This is the worker document-stage fraction only.  It is not mixed
+		   with renderer/queue completion into a fabricated overall percent. */
+		SetDeterminateProgress(
+			EffectProgress.iCompleted, EffectProgress.iTotal);
+	}
+	else if (bHasEffectProgress &&
+		(EFFECT_LOAD_PROGRESS_PHASE::EPOCH_STAGE_COMPLETE ==
+				EffectProgress.ePhase ||
+		 EFFECT_LOAD_PROGRESS_PHASE::CLOSED == EffectProgress.ePhase))
+	{
+		/* Once worker staging is terminal, readiness is the number of Product
+		   queue targets that actually reached a prepared/isolated terminal
+		   receipt under the current catalog revision. */
+		const uint32_t iSettledCount = (min)(
+			m_iEffectPreparationPreparedCount +
+				m_iEffectPreparationFailedCount,
+			m_iEffectPreparationTargetCount);
+		SetDeterminateProgress(
+			iSettledCount, m_iEffectPreparationTargetCount);
+	}
+	else if (!bLoaderFinished && LoaderProgress.bDeterminate)
+	{
+		SetDeterminateProgress(
+			LoaderProgress.iCompleted, LoaderProgress.iTotal);
+	}
+
+	if (m_isEffectLoadJobStarted && !m_isActivationRequested)
+	{
+		CEffectPresentationService::Advance_LoadingProductCuePreparation(
+			m_pDevice, m_pContext, m_pLoader->Get_EffectLoadJob(),
+			m_iEffectLoadJobEpoch);
+	}
+	if (!bProgressDeterminate)
+	{
+		m_fIndeterminateProgress = std::fmod(
+			m_fIndeterminateProgress + (max)(0.f, fTimeDelta) * 0.45f,
+			1.f);
+	}
 
 	const f32_t fTrackLeft = m_fProgressTrackX - m_fProgressTrackWidth * 0.5f;
-	const f32_t fFillWidth = m_fProgressTrackWidth * m_fDisplayProgress;
+	const f32_t fFillWidth = bProgressDeterminate ?
+		m_fProgressTrackWidth * m_fDisplayProgress :
+		m_fProgressTrackWidth * 0.18f;
+	const f32_t fFillLeft = bProgressDeterminate ? fTrackLeft :
+		fTrackLeft + (m_fProgressTrackWidth - fFillWidth) *
+		m_fIndeterminateProgress;
 
 	if (nullptr != m_pProgressFill)
-		m_pProgressFill->Set_Rect(fTrackLeft + fFillWidth * 0.5f, m_fProgressTrackY,
+		m_pProgressFill->Set_Rect(fFillLeft + fFillWidth * 0.5f, m_fProgressTrackY,
 			fFillWidth, m_fProgressTrackHeight);
 
 	if (nullptr != m_pProgressGlow)
-		m_pProgressGlow->Set_Rect(fTrackLeft + fFillWidth, m_fProgressTrackY,
+		m_pProgressGlow->Set_Rect(fFillLeft + fFillWidth, m_fProgressTrackY,
 			m_fProgressGlowWidth, m_fProgressGlowHeight);
 
 	if (m_pLoader->Finished() && bTargetPresentationReady &&
@@ -185,12 +276,15 @@ HRESULT CLevel_Loading::Render()
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	if (nullptr != viewport && nullptr != m_pLoader)
 	{
-		const std::string loadingStatus =
-			(LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-			 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
-			m_pLoader->Finished() &&
-			!m_strEffectPreparationStatus.empty() ?
-			m_strEffectPreparationStatus : CLoader::Get_ActiveStatus();
+		const CLoader::PROGRESS_SNAPSHOT Progress =
+			m_pLoader->Get_ProgressSnapshot();
+		std::string loadingStatus = "Level resources: " + Progress.strStatus;
+		if (Progress.bDeterminate)
+		{
+			loadingStatus += " " + std::to_string(Progress.iCompleted) + "/" +
+				std::to_string(Progress.iTotal);
+		}
+		loadingStatus += " (" + std::to_string(Progress.iElapsedMs) + " ms)";
 		ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::SetNextWindowPos(
 			ImVec2(
@@ -210,6 +304,35 @@ HRESULT CLevel_Loading::Render()
 			ImGuiWindowFlags_NoFocusOnAppearing))
 		{
 			ImGui::TextUnformatted(loadingStatus.c_str());
+			if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
+				 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
+				!m_strEffectPreparationStatus.empty())
+			{
+				const std::string EffectStatus =
+					"Effects: " + m_strEffectPreparationStatus;
+				ImGui::TextUnformatted(EffectStatus.c_str());
+				const std::shared_ptr<CEffectLoadPreparationJob> Job =
+					m_pLoader->Get_EffectLoadJob();
+				if (nullptr != Job)
+				{
+					const EFFECT_LOAD_PROGRESS_SNAPSHOT EffectProgress =
+						Job->Get_Progress();
+					if (!EffectProgress.strStatus.empty())
+					{
+						std::string WorkerStatus = "Effect worker: " +
+							EffectProgress.strStatus;
+						if (EffectProgress.bDeterminate)
+						{
+							WorkerStatus += " " +
+								std::to_string(EffectProgress.iCompleted) + "/" +
+								std::to_string(EffectProgress.iTotal);
+						}
+						if (!EffectProgress.strCurrentId.empty())
+							WorkerStatus += " - " + EffectProgress.strCurrentId;
+						ImGui::TextUnformatted(WorkerStatus.c_str());
+					}
+				}
+			}
 		}
 		ImGui::End();
 	}
@@ -243,8 +366,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 	const bool_t bCharacterSelect =
 		LEVEL::CHARACTER_SELECT == m_eNextLevelID;
 	const bool_t bValtanArena = LEVEL::VALTAN_ARENA == m_eNextLevelID;
-	if ((!bCharacterSelect && !bValtanArena) ||
-		m_isEffectPreparationComplete)
+	if (!bCharacterSelect && !bValtanArena)
 	{
 		return true;
 	}
@@ -262,6 +384,21 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		m_strEffectPreparationRegistrationFailure = Status;
 		m_strEffectPreparationStatus =
 			TargetLabel + ": Effect preparation isolated: " + Status;
+		if (!m_isEffectLoadJobStarted && nullptr != m_pLoader)
+		{
+			std::string JobStatus;
+			if (CEffectPresentationService::Begin_LoadingProductCuePreparation(
+					m_pLoader->Get_EffectLoadJob(), m_iEffectLoadJobEpoch,
+					{}, JobStatus))
+			{
+				m_isEffectLoadJobStarted = true;
+			}
+			else
+			{
+				CEffectPresentationService::Cancel_LoadingProductCuePreparation(
+					m_pLoader->Get_EffectLoadJob(), m_iEffectLoadJobEpoch);
+			}
+		}
 		OutputDebugStringA(("[Level_Loading] " +
 			m_strEffectPreparationStatus + "\n").c_str());
 		return false;
@@ -399,6 +536,19 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			std::to_string(m_iEffectPreparationTargetCount) +
 			" Product Effects for the target presentation.";
 	}
+	if (!m_isEffectLoadJobStarted)
+	{
+		std::string JobStatus;
+		if (!CEffectPresentationService::Begin_LoadingProductCuePreparation(
+				m_pLoader->Get_EffectLoadJob(), m_iEffectLoadJobEpoch,
+				m_EffectPreparationTargets, JobStatus))
+		{
+			return IsolateFailure(
+				"Loader-worker Effect staging could not start: " + JobStatus);
+		}
+		m_isEffectLoadJobStarted = true;
+		m_strEffectPreparationStatus = JobStatus;
+	}
 
 	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe =
 		CEffectPresentationService::Get_ProductCuePreparationProbe(
@@ -435,7 +585,6 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		return false;
 	}
 
-	m_isEffectPreparationComplete = true;
 	if (!m_strEffectPreparationRegistrationFailure.empty())
 	{
 		m_strEffectPreparationStatus =
@@ -466,6 +615,11 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 		return;
 
 	m_isFailureReported = true;
+	if (m_isEffectLoadJobStarted && nullptr != m_pLoader)
+	{
+		CEffectPresentationService::Cancel_LoadingProductCuePreparation(
+			m_pLoader->Get_EffectLoadJob(), m_iEffectLoadJobEpoch);
+	}
 	CCharacterSelectionState::Cancel_PendingCreation();
 	Cancel_LobbyCommand("target level loading failed");
 	/* The loader's live progress line names the stage that refused, and it is

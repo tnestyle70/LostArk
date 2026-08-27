@@ -20,6 +20,7 @@
     <ClCompile Include="..\..\..\Client\Private\DeferredMaterialRenderUtils.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Artist31470ShaderRegistry.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp"><Filter>Production Sources</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_LoadPreparationJob.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp"><Filter>Production Sources</Filter></ClCompile>
@@ -30,6 +31,7 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_Object.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_OccurrenceTuning.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Playback.cpp"><Filter>Production Sources</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_ReconstructedExecution.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_ScreenOverlayPresentation.cpp"><Filter>Production Sources</Filter></ClCompile>

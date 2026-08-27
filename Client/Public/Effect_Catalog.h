@@ -25,7 +25,72 @@ struct EFFECT_OCCURRENCE_TUNING_DOCUMENT;
 struct EFFECT_VISUAL_PROGRAM;
 struct EFFECT_VISUAL_PROGRAM_CORPUS;
 struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
+struct EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING;
 class CEffectMaterialProgramRegistry;
+
+/* Product Loading captures catalog-owned identities on the main thread, then
+   parses only this immutable source on the Loader worker.  The worker result
+   is committed by the catalog owner only after every captured identity is
+   still current. */
+struct EFFECT_PRODUCT_LOAD_STAGE_REQUEST final
+{
+	uint64_t iCatalogRevision = 0u;
+	std::string strEffectAssetId;
+	std::filesystem::path DocumentPath;
+	std::shared_ptr<const void> pSourceRegistrationIdentity;
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pExpectedDocument;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pExpectedVisualProjection;
+	std::shared_ptr<const CEffectMaterialProgramRegistry>
+		pMaterialProgramRegistry;
+	std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
+		pScreenOverlayBinding;
+	std::uintmax_t iSourceByteCount = 0u;
+	std::filesystem::file_time_type SourceWriteTime{};
+};
+
+struct EFFECT_PRODUCT_LOAD_STAGE_RESULT final
+{
+	EFFECT_PRODUCT_LOAD_STAGE_REQUEST Request;
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pVisualProjection;
+};
+
+/* Owner-thread proof of the exact catalog identities published by one Loading
+   commit.  A later composite-transaction failure may use this receipt to erase
+   only the document/projection inserted by that commit.  Reused pre-existing
+   identities are recorded but are never rollback targets. */
+class EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT final
+{
+public:
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT() = default;
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT(
+		const EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&) = delete;
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT& operator=(
+		const EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&) = delete;
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT(
+		EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&& Other) noexcept;
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT& operator=(
+		EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&& Other) noexcept;
+
+	bool Has_NewPublication() const;
+
+private:
+	friend class CEffectCatalog;
+
+	bool Is_Valid() const;
+	void Invalidate() noexcept;
+
+	std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> m_pResult;
+	std::string m_strPreviousCatalogStatus;
+	bool m_bPublishedNewDocument = false;
+};
+
+struct EFFECT_PRODUCT_LOAD_STAGE_BATCH final
+{
+	std::vector<EFFECT_PRODUCT_LOAD_STAGE_REQUEST> Targets;
+};
 
 struct EFFECT_SCREEN_OVERLAY_RESOURCE_IDENTITY final
 {
@@ -501,6 +566,32 @@ class CEffectCatalog final
 {
 public:
     static bool_t Load(std::string& strOutStatus);
+	static bool_t Capture_ProductLoadStageRequest(
+		const std::string& strEffectAssetId,
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST& OutRequest,
+		std::string& strOutStatus);
+	static bool_t Stage_ProductLoadTarget(
+		const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request,
+		std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT>& OutResult,
+		std::string& strOutStatus);
+	static bool_t Commit_ProductLoadStage(
+		const std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT>& pResult,
+		EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT& OutCommitReceipt,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC>& OutDocument,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+			OutVisualProjection,
+		std::string& strOutStatus);
+	/* Standalone catalog consumers may finalize the catalog commit directly.
+	   Composite Product-loading callers must use the receipt overload above. */
+	static bool_t Commit_ProductLoadStage(
+		const std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT>& pResult,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC>& OutDocument,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+			OutVisualProjection,
+		std::string& strOutStatus);
+	static bool_t Rollback_ProductLoadStage(
+		EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&& CommitReceipt,
+		std::string& strOutStatus);
 	/* Debug/main-thread only. Stage performs parse/identity/path/projection
 	   validation without mutating the loaded catalog. Commit keeps the global
 	   runtime revision unchanged so unrelated prepared targets remain valid.

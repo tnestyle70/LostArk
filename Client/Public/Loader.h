@@ -6,13 +6,16 @@
 #include "Network/PacketType.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <mutex>
 #include <span>
+#include <string>
 
 NS_BEGIN(Client)
 
 class CLevelRegistry;
+class CEffectLoadPreparationJob;
 
 class CLoader final
 {
@@ -34,12 +37,24 @@ public:
 		SUCCEEDED,
 		FAILED
 	};
+	struct PROGRESS_SNAPSHOT final
+	{
+		std::string strStatus;
+		bool_t bDeterminate = false;
+		size_t iCompleted = 0u;
+		size_t iTotal = 0u;
+		uint64_t iElapsedMs = 0u;
+	};
 
 	STATE Get_State() const
 	{
 		return m_eState.load(std::memory_order_acquire);
 	}
 	HRESULT Initialize(LEVEL eNextLevelID);
+	HRESULT Initialize(
+		LEVEL eNextLevelID,
+		uint64_t iEffectLoadJobEpoch,
+		uint64_t iEffectCatalogRevision);
 	HRESULT Start_Loading();
 	bool_t Finished() const
 	{
@@ -52,6 +67,11 @@ public:
 			m_iResult.load(std::memory_order_acquire));
 	}
 	static std::string Get_ActiveStatus();
+	PROGRESS_SNAPSHOT Get_ProgressSnapshot() const;
+	std::shared_ptr<CEffectLoadPreparationJob> Get_EffectLoadJob() const
+	{
+		return m_pEffectLoadJob;
+	}
 
 #ifdef _DEBUG
 	void Print_Text();
@@ -82,7 +102,12 @@ private:
 	HRESULT Ready_Character_Shared_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_AnimationPreviewModels(uint32_t iLevelIndex);
 	HRESULT Ready_ValtanPresentation(uint32_t iLevelIndex);
+	HRESULT Run_EffectLoadPreparation();
 	void Set_Status(const tchar_t* pStatus);
+	void Set_DeterminateStatus(
+		const tchar_t* pStatus,
+		size_t iCompleted,
+		size_t iTotal);
 	void Copy_Status(tchar_t* pOutput, size_t outputCount) const;
 
 private:
@@ -92,15 +117,23 @@ private:
 	HANDLE m_hThread = {};
 	tchar_t m_szLoadingText[MAX_PATH] = {};
 	mutable std::mutex m_StatusMutex;
+	bool_t m_bProgressDeterminate = false;
+	size_t m_iProgressCompleted = 0u;
+	size_t m_iProgressTotal = 0u;
+	std::chrono::steady_clock::time_point m_ProgressPhaseStarted =
+		std::chrono::steady_clock::now();
 	std::atomic<STATE> m_eState = STATE::IDLE;
 	std::atomic<long> m_iResult = S_FALSE;
 	std::atomic_bool m_isCancellationRequested = false;
+	std::shared_ptr<CEffectLoadPreparationJob> m_pEffectLoadJob;
 
 public:
 	static unique_ptr<CLoader> Create(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext,
-		LEVEL eNextLevelID);
+		LEVEL eNextLevelID,
+		uint64_t iEffectLoadJobEpoch = 0u,
+		uint64_t iEffectCatalogRevision = 0u);
 	void Free();
 };
 

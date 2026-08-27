@@ -2,6 +2,7 @@
 
 #include "Character.h"
 #include "Effect_Catalog.h"
+#include "Effect_LoadPreparationJob.h"
 #include "Effect_Object.h"
 #include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
@@ -19,11 +20,13 @@
 #include <cfloat>
 #include <cmath>
 #include <cstring>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <limits>
 #include <map>
+#include <new>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -440,18 +443,17 @@ namespace
 		return true;
 	}
 
-	bool_t Prepare_ProductScreenOverlayTemplate(
+	bool_t Prepare_ProductScreenOverlayTemplateFromBinding(
 		ComPtr<ID3D11Device> pDevice,
 		const std::string& EffectAssetId,
+		const std::shared_ptr<const
+			Client::EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>& Binding,
 		std::shared_ptr<const Client::CEffectScreenOverlayPresentation>&
 			OutTemplate,
 		std::string& strOutStatus)
 	{
 		using namespace Client;
 		OutTemplate.reset();
-		const std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
-			Binding = CEffectCatalog::Find_ScreenOverlayProductBinding(
-				EffectAssetId);
 		if (nullptr == Binding)
 		{
 			strOutStatus.clear();
@@ -515,6 +517,19 @@ namespace
 		OutTemplate = std::move(Staged);
 		strOutStatus.clear();
 		return true;
+	}
+
+	bool_t Prepare_ProductScreenOverlayTemplate(
+		ComPtr<ID3D11Device> pDevice,
+		const std::string& EffectAssetId,
+		std::shared_ptr<const Client::CEffectScreenOverlayPresentation>&
+			OutTemplate,
+		std::string& strOutStatus)
+	{
+		return Prepare_ProductScreenOverlayTemplateFromBinding(
+			std::move(pDevice), EffectAssetId,
+			Client::CEffectCatalog::Find_ScreenOverlayProductBinding(EffectAssetId),
+			OutTemplate, strOutStatus);
 	}
 
 	bool_t Apply_ProductScreenOverlayReceipt(
@@ -2093,6 +2108,219 @@ namespace
 		return true;
 	}
 
+	struct PRODUCT_TARGET_PREPARATION_RESULT final
+	{
+		bool_t bPrepared = false;
+		Client::EFFECT_SCENE_BUDGET_COST BudgetCost;
+		f32_t fPlaybackDurationSeconds = 0.f;
+		std::shared_ptr<const Client::CEffectScreenOverlayPresentation>
+			pScreenOverlayTemplate;
+		std::string strStatus;
+	};
+
+	PRODUCT_TARGET_PREPARATION_RESULT Prepare_ProductTarget(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const uint64_t iCatalogRevision,
+		const std::string& EffectId,
+		const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>& Document,
+		const std::shared_ptr<const Client::
+			EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>& Projection,
+		const std::shared_ptr<const Client::CEffectMaterialProgramRegistry>&
+			MaterialProgramRegistry)
+	{
+		PRODUCT_TARGET_PREPARATION_RESULT Result;
+		Result.bPrepared = nullptr != Document;
+		if (nullptr == Document)
+		{
+			Result.strStatus =
+				"Product Effect incremental document load failed for " + EffectId;
+		}
+		else if (nullptr != Projection &&
+			Projection->Get_DocumentShared().get() != Document.get())
+		{
+			Result.strStatus =
+				"Product Effect incremental document/projection identity diverged: " +
+				EffectId;
+			Result.bPrepared = false;
+		}
+		if (Result.bPrepared && !Prepare_ProductScreenOverlayTemplate(
+				pDevice, EffectId, Result.pScreenOverlayTemplate,
+				Result.strStatus))
+		{
+			Result.strStatus =
+				"Product Effect incremental screen-overlay preparation failed for " +
+				EffectId + ": " + Result.strStatus;
+			Result.bPrepared = false;
+		}
+		if (Result.bPrepared &&
+			!Client::CEffectPresentationService::Estimate_DocumentBudget(
+				*Document, Result.BudgetCost, Result.strStatus))
+		{
+			Result.strStatus =
+				"Product Effect incremental budget admission failed for " +
+				EffectId + ": " + Result.strStatus;
+			Result.bPrepared = false;
+		}
+		if (Result.bPrepared && !Try_ResolveProductPlaybackDuration(
+				*Document, Projection, Result.fPlaybackDurationSeconds,
+				Result.strStatus))
+		{
+			Result.strStatus =
+				"Product Effect incremental duration preparation failed for " +
+				EffectId + ": " + Result.strStatus;
+			Result.bPrepared = false;
+		}
+		if (Result.bPrepared &&
+			(!Apply_ProductScreenOverlayReceipt(
+				Result.pScreenOverlayTemplate, Result.BudgetCost,
+				Result.fPlaybackDurationSeconds, Result.strStatus) ||
+			 !BudgetWithin(Result.BudgetCost, SCENE_HARD_BUDGET)))
+		{
+			if (Result.strStatus.empty())
+				Result.strStatus = "screen-overlay hard budget exceeded";
+			Result.strStatus =
+				"Product Effect incremental screen-overlay receipt failed for " +
+				EffectId + ": " + Result.strStatus;
+			Result.bPrepared = false;
+		}
+		if (Result.bPrepared)
+		{
+			Result.bPrepared = Client::CEffectDocumentRenderer::
+				Prepare_VisualProgramTarget(
+					std::move(pDevice), std::move(pContext), iCatalogRevision,
+					{ EffectId, Document, Projection, MaterialProgramRegistry },
+					Result.strStatus);
+		}
+		return Result;
+	}
+
+	void Commit_ProductTargetReceipts(
+		const std::string& EffectId,
+		PRODUCT_TARGET_PREPARATION_RESULT&& Result)
+	{
+		g_ProductEffectBudgetCosts[EffectId] = Result.BudgetCost;
+		g_ProductEffectPlaybackDurations[EffectId] =
+			Result.fPlaybackDurationSeconds;
+		if (nullptr != Result.pScreenOverlayTemplate)
+		{
+			g_ProductScreenOverlayTemplates[EffectId] =
+				std::move(Result.pScreenOverlayTemplate);
+		}
+		else
+		{
+			g_ProductScreenOverlayTemplates.erase(EffectId);
+		}
+	}
+
+	struct PRODUCT_TARGET_RECEIPT_COMMIT final
+	{
+		decltype(g_ProductEffectBudgetCosts)::node_type BudgetCost;
+		decltype(g_ProductEffectPlaybackDurations)::node_type PlaybackDuration;
+		decltype(g_ProductScreenOverlayTemplates)::node_type ScreenOverlayTemplate;
+		bool_t bEraseScreenOverlayTemplate = false;
+	};
+
+	template <typename MapType>
+	void Commit_ProductTargetReceiptNode(
+		MapType& Target,
+		typename MapType::node_type&& Node) noexcept
+	{
+		/* The node's allocation was completed while the bundle could still fail.
+		   Inserting a compatible node allocates nothing.  If the exact key already
+		   exists, insert returns both its position and the still-owned staged node,
+		   so replacing the trivially movable/shared mapped value is also no-fail. */
+		auto Inserted = Target.insert(std::move(Node));
+		if (!Inserted.inserted)
+			Inserted.position->second = std::move(Inserted.node.mapped());
+	}
+
+	bool_t Build_ProductTargetReceiptCommit(
+		const std::string& EffectId,
+		const Client::EFFECT_PRODUCT_LOADING_TARGET_STAGE& Result,
+		PRODUCT_TARGET_RECEIPT_COMMIT& OutCommit,
+		std::string& strOutStatus)
+	{
+		try
+		{
+			PRODUCT_TARGET_RECEIPT_COMMIT Staged;
+			decltype(g_ProductEffectBudgetCosts) BudgetCost;
+			BudgetCost.emplace(EffectId, Result.BudgetCost);
+			Staged.BudgetCost = BudgetCost.extract(BudgetCost.begin());
+
+			decltype(g_ProductEffectPlaybackDurations) PlaybackDuration;
+			PlaybackDuration.emplace(
+				EffectId, Result.fPlaybackDurationSeconds);
+			Staged.PlaybackDuration =
+				PlaybackDuration.extract(PlaybackDuration.begin());
+
+			if (nullptr != Result.pScreenOverlayTemplate)
+			{
+				decltype(g_ProductScreenOverlayTemplates) ScreenOverlayTemplate;
+				ScreenOverlayTemplate.emplace(
+					EffectId, Result.pScreenOverlayTemplate);
+				Staged.ScreenOverlayTemplate =
+					ScreenOverlayTemplate.extract(ScreenOverlayTemplate.begin());
+			}
+			else
+			{
+				Staged.bEraseScreenOverlayTemplate = true;
+			}
+			OutCommit = std::move(Staged);
+		}
+		catch (const std::exception& Exception)
+		{
+			strOutStatus =
+				"Product Effect receipt candidate allocation failed: " +
+				std::string(Exception.what());
+			return false;
+		}
+		catch (...)
+		{
+			strOutStatus =
+				"Product Effect receipt candidate allocation failed.";
+			return false;
+		}
+		strOutStatus.clear();
+		return true;
+	}
+
+	void Commit_ProductTargetReceipts(
+		PRODUCT_TARGET_RECEIPT_COMMIT&& Commit) noexcept
+	{
+		/* Budget and duration nodes are mandatory and retain the exact target key
+		   until the last insertion.  Structural invalidity is impossible after a
+		   successful Build_ProductTargetReceiptCommit and must not be converted to
+		   a partially committed target. */
+		if (Commit.BudgetCost.empty() || Commit.PlaybackDuration.empty() ||
+			Commit.BudgetCost.key() != Commit.PlaybackDuration.key() ||
+			(Commit.bEraseScreenOverlayTemplate ==
+				!Commit.ScreenOverlayTemplate.empty()) ||
+			(!Commit.ScreenOverlayTemplate.empty() &&
+			 Commit.BudgetCost.key() != Commit.ScreenOverlayTemplate.key()))
+		{
+			std::terminate();
+		}
+
+		const std::string& EffectId = Commit.BudgetCost.key();
+		if (Commit.bEraseScreenOverlayTemplate)
+		{
+			g_ProductScreenOverlayTemplates.erase(EffectId);
+		}
+		else
+		{
+			Commit_ProductTargetReceiptNode(
+				g_ProductScreenOverlayTemplates,
+				std::move(Commit.ScreenOverlayTemplate));
+		}
+		Commit_ProductTargetReceiptNode(
+			g_ProductEffectPlaybackDurations,
+			std::move(Commit.PlaybackDuration));
+		Commit_ProductTargetReceiptNode(
+			g_ProductEffectBudgetCosts,
+			std::move(Commit.BudgetCost));
+	}
+
     void Remove_At(const size_t iIndex)
     {
         ACTIVE_EFFECT& Effect = g_ActiveEffects[iIndex];
@@ -2246,6 +2474,515 @@ Client::CEffectPresentationService::Get_ProductCuePreparationProbe(
 		EffectAssetIds, CEffectCatalog::Get_RuntimeRevision());
 }
 
+bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContextIdentity,
+	const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request,
+	std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE>& OutStage,
+	std::string& strOutStatus)
+{
+	OutStage.reset();
+	try
+	{
+	if (nullptr == pDevice || nullptr == pContextIdentity ||
+		0u == Request.iCatalogRevision || Request.strEffectAssetId.empty() ||
+		nullptr == Request.pMaterialProgramRegistry ||
+		Request.pMaterialProgramRegistry->Get_CatalogRevision() !=
+			Request.iCatalogRevision ||
+		(nullptr != Request.pScreenOverlayBinding &&
+		 Request.pScreenOverlayBinding->strEffectAssetId !=
+			Request.strEffectAssetId))
+	{
+		strOutStatus =
+			"Loading Product Effect immutable stage request is invalid.";
+		return false;
+	}
+
+	std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> CatalogStage;
+	if (!CEffectCatalog::Stage_ProductLoadTarget(
+			Request, CatalogStage, strOutStatus) || nullptr == CatalogStage ||
+		nullptr == CatalogStage->pDocument ||
+		CatalogStage->Request.iCatalogRevision != Request.iCatalogRevision ||
+		CatalogStage->Request.strEffectAssetId != Request.strEffectAssetId ||
+		CatalogStage->Request.pSourceRegistrationIdentity.get() !=
+			Request.pSourceRegistrationIdentity.get() ||
+		CatalogStage->Request.pMaterialProgramRegistry.get() !=
+			Request.pMaterialProgramRegistry.get() ||
+		CatalogStage->Request.pScreenOverlayBinding.get() !=
+			Request.pScreenOverlayBinding.get() ||
+		CatalogStage->pDocument->strEffectAssetId != Request.strEffectAssetId ||
+		(nullptr != CatalogStage->pVisualProjection &&
+		 CatalogStage->pVisualProjection->Get_DocumentShared().get() !=
+			CatalogStage->pDocument.get()))
+	{
+		if (strOutStatus.empty())
+		{
+			strOutStatus =
+				"Loading Product Effect catalog stage identity is invalid.";
+		}
+		return false;
+	}
+
+	auto Candidate = std::make_shared<EFFECT_PRODUCT_LOADING_TARGET_STAGE>();
+	Candidate->pCatalogStage = CatalogStage;
+	if (!Prepare_ProductScreenOverlayTemplateFromBinding(
+			pDevice, Request.strEffectAssetId, Request.pScreenOverlayBinding,
+			Candidate->pScreenOverlayTemplate, strOutStatus))
+	{
+		strOutStatus =
+			"Loading Product Effect screen-overlay staging failed for " +
+			Request.strEffectAssetId + ": " + strOutStatus;
+		return false;
+	}
+	if (!Estimate_DocumentBudget(
+			*CatalogStage->pDocument, Candidate->BudgetCost, strOutStatus))
+	{
+		strOutStatus = "Loading Product Effect budget staging failed for " +
+			Request.strEffectAssetId + ": " + strOutStatus;
+		return false;
+	}
+	if (!Try_ResolveProductPlaybackDuration(
+			*CatalogStage->pDocument, CatalogStage->pVisualProjection,
+			Candidate->fPlaybackDurationSeconds, strOutStatus))
+	{
+		strOutStatus = "Loading Product Effect duration staging failed for " +
+			Request.strEffectAssetId + ": " + strOutStatus;
+		return false;
+	}
+	if (!Apply_ProductScreenOverlayReceipt(
+			Candidate->pScreenOverlayTemplate, Candidate->BudgetCost,
+			Candidate->fPlaybackDurationSeconds, strOutStatus) ||
+		!BudgetWithin(Candidate->BudgetCost, SCENE_HARD_BUDGET))
+	{
+		if (strOutStatus.empty())
+			strOutStatus = "screen-overlay hard budget exceeded";
+		strOutStatus =
+			"Loading Product Effect screen-overlay receipt staging failed for " +
+			Request.strEffectAssetId + ": " + strOutStatus;
+		return false;
+	}
+	if (!CEffectDocumentRenderer::Stage_VisualProgramTarget(
+			std::move(pDevice), std::move(pContextIdentity),
+			Request.iCatalogRevision,
+			{ Request.strEffectAssetId, CatalogStage->pDocument,
+				CatalogStage->pVisualProjection,
+				Request.pMaterialProgramRegistry },
+			Candidate->pRendererStage, strOutStatus))
+	{
+		strOutStatus = "Loading Product Effect renderer staging failed for " +
+			Request.strEffectAssetId + ": " + strOutStatus;
+		return false;
+	}
+
+	OutStage = std::move(Candidate);
+	strOutStatus = "Staged Product Effect resources on Loader worker: " +
+		Request.strEffectAssetId;
+	return true;
+	}
+	catch (const std::bad_alloc&)
+	{
+		OutStage.reset();
+		strOutStatus.clear();
+		return false;
+	}
+	catch (const std::exception& Exception)
+	{
+		OutStage.reset();
+		try
+		{
+			strOutStatus =
+				"Loading Product Effect worker staging raised an exception: " +
+				std::string(Exception.what());
+		}
+		catch (...)
+		{
+			strOutStatus.clear();
+		}
+		return false;
+	}
+	catch (...)
+	{
+		OutStage.reset();
+		strOutStatus.clear();
+		return false;
+	}
+}
+
+bool_t Client::CEffectPresentationService::Begin_LoadingProductCuePreparation(
+	const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
+	const uint64_t iJobEpoch,
+	const std::vector<std::string>& EffectAssetIds,
+	std::string& strOutStatus)
+{
+	const uint64_t iCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
+	if (nullptr == pJob || 0u == iJobEpoch || 0u == iCatalogRevision ||
+		pJob->Get_CurrentEpoch() != iJobEpoch ||
+		pJob->Get_CurrentCatalogRevision() != iCatalogRevision)
+	{
+		strOutStatus =
+			"Loading Product Effect job or catalog revision is invalid.";
+		return false;
+	}
+
+	std::optional<EFFECT_LOAD_JOB_COMMAND> Displaced;
+	if (EffectAssetIds.empty())
+	{
+		const EFFECT_LOAD_MAILBOX_POST_RESULT Posted = pJob->Post_Command(
+			EFFECT_LOAD_JOB_COMMAND::Close(iJobEpoch, iCatalogRevision),
+			Displaced, strOutStatus);
+		return EFFECT_LOAD_MAILBOX_POST_RESULT::POSTED == Posted;
+	}
+
+	auto Batch = std::make_shared<EFFECT_PRODUCT_LOAD_STAGE_BATCH>();
+	Batch->Targets.reserve(EffectAssetIds.size());
+	for (const std::string& EffectAssetId : EffectAssetIds)
+	{
+		EFFECT_PRODUCT_LOAD_STAGE_REQUEST Request;
+		if (!CEffectCatalog::Capture_ProductLoadStageRequest(
+				EffectAssetId, Request, strOutStatus))
+		{
+			return false;
+		}
+		Batch->Targets.push_back(std::move(Request));
+	}
+
+	if (!g_ProductPrewarmQueue.Claim_LoadingTargets(
+			iJobEpoch, iCatalogRevision, EffectAssetIds, strOutStatus))
+	{
+		return false;
+	}
+	std::vector<std::string> OwnedEffectAssetIds;
+	auto OwnedBatch = std::make_shared<EFFECT_PRODUCT_LOAD_STAGE_BATCH>();
+	OwnedEffectAssetIds.reserve(Batch->Targets.size());
+	OwnedBatch->Targets.reserve(Batch->Targets.size());
+	std::set<std::string, std::less<>> UniqueOwnedIds;
+	for (EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request : Batch->Targets)
+	{
+		if (g_ProductPrewarmQueue.Get_LoadingOwnerEpoch(
+				Request.strEffectAssetId) != iJobEpoch ||
+			!UniqueOwnedIds.insert(Request.strEffectAssetId).second)
+		{
+			continue;
+		}
+		OwnedEffectAssetIds.push_back(Request.strEffectAssetId);
+		OwnedBatch->Targets.push_back(std::move(Request));
+	}
+	if (OwnedEffectAssetIds.empty())
+	{
+		std::string ReleaseStatus;
+		(void)g_ProductPrewarmQueue.Release_LoadingOwner(
+			iJobEpoch, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::TERMINAL,
+			ReleaseStatus);
+		const EFFECT_LOAD_MAILBOX_POST_RESULT Posted = pJob->Post_Command(
+			EFFECT_LOAD_JOB_COMMAND::Close(iJobEpoch, iCatalogRevision),
+			Displaced, strOutStatus);
+		return EFFECT_LOAD_MAILBOX_POST_RESULT::POSTED == Posted;
+	}
+	std::string OwnedFront;
+	const EFFECT_PRODUCT_PREWARM_STEP_RESULT InitialStep =
+		g_ProductPrewarmQueue.Begin_LoadingFrame(iJobEpoch, OwnedFront);
+	if (EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED != InitialStep &&
+		EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY != InitialStep)
+	{
+		std::string ReleaseStatus;
+		(void)g_ProductPrewarmQueue.Release_LoadingOwner(
+			iJobEpoch, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::STRUCTURAL_FAILURE,
+			ReleaseStatus);
+		strOutStatus =
+			"Loading Product Effect owner has no consumable FIFO front.";
+		return false;
+	}
+
+	const EFFECT_LOAD_MAILBOX_POST_RESULT Posted = pJob->Post_Command(
+		EFFECT_LOAD_JOB_COMMAND::Accept_Discovery(
+			iJobEpoch, iCatalogRevision, std::move(OwnedEffectAssetIds),
+			std::move(OwnedBatch)),
+		Displaced, strOutStatus);
+	if (EFFECT_LOAD_MAILBOX_POST_RESULT::POSTED != Posted)
+	{
+		std::string ReleaseStatus;
+		(void)g_ProductPrewarmQueue.Release_LoadingOwner(
+			iJobEpoch, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::STRUCTURAL_FAILURE,
+			ReleaseStatus);
+		return false;
+	}
+	strOutStatus = "Started Loader-worker Product Effect resource staging.";
+	g_strStatus = strOutStatus;
+	return true;
+}
+
+void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
+	const uint64_t iJobEpoch)
+{
+	if (nullptr == pDevice || nullptr == pContext || nullptr == pJob ||
+		0u == iJobEpoch || pJob->Get_CurrentEpoch() != iJobEpoch)
+	{
+		return;
+	}
+
+	EFFECT_LOAD_JOB_RESULT WorkerResult;
+	std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE> Staged;
+	const auto FailStructural =
+		[pJob, iJobEpoch, &WorkerResult, &Staged](const std::string& Status)
+	{
+		/* Release every owner-thread reference before waking the Loader worker.
+		   The worker deliberately retains the other staged-bundle reference until
+		   ACK/cancel, so even structural failures destroy swapped-out renderer
+		   resources away from the UI frame. */
+		Staged.reset();
+		WorkerResult.pImmutablePayload.reset();
+		g_strStatus = Status;
+		OutputDebugStringA(("[Client][EffectPresentation] " + Status + "\n").c_str());
+		std::string ReleaseStatus;
+		(void)g_ProductPrewarmQueue.Release_LoadingOwner(
+			iJobEpoch, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::STRUCTURAL_FAILURE,
+			ReleaseStatus);
+		if (!pJob->Is_Cancelled() && !pJob->Is_Closed())
+		{
+			std::optional<EFFECT_LOAD_JOB_COMMAND> Displaced;
+			std::string CancelStatus;
+			(void)pJob->Post_Command(
+				EFFECT_LOAD_JOB_COMMAND::Cancel(
+					iJobEpoch, pJob->Get_CurrentCatalogRevision()),
+				Displaced, CancelStatus);
+		}
+	};
+
+	if (!pJob->Try_Pop_Result(WorkerResult))
+		return;
+	const uint64_t iCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
+	if (!WorkerResult.Is_Valid() || WorkerResult.iJobEpoch != iJobEpoch ||
+		WorkerResult.iCatalogRevision != iCatalogRevision ||
+		pJob->Get_CurrentCatalogRevision() != iCatalogRevision)
+	{
+		FailStructural("Loading Product Effect worker result is stale or invalid.");
+		return;
+	}
+
+	if (EFFECT_LOAD_JOB_RESULT_KIND::EPOCH_STAGE_COMPLETE ==
+		WorkerResult.eKind)
+	{
+		std::string ReleaseStatus;
+		if (!g_ProductPrewarmQueue.Release_LoadingOwner(
+				iJobEpoch, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::TERMINAL,
+				ReleaseStatus))
+		{
+			FailStructural(ReleaseStatus);
+			return;
+		}
+		std::optional<EFFECT_LOAD_JOB_COMMAND> Displaced;
+		std::string CloseStatus;
+		const EFFECT_LOAD_MAILBOX_POST_RESULT Posted = pJob->Post_Command(
+			EFFECT_LOAD_JOB_COMMAND::Close(iJobEpoch, iCatalogRevision),
+			Displaced, CloseStatus);
+		if (EFFECT_LOAD_MAILBOX_POST_RESULT::POSTED != Posted)
+			FailStructural("Loading Product Effect worker could not close cleanly.");
+		return;
+	}
+	if (EFFECT_LOAD_JOB_RESULT_KIND::TARGET_STAGED != WorkerResult.eKind ||
+		WorkerResult.strEffectAssetId.empty())
+	{
+		FailStructural("Loading Product Effect worker returned an unknown result.");
+		return;
+	}
+
+	std::string EffectId;
+	const EFFECT_PRODUCT_PREWARM_STEP_RESULT Step =
+		g_ProductPrewarmQueue.Begin_LoadingFrame(iJobEpoch, EffectId);
+	if (EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY != Step ||
+		EffectId != WorkerResult.strEffectAssetId)
+	{
+		FailStructural(
+			"Loading Product Effect result does not match the owned FIFO front.");
+		return;
+	}
+
+	EFFECT_LOAD_JOB_COMMAND TargetCommitAck =
+		EFFECT_LOAD_JOB_COMMAND::Target_CommitAck(
+			iJobEpoch, iCatalogRevision, EffectId);
+	std::optional<EFFECT_LOAD_JOB_COMMAND> DisplacedAck;
+	std::string AckStatus;
+	AckStatus.reserve(128u);
+	const auto PostTargetCommitAck =
+		[pJob, &TargetCommitAck, &DisplacedAck, &AckStatus]() -> bool_t
+	{
+		return EFFECT_LOAD_MAILBOX_POST_RESULT::POSTED == pJob->Post_Command(
+			std::move(TargetCommitAck), DisplacedAck, AckStatus);
+	};
+
+	if (WorkerResult.Failure.has_value())
+	{
+		EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT Failure;
+		Failure.iCatalogRevision = iCatalogRevision;
+		Failure.iJobEpoch = iJobEpoch;
+		Failure.strEffectAssetId = EffectId;
+		Failure.iRootCode = WorkerResult.Failure->iRootCode;
+		Failure.strRootMessage = WorkerResult.Failure->strRootMessage.empty() ?
+			"Product Effect Loading worker staging failed." :
+			WorkerResult.Failure->strRootMessage;
+		EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN Token;
+		std::string PrevalidateStatus;
+		if (!g_ProductPrewarmQueue.Prevalidate_Front(
+				EffectId, iCatalogRevision, iJobEpoch, false,
+				&Failure, Token, PrevalidateStatus))
+		{
+			FailStructural(PrevalidateStatus);
+			return;
+		}
+		std::string SettledStatus =
+			"Product Effect Loading preparation failed closed for " +
+			EffectId + ": " + Failure.strRootMessage;
+		std::string DebugStatus =
+			"[Client][EffectPresentation] " + SettledStatus + "\n";
+		g_ProductPrewarmQueue.Commit_PrevalidatedFront(std::move(Token));
+		if (!PostTargetCommitAck())
+		{
+			FailStructural(
+				"Loading Product Effect failure receipt ACK could not be posted.");
+			return;
+		}
+		g_strStatus.swap(SettledStatus);
+		OutputDebugStringA(DebugStatus.c_str());
+		return;
+	}
+
+	Staged =
+		std::static_pointer_cast<const EFFECT_PRODUCT_LOADING_TARGET_STAGE>(
+			WorkerResult.pImmutablePayload);
+	if (nullptr == Staged || nullptr == Staged->pCatalogStage ||
+		nullptr == Staged->pRendererStage ||
+		nullptr == Staged->pCatalogStage->pDocument ||
+		Staged->pCatalogStage->Request.iCatalogRevision != iCatalogRevision ||
+		Staged->pCatalogStage->Request.strEffectAssetId != EffectId ||
+		Staged->pCatalogStage->pDocument->strEffectAssetId != EffectId ||
+		(nullptr != Staged->pCatalogStage->pVisualProjection &&
+		 Staged->pCatalogStage->pVisualProjection->Get_DocumentShared().get() !=
+			Staged->pCatalogStage->pDocument.get()))
+	{
+		FailStructural(
+			"Loading Product Effect worker candidate identity is invalid.");
+		return;
+	}
+
+	PRODUCT_TARGET_RECEIPT_COMMIT ReceiptCommit;
+	std::string CommitStatus;
+	if (!Build_ProductTargetReceiptCommit(
+			EffectId, *Staged, ReceiptCommit, CommitStatus))
+	{
+		FailStructural(CommitStatus);
+		return;
+	}
+	std::string PreparedStatus =
+		"Prepared Loader-worker staged Product Effect " + EffectId;
+	EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN PreparedToken;
+	if (!g_ProductPrewarmQueue.Prevalidate_Front(
+			EffectId, iCatalogRevision, iJobEpoch, true, nullptr,
+			PreparedToken, CommitStatus))
+	{
+		FailStructural(CommitStatus);
+		return;
+	}
+
+	const auto AbortPreparedToken = [&PreparedToken, &FailStructural](
+		const std::string& Status)
+	{
+		std::string AbortStatus;
+		if (!g_ProductPrewarmQueue.Abort_PrevalidatedFront(
+				std::move(PreparedToken), AbortStatus))
+		{
+			FailStructural(AbortStatus);
+			return;
+		}
+		FailStructural(Status);
+	};
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> Document;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> Projection;
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT CatalogCommitReceipt;
+	const bool_t bCatalogCommitted = CEffectCatalog::Commit_ProductLoadStage(
+			Staged->pCatalogStage, CatalogCommitReceipt,
+			Document, Projection, CommitStatus);
+	if (!bCatalogCommitted)
+	{
+		AbortPreparedToken(CommitStatus.empty() ?
+			"Product Effect staged catalog commit failed." : CommitStatus);
+		return;
+	}
+	if (nullptr == Document ||
+		Document.get() != Staged->pCatalogStage->pDocument.get() ||
+		Projection.get() != Staged->pCatalogStage->pVisualProjection.get())
+	{
+		std::string RollbackStatus;
+		if (!CEffectCatalog::Rollback_ProductLoadStage(
+				std::move(CatalogCommitReceipt), RollbackStatus))
+		{
+			AbortPreparedToken(RollbackStatus.empty() ?
+				"Product Effect exact-identity failure left an unrolled catalog commit." :
+				RollbackStatus);
+		}
+		else
+		{
+			AbortPreparedToken(
+				"Product Effect staged catalog commit returned a different identity.");
+		}
+		return;
+	}
+	if (!CEffectDocumentRenderer::Commit_VisualProgramTargetStage(
+			Staged->pRendererStage, CommitStatus))
+	{
+		std::string RollbackStatus;
+		if (!CEffectCatalog::Rollback_ProductLoadStage(
+				std::move(CatalogCommitReceipt), RollbackStatus))
+		{
+			AbortPreparedToken(RollbackStatus.empty() ?
+				"Product Effect renderer failure left an unrolled catalog commit." :
+				RollbackStatus);
+		}
+		else
+		{
+			AbortPreparedToken(CommitStatus.empty() ?
+				"Product Effect staged renderer commit failed." : CommitStatus);
+		}
+		return;
+	}
+
+	Commit_ProductTargetReceipts(std::move(ReceiptCommit));
+	g_ProductPrewarmQueue.Commit_PrevalidatedFront(std::move(PreparedToken));
+	/* The Loader retains the other bundle reference until this ACK.  Drop all
+	   main-thread references first so maps/session resources swapped out by the
+	   renderer commit are deterministically destroyed on the worker. */
+	Staged.reset();
+	WorkerResult.pImmutablePayload.reset();
+	if (!PostTargetCommitAck())
+	{
+		FailStructural("Loading Product Effect prepared target ACK could not be posted.");
+		return;
+	}
+	g_strStatus.swap(PreparedStatus);
+}
+
+void Client::CEffectPresentationService::Cancel_LoadingProductCuePreparation(
+	const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
+	const uint64_t iJobEpoch)
+{
+	if (nullptr == pJob || 0u == iJobEpoch)
+		return;
+	std::string ReleaseStatus;
+	(void)g_ProductPrewarmQueue.Release_LoadingOwner(
+		iJobEpoch, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::CANCELLED,
+		ReleaseStatus);
+	if (pJob->Is_Cancelled() || pJob->Is_Closed())
+		return;
+	std::optional<EFFECT_LOAD_JOB_COMMAND> Displaced;
+	std::string CancelStatus;
+	(void)pJob->Post_Command(
+		EFFECT_LOAD_JOB_COMMAND::Cancel(
+			iJobEpoch, pJob->Get_CurrentCatalogRevision()),
+		Displaced, CancelStatus);
+}
+
 bool_t Client::CEffectPresentationService::
 Try_Get_PreparedProductDurationSeconds(
 	const std::string& strEffectAssetId,
@@ -2331,68 +3068,11 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		Projection = nullptr == Document ? nullptr :
 			CEffectCatalog::Find_VisualProjection(EffectId);
-	EFFECT_SCENE_BUDGET_COST BudgetCost;
-	f32_t fPlaybackDurationSeconds = 0.f;
-	std::shared_ptr<const CEffectScreenOverlayPresentation>
-		ScreenOverlayTemplate;
-	bool_t bPrepared = nullptr != Document;
-	if (nullptr == Document)
-	{
-		PrepareStatus =
-			"Product Effect incremental document load failed for " + EffectId +
-			": " + CEffectCatalog::Get_Status();
-	}
-	else if (nullptr != Projection &&
-		Projection->Get_DocumentShared().get() != Document.get())
-	{
-		PrepareStatus =
-			"Product Effect incremental document/projection identity diverged: " +
-			EffectId;
-		bPrepared = false;
-	}
-	if (bPrepared && !Prepare_ProductScreenOverlayTemplate(
-			pDevice, EffectId, ScreenOverlayTemplate, PrepareStatus))
-	{
-		PrepareStatus =
-			"Product Effect incremental screen-overlay preparation failed for " +
-			EffectId + ": " + PrepareStatus;
-		bPrepared = false;
-	}
-	if (bPrepared && !Estimate_DocumentBudget(
-			*Document, BudgetCost, PrepareStatus))
-	{
-		PrepareStatus = "Product Effect incremental budget admission failed for " +
-			EffectId + ": " + PrepareStatus;
-		bPrepared = false;
-	}
-	if (bPrepared && !Try_ResolveProductPlaybackDuration(
-			*Document, Projection, fPlaybackDurationSeconds, PrepareStatus))
-	{
-		PrepareStatus =
-			"Product Effect incremental duration preparation failed for " +
-			EffectId + ": " + PrepareStatus;
-		bPrepared = false;
-	}
-	if (bPrepared &&
-		(!Apply_ProductScreenOverlayReceipt(
-			ScreenOverlayTemplate, BudgetCost,
-			fPlaybackDurationSeconds, PrepareStatus) ||
-		 !BudgetWithin(BudgetCost, SCENE_HARD_BUDGET)))
-	{
-		if (PrepareStatus.empty())
-			PrepareStatus = "screen-overlay hard budget exceeded";
-		PrepareStatus =
-			"Product Effect incremental screen-overlay receipt failed for " +
-			EffectId + ": " + PrepareStatus;
-		bPrepared = false;
-	}
-	if (bPrepared)
-	{
-		bPrepared = CEffectDocumentRenderer::Prepare_VisualProgramTarget(
-			std::move(pDevice), std::move(pContext), iCatalogRevision,
-			{ EffectId, Document, Projection, MaterialProgramRegistry },
-			PrepareStatus);
-	}
+	PRODUCT_TARGET_PREPARATION_RESULT Prepared = Prepare_ProductTarget(
+		std::move(pDevice), std::move(pContext), iCatalogRevision, EffectId,
+		Document, Projection, MaterialProgramRegistry);
+	const bool_t bPrepared = Prepared.bPrepared;
+	PrepareStatus = Prepared.strStatus;
 
 	std::string CompletionStatus;
 	if (!g_ProductPrewarmQueue.Complete_Front(
@@ -2405,18 +3085,7 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	}
 	if (bPrepared)
 	{
-		g_ProductEffectBudgetCosts[EffectId] = BudgetCost;
-		g_ProductEffectPlaybackDurations[EffectId] =
-			fPlaybackDurationSeconds;
-		if (nullptr != ScreenOverlayTemplate)
-		{
-			g_ProductScreenOverlayTemplates[EffectId] =
-				std::move(ScreenOverlayTemplate);
-		}
-		else
-		{
-			g_ProductScreenOverlayTemplates.erase(EffectId);
-		}
+		Commit_ProductTargetReceipts(EffectId, std::move(Prepared));
 		g_strStatus = PrepareStatus;
 		return;
 	}
@@ -4214,7 +4883,6 @@ void Client::CEffectPresentationService::Clear_All()
 
 void Client::CEffectPresentationService::Release_PreparedResources()
 {
-    Clear_All();
 	g_ProductPrewarmQueue.Clear();
 	g_ProductEffectBudgetCosts.clear();
 	g_ProductEffectPlaybackDurations.clear();

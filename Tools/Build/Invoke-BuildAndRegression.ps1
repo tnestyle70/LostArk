@@ -14,6 +14,10 @@ $valtanHarnessExe = Join-Path $repoRoot `
     "Tools\ValtanFourPlayerHarness\Bin\$Configuration\ValtanFourPlayerHarness.exe"
 $characterSelectIsolationHarnessExe = Join-Path $repoRoot `
     "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
+$effectRenderHarnessExe = Join-Path $repoRoot `
+    "Tools\EffectRenderContractHarness\Bin\$Configuration\EffectRenderContractHarness.exe"
+$pointLightFalloffHarnessExe = Join-Path $repoRoot `
+    "Tools\PointLightFalloffContractHarness\Bin\$Configuration\PointLightFalloffContractHarness.exe"
 $runtimeResourceRoot = if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
     Join-Path $repoRoot 'Client\Bin\Resources'
 }
@@ -54,6 +58,8 @@ function Assert-RuntimeLayout {
         $serverExe,
         $valtanHarnessExe,
         $characterSelectIsolationHarnessExe,
+        $effectRenderHarnessExe,
+        $pointLightFalloffHarnessExe,
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_Deferred.hlsl'),
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_VtxTex.hlsl'),
         (Join-Path $runtimeResourceRoot 'Fonts')
@@ -115,6 +121,18 @@ try {
             'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
         Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj'
+    }
+
+    $LASTEXITCODE = 0
+    & '.\Tools\Build\Test-CompiledShaderClosure.ps1' `
+        -Configuration $Configuration `
+        -RepositoryRoot $repoRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Compiled shader closure validation failed.'
     }
 
     Assert-RuntimeLayout
@@ -210,6 +228,14 @@ try {
 	& (Join-Path $repoRoot `
 		'Tools\Network\Run-CharacterSelectIsolationHarness.ps1') `
 		-Configuration $Configuration
+
+    & (Join-Path $repoRoot `
+        'Tools\EffectRenderContractHarness\Run-EffectRenderContractHarness.ps1') `
+        -Configuration $Configuration
+
+    & (Join-Path $repoRoot `
+        'Tools\PointLightFalloffContractHarness\Run-PointLightFalloffContractHarness.ps1') `
+        -Configuration $Configuration
 
 	Write-Host "Regression completed: $Configuration"
     Write-Host 'Runtime level validation uses Framework.slnLaunch (Server + Client).'

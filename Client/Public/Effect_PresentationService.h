@@ -18,7 +18,9 @@
 NS_BEGIN(Client)
 
 class CCharacter;
+class CEffectLoadPreparationJob;
 class CEffectObject;
+class CEffectScreenOverlayPresentation;
 class CValtan;
 
 struct EFFECT_SPAWN_DESC final
@@ -108,6 +110,21 @@ struct EFFECT_SCENE_BUDGET_COST final
 	uint64_t iEstimatedDrawSubmissions = 0u;
 
 	bool operator==(const EFFECT_SCENE_BUDGET_COST&) const = default;
+};
+
+/* Immutable Loader-worker candidate for one Product target.  Catalog parsing,
+   overlay resource validation, budget/duration derivation and D3D11
+   device-object creation finish before this object crosses to the owner thread.
+   Nothing in this bundle is globally published until the owner commits it. */
+struct EFFECT_PRODUCT_LOADING_TARGET_STAGE final
+{
+	std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> pCatalogStage;
+	std::shared_ptr<CEffectDocumentRenderer::PRODUCT_TARGET_STAGE>
+		pRendererStage;
+	EFFECT_SCENE_BUDGET_COST BudgetCost;
+	f32_t fPlaybackDurationSeconds = 0.f;
+	std::shared_ptr<const CEffectScreenOverlayPresentation>
+		pScreenOverlayTemplate;
 };
 
 struct EFFECT_SCENE_BUDGET_PROBE final
@@ -228,6 +245,30 @@ public:
 	static EFFECT_PRODUCT_PREWARM_TARGET_PROBE
 		Get_ProductCuePreparationProbe(
 			const std::vector<std::string>& EffectAssetIds);
+	static bool_t Begin_LoadingProductCuePreparation(
+		const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
+		uint64_t iJobEpoch,
+		const std::vector<std::string>& EffectAssetIds,
+		std::string& strOutStatus);
+	/* Loader-worker-only stage.  The context argument is retained solely as the
+	   immutable identity stored by prepared resources; this path never invokes
+	   immediate-context methods or publishes catalog/renderer state. */
+	static bool_t Stage_LoadingProductTarget(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContextIdentity,
+		const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request,
+		std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE>& OutStage,
+		std::string& strOutStatus);
+	/* Main-thread non-blocking result consumer.  It commits at most one staged
+	   worker result and never waits for the Loader producer. */
+	static void Advance_LoadingProductCuePreparation(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
+		uint64_t iJobEpoch);
+	static void Cancel_LoadingProductCuePreparation(
+		const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
+		uint64_t iJobEpoch);
 	/* Natural late-join scheduling consults only metadata committed with the
 	   prepared Product target.  It never loads or stages an Effect from a boss
 	   snapshot callback. */
@@ -459,6 +500,8 @@ public:
 	static void Stop_BossOwner(const std::shared_ptr<CValtan>& pOwner);
     static void Clear_Level(uint32_t iLevelIndex);
     static void Clear_All();
+	/* Requires Clear_All while ObjectManager is alive and a quiescent Loading
+	   worker.  This function releases only process-global prepared/cache state. */
     static void Release_PreparedResources();
     static const std::string& Get_Status();
 

@@ -48,6 +48,8 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - `Client\Default\Client.vcxproj` — 게임 EXE 생성, `Engine.lib`에 링크
 - `Server\Default\Server.vcxproj` — 서버 권위 world/room 실행 파일
 - `Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj` — protocol 회귀 하네스
+- `Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj` — Effect stage/commit, compiled shader, WARP 계약 하네스
+- `Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj` — Engine Deferred compiled shader 소비 계약 하네스
 
 (`Engine\External\imgui\examples\*`의 vcxproj들은 ImGui 원본에 딸려온 샘플이며 솔루션에 포함되지 않는다. 건드리지 않는다.)
 
@@ -59,7 +61,9 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 3) Shared + NetworkProtocolHarness 빌드/실행
 4) Server 빌드
 5) Client 빌드
-6) Lobby/Bern/Valtan smoke + 변경 domain publisher validation
+6) EffectRenderContractHarness + PointLightFalloffContractHarness 빌드/실행
+7) compiled shader closure/hash 검사
+8) Lobby/Bern/Valtan smoke + 변경 domain publisher validation
 ```
 
 Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더에 생성한다.
@@ -75,7 +79,16 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 - `Engine\ThirdPartyLib\*.lib` → `EngineSDK\lib\`
 - `Engine.dll`, `fmod.dll`, 구성에 맞는 `assimp-vc143-mt(d).dll`, PhysX/PhysXCommon/
   PhysXFoundation 구성별 DLL → `Client\Bin\<Configuration>\`
+- `Engine\Bin\<Configuration>\Shader_Cell.cso`, `Shader_Deferred.cso` →
+  `Client\Bin\<Configuration>\`
 - `Engine\Bin\ShaderFiles\*` → `EngineSDK\hlsl\` → `Client\Bin\ShaderFiles\`
+
+Client 빌드는 Client가 소유하는 `Shader_*.hlsl`을 같은 구성의 module-adjacent `Shader_*.cso`로
+생성한다. 제품 런타임은 이 CSO만 `D3DX11CreateEffectFromMemory`로 열며 HLSL source compile로
+fallback하지 않는다. 누락·빈 파일·손상 bytecode·technique/pass/input-layout 불일치는 즉시 실패한다.
+`Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration <Debug|Release>`는 Engine/Client의 23개
+producer와 Client/Effect/PointLight 소비 복사본의 존재 및 SHA-256 일치를 검사한다. CSO는 빌드
+산출물이므로 Git에 커밋하지 않는다.
 
 `EngineSDK\`는 `.gitignore` 대상이다. **clean clone 직후에는 존재하지 않으므로 Client부터 빌드하면 반드시 실패한다.** 병렬 빌드(`/m`)로 한 번에 돌릴 때도 Engine → UpdateLib → Client 순서가 보장되지 않으면 race가 난다.
 
@@ -84,7 +97,7 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 - `CleanBuild.bat` — `.vs`, `EngineSDK`, Engine/Client의 Debug·Release 산출물과 각 프로젝트의 `x64` 중간 산출물 삭제
 - `CleanBuildV2.bat` — 위와 동일하며 이전 공용 출력 구조가 남긴 root exe/dll/pdb도 정리한다. `Resources`, `DataFiles`, `ShaderFiles`는 보존한다.
 
-정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. Client 작업 디렉터리를 반드시 `Client/Default`로 고정하고 셰이더·리소스 전제조건을 먼저 검사한다. 개별 MSBuild를 직접 실행할 때도 위 순서를 그대로 따른다.
+정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. Client 작업 디렉터리를 반드시 `Client/Default`로 고정하고 셰이더·리소스 전제조건을 먼저 검사한다. 이 스크립트는 Client 뒤 두 shader 하네스를 빌드하고 compiled shader closure를 검사한 뒤 하네스를 실행한다. Effect 하네스는 Client에 비링크 ProjectReference를 두므로 clean/병렬 solution 빌드에서도 Client의 전체 CSO 생성이 끝난 뒤 복사한다. 개별 MSBuild를 직접 실행할 때도 위 순서를 그대로 따른다.
 
 같은 working tree에서 Visual Studio와 자동화 빌드/publisher를 겹쳐 실행하지 않는다. 선언과 정의가 일치하는데
 `LNK2019`가 발생하면 broad clean보다 먼저 선택한 `Configuration|Platform`의 evaluated `IntDir/OutDir`와 provider

@@ -9,6 +9,9 @@
 #include "Collider.h"
 #include "DeployPropCatalog.h"
 #include "DeployPropObject.h"
+#include "Effect_Catalog.h"
+#include "Effect_LoadPreparationJob.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "MapAssetCatalog.h"
@@ -154,9 +157,32 @@ uint32_t APIENTRY ThreadMain(void* pArgument)
 }
 
 HRESULT CLoader::Initialize(const LEVEL eNextLevelID)
+
+{
+	return Initialize(eNextLevelID, 0u, 0u);
+}
+
+HRESULT CLoader::Initialize(
+	const LEVEL eNextLevelID,
+	const uint64_t iEffectLoadJobEpoch,
+	const uint64_t iEffectCatalogRevision)
 {
 	if (nullptr == CLevelRegistry::Find(eNextLevelID))
 		return E_INVALIDARG;
+	if ((0u == iEffectLoadJobEpoch) != (0u == iEffectCatalogRevision))
+		return E_INVALIDARG;
+	if (0u != iEffectLoadJobEpoch)
+	{
+		m_pEffectLoadJob = std::make_shared<CEffectLoadPreparationJob>();
+		std::string JobStatus;
+		if (nullptr == m_pEffectLoadJob || !m_pEffectLoadJob->Open(
+			iEffectLoadJobEpoch, iEffectCatalogRevision, JobStatus))
+		{
+			OutputDebugStringA(("[Loader][Effect] " + JobStatus + "\n").c_str());
+			m_pEffectLoadJob.reset();
+			return E_FAIL;
+		}
+	}
 
 	m_eNextLevelID = eNextLevelID;
 	m_iResult.store(S_FALSE, std::memory_order_release);
@@ -180,8 +206,10 @@ HRESULT CLoader::Initialize(const LEVEL eNextLevelID)
 
 HRESULT CLoader::Start_Loading()
 {
-	const HRESULT result =
+	HRESULT result =
 		CLevelRegistry::Execute_Load(m_eNextLevelID, *this);
+	if (SUCCEEDED(result) && nullptr != m_pEffectLoadJob)
+		result = Run_EffectLoadPreparation();
 	m_iResult.store(result, std::memory_order_release);
 	m_eState.store(
 		SUCCEEDED(result) ? STATE::SUCCEEDED : STATE::FAILED,
@@ -191,14 +219,246 @@ HRESULT CLoader::Start_Loading()
 	return result;
 }
 
+HRESULT CLoader::Run_EffectLoadPreparation()
+{
+	if (nullptr == m_pEffectLoadJob)
+		return S_OK;
+
+	std::optional<EFFECT_LOAD_JOB_COMMAND> PendingBatchCommand;
+	for (;;)
+	{
+		EFFECT_LOAD_JOB_COMMAND Command;
+		EFFECT_LOAD_MAILBOX_WAIT_RESULT WaitResult =
+			EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND;
+		if (PendingBatchCommand.has_value())
+		{
+			Command = std::move(*PendingBatchCommand);
+			PendingBatchCommand.reset();
+		}
+		else
+		{
+			WaitResult = m_pEffectLoadJob->Wait_Pop_Command(Command);
+		}
+		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CANCELLED == WaitResult)
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CLOSED == WaitResult)
+			return S_OK;
+		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != WaitResult ||
+			!Command.Is_Valid())
+		{
+			return E_FAIL;
+		}
+		if (EFFECT_LOAD_JOB_COMMAND_KIND::CANCEL == Command.eKind)
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		if (EFFECT_LOAD_JOB_COMMAND_KIND::CLOSE == Command.eKind)
+			return S_OK;
+		if (EFFECT_LOAD_JOB_COMMAND_KIND::ACCEPT_DISCOVERY != Command.eKind &&
+			EFFECT_LOAD_JOB_COMMAND_KIND::REBASE != Command.eKind)
+		{
+			return E_FAIL;
+		}
+
+		const auto Batch =
+			std::static_pointer_cast<const EFFECT_PRODUCT_LOAD_STAGE_BATCH>(
+				Command.pImmutablePayload);
+		if (nullptr == Batch ||
+			Batch->Targets.size() != Command.EffectAssetIds.size())
+		{
+			return E_FAIL;
+		}
+		for (size_t i = 0u; i < Batch->Targets.size(); ++i)
+		{
+			if (Batch->Targets[i].strEffectAssetId != Command.EffectAssetIds[i])
+				return E_FAIL;
+		}
+
+		EFFECT_LOAD_PROGRESS_SNAPSHOT Progress;
+		Progress.iJobEpoch = Command.iJobEpoch;
+		Progress.iCatalogRevision = Command.iCatalogRevision;
+		Progress.ePhase = EFFECT_LOAD_PROGRESS_PHASE::TARGET_STAGE;
+		Progress.bDeterminate = true;
+		Progress.iTotal = static_cast<uint32_t>(Batch->Targets.size());
+		Progress.strStatus = "Staging Product Effect resources.";
+		m_pEffectLoadJob->Publish_Progress(Progress);
+
+		bool_t bEpochRebased = false;
+		for (size_t i = 0u; i < Batch->Targets.size(); ++i)
+		{
+			if (m_isCancellationRequested.load(std::memory_order_acquire) ||
+				m_pEffectLoadJob->Is_Cancelled())
+			{
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			}
+
+			const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request =
+				Batch->Targets[i];
+			Progress.iCompleted = static_cast<uint32_t>(i);
+			Progress.strCurrentId = Request.strEffectAssetId;
+			Progress.strStatus =
+				"Preparing Product Effect document and device resources.";
+			m_pEffectLoadJob->Publish_Progress(Progress);
+
+			std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE> Staged;
+			std::string StageStatus;
+			const bool_t bStaged =
+				CEffectPresentationService::Stage_LoadingProductTarget(
+					m_pDevice, m_pContext, Request, Staged, StageStatus);
+			EFFECT_LOAD_JOB_RESULT Result;
+			Result.eKind = EFFECT_LOAD_JOB_RESULT_KIND::TARGET_STAGED;
+			Result.iJobEpoch = Command.iJobEpoch;
+			Result.iCatalogRevision = Command.iCatalogRevision;
+			Result.strEffectAssetId = Request.strEffectAssetId;
+			if (bStaged)
+			{
+				/* Keep one worker-owned reference through the matching ACK.  The
+				   owner-thread renderer commit swaps the previous prepared maps and
+				   shared-asset session into this candidate; retaining this reference
+				   makes their potentially large COM/map destruction happen back on
+				   the Loader worker after the ACK instead of on the UI frame. */
+				Result.pImmutablePayload = Staged;
+			}
+			else
+			{
+				EFFECT_LOAD_FAILURE_RECEIPT Failure;
+				Failure.iJobEpoch = Command.iJobEpoch;
+				Failure.iCatalogRevision = Command.iCatalogRevision;
+				Failure.strEffectAssetId = Request.strEffectAssetId;
+				Failure.iRootCode = E_FAIL;
+				Failure.strRootMessage = StageStatus.empty() ?
+					"Product Effect worker stage failed." : StageStatus;
+				Result.Failure = std::move(Failure);
+				++Progress.iIsolatedFailureCount;
+			}
+
+			const EFFECT_LOAD_RESULT_PUSH_RESULT PushResult =
+				m_pEffectLoadJob->Push_Result_Wait(std::move(Result));
+			if (EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED == PushResult)
+			{
+				bEpochRebased = true;
+				break;
+			}
+			if (EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED == PushResult)
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			if (EFFECT_LOAD_RESULT_PUSH_RESULT::CLOSED == PushResult)
+				return S_OK;
+			if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != PushResult)
+				return E_FAIL;
+
+			/* The staged payload remains the worker's current target until the
+			   main-thread owner has committed either its prepared record or its
+			   isolated failure receipt.  This bounds in-flight GPU/resource work
+			   to one target and prevents worker staging from outrunning commit. */
+			Progress.strStatus =
+				"Waiting for Product Effect target commit acknowledgment.";
+			m_pEffectLoadJob->Publish_Progress(Progress);
+			EFFECT_LOAD_JOB_COMMAND AckCommand;
+			const EFFECT_LOAD_MAILBOX_WAIT_RESULT AckWaitResult =
+				m_pEffectLoadJob->Wait_Pop_Command(AckCommand);
+			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CANCELLED == AckWaitResult)
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CLOSED == AckWaitResult)
+				return S_OK;
+			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != AckWaitResult ||
+				!AckCommand.Is_Valid())
+			{
+				OutputDebugStringA(
+					"[Loader][Effect] Target commit ACK wait returned an invalid command.\n");
+				return E_FAIL;
+			}
+			if (EFFECT_LOAD_JOB_COMMAND_KIND::CANCEL == AckCommand.eKind)
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			if (EFFECT_LOAD_JOB_COMMAND_KIND::CLOSE == AckCommand.eKind)
+				return S_OK;
+			if (EFFECT_LOAD_JOB_COMMAND_KIND::REBASE == AckCommand.eKind)
+			{
+				PendingBatchCommand = std::move(AckCommand);
+				bEpochRebased = true;
+				break;
+			}
+			if (EFFECT_LOAD_JOB_COMMAND_KIND::TARGET_COMMIT_ACK !=
+					AckCommand.eKind ||
+				AckCommand.iJobEpoch != Command.iJobEpoch ||
+				AckCommand.iCatalogRevision != Command.iCatalogRevision ||
+				1u != AckCommand.EffectAssetIds.size() ||
+				AckCommand.EffectAssetIds.front() != Request.strEffectAssetId)
+			{
+				OutputDebugStringA(
+					"[Loader][Effect] Target commit ACK identity does not match the staged target.\n");
+				return E_FAIL;
+			}
+			Progress.iCompleted = static_cast<uint32_t>(i + 1u);
+			Progress.strCurrentId.clear();
+			Progress.strStatus = Progress.iCompleted == Progress.iTotal ?
+				"Finalizing Product Effect staging epoch." :
+				"Product Effect target committed.";
+			m_pEffectLoadJob->Publish_Progress(Progress);
+		}
+		if (bEpochRebased)
+			continue;
+
+		EFFECT_LOAD_JOB_RESULT Complete;
+		Complete.eKind = EFFECT_LOAD_JOB_RESULT_KIND::EPOCH_STAGE_COMPLETE;
+		Complete.iJobEpoch = Command.iJobEpoch;
+		Complete.iCatalogRevision = Command.iCatalogRevision;
+		const EFFECT_LOAD_RESULT_PUSH_RESULT CompleteResult =
+			m_pEffectLoadJob->Push_Result_Wait(std::move(Complete));
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED == CompleteResult)
+			continue;
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED == CompleteResult)
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::CLOSED == CompleteResult)
+			return S_OK;
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != CompleteResult)
+			return E_FAIL;
+		Progress.ePhase = EFFECT_LOAD_PROGRESS_PHASE::EPOCH_STAGE_COMPLETE;
+		Progress.iCompleted = Progress.iTotal;
+		Progress.strCurrentId.clear();
+		Progress.strStatus = "Product Effect resource staging complete.";
+		m_pEffectLoadJob->Publish_Progress(Progress);
+	}
+}
+
 void CLoader::Set_Status(const tchar_t* pStatus)
 {
 	{
 		lock_guard<mutex> lock(m_StatusMutex);
+		const bool_t bChanged = nullptr == pStatus ?
+			L'\0' != m_szLoadingText[0] :
+			0 != wcscmp(m_szLoadingText, pStatus);
 		if (nullptr == pStatus)
 			m_szLoadingText[0] = L'\0';
 		else
 			wcsncpy_s(m_szLoadingText, pStatus, _TRUNCATE);
+		m_bProgressDeterminate = false;
+		m_iProgressCompleted = 0u;
+		m_iProgressTotal = 0u;
+		if (bChanged)
+			m_ProgressPhaseStarted = std::chrono::steady_clock::now();
+	}
+
+	lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+	g_ActiveStatus = ToUtf8(pStatus);
+}
+
+void CLoader::Set_DeterminateStatus(
+	const tchar_t* pStatus,
+	const size_t iCompleted,
+	const size_t iTotal)
+{
+	{
+		lock_guard<mutex> lock(m_StatusMutex);
+		const bool_t bChanged = nullptr == pStatus ?
+			L'\0' != m_szLoadingText[0] :
+			0 != wcscmp(m_szLoadingText, pStatus);
+		if (nullptr == pStatus)
+			m_szLoadingText[0] = L'\0';
+		else
+			wcsncpy_s(m_szLoadingText, pStatus, _TRUNCATE);
+		m_bProgressDeterminate = 0u != iTotal;
+		m_iProgressCompleted = (min)(iCompleted, iTotal);
+		m_iProgressTotal = iTotal;
+		if (bChanged)
+			m_ProgressPhaseStarted = std::chrono::steady_clock::now();
 	}
 
 	lock_guard<mutex> activeLock(g_ActiveStatusMutex);
@@ -209,6 +469,25 @@ std::string CLoader::Get_ActiveStatus()
 {
 	lock_guard<mutex> lock(g_ActiveStatusMutex);
 	return g_ActiveStatus;
+}
+
+CLoader::PROGRESS_SNAPSHOT CLoader::Get_ProgressSnapshot() const
+{
+	PROGRESS_SNAPSHOT Snapshot;
+	tchar_t Status[MAX_PATH]{};
+	{
+		lock_guard<mutex> lock(m_StatusMutex);
+		wcsncpy_s(Status, m_szLoadingText, _TRUNCATE);
+		Snapshot.bDeterminate = m_bProgressDeterminate;
+		Snapshot.iCompleted = m_iProgressCompleted;
+		Snapshot.iTotal = m_iProgressTotal;
+		Snapshot.iElapsedMs = static_cast<uint64_t>(
+			std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::steady_clock::now() -
+				m_ProgressPhaseStarted).count());
+	}
+	Snapshot.strStatus = ToUtf8(Status);
+	return Snapshot;
 }
 
 void CLoader::Copy_Status(
@@ -558,7 +837,8 @@ HRESULT CLoader::Ready_MapArea(
 			TEXT("Map: model prototypes %zu/%zu"),
 			loadedModelCount,
 			requiredModelCount);
-		Set_Status(progress);
+		Set_DeterminateStatus(
+			progress, loadedModelCount, requiredModelCount);
 
 		const std::string modelPath =
 			entry.resolvedModelPath.string();
@@ -855,7 +1135,8 @@ HRESULT CLoader::Ready_Character_Rendering(
 				completedModelCount,
 				totalModelCount,
 				fileName.c_str());
-			Set_Status(status);
+			Set_DeterminateStatus(
+				status, completedModelCount, totalModelCount);
 		};
 		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
 			m_pDevice,
@@ -1078,11 +1359,14 @@ HRESULT CLoader::Ready_ValtanPresentation(const uint32_t iLevelIndex)
 unique_ptr<CLoader> CLoader::Create(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
-	const LEVEL eNextLevelID)
+	const LEVEL eNextLevelID,
+	const uint64_t iEffectLoadJobEpoch,
+	const uint64_t iEffectCatalogRevision)
 {
 	auto pInstance = unique_ptr<CLoader>(
 		new CLoader(pDevice, pContext));
-	if (FAILED(pInstance->Initialize(eNextLevelID)))
+	if (FAILED(pInstance->Initialize(
+		eNextLevelID, iEffectLoadJobEpoch, iEffectCatalogRevision)))
 		return nullptr;
 	return pInstance;
 }
@@ -1092,11 +1376,41 @@ void CLoader::Free()
 	if (nullptr != m_hThread)
 	{
 		m_isCancellationRequested.store(true, std::memory_order_release);
+		if (nullptr != m_pEffectLoadJob &&
+			!m_pEffectLoadJob->Is_Cancelled() &&
+			!m_pEffectLoadJob->Is_Closed())
+		{
+			std::optional<EFFECT_LOAD_JOB_COMMAND> Displaced;
+			std::string CancelStatus;
+			(void)m_pEffectLoadJob->Post_Command(
+				EFFECT_LOAD_JOB_COMMAND::Cancel(
+					m_pEffectLoadJob->Get_CurrentEpoch(),
+					m_pEffectLoadJob->Get_CurrentCatalogRevision()),
+				Displaced,
+				CancelStatus);
+		}
+		const auto FailFastOnWaitFailure = [](const DWORD waitResult) noexcept
+		{
+			if (WAIT_FAILED != waitResult)
+				return;
+			const DWORD errorCode = GetLastError();
+			OutputDebugStringA(
+				"[Loader] Worker wait failed; terminating the process to preserve loader invariants.\n");
+			if (!TerminateProcess(
+					GetCurrentProcess(),
+					ERROR_SUCCESS == errorCode ? ERROR_INVALID_HANDLE : errorCode))
+			{
+				std::terminate();
+			}
+			__assume(0);
+		};
 		DWORD waitResult = WaitForSingleObject(m_hThread, 5000);
+		FailFastOnWaitFailure(waitResult);
 		if (WAIT_TIMEOUT == waitResult)
 		{
 			CancelSynchronousIo(m_hThread);
 			waitResult = WaitForSingleObject(m_hThread, 5000);
+			FailFastOnWaitFailure(waitResult);
 		}
 		if (WAIT_TIMEOUT == waitResult)
 		{

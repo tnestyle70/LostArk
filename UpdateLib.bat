@@ -29,11 +29,21 @@ if /i "%BUILD_CONFIG%"=="Debug" if not exist "%ENGINE_BIN%\Engine.pdb" (
     echo Engine debug symbols were not built: %ENGINE_BIN%\Engine.pdb
     exit /b 1
 )
+if not exist "%ENGINE_BIN%\Shader_Cell.cso" (
+    echo Engine compiled shader was not built for %BUILD_CONFIG%: %ENGINE_BIN%\Shader_Cell.cso
+    exit /b 1
+)
+if not exist "%ENGINE_BIN%\Shader_Deferred.cso" (
+    echo Engine compiled shader was not built for %BUILD_CONFIG%: %ENGINE_BIN%\Shader_Deferred.cso
+    exit /b 1
+)
 
 xcopy /y/s ".\Engine\Public\*.*" ".\EngineSDK\inc\" || exit /b 1
 xcopy /y "%ENGINE_BIN%\*.lib" "%ENGINE_SDK_LIB%\" || exit /b 1
 xcopy /y ".\Engine\ThirdPartyLib\*.lib" ".\EngineSDK\lib\" || exit /b 1
 xcopy /y "%ENGINE_BIN%\Engine.dll" "%CLIENT_BIN%\" || exit /b 1
+xcopy /y "%ENGINE_BIN%\Shader_Cell.cso" "%CLIENT_BIN%\" || exit /b 1
+xcopy /y "%ENGINE_BIN%\Shader_Deferred.cso" "%CLIENT_BIN%\" || exit /b 1
 if /i "%BUILD_CONFIG%"=="Debug" (
     xcopy /y "%ENGINE_BIN%\Engine.pdb" "%CLIENT_BIN%\" || exit /b 1
 )
