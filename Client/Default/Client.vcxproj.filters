@@ -9285,6 +9285,30 @@
     <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_realpbr_wp_dead_msk.hlsli">
       <Filter>96.DataFiles\Effects\TranslatedShaders</Filter>
     </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.appear_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.blur_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.core_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.core_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.hammer_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.hit_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.magic_circle_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.magic_circle_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.appear_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
@@ -9354,6 +9378,9 @@
     <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blur_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.blur_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.decal_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
@@ -9375,10 +9402,40 @@
     <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.distortion_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.lumen_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.lumen_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.lumen_3.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.lumen_4.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.lumen_5.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.magic_circle_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.magic_circle_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.point_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.point_2.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.point_3.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.point_4.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.point_5.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\V2\Authored\esther.thirain.trail_1.effectv2.json">
@@ -9439,6 +9496,9 @@
       <Filter>96.DataFiles\Effects\V2\Bindings</Filter>
     </None>
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_59030.effectv2bindings.json">
+      <Filter>96.DataFiles\Effects\V2\Bindings</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Bindings\NPC_59060.effectv2bindings.json">
       <Filter>96.DataFiles\Effects\V2\Bindings</Filter>
     </None>
     <None Include="..\..\Data\Effects\V2\TextureSlotUsage.v1.json">

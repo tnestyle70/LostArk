@@ -171,6 +171,13 @@ CMainApp::~CMainApp()
 	Free();
 }
 
+void CMainApp::Play_UIButtonClickSound()
+{
+	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/UI/Select/ui_default_button_click2__59426200.wav");
+	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+}
+
 #ifdef _DEBUG
 void CMainApp::Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle)
 {
@@ -347,7 +354,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		const bool_t iDown = windowFocused &&
 			0 != (GetAsyncKeyState(0x49 /* VK_I */) & 0x8000);
 		if (iDown && !m_bIDown)
+		{
 			m_pInventoryView->Toggle();
+			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+				m_pInventoryView->Is_Open() ?
+				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
+				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
+			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+		}
 		m_bIDown = iDown;
 	}
 
@@ -394,6 +408,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
 				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
 				Set_ItemUpgradeCenterPanelVisible(true);
+			}
+			else
+			{
+				// Closing mid-wait must not leave the looping wait sound behind with no
+				// screen visible to end it.
+				CGameInstance::Get().Stop_Music();
 			}
 		}
 		m_bPDown = pDown;
@@ -1361,7 +1381,10 @@ void CMainApp::Render_LobbyButtons()
 			ImGui::GetForegroundDrawList(pViewport)->AddImage(pHoverSRV, vMin, vMax);
 		}
 		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			Play_UIButtonClickSound();
 			CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT);
+		}
 	}
 }
 
@@ -1607,6 +1630,7 @@ void CMainApp::Update_ItemUpgradeSelection()
 		if (!bHovered || !bClicked)
 			continue;
 
+		Play_UIButtonClickSound();
 		m_iItemUpgradeSelectedSlot = i;
 
 		f32_t fTargetX = 0.f, fTargetY = 0.f, fTargetWidth = 0.f, fTargetHeight = 0.f;
@@ -1648,6 +1672,8 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		return;
 
+	Play_UIButtonClickSound();
+
 	/* (Re)starts the fill from 0 even if a previous run already completed -- a debug preview
 	button is expected to be repeatable. Hides the 100%-only art immediately so a re-click during
 	the held-100 state doesn't leave it showing through the new fill. */
@@ -1662,6 +1688,10 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
 	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
+
+	const filesystem::path growSoundPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/UI/Enhancement/sys_enhance_levelup_growup_full1__465402134.wav");
+	CGameInstance::Get().Play_Sound(growSoundPath.wstring(), 1.f);
 }
 
 void CMainApp::Update_ItemUpgradeReforgeButton()
@@ -1691,6 +1721,8 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		return;
 
+	Play_UIButtonClickSound();
+
 	/* Placeholder pass/fail rate -- Data/Balance has no real 재련 success-rate field yet, so this
 	is a flat 50% purely so both result screens can be exercised while testing. The Client never
 	owns real success/fail authority; replace with a real Server-resolved outcome once one exists,
@@ -1713,6 +1745,14 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", true);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", true);
 	m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ResultWaitEmblem");
+
+	/* CSound_Manager has exactly one loop-capable channel (Play_Music/Stop_Music) --
+	Play_Sound is fire-and-forget one-shot only. Reused here for the "화면을 클릭하여
+	결과 즉시 확인" wait loop since there is no separate SFX-loop primitive; this stops
+	whatever BGM was already playing for as long as the wait screen is up. */
+	const filesystem::path waitSoundPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/UI/Enhancement/sys_enhance_3_waiting1__95424590.wav");
+	CGameInstance::Get().Play_Music(waitSoundPath.wstring(), 1.f);
 }
 
 void CMainApp::Update_ItemUpgradeResultWaitClick()
@@ -1746,6 +1786,32 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_SuccessEffect");
 	else
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_FailEffect");
+
+	CGameInstance::Get().Stop_Music();
+	// Equally-weighted variants (the same real success/fail vox recorded several times),
+	// same pattern CSoundCueCatalog already documents for Character/Valtan cues.
+	static std::mt19937 s_itemUpgradeResultSoundRng{ std::random_device{}() };
+	if (bSuccess)
+	{
+		static const wchar_t* const SUCCESS_SOUNDS[] = {
+			L"Sound/UI/Enhancement/sys_enhance_1_success1__168050678.wav",
+			L"Sound/UI/Enhancement/sys_enhance_2_success1__225949772.wav",
+			L"Sound/UI/Enhancement/sys_enhance_4_success1__596670890.wav",
+		};
+		const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+			SUCCESS_SOUNDS[s_itemUpgradeResultSoundRng() % 3u]);
+		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+	}
+	else
+	{
+		static const wchar_t* const FAIL_SOUNDS[] = {
+			L"Sound/UI/Enhancement/sys_enhance_3_casting_fail1__668013724.wav",
+			L"Sound/UI/Enhancement/sys_enhance_4_casting_fail1__490424786.wav",
+		};
+		const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+			FAIL_SOUNDS[s_itemUpgradeResultSoundRng() % 2u]);
+		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+	}
 }
 
 void CMainApp::Update_ItemUpgradeResultOkButton()
@@ -1781,6 +1847,8 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 		vMouse.y >= vMin.y && vMouse.y < vMax.y;
 	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		return;
+
+	Play_UIButtonClickSound();
 
 	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);

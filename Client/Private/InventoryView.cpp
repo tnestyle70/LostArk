@@ -6,6 +6,7 @@
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
 #include "ItemCatalog.h"
+#include "MainApp.h"
 
 #include <utility>
 
@@ -193,6 +194,7 @@ void Client::CInventoryView::Render_CategoryTabs()
 
 		if (bHovered && bClicked)
 		{
+			CMainApp::Play_UIButtonClickSound();
 			m_strSelectedCategoryId = bSelected ? string{} : Category.pSlotId;
 		}
 

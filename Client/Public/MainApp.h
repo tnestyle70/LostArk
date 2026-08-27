@@ -58,6 +58,11 @@ public:
 	void Update(f32_t fTimeDelta);
 	HRESULT Render();
 
+	/* Shared one-shot click sound for every real UI button (not Debug/Tool authoring
+	widgets) -- single source of truth for the sound asset path so every button's own
+	click-handling code calls this instead of repeating the literal path. */
+	static void Play_UIButtonClickSound();
+
 #ifdef _DEBUG
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 #endif

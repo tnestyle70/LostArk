@@ -1223,7 +1223,10 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(pPath))
 			pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
 		if (bHovered && bClicked)
+		{
+			CMainApp::Play_UIButtonClickSound();
 			*Button.pOutClicked = true;
+		}
 	}
 
 	/* Real nickname entry -- ImGui::InputText already handles Korean IME/caret correctly (this
@@ -1731,7 +1734,10 @@ void CLevel_CharacterSelect::Render_ClassList()
 			IM_COL32(230, 230, 230, 255), Entry.pCategoryLabel);
 
 		if (bHovered && bClicked)
+		{
+			CMainApp::Play_UIButtonClickSound();
 			m_iExpandedCategory = bExpanded ? -1 : i;
+		}
 
 		fRowY += Entry.fHeight + ROW_GAP;
 
@@ -1782,7 +1788,10 @@ void CLevel_CharacterSelect::Render_ClassList()
 			}
 
 			if (bThumbHovered && bClicked)
+			{
+				CMainApp::Play_UIButtonClickSound();
 				Request_ClassChange(Entry.iSupportedClassIndex);
+			}
 
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
 		}
@@ -1857,6 +1866,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 
 		if (bHovered && bClicked)
 		{
+			CMainApp::Play_UIButtonClickSound();
 			m_iSelectedArenaSpawnIndex = Button.iOptionIndex;
 			Request_SelectedArenaSpawn();
 		}
@@ -1881,6 +1891,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 				}
 				if (bClicked && nullptr != m_pWorldEntityCommandSink)
 				{
+					CMainApp::Play_UIButtonClickSound();
 					m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
 						m_iNextDespawnRequestSequence++);
 					/* Request_SelectedArenaSpawn refuses to resend once
@@ -1914,7 +1925,10 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 					pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
 				}
 				if (bClicked)
+				{
+					CMainApp::Play_UIButtonClickSound();
 					Request_CreateCharacterButtonClick();
+				}
 			}
 		}
 	}
@@ -1938,7 +1952,10 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 				}
 			}
 			if (bHovered && bClicked)
+			{
+				CMainApp::Play_UIButtonClickSound();
 				Fail_ServerArena("Leaving Server Arena.");
+			}
 		}
 	}
 }

@@ -2643,7 +2643,10 @@ void CLevel_ValtanArena::Update_DeadScene()
 	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
 		vMouse.y >= vMin.y && vMouse.y < vMax.y;
 	if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		CMainApp::Play_UIButtonClickSound();
 		m_PlayerController.Request_Revive();
+	}
 }
 
 #ifdef _DEBUG

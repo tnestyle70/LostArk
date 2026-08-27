@@ -22,7 +22,11 @@ namespace
 	constexpr std::string_view SCHEMA = "lostark.valtan-pattern-sound-cues";
 	constexpr uint32_t FORMAT_VERSION = 1u;
 	constexpr std::string_view OWNER_ARCHETYPE_ID = "BOSS_VALTAN";
-	constexpr size_t MAX_CUE_COUNT = 512u;
+	/* Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json real cue count grew past the
+	old 512 cap (519 as of the animation-tool-presentation-parity content), which fail-closed the
+	entire document -- every Valtan pattern sound cue silently stopped playing at once instead of
+	just the cues past the limit. Raised with real headroom instead of matching the count exactly. */
+	constexpr size_t MAX_CUE_COUNT = 1024u;
 
 	bool_t Is_ExactObject(
 		const DATA_JSON_VALUE& Value,
@@ -233,6 +237,7 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 	std::unordered_set<std::string> BindingIds;
 	std::unordered_set<std::string> OccurrenceIds;
 	std::unordered_set<std::string> ActionClipOccurrenceTuples;
+	size_t iSkippedUnimplementedPatternCount = 0u;
 	for (const DATA_JSON_VALUE& CueValue : pCues->Get_Array())
 	{
 		if (!Is_ExactObject(CueValue,
@@ -292,13 +297,19 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 			return false;
 		}
 
+		/* A pattern authored at the animation/sound-cue layer but not yet wired into
+		Data/Encounters/Valtan/ValtanEncounter.json (real Server hit shape/damage/motion
+		not authored yet -- e.g. VALTAN_ARENA_BREAK_33/_84) is not a corrupt document,
+		just content that has not reached that layer yet. Skip only this cue instead of
+		fail-closing every other real cue in the same document. */
 		const ENCOUNTER_PATTERN_REFERENCE* pPattern =
 			Encounter.Find_Pattern(Cue.strPatternId);
 		if (nullptr == pPattern)
 		{
-			strOutStatus = "Valtan pattern Sound cue pattern is unknown: " +
-				Cue.strPatternId;
-			return false;
+			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
+				"pattern not yet in Encounter: " + Cue.strPatternId + "\n").c_str());
+			++iSkippedUnimplementedPatternCount;
+			continue;
 		}
 		const auto Stage = std::find_if(pPattern->stages.begin(),
 			pPattern->stages.end(), [&Cue](const ENCOUNTER_STAGE_REFERENCE& Value)
@@ -308,9 +319,10 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 		if (pPattern->stages.end() == Stage ||
 			Stage->actionId != Cue.strActionId || 0u == Stage->iDurationMs)
 		{
-			strOutStatus = "Valtan pattern Sound cue encounter tuple is invalid: " +
-				Cue.strBindingId;
-			return false;
+			OutputDebugStringA(("[Client][Valtan] pattern Sound cue skipped -- "
+				"encounter tuple is invalid: " + Cue.strBindingId + "\n").c_str());
+			++iSkippedUnimplementedPatternCount;
+			continue;
 		}
 		Cue.iStageIndex = static_cast<uint32_t>(Stage - pPattern->stages.begin());
 		Cue.iStageDurationMs = Stage->iDurationMs;
@@ -350,7 +362,9 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 		});
 	InOutDocument = std::move(Staged);
 	strOutStatus = "Parsed " + std::to_string(InOutDocument.Cues.size()) +
-		" clip-occurrence-qualified Valtan pattern Sound cue(s).";
+		" clip-occurrence-qualified Valtan pattern Sound cue(s), skipped " +
+		std::to_string(iSkippedUnimplementedPatternCount) +
+		" not-yet-implemented-pattern cue(s).";
 	return true;
 }
 
