@@ -141,7 +141,7 @@
     <OutDir>$(ProjectDir)..\Bin\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\Intermediate\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>Server</TargetName>
-    <LocalDebuggerCommandArguments>--bind-address 127.0.0.1</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--bind-address 0.0.0.0</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

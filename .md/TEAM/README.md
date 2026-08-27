@@ -2,7 +2,7 @@
 
 이 폴더는 팀원이 pull 후 가장 먼저 보는 살아 있는 public 계약의 정본이다. 날짜별 PLAN/RESULT는 구현 당시의 증거이므로 `.md/GB/<MM-DD>/`에 그대로 보존하고, 여기서 현재 유효한 문서만 연결한다.
 
-## 2026-08-20까지 팀 LAN 세션 시작
+## 2026-09-30까지 팀 LAN 세션 시작
 
 모든 팀원과 에이전트는 pull 후 다른 작업보다 먼저 아래 명령을 실행한다.
 
@@ -12,6 +12,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
 
 endpoint와 만료일 정본은 `../../Tools/Network/TeamLanEndpoint.json`, 실행·실패 진단 정본은
 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`이다.
+현재 공유 Server endpoint는 같은 `JusinGame5G`의 `192.168.0.20:7777`이다.
 현재 Server가 꺼져 있으면 `not-listening`이 정상일 수 있으며, 스크립트가 로컬 debugger 설정을
 동기화한 뒤 출력이 `server-host`이면 Visual Studio의 `Server + Client` profile, `client`이면
 Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.

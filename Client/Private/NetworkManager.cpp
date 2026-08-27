@@ -734,9 +734,9 @@ CNetworkManager& CNetworkManager::Get()
 
 std::string CNetworkManager::Resolve_ServerHost()
 {
-	/* The shared LAN Server was retired on 2026-08-17; each developer runs their
-	   own. LOSTARK_SERVER_HOST still wins for anyone pointing at a real host. */
-	constexpr char DEFAULT_SERVER_HOST[] = "127.0.0.1";
+	/* The temporary team LAN endpoint is the direct-launch fallback. The
+	   process-local environment still wins so isolated tests can name loopback. */
+	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.20";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(
@@ -752,7 +752,7 @@ std::string CNetworkManager::Resolve_ServerHost()
 #ifdef _DEBUG
 	/* The VS debugger environment is the team endpoint authority. A developer
 	   may still opt into a loopback Server when launching outside VS, but that
-	   local convenience file must never silently override an explicit host. */
+	   disabled-by-default convenience file never overrides an explicit host. */
 	if (const std::string localHost = Resolve_DebugLocalServerHost();
 		!localHost.empty())
 	{
