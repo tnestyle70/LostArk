@@ -81,6 +81,14 @@ bool Client::CNetworkPlayerCommandSink::Request_RevivePlayer(
 	return CNetworkManager::Get().Send_RevivePlayer(clientSequence);
 }
 
+#ifdef _DEBUG
+bool Client::CNetworkPlayerCommandSink::Request_DebugKillSelf(
+	const std::uint32_t clientSequence)
+{
+	return CNetworkManager::Get().Send_DebugKillSelf(clientSequence);
+}
+#endif
+
 bool Client::CNetworkPlayerCommandSink::Request_EstherSkill(
 	const std::uint32_t clientSequence,
 	const std::uint8_t slotIndex,

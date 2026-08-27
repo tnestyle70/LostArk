@@ -8,6 +8,7 @@
 #include "PlayerCommandSink.h"
 #include "PlayerSkillCatalog.h"
 #include "SkillGroundTargetPreview.h"
+#include "ClickMoveEffect.h"
 #include "Transform.h"
 
 #include <cmath>
@@ -288,6 +289,8 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 			{
 				m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
 				m_LastSentMoveGoal = goal;
+				if (nullptr != m_pClickMoveEffect)
+					m_pClickMoveEffect->Play(goal);
 				/* Poll_BasicAttack runs later this frame.  Its current physical
 				state either keeps this suppression (held) or clears it (up). */
 				m_BasicAttackResendGate.Suppress_UntilRelease();
@@ -631,6 +634,32 @@ void Client::CPlayerController::Set_CommandSink(
 	m_pCommandSink = commandSink;
 }
 
+bool_t Client::CPlayerController::Request_Revive()
+{
+	if (nullptr == m_pCommandSink)
+		return false;
+	if (!m_pCommandSink->Request_RevivePlayer(m_iNextActionSequence))
+		return false;
+	++m_iNextActionSequence;
+	if (0u == m_iNextActionSequence)
+		m_iNextActionSequence = 1u;
+	return true;
+}
+
+#ifdef _DEBUG
+bool_t Client::CPlayerController::Request_DebugKillSelf()
+{
+	if (nullptr == m_pCommandSink)
+		return false;
+	if (!m_pCommandSink->Request_DebugKillSelf(m_iNextActionSequence))
+		return false;
+	++m_iNextActionSequence;
+	if (0u == m_iNextActionSequence)
+		m_iNextActionSequence = 1u;
+	return true;
+}
+#endif
+
 bool_t Client::CPlayerController::Initialize_TargetingPreview(
 	const uint32_t levelIndex)
 {
@@ -658,6 +687,38 @@ bool_t Client::CPlayerController::Initialize_TargetingPreview(
 			levelIndex, TEXT("Layer_SkillGroundTargetPreview"), object);
 		return false;
 	}
+	return true;
+}
+
+bool_t Client::CPlayerController::Initialize_ClickMoveEffect(
+	const uint32_t levelIndex)
+{
+	if (nullptr != m_pClickMoveEffect)
+		return true;
+	if (levelIndex >= ETOUI(LEVEL::END))
+		return false;
+	CGameObject::GAMEOBJECT_DESC desc{};
+	shared_ptr<CGameObject> object;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+		ETOUI(LEVEL::STATIC),
+		CClickMoveEffect::PROTOTYPE_TAG,
+		levelIndex,
+		TEXT("Layer_ClickMoveEffect"),
+		&desc,
+		&object)))
+	{
+		return false;
+	}
+	shared_ptr<CClickMoveEffect> clickMoveEffect =
+		dynamic_pointer_cast<CClickMoveEffect>(object);
+	if (nullptr == clickMoveEffect ||
+		!clickMoveEffect->Initialize_Textures())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			levelIndex, TEXT("Layer_ClickMoveEffect"), object);
+		return false;
+	}
+	m_pClickMoveEffect = std::move(clickMoveEffect);
 	return true;
 }
 

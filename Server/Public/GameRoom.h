@@ -234,6 +234,13 @@ namespace LostArk::Server
 		void Handle_RevivePlayer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer);
+		/* Debug/Development-build test aid only -- zeroes the caster's own HP and
+		sets PLAYER_ACTION_STATE::DEAD so a death-screen tester does not have to
+		survive a real hit. Real body is compiled out in Release, matching
+		Evaluate_ValtanAudition's convention. */
+		void Handle_DebugKillSelf(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_KILL_SELF& debugKillSelf);
 		void Handle_ChangeCharacterClass(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request);

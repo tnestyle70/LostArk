@@ -21,6 +21,7 @@ namespace LostArk::Server
 		UPDATE_SKILL_AIM,
 		USE_ESTHER_SKILL,
 		REVIVE_PLAYER,
+		DEBUG_KILL_SELF,
 		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
 		VALTAN_AUDITION,
@@ -52,6 +53,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_UPDATE_SKILL_AIM UpdateSkillAim;
 		LostArk::Shared::C2S_USE_ESTHER_SKILL UseEstherSkill;
 		LostArk::Shared::C2S_REVIVE_PLAYER RevivePlayer;
+		LostArk::Shared::C2S_DEBUG_KILL_SELF DebugKillSelf;
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;

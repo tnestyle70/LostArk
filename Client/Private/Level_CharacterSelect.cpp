@@ -338,6 +338,13 @@ HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
 			"[Level_CharacterSelect] Ready_ServerGameplay: Initialize_TargetingPreview failed.\n");
 		return E_FAIL;
 	}
+	if (!m_PlayerController.Initialize_ClickMoveEffect(
+			ETOUI(LEVEL::CHARACTER_SELECT)))
+	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_ServerGameplay: Initialize_ClickMoveEffect failed.\n");
+		return E_FAIL;
+	}
 	return S_OK;
 }
 

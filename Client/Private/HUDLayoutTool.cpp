@@ -145,6 +145,20 @@ namespace
 		Lesson: "I checked the pieces I noticed" is not the same as "I checked the page" -- when a
 		crop comes from an atlas page, list every other region on that same page before moving on. */
 		{ "Item Upgrade",   "UI/ItemUpgrade/ItemUpgradeUI.json", "UI/ItemUpgrade/", false },
+		/* Valtan death screen (CLevel_ValtanArena, real deadscene.gfx). All 4 image slots are sized
+		to their real extracted PNG's native pixel dimensions on purpose -- do not stretch them to an
+		arbitrary rect here; resize in this Tool if a different on-screen size is wanted, the same way
+		any dropped texture auto-fits its slot. DeadScene_WingedArch and DeadScene_Effect's positions
+		are real: both traced from deadscene.xml's own placement matrices relative to "bg" (the panel
+		art's own placement, char109), not guessed -- the arch sits mostly above the panel with only
+		its lower wingtips overlapping, and the ambient ring/smoke effect is centered further back and
+		taller than either, per the real relative offsets. DeadScene_TitleTextMarker is a synthesized
+		placeholder (no bitmap exists for it in the source) sized so "사망하였습니다" fills it --
+		CMainApp::RenderDeadSceneText() draws the real Korean text separately via CGameInstance::
+		Draw_Text (ImGui's own font lacks Korean glyphs), so this slot only marks where that text
+		lands. DeadScene_ReviveButton reuses the same generic pill-button skin as ItemUpgrade's
+		buildUp/continuously/success-ok/fail-ok buttons (V2btn_normal, real 103x36). */
+		{ "Dead Scene",     "UI/DeadScene/DeadSceneUI.json", "UI/DeadScene/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));

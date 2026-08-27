@@ -142,6 +142,7 @@
     <ClInclude Include="..\Public\PlayerCommandSink.h" />
     <ClInclude Include="..\Public\PlayerSkillCatalog.h" />
 	<ClInclude Include="..\Public\SkillGroundTargetPreview.h" />
+	<ClInclude Include="..\Public\ClickMoveEffect.h" />
     <ClInclude Include="..\Public\ItemCatalog.h" />
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
@@ -286,6 +287,7 @@
     <ClCompile Include="..\Private\PlayerController.cpp" />
     <ClCompile Include="..\Private\PlayerSkillCatalog.cpp" />
 	<ClCompile Include="..\Private\SkillGroundTargetPreview.cpp" />
+	<ClCompile Include="..\Private\ClickMoveEffect.cpp" />
     <ClCompile Include="..\Private\ItemCatalog.cpp" />
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
@@ -507,6 +509,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl" />
 	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxSkillGroundTargetPreview.hlsl" />
+	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxClickMoveGlow.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />

@@ -93,6 +93,12 @@ namespace LostArk::Shared
 		C2S_UPDATE_SKILL_AIM,
 		C2S_USE_ESTHER_SKILL,
 		C2S_REVIVE_PLAYER,
+		// Debug/Development-build test aid only: instantly zeroes the caster's own HP and
+		// sets PLAYER_ACTION_STATE::DEAD, so a death-screen tester does not have to survive
+		// a real hit. The wire type exists in every build; the Server body that would touch
+		// gameplay state is compiled out in Release (see GameRoom.cpp's
+		// Handle_DebugKillSelf), matching Evaluate_ValtanAudition's convention.
+		C2S_DEBUG_KILL_SELF,
 		C2S_CHANGE_CHARACTER_CLASS,
 		S2C_CHARACTER_CLASS_CHANGE_RESULT,
 		S2C_WORLD_SNAPSHOT,
@@ -206,6 +212,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_UPDATE_SKILL_AIM:
 		case PACKET_TYPE::C2S_USE_ESTHER_SKILL:
 		case PACKET_TYPE::C2S_REVIVE_PLAYER:
+		case PACKET_TYPE::C2S_DEBUG_KILL_SELF:
 		case PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS:
 		case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:
 		case PACKET_TYPE::S2C_WORLD_SNAPSHOT:

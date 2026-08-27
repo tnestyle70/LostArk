@@ -423,6 +423,20 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_REVIVE_PLAYER& message);
 
+	// Debug/Development-build test aid only -- see the PACKET_TYPE declaration comment.
+	struct C2S_DEBUG_KILL_SELF
+	{
+		std::uint32_t iClientSequence = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DEBUG_KILL_SELF& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DEBUG_KILL_SELF& message);
+
 	struct C2S_CHANGE_CHARACTER_CLASS
 	{
 		std::uint32_t iClientSequence = 0;

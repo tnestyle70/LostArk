@@ -107,6 +107,17 @@ private:
 	void RenderItemUpgradeLevelText();
 	void RenderItemUpgradeMaterialCounts();
 	void RenderItemUpgradeGaugePercentText();
+	/* "화면을 클릭하여 결과 즉시 확인" -- shown only while ITEM_UPGRADE_ATTEMPT_RESULT::WAITING,
+	over the real SmeltLoding wait circle (ItemUpgrade_ResultWaitEmblem), matching the real
+	reference screenshot's prompt placement near the bottom of the wait panel. */
+	void RenderItemUpgradeResultWaitText();
+	/* Item name/grade/"재련 성공" over the real diamond-frame decoration (ItemUpgrade_SuccessDiamondWinged/
+	Frame, ItemUpgrade_SuccessItemIconMarker) while ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS is showing. */
+	void RenderItemUpgradeSuccessDetailText();
+	/* Item name/"재련 실패" over the real diamond-frame decoration (ItemUpgrade_FailDiamondFrame,
+	ItemUpgrade_FailItemIconMarker) while ITEM_UPGRADE_ATTEMPT_RESULT::FAIL is showing. No grade/level
+	marker -- a failed reforge does not change level. */
+	void RenderItemUpgradeFailDetailText();
 	void RenderItemUpgradeListText();
 	/* Hover/click hit-test for the 6 left-list rows, mirrored from Render_LobbyButtons's
 	Lobby_CreateCharacterButton pattern (screen-space rect from Get_SlotRect, ImGui mouse). On
@@ -132,7 +143,28 @@ private:
 	shown. On click, hides both result modals and resets the gauge back to idle (0%) the same way
 	the P-key reopen path does, so the button can be tried again. */
 	void Update_ItemUpgradeResultOkButton();
+	/* Shared by Update_ItemUpgradeReforgeButton (snaps the gauge back to 0% the instant 재련 is
+	clicked, so the wait/result screens never show the old 100% fill behind them) and
+	Update_ItemUpgradeResultOkButton (same reset on dismiss) -- an idle, non-growing 0% state. */
+	void Reset_ItemUpgradeIdleGauge();
+	/* Hides (bVisible=false) or restores (true) the base window's own center-panel content --
+	item icon, gauge, recipe materials, 성장/재련 buttons, level-transition arrow -- so none of it
+	bleeds through behind the wait/success/fail modals. Real Lost Ark's wait/result screens read
+	as their own separate screen (no base-window clutter visible behind them); this is the fix for
+	that. Only ever restores the always-idle-visible set, never the gauge completion effects
+	(WingedRingGold/LevelUpMotion2Big/CompleteEffect etc.), which stay owned by
+	Reset_ItemUpgradeIdleGauge/Update_ItemUpgradeGrowButton's own state machine. */
+	void Set_ItemUpgradeCenterPanelVisible(bool_t bVisible);
 	void RenderBossHealthBar();
+	/* Real HOLD skill (PLAYER_SKILL_KIND::HOLD) charge bar -- ChargeGauge_Bg/_Track/_Fill in
+	HUD_Layout.json (ownerClass:null, same as HealthBar). Progress is reconstructed client-side
+	from real Data/Balance/PlayerSkills.json comboStages[].actionDurationMs and the Server-owned
+	iComboStage/iActionStartTick fields (no continuous charge-percent field exists on the wire). */
+	void RenderChargeGauge();
+	/* Skill display name, centered (X) over ChargeGauge_Track, drawn after
+	CImGuiLayer::EndFrame() -- same reason as RenderBossHealthBarText, RenderChargeGauge's own
+	fill image only composites there. */
+	void RenderChargeGaugeText();
 	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
 	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text
 	submits its SpriteBatch draw immediately, but the bar/frame images RenderBossHealthBar draws
@@ -140,6 +172,16 @@ private:
 	inside the Begin/EndFrame block let the ImGui-composited opaque fill bury this text underneath
 	it every frame. */
 	void RenderBossHealthBarText();
+	/* "사망하였습니다" title + "부활"/"관전하기" button labels over Valtan's death-screen panel
+	(CLevel_ValtanArena owns the panel/button images and the revive click hit-test; this only
+	draws the Korean text). Called after CImGuiLayer::EndFrame(), same reason as
+	RenderBossHealthBarText -- CGameInstance::Draw_Text paints immediately, but the panel/button
+	images composite later inside EndFrame() and would otherwise bury text drawn earlier in the
+	frame. Rects come from CCombatHUDViewModel::Get_DeadSceneTextRects(), which
+	CLevel_ValtanArena::Update_DeadScene() fills from its own (Level-private) m_pDeadSceneView
+	every frame -- not hand-copied constants, so repositioning a slot in the HUD Layout Tool moves
+	this text with it. */
+	void RenderDeadSceneText();
 	/* Room-shared raid Esther gauge bar. Draws nothing when the snapshot says
 	the world has no Esther roster (maximum 0). */
 	void RenderEstherGauge();
@@ -199,6 +241,13 @@ private:
 	is the only writer, on a left-list row click. Defaults to 2 ("상의") to match
 	ItemUpgrade_ListSelectedExample's originally-authored resting position. */
 	int32_t m_iItemUpgradeSelectedSlot = 2;
+	/* Real per-item level state, one per ITEM_UPGRADE_SLOTS entry -- all 6 start at 10 (no real
+	inventory/equipment data is wired in yet, but the level itself is a real tracked number now,
+	not a fixed display literal). Update_ItemUpgradeResultWaitClick increments the selected item's
+	entry by 1 the moment a 재련 attempt actually succeeds; a fail leaves it untouched. Every level
+	display in this preview (left list, right 재련 단계 ladder, center 현재/다음, success detail)
+	reads from this same array so they can never drift out of sync with each other. */
+	int32_t m_iItemUpgradeLevels[6] = { 10, 10, 10, 10, 10, 10 };
 	bool_t m_bPDown = false;
 	/* Current held ItemUpgrade_GaugeFill percent (0..100), driven by the ItemUpgrade_LevelUpBtn
 	("성장") click state machine (see m_bItemUpgradeGrowing) instead of a free-running clock. Stays
@@ -233,12 +282,38 @@ private:
 	Update_ItemUpgradeResultWaitClick() reveals it -- WAITING holds this pending outcome so the
 	"화면을 클릭하여 결과 즉시 확인" suspense screen can sit in front of an already-decided result. */
 	bool_t m_bItemUpgradePendingAttemptSuccess = false;
+	/* Real reforge result flow: the SmeltLoding circle keeps playing UNDER the SmeltSuccess/Fail
+	burst only while that burst is actually playing (90 frames/30fps, real loop=false duration).
+	Update_ItemUpgradeResultWaitClick() sets this to that real duration's wall-clock end; the per-
+	frame check in Update() hides both the circle and the burst layer once past it, settling to the
+	plain icon/name/result screen. Negative = no settle pending. */
+	f64_t m_dItemUpgradeResultSettleAt = -1.0;
 	/* Edge-detects the local player's stance so RenderCombatHUD only calls
 	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
 	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a
 	real stance, so the very first Render sees an edge and plays the arrival pose. */
 	LostArk::Shared::PLAYER_STANCE_ID m_ePreviousHudStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
+	/* RenderChargeGauge's own default (single continuous fill) model needs the REAL elapsed time
+	of each completed comboStage, not its authored iActionDurationMs -- a HOLD skill's loop stage
+	can be cut short (PlayerSkillSystem.cpp's holdLeavesLoop/holdSkipsLoop) when the player
+	releases early, and hasReleasedHold never reaches the wire, so the only way to know a stage's
+	real length is to have actually watched it happen. Tracked across frames by observing
+	iComboStage/iActionStartTick edges: m_iChargeGaugeStageStartTick is the tick the CURRENTLY
+	tracked stage began, and m_fChargeGaugeElapsedBeforeCurrentStageMs accumulates every REAL
+	elapsed stage that came before it in this same skill-use instance. INVALID_SKILL_ID means "not
+	currently tracking a charge" -- the next observed HOLD charge starts fresh from there.
+	m_bChargeGaugeCancelled latches true the instant a stage-advance is observed to have been
+	shorter than its authored duration (or skipped a whole stage) -- proof the hold was released
+	early -- and keeps the gauge hidden for the rest of this same skill-use instance, matching the
+	real screen behavior (the charge visual cancels immediately, it doesn't keep tracking toward a
+	now-moot full-charge target). */
+	LostArk::Shared::SKILL_ID m_iChargeGaugeTrackedSkillId =
+		LostArk::Shared::INVALID_SKILL_ID;
+	std::uint8_t m_iChargeGaugeTrackedComboStage = 0;
+	std::uint32_t m_iChargeGaugeStageStartTick = 0;
+	f32_t m_fChargeGaugeElapsedBeforeCurrentStageMs = 0.f;
+	bool_t m_bChargeGaugeCancelled = false;
 	/* RenderQuickSlot edge-detects "skill just used" per Q..V slot as a ready-to-not-ready
 	transition. iCooldownEndTick itself can't be compared directly across frames: for a ready
 	skill CombatHUDViewModel defaults it to the current (ever-increasing) serverTick rather than
