@@ -1455,6 +1455,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::REVIVE_PLAYER:
 			Handle_RevivePlayer(command.iSessionId, command.RevivePlayer);
 			break;
+		case ROOM_COMMAND_TYPE::DEBUG_KILL_SELF:
+			Handle_DebugKillSelf(command.iSessionId, command.DebugKillSelf);
+			break;
 		case ROOM_COMMAND_TYPE::CHANGE_CHARACTER_CLASS:
 			Handle_ChangeCharacterClass(
 				command.iSessionId, command.ChangeCharacterClass);
@@ -2303,6 +2306,53 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	// combat participant again so party-wipe recovery can resume the encounter.
 	player.isCombatReady = true;
 	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugKillSelf(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_KILL_SELF& debugKillSelf)
+{
+#ifndef _DEBUG
+	/* Debug/Development-build test aid only, same convention as
+	Evaluate_ValtanAudition: a Release-built Server never touches gameplay
+	state for this command. */
+	(void)sessionId;
+	(void)debugKillSelf;
+	return;
+#else
+	using namespace LostArk::Shared;
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+
+	SERVER_PLAYER& player = playerIter->second;
+	if (0u == player.iCurrentHp && PLAYER_ACTION_STATE::DEAD == player.eAction)
+		return;
+
+	player.iCurrentHp = 0u;
+	player.eAction = PLAYER_ACTION_STATE::DEAD;
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.iActionStartTick = 0u;
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	player.TriggerMove = {};
+	player.fKnockbackRemainingSeconds = 0.f;
+	player.fKnockbackSpeed = 0.f;
+	player.iKnockdownEndTick = 0u;
+	player.hasAppliedSkillDamage = false;
+	player.iAppliedHitMask = 0;
+	player.iSpawnedProjectileMask = 0;
+	player.Projectiles.clear();
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
+#endif
 }
 
 void LostArk::Server::CGameRoom::Handle_ReleaseSkill(

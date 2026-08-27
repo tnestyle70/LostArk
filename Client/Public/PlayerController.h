@@ -380,6 +380,14 @@ namespace Client
 			m_allowCapturedKeyboardInput = allow;
 		}
 
+		/* Death-screen revive button. Not polled input, so it is a direct call
+		instead of something Update() discovers each frame. */
+		bool_t Request_Revive();
+#ifdef _DEBUG
+		// O key test aid -- see PACKET_TYPE::C2S_DEBUG_KILL_SELF.
+		bool_t Request_DebugKillSelf();
+#endif
+
 		void Update(bool_t gameplayCommandsEnabled);
 
 		/* Cursor -> world ray unprojected against the groundY plane. Public+static

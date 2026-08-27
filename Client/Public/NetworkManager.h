@@ -161,6 +161,10 @@ public:
 		float aimX,
 		float aimZ);
 	bool Send_RevivePlayer(std::uint32_t clientSequence);
+#ifdef _DEBUG
+	// Debug/Development-build test aid only -- see PACKET_TYPE::C2S_DEBUG_KILL_SELF.
+	bool Send_DebugKillSelf(std::uint32_t clientSequence);
+#endif
 	bool Send_EstherSkill(
 		std::uint32_t clientSequence,
 		std::uint8_t slotIndex,

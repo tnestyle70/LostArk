@@ -43,6 +43,10 @@ public:
 		float aimZ) override;
 	bool Request_RevivePlayer(
 		std::uint32_t clientSequence) override;
+#ifdef _DEBUG
+	bool Request_DebugKillSelf(
+		std::uint32_t clientSequence) override;
+#endif
 	bool Request_EstherSkill(
 		std::uint32_t clientSequence,
 		std::uint8_t slotIndex,

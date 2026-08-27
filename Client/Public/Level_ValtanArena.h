@@ -27,6 +27,7 @@ class CCamera_Free;
 class CCharacter;
 class IPlayerCommandSink;
 class CMapAssetObject;
+class CHUDRuntimeView;
 
 class CLevel_ValtanArena final : public CLevel
 {
@@ -56,7 +57,15 @@ private:
 	void End_CinematicCamera();
 	void Update_WorldDestructionPresentation(f32_t fTimeDelta);
 	bool_t Apply_EncounterPropPresentation();
+	/* Death-screen overlay: real deadscene.gfx panel art + revive button. Local
+	player only, unlimited revives (Handle_RevivePlayer already gates this to
+	VALTAN_ARENA and is free/no-cooldown by design). */
+	void Update_DeadScene();
+	void Render_DeadScene();
 #ifdef _DEBUG
+	// O key: instantly kill the local player (Handle_DebugKillSelf), to test
+	// the death screen without waiting to die for real.
+	void Update_DebugKillSelfKey();
 	enum class REFERENCE_CAMERA_VIEW : uint8_t
 	{
 		NONE,
@@ -182,7 +191,10 @@ private:
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPlayerController m_PlayerController;
+	unique_ptr<CHUDRuntimeView> m_pDeadSceneView;
 #ifdef _DEBUG
+	// O key: instantly kill the local player, to test the death screen without waiting to die.
+	bool_t m_bDebugKillSelfKeyDown = false;
 	weak_ptr<CTransform> m_pReferenceCameraRestoreTarget;
 	bool_t m_bReferenceCameraRestoreFollowRequested = false;
 	bool_t m_bReferenceCameraApplied = false;
