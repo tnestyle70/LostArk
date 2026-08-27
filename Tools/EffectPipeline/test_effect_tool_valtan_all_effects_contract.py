@@ -93,6 +93,88 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             EFFECT_CATALOG_JSON.read_text(encoding="utf-8")
         )
 
+    def test_boss_product_open_obeys_the_existing_unlink_lock(self) -> None:
+        opening = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Open_ValtanProductEffect(",
+            "void Client::CEffect_Tool::Update(",
+        )
+        guard = source_section(
+            opening,
+            "if (m_ValtanPatternProductUnlinkOperation.has_value())",
+            "m_bAllEffectsValtanBossSelected = true;",
+        )
+        self.assertIn("return Reject(", guard)
+        self.assertIn("unlink transaction", guard)
+        self.assertLess(opening.index(guard), opening.index("Refresh_DataFiles()"))
+        self.assertLess(opening.index(guard), opening.index("Refresh_ValtanPatternTree()"))
+
+    def test_boss_product_open_revalidates_identity_before_loading(self) -> None:
+        opening = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Open_ValtanProductEffect(",
+            "void Client::CEffect_Tool::Update(",
+        )
+        for field in ("PatternId", "StageId", "CueOccurrenceId", "EffectAssetId"):
+            self.assertIn(f"Request.str{field}.empty()", opening)
+        for failure in (
+            "if (!Refresh_DataFiles())",
+            "if (!Refresh_ValtanPatternTree())",
+            "!Is_ValtanAllEffectsPattern(*pPattern)",
+            "1u != iStageMatchCount",
+            "1u != iCueMatchCount",
+            "pCue->strPatternId != pPattern->strPatternId",
+            "pCue->strStageId != pStage->strStageId",
+            "pCue->strActionId != pStage->strActionId",
+            "pCue->strEffectAssetId != Request.strEffectAssetId",
+        ):
+            self.assertIn(failure, opening)
+            self.assertLess(
+                opening.index(failure),
+                opening.index("Resolve_DirectAuthoredEditablePath("),
+            )
+        self.assertIn("if (nullptr == pPath)", opening)
+        self.assertIn("return Reject(std::move(PathStatus));", opening)
+        self.assertIn("m_PendingDocumentLoad->Path == *pPath", opening)
+        for forbidden in (
+            "Discard_ActiveDocument(", "Try_SaveDocument(",
+            "m_ActiveDocument =", "strV1EffectAssetId",
+        ):
+            self.assertNotIn(forbidden, opening)
+
+    def test_boss_product_open_keeps_stage_clock_and_clip_preview_distinct(self) -> None:
+        opening = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Open_ValtanProductEffect(",
+            "void Client::CEffect_Tool::Update(",
+        )
+        standalone = source_section(opening, "if (pCue->bUsesStageClock)", "\n\telse\n")
+        self.assertIn("Try_OpenValtanStandaloneEffect(", standalone)
+        self.assertNotIn("Build_ValtanProductPreview(", standalone)
+        self.assertIn("1u != iClipMatchCount", opening)
+        for preview_path in ("NORMAL", "WALL_GROGGY", "PART_BREAK"):
+            self.assertIn(f"VALTAN_PATTERN_PREVIEW_PATH::{preview_path}", opening)
+        self.assertIn("Build_ValtanProductPreview(", opening)
+        self.assertIn("return Reject(std::move(PreviewError));", opening)
+        self.assertIn(
+            "Try_OpenValtanAuthoredEffect(*pPath,Request.strEffectAssetId,Preview,false)",
+            re.sub(r"\s+", "", opening),
+        )
+        for forbidden in ("Try_Play", "Stage_WorldPreview(", "Play_ValtanStageSequence("):
+            self.assertNotIn(forbidden, opening)
+        helper = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(\n"
+            "\tconst std::filesystem::path& Path,\n"
+            "\tconst std::string& strEffectAssetId,\n"
+            "\tconst VALTAN_PRODUCT_PREVIEW& Preview,",
+            "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()",
+        )
+        self.assertIn("m_PendingDocumentLoad->ValtanProductPreview = Preview;", helper)
+        self.assertLess(helper.index("Try_LoadDocumentPath("), helper.index("Play_ValtanProductCue(Preview)"))
+        self.assertIn("if (bAnimationReady && !bQueuePlayCompleteAfterLoad)", helper)
+        self.assertIn("Set_SynchronizedAnimationPaused(true);", helper)
+
     def test_exact_two_plus_twenty_eight_inventory_is_explicit(self) -> None:
         self.assertEqual(
             EXPECTED_INDEPENDENT_IDS,

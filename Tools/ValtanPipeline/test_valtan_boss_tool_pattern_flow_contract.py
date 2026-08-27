@@ -151,17 +151,51 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         cls.server_tests = SERVER_TESTS_CPP.read_text(encoding="utf-8")
         manual = cls.gameplay["decisionModel"]["manualAuditions"]
         cls.inventory = CORE_PATTERN_IDS + [row["patternId"] for row in manual]
+        cls.seed_flow = {
+            "schema": SCHEMA,
+            "formatVersion": 1,
+            "flows": [{
+                "flowId": FLOW_ID,
+                "nextSlotOrdinal": len(cls.inventory) + 1,
+                "interStepPursuitMs": 1000,
+                "slots": [
+                    {"slotId": f"{FLOW_ID}.slot.{ordinal:06d}", "patternId": pattern_id}
+                    for ordinal, pattern_id in enumerate(cls.inventory, start=1)
+                ],
+            }],
+        }
 
-    def test_default_document_is_strict_and_starts_from_all_effects_inventory(self) -> None:
+    def test_saved_document_is_valid_editable_authoring(self) -> None:
+        # A saved Flow is not the initial seed. Reorder, repeated patterns,
+        # removed slots, and an empty authoring draft are all valid saves.
         validate_document(self.flow, self.inventory)
-        slots = self.flow["flows"][0]["slots"]
+
+    def test_initial_seed_fixture_starts_from_all_effects_inventory(self) -> None:
+        validate_document(self.seed_flow, self.inventory)
+        slots = self.seed_flow["flows"][0]["slots"]
         self.assertEqual(28, len(self.inventory))
         self.assertEqual(self.inventory, [slot["patternId"] for slot in slots])
-        self.assertEqual(29, self.flow["flows"][0]["nextSlotOrdinal"])
-        self.assertEqual(28, len({slot["slotId"] for slot in slots}))
+        self.assertEqual(
+            [f"{FLOW_ID}.slot.{ordinal:06d}" for ordinal in range(1, 29)],
+            [slot["slotId"] for slot in slots],
+        )
+        self.assertEqual(29, self.seed_flow["flows"][0]["nextSlotOrdinal"])
+
+    def test_reorder_remove_and_empty_saves_keep_monotonic_slot_identity(self) -> None:
+        seed_slots = self.seed_flow["flows"][0]["slots"]
+        for slots in (list(reversed(seed_slots)), seed_slots[1::2], []):
+            with self.subTest(slot_count=len(slots)):
+                candidate = copy.deepcopy(self.seed_flow)
+                candidate["flows"][0]["slots"] = copy.deepcopy(slots)
+                validate_document(candidate, self.inventory)
+                self.assertEqual(slots, candidate["flows"][0]["slots"])
+        reused = copy.deepcopy(self.seed_flow)
+        reused["flows"][0]["nextSlotOrdinal"] = len(seed_slots)
+        with self.assertRaisesRegex(ValueError, "slot reuse"):
+            validate_document(reused, self.inventory)
 
     def test_duplicate_pattern_ids_are_valid_but_duplicate_slot_ids_are_not(self) -> None:
-        duplicate_pattern = copy.deepcopy(self.flow)
+        duplicate_pattern = copy.deepcopy(self.seed_flow)
         slots = duplicate_pattern["flows"][0]["slots"]
         slots[-1]["patternId"] = slots[0]["patternId"]
         validate_document(duplicate_pattern, self.inventory)
@@ -175,21 +209,21 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
 
     def test_wrong_version_unknown_property_unknown_pattern_and_overflow_fail(self) -> None:
         mutations = []
-        wrong_version = copy.deepcopy(self.flow)
+        wrong_version = copy.deepcopy(self.seed_flow)
         wrong_version["formatVersion"] = 2
         mutations.append(wrong_version)
-        unknown_property = copy.deepcopy(self.flow)
+        unknown_property = copy.deepcopy(self.seed_flow)
         unknown_property["flows"][0]["slots"][0]["index"] = 0
         mutations.append(unknown_property)
-        unknown_pattern = copy.deepcopy(self.flow)
+        unknown_pattern = copy.deepcopy(self.seed_flow)
         unknown_pattern["flows"][0]["slots"][0]["patternId"] = "UNKNOWN"
         mutations.append(unknown_pattern)
-        overflow = copy.deepcopy(self.flow)
+        overflow = copy.deepcopy(self.seed_flow)
         overflow["flows"][0]["slots"].extend(
             copy.deepcopy(overflow["flows"][0]["slots"][:5])
         )
         mutations.append(overflow)
-        float_integer = copy.deepcopy(self.flow)
+        float_integer = copy.deepcopy(self.seed_flow)
         float_integer["formatVersion"] = 1.0
         mutations.append(float_integer)
 
@@ -356,7 +390,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.network_header + self.network_source)
 
     def test_protocol_is_typed_bounded_and_covered_by_round_trip_harness(self) -> None:
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 40", self.packet_type)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 41", self.packet_type)
         for marker in (
             "C2S_DEBUG_VALTAN_PATTERN_FLOW_START",
             "S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT",

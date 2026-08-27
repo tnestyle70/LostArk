@@ -322,6 +322,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(2, migrated["formatVersion"])
         self.assertEqual(7, len(migrated["patterns"]))
         self.assertIsNone(migrated["decisionModel"]["scriptedSequence"])
+        unlinked_cue = "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01"
+        for document in (migrated, self.docs[pipeline.PRESENTATION_AUTHORING_REL]):
+            self.assertNotIn(
+                unlinked_cue,
+                {
+                    cue["cueId"]
+                    for pattern in document["patterns"]
+                    for stage in pattern["stages"]
+                    for cue in stage["effectCues"]
+                },
+                "V1 migration must not restore an intentionally unlinked Product cue",
+            )
         self.assertEqual(before, pipeline.sha256_file(source_path))
         phase_events = [
             (pattern["patternId"], stage["stageId"], event)
@@ -947,6 +959,17 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         }
         self.assertEqual(set(pipeline.WORLD_SET_OWNERS), set(event_sets))
         self.assertEqual(97, len(event_sets[pipeline.WORLD_SET_ID]["members"]))
+        groups = {
+            group["groupId"]: group
+            for group in self.docs[pipeline.WORLD_PRODUCT_REL]["groups"]
+        }
+        placement_ids = [
+            placement_id
+            for member in event_sets[pipeline.WORLD_SET_ID]["members"]
+            for placement_id in groups[member["groupId"]]["memberPlacementIds"]
+        ]
+        self.assertEqual(135, len(placement_ids))
+        self.assertEqual(135, len(set(placement_ids)))
         self.assertEqual(
             3,
             len(

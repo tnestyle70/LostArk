@@ -3058,6 +3058,12 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 		return false;
 	};
 
+	if (m_ValtanPatternProductUnlinkOperation.has_value())
+	{
+		return Reject(
+			"wait for the current Product Effect unlink transaction to finish before opening another occurrence.");
+	}
+
 	m_bAllEffectsValtanBossSelected = true;
 	if (Request.strPatternId.empty() || Request.strStageId.empty() ||
 		Request.strCueOccurrenceId.empty() ||

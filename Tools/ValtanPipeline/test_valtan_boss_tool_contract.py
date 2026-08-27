@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pathlib
 import json
+import re
 import unittest
 
 
@@ -14,6 +15,7 @@ BOSS_H = ROOT / "Client/Public/BossTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 EFFECT_CPP = ROOT / "Client/Private/Effect_Tool.cpp"
+EFFECT_H = ROOT / "Client/Public/Effect_Tool.h"
 MAIN_CPP = ROOT / "Client/Private/MainApp.cpp"
 MAIN_H = ROOT / "Client/Public/MainApp.h"
 LEVEL_CPP = ROOT / "Client/Private/Level_ValtanArena.cpp"
@@ -78,6 +80,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         cls.balance_cpp = BALANCE_CPP.read_text(encoding="utf-8")
         cls.balance_h = BALANCE_H.read_text(encoding="utf-8")
         cls.effect_cpp = EFFECT_CPP.read_text(encoding="utf-8")
+        cls.effect_h = EFFECT_H.read_text(encoding="utf-8")
         cls.main_cpp = MAIN_CPP.read_text(encoding="utf-8")
         cls.main_h = MAIN_H.read_text(encoding="utf-8")
         cls.level_cpp = LEVEL_CPP.read_text(encoding="utf-8")
@@ -125,6 +128,71 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "CDataJson::Parse",
         ):
             self.assertNotIn(forbidden, self.boss_cpp)
+
+    def test_linked_effect_request_contains_only_exact_stable_identity(self) -> None:
+        request = function_body(
+            self.effect_h,
+            "struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST final",
+        )
+        self.assertEqual(
+            [
+                "strPatternId", "strStageId", "strCueOccurrenceId",
+                "strEffectAssetId",
+            ],
+            re.findall(r"std::string\s+(\w+)\s*;", request),
+        )
+        self.assertEqual(4, request.count(";"))
+        render = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_ConnectionSummary(",
+        )
+        compact = re.sub(r"\s+", "", render)
+        self.assertIn('ImGui::Button("EditLinkedEffect")', compact)
+        for destination, source in (
+            ("PatternId", "Pattern.strPatternId"),
+            ("StageId", "Stage.strStageId"),
+            ("CueOccurrenceId", "Cue.strOccurrenceId"),
+            ("EffectAssetId", "Cue.strEffectAssetId"),
+        ):
+            assignment = f"m_strEffectToolOpen{destination}={source};"
+            self.assertIn(assignment, compact)
+            self.assertLess(
+                compact.index(assignment),
+                compact.index("m_hasEffectToolOpenRequest=true;"),
+            )
+        self.assertIn("Stage.ProductCues", render)
+        self.assertNotIn("Open_ValtanProductEffect", render)
+
+    def test_linked_effect_request_is_consumed_exactly_once(self) -> None:
+        consume = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Consume_EffectToolOpenRequest(",
+        )
+        compact = re.sub(r"\s+", "", consume)
+        self.assertIn("if(!m_hasEffectToolOpenRequest)returnfalse;", compact)
+        for field in (
+            "PatternId", "StageId", "CueOccurrenceId", "EffectAssetId",
+        ):
+            self.assertIn(
+                f"outRequest.str{field}=std::move(m_strEffectToolOpen{field});",
+                compact,
+            )
+            self.assertIn(f"m_strEffectToolOpen{field}.clear();", compact)
+        self.assertTrue(compact.endswith("m_hasEffectToolOpenRequest=false;returntrue;}"))
+
+    def test_main_app_routes_linked_effect_without_starting_gameplay(self) -> None:
+        update = function_body(self.main_cpp, "void CMainApp::Update(")
+        begin = update.index("EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;")
+        route = update[begin:update.index("if (nullptr != m_pCameraTool)", begin)]
+        self.assertEqual(1, route.count("Consume_EffectToolOpenRequest(effectRequest)"))
+        self.assertLess(
+            route.index("EnsureDebugTool(DEBUG_TOOL::EFFECT)"),
+            route.index("Open_ValtanProductEffect(effectRequest)"),
+        )
+        self.assertIn("nullptr != m_pEffectTool", route)
+        self.assertIn("m_strToolStatus = bOpened ?", route)
+        for forbidden in ("Try_Play", "Submit_SelectedPattern", "Spawn_Effect"):
+            self.assertNotIn(forbidden, route)
 
     def test_default_screen_keeps_only_the_user_workflow(self) -> None:
         render = function_body(self.boss_cpp, "void Client::CBossTool::Render()")
