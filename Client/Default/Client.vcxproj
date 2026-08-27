@@ -590,11 +590,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=127.0.0.1</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.20</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\Bin\Release\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=127.0.0.1</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.20</LocalDebuggerEnvironment>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

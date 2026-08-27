@@ -36,7 +36,7 @@
 //listen - 해당 소켓을 client 연결을 기다리는 listenening socket으로 변경한다.
 //실제 접속은 accept()에서 수행
 
-//CServerApp - server 전체의 수명 관리 -> TCPListener 127.0.0.1:7777 로컬 입구 개방 -> accept()->
+//CServerApp - server 전체의 수명 관리 -> TCPListener 0.0.0.0:7777 팀 LAN 입구 개방 -> accept()->
 //ClientSession Client 한 명의 연결 -> CPacketStreamParser TCP 바이트에서 프레임 분리 ->
 //Shared Read Message 구조체 복원 -> GameRoom 게임 상태 처리
 
@@ -60,7 +60,7 @@ namespace LostArk::Server
 			std::uint16_t port);
 		bool Open(std::uint16_t port)
 		{
-			return Open("127.0.0.1", port);
+			return Open("0.0.0.0", port);
 		}
 		
 		//실제 client 받아오기

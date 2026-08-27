@@ -171,7 +171,7 @@ function Set-ProjectUserEnvironmentVariable {
         foreach ($row in $rows) {
             $separatorIndex = $row.IndexOf('=')
             $isTargetRow = $separatorIndex -ge 0 -and
-                $row.Substring(0, $separatorIndex) -ceq $VariableName
+                $row.Substring(0, $separatorIndex) -ieq $VariableName
             if ($isTargetRow) {
                 if (-not $hasCanonicalRow) {
                     $canonicalRows.Add($canonicalRow)
@@ -216,7 +216,7 @@ function Set-ProjectUserEnvironmentVariable {
                 $property.Value, "`r`n|`n|`r") | Where-Object {
                     $separatorIndex = $_.IndexOf('=')
                     $separatorIndex -ge 0 -and
-                        $_.Substring(0, $separatorIndex) -ceq $VariableName
+                        $_.Substring(0, $separatorIndex) -ieq $VariableName
                 })
             if (1 -ne $targetRows.Count -or
                 $targetRows[0] -cne $canonicalRow) {
@@ -240,6 +240,50 @@ function Test-IsAdministrator {
         [Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Test-HostFirewallRule {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [string]$Program,
+        [Parameter(Mandatory = $true)]
+        [uint16]$Port
+    )
+
+    $rules = @(Get-NetFirewallRule -DisplayName $Name `
+        -ErrorAction SilentlyContinue)
+    if (1 -ne $rules.Count) {
+        return $false
+    }
+
+    $rule = $rules[0]
+    if ([string]$rule.Enabled -ne 'True' -or
+        [string]$rule.Direction -ne 'Inbound' -or
+        [string]$rule.Action -ne 'Allow' -or
+        [string]$rule.Profile -ne 'Any') {
+        return $false
+    }
+
+    $portFilters = @($rule | Get-NetFirewallPortFilter)
+    $addressFilters = @($rule | Get-NetFirewallAddressFilter)
+    $applicationFilters = @($rule | Get-NetFirewallApplicationFilter)
+    if (1 -ne $portFilters.Count -or
+        [string]$portFilters[0].Protocol -ne 'TCP' -or
+        [string]$portFilters[0].LocalPort -ne [string]$Port -or
+        1 -ne $addressFilters.Count -or
+        @($addressFilters[0].RemoteAddress).Count -ne 1 -or
+        [string]$addressFilters[0].RemoteAddress -ne 'LocalSubnet' -or
+        1 -ne $applicationFilters.Count) {
+        return $false
+    }
+
+    $expectedProgram = [IO.Path]::GetFullPath($Program)
+    $actualProgram = [string]$applicationFilters[0].Program
+    return $expectedProgram.Equals(
+        $actualProgram,
+        [StringComparison]::OrdinalIgnoreCase)
+}
+
 function Sync-HostFirewall {
     param(
         [Parameter(Mandatory = $true)]
@@ -255,27 +299,29 @@ function Sync-HostFirewall {
             Name = "LostArk Server Release TCP $Port (LAN)"
             Program = Join-Path $repoRoot 'Server\Bin\Release\Server.exe'
         })
-    $missingRules = @($definitions | Where-Object {
-        $null -eq (Get-NetFirewallRule -DisplayName $_.Name `
-            -ErrorAction SilentlyContinue)
+    $staleRules = @($definitions | Where-Object {
+        -not (Test-HostFirewallRule `
+            -Name $_.Name `
+            -Program $_.Program `
+            -Port $Port)
     })
-    if (0 -eq $missingRules.Count) {
+    if (0 -eq $staleRules.Count) {
+        Write-Output "Server firewall: TCP $Port LocalSubnet ready"
         return
     }
 
     if (-not (Test-IsAdministrator)) {
-        Write-Warning (
-            'This PC owns the team Server address, but the LostArk TCP ' +
-            "$Port LAN firewall rule is missing. Run this script once from " +
-            'an elevated PowerShell session.')
-        return
+        throw (
+            'This PC owns the team Server address, but its LostArk TCP ' +
+            "$Port LocalSubnet firewall rule is missing or stale. Run this " +
+            'script once from an elevated PowerShell session.')
     }
 
-    foreach ($definition in $definitions) {
-        $existing = Get-NetFirewallRule -DisplayName $definition.Name `
-            -ErrorAction SilentlyContinue
-        if ($null -ne $existing) {
-            Remove-NetFirewallRule -DisplayName $definition.Name
+    foreach ($definition in $staleRules) {
+        $existing = @(Get-NetFirewallRule -DisplayName $definition.Name `
+            -ErrorAction SilentlyContinue)
+        if (0 -ne $existing.Count) {
+            $existing | Remove-NetFirewallRule
         }
         New-NetFirewallRule `
             -DisplayName $definition.Name `
@@ -287,7 +333,16 @@ function Sync-HostFirewall {
             -LocalPort $Port `
             -Program $definition.Program `
             -RemoteAddress LocalSubnet | Out-Null
+
+        if (-not (Test-HostFirewallRule `
+            -Name $definition.Name `
+            -Program $definition.Program `
+            -Port $Port)) {
+            throw "Failed to establish exact firewall rule: $($definition.Name)"
+        }
     }
+
+    Write-Output "Server firewall: TCP $Port LocalSubnet ready"
 }
 
 if (-not (Test-Path -LiteralPath $endpointPath)) {
@@ -296,9 +351,8 @@ if (-not (Test-Path -LiteralPath $endpointPath)) {
 
 $endpoint = Get-Content -LiteralPath $endpointPath -Raw -Encoding UTF8 |
     ConvertFrom-Json
-# The shared LAN Server was retired by the team lead on 2026-08-17, so loopback
-# is now a supported endpoint rather than a misconfiguration. A concrete LAN
-# address still works unchanged for whenever a shared Server comes back.
+# Loopback remains a supported isolated-test endpoint, while a shared LAN
+# contract uses one concrete Client address and an all-adapter Server bind.
 if ($endpoint.schema -ne 'lostark.team-lan-endpoint' -or
     [int]$endpoint.version -ne 1 -or
     [string]$endpoint.serverBindAddress -notin @('0.0.0.0', '127.0.0.1') -or
@@ -316,6 +370,11 @@ if (-not [Net.IPAddress]::TryParse(
     throw 'serverHost must be one concrete IPv4 address, and never 0.0.0.0.'
 }
 $isLoopbackEndpoint = $serverAddress.Equals([Net.IPAddress]::Loopback)
+$serverBindAddress = [string]$endpoint.serverBindAddress
+if (($isLoopbackEndpoint -and '127.0.0.1' -ne $serverBindAddress) -or
+    (-not $isLoopbackEndpoint -and '0.0.0.0' -ne $serverBindAddress)) {
+    throw 'Loopback must bind 127.0.0.1; a shared LAN endpoint must bind 0.0.0.0.'
+}
 
 $activeThrough = [DateTimeOffset]::MinValue
 if (-not [DateTimeOffset]::TryParse(
@@ -335,10 +394,16 @@ if (-not $isLoopbackEndpoint -and -not $AllowExpired -and
 }
 
 $serverHost = $serverAddress.ToString()
-$serverBindAddress = [string]$endpoint.serverBindAddress
 $serverPort = [uint16]$endpoint.port
+$connectedInterfaceIndexes = @(Get-NetIPInterface -AddressFamily IPv4 `
+    -ErrorAction SilentlyContinue | Where-Object {
+        $_.ConnectionState -eq 'Connected'
+    } | ForEach-Object { $_.InterfaceIndex })
 $localAddresses = @(Get-NetIPAddress -AddressFamily IPv4 `
-    -ErrorAction SilentlyContinue | ForEach-Object { $_.IPAddress })
+    -ErrorAction SilentlyContinue | Where-Object {
+        $_.AddressState -eq 'Preferred' -and
+        $connectedInterfaceIndexes -contains $_.InterfaceIndex
+    } | ForEach-Object { $_.IPAddress })
 $ownsServerAddress = $isLoopbackEndpoint -or
     $localAddresses -contains $serverHost
 $effectiveRole = switch ($Role) {
@@ -357,10 +422,15 @@ $effectiveRole = switch ($Role) {
 }
 
 if ('server-host' -eq $effectiveRole) {
+    $canonicalServerArguments = "--bind-address $serverBindAddress"
     Set-ProjectUserProperty `
         -Path $serverUserPath `
         -PropertyName 'LocalDebuggerCommandArguments' `
-        -Value "--bind-address $serverBindAddress"
+        -Value $canonicalServerArguments
+    Set-ProjectUserProperty `
+        -Path $serverUserPath `
+        -PropertyName 'LocalDebuggerCommandArgumentsHistory' `
+        -Value "$canonicalServerArguments|"
 }
 Set-ProjectUserEnvironmentVariable `
     -Path $clientUserPath `
