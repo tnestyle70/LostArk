@@ -533,7 +533,7 @@
           "branches": [
             {
               "outcome": "WALL_CONTACT",
-              "nextActionId": "valtan.attack.dash-charge.recovery"
+              "nextActionId": "valtan.attack.dash-charge.groggy"
             },
             {
               "outcome": "TIMEOUT",
@@ -542,51 +542,11 @@
           ]
         },
         {
-          "stageId": "RECOVERY",
-          "actionId": "valtan.attack.dash-charge.recovery",
-          "stageKind": "RECOVERY",
-          "durationMs": 900,
-          "defaultNextActionId": null,
-          "hit": {
-            "shape": {
-              "kind": "NONE"
-            }
-          },
-          "motion": null,
-          "events": [
-            {
-              "eventId": "event.valtan.dash-charge.recovery.part-window.enter",
-              "trigger": "ENTER",
-              "kind": "SET_BOSS_FLAG",
-              "flagId": "boss.flag.groggy",
-              "enabled": true
-            },
-            {
-              "eventId": "event.valtan.dash-charge.recovery.part-window.exit",
-              "trigger": "EXIT",
-              "kind": "SET_BOSS_FLAG",
-              "flagId": "boss.flag.groggy",
-              "enabled": false
-            }
-          ],
-          "branches": [
-            {
-              "outcome": "PART_DESTROYED",
-              "nextActionId": "valtan.attack.dash-charge.groggy"
-            },
-            {
-              "outcome": "TIMEOUT",
-              "nextActionId": null
-            }
-          ],
-          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
-        },
-        {
           "stageId": "GROGGY",
           "actionId": "valtan.attack.dash-charge.groggy",
           "stageKind": "GROGGY",
           "durationMs": 5000,
-          "defaultNextActionId": "valtan.attack.dash-charge.part-break",
+          "defaultNextActionId": "valtan.attack.dash-charge.recovery",
           "hit": {
             "shape": {
               "kind": "NONE"
@@ -611,8 +571,33 @@
           ],
           "branches": [
             {
-              "outcome": "TIMEOUT",
+              "outcome": "PART_DESTROYED",
               "nextActionId": "valtan.attack.dash-charge.part-break"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": "valtan.attack.dash-charge.recovery"
+            }
+          ],
+          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
+        },
+        {
+          "stageId": "RECOVERY",
+          "actionId": "valtan.attack.dash-charge.recovery",
+          "stageKind": "RECOVERY",
+          "durationMs": 900,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": [
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
             }
           ]
         },
@@ -1317,8 +1302,8 @@
         ],
         "apexHeight": 10.0,
         "travelStageId": "STEP_03",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 700
       },
@@ -3947,14 +3932,14 @@
         "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.terrain-destruction-3.landing",
         "landingPosition": [
-          174.03,
+          156.03,
           22.99751,
           -122.06
         ],
         "apexHeight": 10.0,
         "travelStageId": "LANDING",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 200
       },
@@ -4083,14 +4068,14 @@
         "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.terrain-destruction-9.landing",
         "landingPosition": [
-          138.03,
+          156.03,
           22.99751,
           -122.06
         ],
         "apexHeight": 10.0,
         "travelStageId": "LANDING",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 200
       },

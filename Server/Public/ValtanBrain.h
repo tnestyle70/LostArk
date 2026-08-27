@@ -222,7 +222,7 @@ namespace LostArk::Server
 			float& outProposedX,
 			float& outProposedZ) const;
 		/* The armour charge loop: a charge drives forward until it meets an
-		impact receiver, and the collision -- not the clock -- ends the stage. */
+		authoritative wall, and the collision -- not the clock -- ends the stage. */
 		bool Try_BuildImpactMotion(
 			const SERVER_WORLD_ENTITY& boss,
 			float fixedDeltaSeconds,

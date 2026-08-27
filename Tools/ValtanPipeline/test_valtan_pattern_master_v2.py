@@ -1608,6 +1608,16 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in dash_presentation["stages"]
             if stage["stageId"] == "CHARGE"
         )
+        groggy_presentation = next(
+            stage
+            for stage in dash_presentation["stages"]
+            if stage["stageId"] == "GROGGY"
+        )
+        recovery_presentation = next(
+            stage
+            for stage in dash_presentation["stages"]
+            if stage["stageId"] == "RECOVERY"
+        )
         occurrences = charge_presentation["animation"]["occurrences"]
         presentation_wall_ms = sum(
             occurrence["playMs"] / occurrence["playRate"]
@@ -1628,7 +1638,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         )
         self.assertEqual(
             {
-                "WALL_CONTACT": "valtan.attack.dash-charge.recovery",
+                "WALL_CONTACT": "valtan.attack.dash-charge.groggy",
                 "TIMEOUT": "valtan.attack.dash-charge.recovery",
             },
             {
@@ -1636,13 +1646,47 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 for branch in charge_gameplay["branches"]
             },
         )
+        wall_contact_target = next(
+            branch["nextActionId"]
+            for branch in charge_gameplay["branches"]
+            if branch["outcome"] == "WALL_CONTACT"
+        )
+        self.assertEqual(groggy_presentation["actionId"], wall_contact_target)
+        self.assertNotEqual(recovery_presentation["actionId"], wall_contact_target)
+        self.assertEqual(
+            "LOOP_TO_STAGE_END",
+            groggy_presentation["animation"]["endPolicy"],
+        )
+        self.assertEqual(
+            [
+                {
+                    "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
+                    "clip": "mesh_dmg_parts_loop_1",
+                    "mappingBasis": "PATTERN_PR_REFERENCE",
+                    "sourceStartMs": 0,
+                    "playMs": 0,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": True,
+                }
+            ],
+            groggy_presentation["animation"]["occurrences"],
+        )
         self.assertEqual(
             "DESTROY_FIRST_ELIGIBLE",
-            recovery_gameplay["partDamagePolicy"],
+            groggy_gameplay["partDamagePolicy"],
         )
         self.assertEqual(
             {
-                "PART_DESTROYED": "valtan.attack.dash-charge.groggy",
+                "PART_DESTROYED": "valtan.attack.dash-charge.part-break",
+                "TIMEOUT": "valtan.attack.dash-charge.recovery",
+            },
+            {
+                branch["outcome"]: branch["nextActionId"]
+                for branch in groggy_gameplay["branches"]
+            },
+        )
+        self.assertEqual(
+            {
                 "TIMEOUT": None,
             },
             {
@@ -1650,18 +1694,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 for branch in recovery_gameplay["branches"]
             },
         )
-        self.assertEqual(
-            {
-                "TIMEOUT": "valtan.attack.dash-charge.part-break",
-            },
-            {
-                branch["outcome"]: branch["nextActionId"]
-                for branch in groggy_gameplay["branches"]
-            },
-        )
         self.assertTrue(
             pipeline._has_closed_stage_flag(
-                recovery_gameplay, "boss.flag.groggy"
+                groggy_gameplay, "boss.flag.groggy"
             )
         )
         sequence = gameplay["decisionModel"]["scriptedSequence"]["patternIds"]
@@ -1672,19 +1707,39 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
         _, _, outputs = pipeline.build_repository_product_projection(self.root)
         encounter = json.loads(outputs[pipeline.ENCOUNTER_REL])
+        bindings = json.loads(outputs[pipeline.BINDINGS_REL])
         projected_dash = next(
             pattern
             for pattern in encounter["patterns"]
             if pattern["patternId"] == "VALTAN_DASH_CHARGE"
         )
-        projected_recovery = next(
+        projected_groggy = next(
             stage
             for stage in projected_dash["stages"]
-            if stage["stageId"] == "RECOVERY"
+            if stage["stageId"] == "GROGGY"
         )
         self.assertEqual(
             "DESTROY_FIRST_ELIGIBLE",
-            projected_recovery["partDamagePolicy"],
+            projected_groggy["partDamagePolicy"],
+        )
+        projected_groggy_binding = next(
+            binding
+            for binding in bindings["bindings"]
+            if binding["actionId"] == "valtan.attack.dash-charge.groggy"
+        )
+        self.assertEqual(
+            [
+                {
+                    "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
+                    "clip": "mesh_dmg_parts_loop_1",
+                    "mappingBasis": "PATTERN_PR_REFERENCE",
+                    "sourceStartMs": 0,
+                    "playMs": 0,
+                    "playRate": 1.0,
+                    "loop": True,
+                }
+            ],
+            projected_groggy_binding["clips"],
         )
 
     def test_charge_lock_and_counter_terminal_graph_are_explicit(self) -> None:
@@ -1721,7 +1776,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
         bad_policy = copy.deepcopy(gameplay)
         stage(
-            bad_policy, "VALTAN_DASH_CHARGE", "RECOVERY"
+            bad_policy, "VALTAN_DASH_CHARGE", "GROGGY"
         )["partDamagePolicy"] = "DESTROY_ALL"
         with self.assertRaisesRegex(
             pipeline.PipelineError, "partDamagePolicy is unsupported"
@@ -1729,11 +1784,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             pipeline.validate_gameplay_authoring(bad_policy)
 
         open_part_window = copy.deepcopy(gameplay)
-        recovery = stage(
-            open_part_window, "VALTAN_DASH_CHARGE", "RECOVERY"
+        groggy = stage(
+            open_part_window, "VALTAN_DASH_CHARGE", "GROGGY"
         )
-        recovery["events"] = [
-            event for event in recovery["events"]
+        groggy["events"] = [
+            event for event in groggy["events"]
             if event["trigger"] != "EXIT"
         ]
         with self.assertRaisesRegex(

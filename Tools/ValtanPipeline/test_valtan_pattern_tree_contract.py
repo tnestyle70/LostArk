@@ -597,9 +597,9 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 if candidate["stageId"] == stage_id
             )
 
-        dash = stage(self.gameplay, "VALTAN_DASH_CHARGE", "RECOVERY")
+        dash = stage(self.gameplay, "VALTAN_DASH_CHARGE", "GROGGY")
         dash_product = stage(
-            self.encounter, "VALTAN_DASH_CHARGE", "RECOVERY"
+            self.encounter, "VALTAN_DASH_CHARGE", "GROGGY"
         )
         self.assertEqual(
             "DESTROY_FIRST_ELIGIBLE", dash["partDamagePolicy"]
@@ -631,17 +631,17 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
 
         invalid_policy = copy.deepcopy(self.gameplay)
         stage(
-            invalid_policy, "VALTAN_DASH_CHARGE", "RECOVERY"
+            invalid_policy, "VALTAN_DASH_CHARGE", "GROGGY"
         )["partDamagePolicy"] = "DESTROY_ALL"
         invalid_extensions.append(("unsupported part policy", invalid_policy))
 
         missing_part_branch = copy.deepcopy(self.gameplay)
         stage(
-            missing_part_branch, "VALTAN_DASH_CHARGE", "RECOVERY"
+            missing_part_branch, "VALTAN_DASH_CHARGE", "GROGGY"
         )["branches"] = [
             branch
             for branch in stage(
-                missing_part_branch, "VALTAN_DASH_CHARGE", "RECOVERY"
+                missing_part_branch, "VALTAN_DASH_CHARGE", "GROGGY"
             )["branches"]
             if branch["outcome"] != "PART_DESTROYED"
         ]
@@ -649,11 +649,11 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
 
         missing_groggy_close = copy.deepcopy(self.gameplay)
         stage(
-            missing_groggy_close, "VALTAN_DASH_CHARGE", "RECOVERY"
+            missing_groggy_close, "VALTAN_DASH_CHARGE", "GROGGY"
         )["events"] = [
             event
             for event in stage(
-                missing_groggy_close, "VALTAN_DASH_CHARGE", "RECOVERY"
+                missing_groggy_close, "VALTAN_DASH_CHARGE", "GROGGY"
             )["events"]
             if event["trigger"] != "EXIT"
         ]
@@ -785,6 +785,43 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "serverMotion travel stage must follow the entry stage",
             self.pattern_master_projector,
         )
+
+    def test_phase_two_leaps_use_fast_lift_and_center_terrain_landings(
+        self,
+    ) -> None:
+        patterns = {
+            row["patternId"]: row for row in self.gameplay["patterns"]
+        }
+        expected_world_sets = {
+            "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK":
+                "worldeventset.valtan.terrain-destruction-3.floor84",
+            "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK":
+                "worldeventset.valtan.terrain-destruction-9.floor30",
+        }
+
+        for pattern_id in (
+            "VALTAN_SIX_PIZZA_106",
+            *expected_world_sets,
+        ):
+            motion = patterns[pattern_id]["serverMotion"]
+            self.assertEqual(800, motion["takeoffStartMs"])
+            self.assertEqual(1100, motion["takeoffEndMs"])
+
+        for pattern_id, expected_world_set in expected_world_sets.items():
+            pattern = patterns[pattern_id]
+            self.assertEqual(
+                [156.03, 22.99751, -122.06],
+                pattern["serverMotion"]["landingPosition"],
+            )
+            impact = next(
+                stage for stage in pattern["stages"]
+                if stage["stageId"] == "IMPACT"
+            )
+            world_events = [
+                event["worldEventSetId"] for event in impact["events"]
+                if event["kind"] == "TRIGGER_WORLD_EVENT_SET"
+            ]
+            self.assertEqual([expected_world_set], world_events)
 
     def test_saved_gameplay_overlay_policy_differs_from_product_parity(self) -> None:
         tuned = copy.deepcopy(self.gameplay)

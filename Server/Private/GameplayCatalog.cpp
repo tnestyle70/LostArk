@@ -3057,9 +3057,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			}
 			BOSS_PATTERN_STAGE_DEFINITION& stage = owner->Stages[stageIndex];
 			/* The authored WALL_CONTACT edge must end this stage in the immediate
-			next stage. Most charges open GROGGY directly; dash-charge first opens
-			its short RECOVERY part window and branches to GROGGY only on a valid
-			part hit. */
+			GROGGY stage. The collision/world-destruction transaction publishes the
+			outcome only after an exact receiver mutation commits, so allowing an
+			intermediate recovery here would delay the visible impact reaction. */
 			const auto wallBranch = std::find_if(
 				stage.Branches.begin(), stage.Branches.end(),
 				[](const BOSS_PATTERN_STAGE_BRANCH& branch)
@@ -3070,8 +3070,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			const BOSS_PATTERN_STAGE_DEFINITION& impactStage =
 				owner->Stages[stageIndex + 1u];
 			const bool validImpactKind =
-				BOSS_PATTERN_STAGE_KIND::GROGGY == impactStage.eStageKind ||
-				BOSS_PATTERN_STAGE_KIND::RECOVERY == impactStage.eStageKind;
+				BOSS_PATTERN_STAGE_KIND::GROGGY == impactStage.eStageKind;
 			if (stage.strStageId != fields[4] ||
 				stage.strActionId != fields[5] || stage.bChargeImpact ||
 				stage.Branches.end() == wallBranch ||

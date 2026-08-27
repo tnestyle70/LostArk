@@ -670,11 +670,10 @@ namespace LostArk::Server
 			std::string& status);
 #endif
 		/* The navigation grid is the ground a boss pattern stride may cross.
-		Pattern motion is swept against impact receivers alone, and nothing in
-		that sweep knows where the ground stops, so the furthest sample the grid
-		still owns is what the stride is allowed to reach: a charge stops against
-		the face of a wall instead of entering geometry it then has to be
-		projected out of. A start the grid already refuses passes through
+		The collision sweep owns wall contact, while the furthest sample the grid
+		still owns is what any stride is allowed to reach, so a charge cannot
+		leave the floor before its wall contact is evaluated. A start the grid
+		already refuses passes through
 		unchanged, because refusing it there would strand the boss for good. */
 		static void Resolve_NavigableStep(
 			const CServerNavigation& navigation,
@@ -695,7 +694,8 @@ namespace LostArk::Server
 		void Broadcast_EncounterPropSync();
 		/* Break whatever a non-impact boss body physically reached between its
 		previous and current position. A charge-impact stage bypasses this generic
-		pass and owns one exact swept receiver transaction instead. */
+		pass and owns one exact swept wall transaction: impact receiver first,
+		then the co-located ordinary contact binding. */
 		bool Apply_WorldDestructionBodyContact(
 			SERVER_WORLD_ENTITY& boss,
 			float previousX,

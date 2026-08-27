@@ -115,7 +115,7 @@
       "id": "requested.20260827.attack-whirlwind.jump-fan.vertical-core",
       "displayName": "Requested 2026-08-27 / jump slam very large vertical cyan sprite",
       "groupId": "requested.20260827",
-      "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01:authored.copy.authored.copy.donut.impact.wave.black.1.1:requested.20260827.attack-whirlwind.jump-fan.vertical-core",
+      "sourceNode": "authored-copy:effect.valtan.high-jump.center-landing.active:authored.copy.authored.copy.donut.impact.wave.black.1.1:requested.20260827.attack-whirlwind.jump-fan.vertical-core",
       "visible": true,
       "kind": "particle",
       "resources": [

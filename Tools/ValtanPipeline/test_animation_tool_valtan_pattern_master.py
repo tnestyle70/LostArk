@@ -387,6 +387,33 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
         )
         self.assertIn("Apply_PatternPresentationSample(", network_apply)
         self.assertIn("Apply_PatternPresentationSample(", local_apply)
+        self.assertIn(
+            "case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_ACTIVE:",
+            network_apply,
+        )
+        self.assertRegex(
+            network_apply,
+            r"const bool_t patternEdgeChanged = isPatternState &&\s*"
+            r"\(patternIdChanged \|\| actionIdChanged \|\|\s*"
+            r"iPatternSequence != m_iServerPatternSequence \|\|\s*"
+            r"iPatternStageIndex != m_iServerPatternStageIndex \|\|\s*"
+            r"iActionStartTick != m_iServerActionStartTick\);",
+        )
+        self.assertRegex(
+            network_apply,
+            r"const bool_t bAnimationEdgeChanged =\s*"
+            r"m_iState != nextState \|\| patternEdgeChanged;",
+        )
+        self.assertRegex(
+            network_apply,
+            r"Apply_PatternPresentationSample\(\s*actionId,\s*\*pClip,\s*"
+            r"fActionAgeSeconds,\s*bAnimationEdgeChanged,",
+        )
+        self.assertRegex(
+            shared_sampler,
+            r"if \(bAnimationEdgeChanged \|\| bClipOccurrenceTransition\)\s*"
+            r"\{\s*if \(!m_pBodyModelCom->Start_Animation\(",
+        )
         self.assertNotIn("CActionPresentationTimeline::Resolve_Sample", apply_pose)
         self.assertIn('"Play Arena Presentation Locally"', self.cpp)
 

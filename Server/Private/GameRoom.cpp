@@ -4221,6 +4221,12 @@ bool LostArk::Server::CGameRoom::Start_ValtanFightPage(
 	(void)CBossCombatRuntime::Set_GameplayPhase(
 		boss, policy->iInitialGameplayPhase);
 	boss.bIntroPatternConsumed = !policy->bPlayEntrance;
+	/* A fight page deliberately starts at an authored entrance/health boundary,
+	so let that one-shot queue run ahead of the Product ordered sequence. The
+	Brain clears this override as soon as it consumes the intro or pending
+	mechanic, then ordinary Product playback resumes. */
+	boss.bAutomaticPatternSequenceAuditionOverride = true;
+	boss.bAutomaticPatternSequenceAuditionHold = false;
 	boss.PendingPatternIds.clear();
 	boss.TriggeredPatternIds.clear();
 	boss.MechanicOccurrences.clear();
@@ -9791,9 +9797,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_isReady = false;
 				return;
 			}
-			/* A charge owns one swept impact receiver transaction below. Letting the
-			   stationary body-contact pass run first can break every overlapping wall
-			   box before the exact receiver chooses its single mutation. */
+			/* A charge owns one swept wall transaction below. Letting the stationary
+			   body-contact pass run first can break every overlapping wall box before
+			   the first surface chooses its single impact/contact mutation. */
 			if (!entity.bPatternChargeImpact &&
 				!Apply_WorldDestructionBodyContact(
 				entity, contactStartX, contactStartY, contactStartZ,
@@ -9829,16 +9835,41 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 							targetX, targetZ,
 							entity.fPositionX, entity.fPositionZ);
 					};
-				/* Only a charge may end its stage on a wall. Ordinary stages now
-				carry the small travel their clip bakes, and sweeping those against
-				impact receivers would let a recovery shuffle smash a wall and then
-				fail the impact transition the stage never declared. */
-				SERVER_BOSS_RECEIVER_HIT hit{};
-				if (entity.bPatternChargeImpact &&
-					m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
+				/* Dash Charge stops on the first authoritative collisionBox, including
+				ordinary walls. Other authored charge-impact mechanics retain their
+				exact receiver-only contract. */
+				const bool dashStopsOnEveryWall =
+					"VALTAN_DASH_CHARGE" == entity.strPatternId &&
+					"CHARGE" == entity.strPatternStageId &&
+					"valtan.attack.dash-charge.active" == entity.strActionId;
+				SERVER_BOSS_WALL_HIT hit{};
+				bool foundChargeWall = false;
+				if (entity.bPatternChargeImpact && dashStopsOnEveryWall)
+				{
+					foundChargeWall =
+						m_ServerCollisionSystem.Sweep_BossCircleAgainstWalls(
 						entity.fPositionX, entity.fPositionY, entity.fPositionZ,
 						proposedX, entity.fPositionY, proposedZ,
-						entity.fCollisionRadius, hit))
+						entity.fCollisionRadius, hit);
+				}
+				else if (entity.bPatternChargeImpact)
+				{
+					SERVER_BOSS_RECEIVER_HIT receiverHit{};
+					foundChargeWall =
+						m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
+							entity.fPositionX, entity.fPositionY,
+							entity.fPositionZ, proposedX, entity.fPositionY,
+							proposedZ, entity.fCollisionRadius, receiverHit);
+					if (foundChargeWall)
+					{
+						hit.strCollisionPlacementId =
+							receiverHit.strReceiverPlacementId;
+						hit.strImpactReceiverPlacementId =
+							receiverHit.strReceiverPlacementId;
+						hit.fHitRatio = receiverHit.fHitRatio;
+					}
+				}
+				if (foundChargeWall)
 				{
 					const float deltaX = proposedX - entity.fPositionX;
 					const float deltaZ = proposedZ - entity.fPositionZ;
@@ -9851,56 +9882,68 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					Take_MotionStep(
 						entity.fPositionX + deltaX * safeRatio,
 						entity.fPositionZ + deltaZ * safeRatio);
+					const SERVER_WORLD_ENTITY bossBeforeImpactTransition = entity;
+					const std::string impactPreviousPatternId = entity.strPatternId;
+					const std::string impactPreviousActionId = entity.strActionId;
 					bool triggered = false;
-					if (!Apply_WorldDestructionImpact(
-						entity, hit.strReceiverPlacementId, updateTick, triggered))
+					if (!hit.strImpactReceiverPlacementId.empty() &&
+						!Apply_WorldDestructionImpact(
+							entity, hit.strImpactReceiverPlacementId,
+							updateTick, triggered))
 					{
 						m_isReady = false;
 						return;
 					}
-					/* Geometry always stops the body, but only an exact, newly applied
-					   destruction binding owns WALL_CONTACT. An unbound or consumed
-					   receiver must not manufacture a GROGGY transition. */
-					if (!triggered)
+					if (dashStopsOnEveryWall && !triggered &&
+						!Apply_WorldDestructionContacts(
+						entity, { hit.strCollisionPlacementId }, updateTick))
+					{
+						m_isReady = false;
+						return;
+					}
+					if (!dashStopsOnEveryWall && !triggered)
 					{
 						entity.fPatternForcedMotionSpeed = 0.f;
 					}
-					else
+					/* A fresh receiver publishes WALL_CONTACT as part of its exact
+					   mutation. Ordinary walls and already-consumed receiver surfaces
+					   publish the same geometry outcome without manufacturing another
+					   destruction transition. */
+					const bool impactOutcomePublished = !dashStopsOnEveryWall ||
+						triggered ||
+						CBossCombatRuntime::Publish_PatternOutcome(
+							entity, BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT,
+							updateTick);
+					const CGameplayCatalog* impactCatalog =
+						m_GameplayCatalog.Resolve(entity.PinnedDefinitionRevision);
+					if ((dashStopsOnEveryWall || triggered) &&
+						(!impactOutcomePublished || nullptr == impactCatalog ||
+						!m_ValtanBrain.Complete_ImpactStage(
+							entity, *impactCatalog, updateTick) ||
+						!Apply_BossPatternStageTransition(
+							entity, impactPreviousPatternId,
+							impactPreviousActionId, entity.strPatternId,
+							entity.strActionId,
+							bossBeforeImpactTransition.PinnedDefinitionRevision,
+							entity.PinnedDefinitionRevision, updateTick) ||
+						!Apply_WorldDestructionStageEntry(entity, updateTick)))
 					{
-						const SERVER_WORLD_ENTITY bossBeforeImpactTransition = entity;
-						const std::string impactPreviousPatternId = entity.strPatternId;
-						const std::string impactPreviousActionId = entity.strActionId;
-						const CGameplayCatalog* impactCatalog =
-							m_GameplayCatalog.Resolve(entity.PinnedDefinitionRevision);
-						if (nullptr == impactCatalog ||
-							!m_ValtanBrain.Complete_ImpactStage(
-								entity, *impactCatalog, updateTick) ||
-							!Apply_BossPatternStageTransition(
-								entity, impactPreviousPatternId,
-								impactPreviousActionId, entity.strPatternId,
-								entity.strActionId,
-								bossBeforeImpactTransition.PinnedDefinitionRevision,
-								entity.PinnedDefinitionRevision, updateTick) ||
-							!Apply_WorldDestructionStageEntry(entity, updateTick))
-						{
-							auto mechanicOccurrences =
-								std::move(entity.MechanicOccurrences);
-							const bool mechanicResetRequired =
-								entity.bMechanicLedgerRequiresReset;
-							releaseBossAttachments(entity);
-							entity = bossBeforeImpactTransition;
-							entity.MechanicOccurrences =
-								std::move(mechanicOccurrences);
-							entity.bMechanicLedgerRequiresReset =
-								mechanicResetRequired;
-							m_strStatus =
-								"Valtan impact stage transition failed";
-							m_isReady = false;
-							return;
-						}
-						/* Complete_ImpactStage resolves the authored WALL_CONTACT branch;
-						   GameRoom only owns collision/world-destruction transaction order. */
+						auto mechanicOccurrences =
+							std::move(entity.MechanicOccurrences);
+						const bool mechanicResetRequired =
+							entity.bMechanicLedgerRequiresReset;
+						releaseBossAttachments(entity);
+						entity = bossBeforeImpactTransition;
+						entity.MechanicOccurrences =
+							std::move(mechanicOccurrences);
+						entity.bMechanicLedgerRequiresReset =
+							mechanicResetRequired;
+						m_strStatus = "Valtan wall-contact stage transition failed";
+						m_isReady = false;
+						return;
 					}
+					/* Complete_ImpactStage resolves the authored WALL_CONTACT branch;
+					   GameRoom owns the shared wall-stop/destruction transaction order. */
 				}
 				else
 				{

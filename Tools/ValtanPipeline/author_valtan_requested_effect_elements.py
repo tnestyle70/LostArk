@@ -69,8 +69,8 @@ DONOR_PORTAL = AUTHORING_ROOT / (
 DONOR_PORTAL_RUSH = AUTHORING_ROOT / (
     "effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.effect.json"
 )
-DONOR_HIGH_JUMP_TAKEOFF = AUTHORING_ROOT / (
-    "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01.effect.json"
+DONOR_HIGH_JUMP_VERTICAL = AUTHORING_ROOT / (
+    "effect.valtan.high-jump.center-landing.active.effect.json"
 )
 DONOR_HIGH_JUMP_LAND = AUTHORING_ROOT / (
     "effect.valtan.carrier-v1.attack.high-jump.land.clip-01.effect.json"
@@ -1029,7 +1029,7 @@ def _attack_whirlwind_elements(
     whirlwind: JsonObject,
     arena: JsonObject,
     target_cone: JsonObject,
-    takeoff: JsonObject,
+    vertical_source: JsonObject,
 ) -> list[JsonObject]:
     finish_starts = {
         FOUR_SLASH_FINISH_IDS[0]: 1.250,
@@ -1096,7 +1096,7 @@ def _attack_whirlwind_elements(
     )
     result.append(
         _clone(
-            takeoff,
+            vertical_source,
             HIGH_JUMP_VERTICAL_ID,
             f"{GENERATED_PREFIX}attack-whirlwind.jump-fan.vertical-core",
             "jump slam very large vertical cyan sprite",
@@ -1661,7 +1661,7 @@ def _struggling_elements(
     front_back_product: JsonObject,
     arena: JsonObject,
     fist: JsonObject,
-    takeoff: JsonObject,
+    vertical_source: JsonObject,
     imprison_roar: JsonObject,
 ) -> list[JsonObject]:
     """Build one 27.766s Product for the complete Phase 3 struggle sequence."""
@@ -1750,7 +1750,7 @@ def _struggling_elements(
 
     result.append(
         _clone(
-            takeoff,
+            vertical_source,
             HIGH_JUMP_VERTICAL_ID,
             f"{GENERATED_PREFIX}struggling.large-vertical-burst",
             "phase 3 large vertical cyan sprite burst",
@@ -2370,7 +2370,7 @@ def collect_projection() -> Projection:
         "cone": _load_required(DONOR_CONE, guards),
         "sky": _load_required(DONOR_SKY_AXE, guards),
         "front": _load_required(DONOR_FRONT_BACK, guards),
-        "takeoff": _load_required(DONOR_HIGH_JUMP_TAKEOFF, guards),
+        "vertical": _load_required(DONOR_HIGH_JUMP_VERTICAL, guards),
         "land": _load_required(DONOR_HIGH_JUMP_LAND, guards),
         "target": _load_required(DONOR_TARGET_CONE, guards),
         "portal_rush": _load_required(DONOR_PORTAL_RUSH, guards),
@@ -2389,7 +2389,7 @@ def collect_projection() -> Projection:
         "cone": "effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01",
         "sky": "effect.valtan.sky-axe.active",
         "front": "effect.valtan.carrier-v1.attack.front-back-front.active.clip-01",
-        "takeoff": "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
+        "vertical": "effect.valtan.high-jump.center-landing.active",
         "land": "effect.valtan.carrier-v1.attack.high-jump.land.clip-01",
         "target": "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
         "portal_rush": "effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01",
@@ -2469,7 +2469,7 @@ def collect_projection() -> Projection:
             donors["whirlwind"],
             donors["arena"],
             donors["target"],
-            donors["takeoff"],
+            donors["vertical"],
         ),
         CHARGE: _charge_elements(
             donors["whirlwind"], donors["native"], donors["target"]
@@ -2500,15 +2500,32 @@ def collect_projection() -> Projection:
             front_back_product,
             donors["arena"],
             donors["fist"],
-            donors["takeoff"],
+            donors["vertical"],
             donors["imprison"],
         ),
     }
 
     outputs: dict[Path, bytes] = {}
     appended_by_target: dict[str, int] = {}
+    vertical_provenance_ids = {
+        ATTACK_WHIRLWIND.effect_asset_id:
+            f"{GENERATED_PREFIX}attack-whirlwind.jump-fan.vertical-core",
+        STRUGGLING.effect_asset_id:
+            f"{GENERATED_PREFIX}struggling.large-vertical-burst",
+    }
     for target, generated in direct_generated.items():
         document, appended = _stage_target(target, generated, guards)
+        vertical_generated_id = vertical_provenance_ids.get(target.effect_asset_id)
+        if vertical_generated_id is not None:
+            vertical_element = _element(
+                document,
+                vertical_generated_id,
+                target.effect_asset_id,
+            )
+            vertical_element["sourceNode"] = (
+                f"authored-copy:{expected_donor_ids['vertical']}:"
+                f"{HIGH_JUMP_VERTICAL_ID}:{vertical_generated_id}"
+            )
         if target in (TERRAIN_3, TERRAIN_9):
             suffix = "3" if target is TERRAIN_3 else "9"
             elements = _require_list(document.get("elements"), target.effect_asset_id)

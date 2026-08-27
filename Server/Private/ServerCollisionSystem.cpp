@@ -709,6 +709,94 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_BossCircleAgainstReceivers(
 	return found;
 }
 
+bool LostArk::Server::CServerCollisionSystem::Sweep_BossCircleAgainstWalls(
+	const float startX,
+	const float startY,
+	const float startZ,
+	const float proposedX,
+	const float proposedY,
+	const float proposedZ,
+	const float radius,
+	SERVER_BOSS_WALL_HIT& outHit) const
+{
+	outHit = {};
+	if (!std::isfinite(startX) || !std::isfinite(startY) ||
+		!std::isfinite(startZ) || !std::isfinite(proposedX) ||
+		!std::isfinite(proposedY) || !std::isfinite(proposedZ) ||
+		!std::isfinite(radius) || radius <= 0.f || radius > 1000.f)
+	{
+		return false;
+	}
+
+	bool found = false;
+	float earliestHit = (std::numeric_limits<float>::max)();
+	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
+	{
+		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index])
+			continue;
+		float hitRatio = 0.f;
+		const WORLD_BOOTSTRAP_PLACEMENT& box = m_CollisionBoxes[index];
+		if (!Sweep_CircleAgainstBox(
+			startX, startY, startZ,
+			proposedX, proposedY, proposedZ, radius, box, hitRatio))
+		{
+			continue;
+		}
+		/* The authored boss radius can begin a tick overlapping a wall behind or
+		beside it. A front-contact sweep must let that existing overlap move out
+		or tangentially past the wall instead of reporting ratio zero forever. */
+		if (hitRatio <= SWEEP_EPSILON)
+		{
+			const LOCAL_POINT start = To_BoxLocal(startX, startZ, box);
+			const LOCAL_POINT end = To_BoxLocal(proposedX, proposedZ, box);
+			const float closestX = (std::clamp)(
+				start.x, -box.fHalfExtentX, box.fHalfExtentX);
+			const float closestZ = (std::clamp)(
+				start.z, -box.fHalfExtentZ, box.fHalfExtentZ);
+			const float normalX = start.x - closestX;
+			const float normalZ = start.z - closestZ;
+			const float normalLengthSquared =
+				normalX * normalX + normalZ * normalZ;
+			const float intoSurface =
+				(end.x - start.x) * normalX +
+				(end.z - start.z) * normalZ;
+			if (normalLengthSquared > SWEEP_EPSILON * SWEEP_EPSILON &&
+				intoSurface >= -SWEEP_EPSILON)
+			{
+				continue;
+			}
+		}
+		const bool impactReceiverEnabled =
+			index < m_ImpactReceiverEnabled.size() &&
+			m_ImpactReceiverEnabled[index];
+		const bool earlierSurface = !found ||
+			hitRatio < earliestHit - SWEEP_EPSILON;
+		const bool sameSurface = found &&
+			std::abs(hitRatio - earliestHit) <= SWEEP_EPSILON;
+		if (!earlierSurface && !sameSurface)
+			continue;
+		if (earlierSurface)
+		{
+			found = true;
+			earliestHit = hitRatio;
+			outHit.strCollisionPlacementId = box.strPlacementId;
+			outHit.strImpactReceiverPlacementId = impactReceiverEnabled ?
+				box.strPlacementId : std::string{};
+			outHit.fHitRatio = hitRatio;
+			continue;
+		}
+		if (box.strPlacementId < outHit.strCollisionPlacementId)
+			outHit.strCollisionPlacementId = box.strPlacementId;
+		if (impactReceiverEnabled &&
+			(outHit.strImpactReceiverPlacementId.empty() ||
+			 box.strPlacementId < outHit.strImpactReceiverPlacementId))
+		{
+			outHit.strImpactReceiverPlacementId = box.strPlacementId;
+		}
+	}
+	return found;
+}
+
 void LostArk::Server::CServerCollisionSystem::Collect_BossCircleContacts(
 	const float startX,
 	const float startY,
