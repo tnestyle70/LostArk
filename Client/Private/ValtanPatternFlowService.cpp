@@ -1,6 +1,7 @@
 #include "ValtanPatternFlowService.h"
 
 #include "NetworkManager.h"
+#include "ValtanPatternAuditionService.h"
 #include "Network/PacketMessages.h"
 
 #include <Windows.h>
@@ -88,6 +89,12 @@ bool_t Client::CValtanPatternFlowService::Start(
 {
 	using namespace LostArk::Shared;
 	Update();
+	CValtanPatternAuditionService::Get().Update();
+	if (CValtanPatternAuditionService::Get().Has_PlaybackOwnership())
+	{
+		strOutStatus = "Pattern Flow is locked while an isolated audition or Next command owns playback.";
+		return false;
+	}
 	if (m_Snapshot.Is_InFlight())
 	{
 		strOutStatus = "Pattern Flow is already " +

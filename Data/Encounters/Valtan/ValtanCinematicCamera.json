@@ -461,54 +461,6 @@
                                    ]
                  },
                  {
-                     "cueId":  "camera.valtan.six-pizza-106.landing",
-                     "patternId":  "VALTAN_SIX_PIZZA_106",
-                     "stageId":  "STEP_03",
-                     "trackingMode":  "PLAYER_BOSS_FRAME",
-                     "trackingOrigin":  [
-                                             0,
-                                             0,
-                                             0
-                                         ],
-                     "durationMs":  1200,
-                     "interpolation":  "LINEAR",
-                     "easing":  "SMOOTHSTEP",
-                     "shakeAmplitude":  0.2,
-                     "shakeDurationMs":  180,
-                     "keyframes":  [
-                                       {
-                                           "sceneId":  "camera.valtan.six-pizza-106.landing.scene.01",
-                                           "timeMs":  0,
-                                           "eye":  [
-                                                       0,
-                                                       16,
-                                                       -26
-                                                   ],
-                                           "lookAt":  [
-                                                          0,
-                                                          3,
-                                                          0
-                                                      ],
-                                           "fovYDegrees":  60
-                                       },
-                                       {
-                                           "sceneId":  "camera.valtan.six-pizza-106.landing.scene.02",
-                                           "timeMs":  1200,
-                                           "eye":  [
-                                                       0,
-                                                       13,
-                                                       -22
-                                                   ],
-                                           "lookAt":  [
-                                                          0,
-                                                          2.5,
-                                                          0
-                                                      ],
-                                           "fovYDegrees":  56
-                                       }
-                                   ]
-                 },
-                 {
                      "cueId":  "camera.valtan.four-pillars-105.takeoff",
                      "patternId":  "VALTAN_FOUR_PILLARS_105",
                      "stageId":  "TAKEOFF",

@@ -1,5 +1,6 @@
 #include "Client_Defines.h"
 
+#include "ActionPresentationTimeline.h"
 #include "DataJson.h"
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_Catalog.h"
@@ -21,6 +22,7 @@
 #include "Level.h"
 #include "RuntimeAssetRoot.h"
 #include "Shader.h"
+#include "ValtanPatternTree.h"
 
 #include <algorithm>
 #include <array>
@@ -1389,6 +1391,7 @@ namespace
 				strOutError;
 			return false;
 		}
+		const Client::EFFECT_DOCUMENT_DESC SourceTimingDocument = BudgetDocument;
 		Client::EFFECT_ELEMENT_DESC& BudgetElement =
 			BudgetDocument.Elements.front();
 		BudgetElement.Detail.Particle.iMaxParticles = 512u;
@@ -1482,6 +1485,125 @@ namespace
 			strOutError =
 				"source playback Life x did not extend the declared preview tail";
 			return false;
+		}
+
+		struct CUE_START_CASE final
+		{
+			const char* strName;
+			Client::ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
+			float fOwningClipOffsetSeconds;
+			float fDetailDelaySeconds;
+			float fNativeDelaySeconds;
+			float fBeforeTimelineSeconds;
+			float fAfterTimelineSeconds;
+			bool bBeforeCueVisible;
+		};
+		/* Keep the single-burst source fixture intact. These wall-clock samples
+		   straddle actual 60 Hz births, not merely the displayed cue boundary. */
+		const CUE_START_CASE StartCases[] =
+		{
+			{ "roar-pattern-authored-delay", { 0.f, 1.f, 0.f, 0.f, false },
+				2.3f, 0.74f, 0.f, 3.03f, 3.06f, true },
+			{ "roar-pattern-zero-delay", { 0.f, 1.f, 0.f, 0.f, false },
+				2.3f, 0.f, 0.f, 2.3f, 2.33f, true },
+			{ "terrain-native-delay", { 0.2f, 1.f, 0.2f, 0.f, false },
+				3.4f, 0.f, 0.230893999f, 3.62f, 3.65f, true },
+			{ "late-cue-rate2-delays", { 0.2f, 2.f, 1.2f, 0.f, false },
+				2.f, 0.74f, 0.230893999f, 2.98f, 3.f, true },
+			{ "late-cue-zero-delay", { 0.3f, 2.f, 0.7f, 0.f, false },
+				1.25f, 0.f, 0.f, 1.44f, 1.47f, false }
+		};
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		for (const CUE_START_CASE& Case : StartCases)
+		{
+			Client::EFFECT_DOCUMENT_DESC TimedDocument = SourceTimingDocument;
+			Client::EFFECT_ELEMENT_DESC& TimedElement =
+				TimedDocument.Elements.front();
+			TimedElement.Detail.Timing.fStartDelaySeconds =
+				Case.fDetailDelaySeconds;
+			TimedElement.SourceRecipe.fEmitterDelaySeconds =
+				Case.fNativeDelaySeconds;
+			float fDisplayedStart = 0.f;
+			Client::ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE EditedStart;
+			if (!Client::CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
+					Case.Timing, Case.fOwningClipOffsetSeconds,
+					TimedElement.Detail.Timing.fStartDelaySeconds, fDisplayedStart) ||
+				!Client::CActionPresentationTimeline::Resolve_CuePreviewSample(
+					Case.Timing, fDisplayedStart - Case.fOwningClipOffsetSeconds,
+					EditedStart))
+			{
+				strOutError = std::string("Start Delay Timeline edit failed: ") + Case.strName;
+				return false;
+			}
+			TimedElement.Detail.Timing.fStartDelaySeconds = EditedStart.fEffectSampleSeconds;
+			if (std::abs(TimedElement.Detail.Timing.fStartDelaySeconds -
+					Case.fDetailDelaySeconds) > 1.0e-5f ||
+				TimedElement.SourceRecipe.fEmitterDelaySeconds != Case.fNativeDelaySeconds)
+			{
+				strOutError = "Timeline edit changed an authored or native emitter delay";
+				return false;
+			}
+			std::shared_ptr<const Client::CEffectPlayback::PREPARED_RESOURCES>
+				TimedPrepared;
+			Client::CEffectPlayback TimedPlayback;
+			if (!Client::CEffectDocumentCodec::Validate(
+					TimedDocument, strOutError) ||
+				!Client::CEffectPlayback::Prepare_DocumentResources(
+					TimedDocument, TimedPrepared, strOutError) ||
+				!TimedPlayback.Stage_PrevalidatedDocument(
+					TimedDocument, TimedPrepared, strOutError))
+			{
+				strOutError = std::string("source cue timing fixture failed: ") +
+					Case.strName + ": " + strOutError;
+				return false;
+			}
+
+			const float TimelineSamples[] =
+			{
+				Case.fBeforeTimelineSeconds, Case.fAfterTimelineSeconds,
+				Case.fBeforeTimelineSeconds
+			};
+			Client::ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Samples[3]{};
+			Client::EFFECT_PARTICLE_RUNTIME_PROBE Probes[3]{};
+			for (std::size_t i = 0u; i < std::size(TimelineSamples); ++i)
+			{
+				const bool bAfterBirth = 1u == i;
+				if (!Client::CActionPresentationTimeline::Resolve_CuePreviewSample(
+						Case.Timing, TimelineSamples[i] -
+							Case.fOwningClipOffsetSeconds, Samples[i]))
+				{
+					strOutError = std::string("source cue timing conversion failed: ") +
+						Case.strName;
+					return false;
+				}
+				TimedPlayback.Seek(Samples[i].fEffectSampleSeconds, Identity);
+				if (Samples[i].bVisible !=
+						(bAfterBirth || Case.bBeforeCueVisible) ||
+					!TimedPlayback.Query_ParticleRuntimeProbe(
+						TimedElement.strElementId, Probes[i]) ||
+					Probes[i].iActiveParticleCount != (bAfterBirth ? 1u : 0u) ||
+					std::abs(Probes[i].fSampleTimeSeconds -
+						Samples[i].fEffectSampleSeconds) > 1.0e-5f)
+				{
+					std::ostringstream Error;
+					Error << "source cue particle boundary failed: " << Case.strName
+						<< " seek=" << i << " timeline=" << TimelineSamples[i]
+						<< " effect=" << Samples[i].fEffectSampleSeconds
+						<< " visible=" << Samples[i].bVisible
+						<< " probe=" << Probes[i].fSampleTimeSeconds
+						<< " particles=" << Probes[i].iActiveParticleCount;
+					strOutError = Error.str();
+					return false;
+				}
+			}
+			std::cerr << "[source-cue-start] " << Case.strName
+				<< " timeline=" << TimelineSamples[0] << "/" << TimelineSamples[1]
+				<< " effect=" << Samples[0].fEffectSampleSeconds << "/"
+				<< Samples[1].fEffectSampleSeconds << " particles="
+				<< Probes[0].iActiveParticleCount << "/"
+				<< Probes[1].iActiveParticleCount << "/"
+				<< Probes[2].iActiveParticleCount << '\n';
 		}
 
 		strOutError.clear();
@@ -2665,6 +2787,604 @@ namespace
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
 		Playback.Seek(fSampleTimeSeconds, Identity);
 		OutParticles = Playback.Get_Frame().Particles;
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_ValtanPatternIdentitySummaryContract(std::string& strOutError)
+	{
+		strOutError.clear();
+		const auto Require = [&strOutError](const bool Condition, const char* pMessage)
+		{
+			if (!Condition)
+				strOutError = pMessage;
+			return Condition;
+		};
+		Client::VALTAN_PATTERN_VIEW Pattern;
+		Pattern.strPatternId = "VALTAN_SUMMARY_FIXTURE";
+		Pattern.strDisplayName = "display name must not replace the stable identity";
+		Pattern.bManualServerAudition = true;
+		Pattern.iAuthoringPhase = 2u;
+		Pattern.iMinimumPhase = 1u;
+		Pattern.iMaximumPhase = 3u;
+		Client::VALTAN_STAGE_VIEW First;
+		First.strStageId = "STEP_02";
+		First.iDurationMs = 2600u;
+		First.iAuthoringRepeatCount = 2u;
+		Client::VALTAN_CLIP_OCCURRENCE_VIEW Trimmed;
+		Trimmed.strClipName = "mesh_att_battle_12_01";
+		Trimmed.iSourceStartMs = 900u;
+		Trimmed.iPlayMs = 600u;
+		Trimmed.iAuthoringWallMs = 300u;
+		Trimmed.fPlayRate = 2.f;
+		Client::VALTAN_CLIP_OCCURRENCE_VIEW Natural;
+		Natural.strClipName = "mesh_att_battle_12_02";
+		Natural.iAuthoringWallMs = 1000u;
+		Natural.fPlayRate = 0.5f;
+		Natural.bLoop = true;
+		First.ClipOccurrences = { Trimmed, Natural };
+		Client::VALTAN_STAGE_VIEW Suppressed;
+		Suppressed.strStageId = "STEP_01";
+		Suppressed.iDurationMs = 700u;
+		Suppressed.bSuppressAnimation = true;
+		Suppressed.ClipOccurrences.push_back(Trimmed);
+		Client::VALTAN_STAGE_VIEW Unmapped;
+		Unmapped.strStageId = "STEP_03";
+		Unmapped.iDurationMs = 500u;
+		Unmapped.RuntimeClipNames.push_back("legacy-name-must-not-be-substituted");
+		Pattern.Stages = { First, Suppressed, Unmapped };
+		const std::string Summary =
+			Client::CValtanPatternTree::Build_PatternIdentitySummary(Pattern);
+		const std::string Expected =
+			"Pattern ID: VALTAN_SUMMARY_FIXTURE\n"
+			"Authoring: Phase 2 manual audition | Runtime eligibility: phase 1-3\n"
+			"Clips (authored order):\n"
+			"1. STEP_02 [wall 2.600s; repeats 2]\n"
+			"  mesh_att_battle_12_01 [source start 0.900s; source duration 0.600s; rate 2.000x; wall 0.300s]\n"
+			"  mesh_att_battle_12_02 [source start 0.000s; natural end; rate 0.500x; wall 1.000s; loop]\n"
+			"2. STEP_01 [wall 0.700s]: animation suppressed\n"
+			"3. STEP_03 [wall 0.500s]: no authored clip occurrence";
+		if (!Require(Summary == Expected,
+			"pattern summary changed identity, authored ordering, or source/wall clocks"))
+		{
+			std::cerr << Summary << '\n';
+			return false;
+		}
+		Pattern.strPatternId = "VALTAN_HIGH_JUMP";
+		Pattern.bManualServerAudition = false;
+		Pattern.iMaximumPhase = 1u;
+		Pattern.Stages.clear();
+		if (!Require(Client::CValtanPatternTree::Build_PatternIdentitySummary(Pattern) ==
+			"Pattern ID: VALTAN_HIGH_JUMP\n"
+			"Authoring: Core server | Runtime eligibility: phase 1\n"
+			"Clips (authored order): none",
+			"core pattern summary was mislabeled as an animator phase"))
+			return false;
+		Pattern.strPatternId = "VALTAN_LEGACY_SUMMARY_FIXTURE";
+		return Require(Client::CValtanPatternTree::Build_PatternIdentitySummary(Pattern).find(
+			"Authoring: outside shared audition inventory") != std::string::npos,
+			"nonmanual legacy pattern was silently labeled as a core replay row");
+	}
+
+	bool_t Validate_ValtanProductPatternIdentitySummaryContract(
+		const std::filesystem::path& RepositoryRoot, std::string& strOutError)
+	{
+		strOutError.clear();
+		const auto Require = [&strOutError](const bool Condition, const char* pMessage)
+		{
+			if (!Condition)
+				strOutError = pMessage;
+			return Condition;
+		};
+		Client::VALTAN_PATTERN_TREE_VIEW View;
+		Client::VALTAN_TOOL_AUDITION_INVENTORY Inventory;
+		std::string Status;
+		if (!Client::CValtanPatternTree::Load(View, Status) ||
+			!Client::CValtanPatternTree::Build_ToolAuditionInventory(
+				View, Inventory, Status))
+		{
+			std::cerr << Status << '\n';
+			return Require(false, "current Product graph or shared audition inventory did not load");
+		}
+		if (!Require(Inventory.CorePatternIds.size() == 8u &&
+			Inventory.AnimatorPatternIds.size() == 19u,
+			"current shared inventory did not contain eight core and nineteen manual rows") ||
+			!Require(!Inventory.Contains("VALTAN_SEQUENCE_FRONT_BACK_FRONT") &&
+				!Inventory.Contains("VALTAN_FRONT_BACK_FRONT") &&
+				!Inventory.Contains("VALTAN_GHOST_TRANSITION_15"),
+				"retired or hidden legacy pattern returned to the replay selectors"))
+			return false;
+		for (const auto* pIds : { &Inventory.CorePatternIds, &Inventory.AnimatorPatternIds })
+		{
+			for (const std::string& PatternId : *pIds)
+			{
+				const Client::VALTAN_PATTERN_VIEW* pPattern = nullptr;
+				for (const auto* pRows : { &View.Gimmicks, &View.Rotation })
+				{
+					const auto Found = std::find_if(pRows->begin(), pRows->end(),
+						[&PatternId](const Client::VALTAN_PATTERN_VIEW& Candidate)
+						{ return Candidate.strPatternId == PatternId; });
+					if (pRows->end() != Found)
+						pPattern = &*Found;
+				}
+				if (!Require(nullptr != pPattern, "admitted pattern did not resolve in the Product graph"))
+					return false;
+				const std::string Summary =
+					Client::CValtanPatternTree::Build_PatternIdentitySummary(*pPattern);
+				if (!Require(Summary.starts_with("Pattern ID: " + PatternId + '\n'),
+					"loaded pattern summary substituted another stable identity"))
+					return false;
+				if (PatternId == "VALTAN_SEQUENCE_FOUR")
+				{
+					if (!Require(Summary.find("Authoring: Phase 2 manual audition") != std::string::npos,
+						"four-direction replay lost its authored phase"))
+						return false;
+					std::cout << Summary << '\n';
+				}
+			}
+		}
+		/* Entry-only gates are permitted only at the authored sequence head.
+		   Mutate temporary gameplay copies and keep the live Product untouched. */
+		const std::filesystem::path GameplayPath =
+			RepositoryRoot / L"Data" / L"Valtan" / L"Valtan.gameplay.json";
+		const std::filesystem::path PresentationPath =
+			RepositoryRoot / L"Data" / L"Valtan" / L"Valtan.presentation.json";
+		std::ifstream GameplayInput(GameplayPath, std::ios::binary);
+		if (!Require(static_cast<bool>(GameplayInput), "entry fixture gameplay could not be read"))
+			return false;
+		const std::string GameplayJson((std::istreambuf_iterator<char>(GameplayInput)),
+			std::istreambuf_iterator<char>());
+		Client::DATA_JSON_VALUE Gameplay;
+		if (!Client::CDataJson::Parse(GameplayJson, Gameplay, Status))
+			return Require(false, "entry fixture gameplay did not parse");
+		const Client::DATA_JSON_VALUE* Decision = Gameplay.Find("decisionModel");
+		const Client::DATA_JSON_VALUE* Sequence = nullptr == Decision ?
+			nullptr : Decision->Find("scriptedSequence");
+		const Client::DATA_JSON_VALUE* PatternIds = nullptr == Sequence ?
+			nullptr : Sequence->Find("patternIds");
+		if (!Require(nullptr != PatternIds && PatternIds->Get_Array().size() >= 2u,
+			"entry fixture requires the actual authored sequence head"))
+			return false;
+		const std::string EntryId = PatternIds->Get_Array()[0].Get_String();
+		const std::string SecondId = PatternIds->Get_Array()[1].Get_String();
+		const std::string QuotedEntry = "\"" + Client::CDataJson::Escape(EntryId) + "\"";
+		const std::string QuotedSecond = "\"" + Client::CDataJson::Escape(SecondId) + "\"";
+		const size_t SequenceOffset = GameplayJson.find("\"scriptedSequence\"");
+		const size_t HeadOffset = GameplayJson.find(QuotedEntry, SequenceOffset);
+		const size_t SecondOffset = GameplayJson.find(QuotedSecond, HeadOffset);
+		const size_t PatternsOffset = GameplayJson.find("\"patterns\"");
+		const size_t EntryOffset = GameplayJson.find(QuotedEntry, PatternsOffset);
+		const size_t WeightOffset = GameplayJson.find("\"compatibilitySelectionWeight\"", EntryOffset);
+		const size_t WeightColon = GameplayJson.find(':', WeightOffset);
+		if (!Require(SequenceOffset != std::string::npos &&
+			HeadOffset != std::string::npos && SecondOffset != std::string::npos &&
+			HeadOffset < SecondOffset && PatternsOffset != std::string::npos &&
+			EntryOffset != std::string::npos && WeightColon != std::string::npos,
+			"entry fixture could not locate its bounded JSON fields"))
+			return false;
+		const size_t WeightBegin = GameplayJson.find_first_not_of(" \t\r\n", WeightColon + 1u);
+		const size_t WeightEnd = GameplayJson.find_first_not_of("0123456789", WeightBegin);
+		if (!Require(WeightBegin != std::string::npos &&
+			WeightEnd != std::string::npos && WeightEnd > WeightBegin,
+			"entry fixture compatibility weight was not an integer token"))
+			return false;
+		std::string SwappedGameplay = GameplayJson;
+		SwappedGameplay.replace(SecondOffset, QuotedSecond.size(), QuotedEntry);
+		SwappedGameplay.replace(HeadOffset, QuotedEntry.size(), QuotedSecond);
+		std::string ZeroWeightGameplay = GameplayJson;
+		ZeroWeightGameplay.replace(WeightBegin, WeightEnd - WeightBegin, "0");
+
+		TEMP_SOURCE_CATALOG_FIXTURE EntryFixture;
+		std::error_code FileError;
+		EntryFixture.Root = std::filesystem::temp_directory_path(FileError) /
+			("LostArkValtanEntryContract-" +
+			 std::to_string(static_cast<uint64_t>(GetCurrentProcessId())) + "-" +
+			 std::to_string(static_cast<uint64_t>(GetTickCount64())));
+		if (!Require(!FileError && std::filesystem::create_directories(
+				EntryFixture.Root, FileError) && !FileError,
+			"entry fixture temporary directory could not be created"))
+			return false;
+		const std::filesystem::path InvalidGameplayPath =
+			EntryFixture.Root / L"Valtan.gameplay.json";
+		const auto* const BeforeGimmicks = View.Gimmicks.data();
+		const auto* const BeforeRotation = View.Rotation.data();
+		const auto* const BeforeSets = View.SelectionSets.data();
+		const auto BeforeNormalIds = View.NormalSelection.PatternIds;
+		const size_t iBeforePatterns = View.Get_PatternCount();
+		const size_t iBeforeStages = View.Get_StageCount();
+		const size_t iBeforeIntro = View.iIntroRotationIndex;
+		const auto Summaries = [](const Client::VALTAN_PATTERN_TREE_VIEW& Current)
+		{
+			std::string Result;
+			for (const auto* Rows : { &Current.Gimmicks, &Current.Rotation })
+				for (const Client::VALTAN_PATTERN_VIEW& Pattern : *Rows)
+					Result += Client::CValtanPatternTree::Build_PatternIdentitySummary(Pattern) + '\n';
+			return Result;
+		};
+		const std::string BeforeSummaries = Summaries(View);
+		for (const std::string& InvalidGameplay : { SwappedGameplay, ZeroWeightGameplay })
+		{
+			{
+				std::ofstream Output(InvalidGameplayPath, std::ios::binary | std::ios::trunc);
+				Output << InvalidGameplay;
+				if (!Require(static_cast<bool>(Output), "entry fixture gameplay write failed"))
+					return false;
+			}
+			Status.clear();
+			if (!Require(!Client::CValtanPatternTree::Load_FromAuthoringPaths(
+					InvalidGameplayPath, PresentationPath, View, Status,
+					Client::VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY) &&
+				Status.find("decision owner") != std::string::npos &&
+				Status.find(EntryId) != std::string::npos,
+				"invalid entry order/weight bypassed the strict decision-owner contract") ||
+				!Require(View.Gimmicks.data() == BeforeGimmicks &&
+					View.Rotation.data() == BeforeRotation &&
+					View.SelectionSets.data() == BeforeSets &&
+					View.NormalSelection.PatternIds == BeforeNormalIds &&
+					View.Get_PatternCount() == iBeforePatterns &&
+					View.Get_StageCount() == iBeforeStages &&
+					View.iIntroRotationIndex == iBeforeIntro &&
+					Summaries(View) == BeforeSummaries,
+					"invalid entry gameplay replaced or partially mutated the admitted Product view"))
+				return false;
+		}
+		const Client::VALTAN_TOOL_AUDITION_INVENTORY BeforeFailure = Inventory;
+		View.ManualAuditions.pop_back();
+		return Require(!Client::CValtanPatternTree::Build_ToolAuditionInventory(
+				View, Inventory, Status) && !Status.empty() &&
+			Inventory.CorePatternIds == BeforeFailure.CorePatternIds &&
+			Inventory.AnimatorPatternIds == BeforeFailure.AnimatorPatternIds,
+			"incomplete inventory replaced the previously admitted replay rows");
+	}
+
+	bool_t Validate_RequestedValtanDocumentMetadataContract(
+		const std::filesystem::path& RepositoryRoot,
+		std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>& OutTerrainSymbolDocument,
+		std::string& strOutError)
+	{
+		const std::filesystem::path AuthoredRoot =
+			RepositoryRoot / L"Data" / L"Effects" / L"Authored";
+		/* Exercise the repaired generated labels and the latest user saves
+		   through the same codec used by Open Existing Effect. */
+		const wchar_t* const FileNames[] = {
+			L"effect.valtan.project-tuned.sequence.charge.effect.json",
+			L"effect.valtan.project-tuned.sequence.trash-catch-success.effect.json",
+			L"effect.valtan.project-tuned.sequence.warp.portal.effect.json",
+			L"effect.valtan.sequence.front-back-front.effect.json",
+			L"effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.effect.json",
+			L"effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json",
+			L"effect.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01.effect.json",
+			L"effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.effect.json",
+			L"effect.valtan.floor-wipe-130.effect.json",
+			L"effect.valtan.project-tuned.sequence.attack-whirlwind.effect.json",
+			L"effect.valtan.project-tuned.sequence.catch-breath.effect.json",
+			L"effect.valtan.project-tuned.sequence.six-pizza-106.effect.json",
+			L"effect.valtan.sequence.charge.effect.json",
+			L"effect.valtan.sequence.roar-charge.effect.json",
+			L"effect.valtan.project-tuned.sequence.four.effect.json",
+			L"effect.valtan.project-tuned.terrain-destruction-3.semicircle.effect.json"
+		};
+		std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> TerrainSymbolDocument;
+		Client::EFFECT_DOCUMENT_DESC Baseline;
+		for (const wchar_t* const FileName : FileNames)
+		{
+			const std::filesystem::path Path = AuthoredRoot / FileName;
+			Client::EFFECT_DOCUMENT_DESC Document;
+			if (!Client::CEffectDocumentCodec::Load(Path, Document, strOutError) ||
+				(Document.Elements.empty() && Document.strEffectAssetId !=
+					"effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead") ||
+				Document.strEffectAssetId + ".effect.json" !=
+					Path.filename().generic_string())
+			{
+				strOutError = "requested Valtan metadata load failed for " +
+					Path.filename().generic_string() + ": " + strOutError;
+				return false;
+			}
+			const std::string SavedJson =
+				Client::CEffectDocumentCodec::Serialize(Document);
+			Client::EFFECT_DOCUMENT_DESC Reloaded;
+			if (!Client::CEffectDocumentCodec::Parse(SavedJson, Reloaded,
+					strOutError) ||
+				Client::CEffectDocumentCodec::Serialize(Reloaded) != SavedJson)
+			{
+				strOutError = "requested Valtan metadata round-trip failed for " +
+					Path.filename().generic_string() + ": " + strOutError;
+				return false;
+			}
+			if (Reloaded.strEffectAssetId ==
+				"effect.valtan.project-tuned.terrain-destruction-3.semicircle")
+			{
+				constexpr std::string_view SYMBOL_ID =
+					"requested.20260828.terrain-3.symbol-half-ring";
+				constexpr std::string_view SYMBOL_TEXTURE =
+					"Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/"
+					"fx_c_symbol_003_half_ring.dds";
+				const auto Symbol = std::find_if(
+					Reloaded.Elements.begin(), Reloaded.Elements.end(),
+					[SYMBOL_ID](const Client::EFFECT_ELEMENT_DESC& Element)
+					{ return Element.strElementId == SYMBOL_ID; });
+				if (Symbol == Reloaded.Elements.end() ||
+					Symbol->eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE ||
+					Symbol->Material.strTemplateId != "effect.standard" ||
+					Symbol->SourceRecipe.bEnabled || !Symbol->bVisible ||
+					Symbol->ResourceBindings.size() != 2u)
+				{
+					strOutError = "saved terrain 3 symbol is not the expected manual Sprite Particle";
+					return false;
+				}
+				for (const std::string_view Slot : { "base", "mask" })
+				{
+					const auto Binding = std::find_if(
+						Symbol->ResourceBindings.begin(), Symbol->ResourceBindings.end(),
+						[Slot](const Client::EFFECT_RESOURCE_BINDING_DESC& Resource)
+						{ return Resource.strSlotId == Slot; });
+					if (Binding == Symbol->ResourceBindings.end() ||
+						Binding->strAssetId != SYMBOL_TEXTURE)
+					{
+						strOutError = "saved terrain 3 symbol lost its half-ring DDS " +
+							std::string(Slot) + " binding";
+						return false;
+					}
+				}
+				/* Render the exact saved row in isolation; do not rewrite its
+				   resources, tuning, or the other rows in the authoring document. */
+				auto Isolated = std::make_shared<Client::EFFECT_DOCUMENT_DESC>(Reloaded);
+				Isolated->Elements = { *Symbol };
+				TerrainSymbolDocument = std::move(Isolated);
+			}
+			if (Baseline.Elements.empty())
+				Baseline = std::move(Reloaded);
+		}
+
+		/* 21 Korean UTF-8 syllables plus one ASCII byte is exactly 64 bytes.
+		   Both ASCII and multibyte overflow must fail without replacing the
+		   caller's last successfully loaded document. */
+		std::string BoundaryName;
+		for (size_t iSyllable = 0u; iSyllable < 21u; ++iSyllable)
+			BoundaryName += "\xEB\xB0\x9C";
+		BoundaryName += 'a';
+		Client::EFFECT_DOCUMENT_DESC Boundary = Baseline;
+		Boundary.Elements.front().strDisplayName = BoundaryName;
+		Client::EFFECT_DOCUMENT_DESC Current = Baseline;
+		if (!Client::CEffectDocumentCodec::Parse(
+				Client::CEffectDocumentCodec::Serialize(Boundary), Current,
+				strOutError) ||
+			Current.Elements.front().strDisplayName != BoundaryName)
+		{
+			strOutError = "valid 64-byte Valtan Element name was rejected: " +
+				strOutError;
+			return false;
+		}
+		const std::string BeforeFailure =
+			Client::CEffectDocumentCodec::Serialize(Current);
+		const std::string RejectedNames[] = {
+			std::string(65u, 'a'), BoundaryName + 'a', "", "   "
+		};
+		for (const std::string& RejectedName : RejectedNames)
+		{
+			Client::EFFECT_DOCUMENT_DESC Invalid = Boundary;
+			Invalid.Elements.front().strDisplayName = RejectedName;
+			std::string Rejection;
+			if (Client::CEffectDocumentCodec::Parse(
+					Client::CEffectDocumentCodec::Serialize(Invalid), Current,
+					Rejection) ||
+				Client::CEffectDocumentCodec::Serialize(Current) != BeforeFailure ||
+				Rejection.find(Invalid.Elements.front().strElementId) ==
+					std::string::npos ||
+				Rejection.find("1-64 UTF-8 bytes") == std::string::npos ||
+				Rejection.find("got " + std::to_string(RejectedName.size()) +
+					" bytes") == std::string::npos)
+			{
+				strOutError = "invalid Valtan Element name lost its diagnostic "
+					"or replaced the previously loaded document";
+				return false;
+			}
+		}
+		if (nullptr == TerrainSymbolDocument)
+		{
+			strOutError = "terrain 3 saved symbol document was not validated";
+			return false;
+		}
+		OutTerrainSymbolDocument = std::move(TerrainSymbolDocument);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_ManualParticleEmissionDurationContract(
+		std::string& strOutError)
+	{
+		constexpr f32_t FIXED_STEP_SECONDS = 1.f / 60.f;
+		struct DURATION_CASE final
+		{
+			const char* strName;
+			bool_t bMeshParticle;
+			f32_t fStartDelay;
+			float2_t ParticleLife;
+			f32_t fSpawnRate;
+			uint32_t iBurstCount;
+			f32_t fAfterImage;
+			f32_t fFirstBirthSeconds;
+			f32_t fExpectedEnd;
+		};
+		const DURATION_CASE Cases[] = {
+			{ "sub-step-sprite-burst", false, 0.f, { 0.005f, 0.005f },
+				0.f, 1u, 0.f, FIXED_STEP_SECONDS, FIXED_STEP_SECONDS + 0.005f },
+			{ "fractional-sub-step-burst", false, 0.237f, { 0.010f, 0.010f },
+				0.f, 1u, 0.f, 0.25f, 0.25f + 0.010f },
+			{ "float-boundary-burst", false, 0.1f, { 0.005f, 0.005f },
+				0.f, 1u, 0.f, 0.1f, 0.1f + 0.005f },
+			{ "sprite-burst", false, 0.f, { 2.f, 2.f },
+				0.f, 1u, 0.f, FIXED_STEP_SECONDS, FIXED_STEP_SECONDS + 2.f },
+			{ "delayed-sprite-burst", false, 0.25f, { 5.f, 5.f },
+				0.f, 1u, 0.f, 0.25f, 5.25f },
+			{ "mesh-burst", true, 0.25f, { 2.f, 2.f },
+				0.f, 1u, 0.f, 0.25f, 2.25f },
+			{ "fractional-burst", false, 0.237f, { 2.019f, 2.019f },
+				0.f, 1u, 0.f, 0.25f, 0.25f + 2.019f },
+			{ "variable-life-burst", false, 0.25f, { 1.f, 2.f },
+				0.f, 1u, 0.f, 0.25f, 2.25f },
+			{ "disabled-particle-afterimage", false, 0.25f, { 2.f, 2.f },
+				0.f, 1u, 0.75f, 0.25f, 2.25f },
+			{ "continuous-spawn", false, 0.25f, { 2.f, 2.f },
+				8.f, 1u, 0.f, 0.25f, 7.25f },
+			{ "no-burst", false, 0.25f, { 2.f, 2.f },
+				0.f, 0u, 0.f, 0.25f, 7.25f }
+		};
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		const Client::EFFECT_FIXED_STEP_TRANSFORM_PROVIDER IdentityHistory =
+			[&Identity](const f32_t,
+				Client::EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& OutError)
+			{
+				OutSample = {};
+				OutSample.RootWorld = Identity;
+				OutError.clear();
+				return true;
+			};
+		for (const DURATION_CASE& Case : Cases)
+		{
+			Client::EFFECT_DOCUMENT_DESC Document =
+				Build_ManualParticleContractDocument(
+					"effect.contract.manual-particle-duration",
+					"manual.particle.duration", Case.bMeshParticle);
+			Client::EFFECT_ELEMENT_DESC& Element = Document.Elements.front();
+			Element.Detail.Timing.fStartDelaySeconds = Case.fStartDelay;
+			Element.Detail.Timing.fLifeTimeSeconds = 5.f;
+			Element.Detail.Timing.fAfterImageSeconds = Case.fAfterImage;
+			Element.Detail.AfterImage.iMaxCopies = 0u;
+			Element.Detail.Particle.iBurstCount = Case.iBurstCount;
+			Element.Detail.Particle.fSpawnRatePerSecond = Case.fSpawnRate;
+			Element.Detail.Particle.vLifeTimeSeconds = Case.ParticleLife;
+			Client::CEffectPlayback Playback;
+			if (!Playback.Stage_Document(Document, strOutError))
+			{
+				strOutError = std::string(Case.strName) +
+					" duration fixture failed to stage: " + strOutError;
+				return false;
+			}
+			const bool_t bBurstOnly = Case.fSpawnRate == 0.f &&
+				Case.iBurstCount > 0u;
+			if (bBurstOnly)
+			{
+				/* Check actual emission before duration: a sub-step lifetime must
+				   survive its birth tick instead of producing no visible packet. */
+				Playback.Update(Case.fFirstBirthSeconds, Identity);
+				if (Playback.Get_Frame().Particles.size() != Case.iBurstCount ||
+					Playback.Is_Finished() ||
+					std::abs(Playback.Get_Frame().fSampleTimeSeconds -
+						Case.fFirstBirthSeconds) > 1.0e-6f)
+				{
+					strOutError = std::string(Case.strName) +
+						" lost its first-birth packet (count=" +
+						std::to_string(Playback.Get_Frame().Particles.size()) +
+						", sample=" +
+						std::to_string(Playback.Get_Frame().fSampleTimeSeconds) + ")";
+					return false;
+				}
+				Playback.Reset();
+			}
+			if (std::abs(Playback.Get_DurationSeconds() -
+					Case.fExpectedEnd) > 1.0e-5f)
+			{
+				strOutError = std::string(Case.strName) +
+					" playback duration does not match its emission schedule";
+				return false;
+			}
+			if (Case.fStartDelay > 0.f)
+			{
+				Playback.Seek(Case.fStartDelay - FIXED_STEP_SECONDS, Identity);
+				if (!Playback.Get_Frame().Particles.empty())
+				{
+					strOutError = std::string(Case.strName) +
+						" emitted before Start Delay";
+					return false;
+				}
+			}
+			const f32_t fActiveSample = Case.fFirstBirthSeconds +
+				(std::min)(0.5f, Case.ParticleLife.x * 0.5f);
+			Playback.Seek(fActiveSample, Identity);
+			const size_t iExpectedMinimum = Case.iBurstCount;
+			if (Playback.Get_Frame().Particles.size() < iExpectedMinimum ||
+				(Case.fSpawnRate == 0.f &&
+				 Playback.Get_Frame().Particles.size() != Case.iBurstCount) ||
+				Playback.Is_Finished())
+			{
+				strOutError = std::string(Case.strName) +
+					" did not preserve its active particle packets";
+				return false;
+			}
+			if (Case.fSpawnRate > 0.f)
+			{
+				Playback.Seek(Case.fStartDelay + 5.5f, Identity);
+				if (Playback.Get_Frame().Particles.empty() || Playback.Is_Finished())
+				{
+					strOutError = "continuous emission lost its live particle tail";
+					return false;
+				}
+			}
+			if (bBurstOnly && Case.ParticleLife.x == Case.ParticleLife.y)
+			{
+				Playback.Seek(Case.fExpectedEnd - (std::min)(
+					FIXED_STEP_SECONDS * 0.5f, Case.ParticleLife.x * 0.5f), Identity);
+				if (Playback.Get_Frame().Particles.empty() || Playback.Is_Finished())
+				{
+					strOutError = std::string(Case.strName) +
+						" retired before its actual birth plus particle lifetime";
+					return false;
+				}
+			}
+			Playback.Seek(Case.fExpectedEnd, Identity);
+			/* Continuous emitters retain their existing fixed-step tail eviction.
+			   A start-only burst must also close an exact/fractional final Seek. */
+			if (!bBurstOnly)
+				Playback.Update(FIXED_STEP_SECONDS * 2.f, Identity);
+			if (!Playback.Get_Frame().Particles.empty() ||
+				!Playback.Get_Frame().AfterImages.empty() || !Playback.Is_Finished() ||
+				(bBurstOnly && std::any_of(
+					Playback.Get_Frame().GpuOccurrences.begin(),
+					Playback.Get_Frame().GpuOccurrences.end(),
+					[](const Client::EFFECT_EVALUATED_GPU_OCCURRENCE& Occurrence)
+					{
+						return Occurrence.bActive || Occurrence.iCandidateRowCount > 0u;
+					})))
+			{
+				strOutError = std::string(Case.strName) +
+					" retained particles or blank playback after its declared end";
+				return false;
+			}
+			if (bBurstOnly && Case.ParticleLife.x < FIXED_STEP_SECONDS)
+			{
+				Playback.Seek(fActiveSample, Identity);
+				if (Playback.Get_Frame().Particles.size() != Case.iBurstCount ||
+					Playback.Is_Finished())
+				{
+					strOutError = std::string(Case.strName) +
+						" fractional retirement survived a rewind";
+					return false;
+				}
+				for (const f32_t fSample : {
+					Case.fExpectedEnd, fActiveSample, Case.fExpectedEnd })
+				{
+					if (!Playback.Seek_WithTransformHistory(
+							fSample, IdentityHistory, strOutError))
+					{
+						strOutError = std::string(Case.strName) +
+							" history seek failed: " + strOutError;
+						return false;
+					}
+					const bool_t bAtEnd = fSample == Case.fExpectedEnd;
+					if (Playback.Get_Frame().Particles.size() !=
+							(bAtEnd ? 0u : Case.iBurstCount) ||
+						Playback.Is_Finished() != bAtEnd)
+					{
+						strOutError = std::string(Case.strName) +
+							" history seek disagreed with birth-based lifetime";
+						return false;
+					}
+				}
+			}
+		}
 		strOutError.clear();
 		return true;
 	}
@@ -6184,6 +6904,30 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("transform-motion-hold.complete");
+	std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> TerrainSymbolContractDocument;
+	Write_Progress("requested-valtan-document-metadata.begin");
+	if (!Validate_RequestedValtanDocumentMetadataContract(
+			RepositoryRoot, TerrainSymbolContractDocument, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("requested-valtan-document-metadata.complete");
+	Write_Progress("manual-particle-emission-duration.begin");
+	if (!Validate_ManualParticleEmissionDurationContract(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("manual-particle-emission-duration.complete");
+	Write_Progress("valtan-pattern-identity.begin");
+	if (!Validate_ValtanPatternIdentitySummaryContract(Status) ||
+		!Validate_ValtanProductPatternIdentitySummaryContract(RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("valtan-pattern-identity.complete");
 	Write_Progress("manual-mesh-particle-scale.begin");
 	if (!Validate_ManualMeshParticleScaleComposition(Status))
 	{
@@ -6839,6 +7583,112 @@ int wmain(const int argc, wchar_t** argv)
 			return 1;
 		}
 		Frames.emplace_back(std::move(LinearRevealFrame));
+
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			TerrainSymbolPrepared;
+		const uint64_t iTextureLoadsBeforeTerrainSymbol =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe().iTextureDiskLoadCount;
+		Write_Progress("terrain-symbol-dds-warp-prewarm.begin");
+		if (nullptr == TerrainSymbolContractDocument ||
+			!Client::CEffectDocumentRenderer::
+				Prepare_UnboundMaterialProgramDocumentForTests(
+					Device, Context, TerrainSymbolContractDocument, nullptr,
+					TerrainSymbolPrepared, Status))
+		{
+			std::cerr << "Saved terrain symbol DDS WARP prewarm failed: " <<
+				Status << '\n';
+			return 1;
+		}
+		const uint64_t iTerrainSymbolTextureLoads =
+			Client::CEffectDocumentRenderer::Get_PrewarmProbe().iTextureDiskLoadCount -
+				iTextureLoadsBeforeTerrainSymbol;
+		if (iTerrainSymbolTextureLoads == 0u)
+		{
+			std::cerr << "Saved terrain symbol prewarm did not decode its DDS\n";
+			return 1;
+		}
+		Write_Progress("terrain-symbol-dds-warp-prewarm.complete");
+		Client::CEffectObject::EFFECT_OBJECT_DESC TerrainSymbolDesc{};
+		TerrainSymbolDesc.pDocument = TerrainSymbolContractDocument.get();
+		TerrainSymbolDesc.pPreparedResources = TerrainSymbolPrepared;
+		TerrainSymbolDesc.RootWorld = Identity;
+		TerrainSymbolDesc.bAutoPlay = false;
+		TerrainSymbolDesc.bRequirePreparedResources = true;
+		const std::shared_ptr<Client::CEffectObject> TerrainSymbolObject =
+			Add_EffectObject(PrototypeTag, LayerTag, TerrainSymbolDesc);
+		if (nullptr == TerrainSymbolObject)
+		{
+			std::cerr << "Saved terrain symbol WARP object staging failed\n";
+			return 1;
+		}
+		const Client::EFFECT_ELEMENT_DESC& SavedTerrainSymbol =
+			TerrainSymbolContractDocument->Elements.front();
+		const f32_t fTerrainSymbolDelay =
+			SavedTerrainSymbol.Detail.Timing.fStartDelaySeconds;
+		const f32_t fTerrainSymbolActiveDuration = (std::min)(
+			SavedTerrainSymbol.Detail.Timing.fLifeTimeSeconds,
+			SavedTerrainSymbol.Detail.Particle.vLifeTimeSeconds.x);
+		if (!std::isfinite(fTerrainSymbolDelay) || fTerrainSymbolDelay < 0.f ||
+			!std::isfinite(fTerrainSymbolActiveDuration) ||
+			fTerrainSymbolActiveDuration <= 0.f)
+		{
+			std::cerr << "Saved terrain symbol has no finite active sampling interval\n";
+			return 1;
+		}
+		/* Manual bursts first spawn on a fixed tick at or after the saved delay.
+		   Sample inside that particle's lifetime without changing the saved row. */
+		constexpr f64_t TERRAIN_SYMBOL_TICK_HZ = 60.0;
+		const f64_t fTerrainSymbolBirthStep = (std::max)(1.0, std::floor(
+			static_cast<f64_t>(fTerrainSymbolDelay) * TERRAIN_SYMBOL_TICK_HZ));
+		f32_t fTerrainSymbolBirth = static_cast<f32_t>(
+			fTerrainSymbolBirthStep / TERRAIN_SYMBOL_TICK_HZ);
+		if (fTerrainSymbolBirth < fTerrainSymbolDelay)
+			fTerrainSymbolBirth = static_cast<f32_t>(
+				(fTerrainSymbolBirthStep + 1.0) / TERRAIN_SYMBOL_TICK_HZ);
+		const f32_t fTerrainSymbolSample = fTerrainSymbolBirth +
+			(std::min)(0.5f, fTerrainSymbolActiveDuration * 0.5f);
+		if (!std::isfinite(fTerrainSymbolSample) ||
+			fTerrainSymbolSample <= fTerrainSymbolBirth ||
+			fTerrainSymbolSample >= fTerrainSymbolBirth + fTerrainSymbolActiveDuration)
+		{
+			std::cerr << "Saved terrain symbol active sample is not representable\n";
+			return 1;
+		}
+		FRAME_EVIDENCE TerrainSymbolFrame;
+		TerrainSymbolFrame.strScenarioId =
+			"saved-valtan-terrain-3-symbol-half-ring-" +
+			std::to_string(fTerrainSymbolSample) + "s";
+		TerrainSymbolFrame.strContract = "GAMEINSTANCE_WARP_MRT_SCENE_HDR";
+		Write_Progress("terrain-symbol-dds-warp-render.begin");
+		if (!EngineScope.Render_Frame(
+				TerrainSymbolObject, fTerrainSymbolSample, TerrainSymbolFrame, Status))
+		{
+			std::cerr << "Saved terrain symbol WARP render failed: " << Status << '\n';
+			return 1;
+		}
+		TerrainSymbolFrame.Occurrence = Find_OccurrenceEvidence(
+			TerrainSymbolObject->Get_LastRenderSubmissionStats(),
+			TerrainSymbolContractDocument->Elements.front().strElementId);
+		if (!TerrainSymbolFrame.Occurrence.has_value() ||
+			TerrainSymbolFrame.Occurrence->iActive != 1u ||
+			TerrainSymbolFrame.Occurrence->iCandidate != 1u ||
+			TerrainSymbolFrame.Occurrence->iSubmitted != 1u ||
+			TerrainSymbolFrame.Occurrence->iFailed != 0u ||
+			TerrainSymbolFrame.Occurrence->iTextureSrvBindCount < 2u ||
+			TerrainSymbolFrame.Occurrence->iShaderPassApplyCount == 0u ||
+			TerrainSymbolFrame.Occurrence->iIssuedDrawCallCount == 0u ||
+			TerrainSymbolFrame.Occurrence->eCarrier !=
+				Client::EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE ||
+			TerrainSymbolFrame.Occurrence->bDrawSelectionDiverged)
+		{
+			std::cerr << "Saved terrain symbol DDS did not reach a shader-bound Sprite draw\n";
+			return 1;
+		}
+		std::cout << "[terrain-symbol-dds] base/mask="
+			<< TerrainSymbolContractDocument->Elements.front().ResourceBindings.front().strAssetId
+			<< " textureDiskLoads=" << iTerrainSymbolTextureLoads << '\n';
+		Write_Progress("terrain-symbol-dds-warp-render.complete");
+		Frames.emplace_back(std::move(TerrainSymbolFrame));
 
 		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			WorldMarkPrepared;

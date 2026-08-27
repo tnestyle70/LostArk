@@ -210,6 +210,7 @@ namespace LostArk::Server
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot =
 			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+		std::uint32_t iAttachmentPatternSequence = 0u;
 		float fAttachmentLocalOffsetX = 0.f;
 		float fAttachmentLocalOffsetY = 0.f;
 		float fAttachmentLocalOffsetZ = 0.f;
@@ -220,6 +221,7 @@ namespace LostArk::Server
 			iAttachmentOwnerNetEntityId =
 				LostArk::Shared::INVALID_NET_ENTITY_ID;
 			eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+			iAttachmentPatternSequence = 0u;
 			fAttachmentLocalOffsetX = 0.f;
 			fAttachmentLocalOffsetY = 0.f;
 			fAttachmentLocalOffsetZ = 0.f;

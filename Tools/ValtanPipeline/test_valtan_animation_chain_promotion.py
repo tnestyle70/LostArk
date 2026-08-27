@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import sys
 import tempfile
@@ -11,6 +12,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import promote_valtan_animation_chains as promotion
+import author_valtan_phase_two_mechanics as phase_two
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -27,12 +29,12 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
 
     def test_reviewed_chain_closure_and_stable_ids(self) -> None:
         gameplay, presentation, receipt = promotion.build_candidates(self.root)
-        self.assertEqual(30, len(gameplay["patterns"]))
-        self.assertEqual(30, len(presentation["patterns"]))
-        self.assertEqual(20, receipt["patternCount"])
-        self.assertEqual(99, receipt["stageCount"])
+        self.assertEqual(29, len(gameplay["patterns"]))
+        self.assertEqual(29, len(presentation["patterns"]))
+        self.assertEqual(19, receipt["patternCount"])
+        self.assertEqual(96, receipt["stageCount"])
         self.assertEqual(
-            99,
+            96,
             sum(len(pattern["occurrences"]) for pattern in receipt["patterns"]),
         )
         first = receipt["patterns"][0]
@@ -139,7 +141,52 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         self.assertTrue(occurrences[2]["repeatUntilStageEnd"])
         self.assertEqual(0, occurrences[2]["playMs"])
 
-    def test_all_six_reviewed_clip_aliases_are_explicit(self) -> None:
+    def test_jump_whirlwind_facing_survives_promotion_and_reauthoring(self) -> None:
+        saved_gameplay = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
+        saved_presentation = promotion._read_json(self.root / promotion.PRESENTATION_REL)
+        promoted_gameplay, promoted_presentation, _receipt = promotion.build_candidates(self.root)
+        authored_gameplay, authored_presentation = phase_two.build()
+
+        def pattern(document: dict) -> dict:
+            return next(
+                row for row in document["patterns"]
+                if row["patternId"] == "VALTAN_ATTACK_WHIRLWIND"
+            )
+
+        expected_events = [[], [], [], [{
+            "eventId": "event.valtan.attack-whirlwind.reaim",
+            "trigger": "ENTER",
+            "kind": "RETARGET_RANDOM_ALIVE",
+        }]]
+        saved_pattern = pattern(saved_gameplay)
+        saved_animations = [
+            stage["animation"] for stage in pattern(saved_presentation)["stages"]
+        ]
+        for name, gameplay, presentation in (
+            ("saved", saved_gameplay, saved_presentation),
+            ("promoted", promoted_gameplay, promoted_presentation),
+            ("reauthored", authored_gameplay, authored_presentation),
+        ):
+            with self.subTest(path=name):
+                actual = pattern(gameplay)
+                self.assertEqual(
+                    ("LOCK_NEAREST_ON_START", "LOCK_FACING_ON_START"),
+                    (actual["targetPolicy"], actual["aimPolicy"]),
+                )
+                self.assertEqual(expected_events, [stage["events"] for stage in actual["stages"]])
+                self.assertEqual(saved_pattern, actual)
+                self.assertEqual(
+                    saved_animations,
+                    [stage["animation"] for stage in pattern(presentation)["stages"]],
+                )
+
+        phase_two.author_existing_patterns(authored_gameplay, authored_presentation)
+        self.assertEqual(
+            expected_events,
+            [stage["events"] for stage in pattern(authored_gameplay)["stages"]],
+        )
+
+    def test_reviewed_clip_aliases_cover_promoted_and_retired_intake(self) -> None:
         _gameplay, _presentation, receipt = promotion.build_candidates(self.root)
         aliases = {
             row["sourceClip"]: row["resolvedClip"]
@@ -149,7 +196,6 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         }
         self.assertEqual(
             {
-                "att_battle_2_03": "mesh_att_battle_2_03",
                 "att_battle_19_02": "mesh_att_battle_19_02",
                 "att_battle_19_04": "mesh_att_battle_19_04",
                 "att_battle_20_02": "mesh_att_battle_20_02",
@@ -158,6 +204,53 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
             },
             aliases,
         )
+        manifest = promotion._read_json(self.root / promotion.MANIFEST_REL)
+        self.assertEqual(
+            {**aliases, "att_battle_2_03": "mesh_att_battle_2_03"},
+            manifest["clipAliases"],
+        )
+
+    def test_retired_intake_and_saved_cue_unlinks_survive_animation_refresh(self) -> None:
+        gameplay, presentation, receipt = promotion.build_candidates(self.root)
+        retired_id = "VALTAN_SEQUENCE_FRONT_BACK_FRONT"
+        self.assertIn(retired_id, gameplay["retiredPatternIds"])
+        for document in (gameplay, presentation, receipt):
+            self.assertNotIn(retired_id, {row["patternId"] for row in document["patterns"]})
+        saved = promotion._read_json(self.root / promotion.PRESENTATION_REL)
+        cue_lists = lambda document: {
+            (pattern["patternId"], stage["stageId"]): stage["effectCues"]
+            for pattern in document["patterns"]
+            for stage in pattern["stages"]
+        }
+        self.assertEqual(cue_lists(saved), cue_lists(presentation))
+        authored_gameplay, authored_presentation = phase_two.build()
+        self.assertEqual(cue_lists(saved), cue_lists(authored_presentation))
+        self.assertNotIn(retired_id, {row["patternId"] for row in authored_gameplay["patterns"]})
+        four = next(row for row in authored_gameplay["patterns"] if row["patternId"] == "VALTAN_SEQUENCE_FOUR")
+        self.assertEqual(["STEP_01"], [stage["stageId"] for stage in four["stages"]])
+        unlinked_ids = {
+            "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
+            "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01",
+            "cue.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
+            "cue.valtan.requested.20260827.struggling.composite",
+        }
+        self.assertTrue(unlinked_ids.isdisjoint(
+            cue["cueId"] for rows in cue_lists(presentation).values() for cue in rows
+        ))
+
+        manifest = promotion._read_json(self.root / promotion.MANIFEST_REL)
+        invalid = copy.deepcopy(manifest)
+        retired = invalid["animationIntakeOnly"].pop(0)
+        self.assertEqual("front-back-front", retired["sourceChainId"])
+        retired.update(patternId=retired_id, admissionState="MANUAL_SERVER_AUDITION")
+        invalid["patterns"].insert(8, retired)
+        read_json = promotion._read_json
+        with mock.patch.object(
+            promotion, "_read_json",
+            side_effect=lambda path: invalid if path == self.root / promotion.MANIFEST_REL else read_json(path),
+        ):
+            with self.assertRaisesRegex(promotion.PromotionError, "retired patterns cannot be promoted"):
+                promotion.build_candidates(self.root)
 
     def test_animation_refresh_preserves_server_and_presentation_enrichment(self) -> None:
         generated_gameplay = {
@@ -256,6 +349,115 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
                 generated, existing
             )
 
+    def _build_with_source_fixture(self, gameplay: dict, presentation: dict) -> tuple:
+        read_json = promotion._read_json
+        snapshots = {
+            self.root / promotion.GAMEPLAY_REL: gameplay,
+            self.root / promotion.PRESENTATION_REL: presentation,
+        }
+        with mock.patch.object(
+            promotion, "_read_json",
+            side_effect=lambda path: copy.deepcopy(snapshots[path])
+            if path in snapshots else read_json(path),
+        ):
+            return promotion.build_candidates(self.root)
+
+    def test_trash_capture_refresh_keeps_runtime_graph_and_intake_receipt_separate(self) -> None:
+        saved_g = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
+        saved_p = promotion._read_json(self.root / promotion.PRESENTATION_REL)
+        gameplay, presentation, receipt = self._build_with_source_fixture(saved_g, saved_p)
+        trash = phase_two.pattern(gameplay, "VALTAN_TRASH")
+        trash_p = phase_two.pattern(presentation, "VALTAN_TRASH")
+        self.assertEqual(phase_two.pattern(saved_g, "VALTAN_TRASH"), trash)
+        self.assertEqual(phase_two.pattern(saved_p, "VALTAN_TRASH"), trash_p)
+        self.assertEqual(14, len(trash["stages"]))
+        counter = phase_two.stage(trash, "CATCH_COUNTER")
+        pre_impact = phase_two.stage(trash, "CATCH_PRE_IMPACT")
+        self.assertEqual(200, counter["durationMs"])
+        self.assertEqual(1500, counter["durationMs"] + pre_impact["durationMs"])
+        self.assertEqual({
+            "ALL_PLAYERS_GRABBED": phase_two.stage(trash, "EXECUTE_TAIL")["actionId"],
+            "TIMEOUT": phase_two.stage(trash, "CATCH_SLAM")["actionId"],
+        }, {row["outcome"]: row["nextActionId"] for row in pre_impact["branches"]})
+        self.assertEqual("DAMAGE_GRABBED_PLAYERS", phase_two.stage(trash, "CATCH_SLAM")["events"][0]["kind"])
+        self.assertEqual("EXECUTE_GRABBED_PLAYERS", phase_two.stage(trash, "EXECUTE_TAIL")["events"][0]["kind"])
+        self.assertEqual("HOLD", phase_two.stage(trash, "GROGGY")["events"][0]["releaseMode"])
+        self.assertIn(420631, trash["sourceActionIds"])
+        intake = phase_two.pattern(receipt, "VALTAN_TRASH")
+        self.assertEqual(8, intake["stageCount"])
+        self.assertEqual(8, len(intake["occurrences"]))
+        self.assertNotIn(420631, intake["sourceActionIds"])
+
+    def test_trash_capture_refresh_preserves_tuned_proxy_and_branch_cues(self) -> None:
+        gameplay = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
+        presentation = promotion._read_json(self.root / promotion.PRESENTATION_REL)
+        trash = phase_two.pattern(gameplay, "VALTAN_TRASH")
+        trash_p = phase_two.pattern(presentation, "VALTAN_TRASH")
+        counter = phase_two.stage(trash, "CATCH_COUNTER")
+        counter["counterProxy"]["radiusM"] = 1.75
+        counter_p = phase_two.stage(trash_p, "CATCH_COUNTER")
+        cue = copy.deepcopy(phase_two.stage(trash_p, "STEP_01")["effectCues"][0])
+        cue.update(
+            cueId="cue.valtan.fixture.capture-counter",
+            occurrenceId="cue.valtan.fixture.capture-counter.occurrence.01",
+            clipOccurrenceId=counter_p["animation"]["occurrences"][0]["clipOccurrenceId"],
+        )
+        counter_p["effectCues"] = [cue]
+        camera = copy.deepcopy(next(
+            row for pattern in presentation["patterns"] for stage in pattern["stages"]
+            for row in stage["cameraInvocations"]
+        ))
+        camera.update(cameraInvocationId="camera.valtan.fixture.capture-counter", durationMs=200)
+        counter_p["cameraInvocations"] = [camera]
+        before = copy.deepcopy((gameplay, presentation))
+        refreshed_g, refreshed_p, _receipt = self._build_with_source_fixture(gameplay, presentation)
+        self.assertEqual(before, (gameplay, presentation))
+        self.assertEqual(trash, phase_two.pattern(refreshed_g, "VALTAN_TRASH"))
+        self.assertEqual(trash_p, phase_two.pattern(refreshed_p, "VALTAN_TRASH"))
+        repeated_g, repeated_p, _receipt = self._build_with_source_fixture(refreshed_g, refreshed_p)
+        self.assertEqual(refreshed_g, repeated_g)
+        self.assertEqual(refreshed_p, repeated_p)
+
+    def test_trash_capture_refresh_rejects_extension_identity_and_clock_drift(self) -> None:
+        source_g = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
+        source_p = promotion._read_json(self.root / promotion.PRESENTATION_REL)
+        cases = (
+            ("gameplay", lambda row: row["stages"].pop(), "stage closure/order drift"),
+            ("presentation", lambda row: row["stages"].reverse(), "stage closure/order drift"),
+            ("gameplay", lambda row: row["stages"].append(copy.deepcopy(row["stages"][-1])), "stage closure/order drift"),
+            ("presentation", lambda row: phase_two.stage(row, "RUSH_MISS").update(stageId="UNREVIEWED_BRANCH"), "stage closure/order drift"),
+            ("gameplay", lambda row: phase_two.stage(row, "EXECUTE_TAIL").update(actionId="valtan.fixture.wrong"), "action identity drift"),
+            ("gameplay", lambda row: phase_two.stage(row, "CATCH_COUNTER").update(durationMs=201), "branch duration drift"),
+            ("gameplay", lambda row: phase_two.stage(row, "CATCH_PRE_IMPACT").update(durationMs=1299), "branch duration drift"),
+            ("gameplay", lambda row: phase_two.stage(row, "EXECUTE_TAIL").update(durationMs=1499), "branch duration drift"),
+            ("gameplay", lambda row: phase_two.stage(row, "CATCH_COUNTER").pop("counterProxy"), "counter proxy is missing"),
+            ("presentation", lambda row: phase_two.stage(row, "CATCH_SLAM")["animation"]["occurrences"][0].update(sourceStartMs=1400), "branch source slice drift"),
+            ("presentation", lambda row: phase_two.stage(row, "GROGGY")["animation"]["occurrences"].pop(), "branch source slice drift"),
+            ("gameplay", lambda row: phase_two.stage(row, "CATCH_SLAM").update(defaultNextActionId="valtan.fixture.missing"), "default edge leaves its pattern"),
+            ("gameplay", lambda row: phase_two.stage(row, "CATCH_PRE_IMPACT")["branches"][0].update(nextActionId="valtan.fixture.missing"), "branch leaves its pattern"),
+        )
+        for index, (domain, mutate, error) in enumerate(cases):
+            with self.subTest(case=index, domain=domain), self.assertRaisesRegex(promotion.PromotionError, error):
+                gameplay, presentation = copy.deepcopy((source_g, source_p))
+                mutate(phase_two.pattern(gameplay if domain == "gameplay" else presentation, "VALTAN_TRASH"))
+                self._build_with_source_fixture(gameplay, presentation)
+
+    def test_trash_capture_invalid_typed_events_still_fail_product_validation(self) -> None:
+        source_g = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
+        source_p = promotion._read_json(self.root / promotion.PRESENTATION_REL)
+        cases = (
+            lambda row: phase_two.stage(row, "CATCH_SLAM")["events"][0].update(trigger="EXIT"),
+            lambda row: phase_two.stage(row, "GROGGY")["events"][0].update(releaseMode="UNKNOWN"),
+            lambda row: phase_two.stage(row, "CATCH_COUNTER")["counterProxy"].update(radiusM=0.0),
+        )
+        for index, mutate in enumerate(cases):
+            with self.subTest(case=index):
+                gameplay, presentation = copy.deepcopy((source_g, source_p))
+                mutate(phase_two.pattern(gameplay, "VALTAN_TRASH"))
+                candidate_g, candidate_p, _receipt = self._build_with_source_fixture(gameplay, presentation)
+                with self.assertRaisesRegex(promotion.PromotionError, "promoted split/Product validation failed"):
+                    promotion.validate_and_project(self.root, candidate_g, candidate_p)
+
     def test_atomic_commit_rolls_back_every_replaced_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -283,8 +485,8 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         )
         before = {relative: sha256(self.root / relative) for relative in tracked}
         result = promotion.run(self.root, "Validate")
-        self.assertEqual(20, result["patternCount"])
-        self.assertEqual(99, result["stageCount"])
+        self.assertEqual(19, result["patternCount"])
+        self.assertEqual(96, result["stageCount"])
         self.assertEqual(before, {relative: sha256(self.root / relative) for relative in tracked})
 
 

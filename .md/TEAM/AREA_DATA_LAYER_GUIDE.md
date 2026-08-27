@@ -25,7 +25,7 @@ LevelCatalog scenario
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×347 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음 |
-| `LV_LUT_HEARTRB_ED` | 275 assets / 13,186 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, BossProfile, ValtanEncounter |
+| `LV_LUT_HEARTRB_ED` | 275 assets / 13,186 placements | player spawn 4 + `BOSS_VALTAN` 1 | 392×312, 0.5m cells, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
@@ -91,6 +91,15 @@ MapTool은 Client `.navgrid`/`.navpolicy`를 export하거나 제품 Navigation r
 Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 `Publish-WorldGameplay.ps1`, Server navigation은 `Publish-ServerNavigation.ps1`만 교체한다.
 `ACTIVE.maparea`도 selector 변경 때 자동 저장하지 않는다.
+
+Valtan 파괴 벽의 `navblockers`는 각 source collisionBox의 실제 XZ OBB와 base-walkable 셀, 해당 셀 높이에서
+시작하는 Server body 수직 범위가 겹치는 곳만 소유한다. 위층 벽으로 아래층 길을 막거나 nearest cell을
+대신 배정하지 않는다. 겹치는 벽의 blocker refcount는 각각 유지한다. 99개 벽 중 98개에 wall region이 있으며
+바닥 붕괴 6개 region의 `BLOCK_WHILE_FRACTURED` 계약과 기본 navgrid는 별도다.
+벽 collision 또는 body 높이를 바꾸면 `Split-ValtanIndependentWallGroups.ps1 -Mode RebuildNavigation`으로
+authoring을 갱신하고 `-Mode CheckNavigation`, `Publish-ServerNavigation.ps1 -Mode Validate`,
+`Publish-ValtanWorldDestruction.ps1 -Mode ContractTest`로 검사한 뒤 각 publisher의 Publish를 실행한다.
+파괴의 최종 commit은 같은 mutation이 source와 charge receiver collision, 해당 nav region을 함께 해제한다.
 
 MapCatalog의 `sourceLights`와 `lights`는 선택적인 한 쌍이다. source는
 `Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은

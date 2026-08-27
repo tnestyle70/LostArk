@@ -82,7 +82,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 `origin/main` commit과 생성 데이터를 맞춘다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v41 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. v40의 벽 붕괴 전용/파티 전용 빌드는 통합 v41과 호환되지 않는다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v42 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. v41 이하 빌드는 v42와 호환되지 않는다.
 
 ```powershell
 git switch main
@@ -116,7 +116,7 @@ Client capture는 실행 파일 옆 `Diagnostics/client-session-<pid>.jsonl`, Se
 `Diagnostics/server-session-<pid>.jsonl`이다. 기본 Debug 실행이면 각각
 `Client/Bin/Debug/Diagnostics`, `Server/Bin/Debug/Diagnostics` 아래에 생긴다. gameplay payload와 nickname은
 기록하지 않는다. Client의 `localEndpoint`는 실제 IP와 ephemeral port이고 direct LAN에서는 Server line의
-`peerAddress:peerPort`와 정확히 일치한다. protocol v41에서 이미 끊어진 TCP는 Server-only 원인을 Lobby로
+`peerAddress:peerPort`와 정확히 일치한다. 이미 끊어진 TCP는 Server-only 원인을 Lobby로
 되돌려 보낼 수 없으므로 이 endpoint와 terminal UTC, player/entity를 함께 대조한다.
 
 `ROOM_FULL`이면 Server line의 context에서 `candidateSessionId`,
@@ -524,13 +524,20 @@ ID로 strict join해 `ValtanEncounter.json`, rotations, combat objects, world ev
 bootstrap을 생성한다. 이 generated Product는 read-only이고 Server와 Arena가 split source를 두 번째 런타임으로
 직접 읽지 않는다.
 
-`Data/Actors/BossCatalog.json` format v4의 Valtan `presentationScale: 0.75`는 replicated Arena와 Character/Boss
-Preview가 함께 소비하는 Client actor scale이다. `BossProfiles.json`의 Server collision radius와 hit geometry는
-바꾸지 않는다. managed Effect cue 15개는 `OWNER_RELATIVE` 4개, `GAMEPLAY_FOOTPRINT` 9개,
-`ARENA_ABSOLUTE` 2개로 분류한다. owner-relative만 actor scale을 상속하고, 나머지 두 policy는 owner scale을 제거한
+`Data/Actors/BossCatalog.json` format v4의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
+Preview가 함께 소비하는 Client actor scale이다. `BossProfiles.json`의 Server body radius는 현재 모델의
+몸통·다리 실측에 맞춘 `1.4m`이며 Client Debug collider는 같은 replicated radius를 표시한다. actor scale을
+body radius에 다시 곱하지 않는다. 공격 hit geometry와 장판 크기는 별도 저작 값이다.
+Effect cue의 scale policy는 `OWNER_RELATIVE`, `GAMEPLAY_FOOTPRINT`,
+`ARENA_ABSOLUTE`로 구분한다. owner-relative만 actor scale을 상속하고, 나머지 두 policy는 owner scale을 제거한
 뒤 authored `worldScale`을 사용한다. 이 정책은 호출 transform 계약이며 `Data/Effects/Authored`의 element geometry를
-고치거나 sky-axe에 `0.75`를 강제하지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이
+고치거나 sky-axe에 actor scale을 강제하지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이
 아니다. 세부 필드와 publish 절차는 `발탄인수인계서.md`를 따른다.
+
+Boss Tool의 Next는 isolated audition에 붙는 Server 권위 예약 한 칸이다. 현재 패턴의 최종 world/prop/hit
+commit 뒤 다음 fixed tick에서 시작하며 맵·플레이어·HP·cooldown을 reset하지 않는다. saved Ordered Flow와
+별개이고 공용 `CValtanPatternAuditionService`만 command/result/lifecycle을 소비한다. 예약·전멸 대기·취소와
+Trash 포획 분기의 상세 계약은 `발탄인수인계서.md`의 10.4, 11.9를 따른다.
 
 Effect 시각 기준의 global bloom scatter 정본은 `Data/Rendering/Authored/RenderingProfiles.json`의 exact
 `bloomScatter: 1.0`이다. Rendering publisher는 float32 경계 검증 뒤 같은 값을 runtime JSON에 투영하며 Editor

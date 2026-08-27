@@ -3,17 +3,30 @@
 
 from __future__ import annotations
 
+import copy
+import importlib.util
+import io
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
 AUTHORED_ROOT = ROOT / "Data" / "Effects" / "Authored"
 GENERATED_PREFIX = "requested.20260827."
+SPEC = importlib.util.spec_from_file_location(
+    "valtan_requested_effect_elements", ROOT / "Tools/ValtanPipeline/author_valtan_requested_effect_elements.py"
+)
+assert SPEC is not None and SPEC.loader is not None
+author = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = author
+SPEC.loader.exec_module(author)
 
 SECTOR_04 = "Effect/Valtan/Textures/FX_TEX_05/fx_o_sector_04.dds"
 SECTOR_05 = "Effect/Valtan/Textures/FX_TEX_05/fx_o_sector_05.dds"
@@ -23,236 +36,19 @@ FLOOR_ELECTILE = "Effect/Valtan/Textures/FX_TEX_05/fx_k_electile_02.dds"
 FLOOR_NOISE = "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_002.dds"
 FLOOR_EMISSIVE_NOISE = "Effect/Valtan/Textures/FX_TEX_05/fx_m_noise_001.dds"
 
-PRODUCT_ELEMENTS: dict[str, tuple[int, set[str]]] = {
-    "effect.valtan.project-tuned.terrain-destruction-3.semicircle": (
-        5,
-        {
-            f"{GENERATED_PREFIX}terrain-3.semicircle.sector-{index:02d}"
-            for index in range(1, 4)
-        }
-        | {
-            f"{GENERATED_PREFIX}terrain-3.landing.{index:02d}"
-            for index in range(1, 3)
-        },
-    ),
-    "effect.valtan.project-tuned.terrain-destruction-9.semicircle": (
-        5,
-        {
-            f"{GENERATED_PREFIX}terrain-9.semicircle.sector-{index:02d}"
-            for index in range(1, 4)
-        }
-        | {
-            f"{GENERATED_PREFIX}terrain-9.landing.{index:02d}"
-            for index in range(1, 3)
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.six-pizza-106": (
-        9,
-        {
-            f"{GENERATED_PREFIX}six-pizza.ring.original-dark",
-            f"{GENERATED_PREFIX}six-pizza.ring.original-cyan",
-            f"{GENERATED_PREFIX}six-pizza.ring.separated-dark",
-            f"{GENERATED_PREFIX}six-pizza.ring.separated-cyan",
-            f"{GENERATED_PREFIX}six-pizza.sector.red-04",
-            f"{GENERATED_PREFIX}six-pizza.sector.yellow-05",
-            f"{GENERATED_PREFIX}six-pizza.sector.red-roar-overlay",
-            f"{GENERATED_PREFIX}six-pizza.ring.center-emissive",
-            f"{GENERATED_PREFIX}six-pizza.ring.landing-cyan",
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.attack-whirlwind": (
-        13,
-        {
-            *{
-                f"{GENERATED_PREFIX}attack-whirlwind.slam.{index:02d}"
-                for index in range(1, 4)
-            },
-            *{
-                f"{GENERATED_PREFIX}attack-whirlwind.spin.{index:02d}"
-                for index in range(1, 4)
-            },
-            *{
-                f"{GENERATED_PREFIX}attack-whirlwind.jump-fan.decal-{index:02d}"
-                for index in range(1, 4)
-            },
-            *{
-                f"{GENERATED_PREFIX}attack-whirlwind.jump-fan.core.{index:02d}"
-                for index in range(1, 4)
-            },
-            f"{GENERATED_PREFIX}attack-whirlwind.jump-fan.vertical-core",
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.charge": (
-        8,
-        {
-            f"{GENERATED_PREFIX}charge.slash.dark",
-            f"{GENERATED_PREFIX}charge.slash.bright-cyan",
-            f"{GENERATED_PREFIX}charge.axe-aura.dark-smoke",
-            f"{GENERATED_PREFIX}charge.axe-aura.cyan-cloud",
-            f"{GENERATED_PREFIX}charge.axe-aura.bright-flame",
-            *{
-                f"{GENERATED_PREFIX}charge.target-cone.{index:02d}"
-                for index in range(1, 4)
-            },
-        },
-    ),
-    "effect.valtan.sequence.charge2": (
-        5,
-        {
-            *{
-                f"{GENERATED_PREFIX}charge2.red-fan.sector-{index:02d}"
-                for index in range(1, 4)
-            },
-            f"{GENERATED_PREFIX}charge2.slash.bright-red",
-        },
-    ),
-    "effect.valtan.sequence.roar-charge": (
-        6,
-        {
-            f"{GENERATED_PREFIX}roar-charge.ring.dark",
-            f"{GENERATED_PREFIX}roar-charge.ring.cyan",
-            f"{GENERATED_PREFIX}roar-charge.cone.dark",
-            f"{GENERATED_PREFIX}roar-charge.cone.cyan",
-            f"{GENERATED_PREFIX}roar-charge.upward.wave",
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.three": (
-        5,
-        {
-            f"{GENERATED_PREFIX}three.impact-01.cyan-ring",
-            f"{GENERATED_PREFIX}three.impact-02.cyan-ring",
-            f"{GENERATED_PREFIX}three.impact-01.sky-wave",
-            f"{GENERATED_PREFIX}three.impact-02.sky-wave",
-            f"{GENERATED_PREFIX}three.impact-03.sky-wave",
-        },
-    ),
-    "effect.valtan.sequence.front-back-front": (
-        20,
-        {
-            *{
-                f"{GENERATED_PREFIX}front-back-front.source.{index:02d}"
-                for index in range(1, 6)
-            },
-            *{
-                f"{GENERATED_PREFIX}front-back-front.blast-{index:02d}.ring"
-                for index in range(1, 4)
-            },
-            *{
-                f"{GENERATED_PREFIX}front-back-front.blast-{index:02d}.wave-fallback"
-                for index in range(1, 4)
-            },
-            *{
-                f"{GENERATED_PREFIX}front-back-front.blast-{index:02d}.cyan-burst"
-                for index in range(1, 4)
-            },
-            *{
-                f"{GENERATED_PREFIX}front-back-front.blast-{index:02d}.vertical-spark"
-                for index in range(1, 4)
-            },
-            *{
-                f"{GENERATED_PREFIX}front-back-front.fan.{index:02d}"
-                for index in range(1, 4)
-            },
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.counter": (
-        1,
-        {f"{GENERATED_PREFIX}counter.cyan-roar-ring"},
-    ),
-    "effect.valtan.project-tuned.sequence.warp.portal": (
-        15,
-        {
-            f"{GENERATED_PREFIX}warp.portal.{index:02d}"
-            for index in range(1, 15)
-        }
-        | {f"{GENERATED_PREFIX}warp.portal-rush.forward-mesh"},
-    ),
-    "effect.valtan.project-tuned.sequence.trash": (
-        11,
-        {
-            *{
-                f"{GENERATED_PREFIX}trash.hand-core.{index:02d}"
-                for index in range(1, 7)
-            },
-            *{
-                f"{GENERATED_PREFIX}trash.floor.{index:02d}"
-                for index in range(1, 5)
-            },
-            f"{GENERATED_PREFIX}trash.recovery-smoke",
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.trash-catch-success": (
-        9,
-        {
-            *{
-                f"{GENERATED_PREFIX}trash-catch-success.hand-core.{index:02d}"
-                for index in range(1, 7)
-            },
-            *{
-                f"{GENERATED_PREFIX}trash-catch-success.release-roar.{index:02d}"
-                for index in range(1, 3)
-            },
-            f"{GENERATED_PREFIX}trash-catch-success.release-smoke",
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.trash-catch-fail": (
-        3,
-        {
-            f"{GENERATED_PREFIX}trash-catch-fail.release.{index:02d}"
-            for index in range(1, 4)
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.trash-catch-if": (
-        6,
-        {
-            f"{GENERATED_PREFIX}trash-catch-if.hand-core.{index:02d}"
-            for index in range(1, 7)
-        },
-    ),
-    "effect.valtan.project-tuned.sequence.catch-breath": (
-        7,
-        {
-            f"{GENERATED_PREFIX}catch-breath.hand-charge.01",
-            f"{GENERATED_PREFIX}catch-breath.hand-charge.02",
-            f"{GENERATED_PREFIX}catch-breath.forward-cone.dark",
-            f"{GENERATED_PREFIX}catch-breath.forward-cone.yellow",
-            f"{GENERATED_PREFIX}catch-breath.release-core.01",
-            f"{GENERATED_PREFIX}catch-breath.release-core.02",
-            f"{GENERATED_PREFIX}catch-breath.recovery-smoke",
-        },
-    ),
-    "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead": (
-        39,
-        {
-            *{
-                f"{GENERATED_PREFIX}struggling.portal.{index:02d}"
-                for index in range(1, 16)
-            },
-            *{
-                f"{GENERATED_PREFIX}struggling.fan.{index:02d}"
-                for index in range(1, 6)
-            },
-            f"{GENERATED_PREFIX}struggling.fist-smash.cyan-ring",
-            f"{GENERATED_PREFIX}struggling.radial-burst.prototype-01",
-            f"{GENERATED_PREFIX}struggling.large-vertical-burst",
-            f"{GENERATED_PREFIX}struggling.donut.cyan-grow",
-            *{
-                f"{GENERATED_PREFIX}struggling.final-roar.{index:02d}"
-                for index in range(1, 16)
-            },
-        },
-    ),
-}
+# Initial visual defaults are not a persistent row-count contract. Once saved,
+# Product documents own their tuning and membership (including deletions).
+PRODUCT_ASSET_IDS = tuple(target.effect_asset_id for target in author.PRODUCT_TARGETS)
 
 CUE_CONTRACTS = {
     "cue.valtan.requested.20260827.terrain-3.semicircle": (
         "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-        "IMPACT",
+        "TAKEOFF",
         "effect.valtan.project-tuned.terrain-destruction-3.semicircle",
     ),
     "cue.valtan.requested.20260827.terrain-9.semicircle": (
         "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-        "IMPACT",
+        "TAKEOFF",
         "effect.valtan.project-tuned.terrain-destruction-9.semicircle",
     ),
     "cue.valtan.requested.20260827.six-pizza.composite": (
@@ -277,18 +73,13 @@ CUE_CONTRACTS = {
     ),
     "cue.valtan.requested.20260827.roar-charge.composite": (
         "VALTAN_ROAR_CHARGE",
-        "STEP_03",
+        "STEP_01",
         "effect.valtan.sequence.roar-charge",
     ),
     "cue.valtan.requested.20260827.three.composite": (
         "VALTAN_THREE",
         "STEP_01",
         "effect.valtan.project-tuned.sequence.three",
-    ),
-    "cue.valtan.requested.20260827.front-back-front.electric-fan": (
-        "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
-        "STEP_01",
-        "effect.valtan.sequence.front-back-front",
     ),
     "cue.valtan.requested.20260827.counter.cyan-roar-ring": (
         "VALTAN_COUNTER",
@@ -328,23 +119,18 @@ CUE_CONTRACTS = {
         "STEP_01",
         "effect.valtan.project-tuned.sequence.catch-breath",
     ),
-    "cue.valtan.requested.20260827.struggling.composite": (
-        "VALTAN_STRUGGLING",
-        "STEP_01",
-        "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead",
-    ),
 }
 
 CUE_RUNTIME_EXPECTATIONS = {
     "cue.valtan.requested.20260827.terrain-3.semicircle": (
         "snapshot",
         [0.0, 0.0, 0.0],
-        200,
+        0,
     ),
     "cue.valtan.requested.20260827.terrain-9.semicircle": (
         "snapshot",
         [0.0, 0.0, 0.0],
-        200,
+        0,
     ),
     **{
         f"cue.valtan.phase2.warp.step-{leg:02d}.composite": (
@@ -394,7 +180,7 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
         cls.presentation = _load_json("Data/Valtan/Valtan.presentation.json")
         cls.gameplay = _load_json("Data/Valtan/Valtan.gameplay.json")
         cls.documents: dict[str, dict[str, Any]] = {}
-        for asset_id in PRODUCT_ELEMENTS:
+        for asset_id in PRODUCT_ASSET_IDS:
             relative_path = f"Data/Effects/Authored/{asset_id}.effect.json"
             cls.documents[asset_id] = _load_json(relative_path)
 
@@ -405,7 +191,7 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
 
     def _element(self, asset_id: str, element_id: str) -> dict[str, Any]:
         elements = self._elements(asset_id)
-        self.assertIn(element_id, elements, asset_id)
+        self.assertIn(element_id, elements.keys(), asset_id)
         return elements[element_id]
 
     @staticmethod
@@ -425,8 +211,8 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
         self.assertIsInstance(catalog_rows, list)
         catalog = _index_unique(catalog_rows, "effectAssetId", "effect catalog row")
 
-        self.assertEqual(len(PRODUCT_ELEMENTS), 17)
-        for asset_id, (expected_total, expected_generated) in PRODUCT_ELEMENTS.items():
+        self.assertEqual(len(PRODUCT_ASSET_IDS), 17)
+        for asset_id in PRODUCT_ASSET_IDS:
             with self.subTest(asset_id=asset_id):
                 self.assertIn(asset_id, catalog)
                 self.assertEqual(
@@ -442,20 +228,18 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
                 self.assertEqual(document.get("schema"), "lostark.effect-authoring")
                 self.assertEqual(document.get("version"), 13)
                 self.assertEqual(document.get("effectAssetId"), asset_id)
-                elements = self._elements(asset_id)
-                self.assertEqual(len(elements), expected_total)
-                actual_generated = {
-                    element_id
-                    for element_id in elements
-                    if element_id.startswith(GENERATED_PREFIX)
-                }
-                self.assertEqual(actual_generated, expected_generated)
+                self._elements(asset_id)  # Strict ID uniqueness, without restoring deleted rows.
+                author._validate_effect_document(document, asset_id, asset_id)
 
     def test_generated_rows_match_current_executable_parser_metadata(self) -> None:
-        for asset_id, (_, expected_generated) in PRODUCT_ELEMENTS.items():
-            for element_id in expected_generated:
+        for asset_id in PRODUCT_ASSET_IDS:
+            # Existence/closure is checked separately. Validate the metadata
+            # of saved rows without restoring Elements the user deleted.
+            for element_id, element in self._elements(asset_id).items():
+                if not element_id.startswith(GENERATED_PREFIX):
+                    continue
                 with self.subTest(asset_id=asset_id, element_id=element_id):
-                    element = self._element(asset_id, element_id)
+                    self.assertLessEqual(len(element["displayName"].encode("utf-8")), 64)
                     self.assertTrue(
                         str(element.get("sourceNode", "")).startswith(
                             "authored-copy:"
@@ -470,173 +254,52 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
                         self.assertIn("compilerAssetId", resource)
                         self.assertIsInstance(resource["compilerAssetId"], str)
 
-    def test_terrain_semicircles_are_opposed_and_suppress_dissolve(self) -> None:
-        asset_3 = "effect.valtan.project-tuned.terrain-destruction-3.semicircle"
-        asset_9 = "effect.valtan.project-tuned.terrain-destruction-9.semicircle"
-        for index in range(1, 4):
-            element_3 = self._element(
-                asset_3,
-                f"{GENERATED_PREFIX}terrain-3.semicircle.sector-{index:02d}",
-            )
-            element_9 = self._element(
-                asset_9,
-                f"{GENERATED_PREFIX}terrain-9.semicircle.sector-{index:02d}",
-            )
-            yaw_3 = float(element_3["detail"]["transform"]["rotationDegrees"][1])
-            yaw_9 = float(element_9["detail"]["transform"]["rotationDegrees"][1])
-            self.assertAlmostEqual((yaw_9 - yaw_3) % 360.0, 180.0, places=6)
+    def test_terrain_3_symbol_preserves_the_users_deleted_floor_layers(self) -> None:
+        asset_id = author.TERRAIN_3.effect_asset_id
+        elements = self._elements(asset_id)
+        floor_ids = (author.TERRAIN_3_SYMBOL_RING_ID,)
+        for deleted_id in author.TERRAIN_3_FLOOR_IDS:
+            self.assertNotIn(deleted_id, elements)
+        self.assertTrue(set(floor_ids).issubset(elements))
+        # The user deleted the old electric fan. The new DDS row is appended
+        # independently, so Validate must not recreate that deleted element.
+        self.assertNotIn(author.TERRAIN_3_FLOOR_IDS[2], elements)
+        self.assertFalse(author.TERRAIN_3_REPLACED_SECTOR_IDS.intersection(elements))
+        for element_id in floor_ids:
+            element = elements[element_id]
+            self.assertEqual(element["kind"], "particle")
+            self.assertIn("authored-copy:", element["sourceNode"])
+            self.assertIs(element["sourceRecipe"]["enabled"], False)
 
-            for element in (element_3, element_9):
-                self.assertStart(element, 0.0)
-                resources = self._resources(element)
-                self.assertEqual(resources.get("mask"), SECTOR_04)
-                self.assertNotIn("dissolve", resources)
-                timing = element["detail"]["timing"]
-                self.assertAlmostEqual(
-                    float(timing.get("dissolveStartNormalized")), 1.0, places=6
-                )
+        # Check the actual saved Product row and physical DDS separately from
+        # the temporary projection fixture's placeholder texture dependency.
+        symbol = elements[author.TERRAIN_3_SYMBOL_RING_ID]
+        resources = self._resources(symbol)
+        for slot in ("base", "mask"):
+            self.assertEqual(resources[slot], author.TERRAIN_3_SYMBOL_RING_TEXTURE)
+        texture = ROOT / "Client/Bin/Resources" / author.TERRAIN_3_SYMBOL_RING_TEXTURE
+        self.assertEqual(texture.read_bytes()[:4], b"DDS ")
+        detail = symbol["detail"]
+        self.assertEqual(detail["particle"]["startSize"], [0.75, 0.75])
+        self.assertEqual(detail["particle"]["endSize"], [0.75, 0.75])
+        self.assertEqual(detail["particle"]["lifeTimeSeconds"], [3.0, 3.0])
+        self.assertEqual(detail["timing"]["lifeTimeSeconds"], 5.0)
+        self.assertEqual(detail["uv"]["tileColumns"], 1)
+        self.assertEqual(detail["uv"]["tileRows"], 1)
+        self.assertEqual(detail["uv"]["tileIndex"], 0)
+        self.assertFalse(detail["uv"]["sequence"])
 
-        for asset_id, suffix in ((asset_3, "3"), (asset_9, "9")):
-            self.assertStart(
-                self._element(
-                    asset_id, f"{GENERATED_PREFIX}terrain-{suffix}.landing.01"
-                ),
-                0.230894,
-            )
-            self.assertStart(
-                self._element(
-                    asset_id, f"{GENERATED_PREFIX}terrain-{suffix}.landing.02"
-                ),
-                0.231,
-            )
-            self.assertFalse(
-                any(
-                    element_id.startswith(
-                        f"{GENERATED_PREFIX}terrain-{suffix}.takeoff."
-                    )
-                    for element_id in self._elements(asset_id)
-                )
-            )
+        path = ROOT / author.TERRAIN_3.relative_path
+        before = path.read_bytes()
+        command = [sys.executable, str(SPEC.origin), "--scope", "terrain-3-symbol-ring", "--mode", "Validate"]
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("newElements=0", result.stdout)
+        self.assertIn("changed=0", result.stdout)
+        self.assertEqual(path.read_bytes(), before)
 
-    def test_six_pizza_layers_resources_and_timing_cohorts(self) -> None:
-        asset_id = "effect.valtan.project-tuned.sequence.six-pizza-106"
-        original_dark = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.ring.original-dark"
-        )
-        original_cyan = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.ring.original-cyan"
-        )
-        separated_dark = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.ring.separated-dark"
-        )
-        separated_cyan = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.ring.separated-cyan"
-        )
-        for element in (original_dark, original_cyan, separated_dark, separated_cyan):
-            self.assertStart(element, 6.2)
 
-        self.assertEqual(
-            separated_dark["material"]["renderProfile"],
-            "alpha_two_sided_depth_read",
-        )
-        self.assertEqual(
-            separated_cyan["material"]["renderProfile"],
-            "additive_two_sided_depth_read",
-        )
-        self.assertEqual(separated_dark["detail"]["decal"]["size"], [32.0, 32.0])
-        self.assertEqual(
-            separated_cyan["detail"]["decal"]["size"], [24.5, 24.5]
-        )
-        self.assertAlmostEqual(
-            float(separated_dark["detail"]["transform"]["position"][1]),
-            0.021,
-            places=6,
-        )
-        self.assertAlmostEqual(
-            float(separated_cyan["detail"]["transform"]["position"][1]),
-            0.037,
-            places=6,
-        )
 
-        red = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.sector.red-04"
-        )
-        yellow = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.sector.yellow-05"
-        )
-        overlay = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.sector.red-roar-overlay"
-        )
-        center = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.ring.center-emissive"
-        )
-        landing = self._element(
-            asset_id, f"{GENERATED_PREFIX}six-pizza.ring.landing-cyan"
-        )
-        self.assertEqual(self._resources(red).get("mask"), SECTOR_04)
-        self.assertEqual(self._resources(yellow).get("mask"), SECTOR_05)
-        self.assertEqual(self._resources(overlay).get("mask"), SECTOR_04)
-        for element in (red, yellow, overlay, center):
-            self.assertStart(element, 22.6)
-        self.assertStart(landing, 28.6)
-
-    def test_jump_slam_and_front_back_front_use_broad_fan_layers(self) -> None:
-        jump_asset = "effect.valtan.project-tuned.sequence.attack-whirlwind"
-        expected_decal_layout = (
-            (1.18, [2.8, 0.055, -2.3], [6.8, 6.8]),
-            (1.22, [4.0, 0.055, 0.0], [7.5, 7.5]),
-            (1.26, [2.8, 0.055, 2.3], [6.8, 6.8]),
-        )
-        for index, (start, position, size) in enumerate(
-            expected_decal_layout, start=1
-        ):
-            decal = self._element(
-                jump_asset,
-                f"{GENERATED_PREFIX}attack-whirlwind.jump-fan.decal-{index:02d}",
-            )
-            self.assertStart(decal, start)
-            self.assertEqual(
-                self._resources(decal).get("base"),
-                "Effect/Valtan/Textures/FX_TEX_04/fx_f_ring_001.dds",
-            )
-            self.assertEqual(decal["detail"]["transform"]["position"], position)
-            self.assertEqual(decal["detail"]["decal"]["size"], size)
-
-        for asset_id, prefix, start, scale in (
-            (
-                jump_asset,
-                "attack-whirlwind.jump-fan.core",
-                1.30,
-                [1.9, 1.9, 1.9],
-            ),
-            (
-                "effect.valtan.sequence.front-back-front",
-                "front-back-front.fan",
-                0.30,
-                [2.05, 2.05, 2.05],
-            ),
-        ):
-            for index in range(1, 4):
-                fan = self._element(
-                    asset_id, f"{GENERATED_PREFIX}{prefix}.{index:02d}"
-                )
-                self.assertStart(fan, start)
-                self.assertEqual(fan["detail"]["transform"]["scale"], scale)
-
-        vertical = self._element(
-            jump_asset,
-            f"{GENERATED_PREFIX}attack-whirlwind.jump-fan.vertical-core",
-        )
-        self.assertStart(vertical, 1.32)
-        self.assertEqual(
-            self._resources(vertical).get("base"),
-            "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds",
-        )
-        self.assertEqual(vertical["detail"]["particle"]["burstCount"], 16)
-        self.assertEqual(
-            vertical["detail"]["particle"]["endSize"],
-            [6.26999998, 40.5299988],
-        )
 
     def test_vertical_generated_rows_no_longer_depend_on_takeoff_legacy(self) -> None:
         cases = (
@@ -651,6 +314,9 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
         )
         for asset_id, element_id in cases:
             with self.subTest(asset_id=asset_id):
+                if element_id not in self._elements(asset_id):
+                    self.assertEqual(asset_id, author.STRUGGLING.effect_asset_id)
+                    continue  # The user explicitly cleared this Effect to author a new Draft.
                 element = self._element(asset_id, element_id)
                 self.assertEqual(
                     element["sourceNode"],
@@ -659,78 +325,29 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
                     f"{element_id}",
                 )
 
-    def test_struggling_is_one_timed_product_with_one_radial_prototype(self) -> None:
-        asset_id = "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead"
-
-        portal_ids = {
-            element_id
+    def test_struggling_clear_keeps_one_draft_without_restoring_generated_rows(self) -> None:
+        asset_id = author.STRUGGLING.effect_asset_id
+        self.assertFalse(any(
+            element_id.startswith(f"{GENERATED_PREFIX}struggling.")
             for element_id in self._elements(asset_id)
-            if element_id.startswith(f"{GENERATED_PREFIX}struggling.portal.")
-        }
-        self.assertEqual(len(portal_ids), 15)
-
-        expected_fan_starts = (6.417, 4.617, 4.617, 5.517, 5.517)
-        for index, expected in enumerate(expected_fan_starts, start=1):
-            self.assertStart(
-                self._element(
-                    asset_id, f"{GENERATED_PREFIX}struggling.fan.{index:02d}"
-                ),
-                expected,
-            )
-
-        fist = self._element(
-            asset_id, f"{GENERATED_PREFIX}struggling.fist-smash.cyan-ring"
-        )
-        self.assertStart(fist, 14.682)
-        self.assertEqual(fist["detail"]["decal"]["size"], [14.0, 14.0])
-
-        prototype = self._element(
-            asset_id,
-            f"{GENERATED_PREFIX}struggling.radial-burst.prototype-01",
-        )
-        self.assertStart(prototype, 17.75)
-        self.assertEqual(prototype["detail"]["transform"]["position"], [5.5, 1.5, 0.0])
-        self.assertEqual(
-            prototype["detail"]["transform"]["rotationDegrees"],
-            [0.0, 90.0, 0.0],
-        )
-        particle = prototype["detail"]["particle"]
-        self.assertEqual(particle["maxParticles"], 1)
-        self.assertEqual(particle["spawnRatePerSecond"], 0.0)
-        self.assertEqual(particle["burstCount"], 1)
-        self.assertEqual(particle["startSize"], [0.05, 0.08])
-        self.assertEqual(particle["endSize"], [5.5, 7.5])
-        self.assertIs(prototype["sourceRecipe"]["enabled"], False)
-
-        vertical = self._element(
-            asset_id, f"{GENERATED_PREFIX}struggling.large-vertical-burst"
-        )
-        donut = self._element(
-            asset_id, f"{GENERATED_PREFIX}struggling.donut.cyan-grow"
-        )
-        self.assertStart(vertical, 19.2)
-        self.assertStart(donut, 20.4)
-        self.assertEqual(
-            self._resources(donut).get("base"),
-            "Effect/Valtan/Textures/FX_TEX_00/fx_b_ring_001.dds",
-        )
-        self.assertIs(donut["detail"]["linearLerp"]["scale"], True)
-
-        for index in range(1, 16):
-            self.assertStart(
-                self._element(
-                    asset_id,
-                    f"{GENERATED_PREFIX}struggling.final-roar.{index:02d}",
-                ),
-                21.407,
-            )
+        ))
+        ownership = _load_json("Data/Effects/ValtanPatternAuthoringEffects.json")
+        self.assertEqual(1, sum(
+            row["patternId"] == "VALTAN_STRUGGLING"
+            and row["effectAssetId"] == asset_id
+            and row["state"] == "DRAFT_ATTACHED"
+            for row in ownership["bindings"]
+        ))
+        pattern = next(row for row in self.presentation["patterns"]
+                       if row["patternId"] == "VALTAN_STRUGGLING")
+        self.assertTrue(all(not stage["effectCues"] for stage in pattern["stages"]))
 
     def test_charge_layers_follow_right_weapon_and_scroll_uv(self) -> None:
         asset_id = "effect.valtan.project-tuned.sequence.charge"
         runtime_slots: set[str] = set()
         attached_ids = {
             element_id
-            for element_id in PRODUCT_ELEMENTS[asset_id][1]
+            for element_id in self._elements(asset_id)
             if ".slash." in element_id or ".axe-aura." in element_id
         }
         self.assertEqual(len(attached_ids), 5)
@@ -854,42 +471,6 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
             places=6,
         )
 
-    def test_roar_three_and_counter_requested_timings(self) -> None:
-        roar_asset = "effect.valtan.sequence.roar-charge"
-        for suffix in ("ring.dark", "ring.cyan", "cone.dark", "cone.cyan"):
-            self.assertStart(
-                self._element(
-                    roar_asset,
-                    f"{GENERATED_PREFIX}roar-charge.{suffix}",
-                ),
-                0.74,
-            )
-        self.assertStart(
-            self._element(
-                roar_asset, f"{GENERATED_PREFIX}roar-charge.upward.wave"
-            ),
-            7.063,
-        )
-
-        three_asset = "effect.valtan.project-tuned.sequence.three"
-        expected_three = {
-            "impact-01.cyan-ring": 1.617,
-            "impact-02.cyan-ring": 2.763,
-            "impact-01.sky-wave": 1.617,
-            "impact-02.sky-wave": 2.763,
-            "impact-03.sky-wave": 4.191,
-        }
-        for suffix, expected_start in expected_three.items():
-            self.assertStart(
-                self._element(three_asset, f"{GENERATED_PREFIX}three.{suffix}"),
-                expected_start,
-            )
-
-        counter = self._element(
-            "effect.valtan.project-tuned.sequence.counter",
-            f"{GENERATED_PREFIX}counter.cyan-roar-ring",
-        )
-        self.assertStart(counter, 0.9)
 
     def test_portal_layer_count_and_trash_bindings_and_floor_resources(self) -> None:
         portal_asset = "effect.valtan.project-tuned.sequence.warp.portal"
@@ -988,43 +569,6 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
                 },
             )
 
-    def test_trash_variants_and_catch_breath_have_visible_timed_elements(self) -> None:
-        success = "effect.valtan.project-tuned.sequence.trash-catch-success"
-        fail = "effect.valtan.project-tuned.sequence.trash-catch-fail"
-        branch = "effect.valtan.project-tuned.sequence.trash-catch-if"
-        breath = "effect.valtan.project-tuned.sequence.catch-breath"
-
-        self.assertEqual(len(self._elements(success)), 9)
-        self.assertEqual(len(self._elements(fail)), 3)
-        self.assertEqual(len(self._elements(branch)), 6)
-        self.assertEqual(len(self._elements(breath)), 7)
-
-        dark = self._element(
-            breath, f"{GENERATED_PREFIX}catch-breath.forward-cone.dark"
-        )
-        yellow = self._element(
-            breath, f"{GENERATED_PREFIX}catch-breath.forward-cone.yellow"
-        )
-        for element in (dark, yellow):
-            self.assertStart(element, 2.25)
-            self.assertAlmostEqual(
-                float(element["detail"]["timing"]["lifeTimeSeconds"]),
-                4.1,
-                places=6,
-            )
-            self.assertTrue(element["detail"]["uv"]["loop"])
-        self.assertEqual(
-            dark["material"]["renderProfile"], "alpha_two_sided_depth_read"
-        )
-        self.assertEqual(
-            yellow["material"]["renderProfile"], "additive_two_sided_depth_read"
-        )
-        self.assertEqual(
-            yellow["detail"]["color"]["multiply"], [4.8, 3.85, 0.05, 5.2]
-        )
-        self.assertEqual(
-            yellow["detail"]["transform"]["rotationDegrees"], [0.0, 0.0, 0.0]
-        )
 
     def test_requested_cues_are_on_the_exact_patterns_and_stages(self) -> None:
         actual: dict[str, tuple[str, str, dict[str, Any]]] = {}
@@ -1142,9 +686,17 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
             (row["patternId"], row["effectAssetId"])
             for row in bindings.get("bindings", [])
         }
-        self.assertEqual(
-            actual,
-            {("VALTAN_SEQUENCE_RUSH", "effect.valtan.sequence.rush")},
+        promoted_pairs = {
+            (pattern["patternId"], cue["effectAssetId"])
+            for pattern in self.presentation.get("patterns", [])
+            for stage in pattern.get("stages", [])
+            for cue in stage.get("effectCues", [])
+        }
+        # New user-created Drafts are valid. Only an exact same-pattern
+        # Product binding makes a Draft redundant and eligible for cleanup.
+        self.assertFalse(
+            actual.intersection(promoted_pairs),
+            "A promoted Product must not also remain a Draft of the same pattern",
         )
         catalog = _index_unique(
             self.catalog.get("effects", []), "effectAssetId", "effect catalog row"
@@ -1163,6 +715,611 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
         pizza = patterns["VALTAN_SIX_PIZZA_106"]
         self.assertEqual(pizza.get("targetPolicy"), "LOCK_RANDOM_ALIVE_ON_START")
         self.assertEqual(pizza.get("aimPolicy"), "TRACK_TARGET_EACH_TICK")
+
+
+class ValtanRequestedEffectMetadataProjectionTest(unittest.TestCase):
+    def test_seed_apply_then_saved_deletion_and_unlink_are_not_regenerated(self) -> None:
+        generated = author._roar_charge_elements(
+            _load_json(str(author.DONOR_ARENA_109)),
+            _load_json(str(author.DONOR_CONE)),
+            _load_json(str(author.DONOR_SKY_AXE)),
+        )
+        target = author.ROAR_CHARGE
+        paths = [row.relative_path for row in author.PRODUCT_TARGETS] + [
+            author.CATALOG_PATH, author.PATTERN_AUTHORING_BINDINGS_PATH,
+            author.PRESENTATION_PATH, author.GAMEPLAY_PATH,
+        ]
+        with tempfile.TemporaryDirectory(prefix="valtan-saved-package.") as temporary:
+            root = Path(temporary)
+            for relative in paths:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes((ROOT / relative).read_bytes())
+            target_path = root / target.relative_path
+            target_path.unlink()
+            with mock.patch.object(author, "ROOT", root):
+                guards: dict[Path, bytes | None] = {}
+                seeded, count = author._stage_target(target, generated, guards)
+                self.assertEqual(len(generated), count)
+                self.assertGreater(count, 2)
+                seed = author.Projection(
+                    outputs={target.relative_path: author._output_bytes(target.relative_path, seeded, guards)},
+                    guards=guards, appended_by_target={target.effect_asset_id: count},
+                )
+                author.apply_projection(seed)
+                self.assertEqual(seeded, json.loads(target_path.read_bytes()))
+
+                deleted_id = GENERATED_PREFIX + "roar-charge.cone.cyan"
+                self.assertIn(deleted_id, {row["id"] for row in seeded["elements"]})
+                saved = copy.deepcopy(seeded)
+                saved["elements"] = [row for row in saved["elements"] if row["id"] != deleted_id]
+                saved["elements"][0]["detail"]["timing"]["startDelaySeconds"] = 1.73125
+                saved["elements"][0]["detail"]["color"]["emissiveIntensity"] = 7.25
+                user_row = copy.deepcopy(saved["elements"][0])
+                user_row["id"] = "authored.user.saved-package"
+                user_row["displayName"] = "User-added row"
+                saved["elements"].append(user_row)
+                target_path.write_bytes(author._json_bytes(saved))
+
+                presentation_path = root / author.PRESENTATION_PATH
+                presentation = json.loads(presentation_path.read_bytes())
+                pattern = next(row for row in presentation["patterns"] if row["patternId"] == target.pattern_id)
+                self.assertTrue(any(stage["effectCues"] for stage in pattern["stages"]))
+                for stage in pattern["stages"]:
+                    stage["effectCues"] = []
+                struggling = next(row for row in presentation["patterns"]
+                                  if row["patternId"] == "VALTAN_STRUGGLING")
+                for stage in struggling["stages"]:
+                    stage["effectCues"] = []
+                presentation_path.write_bytes(author._json_bytes(presentation))
+                # Explicitly loading a preserved aggregate as Draft must survive
+                # generator reruns even if it was promoted before its unlink.
+                bindings_path = root / author.PATTERN_AUTHORING_BINDINGS_PATH
+                bindings = json.loads(bindings_path.read_bytes())
+                bindings["bindings"] = [row for row in bindings["bindings"]
+                                        if row["patternId"] != "VALTAN_STRUGGLING"]
+                bindings["bindings"].append({
+                    "patternId": "VALTAN_STRUGGLING",
+                    "effectAssetId": author.STRUGGLING.effect_asset_id,
+                    "authoringPath": author.STRUGGLING.authoring_path,
+                    "state": "DRAFT_ATTACHED",
+                })
+                bindings_path.write_bytes(author._json_bytes(bindings))
+                before = {relative: (root / relative).read_bytes() for relative in paths}
+
+                # No donor files were copied: saved Products must remain valid
+                # even after the author deletes the original donor elements.
+                with mock.patch.object(
+                    author, "_initial_template_elements",
+                    side_effect=AssertionError("saved package must not rebuild donor templates"),
+                ):
+                    projection = author.collect_projection()
+                    self.assertEqual((), projection.changed_paths)
+                    self.assertEqual(0, sum(projection.appended_by_target.values()))
+                    author.apply_projection(projection)
+                    author.validate_projection(author.collect_projection())
+                self.assertEqual(before, {relative: (root / relative).read_bytes() for relative in paths})
+                self.assertEqual(saved, json.loads(target_path.read_bytes()))
+                self.assertNotIn(deleted_id, {row["id"] for row in saved["elements"]})
+
+    def test_draft_cleanup_requires_a_current_product_in_the_same_pattern(self) -> None:
+        draft = {
+            "patternId": "VALTAN_STRUGGLING",
+            "effectAssetId": author.STRUGGLING.effect_asset_id,
+            "authoringPath": author.STRUGGLING.authoring_path,
+            "state": "DRAFT_ATTACHED",
+        }
+        ownership = _load_json(str(author.PATTERN_AUTHORING_BINDINGS_PATH))
+        ownership["bindings"] = [row for row in ownership["bindings"]
+                                 if row["patternId"] != "VALTAN_STRUGGLING"]
+        ownership["bindings"].append(draft)
+        saved = copy.deepcopy(ownership)
+        presentation = {"patterns": [{
+            "patternId": "VALTAN_STRUGGLING", "stages": [{"effectCues": []}],
+        }, {
+            "patternId": "VALTAN_OTHER", "stages": [{"effectCues": [{
+                "effectAssetId": author.STRUGGLING.effect_asset_id,
+            }]}],
+        }]}
+        author._remove_promoted_draft_bindings(ownership, presentation)
+        self.assertEqual(saved, ownership)
+        presentation["patterns"][0]["stages"][0]["effectCues"] = [{
+            "effectAssetId": author.STRUGGLING.effect_asset_id,
+        }]
+        author._remove_promoted_draft_bindings(ownership, presentation)
+        self.assertEqual(saved["bindings"][:-1], ownership["bindings"])
+
+    def test_clone_names_preserve_roles_within_the_executable_byte_limit(self) -> None:
+        source = {"id": "source.metadata", "displayName": "Original", "detail": {"tuned": 7}}
+        donor = {"effectAssetId": "effect.valtan.metadata", "elements": [source]}
+        before = copy.deepcopy(donor)
+        for role in ("short role", "a" * 52, "가" * 17):
+            with self.subTest(role=role):
+                rows = (
+                    author._clone(donor, source["id"], GENERATED_PREFIX + "metadata", role),
+                    author._clone_row(source, donor["effectAssetId"], GENERATED_PREFIX + "metadata", role),
+                )
+                for row in rows:
+                    self.assertLessEqual(len(row["displayName"].encode("utf-8")), 64)
+                    self.assertTrue(row["displayName"].endswith(role))
+                    self.assertEqual(row["detail"], source["detail"])
+                if role == "short role":
+                    self.assertEqual(rows[0]["displayName"], "Requested 2026-08-27 / short role")
+                else:
+                    self.assertTrue(rows[0]["displayName"].startswith("Requested / "))
+        self.assertEqual(donor, before)
+        for role in ("a" * 53, "가" * 18, " "):
+            with self.subTest(rejected_role=role):
+                with self.assertRaisesRegex(author.AuthoringError, "64 UTF-8 bytes"):
+                    author._clone(donor, source["id"], GENERATED_PREFIX + "metadata", role)
+                with self.assertRaisesRegex(author.AuthoringError, "64 UTF-8 bytes"):
+                    author._clone_row(source, donor["effectAssetId"], GENERATED_PREFIX + "metadata", role)
+        self.assertEqual(donor, before)
+
+    def test_metadata_repair_compacts_only_an_overlong_generated_prefix(self) -> None:
+        role = "front-back-front broad electric fan electric-core"
+        generated = {
+            "id": GENERATED_PREFIX + "metadata",
+            "displayName": "Requested 2026-08-27 / " + role,
+            "sourceNode": "authored-copy:effect.source:source.metadata",
+            "detail": {"timing": {"startDelay": 2.25}, "custom": "preserved"},
+        }
+        user = copy.deepcopy(generated)
+        user["id"] = "authored.user.metadata"
+        tuned = copy.deepcopy(generated)
+        tuned["id"] = GENERATED_PREFIX + "user-renamed"
+        tuned["displayName"] = "User tuned name"
+        document = {"elements": [generated, user, tuned]}
+        expected = copy.deepcopy(document)
+        expected["elements"][0]["displayName"] = "Requested / " + role
+        author._repair_generated_parser_metadata(document, "metadata fixture")
+        self.assertEqual(document, expected)
+        author._repair_generated_parser_metadata(document, "metadata fixture")
+        self.assertEqual(document, expected)
+
+
+class ValtanRequestedEffectStartProjectionTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.arena = _load_json(str(author.DONOR_ARENA_109))
+        cls.cone = _load_json(str(author.DONOR_CONE))
+        cls.sky = _load_json(str(author.DONOR_SKY_AXE))
+        cls.hand = _load_json(str(author.DONOR_HAND_CORE))
+
+    def test_generated_roar_cones_emit_at_the_authored_start_once(self) -> None:
+        donor = _index_unique(self.cone["elements"], "id", "cone donor")[author.CONE_ID]
+        original = copy.deepcopy(self.cone)
+        rows = _index_unique(
+            author._roar_charge_elements(self.arena, self.cone, self.sky),
+            "id", "generated roar",
+        )
+        for suffix in ("dark", "cyan"):
+            row = rows[f"{GENERATED_PREFIX}roar-charge.cone.{suffix}"]
+            with self.subTest(element=row["id"]):
+                recipe = row["sourceRecipe"]
+                first_burst = min(burst["timeSeconds"] for burst in recipe["bursts"])
+                first_emission = (
+                    row["detail"]["timing"]["startDelaySeconds"]
+                    + recipe["emitterDelaySeconds"] + first_burst
+                )
+                self.assertAlmostEqual(first_emission, 0.74, places=6)
+                self.assertEqual(recipe, donor["sourceRecipe"])
+        self.assertEqual(self.cone, original)
+
+    def test_retiming_preserves_native_delay_and_all_other_source_fields(self) -> None:
+        donor = _index_unique(self.cone["elements"], "id", "cone donor")[author.CONE_ID]
+        for enabled in (True, False):
+            with self.subTest(source_enabled=enabled):
+                row = copy.deepcopy(donor)
+                row["sourceRecipe"]["enabled"] = enabled
+                row["sourceRecipe"]["emitterDelaySeconds"] = 0.1875
+                original = copy.deepcopy(row)
+                for start in (2.35, 0.0, 0.74):
+                    author._set_start(row, start)
+                    expected = copy.deepcopy(original)
+                    expected["detail"]["timing"]["startDelaySeconds"] = start
+                    self.assertEqual(row, expected)
+
+    def test_composite_offset_does_not_reapply_the_donor_start(self) -> None:
+        offset = 6.4
+        donors = _index_unique(self.hand["elements"], "id", "hand donor")
+        original = copy.deepcopy(self.hand)
+        rows = author._hand_core_sequence(
+            self.hand, "timing-test", "timing test", start_offset=offset,
+        )
+        for row, donor_id in zip(rows, author.HAND_CORE_IDS):
+            with self.subTest(element=row["id"]):
+                donor = donors[donor_id]
+                donor_emitter_start = (
+                    donor["detail"]["timing"]["startDelaySeconds"]
+                    + donor["sourceRecipe"]["emitterDelaySeconds"]
+                )
+                actual_emitter_start = (
+                    row["detail"]["timing"]["startDelaySeconds"]
+                    + row["sourceRecipe"]["emitterDelaySeconds"]
+                )
+                self.assertAlmostEqual(actual_emitter_start, offset + donor_emitter_start, places=6)
+                self.assertEqual(row["sourceRecipe"], donor["sourceRecipe"])
+        self.assertEqual(self.hand, original)
+
+
+class ValtanTerrain3FloorProjectionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory(prefix="valtan-terrain3-floor-test.")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.target = author.TERRAIN_3.relative_path
+        for relative in (self.target, author.DONOR_FIST_IN_OUT, author.DONOR_FLOOR_ELECTRIC):
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes((ROOT / relative).read_bytes())
+        self.saved_before = self.read(self.target)
+        self.before = copy.deepcopy(self.saved_before)
+        self.before["elements"] = [
+            row for row in self.before["elements"]
+            if row["id"] not in {*author.TERRAIN_3_FLOOR_IDS, *author.TERRAIN_3_REPLACED_SECTOR_IDS}
+        ]
+        self.write(self.target, self.before)
+        # An unrelated saved Effect must remain outside this projection.
+        other = self.root / author.TERRAIN_9.relative_path
+        other.write_bytes((ROOT / author.TERRAIN_9.relative_path).read_bytes())
+        patcher = mock.patch.object(author, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def read(self, relative: Path) -> dict[str, Any]:
+        return json.loads((self.root / relative).read_text(encoding="utf-8"))
+
+    def write(self, relative: Path, document: dict[str, Any]) -> None:
+        (self.root / relative).write_bytes(author._json_bytes(document))
+
+    def snapshot(self) -> dict[Path, bytes]:
+        return {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+
+    def projected(self) -> tuple[Any, dict[str, Any]]:
+        projection = author.collect_terrain_3_floor_projection()
+        return projection, json.loads(projection.outputs[self.target])
+
+    def prepare_symbol_target(self) -> None:
+        self.symbol_before = copy.deepcopy(self.saved_before)
+        self.symbol_before["elements"] = [
+            row for row in self.symbol_before["elements"] if row["id"] != author.TERRAIN_3_SYMBOL_RING_ID
+        ]
+        self.write(self.target, self.symbol_before)
+        self.symbol_texture = Path("Client/Bin/Resources") / author.TERRAIN_3_SYMBOL_RING_TEXTURE
+        texture_path = self.root / self.symbol_texture
+        texture_path.parent.mkdir(parents=True, exist_ok=True)
+        # Copy existing DDS bytes only as a dependency/CAS fixture. This does
+        # not create or admit the requested runtime texture or test its pixels.
+        texture_path.write_bytes((ROOT / "Client/Bin/Resources/Effect/Warlord/Textures/FX_TEX_01/fx_c_symbol_003.dds").read_bytes())
+
+    def symbol_projected(self) -> tuple[Any, dict[str, Any]]:
+        projection = author.collect_terrain_3_symbol_ring_projection()
+        return projection, json.loads(projection.outputs[self.target])
+
+    def test_only_three_rows_are_added_without_restoring_deleted_landing(self) -> None:
+        snapshot = self.snapshot()
+        projection, document = self.projected()
+        self.assertEqual(set(projection.outputs), {self.target})
+        self.assertEqual(projection.appended_by_target, {author.TERRAIN_3.effect_asset_id: 3})
+        old = self.before["elements"]
+        self.assertEqual(document["elements"][:len(old)], old)
+        self.assertEqual([r["id"] for r in document["elements"][len(old):]], list(author.TERRAIN_3_FLOOR_IDS))
+        self.assertEqual({k: v for k, v in document.items() if k != "elements"},
+                         {k: v for k, v in self.before.items() if k != "elements"})
+        self.assertEqual(self.snapshot(), snapshot)
+
+    def test_both_half_donuts_keep_circular_uv_mapping_and_donor_growth(self) -> None:
+        _, document = self.projected()
+        donor = _index_unique(self.read(author.DONOR_FIST_IN_OUT)["elements"], "id", "donor")
+        rows = _index_unique(document["elements"], "id", "terrain")
+        for row_id, donor_id in zip(author.TERRAIN_3_FLOOR_IDS[:2], (author.FIST_DONUT_OUTER_ID, author.FIST_DONUT_GROW_ID)):
+            with self.subTest(element=row_id):
+                row = rows[row_id]
+                detail = row["detail"]
+                particle = detail["particle"]
+                uv = detail["uv"]
+                self.assertEqual({r["slotId"]: r["assetId"] for r in row["resources"]},
+                                 {"base": author.HALF_DONUT_TEXTURE, "mask": author.HALF_DONUT_TEXTURE})
+                self.assertEqual((uv["tileColumns"], uv["tileRows"], uv["tileIndex"], uv["sequence"]), (1, 2, 0, False))
+                self.assertEqual(uv["start"] + uv["speed"], [0, 0, 0, 0])
+                self.assertEqual(particle["startSize"], particle["endSize"])
+                width, height = particle["startSize"]
+                self.assertEqual(width, 2 * height)
+                self.assertEqual(particle["initialPositionMin"], [0, height / 2, 0])
+                self.assertEqual(particle["initialPositionMin"], particle["initialPositionMax"])
+                for local_v in (0.0, 0.25, 0.5, 1.0):
+                    source_v = local_v / uv["tileRows"]
+                    cropped_y = height * (0.5 - local_v) + particle["initialPositionMin"][1]
+                    self.assertAlmostEqual(cropped_y, width * (0.5 - source_v))
+                    self.assertGreaterEqual(cropped_y, 0.0)
+                self.assertEqual(detail["transform"]["rotationDegrees"], [-90, 0, 0])
+                self.assertEqual(detail["transform"]["position"][::2], [0, 0])
+                for field in ("color", "linearLerp"):
+                    self.assertEqual(detail[field], donor[donor_id]["detail"][field])
+                self.assertEqual(detail["transform"]["scale"], donor[donor_id]["detail"]["transform"]["scale"])
+                self.assertFalse(particle["billboard"])
+                self.assertFalse(row["sourceRecipe"]["enabled"])
+
+    def test_both_half_donut_particles_cover_the_five_second_element_life(self) -> None:
+        _, document = self.projected()
+        rows = _index_unique(document["elements"], "id", "terrain")
+        for row_id in author.TERRAIN_3_FLOOR_IDS[:2]:
+            with self.subTest(element=row_id):
+                detail = rows[row_id]["detail"]
+                life = detail["timing"]["lifeTimeSeconds"]
+                self.assertEqual(life, 5.0)
+                self.assertEqual(detail["particle"]["lifeTimeSeconds"], [life, life])
+
+    def test_inner_growth_reaches_its_end_at_particle_expiry(self) -> None:
+        _, document = self.projected()
+        inner = next(row for row in document["elements"] if row["id"] == author.TERRAIN_3_FLOOR_IDS[1])
+        detail = inner["detail"]
+        self.assertTrue(detail["linearLerp"]["scale"])
+        timing = detail["timing"]
+        duration = timing.get("transformMotionDurationSeconds", 0) or timing["lifeTimeSeconds"]
+        earliest_expiry = min(detail["particle"]["lifeTimeSeconds"])
+        # Evaluate_ElementWorld normalizes root lerps by Motion Duration or Life.
+        # A two-second particle previously vanished at 40% of this five-second lerp.
+        progress_at_expiry = min(1.0, earliest_expiry / duration)
+        self.assertEqual(earliest_expiry, duration)
+        self.assertEqual(progress_at_expiry, 1.0)
+        last_visible_progress = min(1.0, (earliest_expiry - 1.0 / 60.0) / duration)
+        self.assertGreater(last_visible_progress, 0.99)
+        for start, end in zip(detail["transform"]["scale"], detail["linearLerp"]["endScale"]):
+            self.assertAlmostEqual(start + (end - start) * progress_at_expiry, end)
+
+    def test_electric_changes_only_copy_identity_mask_and_sprite_roll(self) -> None:
+        _, document = self.projected()
+        actual = copy.deepcopy(document["elements"][-1])
+        source = self.read(author.DONOR_FLOOR_ELECTRIC)
+        expected = copy.deepcopy(next(r for r in source["elements"] if r["id"] == author.FLOOR_ELECTRIC_ID))
+        for field in ("id", "displayName", "groupId", "sourceNode"):
+            actual.pop(field)
+            expected.pop(field)
+        expected["resources"].append({"slotId": "mask", "assetId": SECTOR_04})
+        expected["detail"]["sprite"]["billboardRollDegrees"] = 180.0
+        self.assertEqual(actual, expected)
+        self.assertEqual(actual["detail"]["color"]["emissiveIntensity"], 100)
+        self.assertEqual(actual["material"]["renderProfile"], "alpha_two_sided_depth_read")
+
+    def test_replacement_removes_only_exact_old_sector_ids(self) -> None:
+        document = self.read(self.target)
+        for identity in (*sorted(author.TERRAIN_3_REPLACED_SECTOR_IDS), f"{GENERATED_PREFIX}terrain-3.semicircle.sector-04"):
+            row = copy.deepcopy(document["elements"][0])
+            row["id"] = identity
+            document["elements"].append(row)
+        self.write(self.target, document)
+        _, projected = self.projected()
+        retained = [r for r in document["elements"] if r["id"] not in author.TERRAIN_3_REPLACED_SECTOR_IDS]
+        self.assertEqual(projected["elements"][:-3], retained)
+
+    def test_apply_then_validate_preserves_manual_tuning_and_bytes(self) -> None:
+        before = self.snapshot()
+        projection, _ = self.projected()
+        author.apply_projection(projection)
+        document = self.read(self.target)
+        document["elements"][-1]["detail"]["color"]["emissiveIntensity"] = 42.5
+        document["elements"][-2]["visible"] = False
+        rows = _index_unique(document["elements"], "id", "terrain")
+        # Existing legacy or manually tuned lifetimes must not be auto-retuned.
+        rows[author.TERRAIN_3_FLOOR_IDS[0]]["detail"]["particle"]["lifeTimeSeconds"] = [2.0, 2.0]
+        inner_detail = rows[author.TERRAIN_3_FLOOR_IDS[1]]["detail"]
+        inner_detail["timing"]["lifeTimeSeconds"] = 7.0
+        inner_detail["particle"]["lifeTimeSeconds"] = [3.0, 4.0]
+        tuned_bytes = (json.dumps(document, indent=4) + "\n").encode("utf-8")
+        (self.root / self.target).write_bytes(tuned_bytes)
+        for _ in range(2):
+            repeated = author.collect_terrain_3_floor_projection()
+            self.assertEqual(repeated.changed_paths, ())
+            author.apply_projection(repeated)
+            author.validate_projection(repeated)
+            self.assertEqual((self.root / self.target).read_bytes(), tuned_bytes)
+        for relative, payload in before.items():
+            if relative != self.target:
+                self.assertEqual((self.root / relative).read_bytes(), payload)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(author.main(["--scope", "terrain-3-floor", "--mode", "Validate"]), 0)
+        self.assertIn("scope=terrain-3-floor", output.getvalue())
+        self.assertNotIn("sixPizzaTargeting", output.getvalue())
+
+    def test_invalid_inputs_fail_without_writing(self) -> None:
+        cases = (
+            (self.target, lambda d: d.update(version=999)),
+            (self.target, lambda d: d.update(effectAssetId="wrong.effect")),
+            (self.target, lambda d: d["elements"].append(copy.deepcopy(d["elements"][0]))),
+            (author.DONOR_FIST_IN_OUT, lambda d: d.update(version=12)),
+            (author.DONOR_FLOOR_ELECTRIC, lambda d: d.update(elements=[])),
+        )
+        for relative, mutate in cases:
+            with self.subTest(path=relative, mutation=mutate):
+                path = self.root / relative
+                original = path.read_bytes()
+                document = self.read(relative)
+                mutate(document)
+                self.write(relative, document)
+                snapshot = self.snapshot()
+                with self.assertRaises(author.AuthoringError):
+                    self.projected()
+                self.assertEqual(self.snapshot(), snapshot)
+                path.write_bytes(original)
+        for relative in (self.target, author.DONOR_FLOOR_ELECTRIC):
+            path = self.root / relative
+            original = path.read_bytes()
+            path.unlink()
+            snapshot = self.snapshot()
+            with self.assertRaisesRegex(author.AuthoringError, "cannot read required input"):
+                self.projected()
+            self.assertEqual(self.snapshot(), snapshot)
+            path.write_bytes(original)
+        with self.assertRaisesRegex(author.AuthoringError, "path escaped repository"):
+            author._absolute(Path("../outside.effect.json"))
+
+    def test_concurrent_save_is_rejected_for_target_and_both_donors(self) -> None:
+        for relative in (self.target, author.DONOR_FIST_IN_OUT, author.DONOR_FLOOR_ELECTRIC):
+            with self.subTest(path=relative):
+                projection, _ = self.projected()
+                path = self.root / relative
+                original = path.read_bytes()
+                path.write_bytes(original + b"\n")
+                snapshot = self.snapshot()
+                with self.assertRaisesRegex(author.AuthoringError, "input changed after staging"):
+                    author.apply_projection(projection)
+                self.assertEqual(self.snapshot(), snapshot)
+                path.write_bytes(original)
+
+    def test_failed_promotion_keeps_existing_product_and_cleans_staging(self) -> None:
+        projection, _ = self.projected()
+        snapshot = self.snapshot()
+        with mock.patch.object(author.os, "replace", side_effect=OSError("injected promotion failure")):
+            with self.assertRaisesRegex(author.AuthoringError, "all outputs rolled back"):
+                author.apply_projection(projection)
+        self.assertEqual(self.snapshot(), snapshot)
+        self.assertFalse(list(self.root.glob(".valtan-requested-effects.*")))
+
+    def test_symbol_ring_adds_only_one_row_and_keeps_existing_sectors_and_user_rows(self) -> None:
+        self.prepare_symbol_target()
+        document = self.read(self.target)
+        old_sector = copy.deepcopy(document["elements"][0])
+        old_sector["id"] = sorted(author.TERRAIN_3_REPLACED_SECTOR_IDS)[0]
+        document["elements"].append(old_sector)
+        self.write(self.target, document)
+        snapshot = self.snapshot()
+        projection, projected = self.symbol_projected()
+        self.assertEqual(set(projection.outputs), {self.target})
+        self.assertEqual(set(projection.guards), {self.target, author.DONOR_FIST_IN_OUT, self.symbol_texture})
+        self.assertEqual(projection.appended_by_target, {author.TERRAIN_3.effect_asset_id: 1})
+        self.assertEqual(projected["elements"][:-1], document["elements"])
+        self.assertEqual(projected["elements"][-1]["id"], author.TERRAIN_3_SYMBOL_RING_ID)
+        self.assertEqual({k: v for k, v in projected.items() if k != "elements"},
+                         {k: v for k, v in document.items() if k != "elements"})
+        self.assertEqual(self.snapshot(), snapshot)
+
+    def test_symbol_ring_keeps_outer_red_tuning_with_full_uv_and_centered_geometry(self) -> None:
+        self.prepare_symbol_target()
+        _, document = self.symbol_projected()
+        row = document["elements"][-1]
+        donor = next(r for r in self.read(author.DONOR_FIST_IN_OUT)["elements"] if r["id"] == author.FIST_DONUT_OUTER_ID)
+        detail = row["detail"]
+        particle = detail["particle"]
+        uv = detail["uv"]
+        self.assertEqual({r["slotId"]: r["assetId"] for r in row["resources"]},
+                         {"base": author.TERRAIN_3_SYMBOL_RING_TEXTURE, "mask": author.TERRAIN_3_SYMBOL_RING_TEXTURE})
+        self.assertEqual(row["material"], donor["material"])
+        self.assertEqual(detail["color"], donor["detail"]["color"])
+        self.assertEqual(detail["transform"]["scale"], donor["detail"]["transform"]["scale"])
+        self.assertAlmostEqual(detail["transform"]["position"][1], donor["detail"]["transform"]["position"][1] + 0.01)
+        self.assertEqual(detail["transform"]["position"][::2], [0, 0])
+        self.assertEqual(detail["transform"]["rotationDegrees"], [-90, 0, 0])
+        self.assertEqual((uv["tileColumns"], uv["tileRows"], uv["tileIndex"], uv["sequence"], uv["wave"]), (1, 1, 0, False, False))
+        self.assertEqual(uv["start"] + uv["speed"], [0, 0, 0, 0])
+        self.assertEqual(particle["startSize"], [0.75, 0.75])
+        self.assertEqual(particle["startSize"], particle["endSize"])
+        self.assertEqual(particle["initialPositionMin"], [0, 0, 0])
+        self.assertEqual(particle["initialPositionMin"], particle["initialPositionMax"])
+        self.assertEqual((particle["maxParticles"], particle["burstCount"], particle["spawnRatePerSecond"]), (1, 1, 0))
+        self.assertTrue(particle["localSpace"])
+        self.assertFalse(particle["billboard"])
+        self.assertFalse(row["sourceRecipe"]["enabled"])
+        self.assertEqual(detail["timing"]["startDelaySeconds"], 0)
+        self.assertEqual(detail["timing"]["lifeTimeSeconds"], 5)
+        self.assertEqual(particle["lifeTimeSeconds"], [5, 5])
+        self.assertTrue(row["sourceNode"].startswith("authored-copy:"))
+
+    def test_symbol_ring_apply_and_validate_preserve_tuning_and_do_not_change_floor_scope(self) -> None:
+        self.prepare_symbol_target()
+        # Prepare the older floor in this fixture even when the checkout's
+        # live Product has not received that separate projection yet.
+        author.apply_projection(author.collect_terrain_3_floor_projection())
+        before = self.snapshot()
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(author.main(["--scope", "terrain-3-symbol-ring", "--mode", "Apply"]), 0)
+        self.assertIn("targets=1, newElements=1, outputs=1", output.getvalue())
+        document = self.read(self.target)
+        row = document["elements"][-1]
+        row["detail"]["color"]["emissiveIntensity"] = 9.5
+        row["detail"]["uv"]["speed"] = [0.25, -0.5]
+        row["detail"]["timing"]["lifeTimeSeconds"] = 7
+        row["detail"]["particle"]["lifeTimeSeconds"] = [3, 4]
+        row["visible"] = False
+        tuned_bytes = (json.dumps(document, indent=4) + "\n").encode("utf-8")
+        (self.root / self.target).write_bytes(tuned_bytes)
+        for _ in range(2):
+            repeated, _ = self.symbol_projected()
+            self.assertEqual(repeated.changed_paths, ())
+            self.assertEqual(repeated.appended_by_target, {author.TERRAIN_3.effect_asset_id: 0})
+            author.apply_projection(repeated)
+            author.validate_projection(repeated)
+            self.assertEqual((self.root / self.target).read_bytes(), tuned_bytes)
+        floor_projection = author.collect_terrain_3_floor_projection()
+        self.assertEqual(floor_projection.changed_paths, ())
+        for relative, payload in before.items():
+            if relative != self.target:
+                self.assertEqual((self.root / relative).read_bytes(), payload)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(author.main(["--scope", "terrain-3-symbol-ring", "--mode", "Validate"]), 0)
+        self.assertIn("scope=terrain-3-symbol-ring", output.getvalue())
+        self.assertNotIn("sixPizzaTargeting", output.getvalue())
+
+    def test_symbol_ring_invalid_or_missing_inputs_fail_without_writing(self) -> None:
+        self.prepare_symbol_target()
+        cases = (
+            (self.target, lambda d: d.update(version=999)),
+            (self.target, lambda d: d.update(effectAssetId="wrong.effect")),
+            (self.target, lambda d: d["elements"].append(copy.deepcopy(d["elements"][0]))),
+            (author.DONOR_FIST_IN_OUT, lambda d: d.update(version=12)),
+            (author.DONOR_FIST_IN_OUT, lambda d: d.update(effectAssetId="wrong.donor")),
+            (author.DONOR_FIST_IN_OUT, lambda d: d.update(elements=[])),
+        )
+        for relative, mutate in cases:
+            with self.subTest(path=relative, mutation=mutate):
+                path = self.root / relative
+                original = path.read_bytes()
+                document = self.read(relative)
+                mutate(document)
+                self.write(relative, document)
+                snapshot = self.snapshot()
+                with self.assertRaises(author.AuthoringError):
+                    self.symbol_projected()
+                self.assertEqual(self.snapshot(), snapshot)
+                path.write_bytes(original)
+        for relative in (self.target, author.DONOR_FIST_IN_OUT, self.symbol_texture):
+            with self.subTest(missing=relative):
+                path = self.root / relative
+                original = path.read_bytes()
+                path.unlink()
+                snapshot = self.snapshot()
+                with self.assertRaisesRegex(author.AuthoringError, "cannot read required"):
+                    self.symbol_projected()
+                self.assertEqual(self.snapshot(), snapshot)
+                path.write_bytes(original)
+
+    def test_symbol_ring_detects_concurrent_target_donor_or_texture_change(self) -> None:
+        self.prepare_symbol_target()
+        for relative in (self.target, author.DONOR_FIST_IN_OUT, self.symbol_texture):
+            with self.subTest(path=relative):
+                projection, _ = self.symbol_projected()
+                path = self.root / relative
+                original = path.read_bytes()
+                path.write_bytes(original + b"\n")
+                snapshot = self.snapshot()
+                with self.assertRaisesRegex(author.AuthoringError, "input changed after staging"):
+                    author.apply_projection(projection)
+                self.assertEqual(self.snapshot(), snapshot)
+                path.write_bytes(original)
+
+    def test_symbol_ring_failed_promotion_keeps_all_inputs_and_cleans_staging(self) -> None:
+        self.prepare_symbol_target()
+        projection, _ = self.symbol_projected()
+        snapshot = self.snapshot()
+        with mock.patch.object(author.os, "replace", side_effect=OSError("injected promotion failure")):
+            with self.assertRaisesRegex(author.AuthoringError, "all outputs rolled back"):
+                author.apply_projection(projection)
+        self.assertEqual(self.snapshot(), snapshot)
+        self.assertFalse(list(self.root.glob(".valtan-requested-effects.*")))
 
 
 if __name__ == "__main__":

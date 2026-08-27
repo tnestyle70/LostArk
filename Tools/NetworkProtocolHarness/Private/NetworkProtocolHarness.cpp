@@ -1923,8 +1923,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(41u == NETWORK_PROTOCOL_VERSION,
-				"Party And Expanded Destruction Use A Fresh Protocol 41");
+			testRunner.Require(42u == NETWORK_PROTOCOL_VERSION,
+				"Party, Expanded Destruction And Next Pattern Use Protocol 42");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3904,6 +3904,209 @@ namespace
 		}
 	}
 
+	void Test_ValtanNextPatternProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_VALTAN_AUDITION_REQUEST play{};
+		play.iRequestSequence = 0x12345678u;
+		play.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+		play.strBossPlacementId = "b";
+		play.strPatternId = "P";
+		const std::vector<std::uint8_t> playGolden{
+			0x78u, 0x56u, 0x34u, 0x12u, 11u, 0u, 0u, 0u, 0u,
+			1u, 0u, 'b', 1u, 0u, 'P' };
+		CPacketWriter playWriter;
+		testRunner.Require(Write_Message(playWriter, play) &&
+			playGolden == playWriter.Get_Buffer(),
+			"Next Extension Preserves PLAY_PATTERN_ID Golden Bytes");
+		S2C_VALTAN_AUDITION_RESULT playResult{};
+		playResult.iRequestSequence = play.iRequestSequence;
+		playResult.eOperation = play.eOperation;
+		playResult.strBossPlacementId = play.strBossPlacementId;
+		playResult.strPatternId = play.strPatternId;
+		playResult.eResult = VALTAN_AUDITION_RESULT::QUEUED;
+		playResult.iCurrentHealthBar = 160u;
+		const std::vector<std::uint8_t> playResultGolden{
+			0x78u, 0x56u, 0x34u, 0x12u, 11u, 0u, 0u, 0u, 0u,
+			1u, 160u, 0u, 0u, 0u, 1u, 0u, 'b', 1u, 0u, 'P' };
+		CPacketWriter playResultWriter;
+		testRunner.Require(Write_Message(playResultWriter, playResult) &&
+			playResultGolden == playResultWriter.Get_Buffer(),
+			"Next Extension Preserves PLAY_PATTERN_ID Result Golden Bytes");
+
+		for (const auto operation : { VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID,
+			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID })
+		{
+			C2S_VALTAN_AUDITION_REQUEST request = play;
+			request.eOperation = operation;
+			request.strBossPlacementId = "boss.valtan.center";
+			request.strPatternId = "VALTAN_FIST_IN_OUT";
+			request.iPredecessorRoomAuditionEpoch = 7u;
+			request.iPredecessorPatternSequence = 19u;
+			request.iExpectedNextRequestSequence = 73u;
+			CPacketWriter writer;
+			const bool wrote = Write_Message(writer, request);
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_VALTAN_AUDITION_REQUEST decoded{};
+			CPacketWriter roundTrip;
+			testRunner.Require(wrote && Read_Message(reader, decoded) &&
+				0u == reader.Get_RemainingSize() && Write_Message(roundTrip, decoded) &&
+				roundTrip.Get_Buffer() == writer.Get_Buffer(),
+				"Next Queue/Clear Round Trip Full Predecessor And CAS Identity");
+
+			bool rejectedEveryTruncation = true;
+			for (std::size_t length = 0u; length < writer.Get_Buffer().size(); ++length)
+			{
+				CPacketReader truncated{ std::span<const std::uint8_t>(
+					writer.Get_Buffer().data(), length) };
+				C2S_VALTAN_AUDITION_REQUEST unchanged = request;
+				unchanged.iRequestSequence = 91u;
+				CPacketWriter before;
+				CPacketWriter after;
+				(void)Write_Message(before, unchanged);
+				rejectedEveryTruncation = !Read_Message(truncated, unchanged) &&
+					Write_Message(after, unchanged) && before.Get_Buffer() == after.Get_Buffer() &&
+					rejectedEveryTruncation;
+			}
+			testRunner.Require(rejectedEveryTruncation,
+				"Reject Every Truncated Next String/Token Without Mutating Destination");
+
+			S2C_VALTAN_AUDITION_RESULT result = playResult;
+			result.eOperation = operation;
+			result.strBossPlacementId = request.strBossPlacementId;
+			result.strPatternId = request.strPatternId;
+			result.iPredecessorRoomAuditionEpoch = request.iPredecessorRoomAuditionEpoch;
+			result.iPredecessorPatternSequence = request.iPredecessorPatternSequence;
+			result.iExpectedNextRequestSequence = request.iExpectedNextRequestSequence;
+			result.eResult = VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == operation ?
+				VALTAN_AUDITION_RESULT::QUEUED : VALTAN_AUDITION_RESULT::CLEARED;
+			CPacketWriter resultWriter;
+			const bool wroteResult = Write_Message(resultWriter, result);
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_VALTAN_AUDITION_RESULT decodedResult{};
+			CPacketWriter resultRoundTrip;
+			testRunner.Require(wroteResult && Read_Message(resultReader, decodedResult) &&
+				0u == resultReader.Get_RemainingSize() &&
+				Write_Message(resultRoundTrip, decodedResult) &&
+				resultWriter.Get_Buffer() == resultRoundTrip.Get_Buffer(),
+				"Next Verdict Echoes The Full Command Tuple");
+			bool resultRollback = true;
+			for (std::size_t length = 0u; length < resultWriter.Get_Buffer().size(); ++length)
+			{
+				CPacketReader truncated{ std::span<const std::uint8_t>(
+					resultWriter.Get_Buffer().data(), length) };
+				S2C_VALTAN_AUDITION_RESULT unchanged = result;
+				unchanged.iRequestSequence = 94u;
+				CPacketWriter before;
+				CPacketWriter after;
+				(void)Write_Message(before, unchanged);
+				resultRollback = !Read_Message(truncated, unchanged) &&
+					Write_Message(after, unchanged) && before.Get_Buffer() == after.Get_Buffer() &&
+					resultRollback;
+			}
+			testRunner.Require(resultRollback, "Next Result Truncation Preserves Destination");
+			for (const auto invalidResult : { VALTAN_AUDITION_RESULT::ARMED,
+				VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED,
+				VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR,
+				VALTAN_AUDITION_RESULT::REJECTED_NOT_ARMED,
+				VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED,
+				VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == operation ?
+					VALTAN_AUDITION_RESULT::CLEARED : VALTAN_AUDITION_RESULT::QUEUED,
+				VALTAN_AUDITION_RESULT::END })
+			{
+				result.eResult = invalidResult;
+				CPacketWriter invalidWriter;
+				auto bytes = resultWriter.Get_Buffer();
+				bytes[9] = static_cast<std::uint8_t>(invalidResult);
+				CPacketReader invalidReader{ bytes };
+				S2C_VALTAN_AUDITION_RESULT unchanged = decodedResult;
+				testRunner.Require(!Write_Message(invalidWriter, result) &&
+					!Read_Message(invalidReader, unchanged) &&
+					unchanged.eResult == decodedResult.eResult,
+					"Reject Unknown Or Operation-Mismatched Next Verdict");
+			}
+			std::vector<C2S_VALTAN_AUDITION_REQUEST> malformed;
+			auto invalid = request;
+			invalid.iPredecessorRoomAuditionEpoch = 0u;
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.iPredecessorPatternSequence = 0u;
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.strBossPlacementId = "../boss";
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.strPatternId.clear();
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.strPatternId.assign(MAX_STABLE_NETWORK_ID_BYTES + 1u, 'P');
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.iTargetHealthBar = 1u;
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.eOperation = VALTAN_AUDITION_OPERATION::END;
+			malformed.push_back(invalid);
+			if (VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == operation)
+			{
+				invalid = request;
+				invalid.iExpectedNextRequestSequence = 0u;
+				malformed.push_back(invalid);
+			}
+			bool rejectedMalformed = true;
+			for (const auto& value : malformed)
+			{
+				CPacketWriter invalidWriter;
+				rejectedMalformed = !Write_Message(invalidWriter, value) &&
+					invalidWriter.Get_Buffer().empty() && rejectedMalformed;
+			}
+			testRunner.Require(rejectedMalformed,
+				"Reject Next Zero Tokens, Invalid IDs, Hidden Bars And Unknown Operation");
+		}
+		for (const auto operation : { VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID,
+			VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE })
+		{
+			for (std::size_t field = 0u; field < 3u; ++field)
+			{
+				auto hidden = play;
+				hidden.eOperation = operation;
+				if (VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE == operation)
+				{
+					hidden.strBossPlacementId.clear();
+					hidden.strPatternId.clear();
+				}
+				hidden.iPredecessorRoomAuditionEpoch = 0u == field ? 1u : 0u;
+				hidden.iPredecessorPatternSequence = 1u == field ? 1u : 0u;
+				hidden.iExpectedNextRequestSequence = 2u == field ? 1u : 0u;
+				CPacketWriter writer;
+				testRunner.Require(!Write_Message(writer, hidden),
+					"Reject Hidden Next Identity On Older Audition Operations");
+			}
+		}
+		for (const auto state : { VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED,
+			VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER })
+		{
+			S2C_VALTAN_AUDITION_LIFECYCLE lifecycle{};
+			lifecycle.iRequestSequence = 72u;
+			lifecycle.iRoomAuditionEpoch = 5u;
+			lifecycle.iPatternSequence = 21u;
+			lifecycle.strPatternId = "VALTAN_FIST_IN_OUT";
+			lifecycle.eState = state;
+			lifecycle.PinnedDefinitionRevision = Make_GameplayDataRevision(81u);
+			CPacketWriter writer;
+			const bool wrote = Write_Message(writer, lifecycle);
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_VALTAN_AUDITION_LIFECYCLE decoded{};
+			testRunner.Require(wrote && Read_Message(reader, decoded) &&
+				decoded.eState == state && 21u == decoded.iPatternSequence &&
+				decoded.PinnedDefinitionRevision == lifecycle.PinnedDefinitionRevision,
+				"Next Reserved/Waiting Lifecycle Keeps Its Expected Occurrence Identity");
+			lifecycle.iPatternSequence = 0u;
+			CPacketWriter invalid;
+			testRunner.Require(!Write_Message(invalid, lifecycle),
+				"Reject Next Lifecycle Without Expected Pattern Sequence");
+		}
+	}
+
 	void Test_WorldEntitySpawnCommandRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_SPAWN_WORLD_ENTITY request{};
@@ -4166,8 +4369,8 @@ namespace
 		}
 
 		testRunner.Require(
-			41u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Protocol Version 41");
+			42u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 42");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -4194,8 +4397,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			41u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Pattern Flow Contract Uses Protocol 41");
+			42u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Pattern Flow And Next Contract Use Protocol 42");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -5020,6 +5223,7 @@ int main()
 	Test_WorldDestructionProtocol(testRunner);
 	Test_EncounterPropSyncProtocol(testRunner);
 	Test_ValtanAuditionProtocol(testRunner);
+	Test_ValtanNextPatternProtocol(testRunner);
 	Test_SessionDiagnosticReasonContract(testRunner);
 	Test_GameplayDataRevisionContract(testRunner);
 	Test_DataRevisionHotReloadProtocol(testRunner);

@@ -284,7 +284,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 6.4,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.20000000298023224,
         "emitterLoopCount": 1,
         "bursts": [
@@ -1476,7 +1476,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 7.393956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.2000000476837158,
         "emitterLoopCount": 1,
         "bursts": [
@@ -2494,7 +2494,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 7.393956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.20000000298023224,
         "emitterLoopCount": 1,
         "bursts": [
@@ -3821,7 +3821,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 7.393956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.20000000298023224,
         "emitterLoopCount": 1,
         "bursts": [
@@ -5148,7 +5148,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 7.393956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -6124,7 +6124,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 7.796887,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -7102,7 +7102,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 2.2,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -8129,7 +8129,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 2.2,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.209999993,
         "emitterLoopCount": 1,
         "bursts": [
@@ -9208,7 +9208,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 2.3,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.209999993,
         "emitterLoopCount": 1,
         "bursts": [
@@ -10287,7 +10287,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 2.4,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -11349,7 +11349,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 11.16561,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [

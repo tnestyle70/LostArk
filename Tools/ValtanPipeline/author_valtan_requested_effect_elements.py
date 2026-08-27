@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """Project requested Valtan composites without erasing authored tuning.
 
-This is deliberately an append-preserving authoring projection.  Existing
-elements, including rows that were edited live in Effect Tool, are treated as
-user-owned and remain byte-for-byte equivalent at the JSON value level.  A
-stable generated element is added only while its id is absent; a later run
-therefore preserves manual tuning performed on that generated row as well.
-Each requested gameplay pattern owns one direct-authored Product Effect and
-its typed runtime cue set.  Existing user-authored documents promoted to Product keep
+Missing Product documents are seeded from the initial templates. Existing
+documents retain their exact element membership and Effect Detail tuning,
+including deleted generated rows; only parser metadata may be repaired.
+The explicit floor/symbol scopes can append newly requested elements.
+Pattern authoring owns the saved runtime cue lists, including empty lists
+from Unlink, so this projection does not reconnect a Product or retired pattern.
+Existing user-authored documents promoted to Product keep
 their exact element values; only their redundant DRAFT_ATTACHED binding is
-removed after the same file is catalogued as the Product source.  Unrelated
-drafts remain untouched.  The existing exact STRUGGLING authored
-document is promoted in place so the Tool shows one Product rather than a
-second generated comparison asset.
+removed only while that Pattern has a saved Product cue for the same file.
+Unlinked aggregates explicitly loaded as Draft stay attached, including
+STRUGGLING; catalog registration alone is not a current Product cue.
 
 Validate computes the same projection as Apply and reports any missing/stale
 output.  Apply uses compare-and-swap guards for every donor and destination,
@@ -90,6 +89,10 @@ DONOR_HAND_ROAR = AUTHORING_ROOT / (
 DONOR_FIST_IN_OUT = AUTHORING_ROOT / (
     "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01.effect.json"
 )
+DONOR_FLOOR_ELECTRIC = Path(
+    "Data/Effects/Imported/Valtan/ReviewedSourceFamilies/"
+    "effect.valtan.floor-wipe-130.second-smash.reviewed-source-candidate.effect.json"
+)
 DONOR_IMPRISON_ROAR = AUTHORING_ROOT / (
     "effect.valtan.carrier-v1.attack.imprison-roar.active.clip-01.effect.json"
 )
@@ -150,14 +153,30 @@ PORTAL_RUSH_FORWARD_MESH_ID = "source.6653e9d4443d28016cf4"
 HIGH_JUMP_VERTICAL_ID = "authored.copy.authored.copy.donut.impact.wave.black.1.1"
 FIST_RING_SPRITE_ID = "sprite_particle_6"
 FIST_DONUT_GROW_ID = "donut.telegraph.inner.grow"
+FIST_DONUT_OUTER_ID = "donut.telegraph.outer.red"
+FLOOR_ELECTRIC_ID = "source.d1bf9016f12267f99040"
 IMPRISON_RADIAL_ID = "source.9337c047a20560efa84a"
 
 SECTOR_04 = "Effect/Valtan/Textures/FX_TEX_05/fx_o_sector_04.dds"
 SECTOR_05 = "Effect/Valtan/Textures/FX_TEX_05/fx_o_sector_05.dds"
+HALF_DONUT_TEXTURE = "Effect/Valtan/Textures/FX_TEX_05/fx_m_ring_001_cl.dds"
+TERRAIN_3_SYMBOL_RING_TEXTURE = (
+    "Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/fx_c_symbol_003_half_ring.dds"
+)
+TERRAIN_3_SYMBOL_RING_ID = "requested.20260828.terrain-3.symbol-half-ring"
 
 GENERATED_PREFIX = "requested.20260827."
 CUE_PREFIX = "cue.valtan.requested.20260827."
 PHASE_TWO_CUE_PREFIX = "cue.valtan.phase2."
+TERRAIN_3_FLOOR_IDS = (
+    f"{GENERATED_PREFIX}terrain-3.semicircle.half-donut.outer",
+    f"{GENERATED_PREFIX}terrain-3.semicircle.half-donut.inner-grow",
+    f"{GENERATED_PREFIX}terrain-3.semicircle.electric-fan",
+)
+TERRAIN_3_REPLACED_SECTOR_IDS = frozenset(
+    f"{GENERATED_PREFIX}terrain-3.semicircle.sector-{index:02d}"
+    for index in range(1, 4)
+)
 
 
 class AuthoringError(RuntimeError):
@@ -472,6 +491,17 @@ def _new_effect_document(target: Target) -> JsonObject:
     }
 
 
+def _requested_element_display_name(role: str) -> str:
+    # Effect_DocumentCodec validates bytes, not Python character count. Keep
+    # the complete role and remove only redundant provenance when necessary.
+    display_name = f"Requested 2026-08-27 / {role}"
+    if len(display_name.encode("utf-8")) > 64:
+        display_name = f"Requested / {role}"
+    if not role.strip() or len(display_name.encode("utf-8")) > 64:
+        raise AuthoringError(f"generated Element displayName exceeds 64 UTF-8 bytes: {role!r}")
+    return display_name
+
+
 def _clone(
     donor: JsonObject,
     donor_id: str,
@@ -482,7 +512,7 @@ def _clone(
     source = _element(donor, donor_id, donor.get("effectAssetId", "donor"))
     result = copy.deepcopy(source)
     result["id"] = generated_id
-    result["displayName"] = f"Requested 2026-08-27 / {role}"
+    result["displayName"] = _requested_element_display_name(role)
     result["groupId"] = "requested.20260827"
     result["sourceNode"] = (
         f"authored-copy:{donor.get('effectAssetId')}:{donor_id}:{generated_id}"
@@ -511,7 +541,7 @@ def _clone_row(
         raise AuthoringError(f"source Product row has no stable id: {role}")
     result = copy.deepcopy(source)
     result["id"] = generated_id
-    result["displayName"] = f"Requested 2026-08-27 / {role}"
+    result["displayName"] = _requested_element_display_name(role)
     result["groupId"] = "requested.20260827"
     result["sourceNode"] = (
         f"authored-copy:{source_effect_asset_id}:{source_id}:{generated_id}"
@@ -583,11 +613,11 @@ def _remove_resource(element: JsonObject, slot_id: str) -> None:
 
 
 def _set_start(element: JsonObject, seconds: float) -> None:
+    # Playback applies this outer offset before the SourceRecipe's native
+    # emitter delay. Preserve the native recipe; assigning the same value to
+    # both clocks would apply the authored start twice.
     timing = _require_object(_detail(element).get("timing"), "detail.timing")
     timing["startDelaySeconds"] = round(float(seconds), 6)
-    recipe = element.get("sourceRecipe")
-    if isinstance(recipe, dict) and recipe.get("enabled") is True:
-        recipe["emitterDelaySeconds"] = round(float(seconds), 6)
 
 
 def _set_life(element: JsonObject, seconds: float) -> None:
@@ -756,8 +786,10 @@ def _repair_generated_parser_metadata(document: JsonObject, label: str) -> None:
     particle carrier, so ring/even spawn layouts were then rejected as an
     invalid range.  Resource override rows also require an explicit
     ``compilerAssetId`` field even when no compiler baseline exists.  This
-    migration changes only those parser metadata fields and leaves every live
-    Effect Detail/resource/color/timing value untouched.
+    Generated display names must also fit the executable's 64 UTF-8 byte
+    limit. Only an overlong original generated prefix is compacted; the role
+    and all user-authored labels remain intact. This migration leaves every
+    live Effect Detail/resource/color/timing value untouched.
     """
 
     elements = _require_list(document.get("elements"), f"{label}.elements")
@@ -768,6 +800,16 @@ def _repair_generated_parser_metadata(document: JsonObject, label: str) -> None:
             GENERATED_PREFIX
         ):
             continue
+        display_name = row.get("displayName")
+        generated_name_prefix = "Requested 2026-08-27 / "
+        if (
+            isinstance(display_name, str)
+            and display_name.startswith(generated_name_prefix)
+            and len(display_name.encode("utf-8")) > 64
+        ):
+            row["displayName"] = _requested_element_display_name(
+                display_name.removeprefix(generated_name_prefix)
+            )
         source_node = row.get("sourceNode")
         if isinstance(source_node, str) and source_node.startswith(
             "project-authored-copy:"
@@ -797,7 +839,12 @@ def _stage_target(
     document = _new_effect_document(target) if current is None else copy.deepcopy(current)
     _validate_effect_document(document, target.effect_asset_id, target.effect_asset_id)
     _repair_generated_parser_metadata(document, target.effect_asset_id)
-    appended = _append_preserving(document, generated, target.effect_asset_id)
+    # A template seeds a missing Product once. Existing row membership belongs
+    # to Effect Tool, including intentionally deleted generated elements.
+    appended = (
+        _append_preserving(document, generated, target.effect_asset_id)
+        if current is None else 0
+    )
     return document, appended
 
 
@@ -861,6 +908,151 @@ def _terrain_elements(
             )
         )
     return result
+
+
+def _terrain_3_floor_elements(
+    donut_donor: JsonObject, electric_donor: JsonObject
+) -> list[JsonObject]:
+    def half_donut(row: JsonObject) -> None:
+        if row.get("kind") != "particle" or row.get("sourceRecipe", {}).get("enabled"):
+            raise AuthoringError("half-donut donor must be an authored Sprite Particle")
+        _set_resource(row, "base", HALF_DONUT_TEXTURE)
+        _set_resource(row, "mask", HALF_DONUT_TEXTURE)
+        _set_rotation(row, -90.0, 0.0, 0.0)
+        transform = _detail(row)["transform"]
+        _set_position(row, 0.0, float(transform["position"][1]), 0.0)
+        # V=0..0.5 is local +Y. Halve the quad height, then move its
+        # center by half that height so the diameter stays at the origin.
+        _set_particle_sizes(row, (0.75, 0.375), (0.75, 0.375))
+        particle = _detail(row)["particle"]
+        # Keep the single burst alive for the full authored root-scale lerp.
+        _set_life(row, 5.0)
+        particle["lifeTimeSeconds"] = [5.0, 5.0]
+        particle["initialPositionMin"] = [0.0, 0.1875, 0.0]
+        particle["initialPositionMax"] = [0.0, 0.1875, 0.0]
+        particle["localSpace"] = True
+        particle["billboard"] = False
+        _detail(row)["uv"].update(
+            start=[0.0, 0.0], speed=[0.0, 0.0], wave=False,
+            sequence=False, tileColumns=1, tileRows=2, tileIndex=0,
+        )
+        _avoid_dissolve(row)
+
+    def electric_fan(row: JsonObject) -> None:
+        if (
+            row.get("kind") != "particle"
+            or row.get("sourceRecipe", {}).get("rendererShape") != "sprite"
+            or row.get("sourceRecipe", {}).get("enabled") is not True
+        ):
+            raise AuthoringError("electric fan donor must retain its source sprite recipe")
+        _set_resource(row, "mask", SECTOR_04)
+        # EPAL_Z rebuilds the sprite floor basis at +90 degrees. Use sprite
+        # roll (not Element yaw/pitch) to aim sector04 into the donuts' -Z half.
+        _detail(row)["sprite"]["billboardRollDegrees"] = 180.0
+
+    return [
+        _clone(donut_donor, FIST_DONUT_OUTER_ID, TERRAIN_3_FLOOR_IDS[0],
+               "terrain 3 half-donut outer", half_donut),
+        _clone(donut_donor, FIST_DONUT_GROW_ID, TERRAIN_3_FLOOR_IDS[1],
+               "terrain 3 half-donut inner grow", half_donut),
+        _clone(electric_donor, FLOOR_ELECTRIC_ID, TERRAIN_3_FLOOR_IDS[2],
+               "terrain 3 electric fan / emissive 100", electric_fan),
+    ]
+
+
+def _stage_terrain_3_floor(
+    generated: list[JsonObject], guards: dict[Path, bytes | None]
+) -> tuple[JsonObject, int]:
+    # Require the live Product: never recreate a deleted landing row or reset
+    # its timing while adding the requested floor layers.
+    document = copy.deepcopy(_load_required(TERRAIN_3.relative_path, guards))
+    _validate_effect_document(document, TERRAIN_3.effect_asset_id, "terrain 3 Product")
+    document["elements"] = [
+        row for row in document["elements"]
+        if row["id"] not in TERRAIN_3_REPLACED_SECTOR_IDS
+    ]
+    appended = _append_preserving(document, generated, TERRAIN_3.effect_asset_id)
+    return document, appended
+
+
+def collect_terrain_3_floor_projection() -> Projection:
+    """Add only the requested 3-o'clock floor; do not project other patterns."""
+    guards: dict[Path, bytes | None] = {}
+    donut = _load_required(DONOR_FIST_IN_OUT, guards)
+    electric = _load_required(DONOR_FLOOR_ELECTRIC, guards)
+    _validate_effect_document(
+        donut, "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01", "donor.donut"
+    )
+    _validate_effect_document(
+        electric, "effect.valtan.floor-wipe-130.second-smash", "donor.electric"
+    )
+    document, appended = _stage_terrain_3_floor(
+        _terrain_3_floor_elements(donut, electric), guards
+    )
+    return Projection(
+        outputs={TERRAIN_3.relative_path: _output_bytes(TERRAIN_3.relative_path, document, guards)},
+        guards=guards,
+        appended_by_target={TERRAIN_3.effect_asset_id: appended},
+    )
+
+
+def _terrain_3_symbol_ring_element(donut_donor: JsonObject) -> JsonObject:
+    def symbol_ring(row: JsonObject) -> None:
+        if row.get("kind") != "particle" or row.get("sourceRecipe", {}).get("enabled"):
+            raise AuthoringError("symbol-ring donor must be an authored Sprite Particle")
+        _set_resource(row, "base", TERRAIN_3_SYMBOL_RING_TEXTURE)
+        _set_resource(row, "mask", TERRAIN_3_SYMBOL_RING_TEXTURE)
+        _set_rotation(row, -90.0, 0.0, 0.0)
+        height = float(_detail(row)["transform"]["position"][1]) + 0.01
+        _set_position(row, 0.0, round(height, 6), 0.0)
+        _set_start(row, 0.0)
+        _set_life(row, 5.0)
+        _set_single_particle_burst(row, 5.0)
+        # The new texture already contains the upper arc on a square canvas.
+        # It needs neither the old half-height quad nor its center offset.
+        _set_particle_sizes(row, (0.75, 0.75), (0.75, 0.75))
+        particle = _detail(row)["particle"]
+        particle["initialPositionMin"] = [0.0, 0.0, 0.0]
+        particle["initialPositionMax"] = [0.0, 0.0, 0.0]
+        particle["localSpace"] = True
+        particle["billboard"] = False
+        _detail(row)["uv"].update(
+            start=[0.0, 0.0], speed=[0.0, 0.0], wave=False,
+            sequence=False, loop=False, tileColumns=1, tileRows=1, tileIndex=0,
+        )
+        _avoid_dissolve(row)
+
+    result = _clone(
+        donut_donor, FIST_DONUT_OUTER_ID, TERRAIN_3_SYMBOL_RING_ID,
+        "terrain 3 symbol half ring", symbol_ring,
+    )
+    result["displayName"] = "Requested 2026-08-28 / terrain 3 symbol half ring"
+    result["groupId"] = "requested.20260828"
+    return result
+
+
+def collect_terrain_3_symbol_ring_projection() -> Projection:
+    """Append one full-UV symbol ring without migrating any existing floor row."""
+    guards: dict[Path, bytes | None] = {}
+    donut = _load_required(DONOR_FIST_IN_OUT, guards)
+    _validate_effect_document(
+        donut, "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01", "donor.donut"
+    )
+    document = copy.deepcopy(_load_required(TERRAIN_3.relative_path, guards))
+    _validate_effect_document(document, TERRAIN_3.effect_asset_id, "terrain 3 Product")
+    texture = Path("Client/Bin/Resources") / TERRAIN_3_SYMBOL_RING_TEXTURE
+    try:
+        guards[texture] = _absolute(texture).read_bytes()
+    except OSError as exc:
+        raise AuthoringError(f"cannot read required symbol-ring texture {texture}: {exc}") from exc
+    appended = _append_preserving(
+        document, [_terrain_3_symbol_ring_element(donut)], TERRAIN_3.effect_asset_id
+    )
+    return Projection(
+        outputs={TERRAIN_3.relative_path: _output_bytes(TERRAIN_3.relative_path, document, guards)},
+        guards=guards,
+        appended_by_target={TERRAIN_3.effect_asset_id: appended},
+    )
 
 
 def _six_pizza_elements(arena: JsonObject, floor: JsonObject) -> list[JsonObject]:
@@ -2120,7 +2312,9 @@ def _append_catalog_rows(catalog: JsonObject, targets: Iterable[Target]) -> None
             )
 
 
-def _remove_promoted_draft_bindings(document: JsonObject) -> None:
+def _remove_promoted_draft_bindings(
+    document: JsonObject, presentation: JsonObject
+) -> None:
     if (
         document.get("schema") != "lostark.valtan-pattern-authoring-effects"
         or document.get("formatVersion") != 1
@@ -2130,29 +2324,25 @@ def _remove_promoted_draft_bindings(document: JsonObject) -> None:
         document.get("bindings"), "ValtanPatternAuthoringEffects.bindings"
     )
     promoted = set(PROMOTED_DRAFT_BINDINGS)
+    # A historical promotion is not current ownership after the user unlinks
+    # its Product and explicitly loads the preserved file as a Draft again.
+    active_products: set[tuple[str, str]] = set()
+    for pattern_value in _require_list(presentation.get("patterns"), "patterns"):
+        pattern = _require_object(pattern_value, "presentation pattern")
+        for stage_value in _require_list(pattern.get("stages"), "pattern stages"):
+            stage = _require_object(stage_value, "presentation stage")
+            for cue_value in _require_list(stage.get("effectCues", []), "effect cues"):
+                cue = _require_object(cue_value, "effect cue")
+                active_products.add((str(pattern.get("patternId", "")),
+                                     str(cue.get("effectAssetId", ""))))
     kept: list[Any] = []
     for raw in bindings:
         row = _require_object(raw, "ValtanPatternAuthoringEffects binding")
         identity = (str(row.get("patternId", "")), str(row.get("effectAssetId", "")))
-        if identity in promoted:
+        if identity in promoted and identity in active_products:
             continue
         kept.append(raw)
     bindings[:] = kept
-
-
-def _set_single_pattern_cue(
-    pattern: JsonObject,
-    stage_id: str,
-    cue: JsonObject,
-) -> None:
-    stages = _require_list(pattern.get("stages"), f"{pattern.get('patternId')}.stages")
-    for raw in stages:
-        stage = _require_object(raw, f"{pattern.get('patternId')} stage")
-        stage["effectCues"] = []
-    _require_list(
-        _stage(pattern, stage_id).get("effectCues"),
-        f"{pattern.get('patternId')}/{stage_id}.effectCues",
-    ).append(cue)
 
 
 def _pattern(document: JsonObject, pattern_id: str) -> JsonObject:
@@ -2165,202 +2355,15 @@ def _pattern(document: JsonObject, pattern_id: str) -> JsonObject:
     return result
 
 
-def _stage(pattern: JsonObject, stage_id: str) -> JsonObject:
-    stages = _indexed(
-        _require_list(pattern.get("stages"), f"{pattern.get('patternId')}.stages"),
-        "stageId",
-        f"{pattern.get('patternId')}.stages",
-    )
-    result = stages.get(stage_id)
-    if result is None:
-        raise AuthoringError(f"missing stage {pattern.get('patternId')}/{stage_id}")
-    return result
-
-
-def _local_transform(
-    yaw: float = 0.0,
-    position: tuple[float, float, float] = (0.0, 0.0, 0.0),
-) -> JsonObject:
-    return {
-        "position": [float(value) for value in position],
-        "rotationDegrees": [0.0, float(yaw), 0.0],
-        "scale": [1.0, 1.0, 1.0],
-    }
-
-
-def _cue(
-    cue_id: str,
-    effect_asset_id: str,
-    presentation_stage: JsonObject,
-    *,
-    scale_kind: str,
-    yaw: float = 0.0,
-    position: tuple[float, float, float] = (0.0, 0.0, 0.0),
-    follow_policy: str = "follow",
-) -> JsonObject:
-    animation = _require_object(presentation_stage.get("animation"), "stage.animation")
-    occurrences = _require_list(animation.get("occurrences"), "animation.occurrences")
-    if len(occurrences) != 1:
-        raise AuthoringError(f"requested cue requires one occurrence: {cue_id}")
-    occurrence = _require_object(occurrences[0], "animation occurrence")
-    scale: JsonObject = {"kind": scale_kind}
-    if scale_kind == "GAMEPLAY_FOOTPRINT":
-        scale["worldScale"] = [1.5, 1.5, 1.5]
-    return {
-        "cueId": cue_id,
-        "scalePolicy": scale,
-        "occurrenceId": f"{cue_id}.occurrence.01",
-        "effectAssetId": effect_asset_id,
-        "clipOccurrenceId": occurrence["clipOccurrenceId"],
-        "sourceStartMs": occurrence["sourceStartMs"],
-        "sourceEndMs": None,
-        "anchorSlotId": "root",
-        "followPolicy": follow_policy,
-        "stopPolicy": "natural",
-        "repeatPolicy": "once",
-        "localTransform": _local_transform(yaw, position),
-        "mappingBasis": "PROJECT_AUTHORED",
-    }
-
-
-def _stage_presentation(presentation: JsonObject) -> None:
-    for target, suffix in ((TERRAIN_3, "3"), (TERRAIN_9, "9")):
-        pattern = _pattern(presentation, target.pattern_id or "")
-        impact = _stage(pattern, "IMPACT")
-        _set_single_pattern_cue(
-            pattern,
-            "IMPACT",
-            _cue(
-                f"{CUE_PREFIX}terrain-{suffix}.semicircle",
-                target.effect_asset_id,
-                impact,
-                scale_kind="GAMEPLAY_FOOTPRINT",
-                follow_policy="snapshot",
-            ),
-        )
-
-    warp = _pattern(presentation, WARP_PORTAL.pattern_id or "")
-    for raw in _require_list(warp.get("stages"), "VALTAN_WARP.stages"):
-        warp_stage = _require_object(raw, "VALTAN_WARP stage")
-        warp_stage["effectCues"] = [
-            cue
-            for cue in _require_list(
-                warp_stage.get("effectCues"), "VALTAN_WARP stage.effectCues"
-            )
-            if not str(_require_object(cue, "VALTAN_WARP cue").get("cueId", ""))
-            .startswith((CUE_PREFIX, PHASE_TWO_CUE_PREFIX))
-        ]
-    for leg in range(2, 10):
-        leg_stage = _stage(warp, f"STEP_{leg:02d}")
-        leg_stage["effectCues"].append(
-            _cue(
-                f"{PHASE_TWO_CUE_PREFIX}warp.step-{leg:02d}.composite",
-                WARP_PORTAL.effect_asset_id,
-                leg_stage,
-                scale_kind="OWNER_RELATIVE",
-                position=(0.0, 0.0, 3.0),
-            )
-        )
-
-    assignments = (
-        (
-            SIX_PIZZA,
-            "STEP_01",
-            f"{CUE_PREFIX}six-pizza.composite",
-            "GAMEPLAY_FOOTPRINT",
-        ),
-        (
-            ATTACK_WHIRLWIND,
-            "STEP_01",
-            f"{CUE_PREFIX}attack-whirlwind.composite",
-            "GAMEPLAY_FOOTPRINT",
-        ),
-        (
-            PROMOTED_CHARGE,
-            "STEP_01",
-            f"{CUE_PREFIX}charge.axe-follow",
-            "OWNER_RELATIVE",
-        ),
-        (
-            CHARGE_2,
-            "STEP_03",
-            f"{CUE_PREFIX}charge2.red-fan",
-            "GAMEPLAY_FOOTPRINT",
-        ),
-        (
-            ROAR_CHARGE,
-            "STEP_03",
-            f"{CUE_PREFIX}roar-charge.composite",
-            "OWNER_RELATIVE",
-        ),
-        (THREE, "STEP_01", f"{CUE_PREFIX}three.composite", "GAMEPLAY_FOOTPRINT"),
-        (
-            FRONT_BACK_FRONT,
-            "STEP_01",
-            f"{CUE_PREFIX}front-back-front.electric-fan",
-            "GAMEPLAY_FOOTPRINT",
-        ),
-        (
-            COUNTER,
-            "STEP_03",
-            f"{CUE_PREFIX}counter.cyan-roar-ring",
-            "GAMEPLAY_FOOTPRINT",
-        ),
-        (TRASH, "STEP_01", f"{CUE_PREFIX}trash.composite", "OWNER_RELATIVE"),
-        (
-            TRASH_CATCH_SUCCESS,
-            "STEP_01",
-            f"{CUE_PREFIX}trash-catch-success.composite",
-            "OWNER_RELATIVE",
-        ),
-        (
-            TRASH_CATCH_FAIL,
-            "STEP_01",
-            f"{CUE_PREFIX}trash-catch-fail.composite",
-            "OWNER_RELATIVE",
-        ),
-        (
-            TRASH_CATCH_IF,
-            "STEP_01",
-            f"{CUE_PREFIX}trash-catch-if.composite",
-            "OWNER_RELATIVE",
-        ),
-        (
-            CATCH_BREATH,
-            "STEP_01",
-            f"{CUE_PREFIX}catch-breath.composite",
-            "OWNER_RELATIVE",
-        ),
-        (
-            STRUGGLING,
-            "STEP_01",
-            f"{CUE_PREFIX}struggling.composite",
-            "OWNER_RELATIVE",
-        ),
-    )
-    for target, stage_id, cue_id, scale_kind in assignments:
-        pattern = _pattern(presentation, target.pattern_id or "")
-        stage = _stage(pattern, stage_id)
-        _set_single_pattern_cue(
-            pattern,
-            stage_id,
-            _cue(
-                cue_id,
-                target.effect_asset_id,
-                stage,
-                scale_kind=scale_kind,
-            ),
-        )
-
-
 def _stage_six_pizza_targeting(gameplay: JsonObject) -> None:
     pizza = _pattern(gameplay, "VALTAN_SIX_PIZZA_106")
     pizza["targetPolicy"] = "LOCK_RANDOM_ALIVE_ON_START"
     pizza["aimPolicy"] = "TRACK_TARGET_EACH_TICK"
 
 
-def collect_projection() -> Projection:
-    guards: dict[Path, bytes | None] = {}
+def _initial_template_elements(
+    guards: dict[Path, bytes | None],
+) -> tuple[dict[Target, list[JsonObject]], dict[str, str]]:
     donors = {
         "arena": _load_required(DONOR_ARENA_109, guards),
         "floor": _load_required(DONOR_FLOOR_WIPE, guards),
@@ -2378,6 +2381,7 @@ def collect_projection() -> Projection:
         "recovery": _load_required(DONOR_HAND_RECOVERY, guards),
         "roar": _load_required(DONOR_HAND_ROAR, guards),
         "fist": _load_required(DONOR_FIST_IN_OUT, guards),
+        "electric": _load_required(DONOR_FLOOR_ELECTRIC, guards),
         "imprison": _load_required(DONOR_IMPRISON_ROAR, guards),
     }
     expected_donor_ids = {
@@ -2397,6 +2401,7 @@ def collect_projection() -> Projection:
         "recovery": "effect.valtan.carrier-v1.attack.charge-grab-roar.recovery.clip-01",
         "roar": "effect.valtan.carrier-v1.attack.charge-grab-roar.roar.clip-01",
         "fist": "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+        "electric": "effect.valtan.floor-wipe-130.second-smash",
         "imprison": "effect.valtan.carrier-v1.attack.imprison-roar.active.clip-01",
     }
     for name, document in donors.items():
@@ -2457,9 +2462,7 @@ def collect_projection() -> Projection:
         )
 
     direct_generated = {
-        TERRAIN_3: _terrain_elements(
-            donors["floor"], donors["land"], "3", 0.0
-        ),
+        TERRAIN_3: _terrain_3_floor_elements(donors["fist"], donors["electric"]),
         TERRAIN_9: _terrain_elements(
             donors["floor"], donors["land"], "9", 180.0
         ),
@@ -2505,6 +2508,20 @@ def collect_projection() -> Projection:
         ),
     }
 
+    return direct_generated, expected_donor_ids
+
+
+def collect_projection() -> Projection:
+    guards: dict[Path, bytes | None] = {}
+    missing_targets = {
+        target for target in PRODUCT_TARGETS
+        if _load_optional(target.relative_path, guards) is None
+    }
+    # A saved package no longer depends on donor row membership. Users may
+    # delete those rows after copying them into independent Product elements.
+    direct_generated, expected_donor_ids = (
+        _initial_template_elements(guards) if missing_targets else ({}, {})
+    )
     outputs: dict[Path, bytes] = {}
     appended_by_target: dict[str, int] = {}
     vertical_provenance_ids = {
@@ -2513,8 +2530,16 @@ def collect_projection() -> Projection:
         STRUGGLING.effect_asset_id:
             f"{GENERATED_PREFIX}struggling.large-vertical-burst",
     }
-    for target, generated in direct_generated.items():
+    for target in PRODUCT_TARGETS:
+        generated = direct_generated.get(target, [])
         document, appended = _stage_target(target, generated, guards)
+        if guards[target.relative_path] is not None:
+            # The explicit floor/symbol scopes may add new requested layers.
+            # An all-package refresh must not replay those edits or retune a
+            # saved Product. Parser metadata repair above remains non-visual.
+            outputs[target.relative_path] = _output_bytes(target.relative_path, document, guards)
+            appended_by_target[target.effect_asset_id] = 0
+            continue
         vertical_generated_id = vertical_provenance_ids.get(target.effect_asset_id)
         if vertical_generated_id is not None:
             vertical_element = _element(
@@ -2526,8 +2551,8 @@ def collect_projection() -> Projection:
                 f"authored-copy:{expected_donor_ids['vertical']}:"
                 f"{HIGH_JUMP_VERTICAL_ID}:{vertical_generated_id}"
             )
-        if target in (TERRAIN_3, TERRAIN_9):
-            suffix = "3" if target is TERRAIN_3 else "9"
+        if target is TERRAIN_9:
+            suffix = "9"
             elements = _require_list(document.get("elements"), target.effect_asset_id)
             takeoff_prefix = f"{GENERATED_PREFIX}terrain-{suffix}.takeoff."
             elements[:] = [
@@ -2601,18 +2626,20 @@ def collect_projection() -> Projection:
     _append_catalog_rows(catalog, PRODUCT_CATALOG_TARGETS)
     outputs[CATALOG_PATH] = _output_bytes(CATALOG_PATH, catalog, guards)
 
+    presentation = _load_required(PRESENTATION_PATH, guards)
     pattern_bindings = copy.deepcopy(
         _load_required(PATTERN_AUTHORING_BINDINGS_PATH, guards)
     )
-    _remove_promoted_draft_bindings(pattern_bindings)
+    _remove_promoted_draft_bindings(pattern_bindings, presentation)
     outputs[PATTERN_AUTHORING_BINDINGS_PATH] = _output_bytes(
         PATTERN_AUTHORING_BINDINGS_PATH,
         pattern_bindings,
         guards,
     )
 
-    presentation = copy.deepcopy(_load_required(PRESENTATION_PATH, guards))
-    _stage_presentation(presentation)
+    # Pattern authoring owns cue membership, including an empty list saved by
+    # Unlink. Element generation must never reconnect a saved Product or a
+    # retired pattern; the front/back/front document remains a reusable donor.
     outputs[PRESENTATION_PATH] = _output_bytes(PRESENTATION_PATH, presentation, guards)
 
     gameplay_source = _load_required(GAMEPLAY_PATH, guards)
@@ -2712,28 +2739,37 @@ def validate_projection(projection: Projection) -> None:
         )
 
 
-def _summary(projection: Projection, mode: str) -> str:
+def _summary(projection: Projection, mode: str, scope: str = "all") -> str:
     generated = sum(projection.appended_by_target.values())
     return (
         f"[PASS] requested Valtan effect elements {mode}: "
         f"targets={len(projection.appended_by_target)}, "
         f"newElements={generated}, outputs={len(projection.outputs)}, "
         f"changed={len(projection.changed_paths)}, "
-        "existingElements=preserved, sixPizzaTargeting=locked"
+        "existingElements=preserved, "
+        + (f"scope={scope}" if scope != "all" else "sixPizzaTargeting=locked")
     )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("Validate", "Apply"), default="Validate")
+    parser.add_argument(
+        "--scope", choices=("all", "terrain-3-floor", "terrain-3-symbol-ring"), default="all"
+    )
     args = parser.parse_args(argv)
     try:
-        projection = collect_projection()
+        if args.scope == "terrain-3-symbol-ring":
+            projection = collect_terrain_3_symbol_ring_projection()
+        elif args.scope == "terrain-3-floor":
+            projection = collect_terrain_3_floor_projection()
+        else:
+            projection = collect_projection()
         if args.mode == "Apply":
             apply_projection(projection)
         else:
             validate_projection(projection)
-        print(_summary(projection, args.mode.upper()))
+        print(_summary(projection, args.mode.upper(), args.scope))
         return 0
     except AuthoringError as exc:
         print(f"[FAILURE] {exc}", file=sys.stderr)

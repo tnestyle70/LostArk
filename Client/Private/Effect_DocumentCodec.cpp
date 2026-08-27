@@ -6435,9 +6435,15 @@ bool_t Client::CEffectDocumentCodec::Validate(
 	uint64_t iTotalAfterImages = 0u;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
+		if (Element.strDisplayName.size() > 64u ||
+			!Has_VisibleCharacter(Element.strDisplayName))
+		{
+			strOutError = "Element '" + Element.strElementId +
+				"' display name must be 1-64 UTF-8 bytes and not blank (got " +
+				std::to_string(Element.strDisplayName.size()) + " bytes).";
+			return false;
+		}
 		if (!Is_StableId(Element.strElementId) ||
-			Element.strDisplayName.size() > 64u ||
-			!Has_VisibleCharacter(Element.strDisplayName) ||
 			(!Element.strGroupId.empty() && !Is_StableId(Element.strGroupId)) ||
 			Element.strSourceNode.size() > 256u ||
 			Element.eKind >= EFFECT_ELEMENT_KIND::END ||

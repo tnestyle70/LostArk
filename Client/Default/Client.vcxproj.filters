@@ -3774,6 +3774,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.counter.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.four.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.front-back-front.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3831,7 +3834,13 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.rush.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.twohand.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.whirlwind.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sky-axe.active.effect.json">

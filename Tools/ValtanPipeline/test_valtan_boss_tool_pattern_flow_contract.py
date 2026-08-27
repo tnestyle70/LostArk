@@ -178,10 +178,10 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         seed = make_document(self.inventory)
         validate_document(seed, self.inventory)
         slots = seed["flows"][0]["slots"]
-        self.assertEqual(28, len(self.inventory))
+        self.assertEqual(27, len(self.inventory))
         self.assertEqual(self.inventory, [slot["patternId"] for slot in slots])
-        self.assertEqual(29, seed["flows"][0]["nextSlotOrdinal"])
-        self.assertEqual(28, len({slot["slotId"] for slot in slots}))
+        self.assertEqual(len(self.inventory) + 1, seed["flows"][0]["nextSlotOrdinal"])
+        self.assertEqual(27, len({slot["slotId"] for slot in slots}))
 
     def test_duplicate_pattern_ids_are_valid_but_duplicate_slot_ids_are_not(self) -> None:
         duplicate_pattern = make_document([self.inventory[0], self.inventory[0]])
@@ -203,7 +203,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         original_slots = {slot["slotId"]: slot["patternId"] for slot in slots}
 
         # Reproduce the reported edit in memory, not by fixing the live JSON
-        # to these 29 slots. Later user saves may legitimately differ again.
+        # to this fixture. Later user saves may legitimately differ again.
         new_slot_id = f"{FLOW_ID}.slot.{flow['nextSlotOrdinal']:06d}"
         slots.insert(0, {
             "slotId": new_slot_id,
@@ -230,7 +230,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             slot["slotId"]: slot["patternId"] for slot in slots
             if slot["slotId"] != new_slot_id
         })
-        self.assertEqual(30, flow["nextSlotOrdinal"])
+        self.assertEqual(len(self.inventory) + 2, flow["nextSlotOrdinal"])
 
     def test_empty_single_and_maximum_slot_documents_are_valid(self) -> None:
         for count in (0, 1, MAX_SLOTS):
@@ -383,6 +383,24 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertNotIn("CValtanPatternAuditionService::Get().Submit(", start_body)
         self.assertNotIn("PendingPatternIds", self.boss_tool)
 
+    def test_flow_selection_and_hover_reuse_the_shared_pattern_identity(self) -> None:
+        for start, end in (
+            ("Render_FlowSlotList()", "Render_AddPatternPopup()"),
+            ("Render_AddPatternPopup()", "Render_FlowSelectedSlot()"),
+            ("Render_FlowSelectedSlot()", "Render_LiveSummary()"),
+        ):
+            with self.subTest(section=start):
+                begin = self.boss_tool.index("void Client::CBossTool::" + start)
+                finish = self.boss_tool.index("void Client::CBossTool::" + end, begin)
+                section = self.boss_tool[begin:finish]
+                self.assertIn("Find_AuditionPattern(", section)
+                self.assertIn("pPattern->strDisplayName", section)
+                self.assertIn(
+                    "CValtanPatternTree::Build_PatternIdentitySummary(*pPattern)",
+                    section,
+                )
+                self.assertIn("ImGui::IsItemHovered()", section)
+
     def test_start_revalidates_inventory_and_exact_disk_revision(self) -> None:
         start_body = self.boss_tool[
             self.boss_tool.index("bool_t Client::CBossTool::Start_Flow") :
@@ -450,7 +468,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.network_header + self.network_source)
 
     def test_protocol_is_typed_bounded_and_covered_by_round_trip_harness(self) -> None:
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 41", self.packet_type)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 42", self.packet_type)
         for marker in (
             "C2S_DEBUG_VALTAN_PATTERN_FLOW_START",
             "S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT",

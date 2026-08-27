@@ -25,13 +25,20 @@ foreach ($directory in $runtimeDirectories) {
 }
 
 $previousPath = $env:PATH
+$previousNativeErrorAction = $ErrorActionPreference
+$nativeExitCode = -1
 try {
     $env:PATH = ($runtimeDirectories -join ';') + ';' + $previousPath
+    # Preserve stderr diagnostics without treating progress as process failure.
+    $ErrorActionPreference = 'Continue'
+    $global:LASTEXITCODE = -1
     & $executable $repoRoot
-    if ($global:LASTEXITCODE -ne 0) {
-        throw "PointLightFalloffContractHarness failed with exit code $global:LASTEXITCODE"
-    }
+    $nativeExitCode = $global:LASTEXITCODE
 }
 finally {
+    $ErrorActionPreference = $previousNativeErrorAction
     $env:PATH = $previousPath
+}
+if ($nativeExitCode -ne 0) {
+    throw "PointLightFalloffContractHarness failed with exit code $nativeExitCode"
 }

@@ -1545,6 +1545,22 @@ bool CNetworkManager::Send_ValtanPatternAuditionById(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_ValtanNextPatternCommand(
+	const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() ||
+		(VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID != message.eOperation &&
+		 VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID != message.eOperation))
+		return false;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_ValtanPatternFlowStart(
 	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
 {
@@ -2750,8 +2766,17 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			m_iLastErrorCode.store(WSAEINVAL);
 			return;
 		}
-		if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == result.eOperation)
+		if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == result.eOperation ||
+			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == result.eOperation ||
+			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == result.eOperation)
+		{
+			if (m_ValtanPatternAuditionByIdResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+			{
+				Fail_Protocol(WSAENOBUFS);
+				return;
+			}
 			m_ValtanPatternAuditionByIdResults.push_back(std::move(result));
+		}
 		else
 			m_ValtanAuditionResults.push_back(std::move(result));
 		break;

@@ -912,6 +912,47 @@ namespace
 				Element, bSourceVisualProgramActive);
 	}
 
+	bool_t Is_ManualBurstOnlyParticle(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const bool_t bSourceVisualElementActive)
+	{
+		return Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			!Element.SourceRecipe.bEnabled &&
+			!Element.SourcePresentation.bEnabled &&
+			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == Client::EFFECT_SOURCE_SPACE::END &&
+			!bSourceVisualElementActive &&
+			Element.Detail.Particle.iBurstCount > 0u &&
+			Element.Detail.Particle.fSpawnRatePerSecond == 0.f;
+	}
+
+	uint64_t Calculate_ManualBurstFirstSpawnStep(const f32_t fStartDelaySeconds)
+	{
+		uint64_t iFirstStep = (std::max)(uint64_t{ 1u },
+			static_cast<uint64_t>(std::floor(
+				static_cast<f64_t>(fStartDelaySeconds) / FIXED_STEP_SECONDS_EXACT)));
+		/* Step compares float sample times. A float 0.1 start belongs to step 6,
+		   even though converting that start to double and applying ceil gives 7. */
+		if (static_cast<f32_t>(
+				static_cast<f64_t>(iFirstStep) * FIXED_STEP_SECONDS_EXACT) <
+			fStartDelaySeconds)
+		{
+			++iFirstStep;
+		}
+		return iFirstStep;
+	}
+
+	f32_t Calculate_ManualParticleEndSeconds(
+		const uint64_t iSpawnSimulationStep,
+		const f32_t fLifeTimeSeconds)
+	{
+		/* Match Spawn_Particles' minimum lifetime and use the same float deadline
+		   for duration and fractional Seek eviction, including rounded-down ends. */
+		return static_cast<f32_t>(
+			static_cast<f64_t>(iSpawnSimulationStep) * FIXED_STEP_SECONDS_EXACT +
+			static_cast<f64_t>((std::max)(0.001f, fLifeTimeSeconds)));
+	}
+
 	/* Detail.Particle.SourceScale.fCount applied to a particle count the source
 	   produced.  Only source-owned Elements consult it: an authored Element
 	   already owns iMaxParticles and iBurstCount outright, so scaling those
@@ -1987,6 +2028,53 @@ bool_t Client::CEffectPlayback::Is_PlaybackElementAdmitted(
 		Is_SourceVisualProgramElementAdmitted(Element);
 }
 
+f32_t Client::CEffectPlayback::Calculate_ElementEndSeconds(
+	const EFFECT_ELEMENT_DESC& Element,
+	const bool_t bSourceVisualElementActive)
+{
+	const EFFECT_TIMING_DESC& Timing = Element.Detail.Timing;
+	if (Is_ManualBurstOnlyParticle(Element, bSourceVisualElementActive))
+	{
+		/* A single authored burst has no later emission or Particle afterimages.
+		   Timing Life controls root interpolation; it is not an extra tail.
+		   Particle lifetime starts at the first eligible simulation tick. */
+		return Calculate_ManualParticleEndSeconds(
+			Calculate_ManualBurstFirstSpawnStep(Timing.fStartDelaySeconds),
+			Element.Detail.Particle.vLifeTimeSeconds.y);
+	}
+	f32_t fElementTail = 0.f;
+	if (Is_ParticleSimulationElement(Element, bSourceVisualElementActive))
+	{
+		fElementTail = Element.Detail.Particle.vLifeTimeSeconds.y *
+			(Element.SourceRecipe.bEnabled ?
+				Element.Detail.Particle.SourceScale.fLifeTime : 1.f);
+	}
+	else if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
+		fElementTail = Element.Detail.Trail.fPointLifeTimeSeconds;
+	f32_t fElementDuration = Timing.fLifeTimeSeconds;
+	if (Element.SourceRecipe.bEnabled &&
+		Element.SourceRecipe.fEmitterDurationSeconds > 0.f &&
+		0u != Element.SourceRecipe.iEmitterLoopCount)
+	{
+		fElementDuration = Element.SourceRecipe.fEmitterDurationSeconds *
+			static_cast<f32_t>(Element.SourceRecipe.iEmitterLoopCount);
+	}
+	f32_t fElementEnd = Timing.fStartDelaySeconds +
+		(Element.SourceRecipe.bEnabled ?
+			Element.SourceRecipe.fEmitterDelaySeconds : 0.f) +
+		fElementDuration + Timing.fAfterImageSeconds + fElementTail;
+	/* CascadeRibbon owns a closed point-lifetime tail. Preserve the global
+	   fixed-step/Seek ABI and expose only this admitted family's next
+	   representable end time so the final eviction step is evaluated after
+	   emission stops instead of clamping one step early on a float boundary. */
+	if (bSourceVisualElementActive && Is_CascadeRibbonTarget(Element))
+	{
+		fElementEnd = std::nextafter(fElementEnd,
+			std::numeric_limits<f32_t>::infinity());
+	}
+	return fElementEnd;
+}
+
 bool_t Client::CEffectPlayback::Stage_Document(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
@@ -2410,43 +2498,8 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 				bElementSourceVisualActive));
 		if (!bElementPlaybackAdmitted)
 			continue;
-		f32_t fElementTail = 0.f;
-		if (Is_ParticleSimulationElement(
-			Element, bElementSourceVisualActive))
-		{
-			fElementTail = Element.Detail.Particle.vLifeTimeSeconds.y *
-				(Element.SourceRecipe.bEnabled ?
-					Element.Detail.Particle.SourceScale.fLifeTime : 1.f);
-		}
-		else if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
-			fElementTail = Element.Detail.Trail.fPointLifeTimeSeconds;
-		f32_t fElementDuration = Element.Detail.Timing.fLifeTimeSeconds;
-		if (Element.SourceRecipe.bEnabled &&
-			Element.SourceRecipe.fEmitterDurationSeconds > 0.f)
-		{
-			if (0u != Element.SourceRecipe.iEmitterLoopCount)
-			{
-				fElementDuration = Element.SourceRecipe.fEmitterDurationSeconds *
-					static_cast<f32_t>(
-						Element.SourceRecipe.iEmitterLoopCount);
-			}
-		}
-		f32_t fElementEnd =
-			Element.Detail.Timing.fStartDelaySeconds +
-			(Element.SourceRecipe.bEnabled ?
-				Element.SourceRecipe.fEmitterDelaySeconds : 0.f) +
-			fElementDuration +
-			Element.Detail.Timing.fAfterImageSeconds +
-			fElementTail;
-		/* CascadeRibbon owns a closed point-lifetime tail. Preserve the global
-		   fixed-step/Seek ABI and expose only this admitted family's next
-		   representable end time so the final eviction step is evaluated after
-		   emission stops instead of clamping one step early on a float boundary. */
-		if (bElementSourceVisualActive && Is_CascadeRibbonTarget(Element))
-		{
-			fElementEnd = std::nextafter(fElementEnd,
-				std::numeric_limits<f32_t>::infinity());
-		}
+		const f32_t fElementEnd = Calculate_ElementEndSeconds(
+			Element, bElementSourceVisualActive);
 		fStagedDuration = (std::max)(fStagedDuration, fElementEnd);
 	}
 	for (const EFFECT_MODEL_CUE_DESC& Cue : pStagedDocument->ModelCues)
@@ -5821,8 +5874,22 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 		const f32_t T = fPresentationLifeTimeSeconds > 0.f ?
 			Clamp01(fPresentationTime / fPresentationLifeTimeSeconds) : 1.f;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
-		const bool_t bPresentationActive = fPresentationTime >= 0.f &&
-			fPresentationTime < fPresentationLifeTimeSeconds;
+		const bool_t bManualBurstOnly = Is_ManualBurstOnlyParticle(
+			Element, Is_SourceVisualProgramElementAdmitted(Element));
+		if (bManualBurstOnly)
+		{
+			/* Seek can end between simulation ticks. Retire this start-only burst
+			   from its actual birth, without advancing source or continuous clocks. */
+			std::erase_if(State.Particles,
+				[this](const PARTICLE_STATE& Particle)
+				{
+					return m_fSampleTimeSeconds >= Calculate_ManualParticleEndSeconds(
+						Particle.iSpawnSimulationStep, Particle.fLifeTimeSeconds);
+				});
+		}
+		const bool_t bPresentationActive = bManualBurstOnly ?
+			!State.Particles.empty() : fPresentationTime >= 0.f &&
+				fPresentationTime < fPresentationLifeTimeSeconds;
 		const bool_t bGpuVisualOccurrence = Is_GpuVisualOccurrence(Element);
 		const size_t iGpuOccurrence = m_Frame.GpuOccurrences.size();
 		if (bGpuVisualOccurrence)

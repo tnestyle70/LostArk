@@ -801,6 +801,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.four",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.four.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-02.effect.json"

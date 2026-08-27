@@ -86,6 +86,20 @@ namespace LostArk::Server
 		DEAD
 	};
 
+	enum class SERVER_BOSS_PATTERN_TERMINAL_RESULT : std::uint8_t
+	{
+		NONE,
+		COMPLETED,
+		ABORTED
+	};
+
+	struct SERVER_BOSS_PATTERN_TERMINAL_RECEIPT final
+	{
+		std::uint32_t iPatternSequence = 0u;
+		SERVER_BOSS_PATTERN_TERMINAL_RESULT eResult =
+			SERVER_BOSS_PATTERN_TERMINAL_RESULT::NONE;
+	};
+
 	struct SERVER_WORLD_ENTITY
 	{
 		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
@@ -176,6 +190,11 @@ namespace LostArk::Server
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;
 		std::uint32_t iPatternSequence = 0;
+		SERVER_BOSS_PATTERN_TERMINAL_RECEIPT PatternTerminalReceipt;
+		/* Only a committed typed grab execution authorizes the current stage to
+		finish its animation clock after the last living target was executed. */
+		std::uint32_t iGrabExecutionCommittedPatternSequence = 0u;
+		std::uint32_t iGrabExecutionCommittedStageIndex = 0u;
 		std::uint32_t iPatternStageIndex = 0;
 		/* Immutable gameplay bootstrap identity pinned when this entity is
 		created and refreshed at each boss pattern occurrence boundary. */

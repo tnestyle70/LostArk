@@ -12,11 +12,18 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
 }
 
 Push-Location ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')))
+$previousNativeErrorAction = $ErrorActionPreference
+$nativeExitCode = -1
 try {
+    # Preserve stderr diagnostics without treating progress as process failure.
+    $ErrorActionPreference = 'Continue'
+    $global:LASTEXITCODE = -1
     & $executable
-    if ($global:LASTEXITCODE -ne 0) {
-        throw "ActionPresentationTimelineHarness failed with exit code $global:LASTEXITCODE"
-    }
+    $nativeExitCode = $global:LASTEXITCODE
 } finally {
+    $ErrorActionPreference = $previousNativeErrorAction
     Pop-Location
+}
+if ($nativeExitCode -ne 0) {
+    throw "ActionPresentationTimelineHarness failed with exit code $nativeExitCode"
 }

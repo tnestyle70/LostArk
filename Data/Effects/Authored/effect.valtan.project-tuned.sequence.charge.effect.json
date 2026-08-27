@@ -3988,7 +3988,7 @@
     },
     {
       "id": "requested.20260827.charge.axe-aura.bright-flame",
-      "displayName": "Requested 2026-08-27 / gather slash bright-flame axe-follow sprite",
+      "displayName": "Requested / gather slash bright-flame axe-follow sprite",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.pattern.420633.active.v1.unified:valtan.420633.notify006.emitter7336:requested.20260827.charge.axe-aura.bright-flame",
       "visible": true,
@@ -5438,7 +5438,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 0.12,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -6431,7 +6431,7 @@
     },
     {
       "id": "requested.20260827.charge.target-cone.02",
-      "displayName": "Requested 2026-08-27 / gather slash folded target cone electric-core",
+      "displayName": "Requested / gather slash folded target cone electric-core",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01:source.756fbb3603e8a548576e:requested.20260827.charge.target-cone.02",
       "visible": true,
@@ -6693,7 +6693,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.12,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -7416,7 +7416,7 @@
     },
     {
       "id": "requested.20260827.charge.target-cone.03",
-      "displayName": "Requested 2026-08-27 / gather slash folded target cone forward-shine",
+      "displayName": "Requested / gather slash folded target cone forward-shine",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01:source.d8db179c65da128b5e46:requested.20260827.charge.target-cone.03",
       "visible": true,
@@ -7678,7 +7678,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.12,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.5,
         "emitterLoopCount": 1,
         "bursts": [

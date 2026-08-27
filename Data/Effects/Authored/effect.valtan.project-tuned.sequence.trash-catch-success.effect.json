@@ -1476,7 +1476,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.993956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.2000000476837158,
         "emitterLoopCount": 1,
         "bursts": [
@@ -2494,7 +2494,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.993956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.20000000298023224,
         "emitterLoopCount": 1,
         "bursts": [
@@ -3821,7 +3821,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.993956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.20000000298023224,
         "emitterLoopCount": 1,
         "bursts": [
@@ -5148,7 +5148,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.993956,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -6124,7 +6124,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 1.396887,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -7089,7 +7089,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 2.35,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.600000023841858,
         "emitterLoopCount": 1,
         "bursts": [],
@@ -8333,7 +8333,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 2.35,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 2.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -9320,7 +9320,7 @@
     },
     {
       "id": "requested.20260827.trash-catch-success.release-smoke",
-      "displayName": "Requested 2026-08-27 / trash catch success black cyan release smoke",
+      "displayName": "Requested / trash catch success black cyan release smoke",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.charge-grab-roar.recovery.clip-01:source.9c312f0c5add9f438229:requested.20260827.trash-catch-success.release-smoke",
       "visible": true,
@@ -9578,7 +9578,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 3.0,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [

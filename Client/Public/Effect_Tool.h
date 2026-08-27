@@ -588,6 +588,8 @@ private:
 	void Update_ValtanPatternProductEffectUnlink();
 	bool_t Try_CreateValtanPatternEffect(
 		const VALTAN_PATTERN_VIEW& Pattern);
+	bool_t Try_OpenExistingValtanPatternEffect(
+		const VALTAN_PATTERN_VIEW& Pattern);
 	bool_t Can_DeleteSelectedValtanPatternEffect(
 		std::string& strOutReason) const;
 	bool_t Try_DeleteSelectedValtanPatternEffect();
@@ -1258,6 +1260,7 @@ private:
 	bool_t m_bDetailDraftPortableRecipeReadOnly = false;
 	bool_t m_bDetailDraftCapabilityDeferred = false;
 	bool_t m_bDetailDraftPreviewPending = false;
+	bool_t m_bDetailDraftPreviewRestartRequested = false;
 	bool_t m_bModelCueDraftDirty = false;
 	bool_t m_bOccurrenceTuningDirty = false;
 	bool_t m_bOccurrenceTransformDraftDirty = false;
