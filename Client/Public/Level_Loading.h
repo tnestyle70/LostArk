@@ -42,7 +42,8 @@ private:
 	bool_t m_isFailureReported = { false };
 	bool_t m_isRetryRequested = { false };
 	bool_t m_isEffectPreparationRegistered = { false };
-	bool_t m_isEffectPreparationComplete = { false };
+	bool_t m_isEffectLoadJobStarted = { false };
+	uint64_t m_iEffectLoadJobEpoch = 0u;
 	std::vector<std::string> m_EffectPreparationTargets;
 	std::string m_strEffectPreparationStatus;
 	std::string m_strEffectPreparationRegistrationFailure;
@@ -59,9 +60,11 @@ private:
 	/* Authored size of the ProgressGlow slot itself (distinct from the track it slides along). */
 	f32_t							m_fProgressGlowWidth = 40.f, m_fProgressGlowHeight = 23.f;
 
-	/* No per-step byte/asset count exists in CLoader, so this is a simple time-based fill that
-	eases toward 90% and only snaps to 100% once the loader actually reports finished. */
+	/* The bar is determinate only when its current denominator is known.  While
+	   the Level worker spans opaque phases, a moving segment is shown instead
+	   of fabricating an overall percentage. */
 	f32_t							m_fDisplayProgress = 0.f;
+	f32_t							m_fIndeterminateProgress = 0.f;
 
 	wstring_t						m_strTitleText;
 	wstring_t						m_strTipText;

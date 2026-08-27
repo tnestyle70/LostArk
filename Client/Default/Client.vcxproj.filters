@@ -393,6 +393,9 @@
     <ClCompile Include="..\Private\Effect_Catalog.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Effect_LoadPreparationJob.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Effect_OccurrenceTuning.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -1042,6 +1045,9 @@
     <ClInclude Include="..\Public\Effect_Catalog.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Effect_LoadPreparationJob.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Effect_OccurrenceTuning.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
@@ -1633,6 +1639,27 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMeshV2.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectMeshV2.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectRectV2.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectParticleV2.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectDecalV2.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectTrailV2.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshPreview_V2.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli">

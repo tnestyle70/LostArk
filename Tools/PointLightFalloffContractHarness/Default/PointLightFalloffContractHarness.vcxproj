@@ -119,6 +119,7 @@
     <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
     <FmodRuntimeSource>$(EngineRoot)ThirdPartyLib\FMOD\Bin\fmod.dll</FmodRuntimeSource>
     <PhysXRuntimeRoot>$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\</PhysXRuntimeRoot>
+    <DeferredShaderSource>$(EngineBinaryRoot)Shader_Deferred.cso</DeferredShaderSource>
   </PropertyGroup>
   <Target Name="DeployPointLightHarnessRuntimeDependencies" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
     <Error Condition="'$(AssimpRuntimeName)'==''" Text="Unsupported configuration '$(Configuration)' for Assimp runtime deployment." />
@@ -129,6 +130,7 @@
     <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysX_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysX_64.dll" />
     <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysXCommon_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysXCommon_64.dll" />
     <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysXFoundation_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysXFoundation_64.dll" />
+    <Error Condition="!Exists('$(DeferredShaderSource)')" Text="Required compiled shader is missing for $(Configuration): $(DeferredShaderSource)" />
     <ItemGroup>
       <PointLightHarnessRuntimeDependency Include="$(EngineBinaryRoot)Engine.dll" />
       <PointLightHarnessRuntimeDependency Include="$(EngineBinaryRoot)Engine.pdb" Condition="'$(Configuration)'=='Debug'" />
@@ -137,6 +139,7 @@
       <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysX_64.dll" />
       <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysXCommon_64.dll" />
       <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysXFoundation_64.dll" />
+      <PointLightHarnessRuntimeDependency Include="$(DeferredShaderSource)" />
     </ItemGroup>
     <Copy SourceFiles="@(PointLightHarnessRuntimeDependency)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
     <Message Text="Deployed Engine, FMOD, Assimp, and PhysX runtimes to $(TargetDir)" Importance="high" />

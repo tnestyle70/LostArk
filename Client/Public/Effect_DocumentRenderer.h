@@ -44,6 +44,12 @@ enum class RECONSTRUCTED_DIAGNOSTIC_SOLO : uint8_t
 struct EFFECT_RENDER_PREWARM_PROBE final
 {
 	uint64_t iCoreBuildCount = 0u;
+	uint64_t iCoreBuildFailureCount = 0u;
+	uint64_t iCoreBuildMaximumMicroseconds = 0u;
+	uint64_t iTargetPrepareCount = 0u;
+	uint64_t iTargetPrepareMaximumMicroseconds = 0u;
+	uint64_t iTargetCommitCount = 0u;
+	uint64_t iTargetCommitMaximumMicroseconds = 0u;
 	uint64_t iCatalogCommitCount = 0u;
 	uint64_t iPreparedDocumentBuildCount = 0u;
 	uint64_t iModelDiskLoadCount = 0u;
@@ -213,6 +219,7 @@ class CEffectDocumentRenderer final
 public:
 	struct PREPARED_DOCUMENT;
 	struct PRODUCT_PREWARM_SESSION;
+	struct PRODUCT_TARGET_STAGE;
 
 private:
 	struct ELEMENT_RESOURCE final
@@ -337,6 +344,20 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext,
 		uint64_t iCatalogRevision,
 		const EFFECT_RENDER_PREWARM_TARGET& Target,
+		std::string& strOutError);
+	/* Loading worker seam.  Stage performs immutable file/CPU work and only
+	   D3D11 device-object creation; it never calls the immediate context or
+	   publishes a prepared target.  Commit is an owner-thread generation CAS
+	   followed by swaps of the already-complete candidate maps. */
+	static bool_t Stage_VisualProgramTarget(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContextIdentity,
+		uint64_t iCatalogRevision,
+		const EFFECT_RENDER_PREWARM_TARGET& Target,
+		std::shared_ptr<PRODUCT_TARGET_STAGE>& OutStage,
+		std::string& strOutError);
+	static bool_t Commit_VisualProgramTargetStage(
+		const std::shared_ptr<PRODUCT_TARGET_STAGE>& pStage,
 		std::string& strOutError);
 	/* Main-thread-only authoring handoff.  The candidate is fully prepared
 	   before the cache lock is reacquired, then every prepared entry for only

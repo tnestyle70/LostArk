@@ -12,12 +12,15 @@
 #include <array>
 #include <cfloat>
 #include <cmath>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <map>
+#include <new>
 #include <set>
 #include <string_view>
+#include <tuple>
 #include <unordered_set>
 
 namespace
@@ -1140,6 +1143,528 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		", material bindings=0, visual projections=0).";
 	strOutStatus = g_strStatus;
 	StatusGuard.bCommitted = true;
+	return true;
+}
+
+bool_t Client::CEffectCatalog::Capture_ProductLoadStageRequest(
+	const std::string& strEffectAssetId,
+	EFFECT_PRODUCT_LOAD_STAGE_REQUEST& OutRequest,
+	std::string& strOutStatus)
+{
+	OutRequest = {};
+	if (0u == g_iRuntimeRevision || strEffectAssetId.empty() ||
+		g_iCatalogOwnerThreadId != static_cast<uint32_t>(GetCurrentThreadId()))
+	{
+		strOutStatus =
+			"Product Effect load-stage capture requires the catalog owner thread.";
+		return false;
+	}
+	const uint64_t iCapturedCatalogRevision = g_iRuntimeRevision;
+	const auto Source = g_DirectAuthoredSources.find(strEffectAssetId);
+	if (Source == g_DirectAuthoredSources.end() || nullptr == Source->second ||
+		Source->second->DocumentPath.empty())
+	{
+		strOutStatus =
+			"Product Effect load-stage source registration is unavailable: " +
+			strEffectAssetId;
+		return false;
+	}
+	const std::shared_ptr<const CEffectMaterialProgramRegistry> Registry =
+		g_pMaterialProgramRegistry;
+	if (nullptr == Registry ||
+		Registry->Get_CatalogRevision() != iCapturedCatalogRevision ||
+		0u == Registry->Get_GenerationId())
+	{
+		strOutStatus =
+			"Product Effect load-stage material registry is unavailable or stale: " +
+			strEffectAssetId;
+		return false;
+	}
+	std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING> Overlay;
+	const auto OverlayBinding =
+		g_ScreenOverlayProductBindings.find(strEffectAssetId);
+	if (OverlayBinding != g_ScreenOverlayProductBindings.end())
+	{
+		Overlay = OverlayBinding->second;
+		if (nullptr == Overlay ||
+			Overlay->strEffectAssetId != strEffectAssetId)
+		{
+			strOutStatus =
+				"Product Effect load-stage screen-overlay identity is invalid: " +
+				strEffectAssetId;
+			return false;
+		}
+	}
+
+	std::error_code Error;
+	const std::uintmax_t SourceByteCount = std::filesystem::file_size(
+		Source->second->DocumentPath, Error);
+	if (Error || 0u == SourceByteCount)
+	{
+		strOutStatus =
+			"Product Effect load-stage source is missing or empty: " +
+			strEffectAssetId;
+		return false;
+	}
+	const std::filesystem::file_time_type SourceWriteTime =
+		std::filesystem::last_write_time(Source->second->DocumentPath, Error);
+	if (Error)
+	{
+		strOutStatus =
+			"Product Effect load-stage source timestamp is unavailable: " +
+			strEffectAssetId;
+		return false;
+	}
+
+	OutRequest.iCatalogRevision = iCapturedCatalogRevision;
+	OutRequest.strEffectAssetId = strEffectAssetId;
+	OutRequest.DocumentPath = Source->second->DocumentPath;
+	OutRequest.pSourceRegistrationIdentity =
+		std::static_pointer_cast<const void>(Source->second);
+	const auto Document = g_Effects.find(strEffectAssetId);
+	if (Document != g_Effects.end())
+		OutRequest.pExpectedDocument = Document->second;
+	const auto Projection = g_VisualProjections.find(strEffectAssetId);
+	if (Projection != g_VisualProjections.end())
+		OutRequest.pExpectedVisualProjection = Projection->second;
+	if (nullptr != OutRequest.pExpectedVisualProjection &&
+		nullptr == OutRequest.pExpectedDocument)
+	{
+		OutRequest = {};
+		strOutStatus =
+			"Product Effect load-stage projection has no loaded document: " +
+			strEffectAssetId;
+		return false;
+	}
+	OutRequest.pMaterialProgramRegistry = Registry;
+	OutRequest.pScreenOverlayBinding = std::move(Overlay);
+	OutRequest.iSourceByteCount = SourceByteCount;
+	OutRequest.SourceWriteTime = SourceWriteTime;
+	strOutStatus = "Captured Product Effect load-stage source: " +
+		strEffectAssetId;
+	return true;
+}
+
+bool_t Client::CEffectCatalog::Stage_ProductLoadTarget(
+	const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request,
+	std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT>& OutResult,
+	std::string& strOutStatus)
+{
+	OutResult.reset();
+	if (0u == Request.iCatalogRevision ||
+		Request.strEffectAssetId.empty() || Request.DocumentPath.empty() ||
+		nullptr == Request.pSourceRegistrationIdentity ||
+		nullptr == Request.pMaterialProgramRegistry ||
+		0u == Request.iSourceByteCount)
+	{
+		strOutStatus = "Product Effect load-stage request is invalid.";
+		return false;
+	}
+	if (Request.pMaterialProgramRegistry->Get_CatalogRevision() !=
+			Request.iCatalogRevision ||
+		0u == Request.pMaterialProgramRegistry->Get_GenerationId() ||
+		(nullptr != Request.pExpectedVisualProjection &&
+			nullptr == Request.pExpectedDocument) ||
+		(nullptr != Request.pScreenOverlayBinding &&
+			Request.pScreenOverlayBinding->strEffectAssetId !=
+				Request.strEffectAssetId))
+	{
+		strOutStatus =
+			"Product Effect load-stage captured dependency identity is invalid.";
+		return false;
+	}
+
+	auto Staged = std::make_shared<EFFECT_PRODUCT_LOAD_STAGE_RESULT>();
+	Staged->Request = Request;
+	if (nullptr != Request.pExpectedDocument)
+	{
+		if (Request.pExpectedDocument->strEffectAssetId !=
+				Request.strEffectAssetId ||
+			(nullptr != Request.pExpectedVisualProjection &&
+				Request.pExpectedVisualProjection->Get_DocumentShared().get() !=
+					Request.pExpectedDocument.get()))
+		{
+			strOutStatus =
+				"Product Effect loaded-stage identity is invalid.";
+			return false;
+		}
+		Staged->pDocument = Request.pExpectedDocument;
+		Staged->pVisualProjection = Request.pExpectedVisualProjection;
+		OutResult = std::move(Staged);
+		strOutStatus = "Product Effect load-stage reused the loaded document: " +
+			Request.strEffectAssetId;
+		return true;
+	}
+
+	std::error_code Error;
+	if (std::filesystem::file_size(Request.DocumentPath, Error) !=
+			Request.iSourceByteCount || Error ||
+		std::filesystem::last_write_time(Request.DocumentPath, Error) !=
+			Request.SourceWriteTime || Error)
+	{
+		strOutStatus =
+			"Product Effect source changed before worker staging: " +
+			Request.strEffectAssetId;
+		return false;
+	}
+
+	DIRECT_AUTHORED_RUNTIME_SOURCE Source;
+	Source.DocumentPath = Request.DocumentPath;
+	EFFECT_DOCUMENT_DESC Document;
+	if (!Parse_DirectAuthoredRuntimeDocument(
+			Request.strEffectAssetId, Source, Document, strOutStatus))
+	{
+		return false;
+	}
+	if (std::filesystem::file_size(Request.DocumentPath, Error) !=
+			Request.iSourceByteCount || Error ||
+		std::filesystem::last_write_time(Request.DocumentPath, Error) !=
+			Request.SourceWriteTime || Error)
+	{
+		strOutStatus =
+			"Product Effect source changed during worker staging: " +
+			Request.strEffectAssetId;
+		return false;
+	}
+
+	Staged->pDocument =
+		std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(Document));
+	if (Staged->pDocument->iLoadedFormatVersion ==
+		EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION)
+	{
+		if (!CEffectVisualProgramCorpusCodec::
+				Create_DocumentOwnedRuntimeProjection(
+					Staged->pDocument, Staged->pVisualProjection, strOutStatus) ||
+			nullptr == Staged->pVisualProjection ||
+			!Staged->pVisualProjection->Is_Valid() ||
+			Staged->pVisualProjection->Get_EffectAssetId() !=
+				Request.strEffectAssetId ||
+			Staged->pVisualProjection->Get_DocumentShared().get() !=
+				Staged->pDocument.get())
+		{
+			if (strOutStatus.empty())
+				strOutStatus =
+					"Product Effect worker projection is invalid.";
+			return false;
+		}
+	}
+	OutResult = std::move(Staged);
+	strOutStatus = "Staged Product Effect document on the Loader worker: " +
+		Request.strEffectAssetId;
+	return true;
+}
+
+Client::EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT::
+EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT(
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&& Other) noexcept
+{
+	*this = std::move(Other);
+}
+
+Client::EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&
+Client::EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT::operator=(
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&& Other) noexcept
+{
+	if (this == &Other)
+		return *this;
+	if (Is_Valid())
+		std::terminate();
+	m_pResult = std::move(Other.m_pResult);
+	m_strPreviousCatalogStatus =
+		std::move(Other.m_strPreviousCatalogStatus);
+	m_bPublishedNewDocument = Other.m_bPublishedNewDocument;
+	Other.Invalidate();
+	return *this;
+}
+
+bool Client::EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT::
+Has_NewPublication() const
+{
+	return Is_Valid() && m_bPublishedNewDocument;
+}
+
+bool Client::EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT::Is_Valid() const
+{
+	return nullptr != m_pResult && nullptr != m_pResult->pDocument &&
+		0u != m_pResult->Request.iCatalogRevision &&
+		!m_pResult->Request.strEffectAssetId.empty();
+}
+
+void Client::EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT::Invalidate() noexcept
+{
+	m_pResult.reset();
+	m_strPreviousCatalogStatus.clear();
+	m_bPublishedNewDocument = false;
+}
+
+bool_t Client::CEffectCatalog::Commit_ProductLoadStage(
+	const std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT>& pResult,
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT& OutCommitReceipt,
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC>& OutDocument,
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		OutVisualProjection,
+	std::string& strOutStatus)
+{
+	OutDocument.reset();
+	OutVisualProjection.reset();
+	if (OutCommitReceipt.Is_Valid())
+	{
+		strOutStatus =
+			"Product Effect load-stage output receipt is still unconsumed.";
+		return false;
+	}
+	if (nullptr == pResult || nullptr == pResult->pDocument ||
+		0u == pResult->Request.iCatalogRevision ||
+		pResult->Request.strEffectAssetId.empty() ||
+		pResult->pDocument->strEffectAssetId !=
+			pResult->Request.strEffectAssetId ||
+		g_iCatalogOwnerThreadId != static_cast<uint32_t>(GetCurrentThreadId()) ||
+		g_iRuntimeRevision != pResult->Request.iCatalogRevision ||
+		nullptr == pResult->Request.pMaterialProgramRegistry ||
+		pResult->Request.pMaterialProgramRegistry->Get_CatalogRevision() !=
+			pResult->Request.iCatalogRevision ||
+		g_pMaterialProgramRegistry.get() !=
+			pResult->Request.pMaterialProgramRegistry.get())
+	{
+		strOutStatus = "Product Effect load-stage commit is stale or invalid.";
+		return false;
+	}
+	if ((nullptr != pResult->Request.pExpectedVisualProjection &&
+			nullptr == pResult->Request.pExpectedDocument) ||
+		(nullptr != pResult->Request.pExpectedDocument &&
+			pResult->pDocument.get() !=
+				pResult->Request.pExpectedDocument.get()) ||
+		(nullptr != pResult->Request.pExpectedDocument &&
+			pResult->pVisualProjection.get() !=
+				pResult->Request.pExpectedVisualProjection.get()) ||
+		(nullptr != pResult->pVisualProjection &&
+			(!pResult->pVisualProjection->Is_Valid() ||
+			 pResult->pVisualProjection->Get_EffectAssetId() !=
+				pResult->Request.strEffectAssetId ||
+			 pResult->pVisualProjection->Get_DocumentShared().get() !=
+				pResult->pDocument.get())))
+	{
+		strOutStatus =
+			"Product Effect load-stage result identity is invalid.";
+		return false;
+	}
+
+	const std::string& EffectAssetId = pResult->Request.strEffectAssetId;
+	std::string CommittedStatus =
+		"Committed Loader-worker Product Effect document: " + EffectAssetId;
+	std::string CommittedOutStatus = CommittedStatus;
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT CommitReceipt;
+	CommitReceipt.m_pResult = pResult;
+	CommitReceipt.m_strPreviousCatalogStatus = g_strStatus;
+	const auto Source = g_DirectAuthoredSources.find(EffectAssetId);
+	if (Source == g_DirectAuthoredSources.end() || nullptr == Source->second ||
+		Source->second.get() !=
+			pResult->Request.pSourceRegistrationIdentity.get() ||
+		Source->second->DocumentPath != pResult->Request.DocumentPath)
+	{
+		strOutStatus =
+			"Product Effect source registration changed during worker staging.";
+		return false;
+	}
+	const auto CurrentOverlay =
+		g_ScreenOverlayProductBindings.find(EffectAssetId);
+	const bool_t bHasCurrentOverlay =
+		CurrentOverlay != g_ScreenOverlayProductBindings.end();
+	if (bHasCurrentOverlay !=
+			(nullptr != pResult->Request.pScreenOverlayBinding) ||
+		(bHasCurrentOverlay &&
+			(nullptr == CurrentOverlay->second ||
+			 CurrentOverlay->second.get() !=
+				pResult->Request.pScreenOverlayBinding.get())))
+	{
+		strOutStatus =
+			"Product Effect screen-overlay identity changed during worker staging.";
+		return false;
+	}
+
+	const auto CurrentDocument = g_Effects.find(EffectAssetId);
+	const bool_t bHasCurrentDocument = CurrentDocument != g_Effects.end();
+	if (bHasCurrentDocument !=
+			(nullptr != pResult->Request.pExpectedDocument) ||
+		(bHasCurrentDocument && CurrentDocument->second.get() !=
+			pResult->Request.pExpectedDocument.get()))
+	{
+		strOutStatus =
+			"Product Effect document identity changed during worker staging.";
+		return false;
+	}
+	const auto CurrentProjection = g_VisualProjections.find(EffectAssetId);
+	const bool_t bHasCurrentProjection =
+		CurrentProjection != g_VisualProjections.end();
+	if (bHasCurrentProjection !=
+			(nullptr != pResult->Request.pExpectedVisualProjection) ||
+		(bHasCurrentProjection && CurrentProjection->second.get() !=
+			pResult->Request.pExpectedVisualProjection.get()))
+	{
+		strOutStatus =
+			"Product Effect projection identity changed during worker staging.";
+		return false;
+	}
+
+	if (!bHasCurrentDocument)
+	{
+		CommitReceipt.m_bPublishedNewDocument = true;
+		std::error_code Error;
+		if (std::filesystem::file_size(pResult->Request.DocumentPath, Error) !=
+				pResult->Request.iSourceByteCount || Error ||
+			std::filesystem::last_write_time(
+				pResult->Request.DocumentPath, Error) !=
+				pResult->Request.SourceWriteTime || Error)
+		{
+			strOutStatus =
+				"Product Effect source changed before staged commit.";
+			return false;
+		}
+		decltype(g_Effects)::iterator InsertedDocument;
+		bool_t bDocumentInserted = false;
+		try
+		{
+			std::tie(InsertedDocument, bDocumentInserted) =
+				g_Effects.emplace(EffectAssetId, pResult->pDocument);
+		}
+		catch (const std::bad_alloc&)
+		{
+			strOutStatus.clear();
+			return false;
+		}
+		catch (...)
+		{
+			strOutStatus.clear();
+			return false;
+		}
+		if (!bDocumentInserted)
+		{
+			strOutStatus =
+				"Product Effect staged document commit is duplicate.";
+			return false;
+		}
+		if (nullptr != pResult->pVisualProjection)
+		{
+			try
+			{
+				if (!g_VisualProjections.emplace(
+						EffectAssetId, pResult->pVisualProjection).second)
+				{
+					g_Effects.erase(InsertedDocument);
+					strOutStatus =
+						"Product Effect staged projection commit is duplicate.";
+					return false;
+				}
+			}
+			catch (const std::bad_alloc&)
+			{
+				g_Effects.erase(InsertedDocument);
+				strOutStatus.clear();
+				return false;
+			}
+			catch (...)
+			{
+				g_Effects.erase(InsertedDocument);
+				strOutStatus.clear();
+				return false;
+			}
+		}
+	}
+
+	OutDocument = pResult->pDocument;
+	OutVisualProjection = pResult->pVisualProjection;
+	g_strStatus.swap(CommittedStatus);
+	strOutStatus.swap(CommittedOutStatus);
+	OutCommitReceipt = std::move(CommitReceipt);
+	return true;
+}
+
+bool_t Client::CEffectCatalog::Commit_ProductLoadStage(
+	const std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT>& pResult,
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC>& OutDocument,
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		OutVisualProjection,
+	std::string& strOutStatus)
+{
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT IgnoredReceipt;
+	return Commit_ProductLoadStage(
+		pResult, IgnoredReceipt, OutDocument, OutVisualProjection, strOutStatus);
+}
+
+bool_t Client::CEffectCatalog::Rollback_ProductLoadStage(
+	EFFECT_PRODUCT_LOAD_COMMIT_RECEIPT&& CommitReceipt,
+	std::string& strOutStatus)
+{
+	if (!CommitReceipt.Is_Valid() ||
+		g_iCatalogOwnerThreadId != static_cast<uint32_t>(GetCurrentThreadId()))
+	{
+		strOutStatus =
+			"Product Effect load-stage rollback receipt or owner is invalid.";
+		return false;
+	}
+
+	const std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT>& Result =
+		CommitReceipt.m_pResult;
+	const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request = Result->Request;
+	const std::string& EffectAssetId = Request.strEffectAssetId;
+	const auto Source = g_DirectAuthoredSources.find(EffectAssetId);
+	const auto Document = g_Effects.find(EffectAssetId);
+	const auto Projection = g_VisualProjections.find(EffectAssetId);
+	const auto CurrentOverlay =
+		g_ScreenOverlayProductBindings.find(EffectAssetId);
+	const bool_t bHasProjection = Projection != g_VisualProjections.end();
+	const bool_t bHasCurrentOverlay =
+		CurrentOverlay != g_ScreenOverlayProductBindings.end();
+	if (g_iRuntimeRevision != Request.iCatalogRevision ||
+		Source == g_DirectAuthoredSources.end() || nullptr == Source->second ||
+		Source->second.get() != Request.pSourceRegistrationIdentity.get() ||
+		Source->second->DocumentPath != Request.DocumentPath ||
+		Document == g_Effects.end() ||
+		Document->second.get() != Result->pDocument.get() ||
+		bHasProjection != (nullptr != Result->pVisualProjection) ||
+		(bHasProjection && Projection->second.get() !=
+			Result->pVisualProjection.get()) ||
+		bHasCurrentOverlay != (nullptr != Request.pScreenOverlayBinding) ||
+		(bHasCurrentOverlay &&
+			(nullptr == CurrentOverlay->second ||
+			 CurrentOverlay->second.get() !=
+				Request.pScreenOverlayBinding.get())) ||
+		nullptr == Request.pMaterialProgramRegistry ||
+		Request.pMaterialProgramRegistry->Get_CatalogRevision() !=
+			Request.iCatalogRevision ||
+		0u == Request.pMaterialProgramRegistry->Get_GenerationId() ||
+		g_pMaterialProgramRegistry.get() !=
+			Request.pMaterialProgramRegistry.get())
+	{
+		strOutStatus =
+			"Product Effect load-stage rollback exact identity is stale.";
+		return false;
+	}
+
+	if (!CommitReceipt.m_bPublishedNewDocument)
+	{
+		CommitReceipt.Invalidate();
+		strOutStatus =
+			"Product Effect load-stage reused catalog identities; rollback is a no-op.";
+		return true;
+	}
+	if (nullptr != Request.pExpectedDocument ||
+		nullptr != Request.pExpectedVisualProjection)
+	{
+		strOutStatus =
+			"Product Effect load-stage rollback publication receipt is inconsistent.";
+		return false;
+	}
+
+	std::string RolledBackStatus =
+		"Rolled back Loader-worker Product Effect catalog publication: " +
+		EffectAssetId;
+	if (bHasProjection)
+		g_VisualProjections.erase(Projection);
+	g_Effects.erase(Document);
+	g_strStatus.swap(CommitReceipt.m_strPreviousCatalogStatus);
+	CommitReceipt.Invalidate();
+	strOutStatus.swap(RolledBackStatus);
 	return true;
 }
 

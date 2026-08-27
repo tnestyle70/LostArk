@@ -65,6 +65,7 @@
     <ClInclude Include="..\Public\Effect_ScreenOverlayPresentation.h" />
     <ClInclude Include="..\Public\Effect_ThumbnailCache.h" />
     <ClInclude Include="..\Public\Effect_Catalog.h" />
+    <ClInclude Include="..\Public\Effect_LoadPreparationJob.h" />
     <ClInclude Include="..\Public\Effect_OccurrenceTuning.h" />
     <ClInclude Include="..\Public\Effect_VisualProgramCorpus.h" />
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
@@ -218,6 +219,7 @@
     <ClCompile Include="..\Private\Effect_ScreenOverlayPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp" />
     <ClCompile Include="..\Private\Effect_Catalog.cpp" />
+    <ClCompile Include="..\Private\Effect_LoadPreparationJob.cpp" />
     <ClCompile Include="..\Private\Effect_OccurrenceTuning.cpp" />
     <ClCompile Include="..\Private\Effect_VisualProgramCorpus.cpp" />
     <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp" />
@@ -513,6 +515,13 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMeshV2.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectMeshV2.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectRectV2.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectParticleV2.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectDecalV2.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectTrailV2.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshPreview_V2.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectUe3MaterialFamilies.hlsli" />
@@ -3096,6 +3105,8 @@
     <AssimpRuntimeName Condition="'$(Configuration)'=='Release'">assimp-vc143-mt.dll</AssimpRuntimeName>
     <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
     <PhysXRuntimeRoot>$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\</PhysXRuntimeRoot>
+    <EngineCellShaderSource>$(EngineBinaryRoot)Shader_Cell.cso</EngineCellShaderSource>
+    <EngineDeferredShaderSource>$(EngineBinaryRoot)Shader_Deferred.cso</EngineDeferredShaderSource>
   </PropertyGroup>
   <Target Name="ValidateValtanSplitProducts" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1&quot; -Mode ValidateV2" />
@@ -3115,6 +3126,17 @@
     <Copy SourceFiles="@(EngineSdkThirdPartyLibraries)" DestinationFolder="$(EngineSdkRoot)lib" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(EngineShaderSources)" DestinationFolder="$(EngineSdkRoot)hlsl" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(EngineShaderSources)" DestinationFolder="$(ProjectDir)..\Bin\ShaderFiles" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="DeployClientCompiledShaders" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <Error Condition="!Exists('$(EngineCellShaderSource)')" Text="Engine compiled shader is missing for $(Configuration): $(EngineCellShaderSource)" />
+    <Error Condition="!Exists('$(EngineDeferredShaderSource)')" Text="Engine compiled shader is missing for $(Configuration): $(EngineDeferredShaderSource)" />
+    <ItemGroup>
+      <ClientEngineCompiledShaders Include="$(EngineCellShaderSource)" />
+      <ClientEngineCompiledShaders Include="$(EngineDeferredShaderSource)" />
+    </ItemGroup>
+    <MakeDir Directories="$(TargetDir)" />
+    <Copy SourceFiles="@(ClientEngineCompiledShaders)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Message Text="Deployed Engine compiled shaders to $(TargetDir)" Importance="high" />
   </Target>
   <Target Name="DeployClientRuntimeDependencies" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
     <Error Condition="'$(AssimpRuntimeName)'==''" Text="Unsupported configuration '$(Configuration)' for Assimp runtime deployment." />
