@@ -17,6 +17,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
+#include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
 #include "Level_Loading.h"
 #include "LobbyCommandService.h"
@@ -50,6 +51,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <random>
 #include <cwchar>
 #include <fstream>
 
@@ -367,6 +369,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				m_bItemUpgradeCoreFlashPending = false;
 				m_dItemUpgradeShockwaveScheduledAt = -1.0;
 				m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
+				m_dItemUpgradeResultSettleAt = -1.0;
 				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", false);
 				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", false);
 				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
@@ -379,6 +382,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", false);
 				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);
 				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondWinged", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
+				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
+				Set_ItemUpgradeCenterPanelVisible(true);
 			}
 		}
 		m_bPDown = pDown;
@@ -547,6 +558,7 @@ HRESULT CMainApp::Render()
 	#endif
 		RenderCombatHUD();
 		RenderBossHealthBar();
+		RenderChargeGauge();
 		RenderEstherGauge();
 		/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
 		not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
@@ -628,6 +640,7 @@ HRESULT CMainApp::Render()
 	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
 	RenderCombatHUDText();
 	RenderBossHealthBarText();
+	RenderChargeGaugeText();
 	RenderDeadSceneText();
 	RenderDamageNumbers();
 	if (nullptr != m_pInventoryView)
@@ -638,6 +651,9 @@ HRESULT CMainApp::Render()
 	RenderItemUpgradeLevelText();
 	RenderItemUpgradeMaterialCounts();
 	RenderItemUpgradeGaugePercentText();
+	RenderItemUpgradeResultWaitText();
+	RenderItemUpgradeSuccessDetailText();
+	RenderItemUpgradeFailDetailText();
 	RenderItemUpgradeListText();
 	if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
 	{
@@ -1141,6 +1157,47 @@ void CMainApp::RenderCombatHUD()
 			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
 			m_dItemUpgradeShockwaveScheduledAt = -1.0;
 		}
+		if (m_dItemUpgradeResultSettleAt >= 0.0 && ImGui::GetTime() >= m_dItemUpgradeResultSettleAt)
+		{
+			// Burst's real one-shot duration is over -- swap the circle+burst out for the settled
+			// icon/name/result content (RenderItemUpgradeSuccessDetailText/FailDetailText gate on
+			// this same "settled" condition -- m_dItemUpgradeResultSettleAt < 0.0 while
+			// SUCCESS/FAIL is showing -- so the text appears in lockstep with this reveal).
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
+
+			const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
+			const int32_t iSelectedSlot = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
+			// Real success_mc/fail_mc detail: a decorative frame + item icon sit behind the settled
+			// result text (real local placements traced from ItemBuildUpLevelWndContent's own
+			// success_mc/fail_mc timelines). Real in-game capture shows just icon/name/result -- no
+			// wide winged ribbon banner -- so SuccessDiamondWinged is never shown. Same frame for
+			// both outcomes now (SuccessDiamondFrame reused for fail too) -- FailDiamondFrame is
+			// never shown.
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", true);
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", bSuccess);
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", !bSuccess);
+			if (bSuccess)
+			{
+				// Same real icon already shown in the base window's ItemUpgrade_SelectedItemIcon --
+				// the item being reforged doesn't change just because the result modal is up.
+				m_pItemUpgradeView->Set_SlotTexture(
+					"ItemUpgrade_SuccessItemIconMarker", ITEM_UPGRADE_SLOTS[iSelectedSlot].pIconPath);
+				// The actual level-up: a real 재련 success raises this item's own tracked level by 1,
+				// so the left list / right ladder / center 현재-다음 all read the new level once this
+				// result is dismissed. A fail leaves m_iItemUpgradeLevels untouched.
+				++m_iItemUpgradeLevels[iSelectedSlot];
+			}
+			else
+			{
+				m_pItemUpgradeView->Set_SlotTexture(
+					"ItemUpgrade_FailItemIconMarker", ITEM_UPGRADE_SLOTS[iSelectedSlot].pIconPath);
+			}
+			m_dItemUpgradeResultSettleAt = -1.0;
+		}
 
 		/* Idle (not growing, held at 0) is the only state SmeltGlow's own JSON loop should be
 		visible in -- hidden for the rest of the fill and at 100% so it doesn't glow underneath the
@@ -1316,8 +1373,11 @@ void CMainApp::RenderLobbyButtonText()
 
 void CMainApp::RenderItemUpgradeButtonText()
 {
-	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+	{
 		return;
+	}
 
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect(
@@ -1363,8 +1423,11 @@ void CMainApp::RenderItemUpgradeButtonText()
 
 void CMainApp::RenderItemUpgradeListText()
 {
-	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+	{
 		return;
+	}
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
 	const float textScaleX = vTextViewportSize.x / 1280.f;
@@ -1390,9 +1453,10 @@ void CMainApp::RenderItemUpgradeListText()
 	(buildUpGrade_txt / itemName_txt) confirmed in ItemBuildUpListRendererMc's own trace, though
 	this renderer is instantiated per-row purely by AS3 (no static per-row placement to trace an
 	exact position from), so the anchor rects here are a reasonable icon-relative placement for
-	the user to nudge in the Tool rather than an exact traced position. Placeholder item data
-	(same "운명의 업화" set, level 18) until real inventory/equipment data is wired in. */
-	// real sampled reference pixels (list row "18 단계" / item name text):
+	the user to nudge in the Tool rather than an exact traced position. Level reads m_iItemUpgradeLevels[i]
+	directly -- all 6 start at 10, and the selected item's own entry actually increments on a real
+	재련 success (see Update_ItemUpgradeResultWaitClick), so this row updates for real afterward. */
+	// real sampled reference pixels (list row level text):
 	// level = (255,189,74) same gold as curLevel_lb; name = (227,199,161) warm cream, not white.
 	const fvector_t vLevelColor = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
 	const fvector_t vNameColor = XMVectorSet(0.8902f, 0.7804f, 0.6314f, 1.f); // #E3C7A1
@@ -1400,25 +1464,33 @@ void CMainApp::RenderItemUpgradeListText()
 	{
 		const string strLevelSlot = "ItemUpgrade_ListLevel" + to_string(i);
 		const string strNameSlot = "ItemUpgrade_ListItemName" + to_string(i);
-		DrawFit(strLevelSlot.c_str(), L"18\xB2E8\xACC4", 0.765f, vLevelColor); // "18단계" (0.85 * 0.9)
+		const wstring strLevel = to_wstring(m_iItemUpgradeLevels[i]) + L"\xB2E8\xACC4"; // "N단계"
+		DrawFit(strLevelSlot.c_str(), strLevel.c_str(), 0.765f, vLevelColor); // "18단계" (0.85 * 0.9)
 		DrawFit(strNameSlot.c_str(), ITEM_UPGRADE_SLOTS[i].pName, 0.72f, vNameColor); // 0.8 * 0.9
 	}
 
 	/* Right 재련 단계 list: 7 rows now (JSON grew GradeRowEmblem/GradeStripB/GradeRowText from 4 to
 	7, evenly filling the panel from its top edge down) -- the ask was more row slots, not more
 	stat lines per row, so this stays at 1 stat line ("공격력 +N") like before. Real reference
-	scrolls higher levels at the TOP and the current level at the BOTTOM (24단계...18단계 reading
-	top to bottom, i.e. numbers increase bottom -> top), so row 0 (topmost) is the highest of our
-	seven and row 6 (bottom, nearest the gauge) is 19 -- the level actually being reforged toward.
+	scrolls higher levels at the TOP and the current level at the BOTTOM (numbers increase
+	bottom -> top), so row 0 (topmost) is 6 above the current level and row 6 (bottom, nearest the
+	gauge) is the selected item's own CURRENT level -- 10 -> 11 reforge highlights 10, the level
+	you're actually standing at, not 11 (that's the separate curLevel/nextLevel ">>>" display
+	elsewhere). Computed from m_iItemUpgradeLevels[selected] instead of a fixed literal so this
+	ladder shifts with the real level instead of staying frozen at the old 19/25 placeholder range.
 	GradeSelectedExample sits on row 6 to match. Non-selected rows sample as a muted gray (real
-	24/23/22단계 rows, (103,103,103)); the selected (현재/19단계) row uses gold for the level and
-	white for its stat, matching every other "selected" element in this window reading brighter
-	than its neighbors. Stat is a placeholder "공격력 +N" (N = that row's own level) until real
-	per-level balance data exists. */
+	24/23/22단계 rows, (103,103,103)); the selected (현재) row uses gold for the level and white for
+	its stat, matching every other "selected" element in this window reading brighter than its
+	neighbors. Stat is a placeholder "공격력 +N" (N = that row's own level) until real per-level
+	balance data exists. */
 	const fvector_t vRowGray = XMVectorSet(0.4039f, 0.4039f, 0.4039f, 1.f); // #676767
 	const fvector_t vSelectedGold = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
 	const int32_t ROW_COUNT = 7;
-	const int32_t ROW_LEVELS[ROW_COUNT] = { 25, 24, 23, 22, 21, 20, 19 };
+	const int32_t iSelectedForLadder = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+	const int32_t iCurrentLevel = m_iItemUpgradeLevels[iSelectedForLadder];
+	int32_t ROW_LEVELS[ROW_COUNT];
+	for (int32_t i = 0; i < ROW_COUNT; ++i)
+		ROW_LEVELS[i] = iCurrentLevel + (ROW_COUNT - 1 - i);
 	for (int32_t i = 0; i < ROW_COUNT; ++i)
 	{
 		const string strSlot = "ItemUpgrade_GradeRowText" + to_string(i);
@@ -1426,7 +1498,7 @@ void CMainApp::RenderItemUpgradeListText()
 		if (!m_pItemUpgradeView->Get_SlotRect(strSlot.c_str(), fX, fY, fWidth, fHeight))
 			continue;
 
-		const bool_t bSelected = (19 == ROW_LEVELS[i]);
+		const bool_t bSelected = (iCurrentLevel == ROW_LEVELS[i]);
 		const fvector_t vNumColor = bSelected ? vSelectedGold : vRowGray;
 		const fvector_t vStatTextColor = bSelected ? Colors::White : vRowGray;
 
@@ -1590,9 +1662,19 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	the same way every other "no real Server data yet" placeholder in this preview is flagged.
 	Rolled now but held in m_bItemUpgradePendingAttemptSuccess -- not shown until
 	Update_ItemUpgradeResultWaitClick() reveals it, matching the real "화면을 클릭하여 결과 즉시
-	확인" suspense screen instead of an instant reveal. */
-	m_bItemUpgradePendingAttemptSuccess = (std::rand() % 100) < 50;
+	확인" suspense screen instead of an instant reveal.
+	static std::mt19937, not std::rand(): std::rand() is never seeded (no srand() call anywhere
+	in this codebase) so its first call after process start is always the same fixed value --
+	every fresh session's first 재련 attempt was landing on the same outcome every time. */
+	static std::mt19937 s_itemUpgradeRng{ std::random_device{}() };
+	m_bItemUpgradePendingAttemptSuccess = (s_itemUpgradeRng() % 100) < 50;
 	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::WAITING;
+	// The wait screen replaces the whole window's content, not just the reforge button --
+	// snap the gauge back to idle 0% now instead of leaving the old 100% fill visible behind it,
+	// and hide the base window's own icon/gauge/button content so it doesn't bleed through
+	// (real Lost Ark's wait/result screens read as their own separate screen).
+	Reset_ItemUpgradeIdleGauge();
+	Set_ItemUpgradeCenterPanelVisible(false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", true);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", true);
 	m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ResultWaitEmblem");
@@ -1607,23 +1689,38 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 		return;
 	}
 
-	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);
-	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
+	// ItemUpgrade_ResultWaitBg (the same solid-black backdrop already showing behind the wait
+	// circle) stays visible all the way through burst-playing and the settled result -- it's the
+	// one background for this whole screen, not something to swap out mid-flow. Only the dismiss
+	// (OK button) turns it off, back to the normal reforge window.
+	// Real in-game capture: while the burst plays, ONLY the SmeltLoding circle + SmeltSuccess/Fail
+	// burst show -- no icon/name/result text/OK button yet (those would sit on top of the burst
+	// otherwise). Once the burst's own real one-shot duration finishes, the per-frame settle check
+	// in Update() hides the circle+burst and reveals the icon/name/result content in their place.
+	constexpr f64_t RESULT_BURST_DURATION_SECONDS = 90.0 / 30.0;
+	m_dItemUpgradeResultSettleAt = ImGui::GetTime() + RESULT_BURST_DURATION_SECONDS;
 
 	const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
 	m_eItemUpgradeAttemptResult = bSuccess ?
 		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS : ITEM_UPGRADE_ATTEMPT_RESULT::FAIL;
-	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessModalBg", bSuccess);
-	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
-	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailModalBg", !bSuccess);
-	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
+	// Real reforge result screens dim the reforge window itself (drawn above, in Update()) instead
+	// of an opaque bounded panel image -- SuccessModalBg/FailModalBg are never shown.
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", bSuccess);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", !bSuccess);
+	if (bSuccess)
+		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_SuccessEffect");
+	else
+		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_FailEffect");
 }
 
 void CMainApp::Update_ItemUpgradeResultOkButton()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
 		(ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS != m_eItemUpgradeAttemptResult &&
-		 ITEM_UPGRADE_ATTEMPT_RESULT::FAIL != m_eItemUpgradeAttemptResult))
+		 ITEM_UPGRADE_ATTEMPT_RESULT::FAIL != m_eItemUpgradeAttemptResult) ||
+		// Not settled yet (burst still playing) -- the OK button isn't shown yet either, so a click
+		// landing on its still-unrevealed rect must not dismiss early.
+		m_dItemUpgradeResultSettleAt >= 0.0)
 	{
 		return;
 	}
@@ -1651,19 +1748,35 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 		return;
 
 	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessModalBg", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailModalBg", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondWinged", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
 
-	/* Same reset Update_ItemUpgradeGrowButton's own click performs -- dismissing a result always
-	returns the gauge to a clean idle (0%) state so "성장" can be tried again. */
+	// Dismissing a result always returns the gauge to a clean idle (0%) state so "성장" can be
+	// tried again, and brings the base window's own content back now that no modal covers it.
+	Reset_ItemUpgradeIdleGauge();
+	Set_ItemUpgradeCenterPanelVisible(true);
+}
+
+void CMainApp::Reset_ItemUpgradeIdleGauge()
+{
 	m_iItemUpgradePreviousPercent = 0;
 	m_bItemUpgradeGrowing = false;
 	m_dItemUpgradeGrowStartSeconds = -1.0;
 	m_bItemUpgradeCoreFlashPending = false;
 	m_dItemUpgradeShockwaveScheduledAt = -1.0;
 	m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
+	m_dItemUpgradeResultSettleAt = -1.0;
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", false);
 	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
@@ -1671,23 +1784,52 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
 }
 
+void CMainApp::Set_ItemUpgradeCenterPanelVisible(bool_t bVisible)
+{
+	if (nullptr == m_pItemUpgradeView)
+		return;
+
+	constexpr const char_t* CENTER_PANEL_SLOTS[] =
+	{
+		"ItemUpgrade_PanelBg",
+		"ItemUpgrade_RecipeIconBgExample", "ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0",
+		"ItemUpgrade_RecipeIconBg1", "ItemUpgrade_RecipeMaterial1", "ItemUpgrade_RecipeAmount1",
+		"ItemUpgrade_RecipeIconBg2", "ItemUpgrade_RecipeMaterial2", "ItemUpgrade_RecipeAmount2",
+		"ItemUpgrade_DecoIcon", "ItemUpgrade_GaugeFill", "ItemUpgrade_SelectedItemIconBounds",
+		"ItemUpgrade_SelectedItemIcon", "ItemUpgrade_LevelUpBtn", "ItemUpgrade_EquipExpPageLine",
+		"ItemUpgrade_ReforgeButton", "ItemUpgrade_LevelArrowBase", "ItemUpgrade_LevelArrow",
+	};
+	for (const char_t* pSlotId : CENTER_PANEL_SLOTS)
+		m_pItemUpgradeView->Set_SlotVisible(pSlotId, bVisible);
+
+	// Completion-effect slots only ever get hidden here (entering a result), never force-restored --
+	// Reset_ItemUpgradeIdleGauge/Update_ItemUpgradeGrowButton own when these come back on.
+	if (!bVisible)
+	{
+		constexpr const char_t* CENTER_PANEL_EFFECT_SLOTS[] =
+		{
+			"ItemUpgrade_WingedRingGold", "ItemUpgrade_LevelUpMotion2Big", "ItemUpgrade_SmeltGlow",
+			"ItemUpgrade_CoreFlash", "ItemUpgrade_ShockwaveRing", "ItemUpgrade_CompleteEffect",
+			"ItemUpgrade_WingDecoFade",
+		};
+		for (const char_t* pSlotId : CENTER_PANEL_EFFECT_SLOTS)
+			m_pItemUpgradeView->Set_SlotVisible(pSlotId, false);
+	}
+}
+
 void CMainApp::RenderItemUpgradeLevelText()
 {
-	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+	{
 		return;
+	}
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
 	const float textScaleX = vTextViewportSize.x / 1280.f;
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	struct LEVEL_TEXT_SLOT
-	{
-		const char* pSlotId;
-		const wchar_t* pLabel;
-		f32_t fHeightRatio;
-		fvector_t vColor;
-	};
 	// colors are the real ItemBuildUpLevelWndContent/ItemBuildUpLevelGroupMc .as
 	// itemName_lb.color=13769983(0xD21CFF), curLevel_lb.color=16760138(0xFFBD4A),
 	// nextLevel_lb.color=12057344(0xB7FB00). The ">>>" arrow is a real animated
@@ -1712,15 +1854,26 @@ void CMainApp::RenderItemUpgradeLevelText()
 		}
 	}
 
-	const LEVEL_TEXT_SLOT SLOTS[] =
+	// "N단계" / "(N+1)단계" -- reads the same real per-item level state everything else in this
+	// preview now shares (m_iItemUpgradeLevels), instead of a fixed "18단계"/"19단계" literal.
+	const wstring strCurLevel = to_wstring(m_iItemUpgradeLevels[iSelectedSlot]) + L"\xB2E8\xACC4";
+	const wstring strNextLevel = to_wstring(m_iItemUpgradeLevels[iSelectedSlot] + 1) + L"\xB2E8\xACC4";
+	struct LEVEL_TEXT_ENTRY
 	{
-		{ "ItemUpgrade_CurLevelLabel", L"18\xB2E8\xACC4", 0.95f,
-			XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f) }, // "18단계"
-		{ "ItemUpgrade_NextLevelLabel", L"19\xB2E8\xACC4", 0.95f,
-			XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f) }, // "19단계"
+		const char* pSlotId;
+		const wstring& strLabel;
+		f32_t fHeightRatio;
+		fvector_t vColor;
+	};
+	const LEVEL_TEXT_ENTRY SLOTS[] =
+	{
+		{ "ItemUpgrade_CurLevelLabel", strCurLevel, 0.95f,
+			XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f) },
+		{ "ItemUpgrade_NextLevelLabel", strNextLevel, 0.95f,
+			XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f) },
 	};
 
-	for (const LEVEL_TEXT_SLOT& Slot : SLOTS)
+	for (const LEVEL_TEXT_ENTRY& Slot : SLOTS)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pItemUpgradeView->Get_SlotRect(Slot.pSlotId, fX, fY, fWidth, fHeight))
@@ -1730,11 +1883,11 @@ void CMainApp::RenderItemUpgradeLevelText()
 		const f32_t fCenterY = fY + fHeight * 0.5f;
 
 		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Slot.pLabel);
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Slot.strLabel.c_str());
 		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * Slot.fHeightRatio / vMeasured.y) : 1.f;
 		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
 		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Slot.pLabel,
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Slot.strLabel.c_str(),
 			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
 			Slot.vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	}
@@ -1742,8 +1895,11 @@ void CMainApp::RenderItemUpgradeLevelText()
 
 void CMainApp::RenderItemUpgradeMaterialCounts()
 {
-	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+	{
 		return;
+	}
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
 	const float textScaleX = vTextViewportSize.x / 1280.f;
@@ -1812,8 +1968,11 @@ void CMainApp::RenderItemUpgradeMaterialCounts()
 
 void CMainApp::RenderItemUpgradeGaugePercentText()
 {
-	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+	{
 		return;
+	}
 
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_GaugeFill", fX, fY, fWidth, fHeight))
@@ -1834,6 +1993,147 @@ void CMainApp::RenderItemUpgradeGaugePercentText()
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strPercent.c_str(),
 		float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
 		vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+}
+
+void CMainApp::RenderItemUpgradeResultWaitText()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::WAITING != m_eItemUpgradeAttemptResult)
+	{
+		return;
+	}
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ResultWaitBg", fX, fY, fWidth, fHeight))
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	/* "화면을 클릭하여 결과 즉시 확인" -- real suspense-screen prompt, sits near the bottom of
+	the wait panel under the SmeltLoding circle (matches the real reference screenshot layout).
+	The real flow has this as a second stage (a first white "버튼을 클릭해 재련 결과를 확인하세요"
+	+ its own confirm button, only after which this yellow prompt appears) -- simplified here to
+	just this one yellow line per instruction, skipping the first stage/button entirely. */
+	const wstring strPrompt =
+		L"\xD654\xBA74\xC744 \xD074\xB9AD\xD558\xC5EC \xACB0\xACFC \xC989\xC2DC \xD655\xC778";
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strPrompt.c_str());
+	const f32_t fScale = (vMeasured.y > 0.f) ? (fHeight * 0.045f / vMeasured.y) : 1.f;
+
+	// bright glowing gold/yellow, same tone as RenderItemUpgradeGaugePercentText's percent number.
+	const fvector_t vColor = XMVectorSet(1.0f, 0.851f, 0.353f, 1.f); // #FFD959
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strPrompt.c_str(),
+		float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.88f) * textScaleY),
+		vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+}
+
+void CMainApp::RenderItemUpgradeSuccessDetailText()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS != m_eItemUpgradeAttemptResult ||
+		// Not settled yet (burst still playing) -- real in-game capture shows only the circle+burst
+		// during this phase, not the icon/name/result text on top of it.
+		m_dItemUpgradeResultSettleAt >= 0.0)
+	{
+		return;
+	}
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const auto DrawCentered = [&](const char_t* pSlotId, const wchar_t* pLabel,
+		f32_t fHeightRatio, const fvector_t& vColor)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pItemUpgradeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight))
+			return;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * fHeightRatio / vMeasured.y) : 1.f;
+		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
+		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+			float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	};
+
+	// Item name -- same selected-item name/gold-orange tone AND same real size (rect height 19.2,
+	// 0.95f ratio) as RenderItemUpgradeLevelText already draws over the base window's own
+	// ItemUpgrade_ItemNameLabel, directly under the icon.
+	const int32_t iSelectedSlot = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
+	DrawCentered("ItemUpgrade_SuccessItemNameMarker",
+		ITEM_UPGRADE_SLOTS[iSelectedSlot].pName, 0.95f, vGoldOrange);
+
+	// Grade/level reached -- m_iItemUpgradeLevels[iSelectedSlot] is already incremented by the time
+	// this shows (Update_ItemUpgradeResultWaitClick bumps it the instant success is revealed), so
+	// this reads the real new level directly instead of a "+1" guess.
+	const wstring strReachedLevel =
+		to_wstring(m_iItemUpgradeLevels[iSelectedSlot]) + L"\xB2E8\xACC4";
+	DrawCentered("ItemUpgrade_SuccessGradeMarker", strReachedLevel.c_str(), 0.9f, vGoldOrange);
+
+	// "재련 성공" -- light green (연두), by explicit user request.
+	const fvector_t vLightGreen = XMVectorSet(0.5647f, 0.9333f, 0.5647f, 1.f); // #90EE90
+	DrawCentered("ItemUpgrade_SuccessStatusMarker", L"\xC7AC\xB828 \xC131\xACF5", 0.9f, vLightGreen);
+
+	// "확인" -- same label style as RenderItemUpgradeButtonText's other button labels (0.32 height
+	// ratio, white). SuccessOkBtn only shows once settled, same as this whole function.
+	DrawCentered("ItemUpgrade_SuccessOkBtn", L"\xD655\xC778", 0.32f, Colors::White);
+}
+
+void CMainApp::RenderItemUpgradeFailDetailText()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::FAIL != m_eItemUpgradeAttemptResult ||
+		// Not settled yet (burst still playing) -- real in-game capture shows only the circle+burst
+		// during this phase, not the icon/name/result text on top of it.
+		m_dItemUpgradeResultSettleAt >= 0.0)
+	{
+		return;
+	}
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const auto DrawCentered = [&](const char_t* pSlotId, const wchar_t* pLabel,
+		f32_t fHeightRatio, const fvector_t& vColor)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pItemUpgradeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight))
+			return;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * fHeightRatio / vMeasured.y) : 1.f;
+		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
+		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+			float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	};
+
+	// Item name -- same gold/orange tone AND same real size (rect height 19.2, 0.95f ratio) as
+	// RenderItemUpgradeLevelText already draws over the base window's own ItemUpgrade_ItemNameLabel,
+	// directly under the icon (real failItemName_lb placement traced from fail_mc's timeline; no
+	// distinct color was recoverable for it, so this reuses success's confirmed tone).
+	const int32_t iSelectedSlot = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
+	DrawCentered("ItemUpgrade_FailItemNameMarker",
+		ITEM_UPGRADE_SLOTS[iSelectedSlot].pName, 0.95f, vGoldOrange);
+
+	// "재련 실패" -- red, by explicit user request. A failed reforge does not change level, so unlike
+	// the success screen there is no grade/level marker here -- this sits directly under the name.
+	const fvector_t vRed = XMVectorSet(0.9098f, 0.1608f, 0.1608f, 1.f); // #E82929
+	DrawCentered("ItemUpgrade_FailStatusMarker", L"\xC7AC\xB828 \xC2E4\xD328", 0.9f, vRed);
+
+	// "확인" -- same label style as RenderItemUpgradeButtonText's other button labels.
+	DrawCentered("ItemUpgrade_FailOkBtn", L"\xD655\xC778", 0.32f, Colors::White);
 }
 
 void CMainApp::Render_ItemQuickSlots()
@@ -2569,35 +2869,304 @@ void CMainApp::RenderDeadSceneText()
 		return;
 	}
 
+	const HUD_DEADSCENE_TEXT_RECTS& rects = CCombatHUDViewModel::Get().Get_DeadSceneTextRects();
+	if (!rects.isValid)
+		return;
+
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
 	const float textScaleX = vTextViewportSize.x / 1280.f;
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	// Matches Data/UI/DeadScene/DeadSceneUI.json's DeadScene_PanelBg/_ReviveButton rects exactly.
-	constexpr f32_t PANEL_X = 780.f, PANEL_Y = 140.f, PANEL_W = 420.f;
-	constexpr f32_t BUTTON_X = 935.f, BUTTON_Y = 284.f, BUTTON_W = 110.f, BUTTON_H = 38.f;
-	constexpr f32_t TITLE_AREA_HEIGHT = 75.f;
-
+	/* Positions/sizes come from CLevel_ValtanArena::Update_DeadScene(), which reads the live
+	DeadScene_TitleTextMarker/_ReviveButton/_SpectateButton/_ReviveMessageMarker slot rects out of
+	its own m_pDeadSceneView every frame -- moving any of those in the HUD Layout Tool moves this
+	text with them, instead of a hand-copied constant here drifting out of sync the way it just did. */
 	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다
 	const float2_t vTitleMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
-	const f32_t fTitleScale =
-		(vTitleMeasured.y > 0.f) ? (TITLE_AREA_HEIGHT / vTitleMeasured.y) : 1.f;
+	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
+		(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
-		float2_t((PANEL_X + PANEL_W * 0.5f) * textScaleX,
-			(PANEL_Y + TITLE_AREA_HEIGHT * 0.5f) * textScaleY),
+		float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
+			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
 
-	const wstring strButtonLabel = L"\xBD80\xD65C"; // 부활
-	const float2_t vButtonMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strButtonLabel.c_str());
-	const f32_t fButtonScale =
-		(vButtonMeasured.y > 0.f) ? (BUTTON_H * 0.55f / vButtonMeasured.y) : 1.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strButtonLabel.c_str(),
-		float2_t((BUTTON_X + BUTTON_W * 0.5f) * textScaleX,
-			(BUTTON_Y + BUTTON_H * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fButtonScale * textUiScale);
+	const wstring strReviveLabel = L"\xBD80\xD65C"; // 부활
+	const float2_t vReviveMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveLabel.c_str());
+	const f32_t fReviveScale = (vReviveMeasured.y > 0.f) ?
+		(rects.fReviveTextHeight * 0.55f / vReviveMeasured.y) : 1.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveLabel.c_str(),
+		float2_t((rects.fReviveTextX + rects.fReviveTextWidth * 0.5f) * textScaleX,
+			(rects.fReviveTextY + rects.fReviveTextHeight * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fReviveScale * textUiScale);
+
+	const wstring strSpectateLabel = L"\xAD00\xC804\xD558\xAE30"; // 관전하기
+	const float2_t vSpectateMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strSpectateLabel.c_str());
+	const f32_t fSpectateScale = (vSpectateMeasured.y > 0.f) ?
+		(rects.fSpectateHeight * 0.5f / vSpectateMeasured.y) : 1.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strSpectateLabel.c_str(),
+		float2_t((rects.fSpectateX + rects.fSpectateWidth * 0.5f) * textScaleX,
+			(rects.fSpectateY + rects.fSpectateHeight * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fSpectateScale * textUiScale);
+
+	const wstring strReviveMessage = L"\xBD80\xD65C\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?"; // 부활하시겠습니까?
+	const float2_t vMessageMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str());
+	const f32_t fMessageScale = (vMessageMeasured.y > 0.f) ?
+		(rects.fMessageHeight * 0.6f / vMessageMeasured.y) : 1.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str(),
+		float2_t((rects.fMessageX + rects.fMessageWidth * 0.5f) * textScaleX,
+			(rects.fMessageY + rects.fMessageHeight * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fMessageScale * textUiScale);
+}
+
+void CMainApp::RenderChargeGauge()
+{
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+
+	/* Real HOLD skill. Default (34590 적룡포 and every other HOLD skill): the gauge fills ONCE,
+	continuously, from action start and reaches 100% exactly at the real hit -- the first
+	comboStages[] entry with a nonzero hitTimeMs (confirmed real data: 34590's stage index 2 has
+	hitTimeMs=322). "Elapsed since action start" is NOT the sum of authored iActionDurationMs for
+	completed stages -- a HOLD skill's loop stage can be cut short (PlayerSkillSystem.cpp's
+	holdLeavesLoop/holdSkipsLoop) when the player releases early, and hasReleasedHold never reaches
+	the wire, so this tracks the REAL elapsed of each completed stage from observed
+	iComboStage/iActionStartTick edges instead (m_fChargeGaugeElapsedBeforeCurrentStageMs). The
+	instant an observed stage turns out shorter than its authored duration (or a whole stage was
+	skipped), that's proof of an early release -- the gauge cancels (hides) for the rest of this
+	skill-use instance instead of jumping ahead toward a now-moot target.
+
+	Special case (17240 풀배럴 캐넌, Warlord): confirmed against Warlord.skillbindings.json's real
+	clip chain -- stage1 (eternalcyclone_01) is the raise+shout windup (no gauge), stage2
+	(eternalcyclone_02/03/04, 300ms each, summing to stage2's own 900ms) is the 3 real arm-lowering
+	motions in sync with the 3 "thud" sounds (one gauge pump per 300ms sub-clip), and stage3
+	(eternalcyclone_07, the real hit) is the firing animation alone -- gauge hidden, matching the
+	real screen (3rd pump completes, gauge disappears, then it fires). No general data field
+	distinguishes this "single fill" vs "per-stage-of-substage pump" HOLD shape yet -- this is a
+	skillId-keyed exception until a second real multi-pump skill shows what that field should
+	look like. */
+	constexpr LostArk::Shared::SKILL_ID FULL_BARREL_CANNON_SKILL_ID = 17240;
+	constexpr std::uint8_t FULL_BARREL_CANNON_PUMP_STAGE = 2u;
+	constexpr f32_t FULL_BARREL_CANNON_PUMP_MS = 300.f;
+	constexpr std::uint32_t FULL_BARREL_CANNON_PUMP_COUNT = 3u;
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+
+	bool_t bCharging = false;
+	f32_t fChargeProgress = 0.f;
+	const bool_t bIsHoldAction = player.isValid &&
+		LostArk::Shared::PLAYER_ACTION_STATE::SKILL == player.eAction &&
+		0u != player.iComboStage;
+	const PLAYER_SKILL_DEFINITION* pSkill = bIsHoldAction ?
+		CPlayerSkillCatalog::Find_ById(player.iCurrentSkillId) : nullptr;
+	const bool_t bValidHoldStage = nullptr != pSkill &&
+		LostArk::Shared::PLAYER_SKILL_KIND::HOLD == pSkill->eSkillKind &&
+		player.iComboStage <= pSkill->ComboStages.size();
+
+	if (!bValidHoldStage)
+	{
+		// Not (or no longer) charging a HOLD skill -- next real charge starts fully fresh.
+		m_iChargeGaugeTrackedSkillId = LostArk::Shared::INVALID_SKILL_ID;
+		m_bChargeGaugeCancelled = false;
+	}
+	else if (FULL_BARREL_CANNON_SKILL_ID == pSkill->iSkillId)
+	{
+		if (FULL_BARREL_CANNON_PUMP_STAGE == player.iComboStage)
+		{
+			f32_t fStageAgeSeconds = 0.f;
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				player.iServerTick, player.iActionStartTick, SERVER_TICK_HZ, fStageAgeSeconds);
+			const f32_t fStageAgeMs = fStageAgeSeconds * 1000.f;
+			const f32_t fPumpTotalMs = FULL_BARREL_CANNON_PUMP_MS * FULL_BARREL_CANNON_PUMP_COUNT;
+			const f32_t fClampedAgeMs = std::clamp(fStageAgeMs, 0.f, fPumpTotalMs);
+			const f32_t fWithinPumpMs = std::fmod(fClampedAgeMs, FULL_BARREL_CANNON_PUMP_MS);
+			fChargeProgress = std::clamp(fWithinPumpMs / FULL_BARREL_CANNON_PUMP_MS, 0.f, 1.f);
+			bCharging = true;
+		}
+		// Stage 1 (windup) and stage 3 (firing) show no gauge at all for this skill.
+	}
+	else
+	{
+		const bool_t bFreshCharge =
+			LostArk::Shared::INVALID_SKILL_ID == m_iChargeGaugeTrackedSkillId ||
+			m_iChargeGaugeTrackedSkillId != pSkill->iSkillId ||
+			player.iComboStage < m_iChargeGaugeTrackedComboStage;
+		if (bFreshCharge)
+		{
+			m_iChargeGaugeTrackedSkillId = pSkill->iSkillId;
+			m_iChargeGaugeTrackedComboStage = player.iComboStage;
+			m_iChargeGaugeStageStartTick = player.iActionStartTick;
+			m_fChargeGaugeElapsedBeforeCurrentStageMs = 0.f;
+			m_bChargeGaugeCancelled = false;
+		}
+		else if (player.iComboStage != m_iChargeGaugeTrackedComboStage)
+		{
+			// Real elapsed of the stage that just ended = the new stage's own start tick minus
+			// the old stage's start tick -- exact regardless of whether it ran its full authored
+			// duration or was cut short.
+			f32_t fEndedStageSeconds = 0.f;
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				player.iActionStartTick, m_iChargeGaugeStageStartTick, SERVER_TICK_HZ,
+				fEndedStageSeconds);
+			const f32_t fEndedStageRealMs = fEndedStageSeconds * 1000.f;
+			const std::size_t iEndedStageIndex =
+				static_cast<std::size_t>(m_iChargeGaugeTrackedComboStage) - 1u;
+			const f32_t fEndedStageAuthoredMs = static_cast<f32_t>(
+				pSkill->ComboStages[iEndedStageIndex].iActionDurationMs);
+			constexpr f32_t TRUNCATION_TOLERANCE_MS = 50.f;
+			const bool_t bStageWasSkipped =
+				player.iComboStage > m_iChargeGaugeTrackedComboStage + 1u;
+			const bool_t bStageWasCutShort =
+				fEndedStageRealMs < fEndedStageAuthoredMs - TRUNCATION_TOLERANCE_MS;
+			if (bStageWasSkipped || bStageWasCutShort)
+				m_bChargeGaugeCancelled = true;
+
+			m_fChargeGaugeElapsedBeforeCurrentStageMs += fEndedStageRealMs;
+			m_iChargeGaugeTrackedComboStage = player.iComboStage;
+			m_iChargeGaugeStageStartTick = player.iActionStartTick;
+		}
+
+		if (!m_bChargeGaugeCancelled)
+		{
+			std::size_t iHitStageIndex = pSkill->ComboStages.size() - 1;
+			for (std::size_t i = 0; i < pSkill->ComboStages.size(); ++i)
+			{
+				if (0u != pSkill->ComboStages[i].iHitTimeMs)
+				{
+					iHitStageIndex = i;
+					break;
+				}
+			}
+			f32_t fTargetMs = 0.f;
+			for (std::size_t i = 0; i < iHitStageIndex; ++i)
+				fTargetMs += static_cast<f32_t>(pSkill->ComboStages[i].iActionDurationMs);
+			fTargetMs += (0u != pSkill->ComboStages[iHitStageIndex].iHitTimeMs) ?
+				static_cast<f32_t>(pSkill->ComboStages[iHitStageIndex].iHitTimeMs) :
+				static_cast<f32_t>(pSkill->ComboStages[iHitStageIndex].iActionDurationMs);
+
+			f32_t fStageAgeSeconds = 0.f;
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				player.iServerTick, player.iActionStartTick, SERVER_TICK_HZ, fStageAgeSeconds);
+			const f32_t fStageAgeMs = fStageAgeSeconds * 1000.f;
+
+			if (fTargetMs > 0.f)
+			{
+				fChargeProgress = std::clamp(
+					(m_fChargeGaugeElapsedBeforeCurrentStageMs + fStageAgeMs) / fTargetMs, 0.f, 1.f);
+				bCharging = true;
+			}
+		}
+	}
+
+	// Bg/Track are static full images shown via the normal JSON layer composite; Fill is always
+	// kept hidden there and hand-drawn below with a partial-width UV crop instead (same technique
+	// RenderBossHealthBar already uses for its own segment fill).
+	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Bg", bCharging);
+	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Track", bCharging);
+	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Fill", false);
+
+	if (!bCharging)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pHUDRuntimeView->Get_SlotRect("ChargeGauge_Fill", fX, fY, fWidth, fHeight))
+		return;
+
+	ID3D11ShaderResourceView* pFillSRV =
+		m_pHUDRuntimeView->Load_Texture("UI/HUD/ChargeGauge/charge_gauge_fill.png");
+	if (nullptr == pFillSRV || fChargeProgress <= 0.f)
+		return;
+
+	const ImVec2 fillMin{
+		pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY };
+	const ImVec2 fillMax{ fillMin.x + fWidth * scaleX, fillMin.y + fHeight * scaleY };
+	const float fFillBoundaryX = fillMin.x + (fillMax.x - fillMin.x) * fChargeProgress;
+
+	ImGui::GetForegroundDrawList(pViewport)->AddImage(pFillSRV, fillMin,
+		ImVec2(fFillBoundaryX, fillMax.y), ImVec2(0.f, 0.f), ImVec2(fChargeProgress, 1.f));
+}
+
+void CMainApp::RenderChargeGaugeText()
+{
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid ||
+		LostArk::Shared::PLAYER_ACTION_STATE::SKILL != player.eAction ||
+		0u == player.iComboStage)
+	{
+		return;
+	}
+
+	const PLAYER_SKILL_DEFINITION* pSkill =
+		CPlayerSkillCatalog::Find_ById(player.iCurrentSkillId);
+	if (nullptr == pSkill ||
+		LostArk::Shared::PLAYER_SKILL_KIND::HOLD != pSkill->eSkillKind ||
+		player.iComboStage > pSkill->ComboStages.size())
+	{
+		return;
+	}
+	// Must mirror RenderChargeGauge's own bCharging gate exactly -- 17240 풀배럴 캐넌 only shows a
+	// gauge (so only shows this label) during its stage-2 pump; every other HOLD skill hides both
+	// once an early release cancels the charge (m_bChargeGaugeCancelled, set earlier this same
+	// frame by RenderChargeGauge).
+	constexpr LostArk::Shared::SKILL_ID FULL_BARREL_CANNON_SKILL_ID = 17240;
+	if (FULL_BARREL_CANNON_SKILL_ID == pSkill->iSkillId)
+	{
+		if (2u != player.iComboStage)
+			return;
+	}
+	else if (m_bChargeGaugeCancelled)
+	{
+		return;
+	}
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pHUDRuntimeView->Get_SlotRect("ChargeGauge_Track", fX, fY, fWidth, fHeight))
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	// strDisplayName is UTF-8 (Data/Balance/PlayerSkills.json); a byte-wise widen would garble
+	// every Korean skill name, so this needs a real MultiByteToWideChar conversion, same as
+	// CWorldPlayerNameplateView::Try_ConvertUtf8 already does for the equivalent nickname case.
+	wstring strLabel;
+	const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+		pSkill->strDisplayName.data(), static_cast<int>(pSkill->strDisplayName.size()),
+		nullptr, 0);
+	if (iRequiredLength <= 0)
+		return;
+	strLabel.resize(static_cast<size_t>(iRequiredLength));
+	if (iRequiredLength != MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+		pSkill->strDisplayName.data(), static_cast<int>(pSkill->strDisplayName.size()),
+		strLabel.data(), iRequiredLength))
+	{
+		return;
+	}
+
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str());
+	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.7f / vMeasured.y) : 1.f;
+	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.9f / vMeasured.x) : 1.f;
+	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str(),
+		float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 }
 
 void CMainApp::RenderEstherGauge()

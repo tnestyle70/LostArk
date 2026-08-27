@@ -2810,9 +2810,44 @@ void CLevel_ValtanArena::Update_DeadScene()
 		PLAYER_ACTION_STATE::DEAD == player.eAction;
 
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveButton", isDead);
+	/* Spectate is not wired to any server/client command yet -- these two slots exist only
+	so the button and its border can be positioned in the HUD Layout Tool. */
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateButton", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateBorder", isDead);
+	/* Tool-authoring placeholders only (mark where RenderDeadSceneText's labels land) --
+	never shown in real gameplay, regardless of death state. */
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_TitleTextMarker", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveMessageMarker", false);
 	if (!isDead)
 		return;
+
+	/* RenderDeadSceneText() (CMainApp, after EndFrame()) has no access to this Level's
+	m_pDeadSceneView -- push the live, Tool-editable rects through the same Level -> ViewModel ->
+	UI path the rest of the combat HUD uses instead of hand-copying these numbers into
+	MainApp.cpp, which is exactly what went stale and made the title/button text drift off after
+	the panel was repositioned in the Tool. The "부활"/"관전하기" labels are drawn ON their own
+	buttons, so those two read the button slots' own rects directly -- DeadScene_ReviveMessageMarker
+	is a separate free-standing box above the revive button, unrelated to that label. */
+	{
+		HUD_DEADSCENE_TEXT_RECTS textRects;
+		textRects.isValid =
+			m_pDeadSceneView->Get_SlotRect("DeadScene_TitleTextMarker",
+				textRects.fTitleX, textRects.fTitleY,
+				textRects.fTitleWidth, textRects.fTitleHeight) &&
+			m_pDeadSceneView->Get_SlotRect("DeadScene_ReviveButton",
+				textRects.fReviveTextX, textRects.fReviveTextY,
+				textRects.fReviveTextWidth, textRects.fReviveTextHeight) &&
+			m_pDeadSceneView->Get_SlotRect("DeadScene_SpectateButton",
+				textRects.fSpectateX, textRects.fSpectateY,
+				textRects.fSpectateWidth, textRects.fSpectateHeight) &&
+			m_pDeadSceneView->Get_SlotRect("DeadScene_ReviveMessageMarker",
+				textRects.fMessageX, textRects.fMessageY,
+				textRects.fMessageWidth, textRects.fMessageHeight);
+		CCombatHUDViewModel::Get().Set_DeadSceneTextRects(textRects);
+	}
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	if (nullptr == pViewport)
@@ -2859,6 +2894,33 @@ void CLevel_ValtanArena::Render_DeadScene()
 {
 	if (nullptr == m_pDeadSceneView)
 		return;
+
+	using LostArk::Shared::PLAYER_ACTION_STATE;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t isDead = player.isValid &&
+		PLAYER_ACTION_STATE::DEAD == player.eAction;
+	if (isDead)
+	{
+		/* Whole-screen dim, not just the DeadScene panel's own footprint -- drawn straight into
+		the same ImGui foreground draw list the panel/effect/button images use (CHUDRuntimeView's
+		default DRAW_TARGET::FOREGROUND) so it lands in front of the 3D scene and every other HUD
+		element without a new shader/render target, and directly beneath the panel art drawn right
+		after it since both share that one list in submission order. */
+		ImGuiViewport* pViewport = ImGui::GetMainViewport();
+		if (nullptr != pViewport)
+		{
+			/* Must pass pViewport explicitly, same as CHUDRuntimeView::Render() does for the
+			panel/button images -- the zero-arg GetForegroundDrawList() can resolve to a different
+			draw list when called outside a Begin/End block (as this is), so the rect silently
+			never made it into the list that actually gets composited. WorkPos/WorkSize instead of
+			Pos/Size for the same reason: matches CHUDRuntimeView's own scale/origin exactly. */
+			ImGui::GetForegroundDrawList(pViewport)->AddRectFilled(
+				pViewport->WorkPos,
+				ImVec2(pViewport->WorkPos.x + pViewport->WorkSize.x,
+					pViewport->WorkPos.y + pViewport->WorkSize.y),
+				IM_COL32(0, 0, 0, 160));
+		}
+	}
 
 	/* Title/button-label text is drawn by CMainApp::RenderDeadSceneText(),
 	called after CImGuiLayer::EndFrame() -- same reason as

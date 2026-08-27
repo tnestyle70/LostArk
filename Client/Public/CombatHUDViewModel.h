@@ -48,6 +48,15 @@ namespace Client
 			LostArk::Shared::INVALID_SKILL_ID;
 		LostArk::Shared::PLAYER_STANCE_ID eStance =
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
+		/* 0 outside a staged action, 1-based stage index while one runs -- combo
+		stages, and start/loop/end for a HOLD skill. The Server owns it; the UI
+		must not count stages itself. Paired with iActionStartTick (a changed
+		start tick is how the client learns the current stage began) so a HOLD
+		skill's charge gauge can derive real per-stage elapsed time via
+		CActionPresentationTimeline::Try_ResolveActionAgeSeconds, the same way
+		combo animation timing already does. */
+		std::uint8_t iComboStage = 0;
+		std::uint32_t iActionStartTick = 0;
 		std::vector<HUD_SKILL_STATE> Skills;
 	};
 
@@ -86,6 +95,25 @@ namespace Client
 		std::uint32_t iGeneration = 0;
 		std::string strArchetypeId;
 		std::vector<std::string> Clips;
+	};
+
+	/* Reference-resolution rects for the DeadScene labels CMainApp::RenderDeadSceneText() draws
+	after EndFrame() -- see that function's comment for why the text can't be drawn where the
+	DeadScene panel/button images themselves are drawn. CLevel_ValtanArena::Update_DeadScene()
+	fills this from its own m_pDeadSceneView (Get_SlotRect) every frame the player is dead, so
+	repositioning a slot in the HUD Layout Tool moves its text along with it instead of leaving a
+	hand-copied constant in MainApp.cpp to drift out of sync. */
+	struct HUD_DEADSCENE_TEXT_RECTS
+	{
+		bool isValid = false;
+		float fTitleX = 0.f, fTitleY = 0.f, fTitleWidth = 0.f, fTitleHeight = 0.f;
+		float fReviveTextX = 0.f, fReviveTextY = 0.f, fReviveTextWidth = 0.f, fReviveTextHeight = 0.f;
+		float fSpectateX = 0.f, fSpectateY = 0.f, fSpectateWidth = 0.f, fSpectateHeight = 0.f;
+		/* DeadScene_ReviveMessageMarker -- a free-standing message box positioned above the
+		revive button, independent of the "부활" label drawn on the button itself (fReviveText*
+		above). No string is drawn against this yet; RenderDeadSceneText only has the rect wired
+		until the actual message copy is decided. */
+		float fMessageX = 0.f, fMessageY = 0.f, fMessageWidth = 0.f, fMessageHeight = 0.f;
 	};
 
 	class CCombatHUDViewModel final
@@ -130,6 +158,15 @@ namespace Client
 			m_EstherCutinRequest.Clips = clips;
 		}
 		void Reset_RuntimeState();
+
+		void Set_DeadSceneTextRects(const HUD_DEADSCENE_TEXT_RECTS& rects)
+		{
+			m_DeadSceneTextRects = rects;
+		}
+		const HUD_DEADSCENE_TEXT_RECTS& Get_DeadSceneTextRects() const
+		{
+			return m_DeadSceneTextRects;
+		}
 
 		/* Debug-only inventory slice. CClientReplication pushes its
 		replace-in-full inventory state here the same way it pushes
@@ -209,6 +246,7 @@ namespace Client
 		std::uint32_t m_iEstherGauge = 0;
 		std::uint32_t m_iEstherGaugeMaximum = 0;
 		HUD_ESTHER_CUTIN_REQUEST m_EstherCutinRequest;
+		HUD_DEADSCENE_TEXT_RECTS m_DeadSceneTextRects;
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
 		std::string m_strStatus;
 	};

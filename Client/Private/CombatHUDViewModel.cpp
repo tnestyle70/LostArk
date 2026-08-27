@@ -211,6 +211,8 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.eAction = snapshot.eAction;
 	m_Player.iCurrentSkillId = snapshot.iSkillId;
 	m_Player.eStance = snapshot.eStance;
+	m_Player.iComboStage = snapshot.iComboStage;
+	m_Player.iActionStartTick = snapshot.iActionStartTick;
 	Build_PlayerSkills(characterClass, serverTick, &snapshot.Cooldowns);
 }
 
