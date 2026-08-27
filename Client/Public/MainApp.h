@@ -187,6 +187,12 @@ private:
 	every frame -- not hand-copied constants, so repositioning a slot in the HUD Layout Tool moves
 	this text with it. */
 	void RenderDeadSceneText();
+	/* Same split as RenderDeadSceneText(), for the Valtan clear celebration overlay's real
+	"[$]commander.dungeon_clear" headline. Rect comes from
+	CCombatHUDViewModel::Get_RaidClearTextRects(), which
+	CLevel_ValtanArena::Update_RaidClear() fills from its own (Level-private)
+	m_pRaidClearView every frame the overlay is showing. */
+	void RenderRaidClearText();
 	/* Room-shared raid Esther gauge bar. Draws nothing when the snapshot says
 	the world has no Esther roster (maximum 0). */
 	void RenderEstherGauge();
