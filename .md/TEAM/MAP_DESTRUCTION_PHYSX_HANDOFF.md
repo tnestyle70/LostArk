@@ -60,9 +60,9 @@ graph가 없어서 프로젝트가 4x3으로 분할한 `PROJECT_AUTHORED` 물리
 ## 2. 처음 5분 실행 절차
 
 Client 시작 Level은 항상 Lobby고 `Test`의 Debug Map Editor 진입도 최초 Server 승인이 필요하다.
-2026-08-20까지는 먼저 `powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1`을
-실행하고 출력이 `server-host`면 `Server + Client`, `client`면 Client만 시작한다. 이 기간의 접속 정본은
-`192.168.200.103:7777`이며 임의로 `127.0.0.1`로 바꾸지 않는다.
+먼저 `powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고
+출력이 `server-host`면 `Server + Client`, `client`면 Client만 시작한다. 현재 접속 주소와 유효
+기간은 `Tools/Network/TeamLanEndpoint.json`을 따르며 임의로 `127.0.0.1`로 바꾸지 않는다.
 
 ```text
 Lobby -> Test -> LEVEL::DEVELOPMENT
