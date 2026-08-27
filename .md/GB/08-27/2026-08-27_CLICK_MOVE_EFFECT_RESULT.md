@@ -44,7 +44,7 @@ Product Effect Catalog을 쓰지 않고 `CSkillGroundTargetPreview`와 동일한
   `Shader_VtxSkillGroundTargetPreview.hlsl`와 동일 grayscale-coverage 셰이더에 blend state만
   기존 `BS_Additive`(SrcAlpha/One)로 교체. 링 레이어는 기존 `Shader_VtxSkillGroundTargetPreview.hlsl`
   프로토타입(`CSkillGroundTargetPreview::SHADER_TAG`)을 그대로 재사용한다(새 셰이더 불필요).
-- `Client/Bin/Resources/Effect/UI/ClickMoveEffect/click_move_ring.dds`,
+- `Client/Bin/Resources/UI/Effect/ClickMoveEffect/click_move_ring.dds`,
   `click_move_glow.dds` (신규, git-ignored): 그레이스케일 coverage 마스크 플레이스홀더.
   링은 실제 shapeBounds 비율(2080x2060 twips ≈ 104x103), 글로우는 실제 비율
   (760x740 twips ≈ 38x37, 링 대비 0.365x)에 맞춰 생성했다.

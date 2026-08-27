@@ -149,9 +149,9 @@ bool_t Client::CClickMoveEffect::Initialize_Textures()
 		return true;
 
 	const filesystem::path ringPath = CRuntimeAssetRoot::Resolve(
-		"Effect/UI/ClickMoveEffect/click_move_ring.dds");
+		"UI/Effect/ClickMoveEffect/click_move_ring.dds");
 	const filesystem::path glowPath = CRuntimeAssetRoot::Resolve(
-		"Effect/UI/ClickMoveEffect/click_move_glow.dds");
+		"UI/Effect/ClickMoveEffect/click_move_glow.dds");
 	if (ringPath.empty() || glowPath.empty())
 		return false;
 
