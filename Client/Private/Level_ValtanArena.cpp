@@ -110,15 +110,20 @@ namespace
 	}
 }
 
+CLevel_ValtanArena* CLevel_ValtanArena::s_pActiveInstance = nullptr;
+
 CLevel_ValtanArena::CLevel_ValtanArena(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CLevel { pDevice, pContext }
 {
+	s_pActiveInstance = this;
 }
 
 CLevel_ValtanArena::~CLevel_ValtanArena()
 {
+	if (this == s_pActiveInstance)
+		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
 	CCameraTool::Clear_ActorPreviewContext(
 		ETOUI(LEVEL::VALTAN_ARENA));
@@ -136,6 +141,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 {
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
+
+	m_PartyInteraction.Initialize(m_pDevice, m_pContext);
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
@@ -433,6 +440,17 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	cameraAcceptsGameplay = cameraAcceptsGameplay &&
 		!m_bReferenceCameraApplied;
 #endif
+	/* Has to run before m_PlayerController.Update() so a right-click that
+	hits another player is not also spent as that frame's move command --
+	same reasoning as Level_Bern's own Valtan-entry NPC click. Needs this
+	frame's replicated player list, so Collect_PlayerViews moves here
+	instead of Render(). */
+	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	if (m_PartyInteraction.Update(
+		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers))
+	{
+		m_PlayerController.Suppress_MoveClickThisFrame();
+	}
 	m_PlayerController.Update(cameraAcceptsGameplay);
 	Update_DeadScene();
 #ifdef _DEBUG
@@ -2562,8 +2580,9 @@ HRESULT CLevel_ValtanArena::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
+	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+	m_PartyInteraction.Render(m_pPlayerCommandSink);
 	Render_DeadScene();
 
 #ifdef _DEBUG

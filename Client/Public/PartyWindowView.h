@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Network/PacketMessages.h"
 
 #include <string>
 #include <vector>
@@ -12,10 +13,11 @@ class CUITextureCache;
 
 /* Release-safe party roster overlay matching the in-game reference: a title bar, then one row
 per member (class symbol, HP bar with the join-order number and nickname drawn on top, and a
-crown mark on whoever is currently leader). UI-only for now -- there is no party Shared
-protocol yet (no C2S/S2C party messages, no Server roster), so Render() draws whatever
-SEED_MEMBERS below is populated with instead of a real roster. Swapping that for live data is
-a separate follow-up once the team has a party system to read from. */
+crown mark on whoever is currently leader). Sync_From_Roster() feeds it the real Server roster
+(CClientReplication::Get_PartyRoster(), populated by S2C_PARTY_ROSTER) each frame -- an empty
+roster (no party yet) draws nothing. The current Shared protocol has no per-member HP or leader
+flag yet, so fHpRatio stays at 1.f and the first roster member (whoever the party formed around)
+is drawn as leader; both are placeholders until that data exists Server-side. */
 class CPartyWindowView final
 {
 public:
@@ -34,6 +36,7 @@ public:
 	~CPartyWindowView();
 
 public:
+	void Sync_From_Roster(const LostArk::Shared::S2C_PARTY_ROSTER& Roster);
 	void Render();
 
 private:

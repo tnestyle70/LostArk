@@ -1288,6 +1288,71 @@ bool CNetworkManager::Send_ConfirmNpcEntry(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_PartyInvite(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::NET_ENTITY_ID targetNetEntityId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_PARTY_INVITE message{};
+	message.iRequestSequence = requestSequence;
+	message.iTargetNetEntityId = targetNetEntityId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_PARTY_INVITE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_PartyInviteRespond(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::NET_ENTITY_ID fromNetEntityId,
+	const bool accepted)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_PARTY_INVITE_RESPOND message{};
+	message.iRequestSequence = requestSequence;
+	message.iFromNetEntityId = fromNetEntityId;
+	message.bAccepted = accepted;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_PARTY_INVITE_RESPOND,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_Chat(const std::string& text)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_CHAT message{};
+	message.strText = text;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_CHAT,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_DebugGiveItem(
 	const std::uint32_t requestSequence,
 	const std::string_view itemId,
@@ -2700,6 +2765,49 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType =
 			Client::CLIENT_REPLICATION_EVENT_TYPE::INVENTORY_SNAPSHOT;
 		event.InventorySnapshot = std::move(snapshot);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
+	{
+		S2C_PARTY_INVITE_RECEIVED received{};
+		if (!Read_Message(reader, received) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::PARTY_INVITE_RECEIVED;
+		event.PartyInviteReceived = std::move(received);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_PARTY_ROSTER:
+	{
+		S2C_PARTY_ROSTER roster{};
+		if (!Read_Message(reader, roster) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PARTY_ROSTER;
+		event.PartyRoster = std::move(roster);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_CHAT:
+	{
+		S2C_CHAT chat{};
+		if (!Read_Message(reader, chat) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::CHAT_RECEIVED;
+		event.ChatReceived = std::move(chat);
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}

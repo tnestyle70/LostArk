@@ -1429,7 +1429,8 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_Register(command.pSession);
 			break;
 		case ROOM_COMMAND_TYPE::ENTER_WORLD:
-			Join(command.iSessionId, command.EnterWorld);
+			Join(command.iSessionId, command.EnterWorld,
+				command.PartyBatchSessionIds);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -1488,6 +1489,16 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY:
 			Handle_ConfirmNpcEntry(
 				command.iSessionId, command.ConfirmNpcEntry);
+			break;
+		case ROOM_COMMAND_TYPE::PARTY_INVITE:
+			Handle_PartyInvite(command.iSessionId, command.PartyInvite);
+			break;
+		case ROOM_COMMAND_TYPE::PARTY_INVITE_RESPOND:
+			Handle_PartyInviteRespond(
+				command.iSessionId, command.PartyInviteRespond);
+			break;
+		case ROOM_COMMAND_TYPE::CHAT:
+			Handle_Chat(command.iSessionId, command.Chat);
 			break;
 		case ROOM_COMMAND_TYPE::LEAVE:
 			Leave(command.iSessionId, command.eLeaveReason);
@@ -1761,7 +1772,8 @@ void LostArk::Server::CGameRoom::Handle_Register(
 
 bool LostArk::Server::CGameRoom::Join(
 	const SESSION_ID sessionId,
-	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld)
+	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
+	const std::vector<SESSION_ID>& partyBatchSessionIds)
 {
 	using namespace LostArk::Shared;
 
@@ -1945,6 +1957,10 @@ bool LostArk::Server::CGameRoom::Join(
 	}
 	Broadcast_Spawned(player, sessionId);
 
+	if (!partyBatchSessionIds.empty())
+		Register_PartyBatch(partyBatchSessionIds);
+	Try_JoinPendingPartyBatch(sessionId, player.iPlayerId);
+
 	std::cout << "Player joined. World=" << static_cast<unsigned>(m_eWorldId)
 		<< ", SessionId=" << sessionId
 		<< ", PlayerId=" << player.iPlayerId
@@ -2000,6 +2016,8 @@ void LostArk::Server::CGameRoom::Leave(
 		session->Bind_PlayerId(INVALID_PLAYER_ID);
 	m_PlayerIdByEntityId.erase(netEntityId);
 	m_PlayerIdBySessionId.erase(sessionPlayerIter);
+	m_PendingPartyInviteByTargetPlayerId.erase(playerId);
+	Remove_FromParty(playerId);
 	m_Players.erase(playerIter);
 	m_Sessions.erase(sessionId);
 	Broadcast_Despawned(netEntityId, reason);
@@ -2938,21 +2956,355 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 		return;
 	}
 
-	const bool alreadyStaged = std::any_of(
-		m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
-		[sessionId](const SERVER_WORLD_TRANSFER_REQUEST& pending)
-		{
-			return pending.iSessionId == sessionId;
-		});
-	if (alreadyStaged)
+	const auto isAlreadyStaged = [this](SESSION_ID sid)
+	{
+		return std::any_of(
+			m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+			[sid](const SERVER_WORLD_TRANSFER_REQUEST& pending)
+			{
+				return pending.iSessionId == sid;
+			});
+	};
+	if (isAlreadyStaged(player.iSessionId))
 		return;
 
-	SERVER_WORLD_TRANSFER_REQUEST transfer{};
-	transfer.iSessionId = player.iSessionId;
-	transfer.eTargetWorldId = guideIter->eTargetWorldId;
-	transfer.eCharacterClass = player.eCharacterClass;
-	transfer.strNickName = player.strNickName;
-	m_PendingWorldTransfers.push_back(std::move(transfer));
+	/* Solo by default; becomes the whole party's member list only when the
+	   confirming player is a partied leader (members.front(), the original
+	   inviter -- see "Same-room party state" in GameRoom.h). A non-leader
+	   member's solo confirm is rejected instead of splitting the party across
+	   two rooms, so a formed party never breaks on a Valtan entry. */
+	std::vector<PLAYER_ID> batchMemberIds{ playerIter->first };
+	const auto partyIdIter = m_PartyIdByPlayerId.find(playerIter->first);
+	if (partyIdIter != m_PartyIdByPlayerId.end())
+	{
+		const auto membersIter =
+			m_PartyMembersByPartyId.find(partyIdIter->second);
+		if (membersIter != m_PartyMembersByPartyId.end() &&
+			membersIter->second.size() > 1)
+		{
+			if (membersIter->second.front() != playerIter->first)
+				return;
+			batchMemberIds = membersIter->second;
+		}
+	}
+
+	std::vector<SERVER_WORLD_TRANSFER_REQUEST> batchTransfers;
+	batchTransfers.reserve(batchMemberIds.size());
+	for (const PLAYER_ID memberId : batchMemberIds)
+	{
+		const auto memberIter = m_Players.find(memberId);
+		if (memberIter == m_Players.end() ||
+			CHARACTER_CLASS_ID::END == memberIter->second.eCharacterClass ||
+			memberIter->second.strNickName.empty() ||
+			isAlreadyStaged(memberIter->second.iSessionId))
+		{
+			continue;
+		}
+		SERVER_WORLD_TRANSFER_REQUEST transfer{};
+		transfer.iSessionId = memberIter->second.iSessionId;
+		transfer.eTargetWorldId = guideIter->eTargetWorldId;
+		transfer.eCharacterClass = memberIter->second.eCharacterClass;
+		transfer.strNickName = memberIter->second.strNickName;
+		batchTransfers.push_back(std::move(transfer));
+	}
+	if (batchTransfers.empty())
+		return;
+
+	// batchTransfers.front() is always the confirming/leader player -- their
+	// own validity was already checked above, before batchMemberIds was built.
+	if (batchTransfers.size() > 1)
+	{
+		std::vector<SESSION_ID> batchSessionIds;
+		batchSessionIds.reserve(batchTransfers.size());
+		for (const SERVER_WORLD_TRANSFER_REQUEST& transfer : batchTransfers)
+			batchSessionIds.push_back(transfer.iSessionId);
+		batchTransfers.front().PartyBatchSessionIds = std::move(batchSessionIds);
+	}
+	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : batchTransfers)
+		m_PendingWorldTransfers.push_back(std::move(transfer));
+}
+
+void LostArk::Server::CGameRoom::Handle_PartyInvite(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_PARTY_INVITE& request)
+{
+	using namespace LostArk::Shared;
+
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const PLAYER_ID inviterId = sessionIter->second;
+	const auto inviterIter = m_Players.find(inviterId);
+	if (inviterIter == m_Players.end())
+		return;
+	const SERVER_PLAYER& inviter = inviterIter->second;
+
+	const auto targetPlayerIdIter =
+		m_PlayerIdByEntityId.find(request.iTargetNetEntityId);
+	if (targetPlayerIdIter == m_PlayerIdByEntityId.end() ||
+		targetPlayerIdIter->second == inviterId)
+	{
+		return;
+	}
+	const PLAYER_ID targetId = targetPlayerIdIter->second;
+	const auto targetIter = m_Players.find(targetId);
+	if (targetIter == m_Players.end())
+		return;
+	const SERVER_PLAYER& target = targetIter->second;
+
+	const auto inviterPartyIter = m_PartyIdByPlayerId.find(inviterId);
+	const std::uint32_t inviterPartyId = inviterPartyIter != m_PartyIdByPlayerId.end() ?
+		inviterPartyIter->second : 0u;
+	const auto targetPartyIter = m_PartyIdByPlayerId.find(targetId);
+	if (targetPartyIter != m_PartyIdByPlayerId.end())
+	{
+		// Already partied together, or target belongs to a different party --
+		// merging two existing parties is not supported yet either way.
+		return;
+	}
+	if (0u != inviterPartyId)
+	{
+		const auto membersIter = m_PartyMembersByPartyId.find(inviterPartyId);
+		if (membersIter != m_PartyMembersByPartyId.end() &&
+			membersIter->second.size() >= MAX_PARTY_MEMBERS)
+		{
+			return;
+		}
+	}
+
+	// A new invite silently replaces whatever this target's last unanswered
+	// invite was -- only one can ever be outstanding per target.
+	m_PendingPartyInviteByTargetPlayerId[targetId] = inviterId;
+
+	const std::shared_ptr<CClientSession> targetSession =
+		Find_Session(target.iSessionId);
+	if (nullptr == targetSession)
+		return;
+	S2C_PARTY_INVITE_RECEIVED message{};
+	message.iFromNetEntityId = inviter.iNetEntityId;
+	message.strFromNickname = inviter.strNickName;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return;
+	if (!targetSession->Send_Frame(
+			PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED, writer.Get_Buffer()))
+	{
+		targetSession->Request_Close();
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_PartyInviteRespond(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_PARTY_INVITE_RESPOND& request)
+{
+	using namespace LostArk::Shared;
+
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const PLAYER_ID responderId = sessionIter->second;
+
+	const auto pendingIter =
+		m_PendingPartyInviteByTargetPlayerId.find(responderId);
+	if (pendingIter == m_PendingPartyInviteByTargetPlayerId.end())
+		return;
+	const PLAYER_ID inviterId = pendingIter->second;
+	// Consumed either way -- accepting or declining both answer the one
+	// pending invite, and a stale second response has nothing left to act on.
+	m_PendingPartyInviteByTargetPlayerId.erase(pendingIter);
+
+	if (!request.bAccepted)
+		return;
+
+	const auto inviterIter = m_Players.find(inviterId);
+	if (inviterIter == m_Players.end())
+		return;
+	if (inviterIter->second.iNetEntityId != request.iFromNetEntityId)
+		return;
+	if (m_Players.find(responderId) == m_Players.end())
+		return;
+	// Re-check both invariants Handle_PartyInvite validated -- state may have
+	// changed while this invite was outstanding.
+	if (m_PartyIdByPlayerId.find(responderId) != m_PartyIdByPlayerId.end())
+		return;
+
+	auto inviterPartyIter = m_PartyIdByPlayerId.find(inviterId);
+	std::uint32_t partyId = inviterPartyIter != m_PartyIdByPlayerId.end() ?
+		inviterPartyIter->second : 0u;
+	if (0u == partyId)
+	{
+		partyId = m_iNextPartyId++;
+		m_PartyMembersByPartyId[partyId] = { inviterId };
+		m_PartyIdByPlayerId[inviterId] = partyId;
+	}
+	else if (m_PartyMembersByPartyId[partyId].size() >= MAX_PARTY_MEMBERS)
+	{
+		return;
+	}
+	m_PartyMembersByPartyId[partyId].push_back(responderId);
+	m_PartyIdByPlayerId[responderId] = partyId;
+
+	Broadcast_PartyRoster(partyId);
+}
+
+void LostArk::Server::CGameRoom::Broadcast_PartyRoster(
+	const std::uint32_t partyId)
+{
+	using namespace LostArk::Shared;
+
+	const auto membersIter = m_PartyMembersByPartyId.find(partyId);
+	if (membersIter == m_PartyMembersByPartyId.end())
+		return;
+
+	S2C_PARTY_ROSTER message{};
+	for (const PLAYER_ID memberId : membersIter->second)
+	{
+		const auto playerIter = m_Players.find(memberId);
+		if (playerIter == m_Players.end())
+			continue;
+		PARTY_ROSTER_MEMBER member{};
+		member.iNetEntityId = playerIter->second.iNetEntityId;
+		member.strNickname = playerIter->second.strNickName;
+		member.eCharacterClass = playerIter->second.eCharacterClass;
+		message.Members.push_back(std::move(member));
+	}
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return;
+	for (const PLAYER_ID memberId : membersIter->second)
+	{
+		const auto playerIter = m_Players.find(memberId);
+		if (playerIter == m_Players.end())
+			continue;
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(playerIter->second.iSessionId);
+		if (nullptr != session &&
+			!session->Send_Frame(
+				PACKET_TYPE::S2C_PARTY_ROSTER, writer.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Remove_FromParty(
+	const LostArk::Shared::PLAYER_ID playerId)
+{
+	const auto partyIdIter = m_PartyIdByPlayerId.find(playerId);
+	if (partyIdIter == m_PartyIdByPlayerId.end())
+		return;
+	const std::uint32_t partyId = partyIdIter->second;
+	m_PartyIdByPlayerId.erase(partyIdIter);
+
+	const auto membersIter = m_PartyMembersByPartyId.find(partyId);
+	if (membersIter == m_PartyMembersByPartyId.end())
+		return;
+	std::vector<LostArk::Shared::PLAYER_ID>& members = membersIter->second;
+	members.erase(
+		std::remove(members.begin(), members.end(), playerId),
+		members.end());
+	if (members.empty())
+	{
+		m_PartyMembersByPartyId.erase(membersIter);
+		return;
+	}
+	Broadcast_PartyRoster(partyId);
+}
+
+void LostArk::Server::CGameRoom::Register_PartyBatch(
+	const std::vector<SESSION_ID>& sessionIds)
+{
+	if (sessionIds.size() < 2)
+		return;
+	m_PendingPartyBatches.push_back(sessionIds);
+}
+
+void LostArk::Server::CGameRoom::Try_JoinPendingPartyBatch(
+	const SESSION_ID sessionId, const LostArk::Shared::PLAYER_ID playerId)
+{
+	for (auto batchIter = m_PendingPartyBatches.begin();
+		batchIter != m_PendingPartyBatches.end(); ++batchIter)
+	{
+		std::vector<SESSION_ID>& batch = *batchIter;
+		const auto sessionPos = std::find(batch.begin(), batch.end(), sessionId);
+		if (batch.end() == sessionPos)
+			continue;
+
+		/* batch.front() is always the party leader: Handle_ConfirmNpcEntry
+		   builds the batch leader-first, and the source room dequeues/
+		   enqueues every member of one batch in that same order, so the
+		   leader's own Join() (which registers the batch) always lands before
+		   any follower's. */
+		if (sessionId != batch.front())
+		{
+			const auto leaderSessionIter =
+				m_PlayerIdBySessionId.find(batch.front());
+			if (leaderSessionIter != m_PlayerIdBySessionId.end())
+			{
+				const LostArk::Shared::PLAYER_ID leaderPlayerId =
+					leaderSessionIter->second;
+				auto leaderPartyIter = m_PartyIdByPlayerId.find(leaderPlayerId);
+				std::uint32_t partyId =
+					leaderPartyIter != m_PartyIdByPlayerId.end() ?
+						leaderPartyIter->second : 0u;
+				if (0u == partyId)
+				{
+					partyId = m_iNextPartyId++;
+					m_PartyMembersByPartyId[partyId] = { leaderPlayerId };
+					m_PartyIdByPlayerId[leaderPlayerId] = partyId;
+				}
+				if (m_PartyMembersByPartyId[partyId].size() <
+					LostArk::Shared::MAX_PARTY_MEMBERS)
+				{
+					m_PartyMembersByPartyId[partyId].push_back(playerId);
+					m_PartyIdByPlayerId[playerId] = partyId;
+					Broadcast_PartyRoster(partyId);
+				}
+			}
+		}
+
+		batch.erase(sessionPos);
+		if (batch.empty())
+			m_PendingPartyBatches.erase(batchIter);
+		break;
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_Chat(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_CHAT& request)
+{
+	using namespace LostArk::Shared;
+
+	const auto senderPlayerIdIter = m_PlayerIdBySessionId.find(sessionId);
+	if (senderPlayerIdIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto senderIter = m_Players.find(senderPlayerIdIter->second);
+	if (senderIter == m_Players.end())
+		return;
+
+	S2C_CHAT message{};
+	message.iFromNetEntityId = senderIter->second.iNetEntityId;
+	message.strFromNickname = senderIter->second.strNickName;
+	message.strText = request.strText;
+
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return;
+
+	// Every current room member, sender included -- see Handle_Chat's own
+	// header comment for why the sender reads its own bubble off this same
+	// broadcast instead of a second local-only path.
+	for (const auto& [playerId, player] : m_Players)
+	{
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(player.iSessionId);
+		if (nullptr != session &&
+			!session->Send_Frame(PACKET_TYPE::S2C_CHAT, writer.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
 }
 
 void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(

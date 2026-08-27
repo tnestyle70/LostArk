@@ -4054,3 +4054,214 @@ bool LostArk::Shared::Read_Message(
 	message = std::move(decoded);
 	return true;
 }
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_PARTY_INVITE& message)
+{
+	if (0u == message.iRequestSequence ||
+		INVALID_NET_ENTITY_ID == message.iTargetNetEntityId)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U32(message.iTargetNetEntityId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_PARTY_INVITE& message)
+{
+	C2S_PARTY_INVITE decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U32(decoded.iTargetNetEntityId) ||
+		0u == decoded.iRequestSequence ||
+		INVALID_NET_ENTITY_ID == decoded.iTargetNetEntityId)
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_PARTY_INVITE_RECEIVED& message)
+{
+	if (INVALID_NET_ENTITY_ID == message.iFromNetEntityId ||
+		!Is_Valid_PlayerNickname(message.strFromNickname))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iFromNetEntityId);
+	if (!writer.Write_String(message.strFromNickname, MAX_NICKNAME_BYTES))
+		return false;
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_PARTY_INVITE_RECEIVED& message)
+{
+	S2C_PARTY_INVITE_RECEIVED decoded{};
+	if (!reader.Read_U32(decoded.iFromNetEntityId) ||
+		!reader.Read_String(decoded.strFromNickname, MAX_NICKNAME_BYTES) ||
+		INVALID_NET_ENTITY_ID == decoded.iFromNetEntityId ||
+		!Is_Valid_PlayerNickname(decoded.strFromNickname))
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_PARTY_INVITE_RESPOND& message)
+{
+	if (0u == message.iRequestSequence ||
+		INVALID_NET_ENTITY_ID == message.iFromNetEntityId)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U32(message.iFromNetEntityId);
+	writer.Write_U8(message.bAccepted ? 1u : 0u);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_PARTY_INVITE_RESPOND& message)
+{
+	C2S_PARTY_INVITE_RESPOND decoded{};
+	std::uint8_t rawAccepted = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U32(decoded.iFromNetEntityId) ||
+		!reader.Read_U8(rawAccepted) ||
+		0u == decoded.iRequestSequence ||
+		INVALID_NET_ENTITY_ID == decoded.iFromNetEntityId ||
+		rawAccepted > 1u)
+	{
+		return false;
+	}
+	decoded.bAccepted = (1u == rawAccepted);
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_PARTY_ROSTER& message)
+{
+	if (message.Members.size() > MAX_PARTY_MEMBERS)
+		return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.Members.size()));
+	for (const PARTY_ROSTER_MEMBER& member : message.Members)
+	{
+		if (INVALID_NET_ENTITY_ID == member.iNetEntityId ||
+			!Is_Valid_PlayerNickname(member.strNickname) ||
+			!Is_Known_Character_Class(member.eCharacterClass))
+		{
+			return false;
+		}
+		writer.Write_U32(member.iNetEntityId);
+		if (!writer.Write_String(member.strNickname, MAX_NICKNAME_BYTES))
+			return false;
+		writer.Write_U8(static_cast<std::uint8_t>(member.eCharacterClass));
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_PARTY_ROSTER& message)
+{
+	S2C_PARTY_ROSTER decoded{};
+	std::uint8_t memberCount = 0u;
+	if (!reader.Read_U8(memberCount) || memberCount > MAX_PARTY_MEMBERS)
+		return false;
+	decoded.Members.reserve(memberCount);
+	for (std::uint8_t index = 0; index < memberCount; ++index)
+	{
+		PARTY_ROSTER_MEMBER member{};
+		std::uint8_t rawCharacterClass = 0u;
+		if (!reader.Read_U32(member.iNetEntityId) ||
+			!reader.Read_String(member.strNickname, MAX_NICKNAME_BYTES) ||
+			!reader.Read_U8(rawCharacterClass) ||
+			INVALID_NET_ENTITY_ID == member.iNetEntityId ||
+			!Is_Valid_PlayerNickname(member.strNickname))
+		{
+			return false;
+		}
+		member.eCharacterClass =
+			static_cast<CHARACTER_CLASS_ID>(rawCharacterClass);
+		if (!Is_Known_Character_Class(member.eCharacterClass))
+			return false;
+		decoded.Members.push_back(std::move(member));
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_CHAT& message)
+{
+	if (message.strText.empty() ||
+		message.strText.size() > MAX_CHAT_TEXT_BYTES)
+	{
+		return false;
+	}
+	return writer.Write_String(message.strText, MAX_CHAT_TEXT_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_CHAT& message)
+{
+	C2S_CHAT decoded{};
+	if (!reader.Read_String(decoded.strText, MAX_CHAT_TEXT_BYTES) ||
+		decoded.strText.empty())
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_CHAT& message)
+{
+	if (INVALID_NET_ENTITY_ID == message.iFromNetEntityId ||
+		!Is_Valid_PlayerNickname(message.strFromNickname) ||
+		message.strText.empty() ||
+		message.strText.size() > MAX_CHAT_TEXT_BYTES)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iFromNetEntityId);
+	if (!writer.Write_String(message.strFromNickname, MAX_NICKNAME_BYTES))
+		return false;
+	return writer.Write_String(message.strText, MAX_CHAT_TEXT_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_CHAT& message)
+{
+	S2C_CHAT decoded{};
+	if (!reader.Read_U32(decoded.iFromNetEntityId) ||
+		!reader.Read_String(decoded.strFromNickname, MAX_NICKNAME_BYTES) ||
+		!reader.Read_String(decoded.strText, MAX_CHAT_TEXT_BYTES) ||
+		INVALID_NET_ENTITY_ID == decoded.iFromNetEntityId ||
+		!Is_Valid_PlayerNickname(decoded.strFromNickname) ||
+		decoded.strText.empty())
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}

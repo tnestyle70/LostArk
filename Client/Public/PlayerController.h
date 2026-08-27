@@ -392,6 +392,15 @@ namespace Client
 
 		void Update(bool_t gameplayCommandsEnabled);
 
+		/* One-shot: consumed (cleared) by the next Update() regardless of
+		whether it actually had a move click to suppress that frame. Caller
+		(CPartyInteractionView's right-click-a-player hit) calls this before
+		Update() runs so the same physical click that opened the party
+		context menu is not also spent as a move command -- unlike the
+		Valtan-entry NPC click, which is close-range by design and lets both
+		fire since the resulting move is imperceptible. */
+		void Suppress_MoveClickThisFrame() { m_isMoveClickSuppressed = true; }
+
 		/* Cursor -> world ray unprojected against the groundY plane. Public+static
 		because it touches no member state (screen cursor, viewport and view/proj
 		come straight from CGameInstance) -- Level_Bern reuses this same math to
@@ -400,6 +409,21 @@ namespace Client
 		static bool_t Try_PickGroundPlane(
 			f32_t groundY,
 			float3_t& outPosition);
+
+		/* The raw cursor -> world ray Try_PickGroundPlane intersects against a
+		ground plane -- exposed separately for callers that need to test the
+		ray against something other than a horizontal plane (a character or
+		NPC's actual position, e.g. CPartyInteractionView's right-click pick,
+		instead of wherever the ray happens to cross their feet's Y level). */
+		static bool_t Try_PickWorldRay(
+			vector_t& outOrigin,
+			vector_t& outDirection);
+
+		/* Same send-path a normal click-to-move uses (sequence, resend-gate,
+		click effect) but for a caller-computed goal instead of the cursor's
+		own ground-plane pick -- e.g. walking the local character up to an
+		NPC that was right-clicked from outside interaction range. */
+		bool_t Request_MoveToPoint(const float3_t& goal);
 
 	private:
 		//실질적인 navigation picking을 통한 이동으로 교체
@@ -442,6 +466,7 @@ namespace Client
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;
+		bool_t m_isMoveClickSuppressed = false;
 		std::chrono::steady_clock::time_point m_LastMoveGoalSentAt{};
 		float3_t m_LastSentMoveGoal{};
 		/* Edge state indexed by DirectInput key code, not by binding position: a

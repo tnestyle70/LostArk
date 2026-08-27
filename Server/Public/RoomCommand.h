@@ -4,6 +4,7 @@
 #include "Network/PacketMessages.h"
 
 #include <memory>
+#include <vector>
 
 namespace LostArk::Server
 {
@@ -31,6 +32,9 @@ namespace LostArk::Server
 		USE_ITEM,
 		DESPAWN_ALL_WORLD_ENTITIES,
 		CONFIRM_NPC_ENTRY,
+		PARTY_INVITE,
+		PARTY_INVITE_RESPOND,
+		CHAT,
 		LEAVE
 	};
 
@@ -44,6 +48,11 @@ namespace LostArk::Server
 		std::shared_ptr<CClientSession> pSession;
 
 		LostArk::Shared::C2S_ENTER_WORLD EnterWorld;
+		/* Non-empty only on a party-leader-triggered group Valtan entry (see
+		   CGameRoom::Handle_ConfirmNpcEntry) -- lists every session id moving
+		   together as one batch, leader first. Server-internal only, not part
+		   of the wire C2S_ENTER_WORLD payload. */
+		std::vector<SESSION_ID> PartyBatchSessionIds;
 
 		LostArk::Shared::C2S_MOVE Move;
 
@@ -68,6 +77,9 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_USE_ITEM UseItem;
 		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
+		LostArk::Shared::C2S_PARTY_INVITE PartyInvite;
+		LostArk::Shared::C2S_PARTY_INVITE_RESPOND PartyInviteRespond;
+		LostArk::Shared::C2S_CHAT Chat;
 
 		LostArk::Shared::PLAYER_DESPAWN_REASON eLeaveReason =
 			LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;

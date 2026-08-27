@@ -199,7 +199,8 @@ namespace LostArk::Server
 		void Handle_Register(const std::shared_ptr<CClientSession>& session);
 		bool Join(
 			SESSION_ID sessionId,
-			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld);
+			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
+			const std::vector<SESSION_ID>& partyBatchSessionIds);
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason);
@@ -504,6 +505,44 @@ namespace LostArk::Server
 		void Handle_ConfirmNpcEntry(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
+		/* Same-room-only: request.iTargetNetEntityId must resolve to a real
+		   player currently in this room's m_PlayerIdByEntityId. There is no
+		   cross-room player identity yet (nickname is display text only, see
+		   CLAUDE.md), so an invite naming a player in a different room or a
+		   stale/unknown NetEntityId is rejected, not queued. */
+		void Handle_PartyInvite(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_PARTY_INVITE& request);
+		void Handle_PartyInviteRespond(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_PARTY_INVITE_RESPOND& request);
+		void Broadcast_PartyRoster(std::uint32_t partyId);
+		/* Leave() calls this so a disconnecting player does not linger as a
+		   ghost roster entry for whoever they partied with. */
+		void Remove_FromParty(LostArk::Shared::PLAYER_ID playerId);
+		/* Called once, from the party leader's own Join() (see
+		   ROOM_COMMAND::PartyBatchSessionIds), when their ENTER_WORLD carries a
+		   non-empty batch. Stores it in m_PendingPartyBatches for
+		   Try_JoinPendingPartyBatch to match against as the rest of the batch's
+		   Join() calls land in the same FIFO order. */
+		void Register_PartyBatch(const std::vector<SESSION_ID>& sessionIds);
+		/* Called from every successful Join(), leader or follower. If sessionId
+		   is a follower in a pending batch, joins it to the leader's party in
+		   this room (creating one if the leader doesn't have one here yet) --
+		   the same bookkeeping Handle_PartyInviteRespond uses for a
+		   client-driven accept, just server-triggered. A lone leader whose
+		   followers never landed here (e.g. every one of them failed to
+		   transfer) is simply removed from its batch without ever forming a
+		   party. */
+		void Try_JoinPendingPartyBatch(
+			SESSION_ID sessionId, LostArk::Shared::PLAYER_ID playerId);
+		/* Same room-scoped broadcast Broadcast_PartyRoster already uses --
+		   every current session in this room receives the relayed line,
+		   including the sender (its own head bubble is driven off the same
+		   S2C_CHAT the rest of the room gets, not a second local-only path). */
+		void Handle_Chat(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_CHAT& request);
 
 		bool Send_Accepted(
 			const std::shared_ptr<CClientSession>& session,
@@ -819,6 +858,33 @@ namespace LostArk::Server
 			m_PlayerIdBySessionId;
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::PLAYER_ID>
 			m_PlayerIdByEntityId;
+
+		/* Same-room party state -- PLAYER_ID is room-local (freshly allocated
+		   per room on Join), so this map does not by itself survive a member
+		   moving to a different room. 0 means "no party" -- never a real party
+		   ID. Invite/accept/join only; leave/kick/leader promotion is a
+		   separate follow-up.
+		   A party-leader-triggered group Valtan entry (Handle_ConfirmNpcEntry
+		   -> Register_PartyBatch/Try_JoinPendingPartyBatch) is the one case
+		   that does survive a room change: every member transfers together in
+		   one batch and gets re-grouped into a fresh room-local party in the
+		   target room, so the party itself is never actually split across two
+		   rooms at once. There is still no general cross-room party identity
+		   (e.g. inviting or chatting with someone in a different room). */
+		std::uint32_t m_iNextPartyId = 1u;
+		std::unordered_map<LostArk::Shared::PLAYER_ID, std::uint32_t>
+			m_PartyIdByPlayerId;
+		std::unordered_map<std::uint32_t, std::vector<LostArk::Shared::PLAYER_ID>>
+			m_PartyMembersByPartyId;
+		// One pending invite per target at a time; a new invite silently
+		// replaces whatever that target's last unanswered invite was.
+		std::unordered_map<LostArk::Shared::PLAYER_ID, LostArk::Shared::PLAYER_ID>
+			m_PendingPartyInviteByTargetPlayerId;
+		/* Cross-room party continuity for a leader-triggered group Valtan
+		   entry -- each entry is one batch of session ids (leader first)
+		   waiting for the rest of its members' Join() calls to land in this
+		   room. See Register_PartyBatch/Try_JoinPendingPartyBatch. */
+		std::vector<std::vector<SESSION_ID>> m_PendingPartyBatches;
 
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;

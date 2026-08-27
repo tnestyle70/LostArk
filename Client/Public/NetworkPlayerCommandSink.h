@@ -58,6 +58,14 @@ public:
 	bool Request_ConfirmNpcEntry(
 		std::uint32_t clientSequence,
 		const std::string& npcPlacementId) override;
+	bool Request_PartyInvite(
+		std::uint32_t clientSequence,
+		LostArk::Shared::NET_ENTITY_ID targetNetEntityId) override;
+	bool Request_PartyInviteRespond(
+		std::uint32_t clientSequence,
+		LostArk::Shared::NET_ENTITY_ID fromNetEntityId,
+		bool accepted) override;
+	bool Request_SendChat(const std::string& text) override;
 
 private:
 	static std::atomic_uint32_t s_iLiveInstanceCount;

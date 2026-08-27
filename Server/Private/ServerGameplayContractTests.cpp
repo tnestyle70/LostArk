@@ -4336,7 +4336,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		bernEnter.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
 		bernEnter.strNickName = "BernEntryContract";
 		const bool joinedBern = bernEntryRoom.Join(
-			BERN_ENTRY_SESSION, bernEnter);
+			BERN_ENTRY_SESSION, bernEnter, {});
 		std::size_t worldSpawnFrameCount = 0u;
 		bool sawLocalPlayerSpawn = false;
 		for (const CClientSession::OUTBOUND_FRAME& frame :

@@ -186,6 +186,20 @@ public:
 	bool Send_ConfirmNpcEntry(
 		std::uint32_t requestSequence,
 		std::string_view npcPlacementId);
+	/* Same-room-only party invite. The Server re-validates the target
+	NetEntityId is a real player in this room; the answer (if any) arrives
+	as an S2C_PARTY_INVITE_RECEIVED replication event on the target's own
+	connection, not a direct reply to the sender. */
+	bool Send_PartyInvite(
+		std::uint32_t requestSequence,
+		LostArk::Shared::NET_ENTITY_ID targetNetEntityId);
+	bool Send_PartyInviteRespond(
+		std::uint32_t requestSequence,
+		LostArk::Shared::NET_ENTITY_ID fromNetEntityId,
+		bool accepted);
+	/* The Server relays this to every current room member (sender included)
+	as an S2C_CHAT replication event -- there is no direct reply. */
+	bool Send_Chat(const std::string& text);
 	/* Debug-only. The Server owns the truth; this only carries the request and
 	the answer arrives as an S2C_INVENTORY_SNAPSHOT replication event. */
 	bool Send_DebugGiveItem(
