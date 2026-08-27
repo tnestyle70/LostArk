@@ -360,6 +360,51 @@ class ValtanFloorEmissiveContractTests(unittest.TestCase):
         self.assertLess(int(depth_bias.group(1)), 0)
         self.assertLess(float(slope_bias.group(1).rstrip("f")), 0.0)
 
+    def test_dynamic_map_shader_keeps_water_and_valtan_vortex_abi_aligned(
+        self,
+    ) -> None:
+        shader = read_source("Client/Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl")
+        map_object = read_source("Client/Private/MapAssetObject.cpp")
+        render_utils = read_source("Client/Private/MapAssetRenderUtils.cpp")
+        deploy = read_source("Client/Private/DeployPropObject.cpp")
+
+        water_bind = braced_block(
+            map_object,
+            "HRESULT CMapAssetObject::Bind_WaterShaderResources(",
+        )
+        bound_names = set(re.findall(r'"(g_[A-Za-z0-9_]+)"', water_bind))
+        self.assertGreaterEqual(len(bound_names), 17)
+        shader_globals = shader[: shader.index("struct VS_IN")]
+        for binding_name in sorted(bound_names):
+            self.assertRegex(shader_globals, rf"\b{re.escape(binding_name)}\b")
+
+        passes = re.findall(r"(?m)^\s*pass\s+(\w+)", shader)
+        self.assertEqual(
+            [
+                "WaterBackPass",
+                "WaterFrontPass",
+                "WaterTwoSidedPass",
+                "DeferredEmissiveOverlayPass",
+            ],
+            passes[15:19],
+        )
+        self.assertRegex(
+            render_utils,
+            r"MAP_ASSET_RENDER_MODE::WATER\s*==\s*profile\.renderMode\s*\?\s*15u",
+        )
+        self.assertIn("DEFERRED_EMISSIVE_OVERLAY_PASS = 18u", deploy)
+
+        # The green/blue square suppression is a separate Valtan presentation
+        # contract and must survive the water ABI repair unchanged.
+        self.assertIn("g_PresentationVortexProfile", shader_globals)
+        self.assertIn("g_PresentationVortexStrength", shader_globals)
+        for profile in (1, 2, 3):
+            self.assertRegex(
+                shader,
+                rf"(?:if|else if)\s*\(\s*{profile}\s*==\s*"
+                r"g_PresentationVortexProfile",
+            )
+
         blend = braced_block(shader, "BlendState BS_DeferredEmissiveOverlay")
         for target in range(4):
             self.assertRegex(

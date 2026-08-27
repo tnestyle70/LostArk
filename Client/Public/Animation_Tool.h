@@ -19,6 +19,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CCharacter;
+class CValtan;
 
 class CAnimation_Tool final
 {
@@ -33,6 +34,7 @@ private:
 		std::string strPatternDisplayName;
 		std::string strStageId;
 		std::string strSequenceRole;
+		std::string strStageKind;
 		std::string strActionId;
 		std::string strClipOccurrenceId;
 		std::string strClipName;
@@ -45,6 +47,7 @@ private:
 		uint32_t iOccurrenceCount = 0u;
 		f32_t fPlayRate = 1.f;
 		bool_t bRepeatUntilStageEnd = false;
+		bool_t bSuppressAnimation = false;
 	};
 
 	/* Window kinds own a start..end span; point kinds fire on one instant and
@@ -285,7 +288,8 @@ private:
 	bool_t Apply_ValtanPatternMasterPose(
 		const shared_ptr<Engine::CModel>& pModel,
 		const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item,
-		f32_t fLocalWallSeconds) const;
+		f32_t fLocalWallSeconds,
+		bool_t bForceAnimationEdge) const;
 	bool_t Seek_ValtanPatternMasterPreview(
 		const shared_ptr<Engine::CModel>& pModel,
 		f32_t fTimelineSeconds,
@@ -448,6 +452,7 @@ private:
 		VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
 	std::string m_strValtanPatternMasterStatus;
 	std::weak_ptr<Engine::CModel> m_ValtanPatternMasterModel;
+	std::weak_ptr<CValtan> m_ValtanPatternMasterBoss;
 	uint64_t m_iValtanPatternMasterTargetGeneration = 0u;
 	VALTAN_PATTERN_PREVIEW_DOCUMENT m_ValtanPatternPreviewDocument;
 	std::vector<VALTAN_PATTERN_PREVIEW_PLAY_ITEM> m_ValtanPatternPreviewPlaylist;

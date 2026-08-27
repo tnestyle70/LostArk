@@ -659,7 +659,7 @@ def product_clip_occurrences(
         by_action[action_id] = clips
 
     result: dict[str, list[dict[str, Any]]] = {}
-    for pattern in live_encounter_patterns(encounter):
+    for pattern in encounter.get("patterns", []):
         pattern_id = str(pattern.get("patternId") or "")
         ordered: list[dict[str, Any]] = []
         for stage_ordinal, stage in enumerate(pattern.get("stages", [])):
@@ -2406,7 +2406,7 @@ def pattern_coverage(
         raise InventoryError("actionbindings has duplicate patternId")
     rows = []
     missing = []
-    for pattern in encounter.get("patterns", []):
+    for pattern in live_encounter_patterns(encounter):
         pattern_id = str(pattern.get("patternId") or "")
         action = action_by_pattern.get(pattern_id)
         if action is None:

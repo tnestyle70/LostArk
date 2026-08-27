@@ -59,6 +59,10 @@ struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
 	std::string strScalePolicy;
 	float3_t vWorldScale{ 1.f, 1.f, 1.f };
 	bool_t bHasExplicitScalePolicy = false;
+	/* CLIP_OCCURRENCE cues use source-local positions.  A stage-clock cue is
+	   deliberately independent of body animation and uses iStageOffsetMs. */
+	bool_t bUsesStageClock = false;
+	uint32_t iStageOffsetMs = 0u;
 	uint32_t iSourceStartMs = 0u;
 	uint32_t iSourceEndMs = 0u;
 	uint32_t iStageDurationMs = 0u;
@@ -109,6 +113,23 @@ struct VALTAN_STAGE_ACTION_VIEW final
 	std::string strKind;
 	std::string strTargetId;
 	f32_t fValue = 0.f;
+	/* RELEASE_GRABBED_PLAYERS owns a typed release policy instead of the
+	   generic numeric value used by the other stage actions. */
+	std::string strReleaseMode;
+	f32_t fSpeedMps = 0.f;
+	uint32_t iDurationMs = 0u;
+};
+
+/* Presentation invokes a camera cue from one authoritative Server stage.
+   Keep the invocation edge separate from the cinematic cue document: the
+   former owns when/how long the cue runs, while the latter owns shot geometry. */
+struct VALTAN_CAMERA_INVOCATION_VIEW final
+{
+	std::string strCameraInvocationId;
+	std::string strCameraCueId;
+	std::string strTrigger;
+	uint32_t iStartOffsetMs = 0u;
+	std::string strDurationPolicy;
 	uint32_t iDurationMs = 0u;
 };
 
@@ -118,6 +139,17 @@ struct VALTAN_STAGE_BRANCH_VIEW final
 {
 	std::string strOutcome;
 	std::optional<std::string> strNextActionId;
+};
+
+/* Some Server stages extend the normal hit contract with a typed gameplay
+   policy.  Keep those fields in the joined Tool view so Product parity does
+   not silently discard mechanics that the Server actually executes. */
+struct VALTAN_COUNTER_PROXY_VIEW final
+{
+	std::string strSpace;
+	f32_t fForwardOffsetM = 0.f;
+	f32_t fRightOffsetM = 0.f;
+	f32_t fRadiusM = 0.f;
 };
 
 /* The stage is where a Valtan pattern actually becomes work: it owns the
@@ -133,6 +165,9 @@ struct VALTAN_STAGE_VIEW final
 	uint32_t iDurationMs = 0u;
 	uint32_t iAuthoringRepeatCount = 0u;
 	std::string strAnimationEndPolicy;
+	/* Explicit presentation contract: keep the current body pose for the
+	   Server stage instead of resolving a clip or a fallback animation. */
+	bool_t bSuppressAnimation = false;
 
 	/* Server owns damage. These are copied for display so the person
 	   authoring the Effect can see the window they are filling. */
@@ -149,6 +184,12 @@ struct VALTAN_STAGE_VIEW final
 	   iHitDelayMs + k * iHitIntervalMs. */
 	std::vector<uint32_t> HitOffsetsMs;
 	std::string strServerDamageProfileId;
+	/* Absent Product fields mean the normal damage response. Capture stages
+	   opt into the typed left-hand attachment as one inseparable pair. */
+	std::string strPlayerResponse = "DAMAGE";
+	std::string strAttachmentSlot = "NONE";
+	std::string strPartDamagePolicy = "NORMAL";
+	std::optional<VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
 	f32_t fPushRangeM = 0.f;
 	uint32_t iPushMs = 0u;
 	bool_t bKnockdown = false;
@@ -156,6 +197,7 @@ struct VALTAN_STAGE_VIEW final
 	std::optional<VALTAN_STAGE_MOTION_VIEW> Motion;
 	std::vector<VALTAN_STAGE_ACTION_VIEW> Actions;
 	std::vector<VALTAN_STAGE_BRANCH_VIEW> Branches;
+	std::vector<VALTAN_CAMERA_INVOCATION_VIEW> CameraInvocations;
 
 	/* Product authoring uses stable ordered occurrences.  The legacy name
 	   views remain populated for compile-compatible callers while format v1
@@ -392,15 +434,17 @@ struct VALTAN_INDEPENDENT_EFFECT_VIEW final
 	std::string strCombatObjectArchetypeId;
 	std::string strClientVisualId;
 	std::string strEffectCueBindingId;
-	/* SERVER_PATTERN_STAGE projections are pinned to the exact Product cue
-	   occurrence. SERVER_COMBAT_OBJECT identities have no boss-root cue and
-	   therefore leave this tuple absent. */
+	/* SERVER_PATTERN_STAGE projections are pinned either to one Product clip
+	   occurrence or to an explicit stage-clock offset. SERVER_COMBAT_OBJECT
+	   identities have no boss-root cue and leave this tuple absent. */
 	std::string strCueClipOccurrenceId;
 	std::string strCueMappingBasis;
 	uint32_t iCueSourceStartMs = 0u;
 	uint32_t iCueSourceEndMs = 0u;
 	bool_t bHasCueProjection = false;
 	bool_t bHasCueSourceEnd = false;
+	bool_t bUsesCueStageClock = false;
+	uint32_t iCueStageOffsetMs = 0u;
 };
 
 /* Valtan has no phase field. What it has is 160 health bars and gimmicks
@@ -454,6 +498,22 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	size_t Get_CombatObjectEffectCount() const;
 };
 
+/* The intentionally small authoring/audition surface shared by All Effects
+   and Boss Tool. The full graph remains available for live diagnostics, but
+   only these exact Product patterns may appear in either replay selector. */
+struct VALTAN_TOOL_AUDITION_INVENTORY final
+{
+	static constexpr size_t CORE_PATTERN_COUNT = 8u;
+	static constexpr size_t ANIMATOR_PATTERN_COUNT = 20u;
+	static constexpr size_t TOTAL_PATTERN_COUNT =
+		CORE_PATTERN_COUNT + ANIMATOR_PATTERN_COUNT;
+
+	std::vector<std::string> CorePatternIds;
+	std::vector<std::string> AnimatorPatternIds;
+
+	bool_t Contains(const std::string& strPatternId) const;
+};
+
 /* Read-only strict join of the physical Valtan gameplay/presentation
    authoring sources with their generated Encounter, animation binding and
    Effect cue Products. The Tools render the result; nothing here writes. */
@@ -472,6 +532,12 @@ public:
 		VALTAN_PATTERN_TREE_VIEW& OutView,
 		std::string& strOutStatus,
 		VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy);
+	/* Builds the exact All Effects/Boss Tool selector contract: eight named core
+	   Server patterns followed by the twenty authored manual auditions. */
+	static bool_t Build_ToolAuditionInventory(
+		const VALTAN_PATTERN_TREE_VIEW& View,
+		VALTAN_TOOL_AUDITION_INVENTORY& OutInventory,
+		std::string& strOutError);
 	/* effect.valtan.<pattern-slug>.<stage-slug>, the same rule
 	   Tools/EffectPipeline/build_valtan_stage_effects.py emits. */
 	static std::string Build_StageEffectAssetId(

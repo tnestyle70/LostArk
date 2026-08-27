@@ -131,6 +131,22 @@ namespace
 		return FindIn(View.Gimmicks);
 	}
 
+	bool_t Try_ResolveValtanArenaPatternAction(
+		const std::string_view strStageKind,
+		LostArk::Shared::WORLD_ENTITY_ACTION& eOutAction)
+	{
+		using LostArk::Shared::WORLD_ENTITY_ACTION;
+		if ("WINDUP" == strStageKind)
+			eOutAction = WORLD_ENTITY_ACTION::PATTERN_WINDUP;
+		else if ("ACTIVE" == strStageKind || "GROGGY" == strStageKind)
+			eOutAction = WORLD_ENTITY_ACTION::PATTERN_ACTIVE;
+		else if ("RECOVERY" == strStageKind || "PART_BREAK" == strStageKind)
+			eOutAction = WORLD_ENTITY_ACTION::PATTERN_RECOVERY;
+		else
+			return false;
+		return true;
+	}
+
 	void Skip_Space(const char_t*& p)
 	{
 		while (' ' == *p || '\t' == *p)
@@ -287,16 +303,27 @@ void Client::CAnimation_Tool::Update(
 	{
 		const shared_ptr<Engine::CModel> PreviewModel =
 			m_ValtanPatternMasterModel.lock();
-		if (nullptr == PreviewModel ||
+		const shared_ptr<CValtan> PreviewBoss =
+			m_ValtanPatternMasterBoss.lock();
+		if (nullptr == PreviewModel || nullptr == PreviewBoss ||
 			0u == m_iValtanPatternMasterTargetGeneration ||
 			m_iValtanPatternMasterTargetGeneration !=
 				CAnimationTargetService::Resolve_TargetGeneration() ||
-			CAnimationTargetService::Resolve_Model() != PreviewModel)
+			CAnimationTargetService::Resolve_Model() != PreviewModel ||
+			CAnimationTargetService::Resolve_Boss() != PreviewBoss ||
+			PreviewBoss->Get_BodyModel() != PreviewModel)
 		{
 			if (nullptr != PreviewModel)
-				PreviewModel->Set_AnimationSpeed(1.f);
-			Reset_ValtanPatternMasterPreviewState(
-				"Valtan Pattern Master preview cancelled because the animation target changed.");
+			{
+				Stop_ValtanPatternMasterPreview(
+					PreviewModel,
+					"Valtan Pattern Master preview cancelled because the animation target changed; the original boss was restored to idle.");
+			}
+			else
+			{
+				Reset_ValtanPatternMasterPreviewState(
+					"Valtan Pattern Master preview cancelled because the animation target changed.");
+			}
 			return;
 		}
 		if (!bIsActiveTool)
@@ -340,7 +367,7 @@ void Client::CAnimation_Tool::Update(
 			}
 			else if (!Apply_ValtanPatternMasterPose(
 				PreviewModel, Item,
-				m_fValtanPatternMasterItemElapsedSeconds))
+				m_fValtanPatternMasterItemElapsedSeconds, false))
 			{
 				Stop_ValtanPatternMasterPreview(
 					PreviewModel,
@@ -503,6 +530,7 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_eValtanPatternMasterPath = VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
 	m_strValtanPatternMasterStatus.clear();
 	m_ValtanPatternMasterModel.reset();
+	m_ValtanPatternMasterBoss.reset();
 	m_iValtanPatternMasterTargetGeneration = 0u;
 	m_ValtanPatternPreviewDocument = {};
 	m_ValtanPatternPreviewPlaylist.clear();
@@ -1113,20 +1141,20 @@ Client::CAnimation_Tool::Collect_ValtanPatternMasterPatterns() const
 			Collected.insert(pPattern->strPatternId);
 		}
 	}
-	const auto AppendManaged = [&Patterns, &Collected](
+	const auto AppendProductPresentation = [&Patterns, &Collected](
 		const std::vector<VALTAN_PATTERN_VIEW>& Source)
 	{
 		for (const VALTAN_PATTERN_VIEW& Pattern : Source)
 		{
-			if (Pattern.bAuthoringMasterManaged &&
+			if (!Pattern.Stages.empty() &&
 				Collected.insert(Pattern.strPatternId).second)
 			{
 				Patterns.push_back(&Pattern);
 			}
 		}
 	};
-	AppendManaged(m_ValtanPatternMasterView.Rotation);
-	AppendManaged(m_ValtanPatternMasterView.Gimmicks);
+	AppendProductPresentation(m_ValtanPatternMasterView.Rotation);
+	AppendProductPresentation(m_ValtanPatternMasterView.Gimmicks);
 	return Patterns;
 }
 
@@ -1181,8 +1209,9 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 		m_iValtanPatternMasterSelected, 0,
 		static_cast<int32_t>(Patterns.size() - 1u));
 	m_strValtanPatternMasterStatus =
-		"Valtan Pattern Master admitted: " +
-		std::to_string(iManagedPatternCount) + " patterns from "
+		"Valtan Product presentation admitted: " +
+		std::to_string(Patterns.size()) + " patterns (" +
+		std::to_string(iManagedPatternCount) + " authoring-master managed) from "
 		"Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json. " +
 		Status;
 	return true;
@@ -1204,9 +1233,9 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 		strOutStatus = "Animation target changed before the master timeline was staged.";
 		return false;
 	}
-	if (!Pattern.bAuthoringMasterManaged || Pattern.Stages.empty())
+	if (Pattern.Stages.empty())
 	{
-		strOutStatus = "Selected pattern is not admitted by the split "
+		strOutStatus = "Selected pattern has no admitted stages in the split "
 			"Valtan.gameplay.json + Valtan.presentation.json source.";
 		return false;
 	}
@@ -1222,13 +1251,62 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 	for (const VALTAN_STAGE_VIEW* pStage : StagePath)
 	{
 		if (nullptr == pStage || 0u == pStage->iDurationMs ||
-			pStage->strActionId.empty() || pStage->ClipOccurrences.empty())
+			pStage->strActionId.empty())
 		{
 			strOutStatus =
 				"Master branch graph contains an incomplete animation stage.";
 			return false;
 		}
 		const VALTAN_STAGE_VIEW& Stage = *pStage;
+		LostArk::Shared::WORLD_ENTITY_ACTION eStageAction =
+			LostArk::Shared::WORLD_ENTITY_ACTION::END;
+		if (!Try_ResolveValtanArenaPatternAction(
+				Stage.strStageKind, eStageAction) ||
+			LostArk::Shared::WORLD_ENTITY_ACTION::END == eStageAction)
+		{
+			strOutStatus = "Master stage kind has no Arena snapshot action: " +
+				Stage.strStageKind + ".";
+			return false;
+		}
+		const uint64_t iStageTimelineStartMs = iTimelineMs;
+		if (Stage.bSuppressAnimation)
+		{
+			if (!Stage.ClipOccurrences.empty())
+			{
+				strOutStatus = "NONE animation stage unexpectedly owns clips: " +
+					Stage.strActionId + ".";
+				return false;
+			}
+			VALTAN_PATTERN_MASTER_PLAY_ITEM Item;
+			Item.strPatternId = Pattern.strPatternId;
+			Item.strPatternDisplayName = Pattern.strDisplayName;
+			Item.strStageId = Stage.strStageId;
+			Item.strSequenceRole = Stage.strSequenceRole;
+			Item.strStageKind = Stage.strStageKind;
+			Item.strActionId = Stage.strActionId;
+			Item.iAuthoringWallMs = Stage.iDurationMs;
+			Item.iTimelineStartMs = static_cast<uint32_t>(iTimelineMs);
+			Item.iStageTimelineStartMs =
+				static_cast<uint32_t>(iStageTimelineStartMs);
+			Item.iOccurrenceNumber = 1u;
+			Item.iOccurrenceCount = 1u;
+			Item.bSuppressAnimation = true;
+			OutPlaylist.push_back(std::move(Item));
+			iTimelineMs += Stage.iDurationMs;
+			if (iTimelineMs > static_cast<uint64_t>(
+					(std::numeric_limits<uint32_t>::max)()))
+			{
+				strOutStatus = "Master authoring timeline duration overflowed.";
+				return false;
+			}
+			continue;
+		}
+		if (Stage.ClipOccurrences.empty())
+		{
+			strOutStatus = "Master branch graph contains an unbound animation stage: " +
+				Stage.strActionId + ".";
+			return false;
+		}
 		const size_t iPlayableOccurrenceCount =
 			Stage.iAuthoringRepeatCount > 1u ?
 				static_cast<size_t>(Stage.iAuthoringRepeatCount) :
@@ -1241,7 +1319,6 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 			return false;
 		}
 
-		const uint64_t iStageTimelineStartMs = iTimelineMs;
 		uint64_t iStageAnimationWallMs = 0u;
 		for (size_t iClip = 0u; iClip < iPlayableOccurrenceCount; ++iClip)
 		{
@@ -1308,6 +1385,7 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 			Item.strPatternDisplayName = Pattern.strDisplayName;
 			Item.strStageId = Stage.strStageId;
 			Item.strSequenceRole = Stage.strSequenceRole;
+			Item.strStageKind = Stage.strStageKind;
 			Item.strActionId = Stage.strActionId;
 			Item.strClipOccurrenceId = Clip.strClipOccurrenceId;
 			Item.strClipName = Clip.strClipName;
@@ -1348,7 +1426,7 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 	iOutDurationMs = static_cast<uint32_t>(iTimelineMs);
 	strOutStatus = "Admitted " + Pattern.strPatternId + " / " +
 		ValtanPatternMasterPathName(ePath) + " / " +
-		std::to_string(OutPlaylist.size()) + " occurrences / " +
+		std::to_string(OutPlaylist.size()) + " presentation items / " +
 		std::to_string(iOutDurationMs) + " ms.";
 	return true;
 }
@@ -1367,6 +1445,15 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 		m_strValtanPatternMasterStatus =
 			"Valtan Pattern Master play rejected; current model pose preserved: " +
 			Status;
+		return false;
+	}
+
+	const shared_ptr<CValtan> PreviewBoss =
+		CAnimationTargetService::Resolve_Boss();
+	if (nullptr == PreviewBoss || PreviewBoss->Get_BodyModel() != pModel)
+	{
+		m_strValtanPatternMasterStatus =
+			"Valtan Pattern Master play rejected; the staged model is not the current local Valtan boss.";
 		return false;
 	}
 
@@ -1393,6 +1480,7 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 	m_bValtanPatternMasterPlaying = true;
 	m_bValtanPatternMasterPaused = false;
 	m_ValtanPatternMasterModel = pModel;
+	m_ValtanPatternMasterBoss = PreviewBoss;
 	m_iValtanPatternMasterTargetGeneration =
 		CAnimationTargetService::Resolve_TargetGeneration();
 	m_strValtanPatternMasterStatus = Status;
@@ -1418,50 +1506,40 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 bool_t Client::CAnimation_Tool::Apply_ValtanPatternMasterPose(
 	const shared_ptr<Engine::CModel>& pModel,
 	const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item,
-	const f32_t fLocalWallSeconds) const
+	const f32_t fLocalWallSeconds,
+	const bool_t bForceAnimationEdge) const
 {
 	if (nullptr == pModel || !std::isfinite(fLocalWallSeconds) ||
 		fLocalWallSeconds < 0.f)
 	{
 		return false;
 	}
-	const uint32_t iAnimation = pModel->Get_CurrentAnimIndex();
-	const char_t* pName = pModel->Get_AnimationName(iAnimation);
-	if (nullptr == pName || Item.strClipName != pName)
+	const shared_ptr<CValtan> Boss = m_ValtanPatternMasterBoss.lock();
+	if (nullptr == Boss || Boss->Get_BodyModel() != pModel)
 		return false;
-
-	f32_t fTrackPosition = 0.f;
-	f32_t fTrackDuration = 0.f;
-	const f32_t fTickRate = pModel->Get_AnimationTickPerSecond(iAnimation);
-	if (!std::isfinite(fTickRate) || fTickRate <= 0.f ||
-		!pModel->Get_AnimationProgress(
-			iAnimation, fTrackPosition, fTrackDuration) ||
-		!std::isfinite(fTrackDuration) || fTrackDuration <= 0.f)
+	LostArk::Shared::WORLD_ENTITY_ACTION ePatternAction =
+		LostArk::Shared::WORLD_ENTITY_ACTION::END;
+	if (!Try_ResolveValtanArenaPatternAction(
+			Item.strStageKind, ePatternAction))
 	{
 		return false;
 	}
-	const ACTION_PRESENTATION_CLIP_TIMING Timing{
-		fTrackDuration / fTickRate,
-		Item.iPlayMs,
-		Item.fPlayRate,
-		Item.bRepeatUntilStageEnd,
-		static_cast<f32_t>(Item.iSourceStartMs) * 0.001f };
-	ACTION_PRESENTATION_SAMPLE Sample;
-	if (!CActionPresentationTimeline::Resolve_Sample(
-		std::span<const ACTION_PRESENTATION_CLIP_TIMING>(&Timing, 1u),
-		fLocalWallSeconds, Sample))
+	const f32_t fStageWallSeconds =
+		(static_cast<f32_t>(Item.iTimelineStartMs -
+			Item.iStageTimelineStartMs) * 0.001f) +
+		fLocalWallSeconds;
+	if (!Boss->Apply_LocalPatternPresentationSample(
+			ePatternAction,
+			Item.strActionId,
+			fStageWallSeconds,
+			bForceAnimationEdge))
 	{
 		return false;
 	}
-
-	pModel->Set_AnimationSpeed(1.f);
+	/* Animation Tool owns the wall clock and samples the Product presentation
+	   pose explicitly. Pausing the model prevents a second local frame clock
+	   from drifting between those samples. */
 	pModel->Set_AnimPaused(true);
-	if (!pModel->Set_AnimTrackPosition(
-		iAnimation, Sample.fClipSourceTimeSeconds * fTickRate))
-	{
-		return false;
-	}
-	pModel->Play_Animation(0.f);
 	return true;
 }
 
@@ -1486,9 +1564,7 @@ bool_t Client::CAnimation_Tool::Activate_ValtanPatternMasterItem(
 	back to the captured blend-from pose at ratio zero.  Start the occurrence
 	without a blend; the very next Apply_ValtanPatternMasterPose owns the pose. */
 	if (!std::isfinite(fLocalWallSeconds) || fLocalWallSeconds < 0.f ||
-		fLocalWallSeconds > fDurationSeconds + 0.000001f ||
-		!Start_PreviewClip(
-			pModel, Item.strClipName.c_str(), Item.bRepeatUntilStageEnd, 0.f))
+		fLocalWallSeconds > fDurationSeconds + 0.000001f)
 	{
 		return false;
 	}
@@ -1496,13 +1572,15 @@ bool_t Client::CAnimation_Tool::Activate_ValtanPatternMasterItem(
 	m_fValtanPatternMasterItemElapsedSeconds =
 		std::clamp(fLocalWallSeconds, 0.f, fDurationSeconds);
 	if (!Apply_ValtanPatternMasterPose(
-		pModel, Item, m_fValtanPatternMasterItemElapsedSeconds))
+		pModel, Item, m_fValtanPatternMasterItemElapsedSeconds, true))
 	{
 		return false;
 	}
-	m_strValtanPatternMasterStatus = "Playing admitted occurrence " +
-		Item.strClipOccurrenceId + " | " + Item.strStageId + " / " +
-		Item.strSequenceRole + ".";
+	m_strValtanPatternMasterStatus = Item.bSuppressAnimation ?
+		"Playing admitted NONE stage (boss pose hold) | " +
+			Item.strStageId + " / " + Item.strSequenceRole + "." :
+		"Playing admitted occurrence " + Item.strClipOccurrenceId + " | " +
+			Item.strStageId + " / " + Item.strSequenceRole + ".";
 	return true;
 }
 
@@ -1600,6 +1678,10 @@ void Client::CAnimation_Tool::Stop_ValtanPatternMasterPreview(
 void Client::CAnimation_Tool::Reset_ValtanPatternMasterPreviewState(
 	const std::string& status)
 {
+	const shared_ptr<Engine::CModel> PreviewModel =
+		m_ValtanPatternMasterModel.lock();
+	const shared_ptr<CValtan> PreviewBoss =
+		m_ValtanPatternMasterBoss.lock();
 	m_bValtanPatternMasterPlaying = false;
 	m_bValtanPatternMasterPaused = false;
 	m_iValtanPatternMasterItem = 0u;
@@ -1608,12 +1690,21 @@ void Client::CAnimation_Tool::Reset_ValtanPatternMasterPreviewState(
 	m_ValtanPatternMasterPlaylist.clear();
 	m_strValtanPatternMasterStatus = status;
 	m_ValtanPatternMasterModel.reset();
+	m_ValtanPatternMasterBoss.reset();
 	m_iValtanPatternMasterTargetGeneration = 0u;
-#ifdef _DEBUG
-	if (const shared_ptr<CValtan> Boss =
-		CAnimationTargetService::Resolve_Boss())
+	if (nullptr != PreviewBoss)
 	{
-		Boss->Clear_PatternHitAreaPreview();
+		PreviewBoss->Reset_LocalPatternPresentationSample();
+	}
+	else if (nullptr != PreviewModel)
+	{
+		PreviewModel->Set_AnimationSpeed(1.f);
+		PreviewModel->Set_AnimPaused(false);
+	}
+#ifdef _DEBUG
+	if (nullptr != PreviewBoss)
+	{
+		PreviewBoss->Clear_PatternHitAreaPreview();
 	}
 #endif
 }
@@ -1645,7 +1736,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 {
 	ImGui::SeparatorText("Valtan Pattern Master (Authoritative)");
 	ImGui::TextWrapped(
-		"Primary animator workflow. Data/Valtan/Valtan.gameplay.json owns the ordered Server-stage wall clock and Data/Valtan/Valtan.presentation.json owns the animation occurrences joined onto it; each stage declares EXACT, HOLD_LAST_POSE, or LOOP_TO_STAGE_END, and each occurrence owns sourceStartMs, playMs, playRate, and repeatUntilStageEnd. Effects and boss logic consume this same admitted timeline.");
+		"Primary animator workflow. Data/Valtan/Valtan.gameplay.json owns the ordered Server-stage wall clock and Data/Valtan/Valtan.presentation.json owns the animation occurrences joined onto it; each stage declares EXACT, HOLD_LAST_POSE, or LOOP_TO_STAGE_END, and each occurrence owns sourceStartMs, playMs, playRate, and repeatUntilStageEnd. Play samples the same Product binding and CValtan presentation path as Arena, locally on this preview boss. Server movement, Effects, Sound, hit and damage are not run here.");
 
 	if (!m_bValtanPatternMasterLoadAttempted)
 	{
@@ -1735,7 +1826,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	}
 	ImGui::EndDisabled();
 
-	if (ImGui::Button("Play Complete Master Timeline"))
+	if (ImGui::Button("Play Arena Presentation Locally"))
 	{
 		Start_ValtanPatternMasterPreview(
 			pModel, *pSelected, m_eValtanPatternMasterPath);
@@ -1790,16 +1881,28 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 					"Master seek rejected; current admitted pose preserved.";
 			}
 		}
-		ImGui::Text(
-			"Now %s / %s | occurrence %u/%u | wall %u ms",
-			Item.strStageId.c_str(), Item.strSequenceRole.c_str(),
-			Item.iOccurrenceNumber, Item.iOccurrenceCount,
-			Item.iAuthoringWallMs);
-		ImGui::TextDisabled(
-			"%s | source +%u ms, play %u ms, rate %.6g, repeatUntilStageEnd=%s",
-			Item.strClipName.c_str(), Item.iSourceStartMs, Item.iPlayMs,
-			Item.fPlayRate,
-			Item.bRepeatUntilStageEnd ? "true" : "false");
+		if (Item.bSuppressAnimation)
+		{
+			ImGui::Text(
+				"Now %s / %s | animation NONE | wall %u ms",
+				Item.strStageId.c_str(), Item.strSequenceRole.c_str(),
+				Item.iAuthoringWallMs);
+			ImGui::TextDisabled(
+				"Boss pose hold; no additional Valtan animation clip is started.");
+		}
+		else
+		{
+			ImGui::Text(
+				"Now %s / %s | occurrence %u/%u | wall %u ms",
+				Item.strStageId.c_str(), Item.strSequenceRole.c_str(),
+				Item.iOccurrenceNumber, Item.iOccurrenceCount,
+				Item.iAuthoringWallMs);
+			ImGui::TextDisabled(
+				"%s | source +%u ms, play %u ms, rate %.6g, repeatUntilStageEnd=%s",
+				Item.strClipName.c_str(), Item.iSourceStartMs, Item.iPlayMs,
+				Item.fPlayRate,
+				Item.bRepeatUntilStageEnd ? "true" : "false");
+		}
 	}
 	if (!m_strValtanPatternMasterStatus.empty())
 		ImGui::TextWrapped("%s", m_strValtanPatternMasterStatus.c_str());

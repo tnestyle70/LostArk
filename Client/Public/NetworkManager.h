@@ -207,6 +207,14 @@ public:
 		std::uint32_t requestSequence,
 		std::string_view bossPlacementId,
 		std::string_view patternId);
+	/* Debug Boss Tool ordered Flow. The UI supplies one admitted saved
+	   revision; the Server preflights the full slot list and owns every
+	   occurrence after the single reset. */
+	bool Send_ValtanPatternFlowStart(
+		const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message);
+	bool Send_ValtanPatternFlowStopAfterCurrent(
+		const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT&
+			message);
 	/* Debug Balance Tool starts one process-wide revision transaction through
 	   this typed boundary.  The Server remains authoritative for candidate
 	   admission, affected-room staging, and the final room-tick commit. */
@@ -237,6 +245,10 @@ public:
 		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message);
 	bool Try_Consume_ValtanAuditionLifecycle(
 		LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& message);
+	bool Try_Consume_ValtanPatternFlowResult(
+		LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message);
+	bool Try_Consume_ValtanPatternFlowLifecycle(
+		LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE& message);
 
 	bool Try_Consume_ReplicationEvent(
 		Client::CLIENT_REPLICATION_EVENT& event);
@@ -270,6 +282,12 @@ public:
 		LostArk::Shared::VALTAN_DECISION_TRACE_WIRE& outTrace) const;
 	[[nodiscard]] bool Is_PresentationRevisionAvailable(
 		const LostArk::Shared::GameplayDataRevision& revision) const;
+	/* Read-only Debug truth for tools that reload repository presentation JSON.
+	   Availability alone means the world-entry generation exists; this also
+	   proves the current allowlisted source files still match that immutable
+	   world-entry baseline. */
+	[[nodiscard]] bool Is_CurrentPresentationBaselineIntact(
+		std::string& status) const;
 
 
 private:
@@ -360,6 +378,10 @@ private:
 		m_ValtanPatternAuditionByIdResults;
 	std::deque<LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE>
 		m_ValtanAuditionLifecycleEvents;
+	std::deque<LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT>
+		m_ValtanPatternFlowResults;
+	std::deque<LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE>
+		m_ValtanPatternFlowLifecycleEvents;
 	GAMEPLAY_REVISION_CLIENT_STATE m_GameplayRevisionState;
 	VALTAN_DECISION_TRACE_CLIENT_STATE m_ValtanDecisionTraceState;
 	std::uint64_t m_iWorldInboundGeneration = 1u;

@@ -117,8 +117,11 @@ for ($index = 0; $index -lt @($encounter.states).Count; $index++) {
     }
 }
 Add-Current 'Data/Encounters/Valtan/ValtanEncounter.json' $encounterTarget 'patterns.length' @($encounter.patterns).Count
-for ($index = 0; $index -lt @($encounter.patterns).Count; $index++) {
-    $pattern = $encounter.patterns[$index]
+$liveEncounterPatterns = @($encounter.patterns | Where-Object {
+	[string]$_.selectionMode -cne 'AUDITION_ONLY'
+})
+for ($index = 0; $index -lt $liveEncounterPatterns.Count; $index++) {
+    $pattern = $liveEncounterPatterns[$index]
     foreach ($property in $pattern.PSObject.Properties) {
         Add-Current 'Data/Encounters/Valtan/ValtanEncounter.json' "pattern:$($pattern.patternId)" "patterns[$index].$($property.Name)" $property.Value
     }
@@ -200,7 +203,7 @@ if ($receipt.coverage.PSObject.Properties.Name -notcontains `
 }
 $receipt.coverage.bossCombatObjectCount = `
 	@($combatObjectDocument.objects).Count
-$receipt.coverage.encounterPatternCount = @($encounter.patterns).Count
+$receipt.coverage.encounterPatternCount = $liveEncounterPatterns.Count
 $receipt.coverage.fieldEntryCount = $current.Count
 $serialized = $receipt | ConvertTo-Json -Depth 32
 $temporary = "$receiptPath.tmp.$PID"

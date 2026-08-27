@@ -29,11 +29,16 @@
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
+	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h" />
+	<ClInclude Include="..\Public\ValtanPatternFlowService.h" />
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h" />
+	<ClInclude Include="..\Public\ValtanPatternAuthoringEffectDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
+      <ClInclude Include="..\Public\BossTool.h" />
+      <ClInclude Include="..\Public\CameraTool.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\HitAreaWire.h" />
@@ -141,6 +146,8 @@
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
+    <ClInclude Include="..\Public\MapEffectDocument.h" />
+    <ClInclude Include="..\Public\MapEffectPresentationRuntime.h" />
     <ClInclude Include="..\Public\MapLightDocument.h" />
     <ClInclude Include="..\Public\MapLightPresentationRuntime.h" />
     <ClInclude Include="..\Public\MapEditorWorkspaceService.h" />
@@ -180,11 +187,16 @@
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternAuthoringEffectDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
+      <ClCompile Include="..\Private\BossTool.cpp" />
+      <ClCompile Include="..\Private\CameraTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
     <ClCompile Include="..\Private\HitAreaWire.cpp" />
     <ClCompile Include="..\Private\CharacterCatalog.cpp" />
@@ -278,6 +290,8 @@
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
+    <ClCompile Include="..\Private\MapEffectDocument.cpp" />
+    <ClCompile Include="..\Private\MapEffectPresentationRuntime.cpp" />
     <ClCompile Include="..\Private\MapLightDocument.cpp" />
     <ClCompile Include="..\Private\MapLightPresentationRuntime.cpp" />
     <ClCompile Include="..\Private\MapEditorWorkspaceService.cpp" />
@@ -397,6 +411,7 @@
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCombatObjects.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json" />
+	<None Include="..\..\Data\Encounters\Valtan\ValtanBossAuditionFlows.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWallContactActions.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
@@ -415,6 +430,7 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02316.debrisrecipe.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.maplights.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapeffects.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\Editor\ACTIVE.maparea" />
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapset" />
@@ -561,6 +577,13 @@
   <PropertyGroup Label="UserMacros">
     <!-- The project owns runtime deployment. Do not copy DLLs from a developer's vcpkg installation. -->
     <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Keep command-line project builds and Framework.sln builds on one
+         canonical intermediate tree. The VC++ default otherwise inserts the
+         project name only outside a solution, allowing stale LTCG objects to
+         overwrite a freshly linked Client.exe when Visual Studio launches. -->
+    <IntDir>$(ProjectDir)$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
@@ -1059,6 +1082,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.entrance-whirlwind.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.entrance-whirlwind.sweep.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.entrance-whirlwind.windup.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.environment.red-vortex-sky.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.inner.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.outer.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.recovery.effect.json" />
@@ -1122,9 +1146,31 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.rushes.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.dash-charge.active-shield.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.dash-charge.windup-telegraph.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.attack-whirlwind.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.catch-breath.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.charge.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.charge2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.counter.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.front-back-front.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.roar-charge.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.six-pizza-106.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.three.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.trash-catch-fail.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.trash-catch-if.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.trash-catch-success.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.trash.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.warp.portal.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.terrain-destruction-3.semicircle.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.terrain-destruction-9.semicircle.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.windup.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.charge.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.charge2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.front-back-front.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.roar-charge.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.rush.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sky-axe.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.recovery.effect.json" />
@@ -3015,6 +3061,7 @@
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_58700.effectv2bindings.json" />
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_59030.effectv2bindings.json" />
     <None Include="..\..\Data\Effects\V2\TextureSlotUsage.v1.json" />
+    <None Include="..\..\Data\Effects\ValtanPatternAuthoringEffects.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <PropertyGroup>

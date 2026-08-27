@@ -345,6 +345,44 @@ namespace
 				   Its repeated spawns do not open a cross-stage lifetime here. */
 				continue;
 			}
+			if (actionKind->Get_String() == "RELEASE_GRABBED_PLAYERS")
+			{
+				std::string trigger;
+				std::string targetId;
+				std::string releaseMode;
+				uint32_t durationMs = 0u;
+				if (!Is_ExactObject(action,
+						{ "trigger", "kind", "targetId", "releaseMode",
+						  "speedMps", "durationMs" }) ||
+					!Read_String(action, "trigger", false, trigger) ||
+					(trigger != "ENTER" && trigger != "EXIT") ||
+					!Read_String(action, "targetId", false, targetId) ||
+					targetId != "boss.attachment.left-hand" ||
+					!Read_String(action, "releaseMode", false, releaseMode) ||
+					!Is_FiniteNumber(action, "speedMps") ||
+					!Read_Unsigned(action, "durationMs", 5000u, durationMs))
+				{
+					return false;
+				}
+
+				const double speedMps = action.Find("speedMps")->Get_Number();
+				const bool_t isHold = releaseMode == "HOLD" &&
+					0.0 == speedMps && 0u == durationMs;
+				const bool_t isOppositeKnockback =
+					releaseMode == "OPPOSITE_KNOCKBACK" &&
+					speedMps > 0.0 && speedMps <= 50.0 && durationMs > 0u;
+				if ((!isHold && !isOppositeKnockback) || speedMps < 0.0 ||
+					speedMps > 50.0)
+				{
+					return false;
+				}
+
+				const std::string actionKey = trigger + "\n" + targetId;
+				if (!actionKeys.insert(actionKey).second)
+					return false;
+				/* Releasing an attachment is an instantaneous Server command. */
+				continue;
+			}
 
 			std::string trigger;
 			std::string kind;
@@ -381,6 +419,9 @@ namespace
 			else if (kind == "SET_GAMEPLAY_PHASE")
 				validKind = trigger == "ENTER" &&
 					targetId == "boss.phase.gameplay" && 2u == value;
+			else if (kind == "RETARGET_RANDOM_ALIVE")
+				validKind = trigger == "ENTER" &&
+					targetId == "boss.target.pattern" && 1u == value;
 			if (!validKind || (trigger == "ENTER" ? 0u == value : 0u != value))
 				return false;
 
@@ -388,7 +429,8 @@ namespace
 			if (!actionKeys.insert(actionKey).second)
 				return false;
 			if (kind == "SPAWN_COMBAT_OBJECT" ||
-				kind == "SET_GAMEPLAY_PHASE")
+				kind == "SET_GAMEPLAY_PHASE" ||
+				kind == "RETARGET_RANDOM_ALIVE")
 				continue;
 
 			const std::string lifetimeKey = kind + "\n" + targetId;
@@ -583,7 +625,8 @@ bool_t Client::CEncounterPatternReference::Load(
 			!Read_String(entry, "targetPolicy", false, targetPolicy) ||
 			(targetPolicy != "NONE" && targetPolicy != "NEAREST_EACH_TICK" &&
 				targetPolicy != "LOCK_NEAREST_ON_START" &&
-				targetPolicy != "LOCK_RANDOM_ALIVE_ON_START") ||
+				targetPolicy != "LOCK_RANDOM_ALIVE_ON_START" &&
+				targetPolicy != "LOCK_RANDOM_ALIVE_BEHIND_ON_START") ||
 			!Read_String(entry, "aimPolicy", false, aimPolicy) ||
 			(aimPolicy != "NONE" && aimPolicy != "TRACK_TARGET_EACH_TICK" &&
 				aimPolicy != "LOCK_FACING_ON_START" &&
@@ -659,7 +702,9 @@ bool_t Client::CEncounterPatternReference::Load(
 					"hitCount", "hitIntervalMs", "hitDelayMs",
 					"serverDamageProfileId",
 					"pushRangeM", "pushMs", "knockdown", "downMs" },
-					{ "hitOffsetsMs", "motion", "actions", "branches" }))
+					{ "hitOffsetsMs", "motion", "actions", "branches",
+					  "playerResponse", "attachmentSlot", "partDamagePolicy",
+					  "counterProxy" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
 					pattern.patternId;
@@ -696,6 +741,79 @@ bool_t Client::CEncounterPatternReference::Load(
 				outStatus = "Encounter stage field is invalid: " +
 					pattern.patternId;
 				return false;
+			}
+			const DATA_JSON_VALUE* partDamagePolicy =
+				stageEntry.Find("partDamagePolicy");
+			if (nullptr != partDamagePolicy)
+			{
+				if (!partDamagePolicy->Is_String() ||
+					"DESTROY_FIRST_ELIGIBLE" !=
+						partDamagePolicy->Get_String())
+				{
+					outStatus = "Encounter part-damage policy is invalid: " +
+						pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
+				stage.partDamagePolicy = partDamagePolicy->Get_String();
+			}
+			const DATA_JSON_VALUE* counterProxy = stageEntry.Find("counterProxy");
+			if (nullptr != counterProxy)
+			{
+				std::string space;
+				if (!Is_ExactObject(*counterProxy,
+						{ "space", "forwardOffsetM", "rightOffsetM", "radiusM" }) ||
+					!Read_String(*counterProxy, "space", false, space) ||
+					"BOSS_LOCAL" != space ||
+					!Read_Float(*counterProxy, "forwardOffsetM",
+						stage.fCounterProxyForwardOffsetM) ||
+					!Read_Float(*counterProxy, "rightOffsetM",
+						stage.fCounterProxyRightOffsetM) ||
+					!Read_Float(*counterProxy, "radiusM",
+						stage.fCounterProxyRadiusM) ||
+					std::fabs(stage.fCounterProxyForwardOffsetM) > 20.f ||
+					std::fabs(stage.fCounterProxyRightOffsetM) > 20.f ||
+					stage.fCounterProxyRadiusM <= 0.f ||
+					stage.fCounterProxyRadiusM > 20.f)
+				{
+					outStatus = "Encounter counter proxy is invalid: " +
+						pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
+				stage.bHasCounterProxy = true;
+			}
+			const DATA_JSON_VALUE* playerResponse =
+				stageEntry.Find("playerResponse");
+			const DATA_JSON_VALUE* attachmentSlot =
+				stageEntry.Find("attachmentSlot");
+			if ((nullptr == playerResponse) != (nullptr == attachmentSlot))
+			{
+				outStatus = "Encounter capture hit fields are incomplete: " +
+					pattern.patternId + "/" + stage.stageId;
+				return false;
+			}
+			if (nullptr != playerResponse)
+			{
+				uint32_t pushMs = 0u;
+				uint32_t downMs = 0u;
+				const DATA_JSON_VALUE* knockdown = stageEntry.Find("knockdown");
+				if (!playerResponse->Is_String() ||
+					!attachmentSlot->Is_String() ||
+					"CAPTURE" != playerResponse->Get_String() ||
+					"BOSS_LEFT_HAND" != attachmentSlot->Get_String() ||
+					"NONE" == stage.hitShape ||
+					!Is_FiniteNumber(stageEntry, "pushRangeM") ||
+					0.0 != stageEntry.Find("pushRangeM")->Get_Number() ||
+					!Read_Unsigned(stageEntry, "pushMs",
+						MAX_STAGE_DURATION_MS, pushMs) || 0u != pushMs ||
+					!Read_Unsigned(stageEntry, "downMs",
+						MAX_STAGE_DURATION_MS, downMs) || 0u != downMs ||
+					nullptr == knockdown || !knockdown->Is_Boolean() ||
+					knockdown->Get_Boolean())
+				{
+					outStatus = "Encounter capture hit contract is invalid: " +
+						pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
 			}
 			const bool_t hasExplicitHitOffsets = !stage.hitOffsetsMs.empty();
 			const bool_t validExplicitHitSchedule =

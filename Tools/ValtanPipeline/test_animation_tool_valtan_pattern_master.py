@@ -10,9 +10,17 @@ import unittest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CPP_PATH = REPOSITORY_ROOT / "Client/Private/Animation_Tool.cpp"
 HEADER_PATH = REPOSITORY_ROOT / "Client/Public/Animation_Tool.h"
+VALTAN_CPP_PATH = REPOSITORY_ROOT / "Client/Private/Valtan.cpp"
 MASTER_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.pattern.json"
 PRESENTATION_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.presentation.json"
 GAMEPLAY_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.gameplay.json"
+PATTERN_BINDINGS_PATH = (
+    REPOSITORY_ROOT
+    / "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
+)
+PROMOTION_MANIFEST_PATH = (
+    REPOSITORY_ROOT / "Data/Valtan/Valtan.animation-chain-promotions.json"
+)
 
 EXPECTED_PATTERN_ORDER = (
     "VALTAN_WHIRLWIND",
@@ -23,6 +31,32 @@ EXPECTED_PATTERN_ORDER = (
     "VALTAN_FLOOR_WIPE_130",
     "VALTAN_ARENA_BREAK_109",
 )
+
+EXPECTED_PROMOTED_KOREAN_NAMES = {
+    "VALTAN_SIX_PIZZA_106": "중앙이동 후 6방향 공격 후 피자 패턴",
+    "VALTAN_ATTACK_WHIRLWIND": "점프찍기 후 휠윈드",
+    "VALTAN_CHARGE": "모아치기",
+    "VALTAN_ROAR_CHARGE": "사자후 후 위로 모아치기",
+    "VALTAN_THREE": "3연속 내려치기",
+    "VALTAN_TERRAIN_DESTRUCTION": "2페이즈 지형파괴 패턴",
+    "VALTAN_WARP": "워프 패턴",
+    "VALTAN_TRASH": "버러지 패턴",
+    "VALTAN_TRASH_CATCH_SUCCESS": "버러지 패턴 잡기 성공",
+    "VALTAN_TRASH_CATCH_FAIL": "버러지 패턴 잡기 실패",
+    "VALTAN_TRASH_CATCH_IF": "버러지 패턴 잡기 분기",
+    "VALTAN_CATCH_BREATH": "잡아채서 불어 날리기",
+    "VALTAN_COUNTER": "카운터 쳐야 하는 내려치기",
+    "VALTAN_CHARGE_2": "모아치기 2",
+    "VALTAN_STRUGGLING": "3페이즈 전 발악패턴",
+}
+
+EXPECTED_UNCHANGED_SEQUENCE_IDS = {
+    "VALTAN_SEQUENCE_FOUR",
+    "VALTAN_SEQUENCE_RUSH",
+    "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
+    "VALTAN_SEQUENCE_TWOHAND",
+    "VALTAN_SEQUENCE_WHIRLWIND",
+}
 
 
 def function_slice(text: str, signature: str, next_signature: str) -> str:
@@ -36,9 +70,16 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.cpp = CPP_PATH.read_text(encoding="utf-8")
         cls.header = HEADER_PATH.read_text(encoding="utf-8")
+        cls.valtan_cpp = VALTAN_CPP_PATH.read_text(encoding="utf-8")
         cls.master = json.loads(MASTER_PATH.read_text(encoding="utf-8"))
         cls.presentation = json.loads(PRESENTATION_PATH.read_text(encoding="utf-8"))
         cls.gameplay = json.loads(GAMEPLAY_PATH.read_text(encoding="utf-8"))
+        cls.pattern_bindings = json.loads(
+            PATTERN_BINDINGS_PATH.read_text(encoding="utf-8")
+        )
+        cls.promotion_manifest = json.loads(
+            PROMOTION_MANIFEST_PATH.read_text(encoding="utf-8")
+        )
 
     def test_master_contains_the_seven_animation_tool_patterns(self) -> None:
         self.assertEqual("lostark.valtan-pattern-master", self.master["schema"])
@@ -60,6 +101,76 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             "Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json",
         ):
             self.assertIn(token, combined)
+
+    def test_every_product_pattern_and_promoted_audition_is_locally_selectable(self) -> None:
+        gameplay_ids = {pattern["patternId"] for pattern in self.gameplay["patterns"]}
+        presentation_ids = {
+            pattern["patternId"] for pattern in self.presentation["patterns"]
+        }
+        self.assertEqual(gameplay_ids, presentation_ids)
+        self.assertEqual(29, len(gameplay_ids))
+
+        manifest_rows = self.promotion_manifest["patterns"]
+        manifest_ids = [row["patternId"] for row in manifest_rows]
+        manual_ids = [
+            row["patternId"]
+            for row in self.gameplay["decisionModel"]["manualAuditions"]
+        ]
+        expected_manifest_ids = (
+            set(EXPECTED_PROMOTED_KOREAN_NAMES)
+            | EXPECTED_UNCHANGED_SEQUENCE_IDS
+        )
+        self.assertEqual(15, len(EXPECTED_PROMOTED_KOREAN_NAMES))
+        self.assertEqual(5, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
+        self.assertEqual(manifest_ids, manual_ids)
+        self.assertEqual(expected_manifest_ids, set(manifest_ids))
+        self.assertEqual(
+            EXPECTED_UNCHANGED_SEQUENCE_IDS,
+            {
+                pattern_id
+                for pattern_id in manifest_ids
+                if pattern_id.startswith("VALTAN_SEQUENCE_")
+            },
+        )
+        self.assertEqual(
+            EXPECTED_PROMOTED_KOREAN_NAMES,
+            {
+                row["patternId"]: row["displayName"]
+                for row in manifest_rows
+                if row["patternId"] in EXPECTED_PROMOTED_KOREAN_NAMES
+            },
+        )
+        gameplay_names = {
+            row["patternId"]: row["displayName"]
+            for row in self.gameplay["patterns"]
+            if row["patternId"] in EXPECTED_PROMOTED_KOREAN_NAMES
+        }
+        self.assertEqual(EXPECTED_PROMOTED_KOREAN_NAMES, gameplay_names)
+
+        bound_actions = {
+            binding["actionId"] for binding in self.pattern_bindings["bindings"]
+        }
+        product_actions = {
+            stage["actionId"]
+            for pattern in self.presentation["patterns"]
+            for stage in pattern["stages"]
+        }
+        self.assertFalse(product_actions - bound_actions)
+
+        collect = function_slice(
+            self.cpp,
+            "Client::CAnimation_Tool::Collect_ValtanPatternMasterPatterns() const",
+            "bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()",
+        )
+        build = function_slice(
+            self.cpp,
+            "bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(",
+            "bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(",
+        )
+        self.assertIn("AppendProductPresentation", collect)
+        self.assertIn("!Pattern.Stages.empty()", collect)
+        self.assertNotIn("Pattern.bAuthoringMasterManaged &&", collect)
+        self.assertNotIn("!Pattern.bAuthoringMasterManaged", build)
 
     def test_recovered_floor_wipe_and_arena_break_sequences_are_exact(self) -> None:
         patterns = {
@@ -236,15 +347,168 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
         ):
             self.assertIn(token, build)
         for token in (
+            "m_ValtanPatternMasterBoss.lock()",
+            "Boss->Apply_LocalPatternPresentationSample(",
+            "ePatternAction",
+            "Item.strStageKind",
+            "Item.strActionId",
+            "Item.iStageTimelineStartMs",
+            "fStageWallSeconds",
+            "Set_AnimPaused(true)",
+        ):
+            self.assertIn(token, apply_pose)
+
+        shared_sampler = function_slice(
+            self.valtan_cpp,
+            "bool_t CValtan::Apply_PatternPresentationSample(",
+            "bool_t CValtan::Apply_LocalPatternPresentationSample(",
+        )
+        for token in (
+            "m_PatternClipByActionId.find",
+            "Build_PatternTimeline(",
             "CActionPresentationTimeline::Resolve_Sample",
-            "Item.iSourceStartMs",
-            "Item.iPlayMs",
-            "Item.fPlayRate",
-            "Item.bRepeatUntilStageEnd",
+            "Requires_ClipOccurrenceTransition",
+            "Start_Animation(",
+            "Set_AnimationSpeed",
             "Set_AnimTrackPosition",
             "Play_Animation(0.f)",
         ):
-            self.assertIn(token, apply_pose)
+            self.assertIn(token, shared_sampler)
+
+        network_apply = function_slice(
+            self.valtan_cpp,
+            "bool_t CValtan::Apply_NetworkState(",
+            "unique_ptr<CValtan> CValtan::Create(",
+        )
+        local_apply = function_slice(
+            self.valtan_cpp,
+            "bool_t CValtan::Apply_LocalPatternPresentationSample(",
+            "void CValtan::Reset_LocalPatternPresentationSample()",
+        )
+        self.assertIn("Apply_PatternPresentationSample(", network_apply)
+        self.assertIn("Apply_PatternPresentationSample(", local_apply)
+        self.assertNotIn("CActionPresentationTimeline::Resolve_Sample", apply_pose)
+        self.assertIn('"Play Arena Presentation Locally"', self.cpp)
+
+    def test_stage_wall_conversion_matches_the_dash_server_timeline(self) -> None:
+        gameplay_dash = next(
+            pattern
+            for pattern in self.gameplay["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        presentation_dash = next(
+            pattern
+            for pattern in self.presentation["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        gameplay_by_stage = {
+            stage["stageId"]: stage for stage in gameplay_dash["stages"]
+        }
+        presentation_by_stage = {
+            stage["stageId"]: stage for stage in presentation_dash["stages"]
+        }
+
+        normal_stage_ids = ("WINDUP", "CHARGE", "RECOVERY")
+        timeline_ms = 0.0
+        occurrence_starts: dict[tuple[str, int], float] = {}
+        for stage_id in normal_stage_ids:
+            stage_start_ms = timeline_ms
+            animation = presentation_by_stage[stage_id]["animation"]
+            for occurrence_index, occurrence in enumerate(animation["occurrences"]):
+                occurrence_starts[(stage_id, occurrence_index)] = timeline_ms
+                self.assertGreater(occurrence["playMs"], 0)
+                timeline_ms += occurrence["playMs"] / occurrence["playRate"]
+            self.assertAlmostEqual(
+                gameplay_by_stage[stage_id]["durationMs"],
+                timeline_ms - stage_start_ms,
+                delta=0.1,
+            )
+
+        self.assertAlmostEqual(1200.0, occurrence_starts[("WINDUP", 2)])
+        self.assertAlmostEqual(3650.0, occurrence_starts[("CHARGE", 0)])
+        self.assertAlmostEqual(5150.0, occurrence_starts[("RECOVERY", 0)])
+        self.assertAlmostEqual(6050.0, timeline_ms, delta=0.1)
+
+        # Apply_ValtanPatternMasterPose converts occurrence-local wall time to
+        # the same stage-age clock consumed by CValtan's Product sampler.
+        third_windup_stage_age_seconds = (1200.0 - 0.0) * 0.001 + 0.604
+        self.assertAlmostEqual(1.804, third_windup_stage_age_seconds)
+
+    def test_arena_fallback_mapping_and_exact_preview_cleanup_are_explicit(self) -> None:
+        mapper = function_slice(
+            self.cpp,
+            "bool_t Try_ResolveValtanArenaPatternAction(",
+            "void Skip_Space(",
+        )
+        for token in (
+            '"WINDUP" == strStageKind',
+            '"ACTIVE" == strStageKind || "GROGGY" == strStageKind',
+            '"RECOVERY" == strStageKind || "PART_BREAK" == strStageKind',
+            "WORLD_ENTITY_ACTION::PATTERN_WINDUP",
+            "WORLD_ENTITY_ACTION::PATTERN_ACTIVE",
+            "WORLD_ENTITY_ACTION::PATTERN_RECOVERY",
+        ):
+            self.assertIn(token, mapper)
+        self.assertEqual(
+            {"WINDUP", "ACTIVE", "RECOVERY", "GROGGY", "PART_BREAK"},
+            {
+                stage["stageKind"]
+                for pattern in self.gameplay["patterns"]
+                for stage in pattern["stages"]
+            },
+        )
+
+        fallback_resolver = function_slice(
+            self.valtan_cpp,
+            "const std::string* Resolve_ValtanPresentationClip(",
+            "}\n\n#ifdef _DEBUG",
+        )
+        for token in (
+            "presentationClips.patternWindup",
+            "presentationClips.patternActive",
+            "presentationClips.patternRecovery",
+        ):
+            self.assertIn(token, fallback_resolver)
+
+        network_apply = function_slice(
+            self.valtan_cpp,
+            "bool_t CValtan::Apply_NetworkState(",
+            "unique_ptr<CValtan> CValtan::Create(",
+        )
+        local_apply = function_slice(
+            self.valtan_cpp,
+            "bool_t CValtan::Apply_LocalPatternPresentationSample(",
+            "void CValtan::Reset_LocalPatternPresentationSample()",
+        )
+        self.assertIn("Resolve_ValtanPresentationClip(*pActor, action)", network_apply)
+        self.assertIn(
+            "Resolve_ValtanPresentationClip(*pActor, patternAction)",
+            local_apply,
+        )
+
+        update = function_slice(
+            self.cpp,
+            "void Client::CAnimation_Tool::Update(",
+            "void Client::CAnimation_Tool::Render(",
+        )
+        reset = function_slice(
+            self.cpp,
+            "void Client::CAnimation_Tool::Reset_ValtanPatternMasterPreviewState(",
+            "void Client::CAnimation_Tool::Update_ValtanPatternMasterHitAreaPreview()",
+        )
+        self.assertIn("m_ValtanPatternMasterBoss.lock()", update)
+        self.assertIn("Stop_ValtanPatternMasterPreview(", update)
+        self.assertNotIn("CAnimationTargetService::Resolve_Boss()", reset)
+        self.assertIn("m_ValtanPatternMasterBoss.lock()", reset)
+        self.assertIn("PreviewBoss->Reset_LocalPatternPresentationSample()", reset)
+        self.assertIn("PreviewModel->Set_AnimPaused(false)", reset)
+
+        local_reset = function_slice(
+            self.valtan_cpp,
+            "void CValtan::Reset_LocalPatternPresentationSample()",
+            "void CValtan::Load_PatternEffectCues()",
+        )
+        self.assertIn("Set_AnimPaused(false)", local_reset)
 
     def test_dash_paths_come_from_the_admitted_branch_graph(self) -> None:
         build = function_slice(

@@ -36,6 +36,8 @@
 #ifdef _DEBUG
 #include "Animation_Tool.h"
 #include "BalanceTool.h"
+#include "BossTool.h"
+#include "CameraTool.h"
 #include "CharacterPreviewPanel.h"
 #include "Effect_Tool.h"
 #include "Effect_Tool_V2.h"
@@ -45,6 +47,7 @@
 #include "NetworkPlayerCommandSink.h"
 #include "ProfilerCaptureIO.h"
 #include "ValtanPatternAuditionService.h"
+#include "ValtanPatternFlowService.h"
 #endif
 
 #include <algorithm>
@@ -466,9 +469,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CNetworkManager::Get().Update();
 #ifdef _DEBUG
 	/* PLAY_PATTERN_ID has one process-wide verdict/lifecycle queue shared by
-	   Balance Tool and Effect Tool. Drain it once per frame here, independent
+	   Balance, Effect, and Boss Tools. Drain it once per frame here, independent
 	   of which panel is visible or which tree row is expanded. */
 	CValtanPatternAuditionService::Get().Update();
+	CValtanPatternFlowService::Get().Update();
 #endif
 	CGameInstance::Get().Update_Engine(fTimeDelta);
 	CEffectPresentationService::Advance_ProductCuePreparation(
@@ -489,6 +493,28 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	if (nullptr != m_pEffectTool)
 		m_pEffectTool->Update(fTimeDelta);
+	if (nullptr != m_pBossTool)
+	{
+		m_pBossTool->Update(
+			m_bDeveloperToolsVisible &&
+			DEBUG_TOOL::BOSS == m_eActiveDebugTool);
+		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
+		if (m_pBossTool->Consume_CameraToolOpenRequest(cameraRequest))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) &&
+				nullptr != m_pCameraTool)
+			{
+				(void)m_pCameraTool->Open_Cue(cameraRequest);
+			}
+		}
+	}
+	if (nullptr != m_pCameraTool)
+	{
+		m_pCameraTool->Update(
+			fTimeDelta,
+			m_bDeveloperToolsVisible &&
+			DEBUG_TOOL::CAMERA == m_eActiveDebugTool);
+	}
 #endif
 
 	// 현재 Level의 Update가 끝난 뒤에만 기존 Level을 파괴한다.
@@ -611,6 +637,14 @@ HRESULT CMainApp::Render()
 			case DEBUG_TOOL::BALANCE:
 				if (nullptr != m_pBalanceTool)
 					m_pBalanceTool->Render();
+				break;
+			case DEBUG_TOOL::BOSS:
+				if (nullptr != m_pBossTool)
+					m_pBossTool->Render();
+				break;
+			case DEBUG_TOOL::CAMERA:
+				if (nullptr != m_pCameraTool)
+					m_pCameraTool->Render();
 				break;
 			default:
 				break;
@@ -3296,6 +3330,10 @@ void CMainApp::Apply_LevelRequest()
 			"[MainApp] Target rendering profile activation failed: " +
 			profileStatus + "\n").c_str());
 	}
+#ifdef _DEBUG
+	if (profileActivated && nullptr != m_pCameraTool)
+		m_pCameraTool->On_LevelChanged();
+#endif
 	const bool_t levelChanged = profileActivated &&
 		SUCCEEDED(CGameInstance::Get().Change_Level(
 			ETOUI(request.eTargetLevel), move(nextLevel)));
@@ -3387,6 +3425,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
 	if (nullptr != m_pMapTool && DEBUG_TOOL::MAP != eTool)
 		m_pMapTool->SetOpen(false);
+	if (nullptr != m_pCameraTool && DEBUG_TOOL::CAMERA != eTool)
+		m_pCameraTool->Deactivate();
 
 	switch (eTool)
 	{
@@ -3442,8 +3482,19 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		break;
 	case DEBUG_TOOL::BALANCE:
 		if (nullptr == m_pBalanceTool)
-			m_pBalanceTool = make_unique<CBalanceTool>(
+			m_pBalanceTool = make_unique<CBalanceTool>();
+		m_pBalanceTool->Open();
+		break;
+	case DEBUG_TOOL::BOSS:
+		if (nullptr == m_pBossTool)
+			m_pBossTool = make_unique<CBossTool>(
 				make_shared<CNetworkPlayerCommandSink>());
+		m_pBossTool->Open();
+		break;
+	case DEBUG_TOOL::CAMERA:
+		if (nullptr == m_pCameraTool)
+			m_pCameraTool = make_unique<CCameraTool>();
+		m_pCameraTool->Open();
 		break;
 	default:
 		return E_INVALIDARG;
@@ -3489,15 +3540,20 @@ void CMainApp::RenderDeveloperTools()
 		ImGui::EndDisabled();
 	};
 
-	toolButton("Map Tool", DEBUG_TOOL::MAP, isMapEditorWorkspace);
+	toolButton("Boss Tool", DEBUG_TOOL::BOSS, true);
+	ImGui::SameLine();
+	toolButton("Camera Tool", DEBUG_TOOL::CAMERA, true);
 	ImGui::SameLine();
 	toolButton(
 		"Animation Tool",
 		DEBUG_TOOL::ANIMATION,
 		true);
+	ImGui::SameLine();
 	toolButton("Effect Tool", DEBUG_TOOL::EFFECT, true);
 	ImGui::SameLine();
 	toolButton("Effect Tool v2", DEBUG_TOOL::EFFECT_V2, true);
+
+	toolButton("Map Tool", DEBUG_TOOL::MAP, isMapEditorWorkspace);
 	ImGui::SameLine();
 	toolButton("Rendering Workbench", DEBUG_TOOL::RENDERING, true);
 	ImGui::SameLine();
@@ -4127,6 +4183,8 @@ void CMainApp::Free()
 	m_pCharacterPreviewPanel.reset();
 	m_pHUDLayoutTool.reset();
 	m_pBalanceTool.reset();
+	m_pBossTool.reset();
+	m_pCameraTool.reset();
 	m_pMapTool.reset();
 #endif
 

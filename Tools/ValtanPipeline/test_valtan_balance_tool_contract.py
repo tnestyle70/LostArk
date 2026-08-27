@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static admission for the F1 Valtan Balance Tool safety/playback seam."""
+"""Static admission for Balance authoring and the shared Valtan replay seam."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 AUDITION_CPP = ROOT / "Client/Private/ValtanPatternAuditionService.cpp"
 AUDITION_H = ROOT / "Client/Public/ValtanPatternAuditionService.h"
 EFFECT_CPP = ROOT / "Client/Private/Effect_Tool.cpp"
+BOSS_CPP = ROOT / "Client/Private/BossTool.cpp"
 PROJECT = ROOT / "Client/Default/Client.vcxproj"
 FILTERS = ROOT / "Client/Default/Client.vcxproj.filters"
 NETWORK_CPP = ROOT / "Client/Private/NetworkManager.cpp"
@@ -47,6 +48,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         cls.audition_cpp = AUDITION_CPP.read_text(encoding="utf-8")
         cls.audition_h = AUDITION_H.read_text(encoding="utf-8")
         cls.effect_cpp = EFFECT_CPP.read_text(encoding="utf-8")
+        cls.boss_cpp = BOSS_CPP.read_text(encoding="utf-8")
         cls.project = PROJECT.read_text(encoding="utf-8")
         cls.filters = FILTERS.read_text(encoding="utf-8")
         cls.network_cpp = NETWORK_CPP.read_text(encoding="utf-8")
@@ -56,6 +58,42 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         cls.server_project = SERVER_PROJECT.read_text(encoding="utf-8")
         cls.gameplay_publisher = GAMEPLAY_PUBLISHER.read_text(encoding="utf-8")
         cls.valtan_projector = VALTAN_PROJECTOR.read_text(encoding="utf-8")
+
+    def test_balance_tool_selection_reopens_and_focuses_existing_window(self) -> None:
+        open_body = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::Open()",
+        )
+        self.assertIn("m_open = true", open_body)
+        self.assertIn("m_focusPending = true", open_body)
+        render_body = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::Render()",
+        )
+        collapsed = render_body.index("ImGui::SetNextWindowCollapsed(false")
+        focused = render_body.index("ImGui::SetNextWindowFocus()")
+        begin = render_body.index('ImGui::Begin("LostArk Balance Tool"')
+        self.assertLess(collapsed, begin)
+        self.assertLess(focused, begin)
+        ensure_body = function_body(
+            self.main_app_cpp,
+            "HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)",
+        )
+        self.assertIn("m_pBalanceTool->Open();", ensure_body)
+
+    def test_valtan_revive_restores_immediate_boss_target_admission(self) -> None:
+        self.assertNotIn("Request_RevivePlayer", self.balance_cpp)
+        self.assertIn('ImGui::Button("Revive Player")', self.boss_cpp)
+        self.assertIn("Request_RevivePlayer", self.boss_cpp)
+        revive_body = function_body(
+            self.server_game_room_cpp,
+            "void LostArk::Server::CGameRoom::Handle_RevivePlayer(",
+        )
+        self.assertIn("player.isCombatReady = true", revive_body)
+        self.assertLess(
+            revive_body.index("player.isCombatReady = true"),
+            revive_body.index("m_ServerTriggerSystem.Remove_Player"),
+        )
 
     def test_generated_encounter_v4_is_read_only(self) -> None:
         self.assertIn('encounterFormatVersion != 4u', self.balance_cpp)
@@ -122,7 +160,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             "automatic selection disabled",
             "AUDITION_ONLY keeps selection, repeat, and target range read-only",
             "locked to the promoted animation occurrence wall-clock",
-            'ImGui::Button("Play Server Pattern")',
+            "Server replay is available in Boss Tool and Effect Tool; Repeat and Revive remain in Boss Tool",
             'EditFloat("Hit outer radius m"',
             "Pattern Presentation references (read-only)",
         ):
@@ -184,12 +222,17 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn('phasePolicyKind == "AUTHORED_PATTERN_EVENT"', self.balance_cpp)
         self.assertNotIn("boss.phaseTwoHpPercent", self.balance_cpp)
 
-    def test_single_audition_consumer_owns_the_result_queue(self) -> None:
+    def test_single_audition_service_owns_queue_for_two_ui_submitters(self) -> None:
         self.assertIn("class CValtanPatternAuditionService", self.audition_h)
         self.assertIn("Try_Consume_ValtanPatternAuditionByIdResult", self.audition_cpp)
-        self.assertIn('"Balance Tool", "boss.valtan.center"', self.balance_cpp)
-        self.assertIn('"Effect Tool", pBossPlacementId', self.effect_cpp)
-        self.assertIn('ImGui::Button("Play Server Pattern")', self.balance_cpp)
+        self.assertIn('"Boss Tool"', self.boss_cpp)
+        self.assertIn("CValtanPatternAuditionService::Get().Submit", self.boss_cpp)
+        self.assertIn('"Effect Tool"', self.effect_cpp)
+        self.assertIn("CValtanPatternAuditionService::Get().Submit", self.effect_cpp)
+        self.assertNotIn("CValtanPatternAuditionService", self.balance_cpp)
+        self.assertNotIn("Request_RevivePlayer", self.balance_cpp)
+        self.assertNotIn("Request_RevivePlayer", self.effect_cpp)
+        self.assertNotIn("Try_Consume_ValtanPatternAuditionByIdResult", self.effect_cpp)
         self.assertNotIn("m_PendingValtanServerPatternRequest", self.effect_cpp)
         for state in ("REQUEST_PENDING", "QUEUED", "ACTIVE", "COMPLETED", "ABORTED"):
             self.assertIn(state, self.audition_h)

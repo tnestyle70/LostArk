@@ -1208,16 +1208,30 @@ foreach ($pattern in @($master.patterns)) {
         }
     }
     if ($null -ne $pattern.serverMotion) {
+		$orderedStages = @($pattern.stages)
+		$entryStages = @($orderedStages | Where-Object {
+			[string]$_.actionId -ceq [string]$pattern.entryActionId
+		})
         $travelStages = @(
             Get-PatternStage $pattern ([string]$pattern.serverMotion.travelStageId)
         )
-        if ($travelStages.Count -ne 1 -or
-            [string]$pattern.serverMotion.travelStageId -ceq 'TAKEOFF') {
-            throw "pattern $patternId serverMotion.travelStageId references a missing stage."
+		$entryStageIndex = if ($entryStages.Count -eq 1) {
+			[Array]::IndexOf($orderedStages, $entryStages[0])
+		}
+		else { -1 }
+		$travelStageIndex = if ($travelStages.Count -eq 1) {
+			[Array]::IndexOf($orderedStages, $travelStages[0])
+		}
+		else { -1 }
+		if ($entryStages.Count -ne 1 -or $entryStageIndex -ne 0) {
+			throw "pattern $patternId entryActionId must own the first ordered serverMotion stage."
+		}
+		if ($travelStages.Count -ne 1 -or
+			$travelStageIndex -le $entryStageIndex) {
+			throw "pattern $patternId serverMotion travel stage must follow the entry stage."
         }
-        $takeoffStage = @($pattern.stages)[0]
-        if ([string]$takeoffStage.stageId -cne 'TAKEOFF' -or
-            [int]$pattern.serverMotion.takeoffStartMs -ge
+		$takeoffStage = $entryStages[0]
+        if ([int]$pattern.serverMotion.takeoffStartMs -ge
                 [int]$pattern.serverMotion.takeoffEndMs -or
             [int]$pattern.serverMotion.takeoffEndMs -gt [int]$takeoffStage.durationMs -or
             [int]$pattern.serverMotion.travelStartMs -ge

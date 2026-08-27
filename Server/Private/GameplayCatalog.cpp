@@ -288,6 +288,34 @@ namespace
 		return true;
 	}
 
+	bool ParseBossPatternPlayerResponse(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_PLAYER_RESPONSE& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_PLAYER_RESPONSE;
+		if ("DAMAGE" == value)
+			output = BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE;
+		else if ("CAPTURE" == value)
+			output = BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParsePlayerAttachmentSlot(
+		const std::string_view value,
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT& output)
+	{
+		using LostArk::Shared::PLAYER_ATTACHMENT_SLOT;
+		if ("NONE" == value)
+			output = PLAYER_ATTACHMENT_SLOT::NONE;
+		else if ("BOSS_LEFT_HAND" == value)
+			output = PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND;
+		else
+			return false;
+		return true;
+	}
+
 	bool ParseBossPatternStageKind(
 		const std::string_view value,
 		LostArk::Server::BOSS_PATTERN_STAGE_KIND& output)
@@ -398,6 +426,24 @@ namespace
 			output = BOSS_PATTERN_TARGET_POLICY::LOCK_NEAREST_ON_START;
 		else if ("LOCK_RANDOM_ALIVE_ON_START" == value)
 			output = BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_ON_START;
+		else if ("LOCK_RANDOM_ALIVE_BEHIND_ON_START" == value)
+			output =
+				BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_BEHIND_ON_START;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseBossPatternPartDamagePolicy(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_PART_DAMAGE_POLICY& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_PART_DAMAGE_POLICY;
+		if ("NORMAL" == value)
+			output = BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL;
+		else if ("DESTROY_FIRST_ELIGIBLE" == value)
+			output =
+				BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE;
 		else
 			return false;
 		return true;
@@ -476,6 +522,26 @@ namespace
 			output = BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE;
 		else if ("SPAWN_COMBAT_OBJECT" == value)
 			output = BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT;
+		else if ("RETARGET_RANDOM_ALIVE" == value)
+			output = BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE;
+		else if ("RELEASE_GRABBED_PLAYERS" == value)
+			output = BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseBossGrabbedReleaseMode(
+		const std::string_view value,
+		LostArk::Server::BOSS_GRABBED_RELEASE_MODE& output)
+	{
+		using LostArk::Server::BOSS_GRABBED_RELEASE_MODE;
+		if ("NONE" == value)
+			output = BOSS_GRABBED_RELEASE_MODE::NONE;
+		else if ("HOLD" == value)
+			output = BOSS_GRABBED_RELEASE_MODE::HOLD;
+		else if ("OPPOSITE_KNOCKBACK" == value)
+			output = BOSS_GRABBED_RELEASE_MODE::OPPOSITE_KNOCKBACK;
 		else
 			return false;
 		return true;
@@ -486,12 +552,35 @@ namespace
 		const LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND kind,
 		const std::string_view targetId,
 		const std::uint32_t value,
-		const std::uint32_t durationMs)
+		const std::uint32_t durationMs,
+		const LostArk::Server::BOSS_GRABBED_RELEASE_MODE releaseMode,
+		const float releaseSpeedMps)
 	{
 		using LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND;
 		using LostArk::Server::BOSS_PATTERN_STAGE_ACTION_TRIGGER;
-		if (0u != durationMs)
+		using LostArk::Server::BOSS_GRABBED_RELEASE_MODE;
+		if (!std::isfinite(releaseSpeedMps) || releaseSpeedMps < 0.f ||
+			releaseSpeedMps > 50.f)
 			return false;
+		if (BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS == kind)
+		{
+			if ("boss.attachment.left-hand" != targetId || 0u != value)
+				return false;
+			if (BOSS_GRABBED_RELEASE_MODE::HOLD == releaseMode)
+				return 0.f == releaseSpeedMps && 0u == durationMs;
+			return BOSS_GRABBED_RELEASE_MODE::OPPOSITE_KNOCKBACK == releaseMode &&
+				releaseSpeedMps > 0.f && durationMs > 0u && durationMs <= 5000u;
+		}
+		if (BOSS_GRABBED_RELEASE_MODE::NONE != releaseMode ||
+			0.f != releaseSpeedMps || 0u != durationMs)
+		{
+			return false;
+		}
+		if (BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE == kind)
+		{
+			return BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
+				"boss.target.pattern" == targetId && 1u == value;
+		}
 		const bool isSet = BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger;
 		if ((isSet && 0u == value) || (!isSet && 0u != value))
 			return false;
@@ -513,6 +602,9 @@ namespace
 			return isSet && 1u == value && IsStableId(targetId);
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY:
 			return false;
+		case BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE:
+		case BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS:
+			return false;
 		}
 		return false;
 	}
@@ -525,7 +617,11 @@ namespace
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
 				SPAWN_COMBAT_OBJECT_VOLLEY != kind &&
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
-				SET_GAMEPLAY_PHASE != kind;
+				SET_GAMEPLAY_PHASE != kind &&
+			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
+				RETARGET_RANDOM_ALIVE != kind &&
+			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
+				RELEASE_GRABBED_PLAYERS != kind;
 	}
 
 	bool ParseBossPhasePolicyKind(
@@ -952,6 +1048,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	using BOSS_COMBAT_OBJECT_MAP = decltype(m_BossCombatObjects);
 	using INTRO_MAP = decltype(m_IntroPatternIdByEncounter);
 	using ROTATION_MAP = decltype(m_BossPatternRotations);
+	using SEQUENCE_MAP = decltype(m_BossPatternSequences);
 	using TIMELINE_MAP = decltype(m_ValtanTimelines);
 	using PLAYER_MAP = decltype(m_Players);
 	using DAMAGE_MAP = decltype(m_DamageRatePercentByProfileId);
@@ -964,6 +1061,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		BOSS_COMBAT_OBJECT_MAP& bossCombatObjects;
 		INTRO_MAP& intros;
 		ROTATION_MAP& rotations;
+		SEQUENCE_MAP& sequences;
 		TIMELINE_MAP& timelines;
 		PLAYER_MAP& players;
 		DAMAGE_MAP& damages;
@@ -974,6 +1072,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		BOSS_COMBAT_OBJECT_MAP previousBossCombatObjects;
 		INTRO_MAP previousIntros;
 		ROTATION_MAP previousRotations;
+		SEQUENCE_MAP previousSequences;
 		TIMELINE_MAP previousTimelines;
 		PLAYER_MAP previousPlayers;
 		DAMAGE_MAP previousDamages;
@@ -987,6 +1086,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			BOSS_COMBAT_OBJECT_MAP& bossCombatObjectTarget,
 			INTRO_MAP& introTarget,
 			ROTATION_MAP& rotationTarget,
+			SEQUENCE_MAP& sequenceTarget,
 			TIMELINE_MAP& timelineTarget,
 			PLAYER_MAP& playerTarget,
 			DAMAGE_MAP& damageTarget)
@@ -997,6 +1097,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			, bossCombatObjects(bossCombatObjectTarget)
 			, intros(introTarget)
 			, rotations(rotationTarget)
+			, sequences(sequenceTarget)
 			, timelines(timelineTarget)
 			, players(playerTarget)
 			, damages(damageTarget)
@@ -1007,6 +1108,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			, previousBossCombatObjects(std::move(bossCombatObjectTarget))
 			, previousIntros(std::move(introTarget))
 			, previousRotations(std::move(rotationTarget))
+			, previousSequences(std::move(sequenceTarget))
 			, previousTimelines(std::move(timelineTarget))
 			, previousPlayers(std::move(playerTarget))
 			, previousDamages(std::move(damageTarget))
@@ -1024,6 +1126,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			bossCombatObjects = std::move(previousBossCombatObjects);
 			intros = std::move(previousIntros);
 			rotations = std::move(previousRotations);
+			sequences = std::move(previousSequences);
 			timelines = std::move(previousTimelines);
 			players = std::move(previousPlayers);
 			damages = std::move(previousDamages);
@@ -1032,6 +1135,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	LOAD_ROLLBACK rollback{
 		m_Skills, m_Bosses, m_BossParts, m_BossPatterns, m_BossCombatObjects,
 		m_IntroPatternIdByEncounter, m_BossPatternRotations,
+		m_BossPatternSequences,
 		m_ValtanTimelines, m_Players,
 		m_DamageRatePercentByProfileId };
 	m_Skills.clear();
@@ -1041,6 +1145,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	m_BossCombatObjects.clear();
 	m_IntroPatternIdByEncounter.clear();
 	m_BossPatternRotations.clear();
+	m_BossPatternSequences.clear();
 	m_ValtanTimelines.clear();
 	m_Players.clear();
 	m_DamageRatePercentByProfileId.clear();
@@ -1095,6 +1200,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillCombatTraitOwners;
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillTargetOwners;
 	std::unordered_set<std::string> patternPolicyOwners;
+	std::unordered_set<std::string> patternStagePartDamageOwners;
+	std::unordered_set<std::string> patternStageCounterProxyOwners;
 	for (std::uint32_t row = 0; row < rowCount; ++row)
 	{
 		if (!std::getline(input, line))
@@ -1856,13 +1963,18 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				BOSS_PATTERN_AIM_POLICY::TRACK_TARGET_EACH_TICK == aimPolicy;
 			const bool targetLocks =
 				BOSS_PATTERN_TARGET_POLICY::LOCK_NEAREST_ON_START == targetPolicy ||
-				BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_ON_START == targetPolicy;
+				BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_ON_START == targetPolicy ||
+				BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_BEHIND_ON_START ==
+					targetPolicy;
 			const bool aimLocks =
 				BOSS_PATTERN_AIM_POLICY::LOCK_FACING_ON_START == aimPolicy;
+			const bool policyIsCoherent =
+				(targetNone && aimNeedsNoTarget) ||
+				(targetTracks && aimTracks) ||
+				(targetLocks && (aimLocks || aimTracks));
 			if (ownerMap->second.end() == owner ||
 				!patternPolicyOwners.insert(ownerKey).second ||
-				targetNone != aimNeedsNoTarget || targetTracks != aimTracks ||
-				targetLocks != aimLocks)
+				!policyIsCoherent)
 			{
 				m_strStatus =
 					"Boss pattern policy has no owner, is duplicated, or is incoherent";
@@ -2003,7 +2115,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			BOSS_PATTERN_STAGE_DEFINITION stage{};
 			std::uint32_t stageIndex = 0u;
 			std::uint32_t knockdownFlag = 0u;
-			if (22u != fields.size() || !IsStableId(fields[1]) ||
+			const bool hasPlayerResponseFields = 24u == fields.size();
+			if ((22u != fields.size() && !hasPlayerResponseFields) ||
+				!IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				!ParseNumber(fields[3], stageIndex) ||
 				!IsStableId(fields[4]) || !IsStableId(fields[5]) ||
@@ -2023,6 +2137,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				!ParseNumber(fields[19], stage.iPushMs) ||
 				!ParseNumber(fields[20], knockdownFlag) ||
 				!ParseNumber(fields[21], stage.iDownMs) ||
+				(hasPlayerResponseFields &&
+				 (!ParseBossPatternPlayerResponse(
+					fields[22], stage.ePlayerResponse) ||
+				  !ParsePlayerAttachmentSlot(fields[23], stage.eAttachmentSlot))) ||
 				0u == stage.iDurationMs ||
 				(BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape &&
 					0u != stage.iHitDelayMs) ||
@@ -2038,7 +2156,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				(0.f != stage.fPushRangeM && 0u == stage.iPushMs) ||
 				(0.f == stage.fPushRangeM && 0u != stage.iPushMs) ||
 				(1u == knockdownFlag && 0u == stage.iDownMs) ||
-				(0u == knockdownFlag && 0u != stage.iDownMs))
+				(0u == knockdownFlag && 0u != stage.iDownMs) ||
+				(BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE == stage.ePlayerResponse &&
+				 LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE !=
+					stage.eAttachmentSlot) ||
+				(BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE == stage.ePlayerResponse &&
+				 (LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND !=
+					stage.eAttachmentSlot ||
+				  BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape ||
+				  0.f != stage.fPushRangeM || 0u != stage.iPushMs ||
+				  0u != knockdownFlag || 0u != stage.iDownMs)))
 			{
 				m_strStatus = "Boss pattern stage row is invalid";
 				return false;
@@ -2110,6 +2237,104 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			stage->HitOffsetsMs.push_back(hitOffsetMs);
+		}
+		else if (!fields.empty() && "PATTERNSTAGEPARTDAMAGE" == fields[0])
+		{
+			BOSS_PATTERN_PART_DAMAGE_POLICY policy =
+				BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL;
+			if (5u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseBossPatternPartDamagePolicy(fields[4], policy))
+			{
+				m_strStatus =
+					"Boss pattern stage part-damage row is invalid";
+				return false;
+			}
+			const std::string ownerKey = std::string(fields[1]) + "\n" +
+				std::string(fields[2]) + "\n" + std::string(fields[3]);
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap ||
+				!patternStagePartDamageOwners.insert(ownerKey).second)
+			{
+				m_strStatus =
+					"Boss pattern stage part-damage owner is missing or duplicated";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner)
+			{
+				m_strStatus =
+					"Boss pattern stage part-damage has no pattern owner";
+				return false;
+			}
+			const auto stage = std::find_if(
+				owner->Stages.begin(), owner->Stages.end(),
+				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+				{ return candidate.strActionId == fields[3]; });
+			if (owner->Stages.end() == stage)
+			{
+				m_strStatus =
+					"Boss pattern stage part-damage has no stage owner";
+				return false;
+			}
+			stage->ePartDamagePolicy = policy;
+		}
+		else if (!fields.empty() && "PATTERNSTAGECOUNTERPROXY" == fields[0])
+		{
+			float forwardOffsetM = 0.f;
+			float rightOffsetM = 0.f;
+			float radiusM = 0.f;
+			if (7u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], forwardOffsetM) ||
+				!ParseNumber(fields[5], rightOffsetM) ||
+				!ParseNumber(fields[6], radiusM) ||
+				!std::isfinite(forwardOffsetM) ||
+				!std::isfinite(rightOffsetM) || !std::isfinite(radiusM) ||
+				std::fabs(forwardOffsetM) > 20.f ||
+				std::fabs(rightOffsetM) > 20.f ||
+				radiusM <= 0.f || radiusM > 20.f)
+			{
+				m_strStatus = "Boss pattern stage counter-proxy row is invalid";
+				return false;
+			}
+			const std::string ownerKey = std::string(fields[1]) + "\n" +
+				std::string(fields[2]) + "\n" + std::string(fields[3]);
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap ||
+				!patternStageCounterProxyOwners.insert(ownerKey).second)
+			{
+				m_strStatus =
+					"Boss pattern stage counter-proxy owner is missing or duplicated";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner)
+			{
+				m_strStatus =
+					"Boss pattern stage counter-proxy has no pattern owner";
+				return false;
+			}
+			const auto stage = std::find_if(
+				owner->Stages.begin(), owner->Stages.end(),
+				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+				{ return candidate.strActionId == fields[3]; });
+			if (owner->Stages.end() == stage || stage->bHasCounterProxy)
+			{
+				m_strStatus =
+					"Boss pattern stage counter-proxy has no stage owner or is duplicated";
+				return false;
+			}
+			stage->bHasCounterProxy = true;
+			stage->fCounterProxyForwardOffsetM = forwardOffsetM;
+			stage->fCounterProxyRightOffsetM = rightOffsetM;
+			stage->fCounterProxyRadiusM = radiusM;
 		}
 		/* Sorted after PATTERN and ahead of its own steps, so the span opens an
 		empty list the step rows then fill in order. */
@@ -2323,11 +2548,77 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			rotation->Window.iToHealthBar = toBar;
 			rotation->Window.iExpectedCandidateCount = candidateCount;
 		}
+		else if (!fields.empty() && "PATTERNSEQUENCE" == fields[0])
+		{
+			std::uint32_t interStepPursuitMs = 0u;
+			std::uint32_t stepCount = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) ||
+				"ORDERED_ONCE_THEN_IDLE" != fields[3] ||
+				!ParseNumber(fields[4], interStepPursuitMs) ||
+				interStepPursuitMs < 100u || interStepPursuitMs > 10000u ||
+				!ParseNumber(fields[5], stepCount) ||
+				0u == stepCount || stepCount > 32u ||
+				m_BossPatternSequences.contains(std::string(fields[1])))
+			{
+				m_strStatus = "Boss pattern sequence row is invalid or duplicated";
+				return false;
+			}
+			BOSS_PATTERN_SEQUENCE_DEFINITION sequence{};
+			sequence.strEncounterId = fields[1];
+			sequence.strSequenceId = fields[2];
+			sequence.eMode =
+				BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE;
+			sequence.iInterStepPursuitMs = interStepPursuitMs;
+			sequence.iInterStepPursuitTicks = static_cast<std::uint32_t>(
+				(static_cast<std::uint64_t>(interStepPursuitMs) * 30u + 999u) /
+				1000u);
+			sequence.iExpectedStepCount = stepCount;
+			m_BossPatternSequences.emplace(
+				sequence.strEncounterId, std::move(sequence));
+		}
+		else if (!fields.empty() && "PATTERNSEQUENCESTEP" == fields[0])
+		{
+			std::uint32_t stepIndex = 0u;
+			if (5u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], stepIndex) || !IsStableId(fields[4]))
+			{
+				m_strStatus = "Boss pattern sequence step row is invalid";
+				return false;
+			}
+			const auto sequence =
+				m_BossPatternSequences.find(std::string(fields[1]));
+			const auto patternMap = m_BossPatterns.find(std::string(fields[1]));
+			const bool hasPattern = patternMap != m_BossPatterns.end() &&
+				patternMap->second.end() != std::find_if(
+					patternMap->second.begin(), patternMap->second.end(),
+					[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+					{
+						return pattern.strPatternId == fields[4];
+					});
+			if (m_BossPatternSequences.end() == sequence ||
+				sequence->second.strSequenceId != fields[2] ||
+				stepIndex != sequence->second.PatternIds.size() ||
+				stepIndex >= sequence->second.iExpectedStepCount ||
+				!hasPattern ||
+				sequence->second.PatternIds.end() != std::find(
+					sequence->second.PatternIds.begin(),
+					sequence->second.PatternIds.end(), fields[4]))
+			{
+				m_strStatus =
+					"Boss pattern sequence steps violate their ordered contract";
+				return false;
+			}
+			sequence->second.PatternIds.emplace_back(fields[4]);
+		}
 		else if (!fields.empty() && "PATTERNSTAGEACTION" == fields[0])
 		{
 			std::uint32_t actionOrder = 0;
 			BOSS_PATTERN_STAGE_ACTION action{};
-			if (10u != fields.size() || !IsStableId(fields[1]) ||
+			const bool hasReleaseFields = 12u == fields.size();
+			if ((10u != fields.size() && !hasReleaseFields) ||
+				!IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[4], actionOrder) ||
 				!ParseBossPatternStageActionTrigger(fields[5], action.eTrigger) ||
@@ -2335,9 +2626,14 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				!IsStableId(fields[7]) ||
 				!ParseNumber(fields[8], action.iValue) ||
 				!ParseNumber(fields[9], action.iDurationMs) ||
+				(hasReleaseFields &&
+				 (!ParseBossGrabbedReleaseMode(
+					fields[10], action.eReleaseMode) ||
+				  !ParseNumber(fields[11], action.fReleaseSpeedMps))) ||
 				!IsValidBossPatternStageAction(
 					action.eTrigger, action.eKind, fields[7],
-					action.iValue, action.iDurationMs))
+					action.iValue, action.iDurationMs,
+					action.eReleaseMode, action.fReleaseSpeedMps))
 			{
 				m_strStatus = "Boss pattern stage action row is invalid";
 				return false;
@@ -2760,12 +3056,27 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			BOSS_PATTERN_STAGE_DEFINITION& stage = owner->Stages[stageIndex];
-			/* The stun is the next stage. Without it a charge would stop at the
-			wall and simply keep running its own clock. */
+			/* The authored WALL_CONTACT edge must end this stage in the immediate
+			next stage. Most charges open GROGGY directly; dash-charge first opens
+			its short RECOVERY part window and branches to GROGGY only on a valid
+			part hit. */
+			const auto wallBranch = std::find_if(
+				stage.Branches.begin(), stage.Branches.end(),
+				[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+				{
+					return BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT ==
+						branch.eOutcome;
+				});
+			const BOSS_PATTERN_STAGE_DEFINITION& impactStage =
+				owner->Stages[stageIndex + 1u];
+			const bool validImpactKind =
+				BOSS_PATTERN_STAGE_KIND::GROGGY == impactStage.eStageKind ||
+				BOSS_PATTERN_STAGE_KIND::RECOVERY == impactStage.eStageKind;
 			if (stage.strStageId != fields[4] ||
 				stage.strActionId != fields[5] || stage.bChargeImpact ||
-				BOSS_PATTERN_STAGE_KIND::GROGGY !=
-					owner->Stages[stageIndex + 1u].eStageKind ||
+				stage.Branches.end() == wallBranch ||
+				wallBranch->strNextActionId != impactStage.strActionId ||
+				!validImpactKind ||
 				owner->fMaximumRange <= 0.f)
 			{
 				m_strStatus = "Boss pattern charge-impact join is invalid";
@@ -3121,14 +3432,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				0u == pattern.iTriggerHealthBar && 0u == pattern.iTriggerOrder &&
 				pattern.iSelectionWeight > 0u &&
 				pattern.iMaximumConsecutiveUses > 0u;
-			const bool validHealthSelection = isHealthMechanic &&
+			const bool hasNoHealthWindow =
 				0u == pattern.iMinimumHealthBar &&
-				0u == pattern.iMaximumHealthBar &&
+				0u == pattern.iMaximumHealthBar;
+			const bool hasValidHealthWindow =
+				pattern.iMinimumHealthBar >= 1u &&
+				pattern.iMaximumHealthBar >= pattern.iMinimumHealthBar &&
+				pattern.iMaximumHealthBar <= boss.iMaximumHealthBars;
+			const bool validHealthSelection = isHealthMechanic &&
+				(hasNoHealthWindow || hasValidHealthWindow) &&
 				pattern.iTriggerHealthBar >= 1u &&
 				pattern.iTriggerHealthBar <= boss.iMaximumHealthBars &&
 				pattern.iTriggerOrder > 0u &&
-				0u == pattern.iSelectionWeight &&
-				0u == pattern.iMaximumConsecutiveUses;
+				0u == pattern.iSelectionWeight;
 			const bool validAuditionSelection = isAuditionOnly &&
 				0u == pattern.iMinimumHealthBar &&
 				0u == pattern.iMaximumHealthBar &&
@@ -3141,15 +3457,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				validHealthSelection || validAuditionSelection;
 			if (!validSelection ||
 				!patternPolicyOwners.contains(patternPolicyKey) ||
-				(isHealthMechanic &&
-				 BOSS_PATTERN_CATEGORY::MECHANIC != pattern.eCategory) ||
 				(BOSS_PATTERN_AIM_POLICY::FACE_MOTION_ANCHOR ==
 					pattern.eAimPolicy &&
 				 BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR !=
 					pattern.Motion.eKind) ||
 				(BOSS_PATTERN_MOTION_KIND::NONE != pattern.Motion.eKind &&
 				 (pattern.Stages.empty() ||
-				  "TAKEOFF" != pattern.Stages.front().strStageId ||
 				  0u == pattern.Motion.iTravelStageIndex ||
 				  pattern.Motion.iTravelStageIndex >= pattern.Stages.size() ||
 				  pattern.Motion.iTakeoffStartMs >=
@@ -3250,7 +3563,32 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						(validExplicitHitOffsets || validLegacyHitSchedule) &&
 						0u != Find_DamageRatePercent(stage.strDamageProfileId);
 				}
-				if (!validShape ||
+				const bool validPlayerResponse =
+					(BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE ==
+						stage.ePlayerResponse &&
+					 LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE ==
+						stage.eAttachmentSlot) ||
+					(BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE ==
+						stage.ePlayerResponse &&
+					 LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ==
+						stage.eAttachmentSlot &&
+					 BOSS_PATTERN_HIT_SHAPE::NONE != stage.eHitShape &&
+						 0.f == stage.fPushRangeM && 0u == stage.iPushMs &&
+						 !stage.bKnockdown && 0u == stage.iDownMs);
+				const bool validCounterProxy =
+					(!stage.bHasCounterProxy &&
+					 0.f == stage.fCounterProxyForwardOffsetM &&
+					 0.f == stage.fCounterProxyRightOffsetM &&
+					 0.f == stage.fCounterProxyRadiusM) ||
+					(stage.bHasCounterProxy &&
+					 std::isfinite(stage.fCounterProxyForwardOffsetM) &&
+					 std::isfinite(stage.fCounterProxyRightOffsetM) &&
+					 std::isfinite(stage.fCounterProxyRadiusM) &&
+					 std::fabs(stage.fCounterProxyForwardOffsetM) <= 20.f &&
+					 std::fabs(stage.fCounterProxyRightOffsetM) <= 20.f &&
+					 stage.fCounterProxyRadiusM > 0.f &&
+					 stage.fCounterProxyRadiusM <= 20.f);
+				if (!validShape || !validPlayerResponse || !validCounterProxy ||
 					(stage.bWallContact &&
 						(BOSS_PATTERN_STAGE_KIND::ACTIVE != stage.eStageKind ||
 						 BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape ||
@@ -3298,6 +3636,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				bool validActions = true;
 				for (const BOSS_PATTERN_STAGE_ACTION& action : stage.Actions)
 				{
+					if (BOSS_PATTERN_STAGE_ACTION_KIND::
+							SPAWN_COMBAT_OBJECT_VOLLEY != action.eKind &&
+						!IsValidBossPatternStageAction(
+							action.eTrigger, action.eKind, action.strTargetId,
+							action.iValue, action.iDurationMs,
+							action.eReleaseMode, action.fReleaseSpeedMps))
+					{
+						validActions = false;
+						continue;
+					}
 					if (BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE ==
 						action.eKind)
 					{
@@ -3335,6 +3683,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							BOSS_PATTERN_TARGET_POLICY::LOCK_NEAREST_ON_START ==
 								pattern.eTargetPolicy ||
 							BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_ON_START ==
+								pattern.eTargetPolicy ||
+							BOSS_PATTERN_TARGET_POLICY::
+								LOCK_RANDOM_ALIVE_BEHIND_ON_START ==
 								pattern.eTargetPolicy;
 						const bool fixedArea = combatObject !=
 							m_BossCombatObjects.end() &&
@@ -3413,6 +3764,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						return BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT ==
 							branch.eOutcome;
 					});
+				const bool hasPartDestroyed = std::any_of(
+					stage.Branches.begin(), stage.Branches.end(),
+					[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+					{
+						return BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED ==
+							branch.eOutcome;
+					});
 				const bool hasStaggerBroken = std::any_of(
 					stage.Branches.begin(), stage.Branches.end(),
 					[](const BOSS_PATTERN_STAGE_BRANCH& branch)
@@ -3442,6 +3800,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						hasStageAction(BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
 							BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
 							"boss.flag.counterable");
+				}
+				if ((stage.bHasCounterProxy && !hasCounterHit) ||
+					(BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE ==
+						stage.ePartDamagePolicy && !hasPartDestroyed))
+				{
+					validBranches = false;
 				}
 				if (hasStaggerBroken)
 				{
@@ -3624,6 +3988,37 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
 	}
 
+	for (const auto& [sequenceEncounterId, sequence] :
+		m_BossPatternSequences)
+	{
+		const auto patterns = m_BossPatterns.find(sequenceEncounterId);
+		if (m_BossPatterns.end() == patterns ||
+			sequence.strEncounterId != sequenceEncounterId ||
+			sequence.strSequenceId.empty() ||
+			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE !=
+				sequence.eMode ||
+			sequence.PatternIds.size() != sequence.iExpectedStepCount)
+		{
+			m_strStatus = "Boss pattern sequence tagged shape is incomplete";
+			return false;
+		}
+		std::unordered_set<std::string> uniquePatternIds;
+		for (const std::string& patternId : sequence.PatternIds)
+		{
+			const auto pattern = std::find_if(
+				patterns->second.begin(), patterns->second.end(),
+				[&patternId](const BOSS_PATTERN_DEFINITION& candidate)
+				{ return candidate.strPatternId == patternId; });
+			if (!uniquePatternIds.insert(patternId).second ||
+				patterns->second.end() == pattern)
+			{
+				m_strStatus =
+					"Boss pattern sequence contains an unknown or duplicate step";
+				return false;
+			}
+		}
+	}
+
 	for (const auto& [rotationEncounterId, rotations] : m_BossPatternRotations)
 	{
 		(void)rotationEncounterId;
@@ -3709,6 +4104,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	Valtan topology is coherent. */
 	const auto valtanRotations =
 		m_BossPatternRotations.find("ENCOUNTER_VALTAN");
+	const auto valtanSequence =
+		m_BossPatternSequences.find("ENCOUNTER_VALTAN");
 	const auto valtanPatterns = m_BossPatterns.find("ENCOUNTER_VALTAN");
 	const auto valtanBoss = m_Bosses.find("BOSS_VALTAN");
 	const bool expectsAuthoredValtanTopology =
@@ -3718,9 +4115,14 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			valtanBoss->second.PhasePolicy.eKind;
 	if (expectsAuthoredValtanTopology &&
 		(m_BossPatternRotations.end() == valtanRotations ||
+		 m_BossPatternSequences.end() == valtanSequence ||
 		 m_BossPatterns.end() == valtanPatterns))
 	{
-		m_strStatus = "Valtan authored phase topology has no pattern rotations";
+		/* Missing the exclusive program must not silently revive the legacy
+		intro/rotation/global selector, where disabled Product patterns such as
+		Dash could become automatic again. */
+		m_strStatus =
+			"Valtan authored phase topology has no exclusive pattern sequence";
 		return false;
 	}
 	if (m_BossPatternRotations.end() != valtanRotations &&
@@ -3891,6 +4293,14 @@ LostArk::Server::CGameplayCatalog::Find_BossPatternRotation(
 		}
 	}
 	return nullptr;
+}
+
+const LostArk::Server::BOSS_PATTERN_SEQUENCE_DEFINITION*
+LostArk::Server::CGameplayCatalog::Find_BossPatternSequence(
+	const std::string& encounterId) const
+{
+	const auto iter = m_BossPatternSequences.find(encounterId);
+	return m_BossPatternSequences.end() == iter ? nullptr : &iter->second;
 }
 
 const std::string& LostArk::Server::CGameplayCatalog::Find_IntroPatternId(

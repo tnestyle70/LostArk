@@ -475,10 +475,20 @@ namespace LostArk::Shared
 		duration; the state carries no skill id because the summon is a roster
 		slot, not a balance skill. Appended last, same wire rule as FALLING. */
 		ESTHER_CAST,
-		/* A Server-authored boss sequence owns the player's transform and input.
-		The boss snapshot identifies the owner/target; this action only locks the
-		player and gives late joiners a stable presentation edge. */
+		/* A boss owns the player's gameplay transform until it releases the
+		attachment. The Server still publishes a boss-relative fallback position;
+		the Client may replace only presentation with the typed attachment slot. */
 		GRABBED,
+		END
+	};
+
+	/* Typed replicated attachment sockets. This is deliberately not a model
+	bone name: Shared and Server never consume Client assets, while the Client
+	maps the stable slot to the admitted presentation rig. */
+	enum class PLAYER_ATTACHMENT_SLOT : std::uint8_t
+	{
+		NONE,
+		BOSS_LEFT_HAND,
 		END
 	};
 
@@ -517,6 +527,19 @@ namespace LostArk::Shared
 		PLAYER_STANCE_ID eStance = PLAYER_STANCE_ID::NONE;
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
+		/* Canonical only while eAction is GRABBED. The owner is a replicated
+		world entity and the typed slot resolves on the Client; every other action
+		must carry INVALID/NONE so a stale attachment cannot survive release. */
+		NET_ENTITY_ID iAttachmentOwnerNetEntityId = INVALID_NET_ENTITY_ID;
+		PLAYER_ATTACHMENT_SLOT eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::NONE;
+		/* Captured once in the owner's gameplay-root frame for the authoritative
+		Server fallback. The Client resolves the typed slot and separately captures
+		an actual-bone-local presentation matrix; it never composes these gameplay
+		offsets with a model bone. Canonical zero outside GRABBED. */
+		float fAttachmentLocalOffsetX = 0.f;
+		float fAttachmentLocalOffsetY = 0.f;
+		float fAttachmentLocalOffsetZ = 0.f;
+		float fAttachmentYawOffsetDegrees = 0.f;
 		/* Present only for a server-approved GROUND_POINT skill. The Y component
 		 is sampled from the authoritative navigation grid so every client roots
 		 the action effect at the same surface. A non-target action must carry
@@ -978,6 +1001,138 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_VALTAN_AUDITION_LIFECYCLE& message);
+
+	// Debug Boss Tool ordered-flow payload. Slots use stable authoring IDs;
+	// their vector order is the playback order. Repeated pattern IDs are valid
+	// because two distinct slots may intentionally audition the same pattern.
+	inline constexpr std::size_t MAX_VALTAN_PATTERN_FLOW_SLOTS = 32u;
+	inline constexpr std::uint32_t
+		MIN_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS = 100u;
+	inline constexpr std::uint32_t
+		MAX_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS = 10000u;
+	inline constexpr std::size_t VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES = 64u;
+	inline constexpr std::size_t MAX_VALTAN_PATTERN_FLOW_REASON_BYTES = 192u;
+
+	struct VALTAN_PATTERN_FLOW_SLOT_WIRE
+	{
+		std::string strSlotId;
+		std::string strPatternId;
+	};
+
+	struct C2S_DEBUG_VALTAN_PATTERN_FLOW_START
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strBossPlacementId;
+		std::string strFlowId;
+		// Exact lowercase SHA-256 of the admitted saved authoring bytes.
+		std::string strFlowRevision;
+		std::string strStartSlotId;
+		std::uint32_t iInterStepPursuitMs = 0;
+		std::vector<VALTAN_PATTERN_FLOW_SLOT_WIRE> Slots;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message);
+
+	struct C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT
+	{
+		std::uint32_t iControlSequence = 0;
+		std::string strFlowId;
+		std::uint32_t iRoomFlowEpoch = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& message);
+
+	enum class VALTAN_PATTERN_FLOW_COMMAND : std::uint8_t
+	{
+		START,
+		STOP_AFTER_CURRENT,
+		END
+	};
+
+	enum class VALTAN_PATTERN_FLOW_RESULT : std::uint8_t
+	{
+		QUEUED,
+		DUPLICATE_IGNORED,
+		REJECTED_RELEASE_BUILD,
+		REJECTED_WRONG_WORLD,
+		REJECTED_NO_BOSS,
+		REJECTED_BOSS_DEAD,
+		REJECTED_PLAYER_NOT_ENGAGED,
+		REJECTED_CONFLICT,
+		REJECTED_INVALID_FLOW,
+		REJECTED_STALE_FLOW,
+		END
+	};
+
+	struct S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT
+	{
+		std::uint32_t iCommandSequence = 0;
+		VALTAN_PATTERN_FLOW_COMMAND eCommand =
+			VALTAN_PATTERN_FLOW_COMMAND::START;
+		VALTAN_PATTERN_FLOW_RESULT eResult =
+			VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+		std::string strFlowId;
+		std::string strFlowRevision;
+		std::uint32_t iRoomFlowEpoch = 0;
+		GameplayDataRevision PinnedDefinitionRevision{};
+		std::string strReason;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message);
+
+	enum class VALTAN_PATTERN_FLOW_LIFECYCLE_STATE : std::uint8_t
+	{
+		PENDING,
+		ACTIVE,
+		PAUSED_FOR_REVIVE,
+		COMPLETED_HOLD,
+		STOPPED_HOLD,
+		REJECTED,
+		ABORTED,
+		END
+	};
+
+	struct S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::uint32_t iRoomFlowEpoch = 0;
+		std::uint32_t iPatternSequence = 0;
+		std::string strBossPlacementId;
+		std::string strFlowId;
+		std::string strFlowRevision;
+		std::string strStartSlotId;
+		std::string strCurrentSlotId;
+		std::string strCurrentPatternId;
+		// One-based display position in the submitted slot vector.
+		std::uint16_t iCurrentSlotOrdinal = 0;
+		std::uint16_t iSlotCount = 0;
+		VALTAN_PATTERN_FLOW_LIFECYCLE_STATE eState =
+			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::PENDING;
+		GameplayDataRevision PinnedDefinitionRevision{};
+		std::string strReason;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE& message);
 
 	// One response carries at most one retained Server decision and at most the
 	// same 64 candidates CValtanBrain admits into its bounded trace. The query's

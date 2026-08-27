@@ -54,10 +54,26 @@ HRESULT CCamera::Render()
 	return S_OK;
 }
 
-bool_t CCamera::Begin_PresentationOverride(const uint64_t iOwnerId)
+bool_t CCamera::Begin_PresentationOverride(
+	const uint64_t iOwnerId,
+	const PRESENTATION_PRIORITY ePriority)
 {
 	if (m_bPresentationOverrideActive)
-		return m_iPresentationOverrideOwnerId == iOwnerId;
+	{
+		if (m_iPresentationOverrideOwnerId == iOwnerId)
+			return true;
+		if (static_cast<uint32_t>(ePriority) <=
+			static_cast<uint32_t>(m_ePresentationOverridePriority))
+		{
+			return false;
+		}
+		/* A higher-priority product cinematic inherits the original saved pose,
+		   not the authoring preview pose it displaced. Its End therefore still
+		   restores the exact camera state from before either override. */
+		m_iPresentationOverrideOwnerId = iOwnerId;
+		m_ePresentationOverridePriority = ePriority;
+		return true;
+	}
 	if (0u == iOwnerId || nullptr == m_pTransformCom)
 		return false;
 	m_PresentationSavedWorld = *m_pTransformCom->Get_WorldMatrixPtr();
@@ -66,6 +82,7 @@ bool_t CCamera::Begin_PresentationOverride(const uint64_t iOwnerId)
 	m_fPresentationAppliedFovy = m_fFovy;
 	m_bPresentationOverrideActive = true;
 	m_iPresentationOverrideOwnerId = iOwnerId;
+	m_ePresentationOverridePriority = ePriority;
 	return true;
 }
 
@@ -110,6 +127,7 @@ bool_t CCamera::End_PresentationOverride(const uint64_t iOwnerId)
 	}
 	m_bPresentationOverrideActive = false;
 	m_iPresentationOverrideOwnerId = 0u;
+	m_ePresentationOverridePriority = PRESENTATION_PRIORITY::DEFAULT;
 	const matrix_t savedWorld = XMLoadFloat4x4(&m_PresentationSavedWorld);
 	m_pTransformCom->Set_State(STATE::RIGHT, savedWorld.r[0]);
 	m_pTransformCom->Set_State(STATE::UP, savedWorld.r[1]);

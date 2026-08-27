@@ -1,6 +1,6 @@
 {
   "schema": "lostark.valtan-pattern-rotations",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "encounterId": "ENCOUNTER_VALTAN",
   "bossArchetypeId": "BOSS_VALTAN",
   "rotations": [
@@ -21,7 +21,7 @@
         {
           "patternId": "VALTAN_DASH_CHARGE",
           "weight": 30,
-          "enabled": true
+          "enabled": false
         },
         {
           "patternId": "VALTAN_FOUR_SLASH",
@@ -57,7 +57,7 @@
         {
           "patternId": "VALTAN_DASH_CHARGE",
           "weight": 30,
-          "enabled": true
+          "enabled": false
         },
         {
           "patternId": "VALTAN_FOUR_SLASH",
@@ -148,5 +148,40 @@
         "VALTAN_EARTHQUAKE_SMASH"
       ]
     }
-  ]
+  ],
+  "scriptedSequence": {
+    "sequenceId": "sequence.valtan.server-authored.v1",
+    "mode": "ORDERED_ONCE_THEN_IDLE",
+    "interStepPursuitMs": 1000,
+    "patternIds": [
+      "VALTAN_WHIRLWIND",
+      "VALTAN_FOUR_SLASH",
+      "VALTAN_FIST_IN_OUT",
+      "VALTAN_HIGH_JUMP",
+      "VALTAN_FLOOR_WIPE_130",
+      "VALTAN_DASH_CHARGE",
+      "VALTAN_ARENA_BREAK_109",
+      "VALTAN_SIX_PIZZA_106",
+      "VALTAN_ATTACK_WHIRLWIND",
+      "VALTAN_CHARGE",
+      "VALTAN_SEQUENCE_FOUR",
+      "VALTAN_ROAR_CHARGE",
+      "VALTAN_SEQUENCE_RUSH",
+      "VALTAN_THREE",
+      "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "VALTAN_TERRAIN_DESTRUCTION",
+      "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
+      "VALTAN_WARP",
+      "VALTAN_SEQUENCE_TWOHAND",
+      "VALTAN_SEQUENCE_WHIRLWIND",
+      "VALTAN_TRASH",
+      "VALTAN_TRASH_CATCH_SUCCESS",
+      "VALTAN_TRASH_CATCH_FAIL",
+      "VALTAN_TRASH_CATCH_IF",
+      "VALTAN_CATCH_BREATH",
+      "VALTAN_COUNTER",
+      "VALTAN_CHARGE_2"
+    ]
+  }
 }

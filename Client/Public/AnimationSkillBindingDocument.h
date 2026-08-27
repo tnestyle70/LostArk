@@ -99,10 +99,9 @@ namespace Client
 	};
 
 	/* Boss actions are not PlayerSkills. Their authored animation document maps
-	a stable boss-owned action ID to an ordered clip chain that plays once
-	within the stage, mirroring the source action's sequence; gameplay pattern
-	timing remains in the encounter document. A one-clip chain is the plain
-	single-clip stage. */
+	a stable boss-owned action ID either to an ordered clip chain or to explicit
+	NONE playback for an Effect-only stage; gameplay pattern timing remains in
+	the encounter document. A one-clip chain is the plain single-clip stage. */
 	struct BOSS_PATTERN_ANIMATION_CLIP
 	{
 		std::string strClipOccurrenceId;
@@ -139,6 +138,9 @@ namespace Client
 	{
 		std::string strActionId;
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP> Clips;
+		/* Explicit Product admission for a stage that intentionally starts no
+		   model animation.  An empty clip list without this tag remains invalid. */
+		bool_t bSuppressAnimation = false;
 
 		bool operator==(const BOSS_PATTERN_ANIMATION_BINDING&) const = default;
 	};

@@ -27,8 +27,8 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
 
     def test_reviewed_chain_closure_and_stable_ids(self) -> None:
         gameplay, presentation, receipt = promotion.build_candidates(self.root)
-        self.assertEqual(27, len(gameplay["patterns"]))
-        self.assertEqual(27, len(presentation["patterns"]))
+        self.assertEqual(29, len(gameplay["patterns"]))
+        self.assertEqual(29, len(presentation["patterns"]))
         self.assertEqual(20, receipt["patternCount"])
         self.assertEqual(99, receipt["stageCount"])
         self.assertEqual(
@@ -102,14 +102,16 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         self.assertEqual("EXACT", exact["endPolicy"])
         self.assertGreater(exact["productPlayMs"], 0)
 
-    def test_catch_breath_freezes_nearest_target_and_exact_four_stage_sequence(self) -> None:
+    def test_catch_breath_preserves_tuned_target_and_exact_four_stage_sequence(self) -> None:
         gameplay, presentation, _receipt = promotion.build_candidates(self.root)
         gameplay_pattern = next(
             pattern
             for pattern in gameplay["patterns"]
-            if pattern["patternId"] == "VALTAN_SEQUENCE_CATCH_BREATH"
+            if pattern["patternId"] == "VALTAN_CATCH_BREATH"
         )
-        self.assertEqual("LOCK_NEAREST_ON_START", gameplay_pattern["targetPolicy"])
+        self.assertEqual(
+            "LOCK_RANDOM_ALIVE_BEHIND_ON_START", gameplay_pattern["targetPolicy"]
+        )
         self.assertEqual("LOCK_FACING_ON_START", gameplay_pattern["aimPolicy"])
         self.assertEqual(
             [2000, 500, 4000, 2000],
@@ -119,7 +121,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         presentation_pattern = next(
             pattern
             for pattern in presentation["patterns"]
-            if pattern["patternId"] == "VALTAN_SEQUENCE_CATCH_BREATH"
+            if pattern["patternId"] == "VALTAN_CATCH_BREATH"
         )
         occurrences = [
             stage["animation"]["occurrences"][0]
@@ -156,6 +158,103 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
             },
             aliases,
         )
+
+    def test_animation_refresh_preserves_server_and_presentation_enrichment(self) -> None:
+        generated_gameplay = {
+            "patternId": "VALTAN_WARP",
+            "targetPolicy": "NONE",
+            "aimPolicy": "NONE",
+            "eligibility": {"minimumRangeM": 0.0},
+            "invulnerableWhileRunning": False,
+            "serverMotion": None,
+            "reactions": [],
+            "stages": [
+                {
+                    "stageId": "STEP_01",
+                    "actionId": "valtan.sequence.warp.step-01",
+                    "stageKind": "ACTIVE",
+                    "defaultNextActionId": None,
+                    "hit": {"shape": {"kind": "NONE"}},
+                    "motion": None,
+                    "events": [],
+                    "branches": [],
+                }
+            ],
+        }
+        existing_gameplay = {
+            **generated_gameplay,
+            "targetPolicy": "LOCK_RANDOM_ALIVE_ON_START",
+            "aimPolicy": "LOCK_FACING_ON_START",
+            "stages": [
+                {
+                    **generated_gameplay["stages"][0],
+                    "hit": {"shape": {"kind": "BOX"}},
+                    "events": [{"eventId": "event.valtan.warp.portal"}],
+                }
+            ],
+        }
+        preserved_gameplay = promotion._preserve_manual_gameplay_enrichment(
+            generated_gameplay, existing_gameplay
+        )
+        self.assertEqual(
+            "LOCK_RANDOM_ALIVE_ON_START", preserved_gameplay["targetPolicy"]
+        )
+        self.assertEqual(
+            "BOX", preserved_gameplay["stages"][0]["hit"]["shape"]["kind"]
+        )
+
+        generated_presentation = {
+            "patternId": "VALTAN_WARP",
+            "stages": [
+                {
+                    "stageId": "STEP_01",
+                    "actionId": "valtan.sequence.warp.step-01",
+                    "sequenceRole": "STEP",
+                    "animation": {"occurrences": [{"clip": "mesh_att_battle_18_01"}]},
+                    "effectCues": [],
+                    "cameraInvocations": [],
+                }
+            ],
+        }
+        existing_presentation = {
+            **generated_presentation,
+            "stages": [
+                {
+                    **generated_presentation["stages"][0],
+                    "effectCues": [{"bindingId": "cue.valtan.warp.portal"}],
+                }
+            ],
+        }
+        preserved_presentation = promotion._preserve_manual_presentation_enrichment(
+            generated_presentation, existing_presentation
+        )
+        self.assertEqual(
+            "cue.valtan.warp.portal",
+            preserved_presentation["stages"][0]["effectCues"][0]["bindingId"],
+        )
+
+    def test_animation_refresh_rejects_enrichment_stage_identity_drift(self) -> None:
+        generated = {
+            "patternId": "VALTAN_WARP",
+            "stages": [
+                {
+                    "stageId": "STEP_01",
+                    "actionId": "valtan.sequence.warp.step-01",
+                }
+            ],
+        }
+        existing = {
+            "stages": [
+                {
+                    "stageId": "STEP_01",
+                    "actionId": "valtan.sequence.warp.renamed",
+                }
+            ]
+        }
+        with self.assertRaises(promotion.PromotionError):
+            promotion._preserve_manual_presentation_enrichment(
+                generated, existing
+            )
 
     def test_atomic_commit_rolls_back_every_replaced_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

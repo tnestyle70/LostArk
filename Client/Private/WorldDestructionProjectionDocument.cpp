@@ -16,7 +16,7 @@ namespace
 
 	constexpr const char_t* SCHEMA =
 		"lostark.world-destruction-client-projection";
-	constexpr uint32_t FORMAT_VERSION = 2u;
+	constexpr uint32_t FORMAT_VERSION = 3u;
 	constexpr size_t MAX_GROUP_COUNT = 128u;
 	constexpr size_t MAX_MEMBER_COUNT = 4096u;
 	constexpr size_t COMBAT_REVISION_HEX_LENGTH = 64u;
@@ -40,6 +40,18 @@ namespace
 		if (nullptr == value || !value->Is_String() || value->Get_String().empty())
 			return false;
 		outValue = value->Get_String();
+		return true;
+	}
+
+	bool_t Read_Boolean(
+		const DATA_JSON_VALUE& parent,
+		const char_t* key,
+		bool_t& outValue)
+	{
+		const DATA_JSON_VALUE* value = parent.Find(key);
+		if (nullptr == value || !value->Is_Boolean())
+			return false;
+		outValue = value->Get_Boolean();
 		return true;
 	}
 
@@ -169,7 +181,7 @@ bool_t Client::CWorldDestructionProjectionDocument::Parse_Text(
 	for (const DATA_JSON_VALUE& groupValue : groups->Get_Array())
 	{
 		if (!Is_ExactObject(groupValue,
-			{ "groupId", "mutationId", "memberPlacementIds",
+			{ "groupId", "mutationId", "removesGround", "memberPlacementIds",
 				"suppressionAliasPlacementIds" }))
 		{
 			outStatus = "World destruction projection group has unexpected properties";
@@ -185,6 +197,12 @@ bool_t Client::CWorldDestructionProjectionDocument::Parse_Text(
 			!mutationIds.insert(group.strMutationId).second)
 		{
 			outStatus = "World destruction projection group identity is invalid";
+			return false;
+		}
+		if (!Read_Boolean(groupValue, "removesGround", group.bRemovesGround))
+		{
+			outStatus =
+				"World destruction projection ground-removal flag is invalid";
 			return false;
 		}
 		previousGroupId = group.strGroupId;

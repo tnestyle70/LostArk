@@ -1139,13 +1139,14 @@ namespace
 		const std::filesystem::path& RepositoryRoot,
 		std::string& strOutError)
 	{
-		constexpr std::array<std::string_view, 7u> PRODUCT_WITNESSES{
+		constexpr std::array<std::string_view, 8u> PRODUCT_WITNESSES{
 			"effect.artist.skill.31200.unified",
 			"effect.artist.skill.31460.unified",
 			"effect.artist.skill.31460.linear-reveal.unified",
 			"effect.lancemaster.skill.34110.unified",
 			"effect.artist.skill.31950.unified",
 			"effect.valtan.pattern.420633.active",
+			"effect.valtan.environment.red-vortex-sky",
 			"effect.dimensionmaster.skill.2050230.unified"
 		};
 		const std::filesystem::path AuthoredRoot =

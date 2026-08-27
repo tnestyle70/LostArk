@@ -34,22 +34,39 @@ enum class VALTAN_CINEMATIC_CAMERA_EASING
 
 /* WORLD preserves an authored absolute shot. BOSS_XZ translates the authored
    framing by the replicated boss' horizontal displacement from vTrackingOrigin;
-   Y remains authored so an aerial shot does not climb twice with the leap. */
+   Y remains authored so an aerial shot does not climb twice with the leap.
+   BOSS_FACING treats eye/lookAt as points in the authored boss frame whose
+   pivot is vTrackingOrigin, then rotates that frame by the replicated boss yaw.
+   PLAYER_BOSS_FRAME treats them as offsets in a dynamic frame centred between
+   the local player and boss; this is presentation-only framing and never feeds
+   a Client transform back into gameplay. */
 enum class VALTAN_CINEMATIC_TRACKING_MODE
 {
 	WORLD,
 	BOSS_XZ,
+	BOSS_FACING,
+	PLAYER_BOSS_FRAME,
 	END
 };
 
 struct VALTAN_CINEMATIC_CAMERA_CUE final
 {
+	static constexpr uint32_t MAX_TRANSITION_IN_MS = 1000u;
+
 	std::string strCueId;
 	std::string strPatternId;
 	std::string strStageId;
 	std::string strStageActionId;
 	uint32_t iStageIndex = 0u;
 	uint32_t iDurationMs = 0u;
+	/* Optional entry blend from the last resolved output of the immediately
+	   preceding cue in the same Server pattern sequence. A late join has no
+	   outgoing pose and therefore samples this cue directly. */
+	uint32_t iTransitionInMs = 0u;
+	/* Optional handoff from this cue's last submitted pose to the normal
+	   gameplay follow pose. The presentation owner stays acquired until the
+	   bounded handoff reaches that live follow target. */
+	uint32_t iTransitionOutMs = 0u;
 	VALTAN_CINEMATIC_CAMERA_EASING eEasing =
 		VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
 	VALTAN_CINEMATIC_TRACKING_MODE eTrackingMode =
@@ -61,31 +78,6 @@ struct VALTAN_CINEMATIC_CAMERA_CUE final
 	f32_t fShakeAmplitude = 0.f;
 	uint32_t iShakeDurationMs = 0u;
 	std::vector<VALTAN_CINEMATIC_CAMERA_KEYFRAME> Keyframes;
-};
-
-/* The 100-bar sky is a timed presentation layer, never a skybox swap and never
-   a gameplay state: it turns on and off across the four authoritative mechanic
-   stages and touches no collision or navigation. The two stable asset IDs seed
-   the red-cloud and black-aperture presentation composites. */
-struct VALTAN_CINEMATIC_SKY_CUE final
-{
-	std::string strCueId;
-	std::string strPatternId;
-	std::string strStageId;
-	std::string strStageActionId;
-	uint32_t iStageIndex = 0u;
-	uint32_t iStageLocalStartMs = 0u;
-	uint32_t iStageLocalEndMs = 0u;
-	std::string strRedCloudAssetId;
-	std::string strBlackApertureAssetId;
-	f32_t fCloudOpacityStart = 0.f;
-	f32_t fCloudOpacityEnd = 0.f;
-	f32_t fApertureScaleStart = 0.f;
-	f32_t fApertureScaleEnd = 0.f;
-	f32_t fCloudRotationDegreesPerSecond = 0.f;
-	VALTAN_CINEMATIC_TRACKING_MODE eTrackingMode =
-		VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
-	float3_t vTrackingOrigin = {};
 };
 
 class CValtanCinematicCameraDocument final
@@ -100,6 +92,20 @@ public:
 		const CEncounterPatternReference& encounter,
 		CValtanCinematicCameraDocument& outDocument,
 		std::string& outStatus);
+	/* Authoring and runtime share this exact camera-only v5 document. The Tool
+	   stages the camera/death rows into a copy and reparses the serialized text
+	   through Parse_Text before commit. World Effects are authored separately. */
+	bool_t Stage_CameraDraft(
+		const std::vector<VALTAN_CINEMATIC_CAMERA_CUE>& cues,
+		bool_t hasDeathCue,
+		const VALTAN_CINEMATIC_CAMERA_CUE& deathCue,
+		const CEncounterPatternReference& encounter,
+		CValtanCinematicCameraDocument& outDocument,
+		std::string& outText,
+		std::string& outStatus) const;
+	bool_t Serialize_Text(
+		std::string& outText,
+		std::string& outStatus) const;
 	void Clear();
 
 	bool_t Is_Ready() const { return m_isReady; }
@@ -112,25 +118,17 @@ public:
 		std::string_view patternId,
 		uint32_t stageIndex,
 		std::string_view stageActionId) const;
-	const std::vector<VALTAN_CINEMATIC_SKY_CUE>& Get_SkyCues() const
-	{
-		return m_SkyCues;
-	}
-	const VALTAN_CINEMATIC_SKY_CUE* Find_SkyCue(
-		std::string_view patternId,
-		uint32_t stageIndex,
-		std::string_view stageActionId) const;
 	/* The clear shot has no pattern to key on, so it is looked up by the boss
 	   death action instead. Null when the encounter authors none. */
 	const VALTAN_CINEMATIC_CAMERA_CUE* Find_DeathCue() const
 	{
 		return m_hasDeathCue ? &m_DeathCue : nullptr;
 	}
+	bool_t Has_DeathCue() const { return m_hasDeathCue; }
 
 private:
 	std::string m_strEncounterId;
 	std::vector<VALTAN_CINEMATIC_CAMERA_CUE> m_Cues;
-	std::vector<VALTAN_CINEMATIC_SKY_CUE> m_SkyCues;
 	VALTAN_CINEMATIC_CAMERA_CUE m_DeathCue;
 	bool_t m_hasDeathCue = false;
 	bool_t m_isReady = false;

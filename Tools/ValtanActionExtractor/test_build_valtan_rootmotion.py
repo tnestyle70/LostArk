@@ -2,8 +2,10 @@
 
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -95,6 +97,159 @@ class ExplicitClipSegmentTests(unittest.TestCase):
         self.assertIsNone(
             rootmotion.build_explicit_clip_segments(clips, self.curves))
 
+    def test_build_preserves_explicit_chain_with_large_intermediate_excursion(self) -> None:
+        returning_curve = (
+            1000.0,
+            1000.0,
+            [
+                (0.0, 0.0, 0.0, 0.0),
+                (1000.0, -100.0, 0.0, 0.0),
+            ],
+        )
+        static_curve = (
+            1000.0,
+            1000.0,
+            [
+                (0.0, 0.0, 0.0, 0.0),
+                (1000.0, 0.0, 0.0, 0.0),
+            ],
+        )
+        single_returning_curve = (
+            1000.0,
+            1000.0,
+            [
+                (0.0, 0.0, 0.0, 0.0),
+                (500.0, 100.0, 0.0, 0.0),
+                (1000.0, 0.0, 0.0, 0.0),
+            ],
+        )
+        encounter = {
+            "bossArchetypeId": "BOSS_TEST",
+            "patterns": [
+                {
+                    "patternId": "TEST_RETURNING_CHAIN",
+                    "stages": [
+                        {
+                            "stageId": "ACTIVE",
+                            "actionId": "test.returning-chain.active",
+                            "durationMs": 2000,
+                        },
+                    ],
+                },
+                {
+                    "patternId": "TEST_STATIC_CHAIN",
+                    "stages": [
+                        {
+                            "stageId": "ACTIVE",
+                            "actionId": "test.static-chain.active",
+                            "durationMs": 2000,
+                        },
+                    ],
+                },
+                {
+                    "patternId": "TEST_SINGLE_RETURNING_CLIP",
+                    "stages": [
+                        {
+                            "stageId": "ACTIVE",
+                            "actionId": "test.single-returning-clip.active",
+                            "durationMs": 1000,
+                        },
+                    ],
+                },
+            ],
+        }
+        bindings = {
+            "bindings": [
+                {
+                    "actionId": "test.returning-chain.active",
+                    "clips": [
+                        {
+                            "clip": "first",
+                            "sourceStartMs": 0,
+                            "playMs": 1000,
+                            "playRate": 1.0,
+                            "loop": False,
+                        },
+                        {
+                            "clip": "returning",
+                            "sourceStartMs": 0,
+                            "playMs": 1000,
+                            "playRate": 1.0,
+                            "loop": False,
+                        },
+                    ],
+                },
+                {
+                    "actionId": "test.static-chain.active",
+                    "clips": [
+                        {
+                            "clip": "static",
+                            "sourceStartMs": 0,
+                            "playMs": 1000,
+                            "playRate": 1.0,
+                            "loop": False,
+                        },
+                        {
+                            "clip": "static",
+                            "sourceStartMs": 0,
+                            "playMs": 1000,
+                            "playRate": 1.0,
+                            "loop": False,
+                        },
+                    ],
+                },
+                {
+                    "actionId": "test.single-returning-clip.active",
+                    "clips": [
+                        {
+                            "clip": "single-returning",
+                            "sourceStartMs": 0,
+                            "playMs": 1000,
+                            "playRate": 1.0,
+                            "loop": False,
+                        },
+                    ],
+                },
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repo_root = Path(temporary_directory)
+            encounter_path = (
+                repo_root / "Data/Encounters/Valtan/ValtanEncounter.json")
+            bindings_path = (
+                repo_root / "Data/Animation/Authored/Valtan" /
+                "Valtan.patternbindings.json")
+            encounter_path.parent.mkdir(parents=True)
+            bindings_path.parent.mkdir(parents=True)
+            encounter_path.write_text(json.dumps(encounter), encoding="utf-8")
+            bindings_path.write_text(json.dumps(bindings), encoding="utf-8")
+
+            curves = {
+                "first": self.curve,
+                "returning": returning_curve,
+                "static": static_curve,
+                "single-returning": single_returning_curve,
+            }
+            with mock.patch.object(
+                    rootmotion, "read_root_curves", return_value=curves):
+                document, notes = rootmotion.build(
+                    repo_root, repo_root / "Resources")
+
+        self.assertEqual([], notes)
+        self.assertEqual(1, len(document["patterns"]))
+        pattern_ids = [pattern["patternId"] for pattern in document["patterns"]]
+        self.assertEqual(
+            "TEST_RETURNING_CHAIN", document["patterns"][0]["patternId"])
+        self.assertNotIn("TEST_STATIC_CHAIN", pattern_ids)
+        self.assertNotIn("TEST_SINGLE_RETURNING_CLIP", pattern_ids)
+        stage = document["patterns"][0]["stages"][0]
+        self.assertAlmostEqual(0.0, stage["samples"][-1]["forward"], places=6)
+        self.assertGreater(
+            max(abs(sample["forward"]) for sample in stage["samples"]),
+            rootmotion.MINIMUM_TRAVEL_METRES,
+        )
+
     def test_current_explicit_multi_clip_migrations_are_allowlisted(self) -> None:
         repo_root = Path(__file__).resolve().parents[2]
         document = json.loads((
@@ -112,8 +267,10 @@ class ExplicitClipSegmentTests(unittest.TestCase):
 
         self.assertEqual([
             "valtan.attack.dash-charge.windup",
+            "valtan.mechanic.floor-wipe-130.interval",
             "valtan.mechanic.arena-break-109.drop",
             "valtan.mechanic.arena-break-109.impact-hold",
+            "valtan.mechanic.arena-break-109.wide-reveal",
         ], explicit_multi_actions)
 
 

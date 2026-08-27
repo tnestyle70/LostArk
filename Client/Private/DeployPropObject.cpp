@@ -63,6 +63,43 @@ namespace
 		pModel->Play_Animation(0.f);
 		return true;
 	}
+
+	bool_t Is_FiniteSurfacePresentation(
+		const Client::DEPLOY_SURFACE_PRESENTATION_PACKET& packet)
+	{
+		const f32_t rotationLengthSquared =
+			packet.vRootRotationOffset.x * packet.vRootRotationOffset.x +
+			packet.vRootRotationOffset.y * packet.vRootRotationOffset.y +
+			packet.vRootRotationOffset.z * packet.vRootRotationOffset.z +
+			packet.vRootRotationOffset.w * packet.vRootRotationOffset.w;
+		return std::isfinite(packet.fEmissiveIntensity) &&
+			packet.fEmissiveIntensity >= 0.f &&
+			packet.fEmissiveIntensity <= 1000.f &&
+			std::isfinite(packet.vEmissiveColor.x) &&
+			std::isfinite(packet.vEmissiveColor.y) &&
+			std::isfinite(packet.vEmissiveColor.z) &&
+			std::isfinite(packet.vEmissiveColor.w) &&
+			packet.vEmissiveColor.x >= 0.f &&
+			packet.vEmissiveColor.y >= 0.f &&
+			packet.vEmissiveColor.z >= 0.f &&
+			packet.vEmissiveColor.w >= 0.f &&
+			std::isfinite(packet.fEmissiveMaskPower) &&
+			packet.fEmissiveMaskPower >= 0.01f &&
+			packet.fEmissiveMaskPower <= 32.f &&
+			std::isfinite(packet.fTransitionMultiplier) &&
+			packet.fTransitionMultiplier >= 0.f &&
+			packet.fTransitionMultiplier <= 16.f &&
+			std::isfinite(packet.vRootOffset.x) &&
+			std::isfinite(packet.vRootOffset.y) &&
+			std::isfinite(packet.vRootOffset.z) &&
+			std::abs(packet.vRootOffset.x) <= 1000.f &&
+			std::abs(packet.vRootOffset.y) <= 1000.f &&
+			std::abs(packet.vRootOffset.z) <= 1000.f &&
+			std::isfinite(rotationLengthSquared) &&
+			rotationLengthSquared > 0.000001f &&
+			std::isfinite(packet.fOpacity) && packet.fOpacity >= 0.f &&
+			packet.fOpacity <= 1.f;
+	}
 }
 
 CDeployPropObject::CDeployPropObject(
@@ -108,7 +145,7 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 	}
 	m_Placement = desc.placement;
 	m_ModelKind = desc.modelKind;
-	m_fEmissiveIntensity = desc.emissiveIntensity;
+	m_SurfacePresentation.fEmissiveIntensity = desc.emissiveIntensity;
 	m_bDeferredEmissiveOverlay = desc.deferredEmissiveOverlay;
 	m_iPrototypeLevelIndex = desc.prototypeLevelIndex;
 	Apply_Transform();
@@ -133,6 +170,7 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 	UNREFERENCED_PARAMETER(fTimeDelta);
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		m_SurfacePresentation.fOpacity > 0.0001f &&
 		!Is_BasePresentationSuppressed();
 	if (!sourceVisible && !Has_VisibleDebrisPreviewInstance())
 		return;
@@ -157,6 +195,7 @@ HRESULT CDeployPropObject::Render()
 {
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		m_SurfacePresentation.fOpacity > 0.0001f &&
 		!Is_BasePresentationSuppressed();
 	if (sourceVisible)
 	{
@@ -197,6 +236,7 @@ HRESULT CDeployPropObject::Render_Shadow()
 	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		m_SurfacePresentation.fOpacity > 0.0001f &&
 		!Is_BasePresentationSuppressed();
 	if (sourceVisible)
 	{
@@ -248,6 +288,21 @@ bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
 	return true;
 }
 
+bool_t CDeployPropObject::Apply_SurfacePresentation(
+	const DEPLOY_SURFACE_PRESENTATION_PACKET& packet)
+{
+	if (!Is_FiniteSurfacePresentation(packet))
+		return false;
+
+	DEPLOY_SURFACE_PRESENTATION_PACKET staged = packet;
+	XMStoreFloat4(
+		&staged.vRootRotationOffset,
+		XMQuaternionNormalize(XMLoadFloat4(&packet.vRootRotationOffset)));
+	m_SurfacePresentation = staged;
+	Apply_Transform();
+	return true;
+}
+
 bool_t CDeployPropObject::Is_AnimBindPoseOnly() const
 {
 	return m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
@@ -271,10 +326,19 @@ bool_t CDeployPropObject::Get_WorldBounds(
 	   so the eight rotated corners can be re-bounded around the placement. */
 	const float4_t& rootRotation = m_bPhysicsPreviewActive ?
 		m_PhysicsPreviewRotation : m_Placement.rotationQuaternion;
-	const float3_t& rootPosition = m_bPhysicsPreviewActive ?
+	float3_t rootPosition = m_bPhysicsPreviewActive ?
 		m_PhysicsPreviewPosition : m_Placement.position;
-	const vector_t quaternion =
+	vector_t quaternion =
 		XMQuaternionNormalize(XMLoadFloat4(&rootRotation));
+	if (!m_bPhysicsPreviewActive)
+	{
+		quaternion = XMQuaternionNormalize(XMQuaternionMultiply(
+			XMQuaternionNormalize(XMLoadFloat4(
+				&m_SurfacePresentation.vRootRotationOffset)), quaternion));
+		rootPosition.x += m_SurfacePresentation.vRootOffset.x;
+		rootPosition.y += m_SurfacePresentation.vRootOffset.y;
+		rootPosition.z += m_SurfacePresentation.vRootOffset.z;
+	}
 	const matrix_t rotation = XMMatrixScaling(
 		m_Placement.uniformScale,
 		m_Placement.uniformScale,
@@ -889,12 +953,14 @@ HRESULT CDeployPropObject::Render_Static(
 		return E_FAIL;
 	const float2_t uvScale = float2_t(1.f, 1.f);
 	const float2_t uvOffset = float2_t(0.f, 0.f);
-	const float opacity = 1.f;
-	const float emissiveIntensity = m_fEmissiveIntensity;
+	const float opacity = m_SurfacePresentation.fOpacity;
+	const float emissiveIntensity =
+		m_SurfacePresentation.fEmissiveIntensity *
+		m_SurfacePresentation.fTransitionMultiplier;
 	const float specularIntensity = 1.f;
 	const float specularPower = 50.f;
 	const float4_t colorTint = float4_t(1.f, 1.f, 1.f, 1.f);
-	const float4_t emissiveColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	const float4_t emissiveColor = m_SurfacePresentation.vEmissiveColor;
 	const float4_t fullSurfaceEmissiveColor =
 		float4_t(1.f, 1.f, 1.f, 1.f);
 	const float fullSurfaceEmissiveIntensity = 0.f;
@@ -969,7 +1035,12 @@ HRESULT CDeployPropObject::Render_DeferredEmissiveOverlay()
 
 	const float2_t uvScale = float2_t(1.f, 1.f);
 	const float2_t uvOffset = float2_t(0.f, 0.f);
-	const float4_t emissiveColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	const float4_t emissiveColor = m_SurfacePresentation.vEmissiveColor;
+	const f32_t emissiveIntensity =
+		m_SurfacePresentation.fEmissiveIntensity *
+		m_SurfacePresentation.fTransitionMultiplier;
+	const f32_t emissiveMaskPower =
+		m_SurfacePresentation.fEmissiveMaskPower;
 	const uint32_t hasEmissive = 1u;
 	if (FAILED(m_pShaderCom->Bind_RawValue(
 		"g_UVScale", &uvScale, sizeof(uvScale))) ||
@@ -980,8 +1051,11 @@ HRESULT CDeployPropObject::Render_DeferredEmissiveOverlay()
 		FAILED(m_pShaderCom->Bind_RawValue(
 			"g_EmissiveColor", &emissiveColor, sizeof(emissiveColor))) ||
 		FAILED(m_pShaderCom->Bind_RawValue(
-			"g_EmissiveIntensity", &m_fEmissiveIntensity,
-			sizeof(m_fEmissiveIntensity))) ||
+			"g_EmissiveIntensity", &emissiveIntensity,
+			sizeof(emissiveIntensity))) ||
+		FAILED(m_pShaderCom->Bind_RawValue(
+			"g_EmissiveMaskPower", &emissiveMaskPower,
+			sizeof(emissiveMaskPower))) ||
 		FAILED(m_pIntactModelCom->Bind_Material(
 			m_pShaderCom, "g_EmissiveTexture", EMISSIVE_MESH_INDEX,
 			aiTextureType_EMISSIVE)))
@@ -1091,6 +1165,8 @@ bool_t CDeployPropObject::Should_RenderDeferredEmissiveOverlay() const
 	return m_bDeferredEmissiveOverlay &&
 		DEPLOY_PROP_MODEL_KIND::STATIC == m_ModelKind &&
 		DEPLOY_PROP_STATE::INTACT == m_State &&
+		m_SurfacePresentation.fOpacity > 0.0001f &&
+		m_SurfacePresentation.fTransitionMultiplier > 0.0001f &&
 		!Is_BasePresentationSuppressed();
 }
 
@@ -1098,10 +1174,19 @@ void CDeployPropObject::Apply_Transform()
 {
 	const float4_t& rootRotation = m_bPhysicsPreviewActive ?
 		m_PhysicsPreviewRotation : m_Placement.rotationQuaternion;
-	const float3_t& rootPosition = m_bPhysicsPreviewActive ?
+	float3_t rootPosition = m_bPhysicsPreviewActive ?
 		m_PhysicsPreviewPosition : m_Placement.position;
-	const vector_t quaternion =
+	vector_t quaternion =
 		XMQuaternionNormalize(XMLoadFloat4(&rootRotation));
+	if (!m_bPhysicsPreviewActive)
+	{
+		quaternion = XMQuaternionNormalize(XMQuaternionMultiply(
+			XMQuaternionNormalize(XMLoadFloat4(
+				&m_SurfacePresentation.vRootRotationOffset)), quaternion));
+		rootPosition.x += m_SurfacePresentation.vRootOffset.x;
+		rootPosition.y += m_SurfacePresentation.vRootOffset.y;
+		rootPosition.z += m_SurfacePresentation.vRootOffset.z;
+	}
 	const matrix_t world = XMMatrixScaling(
 		m_Placement.uniformScale,
 		m_Placement.uniformScale,

@@ -32,6 +32,13 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	   not uniform. Empty preserves the legacy delay + interval schedule. */
 	std::vector<uint32_t> hitOffsetsMs;
 	std::string serverDamageProfileId;
+	/* Optional Server-authored stage refinements are retained by this read-only
+	   reference so tools can diagnose the same contract that the Server loaded. */
+	std::string partDamagePolicy;
+	bool_t bHasCounterProxy = false;
+	f32_t fCounterProxyForwardOffsetM = 0.f;
+	f32_t fCounterProxyRightOffsetM = 0.f;
+	f32_t fCounterProxyRadiusM = 0.f;
 };
 
 struct ENCOUNTER_PATTERN_REFERENCE final

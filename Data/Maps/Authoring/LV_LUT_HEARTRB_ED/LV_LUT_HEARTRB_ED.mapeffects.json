@@ -1,0 +1,23 @@
+{
+  "schema": "lostark.map-effect-presentation",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "presentations": [
+    {
+      "independentEffectId": "valtan.independent-effect.floor-crack-emissive",
+      "displayName": "발탄 바닥 균열 Emissive",
+      "presentationKind": "DEPLOY_SURFACE_OVERLAY",
+      "owners": [
+        { "groupId": "destroyable.group.valtan.floor30.brick.7000000000000000002", "placementId": "7000000000000000002" },
+        { "groupId": "destroyable.group.valtan.floor30.brick.7000000000000000003", "placementId": "7000000000000000003" },
+        { "groupId": "destroyable.group.valtan.floor84.brick.7000000000000000006", "placementId": "7000000000000000006" },
+        { "groupId": "destroyable.group.valtan.floor84.brick.7000000000000000007", "placementId": "7000000000000000007" }
+      ],
+      "visibleStates": ["INTACT"],
+      "materialIndex": 1,
+      "emissiveIntensity": 1.5,
+      "emissiveColor": [0.12, 1.0, 0.56, 1.0],
+      "maskPower": 1.0
+    }
+  ]
+}

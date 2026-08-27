@@ -37,6 +37,7 @@ ANIM_NOTIFY_REL = "Data/Animation/Reference/Valtan/Valtan.animnotify"
 
 STABLE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,160}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+ANIMATION_INTAKE_ONLY = "ANIMATION_INTAKE_ONLY"
 
 
 class PromotionError(RuntimeError):
@@ -194,13 +195,14 @@ def _validate_header(manifest: dict[str, Any], debug: dict[str, Any]) -> None:
             "sourceDocument",
             "presentationProfile",
             "clipAliases",
+            "animationIntakeOnly",
             "patterns",
         ),
         "promotion manifest",
     )
     if (
         manifest["schema"] != "lostark.valtan-animation-chain-promotions"
-        or manifest["formatVersion"] != 1
+        or manifest["formatVersion"] != 2
         or manifest["bossArchetypeId"] != "BOSS_VALTAN"
         or manifest["encounterId"] != "ENCOUNTER_VALTAN"
     ):
@@ -354,6 +356,109 @@ def _manual_presentation_pattern(
     }
 
 
+def _preserve_manual_gameplay_enrichment(
+    generated: dict[str, Any], existing: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Keep reviewed gameplay semantics while rebuilding animation lineage.
+
+    The promotion tool owns clip identity and stage walls. Pattern authors own
+    target/aim, hit, motion, event and branch semantics after that promotion.
+    Re-running the animation resolver must not silently turn a working Server
+    pattern back into an animation-only audition.
+    """
+
+    if existing is None:
+        return generated
+    generated_stages = {
+        stage["stageId"]: stage for stage in generated["stages"]
+    }
+    existing_stages = {
+        stage.get("stageId"): stage
+        for stage in existing.get("stages", [])
+        if isinstance(stage, dict)
+    }
+    if set(generated_stages) != set(existing_stages):
+        raise PromotionError(
+            f"manual gameplay enrichment stage closure drift: {generated['patternId']}"
+        )
+    for field in (
+        "targetPolicy",
+        "aimPolicy",
+        "eligibility",
+        "invulnerableWhileRunning",
+        "serverMotion",
+        "reactions",
+    ):
+        if field in existing:
+            generated[field] = copy.deepcopy(existing[field])
+    generated_action_ids = {
+        stage["actionId"] for stage in generated_stages.values()
+    }
+    for stage_id, generated_stage in generated_stages.items():
+        existing_stage = existing_stages[stage_id]
+        if existing_stage.get("actionId") != generated_stage["actionId"]:
+            raise PromotionError(
+                "manual gameplay enrichment action identity drift: "
+                f"{generated['patternId']}/{stage_id}"
+            )
+        for field in (
+            "stageKind",
+            "defaultNextActionId",
+            "hit",
+            "motion",
+            "events",
+            "branches",
+        ):
+            if field in existing_stage:
+                generated_stage[field] = copy.deepcopy(existing_stage[field])
+        next_action = generated_stage["defaultNextActionId"]
+        if next_action is not None and next_action not in generated_action_ids:
+            raise PromotionError(
+                "manual gameplay enrichment default edge leaves its pattern: "
+                f"{generated['patternId']}/{stage_id}"
+            )
+        for branch in generated_stage["branches"]:
+            next_action = branch.get("nextActionId")
+            if next_action is not None and next_action not in generated_action_ids:
+                raise PromotionError(
+                    "manual gameplay enrichment branch leaves its pattern: "
+                    f"{generated['patternId']}/{stage_id}"
+                )
+    return generated
+
+
+def _preserve_manual_presentation_enrichment(
+    generated: dict[str, Any], existing: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Keep exact-occurrence Effect/Camera joins across animation refreshes."""
+
+    if existing is None:
+        return generated
+    generated_stages = {
+        stage["stageId"]: stage for stage in generated["stages"]
+    }
+    existing_stages = {
+        stage.get("stageId"): stage
+        for stage in existing.get("stages", [])
+        if isinstance(stage, dict)
+    }
+    if set(generated_stages) != set(existing_stages):
+        raise PromotionError(
+            f"manual presentation enrichment stage closure drift: {generated['patternId']}"
+        )
+    for stage_id, generated_stage in generated_stages.items():
+        existing_stage = existing_stages[stage_id]
+        if existing_stage.get("actionId") != generated_stage["actionId"]:
+            raise PromotionError(
+                "manual presentation enrichment action identity drift: "
+                f"{generated['patternId']}/{stage_id}"
+            )
+        for field in ("sequenceRole", "effectCues", "cameraInvocations"):
+            if field in existing_stage:
+                generated_stage[field] = copy.deepcopy(existing_stage[field])
+    return generated
+
+
 def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     manifest_path = repo_root / MANIFEST_REL
     manifest = _read_json(manifest_path)
@@ -371,10 +476,19 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
         _stable(source_clip, "clipAliases source")
         _stable(target_clip, f"clipAliases[{source_clip}]")
 
+    intake_only = manifest["animationIntakeOnly"]
     promotions = manifest["patterns"]
     chains = debug["chains"]
-    if not isinstance(promotions, list) or not isinstance(chains, list) or not chains:
-        raise PromotionError("manifest patterns and debug chains must be non-empty arrays")
+    if (
+        not isinstance(intake_only, list)
+        or not isinstance(promotions, list)
+        or not isinstance(chains, list)
+        or not promotions
+        or not chains
+    ):
+        raise PromotionError(
+            "manifest promotions, animation intake, and debug chains must be arrays"
+        )
     promotion_ids: set[str] = set()
     pattern_ids: set[str] = set()
     for ordinal, promotion in enumerate(promotions):
@@ -420,6 +534,29 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
                 f"promotion target and aim policies must be authored together: {chain_id}"
             )
 
+    intake_chain_ids: list[str] = []
+    for ordinal, row in enumerate(intake_only):
+        _exact(
+            row,
+            ("sourceChainId", "displayName", "authoringPhase", "admissionState"),
+            f"animationIntakeOnly[{ordinal}]",
+        )
+        chain_id = _stable(
+            row["sourceChainId"],
+            f"animationIntakeOnly[{ordinal}].sourceChainId",
+        )
+        if chain_id in promotion_ids or chain_id in intake_chain_ids:
+            raise PromotionError(f"duplicate animation intake identity: {chain_id}")
+        if (
+            not isinstance(row["displayName"], str)
+            or not row["displayName"].strip()
+            or len(row["displayName"]) > 64
+            or _integer(row["authoringPhase"], "authoringPhase", 1) > 3
+            or row["admissionState"] != ANIMATION_INTAKE_ONLY
+        ):
+            raise PromotionError(f"animation intake metadata is invalid: {chain_id}")
+        intake_chain_ids.append(chain_id)
+
     chain_ids = [
         _stable(chain.get("chainId"), f"debug chain[{ordinal}].chainId")
         for ordinal, chain in enumerate(chains)
@@ -427,11 +564,93 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
     ]
     if len(chain_ids) != len(chains) or len(chain_ids) != len(set(chain_ids)):
         raise PromotionError("debug chain IDs are missing or duplicated")
-    if [row["sourceChainId"] for row in promotions] != chain_ids:
-        raise PromotionError("promotion manifest order/closure must exactly match debug chains")
+    declared_chain_ids = [row["sourceChainId"] for row in promotions] + intake_chain_ids
+    if declared_chain_ids != chain_ids:
+        raise PromotionError(
+            "promotion plus intake-only manifest order/closure must exactly match debug chains"
+        )
+    promoted_chains = chains[: len(promotions)]
 
     curves = _load_root_curves(repo_root, model_path)
     clip_skills = _load_clip_skills(repo_root / ANIM_NOTIFY_REL)
+
+    intake_occurrence_ids: set[str] = set()
+    for declaration, chain in zip(intake_only, chains[len(promotions) :]):
+        chain_id = declaration["sourceChainId"]
+        _exact(
+            chain,
+            ("chainId", "targetPatternId", "targetStageId", "animation"),
+            f"intake-only chain {chain_id}",
+        )
+        if chain["chainId"] != chain_id or chain["targetPatternId"] or chain["targetStageId"]:
+            raise PromotionError(
+                f"intake-only debug chain target fields must remain empty: {chain_id}"
+            )
+        animation = chain["animation"]
+        _exact(
+            animation,
+            ("endPolicy", "repeatCount", "occurrences"),
+            f"intake-only chain {chain_id}.animation",
+        )
+        occurrences = animation["occurrences"]
+        if (
+            animation["endPolicy"] != "NATIVE_CLIP_LENGTHS"
+            or not isinstance(occurrences, list)
+            or not occurrences
+            or _integer(animation["repeatCount"], f"chain {chain_id}.repeatCount", 1)
+            != len(occurrences)
+            or len(occurrences) > 64
+        ):
+            raise PromotionError(f"intake-only animation header is invalid: {chain_id}")
+        for ordinal, source in enumerate(occurrences, start=1):
+            _exact(
+                source,
+                (
+                    "clipOccurrenceId",
+                    "clip",
+                    "mappingBasis",
+                    "sourceStartMs",
+                    "playMs",
+                    "playRate",
+                    "repeatUntilStageEnd",
+                ),
+                f"intake-only chain {chain_id} occurrence[{ordinal}]",
+            )
+            occurrence_id = _stable(
+                source["clipOccurrenceId"],
+                f"intake-only chain {chain_id} source occurrence",
+            )
+            if occurrence_id in intake_occurrence_ids:
+                raise PromotionError(f"duplicate intake-only occurrence: {occurrence_id}")
+            intake_occurrence_ids.add(occurrence_id)
+            source_clip = _stable(
+                source["clip"], f"intake-only chain {chain_id} source clip"
+            )
+            resolved_clip = aliases.get(source_clip, source_clip)
+            curve = curves.get(resolved_clip)
+            if curve is None:
+                raise PromotionError(
+                    f"intake-only clip is absent from the reviewed WModel: {source_clip}"
+                )
+            if source["mappingBasis"] != "PROJECT_AUTHORED":
+                raise PromotionError(
+                    f"intake-only clip must remain PROJECT_AUTHORED: {occurrence_id}"
+                )
+            source_start_ms = _integer(
+                source["sourceStartMs"], f"{occurrence_id}.sourceStartMs"
+            )
+            _integer(source["playMs"], f"{occurrence_id}.playMs")
+            _number(source["playRate"], f"{occurrence_id}.playRate", 0.000001)
+            if not isinstance(source["repeatUntilStageEnd"], bool):
+                raise PromotionError(
+                    f"{occurrence_id}.repeatUntilStageEnd must be Boolean"
+                )
+            native_duration_ms, _ticks_per_second, _keys = curve
+            if source_start_ms >= native_duration_ms:
+                raise PromotionError(
+                    f"intake-only sourceStartMs escapes native clip: {occurrence_id}"
+                )
+
     gameplay = _read_json(repo_root / GAMEPLAY_REL)
     presentation = _read_json(repo_root / PRESENTATION_REL)
 
@@ -448,6 +667,16 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
     existing_manual = gameplay.get("decisionModel", {}).get("manualAuditions", [])
     existing_manual_by_id = {
         row.get("patternId"): row for row in existing_manual if isinstance(row, dict)
+    }
+    existing_gameplay_by_id = {
+        row.get("patternId"): row
+        for row in gameplay.get("patterns", [])
+        if isinstance(row, dict) and row.get("patternId") in pattern_ids
+    }
+    existing_presentation_by_id = {
+        row.get("patternId"): row
+        for row in presentation.get("patterns", [])
+        if isinstance(row, dict) and row.get("patternId") in pattern_ids
     }
     for promotion in promotions:
         pattern_id = promotion["patternId"]
@@ -473,7 +702,7 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
     seen_target_actions: set[str] = set()
     seen_target_occurrences: set[str] = set()
     used_aliases: set[str] = set()
-    for promotion, chain in zip(promotions, chains):
+    for promotion, chain in zip(promotions, promoted_chains):
         chain_id = promotion["sourceChainId"]
         _exact(
             chain,
@@ -633,6 +862,14 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
         presentation_pattern = _manual_presentation_pattern(
             promotion, source_action_ids, stages
         )
+        gameplay_pattern = _preserve_manual_gameplay_enrichment(
+            gameplay_pattern,
+            existing_gameplay_by_id.get(promotion["patternId"]),
+        )
+        presentation_pattern = _preserve_manual_presentation_enrichment(
+            presentation_pattern,
+            existing_presentation_by_id.get(promotion["patternId"]),
+        )
         gameplay["patterns"].append(gameplay_pattern)
         presentation["patterns"].append(presentation_pattern)
         gameplay["decisionModel"]["manualAuditions"].append(
@@ -660,7 +897,7 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
             f"clip alias coverage drift: used={sorted(used_aliases)} declared={sorted(aliases)}"
         )
     reviewed_pattern_count, reviewed_stage_count = _reviewed_closure_counts(
-        promotions, chains
+        promotions, promoted_chains
     )
     generated_stage_count = sum(row["stageCount"] for row in receipt_patterns)
     if (

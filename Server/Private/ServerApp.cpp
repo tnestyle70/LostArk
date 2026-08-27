@@ -2598,6 +2598,31 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.ValtanAudition = request;
 	}
 	else if (frame.ePacketType ==
+		PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_START)
+	{
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::VALTAN_PATTERN_FLOW_START;
+		command.ValtanPatternFlowStart = std::move(request);
+	}
+	else if (frame.ePacketType ==
+		PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT)
+	{
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType =
+			ROOM_COMMAND_TYPE::VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT;
+		command.ValtanPatternFlowStopAfterCurrent = std::move(request);
+	}
+	else if (frame.ePacketType ==
 		PACKET_TYPE::C2S_DATA_REVISION_PREPARE_REQUEST)
 	{
 		C2S_DATA_REVISION_PREPARE_REQUEST request{};

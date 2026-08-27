@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "revision":  566,
+    "revision":  568,
     "placements":  [
                        {
                            "placementId":  "collision.valtan.wallgroup.3705102.9335938568718910930",
@@ -1347,16 +1347,16 @@
                            "placementId":  "Stage_Boss",
                            "kind":  "triggerBox",
                            "position":  [
-                                            130.181,
-                                            23.0607529,
-                                            -95.8730011
-                                        ],
+                                             147.25,
+                                             23.0175991,
+                                             -117.25
+                                         ],
                            "yawDegrees":  0,
                            "enabled":  true,
                            "halfExtents":  [
-                                               2.70000005,
-                                               1,
-                                               2.4000001
+                                               2,
+                                               1.5,
+                                               2
                                            ],
                            "triggerOnce":  true,
                            "events":  [
@@ -1466,11 +1466,11 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            9.76914692,
-                                            9.77140999,
-                                            -21.4049187
-                                        ],
-                           "yawDegrees":  0,
+                                             147.25,
+                                             23.031,
+                                             -117.75
+                                         ],
+                           "yawDegrees":  120,
                            "enabled":  true
                        },
                        {
@@ -1479,11 +1479,11 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            9.53738499,
-                                            9.77140999,
-                                            -22.2993889
-                                        ],
-                           "yawDegrees":  0,
+                                             148.25,
+                                             23.012,
+                                             -116.75
+                                         ],
+                           "yawDegrees":  120,
                            "enabled":  true
                        },
                        {
@@ -1492,11 +1492,11 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            9.7031374,
-                                            9.77141094,
-                                            -20.6715412
-                                        ],
-                           "yawDegrees":  0,
+                                             148.25,
+                                             23.048,
+                                             -118.25
+                                         ],
+                           "yawDegrees":  120,
                            "enabled":  true
                        },
                        {
@@ -1505,11 +1505,11 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            7.12628651,
-                                            9.77140903,
-                                            -21.4965858
-                                        ],
-                           "yawDegrees":  0,
+                                             149.25,
+                                             22.96,
+                                             -117.25
+                                         ],
+                           "yawDegrees":  120,
                            "enabled":  true
                        },
                        {

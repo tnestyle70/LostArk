@@ -3,6 +3,7 @@
 #include "ServerWorldEntity.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <set>
 
@@ -18,6 +19,42 @@ namespace
 		const LostArk::Server::SERVER_BOSS_COMBAT_FLAG flag) noexcept
 	{
 		return static_cast<std::uint32_t>(flag);
+	}
+
+	bool ContainsCounterProxySource(
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const float sourceX,
+		const float sourceZ) noexcept
+	{
+		if (!boss.bPatternHasCounterProxy ||
+			!std::isfinite(sourceX) || !std::isfinite(sourceZ) ||
+			!std::isfinite(boss.fPositionX) ||
+			!std::isfinite(boss.fPositionZ) ||
+			!std::isfinite(boss.fYawDegrees) ||
+			!std::isfinite(boss.fPatternCounterProxyForwardOffsetM) ||
+			!std::isfinite(boss.fPatternCounterProxyRightOffsetM) ||
+			!std::isfinite(boss.fPatternCounterProxyRadiusM) ||
+			boss.fPatternCounterProxyRadiusM <= 0.f)
+		{
+			return false;
+		}
+		constexpr float DEGREES_TO_RADIANS = 0.0174532925f;
+		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+		const float forwardX = std::sin(yawRadians);
+		const float forwardZ = std::cos(yawRadians);
+		const float rightX = forwardZ;
+		const float rightZ = -forwardX;
+		const float proxyX = boss.fPositionX +
+			forwardX * boss.fPatternCounterProxyForwardOffsetM +
+			rightX * boss.fPatternCounterProxyRightOffsetM;
+		const float proxyZ = boss.fPositionZ +
+			forwardZ * boss.fPatternCounterProxyForwardOffsetM +
+			rightZ * boss.fPatternCounterProxyRightOffsetM;
+		const float deltaX = sourceX - proxyX;
+		const float deltaZ = sourceZ - proxyZ;
+		const float radiusSquared = boss.fPatternCounterProxyRadiusM *
+			boss.fPatternCounterProxyRadiusM;
+		return deltaX * deltaX + deltaZ * deltaZ <= radiusSquared;
 	}
 }
 
@@ -95,12 +132,16 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 	}
 	else if (0u != hit.iRawDamage)
 	{
-		const std::uint64_t retained =
-			static_cast<std::uint64_t>(hit.iRawDamage) *
-			(100u - reductionPercent) / 100u;
-		std::uint32_t resolved = static_cast<std::uint32_t>(retained);
-		if (0u == resolved && reductionPercent < 100u)
-			resolved = 1u;
+		std::uint32_t resolved = hit.iRawDamage;
+		if (!hit.bHealthDamagePreResolved)
+		{
+			const std::uint64_t retained =
+				static_cast<std::uint64_t>(hit.iRawDamage) *
+				(100u - reductionPercent) / 100u;
+			resolved = static_cast<std::uint32_t>(retained);
+			if (0u == resolved && reductionPercent < 100u)
+				resolved = 1u;
+		}
 		if (0u != state.iShieldCurrent)
 		{
 			result.iShieldDamage =
@@ -120,13 +161,10 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 	}
 
 	if (0u != hit.iCounterPower &&
-		Has_Flag(state, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE))
+		(!boss.bPatternHasCounterProxy ||
+		 ContainsCounterProxySource(boss, hit.fSourceX, hit.fSourceZ)))
 	{
-		result.bCounterTriggered = Publish_PatternOutcome(
-			boss, BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT,
-			hit.iServerTick);
-		(void)Set_Flag(state,
-			SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
+		result.bCounterTriggered = Try_TriggerCounter(boss, hit.iServerTick);
 	}
 	if (0u != hit.iStaggerDamage && 0u != state.iStaggerMaximum &&
 		state.iStaggerCurrent < state.iStaggerMaximum)
@@ -174,7 +212,10 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 		if (state.Parts.end() != part)
 		{
 			result.iPartDamage =
-				(std::min)(hit.iPartDamage, part->iCurrentDurability);
+				BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE ==
+					boss.ePatternPartDamagePolicy ?
+					part->iCurrentDurability :
+					(std::min)(hit.iPartDamage, part->iCurrentDurability);
 			part->iCurrentDurability -= result.iPartDamage;
 			combatStateChanged = combatStateChanged ||
 				0u != result.iPartDamage;
@@ -201,6 +242,21 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 			state.iStateRevision;
 	}
 	return result;
+}
+
+bool LostArk::Server::CBossCombatRuntime::Try_TriggerCounter(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t serverTick)
+{
+	SERVER_BOSS_COMBAT_STATE& state = boss.BossCombat;
+	if (!Has_Flag(state, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE) ||
+		!Publish_PatternOutcome(
+			boss, BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT, serverTick))
+	{
+		return false;
+	}
+	(void)Set_Flag(state, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
+	return true;
 }
 
 bool LostArk::Server::CBossCombatRuntime::Publish_PatternOutcome(

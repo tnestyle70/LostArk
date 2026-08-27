@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "areaId": "LV_LUT_HEARTRB_ED",
-  "evidence": "Exact UE3 material parameters except explicitly reconstructed crack emissive and phase timing",
+  "evidence": "Exact UE3 material parameters except explicitly reconstructed crack emissive; SpaceHole profiles are Debug reference-camera inputs only",
   "profiles": [
     {
       "assetId": "BG_RAD_VALTAN_FLOOR01A_SM",
@@ -121,69 +121,6 @@
         0.4,
         0.9,
         1.8,
-        1.0
-      ]
-    },
-    {
-      "assetId": "VALTAN_PHASE_CHAOS_RING",
-      "renderMode": "Additive",
-      "cullMode": "None",
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "uvSpeed": [
-        0.012,
-        0.0
-      ],
-      "opacity": 0.48,
-      "opacityPower": 4.0,
-      "colorTint": [
-        1.5,
-        0.08,
-        0.12,
-        1.0
-      ]
-    },
-    {
-      "assetId": "VALTAN_PHASE_CHAOS_CLOUD",
-      "renderMode": "Alpha",
-      "cullMode": "None",
-      "uvScale": [
-        1.5,
-        1.5
-      ],
-      "uvSpeed": [
-        -0.008,
-        0.006
-      ],
-      "opacity": 0.3,
-      "opacityPower": 5.0,
-      "colorTint": [
-        0.35,
-        0.05,
-        0.08,
-        1.0
-      ]
-    },
-    {
-      "assetId": "VALTAN_PHASE_CHAOS_ELECTRIC",
-      "renderMode": "Additive",
-      "cullMode": "None",
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "uvSpeed": [
-        0.025,
-        -0.015
-      ],
-      "opacity": 0.4,
-      "opacityPower": 3.0,
-      "colorTint": [
-        1.2,
-        0.12,
-        0.18,
         1.0
       ]
     }

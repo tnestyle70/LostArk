@@ -86,6 +86,12 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 
 정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. Client 작업 디렉터리를 반드시 `Client/Default`로 고정하고 셰이더·리소스 전제조건을 먼저 검사한다. 개별 MSBuild를 직접 실행할 때도 위 순서를 그대로 따른다.
 
+같은 working tree에서 Visual Studio와 자동화 빌드/publisher를 겹쳐 실행하지 않는다. 선언과 정의가 일치하는데
+`LNK2019`가 발생하면 broad clean보다 먼저 선택한 `Configuration|Platform`의 evaluated `IntDir/OutDir`와 provider
+`.obj`의 정의 심볼을 확인하고, 해당 translation unit만 강제 재컴파일한다. `LNK1104`, `MSB3021`, `MSB3027`의
+대상이 EXE/DLL이면 실행 중 출력물 잠금이므로 compile 성공과 최종 link 실패, 실행 중인 이전 바이너리를 분리해
+보고한다. Client 최종 link는 실행 중인 `Client.exe`를 사용자가 종료한 뒤 한 번만 수행한다.
+
 Loader worker에서 호출되는 shader/model/navigation/camera/character/part/Valtan factory는 modal dialog를 띄우지 않고 실패를 반환한다. 종료 시 cooperative cancellation과 `CancelSynchronousIo`를 순서대로 시도한다. 그래도 10초를 넘기면 `TerminateThread`로 손상된 process를 계속 실행하지 않고 `ERROR_TIMEOUT`으로 process fail-fast한다. smoke harness는 조기 종료나 report 누락을 실패로 판정한다.
 
 ## 팀 협업 규칙

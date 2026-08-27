@@ -1,0 +1,13 @@
+{
+  "schema": "lostark.valtan-pattern-authoring-effects",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "bindings": [
+    {
+      "patternId": "VALTAN_SEQUENCE_RUSH",
+      "effectAssetId": "effect.valtan.sequence.rush",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.rush.effect.json",
+      "state": "DRAFT_ATTACHED"
+    }
+  ]
+}

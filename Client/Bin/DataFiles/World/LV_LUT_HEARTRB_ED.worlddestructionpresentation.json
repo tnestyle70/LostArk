@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-debris-presentation",
     "formatVersion":  1,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "abfb7dc0e6e16aa2a15682cdf77240a24aad0948135fd39759c01b2bebbc6c7c",
+    "combatRuntimeRevision":  "593a55c1eea4b960022e9876bdb62642f2fc83dff831a17e61c9d952f713f3e1",
     "profiles":  [
                      {
                          "groupId":  "destroyable.group.valtan.entrance.frontwallA",

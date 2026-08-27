@@ -9,12 +9,14 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <limits>
 #include <new>
 #include <set>
+#include <string_view>
 #include <utility>
 
 namespace
@@ -49,6 +51,43 @@ namespace
 	// The caster's Esther call converted to fixed 30 Hz room ticks.
 	constexpr std::uint32_t ESTHER_CAST_TICKS =
 		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
+
+	bool Is_StablePatternFlowId(const std::string_view value)
+	{
+		return !value.empty() &&
+			value.size() <= MAX_STABLE_NETWORK_ID_BYTES &&
+			std::all_of(value.begin(), value.end(),
+				[](const unsigned char character)
+				{
+					return 0 != std::isalnum(character) || character == '_' ||
+						character == '-' || character == '.';
+				});
+	}
+
+	bool Is_PatternFlowRevision(const std::string_view value)
+	{
+		return VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES == value.size() &&
+			std::all_of(value.begin(), value.end(),
+				[](const unsigned char character)
+				{
+					return (character >= '0' && character <= '9') ||
+						(character >= 'a' && character <= 'f');
+				});
+	}
+
+	std::string Build_PatternFlowStartRequestIdentity(
+		const C2S_DEBUG_VALTAN_PATTERN_FLOW_START& request)
+	{
+		std::string identity = request.strBossPlacementId + "|" +
+			request.strFlowId + "|" + request.strFlowRevision + "|" +
+			request.strStartSlotId + "|" +
+			std::to_string(request.iInterStepPursuitMs);
+		for (const VALTAN_PATTERN_FLOW_SLOT_WIRE& slot : request.Slots)
+		{
+			identity += "|" + slot.strSlotId + "=" + slot.strPatternId;
+		}
+		return identity;
+	}
 
 	float Resolve_VolleyMinimumSpacing(
 		const BOSS_COMBAT_OBJECT_DEFINITION& definition)
@@ -207,41 +246,6 @@ namespace
 	only presents a death the collapse already decided. */
 	constexpr float FALL_GRAVITY_METERS_PER_SECOND_SQUARED = 9.8f;
 	constexpr std::uint32_t FALL_DEATH_TICKS = 45u;
-	constexpr const char* VALTAN_CATCH_BREATH_PATTERN_ID =
-		"VALTAN_SEQUENCE_CATCH_BREATH";
-	constexpr const char* VALTAN_CATCH_BREATH_STEP_01_ACTION_ID =
-		"valtan.sequence.catch-breath.step-01";
-	constexpr const char* VALTAN_CATCH_BREATH_STEP_02_ACTION_ID =
-		"valtan.sequence.catch-breath.step-02";
-	constexpr const char* VALTAN_CATCH_BREATH_STEP_03_ACTION_ID =
-		"valtan.sequence.catch-breath.step-03";
-	constexpr const char* VALTAN_CATCH_BREATH_STEP_04_ACTION_ID =
-		"valtan.sequence.catch-breath.step-04";
-	/* Original action 420623 notifies the grab at 1.400s in 21_01 and the shot
-		at 0.650s in 21_04. The remaining 1.35s of the firing clip carries the
-		body just over sixty metres, outside the authored arena. */
-	constexpr std::uint32_t VALTAN_CATCH_BREATH_GRAB_NOTIFY_MS = 1400u;
-	constexpr std::uint32_t VALTAN_CATCH_BREATH_THROW_NOTIFY_MS = 650u;
-	constexpr float VALTAN_CATCH_BREATH_THROW_SPEED_METERS_PER_SECOND = 45.f;
-	constexpr float VALTAN_CATCH_BREATH_THROW_SECONDS = 1.35f;
-
-	bool Is_ValtanCatchBreathHeldAction(const std::string_view actionId)
-	{
-		return actionId == VALTAN_CATCH_BREATH_STEP_01_ACTION_ID ||
-			actionId == VALTAN_CATCH_BREATH_STEP_02_ACTION_ID ||
-			actionId == VALTAN_CATCH_BREATH_STEP_03_ACTION_ID ||
-			actionId == VALTAN_CATCH_BREATH_STEP_04_ACTION_ID;
-	}
-
-	void Clear_ValtanCatchBreathControl(SERVER_PLAYER& player)
-	{
-		player.iValtanGrabOwnerEntityId = INVALID_NET_ENTITY_ID;
-		player.iValtanGrabPatternSequence = 0u;
-		player.fValtanThrowDirectionX = 0.f;
-		player.fValtanThrowDirectionZ = 0.f;
-		player.fValtanThrowSpeed = 0.f;
-		player.fValtanThrowRemainingSeconds = 0.f;
-	}
 
 	constexpr std::uint32_t Add_ServerTicksSkippingReservedZero(
 		const std::uint32_t startTick,
@@ -266,16 +270,6 @@ namespace
 			static_cast<std::uint64_t>(
 				(std::numeric_limits<std::uint32_t>::max)() - startTick) +
 				currentTick;
-	}
-
-	bool Has_ValtanCatchBreathNotifyElapsed(
-		const SERVER_WORLD_ENTITY& boss,
-		const std::uint32_t serverTick,
-		const std::uint32_t notifyMs)
-	{
-		return Elapsed_ServerTicksSkippingReservedZero(
-			boss.iActionStartTick, serverTick) * 1000u >=
-			static_cast<std::uint64_t>(notifyMs) * SERVER_TICK_HZ;
 	}
 
 	static_assert(91u == Add_ServerTicksSkippingReservedZero(1u, 90u));
@@ -319,8 +313,8 @@ namespace
 			"VALTAN_ARMOR_BREAK_OPENING",
 			"VALTAN_ENTRANCE_WHIRLWIND",
 			"VALTAN_ARENA_BREAK_109",
-			"VALTAN_ARENA_BREAK_84",
-			"VALTAN_ARENA_BREAK_33",
+			"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+			"VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
 			"VALTAN_FOUR_PILLARS_105" };
 
 	bool Is_CharacterSelectEnvironmentDependentPattern(
@@ -344,17 +338,17 @@ namespace
 	   view also stages the two floor collapses. Stage A drops the outer rail at
 	   84 bars and stage B drops the brick ring at the 30-bar landing. */
 	constexpr const char* FINAL_ARENA_FLOOR_A_PATTERN_ID =
-		"VALTAN_ARENA_BREAK_84";
+		"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK";
 	constexpr const char* FINAL_ARENA_FLOOR_A_STAGE_ID = "IMPACT";
 	constexpr const char* FINAL_ARENA_FLOOR_A_ACTION_ID =
-		"valtan.mechanic.arena-floor-84.impact";
-	constexpr std::uint32_t FINAL_ARENA_FLOOR_A_STAGE_INDEX = 1u;
+		"valtan.mechanic.terrain-destruction-3.impact";
+	constexpr std::uint32_t FINAL_ARENA_FLOOR_A_STAGE_INDEX = 3u;
 	constexpr const char* FINAL_ARENA_FLOOR_B_PATTERN_ID =
-		"VALTAN_ARENA_BREAK_33";
-	constexpr const char* FINAL_ARENA_FLOOR_B_STAGE_ID = "LANDING";
+		"VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK";
+	constexpr const char* FINAL_ARENA_FLOOR_B_STAGE_ID = "IMPACT";
 	constexpr const char* FINAL_ARENA_FLOOR_B_ACTION_ID =
-		"valtan.mechanic.arena-break-33.landing";
-	constexpr std::uint32_t FINAL_ARENA_FLOOR_B_STAGE_INDEX = 1u;
+		"valtan.mechanic.terrain-destruction-9.impact";
+	constexpr std::uint32_t FINAL_ARENA_FLOOR_B_STAGE_INDEX = 3u;
 	struct VALTAN_FIGHT_PAGE_POLICY final
 	{
 		const char* pTimelineRowId;
@@ -404,6 +398,7 @@ namespace
 		player.iCurrentSkillId = INVALID_SKILL_ID;
 		player.Clear_SkillTarget();
 		player.iActionStartTick = 0u;
+		player.Clear_Attachment();
 		player.fFallVelocityY = 0.f;
 		player.iFallDeathTick = 0u;
 		player.fActionElapsedSeconds = 0.f;
@@ -425,7 +420,6 @@ namespace
 		player.hasMoveGoal = false;
 		player.MovePath.clear();
 		player.iMovePathIndex = 0u;
-		Clear_ValtanCatchBreathControl(player);
 		player.isCombatReady = false;
 	}
 
@@ -1469,6 +1463,15 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 				command.iSessionId,
 				command.ValtanAudition);
 			break;
+		case ROOM_COMMAND_TYPE::VALTAN_PATTERN_FLOW_START:
+			Handle_ValtanPatternFlowStart(
+				command.iSessionId, command.ValtanPatternFlowStart);
+			break;
+		case ROOM_COMMAND_TYPE::VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT:
+			Handle_ValtanPatternFlowStopAfterCurrent(
+				command.iSessionId,
+				command.ValtanPatternFlowStopAfterCurrent);
+			break;
 		case ROOM_COMMAND_TYPE::DEBUG_GIVE_ITEM:
 			Handle_DebugGiveItem(command.iSessionId, command.DebugGiveItem);
 			break;
@@ -1587,6 +1590,15 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		recordTickDuration();
 		return;
 	}
+	/* Boss root motion is resolved after the ordinary player update. Refresh a
+	grabbed fallback once more at that committed pose so the snapshot never
+	trails its attachment owner by one fixed tick. */
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		if (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == player.eAction)
+			(void)Update_PlayerAttachment(player, updateTick);
+	}
 	(void)Commit_DueEncounterProps(updateTick);
 	if (!Commit_DueWorldDestruction(updateTick))
 	{
@@ -1599,6 +1611,13 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	if (!Flush_ValtanPatternIdAuditionLifecycle())
 	{
 		m_strStatus = "Valtan audition lifecycle serialization failed";
+		m_isReady = false;
+		recordTickDuration();
+		return;
+	}
+	if (!Flush_ValtanPatternFlowLifecycle())
+	{
+		m_strStatus = "Valtan pattern-flow lifecycle serialization failed";
 		m_isReady = false;
 		recordTickDuration();
 		return;
@@ -1938,6 +1957,13 @@ void LostArk::Server::CGameRoom::Leave(
 	using namespace LostArk::Shared;
 
 #ifdef _DEBUG
+	if (sessionId == m_ValtanPatternFlowAudition.iOwnerSessionId &&
+		Is_ValtanPatternFlowRunning())
+	{
+		Abort_ValtanPatternFlowForOwner(
+			sessionId, "Valtan pattern-flow owner left the room");
+		(void)Flush_ValtanPatternFlowLifecycle();
+	}
 	if (sessionId == m_ValtanTimelineAudition.iOwnerSessionId &&
 		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 			m_ValtanTimelineAudition.ePhase)
@@ -1947,6 +1973,8 @@ void LostArk::Server::CGameRoom::Leave(
 #endif
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternIdAuditionSequenceBySessionId.erase(sessionId);
+	m_ValtanPatternFlowStartSequenceBySessionId.erase(sessionId);
+	m_ValtanPatternFlowControlSequenceBySessionId.erase(sessionId);
 	const auto sessionPlayerIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionPlayerIter == m_PlayerIdBySessionId.end())
 	{
@@ -2029,9 +2057,12 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	}
 #endif
 	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
-		0u == player.iCurrentHp)
+		0u == player.iCurrentHp ||
+		player.fKnockbackRemainingSeconds > 0.f)
 	{
-		if (0u != player.iCurrentHp && Is_BufferableComboAction(player))
+		if (0u != player.iCurrentHp &&
+			player.fKnockbackRemainingSeconds <= 0.f &&
+			Is_BufferableComboAction(player))
 			player.PendingCommand.Set_Move(move);
 		return;
 	}
@@ -2103,7 +2134,8 @@ void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
 	player.PendingCommand.Clear();
 	player.hasBufferedComboInput = false;
 	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
-		0u == player.iCurrentHp)
+		0u == player.iCurrentHp ||
+		player.fKnockbackRemainingSeconds > 0.f)
 	{
 		return;
 	}
@@ -2149,6 +2181,8 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
+		return;
+	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
 		return;
 
 #ifdef _DEBUG
@@ -2276,6 +2310,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iCurrentSkillId = INVALID_SKILL_ID;
 	player.Clear_SkillTarget();
 	player.iActionStartTick = 0u;
+	player.Clear_Attachment();
 	player.fFallVelocityY = 0.f;
 	player.iFallDeathTick = 0u;
 	player.fActionElapsedSeconds = 0.f;
@@ -2298,7 +2333,6 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.fKnockbackSpeed = 0.f;
 	player.iKnockdownEndTick = 0u;
 	player.iHitReactionGraceEndTick = 0u;
-	Clear_ValtanCatchBreathControl(player);
 	// A successful authoritative revive immediately makes the player a valid
 	// combat participant again so party-wipe recovery can resume the encounter.
 	player.isCombatReady = true;
@@ -2318,6 +2352,8 @@ void LostArk::Server::CGameRoom::Handle_ReleaseSkill(
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
+		return;
+	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
 		return;
 
 	m_PlayerSkillSystem.Release(
@@ -2340,6 +2376,8 @@ void LostArk::Server::CGameRoom::Handle_UpdateSkillAim(
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
 		return;
+	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
+		return;
 
 	m_PlayerSkillSystem.Update_Aim(
 		playerIter->second,
@@ -2360,6 +2398,8 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
+		return;
+	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
 		return;
 	/* The call locks the caster into ESTHER_CAST, so only an idle caster may
 	start one: a running skill, knockdown, fall or death keeps the gauge full. */
@@ -2583,12 +2623,12 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iCurrentSkillId = INVALID_SKILL_ID;
 	staged.Clear_SkillTarget();
 	staged.iActionStartTick = 0u;
+	staged.Clear_Attachment();
 	staged.TriggerMove = {};
 	staged.fKnockbackRemainingSeconds = 0.f;
 	staged.fKnockbackSpeed = 0.f;
 	staged.iKnockdownEndTick = 0u;
 	staged.iHitReactionGraceEndTick = 0u;
-	Clear_ValtanCatchBreathControl(staged);
 	staged.fActionElapsedSeconds = 0.f;
 	staged.fSkillAimDirectionX = 0.f;
 	staged.fSkillAimDirectionZ = 1.f;
@@ -2756,8 +2796,17 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 	// MONSTER/BOSS entries (confirmed: only 4 disabled playerSpawn + one disabled
 	// BOSS_VALTAN), so everything currently in m_WorldEntities here was created by
 	// the debug spawn buttons -- safe to despawn all of it unconditionally.
+	const std::uint32_t despawnTick =
+		0u == m_iServerTick ? 1u : m_iServerTick;
 	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		if (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind)
+		{
+			(void)Release_PlayerAttachments(
+				entity.iNetEntityId, 0.f, 0u, false, 0u, despawnTick);
+		}
 		Broadcast_WorldEntityDespawned(entity.iNetEntityId);
+	}
 	m_WorldEntities.clear();
 
 	// Reset spawn group state (DORMANT) too, so the same group can be activated
@@ -3168,6 +3217,12 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 			m_ValtanPatternIdAudition.iExpectedPatternSequence &&
 		boss->strPatternId.empty())
 	{
+		/* A stable-ID audition owns exactly one occurrence. Keep the Product
+		   sequence suppressed after its natural completion; the next accepted
+		   stable-ID request rebuilds the audition boss and clears this hold before
+		   queueing its new occurrence. */
+		boss->bAutomaticPatternSequenceAuditionOverride = true;
+		boss->bAutomaticPatternSequenceAuditionHold = true;
 		Queue_ValtanPatternIdAuditionLifecycle(
 			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED);
 	}
@@ -3179,6 +3234,236 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 	}
 	m_ValtanPatternIdAudition = {};
 	return false;
+}
+
+bool LostArk::Server::CGameRoom::Is_ValtanPatternFlowRunning() const noexcept
+{
+	return VALTAN_PATTERN_FLOW_AUDITION_PHASE::INACTIVE !=
+		m_ValtanPatternFlowAudition.ePhase;
+}
+
+const LostArk::Server::BOSS_PATTERN_SEQUENCE_DEFINITION*
+LostArk::Server::CGameRoom::Resolve_ValtanPatternFlowSequence(
+	const SERVER_WORLD_ENTITY& boss) const noexcept
+{
+	if (!Is_ValtanPatternFlowRunning() ||
+		boss.iNetEntityId != m_ValtanPatternFlowAudition.iBossEntityId)
+	{
+		return nullptr;
+	}
+	return &m_ValtanPatternFlowAudition.Sequence;
+}
+
+void LostArk::Server::CGameRoom::Queue_ValtanPatternFlowLifecycle(
+	const LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE state,
+	const SERVER_WORLD_ENTITY* boss,
+	std::string reason)
+{
+	using namespace LostArk::Shared;
+	const VALTAN_PATTERN_FLOW_AUDITION_STATE& flow =
+		m_ValtanPatternFlowAudition;
+	if (!Is_ValtanPatternFlowRunning() ||
+		INVALID_SESSION_ID == flow.iOwnerSessionId || flow.Slots.empty() ||
+		flow.Sequence.PatternIds.empty())
+	{
+		return;
+	}
+
+	std::size_t sequenceIndex = 0u;
+	if (nullptr != boss && boss->iNetEntityId == flow.iBossEntityId)
+	{
+		sequenceIndex = static_cast<std::size_t>(boss->iRotationStepIndex);
+	}
+	if (sequenceIndex >= flow.Sequence.PatternIds.size())
+		sequenceIndex = flow.Sequence.PatternIds.size() - 1u;
+	const std::size_t slotIndex = flow.iStartSlotIndex + sequenceIndex;
+	if (slotIndex >= flow.Slots.size())
+		return;
+
+	S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE message{};
+	message.iRequestSequence = flow.iRequestSequence;
+	message.iRoomFlowEpoch = flow.iRoomFlowEpoch;
+	message.iPatternSequence =
+		nullptr != boss && boss->bAutomaticPatternSequenceStepRunning ?
+			boss->iPatternSequence :
+			Add_ServerTicksSkippingReservedZero(
+				flow.iFirstPatternSequence,
+				static_cast<std::uint32_t>(sequenceIndex));
+	message.strBossPlacementId = flow.strBossPlacementId;
+	message.strFlowId = flow.strFlowId;
+	message.strFlowRevision = flow.strFlowRevision;
+	message.strStartSlotId = flow.strStartSlotId;
+	message.strCurrentSlotId = flow.Slots[slotIndex].strSlotId;
+	message.strCurrentPatternId = flow.Slots[slotIndex].strPatternId;
+	message.iCurrentSlotOrdinal =
+		static_cast<std::uint16_t>(slotIndex + 1u);
+	message.iSlotCount = static_cast<std::uint16_t>(flow.Slots.size());
+	message.eState = state;
+	message.PinnedDefinitionRevision = flow.PinnedDefinitionRevision;
+	message.strReason = std::move(reason);
+	m_PendingValtanPatternFlowLifecycle.push_back({
+		flow.iOwnerSessionId, std::move(message) });
+}
+
+bool LostArk::Server::CGameRoom::Flush_ValtanPatternFlowLifecycle()
+{
+	using namespace LostArk::Shared;
+	auto pending = std::move(m_PendingValtanPatternFlowLifecycle);
+	m_PendingValtanPatternFlowLifecycle.clear();
+	for (const TARGETED_VALTAN_PATTERN_FLOW_LIFECYCLE& targeted : pending)
+	{
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(targeted.iSessionId);
+		if (nullptr == session)
+			continue;
+		CPacketWriter writer;
+		if (!Write_Message(writer, targeted.Message))
+			return false;
+		if (!session->Send_Frame(
+			PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE,
+			writer.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Finish_ValtanPatternFlow(
+	SERVER_WORLD_ENTITY& boss,
+	const LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE terminalState,
+	std::string reason)
+{
+	if (!Is_ValtanPatternFlowRunning() ||
+		boss.iNetEntityId != m_ValtanPatternFlowAudition.iBossEntityId)
+	{
+		return;
+	}
+	if (LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED !=
+		terminalState &&
+		LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::REJECTED !=
+		terminalState)
+	{
+		reason.clear();
+	}
+	Queue_ValtanPatternFlowLifecycle(
+		terminalState, &boss, std::move(reason));
+	boss.bAutomaticPatternSequenceAuditionOverride = true;
+	boss.bAutomaticPatternSequenceAuditionHold = true;
+	boss.bAutomaticPatternSequencePausedForRevive = false;
+	boss.iAutomaticPatternSequencePauseLastTick = 0u;
+	boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+	boss.MovePath.clear();
+	boss.PinnedDefinitionRevision = m_GameplayCatalog.Get_ActiveRevision();
+	m_ValtanPatternFlowAudition = {};
+}
+
+void LostArk::Server::CGameRoom::Refresh_ValtanPatternFlowState(
+	SERVER_WORLD_ENTITY& boss)
+{
+	using namespace LostArk::Shared;
+	if (!Is_ValtanPatternFlowRunning() ||
+		boss.iNetEntityId != m_ValtanPatternFlowAudition.iBossEntityId)
+	{
+		return;
+	}
+	VALTAN_PATTERN_FLOW_AUDITION_STATE& flow =
+		m_ValtanPatternFlowAudition;
+	if (0u == boss.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss.eAction)
+	{
+		Finish_ValtanPatternFlow(
+			boss, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
+			"Valtan pattern-flow boss became unavailable");
+		return;
+	}
+
+	const std::size_t sequenceIndex =
+		static_cast<std::size_t>(boss.iRotationStepIndex);
+	if (flow.bStopAfterCurrent &&
+		!boss.bAutomaticPatternSequenceStepRunning && boss.strPatternId.empty())
+	{
+		Finish_ValtanPatternFlow(
+			boss, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::STOPPED_HOLD,
+			"Valtan pattern flow stopped after the current slot");
+		return;
+	}
+	if (sequenceIndex >= flow.Sequence.PatternIds.size() &&
+		!boss.bAutomaticPatternSequenceStepRunning && boss.strPatternId.empty())
+	{
+		Finish_ValtanPatternFlow(
+			boss, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::COMPLETED_HOLD,
+			"Valtan pattern flow completed");
+		return;
+	}
+	if (sequenceIndex >= flow.Sequence.PatternIds.size() ||
+		boss.strRotationId != flow.Sequence.strSequenceId)
+	{
+		Finish_ValtanPatternFlow(
+			boss, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
+			"Valtan pattern flow lost its ordered runtime identity");
+		return;
+	}
+
+	if (boss.bAutomaticPatternSequenceStepRunning)
+	{
+		if (boss.strPatternId != flow.Sequence.PatternIds[sequenceIndex])
+		{
+			Finish_ValtanPatternFlow(
+				boss, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
+				"Valtan pattern flow observed an unexpected pattern");
+			return;
+		}
+		const bool paused = boss.bAutomaticPatternSequencePausedForRevive;
+		if (VALTAN_PATTERN_FLOW_AUDITION_PHASE::ACTIVE != flow.ePhase ||
+			flow.iReportedSequenceIndex != sequenceIndex ||
+			flow.bReportedPausedForRevive != paused)
+		{
+			flow.ePhase = VALTAN_PATTERN_FLOW_AUDITION_PHASE::ACTIVE;
+			flow.iReportedSequenceIndex = sequenceIndex;
+			flow.bReportedPausedForRevive = paused;
+			Queue_ValtanPatternFlowLifecycle(
+				paused ?
+					VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::PAUSED_FOR_REVIVE :
+					VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ACTIVE,
+				&boss);
+		}
+		return;
+	}
+
+	if (VALTAN_PATTERN_FLOW_AUDITION_PHASE::PENDING != flow.ePhase ||
+		flow.iReportedSequenceIndex != sequenceIndex)
+	{
+		flow.ePhase = VALTAN_PATTERN_FLOW_AUDITION_PHASE::PENDING;
+		flow.iReportedSequenceIndex = sequenceIndex;
+		flow.bReportedPausedForRevive = false;
+		Queue_ValtanPatternFlowLifecycle(
+			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::PENDING, &boss);
+	}
+}
+
+void LostArk::Server::CGameRoom::Abort_ValtanPatternFlowForOwner(
+	const SESSION_ID sessionId,
+	std::string reason)
+{
+	using namespace LostArk::Shared;
+	if (!Is_ValtanPatternFlowRunning() ||
+		sessionId != m_ValtanPatternFlowAudition.iOwnerSessionId)
+	{
+		return;
+	}
+	SERVER_WORLD_ENTITY* boss = Find_AuditionBoss(
+		m_ValtanPatternFlowAudition.strBossPlacementId);
+	Queue_ValtanPatternFlowLifecycle(
+		VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED, boss, std::move(reason));
+	if (nullptr != boss)
+	{
+		std::string resetStatus;
+		const std::uint32_t resetTick =
+			0u == m_iServerTick ? 1u : m_iServerTick;
+		if (!Reset_ValtanAuditionState(*boss, resetTick, resetStatus))
+			m_strStatus = std::move(resetStatus);
+	}
+	m_ValtanPatternFlowAudition = {};
 }
 #endif
 
@@ -3246,6 +3531,8 @@ bool LostArk::Server::CGameRoom::Reset_ValtanBossOnlyAuditionState(
 	}
 
 	boss = std::move(stagedBoss);
+	(void)Release_PlayerAttachments(
+		boss.iNetEntityId, 0.f, 0u, false, 0u, resetTick);
 	/* Character Select has no Valtan wall, floor or prop runtime. Cancel only
 	   objects emitted by this boss; the private player's active combat objects
 	   belong to a different source and survive the audition reset. */
@@ -3254,6 +3541,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanBossOnlyAuditionState(
 	m_iValtanAuditionArmedHealthBar = 0u;
 #ifdef _DEBUG
 	m_ValtanPatternIdAudition = {};
+	m_ValtanPatternFlowAudition = {};
 	m_ValtanTimelineAudition = {};
 	m_ValtanFightPageStart = {};
 #endif
@@ -3299,6 +3587,10 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	m_iNextWorldDestructionEventSequence = 1u;
 	m_iNextBossCombatEventSequence = 1u;
 	m_TickBossCombatEvents.clear();
+	/* A debug reset is also an encounter-owner reset. Release every attachment
+	before the reset boss can move the old local offset to an unrelated pose. */
+	(void)Release_PlayerAttachments(
+		boss.iNetEntityId, 0.f, 0u, false, 0u, resetTick);
 	/* All preflight work above succeeded. Combat objects belong to the same
 	encounter epoch, so reset them only at this commit edge and keep reliable
 	despawns for the players who are still observing the audition. */
@@ -3306,6 +3598,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	m_iValtanAuditionArmedHealthBar = 0u;
 #ifdef _DEBUG
 	m_ValtanPatternIdAudition = {};
+	m_ValtanPatternFlowAudition = {};
 	m_ValtanTimelineAudition = {};
 	m_ValtanFightPageStart = {};
 #endif
@@ -4310,6 +4603,360 @@ void LostArk::Server::CGameRoom::Restore_ValtanTimelineRowAfterBrain(
 }
 #endif
 
+LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT
+LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& request,
+	std::uint32_t& outRoomFlowEpoch,
+	LostArk::Shared::GameplayDataRevision& outPinnedRevision,
+	std::string& outReason)
+{
+	using namespace LostArk::Shared;
+	outRoomFlowEpoch = 0u;
+	outPinnedRevision = {};
+	outReason.clear();
+#ifndef _DEBUG
+	(void)sessionId;
+	(void)request;
+	outReason = "Valtan pattern flow is unavailable in a Release Server";
+	return VALTAN_PATTERN_FLOW_RESULT::REJECTED_RELEASE_BUILD;
+#else
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		!m_PlayerIdBySessionId.contains(sessionId))
+	{
+		outReason = "Valtan pattern flow requires the Valtan Arena";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_WRONG_WORLD;
+	}
+	auto receipt = m_ValtanPatternFlowStartSequenceBySessionId.find(sessionId);
+	if (0u == request.iRequestSequence ||
+		(m_ValtanPatternFlowStartSequenceBySessionId.end() != receipt &&
+		 !Is_NewerSequence(
+			 request.iRequestSequence, receipt->second.iSequence)))
+	{
+		if (m_ValtanPatternFlowStartSequenceBySessionId.end() != receipt &&
+			request.iRequestSequence == receipt->second.iSequence &&
+			Build_PatternFlowStartRequestIdentity(request) ==
+				receipt->second.strRequestIdentity &&
+			receipt->second.iRoomFlowEpoch != 0u &&
+			receipt->second.PinnedDefinitionRevision.Is_Valid())
+		{
+			outRoomFlowEpoch = receipt->second.iRoomFlowEpoch;
+			outPinnedRevision = receipt->second.PinnedDefinitionRevision;
+			return VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED;
+		}
+		outReason = "Valtan pattern-flow request sequence is invalid or stale";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW;
+	}
+	m_ValtanPatternFlowStartSequenceBySessionId.insert_or_assign(
+		sessionId, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT{
+			request.iRequestSequence, 0u, request.strFlowId,
+			request.strFlowRevision, {}, {} });
+
+	if (!Is_StablePatternFlowId(request.strBossPlacementId) ||
+		!Is_StablePatternFlowId(request.strFlowId) ||
+		!Is_PatternFlowRevision(request.strFlowRevision) ||
+		!Is_StablePatternFlowId(request.strStartSlotId) ||
+		request.Slots.empty() ||
+		request.Slots.size() > MAX_VALTAN_PATTERN_FLOW_SLOTS ||
+		request.iInterStepPursuitMs <
+			MIN_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS ||
+		request.iInterStepPursuitMs >
+			MAX_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS)
+	{
+		outReason = "Valtan pattern-flow request is invalid";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+	}
+	if ("boss.valtan.center" != request.strBossPlacementId)
+	{
+		outReason = "Valtan pattern-flow boss placement is unavailable";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_NO_BOSS;
+	}
+	if (Is_ValtanPatternFlowRunning() ||
+		Refresh_ValtanPatternIdAuditionState() ||
+		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
+			m_ValtanTimelineAudition.ePhase ||
+		0u != m_iValtanAuditionArmedHealthBar)
+	{
+		outReason = "Another Valtan audition is already active";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_CONFLICT;
+	}
+
+	SERVER_WORLD_ENTITY* boss = Find_AuditionBoss(request.strBossPlacementId);
+	if (nullptr == boss)
+	{
+		outReason = "Valtan pattern-flow boss was not found";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_NO_BOSS;
+	}
+	if (0u == boss->iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss->eAction)
+	{
+		outReason = "Valtan pattern-flow boss is dead";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_BOSS_DEAD;
+	}
+
+	const auto ownerId = m_PlayerIdBySessionId.find(sessionId);
+	const auto owner = ownerId == m_PlayerIdBySessionId.end() ?
+		m_Players.end() : m_Players.find(ownerId->second);
+	if (m_Players.end() == owner)
+	{
+		outReason = "Valtan pattern-flow player is unavailable";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+	}
+	const PLAYER_RUNTIME_PROFILE* playerProfile =
+		m_GameplayCatalog.Find_Player(owner->second.eCharacterClass);
+	if (nullptr == playerProfile)
+	{
+		outReason = "Valtan pattern-flow player profile is unavailable";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+	}
+
+	const GameplayDataRevision pinnedRevision =
+		m_GameplayCatalog.Get_ActiveRevision();
+	const CGameplayCatalog* pinnedCatalog =
+		m_GameplayCatalog.Resolve(pinnedRevision);
+	const std::vector<BOSS_PATTERN_DEFINITION>* patterns =
+		nullptr == pinnedCatalog ? nullptr :
+		pinnedCatalog->Find_BossPatterns(boss->strEncounterId);
+	if (nullptr == patterns)
+	{
+		outReason = "Valtan pattern-flow gameplay revision is unavailable";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+	}
+
+	std::set<std::string> slotIds;
+	std::size_t startSlotIndex = request.Slots.size();
+	for (std::size_t index = 0u; index < request.Slots.size(); ++index)
+	{
+		const VALTAN_PATTERN_FLOW_SLOT_WIRE& slot = request.Slots[index];
+		if (!Is_StablePatternFlowId(slot.strSlotId) ||
+			!Is_StablePatternFlowId(slot.strPatternId) ||
+			!slotIds.insert(slot.strSlotId).second)
+		{
+			outReason = "Valtan pattern flow has an invalid or duplicate slot ID";
+			return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+		}
+		if (slot.strSlotId == request.strStartSlotId)
+			startSlotIndex = index;
+		if (patterns->end() == std::find_if(
+				patterns->begin(), patterns->end(),
+				[&slot](const BOSS_PATTERN_DEFINITION& pattern)
+				{
+					return pattern.strPatternId == slot.strPatternId;
+				}))
+		{
+			outReason = "Valtan pattern flow references an unknown pattern";
+			return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+		}
+	}
+	if (startSlotIndex >= request.Slots.size())
+	{
+		outReason = "Valtan pattern-flow start slot is not in the flow";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+	}
+
+	const std::uint32_t resetTick =
+		0u == m_iServerTick ? 1u : m_iServerTick;
+	SERVER_PLAYER stagedOwner = owner->second;
+	Prepare_TimelineAuditionPlayer(stagedOwner, resetTick);
+	stagedOwner.eStance = playerProfile->eDefaultStance;
+	stagedOwner.CooldownEndTickBySkillId.clear();
+	stagedOwner.fKnockbackRemainingSeconds = 0.f;
+	stagedOwner.fKnockbackSpeed = 0.f;
+	stagedOwner.iKnockdownEndTick = 0u;
+	stagedOwner.iHitReactionGraceEndTick = 0u;
+	if (!m_ServerTriggerSystem.Place_PlayerAtValtanAuditionBait(
+			stagedOwner, resetTick))
+	{
+		outReason = "Valtan pattern-flow bait placement is unavailable";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+	}
+	SERVER_WORLD_ENTITY stagedBoss{};
+	std::string resetStatus;
+	if (!Build_ValtanBossOnlyAuditionReset(
+			*boss, resetTick, stagedBoss, resetStatus))
+	{
+		outReason = std::move(resetStatus);
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+	}
+	CWorldDestructionRuntime stagedDestruction = m_WorldDestructionRuntime;
+	if (!stagedDestruction.Reset(resetStatus, resetTick))
+	{
+		outReason = std::move(resetStatus);
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+	}
+	CEncounterPropRuntime stagedProps = m_EncounterPropRuntime;
+	if (stagedProps.Is_Initialized() &&
+		!stagedProps.Reset(resetStatus, resetTick))
+	{
+		outReason = std::move(resetStatus);
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+	}
+	const float baitDeltaX = stagedOwner.fPositionX - stagedBoss.fPositionX;
+	const float baitDeltaZ = stagedOwner.fPositionZ - stagedBoss.fPositionZ;
+	if (baitDeltaX * baitDeltaX + baitDeltaZ * baitDeltaZ >
+		stagedBoss.fEngageDistance * stagedBoss.fEngageDistance)
+	{
+		outReason = "Valtan pattern-flow bait is outside boss engage range";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+	}
+
+	VALTAN_PATTERN_FLOW_AUDITION_STATE stagedFlow{};
+	stagedFlow.ePhase = VALTAN_PATTERN_FLOW_AUDITION_PHASE::PENDING;
+	stagedFlow.iOwnerSessionId = sessionId;
+	stagedFlow.iOwnerPlayerId = stagedOwner.iPlayerId;
+	stagedFlow.iBossEntityId = stagedBoss.iNetEntityId;
+	stagedFlow.iRequestSequence = request.iRequestSequence;
+	stagedFlow.iRoomFlowEpoch = m_iNextValtanPatternFlowEpoch;
+	stagedFlow.iFirstPatternSequence =
+		(std::numeric_limits<std::uint32_t>::max)() ==
+			stagedBoss.iPatternSequence ? 1u : stagedBoss.iPatternSequence + 1u;
+	stagedFlow.iStartSlotIndex = startSlotIndex;
+	stagedFlow.strBossPlacementId = request.strBossPlacementId;
+	stagedFlow.strFlowId = request.strFlowId;
+	stagedFlow.strFlowRevision = request.strFlowRevision;
+	stagedFlow.strStartSlotId = request.strStartSlotId;
+	stagedFlow.Slots = request.Slots;
+	stagedFlow.PinnedDefinitionRevision = pinnedRevision;
+	stagedFlow.Sequence.strEncounterId = stagedBoss.strEncounterId;
+	stagedFlow.Sequence.strSequenceId =
+		"debug.valtan.pattern-flow." +
+		std::to_string(stagedFlow.iRoomFlowEpoch);
+	stagedFlow.Sequence.eMode =
+		BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE;
+	stagedFlow.Sequence.iInterStepPursuitMs =
+		request.iInterStepPursuitMs;
+	stagedFlow.Sequence.iInterStepPursuitTicks =
+		static_cast<std::uint32_t>((
+			static_cast<std::uint64_t>(request.iInterStepPursuitMs) *
+			SERVER_TICK_HZ + 999u) / 1000u);
+	for (std::size_t index = startSlotIndex;
+		index < request.Slots.size(); ++index)
+	{
+		stagedFlow.Sequence.PatternIds.push_back(
+			request.Slots[index].strPatternId);
+	}
+	stagedFlow.Sequence.iExpectedStepCount = static_cast<std::uint32_t>(
+		stagedFlow.Sequence.PatternIds.size());
+
+	if (!Reset_ValtanAuditionState(*boss, resetTick, resetStatus))
+	{
+		outReason = std::move(resetStatus);
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+	}
+	owner->second = std::move(stagedOwner);
+	m_CombatObjectRuntime.Cancel_Source(owner->second.iNetEntityId);
+	m_ServerTriggerSystem.Remove_Player(owner->second.iPlayerId);
+	boss->bIntroPatternConsumed = true;
+	boss->bScriptedPatternPlayback = false;
+	boss->bAutomaticPatternSequenceAuditionOverride = false;
+	boss->bAutomaticPatternSequenceAuditionHold = false;
+	m_ValtanPatternFlowAudition = std::move(stagedFlow);
+	m_iNextValtanPatternFlowEpoch =
+		(std::numeric_limits<std::uint32_t>::max)() ==
+			m_iNextValtanPatternFlowEpoch ?
+		1u : m_iNextValtanPatternFlowEpoch + 1u;
+	outRoomFlowEpoch = m_ValtanPatternFlowAudition.iRoomFlowEpoch;
+	outPinnedRevision = pinnedRevision;
+	m_ValtanPatternFlowStartSequenceBySessionId.insert_or_assign(
+		sessionId, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT{
+			request.iRequestSequence, outRoomFlowEpoch,
+			request.strFlowId, request.strFlowRevision,
+			Build_PatternFlowStartRequestIdentity(request), pinnedRevision });
+	Queue_ValtanPatternFlowLifecycle(
+		VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::PENDING, boss);
+	m_strStatus = "Valtan pattern flow queued: " + request.strFlowId;
+	return VALTAN_PATTERN_FLOW_RESULT::QUEUED;
+#endif
+}
+
+LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT
+LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStopAfterCurrent(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& request,
+	std::uint32_t& outRoomFlowEpoch,
+	LostArk::Shared::GameplayDataRevision& outPinnedRevision,
+	std::string& outReason)
+{
+	using namespace LostArk::Shared;
+	outRoomFlowEpoch = 0u;
+	outPinnedRevision = {};
+	outReason.clear();
+#ifndef _DEBUG
+	(void)sessionId;
+	(void)request;
+	outReason = "Valtan pattern flow is unavailable in a Release Server";
+	return VALTAN_PATTERN_FLOW_RESULT::REJECTED_RELEASE_BUILD;
+#else
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		!m_PlayerIdBySessionId.contains(sessionId))
+	{
+		outReason = "Valtan pattern flow requires the Valtan Arena";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_WRONG_WORLD;
+	}
+	auto receipt = m_ValtanPatternFlowControlSequenceBySessionId.find(sessionId);
+	if (0u == request.iControlSequence ||
+		(m_ValtanPatternFlowControlSequenceBySessionId.end() != receipt &&
+		 !Is_NewerSequence(
+			 request.iControlSequence, receipt->second.iSequence)))
+	{
+		if (m_ValtanPatternFlowControlSequenceBySessionId.end() != receipt &&
+			request.iControlSequence == receipt->second.iSequence &&
+			request.strFlowId == receipt->second.strFlowId &&
+			request.iRoomFlowEpoch == receipt->second.iRoomFlowEpoch &&
+			receipt->second.iRoomFlowEpoch != 0u &&
+			receipt->second.PinnedDefinitionRevision.Is_Valid())
+		{
+			outRoomFlowEpoch = receipt->second.iRoomFlowEpoch;
+			outPinnedRevision = receipt->second.PinnedDefinitionRevision;
+			return VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED;
+		}
+		outReason = "Valtan pattern-flow control sequence is invalid or stale";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW;
+	}
+	m_ValtanPatternFlowControlSequenceBySessionId.insert_or_assign(
+		sessionId, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT{
+			request.iControlSequence, 0u, request.strFlowId, {}, {}, {} });
+	if (!Is_StablePatternFlowId(request.strFlowId) ||
+		0u == request.iRoomFlowEpoch || !Is_ValtanPatternFlowRunning() ||
+		sessionId != m_ValtanPatternFlowAudition.iOwnerSessionId ||
+		request.strFlowId != m_ValtanPatternFlowAudition.strFlowId ||
+		request.iRoomFlowEpoch != m_ValtanPatternFlowAudition.iRoomFlowEpoch)
+	{
+		outReason = "Valtan pattern-flow control targets a stale flow";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW;
+	}
+	SERVER_WORLD_ENTITY* boss = Find_AuditionBoss(
+		m_ValtanPatternFlowAudition.strBossPlacementId);
+	if (nullptr == boss ||
+		boss->iNetEntityId != m_ValtanPatternFlowAudition.iBossEntityId)
+	{
+		outReason = "Valtan pattern-flow boss is unavailable";
+		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_NO_BOSS;
+	}
+	outRoomFlowEpoch = m_ValtanPatternFlowAudition.iRoomFlowEpoch;
+	outPinnedRevision =
+		m_ValtanPatternFlowAudition.PinnedDefinitionRevision;
+	const std::string flowRevision =
+		m_ValtanPatternFlowAudition.strFlowRevision;
+	if (boss->bAutomaticPatternSequenceStepRunning ||
+		!boss->strPatternId.empty())
+	{
+		m_ValtanPatternFlowAudition.bStopAfterCurrent = true;
+	}
+	else
+	{
+		Finish_ValtanPatternFlow(
+			*boss, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::STOPPED_HOLD,
+			"Valtan pattern flow stopped before the next slot");
+	}
+	m_ValtanPatternFlowControlSequenceBySessionId.insert_or_assign(
+		sessionId, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT{
+			request.iControlSequence, outRoomFlowEpoch,
+			request.strFlowId, flowRevision, {}, outPinnedRevision });
+	return VALTAN_PATTERN_FLOW_RESULT::QUEUED;
+#endif
+}
+
 LostArk::Shared::VALTAN_AUDITION_RESULT
 LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 	const SESSION_ID sessionId,
@@ -4361,6 +5008,12 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			m_strStatus = "Valtan stable-ID pattern audition is already "
 				"pending or active: " +
 				m_ValtanPatternIdAudition.strPatternId;
+			return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+		}
+		if (Is_ValtanPatternFlowRunning())
+		{
+			m_strStatus =
+				"A Valtan pattern flow is already pending or active";
 			return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
 		}
 		if (isPatternIdPlay)
@@ -4927,6 +5580,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			player->second.iCurrentSkillId = INVALID_SKILL_ID;
 			player->second.Clear_SkillTarget();
 			player->second.iActionStartTick = resetTick;
+			player->second.Clear_Attachment();
 			player->second.fActionElapsedSeconds = 0.f;
 			player->second.iComboStage = 0u;
 			player->second.hasBufferedComboInput = false;
@@ -4939,7 +5593,6 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			player->second.fKnockbackSpeed = 0.f;
 			player->second.iKnockdownEndTick = 0u;
 			player->second.iHitReactionGraceEndTick = 0u;
-			Clear_ValtanCatchBreathControl(player->second);
 			if (!Has_EngagedAuditionPlayer(*boss))
 			{
 				boss->PendingPatternIds.clear();
@@ -4983,6 +5636,8 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				return VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR;
 
 			boss->iCurrentHp = armedHp;
+			boss->bAutomaticPatternSequenceAuditionOverride = true;
+			boss->bAutomaticPatternSequenceAuditionHold = true;
 			/* The brain compares this against the bar it recomputes, so parking
 			it one above the target is what limits the next crossing to the one
 			authored threshold. */
@@ -5009,6 +5664,8 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			}
 			boss->bIntroPatternConsumed = false;
 			boss->bScriptedPatternPlayback = false;
+			boss->bAutomaticPatternSequenceAuditionOverride = true;
+			boss->bAutomaticPatternSequenceAuditionHold = false;
 			m_iValtanAuditionArmedHealthBar = 0u;
 			m_ValtanAuditionSequenceBySessionId.insert_or_assign(
 				sessionId, request.iRequestSequence);
@@ -5096,6 +5753,8 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			so a normal pattern cannot steal the audition window. */
 			boss->iCurrentHp = targetHp;
 			boss->iLastEvaluatedHealthBar = previousBar;
+			boss->bAutomaticPatternSequenceAuditionOverride = true;
+			boss->bAutomaticPatternSequenceAuditionHold = false;
 			m_bPillarAuditionCycleArmed = isPillarCyclePlay;
 			m_iValtanAuditionArmedHealthBar = 0u;
 			currentHealthBar = targetHealthBar;
@@ -5116,6 +5775,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		pattern, so the camera cue, the wall binding and the debris all run
 		through the product path rather than being started from here. */
 		boss->iCurrentHp = targetHp;
+		boss->bAutomaticPatternSequenceAuditionHold = false;
 		m_iValtanAuditionArmedHealthBar = 0u;
 		currentHealthBar = request.iTargetHealthBar;
 		m_ValtanAuditionSequenceBySessionId.insert_or_assign(
@@ -5139,6 +5799,65 @@ void LostArk::Server::CGameRoom::Handle_ValtanAudition(
 		Evaluate_ValtanAudition(sessionId, request, currentHealthBar);
 	if (!Send_ValtanAuditionResult(
 		session, request, result, currentHealthBar))
+	{
+		session->Request_Close();
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_ValtanPatternFlowStart(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	if (nullptr == session)
+		return;
+	std::uint32_t roomFlowEpoch = 0u;
+	GameplayDataRevision pinnedRevision{};
+	std::string reason;
+	const VALTAN_PATTERN_FLOW_RESULT result = Evaluate_ValtanPatternFlowStart(
+		sessionId, request, roomFlowEpoch, pinnedRevision, reason);
+	if (!Send_ValtanPatternFlowResult(
+			session, request.iRequestSequence,
+			VALTAN_PATTERN_FLOW_COMMAND::START, result,
+			request.strFlowId, request.strFlowRevision, roomFlowEpoch,
+			pinnedRevision, reason))
+	{
+		session->Request_Close();
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_ValtanPatternFlowStopAfterCurrent(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	if (nullptr == session)
+		return;
+	std::uint32_t roomFlowEpoch = 0u;
+	GameplayDataRevision pinnedRevision{};
+	std::string reason;
+	const VALTAN_PATTERN_FLOW_RESULT result =
+		Evaluate_ValtanPatternFlowStopAfterCurrent(
+			sessionId, request, roomFlowEpoch, pinnedRevision, reason);
+	std::string flowRevision;
+#ifdef _DEBUG
+	if (VALTAN_PATTERN_FLOW_RESULT::QUEUED == result ||
+		VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED == result)
+	{
+		const auto receipt =
+			m_ValtanPatternFlowControlSequenceBySessionId.find(sessionId);
+		if (m_ValtanPatternFlowControlSequenceBySessionId.end() != receipt)
+			flowRevision = receipt->second.strFlowRevision;
+	}
+#endif
+	if (!Send_ValtanPatternFlowResult(
+			session, request.iControlSequence,
+			VALTAN_PATTERN_FLOW_COMMAND::STOP_AFTER_CURRENT, result,
+			request.strFlowId, flowRevision, roomFlowEpoch,
+			pinnedRevision, reason))
 	{
 		session->Request_Close();
 	}
@@ -5202,6 +5921,12 @@ bool LostArk::Server::CGameRoom::Build_RequiredPinnedGameplayRevisions(
 		}
 	}
 #ifdef _DEBUG
+	if (Is_ValtanPatternFlowRunning() &&
+		!append(m_ValtanPatternFlowAudition.PinnedDefinitionRevision))
+	{
+		outRevisions.clear();
+		return false;
+	}
 	if (VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE !=
 			m_ValtanPatternIdAudition.ePhase &&
 		!append(m_ValtanPatternIdAudition.PinnedDefinitionRevision))
@@ -5234,6 +5959,12 @@ LostArk::Server::CGameRoom::Resolve_ValtanGameplayCatalog(
 	   Once BeginPattern publishes a stable pattern id, every later stage lookup
 	   resolves the occurrence pin until that pattern is completely retired. */
 	#ifdef _DEBUG
+	if (Is_ValtanPatternFlowRunning() &&
+		boss.iNetEntityId == m_ValtanPatternFlowAudition.iBossEntityId)
+	{
+		return m_GameplayCatalog.Resolve(
+			m_ValtanPatternFlowAudition.PinnedDefinitionRevision);
+	}
 	if (VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 			m_ValtanTimelineAudition.ePhase &&
 		boss.iNetEntityId == m_ValtanTimelineAudition.iBossEntityId)
@@ -5532,6 +6263,34 @@ bool LostArk::Server::CGameRoom::Send_ValtanAuditionResult(
 			writer.Get_Buffer());
 }
 
+bool LostArk::Server::CGameRoom::Send_ValtanPatternFlowResult(
+	const std::shared_ptr<CClientSession>& session,
+	const std::uint32_t commandSequence,
+	const LostArk::Shared::VALTAN_PATTERN_FLOW_COMMAND command,
+	const LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT result,
+	const std::string& flowId,
+	const std::string& flowRevision,
+	const std::uint32_t roomFlowEpoch,
+	const LostArk::Shared::GameplayDataRevision& pinnedRevision,
+	const std::string& reason)
+{
+	using namespace LostArk::Shared;
+	S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT message{};
+	message.iCommandSequence = commandSequence;
+	message.eCommand = command;
+	message.eResult = result;
+	message.strFlowId = flowId;
+	message.strFlowRevision = flowRevision;
+	message.iRoomFlowEpoch = roomFlowEpoch;
+	message.PinnedDefinitionRevision = pinnedRevision;
+	message.strReason = reason;
+	CPacketWriter writer;
+	return nullptr != session && Write_Message(writer, message) &&
+		session->Send_Frame(
+			PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT,
+			writer.Get_Buffer());
+}
+
 bool LostArk::Server::CGameRoom::Send_CharacterClassChangeResult(
 	const std::shared_ptr<CClientSession>& session,
 	const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request,
@@ -5703,6 +6462,20 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.eStance = player.eStance;
 		snapshot.iSkillId = player.iCurrentSkillId;
 		snapshot.iActionStartTick = player.iActionStartTick;
+		if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
+		{
+			snapshot.iAttachmentOwnerNetEntityId =
+				player.iAttachmentOwnerNetEntityId;
+			snapshot.eAttachmentSlot = player.eAttachmentSlot;
+			snapshot.fAttachmentLocalOffsetX =
+				player.fAttachmentLocalOffsetX;
+			snapshot.fAttachmentLocalOffsetY =
+				player.fAttachmentLocalOffsetY;
+			snapshot.fAttachmentLocalOffsetZ =
+				player.fAttachmentLocalOffsetZ;
+			snapshot.fAttachmentYawOffsetDegrees =
+				player.fAttachmentYawOffsetDegrees;
+		}
 		if (PLAYER_ACTION_STATE::SKILL == player.eAction &&
 			player.hasSkillTarget)
 		{
@@ -6118,8 +6891,11 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	m_TickBossCombatEvents.clear();
 	m_iNextBossCombatEventSequence = 1u;
 	m_ValtanPatternIdAuditionSequenceBySessionId.clear();
+	m_ValtanPatternFlowStartSequenceBySessionId.clear();
+	m_ValtanPatternFlowControlSequenceBySessionId.clear();
 #ifdef _DEBUG
 	m_ValtanPatternIdAudition = {};
+	m_ValtanPatternFlowAudition = {};
 	m_ValtanFightPageStart = {};
 #endif
 	m_strStatus = "Replayable arena reset after the room became empty";
@@ -6342,6 +7118,13 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageActions(
 	}
 	boss.BossCombat = std::move(stagedCombat);
 	boss.iPhase = stagedGameplayPhase;
+	if (!Commit_BossPatternPlayerStageActions(
+		boss, *occurrenceCatalog, patternId, actionId, trigger,
+		serverTick, spawnWaveOrdinal))
+	{
+		m_strStatus = "Boss player stage action commit failed";
+		return false;
+	}
 	return true;
 }
 
@@ -6687,225 +7470,20 @@ bool LostArk::Server::CGameRoom::Apply_BossPatternStageTransition(
 					0u : lastSequence + 1u;
 		}
 	}
+	if (!Commit_BossPatternPlayerStageActions(
+			boss, *previousCatalog, previousPatternId, previousActionId,
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT, serverTick) ||
+		!Commit_BossPatternPlayerStageActions(
+			boss, *nextCatalog, nextPatternId, nextActionId,
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, serverTick))
+	{
+		m_strStatus = "Boss player stage action commit failed";
+		CValtanBrain::Fail_Mechanic(
+			boss, failurePatternId,
+			SERVER_BOSS_MECHANIC_FAILURE::STAGE_TRANSITION_COMMIT, serverTick);
+		return false;
+	}
 	return true;
-}
-
-void LostArk::Server::CGameRoom::Apply_ValtanCatchBreathStageTransition(
-	const SERVER_WORLD_ENTITY& boss,
-	const std::string& previousPatternId,
-	const std::string& previousActionId,
-	const std::string& nextPatternId,
-	const std::string& nextActionId,
-	const std::uint32_t serverTick)
-{
-	using namespace LostArk::Shared;
-	const bool wasHolding =
-		previousPatternId == VALTAN_CATCH_BREATH_PATTERN_ID &&
-		Is_ValtanCatchBreathHeldAction(previousActionId);
-	const bool startsGrab =
-		nextPatternId == VALTAN_CATCH_BREATH_PATTERN_ID &&
-		nextActionId == VALTAN_CATCH_BREATH_STEP_01_ACTION_ID;
-
-	if (startsGrab)
-	{
-		const auto owner = m_PlayerIdByEntityId.find(
-			boss.iPatternTargetEntityId);
-		if (owner == m_PlayerIdByEntityId.end())
-			return;
-		const auto target = m_Players.find(owner->second);
-		if (target == m_Players.end() || 0u == target->second.iCurrentHp ||
-			!target->second.isCombatReady ||
-			PLAYER_ACTION_STATE::DEAD == target->second.eAction ||
-			PLAYER_ACTION_STATE::FALLING == target->second.eAction)
-		{
-			return;
-		}
-
-		SERVER_PLAYER& player = target->second;
-		Clear_ValtanCatchBreathControl(player);
-		/* Lock the occurrence now, but do not interrupt the player until the
-		original 21_01 HIT notify at 1.400s. */
-		player.iValtanGrabOwnerEntityId = boss.iNetEntityId;
-		player.iValtanGrabPatternSequence = boss.iPatternSequence;
-		return;
-	}
-
-	SERVER_PLAYER* controlled = nullptr;
-	for (auto& [playerId, player] : m_Players)
-	{
-		(void)playerId;
-		if (player.iValtanGrabOwnerEntityId == boss.iNetEntityId &&
-			player.iValtanGrabPatternSequence == boss.iPatternSequence)
-		{
-			controlled = &player;
-			break;
-		}
-	}
-	if (nullptr == controlled)
-		return;
-	if (nextPatternId == VALTAN_CATCH_BREATH_PATTERN_ID &&
-		Is_ValtanCatchBreathHeldAction(nextActionId))
-	{
-		return;
-	}
-
-	if (wasHolding)
-	{
-		/* A reset, failed stage or Debug replacement can stop before STEP_04.
-		Release the exact occurrence owner instead of leaving input permanently
-		locked. The normal STEP_03 -> STEP_04 edge returned above. */
-		SERVER_PLAYER& player = *controlled;
-		Clear_ValtanCatchBreathControl(player);
-		if (0u != player.iCurrentHp &&
-			PLAYER_ACTION_STATE::GRABBED == player.eAction)
-		{
-			player.eAction = PLAYER_ACTION_STATE::NONE;
-			player.iActionStartTick = 0u;
-			player.iKnockdownEndTick = 0u;
-			player.isCombatReady = true;
-		}
-	}
-}
-
-void LostArk::Server::CGameRoom::Begin_ValtanCatchBreathGrab(
-	SERVER_PLAYER& player,
-	const SERVER_WORLD_ENTITY& boss,
-	const std::uint32_t serverTick)
-{
-	using namespace LostArk::Shared;
-	/* The notify is an authoritative interrupt. Nothing the player was doing
-	may resume after the shot, and no old projectile may continue from the held
-	body. */
-	player.eAction = PLAYER_ACTION_STATE::GRABBED;
-	player.iCurrentSkillId = INVALID_SKILL_ID;
-	player.Clear_SkillTarget();
-	player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-	player.fActionElapsedSeconds = 0.f;
-	player.hasAppliedSkillDamage = false;
-	player.iAppliedHitMask = 0u;
-	player.iSpawnedProjectileMask = 0u;
-	player.Projectiles.clear();
-	player.iComboStage = 0u;
-	player.hasBufferedComboInput = false;
-	player.PendingCommand.Clear();
-	player.hasReleasedHold = false;
-	player.TriggerMove = {};
-	player.hasMoveGoal = false;
-	player.MovePath.clear();
-	player.iMovePathIndex = 0u;
-	player.fKnockbackDirectionX = 0.f;
-	player.fKnockbackDirectionZ = 0.f;
-	player.fKnockbackSpeed = 0.f;
-	player.fKnockbackRemainingSeconds = 0.f;
-	player.iKnockdownEndTick = 0u;
-	player.fFallVelocityY = 0.f;
-	player.iFallDeathTick = 0u;
-	Clear_ValtanCatchBreathControl(player);
-	player.iValtanGrabOwnerEntityId = boss.iNetEntityId;
-	player.iValtanGrabPatternSequence = boss.iPatternSequence;
-	player.fPositionX = boss.fPositionX;
-	player.fPositionY = boss.fPositionY;
-	player.fPositionZ = boss.fPositionZ;
-	player.fYawDegrees = boss.fYawDegrees;
-	/* Keep the solo encounter engaged while Valtan owns the player. Damage
-	filters explicitly reject GRABBED instead of abusing this acquisition bit. */
-	player.isCombatReady = true;
-	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
-	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
-}
-
-void LostArk::Server::CGameRoom::Begin_ValtanCatchBreathThrow(
-	SERVER_PLAYER& player,
-	const SERVER_WORLD_ENTITY& boss,
-	const std::uint32_t serverTick)
-{
-	using namespace LostArk::Shared;
-	const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
-	/* mesh_att_battle_21_02 turns the body around. That skeletal turn does not
-	rotate the authoritative root, so the shot uses the opposite of the locked
-	start facing. */
-	const float throwDirectionX = -std::sin(yawRadians);
-	const float throwDirectionZ = -std::cos(yawRadians);
-	Clear_ValtanCatchBreathControl(player);
-	player.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
-	player.iCurrentSkillId = INVALID_SKILL_ID;
-	player.Clear_SkillTarget();
-	player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-	player.fActionElapsedSeconds = 0.f;
-	player.fValtanThrowDirectionX = throwDirectionX;
-	player.fValtanThrowDirectionZ = throwDirectionZ;
-	player.fValtanThrowSpeed =
-		VALTAN_CATCH_BREATH_THROW_SPEED_METERS_PER_SECOND;
-	player.fValtanThrowRemainingSeconds =
-		VALTAN_CATCH_BREATH_THROW_SECONDS;
-	player.iKnockdownEndTick = Add_ServerTicksSkippingReservedZero(
-		player.iActionStartTick,
-		static_cast<std::uint32_t>(std::ceil(
-			VALTAN_CATCH_BREATH_THROW_SECONDS * SERVER_TICK_HZ)) +
-		FALL_DEATH_TICKS);
-	player.fYawDegrees = Wrap_Degrees(boss.fYawDegrees + 180.f);
-	player.isCombatReady = true;
-}
-
-void LostArk::Server::CGameRoom::Maintain_ValtanCatchBreathGrab(
-	const SERVER_WORLD_ENTITY& boss,
-	const std::uint32_t serverTick)
-{
-	if (boss.strPatternId != VALTAN_CATCH_BREATH_PATTERN_ID ||
-		!Is_ValtanCatchBreathHeldAction(boss.strActionId))
-	{
-		return;
-	}
-	const auto owner = m_PlayerIdByEntityId.find(
-		boss.iPatternTargetEntityId);
-	if (owner == m_PlayerIdByEntityId.end())
-		return;
-	const auto target = m_Players.find(owner->second);
-	if (target == m_Players.end())
-		return;
-	SERVER_PLAYER& player = target->second;
-	if (player.iValtanGrabOwnerEntityId != boss.iNetEntityId ||
-		player.iValtanGrabPatternSequence != boss.iPatternSequence)
-	{
-		return;
-	}
-	if (boss.strActionId == VALTAN_CATCH_BREATH_STEP_01_ACTION_ID &&
-		LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction)
-	{
-		if (!Has_ValtanCatchBreathNotifyElapsed(
-			boss, serverTick, VALTAN_CATCH_BREATH_GRAB_NOTIFY_MS))
-		{
-			return;
-		}
-		if (0u == player.iCurrentHp || !player.isCombatReady ||
-			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction ||
-			LostArk::Shared::PLAYER_ACTION_STATE::FALLING == player.eAction)
-		{
-			Clear_ValtanCatchBreathControl(player);
-			return;
-		}
-		Begin_ValtanCatchBreathGrab(player, boss, serverTick);
-	}
-	if (boss.strActionId == VALTAN_CATCH_BREATH_STEP_04_ACTION_ID &&
-		LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == player.eAction &&
-		Has_ValtanCatchBreathNotifyElapsed(
-			boss, serverTick, VALTAN_CATCH_BREATH_THROW_NOTIFY_MS))
-	{
-		Begin_ValtanCatchBreathThrow(player, boss, serverTick);
-		return;
-	}
-	if (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction)
-		return;
-	/* The Server proxy stays at the boss root for acquisition and late-join
-	state. Client presentation replaces it with left-hand-bone * local offset
-	every frame from the STEP_01 grab notify through the STEP_04 shot notify. */
-	player.fPositionX = boss.fPositionX;
-	player.fPositionY = boss.fPositionY;
-	player.fPositionZ = boss.fPositionZ;
-	player.fYawDegrees = boss.fYawDegrees;
-	player.hasMoveGoal = false;
-	player.MovePath.clear();
-	player.iMovePathIndex = 0u;
 }
 
 bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
@@ -6963,7 +7541,9 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 		{
 			continue;
 		}
-		if (0u != action.iDurationMs)
+		if (0u != action.iDurationMs &&
+			BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS !=
+				action.eKind)
 		{
 			m_strStatus = "Unsupported boss stage action: " + action.strTargetId;
 			return false;
@@ -7290,9 +7870,136 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 			}
 			break;
 		}
+		case BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE:
+			if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != trigger ||
+				"boss.target.pattern" != action.strTargetId ||
+				1u != action.iValue || 0u != action.iDurationMs ||
+				BOSS_GRABBED_RELEASE_MODE::NONE != action.eReleaseMode ||
+				0.f != action.fReleaseSpeedMps)
+			{
+				m_strStatus = "Boss retarget stage action is invalid";
+				return false;
+			}
+			break;
+		case BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS:
+		{
+			const bool hold = BOSS_GRABBED_RELEASE_MODE::HOLD ==
+				action.eReleaseMode && 0.f == action.fReleaseSpeedMps &&
+				0u == action.iDurationMs;
+			const bool knockback =
+				BOSS_GRABBED_RELEASE_MODE::OPPOSITE_KNOCKBACK ==
+					action.eReleaseMode && action.fReleaseSpeedMps > 0.f &&
+					action.fReleaseSpeedMps <= 50.f &&
+					action.iDurationMs > 0u && action.iDurationMs <= 5000u;
+			if ("boss.attachment.left-hand" != action.strTargetId ||
+				0u != action.iValue || !std::isfinite(action.fReleaseSpeedMps) ||
+				(!hold && !knockback))
+			{
+				m_strStatus = "Boss grabbed-player release action is invalid";
+				return false;
+			}
+			break;
+		}
 		default:
 			m_strStatus = "Unsupported boss stage action kind";
 			return false;
+		}
+	}
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
+	SERVER_WORLD_ENTITY& boss,
+	const CGameplayCatalog& catalog,
+	const std::string& patternId,
+	const std::string& actionId,
+	const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+	const std::uint32_t serverTick,
+	const std::uint32_t spawnWaveOrdinal)
+{
+	using namespace LostArk::Shared;
+	if (patternId.empty() || actionId.empty() || spawnWaveOrdinal > 0u)
+		return true;
+	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
+	if (nullptr == patterns)
+		return false;
+	const auto pattern = std::find_if(
+		patterns->begin(), patterns->end(),
+		[&patternId](const BOSS_PATTERN_DEFINITION& candidate)
+		{
+			return candidate.strPatternId == patternId;
+		});
+	if (patterns->end() == pattern)
+		return false;
+	const auto stage = std::find_if(
+		pattern->Stages.begin(), pattern->Stages.end(),
+		[&actionId](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+		{
+			return candidate.strActionId == actionId;
+		});
+	if (pattern->Stages.end() == stage)
+		return false;
+
+	for (const BOSS_PATTERN_STAGE_ACTION& action : stage->Actions)
+	{
+		if (action.eTrigger != trigger)
+			continue;
+		if (BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE ==
+			action.eKind)
+		{
+			std::vector<SERVER_PLAYER*> candidates;
+			candidates.reserve(m_Players.size());
+			for (auto& [playerId, player] : m_Players)
+			{
+				(void)playerId;
+				if (0u == player.iCurrentHp || !player.isCombatReady ||
+					PLAYER_ACTION_STATE::GRABBED == player.eAction ||
+					PLAYER_ACTION_STATE::DEAD == player.eAction ||
+					PLAYER_ACTION_STATE::FALLING == player.eAction)
+				{
+					continue;
+				}
+				candidates.push_back(&player);
+			}
+			if (candidates.empty())
+			{
+				boss.iPatternTargetEntityId = INVALID_NET_ENTITY_ID;
+				boss.bHasPatternTargetLastPosition = false;
+				continue;
+			}
+			const std::uint64_t seed = Mix_DeterministicRandom(
+				Hash_StableId(actionId) ^ Hash_StableId(action.strTargetId) ^
+				(static_cast<std::uint64_t>(boss.iNetEntityId) << 32u) ^
+				static_cast<std::uint64_t>(boss.iPatternSequence) ^
+				(static_cast<std::uint64_t>(serverTick) << 1u));
+			SERVER_PLAYER& selected = *candidates[
+				static_cast<std::size_t>(seed % candidates.size())];
+			boss.iTargetEntityId = selected.iNetEntityId;
+			boss.iPatternTargetEntityId = selected.iNetEntityId;
+			boss.bHasPatternTargetLastPosition = true;
+			boss.fPatternTargetLastPositionX = selected.fPositionX;
+			boss.fPatternTargetLastPositionY = selected.fPositionY;
+			boss.fPatternTargetLastPositionZ = selected.fPositionZ;
+			const float deltaX = selected.fPositionX - boss.fPositionX;
+			const float deltaZ = selected.fPositionZ - boss.fPositionZ;
+			if (deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
+			{
+				boss.fYawDegrees =
+					std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+			}
+			continue;
+		}
+		if (BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS ==
+			action.eKind)
+		{
+			const float distance =
+				BOSS_GRABBED_RELEASE_MODE::OPPOSITE_KNOCKBACK ==
+					action.eReleaseMode ?
+				action.fReleaseSpeedMps *
+					(static_cast<float>(action.iDurationMs) / 1000.f) : 0.f;
+			(void)Release_PlayerAttachments(
+				boss.iNetEntityId, distance, action.iDurationMs,
+				false, 0u, serverTick);
 		}
 	}
 	return true;
@@ -8134,7 +8841,7 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 	player.fKnockbackSpeed = 0.f;
 	player.fKnockbackRemainingSeconds = 0.f;
 	player.iKnockdownEndTick = 0u;
-	Clear_ValtanCatchBreathControl(player);
+	player.Clear_Attachment();
 	/* Every boss and monster gate already refuses a player that is not combat
 	ready, so this one flag removes the falling body from acquisition and from
 	area damage without editing four separate target filters. */
@@ -8149,37 +8856,273 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 	player.fPositionY += player.fFallVelocityY * fixedDeltaSeconds;
 }
 
-bool LostArk::Server::CGameRoom::Advance_ValtanCatchBreathThrow(
-	SERVER_PLAYER& player,
-	const float fixedDeltaSeconds,
-	const std::uint32_t updateTick)
+bool LostArk::Server::CGameRoom::Capture_PlayerAttachment(
+	const LostArk::Shared::NET_ENTITY_ID playerEntityId,
+	const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
+	const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+	const std::uint32_t serverTick)
 {
-	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f ||
-		player.fValtanThrowRemainingSeconds <= 0.f)
+	using namespace LostArk::Shared;
+	if (INVALID_NET_ENTITY_ID == playerEntityId ||
+		INVALID_NET_ENTITY_ID == ownerEntityId ||
+		playerEntityId == ownerEntityId || 0u == serverTick ||
+		PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND != slot)
 	{
 		return false;
 	}
-	if (0u == player.iCurrentHp ||
-		LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
+
+	const auto playerId = m_PlayerIdByEntityId.find(playerEntityId);
+	if (m_PlayerIdByEntityId.end() == playerId)
+		return false;
+	const auto playerIter = m_Players.find(playerId->second);
+	if (m_Players.end() == playerIter)
+		return false;
+	const auto owner = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[ownerEntityId](const SERVER_WORLD_ENTITY& entity)
+		{
+			return entity.iNetEntityId == ownerEntityId;
+		});
+	if (m_WorldEntities.end() == owner ||
+		WORLD_BOOTSTRAP_KIND::BOSS != owner->eKind ||
+		SERVER_ENTITY_ACTION::DEAD == owner->eAction ||
+		0u == owner->iCurrentHp ||
+		!std::isfinite(owner->fPositionX) ||
+		!std::isfinite(owner->fPositionY) ||
+		!std::isfinite(owner->fPositionZ) ||
+		!std::isfinite(owner->fYawDegrees))
 	{
-		Clear_ValtanCatchBreathControl(player);
 		return false;
 	}
-	const float step = (std::min)(
-		fixedDeltaSeconds, player.fValtanThrowRemainingSeconds);
-	/* This is the authored forced-ejection leg, not player navigation. Clamping
-	it to the arena grid or wall collision would make STEP_04 stop at the edge
-	instead of throwing the target out of bounds. */
-	player.fPositionX += player.fValtanThrowDirectionX *
-		player.fValtanThrowSpeed * step;
-	player.fPositionZ += player.fValtanThrowDirectionZ *
-		player.fValtanThrowSpeed * step;
-	player.fValtanThrowRemainingSeconds -= step;
-	if (player.fValtanThrowRemainingSeconds <= 0.000001f)
+
+	SERVER_PLAYER& player = playerIter->second;
+	if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
 	{
-		player.fValtanThrowRemainingSeconds = 0.f;
-		Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
+		return player.iAttachmentOwnerNetEntityId == ownerEntityId &&
+			player.eAttachmentSlot == slot;
 	}
+	if (0u == player.iCurrentHp || !player.isCombatReady ||
+		PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::FALLING == player.eAction ||
+		!std::isfinite(player.fPositionX) ||
+		!std::isfinite(player.fPositionY) ||
+		!std::isfinite(player.fPositionZ) ||
+		!std::isfinite(player.fYawDegrees))
+	{
+		return false;
+	}
+
+	const float yawRadians = owner->fYawDegrees * DEGREES_TO_RADIANS;
+	const float sine = std::sin(yawRadians);
+	const float cosine = std::cos(yawRadians);
+	const float deltaX = player.fPositionX - owner->fPositionX;
+	const float deltaZ = player.fPositionZ - owner->fPositionZ;
+	const float localX = deltaX * cosine - deltaZ * sine;
+	const float localY = player.fPositionY - owner->fPositionY;
+	const float localZ = deltaX * sine + deltaZ * cosine;
+	const float localYaw = Wrap_Degrees(
+		player.fYawDegrees - owner->fYawDegrees);
+	if (!std::isfinite(localX) || !std::isfinite(localY) ||
+		!std::isfinite(localZ) || !std::isfinite(localYaw))
+	{
+		return false;
+	}
+
+	/* Capture interrupts one complete action transaction. Projectiles and
+	combat objects cannot remain owned by a body whose input is now frozen. */
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.fActionElapsedSeconds = 0.f;
+	player.hasAppliedSkillDamage = false;
+	player.iAppliedHitMask = 0u;
+	player.iSpawnedProjectileMask = 0u;
+	player.Projectiles.clear();
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
+	player.hasReleasedHold = false;
+	player.TriggerMove = {};
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	player.fKnockbackDirectionX = 0.f;
+	player.fKnockbackDirectionZ = 0.f;
+	player.fKnockbackSpeed = 0.f;
+	player.fKnockbackRemainingSeconds = 0.f;
+	player.iKnockdownEndTick = 0u;
+	player.iHitReactionGraceEndTick = 0u;
+	player.fFallVelocityY = 0.f;
+	player.iFallDeathTick = 0u;
+	player.Clear_Attachment();
+	player.iAttachmentOwnerNetEntityId = ownerEntityId;
+	player.eAttachmentSlot = slot;
+	player.fAttachmentLocalOffsetX = localX;
+	player.fAttachmentLocalOffsetY = localY;
+	player.fAttachmentLocalOffsetZ = localZ;
+	player.fAttachmentYawOffsetDegrees = localYaw;
+	player.eAction = PLAYER_ACTION_STATE::GRABBED;
+	player.iActionStartTick = serverTick;
+	player.isCombatReady = false;
+	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Release_PlayerAttachment(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
+	const float pushRangeM,
+	const std::uint32_t pushMs,
+	const bool knockdown,
+	const std::uint32_t downMs,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_ACTION_STATE::GRABBED != player.eAction ||
+		player.iAttachmentOwnerNetEntityId != ownerEntityId ||
+		0u == serverTick || !std::isfinite(pushRangeM))
+	{
+		return false;
+	}
+
+	float sourceX = player.fPositionX;
+	float sourceZ = player.fPositionZ;
+	const auto owner = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[ownerEntityId](const SERVER_WORLD_ENTITY& entity)
+		{
+			return entity.iNetEntityId == ownerEntityId;
+		});
+	if (m_WorldEntities.end() != owner &&
+		std::isfinite(owner->fPositionX) &&
+		std::isfinite(owner->fPositionZ))
+	{
+		sourceX = owner->fPositionX;
+		sourceZ = owner->fPositionZ;
+	}
+
+	player.Clear_Attachment();
+	player.eAction = 0u == player.iCurrentHp ?
+		PLAYER_ACTION_STATE::DEAD : PLAYER_ACTION_STATE::NONE;
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.iActionStartTick = 0u;
+	player.fActionElapsedSeconds = 0.f;
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
+	player.hasReleasedHold = false;
+	player.TriggerMove = {};
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	player.fKnockbackRemainingSeconds = 0.f;
+	player.fKnockbackSpeed = 0.f;
+	player.iKnockdownEndTick = 0u;
+	player.iHitReactionGraceEndTick = 0u;
+	player.isCombatReady = 0u != player.iCurrentHp;
+	if (0u != player.iCurrentHp)
+	{
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			player, sourceX, sourceZ, pushRangeM, pushMs,
+			knockdown, downMs, serverTick);
+	}
+	return true;
+}
+
+std::size_t LostArk::Server::CGameRoom::Release_PlayerAttachments(
+	const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
+	const float pushRangeM,
+	const std::uint32_t pushMs,
+	const bool knockdown,
+	const std::uint32_t downMs,
+	const std::uint32_t serverTick)
+{
+	std::size_t released = 0u;
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		if (Release_PlayerAttachment(
+			player, ownerEntityId, pushRangeM, pushMs,
+			knockdown, downMs, serverTick))
+		{
+			++released;
+		}
+	}
+	return released;
+}
+
+bool LostArk::Server::CGameRoom::Update_PlayerAttachment(
+	SERVER_PLAYER& player,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_ACTION_STATE::GRABBED != player.eAction)
+	{
+		if (INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId ||
+			PLAYER_ATTACHMENT_SLOT::NONE != player.eAttachmentSlot)
+		{
+			player.Clear_Attachment();
+		}
+		return false;
+	}
+
+	const NET_ENTITY_ID ownerEntityId =
+		player.iAttachmentOwnerNetEntityId;
+	const auto owner = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[ownerEntityId](const SERVER_WORLD_ENTITY& entity)
+		{
+			return entity.iNetEntityId == ownerEntityId;
+		});
+	const bool validOwner = m_WorldEntities.end() != owner &&
+		WORLD_BOOTSTRAP_KIND::BOSS == owner->eKind &&
+		SERVER_ENTITY_ACTION::DEAD != owner->eAction &&
+		0u != owner->iCurrentHp &&
+		PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND == player.eAttachmentSlot &&
+		std::isfinite(owner->fPositionX) &&
+		std::isfinite(owner->fPositionY) &&
+		std::isfinite(owner->fPositionZ) &&
+		std::isfinite(owner->fYawDegrees) &&
+		std::isfinite(player.fAttachmentLocalOffsetX) &&
+		std::isfinite(player.fAttachmentLocalOffsetY) &&
+		std::isfinite(player.fAttachmentLocalOffsetZ) &&
+		std::isfinite(player.fAttachmentYawOffsetDegrees);
+	if (!validOwner)
+	{
+		(void)Release_PlayerAttachment(
+			player, ownerEntityId, 0.f, 0u, false, 0u,
+			0u == serverTick ? 1u : serverTick);
+		return false;
+	}
+
+	const float yawRadians = owner->fYawDegrees * DEGREES_TO_RADIANS;
+	const float sine = std::sin(yawRadians);
+	const float cosine = std::cos(yawRadians);
+	const float nextX = owner->fPositionX +
+		player.fAttachmentLocalOffsetX * cosine +
+		player.fAttachmentLocalOffsetZ * sine;
+	const float nextY = owner->fPositionY +
+		player.fAttachmentLocalOffsetY;
+	const float nextZ = owner->fPositionZ -
+		player.fAttachmentLocalOffsetX * sine +
+		player.fAttachmentLocalOffsetZ * cosine;
+	const float nextYaw = Wrap_Degrees(
+		owner->fYawDegrees + player.fAttachmentYawOffsetDegrees);
+	if (!std::isfinite(nextX) || !std::isfinite(nextY) ||
+		!std::isfinite(nextZ) || !std::isfinite(nextYaw))
+	{
+		(void)Release_PlayerAttachment(
+			player, ownerEntityId, 0.f, 0u, false, 0u,
+			0u == serverTick ? 1u : serverTick);
+		return false;
+	}
+
+	player.fPositionX = nextX;
+	player.fPositionY = nextY;
+	player.fPositionZ = nextZ;
+	player.fYawDegrees = nextYaw;
+	player.isCombatReady = false;
 	return true;
 }
 
@@ -8253,12 +9196,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			}
 		}
 #endif
-		if (Advance_ValtanCatchBreathThrow(
-			player, fixedDeltaSeconds, updateTick))
-		{
-			continue;
-		}
-		if (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == player.eAction)
+		if (Update_PlayerAttachment(player, updateTick))
 			continue;
 		if (Update_PlayerFall(player, fixedDeltaSeconds, updateTick))
 			continue;
@@ -8267,7 +9205,11 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		{
 			continue;
 		}
+		const bool wasKnockbackActive =
+			player.fKnockbackRemainingSeconds > 0.f;
 		Advance_PlayerKnockback(player, fixedDeltaSeconds);
+		if (wasKnockbackActive)
+			continue;
 		if (LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction &&
 			static_cast<std::int32_t>(
 				updateTick - player.iKnockdownEndTick) >= 0)
@@ -8542,6 +9484,16 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
+	const auto releaseBossAttachments =
+		[this, updateTick](const SERVER_WORLD_ENTITY& boss)
+		{
+			if (WORLD_BOOTSTRAP_KIND::BOSS == boss.eKind &&
+				LostArk::Shared::INVALID_NET_ENTITY_ID != boss.iNetEntityId)
+			{
+				(void)Release_PlayerAttachments(
+					boss.iNetEntityId, 0.f, 0u, false, 0u, updateTick);
+			}
+		};
 	Update_PendingEstherSummons(fixedDeltaSeconds);
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
@@ -8609,6 +9561,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			{
 				m_strStatus =
 					"Valtan occurrence pinned gameplay generation is missing";
+				releaseBossAttachments(entity);
 				m_isReady = false;
 				return;
 			}
@@ -8648,6 +9601,13 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 #endif
 			if (updateValtanBrain)
 			{
+				std::vector<SERVER_PLAYER_CAPTURE_REQUEST> captureRequests;
+				const BOSS_PATTERN_SEQUENCE_DEFINITION* patternFlowSequence =
+					nullptr;
+#ifdef _DEBUG
+				patternFlowSequence =
+					Resolve_ValtanPatternFlowSequence(entity);
+#endif
 				/* Only a stele that is standing right now is cover. A slot that
 				   is breaking or hidden stops answering the blow on the same
 				   tick the Server retired it. */
@@ -8679,7 +9639,21 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					coverCircles,
 					m_TickDamageEvents,
 					&m_GameplayCatalog.Active(),
-					m_GameplayCatalog.Get_ActiveGenerationEpoch());
+					m_GameplayCatalog.Get_ActiveGenerationEpoch(),
+					&captureRequests,
+					patternFlowSequence);
+				for (const SERVER_PLAYER_CAPTURE_REQUEST& request : captureRequests)
+				{
+					(void)Capture_PlayerAttachment(
+						request.iPlayerNetEntityId, entity.iNetEntityId,
+						request.eAttachmentSlot, updateTick);
+				}
+				if (SERVER_ENTITY_ACTION::DEAD == entity.eAction ||
+					0u == entity.iCurrentHp)
+				{
+					(void)Release_PlayerAttachments(
+						entity.iNetEntityId, 0.f, 0u, false, 0u, updateTick);
+				}
 				const VALTAN_DECISION_TRACE* latestTrace =
 					m_ValtanBrain.Get_LatestDecisionTrace();
 				if (nullptr != latestTrace &&
@@ -8696,18 +9670,21 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 						occurrenceCatalog->Get_ActiveRevision();
 				}
 			}
-			const bool stageChanged =
-				previousPatternSequence != entity.iPatternSequence ||
-				previousStageIndex != entity.iPatternStageIndex ||
-				previousActionStartTick != entity.iActionStartTick ||
-				previousPatternId != entity.strPatternId ||
-				previousStageId != entity.strPatternStageId ||
-				previousActionId != entity.strActionId;
 			const bool stageIdentityChanged =
 				previousPatternSequence != entity.iPatternSequence ||
 				previousStageIndex != entity.iPatternStageIndex ||
 				previousPatternId != entity.strPatternId ||
 				previousActionId != entity.strActionId;
+			const bool pauseClockOnlyChanged =
+				!stageIdentityChanged &&
+				previousStageId == entity.strPatternStageId &&
+				previousActionStartTick != entity.iActionStartTick &&
+				(bossBeforeBrain.bAutomaticPatternSequencePausedForRevive ||
+				 entity.bAutomaticPatternSequencePausedForRevive);
+			const bool stageChanged = stageIdentityChanged ||
+				previousStageId != entity.strPatternStageId ||
+				(previousActionStartTick != entity.iActionStartTick &&
+				 !pauseClockOnlyChanged);
 			if (stageIdentityChanged &&
 				!Apply_BossPatternStageTransition(
 					entity, previousPatternId, previousActionId,
@@ -8722,6 +9699,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					entity.bMechanicLedgerRequiresReset;
 				const std::uint32_t lastEvaluatedHealthBar =
 					entity.iLastEvaluatedHealthBar;
+				releaseBossAttachments(entity);
 				entity = bossBeforeBrain;
 				entity.MechanicOccurrences = std::move(mechanicOccurrences);
 				entity.PendingPatternIds = std::move(pendingPatternIds);
@@ -8731,16 +9709,26 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_isReady = false;
 				return;
 			}
-			if (stageIdentityChanged)
+			if (!previousPatternId.empty() &&
+				previousPatternId != entity.strPatternId)
 			{
-				Apply_ValtanCatchBreathStageTransition(
-					entity, previousPatternId, previousActionId,
-					entity.strPatternId, entity.strActionId, updateTick);
+				/* A pattern owns every attachment it captured. Even a catalog-corrupt
+				exit without its authored release action cannot leak that ownership
+				into the next pattern. */
+				releaseBossAttachments(entity);
 			}
-			Maintain_ValtanCatchBreathGrab(entity, updateTick);
+			if (!previousPatternId.empty() &&
+				SERVER_ENTITY_ACTION::IDLE != bossBeforeBrain.eAction &&
+				SERVER_ENTITY_ACTION::IDLE == entity.eAction)
+			{
+				/* A mechanic-reset latch can abort motion without changing the stage
+				identity. Attachment cleanup follows the action abort edge as well. */
+				releaseBossAttachments(entity);
+			}
 			if (!stageChanged && updateValtanBrain &&
 				!Apply_BossPatternScheduledSpawnWave(entity, updateTick))
 			{
+				releaseBossAttachments(entity);
 				m_isReady = false;
 				return;
 			}
@@ -8749,6 +9737,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			if (stageChanged && !Apply_WorldDestructionStageEntry(
 				entity, updateTick))
 			{
+				releaseBossAttachments(entity);
 				m_isReady = false;
 				return;
 			}
@@ -8760,6 +9749,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				entity, contactStartX, contactStartY, contactStartZ,
 				updateTick))
 			{
+				releaseBossAttachments(entity);
 				m_isReady = false;
 				return;
 			}
@@ -8770,12 +9760,14 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				entity.iAppliedPatternHitCount > previousAppliedPatternHitCount &&
 				!Apply_WorldDestructionPatternHitContact(entity, updateTick))
 			{
+				releaseBossAttachments(entity);
 				m_isReady = false;
 				return;
 			}
 			float proposedX = 0.f;
 			float proposedZ = 0.f;
-			if (m_ValtanBrain.Try_BuildStageMotion(
+			if (!entity.bAutomaticPatternSequencePausedForRevive &&
+				m_ValtanBrain.Try_BuildStageMotion(
 				entity, fixedDeltaSeconds, proposedX, proposedZ))
 			{
 				const auto Take_MotionStep =
@@ -8845,6 +9837,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 								std::move(entity.MechanicOccurrences);
 							const bool mechanicResetRequired =
 								entity.bMechanicLedgerRequiresReset;
+							releaseBossAttachments(entity);
 							entity = bossBeforeImpactTransition;
 							entity.MechanicOccurrences =
 								std::move(mechanicOccurrences);
@@ -8867,6 +9860,8 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 #ifdef _DEBUG
 			if (updateValtanBrain)
 				Restore_ValtanTimelineRowAfterBrain(entity, updateTick);
+			if (updateValtanBrain)
+				Refresh_ValtanPatternFlowState(entity);
 #endif
 			if (entity.strPatternId.empty() &&
 				occurrenceCatalog->Get_ActiveRevision() ==
@@ -8915,6 +9910,11 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		{
 			++iter;
 			continue;
+		}
+		if (WORLD_BOOTSTRAP_KIND::BOSS == iter->eKind)
+		{
+			(void)Release_PlayerAttachments(
+				iter->iNetEntityId, 0.f, 0u, false, 0u, updateTick);
 		}
 		Broadcast_WorldEntityDespawned(iter->iNetEntityId);
 		iter = m_WorldEntities.erase(iter);

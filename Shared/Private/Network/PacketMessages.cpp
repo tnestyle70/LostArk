@@ -47,6 +47,14 @@ namespace
 				LostArk::Shared::PLAYER_STANCE_ID::END);
 	}
 
+	bool Is_Valid_PlayerAttachmentSlot(
+		const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot)
+	{
+		return static_cast<std::uint8_t>(slot) <
+			static_cast<std::uint8_t>(
+				LostArk::Shared::PLAYER_ATTACHMENT_SLOT::END);
+	}
+
 	bool Is_Valid_SkillTargetIntent(
 		const LostArk::Shared::SKILL_TARGET_INTENT_KIND intent)
 	{
@@ -90,6 +98,11 @@ namespace
             Is_Valid_Locomotion(snapshot.eLocomotionState) &&
 			Is_Valid_PlayerAction(snapshot.eAction) &&
 			Is_Valid_Stance(snapshot.eStance) &&
+			Is_Valid_PlayerAttachmentSlot(snapshot.eAttachmentSlot) &&
+			std::isfinite(snapshot.fAttachmentLocalOffsetX) &&
+			std::isfinite(snapshot.fAttachmentLocalOffsetY) &&
+			std::isfinite(snapshot.fAttachmentLocalOffsetZ) &&
+			std::isfinite(snapshot.fAttachmentYawOffsetDegrees) &&
 			std::isfinite(snapshot.fSkillTargetX) &&
 			std::isfinite(snapshot.fSkillTargetY) &&
 			std::isfinite(snapshot.fSkillTargetZ) &&
@@ -107,6 +120,27 @@ namespace
 			snapshot.iComboStage <= LostArk::Shared::MAX_COMBO_STAGES &&
 			(0 == snapshot.iComboStage ||
 				LostArk::Shared::PLAYER_ACTION_STATE::SKILL == snapshot.eAction) &&
+			(LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == snapshot.eAction ?
+				(snapshot.iAttachmentOwnerNetEntityId !=
+					LostArk::Shared::INVALID_NET_ENTITY_ID &&
+				 snapshot.iAttachmentOwnerNetEntityId != snapshot.iNetEntityId &&
+				 LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ==
+					snapshot.eAttachmentSlot &&
+				 std::abs(snapshot.fAttachmentLocalOffsetX) <= 1000.f &&
+				 std::abs(snapshot.fAttachmentLocalOffsetY) <= 1000.f &&
+				 std::abs(snapshot.fAttachmentLocalOffsetZ) <= 1000.f &&
+				 std::abs(snapshot.fAttachmentYawOffsetDegrees) <= 180.f &&
+				 !snapshot.isCombatReady &&
+				 LostArk::Shared::PLAYER_LOCOMOTION_STATE::IDLE ==
+					snapshot.eLocomotionState) :
+				(snapshot.iAttachmentOwnerNetEntityId ==
+					LostArk::Shared::INVALID_NET_ENTITY_ID &&
+				 LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE ==
+					snapshot.eAttachmentSlot &&
+				 0.f == snapshot.fAttachmentLocalOffsetX &&
+				 0.f == snapshot.fAttachmentLocalOffsetY &&
+				 0.f == snapshot.fAttachmentLocalOffsetZ &&
+				 0.f == snapshot.fAttachmentYawOffsetDegrees)) &&
 			((LostArk::Shared::PLAYER_ACTION_STATE::SKILL == snapshot.eAction &&
 				snapshot.iSkillId != LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
@@ -1928,6 +1962,12 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U8(static_cast<std::uint8_t>(player.eStance));
 		writer.Write_U32(player.iSkillId);
 		writer.Write_U32(player.iActionStartTick);
+		writer.Write_U32(player.iAttachmentOwnerNetEntityId);
+		writer.Write_U8(static_cast<std::uint8_t>(player.eAttachmentSlot));
+		writer.Write_F32(player.fAttachmentLocalOffsetX);
+		writer.Write_F32(player.fAttachmentLocalOffsetY);
+		writer.Write_F32(player.fAttachmentLocalOffsetZ);
+		writer.Write_F32(player.fAttachmentYawOffsetDegrees);
 		writer.Write_U8(player.hasSkillTarget ? 1u : 0u);
 		writer.Write_F32(player.fSkillTargetX);
 		writer.Write_F32(player.fSkillTargetY);
@@ -2086,6 +2126,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         std::uint8_t rawLocomotion = 0;
 		std::uint8_t rawAction = 0;
 		std::uint8_t rawStance = 0;
+		std::uint8_t rawAttachmentSlot = 0;
 		std::uint8_t rawHasSkillTarget = 0;
 		std::uint8_t rawCombatReady = 0;
 		std::uint8_t cooldownCount = 0;
@@ -2101,6 +2142,12 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U8(rawStance) ||
 			!reader.Read_U32(player.iSkillId) ||
 			!reader.Read_U32(player.iActionStartTick) ||
+			!reader.Read_U32(player.iAttachmentOwnerNetEntityId) ||
+			!reader.Read_U8(rawAttachmentSlot) ||
+			!reader.Read_F32(player.fAttachmentLocalOffsetX) ||
+			!reader.Read_F32(player.fAttachmentLocalOffsetY) ||
+			!reader.Read_F32(player.fAttachmentLocalOffsetZ) ||
+			!reader.Read_F32(player.fAttachmentYawOffsetDegrees) ||
 			!reader.Read_U8(rawHasSkillTarget) ||
 			rawHasSkillTarget > 1u ||
 			!reader.Read_F32(player.fSkillTargetX) ||
@@ -2128,6 +2175,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		player.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(rawCharacterClass);
 		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
 		player.eStance = static_cast<PLAYER_STANCE_ID>(rawStance);
+		player.eAttachmentSlot =
+			static_cast<PLAYER_ATTACHMENT_SLOT>(rawAttachmentSlot);
 		player.hasSkillTarget = 0u != rawHasSkillTarget;
 		player.isCombatReady = 0u != rawCombatReady;
 		player.Cooldowns.reserve(cooldownCount);
@@ -2744,6 +2793,167 @@ namespace
 			(aborted || message.strReason.empty());
 	}
 
+	bool Is_Valid_ValtanPatternFlowRevision(
+		const std::string& revision,
+		const bool allowEmpty)
+	{
+		if (revision.empty())
+			return allowEmpty;
+		return VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES == revision.size() &&
+			std::all_of(
+				revision.begin(), revision.end(), [](const unsigned char value)
+				{
+					return ('0' <= value && value <= '9') ||
+						('a' <= value && value <= 'f');
+				});
+	}
+
+	bool Is_Valid_ValtanPatternFlowSlot(
+		const VALTAN_PATTERN_FLOW_SLOT_WIRE& slot)
+	{
+		return Is_Valid_StableId(slot.strSlotId, false) &&
+			Is_Valid_StableId(slot.strPatternId, false);
+	}
+
+	bool Is_Valid_ValtanPatternFlowStart(
+		const C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
+	{
+		if (0u == message.iRequestSequence ||
+			!Is_Valid_StableId(message.strBossPlacementId, false) ||
+			!Is_Valid_StableId(message.strFlowId, false) ||
+			!Is_Valid_ValtanPatternFlowRevision(
+				message.strFlowRevision, false) ||
+			!Is_Valid_StableId(message.strStartSlotId, false) ||
+			message.iInterStepPursuitMs <
+				MIN_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS ||
+			message.iInterStepPursuitMs >
+				MAX_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS ||
+			message.Slots.empty() ||
+			message.Slots.size() > MAX_VALTAN_PATTERN_FLOW_SLOTS)
+		{
+			return false;
+		}
+
+		/* Slot uniqueness, start membership, and definition resolution are
+		   Server semantics so every well-shaped invalid request receives a typed
+		   result instead of disappearing at the frame decoder. */
+		return std::all_of(
+			message.Slots.begin(), message.Slots.end(),
+			Is_Valid_ValtanPatternFlowSlot);
+	}
+
+	bool Is_Valid_ValtanPatternFlowStop(
+		const C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& message)
+	{
+		return 0u != message.iControlSequence &&
+			Is_Valid_StableId(message.strFlowId, false) &&
+			0u != message.iRoomFlowEpoch;
+	}
+
+	bool Is_Accepted_ValtanPatternFlowResult(
+		const VALTAN_PATTERN_FLOW_RESULT result)
+	{
+		return VALTAN_PATTERN_FLOW_RESULT::QUEUED == result ||
+			VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED == result;
+	}
+
+	bool Is_Valid_ValtanPatternFlowResult(
+		const S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message)
+	{
+		const std::uint8_t rawCommand =
+			static_cast<std::uint8_t>(message.eCommand);
+		const std::uint8_t rawResult =
+			static_cast<std::uint8_t>(message.eResult);
+		if (0u == message.iCommandSequence ||
+			rawCommand >= static_cast<std::uint8_t>(
+				VALTAN_PATTERN_FLOW_COMMAND::END) ||
+			rawResult >= static_cast<std::uint8_t>(
+				VALTAN_PATTERN_FLOW_RESULT::END) ||
+			!Is_Valid_StableId(message.strFlowId, false))
+		{
+			return false;
+		}
+
+		const bool accepted =
+			Is_Accepted_ValtanPatternFlowResult(message.eResult);
+		const bool stopRejection =
+			VALTAN_PATTERN_FLOW_COMMAND::STOP_AFTER_CURRENT ==
+				message.eCommand && !accepted;
+		if (!Is_Valid_ValtanPatternFlowRevision(
+			message.strFlowRevision, stopRejection))
+		{
+			return false;
+		}
+
+		if (accepted)
+		{
+			return 0u != message.iRoomFlowEpoch &&
+				message.PinnedDefinitionRevision.Is_Valid() &&
+				message.strReason.empty();
+		}
+		return !message.PinnedDefinitionRevision.Is_Valid() &&
+			Is_Valid_BoundedReason(
+				message.strReason,
+				MAX_VALTAN_PATTERN_FLOW_REASON_BYTES,
+				false);
+	}
+
+	bool Is_Valid_ValtanPatternFlowLifecycle(
+		const S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE& message)
+	{
+		const std::uint8_t rawState =
+			static_cast<std::uint8_t>(message.eState);
+		if (0u == message.iRequestSequence ||
+			!Is_Valid_StableId(message.strBossPlacementId, false) ||
+			!Is_Valid_StableId(message.strFlowId, false) ||
+			!Is_Valid_ValtanPatternFlowRevision(
+				message.strFlowRevision, false) ||
+			!Is_Valid_StableId(message.strStartSlotId, false) ||
+			rawState >= static_cast<std::uint8_t>(
+				VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::END) ||
+			0u == message.iSlotCount ||
+			message.iSlotCount > MAX_VALTAN_PATTERN_FLOW_SLOTS)
+		{
+			return false;
+		}
+
+		const bool rejected =
+			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::REJECTED == message.eState;
+		const bool aborted =
+			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED == message.eState;
+		if (rejected)
+		{
+			return 0u == message.iRoomFlowEpoch &&
+				0u == message.iPatternSequence &&
+				message.strCurrentSlotId.empty() &&
+				message.strCurrentPatternId.empty() &&
+				0u == message.iCurrentSlotOrdinal &&
+				!message.PinnedDefinitionRevision.Is_Valid() &&
+				Is_Valid_BoundedReason(
+					message.strReason,
+					MAX_VALTAN_PATTERN_FLOW_REASON_BYTES,
+					false);
+		}
+
+		if (0u == message.iRoomFlowEpoch ||
+			!message.PinnedDefinitionRevision.Is_Valid() ||
+			!Is_Valid_StableId(message.strCurrentSlotId, false) ||
+			!Is_Valid_StableId(message.strCurrentPatternId, false) ||
+			0u == message.iCurrentSlotOrdinal ||
+			message.iCurrentSlotOrdinal > message.iSlotCount ||
+			(VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::PENDING != message.eState &&
+				0u == message.iPatternSequence))
+		{
+			return false;
+		}
+
+		return Is_Valid_BoundedReason(
+			message.strReason,
+			MAX_VALTAN_PATTERN_FLOW_REASON_BYTES,
+			!aborted) &&
+			(aborted || message.strReason.empty());
+	}
+
 	bool Is_Valid_ValtanDecisionTraceCandidate(
 		const VALTAN_DECISION_TRACE_CANDIDATE_WIRE& candidate)
 	{
@@ -3151,6 +3361,254 @@ bool LostArk::Shared::Read_Message(
 	decoded.eState = static_cast<VALTAN_AUDITION_LIFECYCLE_STATE>(rawState);
 	if (!Is_Valid_AuditionLifecycle(decoded))
 		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
+{
+	if (!Is_Valid_ValtanPatternFlowStart(message))
+		return false;
+
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(
+			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(message.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+			message.strFlowRevision, VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES) ||
+		!writer.Write_String(
+			message.strStartSlotId, MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iInterStepPursuitMs);
+	writer.Write_U8(static_cast<std::uint8_t>(message.Slots.size()));
+	for (const VALTAN_PATTERN_FLOW_SLOT_WIRE& slot : message.Slots)
+	{
+		if (!writer.Write_String(slot.strSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!writer.Write_String(
+				slot.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
+{
+	C2S_DEBUG_VALTAN_PATTERN_FLOW_START decoded{};
+	std::uint8_t slotCount = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(
+			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strFlowRevision, VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES) ||
+		!reader.Read_String(
+			decoded.strStartSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iInterStepPursuitMs) ||
+		!reader.Read_U8(slotCount) ||
+		0u == slotCount || slotCount > MAX_VALTAN_PATTERN_FLOW_SLOTS)
+	{
+		return false;
+	}
+
+	decoded.Slots.reserve(slotCount);
+	for (std::uint8_t index = 0u; index < slotCount; ++index)
+	{
+		VALTAN_PATTERN_FLOW_SLOT_WIRE slot{};
+		if (!reader.Read_String(
+				slot.strSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(
+				slot.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		decoded.Slots.push_back(std::move(slot));
+	}
+	if (!Is_Valid_ValtanPatternFlowStart(decoded))
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& message)
+{
+	if (!Is_Valid_ValtanPatternFlowStop(message))
+		return false;
+	writer.Write_U32(message.iControlSequence);
+	if (!writer.Write_String(message.strFlowId, MAX_STABLE_NETWORK_ID_BYTES))
+		return false;
+	writer.Write_U32(message.iRoomFlowEpoch);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& message)
+{
+	C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT decoded{};
+	if (!reader.Read_U32(decoded.iControlSequence) ||
+		!reader.Read_String(decoded.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iRoomFlowEpoch) ||
+		!Is_Valid_ValtanPatternFlowStop(decoded))
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message)
+{
+	if (!Is_Valid_ValtanPatternFlowResult(message))
+		return false;
+	writer.Write_U32(message.iCommandSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eCommand));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	if (!writer.Write_String(message.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+			message.strFlowRevision, VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRoomFlowEpoch);
+	if (Is_Accepted_ValtanPatternFlowResult(message.eResult) &&
+		!Write_GameplayDataRevision(
+			writer, message.PinnedDefinitionRevision))
+	{
+		return false;
+	}
+	return writer.Write_String(
+		message.strReason, MAX_VALTAN_PATTERN_FLOW_REASON_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message)
+{
+	S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT decoded{};
+	std::uint8_t rawCommand = 0u;
+	std::uint8_t rawResult = 0u;
+	if (!reader.Read_U32(decoded.iCommandSequence) ||
+		!reader.Read_U8(rawCommand) ||
+		rawCommand >= static_cast<std::uint8_t>(
+			VALTAN_PATTERN_FLOW_COMMAND::END) ||
+		!reader.Read_U8(rawResult) ||
+		rawResult >= static_cast<std::uint8_t>(
+			VALTAN_PATTERN_FLOW_RESULT::END) ||
+		!reader.Read_String(decoded.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strFlowRevision, VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES) ||
+		!reader.Read_U32(decoded.iRoomFlowEpoch))
+	{
+		return false;
+	}
+	decoded.eCommand = static_cast<VALTAN_PATTERN_FLOW_COMMAND>(rawCommand);
+	decoded.eResult = static_cast<VALTAN_PATTERN_FLOW_RESULT>(rawResult);
+	if (Is_Accepted_ValtanPatternFlowResult(decoded.eResult) &&
+		!Read_GameplayDataRevision(
+			reader, decoded.PinnedDefinitionRevision))
+	{
+		return false;
+	}
+	if (!reader.Read_String(
+			decoded.strReason, MAX_VALTAN_PATTERN_FLOW_REASON_BYTES) ||
+		!Is_Valid_ValtanPatternFlowResult(decoded))
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE& message)
+{
+	if (!Is_Valid_ValtanPatternFlowLifecycle(message))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U32(message.iRoomFlowEpoch);
+	writer.Write_U32(message.iPatternSequence);
+	if (!writer.Write_String(
+			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(message.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+			message.strFlowRevision, VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES) ||
+		!writer.Write_String(
+			message.strStartSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+			message.strCurrentSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+			message.strCurrentPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U16(message.iCurrentSlotOrdinal);
+	writer.Write_U16(message.iSlotCount);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eState));
+	if (VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::REJECTED != message.eState &&
+		!Write_GameplayDataRevision(
+			writer, message.PinnedDefinitionRevision))
+	{
+		return false;
+	}
+	return writer.Write_String(
+		message.strReason, MAX_VALTAN_PATTERN_FLOW_REASON_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE& message)
+{
+	S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE decoded{};
+	std::uint8_t rawState = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U32(decoded.iRoomFlowEpoch) ||
+		!reader.Read_U32(decoded.iPatternSequence) ||
+		!reader.Read_String(
+			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strFlowRevision, VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES) ||
+		!reader.Read_String(
+			decoded.strStartSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strCurrentSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strCurrentPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U16(decoded.iCurrentSlotOrdinal) ||
+		!reader.Read_U16(decoded.iSlotCount) ||
+		!reader.Read_U8(rawState) ||
+		rawState >= static_cast<std::uint8_t>(
+			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::END))
+	{
+		return false;
+	}
+	decoded.eState =
+		static_cast<VALTAN_PATTERN_FLOW_LIFECYCLE_STATE>(rawState);
+	if (VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::REJECTED != decoded.eState &&
+		!Read_GameplayDataRevision(
+			reader, decoded.PinnedDefinitionRevision))
+	{
+		return false;
+	}
+	if (!reader.Read_String(
+			decoded.strReason, MAX_VALTAN_PATTERN_FLOW_REASON_BYTES) ||
+		!Is_Valid_ValtanPatternFlowLifecycle(decoded))
+	{
+		return false;
+	}
 	message = std::move(decoded);
 	return true;
 }

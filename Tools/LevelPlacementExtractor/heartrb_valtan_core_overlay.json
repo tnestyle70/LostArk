@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "areaId": "LV_LUT_HEARTRB_ED",
-  "status": "phase-proxy-and-source-attached-towers",
-  "basis": "Six hidden phase proxies remain unchanged. Existing SL04 outer towers retain their original source transforms and visibility, and no tower overlay placements remain.",
+  "status": "debug-reference-proxy-and-source-attached-towers",
+  "basis": "Three hidden SpaceHole planes are retained only for the Debug reference camera. Product sky presentation is owned by Map Effects. Existing SL04 outer towers retain their original source transforms and visibility, and no tower overlay placements remain.",
   "assets": [
     {
       "assetId": "BG_RAD_VALTAN_FLOOR01_SM",
@@ -60,9 +60,9 @@
         1.0
       ],
       "anchor": "Origin",
-      "groupId": "valtan-phase-proxy",
-      "groupLabel": "Valtan Phase Visual Proxies",
-      "evidence": "par_d_spacehole_03 exact texture and position; video-matched proxy plane topology"
+      "groupId": "debug-reference-phase-proxy",
+      "groupLabel": "Valtan Debug Reference Phase Proxies",
+      "evidence": "Debug reference camera only; never a Product sky presentation authority"
     },
     {
       "assetId": "VALTAN_PHASE_SPACEHOLE_CORE",
@@ -75,9 +75,9 @@
         1.0
       ],
       "anchor": "Origin",
-      "groupId": "valtan-phase-proxy",
-      "groupLabel": "Valtan Phase Visual Proxies",
-      "evidence": "par_d_spacehole_03 exact texture and position; video-matched proxy plane topology"
+      "groupId": "debug-reference-phase-proxy",
+      "groupLabel": "Valtan Debug Reference Phase Proxies",
+      "evidence": "Debug reference camera only; never a Product sky presentation authority"
     },
     {
       "assetId": "VALTAN_PHASE_SPACEHOLE_STREAK",
@@ -90,61 +90,16 @@
         1.0
       ],
       "anchor": "Origin",
-      "groupId": "valtan-phase-proxy",
-      "groupLabel": "Valtan Phase Visual Proxies",
-      "evidence": "par_d_spacehole_03 exact texture and position; video-matched proxy plane topology"
-    },
-    {
-      "assetId": "VALTAN_PHASE_CHAOS_RING",
-      "label": "Valtan ChaosGate Ring Proxy",
-      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_CHAOS_RING/VALTAN_PHASE_CHAOS_RING.wmodel",
-      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_CHAOS_RING",
-      "defaultScale": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "anchor": "Origin",
-      "groupId": "valtan-phase-proxy",
-      "groupLabel": "Valtan Phase Visual Proxies",
-      "evidence": "par_d_hugechaosgate_01 exact texture and position; video-matched proxy plane topology"
-    },
-    {
-      "assetId": "VALTAN_PHASE_CHAOS_CLOUD",
-      "label": "Valtan ChaosGate Cloud Proxy",
-      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_CHAOS_CLOUD/VALTAN_PHASE_CHAOS_CLOUD.wmodel",
-      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_CHAOS_CLOUD",
-      "defaultScale": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "anchor": "Origin",
-      "groupId": "valtan-phase-proxy",
-      "groupLabel": "Valtan Phase Visual Proxies",
-      "evidence": "par_d_hugechaosgate_01 exact texture and position; video-matched proxy plane topology"
-    },
-    {
-      "assetId": "VALTAN_PHASE_CHAOS_ELECTRIC",
-      "label": "Valtan ChaosGate Electric Proxy",
-      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_CHAOS_ELECTRIC/VALTAN_PHASE_CHAOS_ELECTRIC.wmodel",
-      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_CHAOS_ELECTRIC",
-      "defaultScale": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "anchor": "Origin",
-      "groupId": "valtan-phase-proxy",
-      "groupLabel": "Valtan Phase Visual Proxies",
-      "evidence": "par_d_hugechaosgate_01 exact texture and position; video-matched proxy plane topology"
+      "groupId": "debug-reference-phase-proxy",
+      "groupLabel": "Valtan Debug Reference Phase Proxies",
+      "evidence": "Debug reference camera only; never a Product sky presentation authority"
     }
   ],
   "placements": [
     {
       "placementId": 7000000000000000101,
-      "sourcePlacementId": "phase:par_d_spacehole_03:cloud",
-      "sourceLevel": "VALTAN_PHASE_SPACEHOLE",
+      "sourcePlacementId": "debug-reference:par_d_spacehole_03:cloud",
+      "sourceLevel": "DEBUG_REFERENCE_VALTAN_PHASE_SPACEHOLE",
       "transformSource": "overlay",
       "assetId": "VALTAN_PHASE_SPACEHOLE_CLOUD",
       "position": [
@@ -167,8 +122,8 @@
     },
     {
       "placementId": 7000000000000000102,
-      "sourcePlacementId": "phase:par_d_spacehole_03:core",
-      "sourceLevel": "VALTAN_PHASE_SPACEHOLE",
+      "sourcePlacementId": "debug-reference:par_d_spacehole_03:core",
+      "sourceLevel": "DEBUG_REFERENCE_VALTAN_PHASE_SPACEHOLE",
       "transformSource": "overlay",
       "assetId": "VALTAN_PHASE_SPACEHOLE_CORE",
       "position": [
@@ -191,8 +146,8 @@
     },
     {
       "placementId": 7000000000000000103,
-      "sourcePlacementId": "phase:par_d_spacehole_03:streak",
-      "sourceLevel": "VALTAN_PHASE_SPACEHOLE",
+      "sourcePlacementId": "debug-reference:par_d_spacehole_03:streak",
+      "sourceLevel": "DEBUG_REFERENCE_VALTAN_PHASE_SPACEHOLE",
       "transformSource": "overlay",
       "assetId": "VALTAN_PHASE_SPACEHOLE_STREAK",
       "position": [
@@ -210,78 +165,6 @@
         3.0,
         3.0,
         3.0
-      ],
-      "visible": false
-    },
-    {
-      "placementId": 7000000000000000201,
-      "sourcePlacementId": "phase:par_d_hugechaosgate_01:ring",
-      "sourceLevel": "VALTAN_PHASE_CHAOSGATE",
-      "transformSource": "overlay",
-      "assetId": "VALTAN_PHASE_CHAOS_RING",
-      "position": [
-        158.42,
-        138.4,
-        -125.12
-      ],
-      "quaternion": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale": [
-        10.0,
-        10.0,
-        10.0
-      ],
-      "visible": false
-    },
-    {
-      "placementId": 7000000000000000202,
-      "sourcePlacementId": "phase:par_d_hugechaosgate_01:cloud",
-      "sourceLevel": "VALTAN_PHASE_CHAOSGATE",
-      "transformSource": "overlay",
-      "assetId": "VALTAN_PHASE_CHAOS_CLOUD",
-      "position": [
-        158.42,
-        138.42,
-        -125.12
-      ],
-      "quaternion": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale": [
-        12.0,
-        12.0,
-        12.0
-      ],
-      "visible": false
-    },
-    {
-      "placementId": 7000000000000000203,
-      "sourcePlacementId": "phase:par_d_hugechaosgate_01:electric",
-      "sourceLevel": "VALTAN_PHASE_CHAOSGATE",
-      "transformSource": "overlay",
-      "assetId": "VALTAN_PHASE_CHAOS_ELECTRIC",
-      "position": [
-        158.42,
-        138.44,
-        -125.12
-      ],
-      "quaternion": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale": [
-        7.0,
-        7.0,
-        7.0
       ],
       "visible": false
     }

@@ -1006,6 +1006,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.environment.red-vortex-sky",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.environment.red-vortex-sky.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.floor-wipe-130",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.effect.json"
@@ -1310,6 +1315,96 @@
       "effectAssetId": "effect.warlord.skill.17820.clip8.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17820.clip8.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.terrain-destruction-3.semicircle",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.terrain-destruction-3.semicircle.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.terrain-destruction-9.semicircle",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.terrain-destruction-9.semicircle.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.six-pizza-106",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.six-pizza-106.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.attack-whirlwind",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.attack-whirlwind.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.charge",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.charge.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.three",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.three.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.counter",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.counter.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.trash",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.trash.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.sequence.charge",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.charge.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.sequence.charge2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.charge2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.sequence.roar-charge",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.roar-charge.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.sequence.front-back-front",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.front-back-front.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.trash-catch-success",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.trash-catch-success.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.trash-catch-fail",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.trash-catch-fail.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.trash-catch-if",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.trash-catch-if.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.catch-breath",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.catch-breath.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.warp.portal.effect.json"
     }
   ]
 }

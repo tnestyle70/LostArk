@@ -5,10 +5,10 @@
 
 namespace LostArk::Shared
 {
-	/* 36 adds the bounded Server-authoritative Valtan decision trace query.
-	35 introduced immutable gameplay data revisions, audition lifecycle, and
-	the Debug Hot Reload prepare/commit protocol. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 36;
+	/* 39 adds bounded Debug Valtan pattern-flow authoring playback. 38 adds
+	typed boss-owned player attachments. 36 added the bounded
+	Server-authoritative Valtan decision trace query. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 39;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -165,7 +165,14 @@ namespace LostArk::Shared
 		// and answers the query with REJECTED_RELEASE_BUILD rather than treating
 		// the frame as an incompatible protocol command.
 		C2S_VALTAN_DECISION_TRACE_QUERY,
-		S2C_VALTAN_DECISION_TRACE_RESPONSE
+		S2C_VALTAN_DECISION_TRACE_RESPONSE,
+
+		// Debug Boss Tool ordered-flow audition. Release keeps the identities
+		// known so policy rejection remains typed instead of closing a session.
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START,
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT,
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -214,6 +221,10 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_DATA_REVISION_RESULT:
 		case PACKET_TYPE::C2S_VALTAN_DECISION_TRACE_QUERY:
 		case PACKET_TYPE::S2C_VALTAN_DECISION_TRACE_RESPONSE:
+		case PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_START:
+		case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT:
+		case PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT:
+		case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE:
 		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
 		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
 		case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:

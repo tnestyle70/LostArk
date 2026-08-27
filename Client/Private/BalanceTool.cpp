@@ -6,9 +6,7 @@
 
 #include "DataJson.h"
 #include "NetworkManager.h"
-#include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
-#include "ValtanPatternAuditionService.h"
 #if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
 #include "ActorCatalog.h"
 #include "CombatHUDViewModel.h"
@@ -694,11 +692,15 @@ namespace
 }
 
 
-Client::CBalanceTool::CBalanceTool(
-	std::shared_ptr<IPlayerCommandSink> commandSink)
-	: m_commandSink(std::move(commandSink))
+Client::CBalanceTool::CBalanceTool()
 {
 	Reload();
+}
+
+void Client::CBalanceTool::Open()
+{
+	m_open = true;
+	m_focusPending = true;
 }
 
 void Client::CBalanceTool::MarkDirty(const bool changed)
@@ -2541,12 +2543,6 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 	const std::string header = pattern.strDisplayName + "##" + pattern.strPatternId;
 	if (ImGui::CollapsingHeader(header.c_str()))
 	{
-		CValtanPatternAuditionService& auditionService =
-			CValtanPatternAuditionService::Get();
-		const VALTAN_PATTERN_AUDITION_SNAPSHOT& audition =
-			auditionService.Get_Snapshot();
-		const bool inValtanArena = ETOUI(LEVEL::VALTAN_ARENA) ==
-			CGameInstance::Get().Get_CurrentLevelID();
 		const bool_t bManualAudition = pattern.bManualServerAudition;
 		ImGui::TextDisabled("MANAGED | %s | %s", groupLabel,
 			pattern.strPatternId.c_str());
@@ -2603,43 +2599,8 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 			}
 		}
 
-		ImGui::BeginDisabled(!inValtanArena || audition.Is_InFlight());
-		if (ImGui::Button("Play Server Pattern"))
-		{
-			std::string submitStatus;
-			if (!auditionService.Submit(
-					"Balance Tool", "boss.valtan.center", pattern.strPatternId,
-					submitStatus))
-			{
-				m_status = std::move(submitStatus);
-			}
-			else
-			{
-				m_status = "Pattern audition submitted: " + pattern.strPatternId;
-			}
-		}
-		ImGui::EndDisabled();
-		if (!inValtanArena)
-			ImGui::TextDisabled("Server playback is available only in Valtan Arena.");
-		if (audition.strPatternId == pattern.strPatternId)
-		{
-			ImGui::TextWrapped("Audition %s | %s",
-				Describe_ValtanPatternAuditionState(audition.eState),
-				audition.strStatus.c_str());
-			if (audition.PinnedDefinitionRevision.Is_Valid())
-			{
-				const std::string pinnedRevision =
-					LostArk::Shared::Format_GameplayDataRevision(
-						audition.PinnedDefinitionRevision);
-				ImGui::TextDisabled(
-					"Server room epoch %u | pattern sequence %u | pinned definition %.12s | Client presentation %s",
-					audition.iRoomAuditionEpoch,
-					audition.iObservedPatternSequence,
-					pinnedRevision.c_str(),
-					audition.isPresentationRevisionAvailable ?
-						"AVAILABLE" : "ISOLATED / UNAVAILABLE");
-			}
-		}
+		ImGui::TextDisabled(
+			"Server replay is available in Boss Tool and Effect Tool; Repeat and Revive remain in Boss Tool.");
 
 		if (pattern.ServerMotion.has_value())
 		{
@@ -3166,28 +3127,8 @@ void Client::CBalanceTool::RenderValtanPatternAuthoring()
 				pattern.patternId.c_str(), pattern.actionId.c_str(),
 				pattern.selectionMode.c_str(), pattern.phaseRequirement.c_str(),
 				pattern.selectionWeight, pattern.stageCount);
-			CValtanPatternAuditionService& service =
-				CValtanPatternAuditionService::Get();
-			const bool inValtanArena = ETOUI(LEVEL::VALTAN_ARENA) ==
-				CGameInstance::Get().Get_CurrentLevelID();
-			ImGui::BeginDisabled(!inValtanArena ||
-				service.Get_Snapshot().Is_InFlight());
-			if (ImGui::Button("Play Server Pattern (Legacy Product)"))
-			{
-				std::string submitStatus;
-				if (!service.Submit("Balance Tool", "boss.valtan.center",
-						pattern.patternId, submitStatus))
-				{
-					m_status = std::move(submitStatus);
-				}
-				else
-				{
-					m_status = "Legacy Product audition submitted: " + pattern.patternId;
-				}
-			}
-			ImGui::EndDisabled();
 			ImGui::TextDisabled(
-				"Promote must migrate the complete reference closure before this row becomes editable.");
+				"Read-only legacy row. Use Boss Tool or Effect Tool for Server replay.");
 			ImGui::TreePop();
 		}
 		ImGui::PopID();
@@ -3399,19 +3340,7 @@ void Client::CBalanceTool::RenderLiveVerification()
 		ImGui::Text("Server tick %u", player.iServerTick);
 		ImGui::Text("Combat ready: %s", player.isCombatReady ? "YES" : "PROTECTED");
 		if (0u == player.iCurrentHp)
-		{
-			ImGui::BeginDisabled(nullptr == m_commandSink);
-			if (ImGui::Button("Revive at death position"))
-			{
-				m_reviveSequence = m_reviveSequence ==
-					(std::numeric_limits<std::uint32_t>::max)() ?
-					1u : m_reviveSequence + 1u;
-				m_status = m_commandSink->Request_RevivePlayer(m_reviveSequence) ?
-					"Revive requested. Waiting for Server snapshot." :
-					"Revive request failed: no active Server connection.";
-			}
-			ImGui::EndDisabled();
-		}
+			ImGui::TextDisabled("Revive is available in F1 -> Boss Tool.");
 	}
 	else
 		ImGui::TextDisabled("No replicated player snapshot");
@@ -3735,8 +3664,7 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 					return stage.stageId ==
 						pattern.serverMotion.travelStageId;
 				});
-			if ("TAKEOFF" != pattern.stages.front().stageId ||
-				travelStage == pattern.stages.begin() ||
+			if (travelStage == pattern.stages.begin() ||
 				pattern.stages.front().durationMs <
 					pattern.serverMotion.takeoffEndMs ||
 				travelStage == pattern.stages.end() ||
@@ -5314,9 +5242,9 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 			return false;
 		}
 	}
-	if (3u != serverMotionCount)
+	if (6u != serverMotionCount)
 	{
-		status = "Balance Tool did not preserve all three authored serverMotion rows.";
+		status = "Balance Tool did not preserve all six authored serverMotion rows.";
 		return false;
 	}
 
@@ -5535,6 +5463,12 @@ void Client::CBalanceTool::Render()
 {
 	if (!m_open)
 		return;
+	if (m_focusPending)
+	{
+		ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
+		ImGui::SetNextWindowFocus();
+		m_focusPending = false;
+	}
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 760.f), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin("LostArk Balance Tool", &m_open))
 	{

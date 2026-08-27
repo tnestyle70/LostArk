@@ -126,6 +126,18 @@ namespace LostArk::Server
 		std::vector<VALTAN_DECISION_CANDIDATE_TRACE> Candidates;
 	};
 
+	/* The brain owns hit admission, while the room owns interruption and
+	attachment lifecycle. This fixed-tick request bridges those two owners only
+	for a surviving CAPTURE hit; it carries stable network identities, never a
+	SERVER_PLAYER pointer. */
+	struct SERVER_PLAYER_CAPTURE_REQUEST final
+	{
+		LostArk::Shared::NET_ENTITY_ID iPlayerNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot =
+			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+	};
+
 	class CValtanBrain final
 	{
 	public:
@@ -199,7 +211,11 @@ namespace LostArk::Server
 				coverCircles,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
 			const CGameplayCatalog* activeThresholdCatalog = nullptr,
-			std::uint16_t activeThresholdGenerationEpoch = 1u) const;
+			std::uint16_t activeThresholdGenerationEpoch = 1u,
+			std::vector<SERVER_PLAYER_CAPTURE_REQUEST>* outCaptureRequests =
+				nullptr,
+			const BOSS_PATTERN_SEQUENCE_DEFINITION*
+				automaticSequenceOverride = nullptr) const;
 		bool Try_BuildStageMotion(
 			const SERVER_WORLD_ENTITY& boss,
 			float fixedDeltaSeconds,

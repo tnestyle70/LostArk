@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <string_view>
 #include <utility>
 
 Client::CCharacterPreviewPanel::~CCharacterPreviewPanel()
@@ -171,11 +172,16 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 {
 	const uint32_t currentLevel =
 		CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t bValtanArenaBossPreview =
+		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
+		nullptr != asset.pBossArchetypeId &&
+		std::string_view{ asset.pBossArchetypeId } == "BOSS_VALTAN";
 	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT))
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		!bValtanArenaBossPreview)
 	{
 		m_Status =
-			"Character previews are admitted in Character Select or Development.";
+			"Character previews are admitted in Character Select or Development; Valtan Arena admits only the dedicated Valtan boss Model View.";
 		return false;
 	}
 	if (m_iPreparedGenericPreviewLevelIndex != currentLevel)

@@ -255,6 +255,15 @@ public:
 		uint32_t iActionStartTick,
 		uint32_t iPatternSequence,
 		uint32_t iPatternStageIndex);
+	/* Animation Tool-only local audition.  It deliberately bypasses network,
+	   Effect, Sound, hit and movement, but samples the same admitted Product
+	   binding through the exact helper Apply_NetworkState uses. */
+	bool_t Apply_LocalPatternPresentationSample(
+		LostArk::Shared::WORLD_ENTITY_ACTION patternAction,
+		std::string_view actionId,
+		f32_t fActionAgeSeconds,
+		bool_t bForceAnimationEdge);
+	void Reset_LocalPatternPresentationSample();
 	bool_t Apply_BossCombatState(
 		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state);
 	bool_t Apply_BossCombatEvent(
@@ -330,8 +339,9 @@ private:
 		(std::numeric_limits<std::size_t>::max)();
 	/* Presentation only: pattern stage actionId -> ordered original clip
 	chain, from Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A
-	missing or corrupt document leaves this empty and every pattern falls back
-	to the catalog's generic clips; it never blocks the spawn. */
+	present empty chain is the explicit NONE variant and holds the preceding
+	pose; a missing action still falls back to the catalog's generic clip. A
+	missing/corrupt document never blocks the spawn. */
 	std::unordered_map<std::string,
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>
 		m_PatternClipByActionId;
@@ -389,6 +399,13 @@ private:
 	void Refresh_ArmorPartVisibility();
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
+	bool_t Apply_PatternPresentationSample(
+		std::string_view actionId,
+		std::string_view fallbackClipName,
+		f32_t fActionAgeSeconds,
+		bool_t bAnimationEdgeChanged,
+		std::size_t iCurrentClipOccurrenceIndex,
+		std::size_t& iOutClipOccurrenceIndex);
 	void Load_PatternEffectCues();
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
 	void Load_PatternSoundCues();

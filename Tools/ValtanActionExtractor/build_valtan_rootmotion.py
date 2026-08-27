@@ -280,36 +280,39 @@ def build(
             if duration_ms <= 0:
                 continue
 
-            if explicit_segments is not None:
-                end_forward, end_lateral = sample_explicit_clip_segments(
-                    explicit_segments, duration_ms)
-            else:
+            if explicit_segments is None:
                 base_forward, base_lateral = sample_clip(curve, start_ms)
+
+            def sample_stage_displacement(time_ms: float) -> tuple[float, float]:
+                if explicit_segments is not None:
+                    return sample_explicit_clip_segments(
+                        explicit_segments, time_ms)
                 sampled_forward, sampled_lateral = sample_clip(
-                    curve, start_ms + duration_ms * play_rate)
-                end_forward = sampled_forward - base_forward
-                end_lateral = sampled_lateral - base_lateral
-            travel = max(abs(end_forward), abs(end_lateral))
+                    curve, start_ms + time_ms * play_rate)
+                return (
+                    sampled_forward - base_forward,
+                    sampled_lateral - base_lateral,
+                )
+
+            end_forward, end_lateral = sample_stage_displacement(duration_ms)
             if authored > 0.0:
                 notes.append(
                     f"{pattern['patternId']}/{stage['stageId']}: kept authored "
                     f"{authored:.1f} m, clip {clip_name} bakes "
                     f"{end_forward:+.2f} m")
                 continue
-            if travel < MINIMUM_TRAVEL_METRES:
-                continue
 
             samples = []
+            admission_travel = max(abs(end_forward), abs(end_lateral))
             time_ms = 0
             while True:
+                forward, lateral = sample_stage_displacement(time_ms)
                 if explicit_segments is not None:
-                    forward, lateral = sample_explicit_clip_segments(
-                        explicit_segments, time_ms)
-                else:
-                    sampled_forward, sampled_lateral = sample_clip(
-                        curve, start_ms + time_ms * play_rate)
-                    forward = sampled_forward - base_forward
-                    lateral = sampled_lateral - base_lateral
+                    admission_travel = max(
+                        admission_travel,
+                        abs(forward),
+                        abs(lateral),
+                    )
                 samples.append({
                     "timeMs": time_ms,
                     "forward": round(forward, 4),
@@ -321,6 +324,8 @@ def build(
                 if time_ms >= duration_ms:
                     break
                 time_ms = min(time_ms + SAMPLE_INTERVAL_MS, duration_ms)
+            if admission_travel < MINIMUM_TRAVEL_METRES:
+                continue
             stages.append({
                 "stageIndex": stage_index,
                 "stageId": stage["stageId"],

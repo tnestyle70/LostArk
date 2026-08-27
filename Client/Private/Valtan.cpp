@@ -145,6 +145,30 @@ namespace
 		}
 		return true;
 	}
+
+	const std::string* Resolve_ValtanPresentationClip(
+		const Client::BOSS_ACTOR_ENTRY& Actor,
+		const LostArk::Shared::WORLD_ENTITY_ACTION action)
+	{
+		using LostArk::Shared::WORLD_ENTITY_ACTION;
+		switch (action)
+		{
+		case WORLD_ENTITY_ACTION::IDLE:
+			return &Actor.presentationClips.idle;
+		case WORLD_ENTITY_ACTION::CHASE:
+			return &Actor.presentationClips.chase;
+		case WORLD_ENTITY_ACTION::PATTERN_WINDUP:
+			return &Actor.presentationClips.patternWindup;
+		case WORLD_ENTITY_ACTION::PATTERN_ACTIVE:
+			return &Actor.presentationClips.patternActive;
+		case WORLD_ENTITY_ACTION::PATTERN_RECOVERY:
+			return &Actor.presentationClips.patternRecovery;
+		case WORLD_ENTITY_ACTION::DEAD:
+			return &Actor.presentationClips.dead;
+		default:
+			return nullptr;
+		}
+	}
 }
 
 #ifdef _DEBUG
@@ -442,6 +466,12 @@ void CValtan::Load_PatternBindings()
 	for (const Client::BOSS_PATTERN_ANIMATION_BINDING& binding :
 		document.Bindings)
 	{
+		if (binding.bSuppressAnimation)
+		{
+			staged.emplace(binding.strActionId,
+				std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>{});
+			continue;
+		}
 		std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
 		if (!Build_PatternTimeline(m_pBodyModelCom,
 				std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(
@@ -455,6 +485,149 @@ void CValtan::Load_PatternBindings()
 		staged.emplace(binding.strActionId, binding.Clips);
 	}
 	m_PatternClipByActionId = std::move(staged);
+}
+
+bool_t CValtan::Apply_PatternPresentationSample(
+	const std::string_view actionId,
+	const std::string_view fallbackClipName,
+	const f32_t fActionAgeSeconds,
+	const bool_t bAnimationEdgeChanged,
+	const std::size_t iCurrentClipOccurrenceIndex,
+	std::size_t& iOutClipOccurrenceIndex)
+{
+	iOutClipOccurrenceIndex = iCurrentClipOccurrenceIndex;
+	if (nullptr == m_pBodyModelCom || fallbackClipName.empty() ||
+		!std::isfinite(fActionAgeSeconds) || fActionAgeSeconds < 0.f)
+	{
+		return false;
+	}
+
+	/* A present empty binding is the explicit Product NONE variant: this stage
+	   owns no new boss animation and keeps the pose reached by the preceding
+	   action. A genuinely missing optional binding still takes the catalog
+	   fallback in both Arena presentation and local Animation Tool audition. */
+	Client::BOSS_PATTERN_ANIMATION_CLIP FallbackClip;
+	FallbackClip.strClipOccurrenceId = "catalog.fallback";
+	FallbackClip.strClipName.assign(fallbackClipName);
+	FallbackClip.strMappingBasis = "PROJECT_AUTHORED";
+	FallbackClip.bLoop = true;
+	std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP> ClipChain(
+		&FallbackClip, 1u);
+	if (!actionId.empty())
+	{
+		const auto Bound = m_PatternClipByActionId.find(std::string(actionId));
+		if (m_PatternClipByActionId.end() != Bound)
+		{
+			if (Bound->second.empty())
+			{
+				m_pBodyModelCom->Set_AnimPaused(true);
+				iOutClipOccurrenceIndex =
+					(std::numeric_limits<std::size_t>::max)();
+				return true;
+			}
+			ClipChain = std::span<
+				const Client::BOSS_PATTERN_ANIMATION_CLIP>(
+					Bound->second.data(), Bound->second.size());
+		}
+	}
+	m_pBodyModelCom->Set_AnimPaused(false);
+
+	std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
+	std::vector<uint32_t> AnimationIndices;
+	if (!Build_PatternTimeline(
+			m_pBodyModelCom, ClipChain, Timings, &AnimationIndices))
+	{
+		return false;
+	}
+	Client::ACTION_PRESENTATION_SAMPLE Sample;
+	if (!Client::CActionPresentationTimeline::Resolve_Sample(
+			std::span<const Client::ACTION_PRESENTATION_CLIP_TIMING>(
+				Timings.data(), Timings.size()),
+			fActionAgeSeconds, Sample) ||
+		Sample.iClipIndex >= AnimationIndices.size())
+	{
+		return false;
+	}
+
+	const uint32_t iTargetAnimation = AnimationIndices[Sample.iClipIndex];
+	const Client::BOSS_PATTERN_ANIMATION_CLIP& TargetClip =
+		ClipChain[Sample.iClipIndex];
+	const bool_t bClipOccurrenceTransition =
+		Client::CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
+			iCurrentClipOccurrenceIndex,
+			Sample.iClipIndex,
+			m_pBodyModelCom->Get_CurrentAnimIndex(),
+			iTargetAnimation);
+	if (bAnimationEdgeChanged || bClipOccurrenceTransition)
+	{
+		if (!m_pBodyModelCom->Start_Animation(
+				TargetClip.strClipName.c_str(), TargetClip.bLoop))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		m_pBodyModelCom->Set_Animation(
+			iTargetAnimation, TargetClip.bLoop);
+	}
+	m_pBodyModelCom->Set_AnimationSpeed(TargetClip.fPlayRate);
+	const f32_t fTicksPerSecond =
+		m_pBodyModelCom->Get_AnimationTickPerSecond(iTargetAnimation);
+	if (!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f ||
+		!m_pBodyModelCom->Set_AnimTrackPosition(
+			iTargetAnimation,
+			Sample.fClipSourceTimeSeconds * fTicksPerSecond))
+	{
+		return false;
+	}
+	m_pBodyModelCom->Play_Animation(0.f);
+	iOutClipOccurrenceIndex = Sample.iClipIndex;
+	return true;
+}
+
+bool_t CValtan::Apply_LocalPatternPresentationSample(
+	const LostArk::Shared::WORLD_ENTITY_ACTION patternAction,
+	const std::string_view actionId,
+	const f32_t fActionAgeSeconds,
+	const bool_t bForceAnimationEdge)
+{
+	if (m_isServerAuthoritative || actionId.empty() ||
+		(LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_WINDUP != patternAction &&
+		 LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_ACTIVE != patternAction &&
+		 LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_RECOVERY != patternAction))
+		return false;
+	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss("BOSS_VALTAN");
+	const std::string* pFallbackClip = nullptr == pActor ? nullptr :
+		Resolve_ValtanPresentationClip(*pActor, patternAction);
+	if (nullptr == pFallbackClip)
+		return false;
+
+	std::size_t iAcceptedClipOccurrenceIndex =
+		m_iPatternPresentationClipOccurrenceIndex;
+	if (!Apply_PatternPresentationSample(
+			actionId,
+			*pFallbackClip,
+			fActionAgeSeconds,
+			bForceAnimationEdge,
+			m_iPatternPresentationClipOccurrenceIndex,
+			iAcceptedClipOccurrenceIndex))
+	{
+		return false;
+	}
+	m_iPatternPresentationClipOccurrenceIndex =
+		iAcceptedClipOccurrenceIndex;
+	return true;
+}
+
+void CValtan::Reset_LocalPatternPresentationSample()
+{
+	if (m_isServerAuthoritative || nullptr == m_pBodyModelCom)
+		return;
+	m_iPatternPresentationClipOccurrenceIndex =
+		(std::numeric_limits<std::size_t>::max)();
+	m_pBodyModelCom->Set_AnimationSpeed(1.f);
+	m_pBodyModelCom->Set_AnimPaused(false);
 }
 
 void CValtan::Load_PatternEffectCues()
@@ -492,6 +665,19 @@ void CValtan::Load_PatternEffectCues()
 				"[Client][Valtan] pattern Effect cue action binding rejected: " +
 				Cue.strOccurrenceId + "\n").c_str());
 			return;
+		}
+		if (Cue.bUsesStageClock)
+		{
+			if (!Binding->second.empty() || !Cue.strClipOccurrenceId.empty() ||
+				Cue.iStartMs >= Cue.iStageDurationMs)
+			{
+				OutputDebugStringA((
+					"[Client][Valtan] stage-clock Effect cue NONE binding rejected: " +
+					Cue.strOccurrenceId + "\n").c_str());
+				return;
+			}
+			Staged[Cue.strActionId].push_back(Cue);
+			continue;
 		}
 		const auto Clip = std::find_if(Binding->second.begin(),
 			Binding->second.end(),
@@ -611,10 +797,10 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		return;
 	const auto Binding =
 		m_PatternClipByActionId.find(m_strServerActionId);
-	if (m_PatternClipByActionId.end() == Binding || Binding->second.empty())
+	if (m_PatternClipByActionId.end() == Binding)
 		return;
 	std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
-	if (!Build_PatternTimeline(m_pBodyModelCom,
+	if (!Binding->second.empty() && !Build_PatternTimeline(m_pBodyModelCom,
 			std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(
 				Binding->second.data(), Binding->second.size()), Timings))
 	{
@@ -629,19 +815,28 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		{
 			continue;
 		}
-		const auto Clip = std::find_if(Binding->second.begin(),
-			Binding->second.end(),
-			[&Cue](const Client::BOSS_PATTERN_ANIMATION_CLIP& Candidate)
-			{
-				return Candidate.strClipOccurrenceId ==
-					Cue.strClipOccurrenceId;
-			});
-		if (Binding->second.end() == Clip)
-			continue;
-		const std::size_t iClipIndex = static_cast<std::size_t>(
-			Clip - Binding->second.begin());
-		if (iClipIndex >= Timings.size())
-			continue;
+		std::size_t iClipIndex = 0u;
+		if (Cue.bUsesStageClock)
+		{
+			if (!Binding->second.empty())
+				continue;
+		}
+		else
+		{
+			const auto Clip = std::find_if(Binding->second.begin(),
+				Binding->second.end(),
+				[&Cue](const Client::BOSS_PATTERN_ANIMATION_CLIP& Candidate)
+				{
+					return Candidate.strClipOccurrenceId ==
+						Cue.strClipOccurrenceId;
+				});
+			if (Binding->second.end() == Clip)
+				continue;
+			iClipIndex = static_cast<std::size_t>(
+				Clip - Binding->second.begin());
+			if (iClipIndex >= Timings.size())
+				continue;
+		}
 		const std::string* pEffectAssetId = &Cue.strEffectAssetId;
 #ifdef _DEBUG
 		if (Is_PatternEffectV1AuditionEnabled() &&
@@ -654,7 +849,7 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		f32_t fFirstOccurrenceWallSeconds = 0.f;
 		f32_t fSourceDurationSeconds = 0.f;
 		f32_t fLoopWallDurationSeconds = 0.f;
-		if (Cue.bUsesLegacyStageWallTime)
+		if (Cue.bUsesStageClock || Cue.bUsesLegacyStageWallTime)
 		{
 			fFirstOccurrenceWallSeconds =
 				static_cast<f32_t>(Cue.iStartMs) * 0.001f;
@@ -677,7 +872,8 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 				continue;
 			}
 		}
-		const f32_t fPlaybackRate = Cue.bUsesLegacyStageWallTime ?
+		const f32_t fPlaybackRate =
+			(Cue.bUsesStageClock || Cue.bUsesLegacyStageWallTime) ?
 			1.f : Timings[iClipIndex].fPlayRate;
 		f32_t fLiveSourceDurationSeconds = 0.f;
 		if (Cue.bHasSourceEnd)
@@ -1667,7 +1863,6 @@ bool_t CValtan::Apply_NetworkState(
 	a row), so the stage's actionId is what marks a clip change there. */
 	const bool_t bAnimationEdgeChanged =
 		m_iState != nextState || patternEdgeChanged;
-	bool_t bPatternClipOccurrenceTransition = false;
 	std::size_t iAcceptedPatternClipOccurrenceIndex =
 		m_iPatternPresentationClipOccurrenceIndex;
 	bool_t bCommitPatternClipOccurrenceIndex = false;
@@ -1684,32 +1879,13 @@ bool_t CValtan::Apply_NetworkState(
 			CActorCatalog::Find_Boss("BOSS_VALTAN");
 		if (nullptr == pActor)
 			return false;
-		const std::string* pClip = nullptr;
-		switch (action)
-		{
-		case LostArk::Shared::WORLD_ENTITY_ACTION::IDLE:
-			pClip = &pActor->presentationClips.idle;
-			break;
-		case LostArk::Shared::WORLD_ENTITY_ACTION::CHASE:
-			pClip = &pActor->presentationClips.chase;
-			break;
-		case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_WINDUP:
-			pClip = &pActor->presentationClips.patternWindup;
-			break;
-		case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_ACTIVE:
-			pClip = &pActor->presentationClips.patternActive;
-			break;
-		case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_RECOVERY:
-			pClip = &pActor->presentationClips.patternRecovery;
-			break;
-		case LostArk::Shared::WORLD_ENTITY_ACTION::DEAD:
-			pClip = &pActor->presentationClips.dead;
-			break;
-		default:
+		const std::string* pClip =
+			Resolve_ValtanPresentationClip(*pActor, action);
+		if (nullptr == pClip)
 			return false;
-		}
 		if (!isPatternState)
 		{
+			m_pBodyModelCom->Set_AnimPaused(false);
 			if (bAnimationEdgeChanged &&
 				!m_pBodyModelCom->Start_Animation(pClip->c_str(), true))
 			{
@@ -1719,80 +1895,16 @@ bool_t CValtan::Apply_NetworkState(
 		}
 		else
 		{
-			/* v2 owns every source segment/rate/loop explicitly.  A non-loop
-			last clip clamps its final pose for any Server-stage remainder. */
-			Client::BOSS_PATTERN_ANIMATION_CLIP FallbackClip;
-			FallbackClip.strClipOccurrenceId = "catalog.fallback";
-			FallbackClip.strClipName = *pClip;
-			FallbackClip.strMappingBasis = "PROJECT_AUTHORED";
-			FallbackClip.bLoop = true;
-			std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP> ClipChain(
-				&FallbackClip, 1u);
-			if (!actionId.empty())
-			{
-				const auto bound =
-					m_PatternClipByActionId.find(std::string(actionId));
-				if (bound != m_PatternClipByActionId.end() &&
-					!bound->second.empty())
-				{
-					ClipChain = std::span<
-						const Client::BOSS_PATTERN_ANIMATION_CLIP>(
-						bound->second.data(), bound->second.size());
-				}
-			}
-			std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
-			std::vector<uint32_t> AnimationIndices;
-			if (!Build_PatternTimeline(m_pBodyModelCom, ClipChain,
-					Timings, &AnimationIndices))
+			if (!Apply_PatternPresentationSample(
+					actionId,
+					*pClip,
+					fActionAgeSeconds,
+					bAnimationEdgeChanged,
+					m_iPatternPresentationClipOccurrenceIndex,
+					iAcceptedPatternClipOccurrenceIndex))
 			{
 				return false;
 			}
-			Client::ACTION_PRESENTATION_SAMPLE Sample;
-			if (!Client::CActionPresentationTimeline::Resolve_Sample(
-					std::span<const Client::ACTION_PRESENTATION_CLIP_TIMING>(
-						Timings.data(), Timings.size()),
-					fActionAgeSeconds, Sample) ||
-				Sample.iClipIndex >= AnimationIndices.size())
-			{
-				return false;
-			}
-			const uint32_t iTargetAnimation =
-				AnimationIndices[Sample.iClipIndex];
-			const Client::BOSS_PATTERN_ANIMATION_CLIP& TargetClip =
-				ClipChain[Sample.iClipIndex];
-			bPatternClipOccurrenceTransition =
-				Client::CActionPresentationTimeline::
-					Requires_ClipOccurrenceTransition(
-						m_iPatternPresentationClipOccurrenceIndex,
-						Sample.iClipIndex,
-						m_pBodyModelCom->Get_CurrentAnimIndex(),
-						iTargetAnimation);
-			if (bAnimationEdgeChanged || bPatternClipOccurrenceTransition)
-			{
-				if (!m_pBodyModelCom->Start_Animation(
-					TargetClip.strClipName.c_str(), TargetClip.bLoop))
-				{
-					return false;
-				}
-			}
-			else
-			{
-				m_pBodyModelCom->Set_Animation(
-					iTargetAnimation, TargetClip.bLoop);
-			}
-			m_pBodyModelCom->Set_AnimationSpeed(TargetClip.fPlayRate);
-			const f32_t fTicksPerSecond =
-				m_pBodyModelCom->Get_AnimationTickPerSecond(
-					iTargetAnimation);
-			if (!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f ||
-				!m_pBodyModelCom->Set_AnimTrackPosition(
-					iTargetAnimation,
-					Sample.fClipSourceTimeSeconds * fTicksPerSecond))
-			{
-				return false;
-			}
-			m_pBodyModelCom->Play_Animation(0.f);
-			iAcceptedPatternClipOccurrenceIndex = Sample.iClipIndex;
 			bCommitPatternClipOccurrenceIndex = true;
 		}
 	}

@@ -76,6 +76,11 @@ namespace LostArk::Server
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
 		std::uint32_t iServerTick = 0u;
+		/* CServerCombatHitRuntime preserves an encounter's legacy armour-defense
+		contract before entering this typed boss boundary.  Such a hit must still
+		flow through shield, HP, stagger, counter, and part processing here, but
+		must not be reduced a second time by the typed part percentages. */
+		bool bHealthDamagePreResolved = false;
 		float fSourceX = 0.f;
 		float fSourceZ = 0.f;
 	};
@@ -105,6 +110,11 @@ namespace LostArk::Server
 		static BOSS_HIT_RESULT Apply_PlayerHit(
 			SERVER_WORLD_ENTITY& boss,
 			const BOSS_INCOMING_HIT& hit);
+		/* Publishes one counter outcome and closes its window as one authoritative
+		edge. Callers remain responsible for any stage-specific spatial gate. */
+		static bool Try_TriggerCounter(
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t serverTick);
 		static bool Publish_PatternOutcome(
 			SERVER_WORLD_ENTITY& boss,
 			BOSS_PATTERN_STAGE_OUTCOME outcome,
