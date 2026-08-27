@@ -185,6 +185,12 @@ namespace LostArk::Server
 		static bool Acquire_RuntimeGameplayProcessMutex(
 			void*& handle,
 			std::string& status);
+		// Production keeps its fixed global name; the friend contract owns an
+		// isolated name while exercising this same Win32 ownership path.
+		static bool Acquire_NamedRuntimeGameplayProcessMutex(
+			const wchar_t* name,
+			void*& handle,
+			std::string& status);
 		static void Release_RuntimeGameplayProcessMutex(void*& handle) noexcept;
 		static bool Load_RuntimeActiveGameplayGeneration(
 			const std::filesystem::path& runtimeRoot,

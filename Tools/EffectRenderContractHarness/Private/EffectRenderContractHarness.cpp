@@ -19,6 +19,7 @@
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Level.h"
+#include "RuntimeAssetRoot.h"
 #include "Shader.h"
 
 #include <algorithm>
@@ -891,6 +892,30 @@ namespace
 			strOutError = "failed to set a harness path environment variable";
 			return false;
 		}
+		return true;
+	}
+
+	bool_t Resolve_HarnessResourceRoot(const std::filesystem::path& RepositoryRoot,
+		std::filesystem::path& OutRoot, std::string& strOutError)
+	{
+		// Keep the standalone repo-root default, but use the production priority
+		// whenever the caller supplied either nonempty resource-root variable.
+		// Size queries include the NUL: an existing empty value reports 1 and,
+		// like CRuntimeAssetRoot's value read, must be treated as unconfigured.
+		const bool configured =
+			1u < GetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr, 0u) ||
+			1u < GetEnvironmentVariableW(L"LOSTARK_SHARED_ASSET_ROOT", nullptr, 0u);
+		const std::filesystem::path candidate = configured ?
+			Client::CRuntimeAssetRoot::Get_ResourceRoot() :
+			RepositoryRoot / L"Client" / L"Bin" / L"Resources";
+		std::error_code error;
+		const std::filesystem::path canonical = std::filesystem::weakly_canonical(candidate, error);
+		if (candidate.empty() || error || !std::filesystem::is_directory(canonical, error) || error)
+		{
+			strOutError = "harness resource root is unavailable: " + candidate.generic_string();
+			return false;
+		}
+		OutRoot = canonical;
 		return true;
 	}
 
@@ -6041,9 +6066,11 @@ namespace
 int wmain(const int argc, wchar_t** argv)
 {
 	std::cout << std::unitbuf;
-	if (argc != 2 || nullptr == argv[1])
+	const bool validateResourceRootOnly = argc == 3 && nullptr != argv[2] &&
+		std::wstring_view(argv[2]) == L"--validate-resource-root";
+	if ((argc != 2 && !validateResourceRootOnly) || nullptr == argv[1])
 	{
-		std::cerr << "usage: EffectRenderContractHarness <repo-root>\n";
+		std::cerr << "usage: EffectRenderContractHarness <repo-root> [--validate-resource-root]\n";
 		return 2;
 	}
 
@@ -6058,13 +6085,10 @@ int wmain(const int argc, wchar_t** argv)
 		RepositoryRoot / L"Data" / L"Effects" / L"Imported" / L"Artist" /
 			L"Candidates" /
 			L"skill.31470.reconstructed-runtime-program.candidate.json";
-	const std::filesystem::path ResourceRoot =
-		RepositoryRoot / L"Client" / L"Bin" / L"Resources";
 	if (FileError ||
 		!std::filesystem::is_directory(ClientWorkingDirectory, FileError) ||
 		FileError || !std::filesystem::is_regular_file(
 			ArtistFullCandidatePath, FileError) ||
-		FileError || !std::filesystem::is_directory(ResourceRoot, FileError) ||
 		FileError)
 	{
 		std::cerr << "required repository runtime inputs are unavailable\n";
@@ -6072,6 +6096,28 @@ int wmain(const int argc, wchar_t** argv)
 	}
 
 	std::string Status;
+	std::filesystem::path ResourceRoot;
+	if (!Resolve_HarnessResourceRoot(RepositoryRoot, ResourceRoot, Status) ||
+		!Set_EnvironmentPath(L"LOSTARK_RESOURCE_ROOT", ResourceRoot, Status) ||
+		!Set_EnvironmentPath(L"LOSTARK_PROJECT_DATA_ROOT", RepositoryRoot / L"Data", Status))
+	{
+		std::cerr << Status << '\n';
+		return 2;
+	}
+	if (validateResourceRootOnly)
+	{
+		if (!Client::CRuntimeAssetRoot::Resolve(L"../outside.wmodel").empty() ||
+			!Client::CRuntimeAssetRoot::Resolve(ResourceRoot / L"absolute.wmodel").empty())
+		{
+			std::cerr << "production resource resolver accepted an escaping or absolute asset ID\n";
+			return 1;
+		}
+		std::cout << "{\"resourceRoot\":\"" <<
+			Client::CDataJson::Escape(ResourceRoot.generic_string()) <<
+			"\",\"assetPathBoundaryValidated\":true}\n";
+		return 0;
+	}
+	std::cout << "[effect-render-contract] resource-root=" << ResourceRoot.generic_string() << '\n';
 	bool bEffectLoadJobContractValidated = false;
 	bool bEffectPrewarmQueueTransactionValidated = false;
 	bool bEffectCatalogLoadStageTransactionValidated = false;
@@ -6109,13 +6155,6 @@ int wmain(const int argc, wchar_t** argv)
 	}
 	Write_Progress("source-screen-overlay-parser.complete");
 
-	if (!Set_EnvironmentPath(L"LOSTARK_RESOURCE_ROOT", ResourceRoot, Status) ||
-		!Set_EnvironmentPath(L"LOSTARK_PROJECT_DATA_ROOT",
-			RepositoryRoot / L"Data", Status))
-	{
-		std::cerr << Status << '\n';
-		return 2;
-	}
 	std::filesystem::current_path(ClientWorkingDirectory, FileError);
 	if (FileError)
 	{

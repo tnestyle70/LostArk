@@ -34,10 +34,10 @@ if (-not $legacyPublishRejected) {
     throw 'Legacy Valtan.pattern.json Publish was not rejected.'
 }
 
-$LASTEXITCODE = 0
+$global:LASTEXITCODE = 0
 & python -B $pythonSuite
-if ($LASTEXITCODE -ne 0) {
-    throw "Valtan split pattern master Python suite failed with exit code $LASTEXITCODE."
+if ($global:LASTEXITCODE -ne 0) {
+    throw "Valtan split pattern master Python suite failed with exit code $global:LASTEXITCODE."
 }
 
 & $projector -Mode ValidateV2 -RepositoryRoot $repositoryRoot
