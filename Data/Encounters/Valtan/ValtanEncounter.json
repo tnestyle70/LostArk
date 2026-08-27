@@ -159,60 +159,13 @@
           "branches": [
             {
               "outcome": "WALL_CONTACT",
-              "nextActionId": "valtan.attack.dash-charge.recovery"
+              "nextActionId": "valtan.attack.dash-charge.groggy"
             },
             {
               "outcome": "TIMEOUT",
               "nextActionId": "valtan.attack.dash-charge.recovery"
             }
           ]
-        },
-        {
-          "stageId": "RECOVERY",
-          "actionId": "valtan.attack.dash-charge.recovery",
-          "stageKind": "RECOVERY",
-          "durationMs": 900,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0,
-          "actions": [
-            {
-              "trigger": "ENTER",
-              "kind": "SET_BOSS_FLAG",
-              "targetId": "boss.flag.groggy",
-              "value": 1,
-              "durationMs": 0
-            },
-            {
-              "trigger": "EXIT",
-              "kind": "SET_BOSS_FLAG",
-              "targetId": "boss.flag.groggy",
-              "value": 0,
-              "durationMs": 0
-            }
-          ],
-          "branches": [
-            {
-              "outcome": "PART_DESTROYED",
-              "nextActionId": "valtan.attack.dash-charge.groggy"
-            },
-            {
-              "outcome": "TIMEOUT",
-              "nextActionId": null
-            }
-          ],
-          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
         },
         {
           "stageId": "GROGGY",
@@ -251,8 +204,39 @@
           ],
           "branches": [
             {
-              "outcome": "TIMEOUT",
+              "outcome": "PART_DESTROYED",
               "nextActionId": "valtan.attack.dash-charge.part-break"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": "valtan.attack.dash-charge.recovery"
+            }
+          ],
+          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
+        },
+        {
+          "stageId": "RECOVERY",
+          "actionId": "valtan.attack.dash-charge.recovery",
+          "stageKind": "RECOVERY",
+          "durationMs": 900,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "branches": [
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
             }
           ]
         },
@@ -1540,8 +1524,8 @@
         ],
         "apexHeight": 10.0,
         "travelStageId": "STEP_03",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 700
       },
@@ -4350,14 +4334,14 @@
         "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.terrain-destruction-3.landing",
         "landingPosition": [
-          174.03,
+          156.03,
           22.99751,
           -122.06
         ],
         "apexHeight": 10.0,
         "travelStageId": "LANDING",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 200
       },
@@ -4483,14 +4467,14 @@
         "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.terrain-destruction-9.landing",
         "landingPosition": [
-          138.03,
+          156.03,
           22.99751,
           -122.06
         ],
         "apexHeight": 10.0,
         "travelStageId": "LANDING",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 200
       },

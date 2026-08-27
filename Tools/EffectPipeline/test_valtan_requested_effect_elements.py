@@ -638,6 +638,27 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
             [6.26999998, 40.5299988],
         )
 
+    def test_vertical_generated_rows_no_longer_depend_on_takeoff_legacy(self) -> None:
+        cases = (
+            (
+                "effect.valtan.project-tuned.sequence.attack-whirlwind",
+                f"{GENERATED_PREFIX}attack-whirlwind.jump-fan.vertical-core",
+            ),
+            (
+                "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead",
+                f"{GENERATED_PREFIX}struggling.large-vertical-burst",
+            ),
+        )
+        for asset_id, element_id in cases:
+            with self.subTest(asset_id=asset_id):
+                element = self._element(asset_id, element_id)
+                self.assertEqual(
+                    element["sourceNode"],
+                    "authored-copy:effect.valtan.high-jump.center-landing.active:"
+                    "authored.copy.authored.copy.donut.impact.wave.black.1.1:"
+                    f"{element_id}",
+                )
+
     def test_struggling_is_one_timed_product_with_one_radial_prototype(self) -> None:
         asset_id = "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead"
 

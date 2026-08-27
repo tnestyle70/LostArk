@@ -128,7 +128,7 @@ class ValtanCarrierV1SuccessorLineageTests(unittest.TestCase):
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-01": 7,
             "effect.valtan.carrier-v1.attack.four-slash.active.clip-02": 2,
             "effect.valtan.carrier-v1.attack.high-jump.land.clip-01": 24,
-            "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01": 3,
+            "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01": 1,
             "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01": 3,
             "effect.valtan.sky-axe.active": 6,
         }

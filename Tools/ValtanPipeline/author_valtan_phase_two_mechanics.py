@@ -158,7 +158,7 @@ def author_existing_patterns(
     dash_charge["branches"] = [
         {
             "outcome": "WALL_CONTACT",
-            "nextActionId": "valtan.attack.dash-charge.recovery",
+            "nextActionId": "valtan.attack.dash-charge.groggy",
         },
         {
             "outcome": "TIMEOUT",
@@ -167,41 +167,27 @@ def author_existing_patterns(
     ]
     dash_charge["defaultNextActionId"] = "valtan.attack.dash-charge.recovery"
     dash_recovery = stage(dash, "RECOVERY")
-    dash_recovery["partDamagePolicy"] = "DESTROY_FIRST_ELIGIBLE"
-    dash_recovery["events"] = [
-        {
-            "eventId": "event.valtan.dash-charge.recovery.part-window.enter",
-            "trigger": "ENTER",
-            "kind": "SET_BOSS_FLAG",
-            "flagId": "boss.flag.groggy",
-            "enabled": True,
-        },
-        {
-            "eventId": "event.valtan.dash-charge.recovery.part-window.exit",
-            "trigger": "EXIT",
-            "kind": "SET_BOSS_FLAG",
-            "flagId": "boss.flag.groggy",
-            "enabled": False,
-        },
-    ]
+    dash_recovery.pop("partDamagePolicy", None)
+    dash_recovery["events"] = []
     dash_recovery["branches"] = [
-        {
-            "outcome": "PART_DESTROYED",
-            "nextActionId": "valtan.attack.dash-charge.groggy",
-        },
         {"outcome": "TIMEOUT", "nextActionId": None},
     ]
     dash_recovery["defaultNextActionId"] = None
     dash_groggy = stage(dash, "GROGGY")
+    dash_groggy["partDamagePolicy"] = "DESTROY_FIRST_ELIGIBLE"
     dash_groggy["branches"] = [
         {
-            "outcome": "TIMEOUT",
+            "outcome": "PART_DESTROYED",
             "nextActionId": "valtan.attack.dash-charge.part-break",
-        }
+        },
+        {
+            "outcome": "TIMEOUT",
+            "nextActionId": "valtan.attack.dash-charge.recovery",
+        },
     ]
-    dash_groggy["defaultNextActionId"] = "valtan.attack.dash-charge.part-break"
+    dash_groggy["defaultNextActionId"] = "valtan.attack.dash-charge.recovery"
     stage(dash, "PART_BREAK")["defaultNextActionId"] = None
-    dash_stage_order = ("WINDUP", "CHARGE", "RECOVERY", "GROGGY", "PART_BREAK")
+    dash_stage_order = ("WINDUP", "CHARGE", "GROGGY", "RECOVERY", "PART_BREAK")
     dash_stages = indexed(dash["stages"], "stageId")
     dash["stages"] = [dash_stages[stage_id] for stage_id in dash_stage_order]
     dash_presentation = presentation_by_id["VALTAN_DASH_CHARGE"]
@@ -517,8 +503,8 @@ def author_existing_patterns(
         "landingPosition": [156.03, 22.99751, -122.06],
         "apexHeight": 10.0,
         "travelStageId": "STEP_03",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 700,
     }
@@ -636,7 +622,6 @@ def renamed_occurrence(
 
 def build_terrain_pair(
     direction: str,
-    landing_x: float,
     source_gameplay: dict[str, Any],
     source_presentation: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -685,11 +670,11 @@ def build_terrain_pair(
         "serverMotion": {
             "kind": "LEAP_TO_ANCHOR",
             "anchorId": f"anchor.valtan.terrain-destruction-{suffix}.landing",
-            "landingPosition": [landing_x, 22.99751, -122.06],
+            "landingPosition": [156.03, 22.99751, -122.06],
             "apexHeight": 10.0,
             "travelStageId": "LANDING",
-            "takeoffStartMs": 0,
-            "takeoffEndMs": 900,
+            "takeoffStartMs": 800,
+            "takeoffEndMs": 1100,
             "travelStartMs": 0,
             "travelEndMs": 200,
         },
@@ -866,12 +851,8 @@ def author_terrain_pairs(
         presentation, "VALTAN_TERRAIN_DESTRUCTION"
     )
     authored = [
-        build_terrain_pair(
-            "3_OCLOCK", 174.03, source_gameplay, source_presentation
-        ),
-        build_terrain_pair(
-            "9_OCLOCK", 138.03, source_gameplay, source_presentation
-        ),
+        build_terrain_pair("3_OCLOCK", source_gameplay, source_presentation),
+        build_terrain_pair("9_OCLOCK", source_gameplay, source_presentation),
     ]
     authored_ids = {row[0]["patternId"] for row in authored}
     gameplay["patterns"] = [

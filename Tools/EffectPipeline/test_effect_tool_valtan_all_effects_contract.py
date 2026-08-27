@@ -509,7 +509,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
     def test_authoritative_valtan_effect_inventory_and_timing_are_intact(self) -> None:
         cues = self.product_cues["cues"]
         cue_asset_ids = [row["effectAssetId"] for row in cues]
-        self.assertEqual(81, len(cues))
+        self.assertEqual(80, len(cues))
         self.assertEqual(66, len(set(cue_asset_ids)))
 
         valtan_catalog = {
@@ -544,6 +544,40 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         )
         self.assertEqual("STAGE_CLOCK", product_fist["timingBasis"])
         self.assertNotIn("clipOccurrenceId", product_fist)
+
+    def test_takeoff_excludes_late_legacy_rows_and_decal_ownership_is_exact(
+        self,
+    ) -> None:
+        authored_root = REPOSITORY_ROOT / "Data/Effects/Authored"
+        takeoff = json.loads((
+            authored_root /
+            "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01.effect.json"
+        ).read_text(encoding="utf-8"))
+        self.assertEqual(
+            ["source.f4617c98d44349eec51d"],
+            [row["id"] for row in takeoff["elements"]],
+        )
+
+        texture_id = (
+            "Effect/Valtan/Textures/FX_TEX_HIGH_01/fx_e_decal_007_2.dds"
+        )
+        owners = set()
+        for path in authored_root.glob("*.effect.json"):
+            document = json.loads(path.read_text(encoding="utf-8"))
+            if any(
+                resource.get("assetId") == texture_id
+                for element in document.get("elements", [])
+                for resource in element.get("resources", [])
+            ):
+                owners.add(document["effectAssetId"])
+        self.assertEqual(
+            {
+                "effect.valtan.carrier-v1.attack.swing.active.clip-02",
+                "effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
+                "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
+            },
+            owners,
+        )
 
     def test_new_effect_is_a_two_document_cas_transaction(self) -> None:
         create = source_section(

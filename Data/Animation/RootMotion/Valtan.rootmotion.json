@@ -2804,7 +2804,7 @@
           ]
         },
         {
-          "stageIndex": 2,
+          "stageIndex": 3,
           "stageId": "RECOVERY",
           "clip": "mesh_att_battle_4_01",
           "durationMs": 900,

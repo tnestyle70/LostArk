@@ -223,8 +223,9 @@ namespace LostArk::Server
 		/* True only while a GROGGY stage runs. Set by the stage transition, so
 		it clears itself when the pattern moves on or is interrupted. */
 		bool bPatternGroggy = false;
-		/* True while a charge stage drives the boss forward. Meeting an impact
-		receiver ends that stage early into the GROGGY stage behind it. */
+		/* True while a charge stage drives the boss forward. Meeting either an
+		ordinary authoritative wall or a destructible impact receiver ends that
+		stage early into the GROGGY stage behind it. */
 		bool bPatternChargeImpact = false;
 		/* True for as long as an authored invulnerable pattern runs. Player hits
 		resolve to nothing while it is set, so the raid answers the mechanic

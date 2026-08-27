@@ -543,8 +543,8 @@ namespace LostArk::Server
 		are roars, magic, waves or floor mechanics deliberately leave this false. */
 		bool bWallContact = false;
 		/* The boss drives forward through this stage at the pattern's authored
-		maximumRange over the stage duration, and meeting an impact receiver ends
-		the stage early into the GROGGY stage that must follow it. */
+		maximumRange over the stage duration, and meeting any authoritative wall
+		ends the stage early into the GROGGY stage that must follow it. */
 		bool bChargeImpact = false;
 		/* This stage reaches through a raised encounter prop. Only the authored
 		allowlist grants it, so a new pattern can never silently ignore the only

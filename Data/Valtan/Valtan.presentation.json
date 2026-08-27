@@ -313,28 +313,6 @@
           "cameraInvocations": []
         },
         {
-          "stageId": "RECOVERY",
-          "actionId": "valtan.attack.dash-charge.recovery",
-          "sequenceRole": "RECOVERY",
-          "animation": {
-            "endPolicy": "EXACT",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
-                "clip": "mesh_att_battle_4_01",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 3350,
-                "playMs": 1383,
-                "playRate": 1.5366667,
-                "repeatUntilStageEnd": false
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
           "stageId": "GROGGY",
           "actionId": "valtan.attack.dash-charge.groggy",
           "sequenceRole": "GROGGY",
@@ -350,6 +328,28 @@
                 "playMs": 0,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "RECOVERY",
+          "actionId": "valtan.attack.dash-charge.recovery",
+          "sequenceRole": "RECOVERY",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
+                "clip": "mesh_att_battle_4_01",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 3350,
+                "playMs": 1383,
+                "playRate": 1.5366667,
+                "repeatUntilStageEnd": false
               }
             ]
           },

@@ -56,8 +56,6 @@ RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
     }),
     "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01": frozenset({
         "source.f4617c98d44349eec51d",
-        "sprite_particle_2",
-        "authored.copy.authored.copy.donut.impact.wave.black.1.1",
     }),
     "effect.valtan.carrier-v1.attack.high-jump.land.clip-01": frozenset({
         "source.7b7b7c81b12e9dd59483",

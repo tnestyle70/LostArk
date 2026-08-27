@@ -2241,7 +2241,7 @@ foreach ($pattern in $liveEncounterPatterns) {
 }
 if ($liveEncounterPatterns.Count -ne 33 -or
 	$authoredStageCount -ne 129 -or
-	$authoredStageActionCount -ne 27 -or
+	$authoredStageActionCount -ne 25 -or
 	$authoredStageBranchCount -ne 24 -or
 	$authoredStageMotionCount -ne 2) {
 	throw ('Valtan reactive stage topology count drifted: ' +
@@ -2254,8 +2254,8 @@ $requiredReactiveRows = @(
 	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t0`t1790",
 	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t1`t2560",
 	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t2`t3330",
-	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.recovery`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.groggy`t1`t0",
-	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.recovery`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.groggy`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.groggy`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.groggy`t0`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t0`tENTER`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t30`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t1`tEXIT`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t0`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_ARENA_BREAK_109`tvaltan.mechanic.arena-break-109.impact`t0`tENTER`tSET_GAMEPLAY_PHASE`tboss.phase.gameplay`t2`t0",
@@ -2279,11 +2279,11 @@ $requiredReactiveRows = @(
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`tSTAGGER_BROKEN`tvaltan.reactive.parry.slash",
-	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.active`tWALL_CONTACT`tvaltan.attack.dash-charge.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.active`tWALL_CONTACT`tvaltan.attack.dash-charge.groggy",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.active`tTIMEOUT`tvaltan.attack.dash-charge.recovery",
-	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.recovery`tPART_DESTROYED`tvaltan.attack.dash-charge.groggy",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`tPART_DESTROYED`tvaltan.attack.dash-charge.part-break",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`tTIMEOUT`tvaltan.attack.dash-charge.recovery",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.recovery`tTIMEOUT`t-",
-	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`tTIMEOUT`tvaltan.attack.dash-charge.part-break",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.part-break`tTIMEOUT`t-",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`tTIMEOUT`tvaltan.reactive.parry.normal-slash",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.slash`tTIMEOUT`tvaltan.reactive.parry.recovery",
@@ -2303,7 +2303,7 @@ $requiredReactiveRows = @(
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.groggy`tTIMEOUT`tvaltan.mechanic.magic-orb-stagger-76.recovery",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tCOUNTER_HIT`tvaltan.mechanic.center-grab-counter-64.recovery",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tTIMEOUT`tvaltan.mechanic.center-grab-counter-64.failed-charge",
-	"PATTERNSTAGEPARTDAMAGE`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.recovery`tDESTROY_FIRST_ELIGIBLE",
+	"PATTERNSTAGEPARTDAMAGE`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`tDESTROY_FIRST_ELIGIBLE",
 	"PATTERNSTAGECOUNTERPROXY`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.step-06`t1`t-1.5`t2.25",
 	"PATTERNSTAGEMOTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tFORWARD`t20"
 )
@@ -3206,16 +3206,13 @@ foreach ($chargeOwner in @($encounterDocument.patterns)) {
 		}
 		$nextActionId = [string]$wallContacts[0].nextActionId
 		$expectedTargetActionId = ''
-		$expectedTargetStageKind = ''
 		if ([string]$chargeOwner.patternId -ceq 'VALTAN_DASH_CHARGE') {
-			$expectedTargetActionId = 'valtan.attack.dash-charge.recovery'
-			$expectedTargetStageKind = 'RECOVERY'
+			$expectedTargetActionId = 'valtan.attack.dash-charge.groggy'
 		}
 		elseif ([string]$chargeOwner.patternId -ceq
 			'VALTAN_ARMOR_BREAK_OPENING') {
 			$expectedTargetActionId =
 				'valtan.mechanic.armor-break-opening.groggy'
-			$expectedTargetStageKind = 'GROGGY'
 		}
 		else {
 			throw "Valtan WALL_CONTACT pattern has no fixed impact target contract: $($chargeOwner.patternId)"
@@ -3228,9 +3225,8 @@ foreach ($chargeOwner in @($encounterDocument.patterns)) {
 			$targetStageIndex -ge $ownerStages.Count -or
 			[string]$ownerStages[$targetStageIndex].actionId -cne
 				$expectedTargetActionId -or
-			[string]$ownerStages[$targetStageIndex].stageKind -cne
-				$expectedTargetStageKind) {
-			throw "Valtan WALL_CONTACT must target its immediate fixed $expectedTargetStageKind stage: $chargeActionId"
+			[string]$ownerStages[$targetStageIndex].stageKind -cne 'GROGGY') {
+			throw "Valtan WALL_CONTACT must target its immediate fixed GROGGY stage: $chargeActionId"
 		}
 		$partBreakCount = @($ownerStages | Where-Object {
 			[string]$_.stageKind -ceq 'PART_BREAK' }).Count

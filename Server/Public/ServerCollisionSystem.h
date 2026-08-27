@@ -34,6 +34,13 @@ namespace LostArk::Server
 		float fHitRatio = 1.f;
 	};
 
+	struct SERVER_BOSS_WALL_HIT final
+	{
+		std::string strCollisionPlacementId;
+		std::string strImpactReceiverPlacementId;
+		float fHitRatio = 1.f;
+	};
+
 	/* One living world entity body. XZ owns the circular footprint and the
 	vertical span prevents entities on separate floors from blocking each other.
 	The stable NetEntityId lets a generic mover exclude itself. */
@@ -102,6 +109,19 @@ namespace LostArk::Server
 			float proposedZ,
 			float radius,
 			SERVER_BOSS_RECEIVER_HIT& outHit) const;
+		/* The first intact authoritative wall reached by a charging boss. Keep
+		the stable base collision ID and an optional co-located active receiver so
+		the caller can try exact impact destruction and then generic contact
+		destruction without losing the surface that actually stopped the body. */
+		bool Sweep_BossCircleAgainstWalls(
+			float startX,
+			float startY,
+			float startZ,
+			float proposedX,
+			float proposedY,
+			float proposedZ,
+			float radius,
+			SERVER_BOSS_WALL_HIT& outHit) const;
 		/* Every collision box the boss body actually reached on this tick, not
 		just the earliest one and not just the authored impact receivers. A body
 		wider than one wall can touch several, and each of them is its own wall

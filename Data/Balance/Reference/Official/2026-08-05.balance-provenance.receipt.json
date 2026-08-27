@@ -3492,11 +3492,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "deterministic-rate-display-baseline-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 100,
-      "transform": "identity",
-      "resultValue": 100
+      "sourceValue": 1000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -3690,11 +3691,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "deterministic-rate-display-baseline-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 100,
-      "transform": "identity",
-      "resultValue": 100
+      "sourceValue": 1000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -3888,11 +3890,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "deterministic-rate-display-baseline-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 100,
-      "transform": "identity",
-      "resultValue": 100
+      "sourceValue": 1000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -4090,11 +4093,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "deterministic-rate-display-baseline-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 100,
-      "transform": "identity",
-      "resultValue": 100
+      "sourceValue": 1000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -4288,11 +4292,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "deterministic-rate-display-baseline-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 100,
-      "transform": "identity",
-      "resultValue": 100
+      "sourceValue": 1000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -4490,11 +4495,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "project-player-offense-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 100,
-      "transform": "identity",
-      "resultValue": 100
+      "sourceValue": 1000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -5216,19 +5222,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17020",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17020,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6000,
-      "transform": "identity",
-      "resultValue": 6000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -5521,10 +5523,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 30000,
+      "sourceValue": 3000,
       "transform": "Balance Tool authored override",
-      "resultValue": 30000,
-      "note": "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -5806,19 +5808,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17030",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17030,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 5000,
-      "transform": "identity",
-      "resultValue": 5000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -6102,19 +6100,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17040",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17040,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 10000,
-      "transform": "identity",
-      "resultValue": 10000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -6398,19 +6392,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17060",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17060,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 7000,
-      "transform": "identity",
-      "resultValue": 7000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -6826,19 +6816,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17080",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17080,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 16000,
-      "transform": "identity",
-      "resultValue": 16000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -7122,19 +7108,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17090",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17090,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -7418,19 +7400,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17100",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17100,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 12000,
-      "transform": "identity",
-      "resultValue": 12000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -7714,19 +7692,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17110",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17110,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 16000,
-      "transform": "identity",
-      "resultValue": 16000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -8010,19 +7984,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17140",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17140,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 20000,
-      "transform": "identity",
-      "resultValue": 20000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -8306,19 +8276,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17170",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17170,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -8800,19 +8766,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17240",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17240,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 75000,
-      "transform": "identity",
-      "resultValue": 75000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9096,19 +9058,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17250",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17250,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9392,19 +9350,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17800",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17800,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 2000,
-      "transform": "identity",
-      "resultValue": 2000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9688,19 +9642,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17810",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17810,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 2000,
-      "transform": "identity",
-      "resultValue": 2000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9984,19 +9934,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:17820",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17820,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 90000,
-      "transform": "identity",
-      "resultValue": 90000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -10789,19 +10735,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050020",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050020,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 8000,
-      "transform": "identity",
-      "resultValue": 8000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11094,10 +11036,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 30000,
+      "sourceValue": 3000,
       "transform": "Balance Tool authored override",
-      "resultValue": 30000,
-      "note": "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11379,19 +11321,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050100",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050100,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 14000,
-      "transform": "identity",
-      "resultValue": 14000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11675,19 +11613,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050120",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050120,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 18000,
-      "transform": "identity",
-      "resultValue": 18000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11971,19 +11905,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050160",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050160,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 28000,
-      "transform": "identity",
-      "resultValue": 28000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12267,19 +12197,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050180",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050180,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 40000,
-      "transform": "identity",
-      "resultValue": 40000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12563,19 +12489,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050210",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050210,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 55000,
-      "transform": "identity",
-      "resultValue": 55000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12859,19 +12781,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050220",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050220,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 40000,
-      "transform": "identity",
-      "resultValue": 40000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13155,19 +13073,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050230",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050230,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 55000,
-      "transform": "identity",
-      "resultValue": 55000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13451,19 +13365,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050240",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050240,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 50000,
-      "transform": "identity",
-      "resultValue": 50000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13747,19 +13657,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050500",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050500,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 120000,
-      "transform": "identity",
-      "resultValue": 120000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -14043,19 +13949,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050520",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050520,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -14339,19 +14241,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050540",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 2050540,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -15195,19 +15093,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31020",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31020,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 7000,
-      "transform": "identity",
-      "resultValue": 7000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -15500,10 +15394,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 30000,
+      "sourceValue": 3000,
       "transform": "Balance Tool authored override",
-      "resultValue": 30000,
-      "note": "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -15785,19 +15679,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31050",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31050,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 2000,
-      "transform": "identity",
-      "resultValue": 2000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -16081,19 +15971,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31110",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31110,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 1000,
-      "transform": "identity",
-      "resultValue": 1000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -16377,19 +16263,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31200",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31200,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 8000,
-      "transform": "identity",
-      "resultValue": 8000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -16871,19 +16753,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31210",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31210,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 16000,
-      "transform": "identity",
-      "resultValue": 16000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -17167,19 +17045,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31420",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31420,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -17463,19 +17337,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31430",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31430,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 14000,
-      "transform": "identity",
-      "resultValue": 14000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -17759,19 +17629,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31460",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31460,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 16000,
-      "transform": "identity",
-      "resultValue": 16000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -18055,19 +17921,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31470",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31470,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 25000,
-      "transform": "identity",
-      "resultValue": 25000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -18351,19 +18213,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31480",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31480,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -18647,19 +18505,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31490",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31490,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 30000,
-      "transform": "identity",
-      "resultValue": 30000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -18943,19 +18797,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31910",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31910,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -19239,19 +19089,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31930",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31930,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -19535,19 +19381,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31950",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 31950,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 72000,
-      "transform": "identity",
-      "resultValue": 72000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -19834,11 +19676,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-stance-transition-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 1000,
-      "transform": "identity",
-      "resultValue": 1000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -20674,12 +20517,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-long-spear-df-space-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 8000,
-      "transform": "identity",
-      "resultValue": 8000,
-      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -20967,10 +20810,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 30000,
+      "sourceValue": 3000,
       "transform": "Balance Tool authored override",
-      "resultValue": 30000,
-      "note": "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -21252,19 +21095,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34040",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34040,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6000,
-      "transform": "identity",
-      "resultValue": 6000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -21548,19 +21387,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34090",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34090,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 10000,
-      "transform": "identity",
-      "resultValue": 10000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -21844,19 +21679,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34100",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34100,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 20000,
-      "transform": "identity",
-      "resultValue": 20000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -22140,19 +21971,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34110",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34110,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 18000,
-      "transform": "identity",
-      "resultValue": 18000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -22436,19 +22263,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34120",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34120,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 10000,
-      "transform": "identity",
-      "resultValue": 10000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -22864,19 +22687,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34140",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34140,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 15000,
-      "transform": "identity",
-      "resultValue": 15000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -23160,19 +22979,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34150",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34150,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -23588,19 +23403,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34160",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34160,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 16000,
-      "transform": "identity",
-      "resultValue": 16000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -23887,11 +23698,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-stance-transition-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 1000,
-      "transform": "identity",
-      "resultValue": 1000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -24637,11 +24449,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-short-spear-binding-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6000,
-      "transform": "identity",
-      "resultValue": 6000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -24913,11 +24726,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-short-spear-binding-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 5000,
-      "transform": "identity",
-      "resultValue": 5000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -25189,11 +25003,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-short-spear-binding-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 16000,
-      "transform": "identity",
-      "resultValue": 16000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -25465,11 +25280,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-short-spear-binding-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -25741,11 +25557,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-short-spear-binding-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -26149,11 +25966,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-short-spear-binding-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 20000,
-      "transform": "identity",
-      "resultValue": 20000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -26623,11 +26441,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "lancemaster-short-spear-binding-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -26896,19 +26715,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34610",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34610,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -27192,19 +27007,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34630",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34630,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -27488,19 +27299,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34650",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 34650,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 55000,
-      "transform": "identity",
-      "resultValue": 55000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -28278,19 +28085,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38020",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38020,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 10000,
-      "transform": "identity",
-      "resultValue": 10000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -28574,19 +28377,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38050",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38050,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 30000,
-      "transform": "identity",
-      "resultValue": 30000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -28870,19 +28669,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38120",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38120,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6000,
-      "transform": "identity",
-      "resultValue": 6000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -29166,19 +28961,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38140",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38140,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 8000,
-      "transform": "identity",
-      "resultValue": 8000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -29462,19 +29253,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38180",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38180,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 8000,
-      "transform": "identity",
-      "resultValue": 8000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -29758,19 +29545,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38200",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38200,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6000,
-      "transform": "identity",
-      "resultValue": 6000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -30054,19 +29837,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38210",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38210,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 9000,
-      "transform": "identity",
-      "resultValue": 9000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -30350,19 +30129,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38250",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38250,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -30646,19 +30421,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38260",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38260,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 12000,
-      "transform": "identity",
-      "resultValue": 12000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -30942,19 +30713,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38290",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38290,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 50000,
-      "transform": "identity",
-      "resultValue": 50000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -31238,19 +31005,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38320",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 38320,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -32094,19 +31857,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45050",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45050,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 12000,
-      "transform": "identity",
-      "resultValue": 12000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -32390,19 +32149,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45060",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45060,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 14000,
-      "transform": "identity",
-      "resultValue": 14000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -32686,19 +32441,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45070",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45070,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -32982,19 +32733,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45190",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45190,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 24000,
-      "transform": "identity",
-      "resultValue": 24000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -33278,19 +33025,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45210",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45210,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 16000,
-      "transform": "identity",
-      "resultValue": 16000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -33574,19 +33317,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45300",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45300,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 22000,
-      "transform": "identity",
-      "resultValue": 22000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -33870,19 +33609,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45600",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45600,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 27000,
-      "transform": "identity",
-      "resultValue": 27000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -34166,19 +33901,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45620",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45620,
-        "secondaryKey": 10,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 15000,
-      "transform": "identity",
-      "resultValue": 15000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -34462,19 +34193,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45810",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45810,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -34758,19 +34485,15 @@
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45820",
       "targetField": "cooldownMs",
-      "basis": "OFFICIAL_EXTRACTED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 45820,
-        "secondaryKey": 1,
-        "column": "Cooltime"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 300000,
-      "transform": "identity",
-      "resultValue": 300000
+      "sourceValue": 3000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -39428,60 +39151,13 @@
           "branches": [
             {
               "outcome": "WALL_CONTACT",
-              "nextActionId": "valtan.attack.dash-charge.recovery"
+              "nextActionId": "valtan.attack.dash-charge.groggy"
             },
             {
               "outcome": "TIMEOUT",
               "nextActionId": "valtan.attack.dash-charge.recovery"
             }
           ]
-        },
-        {
-          "stageId": "RECOVERY",
-          "actionId": "valtan.attack.dash-charge.recovery",
-          "stageKind": "RECOVERY",
-          "durationMs": 900,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0,
-          "actions": [
-            {
-              "trigger": "ENTER",
-              "kind": "SET_BOSS_FLAG",
-              "targetId": "boss.flag.groggy",
-              "value": 1,
-              "durationMs": 0
-            },
-            {
-              "trigger": "EXIT",
-              "kind": "SET_BOSS_FLAG",
-              "targetId": "boss.flag.groggy",
-              "value": 0,
-              "durationMs": 0
-            }
-          ],
-          "branches": [
-            {
-              "outcome": "PART_DESTROYED",
-              "nextActionId": "valtan.attack.dash-charge.groggy"
-            },
-            {
-              "outcome": "TIMEOUT",
-              "nextActionId": null
-            }
-          ],
-          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
         },
         {
           "stageId": "GROGGY",
@@ -39520,8 +39196,39 @@
           ],
           "branches": [
             {
-              "outcome": "TIMEOUT",
+              "outcome": "PART_DESTROYED",
               "nextActionId": "valtan.attack.dash-charge.part-break"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": "valtan.attack.dash-charge.recovery"
+            }
+          ],
+          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
+        },
+        {
+          "stageId": "RECOVERY",
+          "actionId": "valtan.attack.dash-charge.recovery",
+          "stageKind": "RECOVERY",
+          "durationMs": 900,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "branches": [
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
             }
           ]
         },
@@ -39600,60 +39307,13 @@
           "branches": [
             {
               "outcome": "WALL_CONTACT",
-              "nextActionId": "valtan.attack.dash-charge.recovery"
+              "nextActionId": "valtan.attack.dash-charge.groggy"
             },
             {
               "outcome": "TIMEOUT",
               "nextActionId": "valtan.attack.dash-charge.recovery"
             }
           ]
-        },
-        {
-          "stageId": "RECOVERY",
-          "actionId": "valtan.attack.dash-charge.recovery",
-          "stageKind": "RECOVERY",
-          "durationMs": 900,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0,
-          "actions": [
-            {
-              "trigger": "ENTER",
-              "kind": "SET_BOSS_FLAG",
-              "targetId": "boss.flag.groggy",
-              "value": 1,
-              "durationMs": 0
-            },
-            {
-              "trigger": "EXIT",
-              "kind": "SET_BOSS_FLAG",
-              "targetId": "boss.flag.groggy",
-              "value": 0,
-              "durationMs": 0
-            }
-          ],
-          "branches": [
-            {
-              "outcome": "PART_DESTROYED",
-              "nextActionId": "valtan.attack.dash-charge.groggy"
-            },
-            {
-              "outcome": "TIMEOUT",
-              "nextActionId": null
-            }
-          ],
-          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
         },
         {
           "stageId": "GROGGY",
@@ -39692,8 +39352,39 @@
           ],
           "branches": [
             {
-              "outcome": "TIMEOUT",
+              "outcome": "PART_DESTROYED",
               "nextActionId": "valtan.attack.dash-charge.part-break"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": "valtan.attack.dash-charge.recovery"
+            }
+          ],
+          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
+        },
+        {
+          "stageId": "RECOVERY",
+          "actionId": "valtan.attack.dash-charge.recovery",
+          "stageKind": "RECOVERY",
+          "durationMs": 900,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "branches": [
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
             }
           ]
         },
@@ -50547,14 +50238,14 @@
         "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.terrain-destruction-3.landing",
         "landingPosition": [
-          174.03,
+          156.03,
           22.99751,
           -122.06
         ],
         "apexHeight": 10.0,
         "travelStageId": "LANDING",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 200
       },
@@ -50563,18 +50254,18 @@
         "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.terrain-destruction-3.landing",
         "landingPosition": [
-          174.03,
+          156.03,
           22.99751,
           -122.06
         ],
         "apexHeight": 10.0,
         "travelStageId": "LANDING",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 200
       },
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -51085,14 +50776,14 @@
         "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.terrain-destruction-9.landing",
         "landingPosition": [
-          138.03,
+          156.03,
           22.99751,
           -122.06
         ],
         "apexHeight": 10.0,
         "travelStageId": "LANDING",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 200
       },
@@ -51101,18 +50792,18 @@
         "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.terrain-destruction-9.landing",
         "landingPosition": [
-          138.03,
+          156.03,
           22.99751,
           -122.06
         ],
         "apexHeight": 10.0,
         "travelStageId": "LANDING",
-        "takeoffStartMs": 0,
-        "takeoffEndMs": 900,
+        "takeoffStartMs": 800,
+        "takeoffEndMs": 1100,
         "travelStartMs": 0,
         "travelEndMs": 200
       },
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
