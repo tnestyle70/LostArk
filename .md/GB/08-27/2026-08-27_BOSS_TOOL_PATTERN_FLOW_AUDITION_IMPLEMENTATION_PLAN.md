@@ -3,6 +3,18 @@
 > 구현 및 자동 검증 완료. 실제 결과와 남은 수동 확인은
 > `2026-08-27_BOSS_TOOL_PATTERN_FLOW_AUDITION_RESULT.md`를 따른다.
 
+### 2026-08-28 저장본 비종속 회귀 보강
+
+사용자가 Save한 Flow는 초기 28개 seed와 달라도 유효하다. 실제 저장본은 schema/admission/unique slotId/
+monotonic nextSlotOrdinal만 검증하고, 초기 seed 순서와 mutation 검증은 별도 in-memory fixture로 분리한다.
+빈 Flow, 한 슬롯, 32슬롯, 순서 변경·중복 pattern·삭제, 마지막 발급 번호 보존을 정상 사례로 둔다.
+33슬롯 초과 fixture는 unique slotId 33개로 만들어 duplicate 오류가 아닌 `slots` 거절을 검사한다.
+
+수정 범위는 `Tools/ValtanPipeline/test_valtan_boss_tool_pattern_flow_contract.py`와 대응 문서다.
+사용자 저장 JSON, C++ runtime, protocol은 이 보강에서 변경하지 않는다. 통합 세션의 protocol 41 guard는
+유지하고, 원본 폴더의 protocol 39 assertion으로 덮어쓰지 않는다.
+실제 결과는 [저장 Flow 검토 결과 §8](C:/Users/user/Desktop/LostArk/.md/GB/08-28/2026-08-28_VALTAN_SAVED_FLOW_JSON_REVIEW_RESULT.md)을 따른다.
+
 ## 0. 작업 결론
 
 기존 `Boss Tool`은 단일 Pattern의 실제 Server occurrence와 우측 연결 진단을 검증하는 도구로 이미 역할이
