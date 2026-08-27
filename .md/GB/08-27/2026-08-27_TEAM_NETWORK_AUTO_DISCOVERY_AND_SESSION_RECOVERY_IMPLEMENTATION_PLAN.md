@@ -248,7 +248,8 @@ wire를 같은 version으로 광고한다. **PR #247의 통합 기준 40 위에�
 - 99%까지는 준비 작업, 마지막 1%는 MainApp의 실제 Level/profile/필요 identity commit 성공이다. smoothing이나
   표시가 100%에 도달하는 것은 activation 조건이 아니다.
 - 네트워크 복구 대기는 loading epoch/counters를 초기화하지 않는다. terminal failure/cancel은 마지막 수치와
-  원인을 남기고, 사용자가 명시적으로 새 loading/retry를 시작할 때만 새 epoch의 0%를 만든다.
+  원인을 남긴다. 사용자 요청이든 자동 Lobby recovery든 MainApp가 실제 새 LOAD transaction을 시작할 때만
+  새 epoch의 0%를 만든다. 동일 Loading 안의 transport retry는 새 LOAD가 아니다.
 
 ## 3. 목표 구조와 ownership
 
@@ -449,7 +450,8 @@ ACTIVE -> DEGRADED
 DEGRADED -> ACTIVE        (8초 전 current-generation valid frame 회복)
 DEGRADED -> RECOVERY_WAIT (8초 무응답/transport close)
 -> RESUMING
--> RESYNCING
+-> RESYNCING             (wire baseline 검증·session commit)
+-> PRESENTATION_PENDING  (wire lease는 ACTIVE, local 준비/input gate는 아직 닫힘)
 -> ACTIVE
 
 어느 상태에서든 terminal reason
@@ -460,6 +462,10 @@ DEGRADED -> RECOVERY_WAIT (8초 무응답/transport close)
 `CLevel_Lobby`는 target world/class/nickname과 pending identity UI만 소유한다.
 `CNetworkManager::Begin_WorldEntry()`가 immutable intent를 받아 위 state machine을 시작하고,
 `CNetworkManager::Update()`가 non-blocking progress/result를 소비한다. Lobby Render가 discovery를 실행하지 않는다.
+
+wire session state와 presentation readiness는 별도다. Server `COMMITTED`만으로 Client input gate를 열지 않는다.
+최종 gate는 `wireSessionCommitted && presentationReady && exactCurrentGeneration`이며, heartbeat와 typed
+session-control/2PC NACK는 presentation readiness에 막히지 않는다.
 
 transport close 의미를 다음처럼 분리한다.
 
@@ -550,7 +556,8 @@ duplicate ACK/resume은 상태를 다시 commit하지 않고 exact confirmation/
 ticket confirmation과 initial full-sync END validation이 모두 끝나기 전에는 enter accepted를 Lobby/Level에
 공개하지 않는다. Lobby에는 아직 replication Layer가 없으므로 presentation commit은 하지 않는다. accepted 뒤
 Loading이 Level의 `CClientReplication`을 초기화하면 one-shot staged transaction을 넘겨 activation 전에
-presentation을 commit한다. active-Level resume도 authoritative world가 current descriptor와 같을 때만 현재
+presentation을 commit한다. 여기서 session commit은 wire validation만으로 먼저 끝나며 CSO/clone을 기다리지
+않는다. active-Level resume도 authoritative world가 current descriptor와 같을 때만 현재
 Level에서 commit하고, 다르면 target Loading one-shot handoff를 사용한다. 5초
 pending-admission expiry는 reservation과 token digest를 exactly once 폐기하고 player/despawn을 만들지 않는다.
 expired-attempt tombstone은 15초, 최대 64개로 제한해 늦은 동일 ID를 typed reject한 뒤 제거한다.
@@ -602,12 +609,20 @@ Server -> old logical lease에 새 transport를 원자적으로 reserve/rebind
 Server -> FULL_RESYNC_BEGIN
        -> 기존 full-state packet sequence
        -> FULL_RESYNC_END
-Client -> 전체 stage 검증 후 local atomic commit, input은 계속 freeze
-       -> SESSION_RESUME_COMMIT(resume epoch)
+Client network worker -> 전체 wire DTO/count/world/ID/revision 검증 완료
+       -> SESSION_RESUME_COMMIT(resumeEpoch, resyncGeneration, baselineTick)
 Server -> pending successor를 active로 승격
        -> SESSION_RESUME_COMMITTED
-Client -> successor를 active로 확정, predecessor 폐기, input gate open
+Client -> successor를 active로 확정, predecessor 폐기, PRESENTATION_PENDING 유지
+       -> local resource 준비 + one-shot state handoff + presentation atomic commit
+       -> catch-up barrier까지 적용하고 exact generation 재검증
+       -> 필요한 Level/camera/identity activation 완료 뒤 input gate open
 ```
+
+`SESSION_RESUME_COMMIT`은 wire baseline을 검증·보관했다는 증명이지 GPU/화면 준비 완료 ACK가 아니다.
+Server는 exact resume/resync generation과 baseline tick을 검증한다. 이 commit이 원래 15초 grace 안에 끝나면
+lease는 ACTIVE로 돌아가고, 이후 정상 heartbeat 동안 느린 CSO 준비가 옛 grace를 소모하지 않는다. local
+준비 실패는 이미 ACTIVE인 lease를 명시적으로 leave/cleanup하며 grace 만료에 방치하지 않는다.
 
 Client는 successor를 검증한 순간부터 `(predecessor, successor, resumeEpoch)` pair를 보존한다. commit 전
 transport가 다시 끊기면 Server는 해당 epoch의 predecessor 또는 pending successor를 idempotently 인정한다.
@@ -637,7 +652,8 @@ ticket ACK로 Server commit은 끝났지만 confirmation/accepted/full batch가 
 attempt/session이 일치하면 active resume successor rotation을 수행하되 result context를
 `INITIAL_ADMISSION_COMMITTED`로 보낸다. Client는 아직 없는 old PlayerId를 비교하지 않고 boot/session/attempt,
 요청 world/class/nickname과 full closure를 검증해 authoritative PlayerId/NetEntityId를 transactionally 채택한다.
-Lobby/Loading one-shot resync commit과 `SESSION_RESUME_COMMITTED`까지 끝난 뒤에만 Level activation/input을 연다.
+wire `SESSION_RESUME_COMMITTED`를 먼저 확정한다. Loading 뒤의 activation 요청이 target replication을 만들고
+one-shot state를 적용하며, presentation/catch-up과 실제 activation receipt까지 완료된 뒤에만 입력을 연다.
 `ACTIVE_WORLD`는 이미 presentation identity가 있는 Client만 사용하며 기본적으로 기존 identity와 exact match를
 요구한다. 유일한 예외는 authenticated same boot/session/token의 committed transfer receipt가 Client current
 world/PlayerId/NetEntityId와 receipt source에 exact match하고, source->target이 registry의 허용 edge이며,
@@ -721,7 +737,7 @@ event를 이동·교체하지 않는다. `CClientFullResyncTransaction`은 BEGIN
 wire DTO를 stage하고 END에서 count, stable ID, 자신의 exact PlayerId/NetEntityId와 gameplay revision을 모두
 검증한다.
 
-wire validation 뒤에는 실제 presentation도 old live Layer를 건드리지 않고 stage한다. player/world entity
+wire validation과 Server session COMMITTED 뒤에는 실제 presentation도 old live Layer를 건드리지 않고 stage한다. player/world entity
 prototype을 detached clone으로 만들고 replication-owned `Layer_Player`, `Layer_WorldEntity`, registry, local
 character handle, HUD/encounter/destruction candidate를 완성한다. `CClientReplication::Initialize`가 두 exact
 layer를 미리 ensure하고, Engine `Object_Manager/GameInstance`의 batch replacement API가 expected old layer
@@ -884,12 +900,67 @@ clock이 소유한다.
   ACK가 새 lease 상태를 승인하지 못한다.
 - resync BEGIN에 고정한 active/pinned revision은 END/COMMIT까지 바꾸지 않는다. new revision이나 target world를
   이전 baseline에 끼워 넣지 않는다.
-- Loading의 `loadEpoch`는 network transport generation과 다른 identity다. 복구 중에도 검증 가능한 로컬
-  resource 작업은 계속할 수 있지만, target world의 current-generation full state와 session commit이 끝나기
-  전에는 실제 activation을 보류한다. 표시 퍼센트를 네트워크 복구 성공 근거로 사용하지 않는다.
+- Loading의 `loadEpoch`는 network transport generation과 다른 identity다. resource 작업과 wire/session 복구는
+  독립 진행한다. session commit은 **wire DTO validation만** 기다리고, presentation clone/Level 초기화를
+  기다리지 않는다. 실제 activation만 resource readiness와 current-generation wire handoff/session commit을
+  함께 요구한다. 표시 퍼센트를 네트워크 복구 성공 근거로 사용하지 않는다.
+- COMMITTED 뒤 `PRESENTATION_PENDING` 동안 들어오는 2PC PREPARE에는 파일/D3D 준비 없이 typed `NOT_READY`
+  NACK를 보낸다. 이 응답은 session-control allowlist에 포함하고 gameplay mutation gate로 막지 않는다.
+  prepare 요청 송신은 계속 막는다. 현재 NetworkManager는 응답 송신 실패를 protocol failure로 처리하므로
+  PREPARE-response/NACK까지 일괄 차단하면 안 된다.
 - CSO 누락/손상, renderer/core 실패, 잘못된 content revision은 원래 load/validation 실패다. 이를 ping 또는
   transient reconnect로 분류하지 않는다. target-level optional Effect 격리와 entry-required Map Effect 실패
   계약도 그대로 구분한다.
+
+### 3.10 wire 복구와 느린 presentation 준비를 잇는 bounded handoff
+
+현재 `CNetworkManager::Update()`가 main에서 `Handle_Frame`을 실행하고 receive worker는 raw frame만 쌓는다.
+Loading에는 `CClientReplication` consumer가 아직 없으며 `NetworkManager.cpp:1713`의 인접 snapshot coalescing만
+있다. 따라서 worker heartbeat 하나만 추가해서 아래 계약이 구현됐다고 할 수 없다.
+
+1. `CNetworkManager`가 소유한 network worker로 heartbeat/control decode, wire baseline validation,
+   resume COMMIT/COMMITTED 처리와 bounded latest-state 갱신을 옮긴다. main은 immutable 상태/typed event를
+   소비한다. worker는 Engine, CGameObject, D3D, profile activation이나 UI를 호출하지 않는다. main이 20초
+   멈춰도 유효한 wire 복구/heartbeat는 진행되어야 한다.
+   현재 `Handle_Frame` 전체를 그대로 worker에서 호출하지 않는다. immutable admission contract에 대한 wire
+   검증과 Engine/presentation 적용을 분리하고, 후자는 main에서 처리한다. pending 중 2PC NACK는 파일 접근
+   없이 가능한 control fast path다.
+2. `CClientFullResyncTransaction`의 wire stage를 CNetworkManager가 보존한다. player/world entity/combat object의
+   stable ID별 최신 DTO, inventory, destruction/prop state/epoch, active revision과 event watermark를 유지한다.
+   post-END spawn/despawn/snapshot은 이 state에 순서대로 적용하며 input을 시뮬레이션하지 않는다. transient
+   Damage/BossCombat event history는 재생하지 않고 watermark만 전진시킨다. 이는 replication staging이지
+   두 번째 gameplay simulation이 아니다.
+3. 각 wire의 기존 count 한도와 총 8MiB 상한을 지킨다. 계속 늘어나는 event history로 20초 로딩을 버티지
+   않는다. malformed delta, unknown identity/epoch 또는 capacity 초과는 typed failure와 명시적 cleanup이다.
+4. main이 state를 인수할 때 immutable cut `W=(transportGeneration, resyncGeneration, world, revision, tick,
+   receiveSequence)`와 one-shot receipt를 받는다. worker는 cut 이후 frame을 최대 512개/8MiB의 ordered
+   catch-up journal로 보존한다. 인접한 동일 family snapshot만 coalesce하고 spawn/despawn/BEGIN/END 같은
+   barrier를 넘어 순서를 바꾸지 않는다. 단순히 DTO pointer를 넘기고 최신 state에만 계속 쓰면 cut 이후 despawn/spawn을
+   잃으므로 그렇게 구현하지 않는다. 상한 초과는 silent drop 대신 handoff 실패/cleanup이다.
+5. local resources와 wire/session 준비가 끝나면 `Request_Activation`을 허용한다. MainApp의 기존
+   `Create_Level → CClientReplication::Initialize` 경계에서 one-shot baseline을 받아 기존 transaction
+   builder로 stage/commit한다. 현재 Initialize는 설정만 저장하므로 **explicit initial-state apply/adopt를
+   추가**해야 하며 Initialize 호출만으로 spawn이 끝났다고 간주하지 않는다. 원래 `Update`의 spawn/validation
+   helper를 재사용하고 별도 mock spawn/직접 socket 경로를 만들지 않는다.
+6. Character Select는 그 state의 local character, `Ready_Camera`, `Commit_ServerArena`까지 성공을 확인한다.
+   resume handoff를 새 `CONNECTING` 5초 승인 대기로 되돌리지 않는다. Bern/Valtan/Development도 동일한
+   초기 state 소비와 camera/controller binding을 확정한다. target Level을 만들어 두고 여러 frame 대기하지
+   않는다. Engine은 모든 Level layer를 Update/Late_Update하므로 장시간 준비물은 detached transaction
+   안에만 있고, Create_Level 중 실패는 같은 activation transaction에서 target receipt/resources를 rollback한다.
+7. presentation publish와 Change_Level 직전에 current transport/world/revision 및 cut identity를 다시 검증한다.
+   clone 중 재단절·world transfer가 발생하면 stale candidate를 commit하거나 100을 기록하지 않는다.
+   worker의 cut 이후 journal은 `CATCHUP_END` barrier까지 새 consumer가 정확히 한 번 적용한 뒤 ordinary
+   stream으로 원자 전환한다. `presentationReady`도 exact generation/receipt ACK로만 세우며, old ACK는 새
+   generation input gate를 열 수 없다. ACK까지 입력은 계속 차단한다.
+8. Server lease ACTIVE와 local presentation 대기는 다른 deadline이다. local 준비는 첫 pending 진입부터
+   **120초의 별도 `LOCAL_PRESENTATION_PREPARATION_TIMEOUT`**을 둔다. progress poll/heartbeat/동일 loadEpoch의
+   transport retry는 이 deadline을 초기화하지 않는다. 사용자 cancel이나 기한 초과는 valid channel leave와
+   Loader 협력 취소/기존 bounded join을 실행한다. 단일 D3D/I/O가 취소되지 않아 join 제한을 넘기면 기존
+   fail-fast 정책을 따른다. 네트워크 15초 expiry로 이 local 실패를 잘못 보고하지 않는다.
+
+120초는 새 local 작업 상한 정책이며 성능 측정 결과가 아니다. 20초 cold-load는 허용되고, 120초 초과는
+정확한 로컬 준비 실패로 끝나는 fixture를 둔다. 새 별도 LOAD는 새 local budget을 가지지만 동일 요청의 자동
+resume은 그렇지 않다. 이 정책은 PR B의 session 복구 통합 범위이며 P 단독의 기존 초기 접속 동작과 혼동하지 않는다.
 
 ## 4. 수정 예정 파일과 역할
 
@@ -948,14 +1019,14 @@ clock이 소유한다.
 | 추가 | `C:/Users/user/Desktop/LostArk/Client/Public/NetworkRecoveryPolicy.h` | injected clock/RNG 기반 liveness/backoff/grace/terminal pure policy |
 | 추가 | `C:/Users/user/Desktop/LostArk/Client/Private/NetworkRecoveryPolicy.cpp` | exact state transition과 retry deadline 계산 |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/NetworkManager.h` | 유일한 session owner, async entry/recovery API와 terminal reason |
-| 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/NetworkManager.cpp` | session state machine, close 의미 분리와 모든 mutation Send API의 ACTIVE_COMMITTED fence |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/NetworkManager.cpp` | worker wire/control state, bounded latest-state/cut handoff, wire+presentation 이중 mutation fence |
 | 추가 | `C:/Users/user/Desktop/LostArk/Client/Public/PlayerCommandSequenceState.h` | logical-session scoped next move/action sequence와 typed fresh/adopt 계약 |
 | 추가 | `C:/Users/user/Desktop/LostArk/Client/Private/PlayerCommandSequenceState.cpp` | accepted-submit increment/wrap, fresh initialization과 session binding 검증 |
-| 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/ClientReplication.h` | frozen presentation, staged full resync generation과 atomic commit API |
-| 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/ClientReplication.cpp` | transient loss에서 Reset 지연, resync rollback/commit와 terminal-only loss flag |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/ClientReplication.h` | frozen presentation, explicit initial-state adopt와 resync/catch-up receipt API |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/ClientReplication.cpp` | 기존 spawn helper 기반 initial/resume stage·rollback·atomic commit, cut 이후 event 소비와 ready ACK |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/ClientReplicationEvent.h` | BEGIN/END barrier, transport/resync generation과 batch ordering envelope |
 | 추가 | `C:/Users/user/Desktop/LostArk/Client/Public/ClientFullResyncTransaction.h` | wire DTO, detached presentation layer, registry/HUD/world-state candidate와 commit receipt |
-| 추가 | `C:/Users/user/Desktop/LostArk/Client/Private/ClientFullResyncTransaction.cpp` | bounded stage/validate, exact layer identity batch swap와 rollback/commit |
+| 추가 | `C:/Users/user/Desktop/LostArk/Client/Private/ClientFullResyncTransaction.cpp` | bounded wire/latest-state stage, main detached clone, exact layer batch swap와 rollback/commit |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/WorldDestructionProjectionRuntime.h` | same-encounter resume용 authoritative full-replace stage/commit |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/WorldDestructionProjectionRuntime.cpp` | normal forward-sync와 resume replace validation 분리 |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/Level_Lobby.cpp` | blocking connect 제거, async 상태/실패 표시와 explicit cancel |
@@ -967,7 +1038,7 @@ clock이 소유한다.
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/Level_Loading.cpp` | recovery gate, 단일 전체 진행률/fill, 별도 heartbeat, epoch activation 요청 |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/Level_Loading.h` | phase-local fill 상태 대신 loadEpoch와 display-only 보간 상태 |
 | 추가 | `C:/Users/user/Desktop/LostArk/Client/Public/LoadingProgress.h` | production이 소비하는 순수 작업 가중치/epoch/완료량/단조 보간 계약, 별도 singleton 없음 |
-| 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/Loader.h` | 상태 문자열과 분리된 typed resource progress snapshot/epoch |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/Loader.h` | 상태 문자열과 분리된 typed resource progress/epoch와 frozen Development load profile |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/Loader.cpp` | core/map/model/bundle 성공 직후 계측, 실패·취소 원인 보존 |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Public/Effect_LoadPreparationJob.h` | target ACK와 분리한 loading-scoped core/CSO progress snapshot |
 | 수정 | `C:/Users/user/Desktop/LostArk/Client/Private/Effect_LoadPreparationJob.cpp` | exact epoch 검증과 thread-safe snapshot publish, 기존 mailbox/ACK 의미 유지 |
@@ -1218,6 +1289,10 @@ full sync 또는 COMMIT 재전송으로 연장하지 않는다. deadline에 도�
 transport generation을 close한 뒤 exactly-once expiry한다. 14,999ms에 resume result가 accepted됐어도
 15,000ms 이후 도착한 `SESSION_RESUME_COMMIT`은 `EXPIRED`이며 player/slot을 되살리지 않는다.
 
+이 deadline 안에서 기다리는 것은 wire full-state validation과 session COMMIT뿐이다. CSO/Loader/clone은
+네트워크 COMMIT 이후 별도 local preparation으로 진행한다. COMMITTED가 확인된 lease에 과거 grace deadline을
+계속 적용하지 않는다. 이후 새 transport loss가 실제 발생하면 그 새 generation의 DETACH에서 새 grace를 만든다.
+
 `CGameRoom::Detach`와 `Rebind`는 stable logical session을 사용한다. private Character Select room/session,
 world transfer와 data-revision transaction의 ordering도 room thread에서 확정한다. 연결 단위 Debug audition과
 data-revision 2PC는 detach 즉시 abort하지만 product player/world state는 유지한다.
@@ -1289,7 +1364,7 @@ accept reject, structural reserve overflow/fatal 0을 확인하고 drain/reap �
 ## G05. Client recovery와 transactional full resync
 
 active-world transport loss에서 `CClientReplication::Reset_World()`와 Level의 즉시 Lobby 요청을 미룬다.
-NetworkManager가 `RECOVERY_WAIT/RESUMING/RESYNCING`이면 다음을 적용한다.
+NetworkManager가 `RECOVERY_WAIT/RESUMING/RESYNCING/PRESENTATION_PENDING`이면 다음을 적용한다.
 
 - current presentation과 HUD의 마지막 Server state 유지
 - gameplay mouse, keyboard, quick-slot, held/ground target command 제출 차단
@@ -1297,19 +1372,22 @@ NetworkManager가 `RECOVERY_WAIT/RESUMING/RESYNCING`이면 다음을 적용한�
 - recovery 상태와 Client local budget을 표시하되 Server의 exact expiry 시각처럼 표현하지 않음
 - stale transport generation frame 폐기
 
-Server resume accepted 뒤 full sync를 별도 generation에 stage한다. full sync는 initial join late-state send와 같은
-Server helper를 사용하며, Client는 old registry를 수정하지 않은 채 expected counts/IDs/revisions를 검증한다.
-local atomic commit 뒤에도 input을 freeze하고 `S2C_SESSION_RESUME_COMMITTED`를 받아 Server token/lease commit이
-확정된 뒤에만 gate를 연다.
+Server resume accepted 뒤 full sync를 별도 generation의 wire stage에 보존한다. full sync는 initial join
+late-state send와 같은 Server helper를 사용한다. network worker가 expected counts/IDs/revisions를 검증하면
+presentation과 무관하게 COMMIT을 보내고 `S2C_SESSION_RESUME_COMMITTED`로 wire lease를 확정한다. 아직
+input은 닫혀 있다. local resource/transaction 준비와 cut 이후 catch-up, 최종 Level/camera binding을 모두
+완료한 exact-generation presentation receipt까지 받은 뒤에만 gameplay gate를 연다.
 
 `RESUME_RESULT.world`가 current Level descriptor와 같을 때만 현재 Level layer에 in-place stage/commit한다. Server의
 world-transfer transaction이 disconnect보다 먼저 commit되어 authoritative world가 다르면 expected-world mismatch를
 resync corruption으로 처리하지 않는다. 먼저 committed transfer receipt의 boot/session/source/allowed edge/unseen
 epoch/target closure 조건을 모두 검증한다. NetworkManager가 result와 bounded wire transaction을 one-shot 보존하고
-`CLevelTransitionService`에 exact target descriptor의 typed transition을 제출한다. Loading이 target visual map과
-`CClientReplication`/layers를 준비한 뒤 그 target에만 transaction을 commit하고, 성공 뒤
-`SESSION_RESUME_COMMIT`, `SESSION_RESUME_COMMITTED` 순서까지 input을 freeze한다. source layer는 target preflight
-전에는 건드리지 않으며 target load/commit 실패는 partial swap 없이 terminal leave cleanup으로 간다.
+`CLevelTransitionService`에 exact target descriptor의 typed transition을 제출한다. wire/session 복구는 Loading과
+독립적으로 먼저 확정한다. Loading의 로컬 준비가 끝나면 MainApp activation에서 그 target의 replication에만
+bounded one-shot state를 adopt한다. `Initialize`가 현재 설정만 저장하는 점을 감안해 explicit initial-state
+apply와 camera/arena bind를 추가한다. clone/Level을 미리 공개하고 네트워크를 기다리는 경로는 만들지 않는다.
+cut 이후 journal과 ordinary stream의 전환은 §3.10의 receipt/barrier로 닫는다. target load/commit 실패는
+partial swap 없이 이미 ACTIVE인 lease의 terminal leave cleanup으로 간다.
 `INITIAL_ADMISSION_COMMITTED`도 같은 Loading handoff를 사용한다.
 
 focused world-transfer race는 Server transaction 전 detach에서 source world/in-place resume, transaction 후
@@ -1327,9 +1405,11 @@ Select처럼 Update 자체를 skip하는 경로는 false 호출로 바꾼다. `C
 generation/phase fence로 남는다.
 
 sink 경계만으로는 충분하지 않으므로 `CNetworkManager`의 모든 gameplay/world/debug/data-revision mutation
-`Send_*` entry point가 공통 `ACTIVE_COMMITTED && currentTransportGeneration` gate를 가장 먼저 통과한다.
-`RESUMING/RESYNCING`에는 hello, heartbeat, ticket ACK, resume/commit, leave/cancel 같은 명시 session-control
-allowlist만 outbound queue에 들어갈 수 있다. `CNetworkWorldEntityCommandSink`, Valtan Level/service,
+`Send_*` entry point가 공통 `wireSessionCommitted && presentationReady && currentTransportGeneration` gate를
+가장 먼저 통과한다. `RESUMING/RESYNCING/PRESENTATION_PENDING`에는 hello, heartbeat, ticket ACK,
+resume/commit, leave/cancel과 pending 중 2PC PREPARE에 대한 typed NOT_READY NACK 같은 명시 session-control
+allowlist만 outbound queue에 들어갈 수 있다. 2PC 응답을 차단해서 protocol failure를 만드는 회귀는 금지한다.
+`CNetworkWorldEntityCommandSink`, Valtan Level/service,
 `MainApp`, Balance Tool처럼 NetworkManager를 직접 부르는 caller도 이 중앙 gate를 우회하지 못한다. focused
 harness는 move/skill/world interaction/debug audition/data-revision family의 대표 direct API를 recovery phase마다
 호출해 gameplay mutation outbound byte가 0인지 확인한다.
@@ -1354,6 +1434,13 @@ harness만으로 Client presentation atomicity를 통과 처리하지 않는다.
 accepted한 뒤 같은-controller clone swap과 source-Level -> 새 target-Level controller handoff를 각각 수행하고 첫
 새 move/skill이 N+1이며 Server replay fence에서 승인되는지 확인한다. loss 당시 RMB held인 경우 COMMITTED 뒤 계속
 held에서는 move 0건, physical release 뒤 새 press에서는 정확히 한 건의 N+1 move여야 한다.
+
+20초 cold-load/CSO와 20초 main-thread 지연 fixture에서 wire COMMIT/heartbeat는 진행되고 옛 15초 grace로
+만료되지 않아야 한다. 최신-state buffer에는 loading 중 spawn/despawn/inventory/destruction을 반영하며,
+cut W 인수 직후의 despawn A/spawn B, clone 중 재단절/새 world/revision과 늦은 ready ACK를 주입한다.
+ghost A/누락 B/중복 event/old-generation input 또는 100%가 발생하면 실패다. pending 중 직접 mutation Send는
+0 byte, Server 2PC PREPARE에는 NOT_READY NACK→ABORT, presentation 실패 뒤에는 leave/cleanup을 기대한다.
+local 준비 120초 경계와 cancel도 network grace expiry와 다른 typed reason인지 검사한다.
 
 resume reject/expiry/server restart/protocol error는 typed reason과 cleanup fence를 남기고 terminal reset/Lobby
 recovery를 정확히 한 번 실행한다. clone/load/resync validation failure처럼 transport/session control이 valid한
@@ -1497,7 +1584,8 @@ main-thread bounded commit, capacity-2 result channel, exact `TARGET_COMMIT_ACK`
 현재 제품은 `Effect_PresentationService.cpp:2761`에서 stale/invalid worker result를 structural failure로
 처리한다. load job에 REBASE primitive가 있다는 사실만으로 자동 revision 재시도가 구현됐다고 보지 않는다.
 **이번 G09는 자동 REBASE를 새로 활성화하지 않는다.** 현재 실패 정책을 보존해 같은 epoch의 denominator나
-revision을 임의 교체하지 않는다. 새 명시적 loading/retry만 새 epoch로 시작한다.
+revision을 임의 교체하지 않는다. 사용자 요청 또는 자동 Lobby recovery가 실제 새 LOAD를 시작하면 새 epoch다.
+동일 Loading 안의 transport retry는 기존 epoch를 유지한다.
 
 ### G09-2. 파일 책임과 H 계약
 
@@ -1617,6 +1705,7 @@ cache/skip으로 settle한다. 이전 격리 실패는 cached-success로 이름�
 표시값의 단위는 0..1로 통일한다.
 
 ```text
+earned = earnedBasisPoints / 10000.0
 dt = finite한 양수 delta만 허용하고 최대 0.1초로 제한
 display += min(max(0, earned - display), 0.50 × dt)
 ```
@@ -1631,10 +1720,12 @@ heartbeat/spinner는 별도 표시이며 퍼센트로 해석되지 않게 한다
 Loader SUCCEEDED
   + 현재 선택 Effect의 기존 readiness
   + result queue empty / worker epoch close
-  + (복구 중이면) current session/full-state commit
+  + (PR B 복구 중이면) wire DTO 검증 / wire session COMMITTED
 → 표시값과 무관하게 Request_Activation(loadEpoch)
-→ MainApp: Create_Level → Activate_Profile → Change_Level
+→ MainApp: Create_Level (PR B: initial state adopt / camera·arena binding)
+→ Activate_Profile → Change_Level
 → Bern이면 기존 pending identity commit 성공 확인
+→ PR B이면 exact-generation presentation/catch-up receipt까지 확인
 → 같은 loadEpoch의 Complete_Activation: 100 기록
 ```
 
@@ -1644,9 +1735,11 @@ Change_Level/identity 실패는 기존 rollback/diagnostic을 수행하고 termi
 남긴다. Loading 객체가 activation 중 파괴되어도 미완료로 오인해 같은 epoch를 cancel하지 않게
 activation-requested ownership을 service로 넘긴다.
 
-네트워크 복구 중에는 `접속 복구 대기`와 현재 준비율을 함께 표시한다. 같은 Loading의 로컬 준비가 완료되어도
-network readiness 전에는 activation하지 않으며 99% 이하를 유지한다. grace 만료나 terminal validation 실패로
-Loading 자체를 폐기할 때만 cancel한다. recovery retry가 resource progress를 다시 0으로 만들지 않는다.
+네트워크 복구 중에는 `접속 복구 대기`와 현재 준비율을 함께 표시한다. wire/session 복구만 먼저 끝났으면
+`리소스/화면 준비 중`으로 구분하고 15초 grace를 더 소비하지 않는다. 실제 ready 전에는 99% 이하를 유지한다.
+network grace 만료, 별도 local 준비 제한 또는 terminal validation 실패는 기존 LOAD를 실패/취소로 닫는다.
+자동 `Request_Load(LOBBY, "loading.recovery")`도 새 LOAD이므로 새 epoch로 시작하며 이전 실패 snapshot은 보존한다.
+같은 Loading의 단순 recovery retry만으로 resource progress를 다시 0으로 만들지 않는다.
 
 현재 제품이 허용하지 않는 catalog/device identity 변경은 자동 REBASE가 아니라 원래 실패 경로로 끝난다.
 기존 channel의 REBASE 단위 테스트는 그대로 유지하지만 G09가 새로운 자동 재시도 소비자를 추가하지 않는다.
@@ -1675,12 +1768,14 @@ Loading 자체를 폐기할 때만 cancel한다. recovery retry가 resource prog
 | target 전부 settled지만 queue pending 또는 worker open | 100과 activation 금지 |
 | 준비 완료, display가 아직 낮음 | activation 요청은 지연하지 않음 |
 | profile/Level/Change_Level/identity 실패 | 100 금지, terminal reason/마지막 progress 보존 |
-| 실제 activation 성공 / 중복 completion / stale loadEpoch | 현재 epoch 성공 한 번만 100, 다른 관측은 상태 불변 |
+| 실제 activation 성공 / 중복 completion / stale loadEpoch | 현재 epoch 성공 한 번만 100, PR B는 presentation/catch-up receipt도 필요 |
 | old jobEpoch/revision, denominator 변경/역행/초과 | 값 불변, 원래 owner의 실패 정책 유지 |
 | 30/60/144 FPS, 긴/음수/NaN/무한대 delta | display 단조, earned 초과·NaN·반올림 100 없음 |
-| cancel 뒤 늦은 callback / 새 명시 retry | old epoch 무시, 새 transaction에서만 0 초기화 |
+| cancel 뒤 늦은 callback / 사용자 retry / 자동 Lobby LOAD | old epoch 무시, 실제 새 LOAD transaction에서만 0 초기화 |
 | 같은 DEVELOPMENT에서 Map Editor/Training 선택 | frozen load profile과 worker 분기/weight 일치, Release에서 Debug Map Editor PASS 금지 |
 | resource 완료 중 network detach/resume / grace 만료 | 같은 epoch 유지·network commit 뒤 activation, 만료 시 cancel |
+| 20초 cold-load 또는 main 정지 / COMMITTED 후 clone 실패 | wire 복구는 15초 안에 독립 완료, local 실패는 active lease leave/cleanup |
+| snapshot cut 중 spawn/despawn / clone 중 재단절 | catch-up 이후 최신 state, old generation commit/100/입력 0건 |
 
 fixture의 activation 실패 주입은 production ledger/gate 계약의 검증이지 실제 화면 전환 실행 증거가 아니다.
 Debug/Release Client build와 기존 shader closure/Effect harness를 별도로 통과시키고, Character Select의 cold/warm
@@ -1717,7 +1812,8 @@ Debug/Release Client build와 기존 shader closure/Effect harness를 별도로 
 | Public hotspot / unicast 응답 정책 차단 | 정확한 adapter/profile/policy 진단 | 사용자 신뢰 설정 또는 DIRECT/routed 선택, 전역 방화벽 해제 없음 |
 | discovery 후보/adapter/datagram 상한 초과 | 잘린 목록에서 자동 선택 금지 | `DISCOVERY_LIMIT_EXCEEDED` |
 | Loading 단계 변경 / CSO opaque 대기 | 전체 ledger 유지, 별도 작업 중 표시 | phase별 0%/100%로 전체 막대 교체 금지 |
-| Loading 준비 완료, network 복구 중 | 같은 loadEpoch로 99% 이하 유지 | full-state/session commit 뒤에만 activation |
+| Loading 준비 완료, network 복구 중 | 같은 loadEpoch로 99% 이하 유지 | wire/session commit 뒤 activation 진입, presentation/catch-up 뒤 최종 ready |
+| wire COMMITTED, local 준비 지연 | ACTIVE lease + PRESENTATION_PENDING/input 차단 | 최대 120초 local budget, 실패 시 명시적 leave |
 | CSO/content/required resource/activation 실패 | 네트워크 재시도와 분리, 원래 rollback | 100 금지, terminal reason 보존 |
 
 ## 6. 구현 뒤 실행할 자동 검증
@@ -1864,7 +1960,8 @@ device-only 경계, queue/epoch 종료와 compiled shader closure를 함께 통�
 4. 실제 activation 전 100%가 찍히지 않는지 확인한다. 성공 즉시 화면이 바뀌어 100% frame이 보이지 않아도
    service completion log가 정확하면 화면 지연을 추가하지 않는다.
 5. Lobby로 돌아와 같은 process/revision의 재진입(warm cache), Valtan 및 기존 Bern/Training 진입을 확인한다.
-6. 별도 단절 시험에서 loading epoch가 reset되지 않고, terminal failure/명시 새 retry만 새 0%인지 확인한다.
+6. 별도 단절 시험에서 동일 Loading의 epoch가 reset되지 않고, 사용자 retry나 자동 Lobby 복귀 등 실제 새
+   LOAD만 새 0%인지 확인한다. 느린 local 준비를 network 15초 grace 만료로 처리하지 않아야 한다.
 
 실제 CSO 파일을 임의 삭제·변조하는 실사용 시험은 요구하지 않는다. 누락/손상과 실패 rollback은 isolated
 fixture에서 검증하고 사용자 시험은 정상 화면 흐름에 집중한다.

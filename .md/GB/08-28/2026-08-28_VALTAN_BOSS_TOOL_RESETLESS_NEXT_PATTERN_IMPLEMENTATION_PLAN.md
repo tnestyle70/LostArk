@@ -1,7 +1,10 @@
 # Valtan Boss Tool 무리셋 Next Pattern·독립 도넛 구현 계획
 
 작성일: 2026-08-28  
-상태: **구현 전 계획. 이 문서 작성으로 C++·게임 데이터·빌드를 변경하거나 검증 완료한 것이 아니다.**
+상태: **구현 전 초안. 통합 protocol 41 기준 재확인 전이며 이번 병합의 runtime 구현 범위가 아니다.**
+
+사용자 최신 지시에 따라 Trash는 보류했다. 저장 Flow 테스트 보강만 별도 구현했으며,
+이 문서의 Next C++·게임 데이터·빌드는 변경하거나 검증 완료하지 않았다.
 
 ## 0. 구현할 사용자 동작
 
@@ -48,7 +51,7 @@ Play Selected 또는 Preview Isolated로 A 시작 — 최초의 기존 isolated 
 | [GameRoom.cpp:3198](C:/Users/user/Desktop/LostArk/Server/Private/GameRoom.cpp:3198) `Refresh_ValtanPatternIdAuditionState` | 단일 occurrence 완료 뒤 hold·state clear | 정확한 종료 receipt, 완료 anchor, Next 승격 추가 |
 | [ValtanBrain.cpp:1640](C:/Users/user/Desktop/LostArk/Server/Private/ValtanBrain.cpp:1640) `FinishPattern` | 성공과 실패 모두 pattern ID를 비움 | 실제 `completed` 결과를 Server 내부 receipt에 기록 |
 | [ValtanPatternTree.cpp:5482](C:/Users/user/Desktop/LostArk/Client/Private/ValtanPatternTree.cpp:5482) `Build_ToolAuditionInventory` | Core 8 + Animator 20 = 28, 도넛 제외 | 이 authoring/Flow inventory는 유지 |
-| `CValtanPatternTree::Find_Pattern` | joined Gimmicks/Rotation exact stable ID 조회 | Next 목록은 이 조회 사용 |
+| `CBossTool::Find_Pattern` / PatternTree CPP 내부 `Find_Pattern` | joined Gimmicks/Rotation exact stable ID 조회 | UI는 BossTool의 기존 조회, builder는 CPP 내부 helper 사용 |
 
 현재 generated Encounter에는 53개 정의가 있고, split gameplay가 직접 소유한 것은 29개다.
 `전체 패턴`이라는 UI 문구는 이 작업에서 **검증된 split-owned 29개**를 뜻한다. legacy 24개까지 무조건
@@ -341,6 +344,11 @@ Lifecycle helper는 현재 state만 암묵적으로 읽지 말고 명시적 curr
 
 현재 `Update_WorldEntities` 말미의 `Refresh_ValtanPatternIdAuditionState` 호출을 제거하고 room tick의
 `Drain_BossCombatEvents()` 뒤, Debug lifecycle flush 직전으로 이동한다.
+
+현재 `Tick`은 `Commit_DueEncounterProps` 반환값을 버리고 그 함수도 일부 Prepare/Commit 실패를 삼킨다.
+이 경로도 함께 교정하여 READY transaction의 Commit 실패와 invalid Prepare를 false로 전달하고,
+Tick이 false면 not-ready로 종료하게 한다. 정상 no-op은 성공으로 유지한다. 이 전파 없이 prop 실패에도
+승격이 차단된다고 주장하면 안 된다.
 
 ```text
 Update_WorldEntities
@@ -700,6 +708,10 @@ generation 변경 → 이전 generation의 ACTIVE/COMPLETED 도착
 종료된 chain이 late packet으로 되살아나면 실패다.
 
 ### G08-4. Flow 저장 회귀와 정적 Tool 검증
+
+저장본/seed 분리는 사용자 추가 요청으로 먼저 구현했고 73 focused tests가 통과했다.
+[실제 수정 결과 §8](C:/Users/user/Desktop/LostArk/.md/GB/08-28/2026-08-28_VALTAN_SAVED_FLOW_JSON_REVIEW_RESULT.md)을
+보존하며 Next 구현에서 다시 현재 JSON 순서에 고정하지 않는다. 아래 Next UI 관련 회귀는 아직 구현 전이다.
 
 [test_valtan_boss_tool_pattern_flow_contract.py:159](C:/Users/user/Desktop/LostArk/Tools/ValtanPipeline/test_valtan_boss_tool_pattern_flow_contract.py:159)의
 현재 editable JSON=초기 seed 강제 assertion을 분리한다.
