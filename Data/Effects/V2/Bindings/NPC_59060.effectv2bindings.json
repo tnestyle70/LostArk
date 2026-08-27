@@ -1,0 +1,15 @@
+{
+  "schema": "lostark.effect-v2-bindings",
+  "formatVersion": 1,
+  "archetypeId": "NPC_59060",
+  "bindings": [
+    { "effectId": "esther.balthorr.magic_circle_1", "clip": "npc_sk_breathofarcturus", "startMs": 0, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.balthorr.core_2", "clip": "npc_sk_breathofarcturus", "startMs": 0, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.balthorr.core_1", "clip": "npc_sk_breathofarcturus", "startMs": 0, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.balthorr.appear_1", "clip": "npc_sk_breathofarcturus", "startMs": 333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.balthorr.magic_circle_2", "clip": "npc_sk_breathofarcturus", "startMs": 333, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.balthorr.hit_1", "clip": "npc_sk_breathofarcturus", "startMs": 2400, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.balthorr.blur_1", "clip": "npc_sk_breathofarcturus", "startMs": 2400, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.balthorr.hammer_1", "clip": "npc_sk_breathofarcturus", "startMs": 1200, "bone": "b_wp_1", "followBone": true, "rotation": "Bone", "stopWithClip": false }
+  ]
+}
