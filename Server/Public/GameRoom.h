@@ -28,7 +28,9 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace LostArk::Server
@@ -117,12 +119,18 @@ namespace LostArk::Server
 		std::size_t iIngressHighWatermark = 0;
 		std::size_t iLastDrainedCommandCount = 0;
 		std::size_t iLastRemainingCommandCount = 0;
+		std::size_t iLastCleanupIngressDepth = 0;
+		std::size_t iCleanupIngressHighWatermark = 0;
+		std::size_t iLastDrainedCleanupCommandCount = 0;
+		std::size_t iLastRemainingCleanupCommandCount = 0;
 		std::uint64_t iDrainLimitedTickCount = 0;
 		std::uint64_t iCoalescedMoveCommandCount = 0;
 		std::uint64_t iCoalescedAimCommandCount = 0;
 		std::uint64_t iDroppedBestEffortCommandCount = 0;
 		std::uint64_t iRejectedReliableCommandCount = 0;
 		std::uint64_t iRejectedCleanupCommandCount = 0;
+		std::uint64_t iDeduplicatedCleanupCommandCount = 0;
+		std::uint64_t iCancelledCommandCountByCleanup = 0;
 		std::uint64_t iSnapshotEncodeCount = 0;
 		std::uint64_t iSnapshotEncodeFailureCount = 0;
 		std::uint64_t iLastSnapshotEncodeMicroseconds = 0;
@@ -203,6 +211,10 @@ namespace LostArk::Server
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason);
+		void Close_SessionForBindingFailure(
+			SESSION_ID sessionId,
+			std::string_view packetName,
+			std::string_view validation);
 		void Handle_Move(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_MOVE& move);
@@ -785,15 +797,17 @@ namespace LostArk::Server
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
 	private:
-		static constexpr std::size_t MAX_INBOUND_COMMAND_COUNT = 1024u;
-		// Best-effort traffic leaves room for gameplay/control commands. The
-		// final 64 slots stay available to LEAVE and failed-entry rollback.
+		// Best-effort traffic leaves room for gameplay/control commands. LEAVE
+		// never shares this bounded queue: disconnect cleanup has its own
+		// session-deduplicated priority queue below.
 		static constexpr std::size_t MAX_BEST_EFFORT_COMMAND_COUNT = 768u;
 		static constexpr std::size_t MAX_RELIABLE_COMMAND_COUNT = 960u;
 		static constexpr std::size_t MAX_COMMANDS_DRAINED_PER_TICK = 256u;
 
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
+		std::deque<ROOM_COMMAND> m_CleanupCommands;
+		std::unordered_set<SESSION_ID> m_QueuedCleanupSessionIds;
 		SERVER_ROOM_PERFORMANCE_METRICS m_PerformanceMetrics;
 		SERVER_ROOM_PERFORMANCE_METRICS m_LastRoomPerfLogSample;
 		std::uint64_t m_iLastRoomPerfSnapshotDroppedCount = 0;

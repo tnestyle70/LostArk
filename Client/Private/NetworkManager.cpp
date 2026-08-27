@@ -736,7 +736,7 @@ std::string CNetworkManager::Resolve_ServerHost()
 {
 	/* The temporary team LAN endpoint is the direct-launch fallback. The
 	   process-local environment still wins so isolated tests can name loopback. */
-	constexpr char DEFAULT_SERVER_HOST[] = "10.207.18.151";
+	constexpr char DEFAULT_SERVER_HOST[] = "10.207.18.103";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(
@@ -833,6 +833,7 @@ void CNetworkManager::Update()
 		//swap�� ���ؼ� frame�� �ؼ��ϴ� ���� network workter�� ���
 		//�� frame�� ���� �� �ִ�.
 		receivedFrames.swap(m_InboundFrames);
+		m_SessionDiagnostic.Record_RawQueueDepth(m_InboundFrames.size());
 	}
 	
 	for (const auto& frame : receivedFrames)
@@ -847,32 +848,48 @@ bool CNetworkManager::Connect_To_Server(
 	const std::string_view host,
 	const std::uint16_t port)
 {
+	if (Is_Connected())
+		return true;
+
+	// A new explicit connect is the only boundary that clears the previous
+	// terminal latch. First reclaim any stale worker/socket from that previous
+	// generation, then start the new capture generation.
+	if (INVALID_SOCKET != m_hServerSocket || m_ReceiveThread.joinable())
+		Close_ServerConnection();
+	m_SessionDiagnostic.Begin_Attempt(
+		host, port, LostArk::Shared::NETWORK_PROTOCOL_VERSION);
+
 	if (!m_isWinSocketInitialized)
 	{
 		m_iLastErrorCode = WSANOTINITIALISED;
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			WSANOTINITIALISED,
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"WinSock was not initialized before connect.");
 		return false;
 	}
 
-	if (Is_Connected())
-		return true;
 	if (host.empty() || host.size() > 63u || 0u == port)
 	{
 		m_iLastErrorCode = WSAEINVAL;
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			WSAEINVAL,
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Server host or port was invalid.");
 		return false;
-	}
-
-	// ��밡 ���� ������ ������ Receive Thread�� ����� joinable ������ �� �ִ�.
-	// �� Socket�� Thread�� ����� ���� ���� ���� �ڿ��� ������ ȸ���Ѵ�.
-	if (INVALID_SOCKET != m_hServerSocket ||
-		m_ReceiveThread.joinable())
-	{
-		Close_ServerConnection();
 	}
 
 	m_hServerSocket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (INVALID_SOCKET == m_hServerSocket)
 	{
 		m_iLastErrorCode = ::WSAGetLastError();
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			m_iLastErrorCode.load(),
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"TCP socket creation failed.");
 		return false;
 	}
 
@@ -889,6 +906,11 @@ bool CNetworkManager::Connect_To_Server(
 		&serverAddress.sin_addr))
 	{
 		m_iLastErrorCode = WSAEINVAL;
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			WSAEINVAL,
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Server host was not an IPv4 address or localhost.");
 		Close_ServerConnection();
 		return false;
 	}
@@ -901,6 +923,11 @@ bool CNetworkManager::Connect_To_Server(
 		&nonBlocking))
 	{
 		m_iLastErrorCode = ::WSAGetLastError();
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			m_iLastErrorCode.load(),
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Could not enable non-blocking connect mode.");
 		Close_ServerConnection();
 		return false;
 	}
@@ -915,6 +942,11 @@ bool CNetworkManager::Connect_To_Server(
 		if (WSAEWOULDBLOCK != connectError)
 		{
 			m_iLastErrorCode = connectError;
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+				connectError,
+				LostArk::Shared::PACKET_TYPE::INVALID,
+				"connect() failed before the socket became writable.");
 			Close_ServerConnection();
 			return false;
 		}
@@ -938,6 +970,13 @@ bool CNetworkManager::Connect_To_Server(
 		{
 			m_iLastErrorCode = 0 == selectResult ?
 				WSAETIMEDOUT : ::WSAGetLastError();
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+				m_iLastErrorCode.load(),
+				LostArk::Shared::PACKET_TYPE::INVALID,
+				0 == selectResult ?
+					"Connect did not complete within 1500 ms." :
+					"select() failed while waiting for connect.");
 			Close_ServerConnection();
 			return false;
 		}
@@ -954,6 +993,11 @@ bool CNetworkManager::Connect_To_Server(
 		{
 			m_iLastErrorCode = 0 != socketError ?
 				socketError : ::WSAGetLastError();
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+				m_iLastErrorCode.load(),
+				LostArk::Shared::PACKET_TYPE::INVALID,
+				"Connected socket reported SO_ERROR.");
 			Close_ServerConnection();
 			return false;
 		}
@@ -966,8 +1010,37 @@ bool CNetworkManager::Connect_To_Server(
 		&nonBlocking))
 	{
 		m_iLastErrorCode = ::WSAGetLastError();
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			m_iLastErrorCode.load(),
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Could not restore blocking socket mode after connect.");
 		Close_ServerConnection();
 		return false;
+	}
+
+	sockaddr_in localAddress{};
+	int localAddressLength = sizeof(localAddress);
+	char localAddressText[INET_ADDRSTRLEN]{};
+	if (0 == ::getsockname(
+		m_hServerSocket,
+		reinterpret_cast<sockaddr*>(&localAddress),
+		&localAddressLength) &&
+		nullptr != ::InetNtopA(
+			AF_INET,
+			&localAddress.sin_addr,
+			localAddressText,
+			static_cast<DWORD>(std::size(localAddressText))))
+	{
+		m_SessionDiagnostic.Record_LocalEndpoint(
+			std::string{ localAddressText } + ":" +
+			std::to_string(::ntohs(localAddress.sin_port)));
+	}
+	else
+	{
+		// Correlation is best-effort and must never turn a usable gameplay
+		// connection into a failed attempt.
+		m_SessionDiagnostic.Record_LocalEndpoint("unavailable");
 	}
 
 	m_StreamParser.Reset();
@@ -975,6 +1048,9 @@ bool CNetworkManager::Connect_To_Server(
 	m_iLastErrorCode.store(0);
 	m_hasProtocolFailure.store(false);
 	m_isReceiveRunning.store(true);
+	// Persist success before the worker can observe an immediate FIN/RST, so
+	// JSONL event order always reflects connect before its terminal edge.
+	m_SessionDiagnostic.Record_Event("connect.succeeded");
 	m_ReceiveThread = std::thread(
 		&CNetworkManager::Receive_Loop,
 		this,
@@ -989,7 +1065,14 @@ bool CNetworkManager::Send_EnterWorld(
 	using namespace LostArk::Shared;
 
 	if (!Is_Connected())
+	{
+		m_SessionDiagnostic.Record_Terminal(
+			SESSION_DIAGNOSTIC_REASON::CLIENT_ENTER_SEND_FAILED,
+			WSAENOTCONN,
+			PACKET_TYPE::C2S_ENTER_WORLD,
+			"C2S_ENTER_WORLD was requested without a live socket.");
 		return false;
+	}
 
 	C2S_ENTER_WORLD message{};
 	message.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
@@ -999,7 +1082,14 @@ bool CNetworkManager::Send_EnterWorld(
 
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
+	{
+		m_SessionDiagnostic.Record_Terminal(
+			SESSION_DIAGNOSTIC_REASON::CLIENT_ENTER_SEND_FAILED,
+			WSAEINVAL,
+			PACKET_TYPE::C2S_ENTER_WORLD,
+			"C2S_ENTER_WORLD serialization failed.");
 		return false;
+	}
 
 	std::vector<std::uint8_t> frameBytes;
 	if (!Build_Packet_Frame(
@@ -1007,16 +1097,22 @@ bool CNetworkManager::Send_EnterWorld(
 		payloadWriter.Get_Buffer(),
 		frameBytes))
 	{
+		m_SessionDiagnostic.Record_Terminal(
+			SESSION_DIAGNOSTIC_REASON::CLIENT_ENTER_SEND_FAILED,
+			WSAEINVAL,
+			PACKET_TYPE::C2S_ENTER_WORLD,
+			"C2S_ENTER_WORLD frame construction failed.");
 		return false;
 	}
 
-	if (!Send_All(frameBytes))
+	if (!Send_All(frameBytes, PACKET_TYPE::C2S_ENTER_WORLD))
 		return false;
 
 	// The request is now committed to the socket. From this point only its
 	// future acceptance may establish a world; older room events are stale.
 	Reset_WorldInboundState();
 	m_eLocalCharacterClass = characterClass;
+	m_SessionDiagnostic.Record_EnterSent(worldId);
 	return true;
 }
 
@@ -1607,6 +1703,7 @@ bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EV
 
 	event = std::move(m_ReplicationEvents.front());
 	m_ReplicationEvents.pop_front();
+	m_SessionDiagnostic.Record_EventQueueDepth(m_ReplicationEvents.size());
 	return true;
 }
 
@@ -1623,20 +1720,33 @@ bool CNetworkManager::Enqueue_ReplicationEvent(
 			m_ReplicationEvents.back().eType, event.eType))
 	{
 		m_ReplicationEvents.back() = std::move(event);
+		m_SessionDiagnostic.Record_EventQueueDepth(m_ReplicationEvents.size());
 		return true;
 	}
 	if (m_ReplicationEvents.size() >= MAX_REPLICATION_EVENT_QUEUE)
 	{
-		Fail_Protocol(WSAENOBUFS);
+		Fail_Protocol(
+			WSAENOBUFS,
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_EVENT_QUEUE_OVERFLOW,
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Replication event queue reached its 4096-event bound.");
 		return false;
 	}
 	m_ReplicationEvents.push_back(std::move(event));
+	m_SessionDiagnostic.Record_EventQueueDepth(m_ReplicationEvents.size());
 	return true;
 }
 
-void CNetworkManager::Fail_Protocol(const int errorCode)
+void CNetworkManager::Fail_Protocol(
+	const int errorCode,
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const LostArk::Shared::PACKET_TYPE triggeringPacket,
+	const std::string_view detail)
 {
 	m_iLastErrorCode.store(errorCode);
+	m_SessionDiagnostic.Record_Terminal(
+		reason, errorCode, triggeringPacket, detail);
 	m_hasProtocolFailure.store(true);
 	m_isReceiveRunning.store(false);
 	const SOCKET socketToClose = m_hServerSocket;
@@ -1646,9 +1756,15 @@ void CNetworkManager::Fail_Protocol(const int errorCode)
 		::shutdown(socketToClose, SD_BOTH);
 		::closesocket(socketToClose);
 	}
+	if (m_ReceiveThread.joinable() &&
+		m_ReceiveThread.get_id() != std::this_thread::get_id())
+	{
+		m_ReceiveThread.join();
+	}
 	{
 		std::scoped_lock lock{ m_InboundMutex };
 		m_InboundFrames.clear();
+		m_SessionDiagnostic.Record_RawQueueDepth(0u);
 	}
 	m_StreamParser.Reset();
 	Reset_WorldInboundState();
@@ -1660,6 +1776,7 @@ void CNetworkManager::Reset_WorldInboundState()
 		(std::numeric_limits<std::uint64_t>::max)() == m_iWorldInboundGeneration ?
 			1u : m_iWorldInboundGeneration + 1u;
 	m_ReplicationEvents.clear();
+	m_SessionDiagnostic.Record_EventQueueDepth(0u);
 	m_WorldEntitySpawnResults.clear();
 	m_CharacterClassChangeResults.clear();
 	m_ValtanAuditionResults.clear();
@@ -2006,6 +2123,8 @@ void CNetworkManager::Record_PresentationIsolation(
 
 void CNetworkManager::Close_ServerConnection()
 {
+	if (0u != m_SessionDiagnostic.Get_Snapshot().iConnectionGeneration)
+		m_SessionDiagnostic.Record_Event("connection.close-requested");
 	m_isReceiveRunning.store(false);
 	const SOCKET socketToClose = m_hServerSocket;
 	m_hServerSocket = INVALID_SOCKET;
@@ -2022,6 +2141,7 @@ void CNetworkManager::Close_ServerConnection()
 	{
 		std::scoped_lock lock{ m_InboundMutex };
 		m_InboundFrames.clear();
+		m_SessionDiagnostic.Record_RawQueueDepth(0u);
 	}
 
 	m_StreamParser.Reset();
@@ -2039,6 +2159,31 @@ bool CNetworkManager::Is_Connected() const
 int CNetworkManager::Get_LastErrorCode() const
 {
 	return m_iLastErrorCode.load();
+}
+
+void CNetworkManager::Record_SessionEvent(
+	const std::string_view eventName,
+	const std::string_view detail)
+{
+	m_SessionDiagnostic.Record_Event(eventName, detail);
+}
+
+void CNetworkManager::Record_SessionRecovery(
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const std::string_view source,
+	const std::string_view detail)
+{
+	m_SessionDiagnostic.Record_Recovery(reason, source, detail);
+}
+
+bool CNetworkManager::Record_SessionTerminal(
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const int wsaError,
+	const LostArk::Shared::PACKET_TYPE triggeringPacket,
+	const std::string_view detail)
+{
+	return m_SessionDiagnostic.Record_Terminal(
+		reason, wsaError, triggeringPacket, detail);
 }
 
 LostArk::Shared::PLAYER_ID CNetworkManager::Get_LocalPlayerId() const
@@ -2092,7 +2237,17 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 
 		//��밡 ���������� ������ �����޴�.
 		if (0 == receiveByteCount)
+		{
+			if (m_isReceiveRunning.load())
+			{
+				m_SessionDiagnostic.Record_Terminal(
+					SESSION_DIAGNOSTIC_REASON::CLIENT_PEER_CLOSED,
+					0,
+					PACKET_TYPE::INVALID,
+					"Server completed an orderly TCP close (FIN).");
+			}
 			break;
+		}
 
 		//socket I/O ���� �Ǵ� shutdown���� recv�� �����ƴ�.
 		if (SOCKET_ERROR == receiveByteCount)
@@ -2101,7 +2256,14 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 
 			//����ڰ� ������ ����� ������ ���� ��� ������ ��� X
 			if (m_isReceiveRunning.load())
+			{
 				m_iLastErrorCode.store(errorCode);
+				m_SessionDiagnostic.Record_Terminal(
+					SESSION_DIAGNOSTIC_REASON::CLIENT_RECEIVE_ERROR,
+					errorCode,
+					PACKET_TYPE::INVALID,
+					"recv() failed while the connection was active.");
+			}
 
 			break;
 		}
@@ -2116,6 +2278,11 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 		if (!m_StreamParser.Append(receiveBytes))
 		{
 			m_iLastErrorCode.store(WSAEMSGSIZE);
+			m_SessionDiagnostic.Record_Terminal(
+				SESSION_DIAGNOSTIC_REASON::CLIENT_PARSER_OVERFLOW,
+				WSAEMSGSIZE,
+				PACKET_TYPE::INVALID,
+				"TCP parser buffered-byte bound was exceeded.");
 			break;
 		}
 		//�̹� recv�� �ϼ��� �������� ���� �� ������ �� �ִ�. ;; ���� ���� ���鼭 �ľ�
@@ -2135,6 +2302,11 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 			{
 				//�߸��� ũ�� �Ǵ� ��Ŷ Ÿ���� �߰߉Ѵ�.
 				m_iLastErrorCode.store(WSAEPROTONOSUPPORT);
+				m_SessionDiagnostic.Record_Terminal(
+					SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_FRAME,
+					WSAEPROTONOSUPPORT,
+					PACKET_TYPE::INVALID,
+					"TCP parser rejected an invalid frame header or packet type.");
 				
 				m_isReceiveRunning.store(false);
 				return;
@@ -2155,17 +2327,28 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 						frame.ePacketType))
 				{
 					m_InboundFrames.back() = std::move(frame);
+					m_SessionDiagnostic.Record_InboundFrame(
+						m_InboundFrames.back().ePacketType,
+						m_InboundFrames.size());
 					continue;
 				}
 				if (m_InboundFrames.size() >= MAX_INBOUND_FRAME_QUEUE)
 				{
 					m_iLastErrorCode.store(WSAENOBUFS);
+					m_SessionDiagnostic.Record_Terminal(
+						SESSION_DIAGNOSTIC_REASON::CLIENT_RAW_QUEUE_OVERFLOW,
+						WSAENOBUFS,
+						frame.ePacketType,
+						"Inbound raw frame queue reached its 4096-frame bound.");
 					m_hasProtocolFailure.store(true);
 					m_isReceiveRunning.store(false);
 					return;
 				}
 				m_InboundFrames.push_back(
 					std::move(frame));
+				m_SessionDiagnostic.Record_InboundFrame(
+					m_InboundFrames.back().ePacketType,
+					m_InboundFrames.size());
 			}
 		}
 	}
@@ -2192,7 +2375,11 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		if (!Read_Message(reader, accepted) ||
 			0 != reader.Get_RemainingSize())
 		{
-			Fail_Protocol(WSAEINVAL);
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_ENTER_ACCEPTED,
+				"S2C_ENTER_ACCEPTED payload decode or trailing-byte validation failed.");
 			return;
 		}
 
@@ -2209,7 +2396,14 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		if (!CapturePresentationArtifactBaseline(
 				stagedPresentationArtifactBaseline, baselineStatus))
 		{
-			Fail_Protocol(WSAEINVAL);
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::
+					CLIENT_ENTRY_PRESENTATION_BASELINE_FAILED,
+				PACKET_TYPE::S2C_ENTER_ACCEPTED,
+				baselineStatus.empty() ?
+					"Presentation artifact baseline capture failed without detail." :
+					baselineStatus);
 			return;
 		}
 		const auto admitEntryRevision = [
@@ -2264,7 +2458,12 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 				accepted.ActiveGameplayRevision,
 				"World entry active revision", entryAdmissionFailure))
 		{
-			Fail_Protocol(WSAEINVAL);
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::
+					CLIENT_ENTRY_PRESENTATION_REVISION_FAILED,
+				PACKET_TYPE::S2C_ENTER_ACCEPTED,
+				entryAdmissionFailure);
 			return;
 		}
 		for (const GameplayDataRevision& required :
@@ -2274,7 +2473,12 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 					required, "World entry pinned occurrence",
 					entryAdmissionFailure))
 			{
-				Fail_Protocol(WSAEINVAL);
+				Fail_Protocol(
+					WSAEINVAL,
+					SESSION_DIAGNOSTIC_REASON::
+						CLIENT_ENTRY_PRESENTATION_REVISION_FAILED,
+					PACKET_TYPE::S2C_ENTER_ACCEPTED,
+					entryAdmissionFailure);
 				return;
 			}
 		}
@@ -2285,7 +2489,12 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		   generation. Any other revision set is a protocol violation. */
 		if (!accepted.RequiredPinnedGameplayRevisions.empty())
 		{
-			Fail_Protocol(WSAEINVAL);
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::
+					CLIENT_ENTRY_PRESENTATION_REVISION_FAILED,
+				PACKET_TYPE::S2C_ENTER_ACCEPTED,
+				"Release Client received pinned presentation revisions that it cannot load.");
 			return;
 		}
 		stagedHasBootstrapPresentationRevision = true;
@@ -2322,6 +2531,8 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_LocalSpawn = {};
 		m_hasPendingEnterAccepted = true;
 		m_PendingEnterAccepted = accepted;
+		m_SessionDiagnostic.Record_EnterAccepted(
+			accepted.eWorldId, accepted.iPlayerId, accepted.iNetEntityId);
 		break;
 	}
 	case PACKET_TYPE::S2C_ENTER_REJECTED:
@@ -2330,11 +2541,16 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		if (!Read_Message(reader, rejected) ||
 			0 != reader.Get_RemainingSize())
 		{
-			m_iLastErrorCode.store(WSAEINVAL);
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_ENTER_REJECTED,
+				"S2C_ENTER_REJECTED payload decode or trailing-byte validation failed.");
 			return;
 		}
 		m_hasPendingEnterRejected = true;
 		m_PendingEnterRejected = rejected;
+		m_SessionDiagnostic.Record_EnterRejected(rejected.eWorldId);
 		break;
 	}
 	//Player Spawn
@@ -2710,15 +2926,50 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		S2C_WORLD_SNAPSHOT snapshot{};
 
 		if (!Read_Message(reader, snapshot) ||
-			0 != reader.Get_RemainingSize() ||
-			snapshot.eWorldId != m_eWorldId ||
-			snapshot.ActiveGameplayRevision !=
-				m_GameplayRevisionState.ServerActiveRevision)
+			0 != reader.Get_RemainingSize())
 		{
-			Fail_Protocol(WSAEINVAL);
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+				"S2C_WORLD_SNAPSHOT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (snapshot.eWorldId != m_eWorldId)
+		{
+			const std::string detail =
+				"S2C_WORLD_SNAPSHOT world mismatch: expected " +
+				std::to_string(static_cast<std::uint16_t>(m_eWorldId)) +
+				", received " +
+				std::to_string(static_cast<std::uint16_t>(snapshot.eWorldId)) + ".";
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+				detail);
+			return;
+		}
+		if (snapshot.ActiveGameplayRevision !=
+			m_GameplayRevisionState.ServerActiveRevision)
+		{
+			const std::string expected = Format_GameplayDataRevision(
+				m_GameplayRevisionState.ServerActiveRevision);
+			const std::string received = Format_GameplayDataRevision(
+				snapshot.ActiveGameplayRevision);
+			const std::string detail =
+				"S2C_WORLD_SNAPSHOT active gameplay revision mismatch: expected " +
+				(expected.empty() ? std::string{ "INVALID" } : expected) +
+				", received " +
+				(received.empty() ? std::string{ "INVALID" } : received) + ".";
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+				detail);
 			return;
 		}
 
+		m_SessionDiagnostic.Record_ServerTick(snapshot.iServerTick);
 		Record_WorldRevisionSet(
 			snapshot.ActiveGameplayRevision,
 			snapshot.RequiredPinnedGameplayRevisions);
@@ -2728,7 +2979,15 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			if (!Is_AnnouncedWorldRevision(
 					entity.PinnedDefinitionRevision))
 			{
-				Fail_Protocol(WSAEINVAL);
+				const std::string revision = Format_GameplayDataRevision(
+					entity.PinnedDefinitionRevision);
+				Fail_Protocol(
+					WSAEINVAL,
+					SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+					PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+					"World entity " + std::to_string(entity.iNetEntityId) +
+					" referenced unannounced pinned revision " +
+					(revision.empty() ? std::string{ "INVALID" } : revision) + ".");
 				return;
 			}
 			if (!Is_PresentationRevisionAvailable(
@@ -2755,7 +3014,18 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			if (!Is_AnnouncedWorldRevision(
 					object.PinnedDefinitionRevision))
 			{
-				Fail_Protocol(WSAEINVAL);
+				const std::string revision = Format_GameplayDataRevision(
+					object.PinnedDefinitionRevision);
+				Fail_Protocol(
+					WSAEINVAL,
+					SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+					PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+					"Combat object " +
+					std::to_string(object.iCombatObjectId) +
+					" from entity " +
+					std::to_string(object.iSourceNetEntityId) +
+					" referenced unannounced pinned revision " +
+					(revision.empty() ? std::string{ "INVALID" } : revision) + ".");
 				return;
 			}
 			if (!Is_PresentationRevisionAvailable(
@@ -2878,10 +3148,20 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 }
 
 bool CNetworkManager::Send_All(
-	std::span<const std::uint8_t> bytes)
+	std::span<const std::uint8_t> bytes,
+	const LostArk::Shared::PACKET_TYPE triggeringPacket)
 {
 	if (!Is_Connected())
+	{
+		m_iLastErrorCode.store(WSAENOTCONN);
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_CONNECTION_LOST,
+			WSAENOTCONN,
+			triggeringPacket,
+			"A packet send was attempted without a live connection.");
 		return false;
+	}
 
 	std::size_t sentByteCount = 0;
 
@@ -2896,12 +3176,26 @@ bool CNetworkManager::Send_All(
 
 		if (SOCKET_ERROR == result)
 		{
-			m_iLastErrorCode.store(::WSAGetLastError());
+			const int errorCode = ::WSAGetLastError();
+			m_iLastErrorCode.store(errorCode);
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_SEND_ERROR,
+				errorCode,
+				triggeringPacket,
+				"send() failed before the full packet frame was written.");
 			return false;
 		}
 
 		if (0 == result)
+		{
+			m_iLastErrorCode.store(WSAECONNRESET);
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_SEND_ERROR,
+				WSAECONNRESET,
+				triggeringPacket,
+				"send() returned zero before the full packet frame was written.");
 			return false;
+		}
 
 		sentByteCount += static_cast<std::size_t>(result);
 	}

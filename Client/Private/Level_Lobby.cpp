@@ -9,6 +9,8 @@
 #include "NetworkManager.h"
 #include "RuntimeAssetRoot.h"
 
+#include <chrono>
+
 #ifdef _DEBUG
 #include "MapEditorWorkspaceService.h"
 #endif
@@ -82,14 +84,17 @@ void CLevel_Lobby::Update(const f32_t fTimeDelta)
 	/* A refused load or activation drops back here with the socket already
 	closed, so without this the bounce is indistinguishable from a dropped
 	connection and the reason is thrown away. */
-	HRESULT loadFailure = S_OK;
-	std::string loadFailureDetail;
-	if (CLevelTransitionService::Try_ConsumeLoadFailure(
-		loadFailure, loadFailureDetail))
+	CLIENT_RECOVERY_DIAGNOSTIC recovery{};
+	if (CLevelTransitionService::Try_ConsumeRecovery(recovery))
 	{
-		m_strStatus = loadFailureDetail.empty() ?
-			"Stage loading failed. Lobby remains active." :
-			"Stage loading failed: " + loadFailureDetail;
+		m_RecoveryDiagnostic = std::move(recovery);
+		m_hasRecoveryDiagnostic = true;
+		const std::string reasonName{
+			LostArk::Shared::To_SessionDiagnosticReasonName(
+				m_RecoveryDiagnostic.eReason) };
+		m_strStatus = "Lobby recovery: " + reasonName + ".";
+		if (!m_RecoveryDiagnostic.strDetail.empty())
+			m_strStatus += " " + m_RecoveryDiagnostic.strDetail;
 	}
 
 	LOBBY_COMMAND command{};
@@ -108,12 +113,18 @@ void CLevel_Lobby::Update(const f32_t fTimeDelta)
 		if (!CNetworkManager::Get().Is_Connected())
 		{
 			Cancel_PendingEntry(
-				"Server disconnected before approving entry. Lobby remains active.");
+				"Server disconnected before approving entry. Lobby remains active.",
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_CONNECTION_LOST,
+				"lobby.entry-approval-disconnected");
 		}
 		else if (std::chrono::steady_clock::now() >= m_ApprovalDeadline)
 		{
 			Cancel_PendingEntry(
-				"Server entry approval timed out after 5 seconds. Lobby remains active.");
+				"Server entry approval timed out after 5 seconds. Lobby remains active.",
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_APPROVAL_TIMEOUT,
+				"lobby.entry-approval-timeout");
 		}
 	}
 
@@ -145,18 +156,26 @@ void CLevel_Lobby::Consume_EnterRejected()
 		rejected.eWorldId != m_ePendingWorldId ||
 		ENTER_WORLD_REJECTION_REASON::ROOM_FULL != rejected.eReason)
 	{
-		Cancel_PendingEntry("Server returned an invalid world-entry rejection.");
+		Cancel_PendingEntry(
+			"Server returned an invalid world-entry rejection.",
+			SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+			"lobby.entry-rejected-invalid");
 		return;
 	}
 
 	if (WORLD_ID::VALTAN_ARENA == rejected.eWorldId)
 	{
 		Cancel_PendingEntry(
-			"Valtan raid is full (4/4). Lobby remains active.");
+			"Valtan raid is full (4/4). Lobby remains active.",
+			SESSION_DIAGNOSTIC_REASON::CLIENT_EXPECTED_ROOM_FULL,
+			"lobby.entry-room-full");
 		return;
 	}
 
-	Cancel_PendingEntry("The selected world is full. Lobby remains active.");
+	Cancel_PendingEntry(
+		"The selected world is full. Lobby remains active.",
+		SESSION_DIAGNOSTIC_REASON::CLIENT_EXPECTED_ROOM_FULL,
+		"lobby.entry-room-full");
 }
 
 bool_t CLevel_Lobby::Begin_StageRequest(const LOBBY_COMMAND& command)
@@ -232,6 +251,8 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 			serverHost + ":" +
 			to_string(CNetworkManager::DEFAULT_SERVER_PORT) + " (WSA " +
 			to_string(networkManager.Get_LastErrorCode()) + ").";
+		CLevelTransitionService::Report_NetworkRecovery(
+			"lobby.connect-failed", m_strStatus);
 		return false;
 	}
 
@@ -244,6 +265,8 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 			CCharacterSelectionState::Cancel_PendingCreation();
 		m_strStatus = "C2S_ENTER_WORLD send failed (WSA " +
 			to_string(networkManager.Get_LastErrorCode()) + ").";
+		CLevelTransitionService::Report_NetworkRecovery(
+			"lobby.enter-send-failed", m_strStatus);
 		networkManager.Close_ServerConnection();
 		return false;
 	}
@@ -312,7 +335,11 @@ void CLevel_Lobby::Consume_EnterAccepted()
 
 	if (ENTRY_STATE::WAITING_FOR_APPROVAL != m_eEntryState)
 	{
-		Cancel_PendingEntry("Unexpected server approval was rejected.");
+		Cancel_PendingEntry(
+			"Unexpected server approval was rejected.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_INVALID_SERVER_RESPONSE,
+			"lobby.entry-accepted-unexpected");
 		return;
 	}
 
@@ -321,7 +348,11 @@ void CLevel_Lobby::Consume_EnterAccepted()
 		accepted.iPlayerId == LostArk::Shared::INVALID_PLAYER_ID ||
 		accepted.iNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID)
 	{
-		Cancel_PendingEntry("Server returned an invalid world approval.");
+		Cancel_PendingEntry(
+			"Server returned an invalid world approval.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_INVALID_SERVER_RESPONSE,
+			"lobby.entry-accepted-invalid");
 		return;
 	}
 
@@ -341,7 +372,11 @@ void CLevel_Lobby::Consume_EnterAccepted()
 		if (opensMapEditorWorkspace)
 			CMapEditorWorkspaceService::Cancel();
 #endif
-		Cancel_PendingEntry(CLevelTransitionService::Get_Status());
+		Cancel_PendingEntry(
+			CLevelTransitionService::Get_Status(),
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_LOADING_START_FAILED,
+			"lobby.loading-request-rejected");
 		return;
 	}
 
@@ -363,8 +398,16 @@ void CLevel_Lobby::Consume_EnterAccepted()
 	m_strStatus = "Server approved the world. Loading the stage.";
 }
 
-void CLevel_Lobby::Cancel_PendingEntry(const string& reason)
+void CLevel_Lobby::Cancel_PendingEntry(
+	const string& reason,
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON diagnosticReason,
+	const char_t* pDiagnosticSource)
 {
+	CLevelTransitionService::Report_Recovery(
+		diagnosticReason,
+		nullptr == pDiagnosticSource ? "lobby.entry-cancelled" :
+			pDiagnosticSource,
+		reason);
 	CNetworkManager::Get().Close_ServerConnection();
 	if (m_hasPendingCharacterCreationEntry)
 		CCharacterSelectionState::Cancel_PendingCreation();
@@ -451,6 +494,146 @@ void CLevel_Lobby::Render_StagePanel()
 	ImGui::EndDisabled();
 
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	if (m_hasRecoveryDiagnostic)
+	{
+		const CLIENT_SESSION_DIAGNOSTIC_SNAPSHOT& session =
+			m_RecoveryDiagnostic.Session;
+		const std::string reasonName{
+			LostArk::Shared::To_SessionDiagnosticReasonName(
+				m_RecoveryDiagnostic.eReason) };
+		const auto now = std::chrono::system_clock::now();
+		const std::uint64_t nowUnixMs = static_cast<std::uint64_t>(
+			std::chrono::duration_cast<std::chrono::milliseconds>(
+				now.time_since_epoch()).count());
+		const std::uint64_t elapsedEnd = 0u != session.iTerminalUnixMs ?
+			session.iTerminalUnixMs : nowUnixMs;
+		const std::uint64_t elapsedMs =
+			elapsedEnd >= session.iConnectStartedUnixMs ?
+				elapsedEnd - session.iConnectStartedUnixMs : 0u;
+		const bool_t hasLastReceive = 0u != session.iLastReceiveUnixMs;
+		const std::uint64_t lastReceiveAgeMs =
+			hasLastReceive && elapsedEnd >= session.iLastReceiveUnixMs ?
+				elapsedEnd - session.iLastReceiveUnixMs : 0u;
+
+		ImGui::Separator();
+		ImGui::TextColored(
+			ImVec4(1.f, 0.55f, 0.2f, 1.f),
+			"Last Lobby recovery diagnostic");
+		ImGui::Text("Reason: %s", reasonName.c_str());
+		if (session.eReason != m_RecoveryDiagnostic.eReason &&
+			LostArk::Shared::Is_Known_SessionDiagnosticReason(session.eReason))
+		{
+			const std::string transportReason{
+				LostArk::Shared::To_SessionDiagnosticReasonName(session.eReason) };
+			ImGui::Text(
+				"Transport/session terminal: %s", transportReason.c_str());
+		}
+		ImGui::TextWrapped(
+			"Source: %s", m_RecoveryDiagnostic.strSource.c_str());
+		if (!m_RecoveryDiagnostic.strDetail.empty())
+		{
+			ImGui::TextWrapped(
+				"Recovery detail: %s",
+				m_RecoveryDiagnostic.strDetail.c_str());
+		}
+		if (!session.strDetail.empty() &&
+			session.strDetail != m_RecoveryDiagnostic.strDetail)
+		{
+			ImGui::TextWrapped(
+				"First terminal detail: %s", session.strDetail.c_str());
+		}
+		ImGui::Text(
+			"Protocol: %u (Client expected %u)",
+			static_cast<unsigned>(session.iProtocolVersion),
+			static_cast<unsigned>(LostArk::Shared::NETWORK_PROTOCOL_VERSION));
+		ImGui::TextWrapped(
+			"Remote endpoint: %s  |  Local endpoint: %s",
+			session.strEndpoint.empty() ? "unavailable" :
+				session.strEndpoint.c_str(),
+			session.strLocalEndpoint.empty() ? "unavailable" :
+				session.strLocalEndpoint.c_str());
+		ImGui::Text(
+			"Connection generation: %llu",
+			static_cast<unsigned long long>(session.iConnectionGeneration));
+		ImGui::Text(
+			"World/Player/Entity: %u / %llu / %llu",
+			static_cast<unsigned>(session.eWorldId),
+			static_cast<unsigned long long>(session.iPlayerId),
+			static_cast<unsigned long long>(session.iNetEntityId));
+		ImGui::Text(
+			"Packet/WSA/HRESULT: %u / %d / %ld",
+			static_cast<unsigned>(session.eTriggeringPacket),
+			session.iWsaError,
+			static_cast<long>(m_RecoveryDiagnostic.hResult));
+		ImGui::Text(
+			"Terminal UTC Unix ms: %llu",
+			static_cast<unsigned long long>(session.iTerminalUnixMs));
+		if (hasLastReceive)
+		{
+			ImGui::Text(
+				"Elapsed: %llu ms  |  Last receive age: %llu ms  |  Last server tick: %u",
+				static_cast<unsigned long long>(elapsedMs),
+				static_cast<unsigned long long>(lastReceiveAgeMs),
+				session.iLastServerTick);
+		}
+		else
+		{
+			ImGui::Text(
+				"Elapsed: %llu ms  |  Last receive: none  |  Last server tick: %u",
+				static_cast<unsigned long long>(elapsedMs),
+				session.iLastServerTick);
+		}
+		ImGui::Text(
+			"Raw queue current/high: %zu/%zu  |  Event queue current/high: %zu/%zu",
+			session.iRawQueueDepth,
+			session.iRawQueueHighWatermark,
+			session.iEventQueueDepth,
+			session.iEventQueueHighWatermark);
+		ImGui::Text(
+			"Capture schema: %s v%u",
+			CLIENT_SESSION_DIAGNOSTIC_SCHEMA.data(),
+			CLIENT_SESSION_DIAGNOSTIC_FORMAT_VERSION);
+		ImGui::TextWrapped(
+			"Capture path: %s",
+			session.strCapturePath.empty() ? "unavailable" :
+				session.strCapturePath.c_str());
+		ImGui::TextWrapped(
+			"Capture I/O: %s",
+			session.strCaptureIoStatus.empty() ? "not initialized" :
+				session.strCaptureIoStatus.c_str());
+		const auto isBrokenTransportReason = [](
+			const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason)
+		{
+			return
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_PEER_CLOSED ==
+					reason ||
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_RECEIVE_ERROR ==
+					reason ||
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECTION_LOST ==
+					reason;
+		};
+		const bool_t hasBrokenTransport =
+			isBrokenTransportReason(m_RecoveryDiagnostic.eReason) ||
+			isBrokenTransportReason(session.eReason);
+		const bool_t needsServerCorrelation = hasBrokenTransport ||
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_APPROVAL_TIMEOUT ==
+				m_RecoveryDiagnostic.eReason ||
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_EXPECTED_ROOM_FULL ==
+				m_RecoveryDiagnostic.eReason;
+		if (needsServerCorrelation)
+		{
+			if (hasBrokenTransport)
+			{
+				ImGui::TextWrapped(
+					"The broken TCP connection cannot carry the Server-side "
+					"terminal cause back to this Lobby.");
+			}
+			ImGui::TextWrapped(
+				"Server-side cause: match Local endpoint to Server peerAddress:peerPort, "
+				"then confirm Terminal UTC ms + Player/Entity in "
+				"Server/Bin/<config>/Diagnostics/server-session-<pid>.jsonl.");
+		}
+	}
 	ImGui::End();
 }
 

@@ -52,6 +52,13 @@ namespace
 	constexpr std::uint32_t ESTHER_CAST_TICKS =
 		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
 
+	std::uint64_t Current_UnixMilliseconds()
+	{
+		return static_cast<std::uint64_t>(
+			std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::system_clock::now().time_since_epoch()).count());
+	}
+
 	bool Is_StablePatternFlowId(const std::string_view value)
 	{
 		return !value.empty() &&
@@ -982,6 +989,38 @@ bool LostArk::Server::CGameRoom::Enqueue(ROOM_COMMAND command)
 	if (!m_acceptsCommands)
 		return false;
 
+	if (ROOM_COMMAND_TYPE::LEAVE == command.eType)
+	{
+		/* A disconnect must never compete with gameplay traffic for ingress
+		   capacity. Keep one pending/in-flight cleanup per session and cancel
+		   any commands that would otherwise run after that session leaves. */
+		if (!m_QueuedCleanupSessionIds.insert(command.iSessionId).second)
+		{
+			++m_PerformanceMetrics.iDeduplicatedCleanupCommandCount;
+			return true;
+		}
+		const std::size_t oldCommandCount = m_InboundCommands.size();
+		std::erase_if(
+			m_InboundCommands,
+			[sessionId = command.iSessionId](const ROOM_COMMAND& queued)
+			{
+				return queued.iSessionId == sessionId;
+			});
+		m_PerformanceMetrics.iCancelledCommandCountByCleanup +=
+			oldCommandCount - m_InboundCommands.size();
+		m_CleanupCommands.push_back(std::move(command));
+		m_PerformanceMetrics.iCleanupIngressHighWatermark = (std::max)(
+			m_PerformanceMetrics.iCleanupIngressHighWatermark,
+			m_CleanupCommands.size());
+		return true;
+	}
+	if (m_QueuedCleanupSessionIds.contains(command.iSessionId))
+	{
+		// Do not let receive traffic reappear behind pending/in-flight cleanup.
+		++m_PerformanceMetrics.iCancelledCommandCountByCleanup;
+		return false;
+	}
+
 	if (Is_BestEffortCommand(command.eType))
 	{
 		if (Try_RemoveCoalescedCommand(m_InboundCommands, command))
@@ -999,16 +1038,9 @@ bool LostArk::Server::CGameRoom::Enqueue(ROOM_COMMAND command)
 			return true;
 		}
 	}
-	else if (ROOM_COMMAND_TYPE::LEAVE != command.eType &&
-		m_InboundCommands.size() >= MAX_RELIABLE_COMMAND_COUNT)
+	else if (m_InboundCommands.size() >= MAX_RELIABLE_COMMAND_COUNT)
 	{
 		++m_PerformanceMetrics.iRejectedReliableCommandCount;
-		return false;
-	}
-	else if (ROOM_COMMAND_TYPE::LEAVE == command.eType &&
-		m_InboundCommands.size() >= MAX_INBOUND_COMMAND_COUNT)
-	{
-		++m_PerformanceMetrics.iRejectedCleanupCommandCount;
 		return false;
 	}
 
@@ -1305,6 +1337,8 @@ bool LostArk::Server::CGameRoom::Try_SealPrivateArenaForRetirement()
 	if (!m_acceptsCommands)
 		return true;
 	if (!m_InboundCommands.empty() ||
+		!m_CleanupCommands.empty() ||
+		!m_QueuedCleanupSessionIds.empty() ||
 		!m_PendingWorldTransfers.empty() ||
 		!m_Sessions.empty() ||
 		!m_Players.empty() ||
@@ -1359,9 +1393,12 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 				elapsedMicroseconds);
 		};
 
+	std::deque<ROOM_COMMAND> cleanupCommands;
 	std::deque<ROOM_COMMAND> commands;
 	{
 		std::scoped_lock lock{ m_CommandMutex };
+		const std::size_t cleanupIngressDepth = m_CleanupCommands.size();
+		cleanupCommands.swap(m_CleanupCommands);
 		const std::size_t ingressDepth = m_InboundCommands.size();
 		const std::size_t drainCount = (std::min)(
 			ingressDepth, MAX_COMMANDS_DRAINED_PER_TICK);
@@ -1374,8 +1411,21 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		m_PerformanceMetrics.iLastDrainedCommandCount = drainCount;
 		m_PerformanceMetrics.iLastRemainingCommandCount =
 			m_InboundCommands.size();
+		m_PerformanceMetrics.iLastCleanupIngressDepth = cleanupIngressDepth;
+		m_PerformanceMetrics.iLastDrainedCleanupCommandCount =
+			cleanupCommands.size();
+		m_PerformanceMetrics.iLastRemainingCleanupCommandCount =
+			m_CleanupCommands.size();
 		if (!m_InboundCommands.empty())
 			++m_PerformanceMetrics.iDrainLimitedTickCount;
+	}
+
+	// Cleanup is independent of and always precedes the bounded gameplay drain.
+	for (ROOM_COMMAND& command : cleanupCommands)
+	{
+		Leave(command.iSessionId, command.eLeaveReason);
+		std::scoped_lock lock{ m_CommandMutex };
+		m_QueuedCleanupSessionIds.erase(command.iSessionId);
 	}
 
 	for (ROOM_COMMAND& command : commands)
@@ -1447,7 +1497,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 				command.iSessionId, command.ConfirmNpcEntry);
 			break;
 		case ROOM_COMMAND_TYPE::LEAVE:
-			Leave(command.iSessionId, command.eLeaveReason);
+			// LEAVE is routed exclusively through m_CleanupCommands.
 			break;
 		}
 	}
@@ -1660,6 +1710,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 				metrics.iMaximumTickMicroseconds >
 					m_LastRoomPerfLogSample.iMaximumTickMicroseconds) ||
 			0u != metrics.iLastRemainingCommandCount ||
+			0u != metrics.iLastRemainingCleanupCommandCount ||
 			maximumCurrentOutboundFrames >= 64u ||
 			(maximumOutboundFrameHighWatermark >= 64u &&
 				maximumOutboundFrameHighWatermark >
@@ -1684,6 +1735,16 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			<< " IngressHigh=" << metrics.iIngressHighWatermark
 			<< " Drained=" << metrics.iLastDrainedCommandCount
 			<< " Remaining=" << metrics.iLastRemainingCommandCount
+			<< " CleanupIngress=" << metrics.iLastCleanupIngressDepth
+			<< " CleanupIngressHigh=" << metrics.iCleanupIngressHighWatermark
+			<< " CleanupDrained="
+			<< metrics.iLastDrainedCleanupCommandCount
+			<< " CleanupRemaining="
+			<< metrics.iLastRemainingCleanupCommandCount
+			<< " CleanupDeduplicated="
+			<< metrics.iDeduplicatedCleanupCommandCount
+			<< " CleanupCancelledCommands="
+			<< metrics.iCancelledCommandCountByCleanup
 			<< " MoveCoalesced=" << metrics.iCoalescedMoveCommandCount
 			<< " AimCoalesced=" << metrics.iCoalescedAimCommandCount
 			<< " BestEffortDropped="
@@ -1731,26 +1792,113 @@ bool LostArk::Server::CGameRoom::Join(
 		m_iNextNetEntityId == INVALID_NET_ENTITY_ID)
 	{
 		if (nullptr != session)
-			session->Request_Close();
+		{
+			session->Request_Close(
+				SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+				WSAEINVAL,
+				"ENTER_WORLD failed room/session/id validation");
+		}
 		return false;
 	}
 	if (Is_PlayerAdmissionFull())
 	{
+		const std::size_t enabledPlayerSpawnCount =
+			static_cast<std::size_t>(std::count_if(
+				m_WorldBootstrap.Get_Placements().begin(),
+				m_WorldBootstrap.Get_Placements().end(),
+				[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+				{
+					return placement.isEnabled &&
+						WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind;
+				}));
+		const std::string roomFullCounts =
+			"activePlayers=" + std::to_string(m_Players.size()) +
+			", registeredSessionsIncludingCandidate=" +
+			std::to_string(m_Sessions.size()) +
+			", candidateSessionId=" + std::to_string(sessionId) +
+			", candidateRegistered=" +
+			(m_Sessions.contains(sessionId) ? "true" : "false") +
+			", enabledPlayerSpawns=" +
+			std::to_string(enabledPlayerSpawnCount);
+		/* Leave room for the terminal-action prefix so the copied close context
+		   remains bounded to roughly one KiB. */
+		constexpr std::size_t MAX_ROOM_FULL_CONTEXT_BYTES = 960u;
+		const std::uint64_t observedUnixMilliseconds =
+			Current_UnixMilliseconds();
+		std::string roomFullContext = roomFullCounts + ", activeRoster=[";
+		bool isFirstRosterEntry = true;
+		for (const auto& [playerId, player] : m_Players)
+		{
+			const std::shared_ptr<CClientSession> incumbent =
+				Find_Session(player.iSessionId);
+			std::string peer = "unavailable";
+			std::uint64_t lastInboundUnixMilliseconds = 0u;
+			if (nullptr != incumbent)
+			{
+				const CLIENT_SESSION_PEER_ENDPOINT& endpoint =
+					incumbent->Get_PeerEndpoint();
+				peer = endpoint.strAddress + ':' +
+					std::to_string(endpoint.iPort);
+				lastInboundUnixMilliseconds =
+					incumbent->Get_LastInboundUnixMilliseconds();
+			}
+			const std::uint64_t lastInboundAgeMilliseconds =
+				0u != lastInboundUnixMilliseconds &&
+				observedUnixMilliseconds >= lastInboundUnixMilliseconds ?
+				observedUnixMilliseconds - lastInboundUnixMilliseconds : 0u;
+			const std::string rosterEntry =
+				(isFirstRosterEntry ? "" : ", ") +
+				std::string{ "{sessionId=" } +
+				std::to_string(player.iSessionId) +
+				", playerId=" + std::to_string(playerId) +
+				", spawn=" + player.strSpawnPlacementId +
+				", peer=" + peer +
+				", lastInboundUnixMs=" +
+				std::to_string(lastInboundUnixMilliseconds) +
+				", lastInboundAgeMs=" +
+				std::to_string(lastInboundAgeMilliseconds) + '}';
+			if (roomFullContext.size() + rosterEntry.size() + 1u >
+				MAX_ROOM_FULL_CONTEXT_BYTES)
+			{
+				constexpr std::string_view TRUNCATED =
+					", {truncated=true}]";
+				roomFullContext.resize((std::min)(
+					roomFullContext.size(),
+					MAX_ROOM_FULL_CONTEXT_BYTES - TRUNCATED.size()));
+				roomFullContext.append(TRUNCATED);
+				break;
+			}
+			roomFullContext += rosterEntry;
+			isFirstRosterEntry = false;
+		}
+		if (roomFullContext.empty() || ']' != roomFullContext.back())
+			roomFullContext += ']';
 		if (Send_EnterRejected(
 				session, ENTER_WORLD_REJECTION_REASON::ROOM_FULL))
 		{
-			session->Request_Close_After_Flush();
+			session->Request_Close_After_Flush(
+				SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL,
+				0,
+				"typed ROOM_FULL rejection flushed before close; " +
+					roomFullContext);
 		}
 		else
 		{
-			session->Request_Close();
+			session->Request_Close(
+				SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL,
+				0,
+				"ROOM_FULL rejection could not be queued; " +
+					roomFullContext);
 		}
 		return false;
 	}
 	const WORLD_BOOTSTRAP_PLACEMENT* spawn = Find_AvailablePlayerSpawn();
 	if (nullptr == spawn)
 	{
-		session->Request_Close();
+		session->Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_SPAWN_EXHAUSTED,
+			0,
+			"no available player spawn placement");
 		return false;
 	}
 
@@ -1769,7 +1917,10 @@ bool LostArk::Server::CGameRoom::Join(
 		m_GameplayCatalog.Find_Player(player.eCharacterClass);
 	if (nullptr == playerProfile)
 	{
-		session->Request_Close();
+		session->Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_PROFILE_MISSING,
+			0,
+			"selected character class has no runtime profile");
 		return false;
 	}
 	player.eStance = playerProfile->eDefaultStance;
@@ -1789,7 +1940,10 @@ bool LostArk::Server::CGameRoom::Join(
 		if (!m_ServerNavigation.Project_Point(
 			player.fPositionX, player.fPositionZ, projected))
 		{
-			session->Request_Close();
+			session->Request_Close(
+				SESSION_DIAGNOSTIC_REASON::SERVER_NAVIGATION_FAILED,
+				0,
+				"player spawn could not project onto Server navigation");
 			return false;
 		}
 		player.fPositionX = projected.x;
@@ -1825,7 +1979,10 @@ bool LostArk::Server::CGameRoom::Join(
 		{
 			m_strStatus = "World entity spawn payload preflight failed: " +
 				entity.strPlacementId;
-			session->Request_Close();
+			session->Request_Close(
+				SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED,
+				0,
+				m_strStatus);
 			return false;
 		}
 		worldEntitySpawnPayloads.push_back(std::move(payload));
@@ -1841,7 +1998,10 @@ bool LostArk::Server::CGameRoom::Join(
 	if (!Send_Accepted(session, player))
 	{
 		Rollback_Join(sessionId);
-		session->Request_Close();
+		session->Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
+			0,
+			"S2C_ENTER_ACCEPTED enqueue failed");
 		return false;
 	}
 	// A re-entering session sees its existing inventory without needing to
@@ -1850,14 +2010,20 @@ bool LostArk::Server::CGameRoom::Join(
 	if (!Send_InventorySnapshot(session, 0u, player.Inventory))
 	{
 		Rollback_Join(sessionId);
-		session->Request_Close();
+		session->Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
+			0,
+			"initial inventory snapshot enqueue failed");
 		return false;
 	}
 	if (!Send_WorldDestructionFullSync(session) ||
 		!Send_EncounterPropSync(session))
 	{
 		Rollback_Join(sessionId);
-		session->Request_Close();
+		session->Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
+			0,
+			"initial world-state sync enqueue failed");
 		return false;
 	}
 	for (const std::vector<std::uint8_t>& payload : worldEntitySpawnPayloads)
@@ -1866,7 +2032,10 @@ bool LostArk::Server::CGameRoom::Join(
 			PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED, payload))
 		{
 			Rollback_Join(sessionId);
-			session->Request_Close();
+			session->Request_Close(
+				SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
+				0,
+				"initial world entity spawn enqueue failed");
 			return false;
 		}
 	}
@@ -1878,7 +2047,10 @@ bool LostArk::Server::CGameRoom::Join(
 		if (!Send_CombatObjectSpawned(session, combatObject))
 		{
 			Rollback_Join(sessionId);
-			session->Request_Close();
+			session->Request_Close(
+				SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
+				0,
+				"initial combat object spawn enqueue failed");
 			return false;
 		}
 	}
@@ -1890,14 +2062,20 @@ bool LostArk::Server::CGameRoom::Join(
 		if (!Send_Spawned(session, existingPlayer))
 		{
 			Rollback_Join(sessionId);
-			session->Request_Close();
+			session->Request_Close(
+				SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
+				0,
+				"existing player spawn enqueue failed");
 			return false;
 		}
 	}
 	if (!Send_Spawned(session, player))
 	{
 		Rollback_Join(sessionId);
-		session->Request_Close();
+		session->Request_Close(
+			SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED,
+			0,
+			"joining player spawn enqueue failed");
 		return false;
 	}
 	Broadcast_Spawned(player, sessionId);
@@ -1978,6 +2156,21 @@ void LostArk::Server::CGameRoom::Leave(
 	}
 }
 
+void LostArk::Server::CGameRoom::Close_SessionForBindingFailure(
+	const SESSION_ID sessionId,
+	const std::string_view packetName,
+	const std::string_view validation)
+{
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	if (nullptr == session)
+		return;
+	session->Request_Close(
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+		WSAENOTCONN,
+		"packet=" + std::string{ packetName } + " validation=" +
+			std::string{ validation });
+}
+
 void LostArk::Server::CGameRoom::Handle_Move(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_MOVE& move)
@@ -1985,22 +2178,49 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
-		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
-			session->Request_Close();
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_MOVE", "missing-player-binding");
 		return;
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
+	{
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_MOVE", "missing-player-state");
 		return;
+	}
 
 	SERVER_PLAYER& player = playerIter->second;
-	if (!Is_NewerSequence(move.iClientSequence, player.iLastMoveSequence) ||
-		!std::isfinite(move.fGoalX) || !std::isfinite(move.fGoalZ) ||
-		std::abs(move.fGoalX) > MAX_ABS_MOVE_GOAL ||
+	std::string validationFailure;
+	if (!Is_NewerSequence(move.iClientSequence, player.iLastMoveSequence))
+	{
+		validationFailure =
+			"packet=C2S_MOVE validation=stale-sequence receivedSequence=" +
+			std::to_string(move.iClientSequence) + " lastSequence=" +
+			std::to_string(player.iLastMoveSequence);
+	}
+	else if (!std::isfinite(move.fGoalX) || !std::isfinite(move.fGoalZ))
+	{
+		validationFailure =
+			"packet=C2S_MOVE validation=non-finite-goal";
+	}
+	else if (std::abs(move.fGoalX) > MAX_ABS_MOVE_GOAL ||
 		std::abs(move.fGoalZ) > MAX_ABS_MOVE_GOAL)
 	{
+		validationFailure =
+			"packet=C2S_MOVE validation=out-of-range-goal goalX=" +
+			std::to_string(move.fGoalX) + " goalZ=" +
+			std::to_string(move.fGoalZ);
+	}
+	if (!validationFailure.empty())
+	{
 		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
-			session->Request_Close();
+		{
+			session->Request_Close(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_COMMAND_VALIDATION_FAILED,
+				WSAEINVAL,
+				validationFailure);
+		}
 		return;
 	}
 
@@ -2134,13 +2354,17 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
-		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
-			session->Request_Close();
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_USE_SKILL", "missing-player-binding");
 		return;
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
+	{
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_USE_SKILL", "missing-player-state");
 		return;
+	}
 	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
 		return;
 
@@ -2352,13 +2576,17 @@ void LostArk::Server::CGameRoom::Handle_ReleaseSkill(
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
-		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
-			session->Request_Close();
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_RELEASE_SKILL", "missing-player-binding");
 		return;
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
+	{
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_RELEASE_SKILL", "missing-player-state");
 		return;
+	}
 	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
 		return;
 
@@ -2375,13 +2603,17 @@ void LostArk::Server::CGameRoom::Handle_UpdateSkillAim(
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
-		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
-			session->Request_Close();
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_UPDATE_SKILL_AIM", "missing-player-binding");
 		return;
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
+	{
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_UPDATE_SKILL_AIM", "missing-player-state");
 		return;
+	}
 	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
 		return;
 
@@ -2398,13 +2630,17 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
-		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
-			session->Request_Close();
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_USE_ESTHER_SKILL", "missing-player-binding");
 		return;
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
+	{
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_USE_ESTHER_SKILL", "missing-player-state");
 		return;
+	}
 	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
 		return;
 	/* The call locks the caster into ESTHER_CAST, so only an idle caster may

@@ -121,6 +121,7 @@
     <ClInclude Include="..\Public\NetObjectRegistry.h" />
     <ClInclude Include="..\Public\Npc.h" />
     <ClInclude Include="..\Public\NetworkManager.h" />
+    <ClInclude Include="..\Public\ClientSessionDiagnostic.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
     <ClInclude Include="..\Public\Part_Equipment.h" />
 	<ClInclude Include="..\Public\DeferredMaterialRenderUtils.h" />
@@ -267,6 +268,7 @@
     <ClCompile Include="..\Private\NetObjectRegistry.cpp" />
     <ClCompile Include="..\Private\Npc.cpp" />
     <ClCompile Include="..\Private\NetworkManager.cpp" />
+    <ClCompile Include="..\Private\ClientSessionDiagnostic.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
 	<ClCompile Include="..\Private\DeferredMaterialRenderUtils.cpp" />
@@ -600,11 +602,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.151</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.103</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\Bin\Release\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.151</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.103</LocalDebuggerEnvironment>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

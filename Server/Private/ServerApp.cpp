@@ -22,6 +22,7 @@
 #include <iostream>
 #include <limits>
 #include <set>
+#include <sstream>
 #include <span>
 #include <string>
 #include <utility>
@@ -32,6 +33,140 @@
 namespace
 {
 	using LostArk::Shared::GameplayDataRevision;
+
+	std::uint64_t Current_UnixMilliseconds()
+	{
+		return static_cast<std::uint64_t>(
+			std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::system_clock::now().time_since_epoch()).count());
+	}
+
+	std::string Escape_JsonString(const std::string_view value)
+	{
+		std::string escaped;
+		escaped.reserve(value.size());
+		constexpr char HEX[] = "0123456789abcdef";
+		for (const unsigned char character : value)
+		{
+			switch (character)
+			{
+			case '"': escaped += "\\\""; break;
+			case '\\': escaped += "\\\\"; break;
+			case '\b': escaped += "\\b"; break;
+			case '\f': escaped += "\\f"; break;
+			case '\n': escaped += "\\n"; break;
+			case '\r': escaped += "\\r"; break;
+			case '\t': escaped += "\\t"; break;
+			default:
+				if (character < 0x20u)
+				{
+					escaped += "\\u00";
+					escaped.push_back(HEX[(character >> 4u) & 0x0fu]);
+					escaped.push_back(HEX[character & 0x0fu]);
+				}
+				else
+					escaped.push_back(static_cast<char>(character));
+				break;
+			}
+		}
+		return escaped;
+	}
+
+	std::filesystem::path Resolve_ServerSessionDiagnosticPath()
+	{
+		std::array<wchar_t, 32768u> modulePath{};
+		const DWORD length = ::GetModuleFileNameW(
+			nullptr, modulePath.data(), static_cast<DWORD>(modulePath.size()));
+		if (0u == length || length >= modulePath.size())
+			return {};
+
+		std::error_code error;
+		const std::filesystem::path diagnosticDirectory =
+			std::filesystem::path{ modulePath.data() }.parent_path() /
+			L"Diagnostics";
+		std::filesystem::create_directories(diagnosticDirectory, error);
+		if (error)
+			return {};
+		return diagnosticDirectory /
+			(L"server-session-" + std::to_wstring(::GetCurrentProcessId()) +
+				L".jsonl");
+	}
+
+	std::string Build_ServerSessionDiagnosticJson(
+		const LostArk::Server::SESSION_ID sessionId,
+		const LostArk::Server::CLIENT_SESSION_PEER_ENDPOINT& peer,
+		const LostArk::Server::CLIENT_SESSION_CLOSE_DIAGNOSTIC& diagnostic,
+		const LostArk::Shared::WORLD_ID worldId,
+		const LostArk::Shared::PLAYER_ID playerId,
+		const bool wasBound,
+		const bool leaveEnqueued,
+		const LostArk::Server::CLIENT_SESSION_OUTBOUND_METRICS& metrics)
+	{
+		const std::uint64_t occurredAt = 0u ==
+			diagnostic.iOccurredUnixMilliseconds ?
+			Current_UnixMilliseconds() :
+			diagnostic.iOccurredUnixMilliseconds;
+		std::ostringstream json;
+		json << "{\"schema\":\"lostark.server-session-diagnostic\""
+			<< ",\"formatVersion\":1"
+			<< ",\"networkProtocolVersion\":" <<
+				LostArk::Shared::NETWORK_PROTOCOL_VERSION
+			<< ",\"occurredUnixMs\":" << occurredAt
+			<< ",\"sessionId\":" << sessionId
+			<< ",\"peerAddress\":\"" << Escape_JsonString(peer.strAddress)
+			<< "\",\"peerPort\":" << peer.iPort
+			<< ",\"reason\":\"" <<
+				LostArk::Shared::To_SessionDiagnosticReasonName(
+					diagnostic.eReason) << '"'
+			<< ",\"nativeErrorCode\":" << diagnostic.iNativeErrorCode
+			<< ",\"context\":\"" <<
+				Escape_JsonString(diagnostic.strContext) << '"'
+			<< ",\"lastInboundPacket\":" <<
+				static_cast<std::uint16_t>(diagnostic.eLastInboundPacket)
+			<< ",\"lastInboundUnixMs\":" <<
+				diagnostic.iLastInboundUnixMilliseconds
+			<< ",\"lastInboundAgeMs\":" <<
+				(0u != diagnostic.iLastInboundUnixMilliseconds &&
+					occurredAt >= diagnostic.iLastInboundUnixMilliseconds ?
+					occurredAt - diagnostic.iLastInboundUnixMilliseconds : 0u)
+			<< ",\"worldId\":" << static_cast<std::uint16_t>(worldId)
+			<< ",\"playerId\":" << playerId
+			<< ",\"wasBound\":" << (wasBound ? "true" : "false")
+			<< ",\"leaveEnqueued\":" <<
+				(leaveEnqueued ? "true" : "false")
+			<< ",\"outbound\":{"
+			<< "\"queuedFramesAtClose\":" <<
+				diagnostic.iQueuedFrameCountAtClose
+			<< ",\"queuedBytesAtClose\":" <<
+				diagnostic.iQueuedByteCountAtClose
+			<< ",\"queuedFramesAfterClose\":" <<
+				metrics.iCurrentQueuedFrameCount
+			<< ",\"queuedBytesAfterClose\":" <<
+				metrics.iCurrentQueuedByteCount
+			<< ",\"frameHighWatermark\":" <<
+				metrics.iQueuedFrameHighWatermark
+			<< ",\"byteHighWatermark\":" <<
+				metrics.iQueuedByteHighWatermark
+			<< ",\"reliableEnqueued\":" <<
+				metrics.iReliableEnqueuedFrameCount
+			<< ",\"reliableRejected\":" <<
+				metrics.iReliableRejectedFrameCount
+			<< ",\"snapshotEnqueued\":" <<
+				metrics.iSnapshotEnqueuedFrameCount
+			<< ",\"snapshotCoalesced\":" <<
+				metrics.iSnapshotCoalescedFrameCount
+			<< ",\"snapshotDropped\":" <<
+				metrics.iSnapshotDroppedFrameCount
+			<< ",\"sentFrames\":" << metrics.iSentFrameCount
+			<< ",\"sentBytes\":" << metrics.iSentByteCount
+			<< ",\"sendFailures\":" << metrics.iSendFailureCount
+			<< ",\"lastSendUs\":" <<
+				metrics.iLastFrameSendMicroseconds
+			<< ",\"maxSendUs\":" <<
+				metrics.iMaximumFrameSendMicroseconds
+			<< "}}";
+		return json.str();
+	}
 
 	enum class JSON_KIND : std::uint8_t
 	{
@@ -2173,6 +2308,55 @@ int LostArk::Server::CServerApp::Reset_ValtanRuntimeToPackaged()
 #endif
 }
 
+bool LostArk::Server::CServerApp::Validate_ServerSessionDiagnosticJson(
+	const std::string_view json,
+	std::string& status)
+{
+	JSON_VALUE root{};
+	CBoundedJsonParser parser{ json };
+	if (!parser.Parse(root, status) || JSON_KIND::OBJECT != root.eKind)
+	{
+		if (status.empty())
+			status = "Session diagnostic root must be a JSON object";
+		return false;
+	}
+	const auto findMember = [&root](const std::string_view name)
+		-> const JSON_VALUE*
+		{
+			for (std::size_t index = 0u;
+				index < root.MemberNames.size(); ++index)
+			{
+				if (root.MemberNames[index] == name)
+					return &root.MemberValues[index];
+			}
+			return nullptr;
+		};
+	const JSON_VALUE* schema = findMember("schema");
+	const JSON_VALUE* formatVersion = findMember("formatVersion");
+	const JSON_VALUE* protocolVersion =
+		findMember("networkProtocolVersion");
+	const JSON_VALUE* reason = findMember("reason");
+	const JSON_VALUE* outbound = findMember("outbound");
+	if (nullptr == schema || JSON_KIND::STRING != schema->eKind ||
+		"lostark.server-session-diagnostic" != schema->String ||
+		nullptr == formatVersion ||
+		JSON_KIND::INTEGER != formatVersion->eKind ||
+		formatVersion->isNegative || 1u != formatVersion->Integer ||
+		nullptr == protocolVersion ||
+		JSON_KIND::INTEGER != protocolVersion->eKind ||
+		protocolVersion->isNegative ||
+		LostArk::Shared::NETWORK_PROTOCOL_VERSION != protocolVersion->Integer ||
+		nullptr == reason || JSON_KIND::STRING != reason->eKind ||
+		reason->String.empty() || nullptr == outbound ||
+		JSON_KIND::OBJECT != outbound->eKind)
+	{
+		status = "Session diagnostic schema/format/protocol/reason/outbound contract invalid";
+		return false;
+	}
+	status.clear();
+	return true;
+}
+
 LostArk::Server::CServerApp::~CServerApp()
 {
 	Shutdown();
@@ -2435,60 +2619,98 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 	using namespace LostArk::Shared;
 
 	CPacketReader reader{ frame.Payload };
+	const auto closeMalformedPayload =
+		[this, sessionId](const std::string_view packetName)
+		{
+			const std::string context = "Malformed payload or trailing bytes for " +
+				std::string{ packetName };
+			Request_SessionClose(
+				sessionId,
+				SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_MESSAGE_DECODE_FAILED,
+				WSAEINVAL,
+				context);
+		};
 	if (frame.ePacketType == PACKET_TYPE::C2S_ENTER_WORLD)
 	{
+		CPacketReader entryPrefixReader{ frame.Payload };
+		std::uint16_t receivedProtocolVersion = 0u;
+		std::uint16_t receivedWorldId = 0u;
+		if (!entryPrefixReader.Read_U16(receivedProtocolVersion) ||
+			!entryPrefixReader.Read_U16(receivedWorldId))
+		{
+			Request_SessionClose(
+				sessionId,
+				SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_MESSAGE_DECODE_FAILED,
+				WSAEMSGSIZE,
+				"C2S_ENTER_WORLD is truncated before protocol/world prefix");
+			return;
+		}
+		if (receivedProtocolVersion != NETWORK_PROTOCOL_VERSION)
+		{
+			const std::string context =
+				"C2S_ENTER_WORLD protocol mismatch: expected=" +
+				std::to_string(NETWORK_PROTOCOL_VERSION) + ", received=" +
+				std::to_string(receivedProtocolVersion);
+			Request_SessionClose(
+				sessionId,
+				SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_MESSAGE_DECODE_FAILED,
+				WSAEPROTONOSUPPORT,
+				context);
+			return;
+		}
+		if (!Is_Known_World_Id(static_cast<WORLD_ID>(receivedWorldId)))
+		{
+			const std::string context =
+				"C2S_ENTER_WORLD contains unknown world id=" +
+				std::to_string(receivedWorldId);
+			Request_SessionClose(
+				sessionId,
+				SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_MESSAGE_DECODE_FAILED,
+				WSAEINVAL,
+				context);
+			return;
+		}
+
 		C2S_ENTER_WORLD enterWorld{};
 		if (!Read_Message(reader, enterWorld) ||
-			0u != reader.Get_RemainingSize() ||
-			enterWorld.iProtocolVersion != NETWORK_PROTOCOL_VERSION ||
-			!Is_Known_World_Id(enterWorld.eWorldId))
+			0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			Request_SessionClose(
+				sessionId,
+				SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_MESSAGE_DECODE_FAILED,
+				WSAEPROTONOSUPPORT,
+				"C2S_ENTER_WORLD decode or trailing-byte validation failed");
 			return;
 		}
-
 		const std::shared_ptr<CGameRoom> targetSimulation =
 			Acquire_EntrySimulation(sessionId, enterWorld.eWorldId);
-		if (nullptr == targetSimulation ||
-			!Bind_SessionSimulation(
-				sessionId, enterWorld.eWorldId, targetSimulation))
+		if (nullptr == targetSimulation)
 		{
-			Request_SessionClose(sessionId);
+			Request_SessionClose(
+				sessionId,
+				SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+				0,
+				"entry simulation acquisition failed");
 			return;
 		}
-
-		std::shared_ptr<CClientSession> session;
+		SESSION_DIAGNOSTIC_REASON failureReason =
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED;
+		int nativeErrorCode = 0;
+		std::string failureContext;
+		if (!Bind_AndEnqueueEntry(
+			sessionId,
+			enterWorld.eWorldId,
+			targetSimulation,
+			std::move(enterWorld),
+			failureReason,
+			nativeErrorCode,
+			failureContext))
 		{
-			std::scoped_lock lock{ m_SessionsMutex };
-			const auto iter = m_Sessions.find(sessionId);
-			if (iter != m_Sessions.end())
-				session = iter->second;
-		}
-
-		ROOM_COMMAND registerCommand{};
-		registerCommand.eType = ROOM_COMMAND_TYPE::REGISTER_SESSION;
-		registerCommand.iSessionId = sessionId;
-		registerCommand.pSession = session;
-
-		ROOM_COMMAND enterCommand{};
-		enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
-		enterCommand.iSessionId = sessionId;
-		enterCommand.EnterWorld = std::move(enterWorld);
-
-		if (nullptr == session ||
-			!targetSimulation->Enqueue(std::move(registerCommand)) ||
-			!targetSimulation->Enqueue(std::move(enterCommand)))
-		{
-			// REGISTER may already be queued. LEAVE is ordered after it and
-			// removes the weak session before a private arena can retire.
-			ROOM_COMMAND rollbackCommand{};
-			rollbackCommand.eType = ROOM_COMMAND_TYPE::LEAVE;
-			rollbackCommand.iSessionId = sessionId;
-			rollbackCommand.eLeaveReason =
-				PLAYER_DESPAWN_REASON::DISCONNECTED;
-			(void)targetSimulation->Enqueue(std::move(rollbackCommand));
-			Unbind_SessionSimulation(sessionId, targetSimulation);
-			Request_SessionClose(sessionId);
+			Request_SessionClose(
+				sessionId,
+				failureReason,
+				nativeErrorCode,
+				failureContext);
 		}
 		return;
 	}
@@ -2500,7 +2722,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_MOVE move{};
 		if (!Read_Message(reader, move) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_MOVE");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::MOVE;
@@ -2511,7 +2733,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_USE_SKILL useSkill{};
 		if (!Read_Message(reader, useSkill) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_USE_SKILL");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
@@ -2522,7 +2744,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_RELEASE_SKILL releaseSkill{};
 		if (!Read_Message(reader, releaseSkill) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_RELEASE_SKILL");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::RELEASE_SKILL;
@@ -2534,7 +2756,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		if (!Read_Message(reader, updateSkillAim) ||
 			0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_UPDATE_SKILL_AIM");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM;
@@ -2546,7 +2768,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		if (!Read_Message(reader, useEstherSkill) ||
 			0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_USE_ESTHER_SKILL");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::USE_ESTHER_SKILL;
@@ -2558,7 +2780,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		if (!Read_Message(reader, revivePlayer) ||
 			0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_REVIVE_PLAYER");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::REVIVE_PLAYER;
@@ -2570,7 +2792,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		if (!Read_Message(reader, debugKillSelf) ||
 			0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_DEBUG_KILL_SELF");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_KILL_SELF;
@@ -2581,7 +2803,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_CHANGE_CHARACTER_CLASS request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_CHANGE_CHARACTER_CLASS");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::CHANGE_CHARACTER_CLASS;
@@ -2592,7 +2814,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_SPAWN_WORLD_ENTITY request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_SPAWN_WORLD_ENTITY");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::SPAWN_WORLD_ENTITY;
@@ -2603,7 +2825,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_VALTAN_AUDITION_REQUEST request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_VALTAN_AUDITION_REQUEST");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::VALTAN_AUDITION;
@@ -2615,7 +2837,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_DEBUG_VALTAN_PATTERN_FLOW_START");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::VALTAN_PATTERN_FLOW_START;
@@ -2627,7 +2849,8 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload(
+				"C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT");
 			return;
 		}
 		command.eType =
@@ -2640,7 +2863,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_DATA_REVISION_PREPARE_REQUEST request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_DATA_REVISION_PREPARE_REQUEST");
 			return;
 		}
 
@@ -2762,7 +2985,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_DATA_REVISION_PREPARE_RESPONSE response{};
 		if (!Read_Message(reader, response) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_DATA_REVISION_PREPARE_RESPONSE");
 			return;
 		}
 #ifdef _DEBUG
@@ -2783,7 +3006,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_VALTAN_DECISION_TRACE_QUERY request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_VALTAN_DECISION_TRACE_QUERY");
 			return;
 		}
 #ifdef _DEBUG
@@ -2818,7 +3041,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_DEBUG_GIVE_ITEM request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_DEBUG_GIVE_ITEM");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_GIVE_ITEM;
@@ -2829,7 +3052,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_USE_ITEM request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_USE_ITEM");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::USE_ITEM;
@@ -2840,7 +3063,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_DESPAWN_ALL_WORLD_ENTITIES request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_DESPAWN_ALL_WORLD_ENTITIES");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::DESPAWN_ALL_WORLD_ENTITIES;
@@ -2851,7 +3074,7 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		C2S_CONFIRM_NPC_ENTRY request{};
 		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
 		{
-			Request_SessionClose(sessionId);
+			closeMalformedPayload("C2S_CONFIRM_NPC_ENTRY");
 			return;
 		}
 		command.eType = ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY;
@@ -2859,22 +3082,41 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 	}
 	else
 	{
-		Request_SessionClose(sessionId);
+		Request_SessionClose(
+			sessionId,
+			SESSION_DIAGNOSTIC_REASON::SERVER_UNKNOWN_PACKET,
+			WSAEPROTONOSUPPORT,
+			"packet type is not a supported Client command");
 		return;
 	}
 
 	if (!Enqueue_AssignedCommand(sessionId, std::move(command)))
-		Request_SessionClose(sessionId);
+	{
+		Request_SessionClose(
+			sessionId,
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW,
+			WSAENOBUFS,
+			"assigned room ingress rejected a reliable Client command");
+	}
 }
 
 void LostArk::Server::CServerApp::On_SessionClosed(const SESSION_ID sessionId)
 {
+	std::shared_ptr<CClientSession> session;
+	LostArk::Shared::WORLD_ID worldId = LostArk::Shared::WORLD_ID::END;
+	bool wasBound = false;
+	bool leaveEnqueued = false;
 	{
 		std::scoped_lock lock{ m_SessionsMutex };
+		const auto sessionIter = m_Sessions.find(sessionId);
+		if (sessionIter != m_Sessions.end())
+			session = sessionIter->second;
 		const auto bindingIter =
 			m_GameplayBindingBySessionId.find(sessionId);
 		if (bindingIter != m_GameplayBindingBySessionId.end())
 		{
+			wasBound = true;
+			worldId = bindingIter->second.eWorldId;
 			if (nullptr != bindingIter->second.pSimulation)
 			{
 				ROOM_COMMAND command{};
@@ -2882,10 +3124,71 @@ void LostArk::Server::CServerApp::On_SessionClosed(const SESSION_ID sessionId)
 				command.iSessionId = sessionId;
 				command.eLeaveReason =
 					LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;
-				(void)bindingIter->second.pSimulation->Enqueue(
-					std::move(command));
+				leaveEnqueued =
+					bindingIter->second.pSimulation->Enqueue(
+						std::move(command));
 			}
 			m_GameplayBindingBySessionId.erase(bindingIter);
+		}
+	}
+
+	if (nullptr != session)
+	{
+		CLIENT_SESSION_CLOSE_DIAGNOSTIC diagnostic =
+			session->Get_CloseDiagnostic();
+		if (LostArk::Shared::SESSION_DIAGNOSTIC_REASON::NONE ==
+			diagnostic.eReason)
+		{
+			session->Request_Close(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_APPLICATION_CLOSE,
+				0,
+				"close callback arrived without a terminal classification");
+			diagnostic = session->Get_CloseDiagnostic();
+		}
+		const CLIENT_SESSION_OUTBOUND_METRICS metrics =
+			session->Get_OutboundMetrics();
+		const std::string json = Build_ServerSessionDiagnosticJson(
+			sessionId,
+			session->Get_PeerEndpoint(),
+			diagnostic,
+			worldId,
+			session->Get_PlayerId(),
+			wasBound,
+			leaveEnqueued,
+			metrics);
+		std::string jsonValidationStatus;
+		const bool isJsonValid = Validate_ServerSessionDiagnosticJson(
+			json, jsonValidationStatus);
+		std::scoped_lock diagnosticLock{ m_SessionDiagnosticLogMutex };
+		if (!isJsonValid)
+		{
+			std::cerr << "[SessionDiagnostic][INVALID_JSON] SessionId=" <<
+				sessionId << ", Status=" << jsonValidationStatus << '\n';
+		}
+		std::cout << "[SessionDiagnostic] " << json << '\n';
+		if (wasBound && !leaveEnqueued)
+		{
+			std::cerr <<
+				"[SessionDiagnostic][LEAVE_ENQUEUE_INVARIANT_FAILED] SessionId="
+				<< sessionId << ", World=" <<
+				static_cast<std::uint16_t>(worldId) <<
+				". A live binding unexpectedly rejected its dedicated cleanup "
+				"queue; inspect room readiness/retirement invariants.\n";
+		}
+		const std::filesystem::path logPath =
+			Resolve_ServerSessionDiagnosticPath();
+		if (!logPath.empty())
+		{
+			std::ofstream log{ logPath, std::ios::binary | std::ios::app };
+			if (log)
+				log << json << '\n';
+			else
+				std::cerr << "Session diagnostic log open failed. Path="
+					<< logPath.string() << '\n';
+		}
+		else
+		{
+			std::cerr << "Session diagnostic log path resolution failed.\n";
 		}
 	}
 
@@ -2901,7 +3204,11 @@ void LostArk::Server::CServerApp::On_SessionClosed(const SESSION_ID sessionId)
 	(void)Queue_ServerControlEvent(std::move(controlEvent));
 }
 
-void LostArk::Server::CServerApp::Request_SessionClose(const SESSION_ID sessionId)
+void LostArk::Server::CServerApp::Request_SessionClose(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const int nativeErrorCode,
+	const std::string_view context)
 {
 	std::shared_ptr<CClientSession> session;
 	{
@@ -2911,7 +3218,7 @@ void LostArk::Server::CServerApp::Request_SessionClose(const SESSION_ID sessionI
 			session = iter->second;
 	}
 	if (nullptr != session)
-		session->Request_Close();
+		session->Request_Close(reason, nativeErrorCode, context);
 }
 
 void LostArk::Server::CServerApp::Reap_ClosedSessions()
@@ -2992,28 +3299,56 @@ LostArk::Server::CServerApp::Find_SharedSimulation(
 	return iter == m_SharedGameRooms.end() ? nullptr : iter->second;
 }
 
-bool LostArk::Server::CServerApp::Bind_SessionSimulation(
+bool LostArk::Server::CServerApp::Bind_AndEnqueueEntry(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::WORLD_ID worldId,
-	const std::shared_ptr<CGameRoom>& simulation)
+	const std::shared_ptr<CGameRoom>& simulation,
+	LostArk::Shared::C2S_ENTER_WORLD enterWorld,
+	LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outFailureReason,
+	int& outNativeErrorCode,
+	std::string& outFailureContext)
 {
-	using LostArk::Shared::WORLD_ID;
+	using namespace LostArk::Shared;
+	outFailureReason = SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED;
+	outNativeErrorCode = WSAEINVAL;
+	outFailureContext = "entry stage=bind-validation packet=C2S_ENTER_WORLD";
 
 	if (nullptr == simulation ||
-		!LostArk::Shared::Is_Known_World_Id(worldId) ||
-		simulation->Get_WorldId() != worldId)
+		!Is_Known_World_Id(worldId) ||
+		simulation->Get_WorldId() != worldId ||
+		enterWorld.eWorldId != worldId)
 	{
 		return false;
 	}
 
+	/* Binding, REGISTER/ENTER admission and the terminal-state recheck are one
+	   transaction relative to On_SessionClosed. The shared lock order remains
+	   ServerApp sessions -> room command queue. */
 	std::scoped_lock lock{ m_SessionsMutex };
-	if (!m_Sessions.contains(sessionId))
+	const auto sessionIter = m_Sessions.find(sessionId);
+	if (sessionIter == m_Sessions.end() || nullptr == sessionIter->second)
+	{
+		outNativeErrorCode = WSAENOTCONN;
+		outFailureContext =
+			"entry stage=session-lookup packet=C2S_ENTER_WORLD";
 		return false;
+	}
+	if (sessionIter->second->Is_Closing())
+	{
+		outNativeErrorCode = WSAESHUTDOWN;
+		outFailureContext =
+			"entry stage=terminal-recheck packet=C2S_ENTER_WORLD "
+			"sessionAlreadyClosing=true";
+		return false;
+	}
 	if (nullptr == m_pActiveGameplayGeneration ||
 		nullptr == simulation->Get_ActiveGameplayGeneration() ||
 		simulation->Get_ActiveGameplayGeneration()->Get_ActiveRevision() !=
 			m_pActiveGameplayGeneration->Get_ActiveRevision())
 	{
+		outFailureContext =
+			"entry stage=gameplay-revision-validation "
+			"packet=C2S_ENTER_WORLD";
 		return false;
 	}
 
@@ -3024,10 +3359,12 @@ bool LostArk::Server::CServerApp::Bind_SessionSimulation(
 		m_GameplayBindingBySessionId.find(sessionId);
 	if (existingBinding != m_GameplayBindingBySessionId.end())
 	{
-		return existingBinding->second.eWorldId == worldId &&
-			existingBinding->second.iPrivateArenaOwnerSessionId ==
-				privateOwnerSessionId &&
-			existingBinding->second.pSimulation == simulation;
+		outFailureReason =
+			SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_COMMAND_VALIDATION_FAILED;
+		outNativeErrorCode = WSAEALREADY;
+		outFailureContext =
+			"entry stage=duplicate-binding packet=C2S_ENTER_WORLD";
+		return false;
 	}
 
 	bool insertedPrivateArena = false;
@@ -3036,7 +3373,11 @@ bool LostArk::Server::CServerApp::Bind_SessionSimulation(
 		const auto [arenaIter, inserted] =
 			m_CharacterSelectArenas.emplace(sessionId, simulation);
 		if (!inserted && arenaIter->second != simulation)
+		{
+			outFailureContext =
+				"entry stage=private-arena-binding packet=C2S_ENTER_WORLD";
 			return false;
+		}
 		insertedPrivateArena = inserted;
 	}
 	else
@@ -3045,6 +3386,8 @@ bool LostArk::Server::CServerApp::Bind_SessionSimulation(
 		if (sharedIter == m_SharedGameRooms.end() ||
 			sharedIter->second != simulation)
 		{
+			outFailureContext =
+				"entry stage=shared-room-binding packet=C2S_ENTER_WORLD";
 			return false;
 		}
 	}
@@ -3060,6 +3403,48 @@ bool LostArk::Server::CServerApp::Bind_SessionSimulation(
 	{
 		if (insertedPrivateArena)
 			m_CharacterSelectArenas.erase(sessionId);
+		outFailureContext =
+			"entry stage=binding-commit packet=C2S_ENTER_WORLD";
+		return false;
+	}
+
+	ROOM_COMMAND registerCommand{};
+	registerCommand.eType = ROOM_COMMAND_TYPE::REGISTER_SESSION;
+	registerCommand.iSessionId = sessionId;
+	registerCommand.pSession = sessionIter->second;
+	if (!simulation->Enqueue(std::move(registerCommand)))
+	{
+		m_GameplayBindingBySessionId.erase(sessionId);
+		if (insertedPrivateArena)
+			m_CharacterSelectArenas.erase(sessionId);
+		outFailureReason =
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW;
+		outNativeErrorCode = WSAENOBUFS;
+		outFailureContext =
+			"entry stage=register-ingress packet=C2S_ENTER_WORLD";
+		return false;
+	}
+
+	ROOM_COMMAND enterCommand{};
+	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
+	enterCommand.iSessionId = sessionId;
+	enterCommand.EnterWorld = std::move(enterWorld);
+	if (!simulation->Enqueue(std::move(enterCommand)))
+	{
+		ROOM_COMMAND rollbackCommand{};
+		rollbackCommand.eType = ROOM_COMMAND_TYPE::LEAVE;
+		rollbackCommand.iSessionId = sessionId;
+		rollbackCommand.eLeaveReason = PLAYER_DESPAWN_REASON::DISCONNECTED;
+		const bool rollbackEnqueued =
+			simulation->Enqueue(std::move(rollbackCommand));
+		m_GameplayBindingBySessionId.erase(sessionId);
+		outFailureReason =
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW;
+		outNativeErrorCode = WSAENOBUFS;
+		outFailureContext =
+			"entry stage=enter-ingress packet=C2S_ENTER_WORLD "
+			"rollbackCleanupEnqueued=" +
+			std::string{ rollbackEnqueued ? "true" : "false" };
 		return false;
 	}
 	return true;
@@ -3983,21 +4368,59 @@ void LostArk::Server::CServerApp::Handle_WorldTransfers(
 	SERVER_WORLD_TRANSFER_REQUEST transfer{};
 	while (sourceSimulation->Try_DequeueWorldTransfer(transfer))
 	{
-		if (!Transfer_SessionWorld(sourceSimulation, transfer))
-			Request_SessionClose(transfer.iSessionId);
+		SESSION_WORLD_TRANSFER_FAILURE failure{};
+		if (!Transfer_SessionWorld(sourceSimulation, transfer, failure))
+		{
+			Request_SessionClose(
+				transfer.iSessionId,
+				failure.eReason,
+				failure.iNativeErrorCode,
+				failure.strContext);
+		}
 	}
 }
 
 bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	const std::shared_ptr<CGameRoom>& sourceSimulation,
-	const SERVER_WORLD_TRANSFER_REQUEST& transfer)
+	const SERVER_WORLD_TRANSFER_REQUEST& transfer,
+	SESSION_WORLD_TRANSFER_FAILURE& outFailure)
 {
 	using namespace LostArk::Shared;
+	outFailure = {};
+	const auto setFailure =
+		[&outFailure, &sourceSimulation, &transfer](
+			const SESSION_DIAGNOSTIC_REASON reason,
+			const int nativeErrorCode,
+			const std::string_view stage,
+			const bool rollbackRequired = false,
+			const bool rollbackEnqueued = false)
+		{
+			const WORLD_ID sourceWorldId = nullptr == sourceSimulation ?
+				WORLD_ID::END : sourceSimulation->Get_WorldId();
+			outFailure.eReason = reason;
+			outFailure.iNativeErrorCode = nativeErrorCode;
+			outFailure.bRollbackCleanupRequired = rollbackRequired;
+			outFailure.bRollbackCleanupEnqueued = rollbackEnqueued;
+			outFailure.strContext =
+				"world transfer stage=" + std::string{ stage } +
+				" sourceWorld=" +
+				std::to_string(static_cast<std::uint16_t>(sourceWorldId)) +
+				" targetWorld=" + std::to_string(
+					static_cast<std::uint16_t>(transfer.eTargetWorldId)) +
+				" rollbackCleanupRequired=" +
+				(rollbackRequired ? "true" : "false") +
+				" rollbackCleanupEnqueued=" +
+				(rollbackEnqueued ? "true" : "false");
+		};
 
 	if (nullptr == sourceSimulation ||
 		CHARACTER_CLASS_ID::END == transfer.eCharacterClass ||
 		transfer.strNickName.empty())
 	{
+		setFailure(
+			SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+			WSAEINVAL,
+			"request-validation");
 		return false;
 	}
 
@@ -4008,6 +4431,10 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 		targetSimulation == sourceSimulation ||
 		sourceWorldId == transfer.eTargetWorldId)
 	{
+		setFailure(
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+			WSAEINVAL,
+			"target-resolution");
 		return false;
 	}
 
@@ -4018,6 +4445,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	const auto bindingIter =
 		m_GameplayBindingBySessionId.find(transfer.iSessionId);
 	if (sessionIter == m_Sessions.end() ||
+		nullptr == sessionIter->second ||
 		bindingIter == m_GameplayBindingBySessionId.end() ||
 		bindingIter->second.eWorldId != sourceWorldId ||
 		bindingIter->second.pSimulation != sourceSimulation ||
@@ -4025,6 +4453,18 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 			bindingIter->second.iPrivateArenaOwnerSessionId !=
 				transfer.iSessionId))
 	{
+		setFailure(
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+			WSAENOTCONN,
+			"source-binding-validation");
+		return false;
+	}
+	if (sessionIter->second->Is_Closing())
+	{
+		setFailure(
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+			WSAESHUTDOWN,
+			"source-session-terminal-recheck");
 		return false;
 	}
 
@@ -4033,7 +4473,13 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	registerCommand.iSessionId = transfer.iSessionId;
 	registerCommand.pSession = sessionIter->second;
 	if (!targetSimulation->Enqueue(std::move(registerCommand)))
+	{
+		setFailure(
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW,
+			WSAENOBUFS,
+			"target-register-ingress");
 		return false;
+	}
 
 	C2S_ENTER_WORLD enterWorld{};
 	enterWorld.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
@@ -4051,7 +4497,14 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 		targetRollback.iSessionId = transfer.iSessionId;
 		targetRollback.eLeaveReason =
 			PLAYER_DESPAWN_REASON::LEVEL_CHANGED;
-		(void)targetSimulation->Enqueue(std::move(targetRollback));
+		const bool rollbackEnqueued =
+			targetSimulation->Enqueue(std::move(targetRollback));
+		setFailure(
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW,
+			WSAENOBUFS,
+			"target-enter-ingress",
+			true,
+			rollbackEnqueued);
 		return false;
 	}
 
@@ -4063,7 +4516,14 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 		targetRollback.iSessionId = transfer.iSessionId;
 		targetRollback.eLeaveReason =
 			PLAYER_DESPAWN_REASON::LEVEL_CHANGED;
-		(void)targetSimulation->Enqueue(std::move(targetRollback));
+		const bool rollbackEnqueued =
+			targetSimulation->Enqueue(std::move(targetRollback));
+		setFailure(
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+			WSAEINVAL,
+			"source-departure-commit",
+			true,
+			rollbackEnqueued);
 		return false;
 	}
 
@@ -4071,22 +4531,6 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	bindingIter->second.iPrivateArenaOwnerSessionId = INVALID_SESSION_ID;
 	bindingIter->second.pSimulation = targetSimulation;
 	return true;
-}
-
-void LostArk::Server::CServerApp::Unbind_SessionSimulation(
-	const SESSION_ID sessionId,
-	const std::shared_ptr<CGameRoom>& expectedSimulation)
-{
-	std::scoped_lock lock{ m_SessionsMutex };
-	const auto iter = m_GameplayBindingBySessionId.find(sessionId);
-	if (iter == m_GameplayBindingBySessionId.end())
-		return;
-	if (nullptr != expectedSimulation &&
-		iter->second.pSimulation != expectedSimulation)
-	{
-		return;
-	}
-	m_GameplayBindingBySessionId.erase(iter);
 }
 
 void LostArk::Server::CServerApp::Shutdown()
@@ -4105,20 +4549,28 @@ void LostArk::Server::CServerApp::Shutdown()
 		for (auto& [sessionId, session] : m_Sessions)
 		{
 			(void)sessionId;
-			sessions.push_back(std::move(session));
+			sessions.push_back(session);
 		}
-		m_Sessions.clear();
-		m_GameplayBindingBySessionId.clear();
 	}
 	for (const auto& session : sessions)
 	{
 		if (nullptr != session)
-			session->Request_Close();
+		{
+			session->Request_Close(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SHUTDOWN,
+				0,
+				"Server process shutdown");
+		}
 	}
 	for (const auto& session : sessions)
 	{
 		if (nullptr != session)
 			session->Stop();
+	}
+	{
+		std::scoped_lock lock{ m_SessionsMutex };
+		m_Sessions.clear();
+		m_GameplayBindingBySessionId.clear();
 	}
 
 	// Receive callbacks and the room thread are stopped before simulations are

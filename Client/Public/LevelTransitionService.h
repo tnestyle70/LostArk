@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "ClientSessionDiagnostic.h"
 #include "Engine_Defines.h"
 #include "LobbyCommandService.h"
 
@@ -22,6 +23,17 @@ struct LEVEL_TRANSITION_REQUEST final
 	std::string strSource;
 	LOBBY_COMMAND_TOKEN iLobbyCommandToken =
 		INVALID_LOBBY_COMMAND_TOKEN;
+};
+
+struct CLIENT_RECOVERY_DIAGNOSTIC final
+{
+	LostArk::Shared::SESSION_DIAGNOSTIC_REASON eReason =
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON::NONE;
+	HRESULT hResult = S_OK;
+	std::string strSource;
+	std::string strDetail;
+	std::uint64_t iOccurredUnixMs = 0u;
+	CLIENT_SESSION_DIAGNOSTIC_SNAPSHOT Session;
 };
 
 enum class SERVER_WORLD_TRANSFER_PUMP_RESULT
@@ -52,6 +64,16 @@ public:
 	static void Report_LoadFailure(
 		HRESULT result,
 		std::string_view detail = {});
+	static void Report_Recovery(
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+		std::string_view source,
+		std::string_view detail = {},
+		HRESULT result = S_OK);
+	static void Report_NetworkRecovery(
+		std::string_view source,
+		std::string_view detail = {});
+	static bool_t Try_ConsumeRecovery(
+		CLIENT_RECOVERY_DIAGNOSTIC& outDiagnostic);
 	static bool_t Try_ConsumeLoadFailure(
 		HRESULT& outResult,
 		std::string& outDetail);

@@ -624,8 +624,11 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 	Cancel_LobbyCommand("target level loading failed");
 	/* The loader's live progress line names the stage that refused, and it is
 	the only record of it once the loading Level is torn down. */
-	CLevelTransitionService::Report_LoadFailure(
-		result, "[Loader] " + CLoader::Get_ActiveStatus());
+	CLevelTransitionService::Report_Recovery(
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOAD_FAILED,
+		"loading.target-resource-load",
+		"[Loader] " + CLoader::Get_ActiveStatus(),
+		result);
 	CNetworkManager::Get().Close_ServerConnection();
 
 	if (FAILED(CGameInstance::Get().Clear_Resources(

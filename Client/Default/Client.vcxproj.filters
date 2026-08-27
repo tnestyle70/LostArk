@@ -513,6 +513,9 @@
     <ClCompile Include="..\Private\NetworkManager.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ClientSessionDiagnostic.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\NetObjectRegistry.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
@@ -890,6 +893,9 @@
       <Filter>02.GameObjects\01. Npc</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\NetworkManager.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ClientSessionDiagnostic.h">
       <Filter>04. Network</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ClientReplicationEvent.h">

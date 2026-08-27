@@ -8,6 +8,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
+#include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "Transform.h"
 
@@ -124,6 +125,10 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 	}
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
+		CLevelTransitionService::Report_NetworkRecovery(
+			"level-development.network-connection-lost",
+			"Training replication observed a disconnected Server session.");
+		CNetworkManager::Get().Close_ServerConnection();
 		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
 			"network.connection-lost"))

@@ -114,7 +114,12 @@ namespace
 	{
 		const std::string detail = std::string(pStage) + " " + status;
 		OutputDebugStringA((detail + "\n").c_str());
-		Client::CLevelTransitionService::Report_LoadFailure(E_FAIL, detail);
+		Client::CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_LEVEL_CREATE_FAILED,
+			"level-valtan.initialize",
+			detail,
+			E_FAIL);
 		return E_FAIL;
 	}
 }
@@ -425,10 +430,13 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 				presentationStatus =
 					"World destruction projection rejected the Server sync.";
 			}
-			CLevelTransitionService::Report_LoadFailure(
-				E_FAIL,
+			CLevelTransitionService::Report_Recovery(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_REPLICATION_FAILED,
+				"level-valtan.world-destruction-sync",
 				"[Level_ValtanArena][WorldDestructionSync] " +
-					presentationStatus);
+					presentationStatus,
+				E_FAIL);
 #ifdef _DEBUG
 			End_ReferenceCamera(false);
 #endif
@@ -450,6 +458,10 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		End_ReferenceCamera(false);
 #endif
 		End_CinematicCamera();
+		CLevelTransitionService::Report_NetworkRecovery(
+			"level-valtan.network-connection-lost",
+			"Valtan replication observed a disconnected Server session.");
+		CNetworkManager::Get().Close_ServerConnection();
 		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
 			"network.connection-lost"))
@@ -463,10 +475,13 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	}
 	if (!Apply_EncounterPropPresentation())
 	{
-		CLevelTransitionService::Report_LoadFailure(
-			E_FAIL,
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED,
+			"level-valtan.encounter-prop-sync",
 			"[Level_ValtanArena][EncounterPropSync] " +
-				m_DeployRuntime.Get_Status());
+				m_DeployRuntime.Get_Status(),
+			E_FAIL);
 #ifdef _DEBUG
 		End_ReferenceCamera(false);
 #endif
