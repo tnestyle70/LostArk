@@ -38,6 +38,7 @@ namespace
 		std::string strHost = "127.0.0.1";
 		std::uint16_t iPort = 7777u;
 		std::uint32_t iTimeoutMilliseconds = 4000u;
+		std::uint32_t iBernPartySize = 0u;
 		bool isG02IdentityFast = false;
 	};
 
@@ -67,6 +68,7 @@ namespace
 		bool hasPort = false;
 		bool hasTimeout = false;
 		bool hasG02IdentityFast = false;
+		bool hasBernPartySize = false;
 		for (int index = 1; index < argumentCount; ++index)
 		{
 			const std::string_view argument(arguments[index]);
@@ -110,10 +112,29 @@ namespace
 				hasG02IdentityFast = true;
 				continue;
 			}
+			if ("--bern-party-size" == argument && !hasBernPartySize &&
+				index + 1 < argumentCount)
+			{
+				std::uint32_t partySize = 0u;
+				if (!Parse_Unsigned(arguments[++index], partySize) ||
+					(partySize != 2u && partySize != 4u))
+				{
+					error = "--bern-party-size must be 2 or 4";
+					return false;
+				}
+				options.iBernPartySize = partySize;
+				hasBernPartySize = true;
+				continue;
+			}
 
 			error = "Usage: CharacterSelectIsolationHarness [--host IPv4] "
 				"[--port 1..65535] [--timeout-ms 1000..4000] "
-				"[--g02-identity-fast]";
+				"[--g02-identity-fast | --bern-party-size 2|4]";
+			return false;
+		}
+		if (hasG02IdentityFast && hasBernPartySize)
+		{
+			error = "--g02-identity-fast and --bern-party-size cannot be combined";
 			return false;
 		}
 
@@ -1517,6 +1538,7 @@ namespace
 
 int main(const int argumentCount, char** arguments)
 {
+	std::cout.setf(std::ios_base::unitbuf);
 	HARNESS_OPTIONS options{};
 	std::string error;
 	if (!Parse_Options(argumentCount, arguments, options, error))
@@ -1532,12 +1554,12 @@ int main(const int argumentCount, char** arguments)
 		return 1;
 	}
 
-	if (!Run_CharacterSelectIsolation(options, error) ||
-		!Run_BernSharedProof(options, error) ||
-		(!options.isG02IdentityFast &&
-			(!Run_BernToValtanTransferProof(options, error) ||
-				!Run_BernPartyTransferProof(options, 2u, error) ||
-				!Run_BernPartyTransferProof(options, 4u, error))))
+	const bool passed = options.iBernPartySize != 0u ?
+		Run_BernPartyTransferProof(options, options.iBernPartySize, error) :
+		(Run_CharacterSelectIsolation(options, error) &&
+			Run_BernSharedProof(options, error) &&
+			(options.isG02IdentityFast || Run_BernToValtanTransferProof(options, error)));
+	if (!passed)
 	{
 		std::cerr << "[FAILURE] " << error << '\n';
 		return 1;

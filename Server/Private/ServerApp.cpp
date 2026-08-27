@@ -1900,7 +1900,6 @@ bool LostArk::Server::CServerApp::Acquire_RuntimeGameplayProcessMutex(
 	void*& handle,
 	std::string& status)
 {
-	handle = nullptr;
 #ifdef _DEBUG
 	constexpr const wchar_t* MUTEX_NAME =
 		L"Local\\LostArk.Server.ValtanRuntimeActivation.Debug";
@@ -1908,7 +1907,21 @@ bool LostArk::Server::CServerApp::Acquire_RuntimeGameplayProcessMutex(
 	constexpr const wchar_t* MUTEX_NAME =
 		L"Local\\LostArk.Server.ValtanRuntimeActivation.Release";
 #endif
-	HANDLE mutex = ::CreateMutexW(nullptr, FALSE, MUTEX_NAME);
+	return Acquire_NamedRuntimeGameplayProcessMutex(MUTEX_NAME, handle, status);
+}
+
+bool LostArk::Server::CServerApp::Acquire_NamedRuntimeGameplayProcessMutex(
+	const wchar_t* name,
+	void*& handle,
+	std::string& status)
+{
+	handle = nullptr;
+	if (nullptr == name || L'\0' == name[0])
+	{
+		status = "Runtime gameplay process mutex name is missing";
+		return false;
+	}
+	HANDLE mutex = ::CreateMutexW(nullptr, FALSE, name);
 	if (nullptr == mutex)
 	{
 		status = "Runtime gameplay process mutex cannot be created";

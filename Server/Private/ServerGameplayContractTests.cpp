@@ -3005,30 +3005,54 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			!CServerApp::Reset_RuntimeGameplayActivationToPackaged(
 				packagedResetRoot, newPackaged, resetStatus);
 		fs::remove_all(packagedResetRoot, packagedResetError);
+		tests.Require(
+			candidateResetSelectedPackaged && recoveredResetPackage &&
+			corruptJournalPreservedOldPointer && corruptPointerResetRejected,
+			"Reset a missing or retired candidate to packaged idempotently and reject corrupt durable state without mutation");
 
+		// Never contend with a user's running Server. Only the name is test-
+		// owned; creation, refusal and release use the production Win32 path.
+		const std::wstring mutexName =
+			L"Local\\LostArk.Server.ValtanRuntimeActivation.Contract." +
+			std::to_wstring(GetCurrentProcessId());
 		void* ownerMutex = nullptr;
 		std::string mutexStatus;
 		const bool acquiredOwnerMutex =
-			CServerApp::Acquire_RuntimeGameplayProcessMutex(
-				ownerMutex, mutexStatus);
+			CServerApp::Acquire_NamedRuntimeGameplayProcessMutex(
+				mutexName.c_str(), ownerMutex, mutexStatus) &&
+			nullptr != ownerMutex && mutexStatus.empty();
 		std::atomic_bool secondThreadWasRefused{ false };
-		std::thread competingResetThread([&secondThreadWasRefused]()
+		std::thread competingResetThread([&mutexName, &secondThreadWasRefused]()
 		{
 			void* competingMutex = nullptr;
 			std::string competingStatus;
 			secondThreadWasRefused.store(
-				!CServerApp::Acquire_RuntimeGameplayProcessMutex(
-					competingMutex, competingStatus));
+				!CServerApp::Acquire_NamedRuntimeGameplayProcessMutex(
+					mutexName.c_str(), competingMutex, competingStatus) &&
+				nullptr == competingMutex &&
+				"Another Server process owns the runtime gameplay activation lock" == competingStatus);
 			CServerApp::Release_RuntimeGameplayProcessMutex(competingMutex);
 		});
 		competingResetThread.join();
 		CServerApp::Release_RuntimeGameplayProcessMutex(ownerMutex);
+		const bool ownerReleased = nullptr == ownerMutex;
+		const bool acquiredAfterRelease =
+			CServerApp::Acquire_NamedRuntimeGameplayProcessMutex(
+				mutexName.c_str(), ownerMutex, mutexStatus) &&
+			nullptr != ownerMutex && mutexStatus.empty();
+		CServerApp::Release_RuntimeGameplayProcessMutex(ownerMutex);
 		tests.Require(
-			candidateResetSelectedPackaged && recoveredResetPackage &&
-			corruptJournalPreservedOldPointer &&
-			corruptPointerResetRejected && acquiredOwnerMutex &&
-			secondThreadWasRefused.load(),
-			"Reset a missing or retired candidate to packaged idempotently, reject corrupt durable state without mutation, and refuse a concurrent Server owner");
+			acquiredOwnerMutex && secondThreadWasRefused.load() &&
+			ownerReleased && acquiredAfterRelease && nullptr == ownerMutex,
+			"Acquire, refuse a concurrent owner, release and reacquire through the production mutex path in an isolated namespace");
+		const bool rejectedNullMutexName =
+			!CServerApp::Acquire_NamedRuntimeGameplayProcessMutex(nullptr, ownerMutex, mutexStatus) &&
+			nullptr == ownerMutex && !mutexStatus.empty();
+		const bool rejectedEmptyMutexName =
+			!CServerApp::Acquire_NamedRuntimeGameplayProcessMutex(L"", ownerMutex, mutexStatus) &&
+			nullptr == ownerMutex && !mutexStatus.empty();
+		tests.Require(rejectedNullMutexName && rejectedEmptyMutexName,
+			"Reject a missing mutex namespace instead of creating an unprotected unnamed lock");
 		fs::remove_all(runtimePersistenceRoot, runtimePersistenceError);
 
 		valtanRoom->m_WorldEntities.pop_back();

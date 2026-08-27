@@ -650,7 +650,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertEqual("STAGE_CLOCK", product_fist["timingBasis"])
         self.assertNotIn("clipOccurrenceId", product_fist)
 
-    def test_takeoff_excludes_late_legacy_rows_and_decal_ownership_is_exact(
+    def test_takeoff_excludes_late_legacy_rows_and_decal_owners_allow_user_edits(
         self,
     ) -> None:
         authored_root = REPOSITORY_ROOT / "Data/Effects/Authored"
@@ -675,13 +675,17 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
                 for resource in element.get("resources", [])
             ):
                 owners.add(document["effectAssetId"])
+        # The editable floor-wipe document may remove or replace this decal.
+        # Keep the other exact owners and reject unrelated ownership drift.
+        optional_floor_wipe_owner = (
+            "effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01"
+        )
         self.assertEqual(
             {
                 "effect.valtan.carrier-v1.attack.swing.active.clip-02",
-                "effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
                 "effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01",
             },
-            owners,
+            owners - {optional_floor_wipe_owner},
         )
 
     def test_new_effect_is_a_two_document_cas_transaction(self) -> None:

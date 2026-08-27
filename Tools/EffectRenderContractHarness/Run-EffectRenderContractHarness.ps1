@@ -28,8 +28,8 @@ try {
     $env:PATH = ($runtimeDirectories -join ';') + ';' + $previousPath
 
     & $executable $repoRoot
-    if ($LASTEXITCODE -ne 0) {
-        throw "EffectRenderContractHarness failed with exit code $LASTEXITCODE"
+    if ($global:LASTEXITCODE -ne 0) {
+        throw "EffectRenderContractHarness failed with exit code $global:LASTEXITCODE"
     }
 }
 finally {
