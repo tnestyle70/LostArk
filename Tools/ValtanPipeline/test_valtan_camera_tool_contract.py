@@ -20,6 +20,7 @@ camera_document = read("Client/Private/ValtanCinematicCameraDocument.cpp")
 camera_controller = read("Client/Private/ValtanCinematicCameraController.cpp")
 camera_controller_header = read("Client/Public/ValtanCinematicCameraController.h")
 valtan_level = read("Client/Private/Level_ValtanArena.cpp")
+valtan_runtime = read("Client/Private/Valtan.cpp")
 main_app = read("Client/Private/MainApp.cpp")
 boss_tool = read("Client/Private/BossTool.cpp")
 camera_runtime = read("Engine/Private/Camera.cpp")
@@ -357,6 +358,72 @@ require(
     entrance_handoff["transitionOutMs"] ==
     entrance_gameplay["stages"][-1]["durationMs"],
     "Valtan entrance camera invocation and final handoff wall do not close exactly",
+)
+
+raid_bgm_begin = valtan_runtime.index("void CValtan::Update_RaidBgm")
+raid_bgm_end = valtan_runtime.index(
+    "bool_t CValtan::Apply_NetworkState", raid_bgm_begin
+)
+raid_bgm_body = valtan_runtime[raid_bgm_begin:raid_bgm_end]
+require(
+    'constexpr const char_t* VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID' in
+    valtan_runtime and
+    '"VALTAN_ENTRANCE_CINEMATIC";' in valtan_runtime and
+    'constexpr const char_t* VALTAN_ENTRANCE_PATTERN_ID' in valtan_runtime and
+    '"VALTAN_ENTRANCE_WHIRLWIND";' in valtan_runtime,
+    "Valtan BGM must distinguish the camera-only entrance from the whirlwind entrance",
+)
+
+cinematic_check = "if (isCinematicEntrancePattern)"
+entrance_check = "if (isEntrancePattern)"
+late_join_check = "if (RAID_BGM_STATE::NONE == m_eRaidBgmState"
+require(
+    cinematic_check in raid_bgm_body and
+    entrance_check in raid_bgm_body and
+    late_join_check in raid_bgm_body,
+    "Valtan BGM must retain cinematic, entrance, and late-join branches",
+)
+
+cinematic_begin = raid_bgm_body.index(cinematic_check)
+entrance_begin = raid_bgm_body.index(entrance_check, cinematic_begin)
+late_join_begin = raid_bgm_body.index(late_join_check, entrance_begin)
+require(
+    cinematic_begin < entrance_begin < late_join_begin,
+    "The camera-only entrance must return before whirlwind and late-join handling",
+)
+
+cinematic_branch = raid_bgm_body[cinematic_begin:entrance_begin]
+require(
+    "return;" in cinematic_branch and
+    "Transition_RaidBgm" not in cinematic_branch and
+    "m_hasObservedEntrancePattern" not in cinematic_branch,
+    "VALTAN_ENTRANCE_CINEMATIC must preserve Level-owned M04 without entrance state",
+)
+
+entrance_branch = raid_bgm_body[entrance_begin:late_join_begin]
+require(
+    "m_hasObservedEntrancePattern = true;" in entrance_branch and
+    "Transition_RaidBgm(RAID_BGM_STATE::M05_INTRO);" in entrance_branch and
+    "return;" in entrance_branch,
+    "Only VALTAN_ENTRANCE_WHIRLWIND may mark the entrance and start M05",
+)
+
+post_late_join_check = "if (RAID_BGM_STATE::M05_INTRO == m_eRaidBgmState"
+post_late_join_begin = raid_bgm_body.index(post_late_join_check, late_join_begin)
+late_join_branch = raid_bgm_body[late_join_begin:post_late_join_begin]
+require(
+    "WORLD_ENTITY_ACTION::IDLE != action" in late_join_branch and
+    "m_hasObservedEntrancePattern = false;" in late_join_branch and
+    "Transition_RaidBgm(RAID_BGM_STATE::M06_PHASE_ONE);" in late_join_branch,
+    "A non-idle first normal snapshot must keep late-join semantics and enter M06",
+)
+
+post_entrance_branch = raid_bgm_body[post_late_join_begin:]
+require(
+    "m_hasObservedEntrancePattern" in post_entrance_branch and
+    "Transition_RaidBgm(RAID_BGM_STATE::M06_PHASE_ONE);" in
+    post_entrance_branch,
+    "The first normal snapshot after M05 must advance the sequence to M06",
 )
 six_pizza = next(row for row in presentation["patterns"]
                  if row["patternId"] == "VALTAN_SIX_PIZZA_106")

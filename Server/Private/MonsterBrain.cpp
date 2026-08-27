@@ -78,13 +78,11 @@ namespace
 		return deltaX * deltaX + deltaZ * deltaZ;
 	}
 
-	float NormalizeDegrees(float value)
+	float NormalizeDegrees(const float value)
 	{
-		while (value > 180.f)
-			value -= 360.f;
-		while (value < -180.f)
-			value += 360.f;
-		return value;
+		if (!std::isfinite(value))
+			return 0.f;
+		return std::remainder(value, 360.f);
 	}
 
 	float Approach(const float current, const float target, const float delta)

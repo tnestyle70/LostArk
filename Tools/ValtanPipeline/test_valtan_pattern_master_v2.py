@@ -946,7 +946,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             row["worldEventSetId"]: row for row in companion["sets"]
         }
         self.assertEqual(set(pipeline.WORLD_SET_OWNERS), set(event_sets))
-        self.assertEqual(30, len(event_sets[pipeline.WORLD_SET_ID]["members"]))
+        self.assertEqual(97, len(event_sets[pipeline.WORLD_SET_ID]["members"]))
         self.assertEqual(
             3,
             len(
@@ -993,10 +993,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             member["bindingId"]
             for member in event_sets[pipeline.WORLD_SET_ID]["members"]
         }
-        self.assertEqual(30, len(managed_ids))
+        self.assertEqual(97, len(managed_ids))
         source_other = [row for row in source["bindings"] if row["bindingId"] not in managed_ids]
         projected_other = [row for row in projected["bindings"] if row["bindingId"] not in managed_ids]
-        self.assertEqual(194, len(source_other))
+        self.assertEqual(127, len(source_other))
         self.assertEqual(source_other, projected_other)
         self.assertEqual(source["groups"], projected["groups"])
         self.assertEqual(source["mutations"], projected["mutations"])

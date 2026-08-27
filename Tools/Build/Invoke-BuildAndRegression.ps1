@@ -14,6 +14,8 @@ $valtanHarnessExe = Join-Path $repoRoot `
     "Tools\ValtanFourPlayerHarness\Bin\$Configuration\ValtanFourPlayerHarness.exe"
 $characterSelectIsolationHarnessExe = Join-Path $repoRoot `
     "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
+$actionPresentationTimelineHarnessExe = Join-Path $repoRoot `
+    "Tools\ActionPresentationTimelineHarness\Bin\$Configuration\ActionPresentationTimelineHarness.exe"
 $effectRenderHarnessExe = Join-Path $repoRoot `
     "Tools\EffectRenderContractHarness\Bin\$Configuration\EffectRenderContractHarness.exe"
 $pointLightFalloffHarnessExe = Join-Path $repoRoot `
@@ -58,6 +60,7 @@ function Assert-RuntimeLayout {
         $serverExe,
         $valtanHarnessExe,
         $characterSelectIsolationHarnessExe,
+        $actionPresentationTimelineHarnessExe,
         $effectRenderHarnessExe,
         $pointLightFalloffHarnessExe,
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_Deferred.hlsl'),
@@ -122,6 +125,8 @@ try {
             'Tools\ValtanFourPlayerHarness\Default\ValtanFourPlayerHarness.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\ActionPresentationTimelineHarness\Default\ActionPresentationTimelineHarness.vcxproj'
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
         Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
         Invoke-MSBuildProject $msbuild `
@@ -231,6 +236,10 @@ try {
 	& (Join-Path $repoRoot `
 		'Tools\Network\Run-CharacterSelectIsolationHarness.ps1') `
 		-Configuration $Configuration
+
+    & (Join-Path $repoRoot `
+        'Tools\ActionPresentationTimelineHarness\Run-ActionPresentationTimelineHarness.ps1') `
+        -Configuration $Configuration
 
     & (Join-Path $repoRoot `
         'Tools\EffectRenderContractHarness\Run-EffectRenderContractHarness.ps1') `

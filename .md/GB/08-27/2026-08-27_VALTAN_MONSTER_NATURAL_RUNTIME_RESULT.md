@@ -119,3 +119,12 @@ Effect source closure에는 실제 Resources에 존재하지만 Git에서 ignore
 ## 보존한 범위
 
 작업 시작 전 존재하던 Bern/Valtan BGM·Sound Manager 변경과 다른 untracked 파일은 되돌리거나 stage하지 않았다. 이번 기능도 자동 commit/stage하지 않았다.
+
+## 2026-08-28 PR 병합 전 교정
+
+손상된 spawn bootstrap의 `ANCHOR` 좌표나 yaw가 비유한값 또는 지나치게 큰 값이어도
+`from_chars`를 통과할 수 있었고, 기존 반복식 각도 정규화는 `1e20f`에서 진행하지 않아
+Server fixed tick을 멈출 수 있었다. runtime loader는 이제 X/Y/Z/yaw가 finite이고
+절댓값 100000 이하인지 stage 단계에서 검사해 실패 시 기존 committed catalog를 유지한다.
+각도 정규화도 bounded remainder 계산을 사용한다. 정상 load 뒤 손상된 replacement를 넣어
+revision/group/anchor가 바뀌지 않는 rollback 계약을 Server harness에 추가했다.

@@ -45,6 +45,8 @@ namespace
 	constexpr int32_t ROOT_MOTION_LOCK_ALL_AXES = -1;
 	constexpr const char_t* VALTAN_ENTRANCE_PATTERN_ID =
 		"VALTAN_ENTRANCE_WHIRLWIND";
+	constexpr const char_t* VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC";
 	constexpr const char_t* VALTAN_GHOST_TRANSITION_PATTERN_ID =
 		"VALTAN_GHOST_TRANSITION_15";
 	constexpr const char_t* VALTAN_GHOST_PHASE_ACTION_ID =
@@ -1850,6 +1852,8 @@ void CValtan::Update_RaidBgm(
 
 	const bool_t isEntrancePattern =
 		VALTAN_ENTRANCE_PATTERN_ID == patternId;
+	const bool_t isCinematicEntrancePattern =
+		VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID == patternId;
 	const bool_t isGhostTransition =
 		VALTAN_GHOST_TRANSITION_PATTERN_ID == patternId;
 	const bool_t isGhostPhaseEdge = isGhostTransition &&
@@ -1878,6 +1882,11 @@ void CValtan::Update_RaidBgm(
 		Transition_RaidBgm(RAID_BGM_STATE::M08_GHOST_PHASE);
 		return;
 	}
+	/* This camera-only entrance gate deliberately adds no BGM edge. Keep
+	   the Level-owned M04 track until VALTAN_ENTRANCE_WHIRLWIND starts M05,
+	   and do not classify its non-idle snapshots as a late join. */
+	if (isCinematicEntrancePattern)
+		return;
 	if (isEntrancePattern)
 	{
 		m_hasObservedEntrancePattern = true;

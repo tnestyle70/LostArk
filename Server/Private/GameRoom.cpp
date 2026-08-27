@@ -186,6 +186,68 @@ namespace
 		}
 	}
 
+	bool Is_SameDestructionTransitionTarget(
+		const WORLD_DESTRUCTION_STATE_TRANSITION& left,
+		const WORLD_DESTRUCTION_STATE_TRANSITION& right)
+	{
+		return left.strGroupId == right.strGroupId &&
+			left.strMutationId == right.strMutationId &&
+			left.ePreviousState == right.ePreviousState &&
+			left.eNextState == right.eNextState &&
+			left.eFinalState == right.eFinalState &&
+			left.iPreviousStateVersion == right.iPreviousStateVersion &&
+			left.iNextStateVersion == right.iNextStateVersion &&
+			left.iCommitTick == right.iCommitTick &&
+			left.bApplyPersistentMutation ==
+				right.bApplyPersistentMutation &&
+			left.MemberPlacementIds == right.MemberPlacementIds &&
+			left.strCollisionStateId == right.strCollisionStateId &&
+			left.strNavigationStateId == right.strNavigationStateId;
+	}
+
+	template<typename PAIR>
+	bool Append_UniqueDestructionTransitions(
+		const WORLD_DESTRUCTION_TRANSACTION& transaction,
+		const std::uint32_t expectedEncounterEpoch,
+		const std::uint32_t expectedRequestTick,
+		std::vector<PAIR>& stagedPairs,
+		std::map<std::string, std::size_t>& stagedIndexByGroupId)
+	{
+		if (transaction.iEncounterEpoch != expectedEncounterEpoch ||
+			transaction.iRequestTick != expectedRequestTick ||
+			transaction.BindingApplications.size() !=
+				transaction.Transitions.size() ||
+			transaction.Transitions.empty())
+		{
+			return false;
+		}
+		for (std::size_t index = 0u;
+			index < transaction.Transitions.size(); ++index)
+		{
+			const WORLD_DESTRUCTION_STATE_TRANSITION& transition =
+				transaction.Transitions[index];
+			const auto existing = stagedIndexByGroupId.find(
+				transition.strGroupId);
+			if (stagedIndexByGroupId.end() != existing)
+			{
+				if (!Is_SameDestructionTransitionTarget(
+					stagedPairs[existing->second].Transition, transition))
+				{
+					return false;
+				}
+				/* Contact bindings are staged first. A later stage binding may own
+				   the same mutation, but one transition must retain exactly one
+				   application, so keep that first valid pair. */
+				continue;
+			}
+			stagedIndexByGroupId.emplace(
+				transition.strGroupId, stagedPairs.size());
+			stagedPairs.push_back({
+				transaction.BindingApplications[index], transition });
+		}
+		return true;
+	}
+
 	std::uint64_t To_Microseconds(
 		const std::chrono::steady_clock::duration duration)
 	{
@@ -3933,29 +3995,13 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineArenaState(
 		WORLD_DESTRUCTION_STATE_TRANSITION Transition;
 	};
 	std::vector<STAGED_TRANSITION> staged;
-	std::set<std::string> stagedGroupIds;
+	std::map<std::string, std::size_t> stagedIndexByGroupId;
 	const auto append =
 		[&](const WORLD_DESTRUCTION_TRANSACTION& transaction) -> bool
 		{
-			if (transaction.iEncounterEpoch != runtime.Get_EncounterEpoch() ||
-				transaction.iRequestTick != requestTick ||
-				transaction.BindingApplications.size() !=
-					transaction.Transitions.size() ||
-				transaction.Transitions.empty())
-			{
-				return false;
-			}
-			for (std::size_t index = 0u;
-				index < transaction.Transitions.size(); ++index)
-			{
-				const std::string& groupId =
-					transaction.Transitions[index].strGroupId;
-				if (!stagedGroupIds.insert(groupId).second)
-					return false;
-				staged.push_back({ transaction.BindingApplications[index],
-					transaction.Transitions[index] });
-			}
-			return true;
+			return Append_UniqueDestructionTransitions(
+				transaction, runtime.Get_EncounterEpoch(), requestTick,
+				staged, stagedIndexByGroupId);
 		};
 	std::uint32_t triggerSequence = boss.iPatternSequence;
 	const auto nextSequence = [&triggerSequence]()
@@ -5615,38 +5661,28 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
 			}
 
-			/* Build one Server transaction containing the 69 ordinary contact
-			   walls and the 30 pattern-only outer walls. There are deliberately no
-			   one-shot debris events in this diagnostic view: it exists to inspect
-			   the final persistent arena, collision and navigation state. */
+			/* The 69 contact bindings and expanded 97-group 109 set overlap on
+			   67 ordinary walls. Fold only identical target transitions into 99
+			   unique walls; any conflicting payload for one group fails closed.
+			   There are deliberately no one-shot debris events in this diagnostic
+			   view: it inspects persistent arena, collision and navigation state. */
 			struct FINAL_TRANSITION_PAIR final
 			{
 				WORLD_DESTRUCTION_BINDING_APPLICATION Application;
 				WORLD_DESTRUCTION_STATE_TRANSITION Transition;
 			};
 			std::vector<FINAL_TRANSITION_PAIR> stagedPairs;
+			std::map<std::string, std::size_t> stagedIndexByGroupId;
 			const WORLD_DESTRUCTION_DESCRIPTOR_GRAPH& graph =
 				m_WorldDestructionBootstrap.Get_DescriptorGraph();
 			const auto appendTransaction =
-				[&stagedPairs, resetTick, this](
+				[&stagedPairs, &stagedIndexByGroupId, resetTick, this](
 					const WORLD_DESTRUCTION_TRANSACTION& transaction) -> bool
 				{
-					if (transaction.iEncounterEpoch !=
-							m_WorldDestructionRuntime.Get_EncounterEpoch() ||
-						transaction.iRequestTick != resetTick ||
-						transaction.BindingApplications.size() !=
-							transaction.Transitions.size())
-					{
-						return false;
-					}
-					for (std::size_t index = 0u;
-						index < transaction.Transitions.size(); ++index)
-					{
-						stagedPairs.push_back({
-							transaction.BindingApplications[index],
-							transaction.Transitions[index] });
-					}
-					return true;
+					return Append_UniqueDestructionTransitions(
+						transaction,
+						m_WorldDestructionRuntime.Get_EncounterEpoch(),
+						resetTick, stagedPairs, stagedIndexByGroupId);
 				};
 
 			for (const WORLD_DESTRUCTION_BINDING_DESCRIPTOR& binding :
@@ -8408,23 +8444,14 @@ bool LostArk::Server::CGameRoom::Break_EveryWallForAudition(
 		m_WorldDestructionBootstrap.Get_DescriptorGraph();
 	const std::uint32_t epoch = m_WorldDestructionRuntime.Get_EncounterEpoch();
 	std::vector<WALL_PAIR> stagedPairs;
+	std::map<std::string, std::size_t> stagedIndexByGroupId;
 	const auto append =
-		[&stagedPairs, epoch](const WORLD_DESTRUCTION_TRANSACTION& transaction)
+		[&stagedPairs, &stagedIndexByGroupId, epoch, resetTick](
+			const WORLD_DESTRUCTION_TRANSACTION& transaction)
 		{
-			if (transaction.iEncounterEpoch != epoch ||
-				transaction.BindingApplications.size() !=
-					transaction.Transitions.size())
-			{
-				return false;
-			}
-			for (std::size_t index = 0u;
-				index < transaction.Transitions.size(); ++index)
-			{
-				stagedPairs.push_back({
-					transaction.BindingApplications[index],
-					transaction.Transitions[index] });
-			}
-			return true;
+			return Append_UniqueDestructionTransitions(
+				transaction, epoch, resetTick,
+				stagedPairs, stagedIndexByGroupId);
 		};
 
 	for (const WORLD_DESTRUCTION_BINDING_DESCRIPTOR& binding : graph.Bindings)

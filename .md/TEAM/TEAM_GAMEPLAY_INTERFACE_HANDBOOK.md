@@ -112,7 +112,7 @@ Client capture는 실행 파일 옆 `Diagnostics/client-session-<pid>.jsonl`, Se
 `Diagnostics/server-session-<pid>.jsonl`이다. 기본 Debug 실행이면 각각
 `Client/Bin/Debug/Diagnostics`, `Server/Bin/Debug/Diagnostics` 아래에 생긴다. gameplay payload와 nickname은
 기록하지 않는다. Client의 `localEndpoint`는 실제 IP와 ephemeral port이고 direct LAN에서는 Server line의
-`peerAddress:peerPort`와 정확히 일치한다. protocol v39에서 이미 끊어진 TCP는 Server-only 원인을 Lobby로
+`peerAddress:peerPort`와 정확히 일치한다. protocol v40에서 이미 끊어진 TCP는 Server-only 원인을 Lobby로
 되돌려 보낼 수 없으므로 이 endpoint와 terminal UTC, player/entity를 함께 대조한다.
 
 `ROOM_FULL`이면 Server line의 context에서 `candidateSessionId`,

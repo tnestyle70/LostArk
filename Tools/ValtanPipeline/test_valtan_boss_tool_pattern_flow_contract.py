@@ -356,7 +356,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.network_header + self.network_source)
 
     def test_protocol_is_typed_bounded_and_covered_by_round_trip_harness(self) -> None:
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 39", self.packet_type)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 40", self.packet_type)
         for marker in (
             "C2S_DEBUG_VALTAN_PATTERN_FLOW_START",
             "S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT",

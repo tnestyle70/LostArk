@@ -394,6 +394,193 @@ namespace
 		return predicate();
 	}
 
+	bool Replace_FirstSpawnAnchorField(
+		std::string& bootstrapText,
+		const std::size_t fieldIndex,
+		const std::string_view replacement)
+	{
+		std::size_t rowStart = bootstrapText.find("ANCHOR\t");
+		while (std::string::npos != rowStart && 0u != rowStart &&
+			'\n' != bootstrapText[rowStart - 1u])
+		{
+			rowStart = bootstrapText.find("ANCHOR\t", rowStart + 1u);
+		}
+		if (std::string::npos == rowStart)
+			return false;
+
+		std::size_t rowEnd = bootstrapText.find('\n', rowStart);
+		if (std::string::npos == rowEnd)
+			rowEnd = bootstrapText.size();
+		std::size_t valueEnd = rowEnd;
+		if (valueEnd > rowStart && '\r' == bootstrapText[valueEnd - 1u])
+			--valueEnd;
+
+		std::size_t fieldStart = rowStart;
+		for (std::size_t index = 0u; index < fieldIndex; ++index)
+		{
+			const std::size_t tab = bootstrapText.find('\t', fieldStart);
+			if (std::string::npos == tab || tab >= valueEnd)
+				return false;
+			fieldStart = tab + 1u;
+		}
+		std::size_t fieldEnd = bootstrapText.find('\t', fieldStart);
+		if (std::string::npos == fieldEnd || fieldEnd > valueEnd)
+			fieldEnd = valueEnd;
+		if (fieldStart >= fieldEnd)
+			return false;
+		bootstrapText.replace(
+			fieldStart, fieldEnd - fieldStart, replacement);
+		return true;
+	}
+
+	bool Reject_CorruptSpawnAnchorReloadTransactionally(
+		LostArk::Server::CSpawnGroupBootstrap& bootstrap)
+	{
+		namespace fs = std::filesystem;
+		using LostArk::Server::SPAWN_GROUP_ANCHOR;
+		using LostArk::Shared::WORLD_ID;
+
+		const auto& groups = bootstrap.Get_Groups();
+		std::string preservedAnchorId;
+		for (const auto& group : groups)
+		{
+			for (const auto& wave : group.Waves)
+			{
+				if (!wave.Entries.empty())
+				{
+					preservedAnchorId = wave.Entries.front().strAnchorId;
+					break;
+				}
+			}
+			if (!preservedAnchorId.empty())
+				break;
+		}
+		const SPAWN_GROUP_ANCHOR* preservedAnchor =
+			bootstrap.Find_Anchor(preservedAnchorId);
+		if (groups.empty() || nullptr == preservedAnchor)
+			return false;
+		const SPAWN_GROUP_ANCHOR expectedAnchor = *preservedAnchor;
+		const std::size_t expectedGroupCount = groups.size();
+		const std::string expectedFirstGroupId =
+			groups.front().strSpawnGroupId;
+		const std::uint32_t expectedRevision = bootstrap.Get_Revision();
+
+		std::vector<wchar_t> environmentBuffer(32768u);
+		const DWORD configuredLength = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", environmentBuffer.data(),
+			static_cast<DWORD>(environmentBuffer.size()));
+		if (configuredLength >= environmentBuffer.size())
+			return false;
+		const bool hadConfiguredRoot = 0u != configuredLength;
+		const std::wstring previousRoot = hadConfiguredRoot ?
+			environmentBuffer.data() : L"";
+		fs::path packagedDataRoot;
+		if (hadConfiguredRoot)
+		{
+			packagedDataRoot = fs::path(previousRoot).lexically_normal();
+		}
+		else
+		{
+			std::vector<wchar_t> moduleBuffer(32768u);
+			const DWORD moduleLength = GetModuleFileNameW(
+				nullptr, moduleBuffer.data(),
+				static_cast<DWORD>(moduleBuffer.size()));
+			if (0u == moduleLength || moduleLength >= moduleBuffer.size())
+				return false;
+			packagedDataRoot = fs::path(moduleBuffer.data()).parent_path().
+				parent_path() / L"DataFiles";
+		}
+
+		std::ifstream input(
+			packagedDataRoot / L"World" /
+				L"VALTAN_ARENA.spawngroupsbootstrap",
+			std::ios::binary);
+		if (!input)
+			return false;
+		const std::string validText{
+			std::istreambuf_iterator<char>(input),
+			std::istreambuf_iterator<char>() };
+		if (validText.empty())
+			return false;
+
+		const fs::path fixtureRoot = fs::temp_directory_path() /
+			(L"LostArkSpawnAnchorContractTest-" +
+				std::to_wstring(GetCurrentProcessId()));
+		std::error_code fixtureError;
+		fs::remove_all(fixtureRoot, fixtureError);
+		if (fixtureError)
+			return false;
+		fs::create_directories(fixtureRoot / L"World", fixtureError);
+		if (fixtureError || !SetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", fixtureRoot.c_str()))
+		{
+			return false;
+		}
+
+		struct ANCHOR_CORRUPTION final
+		{
+			std::size_t fieldIndex = 0u;
+			std::string_view replacement;
+		};
+		constexpr std::array corruptions{
+			ANCHOR_CORRUPTION{ 2u, "100001" },
+			ANCHOR_CORRUPTION{ 3u, "-100001" },
+			ANCHOR_CORRUPTION{ 4u, "1e20" },
+			ANCHOR_CORRUPTION{ 5u, "1e20" },
+			ANCHOR_CORRUPTION{ 2u, "nan" },
+			ANCHOR_CORRUPTION{ 3u, "nan" },
+			ANCHOR_CORRUPTION{ 4u, "nan" },
+			ANCHOR_CORRUPTION{ 5u, "nan" }
+		};
+		bool rejectedAll = true;
+		for (const ANCHOR_CORRUPTION& corruption : corruptions)
+		{
+			std::string corruptText = validText;
+			if (!Replace_FirstSpawnAnchorField(
+				corruptText, corruption.fieldIndex, corruption.replacement))
+			{
+				rejectedAll = false;
+				break;
+			}
+			bool wroteFixture = false;
+			{
+				std::ofstream output(
+					fixtureRoot / L"World" /
+						L"VALTAN_ARENA.spawngroupsbootstrap",
+					std::ios::binary | std::ios::trunc);
+				output.write(corruptText.data(),
+					static_cast<std::streamsize>(corruptText.size()));
+				wroteFixture = output.good();
+			}
+			const bool rejected = wroteFixture &&
+				!bootstrap.Load(WORLD_ID::VALTAN_ARENA);
+			const SPAWN_GROUP_ANCHOR* currentAnchor =
+				bootstrap.Find_Anchor(preservedAnchorId);
+			rejectedAll = rejectedAll && rejected &&
+				bootstrap.Get_Status() ==
+					"Spawn group anchor row is invalid" &&
+				expectedRevision == bootstrap.Get_Revision() &&
+				expectedGroupCount == bootstrap.Get_Groups().size() &&
+				!bootstrap.Get_Groups().empty() &&
+				expectedFirstGroupId ==
+					bootstrap.Get_Groups().front().strSpawnGroupId &&
+				nullptr != currentAnchor &&
+				expectedAnchor.fPositionX == currentAnchor->fPositionX &&
+				expectedAnchor.fPositionY == currentAnchor->fPositionY &&
+				expectedAnchor.fPositionZ == currentAnchor->fPositionZ &&
+				expectedAnchor.fYawDegrees == currentAnchor->fYawDegrees;
+			if (!rejectedAll)
+				break;
+		}
+
+		const bool restoredEnvironment = SetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT",
+			hadConfiguredRoot ? previousRoot.c_str() : nullptr);
+		fixtureError.clear();
+		fs::remove_all(fixtureRoot, fixtureError);
+		return rejectedAll && restoredEnvironment && !fixtureError;
+	}
+
 	struct QUICK_SKILL_CONTRACT final
 	{
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass;
@@ -3207,7 +3394,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const bool reactiveTopologyExact = nullptr != patterns &&
 			34u == valtanLivePatternCount && 132u == valtanStageCount &&
 			24u == valtanStageActionCount &&
-			142u == valtanRuntimeBranchCount && 5u == valtanMotionCount &&
+			142u == valtanRuntimeBranchCount && 2u == valtanMotionCount &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&
 			2u == parryStance->Branches.size() &&
 			hasAction(parryStance,
@@ -3300,7 +3487,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr != counterSlam && 1u == counterSlam->Branches.size() &&
 			hasBranch(counterSlam, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
 		tests.Require(reactiveTopologyExact,
-			"Load all 132 current Valtan stages with the exact 24 actions, 142 runtime branches, five motions, and terminal counter slam");
+			"Load all 132 current Valtan stages with the exact 24 actions, 142 runtime branches, two stage motions, and terminal counter slam");
 		tests.Require(
 			nullptr != fourSlashes && 3u == fourSlashes->iHitCount &&
 			0u == fourSlashes->iHitDelayMs &&
@@ -4830,6 +5017,50 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			SERVER_ENTITY_ACTION::PATTERN_WINDUP == monster.eAction &&
 			players.begin()->second.iNetEntityId == monster.iTargetEntityId,
 			"Ignore protected players and acquire the same player after combat admission");
+	}
+	{
+		CServerNavigation navigation;
+		const bool navigationLoaded =
+			navigation.Load("LV_LOBBY_CLASSSELECT_SL00");
+		SERVER_WORLD_ENTITY monster{};
+		monster.iNetEntityId = 750u;
+		monster.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+		monster.eAction = SERVER_ENTITY_ACTION::CHASE;
+		monster.iCurrentHp = 100u;
+		monster.iMaximumHp = 100u;
+		monster.iTargetEntityId = 752u;
+		monster.iNextPathReplanTick = 100u;
+		monster.fYawDegrees = 1e20f;
+		monster.fCollisionRadius = 0.1f;
+		monster.fAttackRange = 0.01f;
+		monster.fEngageDistance = 10.f;
+		monster.fTargetReleaseDistance = 14.f;
+		monster.fMoveSpeed = 2.f;
+		monster.fTurnSpeedDegreesPerSecond = 180.f;
+		monster.fMoveAcceleration = 4.f;
+		monster.fMoveDeceleration = 6.f;
+		monster.fArrivalSlowRadius = 1.f;
+		monster.MovePath.push_back({ 2.f, 0.f, 0.f });
+
+		SERVER_PLAYER player{};
+		player.iPlayerId = 751u;
+		player.iNetEntityId = 752u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = 100u;
+		player.iMaximumHp = 100u;
+		player.fPositionX = 5.f;
+		player.isCombatReady = true;
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		players.emplace(player.iPlayerId, player);
+		std::vector<DAMAGE_EVENT> damageEvents;
+		CMonsterBrain monsterBrain;
+		monsterBrain.Update(
+			monster, players, catalog, navigation,
+			1.f / 30.f, 10u, damageEvents);
+		tests.Require(
+			navigationLoaded && std::isfinite(monster.fYawDegrees) &&
+			std::fabs(monster.fYawDegrees) <= 180.f,
+			"Normalize an extreme monster yaw in bounded time");
 	}
 	{
 		CServerNavigation navigation;
@@ -6526,6 +6757,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 			return placement.strPlacementId == "npc.bern.aylara";
 		});
+	const auto bernSchmidt = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "npc.bern.schmidt";
+		});
 	const auto bernPlayerEntrySpawn = std::find_if(
 		bernPlacements.begin(), bernPlacements.end(),
 		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -6697,7 +6934,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"collision.bern.editor-proof";
 		});
 	tests.Require(
-		bernLoaded && bernPlacements.size() == 35u &&
+		bernLoaded && bernPlacements.size() == 36u &&
 		4u == static_cast<size_t>(std::count_if(
 			bernPlacements.begin(), bernPlacements.end(),
 			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -6705,7 +6942,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
 					placement.isEnabled;
 			})) &&
-		29u == static_cast<size_t>(std::count_if(
+		30u == static_cast<size_t>(std::count_if(
 			bernPlacements.begin(), bernPlacements.end(),
 			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
 			{
@@ -6719,6 +6956,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		WORLD_BOOTSTRAP_KIND::NPC == bernAylara->eKind &&
 		bernAylara->strArchetypeId == "NPC_AYLARA" &&
 		bernAylara->isEnabled &&
+		bernSchmidt != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::NPC == bernSchmidt->eKind &&
+		bernSchmidt->strArchetypeId == "NPC_SCHMIDT" &&
+		bernSchmidt->isEnabled &&
 		bernPlayerEntrySpawn != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == bernPlayerEntrySpawn->eKind &&
 		bernLeftGuardPatrol != bernPlacements.end() &&
@@ -6750,7 +6991,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		1u == bernValtanTrigger->TriggerActions.size() &&
 		bernCollision != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind,
-		"Load Bern spawns, four irregular stationary plaza crowds, two guard ping-pong patrols toward the player entry, disabled legacy trigger, and collision box");
+		"Load Bern spawns, Schmidt, four irregular stationary plaza crowds, two guard ping-pong patrols toward the player entry, disabled legacy trigger, and collision box");
 	CServerCollisionSystem bernCollisionSystem;
 	std::string bernCollisionStatus;
 	tests.Require(
@@ -12762,10 +13003,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 	{
 		CSpawnGroupBootstrap spawnBootstrap;
+		const bool loaded = spawnBootstrap.Load(WORLD_ID::VALTAN_ARENA);
 		tests.Require(
-			spawnBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
-			3u == spawnBootstrap.Get_Groups().size(),
+			loaded && 3u == spawnBootstrap.Get_Groups().size(),
 			"Load three authored Valtan spawn groups");
+		tests.Require(
+			loaded && Reject_CorruptSpawnAnchorReloadTransactionally(
+				spawnBootstrap),
+			"Reject nonfinite or out-of-range spawn anchors and preserve the admitted bootstrap");
 		CSpawnGroupRuntime spawnRuntime;
 		std::string spawnStatus;
 		tests.Require(

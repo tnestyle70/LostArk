@@ -732,8 +732,8 @@ def build_world_event_sets(world: dict[str, Any]) -> dict[str, Any]:
     groups = unique_index(world["groups"], "groupId", "groups")
     mutations = unique_index(world["mutations"], "mutationId", "mutations")
     managed = world_managed_bindings(world)
-    if len(managed) != 30:
-        raise PipelineError(f"initial 109 migration requires 30 enabled bindings, got {len(managed)}")
+    if len(managed) != 97:
+        raise PipelineError(f"initial 109 migration requires 97 enabled bindings, got {len(managed)}")
     members: list[dict[str, Any]] = []
     placement_ids: set[str] = set()
     for ordinal, binding in enumerate(managed):
@@ -754,8 +754,8 @@ def build_world_event_sets(world: dict[str, Any]) -> dict[str, Any]:
         nav_regions = group.get("navigationRegionIds")
         if not isinstance(group_placements, list) or not group_placements:
             raise PipelineError(f"managed group has no placement closure: {group_id}")
-        if not isinstance(nav_regions, list) or not nav_regions:
-            raise PipelineError(f"managed group has no navigation closure: {group_id}")
+        if not isinstance(nav_regions, list):
+            raise PipelineError(f"managed group navigation closure is not a list: {group_id}")
         for placement_id in group_placements:
             stable_id(placement_id, f"group {group_id} placementId")
             if placement_id in placement_ids:
@@ -772,8 +772,8 @@ def build_world_event_sets(world: dict[str, Any]) -> dict[str, Any]:
                 "enabled": binding["enabled"],
             }
         )
-    if len(placement_ids) != 60:
-        raise PipelineError(f"initial 109 migration requires 60 unique placements, got {len(placement_ids)}")
+    if len(placement_ids) != 135:
+        raise PipelineError(f"initial 109 migration requires 135 unique placements, got {len(placement_ids)}")
     result = {
         "schema": "lostark.valtan-world-event-set-authoring",
         "formatVersion": 1,
@@ -888,8 +888,8 @@ def validate_world_event_sets(
         raise PipelineError(
             "world event set membership must equal the current managed flat binding IDs"
         )
-    if migration_fixture and (len(binding_ids) != 30 or len(placement_ids) != 60):
-        raise PipelineError("initial 109 migration fixture must close 30 bindings / 60 placements")
+    if migration_fixture and (len(binding_ids) != 97 or len(placement_ids) != 135):
+        raise PipelineError("initial 109 migration fixture must close 97 bindings / 135 placements")
 
 
 def _shape_from_flat(row: dict[str, Any], prefix: str = "hit") -> dict[str, Any]:

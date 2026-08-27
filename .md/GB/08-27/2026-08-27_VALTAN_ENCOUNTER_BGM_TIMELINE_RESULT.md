@@ -48,3 +48,17 @@ Client를 에이전트가 실행하거나 음향 결과를 대신 판정하지 �
 재시작한 뒤 레벨 진입 M01, Lugaru 종료 M04, 등장 M05, 첫 일반 전투 M06,
 14줄 망령화 M07, 망령 전투 M08, 최종 사망 M09를 직접 들어야 최종 runtime audio
 검증이 완료된다.
+
+## 2026-08-28 PR 병합 전 교정
+
+새 `VALTAN_ENTRANCE_CINEMATIC`은 카메라만 소유하며 BGM edge를 추가하지 않는다.
+합성 병합 트리에서는 이 non-IDLE pattern을 late join으로 오인해 M04에서 M06으로 바로
+넘어가고 M05를 생략했다. 이제 cinematic snapshot은 M04를 유지하고, 기존 계약대로
+`VALTAN_ENTRANCE_WHIRLWIND`가 M05를 시작하며 그 뒤 첫 일반 snapshot이 M06을 시작한다.
+카메라 계약 테스트가 이 순서와 late-join M06 경로를 함께 고정한다.
+
+위 런타임 리소스 PASS는 저작 당시 로컬 배치 결과였으며 Git dependency closure가 아니다.
+2026-08-28 clean PR worktree와 현재 공유 PC를 다시 확인한 결과 Bern 1개와 Valtan 7개,
+총 8개 WAV가 exact runtime 경로에 없다. 코드는 누락된 음악 presentation만 격리해 전투를
+계속하지만, 팀 관리 `Client/Bin/Resources/Sound` 입력을 다시 배치하기 전에는 BGM 재생을
+완료 또는 청음 PASS로 기록할 수 없다.

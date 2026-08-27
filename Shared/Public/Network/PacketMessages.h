@@ -726,9 +726,10 @@ namespace LostArk::Shared
 	inline constexpr std::size_t MAX_COMBAT_RUNTIME_REVISION_BYTES = 64;
 	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_GROUPS = 128;
 	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_CHANGED_STATES = 128;
-	// The 109 collapse breaks the outer ring and every interior wall on one
-	// edge, so this has to reach the whole graph the way its two siblings do.
-	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_EVENTS = 128;
+	// A maximum-length delta must still fit one 64 KiB frame when all 128
+	// changed-state slots are populated. 106 is the exact remaining budget;
+	// the current 109 collapse emits 97 changed states and 97 live events.
+	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_EVENTS = 106;
 
 	enum class WORLD_DESTRUCTION_RUNTIME_STATE : std::uint8_t
 	{

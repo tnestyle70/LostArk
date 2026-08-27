@@ -317,6 +317,52 @@ namespace
 		return result;
 	}
 
+	std::string Make_MaximumStableNetworkId(
+		const char fill,
+		const std::uint32_t ordinal)
+	{
+		std::string result(MAX_STABLE_NETWORK_ID_BYTES, fill);
+		result[result.size() - 3u] = static_cast<char>(
+			'0' + ordinal / 100u % 10u);
+		result[result.size() - 2u] = static_cast<char>(
+			'0' + ordinal / 10u % 10u);
+		result[result.size() - 1u] = static_cast<char>(
+			'0' + ordinal % 10u);
+		return result;
+	}
+
+	S2C_WORLD_DESTRUCTION_DELTA Make_MaximumSizedDestructionDelta(
+		const std::size_t stateCount,
+		const std::size_t eventCount)
+	{
+		S2C_WORLD_DESTRUCTION_DELTA result{};
+		result.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
+		result.iServerTick = 1u;
+		result.iEncounterEpoch = 1u;
+		result.ChangedStates.reserve(stateCount);
+		for (std::size_t index = 0u; index < stateCount; ++index)
+		{
+			WORLD_DESTRUCTION_STATE_WIRE state{};
+			state.strGroupId = Make_MaximumStableNetworkId(
+				'g', static_cast<std::uint32_t>(index));
+			state.eState = WORLD_DESTRUCTION_RUNTIME_STATE::DESPAWNED;
+			state.iStateVersion = static_cast<std::uint32_t>(index) + 1u;
+			state.iStateStartTick = static_cast<std::uint32_t>(index) + 1u;
+			result.ChangedStates.push_back(std::move(state));
+		}
+		result.LiveEvents.reserve(eventCount);
+		for (std::size_t index = 0u; index < eventCount; ++index)
+		{
+			WORLD_DESTRUCTION_EVENT_WIRE event = Make_DestructionEvent(index + 1u);
+			event.strGroupId = Make_MaximumStableNetworkId('e', 0u);
+			event.strMutationId = Make_MaximumStableNetworkId('m', 0u);
+			event.strBindingId = Make_MaximumStableNetworkId('b', 0u);
+			result.LiveEvents.push_back(std::move(event));
+		}
+		result.Diagnostics.iLastEventSequence = eventCount;
+		return result;
+	}
+
 	//월드 진입에 대한 테스트
 	void Test_EnterWorldRoundTrip(
 		TEST_RUNNER& testRunner)
@@ -2903,6 +2949,64 @@ namespace
 		}
 
 		{
+			constexpr std::size_t MAXIMUM_DELTA_PAYLOAD_BYTES = 65258u;
+			constexpr std::size_t MAXIMUM_DELTA_FRAME_BYTES = 65264u;
+			const S2C_WORLD_DESTRUCTION_DELTA maximumDelta =
+				Make_MaximumSizedDestructionDelta(
+					MAX_WORLD_DESTRUCTION_CHANGED_STATES,
+					MAX_WORLD_DESTRUCTION_EVENTS);
+			CPacketWriter maximumWriter;
+			std::vector<std::uint8_t> maximumFrame;
+			const bool wroteMaximum = Write_Message(maximumWriter, maximumDelta);
+			const bool framedMaximum = wroteMaximum && Build_Packet_Frame(
+				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA,
+				maximumWriter.Get_Buffer(), maximumFrame);
+			CPacketReader maximumReader{ maximumWriter.Get_Buffer() };
+			S2C_WORLD_DESTRUCTION_DELTA decodedMaximum{};
+			const bool readMaximum = wroteMaximum &&
+				Read_Message(maximumReader, decodedMaximum) &&
+				0u == maximumReader.Get_RemainingSize() &&
+				MAX_WORLD_DESTRUCTION_CHANGED_STATES ==
+					decodedMaximum.ChangedStates.size() &&
+				MAX_WORLD_DESTRUCTION_EVENTS ==
+					decodedMaximum.LiveEvents.size();
+			testRunner.Require(
+				framedMaximum && readMaximum &&
+				MAXIMUM_DELTA_PAYLOAD_BYTES ==
+					maximumWriter.Get_Buffer().size() &&
+				MAXIMUM_DELTA_FRAME_BYTES == maximumFrame.size() &&
+				maximumFrame.size() <= MAX_PACKET_BYTES,
+				"Frame 128 Maximum Destruction States And 106 Maximum Events");
+
+			constexpr std::size_t COLLAPSE_PAYLOAD_BYTES = 56847u;
+			constexpr std::size_t COLLAPSE_FRAME_BYTES = 56853u;
+			const S2C_WORLD_DESTRUCTION_DELTA collapseDelta =
+				Make_MaximumSizedDestructionDelta(97u, 97u);
+			CPacketWriter collapseWriter;
+			std::vector<std::uint8_t> collapseFrame;
+			const bool wroteCollapse = Write_Message(
+				collapseWriter, collapseDelta);
+			const bool framedCollapse = wroteCollapse && Build_Packet_Frame(
+				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA,
+				collapseWriter.Get_Buffer(), collapseFrame);
+			testRunner.Require(
+				framedCollapse &&
+				COLLAPSE_PAYLOAD_BYTES == collapseWriter.Get_Buffer().size() &&
+				COLLAPSE_FRAME_BYTES == collapseFrame.size() &&
+				collapseFrame.size() <= MAX_PACKET_BYTES,
+				"Frame Maximum-Length 97-State 97-Event Collapse Delta");
+
+			const S2C_WORLD_DESTRUCTION_DELTA overflowDelta =
+				Make_MaximumSizedDestructionDelta(
+					MAX_WORLD_DESTRUCTION_CHANGED_STATES,
+					MAX_WORLD_DESTRUCTION_EVENTS + 1u);
+			CPacketWriter overflowWriter;
+			testRunner.Require(
+				!Write_Message(overflowWriter, overflowDelta),
+				"Reject Canonical 107-Event Destruction Delta");
+		}
+
+		{
 			std::vector<std::uint8_t> malformed = validDeltaPayload;
 			malformed.pop_back();
 			CPacketReader reader{ malformed };
@@ -2913,7 +3017,8 @@ namespace
 				"Reject Truncated Destruction Delta Atomically");
 
 			malformed = validDeltaPayload;
-			malformed[76] = 65u;
+			malformed[76] = static_cast<std::uint8_t>(
+				MAX_WORLD_DESTRUCTION_EVENTS + 1u);
 			malformed[77] = 0u;
 			CPacketReader countReader{ malformed };
 			testRunner.Require(!Read_Message(countReader, unchanged),
@@ -3867,8 +3972,8 @@ namespace
 		}
 
 		testRunner.Require(
-			39u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Do Not Change Protocol Version 39");
+			40u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 40");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -3895,8 +4000,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			39u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Pattern Flow Contract Uses Protocol 39");
+			40u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Pattern Flow Contract Uses Protocol 40");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
