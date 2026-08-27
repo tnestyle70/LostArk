@@ -26,6 +26,7 @@
     <ClInclude Include="..\Public\Network\PacketFrame.h" />
     <ClInclude Include="..\Public\Network\PacketMessages.h" />
     <ClInclude Include="..\Public\Network\PacketReader.h" />
+    <ClInclude Include="..\Public\Network\SessionDiagnostic.h" />
     <ClInclude Include="..\Public\Network\PacketStreamParser.h" />
     <ClInclude Include="..\Public\Network\PacketType.h" />
     <ClInclude Include="..\Public\Network\PacketWriter.h" />

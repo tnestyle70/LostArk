@@ -101,6 +101,34 @@ Test-NetConnection 10.207.18.103 -Port 7777
 
 `TcpTestSucceeded: False`면 Server listener, endpoint 어댑터, TCP 7777 firewall, 공유기의 AP/client isolation 순서로 본다. `True`인데 Lobby에서 거부되거나 끊기면 서로 다른 commit/binary/protocol/gameplay bootstrap을 먼저 확인한다. 승인 뒤 `Stage loading failed`로 Lobby에 남으면 네트워크가 아니라 Client runtime Resources 또는 Loader 문제다. Bern과 Valtan은 player spawn이 네 개라 Server PC의 Client도 입장하면 다른 PC 세 대까지 같은 room에 들어갈 수 있다. Character Select는 session-private이므로 여러 PC가 같은 Server를 써도 서로 보이지 않으며, 동시 플레이 확인은 Bern 또는 Valtan에서 한다.
 
+#### Lobby fallback 진단과 4인 대조
+
+Lobby로 복귀하면 `Last Lobby recovery diagnostic`에서 최초 reason과 source/detail, remote/local endpoint,
+protocol, world/player/entity, packet/WSA/HRESULT, terminal UTC, 마지막 Server tick, raw/event queue
+current/high와 capture 경로를 확인한다. 운영 실패를 runtime assertion으로 process 종료하지 않으며,
+reason schema와 실패 재현은 NetworkProtocolHarness와 Server contract test가 assertion으로 고정한다.
+
+Client capture는 실행 파일 옆 `Diagnostics/client-session-<pid>.jsonl`, Server capture는 실행 파일 옆
+`Diagnostics/server-session-<pid>.jsonl`이다. 기본 Debug 실행이면 각각
+`Client/Bin/Debug/Diagnostics`, `Server/Bin/Debug/Diagnostics` 아래에 생긴다. gameplay payload와 nickname은
+기록하지 않는다. Client의 `localEndpoint`는 실제 IP와 ephemeral port이고 direct LAN에서는 Server line의
+`peerAddress:peerPort`와 정확히 일치한다. protocol v39에서 이미 끊어진 TCP는 Server-only 원인을 Lobby로
+되돌려 보낼 수 없으므로 이 endpoint와 terminal UTC, player/entity를 함께 대조한다.
+
+`ROOM_FULL`이면 Server line의 context에서 `candidateSessionId`,
+`registeredSessionsIncludingCandidate`, `activeRoster`를 본다. registered 수에는 거부된 candidate도
+포함된다. active roster의 네 `peer`를 네 Client Lobby의 local endpoint와 대조해 실제 사용자에게 없는
+endpoint가 있을 때만 stale/ghost 후보로 판정한다. `lastInboundAgeMs`는 heartbeat가 없는 계약에서 건강한
+idle Client도 커질 수 있으므로 단독 ghost 증거가 아니다. 네 endpoint가 모두 실제 접속자와 일치하면
+Server-host Client를 포함한 실제 fifth entry인지 확인한다.
+
+- `CLIENT_LOAD_*`, `CLIENT_ACTIVATION_*`, presentation/revision reason은 평균 Wi-Fi 속도가 아니라 해당
+  Client의 Data/Resources/Loader/Level 적용 경로를 먼저 조사한다.
+- `SERVER_SEND_ERROR_OR_TIMEOUT`과 큰 outbound high-watermark는 평균 RTT가 아니라 해당 Client가 socket을
+  drain하지 못한 blocked-send 증거다.
+- `SERVER_ROOM_INGRESS_OVERFLOW` 또는 reliable overflow는 Server queue pressure다.
+- `CLIENT_EXPECTED_ROOM_FULL`은 정상 capacity rejection이며 active roster 대조 전에는 ghost로 단정하지 않는다.
+
 현재 Server PC 주소가 실제 어댑터에 있는지는 다음 명령으로 확인한다.
 
 ```powershell

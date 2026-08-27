@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Level.h"
+#include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
 #include "Network/PacketType.h"
 
@@ -44,7 +45,10 @@ private:
 		LEVEL& outTargetLevel) const;
 	void Consume_EnterRejected();
 	void Consume_EnterAccepted();
-	void Cancel_PendingEntry(const string& reason);
+	void Cancel_PendingEntry(
+		const string& reason,
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON diagnosticReason,
+		const char_t* pDiagnosticSource);
 	void Render_StagePanel();
 
 private:
@@ -56,6 +60,8 @@ private:
 		LOBBY_COMMAND_PURPOSE::GAMEPLAY;
 	bool_t m_hasPendingCharacterCreationEntry = false;
 	std::chrono::steady_clock::time_point m_ApprovalDeadline{};
+	bool_t m_hasRecoveryDiagnostic = false;
+	CLIENT_RECOVERY_DIAGNOSTIC m_RecoveryDiagnostic;
 	string m_strStatus =
 		"Choose a stage directly or open Character Select to change class.";
 
