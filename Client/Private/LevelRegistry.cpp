@@ -36,18 +36,19 @@ namespace
 	MAP_LOAD_SCOPE MakeBernMapScope()
 	{
 		MAP_LOAD_SCOPE scope = MakeFullMapScope();
-		/* The Bern-only bypass proved that the camera-dependent popping came
-		   from false frustum rejection. Product rendering now uses normal
-		   culling again, with final-render camera snapshots, rebuilt bounds and
-		   conservative rejection below. Keep the switches explicit so the same
-		   diagnostic can be staged again without changing other levels. */
+		/* Valtan runs the same culling with zero margin and zero reject grace,
+		   on terrain with more height steps, without the popping reported here.
+		   The 08-25 Bern-only margin and 3-frame grace were mitigations for a
+		   cause that was never confirmed, so match Valtan exactly. Keep the
+		   switches explicit so the same diagnostic can be staged again without
+		   changing other levels. */
 		scope.frustumCulling.bypass = false;
 		scope.frustumCulling.diagnostics = false;
-		scope.frustumCulling.baseMargin = 0.25f;
-		scope.frustumCulling.largeObjectRadiusThreshold = 4.f;
-		scope.frustumCulling.largeObjectAbsoluteMargin = 2.f;
-		scope.frustumCulling.largeObjectRelativeMargin = 0.12f;
-		scope.frustumCulling.rejectHysteresisFrames = 3u;
+		scope.frustumCulling.baseMargin = 0.f;
+		scope.frustumCulling.largeObjectRadiusThreshold = 0.f;
+		scope.frustumCulling.largeObjectAbsoluteMargin = 0.f;
+		scope.frustumCulling.largeObjectRelativeMargin = 0.f;
+		scope.frustumCulling.rejectHysteresisFrames = 0u;
 		return scope;
 	}
 
