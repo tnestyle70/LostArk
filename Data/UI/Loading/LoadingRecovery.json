@@ -1,0 +1,45 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
+  "slots": [
+    {
+      "id": "LoadingRecovery_Panel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 270, "y": 252, "width": 740, "height": 216 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Loading/loading_i21_nopack.dds", "hoverPath": null, "tint": [0.35, 0.35, 0.35, 0.96], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "LoadingRecovery_Message",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 310, "y": 292, "width": 660, "height": 72 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "LoadingRecovery_RetryButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 569, "y": 388, "width": 142, "height": 48 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Lobby/create_character_button.png", "hoverPath": "UI/Lobby/create_character_button_hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    }
+  ]
+}

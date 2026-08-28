@@ -237,10 +237,11 @@ HRESULT CLevel_CharacterSelect::Render()
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
 		TEXT("LostArk Character Select - Server Arena"));
-#endif
 	Render_SelectionPanel();
+#endif
 	Render_ClassList();
 	Render_ArenaSpawnButtons();
+	Render_CreateCharacterProductInputHost();
 	return S_OK;
 }
 
@@ -1371,6 +1372,39 @@ bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 	return true;
 }
 
+void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
+{
+	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr != pViewport)
+	{
+		ImGui::SetNextWindowViewport(pViewport->ID);
+		ImGui::SetNextWindowPos(pViewport->WorkPos, ImGuiCond_Always);
+	}
+	ImGui::SetNextWindowSize(ImVec2(1.f, 1.f), ImGuiCond_Always);
+	constexpr ImGuiWindowFlags flags =
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_NoBackground |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoNav |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoFocusOnAppearing |
+		ImGuiWindowFlags_NoInputs;
+
+	const bool_t isHostOpen = ImGui::Begin(
+		"##CharacterSelectProductInputHost", nullptr, flags);
+	if (isHostOpen)
+	{
+		if (m_hasCreateCharacterButtonClick)
+		{
+			m_hasCreateCharacterButtonClick = false;
+			Open_CreateCharacterModal();
+		}
+		Render_CreateCharacterModal();
+	}
+	ImGui::End();
+}
+
+#ifdef _DEBUG
 void CLevel_CharacterSelect::Render_SelectionPanel()
 {
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -1389,12 +1423,6 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	{
 		ImGui::End();
 		return;
-	}
-
-	if (m_hasCreateCharacterButtonClick)
-	{
-		m_hasCreateCharacterButtonClick = false;
-		Open_CreateCharacterModal();
 	}
 
 	ImGui::TextUnformatted("Server-authorized Character Select");
@@ -1490,7 +1518,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		m_iPendingClassIndex.has_value() ||
 		Is_ClassPresentationPreparationPending());
 	if (ImGui::Button("Create Character"))
-		Open_CreateCharacterModal();
+		Request_CreateCharacterButtonClick();
 	ImGui::SameLine();
 	if (ImGui::Button("Enter Valtan Map"))
 		Enter_Stage(LOBBY_STAGE::VALTAN);
@@ -1502,9 +1530,9 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	ImGui::TextDisabled(
 		"F1: tools  |  F6: follow/free  |  Server-authorized skill input enabled");
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
-	Render_CreateCharacterModal();
 	ImGui::End();
 }
+#endif
 
 namespace
 {
@@ -1629,10 +1657,9 @@ void CLevel_CharacterSelect::Render_ClassList()
 	/* Create Character modal's 4 slots (Panel/TextBox/Confirm/Cancel) are drawn entirely by
 	Render_CreateCharacterModal() -- hover-aware, gated on m_isCreateCharacterModalOpen, and with
 	the real InputText overlay positioned relative to them. Left un-hidden, this generic per-slot
-	pass drew all 4 every frame regardless of whether the modal was open, and did so *after*
-	Render_CreateCharacterModal() already ran (Render_SelectionPanel -> Render_ClassList order),
-	so its plain re-draw of TextBox landed on top of the already-submitted InputText -- same
-	double-draw problem Esther_GaugeFill/Ready glows solve the same way. */
+	pass would draw all 4 every frame regardless of whether the modal was open. The common product
+	input host submits those slots conditionally after this pass, so the generic view must never
+	own them -- the same double-draw boundary Esther_GaugeFill/Ready glows use. */
 	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", false);
 	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", false);
 	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_ConfirmButton", false);
@@ -1947,11 +1974,11 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		}
 	}
 
-	/* CreateCharacterButton: real image button for the same Open_CreateCharacterModal() the
-	ImGui "Create Character" button already calls (Render_SelectionPanel), gated the same way
-	(bInteractable already covers isConnecting/isReturning/transitionPending via MODE::SERVER_ARENA
-	and the other two checks; m_iPendingClassIndex is the one condition bInteractable doesn't
-	already include). */
+	/* CreateCharacterButton stages the same one-shot request as the Debug "Create Character"
+	button. Render_CreateCharacterProductInputHost owns the matching OpenPopup/BeginPopupModal ID
+	stack in both configurations. bInteractable already covers
+	isConnecting/isReturning/transitionPending via MODE::SERVER_ARENA and the other two checks;
+	m_iPendingClassIndex is the one condition bInteractable does not already include. */
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (m_pClassSelectView->Get_SlotRect("CreateCharacterButton", fX, fY, fWidth, fHeight))

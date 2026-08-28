@@ -32,12 +32,17 @@ private:
 	void Retry_LobbyLoad();
 	HRESULT Ready_Layer_Chrome();
 	bool_t Advance_TargetEffectPreparation();
+	void Render_LoadingRecoveryProduct();
+#ifdef _DEBUG
+	void Render_LoadingProgressDiagnostics();
+#endif
 
 private:
 	LEVEL m_eNextLevelID = LEVEL::END;
 	LOBBY_COMMAND_TOKEN m_iLobbyCommandToken =
 		INVALID_LOBBY_COMMAND_TOKEN;
 	unique_ptr<class CLoader> m_pLoader = { nullptr };
+	unique_ptr<class CHUDRuntimeView> m_pRecoveryView = { nullptr };
 	bool_t m_isActivationRequested = { false };
 	bool_t m_isFailureReported = { false };
 	bool_t m_isRetryRequested = { false };

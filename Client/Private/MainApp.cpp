@@ -17,6 +17,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
+#include "Level_Lobby.h"
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
 #include "Level_Loading.h"
@@ -63,6 +64,22 @@
 
 namespace
 {
+	struct LOBBY_PRODUCT_BUTTON
+	{
+		const char_t* pSlotId;
+		LOBBY_STAGE eStage;
+		const wchar_t* pLabel;
+	};
+
+	constexpr std::array<LOBBY_PRODUCT_BUTTON, 4> LOBBY_PRODUCT_BUTTONS =
+	{{
+		{ "Lobby_TestButton", LOBBY_STAGE::TEST, L"\xD14C\xC2A4\xD2B8" },
+		{ "Lobby_CreateCharacterButton", LOBBY_STAGE::CHARACTER_SELECT,
+			L"\xCE90\xB9AD\xD130 \xC0DD\xC131" },
+		{ "Lobby_ValtanButton", LOBBY_STAGE::VALTAN, L"\xBC1C\xD0C4" },
+		{ "Lobby_BernButton", LOBBY_STAGE::BERN, L"\xBCA0\xB978" },
+	}};
+
 	/* Not _DEBUG-gated: the K (skill window) toggle below needs this in Release too, not just
 	the _DEBUG-only map tool focus check further down. */
 	bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
@@ -1461,23 +1478,25 @@ void CMainApp::Render_LobbyButtons()
 		return;
 	const float scaleX = pViewport->WorkSize.x / 1280.f;
 	const float scaleY = pViewport->WorkSize.y / 720.f;
-
-	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-	if (!m_pLobbyBackgroundView->Get_SlotRect(
-		"Lobby_CreateCharacterButton", fX, fY, fWidth, fHeight))
-	{
-		return;
-	}
-
-	const ImVec2 vMin(
-		pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
 	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-
-	if (bHovered)
+	for (const LOBBY_PRODUCT_BUTTON& Button : LOBBY_PRODUCT_BUTTONS)
 	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pLobbyBackgroundView->Get_SlotRect(
+			Button.pSlotId, fX, fY, fWidth, fHeight))
+		{
+			continue;
+		}
+
+		const ImVec2 vMin(
+			pViewport->WorkPos.x + fX * scaleX,
+			pViewport->WorkPos.y + fY * scaleY);
+		const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
+		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+			vMouse.y >= vMin.y && vMouse.y < vMax.y;
+		if (!bHovered)
+			continue;
+
 		/* Base idle art is already drawn by the generic m_pLobbyBackgroundView->Render("", 0)
 		pass above; this draws the real hover art directly on top of it (same rect, fully opaque),
 		matching how CInventoryView::Render_CategoryTabs swaps hover art manually. */
@@ -1486,11 +1505,13 @@ void CMainApp::Render_LobbyButtons()
 		{
 			ImGui::GetForegroundDrawList(pViewport)->AddImage(pHoverSRV, vMin, vMax);
 		}
-		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+			CLevel_Lobby::Can_SubmitProductCommand())
 		{
 			Play_UIButtonClickSound();
-			CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT);
+			CLobbyCommandService::Request(Button.eStage);
 		}
+		break;
 	}
 }
 
@@ -1501,38 +1522,33 @@ void CMainApp::RenderLobbyButtonText()
 	if (nullptr == m_pLobbyBackgroundView)
 		return;
 
-	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-	if (!m_pLobbyBackgroundView->Get_SlotRect(
-		"Lobby_CreateCharacterButton", fX, fY, fWidth, fHeight))
-	{
-		return;
-	}
-
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
 	const float textScaleX = vTextViewportSize.x / 1280.f;
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	const f32_t fCenterX = fX + fWidth * 0.5f;
-	const f32_t fCenterY = fY + fHeight * 0.5f;
+	for (const LOBBY_PRODUCT_BUTTON& Button : LOBBY_PRODUCT_BUTTONS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pLobbyBackgroundView->Get_SlotRect(
+			Button.pSlotId, fX, fY, fWidth, fHeight))
+		{
+			continue;
+		}
 
-	/* Font_YoonGasiIIM -- same real LostArk source font already used for the inventory title and
-	HUD key labels (see RenderQuickSlotKeyLabels), picked for real readability over YG760.
-	Written as \x-escaped UTF-16 code units (not raw UTF-8 source bytes) -- this file has no BOM,
-	so MSVC's source-encoding fallback mangles literal non-ASCII bytes in string literals into
-	garbage code points at compile time (matches InventoryView.cpp's existing "\xC18C\xC9C0\xD488"
-	pattern for "소지품"). */
-	const wchar_t* pLabel = L"\xCE90\xB9AD\xD130 \xC0DD\xC131"; // "캐릭터 생성"
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
-	/* 6-glyph label on a narrow 142px button -- height-only scaling (like the single-glyph HUD
-	key labels) ran the text past the button's own edges, so this also caps by width. */
-	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.32f / vMeasured.y) : 1.f;
-	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.8f / vMeasured.x) : 1.f;
-	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(
+			TEXT("Font_YoonGasiIIM"), Button.pLabel);
+		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
+			(fHeight * 0.32f / vMeasured.y) : 1.f;
+		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
+			(fWidth * 0.8f / vMeasured.x) : 1.f;
+		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Button.pLabel,
+			float2_t(
+				(fX + fWidth * 0.5f) * textScaleX,
+				(fY + fHeight * 0.5f) * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	}
 }
 
 void CMainApp::RenderItemUpgradeButtonText()
