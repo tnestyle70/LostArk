@@ -1058,7 +1058,7 @@ void Client::CBossTool::Render_AddPatternPopup()
 		};
 		ImGui::SeparatorText("CORE SERVER PATTERNS (8)");
 		RenderIds(m_AuditionInventory.CorePatternIds);
-		ImGui::SeparatorText("ANIMATOR PATTERNS (19)");
+		ImGui::SeparatorText("ANIMATOR PATTERNS (20)");
 		RenderIds(m_AuditionInventory.AnimatorPatternIds);
 	}
 	ImGui::EndChild();
@@ -1476,7 +1476,7 @@ void Client::CBossTool::Render_PatternList()
 	}
 	if (HasVisible(m_AuditionInventory.AnimatorPatternIds))
 	{
-		ImGui::SeparatorText("ANIMATOR PATTERNS (19)");
+		ImGui::SeparatorText("ANIMATOR PATTERNS (20)");
 		RenderPatternIds(m_AuditionInventory.AnimatorPatternIds);
 	}
 	if (0u == iVisiblePatternCount)

@@ -95,8 +95,9 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	m_pModelCom->Set_AnimationSpeed(1.f);
 	if (!m_pModelCom->Set_Animation(pClipName, isLoop))
 		return false;
-	CEffectV2Runtime::Notify_NpcClip(
-		static_pointer_cast<CNpc>(shared_from_this()), pClipName);
+	CEffectV2Runtime::Notify_Clip(
+		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
+		pClipName);
 	return true;
 }
 
@@ -125,8 +126,9 @@ bool_t CNpc::Play_NetworkAction(
 	}
 	/* Keep the existing NPC effect/cutin hook on every semantic action edge,
 	including a restart that resolves to the same clip name. */
-	CEffectV2Runtime::Notify_NpcClip(
-		static_pointer_cast<CNpc>(shared_from_this()), pClipName);
+	CEffectV2Runtime::Notify_Clip(
+		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
+		pClipName);
 	return true;
 }
 
@@ -238,8 +240,9 @@ void CNpc::Update(f32_t fTimeDelta)
 		m_pColliderCom->Update(XMLoadFloat4x4(
 			m_pTransformCom->Get_WorldMatrixPtr()));
 	}
-	CEffectV2Runtime::Tick_Npc(
-		static_pointer_cast<CNpc>(shared_from_this()), m_pDevice, m_pContext);
+	CEffectV2Runtime::Tick(
+		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
+		m_pDevice, m_pContext);
 	if (m_fHitFlashRemainingSeconds > 0.f)
 	{
 		m_fHitFlashRemainingSeconds -= fTimeDelta;

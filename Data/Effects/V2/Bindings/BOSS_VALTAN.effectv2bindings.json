@@ -1,0 +1,13 @@
+{
+  "schema": "lostark.effect-v2-bindings",
+  "formatVersion": 1,
+  "archetypeId": "BOSS_VALTAN",
+  "bindings": [
+    { "effectId": "boss.valtan.hand_1", "stage": "valtan.sequence.center-trash-rush-if.step-06", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "boss.valtan.hand_2", "stage": "valtan.sequence.center-trash-rush-if.step-06", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "boss.valtan.hand_3", "stage": "valtan.sequence.rush-success.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "boss.valtan.hand_4", "stage": "valtan.sequence.rush-success.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "boss.valtan.hand_5", "stage": "valtan.sequence.rush-if.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "boss.valtan.hand_6", "stage": "valtan.sequence.rush-if.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false }
+  ]
+}

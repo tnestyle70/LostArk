@@ -16,6 +16,8 @@
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "Shader.h"
+#include "Valtan.h"
+#include "ValtanPresentationAssetService.h"
 
 #include "DirectXTK/DDSTextureLoader.h"
 
@@ -1270,6 +1272,23 @@ namespace
 {
 	constexpr const wchar_t* TARGET_LAYER_TAG = L"Layer_EffectPreviewV2Target";
 	constexpr f32_t BINDING_FRAME_RATE = 30.f;
+	constexpr const char* VALTAN_TARGET_ARCHETYPE_ID = "BOSS_VALTAN";
+
+	bool_t Resolve_ValtanStageAction(
+		const std::string_view strStageKind,
+		LostArk::Shared::WORLD_ENTITY_ACTION& eOutAction)
+	{
+		using LostArk::Shared::WORLD_ENTITY_ACTION;
+		if ("WINDUP" == strStageKind)
+			eOutAction = WORLD_ENTITY_ACTION::PATTERN_WINDUP;
+		else if ("ACTIVE" == strStageKind || "GROGGY" == strStageKind)
+			eOutAction = WORLD_ENTITY_ACTION::PATTERN_ACTIVE;
+		else if ("RECOVERY" == strStageKind || "PART_BREAK" == strStageKind)
+			eOutAction = WORLD_ENTITY_ACTION::PATTERN_RECOVERY;
+		else
+			return false;
+		return true;
+	}
 }
 
 bool_t Client::CEffect_Tool_V2::Collect_BoneNames(
@@ -1293,6 +1312,46 @@ bool_t Client::CEffect_Tool_V2::Collect_BoneNames(
 bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 {
 	Despawn_Target();
+	float3_t vPosition{ 0.f, 0.f, 0.f };
+	if (const std::shared_ptr<CCharacter> pCharacter =
+		CAnimationTargetService::Resolve_SceneCharacter();
+		nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
+	{
+		XMStoreFloat3(&vPosition,
+			pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
+			XMVectorSet(2.5f, 0.f, 0.f, 0.f));
+	}
+	const bool_t bSpawned = VALTAN_TARGET_ARCHETYPE_ID == strArchetypeId ?
+		Spawn_ValtanTarget(vPosition) : Spawn_NpcTarget(strArchetypeId, vPosition);
+	if (!bSpawned)
+		return false;
+
+	EFFECT_V2_TARGET_VIEW View;
+	if (!Resolve_TargetView(View))
+	{
+		Despawn_Target();
+		m_strAttachStatus = "Target spawn returned an unexpected object.";
+		return false;
+	}
+	CEffectV2Runtime::Set_Ignored(m_Target, !m_bRuntimeOnTarget);
+	m_strTargetArchetypeId = strArchetypeId;
+	m_vTargetPosition = vPosition;
+	m_fTargetYawDegrees = 0.f;
+	m_fTargetLastClipSeconds = -1.f;
+	if (m_strPivotBone.empty() || !View.pModel->Has_Bone(m_strPivotBone.c_str()))
+	{
+		m_strPivotBone = View.pModel->Has_Bone("b_effectroot") ? "b_effectroot" :
+			(m_TargetBoneNames.empty() ? std::string() : m_TargetBoneNames.front());
+	}
+	Load_Bindings(strArchetypeId);
+	m_strAttachStatus = "Target " + strArchetypeId + " spawned beside the scene character.";
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Spawn_NpcTarget(
+	const std::string& strArchetypeId,
+	const float3_t& vPosition)
+{
 	CGameInstance& GameInstance = CGameInstance::Get();
 	const uint32_t iLevel = GameInstance.Get_CurrentLevelID();
 	const NPC_ACTOR_ENTRY* pActor = CActorCatalog::Find_Npc(strArchetypeId);
@@ -1308,16 +1367,6 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 	{
 		m_strAttachStatus = "NPC presentation prototypes failed: " + strArchetypeId;
 		return false;
-	}
-
-	float3_t vPosition{ 0.f, 0.f, 0.f };
-	if (const std::shared_ptr<CCharacter> pCharacter =
-		CAnimationTargetService::Resolve_SceneCharacter();
-		nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
-	{
-		XMStoreFloat3(&vPosition,
-			pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
-			XMVectorSet(2.5f, 0.f, 0.f, 0.f));
 	}
 
 	CNpc::NPC_DESC Desc{};
@@ -1348,12 +1397,7 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 		m_strAttachStatus = "Target spawn returned an unexpected object.";
 		return false;
 	}
-	CEffectV2Runtime::Set_Ignored(pNpc, !m_bRuntimeOnTarget);
-	m_pTarget = pNpc;
-	m_strTargetArchetypeId = strArchetypeId;
-	m_vTargetPosition = vPosition;
-	m_fTargetYawDegrees = 0.f;
-	m_fTargetLastClipSeconds = -1.f;
+	m_Target = EFFECT_V2_TARGET::From_Npc(pNpc);
 
 	std::vector<std::string> BoneNames;
 	Collect_BoneNames(pActor->modelAssetId, BoneNames);
@@ -1363,40 +1407,128 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 		if (pNpc->Get_Model()->Has_Bone(strBone.c_str()))
 			m_TargetBoneNames.push_back(strBone);
 	}
-	if (m_strPivotBone.empty() || !pNpc->Get_Model()->Has_Bone(m_strPivotBone.c_str()))
-	{
-		m_strPivotBone = pNpc->Get_Model()->Has_Bone("b_effectroot") ? "b_effectroot" :
-			(m_TargetBoneNames.empty() ? std::string() : m_TargetBoneNames.front());
-	}
 
 	const auto Strike = pActor->actionClips.find("esther.strike");
 	if (Strike != pActor->actionClips.end() && !Strike->second.empty())
-		pNpc->Set_Animation(Strike->second.front().c_str(), m_bTargetClipLoop);
-
-	Load_Bindings(strArchetypeId);
-	m_strAttachStatus = "Target " + strArchetypeId + " spawned beside the scene character.";
+		Play_TargetClip(Strike->second.front().c_str(), m_bTargetClipLoop);
 	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Spawn_ValtanTarget(const float3_t& vPosition)
+{
+	CGameInstance& GameInstance = CGameInstance::Get();
+	const uint32_t iLevel = GameInstance.Get_CurrentLevelID();
+	const BOSS_ACTOR_ENTRY* pBoss = CActorCatalog::Find_Boss(VALTAN_TARGET_ARCHETYPE_ID);
+	if (nullptr == pBoss || pBoss->clientPresentationId != "boss.valtan.client.v1")
+	{
+		m_strAttachStatus = "Valtan presentation contract is not admitted.";
+		return false;
+	}
+	if (!CValtanPresentationAssetService::Is_Ready(iLevel) &&
+		FAILED(CValtanPresentationAssetService::Ensure_Prototypes(m_pDevice, m_pContext, iLevel)))
+	{
+		m_strAttachStatus = "Valtan presentation prototypes failed.";
+		return false;
+	}
+
+	CValtan::VALTAN_DESC Desc{};
+	Desc.iPrototypeLevelIndex = iLevel;
+	Desc.vPosition = vPosition;
+	Desc.fScale = pBoss->presentationScale;
+	Desc.fCollisionRadius = 0.f;
+	Desc.isServerAuthoritative = false;
+	std::shared_ptr<CGameObject> pGameObject;
+	if (FAILED(GameInstance.Add_GameObject_to_Layer(
+		iLevel, TEXT("Prototype_GameObject_Valtan"), iLevel, TARGET_LAYER_TAG,
+		&Desc, &pGameObject)))
+	{
+		m_strAttachStatus = "Valtan target spawn failed.";
+		return false;
+	}
+	const std::shared_ptr<CValtan> pValtan = std::dynamic_pointer_cast<CValtan>(pGameObject);
+	float4x4_t PresentationRoot{};
+	if (nullptr == pValtan || nullptr == pValtan->Get_BodyModel() ||
+		!pValtan->Try_Get_PresentationRootMatrix(&PresentationRoot))
+	{
+		GameInstance.Remove_GameObject_from_Layer(iLevel, TARGET_LAYER_TAG, pGameObject);
+		m_strAttachStatus = "Valtan target did not expose its body presentation root.";
+		return false;
+	}
+	m_Target = EFFECT_V2_TARGET::From_Valtan(pValtan);
+
+	std::vector<std::string> BoneNames;
+	Collect_BoneNames(pBoss->bodyModel, BoneNames);
+	m_TargetBoneNames.clear();
+	for (const std::string& strBone : BoneNames)
+	{
+		if (pValtan->Get_BodyModel()->Has_Bone(strBone.c_str()))
+			m_TargetBoneNames.push_back(strBone);
+	}
+
+	if (!pBoss->presentationClips.idle.empty())
+		Play_TargetClip(pBoss->presentationClips.idle.c_str(), m_bTargetClipLoop);
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Resolve_TargetView(EFFECT_V2_TARGET_VIEW& OutView) const
+{
+	return m_Target.Is_Valid() && CEffectV2Object::Resolve_TargetView(m_Target, OutView);
+}
+
+void Client::CEffect_Tool_V2::Play_TargetClip(const char_t* pClipName, const bool_t bLoop)
+{
+	EFFECT_V2_TARGET_VIEW View;
+	if (nullptr == pClipName || !Resolve_TargetView(View))
+		return;
+	View.pModel->Set_AnimationSpeed(1.f);
+	if (!View.pModel->Set_Animation(pClipName, bLoop))
+		return;
+	View.pModel->Set_AnimTrackPosition(View.pModel->Get_CurrentAnimIndex(), 0.f);
+	m_fTargetLastClipSeconds = -1.f;
+	CEffectV2Runtime::Notify_Clip(m_Target, pClipName);
 }
 
 void Client::CEffect_Tool_V2::Despawn_Target()
 {
+	m_bValtanTimelineActive = false;
+	m_bValtanTimelinePaused = false;
+	m_fValtanTimelineSeconds = 0.f;
+	m_iValtanTimelineStage = static_cast<size_t>(-1);
+	m_ValtanTimeline.clear();
 	if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
 		pPreview->Clear_FollowTarget();
 	m_ePivotMode = PIVOT_MODE::WORLD;
-	if (const std::shared_ptr<CNpc> pNpc = m_pTarget.lock())
+	if (const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock())
 	{
-		CEffectV2Runtime::Set_Ignored(pNpc, false);
+		CEffectV2Runtime::Set_Ignored(m_Target, false);
 		CGameInstance::Get().Remove_GameObject_from_Layer(
-			CGameInstance::Get().Get_CurrentLevelID(), TARGET_LAYER_TAG, pNpc);
+			CGameInstance::Get().Get_CurrentLevelID(), TARGET_LAYER_TAG, pOwner);
 	}
-	m_pTarget.reset();
+	m_Target.Reset();
 	m_TargetBoneNames.clear();
 }
 
 void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t fYawDegrees)
 {
-	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
-	if (nullptr == pNpc || !pNpc->Apply_NetworkState(vPosition, fYawDegrees))
+	const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock();
+	if (nullptr == pOwner)
+		return;
+	if (EFFECT_V2_TARGET_KIND::NPC == m_Target.eKind)
+	{
+		if (!std::static_pointer_cast<CNpc>(pOwner)->Apply_NetworkState(vPosition, fYawDegrees))
+			return;
+	}
+	else if (EFFECT_V2_TARGET_KIND::VALTAN == m_Target.eKind)
+	{
+		const std::shared_ptr<CTransform> pTransform =
+			std::static_pointer_cast<CValtan>(pOwner)->Get_Transform();
+		if (nullptr == pTransform)
+			return;
+		pTransform->Set_State(STATE::POSITION,
+			XMVectorSet(vPosition.x, vPosition.y, vPosition.z, 1.f));
+		pTransform->Rotation(0.f, fYawDegrees, 0.f);
+	}
+	else
 		return;
 	m_vTargetPosition = vPosition;
 	m_fTargetYawDegrees = fYawDegrees;
@@ -1404,15 +1536,16 @@ void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t
 
 void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 {
-	UNREFERENCED_PARAMETER(fTimeDelta);
-	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
+	Update_ValtanTimeline(fTimeDelta);
+	EFFECT_V2_TARGET_VIEW View;
+	const bool_t bHasTarget = Resolve_TargetView(View);
 	const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
 	if (nullptr != pPreview)
 	{
-		if (PIVOT_MODE::TARGET_BONE == m_ePivotMode && nullptr != pNpc &&
+		if (PIVOT_MODE::TARGET_BONE == m_ePivotMode && bHasTarget &&
 			!m_strPivotBone.empty())
 		{
-			pPreview->Set_FollowTarget(pNpc, m_strPivotBone, m_ePivotRotation);
+			pPreview->Set_FollowTarget(m_Target, m_strPivotBone, m_ePivotRotation);
 		}
 		else if (pPreview->Has_FollowTarget())
 			pPreview->Clear_FollowTarget();
@@ -1425,9 +1558,9 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 		pPreview->PivotWorld()._43 = m_vTestOrbitCenter.z + std::sin(m_fTestOrbitAngle) * m_fTestOrbitRadius;
 	}
 	const bool_t bSnapOnRestart = PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode;
-	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
+	if (!bHasTarget)
 		return;
-	const std::shared_ptr<Engine::CModel> pModel = pNpc->Get_Model();
+	const std::shared_ptr<Engine::CModel>& pModel = View.pModel;
 
 	f32_t fPosition = 0.f;
 	f32_t fDuration = 0.f;
@@ -1445,7 +1578,8 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 			Snap_PivotToTarget();
 		pPreview->Restart();
 	}
-	if (fSeconds < m_fTargetLastClipSeconds && nullptr != pPreview && 0 == m_iSpawnFrame)
+	if (!m_bValtanTimelineActive && fSeconds < m_fTargetLastClipSeconds &&
+		nullptr != pPreview && 0 == m_iSpawnFrame)
 	{
 		if (bSnapOnRestart)
 			Snap_PivotToTarget();
@@ -1456,18 +1590,391 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 
 void Client::CEffect_Tool_V2::Snap_PivotToTarget()
 {
-	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
+	EFFECT_V2_TARGET_VIEW View;
 	const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
-	if (nullptr == pNpc || nullptr == pPreview)
+	if (!Resolve_TargetView(View) || nullptr == pPreview)
 		return;
 	float4x4_t Pivot;
-	if (!CEffectV2Object::Resolve_TargetPivot(*pNpc, m_strPivotBone, m_ePivotRotation, Pivot))
+	if (!CEffectV2Object::Resolve_TargetPivot(View, m_strPivotBone, m_ePivotRotation, Pivot))
 	{
 		m_strAttachStatus = "Snap failed: bone not found " + m_strPivotBone;
 		return;
 	}
 	pPreview->Clear_FollowTarget();
 	pPreview->PivotWorld() = Pivot;
+}
+
+bool_t Client::CEffect_Tool_V2::Ensure_ValtanTree()
+{
+	if (m_bValtanTreeLoaded)
+		return !m_ValtanPatterns.empty();
+	m_bValtanTreeLoaded = true;
+	m_ValtanPatterns.clear();
+	m_iValtanPatternSelection = -1;
+	VALTAN_PATTERN_TREE_VIEW Staged;
+	if (!CValtanPatternTree::Load(Staged, m_strValtanTreeStatus))
+	{
+		m_ValtanTree = {};
+		return false;
+	}
+	m_ValtanTree = std::move(Staged);
+	for (const VALTAN_PATTERN_VIEW& Pattern : m_ValtanTree.Gimmicks)
+	{
+		if (Pattern.bAuthoringMasterManaged && !Pattern.Stages.empty())
+			m_ValtanPatterns.push_back(&Pattern);
+	}
+	for (const VALTAN_PATTERN_VIEW& Pattern : m_ValtanTree.Rotation)
+	{
+		if (Pattern.bAuthoringMasterManaged && !Pattern.Stages.empty())
+			m_ValtanPatterns.push_back(&Pattern);
+	}
+	m_strValtanTreeStatus = "Loaded " + std::to_string(m_ValtanPatterns.size()) +
+		" master pattern(s).";
+	return !m_ValtanPatterns.empty();
+}
+
+bool_t Client::CEffect_Tool_V2::Build_ValtanTimeline(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_PATTERN_PREVIEW_PATH ePath)
+{
+	m_ValtanTimeline.clear();
+	m_iValtanTimelineDurationMs = 0u;
+	m_iValtanTimelineStage = static_cast<size_t>(-1);
+	std::vector<const VALTAN_STAGE_VIEW*> Path;
+	std::string strError;
+	std::string strPathNote;
+	if (!CValtanPatternTree::Build_PreviewStagePath(Pattern, ePath, Path, strError))
+	{
+		/* A cyclic branch graph (catch loops) has no linear preview path. The
+		   authored stage order still names every Server stage once, which is
+		   all a stage-keyed binding needs. */
+		Path.clear();
+		for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+			Path.push_back(&Stage);
+		strPathNote = " (no linear path: " + strError + "; authored stage order)";
+	}
+	uint64_t iCursorMs = 0u;
+	for (const VALTAN_STAGE_VIEW* pStage : Path)
+	{
+		if (nullptr == pStage)
+			continue;
+		LostArk::Shared::WORLD_ENTITY_ACTION eAction =
+			LostArk::Shared::WORLD_ENTITY_ACTION::END;
+		if (!Resolve_ValtanStageAction(pStage->strStageKind, eAction))
+		{
+			m_strAttachStatus = "Stage kind has no arena action: " + pStage->strStageKind;
+			m_ValtanTimeline.clear();
+			return false;
+		}
+		VALTAN_TIMELINE_STAGE Stage;
+		Stage.strActionId = pStage->strActionId;
+		Stage.strStageId = pStage->strStageId;
+		Stage.strStageKind = pStage->strStageKind;
+		Stage.iStartMs = static_cast<uint32_t>(iCursorMs);
+		Stage.iDurationMs = pStage->iDurationMs;
+		iCursorMs += pStage->iDurationMs;
+		m_ValtanTimeline.push_back(std::move(Stage));
+	}
+	if (m_ValtanTimeline.empty() || 0u == iCursorMs)
+	{
+		m_strAttachStatus = "Pattern has no timed stage on this path.";
+		m_ValtanTimeline.clear();
+		return false;
+	}
+	m_iValtanTimelineDurationMs = static_cast<uint32_t>(iCursorMs);
+	m_strAttachStatus = "Pattern timeline " + std::to_string(m_iValtanTimelineDurationMs) +
+		" ms over " + std::to_string(m_ValtanTimeline.size()) + " stage(s)" + strPathNote;
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Try_ResolveValtanTimelineStage(
+	const uint32_t iTimelineMs,
+	size_t& iOutStage,
+	uint32_t& iOutStageOffsetMs) const
+{
+	for (size_t iStage = 0u; iStage < m_ValtanTimeline.size(); ++iStage)
+	{
+		const VALTAN_TIMELINE_STAGE& Stage = m_ValtanTimeline[iStage];
+		const bool_t bLast = iStage + 1u == m_ValtanTimeline.size();
+		if (iTimelineMs >= Stage.iStartMs &&
+			(iTimelineMs < Stage.iStartMs + Stage.iDurationMs || bLast))
+		{
+			iOutStage = iStage;
+			iOutStageOffsetMs = (std::min)(iTimelineMs - Stage.iStartMs, Stage.iDurationMs);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool_t Client::CEffect_Tool_V2::Apply_ValtanTimeline(const f32_t fSeconds, const bool_t bForceEdge)
+{
+	const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock();
+	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || nullptr == pOwner ||
+		m_ValtanTimeline.empty() || !std::isfinite(fSeconds))
+	{
+		return false;
+	}
+	const std::shared_ptr<CValtan> pValtan = std::static_pointer_cast<CValtan>(pOwner);
+	const uint32_t iTimelineMs = static_cast<uint32_t>(
+		std::lround((std::max)(0.f, fSeconds) * 1000.f));
+	size_t iStage = 0u;
+	uint32_t iOffsetMs = 0u;
+	if (!Try_ResolveValtanTimelineStage(iTimelineMs, iStage, iOffsetMs))
+		return false;
+	const VALTAN_TIMELINE_STAGE& Stage = m_ValtanTimeline[iStage];
+	LostArk::Shared::WORLD_ENTITY_ACTION eAction =
+		LostArk::Shared::WORLD_ENTITY_ACTION::END;
+	if (!Resolve_ValtanStageAction(Stage.strStageKind, eAction))
+		return false;
+	const bool_t bEdge = bForceEdge || iStage != m_iValtanTimelineStage;
+	if (!pValtan->Apply_LocalPatternPresentationSample(
+		eAction, Stage.strActionId, static_cast<f32_t>(iOffsetMs) * 0.001f, bEdge))
+	{
+		return false;
+	}
+	if (const std::shared_ptr<Engine::CModel> pModel = pValtan->Get_BodyModel())
+		pModel->Set_AnimPaused(true);
+	m_iValtanTimelineStage = iStage;
+	return true;
+}
+
+void Client::CEffect_Tool_V2::Update_ValtanTimeline(const f32_t fTimeDelta)
+{
+	if (!m_bValtanTimelineActive)
+		return;
+	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || !m_Target.Is_Valid() ||
+		m_ValtanTimeline.empty())
+	{
+		Stop_ValtanTimeline();
+		return;
+	}
+	const f32_t fDuration = static_cast<f32_t>(m_iValtanTimelineDurationMs) * 0.001f;
+	const f32_t fPrevious = m_fValtanTimelineSeconds;
+	if (!m_bValtanTimelinePaused && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+	{
+		m_fValtanTimelineSeconds += fTimeDelta;
+		if (m_fValtanTimelineSeconds >= fDuration)
+		{
+			if (m_bValtanTimelineLoop)
+				m_fValtanTimelineSeconds = 0.f;
+			else
+			{
+				m_fValtanTimelineSeconds = fDuration;
+				m_bValtanTimelinePaused = true;
+			}
+		}
+	}
+	Apply_ValtanTimeline(m_fValtanTimelineSeconds, false);
+	if (m_bValtanTimelinePaused)
+		return;
+	const f32_t fSpawn = static_cast<f32_t>(m_iValtanSpawnTimelineMs) * 0.001f;
+	const bool_t bWrapped = m_fValtanTimelineSeconds < fPrevious;
+	const bool_t bCrossed = bWrapped ?
+		m_fValtanTimelineSeconds >= fSpawn :
+		(fPrevious < fSpawn && m_fValtanTimelineSeconds >= fSpawn);
+	if (bCrossed)
+	{
+		if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
+		{
+			if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
+				Snap_PivotToTarget();
+			pPreview->Restart();
+		}
+	}
+}
+
+void Client::CEffect_Tool_V2::Stop_ValtanTimeline()
+{
+	const bool_t bWasActive = m_bValtanTimelineActive;
+	m_bValtanTimelineActive = false;
+	m_bValtanTimelinePaused = false;
+	m_fValtanTimelineSeconds = 0.f;
+	m_iValtanTimelineStage = static_cast<size_t>(-1);
+	if (!bWasActive)
+		return;
+	const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock();
+	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || nullptr == pOwner)
+		return;
+	std::static_pointer_cast<CValtan>(pOwner)->Reset_LocalPatternPresentationSample();
+	const BOSS_ACTOR_ENTRY* pBoss = CActorCatalog::Find_Boss(VALTAN_TARGET_ARCHETYPE_ID);
+	if (nullptr != pBoss && !pBoss->presentationClips.idle.empty())
+		Play_TargetClip(pBoss->presentationClips.idle.c_str(), m_bTargetClipLoop);
+}
+
+bool_t Client::CEffect_Tool_V2::Try_LocateValtanStage(
+	const std::string& strActionId,
+	const uint32_t iOffsetMs)
+{
+	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || !Ensure_ValtanTree())
+		return false;
+	constexpr VALTAN_PATTERN_PREVIEW_PATH Paths[] = {
+		VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+		VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
+		VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK
+	};
+	for (size_t iPattern = 0u; iPattern < m_ValtanPatterns.size(); ++iPattern)
+	{
+		const VALTAN_PATTERN_VIEW& Pattern = *m_ValtanPatterns[iPattern];
+		const bool_t bOwnsStage = std::any_of(
+			Pattern.Stages.begin(), Pattern.Stages.end(),
+			[&strActionId](const VALTAN_STAGE_VIEW& Stage)
+			{ return Stage.strActionId == strActionId; });
+		if (!bOwnsStage)
+			continue;
+		for (const VALTAN_PATTERN_PREVIEW_PATH ePath : Paths)
+		{
+			if (!Build_ValtanTimeline(Pattern, ePath))
+				continue;
+			for (const VALTAN_TIMELINE_STAGE& Stage : m_ValtanTimeline)
+			{
+				if (Stage.strActionId != strActionId)
+					continue;
+				m_iValtanPatternSelection = static_cast<int32_t>(iPattern);
+				m_eValtanPath = ePath;
+				m_iValtanSpawnTimelineMs = static_cast<int32_t>(
+					Stage.iStartMs + (std::min)(iOffsetMs, Stage.iDurationMs));
+				m_bValtanTimelineActive = true;
+				m_bValtanTimelinePaused = true;
+				m_fValtanTimelineSeconds = static_cast<f32_t>(m_iValtanSpawnTimelineMs) * 0.001f;
+				Apply_ValtanTimeline(m_fValtanTimelineSeconds, true);
+				return true;
+			}
+		}
+	}
+	m_ValtanTimeline.clear();
+	m_strAttachStatus = "No master pattern stage owns actionId " + strActionId;
+	return false;
+}
+
+void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
+{
+	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || !m_Target.Is_Valid())
+		return;
+	ImGui::SeparatorText("Pattern Timeline (Valtan master)");
+	if (!Ensure_ValtanTree())
+	{
+		ImGui::TextWrapped("%s", m_strValtanTreeStatus.c_str());
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Retry"))
+			m_bValtanTreeLoaded = false;
+		return;
+	}
+	const char* pPatternLabel =
+		m_iValtanPatternSelection >= 0 &&
+		m_iValtanPatternSelection < static_cast<int32_t>(m_ValtanPatterns.size()) ?
+		m_ValtanPatterns[static_cast<size_t>(m_iValtanPatternSelection)]->strPatternId.c_str() :
+		"(select)";
+	if (ImGui::BeginCombo("Pattern", pPatternLabel))
+	{
+		for (int32_t iIndex = 0; iIndex < static_cast<int32_t>(m_ValtanPatterns.size()); ++iIndex)
+		{
+			const VALTAN_PATTERN_VIEW& Pattern = *m_ValtanPatterns[static_cast<size_t>(iIndex)];
+			const std::string strLabel = Pattern.strPatternId + "  (" +
+				std::to_string(Pattern.Stages.size()) + " stages)";
+			if (ImGui::Selectable(strLabel.c_str(), iIndex == m_iValtanPatternSelection))
+			{
+				m_iValtanPatternSelection = iIndex;
+				if (m_bValtanTimelineActive)
+					Stop_ValtanTimeline();
+			}
+		}
+		ImGui::EndCombo();
+	}
+	int32_t iPath = static_cast<int32_t>(m_eValtanPath);
+	if (ImGui::Combo("Branch Path", &iPath, "NORMAL\0WALL_GROGGY\0PART_BREAK\0"))
+	{
+		m_eValtanPath = static_cast<VALTAN_PATTERN_PREVIEW_PATH>(iPath);
+		if (m_bValtanTimelineActive)
+			Stop_ValtanTimeline();
+	}
+	const bool_t bHasPattern = m_iValtanPatternSelection >= 0 &&
+		m_iValtanPatternSelection < static_cast<int32_t>(m_ValtanPatterns.size());
+	ImGui::BeginDisabled(!bHasPattern);
+	if (ImGui::Button(m_bValtanTimelineActive ?
+		(m_bValtanTimelinePaused ? "Resume" : "Pause") : "Play Pattern"))
+	{
+		if (!m_bValtanTimelineActive)
+		{
+			if (Build_ValtanTimeline(
+				*m_ValtanPatterns[static_cast<size_t>(m_iValtanPatternSelection)], m_eValtanPath))
+			{
+				m_bValtanTimelineActive = true;
+				m_bValtanTimelinePaused = false;
+				m_fValtanTimelineSeconds = 0.f;
+				m_iValtanSpawnTimelineMs = (std::min)(
+					m_iValtanSpawnTimelineMs, static_cast<int32_t>(m_iValtanTimelineDurationMs));
+				Apply_ValtanTimeline(0.f, true);
+				if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
+					nullptr != pPreview && 0 == m_iValtanSpawnTimelineMs)
+				{
+					pPreview->Restart();
+				}
+			}
+		}
+		else
+			m_bValtanTimelinePaused = !m_bValtanTimelinePaused;
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!m_bValtanTimelineActive);
+	if (ImGui::Button("Stop"))
+		Stop_ValtanTimeline();
+	ImGui::SameLine();
+	if (ImGui::Button("Restart Pattern"))
+	{
+		m_fValtanTimelineSeconds = 0.f;
+		m_bValtanTimelinePaused = false;
+		Apply_ValtanTimeline(0.f, true);
+		if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
+			nullptr != pPreview && 0 == m_iValtanSpawnTimelineMs)
+		{
+			pPreview->Restart();
+		}
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::Checkbox("Loop##Pattern", &m_bValtanTimelineLoop);
+	if (!m_bValtanTimelineActive)
+	{
+		ImGui::TextDisabled("Play a pattern to scrub its stages and place the spawn point.");
+		return;
+	}
+
+	int32_t iTimelineMs = static_cast<int32_t>(std::lround(m_fValtanTimelineSeconds * 1000.f));
+	ImGui::SetNextItemWidth(-1.f);
+	if (ImGui::SliderInt("##PatternScrub", &iTimelineMs, 0,
+		static_cast<int32_t>(m_iValtanTimelineDurationMs), "%d ms"))
+	{
+		m_bValtanTimelinePaused = true;
+		m_fValtanTimelineSeconds = static_cast<f32_t>(iTimelineMs) * 0.001f;
+		Apply_ValtanTimeline(m_fValtanTimelineSeconds, true);
+	}
+	size_t iStage = 0u;
+	uint32_t iStageOffsetMs = 0u;
+	if (Try_ResolveValtanTimelineStage(
+		static_cast<uint32_t>((std::max)(0, iTimelineMs)), iStage, iStageOffsetMs))
+	{
+		const VALTAN_TIMELINE_STAGE& Stage = m_ValtanTimeline[iStage];
+		ImGui::Text("Stage %zu/%zu  %s [%s]  +%u / %u ms",
+			iStage + 1u, m_ValtanTimeline.size(), Stage.strActionId.c_str(),
+			Stage.strStageKind.c_str(), iStageOffsetMs, Stage.iDurationMs);
+	}
+	if (ImGui::Button("Spawn Here"))
+		m_iValtanSpawnTimelineMs = (std::max)(0, iTimelineMs);
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(140.f);
+	ImGui::InputInt("Spawn Point (ms)", &m_iValtanSpawnTimelineMs);
+	m_iValtanSpawnTimelineMs = (std::max)(0,
+		(std::min)(m_iValtanSpawnTimelineMs, static_cast<int32_t>(m_iValtanTimelineDurationMs)));
+	size_t iSpawnStage = 0u;
+	uint32_t iSpawnOffsetMs = 0u;
+	if (Try_ResolveValtanTimelineStage(
+		static_cast<uint32_t>(m_iValtanSpawnTimelineMs), iSpawnStage, iSpawnOffsetMs))
+	{
+		ImGui::TextDisabled("Binding will store stage %s +%u ms (Server stage clock).",
+			m_ValtanTimeline[iSpawnStage].strActionId.c_str(), iSpawnOffsetMs);
+	}
 }
 
 bool_t Client::CEffect_Tool_V2::Load_Bindings(const std::string& strArchetypeId)
@@ -1523,50 +2030,52 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		ImGui::End();
 		return;
 	}
-	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
-	const std::shared_ptr<Engine::CModel> pModel =
-		nullptr != pNpc ? pNpc->Get_Model() : nullptr;
+	EFFECT_V2_TARGET_VIEW View;
+	const bool_t bHasTarget = Resolve_TargetView(View);
+	const std::shared_ptr<Engine::CModel> pModel = bHasTarget ? View.pModel : nullptr;
 
-	ImGui::SeparatorText("Target (NPC archetype)");
+	ImGui::SeparatorText("Target (NPC archetype / Valtan)");
 	const std::vector<NPC_ACTOR_ENTRY>& Npcs = CActorCatalog::Get_Npcs();
-	const char* pSelectedLabel =
-		m_iTargetArchetypeSelection >= 0 &&
-		m_iTargetArchetypeSelection < static_cast<int32_t>(Npcs.size()) ?
-		Npcs[static_cast<size_t>(m_iTargetArchetypeSelection)].archetypeId.c_str() : "(select)";
-	if (ImGui::BeginCombo("Archetype", pSelectedLabel))
+	if (ImGui::BeginCombo("Archetype",
+		m_strSelectedArchetypeId.empty() ? "(select)" : m_strSelectedArchetypeId.c_str()))
 	{
-		for (int32_t iIndex = 0; iIndex < static_cast<int32_t>(Npcs.size()); ++iIndex)
+		if (ImGui::Selectable("BOSS_VALTAN  (Valtan)",
+			VALTAN_TARGET_ARCHETYPE_ID == m_strSelectedArchetypeId))
 		{
-			const NPC_ACTOR_ENTRY& Entry = Npcs[static_cast<size_t>(iIndex)];
+			m_strSelectedArchetypeId = VALTAN_TARGET_ARCHETYPE_ID;
+		}
+		ImGui::Separator();
+		for (const NPC_ACTOR_ENTRY& Entry : Npcs)
+		{
 			if (Entry.runtimeStatus != "supported")
 				continue;
 			const std::string strLabel = Entry.archetypeId + "  (" +
 				std::filesystem::path(Entry.modelAssetId).stem().string() + ")";
-			if (ImGui::Selectable(strLabel.c_str(), iIndex == m_iTargetArchetypeSelection))
-				m_iTargetArchetypeSelection = iIndex;
+			if (ImGui::Selectable(strLabel.c_str(), Entry.archetypeId == m_strSelectedArchetypeId))
+				m_strSelectedArchetypeId = Entry.archetypeId;
 		}
 		ImGui::EndCombo();
 	}
-	ImGui::BeginDisabled(m_iTargetArchetypeSelection < 0);
+	ImGui::BeginDisabled(m_strSelectedArchetypeId.empty());
 	if (ImGui::Button("Spawn Target"))
-		Spawn_Target(Npcs[static_cast<size_t>(m_iTargetArchetypeSelection)].archetypeId);
+		Spawn_Target(m_strSelectedArchetypeId);
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(nullptr == pNpc);
+	ImGui::BeginDisabled(!bHasTarget);
 	if (ImGui::Button("Despawn"))
 		Despawn_Target();
 	ImGui::EndDisabled();
-	if (nullptr != pNpc)
+	if (bHasTarget)
 	{
 		ImGui::Text("Live: %s", m_strTargetArchetypeId.c_str());
 		if (ImGui::Checkbox("Runtime spawns on target", &m_bRuntimeOnTarget))
 		{
-			CEffectV2Runtime::Set_Ignored(pNpc, !m_bRuntimeOnTarget);
+			CEffectV2Runtime::Set_Ignored(m_Target, !m_bRuntimeOnTarget);
 			if (m_bRuntimeOnTarget && nullptr != pModel)
 			{
 				const char_t* pClip = pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex());
 				if (nullptr != pClip)
-					CEffectV2Runtime::Notify_NpcClip(pNpc, pClip);
+					CEffectV2Runtime::Notify_Clip(m_Target, pClip);
 			}
 		}
 		if (ImGui::IsItemHovered())
@@ -1604,11 +2113,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 				if (nullptr == pName)
 					continue;
 				if (ImGui::Selectable(pName, iClip == iCurrent))
-				{
-					pNpc->Set_Animation(pName, m_bTargetClipLoop);
-					pModel->Set_AnimTrackPosition(iClip, 0.f);
-					m_fTargetLastClipSeconds = -1.f;
-				}
+					Play_TargetClip(pName, m_bTargetClipLoop);
 			}
 			ImGui::EndCombo();
 		}
@@ -1661,6 +2166,8 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 			pModel->Set_Animation(iCurrent, m_bTargetClipLoop);
 	}
 
+	Render_ValtanPatternSection();
+
 	ImGui::SeparatorText("Effect Pivot");
 	int32_t iMode = static_cast<int32_t>(m_ePivotMode);
 	if (ImGui::Combo("Pivot Mode", &iMode, "World\0Target Bone (follow)\0Target Bone (snap once)\0"))
@@ -1693,7 +2200,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		m_ePivotRotation = static_cast<PIVOT_ROTATION>(iRotation);
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Bone: inherit bone orientation. Target Yaw: bone position + target facing (default). World: bone position only.");
-	if (PIVOT_MODE::TARGET_BONE == m_ePivotMode && nullptr == pNpc)
+	if (PIVOT_MODE::TARGET_BONE == m_ePivotMode && !bHasTarget)
 		ImGui::TextDisabled("Spawn a target to follow a bone.");
 	ImGui::InputInt("Spawn Frame (30 fps)", &m_iSpawnFrame);
 	m_iSpawnFrame = (std::max)(0, (std::min)(m_iSpawnFrame, 18000));
@@ -1703,25 +2210,50 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 	ImGui::SeparatorText("Bindings (Data/Effects/V2/Bindings)");
 	const char_t* pClipForBinding =
 		nullptr != pModel ? pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex()) : nullptr;
-	ImGui::Text("Effect: %s | Clip: %s | Bone: %s",
+	std::string strStageForBinding;
+	uint32_t iStageOffsetForBinding = 0u;
+	if (m_bValtanTimelineActive)
+	{
+		size_t iSpawnStage = 0u;
+		if (Try_ResolveValtanTimelineStage(
+			static_cast<uint32_t>((std::max)(0, m_iValtanSpawnTimelineMs)),
+			iSpawnStage, iStageOffsetForBinding))
+		{
+			strStageForBinding = m_ValtanTimeline[iSpawnStage].strActionId;
+		}
+	}
+	const bool_t bStageBinding = !strStageForBinding.empty();
+	ImGui::Text("Effect: %s | %s: %s | Bone: %s",
 		'\0' == m_szEffectId[0] ? "(none)" : m_szEffectId,
-		nullptr != pClipForBinding ? pClipForBinding : "(none)",
+		bStageBinding ? "Stage" : "Clip",
+		bStageBinding ? strStageForBinding.c_str() :
+			(nullptr != pClipForBinding ? pClipForBinding : "(none)"),
 		m_strPivotBone.empty() ? "(none)" : m_strPivotBone.c_str());
-	ImGui::BeginDisabled('\0' == m_szEffectId[0] || nullptr == pClipForBinding || nullptr == pNpc);
+	ImGui::BeginDisabled('\0' == m_szEffectId[0] || !bHasTarget ||
+		(!bStageBinding && nullptr == pClipForBinding));
 	if (ImGui::Button("Add / Update Binding"))
 	{
 		EFFECT_BINDING Binding;
 		Binding.strEffectId = m_szEffectId;
-		Binding.strClip = pClipForBinding;
-		Binding.iStartMs = static_cast<uint32_t>(
-			static_cast<f32_t>(m_iSpawnFrame) * 1000.f / BINDING_FRAME_RATE);
+		if (bStageBinding)
+		{
+			Binding.strStage = strStageForBinding;
+			Binding.iStartMs = iStageOffsetForBinding;
+		}
+		else
+		{
+			Binding.strClip = pClipForBinding;
+			Binding.iStartMs = static_cast<uint32_t>(
+				static_cast<f32_t>(m_iSpawnFrame) * 1000.f / BINDING_FRAME_RATE);
+		}
 		Binding.strBone = PIVOT_MODE::WORLD != m_ePivotMode ? m_strPivotBone : std::string();
 		Binding.bFollowBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode;
 		Binding.eRotation = m_ePivotRotation;
 		bool_t bReplaced = false;
 		for (EFFECT_BINDING& Existing : m_Bindings)
 		{
-			if (Existing.strEffectId == Binding.strEffectId && Existing.strClip == Binding.strClip)
+			if (Existing.strEffectId == Binding.strEffectId &&
+				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage)
 			{
 				Binding.bStopWithClip = Existing.bStopWithClip;
 				Existing = Binding;
@@ -1749,8 +2281,11 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		EFFECT_BINDING& Binding = m_Bindings[iIndex];
 		ImGui::PushID(static_cast<int32_t>(iIndex));
 		char_t szRow[256]{};
-		std::snprintf(szRow, sizeof(szRow), "%s @ %s +%ums %s%s",
-			Binding.strEffectId.c_str(), Binding.strClip.c_str(), Binding.iStartMs,
+		std::snprintf(szRow, sizeof(szRow), "%s @ %s%s +%ums %s%s",
+			Binding.strEffectId.c_str(),
+			Binding.strStage.empty() ? "" : "stage:",
+			Binding.strStage.empty() ? Binding.strClip.c_str() : Binding.strStage.c_str(),
+			Binding.iStartMs,
 			Binding.strBone.empty() ? "(world)" : Binding.strBone.c_str(),
 			Binding.bFollowBone ? "" : " [snap once]");
 		/* The row spans the full line, so the overlapping SameLine checkbox and
@@ -1758,8 +2293,6 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		if (ImGui::Selectable(szRow, false, ImGuiSelectableFlags_AllowOverlap))
 		{
 			std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", Binding.strEffectId.c_str());
-			m_iSpawnFrame = static_cast<int32_t>(
-				static_cast<f32_t>(Binding.iStartMs) * BINDING_FRAME_RATE / 1000.f + 0.5f);
 			m_ePivotMode = Binding.strBone.empty() ? PIVOT_MODE::WORLD :
 				(Binding.bFollowBone ? PIVOT_MODE::TARGET_BONE : PIVOT_MODE::TARGET_BONE_FIXED);
 			m_ePivotRotation = Binding.eRotation;
@@ -1767,8 +2300,18 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 				m_strPivotBone = Binding.strBone;
 			if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
 				Snap_PivotToTarget();
-			if (nullptr != pNpc)
-				pNpc->Set_Animation(Binding.strClip.c_str(), m_bTargetClipLoop);
+			if (!Binding.strStage.empty())
+			{
+				Try_LocateValtanStage(Binding.strStage, Binding.iStartMs);
+			}
+			else
+			{
+				if (m_bValtanTimelineActive)
+					Stop_ValtanTimeline();
+				m_iSpawnFrame = static_cast<int32_t>(
+					static_cast<f32_t>(Binding.iStartMs) * BINDING_FRAME_RATE / 1000.f + 0.5f);
+				Play_TargetClip(Binding.strClip.c_str(), m_bTargetClipLoop);
+			}
 		}
 		ImGui::SameLine();
 		ImGui::Checkbox("Stop w/ clip", &Binding.bStopWithClip);

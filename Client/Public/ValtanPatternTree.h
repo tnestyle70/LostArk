@@ -507,7 +507,7 @@ struct VALTAN_PATTERN_TREE_VIEW final
 struct VALTAN_TOOL_AUDITION_INVENTORY final
 {
 	static constexpr size_t CORE_PATTERN_COUNT = 8u;
-	static constexpr size_t ANIMATOR_PATTERN_COUNT = 19u;
+	static constexpr size_t ANIMATOR_PATTERN_COUNT = 20u;
 	static constexpr size_t TOTAL_PATTERN_COUNT =
 		CORE_PATTERN_COUNT + ANIMATOR_PATTERN_COUNT;
 

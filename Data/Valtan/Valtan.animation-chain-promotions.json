@@ -5,7 +5,7 @@
   "encounterId": "ENCOUNTER_VALTAN",
   "sourceDocument": {
     "path": "Data/Valtan/Valtan.presentation.debug.json",
-    "sha256": "e54bae1db404ad39497e18ea5717a69a53790aad0caef1d0156351077a3edccf"
+    "sha256": "7455491f895a357890c463958c7ce8fe3e1afed8e24ffac6963b7486faaf9ba2"
   },
   "presentationProfile": {
     "profileId": "presentation.valtan.normal",
@@ -167,6 +167,13 @@
       "sourceChainId": "charge2",
       "patternId": "VALTAN_CHARGE_2",
       "displayName": "모아치기 2",
+      "authoringPhase": 2,
+      "admissionState": "MANUAL_SERVER_AUDITION"
+    },
+    {
+      "sourceChainId": "cross",
+      "patternId": "VALTAN_CROSS",
+      "displayName": "십자 돌 공격",
       "authoringPhase": 2,
       "admissionState": "MANUAL_SERVER_AUDITION"
     },

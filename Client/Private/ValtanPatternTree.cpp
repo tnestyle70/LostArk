@@ -2087,7 +2087,7 @@ namespace
 		if (WeightedPatternIds != ManagedNormalPatternIds)
 		{
 			strOutError =
-				"master normalSelection is not the exact managed normal pattern set";
+				"master normalSelection is not a subset of the managed normal pattern set";
 			return false;
 		}
 		for (const Client::VALTAN_COUNTER_REACTION_LAYER_VIEW& Layer :
@@ -5560,7 +5560,7 @@ bool_t Client::CValtanPatternTree::Build_ToolAuditionInventory(
 		View.ManualAuditions.size())
 	{
 		strOutError =
-			"Valtan tool audition inventory requires exactly 19 animator Patterns.";
+			"Valtan tool audition inventory requires exactly 20 animator Patterns.";
 		return false;
 	}
 	for (const VALTAN_MANUAL_AUDITION_VIEW& Manual : View.ManualAuditions)
@@ -5586,7 +5586,7 @@ bool_t Client::CValtanPatternTree::Build_ToolAuditionInventory(
 			UniquePatternIds.size())
 	{
 		strOutError =
-			"Valtan tool audition inventory did not close over exactly 27 Patterns.";
+			"Valtan tool audition inventory did not close over exactly 28 Patterns.";
 		return false;
 	}
 

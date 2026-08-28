@@ -817,6 +817,9 @@
     <ClInclude Include="..\Public\EffectV2_Runtime.h">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\EffectV2_Target.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClInclude>
