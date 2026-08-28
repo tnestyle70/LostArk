@@ -88,7 +88,10 @@ private:
 	void Cancel_CreateCharacter();
 	void Render_CreateCharacterModal();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
+	void Render_CreateCharacterProductInputHost();
+#ifdef _DEBUG
 	void Render_SelectionPanel();
+#endif
 	void Render_ClassList();
 	/* Real click/hover for GoBackIcon/SpawnMonsterButton/BossSpawnButton/SpawnCancelButton --
 	CHUDRuntimeView has no hit-test or hover of its own (see HUDRuntimeView.cpp), so this follows
@@ -104,13 +107,9 @@ public:
 	instead of a second CHUDRuntimeView of its own. */
 	void Render_ArenaSpawnLabels();
 	static CLevel_CharacterSelect* Get_Active() { return s_pActiveInstance; }
-	/* Real click for CreateCharacterButton (Render_ArenaSpawnButtons) can't call
-	Open_CreateCharacterModal() directly -- ImGui::OpenPopup() resolves against the *current*
-	window's ID stack, and Render_ArenaSpawnButtons runs after Render_SelectionPanel's
-	ImGui::Begin("Character Select")/End() has already closed, outside any window. Calling it
-	there opened a popup ID that Render_CreateCharacterModal's BeginPopupModal (still inside that
-	window) never matched, so nothing appeared. This flag lets Render_SelectionPanel make the real
-	call itself, from the same window the modal is checked in. */
+	/* Authored and Debug Create Character buttons only stage this request. The common hidden
+	product input host consumes it once and calls OpenPopup/BeginPopupModal under one stable ImGui
+	ID stack, so Release does not need the visible Character Select diagnostic window. */
 	void Request_CreateCharacterButtonClick() { m_hasCreateCharacterButtonClick = true; }
 
 private:

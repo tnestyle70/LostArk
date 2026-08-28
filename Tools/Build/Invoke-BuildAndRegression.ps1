@@ -118,6 +118,10 @@ try {
     [Environment]::SetEnvironmentVariable(
         'LOSTARK_RESOURCE_ROOT', $runtimeResourceRoot, 'Process')
 
+    Invoke-PythonGate `
+        'Release client surface visibility and product input gate' `
+        @('Tools/Build/test_release_client_surface_contract.py')
+
     if (-not $SkipBuild) {
         $msbuild = Resolve-MSBuild
         Invoke-MSBuildProject $msbuild 'Engine\Default\Engine.vcxproj'

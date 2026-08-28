@@ -107,15 +107,13 @@ private:
 	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
-	/* Lobby's real "캐릭터 생성" button -- screen-space hit test against
-	Lobby_CreateCharacterButton's rect (Lobby_Layout.json), submitting
-	CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT) on click, same typed command the
-	ImGui "Character Select" button already uses. The image itself is drawn by the existing
-	m_pLobbyBackgroundView->Render("", 0) generic pass; this only adds hover feedback + the hit
-	test. Called alongside that Render() call, before EndFrame(). */
+	/* Lobby's authored Test/Character Select/Valtan/Bern buttons -- screen-space hit test against
+	their stable Lobby_Layout.json slots, submitting the matching CLobbyCommandService typed
+	command only while the active Lobby is idle. The generic runtime view draws idle art; this adds
+	hover feedback and click handling before EndFrame(). */
 	void Render_LobbyButtons();
-	/* White "캐릭터 생성" label for Lobby_CreateCharacterButton. Called after EndFrame() like the
-	other LOA-font text, same z-order reason as RenderQuickSlotKeyLabels. */
+	/* White labels for the four authored Lobby command buttons. Called after EndFrame() like the
+	other LOA-font text, for the same z-order reason as RenderQuickSlotKeyLabels. */
 	void RenderLobbyButtonText();
 	/* White "장비 재련" label for ItemUpgrade_ReforgeButton, same reasoning/pattern as
 	RenderLobbyButtonText() -- the button image itself is blank (reused from

@@ -229,7 +229,7 @@ class ValtanFloorDestructionTransitionContractTests(unittest.TestCase):
             for row in self.boss_catalog["bosses"]
             if row["archetypeId"] == "BOSS_VALTAN"
         )
-        self.assertEqual(valtan["presentationScale"], 1.0)
+        self.assertEqual(valtan["presentationScale"], 10.0)
 
     def test_published_ground_groups_join_the_existing_debris_seam(self) -> None:
         self.assertEqual(

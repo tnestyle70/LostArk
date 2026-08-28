@@ -12,6 +12,7 @@
 #include "Effect_LoadPreparationJob.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
+#include "HUDRuntimeView.h"
 #include "LevelTransitionService.h"
 #include "LevelRegistry.h"
 #include "Loader.h"
@@ -82,6 +83,10 @@ HRESULT CLevel_Loading::Initialize(
 
 	if (FAILED(Ready_Layer_Chrome()))
 		return E_FAIL;
+	m_pRecoveryView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext,
+		L"UI/Loading/LoadingRecovery.json",
+		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
 
 	const bool_t bUsesEffectLoadJob =
 		LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
@@ -272,93 +277,201 @@ HRESULT CLevel_Loading::Render()
 			m_vTipPos, Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.6f);
 	}
 
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	if (nullptr != viewport && nullptr != m_pLoader)
-	{
-		const CLoader::PROGRESS_SNAPSHOT Progress =
-			m_pLoader->Get_ProgressSnapshot();
-		std::string loadingStatus = "Level resources: " + Progress.strStatus;
-		if (Progress.bDeterminate)
-		{
-			loadingStatus += " " + std::to_string(Progress.iCompleted) + "/" +
-				std::to_string(Progress.iTotal);
-		}
-		loadingStatus += " (" + std::to_string(Progress.iElapsedMs) + " ms)";
-		ImGui::SetNextWindowViewport(viewport->ID);
-		ImGui::SetNextWindowPos(
-			ImVec2(
-				viewport->WorkPos.x + viewport->WorkSize.x * 0.5f,
-				viewport->WorkPos.y + 16.f),
-			ImGuiCond_Always,
-			ImVec2(0.5f, 0.f));
-		ImGui::SetNextWindowBgAlpha(0.82f);
-		if (ImGui::Begin(
-			"Loading progress",
-			nullptr,
-			ImGuiWindowFlags_AlwaysAutoResize |
-			ImGuiWindowFlags_NoDecoration |
-			ImGuiWindowFlags_NoMove |
-			ImGuiWindowFlags_NoNav |
-			ImGuiWindowFlags_NoSavedSettings |
-			ImGuiWindowFlags_NoFocusOnAppearing))
-		{
-			ImGui::TextUnformatted(loadingStatus.c_str());
-			if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-				 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
-				!m_strEffectPreparationStatus.empty())
-			{
-				const std::string EffectStatus =
-					"Effects: " + m_strEffectPreparationStatus;
-				ImGui::TextUnformatted(EffectStatus.c_str());
-				const std::shared_ptr<CEffectLoadPreparationJob> Job =
-					m_pLoader->Get_EffectLoadJob();
-				if (nullptr != Job)
-				{
-					const EFFECT_LOAD_PROGRESS_SNAPSHOT EffectProgress =
-						Job->Get_Progress();
-					if (!EffectProgress.strStatus.empty())
-					{
-						std::string WorkerStatus = "Effect worker: " +
-							EffectProgress.strStatus;
-						if (EffectProgress.bDeterminate)
-						{
-							WorkerStatus += " " +
-								std::to_string(EffectProgress.iCompleted) + "/" +
-								std::to_string(EffectProgress.iTotal);
-						}
-						if (!EffectProgress.strCurrentId.empty())
-							WorkerStatus += " - " + EffectProgress.strCurrentId;
-						ImGui::TextUnformatted(WorkerStatus.c_str());
-					}
-				}
-			}
-		}
-		ImGui::End();
-	}
-
-	if (m_isFailureReported && LEVEL::LOBBY == m_eNextLevelID)
-	{
-		ImGui::SetNextWindowPos(ImVec2(24.f, 24.f), ImGuiCond_Always);
-		if (ImGui::Begin(
-			"Loading recovery",
-			nullptr,
-			ImGuiWindowFlags_AlwaysAutoResize |
-			ImGuiWindowFlags_NoCollapse))
-		{
-			ImGui::TextWrapped(
-				"Lobby resources could not be loaded. Partial resources were rolled back.");
-			if (ImGui::Button("Retry Lobby"))
-				m_isRetryRequested = true;
-		}
-		ImGui::End();
-	}
+	Render_LoadingRecoveryProduct();
 
 #ifdef _DEBUG
+	Render_LoadingProgressDiagnostics();
 	if (nullptr != m_pLoader)
 		m_pLoader->Print_Text();
 #endif
 	return S_OK;
 }
+
+void CLevel_Loading::Render_LoadingRecoveryProduct()
+{
+	if (!m_isFailureReported || LEVEL::LOBBY != m_eNextLevelID)
+	{
+		return;
+	}
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	if (nullptr != m_pRecoveryView)
+		m_pRecoveryView->Render("", 0);
+
+	struct PRODUCT_RECT
+	{
+		f32_t fX;
+		f32_t fY;
+		f32_t fWidth;
+		f32_t fHeight;
+	};
+	constexpr PRODUCT_RECT DEFAULT_PANEL_RECT{ 270.f, 252.f, 740.f, 216.f };
+	constexpr PRODUCT_RECT DEFAULT_MESSAGE_RECT{ 310.f, 292.f, 660.f, 72.f };
+	constexpr PRODUCT_RECT DEFAULT_RETRY_RECT{ 569.f, 388.f, 142.f, 48.f };
+
+	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
+	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
+	const auto ResolveRect = [pViewport, fScaleX, fScaleY](
+		const f32_t fX, const f32_t fY, const f32_t fWidth, const f32_t fHeight,
+		ImVec2& vMin, ImVec2& vMax)
+	{
+		vMin = ImVec2(
+			pViewport->WorkPos.x + fX * fScaleX,
+			pViewport->WorkPos.y + fY * fScaleY);
+		vMax = ImVec2(vMin.x + fWidth * fScaleX, vMin.y + fHeight * fScaleY);
+	};
+
+	const auto ResolveProductRect = [this](
+		const char_t* pSlotId,
+		const PRODUCT_RECT& DefaultRect,
+		PRODUCT_RECT& outRect)
+	{
+		outRect = DefaultRect;
+		return nullptr != m_pRecoveryView && m_pRecoveryView->Get_SlotRect(
+			pSlotId, outRect.fX, outRect.fY, outRect.fWidth, outRect.fHeight);
+	};
+
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	PRODUCT_RECT PanelRect{};
+	const bool_t bHasAuthoredPanel = ResolveProductRect(
+		"LoadingRecovery_Panel", DEFAULT_PANEL_RECT, PanelRect);
+	if (!bHasAuthoredPanel)
+	{
+		ImVec2 vMin, vMax;
+		ResolveRect(
+			PanelRect.fX, PanelRect.fY, PanelRect.fWidth, PanelRect.fHeight,
+			vMin, vMax);
+		pDrawList->AddRectFilled(vMin, vMax, IM_COL32(20, 20, 24, 235), 8.f);
+	}
+
+	PRODUCT_RECT MessageRect{};
+	ResolveProductRect(
+		"LoadingRecovery_Message", DEFAULT_MESSAGE_RECT, MessageRect);
+	{
+		ImVec2 vMin, vMax;
+		ResolveRect(
+			MessageRect.fX, MessageRect.fY,
+			MessageRect.fWidth, MessageRect.fHeight,
+			vMin, vMax);
+		constexpr const char_t* MESSAGE =
+			"Lobby resources could not be loaded. Partial resources were rolled back.";
+		const ImVec2 vTextSize = ImGui::CalcTextSize(MESSAGE);
+		pDrawList->AddText(
+			ImVec2(
+				vMin.x + ((vMax.x - vMin.x) - vTextSize.x) * 0.5f,
+				vMin.y + ((vMax.y - vMin.y) - vTextSize.y) * 0.5f),
+			IM_COL32_WHITE, MESSAGE);
+	}
+
+	PRODUCT_RECT RetryRect{};
+	const bool_t bHasAuthoredRetry = ResolveProductRect(
+		"LoadingRecovery_RetryButton", DEFAULT_RETRY_RECT, RetryRect);
+	ImVec2 vMin, vMax;
+	ResolveRect(
+		RetryRect.fX, RetryRect.fY, RetryRect.fWidth, RetryRect.fHeight,
+		vMin, vMax);
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+		vMouse.y >= vMin.y && vMouse.y < vMax.y;
+	if (!bHasAuthoredRetry)
+	{
+		pDrawList->AddRectFilled(
+			vMin, vMax,
+			bHovered ? IM_COL32(164, 118, 46, 255) : IM_COL32(92, 76, 54, 255),
+			4.f);
+	}
+	if (bHovered)
+	{
+		if (bHasAuthoredRetry && nullptr != m_pRecoveryView)
+		{
+			if (ID3D11ShaderResourceView* pHoverSRV = m_pRecoveryView->Load_Texture(
+				"UI/Lobby/create_character_button_hover.png"))
+			{
+				pDrawList->AddImage(pHoverSRV, vMin, vMax);
+			}
+		}
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			m_isRetryRequested = true;
+	}
+	constexpr const char_t* RETRY_LABEL = "Retry Lobby";
+	const ImVec2 vLabelSize = ImGui::CalcTextSize(RETRY_LABEL);
+	pDrawList->AddText(
+		ImVec2(
+			vMin.x + ((vMax.x - vMin.x) - vLabelSize.x) * 0.5f,
+			vMin.y + ((vMax.y - vMin.y) - vLabelSize.y) * 0.5f),
+		IM_COL32_WHITE, RETRY_LABEL);
+}
+
+#ifdef _DEBUG
+void CLevel_Loading::Render_LoadingProgressDiagnostics()
+{
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	if (nullptr == viewport || nullptr == m_pLoader)
+		return;
+
+	const CLoader::PROGRESS_SNAPSHOT Progress =
+		m_pLoader->Get_ProgressSnapshot();
+	std::string loadingStatus = "Level resources: " + Progress.strStatus;
+	if (Progress.bDeterminate)
+	{
+		loadingStatus += " " + std::to_string(Progress.iCompleted) + "/" +
+			std::to_string(Progress.iTotal);
+	}
+	loadingStatus += " (" + std::to_string(Progress.iElapsedMs) + " ms)";
+	ImGui::SetNextWindowViewport(viewport->ID);
+	ImGui::SetNextWindowPos(
+		ImVec2(
+			viewport->WorkPos.x + viewport->WorkSize.x * 0.5f,
+			viewport->WorkPos.y + 16.f),
+		ImGuiCond_Always,
+		ImVec2(0.5f, 0.f));
+	ImGui::SetNextWindowBgAlpha(0.82f);
+	if (ImGui::Begin(
+		"Loading progress",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoNav |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoFocusOnAppearing))
+	{
+		ImGui::TextUnformatted(loadingStatus.c_str());
+		if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
+			 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
+			!m_strEffectPreparationStatus.empty())
+		{
+			const std::string EffectStatus =
+				"Effects: " + m_strEffectPreparationStatus;
+			ImGui::TextUnformatted(EffectStatus.c_str());
+			const std::shared_ptr<CEffectLoadPreparationJob> Job =
+				m_pLoader->Get_EffectLoadJob();
+			if (nullptr != Job)
+			{
+				const EFFECT_LOAD_PROGRESS_SNAPSHOT EffectProgress =
+					Job->Get_Progress();
+				if (!EffectProgress.strStatus.empty())
+				{
+					std::string WorkerStatus = "Effect worker: " +
+						EffectProgress.strStatus;
+					if (EffectProgress.bDeterminate)
+					{
+						WorkerStatus += " " +
+							std::to_string(EffectProgress.iCompleted) + "/" +
+							std::to_string(EffectProgress.iTotal);
+					}
+					if (!EffectProgress.strCurrentId.empty())
+						WorkerStatus += " - " + EffectProgress.strCurrentId;
+					ImGui::TextUnformatted(WorkerStatus.c_str());
+				}
+			}
+		}
+	}
+	ImGui::End();
+}
+#endif
 
 bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 {

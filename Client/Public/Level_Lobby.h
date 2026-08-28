@@ -49,7 +49,9 @@ private:
 		const string& reason,
 		LostArk::Shared::SESSION_DIAGNOSTIC_REASON diagnosticReason,
 		const char_t* pDiagnosticSource);
+#ifdef _DEBUG
 	void Render_StagePanel();
+#endif
 
 private:
 	ENTRY_STATE m_eEntryState = ENTRY_STATE::IDLE;
@@ -64,8 +66,10 @@ private:
 	CLIENT_RECOVERY_DIAGNOSTIC m_RecoveryDiagnostic;
 	string m_strStatus =
 		"Choose a stage directly or open Character Select to change class.";
+	static CLevel_Lobby* s_pActiveInstance;
 
 public:
+	static bool_t Can_SubmitProductCommand();
 	static unique_ptr<CLevel_Lobby> Create(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);

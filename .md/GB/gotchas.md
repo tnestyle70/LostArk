@@ -334,15 +334,17 @@ adapter가 필요하다. 도화가 F에서 사람이 쓴 전용 파일은 이 �
   formatVersion만 봉인하고, 전체 catalog 보존은 publisher가 담당해야 한다. 그래야 병렬 캐릭터
   복원과 발탄 exact carrier 검증이 서로의 Product를 지우거나 재봉인하지 않는다.
 
-## Valtan Product presentationScale 정본은 1.0이다
+## Valtan Product presentationScale 정본은 10.0이다
 
-- 2026-08-26 사용자 확정에 따라 `Data/Actors/BossCatalog.json`의
-  `BOSS_VALTAN.presentationScale`은 `1.0`이 정본이다.
-- 과거 문서나 stash에 `0.75`가 남아 있어도 회귀 복원 근거로 사용하지 않는다. 값 변경은 사용자
+- 2026-08-28 사용자 확정에 따라 `Data/Actors/BossCatalog.json`의
+  `BOSS_VALTAN.presentationScale`은 `10.0`이 정본이다.
+- 과거 문서나 stash에 `0.75` 또는 `1.0`이 남아 있어도 회귀 복원 근거로 사용하지 않는다. 값 변경은 사용자
   육안 판정과 명시적 승인 없이 하지 않는다.
+- 이 값은 Client presentation 배율이다. Server `BossProfiles.json`의 `collisionRadius: 1.4`와 공격 hit
+  geometry는 scale-one gameplay 기준을 유지하며 presentationScale을 곱하지 않는다.
 - `GAMEPLAY_FOOTPRINT`는 owner basis scale을 제거한 뒤 authored world scale을 적용하므로,
   Effect footprint 보정이나 미세 scale drift 허용을 이유로 boss presentationScale을 바꾸지 않는다.
-- `test_valtan_model_view_composition.py`가 `1.0`을 고정해 무단 회귀를 막는다.
+- `test_valtan_model_view_composition.py`가 `10.0`과 독립된 Server body radius를 함께 고정해 무단 회귀를 막는다.
 
 ## Valtan strict join과 Effect Tool에서 재발시키지 않을 경계
 
