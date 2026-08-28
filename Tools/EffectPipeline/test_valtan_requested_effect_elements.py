@@ -101,17 +101,17 @@ CUE_CONTRACTS = {
     },
     "cue.valtan.requested.20260827.trash-catch-success.composite": (
         "VALTAN_TRASH_CATCH_SUCCESS",
-        "STEP_01",
+        "CATCH_COUNTER",
         "effect.valtan.project-tuned.sequence.trash-catch-success",
     ),
     "cue.valtan.requested.20260827.trash-catch-fail.composite": (
         "VALTAN_TRASH_CATCH_FAIL",
-        "STEP_01",
+        "RUSH_MISS",
         "effect.valtan.project-tuned.sequence.trash-catch-fail",
     ),
     "cue.valtan.requested.20260827.trash-catch-if.composite": (
         "VALTAN_TRASH_CATCH_IF",
-        "STEP_01",
+        "STEP_07",
         "effect.valtan.project-tuned.sequence.trash-catch-if",
     ),
     "cue.valtan.requested.20260827.catch-breath.composite": (
@@ -132,14 +132,25 @@ CUE_RUNTIME_EXPECTATIONS = {
         [0.0, 0.0, 0.0],
         0,
     ),
+    "cue.valtan.requested.20260827.six-pizza.composite": (
+        "snapshot",
+        [0.0, 0.0, 0.0],
+        0,
+    ),
     **{
         f"cue.valtan.phase2.warp.step-{leg:02d}.composite": (
-            "follow",
-            [0.0, 0.0, 3.0],
+            "snapshot",
+            [0.0, 0.0, 0.0],
             0,
         )
         for leg in range(2, 10)
     },
+}
+
+CUE_ANCHOR_EXPECTATIONS = {
+    "cue.valtan.requested.20260827.terrain-3.semicircle": "arena.center",
+    "cue.valtan.requested.20260827.terrain-9.semicircle": "arena.center",
+    "cue.valtan.requested.20260827.six-pizza.composite": "arena.center.facing",
 }
 
 
@@ -607,7 +618,10 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
                 self.assertEqual(pattern_id, expected_pattern)
                 self.assertEqual(stage_id, expected_stage)
                 self.assertEqual(cue.get("effectAssetId"), expected_asset)
-                self.assertEqual(cue.get("anchorSlotId"), "root")
+                self.assertEqual(
+                    cue.get("anchorSlotId"),
+                    CUE_ANCHOR_EXPECTATIONS.get(cue_id, "root"),
+                )
                 self.assertEqual(cue.get("stopPolicy"), "natural")
                 self.assertEqual(cue.get("repeatPolicy"), "once")
                 runtime = CUE_RUNTIME_EXPECTATIONS.get(cue_id)
@@ -708,13 +722,14 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
             "Effects/Authored/effect.valtan.sequence.charge.effect.json",
         )
 
-    def test_six_pizza_locks_one_player_then_tracks_aim(self) -> None:
+    def test_six_pizza_locks_one_player_and_facing_at_center(self) -> None:
         patterns = _index_unique(
             self.gameplay.get("patterns", []), "patternId", "gameplay pattern"
         )
         pizza = patterns["VALTAN_SIX_PIZZA_106"]
         self.assertEqual(pizza.get("targetPolicy"), "LOCK_RANDOM_ALIVE_ON_START")
-        self.assertEqual(pizza.get("aimPolicy"), "TRACK_TARGET_EACH_TICK")
+        self.assertEqual(pizza.get("aimPolicy"), "LOCK_FACING_ON_START")
+        self.assertIs(pizza.get("serverMotion", {}).get("moveToAnchorBeforeTakeoff"), True)
 
 
 class ValtanRequestedEffectMetadataProjectionTest(unittest.TestCase):

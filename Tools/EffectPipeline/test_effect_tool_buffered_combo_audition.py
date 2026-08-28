@@ -81,9 +81,12 @@ class EffectToolBufferedComboAuditionTests(unittest.TestCase):
             "StagedClips.back().fHoldAfterSeconds += fRemainingWallSeconds",
             self.source,
         )
-        self.assertIn(
-            "fWallDurationSeconds + Clip.fHoldAfterSeconds", self.source
-        )
+        self.assertIn("WallDuration + Clip.fHoldAfterSeconds", self.source)
+        self.assertGreaterEqual(self.source.count("Resolve_PreviewSequenceSample("), 2)
+        self.assertIn("Sample.iClipIndex, bHoldingEndPose || !m_bPreviewPlaying", self.source)
+        timeline = (self.repository_root / "Client/Private/ActionPresentationTimeline.cpp").read_text(encoding="utf-8")
+        self.assertIn("Clips.subspan(i, 1u), LocalWall, Staged", timeline)
+        self.assertIn("Clips[i].bLoop && LocalWall >= WallBudgets[i]", timeline)
         self.assertIn(
             "Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds)",
             self.source,

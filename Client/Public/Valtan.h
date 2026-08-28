@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "ActionPresentationTimeline.h"
 #include "AnimationSkillBindingDocument.h"
 #include "ContainerObject.h"
 #include "DeferredMaterialRenderUtils.h"
@@ -189,7 +190,8 @@ public:
 	/* Armour parts are authored on the body rig, so they are skinned parts
 	with no socket bone. The stable state mask, never array order, joins them
 	to Server-owned alive-part state. */
-	static wstring_t Build_ArmorModelPrototypeTag(uint32_t iStateMask);
+	static wstring_t Build_ArmorModelPrototypeTag(
+		uint32_t iStateMask, std::string_view archetypeId = "BOSS_VALTAN");
 	static wstring_t Build_ArmorPartTag(uint32_t iStateMask);
 
 	typedef struct tagValtanDesc : public CContainerObject::CONTAINEROBJECT_DESC
@@ -200,6 +202,9 @@ public:
 		float3_t vPosition = {};
 		f32_t fScale = {};
 		bool_t isServerAuthoritative = false;
+		std::string strArchetypeId = "BOSS_VALTAN";
+		LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		f32_t fCollisionRadius = 0.f;
 	} VALTAN_DESC;
 
@@ -227,6 +232,9 @@ public:
 	virtual HRESULT Render() override;
 
 	void Trigger_HitFlash();
+	// Reliable DEAD despawns can arrive without the final snapshot.
+	bool_t Begin_NetworkDeathPresentation();
+	bool_t Is_NetworkDeathPresentationComplete() const;
 	uint32_t Get_State() const { return m_iState; }
 	PATH_RESULT_CODE Get_PathResult() const { return m_PathFollower.Get_LastResult(); }
 	uint32_t Get_PathExpandedNodes() const { return m_PathFollower.Get_LastExpandedNodes(); }
@@ -324,7 +332,13 @@ private:
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;
+	std::string m_strArchetypeId = "BOSS_VALTAN";
+	LostArk::Shared::NET_ENTITY_ID m_iOwnerBossNetEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
 	bool_t m_isRaidBgmEnabled = false;
+	uint64_t m_iRaidBgmOwnershipGeneration = 0u;
+	CDeathPresentationClock m_DeathPresentationClock;
+	uint32_t m_iDeathAnimationIndex = (std::numeric_limits<uint32_t>::max)();
 	bool_t m_hasObservedEntrancePattern = false;
 	RAID_BGM_STATE m_eRaidBgmState = RAID_BGM_STATE::NONE;
 	/* Presentation-only snapshot buffer. Apply_NetworkState commits the Server
@@ -348,6 +362,8 @@ private:
 	uint32_t m_iServerPatternSequence = 0u;
 	uint32_t m_iServerPatternStageIndex = 0u;
 	f32_t m_fServerActionAgeSeconds = 0.f;
+	// Authoritative facing captured once per occurrence, never the interpolated visual yaw.
+	f32_t m_fServerPatternFacingYawDegrees = 0.f;
 	std::size_t m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
 	/* Presentation only: pattern stage actionId -> ordered original clip
@@ -364,6 +380,8 @@ private:
 	   are an independent optional presentation registry. */
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_EFFECT_CUE>> m_PatternEffectCuesByActionId;
+	// Captured from the same admitted pattern view as the Product cue document.
+	std::unordered_map<std::string, float3_t> m_PatternArenaCenterAnchors;
 	std::unordered_set<std::string> m_AttemptedPatternEffectOccurrenceKeys;
 	bool_t m_bPatternEffectCueScanAgeValid = false;
 	f32_t m_fPatternEffectCueScanAgeSeconds = 0.f;

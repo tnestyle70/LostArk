@@ -51,6 +51,7 @@
 #include "ProfilerCaptureIO.h"
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
+#include "ValtanTuningCommandService.h"
 #endif
 
 #include <algorithm>
@@ -507,6 +508,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	   of which panel is visible or which tree row is expanded. */
 	CValtanPatternAuditionService::Get().Update();
 	CValtanPatternFlowService::Get().Update();
+	CValtanTuningCommandService::Get().Update();
 #endif
 	CGameInstance::Get().Update_Engine(fTimeDelta);
 	if (ETOUI(LEVEL::LOADING) !=

@@ -12,6 +12,7 @@
 #include "ReplicatedPlayerHealth.h"
 
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -63,6 +64,94 @@ namespace Client
 		COMMITTED,
 		RECOVERED_FAILURE,
 		FATAL_FAILURE
+	};
+
+	/* Pure presentation math shared by replication and the headless contract
+	   harness. Capture position never becomes a hand-local displacement. */
+	class CPlayerHandGripTransform final
+	{
+	public:
+		static bool_t Build_LocalOffset(
+			const float4x4_t& playerWorld,
+			const float4x4_t& handWorld,
+			float4x4_t& outLocalOffset)
+		{
+			if (!Is_UsableAffineMatrix(playerWorld) ||
+				!Is_UsableAffineMatrix(handWorld))
+				return false;
+
+			matrix_t playerBasis = DirectX::XMLoadFloat4x4(&playerWorld);
+			matrix_t handBasis = DirectX::XMLoadFloat4x4(&handWorld);
+			playerBasis.r[3] = DirectX::XMVectorSet(0.f, 0.f, 0.f, 1.f);
+			handBasis.r[3] = DirectX::XMVectorSet(0.f, 0.f, 0.f, 1.f);
+			matrix_t local = playerBasis *
+				DirectX::XMMatrixInverse(nullptr, handBasis);
+			local.r[3] = DirectX::XMVectorSet(0.f, 0.f, 0.f, 1.f);
+			float4x4_t staged{};
+			DirectX::XMStoreFloat4x4(&staged, local);
+			if (!Is_UsableAffineMatrix(staged))
+				return false;
+			outLocalOffset = staged;
+			return true;
+		}
+
+		static bool_t Compose_World(
+			const float4x4_t& localOffset,
+			const float4x4_t& handWorld,
+			float4x4_t& outWorld)
+		{
+			if (!Is_UsableAffineMatrix(localOffset) ||
+				!Is_UsableAffineMatrix(handWorld))
+				return false;
+			float4x4_t staged{};
+			DirectX::XMStoreFloat4x4(&staged,
+				DirectX::XMLoadFloat4x4(&localOffset) *
+				DirectX::XMLoadFloat4x4(&handWorld));
+			if (!Is_UsableAffineMatrix(staged))
+				return false;
+			outWorld = staged;
+			return true;
+		}
+
+	private:
+		static bool_t Is_UsableAffineMatrix(const float4x4_t& value)
+		{
+			for (std::size_t row = 0u; row < 4u; ++row)
+				for (std::size_t column = 0u; column < 4u; ++column)
+					if (!std::isfinite(value.m[row][column]))
+						return false;
+			if (std::abs(value._14) > 1.e-5f ||
+				std::abs(value._24) > 1.e-5f ||
+				std::abs(value._34) > 1.e-5f ||
+				std::abs(value._44 - 1.f) > 1.e-5f)
+				return false;
+
+			// Normal Valtan hand bones carry approximately 0.01 scale. Judge
+			// basis degeneracy independently of that valid model conversion.
+			double normalized[3u][3u]{};
+			for (std::size_t row = 0u; row < 3u; ++row)
+			{
+				double lengthSquared = 0.0;
+				for (std::size_t column = 0u; column < 3u; ++column)
+				{
+					const double component = value.m[row][column];
+					lengthSquared += component * component;
+				}
+				const double length = std::sqrt(lengthSquared);
+				if (!std::isfinite(length) || !(length > 0.0))
+					return false;
+				for (std::size_t column = 0u; column < 3u; ++column)
+					normalized[row][column] = value.m[row][column] / length;
+			}
+			const double determinant =
+				normalized[0u][0u] * (normalized[1u][1u] * normalized[2u][2u] -
+					normalized[1u][2u] * normalized[2u][1u]) -
+				normalized[0u][1u] * (normalized[1u][0u] * normalized[2u][2u] -
+					normalized[1u][2u] * normalized[2u][0u]) +
+				normalized[0u][2u] * (normalized[1u][0u] * normalized[2u][1u] -
+					normalized[1u][1u] * normalized[2u][0u]);
+			return std::isfinite(determinant) && std::abs(determinant) > 1.e-6;
+		}
 	};
 
 	struct VALTAN_PRESENTATION_STATE final
@@ -347,6 +436,8 @@ namespace Client
 			const LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED& spawned);
 		bool Apply_WorldEntityDespawn(
 			const LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED& despawned);
+		void Remove_DependentBossPresentations(
+			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId);
 		bool Apply_CombatObjectSpawn(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
 		bool Apply_CombatObjectDespawn(
@@ -381,6 +472,7 @@ namespace Client
 			std::uint32_t iServerTick);
 		void Clear_DeferredLocalCharacterClassReplacement();
 
+		void Update_DeathPresentations();
 		void Reset_World();
 		bool Spawn_CombatObjectPresentation(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned,
@@ -485,6 +577,8 @@ namespace Client
 
 		struct WORLD_ENTITY_PRESENTATION
 		{
+			LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
 			LostArk::Shared::WORLD_ENTITY_KIND eKind =
 				LostArk::Shared::WORLD_ENTITY_KIND::END;
 			std::string strPlacementId;
@@ -506,5 +600,7 @@ namespace Client
 		std::unordered_map<
 			LostArk::Shared::NET_ENTITY_ID,
 			WORLD_ENTITY_PRESENTATION> m_WorldEntities;
+		/* The existing Layer owns death tails; they are no longer network entities. */
+		std::vector<std::weak_ptr<CValtan>> m_DeathPresentations;
 	};
 }

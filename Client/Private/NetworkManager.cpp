@@ -1551,7 +1551,8 @@ bool CNetworkManager::Send_ValtanNextPatternCommand(
 	using namespace LostArk::Shared;
 	if (!Is_Connected() ||
 		(VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID != message.eOperation &&
-		 VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID != message.eOperation))
+		 VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID != message.eOperation &&
+		 VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID != message.eOperation))
 		return false;
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
@@ -2768,7 +2769,8 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		}
 		if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == result.eOperation ||
 			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == result.eOperation ||
-			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == result.eOperation)
+			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == result.eOperation ||
+			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == result.eOperation)
 		{
 			if (m_ValtanPatternAuditionByIdResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 			{

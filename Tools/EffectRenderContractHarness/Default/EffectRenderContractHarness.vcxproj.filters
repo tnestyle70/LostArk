@@ -18,6 +18,7 @@
     <ClCompile Include="..\Private\EffectRenderContractHarness.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternTree.cpp"><Filter>Production Sources</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowDocument.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\EncounterPatternReference.cpp"><Filter>Production Sources</Filter></ClCompile>

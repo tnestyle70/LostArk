@@ -108,6 +108,14 @@ public:
 		f32_t fBlendElapsedSeconds,
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
+	/* Samples one explicitly named clip without binding it to the live model.
+	   Unkeyed bones use the immutable skeleton rest pose and the unrelated live
+	   transition is not applied. Missing/ambiguous names leave output unchanged. */
+	bool_t Sample_AnimationBoneCombinedMatrices(
+		const char_t* pAnimationName,
+		f32_t fTrackPositionTicks,
+		std::span<const uint32_t> BoneIndices,
+		std::span<float4x4_t> OutCombinedMatrices) const;
 	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
 	void Refresh_BoneCombinedMatrices();
 	bool_t Enable_RootMotionSuppression(
@@ -178,6 +186,7 @@ private:
 	vector<shared_ptr<class CMaterial>>	m_Materials;
 
 	vector<shared_ptr<class CBone>>		m_Bones;
+	vector<float4x4_t>					m_BoneRestLocalTransforms;
 	uint64_t							m_iSkeletonHash = {};
 
 	uint32_t								m_iCurrentAnimIndex = {};
@@ -205,6 +214,13 @@ private:
 	array<uint8_t, 32>						m_GeometryMetadataIdentitySha256 = {};
 
 private:
+	bool_t Sample_BoneCombinedMatricesForAnimation(
+		uint32_t iExpectedAnimationIndex,
+		f32_t fTrackPositionTicks,
+		bool_t bUseCurrentPoseAndBlend,
+		f32_t fBlendElapsedSeconds,
+		std::span<const uint32_t> BoneIndices,
+		std::span<float4x4_t> OutCombinedMatrices) const;
 	void Begin_AnimBlend(f32_t fBlendSeconds);
 	void Update_AnimBlend(f32_t fTimeDelta);
 	HRESULT Ready_Meshes();

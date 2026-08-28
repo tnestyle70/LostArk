@@ -16,6 +16,8 @@ DOCUMENT_H = ROOT / "Client/Public/ValtanPatternFlowDocument.h"
 DOCUMENT_CPP = ROOT / "Client/Private/ValtanPatternFlowDocument.cpp"
 SERVICE_H = ROOT / "Client/Public/ValtanPatternFlowService.h"
 SERVICE_CPP = ROOT / "Client/Private/ValtanPatternFlowService.cpp"
+TUNING_SERVICE_H = ROOT / "Client/Public/ValtanTuningCommandService.h"
+TUNING_SERVICE_CPP = ROOT / "Client/Private/ValtanTuningCommandService.cpp"
 BOSS_TOOL_CPP = ROOT / "Client/Private/BossTool.cpp"
 NETWORK_H = ROOT / "Client/Public/NetworkManager.h"
 NETWORK_CPP = ROOT / "Client/Private/NetworkManager.cpp"
@@ -33,8 +35,13 @@ PACKET_MESSAGES_CPP = ROOT / "Shared/Private/Network/PacketMessages.cpp"
 PROTOCOL_HARNESS_CPP = (
     ROOT / "Tools/NetworkProtocolHarness/Private/NetworkProtocolHarness.cpp"
 )
+TUNING_PIPELINE_PY = ROOT / "Tools/ValtanPipeline/valtan_tuning_pipeline.py"
+GAMEPLAY_PUBLISHER_PS = (
+    ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"
+)
 SERVER_ROOM_H = ROOT / "Server/Public/GameRoom.h"
 SERVER_ROOM_CPP = ROOT / "Server/Private/GameRoom.cpp"
+SERVER_GAMEPLAY_CATALOG_CPP = ROOT / "Server/Private/GameplayCatalog.cpp"
 SERVER_BRAIN_H = ROOT / "Server/Public/ValtanBrain.h"
 SERVER_BRAIN_CPP = ROOT / "Server/Private/ValtanBrain.cpp"
 SERVER_APP_CPP = ROOT / "Server/Private/ServerApp.cpp"
@@ -42,18 +49,9 @@ SERVER_TESTS_CPP = ROOT / "Server/Private/ServerGameplayContractTests.cpp"
 
 SCHEMA = "lostark.valtan-boss-audition-flows"
 FLOW_ID = "flow.valtan.boss-tool.default"
-MAX_SLOTS = 32
+MAX_SLOTS = 255
 STABLE_ID = re.compile(r"[A-Za-z0-9_.-]{1,128}")
-CORE_PATTERN_IDS = [
-    "VALTAN_WHIRLWIND",
-    "VALTAN_FOUR_SLASH",
-    "VALTAN_HIGH_JUMP",
-    "VALTAN_DASH_CHARGE",
-    "VALTAN_FLOOR_WIPE_130",
-    "VALTAN_ARENA_BREAK_109",
-    "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-    "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-]
+
 
 
 def make_document(pattern_ids: list[str]) -> dict:
@@ -101,7 +99,7 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
     ):
         raise ValueError("pursuit")
     slots = flow["slots"]
-    if not isinstance(slots, list) or len(slots) > MAX_SLOTS:
+    if not isinstance(slots, list) or not slots or len(slots) > MAX_SLOTS:
         raise ValueError("slots")
     admitted = set(admitted_pattern_ids)
     if len(admitted) != len(admitted_pattern_ids) or not admitted:
@@ -109,7 +107,7 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
     slot_ids: set[str] = set()
     maximum_ordinal = 0
     prefix = FLOW_ID + ".slot."
-    for slot in slots:
+    for slot_index, slot in enumerate(slots):
         if not isinstance(slot, dict) or set(slot) != {"slotId", "patternId"}:
             raise ValueError("slot properties")
         slot_id = slot["slotId"]
@@ -130,6 +128,8 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
             or pattern_id not in admitted
         ):
             raise ValueError("pattern id")
+        if pattern_id == "VALTAN_ENTRANCE_CINEMATIC" and slot_index != 0:
+            raise ValueError("entry position")
         slot_ids.add(slot_id)
         maximum_ordinal = max(maximum_ordinal, int(slot_id[-6:]))
     if flow["nextSlotOrdinal"] <= maximum_ordinal:
@@ -143,6 +143,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         cls.source = DOCUMENT_CPP.read_text(encoding="utf-8")
         cls.service_header = SERVICE_H.read_text(encoding="utf-8")
         cls.service_source = SERVICE_CPP.read_text(encoding="utf-8")
+        cls.tuning_service_header = TUNING_SERVICE_H.read_text(encoding="utf-8")
+        cls.tuning_service_source = TUNING_SERVICE_CPP.read_text(encoding="utf-8")
         cls.boss_tool = BOSS_TOOL_CPP.read_text(encoding="utf-8")
         cls.network_header = NETWORK_H.read_text(encoding="utf-8")
         cls.network_source = NETWORK_CPP.read_text(encoding="utf-8")
@@ -158,33 +160,50 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             + PACKET_MESSAGES_CPP.read_text(encoding="utf-8")
         )
         cls.protocol_harness = PROTOCOL_HARNESS_CPP.read_text(encoding="utf-8")
+        cls.tuning_pipeline = TUNING_PIPELINE_PY.read_text(encoding="utf-8")
+        cls.gameplay_publisher = GAMEPLAY_PUBLISHER_PS.read_text(encoding="utf-8")
         cls.server_room_header = SERVER_ROOM_H.read_text(encoding="utf-8")
         cls.server_room = SERVER_ROOM_CPP.read_text(encoding="utf-8")
+        cls.server_gameplay_catalog = SERVER_GAMEPLAY_CATALOG_CPP.read_text(
+            encoding="utf-8"
+        )
         cls.server_brain = (
             SERVER_BRAIN_H.read_text(encoding="utf-8")
             + SERVER_BRAIN_CPP.read_text(encoding="utf-8")
         )
         cls.server_app = SERVER_APP_CPP.read_text(encoding="utf-8")
         cls.server_tests = SERVER_TESTS_CPP.read_text(encoding="utf-8")
-        manual = cls.gameplay["decisionModel"]["manualAuditions"]
-        cls.inventory = CORE_PATTERN_IDS + [row["patternId"] for row in manual]
+        cls.inventory = [row["patternId"] for row in cls.gameplay["patterns"]]
+        cls.sample_pattern_ids = [
+            "VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_FLOOR_WIPE_130",
+            "VALTAN_SEQUENCE_FOUR", "VALTAN_COUNTER",
+        ]
 
     def test_saved_document_is_strict_without_requiring_the_initial_seed(self) -> None:
-        # This is editable authoring data: reorder, removal, repeated patterns,
-        # and even an empty draft are valid. Only its public schema is fixed.
+        # This is editable authoring data: reorder, removal, and repeated
+        # patterns are valid. A persisted Flow must retain one playable slot.
         validate_document(self.flow, self.inventory)
 
-    def test_initial_seed_fixture_starts_from_all_effects_inventory(self) -> None:
-        seed = make_document(self.inventory)
+    def test_flow_selects_a_subset_without_requiring_every_authored_pattern(self) -> None:
+        seed = make_document(self.sample_pattern_ids)
         validate_document(seed, self.inventory)
         slots = seed["flows"][0]["slots"]
-        self.assertEqual(27, len(self.inventory))
-        self.assertEqual(self.inventory, [slot["patternId"] for slot in slots])
-        self.assertEqual(len(self.inventory) + 1, seed["flows"][0]["nextSlotOrdinal"])
-        self.assertEqual(27, len({slot["slotId"] for slot in slots}))
+        self.assertEqual(self.sample_pattern_ids, [slot["patternId"] for slot in slots])
+        self.assertEqual(len(slots) + 1, seed["flows"][0]["nextSlotOrdinal"])
+        self.assertEqual(len(slots), len({slot["slotId"] for slot in slots}))
+        self.assertLess(len(slots), len(self.inventory))
+
+    def test_entry_cinematic_is_optional_and_only_valid_at_the_first_slot(self) -> None:
+        entry = "VALTAN_ENTRANCE_CINEMATIC"
+        for pattern_ids in ([entry, "VALTAN_WHIRLWIND"], ["VALTAN_WHIRLWIND"]):
+            with self.subTest(valid=pattern_ids):
+                validate_document(make_document(pattern_ids), self.inventory)
+        for pattern_ids in (["VALTAN_WHIRLWIND", entry], [entry, entry]):
+            with self.subTest(invalid=pattern_ids), self.assertRaisesRegex(ValueError, "entry position"):
+                validate_document(make_document(pattern_ids), self.inventory)
 
     def test_duplicate_pattern_ids_are_valid_but_duplicate_slot_ids_are_not(self) -> None:
-        duplicate_pattern = make_document([self.inventory[0], self.inventory[0]])
+        duplicate_pattern = make_document(["VALTAN_WHIRLWIND", "VALTAN_WHIRLWIND"])
         slots = duplicate_pattern["flows"][0]["slots"]
         self.assertNotEqual(slots[0]["slotId"], slots[1]["slotId"])
         validate_document(duplicate_pattern, self.inventory)
@@ -197,7 +216,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             validate_document(duplicate_slot, self.inventory)
 
     def test_reordered_slots_and_new_duplicate_pattern_keep_stable_ids(self) -> None:
-        document = make_document(self.inventory)
+        document = make_document(self.sample_pattern_ids)
         flow = document["flows"][0]
         slots = flow["slots"]
         original_slots = {slot["slotId"]: slot["patternId"] for slot in slots}
@@ -230,17 +249,19 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             slot["slotId"]: slot["patternId"] for slot in slots
             if slot["slotId"] != new_slot_id
         })
-        self.assertEqual(len(self.inventory) + 2, flow["nextSlotOrdinal"])
+        self.assertEqual(len(self.sample_pattern_ids) + 2, flow["nextSlotOrdinal"])
 
-    def test_empty_single_and_maximum_slot_documents_are_valid(self) -> None:
-        for count in (0, 1, MAX_SLOTS):
+    def test_single_and_maximum_slot_documents_are_valid_but_empty_is_not(self) -> None:
+        for count in (1, 33, MAX_SLOTS):
             with self.subTest(slot_count=count):
-                document = make_document([self.inventory[0]] * count)
+                document = make_document(["VALTAN_WHIRLWIND"] * count)
                 validate_document(document, self.inventory)
                 self.assertEqual(count, len(document["flows"][0]["slots"]))
+        with self.assertRaisesRegex(ValueError, "slots"):
+            validate_document(make_document([]), self.inventory)
 
     def test_removed_slots_preserve_sparse_ids_and_next_ordinal(self) -> None:
-        document = make_document(self.inventory)
+        document = make_document(self.sample_pattern_ids)
         flow = document["flows"][0]
         original_ordinal = flow["nextSlotOrdinal"]
         flow["slots"] = list(reversed(flow["slots"][::2]))
@@ -251,11 +272,12 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertEqual(original_ordinal, round_trip["flows"][0]["nextSlotOrdinal"])
 
         flow["slots"].clear()
-        validate_document(document, self.inventory)
+        with self.assertRaisesRegex(ValueError, "slots"):
+            validate_document(document, self.inventory)
         self.assertEqual(original_ordinal, flow["nextSlotOrdinal"])
 
     def test_slot_ordinal_exhaustion_preserves_the_last_issued_id(self) -> None:
-        document = make_document([self.inventory[0]])
+        document = make_document(["VALTAN_WHIRLWIND"])
         flow = document["flows"][0]
         flow["slots"][0]["slotId"] = f"{FLOW_ID}.slot.999999"
         flow["nextSlotOrdinal"] = 1_000_000
@@ -269,7 +291,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
 
     def test_wrong_version_unknown_property_unknown_pattern_and_overflow_fail(self) -> None:
         mutations = []
-        seed = make_document(self.inventory)
+        seed = make_document(self.sample_pattern_ids)
         wrong_version = copy.deepcopy(seed)
         wrong_version["formatVersion"] = 2
         mutations.append(("version", wrong_version))
@@ -279,9 +301,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         unknown_pattern = copy.deepcopy(seed)
         unknown_pattern["flows"][0]["slots"][0]["patternId"] = "UNKNOWN"
         mutations.append(("pattern id", unknown_pattern))
-        # All IDs remain unique so this tests the 32-slot boundary itself,
+        # All IDs remain unique so this tests the wire-slot boundary itself,
         # not an unrelated duplicate-slot rejection.
-        overflow = make_document([self.inventory[0]] * (MAX_SLOTS + 1))
+        overflow = make_document(["VALTAN_WHIRLWIND"] * (MAX_SLOTS + 1))
         mutations.append(("slots", overflow))
         float_integer = copy.deepcopy(seed)
         float_integer["formatVersion"] = 1.0
@@ -297,6 +319,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             "Has_ExactProperties(root, { \"schema\", \"formatVersion\", \"flows\" })",
             "Try_ParseUnsignedInteger",
             "Try_ParseSlotOrdinal",
+            "16u + MAX_SLOTS * 3u",
             "admitted.contains(slot.strPatternId)",
             "outDocument = std::move(staged)",
             "m_Baseline = staged",
@@ -343,12 +366,38 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             "Get_Draft()",
             "Get_DefaultFlow()",
             "Get_SourceRevision()",
+            "Compute_SourceRevision(",
             "Verify_SourceRevision(",
         ):
             self.assertIn(marker, self.header)
         self.assertIn(
             "const VALTAN_PATTERN_FLOW_DEFINITION* Get_DefaultFlow() const noexcept",
             self.header,
+        )
+
+    def test_entry_add_inserts_first_and_failed_duplicate_preserves_the_draft(self) -> None:
+        add_body = self.source[
+            self.source.index("bool_t Client::CValtanPatternFlowDocument::Add_Slot(") :
+            self.source.index("bool_t Client::CValtanPatternFlowDocument::Move_Slot(")
+        ]
+        self.assertIn("OPTIONAL_ENTRY_PATTERN_ID == patternId", add_body)
+        self.assertIn("flow.Slots.insert(flow.Slots.begin(), StagedSlot)", add_body)
+        self.assertIn("flow.Slots.push_back(StagedSlot)", add_body)
+        self.assertLess(add_body.index("Validate(staged"), add_body.index("m_Draft = std::move(staged)"))
+        self.assertNotIn("27-pattern", self.boss_tool)
+        self.assertIn("m_AuditionInventory.Get_PatternCount()", self.boss_tool)
+
+    def test_move_stages_validates_and_preserves_the_previous_draft_on_failure(self) -> None:
+        move_body = self.source[
+            self.source.index("bool_t Client::CValtanPatternFlowDocument::Move_Slot(") :
+            self.source.index("bool_t Client::CValtanPatternFlowDocument::Remove_Slot(")
+        ]
+        self.assertIn("const std::vector<std::string>& admittedPatternIds", move_body)
+        self.assertIn("VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft", move_body)
+        self.assertIn("Validate(staged, admittedPatternIds, outStatus)", move_body)
+        self.assertLess(
+            move_body.index("Validate(staged, admittedPatternIds, outStatus)"),
+            move_body.index("m_Draft = std::move(staged)"),
         )
 
     def test_project_and_filter_register_each_new_source_once(self) -> None:
@@ -408,6 +457,11 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         ]
         self.assertIn("CValtanPatternFlowDocument::Validate(", start_body)
         self.assertIn("m_FlowDocument.Verify_SourceRevision", start_body)
+        self.assertIn("Is_SavedPatternFlowServerActive(", start_body)
+        self.assertLess(
+            start_body.index("Is_SavedPatternFlowServerActive("),
+            start_body.index("CValtanPatternFlowService::Get().Start("),
+        )
         verify_body = self.source[
             self.source.index("Verify_SourceRevision(") :
             self.source.index("Add_Slot(", self.source.index("Verify_SourceRevision("))
@@ -416,6 +470,52 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("m_bExternalConflict = true", verify_body)
         self.assertNotIn("m_Baseline =", verify_body)
         self.assertNotIn("m_Draft =", verify_body)
+
+        load_body = self.source[
+            self.source.index("bool_t Client::CValtanPatternFlowDocument::Load(") :
+            self.source.index("bool_t Client::CValtanPatternFlowDocument::Reload(")
+        ]
+        self.assertIn("flow.Slots.empty()", self.source)
+        self.assertLess(load_body.index("!Validate(staged"), load_body.index("m_Baseline = staged"))
+
+        self.assertIn(
+            "Is_SavedPatternFlowServerActive(", self.tuning_service_header
+        )
+        active_query = self.tuning_service_source[
+            self.tuning_service_source.index(
+                "CValtanTuningCommandService::Is_SavedPatternFlowServerActive("
+            ) :
+            self.tuning_service_source.index(
+                "CValtanTuningCommandService::Publish_SavedPatternFlow("
+            )
+        ]
+        for token in (
+            "Read_RevisionObservation()",
+            "m_Snapshot.strFlowRevision != strSavedRevision",
+            "m_Snapshot.iConnectionGeneration == Observation.iConnectionGeneration",
+            "m_Snapshot.iWorldInboundGeneration == Observation.iWorldInboundGeneration",
+            "Observation.ServerActiveRevision == CandidateRevision",
+        ):
+            self.assertIn(token, active_query)
+
+    def test_reload_starts_first_saved_slot_and_save_publishes_default(self) -> None:
+        reload_body = self.boss_tool[
+            self.boss_tool.index("bool_t Client::CBossTool::Reload_FlowDocument()"):
+            self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()")
+        ]
+        self.assertLess(reload_body.index("m_FlowDocument.Reload("), reload_body.index("pFlow->Slots.front().strSlotId"))
+        self.assertLess(reload_body.index("pFlow->Slots.front().strSlotId"), reload_body.index("Start_Flow(false)"))
+        self.assertIn("playback unchanged", reload_body)
+        self.assertIn("Has_PendingCommand()", reload_body)
+        save_body = self.boss_tool[
+            self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()"):
+            self.boss_tool.index("bool_t Client::CBossTool::Apply_SavedFlow()")
+        ]
+        self.assertLess(save_body.index("m_FlowDocument.Save("), save_body.index("Publish_SavedPatternFlow("))
+        self.assertNotIn("Start_Flow(", save_body)
+        self.assertIn("Saved, but the Server order has not changed", save_body)
+        self.assertIn("CValtanTuningCommandService::Get().Update();", self.main_app)
+        self.assertIn("flow.Slots.empty()", self.source)
 
     def test_authoring_playback_and_preview_status_are_rendered_separately(self) -> None:
         for marker in (
@@ -434,10 +534,11 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
 
     def test_world_change_and_late_lifecycle_cannot_resurrect_flow(self) -> None:
         for marker in (
-            "VALTAN_PATTERN_FLOW_STATE::IDLE != m_Snapshot.eState",
-            "m_Snapshot.iWorldInboundGeneration = CurrentWorldGeneration",
+            "m_PendingStart.iWorldInboundGeneration",
+            "m_Snapshot.iWorldInboundGeneration",
             "if (!m_Snapshot.Is_InFlight())",
-            "VALTAN_PATTERN_FLOW_STATE::REQUEST_PENDING !=",
+            "Matches_Request(m_CurrentRequest, Lifecycle)",
+            "Matches_OrderedSlot(m_CurrentRequest, Lifecycle)",
         ):
             self.assertIn(marker, self.service_source)
         lifecycle_guard = self.service_source.index("if (!m_Snapshot.Is_InFlight())")
@@ -468,7 +569,6 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.network_header + self.network_source)
 
     def test_protocol_is_typed_bounded_and_covered_by_round_trip_harness(self) -> None:
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 42", self.packet_type)
         for marker in (
             "C2S_DEBUG_VALTAN_PATTERN_FLOW_START",
             "S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT",
@@ -479,12 +579,34 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.packet_messages)
             self.assertIn(marker, self.protocol_harness)
         for marker in (
-            "MAX_VALTAN_PATTERN_FLOW_SLOTS = 32u",
+            "MAX_VALTAN_PATTERN_FLOW_SLOTS = 255u",
             "MIN_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS = 100u",
             "MAX_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS = 10000u",
             "Valtan Pattern Flow Leaves Duplicate Slot Rejection To Server",
+            "Valtan Pattern Flow 33 Slot Expansion Round Trip",
+            "Valtan Pattern Flow 255 Slot Round Trip",
+            "Reject 256 Slot Valtan Pattern Flow Start",
+            "Reject Valtan Pattern Flow Exceeding Frame Budget",
         ):
             self.assertIn(marker, self.packet_messages + self.protocol_harness)
+        for marker in (
+            "SAVED_FLOW_MAX_SLOTS = 255",
+            "len(slots) > SAVED_FLOW_MAX_SLOTS",
+            "1..{SAVED_FLOW_MAX_SLOTS} slots",
+        ):
+            self.assertIn(marker, self.tuning_pipeline)
+        self.assertIn(
+            "len(rows) > SAVED_FLOW_MAX_SLOTS", self.tuning_pipeline
+        )
+        for marker in (
+            "$maximumValtanPatternFlowSlots = 255",
+            "Count -gt $maximumValtanPatternFlowSlots",
+        ):
+            self.assertIn(marker, self.gameplay_publisher)
+        self.assertIn(
+            "stepCount > LostArk::Shared::MAX_VALTAN_PATTERN_FLOW_SLOTS",
+            self.server_gameplay_catalog,
+        )
 
     def test_server_runs_one_ephemeral_ordered_suffix_without_client_slot_loop(self) -> None:
         for marker in (

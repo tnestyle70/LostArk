@@ -15,7 +15,7 @@
       "offsetRightM": 0.0,
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
-      "lifeMs": 4000,
+      "lifeMs": 6500,
       "hits": [
         {
           "hitShape": "CIRCLE",
@@ -62,6 +62,39 @@
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.red-blade-wave",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.fist-in-out.donut",
+      "clientVisualId": "combatobject.visual.valtan.fist-in-out.donut.v1",
+      "ownerPatternId": "VALTAN_FIST_IN_OUT",
+      "ownerStageActionId": "valtan.attack.fist-in-out.inner",
+      "kind": "FIXED_AREA",
+      "originPolicy": "BOSS_POSITION",
+      "directionPolicy": "NONE",
+      "offsetForwardM": 0.0,
+      "offsetRightM": 0.0,
+      "speedMps": 0.0,
+      "maximumDistanceM": 0.0,
+      "lifeMs": 2600,
+      "hits": [
+        {
+          "hitShape": "RING",
+          "hitOuterRadius": 16.0,
+          "hitInnerRadius": 8.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "trigger": "TIMED",
+          "atMs": 1600,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.fist-in-out",
           "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,

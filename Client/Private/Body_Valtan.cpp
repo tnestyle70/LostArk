@@ -27,6 +27,9 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 	const auto pDesc = static_cast<BODY_VALTAN_DESC*>(pArg);
 	m_pParentState = pDesc->pParentState;
 	m_iPrototypeLevelIndex = pDesc->iPrototypeLevelIndex;
+	m_strModelPrototypeTag = pDesc->strModelPrototypeTag;
+	if (m_strModelPrototypeTag.empty())
+		return E_INVALIDARG;
 	m_pEmissiveOverride = pDesc->pEmissiveOverride;
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components()))
 		return E_FAIL;
@@ -45,8 +48,8 @@ void CBody_Valtan::Priority_Update(f32_t fTimeDelta)
 
 void CBody_Valtan::Update(f32_t fTimeDelta)
 {
-	if (nullptr != m_pParentState &&
-		*m_pParentState != CValtan::VALTAN_STATE::DEAD)
+	// A server death owns a finite, non-loop clip; keep advancing its pose.
+	if (nullptr != m_pModelCom)
 		m_pModelCom->Update_Animation(fTimeDelta);
 
 	__super::Update_CombinedWorldMatrix(
@@ -125,7 +128,7 @@ HRESULT CBody_Valtan::Ready_Components()
 
 	if (FAILED(__super::Add_Component(
 		m_iPrototypeLevelIndex,
-		TEXT("Prototype_Component_Model_Valtan"),
+		m_strModelPrototypeTag,
 		TEXT("Com_Model"),
 		m_pModelCom)))
 		return E_FAIL;

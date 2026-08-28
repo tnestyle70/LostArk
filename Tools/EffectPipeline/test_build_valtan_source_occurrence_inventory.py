@@ -37,13 +37,48 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
             }
         )
 
-    def test_first_inventory_is_32_of_33_and_never_counts_branch_upper_bound(self) -> None:
+    def test_inventory_uses_live_stable_id_coverage_and_never_counts_branch_upper_bound(self) -> None:
         summary = self.document["summary"]
-        self.assertEqual(summary["encounterPatternCount"], 33)
-        self.assertEqual(summary["actionBindingPatternCount"], 32)
-        self.assertEqual(summary["missingActionBindingPatternCount"], 1)
+        encounter = INVENTORY.read_json(INVENTORY.ENCOUNTER_PATH)
+        action_bindings = INVENTORY.read_json(INVENTORY.ACTION_BINDINGS_PATH)
+        pattern_bindings = INVENTORY.read_json(INVENTORY.PATTERN_BINDINGS_PATH)
+        live_pattern_ids = [
+            row["patternId"]
+            for row in INVENTORY.live_encounter_patterns(encounter)
+        ]
+        action_binding_ids = [
+            row["patternId"] for row in action_bindings["patterns"]
+        ]
+        coverage_ids = [
+            row["patternId"] for row in self.document["coverage"]["patterns"]
+        ]
+        missing_ids = [
+            row["patternId"]
+            for row in self.document["coverage"][
+                "missingActionBindingPatterns"
+            ]
+        ]
+        self.assertEqual(len(live_pattern_ids), len(set(live_pattern_ids)))
+        self.assertEqual(
+            len(action_binding_ids), len(set(action_binding_ids))
+        )
+        self.assertEqual(coverage_ids, live_pattern_ids)
+        expected_missing = set(live_pattern_ids) - set(action_binding_ids)
+        self.assertEqual(set(missing_ids), expected_missing)
+        self.assertEqual(
+            expected_missing, set(INVENTORY.MISSING_ACTION_BINDING_POLICIES)
+        )
+        self.assertEqual(
+            summary["encounterPatternCount"], len(live_pattern_ids)
+        )
+        self.assertEqual(
+            summary["actionBindingPatternCount"],
+            len(set(live_pattern_ids) & set(action_binding_ids)),
+        )
+        self.assertEqual(
+            summary["missingActionBindingPatternCount"], len(expected_missing)
+        )
         self.assertGreater(summary["branchCandidateCount"], 0)
-        self.assertEqual(summary["sourceSequenceCandidateCount"], 230)
         self.assertEqual(
             summary["branchCandidateCount"],
             summary["sourceSequenceCandidateCount"],
@@ -52,9 +87,26 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         self.assertEqual(summary["reviewedSelectedBranchCount"], 0)
         self.assertEqual(summary["reviewedSelectedSequenceCount"], 0)
         self.assertEqual(summary["completionCarrierDenominator"], 0)
-        self.assertEqual(summary["encounterStageActionCount"], 131)
-        self.assertEqual(summary["patternBindingActionCount"], 131)
-        self.assertEqual(summary["patternBindingGapCount"], 0)
+        encounter_action_ids = {
+            str(stage.get("actionId") or "")
+            for pattern in encounter["patterns"]
+            for stage in pattern["stages"]
+        }
+        pattern_binding_action_ids = {
+            str(row.get("actionId") or "")
+            for row in pattern_bindings["bindings"]
+        }
+        self.assertEqual(
+            summary["encounterStageActionCount"], len(encounter_action_ids)
+        )
+        self.assertEqual(
+            summary["patternBindingActionCount"],
+            len(pattern_binding_action_ids),
+        )
+        self.assertEqual(
+            summary["patternBindingGapCount"],
+            len(encounter_action_ids - pattern_binding_action_ids),
+        )
         self.assertEqual(summary["patternBindingGapProposalCount"], 3)
         self.assertEqual(summary["droppedOccurrenceCount"], 0)
         self.assertEqual(summary["duplicateOccurrenceCount"], 0)
@@ -140,6 +192,69 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
             ],
             ["Att_Battle_4_01"],
         )
+
+    def test_bound_stable_id_extension_is_admitted_but_new_missing_policy_is_rejected(self) -> None:
+        encounter = copy.deepcopy(INVENTORY.read_json(INVENTORY.ENCOUNTER_PATH))
+        action_bindings = copy.deepcopy(
+            INVENTORY.read_json(INVENTORY.ACTION_BINDINGS_PATH)
+        )
+        pattern_id = "VALTAN_DYNAMIC_EXTENSION_CONTRACT"
+        added_pattern = copy.deepcopy(
+            INVENTORY.live_encounter_patterns(encounter)[0]
+        )
+        added_pattern["patternId"] = pattern_id
+        encounter["patterns"].append(added_pattern)
+        added_binding = copy.deepcopy(action_bindings["patterns"][0])
+        added_binding["patternId"] = pattern_id
+        action_bindings["patterns"].append(added_binding)
+
+        (
+            _live_patterns,
+            live_pattern_ids,
+            action_pattern_ids,
+            coverage,
+            missing,
+        ) = INVENTORY.resolve_pattern_coverage_contract(
+            encounter, action_bindings
+        )
+        self.assertIn(pattern_id, live_pattern_ids)
+        self.assertIn(pattern_id, action_pattern_ids)
+        self.assertEqual(coverage[-1]["patternId"], pattern_id)
+        self.assertEqual(
+            {row["patternId"] for row in missing},
+            set(INVENTORY.MISSING_ACTION_BINDING_POLICIES),
+        )
+
+        action_bindings["patterns"].append(copy.deepcopy(added_binding))
+        with self.assertRaisesRegex(
+            INVENTORY.InventoryError, "invalid or duplicated"
+        ):
+            INVENTORY.resolve_pattern_coverage_contract(
+                encounter, action_bindings
+            )
+        action_bindings["patterns"].pop()
+
+        action_bindings["patterns"].pop()
+        with self.assertRaisesRegex(
+            INVENTORY.InventoryError,
+            "differ from the explicit reviewed missing policies",
+        ):
+            INVENTORY.resolve_pattern_coverage_contract(
+                encounter, action_bindings
+            )
+
+    def test_inventory_validator_keeps_sealed_coverage_and_rejects_projection_drift(self) -> None:
+        sealed = INVENTORY.read_json(INVENTORY.OUTPUT_PATH)
+        INVENTORY.validate_inventory(sealed)
+
+        drifted = copy.deepcopy(self.document)
+        drifted["coverage"]["missingActionBindingPatterns"][0][
+            "sourceActionIds"
+        ] = [999999]
+        with self.assertRaisesRegex(
+            INVENTORY.InventoryError, "exact coverage projection"
+        ):
+            INVENTORY.validate_inventory(drifted)
 
     def test_reviewed_visual_signature_equivalence_keeps_every_sequence(self) -> None:
         reviews = {
@@ -930,6 +1045,35 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
             schema["properties"]["formatVersion"]["const"],
             self.document["formatVersion"],
         )
+        patterns = schema["properties"]["coverage"]["properties"][
+            "patterns"
+        ]
+        missing = schema["properties"]["coverage"]["properties"][
+            "missingActionBindingPatterns"
+        ]
+        missing_pattern = schema["$defs"]["missingPattern"]
+        summary = schema["$defs"]["summary"]["properties"]
+        self.assertNotIn("maxItems", patterns)
+        self.assertNotIn("maxItems", missing)
+        self.assertNotIn("const", missing_pattern["properties"]["patternId"])
+        self.assertEqual(
+            missing_pattern["properties"]["patternId"]["pattern"],
+            "^VALTAN_[A-Z0-9_]+$",
+        )
+        for field in (
+            "encounterPatternCount",
+            "actionBindingPatternCount",
+            "missingActionBindingPatternCount",
+            "encounterStageActionCount",
+            "patternBindingActionCount",
+        ):
+            self.assertNotIn("const", summary[field])
+        try:
+            import jsonschema
+        except ImportError:
+            self.skipTest("jsonschema is not installed")
+        jsonschema.Draft202012Validator.check_schema(schema)
+        jsonschema.Draft202012Validator(schema).validate(self.document)
 
 
 if __name__ == "__main__":

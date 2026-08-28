@@ -1,6 +1,6 @@
 {
   "schema": "lostark.boss-catalog",
-  "formatVersion": 4,
+  "formatVersion": 5,
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",
@@ -34,6 +34,16 @@
           "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
           "clientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
           "effectAssetId": "effect.valtan.red-blade-wave.active"
+        },
+        {
+          "combatObjectArchetypeId": "combatobject.valtan.fist-in-out.donut",
+          "clientVisualId": "combatobject.visual.valtan.fist-in-out.donut.v1",
+          "effectAssetId": "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+          "worldScale": [
+            1.5,
+            1.5,
+            1.5
+          ]
         }
       ],
       "animationSetId": "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",
@@ -47,7 +57,33 @@
         "patternActive": "mesh_att_battle_2_02",
         "patternRecovery": "mesh_att_battle_2_03",
         "dead": "mesh_dead_1"
-      }
+      },
+      "bodyModelPreScale": 0.0001,
+      "weaponModelPreScale": 100.0
+    },
+    {
+      "archetypeId": "BOSS_VALTAN_GHOST",
+      "visualAssetId": "VALTAN_MN_RPBF_02",
+      "presentationScale": 1.0,
+      "bodyModel": "Character/Valtan/Ghost/MN_RPBF_02.wmodel",
+      "weaponModel": "Character/Valtan/ValtanWeapon.wmodel",
+      "armorModels": [],
+      "armorParts": [],
+      "combatObjectVisuals": [],
+      "animationSetId": "Character/Valtan/Ghost/MN_RPBF_02_AnimSet.wmodel",
+      "serverProfileId": "boss.valtan.ghost.server.v1",
+      "clientPresentationId": "boss.valtan.client.v1",
+      "presentationStatus": "complete",
+      "presentationClips": {
+        "idle": "mesh_idle_battle_1",
+        "chase": "mesh_run_battle_1",
+        "patternWindup": "mesh_att_battle_2_01",
+        "patternActive": "mesh_att_battle_2_02",
+        "patternRecovery": "mesh_att_battle_2_03",
+        "dead": "mesh_dead_1"
+      },
+      "bodyModelPreScale": 0.01,
+      "weaponModelPreScale": 1.0
     }
   ]
 }

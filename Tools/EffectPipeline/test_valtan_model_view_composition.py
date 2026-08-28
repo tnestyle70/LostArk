@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import math
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -40,6 +41,12 @@ floor_contract = load_module(
 )
 
 
+ghost_bake = load_module(
+    "bake_ghost_valtan_animset_for_model_view",
+    REPOSITORY_ROOT / "Tools/ModelAssetConverter/bake_ghost_valtan_animset.py",
+)
+
+
 def raw_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -58,6 +65,12 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             cls.resource_root
             / "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel"
         )
+        cls.ghost_body_path = (
+            cls.resource_root / "Character/Valtan/Ghost/MN_RPBF_02.wmodel"
+        )
+        cls.ghost_animset_path = (
+            cls.resource_root / "Character/Valtan/Ghost/MN_RPBF_02_AnimSet.wmodel"
+        )
         cls.armor_part_paths = (
             cls.resource_root
             / "Character/Valtan/MN_RPBF_01_Parts1.wmodel",
@@ -72,11 +85,15 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             )
         )
         self.assertEqual(catalog["schema"], "lostark.boss-catalog")
-        self.assertEqual(catalog["formatVersion"], 4)
-        self.assertEqual(len(catalog["bosses"]), 1)
-        valtan = catalog["bosses"][0]
+        self.assertEqual(catalog["formatVersion"], 5)
+        self.assertEqual({row["archetypeId"] for row in catalog["bosses"]},
+                         {"BOSS_VALTAN", "BOSS_VALTAN_GHOST"})
+        valtan = next(row for row in catalog["bosses"]
+                      if row["archetypeId"] == "BOSS_VALTAN")
         self.assertEqual(valtan["archetypeId"], "BOSS_VALTAN")
         self.assertEqual(valtan["presentationScale"], 1.0)
+        self.assertEqual(valtan["bodyModelPreScale"], 0.0001)
+        self.assertEqual(valtan["weaponModelPreScale"], 100.0)
         self.assertEqual(
             valtan["bodyModel"], "Character/Valtan/MN_RPBF_01.wmodel"
         )
@@ -115,8 +132,189 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                         "combatobject.visual.valtan.red-blade-wave.projectile.v1",
                     "effectAssetId": "effect.valtan.red-blade-wave.active",
                 },
+                {
+                    "combatObjectArchetypeId":
+                        "combatobject.valtan.fist-in-out.donut",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.fist-in-out.donut.v1",
+                    "effectAssetId":
+                        "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+                    "worldScale": [1.5, 1.5, 1.5],
+                },
             ],
         )
+
+    def test_ghost_catalog_joins_the_shared_product_presentation(self) -> None:
+        catalog = json.loads((REPOSITORY_ROOT / "Data/Actors/BossCatalog.json")
+                             .read_text(encoding="utf-8-sig"))
+        normal = next(row for row in catalog["bosses"]
+                      if row["archetypeId"] == "BOSS_VALTAN")
+        ghost = next(row for row in catalog["bosses"]
+                     if row["archetypeId"] == "BOSS_VALTAN_GHOST")
+        self.assertEqual(ghost["bodyModel"],
+                         "Character/Valtan/Ghost/MN_RPBF_02.wmodel")
+        self.assertEqual(ghost["animationSetId"],
+                         "Character/Valtan/Ghost/MN_RPBF_02_AnimSet.wmodel")
+        self.assertEqual(ghost["weaponModel"], normal["weaponModel"])
+        self.assertEqual(ghost["clientPresentationId"], normal["clientPresentationId"])
+        self.assertEqual(ghost["serverProfileId"], "boss.valtan.ghost.server.v1")
+        self.assertEqual(ghost["presentationClips"], normal["presentationClips"])
+        self.assertEqual(ghost["bodyModelPreScale"], 0.01)
+        self.assertEqual(ghost["weaponModelPreScale"], 1.0)
+        self.assertEqual(ghost["presentationScale"], 1.0)
+        self.assertEqual(ghost["armorModels"], [])
+        self.assertEqual(ghost["armorParts"], [])
+        self.assertEqual(ghost["combatObjectVisuals"], [])
+        for key in ("bodyModel", "animationSetId", "weaponModel"):
+            candidate = (self.resource_root / ghost[key]).resolve()
+            self.assertTrue(candidate.is_relative_to(self.resource_root.resolve()))
+            self.assertTrue(candidate.is_file(), ghost[key])
+
+    def test_ghost_donor_matches_actual_skeleton_and_all_three_attack_clips(self) -> None:
+        body_bytes = self.ghost_body_path.read_bytes()
+        donor_bytes = self.ghost_animset_path.read_bytes()
+        body_count, body_sections = ghost_bake.read_sections(body_bytes)
+        donor_count, donor_sections = ghost_bake.read_sections(donor_bytes)
+        body_bones = builder.read_wmodel_bones(self.ghost_body_path)
+        donor_bones = builder.read_wmodel_bones(self.ghost_animset_path)
+        self.assertEqual(len(body_bones), 87)
+        self.assertEqual(body_bones, donor_bones,
+                         "Attach_AnimationSet must bind the body's ordered bone identities")
+        sockets = [bone for bone in body_bones if bone.name == "b_wp_r_01"]
+        self.assertEqual([(bone.index, bone.parent_index) for bone in sockets], [(54, 41)])
+        body_hash = ghost_bake.skeleton_hash(
+            ghost_bake.skeleton_bones(body_bytes, body_sections))
+        donor_hash = ghost_bake.skeleton_hash(
+            ghost_bake.skeleton_bones(donor_bytes, donor_sections))
+        self.assertNotEqual(body_hash, 0)
+        self.assertEqual(body_hash, donor_hash)
+        body_clips = {row["name"] for row in body_sections
+                      if row["type"] == ghost_bake.SECTION_ANIMATION}
+        donor_clips = {row["name"] for row in donor_sections
+                       if row["type"] == ghost_bake.SECTION_ANIMATION}
+        self.assertEqual((len(body_clips), len(donor_clips)), (body_count, donor_count))
+        self.assertTrue(body_clips.isdisjoint(donor_clips),
+                        "a duplicate clip rejects the atomic donor attach")
+        presentation = json.loads((REPOSITORY_ROOT / "Data/Valtan/Valtan.presentation.json")
+                                  .read_text(encoding="utf-8-sig"))
+        attack_ids = {"VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR"}
+        attacks = [row for row in presentation["patterns"]
+                   if row["patternId"] in attack_ids]
+        self.assertEqual({row["patternId"] for row in attacks}, attack_ids)
+        required_clips = {occurrence["clip"] for attack in attacks
+                          for stage in attack["stages"]
+                          for occurrence in stage["animation"].get("occurrences", [])}
+        self.assertTrue(required_clips)
+        self.assertFalse(required_clips - (body_clips | donor_clips))
+        for section in donor_sections:
+            if section["type"] != ghost_bake.SECTION_ANIMATION:
+                continue
+            trailer_at = (ghost_bake.FILE_HEADER_SIZE + section["offset"] +
+                          section["size"] - ghost_bake.ANIMATION_TRAILER_SIZE)
+            self.assertEqual(struct.unpack_from("<Q", donor_bytes, trailer_at)[0],
+                             body_hash, section["name"])
+
+    def test_normal_and_ghost_death_clips_have_finite_actual_model_durations(self) -> None:
+        catalog = json.loads((REPOSITORY_ROOT / "Data/Actors/BossCatalog.json")
+                             .read_text(encoding="utf-8-sig"))
+        for actor in catalog["bosses"]:
+            if actor["archetypeId"] not in {"BOSS_VALTAN", "BOSS_VALTAN_GHOST"}:
+                continue
+            with self.subTest(archetype=actor["archetypeId"]):
+                death_clips = []
+                for asset in (actor["bodyModel"], actor["animationSetId"]):
+                    payload = (self.resource_root / asset).read_bytes()
+                    _, sections = ghost_bake.read_sections(payload)
+                    for section in sections:
+                        if (section["type"] == ghost_bake.SECTION_ANIMATION and
+                                section["name"] == actor["presentationClips"]["dead"]):
+                            header = struct.unpack_from("<4sIffIIB", payload, section["payload_at"])
+                            self.assertEqual(header[0], b"WANM")
+                            duration, ticks_per_second = header[2:4]
+                            self.assertTrue(math.isfinite(duration) and duration > 0)
+                            self.assertTrue(math.isfinite(ticks_per_second) and ticks_per_second > 0)
+                            self.assertTrue(math.isfinite(duration / ticks_per_second))
+                            death_clips.append((asset, duration / ticks_per_second))
+                self.assertEqual(len(death_clips), 1,
+                                 "the actual combined model must resolve exactly one catalog death clip")
+
+    def test_ghost_donor_translation_keys_use_the_catalog_body_unit_ratio(self) -> None:
+        catalog = json.loads((REPOSITORY_ROOT / "Data/Actors/BossCatalog.json")
+                             .read_text(encoding="utf-8-sig"))
+        actors = {row["archetypeId"]: row for row in catalog["bosses"]}
+        ratio = (actors["BOSS_VALTAN"]["bodyModelPreScale"] /
+                 actors["BOSS_VALTAN_GHOST"]["bodyModelPreScale"])
+        source = self.animset_path.read_bytes()
+        donor = self.ghost_animset_path.read_bytes()
+        _, source_sections = ghost_bake.read_sections(source)
+        _, donor_sections = ghost_bake.read_sections(donor)
+        donor_clips = {row["name"]: row for row in donor_sections
+                       if row["type"] == ghost_bake.SECTION_ANIMATION}
+        sampled_keys = 0
+        for source_section in source_sections:
+            if source_section["type"] != ghost_bake.SECTION_ANIMATION:
+                continue
+            donor_section = donor_clips[source_section["name"]]
+            source_base = source_section["payload_at"]
+            donor_base = donor_section["payload_at"]
+            source_channels = struct.unpack_from("<I", source, source_base + 4)[0]
+            donor_channels = struct.unpack_from("<I", donor, donor_base + 4)[0]
+            self.assertEqual(source_channels, donor_channels)
+            source_table = source_base + ghost_bake.ANIMATION_META_SIZE
+            donor_table = donor_base + ghost_bake.ANIMATION_META_SIZE
+            source_keys = source_table + source_channels * ghost_bake.ANIMATION_CHANNEL_SIZE
+            donor_keys = donor_table + donor_channels * ghost_bake.ANIMATION_CHANNEL_SIZE
+            for channel in range(source_channels):
+                source_count, source_offset = struct.unpack_from(
+                    "<II", source, source_table + channel * ghost_bake.ANIMATION_CHANNEL_SIZE + 8)
+                donor_count, donor_offset = struct.unpack_from(
+                    "<II", donor, donor_table + channel * ghost_bake.ANIMATION_CHANNEL_SIZE + 8)
+                self.assertEqual(source_count, donor_count)
+                if source_count == 0:
+                    continue
+                for index in {0, source_count - 1}:
+                    expected = struct.unpack_from("<4f", source,
+                        source_keys + source_offset + index * ghost_bake.VECTOR_KEY_SIZE)
+                    actual = struct.unpack_from("<4f", donor,
+                        donor_keys + donor_offset + index * ghost_bake.VECTOR_KEY_SIZE)
+                    self.assertEqual(expected[0], actual[0])
+                    for reference, value in zip(expected[1:], actual[1:]):
+                        self.assertTrue(math.isclose(value, reference * ratio,
+                                                    rel_tol=1.0e-6, abs_tol=1.0e-6),
+                                        source_section["name"])
+                    sampled_keys += 1
+        self.assertGreater(sampled_keys, 0)
+
+    def test_ghost_material_dependencies_resolve_inside_resources(self) -> None:
+        materials = floor_contract.parse_wmodel_materials(self.ghost_body_path)
+        self.assertTrue(materials)
+        expected = {
+            "textures/mn_rpbf_01_ghost_d.dds",
+            "textures/mn_rpbf_01_n.dds",
+            "textures/mn_rpbf_01-1_d_loc_int.dds",
+            "textures/mn_rpbf_01-1_n_loc_int.dds",
+            "textures/mn_rpbf_01-2_d_loc_int.dds",
+            "textures/mn_rpbf_01-2_n_loc_int.dds",
+        }
+        referenced = set()
+        for slots in materials.values():
+            self.assertTrue(slots["baseColor"])
+            self.assertTrue(slots["normal"])
+            for relative_path in slots.values():
+                if not relative_path:
+                    continue
+                self.assertTrue(relative_path.startswith("textures/"))
+                candidate = (self.ghost_body_path.parent / relative_path).resolve()
+                self.assertTrue(candidate.is_relative_to(self.resource_root.resolve()))
+                self.assertTrue(candidate.is_file(), relative_path)
+                with candidate.open("rb") as texture:
+                    self.assertEqual(texture.read(4), b"DDS ", relative_path)
+                referenced.add(relative_path)
+        self.assertEqual(referenced, expected)
+        # The donor carries no render-texture dependency: CModel attaches only its clips.
+        donor_materials = floor_contract.parse_wmodel_materials(self.ghost_animset_path)
+        self.assertFalse({path for slots in donor_materials.values()
+                          for path in slots.values() if path})
 
     def test_product_bundle_bytes_are_pinned(self) -> None:
         expected = {
@@ -286,7 +484,7 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                        if row["archetypeId"] == actor["archetypeId"])
         # CValtanPresentationAssetService's WModel pretransform, followed by
         # the catalog visual scale. Body yaw preserves this XZ radius.
-        world_scale = 0.0001 * actor["presentationScale"]
+        world_scale = actor["bodyModelPreScale"] * actor["presentationScale"]
         bone_indices = {bone.name: index
                         for index, bone in enumerate(body.skeleton_bones)}
         root_index = bone_indices["b_root"]

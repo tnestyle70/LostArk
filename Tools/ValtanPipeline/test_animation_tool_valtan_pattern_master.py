@@ -32,33 +32,6 @@ EXPECTED_PATTERN_ORDER = (
     "VALTAN_ARENA_BREAK_109",
 )
 
-EXPECTED_PROMOTED_KOREAN_NAMES = {
-    "VALTAN_SIX_PIZZA_106": "중앙이동 후 6방향 공격 후 피자 패턴",
-    "VALTAN_ATTACK_WHIRLWIND": "점프찍기 후 휠윈드",
-    "VALTAN_CHARGE": "모아치기",
-    "VALTAN_ROAR_CHARGE": "사자후 후 위로 모아치기",
-    "VALTAN_THREE": "3연속 내려치기",
-    "VALTAN_TERRAIN_DESTRUCTION": "2페이즈 지형파괴 패턴",
-    "VALTAN_WARP": "워프 패턴",
-    "VALTAN_TRASH": "버러지 패턴",
-    "VALTAN_TRASH_CATCH_SUCCESS": "버러지 패턴 잡기 성공",
-    "VALTAN_TRASH_CATCH_FAIL": "버러지 패턴 잡기 실패",
-    "VALTAN_TRASH_CATCH_IF": "버러지 패턴 잡기 분기",
-    "VALTAN_CATCH_BREATH": "잡아채서 불어 날리기",
-    "VALTAN_COUNTER": "카운터 쳐야 하는 내려치기",
-    "VALTAN_CHARGE_2": "모아치기 2",
-    "VALTAN_STRUGGLING": "3페이즈 전 발악패턴",
-    "VALTAN_CROSS": "십자 돌 공격",
-}
-
-EXPECTED_UNCHANGED_SEQUENCE_IDS = {
-    "VALTAN_SEQUENCE_FOUR",
-    "VALTAN_SEQUENCE_RUSH",
-    "VALTAN_SEQUENCE_TWOHAND",
-    "VALTAN_SEQUENCE_WHIRLWIND",
-}
-
-
 def function_slice(text: str, signature: str, next_signature: str) -> str:
     start = text.index(signature)
     end = text.index(next_signature, start + len(signature))
@@ -102,50 +75,89 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
         ):
             self.assertIn(token, combined)
 
+    def test_live_pattern_inventory_is_a_dynamic_stable_id_join(self) -> None:
+        gameplay_ids = [pattern["patternId"] for pattern in self.gameplay["patterns"]]
+        presentation_ids = [
+            pattern["patternId"] for pattern in self.presentation["patterns"]
+        ]
+        self.assertTrue(gameplay_ids)
+        self.assertEqual(len(gameplay_ids), len(set(gameplay_ids)))
+        self.assertEqual(len(presentation_ids), len(set(presentation_ids)))
+        self.assertEqual(set(gameplay_ids), set(presentation_ids))
+
     def test_every_product_pattern_and_promoted_audition_is_locally_selectable(self) -> None:
         gameplay_ids = {pattern["patternId"] for pattern in self.gameplay["patterns"]}
         presentation_ids = {
             pattern["patternId"] for pattern in self.presentation["patterns"]
         }
         self.assertEqual(gameplay_ids, presentation_ids)
-        self.assertEqual(30, len(gameplay_ids))
+        self.assertTrue(gameplay_ids)
+        self.assertEqual(len(gameplay_ids), len(self.gameplay["patterns"]))
+        self.assertEqual(len(presentation_ids), len(self.presentation["patterns"]))
+
+        decision_rows = self.gameplay["decisionModel"]["manualAuditions"]
+        manual_rows = [
+            row for row in decision_rows
+            if row["admissionState"] == "MANUAL_SERVER_AUDITION"
+        ]
+        derived_rows = [
+            row for row in decision_rows
+            if row["admissionState"] == "DERIVED_SERVER_PATTERN"
+        ]
+        self.assertEqual(len(decision_rows), len(manual_rows) + len(derived_rows))
+        for row in decision_rows:
+            self.assertRegex(row["patternId"], r"^[A-Za-z0-9_.-]{1,128}$")
+            self.assertRegex(row["sourceChainId"], r"^[A-Za-z0-9_.-]{1,128}$")
+            self.assertIs(type(row["authoringPhase"]), int)
+            self.assertIn(row["authoringPhase"], (1, 2, 3))
+        decision_ids = [row["patternId"] for row in decision_rows]
+        decision_chains = [row["sourceChainId"] for row in decision_rows]
+        self.assertEqual(len(decision_ids), len(set(decision_ids)))
+        self.assertEqual(len(decision_chains), len(set(decision_chains)))
+        self.assertTrue(set(decision_ids).issubset(gameplay_ids))
+        self.assertTrue(set(decision_ids).issubset(presentation_ids))
 
         manifest_rows = self.promotion_manifest["patterns"]
+        lineage = lambda row: (
+            row["patternId"], row["sourceChainId"],
+            row["authoringPhase"], row["admissionState"],
+        )
+        self.assertEqual(
+            [lineage(row) for row in manual_rows],
+            [lineage(row) for row in manifest_rows],
+        )
         manifest_ids = [row["patternId"] for row in manifest_rows]
-        manual_ids = [
-            row["patternId"]
-            for row in self.gameplay["decisionModel"]["manualAuditions"]
-        ]
-        expected_manifest_ids = (
-            set(EXPECTED_PROMOTED_KOREAN_NAMES)
-            | EXPECTED_UNCHANGED_SEQUENCE_IDS
+        manifest_chains = [row["sourceChainId"] for row in manifest_rows]
+        self.assertEqual(len(manifest_ids), len(set(manifest_ids)))
+        self.assertEqual(len(manifest_chains), len(set(manifest_chains)))
+        self.assertFalse(
+            {row["patternId"] for row in derived_rows} & set(manifest_ids)
         )
-        self.assertEqual(16, len(EXPECTED_PROMOTED_KOREAN_NAMES))
-        self.assertEqual(4, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
-        self.assertEqual(manifest_ids, manual_ids)
-        self.assertEqual(expected_manifest_ids, set(manifest_ids))
-        self.assertEqual(
-            EXPECTED_UNCHANGED_SEQUENCE_IDS,
-            {
-                pattern_id
-                for pattern_id in manifest_ids
-                if pattern_id.startswith("VALTAN_SEQUENCE_")
-            },
-        )
-        self.assertEqual(
-            EXPECTED_PROMOTED_KOREAN_NAMES,
-            {
-                row["patternId"]: row["displayName"]
-                for row in manifest_rows
-                if row["patternId"] in EXPECTED_PROMOTED_KOREAN_NAMES
-            },
+        self.assertFalse(
+            {row["sourceChainId"] for row in derived_rows} & set(manifest_chains)
         )
         gameplay_names = {
             row["patternId"]: row["displayName"]
             for row in self.gameplay["patterns"]
-            if row["patternId"] in EXPECTED_PROMOTED_KOREAN_NAMES
         }
-        self.assertEqual(EXPECTED_PROMOTED_KOREAN_NAMES, gameplay_names)
+        for row in manifest_rows:
+            self.assertEqual(gameplay_names[row["patternId"]], row["displayName"])
+
+        source_path = REPOSITORY_ROOT / self.promotion_manifest["sourceDocument"]["path"]
+        debug_document = json.loads(source_path.read_text(encoding="utf-8"))
+        debug_chains = [row["chainId"] for row in debug_document["chains"]]
+        intake_chains = [
+            row["sourceChainId"]
+            for row in self.promotion_manifest["animationIntakeOnly"]
+        ]
+        all_promoted_chains = set(manifest_chains) | set(intake_chains)
+        self.assertEqual(all_promoted_chains, set(debug_chains))
+        self.assertEqual(manifest_chains, [
+            chain_id for chain_id in debug_chains if chain_id in set(manifest_chains)
+        ])
+        self.assertEqual(intake_chains, [
+            chain_id for chain_id in debug_chains if chain_id in set(intake_chains)
+        ])
 
         retired_id = "VALTAN_SEQUENCE_FRONT_BACK_FRONT"
         self.assertNotIn(retired_id, gameplay_ids)

@@ -1,5 +1,8 @@
 #include "Valtan.h"
 
+#include "ValtanPresentationAssetService.h"
+#include "ValtanPatternTree.h"
+
 #include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
 #include "AnimationSkillBindingDocument.h"
@@ -32,6 +35,13 @@
 
 namespace
 {
+	uint64_t g_iRaidBgmOwnershipGeneration = 0u;
+
+	bool Is_ArenaCenterCueAnchor(const std::string_view slot)
+	{
+		return slot == "arena.center" || slot == "arena.center.facing";
+	}
+
 	constexpr f32_t VALTAN_SERVER_TICK_HZ = 30.f;
 	constexpr f32_t VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS = 1.f / 120.f;
 	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
@@ -207,10 +217,14 @@ bool_t CValtan::Is_PatternEffectV1AuditionEnabled()
 }
 #endif
 
-wstring_t CValtan::Build_ArmorModelPrototypeTag(const uint32_t iStateMask)
+wstring_t CValtan::Build_ArmorModelPrototypeTag(
+	const uint32_t iStateMask, const std::string_view archetypeId)
 {
-	return TEXT("Prototype_Component_Model_ValtanArmorMask_") +
+	wstring_t tag = TEXT("Prototype_Component_Model_ValtanArmorMask_") +
 		std::to_wstring(iStateMask);
+	if ("BOSS_VALTAN" != archetypeId)
+		tag += L"_" + wstring_t(archetypeId.begin(), archetypeId.end());
+	return tag;
 }
 
 wstring_t CValtan::Build_ArmorPartTag(const uint32_t iStateMask)
@@ -227,7 +241,8 @@ CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 
 CValtan::~CValtan()
 {
-	if (m_isRaidBgmEnabled && RAID_BGM_STATE::NONE != m_eRaidBgmState)
+	if (m_isRaidBgmEnabled && RAID_BGM_STATE::NONE != m_eRaidBgmState &&
+		m_iRaidBgmOwnershipGeneration == g_iRaidBgmOwnershipGeneration)
 		CGameInstance::Get().Stop_Music();
 }
 
@@ -241,6 +256,14 @@ HRESULT CValtan::Initialize(void* pArg)
 	if (nullptr == pArg)
 		return E_INVALIDARG;
 	VALTAN_DESC desc = *static_cast<VALTAN_DESC*>(pArg);
+	const BOSS_ACTOR_ENTRY* actor = CActorCatalog::Find_Boss(desc.strArchetypeId);
+	if (nullptr == actor || actor->clientPresentationId != "boss.valtan.client.v1" ||
+		(desc.isServerAuthoritative &&
+			(("BOSS_VALTAN_GHOST" == desc.strArchetypeId) !=
+			 (LostArk::Shared::INVALID_NET_ENTITY_ID != desc.iOwnerBossNetEntityId))))
+	{
+		return E_INVALIDARG;
+	}
 	if (!std::isfinite(desc.fScale) || desc.fScale <= 0.f ||
 		desc.fScale > 100.f)
 	{
@@ -254,7 +277,10 @@ HRESULT CValtan::Initialize(void* pArg)
 	m_fMoveSpeed = desc.fSpeedPerSec;
 	m_iPrototypeLevelIndex = desc.iPrototypeLevelIndex;
 	m_isServerAuthoritative = desc.isServerAuthoritative;
+	m_strArchetypeId = desc.strArchetypeId;
+	m_iOwnerBossNetEntityId = desc.iOwnerBossNetEntityId;
 	m_isRaidBgmEnabled = m_isServerAuthoritative &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId &&
 		ETOUI(LEVEL::VALTAN_ARENA) == m_iPrototypeLevelIndex;
 	m_pTargetTransform = desc.pTargetTransform;
 
@@ -627,7 +653,7 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		 LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_ACTIVE != patternAction &&
 		 LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_RECOVERY != patternAction))
 		return false;
-	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss("BOSS_VALTAN");
+	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss(m_strArchetypeId);
 	const std::string* pFallbackClip = nullptr == pActor ? nullptr :
 		Resolve_ValtanPresentationClip(*pActor, patternAction);
 	if (nullptr == pFallbackClip)
@@ -684,13 +710,47 @@ void CValtan::Load_PatternEffectCues()
 
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_EFFECT_CUE>> Staged;
+	std::unordered_map<std::string, float3_t> StagedArenaCenters;
+	const bool needsArenaCenters = std::any_of(Document.Cues.begin(), Document.Cues.end(),
+		[](const VALTAN_PATTERN_EFFECT_CUE& cue)
+		{ return Is_ArenaCenterCueAnchor(cue.strAnchorSlotId); });
+	if (needsArenaCenters)
+	{
+		VALTAN_PATTERN_TREE_VIEW view;
+		if (!CValtanPatternTree::Load(view, Status))
+		{
+			OutputDebugStringA(("[Client][Valtan] arena-center cue projection rejected: " +
+				Status + "\n").c_str());
+			return;
+		}
+		for (const std::vector<VALTAN_PATTERN_VIEW>* group : { &view.Gimmicks, &view.Rotation })
+		{
+			for (const VALTAN_PATTERN_VIEW& pattern : *group)
+			{
+				if (!pattern.ServerMotion || pattern.ServerMotion->strKind != "LEAP_TO_ANCHOR")
+					continue;
+				const auto& landing = pattern.ServerMotion->LandingPosition;
+				if (!std::isfinite(landing[0]) || !std::isfinite(landing[1]) ||
+					!std::isfinite(landing[2]))
+				{
+					OutputDebugStringA(("[Client][Valtan] arena-center landing is not finite: " +
+						pattern.strPatternId + "\n").c_str());
+					return;
+				}
+				StagedArenaCenters.emplace(pattern.strPatternId,
+					float3_t(landing[0], landing[1], landing[2]));
+			}
+		}
+	}
 	std::unordered_map<std::string,
 		std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING>> TimingsByAction;
 	for (const VALTAN_PATTERN_EFFECT_CUE& Cue : Document.Cues)
 	{
-		if ("root" != Cue.strAnchorSlotId &&
+		if ((Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId) &&
+			!StagedArenaCenters.contains(Cue.strPatternId)) ||
+			(!Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId) && "root" != Cue.strAnchorSlotId &&
 			(nullptr == m_pBodyModelCom ||
-			 !m_pBodyModelCom->Has_Bone(Cue.strAnchorSlotId.c_str())))
+			 !m_pBodyModelCom->Has_Bone(Cue.strAnchorSlotId.c_str()))))
 		{
 			OutputDebugStringA((
 				"[Client][Valtan] pattern Effect cue anchor rejected: " +
@@ -809,6 +869,7 @@ void CValtan::Load_PatternEffectCues()
 			});
 	}
 	m_PatternEffectCuesByActionId = std::move(Staged);
+	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
 	m_AttemptedPatternEffectOccurrenceKeys.clear();
 	m_bPatternEffectCueScanAgeValid = false;
 	m_fPatternEffectCueScanAgeSeconds = 0.f;
@@ -979,7 +1040,34 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			Desc.fPlaybackRate = fPlaybackRate;
 			Desc.fInitialSampleTimeSeconds = Sample.fInitialSampleSeconds;
 			std::string Status;
-			if (!CEffectPresentationService::Spawn(Desc, Status))
+			bool_t spawned = false;
+			if (Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId))
+			{
+				const auto center = m_PatternArenaCenterAnchors.find(Cue.strPatternId);
+				float4x4_t anchor{}, root{};
+				if (center != m_PatternArenaCenterAnchors.end())
+				{
+					const f32_t yaw = Cue.strAnchorSlotId == "arena.center.facing" ?
+						m_fServerPatternFacingYawDegrees : 0.f;
+					// Fixed center; only the facing slot uses the Server-selected target yaw.
+					XMStoreFloat4x4(&anchor, XMMatrixRotationY(XMConvertToRadians(yaw)) *
+						XMMatrixTranslation(center->second.x, center->second.y, center->second.z));
+					if (CEffectPresentationService::Build_CueScalePolicyRoot(
+						Cue.LocalTransform, Cue.eScalePolicy, Cue.vWorldScale, anchor, root))
+					{
+						EFFECT_WORLD_ROOT_HANDLE handle;
+						spawned = CEffectPresentationService::Spawn_WorldRoot(
+							Desc, root, handle, Status);
+					}
+					else
+						Status = "Arena-center cue local transform is invalid.";
+				}
+				else
+					Status = "Arena-center cue has no admitted landing anchor.";
+			}
+			else
+				spawned = CEffectPresentationService::Spawn(Desc, Status);
+			if (!spawned)
 			{
 				OutputDebugStringA((
 					"[Client][Valtan] pattern Effect spawn isolated: " + Status +
@@ -1274,7 +1362,10 @@ void CValtan::Update(f32_t fTimeDelta)
 	}
 	if (m_isServerAuthoritative)
 	{
-		Update_NetworkTransform(fTimeDelta);
+		if (m_DeathPresentationClock.Has_Started())
+			m_DeathPresentationClock.Advance(fTimeDelta);
+		else
+			Update_NetworkTransform(fTimeDelta);
 		__super::Update(fTimeDelta);
 		return;
 	}
@@ -1397,6 +1488,8 @@ HRESULT CValtan::Ready_PartObjects()
 	bodyDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
 	bodyDesc.pParentState = &m_iState;
 	bodyDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+	bodyDesc.strModelPrototypeTag =
+		CValtanPresentationAssetService::Get_BodyModelPrototypeTag(m_strArchetypeId);
 	bodyDesc.pEmissiveOverride = &m_HitFlash;
 
 	if (FAILED(__super::Add_PartObject(
@@ -1437,7 +1530,8 @@ HRESULT CValtan::Ready_PartObjects()
 
 	weaponDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 
-	weaponDesc.strModelTag = TEXT("Prototype_Component_Model_ValtanWeapon");
+	weaponDesc.strModelTag =
+		CValtanPresentationAssetService::Get_WeaponModelPrototypeTag(m_strArchetypeId);
 
 	weaponDesc.strShaderTag = TEXT("Prototype_Component_Shader_VtxMeshBinary");
 
@@ -1473,7 +1567,7 @@ actually attached are recorded. */
 void CValtan::Ready_ArmorParts()
 {
 	m_ArmorPartTagsByStateMask.clear();
-	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss("BOSS_VALTAN");
+	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss(m_strArchetypeId);
 	if (nullptr == pActor)
 		return;
 
@@ -1486,7 +1580,7 @@ void CValtan::Ready_ArmorParts()
 		armorDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
 		armorDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 		armorDesc.strModelTag =
-			Build_ArmorModelPrototypeTag(armorPart.stateMask);
+			Build_ArmorModelPrototypeTag(armorPart.stateMask, m_strArchetypeId);
 		armorDesc.strShaderTag =
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
 		armorDesc.pSkeletonModel = m_pBodyModelCom;
@@ -1769,7 +1863,7 @@ bool_t CValtan::Apply_BrokenArmorMask(const uint8_t iBrokenArmorMask)
 
 void CValtan::Refresh_ArmorPartVisibility()
 {
-	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss("BOSS_VALTAN");
+	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss(m_strArchetypeId);
 	if (nullptr == pActor)
 		return;
 
@@ -1847,6 +1941,10 @@ void CValtan::Transition_RaidBgm(const RAID_BGM_STATE nextState)
 		return;
 	}
 
+	// An older death tail must not stop music claimed by a newly spawned boss.
+	if (0u == ++g_iRaidBgmOwnershipGeneration)
+		++g_iRaidBgmOwnershipGeneration;
+	m_iRaidBgmOwnershipGeneration = g_iRaidBgmOwnershipGeneration;
 	/* Commit the presentation edge even when the local resource is missing.
 	The Server snapshot remains authoritative, and a missing WAV must not turn
 	every following snapshot into a 30 Hz load retry. */
@@ -1942,6 +2040,74 @@ void CValtan::Update_RaidBgm(
 	}
 }
 
+bool_t CValtan::Begin_NetworkDeathPresentation()
+{
+	if (!m_isServerAuthoritative)
+		return false;
+	if (m_DeathPresentationClock.Has_Started())
+		return !Is_NetworkDeathPresentationComplete();
+	m_iState = VALTAN_STATE::DEAD;
+	m_strServerPatternId.clear();
+	m_strServerActionId.clear();
+	m_iServerActionStartTick = 0u;
+	m_iServerPatternStageIndex = 0u;
+	m_iNetworkSampleCount = 0u;
+	m_hasNetworkTransformState = false;
+	m_fHitFlashRemainingSeconds = 0.f;
+	m_HitFlash = {};
+	const auto owner = std::static_pointer_cast<CValtan>(shared_from_this());
+	CEffectPresentationService::Stop_BossOwner(owner);
+	Client::CEffectV2Runtime::Sync_Stage(
+		Client::EFFECT_V2_TARGET::From_Valtan(owner), "", 0.f, m_pDevice, m_pContext);
+	bool_t hasPlayableClip = false;
+	f32_t durationSeconds = 0.f;
+	const BOSS_ACTOR_ENTRY* actor = CActorCatalog::Find_Boss(m_strArchetypeId);
+	if (nullptr != actor && nullptr != m_pBodyModelCom &&
+		!actor->presentationClips.dead.empty())
+	{
+		for (uint32_t index = 0u; index < m_pBodyModelCom->Get_NumAnimations(); ++index)
+		{
+			const char* name = m_pBodyModelCom->Get_AnimationName(index);
+			if (nullptr == name || actor->presentationClips.dead != name)
+				continue;
+			f32_t position = 0.f, durationTicks = 0.f;
+			const f32_t ticksPerSecond = m_pBodyModelCom->Get_AnimationTickPerSecond(index);
+			if (!m_pBodyModelCom->Get_AnimationProgress(index, position, durationTicks) ||
+				!std::isfinite(durationTicks) || durationTicks <= 0.f ||
+				!std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f)
+				break;
+			durationSeconds = durationTicks / ticksPerSecond;
+			if (!std::isfinite(durationSeconds) || durationSeconds <= 0.f)
+				break;
+			m_pBodyModelCom->Set_AnimPaused(false);
+			m_pBodyModelCom->Set_AnimationSpeed(1.f);
+			hasPlayableClip = m_pBodyModelCom->Start_Animation(index, false);
+			if (hasPlayableClip)
+				m_iDeathAnimationIndex = index;
+			break;
+		}
+	}
+	m_DeathPresentationClock.Start(hasPlayableClip, durationSeconds);
+	if (!hasPlayableClip)
+		OutputDebugStringA(("[Client][Valtan] no playable death clip; retire immediately: " +
+			m_strArchetypeId + "\n").c_str());
+	Update_RaidBgm(LostArk::Shared::WORLD_ENTITY_ACTION::DEAD, {}, {});
+	return !Is_NetworkDeathPresentationComplete();
+}
+
+bool_t CValtan::Is_NetworkDeathPresentationComplete() const
+{
+	if (!m_DeathPresentationClock.Has_Started() || m_DeathPresentationClock.Is_Complete() ||
+		nullptr == m_pBodyModelCom ||
+		m_pBodyModelCom->Get_CurrentAnimIndex() != m_iDeathAnimationIndex ||
+		m_pBodyModelCom->Is_AnimLoop() || m_pBodyModelCom->Is_AnimPaused())
+		return true;
+	f32_t position = 0.f, duration = 0.f;
+	return !m_pBodyModelCom->Get_AnimationProgress(m_iDeathAnimationIndex, position, duration) ||
+		!std::isfinite(position) || !std::isfinite(duration) ||
+		duration <= 0.f || position >= duration;
+}
+
 bool_t CValtan::Apply_NetworkState(
 	const float3_t& position,
 	const f32_t yawDegrees,
@@ -1997,6 +2163,22 @@ bool_t CValtan::Apply_NetworkState(
 	{
 		return false;
 	}
+	if (VALTAN_STATE::DEAD == nextState)
+	{
+		if (!m_DeathPresentationClock.Has_Started())
+		{
+			m_pTransformCom->Set_State(STATE::POSITION,
+				XMVectorSet(position.x, position.y, position.z, 1.f));
+			m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+			m_fPresentationYawDegrees = yawDegrees;
+			Begin_NetworkDeathPresentation();
+		}
+		if (0u != iServerTick)
+			m_iLastServerTick = iServerTick;
+		return true;
+	}
+	if (m_DeathPresentationClock.Has_Started())
+		return false;
 	f32_t fActionAgeSeconds = 0.f;
 	if (isPatternState)
 	{
@@ -2052,7 +2234,7 @@ bool_t CValtan::Apply_NetworkState(
 				VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS)))
 	{
 		const BOSS_ACTOR_ENTRY* pActor =
-			CActorCatalog::Find_Boss("BOSS_VALTAN");
+			CActorCatalog::Find_Boss(m_strArchetypeId);
 		if (nullptr == pActor)
 			return false;
 		const std::string* pClip =
@@ -2111,6 +2293,8 @@ bool_t CValtan::Apply_NetworkState(
 		m_iLastServerTick = iServerTick;
 	if (isPatternState)
 	{
+		if (iPatternSequence != m_iServerPatternSequence)
+			m_fServerPatternFacingYawDegrees = yawDegrees;
 		m_strServerPatternId.assign(patternId);
 		m_iServerActionStartTick = iActionStartTick;
 		m_iServerPatternSequence = iPatternSequence;

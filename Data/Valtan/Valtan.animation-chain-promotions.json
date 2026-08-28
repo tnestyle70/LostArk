@@ -27,18 +27,6 @@
       "displayName": "2페이즈 전방-후방-전방 연속 공격",
       "authoringPhase": 2,
       "admissionState": "ANIMATION_INTAKE_ONLY"
-    },
-    {
-      "sourceChainId": "respawn",
-      "displayName": "3페이즈 망령화 발탄 부활",
-      "authoringPhase": 3,
-      "admissionState": "ANIMATION_INTAKE_ONLY"
-    },
-    {
-      "sourceChainId": "dead",
-      "displayName": "3페이즈 발탄 사망",
-      "authoringPhase": 3,
-      "admissionState": "ANIMATION_INTAKE_ONLY"
     }
   ],
   "patterns": [
@@ -183,6 +171,22 @@
       "displayName": "3페이즈 전 발악패턴",
       "authoringPhase": 3,
       "admissionState": "MANUAL_SERVER_AUDITION"
+    },
+    {
+      "sourceChainId": "respawn",
+      "patternId": "VALTAN_GHOST_RESPAWN_AUDITION",
+      "displayName": "3페이즈 망령화 발탄 부활",
+      "authoringPhase": 3,
+      "admissionState": "MANUAL_SERVER_AUDITION",
+      "sourceActionId": 420624
+    },
+    {
+      "sourceChainId": "dead",
+      "patternId": "VALTAN_GHOST_DEATH_AUDITION",
+      "displayName": "3페이즈 발탄 사망",
+      "authoringPhase": 3,
+      "admissionState": "MANUAL_SERVER_AUDITION",
+      "sourceActionId": 420603
     }
   ]
 }

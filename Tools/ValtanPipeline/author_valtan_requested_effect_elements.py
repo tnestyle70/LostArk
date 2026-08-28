@@ -2358,7 +2358,7 @@ def _pattern(document: JsonObject, pattern_id: str) -> JsonObject:
 def _stage_six_pizza_targeting(gameplay: JsonObject) -> None:
     pizza = _pattern(gameplay, "VALTAN_SIX_PIZZA_106")
     pizza["targetPolicy"] = "LOCK_RANDOM_ALIVE_ON_START"
-    pizza["aimPolicy"] = "TRACK_TARGET_EACH_TICK"
+    pizza["aimPolicy"] = "LOCK_FACING_ON_START"
 
 
 def _initial_template_elements(

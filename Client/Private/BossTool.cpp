@@ -11,6 +11,7 @@
 #include "ProjectDataRoot.h"
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
+#include "ValtanTuningCommandService.h"
 
 #include <algorithm>
 #include <cctype>
@@ -163,8 +164,8 @@ void Client::CBossTool::Update(const bool_t bToolVisible)
 
 	Synchronize_LiveSelection();
 	Refresh_PresentationFreshness();
-	const VALTAN_PATTERN_FLOW_SNAPSHOT& FlowSnapshot =
-		CValtanPatternFlowService::Get().Get_Snapshot();
+	const bool_t bFlowOwnsPlayback =
+		CValtanPatternFlowService::Get().Has_PlaybackOwnership();
 	const HUD_PLAYER_STATE& Player = CCombatHUDViewModel::Get().Get_Player();
 	if (m_bReviveFeedbackPending && Player.isValid && 0u != Player.iCurrentHp)
 	{
@@ -190,7 +191,7 @@ void Client::CBossTool::Update(const bool_t bToolVisible)
 	}
 
 	if (!m_bRepeat || m_strRepeatPatternId.empty() ||
-		FlowSnapshot.Is_InFlight() ||
+		bFlowOwnsPlayback ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
 		CONSUMER_ID != Audition.strConsumerId ||
 		m_strRepeatPatternId != Audition.strPatternId ||
@@ -222,20 +223,23 @@ bool_t Client::CBossTool::Reload_Graph()
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
 	m_bGraphLoadAttempted = true;
-	m_bNextPatternInventoryReady = false;
 	VALTAN_PATTERN_TREE_VIEW StagedGraph;
 	std::string Status;
 	if (!CValtanPatternTree::Load(StagedGraph, Status))
 	{
-		m_strStatus = "Graph reload failed: " + Status;
+		m_strStatus = m_bGraphReady ?
+			"Graph reload failed; previous playable inventory preserved: " + Status :
+			"Graph reload failed: " + Status;
 		return false;
 	}
 	VALTAN_TOOL_AUDITION_INVENTORY StagedAuditionInventory;
 	std::string InventoryError;
-	if (!CValtanPatternTree::Build_ToolAuditionInventory(
+	if (!CValtanPatternTree::Build_PlayablePatternInventory(
 			StagedGraph, StagedAuditionInventory, InventoryError))
 	{
-		m_strStatus = "Graph reload failed: " + InventoryError;
+		m_strStatus = m_bGraphReady ?
+			"Graph reload failed; previous playable inventory preserved: " + InventoryError :
+			"Graph reload failed: " + InventoryError;
 		return false;
 	}
 
@@ -243,7 +247,60 @@ bool_t Client::CBossTool::Reload_Graph()
 	if (!CValtanPatternTree::Build_NextPatternInventory(
 			StagedGraph, StagedNextPatternIds, InventoryError))
 	{
-		m_strStatus = "Graph reload failed: " + InventoryError;
+		m_strStatus = m_bGraphReady ?
+			"Graph reload failed; previous playable inventory preserved: " + InventoryError :
+			"Graph reload failed: " + InventoryError;
+		return false;
+	}
+	std::vector<std::string> StagedAdmittedPatternIds;
+	StagedAdmittedPatternIds.reserve(StagedAuditionInventory.Get_PatternCount());
+	for (const auto* pPatternIds : {
+			&StagedAuditionInventory.CorePatternIds,
+			&StagedAuditionInventory.AnimatorPatternIds,
+			&StagedAuditionInventory.DerivedPatternIds })
+	{
+		StagedAdmittedPatternIds.insert(
+			StagedAdmittedPatternIds.end(),
+			pPatternIds->begin(), pPatternIds->end());
+	}
+	const bool_t bFlowWasReady = m_FlowDocument.Is_Ready();
+	CValtanPatternFlowDocument StagedFlowDocument = m_FlowDocument;
+	std::string StagedFlowStatus;
+	if (bFlowWasReady)
+	{
+		if (!StagedFlowDocument.Verify_SourceRevision(StagedFlowStatus) ||
+			!CValtanPatternFlowDocument::Validate(
+				StagedFlowDocument.Get_Draft(), StagedAdmittedPatternIds,
+				StagedFlowStatus))
+		{
+			m_strStatus = m_bGraphReady ?
+				"Graph reload failed; previous playable inventory preserved: " +
+					StagedFlowStatus :
+				"Graph reload failed because the loaded Flow conflicts: " +
+					StagedFlowStatus;
+			m_strFlowStatus = "Flow inventory conflict; graph reload was not committed: " +
+				StagedFlowStatus;
+			return false;
+		}
+	}
+	else if (!StagedFlowDocument.Load(
+		StagedAdmittedPatternIds, StagedFlowStatus))
+	{
+		m_strStatus = "Graph reload failed because the saved Flow could not be staged: " +
+			StagedFlowStatus;
+		m_strFlowStatus = "Flow load failed; graph reload was not committed: " +
+			StagedFlowStatus;
+		return false;
+	}
+	if (StagedGraph.strSavedFlowSourceRevision.empty() ||
+		StagedGraph.strSavedFlowSourceRevision !=
+			StagedFlowDocument.Get_SourceRevision())
+	{
+		m_strStatus = m_bGraphReady ?
+			"Graph reload failed; previous playable inventory preserved because the saved Flow changed during reload." :
+			"Graph reload failed because the saved Flow changed during reload.";
+		m_strFlowStatus =
+			"Flow source revision did not match the staged graph; reload was not committed.";
 		return false;
 	}
 
@@ -264,6 +321,7 @@ bool_t Client::CBossTool::Reload_Graph()
 	m_Graph = std::move(StagedGraph);
 	m_AuditionInventory = std::move(StagedAuditionInventory);
 	m_NextPatternIds = std::move(StagedNextPatternIds);
+	m_FlowDocument = std::move(StagedFlowDocument);
 	m_bNextPatternInventoryReady = true;
 	m_EncounterReference = bEncounterReady ?
 		std::move(StagedEncounter) : CEncounterPatternReference{};
@@ -283,33 +341,13 @@ bool_t Client::CBossTool::Reload_Graph()
 	m_bResourceSearchStale = false;
 	m_bGraphReady = true;
 	Refresh_PresentationFreshness(true);
-	if (!m_FlowDocument.Is_Ready())
+	if (!bFlowWasReady)
 	{
-		std::string FlowStatus;
-		if (m_FlowDocument.Load(Build_AdmittedPatternIds(), FlowStatus))
-		{
-			m_strFlowStatus = FlowStatus;
-			const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
-				m_FlowDocument.Get_DefaultFlow();
-			if (nullptr != pFlow && !pFlow->Slots.empty())
-				m_strSelectedFlowSlotId = pFlow->Slots.front().strSlotId;
-		}
-		else
-		{
-			m_strFlowStatus = "Flow load failed: " + FlowStatus;
-		}
-	}
-	else
-	{
-		std::string FlowValidationStatus;
-		if (!CValtanPatternFlowDocument::Validate(
-				m_FlowDocument.Get_Draft(), Build_AdmittedPatternIds(),
-				FlowValidationStatus))
-		{
-			m_strFlowStatus =
-				"Flow inventory conflict after graph reload: " +
-				FlowValidationStatus;
-		}
+		m_strFlowStatus = StagedFlowStatus;
+		const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
+			m_FlowDocument.Get_DefaultFlow();
+		if (nullptr != pFlow && !pFlow->Slots.empty())
+			m_strSelectedFlowSlotId = pFlow->Slots.front().strSlotId;
 	}
 
 	const VALTAN_PATTERN_VIEW* pSelected =
@@ -342,8 +380,9 @@ bool_t Client::CBossTool::Reload_Graph()
 		m_strRepeatPatternId.clear();
 	}
 
-	m_strStatus =
-		"Boss graph reloaded with the canonical 27-pattern All Effects inventory.";
+	m_strStatus = "Boss graph reloaded with " +
+		std::to_string(m_AuditionInventory.Get_PatternCount()) +
+		" split-owned playable patterns.";
 	return true;
 }
 
@@ -411,10 +450,10 @@ bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()
 		m_strFlowStatus = "Select a valid saved Flow slot first.";
 		return false;
 	}
-	if (CValtanPatternFlowService::Get().Get_Snapshot().Is_InFlight())
+	if (CValtanPatternFlowService::Get().Has_PlaybackOwnership())
 	{
 		m_strFlowStatus =
-			"Isolated preview is unavailable while Server Flow playback is active.";
+			"Isolated preview is unavailable while Server Flow playback or a Start request is active.";
 		return false;
 	}
 
@@ -436,6 +475,13 @@ bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()
 
 bool_t Client::CBossTool::Start_Flow(const bool_t bFromSelectedSlot)
 {
+	const CValtanTuningCommandService& Tuning = CValtanTuningCommandService::Get();
+	if (Tuning.Has_PendingCommand())
+	{
+		m_strFlowStatus =
+			"Resolve the pending saved Flow publication or Server application before playback.";
+		return false;
+	}
 	const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
 		m_FlowDocument.Get_DefaultFlow();
 	if (nullptr == pFlow || pFlow->Slots.empty())
@@ -465,6 +511,16 @@ bool_t Client::CBossTool::Start_Flow(const bool_t bFromSelectedSlot)
 		m_strFlowStatus = "Flow start blocked: " + ValidationStatus;
 		return false;
 	}
+	if (!Tuning.Is_SavedPatternFlowServerActive(
+			m_FlowDocument.Get_SourceRevision()))
+	{
+		const VALTAN_TUNING_COMMAND_SNAPSHOT& Publication = Tuning.Get_Snapshot();
+		m_strFlowStatus =
+			"Apply this exact saved Flow revision to the current Server world before playback.";
+		if (!Publication.strStatus.empty())
+			m_strFlowStatus += " " + Publication.strStatus;
+		return false;
+	}
 	const std::string StartSlotId = bFromSelectedSlot ?
 		m_strSelectedFlowSlotId : pFlow->Slots.front().strSlotId;
 	if (StartSlotId.empty())
@@ -472,10 +528,13 @@ bool_t Client::CBossTool::Start_Flow(const bool_t bFromSelectedSlot)
 		m_strFlowStatus = "Select a Flow slot to use Start Here.";
 		return false;
 	}
-	if (CValtanPatternAuditionService::Get().Has_PlaybackOwnership())
+	if (CValtanPatternFlowService::Get().Has_PendingStart() ||
+		CValtanPatternAuditionService::Get().Has_PendingNextCommand() ||
+		VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING ==
+			CValtanPatternAuditionService::Get().Get_Snapshot().eState)
 	{
 		m_strFlowStatus =
-			"Wait for isolated playback and all Next commands to finish before starting Flow.";
+			"Resolve the pending Server command before restarting the saved Flow.";
 		return false;
 	}
 
@@ -519,32 +578,39 @@ bool_t Client::CBossTool::Request_RevivePlayer(
 
 bool_t Client::CBossTool::Reload_FlowDocument()
 {
+	if (CValtanTuningCommandService::Get().Has_PendingCommand())
+	{
+		m_strFlowStatus = "Wait for the saved Flow publication/application result before Reload.";
+		return false;
+	}
 	std::string Status;
 	if (!m_FlowDocument.Reload(Build_AdmittedPatternIds(), Status))
 	{
-		m_strFlowStatus = "Flow reload failed: " + Status;
+		m_strFlowStatus = "Flow reload failed; playback unchanged: " + Status;
 		return false;
 	}
 	m_bConfirmDiscardDirtyFlow = false;
 	const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
 		m_FlowDocument.Get_DefaultFlow();
-	if (nullptr == pFlow || pFlow->Slots.end() == std::find_if(
-			pFlow->Slots.begin(), pFlow->Slots.end(),
-			[this](const VALTAN_PATTERN_FLOW_SLOT& Slot)
-			{
-				return Slot.strSlotId == m_strSelectedFlowSlotId;
-			}))
+	m_strSelectedFlowSlotId =
+		nullptr != pFlow && !pFlow->Slots.empty() ?
+			pFlow->Slots.front().strSlotId : std::string{};
+	if (!Start_Flow(false))
 	{
-		m_strSelectedFlowSlotId =
-			nullptr != pFlow && !pFlow->Slots.empty() ?
-				pFlow->Slots.front().strSlotId : std::string{};
+		m_strFlowStatus =
+			"Saved Flow reloaded, but restart was not submitted: " + m_strFlowStatus;
+		return false;
 	}
-	m_strFlowStatus = Status;
 	return true;
 }
 
 bool_t Client::CBossTool::Save_FlowDocument()
 {
+	if (CValtanTuningCommandService::Get().Has_PendingCommand())
+	{
+		m_strFlowStatus = "Resolve the pending gameplay publication/application before Save.";
+		return false;
+	}
 	std::string Status;
 	if (!m_FlowDocument.Save(Build_AdmittedPatternIds(), Status))
 	{
@@ -552,8 +618,55 @@ bool_t Client::CBossTool::Save_FlowDocument()
 		return false;
 	}
 	m_bConfirmDiscardDirtyFlow = false;
+	std::string PublishStatus;
+	const bool bSubmitted = CValtanTuningCommandService::Get().Publish_SavedPatternFlow(
+		m_FlowDocument.Get_SourceRevision(), PublishStatus);
+	m_strFlowStatus = Status + (bSubmitted ? " Applying the saved default order: " :
+		" Saved, but the Server order has not changed: ") + PublishStatus;
+	return true; // Disk save succeeded; publication has its own exact result.
+}
+
+bool_t Client::CBossTool::Apply_SavedFlow()
+{
+	std::string Status;
+	if (!m_FlowDocument.Is_Ready() || m_FlowDocument.Is_Dirty() ||
+		!m_FlowDocument.Verify_SourceRevision(Status))
+	{
+		m_strFlowStatus = "Save or Reload a clean Flow before applying it: " + Status;
+		return false;
+	}
+	CValtanTuningCommandService& Service = CValtanTuningCommandService::Get();
+	const VALTAN_TUNING_COMMAND_SNAPSHOT& Publication = Service.Get_Snapshot();
+	const bool bHasCandidate = Publication.strFlowRevision == m_FlowDocument.Get_SourceRevision() &&
+		!Publication.strCandidateRevision.empty();
+	const bool bSubmitted = bHasCandidate ?
+		Service.ApplyCandidate(Publication.strCandidateRevision, Publication.strApplyClass, Status) :
+		Service.Publish_SavedPatternFlow(m_FlowDocument.Get_SourceRevision(), Status);
 	m_strFlowStatus = Status;
-	return true;
+	return bSubmitted;
+}
+
+void Client::CBossTool::Render_FlowPublicationStatus()
+{
+	const CValtanTuningCommandService& Service = CValtanTuningCommandService::Get();
+	const VALTAN_TUNING_COMMAND_SNAPSHOT& Publication = Service.Get_Snapshot();
+	ImGui::TextDisabled("Default order source: saved Pattern Flow.");
+	if (VALTAN_TUNING_COMMAND_STATE::IDLE != Publication.eState)
+	{
+		ImGui::TextWrapped("Default order apply: %s | %s",
+			Describe_ValtanTuningCommandState(Publication.eState), Publication.strStatus.c_str());
+		if (!Publication.strFlowRevision.empty() &&
+			Publication.strFlowRevision != m_FlowDocument.Get_SourceRevision())
+			ImGui::TextWrapped("This result belongs to a different saved Flow revision.");
+		if (!Publication.strCandidateRevision.empty())
+			ImGui::TextDisabled("Candidate: %.12s", Publication.strCandidateRevision.c_str());
+	}
+	ImGui::TextDisabled("Current runs keep their order. New runs use the admitted order; Reload starts slot 01.");
+	ImGui::BeginDisabled(Service.Has_PendingCommand() || !m_FlowDocument.Is_Ready() ||
+		m_FlowDocument.Is_Dirty());
+	if (ImGui::Button("Apply Saved Flow"))
+		(void)Apply_SavedFlow();
+	ImGui::EndDisabled();
 }
 
 void Client::CBossTool::Synchronize_LiveSelection()
@@ -651,7 +764,7 @@ void Client::CBossTool::Render_BossVerificationTab()
 void Client::CBossTool::Render_PatternFlowTab()
 {
 	ImGui::TextDisabled(
-		"Edit a Debug-only order. Product scriptedSequence is not published here.");
+		"Save the default Server order. Reload restarts from slot 01 after application.");
 	if (!m_bGraphReady)
 	{
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
@@ -659,9 +772,13 @@ void Client::CBossTool::Render_PatternFlowTab()
 			(void)Reload_Graph();
 	}
 
-	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
-		CValtanPatternFlowService::Get().Get_Snapshot();
-	const bool_t bPlaybackLocked = Playback.Is_InFlight();
+	const CValtanPatternFlowService& FlowService = CValtanPatternFlowService::Get();
+	const bool_t bPlaybackLocked = FlowService.Has_PlaybackOwnership();
+	const bool_t bCommandPending = FlowService.Has_PendingStart() ||
+		CValtanTuningCommandService::Get().Has_PendingCommand() ||
+		CValtanPatternAuditionService::Get().Has_PendingNextCommand() ||
+		VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING ==
+			CValtanPatternAuditionService::Get().Get_Snapshot().eState;
 	const char_t* pDocumentState = !m_FlowDocument.Is_Ready() ?
 		"NOT LOADED" :
 		(m_FlowDocument.Has_ExternalConflict() ? "EXTERNAL CONFLICT" :
@@ -675,23 +792,25 @@ void Client::CBossTool::Render_PatternFlowTab()
 			m_FlowDocument.Get_SourceRevision().c_str());
 	}
 	ImGui::SameLine();
-	ImGui::BeginDisabled(bPlaybackLocked);
+	ImGui::BeginDisabled(bCommandPending);
 	if (ImGui::Button("Reload Flow"))
 	{
 		if (m_FlowDocument.Is_Dirty())
 		{
 			m_bConfirmDiscardDirtyFlow = true;
 			m_strFlowStatus =
-				"Reload would discard the current draft. Confirm below.";
+				"Reload discards this draft and restarts the saved order at slot 01. Confirm below.";
 		}
 		else
 		{
 			(void)Reload_FlowDocument();
 		}
 	}
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGui::SetTooltip("Reload the saved order and request one Server reset, starting at slot 01.");
 	ImGui::SameLine();
 	ImGui::BeginDisabled(
-		!m_FlowDocument.Is_Ready() || !m_FlowDocument.Is_Dirty());
+		bPlaybackLocked || !m_FlowDocument.Is_Ready() || !m_FlowDocument.Is_Dirty());
 	if (ImGui::Button("Save Flow"))
 		(void)Save_FlowDocument();
 	ImGui::EndDisabled();
@@ -699,8 +818,8 @@ void Client::CBossTool::Render_PatternFlowTab()
 	if (m_bConfirmDiscardDirtyFlow)
 	{
 		ImGui::TextWrapped(
-			"Discard unsaved slot changes and reload the current disk revision?");
-		ImGui::BeginDisabled(bPlaybackLocked);
+			"Discard unsaved slot changes, then restart the saved Flow at slot 01?");
+		ImGui::BeginDisabled(bCommandPending);
 		if (ImGui::Button("Discard & Reload"))
 			(void)Reload_FlowDocument();
 		ImGui::SameLine();
@@ -716,6 +835,8 @@ void Client::CBossTool::Render_PatternFlowTab()
 	{
 		ImGui::TextWrapped("%s", m_strFlowStatus.c_str());
 	}
+
+	Render_FlowPublicationStatus();
 
 	/* Keep Next independent of draft admission and selection. Small windows
 	   scroll this parent; both right-side children retain usable minimums. */
@@ -768,6 +889,7 @@ void Client::CBossTool::Render_NextPatternCard()
 	const VALTAN_NEXT_PATTERN_SNAPSHOT& Next = Service.Get_NextSnapshot();
 	const VALTAN_NEXT_PATTERN_COMMAND& Command = Service.Get_NextCommand();
 	const bool_t bFlowActive = CValtanPatternFlowService::Get().Get_Snapshot().Is_InFlight();
+	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
 	const auto LabelFor = [this](const std::string& Id)
 	{
 		const VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(Id);
@@ -775,8 +897,10 @@ void Client::CBossTool::Render_NextPatternCard()
 			pPattern->strDisplayName : (Id.empty() ? std::string("None") : Id);
 	};
 	ImGui::SeparatorText("Next Pattern (no reset)");
-	ImGui::TextWrapped("Current: %s | %s", LabelFor(Current.strPatternId).c_str(),
-		Describe_ValtanPatternAuditionState(Current.eState));
+	ImGui::TextWrapped("Current: %s | %s",
+		LabelFor(Boss.isValid ? Boss.strPatternId : Current.strPatternId).c_str(),
+		Boss.isValid && !Boss.strPatternId.empty() ? "SERVER" :
+			Describe_ValtanPatternAuditionState(Current.eState));
 	ImGui::TextWrapped("Next: %s | %s", LabelFor(Next.strPatternId).c_str(),
 		Describe_ValtanNextPatternState(Next.eState));
 	if (Next.Is_Live())
@@ -793,16 +917,11 @@ void Client::CBossTool::Render_NextPatternCard()
 		ImGui::TextWrapped("Command: %s | %s", Describe_ValtanNextCommandState(Command.eState),
 			Command.strStatus.c_str());
 
-	const bool_t bCurrentReady =
-		VALTAN_PATTERN_AUDITION_STATE::QUEUED == Current.eState ||
-		VALTAN_PATTERN_AUDITION_STATE::ACTIVE == Current.eState ||
-		VALTAN_PATTERN_AUDITION_STATE::COMPLETED == Current.eState;
+	std::string SelectionStatus;
+	const bool_t bRuntimeCanChoose =
+		Service.Can_QueueNextPattern(BOSS_PLACEMENT_ID, SelectionStatus);
 	const bool_t bCanChoose = m_bNextPatternInventoryReady &&
-		!m_NextPatternIds.empty() && CNetworkManager::Get().Is_Connected() &&
-		bCurrentReady && 0u != Current.iRoomAuditionEpoch &&
-		0u != Current.iObservedPatternSequence && !bFlowActive &&
-		!(Next.Is_Live() && Next.bReservationConsumed) &&
-		!Service.Has_PendingNextCommand();
+		!m_NextPatternIds.empty() && bRuntimeCanChoose;
 	ImGui::BeginDisabled(!bCanChoose);
 	if (ImGui::Button("Next Pattern..."))
 		ImGui::OpenPopup("##chooseBossNextPattern");
@@ -831,8 +950,12 @@ void Client::CBossTool::Render_NextPatternCard()
 		if (ImGui::Button("Reload Graph##next"))
 			(void)Reload_Graph();
 	}
+	if (!bRuntimeCanChoose)
+		ImGui::TextWrapped("%s", SelectionStatus.c_str());
 	ImGui::TextWrapped("%s", m_strNextPatternStatus.c_str());
-	ImGui::TextWrapped("Next preserves the current arena and turns Repeat off. Flow Save/Reload edits only the saved document.");
+	ImGui::TextWrapped("Next starts after the current Server pattern without resetting the arena. Repeat is turned off.");
+	if (bFlowActive)
+		ImGui::TextWrapped("Choosing Next stops the remaining Flow order after this occurrence; the saved slots are unchanged.");
 }
 
 void Client::CBossTool::Render_NextPatternPicker()
@@ -846,11 +969,9 @@ void Client::CBossTool::Render_NextPatternPicker()
 		m_NextPatternSearch.data(), m_NextPatternSearch.size());
 	const std::string Query = m_NextPatternSearch.data();
 	CValtanPatternAuditionService& Service = CValtanPatternAuditionService::Get();
-	const VALTAN_NEXT_PATTERN_SNAPSHOT& Next = Service.Get_NextSnapshot();
+	std::string SelectionStatus;
 	ImGui::BeginDisabled(!m_bNextPatternInventoryReady ||
-		Service.Has_PendingNextCommand() ||
-		(Next.Is_Live() && Next.bReservationConsumed) ||
-		CValtanPatternFlowService::Get().Get_Snapshot().Is_InFlight());
+		!Service.Can_QueueNextPattern(BOSS_PLACEMENT_ID, SelectionStatus));
 	if (ImGui::BeginChild("##bossNextPatternChoices", ImVec2(0.f, 330.f), true))
 	{
 		for (const std::string& PatternId : m_NextPatternIds)
@@ -890,7 +1011,8 @@ void Client::CBossTool::Render_FlowSlotList()
 {
 	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
 		CValtanPatternFlowService::Get().Get_Snapshot();
-	const bool_t bPlaybackLocked = Playback.Is_InFlight();
+	const bool_t bPlaybackLocked =
+		CValtanPatternFlowService::Get().Has_PlaybackOwnership();
 	ImGui::TextUnformatted("Ordered Slots");
 	ImGui::SameLine();
 	ImGui::BeginDisabled(bPlaybackLocked);
@@ -955,15 +1077,23 @@ void Client::CBossTool::Render_FlowSlotList()
 				return Slot.strSlotId == m_strSelectedFlowSlotId;
 			});
 	const bool_t bHasSelection = pFlow->Slots.end() != SelectedAt;
-	const bool_t bCanMoveUp = bHasSelection && SelectedAt != pFlow->Slots.begin();
+	const bool_t bSelectedIsEntry = nullptr != pSelected &&
+		"VALTAN_ENTRANCE_CINEMATIC" == pSelected->strPatternId;
+	const bool_t bFirstIsEntry = !pFlow->Slots.empty() &&
+		"VALTAN_ENTRANCE_CINEMATIC" == pFlow->Slots.front().strPatternId;
+	const bool_t bWouldCrossEntry = bHasSelection && bFirstIsEntry &&
+		SelectedAt == std::next(pFlow->Slots.begin());
+	const bool_t bCanMoveUp = bHasSelection &&
+		SelectedAt != pFlow->Slots.begin() && !bWouldCrossEntry;
 	const bool_t bCanMoveDown = bHasSelection &&
-		std::next(SelectedAt) != pFlow->Slots.end();
+		std::next(SelectedAt) != pFlow->Slots.end() && !bSelectedIsEntry;
 	ImGui::BeginDisabled(bPlaybackLocked || !bCanMoveUp);
 	if (ImGui::Button("Up"))
 	{
 		std::string Status;
 		if (!m_FlowDocument.Move_Slot(
-				m_strSelectedFlowSlotId, -1, Status))
+				m_strSelectedFlowSlotId, -1,
+				Build_AdmittedPatternIds(), Status))
 			m_strFlowStatus = Status;
 		else
 			m_strFlowStatus = Status;
@@ -975,7 +1105,8 @@ void Client::CBossTool::Render_FlowSlotList()
 	{
 		std::string Status;
 		if (!m_FlowDocument.Move_Slot(
-				m_strSelectedFlowSlotId, 1, Status))
+				m_strSelectedFlowSlotId, 1,
+				Build_AdmittedPatternIds(), Status))
 			m_strFlowStatus = Status;
 		else
 			m_strFlowStatus = Status;
@@ -1009,7 +1140,7 @@ void Client::CBossTool::Render_AddPatternPopup()
 	if (!ImGui::BeginPopup("##addBossFlowPattern"))
 		return;
 	const bool_t bPlaybackLocked =
-		CValtanPatternFlowService::Get().Get_Snapshot().Is_InFlight();
+		CValtanPatternFlowService::Get().Has_PlaybackOwnership();
 	ImGui::BeginDisabled(bPlaybackLocked);
 	ImGui::TextUnformatted("Add from All Effects");
 	ImGui::SetNextItemWidth(360.f);
@@ -1056,10 +1187,18 @@ void Client::CBossTool::Render_AddPatternPopup()
 				ImGui::PopID();
 			}
 		};
-		ImGui::SeparatorText("CORE SERVER PATTERNS (8)");
+		ImGui::SeparatorText((std::string("CORE SERVER PATTERNS (") +
+			std::to_string(m_AuditionInventory.CorePatternIds.size()) + ")").c_str());
 		RenderIds(m_AuditionInventory.CorePatternIds);
-		ImGui::SeparatorText("ANIMATOR PATTERNS (20)");
+		ImGui::SeparatorText((std::string("ANIMATOR PATTERNS (") +
+			std::to_string(m_AuditionInventory.AnimatorPatternIds.size()) + ")").c_str());
 		RenderIds(m_AuditionInventory.AnimatorPatternIds);
+		if (!m_AuditionInventory.DerivedPatternIds.empty())
+		{
+			ImGui::SeparatorText((std::string("DERIVED SERVER PATTERNS (") +
+				std::to_string(m_AuditionInventory.DerivedPatternIds.size()) + ")").c_str());
+			RenderIds(m_AuditionInventory.DerivedPatternIds);
+		}
 	}
 	ImGui::EndChild();
 	ImGui::EndDisabled();
@@ -1103,8 +1242,8 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 			CValtanPatternTree::Build_PatternIdentitySummary(*pPattern).c_str());
 	}
 
-	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
-		CValtanPatternFlowService::Get().Get_Snapshot();
+	CValtanPatternFlowService& FlowService = CValtanPatternFlowService::Get();
+	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback = FlowService.Get_Snapshot();
 	const VALTAN_PATTERN_AUDITION_SNAPSHOT& Isolated =
 		CValtanPatternAuditionService::Get().Get_Snapshot();
 	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
@@ -1113,7 +1252,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		Boss.isValid && Player.isValid && 0u != Player.iCurrentHp &&
 		Player.isCombatReady;
 	const bool_t bCanPreview = nullptr != pSlot && nullptr != pPattern &&
-		bRuntimeReady && !Playback.Is_InFlight() &&
+		bRuntimeReady && !FlowService.Has_PlaybackOwnership() &&
 		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership();
 	ImGui::BeginDisabled(!bCanPreview);
 	if (ImGui::Button("Preview Isolated"))
@@ -1124,7 +1263,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 
 	ImGui::SeparatorText("Flow Playback");
 	int32_t PursuitMs = static_cast<int32_t>(pFlow->iInterStepPursuitMs);
-	ImGui::BeginDisabled(Playback.Is_InFlight());
+	ImGui::BeginDisabled(FlowService.Has_PlaybackOwnership());
 	ImGui::SetNextItemWidth(190.f);
 	if (ImGui::SliderInt(
 			"Inter-step pursuit (ms)", &PursuitMs,
@@ -1143,9 +1282,15 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 	const bool_t bDraftAdmitted = CValtanPatternFlowDocument::Validate(
 		m_FlowDocument.Get_Draft(), Build_AdmittedPatternIds(),
 		DraftValidationStatus);
+	const CValtanTuningCommandService& Tuning =
+		CValtanTuningCommandService::Get();
 	const bool_t bCanStart = bRuntimeReady && bSavedClean && bDraftAdmitted &&
-		!pFlow->Slots.empty() && !Playback.Is_InFlight() &&
-		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership();
+		!pFlow->Slots.empty() && !Tuning.Has_PendingCommand() &&
+		Tuning.Is_SavedPatternFlowServerActive(
+			m_FlowDocument.Get_SourceRevision()) &&
+		!FlowService.Has_PendingStart() &&
+		!CValtanPatternAuditionService::Get().Has_PendingNextCommand() &&
+		VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING != Isolated.eState;
 	ImGui::BeginDisabled(!bCanStart);
 	if (ImGui::Button("Start First"))
 		(void)Start_Flow(false);
@@ -1176,12 +1321,30 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 	}
 
 	ImGui::TextWrapped("Tool: %s", m_strFlowStatus.c_str());
-	if (VALTAN_PATTERN_FLOW_STATE::IDLE != Playback.eState)
-	{
-		ImGui::TextWrapped(
-			"Server: %s | %s",
-			Describe_ValtanPatternFlowState(Playback.eState),
+	ImGui::TextWrapped(
+		"Server: %s | %s",
+		Describe_ValtanPatternFlowState(Playback.eState),
+		Playback.strStatus.empty() ?
+			"No saved Flow is active. Reload Flow starts the saved order at slot 01." :
 			Playback.strStatus.c_str());
+	ImGui::TextDisabled("Saved revision: %.12s", m_FlowDocument.Get_SourceRevision().c_str());
+	if (!Playback.strFlowRevision.empty())
+	{
+		ImGui::TextDisabled("Server Flow revision: %.12s", Playback.strFlowRevision.c_str());
+		if (Playback.Is_InFlight() &&
+			Playback.strFlowRevision != m_FlowDocument.Get_SourceRevision())
+		{
+			ImGui::TextWrapped(
+				"The Server is still playing the previous saved order. Reload Flow restarts the current saved revision.");
+		}
+	}
+	const VALTAN_PATTERN_FLOW_START_COMMAND& StartCommand = FlowService.Get_PendingStart();
+	if (!StartCommand.strStatus.empty())
+		ImGui::TextWrapped("Start request: %s", StartCommand.strStatus.c_str());
+	if (VALTAN_PATTERN_FLOW_START_STATE::UNCONFIRMED == StartCommand.eState &&
+		ImGui::Button("Retry Same Flow Start"))
+	{
+		(void)FlowService.Retry_Start(m_strFlowStatus);
 	}
 	if (FLOW_PREVIEW_CONSUMER_ID == Isolated.strConsumerId &&
 		VALTAN_PATTERN_AUDITION_STATE::IDLE != Isolated.eState &&
@@ -1283,8 +1446,8 @@ void Client::CBossTool::Render_ActionBar()
 {
 	const VALTAN_PATTERN_AUDITION_SNAPSHOT& Audition =
 		CValtanPatternAuditionService::Get().Get_Snapshot();
-	const VALTAN_PATTERN_FLOW_SNAPSHOT& FlowPlayback =
-		CValtanPatternFlowService::Get().Get_Snapshot();
+	const bool_t bFlowOwnsPlayback =
+		CValtanPatternFlowService::Get().Has_PlaybackOwnership();
 	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
 	const HUD_PLAYER_STATE& Player = CCombatHUDViewModel::Get().Get_Player();
 	const VALTAN_PATTERN_VIEW* pSelected =
@@ -1294,7 +1457,7 @@ void Client::CBossTool::Render_ActionBar()
 		CNetworkManager::Get().Is_Connected() && Boss.isValid &&
 		Player.isValid && 0u != Player.iCurrentHp && Player.isCombatReady &&
 		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership() &&
-		!FlowPlayback.Is_InFlight();
+		!bFlowOwnsPlayback;
 	const bool_t bNextOwnsPlayback =
 		CValtanPatternAuditionService::Get().Get_NextSnapshot().Is_Live() ||
 		CValtanPatternAuditionService::Get().Has_PendingNextCommand();
@@ -1312,7 +1475,7 @@ void Client::CBossTool::Render_ActionBar()
 		(void)Submit_SelectedPattern();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(nullptr == pSelected || bNextOwnsPlayback || FlowPlayback.Is_InFlight());
+	ImGui::BeginDisabled(nullptr == pSelected || bNextOwnsPlayback || bFlowOwnsPlayback);
 	if (ImGui::Checkbox("Repeat", &m_bRepeat))
 	{
 		m_bReviveFeedbackPending = false;
@@ -1362,7 +1525,7 @@ void Client::CBossTool::Render_ActionBar()
 			Status = "Play paused: revive the player, then Repeat continues from the same selection.";
 		else if (!Player.isCombatReady)
 			Status = "Play unavailable: wait for the Server player to become combat-ready.";
-		else if (FlowPlayback.Is_InFlight())
+		else if (bFlowOwnsPlayback)
 			Status = "Play unavailable while ordered Pattern Flow is active.";
 		else if (bNextOwnsPlayback)
 			Status = "Play and Repeat are locked while Next owns a reservation or unresolved command.";
@@ -1471,13 +1634,21 @@ void Client::CBossTool::Render_PatternList()
 	};
 	if (HasVisible(m_AuditionInventory.CorePatternIds))
 	{
-		ImGui::SeparatorText("CORE SERVER PATTERNS (8)");
+		ImGui::SeparatorText((std::string("CORE SERVER PATTERNS (") +
+			std::to_string(m_AuditionInventory.CorePatternIds.size()) + ")").c_str());
 		RenderPatternIds(m_AuditionInventory.CorePatternIds);
 	}
 	if (HasVisible(m_AuditionInventory.AnimatorPatternIds))
 	{
-		ImGui::SeparatorText("ANIMATOR PATTERNS (20)");
+		ImGui::SeparatorText((std::string("ANIMATOR PATTERNS (") +
+			std::to_string(m_AuditionInventory.AnimatorPatternIds.size()) + ")").c_str());
 		RenderPatternIds(m_AuditionInventory.AnimatorPatternIds);
+	}
+	if (HasVisible(m_AuditionInventory.DerivedPatternIds))
+	{
+		ImGui::SeparatorText((std::string("DERIVED SERVER PATTERNS (") +
+			std::to_string(m_AuditionInventory.DerivedPatternIds.size()) + ")").c_str());
+		RenderPatternIds(m_AuditionInventory.DerivedPatternIds);
 	}
 	if (0u == iVisiblePatternCount)
 		ImGui::TextDisabled("No pattern matches this search.");
@@ -2265,9 +2436,7 @@ Client::CBossTool::Find_SelectedFlowSlot() const
 std::vector<std::string> Client::CBossTool::Build_AdmittedPatternIds() const
 {
 	std::vector<std::string> PatternIds;
-	PatternIds.reserve(
-		m_AuditionInventory.CorePatternIds.size() +
-		m_AuditionInventory.AnimatorPatternIds.size());
+	PatternIds.reserve(m_AuditionInventory.Get_PatternCount());
 	PatternIds.insert(
 		PatternIds.end(),
 		m_AuditionInventory.CorePatternIds.begin(),
@@ -2276,6 +2445,10 @@ std::vector<std::string> Client::CBossTool::Build_AdmittedPatternIds() const
 		PatternIds.end(),
 		m_AuditionInventory.AnimatorPatternIds.begin(),
 		m_AuditionInventory.AnimatorPatternIds.end());
+	PatternIds.insert(
+		PatternIds.end(),
+		m_AuditionInventory.DerivedPatternIds.begin(),
+		m_AuditionInventory.DerivedPatternIds.end());
 	return PatternIds;
 }
 

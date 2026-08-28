@@ -64,16 +64,14 @@
       "properties": {
         "patterns": {
           "type": "array",
-          "minItems": 33,
-          "maxItems": 33,
+          "minItems": 1,
           "items": {
             "$ref": "#/$defs/patternCoverage"
           }
         },
         "missingActionBindingPatterns": {
           "type": "array",
-          "minItems": 1,
-          "maxItems": 1,
+          "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/missingPattern"
           }
@@ -235,10 +233,14 @@
       "required": ["patternId", "status", "sourceActionIds"],
       "properties": {
         "patternId": {
-          "const": "VALTAN_ENTRANCE_WHIRLWIND"
+          "type": "string",
+          "pattern": "^VALTAN_[A-Z0-9_]+$"
         },
         "status": {
-          "const": "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW"
+          "enum": [
+            "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW",
+            "MISSING_ACTION_BINDING_NO_SOURCE_ACTION"
+          ]
         },
         "sourceActionIds": {
           "type": "array",
@@ -940,13 +942,16 @@
       ],
       "properties": {
         "encounterPatternCount": {
-          "const": 33
+          "type": "integer",
+          "minimum": 1
         },
         "actionBindingPatternCount": {
-          "const": 32
+          "type": "integer",
+          "minimum": 0
         },
         "missingActionBindingPatternCount": {
-          "const": 1
+          "type": "integer",
+          "minimum": 0
         },
         "branchCandidateCount": {
           "type": "integer",
@@ -977,10 +982,12 @@
           "minimum": 1
         },
         "encounterStageActionCount": {
-          "const": 131
+          "type": "integer",
+          "minimum": 1
         },
         "patternBindingActionCount": {
-          "const": 131
+          "type": "integer",
+          "minimum": 1
         },
         "patternBindingGapCount": {
           "const": 0

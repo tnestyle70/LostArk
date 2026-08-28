@@ -16,9 +16,32 @@
         "kind": "AUTHORED_PATTERN_EVENT"
       },
       "armorPlates": [
-        { "plateIndex": 0, "durability": 20, "defense": 50 },
-        { "plateIndex": 1, "durability": 20, "defense": 50 }
+        {
+          "plateIndex": 0,
+          "durability": 20,
+          "defense": 50
+        },
+        {
+          "plateIndex": 1,
+          "durability": 20,
+          "defense": 50
+        }
       ]
+    },
+    {
+      "archetypeId": "BOSS_VALTAN_GHOST",
+      "encounterId": "ENCOUNTER_VALTAN",
+      "displayName": "유령 발탄",
+      "maximumHp": 60000,
+      "maximumHealthBars": 160,
+      "attackPower": 100,
+      "collisionRadius": 1.4,
+      "engageDistance": 20.0,
+      "moveSpeed": 2.6,
+      "phasePolicy": {
+        "kind": "AUTHORED_PATTERN_EVENT"
+      },
+      "armorPlates": []
     }
   ]
 }

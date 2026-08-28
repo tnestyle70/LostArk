@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Executable contract tests for Map Effect cross-document publishing."""
+"""Executable contracts for map file-set publishing and Map Effect joins."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ POWERSHELL = shutil.which("powershell")
 
 
 class Fixture:
-    def __init__(self) -> None:
+    def __init__(self, *, create_runtime_map: bool = True) -> None:
         self._temp = tempfile.TemporaryDirectory(prefix="LostArkMapEffectContract.")
         self.root = Path(self._temp.name)
         self.authoring = self.root / "Data" / "Maps" / "Authoring" / AREA_ID
@@ -37,13 +37,14 @@ class Fixture:
         for path in (
             self.authoring,
             self.imported,
-            self.runtime_map,
             self.runtime_world,
             self.runtime_resources,
             self.effect_authored,
             self.encounter_root,
         ):
             path.mkdir(parents=True, exist_ok=True)
+        if create_runtime_map:
+            self.runtime_map.mkdir(parents=True, exist_ok=True)
         self._write_fixture()
 
     def close(self) -> None:
@@ -63,6 +64,71 @@ class Fixture:
     @property
     def deploy_catalog_path(self) -> Path:
         return self.imported / f"{AREA_ID}.deployassets"
+
+    @property
+    def map_placement_path(self) -> Path:
+        return self.authoring / f"{AREA_ID}.mapplacements"
+
+    @property
+    def map_asset_path(self) -> Path:
+        return self.imported / f"{AREA_ID}.mapassets"
+
+    @staticmethod
+    def placement_row(
+        placement_id: int = 1,
+        source: str = "fixture",
+        asset: str = "FIXTURE",
+        transform: str = "editor",
+        values: str = "0 0 0 0 0 0 1 1 1 1 1",
+    ) -> str:
+        return (
+            f'{placement_id} "{source}" "fixture" "{transform}" "{asset}" '
+            f"{values}"
+        )
+
+    @staticmethod
+    def asset_row(asset: str = "FIXTURE") -> str:
+        return (
+            f'"{asset}" "Fixture" "Map/fixture.wmodel" '
+            f'"Prototype_{asset}" 1 1 1 Origin'
+        )
+
+    def write_placements(self, rows: list[str], path: Path | None = None) -> None:
+        (path or self.map_placement_path).write_text(
+            f'LOSTARK_MAP_PLACEMENTS 2 "{AREA_ID}" {len(rows)}\n'
+            + "\n".join(rows)
+            + ("\n" if rows else ""),
+            encoding="utf-8",
+        )
+
+    def make_shards(self) -> None:
+        catalog = self.read_json(self.root / "Data" / "Maps" / "MapCatalog.json")
+        catalog["areas"][0]["sourceCatalog"] = (
+            f"Data/Maps/Imported/{AREA_ID}/{AREA_ID}.mapset"
+        )
+        catalog["areas"][0]["catalog"] = (
+            f"Client/Bin/DataFiles/Map/{AREA_ID}.mapset"
+        )
+        catalog["areas"][0].pop("placements", None)
+        self.write_json(self.root / "Data" / "Maps" / "MapCatalog.json", catalog)
+        (self.imported / f"{AREA_ID}.mapset").write_text(
+            f'LOSTARK_MAP_SHARD_SET 1 "{AREA_ID}" 2\n'
+            f'"A" "{AREA_ID}_A.mapassets" "{AREA_ID}_A.mapplacements" 1 1\n'
+            f'"B" "{AREA_ID}_B.mapassets" "{AREA_ID}_B.mapplacements" 2 1\n',
+            encoding="utf-8",
+        )
+        for shard, assets in (("A", ["FIXTURE"]), ("B", ["FIXTURE", "SECOND"])):
+            (self.imported / f"{AREA_ID}_{shard}.mapassets").write_text(
+                f'LOSTARK_MAP_ASSET_CATALOG 1 "{AREA_ID}" {len(assets)}\n'
+                + "\n".join(self.asset_row(asset) for asset in assets)
+                + "\n",
+                encoding="utf-8",
+            )
+        first = self.placement_row(1, "baseline.A")
+        second = self.placement_row(2, "baseline.B")
+        self.write_placements([first], self.imported / f"{AREA_ID}_A.mapplacements")
+        self.write_placements([second], self.imported / f"{AREA_ID}_B.mapplacements")
+        self.write_placements([first, second, self.placement_row(3, "new.placement")])
 
     @property
     def deploy_placement_path(self) -> Path:
@@ -122,15 +188,13 @@ class Fixture:
             ],
         }
         self._write_json(self.root / "Data" / "Maps" / "MapCatalog.json", map_catalog)
-        (self.imported / f"{AREA_ID}.mapassets").write_text(
-            f'LOSTARK_MAP_ASSET_CATALOG 1 "{AREA_ID}" 0\n', encoding="utf-8"
-        )
-        (self.authoring / f"{AREA_ID}.mapplacements").write_text(
-            f'LOSTARK_MAP_PLACEMENTS 2 "{AREA_ID}" 1\n'
-            '1 "fixture" "fixture" "editor" "FIXTURE" '
-            "0 0 0 0 0 0 1 1 1\n",
+        self.map_asset_path.write_text(
+            f'LOSTARK_MAP_ASSET_CATALOG 1 "{AREA_ID}" 1\n'
+            + self.asset_row()
+            + "\n",
             encoding="utf-8",
         )
+        self.write_placements([self.placement_row()])
         self.deploy_catalog_path.write_text(
             f'LOSTARK_DEPLOY_PROP_CATALOG 2 "{AREA_ID}" 1\n'
             '"VALTAN_FLOOR_BRICK_A" STATIC "fixture.floor" '
@@ -340,7 +404,21 @@ class Fixture:
             if path.is_file()
         }
 
-    def publish(self, failure_after_promote: int = 0) -> subprocess.CompletedProcess[str]:
+    def runtime_state(self) -> dict[str, tuple[bool, int, bytes | None]]:
+        if not self.runtime_map.exists():
+            return {}
+        return {
+            path.relative_to(self.runtime_map).as_posix(): (
+                path.is_dir(),
+                path.stat().st_mtime_ns,
+                None if path.is_dir() else path.read_bytes(),
+            )
+            for path in [self.runtime_map, *sorted(self.runtime_map.rglob("*"))]
+        }
+
+    def publish(
+        self, failure_after_promote: int = 0, *, mode: str | None = None
+    ) -> subprocess.CompletedProcess[str]:
         if POWERSHELL is None:
             raise RuntimeError("powershell executable was not found")
         command = [
@@ -357,6 +435,8 @@ class Fixture:
         ]
         if failure_after_promote:
             command += ["-FailureAfterPromote", str(failure_after_promote)]
+        if mode is not None:
+            command += ["-Mode", mode]
         return subprocess.run(
             command,
             cwd=REPO_ROOT,
@@ -366,6 +446,7 @@ class Fixture:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=False,
+            timeout=30,
         )
 
 
@@ -603,6 +684,267 @@ class MapEffectPresentationContractTests(unittest.TestCase):
             self.assertEqual(before, fixture.snapshot_runtime())
         finally:
             fixture.close()
+
+
+class MapAuthoringPublishContractTests(unittest.TestCase):
+    def test_validate_check_publish_single_and_shards(self) -> None:
+        for sharded in (False, True):
+            with self.subTest(sharded=sharded):
+                fixture = Fixture(create_runtime_map=False)
+                try:
+                    if sharded:
+                        fixture.make_shards()
+                    before = fixture.runtime_state()
+                    validated = fixture.publish(mode="Validate")
+                    self.assertEqual(0, validated.returncode, validated.stdout)
+                    self.assertEqual(before, fixture.runtime_state())
+                    self.assertFalse(fixture.runtime_map.exists())
+                    missing = fixture.publish(mode="Check")
+                    self.assertNotEqual(0, missing.returncode, missing.stdout)
+                    self.assertIn("runtime output is missing", missing.stdout)
+                    self.assertFalse(fixture.runtime_map.exists())
+
+                    published = fixture.publish()
+                    self.assertEqual(0, published.returncode, published.stdout)
+                    self.assertTrue(
+                        (fixture.runtime_map / f"{AREA_ID}.deployplacements").is_file()
+                    )
+                    if sharded:
+                        first = (fixture.runtime_map / f"{AREA_ID}_A.mapplacements").read_text(encoding="utf-8")
+                        second = (fixture.runtime_map / f"{AREA_ID}_B.mapplacements").read_text(encoding="utf-8")
+                        self.assertEqual(["1"], [row.split()[0] for row in first.splitlines()[1:]])
+                        self.assertEqual(["2", "3"], [row.split()[0] for row in second.splitlines()[1:]])
+                    preserved = fixture.runtime_map / "UNRELATED_AREA.mapplacements"
+                    preserved.write_bytes(b"unrelated area must stay unchanged\n")
+                    stale = fixture.runtime_map / f"{AREA_ID}.unreferenced-old-output"
+                    stale.write_bytes(b"stale output is outside this transaction\n")
+                    before = fixture.runtime_state()
+                    checked = fixture.publish(mode="Check")
+                    self.assertEqual(0, checked.returncode, checked.stdout)
+                    self.assertEqual(before, fixture.runtime_state())
+
+                    rows = fixture.map_placement_path.read_text(encoding="utf-8").splitlines()[1:]
+                    rows[0] = rows[0].replace("0 0 0 0 0 0 1", "0 0.015 0 0 0 0 1")
+                    fixture.write_placements(rows)
+                    validated = fixture.publish(mode="Validate")
+                    self.assertEqual(0, validated.returncode, validated.stdout)
+                    self.assertEqual(before, fixture.runtime_state())
+                    changed = fixture.publish(mode="Check")
+                    self.assertNotEqual(0, changed.returncode, changed.stdout)
+                    self.assertIn("differs from authoring", changed.stdout)
+                    self.assertEqual(before, fixture.runtime_state())
+                    updated = fixture.publish(mode="Publish")
+                    self.assertEqual(0, updated.returncode, updated.stdout)
+                    final = fixture.publish(mode="Check")
+                    self.assertEqual(0, final.returncode, final.stdout)
+                    self.assertEqual(b"unrelated area must stay unchanged\n", preserved.read_bytes())
+                    self.assertEqual(b"stale output is outside this transaction\n", stale.read_bytes())
+                finally:
+                    fixture.close()
+
+    def test_check_compares_every_declared_output_without_rewriting(self) -> None:
+        fixture = Fixture()
+        try:
+            fixture.make_shards()
+            published = fixture.publish()
+            self.assertEqual(0, published.returncode, published.stdout)
+            outputs = sorted(fixture.runtime_map.iterdir())
+            for output in outputs:
+                with self.subTest(output=output.name):
+                    original = output.read_bytes()
+                    output.write_bytes(original + b" ")
+                    before = fixture.runtime_state()
+                    changed = fixture.publish(mode="Check")
+                    self.assertNotEqual(0, changed.returncode, changed.stdout)
+                    self.assertIn(output.name, changed.stdout)
+                    self.assertEqual(before, fixture.runtime_state())
+                    output.write_bytes(original)
+            missing = fixture.runtime_map / f"{AREA_ID}.mapeffects.json"
+            missing.unlink()
+            before = fixture.runtime_state()
+            checked = fixture.publish(mode="Check")
+            self.assertNotEqual(0, checked.returncode, checked.stdout)
+            self.assertIn("runtime output is missing", checked.stdout)
+            self.assertEqual(before, fixture.runtime_state())
+        finally:
+            fixture.close()
+
+    def test_invalid_single_placements_preserve_runtime(self) -> None:
+        row = Fixture.placement_row
+        cases = [
+            ("duplicate-id", [row(), row(source="other")], "Duplicate authoring placement ID"),
+            ("duplicate-source", [row(), row(2)], "Duplicate authoring source placement ID"),
+            ("missing-asset", [row(asset="MISSING")], "outside the catalog"),
+            ("case-sensitive-asset", [row(asset="fixture")], "outside the catalog"),
+            ("zero-id", [row(0)], "ID domain"),
+            ("editor-high-id", [row(1 << 63)], "ID domain"),
+            ("actor-low-id", [row(transform="actor")], "ID domain"),
+            ("unknown-source", [row(transform="unknown")], "ID domain"),
+            ("truncated", [row(values="0 0 0 0 0 0 1 1 1")], "Invalid placement row"),
+            ("nan", [row(values="NaN 0 0 0 0 0 1 1 1 1 1")], "Invalid placement row"),
+            ("float-overflow", [row(values="1e39 0 0 0 0 0 1 1 1 1 1")], "Non-finite placement"),
+            ("zero-scale", [row(values="0 0 0 0 0 0 1 1 0 1 1")], "transform or ID domain"),
+            ("zero-quaternion", [row(values="0 0 0 0 0 0 0 1 1 1 1")], "transform or ID domain"),
+        ]
+        for index, (name, rows, expected) in enumerate(cases):
+            with self.subTest(name=name):
+                fixture = Fixture(create_runtime_map=False)
+                try:
+                    fixture.write_placements(rows)
+                    result = fixture.publish(mode=("Validate", "Check", "Publish")[index % 3])
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertIn(expected, result.stdout)
+                    self.assertFalse(fixture.runtime_map.exists())
+                finally:
+                    fixture.close()
+
+    def test_single_headers_and_catalog_id_are_validated(self) -> None:
+        cases = [
+            ("placement-version", "placement", "PLACEMENTS 2", "PLACEMENTS 9", "header"),
+            ("placement-area", "placement", f'"{AREA_ID}"', '"OTHER_AREA"', "header"),
+            ("placement-count", "placement", f'"{AREA_ID}" 1', f'"{AREA_ID}" 2', "count mismatch"),
+            ("catalog-version", "catalog", "CATALOG 1", "CATALOG 9", "header/count"),
+            ("catalog-area", "catalog", f'"{AREA_ID}"', '"OTHER_AREA"', "header/count"),
+            ("catalog-count", "catalog", f'"{AREA_ID}" 1', f'"{AREA_ID}" 2', "header/count"),
+        ]
+        for name, target, old, new, expected in cases:
+            with self.subTest(name=name):
+                fixture = Fixture(create_runtime_map=False)
+                try:
+                    path = fixture.map_placement_path if target == "placement" else fixture.map_asset_path
+                    path.write_text(path.read_text(encoding="utf-8").replace(old, new, 1), encoding="utf-8")
+                    result = fixture.publish(mode="Validate")
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertIn(expected, result.stdout)
+                    self.assertFalse(fixture.runtime_map.exists())
+                finally:
+                    fixture.close()
+        fixture = Fixture(create_runtime_map=False)
+        try:
+            fixture.map_asset_path.write_text(
+                f'LOSTARK_MAP_ASSET_CATALOG 1 "{AREA_ID}" 2\n'
+                + (fixture.asset_row() + "\n") * 2,
+                encoding="utf-8",
+            )
+            result = fixture.publish(mode="Validate")
+            self.assertNotEqual(0, result.returncode, result.stdout)
+            self.assertIn("Duplicate asset ID", result.stdout)
+            self.assertFalse(fixture.runtime_map.exists())
+        finally:
+            fixture.close()
+
+    def test_shard_inputs_fail_before_runtime_changes(self) -> None:
+        cases = [
+            ("duplicate-shard", "set", '"B" "', '"A" "', "Duplicate shard ID"),
+            ("unsafe-path", "set", f'"{AREA_ID}_A.mapassets"', '"../outside.mapassets"', "must be a leaf"),
+            ("missing-shard", "set", f'"{AREA_ID}_A.mapassets"', '"missing.mapassets"', "Shard source is missing"),
+            ("asset-count", "set", f'"{AREA_ID}_A.mapplacements" 1 1', f'"{AREA_ID}_A.mapplacements" 2 1', "Shard asset count mismatch"),
+            ("placement-count", "set", f'"{AREA_ID}_A.mapplacements" 1 1', f'"{AREA_ID}_A.mapplacements" 1 2', "Shard placement count mismatch"),
+            ("baseline-id", "B", '\n2 "', '\n1 "', "Duplicate placement ID across"),
+            ("baseline-source", "B", '"baseline.B"', '"baseline.A"', "Duplicate source placement ID across"),
+            ("baseline-asset", "A", '"FIXTURE"', '"SECOND"', "outside its shard"),
+            ("existing-shard-asset", "authoring", '"editor" "FIXTURE"', '"editor" "SECOND"', "asset unavailable in its shard"),
+        ]
+        for index, (name, target, old, new, expected) in enumerate(cases):
+            with self.subTest(name=name):
+                fixture = Fixture(create_runtime_map=False)
+                try:
+                    fixture.make_shards()
+                    paths = {
+                        "set": fixture.imported / f"{AREA_ID}.mapset",
+                        "A": fixture.imported / f"{AREA_ID}_A.mapplacements",
+                        "B": fixture.imported / f"{AREA_ID}_B.mapplacements",
+                        "authoring": fixture.map_placement_path,
+                    }
+                    path = paths[target]
+                    path.write_text(
+                        path.read_text(encoding="utf-8").replace(old, new, 1),
+                        encoding="utf-8",
+                    )
+                    result = fixture.publish(mode=("Validate", "Check", "Publish")[index % 3])
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertIn(expected, result.stdout)
+                    self.assertFalse(fixture.runtime_map.exists())
+                finally:
+                    fixture.close()
+
+    def test_required_inputs_are_not_published_partially(self) -> None:
+        cases = [
+            ("map_placement_path", "Authoring placement is missing"),
+            ("map_asset_path", "Imported map catalog is missing"),
+            ("deploy_placement_path", "Deploy authoring pair is incomplete"),
+        ]
+        for attribute, expected in cases:
+            with self.subTest(attribute=attribute):
+                fixture = Fixture(create_runtime_map=False)
+                try:
+                    getattr(fixture, attribute).unlink()
+                    result = fixture.publish()
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertIn(expected, result.stdout)
+                    self.assertFalse(fixture.runtime_map.exists())
+                finally:
+                    fixture.close()
+
+    def test_publish_rollback_restores_new_and_existing_output_sets(self) -> None:
+        for sharded, failure_after in ((False, 3), (True, 1), (True, 3)):
+            for previously_published in (False, True):
+                with self.subTest(sharded=sharded, failure_after=failure_after,
+                                  previously_published=previously_published):
+                    fixture = Fixture(create_runtime_map=False)
+                    try:
+                        if sharded:
+                            fixture.make_shards()
+                        if previously_published:
+                            first = fixture.publish()
+                            self.assertEqual(0, first.returncode, first.stdout)
+                        before = fixture.snapshot_runtime()
+                        rows = fixture.map_placement_path.read_text(encoding="utf-8").splitlines()[1:]
+                        fixture.write_placements([
+                            row.replace("0 0 0 0 0 0 1", "0 0.015 0 0 0 0 1")
+                            for row in rows
+                        ])
+                        failed = fixture.publish(failure_after_promote=failure_after)
+                        self.assertNotEqual(0, failed.returncode, failed.stdout)
+                        self.assertIn("Injected map publish failure", failed.stdout)
+                        self.assertEqual(before, fixture.snapshot_runtime())
+                        self.assertFalse(any(path.is_dir() for path in fixture.runtime_map.iterdir()))
+                    finally:
+                        fixture.close()
+
+    def test_catalog_model_paths_must_remain_resources_relative(self) -> None:
+        unsafe_paths = [
+            "/outside.wmodel",
+            "C:/outside.wmodel",
+            "C:outside.wmodel",
+            r"\\server\share\outside.wmodel",
+            "../outside.wmodel",
+            "Map/../../outside.wmodel",
+            r"Map\\..\\outside.wmodel",
+            r"Map/\.\./outside.wmodel",
+        ]
+        for sharded in (False, True):
+            for model_path in unsafe_paths:
+                with self.subTest(sharded=sharded, model_path=model_path):
+                    fixture = Fixture(create_runtime_map=False)
+                    try:
+                        if sharded:
+                            fixture.make_shards()
+                            path = fixture.imported / f"{AREA_ID}_A.mapassets"
+                        else:
+                            path = fixture.map_asset_path
+                        path.write_text(
+                            path.read_text(encoding="utf-8").replace(
+                                "Map/fixture.wmodel", model_path
+                            ),
+                            encoding="utf-8",
+                        )
+                        result = fixture.publish(mode="Validate")
+                        self.assertNotEqual(0, result.returncode, result.stdout)
+                        self.assertIn("must stay Resources-relative", result.stdout)
+                        self.assertFalse(fixture.runtime_map.exists())
+                    finally:
+                        fixture.close()
 
 
 if __name__ == "__main__":

@@ -41,6 +41,59 @@ namespace
 		return false;
 	}
 
+	bool VerifyFiniteDeathPresentationClock()
+	{
+		Client::CDeathPresentationClock Clock;
+		Clock.Advance(5.f);
+		if (!Require(!Clock.Has_Started() && !Clock.Is_Complete(),
+			"an unstarted death presentation acquired a lifetime") ||
+			!Require(Clock.Start(true, 2.f), "a finite death clip did not start"))
+			return false;
+		Clock.Advance(0.5f);
+		if (!Require(!Clock.Is_Complete() && !Clock.Start(true, 200.f),
+			"a duplicate DEAD snapshot/despawn restarted the death clip"))
+			return false;
+		Clock.Advance(1.5f);
+		if (!Require(Clock.Is_Complete() && !Clock.Start(true, 2.f),
+			"a completed death clip did not retire or was resurrected"))
+			return false;
+
+		Client::CDeathPresentationClock Missing;
+		if (!Require(Missing.Start(false, 2.f) && Missing.Is_Complete(),
+			"a missing/failed model clip kept a death presentation alive"))
+			return false;
+		for (const float Duration : { 0.f, -1.f,
+			(std::numeric_limits<float>::infinity)(),
+			(std::numeric_limits<float>::quiet_NaN)() })
+		{
+			Client::CDeathPresentationClock Invalid;
+			if (!Require(Invalid.Start(true, Duration) && Invalid.Is_Complete(),
+				"an invalid clip duration retained an unbounded death presentation"))
+				return false;
+		}
+		for (const float Delta : { -1.f,
+			(std::numeric_limits<float>::infinity)(),
+			(std::numeric_limits<float>::quiet_NaN)() })
+		{
+			Client::CDeathPresentationClock InvalidDelta;
+			InvalidDelta.Start(true, 2.f);
+			InvalidDelta.Advance(Delta);
+			if (!Require(InvalidDelta.Is_Complete(),
+				"an invalid presentation tick left a death tail stuck"))
+				return false;
+		}
+		Client::CDeathPresentationClock LargeDelta;
+		LargeDelta.Start(true, (std::numeric_limits<float>::max)());
+		LargeDelta.Advance((std::numeric_limits<float>::max)());
+		if (!Require(LargeDelta.Is_Complete(),
+			"a large finite update overflowed the bounded death clock"))
+			return false;
+		Client::CDeathPresentationClock NewBoss;
+		NewBoss.Start(true, 2.f);
+		return Require(!NewBoss.Is_Complete(),
+			"a newly spawned boss inherited the previous death lifetime");
+	}
+
 	bool VerifyAdjacentExplicitSourceWindows()
 	{
 		const std::array<ACTION_PRESENTATION_CLIP_TIMING, 2u> Clips{
@@ -1581,7 +1634,8 @@ bool VerifyClientPartyRegression(const std::filesystem::path& root);
 
 int main()
 {
-	if (!VerifyAdjacentExplicitSourceWindows() ||
+	if (!VerifyFiniteDeathPresentationClock() ||
+		!VerifyAdjacentExplicitSourceWindows() ||
 		!VerifyClientPartyRegression(std::filesystem::current_path()) ||
 		!VerifyLegacyNaturalEndCompatibility() ||
 		!VerifyClipOccurrenceTransitions() ||

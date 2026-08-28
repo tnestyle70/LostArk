@@ -383,6 +383,12 @@ public:
 			const std::shared_ptr<const PREPARED_DOCUMENT>& pPrepared);
 	static EFFECT_RENDER_PREWARM_PROBE Get_PrewarmProbe();
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	/* Read the eight prepared standard-material SRV formats without rendering;
+	   unbound slots are DXGI_FORMAT_UNKNOWN. */
+	bool_t Read_AuthoredTextureFormatsForTests(
+		std::string_view strElementId,
+		std::array<DXGI_FORMAT, 8u>& OutFormats,
+		std::string& strOutError) const;
 	/* Harness-only Binding0 half of the dual-resolve proof.  It prepares the
 	   same immutable authored/projection document without installing a material
 	   registry; Product preparation never calls this path. */

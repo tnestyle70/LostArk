@@ -5,12 +5,15 @@
 
 namespace LostArk::Shared
 {
-	/* 42 adds resetless Valtan next-pattern reservation and correlated control.
+	/* 44 adds an immutable owner boss identity to world-entity spawn and a
+	reliable typed death reason to world-entity despawn.
+	43 adds live Product/Flow Next adoption with an observed predecessor.
+	42 adds resetless Valtan next-pattern reservation and correlated control.
 	41 combines same-room party invite/accept and roster sync with the
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 42;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 44;
 
 	enum class WORLD_ID : std::uint16_t
 	{

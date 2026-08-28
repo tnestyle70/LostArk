@@ -1,11 +1,54 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <span>
 
 namespace Client
 {
+
+/* A reliable death can outlive network authority only for the admitted
+   finite model clip. Repeated snapshots/despawns never restart this clock. */
+class CDeathPresentationClock final
+{
+public:
+	bool Start(const bool bHasPlayableClip, const float fDurationSeconds)
+	{
+		if (m_bStarted)
+			return false;
+		m_bStarted = true;
+		m_bHasPlayableClip = bHasPlayableClip && std::isfinite(fDurationSeconds) &&
+			fDurationSeconds > 0.f;
+		m_fDurationSeconds = m_bHasPlayableClip ? fDurationSeconds : 0.f;
+		return true;
+	}
+	void Advance(const float fDeltaSeconds)
+	{
+		if (!m_bStarted || !m_bHasPlayableClip)
+			return;
+		if (!std::isfinite(fDeltaSeconds) || fDeltaSeconds < 0.f)
+		{
+			m_bHasPlayableClip = false;
+			return;
+		}
+		m_fElapsedSeconds = static_cast<float>((std::min)(
+			static_cast<double>(m_fDurationSeconds),
+			static_cast<double>(m_fElapsedSeconds) + fDeltaSeconds));
+	}
+	bool Has_Started() const { return m_bStarted; }
+	bool Is_Complete() const
+	{
+		return m_bStarted && (!m_bHasPlayableClip ||
+			m_fElapsedSeconds >= m_fDurationSeconds);
+	}
+private:
+	bool m_bStarted = false;
+	bool m_bHasPlayableClip = false;
+	float m_fDurationSeconds = 0.f;
+	float m_fElapsedSeconds = 0.f;
+};
 
 struct ACTION_PRESENTATION_CLIP_TIMING final
 {
@@ -59,6 +102,14 @@ public:
 	static bool Resolve_Sample(
 		std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
 		float fStageWallTimeSeconds,
+		ACTION_PRESENTATION_SAMPLE& OutSample);
+	/* Finite authoring wall budgets may hold a terminal pose or repeat a source
+	   clip before advancing. Tool live seek and source-anchor history share
+	   this mapping; invalid input leaves OutSample unchanged. */
+	static bool Resolve_PreviewSequenceSample(
+		std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
+		std::span<const float> WallBudgets,
+		float fTimelineWallTimeSeconds,
 		ACTION_PRESENTATION_SAMPLE& OutSample);
 	/* Sequential occurrences may intentionally reuse one model animation. The
 	   occurrence identity must still force a restart/seek at their boundary. */

@@ -345,7 +345,8 @@ namespace LostArk::Server
 			INACTIVE,
 			PENDING,
 			ACTIVE,
-			COMPLETED_HOLD
+			COMPLETED_HOLD,
+			IDLE_HOLD
 		};
 
 		struct VALTAN_PATTERN_ID_AUDITION_STATE final
@@ -363,6 +364,10 @@ namespace LostArk::Server
 			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 			bool bResetlessContinuation = false;
 			bool bReportedWaitingForPlayer = false;
+			// A live predecessor has no Client Play request to report a lifecycle for.
+			bool bAdoptedLivePredecessor = false;
+			// Keep only the current Flow occurrence on its existing ordered Brain path.
+			std::optional<BOSS_PATTERN_SEQUENCE_DEFINITION> AdoptedFlowSequence;
 		};
 
 		struct VALTAN_NEXT_PATTERN_RESERVATION final
@@ -393,6 +398,10 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
 			std::uint32_t& outCurrentHealthBar);
+		LostArk::Shared::VALTAN_AUDITION_RESULT Adopt_ValtanLiveNextPattern(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
+			SERVER_WORLD_ENTITY& boss);
 		void Cancel_ValtanNextPatternReservation(std::string reason);
 		void Cancel_ValtanPatternIdAudition(std::string reason);
 		void Try_PromoteValtanNextPattern(SERVER_WORLD_ENTITY& boss);
@@ -438,6 +447,7 @@ namespace LostArk::Server
 			std::size_t iStartSlotIndex = 0u;
 			std::size_t iReportedSequenceIndex =
 				(static_cast<std::size_t>(-1));
+			std::uint32_t iReportedPatternSequence = 0u;
 			bool bReportedPausedForRevive = false;
 			bool bStopAfterCurrent = false;
 			std::string strBossPlacementId;
@@ -630,7 +640,9 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& entity);
 		bool Send_WorldEntityDespawned(
 			const std::shared_ptr<CClientSession>& session,
-			LostArk::Shared::NET_ENTITY_ID netEntityId);
+			LostArk::Shared::NET_ENTITY_ID netEntityId,
+			LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON reason =
+				LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON::REMOVED);
 		bool Send_CombatObjectSpawned(
 			const std::shared_ptr<CClientSession>& session,
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
@@ -691,7 +703,9 @@ namespace LostArk::Server
 		void Broadcast_WorldEntitySpawned(
 			const SERVER_WORLD_ENTITY& entity);
 		void Broadcast_WorldEntityDespawned(
-			LostArk::Shared::NET_ENTITY_ID netEntityId);
+			LostArk::Shared::NET_ENTITY_ID netEntityId,
+			LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON reason =
+				LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON::REMOVED);
 		bool Broadcast_WorldDestructionDelta(
 			const std::vector<WORLD_DESTRUCTION_STATE_TRANSITION>& transitions,
 			const std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>&
@@ -709,7 +723,10 @@ namespace LostArk::Server
 		bool Build_WorldEntity(
 			const WORLD_BOOTSTRAP_PLACEMENT& placement,
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
-			SERVER_WORLD_ENTITY& outEntity);
+			SERVER_WORLD_ENTITY& outEntity,
+			const CGameplayCatalog* definitionCatalog = nullptr,
+			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID);
 		bool Initialize_WorldEntities();
 		bool Reset_ReplayableArenaWhenEmpty();
 		bool Reset_ValtanArenaWhenEmpty();
@@ -893,6 +910,15 @@ namespace LostArk::Server
 			std::uint32_t downMs,
 			std::uint32_t serverTick);
 		void Update_Players(float fixedDeltaSeconds);
+		bool Prepare_ArenaEjection(
+			SERVER_PLAYER& staged,
+			const SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_STAGE_ACTION& action,
+			std::uint32_t serverTick);
+		bool Resolve_ArenaCenter(
+			const SERVER_WORLD_ENTITY& boss,
+			SERVER_NAV_POINT& point);
+		bool Update_DependentBosses(std::uint32_t serverTick);
 		/* Slides a hit player along the armed knockback window, clamped to
 		walkable floor and blocking bodies; a wall ends the window early. */
 		void Advance_PlayerKnockback(
@@ -977,6 +1003,8 @@ namespace LostArk::Server
 		CMonsterBrain m_MonsterBrain;
 		CNpcBehaviorRuntime m_NpcBehaviorRuntime;
 		CValtanBrain m_ValtanBrain;
+		std::unique_ptr<CValtanBrain> m_DependentValtanBrain =
+			std::make_unique<CValtanBrain>();
 		VALTAN_DECISION_TRACE_REVISION_STATE m_ValtanDecisionTraceRevision;
 		CEstherSkillSystem m_EstherSkillSystem;
 		CWorldDestructionBootstrap m_WorldDestructionBootstrap;

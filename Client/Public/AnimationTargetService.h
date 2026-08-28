@@ -36,6 +36,8 @@ private:
 	std::vector<uint32_t> m_BoneIndices;
 	uint64_t m_iTargetGeneration = 0u;
 	uint32_t m_iAnimationIndex = UINT32_MAX;
+	/* Empty keeps the original current-clip binding contract. */
+	std::string m_strExplicitClipName;
 	f32_t m_fTickRate = 0.f;
 	f32_t m_fDurationTicks = 0.f;
 	f32_t m_fDurationSeconds = 0.f;
@@ -116,12 +118,26 @@ public:
 		uint32_t iExpectedAnimationIndex,
 		std::span<const std::string> BoneNames,
 		CAnimationHistoricalPoseBinding& OutBinding);
+	/* Pins an explicit clip on the same target without changing its current
+	   animation. Multi-stage history uses clip-local time; each named clip is
+	   sampled from rest without the unrelated live transition blend. */
+	static bool_t Prepare_HistoricalClipPoseBinding(
+		uint64_t iExpectedTargetGeneration,
+		const std::string& strClipName,
+		std::span<const std::string> BoneNames,
+		CAnimationHistoricalPoseBinding& OutBinding);
 	static bool_t Sample_HistoricalPose(
 		const CAnimationHistoricalPoseBinding& Binding,
 		f32_t fAnimationLocalTimeSeconds,
 		ANIMATION_HISTORICAL_POSE_SAMPLE& OutSample);
 
 private:
+	static bool_t Prepare_HistoricalPoseBindingForAnimation(
+		uint64_t iExpectedTargetGeneration,
+		uint32_t iExpectedAnimationIndex,
+		const std::string& strExplicitClipName,
+		std::span<const std::string> BoneNames,
+		CAnimationHistoricalPoseBinding& OutBinding);
 	static std::weak_ptr<CCharacter> s_Target;
 	static std::weak_ptr<CCharacter> s_PreviewCharacter;
 	static std::weak_ptr<CValtan> s_PreviewBoss;

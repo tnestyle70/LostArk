@@ -1,4 +1,5 @@
 #include "ValtanPatternAuditionService.h"
+#include "ActionPresentationTimeline.h"
 
 #if !defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
 #include "CombatHUDViewModel.h"
@@ -74,6 +75,14 @@ namespace
 			Request.iPredecessorRoomAuditionEpoch == Result.iPredecessorRoomAuditionEpoch &&
 			Request.iPredecessorPatternSequence == Result.iPredecessorPatternSequence &&
 			Request.iExpectedNextRequestSequence == Result.iExpectedNextRequestSequence;
+	}
+
+	bool Can_IntroduceOccurrence(
+		const LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE State)
+	{
+		using namespace LostArk::Shared;
+		return VALTAN_AUDITION_LIFECYCLE_STATE::PENDING == State ||
+			VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE == State;
 	}
 }
 
@@ -191,34 +200,29 @@ bool Client::CValtanPatternAuditionService::Submit(
 	return true;
 }
 
-bool Client::CValtanPatternAuditionService::Queue_NextPattern(
-	const std::string_view strConsumerId,
+bool Client::CValtanPatternAuditionService::Can_QueueNextPattern(
 	const std::string_view strBossPlacementId,
-	const std::string_view strPatternId,
-	std::string& strOutStatus)
+	std::string& strOutStatus) const
+{
+	LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request{};
+	return Prepare_NextCommand(strBossPlacementId, Request, strOutStatus);
+}
+
+bool Client::CValtanPatternAuditionService::Prepare_NextCommand(
+	const std::string_view strBossPlacementId,
+	LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& Request,
+	std::string& strOutStatus) const
 {
 	using namespace LostArk::Shared;
-	Update();
-	if (strConsumerId.empty() || strBossPlacementId.empty() || strPatternId.empty())
+	if (strBossPlacementId.empty())
 	{
-		strOutStatus = "Next Pattern requires stable consumer, boss placement, and pattern IDs.";
+		strOutStatus = "Next Pattern requires a stable boss placement ID.";
 		return false;
 	}
-	const bool bPredecessorReady =
-		VALTAN_PATTERN_AUDITION_STATE::QUEUED == m_Snapshot.eState ||
-		VALTAN_PATTERN_AUDITION_STATE::ACTIVE == m_Snapshot.eState ||
-		VALTAN_PATTERN_AUDITION_STATE::COMPLETED == m_Snapshot.eState;
-	if (!bPredecessorReady || !m_hasAuthoritativeLifecycle ||
-		0u == m_Snapshot.iRoomAuditionEpoch ||
-		0u == m_Snapshot.iObservedPatternSequence ||
-		strBossPlacementId != m_Snapshot.strBossPlacementId)
+	if (!Is_Connected() || 0u == m_iNextRequestSequence)
 	{
-		strOutStatus = "Next Pattern needs this Client's authoritative current audition or completed hold.";
-		return false;
-	}
-	if (Is_FlowInFlight())
-	{
-		strOutStatus = "Next Pattern is unavailable during ordered Flow playback.";
+		strOutStatus = !Is_Connected() ? "Start and connect the Debug Server first." :
+			"Audition request identities are exhausted; restart the Client session.";
 		return false;
 	}
 	if (Has_PendingNextCommand())
@@ -226,24 +230,98 @@ bool Client::CValtanPatternAuditionService::Queue_NextPattern(
 		strOutStatus = "Resolve or retry the pending Next command before choosing another pattern.";
 		return false;
 	}
-	if (m_NextSnapshot.Is_Live() && m_NextSnapshot.bReservationConsumed)
+	if (Is_FlowStartPending())
 	{
-		strOutStatus = "Next has already been promoted. Wait for its ACTIVE lifecycle before choosing another pattern.";
+		strOutStatus = "Wait for the pending Flow start or restart before choosing Next Pattern.";
 		return false;
 	}
-	if ((std::numeric_limits<uint32_t>::max)() == m_Snapshot.iObservedPatternSequence)
+
+	uint32_t iEpoch = 0u;
+	uint32_t iPredecessorSequence = 0u;
+	uint32_t iNextToken = 0u;
+	bool bLivePredecessor = false;
+	if (m_NextSnapshot.Is_Live())
+	{
+		if (m_NextSnapshot.bReservationConsumed || 0u == m_NextSnapshot.iPredecessorPatternSequence)
+		{
+			strOutStatus = "Next is starting. Wait for its ACTIVE lifecycle before choosing another pattern.";
+			return false;
+		}
+		if (0u == m_NextSnapshot.iRoomAuditionEpoch ||
+			m_NextSnapshot.iWorldInboundGeneration != World_InboundGeneration() ||
+			strBossPlacementId != m_NextSnapshot.strBossPlacementId)
+		{
+			strOutStatus = "The approved Next reservation does not belong to this boss and world session.";
+			return false;
+		}
+		/* A live Product/Flow predecessor has no isolated current snapshot.
+		   Its approved reservation still owns the full replacement CAS tuple. */
+		iEpoch = m_NextSnapshot.iRoomAuditionEpoch;
+		iPredecessorSequence = m_NextSnapshot.iPredecessorPatternSequence;
+		iNextToken = m_NextSnapshot.iRequestSequence;
+	}
+	else
+	{
+		const bool bPredecessorReady =
+			(VALTAN_PATTERN_AUDITION_STATE::QUEUED == m_Snapshot.eState ||
+			 VALTAN_PATTERN_AUDITION_STATE::ACTIVE == m_Snapshot.eState ||
+			 VALTAN_PATTERN_AUDITION_STATE::COMPLETED == m_Snapshot.eState) &&
+			m_hasAuthoritativeLifecycle && 0u != m_Snapshot.iRoomAuditionEpoch &&
+			0u != m_Snapshot.iObservedPatternSequence &&
+			m_Snapshot.iWorldInboundGeneration == World_InboundGeneration() &&
+			strBossPlacementId == m_Snapshot.strBossPlacementId;
+		if (bPredecessorReady && !Is_FlowInFlight())
+		{
+			iEpoch = m_Snapshot.iRoomAuditionEpoch;
+			iPredecessorSequence = m_Snapshot.iObservedPatternSequence;
+		}
+		else
+		{
+			if (m_Snapshot.Is_InFlight() && !Is_FlowInFlight())
+			{
+				strOutStatus = "Wait for the current isolated audition's authoritative lifecycle.";
+				return false;
+			}
+			if (!Read_LivePatternSequence(iPredecessorSequence))
+			{
+				strOutStatus = "Next Pattern needs a living replicated Valtan in the active Server room.";
+				return false;
+			}
+			bLivePredecessor = true;
+		}
+	}
+	if ((std::numeric_limits<uint32_t>::max)() == iPredecessorSequence)
 	{
 		strOutStatus = "The predecessor pattern sequence is exhausted; start a new isolated audition.";
 		return false;
 	}
-	C2S_VALTAN_AUDITION_REQUEST Request{};
-	Request.eOperation = VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID;
+	Request.eOperation = bLivePredecessor ?
+		VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID :
+		VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID;
 	Request.strBossPlacementId = strBossPlacementId;
+	Request.iPredecessorRoomAuditionEpoch = iEpoch;
+	Request.iPredecessorPatternSequence = iPredecessorSequence;
+	Request.iExpectedNextRequestSequence = iNextToken;
+	strOutStatus.clear();
+	return true;
+}
+
+bool Client::CValtanPatternAuditionService::Queue_NextPattern(
+	const std::string_view strConsumerId,
+	const std::string_view strBossPlacementId,
+	const std::string_view strPatternId,
+	std::string& strOutStatus)
+{
+	Update();
+	if (strConsumerId.empty() || strPatternId.empty())
+	{
+		strOutStatus = "Next Pattern requires stable consumer, boss placement, and pattern IDs.";
+		return false;
+	}
+	LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request{};
+	if (!Prepare_NextCommand(strBossPlacementId, Request, strOutStatus))
+		return false;
 	Request.strPatternId = strPatternId;
-	Request.iPredecessorRoomAuditionEpoch = m_Snapshot.iRoomAuditionEpoch;
-	Request.iPredecessorPatternSequence = m_Snapshot.iObservedPatternSequence;
-	Request.iExpectedNextRequestSequence = m_NextSnapshot.Is_Live() ?
-		m_NextSnapshot.iRequestSequence : 0u;
 	return Send_NextCommand(std::move(Request), strConsumerId, strOutStatus);
 }
 
@@ -251,9 +329,11 @@ bool Client::CValtanPatternAuditionService::Clear_NextPattern(std::string& strOu
 {
 	using namespace LostArk::Shared;
 	Update();
-	if (!m_NextSnapshot.Is_Live() || m_NextSnapshot.bReservationConsumed || Has_PendingNextCommand())
+	if (!m_NextSnapshot.Is_Live() || m_NextSnapshot.bReservationConsumed ||
+		0u == m_NextSnapshot.iPredecessorPatternSequence || Has_PendingNextCommand())
 	{
-		strOutStatus = m_NextSnapshot.Is_Live() && m_NextSnapshot.bReservationConsumed ?
+		strOutStatus = m_NextSnapshot.Is_Live() &&
+			(m_NextSnapshot.bReservationConsumed || 0u == m_NextSnapshot.iPredecessorPatternSequence) ?
 			"The Server already consumed this reservation. The promoted pattern must become ACTIVE before another Next command." :
 			"Cancel requires an approved Next reservation and no unresolved Next command.";
 		return false;
@@ -317,18 +397,28 @@ bool Client::CValtanPatternAuditionService::Retry_NextPatternCommand(std::string
 	return true;
 }
 
-void Client::CValtanPatternAuditionService::Accept_NextCommand()
+void Client::CValtanPatternAuditionService::Accept_NextCommand(const uint32_t iRoomAuditionEpoch)
 {
 	const auto& Request = m_NextCommand.Request;
+	const bool bAdoptsLivePredecessor =
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID ==
+		Request.eOperation;
+	const auto PinnedRevision = m_NextSnapshot.Is_Live() ?
+		m_NextSnapshot.PinnedDefinitionRevision :
+		(bAdoptsLivePredecessor ? LostArk::Shared::GameplayDataRevision{} :
+		 m_Snapshot.PinnedDefinitionRevision);
+	const bool bPresentationAvailable = m_NextSnapshot.Is_Live() ?
+		m_NextSnapshot.isPresentationRevisionAvailable :
+		(!bAdoptsLivePredecessor && m_Snapshot.isPresentationRevisionAvailable);
 	m_NextSnapshot = {};
 	m_NextSnapshot.eState = VALTAN_NEXT_PATTERN_STATE::RESERVED;
 	m_NextSnapshot.iRequestSequence = Request.iRequestSequence;
 	m_NextSnapshot.iWorldInboundGeneration = m_NextCommand.iWorldInboundGeneration;
-	m_NextSnapshot.iRoomAuditionEpoch = Request.iPredecessorRoomAuditionEpoch;
+	m_NextSnapshot.iRoomAuditionEpoch = iRoomAuditionEpoch;
 	m_NextSnapshot.iPredecessorPatternSequence = Request.iPredecessorPatternSequence;
 	m_NextSnapshot.iExpectedPatternSequence = Request.iPredecessorPatternSequence + 1u;
-	m_NextSnapshot.PinnedDefinitionRevision = m_Snapshot.PinnedDefinitionRevision;
-	m_NextSnapshot.isPresentationRevisionAvailable = m_Snapshot.isPresentationRevisionAvailable;
+	m_NextSnapshot.PinnedDefinitionRevision = PinnedRevision;
+	m_NextSnapshot.isPresentationRevisionAvailable = bPresentationAvailable;
 	m_NextSnapshot.strConsumerId = m_NextCommand.strConsumerId;
 	m_NextSnapshot.strBossPlacementId = Request.strBossPlacementId;
 	m_NextSnapshot.strPatternId = Request.strPatternId;
@@ -362,10 +452,19 @@ void Client::CValtanPatternAuditionService::Apply_ServerResult(
 	}
 	if (!Has_PendingNextCommand() || !Exact_CommandResult(m_NextCommand.Request, Result))
 		return;
-	if (VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == Result.eOperation &&
+	if ((VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == Result.eOperation ||
+		 VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == Result.eOperation) &&
 		VALTAN_AUDITION_RESULT::QUEUED == Result.eResult)
 	{
-		Accept_NextCommand();
+		if (VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == Result.eOperation)
+		{
+			/* The verdict echoes epoch zero. Only the exact lifecycle supplies
+			   the Server-issued chain epoch; keep retry ownership until then. */
+			m_NextCommand.strStatus =
+				"Server approved live Next; waiting for its authoritative reservation lifecycle.";
+		}
+		else
+			Accept_NextCommand(Result.iPredecessorRoomAuditionEpoch);
 		return;
 	}
 	if (VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == Result.eOperation &&
@@ -397,7 +496,8 @@ void Client::CValtanPatternAuditionService::Apply_ServerResult(
 	m_NextCommand.eState = VALTAN_NEXT_COMMAND_STATE::NONE;
 	m_NextCommand.strStatus = Describe_Rejection(Result.eResult, Result.strBossPlacementId);
 	if (!m_NextSnapshot.Is_Live() &&
-		VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == Result.eOperation)
+		(VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == Result.eOperation ||
+		 VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == Result.eOperation))
 	{
 		m_NextSnapshot.eState = VALTAN_NEXT_PATTERN_STATE::REJECTED;
 		m_NextSnapshot.strStatus = m_NextCommand.strStatus;
@@ -409,12 +509,21 @@ bool Client::CValtanPatternAuditionService::Apply_NextLifecycle(
 {
 	using namespace LostArk::Shared;
 	const auto& Request = m_NextCommand.Request;
+	const bool bLiveCandidate =
+		VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == Request.eOperation;
+	const GameplayDataRevision CandidatePinnedRevision = m_NextSnapshot.Is_Live() ?
+		m_NextSnapshot.PinnedDefinitionRevision :
+		(bLiveCandidate ? GameplayDataRevision{} : m_Snapshot.PinnedDefinitionRevision);
 	const bool bCandidate = Has_PendingNextCommand() &&
-		VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == Request.eOperation &&
+		(VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == Request.eOperation || bLiveCandidate) &&
 		Lifecycle.iRequestSequence == Request.iRequestSequence &&
-		Lifecycle.iRoomAuditionEpoch == Request.iPredecessorRoomAuditionEpoch &&
+		0u != Lifecycle.iRoomAuditionEpoch &&
+		(bLiveCandidate || Lifecycle.iRoomAuditionEpoch == Request.iPredecessorRoomAuditionEpoch) &&
 		Lifecycle.iPatternSequence == Request.iPredecessorPatternSequence + 1u &&
-		Lifecycle.strPatternId == Request.strPatternId;
+		Lifecycle.strPatternId == Request.strPatternId &&
+		Lifecycle.PinnedDefinitionRevision.Is_Valid() &&
+		(!CandidatePinnedRevision.Is_Valid() ||
+		 CandidatePinnedRevision == Lifecycle.PinnedDefinitionRevision);
 	/* NEXT_RESERVED can overtake its verdict. It confirms only the exact
 	   reservation request, epoch and expected sequence of this candidate. */
 	if (bCandidate)
@@ -427,7 +536,7 @@ bool Client::CValtanPatternAuditionService::Apply_NextLifecycle(
 		case VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE:
 		case VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED:
 		case VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED:
-			Accept_NextCommand();
+			Accept_NextCommand(Lifecycle.iRoomAuditionEpoch);
 			break;
 		default: return false;
 		}
@@ -436,7 +545,10 @@ bool Client::CValtanPatternAuditionService::Apply_NextLifecycle(
 		Lifecycle.iRequestSequence != m_NextSnapshot.iRequestSequence ||
 		Lifecycle.iRoomAuditionEpoch != m_NextSnapshot.iRoomAuditionEpoch ||
 		Lifecycle.iPatternSequence != m_NextSnapshot.iExpectedPatternSequence ||
-		Lifecycle.strPatternId != m_NextSnapshot.strPatternId)
+		Lifecycle.strPatternId != m_NextSnapshot.strPatternId ||
+		!Lifecycle.PinnedDefinitionRevision.Is_Valid() ||
+		(m_NextSnapshot.PinnedDefinitionRevision.Is_Valid() &&
+		 m_NextSnapshot.PinnedDefinitionRevision != Lifecycle.PinnedDefinitionRevision))
 		return false;
 
 	m_hasAuthoritativeLifecycle = true;
@@ -510,14 +622,24 @@ void Client::CValtanPatternAuditionService::Apply_ServerLifecycle(
 	const bool bCompletedAbort =
 		VALTAN_PATTERN_AUDITION_STATE::COMPLETED == m_Snapshot.eState &&
 		VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED == Lifecycle.eState;
+	const bool bHasOccurrence = m_hasAuthoritativeLifecycle &&
+		0u != m_Snapshot.iObservedPatternSequence;
+	const bool bSameOccurrence = bHasOccurrence &&
+		m_Snapshot.iObservedPatternSequence == Lifecycle.iPatternSequence;
+	const bool bNewOccurrence = bHasOccurrence && !bSameOccurrence &&
+		Can_IntroduceOccurrence(Lifecycle.eState) &&
+		CActionPresentationTimeline::Is_ForwardTick(
+			Lifecycle.iPatternSequence, m_Snapshot.iObservedPatternSequence);
 	if ((!m_Snapshot.Is_InFlight() && !bCompletedAbort) ||
 		Lifecycle.iRequestSequence != m_Snapshot.iRequestSequence ||
 		Lifecycle.strPatternId != m_Snapshot.strPatternId ||
 		0u == Lifecycle.iRoomAuditionEpoch || 0u == Lifecycle.iPatternSequence ||
+		!Lifecycle.PinnedDefinitionRevision.Is_Valid() ||
 		(0u != m_Snapshot.iRoomAuditionEpoch &&
 			m_Snapshot.iRoomAuditionEpoch != Lifecycle.iRoomAuditionEpoch) ||
-		(m_hasAuthoritativeLifecycle && 0u != m_Snapshot.iObservedPatternSequence &&
-			m_Snapshot.iObservedPatternSequence != Lifecycle.iPatternSequence))
+		(bHasOccurrence && m_Snapshot.PinnedDefinitionRevision !=
+			Lifecycle.PinnedDefinitionRevision) ||
+		(bHasOccurrence && !bSameOccurrence && !bNewOccurrence))
 		return;
 	if (VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED == Lifecycle.eState ||
 		VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER == Lifecycle.eState)
@@ -533,7 +655,8 @@ void Client::CValtanPatternAuditionService::Apply_ServerLifecycle(
 	switch (Lifecycle.eState)
 	{
 	case VALTAN_AUDITION_LIFECYCLE_STATE::PENDING:
-		if (VALTAN_PATTERN_AUDITION_STATE::ACTIVE != m_Snapshot.eState)
+		if (bNewOccurrence ||
+			VALTAN_PATTERN_AUDITION_STATE::ACTIVE != m_Snapshot.eState)
 		{
 			m_Snapshot.eState = VALTAN_PATTERN_AUDITION_STATE::QUEUED;
 			m_Snapshot.strStatus = "Server lifecycle PENDING in room epoch " +
@@ -614,7 +737,8 @@ void Client::CValtanPatternAuditionService::Update()
 	using namespace LostArk::Shared;
 	const uint64_t iGeneration = World_InboundGeneration();
 	const bool bWorldChanged =
-		(0u != m_Snapshot.iRequestSequence && m_Snapshot.iWorldInboundGeneration != iGeneration) ||
+		((m_Snapshot.Is_InFlight() || VALTAN_PATTERN_AUDITION_STATE::COMPLETED == m_Snapshot.eState) &&
+			m_Snapshot.iWorldInboundGeneration != iGeneration) ||
 		(m_NextSnapshot.Is_Live() && m_NextSnapshot.iWorldInboundGeneration != iGeneration) ||
 		(Has_PendingNextCommand() && m_NextCommand.iWorldInboundGeneration != iGeneration);
 	/* Invalidate before draining. A completed hold cannot adopt packets from
@@ -704,8 +828,32 @@ bool Client::CValtanPatternAuditionService::Is_FlowInFlight() const
 #if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
 	return m_HarnessInput.bFlowInFlight;
 #else
-	return CValtanPatternFlowService::Get().Get_Snapshot().Is_InFlight();
+	return CValtanPatternFlowService::Get().Has_PlaybackOwnership();
 #endif
+}
+
+bool Client::CValtanPatternAuditionService::Is_FlowStartPending() const
+{
+#if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
+	return m_HarnessInput.bFlowStartPending;
+#else
+	return CValtanPatternFlowService::Get().Has_PendingStart();
+#endif
+}
+
+bool Client::CValtanPatternAuditionService::Read_LivePatternSequence(uint32_t& iOutPatternSequence) const
+{
+#if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
+	if (!m_HarnessInput.bLiveBossValid || !m_HarnessInput.bLiveBossAlive)
+		return false;
+	iOutPatternSequence = m_HarnessInput.iLivePatternSequence;
+#else
+	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
+	if (!Boss.isValid || "BOSS_VALTAN" != Boss.strArchetypeId || 0u == Boss.iCurrentHp)
+		return false;
+	iOutPatternSequence = Boss.iPatternSequence;
+#endif
+	return true;
 }
 
 bool Client::CValtanPatternAuditionService::Is_PresentationAvailable(

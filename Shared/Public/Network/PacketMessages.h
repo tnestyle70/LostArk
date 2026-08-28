@@ -6,6 +6,7 @@
 
 #include <string>
 #include <string_view>
+#include <limits>
 #include <vector>
 //character의 class와 nickname용 packet
 namespace LostArk::Shared
@@ -171,6 +172,8 @@ namespace LostArk::Shared
 	struct S2C_WORLD_ENTITY_SPAWNED
 	{
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		// Immutable dependent-boss relation. Zero identifies an independent entity.
+		NET_ENTITY_ID iOwnerBossNetEntityId = INVALID_NET_ENTITY_ID;
 		WORLD_ENTITY_KIND eKind = WORLD_ENTITY_KIND::END;
 		std::string strArchetypeId;
 		std::string strEncounterId;
@@ -196,9 +199,24 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		S2C_WORLD_ENTITY_SPAWNED& spawned);
 
+	// Reliable admission is owner-first. A dependent boss may only refer to an
+	// independent boss in the same encounter; nested ownership is not supported.
+	bool Is_Valid_WorldEntitySpawnOwner(
+		const S2C_WORLD_ENTITY_SPAWNED& spawned,
+		const S2C_WORLD_ENTITY_SPAWNED* pOwner);
+
+	enum class WORLD_ENTITY_DESPAWN_REASON : std::uint8_t
+	{
+		REMOVED = 0,
+		DEAD,
+		END
+	};
+
 	struct S2C_WORLD_ENTITY_DESPAWNED
 	{
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		// DEAD is reliable even when the final HP-zero snapshot was not observed.
+		WORLD_ENTITY_DESPAWN_REASON eReason = WORLD_ENTITY_DESPAWN_REASON::REMOVED;
 	};
 
 	bool Write_Message(
@@ -913,6 +931,9 @@ namespace LostArk::Shared
 		START_FIGHT_PAGE,
 		QUEUE_NEXT_PATTERN_ID,
 		CLEAR_NEXT_PATTERN_ID,
+		// Adopt the observed Product/owned Flow occurrence without an arena reset.
+		// The Server assigns a new audition epoch in the Next lifecycle.
+		QUEUE_NEXT_LIVE_PATTERN_ID,
 		END
 	};
 
@@ -960,7 +981,8 @@ namespace LostArk::Shared
 		std::string strBossPlacementId;
 		std::string strPatternId;
 		// Next controls compare the exact current occurrence and one-slot token.
-		// These fields are encoded only by QUEUE/CLEAR_NEXT_PATTERN_ID.
+		// Encoded by all Next controls. LIVE requires epoch/token zero and an
+		// observed sequence (zero only when the Server has not run a pattern).
 		std::uint32_t iPredecessorRoomAuditionEpoch = 0u;
 		std::uint32_t iPredecessorPatternSequence = 0u;
 		std::uint32_t iExpectedNextRequestSequence = 0u;
@@ -1039,7 +1061,13 @@ namespace LostArk::Shared
 	// Debug Boss Tool ordered-flow payload. Slots use stable authoring IDs;
 	// their vector order is the playback order. Repeated pattern IDs are valid
 	// because two distinct slots may intentionally audition the same pattern.
-	inline constexpr std::size_t MAX_VALTAN_PATTERN_FLOW_SLOTS = 32u;
+	// The existing wire count is one byte. Keep the authoring/runtime bound at
+	// the full encodable range so pattern inventory growth is not coupled to an
+	// arbitrary smaller slot cap.
+	inline constexpr std::size_t MAX_VALTAN_PATTERN_FLOW_SLOTS = 255u;
+	static_assert(
+		MAX_VALTAN_PATTERN_FLOW_SLOTS ==
+			(static_cast<std::size_t>((std::numeric_limits<std::uint8_t>::max)())));
 	inline constexpr std::uint32_t
 		MIN_VALTAN_PATTERN_FLOW_INTER_STEP_PURSUIT_MS = 100u;
 	inline constexpr std::uint32_t

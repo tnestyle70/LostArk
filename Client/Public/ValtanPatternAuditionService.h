@@ -123,6 +123,10 @@ struct VALTAN_AUDITION_HARNESS_INPUT final
 	bool bConnected = true;
 	bool bSendSucceeds = true;
 	bool bFlowInFlight = false;
+	bool bFlowStartPending = false;
+	bool bLiveBossValid = false;
+	bool bLiveBossAlive = true;
+	uint32_t iLivePatternSequence = 0u;
 	bool bPresentationAvailable = true;
 	uint64_t iWorldInboundGeneration = 1u;
 	uint64_t iNowMilliseconds = 100u;
@@ -147,6 +151,9 @@ public:
 		std::string_view strBossPlacementId,
 		std::string_view strPatternId,
 		std::string& strOutStatus);
+	[[nodiscard]] bool Can_QueueNextPattern(
+		std::string_view strBossPlacementId,
+		std::string& strOutStatus) const;
 	bool Queue_NextPattern(
 		std::string_view strConsumerId,
 		std::string_view strBossPlacementId,
@@ -204,7 +211,11 @@ private:
 		LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request,
 		std::string_view strConsumerId,
 		std::string& strOutStatus);
-	void Accept_NextCommand();
+	bool Prepare_NextCommand(
+		std::string_view strBossPlacementId,
+		LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& Request,
+		std::string& strOutStatus) const;
+	void Accept_NextCommand(uint32_t iRoomAuditionEpoch);
 	void Apply_ServerResult(const LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& Result);
 	void Apply_ServerLifecycle(const LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& Lifecycle);
 	bool Apply_NextLifecycle(const LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& Lifecycle);
@@ -215,6 +226,8 @@ private:
 	[[nodiscard]] bool Is_Connected() const;
 	[[nodiscard]] uint64_t World_InboundGeneration() const;
 	[[nodiscard]] bool Is_FlowInFlight() const;
+	[[nodiscard]] bool Is_FlowStartPending() const;
+	[[nodiscard]] bool Read_LivePatternSequence(uint32_t& iOutPatternSequence) const;
 	[[nodiscard]] bool Is_PresentationAvailable(const LostArk::Shared::GameplayDataRevision& Revision) const;
 	bool Send_Request(const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& Request);
 	bool Consume_Result(LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& Result);

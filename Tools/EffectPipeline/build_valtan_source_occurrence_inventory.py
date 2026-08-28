@@ -223,9 +223,18 @@ def portable_recipe_with_exact_decal(
         raise MaterializeError("portable Decal recipe lost renderer shape")
     return staged
 
-EXPECTED_PATTERN_COUNT = 33
+STABLE_PATTERN_ID_PATTERN = re.compile(r"VALTAN_[A-Z0-9_]+")
 MISSING_ACTION_BINDING_POLICIES = {
+    "VALTAN_ENTRANCE_CINEMATIC": (
+        "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW"
+    ),
     "VALTAN_ENTRANCE_WHIRLWIND": (
+        "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW"
+    ),
+    "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK": (
+        "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW"
+    ),
+    "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK": (
         "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW"
     ),
 }
@@ -238,6 +247,28 @@ def live_encounter_patterns(encounter: dict[str, Any]) -> list[dict[str, Any]]:
         for pattern in encounter.get("patterns", [])
         if pattern.get("selectionMode") != "AUDITION_ONLY"
     ]
+
+
+def stable_unique_pattern_ids(
+    rows: Any, context: str, *, require_nonempty: bool = True
+) -> list[str]:
+    if not isinstance(rows, list) or (require_nonempty and not rows):
+        raise InventoryError(f"{context} must contain pattern rows")
+    result: list[str] = []
+    seen: set[str] = set()
+    for index, row in enumerate(rows):
+        pattern_id = row.get("patternId") if isinstance(row, dict) else None
+        if (
+            not isinstance(pattern_id, str)
+            or STABLE_PATTERN_ID_PATTERN.fullmatch(pattern_id) is None
+            or pattern_id in seen
+        ):
+            raise InventoryError(
+                f"{context}[{index}].patternId is invalid or duplicated"
+            )
+        seen.add(pattern_id)
+        result.append(pattern_id)
+    return result
 
 
 ARENA84_BINDING_GAP_PROPOSALS = [
@@ -2398,12 +2429,12 @@ def apply_reviewed_selections(
 def pattern_coverage(
     encounter: dict[str, Any], action_bindings: dict[str, Any]
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    action_rows = action_bindings.get("patterns", [])
+    stable_unique_pattern_ids(action_rows, "actionbindings.patterns")
     action_by_pattern = {
         str(row.get("patternId") or ""): row
-        for row in action_bindings.get("patterns", [])
+        for row in action_rows
     }
-    if len(action_by_pattern) != len(action_bindings.get("patterns", [])):
-        raise InventoryError("actionbindings has duplicate patternId")
     rows = []
     missing = []
     for pattern in live_encounter_patterns(encounter):
@@ -2436,6 +2467,56 @@ def pattern_coverage(
                 }
             )
     return rows, missing
+
+
+def resolve_pattern_coverage_contract(
+    encounter: dict[str, Any], action_bindings: dict[str, Any]
+) -> tuple[
+    list[dict[str, Any]],
+    set[str],
+    set[str],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
+    live_patterns = live_encounter_patterns(encounter)
+    live_pattern_ids = stable_unique_pattern_ids(
+        live_patterns, "live encounter patterns"
+    )
+    action_rows = action_bindings.get("patterns", [])
+    action_pattern_ids = stable_unique_pattern_ids(
+        action_rows, "actionbindings.patterns"
+    )
+    coverage, missing = pattern_coverage(encounter, action_bindings)
+    coverage_ids = stable_unique_pattern_ids(
+        coverage, "source occurrence coverage"
+    )
+    missing_ids = stable_unique_pattern_ids(
+        missing,
+        "source occurrence missing-action coverage",
+        require_nonempty=False,
+    )
+    if coverage_ids != live_pattern_ids:
+        raise InventoryError(
+            "source occurrence coverage changed the live encounter pattern order"
+        )
+    live_pattern_set = set(live_pattern_ids)
+    action_pattern_set = set(action_pattern_ids)
+    expected_missing = live_pattern_set - action_pattern_set
+    if set(missing_ids) != expected_missing:
+        raise InventoryError(
+            "source occurrence missing-action coverage is not the exact live/actionbinding difference"
+        )
+    if expected_missing != set(MISSING_ACTION_BINDING_POLICIES):
+        raise InventoryError(
+            "live patterns without actionbindings differ from the explicit reviewed missing policies"
+        )
+    return (
+        live_patterns,
+        live_pattern_set,
+        action_pattern_set,
+        coverage,
+        missing,
+    )
 
 
 def source_system_ids_from_patterns(patterns: list[dict[str, Any]]) -> set[str]:
@@ -2645,21 +2726,13 @@ def build_inventory(
     catalog = catalog or read_json(SOURCE_CATALOG_PATH)
 
     patterns = action_bindings.get("patterns", [])
-    live_patterns = live_encounter_patterns(encounter)
-    live_pattern_ids = {
-        str(pattern.get("patternId") or "") for pattern in live_patterns
-    }
-    coverage, missing = pattern_coverage(encounter, action_bindings)
-    if len(live_patterns) != EXPECTED_PATTERN_COUNT:
-        raise InventoryError(
-            f"Valtan live encounter pattern count is not {EXPECTED_PATTERN_COUNT}"
-        )
-    if {row["patternId"] for row in missing} != set(
-        MISSING_ACTION_BINDING_POLICIES
-    ):
-        raise InventoryError(
-            "first inventory must explicitly retain the Entrance binding gap"
-        )
+    (
+        live_patterns,
+        live_pattern_ids,
+        action_pattern_ids,
+        coverage,
+        missing,
+    ) = resolve_pattern_coverage_contract(encounter, action_bindings)
 
     product_clips = product_clip_occurrences(encounter, pattern_bindings)
     source_sequences = load_source_clip_sequences()
@@ -2899,9 +2972,8 @@ def build_inventory(
         "occurrences": occurrences,
         "summary": {
             "encounterPatternCount": len(live_patterns),
-            "actionBindingPatternCount": sum(
-                str(pattern.get("patternId") or "") in live_pattern_ids
-                for pattern in patterns
+            "actionBindingPatternCount": len(
+                live_pattern_ids & action_pattern_ids
             ),
             "missingActionBindingPatternCount": len(missing),
             "branchCandidateCount": len(branches),
@@ -3030,12 +3102,60 @@ def validate_inventory(document: dict[str, Any]) -> None:
     if document.get("formatVersion") != 1:
         raise InventoryError("inventory formatVersion is invalid")
     summary = document.get("summary") or {}
-    if summary.get("encounterPatternCount") != EXPECTED_PATTERN_COUNT:
-        raise InventoryError("inventory does not cover 33 patterns")
-    if summary.get("actionBindingPatternCount") != 32:
-        raise InventoryError("first inventory must expose 32/33 actionbindings")
-    if summary.get("missingActionBindingPatternCount") != 1:
-        raise InventoryError("first inventory must expose one actionbinding gap")
+    coverage = document.get("coverage")
+    if not isinstance(coverage, dict):
+        raise InventoryError("inventory pattern coverage is missing")
+    coverage_rows = coverage.get("patterns")
+    missing_rows = coverage.get("missingActionBindingPatterns")
+    coverage_ids = stable_unique_pattern_ids(
+        coverage_rows, "inventory coverage.patterns"
+    )
+    stable_unique_pattern_ids(
+        missing_rows,
+        "inventory coverage.missingActionBindingPatterns",
+        require_nonempty=False,
+    )
+    missing_by_id = {row["patternId"]: row for row in missing_rows}
+    coverage_missing_by_id: dict[str, dict[str, Any]] = {}
+    for row in coverage_rows:
+        pattern_id = row["patternId"]
+        status = row.get("status")
+        if status != "ACTION_BINDING_PRESENT":
+            expected_status = MISSING_ACTION_BINDING_POLICIES.get(pattern_id)
+            if (
+                status != expected_status
+                or row.get("sourceActionBindingCount") != 0
+            ):
+                raise InventoryError(
+                    "missing action-binding coverage row changed: " + pattern_id
+                )
+            coverage_missing_by_id[pattern_id] = {
+                "patternId": pattern_id,
+                "status": status,
+                "sourceActionIds": row.get("sourceActionIds"),
+            }
+        elif (
+            not isinstance(row.get("sourceActionBindingCount"), int)
+            or isinstance(row.get("sourceActionBindingCount"), bool)
+            or row["sourceActionBindingCount"] <= 0
+        ):
+            raise InventoryError(
+                "present action-binding coverage row is invalid: " + pattern_id
+            )
+    if missing_by_id != coverage_missing_by_id:
+        raise InventoryError(
+            "missing action-binding rows are not the exact coverage projection"
+        )
+    if (
+        summary.get("encounterPatternCount") != len(coverage_ids)
+        or summary.get("actionBindingPatternCount")
+        != len(coverage_ids) - len(coverage_missing_by_id)
+        or summary.get("missingActionBindingPatternCount")
+        != len(coverage_missing_by_id)
+    ):
+        raise InventoryError(
+            "inventory pattern coverage summary does not match its stable ID sets"
+        )
     if summary.get("sourceActionEvidenceProposalCount") != 1:
         raise InventoryError("Dash 400424 evidence-only proposal is missing")
     if summary.get("sourceVisualSignatureEquivalentReviewCount") != 4:
@@ -3064,12 +3184,6 @@ def validate_inventory(document: dict[str, Any]) -> None:
         raise InventoryError(
             "unreviewed branch upper bound leaked into completion denominator"
         )
-    missing = {
-        row["patternId"]: row["status"]
-        for row in document["coverage"]["missingActionBindingPatterns"]
-    }
-    if missing != MISSING_ACTION_BINDING_POLICIES:
-        raise InventoryError("Entrance missing policy changed")
     dash_proposals = document.get("sourceActionEvidenceProposals", [])
     if (
         len(dash_proposals) != 1

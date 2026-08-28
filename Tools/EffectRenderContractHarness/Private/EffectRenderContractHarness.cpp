@@ -1,6 +1,9 @@
 #include "Client_Defines.h"
 
 #include "ActionPresentationTimeline.h"
+#include "ActorCatalog.h"
+#include "BinaryAsset/ModelAssetData.h"
+#include "ClientReplication.h"
 #include "DataJson.h"
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_Catalog.h"
@@ -13,6 +16,7 @@
 #include "Effect_Object.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_Playback.h"
+#include "Effect_PresentationService.h"
 #include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_RuntimeAuthority.h"
@@ -20,9 +24,11 @@
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Level.h"
+#include "Model.h"
 #include "RuntimeAssetRoot.h"
 #include "Shader.h"
 #include "ValtanPatternTree.h"
+#include "ValtanPatternFlowDocument.h"
 
 #include <algorithm>
 #include <array>
@@ -32,6 +38,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -384,6 +391,193 @@ namespace
 			Rejection.empty())
 		{
 			strOutError = "Unknown Artist E crane cue did not fail closed.";
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_NamedHistoricalAnimationSamplingContract(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		std::string& strOutError)
+	{
+		Engine::MODEL_ASSET_LOAD_DESC BodyLoad;
+		BodyLoad.assetRoot = Client::CRuntimeAssetRoot::Get_ResourceRoot();
+		BodyLoad.meshPath = Client::CRuntimeAssetRoot::Resolve(
+			"Character/Valtan/MN_RPBF_01.wmodel");
+		Engine::MODEL_ASSET_LOAD_DESC AnimationLoad = BodyLoad;
+		AnimationLoad.meshPath = Client::CRuntimeAssetRoot::Resolve(
+			"Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel");
+		const matrix_t PreTransform = XMMatrixScaling(0.0001f, 0.0001f, 0.0001f);
+		const auto Prototype = Engine::CModel::Create(
+			pDevice, pContext, MODEL::ANIM, BodyLoad, PreTransform);
+		const auto AnimationSet = Engine::CModel::Create(
+			pDevice, pContext, MODEL::ANIM, AnimationLoad, PreTransform);
+		if (nullptr == Prototype || nullptr == AnimationSet ||
+			FAILED(Prototype->Attach_AnimationSet(*AnimationSet)))
+		{
+			strOutError = "Valtan historical sampler fixture could not load the product model/animation set";
+			return false;
+		}
+		const auto Model = std::dynamic_pointer_cast<Engine::CModel>(Prototype->Clone(nullptr));
+		if (nullptr == Model || !Model->Enable_RootMotionSuppression("b_root", 2))
+		{
+			strOutError = "Valtan historical sampler fixture could not clone its product skeleton";
+			return false;
+		}
+		constexpr std::array<const char*, 3u> ClipNames = {
+			"mesh_att_battle_9_01_start", "mesh_att_battle_9_01_loop", "mesh_att_battle_9_01_end"
+		};
+		std::array<uint32_t, 3u> ClipIndices = { UINT32_MAX, UINT32_MAX, UINT32_MAX };
+		std::array<f32_t, 3u> SampleTicks{};
+		for (size_t iClip = 0u; iClip < ClipNames.size(); ++iClip)
+		{
+			for (uint32_t i = 0u; i < Model->Get_NumAnimations(); ++i)
+			{
+				const char* pName = Model->Get_AnimationName(i);
+				if (nullptr != pName && 0 == std::strcmp(pName, ClipNames[iClip]))
+					ClipIndices[iClip] = i;
+			}
+			f32_t Position = 0.f, Duration = 0.f;
+			if (ClipIndices[iClip] == UINT32_MAX ||
+				!Model->Get_AnimationProgress(ClipIndices[iClip], Position, Duration) ||
+				!std::isfinite(Duration) || Duration <= 0.f)
+			{
+				strOutError = "Valtan charge historical sampler is missing a required stage clip";
+				return false;
+			}
+			SampleTicks[iClip] = Duration * 0.6f;
+		}
+		std::vector<uint32_t> BoneIndices;
+		for (uint32_t iBone = 0u;; ++iBone)
+		{
+			matrix_t Local;
+			if (!Model->Get_BoneLocalMatrix(iBone, Local))
+				break;
+			BoneIndices.push_back(iBone);
+		}
+		if (BoneIndices.empty() || Model->Find_BoneIndex("bip001-l-hand") < 0 ||
+			!Model->Start_Animation(ClipIndices[0], false))
+		{
+			strOutError = "Valtan charge historical sampler has no hand skeleton or initial clip";
+			return false;
+		}
+		Model->Set_AnimTrackPosition(ClipIndices[0], SampleTicks[0]);
+		Model->Play_Animation(0.f);
+		Model->Set_Animation(ClipIndices[1], false, 0.5f);
+		Model->Set_AnimTrackPosition(ClipIndices[1], SampleTicks[1]);
+		Model->Update_Animation(0.1f);
+		Model->Set_AnimPaused(true);
+		struct POSE_STATE final
+		{
+			uint32_t iCurrentClip = UINT32_MAX;
+			bool_t bPaused = false, bLoop = false, bBlending = false;
+			std::vector<f32_t> Cursors;
+			std::vector<float4x4_t> Local, Combined, CurrentSample;
+		};
+		const auto Capture = [&Model, &BoneIndices](POSE_STATE& Out)
+		{
+			Out.iCurrentClip = Model->Get_CurrentAnimIndex();
+			Out.bPaused = Model->Is_AnimPaused();
+			Out.bLoop = Model->Is_AnimLoop();
+			Out.bBlending = Model->Is_AnimBlending();
+			Out.Cursors.resize(Model->Get_NumAnimations());
+			for (uint32_t i = 0u; i < Model->Get_NumAnimations(); ++i)
+			{
+				f32_t Duration = 0.f;
+				if (!Model->Get_AnimationProgress(i, Out.Cursors[i], Duration))
+					return false;
+			}
+			Out.Local.resize(BoneIndices.size());
+			Out.Combined.resize(BoneIndices.size());
+			Out.CurrentSample.resize(BoneIndices.size());
+			for (size_t i = 0u; i < BoneIndices.size(); ++i)
+			{
+				matrix_t Local, Combined;
+				if (!Model->Get_BoneLocalMatrix(BoneIndices[i], Local) ||
+					!Model->Get_BoneCombinedMatrix(BoneIndices[i], Combined))
+					return false;
+				XMStoreFloat4x4(&Out.Local[i], Local);
+				XMStoreFloat4x4(&Out.Combined[i], Combined);
+			}
+			return Model->Sample_CurrentAnimationBoneCombinedMatrices(
+				Out.iCurrentClip, Out.Cursors[Out.iCurrentClip], BoneIndices, Out.CurrentSample);
+		};
+		const auto EqualMatrices = [](const auto& Left, const auto& Right)
+		{
+			return Left.size() == Right.size() &&
+				0 == std::memcmp(Left.data(), Right.data(), Left.size() * sizeof(float4x4_t));
+		};
+		const auto SameState = [&EqualMatrices](const POSE_STATE& Before, const POSE_STATE& After)
+		{
+			return Before.iCurrentClip == After.iCurrentClip && Before.bPaused == After.bPaused &&
+				Before.bLoop == After.bLoop && Before.bBlending == After.bBlending &&
+				Before.Cursors == After.Cursors && EqualMatrices(Before.Local, After.Local) &&
+				EqualMatrices(Before.Combined, After.Combined) &&
+				EqualMatrices(Before.CurrentSample, After.CurrentSample);
+		};
+		POSE_STATE Before, After;
+		if (!Capture(Before) || !Before.bBlending)
+		{
+			strOutError = "Valtan historical sampler did not prepare an active live transition";
+			return false;
+		}
+		std::array<std::vector<float4x4_t>, 3u> Baselines;
+		for (size_t i = 0u; i < ClipNames.size(); ++i)
+		{
+			Baselines[i].resize(BoneIndices.size());
+			if (!Model->Sample_AnimationBoneCombinedMatrices(
+					ClipNames[i], SampleTicks[i], BoneIndices, Baselines[i]))
+			{
+				strOutError = "Explicit Valtan stage pose could not be sampled during another live clip";
+				return false;
+			}
+		}
+		std::vector<float4x4_t> Preserved = Baselines.front();
+		const std::array<uint32_t, 1u> InvalidBone = { UINT32_MAX };
+		if (Model->Sample_AnimationBoneCombinedMatrices("missing.contract.clip", 0.f, BoneIndices, Preserved) ||
+			Model->Sample_AnimationBoneCombinedMatrices(nullptr, 0.f, BoneIndices, Preserved) ||
+			Model->Sample_AnimationBoneCombinedMatrices(ClipNames[0], -1.f, BoneIndices, Preserved) ||
+			Model->Sample_AnimationBoneCombinedMatrices(ClipNames[0], SampleTicks[0] * 2.f, BoneIndices, Preserved) ||
+			Model->Sample_AnimationBoneCombinedMatrices(ClipNames[0],
+				std::numeric_limits<f32_t>::quiet_NaN(), BoneIndices, Preserved) ||
+			Model->Sample_AnimationBoneCombinedMatrices(ClipNames[0], 0.f, InvalidBone,
+				std::span<float4x4_t>(Preserved.data(), 1u)) ||
+			Model->Sample_CurrentAnimationBoneCombinedMatrices(ClipIndices[0], 0.f, BoneIndices, Preserved) ||
+			!EqualMatrices(Preserved, Baselines.front()) || !Capture(After) || !SameState(Before, After))
+		{
+			strOutError = "Historical clip sampling mutated live state, accepted invalid input, or lost output rollback";
+			return false;
+		}
+		/* A different live clip, paused flag, and unrelated bone pose must not
+		   change a named clip's result (including bones without its channels). */
+		if (!Model->Start_Animation(ClipIndices[2], true) ||
+			!Model->Set_BoneLocalMatrix(BoneIndices.front(), XMMatrixTranslation(111.f, 222.f, 333.f)))
+		{
+			strOutError = "Historical sampler could not prepare a second live-state fixture";
+			return false;
+		}
+		Model->Refresh_BoneCombinedMatrices();
+		Model->Skip_Blend();
+		if (!Capture(Before))
+		{
+			strOutError = "Historical sampler could not capture the second live-state fixture";
+			return false;
+		}
+		for (size_t i = 0u; i < ClipNames.size(); ++i)
+		{
+			std::vector<float4x4_t> Repeated(BoneIndices.size());
+			if (!Model->Sample_AnimationBoneCombinedMatrices(ClipNames[i], SampleTicks[i], BoneIndices, Repeated) ||
+				!EqualMatrices(Repeated, Baselines[i]))
+			{
+				strOutError = "Named historical pose inherited the unrelated live clip, blend, or bone state";
+				return false;
+			}
+		}
+		if (!Capture(After) || !SameState(Before, After))
+		{
+			strOutError = "Repeated historical sampling changed current animation or its live palette";
 			return false;
 		}
 		strOutError.clear();
@@ -1743,6 +1937,420 @@ namespace
 		return true;
 	}
 
+	bool_t Validate_AuthoredMaterialColorSpaceContract(
+		Client::EFFECT_DOCUMENT_DESC& OutDocument,
+		std::string& strOutError)
+	{
+		Client::EFFECT_DOCUMENT_DESC Document;
+		Document.strEffectAssetId = "effect.contract.material-color-space";
+		Document.strDisplayName = "Authored material color space";
+		Client::EFFECT_ELEMENT_DESC Element;
+		Element.strElementId = "sprite.color-space";
+		Element.strDisplayName = "Color-space fixture";
+		Element.strGroupId = "contract.fixture";
+		Element.eKind = Client::EFFECT_ELEMENT_KIND::SPRITE;
+		for (const Client::EFFECT_MATERIAL_INPUT_SLOT_DESC& Input :
+			Client::EFFECT_STANDARD_MATERIAL_INPUTS)
+		{
+			Element.ResourceBindings.push_back({ std::string(Input.strSlotId),
+				"Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds" });
+		}
+		Document.Elements.push_back(std::move(Element));
+		if (!Client::CEffectDocumentCodec::Validate(Document, strOutError))
+			return false;
+		const std::string LegacyJson = Client::CEffectDocumentCodec::Serialize(Document);
+		Client::EFFECT_DOCUMENT_DESC LegacyRoundTrip;
+		if (LegacyJson.find("colorTexturesSRGB") != std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(LegacyJson, LegacyRoundTrip, strOutError) ||
+			LegacyRoundTrip.Elements.front().Material.bColorTexturesSRGB ||
+			Client::CEffectDocumentCodec::Serialize(LegacyRoundTrip) != LegacyJson)
+		{
+			strOutError = "Legacy material color-space default changed canonical serialization.";
+			return false;
+		}
+		Document.Elements.front().Material.bColorTexturesSRGB = true;
+		const std::string SrgbJson = Client::CEffectDocumentCodec::Serialize(Document);
+		const std::string Field = "\"colorTexturesSRGB\": true";
+		const size_t FieldOffset = SrgbJson.find(Field);
+		Client::EFFECT_DOCUMENT_DESC RoundTrip;
+		if (FieldOffset == std::string::npos ||
+			!Client::CEffectDocumentCodec::Parse(SrgbJson, RoundTrip, strOutError) ||
+			!Client::CEffectDocumentCodec::Validate(RoundTrip, strOutError) ||
+			!RoundTrip.Elements.front().Material.bColorTexturesSRGB ||
+			Client::CEffectDocumentCodec::Serialize(RoundTrip) != SrgbJson)
+		{
+			strOutError = "Authored material color-space true did not round-trip.";
+			return false;
+		}
+		std::string ExplicitFalse = SrgbJson;
+		ExplicitFalse.replace(FieldOffset, Field.size(), "\"colorTexturesSRGB\": false");
+		if (!Client::CEffectDocumentCodec::Parse(ExplicitFalse, RoundTrip, strOutError) ||
+			Client::CEffectDocumentCodec::Serialize(RoundTrip) != LegacyJson)
+		{
+			strOutError = "Explicit false material color space did not normalize to omission.";
+			return false;
+		}
+		for (const std::string_view InvalidValue : { "0", "1", "null", "\"true\"", "[]", "{}" })
+		{
+			std::string InvalidJson = SrgbJson;
+			InvalidJson.replace(FieldOffset, Field.size(),
+				"\"colorTexturesSRGB\": " + std::string(InvalidValue));
+			Client::EFFECT_DOCUMENT_DESC Preserved = LegacyRoundTrip;
+			std::string Error;
+			if (Client::CEffectDocumentCodec::Parse(InvalidJson, Preserved, Error) ||
+				Error.find("colorTexturesSRGB") == std::string::npos ||
+				Client::CEffectDocumentCodec::Serialize(Preserved) != LegacyJson)
+			{
+				strOutError = "Invalid material color-space type was accepted or changed prior output.";
+				return false;
+			}
+		}
+		for (size_t iCase = 0u; iCase < 6u; ++iCase)
+		{
+			Client::EFFECT_DOCUMENT_DESC Invalid = Document;
+			auto& Material = Invalid.Elements.front().Material;
+			switch (iCase)
+			{
+			case 0u: Material.strTemplateId = Client::EFFECT_SOURCE_MATERIAL_TEMPLATE_ID; break;
+			case 1u: Material.strTemplateId = Client::EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID; break;
+			case 2u: Material.SourceMaterial.bEnabled = true; break;
+			case 3u: Material.Execution.bEnabled = true; break;
+			case 4u: Material.Execution.bFailClosed = true; break;
+			case 5u: Invalid.Elements.front().SourceRecipe.bEnabled = true; break;
+			}
+			std::string Error;
+			if (Client::CEffectDocumentCodec::Validate(Invalid, Error) ||
+				Error.find("colorTexturesSRGB") == std::string::npos)
+			{
+				strOutError = "Source-owned material accepted the authored color-space override.";
+				return false;
+			}
+		}
+		OutDocument = std::move(LegacyRoundTrip);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_AuthoredMaterialColorSpaceResources(
+		const std::filesystem::path& RepositoryRoot,
+		ComPtr<ID3D11Device> Device,
+		ComPtr<ID3D11DeviceContext> Context,
+		Client::EFFECT_DOCUMENT_DESC Document,
+		std::string& strOutError)
+	{
+		Client::CEffectDocumentRenderer Renderer(Device, Context);
+		if (FAILED(Renderer.Initialize()))
+		{
+			strOutError = "Authored color-space renderer initialization failed.";
+			return false;
+		}
+		// All slots share one existing BC1 DDS, so cache keys must preserve each
+		// lane's decoding. Order: base/noise/mask/emissive/dissolve/base2/mask2/noise2.
+		constexpr std::array<bool_t, 8u> ColorSlots =
+			{ true, false, false, true, false, true, false, false };
+		for (const bool_t bSrgb : { false, true, false })
+		{
+			Document.Elements.front().Material.bColorTexturesSRGB = bSrgb;
+			const auto Before = Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+			if (!Renderer.Stage_Document(Document, strOutError))
+				return false;
+			const auto After = Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+			std::array<DXGI_FORMAT, 8u> Formats{};
+			if (After.iPreparedDocumentBuildCount != Before.iPreparedDocumentBuildCount + 1u ||
+				!Renderer.Read_AuthoredTextureFormatsForTests(
+					Document.Elements.front().strElementId, Formats, strOutError))
+			{
+				strOutError = "Material color-space change reused stale prepared resources: " + strOutError;
+				return false;
+			}
+			for (size_t i = 0u; i < Formats.size(); ++i)
+			{
+				const DXGI_FORMAT Expected = bSrgb && ColorSlots[i] ?
+					DXGI_FORMAT_BC1_UNORM_SRGB : DXGI_FORMAT_BC1_UNORM;
+				if (Formats[i] != Expected)
+				{
+					strOutError = "Authored texture SRV has the wrong color space at slot " +
+						std::to_string(i) + ": format=" + std::to_string(Formats[i]);
+					return false;
+				}
+			}
+		}
+		Client::EFFECT_DOCUMENT_DESC ChargeDocument;
+		if (!Client::CEffectDocumentCodec::Load(
+				RepositoryRoot / L"Data/Effects/Authored/"
+					L"effect.valtan.sequence.charge.effect.json",
+				ChargeDocument, strOutError))
+			return false;
+		Client::EFFECT_DOCUMENT_DESC HandDocument = ChargeDocument;
+		HandDocument.Elements.clear();
+		constexpr std::array<std::string_view, 2u> HandElementIds =
+			{ "authored.valtan.charge.hand-fire", "authored.valtan.charge.hand-smoke" };
+		for (const std::string_view ElementId : HandElementIds)
+		{
+			const auto Hand = std::find_if(ChargeDocument.Elements.begin(),
+				ChargeDocument.Elements.end(), [ElementId](
+					const Client::EFFECT_ELEMENT_DESC& Element)
+				{ return Element.strElementId == ElementId; });
+			if (Hand == ChargeDocument.Elements.end())
+			{
+				strOutError = "Charge material color-space fixture is missing " +
+					std::string(ElementId);
+				return false;
+			}
+			HandDocument.Elements.push_back(*Hand);
+		}
+		// The actual fire DDS is BC1 and shares one asset across color and mask
+		// lanes; the smoke DDS is BC3. Unbound slots must stay unbound on reuse.
+		std::array<std::array<DXGI_FORMAT, 8u>, 2u> ExpectedHandFormats{};
+		ExpectedHandFormats[0u][0u] = DXGI_FORMAT_BC1_UNORM_SRGB;
+		ExpectedHandFormats[0u][2u] = DXGI_FORMAT_BC1_UNORM;
+		ExpectedHandFormats[0u][3u] = DXGI_FORMAT_BC1_UNORM_SRGB;
+		ExpectedHandFormats[1u][0u] = DXGI_FORMAT_BC3_UNORM_SRGB;
+		const std::string HandCanonical = Client::CEffectDocumentCodec::Serialize(HandDocument);
+		for (size_t iStage = 0u; iStage < 2u; ++iStage)
+		{
+			const auto Before = Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+			if (!Renderer.Stage_Document(HandDocument, strOutError))
+				return false;
+			const auto After = Client::CEffectDocumentRenderer::Get_PrewarmProbe();
+			const uint64_t ExpectedBuildCount = Before.iPreparedDocumentBuildCount +
+				(0u == iStage ? 1u : 0u);
+			if (After.iPreparedDocumentBuildCount != ExpectedBuildCount ||
+				Client::CEffectDocumentCodec::Serialize(HandDocument) != HandCanonical)
+			{
+				strOutError = "Charge hand texture preparation changed the document or rebuilt unchanged resources.";
+				return false;
+			}
+			for (size_t iElement = 0u; iElement < HandElementIds.size(); ++iElement)
+			{
+				std::array<DXGI_FORMAT, 8u> Formats{};
+				if (!Renderer.Read_AuthoredTextureFormatsForTests(
+						HandElementIds[iElement], Formats, strOutError))
+					return false;
+				if (Formats != ExpectedHandFormats[iElement])
+				{
+					strOutError = "Charge hand texture SRV formats changed color space or bindings: " +
+						std::string(HandElementIds[iElement]);
+					return false;
+				}
+			}
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_DuplicatedAuthoredElementsContract(
+		const std::filesystem::path& RepositoryRoot,
+		std::string& strOutError)
+	{
+		Client::EFFECT_DOCUMENT_DESC SourceDocument;
+		if (!Client::CEffectDocumentCodec::Load(
+				RepositoryRoot / L"Data/Effects/Authored/"
+					L"effect.dimensionmaster.skill.2050010.ba1.effect.json",
+				SourceDocument, strOutError))
+			return false;
+		const auto SourceMesh = std::find_if(SourceDocument.Elements.begin(),
+			SourceDocument.Elements.end(), [](const Client::EFFECT_ELEMENT_DESC& Element)
+			{ return Element.eKind == Client::EFFECT_ELEMENT_KIND::MESH; });
+		if (SourceMesh == SourceDocument.Elements.end())
+		{
+			strOutError = "Duplicate fixture has no authored Mesh.";
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC Baseline;
+		if (!Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				SourceDocument, SourceMesh->strElementId,
+				"effect.contract.duplicate", Baseline, strOutError))
+			return false;
+		Client::EFFECT_ELEMENT_DESC& Master = Baseline.Elements.front();
+		Master.strElementId = "mesh.duplicate.master";
+		Master.strGroupId = "duplicate.pair";
+		Master.Detail.Timing.fStartDelaySeconds = 0.35f;
+		Master.Detail.Timing.fAfterImageSeconds = 0.f;
+		Client::EFFECT_ELEMENT_DESC Companion = Master;
+		Companion.strElementId = "mesh.duplicate.companion";
+		Companion.Detail.Transform.vPosition.x += 1.25f;
+		Companion.TransformInheritance.bEnabled = true;
+		Companion.TransformInheritance.strMasterElementId = Master.strElementId;
+		Client::EFFECT_ELEMENT_DESC External = Master;
+		External.strElementId = "mesh.duplicate.external";
+		Baseline.Elements.push_back(std::move(Companion));
+		Baseline.Elements.push_back(std::move(External));
+		if (!Client::CEffectDocumentCodec::Validate(Baseline, strOutError))
+			return false;
+		const std::string BaselineJson = Client::CEffectDocumentCodec::Serialize(Baseline);
+		const auto FindElement = [](const Client::EFFECT_DOCUMENT_DESC& Document,
+			const std::string& ElementId) -> const Client::EFFECT_ELEMENT_DESC*
+		{
+			const auto Found = std::find_if(Document.Elements.begin(), Document.Elements.end(),
+				[&ElementId](const Client::EFFECT_ELEMENT_DESC& Element)
+				{ return Element.strElementId == ElementId; });
+			return Found == Document.Elements.end() ? nullptr : &*Found;
+		};
+
+		Client::EFFECT_DOCUMENT_DESC Current = Baseline;
+		std::vector<std::string> Marked =
+			{ "mesh.duplicate.companion", "mesh.duplicate.master" };
+		for (size_t iRound = 1u; iRound < 10u; ++iRound)
+		{
+			Client::EFFECT_DOCUMENT_DESC Duplicated;
+			std::unordered_map<std::string, std::string> CopyIds;
+			if (!Client::CEffectDocumentCodec::Build_DuplicatedAuthoredElements(
+					Current, Marked, Duplicated, CopyIds, strOutError))
+				return false;
+			if (CopyIds.size() != 2u || Duplicated.Elements.size() != Current.Elements.size() + 2u)
+			{
+				strOutError = "Marked pair duplication did not append exactly two Elements.";
+				return false;
+			}
+			const Client::EFFECT_ELEMENT_DESC* pCompanion = FindElement(Duplicated, CopyIds.at(Marked[0]));
+			const Client::EFFECT_ELEMENT_DESC* pMaster = FindElement(Duplicated, CopyIds.at(Marked[1]));
+			if (nullptr == pCompanion || nullptr == pMaster ||
+				pCompanion->TransformInheritance.strMasterElementId != pMaster->strElementId ||
+				pCompanion->strSourceNode != "authored-copy:mesh.duplicate.companion" ||
+				pMaster->strSourceNode != "authored-copy:mesh.duplicate.master" ||
+				pCompanion->Detail.Timing.fStartDelaySeconds != 0.35f ||
+				pMaster->Detail.Timing.fStartDelaySeconds != 0.35f)
+			{
+				strOutError = "Duplicate pair lost its remapped master, origin, or timing.";
+				return false;
+			}
+			for (const std::string& SourceId : Marked)
+			{
+				const Client::EFFECT_ELEMENT_DESC& Source = *FindElement(Current, SourceId);
+				Client::EFFECT_DOCUMENT_DESC Expected = Current;
+				Expected.Elements = { Source };
+				Client::EFFECT_DOCUMENT_DESC Actual = Expected;
+				Actual.Elements = { *FindElement(Duplicated, CopyIds.at(SourceId)) };
+				Actual.Elements.front().strElementId = Source.strElementId;
+				Actual.Elements.front().strSourceNode = Source.strSourceNode;
+				Actual.Elements.front().SourcePresentation = Source.SourcePresentation;
+				Actual.Elements.front().TransformInheritance = Source.TransformInheritance;
+				if (Client::CEffectDocumentCodec::Serialize(Actual) !=
+					Client::CEffectDocumentCodec::Serialize(Expected))
+				{
+					strOutError = "Duplicate changed authored payload outside identity and inheritance.";
+					return false;
+				}
+			}
+			Client::EFFECT_DOCUMENT_DESC Originals = Duplicated;
+			std::erase_if(Originals.Elements, [&CopyIds](const Client::EFFECT_ELEMENT_DESC& Element)
+				{
+					return std::any_of(CopyIds.begin(), CopyIds.end(), [&Element](const auto& Pair)
+						{ return Pair.second == Element.strElementId; });
+				});
+			if (Client::CEffectDocumentCodec::Serialize(Originals) !=
+				Client::CEffectDocumentCodec::Serialize(Current))
+			{
+				strOutError = "Duplicate modified an existing Element or document metadata.";
+				return false;
+			}
+			Marked = { CopyIds.at(Marked[0]), CopyIds.at(Marked[1]) };
+			Current = std::move(Duplicated);
+		}
+		Client::EFFECT_DOCUMENT_DESC RoundTrip;
+		const std::string RepeatedJson = Client::CEffectDocumentCodec::Serialize(Current);
+		if (Current.Elements.size() != 21u ||
+			!Client::CEffectDocumentCodec::Parse(RepeatedJson, RoundTrip, strOutError) ||
+			!Client::CEffectDocumentCodec::Validate(RoundTrip, strOutError) ||
+			Client::CEffectDocumentCodec::Serialize(RoundTrip) != RepeatedJson)
+		{
+			strOutError = "Ten duplicated pairs plus one untouched Element did not round-trip.";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC SingleCopy;
+		std::unordered_map<std::string, std::string> CopyIds;
+		if (!Client::CEffectDocumentCodec::Build_DuplicatedAuthoredElements(
+				Baseline, { "mesh.duplicate.companion" }, SingleCopy, CopyIds, strOutError) ||
+			SingleCopy.Elements.size() != 4u || CopyIds.size() != 1u ||
+			FindElement(SingleCopy, CopyIds.at("mesh.duplicate.companion"))->
+				TransformInheritance.strMasterElementId != "mesh.duplicate.master")
+		{
+			strOutError = "Single duplicate did not preserve its unselected external master.";
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC Collision = Baseline;
+		Collision.Elements.push_back(Collision.Elements.front());
+		Collision.Elements.back().strElementId = "authored.copy.mesh.duplicate.master.1";
+		if (!Client::CEffectDocumentCodec::Build_DuplicatedAuthoredElements(
+				Collision, { "mesh.duplicate.master" }, SingleCopy, CopyIds, strOutError) ||
+			CopyIds.at("mesh.duplicate.master") != "authored.copy.mesh.duplicate.master.2")
+		{
+			strOutError = "Duplicate did not avoid an existing authored copy ID.";
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC LongIds = Baseline;
+		LongIds.Elements[0].strElementId = std::string(127u, 'a') + "1";
+		LongIds.Elements[1].strElementId = std::string(127u, 'a') + "2";
+		LongIds.Elements[1].TransformInheritance.strMasterElementId = LongIds.Elements[0].strElementId;
+		if (!Client::CEffectDocumentCodec::Build_DuplicatedAuthoredElements(
+				LongIds, { LongIds.Elements[0].strElementId, LongIds.Elements[1].strElementId },
+				SingleCopy, CopyIds, strOutError) || CopyIds.size() != 2u ||
+			CopyIds.at(LongIds.Elements[0].strElementId) == CopyIds.at(LongIds.Elements[1].strElementId) ||
+			std::any_of(CopyIds.begin(), CopyIds.end(), [](const auto& Pair)
+				{ return Pair.second.size() > 128u; }))
+		{
+			strOutError = "Duplicate truncation did not preserve unique bounded IDs.";
+			return false;
+		}
+
+		const auto ExpectRejected = [&Baseline, &BaselineJson, &strOutError](
+			const Client::EFFECT_DOCUMENT_DESC& Source, const std::vector<std::string>& Targets)
+		{
+			Client::EFFECT_DOCUMENT_DESC Preserved = Baseline;
+			std::unordered_map<std::string, std::string> PreservedIds = { { "sentinel", "sentinel.copy" } };
+			std::string Error;
+			if (Client::CEffectDocumentCodec::Build_DuplicatedAuthoredElements(
+					Source, Targets, Preserved, PreservedIds, Error) || Error.empty() ||
+				Client::CEffectDocumentCodec::Serialize(Preserved) != BaselineJson ||
+				PreservedIds != std::unordered_map<std::string, std::string>{ { "sentinel", "sentinel.copy" } })
+			{
+				strOutError = "Rejected duplicate modified a prior staged document or ID map.";
+				return false;
+			}
+			return true;
+		};
+		if (!ExpectRejected(Baseline, {}) ||
+			!ExpectRejected(Baseline, { "mesh.duplicate.master", "missing.element" }) ||
+			!ExpectRejected(Baseline, { "mesh.duplicate.master", "mesh.duplicate.master" }) ||
+			!ExpectRejected(Baseline, { "../invalid-id" }))
+			return false;
+		Client::EFFECT_DOCUMENT_DESC Invalid = Baseline;
+		Invalid.iFormatVersion = 0u;
+		if (!ExpectRejected(Invalid, { "mesh.duplicate.master" }))
+			return false;
+		Invalid = Baseline;
+		Invalid.Elements.push_back(Invalid.Elements.front());
+		if (!ExpectRejected(Invalid, { "mesh.duplicate.master" }))
+			return false;
+		Invalid = Baseline;
+		Invalid.Elements[1].TransformInheritance.strMasterElementId = "missing.master";
+		if (!ExpectRejected(Invalid, { "mesh.duplicate.master", "mesh.duplicate.companion" }))
+			return false;
+		Invalid = Baseline;
+		if (Invalid.Elements.front().ResourceBindings.empty())
+		{
+			strOutError = "Duplicate fixture has no resource binding for path rejection.";
+			return false;
+		}
+		Invalid.Elements.front().ResourceBindings.front().strAssetId = "../outside.wmodel";
+		if (!ExpectRejected(Invalid, { "mesh.duplicate.master" }))
+			return false;
+		Client::EFFECT_DOCUMENT_DESC AtCapacity = Baseline;
+		while (AtCapacity.Elements.size() < 2047u)
+		{
+			Client::EFFECT_ELEMENT_DESC Element = Baseline.Elements.front();
+			Element.strElementId = "mesh.capacity." + std::to_string(AtCapacity.Elements.size());
+			AtCapacity.Elements.push_back(std::move(Element));
+		}
+		if (!Client::CEffectDocumentCodec::Validate(AtCapacity, strOutError) ||
+			!ExpectRejected(AtCapacity, { "mesh.duplicate.master", "mesh.duplicate.companion" }))
+			return false;
+		strOutError.clear();
+		return true;
+	}
+
 	bool_t Validate_TransformMotionHoldContract(
 		const std::filesystem::path& RepositoryRoot,
 		std::string& strOutError)
@@ -2851,6 +3459,7 @@ namespace
 			return false;
 		}
 		Pattern.strPatternId = "VALTAN_HIGH_JUMP";
+		Pattern.bAuthoringMasterManaged = true;
 		Pattern.bManualServerAudition = false;
 		Pattern.iMaximumPhase = 1u;
 		Pattern.Stages.clear();
@@ -2861,9 +3470,276 @@ namespace
 			"core pattern summary was mislabeled as an animator phase"))
 			return false;
 		Pattern.strPatternId = "VALTAN_LEGACY_SUMMARY_FIXTURE";
+		Pattern.bAuthoringMasterManaged = false;
 		return Require(Client::CValtanPatternTree::Build_PatternIdentitySummary(Pattern).find(
 			"Authoring: outside shared audition inventory") != std::string::npos,
 			"nonmanual legacy pattern was silently labeled as a core replay row");
+	}
+
+	bool_t Validate_ValtanPlayableInventoryExpansionContract(std::string& strOutError)
+	{
+		std::string Status;
+		const auto Require = [&strOutError](const bool Condition, const char* pMessage)
+		{
+			if (!Condition)
+				strOutError = pMessage;
+			return Condition;
+		};
+		const auto Flatten = [](const Client::VALTAN_TOOL_AUDITION_INVENTORY& Inventory)
+		{
+			std::vector<std::string> Ids;
+			for (const auto* pIds : { &Inventory.CorePatternIds, &Inventory.AnimatorPatternIds,
+				&Inventory.DerivedPatternIds })
+				Ids.insert(Ids.end(), pIds->begin(), pIds->end());
+			return Ids;
+		};
+		const auto SameInventory = [](const Client::VALTAN_TOOL_AUDITION_INVENTORY& Left,
+			const Client::VALTAN_TOOL_AUDITION_INVENTORY& Right)
+		{
+			return Left.CorePatternIds == Right.CorePatternIds &&
+				Left.AnimatorPatternIds == Right.AnimatorPatternIds &&
+				Left.DerivedPatternIds == Right.DerivedPatternIds;
+		};
+		const auto VerifyParity = [&](const Client::VALTAN_PATTERN_TREE_VIEW& View,
+			Client::VALTAN_TOOL_AUDITION_INVENTORY& Inventory, std::vector<std::string>& Next)
+		{
+			if (!Client::CValtanPatternTree::Build_PlayablePatternInventory(View, Inventory, Status) ||
+				!Client::CValtanPatternTree::Build_NextPatternInventory(View, Next, Status))
+			{
+				strOutError = "dynamic playable inventory failed: " + Status;
+				return false;
+			}
+			std::set<std::string> Expected;
+			for (const auto* pRows : { &View.Gimmicks, &View.Rotation })
+				for (const Client::VALTAN_PATTERN_VIEW& Pattern : *pRows)
+					if (Pattern.bAuthoringMasterManaged)
+						Expected.insert(Pattern.strPatternId);
+			const std::vector<std::string> ToolIds = Flatten(Inventory);
+			return Require(ToolIds.size() == Expected.size() && Next.size() == Expected.size() &&
+				std::set<std::string>(ToolIds.begin(), ToolIds.end()) == Expected &&
+				std::set<std::string>(Next.begin(), Next.end()) == Expected,
+				"Tool, Flow and Next did not share all split-owned identities");
+		};
+
+		/* Exercise the production builder at its joined-view boundary. These
+		   arbitrary IDs deliberately have no C++ allowlist or Product-count fixture. */
+		Client::VALTAN_PATTERN_TREE_VIEW View;
+		const auto AppendPattern = [&View](const std::string& Id, const uint32_t SourceIndex,
+			const std::string& Admission = std::string{})
+		{
+			Client::VALTAN_PATTERN_VIEW Pattern;
+			Pattern.strPatternId = Id;
+			Pattern.bAuthoringMasterManaged = true;
+			Pattern.iSourceSequenceIndex = SourceIndex;
+			Pattern.strSelectionMode = Admission.empty() ? "NORMAL" : "AUDITION_ONLY";
+			Pattern.strEntryActionId = "action." + Id + ".entry";
+			Client::VALTAN_STAGE_VIEW Stage;
+			Stage.strStageId = "STEP_01";
+			Stage.strActionId = Pattern.strEntryActionId;
+			Stage.iDurationMs = 1000u;
+			Pattern.Stages.push_back(std::move(Stage));
+			if (!Admission.empty())
+			{
+				Pattern.bManualServerAudition = true;
+				Pattern.strSourceAnimationChainId = "chain." + Id;
+				Pattern.iAuthoringPhase = 2u;
+				Pattern.strAdmissionState = Admission;
+				View.ManualAuditions.push_back({ Id, Pattern.strSourceAnimationChainId,
+					Pattern.iAuthoringPhase, Admission });
+			}
+			View.Rotation.push_back(std::move(Pattern));
+		};
+		AppendPattern("VALTAN_DYNAMIC_CORE_0", 10u);
+		Client::VALTAN_TOOL_AUDITION_INVENTORY Inventory;
+		std::vector<std::string> Next;
+		if (!VerifyParity(View, Inventory, Next) ||
+			!Require(Inventory.AnimatorPatternIds.empty() && Inventory.DerivedPatternIds.empty(),
+				"a valid core-only inventory required a fixed manual count") ||
+			!Require(Client::CValtanPatternTree::Build_PatternIdentitySummary(View.Rotation.front()).
+				find("Authoring: Core server") != std::string::npos,
+				"a new split-owned core ID was mislabeled as legacy"))
+			return false;
+
+		AppendPattern("VALTAN_DYNAMIC_MANUAL_A", 22u, "MANUAL_SERVER_AUDITION");
+		AppendPattern("VALTAN_DYNAMIC_MANUAL_B", 21u, "MANUAL_SERVER_AUDITION");
+		AppendPattern("VALTAN_DYNAMIC_DERIVED_A", 32u, "DERIVED_SERVER_PATTERN");
+		AppendPattern("VALTAN_DYNAMIC_DERIVED_B", 31u, "DERIVED_SERVER_PATTERN");
+		AppendPattern("VALTAN_ENTRANCE_CINEMATIC", 0u);
+		for (uint32_t Index = 1u; Index <= Client::CValtanPatternFlowDocument::MAX_SLOTS; ++Index)
+			AppendPattern("VALTAN_DYNAMIC_CORE_" + std::to_string(Index), 100u + Index);
+		Client::VALTAN_PATTERN_VIEW Legacy;
+		Legacy.strPatternId = "VALTAN_LEGACY_INVENTORY_FIXTURE";
+		View.Gimmicks.push_back(Legacy);
+		if (!VerifyParity(View, Inventory, Next) ||
+			!Require(Inventory.Get_PatternCount() > Client::CValtanPatternFlowDocument::MAX_SLOTS &&
+				!Inventory.Contains(Legacy.strPatternId) &&
+				Inventory.AnimatorPatternIds == std::vector<std::string>{
+					"VALTAN_DYNAMIC_MANUAL_A", "VALTAN_DYNAMIC_MANUAL_B" } &&
+				Inventory.DerivedPatternIds == std::vector<std::string>{
+					"VALTAN_DYNAMIC_DERIVED_A", "VALTAN_DYNAMIC_DERIVED_B" } &&
+				std::find(Next.begin(), Next.end(), "VALTAN_DYNAMIC_MANUAL_B") <
+					std::find(Next.begin(), Next.end(), "VALTAN_DYNAMIC_MANUAL_A") &&
+				std::find(Next.begin(), Next.end(), "VALTAN_DYNAMIC_DERIVED_B") <
+					std::find(Next.begin(), Next.end(), "VALTAN_DYNAMIC_DERIVED_A"),
+				"inventory growth changed manual display order, capped IDs, or admitted legacy rows"))
+			return false;
+
+		Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Document;
+		Client::VALTAN_PATTERN_FLOW_DEFINITION Flow;
+		Flow.strFlowId = Client::CValtanPatternFlowDocument::DEFAULT_FLOW_ID;
+		Flow.iNextSlotOrdinal = 4u;
+		Flow.Slots = {
+			{ Flow.strFlowId + ".slot.000001", "VALTAN_DYNAMIC_CORE_0" },
+			{ Flow.strFlowId + ".slot.000002", "VALTAN_DYNAMIC_MANUAL_A" },
+			{ Flow.strFlowId + ".slot.000003", "VALTAN_DYNAMIC_CORE_0" }
+		};
+		Document.Flows.push_back(Flow);
+		Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Parsed;
+		if (!Require(Client::CValtanPatternFlowDocument::Parse_Text(
+				Client::CValtanPatternFlowDocument::Serialize_Text(Document), Parsed, Status) &&
+			Parsed == Document &&
+			Client::CValtanPatternFlowDocument::Validate(Parsed, Next, Status),
+			"a short repeated-pattern Flow was rejected when inventory exceeded slot capacity"))
+			return false;
+
+		auto MaximumDocument = Document;
+		auto& MaximumFlow = MaximumDocument.Flows.front();
+		MaximumFlow.Slots.clear();
+		for (std::size_t Index = 1u;
+			Index <= Client::CValtanPatternFlowDocument::MAX_SLOTS; ++Index)
+		{
+			std::ostringstream SlotId;
+			SlotId << MaximumFlow.strFlowId << ".slot." <<
+				std::setfill('0') << std::setw(6) << Index;
+			MaximumFlow.Slots.push_back(
+				{ SlotId.str(), "VALTAN_DYNAMIC_CORE_0" });
+		}
+		MaximumFlow.iNextSlotOrdinal =
+			Client::CValtanPatternFlowDocument::MAX_SLOTS + 1u;
+		Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT ParsedMaximum;
+		if (!Require(Client::CValtanPatternFlowDocument::Parse_Text(
+				Client::CValtanPatternFlowDocument::Serialize_Text(MaximumDocument),
+				ParsedMaximum, Status) &&
+			ParsedMaximum == MaximumDocument &&
+			Client::CValtanPatternFlowDocument::Validate(
+				ParsedMaximum, Next, Status),
+			"the maximum 255-slot Flow did not serialize, parse and validate"))
+			return false;
+
+		auto EntryFlow = Document;
+		EntryFlow.Flows.front().Slots.resize(2u);
+		EntryFlow.Flows.front().Slots[0].strPatternId = "VALTAN_ENTRANCE_CINEMATIC";
+		EntryFlow.Flows.front().Slots[1].strPatternId = "VALTAN_DYNAMIC_CORE_0";
+		if (!Require(Client::CValtanPatternFlowDocument::Validate(EntryFlow, Next, Status),
+				"an entry at the first Flow slot was rejected"))
+			return false;
+		std::swap(EntryFlow.Flows.front().Slots[0].strPatternId,
+			EntryFlow.Flows.front().Slots[1].strPatternId);
+		if (!Require(!Client::CValtanPatternFlowDocument::Validate(EntryFlow, Next, Status) &&
+			!Status.empty(), "an entry after another Flow slot was admitted"))
+			return false;
+		EntryFlow.Flows.front().Slots[0].strPatternId = "VALTAN_ENTRANCE_CINEMATIC";
+		if (!Require(!Client::CValtanPatternFlowDocument::Validate(EntryFlow, Next, Status) &&
+			!Status.empty(), "a repeated entry was admitted"))
+			return false;
+
+		const auto RejectWithoutMutation = [&](const Client::VALTAN_PATTERN_TREE_VIEW& Invalid)
+		{
+			const auto Before = Inventory;
+			const auto BeforeNext = Next;
+			if (!Require(!Client::CValtanPatternTree::Build_PlayablePatternInventory(
+					Invalid, Inventory, Status) && !Status.empty() && SameInventory(Inventory, Before),
+					"invalid identity or manual metadata changed the admitted Tool inventory"))
+				return false;
+			return Require(!Client::CValtanPatternTree::Build_NextPatternInventory(
+					Invalid, Next, Status) && !Status.empty() && Next == BeforeNext,
+					"invalid identity or manual metadata changed the admitted Next inventory");
+		};
+		for (uint32_t InvalidCase = 0u; InvalidCase < 16u; ++InvalidCase)
+		{
+			auto Invalid = View;
+			switch (InvalidCase)
+			{
+			case 0u:
+				Invalid.Gimmicks.push_back(Invalid.Rotation.front());
+				break;
+			case 1u:
+				Invalid.Rotation.front().strPatternId = "VALTAN/INVALID";
+				break;
+			case 2u:
+				Invalid.Rotation.front().Stages.clear();
+				break;
+			case 3u:
+				Invalid.Rotation.front().strEntryActionId = "action.missing.entry";
+				break;
+			case 4u:
+				Invalid.Rotation.front().Stages.push_back(Invalid.Rotation.front().Stages.front());
+				break;
+			case 5u:
+				Invalid.Rotation.front().Stages.push_back(Invalid.Rotation.front().Stages.front());
+				Invalid.Rotation.front().Stages.back().strStageId = "STEP_02";
+				break;
+			case 6u:
+				Invalid.ManualAuditions.erase(Invalid.ManualAuditions.begin());
+				break;
+			case 7u:
+				Invalid.Rotation.erase(Invalid.Rotation.begin() + 1);
+				break;
+			case 8u:
+				Invalid.Rotation[1].strSourceAnimationChainId = "chain.mismatched";
+				break;
+			case 9u:
+				Invalid.Rotation[1].iAuthoringPhase = 3u;
+				break;
+			case 10u:
+				Invalid.ManualAuditions[0].strAdmissionState = "UNKNOWN_ADMISSION";
+				Invalid.Rotation[1].strAdmissionState = "UNKNOWN_ADMISSION";
+				break;
+			case 11u:
+				Invalid.ManualAuditions.push_back(Invalid.ManualAuditions.front());
+				break;
+			case 12u:
+				Invalid.ManualAuditions[1].strSourceChainId = Invalid.ManualAuditions[0].strSourceChainId;
+				Invalid.Rotation[2].strSourceAnimationChainId = Invalid.ManualAuditions[0].strSourceChainId;
+				break;
+			case 13u:
+				Invalid.Rotation[1].bAuthoringMasterManaged = false;
+				break;
+			case 14u:
+				Invalid.Rotation.front().Stages.front().strStageId = "INVALID/STAGE";
+				break;
+			case 15u:
+				Invalid.Rotation.clear();
+				Invalid.ManualAuditions.clear();
+				break;
+			}
+			if (!RejectWithoutMutation(Invalid))
+			{
+				strOutError += " (case " + std::to_string(InvalidCase) + ")";
+				return false;
+			}
+		}
+		std::erase_if(View.Rotation, [](const Client::VALTAN_PATTERN_VIEW& Pattern)
+		{
+			return Pattern.bManualServerAudition || Pattern.strPatternId == "VALTAN_DYNAMIC_CORE_0";
+		});
+		View.ManualAuditions.clear();
+		if (!VerifyParity(View, Inventory, Next) ||
+			!Require(Inventory.AnimatorPatternIds.empty() && Inventory.DerivedPatternIds.empty() &&
+				!Inventory.Contains("VALTAN_DYNAMIC_CORE_0") &&
+				!Inventory.Contains("VALTAN_DYNAMIC_MANUAL_A") &&
+				!Inventory.Contains("VALTAN_DYNAMIC_DERIVED_A"),
+				"removing definitions retained old rows or required the old category counts") ||
+			!Require(!Client::CValtanPatternFlowDocument::Validate(Document, Next, Status) &&
+				!Status.empty(), "a Flow retained a removed pattern identity"))
+			return false;
+		for (auto& Slot : Document.Flows.front().Slots)
+			Slot.strPatternId = "VALTAN_DYNAMIC_CORE_1";
+		if (!Require(Client::CValtanPatternFlowDocument::Validate(Document, Next, Status),
+			"a valid remaining Flow required the removed manual or derived inventory"))
+			return false;
+		strOutError.clear();
+		return true;
 	}
 
 	bool_t Validate_ValtanProductPatternIdentitySummaryContract(
@@ -2876,25 +3752,72 @@ namespace
 				strOutError = pMessage;
 			return Condition;
 		};
+		const std::filesystem::path GameplayPath =
+			RepositoryRoot / L"Data" / L"Valtan" / L"Valtan.gameplay.json";
+		const std::filesystem::path PresentationPath =
+			RepositoryRoot / L"Data" / L"Valtan" / L"Valtan.presentation.json";
+		const auto ReadBytes = [](const std::filesystem::path& Path)
+		{
+			std::ifstream Input(Path, std::ios::binary);
+			return std::string(std::istreambuf_iterator<char>(Input),
+				std::istreambuf_iterator<char>());
+		};
+		const std::string GameplayJson = ReadBytes(GameplayPath);
 		Client::VALTAN_PATTERN_TREE_VIEW View;
 		Client::VALTAN_TOOL_AUDITION_INVENTORY Inventory;
 		std::string Status;
 		if (!Client::CValtanPatternTree::Load(View, Status) ||
-			!Client::CValtanPatternTree::Build_ToolAuditionInventory(
+			!Client::CValtanPatternTree::Build_PlayablePatternInventory(
 				View, Inventory, Status))
 		{
 			std::cerr << Status << '\n';
 			return Require(false, "current Product graph or shared audition inventory did not load");
 		}
-		if (!Require(Inventory.CorePatternIds.size() == 8u &&
-			Inventory.AnimatorPatternIds.size() == 19u,
-			"current shared inventory did not contain eight core and nineteen manual rows") ||
+		Client::DATA_JSON_VALUE GameplaySource;
+		if (!Require(Client::CDataJson::Parse(GameplayJson, GameplaySource, Status),
+			"current split gameplay did not parse for the inventory identity check"))
+			return false;
+		const auto* pSourcePatterns = GameplaySource.Find("patterns");
+		if (!Require(nullptr != pSourcePatterns && pSourcePatterns->Is_Array(),
+			"current split gameplay has no pattern definitions"))
+			return false;
+		std::set<std::string> SourceIds;
+		for (const Client::DATA_JSON_VALUE& Pattern : pSourcePatterns->Get_Array())
+		{
+			const auto* pId = Pattern.Find("patternId");
+			if (!Require(nullptr != pId && pId->Is_String() && SourceIds.insert(pId->Get_String()).second,
+				"current split gameplay repeats or omits a pattern identity"))
+				return false;
+		}
+		std::set<std::string> InventoryIds;
+		for (const auto* pIds : { &Inventory.CorePatternIds, &Inventory.AnimatorPatternIds,
+			&Inventory.DerivedPatternIds })
+			InventoryIds.insert(pIds->begin(), pIds->end());
+		std::set<std::string> CoreIds = SourceIds;
+		std::vector<std::string> AnimatorIds;
+		std::vector<std::string> DerivedIds;
+		for (const auto& Manual : View.ManualAuditions)
+		{
+			CoreIds.erase(Manual.strPatternId);
+			("DERIVED_SERVER_PATTERN" == Manual.strAdmissionState ? DerivedIds : AnimatorIds).
+				push_back(Manual.strPatternId);
+		}
+		std::vector<std::string> NextIds;
+		if (!Require(Client::CValtanPatternTree::Build_NextPatternInventory(View, NextIds, Status) &&
+			Inventory.Get_PatternCount() == SourceIds.size() && InventoryIds == SourceIds &&
+			std::set<std::string>(Inventory.CorePatternIds.begin(), Inventory.CorePatternIds.end()) == CoreIds &&
+			Inventory.AnimatorPatternIds == AnimatorIds && Inventory.DerivedPatternIds == DerivedIds &&
+			NextIds.size() == SourceIds.size() &&
+			std::set<std::string>(NextIds.begin(), NextIds.end()) == SourceIds,
+			"current Tool, Flow or Next inventory differs from the split-owned source identities") ||
 			!Require(!Inventory.Contains("VALTAN_SEQUENCE_FRONT_BACK_FRONT") &&
 				!Inventory.Contains("VALTAN_FRONT_BACK_FRONT") &&
 				!Inventory.Contains("VALTAN_GHOST_TRANSITION_15"),
-				"retired or hidden legacy pattern returned to the replay selectors"))
+				"retired or hidden legacy pattern returned to the replay selectors") ||
+			!Validate_ValtanPlayableInventoryExpansionContract(strOutError))
 			return false;
-		for (const auto* pIds : { &Inventory.CorePatternIds, &Inventory.AnimatorPatternIds })
+		for (const auto* pIds : { &Inventory.CorePatternIds, &Inventory.AnimatorPatternIds,
+			&Inventory.DerivedPatternIds })
 		{
 			for (const std::string& PatternId : *pIds)
 			{
@@ -2914,6 +3837,90 @@ namespace
 				if (!Require(Summary.starts_with("Pattern ID: " + PatternId + '\n'),
 					"loaded pattern summary substituted another stable identity"))
 					return false;
+				if (PatternId == "VALTAN_GHOST_FINALE")
+				{
+					if (!Require(pPattern->Finale.has_value() &&
+						pPattern->Finale->strKind == "GHOST_PORTAL_LOOP" &&
+						pPattern->Finale->strGhostArchetypeId == "BOSS_VALTAN_GHOST" &&
+						pPattern->Finale->iMaximumActiveGhosts == 1u &&
+						Summary.find("Authoring: Derived server") != std::string::npos,
+						"derived finale gameplay or identity metadata did not reach the Client"))
+						return false;
+				}
+				if (PatternId == "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK" ||
+					PatternId == "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK" ||
+					PatternId == "VALTAN_SIX_PIZZA_106")
+				{
+					if (!Require(pPattern->ServerMotion.has_value() &&
+						pPattern->ServerMotion->bMoveToAnchorBeforeTakeoff,
+						"center-before-takeoff motion was dropped from the Client view"))
+						return false;
+				}
+				if (PatternId == "VALTAN_WARP" || PatternId == "VALTAN_GHOST_FINALE")
+				{
+					const bool_t bTargetRush = PatternId == "VALTAN_WARP";
+					const char* const pExpectedMotionKind = bTargetRush ?
+						"PORTAL_TARGET_RUSH" : "PORTAL_CROSS_ARENA";
+					size_t iPortalLegs = 0u;
+					bool_t bHasCenterReturn = false;
+					for (const Client::VALTAN_STAGE_VIEW& Stage : pPattern->Stages)
+					{
+						if (Stage.Motion.has_value() &&
+							(Stage.Motion->strKind == "PORTAL_TARGET_RUSH" ||
+							 Stage.Motion->strKind == "PORTAL_CROSS_ARENA"))
+						{
+							const std::string ExpectedStageId =
+								"STEP_0" + std::to_string(iPortalLegs + 2u);
+							if (!Require(Stage.Motion->strKind == pExpectedMotionKind &&
+								Stage.strStageId == ExpectedStageId,
+								"general and finale portal motion ownership was mixed"))
+								return false;
+							if (!bTargetRush &&
+								!Require(Stage.Motion->iCornerIndex == iPortalLegs % 4u &&
+									Stage.Motion->HalfExtentsM == std::array<f32_t, 2u>{ 22.f, 22.f },
+									"finale portal corner geometry changed during the Client join"))
+								return false;
+							if (!Require(Stage.ProductCues.size() == 1u,
+								"portal leg lost its single Product effect cue"))
+								return false;
+							const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue =
+								Stage.ProductCues.front();
+							const Client::EFFECT_FOLLOW_POLICY ExpectedFollow = bTargetRush ?
+								Client::EFFECT_FOLLOW_POLICY::FOLLOW :
+								Client::EFFECT_FOLLOW_POLICY::SNAPSHOT;
+							const f32_t fExpectedLocalZ = bTargetRush ? 3.f : 0.f;
+							if (!Require(
+								Cue.strEffectAssetId ==
+									"effect.valtan.project-tuned.sequence.warp.portal" &&
+								Cue.strAnchorSlotId == "root" &&
+								Cue.eFollowPolicy == ExpectedFollow &&
+								Cue.strFollowPolicy == (bTargetRush ? "follow" : "snapshot") &&
+								Cue.LocalTransform.vPosition.x == 0.f &&
+								Cue.LocalTransform.vPosition.y == 0.f &&
+								Cue.LocalTransform.vPosition.z == fExpectedLocalZ,
+								"portal cue follow or root-local placement contract changed"))
+								return false;
+							++iPortalLegs;
+						}
+						for (const Client::VALTAN_STAGE_ACTION_VIEW& Action : Stage.Actions)
+							bHasCenterReturn |= "RETURN_TO_ARENA_CENTER" == Action.strKind;
+					}
+					if (!Require(iPortalLegs == 8u && bHasCenterReturn,
+						"portal Client projection lost a leg or its center return"))
+						return false;
+				}
+				if (PatternId == "VALTAN_FIST_IN_OUT")
+				{
+					const auto Stage = std::find_if(pPattern->Stages.begin(), pPattern->Stages.end(),
+						[](const Client::VALTAN_STAGE_VIEW& Candidate)
+						{ return Candidate.strStageId == "INNER"; });
+					if (!Require(Stage != pPattern->Stages.end() &&
+						Stage->CombatObjectEffects.size() == 1u && Stage->ProductCues.empty() &&
+						Stage->CombatObjectEffects.front().strCombatObjectArchetypeId ==
+							"combatobject.valtan.fist-in-out.donut" && Stage->iHitCount == 0u,
+						"donut Client stage lost independent ownership or duplicated its stage hit/cue"))
+						return false;
+				}
 				if (PatternId == "VALTAN_SEQUENCE_FOUR")
 				{
 					if (!Require(Summary.find("Authoring: Phase 2 manual audition") != std::string::npos,
@@ -2923,69 +3930,224 @@ namespace
 				}
 			}
 		}
-		/* Entry-only gates are permitted only at the authored sequence head.
-		   Mutate temporary gameplay copies and keep the live Product untouched. */
-		const std::filesystem::path GameplayPath =
-			RepositoryRoot / L"Data" / L"Valtan" / L"Valtan.gameplay.json";
-		const std::filesystem::path PresentationPath =
-			RepositoryRoot / L"Data" / L"Valtan" / L"Valtan.presentation.json";
-		std::ifstream GameplayInput(GameplayPath, std::ios::binary);
-		if (!Require(static_cast<bool>(GameplayInput), "entry fixture gameplay could not be read"))
+		/* Resolve the physical saved Flow from its own authoring snapshot.
+		   Repeated pattern IDs are occurrences; repeated slot IDs are invalid. */
+		const std::string FlowJson = ReadBytes(RepositoryRoot / L"Data" /
+			L"Encounters" / L"Valtan" / L"ValtanBossAuditionFlows.json");
+		Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT FlowDocument;
+		if (!Require(!GameplayJson.empty() &&
+			Client::CValtanPatternFlowDocument::Parse_Text(FlowJson, FlowDocument, Status) &&
+			FlowDocument.Flows.front().Slots.size() >= 2u,
+			"saved Flow fixture sources did not load"))
 			return false;
-		const std::string GameplayJson((std::istreambuf_iterator<char>(GameplayInput)),
-			std::istreambuf_iterator<char>());
-		Client::DATA_JSON_VALUE Gameplay;
-		if (!Client::CDataJson::Parse(GameplayJson, Gameplay, Status))
-			return Require(false, "entry fixture gameplay did not parse");
-		const Client::DATA_JSON_VALUE* Decision = Gameplay.Find("decisionModel");
-		const Client::DATA_JSON_VALUE* Sequence = nullptr == Decision ?
-			nullptr : Decision->Find("scriptedSequence");
-		const Client::DATA_JSON_VALUE* PatternIds = nullptr == Sequence ?
-			nullptr : Sequence->Find("patternIds");
-		if (!Require(nullptr != PatternIds && PatternIds->Get_Array().size() >= 2u,
-			"entry fixture requires the actual authored sequence head"))
-			return false;
-		const std::string EntryId = PatternIds->Get_Array()[0].Get_String();
-		const std::string SecondId = PatternIds->Get_Array()[1].Get_String();
-		const std::string QuotedEntry = "\"" + Client::CDataJson::Escape(EntryId) + "\"";
-		const std::string QuotedSecond = "\"" + Client::CDataJson::Escape(SecondId) + "\"";
 		const size_t SequenceOffset = GameplayJson.find("\"scriptedSequence\"");
-		const size_t HeadOffset = GameplayJson.find(QuotedEntry, SequenceOffset);
-		const size_t SecondOffset = GameplayJson.find(QuotedSecond, HeadOffset);
-		const size_t PatternsOffset = GameplayJson.find("\"patterns\"");
-		const size_t EntryOffset = GameplayJson.find(QuotedEntry, PatternsOffset);
-		const size_t WeightOffset = GameplayJson.find("\"compatibilitySelectionWeight\"", EntryOffset);
-		const size_t WeightColon = GameplayJson.find(':', WeightOffset);
-		if (!Require(SequenceOffset != std::string::npos &&
-			HeadOffset != std::string::npos && SecondOffset != std::string::npos &&
-			HeadOffset < SecondOffset && PatternsOffset != std::string::npos &&
-			EntryOffset != std::string::npos && WeightColon != std::string::npos,
-			"entry fixture could not locate its bounded JSON fields"))
+		const size_t SequenceBegin = GameplayJson.find('{', SequenceOffset);
+		const size_t SequenceEnd = GameplayJson.find('}', SequenceBegin);
+		if (!Require(SequenceOffset != std::string::npos && SequenceBegin != std::string::npos &&
+			SequenceEnd != std::string::npos, "saved Flow sequence reference was not found"))
 			return false;
-		const size_t WeightBegin = GameplayJson.find_first_not_of(" \t\r\n", WeightColon + 1u);
-		const size_t WeightEnd = GameplayJson.find_first_not_of("0123456789", WeightBegin);
-		if (!Require(WeightBegin != std::string::npos &&
-			WeightEnd != std::string::npos && WeightEnd > WeightBegin,
+		const auto InlineGameplay = [&](const char* PatternIds)
+		{
+			std::string Result = GameplayJson;
+			Result.replace(SequenceBegin, SequenceEnd + 1u - SequenceBegin,
+				std::string("{\"sequenceId\":\"sequence.valtan.server-authored.v1\","
+					"\"mode\":\"ORDERED_ONCE_THEN_IDLE\",\"interStepPursuitMs\":1000,"
+					"\"patternIds\":") + PatternIds + "}");
+			return Result;
+		};
+		const std::string EntryId = "VALTAN_ENTRANCE_CINEMATIC";
+		const std::string EntrySequence = InlineGameplay(
+			R"(["VALTAN_ENTRANCE_CINEMATIC","VALTAN_WHIRLWIND"])");
+		const size_t EntryOffset = EntrySequence.find("\"" + EntryId + "\"",
+			EntrySequence.find("\"patterns\""));
+		const size_t WeightColon = EntrySequence.find(':',
+			EntrySequence.find("\"compatibilitySelectionWeight\"", EntryOffset));
+		const size_t WeightBegin = EntrySequence.find_first_not_of(" \t\r\n", WeightColon + 1u);
+		const size_t WeightEnd = EntrySequence.find_first_not_of("0123456789", WeightBegin);
+		if (!Require(EntryOffset != std::string::npos && WeightColon != std::string::npos &&
+			WeightBegin != std::string::npos && WeightEnd != std::string::npos && WeightEnd > WeightBegin,
 			"entry fixture compatibility weight was not an integer token"))
 			return false;
-		std::string SwappedGameplay = GameplayJson;
-		SwappedGameplay.replace(SecondOffset, QuotedSecond.size(), QuotedEntry);
-		SwappedGameplay.replace(HeadOffset, QuotedEntry.size(), QuotedSecond);
-		std::string ZeroWeightGameplay = GameplayJson;
+		std::string ZeroWeightGameplay = EntrySequence;
 		ZeroWeightGameplay.replace(WeightBegin, WeightEnd - WeightBegin, "0");
+		const std::string SwappedGameplay = InlineGameplay(
+			R"(["VALTAN_WHIRLWIND","VALTAN_ENTRANCE_CINEMATIC"])");
 
 		TEMP_SOURCE_CATALOG_FIXTURE EntryFixture;
 		std::error_code FileError;
 		EntryFixture.Root = std::filesystem::temp_directory_path(FileError) /
-			("LostArkValtanEntryContract-" +
+			("LostArkValtanFlowContract-" +
 			 std::to_string(static_cast<uint64_t>(GetCurrentProcessId())) + "-" +
 			 std::to_string(static_cast<uint64_t>(GetTickCount64())));
-		if (!Require(!FileError && std::filesystem::create_directories(
-				EntryFixture.Root, FileError) && !FileError,
-			"entry fixture temporary directory could not be created"))
+		const std::filesystem::path FixtureGameplay = EntryFixture.Root /
+			L"Data" / L"Valtan" / L"Valtan.gameplay.json";
+		const std::filesystem::path FixtureFlow = EntryFixture.Root /
+			L"Data" / L"Encounters" / L"Valtan" / L"ValtanBossAuditionFlows.json";
+		std::filesystem::create_directories(FixtureGameplay.parent_path(), FileError);
+		if (!Require(!FileError, "Flow fixture gameplay directory could not be created"))
 			return false;
-		const std::filesystem::path InvalidGameplayPath =
-			EntryFixture.Root / L"Valtan.gameplay.json";
+		std::filesystem::create_directories(FixtureFlow.parent_path(), FileError);
+		if (!Require(!FileError, "Flow fixture document directory could not be created"))
+			return false;
+		const auto WriteBytes = [&Require](const std::filesystem::path& Path, const std::string& Text)
+		{
+			std::ofstream Output(Path, std::ios::binary | std::ios::trunc);
+			Output << Text;
+			return Require(static_cast<bool>(Output), "Flow fixture write failed");
+		};
+		if (!WriteBytes(FixtureGameplay, GameplayJson) || !WriteBytes(FixtureFlow, FlowJson))
+			return false;
+
+		/* Exercise the actual editor mutation path against a private Flow file.
+		   ENTRY receives a fresh stable slot ID but is inserted at array index 0;
+		   ordinary additions append, and a rejected duplicate cannot mutate the draft. */
+		auto EditableFixture = FlowDocument;
+		EditableFixture.Flows.front().Slots = {
+			{ EditableFixture.Flows.front().strFlowId + ".slot.000001", "VALTAN_WHIRLWIND" },
+			{ EditableFixture.Flows.front().strFlowId + ".slot.000002", "VALTAN_FOUR_SLASH" }
+		};
+		EditableFixture.Flows.front().iNextSlotOrdinal = 31u;
+		if (!WriteBytes(FixtureFlow,
+				Client::CValtanPatternFlowDocument::Serialize_Text(EditableFixture)) ||
+			!Set_EnvironmentPath(L"LOSTARK_PROJECT_DATA_ROOT", EntryFixture.Root / L"Data", Status))
+			return false;
+		Client::CValtanPatternFlowDocument EditableFlow;
+		const bool_t bEditableLoaded = EditableFlow.Load(NextIds, Status);
+		const auto BeforeEntry = bEditableLoaded ? EditableFlow.Get_Draft() :
+			Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT{};
+		std::string EntrySlotId;
+		const bool_t bEntryAdded = bEditableLoaded && EditableFlow.Add_Slot(
+			EntryId, NextIds, EntrySlotId, Status);
+		const auto AfterEntry = bEntryAdded ? EditableFlow.Get_Draft() :
+			Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT{};
+		std::string RejectedSlotId;
+		const bool_t bDuplicateRejected = bEntryAdded && !EditableFlow.Add_Slot(
+			EntryId, NextIds, RejectedSlotId, Status);
+		const bool_t bDuplicatePreserved = bDuplicateRejected &&
+			EditableFlow.Get_Draft() == AfterEntry;
+		const bool_t bEntryMoveRejected = bDuplicatePreserved &&
+			!EditableFlow.Move_Slot(EntrySlotId, 1, NextIds, Status);
+		const bool_t bEntryMovePreserved = bEntryMoveRejected &&
+			EditableFlow.Get_Draft() == AfterEntry;
+		const bool_t bCrossEntryMoveRejected = bEntryMovePreserved &&
+			!EditableFlow.Move_Slot(
+				EditableFixture.Flows.front().Slots.front().strSlotId,
+				-1, NextIds, Status);
+		const bool_t bCrossEntryMovePreserved = bCrossEntryMoveRejected &&
+			EditableFlow.Get_Draft() == AfterEntry;
+		const std::string MovableSlotId =
+			EditableFixture.Flows.front().Slots.back().strSlotId;
+		const bool_t bOrdinaryMoveAccepted = bCrossEntryMovePreserved &&
+			EditableFlow.Move_Slot(MovableSlotId, -1, NextIds, Status);
+		const auto AfterMove = bOrdinaryMoveAccepted ? EditableFlow.Get_Draft() :
+			Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT{};
+		const bool_t bOrdinaryMovePreservedIdentity = bOrdinaryMoveAccepted &&
+			AfterMove.Flows.front().iNextSlotOrdinal ==
+				AfterEntry.Flows.front().iNextSlotOrdinal &&
+			AfterMove.Flows.front().Slots[1].strSlotId == MovableSlotId &&
+			AfterMove.Flows.front().Slots[2].strSlotId ==
+				EditableFixture.Flows.front().Slots.front().strSlotId;
+		const bool_t bOrdinaryMoveRestored = bOrdinaryMovePreservedIdentity &&
+			EditableFlow.Move_Slot(MovableSlotId, 1, NextIds, Status) &&
+			EditableFlow.Get_Draft() == AfterEntry;
+		std::string AppendedSlotId;
+		const bool_t bOrdinaryAdded = bOrdinaryMoveRestored && EditableFlow.Add_Slot(
+			"VALTAN_WHIRLWIND", NextIds, AppendedSlotId, Status);
+		const auto AfterOrdinary = bOrdinaryAdded ? EditableFlow.Get_Draft() :
+			Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT{};
+		const std::string RevisionBeforeRejectedReload =
+			EditableFlow.Get_SourceRevision();
+		auto EmptyFixture = EditableFixture;
+		EmptyFixture.Flows.front().Slots.clear();
+		const bool_t bEmptyFixtureWritten = bOrdinaryAdded && WriteBytes(
+			FixtureFlow,
+			Client::CValtanPatternFlowDocument::Serialize_Text(EmptyFixture));
+		const bool_t bEmptyReloadRejected = bEmptyFixtureWritten &&
+			!EditableFlow.Reload(NextIds, Status);
+		const bool_t bEmptyReloadPreserved = bEmptyReloadRejected &&
+			EditableFlow.Get_Draft() == AfterOrdinary &&
+			EditableFlow.Get_SourceRevision() == RevisionBeforeRejectedReload &&
+			EditableFlow.Get_Path() == FixtureFlow && EditableFlow.Is_Ready() &&
+			EditableFlow.Is_Dirty() && !EditableFlow.Has_ExternalConflict();
+		std::string RestoreStatus;
+		const bool_t bEnvironmentRestored = Set_EnvironmentPath(
+			L"LOSTARK_PROJECT_DATA_ROOT", RepositoryRoot / L"Data", RestoreStatus);
+		if (!Require(bEnvironmentRestored,
+				"Flow editor fixture did not restore the repository data root") ||
+			!Require(bEditableLoaded && bEntryAdded &&
+				AfterEntry.Flows.front().Slots.size() == 3u &&
+				AfterEntry.Flows.front().Slots.front().strPatternId == EntryId &&
+				AfterEntry.Flows.front().Slots.front().strSlotId == EntrySlotId &&
+				EntrySlotId == EditableFixture.Flows.front().strFlowId + ".slot.000031" &&
+				std::equal(BeforeEntry.Flows.front().Slots.begin(),
+					BeforeEntry.Flows.front().Slots.end(),
+					AfterEntry.Flows.front().Slots.begin() + 1u),
+				"Add ENTRY did not insert one fresh stable slot before the saved order") ||
+			!Require(bDuplicatePreserved,
+				"a rejected duplicate ENTRY changed the loaded Flow draft") ||
+			!Require(bEntryMovePreserved && bCrossEntryMovePreserved,
+				"an invalid ENTRY move changed the loaded Flow draft") ||
+			!Require(bOrdinaryMoveRestored,
+				"a valid ordinary move changed stable IDs or nextSlotOrdinal") ||
+			!Require(bOrdinaryAdded && AfterOrdinary.Flows.front().Slots.size() == 4u &&
+				AfterOrdinary.Flows.front().Slots.back().strPatternId == "VALTAN_WHIRLWIND" &&
+				AfterOrdinary.Flows.front().Slots.back().strSlotId == AppendedSlotId &&
+				AppendedSlotId == EditableFixture.Flows.front().strFlowId + ".slot.000032",
+				"ordinary Add did not append after the preserved Flow order") ||
+			!Require(bEmptyReloadPreserved,
+				"an invalid persisted empty Flow replaced the admitted editor state") ||
+			!WriteBytes(FixtureFlow, FlowJson))
+			return false;
+		Client::VALTAN_PATTERN_TREE_VIEW SnapshotView;
+		std::string ExpectedFlowRevision;
+		if (!Require(Client::CValtanPatternFlowDocument::Compute_SourceRevision(
+				FlowJson, ExpectedFlowRevision),
+			"saved Flow fixture revision could not be computed") ||
+			!Require(Client::CValtanPatternTree::Load_FromAuthoringPaths(
+				FixtureGameplay, PresentationPath, SnapshotView, Status,
+				Client::VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY),
+			"reference did not resolve the Flow inside its own immutable source snapshot") ||
+			!Require(SnapshotView.strSavedFlowSourceRevision == ExpectedFlowRevision,
+			"pattern tree did not expose the exact saved Flow revision it consumed"))
+		{
+			std::cerr << Status << '\n';
+			return false;
+		}
+		if (!WriteBytes(FixtureGameplay, InlineGameplay(
+			R"(["VALTAN_WHIRLWIND","VALTAN_FOUR_SLASH","VALTAN_WHIRLWIND"])") ) ||
+			!Require(Client::CValtanPatternTree::Load_FromAuthoringPaths(
+				FixtureGameplay, PresentationPath, SnapshotView, Status,
+				Client::VALTAN_PATTERN_TREE_LOAD_POLICY::RESTORE_AUTHORING_SNAPSHOT),
+				"explicit A/B/A occurrences were rejected or required a hidden entry prefix"))
+			return false;
+
+		for (const char* pPatternId : { "VALTAN_GHOST_FINALE", "VALTAN_FIST_IN_OUT" })
+		{
+			auto SelectedFlow = FlowDocument;
+			SelectedFlow.Flows.front().Slots.back().strPatternId = pPatternId;
+			if (!WriteBytes(FixtureGameplay, GameplayJson) ||
+				!WriteBytes(FixtureFlow, Client::CValtanPatternFlowDocument::Serialize_Text(SelectedFlow)) ||
+				!Require(Client::CValtanPatternTree::Load_FromAuthoringPaths(
+					FixtureGameplay, PresentationPath, SnapshotView, Status,
+					Client::VALTAN_PATTERN_TREE_LOAD_POLICY::RESTORE_AUTHORING_SNAPSHOT),
+					"saved Flow rejected a split-owned core or derived slot") ||
+				!WriteBytes(FixtureFlow, FlowJson))
+				return false;
+		}
+		auto FirstEntryFlow = FlowDocument;
+		FirstEntryFlow.Flows.front().Slots.resize(2u);
+		FirstEntryFlow.Flows.front().Slots[0].strPatternId = EntryId;
+		FirstEntryFlow.Flows.front().Slots[1].strPatternId = "VALTAN_WHIRLWIND";
+		if (!Require(Client::CValtanPatternFlowDocument::Validate(FirstEntryFlow, NextIds, Status),
+				"saved Flow rejected its single first entry") ||
+			!WriteBytes(FixtureFlow, Client::CValtanPatternFlowDocument::Serialize_Text(FirstEntryFlow)) ||
+			!Require(Client::CValtanPatternTree::Load_FromAuthoringPaths(
+				FixtureGameplay, PresentationPath, SnapshotView, Status,
+				Client::VALTAN_PATTERN_TREE_LOAD_POLICY::RESTORE_AUTHORING_SNAPSHOT),
+				"source-local Flow entry did not join the current Product topology") ||
+			!WriteBytes(FixtureFlow, FlowJson))
+			return false;
+
 		const auto* const BeforeGimmicks = View.Gimmicks.data();
 		const auto* const BeforeRotation = View.Rotation.data();
 		const auto* const BeforeSets = View.SelectionSets.data();
@@ -3002,38 +4164,228 @@ namespace
 			return Result;
 		};
 		const std::string BeforeSummaries = Summaries(View);
-		for (const std::string& InvalidGameplay : { SwappedGameplay, ZeroWeightGameplay })
+		const auto RejectedWithoutMutation = [&]()
 		{
-			{
-				std::ofstream Output(InvalidGameplayPath, std::ios::binary | std::ios::trunc);
-				Output << InvalidGameplay;
-				if (!Require(static_cast<bool>(Output), "entry fixture gameplay write failed"))
-					return false;
-			}
 			Status.clear();
-			if (!Require(!Client::CValtanPatternTree::Load_FromAuthoringPaths(
-					InvalidGameplayPath, PresentationPath, View, Status,
-					Client::VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY) &&
-				Status.find("decision owner") != std::string::npos &&
-				Status.find(EntryId) != std::string::npos,
-				"invalid entry order/weight bypassed the strict decision-owner contract") ||
-				!Require(View.Gimmicks.data() == BeforeGimmicks &&
-					View.Rotation.data() == BeforeRotation &&
-					View.SelectionSets.data() == BeforeSets &&
+			return Require(!Client::CValtanPatternTree::Load_FromAuthoringPaths(
+				FixtureGameplay, PresentationPath, View, Status,
+				Client::VALTAN_PATTERN_TREE_LOAD_POLICY::RESTORE_AUTHORING_SNAPSHOT) &&
+				!Status.empty(), "invalid Flow/entry authoring was admitted") &&
+				Require(View.Gimmicks.data() == BeforeGimmicks &&
+					View.Rotation.data() == BeforeRotation && View.SelectionSets.data() == BeforeSets &&
 					View.NormalSelection.PatternIds == BeforeNormalIds &&
-					View.Get_PatternCount() == iBeforePatterns &&
-					View.Get_StageCount() == iBeforeStages &&
-					View.iIntroRotationIndex == iBeforeIntro &&
-					Summaries(View) == BeforeSummaries,
-					"invalid entry gameplay replaced or partially mutated the admitted Product view"))
+					View.Get_PatternCount() == iBeforePatterns && View.Get_StageCount() == iBeforeStages &&
+					View.iIntroRotationIndex == iBeforeIntro && Summaries(View) == BeforeSummaries,
+					"invalid Flow/entry authoring mutated the admitted Product view");
+		};
+		for (const std::string& InvalidGameplay : { SwappedGameplay, ZeroWeightGameplay })
+			if (!WriteBytes(FixtureGameplay, InvalidGameplay) || !RejectedWithoutMutation() ||
+				!Require(Status.find("decision owner") != std::string::npos &&
+					Status.find(EntryId) != std::string::npos, "entry rejection lost its decision-owner reason"))
+				return false;
+		const auto ReplacePatternField = [&](const char* pPatternId,
+			const char* pField, const char* pValue, const char* pStageId = nullptr)
+		{
+			std::string Mutated = GameplayJson;
+			const auto FindIdentityField = [&Mutated](const char* pName,
+				const char* pIdentity, const size_t Begin)
+			{
+				const std::string Pretty = std::string("\"") + pName + "\": \"" +
+					pIdentity + "\"";
+				const size_t PrettyAt = Mutated.find(Pretty, Begin);
+				return PrettyAt != std::string::npos ? PrettyAt : Mutated.find(
+					std::string("\"") + pName + "\":\"" + pIdentity + "\"", Begin);
+			};
+			const size_t Pattern = FindIdentityField(
+				"patternId", pPatternId, Mutated.find("\"patterns\""));
+			const size_t Scope = nullptr == pStageId ? Pattern :
+				FindIdentityField("stageId", pStageId,
+					Mutated.find("\"stages\"", Pattern));
+			if (Scope == std::string::npos)
+				return std::string{};
+			size_t FieldScope = Scope;
+			if (nullptr != pStageId && std::string_view(pField) == "kind")
+			{
+				FieldScope = Mutated.find("\"motion\"", Scope);
+				if (FieldScope == std::string::npos)
+					return std::string{};
+			}
+			const size_t Field = Mutated.find(
+				std::string("\"") + pField + "\"", FieldScope);
+			const size_t Colon = Mutated.find(':', Field);
+			const size_t Begin = Mutated.find_first_not_of(" \t\r\n", Colon + 1u);
+			if (Pattern == std::string::npos || Field == std::string::npos ||
+				Colon == std::string::npos || Begin == std::string::npos)
+				return std::string{};
+			size_t End = std::string::npos;
+			if (Mutated[Begin] == '[')
+			{
+				End = Mutated.find(']', Begin);
+				if (End != std::string::npos) ++End;
+			}
+			else if (Mutated[Begin] == '\"')
+			{
+				End = Mutated.find('\"', Begin + 1u);
+				if (End != std::string::npos) ++End;
+			}
+			else
+				End = Mutated.find_first_of(",}\r\n", Begin);
+			if (End == std::string::npos || End <= Begin)
+				return std::string{};
+			Mutated.replace(Begin, End - Begin, pValue);
+			return Mutated;
+		};
+		struct INVALID_PATTERN_FIELD final
+		{
+			const char* pPatternId;
+			const char* pField;
+			const char* pValue;
+			const char* pStageId = nullptr;
+		};
+		const INVALID_PATTERN_FIELD InvalidPatternFields[] = {
+			{ "VALTAN_GHOST_FINALE", "maximumActiveGhosts", "2" },
+			{ "VALTAN_GHOST_FINALE", "invulnerableWhileRunning", "true" },
+			{ "VALTAN_GHOST_FINALE", "ghostArchetypeId", "\"BOSS_VALTAN\"" },
+			{ "VALTAN_GHOST_FINALE", "ghostPatternIds",
+				"[\"VALTAN_WHIRLWIND\",\"VALTAN_WHIRLWIND\",\"VALTAN_SEQUENCE_FOUR\"]" },
+			{ "VALTAN_GHOST_FINALE", "ghostPatternIds",
+				"[\"VALTAN_WHIRLWIND\",\"VALTAN_UNKNOWN\",\"VALTAN_SEQUENCE_FOUR\"]" },
+			{ "VALTAN_GHOST_FINALE", "cornerIndex", "4", "STEP_02" },
+			{ "VALTAN_GHOST_FINALE", "halfExtentsM", "[0,22]", "STEP_02" },
+			{ "VALTAN_WARP", "kind", "\"UNKNOWN_MOTION\"", "STEP_02" },
+			{ "VALTAN_WARP", "kind",
+				"\"PORTAL_TARGET_RUSH\",\"cornerIndex\":0", "STEP_02" },
+			{ "VALTAN_SIX_PIZZA_106", "moveToAnchorBeforeTakeoff", "\"true\"" },
+			{ "VALTAN_SIX_PIZZA_106", "takeoffStartMs", "0" },
+			{ "VALTAN_SIX_PIZZA_106", "aimPolicy", "\"FACE_TARGET\"" },
+			{ "VALTAN_CATCH_BREATH", "releaseMode", "\"UNKNOWN_RELEASE\"" },
+			{ "VALTAN_FIST_IN_OUT", "count", "2" }
+		};
+		for (const INVALID_PATTERN_FIELD& Invalid : InvalidPatternFields)
+		{
+			const std::string Mutated = ReplacePatternField(
+				Invalid.pPatternId, Invalid.pField, Invalid.pValue, Invalid.pStageId);
+			if (!Require(!Mutated.empty(), "invalid pattern field fixture was not found") ||
+				!WriteBytes(FixtureGameplay, Mutated) || !RejectedWithoutMutation())
 				return false;
 		}
+		const auto FindFixturePattern = [&](const char* pPatternId)
+			-> const Client::VALTAN_PATTERN_VIEW*
+		{
+			for (const auto* pRows : { &SnapshotView.Gimmicks, &SnapshotView.Rotation })
+				for (const Client::VALTAN_PATTERN_VIEW& Pattern : *pRows)
+					if (Pattern.strPatternId == pPatternId)
+						return &Pattern;
+			return nullptr;
+		};
+		const auto AddFixtureBranch = [&](const char* pPatternId,
+			const Client::VALTAN_STAGE_VIEW& Stage, const char* pOutcome,
+			const std::optional<std::string>& Target)
+		{
+			if (std::any_of(Stage.Branches.begin(), Stage.Branches.end(),
+				[pOutcome](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+				{ return Branch.strOutcome == pOutcome; }))
+				return std::string{};
+			std::ostringstream Branches;
+			Branches << '[';
+			for (const Client::VALTAN_STAGE_BRANCH_VIEW& Branch : Stage.Branches)
+			{
+				Branches << "{\"outcome\":\"" << Client::CDataJson::Escape(Branch.strOutcome) <<
+					"\",\"nextActionId\":";
+				if (Branch.strNextActionId.has_value())
+					Branches << '\"' << Client::CDataJson::Escape(*Branch.strNextActionId) << '\"';
+				else
+					Branches << "null";
+				Branches << "},";
+			}
+			Branches << "{\"outcome\":\"" << pOutcome << "\",\"nextActionId\":";
+			if (Target.has_value())
+				Branches << '\"' << Client::CDataJson::Escape(*Target) << '\"';
+			else
+				Branches << "null";
+			Branches << "}]";
+			return ReplacePatternField(pPatternId, "branches", Branches.str().c_str(),
+				Stage.strStageId.c_str());
+		};
+		const char* FinitePatternIds[] = {
+			"VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF", "VALTAN_TRASH_CATCH_SUCCESS",
+			"VALTAN_TRASH_CATCH_FAIL", "VALTAN_GHOST_FINALE", "VALTAN_WHIRLWIND",
+			"VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR" };
+		for (const char* pPatternId : FinitePatternIds)
+		{
+			const Client::VALTAN_PATTERN_VIEW* pPattern = FindFixturePattern(pPatternId);
+			if (!Require(nullptr != pPattern && !pPattern->Stages.empty(),
+				"finite graph fixture pattern is missing"))
+				return false;
+			const size_t iCases = pPattern->Stages.size() > 1u ? 2u : 1u;
+			for (size_t iCase = 0u; iCase < iCases; ++iCase)
+			{
+				const Client::VALTAN_STAGE_VIEW& Stage = 0u == iCase ?
+					pPattern->Stages.front() : pPattern->Stages.back();
+				// Self edge and a later alternative returning to the entry must
+				// both fail even when the normal preview would not select it.
+				const std::string Mutated = AddFixtureBranch(pPatternId, Stage,
+					"PART_DESTROYED", pPattern->Stages.front().strActionId);
+				if (!Require(!Mutated.empty(), "finite graph branch fixture was not constructed") ||
+					!WriteBytes(FixtureGameplay, Mutated) || !RejectedWithoutMutation())
+					return false;
+				if (Status.find("finite stage graph contains a cycle") == std::string::npos ||
+					Status.find(pPatternId) == std::string::npos)
+				{
+					strOutError = "cycle rejection lost its graph and owner reason for " +
+						std::string(pPatternId) + ": " + Status;
+					return false;
+				}
+			}
+		}
+		const Client::VALTAN_PATTERN_VIEW* pWarp = FindFixturePattern("VALTAN_WARP");
+		if (!Require(nullptr != pWarp && !pWarp->Stages.empty(),
+			"navigation-blocked fixture pattern is missing"))
+			return false;
+		const std::string InvalidNavBranch = AddFixtureBranch("VALTAN_WARP",
+			pWarp->Stages.front(), "NAVIGATION_BLOCKED", std::nullopt);
+		if (!Require(!InvalidNavBranch.empty(), "navigation-blocked fixture was not constructed") ||
+			!WriteBytes(FixtureGameplay, InvalidNavBranch) || !RejectedWithoutMutation() ||
+			!Require(Status.find("navigation-blocked branch requires a capture rush") != std::string::npos,
+				"navigation-blocked rejection lost its capture-response reason"))
+			return false;
+		if (!WriteBytes(FixtureGameplay, GameplayJson))
+			return false;
+		for (uint32_t InvalidCase = 0u; InvalidCase < 7u; ++InvalidCase)
+		{
+			auto InvalidFlow = FlowDocument;
+			auto& Flow = InvalidFlow.Flows.front();
+			if (0u == InvalidCase) InvalidFlow.iFormatVersion = 2u;
+			if (1u == InvalidCase) Flow.Slots[1].strSlotId = Flow.Slots.front().strSlotId;
+			if (2u == InvalidCase) Flow.Slots[0].strPatternId = "VALTAN_UNKNOWN";
+			if (3u == InvalidCase) Flow.strFlowId = "flow.valtan.unknown";
+			if (4u == InvalidCase) Flow.Slots.clear();
+			if (5u == InvalidCase) Flow.Slots[1].strPatternId = EntryId;
+			if (6u == InvalidCase)
+			{
+				Flow.Slots[0].strPatternId = EntryId;
+				Flow.Slots[1].strPatternId = EntryId;
+			}
+			if (!WriteBytes(FixtureFlow, Client::CValtanPatternFlowDocument::Serialize_Text(InvalidFlow)) ||
+				!RejectedWithoutMutation())
+				return false;
+		}
+		std::filesystem::remove(FixtureFlow, FileError);
+		if (!Require(!FileError, "missing Flow fixture could not be prepared") ||
+			!RejectedWithoutMutation())
+			return false; // A missing snapshot Flow must not fall back to the workspace.
 		const Client::VALTAN_TOOL_AUDITION_INVENTORY BeforeFailure = Inventory;
-		View.ManualAuditions.pop_back();
-		return Require(!Client::CValtanPatternTree::Build_ToolAuditionInventory(
+		const auto Animator = std::find_if(View.ManualAuditions.begin(), View.ManualAuditions.end(),
+			[](const Client::VALTAN_MANUAL_AUDITION_VIEW& Manual)
+			{ return Manual.strAdmissionState == "MANUAL_SERVER_AUDITION"; });
+		if (!Require(Animator != View.ManualAuditions.end(), "animator inventory fixture is missing"))
+			return false;
+		View.ManualAuditions.erase(Animator);
+		return Require(!Client::CValtanPatternTree::Build_PlayablePatternInventory(
 				View, Inventory, Status) && !Status.empty() &&
 			Inventory.CorePatternIds == BeforeFailure.CorePatternIds &&
-			Inventory.AnimatorPatternIds == BeforeFailure.AnimatorPatternIds,
+			Inventory.AnimatorPatternIds == BeforeFailure.AnimatorPatternIds &&
+			Inventory.DerivedPatternIds == BeforeFailure.DerivedPatternIds,
 			"incomplete inventory replaced the previously admitted replay rows");
 	}
 
@@ -3090,6 +4442,86 @@ namespace
 				strOutError = "requested Valtan metadata round-trip failed for " +
 					Path.filename().generic_string() + ": " + strOutError;
 				return false;
+			}
+			if (Reloaded.strEffectAssetId == "effect.valtan.sequence.charge")
+			{
+				const std::vector<std::string> HandIds = {
+					"authored.valtan.charge.hand-fire", "authored.valtan.charge.hand-smoke"
+				};
+				for (const std::string& HandId : HandIds)
+				{
+					const auto Hand = std::find_if(Reloaded.Elements.begin(), Reloaded.Elements.end(),
+						[&HandId](const auto& E) { return E.strElementId == HandId; });
+					if (Hand == Reloaded.Elements.end() ||
+						Hand->ActionCueAttachment.eOrientation != Client::EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW ||
+						Hand->ActionCueAttachment.strRuntimeBoneName != "bip001-l-hand")
+					{
+						strOutError = "charge hand emitter lost its explicit left-hand owner-yaw attachment";
+						return false;
+					}
+					Client::EFFECT_DOCUMENT_DESC Portable;
+					if (!Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(
+							Reloaded, HandId, "effect.contract.reused-valtan-hand", Portable, strOutError) ||
+						Portable.Elements.size() != 1u)
+					{
+						strOutError = "charge hand Saved Element reuse failed: " + strOutError;
+						return false;
+					}
+					const auto& Copy = Portable.Elements.front();
+					Client::EFFECT_DOCUMENT_DESC ExpectedPayload = Portable;
+					ExpectedPayload.Elements.front().Detail = Hand->Detail;
+					ExpectedPayload.Elements.front().Material = Hand->Material;
+					ExpectedPayload.Elements.front().ResourceBindings = Hand->ResourceBindings;
+					if (Copy.ActionCueAttachment.bEnabled || Copy.ActionCueAttachment.bFollow ||
+						Copy.ActionCueAttachment.eOrientation != Client::EFFECT_ATTACHMENT_ORIENTATION::BONE ||
+						!Copy.ActionCueAttachment.strRuntimeBoneName.empty() ||
+						Client::CEffectDocumentCodec::Serialize(ExpectedPayload) !=
+							Client::CEffectDocumentCodec::Serialize(Portable) ||
+						Client::CEffectDocumentCodec::Serialize(Reloaded) != SavedJson)
+					{
+						strOutError = "charge hand reuse changed material/particle settings or retained foreign attachment";
+						return false;
+					}
+					Client::CEffectPlayback Playback;
+					float4x4_t Identity{};
+					XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+					if (!Playback.Stage_Document(Portable, strOutError))
+						return false;
+					Playback.Seek(0.5f, Identity);
+					if (Playback.Get_Frame().Particles.empty())
+					{
+						strOutError = "reused charge hand emitter produced no autonomous particles";
+						return false;
+					}
+					for (const auto& Particle : Playback.Get_Frame().Particles)
+					{
+						Client::EFFECT_SUBUV_FRAME_DESC UV;
+						if (!Client::CEffectPlayback::Resolve_ParticleSpriteSubUV(Particle, {}, UV) ||
+							UV.Current.x >= 1.f || UV.Current.y >= 1.f || UV.fBlend != 0.f)
+						{
+							strOutError = "reused charge hand emitter lost per-particle atlas playback";
+							return false;
+						}
+					}
+					Playback.Seek(Copy.Detail.Timing.fLifeTimeSeconds +
+						Copy.Detail.Particle.vLifeTimeSeconds.y + 0.1f, Identity);
+					if (!Playback.Get_Frame().Particles.empty())
+					{
+						strOutError = "reused charge hand emitter did not drain its particle tail";
+						return false;
+					}
+				}
+				Client::EFFECT_DOCUMENT_DESC Duplicated;
+				std::unordered_map<std::string, std::string> Copies;
+				if (!Client::CEffectDocumentCodec::Build_DuplicatedAuthoredElements(
+						Reloaded, HandIds, Duplicated, Copies, strOutError) ||
+					Copies.size() != HandIds.size() ||
+					Duplicated.Elements.size() != Reloaded.Elements.size() + HandIds.size() ||
+					Client::CEffectDocumentCodec::Serialize(Reloaded) != SavedJson)
+				{
+					strOutError = "charge hand pair duplication changed its source or failed validation: " + strOutError;
+					return false;
+				}
 			}
 			if (Reloaded.strEffectAssetId ==
 				"effect.valtan.project-tuned.terrain-destruction-3.semicircle")
@@ -3186,6 +4618,193 @@ namespace
 			return false;
 		}
 		OutTerrainSymbolDocument = std::move(TerrainSymbolDocument);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_AuthoredParticleDynamicsAndLifeSubUVContract(
+		std::string& strOutError)
+	{
+		Client::EFFECT_DOCUMENT_DESC Document = Build_ManualParticleContractDocument(
+			"effect.contract.native-particle", "manual.native-particle", false);
+		Document.Elements.front().Detail.Particle.bBillboard = true;
+		const std::string LegacyText = Client::CEffectDocumentCodec::Serialize(Document);
+		for (const char* Key : { "\"drag\"", "\"rotationRangeDegrees\"",
+			"\"spinRangeDegreesPerSecond\"", "\"subUVOverLife\"", "\"uniformSolidAngle\"" })
+		{
+			if (LegacyText.find(Key) != std::string::npos)
+			{
+				strOutError = "default native particle options changed legacy serialization";
+				return false;
+			}
+		}
+		auto& Element = Document.Elements.front();
+		auto& Detail = Element.Detail;
+		Detail.Particle.fDrag = 1.f;
+		Detail.Particle.vRotationRangeDegrees = { -10.f, 10.f };
+		Detail.Particle.vSpinRangeDegreesPerSecond = { 55.f, 65.f };
+		Detail.Particle.bSubUVOverLife = true;
+		Detail.Particle.InitialVelocity.eMode = Client::EFFECT_PARTICLE_VELOCITY_MODE::CONE;
+		Detail.Particle.InitialVelocity.vSpeedRange = { 0.2f, 0.5f };
+		Detail.Particle.InitialVelocity.fConeAngleDegrees = 25.f;
+		Detail.Particle.InitialVelocity.bUniformSolidAngle = true;
+		Detail.UV.iTileColumns = 4;
+		Detail.UV.iTileRows = 4;
+		Client::EFFECT_DOCUMENT_DESC RoundTrip;
+		const std::string ConfiguredText = Client::CEffectDocumentCodec::Serialize(Document);
+		if (!Client::CEffectDocumentCodec::Validate(Document, strOutError) ||
+			!Client::CEffectDocumentCodec::Parse(ConfiguredText, RoundTrip, strOutError) ||
+			Client::CEffectDocumentCodec::Serialize(RoundTrip) != ConfiguredText)
+		{
+			strOutError = "native particle option codec round-trip failed: " + strOutError;
+			return false;
+		}
+		const auto Reject = [&Document, &RoundTrip, &ConfiguredText, &strOutError](
+			const auto& Mutate, const char* Label)
+		{
+			Client::EFFECT_DOCUMENT_DESC Invalid = Document;
+			Mutate(Invalid.Elements.front());
+			std::string Rejection;
+			if (Client::CEffectDocumentCodec::Validate(Invalid, Rejection) ||
+				Rejection.empty() ||
+				Client::CEffectDocumentCodec::Parse(
+					Client::CEffectDocumentCodec::Serialize(Invalid), RoundTrip, Rejection) ||
+				Client::CEffectDocumentCodec::Serialize(RoundTrip) != ConfiguredText)
+			{
+				strOutError = std::string("native particle rejection/rollback failed: ") + Label;
+				return false;
+			}
+			return true;
+		};
+		if (!Reject([](auto& E) { E.Detail.Particle.fDrag = -1.f; }, "negative drag") ||
+			!Reject([](auto& E) { E.Detail.Particle.vSpinRangeDegreesPerSecond = { 65.f, 55.f }; }, "spin range") ||
+			!Reject([](auto& E) { E.Detail.UV.bSequence = true; }, "emitter UV clock") ||
+			!Reject([](auto& E) { E.Detail.UV.iTileRows = E.Detail.UV.iTileColumns = 1; }, "missing atlas") ||
+			!Reject([](auto& E) { E.Detail.Particle.bBillboard = false; }, "non-sprite carrier") ||
+			!Reject([](auto& E) { E.SourceRecipe.bEnabled = true; }, "source recipe") ||
+			!Reject([](auto& E) { E.Material.Execution.bEnabled = true; }, "typed material") ||
+			!Reject([](auto& E) { E.Detail.Particle.InitialVelocity.eMode = Client::EFFECT_PARTICLE_VELOCITY_MODE::OUTWARD; }, "non-cone solid angle"))
+		{
+			return false;
+		}
+
+		Client::EFFECT_EVALUATED_PARTICLE AtlasParticle;
+		AtlasParticle.pElement = &Document.Elements.front();
+		struct FRAME_CASE { f32_t Life; uint32_t Frame; };
+		const FRAME_CASE Frames[] = {
+			{ 0.f, 0u }, { 0.0624f, 0u }, { 0.0625f, 1u },
+			{ 0.5f, 8u }, { 0.999f, 15u }, { 1.f, 15u },
+			{ 0.5f / 0.6f, 13u }, { 0.5f / 1.2f, 6u }
+		};
+		for (const FRAME_CASE& Case : Frames)
+		{
+			AtlasParticle.fNormalizedLife = Case.Life;
+			Client::EFFECT_SUBUV_FRAME_DESC UV;
+			if (!Client::CEffectPlayback::Resolve_ParticleSpriteSubUV(AtlasParticle, {}, UV) ||
+				UV.Current.x != 0.25f || UV.Current.y != 0.25f ||
+				UV.Current.z != static_cast<f32_t>(Case.Frame % 4u) * 0.25f ||
+				UV.Current.w != static_cast<f32_t>(Case.Frame / 4u) * 0.25f ||
+				UV.Next.x != UV.Current.x || UV.Next.y != UV.Current.y ||
+				UV.Next.z != UV.Current.z || UV.Next.w != UV.Current.w || UV.fBlend != 0.f)
+			{
+				strOutError = "native sprite SubUV did not use the particle life or terminal atlas cell";
+				return false;
+			}
+		}
+		Client::EFFECT_SUBUV_FRAME_DESC PreservedUV;
+		PreservedUV.Current = { 2.f, 3.f, 4.f, 5.f };
+		AtlasParticle.fNormalizedLife = std::numeric_limits<f32_t>::quiet_NaN();
+		if (Client::CEffectPlayback::Resolve_ParticleSpriteSubUV(AtlasParticle, {}, PreservedUV) ||
+			PreservedUV.Current.x != 2.f || PreservedUV.Current.w != 5.f)
+		{
+			strOutError = "invalid particle SubUV overwrote the caller's previous result";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC Motion = Document;
+		auto& P = Motion.Elements.front().Detail.Particle;
+		P.iMaxParticles = P.iBurstCount = 1u;
+		P.vLifeTimeSeconds = { 1.f, 1.f };
+		P.InitialVelocity = {};
+		P.vInitialVelocityMin = P.vInitialVelocityMax = { 1.f, 0.f, 0.f };
+		P.vAcceleration = { 0.f, 0.03f, 0.f };
+		P.vRotationRangeDegrees = { 10.f, 10.f };
+		P.vSpinRangeDegreesPerSecond = { 60.f, 60.f };
+		Client::CEffectPlayback MotionPlayback;
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		constexpr f32_t Step = 1.f / 60.f;
+		if (!MotionPlayback.Stage_Document(Motion, strOutError))
+			return false;
+		MotionPlayback.Update(Step, Identity);
+		if (MotionPlayback.Get_Frame().Particles.size() != 1u)
+		{
+			strOutError = "native sprite motion fixture produced no birth packet";
+			return false;
+		}
+		const Client::EFFECT_EVALUATED_PARTICLE First = MotionPlayback.Get_Frame().Particles.front();
+		MotionPlayback.Update(Step, Identity);
+		if (MotionPlayback.Get_Frame().Particles.size() != 1u)
+		{
+			strOutError = "native sprite motion fixture lost its packet after the next tick";
+			return false;
+		}
+		const Client::EFFECT_EVALUATED_PARTICLE Second = MotionPlayback.Get_Frame().Particles.front();
+		if (std::abs(First.fSpriteRotationDegrees - 10.f) > 1.0e-5f ||
+			std::abs(First.vWorldVelocity.x - 1.f) > 1.0e-5f ||
+			std::abs(First.vWorldVelocity.y) > 1.0e-5f ||
+			std::abs(First.World._41) > 1.0e-5f ||
+			std::abs(First.World._42) > 1.0e-5f ||
+			std::abs(First.fNormalizedLife) > 1.0e-5f ||
+			std::abs(Second.fSpriteRotationDegrees - First.fSpriteRotationDegrees - 1.f) > 1.0e-5f ||
+			std::abs(Second.vWorldVelocity.x - First.vWorldVelocity.x * (1.f - Step)) > 1.0e-5f ||
+			std::abs(Second.vWorldVelocity.y - (First.vWorldVelocity.y + 0.03f * Step) * (1.f - Step)) > 1.0e-5f ||
+			std::abs(Second.World._41 - First.World._41 - Second.vWorldVelocity.x * Step) > 1.0e-5f ||
+			std::abs(Second.Color.w - (1.f - Second.fNormalizedLife)) > 1.0e-5f)
+		{
+			strOutError = "native sprite drag, spin, integration order, or single alpha fade drifted";
+			return false;
+		}
+		Client::EFFECT_DOCUMENT_DESC InvalidMotion = Motion;
+		InvalidMotion.Elements.front().Detail.Particle.fDrag = -1.f;
+		std::string Rejection;
+		if (MotionPlayback.Stage_Document(InvalidMotion, Rejection) || Rejection.empty() ||
+			MotionPlayback.Get_Frame().Particles.size() != 1u ||
+			MotionPlayback.Get_Frame().Particles.front().World._41 != Second.World._41)
+		{
+			strOutError = "native particle failed stage replaced the previous playback";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC Cone = Document;
+		auto& ConeP = Cone.Elements.front().Detail.Particle;
+		ConeP.iMaxParticles = ConeP.iBurstCount = 512u;
+		ConeP.fDrag = 0.f;
+		ConeP.vRotationRangeDegrees = {};
+		ConeP.vSpinRangeDegreesPerSecond = {};
+		ConeP.InitialVelocity.vSpeedRange = { 1.f, 1.f };
+		Client::CEffectPlayback ConePlayback;
+		if (!ConePlayback.Stage_Document(Cone, strOutError))
+			return false;
+		ConePlayback.Update(Step, Identity);
+		const auto& ConeParticles = ConePlayback.Get_Frame().Particles;
+		const f32_t CosLimit = std::cos(XMConvertToRadians(25.f));
+		double MeanCos = 0.;
+		for (const auto& Particle : ConeParticles)
+		{
+			if (Particle.vWorldVelocity.y < CosLimit - 1.0e-5f || Particle.vWorldVelocity.y > 1.f)
+			{
+				strOutError = "native sprite solid-angle cone escaped its authored aperture";
+				return false;
+			}
+			MeanCos += Particle.vWorldVelocity.y;
+		}
+		if (ConeParticles.size() != 512u ||
+			std::abs(MeanCos / 512. - (1. + CosLimit) * 0.5) > 0.004)
+		{
+			strOutError = "native sprite cone was not sampled uniformly in solid angle";
+			return false;
+		}
 		strOutError.clear();
 		return true;
 	}
@@ -3383,6 +5002,483 @@ namespace
 						return false;
 					}
 				}
+			}
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Are_ContractMatricesNear(const float4x4_t& first,
+		const float4x4_t& second)
+	{
+		for (size_t row = 0u; row < 4u; ++row)
+			for (size_t column = 0u; column < 4u; ++column)
+				if (!(std::abs(first.m[row][column] -
+					second.m[row][column]) <= 1.e-4f))
+					return false;
+		return true;
+	}
+
+	bool_t Validate_OwnerYawAttachmentContract(std::string& strOutError)
+	{
+		using Client::CEffectDocumentCodec;
+		using Client::CEffectPlayback;
+		using Client::EFFECT_ATTACHMENT_ORIENTATION;
+		const auto Require = [&strOutError](const bool_t bCondition, const char* pMessage)
+		{
+			if (!bCondition)
+				strOutError = pMessage;
+			return bCondition;
+		};
+		const std::array<Client::ACTION_PRESENTATION_CLIP_TIMING, 3u> ChargeClips{{
+			{ 1.7f, 0u, 1.f, false, 0.f },
+			{ 1.133f, 0u, 1.f, true, 0.f },
+			{ 1.067f, 0u, 1.f, false, 0.f }
+		}};
+		const std::array<float, 3u> ChargeWall{ 1.7f, 1.133f, 1.067f };
+		struct CHARGE_SAMPLE { float Wall; size_t Clip; float Source; };
+		const CHARGE_SAMPLE ChargeSamples[] = {
+			{ 0.f, 0u, 0.f }, { 1.699f, 0u, 1.699f },
+			{ 1.7f, 1u, 0.f }, { 2.4f, 1u, 0.7f },
+			{ 2.833f, 2u, 0.f }, { 3.9f, 2u, 1.067f }, { 4.8f, 2u, 1.067f }
+		};
+		for (const auto& Case : ChargeSamples)
+		{
+			Client::ACTION_PRESENTATION_SAMPLE Sample;
+			if (!Require(Client::CActionPresentationTimeline::Resolve_PreviewSequenceSample(
+					ChargeClips, ChargeWall, Case.Wall, Sample) &&
+				Sample.iClipIndex == Case.Clip &&
+				std::abs(Sample.fClipSourceTimeSeconds - Case.Source) < 0.00001f,
+				"charge whole-pattern history selected the wrong stage/source clock"))
+				return false;
+		}
+		const std::array<Client::ACTION_PRESENTATION_CLIP_TIMING, 2u> TrimmedClips{{
+			{ 2.f, 600u, 2.f, false, 0.4f }, { 0.2f, 0u, 1.f, true, 0.f }
+		}};
+		const std::array<float, 2u> TrimmedWall{ 0.5f, 0.55f };
+		Client::ACTION_PRESENTATION_SAMPLE Trimmed;
+		if (!Require(Client::CActionPresentationTimeline::Resolve_PreviewSequenceSample(
+				TrimmedClips, TrimmedWall, 0.4f, Trimmed) &&
+			Trimmed.iClipIndex == 0u && std::abs(Trimmed.fClipSourceTimeSeconds - 1.f) < 0.00001f &&
+			Client::CActionPresentationTimeline::Resolve_PreviewSequenceSample(
+				TrimmedClips, TrimmedWall, 0.75f, Trimmed) && Trimmed.iClipIndex == 1u &&
+			Trimmed.iLoopEpoch == 1u && std::abs(Trimmed.fClipSourceTimeSeconds - 0.05f) < 0.00001f,
+			"source trim/play rate/hold/finite loop history clocks diverged"))
+			return false;
+		const auto PreservedSample = Trimmed;
+		auto InvalidClips = ChargeClips;
+		InvalidClips.back().fPlayRate = 0.f;
+		if (!Require(!Client::CActionPresentationTimeline::Resolve_PreviewSequenceSample(
+				InvalidClips, ChargeWall, 0.f, Trimmed) &&
+			Trimmed.iClipIndex == PreservedSample.iClipIndex &&
+			Trimmed.fClipSourceTimeSeconds == PreservedSample.fClipSourceTimeSeconds,
+			"invalid later history clip partially committed the sequence sample"))
+			return false;
+
+		float4x4_t RawBone{}, PresentationRoot{}, OwnerWorld{}, Expected{};
+		XMStoreFloat4x4(&RawBone, XMMatrixScaling(0.01f, 0.01f, 0.01f) *
+			XMMatrixRotationZ(0.9f) * XMMatrixTranslation(2.f, 3.f, 4.f));
+		XMStoreFloat4x4(&PresentationRoot, XMMatrixScaling(0.2f, 0.2f, 0.2f) *
+			XMMatrixRotationY(-0.7f) * XMMatrixTranslation(8.f, 1.f, -4.f));
+		XMStoreFloat4x4(&OwnerWorld, XMMatrixScaling(2.f, 3.f, 4.f) *
+			XMMatrixRotationY(0.63f) * XMMatrixTranslation(100.f, 20.f, 30.f));
+		XMStoreFloat4x4(&Expected, XMMatrixRotationY(0.63f));
+		float4x4_t BonePresentationWorld{};
+		XMStoreFloat4x4(&BonePresentationWorld,
+			XMLoadFloat4x4(&RawBone) * XMLoadFloat4x4(&PresentationRoot));
+		Expected._41 = BonePresentationWorld._41;
+		Expected._42 = BonePresentationWorld._42;
+		Expected._43 = BonePresentationWorld._43;
+		float4x4_t RuntimeWorld{}, ToolWorld{};
+		if (!Require(CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
+				RawBone, PresentationRoot, OwnerWorld, RuntimeWorld) &&
+			CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
+				RawBone, PresentationRoot, OwnerWorld, ToolWorld) &&
+			Are_ContractMatricesNear(Expected, RuntimeWorld) &&
+			Are_ContractMatricesNear(RuntimeWorld, ToolWorld),
+			"owner_yaw did not preserve raw bone position and actual owner unit-basis parity"))
+		{
+			return false;
+		}
+		float4x4_t RotatedBone = RawBone;
+		XMStoreFloat4x4(&RotatedBone, XMMatrixRotationX(-1.2f) * XMLoadFloat4x4(&RawBone));
+		if (!Require(CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
+				RotatedBone, PresentationRoot, OwnerWorld, ToolWorld) &&
+			Are_ContractMatricesNear(Expected, ToolWorld),
+			"owner_yaw incorrectly inherited animated bone rotation or import scale"))
+			return false;
+		for (uint32_t iInvalid = 0u; iInvalid < 7u; ++iInvalid)
+		{
+			float4x4_t BadOwner = OwnerWorld, BadBone = RawBone, BadRoot = PresentationRoot;
+			if (0u == iInvalid) BadOwner._11 = BadOwner._12 = BadOwner._13 = 0.f;
+			if (1u == iInvalid) BadOwner._11 = std::numeric_limits<f32_t>::quiet_NaN();
+			if (2u == iInvalid) { BadOwner._11 *= -1.f; BadOwner._12 *= -1.f; BadOwner._13 *= -1.f; }
+			if (3u == iInvalid) BadOwner._12 += 1.f;
+			if (4u == iInvalid) BadOwner._14 = 1.f;
+			if (5u == iInvalid) BadBone._41 = std::numeric_limits<f32_t>::infinity();
+			if (6u == iInvalid) BadRoot._44 = 0.f;
+			float4x4_t Preserved = Expected;
+			if (!Require(!CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
+					BadBone, BadRoot, BadOwner, Preserved) &&
+				Are_ContractMatricesNear(Expected, Preserved),
+				"owner_yaw accepted invalid matrices or changed output on rejection"))
+				return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC Document = Build_ManualParticleContractDocument(
+			"effect.contract.owner-yaw", "manual.hand.fire", false);
+		auto& Attachment = Document.Elements.front().ActionCueAttachment;
+		Attachment.bEnabled = Attachment.bFollow = true;
+		Attachment.strSourceAnchorSlotId = "bip001-l-hand";
+		Attachment.strRuntimeAnchorSlotId = "manual.hand.anchor";
+		Attachment.strRuntimeBoneName = "bip001-l-hand";
+		const std::string LegacyText = CEffectDocumentCodec::Serialize(Document);
+		if (!Require(LegacyText.find("\"orientation\"") == std::string::npos,
+			"default bone attachment changed legacy serialized bytes"))
+			return false;
+		Attachment.eOrientation = EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW;
+		Client::EFFECT_ELEMENT_DESC Smoke = Document.Elements.front();
+		Smoke.strElementId = "manual.hand.smoke";
+		Document.Elements.emplace_back(std::move(Smoke));
+		const std::string ConfiguredText = CEffectDocumentCodec::Serialize(Document);
+		Client::EFFECT_DOCUMENT_DESC RoundTrip;
+		if (!Require(CEffectDocumentCodec::Validate(Document, strOutError) &&
+			CEffectDocumentCodec::Parse(ConfiguredText, RoundTrip, strOutError) &&
+			CEffectDocumentCodec::Serialize(RoundTrip) == ConfiguredText,
+			"owner_yaw pair codec round-trip failed"))
+			return false;
+		const auto RejectDocument = [&](const auto& Mutate)
+		{
+			auto Invalid = Document;
+			Mutate(Invalid);
+			std::string Error;
+			return !CEffectDocumentCodec::Validate(Invalid, Error) && !Error.empty() &&
+				!CEffectDocumentCodec::Parse(CEffectDocumentCodec::Serialize(Invalid), RoundTrip, Error) &&
+				CEffectDocumentCodec::Serialize(RoundTrip) == ConfiguredText;
+		};
+		if (!Require(
+			RejectDocument([](auto& D) { D.Elements.front().ActionCueAttachment.bEnabled = false; }) &&
+			RejectDocument([](auto& D) { D.Elements.front().ActionCueAttachment.bFollow = false; }) &&
+			RejectDocument([](auto& D) { D.Elements.front().SourceRecipe.bEnabled = true; }) &&
+			RejectDocument([](auto& D) { D.Elements.back().ActionCueAttachment.strRuntimeBoneName = "bip001-r-hand"; }) &&
+			RejectDocument([](auto& D) { D.Elements.back().ActionCueAttachment.eOrientation = EFFECT_ATTACHMENT_ORIENTATION::BONE; }) &&
+			RejectDocument([](auto& D) { D.Elements.back().ActionCueAttachment.SocketLocalTransform.vPosition.x = 1.f; }),
+			"owner_yaw wrong mode/shared slot conflict rejection or codec rollback failed"))
+			return false;
+		auto InvalidEnum = Document;
+		InvalidEnum.Elements.front().ActionCueAttachment.eOrientation = EFFECT_ATTACHMENT_ORIENTATION::END;
+		if (!Require(!CEffectDocumentCodec::Validate(InvalidEnum, strOutError),
+			"invalid attachment orientation enum was accepted"))
+			return false;
+		for (const std::string Replacement : { std::string("\"camera\""), std::string("17"), std::string("null") })
+		{
+			std::string InvalidText = ConfiguredText;
+			const size_t iToken = InvalidText.find("\"owner_yaw\"");
+			if (!Require(iToken != std::string::npos, "owner_yaw serialized token is missing"))
+				return false;
+			InvalidText.replace(iToken, std::string("\"owner_yaw\"").size(), Replacement);
+			if (!Require(!CEffectDocumentCodec::Parse(InvalidText, RoundTrip, strOutError) &&
+				CEffectDocumentCodec::Serialize(RoundTrip) == ConfiguredText,
+				"invalid orientation token changed the previously parsed document"))
+				return false;
+		}
+		// Removing sharing allows independent, explicitly authored bone policies.
+		auto Independent = Document;
+		Independent.Elements.back().ActionCueAttachment.strRuntimeAnchorSlotId = "manual.hand.smoke";
+		Independent.Elements.back().ActionCueAttachment.eOrientation = EFFECT_ATTACHMENT_ORIENTATION::BONE;
+		if (!Require(CEffectDocumentCodec::Validate(Independent, strOutError),
+			"distinct stable attachment slots did not allow independent orientation"))
+			return false;
+
+		Client::CEffectPlayback Playback;
+		if (!Playback.Stage_Document(Document, strOutError))
+			return false;
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		Playback.Set_SourceAnchorWorlds(std::unordered_map<std::string, float4x4_t>{
+			{ "manual.hand.anchor", RuntimeWorld } });
+		Playback.Seek(0.1f, Identity);
+		const auto FrameBefore = Playback.Get_Frame();
+		if (!Require(!FrameBefore.Particles.empty(), "native hand attachment did not reach playback"))
+			return false;
+		auto InvalidStage = Document;
+		InvalidStage.Elements.back().ActionCueAttachment.strRuntimeBoneName = "bip001-r-hand";
+		if (!Require(!Playback.Stage_Document(InvalidStage, strOutError) &&
+			Playback.Get_Frame().Particles.size() == FrameBefore.Particles.size() &&
+			Playback.Get_Frame().fSampleTimeSeconds == FrameBefore.fSampleTimeSeconds &&
+			Are_ContractMatricesNear(Playback.Get_Frame().Particles.front().World,
+				FrameBefore.Particles.front().World),
+			"conflicting hand anchor partially replaced the previous playback frame"))
+			return false;
+		Playback.Set_SourceAnchorWorlds(std::unordered_map<std::string, float4x4_t>{});
+		Playback.Seek(0.1f, Identity);
+		if (!Require(Playback.Get_Frame().Particles.empty(),
+			"missing hand anchor silently fell back to the effect root"))
+			return false;
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_CombatObjectVisualRootContract(std::string& strOutError)
+	{
+		const float3_t Position(156.03f, 22.99751f, -122.06f);
+		for (const f32_t fScale : { 1.f, 1.5f })
+		{
+			Client::BOSS_COMBAT_OBJECT_VISUAL_ENTRY Visual;
+			Visual.worldScale = { fScale, fScale, fScale };
+			for (const f32_t fYawDegrees : { 0.f, 90.f, -37.f })
+			{
+				const float4x4_t Root = Visual.Make_WorldRoot(Position, fYawDegrees);
+				if (Root._41 != Position.x || Root._42 != Position.y ||
+					Root._43 != Position.z || Root._44 != 1.f)
+				{
+					strOutError = "combat object visual scale changed its world anchor";
+					return false;
+				}
+				for (size_t iAxis = 0u; iAxis < 3u; ++iAxis)
+				{
+					const f32_t fLength = std::sqrt(
+						Root.m[iAxis][0] * Root.m[iAxis][0] +
+						Root.m[iAxis][1] * Root.m[iAxis][1] +
+						Root.m[iAxis][2] * Root.m[iAxis][2]);
+					if (std::abs(fLength - fScale) > 1.e-4f)
+					{
+						strOutError = "combat object visual root lost its authored scale";
+						return false;
+					}
+				}
+				const f32_t fYawRadians = XMConvertToRadians(fYawDegrees);
+				if (std::abs(Root._11 - fScale * std::cos(fYawRadians)) > 1.e-4f ||
+					std::abs(Root._13 + fScale * std::sin(fYawRadians)) > 1.e-4f)
+				{
+					strOutError = "combat object visual root lost its authored yaw";
+					return false;
+				}
+			}
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_PlayerHandGripTransformContract(std::string& strOutError)
+	{
+		constexpr f32_t EPSILON = 1.e-4f;
+		const auto MatricesMatch = Are_ContractMatricesNear;
+		float4x4_t handWorld{};
+		float4x4_t playerWorld{};
+		XMStoreFloat4x4(&handWorld,
+			XMMatrixScaling(2.f, 1.3f, 0.8f) *
+			XMMatrixRotationRollPitchYaw(0.4f, -0.8f, 0.2f) *
+			XMMatrixTranslation(5.f, 3.f, -7.f));
+		XMStoreFloat4x4(&playerWorld,
+			XMMatrixScaling(1.25f, 0.75f, 1.5f) *
+			XMMatrixRotationRollPitchYaw(0.2f, 0.6f, -0.1f) *
+			XMMatrixTranslation(40.f, 2.f, -10.f));
+		float4x4_t distantPlayerWorld = playerWorld;
+		distantPlayerWorld._41 = -80.f;
+		distantPlayerWorld._42 = 7.f;
+		distantPlayerWorld._43 = 90.f;
+		float4x4_t firstOffset{};
+		float4x4_t distantOffset{};
+		if (!Client::CPlayerHandGripTransform::Build_LocalOffset(
+				playerWorld, handWorld, firstOffset) ||
+			!Client::CPlayerHandGripTransform::Build_LocalOffset(
+				distantPlayerWorld, handWorld, distantOffset) ||
+			!MatricesMatch(firstOffset, distantOffset) ||
+			firstOffset._41 != 0.f || firstOffset._42 != 0.f ||
+			firstOffset._43 != 0.f)
+		{
+			strOutError = "hand grip retained the player's capture distance";
+			return false;
+		}
+		float4x4_t attachedWorld{};
+		float4x4_t expectedWorld = playerWorld;
+		expectedWorld._41 = handWorld._41;
+		expectedWorld._42 = handWorld._42;
+		expectedWorld._43 = handWorld._43;
+		if (!Client::CPlayerHandGripTransform::Compose_World(
+				firstOffset, handWorld, attachedWorld) ||
+			!MatricesMatch(attachedWorld, expectedWorld))
+		{
+			strOutError = "hand grip changed the captured player rotation or scale";
+			return false;
+		}
+		float4x4_t movedHandWorld{};
+		XMStoreFloat4x4(&movedHandWorld,
+			XMMatrixScaling(2.f, 1.3f, 0.8f) *
+			XMMatrixRotationRollPitchYaw(-0.3f, 1.1f, -0.5f) *
+			XMMatrixTranslation(-12.f, 9.f, 30.f));
+		float4x4_t distantAttachedWorld{};
+		if (!Client::CPlayerHandGripTransform::Compose_World(
+				firstOffset, movedHandWorld, attachedWorld) ||
+			!Client::CPlayerHandGripTransform::Compose_World(
+				distantOffset, movedHandWorld, distantAttachedWorld) ||
+			!MatricesMatch(attachedWorld, distantAttachedWorld) ||
+			std::abs(attachedWorld._41 - movedHandWorld._41) > EPSILON ||
+			std::abs(attachedWorld._42 - movedHandWorld._42) > EPSILON ||
+			std::abs(attachedWorld._43 - movedHandWorld._43) > EPSILON)
+		{
+			strOutError = "hand grip did not follow the animated hand origin";
+			return false;
+		}
+		// Actual normal-model hand scale produces a determinant near 1e-6,
+		// including values just below it after animation interpolation.
+		// Ghost bones use unit scale; both paths must preserve the grip.
+		for (const f32_t fHandScale : { 0.01f, 0.009999995f, 1.f })
+		{
+			float4x4_t scaledHandWorld{};
+			XMStoreFloat4x4(&scaledHandWorld,
+				XMMatrixScaling(fHandScale, fHandScale, fHandScale) *
+				XMMatrixRotationRollPitchYaw(0.4f, -0.8f, 0.2f) *
+				XMMatrixTranslation(5.f, 3.f, -7.f));
+			float4x4_t scaledOffset{};
+			float4x4_t distantScaledOffset{};
+			float4x4_t scaledAttachedWorld{};
+			if (!Client::CPlayerHandGripTransform::Build_LocalOffset(
+					playerWorld, scaledHandWorld, scaledOffset) ||
+				!Client::CPlayerHandGripTransform::Build_LocalOffset(
+					distantPlayerWorld, scaledHandWorld, distantScaledOffset) ||
+				!MatricesMatch(scaledOffset, distantScaledOffset) ||
+				!Client::CPlayerHandGripTransform::Compose_World(
+					scaledOffset, scaledHandWorld, scaledAttachedWorld) ||
+				!MatricesMatch(scaledAttachedWorld, expectedWorld))
+			{
+				strOutError = "valid normal or ghost hand scale rejected the fixed grip";
+				return false;
+			}
+			float4x4_t scaledMovedHandWorld{};
+			XMStoreFloat4x4(&scaledMovedHandWorld,
+				XMMatrixScaling(fHandScale, fHandScale, fHandScale) *
+				XMMatrixRotationRollPitchYaw(-0.3f, 1.1f, -0.5f) *
+				XMMatrixTranslation(-12.f, 9.f, 30.f));
+			float4x4_t distantScaledAttachedWorld{};
+			if (!Client::CPlayerHandGripTransform::Compose_World(
+					scaledOffset, scaledMovedHandWorld, scaledAttachedWorld) ||
+				!Client::CPlayerHandGripTransform::Compose_World(
+					distantScaledOffset, scaledMovedHandWorld, distantScaledAttachedWorld) ||
+				!MatricesMatch(scaledAttachedWorld, distantScaledAttachedWorld) ||
+				std::abs(scaledAttachedWorld._41 - scaledMovedHandWorld._41) > EPSILON ||
+				std::abs(scaledAttachedWorld._42 - scaledMovedHandWorld._42) > EPSILON ||
+				std::abs(scaledAttachedWorld._43 - scaledMovedHandWorld._43) > EPSILON)
+			{
+				strOutError = "scaled animated hand lost its fixed grip anchor";
+				return false;
+			}
+		}
+		std::array<float4x4_t, 6u> invalidMatrices{};
+		for (float4x4_t& invalid : invalidMatrices)
+			XMStoreFloat4x4(&invalid, XMMatrixIdentity());
+		invalidMatrices[0]._11 = 0.f;
+		invalidMatrices[1]._41 = (std::numeric_limits<f32_t>::quiet_NaN)();
+		invalidMatrices[2]._22 = (std::numeric_limits<f32_t>::infinity)();
+		invalidMatrices[3]._14 = 1.f;
+		invalidMatrices[4]._44 = 0.f;
+		invalidMatrices[5]._21 = 1.f;
+		invalidMatrices[5]._22 = 1.e-8f;
+		for (const float4x4_t& invalid : invalidMatrices)
+		{
+			float4x4_t unchanged = expectedWorld;
+			if (Client::CPlayerHandGripTransform::Build_LocalOffset(
+					playerWorld, invalid, unchanged) ||
+				!MatricesMatch(unchanged, expectedWorld) ||
+				Client::CPlayerHandGripTransform::Build_LocalOffset(
+					invalid, handWorld, unchanged) ||
+				!MatricesMatch(unchanged, expectedWorld) ||
+				Client::CPlayerHandGripTransform::Compose_World(
+					firstOffset, invalid, unchanged) ||
+				!MatricesMatch(unchanged, expectedWorld) ||
+				Client::CPlayerHandGripTransform::Compose_World(
+					invalid, handWorld, unchanged) ||
+				!MatricesMatch(unchanged, expectedWorld))
+			{
+				strOutError = "invalid hand grip matrix changed committed presentation";
+				return false;
+			}
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_ManualWorldSpaceScaleAnimation(std::string& strOutError)
+	{
+		Client::EFFECT_DOCUMENT_DESC Document = Build_ManualParticleContractDocument(
+			"effect.contract.world-space-scale", "particle.world-space-scale", false);
+		Client::EFFECT_ELEMENT_DESC& Element = Document.Elements.front();
+		Element.Detail.Timing.fStartDelaySeconds = 0.4f;
+		Element.Detail.Timing.fLifeTimeSeconds = 5.f;
+		Element.Detail.Transform.vPosition = { 1.f, 0.f, 2.f };
+		Element.Detail.Transform.vRotationDegrees = { -90.f, 0.f, 0.f };
+		Element.Detail.Transform.vScale = { 17.f, 17.f, 17.f };
+		Element.Detail.LinearLerp.bScale = true;
+		Element.Detail.LinearLerp.vEndScale = { 41.3f, 41.3f, 1.f };
+		Element.Detail.Particle.bLocalSpace = false;
+		Element.Detail.Particle.iBurstCount = 1u;
+		Element.Detail.Particle.iMaxParticles = 1u;
+		float4x4_t BirthRoot{};
+		float4x4_t MovedRoot{};
+		XMStoreFloat4x4(&BirthRoot,
+			XMMatrixScaling(1.5f, 1.5f, 1.5f) * XMMatrixRotationY(0.6f) *
+			XMMatrixTranslation(156.03f, 22.99751f, -122.06f));
+		XMStoreFloat4x4(&MovedRoot,
+			XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixRotationY(-0.8f) *
+			XMMatrixTranslation(-20.f, 10.f, 80.f));
+		Client::CEffectPlayback Playback;
+		if (!Playback.Stage_Document(Document, strOutError))
+			return false;
+		Playback.Seek(0.5f, BirthRoot);
+		if (Playback.Get_Frame().Particles.size() != 1u)
+		{
+			strOutError = "world-space scale fixture did not emit its delayed burst";
+			return false;
+		}
+		const float4x4_t FirstWorld = Playback.Get_Frame().Particles.front().World;
+		Playback.Update(0.5f, MovedRoot);
+		Client::EFFECT_DOCUMENT_DESC LocalDocument = Document;
+		LocalDocument.Elements.front().Detail.Particle.bLocalSpace = true;
+		Client::CEffectPlayback LocalPlayback;
+		if (!LocalPlayback.Stage_Document(LocalDocument, strOutError))
+			return false;
+		LocalPlayback.Seek(1.f, BirthRoot);
+		if (Playback.Get_Frame().Particles.size() != 1u ||
+			LocalPlayback.Get_Frame().Particles.size() != 1u)
+		{
+			strOutError = "world-space scale fixture lost its active particle";
+			return false;
+		}
+		const float4x4_t AnimatedWorld = Playback.Get_Frame().Particles.front().World;
+		if (!Are_ContractMatricesNear(AnimatedWorld,
+				LocalPlayback.Get_Frame().Particles.front().World) ||
+			Are_ContractMatricesNear(FirstWorld, AnimatedWorld) ||
+			std::abs(FirstWorld._41 - AnimatedWorld._41) > 1.e-4f ||
+			std::abs(FirstWorld._42 - AnimatedWorld._42) > 1.e-4f ||
+			std::abs(FirstWorld._43 - AnimatedWorld._43) > 1.e-4f)
+		{
+			strOutError = "world-space birth froze scale animation or followed a moved emitter";
+			return false;
+		}
+		for (const f32_t fInvalidScale : { 0.f,
+			(std::numeric_limits<f32_t>::quiet_NaN)() })
+		{
+			Client::EFFECT_DOCUMENT_DESC Invalid = Document;
+			Invalid.Elements.front().Detail.Transform.vScale.x = fInvalidScale;
+			std::string Rejection;
+			if (Playback.Stage_Document(Invalid, Rejection) || Rejection.empty() ||
+				Playback.Get_Frame().Particles.size() != 1u ||
+				!Are_ContractMatricesNear(AnimatedWorld,
+					Playback.Get_Frame().Particles.front().World))
+			{
+				strOutError = "invalid birth scale changed committed world-space playback";
+				return false;
+			}
+			Invalid = Document;
+			Invalid.Elements.front().Detail.LinearLerp.vEndScale.z = fInvalidScale;
+			if (Playback.Stage_Document(Invalid, Rejection) || Rejection.empty() ||
+				Playback.Get_Frame().Particles.size() != 1u ||
+				!Are_ContractMatricesNear(AnimatedWorld,
+					Playback.Get_Frame().Particles.front().World))
+			{
+				strOutError = "invalid end scale changed committed world-space playback";
+				return false;
 			}
 		}
 		strOutError.clear();
@@ -3653,10 +5749,13 @@ namespace
 				Client::EFFECT_PARTICLE_ORIENTATION_MODE::
 					GROUND_TANGENT_COUNTER_CLOCKWISE
 			}};
-		for (const Client::EFFECT_PARTICLE_ORIENTATION_MODE eMode :
-			OrientationModes)
+		for (size_t iCase = 0u; iCase < 2u * OrientationModes.size(); ++iCase)
 		{
+			const Client::EFFECT_PARTICLE_ORIENTATION_MODE eMode =
+				OrientationModes[iCase / 2u];
 			Client::EFFECT_DOCUMENT_DESC Oriented = EvenRingRoundTrip;
+			Oriented.Elements.front().Detail.Particle.bLocalSpace =
+				0u == iCase % 2u;
 			Oriented.Elements.front().Detail.Particle.InitialOrientation.eMode = eMode;
 			std::vector<Client::EFFECT_EVALUATED_PARTICLE> OrientedParticles;
 			if (!Evaluate_ManualParticleContractDocument(
@@ -3725,6 +5824,47 @@ namespace
 						"Sprite local +X did not follow its radial/tangent mode";
 					return false;
 				}
+			}
+		}
+
+		Client::EFFECT_DOCUMENT_DESC WorldRing = EvenRingRoundTrip;
+		WorldRing.Elements.front().Detail.Particle.bLocalSpace = false;
+		Client::EFFECT_DOCUMENT_DESC WorldRingRoundTrip;
+		if (!Client::CEffectDocumentCodec::Parse(
+				Client::CEffectDocumentCodec::Serialize(WorldRing),
+				WorldRingRoundTrip, strOutError) ||
+			WorldRingRoundTrip.Elements.front().Detail.Particle.bLocalSpace)
+		{
+			strOutError = "world-space Ring orientation failed to round-trip: " + strOutError;
+			return false;
+		}
+		Client::CEffectPlayback WorldRingPlayback;
+		if (!WorldRingPlayback.Stage_Document(WorldRingRoundTrip, strOutError))
+			return false;
+		float4x4_t BirthRoot{};
+		float4x4_t MovedRoot{};
+		XMStoreFloat4x4(&BirthRoot,
+			XMMatrixScaling(1.5f, 1.5f, 1.5f) * XMMatrixRotationY(0.7f) *
+			XMMatrixTranslation(156.03f, 22.99751f, -122.06f));
+		XMStoreFloat4x4(&MovedRoot,
+			XMMatrixRotationY(-0.8f) * XMMatrixTranslation(-20.f, 10.f, 80.f));
+		WorldRingPlayback.Seek(0.25f, BirthRoot);
+		const auto BirthParticles = WorldRingPlayback.Get_Frame().Particles;
+		WorldRingPlayback.Update(0.25f, MovedRoot);
+		const auto& FrozenParticles = WorldRingPlayback.Get_Frame().Particles;
+		if (BirthParticles.size() != RING_PARTICLE_COUNT ||
+			FrozenParticles.size() != RING_PARTICLE_COUNT)
+		{
+			strOutError = "world-space Ring did not preserve its birth population";
+			return false;
+		}
+		for (size_t iParticle = 0u; iParticle < RING_PARTICLE_COUNT; ++iParticle)
+		{
+			if (!Are_ContractMatricesNear(BirthParticles[iParticle].World,
+					FrozenParticles[iParticle].World))
+			{
+				strOutError = "world-space Ring followed a later emitter transform";
+				return false;
 			}
 		}
 
@@ -6788,9 +8928,14 @@ int wmain(const int argc, wchar_t** argv)
 	std::cout << std::unitbuf;
 	const bool validateResourceRootOnly = argc == 3 && nullptr != argv[2] &&
 		std::wstring_view(argv[2]) == L"--validate-resource-root";
-	if ((argc != 2 && !validateResourceRootOnly) || nullptr == argv[1])
+	const bool validateValtanPatternInventoryOnly =
+		argc == 3 && nullptr != argv[2] &&
+		std::wstring_view(argv[2]) == L"--validate-valtan-pattern-inventory";
+	if ((argc != 2 && !validateResourceRootOnly &&
+			!validateValtanPatternInventoryOnly) || nullptr == argv[1])
 	{
-		std::cerr << "usage: EffectRenderContractHarness <repo-root> [--validate-resource-root]\n";
+		std::cerr << "usage: EffectRenderContractHarness <repo-root> "
+			"[--validate-resource-root|--validate-valtan-pattern-inventory]\n";
 		return 2;
 	}
 
@@ -6835,6 +8980,26 @@ int wmain(const int argc, wchar_t** argv)
 		std::cout << "{\"resourceRoot\":\"" <<
 			Client::CDataJson::Escape(ResourceRoot.generic_string()) <<
 			"\",\"assetPathBoundaryValidated\":true}\n";
+		return 0;
+	}
+	if (validateValtanPatternInventoryOnly)
+	{
+		std::filesystem::current_path(ClientWorkingDirectory, FileError);
+		if (FileError)
+		{
+			std::cerr << "could not enter Client/Default\n";
+			return 2;
+		}
+		if (!Validate_ValtanPatternIdentitySummaryContract(Status) ||
+			!Validate_ValtanProductPatternIdentitySummaryContract(
+				RepositoryRoot, Status))
+		{
+			std::cerr << Status << '\n';
+			return 1;
+		}
+		std::cout <<
+			"{\"schema\":\"lostark.valtan-pattern-inventory-contract-result\","
+			"\"formatVersion\":1,\"validated\":true}\n";
 		return 0;
 	}
 	std::cout << "[effect-render-contract] resource-root=" << ResourceRoot.generic_string() << '\n';
@@ -6897,6 +9062,21 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("artist-particlemaster-hdr-emissive.complete");
+	Client::EFFECT_DOCUMENT_DESC AuthoredMaterialColorSpaceDocument;
+	Write_Progress("authored-material-color-space.begin");
+	if (!Validate_AuthoredMaterialColorSpaceContract(AuthoredMaterialColorSpaceDocument, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("authored-material-color-space.complete");
+	Write_Progress("duplicate-authored-elements.begin");
+	if (!Validate_DuplicatedAuthoredElementsContract(RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("duplicate-authored-elements.complete");
 	Write_Progress("transform-motion-hold.begin");
 	if (!Validate_TransformMotionHoldContract(RepositoryRoot, Status))
 	{
@@ -6913,6 +9093,13 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("requested-valtan-document-metadata.complete");
+	Write_Progress("authored-particle-dynamics-life-subuv.begin");
+	if (!Validate_AuthoredParticleDynamicsAndLifeSubUVContract(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("authored-particle-dynamics-life-subuv.complete");
 	Write_Progress("manual-particle-emission-duration.begin");
 	if (!Validate_ManualParticleEmissionDurationContract(Status))
 	{
@@ -6928,6 +9115,34 @@ int wmain(const int argc, wchar_t** argv)
 		return 1;
 	}
 	Write_Progress("valtan-pattern-identity.complete");
+	Write_Progress("owner-yaw-attachment.begin");
+	if (!Validate_OwnerYawAttachmentContract(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("owner-yaw-attachment.complete");
+	Write_Progress("combat-object-visual-root.begin");
+	if (!Validate_CombatObjectVisualRootContract(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("combat-object-visual-root.complete");
+	Write_Progress("manual-world-space-scale.begin");
+	if (!Validate_ManualWorldSpaceScaleAnimation(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("manual-world-space-scale.complete");
+	Write_Progress("player-hand-grip-transform.begin");
+	if (!Validate_PlayerHandGripTransformContract(Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("player-hand-grip-transform.complete");
 	Write_Progress("manual-mesh-particle-scale.begin");
 	if (!Validate_ManualMeshParticleScaleComposition(Status))
 	{
@@ -7169,6 +9384,21 @@ int wmain(const int argc, wchar_t** argv)
 		Write_Progress("warp-engine-initialize.complete");
 		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
 		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		Write_Progress("named-historical-animation-sampling.begin");
+		if (!Validate_NamedHistoricalAnimationSamplingContract(Device, Context, Status))
+		{
+			std::cerr << Status << '\n';
+			return 1;
+		}
+		Write_Progress("named-historical-animation-sampling.complete");
+		Write_Progress("authored-material-color-space-srv.begin");
+		if (!Validate_AuthoredMaterialColorSpaceResources(
+				RepositoryRoot, Device, Context, AuthoredMaterialColorSpaceDocument, Status))
+		{
+			std::cerr << Status << '\n';
+			return 1;
+		}
+		Write_Progress("authored-material-color-space-srv.complete");
 		Write_Progress("compiled-shader-fast-failure.begin");
 		if (!Validate_CompiledShaderFastFailure(
 				Device, Context, iCompiledShaderMaximumFailureMs, Status))

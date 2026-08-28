@@ -30,6 +30,8 @@ namespace
 	constexpr std::size_t MAX_STABLE_ID_LENGTH = 128u;
 	constexpr std::uint64_t MAX_SLOT_ORDINAL = 999999u;
 	constexpr std::size_t SHA256_BYTE_COUNT = 32u;
+	constexpr std::string_view OPTIONAL_ENTRY_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC";
 
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
@@ -258,6 +260,13 @@ std::filesystem::path Client::CValtanPatternFlowDocument::Resolve_Path()
 		std::filesystem::path(L"Encounters/Valtan/ValtanBossAuditionFlows.json"));
 }
 
+bool_t Client::CValtanPatternFlowDocument::Compute_SourceRevision(
+	const std::string_view text,
+	std::string& outRevision)
+{
+	return Build_Revision(text, outRevision);
+}
+
 bool_t Client::CValtanPatternFlowDocument::Parse_Text(
 	const std::string_view text,
 	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& outDocument,
@@ -266,7 +275,9 @@ bool_t Client::CValtanPatternFlowDocument::Parse_Text(
 	DATA_JSON_PARSE_LIMITS limits;
 	limits.iMaximumBytes = MAX_DOCUMENT_BYTES;
 	limits.iMaximumDepth = 8u;
-	limits.iMaximumValues = 256u;
+	// Root/flow metadata consumes fewer than sixteen values and every slot
+	// contributes one object plus two strings.
+	limits.iMaximumValues = 16u + MAX_SLOTS * 3u;
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	if (!CDataJson::Parse(text, root, parseError, limits) ||
@@ -386,6 +397,11 @@ bool_t Client::CValtanPatternFlowDocument::Validate(
 	}
 
 	const VALTAN_PATTERN_FLOW_DEFINITION& flow = document.Flows.front();
+	if (flow.Slots.empty())
+	{
+		outStatus = "The default Valtan Flow must contain at least one slot.";
+		return false;
+	}
 	if (flow.strFlowId != DEFAULT_FLOW_ID ||
 		flow.iInterStepPursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
 		flow.iInterStepPursuitMs > MAX_INTER_STEP_PURSUIT_MS ||
@@ -399,8 +415,14 @@ bool_t Client::CValtanPatternFlowDocument::Validate(
 
 	std::unordered_set<std::string> slotIds;
 	std::uint64_t maximumUsedOrdinal = 0u;
-	for (const VALTAN_PATTERN_FLOW_SLOT& slot : flow.Slots)
+	for (std::size_t slotIndex = 0u; slotIndex < flow.Slots.size(); ++slotIndex)
 	{
+		const VALTAN_PATTERN_FLOW_SLOT& slot = flow.Slots[slotIndex];
+		if (OPTIONAL_ENTRY_PATTERN_ID == slot.strPatternId && 0u != slotIndex)
+		{
+			outStatus = "The optional entry cinematic must occur exactly once at the first step.";
+			return false;
+		}
 		std::uint64_t ordinal = 0u;
 		if (!Is_StableId(slot.strSlotId) ||
 			!Try_ParseSlotOrdinal(flow.strFlowId, slot.strSlotId, ordinal) ||
@@ -697,7 +719,7 @@ bool_t Client::CValtanPatternFlowDocument::Add_Slot(
 		admittedPatternIds.end() == std::find(
 			admittedPatternIds.begin(), admittedPatternIds.end(), patternId))
 	{
-		outStatus = "Valtan Boss Flow cannot add this pattern or has reached 32 slots.";
+		outStatus = "Valtan Boss Flow cannot add this pattern or has reached 255 slots.";
 		return false;
 	}
 
@@ -705,52 +727,66 @@ bool_t Client::CValtanPatternFlowDocument::Add_Slot(
 	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
 	const std::string slotId = Build_SlotId(
 		flow.strFlowId, flow.iNextSlotOrdinal);
-	flow.Slots.push_back({ slotId, std::string(patternId) });
+	const bool_t bEntryPattern = OPTIONAL_ENTRY_PATTERN_ID == patternId;
+	const VALTAN_PATTERN_FLOW_SLOT StagedSlot{
+		slotId, std::string(patternId) };
+	if (bEntryPattern)
+		flow.Slots.insert(flow.Slots.begin(), StagedSlot);
+	else
+		flow.Slots.push_back(StagedSlot);
 	++flow.iNextSlotOrdinal;
 	if (!Validate(staged, admittedPatternIds, outStatus))
 		return false;
 	m_Draft = std::move(staged);
 	outSlotId = slotId;
-	outStatus = "Added " + std::string(patternId) + " as " + slotId + ".";
+	outStatus = "Added " + std::string(patternId) + " as " + slotId +
+		(bEntryPattern ? " at the first Flow slot." : ".");
 	return true;
 }
 
 bool_t Client::CValtanPatternFlowDocument::Move_Slot(
 	const std::string_view slotId,
 	const std::int32_t delta,
+	const std::vector<std::string>& admittedPatternIds,
 	std::string& outStatus)
 {
 	outStatus.clear();
-	VALTAN_PATTERN_FLOW_DEFINITION* flow =
+	const VALTAN_PATTERN_FLOW_DEFINITION* current =
 		m_bReady && 1u == m_Draft.Flows.size() ?
 			&m_Draft.Flows.front() : nullptr;
-	if (nullptr == flow || (delta != -1 && delta != 1))
+	if (nullptr == current || (delta != -1 && delta != 1))
 	{
 		outStatus = "Valtan Boss Flow move requires a loaded flow and delta -1 or +1.";
 		return false;
 	}
 	const auto found = std::find_if(
-		flow->Slots.begin(), flow->Slots.end(),
+		current->Slots.begin(), current->Slots.end(),
 		[slotId](const VALTAN_PATTERN_FLOW_SLOT& slot)
 		{
 			return slot.strSlotId == slotId;
 		});
-	if (found == flow->Slots.end())
+	if (found == current->Slots.end())
 	{
 		outStatus = "Valtan Boss Flow slot no longer exists.";
 		return false;
 	}
-	const std::ptrdiff_t source = found - flow->Slots.begin();
+	const std::ptrdiff_t source = found - current->Slots.begin();
 	const std::ptrdiff_t destination = source + delta;
 	if (destination < 0 ||
-		destination >= static_cast<std::ptrdiff_t>(flow->Slots.size()))
+		destination >= static_cast<std::ptrdiff_t>(current->Slots.size()))
 	{
 		outStatus = "Valtan Boss Flow slot is already at that boundary.";
 		return false;
 	}
+
+	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;
+	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
 	std::iter_swap(
-		flow->Slots.begin() + source,
-		flow->Slots.begin() + destination);
+		flow.Slots.begin() + source,
+		flow.Slots.begin() + destination);
+	if (!Validate(staged, admittedPatternIds, outStatus))
+		return false;
+	m_Draft = std::move(staged);
 	outStatus = "Moved Valtan Boss Flow slot " + std::string(slotId) + ".";
 	return true;
 }

@@ -3,7 +3,8 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
     [switch]$SkipBuild,
-    [string]$ResourceRoot = ''
+    [string]$ResourceRoot = '',
+    [switch]$AllowLocalEffectResources
 )
 
 $ErrorActionPreference = 'Stop'
@@ -22,6 +23,8 @@ $effectRenderHarnessExe = Join-Path $repoRoot `
     "Tools\EffectRenderContractHarness\Bin\$Configuration\EffectRenderContractHarness.exe"
 $pointLightFalloffHarnessExe = Join-Path $repoRoot `
     "Tools\PointLightFalloffContractHarness\Bin\$Configuration\PointLightFalloffContractHarness.exe"
+$mapFrustumHarnessExe = Join-Path $repoRoot `
+    "Tools\MapFrustumContractHarness\Bin\$Configuration\MapFrustumContractHarness.exe"
 $runtimeResourceRoot = if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
     Join-Path $repoRoot 'Client\Bin\Resources'
 }
@@ -66,6 +69,7 @@ function Assert-RuntimeLayout {
         $valtanAuditionServiceHarnessExe,
         $effectRenderHarnessExe,
         $pointLightFalloffHarnessExe,
+        $mapFrustumHarnessExe,
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_Deferred.hlsl'),
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_VtxTex.hlsl'),
         (Join-Path $runtimeResourceRoot 'Fonts')
@@ -138,6 +142,8 @@ try {
             'Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\MapFrustumContractHarness\Default\MapFrustumContractHarness.vcxproj'
     }
 
     $global:LASTEXITCODE = 0
@@ -149,6 +155,22 @@ try {
     }
 
     Assert-RuntimeLayout
+
+    $global:LASTEXITCODE = 0
+    & '.\Tools\ProjectAudit\Test-BernFrustumCullingContract.ps1'
+    if ($global:LASTEXITCODE -ne 0) {
+        throw 'Bern frustum source contract validation failed.'
+    }
+
+    $global:LASTEXITCODE = 0
+    & '.\Tools\MapFrustumContractHarness\Run-MapFrustumContractHarness.ps1' `
+        -Configuration $Configuration
+    if ($global:LASTEXITCODE -ne 0) {
+        throw 'MapFrustumContractHarness failed.'
+    }
+    Invoke-PythonGate `
+        'Map surface geometry and depth diagnostic unit gate' `
+        @('Tools/MapPipeline/test_map_surface_depth_contract.py')
 
     & (Join-Path $repoRoot 'Tools\Build\Test-NativeHarnessExitPropagation.ps1') `
         -Configuration $Configuration
@@ -200,7 +222,7 @@ try {
 
     $global:LASTEXITCODE = 0
     & '.\Tools\EffectPipeline\Validate-EffectSources.ps1' `
-        -RepositoryRoot $repoRoot
+        -RepositoryRoot $repoRoot -AllowLocalResources:$AllowLocalEffectResources
     if ($global:LASTEXITCODE -ne 0) {
         throw 'Effect source validation failed.'
     }

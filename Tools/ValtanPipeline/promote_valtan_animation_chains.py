@@ -383,7 +383,8 @@ def _expand_trash_capture_promotion(
     # Keep the receipt's sourceActionIds/occurrences limited to the intake.
     gameplay = copy.deepcopy(generated_gameplay)
     presentation = copy.deepcopy(generated_presentation)
-    author_trash_capture_flow({"patterns": [gameplay]}, {"patterns": [presentation]})
+    author_trash_capture_flow({"patterns": [gameplay]}, {"patterns": [presentation]},
+                              audition_pattern_ids=())
     expected_ids = [row["stageId"] for row in gameplay["stages"]]
     for domain, generated, existing in (
         ("gameplay", gameplay, existing_gameplay),
@@ -400,6 +401,8 @@ def _expand_trash_capture_promotion(
             stage_id = expected["stageId"]
             if current.get("actionId") != expected["actionId"]:
                 raise PromotionError(f"Trash capture {domain} action identity drift: {stage_id}")
+            if domain == "gameplay" and "counterProxy" in expected and "counterProxy" not in current:
+                raise PromotionError(f"Trash capture counter proxy is missing: {stage_id}")
             if stage_id in intake_ids:
                 continue
             if domain == "gameplay":
@@ -559,7 +562,7 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
                 "authoringPhase",
                 "admissionState",
             ),
-            ("targetPolicy", "aimPolicy"),
+            ("targetPolicy", "aimPolicy", "sourceActionId"),
             f"promotion[{ordinal}]",
         )
         chain_id = _stable(promotion["sourceChainId"], f"promotion[{ordinal}].sourceChainId")
@@ -590,6 +593,12 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
         if (target_policy == "NONE") != (aim_policy == "NONE"):
             raise PromotionError(
                 f"promotion target and aim policies must be authored together: {chain_id}"
+            )
+        if "sourceActionId" in promotion:
+            _integer(
+                promotion["sourceActionId"],
+                f"promotion[{ordinal}].sourceActionId",
+                1,
             )
 
     intake_chain_ids: list[str] = []
@@ -832,8 +841,24 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
             if curve is None:
                 raise PromotionError(f"clip is absent from the reviewed WModel: {source_clip}")
             source_action_id = clip_skills.get(resolved_clip)
+            reviewed_source_action_id = promotion.get("sourceActionId")
             if source_action_id is None:
-                raise PromotionError(f"clip has no Valtan.animnotify source action: {resolved_clip}")
+                if reviewed_source_action_id is None:
+                    raise PromotionError(
+                        f"clip has no Valtan.animnotify source action: {resolved_clip}"
+                    )
+                source_action_id = reviewed_source_action_id
+            elif (
+                reviewed_source_action_id is not None
+                and reviewed_source_action_id != source_action_id
+            ):
+                raise PromotionError(
+                    f"reviewed source action contradicts Valtan.animnotify: {resolved_clip}"
+                )
+            if source_action_id not in set(clip_skills.values()):
+                raise PromotionError(
+                    f"reviewed source action is absent from Valtan.animnotify: {source_action_id}"
+                )
             if source_action_id not in source_action_ids:
                 source_action_ids.append(source_action_id)
 
@@ -943,6 +968,19 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
                 existing_gameplay_by_id.get(promotion["patternId"]),
                 existing_presentation_by_id.get(promotion["patternId"]),
             )
+        elif promotion["patternId"] in (
+            "VALTAN_TRASH_CATCH_IF", "VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL"
+        ):
+            from author_valtan_phase_two_mechanics import author_trash_capture_flow
+            shared_gameplay = copy.deepcopy(next(
+                row for row in gameplay["patterns"] if row["patternId"] == "VALTAN_TRASH"))
+            shared_presentation = copy.deepcopy(next(
+                row for row in presentation["patterns"] if row["patternId"] == "VALTAN_TRASH"))
+            author_trash_capture_flow(
+                {"patterns": [shared_gameplay, gameplay_pattern]},
+                {"patterns": [shared_presentation, presentation_pattern]},
+                audition_pattern_ids=(promotion["patternId"],),
+            )
         gameplay_pattern = _preserve_manual_gameplay_enrichment(
             gameplay_pattern,
             existing_gameplay_by_id.get(promotion["patternId"]),
@@ -1026,6 +1064,7 @@ def validate_and_project(
             presentation,
             docs[pipeline.WORLD_SET_REL],
             docs[pipeline.COMBAT_AUTHORING_REL],
+            docs.get(pipeline.SAVED_FLOW_REL),
         )
         pipeline.validate_legacy_manifest(
             docs[pipeline.LEGACY_REL],

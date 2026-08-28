@@ -15,8 +15,8 @@
     "modelPath": "Client/Bin/Resources/Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",
     "modelSha256": "4fd71652bf4ca6b11607449b7ece83509d9b3886b1bcdde9e2dc49c5b8c561c0"
   },
-  "patternCount": 20,
-  "stageCount": 97,
+  "patternCount": 22,
+  "stageCount": 99,
   "patterns": [
     {
       "sourceChainId": "center-six-pizza-charge",
@@ -1638,7 +1638,8 @@
       "admissionState": "MANUAL_SERVER_AUDITION",
       "sourceActionIds": [
         420613,
-        420623
+        420623,
+        420631
       ],
       "stageCount": 2,
       "occurrences": [
@@ -2226,6 +2227,70 @@
           "nativeSourceMs": 333,
           "stageDurationMs": 333,
           "productPlayMs": 333,
+          "endPolicy": "EXACT",
+          "resolution": "NATIVE_WMODEL"
+        }
+      ]
+    },
+    {
+      "sourceChainId": "respawn",
+      "patternId": "VALTAN_GHOST_RESPAWN_AUDITION",
+      "authoringPhase": 3,
+      "admissionState": "MANUAL_SERVER_AUDITION",
+      "sourceActionIds": [
+        420624
+      ],
+      "stageCount": 1,
+      "occurrences": [
+        {
+          "sourceClipOccurrenceId": "valtan.debug.respawn.clip.01",
+          "targetStageId": "STEP_01",
+          "targetActionId": "valtan.sequence.respawn.step-01",
+          "targetClipOccurrenceId": "valtan.sequence.respawn.step-01.clip-01",
+          "sourceClip": "mesh_respawn_1",
+          "resolvedClip": "mesh_respawn_1",
+          "aliasApplied": false,
+          "sourceActionId": 420624,
+          "sourceStartMs": 0,
+          "authoredWallMs": 0,
+          "playRate": 1.0,
+          "nativeDurationTicks": 90.0,
+          "ticksPerSecond": 30.0,
+          "nativeSourceMs": 3000,
+          "stageDurationMs": 3000,
+          "productPlayMs": 3000,
+          "endPolicy": "EXACT",
+          "resolution": "NATIVE_WMODEL"
+        }
+      ]
+    },
+    {
+      "sourceChainId": "dead",
+      "patternId": "VALTAN_GHOST_DEATH_AUDITION",
+      "authoringPhase": 3,
+      "admissionState": "MANUAL_SERVER_AUDITION",
+      "sourceActionIds": [
+        420603
+      ],
+      "stageCount": 1,
+      "occurrences": [
+        {
+          "sourceClipOccurrenceId": "valtan.debug.dead.clip.01",
+          "targetStageId": "STEP_01",
+          "targetActionId": "valtan.sequence.dead.step-01",
+          "targetClipOccurrenceId": "valtan.sequence.dead.step-01.clip-01",
+          "sourceClip": "mesh_dead_1",
+          "resolvedClip": "mesh_dead_1",
+          "aliasApplied": false,
+          "sourceActionId": 420603,
+          "sourceStartMs": 0,
+          "authoredWallMs": 0,
+          "playRate": 1.0,
+          "nativeDurationTicks": 110.0,
+          "ticksPerSecond": 30.0,
+          "nativeSourceMs": 3667,
+          "stageDurationMs": 3667,
+          "productPlayMs": 3667,
           "endPolicy": "EXACT",
           "resolution": "NATIVE_WMODEL"
         }

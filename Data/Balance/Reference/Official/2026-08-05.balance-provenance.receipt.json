@@ -46,11 +46,11 @@
     "playerProfileCount": 6,
     "skillDefinitionCount": 94,
     "damageProfileCount": 109,
-    "bossProfileCount": 1,
+    "bossProfileCount": 2,
     "encounterPatternCount": 34,
-    "fieldEntryCount": 3312,
+    "fieldEntryCount": 3336,
     "bossPartCount": 2,
-    "bossCombatObjectCount": 2
+    "bossCombatObjectCount": 3
   },
   "entries": [
     {
@@ -226,6 +226,164 @@
     {
       "targetDocument": "Data/Balance/BossProfiles.json",
       "targetId": "boss:BOSS_VALTAN",
+      "targetField": "phasePolicy",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": {
+        "kind": "AUTHORED_PATTERN_EVENT"
+      },
+      "transform": "Balance Tool authored override",
+      "resultValue": {
+        "kind": "AUTHORED_PATTERN_EVENT"
+      },
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "archetypeId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "BOSS_VALTAN_GHOST",
+      "transform": "Balance Tool authored override",
+      "resultValue": "BOSS_VALTAN_GHOST",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "armorPlates",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": [],
+      "transform": "Balance Tool authored override",
+      "resultValue": [],
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "attackPower",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 100,
+      "transform": "Balance Tool authored override",
+      "resultValue": 100,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "collisionRadius",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1.4,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1.4,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "유령 발탄",
+      "transform": "Balance Tool authored override",
+      "resultValue": "유령 발탄",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "encounterId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "ENCOUNTER_VALTAN",
+      "transform": "Balance Tool authored override",
+      "resultValue": "ENCOUNTER_VALTAN",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "engageDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 20.0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 20.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "maximumHealthBars",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 160,
+      "transform": "Balance Tool authored override",
+      "resultValue": 160,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "maximumHp",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 60000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 60000,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
+      "targetField": "moveSpeed",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 2.6,
+      "transform": "Balance Tool authored override",
+      "resultValue": 2.6,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_VALTAN_GHOST",
       "targetField": "phasePolicy",
       "basis": "PROJECT_TUNED",
       "source": {
@@ -34892,6 +35050,224 @@
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "clientVisualId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "combatobject.visual.valtan.fist-in-out.donut.v1",
+      "transform": "Balance Tool authored override",
+      "resultValue": "combatobject.visual.valtan.fist-in-out.donut.v1",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "combatObjectArchetypeId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "combatobject.valtan.fist-in-out.donut",
+      "transform": "Balance Tool authored override",
+      "resultValue": "combatobject.valtan.fist-in-out.donut",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "directionPolicy",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "Balance Tool authored override",
+      "resultValue": "NONE",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "hits",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": [
+        {
+          "hitShape": "RING",
+          "hitOuterRadius": 16.0,
+          "hitInnerRadius": 8.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "trigger": "TIMED",
+          "atMs": 1600,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.fist-in-out",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "transform": "Balance Tool authored override",
+      "resultValue": [
+        {
+          "hitShape": "RING",
+          "hitOuterRadius": 16.0,
+          "hitInnerRadius": 8.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "trigger": "TIMED",
+          "atMs": 1600,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.fist-in-out",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "kind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "FIXED_AREA",
+      "transform": "Balance Tool authored override",
+      "resultValue": "FIXED_AREA",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "lifeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 2600,
+      "transform": "Balance Tool authored override",
+      "resultValue": 2600,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "maximumDistanceM",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "offsetForwardM",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "offsetRightM",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "originPolicy",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "BOSS_POSITION",
+      "transform": "Balance Tool authored override",
+      "resultValue": "BOSS_POSITION",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "ownerPatternId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "VALTAN_FIST_IN_OUT",
+      "transform": "Balance Tool authored override",
+      "resultValue": "VALTAN_FIST_IN_OUT",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "ownerStageActionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "valtan.attack.fist-in-out.inner",
+      "transform": "Balance Tool authored override",
+      "resultValue": "valtan.attack.fist-in-out.inner",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.fist-in-out.donut",
+      "targetField": "speedMps",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
       "targetId": "combat-object:combatobject.valtan.high-jump.target-axe",
       "targetField": "clientVisualId",
       "basis": "PROJECT_TUNED",
@@ -35005,9 +35381,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 4000,
+      "sourceValue": 6500,
       "transform": "Balance Tool authored override",
-      "resultValue": 4000,
+      "resultValue": 6500,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -35349,10 +35725,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 2,
+      "sourceValue": 3,
       "transform": "Balance Tool authored override",
-      "resultValue": 2,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": 3,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -35415,9 +35791,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 54,
+      "sourceValue": 57,
       "transform": "Balance Tool authored override",
-      "resultValue": 54,
+      "resultValue": 57,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -41510,21 +41886,30 @@
           "stageId": "INNER",
           "actionId": "valtan.attack.fist-in-out.inner",
           "stageKind": "ACTIVE",
-          "durationMs": 2600,
-          "hitShape": "RING",
-          "hitOuterRadius": 16.0,
-          "hitInnerRadius": 8.0,
+          "durationMs": 100,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
-          "hitCount": 1,
+          "hitCount": 0,
           "hitIntervalMs": 0,
-          "hitDelayMs": 1600,
-          "serverDamageProfileId": "damage.valtan.fist-in-out",
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
           "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,
-          "downMs": 0
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SPAWN_COMBAT_OBJECT",
+              "targetId": "combatobject.valtan.fist-in-out.donut",
+              "value": 1,
+              "durationMs": 0
+            }
+          ]
         }
       ],
       "transform": "Balance Tool authored override",
@@ -41533,21 +41918,30 @@
           "stageId": "INNER",
           "actionId": "valtan.attack.fist-in-out.inner",
           "stageKind": "ACTIVE",
-          "durationMs": 2600,
-          "hitShape": "RING",
-          "hitOuterRadius": 16.0,
-          "hitInnerRadius": 8.0,
+          "durationMs": 100,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
-          "hitCount": 1,
+          "hitCount": 0,
           "hitIntervalMs": 0,
-          "hitDelayMs": 1600,
-          "serverDamageProfileId": "damage.valtan.fist-in-out",
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
           "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,
-          "downMs": 0
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SPAWN_COMBAT_OBJECT",
+              "targetId": "combatobject.valtan.fist-in-out.donut",
+              "value": 1,
+              "durationMs": 0
+            }
+          ]
         }
       ],
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
@@ -44930,7 +45324,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 4000,
+          "durationMs": 6500,
           "hitShape": "NONE",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -45034,7 +45428,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 4000,
+          "durationMs": 6500,
           "hitShape": "NONE",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -50682,7 +51076,8 @@
         "takeoffStartMs": 800,
         "takeoffEndMs": 1100,
         "travelStartMs": 0,
-        "travelEndMs": 200
+        "travelEndMs": 200,
+        "moveToAnchorBeforeTakeoff": true
       },
       "transform": "Balance Tool authored override",
       "resultValue": {
@@ -50698,7 +51093,8 @@
         "takeoffStartMs": 800,
         "takeoffEndMs": 1100,
         "travelStartMs": 0,
-        "travelEndMs": 200
+        "travelEndMs": 200,
+        "moveToAnchorBeforeTakeoff": true
       },
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
@@ -51220,7 +51616,8 @@
         "takeoffStartMs": 800,
         "takeoffEndMs": 1100,
         "travelStartMs": 0,
-        "travelEndMs": 200
+        "travelEndMs": 200,
+        "moveToAnchorBeforeTakeoff": true
       },
       "transform": "Balance Tool authored override",
       "resultValue": {
@@ -51236,7 +51633,8 @@
         "takeoffStartMs": 800,
         "takeoffEndMs": 1100,
         "travelStartMs": 0,
-        "travelEndMs": 200
+        "travelEndMs": 200,
+        "moveToAnchorBeforeTakeoff": true
       },
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },

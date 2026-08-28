@@ -1,5 +1,9 @@
 # Valtan Boss Tool 무리셋 Next Pattern·독립 도넛 구현 계획
 
+> 2026-08-28 후속 구현은 G11~G14를 따른다. G11의 live Next 및 Reload 재시작,
+> G12의 저장 Flow→Product 기본 순서 연결이 최초 isolated-only / document-only 제한을 대체한다.
+> G13은 Six Pizza 첫 착지, G14는 도끼 점프의 공중 대기 시간만 수정한다. 이전 구현 이력은 보존한다.
+
 작성일: 2026-08-28
 상태: **2026-08-28 사용자 승인 구현 및 최종 자동 검증 진행. main cd120501에서 분기한 codex/valtan-arena-navigation-next에 PR #251 a6871a2f를 통합한 뒤, 확정 변경을 Desktop의 codex/valtan-arena-next-desktop에 반영했다. 선행 worktree의 개별 빌드·Server 계약은 통과했고 최종 Desktop 전체 regression·다른 작업 통합·시각 확인 상태는 RESULT에 기록한다.**
 
@@ -851,3 +855,223 @@ STEP_03 휠윈드의 방향을 유지한다. STEP_04 종료 동작 ENTER에서 �
 Effect는 보존한다. publisher로 Product·bootstrap을 생성하고 기존 Server 실행형 fixture에
 공격 중 방향 유지, 회전 종료 경계의 재조준, 살아 있는 대상 부재, 새 occurrence를 확인한다.
 새 C++ 파일이나 project/filter 등록은 필요하지 않다. 결과와 실제 빌드 상태는 RESULT에 기록한다.
+
+## G11. main 기준 live Next 선택과 저장 Flow 재시작
+
+### 목표와 종료 증거
+
+최초 main 38cc82c8과 동일한 Desktop에서 codex/valtan-flow-reload-next-fix로 분기한다.
+후속 main PR #255의 CROSS 추가는 1a9bce42까지 보존 통합한다. 이에 따라 현재 split 30 /
+공용 Tool 28(8 core + 20 animator) / Product 54 정의를 사용하고, 이 문서 G00~G10의
+과거 29/27 수량으로 되돌리지 않는다. 저장 Flow 22슬롯은 inventory 확장과 별개로 그대로 둔다.
+사용자가 첨부한 화면의 저장 revision은 현재 JSON의 3a0e831a8454ef09ae05c1023b251d607cce60d0702e3cb732fb7e9b952b79d5와 같다.
+현재 22슬롯, 첫 행 WHIRLWIND, 중간의 별도 WHIRLWIND 슬롯과 nextSlotOrdinal 31을 보존한다.
+slot ID 숫자를 정렬 기준으로 쓰지 않으며 사용자 Effect 및 맵 수정도 이 작업에 섞지 않는다.
+
+기존 Next가 IDLE에서 비활성인 이유는 Client와 Server가 isolated predecessor epoch만 받기 때문이다.
+기존 Reload는 문서만 읽으므로 Product 자동 순서 또는 이미 승인된 이전 Flow를 교체하지 않는다.
+G11은 최초 해석의 Debug 재시작 범위다. 사용자 최종 확인에 따라 실제 Product 기본 순서 연결은 G12가 추가로 소유한다.
+
+### G11-H. 실제 변경 파일과 소유권
+
+| 파일 | 변경 책임 |
+|---|---|
+| Client/Public/BossTool.h, Client/Private/BossTool.cpp | Reload 성공 뒤 첫 슬롯 Start 제출, pending/실제 runtime/저장 revision 분리, live Next 선택과 거절 이유 표시 |
+| Client/Public/ValtanPatternFlowService.h, Client/Private/ValtanPatternFlowService.cpp | 승인된 Flow와 pending Start 분리, 교체 거절 rollback, exact retry, old lifecycle 계속 소비 |
+| Client/Public/ValtanPatternFlowDocument.h | 실제 service harness에서 renderer 없이 정의를 소비하도록 bool alias와 불필요 Engine include만 분리; 저장 계약 불변 |
+| Client/Public/ValtanPatternAuditionService.h, Client/Private/ValtanPatternAuditionService.cpp | HUD 관측 predecessor에 대한 live Next 요청과 새 epoch lifecycle 채택 |
+| Client/Private/NetworkManager.cpp | 새 typed operation 송신과 공용 audition result queue routing |
+| Shared/Public/Network/PacketType.h, Shared/Public/Network/PacketMessages.h, Shared/Private/Network/PacketMessages.cpp | protocol 43 및 QUEUE_NEXT_LIVE_PATTERN_ID의 strict codec |
+| Server/Public/GameRoom.h, Server/Private/GameRoom.cpp | 실제 current 채택, idle/active 완료 경계, 같은 owner Flow 재시작 transaction |
+| Tools/NetworkProtocolHarness/Private/NetworkProtocolHarness.cpp, Server/Private/ServerGameplayContractTests.cpp | wire, live Next, restart 및 순서/실패 회귀 |
+| Tools/ValtanPatternAuditionServiceHarness | 기존 actual-service 실행 파일에 FlowService CPP와 Flow test TU 추가 및 project/filter 등록 |
+| Tools/ValtanPipeline의 대응 contract tests, 팀 보스툴 문서 | 새 사용자 동작을 검사하고 public 실행 절차 갱신 |
+
+새 게임 런타임이나 UI 실행기는 추가하지 않는다. Flow 정의의 저장/재생 ID, JSON schema, Product 순서는 바꾸지 않는다.
+
+### G11-CPP. Reload 및 saved Flow 실행
+
+1. Reload는 dirty draft일 때만 Discard & Reload 확인을 유지한다. Keep Draft 및 parse/validation 실패는 Server 명령을 보내지 않는다.
+2. 읽기 성공 후 selection은 항상 배열 첫 slotId다. Start_Flow(false)가 그 저장 revision과 전체 배열을 같은 기존 FLOW_START 경로로 보낸다.
+3. FlowService의 기존 Start signature는 유지한다. pending Start command가 full request, Client generation, 송신 시간과 WAITING/UNCONFIRMED를 소유한다.
+4. Get_Snapshot은 마지막 Server 승인 run을 유지한다. Has_PendingStart/Get_PendingStart/Has_PlaybackOwnership/Retry_Start를 실제 Tool과 audition service가 소비한다.
+5. pending 동안 기존 Flow lifecycle과 Stop 소유권을 유지한다. 새 요청 거절/송신 실패는 기존 run을 버리지 않는다. exact 승인 또는 lifecycle 뒤에만 새 run으로 교체한다.
+6. 5초 응답 부재는 미확정으로 표시하고 같은 요청만 재전송한다. Server가 승인한 PENDING 또는 부활 대기를 15초 뒤 Client 단독 ABORTED로 만들지 않는다.
+7. Server는 같은 session의 Flow/isolated/Next만 교체할 수 있다. 타 owner 및 Timeline 충돌은 계속 거절한다. 모든 새 슬롯/리소스/reset preflight 뒤 기존 reset을 한 번 commit하고 새 epoch를 발급한다.
+8. Save는 파일만 저장한다. 화면에는 현재 Server 실행 출처와 saved/runtime revision을 구분해 표시하고 Reload가 첫 행을 재생한다는 뜻을 명시한다.
+
+### G11-CPP. live Next와 완료 경계
+
+기존 QUEUE/CLEAR의 nonzero predecessor epoch와 CAS 계약은 유지한다. 새 QUEUE_NEXT_LIVE_PATTERN_ID만
+epoch=0, expected-next-token=0과 HUD에서 관측한 실제 predecessor sequence를 받는다. sequence 0은 실제 idle만 허용한다.
+Server는 같은 placement/entity의 실제 sequence, owner, 살아 있는 boss, pinned catalog와 split-owned 대상 ID를 검증한다.
+
+현재 Product 패턴 또는 같은 owner Flow의 현재 패턴이 있으면 이를 새 Server epoch의 선행 occurrence로 채택한다.
+선행 current의 가짜 lifecycle은 보내지 않는다. NEXT_RESERVED의 exact request/pattern/expected sequence와 실제 epoch를
+Client가 채택하고 B의 PENDING/ACTIVE부터 기존 current service로 승격한다.
+현재 패턴이 없으면 별도 idle anchor로 다음 tick에 B를 시작하며 정상 완료 receipt를 합성하지 않는다.
+플레이어가 없으면 기존 resetless PENDING/WAITING 경계를 유지하고 자동 부활하지 않는다.
+
+Flow 중 Next 선택은 남은 Flow 재생을 종료하고 현재 occurrence가 실제 완료된 뒤 선택한 one-shot을 시작한다.
+현재 occurrence가 소비하던 Flow sequence/pin은 그 종료까지 보존한다. 저장 배열에 삽입하거나 Product cursor로 자동 복귀하지 않는다.
+예약 채택과 승격에서 player/boss 위치, HP, resource, cooldown, wall/floor/prop/navigation을 reset하지 않는다.
+stale sequence, 다른 owner, 손상된 ledger와 unknown pattern은 실패 이유를 보존하고 기존 실행을 유지한다.
+
+### G11 검증과 사용자 확인
+
+- Shared: 새 op roundtrip, zero/nonzero 필드 조합, 잘못된 ID/version, truncation, destination rollback, 기존 Queue/Clear strictness.
+- Server: live Product/owned Flow/idle의 Next, current 완료 후 다음 tick 시작, same-ID occurrence, player 대기, 잘못된 owner/sequence/ID 및 반복 요청.
+- Server Flow: sparse slotId의 서로 다른 A/B/C에서 새 revision C/A/B로 재시작하여 실제 관측 순서를 비교한다. 실패/타 owner/stale Stop/중복 restart에서 이전 상태와 reset 횟수를 확인한다.
+- Client 실제 service: old lifecycle 수신 중 replacement, 거절/송신 실패 보존, exact retry, world 변경, 15초를 넘긴 Server 대기, live lifecycle의 actual epoch와 request identity 검증.
+- 관련 Python contract, Project-ValtanPatternMaster ValidateV2, gameplay publisher Validate, JSON/XML parse, Debug/Release 정본 회귀, git diff --check를 실행한 결과만 RESULT에 기록한다.
+- 기존 actual-service harness project/filter에 새 Flow test TU와 production CPP를 함께 등록하고 Debug/Release에서 실행한다.
+- 에이전트는 Client/UI를 실행하거나 캡처하지 않는다. 사용자가 Server + Client profile로 실행하여 F1 → Boss Tool → Pattern Flow에서 Reload Flow의 01 시작, live Next 선택, 저장 순서와 실제 진행을 확인한다.
+
+
+## G12. 사용자 최종 확인: 저장 Flow를 실제 발탄 기본 순서에 연결
+
+### 요청과 확인한 원인
+
+사용자가 말한 차이는 같은 ID의 animation clip 차이가 아니다. Boss Verification이 관찰하는 실제 발탄이
+Pattern Flow에 저장한 커스텀 순서를 다음 실행에 사용해야 한다. 현재 Save는 22개 slot 문서만 바꾸고,
+제품은 별도 gameplay.scriptedSequence의 28개 고정 항목을 읽어 저장한 변경을 소비하지 않는다.
+두 첨부 화면의 WHIRLWIND와 SEQUENCE_WHIRLWIND는 별개 정의이며 이번 수정에서 합치지 않는다.
+
+저장 순서에는 WHIRLWIND가 두 번 있다. 중복을 지우거나 입장 패턴을 숨겨서 앞에 넣으면 사용자 순서와
+달라지므로 배열 순서와 반복 occurrence를 그대로 보존한다. 취소된 Ordered Slots 현재/Next 표시 확장은 하지 않는다.
+
+### 단일 저장 정본과 실제 소비자
+
+1. 기존 `ValtanBossAuditionFlows.json`의 default flow가 순서와 inter-step pursuit의 단일 정본이다.
+2. `Valtan.gameplay.json`의 scriptedSequence는 sequenceId/mode/flowId로 그 정본을 참조한다.
+   임의 파일 경로를 받지 않으며 flowId는 고정된 Flow 문서에서 정확히 한 번 resolve한다.
+3. Python pipeline과 Client PatternTree는 참조를 strict parse/validate한 뒤 기존 inline sequence IR로 바꾼다.
+   generated Product/Server bootstrap은 기존 PATTERNSEQUENCE/PATTERNSEQUENCESTEP 경로를 그대로 쓴다.
+   inline shape는 기존 immutable/migration 입력 호환을 유지한다. 두 shape를 섞거나 unknown flow를 받지 않는다.
+4. canonical source manifest는 Flow 파일 hash도 포함한다. 저장 후 낡은 authoring overlay는 CAS 실패로 알리며
+   다른 Balance 편집을 자동 폐기하거나 새 Flow에 몰래 합치지 않는다.
+5. 순서의 반복 patternId는 서로 다른 occurrence다. slotId 중복은 계속 거부하고, Product ordinal과 unknown ID
+   검증도 유지한다. 현재 22슬롯을 덮어쓰거나 재정렬하지 않는다.
+6. 기존 입장 cinematic 정의는 지원하는 entry-only 정의로 남긴다. 커스텀 순서에서 생략하면 자동 삽입하지 않는다.
+   명시적으로 사용하는 경우 첫 행에서만 허용하며, 임의의 unowned pattern 허용으로 넓히지 않는다.
+
+### Save, 적용, Reload의 의미
+
+Flow 파일의 기존 durable Save를 유지한다. 저장 뒤 기존 Product publisher와 immutable candidate 생성 경로를
+호출하고, 기존 typed DATA_REVISION prepare/Client READY/Server tick commit을 통해 실제 기본 순서를 적용한다.
+새 파일 watcher, Client local AI 또는 두 번째 boss sequence runtime은 만들지 않는다.
+
+- Tool은 SAVED와 PUBLISHING/APPLY_PENDING/COMMITTED/FAILED를 분리한다.
+- publisher 또는 Server 실패는 저장된 draft를 잃지 않으며, 이전 Server revision이 계속 실행 중임을 표시한다.
+- 같은 request sequence/candidate/connection generation의 실제 COMMITTED만 적용 성공이다.
+  이미 같은 candidate를 사용하는 Server는 ALREADY ACTIVE로 별도 표시하고 새 commit receipt를 합성하지 않는다.
+- pipeline 작업은 hidden owned process로 실행하고 UI Update에서 결과를 소비한다. 미확정 중 중복 publish를 막는다.
+  120초는 미확정 경고 기준이다. 내부 Product publisher도 timeout으로 강제 종료하지 않아 commit/rollback을 끝내게 한다.
+- 기존 Balance Tool과 Flow 적용이 하나의 typed revision request sequence 소유자를 공유한다.
+- 진행 중 Product 순서 전체는 시작 catalog generation을 끝까지 pin한다. 새 순서는 다음 encounter/reset에서 사용한다.
+  현재 run의 중간 ordinal에 다른 revision 배열을 끼워 넣지 않는다.
+- 명시적 Reload Flow는 적용 작업이 확정된 뒤 저장된 첫 slot(화면 01)부터 기존 FLOW_START로 재시작한다.
+- 기존 Next는 현재 occurrence 완료 뒤 reset 없이 다음 선택을 재생한다. Next 자체는 저장 기본 순서를 변경하지 않는다.
+
+### 파일과 검증
+
+Python `valtan_tuning_pipeline.py`, 기존 PowerShell publisher, 해당 schema/계약 tests가 Flow 참조와 candidate를 소유한다.
+Client PatternTree는 같은 정본을 소비한다. 새 typed tuning command service의 public header/private cpp는
+Client project와 filters, 필요한 실제 service harness에 함께 등록하고 BossTool 및 BalanceTool이 호출한다.
+Server GameplayCatalog의 반복 step admission과 기존 Brain의 Product sequence pin을 수정한다.
+
+기존 source/Project ValidateV2/Gameplay Validate와 actual-service, protocol, Server harness를 확장한다.
+검증은 saved A/B/A와 reordered C/A/B가 Product/bootstrap에 같은 순서로 투영되는지, 틀린 schema/flowId/slotId,
+빈 default/unknown pattern/CAS drift/중간 publisher 실패에서 이전 실행 보존, stale revision 결과 무시,
+active sequence old pin 유지와 reset 뒤 새 순서 시작을 포함한다. 현재 22슬롯도 삭제·중복 제거 없이 검사한다.
+Debug/Release 정본 회귀와 git diff --check 결과를 RESULT에 기록한다. 사용자 UI 조작/시각 확인은 수동 미검증으로 남긴다.
+
+## G13. Six Pizza 첫 착지만 도끼 점프 시간에 맞추기
+
+사용자는 마지막 확인에서 상승이 아니라 첫 착지가 느리다고 정정했다. 현재 첫 착지는
+`VALTAN_SIX_PIZZA_106.serverMotion.travelStageId=STEP_03`, `travelStartMs=0`,
+`travelEndMs=700`이다. 도끼 점프 `VALTAN_HIGH_JUMP`의 LAND 이동은 0~267ms다.
+Server `Advance_ArenaBreakLeap`는 이 구간 동안 높이와 착지 위치를 보간한다. 첫 STEP_03 이후에는
+leap apex를 해제하므로 이후 애니메이션 구간 전체의 재생 속도를 바꾸지 않는다.
+
+`Valtan.gameplay.json`과 기존 재저작 helper `author_valtan_phase_two_mechanics.py`에서
+Six Pizza의 `travelEndMs`만 267로 맞춘다. 높이 10m, 상승 800~1100ms, STEP_03 전체 길이 1200ms,
+후속 단계, presentation clip/rate와 사용자 미커밋 Effect JSON은 보존한다. generated Product는
+기존 publisher로 생성하며 직접 편집하지 않는다. 새 C++ 파일이나 project/filter 등록은 없다.
+
+기존 PatternTree Python 회귀에 첫 착지 시간의 도끼 점프 일치와 상승/단계 시간 보존을 추가한다.
+기존 Server leap 실행 fixture를 확장해 실제 fixed tick에서 STEP_03 진입 후 267ms 경계까지
+anchor 착지가 끝나고 이후 stage의 이동을 다시 적용하지 않는지 검증한다. publisher validation과
+Debug/Release 하네스 결과를 RESULT에 기록하며 착지의 최종 시각 판정은 사용자가 한다.
+
+## G14. 추적 도끼 점프의 공중 대기 2.5초 연장
+
+추가 요청의 중간 텀은 `VALTAN_HIGH_JUMP/AIRBORNE`다. 기존 4000ms에서 6500ms로 늘린다.
+TAKEOFF 1933ms, LAND 3200ms, RECOVERY 400ms, 상승/착지 이동 window, 도끼 생성 0/1333/2666ms,
+최초 타격 1200ms는 변경하지 않는다. 기존 publisher는 managed 도끼의 보존 시간을 owner stage에서
+생성하므로 Product `lifeMs`도 4000→6500ms로 이어진다. 이는 타격 횟수나 추적 시간을 늘리지 않는다.
+AIRBORNE presentation은 이미
+`LOOP_TO_STAGE_END`이므로 애니메이션 전체 속도를 변경하지 않고 Server stage 시간을 따른다.
+
+정본 gameplay와 v1 migration의 현재 HIGH_JUMP 투영값을 6500ms로 갱신한다. 기존 publisher와
+Server catalog에는 owner 검증에 4000ms equality가 있어 길어진 유효 stage도 거부하고 있었다.
+세 웨이브의 최소 4000ms를 유지하면서 더 긴 대기를 허용하도록 고친다. 이는 기존 4000ms immutable
+candidate를 계속 읽을 수 있게 하며, 새 기본값 6500ms와 minimum/maximum 및 spawn schedule 경계는
+기존 validator와 실제 catalog로 검증한다. snapshot revision/pin을 우회하는 runtime 값 교체는 하지 않는다.
+
+기존 HIGH_JUMP projection/Server leap 회귀에 6500ms 체류와 기존 도끼 횟수·간격, 267ms 착지를
+함께 확인한다. overflow fixture는 바뀐 stage duration을 기준으로 만든다. Product/bootstrap은 publisher로
+생성하고 Debug/Release 회귀 및 사용자 미검증 상태를 같은 RESULT에 기록한다.
+
+## G15. 고정 개수를 없애고 Boss Tool·Flow·Play/Next의 패턴 목록 통합
+
+### 현재 데이터와 결함
+
+29는 필수 개수가 아니다. 현재 split gameplay에는 31개 정의가 있으며, 기존 Tool의 하드코딩된
+Core 8개와 Animator 20개, 새 Derived 1개만 합치면 29개가 된다. 정상 정의인 FIST_IN_OUT과
+ENTRANCE_CINEMATIC은 이 별도 목록에서 빠진다. Next는 이미 strict join된 전체 split 정의를
+열거하지만 Flow publisher는 Core ID 상수와 MANUAL_SERVER_AUDITION만 합쳐 28개를 요구한다.
+따라서 툴에서 추가한 GHOST_FINALE를 저장해도 실제 적용 단계에서 거부되는 불일치가 있다.
+
+### 정본과 변경 경로
+
+패턴 선택 정본은 `Data/Valtan/Valtan.gameplay.json.patterns`의 stable patternId와 대응 presentation이다.
+새 allowlist JSON, 개수 상수 또는 별도 재생 런타임을 추가하지 않는다. Client의 strict joined graph에서
+`bAuthoringMasterManaged`인 정의만 기존 entry/stage identity 검증을 거쳐 공통 재생 목록으로 만든다.
+Tool은 이 목록을 Core, Animator, Derived로 표시하되 manualAuditions의 실제 admissionState로 분류한다.
+분류별 개수와 전체 개수는 표시값이며 승인 조건이 아니다. Next·Play Selected·All Effects·저장 Flow가
+같은 정의 집합을 소비한다. legacy Product만 존재하는 정의는 자동으로 이 집합에 넣지 않는다.
+
+Python Flow resolver와 Client의 source-local Flow resolver는 실제 gameplay patterns에서 ID를 읽는다.
+Core ID 상수, 정확히 20개 manual 요구, 28/29개 equality를 삭제한다. 새 정의를 추가하거나 기존 정의를
+제거한 뒤에도 유효한 남은 Flow를 읽을 수 있어야 한다. 등록된 Derived 정의에는 animation intake의
+고정 목록을 강제하지 않으며, 기존 MANUAL_SERVER_AUDITION의 source chain/clip 연결 검증은 유지한다.
+
+### 유지할 실행 계약
+
+patternId·stageId·actionId의 유효성과 중복, gameplay/presentation/Product 조인의 일치, 소유자 충돌,
+알 수 없는 ID, source-local snapshot, 실패 시 기존 상태 보존은 계속 검사한다. entry cinematic의
+첫 슬롯 1회 규칙은 Product의 기존 의미이므로 Client 저장 검사도 일치시킨다. 이는 일반 패턴의
+반복 occurrence를 제한하지 않는다. 한 Flow의 1~255슬롯 U8 범위와 문서/packet 크기는 별도의
+저장·전송 용량이며 256슬롯은 모든 소비 경계에서 거부한다. 이 용량은
+전체 등록 패턴 수 제한으로 사용하지 않는다. 기존 사용자 22슬롯을 자동 채움·재정렬하지 않는다.
+
+새 패턴은 stable ID로 gameplay와 presentation을 함께 추가하고, 기존 자동 선택/기믹 소유자 또는
+manualAuditions의 MANUAL_SERVER_AUDITION/DERIVED_SERVER_PATTERN으로 실행 소유자를 선언한다.
+기존 clip을 조합한 독립 패턴은 새 patternId/actionId/stageId/occurrenceId를 사용한다. 단순 재생 순서의
+결합은 Flow 슬롯 참조로 표현한다. 새 Server 행동 종류가 필요하면 해당 typed 실행 계약과 검증을
+함께 확장한다. 기존 행동을 조합하는 경우 C++ 목록이나 숫자를 추가로 고치지 않는다.
+
+### 파일과 검증
+
+기존 PatternTree h/cpp, FlowDocument cpp, 필요 시 BossTool/Effect Tool의 목록 소비부,
+`valtan_tuning_pipeline.py`와 기존 Python/EffectRender/Flow service 하네스를 수정한다.
+새 C++ 파일이 없으므로 project/filter 등록은 추가하지 않는다. 다른 작업의 ghost/portal/잡기 구현,
+protocol 44, Effect 및 맵 편집은 보존하며 다른 작업에 메시지를 보내지 않는다.
+
+회귀는 현재 전체 정의와 Tool/Next의 집합 일치, 임의 개수의 유효한 신규 Core/manual/derived 추가 및
+제거, GHOST_FINALE 저장→join→Product sequence, FIST_IN_OUT과 optional entry 선택을 검사한다.
+등록 패턴이 32개를 넘어도 일부만 선택한 Flow가 동작해야 한다. 잘못된 ID·중복·entry 위치·중간
+실패에서는 이전 목록/문서/실행이 유지되어야 한다. 기존 Python suite와 publisher Validate를 우선
+실행하고 관련 실제 C++ harness 및 필요한 빌드를 검증한다. 실행하지 않은 검사와 사용자 화면
+확인은 PASS로 기록하지 않는다. 최종 인계는 대응 RESULT의 G15 결과로 제공한다.

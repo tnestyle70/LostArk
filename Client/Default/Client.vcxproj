@@ -31,6 +31,7 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowService.h" />
+	<ClInclude Include="..\Public\ValtanTuningCommandService.h" />
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternAuthoringEffectDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
@@ -198,6 +199,7 @@
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp" />
+	<ClCompile Include="..\Private\ValtanTuningCommandService.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternAuthoringEffectDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
@@ -3036,6 +3038,12 @@
     <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_s_pa_glasshole_02_tr.hlsli" />
     <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_fx_w_pa_area_01_tr.hlsli" />
     <None Include="..\..\Data\Effects\TranslatedShaders\Shade_Ue3_realpbr_wp_dead_msk.hlsli" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.valtan.hand_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.valtan.hand_2.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.valtan.hand_3.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.valtan.hand_4.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.valtan.hand_5.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.valtan.hand_6.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.appear_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.blur_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.balthorr.core_1.effectv2.json" />
@@ -3105,6 +3113,7 @@
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.magic_circle_4.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\esther.wei.trail_2.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Bindings\BOSS_VALTAN.effectv2bindings.json" />
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_58700.effectv2bindings.json" />
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_59030.effectv2bindings.json" />
     <None Include="..\..\Data\Effects\V2\Bindings\NPC_59060.effectv2bindings.json" />

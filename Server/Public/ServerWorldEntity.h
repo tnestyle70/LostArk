@@ -104,6 +104,11 @@ namespace LostArk::Server
 	{
 		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		/* Dependent bosses share the existing boss runtime, never the primary HUD
+		identity or damage target set. This relation outlives a pattern cycle. */
+		LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		BOSS_PATTERN_SEQUENCE_DEFINITION DependentPatternSequence;
 		std::string strPlacementId;
 		std::string strArchetypeId;
 		std::string strEncounterId;
@@ -126,6 +131,17 @@ namespace LostArk::Server
 		so the step never reaches back into the catalog. A stage that has one is
 		stepped along it and ignores fPatternForcedMotionSpeed. */
 		std::vector<ROOT_MOTION_SAMPLE> PatternStageRootMotion;
+		bool bPortalMotionActive = false;
+		std::vector<LostArk::Shared::NET_ENTITY_ID> PortalStageHitTargets;
+		float fPortalStartX = 0.f;
+		float fPortalStartZ = 0.f;
+		float fPortalEndX = 0.f;
+		float fPortalEndZ = 0.f;
+		/* Portal contact is swept from the last authored pulse, rather than the
+		current render pose, so a fast root-motion step cannot tunnel through a
+		player between two 50 ms evaluations. */
+		float fPortalLastHitSampleX = 0.f;
+		float fPortalLastHitSampleZ = 0.f;
 		/* The authored placement this entity spawned at. The 109 phase
 		transition lands Valtan back on it, so the landing point stays authored
 		data rather than a constant recomputed inside the brain. */
@@ -157,6 +173,7 @@ namespace LostArk::Server
 		std::uint32_t iPatternLeapTakeoffEndMs = 0u;
 		std::uint32_t iPatternLeapTravelStartMs = 0u;
 		std::uint32_t iPatternLeapTravelEndMs = 0u;
+		bool bPatternMoveToAnchorBeforeTakeoff = false;
 		/* The encounter's intro pattern runs once per encounter epoch, on the
 		first engage. A late joiner never replays it, and only a room-empty or
 		Debug reset clears the ledger. */
@@ -199,6 +216,10 @@ namespace LostArk::Server
 		/* Immutable gameplay bootstrap identity pinned when this entity is
 		created and refreshed at each boss pattern occurrence boundary. */
 		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+		/* Product owns one immutable sequence from its first selected step through
+		terminal idle. Hot reload cannot combine an old ordinal with a new list;
+		only a fresh encounter/reset releases this pin. Debug Flow owns its own pin. */
+		LostArk::Shared::GameplayDataRevision ProductSequencePinnedDefinitionRevision{};
 		std::uint32_t iPatternStageDurationMs = 0;
 		/* First nonzero Server tick on which this stage is evaluated. Tick zero is
 		the process-wide reserved sentinel, so wrap advances UINT32_MAX -> 1. */

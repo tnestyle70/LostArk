@@ -92,6 +92,12 @@ Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 `Publish-WorldGameplay.ps1`, Server navigation은 `Publish-ServerNavigation.ps1`만 교체한다.
 `ACTIVE.maparea`도 selector 변경 때 자동 저장하지 않는다.
 
+Visual publisher는 `-AreaId <AreaId> -Mode Validate|Check|Publish`를 지원한다.
+Validate는 source를 검증하고, Check는 같은 예상 파일과 현재 runtime의 byte 일치만 검사한다.
+두 모드는 runtime을 쓰지 않으며 Publish만 기존 파일 집합 transaction을 실행한다. 기본값은
+기존 호출과 같은 Publish다. 현재 Area가 선언한 파일만 대상으로 하며 다른 Area나 미참조 파일을
+자동 삭제하지 않는다. 상세 명령은 [Map pipeline 사용서](../../Tools/MapPipeline/README.md)를 따른다.
+
 Valtan 파괴 벽의 `navblockers`는 각 source collisionBox의 실제 XZ OBB와 base-walkable 셀, 해당 셀 높이에서
 시작하는 Server body 수직 범위가 겹치는 곳만 소유한다. 위층 벽으로 아래층 길을 막거나 nearest cell을
 대신 배정하지 않는다. 겹치는 벽의 blocker refcount는 각각 유지한다. 99개 벽 중 98개에 wall region이 있으며

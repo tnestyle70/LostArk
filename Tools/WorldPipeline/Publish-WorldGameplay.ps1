@@ -152,7 +152,7 @@ function Get-EncounterProfiles {
 		$null = $document.PSObject.Properties['introPatternId']
 		$patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 		foreach ($pattern in $patterns) {
-			# serverMotion is owned and strictly validated by the gameplay balance
+			# serverMotion/finale are owned and strictly validated by the gameplay balance
 			# publisher; this document only needs to tolerate its presence.
 			$patternProperties = @(
 				'patternId','displayName','actionId','sourceActionIds','selectionMode',
@@ -163,6 +163,9 @@ function Get-EncounterProfiles {
 				'stages')
 			if ($null -ne $pattern.PSObject.Properties['serverMotion']) {
 				$patternProperties += 'serverMotion'
+			}
+			if ($null -ne $pattern.PSObject.Properties['finale']) {
+				$patternProperties += 'finale'
 			}
 			Assert-ExactProperties $pattern $patternProperties "$($document.encounterId) pattern"
 			Assert-JsonNumber $pattern.minimumRange "$($document.encounterId) minimumRange"

@@ -259,6 +259,9 @@ def build(
         stages = []
         for stage_index, stage in enumerate(pattern["stages"]):
             motion = stage.get("motion") or {}
+            if motion.get("kind") == "PORTAL_CROSS_ARENA":
+                notes.append(f"{pattern['patternId']}/{stage['stageId']}: kept portal transform motion")
+                continue
             authored = float(motion.get("distance", 0.0)) if motion.get(
                 "kind") == "FORWARD" else 0.0
             action_id = stage.get("actionId")

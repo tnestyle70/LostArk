@@ -7,6 +7,7 @@
 #include "DataJson.h"
 #include "NetworkManager.h"
 #include "ProjectDataRoot.h"
+#include "ValtanTuningCommandService.h"
 #if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
 #include "ActorCatalog.h"
 #include "CombatHUDViewModel.h"
@@ -3404,16 +3405,11 @@ void Client::CBalanceTool::RenderLiveVerification()
 
 bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 {
-	const std::size_t livePatternCount = static_cast<std::size_t>(std::count_if(
-		m_patterns.begin(), m_patterns.end(), [](const PATTERN_EDIT& pattern)
-		{
-			return pattern.selectionMode != "AUDITION_ONLY";
-		}));
 	if (m_players.size() != 6u || m_skills.size() != 94u ||
 		m_damageProfiles.size() != 108u || m_bosses.size() != 1u ||
-		livePatternCount != 33u || m_patterns.size() < livePatternCount)
+		m_patterns.empty())
 	{
-		status = "Draft object counts are incomplete.";
+		status = "Draft required collections are incomplete.";
 		return false;
 	}
 	const auto isKnownStance = [](const std::string& value)
@@ -4509,11 +4505,6 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 
 bool Client::CBalanceTool::RequestValtanHotReload(std::string& status)
 {
-#if !defined(_DEBUG)
-	status = "Release Client does not initiate gameplay data revision transactions.";
-	return false;
-#else
-	using namespace LostArk::Shared;
 	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
 		m_valtanSourceJoin.state)
 	{
@@ -4521,60 +4512,8 @@ bool Client::CBalanceTool::RequestValtanHotReload(std::string& status)
 			"Hot Reload blocked: the split gameplay/presentation source join is not validated.";
 		return false;
 	}
-	if (m_valtanCandidateApplyClass != "HOT_RELOAD")
-	{
-		status = m_valtanCandidateApplyClass.empty() ?
-			"Publish a valid immutable Valtan candidate before Apply." :
-			"Hot Reload blocked: candidate apply class " +
-				m_valtanCandidateApplyClass +
-				" requires a controlled encounter reset or Server restart.";
-		return false;
-	}
-	GameplayDataRevision candidate{};
-	if (!Try_Parse_GameplayDataRevision(m_valtanCandidateRevision, candidate))
-	{
-		status = "Publish a valid immutable Valtan candidate before Apply.";
-		return false;
-	}
-	CNetworkManager& network = CNetworkManager::Get();
-	if (!network.Is_Connected())
-	{
-		status = "Hot Reload requires an active Server connection.";
-		return false;
-	}
-	const CNetworkManager::GAMEPLAY_REVISION_CLIENT_STATE& revisionState =
-		network.Get_GameplayRevisionState();
-	if (!revisionState.ServerActiveRevision.Is_Valid())
-	{
-		status = "Server has not announced an active gameplay revision.";
-		return false;
-	}
-	if (revisionState.ServerActiveRevision == candidate)
-	{
-		status = "The selected Valtan candidate is already active.";
-		return false;
-	}
-
-	m_valtanRevisionTransactionSequence =
-		(std::numeric_limits<std::uint32_t>::max)() ==
-			m_valtanRevisionTransactionSequence ?
-		1u : m_valtanRevisionTransactionSequence + 1u;
-	C2S_DATA_REVISION_PREPARE_REQUEST request{};
-	request.iTransactionSequence = m_valtanRevisionTransactionSequence;
-	request.BaseRevision = revisionState.ServerActiveRevision;
-	request.CandidateRevision = candidate;
-	request.iRequiredPresentationLaneMask =
-		GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK;
-	if (!network.Send_DataRevisionPrepareRequest(request))
-	{
-		status = "Could not submit the typed Valtan revision prepare request.";
-		return false;
-	}
-	status = "Valtan Hot Reload prepare submitted for candidate " +
-		m_valtanCandidateRevision.substr(0u, 12u) +
-		". Waiting for Server room and Client presentation admission.";
-	return true;
-#endif
+	return CValtanTuningCommandService::Get().ApplyCandidate(
+		m_valtanCandidateRevision, m_valtanCandidateApplyClass, status);
 }
 
 bool Client::CBalanceTool::Save(
@@ -4921,17 +4860,25 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 				safetyTool.m_status;
 			return false;
 		}
+		VALTAN_TOOL_AUDITION_INVENTORY playableInventory;
+		std::string inventoryStatus;
+		if (!CValtanPatternTree::Build_PlayablePatternInventory(
+				safetyTool.m_valtanPatternTree, playableInventory, inventoryStatus))
+		{
+			status = "Balance Tool playable inventory admission failed: " +
+				inventoryStatus;
+			return false;
+		}
 		const std::size_t expectedManagedPatternCount =
-			safetyTool.m_valtanPatternTree.NormalSelection.PatternIds.size() +
-			safetyTool.m_valtanPatternTree.Mechanics.size() +
-			safetyTool.m_valtanPatternTree.ManualAuditions.size();
+			playableInventory.Get_PatternCount();
 		const std::size_t managedPatternCount =
 			CountManagedValtanPatterns(safetyTool.m_valtanPatternTree);
 		if (expectedManagedPatternCount != managedPatternCount ||
-			26u != safetyTool.m_legacyPatterns.size())
+			safetyTool.m_patterns.size() !=
+				managedPatternCount + safetyTool.m_legacyPatterns.size())
 		{
-			status = "Balance Tool did not preserve the dynamic managed / 26 legacy "
-				"Valtan boundary.";
+			status = "Balance Tool did not preserve the dynamic managed / legacy "
+				"Valtan identity partition.";
 			return false;
 		}
 		const std::filesystem::path productPath = CProjectDataRoot::Resolve(
@@ -4956,7 +4903,8 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 		}
 		status = "Balance Tool admitted Encounter v4, exposed " +
 			std::to_string(managedPatternCount) +
-			" managed / 26 legacy Valtan patterns, and rejected the lossy generated Product Save.";
+			" managed / " + std::to_string(safetyTool.m_legacyPatterns.size()) +
+			" legacy Valtan patterns, and rejected the lossy generated Product Save.";
 		return true;
 	}
 
@@ -5073,24 +5021,12 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 		Field(skillRoot, "skills", DATA_JSON_TYPE::ARRAY);
 	const DATA_JSON_VALUE* patterns =
 		Field(encounterRoot, "patterns", DATA_JSON_TYPE::ARRAY);
-	std::size_t livePatternCount = 0u;
-	if (nullptr != patterns)
-	{
-		for (const DATA_JSON_VALUE& pattern : patterns->Get_Array())
-		{
-			std::string selectionMode;
-			if (!ReadString(pattern, "selectionMode", selectionMode) ||
-				selectionMode != "AUDITION_ONLY")
-				++livePatternCount;
-		}
-	}
 	if (nullptr == players || players->Get_Array().size() != 6u ||
 		nullptr == skills || skills->Get_Array().size() != 94u ||
 		nullptr == patterns ||
-		patterns->Get_Array().size() != tool.m_patterns.size() ||
-		33u != livePatternCount)
+		patterns->Get_Array().size() != tool.m_patterns.size())
 	{
-		status = "Balance Tool round-trip changed current object counts.";
+		status = "Balance Tool round-trip changed required collections or Pattern identities.";
 		return false;
 	}
 
@@ -5444,9 +5380,10 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 		return false;
 	}
 
-	status = "Balance Tool read-only round-trip preserved 6 players, 94 skills, "
-		"108 damage profiles, 1 boss, 33 live patterns plus manual auditions, identityCost, all skill kinds, "
-		"comboAdvanceMs, introPatternId, and serverMotion.";
+	status = "Balance Tool read-only round-trip preserved " +
+		std::to_string(tool.m_patterns.size()) +
+		" loaded Valtan patterns plus manual auditions, all balance domains, "
+		"identityCost, all skill kinds, comboAdvanceMs, introPatternId, and serverMotion.";
 	return true;
 }
 #else
@@ -5551,6 +5488,7 @@ void Client::CBalanceTool::Render()
 		const bool canApply = splitJoinValidated &&
 			!m_valtanCandidateRevision.empty() &&
 			candidateIsHotReload &&
+			!CValtanTuningCommandService::Get().Has_PendingCommand() &&
 			!m_dirty && CNetworkManager::Get().Is_Connected() &&
 			revisionState.ServerActiveRevision.Is_Valid();
 		ImGui::BeginDisabled(!canApply);
