@@ -36,19 +36,24 @@ namespace
 	MAP_LOAD_SCOPE MakeBernMapScope()
 	{
 		MAP_LOAD_SCOPE scope = MakeFullMapScope();
-		/* Valtan runs the same culling with zero margin and zero reject grace,
-		   on terrain with more height steps, without the popping reported here.
-		   The 08-25 Bern-only margin and 3-frame grace were mitigations for a
-		   cause that was never confirmed, so match Valtan exactly. Keep the
-		   switches explicit so the same diagnostic can be staged again without
-		   changing other levels. */
+		/* Bern is the only level whose far plane is data driven, max(2000,
+		   span * 8), which reaches roughly 18837 here. That is what exposed the
+		   float32 cancellation in the old corner-built frustum planes, so the
+		   left plane sat tens of world units inside the real one and cut
+		   geometry the camera was looking straight at. The planes now come from
+		   the view-projection matrix and the margins below are back to being an
+		   ordinary conservative allowance rather than a mitigation. Diagnostics
+		   can be enabled here alone to log every dropped placement with its
+		   plane distances and on-screen NDC to
+		   Diagnostics/BernFrustumCulling.log; leave it off in normal builds
+		   because it writes and flushes one line per rejected placement. */
 		scope.frustumCulling.bypass = false;
 		scope.frustumCulling.diagnostics = false;
-		scope.frustumCulling.baseMargin = 0.f;
-		scope.frustumCulling.largeObjectRadiusThreshold = 0.f;
-		scope.frustumCulling.largeObjectAbsoluteMargin = 0.f;
-		scope.frustumCulling.largeObjectRelativeMargin = 0.f;
-		scope.frustumCulling.rejectHysteresisFrames = 0u;
+		scope.frustumCulling.baseMargin = 0.25f;
+		scope.frustumCulling.largeObjectRadiusThreshold = 4.f;
+		scope.frustumCulling.largeObjectAbsoluteMargin = 2.f;
+		scope.frustumCulling.largeObjectRelativeMargin = 0.12f;
+		scope.frustumCulling.rejectHysteresisFrames = 3u;
 		return scope;
 	}
 
