@@ -334,17 +334,18 @@ adapter가 필요하다. 도화가 F에서 사람이 쓴 전용 파일은 이 �
   formatVersion만 봉인하고, 전체 catalog 보존은 publisher가 담당해야 한다. 그래야 병렬 캐릭터
   복원과 발탄 exact carrier 검증이 서로의 Product를 지우거나 재봉인하지 않는다.
 
-## Valtan Product presentationScale 정본은 10.0이다
+## Valtan Product presentationScale 정본은 1.0이고 10배 대상은 본체 HP다
 
-- 2026-08-28 사용자 확정에 따라 `Data/Actors/BossCatalog.json`의
-  `BOSS_VALTAN.presentationScale`은 `10.0`이 정본이다.
-- 과거 문서나 stash에 `0.75` 또는 `1.0`이 남아 있어도 회귀 복원 근거로 사용하지 않는다. 값 변경은 사용자
-  육안 판정과 명시적 승인 없이 하지 않는다.
-- 이 값은 Client presentation 배율이다. Server `BossProfiles.json`의 `collisionRadius: 1.4`와 공격 hit
-  geometry는 scale-one gameplay 기준을 유지하며 presentationScale을 곱하지 않는다.
+- 2026-08-28 사용자 정정에 따라 `Data/Actors/BossCatalog.json`의
+  `BOSS_VALTAN.presentationScale`은 `1.0`이 정본이다. `10.0`은 HP 10배 요청을 시각 배율에 잘못 적용한 값이므로
+  다시 복원하지 않는다.
+- Server 권위 정본 `Data/Balance/BossProfiles.json`의 일반 `BOSS_VALTAN.maximumHp`는 `600000`,
+  `maximumHealthBars`는 `160`이다. 종속 `BOSS_VALTAN_GHOST.maximumHp`는 `60000`을 유지한다.
+- Server `collisionRadius: 1.4`와 공격 hit geometry는 scale-one gameplay 기준을 유지한다.
 - `GAMEPLAY_FOOTPRINT`는 owner basis scale을 제거한 뒤 authored world scale을 적용하므로,
   Effect footprint 보정이나 미세 scale drift 허용을 이유로 boss presentationScale을 바꾸지 않는다.
-- `test_valtan_model_view_composition.py`가 `10.0`과 독립된 Server body radius를 함께 고정해 무단 회귀를 막는다.
+- `test_valtan_model_view_composition.py`가 `1.0`과 Server body radius `1.4`를 함께 고정하고,
+  gameplay balance/Server 계약 테스트가 본체 HP `600000`을 고정한다.
 
 ## Valtan strict join과 Effect Tool에서 재발시키지 않을 경계
 
