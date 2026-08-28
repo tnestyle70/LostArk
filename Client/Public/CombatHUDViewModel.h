@@ -145,7 +145,11 @@ namespace Client
 	{
 		bool isValid = false;
 		float fTextX = 0.f, fTextY = 0.f, fTextWidth = 0.f, fTextHeight = 0.f;
-		std::wstring strText;
+		/* Kept as two separate pieces (not one combined string) so
+		CMainApp::RenderItemAnnounceText() can draw the item name in its own grade
+		color and the "을(를) 획득하였습니다" suffix in plain white. */
+		std::wstring strItemName;
+		std::wstring strSuffix;
 	};
 
 	class CCombatHUDViewModel final
@@ -248,6 +252,15 @@ namespace Client
 
 		const HUD_PLAYER_STATE& Get_Player() const { return m_Player; }
 		const HUD_BOSS_STATE& Get_Boss() const { return m_Boss; }
+		/* Set directly from the raw incoming WORLD_ENTITY_SNAPSHOT.eAction
+		(CClientReplication::Apply_WorldSnapshot), independent of whether Apply_Boss's
+		own BossCombat-revision-gated validation succeeds that tick -- see the
+		Set_BossDeadRaw call site's own comment for why the gated path can get stuck
+		forever. Never reset back to false; a boss that reached DEAD stays DEAD for
+		the rest of this Level's session, same as Get_Boss().eAction would if the
+		gate weren't buggy. */
+		void Set_BossDeadRaw(bool isDead) { m_bBossDeadRaw = m_bBossDeadRaw || isDead; }
+		bool Get_BossDeadRaw() const { return m_bBossDeadRaw; }
 		std::uint32_t Get_EstherGauge() const { return m_iEstherGauge; }
 		std::uint32_t Get_EstherGaugeMaximum() const
 		{
@@ -293,6 +306,7 @@ namespace Client
 		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;
+		bool m_bBossDeadRaw = false;
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;
 		std::uint32_t m_iEstherGauge = 0;
 		std::uint32_t m_iEstherGaugeMaximum = 0;

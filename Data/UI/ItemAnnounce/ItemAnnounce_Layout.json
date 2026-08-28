@@ -34,7 +34,7 @@
       "id": "ItemAnnounce_TextBox",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 397.46, "y": 558.28, "width": 273.2, "height": 40 },
+      "rect": { "x": 412.46, "y": 558.28, "width": 258.2, "height": 40 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [],
