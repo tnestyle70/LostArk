@@ -2,6 +2,12 @@
 
 갱신일: 2026-08-28
 
+> 아래는 PR250 병합 전 인계 기록이다. 이후 사용자가 Next/Trash와 파괴 벽 이동 수정을 명시적으로 재개했다.
+> 초기 구현 worktree는 `C:/w/valtan-arena-next`였다. 최종 적용·빌드는 PR #251 `a6871a2f` 기반
+> `codex/valtan-arena-next-desktop`의 `C:/Users/user/Desktop/LostArk/Framework.sln`을 기준으로 한다.
+> 구현 범위는 갱신된 Next/Trash PLAN, 완료·검증 상태는 대응 RESULT를 따른다. 아래의 보류 표기를 현재 지시로
+> 재사용하지 않는다. 저장 Flow를 임의 수정하지 않는 경계는 계속 유지한다.
+
 ## 1. 최신 사용자 요청을 우선한다
 
 현재 완료할 단위는 **저장 Flow를 초기 28개 순서에 고정한 테스트 수정**이다.

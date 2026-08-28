@@ -273,6 +273,75 @@ bool Client::CActionPresentationTimeline::Resolve_CuePreviewSample(
 	return true;
 }
 
+bool Client::CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
+	const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
+	const float fOwningClipTimelineOffsetSeconds,
+	const float fEffectSampleSeconds,
+	float& fOutTimelineSeconds)
+{
+	fOutTimelineSeconds = 0.f;
+	ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
+	if (!std::isfinite(fOwningClipTimelineOffsetSeconds) ||
+		fOwningClipTimelineOffsetSeconds < 0.f ||
+		!std::isfinite(fEffectSampleSeconds) || fEffectSampleSeconds < 0.f ||
+		!Resolve_CuePreviewSample(Timing, 0.f, Sample))
+	{
+		return false;
+	}
+	const double fTimelineSeconds =
+		static_cast<double>(fOwningClipTimelineOffsetSeconds) +
+		static_cast<double>(Sample.fCueWallStartSeconds) +
+		static_cast<double>(fEffectSampleSeconds) / Timing.fPlayRate;
+	if (!std::isfinite(fTimelineSeconds) ||
+		fTimelineSeconds > (std::numeric_limits<float>::max)())
+	{
+		return false;
+	}
+	fOutTimelineSeconds = static_cast<float>(fTimelineSeconds);
+	return true;
+}
+
+bool Client::CActionPresentationTimeline::Resolve_CuePreviewDuration(
+	const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
+	const float fOwningClipTimelineOffsetSeconds,
+	const float fTimelineDurationSeconds,
+	const float fEffectDurationSeconds,
+	float& fOutTimelineDurationSeconds)
+{
+	fOutTimelineDurationSeconds = 0.f;
+	if (!std::isfinite(fOwningClipTimelineOffsetSeconds) ||
+		fOwningClipTimelineOffsetSeconds < 0.f ||
+		!std::isfinite(fTimelineDurationSeconds) || fTimelineDurationSeconds < 0.f ||
+		!std::isfinite(fEffectDurationSeconds) || fEffectDurationSeconds < 0.f)
+	{
+		return false;
+	}
+
+	ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
+	if (!Resolve_CuePreviewSample(Timing, 0.f, Sample))
+		return false;
+
+	double fEffectWallEnd = static_cast<double>(Sample.fCueWallStartSeconds) +
+		static_cast<double>(fEffectDurationSeconds) /
+			static_cast<double>(Timing.fPlayRate);
+	if (Timing.bHasCueSourceEnd)
+	{
+		fEffectWallEnd = (std::min)(fEffectWallEnd,
+			static_cast<double>(Sample.fCueWallEndSeconds));
+	}
+	const double fTimelineDuration = (std::max)(
+		static_cast<double>(fTimelineDurationSeconds),
+		static_cast<double>(fOwningClipTimelineOffsetSeconds) + fEffectWallEnd);
+	if (!std::isfinite(fTimelineDuration) ||
+		fTimelineDuration > static_cast<double>((std::numeric_limits<float>::max)()))
+	{
+		return false;
+	}
+
+	fOutTimelineDurationSeconds = static_cast<float>(fTimelineDuration);
+	return true;
+}
+
 bool Client::CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
 	const bool bHasExplicitLoopPolicy,
 	const bool bLoop,
@@ -280,13 +349,27 @@ bool Client::CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
 	const bool bAuthoredEndPoseHold,
 	const bool bAnimationPaused,
 	const float fCurrentSourceSeconds,
-	const float fSourceDurationSeconds)
+	const float fSourceDurationSeconds,
+	const float fCurrentClipWallSeconds,
+	const float fAuthoredClipWallDurationSeconds)
 {
-	return bHasExplicitLoopPolicy && !bLoop &&
-		(bLastClip || bAuthoredEndPoseHold) &&
-		bAnimationPaused && std::isfinite(fCurrentSourceSeconds) &&
-		std::isfinite(fSourceDurationSeconds) &&
-		fSourceDurationSeconds > 0.f &&
+	if (!bHasExplicitLoopPolicy || !bAnimationPaused ||
+		!std::isfinite(fCurrentSourceSeconds) ||
+		!std::isfinite(fSourceDurationSeconds) || fSourceDurationSeconds <= 0.f)
+	{
+		return false;
+	}
+	if (bLoop)
+	{
+		/* LOOP_TO_STAGE_END can stop partway through its final source epoch.
+		   Only the final finite wall boundary releases a natural Effect tail. */
+		return bLastClip && std::isfinite(fCurrentClipWallSeconds) &&
+			fCurrentClipWallSeconds >= 0.f &&
+			std::isfinite(fAuthoredClipWallDurationSeconds) &&
+			fAuthoredClipWallDurationSeconds > 0.f &&
+			fCurrentClipWallSeconds + 0.0001f >= fAuthoredClipWallDurationSeconds;
+	}
+	return (bLastClip || bAuthoredEndPoseHold) &&
 		fCurrentSourceSeconds + 0.0001f >= fSourceDurationSeconds;
 }
 

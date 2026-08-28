@@ -9,7 +9,7 @@
       "maximumHp": 60000,
       "maximumHealthBars": 160,
       "attackPower": 100,
-      "collisionRadius": 3.0,
+      "collisionRadius": 1.4,
       "engageDistance": 20.0,
       "moveSpeed": 2.6,
       "phasePolicy": {

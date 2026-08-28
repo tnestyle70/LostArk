@@ -1,5 +1,9 @@
 [CmdletBinding()]
-param()
+param(
+    [ValidateSet('Migrate', 'RebuildNavigation', 'CheckNavigation')]
+    [string]$Mode = 'Migrate',
+    [string]$BaseNavGridPath = 'Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid'
+)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
@@ -7,6 +11,11 @@ $eventsPath = Join-Path $repoRoot 'Data\Encounters\Valtan\ValtanWorldEvents.json
 $simulationPath = Join-Path $repoRoot 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.destructionsimulation.json'
 $gameplayPath = Join-Path $repoRoot 'Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json'
 $navPath = Join-Path $repoRoot 'Data\Navigation\LV_LUT_HEARTRB_ED.navblockers'
+. (Join-Path $PSScriptRoot 'ValtanWallNavigation.ps1')
+$resolvedNavGridPath = if ([IO.Path]::IsPathRooted($BaseNavGridPath)) {
+    [IO.Path]::GetFullPath($BaseNavGridPath)
+} else { Join-Path $repoRoot $BaseNavGridPath }
+$wallNavigationGrid = Read-ValtanWallNavigationGrid $resolvedNavGridPath
 
 $combinedImpactGroupId = 'destroyable.group.valtan.deploy.11047903315509031966'
 $outerPrefix = 'destroyable.group.valtan.outerwall109.sector'
@@ -105,84 +114,157 @@ function Find-SourceCollision([object]$gameplay, [string]$sourceId) {
     return $matches[0]
 }
 
-function Split-RegionByNearestWall(
+function Split-RegionByWallFootprint(
     [object]$region,
     [object[]]$elements,
     [object]$gameplay,
     [object]$nav,
     [string]$kind) {
-    $walls = @($elements | ForEach-Object {
-        $sourceId = [string]$_.sourceRuntimePlacementId
-        $collision = Find-SourceCollision $gameplay $sourceId
-        [pscustomobject]@{
-            SourceId=$sourceId
-            X=[double]$collision.position[0]
-            Z=[double]$collision.position[2]
-            Cells=[Collections.Generic.List[object]]::new()
-        }
-    })
-    foreach ($cell in @($region.Cells)) {
-        $worldX = $nav.OriginX + (($cell.X + 0.5) * $nav.CellSize)
-        $worldZ = $nav.OriginZ + (($cell.Y + 0.5) * $nav.CellSize)
-        $nearest = $null
-        $nearestDistance = [double]::PositiveInfinity
-        foreach ($wall in $walls) {
-            $dx = $worldX - $wall.X
-            $dz = $worldZ - $wall.Z
-            $distance = $dx * $dx + $dz * $dz
-            if ($distance -lt $nearestDistance -or
-                ($distance -eq $nearestDistance -and
-                 [string]::CompareOrdinal($wall.SourceId, $nearest.SourceId) -lt 0)) {
-                $nearest = $wall
-                $nearestDistance = $distance
-            }
-        }
-        $nearest.Cells.Add($cell)
-    }
-    # A tightly packed wall can own no unique cell after the nearest-wall
-    # partition. Give that wall its nearest cell as a shared owner instead of
-    # dropping its navigation channel. ServerNavigation uses blocker
-    # refcounts, so the cell opens only after every overlapping wall falls.
-    foreach ($wall in $walls) {
-        if (0 -ne $wall.Cells.Count) { continue }
-        $nearestCell = $null
-        $nearestDistance = [double]::PositiveInfinity
-        foreach ($cell in @($region.Cells)) {
-            $worldX = $nav.OriginX + (($cell.X + 0.5) * $nav.CellSize)
-            $worldZ = $nav.OriginZ + (($cell.Y + 0.5) * $nav.CellSize)
-            $dx = $worldX - $wall.X
-            $dz = $worldZ - $wall.Z
-            $distance = $dx * $dx + $dz * $dz
-            if ($distance -lt $nearestDistance) {
-                $nearestCell = $cell
-                $nearestDistance = $distance
-            }
-        }
-        if ($null -eq $nearestCell) {
-            throw "Navigation source region has no cell for $($wall.SourceId)."
-        }
-        $wall.Cells.Add($nearestCell)
-    }
     $result = @{}
-    foreach ($wall in $walls) {
-        if (0 -eq $wall.Cells.Count) {
-            $result[$wall.SourceId] = $null
+    foreach ($element in $elements) {
+        $sourceId = [string]$element.sourceRuntimePlacementId
+        $collision = Find-SourceCollision $gameplay $sourceId
+        $keys = Get-ValtanWallNavigationCellKeys $collision $wallNavigationGrid
+        if ($keys.Count -eq 0) {
+            $result[$sourceId] = $null
             continue
         }
-        $result[$wall.SourceId] = [pscustomobject]@{
-            RegionId="navregion.valtan.$kind.$($wall.SourceId)"
-            ConditionId="condition.valtan.$kind.$($wall.SourceId).destroyed"
+        $cells = @($keys | ForEach-Object {
+            $parts = $_.Split(',')
+            [pscustomobject]@{ X=[int]$parts[0]; Y=[int]$parts[1] }
+        } | Sort-Object Y,X)
+        $result[$sourceId] = [pscustomobject]@{
+            RegionId="navregion.valtan.$kind.$sourceId"
+            ConditionId="condition.valtan.$kind.$sourceId.destroyed"
             ActivateWhenTrue=0
-            Cells=@($wall.Cells)
+            Cells=$cells
         }
     }
     return $result
+}
+
+function Write-StagedWallNavigationEvents([byte[]]$OriginalBytes, [string]$StagingRoot) {
+    $text = [Text.Encoding]::UTF8.GetString($OriginalBytes)
+    $original = $text | ConvertFrom-Json
+    foreach ($group in $events.groups) {
+        $previous = @($original.groups | Where-Object { $_.groupId -ceq $group.groupId })
+        if ($previous.Count -ne 1) { throw 'Wall navigation lost a stable group identity.' }
+        if ((@($previous[0].navigationRegionIds) -join '|') -ceq (@($group.navigationRegionIds) -join '|')) { continue }
+        $pattern = '(?s)("groupId"\s*:\s*"' + [regex]::Escape([string]$group.groupId) +
+            '".*?"navigationRegionIds"\s*:\s*\[)(.*?)(\])'
+        $matches = [regex]::Matches($text, $pattern)
+        if ($matches.Count -ne 1) { throw 'Wall navigation cannot locate its exact JSON field.' }
+        $field = $matches[0].Groups[2]
+        $indent = [regex]::Match($field.Value, '[ \t]*$').Value
+        $newline = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
+        $rows = @($group.navigationRegionIds | ForEach-Object { $indent + '    "' + [string]$_ + '"' })
+        $replacement = $newline + ($rows -join (',' + $newline)) + $newline + $indent
+        $text = $text.Remove($field.Index, $field.Length).Insert($field.Index, $replacement)
+    }
+    $staged = Join-Path $StagingRoot ([IO.Path]::GetFileName($eventsPath))
+    [IO.File]::WriteAllText($staged, $text, [Text.UTF8Encoding]::new($false))
+    return $staged
+}
+
+function Update-IndependentWallNavigation([bool]$CheckOnly) {
+    if ($nav.Width -ne $wallNavigationGrid.Width -or $nav.Height -ne $wallNavigationGrid.Height -or
+        $nav.CellSize -ne $wallNavigationGrid.CellSize -or
+        $nav.OriginX -ne $wallNavigationGrid.OriginX -or $nav.OriginZ -ne $wallNavigationGrid.OriginZ) {
+        throw 'Wall blocker grid does not match the published base navigation.'
+    }
+    $oldRegions = @{}
+    foreach ($region in $nav.Regions) { $oldRegions[$region.RegionId] = $region }
+    $wallGroups = @($events.groups | Where-Object { $_.navPolarity -ceq 'BLOCK_WHILE_INTACT' })
+    if ($wallGroups.Count -ne 99) { throw 'Navigation repair requires all 99 independent Valtan walls.' }
+    $wallRegionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $stagedRegions = [Collections.Generic.List[object]]::new()
+    $changedGroups = 0
+    foreach ($group in $wallGroups) {
+        $profiles = @($simulation.profiles | Where-Object { $_.groupId -ceq $group.groupId })
+        if ($profiles.Count -ne 1 -or @($profiles[0].elements).Count -ne 1 -or
+            @($group.navigationRegionIds).Count -gt 1) {
+            throw "Wall navigation needs one exact source emitter: $($group.groupId)"
+        }
+        $sourceId = [string]$profiles[0].elements[0].sourceRuntimePlacementId
+        $collision = Find-SourceCollision $gameplay $sourceId
+        $keys = Get-ValtanWallNavigationCellKeys $collision $wallNavigationGrid
+        $stem = ([string]$group.groupId).Substring('destroyable.group.'.Length)
+        $regionId = "navregion.$stem"
+        $conditionId = "condition.$stem.destroyed"
+        $previousKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($oldId in @($group.navigationRegionIds)) {
+            if (-not $wallRegionIds.Add([string]$oldId) -or -not $oldRegions.ContainsKey([string]$oldId)) {
+                throw "Wall navigation region is shared or missing: $oldId"
+            }
+            $previous = $oldRegions[[string]$oldId]
+            if ($previous.ActivateWhenTrue -ne 0) { throw "Wall navigation polarity is invalid: $oldId" }
+            $regionId = [string]$oldId
+            $conditionId = [string]$previous.ConditionId
+            foreach ($cell in $previous.Cells) { [void]$previousKeys.Add("$($cell.X),$($cell.Y)") }
+        }
+        if (-not $previousKeys.SetEquals($keys)) { ++$changedGroups }
+        if ($keys.Count -eq 0) {
+            $group.navigationRegionIds = @()
+            continue
+        }
+        $group.navigationRegionIds = @($regionId)
+        $cells = @($keys | ForEach-Object {
+            $parts = $_.Split(',')
+            [pscustomobject]@{ X=[int]$parts[0]; Y=[int]$parts[1] }
+        } | Sort-Object Y,X)
+        $stagedRegions.Add([pscustomobject]@{
+            RegionId=$regionId; ConditionId=$conditionId; ActivateWhenTrue=0; Cells=$cells
+        })
+    }
+    if ($CheckOnly) {
+        if ($changedGroups -ne 0) { throw "Wall navigation differs from its collision footprints: $changedGroups groups. Run -Mode RebuildNavigation." }
+        Write-Host "Wall navigation Check succeeded: $($wallGroups.Count) exact wall footprints; floor regions preserved."
+        return
+    }
+    if ($changedGroups -eq 0) {
+        Write-Host 'Wall navigation already matches its collision footprints; no files changed.'
+        return
+    }
+    # Preserve every floor region and its cell order. Only wall ownership is
+    # rebuilt; this never turns base-blocked ground or collapsed floors on.
+    $nav.Regions = @($nav.Regions | Where-Object { -not $wallRegionIds.Contains($_.RegionId) }) +
+        @($stagedRegions | Sort-Object RegionId -CaseSensitive)
+    $stagingRoot = Join-Path $repoRoot ('_work/valtan-wall-nav-' + [Guid]::NewGuid().ToString('N'))
+    [IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
+    $beforeEvents = [IO.File]::ReadAllBytes($eventsPath)
+    $beforeNav = [IO.File]::ReadAllBytes($navPath)
+    try {
+        $stagedEvents = Write-StagedWallNavigationEvents $beforeEvents $stagingRoot
+        $stagedNav = Write-StagedNav $nav $stagingRoot
+        # Both complete documents are prepared before either canonical file is
+        # replaced. Restore both originals if either promotion fails.
+        [IO.File]::Copy($stagedEvents, $eventsPath, $true)
+        [IO.File]::Copy($stagedNav, $navPath, $true)
+    }
+    catch {
+        [IO.File]::WriteAllBytes($eventsPath, $beforeEvents)
+        [IO.File]::WriteAllBytes($navPath, $beforeNav)
+        throw
+    }
+    finally {
+        $safeRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot '_work')) + [IO.Path]::DirectorySeparatorChar
+        $resolvedStaging = [IO.Path]::GetFullPath($stagingRoot)
+        if (-not $resolvedStaging.StartsWith($safeRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Wall navigation staging cleanup escaped the workspace.'
+        }
+        [IO.Directory]::Delete($resolvedStaging, $true)
+    }
+    Write-Host "Wall navigation rebuilt: $changedGroups changed walls; $($stagedRegions.Count) wall regions; floor regions preserved."
 }
 
 $events = Read-Json $eventsPath
 $simulation = Read-Json $simulationPath
 $gameplay = Read-Json $gameplayPath
 $nav = Read-NavDocument $navPath
+if ($Mode -ne 'Migrate') {
+    Update-IndependentWallNavigation ($Mode -eq 'CheckNavigation')
+    return
+}
 
 $alreadySplit = @($events.groups | Where-Object {
     ([string]$_.groupId).StartsWith('destroyable.group.valtan.wall159.', [StringComparison]::Ordinal)
@@ -203,26 +285,12 @@ if ($alreadySplit) {
         $sourceId = ([string]$group.groupId).Substring(
             ([string]$group.groupId).LastIndexOf('.') + 1)
         $collision = Find-SourceCollision $gameplay $sourceId
-        $candidateCells = @($nav.Regions | Where-Object {
-            ([string]$_.RegionId).StartsWith(
-                "navregion.valtan.$kind.", [StringComparison]::Ordinal)
-        } | ForEach-Object { $_.Cells })
-        if ($candidateCells.Count -eq 0) {
-            throw "No authored navigation cells remain for $($group.groupId)."
-        }
-        $nearestCell = $null
-        $nearestDistance = [double]::PositiveInfinity
-        foreach ($cell in $candidateCells) {
-            $worldX = $nav.OriginX + (($cell.X + 0.5) * $nav.CellSize)
-            $worldZ = $nav.OriginZ + (($cell.Y + 0.5) * $nav.CellSize)
-            $dx = $worldX - [double]$collision.position[0]
-            $dz = $worldZ - [double]$collision.position[2]
-            $distance = $dx * $dx + $dz * $dz
-            if ($distance -lt $nearestDistance) {
-                $nearestCell = $cell
-                $nearestDistance = $distance
-            }
-        }
+        $keys = Get-ValtanWallNavigationCellKeys $collision $wallNavigationGrid
+        if ($keys.Count -eq 0) { continue }
+        $ownedCells = @($keys | ForEach-Object {
+            $parts = $_.Split(',')
+            [pscustomobject]@{ X=[int]$parts[0]; Y=[int]$parts[1] }
+        } | Sort-Object Y,X)
         $regionId = "navregion.valtan.$kind.$sourceId"
         $conditionId = "condition.valtan.$kind.$sourceId.destroyed"
         $group.navigationRegionIds = @($regionId)
@@ -230,7 +298,7 @@ if ($alreadySplit) {
             RegionId=$regionId
             ConditionId=$conditionId
             ActivateWhenTrue=0
-            Cells=@($nearestCell)
+            Cells=$ownedCells
         })
     }
     $nav.Regions = @($nav.Regions) + @($repairRegions | Sort-Object -Property RegionId -CaseSensitive)
@@ -349,7 +417,7 @@ if ($alreadySplit) {
                 throw "Legacy group nav region is missing: $($profile.groupId)"
             }
             [void]$legacyRegionIds.Add([string]$oldRegion[0].RegionId)
-            $navBySource = Split-RegionByNearestWall `
+            $navBySource = Split-RegionByWallFootprint `
                 $oldRegion[0] @($profile.elements) $gameplay $nav 'wall'
         }
 
@@ -487,7 +555,7 @@ $impactOldRegion = @($nav.Regions | Where-Object {
 })
 if ($impactOldRegion.Count -ne 1) { throw 'Combined 159 navigation region is missing.' }
 [void]$oldRegionIds.Add($impactOldRegion[0].RegionId)
-$impactNavBySource = Split-RegionByNearestWall $impactOldRegion[0] @($impactProfile[0].elements) $gameplay $nav 'wall159'
+$impactNavBySource = Split-RegionByWallFootprint $impactOldRegion[0] @($impactProfile[0].elements) $gameplay $nav 'wall159'
 foreach ($entry in $impactNavBySource.GetEnumerator()) { $newRegionsBySource[$entry.Key] = $entry.Value }
 
 foreach ($profile in $outerProfiles) {
@@ -500,7 +568,7 @@ foreach ($profile in $outerProfiles) {
     })
     if ($oldRegion.Count -ne 1) { throw "Outer navigation region is missing: $($group.navigationRegionIds[0])" }
     [void]$oldRegionIds.Add($oldRegion[0].RegionId)
-    $split = Split-RegionByNearestWall $oldRegion[0] @($profile.elements) $gameplay $nav 'outerwall109'
+    $split = Split-RegionByWallFootprint $oldRegion[0] @($profile.elements) $gameplay $nav 'outerwall109'
     foreach ($entry in $split.GetEnumerator()) { $newRegionsBySource[$entry.Key] = $entry.Value }
 }
 

@@ -20,6 +20,7 @@
 #include "ValtanPatternAuditionService.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Object.h"
+#include "Effect_Playback.h"
 #include "Effect_PresentationService.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_RuntimeAuthority.h"
@@ -2780,28 +2781,8 @@ namespace
 	f32_t Element_PreviewEndSeconds(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
-		const Client::EFFECT_TIMING_DESC& Timing = Element.Detail.Timing;
-		f32_t fTail = 0.f;
-		if (Is_PreviewParticleSimulationElement(Element))
-		{
-			fTail = Element.Detail.Particle.vLifeTimeSeconds.y *
-				(Element.SourceRecipe.bEnabled ?
-					Element.Detail.Particle.SourceScale.fLifeTime : 1.f);
-		}
-        else if (Client::EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
-            fTail = Element.Detail.Trail.fPointLifeTimeSeconds;
-		f32_t fEmissionDuration = Timing.fLifeTimeSeconds;
-		if (Element.SourceRecipe.bEnabled &&
-			Element.SourceRecipe.fEmitterDurationSeconds > 0.f &&
-			0u != Element.SourceRecipe.iEmitterLoopCount)
-		{
-			fEmissionDuration = Element.SourceRecipe.fEmitterDurationSeconds *
-				static_cast<f32_t>(Element.SourceRecipe.iEmitterLoopCount);
-		}
-		return Timing.fStartDelaySeconds +
-			(Element.SourceRecipe.bEnabled ?
-				Element.SourceRecipe.fEmitterDelaySeconds : 0.f) +
-			fEmissionDuration + Timing.fAfterImageSeconds + fTail;
+		return Client::CEffectPlayback::Calculate_ElementEndSeconds(
+			Element, Is_SourceParticleCarrier(Element));
 	}
 
     bool Slot_Allowed(
@@ -3225,6 +3206,11 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 	{
 		m_strValtanPatternEffectStatus =
 			"Exact Boss Product occurrence is waiting for the current Effect Save/Discard decision.";
+	}
+	else
+	{
+		m_strValtanPatternEffectStatus =
+			"Exact Product Effect could not open: " + m_strPreviewStatus;
 	}
 	return bOpened;
 }
@@ -3854,6 +3840,14 @@ void Client::CEffect_Tool::Render_PendingDocumentLoadModal()
     ImGui::SameLine();
     if (ImGui::Button("Cancel"))
     {
+		if (m_PendingDocumentLoad.has_value() &&
+			m_PendingDocumentLoad->ePreviewIntent ==
+				EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT &&
+			!m_PendingDocumentLoad->strValtanPatternId.empty())
+		{
+			m_strValtanPatternEffectStatus =
+				"Cancelled Open Existing Effect; the current Effect and Product connections are unchanged.";
+		}
         m_PendingDocumentLoad.reset();
         m_strDocumentStatus =
             "Cancelled the pending Effect document load.";
@@ -5135,9 +5129,15 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     ImGui::SameLine();
     if (ImGui::Button("Restart + Play"))
         Start_WorldPreviewFromBeginning();
-	ImGui::Text("World Preview: %s | %.3f / %.3f s",
+	ImGui::Text("World Preview: %s | Timeline %.3f / %.3f s",
 		m_bPreviewPlaying ? "PLAYING" : "PAUSED",
 		m_fPreviewTimeSeconds, m_fPreviewDurationSeconds);
+	const f32_t fEffectTimelineStart = Resolve_EffectTimelineTime(0.f);
+	ImGui::Text("Effect local: %.3f s | Effect 0 = Timeline %.3f s",
+		Resolve_EffectSampleTime(m_fPreviewTimeSeconds),
+		fEffectTimelineStart);
+	if (m_fPreviewTimeSeconds + 0.0001f < fEffectTimelineStart)
+		ImGui::TextDisabled("Waiting for the Effect cue start.");
 	if (m_bReconstructedSourceRuntimeNaturalTailActive)
 	{
 		ImGui::TextDisabled(
@@ -5147,7 +5147,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     if (!m_SynchronizedAnimationClips.empty())
     {
         ImGui::TextDisabled(
-            "Animation source time owns this Effect timeline; playRate is applied automatically.");
+            "Sample Time is the animation timeline; Start Delay uses Effect local time. Play rate is applied automatically.");
     }
 	if (ImGui::SliderFloat("Sample Time", &m_fPreviewTimeSeconds,
 		0.f, m_fPreviewDurationSeconds, "%.3f s"))
@@ -5754,6 +5754,7 @@ void Client::CEffect_Tool::Render_SourceModuleSelectionDetail()
 		Refresh_DetailDraftAdmission(*pCurrent);
 		m_bDetailDraftDirty = false;
 		m_bDetailDraftPreviewPending = false;
+		m_bDetailDraftPreviewRestartRequested = false;
 	}
 	const auto Module = std::find_if(
 		m_DetailDraft->SourceRecipe.Modules.begin(),
@@ -5804,6 +5805,7 @@ void Client::CEffect_Tool::Render_SourceModuleSelectionDetail()
 		{
 			m_bDetailDraftDirty = false;
 			m_bDetailDraftPreviewPending = false;
+			m_bDetailDraftPreviewRestartRequested = false;
 			if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
 			{
 				m_DetailDraft = *pCommitted;
@@ -5820,6 +5822,7 @@ void Client::CEffect_Tool::Render_SourceModuleSelectionDetail()
 		Refresh_DetailDraftAdmission(*pCurrent);
 		m_bDetailDraftDirty = false;
 		m_bDetailDraftPreviewPending = false;
+		m_bDetailDraftPreviewRestartRequested = false;
 		Stage_WorldPreview();
 		m_strDetailStatus = "Reverted source Module draft.";
 	}
@@ -6055,12 +6058,19 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 		Refresh_DetailDraftAdmission(*pCurrent);
         m_bDetailDraftDirty = false;
 		m_bDetailDraftPreviewPending = false;
+		m_bDetailDraftPreviewRestartRequested = false;
         m_strDetailStatus.clear();
     }
     const f32_t fElementStart =
         m_DetailDraft->Detail.Timing.fStartDelaySeconds;
-    ImGui::TextDisabled("Visible timeline: %.3f - %.3f s",
-        fElementStart, Element_PreviewEndSeconds(*m_DetailDraft));
+	const f32_t fNativeEmitterDelay = m_DetailDraft->SourceRecipe.bEnabled ?
+		m_DetailDraft->SourceRecipe.fEmitterDelaySeconds : 0.f;
+	ImGui::TextDisabled("Effect local window: %.3f - %.3f s",
+		fElementStart + fNativeEmitterDelay,
+		Element_PreviewEndSeconds(*m_DetailDraft));
+	ImGui::TextDisabled("Emitter start: Timeline %.3f s (Effect %.3f + source %.3f)",
+		Resolve_EffectTimelineTime(fElementStart + fNativeEmitterDelay),
+		fElementStart, fNativeEmitterDelay);
     bool_t bChanged = false;
 	ImGui::TextDisabled(bAdapterPacketInspection ?
 		"Exact adapter packet inspection. Persistent transforms use Stable occurrence Save / Reload; create a generic Authored starting copy before material/resource editing." :
@@ -6108,6 +6118,7 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
         {
             m_bDetailDraftDirty = false;
 			m_bDetailDraftPreviewPending = false;
+			m_bDetailDraftPreviewRestartRequested = false;
 			if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
 			{
 				m_DetailDraft = *pCommitted;
@@ -6124,6 +6135,7 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 		Refresh_DetailDraftAdmission(*pCurrent);
         m_bDetailDraftDirty = false;
 		m_bDetailDraftPreviewPending = false;
+		m_bDetailDraftPreviewRestartRequested = false;
 		Recalculate_PreviewDuration(*m_ActiveDocument);
 		if (Stage_WorldPreview(*m_ActiveDocument))
             m_strPreviewStatus =
@@ -7565,11 +7577,13 @@ void Client::CEffect_Tool::Render_UVKeyframes(
             }
             if (bCommitted)
             {
-                m_fPreviewTimeSeconds = 0.f;
-                if (const shared_ptr<CEffectObject> pObject =
-                    m_pWorldPreviewObject.lock())
-                    pObject->Set_SampleTime(
-                        Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+				const bool_t bWasPlaying = m_bPreviewPlaying;
+				Start_WorldPreviewFromBeginning();
+				if (!bWasPlaying)
+				{
+					m_bPreviewPlaying = false;
+					Set_SynchronizedAnimationPaused(true);
+				}
             }
             else
                 bChanged = true;
@@ -7593,6 +7607,14 @@ void Client::CEffect_Tool::Render_TimingDetail(
 	bChanged |= ImGui::DragFloat("Start Delay Timer",
 		&Detail.Timing.fStartDelaySeconds, 0.01f, 0.f, 60.f, "%.3f",
 		ImGuiSliderFlags_AlwaysClamp);
+	ImGui::TextDisabled("Start Delay is relative to Effect 0 (Timeline %.3f s).",
+		Resolve_EffectTimelineTime(0.f));
+	const f32_t fNativeEmitterDelay = Element.SourceRecipe.bEnabled ?
+		Element.SourceRecipe.fEmitterDelaySeconds : 0.f;
+	const f32_t fEmitterStart =
+		Detail.Timing.fStartDelaySeconds + fNativeEmitterDelay;
+	ImGui::TextDisabled("Emitter start: Effect %.3f s / Timeline %.3f s",
+		fEmitterStart, Resolve_EffectTimelineTime(fEmitterStart));
 	const bool_t bSupportsSeparateTransformMotion =
 		Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
 		Resolve_AuthoringFamily(Element) ==
@@ -7657,8 +7679,26 @@ void Client::CEffect_Tool::Render_TimingDetail(
 	}
 	if (Is_SourceParticleCarrier(Element))
 	{
+		ImGui::TextDisabled("Native emitter delay: +%.3f s", fNativeEmitterDelay);
 		ImGui::TextDisabled(
-			"Start Delay positions this Element in the clip. The SourceRecipe owns its native emitter schedule; Life Time remains the authored emission-window fallback.");
+			"Life Time controls root motion and the emission-window fallback; SourceRecipe owns native particle life and spawning.");
+		const f32_t fMotionDuration =
+			Detail.Timing.fTransformMotionDurationSeconds > 0.f ?
+				Detail.Timing.fTransformMotionDurationSeconds :
+				Detail.Timing.fLifeTimeSeconds;
+		if (Detail.LinearLerp.bScale && fNativeEmitterDelay >= fMotionDuration)
+		{
+			ImGui::TextWrapped(
+				"Scaling Lerp finishes before the native emitter starts. Increase Motion Duration or Life Time to keep scaling during visible playback.");
+		}
+	}
+	else if (Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+	{
+		ImGui::TextDisabled("Particle lifetime: %.3f - %.3f s after spawn",
+			Detail.Particle.vLifeTimeSeconds.x,
+			Detail.Particle.vLifeTimeSeconds.y);
+		ImGui::TextDisabled(
+			"Life Time controls root motion / emission; a single burst ends when its particles expire.");
 	}
 	bChanged |= ImGui::SliderFloat("Dissolve Start",
 		&Detail.Timing.fDissolveStartNormalized, 0.f, 1.f);
@@ -7736,6 +7776,13 @@ void Client::CEffect_Tool::Render_SizeDetail(
 		}
 		bChanged |= ImGui::DragFloat("Size x", &Tuning.fSize,
 			0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Size x is a constant source multiplier (editor range 0.01-16); zero is invalid.\n"
+				"For growth, set Transform > Scaling to a positive start (editor minimum 0.001), then enable Linear Lerp > Lerp Scaling and set Scaling End.\n"
+				"Keep Timing > Motion Duration (or Life Time) longer than the native emitter delay so scaling continues after particles appear.");
+		}
 		bChanged |= ImGui::DragFloat("Life x", &Tuning.fLifeTime,
 			0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 		bChanged |= ImGui::DragFloat("Speed x", &Tuning.fSpeed,
@@ -8991,8 +9038,9 @@ void Client::CEffect_Tool::Render_LerpDetail(
         bChanged |= bToggleChanged;
         if (bToggleChanged && !bWasEnabled && bEnabled)
         {
-            m_fPreviewTimeSeconds = 0.f;
-            m_bPreviewPlaying = true;
+			/* The draft must stage before both clocks restart. A rejected
+			   resource/material edit must not consume the current animation. */
+			m_bDetailDraftPreviewRestartRequested = true;
         }
     };
     RenderLerpToggle("Lerp Position", Lerp.bPosition);
@@ -11416,6 +11464,7 @@ bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(
 	if (!Try_LoadDocumentPath(
 			Path, EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId))
 	{
+		m_strPreviewStatus = m_strDocumentStatus;
 		if (m_PendingDocumentLoad.has_value() &&
 			m_PendingDocumentLoad->Path == Path)
 		{
@@ -11432,6 +11481,8 @@ bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(
 	   target pattern timeline after a successful load, so Cancel preserves the
 	   previous Character Product preview exactly. */
 	const bool_t bAnimationReady = Play_ValtanProductCue(Preview);
+	if (!bAnimationReady)
+		m_strPreviewStatus = m_strPreviewAnimationStatus;
 	if (bAnimationReady && !bQueuePlayCompleteAfterLoad)
 	{
 		/* Keep Open Editor distinct from Play Effect + Animation. */
@@ -11549,7 +11600,7 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternAuthoringEffects()
 			Authored.strEffectAssetId != Binding.strEffectAssetId)
 		{
 			m_strValtanPatternAuthoringEffectsStatus =
-				"Valtan pattern Effect binding is broken or outside the exact 28-pattern authoring inventory: " +
+				"Valtan pattern Effect binding is broken or outside the exact 27-pattern authoring inventory: " +
 				Binding.strPatternId + " / " + Binding.strEffectAssetId +
 				(AuthoredStatus.empty() ? std::string{} :
 					(" | " + AuthoredStatus));
@@ -11610,6 +11661,98 @@ std::string Client::CEffect_Tool::Build_ValtanPatternAggregateEffectAssetId(
 {
 	return Pattern.strActionId.empty() ?
 		std::string{} : "effect." + Pattern.strActionId;
+}
+
+bool_t Client::CEffect_Tool::Try_OpenExistingValtanPatternEffect(
+	const VALTAN_PATTERN_VIEW& Pattern)
+{
+	const auto Reject = [this](std::string Reason)
+	{
+		m_strValtanPatternEffectStatus =
+			"Open Existing Effect preserved the current Effect: " +
+			std::move(Reason);
+		return false;
+	};
+	if (m_ValtanPatternProductUnlinkOperation.has_value())
+		return Reject("wait for the current Product unlink transaction.");
+	const VALTAN_PATTERN_VIEW* pCurrent =
+		Find_ValtanPattern(Pattern.strPatternId);
+	if (nullptr == pCurrent || !Is_ValtanAllEffectsPattern(*pCurrent) ||
+		m_strSelectedValtanPatternId != Pattern.strPatternId)
+	{
+		return Reject("select one current Pattern from the All Effects inventory.");
+	}
+
+	VALTAN_PATTERN_AUTHORING_EFFECT_BINDING Aggregate;
+	Aggregate.strPatternId = pCurrent->strPatternId;
+	Aggregate.strEffectAssetId = Build_ValtanPatternAggregateEffectAssetId(*pCurrent);
+	Aggregate.strAuthoringPath =
+		CValtanPatternAuthoringEffectDocument::Build_AuthoringPath(
+			Aggregate.strEffectAssetId);
+	const std::filesystem::path Path =
+		CValtanPatternAuthoringEffectDocument::Resolve_AuthoringPath(Aggregate);
+	if (Path.empty())
+		return Reject("the Pattern has no safe canonical authored Effect path.");
+	const auto Indexed =
+		m_DirectAuthoredEditableEntries.find(Aggregate.strEffectAssetId);
+	if (Indexed != m_DirectAuthoredEditableEntries.end() &&
+		Indexed->second.Path.lexically_normal() != Path.lexically_normal())
+	{
+		return Reject("the registered source path differs from the Pattern aggregate; use its exact Product row.");
+	}
+	EFFECT_DOCUMENT_DESC ExistingDocument;
+	std::string Error;
+	if (!CEffectDocumentCodec::Load(Path, ExistingDocument, Error))
+		return Reject(std::move(Error));
+	if (ExistingDocument.strEffectAssetId != Aggregate.strEffectAssetId)
+		return Reject("the existing file does not contain the exact Pattern aggregate Effect ID.");
+
+	EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST Request;
+	size_t iProductCueCount = 0u;
+	for (const VALTAN_STAGE_VIEW& Stage : pCurrent->Stages)
+	{
+		for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue : Stage.ProductCues)
+		{
+			if (Cue.strEffectAssetId != Aggregate.strEffectAssetId)
+				continue;
+			++iProductCueCount;
+			Request.strPatternId = Aggregate.strPatternId;
+			Request.strStageId = Stage.strStageId;
+			Request.strCueOccurrenceId = Cue.strOccurrenceId;
+			Request.strEffectAssetId = Aggregate.strEffectAssetId;
+		}
+	}
+	if (iProductCueCount > 1u)
+	{
+		return Reject("this Effect has multiple Product occurrences; select its exact occurrence before opening.");
+	}
+	if (1u == iProductCueCount)
+	{
+		/* The existing Product opener refreshes and re-resolves the complete stable
+		   tuple. Do not retain any Pattern-tree pointer across this call. */
+		return Open_ValtanProductEffect(Request);
+	}
+
+	/* Unlink removes only the cue. The preserved authored file remains the one
+	   aggregate; opening it must not recreate Product or DRAFT_ATTACHED ownership. */
+	if (!Try_OpenValtanStandaloneEffect(Path, Aggregate.strEffectAssetId))
+	{
+		const bool_t bPending = m_PendingDocumentLoad.has_value() &&
+			m_PendingDocumentLoad->Path == Path &&
+			m_PendingDocumentLoad->strSelectionId == Aggregate.strEffectAssetId;
+		if (bPending)
+			m_PendingDocumentLoad->strValtanPatternId = Aggregate.strPatternId;
+		m_strValtanPatternEffectStatus = bPending ?
+			"Open Existing Effect is waiting for Save, Discard, or Cancel; the current Effect is unchanged." :
+			("Open Existing Effect failed: " + m_strPreviewStatus);
+		return false;
+	}
+	m_SelectedValtanPatternEffect.reset();
+	m_strValtanPatternEffectStatus =
+		"Opened the existing aggregate Effect for authoring only: " +
+		Aggregate.strEffectAssetId +
+		". This Pattern remains unlinked; no Product cue, catalog row, or draft ownership was created.";
+	return true;
 }
 
 bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
@@ -12188,7 +12331,7 @@ bool_t Client::CEffect_Tool::Prepare_ActiveValtanPatternDraftTimeline(
 	if (nullptr == pPattern || !Is_ValtanAllEffectsPattern(*pPattern))
 	{
 		m_strPreviewAnimationStatus =
-			"Valtan Pattern Draft owner is no longer in the exact 28-pattern inventory: " +
+			"Valtan Pattern Draft owner is no longer in the exact 27-pattern inventory: " +
 			m_strActiveValtanPatternDraftId;
 		return false;
 	}
@@ -12402,15 +12545,21 @@ bool_t Client::CEffect_Tool::Try_OpenValtanStandaloneEffect(
 		m_ActiveDocument->strEffectAssetId == strEffectAssetId;
 	if (!bAlreadyActive)
 	{
-		return Try_LoadDocumentPath(
+		const bool_t bLoaded = Try_LoadDocumentPath(
 			Path, EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId,
 			EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT);
+		if (!bLoaded)
+			m_strPreviewStatus = m_strDocumentStatus;
+		return bLoaded;
 	}
 
 	/* Active drafts are previewed without reloading the disk document. Stage
 	   the dedicated static target before changing active preview ownership. */
 	if (!Prepare_ValtanStandaloneEffectTarget())
+	{
+		m_strPreviewStatus = m_strPreviewAnimationStatus;
 		return false;
+	}
 	Release_WorldPreview(true);
 	m_eActiveDocumentPreviewIntent =
 		EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT;
@@ -12668,7 +12817,7 @@ bool_t Client::CEffect_Tool::Try_CreateValtanPatternEffect(
 		m_strSelectedValtanPatternId != Pattern.strPatternId)
 	{
 		m_strValtanPatternEffectStatus =
-			"New Effect requires one selected pattern from the exact 28-pattern inventory.";
+			"New Effect requires one selected pattern from the exact 27-pattern inventory.";
 		return false;
 	}
 	if (nullptr != Find_ValtanPatternAuthoringEffect(Pattern.strPatternId))
@@ -12741,7 +12890,7 @@ bool_t Client::CEffect_Tool::Try_CreateValtanPatternEffect(
 	{
 		m_strValtanPatternEffectStatus =
 			"New Effect refuses an Effect ID already owned by Product: " +
-			Binding.strEffectAssetId;
+			Binding.strEffectAssetId + ". Use Open Existing Effect to preserve it.";
 		return false;
 	}
 
@@ -12753,7 +12902,7 @@ bool_t Client::CEffect_Tool::Try_CreateValtanPatternEffect(
 		m_strValtanPatternEffectStatus = FileError ?
 			"New Effect could not inspect its exact authored destination." :
 			"New Effect refuses an existing unowned Effect path: " +
-				EffectPath.string();
+				EffectPath.string() + ". Use Open Existing Effect to preserve it.";
 		return false;
 	}
 
@@ -15264,7 +15413,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	{
 		ImGui::TextColored(
 			ImVec4(1.f, 0.45f, 0.35f, 1.f),
-			"Valtan All Effects inventory is incomplete (%zu/2 Effects, %zu/28 Patterns); no legacy or replacement row was substituted.",
+			"Valtan All Effects inventory is incomplete (%zu/2 Effects, %zu/27 Patterns); no legacy or replacement row was substituted.",
 			IndependentRows.size(),
 			CorePatterns.size() + AnimatorPatterns.size());
 	}
@@ -15289,31 +15438,73 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 			(pSelectedPattern->strDisplayName.empty() ?
 				pSelectedPattern->strPatternId.c_str() :
 				pSelectedPattern->strDisplayName.c_str()));
-	if (nullptr != pSelectedPattern &&
-		!pSelectedPattern->strDisplayName.empty())
+	if (nullptr != pSelectedPattern)
 	{
-		ImGui::TextDisabled("%s", pSelectedPattern->strPatternId.c_str());
+		ImGui::TextWrapped("%s",
+			CValtanPatternTree::Build_PatternIdentitySummary(*pSelectedPattern).c_str());
+	}
+	std::filesystem::path AggregateEffectPath;
+	std::error_code AggregatePathError;
+	bool_t bExistingAggregate = false;
+	if (nullptr != pSelectedPattern)
+	{
+		VALTAN_PATTERN_AUTHORING_EFFECT_BINDING Aggregate;
+		Aggregate.strPatternId = pSelectedPattern->strPatternId;
+		Aggregate.strEffectAssetId =
+			Build_ValtanPatternAggregateEffectAssetId(*pSelectedPattern);
+		Aggregate.strAuthoringPath =
+			CValtanPatternAuthoringEffectDocument::Build_AuthoringPath(
+				Aggregate.strEffectAssetId);
+		AggregateEffectPath =
+			CValtanPatternAuthoringEffectDocument::Resolve_AuthoringPath(Aggregate);
+		const bool_t bPathExists = !AggregateEffectPath.empty() &&
+			std::filesystem::exists(AggregateEffectPath, AggregatePathError);
+		bExistingAggregate = bPathExists ||
+			CEffectCatalog::Contains(Aggregate.strEffectAssetId) ||
+			m_DirectAuthoredEditableEntries.contains(Aggregate.strEffectAssetId);
 	}
 	const bool_t bCanCreate = nullptr != pSelectedPattern &&
 		nullptr == pSelectedBinding &&
 		m_bValtanPatternAuthoringEffectsLoaded &&
-		!Has_UnsavedWork();
+		!Has_UnsavedWork() && !bExistingAggregate &&
+		!AggregateEffectPath.empty() && !AggregatePathError;
 	ImGui::BeginDisabled(!bCanCreate);
 	if (ImGui::Button("Create Effect") && nullptr != pSelectedPattern)
 		Try_CreateValtanPatternEffect(*pSelectedPattern);
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 	{
-		const char_t* pReason = nullptr == pSelectedPattern ?
-			"Select one Pattern row first." :
-			(nullptr != pSelectedBinding ?
-				"The selected Pattern already owns its one aggregate Effect." :
-				(!m_bValtanPatternAuthoringEffectsLoaded ?
-					"Refresh the Pattern Effect ownership document first." :
-					(Has_UnsavedWork() ?
-						"Save or discard the active Effect edits first." :
-						"Create one empty v13 Effect and attach DRAFT_ATTACHED ownership.")));
+		const char_t* pReason =
+			"Create one empty v13 Effect and attach DRAFT_ATTACHED ownership.";
+		if (nullptr == pSelectedPattern)
+			pReason = "Select one Pattern row first.";
+		else if (nullptr != pSelectedBinding)
+			pReason = "The selected Pattern already owns its one aggregate Effect.";
+		else if (bExistingAggregate)
+			pReason = "The aggregate Effect already exists. Open Existing Effect preserves its Elements and any deleted Product links.";
+		else if (!m_bValtanPatternAuthoringEffectsLoaded)
+			pReason = "Refresh the Pattern Effect ownership document first.";
+		else if (Has_UnsavedWork())
+			pReason = "Save or discard the active Effect edits first.";
+		else if (AggregateEffectPath.empty() || AggregatePathError)
+			pReason = "The canonical Effect destination could not be inspected; Refresh before creating.";
 		ImGui::SetTooltip("%s", pReason);
+	}
+	if (bExistingAggregate && nullptr == pSelectedBinding)
+	{
+		ImGui::SameLine();
+		const bool_t bOpenExistingRequested = ImGui::Button("Open Existing Effect");
+		if (bOpenExistingRequested)
+			Try_OpenExistingValtanPatternEffect(*pSelectedPattern);
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Open the preserved canonical file. An unlinked Effect stays authoring-only; deleted Product links are not restored.");
+		}
+		/* Product Open refreshes the joined tree even when a later check fails.
+		   Discard every pointer collected for this render frame before continuing. */
+		if (bOpenExistingRequested)
+			return;
 	}
 	std::string DeleteReason;
 	const bool_t bCanDelete =
@@ -15522,7 +15713,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		if (!strSearch.empty())
 			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 		if (ImGui::TreeNodeEx(
-				"ANIMATOR PATTERNS (21)",
+				"ANIMATOR PATTERNS (20)",
 				ImGuiTreeNodeFlags_OpenOnArrow))
 		{
 			for (const VALTAN_PATTERN_VIEW* pPattern : AnimatorPatterns)
@@ -15602,7 +15793,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	}
 	ImGui::InputTextWithHint("##effect-search",
 		m_bAllEffectsValtanBossSelected ?
-			"Search the exact 2 Effects or 28 Patterns..." :
+			"Search the exact 2 Effects or 27 Patterns..." :
 			"Search skill, Product cue, or saved Effect ID...",
 		m_AllEffectsSearch.data(), m_AllEffectsSearch.size());
 	ImGui::SameLine();
@@ -20188,6 +20379,13 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
 		true,
 		Pending.ePreviewIntent))
 	{
+		if (EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT ==
+				Pending.ePreviewIntent && !Pending.strValtanPatternId.empty())
+		{
+			m_strValtanPatternEffectStatus =
+				"Open Existing Effect failed; the current Effect is unchanged: " +
+				m_strDocumentStatus;
+		}
 		if (DiscardedAreaDraft.has_value())
 		{
 			m_ValtanAreaMapEffectDocument =
@@ -20247,6 +20445,14 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
 	if (EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT ==
 		Pending.ePreviewIntent)
 	{
+		if (!Pending.strValtanPatternId.empty())
+		{
+			m_strSelectedValtanPatternId = Pending.strValtanPatternId;
+			m_SelectedValtanPatternEffect.reset();
+			m_strValtanPatternEffectStatus =
+				"Opened the existing aggregate Effect for authoring only: " +
+				Pending.strSelectionId + ". Product connections were not changed.";
+		}
 		if (Pending.bPlayCompleteAfterLoad &&
 			!Try_PlayActiveUnifiedEffect())
 		{
@@ -22598,6 +22804,7 @@ bool_t Client::CEffect_Tool::Try_AuditionParticleSystem()
         m_pWorldPreviewObject.lock())
     {
         Reset_ProductCueSnapshot();
+		Restart_SynchronizedAnimationSequence();
         pObject->Reset();
 		const f32_t fEffectSampleSeconds =
 			Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
@@ -22615,6 +22822,7 @@ bool_t Client::CEffect_Tool::Try_AuditionParticleSystem()
 		if (!bTransformApplied)
 		{
 			pObject->Set_Visible(false);
+			Set_SynchronizedAnimationPaused(true);
 			m_bPreviewPlaying = false;
 			m_strPreviewStatus =
 				"Particle audition refused missing Valtan exact history: " +
@@ -22694,11 +22902,15 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
         return false;
     }
 	m_ePreviewFilter = ePreviousFilter;
+	m_bDetailDraftPreviewRestartRequested = false;
 
     if (const shared_ptr<CEffectObject> pObject =
         m_pWorldPreviewObject.lock())
     {
         Reset_ProductCueSnapshot();
+		/* Seek uses the requested play state when deciding whether to hold the
+		   model. Commit it only after the audition document staged successfully. */
+		m_bPreviewPlaying = true;
         Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
         float4x4_t Root{};
         const bool_t bRootResolved = Resolve_PreviewRoot(Root);
@@ -22721,6 +22933,7 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
 		if (!bTransformApplied)
 		{
 			pObject->Set_Visible(false);
+			Set_SynchronizedAnimationPaused(true);
 			m_bPreviewPlaying = false;
 			m_strPreviewStatus =
 				"Element audition refused missing Valtan exact history: " +
@@ -22731,7 +22944,6 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
 			bRootResolved &&
 			Is_ProductCueVisible(m_fPreviewTimeSeconds));
 		m_bPreviewVisibleRequested = true;
-        m_bPreviewPlaying = true;
     }
     else
     {
@@ -27949,6 +28161,11 @@ bool_t Client::CEffect_Tool::Stage_DetailDraftPreview()
     }
     m_strPreviewStatus =
         "Live Detail draft staged; Apply Detail commits it to the active Document.";
+	if (m_bDetailDraftPreviewRestartRequested)
+	{
+		m_bDetailDraftPreviewRestartRequested = false;
+		Start_WorldPreviewFromBeginning();
+	}
     return true;
 }
 
@@ -28231,14 +28448,10 @@ f32_t Client::CEffect_Tool::Resolve_EffectTimelineTime(
 			ProductCue.Cue.iEndMs) * 0.001f;
 		Timing.bHasCueSourceEnd = EFFECT_STOP_POLICY::CUE_END ==
 			ProductCue.Cue.eStopPolicy;
-		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
-		if (!CActionPresentationTimeline::Resolve_CuePreviewSample(
-				Timing, 0.f, Sample))
-		{
-			return fClampedEffectSample;
-		}
-		return fOccurrenceOffsetSeconds + Sample.fCueWallStartSeconds +
-			fClampedEffectSample / Timing.fPlayRate;
+		f32_t fTimelineSeconds = 0.f;
+		return CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
+			Timing, fOccurrenceOffsetSeconds, fClampedEffectSample,
+			fTimelineSeconds) ? fTimelineSeconds : fClampedEffectSample;
 	}
 	if (!m_ValtanProductPreview.has_value())
 	{
@@ -28258,14 +28471,10 @@ f32_t Client::CEffect_Tool::Resolve_EffectTimelineTime(
 		m_ValtanProductPreview->Cue.iSourceEndMs) * 0.001f;
 	Timing.bHasCueSourceEnd =
 		m_ValtanProductPreview->Cue.bHasSourceEnd;
-	ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
-	if (!CActionPresentationTimeline::Resolve_CuePreviewSample(
-			Timing, 0.f, Sample))
-	{
-		return fClampedEffectSample;
-	}
-	return fClipTimelineOffsetSeconds + Sample.fCueWallStartSeconds +
-		fClampedEffectSample / Timing.fPlayRate;
+	f32_t fTimelineSeconds = 0.f;
+	return CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
+		Timing, fClipTimelineOffsetSeconds, fClampedEffectSample,
+		fTimelineSeconds) ? fTimelineSeconds : fClampedEffectSample;
 }
 
 bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
@@ -29786,6 +29995,12 @@ bool_t Client::CEffect_Tool::Try_ResolveSynchronizedAnimationTime(
 			0u != Clip.iAuthoringWallMs &&
 			fTimelineClipWallDurationSeconds >
 				fWallDurationSeconds + 0.0001f;
+		/* Use the model clock plus completed epochs, not the Tool's previous
+		   frame time, to recognize a finite loop's held final boundary. */
+		const f32_t fCurrentWallSeconds =
+			static_cast<f32_t>(m_iSynchronizedAnimationLoopEpoch) *
+				fWallDurationSeconds +
+			fCurrentSourceSeconds / Clip.fPlayRate;
 		if (CActionPresentationTimeline::
 			Should_ReleaseCompletedAnimationClock(
 				Clip.bHasExplicitLoopPolicy || bHasSourceWindow,
@@ -29793,16 +30008,14 @@ bool_t Client::CEffect_Tool::Try_ResolveSynchronizedAnimationTime(
 				iClip + 1u == m_SynchronizedAnimationClips.size(),
 				bAuthoredEndPoseHold,
 				pModel->Is_AnimPaused(), fCurrentSourceSeconds,
-				fSourceDurationSeconds))
+				fSourceDurationSeconds, fCurrentWallSeconds,
+				0u == Clip.iAuthoringWallMs ? 0.f :
+					fTimelineClipWallDurationSeconds))
 		{
 			/* Keep the model paused on its final pose, but let the Effect Tool
 			   wall clock finish an authored hold or final natural Effect tail. */
 			return false;
 		}
-		const f32_t fCurrentWallSeconds =
-			static_cast<f32_t>(m_iSynchronizedAnimationLoopEpoch) *
-				fWallDurationSeconds +
-			fCurrentSourceSeconds / Clip.fPlayRate;
 		fOutTimeSeconds += (std::min)(
 			fCurrentWallSeconds, fTimelineClipWallDurationSeconds);
     }
@@ -30213,6 +30426,7 @@ void Client::CEffect_Tool::Reset_DetailDraft()
 	m_bDetailDraftPortableRecipeReadOnly = false;
 	m_bDetailDraftCapabilityDeferred = false;
 	m_bDetailDraftPreviewPending = false;
+	m_bDetailDraftPreviewRestartRequested = false;
 	m_fDetailDraftPreviewDueSeconds = 0.0;
     m_strDetailStatus.clear();
 }
@@ -30324,6 +30538,30 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
 				m_ValtanProductPreview->Cue.iStageDurationMs;
 		m_fPreviewDurationSeconds = static_cast<f32_t>(
 			iProductTimelineDurationMs) * 0.001f;
+		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
+		Timing.fClipSourceStartSeconds = static_cast<f32_t>(
+			m_ValtanProductPreview->Clip.iSourceStartMs) * 0.001f;
+		Timing.fPlayRate = m_ValtanProductPreview->Clip.fPlayRate;
+		Timing.fCueSourceStartSeconds = static_cast<f32_t>(
+			m_ValtanProductPreview->Cue.iSourceStartMs) * 0.001f;
+		Timing.fCueSourceEndSeconds = static_cast<f32_t>(
+			m_ValtanProductPreview->Cue.iSourceEndMs) * 0.001f;
+		Timing.bHasCueSourceEnd =
+			m_ValtanProductPreview->Cue.bHasSourceEnd;
+		f32_t fCuePreviewDuration = 0.f;
+		if (CActionPresentationTimeline::Resolve_CuePreviewDuration(
+				Timing, static_cast<f32_t>(
+					m_ValtanProductPreview->iOwningClipTimelineOffsetMs) * 0.001f,
+				m_fPreviewDurationSeconds, fEffectDurationSeconds,
+				fCuePreviewDuration))
+		{
+			m_fPreviewDurationSeconds = fCuePreviewDuration;
+		}
+		else
+		{
+			m_strPreviewStatus =
+				"Valtan Effect preview duration rejected invalid cue timing; the pattern duration was preserved.";
+		}
 	}
 	else if (0u != m_iValtanWorldOwnerStageDurationMs)
 	{

@@ -275,7 +275,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -2967,7 +2967,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -7488,7 +7488,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -8610,7 +8610,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -10293,7 +10293,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -11328,7 +11328,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.30000001192092896,
         "emitterLoopCount": 1,
         "bursts": [
@@ -13761,7 +13761,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.30000001192092896,
         "emitterLoopCount": 3,
         "bursts": [
@@ -14890,7 +14890,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -15897,7 +15897,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 0.063222,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -16730,7 +16730,7 @@
     },
     {
       "id": "requested.20260827.warp.portal-rush.forward-mesh",
-      "displayName": "Requested 2026-08-27 / portal rush folded forward mesh after three rolls",
+      "displayName": "Requested / portal rush folded forward mesh after three rolls",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01:source.6653e9d4443d28016cf4:requested.20260827.warp.portal-rush.forward-mesh",
       "visible": true,

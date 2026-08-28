@@ -173,6 +173,12 @@ void Client::CBossTool::Update(const bool_t bToolVisible)
 	}
 	const VALTAN_PATTERN_AUDITION_SNAPSHOT& Audition =
 		CValtanPatternAuditionService::Get().Get_Snapshot();
+	if (CValtanPatternAuditionService::Get().Get_NextSnapshot().Is_Live() ||
+		CValtanPatternAuditionService::Get().Has_PendingNextCommand())
+	{
+		m_bRepeat = false;
+		m_strRepeatPatternId.clear();
+	}
 	if (CONSUMER_ID == Audition.strConsumerId &&
 		(VALTAN_PATTERN_AUDITION_STATE::REJECTED == Audition.eState ||
 		 VALTAN_PATTERN_AUDITION_STATE::ABORTED == Audition.eState))
@@ -185,6 +191,7 @@ void Client::CBossTool::Update(const bool_t bToolVisible)
 
 	if (!m_bRepeat || m_strRepeatPatternId.empty() ||
 		FlowSnapshot.Is_InFlight() ||
+		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
 		CONSUMER_ID != Audition.strConsumerId ||
 		m_strRepeatPatternId != Audition.strPatternId ||
 		VALTAN_PATTERN_AUDITION_STATE::COMPLETED != Audition.eState)
@@ -215,6 +222,7 @@ bool_t Client::CBossTool::Reload_Graph()
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
 	m_bGraphLoadAttempted = true;
+	m_bNextPatternInventoryReady = false;
 	VALTAN_PATTERN_TREE_VIEW StagedGraph;
 	std::string Status;
 	if (!CValtanPatternTree::Load(StagedGraph, Status))
@@ -226,6 +234,14 @@ bool_t Client::CBossTool::Reload_Graph()
 	std::string InventoryError;
 	if (!CValtanPatternTree::Build_ToolAuditionInventory(
 			StagedGraph, StagedAuditionInventory, InventoryError))
+	{
+		m_strStatus = "Graph reload failed: " + InventoryError;
+		return false;
+	}
+
+	std::vector<std::string> StagedNextPatternIds;
+	if (!CValtanPatternTree::Build_NextPatternInventory(
+			StagedGraph, StagedNextPatternIds, InventoryError))
 	{
 		m_strStatus = "Graph reload failed: " + InventoryError;
 		return false;
@@ -247,6 +263,8 @@ bool_t Client::CBossTool::Reload_Graph()
 
 	m_Graph = std::move(StagedGraph);
 	m_AuditionInventory = std::move(StagedAuditionInventory);
+	m_NextPatternIds = std::move(StagedNextPatternIds);
+	m_bNextPatternInventoryReady = true;
 	m_EncounterReference = bEncounterReady ?
 		std::move(StagedEncounter) : CEncounterPatternReference{};
 	m_CameraDocument = bCameraReady ?
@@ -325,7 +343,7 @@ bool_t Client::CBossTool::Reload_Graph()
 	}
 
 	m_strStatus =
-		"Boss graph reloaded with the canonical 28-pattern All Effects inventory.";
+		"Boss graph reloaded with the canonical 27-pattern All Effects inventory.";
 	return true;
 }
 
@@ -454,10 +472,10 @@ bool_t Client::CBossTool::Start_Flow(const bool_t bFromSelectedSlot)
 		m_strFlowStatus = "Select a Flow slot to use Start Here.";
 		return false;
 	}
-	if (CValtanPatternAuditionService::Get().Get_Snapshot().Is_InFlight())
+	if (CValtanPatternAuditionService::Get().Has_PlaybackOwnership())
 	{
 		m_strFlowStatus =
-			"Wait for the isolated Pattern audition to finish before starting Flow.";
+			"Wait for isolated playback and all Next commands to finish before starting Flow.";
 		return false;
 	}
 
@@ -639,7 +657,6 @@ void Client::CBossTool::Render_PatternFlowTab()
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
 		if (ImGui::Button("Retry Graph Load##flow"))
 			(void)Reload_Graph();
-		return;
 	}
 
 	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
@@ -698,9 +715,15 @@ void Client::CBossTool::Render_PatternFlowTab()
 	if (!m_FlowDocument.Is_Ready())
 	{
 		ImGui::TextWrapped("%s", m_strFlowStatus.c_str());
-		return;
 	}
 
+	/* Keep Next independent of draft admission and selection. Small windows
+	   scroll this parent; both right-side children retain usable minimums. */
+	const float fNextCardHeight = 280.f;
+	const float fColumnHeight = (std::max)(
+		480.f, ImGui::GetContentRegionAvail().y);
+	const float fSelectedHeight = fColumnHeight - fNextCardHeight -
+		ImGui::GetStyle().ItemSpacing.y;
 	if (ImGui::BeginTable(
 			"##bossPatternFlowLayout",
 			2,
@@ -714,11 +737,153 @@ void Client::CBossTool::Render_PatternFlowTab()
 			"Selected Slot", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
-		Render_FlowSlotList();
+		if (ImGui::BeginChild("##bossFlowSlotsPane", ImVec2(0.f, fColumnHeight)))
+		{
+			if (m_bGraphReady && m_FlowDocument.Is_Ready())
+				Render_FlowSlotList();
+			else
+				ImGui::TextWrapped("Flow slots are unavailable. Next runtime state is still visible on the right.");
+		}
+		ImGui::EndChild();
 		ImGui::TableSetColumnIndex(1);
-		Render_FlowSelectedSlot();
+		if (ImGui::BeginChild("##bossFlowSelectedPane", ImVec2(0.f, fSelectedHeight), true))
+		{
+			if (m_bGraphReady && m_FlowDocument.Is_Ready())
+				Render_FlowSelectedSlot();
+			else
+				ImGui::TextWrapped("%s", m_strFlowStatus.c_str());
+		}
+		ImGui::EndChild();
+		if (ImGui::BeginChild("##bossNextPatternCard", ImVec2(0.f, fNextCardHeight), true))
+			Render_NextPatternCard();
+		ImGui::EndChild();
 		ImGui::EndTable();
 	}
+}
+
+void Client::CBossTool::Render_NextPatternCard()
+{
+	CValtanPatternAuditionService& Service = CValtanPatternAuditionService::Get();
+	const VALTAN_PATTERN_AUDITION_SNAPSHOT& Current = Service.Get_Snapshot();
+	const VALTAN_NEXT_PATTERN_SNAPSHOT& Next = Service.Get_NextSnapshot();
+	const VALTAN_NEXT_PATTERN_COMMAND& Command = Service.Get_NextCommand();
+	const bool_t bFlowActive = CValtanPatternFlowService::Get().Get_Snapshot().Is_InFlight();
+	const auto LabelFor = [this](const std::string& Id)
+	{
+		const VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(Id);
+		return nullptr != pPattern && !pPattern->strDisplayName.empty() ?
+			pPattern->strDisplayName : (Id.empty() ? std::string("None") : Id);
+	};
+	ImGui::SeparatorText("Next Pattern (no reset)");
+	ImGui::TextWrapped("Current: %s | %s", LabelFor(Current.strPatternId).c_str(),
+		Describe_ValtanPatternAuditionState(Current.eState));
+	ImGui::TextWrapped("Next: %s | %s", LabelFor(Next.strPatternId).c_str(),
+		Describe_ValtanNextPatternState(Next.eState));
+	if (Next.Is_Live())
+	{
+		ImGui::TextWrapped("Reservation %u | epoch %u | predecessor %u -> %u",
+			Next.iRequestSequence, Next.iRoomAuditionEpoch,
+			Next.iPredecessorPatternSequence, Next.iExpectedPatternSequence);
+		if (Next.bReservationConsumed)
+			ImGui::TextWrapped("Reservation consumed: this occurrence is awaiting ACTIVE. Choose or cancel becomes available for the next reservation after it starts.");
+	}
+	if (!Next.strStatus.empty())
+		ImGui::TextWrapped("%s", Next.strStatus.c_str());
+	if (!Command.strStatus.empty())
+		ImGui::TextWrapped("Command: %s | %s", Describe_ValtanNextCommandState(Command.eState),
+			Command.strStatus.c_str());
+
+	const bool_t bCurrentReady =
+		VALTAN_PATTERN_AUDITION_STATE::QUEUED == Current.eState ||
+		VALTAN_PATTERN_AUDITION_STATE::ACTIVE == Current.eState ||
+		VALTAN_PATTERN_AUDITION_STATE::COMPLETED == Current.eState;
+	const bool_t bCanChoose = m_bNextPatternInventoryReady &&
+		!m_NextPatternIds.empty() && CNetworkManager::Get().Is_Connected() &&
+		bCurrentReady && 0u != Current.iRoomAuditionEpoch &&
+		0u != Current.iObservedPatternSequence && !bFlowActive &&
+		!(Next.Is_Live() && Next.bReservationConsumed) &&
+		!Service.Has_PendingNextCommand();
+	ImGui::BeginDisabled(!bCanChoose);
+	if (ImGui::Button("Next Pattern..."))
+		ImGui::OpenPopup("##chooseBossNextPattern");
+	ImGui::EndDisabled();
+	Render_NextPatternPicker();
+	ImGui::BeginDisabled(!Next.Is_Live() || Next.bReservationConsumed || Service.Has_PendingNextCommand());
+	if (ImGui::Button("Cancel Reservation"))
+		(void)Service.Clear_NextPattern(m_strNextPatternStatus);
+	ImGui::EndDisabled();
+	if (VALTAN_NEXT_COMMAND_STATE::UNCONFIRMED == Command.eState)
+	{
+		if (ImGui::Button("Retry Same Next Command"))
+			(void)Service.Retry_NextPatternCommand(m_strNextPatternStatus);
+	}
+	const HUD_PLAYER_STATE& Player = CCombatHUDViewModel::Get().Get_Player();
+	if (Next.Is_Live() && Player.isValid && 0u == Player.iCurrentHp)
+	{
+		ImGui::BeginDisabled(nullptr == m_pCommandSink);
+		if (ImGui::Button("Revive Player##next"))
+			(void)Request_RevivePlayer(m_strNextPatternStatus);
+		ImGui::EndDisabled();
+	}
+	if (!m_bNextPatternInventoryReady)
+	{
+		ImGui::TextWrapped("New selection is unavailable until the canonical graph reload succeeds. Reservation controls remain available.");
+		if (ImGui::Button("Reload Graph##next"))
+			(void)Reload_Graph();
+	}
+	ImGui::TextWrapped("%s", m_strNextPatternStatus.c_str());
+	ImGui::TextWrapped("Next preserves the current arena and turns Repeat off. Flow Save/Reload edits only the saved document.");
+}
+
+void Client::CBossTool::Render_NextPatternPicker()
+{
+	ImGui::SetNextWindowSize(ImVec2(470.f, 440.f), ImGuiCond_FirstUseEver);
+	if (!ImGui::BeginPopup("##chooseBossNextPattern"))
+		return;
+	ImGui::Text("Split-owned Product patterns: %zu", m_NextPatternIds.size());
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint("##bossNextPatternSearch", "Search name or stable pattern ID...",
+		m_NextPatternSearch.data(), m_NextPatternSearch.size());
+	const std::string Query = m_NextPatternSearch.data();
+	CValtanPatternAuditionService& Service = CValtanPatternAuditionService::Get();
+	const VALTAN_NEXT_PATTERN_SNAPSHOT& Next = Service.Get_NextSnapshot();
+	ImGui::BeginDisabled(!m_bNextPatternInventoryReady ||
+		Service.Has_PendingNextCommand() ||
+		(Next.Is_Live() && Next.bReservationConsumed) ||
+		CValtanPatternFlowService::Get().Get_Snapshot().Is_InFlight());
+	if (ImGui::BeginChild("##bossNextPatternChoices", ImVec2(0.f, 330.f), true))
+	{
+		for (const std::string& PatternId : m_NextPatternIds)
+		{
+			const VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(PatternId);
+			if (nullptr == pPattern || !pPattern->bAuthoringMasterManaged ||
+				(!Contains_CaseInsensitive(PatternId, Query) &&
+				 !Contains_CaseInsensitive(pPattern->strDisplayName, Query)))
+				continue;
+			const bool_t bCompatibilityManual =
+				"VALTAN_TRASH_CATCH_SUCCESS" == PatternId ||
+				"VALTAN_TRASH_CATCH_FAIL" == PatternId ||
+				"VALTAN_TRASH_CATCH_IF" == PatternId;
+			const std::string Label = (pPattern->strDisplayName.empty() ?
+				PatternId : pPattern->strDisplayName) +
+				(bCompatibilityManual ? " [compatibility manual]" : "");
+			ImGui::PushID(PatternId.c_str());
+			if (ImGui::Selectable(Label.c_str(), false))
+			{
+				/* Selecting Next owns this decision even if the Server rejects it. */
+				m_bRepeat = false;
+				m_strRepeatPatternId.clear();
+				(void)Service.Queue_NextPattern(CONSUMER_ID, BOSS_PLACEMENT_ID,
+					PatternId, m_strNextPatternStatus);
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::TextDisabled("%s", PatternId.c_str());
+			ImGui::PopID();
+		}
+	}
+	ImGui::EndChild();
+	ImGui::EndDisabled();
+	ImGui::EndPopup();
 }
 
 void Client::CBossTool::Render_FlowSlotList()
@@ -765,9 +930,15 @@ void Client::CBossTool::Render_FlowSlotList()
 				m_strSelectedFlowSlotId = Slot.strSlotId;
 			}
 			if (ImGui::IsItemHovered())
-				ImGui::SetTooltip(
-					"%s\nPattern: %s", Slot.strSlotId.c_str(),
-					Slot.strPatternId.c_str());
+			{
+				if (nullptr != pPattern)
+					ImGui::SetTooltip("Slot: %s\n%s", Slot.strSlotId.c_str(),
+						CValtanPatternTree::Build_PatternIdentitySummary(*pPattern).c_str());
+				else
+					ImGui::SetTooltip(
+						"Slot: %s\nPattern ID: %s (outside shared inventory)", Slot.strSlotId.c_str(),
+						Slot.strPatternId.c_str());
+			}
 			ImGui::PopID();
 		}
 		if (pFlow->Slots.empty())
@@ -880,13 +1051,14 @@ void Client::CBossTool::Render_AddPatternPopup()
 					m_strFlowStatus = Status;
 				}
 				if (ImGui::IsItemHovered())
-					ImGui::SetTooltip("%s", PatternId.c_str());
+					ImGui::SetTooltip("%s",
+						CValtanPatternTree::Build_PatternIdentitySummary(*pPattern).c_str());
 				ImGui::PopID();
 			}
 		};
 		ImGui::SeparatorText("CORE SERVER PATTERNS (8)");
 		RenderIds(m_AuditionInventory.CorePatternIds);
-		ImGui::SeparatorText("ANIMATOR PATTERNS (21)");
+		ImGui::SeparatorText("ANIMATOR PATTERNS (20)");
 		RenderIds(m_AuditionInventory.AnimatorPatternIds);
 	}
 	ImGui::EndChild();
@@ -927,6 +1099,8 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 			ImGui::SetTooltip(
 				"Slot: %s\nPattern: %s",
 				pSlot->strSlotId.c_str(), pSlot->strPatternId.c_str());
+		ImGui::TextWrapped("%s",
+			CValtanPatternTree::Build_PatternIdentitySummary(*pPattern).c_str());
 	}
 
 	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
@@ -939,7 +1113,8 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		Boss.isValid && Player.isValid && 0u != Player.iCurrentHp &&
 		Player.isCombatReady;
 	const bool_t bCanPreview = nullptr != pSlot && nullptr != pPattern &&
-		bRuntimeReady && !Playback.Is_InFlight() && !Isolated.Is_InFlight();
+		bRuntimeReady && !Playback.Is_InFlight() &&
+		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership();
 	ImGui::BeginDisabled(!bCanPreview);
 	if (ImGui::Button("Preview Isolated"))
 		(void)Preview_SelectedFlowSlotIsolated();
@@ -970,7 +1145,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		DraftValidationStatus);
 	const bool_t bCanStart = bRuntimeReady && bSavedClean && bDraftAdmitted &&
 		!pFlow->Slots.empty() && !Playback.Is_InFlight() &&
-		!Isolated.Is_InFlight();
+		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership();
 	ImGui::BeginDisabled(!bCanStart);
 	if (ImGui::Button("Start First"))
 		(void)Start_Flow(false);
@@ -1118,7 +1293,11 @@ void Client::CBossTool::Render_ActionBar()
 		nullptr != pSelected &&
 		CNetworkManager::Get().Is_Connected() && Boss.isValid &&
 		Player.isValid && 0u != Player.iCurrentHp && Player.isCombatReady &&
-		!Audition.Is_InFlight() && !FlowPlayback.Is_InFlight();
+		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership() &&
+		!FlowPlayback.Is_InFlight();
+	const bool_t bNextOwnsPlayback =
+		CValtanPatternAuditionService::Get().Get_NextSnapshot().Is_Live() ||
+		CValtanPatternAuditionService::Get().Has_PendingNextCommand();
 
 	ImGui::TextDisabled("Replay:");
 	ImGui::SameLine();
@@ -1133,7 +1312,7 @@ void Client::CBossTool::Render_ActionBar()
 		(void)Submit_SelectedPattern();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(nullptr == pSelected);
+	ImGui::BeginDisabled(nullptr == pSelected || bNextOwnsPlayback || FlowPlayback.Is_InFlight());
 	if (ImGui::Checkbox("Repeat", &m_bRepeat))
 	{
 		m_bReviveFeedbackPending = false;
@@ -1185,6 +1364,8 @@ void Client::CBossTool::Render_ActionBar()
 			Status = "Play unavailable: wait for the Server player to become combat-ready.";
 		else if (FlowPlayback.Is_InFlight())
 			Status = "Play unavailable while ordered Pattern Flow is active.";
+		else if (bNextOwnsPlayback)
+			Status = "Play and Repeat are locked while Next owns a reservation or unresolved command.";
 		else if (Audition.Is_InFlight() ||
 			(CONSUMER_ID == Audition.strConsumerId &&
 			 VALTAN_PATTERN_AUDITION_STATE::IDLE != Audition.eState))
@@ -1282,12 +1463,8 @@ void Client::CBossTool::Render_PatternList()
 			}
 			if (ImGui::IsItemHovered())
 			{
-				if (pPattern->strDisplayName.empty())
-					ImGui::SetTooltip("%s", pPattern->strPatternId.c_str());
-				else
-					ImGui::SetTooltip("%s\n%s",
-						pPattern->strDisplayName.c_str(),
-						pPattern->strPatternId.c_str());
+				ImGui::SetTooltip("%s",
+					CValtanPatternTree::Build_PatternIdentitySummary(*pPattern).c_str());
 			}
 			ImGui::PopID();
 		}
@@ -1299,7 +1476,7 @@ void Client::CBossTool::Render_PatternList()
 	}
 	if (HasVisible(m_AuditionInventory.AnimatorPatternIds))
 	{
-		ImGui::SeparatorText("ANIMATOR PATTERNS (21)");
+		ImGui::SeparatorText("ANIMATOR PATTERNS (20)");
 		RenderPatternIds(m_AuditionInventory.AnimatorPatternIds);
 	}
 	if (0u == iVisiblePatternCount)
@@ -1324,6 +1501,8 @@ void Client::CBossTool::Render_SelectedPattern()
 			pPattern->strDisplayName.c_str());
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("%s", pPattern->strPatternId.c_str());
+	ImGui::TextWrapped("%s",
+		CValtanPatternTree::Build_PatternIdentitySummary(*pPattern).c_str());
 	if (0 != pPattern->iTriggerHealthBar)
 	{
 		ImGui::Text(
@@ -1335,9 +1514,9 @@ void Client::CBossTool::Render_SelectedPattern()
 	else
 	{
 		ImGui::TextDisabled(
-			"Phase %u-%u | Server-selected pattern",
+			"Runtime phase %u-%u | Selection mode: %s",
 			pPattern->iMinimumPhase,
-			pPattern->iMaximumPhase);
+			pPattern->iMaximumPhase, pPattern->strSelectionMode.c_str());
 	}
 	const HUD_BOSS_STATE& LiveBoss = CCombatHUDViewModel::Get().Get_Boss();
 	if (LiveBoss.isValid &&

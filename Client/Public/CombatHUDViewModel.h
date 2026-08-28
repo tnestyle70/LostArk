@@ -119,6 +119,16 @@ namespace Client
 		float fMessageX = 0.f, fMessageY = 0.f, fMessageWidth = 0.f, fMessageHeight = 0.f;
 	};
 
+	/* Reference-resolution rect for the Raid Clear headline CMainApp::RenderRaidClearText() draws
+	after EndFrame() -- same reason/split as HUD_DEADSCENE_TEXT_RECTS above.
+	CLevel_ValtanArena::Update_RaidClear() fills this from its own m_pRaidClearView
+	(Get_SlotRect("RaidClear_TitleTextBox")) every frame the overlay is showing. */
+	struct HUD_RAIDCLEAR_TEXT_RECTS
+	{
+		bool isValid = false;
+		float fTitleX = 0.f, fTitleY = 0.f, fTitleWidth = 0.f, fTitleHeight = 0.f;
+	};
+
 	class CCombatHUDViewModel final
 	{
 	public:
@@ -170,6 +180,15 @@ namespace Client
 		const HUD_DEADSCENE_TEXT_RECTS& Get_DeadSceneTextRects() const
 		{
 			return m_DeadSceneTextRects;
+		}
+
+		void Set_RaidClearTextRects(const HUD_RAIDCLEAR_TEXT_RECTS& rects)
+		{
+			m_RaidClearTextRects = rects;
+		}
+		const HUD_RAIDCLEAR_TEXT_RECTS& Get_RaidClearTextRects() const
+		{
+			return m_RaidClearTextRects;
 		}
 
 		/* Debug-only inventory slice. CClientReplication pushes its
@@ -251,6 +270,7 @@ namespace Client
 		std::uint32_t m_iEstherGaugeMaximum = 0;
 		HUD_ESTHER_CUTIN_REQUEST m_EstherCutinRequest;
 		HUD_DEADSCENE_TEXT_RECTS m_DeadSceneTextRects;
+		HUD_RAIDCLEAR_TEXT_RECTS m_RaidClearTextRects;
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
 		std::string m_strStatus;
 	};

@@ -27,6 +27,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EffectRenderContractHarness
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ActionPresentationTimelineHarness", "Tools\ActionPresentationTimelineHarness\Default\ActionPresentationTimelineHarness.vcxproj", "{FE2F0209-900F-45C0-8590-CA8660D4DF10}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ValtanPatternAuditionServiceHarness", "Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj", "{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -121,6 +123,12 @@ Global
 		{FE2F0209-900F-45C0-8590-CA8660D4DF10}.Release|x64.ActiveCfg = Release|x64
 		{FE2F0209-900F-45C0-8590-CA8660D4DF10}.Release|x64.Build.0 = Release|x64
 		{FE2F0209-900F-45C0-8590-CA8660D4DF10}.Release|x86.ActiveCfg = Release|x64
+		{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}.Debug|x64.ActiveCfg = Debug|x64
+		{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}.Debug|x64.Build.0 = Debug|x64
+		{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}.Debug|x86.ActiveCfg = Debug|x64
+		{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}.Release|x64.ActiveCfg = Release|x64
+		{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}.Release|x64.Build.0 = Release|x64
+		{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

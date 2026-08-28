@@ -262,7 +262,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertNotIn("iPatternStageIndex", find_live)
         self.assertIn("No pattern matches this search.", self.boss_cpp)
 
-    def test_selector_is_exactly_the_all_effects_eight_plus_twenty(self) -> None:
+    def test_selector_is_exactly_the_all_effects_eight_plus_nineteen(self) -> None:
         inventory = function_body(
             self.tree_cpp,
             "bool_t Client::CValtanPatternTree::Build_ToolAuditionInventory(",
@@ -291,9 +291,9 @@ class ValtanBossToolContractTests(unittest.TestCase):
             for row in self.gameplay["decisionModel"]["manualAuditions"]
         ]
         visible_ids = EXPECTED_CORE_PATTERN_IDS + manual_ids
-        self.assertEqual(21, len(manual_ids))
-        self.assertEqual(29, len(visible_ids))
-        self.assertEqual(29, len(set(visible_ids)))
+        self.assertEqual(20, len(manual_ids))
+        self.assertEqual(28, len(visible_ids))
+        self.assertEqual(28, len(set(visible_ids)))
         for excluded in (
             "VALTAN_SWING",
             "VALTAN_FIST_IN_OUT",
@@ -309,7 +309,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "m_AuditionInventory.CorePatternIds",
             "m_AuditionInventory.AnimatorPatternIds",
             '"CORE SERVER PATTERNS (8)"',
-            '"ANIMATOR PATTERNS (21)"',
+            '"ANIMATOR PATTERNS (20)"',
             "Find_AuditionPattern",
         ):
             self.assertIn(marker, pattern_list)
@@ -323,6 +323,34 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "CValtanPatternTree::Build_ToolAuditionInventory",
             self.effect_cpp,
         )
+
+    def test_selected_identity_reuses_the_shared_joined_pattern_summary(self) -> None:
+        self.assertIn("static std::string Build_PatternIdentitySummary(", self.tree_h)
+        summary = function_body(
+            self.tree_cpp,
+            "std::string Client::CValtanPatternTree::Build_PatternIdentitySummary(",
+        )
+        for field in (
+            "Pattern.strPatternId", "Pattern.iAuthoringPhase",
+            "Pattern.iMinimumPhase", "Pattern.iMaximumPhase",
+            "Stage.ClipOccurrences", "Clip.iSourceStartMs", "Clip.iPlayMs",
+            "Clip.fPlayRate", "Clip.iAuthoringWallMs",
+        ):
+            self.assertIn(field, summary)
+        self.assertNotIn("strDisplayName", summary)
+        self.assertNotIn("RuntimeClipNames", summary)
+        self.assertNotIn("std::sort", summary)
+        for signature in (
+            "void Client::CBossTool::Render_SelectedPattern()",
+            "void Client::CBossTool::Render_PatternList()",
+        ):
+            with self.subTest(signature=signature):
+                selected = function_body(self.boss_cpp, signature)
+                self.assertIn(
+                    "CValtanPatternTree::Build_PatternIdentitySummary(*pPattern)",
+                    selected,
+                )
+                self.assertIn("pPattern->strDisplayName", selected)
 
     def test_new_core_rows_keep_the_exact_server_audition_tuples(self) -> None:
         scripted_ids = self.gameplay["decisionModel"]["scriptedSequence"][
@@ -548,6 +576,76 @@ class ValtanBossToolContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, self.boss_cpp)
         self.assertNotIn('"runtime matched"', self.boss_cpp)
+
+    def test_next_picker_is_independent_of_saved_flow_and_turns_repeat_off(self) -> None:
+        picker = function_body(self.boss_cpp, "void Client::CBossTool::Render_NextPatternPicker()")
+        for marker in (
+            "m_NextPatternIds", "m_NextPatternSearch", "Contains_CaseInsensitive",
+            "strDisplayName", "PatternId", "bAuthoringMasterManaged",
+            "Queue_NextPattern", "compatibility manual",
+        ):
+            self.assertIn(marker, picker)
+        for forbidden in ("Add_Slot", "m_FlowDocument", ".Submit(", "Send_", "CNetworkManager"):
+            self.assertNotIn(forbidden, picker)
+        self.assertLess(picker.index("m_bRepeat = false"), picker.index("Queue_NextPattern"))
+        self.assertLess(picker.index("m_strRepeatPatternId.clear()"), picker.index("Queue_NextPattern"))
+        admitted = function_body(self.boss_cpp, "std::vector<std::string> Client::CBossTool::Build_AdmittedPatternIds() const")
+        self.assertNotIn("m_NextPatternIds", admitted)
+        self.assertIn("m_AuditionInventory", admitted)
+
+    def test_next_card_survives_graph_flow_and_selected_slot_failures(self) -> None:
+        layout = function_body(self.boss_cpp, "void Client::CBossTool::Render_PatternFlowTab()")
+        self.assertNotIn("return;", layout)
+        self.assertIn("fColumnHeight", layout)
+        self.assertLess(layout.index("##bossFlowSelectedPane"), layout.index("##bossNextPatternCard"))
+        self.assertIn("ImGui::EndChild();", layout[layout.index("Render_FlowSelectedSlot();"):layout.index("##bossNextPatternCard")])
+        card = function_body(self.boss_cpp, "void Client::CBossTool::Render_NextPatternCard()")
+        for marker in ("Get_Snapshot", "Get_NextSnapshot", "Get_NextCommand",
+                       "Clear_NextPattern", "Retry_NextPatternCommand", "UNCONFIRMED"):
+            self.assertIn(marker, card)
+        self.assertIn("!(Next.Is_Live() && Next.bReservationConsumed)", card)
+        self.assertIn("!Next.Is_Live() || Next.bReservationConsumed ||", card)
+        picker = function_body(self.boss_cpp, "void Client::CBossTool::Render_NextPatternPicker()")
+        self.assertIn("(Next.Is_Live() && Next.bReservationConsumed)", picker)
+        for forbidden in ("m_FlowDocument", "Find_SelectedFlowSlot", "Is_Dirty", "Has_ExternalConflict"):
+            self.assertNotIn(forbidden, card)
+        reload_graph = function_body(self.boss_cpp, "bool_t Client::CBossTool::Reload_Graph()")
+        self.assertLess(reload_graph.index("m_bNextPatternInventoryReady = false"), reload_graph.index("CValtanPatternTree::Load("))
+        self.assertLess(reload_graph.index("Build_NextPatternInventory("), reload_graph.index("m_Graph ="))
+        for function in ("Reload_FlowDocument", "Save_FlowDocument"):
+            body = function_body(self.boss_cpp, "bool_t Client::CBossTool::" + function + "()")
+            for forbidden in ("Queue_NextPattern", "Clear_NextPattern", ".Submit(", "Send_"):
+                self.assertNotIn(forbidden, body)
+
+    def test_next_ownership_guards_repeat_flow_and_other_tools(self) -> None:
+        for signature in (
+            "void Client::CBossTool::Update(const bool_t bToolVisible)",
+            "void Client::CBossTool::Render_ActionBar()",
+            "void Client::CBossTool::Render_FlowSelectedSlot()",
+            "bool_t Client::CBossTool::Start_Flow(const bool_t bFromSelectedSlot)",
+        ):
+            self.assertIn("Has_PlaybackOwnership", function_body(self.boss_cpp, signature))
+        action_bar = function_body(self.boss_cpp, "void Client::CBossTool::Render_ActionBar()")
+        repeat_begin = action_bar.index('ImGui::Checkbox("Repeat"')
+        self.assertIn("bNextOwnsPlayback", action_bar[:repeat_begin])
+        service = (ROOT / "Client/Private/ValtanPatternAuditionService.cpp").read_text(encoding="utf-8")
+        submit = function_body(service, "bool Client::CValtanPatternAuditionService::Submit(")
+        self.assertIn("Has_PlaybackOwnership() || Is_FlowInFlight()", submit)
+        flow = (ROOT / "Client/Private/ValtanPatternFlowService.cpp").read_text(encoding="utf-8")
+        self.assertIn("Has_PlaybackOwnership", function_body(flow, "bool_t Client::CValtanPatternFlowService::Start("))
+        self.assertIn("CValtanPatternAuditionService::Get().Update();", self.main_cpp)
+
+    def test_next_wire_stays_behind_single_shared_service_queue(self) -> None:
+        send = function_body(self.network_cpp, "bool CNetworkManager::Send_ValtanNextPatternCommand(")
+        self.assertIn("Write_Message(payloadWriter, message)", send)
+        for operation in ("PLAY_PATTERN_ID", "QUEUE_NEXT_PATTERN_ID", "CLEAR_NEXT_PATTERN_ID"):
+            self.assertIn("VALTAN_AUDITION_OPERATION::" + operation + " == result.eOperation", self.network_cpp)
+        service = (ROOT / "Client/Private/ValtanPatternAuditionService.cpp").read_text(encoding="utf-8")
+        update = function_body(service, "void Client::CValtanPatternAuditionService::Update()")
+        self.assertLess(update.index("if (!Is_Connected() || bWorldChanged)"), update.index("while (Consume_Result(Result))"))
+        retry = function_body(service, "bool Client::CValtanPatternAuditionService::Retry_NextPatternCommand(")
+        self.assertIn("Send_Request(m_NextCommand.Request)", retry)
+        self.assertNotIn("Advance_RequestSequence", retry)
 
     def test_server_holds_completed_stable_id_pattern_until_next_request(self) -> None:
         completion = function_body(

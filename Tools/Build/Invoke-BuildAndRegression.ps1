@@ -16,6 +16,8 @@ $characterSelectIsolationHarnessExe = Join-Path $repoRoot `
     "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
 $actionPresentationTimelineHarnessExe = Join-Path $repoRoot `
     "Tools\ActionPresentationTimelineHarness\Bin\$Configuration\ActionPresentationTimelineHarness.exe"
+$valtanAuditionServiceHarnessExe = Join-Path $repoRoot `
+    "Tools\ValtanPatternAuditionServiceHarness\Bin\$Configuration\ValtanPatternAuditionServiceHarness.exe"
 $effectRenderHarnessExe = Join-Path $repoRoot `
     "Tools\EffectRenderContractHarness\Bin\$Configuration\EffectRenderContractHarness.exe"
 $pointLightFalloffHarnessExe = Join-Path $repoRoot `
@@ -49,7 +51,7 @@ function Invoke-MSBuildProject {
 
     & $MSBuild $Project /m /nodeReuse:false /t:Build `
         "/p:Configuration=$Configuration" /p:Platform=x64 /v:minimal
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw "Build failed: $Project"
     }
 }
@@ -61,6 +63,7 @@ function Assert-RuntimeLayout {
         $valtanHarnessExe,
         $characterSelectIsolationHarnessExe,
         $actionPresentationTimelineHarnessExe,
+        $valtanAuditionServiceHarnessExe,
         $effectRenderHarnessExe,
         $pointLightFalloffHarnessExe,
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_Deferred.hlsl'),
@@ -115,12 +118,14 @@ try {
         $msbuild = Resolve-MSBuild
         Invoke-MSBuildProject $msbuild 'Engine\Default\Engine.vcxproj'
         & cmd /c ".\UpdateLib.bat $Configuration"
-        if ($LASTEXITCODE -ne 0) {
+        if ($global:LASTEXITCODE -ne 0) {
             throw 'UpdateLib.bat failed.'
         }
         Invoke-MSBuildProject $msbuild 'Shared\Default\Shared.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\ValtanFourPlayerHarness\Default\ValtanFourPlayerHarness.vcxproj'
         Invoke-MSBuildProject $msbuild `
@@ -135,25 +140,28 @@ try {
             'Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj'
     }
 
-    $LASTEXITCODE = 0
+    $global:LASTEXITCODE = 0
     & '.\Tools\Build\Test-CompiledShaderClosure.ps1' `
         -Configuration $Configuration `
         -RepositoryRoot $repoRoot
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw 'Compiled shader closure validation failed.'
     }
 
     Assert-RuntimeLayout
 
-	$LASTEXITCODE = 0
+    & (Join-Path $repoRoot 'Tools\Build\Test-NativeHarnessExitPropagation.ps1') `
+        -Configuration $Configuration
+
+	$global:LASTEXITCODE = 0
 	& '.\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1' `
 		-Mode ValidateV2
-	if ($LASTEXITCODE -ne 0) {
+	if ($global:LASTEXITCODE -ne 0) {
 		throw 'Valtan split pattern master validation failed.'
 	}
-	$LASTEXITCODE = 0
+	$global:LASTEXITCODE = 0
 	& '.\Tools\ValtanPipeline\Test-ValtanPatternMaster.ps1'
-	if ($LASTEXITCODE -ne 0) {
+	if ($global:LASTEXITCODE -ne 0) {
 		throw 'Valtan split pattern master focused harness failed.'
 	}
 	Invoke-PythonGate `
@@ -163,30 +171,43 @@ try {
 		'Valtan Effect Tool master tree gate' `
 		@('Tools/EffectPipeline/test_effect_tool_valtan_saved_rows.py')
 
-    $LASTEXITCODE = 0
+    $global:LASTEXITCODE = 0
     & '.\Tools\GameplayPipeline\Publish-BalanceRuntimeSet.ps1' `
         -Mode Validate
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw 'Gameplay balance validation failed.'
     }
 
-    $LASTEXITCODE = 0
+    $global:LASTEXITCODE = 0
     & '.\Tools\NavigationPipeline\Publish-ServerNavigation.ps1' `
         -Mode Validate
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw 'Server navigation validation failed.'
     }
 
-    $LASTEXITCODE = 0
+    $global:LASTEXITCODE = 0
+    & '.\Tools\WorldPipeline\Split-ValtanIndependentWallGroups.ps1' `
+        -Mode CheckNavigation
+    if ($global:LASTEXITCODE -ne 0) {
+        throw 'Valtan wall navigation footprint validation failed.'
+    }
+    $global:LASTEXITCODE = 0
+    & '.\Tools\WorldPipeline\Publish-ValtanWorldDestruction.ps1' `
+        -Mode Validate
+    if ($global:LASTEXITCODE -ne 0) {
+        throw 'Valtan world destruction validation failed.'
+    }
+
+    $global:LASTEXITCODE = 0
     & '.\Tools\EffectPipeline\Validate-EffectSources.ps1' `
         -RepositoryRoot $repoRoot
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw 'Effect source validation failed.'
     }
 
-    $LASTEXITCODE = 0
+    $global:LASTEXITCODE = 0
     & '.\Tools\EffectPipeline\Sync-EffectDataProject.ps1' -Check
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw 'Effect project registration validation failed.'
     }
 
@@ -204,13 +225,16 @@ try {
         'Valtan floor crack emissive runtime contract gate' `
         @('Tools/LevelPlacementExtractor/test_valtan_floor_emissive_contract.py')
     Invoke-PythonGate `
+        'Valtan body collision and model composition gate' `
+        @('Tools/EffectPipeline/test_valtan_model_view_composition.py')
+    Invoke-PythonGate `
         'Ground-target preview prototype scope gate' `
         @('Tools/GameplayPipeline/test_ground_target_preview_prototype_scope.py')
 
-    $LASTEXITCODE = 0
+    $global:LASTEXITCODE = 0
     & '.\Tools\RenderingPipeline\Publish-RenderingProfiles.ps1' `
         -Mode Validate
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw 'Rendering profile validation failed.'
     }
     Invoke-PythonGate `
@@ -220,12 +244,17 @@ try {
     $protocolHarness = Join-Path $repoRoot `
         "Tools\NetworkProtocolHarness\Bin\$Configuration\NetworkProtocolHarness.exe"
     & $protocolHarness
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw 'NetworkProtocolHarness failed.'
     }
 
+    & $valtanAuditionServiceHarnessExe
+    if ($global:LASTEXITCODE -ne 0) {
+        throw 'ValtanPatternAuditionServiceHarness failed.'
+    }
+
     & $serverExe --contract-test
-    if ($LASTEXITCODE -ne 0) {
+    if ($global:LASTEXITCODE -ne 0) {
         throw 'Server gameplay contract tests failed.'
     }
 
@@ -240,6 +269,10 @@ try {
     & (Join-Path $repoRoot `
         'Tools\ActionPresentationTimelineHarness\Run-ActionPresentationTimelineHarness.ps1') `
         -Configuration $Configuration
+
+    & (Join-Path $repoRoot `
+        'Tools\EffectRenderContractHarness\Test-EffectRenderResourceRoot.ps1') `
+        -Configuration $Configuration -ResourceRoot $runtimeResourceRoot
 
     & (Join-Path $repoRoot `
         'Tools\EffectRenderContractHarness\Run-EffectRenderContractHarness.ps1') `

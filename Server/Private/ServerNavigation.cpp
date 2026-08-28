@@ -498,37 +498,125 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	const float endX,
 	const float endZ) const
 {
-	constexpr float LOS_HEIGHT_TOLERANCE = 1.f;
-	SERVER_NAV_POINT startPoint{};
-	SERVER_NAV_POINT endPoint{};
-	if (!Sample_Position(startX, startZ, startPoint) ||
-		!Sample_Position(endX, endZ, endPoint))
+	constexpr double LOS_HEIGHT_TOLERANCE = 1.000001;
+	constexpr double CORNER_TOLERANCE = 0.000000000001;
+	if (!Is_PointWalkableExact(startX, startZ) ||
+		!Is_PointWalkableExact(endX, endZ))
 	{
 		return false;
 	}
-	const float deltaX = endX - startX;
-	const float deltaZ = endZ - startZ;
-	const float distance = std::hypot(deltaX, deltaZ);
-	const int stepCount =
-		1 + static_cast<int>(distance / (m_fCellSize * 0.25f));
-	for (int step = 1; step < stepCount; ++step)
+	if (startX == endX && startZ == endZ)
+		return true;
+
+	// Traverse every crossed grid cell. Fixed-distance samples can skip the
+	// arbitrarily short part of a segment that clips a blocked cell's corner.
+	// Keep the same grid-coordinate rounding as Is_PointWalkableExact.
+	const double gridStartX = (startX - m_fOriginX) / m_fCellSize;
+	const double gridStartZ = (startZ - m_fOriginZ) / m_fCellSize;
+	const double gridEndX = (endX - m_fOriginX) / m_fCellSize;
+	const double gridEndZ = (endZ - m_fOriginZ) / m_fCellSize;
+	int cellX = static_cast<int>(std::floor(gridStartX));
+	int cellZ = static_cast<int>(std::floor(gridStartZ));
+	const int endCellX = static_cast<int>(std::floor(gridEndX));
+	const int endCellZ = static_cast<int>(std::floor(gridEndZ));
+	const double deltaX = gridEndX - gridStartX;
+	const double deltaZ = gridEndZ - gridStartZ;
+	const int stepX = (deltaX > 0.0) - (deltaX < 0.0);
+	const int stepZ = (deltaZ > 0.0) - (deltaZ < 0.0);
+	const double infinity = (std::numeric_limits<double>::infinity)();
+	const double deltaRatioX = 0 == stepX ? infinity : std::abs(1.0 / deltaX);
+	const double deltaRatioZ = 0 == stepZ ? infinity : std::abs(1.0 / deltaZ);
+	double nextRatioX = 0 == stepX ? infinity :
+		(static_cast<double>(cellX + (stepX > 0 ? 1 : 0)) - gridStartX) / deltaX;
+	double nextRatioZ = 0 == stepZ ? infinity :
+		(static_cast<double>(cellZ + (stepZ > 0 ? 1 : 0)) - gridStartZ) / deltaZ;
+	const double startHeight = m_Heights[cellZ * m_iWidth + cellX];
+	const double endHeight = m_Heights[endCellZ * m_iWidth + endCellX];
+	const bool followsXBoundary = 0 == stepX && gridStartX == std::floor(gridStartX);
+	const bool followsZBoundary = 0 == stepZ && gridStartZ == std::floor(gridStartZ);
+	const auto resolveExactCell = [&](const int x, const int z, std::uint32_t& index)
 	{
-		const float ratio =
-			static_cast<float>(step) / static_cast<float>(stepCount);
-		SERVER_NAV_POINT samplePoint{};
-		if (!Sample_Position(
-			startX + deltaX * ratio,
-			startZ + deltaZ * ratio,
-			samplePoint))
+		if (x < 0 || z < 0 || x >= static_cast<int>(m_iWidth) ||
+			z >= static_cast<int>(m_iHeight))
 		{
 			return false;
 		}
-		const float expectedHeight =
-			startPoint.y + (endPoint.y - startPoint.y) * ratio;
-		if (std::abs(samplePoint.y - expectedHeight) > LOS_HEIGHT_TOLERANCE)
+		index = static_cast<std::uint32_t>(z) * m_iWidth +
+			static_cast<std::uint32_t>(x);
+		return Is_CellWalkable(index);
+	};
+	const auto heightMatches = [&](const std::uint32_t index, const double ratio)
+	{
+		const double expectedHeight = startHeight + (endHeight - startHeight) * ratio;
+		return std::abs(m_Heights[index] - expectedHeight) <= LOS_HEIGHT_TOLERANCE;
+	};
+	double enteredRatio = 0.0;
+	const std::uint64_t maximumVisits =
+		static_cast<std::uint64_t>(m_iWidth) + m_iHeight + 1u;
+	for (std::uint64_t visit = 0u; visit < maximumVisits; ++visit)
+	{
+		std::uint32_t current = 0u;
+		const double exitedRatio = (std::min)(1.0, (std::min)(nextRatioX, nextRatioZ));
+		if (!resolveExactCell(cellX, cellZ, current) ||
+			!heightMatches(current, enteredRatio) || !heightMatches(current, exitedRatio))
+		{
 			return false;
+		}
+		// A segment along an internal grid edge also touches the cell on its
+		// other side. Do not turn that edge into a shortcut beside a live wall.
+		for (const auto& neighbor : {
+			std::pair{ followsXBoundary && cellX > 0, current - 1u },
+			std::pair{ followsZBoundary && cellZ > 0, current - m_iWidth } })
+		{
+			if (neighbor.first &&
+				(!Is_CellTraversalAllowed(current, neighbor.second) ||
+				 !heightMatches(neighbor.second, enteredRatio) ||
+				 !heightMatches(neighbor.second, exitedRatio)))
+			{
+				return false;
+			}
+		}
+		if (cellX == endCellX && cellZ == endCellZ)
+			return true;
+
+		const bool crossesX = nextRatioX <= nextRatioZ + CORNER_TOLERANCE;
+		const bool crossesZ = nextRatioZ <= nextRatioX + CORNER_TOLERANCE;
+		std::uint32_t next = 0u;
+		if (!resolveExactCell(
+			cellX + (crossesX ? stepX : 0),
+			cellZ + (crossesZ ? stepZ : 0), next) ||
+			!Is_CellTraversalAllowed(current, next))
+		{
+			return false;
+		}
+		if (crossesX && crossesZ)
+		{
+			std::uint32_t sideX = 0u;
+			std::uint32_t sideZ = 0u;
+			if (!resolveExactCell(cellX + stepX, cellZ, sideX) ||
+				!resolveExactCell(cellX, cellZ + stepZ, sideZ) ||
+				!Is_CellTraversalAllowed(current, sideX) ||
+				!Is_CellTraversalAllowed(current, sideZ) ||
+				!Is_CellTraversalAllowed(sideX, next) ||
+				!Is_CellTraversalAllowed(sideZ, next) ||
+				!heightMatches(sideX, exitedRatio) || !heightMatches(sideZ, exitedRatio))
+			{
+				return false;
+			}
+		}
+		if (crossesX)
+		{
+			cellX += stepX;
+			nextRatioX += deltaRatioX;
+		}
+		if (crossesZ)
+		{
+			cellZ += stepZ;
+			nextRatioZ += deltaRatioZ;
+		}
+		enteredRatio = exitedRatio;
 	}
-	return true;
+	return false;
 }
 
 bool LostArk::Server::CServerNavigation::Find_Path(

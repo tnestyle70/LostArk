@@ -2555,31 +2555,13 @@
     },
     {
       "actionId": "valtan.sequence.front-back-front.step-01",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.sequence.front-back-front.step-01.clip-01",
-          "clip": "mesh_att_battle_19_01",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 2700,
-          "playRate": 1.0,
-          "loop": false
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.sequence.front-back-front.step-02",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.sequence.front-back-front.step-02.clip-01",
-          "clip": "mesh_att_battle_2_03",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 2067,
-          "playRate": 1.0,
-          "loop": false
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.sequence.warp.step-01",
@@ -3446,6 +3428,108 @@
           "playMs": 0,
           "playRate": 1.0,
           "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.sequence.center-trash-rush-if.catch-counter",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.catch-counter.clip-01",
+          "clip": "mesh_att_battle_13_05-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 200,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.sequence.center-trash-rush-if.catch-pre-impact",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.catch-pre-impact.clip-01",
+          "clip": "mesh_att_battle_13_05-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 200,
+          "playMs": 1300,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.sequence.center-trash-rush-if.catch-slam",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.catch-slam.clip-01",
+          "clip": "mesh_att_battle_13_05-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 1500,
+          "playMs": 1500,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.sequence.center-trash-rush-if.execute-tail",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.execute-tail.clip-01",
+          "clip": "mesh_att_battle_13_05-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 1500,
+          "playMs": 1500,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.sequence.center-trash-rush-if.rush-miss",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.rush-miss.clip-01",
+          "clip": "mesh_att_battle_13_05-2",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.sequence.center-trash-rush-if.groggy",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.groggy.clip-01",
+          "clip": "mesh_abn_groggy_1_start",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1833,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.groggy.clip-02",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 600,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.groggy.clip-03",
+          "clip": "mesh_abn_groggy_1_end",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
         }
       ]
     },

@@ -54,8 +54,8 @@ if ($Mode -in @('Validate', 'ValidateV2', 'MigrateV2Preview')) {
         $command += @('migrate-preview', '--output', $resolvedV2Output)
     }
     & python @command
-    if ($LASTEXITCODE -ne 0) {
-        throw "Valtan v2 pipeline failed with exit code $LASTEXITCODE."
+    if ($global:LASTEXITCODE -ne 0) {
+        throw "Valtan v2 pipeline failed with exit code $global:LASTEXITCODE."
     }
     return
 }
@@ -577,8 +577,8 @@ if ($Mode -eq 'PublishV2') {
         $projectCommand = @($pipeline, '--repository-root', $repoRoot,
             'project-products', '--output-root', $projectionRoot)
         $projectText = (& python @projectCommand | Out-String).Trim()
-        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($projectText)) {
-            throw "Valtan v2 Product projection failed with exit code $LASTEXITCODE."
+        if ($global:LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($projectText)) {
+            throw "Valtan v2 Product projection failed with exit code $global:LASTEXITCODE."
         }
         $projectResult = $projectText | ConvertFrom-Json
         if (-not [bool]$projectResult.ok -or
@@ -608,7 +608,7 @@ if ($Mode -eq 'PublishV2') {
             'source-manifest', '--authoring-root',
             (Join-Path $repoRoot 'Intermediate\ValtanTuningAuthoring'))
         $manifestText = (& python @manifestCommand | Out-String).Trim()
-        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($manifestText)) {
+        if ($global:LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($manifestText)) {
             throw 'Valtan source CAS query failed before Product commit.'
         }
         $manifestResult = $manifestText | ConvertFrom-Json

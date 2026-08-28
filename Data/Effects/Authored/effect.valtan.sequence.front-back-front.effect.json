@@ -289,7 +289,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 2.25,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -1316,7 +1316,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.45,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.209999993,
         "emitterLoopCount": 1,
         "bursts": [
@@ -2395,7 +2395,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.45,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.209999993,
         "emitterLoopCount": 1,
         "bursts": [
@@ -3474,7 +3474,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 1.35,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -4545,7 +4545,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 1.35,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.209999993,
         "emitterLoopCount": 1,
         "bursts": [
@@ -7158,7 +7158,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.blast-01.cyan-burst",
-      "displayName": "Requested 2026-08-27 / front-back-front large cyan sprite burst 1",
+      "displayName": "Requested / front-back-front large cyan sprite burst 1",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.front-back-front.active.clip-01:source.f8d777d1df9ff25e7865:requested.20260827.front-back-front.blast-01.cyan-burst",
       "visible": true,
@@ -7433,7 +7433,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.45,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -8237,7 +8237,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.blast-01.vertical-spark",
-      "displayName": "Requested 2026-08-27 / front-back-front vertical fallback sprite 1",
+      "displayName": "Requested / front-back-front vertical fallback sprite 1",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.front-back-front.active.clip-01:source.fc574dec0694b30d912b:requested.20260827.front-back-front.blast-01.vertical-spark",
       "visible": true,
@@ -8504,7 +8504,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.45,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.209999993,
         "emitterLoopCount": 1,
         "bursts": [
@@ -9362,7 +9362,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.blast-02.cyan-burst",
-      "displayName": "Requested 2026-08-27 / front-back-front large cyan sprite burst 2",
+      "displayName": "Requested / front-back-front large cyan sprite burst 2",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.front-back-front.active.clip-01:source.f8d777d1df9ff25e7865:requested.20260827.front-back-front.blast-02.cyan-burst",
       "visible": true,
@@ -9637,7 +9637,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 1.35,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -10441,7 +10441,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.blast-02.vertical-spark",
-      "displayName": "Requested 2026-08-27 / front-back-front vertical fallback sprite 2",
+      "displayName": "Requested / front-back-front vertical fallback sprite 2",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.front-back-front.active.clip-01:source.fc574dec0694b30d912b:requested.20260827.front-back-front.blast-02.vertical-spark",
       "visible": true,
@@ -10708,7 +10708,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 1.35,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.209999993,
         "emitterLoopCount": 1,
         "bursts": [
@@ -11566,7 +11566,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.blast-03.cyan-burst",
-      "displayName": "Requested 2026-08-27 / front-back-front large cyan sprite burst 3",
+      "displayName": "Requested / front-back-front large cyan sprite burst 3",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.front-back-front.active.clip-01:source.f8d777d1df9ff25e7865:requested.20260827.front-back-front.blast-03.cyan-burst",
       "visible": true,
@@ -11841,7 +11841,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 2.25,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.5,
         "emitterLoopCount": 1,
         "bursts": [
@@ -12645,7 +12645,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.blast-03.vertical-spark",
-      "displayName": "Requested 2026-08-27 / front-back-front vertical fallback sprite 3",
+      "displayName": "Requested / front-back-front vertical fallback sprite 3",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.front-back-front.active.clip-01:source.fc574dec0694b30d912b:requested.20260827.front-back-front.blast-03.vertical-spark",
       "visible": true,
@@ -12912,7 +12912,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 2.25,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.209999993,
         "emitterLoopCount": 1,
         "bursts": [
@@ -13770,7 +13770,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.fan.01",
-      "displayName": "Requested 2026-08-27 / front-back-front broad electric fan fan-mesh",
+      "displayName": "Requested / front-back-front broad electric fan fan-mesh",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01:source.c0fe650144959a572dbb:requested.20260827.front-back-front.fan.01",
       "visible": true,
@@ -14037,7 +14037,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 0.3,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -15030,7 +15030,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.fan.02",
-      "displayName": "Requested 2026-08-27 / front-back-front broad electric fan electric-core",
+      "displayName": "Requested / front-back-front broad electric fan electric-core",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01:source.756fbb3603e8a548576e:requested.20260827.front-back-front.fan.02",
       "visible": true,
@@ -15292,7 +15292,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.3,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,
         "bursts": [
@@ -16015,7 +16015,7 @@
     },
     {
       "id": "requested.20260827.front-back-front.fan.03",
-      "displayName": "Requested 2026-08-27 / front-back-front broad electric fan forward-shine",
+      "displayName": "Requested / front-back-front broad electric fan forward-shine",
       "groupId": "requested.20260827",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.mechanic.four-pillars-105.target-cone.clip-01:source.d8db179c65da128b5e46:requested.20260827.front-back-front.fan.03",
       "visible": true,
@@ -16277,7 +16277,7 @@
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.3,
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 1.5,
         "emitterLoopCount": 1,
         "bursts": [

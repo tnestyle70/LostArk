@@ -15,8 +15,8 @@
     "modelPath": "Client/Bin/Resources/Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",
     "modelSha256": "4fd71652bf4ca6b11607449b7ece83509d9b3886b1bcdde9e2dc49c5b8c561c0"
   },
-  "patternCount": 21,
-  "stageCount": 99,
+  "patternCount": 20,
+  "stageCount": 97,
   "patterns": [
     {
       "sourceChainId": "center-six-pizza-charge",
@@ -1029,59 +1029,6 @@
           "nativeSourceMs": 1067,
           "stageDurationMs": 1067,
           "productPlayMs": 1067,
-          "endPolicy": "EXACT",
-          "resolution": "NATIVE_WMODEL"
-        }
-      ]
-    },
-    {
-      "sourceChainId": "front-back-front",
-      "patternId": "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
-      "authoringPhase": 2,
-      "admissionState": "MANUAL_SERVER_AUDITION",
-      "sourceActionIds": [
-        420624,
-        420661
-      ],
-      "stageCount": 2,
-      "occurrences": [
-        {
-          "sourceClipOccurrenceId": "valtan.debug.front-back-front.clip.01",
-          "targetStageId": "STEP_01",
-          "targetActionId": "valtan.sequence.front-back-front.step-01",
-          "targetClipOccurrenceId": "valtan.sequence.front-back-front.step-01.clip-01",
-          "sourceClip": "mesh_att_battle_19_01",
-          "resolvedClip": "mesh_att_battle_19_01",
-          "aliasApplied": false,
-          "sourceActionId": 420624,
-          "sourceStartMs": 0,
-          "authoredWallMs": 2700,
-          "playRate": 1.0,
-          "nativeDurationTicks": 150.0,
-          "ticksPerSecond": 30.0,
-          "nativeSourceMs": 5000,
-          "stageDurationMs": 2700,
-          "productPlayMs": 2700,
-          "endPolicy": "EXACT",
-          "resolution": "EXPLICIT_WALL_EXACT"
-        },
-        {
-          "sourceClipOccurrenceId": "valtan.debug.front-back-front.clip.02",
-          "targetStageId": "STEP_02",
-          "targetActionId": "valtan.sequence.front-back-front.step-02",
-          "targetClipOccurrenceId": "valtan.sequence.front-back-front.step-02.clip-01",
-          "sourceClip": "att_battle_2_03",
-          "resolvedClip": "mesh_att_battle_2_03",
-          "aliasApplied": true,
-          "sourceActionId": 420661,
-          "sourceStartMs": 0,
-          "authoredWallMs": 0,
-          "playRate": 1.0,
-          "nativeDurationTicks": 62.0,
-          "ticksPerSecond": 30.0,
-          "nativeSourceMs": 2067,
-          "stageDurationMs": 2067,
-          "productPlayMs": 2067,
           "endPolicy": "EXACT",
           "resolution": "NATIVE_WMODEL"
         }

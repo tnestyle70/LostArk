@@ -1043,46 +1043,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
-              "scalePolicy": {
-                "kind": "GAMEPLAY_FOOTPRINT",
-                "worldScale": [
-                  1.5,
-                  1.5,
-                  1.5
-                ]
-              },
-              "occurrenceId": "cue.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
-              "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
-              "sourceStartMs": 0,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0,
-                  0,
-                  0
-                ],
-                "rotationDegrees": [
-                  0,
-                  0,
-                  0
-                ],
-                "scale": [
-                  1,
-                  1,
-                  1
-                ]
-              },
-              "mappingBasis": "PROJECT_AUTHORED"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": []
         },
         {
@@ -1254,46 +1215,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
-              "scalePolicy": {
-                "kind": "ARENA_ABSOLUTE",
-                "worldScale": [
-                  1.5,
-                  1.5,
-                  1.5
-                ]
-              },
-              "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
-              "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
-              "sourceStartMs": 400,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0,
-                  0,
-                  0
-                ],
-                "rotationDegrees": [
-                  0,
-                  0,
-                  0
-                ],
-                "scale": [
-                  1,
-                  1,
-                  1
-                ]
-              },
-              "mappingBasis": "PROJECT_AUTHORED"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": [
             {
               "cameraInvocationId": "camera.valtan.arena-break-109.impact.invocation",
@@ -1413,41 +1335,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01",
-              "scalePolicy": {
-                "kind": "OWNER_RELATIVE"
-              },
-              "occurrenceId": "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.attack.ledge-roar.recovery.clip-01",
-              "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",
-              "sourceStartMs": 0,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0,
-                  0,
-                  0
-                ],
-                "rotationDegrees": [
-                  0,
-                  0,
-                  0
-                ],
-                "scale": [
-                  1,
-                  1,
-                  1
-                ]
-              },
-              "mappingBasis": "PROJECT_AUTHORED"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": [
             {
               "cameraInvocationId": "camera.valtan.arena-break-109.recovery.invocation",
@@ -1605,16 +1493,7 @@
             ]
           },
           "effectCues": [],
-          "cameraInvocations": [
-            {
-              "cameraInvocationId": "camera.valtan.six-pizza-106.landing.invocation",
-              "cameraCueId": "camera.valtan.six-pizza-106.landing",
-              "trigger": "ENTER",
-              "startOffsetMs": 0,
-              "durationPolicy": "EXPLICIT",
-              "durationMs": 1200
-            }
-          ]
+          "cameraInvocations": []
         },
         {
           "stageId": "STEP_04",
@@ -2099,7 +1978,7 @@
                 ]
               },
               "occurrenceId": "cue.valtan.phase2.four.slashes.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+              "effectAssetId": "effect.valtan.project-tuned.sequence.four",
               "clipOccurrenceId": "valtan.sequence.four.step-01.clip-01",
               "sourceStartMs": 0,
               "sourceEndMs": null,
@@ -2176,7 +2055,41 @@
               }
             ]
           },
-          "effectCues": [],
+          "effectCues": [
+            {
+              "cueId": "cue.valtan.requested.20260827.roar-charge.composite",
+              "scalePolicy": {
+                "kind": "OWNER_RELATIVE"
+              },
+              "occurrenceId": "cue.valtan.requested.20260827.roar-charge.composite.occurrence.01",
+              "effectAssetId": "effect.valtan.sequence.roar-charge",
+              "clipOccurrenceId": "valtan.sequence.roar-charge.step-01.clip-01",
+              "sourceStartMs": 0,
+              "sourceEndMs": null,
+              "anchorSlotId": "root",
+              "followPolicy": "follow",
+              "stopPolicy": "natural",
+              "repeatPolicy": "once",
+              "localTransform": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rotationDegrees": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "mappingBasis": "PROJECT_AUTHORED"
+            }
+          ],
           "cameraInvocations": []
         },
         {
@@ -2220,41 +2133,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.requested.20260827.roar-charge.composite",
-              "scalePolicy": {
-                "kind": "OWNER_RELATIVE"
-              },
-              "occurrenceId": "cue.valtan.requested.20260827.roar-charge.composite.occurrence.01",
-              "effectAssetId": "effect.valtan.sequence.roar-charge",
-              "clipOccurrenceId": "valtan.sequence.roar-charge.step-03.clip-01",
-              "sourceStartMs": 0,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "rotationDegrees": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "scale": [
-                  1.0,
-                  1.0,
-                  1.0
-                ]
-              },
-              "mappingBasis": "PROJECT_AUTHORED"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": []
         },
         {
@@ -3042,107 +2921,6 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
-      "sourceSequenceIndex": 1,
-      "presentationSources": [
-        {
-          "sourceActionId": 420624,
-          "sequenceIndex": 1,
-          "role": "PRIMARY"
-        },
-        {
-          "sourceActionId": 420661,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
-        }
-      ],
-      "stages": [
-        {
-          "stageId": "STEP_01",
-          "actionId": "valtan.sequence.front-back-front.step-01",
-          "sequenceRole": "STEP",
-          "animation": {
-            "endPolicy": "EXACT",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.sequence.front-back-front.step-01.clip-01",
-                "clip": "mesh_att_battle_19_01",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 0,
-                "playMs": 2700,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": false
-              }
-            ]
-          },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.requested.20260827.front-back-front.electric-fan",
-              "scalePolicy": {
-                "kind": "GAMEPLAY_FOOTPRINT",
-                "worldScale": [
-                  1.5,
-                  1.5,
-                  1.5
-                ]
-              },
-              "occurrenceId": "cue.valtan.requested.20260827.front-back-front.electric-fan.occurrence.01",
-              "effectAssetId": "effect.valtan.sequence.front-back-front",
-              "clipOccurrenceId": "valtan.sequence.front-back-front.step-01.clip-01",
-              "sourceStartMs": 0,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "rotationDegrees": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "scale": [
-                  1.0,
-                  1.0,
-                  1.0
-                ]
-              },
-              "mappingBasis": "PROJECT_AUTHORED"
-            }
-          ],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "STEP_02",
-          "actionId": "valtan.sequence.front-back-front.step-02",
-          "sequenceRole": "STEP",
-          "animation": {
-            "endPolicy": "EXACT",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.sequence.front-back-front.step-02.clip-01",
-                "clip": "mesh_att_battle_2_03",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 0,
-                "playMs": 2067,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": false
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        }
-      ]
-    },
-    {
       "patternId": "VALTAN_WARP",
       "sourceSequenceIndex": 1,
       "presentationSources": [
@@ -3816,6 +3594,11 @@
           "sourceActionId": 420613,
           "sequenceIndex": 1,
           "role": "REFERENCE"
+        },
+        {
+          "sourceActionId": 420631,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
         }
       ],
       "stages": [
@@ -4021,6 +3804,156 @@
                 "mappingBasis": "PROJECT_AUTHORED",
                 "sourceStartMs": 0,
                 "playMs": 667,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "CATCH_COUNTER",
+          "actionId": "valtan.sequence.center-trash-rush-if.catch-counter",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.catch-counter.clip-01",
+                "clip": "mesh_att_battle_13_05-1",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 200,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "CATCH_PRE_IMPACT",
+          "actionId": "valtan.sequence.center-trash-rush-if.catch-pre-impact",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.catch-pre-impact.clip-01",
+                "clip": "mesh_att_battle_13_05-1",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 200,
+                "playMs": 1300,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "CATCH_SLAM",
+          "actionId": "valtan.sequence.center-trash-rush-if.catch-slam",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.catch-slam.clip-01",
+                "clip": "mesh_att_battle_13_05-1",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 1500,
+                "playMs": 1500,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "EXECUTE_TAIL",
+          "actionId": "valtan.sequence.center-trash-rush-if.execute-tail",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.execute-tail.clip-01",
+                "clip": "mesh_att_battle_13_05-1",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 1500,
+                "playMs": 1500,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "RUSH_MISS",
+          "actionId": "valtan.sequence.center-trash-rush-if.rush-miss",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.rush-miss.clip-01",
+                "clip": "mesh_att_battle_13_05-2",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1000,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "GROGGY",
+          "actionId": "valtan.sequence.center-trash-rush-if.groggy",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.groggy.clip-01",
+                "clip": "mesh_abn_groggy_1_start",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1833,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.groggy.clip-02",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 600,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.groggy.clip-03",
+                "clip": "mesh_abn_groggy_1_end",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 2000,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
               }
@@ -4745,41 +4678,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.requested.20260827.struggling.composite",
-              "scalePolicy": {
-                "kind": "OWNER_RELATIVE"
-              },
-              "occurrenceId": "cue.valtan.requested.20260827.struggling.composite.occurrence.01",
-              "effectAssetId": "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead",
-              "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-01.clip-01",
-              "sourceStartMs": 0,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "rotationDegrees": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "scale": [
-                  1.0,
-                  1.0,
-                  1.0
-                ]
-              },
-              "mappingBasis": "PROJECT_AUTHORED"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": []
         },
         {
@@ -5096,7 +4995,46 @@
               }
             ]
           },
-          "effectCues": [],
+          "effectCues": [
+            {
+              "cueId": "cue.valtan.requested.20260827.terrain-3.semicircle",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
+              "occurrenceId": "cue.valtan.requested.20260827.terrain-3.semicircle.occurrence.01",
+              "effectAssetId": "effect.valtan.project-tuned.terrain-destruction-3.semicircle",
+              "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.takeoff.clip-01",
+              "sourceStartMs": 0,
+              "sourceEndMs": null,
+              "anchorSlotId": "root",
+              "followPolicy": "snapshot",
+              "stopPolicy": "natural",
+              "repeatPolicy": "once",
+              "localTransform": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rotationDegrees": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "mappingBasis": "PROJECT_AUTHORED"
+            }
+          ],
           "cameraInvocations": []
         },
         {
@@ -5162,46 +5100,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.requested.20260827.terrain-3.semicircle",
-              "scalePolicy": {
-                "kind": "GAMEPLAY_FOOTPRINT",
-                "worldScale": [
-                  1.5,
-                  1.5,
-                  1.5
-                ]
-              },
-              "occurrenceId": "cue.valtan.requested.20260827.terrain-3.semicircle.occurrence.01",
-              "effectAssetId": "effect.valtan.project-tuned.terrain-destruction-3.semicircle",
-              "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.impact.clip-01",
-              "sourceStartMs": 200,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "snapshot",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "rotationDegrees": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "scale": [
-                  1.0,
-                  1.0,
-                  1.0
-                ]
-              },
-              "mappingBasis": "PROJECT_AUTHORED"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": []
         }
       ]
@@ -5276,7 +5175,46 @@
               }
             ]
           },
-          "effectCues": [],
+          "effectCues": [
+            {
+              "cueId": "cue.valtan.requested.20260827.terrain-9.semicircle",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
+              "occurrenceId": "cue.valtan.requested.20260827.terrain-9.semicircle.occurrence.01",
+              "effectAssetId": "effect.valtan.project-tuned.terrain-destruction-9.semicircle",
+              "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.takeoff.clip-01",
+              "sourceStartMs": 0,
+              "sourceEndMs": null,
+              "anchorSlotId": "root",
+              "followPolicy": "snapshot",
+              "stopPolicy": "natural",
+              "repeatPolicy": "once",
+              "localTransform": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rotationDegrees": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "mappingBasis": "PROJECT_AUTHORED"
+            }
+          ],
           "cameraInvocations": []
         },
         {
@@ -5342,46 +5280,7 @@
               }
             ]
           },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.requested.20260827.terrain-9.semicircle",
-              "scalePolicy": {
-                "kind": "GAMEPLAY_FOOTPRINT",
-                "worldScale": [
-                  1.5,
-                  1.5,
-                  1.5
-                ]
-              },
-              "occurrenceId": "cue.valtan.requested.20260827.terrain-9.semicircle.occurrence.01",
-              "effectAssetId": "effect.valtan.project-tuned.terrain-destruction-9.semicircle",
-              "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.impact.clip-01",
-              "sourceStartMs": 200,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "snapshot",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "rotationDegrees": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "scale": [
-                  1.0,
-                  1.0,
-                  1.0
-                ]
-              },
-              "mappingBasis": "PROJECT_AUTHORED"
-            }
-          ],
+          "effectCues": [],
           "cameraInvocations": []
         }
       ]

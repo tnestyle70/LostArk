@@ -54,7 +54,6 @@ EXPECTED_PROMOTED_KOREAN_NAMES = {
 EXPECTED_UNCHANGED_SEQUENCE_IDS = {
     "VALTAN_SEQUENCE_FOUR",
     "VALTAN_SEQUENCE_RUSH",
-    "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
     "VALTAN_SEQUENCE_TWOHAND",
     "VALTAN_SEQUENCE_WHIRLWIND",
 }
@@ -109,7 +108,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             pattern["patternId"] for pattern in self.presentation["patterns"]
         }
         self.assertEqual(gameplay_ids, presentation_ids)
-        self.assertEqual(31, len(gameplay_ids))
+        self.assertEqual(30, len(gameplay_ids))
 
         manifest_rows = self.promotion_manifest["patterns"]
         manifest_ids = [row["patternId"] for row in manifest_rows]
@@ -122,7 +121,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             | EXPECTED_UNCHANGED_SEQUENCE_IDS
         )
         self.assertEqual(16, len(EXPECTED_PROMOTED_KOREAN_NAMES))
-        self.assertEqual(5, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
+        self.assertEqual(4, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
         self.assertEqual(manifest_ids, manual_ids)
         self.assertEqual(expected_manifest_ids, set(manifest_ids))
         self.assertEqual(
@@ -147,6 +146,13 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             if row["patternId"] in EXPECTED_PROMOTED_KOREAN_NAMES
         }
         self.assertEqual(EXPECTED_PROMOTED_KOREAN_NAMES, gameplay_names)
+
+        retired_id = "VALTAN_SEQUENCE_FRONT_BACK_FRONT"
+        self.assertNotIn(retired_id, gameplay_ids)
+        self.assertIn(retired_id, self.gameplay["retiredPatternIds"])
+        for rows in (self.gameplay["patterns"], manifest_rows):
+            four = next(row for row in rows if row["patternId"] == "VALTAN_SEQUENCE_FOUR")
+            self.assertEqual("2페이즈 4방향 공격", four["displayName"])
 
         bound_actions = {
             binding["actionId"] for binding in self.pattern_bindings["bindings"]

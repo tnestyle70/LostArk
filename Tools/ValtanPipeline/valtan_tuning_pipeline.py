@@ -52,7 +52,7 @@ DAMAGE_REL = "Data/Balance/DamageProfiles.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 24
+GAMEPLAY_BOOTSTRAP_VERSION = 25
 
 SCRIPTED_SEQUENCE_MODE = "ORDERED_ONCE_THEN_IDLE"
 
@@ -2117,6 +2117,8 @@ def _event_fields(kind: str) -> tuple[str, ...]:
         "SET_GAMEPLAY_PHASE": common + ("gameplayPhase",),
         "TRIGGER_WORLD_EVENT_SET": common + ("worldEventSetId",),
         "RETARGET_RANDOM_ALIVE": common,
+        "DAMAGE_GRABBED_PLAYERS": common + ("damageProfileId",),
+        "EXECUTE_GRABBED_PLAYERS": common,
         "RELEASE_GRABBED_PLAYERS": common
         + ("releaseMode", "speedMps", "durationMs"),
     }.get(kind, ())
@@ -2407,7 +2409,16 @@ def validate_manual_audition_animation_lineage(
         intake_chain_ids.append(chain_id)
 
     debug_chain_ids = [row["chainId"] for row in debug_presentation["chains"]]
-    if declared_chain_ids != debug_chain_ids:
+    promoted_chain_ids = [row["sourceChainId"] for row in promotion_rows]
+    promoted_chain_id_set = set(promoted_chain_ids)
+    intake_chain_id_set = set(intake_chain_ids)
+    if (
+        declared_chain_id_set != set(debug_chain_ids)
+        or promoted_chain_ids
+        != [value for value in debug_chain_ids if value in promoted_chain_id_set]
+        or intake_chain_ids
+        != [value for value in debug_chain_ids if value in intake_chain_id_set]
+    ):
         raise PipelineError(
             "phase-2/3 animation intake must exact-join promotion plus "
             "intake-only declarations: "
@@ -2483,6 +2494,38 @@ def validate_manual_audition_animation_lineage(
             for stage in pattern["stages"]
             for occurrence in stage["animation"]["occurrences"]
         ]
+        if pattern_id == "VALTAN_TRASH":
+            # The reviewed intake still owns the eight setup/rush clips. The
+            # Product graph now owns real capture outcomes, not three separate
+            # ordered audition rows. Validate its source slices explicitly.
+            extensions = {
+                "CATCH_COUNTER": [("mesh_att_battle_13_05-1", 0, 200)],
+                "CATCH_PRE_IMPACT": [("mesh_att_battle_13_05-1", 200, 1300)],
+                "CATCH_SLAM": [("mesh_att_battle_13_05-1", 1500, 1500)],
+                "EXECUTE_TAIL": [("mesh_att_battle_13_05-1", 1500, 1500)],
+                "RUSH_MISS": [("mesh_att_battle_13_05-2", 0, 1000)],
+                "GROGGY": [
+                    ("mesh_abn_groggy_1_start", 0, 1833),
+                    ("mesh_abn_groggy_1_loop", 0, 600),
+                    ("mesh_abn_groggy_1_end", 0, 2000),
+                ],
+            }
+            expected_ids = [f"STEP_{i:02d}" for i in range(1, 9)] + list(extensions)
+            if [stage["stageId"] for stage in pattern["stages"]] != expected_ids:
+                raise PipelineError(f"{context} capture branch stage inventory drift")
+            if 420631 not in pattern["sourceActionIds"]:
+                raise PipelineError(f"{context} real groggy source action is missing")
+            for branch_stage in pattern["stages"][8:]:
+                actual = [
+                    (clip["clip"], clip["sourceStartMs"], clip["playMs"])
+                    for clip in branch_stage["animation"]["occurrences"]
+                ]
+                if actual != extensions[branch_stage["stageId"]] or any(
+                    clip["playRate"] != 1.0 or clip["repeatUntilStageEnd"]
+                    for clip in branch_stage["animation"]["occurrences"]
+                ):
+                    raise PipelineError(f"{context} capture branch source slice drift")
+            product_occurrences = product_occurrences[:len(occurrences)]
         if len(product_occurrences) != len(occurrences):
             raise PipelineError(f"{context} Product occurrence count drift")
         for ordinal, (source, product) in enumerate(
@@ -2571,6 +2614,14 @@ def validate_v2_master(
         "decisionModel",
     )
     pattern_by_id = unique_index(master["patterns"], "patternId", "v2 patterns")
+    retired_rows = master["retiredPatternIds"]
+    if not isinstance(retired_rows, list):
+        raise PipelineError("retiredPatternIds must be an array")
+    retired_ids = [stable_id(value, "retiredPatternIds") for value in retired_rows]
+    if len(retired_ids) != len(set(retired_ids)):
+        raise PipelineError("retiredPatternIds contains a duplicate")
+    if set(retired_ids) & set(pattern_by_id):
+        raise PipelineError("retiredPatternIds cannot contain an active pattern")
     manual_patterns = _validate_manual_auditions(
         master["decisionModel"], pattern_by_id
     )
@@ -2821,6 +2872,11 @@ def validate_v2_master(
             duration = integer(stage["durationMs"], f"{pattern_id}/{stage_id}.durationMs", 1, 600000)
             if stage["defaultNextActionId"] is not None and stage["defaultNextActionId"] not in action_ids:
                 raise PipelineError(f"defaultNextActionId is missing: {pattern_id}/{stage_id}")
+            grab_impacts = [event for event in stage["events"] if isinstance(event, dict) and event.get("kind") in (
+                "DAMAGE_GRABBED_PLAYERS", "EXECUTE_GRABBED_PLAYERS"
+            )]
+            if grab_impacts and (len(stage["events"]) != 1 or stage["hit"]["shape"]["kind"] != "NONE"):
+                raise PipelineError(f"grabbed-player impact must own its stage transaction: {pattern_id}/{stage_id}")
             for branch in stage["branches"]:
                 exact(branch, ("outcome", "nextActionId"), f"{pattern_id}/{stage_id}.branch")
                 if branch["nextActionId"] is not None and branch["nextActionId"] not in action_ids:
@@ -3077,6 +3133,17 @@ def validate_v2_master(
                         raise PipelineError(
                             f"grabbed-player release event is invalid: {event_id}"
                         )
+                elif event["kind"] in (
+                    "DAMAGE_GRABBED_PLAYERS", "EXECUTE_GRABBED_PLAYERS"
+                ):
+                    if event["trigger"] != "ENTER":
+                        raise PipelineError(
+                            f"grabbed-player impact must run on ENTER: {event_id}"
+                        )
+                    if event["kind"] == "DAMAGE_GRABBED_PLAYERS":
+                        stable_id(event["damageProfileId"], f"{event_id}.damageProfileId")
+                        if not event["damageProfileId"].startswith("damage."):
+                            raise PipelineError(f"invalid grabbed damage profile: {event_id}")
             for cue in stage["effectCues"]:
                 cue_timing_basis = cue.get(
                     "timingBasis", CUE_TIMING_BASIS_CLIP_OCCURRENCE
@@ -3955,6 +4022,14 @@ def _compile_event(
             "speedMps": event["speedMps"],
             "durationMs": event["durationMs"],
         }
+    if event["kind"] in ("DAMAGE_GRABBED_PLAYERS", "EXECUTE_GRABBED_PLAYERS"):
+        return {
+            "trigger": event["trigger"],
+            "kind": event["kind"],
+            "targetId": event.get("damageProfileId", "boss.attachment.left-hand"),
+            "value": 0,
+            "durationMs": 0,
+        }
     raise PipelineError(f"event cannot compile to current Product: {event['kind']}")
 
 
@@ -4689,15 +4764,15 @@ def project_v2_products(
         if migration_fixture
         else set()
     )
-    validate_legacy_products(
-        docs[LEGACY_REL], docs,
-        managed_pattern_ids | fixture_legacy_managed_ids,
-    )
     source_patterns = {
         row["patternId"]: row for row in docs[ENCOUNTER_REL]["patterns"]
     }
     source_retired_pattern_ids = (
         set(master["retiredPatternIds"]) & set(source_patterns)
+    )
+    validate_legacy_products(
+        docs[LEGACY_REL], docs,
+        managed_pattern_ids | source_retired_pattern_ids | fixture_legacy_managed_ids,
     )
     managed_patterns = {
         row["patternId"]: compile_pattern_product(master, row)
@@ -4770,7 +4845,7 @@ def project_v2_products(
     source_managed_action_ids = {
         stage["actionId"]
         for pattern_id, pattern in source_patterns.items()
-        if pattern_id in managed_pattern_ids
+        if pattern_id in managed_pattern_ids | source_retired_pattern_ids
         for stage in pattern["stages"]
     }
     removed_managed_action_ids = (
@@ -4794,7 +4869,7 @@ def project_v2_products(
     source_managed_cue_ids = {
         row["bindingId"]
         for row in source_cue_document["cues"]
-        if row.get("patternId") in managed_pattern_ids
+        if row.get("patternId") in managed_pattern_ids | set(master["retiredPatternIds"])
     }
     removed_managed_cue_ids = source_managed_cue_ids - set(managed_cues)
     binding_rows_output = replace_append_or_remove_rows(

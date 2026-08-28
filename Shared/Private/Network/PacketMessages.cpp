@@ -2592,6 +2592,21 @@ namespace
 {
 	using namespace LostArk::Shared;
 
+	bool Is_NextAuditionOperation(const std::uint8_t rawOperation)
+	{
+		return static_cast<std::uint8_t>(
+			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID) == rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID) == rawOperation;
+	}
+
+	bool Is_StableAuditionOperation(const std::uint8_t rawOperation)
+	{
+		return Is_NextAuditionOperation(rawOperation) ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation;
+	}
+
 	// A request sequence of zero can never be told apart from a default-built
 	// struct, so it is not a usable duplicate key. Health bar zero is the dead
 	// boss and carries no authored pattern.
@@ -2600,11 +2615,29 @@ namespace
 		const std::uint8_t rawOperation,
 		const std::uint32_t targetHealthBar,
 		const std::string& bossPlacementId,
-		const std::string& patternId)
+		const std::string& patternId,
+		const std::uint32_t predecessorEpoch,
+		const std::uint32_t predecessorPatternSequence,
+		const std::uint32_t expectedNextRequestSequence)
 	{
 		if (0u == requestSequence ||
 			rawOperation >= static_cast<std::uint8_t>(
 				VALTAN_AUDITION_OPERATION::END))
+		{
+			return false;
+		}
+		if (Is_NextAuditionOperation(rawOperation))
+		{
+			return 0u == targetHealthBar && 0u != predecessorEpoch &&
+				0u != predecessorPatternSequence &&
+				(static_cast<std::uint8_t>(
+					VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID) != rawOperation ||
+				 0u != expectedNextRequestSequence) &&
+				Is_Valid_StableId(bossPlacementId, false) &&
+				Is_Valid_StableId(patternId, false);
+		}
+		if (0u != predecessorEpoch || 0u != predecessorPatternSequence ||
+			0u != expectedNextRequestSequence)
 		{
 			return false;
 		}
@@ -2655,6 +2688,65 @@ namespace
 		}
 		return 0u != targetHealthBar;
 	}
+
+	bool Is_Valid_AuditionResult(
+		const std::uint8_t rawOperation, const std::uint8_t rawResult)
+	{
+		if (rawResult >= static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::END))
+			return false;
+		if (!Is_NextAuditionOperation(rawOperation))
+			return rawResult < static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::CLEARED);
+		const auto result = static_cast<VALTAN_AUDITION_RESULT>(rawResult);
+		if (VALTAN_AUDITION_RESULT::ARMED == result ||
+			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED == result ||
+			VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR == result ||
+			VALTAN_AUDITION_RESULT::REJECTED_NOT_ARMED == result ||
+			VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED == result)
+		{
+			return false;
+		}
+		const bool clear = static_cast<std::uint8_t>(
+			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID) == rawOperation;
+		return !(clear && VALTAN_AUDITION_RESULT::QUEUED == result) &&
+			!(!clear && VALTAN_AUDITION_RESULT::CLEARED == result);
+	}
+
+	template <typename TMessage>
+	bool Write_AuditionIdentity(
+		CPacketWriter& writer, const TMessage& message, const std::uint8_t operation)
+	{
+		if (!Is_StableAuditionOperation(operation))
+			return true;
+		if (!writer.Write_String(message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!writer.Write_String(message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		if (Is_NextAuditionOperation(operation))
+		{
+			writer.Write_U32(message.iPredecessorRoomAuditionEpoch);
+			writer.Write_U32(message.iPredecessorPatternSequence);
+			writer.Write_U32(message.iExpectedNextRequestSequence);
+		}
+		return true;
+	}
+
+	template <typename TMessage>
+	bool Read_AuditionIdentity(
+		CPacketReader& reader, TMessage& message, const std::uint8_t operation)
+	{
+		if (!Is_StableAuditionOperation(operation))
+			return true;
+		if (!reader.Read_String(message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		return !Is_NextAuditionOperation(operation) ||
+			(reader.Read_U32(message.iPredecessorRoomAuditionEpoch) &&
+			 reader.Read_U32(message.iPredecessorPatternSequence) &&
+			 reader.Read_U32(message.iExpectedNextRequestSequence));
+	}
 }
 
 bool LostArk::Shared::Write_Message(
@@ -2665,21 +2757,16 @@ bool LostArk::Shared::Write_Message(
 		static_cast<std::uint8_t>(message.eOperation);
 	if (!Is_Valid_AuditionRequest(
 		message.iRequestSequence, rawOperation, message.iTargetHealthBar,
-		message.strBossPlacementId, message.strPatternId))
+		message.strBossPlacementId, message.strPatternId,
+		message.iPredecessorRoomAuditionEpoch, message.iPredecessorPatternSequence,
+		message.iExpectedNextRequestSequence))
 	{
 		return false;
 	}
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U8(rawOperation);
 	writer.Write_U32(message.iTargetHealthBar);
-	if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == message.eOperation)
-	{
-		return writer.Write_String(
-			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) &&
-			writer.Write_String(
-				message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES);
-	}
-	return true;
+	return Write_AuditionIdentity(writer, message, rawOperation);
 }
 
 bool LostArk::Shared::Read_Message(
@@ -2694,18 +2781,15 @@ bool LostArk::Shared::Read_Message(
 	{
 		return false;
 	}
-	if (static_cast<std::uint8_t>(
-			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation &&
-		(!reader.Read_String(
-			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
-		 !reader.Read_String(
-			decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES)))
+	if (!Read_AuditionIdentity(reader, decoded, rawOperation))
 	{
 		return false;
 	}
 	if (!Is_Valid_AuditionRequest(
 		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar,
-		decoded.strBossPlacementId, decoded.strPatternId))
+		decoded.strBossPlacementId, decoded.strPatternId,
+		decoded.iPredecessorRoomAuditionEpoch, decoded.iPredecessorPatternSequence,
+		decoded.iExpectedNextRequestSequence))
 	{
 		return false;
 	}
@@ -2725,8 +2809,10 @@ bool LostArk::Shared::Write_Message(
 		static_cast<std::uint8_t>(message.eResult);
 	if (!Is_Valid_AuditionRequest(
 		message.iRequestSequence, rawOperation, message.iTargetHealthBar,
-		message.strBossPlacementId, message.strPatternId) ||
-		rawResult >= static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::END))
+		message.strBossPlacementId, message.strPatternId,
+		message.iPredecessorRoomAuditionEpoch, message.iPredecessorPatternSequence,
+		message.iExpectedNextRequestSequence) ||
+		!Is_Valid_AuditionResult(rawOperation, rawResult))
 	{
 		return false;
 	}
@@ -2735,14 +2821,7 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_U32(message.iTargetHealthBar);
 	writer.Write_U8(rawResult);
 	writer.Write_U32(message.iCurrentHealthBar);
-	if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == message.eOperation)
-	{
-		return writer.Write_String(
-			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) &&
-			writer.Write_String(
-				message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES);
-	}
-	return true;
+	return Write_AuditionIdentity(writer, message, rawOperation);
 }
 
 bool LostArk::Shared::Read_Message(
@@ -2760,19 +2839,16 @@ bool LostArk::Shared::Read_Message(
 	{
 		return false;
 	}
-	if (static_cast<std::uint8_t>(
-			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation &&
-		(!reader.Read_String(
-			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
-		 !reader.Read_String(
-			decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES)))
+	if (!Read_AuditionIdentity(reader, decoded, rawOperation))
 	{
 		return false;
 	}
 	if (!Is_Valid_AuditionRequest(
 		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar,
-		decoded.strBossPlacementId, decoded.strPatternId) ||
-		rawResult >= static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::END))
+		decoded.strBossPlacementId, decoded.strPatternId,
+		decoded.iPredecessorRoomAuditionEpoch, decoded.iPredecessorPatternSequence,
+		decoded.iExpectedNextRequestSequence) ||
+		!Is_Valid_AuditionResult(rawOperation, rawResult))
 	{
 		return false;
 	}
@@ -2803,7 +2879,9 @@ namespace
 		}
 		if (0u == message.iPatternSequence &&
 			(VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE == message.eState ||
-			 VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED == message.eState))
+			 VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED == message.eState ||
+			 VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED == message.eState ||
+			 VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER == message.eState))
 		{
 			return false;
 		}

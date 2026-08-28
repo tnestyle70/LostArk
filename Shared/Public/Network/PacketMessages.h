@@ -911,6 +911,8 @@ namespace LostArk::Shared
 		// page boundary. iTargetHealthBar carries that boundary timeline row's
 		// stable command ID; only the four product page rows are admitted.
 		START_FIGHT_PAGE,
+		QUEUE_NEXT_PATTERN_ID,
+		CLEAR_NEXT_PATTERN_ID,
 		END
 	};
 
@@ -935,6 +937,11 @@ namespace LostArk::Shared
 		// CValtanBrain drops its target when nobody is combat-ready inside the
 		// engage distance, so a pattern queued now would never start.
 		REJECTED_PLAYER_NOT_ENGAGED,
+		CLEARED,
+		REJECTED_STALE_REQUEST,
+		REJECTED_STALE_AUDITION,
+		REJECTED_NOT_OWNER,
+		REJECTED_NEXT_CHANGED,
 		END
 	};
 
@@ -948,10 +955,15 @@ namespace LostArk::Shared
 		// reuse it as a timeline row's stable command ID. STOP_TIMELINE_ROW
 		// carries 0.
 		std::uint32_t iTargetHealthBar = 0;
-		// Present only on the PLAY_PATTERN_ID wire shape. Every older operation
-		// requires both fields to stay empty and therefore keeps its byte layout.
+		// Stable-ID operations encode these strings. Older operations keep their
+		// original wire shape and require hidden identity fields to stay empty.
 		std::string strBossPlacementId;
 		std::string strPatternId;
+		// Next controls compare the exact current occurrence and one-slot token.
+		// These fields are encoded only by QUEUE/CLEAR_NEXT_PATTERN_ID.
+		std::uint32_t iPredecessorRoomAuditionEpoch = 0u;
+		std::uint32_t iPredecessorPatternSequence = 0u;
+		std::uint32_t iExpectedNextRequestSequence = 0u;
 	};
 
 	bool Write_Message(
@@ -973,9 +985,12 @@ namespace LostArk::Shared
 		// request, so a rejected audition still reports the live state.
 		std::uint32_t iCurrentHealthBar = 0;
 		// Exact request echo for the stable-ID result consumer. These strings are
-		// encoded only for PLAY_PATTERN_ID; legacy result frames are unchanged.
+		// encoded only for stable-ID operations; legacy frames are unchanged.
 		std::string strBossPlacementId;
 		std::string strPatternId;
+		std::uint32_t iPredecessorRoomAuditionEpoch = 0u;
+		std::uint32_t iPredecessorPatternSequence = 0u;
+		std::uint32_t iExpectedNextRequestSequence = 0u;
 	};
 
 	bool Write_Message(
@@ -994,6 +1009,8 @@ namespace LostArk::Shared
 		ACTIVE,
 		COMPLETED,
 		ABORTED,
+		NEXT_RESERVED,
+		WAITING_FOR_PLAYER,
 		END
 	};
 

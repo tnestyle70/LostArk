@@ -113,3 +113,37 @@ focused tests로 고정하고 source index 및 Valtan V2 suite를 재실행한�
 
 신규 C++ 파일이 필요해지면 해당 프로젝트와 filters 등록도 같은 변경에 포함한다.
 build 산출물, EngineSDK, private 규칙/로그는 commit하지 않는다.
+
+## G06. 병합 뒤 실행 검증의 격리
+
+PR #250은 `cd120501`로 main에 병합됐다. 후속 작업은
+`codex/post-merge-valtan-party-regression`에서 수행한다.
+
+- `ServerApp.h/.cpp`의 private mutex 생성/획득 helper를 이름 선택과 분리한다.
+  제품 wrapper의 기존 Debug/Release 전역 이름과 단일 owner 보호는 바꾸지 않는다.
+  friend contract fixture만 PID별 test-owned 이름으로 같은 Win32 경로의 최초 획득,
+  다른 thread의 동시 owner 거부, release 뒤 재획득과 실패 handle 정리를 검사한다.
+  durable pointer reset 검사는 별도 assertion으로 남긴다. CLI/env 우회는 추가하지 않는다.
+- `EffectRenderContractHarness.cpp`는 명시적 `LOSTARK_RESOURCE_ROOT`를 하드코드된
+  checkout 경로로 덮어쓰지 않고 기존 `CRuntimeAssetRoot`의 해석·검증 경로를 소비한다.
+  source/compiled shader와 runtime resource root의 소유권은 분리해 유지한다.
+- Action Release, 최종 Valtan V2/focused/data validators와 Release 실제 socket 기반
+  2/4인 이동을 실행한다. 실패는 실제 입력·코드와 대조해 필요한 수정만 수행한다.
+- 실제 socket 검사에서 solo/2인/4인의 가이드 접근을 한 process에 누적하면 기존
+  55초 harness watchdog을 넘었다. native harness에 검증 전용 party-size 선택을 두고
+  runner는 Core/Party2/Party4를 각각 새 owned Server로 순차 실행한다. 각 process의
+  기존 bounded timeout과 Server의 60초 상한은 유지하고 timeout 직전 로그도 보존한다.
+- 제품 Debug Server의 전역 owner가 이미 실행 중이면 새 Debug live Server는 계속
+  거부되어야 한다. 이 경계를 테스트를 통과시키려는 목적으로 해제하지 않는다.
+- 정본 자동화는 순서대로 실행하며, 사용자 Server와 UI는 종료·조작하지 않는다.
+  자동 수치 검증을 사용자 visual/audio PASS로 기록하지 않는다.
+- 실제 실행에서 호출자의 지역 `LASTEXITCODE=0`이 native 실패를 가리는 문제가
+  확인됐다. 정본 runner, 세 native harness wrapper와 Valtan projector/test wrapper의
+  native 상태 읽기/초기화를 전역 자동 변수로 통일한다. AST guard와 실제 invalid-resource
+  native 호출을 지역 success sentinel 아래 실행해 실패 전파를 고정한다.
+
+새 C++ 파일은 필요하지 않다. 리소스 경로의 8가지 native 검증을 담당하는
+`Test-EffectRenderResourceRoot.ps1`만 기존 Effect harness project/filter의 Scripts에
+등록하고 정본 회귀에서 실행한다. `Tools/Build/Test-NativeHarnessExitPropagation.ps1`은
+정본 runner가 직접 소비한다. 최종 결과와 남는 환경 경계를 RESULT에 추가하고
+후속 PR은 검증한 변경만 포함한다.

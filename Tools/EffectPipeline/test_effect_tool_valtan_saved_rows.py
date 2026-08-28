@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -88,6 +90,9 @@ RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
         "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.donut.impact.w.1",
         "authored.copy.authored.copy.authored.copy.donut.impact.wave.black.1.1.2",
         "sprite_particle_5",
+        # The latest user save keeps the delayed cylinder and deletes the
+        # former immediate cylinder; validation must not restore that row.
+        "authored.copy.requested.20260827.terrain-3.landing.01.2",
     }),
 }
 V1_ALIAS_PATH = (
@@ -930,8 +935,9 @@ def validate_full_valtan_product_timeline_contract(
     )
     if "fTimelineSeconds - fClipTimelineOffsetSeconds" not in sample:
         raise AssertionError("Valtan cue sample clock lost its global clip offset")
-    if "fClipTimelineOffsetSeconds + Sample.fCueWallStartSeconds" not in inverse:
-        raise AssertionError("Valtan effect-to-timeline inverse lost its global offset")
+    if ("Resolve_CuePreviewTimelineTime(" not in inverse or
+            "Timing, fClipTimelineOffsetSeconds, fClampedEffectSample" not in inverse):
+        raise AssertionError("Valtan effect-to-timeline inverse lost its tested global offset")
     for token in (
         "iOwningStageTimelineOffsetMs",
         "iOwningClipTimelineOffsetMs",
@@ -1099,11 +1105,8 @@ def validate_manual_authoring_detail_contract(cpp_text: str) -> None:
         "    bool Slot_Allowed(",
     )
     for token in (
-        "Is_PreviewParticleSimulationElement(Element)",
-        "SourceScale.fLifeTime",
-        "SourceRecipe.fEmitterDelaySeconds",
-        "SourceRecipe.fEmitterDurationSeconds",
-        "SourceRecipe.iEmitterLoopCount",
+        "Client::CEffectPlayback::Calculate_ElementEndSeconds(",
+        "Element, Is_SourceParticleCarrier(Element)",
     ):
         if token not in preview_end:
             raise AssertionError(f"Tool preview duration lost source schedule parity: {token}")
@@ -2027,31 +2030,132 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "m_ValtanProductPreview->Cue.iStageDurationMs", duration
         )
 
-    def test_optional_authored_slot_delete_and_hit_resource_contract(self) -> None:
-        hit_path = (
-            AUTHORED_ROOT
-            / "effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json"
+    def test_optional_slot_delete_preserves_user_saved_product_deletions(self) -> None:
+        phase_one_id = "effect.valtan.carrier-v1.attack.four-slash.active.clip-01"
+        phase_two_id = "effect.valtan.project-tuned.sequence.four"
+        document = json.loads(
+            (AUTHORED_ROOT / f"{phase_two_id}.effect.json").read_text(encoding="utf-8")
         )
-        document = json.loads(hit_path.read_text(encoding="utf-8"))
+        self.assertEqual(phase_two_id, document["effectAssetId"])
         elements = {row["id"]: row for row in document["elements"]}
-        self.assertEqual(
-            {
-                "base": "Effect/Valtan/Textures/FX_TEX_04/fx_h_hit_01.dds",
-            },
-            {
-                row["slotId"]: row["assetId"]
-                for row in elements["valtan.clip01.hit-spark.01"]["resources"]
-            },
+        # These are the user's saved Phase 2 rows, not a factory seed. The
+        # removed hit/weapon rows belong to the independently restored Phase 1.
+        expected_ids = {
+            "occurrence.c627ba06ba0a8d5d48086907",
+            "authored.copy.requested.20260827.attack-whirlwind.jump-fan.vertical-core.1",
+            "authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.vertical-core.1.1",
+            "authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.vertical-core.1.1.1",
+            "authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.vertical-core.1.1.1.1",
+            "authored.copy.authored.copy.requested.20260827.three.impact-03.sky-wave.1.1",
+            "authored.copy.authored.copy.authored.copy.requested.20260827.three.impact-03.sky-wave.1.1.1",
+            "authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.three.impact-03.sky-wave.1.1.1.1",
+            "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.three.impact-03.sky-wave.1.1.1.1.1",
+            "authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1",
+            "authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1.1",
+            "authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1.1.2",
+            "authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1.1.2.1",
+            "authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1.1.1",
+            "authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1.1.1.2",
+            "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1..1",
+            "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-f.1",
+            "authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1.1.1.1",
+            "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-fan.decal-01.1..2",
+            "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-whirlwind.jump-f.2",
+            "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.requested.20260827.attack-wh.1",
+        }
+        self.assertEqual(expected_ids, set(elements))
+        self.assertEqual(len(expected_ids), len(document["elements"]))
+        deleted_ids = {
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007",
+            "occurrence.14794cdb89c73ee33f1dead3",
+        }
+        self.assertTrue(deleted_ids.isdisjoint(elements))
+
+        phase_one_document = json.loads(
+            (AUTHORED_ROOT / f"{phase_one_id}.effect.json").read_text(encoding="utf-8")
         )
+        self.assertEqual(phase_one_id, phase_one_document["effectAssetId"])
+        self.assertNotEqual(
+            phase_one_document["effectAssetId"], document["effectAssetId"]
+        )
+        phase_one_ids = {
+            "valtan.clip01.weapon-slash.01",
+            "authored.copy.valtan.clip01.weapon-slash.01.1",
+            "authored.copy.authored.copy.valtan.clip01.weapon-slash.01.1.1",
+            "valtan.clip01.hit-spark.01",
+            "impact.fragments.hit_007",
+            "occurrence.14794cdb89c73ee33f1dead3",
+            "occurrence.c627ba06ba0a8d5d48086907",
+        }
         self.assertEqual(
-            {
-                "base": "Effect/Valtan/Textures/FX_TEX_00/fx_a_hit_007.dds",
-                "emissive": "Effect/Warlord/Textures/FX_TEX_00/fx_a_hit_007.dds",
-            },
-            {
-                row["slotId"]: row["assetId"]
-                for row in elements["impact.fragments.hit_007"]["resources"]
-            },
+            phase_one_ids, {row["id"] for row in phase_one_document["elements"]}
+        )
+        self.assertEqual(len(phase_one_ids), len(phase_one_document["elements"]))
+
+        runtime_cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
+        presentation = json.loads(
+            VALTAN_PRESENTATION_PATH.read_text(encoding="utf-8")
+        )
+        spec = importlib.util.spec_from_file_location(
+            "valtan_phase_two_mechanics_saved_rows",
+            REPOSITORY_ROOT / "Tools/ValtanPipeline/author_valtan_phase_two_mechanics.py",
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        factory = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(factory)
+        factory_presentation = copy.deepcopy(presentation)
+        factory.author_existing_patterns(
+            copy.deepcopy(json.loads(factory.GAMEPLAY.read_text(encoding="utf-8"))),
+            factory_presentation,
+        )
+        cue_contracts = (
+            (
+                "VALTAN_FOUR_SLASH", "SLASHES", phase_one_id,
+                "cue.valtan.carrier-v1.attack.four-slash.active.clip-01",
+                "valtan.attack.four-slash.active.clip.01", "mesh_att_battle_10_01",
+            ),
+            (
+                "VALTAN_SEQUENCE_FOUR", "STEP_01", phase_two_id,
+                "cue.valtan.phase2.four.slashes",
+                "valtan.sequence.four.step-01.clip-01", "mesh_att_battle_19_01",
+            ),
+        )
+        for pattern_id, stage_id, effect_id, cue_id, occurrence_id, clip in cue_contracts:
+            with self.subTest(pattern=pattern_id):
+                expected_cue = [(cue_id, effect_id, occurrence_id)]
+                self.assertEqual(
+                    expected_cue,
+                    [
+                        (row["bindingId"], row["effectAssetId"], row["clipOccurrenceId"])
+                        for row in runtime_cues
+                        if (row["patternId"], row["stageId"]) == (pattern_id, stage_id)
+                    ],
+                )
+                for candidate in (presentation, factory_presentation):
+                    pattern = factory.pattern(candidate, pattern_id)
+                    stage = factory.stage(pattern, stage_id)
+                    self.assertEqual(
+                        expected_cue,
+                        [
+                            (row["cueId"], row["effectAssetId"], row["clipOccurrenceId"])
+                            for row in stage["effectCues"]
+                        ],
+                    )
+                    self.assertEqual(
+                        [(occurrence_id, clip)],
+                        [
+                            (row["clipOccurrenceId"], row["clip"])
+                            for row in stage["animation"]["occurrences"]
+                        ],
+                    )
+        self.assertEqual(
+            factory.pattern(presentation, "VALTAN_FOUR_SLASH"),
+            factory.pattern(factory_presentation, "VALTAN_FOUR_SLASH"),
         )
 
         cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
@@ -2106,6 +2210,48 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             sorted(clear_slot.index(token) for token in ordered_tokens),
             [clear_slot.index(token) for token in ordered_tokens],
         )
+
+    def test_requested_composites_start_at_pattern_zero(self) -> None:
+        presentation = json.loads(VALTAN_PRESENTATION_PATH.read_text(encoding="utf-8"))
+        runtime = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
+        spec = importlib.util.spec_from_file_location(
+            "valtan_pattern_zero_factory",
+            REPOSITORY_ROOT / "Tools/ValtanPipeline/author_valtan_phase_two_mechanics.py",
+        )
+        factory = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(factory)
+        gameplay = json.loads(factory.GAMEPLAY.read_text(encoding="utf-8"))
+        seeded = copy.deepcopy(presentation)
+        factory.author_existing_patterns(copy.deepcopy(gameplay), seeded)
+        source_g = factory.pattern(gameplay, "VALTAN_TERRAIN_DESTRUCTION")
+        source_p = factory.pattern(presentation, "VALTAN_TERRAIN_DESTRUCTION")
+        terrain_seeds = {
+            clock: factory.build_terrain_pair(clock, source_g, source_p)[1]
+            for clock in ("3_OCLOCK", "9_OCLOCK")
+        }
+        for pattern_id, cue_id, stage_id, start_ms, seed in (
+            ("VALTAN_ROAR_CHARGE", "cue.valtan.requested.20260827.roar-charge.composite",
+             "STEP_01", 0, factory.pattern(seeded, "VALTAN_ROAR_CHARGE")),
+            ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "cue.valtan.requested.20260827.terrain-3.semicircle",
+             "TAKEOFF", 0, terrain_seeds["3_OCLOCK"]),
+            ("VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK", "cue.valtan.requested.20260827.terrain-9.semicircle",
+             "TAKEOFF", 0, terrain_seeds["9_OCLOCK"]),
+        ):
+            with self.subTest(pattern=pattern_id):
+                for pattern in (factory.pattern(presentation, pattern_id), seed):
+                    occurrences = [(stage, cue) for stage in pattern["stages"]
+                                   for cue in stage["effectCues"] if cue["cueId"] == cue_id]
+                    self.assertEqual(len(occurrences), 1)
+                    stage, cue = occurrences[0]
+                    self.assertEqual(stage_id, stage["stageId"])
+                    self.assertEqual(start_ms, cue["sourceStartMs"])
+                    self.assertEqual(stage["animation"]["occurrences"][0]["clipOccurrenceId"],
+                                     cue["clipOccurrenceId"])
+                    if start_ms == 0:
+                        self.assertEqual(pattern["stages"][0]["stageId"], stage_id)
+                cue = next(row for row in runtime if row["bindingId"] == cue_id)
+                self.assertEqual(stage_id, cue["stageId"])
+                self.assertEqual(start_ms, cue["sourceStartMs"])
 
     def test_whirlwind_trail_uses_element_local_axe_follow(self) -> None:
         effect_id = "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01"
@@ -2630,6 +2776,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "effect.valtan.project-tuned.sequence.attack-whirlwind",
             "effect.valtan.project-tuned.sequence.catch-breath",
             "effect.valtan.project-tuned.sequence.counter",
+            "effect.valtan.project-tuned.sequence.four",
             "effect.valtan.project-tuned.sequence.six-pizza-106",
             "effect.valtan.project-tuned.sequence.three",
             "effect.valtan.project-tuned.sequence.trash",
@@ -2800,6 +2947,31 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         self.assertTrue(all(row["visible"] for row in floor["elements"]))
         self.assertEqual([], floor["modelCues"])
+        floor_elements = {row["id"]: row for row in floor["elements"]}
+        for element_id, start_delay in (
+            ("authored.copy.requested.20260827.terrain-3.landing.01.2", 4.57000017),
+        ):
+            with self.subTest(user_added_cylinder=element_id):
+                element = floor_elements[element_id]
+                self.assertEqual("particle", element["kind"])
+                self.assertEqual(
+                    "Effect/Valtan/Meshes/FX_SM_00/fm_c_cylinder_002.wmodel",
+                    {
+                        row["slotId"]: row["assetId"]
+                        for row in element["resources"]
+                    }["meshModel"],
+                )
+                self.assertAlmostEqual(
+                    start_delay,
+                    element["detail"]["timing"]["startDelaySeconds"],
+                    places=7,
+                )
+                self.assertTrue(element["sourceRecipe"]["enabled"])
+                self.assertAlmostEqual(
+                    0.230893999,
+                    element["sourceRecipe"]["emitterDelaySeconds"],
+                    places=7,
+                )
         center = json.loads(
             (
                 REPOSITORY_ROOT / "Data" /

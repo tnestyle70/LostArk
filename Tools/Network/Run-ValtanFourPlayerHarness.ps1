@@ -137,9 +137,14 @@ try {
     }
     $harnessStdoutTask = $harnessProcess.StandardOutput.ReadToEndAsync()
     $harnessStderrTask = $harnessProcess.StandardError.ReadToEndAsync()
-    if (-not $harnessProcess.WaitForExit($HarnessTimeoutMilliseconds + 5000)) {
-        $harnessProcess.Kill($true)
-        throw 'Valtan four-player harness exceeded its external timeout.'
+    $harnessTimedOut = -not $harnessProcess.WaitForExit($HarnessTimeoutMilliseconds + 5000)
+    if ($harnessTimedOut) {
+        # This owned console harness creates no child processes. Keep the
+        # .NET Framework-compatible overload and drain diagnostics after exit.
+        $harnessProcess.Kill()
+        if (-not $harnessProcess.WaitForExit(5000)) {
+            throw 'Valtan four-player harness did not stop after its timeout.'
+        }
     }
     $harnessProcess.WaitForExit()
     $harnessExitCode = $harnessProcess.ExitCode
@@ -151,6 +156,9 @@ try {
         -Encoding UTF8
     Write-CapturedLog -Path $harnessStdout
     Write-CapturedLog -Path $harnessStderr -AsError
+    if ($harnessTimedOut) {
+        throw 'Valtan four-player harness exceeded its external timeout.'
+    }
     if (0 -ne $harnessExitCode) {
         throw "Valtan four-player harness failed with code $harnessExitCode."
     }
@@ -168,7 +176,7 @@ finally {
     if ($null -ne $harnessProcess) {
         $harnessProcess.Refresh()
         if (-not $harnessProcess.HasExited) {
-            $harnessProcess.Kill($true)
+            $harnessProcess.Kill()
             $null = $harnessProcess.WaitForExit(5000)
         }
         $harnessProcess.Dispose()

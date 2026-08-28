@@ -7,9 +7,9 @@
   "modelCues": [  ],
   "elements": [
     {
-      "id": "requested.20260827.terrain-3.landing.01",
+      "id": "authored.copy.requested.20260827.terrain-3.landing.01.1",
       "displayName": "Requested 2026-08-27 / terrain 3 folded landing layer 1",
-      "groupId": "requested.20260827",
+      "groupId": "manual.authoring",
       "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.high-jump.land.clip-01:source.7b7b7c81b12e9dd59483:requested.20260827.terrain-3.landing.01",
       "visible": true,
       "kind": "particle",
@@ -27,7 +27,7 @@
         "transform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [1, 1, 1], "velocityPerSecond": [0, 0, 0] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 0.0500000007, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.100000001, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
+        "timing": { "startDelaySeconds": 3.29999995, "lifeTimeSeconds": 0.100000001, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
         "mesh": { "useModelMaterial": false, "modelPreScale": 0.00999999978, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [0.159999996, 0.159999996], "depth": 0.25 },
@@ -153,6 +153,41 @@
             ] }
         ] },
       "sourcePresentation": { "enabled": false }
+    },
+    {
+      "id": "requested.20260828.terrain-3.symbol-half-ring",
+      "displayName": "Requested 2026-08-28 / terrain 3 symbol half ring",
+      "groupId": "requested.20260828",
+      "sourceNode": "authored-copy:effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01:donut.telegraph.outer.red:requested.20260828.terrain-3.symbol-half-ring",
+      "visible": true,
+      "kind": "particle",
+      "resources": [
+        { "slotId": "base", "assetId": "Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/fx_c_symbol_003_half_ring.dds" },
+        { "slotId": "mask", "assetId": "Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/fx_c_symbol_003_half_ring.dds" }
+      ],
+      "material": { "templateId": "effect.standard", "sourceMaterialPath": "", "renderProfile": "alpha_two_sided_depth_read", "sourceProfile": { "enabled": false } },
+      "actionCueAttachment": { "enabled": false, "follow": false, "sourceAnchorSlotId": "", "runtimeAnchorSlotId": "", "runtimeBoneName": "", "snapshotRootSourceBasisYawDegrees": 0, "socketLocalTransform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] } },
+      "transformInheritance": { "enabled": false, "masterElementId": "" },
+      "detail": {
+        "transform": { "position": [0, 0.289999992, 0], "rotationDegrees": [-90, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [22, 22, 22], "velocityPerSecond": [0, 0, 0] },
+        "color": { "offset": [0, 0, 0, 0], "multiply": [0.449999988, 0, 0, 0.5], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
+        "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": false, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
+        "timing": { "startDelaySeconds": 1.36000001, "lifeTimeSeconds": 5, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
+        "mesh": { "useModelMaterial": false, "sourceTypeDataRotationDegrees": [0, 0, 0] },
+        "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
+        "decal": { "size": [1, 1], "depth": 0.25 },
+        "linearLerp": { "position": false, "endPosition": [0, 0, 0], "rotation": false, "endRotationDegrees": [0, 0, 0], "revolution": false, "endRevolutionDegreesPerSecond": [0, 0, 0], "scale": false, "endScale": [1, 1, 1], "velocity": false, "endVelocityPerSecond": [0, 0, 0], "colorOffset": false, "endColorOffset": [0, 0, 0, 0], "colorMultiply": false, "endColorMultiply": [1, 1, 1, 1], "emissiveIntensity": false, "endEmissiveIntensity": 1 },
+        "particle": { "maxParticles": 1, "spawnRatePerSecond": 0, "burstCount": 1, "randomSeed": 1, "lifeTimeSeconds": [3, 3], "initialPositionMin": [0, 0, 0], "initialPositionMax": [0, 0, 0], "initialVelocityMin": [0, 0, 0], "initialVelocityMax": [0, 0, 0], "acceleration": [0, 0, 0], "startSize": [0.75, 0.75], "endSize": [0.75, 0.75], "localSpace": true, "billboard": false },
+        "trail": { "maxPoints": 64, "pointLifeTimeSeconds": 0.349999994, "sampleIntervalSeconds": 0.0166666675, "minimumDistance": 0.00999999978, "startWidth": 0.200000003, "endWidth": 0, "tilingDistanceWorldUnits": 0, "distanceTessellationStepWorldUnits": 0, "faceCamera": true },
+        "afterImage": { "sampleIntervalSeconds": 0.0500000007, "maxCopies": 16, "alphaExponent": 1 },
+        "light": { "enabled": false },
+        "screenPost": { "enabled": false }
+      },
+      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1,
+        "bursts": [        ],
+        "modules": [        ] },
+      "sourcePresentation": { "enabled": false },
+      "authoringOverrides": { "resources": [ { "slotId": "base", "assetId": "Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/fx_c_symbol_003_half_ring.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_05/fx_m_noise_001.dds" }, { "slotId": "mask", "assetId": "Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/fx_c_symbol_003_half_ring.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_00/fx_b_ring_005_cl.dds" } ], "scalars": [], "colors": [] }
     }
   ]
 }
