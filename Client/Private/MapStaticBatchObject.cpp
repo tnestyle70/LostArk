@@ -241,6 +241,7 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 
 	m_Instances[iter->second] = instance;
 	m_bShadowInstancesDirty = true;
+	m_bVisibleInstancesDirty = true;
 	return S_OK;
 }
 
@@ -255,8 +256,13 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
 		return HRESULT_FROM_WIN32(
 			ERROR_NOT_FOUND);
 
-	m_Instances[iter->second].Visible = visible;
-	m_bShadowInstancesDirty = true;
+	FMapStaticInstance& instance = m_Instances[iter->second];
+	if (instance.Visible != visible)
+	{
+		instance.Visible = visible;
+		m_bShadowInstancesDirty = true;
+		m_bVisibleInstancesDirty = true;
+	}
 	return S_OK;
 }
 
@@ -388,7 +394,25 @@ HRESULT CMapStaticBatchObject::Ensure_ShadowInstanceCapacity(
 HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
 {
+	const bool_t hasCameraSnapshot = nullptr != cameraSnapshot;
+	const uint64_t cameraRevision = hasCameraSnapshot ?
+		cameraSnapshot->revision : 0u;
+	if (!m_bVisibleInstancesDirty &&
+		m_bVisibleInstancesUsedCamera == hasCameraSnapshot &&
+		m_iVisibleCameraRevision == cameraRevision)
+	{
+		if (Engine::CProfiler* profiler =
+			CGameInstance::Get().Get_Profiler())
+		{
+			profiler->Add_Counter(
+				Engine::EProfilerCounter::MapVisibleInstances,
+				m_VisibleInstances.size());
+		}
+		return S_OK;
+	}
+
 	m_VisibleInstances.clear();
+	bool_t requiresNextCameraTick = false;
 
 	for (FMapStaticInstance& instance :
 		m_Instances)
@@ -397,7 +421,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 			continue;
 
 		MAP_FRUSTUM_CULL_DECISION decision{};
-		if (nullptr != cameraSnapshot &&
+		const bool_t evaluated = hasCameraSnapshot &&
 			CMapAssetRenderUtils::Evaluate_FrustumVisibility(
 				m_FrustumCulling,
 				*cameraSnapshot,
@@ -407,8 +431,13 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 				instance.WorldBoundsCenter,
 				instance.WorldBoundsRadius,
 				instance.FrustumState,
-				decision) &&
-			!decision.shouldRender)
+				decision);
+		if (evaluated && !decision.wouldBeVisible &&
+			decision.shouldRender && !m_FrustumCulling.bypass)
+		{
+			requiresNextCameraTick = true;
+		}
+		if (evaluated && !decision.shouldRender)
 		{
 			continue;
 		}
@@ -433,7 +462,12 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	}
 
 	if (m_VisibleInstances.empty())
+	{
+		m_bVisibleInstancesDirty = requiresNextCameraTick;
+		m_bVisibleInstancesUsedCamera = hasCameraSnapshot;
+		m_iVisibleCameraRevision = cameraRevision;
 		return S_OK;
+	}
 
 	if (FAILED(Ensure_InstanceCapacity(
 		static_cast<uint32_t>(
@@ -463,6 +497,9 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	m_pContext->Unmap(
 		m_pInstanceBuffer.Get(),
 		0);
+	m_bVisibleInstancesDirty = requiresNextCameraTick;
+	m_bVisibleInstancesUsedCamera = hasCameraSnapshot;
+	m_iVisibleCameraRevision = cameraRevision;
 
 	return S_OK;
 }

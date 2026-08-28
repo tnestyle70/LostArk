@@ -120,6 +120,9 @@ private:
 
 	bool_t m_bMirrored = false;
 	bool_t m_bShadowInstancesDirty = true;
+	bool_t m_bVisibleInstancesDirty = true;
+	bool_t m_bVisibleInstancesUsedCamera = false;
+	uint64_t m_iVisibleCameraRevision = {};
 	f32_t m_fElapsedTime = {};
 	//해당 batch에 소속된 전체 placement
 	//vector - 메모리 연속, 순회가 빠름, index O(1), 프레임마다 전체 순회 좋음

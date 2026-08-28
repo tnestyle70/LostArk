@@ -23,6 +23,9 @@ namespace
 	float4x4_t g_LastView = {};
 	float4x4_t g_LastProjection = {};
 	Client::MAP_CAMERA_CULL_SNAPSHOT g_LastCameraSnapshot{};
+	uint64_t g_ValidatedPlaneRevision = {};
+	bool_t g_HasValidatedPlanes = false;
+	float4_t g_ValidatedPlanes[6]{};
 
 	bool_t IsFiniteMatrix(const float4x4_t& matrix)
 	{
@@ -66,6 +69,46 @@ namespace
 					values[row][entry] -= factor * values[column][entry];
 			}
 		}
+		return true;
+	}
+
+	void CacheValidatedPlanes(
+		const Client::MAP_CAMERA_CULL_SNAPSHOT& snapshot)
+	{
+		g_ValidatedPlaneRevision = snapshot.revision;
+		std::memcpy(g_ValidatedPlanes, snapshot.worldPlanes,
+			sizeof(g_ValidatedPlanes));
+		g_HasValidatedPlanes = true;
+	}
+
+	bool_t ValidateNormalizedPlanes(
+		const Client::MAP_CAMERA_CULL_SNAPSHOT& snapshot,
+		std::string* reason)
+	{
+		if (g_HasValidatedPlanes &&
+			g_ValidatedPlaneRevision == snapshot.revision &&
+			0 == std::memcmp(g_ValidatedPlanes, snapshot.worldPlanes,
+				sizeof(g_ValidatedPlanes)))
+		{
+			return true;
+		}
+
+		for (const float4_t& plane : snapshot.worldPlanes)
+		{
+			const double normSquared =
+				static_cast<double>(plane.x) * plane.x +
+				static_cast<double>(plane.y) * plane.y +
+				static_cast<double>(plane.z) * plane.z;
+			if (!std::isfinite(plane.w) || !std::isfinite(normSquared) ||
+				std::abs(normSquared - 1.0) >
+					8.0 * std::numeric_limits<f32_t>::epsilon())
+			{
+				return ReportCullFailure(reason,
+					"invalid normalized frustum plane");
+			}
+		}
+
+		CacheValidatedPlanes(snapshot);
 		return true;
 	}
 
@@ -113,7 +156,38 @@ namespace
 				g_DiagnosticStream << ',';
 			g_DiagnosticStream << decision.planeDistances[index];
 		}
-		g_DiagnosticStream << "]\n";
+		g_DiagnosticStream << ']';
+		const matrix_t viewProjection =
+			XMLoadFloat4x4(&snapshot.view) *
+			XMLoadFloat4x4(&snapshot.projection);
+		const vector_t clip = XMVector3Transform(
+			XMVectorSetW(XMLoadFloat3(&worldCenter), 1.f), viewProjection);
+		const f32_t clipW = XMVectorGetW(clip);
+		if (std::isfinite(clipW) && std::abs(clipW) > 0.000001f)
+		{
+			const f32_t ndcX = XMVectorGetX(clip) / clipW;
+			const f32_t ndcY = XMVectorGetY(clip) / clipW;
+			const f32_t ndcZ = XMVectorGetZ(clip) / clipW;
+			const f32_t ndcRadiusX = decision.baseRadius *
+				snapshot.projection._11 / std::abs(clipW);
+			const f32_t ndcRadiusY = decision.baseRadius *
+				snapshot.projection._22 / std::abs(clipW);
+			const bool_t onScreen = clipW > 0.f &&
+				std::abs(ndcX) <= 1.f + ndcRadiusX &&
+				std::abs(ndcY) <= 1.f + ndcRadiusY &&
+				ndcZ >= 0.f && ndcZ <= 1.f;
+			g_DiagnosticStream
+				<< " ndc=(" << ndcX << ',' << ndcY << ',' << ndcZ << ')'
+				<< " clipW=" << clipW
+				<< " ndcRadius=(" << ndcRadiusX << ',' << ndcRadiusY << ')'
+				<< " onScreen=" << (onScreen ? 1 : 0);
+		}
+		else
+		{
+			g_DiagnosticStream << " ndc=none clipW=" << clipW
+				<< " ndcRadius=none onScreen=0";
+		}
+		g_DiagnosticStream << '\n';
 		g_DiagnosticStream.flush();
 	}
 }
@@ -187,6 +261,7 @@ bool_t CMapAssetRenderUtils::Build_CameraCullSnapshot(
 			stored[component] = static_cast<f32_t>(normalized);
 		}
 	}
+	CacheValidatedPlanes(candidate);
 	outSnapshot = candidate;
 	return true;
 }
@@ -268,6 +343,8 @@ bool_t CMapAssetRenderUtils::Evaluate_FrustumVisibility(
 		if (!std::isfinite(value) || value < 0.f)
 			return ReportCullFailure(outFailureReason, "invalid frustum margin policy");
 	}
+	if (!ValidateNormalizedPlanes(snapshot, outFailureReason))
+		return false;
 
 	MAP_FRUSTUM_CULL_DECISION candidate{};
 	candidate.baseRadius = worldRadius;
@@ -290,22 +367,16 @@ bool_t CMapAssetRenderUtils::Evaluate_FrustumVisibility(
 	candidate.margin = static_cast<f32_t>(margin);
 	candidate.effectiveRadius = static_cast<f32_t>(effectiveRadius);
 	double largestSeparation = 0.0;
+	const vector_t center = XMLoadFloat3(&worldCenter);
 	for (uint32_t index = 0; index < 6u; ++index)
 	{
 		const float4_t& plane = snapshot.worldPlanes[index];
-		const double normSquared = static_cast<double>(plane.x) * plane.x +
-			static_cast<double>(plane.y) * plane.y +
-			static_cast<double>(plane.z) * plane.z;
-		if (!std::isfinite(plane.w) || !std::isfinite(normSquared) ||
-			std::abs(normSquared - 1.0) >
-				8.0 * std::numeric_limits<f32_t>::epsilon())
-		{
-			return ReportCullFailure(outFailureReason, "invalid normalized frustum plane");
-		}
 		const double x = static_cast<double>(plane.x) * worldCenter.x;
 		const double y = static_cast<double>(plane.y) * worldCenter.y;
 		const double z = static_cast<double>(plane.z) * worldCenter.z;
-		const double distance = x + y + z + plane.w;
+		const f32_t planeDistance = XMVectorGetX(XMPlaneDotCoord(
+			XMLoadFloat4(&plane), center));
+		const double distance = planeDistance;
 		const double magnitude = std::abs(x) + std::abs(y) + std::abs(z) +
 			std::abs(static_cast<double>(plane.w)) + effectiveRadius;
 		const double tolerance = 8.0 * std::numeric_limits<f32_t>::epsilon() *
