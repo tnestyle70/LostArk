@@ -39,6 +39,8 @@
 #include "Profiler.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "Transform.h"
+#include "Valtan.h"
 
 #include <algorithm>
 #include <array>
@@ -96,13 +98,6 @@ namespace
 	constexpr const char_t* VALTAN_AREA_MAP_EFFECT_SOURCE =
 		"Maps/Authoring/LV_LUT_HEARTRB_ED/"
 		"LV_LUT_HEARTRB_ED.mapeffects.json";
-	constexpr std::array<std::string_view, 2u>
-		VALTAN_ALL_EFFECTS_INDEPENDENT_EFFECT_IDS =
-	{
-		"valtan.independent-effect.donut-in-out",
-		"valtan.independent-effect.target-axe"
-	};
-
 	bool Is_ValtanExactHistoryPreviewEffectAssetId(
 		const std::string_view strEffectAssetId)
 	{
@@ -752,6 +747,8 @@ namespace
 		std::string strRuntimeAnchorSlotId;
 		std::string strRuntimeBoneName;
 		Client::EFFECT_TRANSFORM_DESC SocketLocalTransform{};
+		Client::EFFECT_ATTACHMENT_ORIENTATION eOrientation =
+			Client::EFFECT_ATTACHMENT_ORIENTATION::BONE;
 	};
 
 	std::vector<TOOL_SOURCE_ANCHOR_REQUEST> Collect_ToolSourceAnchorRequests(
@@ -784,7 +781,8 @@ namespace
 				AddRequest({
 					Element.ActionCueAttachment.strRuntimeAnchorSlotId,
 					Element.ActionCueAttachment.strRuntimeBoneName,
-					Element.ActionCueAttachment.SocketLocalTransform });
+					Element.ActionCueAttachment.SocketLocalTransform,
+					Element.ActionCueAttachment.eOrientation });
 			}
 		}
 		std::sort(Requests.begin(), Requests.end(),
@@ -796,13 +794,47 @@ namespace
 		return Requests;
 	}
 
+	bool_t Has_OwnerYawFollowAttachments(const Client::EFFECT_DOCUMENT_DESC& Document)
+	{
+		return std::any_of(Document.Elements.begin(), Document.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{ return Element.bVisible && Element.ActionCueAttachment.bEnabled &&
+				Element.ActionCueAttachment.bFollow && Element.ActionCueAttachment.eOrientation ==
+				Client::EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW; });
+	}
+
+	bool Try_ResolveToolAttachmentOwnerWorld(float4x4_t& OutWorld)
+	{
+		const auto pBoss = Client::CAnimationTargetService::Resolve_Boss();
+		const auto pCharacter = Client::CAnimationTargetService::Resolve_Character();
+		const auto pTargetModel = Client::CAnimationTargetService::Resolve_Model();
+		if ((nullptr != pBoss && pBoss->Get_BodyModel() != pTargetModel) ||
+			(nullptr == pBoss && (nullptr == pCharacter || pCharacter->Get_BodyModel() != pTargetModel)))
+			return false;
+		const auto pTransform = nullptr != pBoss ? pBoss->Get_Transform() :
+			(nullptr != pCharacter ? pCharacter->Get_Transform() : nullptr);
+		if (nullptr == pTransform)
+			return false;
+		OutWorld = *pTransform->Get_WorldMatrixPtr();
+		return true;
+	}
+
 	bool Build_ToolValtanSourceAnchorWorld(
 		const float4x4_t& RawBone,
 		const float4x4_t& SampledOwnerRoot,
 		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy,
 		const float3_t& WorldScale,
+		const float4x4_t& ActualOwnerWorld,
+		const Client::EFFECT_ATTACHMENT_ORIENTATION eOrientation,
 		float4x4_t& OutWorld)
 	{
+		if (eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW)
+		{
+			return Client::CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
+				RawBone, SampledOwnerRoot, ActualOwnerWorld, OutWorld);
+		}
+		if (eOrientation != Client::EFFECT_ATTACHMENT_ORIENTATION::BONE)
+			return false;
 		float4x4_t EffectiveOwnerRoot{};
 		if (!Client::CEffectPresentationService::Build_CueScalePolicyAnchor(
 				eScalePolicy, WorldScale, SampledOwnerRoot,
@@ -829,7 +861,16 @@ namespace
 		OutWorlds.reserve(Requests.size());
 		std::shared_ptr<Engine::CModel> pValtanModel;
 		float4x4_t SampledValtanOwnerRoot{};
-		if (nullptr != pValtanCue && !Requests.empty())
+		float4x4_t ActualOwnerWorld{};
+		const bool_t bNeedsOwnerYaw = std::any_of(Requests.begin(), Requests.end(),
+			[](const TOOL_SOURCE_ANCHOR_REQUEST& Request)
+			{ return Request.eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW; });
+		if (bNeedsOwnerYaw && !Try_ResolveToolAttachmentOwnerWorld(ActualOwnerWorld))
+		{
+			strOutError = "owner_yaw attachment requires the actual preview owner transform.";
+			return false;
+		}
+		if ((nullptr != pValtanCue || bNeedsOwnerYaw) && !Requests.empty())
 		{
 			pValtanModel = Client::CAnimationTargetService::Resolve_Model();
 			if (nullptr == pValtanModel ||
@@ -845,7 +886,9 @@ namespace
 		for (const TOOL_SOURCE_ANCHOR_REQUEST& Request : Requests)
 		{
 			float4x4_t BoneAnchorWorld{};
-			const bool_t bResolved = nullptr != pValtanCue ?
+			const bool_t bUsesRawBone = nullptr != pValtanCue ||
+				Request.eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW;
+			const bool_t bResolved = bUsesRawBone ?
 				(nullptr != pValtanModel &&
 				 pValtanModel->Has_Bone(Request.strRuntimeBoneName.c_str())) :
 				Client::CAnimationTargetService::Resolve_AnchorTransform(
@@ -861,15 +904,17 @@ namespace
 				bAllResolved = false;
 				continue;
 			}
-			if (nullptr != pValtanCue)
+			if (bUsesRawBone)
 			{
 				float4x4_t RawBone{};
 				XMStoreFloat4x4(&RawBone, pValtanModel->Get_BoneMatrix(
 					Request.strRuntimeBoneName.c_str()));
 				if (!Build_ToolValtanSourceAnchorWorld(
 						RawBone, SampledValtanOwnerRoot,
-						pValtanCue->eScalePolicy, pValtanCue->vWorldScale,
-						BoneAnchorWorld))
+						nullptr != pValtanCue ? pValtanCue->eScalePolicy :
+							Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE,
+						nullptr != pValtanCue ? pValtanCue->vWorldScale : float3_t{ 1.f, 1.f, 1.f },
+						ActualOwnerWorld, Request.eOrientation, BoneAnchorWorld))
 				{
 					if (strOutError.empty())
 					{
@@ -1656,6 +1701,13 @@ namespace
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
 		return Client::Resolve_EffectToolAuthoringFamily(Element);
+	}
+
+	bool_t Can_EditElementFollowAttachment(const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Element.eKind == Client::EFFECT_ELEMENT_KIND::TRAIL ||
+			(Resolve_AuthoringFamily(Element) == Client::EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE &&
+			 !Element.SourceRecipe.bEnabled && Element.RuntimeCarrier.Is_Empty());
 	}
 
 	const char_t* ScreenPostProfile_Label(
@@ -3468,6 +3520,14 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 		m_ValtanProductPreview.has_value() ?
 			&m_ValtanProductPreview->Cue : nullptr,
 		SourceAnchorWorlds, SourceAnchorError);
+	if (!bSourceAnchorsResolved && Has_OwnerYawFollowAttachments(SourceAnchorDocument))
+	{
+		m_bPreviewPlaying = false;
+		pObject->Set_Playing(false);
+		Set_SynchronizedAnimationPaused(true);
+		m_strPreviewStatus = "Hand source anchor unavailable; previous preview preserved: " + SourceAnchorError;
+		return;
+	}
 	pObject->Set_SourceAnchorWorlds(std::move(SourceAnchorWorlds));
 	if (!bSourceAnchorsResolved)
 	{
@@ -3525,6 +3585,15 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 				pObject, SourceAnchorDocument,
 				fEffectSampleSeconds, HistoryError))
 		{
+			if (Has_OwnerYawFollowAttachments(SourceAnchorDocument) &&
+				!m_SynchronizedAnimationClips.empty())
+			{
+				m_bPreviewPlaying = false;
+				pObject->Set_Playing(false);
+				Set_SynchronizedAnimationPaused(true);
+				m_strPreviewStatus = "Hand history seek failed; previous preview preserved: " + HistoryError;
+				return;
+			}
 			if (bRootResolved)
 				pObject->Set_RootWorld(Root);
 			pObject->Set_SampleTime(fEffectSampleSeconds);
@@ -4846,16 +4915,16 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     }
     ImGui::EndDisabled();
 
-	const EFFECT_ELEMENT_DESC* pSelectedTrail = Find_SelectedElement();
-	if (nullptr != pSelectedTrail &&
-		EFFECT_ELEMENT_KIND::TRAIL == pSelectedTrail->eKind)
+	const EFFECT_ELEMENT_DESC* pSelectedFollowElement = Find_SelectedElement();
+	if (nullptr != pSelectedFollowElement &&
+		Can_EditElementFollowAttachment(*pSelectedFollowElement))
 	{
-		ImGui::SeparatorText("Selected Trail Follow");
+		ImGui::SeparatorText("Selected Element Follow");
 		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
-			pSelectedTrail->ActionCueAttachment;
-		const bool_t bHasTrailFollow =
+			pSelectedFollowElement->ActionCueAttachment;
+		const bool_t bHasElementFollow =
 			Attachment.bEnabled && Attachment.bFollow;
-		if (bHasTrailFollow)
+		if (bHasElementFollow)
 		{
 			ImGui::TextWrapped("Element-local follow: %s -> %s",
 				Attachment.strRuntimeAnchorSlotId.c_str(),
@@ -4864,27 +4933,27 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 		else
 		{
 			ImGui::TextWrapped(
-				"No element-local follow. A stationary root produces only one Trail point and no ribbon draw.");
+				"No element-local follow. Select a Socket / Bone above and attach this Element.");
 		}
 		ImGui::TextDisabled(
-			"This edits only the selected Trail; Product cue placement and the other Elements stay unchanged.");
-		const bool_t bTrailAttachmentEditable =
+			"This edits only the selected Element. Detail > Element Follow Attachment changes orientation through Apply.");
+		const bool_t bAttachmentEditable =
 			EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT == m_eActiveDocumentSource ||
 			EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource;
-		const bool_t bCanSetTrailFollow =
-			bTrailAttachmentEditable &&
+		const bool_t bCanSetElementFollow =
+			bAttachmentEditable &&
 			!Has_UnappliedDetailDraft() &&
 			!m_strPreviewAnchorSlotId.empty();
-		ImGui::BeginDisabled(!bCanSetTrailFollow);
-		if (ImGui::Button("Attach Selected Trail to Bone"))
-			Try_SetSelectedTrailFollowAnchor(m_strPreviewAnchorSlotId);
+		ImGui::BeginDisabled(!bCanSetElementFollow);
+		if (ImGui::Button("Attach Selected Element to Bone"))
+			Try_SetSelectedElementFollowAnchor(m_strPreviewAnchorSlotId);
 		ImGui::EndDisabled();
 		ImGui::SameLine();
-		ImGui::BeginDisabled(!bTrailAttachmentEditable ||
+		ImGui::BeginDisabled(!bAttachmentEditable ||
 			Has_UnappliedDetailDraft() ||
-			!bHasTrailFollow);
-		if (ImGui::Button("Clear Selected Trail Follow"))
-			Try_ClearSelectedTrailFollowAnchor();
+			!bHasElementFollow);
+		if (ImGui::Button("Clear Selected Element Follow"))
+			Try_ClearSelectedElementFollowAnchor();
 		ImGui::EndDisabled();
 	}
 
@@ -5202,6 +5271,11 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 							Is_ProductCueVisible(m_fPreviewTimeSeconds));
 						m_strPreviewStatus =
 							"Sample Time rebuilt moving source-anchor history.";
+					}
+					else if (Has_OwnerYawFollowAttachments(SourceAnchorDocument) &&
+						!m_SynchronizedAnimationClips.empty())
+					{
+						m_strPreviewStatus = "Hand history sample failed; previous preview preserved: " + HistoryError;
 					}
 					else
 					{
@@ -6824,6 +6898,27 @@ void Client::CEffect_Tool::Render_Detail(
 		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
 	}
 	Render_CompositionDetail(Element, bChanged);
+	if (Can_EditElementFollowAttachment(Element) &&
+		Element.ActionCueAttachment.bEnabled && Element.ActionCueAttachment.bFollow &&
+		!Element.SourceRecipe.bEnabled && Element.RuntimeCarrier.Is_Empty() &&
+		m_ActiveDocument.has_value() && !m_ActiveDocument->bSourceContract &&
+		ImGui::CollapsingHeader("Element Follow Attachment"))
+	{
+		auto& Attachment = Element.ActionCueAttachment;
+		ImGui::TextWrapped("Bone: %s", Attachment.strRuntimeBoneName.c_str());
+		int iOrientation = static_cast<int>(Attachment.eOrientation);
+		const char* OrientationItems[] = { "Bone", "Owner yaw (unit scale)" };
+		if (ImGui::Combo("Follow Orientation", &iOrientation,
+			OrientationItems, static_cast<int>(std::size(OrientationItems))))
+		{
+			Attachment.eOrientation = static_cast<EFFECT_ATTACHMENT_ORIENTATION>(iOrientation);
+			// A shared pair can be edited independently without aliasing two bases.
+			Attachment.strRuntimeAnchorSlotId = Element.strElementId;
+			bChanged = true;
+		}
+		ImGui::TextWrapped(
+			"Owner yaw keeps the bone position with the actual owner's unit basis. Apply commits this Detail draft.");
+	}
 	Render_TransformDetail(Element.Detail, bChanged);
 	Render_TimingDetail(Element, bChanged);
 	Render_SizeDetail(Element, bChanged);
@@ -7492,11 +7587,18 @@ void Client::CEffect_Tool::Render_UVDetail(
     bChanged |= ImGui::DragFloat("Wave Frequency",
         &Detail.UV.fWaveFrequency, 0.01f, 0.f, 100.f, "%.3f",
         ImGuiSliderFlags_AlwaysClamp);
+    if (Detail.Particle.bSubUVOverLife)
+        ImGui::BeginDisabled();
     bChanged |= ImGui::Checkbox("UV Sequence", &Detail.UV.bSequence);
     bChanged |= ImGui::Checkbox("UV Loop", &Detail.UV.bLoop);
     bChanged |= ImGui::DragFloat("Sequence Term",
         &Detail.UV.fSequenceTerm, 0.001f, 0.001f, 60.f, "%.3f",
         ImGuiSliderFlags_AlwaysClamp);
+    if (Detail.Particle.bSubUVOverLife)
+    {
+        ImGui::EndDisabled();
+        ImGui::TextDisabled("SubUV over particle life owns each particle's atlas frame.");
+    }
     bool_t bTileChanged = ImGui::DragInt(
         "UV Tile Columns", &Detail.UV.iTileColumns, 0.1f, 1, 64, "%d",
         ImGuiSliderFlags_AlwaysClamp);
@@ -7505,9 +7607,13 @@ void Client::CEffect_Tool::Render_UVDetail(
         ImGuiSliderFlags_AlwaysClamp);
     const int32_t iMaximumTile = (std::max)(
         0, Detail.UV.iTileColumns * Detail.UV.iTileRows - 1);
+    if (Detail.Particle.bSubUVOverLife)
+        ImGui::BeginDisabled();
     bTileChanged |= ImGui::DragInt(
         "UV Tile Index", &Detail.UV.iTileIndex, 0.1f, 0, iMaximumTile,
         "%d", ImGuiSliderFlags_AlwaysClamp);
+    if (Detail.Particle.bSubUVOverLife)
+        ImGui::EndDisabled();
     Detail.UV.iTileIndex = std::clamp(
         Detail.UV.iTileIndex, 0, iMaximumTile);
     bChanged |= bTileChanged;
@@ -7869,6 +7975,20 @@ void Client::CEffect_Tool::Render_AuthoringMaterialParameters(
 	EFFECT_ELEMENT_DESC& Element,
 	bool_t& bChanged)
 {
+	if (Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+		!Element.Material.SourceMaterial.bEnabled &&
+		!Element.Material.Execution.bEnabled &&
+		!Element.Material.Execution.bFailClosed &&
+		!Element.SourceRecipe.bEnabled)
+	{
+		bChanged |= ImGui::Checkbox("sRGB Base / Emissive", &Element.Material.bColorTexturesSRGB);
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Decode colour textures as sRGB; mask, noise, and dissolve stay linear. "
+				"Apply stages new texture views and preserves the previous Effect if loading fails.");
+		}
+	}
+
 	struct SCALAR_CONTROL final
 	{
 		std::string strName;
@@ -8101,6 +8221,12 @@ void Client::CEffect_Tool::Render_KindDetail(
 			bSourcePlayback;
 		const bool_t bMeshParticle = Resolve_AuthoringFamily(Element) ==
 			EFFECT_AUTHORING_FAMILY::MESH_PARTICLE;
+		const bool_t bNativeSpriteDynamicsEditable = !bMeshParticle &&
+			Is_DirectHandAuthoredElement(Element) && Detail.Particle.bBillboard &&
+			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+			Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			!Element.Material.Execution.bFailClosed &&
+			!Element.Material.Execution.bAuthoringApproximate;
 		const bool_t bGenericMeshRingFillCarrier = bMeshParticle &&
 			Is_DirectHandAuthoredElement(Element) &&
 			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
@@ -8287,6 +8413,48 @@ void Client::CEffect_Tool::Render_KindDetail(
         }
 		bChanged |= DragFloat3("Acceleration",
 			Detail.Particle.vAcceleration, 0.01f, -1000.f, 1000.f);
+		if (bNativeSpriteDynamicsEditable)
+		{
+			bChanged |= ImGui::DragFloat("Particle Drag",
+				&Detail.Particle.fDrag, 0.01f, 0.f, 1000.f, "%.3f",
+				ImGuiSliderFlags_AlwaysClamp);
+			if (DragFloat2("Particle Rotation Min/Max Degrees",
+				Detail.Particle.vRotationRangeDegrees, 1.f, -3600.f, 3600.f))
+			{
+				Detail.Particle.vRotationRangeDegrees.y = (std::max)(
+					Detail.Particle.vRotationRangeDegrees.x,
+					Detail.Particle.vRotationRangeDegrees.y);
+				bChanged = true;
+			}
+			if (DragFloat2("Particle Spin Min/Max Degrees Per Second",
+				Detail.Particle.vSpinRangeDegreesPerSecond, 1.f, -3600.f, 3600.f))
+			{
+				Detail.Particle.vSpinRangeDegreesPerSecond.y = (std::max)(
+					Detail.Particle.vSpinRangeDegreesPerSecond.x,
+					Detail.Particle.vSpinRangeDegreesPerSecond.y);
+				bChanged = true;
+			}
+			const bool_t bHasAtlas =
+				static_cast<int64_t>(Detail.UV.iTileColumns) * Detail.UV.iTileRows > 1;
+			const bool_t bDisableLifeSubUV = !bHasAtlas && !Detail.Particle.bSubUVOverLife;
+			if (bDisableLifeSubUV)
+				ImGui::BeginDisabled();
+			if (ImGui::Checkbox("SubUV over particle life",
+				&Detail.Particle.bSubUVOverLife))
+			{
+				if (Detail.Particle.bSubUVOverLife)
+				{
+					Detail.UV.bSequence = false;
+					Detail.UV.bLoop = false;
+					Detail.UV.iTileIndex = 0;
+				}
+				bChanged = true;
+			}
+			if (bDisableLifeSubUV)
+				ImGui::EndDisabled();
+			ImGui::TextDisabled(
+				"Set UV Tile Columns/Rows above 1 for an atlas. Life SubUV plays all frames once over each particle's own lifetime.");
+		}
 
 		/* Spawn volume and emission direction: the two axes the authored Detail
 		   could not express at all, so a ring that collapses inward or a mesh
@@ -8408,7 +8576,6 @@ void Client::CEffect_Tool::Render_KindDetail(
 					}
 					else
 					{
-						Detail.Particle.bLocalSpace = true;
 						Detail.Particle.bBillboard = false;
 					}
 					bChanged = true;
@@ -8420,7 +8587,7 @@ void Client::CEffect_Tool::Render_KindDetail(
 						&Orientation.fOffsetDegrees, 1.f, -3600.f, 3600.f,
 						"%.1f", ImGuiSliderFlags_AlwaysClamp);
 					ImGui::TextDisabled(
-						"Ground orientation is particle-local and requires Local Space ON plus Billboard OFF.");
+						"Ground orientation is set at particle birth and requires Billboard OFF.");
 				}
 			}
 		}
@@ -8438,6 +8605,8 @@ void Client::CEffect_Tool::Render_KindDetail(
 		{
 			Emission.eMode =
 				static_cast<EFFECT_PARTICLE_VELOCITY_MODE>(iVelocityMode);
+			if (Emission.eMode != EFFECT_PARTICLE_VELOCITY_MODE::CONE)
+				Emission.bUniformSolidAngle = false;
 			bChanged = true;
 		}
 		if (EFFECT_PARTICLE_VELOCITY_MODE::FIXED != Emission.eMode)
@@ -8454,6 +8623,11 @@ void Client::CEffect_Tool::Render_KindDetail(
 				bChanged |= ImGui::DragFloat("Cone Half Angle Degrees",
 					&Emission.fConeAngleDegrees, 1.f, 0.f, 180.f, "%.1f",
 					ImGuiSliderFlags_AlwaysClamp);
+				if (bNativeSpriteDynamicsEditable)
+				{
+					bChanged |= ImGui::Checkbox("Uniform Cone Solid Angle",
+						&Emission.bUniformSolidAngle);
+				}
 			}
 			ImGui::TextDisabled(
 				"Outward and Inward are radial about the Element origin and replace the Initial Velocity box.");
@@ -8533,17 +8707,13 @@ void Client::CEffect_Tool::Render_KindDetail(
 		const bool_t bOrientationLocksParticleBasis =
 			EFFECT_PARTICLE_ORIENTATION_MODE::FIXED !=
 				Detail.Particle.InitialOrientation.eMode;
-		if (bOrientationLocksParticleBasis)
-			ImGui::BeginDisabled();
 		bChanged |= ImGui::Checkbox("Particle Local Space",
 			&Detail.Particle.bLocalSpace);
-		if (bOrientationLocksParticleBasis)
-			ImGui::EndDisabled();
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip(
 				"Local Space keeps spawned particles relative to this Element; "
-				"disabled particles continue in world/root space.");
+				"disabled particles freeze the emitter position/orientation at birth; manual scale curves keep animating.");
 		}
 		if (!bMeshParticle)
 		{
@@ -10888,12 +11058,22 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::SameLine();
 	const EFFECT_ELEMENT_DESC* pSelectedForDuplicate = Find_SelectedElement();
 	const bool_t bCanDuplicateSelected = !Has_UnappliedDetailDraft() &&
-		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-		nullptr != pSelectedForDuplicate &&
-		AuthoringFamily_CanCreate(
-			Resolve_AuthoringFamily(*pSelectedForDuplicate));
+		(m_MarkedElementIds.empty() ?
+			(EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
+				nullptr != pSelectedForDuplicate &&
+				AuthoringFamily_CanCreate(Resolve_AuthoringFamily(*pSelectedForDuplicate))) :
+			std::all_of(m_ActiveDocument->Elements.begin(),
+				m_ActiveDocument->Elements.end(),
+				[this](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return !m_MarkedElementIds.contains(Element.strElementId) ||
+						AuthoringFamily_CanCreate(Resolve_AuthoringFamily(Element));
+				}));
+	const std::string DuplicateLabel = m_MarkedElementIds.empty() ?
+		std::string("Duplicate Selected") :
+		"Duplicate " + std::to_string(m_MarkedElementIds.size()) + " Marked";
 	ImGui::BeginDisabled(!bCanDuplicateSelected);
-	if (ImGui::SmallButton("Duplicate Selected"))
+	if (ImGui::SmallButton(DuplicateLabel.c_str()))
 		Try_DuplicateSelectedElement();
 	ImGui::EndDisabled();
 	if (!m_MarkedElementIds.empty())
@@ -10903,7 +11083,7 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 			m_MarkedElementIds.clear();
 	}
 	ImGui::TextDisabled(
-		"Ctrl or Shift click Element rows to mark several, then Delete; Duplicate copies the open row as one independent occurrence.");
+		"Ctrl or Shift click Element rows to mark several, then Delete or Duplicate all marked. Copies stay marked and preserve timing; adjust Start Delay for later hits.");
 	ImGui::SameLine();
 	const EFFECT_ELEMENT_DESC* pSelectedForSeed = Find_SelectedElement();
 	const bool_t bCanSeedSelected =
@@ -11240,6 +11420,25 @@ bool_t Client::CEffect_Tool::Play_ValtanStageSequence(
 		Clip.bHasExplicitLoopPolicy = true;
 		Staged.push_back(std::move(Clip));
 	}
+	for (const SYNCHRONIZED_ANIMATION_CLIP& Clip : Staged)
+	{
+		uint32_t iAnimationIndex = UINT32_MAX;
+		f32_t fSourceStartTicks = 0.f;
+		if (!Resolve_SynchronizedAnimationClipStart(
+				pModel, Clip, iAnimationIndex, fSourceStartTicks))
+		{
+			m_strPreviewAnimationStatus =
+				"Valtan clip occurrence has an invalid model/source segment: " +
+				Clip.strClipName;
+			return false;
+		}
+	}
+	std::vector<SYNCHRONIZED_ANIMATION_CLIP> PreviousClips =
+		m_SynchronizedAnimationClips;
+	const size_t iPreviousClipIndex = m_iSynchronizedAnimationClipIndex;
+	const uint64_t iPreviousLoopEpoch = m_iSynchronizedAnimationLoopEpoch;
+	const uint64_t iPreviousTargetGeneration =
+		m_iSynchronizedAnimationTargetGeneration;
 	m_SynchronizedAnimationClips = std::move(Staged);
 	m_iSynchronizedAnimationClipIndex = 0u;
 	m_iSynchronizedAnimationLoopEpoch = 0u;
@@ -11248,7 +11447,11 @@ bool_t Client::CEffect_Tool::Play_ValtanStageSequence(
 	if (!Start_SynchronizedAnimationClip(0u, false))
 	{
 		const std::string FailedClip = Clips.front().strClipName;
-		Reset_SynchronizedAnimationSequence();
+		m_SynchronizedAnimationClips = std::move(PreviousClips);
+		m_iSynchronizedAnimationClipIndex = iPreviousClipIndex;
+		m_iSynchronizedAnimationLoopEpoch = iPreviousLoopEpoch;
+		m_iSynchronizedAnimationTargetGeneration =
+			iPreviousTargetGeneration;
 		m_strPreviewAnimationStatus =
 			"Valtan clip occurrence could not be started: " + FailedClip;
 		return false;
@@ -11513,7 +11716,7 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	}
 	VALTAN_TOOL_AUDITION_INVENTORY StagedAuditionInventory;
 	std::string InventoryError;
-	if (!CValtanPatternTree::Build_ToolAuditionInventory(
+	if (!CValtanPatternTree::Build_PlayablePatternInventory(
 			Staged, StagedAuditionInventory, InventoryError))
 	{
 		m_strValtanPatternTreeStatus = m_bValtanPatternTreeLoaded ?
@@ -11600,7 +11803,7 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternAuthoringEffects()
 			Authored.strEffectAssetId != Binding.strEffectAssetId)
 		{
 			m_strValtanPatternAuthoringEffectsStatus =
-				"Valtan pattern Effect binding is broken or outside the exact 27-pattern authoring inventory: " +
+				"Valtan pattern Effect binding is broken or outside the current split-owned playable inventory: " +
 				Binding.strPatternId + " / " + Binding.strEffectAssetId +
 				(AuthoredStatus.empty() ? std::string{} :
 					(" | " + AuthoredStatus));
@@ -12331,7 +12534,7 @@ bool_t Client::CEffect_Tool::Prepare_ActiveValtanPatternDraftTimeline(
 	if (nullptr == pPattern || !Is_ValtanAllEffectsPattern(*pPattern))
 	{
 		m_strPreviewAnimationStatus =
-			"Valtan Pattern Draft owner is no longer in the exact 27-pattern inventory: " +
+			"Valtan Pattern Draft owner is no longer in the current split-owned playable inventory: " +
 			m_strActiveValtanPatternDraftId;
 		return false;
 	}
@@ -12817,7 +13020,7 @@ bool_t Client::CEffect_Tool::Try_CreateValtanPatternEffect(
 		m_strSelectedValtanPatternId != Pattern.strPatternId)
 	{
 		m_strValtanPatternEffectStatus =
-			"New Effect requires one selected pattern from the exact 27-pattern inventory.";
+			"New Effect requires one selected pattern from the current split-owned playable inventory.";
 		return false;
 	}
 	if (nullptr != Find_ValtanPatternAuthoringEffect(Pattern.strPatternId))
@@ -15343,25 +15546,22 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	}
 
 	std::vector<const VALTAN_INDEPENDENT_EFFECT_VIEW*> IndependentRows;
-	IndependentRows.reserve(VALTAN_ALL_EFFECTS_INDEPENDENT_EFFECT_IDS.size());
+	IndependentRows.reserve(m_ValtanPatternTree.IndependentEffects.size());
+	std::set<std::string, std::less<>> VisibleIndependentIds;
 	bool_t bInventoryExact = true;
-	for (const std::string_view strIndependentId :
-		VALTAN_ALL_EFFECTS_INDEPENDENT_EFFECT_IDS)
+	for (const VALTAN_INDEPENDENT_EFFECT_VIEW& Effect :
+		m_ValtanPatternTree.IndependentEffects)
 	{
-		const auto Found = std::find_if(
-			m_ValtanPatternTree.IndependentEffects.begin(),
-			m_ValtanPatternTree.IndependentEffects.end(),
-			[strIndependentId](
-				const VALTAN_INDEPENDENT_EFFECT_VIEW& Effect)
-			{
-				return Effect.strIndependentEffectId == strIndependentId;
-			});
-		if (Found == m_ValtanPatternTree.IndependentEffects.end())
+		if (Effect.strIndependentEffectId.empty() ||
+			Effect.strEffectAssetId.empty() ||
+			Effect.strOwnerPatternId.empty() || Effect.strOwnerStageId.empty() ||
+			!VisibleIndependentIds.insert(
+				Effect.strIndependentEffectId).second)
 		{
 			bInventoryExact = false;
 			continue;
 		}
-		IndependentRows.push_back(&*Found);
+		IndependentRows.push_back(&Effect);
 	}
 
 	std::vector<const VALTAN_PATTERN_VIEW*> CorePatterns;
@@ -15398,13 +15598,29 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		}
 		AnimatorPatterns.push_back(pPattern);
 	}
-	if (2u != IndependentRows.size() ||
-		VALTAN_TOOL_AUDITION_INVENTORY::CORE_PATTERN_COUNT !=
+	std::vector<const VALTAN_PATTERN_VIEW*> DerivedPatterns;
+	DerivedPatterns.reserve(m_ValtanToolAuditionInventory.DerivedPatternIds.size());
+	for (const std::string& strPatternId :
+		m_ValtanToolAuditionInventory.DerivedPatternIds)
+	{
+		const VALTAN_PATTERN_VIEW* pPattern = Find_ValtanPattern(strPatternId);
+		if (nullptr == pPattern || !pPattern->bManualServerAudition ||
+			"DERIVED_SERVER_PATTERN" != pPattern->strAdmissionState ||
+			!VisiblePatternIds.insert(strPatternId).second)
+		{
+			bInventoryExact = false;
+			continue;
+		}
+		DerivedPatterns.push_back(pPattern);
+	}
+	if (m_ValtanPatternTree.IndependentEffects.size() !=
+			IndependentRows.size() ||
+		m_ValtanToolAuditionInventory.CorePatternIds.size() !=
 			CorePatterns.size() ||
-		VALTAN_TOOL_AUDITION_INVENTORY::ANIMATOR_PATTERN_COUNT !=
+		m_ValtanToolAuditionInventory.AnimatorPatternIds.size() !=
 			AnimatorPatterns.size() ||
-		VALTAN_TOOL_AUDITION_INVENTORY::TOTAL_PATTERN_COUNT !=
-			VisiblePatternIds.size())
+		m_ValtanToolAuditionInventory.Get_PatternCount() != VisiblePatternIds.size() ||
+		m_ValtanToolAuditionInventory.DerivedPatternIds.size() != DerivedPatterns.size())
 	{
 		bInventoryExact = false;
 	}
@@ -15413,9 +15629,11 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	{
 		ImGui::TextColored(
 			ImVec4(1.f, 0.45f, 0.35f, 1.f),
-			"Valtan All Effects inventory is incomplete (%zu/2 Effects, %zu/27 Patterns); no legacy or replacement row was substituted.",
+			"Valtan All Effects inventory is incomplete (%zu/%zu Effects, %zu/%zu Patterns); no legacy or replacement row was substituted.",
 			IndependentRows.size(),
-			CorePatterns.size() + AnimatorPatterns.size());
+			m_ValtanPatternTree.IndependentEffects.size(),
+			VisiblePatternIds.size(),
+			m_ValtanToolAuditionInventory.Get_PatternCount());
 	}
 
 	const VALTAN_PATTERN_VIEW* pSelectedPattern =
@@ -15644,7 +15862,8 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		if (!strSearch.empty())
 			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 		const std::string IndependentLabel =
-			"INDEPENDENT EFFECT (PATTERN 2 + AREA " +
+			"INDEPENDENT EFFECT (PATTERN " +
+			std::to_string(IndependentRows.size()) + " + AREA " +
 			std::to_string(m_ValtanAreaMapEffectDocument.Is_Ready() ?
 				m_ValtanAreaMapEffectDocument.Get_Surfaces().size() +
 				m_ValtanAreaMapEffectDocument.Get_WorldEffects().size() : 0u) +
@@ -15657,8 +15876,11 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 			{
 				if (!strSearch.empty())
 					ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+				const std::string PatternIndependentLabel =
+					"PATTERN-OWNED INDEPENDENT EFFECT (" +
+					std::to_string(IndependentRows.size()) + ")";
 				if (ImGui::TreeNodeEx(
-						"PATTERN-OWNED INDEPENDENT EFFECT (2)",
+						PatternIndependentLabel.c_str(),
 						ImGuiTreeNodeFlags_OpenOnArrow))
 				{
 					for (const VALTAN_INDEPENDENT_EFFECT_VIEW* pEffect :
@@ -15688,8 +15910,8 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		if (!strSearch.empty())
 			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 		if (ImGui::TreeNodeEx(
-				"CORE SERVER PATTERNS (8)",
-				ImGuiTreeNodeFlags_OpenOnArrow))
+				"CORE SERVER PATTERNS", ImGuiTreeNodeFlags_OpenOnArrow,
+				"CORE SERVER PATTERNS (%zu)", CorePatterns.size()))
 		{
 			for (const VALTAN_PATTERN_VIEW* pPattern : CorePatterns)
 			{
@@ -15697,6 +15919,25 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 					Render_ValtanPatternNode(
 						*pPattern, "Core", strSearch);
 			}
+			ImGui::TreePop();
+		}
+	}
+
+	const bool_t bHasVisibleDerived = std::any_of(
+		DerivedPatterns.begin(), DerivedPatterns.end(),
+		[this, &strSearch](const VALTAN_PATTERN_VIEW* pPattern)
+		{ return nullptr != pPattern && Matches_ValtanPatternSearch(*pPattern, strSearch); });
+	if (bHasVisibleDerived)
+	{
+		if (!strSearch.empty())
+			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+		if (ImGui::TreeNodeEx(
+				"DERIVED SERVER PATTERNS", ImGuiTreeNodeFlags_OpenOnArrow,
+				"DERIVED SERVER PATTERNS (%zu)", DerivedPatterns.size()))
+		{
+			for (const VALTAN_PATTERN_VIEW* pPattern : DerivedPatterns)
+				if (nullptr != pPattern)
+					Render_ValtanPatternNode(*pPattern, "Derived", strSearch);
 			ImGui::TreePop();
 		}
 	}
@@ -15713,8 +15954,8 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		if (!strSearch.empty())
 			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 		if (ImGui::TreeNodeEx(
-				"ANIMATOR PATTERNS (20)",
-				ImGuiTreeNodeFlags_OpenOnArrow))
+				"ANIMATOR PATTERNS", ImGuiTreeNodeFlags_OpenOnArrow,
+				"ANIMATOR PATTERNS (%zu)", AnimatorPatterns.size()))
 		{
 			for (const VALTAN_PATTERN_VIEW* pPattern : AnimatorPatterns)
 			{
@@ -15793,7 +16034,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	}
 	ImGui::InputTextWithHint("##effect-search",
 		m_bAllEffectsValtanBossSelected ?
-			"Search the exact 2 Effects or 27 Patterns..." :
+			"Search independent Effects or playable Patterns..." :
 			"Search skill, Product cue, or saved Effect ID...",
 		m_AllEffectsSearch.data(), m_AllEffectsSearch.size());
 	ImGui::SameLine();
@@ -17866,7 +18107,8 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 	{
 		ImGui::SetTooltip(
-			"Select one Mesh, Sprite, Particle, Decal, or Trail child row and open/create a Current Effect with no unapplied Detail draft. The source Effect will stay closed.");
+			"Select one Mesh, Sprite, Particle, Decal, or Trail child row and open/create a Current Effect with no unapplied Detail draft. The source Effect will stay closed. "
+			"Native owner-yaw Sprite Particles copy emitter settings with bone attachment reset; select a target bone and attach again.");
 	}
 	ImGui::SameLine();
     ImGui::BeginDisabled(!bSelectedSavedEffect);
@@ -18880,91 +19122,49 @@ bool_t Client::CEffect_Tool::Try_DuplicateSelectedElement()
 	if (Has_UnappliedDetailDraft())
 	{
 		m_strElementStatus =
-			"Apply or Revert the open Detail draft before duplicating an Element.";
+			"Apply or Revert the open Detail draft before duplicating Elements.";
 		return false;
 	}
 	if (!m_ActiveDocument.has_value() ||
 		(EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource &&
 		 EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT != m_eActiveDocumentSource) ||
-		m_strSelectedElementId.empty())
+		(m_MarkedElementIds.empty() && m_strSelectedElementId.empty()))
 	{
 		m_strElementStatus =
-			"Open an authored Effect and select one Element to duplicate.";
+			"Open an authored Effect and select or mark Elements to duplicate.";
 		return false;
 	}
 
-	const auto Selected = std::find_if(
-		m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
-		[this](const EFFECT_ELEMENT_DESC& Element)
+	const std::vector<std::string> Targets = m_MarkedElementIds.empty() ?
+		std::vector<std::string>{ m_strSelectedElementId } :
+		std::vector<std::string>(m_MarkedElementIds.begin(), m_MarkedElementIds.end());
+	EFFECT_DOCUMENT_DESC Staged;
+	std::unordered_map<std::string, std::string> DuplicateIds;
+	std::string Error;
+	if (!CEffectDocumentCodec::Build_DuplicatedAuthoredElements(
+			*m_ActiveDocument, Targets, Staged, DuplicateIds, Error))
+	{
+		m_strElementStatus = Error;
+		return false;
+	}
+
+	const auto OpenCopy = DuplicateIds.find(m_strSelectedElementId);
+	const std::string DuplicateId = OpenCopy == DuplicateIds.end() ?
+		DuplicateIds.at(Targets.front()) : OpenCopy->second;
+	const auto SelectedDuplicate = std::find_if(
+		Staged.Elements.begin(), Staged.Elements.end(),
+		[&DuplicateId](const EFFECT_ELEMENT_DESC& Element)
 		{
-			return Element.strElementId == m_strSelectedElementId;
+			return Element.strElementId == DuplicateId;
 		});
-	if (Selected == m_ActiveDocument->Elements.end())
-	{
-		m_strElementStatus =
-			"The selected Element no longer exists; nothing was duplicated.";
-		return false;
-	}
-	if (!AuthoringFamily_CanCreate(Resolve_AuthoringFamily(*Selected)))
-	{
-		m_strElementStatus =
-			"Presentation Light and Screen Post duplication is not admitted; use source-backed materialization or edit/delete the existing occurrence.";
-		return false;
-	}
-	if (Selected->TransformInheritance.bEnabled)
-	{
-		const std::string& strMasterId =
-			Selected->TransformInheritance.strMasterElementId;
-		if (strMasterId == Selected->strElementId ||
-			std::none_of(m_ActiveDocument->Elements.begin(),
-				m_ActiveDocument->Elements.end(),
-				[&strMasterId](const EFFECT_ELEMENT_DESC& Element)
-				{
-					return Element.strElementId == strMasterId;
-				}))
-		{
-			m_strElementStatus =
-				"Duplicate rejected an invalid or self-referential transform inheritance master.";
-			return false;
-		}
-	}
-	const std::string SourceElementId = Selected->strElementId;
-
-	EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
-	const std::string Prefix = "authored.copy.";
-	std::string DuplicateId;
-	for (size_t iCopy = 1u; iCopy <= Staged.Elements.size() + 1u; ++iCopy)
-	{
-		const std::string Suffix = "." + std::to_string(iCopy);
-		const size_t iMaximumSourceLength = 128u - Prefix.size() - Suffix.size();
-		DuplicateId = Prefix +
-			SourceElementId.substr(0u, iMaximumSourceLength) + Suffix;
-		if (std::none_of(Staged.Elements.begin(), Staged.Elements.end(),
-			[&DuplicateId](const EFFECT_ELEMENT_DESC& Element)
-			{
-				return Element.strElementId == DuplicateId;
-			}))
-		{
-			break;
-		}
-		DuplicateId.clear();
-	}
-	if (DuplicateId.empty())
-	{
-		m_strElementStatus =
-			"Duplicate could not allocate a unique authored Element ID.";
-		return false;
-	}
-
-	EFFECT_ELEMENT_DESC Duplicate = *Selected;
-	Duplicate.strElementId = DuplicateId;
-	Duplicate.strSourceNode = "authored-copy:" + SourceElementId;
-	Duplicate.SourcePresentation = {};
-	const size_t iSelectedIndex = static_cast<size_t>(
-		std::distance(m_ActiveDocument->Elements.begin(), Selected));
-	Staged.Elements.insert(
-		Staged.Elements.begin() + static_cast<ptrdiff_t>(iSelectedIndex + 1u),
-		Duplicate);
+	const std::string SelectedGroupId = SelectedDuplicate->strGroupId;
+	const EFFECT_ELEMENT_KIND eSelectedKind = SelectedDuplicate->eKind;
+	const std::string SelectedSlotId = Default_SlotId(eSelectedKind);
+	const EFFECT_RESOURCE_FILE_KIND eSelectedFileKind =
+		Slot_FileKind(*SelectedDuplicate, SelectedSlotId);
+	std::set<std::string, std::less<>> CopiedMarks;
+	for (const auto& [SourceId, CopyId] : DuplicateIds)
+		CopiedMarks.insert(CopyId);
 
 	const std::string strPreviousIsolationElement =
 		m_strPreviewIsolationElementId;
@@ -18980,25 +19180,24 @@ bool_t Client::CEffect_Tool::Try_DuplicateSelectedElement()
 	}
 
 	Reset_DetailDraft();
-	m_MarkedElementIds.clear();
+	m_MarkedElementIds = std::move(CopiedMarks);
 	m_eDetailSelection = EFFECT_DETAIL_SELECTION::ELEMENT;
 	m_strSelectedElementId = DuplicateId;
-	m_strSelectedElementGroupId = Duplicate.strGroupId;
+	m_strSelectedElementGroupId = SelectedGroupId;
 	m_strSelectedComponentId.clear();
 	m_strSelectedEmitterId.clear();
 	m_strSelectedSourceModuleId.clear();
-	m_eSelectedEffectType = Duplicate.eKind;
-	m_strSelectedResourceSlotId = Default_SlotId(Duplicate.eKind);
-	m_eResourceLibraryFileKind = Slot_FileKind(
-		Duplicate, m_strSelectedResourceSlotId);
+	m_eSelectedEffectType = eSelectedKind;
+	m_strSelectedResourceSlotId = SelectedSlotId;
+	m_eResourceLibraryFileKind = eSelectedFileKind;
 	m_strSelectedResourceAssetId.clear();
 	if (m_bActiveDocumentDrawable && m_bPreviewVisibleRequested)
 		Start_WorldPreviewFromBeginning();
-	m_strElementStatus = "Duplicated '" + SourceElementId +
-		"' as '" + DuplicateId +
-		"'; timing, material, resources, attachment, and source recipe were preserved.";
-	m_strDocumentStatus =
-		"Current Effect has one unsaved duplicated Element; no Data File was written.";
+	m_strElementStatus = "Duplicated " + std::to_string(DuplicateIds.size()) +
+		" Element(s); timing, material, resources, attachment, and source recipe were preserved. Copies remain marked.";
+	m_strDocumentStatus = "Current Effect has " +
+		std::to_string(DuplicateIds.size()) +
+		" unsaved duplicated Element(s); no Data File was written.";
 	return true;
 }
 
@@ -21387,6 +21586,12 @@ bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(
 		"' as unsaved '" + CopyElementId + "' in Current Effect.";
 	m_strDocumentStatus =
 		"Current Effect gained one portable authored Element copy with its executable Detail/material carrier; the source Effect was not opened or changed and no file was saved.";
+	if (SourceElement.ActionCueAttachment.bFollow &&
+		!Committed.ActionCueAttachment.bEnabled)
+	{
+		m_strDocumentStatus +=
+			" Bone attachment was reset; select the target bone and use Attach Selected Element.";
+	}
 	return true;
 }
 
@@ -23521,39 +23726,39 @@ bool_t Client::CEffect_Tool::Try_ClearSelectedSlot()
     return true;
 }
 
-bool_t Client::CEffect_Tool::Try_SetSelectedTrailFollowAnchor(
+bool_t Client::CEffect_Tool::Try_SetSelectedElementFollowAnchor(
 	const std::string& strBoneName)
 {
 	if (Has_UnappliedDetailDraft())
 	{
 		m_strPreviewStatus =
-			"Apply or Revert the open Detail draft before changing Trail follow.";
+			"Apply or Revert the open Detail draft before changing Element follow.";
 		return false;
 	}
 	if (!m_ActiveDocument.has_value())
 	{
 		m_strPreviewStatus =
-			"Load an authored Effect and select one Trail before setting follow.";
+			"Load an authored Effect and select a Trail or native Sprite Particle before setting follow.";
 		return false;
 	}
 	if (EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT != m_eActiveDocumentSource &&
 		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource)
 	{
 		m_strPreviewStatus =
-			"Trail follow is editable only on a New or Authored Effect document.";
+			"Element follow is editable only on a New or Authored Effect document.";
 		return false;
 	}
 	if (strBoneName.empty())
 	{
 		m_strPreviewStatus =
-			"Enter a Socket / Bone before setting Trail follow.";
+			"Enter a Socket / Bone before setting Element follow.";
 		return false;
 	}
 	float4x4_t AnchorWorld{};
 	if (!CAnimationTargetService::Resolve_AnchorTransform(
 			strBoneName.c_str(), &AnchorWorld))
 	{
-		m_strPreviewStatus = "Trail follow rejected: model bone '" +
+		m_strPreviewStatus = "Element follow rejected: model bone '" +
 			strBoneName + "' does not exist on the current target.";
 		return false;
 	}
@@ -23565,10 +23770,10 @@ bool_t Client::CEffect_Tool::Try_SetSelectedTrailFollowAnchor(
 			return Element.strElementId == m_strSelectedElementId;
 		});
 	if (Selected == Staged.Elements.end() ||
-		EFFECT_ELEMENT_KIND::TRAIL != Selected->eKind)
+		!Can_EditElementFollowAttachment(*Selected))
 	{
 		m_strPreviewStatus =
-			"Select one Trail Element before setting follow.";
+			"Select a Trail or native Sprite Particle Element before setting follow.";
 		return false;
 	}
 
@@ -23596,17 +23801,17 @@ bool_t Client::CEffect_Tool::Try_SetSelectedTrailFollowAnchor(
 		}
 	}
 	Start_WorldPreviewFromBeginning();
-	m_strPreviewStatus = "Selected Trail now follows model bone '" +
+	m_strPreviewStatus = "Selected Element now follows model bone '" +
 		strBoneName + "'. Save Changes to persist the attachment.";
 	return true;
 }
 
-bool_t Client::CEffect_Tool::Try_ClearSelectedTrailFollowAnchor()
+bool_t Client::CEffect_Tool::Try_ClearSelectedElementFollowAnchor()
 {
 	if (Has_UnappliedDetailDraft())
 	{
 		m_strPreviewStatus =
-			"Apply or Revert the open Detail draft before clearing Trail follow.";
+			"Apply or Revert the open Detail draft before clearing Element follow.";
 		return false;
 	}
 	if (!m_ActiveDocument.has_value())
@@ -23615,7 +23820,7 @@ bool_t Client::CEffect_Tool::Try_ClearSelectedTrailFollowAnchor()
 		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource)
 	{
 		m_strPreviewStatus =
-			"Trail follow is editable only on a New or Authored Effect document.";
+			"Element follow is editable only on a New or Authored Effect document.";
 		return false;
 	}
 
@@ -23626,11 +23831,11 @@ bool_t Client::CEffect_Tool::Try_ClearSelectedTrailFollowAnchor()
 			return Element.strElementId == m_strSelectedElementId;
 		});
 	if (Selected == Staged.Elements.end() ||
-		EFFECT_ELEMENT_KIND::TRAIL != Selected->eKind ||
+		!Can_EditElementFollowAttachment(*Selected) ||
 		!Selected->ActionCueAttachment.bEnabled)
 	{
 		m_strPreviewStatus =
-			"The selected Trail has no element-local follow to clear.";
+			"The selected Element has no element-local follow to clear.";
 		return false;
 	}
 	Selected->ActionCueAttachment = {};
@@ -23648,7 +23853,7 @@ bool_t Client::CEffect_Tool::Try_ClearSelectedTrailFollowAnchor()
 	}
 	Start_WorldPreviewFromBeginning();
 	m_strPreviewStatus =
-		"Cleared the selected Trail follow. A stationary root will not form a ribbon unless Transform velocity moves it.";
+		"Cleared the selected Element follow. Save Changes to persist the attachment change.";
 	return true;
 }
 
@@ -27851,6 +28056,22 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 {
 	const EFFECT_DOCUMENT_DESC PreviewDocument =
 		Build_PreviewDocument(Document);
+	const bool_t bOwnerYawAttachment = Has_OwnerYawFollowAttachments(PreviewDocument);
+	if (bOwnerYawAttachment)
+	{
+		std::unordered_map<std::string, float4x4_t> PreflightAnchors;
+		std::string PreflightError;
+		if (!Resolve_ToolSourceAnchorWorlds(PreviewDocument,
+				m_ValtanProductPreview.has_value() ? &m_ValtanProductPreview->Cue : nullptr,
+				PreflightAnchors, PreflightError) ||
+			(!m_SynchronizedAnimationClips.empty() &&
+			 !Seek_WorldPreviewWithSourceAnchorHistory(nullptr, PreviewDocument,
+				 Resolve_EffectSampleTime(m_fPreviewTimeSeconds), PreflightError, true)))
+		{
+			m_strPreviewStatus = "Hand attachment preflight failed; previous preview preserved: " + PreflightError;
+			return false;
+		}
+	}
     if (!Ensure_WorldPreviewObject())
         return false;
     shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
@@ -28481,10 +28702,11 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 	const std::shared_ptr<CEffectObject>& pObject,
 	const EFFECT_DOCUMENT_DESC& Document,
 	const f32_t fEffectSampleSeconds,
-	std::string& strOutError)
+	std::string& strOutError,
+	const bool_t bValidateOnly)
 {
 	strOutError.clear();
-	if (nullptr == pObject || !std::isfinite(fEffectSampleSeconds) ||
+	if ((!bValidateOnly && nullptr == pObject) || !std::isfinite(fEffectSampleSeconds) ||
 		fEffectSampleSeconds < 0.f)
 	{
 		strOutError = "Effect history seek received an invalid sample request.";
@@ -28513,84 +28735,86 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 		Collect_ToolSourceAnchorRequests(Document);
 	if (Requests.empty())
 	{
+		if (bValidateOnly)
+			return true;
 		pObject->Set_SourceAnchorWorlds({});
 		pObject->Set_RootWorld(EffectRoot);
 		pObject->Set_SampleTime(fEffectSampleSeconds);
 		return true;
 	}
 
-	/* HistoricalPoseBinding samples one current clip without mutating the live
-	   animation cursor. Multi-clip reconstruction needs a separate sequence
-	   binding and deliberately remains outside this narrow Tool seek path. */
-	if (1u != m_SynchronizedAnimationClips.size() ||
+	float4x4_t ActualOwnerWorld{};
+	const bool_t bNeedsOwnerYaw = std::any_of(Requests.begin(), Requests.end(),
+		[](const TOOL_SOURCE_ANCHOR_REQUEST& Request)
+		{ return Request.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW; });
+	if (bNeedsOwnerYaw && !Try_ResolveToolAttachmentOwnerWorld(ActualOwnerWorld))
+	{
+		strOutError = "owner_yaw history requires the actual preview owner transform.";
+		return false;
+	}
+
+	if (m_SynchronizedAnimationClips.empty() ||
 		0u == m_iSynchronizedAnimationTargetGeneration ||
 		m_iSynchronizedAnimationTargetGeneration !=
 			CAnimationTargetService::Resolve_TargetGeneration())
 	{
-		strOutError =
-			"Source-anchor history requires one synchronized animation clip.";
+		strOutError = "Source-anchor history requires a synchronized animation timeline.";
 		return false;
 	}
-	const SYNCHRONIZED_ANIMATION_CLIP Clip =
-		m_SynchronizedAnimationClips.front();
-	if (!std::isfinite(Clip.fPlayRate) || Clip.fPlayRate <= 0.f)
-	{
-		strOutError = "Source-anchor history has an invalid animation play rate.";
-		return false;
-	}
-	const shared_ptr<Engine::CModel> pModel =
-		CAnimationTargetService::Resolve_Model();
+	const auto pModel = CAnimationTargetService::Resolve_Model();
 	if (nullptr == pModel)
 	{
 		strOutError = "Source-anchor history has no animation model.";
 		return false;
 	}
-	const uint32_t iAnimationIndex = pModel->Get_CurrentAnimIndex();
-	const char_t* pCurrentClip = pModel->Get_AnimationName(iAnimationIndex);
-	if (nullptr == pCurrentClip || Clip.strClipName != pCurrentClip)
-	{
-		strOutError = "Source-anchor history clip identity changed.";
-		return false;
-	}
-
 	std::vector<std::string> BoneNames;
-	BoneNames.reserve(Requests.size());
 	for (const TOOL_SOURCE_ANCHOR_REQUEST& Request : Requests)
 		BoneNames.push_back(Request.strRuntimeBoneName);
-	CAnimationHistoricalPoseBinding PoseBinding;
-	if (!CAnimationTargetService::Prepare_HistoricalPoseBinding(
-			m_iSynchronizedAnimationTargetGeneration, iAnimationIndex,
-			BoneNames, PoseBinding) ||
-		PoseBinding.Get_BoneCount() != Requests.size())
+	std::vector<CAnimationHistoricalPoseBinding> PoseBindings;
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING> ClipTimings;
+	std::vector<float> WallBudgets;
+	const bool_t bSingleClip = m_SynchronizedAnimationClips.size() == 1u;
+	for (const SYNCHRONIZED_ANIMATION_CLIP& Clip : m_SynchronizedAnimationClips)
 	{
-		strOutError =
-			"Source-anchor historical pose binding could not be prepared.";
-		return false;
-	}
-
-	const f32_t fSourceStartSeconds =
-		static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f;
-	f32_t fSourceDurationSeconds =
-		PoseBinding.Get_DurationSeconds() - fSourceStartSeconds;
-	if (0u != Clip.iPlayMs)
-	{
-		fSourceDurationSeconds = (std::min)(fSourceDurationSeconds,
-			static_cast<f32_t>(Clip.iPlayMs) * 0.001f);
-	}
-	if (!std::isfinite(fSourceStartSeconds) || fSourceStartSeconds < 0.f ||
-		!std::isfinite(fSourceDurationSeconds) ||
-		fSourceDurationSeconds <= 0.f)
-	{
-		strOutError = "Source-anchor history has an invalid source segment.";
-		return false;
-	}
-	const f32_t fWallDurationSeconds =
-		fSourceDurationSeconds / Clip.fPlayRate;
-	if (!std::isfinite(fWallDurationSeconds) ||
-		fWallDurationSeconds <= 0.f)
-	{
-		strOutError = "Source-anchor history has an invalid wall duration.";
-		return false;
+		CAnimationHistoricalPoseBinding Binding;
+		bool_t bPrepared = false;
+		if (bSingleClip)
+		{
+			const uint32_t iAnimationIndex = pModel->Get_CurrentAnimIndex();
+			const char* pCurrentClip = pModel->Get_AnimationName(iAnimationIndex);
+			bPrepared = nullptr != pCurrentClip && Clip.strClipName == pCurrentClip &&
+				CAnimationTargetService::Prepare_HistoricalPoseBinding(
+					m_iSynchronizedAnimationTargetGeneration, iAnimationIndex,
+					BoneNames, Binding);
+		}
+		else
+		{
+			bPrepared = CAnimationTargetService::Prepare_HistoricalClipPoseBinding(
+				m_iSynchronizedAnimationTargetGeneration, Clip.strClipName,
+				BoneNames, Binding);
+		}
+		if (!bPrepared || Binding.Get_BoneCount() != Requests.size())
+		{
+			strOutError = "Source-anchor historical clip binding failed: " + Clip.strClipName;
+			return false;
+		}
+		ACTION_PRESENTATION_CLIP_TIMING Timing;
+		Timing.fModelSourceDurationSeconds = Binding.Get_DurationSeconds();
+		Timing.iPlayMs = Clip.iPlayMs;
+		Timing.fPlayRate = Clip.fPlayRate;
+		Timing.bLoop = Clip.bHasExplicitLoopPolicy && Clip.bLoop;
+		Timing.fSourceStartSeconds = static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f;
+		float SourceDuration = 0.f, WallDuration = 0.f;
+		if (!std::isfinite(Clip.fHoldAfterSeconds) || Clip.fHoldAfterSeconds < 0.f ||
+			!CActionPresentationTimeline::Resolve_ClipDuration(Timing, SourceDuration, WallDuration))
+		{
+			strOutError = "Source-anchor history has an invalid clip source/wall segment: " + Clip.strClipName;
+			return false;
+		}
+		PoseBindings.push_back(std::move(Binding));
+		ClipTimings.push_back(Timing);
+		WallBudgets.push_back(0u == Clip.iAuthoringWallMs ?
+			WallDuration + Clip.fHoldAfterSeconds : static_cast<f32_t>(Clip.iAuthoringWallMs) * 0.001f);
 	}
 	const bool_t bValtanScalePolicy = m_ValtanProductPreview.has_value();
 	const VALTAN_PATTERN_EFFECT_SCALE_POLICY eValtanScalePolicy =
@@ -28600,26 +28824,29 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 		m_ValtanProductPreview->Cue.vWorldScale : float3_t{ 1.f, 1.f, 1.f };
 
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
-		[this, &PoseBinding, &Requests, EffectRoot, Clip,
-		 fSourceStartSeconds, fSourceDurationSeconds,
-		 fWallDurationSeconds, bValtanScalePolicy, eValtanScalePolicy,
-		 vValtanWorldScale](const f32_t fHistoryEffectSeconds,
+		[this, &PoseBindings, &ClipTimings, &WallBudgets, &Requests, EffectRoot,
+		 bSingleClip, bNeedsOwnerYaw, bValtanScalePolicy, eValtanScalePolicy,
+		 vValtanWorldScale, ActualOwnerWorld](const f32_t fHistoryEffectSeconds,
 			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
 			std::string& strProviderError)
 		{
-			f32_t fWallSeconds = (std::max)(
-				0.f, Resolve_EffectTimelineTime(fHistoryEffectSeconds));
-			if (Clip.bHasExplicitLoopPolicy && Clip.bLoop)
-				fWallSeconds = std::fmod(fWallSeconds, fWallDurationSeconds);
-			else
-				fWallSeconds = (std::min)(fWallSeconds, fWallDurationSeconds);
-			const f32_t fAnimationSeconds = fSourceStartSeconds +
-				(std::min)(fSourceDurationSeconds,
-					fWallSeconds * Clip.fPlayRate);
+			const f32_t fTimelineSeconds = Resolve_EffectTimelineTime(fHistoryEffectSeconds);
+			ACTION_PRESENTATION_SAMPLE AnimationSample;
+			const bool_t bMapped = bSingleClip && !bNeedsOwnerYaw ?
+				CActionPresentationTimeline::Resolve_Sample(
+					ClipTimings, fTimelineSeconds, AnimationSample) :
+				CActionPresentationTimeline::Resolve_PreviewSequenceSample(
+					ClipTimings, WallBudgets, fTimelineSeconds, AnimationSample);
+			if (!bMapped || AnimationSample.iClipIndex >= PoseBindings.size())
+			{
+				strProviderError = "Source-anchor history could not resolve the authored clip timeline.";
+				return false;
+			}
 
 			ANIMATION_HISTORICAL_POSE_SAMPLE PoseSample;
 			if (!CAnimationTargetService::Sample_HistoricalPose(
-					PoseBinding, fAnimationSeconds, PoseSample) ||
+					PoseBindings[AnimationSample.iClipIndex],
+					AnimationSample.fClipSourceTimeSeconds, PoseSample) ||
 				PoseSample.BoneCombinedMatrices.size() != Requests.size())
 			{
 				strProviderError =
@@ -28633,12 +28860,14 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 			{
 				const TOOL_SOURCE_ANCHOR_REQUEST& Request = Requests[iRequest];
 				float4x4_t BoneWorld{};
-				if (bValtanScalePolicy)
+				if (bValtanScalePolicy ||
+					Request.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW)
 				{
 					if (!Build_ToolValtanSourceAnchorWorld(
 							PoseSample.BoneCombinedMatrices[iRequest],
 							PoseSample.RootWorld, eValtanScalePolicy,
-							vValtanWorldScale, BoneWorld))
+							vValtanWorldScale, ActualOwnerWorld, Request.eOrientation,
+							BoneWorld))
 					{
 						strProviderError =
 							"Source-anchor history could not normalize the Valtan source bone with its cue scale policy.";
@@ -28678,6 +28907,22 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 			strProviderError.clear();
 			return true;
 		};
+	if (bValidateOnly)
+	{
+		// Preflight every sample before Stage_Document replaces the existing preview.
+		// Use the same exact fixed-step clock as CEffectPlayback history evaluation.
+		const uint64_t iSteps = static_cast<uint64_t>(std::floor(
+			static_cast<f64_t>(fEffectSampleSeconds) * 60.0 + 1.0e-9));
+		for (uint64_t iStep = 0u; iStep <= iSteps; ++iStep)
+		{
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Sample;
+			if (!TransformProvider(static_cast<f32_t>(
+					static_cast<f64_t>(iStep) / 60.0), Sample, strOutError))
+				return false;
+		}
+		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE FinalSample;
+		return TransformProvider(fEffectSampleSeconds, FinalSample, strOutError);
+	}
 	return pObject->Set_SampleTimeWithTransformHistory(
 		fEffectSampleSeconds, TransformProvider, strOutError);
 }
@@ -29667,6 +29912,75 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 		Recalculate_PreviewDuration(*pPreviewDocument);
 }
 
+bool_t Client::CEffect_Tool::Resolve_SynchronizedAnimationClipStart(
+	const std::shared_ptr<Engine::CModel>& pModel,
+	const SYNCHRONIZED_ANIMATION_CLIP& Clip,
+	uint32_t& iOutAnimationIndex,
+	f32_t& fOutSourceStartTicks) const
+{
+	if (nullptr == pModel || Clip.strClipName.empty() ||
+		Clip.strClipName.find('\0') != std::string::npos ||
+		!std::isfinite(Clip.fPlayRate) || Clip.fPlayRate <= 0.f ||
+		!std::isfinite(Clip.fHoldAfterSeconds) || Clip.fHoldAfterSeconds < 0.f)
+	{
+		return false;
+	}
+
+	uint32_t iAnimationIndex = UINT32_MAX;
+	for (uint32_t iCandidate = 0u;
+		iCandidate < pModel->Get_NumAnimations(); ++iCandidate)
+	{
+		const char_t* pName = pModel->Get_AnimationName(iCandidate);
+		if (nullptr == pName || Clip.strClipName != pName)
+			continue;
+		if (UINT32_MAX != iAnimationIndex)
+			return false;
+		iAnimationIndex = iCandidate;
+	}
+	if (UINT32_MAX == iAnimationIndex)
+		return false;
+
+	f32_t fPositionTicks = 0.f;
+	f32_t fDurationTicks = 0.f;
+	const f32_t fTicksPerSecond =
+		pModel->Get_AnimationTickPerSecond(iAnimationIndex);
+	if (!pModel->Get_AnimationProgress(
+			iAnimationIndex, fPositionTicks, fDurationTicks) ||
+		!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f ||
+		!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f)
+	{
+		return false;
+	}
+
+	ACTION_PRESENTATION_CLIP_TIMING Timing;
+	Timing.fModelSourceDurationSeconds = fDurationTicks / fTicksPerSecond;
+	Timing.iPlayMs = Clip.iPlayMs;
+	Timing.fPlayRate = Clip.fPlayRate;
+	Timing.bLoop = Clip.bHasExplicitLoopPolicy && Clip.bLoop;
+	Timing.fSourceStartSeconds =
+		static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f;
+	f32_t fSourceDurationSeconds = 0.f;
+	f32_t fWallDurationSeconds = 0.f;
+	if (!std::isfinite(Timing.fModelSourceDurationSeconds) ||
+		Timing.fModelSourceDurationSeconds <= 0.f ||
+		!CActionPresentationTimeline::Resolve_ClipDuration(
+			Timing, fSourceDurationSeconds, fWallDurationSeconds))
+	{
+		return false;
+	}
+	const f32_t fSourceStartTicks =
+		Timing.fSourceStartSeconds * fTicksPerSecond;
+	if (!std::isfinite(fSourceStartTicks) || fSourceStartTicks < 0.f ||
+		fSourceStartTicks >= fDurationTicks)
+	{
+		return false;
+	}
+
+	iOutAnimationIndex = iAnimationIndex;
+	fOutSourceStartTicks = fSourceStartTicks;
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Start_SynchronizedAnimationClip(
 	const size_t iClipIndex,
 	const bool_t bPaused)
@@ -29679,34 +29993,25 @@ bool_t Client::CEffect_Tool::Start_SynchronizedAnimationClip(
 		return false;
 	const SYNCHRONIZED_ANIMATION_CLIP& Clip =
 		m_SynchronizedAnimationClips[iClipIndex];
+	uint32_t iAnimationIndex = UINT32_MAX;
+	f32_t fSourceStartTicks = 0.f;
+	if (!Resolve_SynchronizedAnimationClipStart(
+			pModel, Clip, iAnimationIndex, fSourceStartTicks))
+	{
+		return false;
+	}
 	const bool_t bHasSourceWindow =
 		0u != Clip.iSourceStartMs || 0u != Clip.iPlayMs;
 	const bool_t bEngineLoop = !Clip.bHasExplicitLoopPolicy &&
 		!bHasSourceWindow &&
 		1u == m_SynchronizedAnimationClips.size() && m_bPreviewLoop;
-	if (!pModel->Start_Animation(Clip.strClipName.c_str(), bEngineLoop))
+	if (!pModel->Start_Animation(iAnimationIndex, bEngineLoop))
 		return false;
 
 	pModel->Set_AnimationSpeed(Clip.fPlayRate);
 	if (0u != Clip.iSourceStartMs)
 	{
-		const uint32_t iAnimation = pModel->Get_CurrentAnimIndex();
-		f32_t fPosition = 0.f;
-		f32_t fDuration = 0.f;
-		const f32_t fTicksPerSecond =
-			pModel->Get_AnimationTickPerSecond(iAnimation);
-		const f32_t fSourceStartTicks =
-			static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f *
-			fTicksPerSecond;
-		if (!pModel->Get_AnimationProgress(
-				iAnimation, fPosition, fDuration) ||
-			!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f ||
-			!std::isfinite(fSourceStartTicks) ||
-			fSourceStartTicks < 0.f || fSourceStartTicks >= fDuration)
-		{
-			return false;
-		}
-		pModel->Set_AnimTrackPosition(iAnimation, fSourceStartTicks);
+		pModel->Set_AnimTrackPosition(iAnimationIndex, fSourceStartTicks);
 		pModel->Play_Animation(0.f);
 	}
 	pModel->Set_AnimPaused(bPaused);
@@ -29735,138 +30040,80 @@ void Client::CEffect_Tool::Restart_SynchronizedAnimationSequence()
 void Client::CEffect_Tool::Seek_SynchronizedAnimationSequence(
     const f32_t fTimeSeconds)
 {
-    if (m_SynchronizedAnimationClips.empty() ||
-        !std::isfinite(fTimeSeconds) ||
-        m_iSynchronizedAnimationTargetGeneration !=
-            CAnimationTargetService::Resolve_TargetGeneration())
-    {
-        return;
-    }
-    const shared_ptr<Engine::CModel> pModel =
-        CAnimationTargetService::Resolve_Model();
-    if (nullptr == pModel)
-        return;
-
-    f32_t fRemainingSeconds = (std::max)(0.f, fTimeSeconds);
-    for (size_t iClip = 0u; iClip < m_SynchronizedAnimationClips.size();
-        ++iClip)
-    {
-		const SYNCHRONIZED_ANIMATION_CLIP& Clip =
-            m_SynchronizedAnimationClips[iClip];
-        uint32_t iAnimation = UINT32_MAX;
-        for (uint32_t iCandidate = 0u;
-            iCandidate < pModel->Get_NumAnimations(); ++iCandidate)
-        {
-            const char_t* pName = pModel->Get_AnimationName(iCandidate);
-            if (nullptr != pName && Clip.strClipName == pName)
-            {
-                iAnimation = iCandidate;
-                break;
-            }
-        }
-        f32_t fPosition = 0.f;
-        f32_t fDuration = 0.f;
-        const f32_t fTicksPerSecond = UINT32_MAX == iAnimation ? 0.f :
-            pModel->Get_AnimationTickPerSecond(iAnimation);
-        if (UINT32_MAX == iAnimation ||
-            !pModel->Get_AnimationProgress(
-                iAnimation, fPosition, fDuration) ||
-            !std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f ||
-            !std::isfinite(fDuration) || fDuration <= 0.f)
-        {
-            m_strPreviewAnimationStatus =
-                "Skill animation seek failed: " + Clip.strClipName;
-            return;
-        }
-
-		const f32_t fSourceStartSeconds =
-			static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f;
-		f32_t fSourceDurationSeconds =
-			fDuration / fTicksPerSecond - fSourceStartSeconds;
-		if (!std::isfinite(fSourceDurationSeconds) ||
-			fSourceDurationSeconds <= 0.f ||
-			!std::isfinite(Clip.fPlayRate) || Clip.fPlayRate <= 0.f)
-		{
-			m_strPreviewAnimationStatus =
-				"Skill animation seek has an invalid source segment: " +
-				Clip.strClipName;
-			return;
-		}
-		if (0u != Clip.iPlayMs)
-        {
-            fSourceDurationSeconds = (std::min)(
-                fSourceDurationSeconds,
-                static_cast<f32_t>(Clip.iPlayMs) * 0.001f);
-        }
-		const f32_t fWallDurationSeconds =
-			fSourceDurationSeconds / Clip.fPlayRate;
-		if (!std::isfinite(Clip.fHoldAfterSeconds) ||
-			Clip.fHoldAfterSeconds < 0.f)
-		{
-			m_strPreviewAnimationStatus =
-				"Skill animation seek has an invalid end-pose hold: " +
-				Clip.strClipName;
-			return;
-		}
-		const f32_t fSegmentWallDurationSeconds =
-			fWallDurationSeconds + Clip.fHoldAfterSeconds;
-		const f32_t fTimelineClipWallDurationSeconds =
-			0u == Clip.iAuthoringWallMs ? fSegmentWallDurationSeconds :
-				static_cast<f32_t>(Clip.iAuthoringWallMs) * 0.001f;
-		const bool_t bLastClip =
-			iClip + 1u == m_SynchronizedAnimationClips.size();
-		if (!bLastClip &&
-			fRemainingSeconds >= fTimelineClipWallDurationSeconds)
-		{
-			fRemainingSeconds -= fTimelineClipWallDurationSeconds;
-			continue;
-		}
-
-		const f32_t fTimelineLocalWallSeconds = (std::min)(
-			fRemainingSeconds, fTimelineClipWallDurationSeconds);
-		const bool_t bHoldingEndPose =
-			!(Clip.bHasExplicitLoopPolicy && Clip.bLoop) &&
-			fTimelineLocalWallSeconds >= fWallDurationSeconds;
-		f32_t fLocalWallSeconds = (std::min)(
-			fTimelineLocalWallSeconds, fWallDurationSeconds);
-		m_iSynchronizedAnimationLoopEpoch = 0u;
-		if (Clip.bHasExplicitLoopPolicy && Clip.bLoop)
-		{
-			/* A master stage owns a finite wall budget even when its source clip
-			   repeats. At the exact endpoint sample the end of the final epoch
-			   instead of wrapping visually to its first frame. */
-			const f32_t fLoopSampleWallSeconds =
-				fTimelineLocalWallSeconds >=
-					fTimelineClipWallDurationSeconds &&
-					fTimelineClipWallDurationSeconds > 0.f ?
-					(std::max)(0.f, fTimelineLocalWallSeconds - 0.000001f) :
-					fTimelineLocalWallSeconds;
-			const f32_t fEpoch = std::floor(
-				fLoopSampleWallSeconds / fWallDurationSeconds);
-			if (!std::isfinite(fEpoch) || fEpoch < 0.f)
-				return;
-			m_iSynchronizedAnimationLoopEpoch =
-				static_cast<uint64_t>(fEpoch);
-			fLocalWallSeconds = std::fmod(
-				fLoopSampleWallSeconds, fWallDurationSeconds);
-		}
-		m_iSynchronizedAnimationClipIndex = iClip;
-		if (!Start_SynchronizedAnimationClip(
-				iClip, bHoldingEndPose || !m_bPreviewPlaying))
-		{
-			m_strPreviewAnimationStatus =
-				"Skill animation seek failed: " + Clip.strClipName;
-			return;
-		}
-		const f32_t fTrackPosition =
-			(fSourceStartSeconds + (std::min)(
-				fLocalWallSeconds * Clip.fPlayRate,
-				fSourceDurationSeconds)) * fTicksPerSecond;
-		pModel->Set_AnimTrackPosition(iAnimation, fTrackPosition);
-		pModel->Play_Animation(0.f);
-		pModel->Set_AnimPaused(bHoldingEndPose || !m_bPreviewPlaying);
+	if (m_SynchronizedAnimationClips.empty() || !std::isfinite(fTimeSeconds) ||
+		m_iSynchronizedAnimationTargetGeneration != CAnimationTargetService::Resolve_TargetGeneration())
 		return;
-    }
+	const auto pModel = CAnimationTargetService::Resolve_Model();
+	if (nullptr == pModel)
+		return;
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
+	std::vector<float> WallBudgets;
+	std::vector<uint32_t> AnimationIndices;
+	std::vector<float> TickRates;
+	for (const SYNCHRONIZED_ANIMATION_CLIP& Clip : m_SynchronizedAnimationClips)
+	{
+		uint32_t iAnimation = UINT32_MAX;
+		for (uint32_t iCandidate = 0u; iCandidate < pModel->Get_NumAnimations(); ++iCandidate)
+		{
+			const char_t* pName = pModel->Get_AnimationName(iCandidate);
+			if (nullptr != pName && Clip.strClipName == pName)
+			{
+				iAnimation = iCandidate;
+				break;
+			}
+		}
+		float Position = 0.f, Duration = 0.f;
+		const float TickRate = iAnimation == UINT32_MAX ? 0.f :
+			pModel->Get_AnimationTickPerSecond(iAnimation);
+		if (iAnimation == UINT32_MAX || !std::isfinite(TickRate) || TickRate <= 0.f ||
+			!pModel->Get_AnimationProgress(iAnimation, Position, Duration) ||
+			!std::isfinite(Clip.fHoldAfterSeconds) || Clip.fHoldAfterSeconds < 0.f)
+		{
+			m_strPreviewAnimationStatus = "Skill animation seek has an invalid source clip: " + Clip.strClipName;
+			return;
+		}
+		ACTION_PRESENTATION_CLIP_TIMING Timing;
+		Timing.fModelSourceDurationSeconds = Duration / TickRate;
+		Timing.iPlayMs = Clip.iPlayMs;
+		Timing.fPlayRate = Clip.fPlayRate;
+		Timing.bLoop = Clip.bHasExplicitLoopPolicy && Clip.bLoop;
+		Timing.fSourceStartSeconds = static_cast<f32_t>(Clip.iSourceStartMs) * 0.001f;
+		float SourceDuration = 0.f, WallDuration = 0.f;
+		if (!CActionPresentationTimeline::Resolve_ClipDuration(Timing, SourceDuration, WallDuration))
+		{
+			m_strPreviewAnimationStatus = "Skill animation seek has an invalid source segment: " + Clip.strClipName;
+			return;
+		}
+		Timings.push_back(Timing);
+		WallBudgets.push_back(0u == Clip.iAuthoringWallMs ? WallDuration + Clip.fHoldAfterSeconds :
+			static_cast<f32_t>(Clip.iAuthoringWallMs) * 0.001f);
+		AnimationIndices.push_back(iAnimation);
+		TickRates.push_back(TickRate);
+	}
+	ACTION_PRESENTATION_SAMPLE Sample;
+	if (!CActionPresentationTimeline::Resolve_PreviewSequenceSample(
+			Timings, WallBudgets, (std::max)(0.f, fTimeSeconds), Sample))
+	{
+		m_strPreviewAnimationStatus = "Skill animation seek could not resolve the finite authoring timeline.";
+		return;
+	}
+	const auto& Clip = m_SynchronizedAnimationClips[Sample.iClipIndex];
+	float SourceDuration = 0.f, WallDuration = 0.f;
+	if (!CActionPresentationTimeline::Resolve_ClipDuration(Timings[Sample.iClipIndex], SourceDuration, WallDuration))
+		return;
+	const bool_t bHoldingEndPose = !(Clip.bHasExplicitLoopPolicy && Clip.bLoop) &&
+		Sample.fClipSourceTimeSeconds >= Timings[Sample.iClipIndex].fSourceStartSeconds + SourceDuration;
+	m_iSynchronizedAnimationLoopEpoch = Sample.iLoopEpoch;
+	m_iSynchronizedAnimationClipIndex = Sample.iClipIndex;
+	if (!Start_SynchronizedAnimationClip(Sample.iClipIndex, bHoldingEndPose || !m_bPreviewPlaying))
+	{
+		m_strPreviewAnimationStatus = "Skill animation seek failed: " + Clip.strClipName;
+		return;
+	}
+	pModel->Set_AnimTrackPosition(AnimationIndices[Sample.iClipIndex],
+		Sample.fClipSourceTimeSeconds * TickRates[Sample.iClipIndex]);
+	pModel->Play_Animation(0.f);
+	pModel->Set_AnimPaused(bHoldingEndPose || !m_bPreviewPlaying);
 }
 
 void Client::CEffect_Tool::Set_SynchronizedAnimationPaused(

@@ -965,6 +965,7 @@ namespace
 			"Read World Entity Spawned");
 		testRunner.Require(
 			decoded.iNetEntityId == source.iNetEntityId &&
+			decoded.iOwnerBossNetEntityId == source.iOwnerBossNetEntityId &&
 			decoded.eKind == source.eKind &&
 			decoded.strArchetypeId == source.strArchetypeId &&
 			decoded.strEncounterId == source.strEncounterId &&
@@ -1021,6 +1022,101 @@ namespace
 			!Write_Message(npcRadiusWriter, invalid),
 			"Reject NPC With Combat Collision Radius");
 
+		S2C_WORLD_ENTITY_SPAWNED ghost = source;
+		ghost.iNetEntityId = 901u;
+		ghost.iOwnerBossNetEntityId = source.iNetEntityId;
+		ghost.strArchetypeId = "BOSS_VALTAN_GHOST";
+		ghost.strPlacementId.clear();
+		ghost.strActionId = "VALTAN_WHIRLWIND.STEP_02";
+		std::vector<std::uint8_t> ghostPayload;
+		testRunner.Require(Build_WorldEntitySpawnedPayload(ghost, ghostPayload),
+			"Writer Dependent Boss Spawn");
+		CPacketReader ghostReader{ ghostPayload };
+		S2C_WORLD_ENTITY_SPAWNED decodedGhost{};
+		testRunner.Require(Read_Message(ghostReader, decodedGhost) &&
+			decodedGhost.iNetEntityId == ghost.iNetEntityId &&
+			decodedGhost.iOwnerBossNetEntityId == source.iNetEntityId &&
+			decodedGhost.strActionId == ghost.strActionId &&
+			0u == ghostReader.Get_RemainingSize(),
+			"Dependent Boss Spawn Preserves Owner And Late Join Action");
+		testRunner.Require(Is_Valid_WorldEntitySpawnOwner(source, nullptr) &&
+			Is_Valid_WorldEntitySpawnOwner(decodedGhost, &source) &&
+			!Is_Valid_WorldEntitySpawnOwner(decodedGhost, nullptr),
+			"Dependent Boss Admission Requires Reliable Owner First");
+		S2C_WORLD_ENTITY_SPAWNED wrongOwner = source;
+		wrongOwner.strEncounterId = "ENCOUNTER_OTHER";
+		testRunner.Require(!Is_Valid_WorldEntitySpawnOwner(ghost, &wrongOwner),
+			"Dependent Boss Cannot Cross Encounter Ownership");
+		wrongOwner = source;
+		wrongOwner.iOwnerBossNetEntityId = 800u;
+		testRunner.Require(!Is_Valid_WorldEntitySpawnOwner(ghost, &wrongOwner),
+			"Dependent Boss Cannot Own Another Boss");
+		wrongOwner = source;
+		wrongOwner.eKind = WORLD_ENTITY_KIND::MONSTER;
+		testRunner.Require(!Is_Valid_WorldEntitySpawnOwner(ghost, &wrongOwner),
+			"Dependent Boss Cannot Refer To A Non Boss Owner");
+		wrongOwner = source;
+		wrongOwner.iNetEntityId = 800u;
+		testRunner.Require(!Is_Valid_WorldEntitySpawnOwner(ghost, &wrongOwner),
+			"Dependent Boss Cannot Rebind An Unknown Owner");
+		S2C_WORLD_ENTITY_SPAWNED noEncounterGhost = ghost;
+		noEncounterGhost.strEncounterId.clear();
+		testRunner.Require(!Is_Valid_WorldEntitySpawnOwner(noEncounterGhost, &source),
+			"Dependent Boss Requires An Encounter Identity");
+
+		for (const WORLD_ENTITY_KIND kind :
+			{ WORLD_ENTITY_KIND::NPC, WORLD_ENTITY_KIND::MONSTER })
+		{
+			S2C_WORLD_ENTITY_SPAWNED invalidDependent = ghost;
+			invalidDependent.eKind = kind;
+			invalidDependent.fCollisionRadius =
+				WORLD_ENTITY_KIND::NPC == kind ? 0.f : source.fCollisionRadius;
+			CPacketWriter dependentWriter;
+			testRunner.Require(!Write_Message(dependentWriter, invalidDependent) &&
+				dependentWriter.Get_Buffer().empty(),
+				"Non Boss Owner Field Rejected Before Serialization");
+			std::vector<std::uint8_t> invalidWire = ghostPayload;
+			invalidWire[8u] = static_cast<std::uint8_t>(kind);
+			if (WORLD_ENTITY_KIND::NPC == kind)
+				std::fill(invalidWire.end() - sizeof(float), invalidWire.end(), 0u);
+			CPacketReader dependentReader{ invalidWire };
+			S2C_WORLD_ENTITY_SPAWNED preserved = source;
+			testRunner.Require(!Read_Message(dependentReader, preserved) &&
+				preserved.iNetEntityId == source.iNetEntityId &&
+				preserved.iOwnerBossNetEntityId == INVALID_NET_ENTITY_ID,
+				"Non Boss Owner Wire Rejected Without Partial Commit");
+		}
+		S2C_WORLD_ENTITY_SPAWNED selfOwned = ghost;
+		selfOwned.iOwnerBossNetEntityId = selfOwned.iNetEntityId;
+		CPacketWriter selfOwnerWriter;
+		testRunner.Require(!Write_Message(selfOwnerWriter, selfOwned) &&
+			selfOwnerWriter.Get_Buffer().empty() &&
+			!Is_Valid_WorldEntitySpawnOwner(selfOwned, &source),
+			"Boss Self Ownership Is Rejected");
+		std::vector<std::uint8_t> selfOwnerWire = ghostPayload;
+		std::copy_n(selfOwnerWire.begin(), sizeof(NET_ENTITY_ID),
+			selfOwnerWire.begin() + sizeof(NET_ENTITY_ID));
+		CPacketReader selfOwnerReader{ selfOwnerWire };
+		S2C_WORLD_ENTITY_SPAWNED selfOwnerOutput = source;
+		testRunner.Require(!Read_Message(selfOwnerReader, selfOwnerOutput) &&
+			selfOwnerOutput.iNetEntityId == source.iNetEntityId &&
+			selfOwnerOutput.iOwnerBossNetEntityId == INVALID_NET_ENTITY_ID,
+			"Boss Self Ownership Wire Leaves Destination Unchanged");
+		std::vector<std::uint8_t> oldSpawnWire = ghostPayload;
+		oldSpawnWire.erase(oldSpawnWire.begin() + 4u, oldSpawnWire.begin() + 8u);
+		CPacketReader oldSpawnReader{ oldSpawnWire };
+		S2C_WORLD_ENTITY_SPAWNED oldSpawnOutput = source;
+		testRunner.Require(!Read_Message(oldSpawnReader, oldSpawnOutput) &&
+			oldSpawnOutput.iNetEntityId == source.iNetEntityId,
+			"Protocol 43 Spawn Without Owner Cannot Be Read As Protocol 44");
+		C2S_ENTER_WORLD oldOwnerPeer{};
+		oldOwnerPeer.iProtocolVersion = 43u;
+		oldOwnerPeer.eWorldId = WORLD_ID::VALTAN_ARENA;
+		oldOwnerPeer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		CPacketWriter oldOwnerPeerWriter;
+		testRunner.Require(!Write_Message(oldOwnerPeerWriter, oldOwnerPeer),
+			"Protocol 44 Rejects Peer Without Dependent Boss Owner Contract");
+
 		payload.pop_back();
 		CPacketReader truncatedReader{ payload };
 		S2C_WORLD_ENTITY_SPAWNED unchanged{};
@@ -1040,7 +1136,7 @@ namespace
 			Build_WorldEntityDespawnedPayload(source, payload),
 			"Writer World Entity Despawned");
 		testRunner.Require(
-			payload == std::vector<std::uint8_t>{ 0x85, 0x03, 0x00, 0x00 },
+			payload == std::vector<std::uint8_t>{ 0x85, 0x03, 0x00, 0x00, 0x00 },
 			"World Entity Despawned Payload Layout");
 
 		CPacketReader reader{ payload };
@@ -1048,6 +1144,7 @@ namespace
 		testRunner.Require(
 			Read_Message(reader, decoded) &&
 			decoded.iNetEntityId == source.iNetEntityId &&
+			decoded.eReason == WORLD_ENTITY_DESPAWN_REASON::REMOVED &&
 			0u == reader.Get_RemainingSize(),
 			"World Entity Despawned Round Trip");
 
@@ -1056,6 +1153,37 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidWriter, invalid),
 			"Reject World Entity Despawned Zero Entity ID");
+		source.eReason = WORLD_ENTITY_DESPAWN_REASON::DEAD;
+		testRunner.Require(Build_WorldEntityDespawnedPayload(source, payload) &&
+			payload == std::vector<std::uint8_t>{ 0x85, 0x03, 0x00, 0x00, 0x01 },
+			"Reliable Dead Despawn Does Not Require A Final Snapshot");
+		CPacketReader deathReader{ payload };
+		testRunner.Require(Read_Message(deathReader, decoded) &&
+			decoded.eReason == WORLD_ENTITY_DESPAWN_REASON::DEAD &&
+			decoded.iNetEntityId == source.iNetEntityId &&
+			0u == deathReader.Get_RemainingSize(),
+			"Dead Despawn Round Trip");
+		for (const std::uint8_t reason : { std::uint8_t{ 2u }, std::uint8_t{ 255u } })
+		{
+			invalid = source;
+			invalid.eReason = static_cast<WORLD_ENTITY_DESPAWN_REASON>(reason);
+			CPacketWriter reasonWriter;
+			testRunner.Require(!Write_Message(reasonWriter, invalid) &&
+				reasonWriter.Get_Buffer().empty(), "Reject Unknown Despawn Reason Before Write");
+			auto malformed = payload;
+			malformed.back() = reason;
+			CPacketReader reasonReader{ malformed };
+			S2C_WORLD_ENTITY_DESPAWNED unchanged{};
+			unchanged.iNetEntityId = 17u;
+			testRunner.Require(!Read_Message(reasonReader, unchanged) &&
+				unchanged.iNetEntityId == 17u &&
+				unchanged.eReason == WORLD_ENTITY_DESPAWN_REASON::REMOVED,
+				"Reject Unknown Despawn Reason Without Partial Commit");
+		}
+		payload.pop_back();
+		CPacketReader oldPayloadReader{ payload };
+		testRunner.Require(!Read_Message(oldPayloadReader, decoded),
+			"Reject Old Despawn Payload Without Typed Reason");
 	}
 
 	void Test_CombatObjectLifecycleRoundTrip(TEST_RUNNER& testRunner)
@@ -1920,11 +2048,50 @@ namespace
 			"Reject Truncated Revive Without Mutation");
 	}
 
+	void Test_ReturnToBernProtocol(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_RETURN_TO_BERN) ==
+				static_cast<std::uint16_t>(
+					PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT) + 1u &&
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_RETURN_TO_BERN),
+			"Return To Bern Packet Identity Is Append Only And Known");
+
+		C2S_RETURN_TO_BERN source{};
+		source.iRequestSequence = 77u;
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_Message(writer, source) && 4u == writer.Get_Buffer().size(),
+			"Writer Return To Bern");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_RETURN_TO_BERN decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iRequestSequence == source.iRequestSequence &&
+			0u == reader.Get_RemainingSize(),
+			"Return To Bern Round Trip");
+
+		C2S_RETURN_TO_BERN invalid{};
+		CPacketWriter invalidWriter;
+		testRunner.Require(!Write_Message(invalidWriter, invalid),
+			"Reject Zero Return To Bern Sequence");
+
+		std::vector<std::uint8_t> truncated = writer.Get_Buffer();
+		truncated.pop_back();
+		CPacketReader truncatedReader{ truncated };
+		C2S_RETURN_TO_BERN unchanged{};
+		unchanged.iRequestSequence = 99u;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			99u == unchanged.iRequestSequence,
+			"Reject Truncated Return To Bern Without Mutation");
+	}
+
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(42u == NETWORK_PROTOCOL_VERSION,
-				"Party, Expanded Destruction And Next Pattern Use Protocol 42");
+			testRunner.Require(45u == NETWORK_PROTOCOL_VERSION,
+				"Return To Bern, Party, Next Pattern And Boss Owner Use Protocol 45");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3934,15 +4101,18 @@ namespace
 			"Next Extension Preserves PLAY_PATTERN_ID Result Golden Bytes");
 
 		for (const auto operation : { VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID,
-			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID })
+			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID,
+			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID })
 		{
 			C2S_VALTAN_AUDITION_REQUEST request = play;
 			request.eOperation = operation;
 			request.strBossPlacementId = "boss.valtan.center";
 			request.strPatternId = "VALTAN_FIST_IN_OUT";
-			request.iPredecessorRoomAuditionEpoch = 7u;
+			const bool live = VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == operation;
+			const bool clear = VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == operation;
+			request.iPredecessorRoomAuditionEpoch = live ? 0u : 7u;
 			request.iPredecessorPatternSequence = 19u;
-			request.iExpectedNextRequestSequence = 73u;
+			request.iExpectedNextRequestSequence = live ? 0u : 73u;
 			CPacketWriter writer;
 			const bool wrote = Write_Message(writer, request);
 			CPacketReader reader{ writer.Get_Buffer() };
@@ -3977,8 +4147,7 @@ namespace
 			result.iPredecessorRoomAuditionEpoch = request.iPredecessorRoomAuditionEpoch;
 			result.iPredecessorPatternSequence = request.iPredecessorPatternSequence;
 			result.iExpectedNextRequestSequence = request.iExpectedNextRequestSequence;
-			result.eResult = VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == operation ?
-				VALTAN_AUDITION_RESULT::QUEUED : VALTAN_AUDITION_RESULT::CLEARED;
+			result.eResult = clear ? VALTAN_AUDITION_RESULT::CLEARED : VALTAN_AUDITION_RESULT::QUEUED;
 			CPacketWriter resultWriter;
 			const bool wroteResult = Write_Message(resultWriter, result);
 			CPacketReader resultReader{ resultWriter.Get_Buffer() };
@@ -4009,8 +4178,7 @@ namespace
 				VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR,
 				VALTAN_AUDITION_RESULT::REJECTED_NOT_ARMED,
 				VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED,
-				VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == operation ?
-					VALTAN_AUDITION_RESULT::CLEARED : VALTAN_AUDITION_RESULT::QUEUED,
+				clear ? VALTAN_AUDITION_RESULT::QUEUED : VALTAN_AUDITION_RESULT::CLEARED,
 				VALTAN_AUDITION_RESULT::END })
 			{
 				result.eResult = invalidResult;
@@ -4026,10 +4194,13 @@ namespace
 			}
 			std::vector<C2S_VALTAN_AUDITION_REQUEST> malformed;
 			auto invalid = request;
-			invalid.iPredecessorRoomAuditionEpoch = 0u;
+			invalid.iPredecessorRoomAuditionEpoch = live ? 1u : 0u;
 			malformed.push_back(invalid);
 			invalid = request;
-			invalid.iPredecessorPatternSequence = 0u;
+			if (live)
+				invalid.iExpectedNextRequestSequence = 1u;
+			else
+				invalid.iPredecessorPatternSequence = 0u;
 			malformed.push_back(invalid);
 			invalid = request;
 			invalid.strBossPlacementId = "../boss";
@@ -4060,7 +4231,20 @@ namespace
 					invalidWriter.Get_Buffer().empty() && rejectedMalformed;
 			}
 			testRunner.Require(rejectedMalformed,
-				"Reject Next Zero Tokens, Invalid IDs, Hidden Bars And Unknown Operation");
+				"Reject Next Invalid Tokens, IDs, Hidden Bars And Unknown Operation");
+			if (live)
+			{
+				request.iPredecessorPatternSequence = 0u;
+				CPacketWriter idleWriter;
+				const bool wroteIdle = Write_Message(idleWriter, request);
+				CPacketReader idleReader{ idleWriter.Get_Buffer() };
+				C2S_VALTAN_AUDITION_REQUEST idleDecoded{};
+				testRunner.Require(wroteIdle && Read_Message(idleReader, idleDecoded) &&
+					0u == idleDecoded.iPredecessorPatternSequence &&
+					0u == idleDecoded.iPredecessorRoomAuditionEpoch &&
+					0u == idleReader.Get_RemainingSize(),
+					"Only Live Next Can Adopt An Observed Initial Idle Sequence Zero");
+			}
 		}
 		for (const auto operation : { VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID,
 			VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE })
@@ -4369,8 +4553,8 @@ namespace
 		}
 
 		testRunner.Require(
-			42u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Protocol Version 42");
+			45u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 45");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -4397,8 +4581,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			42u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Pattern Flow And Next Contract Use Protocol 42");
+			45u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Pattern Flow, Next, Boss Owner And Return Contract Use Protocol 45");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -4769,6 +4953,12 @@ namespace
 			decodedStart.Slots[0].strPatternId ==
 				decodedStart.Slots[1].strPatternId,
 			"Valtan Pattern Flow Repeated Pattern Round Trip");
+		const std::size_t slotCountOffset = sizeof(std::uint32_t) +
+			(sizeof(std::uint16_t) + start.strBossPlacementId.size()) +
+			(sizeof(std::uint16_t) + start.strFlowId.size()) +
+			(sizeof(std::uint16_t) + start.strFlowRevision.size()) +
+			(sizeof(std::uint16_t) + start.strStartSlotId.size()) +
+			sizeof(std::uint32_t);
 
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START duplicateSlot = start;
 		duplicateSlot.Slots[1].strSlotId =
@@ -4795,15 +4985,42 @@ namespace
 			maximum.Slots.push_back(std::move(slot));
 		}
 		maximum.strStartSlotId = maximum.Slots.back().strSlotId;
+		const std::size_t maximumSlotCountOffset = sizeof(std::uint32_t) +
+			(sizeof(std::uint16_t) + maximum.strBossPlacementId.size()) +
+			(sizeof(std::uint16_t) + maximum.strFlowId.size()) +
+			(sizeof(std::uint16_t) + maximum.strFlowRevision.size()) +
+			(sizeof(std::uint16_t) + maximum.strStartSlotId.size()) +
+			sizeof(std::uint32_t);
 		CPacketWriter maximumWriter;
-		CPacketReader maximumReader{
-			(Write_Message(maximumWriter, maximum),
-				maximumWriter.Get_Buffer()) };
+		const bool wroteMaximum = Write_Message(maximumWriter, maximum);
+		CPacketReader maximumReader{ maximumWriter.Get_Buffer() };
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START decodedMaximum{};
 		testRunner.Require(
+			wroteMaximum &&
+			maximumSlotCountOffset < maximumWriter.Get_Buffer().size() &&
+			(std::numeric_limits<std::uint8_t>::max)() ==
+				maximumWriter.Get_Buffer()[maximumSlotCountOffset] &&
 			Read_Message(maximumReader, decodedMaximum) &&
-			MAX_VALTAN_PATTERN_FLOW_SLOTS == decodedMaximum.Slots.size(),
-			"Valtan Pattern Flow 32 Slot Round Trip");
+			0u == maximumReader.Get_RemainingSize() &&
+			MAX_VALTAN_PATTERN_FLOW_SLOTS == decodedMaximum.Slots.size() &&
+			maximum.Slots.front().strSlotId ==
+				decodedMaximum.Slots.front().strSlotId &&
+			maximum.Slots.back().strSlotId ==
+				decodedMaximum.Slots.back().strSlotId,
+			"Valtan Pattern Flow 255 Slot Round Trip");
+
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START expanded = maximum;
+		expanded.Slots.resize(33u);
+		expanded.strStartSlotId = expanded.Slots.back().strSlotId;
+		CPacketWriter expandedWriter;
+		CPacketReader expandedReader{
+			(Write_Message(expandedWriter, expanded),
+				expandedWriter.Get_Buffer()) };
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START decodedExpanded{};
+		testRunner.Require(
+			Read_Message(expandedReader, decodedExpanded) &&
+			33u == decodedExpanded.Slots.size(),
+			"Valtan Pattern Flow 33 Slot Expansion Round Trip");
 
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START invalidStart = start;
 		invalidStart.Slots.clear();
@@ -4813,38 +5030,49 @@ namespace
 			"Reject Empty Valtan Pattern Flow Start");
 		invalidStart = maximum;
 		invalidStart.Slots.push_back(
-			{ "flow.slot.33", "VALTAN_DASH_CHARGE" });
+			{ "flow.slot.256", "VALTAN_DASH_CHARGE" });
+		CPacketWriter overflowWriter;
 		testRunner.Require(
-			!Write_Message(invalidStartWriter, invalidStart),
-			"Reject 33 Slot Valtan Pattern Flow Start");
+			!Write_Message(overflowWriter, invalidStart) &&
+			overflowWriter.Get_Buffer().empty(),
+			"Reject 256 Slot Valtan Pattern Flow Start");
+		C2S_DEBUG_VALTAN_PATTERN_FLOW_START oversizedFrame = maximum;
+		oversizedFrame.strBossPlacementId.assign(
+			MAX_STABLE_NETWORK_ID_BYTES, 'B');
+		oversizedFrame.strFlowId.assign(MAX_STABLE_NETWORK_ID_BYTES, 'F');
+		oversizedFrame.strStartSlotId.assign(
+			MAX_STABLE_NETWORK_ID_BYTES, 'S');
+		for (auto& slot : oversizedFrame.Slots)
+		{
+			slot.strSlotId.assign(MAX_STABLE_NETWORK_ID_BYTES, 'A');
+			slot.strPatternId.assign(MAX_STABLE_NETWORK_ID_BYTES, 'P');
+		}
+		CPacketWriter oversizedFrameWriter;
+		testRunner.Require(
+			!Write_Message(oversizedFrameWriter, oversizedFrame) &&
+			oversizedFrameWriter.Get_Buffer().empty(),
+			"Reject Valtan Pattern Flow Exceeding Frame Budget");
 		invalidStart = start;
 		invalidStart.strFlowRevision.front() = 'A';
 		testRunner.Require(
 			!Write_Message(invalidStartWriter, invalidStart),
 			"Reject Non-Lowercase Valtan Pattern Flow Revision");
 
-		std::vector<std::uint8_t> oversizeCount =
+		std::vector<std::uint8_t> zeroCount =
 			startWriter.Get_Buffer();
-		const std::size_t slotCountOffset = sizeof(std::uint32_t) +
-			(sizeof(std::uint16_t) + start.strBossPlacementId.size()) +
-			(sizeof(std::uint16_t) + start.strFlowId.size()) +
-			(sizeof(std::uint16_t) + start.strFlowRevision.size()) +
-			(sizeof(std::uint16_t) + start.strStartSlotId.size()) +
-			sizeof(std::uint32_t);
-		if (slotCountOffset < oversizeCount.size())
+		if (slotCountOffset < zeroCount.size())
 		{
-			oversizeCount[slotCountOffset] = static_cast<std::uint8_t>(
-				MAX_VALTAN_PATTERN_FLOW_SLOTS + 1u);
+			zeroCount[slotCountOffset] = 0u;
 		}
-		CPacketReader oversizeCountReader{ oversizeCount };
+		CPacketReader zeroCountReader{ zeroCount };
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START unchangedStart{};
 		unchangedStart.iRequestSequence = 999u;
 		unchangedStart.strFlowId = "sentinel";
 		testRunner.Require(
-			!Read_Message(oversizeCountReader, unchangedStart) &&
+			!Read_Message(zeroCountReader, unchangedStart) &&
 			999u == unchangedStart.iRequestSequence &&
 			"sentinel" == unchangedStart.strFlowId,
-			"Reject Oversize Valtan Pattern Flow Slot Count Atomically");
+			"Reject Zero Valtan Pattern Flow Slot Count Atomically");
 
 		std::vector<std::uint8_t> truncatedStart =
 			startWriter.Get_Buffer();
@@ -5230,6 +5458,7 @@ int main()
 	Test_ValtanAuditionLifecycleProtocol(testRunner);
 	Test_ValtanPatternFlowProtocol(testRunner);
 	Test_ValtanDecisionTraceProtocol(testRunner);
+	Test_ReturnToBernProtocol(testRunner);
 	Test_PartyInviteProtocol(testRunner);
 	Test_ChatProtocol(testRunner);
 

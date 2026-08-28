@@ -2,12 +2,18 @@
   "schema": "lostark.item-catalog",
   "formatVersion": 2,
   "items": [
-    { "itemId": "POTION_HP_SMALL", "displayName": "체력 물약(소)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_1.png", "healPercent": 15 },
-    { "itemId": "POTION_HP_MEDIUM", "displayName": "체력 물약(중)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_2.png", "healPercent": 30 },
-    { "itemId": "POTION_HP_LARGE", "displayName": "체력 물약(대)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_3.png", "healPercent": 45 },
-    { "itemId": "MATERIAL_DESTRUCTION_STONE", "displayName": "파괴석", "maxStack": 9999, "iconPath": "", "healPercent": 0 },
-    { "itemId": "MATERIAL_GUARDIAN_STONE", "displayName": "수호석", "maxStack": 9999, "iconPath": "", "healPercent": 0 },
-    { "itemId": "MATERIAL_LEAPSTONE_TIER1", "displayName": "1단계 도약돌", "maxStack": 9999, "iconPath": "", "healPercent": 0 },
-    { "itemId": "CURRENCY_GOLD", "displayName": "골드", "maxStack": 999999999, "iconPath": "", "healPercent": 0 }
+    { "itemId": "POTION_HP_SMALL", "displayName": "체력 물약(소)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_1.png", "healPercent": 15, "category": "use" },
+    { "itemId": "POTION_HP_MEDIUM", "displayName": "체력 물약(중)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_2.png", "healPercent": 30, "category": "use" },
+    { "itemId": "POTION_HP_LARGE", "displayName": "체력 물약(대)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_3.png", "healPercent": 45, "category": "use" },
+    { "itemId": "MATERIAL_DESTRUCTION_STONE", "displayName": "파괴석", "maxStack": 9999, "iconPath": "", "healPercent": 0, "category": "use" },
+    { "itemId": "MATERIAL_GUARDIAN_STONE", "displayName": "수호석", "maxStack": 9999, "iconPath": "", "healPercent": 0, "category": "use" },
+    { "itemId": "MATERIAL_LEAPSTONE_TIER1", "displayName": "1단계 도약돌", "maxStack": 9999, "iconPath": "", "healPercent": 0, "category": "use" },
+    { "itemId": "CURRENCY_GOLD", "displayName": "골드", "maxStack": 999999999, "iconPath": "", "healPercent": 0, "category": "use" },
+    { "itemId": "EQUIP_DESTINYBLAZE_HEAD", "displayName": "운명의 업화 머리장식", "maxStack": 1, "iconPath": "UI/ItemUpgrade/lm_head_icon.png", "healPercent": 0, "category": "combat" },
+    { "itemId": "EQUIP_DESTINYBLAZE_SHOULDER", "displayName": "운명의 업화 어깨장식", "maxStack": 1, "iconPath": "UI/ItemUpgrade/lm_shoulder_icon.png", "healPercent": 0, "category": "combat" },
+    { "itemId": "EQUIP_DESTINYBLAZE_TOP", "displayName": "운명의 업화 상의", "maxStack": 1, "iconPath": "UI/ItemUpgrade/lm_top_icon.png", "healPercent": 0, "category": "combat" },
+    { "itemId": "EQUIP_DESTINYBLAZE_BOTTOM", "displayName": "운명의 업화 하의", "maxStack": 1, "iconPath": "UI/ItemUpgrade/lm_bottom_icon.png", "healPercent": 0, "category": "combat" },
+    { "itemId": "EQUIP_DESTINYBLAZE_GLOVE", "displayName": "운명의 업화 장갑", "maxStack": 1, "iconPath": "UI/ItemUpgrade/lm_glove_icon.png", "healPercent": 0, "category": "combat" },
+    { "itemId": "EQUIP_DESTINYBLAZE_WEAPON", "displayName": "운명의 업화 시계", "maxStack": 1, "iconPath": "UI/ItemUpgrade/lm_weapon_icon.png", "healPercent": 0, "category": "combat" }
   ]
 }

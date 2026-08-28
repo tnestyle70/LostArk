@@ -21,6 +21,10 @@ namespace Client
 		// use restores. Display/UI-only -- the Server's own copy is what's
 		// actually authoritative when a use is applied.
 		std::uint32_t iHealPercent = 0;
+		// "combat" (equipment, shown under the InventoryView Combat filter and
+		// the item-upgrade window) or "use" (consumables/materials/currency,
+		// shown under the Use filter). Display/filter-only, never sent to Server.
+		std::string strCategory;
 	};
 
 	class CItemCatalog final

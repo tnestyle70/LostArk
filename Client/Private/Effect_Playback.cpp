@@ -159,6 +159,50 @@ namespace
 			A.z + (B.z - A.z) * T);
 	}
 
+	bool_t Compose_ManualParticleScaleLerpRoot(
+		const Client::EFFECT_DETAIL_DESC& Detail,
+		const f32_t fSpawnSampleTimeSeconds,
+		const f32_t fSampleTimeSeconds,
+		const float4x4_t& SpawnRootWorld,
+		float4x4_t& OutRootWorld)
+	{
+		const f32_t fDuration = Detail.Timing.fTransformMotionDurationSeconds > 0.f ?
+			Detail.Timing.fTransformMotionDurationSeconds :
+			Detail.Timing.fLifeTimeSeconds;
+		if (!std::isfinite(fDuration) || fDuration <= 0.f ||
+			!std::isfinite(fSpawnSampleTimeSeconds) ||
+			!std::isfinite(fSampleTimeSeconds))
+			return false;
+		const f32_t fSpawnT = Clamp01((std::max)(0.f,
+			fSpawnSampleTimeSeconds - Detail.Timing.fStartDelaySeconds) / fDuration);
+		const f32_t fCurrentT = Clamp01((std::max)(0.f,
+			fSampleTimeSeconds - Detail.Timing.fStartDelaySeconds) / fDuration);
+		const float3_t SpawnScale = Lerp3(
+			Detail.Transform.vScale, Detail.LinearLerp.vEndScale, fSpawnT);
+		const float3_t CurrentScale = Lerp3(
+			Detail.Transform.vScale, Detail.LinearLerp.vEndScale, fCurrentT);
+		const f32_t SpawnValues[] = { SpawnScale.x, SpawnScale.y, SpawnScale.z };
+		const f32_t CurrentValues[] = { CurrentScale.x, CurrentScale.y, CurrentScale.z };
+		float4x4_t Staged = SpawnRootWorld;
+		for (size_t iAxis = 0u; iAxis < 3u; ++iAxis)
+		{
+			if (!std::isfinite(SpawnValues[iAxis]) || SpawnValues[iAxis] <= 0.f ||
+				!std::isfinite(CurrentValues[iAxis]) || CurrentValues[iAxis] <= 0.f)
+				return false;
+			const f32_t fRatio = CurrentValues[iAxis] / SpawnValues[iAxis];
+			if (!std::isfinite(fRatio) || fRatio <= 0.f)
+				return false;
+			for (size_t iColumn = 0u; iColumn < 3u; ++iColumn)
+				Staged.m[iAxis][iColumn] *= fRatio;
+		}
+		for (size_t iRow = 0u; iRow < 4u; ++iRow)
+			for (size_t iColumn = 0u; iColumn < 4u; ++iColumn)
+				if (!std::isfinite(Staged.m[iRow][iColumn]))
+					return false;
+		OutRootWorld = Staged;
+		return true;
+	}
+
 	float4_t Lerp4(const float4_t& A, const float4_t& B, const f32_t T)
 	{
 		return float4_t(
@@ -2075,6 +2119,104 @@ f32_t Client::CEffectPlayback::Calculate_ElementEndSeconds(
 	return fElementEnd;
 }
 
+bool_t Client::CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
+	const float4x4_t& RawBone,
+	const float4x4_t& PresentationRoot,
+	const float4x4_t& OwnerWorld,
+	float4x4_t& OutWorld)
+{
+	constexpr f32_t MINIMUM_BASIS_LENGTH = 0.00000001f;
+	constexpr f32_t MINIMUM_NORMALIZED_DETERMINANT = 0.0001f;
+	constexpr f32_t ORTHOGONAL_TOLERANCE = 0.001f;
+	constexpr f32_t MINIMUM_SIGNED_UNIT_DETERMINANT = 0.999f;
+	const auto BasisLength = [](const f32_t X, const f32_t Y, const f32_t Z)
+	{
+		return std::sqrt(X * X + Y * Y + Z * Z);
+	};
+	const auto BasisDot = [](const f32_t AX, const f32_t AY, const f32_t AZ,
+		const f32_t BX, const f32_t BY, const f32_t BZ)
+	{
+		return AX * BX + AY * BY + AZ * BZ;
+	};
+	const auto BasisDeterminant = [](const float4x4_t& Value)
+	{
+		return
+			Value._11 * (Value._22 * Value._33 - Value._23 * Value._32) -
+			Value._12 * (Value._21 * Value._33 - Value._23 * Value._31) +
+			Value._13 * (Value._21 * Value._32 - Value._22 * Value._31);
+	};
+	const auto IsValidAffine = [&](const float4x4_t& Value)
+	{
+		const f32_t* const Values = &Value._11;
+		for (size_t iValue = 0u; iValue < 16u; ++iValue)
+		{
+			if (!std::isfinite(Values[iValue]))
+				return false;
+		}
+		if (std::abs(Value._14) > 0.00001f ||
+			std::abs(Value._24) > 0.00001f ||
+			std::abs(Value._34) > 0.00001f ||
+			std::abs(Value._44 - 1.f) > 0.00001f)
+		{
+			return false;
+		}
+		const f32_t ScaleX = BasisLength(Value._11, Value._12, Value._13);
+		const f32_t ScaleY = BasisLength(Value._21, Value._22, Value._23);
+		const f32_t ScaleZ = BasisLength(Value._31, Value._32, Value._33);
+		if (!std::isfinite(ScaleX) || !std::isfinite(ScaleY) ||
+			!std::isfinite(ScaleZ) || ScaleX <= MINIMUM_BASIS_LENGTH ||
+			ScaleY <= MINIMUM_BASIS_LENGTH || ScaleZ <= MINIMUM_BASIS_LENGTH)
+		{
+			return false;
+		}
+		const f32_t NormalizedDeterminant =
+			std::abs(BasisDeterminant(Value)) / (ScaleX * ScaleY * ScaleZ);
+		return std::isfinite(NormalizedDeterminant) &&
+			NormalizedDeterminant >= MINIMUM_NORMALIZED_DETERMINANT;
+	};
+
+	if (!IsValidAffine(RawBone) || !IsValidAffine(PresentationRoot) ||
+		!IsValidAffine(OwnerWorld))
+	{
+		return false;
+	}
+
+	float4x4_t Candidate = OwnerWorld;
+	for (size_t iAxis = 0u; iAxis < 3u; ++iAxis)
+	{
+		f32_t* const Axis = &Candidate.m[iAxis][0u];
+		const f32_t Length = BasisLength(Axis[0u], Axis[1u], Axis[2u]);
+		Axis[0u] /= Length;
+		Axis[1u] /= Length;
+		Axis[2u] /= Length;
+		Axis[3u] = 0.f;
+	}
+	if (std::abs(BasisDot(Candidate._11, Candidate._12, Candidate._13,
+			Candidate._21, Candidate._22, Candidate._23)) > ORTHOGONAL_TOLERANCE ||
+		std::abs(BasisDot(Candidate._11, Candidate._12, Candidate._13,
+			Candidate._31, Candidate._32, Candidate._33)) > ORTHOGONAL_TOLERANCE ||
+		std::abs(BasisDot(Candidate._21, Candidate._22, Candidate._23,
+			Candidate._31, Candidate._32, Candidate._33)) > ORTHOGONAL_TOLERANCE ||
+		BasisDeterminant(Candidate) < MINIMUM_SIGNED_UNIT_DETERMINANT)
+	{
+		return false;
+	}
+
+	float4x4_t BonePresentationWorld{};
+	XMStoreFloat4x4(&BonePresentationWorld,
+		XMLoadFloat4x4(&RawBone) * XMLoadFloat4x4(&PresentationRoot));
+	if (!IsValidAffine(BonePresentationWorld))
+		return false;
+	Candidate._41 = BonePresentationWorld._41;
+	Candidate._42 = BonePresentationWorld._42;
+	Candidate._43 = BonePresentationWorld._43;
+	Candidate._44 = 1.f;
+	if (!IsValidAffine(Candidate))
+		return false;
+	OutWorld = Candidate;
+	return true;
+}
+
 bool_t Client::CEffectPlayback::Stage_Document(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
@@ -2743,6 +2885,36 @@ bool_t Client::CEffectPlayback::Resolve_ParticleSpriteSubUV(
 	EFFECT_SUBUV_FRAME_DESC& OutSubUV)
 {
 	EFFECT_SUBUV_FRAME_DESC Staged = SourceSubUV;
+	if (nullptr != Particle.pElement &&
+		Particle.pElement->Detail.Particle.bSubUVOverLife)
+	{
+		const EFFECT_ELEMENT_DESC& Element = *Particle.pElement;
+		const EFFECT_UV_DESC& UV = Element.Detail.UV;
+		const int64_t iFrameCount =
+			static_cast<int64_t>(UV.iTileColumns) * UV.iTileRows;
+		if (Element.SourceRecipe.bEnabled || Element.Material.Execution.bEnabled ||
+			Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE || Is_MeshParticle(Element) ||
+			UV.iTileColumns <= 0 || UV.iTileRows <= 0 ||
+			iFrameCount <= 1 || iFrameCount > UINT32_MAX ||
+			UV.bSequence || UV.bLoop || UV.iTileIndex != 0 ||
+			!std::isfinite(Particle.fNormalizedLife))
+		{
+			return false;
+		}
+		const double Frame = std::floor(
+			static_cast<double>(std::clamp(Particle.fNormalizedLife, 0.f, 1.f)) *
+			static_cast<double>(iFrameCount));
+		const uint32_t iFrame = static_cast<uint32_t>((std::min)(
+			Frame, static_cast<double>(iFrameCount - 1)));
+		const f32_t fScaleX = 1.f / static_cast<f32_t>(UV.iTileColumns);
+		const f32_t fScaleY = 1.f / static_cast<f32_t>(UV.iTileRows);
+		Staged.Current = {
+			fScaleX, fScaleY,
+			static_cast<f32_t>(iFrame % static_cast<uint32_t>(UV.iTileColumns)) * fScaleX,
+			static_cast<f32_t>(iFrame / static_cast<uint32_t>(UV.iTileColumns)) * fScaleY };
+		Staged.Next = Staged.Current;
+		Staged.fBlend = 0.f;
+	}
 	/* Mesh particles retain their signed model transform.  Cascade image
 	   flipping is a Sprite renderer contract and must not mirror mesh UVs. */
 	if (!Particle.bSourceImageFlipping ||
@@ -3465,6 +3637,9 @@ void Client::CEffectPlayback::Spawn_Particles(
 	for (uint32_t iParticle = 0u; iParticle < iSpawnCount; ++iParticle)
 	{
 		PARTICLE_STATE Particle;
+		/* Manual particles keep the document birth clock for authored scale
+		   animation. Source modules replace it with their emitter-local clock. */
+		Particle.fSpawnEmitterTimeSeconds = m_fSampleTimeSeconds;
 		Particle.fDistributionRandom = static_cast<f32_t>(Next_Random(State)) /
 			static_cast<f32_t>(UINT32_MAX);
 		if (Element.SourceRecipe.bEnabled)
@@ -3532,10 +3707,12 @@ void Client::CEffectPlayback::Spawn_Particles(
 					Desc, State, iParticle, iSpawnCount,
 					bAuthoredFixedBurst);
 			Particle.vPosition = SpawnSample.vPosition;
+			/* Orientation belongs to the birth pose in both simulation spaces.
+			   World-space particles retain it through their SpawnRootWorld. */
 			if (SpawnSample.bHasRingAzimuth &&
 				Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
 				!Is_MeshParticle(Element) &&
-				Desc.bLocalSpace && !Desc.bBillboard &&
+				!Desc.bBillboard &&
 				EFFECT_PARTICLE_ORIENTATION_MODE::FIXED !=
 					Desc.InitialOrientation.eMode)
 			{
@@ -3579,6 +3756,20 @@ void Client::CEffectPlayback::Spawn_Particles(
 			Particle.vSize = Particle.vBaseSize;
 			Particle.fLifeTimeSeconds = Random_Range(
 				State, Desc.vLifeTimeSeconds.x, Desc.vLifeTimeSeconds.y);
+			/* Default ranges must not advance the established emitter stream. */
+			if (Desc.vRotationRangeDegrees.x != 0.f ||
+				Desc.vRotationRangeDegrees.y != 0.f)
+			{
+				Particle.vRotationDegrees.z += Random_Range(
+					State, Desc.vRotationRangeDegrees.x, Desc.vRotationRangeDegrees.y);
+			}
+			if (Desc.vSpinRangeDegreesPerSecond.x != 0.f ||
+				Desc.vSpinRangeDegreesPerSecond.y != 0.f)
+			{
+				Particle.vRotationRateDegreesPerSecond.z = Random_Range(
+					State, Desc.vSpinRangeDegreesPerSecond.x,
+					Desc.vSpinRangeDegreesPerSecond.y);
+			}
 			Particle.vDynamicParameter = {};
 			const f32_t* pDynamicStart = &Desc.vDynamicParameterStart.x;
 			f32_t* pParticleDynamic = &Particle.vDynamicParameter.x;
@@ -4475,6 +4666,21 @@ void Client::CEffectPlayback::Update_Particles(
 		fEmitterTime = bFiniteComplete ? fEmitterDuration :
 			std::fmod(fEmitterElapsed, fEmitterDuration);
 	}
+	const EFFECT_PARTICLE_DESC& NativeParticle = Element.Detail.Particle;
+	/* These optional native dynamics were introduced for V2 sprite-particle
+	   reuse. V2 updates the particles present at the beginning of a tick and
+	   appends births afterwards, so an enhanced native birth exports its exact
+	   spawn state once. Legacy documents retain their historical birth-step
+	   integration while every extension remains at its default. */
+	const bool_t bDeferEnhancedNativeBirthIntegration =
+		!Element.SourceRecipe.bEnabled &&
+		(NativeParticle.fDrag > 0.f ||
+		 NativeParticle.vRotationRangeDegrees.x != 0.f ||
+		 NativeParticle.vRotationRangeDegrees.y != 0.f ||
+		 NativeParticle.vSpinRangeDegreesPerSecond.x != 0.f ||
+		 NativeParticle.vSpinRangeDegreesPerSecond.y != 0.f ||
+		 NativeParticle.bSubUVOverLife ||
+		 NativeParticle.InitialVelocity.bUniformSolidAngle);
 
 	/* A particle's spawn-owning step evaluates age zero.  On later steps,
 	   reject the terminal age before running another module update, then commit
@@ -4493,8 +4699,12 @@ void Client::CEffectPlayback::Update_Particles(
 	{
 		if (!Can_EvaluateElementWorld(Element))
 			return;
-		if (Particle.iSpawnSimulationStep != m_iSimulationStep)
+		const bool_t bBirthStep =
+			Particle.iSpawnSimulationStep == m_iSimulationStep;
+		if (!bBirthStep)
 			Particle.fAgeSeconds += fFixedDelta;
+		if (bBirthStep && bDeferEnhancedNativeBirthIntegration)
+			continue;
 		const float4x4_t ElementWorld = Evaluate_ElementWorld(
 			Element, m_fSampleTimeSeconds, RootWorld);
 		const f32_t fNormalizedAge = Clamp01(
@@ -4509,6 +4719,11 @@ void Client::CEffectPlayback::Update_Particles(
 			Particle.vVelocityScale = { 1.f, 1.f, 1.f };
 			Particle.vVelocity = Add3(Particle.vVelocity,
 				Scale3(Element.Detail.Particle.vAcceleration, fFixedDelta));
+			if (Element.Detail.Particle.fDrag > 0.f)
+			{
+				Particle.vVelocity = Scale3(Particle.vVelocity,
+					(std::max)(0.f, 1.f - Element.Detail.Particle.fDrag * fFixedDelta));
+			}
 		}
 		const float3_t EffectiveVelocity = Apply_TargetAttractor(
 			Element, Particle, fNormalizedAge, fFixedDelta,
@@ -6036,6 +6251,23 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			m_Frame.ScreenPosts.push_back(Post);
 		}
 
+		const EFFECT_ELEMENT_DESC* pManualScaleElement = nullptr;
+		if (!State.Particles.empty() && !Element.SourceRecipe.bEnabled &&
+			!Element.Detail.Particle.bLocalSpace)
+		{
+			pManualScaleElement = &Element;
+			for (size_t iDepth = 0u; iDepth < Document.Elements.size(); ++iDepth)
+			{
+				const auto Master = m_TransformMasterIndices.find(
+					pManualScaleElement->strElementId);
+				if (Master == m_TransformMasterIndices.end() ||
+					Master->second >= Document.Elements.size())
+					break;
+				pManualScaleElement = &Document.Elements[Master->second];
+			}
+			if (!pManualScaleElement->Detail.LinearLerp.bScale)
+				pManualScaleElement = nullptr;
+		}
 		float4x4_t ParticleElementWorld{};
 		if (!State.Particles.empty() && Element.Detail.Particle.bLocalSpace)
 		{
@@ -6055,9 +6287,23 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 						(Element.Detail.Particle.vEndSize.y -
 							Element.Detail.Particle.vStartSize.y) * ParticleT,
 					0.f);
+			float4x4_t AnimatedSpawnRoot{};
+			if (nullptr != pManualScaleElement &&
+				!Compose_ManualParticleScaleLerpRoot(
+					pManualScaleElement->Detail, Particle.fSpawnEmitterTimeSeconds,
+					m_fSampleTimeSeconds, Particle.SpawnRootWorld, AnimatedSpawnRoot))
+			{
+				m_strSourceVisualProgramStatus =
+					"manual world-space scale lerp rejected an invalid scale: " +
+					Element.strElementId;
+				continue;
+			}
+			/* A world-space birth freezes the emitter position and orientation.
+			   Its authored scale curve remains a visual animation at that origin. */
 			const float4x4_t& ParticleRoot =
-				Element.Detail.Particle.bLocalSpace ?
-					ParticleElementWorld : Particle.SpawnRootWorld;
+				Element.Detail.Particle.bLocalSpace ? ParticleElementWorld :
+					nullptr != pManualScaleElement ? AnimatedSpawnRoot :
+						Particle.SpawnRootWorld;
 			const bool_t bMeshParticle = Is_MeshParticle(Element);
 			const f32_t fDepthScale = bMeshParticle ?
 				(Element.SourceRecipe.bEnabled ? Size.z :
@@ -6144,6 +6390,8 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			   offset into an actual spin over the particle's own age. */
 			Evaluated.fSpriteRotationDegrees =
 				Particle.vRotationDegrees.z +
+				(!Element.SourceRecipe.bEnabled ?
+					Particle.vRotationRateDegreesPerSecond.z * Particle.fAgeSeconds : 0.f) +
 				Element.Detail.Sprite.fBillboardRollDegrees +
 				Element.Detail.Sprite.fBillboardRollDegreesPerSecond *
 					Particle.fAgeSeconds;
@@ -6499,12 +6747,16 @@ float3_t Client::CEffectPlayback::Sample_AuthoredInitialVelocity(
 		   authored Transform rotation already aims. */
 		const f32_t fHalfAngle = XMConvertToRadians(
 			std::clamp(Emission.fConeAngleDegrees, 0.f, 180.f));
-		const f32_t fPolar = Random_Range(State, 0.f, fHalfAngle);
+		const f32_t fPolar = Emission.bUniformSolidAngle ? 0.f :
+			Random_Range(State, 0.f, fHalfAngle);
+		const f32_t fCosPolar = Emission.bUniformSolidAngle ?
+			Random_Range(State, 1.f, std::cos(fHalfAngle)) : std::cos(fPolar);
 		const f32_t fAzimuth = Random_Range(State, 0.f, XM_2PI);
-		const f32_t fSinPolar = std::sin(fPolar);
+		const f32_t fSinPolar = Emission.bUniformSolidAngle ?
+			std::sqrt((std::max)(0.f, 1.f - fCosPolar * fCosPolar)) : std::sin(fPolar);
 		vDirection = float3_t(
 			fSinPolar * std::cos(fAzimuth),
-			std::cos(fPolar),
+			fCosPolar,
 			fSinPolar * std::sin(fAzimuth));
 	}
 	else

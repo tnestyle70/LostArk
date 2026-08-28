@@ -36,6 +36,12 @@ namespace
 			BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET == pattern.Motion.eKind;
 	}
 
+	bool Is_PortalMotion(const BOSS_PATTERN_STAGE_MOTION_KIND kind)
+	{
+		return BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH == kind ||
+			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA == kind;
+	}
+
 	constexpr std::uint32_t LEAP_TAKEOFF_STAGE_INDEX = 0u;
 
 	std::uint32_t NextServerTickSkippingReservedZero(
@@ -175,6 +181,23 @@ namespace
 		const float apex = boss.fLeapApexHeight;
 		if (LEAP_TAKEOFF_STAGE_INDEX == boss.iPatternStageIndex)
 		{
+			if (boss.bPatternMoveToAnchorBeforeTakeoff)
+			{
+				const float elapsedMs = boss.fActionElapsedSeconds * 1000.f;
+				const float moveRatio = std::clamp(elapsedMs /
+					static_cast<float>(boss.iPatternLeapTakeoffStartMs), 0.f, 1.f);
+				boss.fPositionX = boss.fLeapOriginX +
+					(boss.fLeapLandingX - boss.fLeapOriginX) * moveRatio;
+				boss.fPositionY = boss.fLeapOriginY +
+					(boss.fLeapLandingY - boss.fLeapOriginY) * moveRatio;
+				boss.fPositionZ = boss.fLeapOriginZ +
+					(boss.fLeapLandingZ - boss.fLeapOriginZ) * moveRatio;
+				if (moveRatio < 1.f)
+					return;
+				boss.fLeapOriginX = boss.fLeapLandingX;
+				boss.fLeapOriginY = boss.fLeapLandingY;
+				boss.fLeapOriginZ = boss.fLeapLandingZ;
+			}
 			const float ratio = StageWindowRatio(
 				boss, boss.iPatternLeapTakeoffStartMs,
 				boss.iPatternLeapTakeoffEndMs);
@@ -1436,6 +1459,8 @@ namespace
 			serverTick : NextServerTickSkippingReservedZero(serverTick);
 		boss.iAppliedPatternStageSpawnWaveCount = 0u;
 		boss.ePatternStageMotionKind = stage.Motion.eKind;
+		boss.PortalStageHitTargets.clear();
+		CValtanBrain::Configure_PortalMotion(boss, stage);
 		boss.strActionId = stage.strActionId;
 		boss.strDamageProfileId = stage.strDamageProfileId;
 		boss.ePatternHitShape = stage.eHitShape;
@@ -1524,6 +1549,8 @@ namespace
 		boss.iGrabExecutionCommittedStageIndex = 0u;
 		boss.strPatternId = pattern.strPatternId;
 		boss.bPatternInvulnerable = pattern.bInvulnerableWhileRunning;
+		boss.bPatternMoveToAnchorBeforeTakeoff =
+			pattern.Motion.bMoveToAnchorBeforeTakeoff;
 		boss.fPatternMinimumRange = pattern.fMinimumRange;
 		boss.fPatternMaximumRange = pattern.fMaximumRange;
 		StartPatternCooldown(boss, pattern, serverTick);
@@ -1541,6 +1568,15 @@ namespace
 		/* The target has to be locked before the landing is chosen, because a
 		leap that follows its target lands where that lock put it. */
 		BeginPatternTargetAndAim(boss, pattern, players, nearestTarget);
+		if (pattern.Motion.bMoveToAnchorBeforeTakeoff &&
+			BOSS_PATTERN_AIM_POLICY::LOCK_FACING_ON_START == pattern.eAimPolicy &&
+			boss.bHasPatternTargetLastPosition)
+		{
+			const float deltaX = boss.fPatternTargetLastPositionX - pattern.Motion.fLandingX;
+			const float deltaZ = boss.fPatternTargetLastPositionZ - pattern.Motion.fLandingZ;
+			if (deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
+				boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+		}
 		/* A pattern that owns a compiled landing anchor lands on it, and one that
 		follows its target lands where the lock found it. The authored position is
 		the anchor a targetless leap falls back to, so the arc always has a real
@@ -1698,6 +1734,11 @@ namespace
 		boss.iPatternLeapTravelStageIndex = 1u;
 		boss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		boss.PatternStageRootMotion.clear();
+		boss.bPortalMotionActive = false;
+		boss.PortalStageHitTargets.clear();
+		boss.fPortalLastHitSampleX = 0.f;
+		boss.fPortalLastHitSampleZ = 0.f;
+		boss.bPatternMoveToAnchorBeforeTakeoff = false;
 		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
 		boss.ePatternPlayerResponse = BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE;
 		boss.ePatternAttachmentSlot =
@@ -1917,14 +1958,20 @@ namespace
 				boss.fPatternHitLength,
 				boss.fPatternHitAngleDegrees);
 		case BOSS_PATTERN_HIT_SHAPE::BOX:
+		{
+			const float portalTravel = boss.bPortalMotionActive ?
+				(std::max)(0.f,
+					(boss.fPositionX - boss.fPortalLastHitSampleX) * forwardX +
+					(boss.fPositionZ - boss.fPortalLastHitSampleZ) * forwardZ) : 0.f;
 			return LostArk::Shared::CombatCollision::Circle_IntersectsForwardBox(
 				playerBody,
-				boss.fPositionX,
-				boss.fPositionZ,
+				boss.bPortalMotionActive ? boss.fPortalLastHitSampleX : boss.fPositionX,
+				boss.bPortalMotionActive ? boss.fPortalLastHitSampleZ : boss.fPositionZ,
 				forwardX,
 				forwardZ,
-				boss.fPatternHitLength,
+				boss.fPatternHitLength + portalTravel,
 				boss.fPatternHitHalfWidth);
+		}
 		case BOSS_PATTERN_HIT_SHAPE::CROSS:
 			return LostArk::Shared::CombatCollision::Circle_IntersectsCross(
 				playerBody,
@@ -1974,6 +2021,10 @@ namespace
 			/* A successful player counter answers the hit instead of taking it,
 			so it is consulted before any damage is resolved. */
 			if (0u == player.iCurrentHp || !player.isCombatReady ||
+				(boss.bPortalMotionActive &&
+					boss.PortalStageHitTargets.end() != std::find(
+						boss.PortalStageHitTargets.begin(),
+						boss.PortalStageHitTargets.end(), player.iNetEntityId)) ||
 				!ContainsPatternHit(boss, player) ||
 				(!boss.bPatternPiercesCover &&
 					IsShieldedByCover(boss, player, coverCircles)))
@@ -1997,6 +2048,9 @@ namespace
 			const SERVER_COMBAT_HIT_RESULT hitResult =
 				CServerCombatHitRuntime::Apply_WorldToPlayer(
 					player, incoming, catalog, outDamageEvents);
+			if (boss.bPortalMotionActive &&
+				SERVER_COMBAT_HIT_RESULT::LANDED == hitResult)
+				boss.PortalStageHitTargets.push_back(player.iNetEntityId);
 			if (SERVER_COMBAT_HIT_RESULT::LANDED == hitResult &&
 				BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE ==
 					boss.ePatternPlayerResponse &&
@@ -2175,8 +2229,12 @@ void LostArk::Server::CValtanBrain::Update(
 	genuinely broken catalog can still re-latch the ledger in this same tick. */
 	(void)SettlePartyWipeMechanicFailures(boss, players, serverTick);
 	const std::uint32_t currentHealthBar = Calculate_HealthBar(boss);
+	const bool ownsPinnedProductSequence = nullptr == automaticSequenceOverride &&
+		boss.ProductSequencePinnedDefinitionRevision.Is_Valid() &&
+		!boss.bScriptedPatternPlayback && !boss.bAutomaticPatternSequenceAuditionOverride;
 	const CGameplayCatalog& thresholdCatalog =
-		nullptr == activeThresholdCatalog ? catalog : *activeThresholdCatalog;
+		ownsPinnedProductSequence || nullptr == activeThresholdCatalog ?
+			catalog : *activeThresholdCatalog;
 	const auto* thresholdPatterns =
 		thresholdCatalog.Find_BossPatterns(boss.strEncounterId);
 	const BOSS_PATTERN_SEQUENCE_DEFINITION* thresholdSequence =
@@ -2272,7 +2330,13 @@ void LostArk::Server::CValtanBrain::Update(
 		HasPlayerAwaitingRevive(players) &&
 		!continueTargetlessOwnedGrabPattern &&
 		!continueTargetlessOrderedFloorWipe;
-	if (pauseOrderedStepForRevive)
+	const auto* runningDefinition = FindPattern(*patterns, boss.strPatternId);
+	const bool independentFinaleOrChild = !players.empty() &&
+		(LostArk::Shared::INVALID_NET_ENTITY_ID != boss.iOwnerBossNetEntityId ||
+			(nullptr != runningDefinition &&
+				BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP ==
+					runningDefinition->Finale.eKind));
+	if (pauseOrderedStepForRevive && !independentFinaleOrChild)
 	{
 		/* A death during an ordered step is a recoverable operator pause, not an
 		mechanic failure. Move both authoritative clocks by the paused tick count so
@@ -2288,7 +2352,7 @@ void LostArk::Server::CValtanBrain::Update(
 	const bool continueTargetlessRunningStage =
 		continueTargetlessScheduledArenaStage ||
 		continueTargetlessOwnedGrabPattern ||
-		continueTargetlessOrderedFloorWipe;
+		continueTargetlessOrderedFloorWipe || independentFinaleOrChild;
 	/* The ordered review program deliberately lets FLOOR_WIPE finish its
 	   already-started recovery after killing the last player. FinishPattern then
 	   advances exactly once to the arena-break cursor; with no target the boss
@@ -2347,7 +2411,8 @@ void LostArk::Server::CValtanBrain::Update(
 	{
 		VALTAN_DECISION_TRACE trace = MakeDecisionTraceHeader(
 			boss, serverTick, currentHealthBar);
-		trace.iTargetNetEntityId = target->iNetEntityId;
+		trace.iTargetNetEntityId = nullptr == target ?
+			LostArk::Shared::INVALID_NET_ENTITY_ID : target->iNetEntityId;
 		trace.fTargetDistance = distance;
 		trace.Candidates.reserve((std::min)(
 			patterns->size(), MAX_DECISION_CANDIDATE_COUNT));
@@ -2393,6 +2458,12 @@ void LostArk::Server::CValtanBrain::Update(
 				boss.MovePath.clear();
 				return;
 			}
+			if (nullptr == target)
+			{
+				Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
+				boss.MovePath.clear();
+				return;
+			}
 			Transition(boss, SERVER_ENTITY_ACTION::CHASE, serverTick);
 			const float pathDeltaX = target->fPositionX - boss.fLastPathGoalX;
 			const float pathDeltaZ = target->fPositionZ - boss.fLastPathGoalZ;
@@ -2414,12 +2485,19 @@ void LostArk::Server::CValtanBrain::Update(
 			return;
 		}
 		boss.MovePath.clear();
-		if (BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_BEHIND_ON_START !=
+		if (nullptr != target &&
+			BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_BEHIND_ON_START !=
 			selected->eTargetPolicy)
 		{
 			const float deltaX = target->fPositionX - boss.fPositionX;
 			const float deltaZ = target->fPositionZ - boss.fPositionZ;
 			boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+		}
+		if (nullptr == automaticSequenceOverride &&
+			boss.bAutomaticPatternSequenceStepRunning &&
+			!boss.ProductSequencePinnedDefinitionRevision.Is_Valid())
+		{
+			boss.ProductSequencePinnedDefinitionRevision = catalog.Get_ActiveRevision();
 		}
 		BeginPattern(
 			boss, *selected, players, target,
@@ -2474,6 +2552,17 @@ void LostArk::Server::CValtanBrain::Update(
 		static_cast<float>(elapsedStageTicks) /
 		static_cast<float>(SERVER_TICK_HZ);
 	Advance_ArenaBreakLeap(boss);
+	if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA ==
+		boss.ePatternStageMotionKind && boss.iPatternStageDurationMs > 0u)
+	{
+		const float ratio = std::clamp(boss.fActionElapsedSeconds * 1000.f /
+			static_cast<float>(boss.iPatternStageDurationMs), 0.f, 1.f);
+		boss.fPositionX = boss.fPortalStartX +
+			(boss.fPortalEndX - boss.fPortalStartX) * ratio;
+		boss.fPositionZ = boss.fPortalStartZ +
+			(boss.fPortalEndZ - boss.fPortalStartZ) * ratio;
+		boss.fPositionY = boss.fSpawnPositionY;
+	}
 	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount)
 	{
 		const std::uint32_t hitOffsetMs =
@@ -2488,6 +2577,11 @@ void LostArk::Server::CValtanBrain::Update(
 		ApplyPatternHit(
 			boss, players, catalog, serverTick, coverCircles,
 			outDamageEvents, outCaptureRequests);
+		if (boss.bPortalMotionActive)
+		{
+			boss.fPortalLastHitSampleX = boss.fPositionX;
+			boss.fPortalLastHitSampleZ = boss.fPositionZ;
+		}
 		++boss.iAppliedPatternHitCount;
 	}
 	if (!HasElapsedMilliseconds(
@@ -2495,6 +2589,12 @@ void LostArk::Server::CValtanBrain::Update(
 	{
 		return;
 	}
+	/* The room commits this tick's captures before resolving an early nav edge.
+	   On an ordinary deadline, wait one tick rather than classifying an uncommitted
+	   capture as a miss. No additional hit is applied on that extra tick. */
+	if (BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE == currentStage.ePlayerResponse &&
+		nullptr != outCaptureRequests && !outCaptureRequests->empty())
+		return;
 	if (ApplyTimeoutBranch(
 		boss, *currentPattern, currentStage, players, serverTick))
 	{
@@ -2637,7 +2737,9 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 	GameRoom would turn a vertical TAKEOFF into a drift and move a target landing
 	off the position captured at pattern start. IMPACT and later stages clear the
 	leap apex and may consume their own root motion normally. */
-	if (boss.fLeapApexHeight > 0.f)
+	if (boss.fLeapApexHeight > 0.f ||
+		BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA ==
+			boss.ePatternStageMotionKind)
 		return false;
 
 	/* A stage whose clip already carries the travel steps along that curve,
@@ -2681,6 +2783,78 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 	return std::isfinite(outProposedX) && std::isfinite(outProposedZ);
 }
 
+bool LostArk::Server::CValtanBrain::Restart_FinaleCycle(
+	SERVER_WORLD_ENTITY& boss,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const BOSS_PATTERN_DEFINITION& pattern,
+	const std::uint32_t serverTick) const
+{
+	if (BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP != pattern.Finale.eKind ||
+		pattern.Stages.empty() || 0u == boss.iCurrentHp ||
+		0u == serverTick ||
+		(std::numeric_limits<std::uint32_t>::max)() == boss.iPatternSequence)
+		return false;
+	SERVER_PLAYER* target = nullptr;
+	for (auto& [playerId, player] : players)
+	{
+		(void)playerId;
+		if (IsEngageablePlayer(player))
+		{
+			target = &player;
+			break;
+		}
+	}
+	const auto revision = boss.PinnedDefinitionRevision;
+	BeginPattern(boss, pattern, players, target, revision, serverTick);
+	return true;
+}
+
+void LostArk::Server::CValtanBrain::Configure_PortalMotion(
+	SERVER_WORLD_ENTITY& boss,
+	const BOSS_PATTERN_STAGE_DEFINITION& stage)
+{
+	boss.bPortalMotionActive = Is_PortalMotion(stage.Motion.eKind);
+	if (!boss.bPortalMotionActive)
+		return;
+	boss.MovePath.clear();
+	if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH == stage.Motion.eKind)
+	{
+		if (boss.bHasPatternTargetLastPosition)
+			FacePoint(boss, boss.fPatternTargetLastPositionX,
+				boss.fPatternTargetLastPositionZ);
+		boss.fPortalLastHitSampleX = boss.fPositionX;
+		boss.fPortalLastHitSampleZ = boss.fPositionZ;
+		return;
+	}
+	const float signX = 0u == stage.Motion.iCornerIndex ||
+		3u == stage.Motion.iCornerIndex ? -1.f : 1.f;
+	const float signZ = stage.Motion.iCornerIndex < 2u ? -1.f : 1.f;
+	boss.fPortalStartX = boss.fSpawnPositionX + signX * stage.Motion.fHalfExtentsX;
+	boss.fPortalStartZ = boss.fSpawnPositionZ + signZ * stage.Motion.fHalfExtentsZ;
+	float deltaX = boss.bHasPatternTargetLastPosition ?
+		boss.fPatternTargetLastPositionX - boss.fPortalStartX :
+		-signX * stage.Motion.fHalfExtentsX;
+	float deltaZ = boss.bHasPatternTargetLastPosition ?
+		boss.fPatternTargetLastPositionZ - boss.fPortalStartZ :
+		-signZ * stage.Motion.fHalfExtentsZ;
+	if (deltaX * signX >= -0.001f || deltaZ * signZ >= -0.001f)
+	{
+		deltaX = -signX * stage.Motion.fHalfExtentsX;
+		deltaZ = -signZ * stage.Motion.fHalfExtentsZ;
+	}
+	const float scale = (std::min)(
+		2.f * stage.Motion.fHalfExtentsX / std::fabs(deltaX),
+		2.f * stage.Motion.fHalfExtentsZ / std::fabs(deltaZ));
+	boss.fPortalEndX = boss.fPortalStartX + deltaX * scale;
+	boss.fPortalEndZ = boss.fPortalStartZ + deltaZ * scale;
+	boss.fPositionX = boss.fPortalStartX;
+	boss.fPositionY = boss.fSpawnPositionY;
+	boss.fPositionZ = boss.fPortalStartZ;
+	boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+	boss.fPortalLastHitSampleX = boss.fPositionX;
+	boss.fPortalLastHitSampleZ = boss.fPositionZ;
+}
+
 bool LostArk::Server::CValtanBrain::Complete_ImpactStage(
 	SERVER_WORLD_ENTITY& boss,
 	const CGameplayCatalog& catalog,
@@ -2711,4 +2885,39 @@ bool LostArk::Server::CValtanBrain::Complete_ImpactStage(
 	}
 	boss.fPatternForcedMotionSpeed = 0.f;
 	return true;
+}
+
+bool LostArk::Server::CValtanBrain::Complete_NavigationBlockedStage(
+	SERVER_WORLD_ENTITY& boss,
+	const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const CGameplayCatalog& catalog,
+	const std::uint32_t serverTick) const
+{
+	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
+	const auto* pattern = nullptr == patterns ? nullptr :
+		FindPattern(*patterns, boss.strPatternId);
+	if (nullptr == pattern || boss.iPatternStageIndex >= pattern->Stages.size())
+		return false;
+	const auto& stage = pattern->Stages[boss.iPatternStageIndex];
+	const auto blocked = std::find_if(stage.Branches.begin(), stage.Branches.end(),
+		[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+		{ return BOSS_PATTERN_STAGE_OUTCOME::NAVIGATION_BLOCKED == branch.eOutcome; });
+	if (blocked == stage.Branches.end())
+		return false;
+	const SERVER_BOSS_GRAB_ROSTER roster = Classify_GrabbedPlayers(boss, players);
+	for (const auto outcome : { BOSS_PATTERN_STAGE_OUTCOME::ALL_PLAYERS_GRABBED,
+		BOSS_PATTERN_STAGE_OUTCOME::ANY_PLAYER_GRABBED })
+	{
+		const bool eligible = BOSS_PATTERN_STAGE_OUTCOME::ALL_PLAYERS_GRABBED ==
+			outcome ? SERVER_BOSS_GRAB_CLASSIFICATION::ALL == roster.eClassification :
+			roster.iGrabbedCount > 0u;
+		if (!eligible)
+			continue;
+		const auto branch = std::find_if(stage.Branches.begin(), stage.Branches.end(),
+			[outcome](const BOSS_PATTERN_STAGE_BRANCH& candidate)
+			{ return outcome == candidate.eOutcome; });
+		if (branch != stage.Branches.end())
+			return ApplyStageBranch(boss, *pattern, *branch, serverTick);
+	}
+	return ApplyStageBranch(boss, *pattern, *blocked, serverTick);
 }

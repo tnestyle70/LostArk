@@ -31,6 +31,11 @@ from typing import Any, Iterable, Mapping, Sequence
 
 MASTER_REL = "Data/Valtan/Valtan.pattern.json"
 GAMEPLAY_AUTHORING_REL = "Data/Valtan/Valtan.gameplay.json"
+SAVED_FLOW_REL = "Data/Encounters/Valtan/ValtanBossAuditionFlows.json"
+SAVED_FLOW_MAX_SLOTS = 255
+DEFAULT_SAVED_FLOW_ID = "flow.valtan.boss-tool.default"
+SAVED_FLOW_MAX_BYTES = 256 * 1024
+OPTIONAL_ENTRY_PATTERN_ID = "VALTAN_ENTRANCE_CINEMATIC"
 PRESENTATION_AUTHORING_REL = "Data/Valtan/Valtan.presentation.json"
 DEBUG_PRESENTATION_REL = "Data/Valtan/Valtan.presentation.debug.json"
 ANIMATION_PROMOTION_MANIFEST_REL = (
@@ -52,7 +57,7 @@ DAMAGE_REL = "Data/Balance/DamageProfiles.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 25
+GAMEPLAY_BOOTSTRAP_VERSION = 26
 
 SCRIPTED_SEQUENCE_MODE = "ORDERED_ONCE_THEN_IDLE"
 
@@ -80,6 +85,10 @@ AUTHORING_ARTIFACTS = (
     WORLD_SET_REL,
     LEGACY_REL,
     PROVENANCE_REL,
+    SAVED_FLOW_REL,
+)
+LEGACY_AUTHORING_ARTIFACTS = tuple(
+    relative for relative in AUTHORING_ARTIFACTS if relative != SAVED_FLOW_REL
 )
 
 WORLD_SET_ID = "worldeventset.valtan.arena-break-109.outer-wall"
@@ -184,6 +193,10 @@ MANAGED_CUE_SCALE_POLICIES = {
     "cue.valtan.phase2.four.slashes": GAMEPLAY_FOOTPRINT,
     **{
         f"cue.valtan.phase2.warp.step-{leg:02d}.composite": OWNER_RELATIVE
+        for leg in range(2, 10)
+    },
+    **{
+        f"cue.valtan.finale.warp.step-{leg:02d}.composite": OWNER_RELATIVE
         for leg in range(2, 10)
     },
     "cue.valtan.phase2.terrain.four-axe.01": GAMEPLAY_FOOTPRINT,
@@ -1094,6 +1107,27 @@ def _has_closed_stage_flag(stage: Mapping[str, Any], flag_id: str) -> bool:
 def _validate_pattern_stage_extensions(
     stage: Mapping[str, Any], context: str
 ) -> None:
+    motion = stage.get("motion")
+    if motion is not None:
+        if not isinstance(motion, dict):
+            raise PipelineError(f"{context}.motion must be an object")
+        if motion.get("kind") == "PORTAL_CROSS_ARENA":
+            exact(motion, ("kind", "cornerIndex", "halfExtentsM"), f"{context}.motion")
+            integer(motion["cornerIndex"], f"{context}.motion.cornerIndex", 0, 3)
+            if not isinstance(motion["halfExtentsM"], list) or len(motion["halfExtentsM"]) != 2:
+                raise PipelineError(f"{context}.motion.halfExtentsM requires X/Z")
+            for value in motion["halfExtentsM"]:
+                number(value, f"{context}.motion.halfExtentsM", 1, 100)
+        elif motion.get("kind") == "PORTAL_TARGET_RUSH":
+            exact(motion, ("kind",), f"{context}.motion")
+        elif motion.get("kind") == "FORWARD":
+            exact(motion, ("kind", "distance"), f"{context}.motion")
+            number(motion["distance"], f"{context}.motion.distance", 0.000001, 1000)
+        else:
+            raise PipelineError(f"{context}.motion kind is unsupported")
+    if any(branch.get("outcome") == "NAVIGATION_BLOCKED" for branch in stage.get("branches", [])):
+        if stage.get("hit", {}).get("playerResponse") != "CAPTURE":
+            raise PipelineError(f"{context} navigation-blocked outcome requires a capture rush")
     part_damage_policy = stage.get("partDamagePolicy", "NORMAL")
     if part_damage_policy not in ("NORMAL", "DESTROY_FIRST_ELIGIBLE"):
         raise PipelineError(f"{context}.partDamagePolicy is unsupported")
@@ -1174,7 +1208,11 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
     hit_ids: set[str] = set()
     for object_ordinal, obj in enumerate(document["objects"]):
         context = f"combat authoring object[{object_ordinal}]"
-        exact(obj, ("combatObjectArchetypeId", "kind", "spawn", "movement", "hits"), context)
+        object_fields = ("combatObjectArchetypeId", "kind", "spawn", "movement", "hits")
+        if "lifetimeMs" in obj:
+            object_fields += ("lifetimeMs",)
+            integer(obj["lifetimeMs"], f"{context}.lifetimeMs", 1, 600000)
+        exact(obj, object_fields, context)
         archetype = stable_id(obj["combatObjectArchetypeId"], f"{context}.combatObjectArchetypeId")
         if archetype in archetypes:
             raise PipelineError(f"duplicate combat object archetype: {archetype}")
@@ -1230,6 +1268,12 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
             interval = integer(hit["repeat"]["intervalMs"], f"{hit_context}.repeat.intervalMs", 0, 600000)
             if count == 1 and interval != 0:
                 raise PipelineError(f"{hit_context} single hit must have intervalMs 0")
+            if count > 1 and interval == 0:
+                raise PipelineError(f"{hit_context} repeated hit requires a positive interval")
+            if "lifetimeMs" in obj and trigger.get("kind") == "TIMED" and (
+                trigger["atMs"] + (count - 1) * interval >= obj["lifetimeMs"]
+            ):
+                raise PipelineError(f"{hit_context} timed hit escapes object lifetime")
             _validate_shape(hit["shape"], f"{hit_context}.shape")
             stable_id(hit["serverDamageProfileId"], f"{hit_context}.serverDamageProfileId")
             number(hit["pushRangeM"], f"{hit_context}.pushRangeM", 0.0, 100000.0)
@@ -1344,8 +1388,6 @@ def build_legacy_manifest(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
         },
     }
     validate_legacy_manifest(result, managed)
-    if len(pattern_entries) != 26:
-        raise PipelineError(f"initial legacy migration requires 26 patterns, got {len(pattern_entries)}")
     return result
 
 
@@ -1966,7 +2008,7 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
                     "actionId": stage["actionId"],
                     "stageKind": stage["stageKind"],
                     "durationMs": (
-                        4000
+                        6500
                         if pattern_id == "VALTAN_HIGH_JUMP"
                         and stage["stageId"] == "AIRBORNE"
                         else stage["durationMs"]
@@ -2103,6 +2145,7 @@ def _event_fields(kind: str) -> tuple[str, ...]:
     common = ("eventId", "trigger", "kind")
     return {
         "SET_BOSS_FLAG": common + ("flagId", "enabled"),
+        "SPAWN_COMBAT_OBJECT": common + ("combatObjectArchetypeId", "count"),
         "SPAWN_COMBAT_OBJECT_VOLLEY": common
         + (
             "combatObjectArchetypeId",
@@ -2117,6 +2160,7 @@ def _event_fields(kind: str) -> tuple[str, ...]:
         "SET_GAMEPLAY_PHASE": common + ("gameplayPhase",),
         "TRIGGER_WORLD_EVENT_SET": common + ("worldEventSetId",),
         "RETARGET_RANDOM_ALIVE": common,
+        "RETURN_TO_ARENA_CENTER": common,
         "DAMAGE_GRABBED_PLAYERS": common + ("damageProfileId",),
         "EXECUTE_GRABBED_PLAYERS": common,
         "RELEASE_GRABBED_PLAYERS": common
@@ -2225,6 +2269,170 @@ def _validate_manual_auditions(
     return pattern_ids
 
 
+def read_saved_flow_document(root: Path) -> dict[str, Any]:
+    """Read the one repository-relative Flow input, never a caller-supplied path."""
+
+    path = repo_path(root, SAVED_FLOW_REL)
+    try:
+        raw = path.read_bytes()
+        if not raw or len(raw) > SAVED_FLOW_MAX_BYTES:
+            raise PipelineError("saved Flow document is empty or exceeds 256 KiB")
+        return json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_pairs,
+            parse_constant=_reject_nonfinite_constant,
+        )
+    except PipelineError:
+        raise
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise PipelineError(f"cannot read saved Flow document: {exc}") from exc
+
+
+def validate_saved_flow_document(
+    document: dict[str, Any],
+    admitted_pattern_ids: Iterable[str],
+    *,
+    require_nonempty: bool = True,
+) -> dict[str, Any]:
+    """Match the Boss Tool's stable slot contract without sorting or deduplicating."""
+
+    exact(document, ("schema", "formatVersion", "flows"), "saved Flow document")
+    if document["schema"] != "lostark.valtan-boss-audition-flows":
+        raise PipelineError("saved Flow schema is invalid")
+    integer(document["formatVersion"], "saved Flow formatVersion", 1, 1)
+    flows = document["flows"]
+    if not isinstance(flows, list) or len(flows) != 1:
+        raise PipelineError("saved Flow must contain exactly one default flow")
+    flow = flows[0]
+    exact(
+        flow,
+        ("flowId", "nextSlotOrdinal", "interStepPursuitMs", "slots"),
+        "saved Flow definition",
+    )
+    if flow["flowId"] != DEFAULT_SAVED_FLOW_ID:
+        raise PipelineError("saved Flow flowId is not the supported default flow")
+    next_ordinal = integer(
+        flow["nextSlotOrdinal"], "saved Flow nextSlotOrdinal", 1, 1000000
+    )
+    integer(flow["interStepPursuitMs"], "saved Flow interStepPursuitMs", 100, 10000)
+    slots = flow["slots"]
+    if (
+        not isinstance(slots, list)
+        or len(slots) > SAVED_FLOW_MAX_SLOTS
+        or (require_nonempty and not slots)
+    ):
+        raise PipelineError(
+            f"saved Flow requires 1..{SAVED_FLOW_MAX_SLOTS} slots for Product playback"
+        )
+    admitted_rows = list(admitted_pattern_ids)
+    admitted = set(admitted_rows)
+    if (
+        not admitted
+        or len(admitted) != len(admitted_rows)
+        or any(
+            not isinstance(value, str)
+            or re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", value) is None
+            for value in admitted
+        )
+    ):
+        raise PipelineError("saved Flow admitted inventory is invalid or duplicated")
+    slot_ids: set[str] = set()
+    maximum_ordinal = 0
+    for ordinal, slot in enumerate(slots):
+        context = f"saved Flow slots[{ordinal}]"
+        exact(slot, ("slotId", "patternId"), context)
+        slot_id = slot["slotId"]
+        match = re.fullmatch(
+            re.escape(DEFAULT_SAVED_FLOW_ID) + r"\.slot\.([0-9]{6})",
+            slot_id if isinstance(slot_id, str) else "",
+        )
+        if (
+            match is None
+            or len(slot_id) > 128
+            or int(match.group(1)) == 0
+            or slot_id in slot_ids
+        ):
+            raise PipelineError(f"{context}.slotId is malformed or duplicated")
+        pattern_id = slot["patternId"]
+        if not isinstance(pattern_id, str) or pattern_id not in admitted:
+            raise PipelineError(f"{context}.patternId is not in the Boss Tool inventory")
+        if pattern_id == OPTIONAL_ENTRY_PATTERN_ID and ordinal != 0:
+            raise PipelineError("the optional entry cinematic must occur exactly once at the first step")
+        slot_ids.add(slot_id)
+        maximum_ordinal = max(maximum_ordinal, int(match.group(1)))
+    if next_ordinal <= maximum_ordinal:
+        raise PipelineError("saved Flow nextSlotOrdinal would reuse a stable slot ID")
+    return flow
+
+
+def resolve_gameplay_flow_reference(
+    gameplay: dict[str, Any],
+    flow_document: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Resolve the tagged physical source to the existing inline sequence IR."""
+
+    decision = gameplay.get("decisionModel") if isinstance(gameplay, dict) else None
+    sequence = decision.get("scriptedSequence") if isinstance(decision, dict) else None
+    if not isinstance(sequence, dict) or "flowId" not in sequence:
+        return gameplay
+    exact(sequence, ("sequenceId", "mode", "flowId"), "scriptedSequence Flow reference")
+    stable_id(sequence["sequenceId"], "scriptedSequence.sequenceId")
+    if sequence["mode"] != SCRIPTED_SEQUENCE_MODE:
+        raise PipelineError("scriptedSequence.mode must be ORDERED_ONCE_THEN_IDLE")
+    if sequence["flowId"] != DEFAULT_SAVED_FLOW_ID:
+        raise PipelineError("scriptedSequence flowId is not the supported default flow")
+    if flow_document is None:
+        raise PipelineError("scriptedSequence Flow reference requires its snapshot-local Flow document")
+    patterns = gameplay.get("patterns")
+    if not isinstance(patterns, list) or not patterns or any(
+        not isinstance(pattern, dict) for pattern in patterns
+    ):
+        raise PipelineError("saved Flow requires authored pattern definitions")
+    pattern_by_id = unique_index(patterns, "patternId", "gameplay patterns")
+    _validate_manual_auditions(decision, pattern_by_id)
+    # Match the Client's strictly joined split-owned inventory. Grouping is
+    # presentation metadata, never another list of IDs or a fixed count gate.
+    # Full gameplay/presentation/owner validation still follows this resolve.
+    flow = validate_saved_flow_document(flow_document, pattern_by_id)
+    resolved = copy.deepcopy(gameplay)
+    resolved["decisionModel"]["scriptedSequence"] = {
+        "sequenceId": sequence["sequenceId"],
+        "mode": sequence["mode"],
+        "interStepPursuitMs": flow["interStepPursuitMs"],
+        "patternIds": [slot["patternId"] for slot in flow["slots"]],
+    }
+    return resolved
+
+
+def _restore_gameplay_flow_reference(
+    gameplay: dict[str, Any],
+    source_gameplay: dict[str, Any],
+    flow_document: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Keep immutable authoring on the same reference plus Flow source closure."""
+
+    sequence = source_gameplay["decisionModel"]["scriptedSequence"]
+    if not isinstance(sequence, dict) or "flowId" not in sequence:
+        return gameplay
+    restored = copy.deepcopy(gameplay)
+    restored["decisionModel"]["scriptedSequence"] = copy.deepcopy(sequence)
+    resolved = resolve_gameplay_flow_reference(restored, flow_document)
+    if resolved["decisionModel"]["scriptedSequence"] != gameplay["decisionModel"]["scriptedSequence"]:
+        raise PipelineError("saved Flow source does not match the immutable authoring sequence")
+    return restored
+
+
+def _snapshot_saved_flow_text(root: Path, sources: dict[str, Any]) -> str | None:
+    entry = next((row for row in sources["files"] if row["path"] == SAVED_FLOW_REL), None)
+    if entry is None:
+        return None
+    text = read_text(repo_path(root, SAVED_FLOW_REL))
+    raw = text.encode("utf-8")
+    if sha256_bytes(raw) != entry["sha256"] or len(raw) != entry["bytes"]:
+        raise PipelineError("saved Flow changed while its immutable source was staged")
+    return text
+
+
 def _validate_scripted_sequence(
     decision_model: dict[str, Any],
     pattern_by_id: Mapping[str, dict[str, Any]],
@@ -2251,18 +2459,25 @@ def _validate_scripted_sequence(
         10000,
     )
     rows = sequence["patternIds"]
-    if not isinstance(rows, list) or not rows or len(rows) > 32:
+    if (
+        not isinstance(rows, list)
+        or not rows
+        or len(rows) > SAVED_FLOW_MAX_SLOTS
+    ):
         raise PipelineError("scriptedSequence.patternIds count is invalid")
     pattern_ids = tuple(
         stable_id(value, "scriptedSequence.patternId") for value in rows
     )
-    if len(set(pattern_ids)) != len(pattern_ids):
-        raise PipelineError("scriptedSequence.patternIds contains a duplicate")
     for pattern_id in pattern_ids:
         if pattern_id not in pattern_by_id:
             raise PipelineError(
                 f"scriptedSequence names no managed pattern: {pattern_id}"
             )
+    if OPTIONAL_ENTRY_PATTERN_ID in pattern_ids and (
+        pattern_ids[0] != OPTIONAL_ENTRY_PATTERN_ID
+        or pattern_ids.count(OPTIONAL_ENTRY_PATTERN_ID) != 1
+    ):
+        raise PipelineError("the optional entry cinematic must occur exactly once at the first step")
     return pattern_ids
 
 
@@ -2335,8 +2550,8 @@ def validate_manual_audition_animation_lineage(
 
     promotion_rows = promotion_manifest["patterns"]
     intake_rows = promotion_manifest["animationIntakeOnly"]
-    if not isinstance(promotion_rows, list) or not promotion_rows:
-        raise PipelineError("Valtan animation promotion patterns must be non-empty")
+    if not isinstance(promotion_rows, list):
+        raise PipelineError("Valtan animation promotion patterns must be an array")
     if not isinstance(intake_rows, list):
         raise PipelineError("Valtan animation intake-only rows must be an array")
 
@@ -2351,7 +2566,7 @@ def validate_manual_audition_animation_lineage(
         "authoringPhase",
         "admissionState",
     }
-    promotion_optional = {"targetPolicy", "aimPolicy"}
+    promotion_optional = {"targetPolicy", "aimPolicy", "sourceActionId"}
     for ordinal, row in enumerate(promotion_rows):
         context = f"animation promotion patterns[{ordinal}]"
         if not isinstance(row, dict):
@@ -2364,6 +2579,8 @@ def validate_manual_audition_animation_lineage(
             raise PipelineError(f"{context} fields mismatch")
         if ("targetPolicy" in row) != ("aimPolicy" in row):
             raise PipelineError(f"{context} target/aim policy must be paired")
+        if "sourceActionId" in row:
+            integer(row["sourceActionId"], f"{context}.sourceActionId", 1)
         pattern_id = stable_id(row["patternId"], f"{context}.patternId")
         chain_id = stable_id(row["sourceChainId"], f"{context}.sourceChainId")
         phase = integer(
@@ -2526,6 +2743,28 @@ def validate_manual_audition_animation_lineage(
                 ):
                     raise PipelineError(f"{context} capture branch source slice drift")
             product_occurrences = product_occurrences[:len(occurrences)]
+        trash_fragments = {
+            "VALTAN_TRASH_CATCH_IF": ["STEP_07", "STEP_08", "CATCH_COUNTER", "CATCH_PRE_IMPACT",
+                                      "CATCH_SLAM", "EXECUTE_TAIL", "RUSH_MISS", "GROGGY"],
+            "VALTAN_TRASH_CATCH_SUCCESS": ["CATCH_COUNTER", "CATCH_PRE_IMPACT", "CATCH_SLAM", "EXECUTE_TAIL"],
+            "VALTAN_TRASH_CATCH_FAIL": ["RUSH_MISS"],
+        }
+        if pattern_id in trash_fragments:
+            # These are now finite subgraphs of the reviewed main capture
+            # pattern, not an unrelated replay of its old animation-only rows.
+            expected_ids = trash_fragments[pattern_id]
+            if [stage["stageId"] for stage in pattern["stages"]] != expected_ids:
+                raise PipelineError(f"{context} shared capture fragment stage inventory drift")
+            shared = {stage["stageId"]: stage for stage in patterns["VALTAN_TRASH"]["stages"]}
+            for fragment in pattern["stages"]:
+                source_fragment = shared[fragment["stageId"]]
+                def slices(value: dict[str, Any]) -> list[tuple[Any, ...]]:
+                    return [(clip["clip"], clip["sourceStartMs"], clip["playMs"],
+                             clip["playRate"], clip["repeatUntilStageEnd"])
+                            for clip in value["animation"]["occurrences"]]
+                if slices(fragment) != slices(source_fragment) or fragment["durationMs"] != source_fragment["durationMs"]:
+                    raise PipelineError(f"{context} shared capture fragment source slice drift")
+            continue
         if len(product_occurrences) != len(occurrences):
             raise PipelineError(f"{context} Product occurrence count drift")
         for ordinal, (source, product) in enumerate(
@@ -2785,10 +3024,12 @@ def validate_v2_master(
     decision_owned_patterns = (
         candidate_patterns | mechanic_patterns | manual_patterns
     )
+    # The reviewed entrance remains a loadable definition when a custom Flow
+    # omits it. It is not automatically prepended and is never a weighted owner.
     scripted_entry_only_patterns = (
-        {scripted_pattern_ids[0]}
-        if scripted_pattern_ids and
-        scripted_pattern_ids[0] not in decision_owned_patterns
+        {OPTIONAL_ENTRY_PATTERN_ID}
+        if OPTIONAL_ENTRY_PATTERN_ID in pattern_by_id
+        and OPTIONAL_ENTRY_PATTERN_ID not in decision_owned_patterns
         else set()
     )
     if (
@@ -2797,7 +3038,7 @@ def validate_v2_master(
     ):
         raise PipelineError(
             "decision model must own every managed pattern exactly once; only "
-            "the first scripted sequence pattern may be an entry-only gate"
+            "VALTAN_ENTRANCE_CINEMATIC may be a dormant entry-only definition"
         )
     event_ids: set[str] = set()
     expected_cue_policies = {
@@ -2814,10 +3055,11 @@ def validate_v2_master(
     for pattern_id, pattern in pattern_by_id.items():
         exact(
             pattern,
-            ("patternId", "displayName", "category", "compatibilitySelectionWeight", "actionId", "entryActionId", "targetPolicy", "aimPolicy", "eligibility", "invulnerableWhileRunning", "sourceActionIds", "sourceSequenceIndex", "presentationSources", "serverMotion", "reactions", "stages"),
+            ("patternId", "displayName", "category", "compatibilitySelectionWeight", "actionId", "entryActionId", "targetPolicy", "aimPolicy", "eligibility", "invulnerableWhileRunning", "sourceActionIds", "sourceSequenceIndex", "presentationSources", "serverMotion", "reactions", "stages") + (("finale",) if "finale" in pattern else ()),
             f"pattern {pattern_id}",
         )
         _validate_pattern_target_aim(pattern, f"pattern {pattern_id}")
+        _validate_finale(pattern, pattern_by_id)
         compatibility_weight = integer(
             pattern["compatibilitySelectionWeight"],
             f"pattern {pattern_id}.compatibilitySelectionWeight",
@@ -3034,6 +3276,16 @@ def validate_v2_master(
                 if event["kind"] == "SET_BOSS_FLAG":
                     stable_id(event["flagId"], f"event {event_id}.flagId")
                     boolean(event["enabled"], f"event {event_id}.enabled")
+                elif event["kind"] == "SPAWN_COMBAT_OBJECT":
+                    archetype = stable_id(event["combatObjectArchetypeId"], f"event {event_id}.archetype")
+                    if archetype not in combat_archetypes or event["trigger"] != "ENTER":
+                        raise PipelineError(f"spawn event has unresolved archetype/trigger: {event_id}")
+                    integer(event["count"], f"event {event_id}.count", 1, 1)
+                    definition = next(row for row in combat_authoring["objects"]
+                                      if row["combatObjectArchetypeId"] == archetype)
+                    if "lifetimeMs" not in definition:
+                        raise PipelineError(f"independent spawn requires explicit lifetimeMs: {event_id}")
+                    spawn_events.add(event_id)
                 elif event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY":
                     archetype = stable_id(event["combatObjectArchetypeId"], f"event {event_id}.archetype")
                     if archetype not in combat_archetypes or event["volleyPolicy"] != "PER_ALIVE_PLAYER":
@@ -3102,7 +3354,7 @@ def validate_v2_master(
                 elif event["kind"] == "TRIGGER_WORLD_EVENT_SET":
                     stable_id(event["worldEventSetId"], f"event {event_id}.worldEventSetId")
                     world_events.append((pattern_id, stage_id, event["worldEventSetId"]))
-                elif event["kind"] == "RETARGET_RANDOM_ALIVE":
+                elif event["kind"] in ("RETARGET_RANDOM_ALIVE", "RETURN_TO_ARENA_CENTER"):
                     if event["trigger"] != "ENTER":
                         raise PipelineError(
                             f"boss retarget event must run on ENTER: {event_id}"
@@ -3123,7 +3375,7 @@ def validate_v2_master(
                         and release_duration_ms == 0
                     )
                     knockback = (
-                        event["releaseMode"] == "OPPOSITE_KNOCKBACK"
+                        event["releaseMode"] in ("OPPOSITE_KNOCKBACK", "ARENA_EJECTION")
                         and speed_mps > 0
                         and release_duration_ms > 0
                     )
@@ -3196,6 +3448,19 @@ def validate_v2_master(
                         f"unsupported Effect cue timing basis: {pattern_id}/{stage_id}"
                     )
                 cue_id = stable_id(cue["cueId"], f"{pattern_id}/{stage_id}.cueId")
+                anchor_slot = stable_id(cue["anchorSlotId"], f"{cue_id}.anchorSlotId")
+                if anchor_slot.startswith("arena.center"):
+                    motion = pattern.get("serverMotion")
+                    if (anchor_slot not in ("arena.center", "arena.center.facing")
+                            or not isinstance(motion, dict)
+                            or motion.get("kind") != "LEAP_TO_ANCHOR"
+                            or motion.get("moveToAnchorBeforeTakeoff") is not True
+                            or cue["followPolicy"] != "snapshot"):
+                        raise PipelineError(f"{cue_id} arena center anchor requires a fixed center approach")
+                    if (anchor_slot == "arena.center.facing"
+                            and (pattern["aimPolicy"] != "LOCK_FACING_ON_START"
+                                 or pattern["targetPolicy"] != "LOCK_RANDOM_ALIVE_ON_START")):
+                        raise PipelineError(f"{cue_id} facing anchor requires one locked random target")
                 if cue_id in cue_ids:
                     raise PipelineError(f"duplicate managed cue: {cue_id}")
                 scale_kind = validate_cue_scale_policy(
@@ -3278,7 +3543,82 @@ def validate_v2_master(
         independent_ids.add(independent_id)
 
 
-def validate_gameplay_authoring(document: dict[str, Any]) -> None:
+def _validate_finite_pattern_graph(pattern: Mapping[str, Any]) -> None:
+    """Require every stage to terminate; looping finales repeat occurrences, not edges."""
+    stages = unique_index(pattern["stages"], "actionId", "finite pattern stages")
+    active: set[str] = set()
+    completed: set[str] = set()
+
+    def visit(action_id: str) -> None:
+        if action_id in active:
+            raise PipelineError(f"pattern {pattern['patternId']} finite stage graph contains a cycle")
+        if action_id in completed:
+            return
+        stage = stages.get(action_id)
+        if stage is None:
+            raise PipelineError(f"pattern {pattern['patternId']} finite stage graph has a dangling action")
+        active.add(action_id)
+        successors = [stage["defaultNextActionId"]] + [branch["nextActionId"] for branch in stage["branches"]]
+        for target in successors:
+            if target is not None:
+                visit(target)
+        active.remove(action_id)
+        completed.add(action_id)
+
+    for action_id in stages:
+        visit(action_id)
+
+
+def _validate_finale(pattern: Mapping[str, Any], patterns: Mapping[str, Any]) -> None:
+    if pattern["patternId"] in ("VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF",
+                                 "VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL"):
+        _validate_finite_pattern_graph(pattern)
+    if "finale" not in pattern:
+        return
+    context = f"pattern {pattern['patternId']}.finale"
+    finale = pattern["finale"]
+    if not isinstance(finale, dict):
+        raise PipelineError(f"{context} must be an object")
+    exact(finale, ("kind", "ghostArchetypeId", "ghostPatternIds",
+                   "spawnHalfExtentsM", "maximumActiveGhosts"), context)
+    if finale["kind"] != "GHOST_PORTAL_LOOP":
+        raise PipelineError(f"{context} kind is unsupported")
+    _validate_finite_pattern_graph(pattern)
+    if stable_id(finale["ghostArchetypeId"], context) != "BOSS_VALTAN_GHOST":
+        raise PipelineError(f"{context} requires the dependent ghost archetype")
+    integer(finale["maximumActiveGhosts"], f"{context}.maximumActiveGhosts", 1, 1)
+    extents = finale["spawnHalfExtentsM"]
+    if not isinstance(extents, list) or len(extents) != 2:
+        raise PipelineError(f"{context}.spawnHalfExtentsM requires X/Z")
+    for value in extents:
+        number(value, f"{context}.spawnHalfExtentsM", 1, 100)
+    children = finale["ghostPatternIds"]
+    if not isinstance(children, list) or len(children) != 3:
+        raise PipelineError(f"{context}.ghostPatternIds requires three finite attacks")
+    for child_id in children:
+        stable_id(child_id, f"{context}.ghostPatternIds")
+    if len(set(children)) != 3:
+        raise PipelineError(f"{context}.ghostPatternIds has duplicate IDs")
+    for child_id in children:
+        stable_id(child_id, f"{context}.ghostPatternIds")
+        child = patterns.get(child_id)
+        if child is None or child_id == pattern["patternId"] or "finale" in child:
+            raise PipelineError(f"{context} has unresolved/recursive child {child_id}")
+        _validate_finite_pattern_graph(child)
+        if any(event.get("kind") == "TRIGGER_WORLD_EVENT_SET"
+               for stage in child["stages"] for event in stage["events"]):
+            raise PipelineError(f"{context} cannot delegate terrain destruction")
+    if children != ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR"]:
+        raise PipelineError(f"{context} requires the reviewed whirlwind/four-slash/four-direction order")
+    if pattern.get("invulnerableWhileRunning"):
+        raise PipelineError(f"{context} must remain damageable until owner death")
+
+
+def validate_gameplay_authoring(
+    document: dict[str, Any],
+    flow_document: dict[str, Any] | None = None,
+) -> None:
+    document = resolve_gameplay_flow_reference(document, flow_document)
     exact(
         document,
         (
@@ -3346,9 +3686,10 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                 "serverMotion",
                 "reactions",
                 "stages",
-            ),
+            ) + (("finale",) if "finale" in pattern else ()),
             f"gameplay pattern {pattern_id}",
         )
+        _validate_finale(pattern, patterns)
         _validate_pattern_target_aim(
             pattern, f"gameplay pattern {pattern_id}"
         )
@@ -3392,9 +3733,14 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                     "takeoffEndMs",
                     "travelStartMs",
                     "travelEndMs",
-                ),
+                ) + (("moveToAnchorBeforeTakeoff",) if "moveToAnchorBeforeTakeoff" in server_motion else ()),
                 f"gameplay pattern {pattern_id}.serverMotion",
             )
+            if "moveToAnchorBeforeTakeoff" in server_motion:
+                boolean(server_motion["moveToAnchorBeforeTakeoff"],
+                        f"gameplay pattern {pattern_id}.serverMotion.moveToAnchorBeforeTakeoff")
+                if server_motion["moveToAnchorBeforeTakeoff"] and server_motion["takeoffStartMs"] <= 0:
+                    raise PipelineError(f"center approach requires a positive anticipation window: {pattern_id}")
             if server_motion["kind"] not in {"LEAP_TO_ANCHOR", "LEAP_TO_TARGET"}:
                 raise PipelineError(
                     f"unsupported serverMotion kind: {pattern_id}"
@@ -3521,6 +3867,33 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                 raise PipelineError(
                     "capture hit requires the typed boss-left-hand slot: "
                     f"{pattern_id}/{stage_id}"
+                )
+
+    warp = patterns.get("VALTAN_WARP")
+    if warp is not None:
+        warp_stages = {stage["stageId"]: stage for stage in warp["stages"]}
+        for leg in range(8):
+            stage_id = f"STEP_{leg + 2:02d}"
+            stage = warp_stages.get(stage_id)
+            if stage is None or stage.get("motion") != {"kind": "PORTAL_TARGET_RUSH"}:
+                raise PipelineError(
+                    f"VALTAN_WARP requires target-rush motion: {stage_id}"
+                )
+
+    finale = patterns.get("VALTAN_GHOST_FINALE")
+    if finale is not None:
+        finale_stages = {stage["stageId"]: stage for stage in finale["stages"]}
+        for leg in range(8):
+            stage_id = f"STEP_{leg + 2:02d}"
+            expected_motion = {
+                "kind": "PORTAL_CROSS_ARENA",
+                "cornerIndex": leg % 4,
+                "halfExtentsM": [22.0, 22.0],
+            }
+            stage = finale_stages.get(stage_id)
+            if stage is None or stage.get("motion") != expected_motion:
+                raise PipelineError(
+                    f"VALTAN_GHOST_FINALE requires corner portal motion: {stage_id}"
                 )
 
 
@@ -3725,6 +4098,8 @@ def split_v2_authoring(
                 "stages": gameplay_stages,
             }
         )
+        if "finale" in pattern:
+            gameplay_patterns[-1]["finale"] = copy.deepcopy(pattern["finale"])
         presentation_patterns.append(
             {
                 "patternId": pattern["patternId"],
@@ -3767,9 +4142,11 @@ def join_v2_authoring(
     presentation: dict[str, Any],
     world_sets: dict[str, Any],
     combat_authoring: dict[str, Any],
+    flow_document: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Strictly join the two physical authoring roles into the internal v2 IR."""
 
+    gameplay = resolve_gameplay_flow_reference(gameplay, flow_document)
     validate_gameplay_authoring(gameplay)
     validate_presentation_authoring(presentation)
     for field in ("bossArchetypeId", "encounterId", "scope"):
@@ -3879,6 +4256,8 @@ def join_v2_authoring(
                 "stages": joined_stages,
             }
         )
+        if "finale" in gameplay_pattern:
+            joined_patterns[-1]["finale"] = copy.deepcopy(gameplay_pattern["finale"])
     joined = {
         "schema": "lostark.valtan-pattern-master",
         "formatVersion": 2,
@@ -3958,6 +4337,14 @@ def _compile_event(
             "value": 1 if event["enabled"] else 0,
             "durationMs": 0,
         }
+    if event["kind"] == "SPAWN_COMBAT_OBJECT":
+        return {
+            "trigger": event["trigger"],
+            "kind": "SPAWN_COMBAT_OBJECT",
+            "targetId": event["combatObjectArchetypeId"],
+            "value": event["count"],
+            "durationMs": 0,
+        }
     if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY":
         layout = event["layout"]
         spawn_schedule = event["spawnSchedule"]
@@ -4005,11 +4392,11 @@ def _compile_event(
         }
     if event["kind"] == "TRIGGER_WORLD_EVENT_SET":
         return None
-    if event["kind"] == "RETARGET_RANDOM_ALIVE":
+    if event["kind"] in ("RETARGET_RANDOM_ALIVE", "RETURN_TO_ARENA_CENTER"):
         return {
             "trigger": event["trigger"],
-            "kind": "RETARGET_RANDOM_ALIVE",
-            "targetId": "boss.target.pattern",
+            "kind": event["kind"],
+            "targetId": "boss.arena.center" if event["kind"] == "RETURN_TO_ARENA_CENTER" else "boss.target.pattern",
             "value": 1,
             "durationMs": 0,
         }
@@ -4143,6 +4530,8 @@ def compile_pattern_product(
     }
     if pattern["serverMotion"] is not None:
         result["serverMotion"] = copy.deepcopy(pattern["serverMotion"])
+    if "finale" in pattern:
+        result["finale"] = copy.deepcopy(pattern["finale"])
     result["stages"] = projected_stages
     return result
 
@@ -4575,7 +4964,7 @@ def _compile_combat_products(
     for pattern in master["patterns"]:
         for stage in pattern["stages"]:
             for event in stage["events"]:
-                if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY":
+                if event["kind"] in ("SPAWN_COMBAT_OBJECT", "SPAWN_COMBAT_OBJECT_VOLLEY"):
                     archetype = event["combatObjectArchetypeId"]
                     if archetype in managed_owners:
                         raise PipelineError(f"combat object has multiple managed owners: {archetype}")
@@ -4598,6 +4987,7 @@ def _compile_combat_products(
             ordinal = sealed["originalOrdinal"]
         else:
             raise PipelineError(f"combat object has no exact managed/legacy owner: {archetype}")
+        life_ms = obj.get("lifetimeMs", life_ms)
         client_visual = visuals.get(archetype)
         if client_visual is None:
             raise PipelineError(f"combat object has no BossCatalog visual: {archetype}")
@@ -4802,8 +5192,23 @@ def project_v2_products(
         window["compatibilityRotationId"] for window in master["decisionModel"]["selectionWindows"]
     }
     rotation_replacements = {row["rotationId"]: row for row in rotations if row["rotationId"] in managed_rotation_ids}
+    combat_authoring = docs[COMBAT_AUTHORING_REL]
+    if migration_fixture:
+        # The sealed v1 fixture predates independent donut ownership. Preserve
+        # newer Product rows untouched, instead of making historical migration
+        # invent a spawn owner or delete a current hazard.
+        fixture_owners = {
+            event["combatObjectArchetypeId"]
+            for pattern in master["patterns"] for stage in pattern["stages"]
+            for event in stage["events"]
+            if event["kind"] in ("SPAWN_COMBAT_OBJECT", "SPAWN_COMBAT_OBJECT_VOLLEY")
+        } | {row["combatObjectArchetypeId"] for row in docs[LEGACY_REL]["legacyCombatObjectOwners"]}
+        combat_authoring = {**combat_authoring, "objects": [
+            row for row in combat_authoring["objects"]
+            if row["combatObjectArchetypeId"] in fixture_owners
+        ]}
     combat_rows = _compile_combat_products(
-        master, docs[COMBAT_AUTHORING_REL], docs[LEGACY_REL], docs[BOSS_CATALOG_REL]
+        master, combat_authoring, docs[LEGACY_REL], docs[BOSS_CATALOG_REL]
     )
     source_combat_rows = {
         row["combatObjectArchetypeId"]: row
@@ -4811,7 +5216,7 @@ def project_v2_products(
     }
     combat_rows = [
         _preserve_equal_json_values(
-            source_combat_rows[row["combatObjectArchetypeId"]], row
+            source_combat_rows.get(row["combatObjectArchetypeId"], {}), row
         )
         for row in combat_rows
     ]
@@ -4924,7 +5329,7 @@ def project_v2_products(
             4,
         ),
         ROTATIONS_REL: json_text(rotation_document),
-        COMBAT_PRODUCT_REL: replace_rows_same_ordinal(
+        COMBAT_PRODUCT_REL: replace_or_append_rows(
             source_texts[COMBAT_PRODUCT_REL],
             "objects",
             "combatObjectArchetypeId",
@@ -5109,7 +5514,15 @@ def load_pipeline_documents(
         relatives.extend((GAMEPLAY_AUTHORING_REL, PRESENTATION_AUTHORING_REL))
     if include_companions:
         relatives.extend((COMBAT_AUTHORING_REL, WORLD_SET_REL, LEGACY_REL))
-    return require_documents(root, relatives)
+    docs = require_documents(root, relatives)
+    if include_split_authoring:
+        sequence = docs[GAMEPLAY_AUTHORING_REL].get("decisionModel", {}).get("scriptedSequence")
+        if isinstance(sequence, dict) and "flowId" in sequence:
+            docs[SAVED_FLOW_REL] = read_saved_flow_document(root)
+            docs[GAMEPLAY_AUTHORING_REL] = resolve_gameplay_flow_reference(
+                docs[GAMEPLAY_AUTHORING_REL], docs[SAVED_FLOW_REL]
+            )
+    return docs
 
 
 def source_manifest(root: Path) -> dict[str, Any]:
@@ -5134,11 +5547,20 @@ def source_manifest(root: Path) -> dict[str, Any]:
         ANIMATION_PROMOTION_MANIFEST_REL,
         PROVENANCE_REL,
     )
+    source_gameplay = read_json(repo_path(root, GAMEPLAY_AUTHORING_REL))
+    sequence = source_gameplay.get("decisionModel", {}).get("scriptedSequence")
+    references_flow = isinstance(sequence, dict) and "flowId" in sequence
+    if references_flow:
+        paths += (SAVED_FLOW_REL,)
 
     def snapshot_entries() -> list[dict[str, Any]]:
         entries = []
         for relative in sorted(paths):
-            sha256, byte_count = source_text_identity(repo_path(root, relative))
+            if relative == SAVED_FLOW_REL:
+                flow_bytes = repo_path(root, relative).read_bytes()
+                sha256, byte_count = sha256_bytes(flow_bytes), len(flow_bytes)
+            else:
+                sha256, byte_count = source_text_identity(repo_path(root, relative))
             entries.append(
                 {
                     "path": relative,
@@ -5163,6 +5585,7 @@ def source_manifest(root: Path) -> dict[str, Any]:
         split_documents[PRESENTATION_AUTHORING_REL],
         split_documents[WORLD_SET_REL],
         split_documents[COMBAT_AUTHORING_REL],
+        read_saved_flow_document(root) if references_flow else None,
     )
     if entries != snapshot_entries():
         raise PipelineError("Valtan source files changed during strict split join")
@@ -5992,6 +6415,8 @@ def _publish_gameplay_bootstrap(
         text=True,
         encoding="utf-8",
         errors="replace",
+        timeout=180,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         check=False,
     )
     if completed.returncode != 0:
@@ -6047,7 +6472,7 @@ def _is_valtan_gameplay_row(row: str) -> bool:
     if kind == "DAMAGE":
         return owner.startswith("damage.valtan.")
     if kind in ("BOSS", "BOSSARMOR", "BOSSPART"):
-        return owner == "BOSS_VALTAN"
+        return owner in ("BOSS_VALTAN", "BOSS_VALTAN_GHOST")
     if kind in ("BOSSCOMBATOBJECT", "BOSSCOMBATOBJECTHIT"):
         return owner == "ENCOUNTER_VALTAN"
     if kind == "ENCOUNTERINTRO" or kind.startswith("PATTERN"):
@@ -6353,6 +6778,20 @@ def validate_candidate_revision_manifest(stage: Path, manifest: dict[str, Any]) 
             raise PipelineError("candidate revision artifact hash/size mismatch: " + relative)
     if manifest["artifactSetId"] != _manifest_hash(artifacts):
         raise PipelineError("candidate revision artifactSetId mismatch")
+    authoring_gameplay_path = stage / "Authoring/Valtan.gameplay.json"
+    if authoring_gameplay_path.is_file():
+        authoring_gameplay = read_json(authoring_gameplay_path)
+        sequence = authoring_gameplay.get("decisionModel", {}).get("scriptedSequence")
+        if isinstance(sequence, dict) and "flowId" in sequence:
+            if SAVED_FLOW_REL not in artifact_by_path:
+                raise PipelineError("candidate Flow reference has no immutable Flow artifact")
+            resolved_gameplay = resolve_gameplay_flow_reference(
+                authoring_gameplay, read_saved_flow_document(stage)
+            )
+            if read_json(stage / ROTATIONS_REL).get("scriptedSequence") != (
+                resolved_gameplay["decisionModel"]["scriptedSequence"]
+            ):
+                raise PipelineError("candidate saved Flow order does not match its Product sequence")
     for row in compatibility["artifacts"]:
         artifact = artifact_by_path.get(row["path"])
         if (
@@ -6657,8 +7096,15 @@ def _validate_authoring_artifact(directory: Path, revision_id: str) -> dict[str,
         ):
             raise PipelineError("recovery authoring artifact hash/path mismatch")
         paths.add(relative)
-    if paths != set(AUTHORING_ARTIFACTS) or _manifest_hash(artifacts) != manifest["artifactSetId"]:
+    expected_paths = set(
+        AUTHORING_ARTIFACTS if SAVED_FLOW_REL in paths else LEGACY_AUTHORING_ARTIFACTS
+    )
+    if paths != expected_paths or _manifest_hash(artifacts) != manifest["artifactSetId"]:
         raise PipelineError("recovery authoring artifact set mismatch")
+    resolve_gameplay_flow_reference(
+        read_json(directory / GAMEPLAY_AUTHORING_REL),
+        read_saved_flow_document(directory) if SAVED_FLOW_REL in paths else None,
+    )
     expected_revision = sha256_bytes(
         (
             manifest["repositorySourceRevision"]
@@ -7070,7 +7516,10 @@ def load_authoring_revision(
         ):
             raise PipelineError(f"saved authoring artifact hash/size mismatch: {relative}")
         actual_paths.append(relative)
-    if tuple(sorted(actual_paths)) != tuple(sorted(AUTHORING_ARTIFACTS)):
+    expected_paths = (
+        AUTHORING_ARTIFACTS if SAVED_FLOW_REL in actual_paths else LEGACY_AUTHORING_ARTIFACTS
+    )
+    if tuple(sorted(actual_paths)) != tuple(sorted(expected_paths)):
         raise PipelineError("saved authoring artifact set is incomplete")
     if _manifest_hash(artifacts) != manifest["artifactSetId"]:
         raise PipelineError("saved authoring artifact-set hash mismatch")
@@ -7091,6 +7540,7 @@ def load_authoring_revision(
         read_json(revision_root / PRESENTATION_AUTHORING_REL),
         read_json(revision_root / WORLD_SET_REL),
         read_json(revision_root / COMBAT_AUTHORING_REL),
+        read_saved_flow_document(revision_root) if SAVED_FLOW_REL in actual_paths else None,
     )
     bosses = read_json(revision_root / BOSS_PROFILES_REL)
     damage = read_json(revision_root / DAMAGE_REL)
@@ -7214,6 +7664,10 @@ def save_authoring(
         gameplay, presentation = split_v2_authoring(
             master, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL]
         )
+        gameplay = _restore_gameplay_flow_reference(
+            gameplay, read_json(repo_path(root, GAMEPLAY_AUTHORING_REL)),
+            docs.get(SAVED_FLOW_REL),
+        )
         values = {
             GAMEPLAY_AUTHORING_REL: gameplay,
             PRESENTATION_AUTHORING_REL: presentation,
@@ -7225,6 +7679,9 @@ def save_authoring(
         }
         for relative, value in values.items():
             _write_fsync(stage / relative, json_text(value).encode("utf-8"))
+        saved_flow_text = _snapshot_saved_flow_text(root, current_sources)
+        if saved_flow_text is not None:
+            _write_fsync(stage / SAVED_FLOW_REL, saved_flow_text.encode("utf-8"))
         balance_outputs = project_balance_products(root, bosses, damage)
         _write_fsync(
             stage / PROVENANCE_REL,
@@ -7236,6 +7693,7 @@ def save_authoring(
             read_json(stage / PRESENTATION_AUTHORING_REL),
             read_json(stage / WORLD_SET_REL),
             read_json(stage / COMBAT_AUTHORING_REL),
+            read_saved_flow_document(stage) if saved_flow_text is not None else None,
         )
         validate_balance_documents(
             read_json(stage / BOSS_PROFILES_REL), read_json(stage / DAMAGE_REL)
@@ -7496,6 +7954,10 @@ def publish_candidate(
         candidate_gameplay, candidate_presentation = split_v2_authoring(
             v2, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL]
         )
+        candidate_gameplay = _restore_gameplay_flow_reference(
+            candidate_gameplay, read_json(repo_path(root, GAMEPLAY_AUTHORING_REL)),
+            docs.get(SAVED_FLOW_REL),
+        )
         authoring_outputs = {
             "Authoring/Valtan.gameplay.json": json_text(candidate_gameplay),
             "Authoring/Valtan.presentation.json": json_text(candidate_presentation),
@@ -7503,6 +7965,9 @@ def publish_candidate(
             "Authoring/Valtan.worldeventsets.json": json_text(docs[WORLD_SET_REL]),
             "Authoring/Valtan.legacy-compatibility.json": json_text(docs[LEGACY_REL]),
         }
+        saved_flow_text = _snapshot_saved_flow_text(root, current_sources)
+        if saved_flow_text is not None:
+            authoring_outputs[SAVED_FLOW_REL] = saved_flow_text
         if draft_patch is not None:
             authoring_outputs["Authoring/Valtan.tuning-draft-patch.json"] = json_text(draft_patch)
         for relative, text in {**authoring_outputs, **outputs}.items():
@@ -7743,6 +8208,76 @@ def publish_candidate(
         lock_path.unlink(missing_ok=True)
 
 
+def _require_saved_flow_revision(root: Path, expected_revision: str) -> None:
+    if not isinstance(expected_revision, str) or re.fullmatch(r"[0-9a-f]{64}", expected_revision) is None:
+        raise PipelineError("expectedFlowRevision must be a lowercase SHA-256")
+    if sha256_file(repo_path(root, SAVED_FLOW_REL)) != expected_revision:
+        raise PipelineError("saved Flow revision changed; reload the saved Flow before publishing")
+
+
+def publish_saved_flow(
+    root: Path,
+    candidate_root: Path,
+    expected_flow_revision: str,
+    *,
+    fail_at: str | None = None,
+) -> dict[str, Any]:
+    """Project the saved canonical Flow, then build an inactive immutable candidate."""
+
+    _require_saved_flow_revision(root, expected_flow_revision)
+    source_gameplay = read_json(repo_path(root, GAMEPLAY_AUTHORING_REL))
+    sequence = source_gameplay.get("decisionModel", {}).get("scriptedSequence")
+    if not isinstance(sequence, dict) or sequence.get("flowId") != DEFAULT_SAVED_FLOW_ID:
+        raise PipelineError("Product scriptedSequence does not reference the saved default Flow")
+    # Validate the reference, inventory, and full joined source before a Product
+    # publisher may replace any generated document. Saved Balance overlays are
+    # intentionally neither selected nor discarded by this Flow-only command.
+    source_manifest(root)
+    command = [
+        _powershell_executable(), "-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-File", str(repo_path(root, "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1")),
+        "-Mode", "PublishV2", "-RepositoryRoot", str(root),
+        "-ExpectedFlowRevision", expected_flow_revision,
+    ]
+    # The editor owns this asynchronous process and reports long-running work
+    # as unconfirmed. subprocess.run(timeout=...) would kill the inner Product
+    # publisher before its durable commit/rollback can finish.
+    try:
+        completed = subprocess.run(
+            command, cwd=root, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except OSError as exc:
+        raise PipelineError(f"saved Flow Product publisher did not complete: {exc}") from exc
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout).strip()[-4000:]
+        raise PipelineError("saved Flow Product publication failed" + (f": {detail}" if detail else ""))
+    _require_saved_flow_revision(root, expected_flow_revision)
+    current_sources = source_manifest(root)
+    pointer = publish_candidate(
+        root, candidate_root, expected_source_manifest=current_sources, fail_at=fail_at
+    )
+    _require_saved_flow_revision(root, expected_flow_revision)
+    manifest = _validate_transaction_artifact(
+        staging_root(root, candidate_root, "CandidateRoot") / "revisions" / pointer["revisionId"],
+        pointer["revisionId"], "candidate",
+    )
+    flow_artifact = next(
+        (row for row in manifest["artifacts"] if row["path"] == SAVED_FLOW_REL), None
+    )
+    if flow_artifact is None or flow_artifact["sha256"] != expected_flow_revision:
+        raise PipelineError("published candidate does not contain the requested saved Flow revision")
+    return {
+        "sourceRevision": current_sources["sourceManifestId"],
+        "candidateRevision": pointer["revisionId"],
+        "flowRevision": expected_flow_revision,
+        "applyClass": manifest["applyClass"],
+        "splitJoinValidated": True,
+        "pointer": pointer,
+    }
+
+
 def emit_bootstrap_patch(root: Path) -> str:
     docs = load_pipeline_documents(
         root,
@@ -7948,6 +8483,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     source_parser = subparsers.add_parser("source-manifest")
     source_parser.add_argument("--output", type=Path)
+    source_parser.add_argument("--repository-only", action="store_true")
     source_parser.add_argument(
         "--authoring-root",
         type=Path,
@@ -7974,6 +8510,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             "after_journal_unlink",
         ),
     )
+    flow_publish_parser = subparsers.add_parser("publish-saved-flow")
+    flow_publish_parser.add_argument("--candidate-root", type=Path, required=True)
+    flow_publish_parser.add_argument("--expected-flow-revision", required=True)
+    flow_publish_parser.add_argument(
+        "--fail-at",
+        choices=("after_stage", "after_validate", "after_revision_manifest", "before_promote", "after_promote", "before_pointer", "after_pointer"),
+    )
     args = parser.parse_args(argv)
     root = args.repository_root.resolve()
     command_name = args.command.replace("-", "_").upper()
@@ -7985,12 +8528,17 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         source_manifest_payload: dict[str, Any] | None = None
         if args.command == "source-manifest":
-            source_authoring_root = args.authoring_root
-            if not source_authoring_root.is_absolute():
-                source_authoring_root = root / source_authoring_root
-            current_sources, source_manifest_payload, source_revision = (
-                source_manifest_with_authoring(root, source_authoring_root)
-            )
+            if args.repository_only:
+                current_sources = source_manifest(root)
+                source_manifest_payload = {**current_sources, "authoringRevision": None}
+                source_revision = current_sources["sourceManifestId"]
+            else:
+                source_authoring_root = args.authoring_root
+                if not source_authoring_root.is_absolute():
+                    source_authoring_root = root / source_authoring_root
+                current_sources, source_manifest_payload, source_revision = (
+                    source_manifest_with_authoring(root, source_authoring_root)
+                )
         else:
             current_sources = source_manifest(root)
             source_revision = current_sources["sourceManifestId"]
@@ -8085,6 +8633,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             if source_manifest_payload is None:
                 raise PipelineError("source manifest payload was not initialized")
             payload = source_manifest_payload
+        elif args.command == "publish-saved-flow":
+            published = publish_saved_flow(
+                root, args.candidate_root, args.expected_flow_revision, fail_at=args.fail_at
+            )
+            source_revision = published.pop("sourceRevision")
+            candidate_revision = published.pop("candidateRevision")
+            payload = published
         elif args.command == "publish-candidate":
             expected = read_json(args.expected_source_manifest) if args.expected_source_manifest else None
             draft_patch = read_json(args.draft_patch.resolve()) if args.draft_patch else None

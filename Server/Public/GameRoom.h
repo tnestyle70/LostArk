@@ -6,6 +6,7 @@
 #include "WorldBootstrap.h"
 #include "GameplayCatalog.h"
 #include "ItemCatalog.h"
+#include "ValtanClearRewards.h"
 #include "PlayerSkillSystem.h"
 #include "CombatObjectRuntime.h"
 #include "ServerNavigation.h"
@@ -225,7 +226,10 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
 			std::span<const STAGED_PLAYER_ENTRY> precedingEntries,
 			STAGED_PLAYER_ENTRY& staged,
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status,
+			const std::string& spawnPlacementOverrideId = {},
+			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
+				carriedInventory = {});
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -233,7 +237,10 @@ namespace LostArk::Server
 		void Handle_Register(const std::shared_ptr<CClientSession>& session);
 		bool Join(
 			SESSION_ID sessionId,
-			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld);
+			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
+			const std::string& spawnPlacementOverrideId = {},
+			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
+				carriedInventory = {});
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -345,7 +352,8 @@ namespace LostArk::Server
 			INACTIVE,
 			PENDING,
 			ACTIVE,
-			COMPLETED_HOLD
+			COMPLETED_HOLD,
+			IDLE_HOLD
 		};
 
 		struct VALTAN_PATTERN_ID_AUDITION_STATE final
@@ -363,6 +371,10 @@ namespace LostArk::Server
 			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 			bool bResetlessContinuation = false;
 			bool bReportedWaitingForPlayer = false;
+			// A live predecessor has no Client Play request to report a lifecycle for.
+			bool bAdoptedLivePredecessor = false;
+			// Keep only the current Flow occurrence on its existing ordered Brain path.
+			std::optional<BOSS_PATTERN_SEQUENCE_DEFINITION> AdoptedFlowSequence;
 		};
 
 		struct VALTAN_NEXT_PATTERN_RESERVATION final
@@ -393,6 +405,10 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
 			std::uint32_t& outCurrentHealthBar);
+		LostArk::Shared::VALTAN_AUDITION_RESULT Adopt_ValtanLiveNextPattern(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
+			SERVER_WORLD_ENTITY& boss);
 		void Cancel_ValtanNextPatternReservation(std::string reason);
 		void Cancel_ValtanPatternIdAudition(std::string reason);
 		void Try_PromoteValtanNextPattern(SERVER_WORLD_ENTITY& boss);
@@ -438,6 +454,7 @@ namespace LostArk::Server
 			std::size_t iStartSlotIndex = 0u;
 			std::size_t iReportedSequenceIndex =
 				(static_cast<std::size_t>(-1));
+			std::uint32_t iReportedPatternSequence = 0u;
 			bool bReportedPausedForRevive = false;
 			bool bStopAfterCurrent = false;
 			std::string strBossPlacementId;
@@ -563,6 +580,15 @@ namespace LostArk::Server
 			std::uint64_t iTraceSequence = 0u;
 			LostArk::Shared::GameplayDataRevision DefinitionRevision{};
 		};
+		// Validates itemId against the loaded catalog and stacks quantity into
+		// player.Inventory, capped at maxStack and MAX_INVENTORY_ITEMS distinct
+		// stacks. Returns false (no-op) for an unknown item or a full inventory
+		// that would need a new stack. Shared by Handle_DebugGiveItem and the
+		// Valtan clear-reward grant in the world entity tick loop.
+		bool Grant_Item(
+			SERVER_PLAYER& player,
+			const std::string& itemId,
+			std::uint32_t quantity);
 		// Debug-only. Validates the item against the loaded catalog and
 		// stacks it into the player's inventory, capped at maxStack.
 		void Handle_DebugGiveItem(
@@ -590,6 +616,14 @@ namespace LostArk::Server
 		void Handle_ConfirmNpcEntry(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
+		// Raid Clear screen's "돌아가기" button -- the reverse trip. No proximity
+		// or party-leader gating (unlike Handle_ConfirmNpcEntry): any player in
+		// VALTAN_ARENA can return to BERN independently. Lands next to Bern's own
+		// Valtan-entry guide NPC via SERVER_WORLD_TRANSFER_REQUEST's
+		// strSpawnPlacementOverrideId. VALTAN_ARENA only; no-op for anything else.
+		void Handle_ReturnToBern(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_RETURN_TO_BERN& request);
 		/* Same-room-only: request.iTargetNetEntityId must resolve to a real
 		   player currently in this room's m_PlayerIdByEntityId. There is no
 		   cross-room player identity yet (nickname is display text only, see
@@ -630,7 +664,9 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& entity);
 		bool Send_WorldEntityDespawned(
 			const std::shared_ptr<CClientSession>& session,
-			LostArk::Shared::NET_ENTITY_ID netEntityId);
+			LostArk::Shared::NET_ENTITY_ID netEntityId,
+			LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON reason =
+				LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON::REMOVED);
 		bool Send_CombatObjectSpawned(
 			const std::shared_ptr<CClientSession>& session,
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
@@ -691,7 +727,9 @@ namespace LostArk::Server
 		void Broadcast_WorldEntitySpawned(
 			const SERVER_WORLD_ENTITY& entity);
 		void Broadcast_WorldEntityDespawned(
-			LostArk::Shared::NET_ENTITY_ID netEntityId);
+			LostArk::Shared::NET_ENTITY_ID netEntityId,
+			LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON reason =
+				LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON::REMOVED);
 		bool Broadcast_WorldDestructionDelta(
 			const std::vector<WORLD_DESTRUCTION_STATE_TRANSITION>& transitions,
 			const std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>&
@@ -709,7 +747,10 @@ namespace LostArk::Server
 		bool Build_WorldEntity(
 			const WORLD_BOOTSTRAP_PLACEMENT& placement,
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
-			SERVER_WORLD_ENTITY& outEntity);
+			SERVER_WORLD_ENTITY& outEntity,
+			const CGameplayCatalog* definitionCatalog = nullptr,
+			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID);
 		bool Initialize_WorldEntities();
 		bool Reset_ReplayableArenaWhenEmpty();
 		bool Reset_ValtanArenaWhenEmpty();
@@ -893,6 +934,15 @@ namespace LostArk::Server
 			std::uint32_t downMs,
 			std::uint32_t serverTick);
 		void Update_Players(float fixedDeltaSeconds);
+		bool Prepare_ArenaEjection(
+			SERVER_PLAYER& staged,
+			const SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_STAGE_ACTION& action,
+			std::uint32_t serverTick);
+		bool Resolve_ArenaCenter(
+			const SERVER_WORLD_ENTITY& boss,
+			SERVER_NAV_POINT& point);
+		bool Update_DependentBosses(std::uint32_t serverTick);
 		/* Slides a hit player along the armed knockback window, clamped to
 		walkable floor and blocking bodies; a wall ends the window early. */
 		void Advance_PlayerKnockback(
@@ -967,6 +1017,7 @@ namespace LostArk::Server
 		CWorldBootstrap m_WorldBootstrap;
 		CGameplayCatalogGenerations m_GameplayCatalog;
 		CItemCatalog m_ItemCatalog;
+		CValtanClearRewards m_ValtanClearRewards;
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;
 		CServerTriggerSystem m_ServerTriggerSystem;
@@ -977,6 +1028,8 @@ namespace LostArk::Server
 		CMonsterBrain m_MonsterBrain;
 		CNpcBehaviorRuntime m_NpcBehaviorRuntime;
 		CValtanBrain m_ValtanBrain;
+		std::unique_ptr<CValtanBrain> m_DependentValtanBrain =
+			std::make_unique<CValtanBrain>();
 		VALTAN_DECISION_TRACE_REVISION_STATE m_ValtanDecisionTraceRevision;
 		CEstherSkillSystem m_EstherSkillSystem;
 		CWorldDestructionBootstrap m_WorldDestructionBootstrap;

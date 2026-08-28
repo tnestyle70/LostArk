@@ -35,37 +35,18 @@ EFFECT_CATALOG_JSON = REPOSITORY_ROOT / "Data/Effects/EffectCatalog.json"
 CLIENT_PROJECT = REPOSITORY_ROOT / "Client/Default/Client.vcxproj"
 CLIENT_FILTERS = REPOSITORY_ROOT / "Client/Default/Client.vcxproj.filters"
 
-EXPECTED_INDEPENDENT_IDS = [
-    "valtan.independent-effect.donut-in-out",
-    "valtan.independent-effect.target-axe",
-]
-EXPECTED_CORE_PATTERN_IDS = [
-    "VALTAN_WHIRLWIND",
-    "VALTAN_FOUR_SLASH",
-    "VALTAN_HIGH_JUMP",
-    "VALTAN_DASH_CHARGE",
-    "VALTAN_FLOOR_WIPE_130",
-    "VALTAN_ARENA_BREAK_109",
-    "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-    "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-]
+REQUIRED_INDEPENDENT_EFFECT_ASSETS = {
+    "valtan.independent-effect.donut-in-out":
+        "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+    "valtan.independent-effect.target-axe": "effect.valtan.sky-axe.active",
+}
+
 
 
 def source_section(source: str, start: str, end: str) -> str:
     start_index = source.index(start)
     end_index = source.index(end, start_index)
     return source[start_index:end_index]
-
-
-def string_array(source: str, name: str) -> list[str]:
-    match = re.search(
-        rf"{re.escape(name)}\s*=\s*\{{(?P<body>.*?)\}};",
-        source,
-        flags=re.DOTALL,
-    )
-    if match is None:
-        raise AssertionError(f"array not found: {name}")
-    return re.findall(r'"([^"]+)"', match.group("body"))
 
 
 class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
@@ -358,7 +339,9 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "void Client::CEffect_Tool::Seek_SynchronizedAnimationSequence(",
             "void Client::CEffect_Tool::Set_SynchronizedAnimationPaused(",
         )
-        self.assertIn("iClip, bHoldingEndPose || !m_bPreviewPlaying", sampler)
+        self.assertIn("CActionPresentationTimeline::Resolve_PreviewSequenceSample(", sampler)
+        self.assertIn("Sample.iClipIndex, bHoldingEndPose || !m_bPreviewPlaying", sampler)
+        self.assertLess(sampler.index("Resolve_PreviewSequenceSample("), sampler.index("Start_SynchronizedAnimationClip("))
         self.assertIn("Set_AnimPaused(bHoldingEndPose || !m_bPreviewPlaying)", sampler)
 
     def test_source_size_help_matches_the_existing_positive_scaling_controls(self) -> None:
@@ -383,40 +366,34 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertIn('RenderLerpToggle("Lerp Scaling", Lerp.bScale);', self.cpp)
         self.assertIn('"Scaling End", Lerp.vEndScale, 0.01f, 0.001f, 100.f', self.cpp)
 
-    def test_exact_two_plus_twenty_seven_inventory_is_explicit(self) -> None:
-        self.assertEqual(
-            EXPECTED_INDEPENDENT_IDS,
-            string_array(
-                self.cpp, "VALTAN_ALL_EFFECTS_INDEPENDENT_EFFECT_IDS"
-            ),
-        )
-        self.assertEqual(
-            EXPECTED_CORE_PATTERN_IDS,
-            string_array(
-                self.pattern_tree_cpp,
-                "VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS",
-            ),
-        )
-        manual = self.gameplay["decisionModel"]["manualAuditions"]
-        self.assertEqual(20, len(manual))
-        manual_ids = [row["patternId"] for row in manual]
-        self.assertEqual(20, len(set(manual_ids)))
-        self.assertTrue(set(EXPECTED_CORE_PATTERN_IDS).isdisjoint(manual_ids))
+    def test_independent_effects_and_authored_pattern_inventory_have_distinct_owners(self) -> None:
+        self.assertNotIn("VALTAN_ALL_EFFECTS_INDEPENDENT_EFFECT_IDS", self.cpp)
+        authored_ids = [row["patternId"] for row in self.gameplay["patterns"]]
+        manual_ids = [row["patternId"] for row in self.gameplay["decisionModel"]["manualAuditions"]]
+        self.assertEqual(len(authored_ids), len(set(authored_ids)))
+        self.assertEqual(len(manual_ids), len(set(manual_ids)))
+        self.assertLessEqual(set(manual_ids), set(authored_ids))
+        self.assertTrue({
+            "VALTAN_GHOST_RESPAWN_AUDITION",
+            "VALTAN_GHOST_DEATH_AUDITION",
+        }.issubset(set(manual_ids)))
+        self.assertNotIn("VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS", self.pattern_tree_cpp)
+        self.assertNotIn("exact 27-pattern", self.cpp)
+        self.assertNotIn("27 Patterns", self.cpp)
 
+        independent_rows = self.pattern_product["independentEffects"]
         independent = {
             row["independentEffectId"]: row
-            for row in self.pattern_product["independentEffects"]
+            for row in independent_rows
         }
-        self.assertEqual(set(EXPECTED_INDEPENDENT_IDS), set(independent))
-        self.assertEqual(
-            "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
-            independent[EXPECTED_INDEPENDENT_IDS[0]]["effectAssetId"],
-        )
-        self.assertEqual(
-            "effect.valtan.sky-axe.active",
-            independent[EXPECTED_INDEPENDENT_IDS[1]]["effectAssetId"],
-        )
-        self.assertNotIn("VALTAN_FIST_IN_OUT", EXPECTED_CORE_PATTERN_IDS)
+        self.assertTrue(independent_rows)
+        self.assertEqual(len(independent_rows), len(independent))
+        self.assertLessEqual(set(REQUIRED_INDEPENDENT_EFFECT_ASSETS), set(independent))
+        for independent_id, effect_asset_id in REQUIRED_INDEPENDENT_EFFECT_ASSETS.items():
+            self.assertEqual(
+                effect_asset_id, independent[independent_id]["effectAssetId"]
+            )
+        self.assertIn("VALTAN_FIST_IN_OUT", authored_ids)
 
     def test_tree_uses_authored_manual_order_and_no_legacy_fallback(self) -> None:
         tree = source_section(
@@ -425,18 +402,26 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "void Client::CEffect_Tool::Render_AllEffectsWindow()",
         )
         for token in (
-            "VALTAN_ALL_EFFECTS_INDEPENDENT_EFFECT_IDS",
+            "m_ValtanPatternTree.IndependentEffects",
+            "IndependentRows.reserve(m_ValtanPatternTree.IndependentEffects.size())",
             "m_ValtanToolAuditionInventory.CorePatternIds",
             "m_ValtanToolAuditionInventory.AnimatorPatternIds",
-            "CORE SERVER PATTERNS (8)",
-            "ANIMATOR PATTERNS (20)",
-            "INDEPENDENT EFFECT (2)",
-            "TOTAL_PATTERN_COUNT !=",
+            "CORE SERVER PATTERNS",
+            "ANIMATOR PATTERNS",
+            "PATTERN-OWNED INDEPENDENT EFFECT (",
+            "m_ValtanToolAuditionInventory.Get_PatternCount()",
+            "m_ValtanToolAuditionInventory.DerivedPatternIds",
             "no legacy or replacement row was substituted",
         ):
             self.assertIn(token, tree)
+        for fixed_surface in (
+            "2u != IndependentRows.size()",
+            "%zu/2 Effects",
+            "PATTERN-OWNED INDEPENDENT EFFECT (2)",
+        ):
+            self.assertNotIn(fixed_surface, tree)
         self.assertIn(
-            "CValtanPatternTree::Build_ToolAuditionInventory",
+            "CValtanPatternTree::Build_PlayablePatternInventory",
             self.cpp,
         )
         for retired_surface in (
@@ -655,16 +640,12 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             play + update,
         )
 
-    def test_all_twenty_seven_visible_pattern_names_are_canonical_korean(self) -> None:
+    def test_all_authored_pattern_names_are_canonical_korean(self) -> None:
         patterns = {
             row["patternId"]: row for row in self.gameplay["patterns"]
         }
-        visible_pattern_ids = EXPECTED_CORE_PATTERN_IDS + [
-            row["patternId"]
-            for row in self.gameplay["decisionModel"]["manualAuditions"]
-        ]
-        self.assertEqual(28, len(visible_pattern_ids))
-        self.assertEqual(28, len(set(visible_pattern_ids)))
+        visible_pattern_ids = [row["patternId"] for row in self.gameplay["patterns"]]
+        self.assertEqual(len(visible_pattern_ids), len(set(visible_pattern_ids)))
         for pattern_id in visible_pattern_ids:
             display_name = patterns[pattern_id]["displayName"]
             with self.subTest(pattern_id=pattern_id):
@@ -856,12 +837,20 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertEqual(1, len(fist["stages"]))
         fist_stage = fist["stages"][0]
         self.assertEqual("NONE", fist_stage["animation"]["mode"])
-        self.assertEqual("STAGE_CLOCK", fist_stage["effectCues"][0]["timingBasis"])
-        product_fist = next(
-            row for row in cues if row["patternId"] == "VALTAN_FIST_IN_OUT"
+        self.assertEqual([], fist_stage["effectCues"])
+        self.assertFalse(any(row["patternId"] == "VALTAN_FIST_IN_OUT" for row in cues))
+        independent = next(
+            row for row in self.presentation["independentEffects"]
+            if row["independentEffectId"] == "valtan.independent-effect.donut-in-out"
         )
-        self.assertEqual("STAGE_CLOCK", product_fist["timingBasis"])
-        self.assertNotIn("clipOccurrenceId", product_fist)
+        self.assertEqual("SERVER_COMBAT_OBJECT", independent["ownership"])
+        owner = next(row for row in self.gameplay["patterns"] if row["patternId"] == "VALTAN_FIST_IN_OUT")
+        spawn = next(
+            event for stage in owner["stages"] for event in stage["events"]
+            if event["eventId"] == independent["spawnEventId"]
+        )
+        self.assertEqual("SPAWN_COMBAT_OBJECT", spawn["kind"])
+        self.assertEqual("combatobject.valtan.fist-in-out.donut", spawn["combatObjectArchetypeId"])
 
     def test_takeoff_excludes_late_legacy_rows_and_decal_owners_allow_user_edits(
         self,

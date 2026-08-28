@@ -36,10 +36,17 @@ namespace
 	MAP_LOAD_SCOPE MakeBernMapScope()
 	{
 		MAP_LOAD_SCOPE scope = MakeFullMapScope();
-		/* The Bern-only bypass proved that camera-dependent popping came from
-		   false frustum rejection. Product rendering uses normal culling with
-		   final-render camera snapshots, rebuilt bounds, conservative margins,
-		   and a short reject grace. Keep the switches explicit for diagnostics. */
+		/* Bern is the only level whose far plane is data driven, max(2000,
+		   span * 8), which reaches roughly 18837 here. That is what exposed the
+		   float32 cancellation in the old corner-built frustum planes, so the
+		   left plane sat tens of world units inside the real one and cut
+		   geometry the camera was looking straight at. The planes now come from
+		   the view-projection matrix and the margins below are back to being an
+		   ordinary conservative allowance rather than a mitigation. Diagnostics
+		   can be enabled here alone to log every dropped placement with its
+		   plane distances and on-screen NDC to
+		   Diagnostics/BernFrustumCulling.log; leave it off in normal builds
+		   because it writes and flushes one line per rejected placement. */
 		scope.frustumCulling.bypass = false;
 		scope.frustumCulling.diagnostics = false;
 		scope.frustumCulling.baseMargin = 0.25f;

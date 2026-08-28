@@ -696,6 +696,38 @@
         "loop": true,
         "additive": false
       }
+    },
+    {
+      "id": "RaidClear_ReturnButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 590,
+        "y": 450,
+        "width": 100,
+        "height": 34
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     }
   ]
 }

@@ -324,7 +324,6 @@ private:
 	bool m_open = true;
 	bool m_focusPending = false;
 	std::string m_status;
-	std::uint32_t m_valtanRevisionTransactionSequence = 0u;
 	std::uint32_t m_valtanDecisionTraceRequestSequence = 0u;
 	std::uint32_t m_valtanDecisionLastQueryServerTick = 0u;
 };

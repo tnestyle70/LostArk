@@ -253,6 +253,20 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			std::uint32_t serverTick) const;
 
+		bool Complete_NavigationBlockedStage(
+			SERVER_WORLD_ENTITY& boss,
+			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			const CGameplayCatalog& catalog,
+			std::uint32_t serverTick) const;
+		bool Restart_FinaleCycle(
+			SERVER_WORLD_ENTITY& boss,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			const BOSS_PATTERN_DEFINITION& pattern,
+			std::uint32_t serverTick) const;
+		static void Configure_PortalMotion(
+			SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_STAGE_DEFINITION& stage);
+
 	private:
 		void Record_DecisionTrace(VALTAN_DECISION_TRACE&& trace) const;
 

@@ -19,6 +19,7 @@ public:
 	{
 		const uint32_t* pParentState = { nullptr };
 		uint32_t iPrototypeLevelIndex = {};
+		wstring_t strModelPrototypeTag = TEXT("Prototype_Component_Model_Valtan");
 		const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = { nullptr };
 	} BODY_VALTAN_DESC;
 
@@ -42,6 +43,7 @@ private:
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	const uint32_t* m_pParentState = { nullptr };
 	uint32_t m_iPrototypeLevelIndex = {};
+	wstring_t m_strModelPrototypeTag;
 	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
 
 private:

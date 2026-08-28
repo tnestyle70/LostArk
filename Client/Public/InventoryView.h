@@ -16,11 +16,12 @@ draw from Data/UI/Inventory/InventoryUI.json (CHUDLayoutTool's "Inventory UI" do
 icons/quantities placed into the Inventory_Slot_N grid come from CClientReplication's real
 S2C_INVENTORY_SNAPSHOT, passed into Render() each frame.
 
-Category tab clicks only toggle a persistent "selected" visual (hover art stays on until a
-different tab is clicked, matching the reference's filter-tab feel) -- real per-item filtering
-by category needs a category field on Data/Items/ItemCatalog.json rows that does not exist yet,
-so every slot still shows the full unfiltered inventory regardless of which tab is selected.
-Category slots are force-hidden in the background view's generic pass and drawn here instead
+Category tab clicks toggle a persistent "selected" visual (hover art stays on until a different
+tab is clicked, matching the reference's filter-tab feel) and also filter Render_Items by each
+item's Data/Items/ItemCatalog.json "category" field ("combat"/"use" today; Cloth/Gem/Card/Etc
+have no items yet, so those tabs render an empty grid). All (and both tabs deselected) shows
+the full unfiltered inventory. Category slots are force-hidden in the background view's generic
+pass and drawn here instead
 (same reasoning as Esther's gauge fill/ready glow) so this class's own hover-or-selected choice
 is the only thing that ever paints them.
 

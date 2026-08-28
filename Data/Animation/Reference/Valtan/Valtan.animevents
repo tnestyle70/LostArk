@@ -21,7 +21,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_abn_groggy_1_start" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_abn_groggy_1_start" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_abn_groggy_1_start" HIT startms=0 endms=0 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"mesh_abn_groggy_1_start" SHAKE startms=0 payload="" src=orig
+"mesh_abn_groggy_1_start" SHAKE startms=0 payload="dur=0.3;in=0;out=0.2;x=9,50;y=6,50;z=6,50;fov=0,0" src=orig
 "mesh_abn_groggy_1_start" SOUND startms=0 payload="S_Systems.SYS_MONSTER_GROGGY" src=orig
 "mesh_abn_groggy_1_start" SOUND startms=50 payload="S_Mob_G_Voltan2.G_Voltan2_FreezeStart1" src=orig
 "mesh_abn_groggy_1_start" SOUND startms=100 payload="S_Mob_G_Voltan2.G_Voltan2_Attack11_Cast3" src=orig
@@ -32,12 +32,12 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_10_01" EFFECT startms=495 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_08" src=orig
 "mesh_att_battle_10_01" EFFECT startms=1667 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
 "mesh_att_battle_10_01" EFFECT startms=1672 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_10_01" SHAKE startms=1672 payload="" src=orig
+"mesh_att_battle_10_01" SHAKE startms=1672 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" src=orig
 "mesh_att_battle_10_01" SOUND startms=1700 payload="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot1" src=orig
 "mesh_att_battle_10_01" HIT startms=1791 endms=1991 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_10_01" HIT startms=1791 endms=1991 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_10_01" SOUND startms=2200 payload="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot1" src=orig
-"mesh_att_battle_10_01" SHAKE startms=2220 payload="" src=orig
+"mesh_att_battle_10_01" SHAKE startms=2220 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" src=orig
 "mesh_att_battle_10_01" EFFECT startms=2221 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
 "mesh_att_battle_10_01" EFFECT startms=2248 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_10_01" HIT startms=2300 endms=2500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -45,7 +45,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_10_01" SOUND startms=3000 payload="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot2" src=orig
 "mesh_att_battle_10_01" EFFECT startms=3008 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
 "mesh_att_battle_10_01" EFFECT startms=3100 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_10_01" SHAKE startms=3100 payload="" src=orig
+"mesh_att_battle_10_01" SHAKE startms=3100 payload="dur=0.4;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_10_01" EFFECT startms=3134 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_01" src=orig
 "mesh_att_battle_10_01" HIT startms=3138 endms=3338 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_10_01" HIT startms=3138 endms=3338 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -54,11 +54,11 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_10_01" STAGE startms=3420 payload="statuseffect" src=orig
 "mesh_att_battle_10_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_03" src=orig
 "mesh_att_battle_10_02" EFFECT startms=0 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_08" src=orig
-"mesh_att_battle_10_02" SHAKE startms=0 payload="" src=orig
+"mesh_att_battle_10_02" SHAKE startms=0 payload="dur=0.6;in=0.6;out=0;x=1.5,60;y=1.5,60;z=1.5,60;fov=0,0" src=orig
 "mesh_att_battle_10_02" SOUND startms=500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot3" src=orig
 "mesh_att_battle_10_02" EFFECT startms=600 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_08" src=orig
 "mesh_att_battle_10_02" HIT startms=600 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"mesh_att_battle_10_02" SHAKE startms=600 payload="" src=orig
+"mesh_att_battle_10_02" SHAKE startms=600 payload="dur=0.4;in=0;out=0;x=5,55;y=5,55;z=8,55;fov=0,0" src=orig
 "mesh_att_battle_10_02" SOUND startms=1500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack08_ShotVox2" src=orig
 "mesh_att_battle_10_02" SOUND startms=1500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot4" src=orig
 "mesh_att_battle_10_02" EFFECT startms=1624 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
@@ -66,7 +66,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_10_02" EFFECT startms=1700 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_05" src=orig
 "mesh_att_battle_10_02" EFFECT startms=1700 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_10_02" EFFECT startms=1700 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_10_02" SHAKE startms=1700 payload="" src=orig
+"mesh_att_battle_10_02" SHAKE startms=1700 payload="dur=1.3;in=1.3;out=0;x=1.5,60;y=1.5,60;z=1.5,60;fov=0,0" src=orig
 "mesh_att_battle_10_02" HIT startms=1800 endms=2000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_10_02" HIT startms=1800 endms=2000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_10_02" HIT startms=1800 endms=2000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -75,12 +75,12 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_10_02" EFFECT startms=3000 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_10_02" EFFECT startms=3000 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "mesh_att_battle_10_02" HIT startms=3000 endms=3167 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"mesh_att_battle_10_02" SHAKE startms=3000 payload="" src=orig
+"mesh_att_battle_10_02" SHAKE startms=3000 payload="dur=0.6;in=0;out=0.1;x=4,50;y=4,50;z=8,40;fov=0,0" src=orig
 "mesh_att_battle_10_02" SOUND startms=3000 payload="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot5" src=orig
 "mesh_att_battle_10_02" STAGE startms=3070 payload="next" src=orig
 "mesh_att_battle_11_01" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack10_CastVox1" src=orig
 "mesh_att_battle_11_01" EFFECT startms=595 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_05_02" src=orig
-"mesh_att_battle_11_01" SHAKE startms=595 payload="" src=orig
+"mesh_att_battle_11_01" SHAKE startms=595 payload="dur=0.3;in=0;out=0;x=4,55;y=4,55;z=6,55;fov=0,0" src=orig
 "mesh_att_battle_11_01" EFFECT startms=597 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_11_01" EFFECT startms=597 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "mesh_att_battle_11_01" HIT startms=600 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -89,7 +89,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_11_01" HIT startms=600 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_11_01" SOUND startms=600 payload="S_Mob_G_Voltan2.G_Voltan2_Attack10_Cast1" src=orig
 "mesh_att_battle_11_01" EFFECT startms=1261 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_05_02" src=orig
-"mesh_att_battle_11_01" SHAKE startms=1264 payload="" src=orig
+"mesh_att_battle_11_01" SHAKE startms=1264 payload="dur=0.3;in=0;out=0;x=4,55;y=4,55;z=6,55;fov=0,0" src=orig
 "mesh_att_battle_11_01" EFFECT startms=1265 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "mesh_att_battle_11_01" EFFECT startms=1265 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_11_01" HIT startms=1300 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -112,7 +112,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_12_01" EFFECT startms=800 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01" src=orig
 "mesh_att_battle_12_01" EFFECT startms=800 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_12_01" EFFECT startms=800 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_12_01" SHAKE startms=800 payload="" src=orig
+"mesh_att_battle_12_01" SHAKE startms=800 payload="dur=0.4;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" src=orig
 "mesh_att_battle_12_01" STAGE startms=1100 payload="next" src=orig
 "mesh_att_battle_12_02" HIT startms=0 endms=0 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_02" STAGE startms=900 payload="next" src=orig
@@ -122,7 +122,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_12_03" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_03" EFFECT startms=211 payload="" src=orig
 "mesh_att_battle_12_03" EFFECT startms=217 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_12_03" SHAKE startms=224 payload="" src=orig
+"mesh_att_battle_12_03" SHAKE startms=224 payload="dur=0.5;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_12_03" HIT startms=230 endms=430 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_03" EFFECT startms=231 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_02" src=orig
 "mesh_att_battle_12_03" EFFECT startms=231 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
@@ -141,7 +141,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_12_04" HIT startms=2000 endms=2100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_04" SOUND startms=2100 payload="S_Mob_G_Voltan2.G_Voltan2_Attack11_Shot4" src=orig
 "mesh_att_battle_12_04" EFFECT startms=2200 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Trail_02" src=orig
-"mesh_att_battle_12_04" SHAKE startms=2413 payload="" src=orig
+"mesh_att_battle_12_04" SHAKE startms=2413 payload="dur=0.6;in=0;out=0.05;x=8,40;y=8,40;z=8,40;fov=0,0" src=orig
 "mesh_att_battle_12_04" EFFECT startms=2420 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "mesh_att_battle_12_04" EFFECT startms=2420 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_12_04" STAGE startms=2700 payload="next" src=orig
@@ -154,7 +154,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_12_05" EFFECT startms=3594 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01" src=orig
 "mesh_att_battle_12_05" EFFECT startms=3594 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_12_05" EFFECT startms=3594 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_12_05" SHAKE startms=3594 payload="" src=orig
+"mesh_att_battle_12_05" SHAKE startms=3594 payload="dur=0.4;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" src=orig
 "mesh_att_battle_12_06" HIT startms=0 endms=0 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_06" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_06" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -174,7 +174,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_12_07" EFFECT startms=268 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "mesh_att_battle_12_07" EFFECT startms=268 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_12_07" EFFECT startms=268 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_12_07" SHAKE startms=268 payload="" src=orig
+"mesh_att_battle_12_07" SHAKE startms=268 payload="dur=0.7;in=0;out=0.1;x=8,65;y=8,65;z=8,50;fov=0,0" src=orig
 "mesh_att_battle_12_07" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_07" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_07" STAGE startms=1100 payload="next" src=orig
@@ -189,7 +189,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_12_10" EFFECT startms=0 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_08_05" src=orig
 "mesh_att_battle_12_10" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
 "mesh_att_battle_12_10" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_12_10" SHAKE startms=0 payload="" src=orig
+"mesh_att_battle_12_10" SHAKE startms=0 payload="dur=5;in=3;out=0;x=1.5,70;y=1.5,70;z=1.5,70;fov=0,0" src=orig
 "mesh_att_battle_12_10" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack29_Cast3" src=orig
 "mesh_att_battle_12_10" SOUND startms=500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack20_ShotVox1" src=orig
 "mesh_att_battle_12_10" STAGE startms=2900 payload="next" src=orig
@@ -201,7 +201,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_12_11" HIT startms=150 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_11" EFFECT startms=162 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_12_11" EFFECT startms=162 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_12_11" SHAKE startms=162 payload="" src=orig
+"mesh_att_battle_12_11" SHAKE startms=162 payload="dur=0.5;in=0;out=0.1;x=8,50;y=8,50;z=8,50;fov=0,0" src=orig
 "mesh_att_battle_12_11" EFFECT startms=163 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_08_04" src=orig
 "mesh_att_battle_12_11" HIT startms=700 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_12_11" HIT startms=1150 endms=1250 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -216,7 +216,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_13_01" EFFECT startms=1430 payload="" src=orig
 "mesh_att_battle_13_01" EFFECT startms=1430 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_13_01" EFFECT startms=1430 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_13_01" SHAKE startms=1430 payload="" src=orig
+"mesh_att_battle_13_01" SHAKE startms=1430 payload="dur=0.4;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" src=orig
 "mesh_att_battle_13_01" EFFECT startms=1435 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_13_02" src=orig
 "mesh_att_battle_13_01" HIT startms=1450 endms=1650 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_13_01" EFFECT startms=1455 payload="FX_MN_RPBF_00_N.Par_N_RPBF_BlowSlash_Atk_01" src=orig
@@ -263,7 +263,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_13_05-1" SOUND startms=1400 payload="S_Mob_G_Voltan2.G_Voltan2_Attack12_Shot3" src=orig
 "mesh_att_battle_13_05-1" EFFECT startms=1487 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_07_02" src=orig
 "mesh_att_battle_13_05-1" EFFECT startms=1487 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Crack_01_02" src=orig
-"mesh_att_battle_13_05-1" SHAKE startms=1487 payload="" src=orig
+"mesh_att_battle_13_05-1" SHAKE startms=1487 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_13_05-1" HIT startms=1500 endms=1700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_13_05-1" HIT startms=1500 endms=1700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_13_05-1" HIT startms=1500 endms=1700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -309,7 +309,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_14_03" EFFECT startms=1001 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_08_02" src=orig
 "mesh_att_battle_14_03" EFFECT startms=1001 payload="FX_MN_RPBF_00_N.Par_N_RPBF_SK09_Exp_03" src=orig
 "mesh_att_battle_14_03" EFFECT startms=1002 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_14_03" SHAKE startms=1003 payload="" src=orig
+"mesh_att_battle_14_03" SHAKE startms=1003 payload="dur=0.8;in=0;out=0.1;x=12,50;y=12,50;z=14,60;fov=0,0" src=orig
 "mesh_att_battle_14_03" EFFECT startms=1006 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" src=orig
 "mesh_att_battle_14_03" EFFECT startms=1006 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "mesh_att_battle_14_03" STAGE startms=1550 payload="next" src=orig
@@ -336,7 +336,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_15_03" EFFECT startms=0 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_01" src=orig
 "mesh_att_battle_15_03" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack25_Shot3" src=orig
 "mesh_att_battle_15_03" EFFECT startms=169 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
-"mesh_att_battle_15_03" SHAKE startms=260 payload="" src=orig
+"mesh_att_battle_15_03" SHAKE startms=260 payload="dur=0.8;in=0;out=0;x=8,50;y=8,50;z=10,50;fov=0,0" src=orig
 "mesh_att_battle_15_03" EFFECT startms=261 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_15_03" EFFECT startms=261 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "mesh_att_battle_15_03" EFFECT startms=262 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_02" src=orig
@@ -361,7 +361,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_16_01" EFFECT startms=1625 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01" src=orig
 "mesh_att_battle_16_01" EFFECT startms=1625 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_16_01" EFFECT startms=1625 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_16_01" SHAKE startms=1630 payload="" src=orig
+"mesh_att_battle_16_01" SHAKE startms=1630 payload="dur=0.4;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" src=orig
 "mesh_att_battle_16_01" STAGE startms=1700 payload="next" src=orig
 "mesh_att_battle_16_02" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_16_02" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -376,7 +376,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_16_03" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_16_03" EFFECT startms=211 payload="" src=orig
 "mesh_att_battle_16_03" EFFECT startms=217 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_16_03" SHAKE startms=224 payload="" src=orig
+"mesh_att_battle_16_03" SHAKE startms=224 payload="dur=0.5;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_16_03" EFFECT startms=231 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_16_03" EFFECT startms=231 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_02" src=orig
 "mesh_att_battle_16_03" EFFECT startms=231 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
@@ -399,7 +399,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_16_09" EFFECT startms=0 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_08_05" src=orig
 "mesh_att_battle_16_09" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
 "mesh_att_battle_16_09" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_16_09" SHAKE startms=0 payload="" src=orig
+"mesh_att_battle_16_09" SHAKE startms=0 payload="dur=5;in=3;out=0;x=1.5,70;y=1.5,70;z=1.5,70;fov=0,0" src=orig
 "mesh_att_battle_16_09" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack15_Cast5" src=orig
 "mesh_att_battle_16_09" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack15_ShotVox3" src=orig
 "mesh_att_battle_16_09" STAGE startms=4900 payload="next" src=orig
@@ -407,7 +407,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_16_10" EFFECT startms=290 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
 "mesh_att_battle_16_10" EFFECT startms=396 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_16_10" EFFECT startms=396 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_16_10" SHAKE startms=396 payload="" src=orig
+"mesh_att_battle_16_10" SHAKE startms=396 payload="dur=0.5;in=0;out=0.1;x=8,50;y=8,50;z=8,50;fov=0,0" src=orig
 "mesh_att_battle_16_10" EFFECT startms=397 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_08_04" src=orig
 "mesh_att_battle_16_10" HIT startms=400 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_16_10" HIT startms=400 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -425,7 +425,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_17_end" SOUND startms=1000 payload="S_Mob_G_Voltan2.G_Voltan2_Attack16_Shot2" src=orig
 "mesh_att_battle_17_end" HIT startms=1150 endms=1350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_17_end" EFFECT startms=1163 payload="FX_MN_RPBF_00_N.Par_N_RPBF_SK09_Exp_03" src=orig
-"mesh_att_battle_17_end" SHAKE startms=1171 payload="" src=orig
+"mesh_att_battle_17_end" SHAKE startms=1171 payload="dur=0.8;in=0;out=0.3;x=4,50;y=4,50;z=12,70;fov=0,0" src=orig
 "mesh_att_battle_17_end" EFFECT startms=1172 payload="FX_MN_RPBF_00_N.Par_N_RPBF_SK09_Exp_04" src=orig
 "mesh_att_battle_17_end" EFFECT startms=1176 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_17_end" EFFECT startms=1180 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
@@ -442,7 +442,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_17_loop" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_17_loop" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_17_loop" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"mesh_att_battle_17_loop" SHAKE startms=0 payload="" src=orig
+"mesh_att_battle_17_loop" SHAKE startms=0 payload="dur=10;in=9;out=1;x=2,25;y=2,25;z=3,50;fov=0,0" src=orig
 "mesh_att_battle_17_loop" HIT startms=500 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_17_loop" EFFECT startms=2199 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_17_loop" EFFECT startms=2323 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Light_04_1" src=orig
@@ -499,7 +499,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_18_03-1" SOUND startms=700 payload="S_Mob_G_Voltan2.G_Voltan2_Attack18_Shot1" src=orig
 "mesh_att_battle_18_03-1" EFFECT startms=732 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_18_03-1" EFFECT startms=733 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_18_03-1" SHAKE startms=740 payload="" src=orig
+"mesh_att_battle_18_03-1" SHAKE startms=740 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_18_03-1" HIT startms=800 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_18_03-1" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_18_03-2" SOUND startms=200 payload="S_Mob_G_Voltan2.G_Voltan2_Attack17_Shot1" src=orig
@@ -522,7 +522,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_19_01" EFFECT startms=1170 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_11" src=orig
 "mesh_att_battle_19_01" EFFECT startms=1174 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_19_01" EFFECT startms=1175 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_19_01" SHAKE startms=1182 payload="" src=orig
+"mesh_att_battle_19_01" SHAKE startms=1182 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_19_01" HIT startms=1200 endms=1400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_19_01" HIT startms=1200 endms=1400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_19_01" SOUND startms=1500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack11_Cast3" src=orig
@@ -531,7 +531,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_19_01" HIT startms=2200 endms=2400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_19_01" EFFECT startms=2226 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_19_01" EFFECT startms=2227 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_19_01" SHAKE startms=2234 payload="" src=orig
+"mesh_att_battle_19_01" SHAKE startms=2234 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_19_01" EFFECT startms=2254 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_12" src=orig
 "mesh_att_battle_19_01" EFFECT startms=2254 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_13" src=orig
 "mesh_att_battle_19_01" EFFECT startms=2254 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_11" src=orig
@@ -541,7 +541,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_19_01" HIT startms=3200 endms=3400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_19_01" EFFECT startms=3215 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_19_01" EFFECT startms=3216 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_19_01" SHAKE startms=3223 payload="" src=orig
+"mesh_att_battle_19_01" SHAKE startms=3223 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_19_01" EFFECT startms=3224 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_12" src=orig
 "mesh_att_battle_19_01" EFFECT startms=3224 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_13" src=orig
 "mesh_att_battle_19_01" EFFECT startms=3224 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_11" src=orig
@@ -551,7 +551,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_19_01" HIT startms=4200 endms=4400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_19_01" EFFECT startms=4207 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_19_01" EFFECT startms=4208 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_19_01" SHAKE startms=4215 payload="" src=orig
+"mesh_att_battle_19_01" SHAKE startms=4215 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_19_01" EFFECT startms=4220 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_12" src=orig
 "mesh_att_battle_19_01" EFFECT startms=4220 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_13" src=orig
 "mesh_att_battle_19_01" EFFECT startms=4220 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_11" src=orig
@@ -641,7 +641,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_1_01" SOUND startms=1400 payload="S_Mob_G_Voltan2.G_Voltan2_Attack01_Shot1" src=orig
 "mesh_att_battle_1_01" EFFECT startms=1490 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
 "mesh_att_battle_1_01" EFFECT startms=1490 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_1_01" SHAKE startms=1490 payload="" src=orig
+"mesh_att_battle_1_01" SHAKE startms=1490 payload="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" src=orig
 "mesh_att_battle_1_01" EFFECT startms=1550 payload="FX_CM_00.Dust.Par_D_Dust_002_pr" src=orig
 "mesh_att_battle_1_01" HIT startms=1570 endms=1770 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_1_01" HIT startms=1570 endms=1770 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -661,13 +661,13 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_1_02" HIT startms=1800 endms=2400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_1_02" EFFECT startms=1850 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_2" src=orig
 "mesh_att_battle_1_02" EFFECT startms=1850 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" src=orig
-"mesh_att_battle_1_02" SHAKE startms=1850 payload="" src=orig
+"mesh_att_battle_1_02" SHAKE startms=1850 payload="dur=0.2;in=0;out=0.05;x=6,50;y=6,50;z=6,50;fov=0,0" src=orig
 "mesh_att_battle_1_02" EFFECT startms=2035 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" src=orig
-"mesh_att_battle_1_02" SHAKE startms=2035 payload="" src=orig
+"mesh_att_battle_1_02" SHAKE startms=2035 payload="dur=0.15;in=0;out=0.05;x=4,50;y=4,50;z=6,50;fov=0,0" src=orig
 "mesh_att_battle_1_02" EFFECT startms=2215 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" src=orig
-"mesh_att_battle_1_02" SHAKE startms=2215 payload="" src=orig
+"mesh_att_battle_1_02" SHAKE startms=2215 payload="dur=0.15;in=0;out=0.05;x=4,50;y=4,50;z=6,50;fov=0,0" src=orig
 "mesh_att_battle_1_02" EFFECT startms=2400 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" src=orig
-"mesh_att_battle_1_02" SHAKE startms=2400 payload="" src=orig
+"mesh_att_battle_1_02" SHAKE startms=2400 payload="dur=0.15;in=0;out=0.05;x=4,50;y=4,50;z=6,50;fov=0,0" src=orig
 "mesh_att_battle_1_02" STAGE startms=2400 payload="next" src=orig
 "mesh_att_battle_20_01" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack19_Cast1" src=orig
 "mesh_att_battle_20_01" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack18_ShotVox1" src=orig
@@ -684,9 +684,9 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_20_01" EFFECT startms=1255 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "mesh_att_battle_20_01" EFFECT startms=1255 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" src=orig
 "mesh_att_battle_20_01" EFFECT startms=1256 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" src=orig
-"mesh_att_battle_20_01" SHAKE startms=1257 payload="" src=orig
+"mesh_att_battle_20_01" SHAKE startms=1257 payload="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_20_01" EFFECT startms=1384 payload="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" src=orig
-"mesh_att_battle_20_01" SHAKE startms=1388 payload="" src=orig
+"mesh_att_battle_20_01" SHAKE startms=1388 payload="dur=1;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_20_01" EFFECT startms=1604 payload="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" src=orig
 "mesh_att_battle_20_01" EFFECT startms=1875 payload="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" src=orig
 "mesh_att_battle_20_01" HIT startms=2000 endms=2200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -703,7 +703,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_20_03" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_20_03" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_20_03" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"mesh_att_battle_20_03" SHAKE startms=22 payload="" src=orig
+"mesh_att_battle_20_03" SHAKE startms=22 payload="dur=3;in=0;out=0.1;x=4,40;y=3,40;z=3,40;fov=0,0" src=orig
 "mesh_att_battle_20_03" EFFECT startms=80 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_20_03" SOUND startms=200 payload="S_Mob_G_Voltan2.G_Voltan2_Attack15_Shot2" src=orig
 "mesh_att_battle_20_03" SOUND startms=1200 payload="S_Mob_G_Voltan2.G_Voltan2_Attack13_ShotVox1" src=orig
@@ -753,7 +753,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_21_04" EFFECT startms=668 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Wave_02" src=orig
 "mesh_att_battle_21_04" EFFECT startms=681 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" src=orig
 "mesh_att_battle_21_04" EFFECT startms=681 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
-"mesh_att_battle_21_04" SHAKE startms=683 payload="" src=orig
+"mesh_att_battle_21_04" SHAKE startms=683 payload="dur=0.8;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_21_04" HIT startms=1799 endms=2000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_21_04-1" SOUND startms=600 payload="S_Mob_G_Voltan2.G_Voltan2_Attack20_Shot3" src=orig
 "mesh_att_battle_21_04-1" HIT startms=650 endms=850 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -766,7 +766,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_21_04-1" EFFECT startms=668 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Wave_02" src=orig
 "mesh_att_battle_21_04-1" EFFECT startms=681 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" src=orig
 "mesh_att_battle_21_04-1" EFFECT startms=681 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
-"mesh_att_battle_21_04-1" SHAKE startms=683 payload="" src=orig
+"mesh_att_battle_21_04-1" SHAKE startms=683 payload="dur=0.8;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_21_04-1" HIT startms=1799 endms=2000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_2_01" SOUND startms=10 payload="S_Mob_G_Voltan2.G_Voltan2_Attack02_CastVox1" src=orig
 "mesh_att_battle_2_01" SOUND startms=300 payload="S_Mob_G_Voltan2.G_Voltan2_Attack02_Cast1" src=orig
@@ -783,7 +783,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_2_01" EFFECT startms=1617 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_01" src=orig
 "mesh_att_battle_2_01" EFFECT startms=1617 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_2_01" EFFECT startms=1617 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_2_01" SHAKE startms=1617 payload="" src=orig
+"mesh_att_battle_2_01" SHAKE startms=1617 payload="dur=0.4;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_2_01" STAGE startms=2000 payload="next" src=orig
 "mesh_att_battle_2_02" EFFECT startms=0 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_08" src=orig
 "mesh_att_battle_2_02" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack02_Cast2" src=orig
@@ -800,7 +800,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_2_02" EFFECT startms=963 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_02" src=orig
 "mesh_att_battle_2_02" EFFECT startms=963 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_2_02" EFFECT startms=963 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_2_02" SHAKE startms=963 payload="" src=orig
+"mesh_att_battle_2_02" SHAKE startms=963 payload="dur=0.4;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_2_02" STAGE startms=1100 payload="next" src=orig
 "mesh_att_battle_2_03" COUNTER startms=0 endms=1200 payload="" src=orig
 "mesh_att_battle_2_03" EFFECT startms=0 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_08" src=orig
@@ -813,7 +813,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_2_03" EFFECT startms=1191 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_2_03" EFFECT startms=1191 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_04" src=orig
 "mesh_att_battle_2_03" EFFECT startms=1191 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
-"mesh_att_battle_2_03" SHAKE startms=1191 payload="" src=orig
+"mesh_att_battle_2_03" SHAKE startms=1191 payload="dur=0.4;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_2_03" HIT startms=1200 endms=1400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_2_03" HIT startms=1300 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_2_03" HIT startms=1300 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -904,7 +904,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_5_01_end" SOUND startms=100 payload="S_Mob_G_Voltan2.G_Voltan2_Attack18_Shot7" src=orig
 "mesh_att_battle_5_01_end" SOUND startms=100 payload="S_Mob_G_Voltan2.G_Voltan2_Attack18_ShotVox4" src=orig
 "mesh_att_battle_5_01_end" EFFECT startms=738 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
-"mesh_att_battle_5_01_end" SHAKE startms=738 payload="" src=orig
+"mesh_att_battle_5_01_end" SHAKE startms=738 payload="dur=1;in=0;out=0.2;x=3,60;y=3,60;z=6,60;fov=0,0" src=orig
 "mesh_att_battle_5_01_end" EFFECT startms=740 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Wave_01_14" src=orig
 "mesh_att_battle_5_01_end" EFFECT startms=740 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Wave_01_22" src=orig
 "mesh_att_battle_5_01_end" EFFECT startms=740 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_07_02" src=orig
@@ -920,7 +920,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_5_01_loop" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "mesh_att_battle_5_01_loop" EFFECT startms=0 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Shout_01" src=orig
 "mesh_att_battle_5_01_loop" EFFECT startms=0 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Wave_01_3" src=orig
-"mesh_att_battle_5_01_loop" SHAKE startms=0 payload="" src=orig
+"mesh_att_battle_5_01_loop" SHAKE startms=0 payload="dur=4;in=0;out=0.1;x=3,100;y=3,100;z=3,100;fov=0,0" src=orig
 "mesh_att_battle_5_01_loop" SOUND startms=3400 payload="S_Mob_G_Voltan2.G_Voltan2_Attack03_Cast2" src=orig
 "mesh_att_battle_5_01_loop" STAGE startms=3870 payload="next" src=orig
 "mesh_att_battle_5_01_start" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack03_ShotVox1" src=orig
@@ -934,14 +934,14 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_5_01_start" EFFECT startms=1290 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "mesh_att_battle_5_01_start" EFFECT startms=1290 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" src=orig
 "mesh_att_battle_5_01_start" EFFECT startms=1290 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Wave_01_1" src=orig
-"mesh_att_battle_5_01_start" SHAKE startms=1290 payload="" src=orig
+"mesh_att_battle_5_01_start" SHAKE startms=1290 payload="dur=0.2;in=0;out=0.05;x=3,60;y=3,60;z=5,60;fov=0,0" src=orig
 "mesh_att_battle_5_01_start" STAGE startms=1300 payload="next" src=orig
 "mesh_att_battle_5_02_end" EFFECT startms=0 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_01" src=orig
 "mesh_att_battle_5_02_end" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack11_Cast3" src=orig
 "mesh_att_battle_5_02_end" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack25_Shot2" src=orig
 "mesh_att_battle_5_02_end" EFFECT startms=100 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
 "mesh_att_battle_5_02_end" EFFECT startms=220 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
-"mesh_att_battle_5_02_end" SHAKE startms=220 payload="" src=orig
+"mesh_att_battle_5_02_end" SHAKE startms=220 payload="dur=0.6;in=0;out=0;x=6,55;y=6,55;z=8,55;fov=0,0" src=orig
 "mesh_att_battle_5_02_end" EFFECT startms=230 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_5_02_end" EFFECT startms=230 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_5_02_end" EFFECT startms=230 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_03" src=orig
@@ -952,7 +952,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_5_02_loop" EFFECT startms=0 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_01" src=orig
 "mesh_att_battle_5_02_loop" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_5_02_loop" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"mesh_att_battle_5_02_loop" SHAKE startms=0 payload="" src=orig
+"mesh_att_battle_5_02_loop" SHAKE startms=0 payload="dur=7.5;in=1;out=0;x=1.5,70;y=1.5,70;z=1.5,70;fov=0,0" src=orig
 "mesh_att_battle_5_02_loop" EFFECT startms=1500 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_01" src=orig
 "mesh_att_battle_5_02_loop" HIT startms=3000 endms=3200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_5_02_loop" STAGE startms=3900 payload="next" src=orig
@@ -975,13 +975,13 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_7_01" SOUND startms=600 payload="S_Mob_G_Voltan2.G_Voltan2_Attack05_Cast1" src=orig
 "mesh_att_battle_7_01" EFFECT startms=640 payload="FX_CM_02.Light.Par_MP_Light_03" src=orig
 "mesh_att_battle_7_01" EFFECT startms=659 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_05" src=orig
-"mesh_att_battle_7_01" SHAKE startms=667 payload="" src=orig
+"mesh_att_battle_7_01" SHAKE startms=667 payload="dur=1.9;in=1;out=0;x=1.5,50;y=1.5,50;z=1.5,50;fov=0,0" src=orig
 "mesh_att_battle_7_01" SOUND startms=1000 payload="S_Mob_G_Voltan2.G_Voltan2_Attack05_CastVox1" src=orig
 "mesh_att_battle_7_01" SOUND startms=2100 payload="S_Mob_G_Voltan2.G_Voltan2_Attack03_Cast2" src=orig
 "mesh_att_battle_7_01" SOUND startms=2160 payload="S_Mob_G_Voltan2.G_Voltan2_Attack27_Cast2" src=orig
 "mesh_att_battle_7_01" SOUND startms=3000 payload="S_Mob_G_Voltan2.G_Voltan2_Attack05_Shot1" src=orig
 "mesh_att_battle_7_01" EFFECT startms=3051 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
-"mesh_att_battle_7_01" SHAKE startms=3118 payload="" src=orig
+"mesh_att_battle_7_01" SHAKE startms=3118 payload="dur=0.8;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" src=orig
 "mesh_att_battle_7_01" EFFECT startms=3151 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_01" src=orig
 "mesh_att_battle_7_01" EFFECT startms=3151 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_02" src=orig
 "mesh_att_battle_7_01" EFFECT startms=3151 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_03" src=orig
@@ -1001,7 +1001,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_7_02" SOUND startms=500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack05_ShotVox1" src=orig
 "mesh_att_battle_7_02" SOUND startms=500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack05_Shot2" src=orig
 "mesh_att_battle_7_02" EFFECT startms=728 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
-"mesh_att_battle_7_02" SHAKE startms=776 payload="" src=orig
+"mesh_att_battle_7_02" SHAKE startms=776 payload="dur=0.5;in=0;out=0.05;x=6,85;y=6,85;z=8,85;fov=0,0" src=orig
 "mesh_att_battle_7_02" EFFECT startms=795 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_01" src=orig
 "mesh_att_battle_7_02" EFFECT startms=795 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_02" src=orig
 "mesh_att_battle_7_02" EFFECT startms=795 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_03" src=orig
@@ -1019,7 +1019,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_7_03" SOUND startms=500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack05_ShotVox2" src=orig
 "mesh_att_battle_7_03" SOUND startms=500 payload="S_Mob_G_Voltan2.G_Voltan2_Attack05_Shot3" src=orig
 "mesh_att_battle_7_03" EFFECT startms=728 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
-"mesh_att_battle_7_03" SHAKE startms=776 payload="" src=orig
+"mesh_att_battle_7_03" SHAKE startms=776 payload="dur=0.5;in=0;out=0.05;x=6,85;y=6,85;z=8,85;fov=0,0" src=orig
 "mesh_att_battle_7_03" EFFECT startms=795 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_02" src=orig
 "mesh_att_battle_7_03" EFFECT startms=795 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "mesh_att_battle_7_03" EFFECT startms=795 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
@@ -1036,7 +1036,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_8_01_end" EFFECT startms=230 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "mesh_att_battle_8_01_end" EFFECT startms=231 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_06_04" src=orig
 "mesh_att_battle_8_01_end" EFFECT startms=231 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_8_01_end" SHAKE startms=236 payload="" src=orig
+"mesh_att_battle_8_01_end" SHAKE startms=236 payload="dur=0.7;in=0;out=0.1;x=5,45;y=5,45;z=7,45;fov=0,0" src=orig
 "mesh_att_battle_8_01_end" HIT startms=240 endms=440 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_8_01_end" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_8_01_end" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -1045,7 +1045,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_8_01_end" EFFECT startms=2240 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "mesh_att_battle_8_01_end" EFFECT startms=2240 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_06_05" src=orig
 "mesh_att_battle_8_01_end" EFFECT startms=2240 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"mesh_att_battle_8_01_end" SHAKE startms=2240 payload="" src=orig
+"mesh_att_battle_8_01_end" SHAKE startms=2240 payload="dur=0.7;in=0;out=0.1;x=5,45;y=5,45;z=7,45;fov=0,0" src=orig
 "mesh_att_battle_8_01_loop" HIT startms=0 endms=201 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_8_01_loop" HIT startms=0 endms=201 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_8_01_loop" HIT startms=3200 endms=3400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
@@ -1060,7 +1060,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_8_01_start" EFFECT startms=1125 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_06_03" src=orig
 "mesh_att_battle_8_01_start" EFFECT startms=1125 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_att_battle_8_01_start" EFFECT startms=1125 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"mesh_att_battle_8_01_start" SHAKE startms=1132 payload="" src=orig
+"mesh_att_battle_8_01_start" SHAKE startms=1132 payload="dur=0.5;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" src=orig
 "mesh_att_battle_8_01_start" HIT startms=1600 endms=1800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_8_01_start" HIT startms=1600 endms=1800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_8_01_start" STAGE startms=1750 payload="next" src=orig
@@ -1069,7 +1069,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_9_01_end" EFFECT startms=100 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" src=orig
 "mesh_att_battle_9_01_end" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "mesh_att_battle_9_01_end" HIT startms=140 endms=340 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"mesh_att_battle_9_01_end" SHAKE startms=140 payload="" src=orig
+"mesh_att_battle_9_01_end" SHAKE startms=140 payload="dur=0.5;in=0;out=0.2;x=9,50;y=6,50;z=6,50;fov=0,0" src=orig
 "mesh_att_battle_9_01_end" HIT startms=1000 endms=1050 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_att_battle_9_01_end-2" EFFECT startms=0 payload="FX_MN_RPBF_00_N.Par_N_RPBF_Light_04_01" src=orig
 "mesh_att_battle_9_01_end-2" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack06_ShotVox2" src=orig
@@ -1078,7 +1078,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_att_battle_9_01_end-2" EFFECT startms=120 payload="FX_BS_01.Trail.Par_O_BOEH_Trail_01_2" src=orig
 "mesh_att_battle_9_01_end-2" EFFECT startms=200 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Trail_01" src=orig
 "mesh_att_battle_9_01_end-2" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
-"mesh_att_battle_9_01_end-2" SHAKE startms=200 payload="" src=orig
+"mesh_att_battle_9_01_end-2" SHAKE startms=200 payload="dur=0.6;in=0;out=0.1;x=9,50;y=6,50;z=6,50;fov=0,0" src=orig
 "mesh_att_battle_9_01_end-2" EFFECT startms=217 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_02" src=orig
 "mesh_att_battle_9_01_end-2" EFFECT startms=300 payload="FX_MN_RPBF_00_S.Par_S_RPBF_Trail_01_1" src=orig
 "mesh_att_battle_9_01_end-2" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
@@ -1118,7 +1118,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_dmg_parts_start_1" HIT startms=0 endms=201 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_dmg_parts_start_1" HIT startms=0 endms=0 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "mesh_dmg_parts_start_1" HIT startms=0 endms=100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"mesh_dmg_parts_start_1" SHAKE startms=0 payload="" src=orig
+"mesh_dmg_parts_start_1" SHAKE startms=0 payload="dur=0.3;in=0;out=0.2;x=9,100;y=10,100;z=10,100;fov=0,0" src=orig
 "mesh_dmg_parts_start_1" SOUND startms=0 payload="S_Systems.SYS_MONSTER_GROGGY" src=orig
 "mesh_dmg_parts_start_1" SOUND startms=50 payload="S_Mob_G_Voltan2.G_Voltan2_FreezeStart1" src=orig
 "mesh_dmg_parts_start_1" SOUND startms=100 payload="S_Mob_G_Voltan2.G_Voltan2_Attack23_Shot1" src=orig
@@ -1132,7 +1132,7 @@ LOSTARK_ANIM_EVENTS 3 "Valtan" 1173
 "mesh_evt1_att_battle_5_01_end" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack07_ShotVox1" src=orig
 "mesh_evt1_att_battle_5_01_end" SOUND startms=1 payload="S_Mob_G_Voltan2.G_Voltan2_Attack07_Shot1" src=orig
 "mesh_evt1_att_battle_5_01_end" EFFECT startms=738 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
-"mesh_evt1_att_battle_5_01_end" SHAKE startms=738 payload="" src=orig
+"mesh_evt1_att_battle_5_01_end" SHAKE startms=738 payload="dur=1;in=0;out=0.2;x=3,60;y=3,60;z=3,60;fov=0,0" src=orig
 "mesh_evt1_att_battle_5_01_end" EFFECT startms=740 payload="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_03_01" src=orig
 "mesh_evt1_att_battle_5_01_end" EFFECT startms=741 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "mesh_evt1_att_battle_5_01_end" EFFECT startms=742 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig

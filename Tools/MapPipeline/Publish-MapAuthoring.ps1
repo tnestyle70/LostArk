@@ -7,10 +7,16 @@ param(
     [string]$ProjectRoot,
 
     [ValidateRange(0, 65537)]
-    [int]$FailureAfterPromote = 0
+    [int]$FailureAfterPromote = 0,
+
+    [ValidateSet('Validate', 'Check', 'Publish')]
+    [string]$Mode = 'Publish'
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Mode -ne 'Publish' -and $FailureAfterPromote -ne 0) {
+    throw 'FailureAfterPromote is only supported in Publish mode.'
+}
 if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 }
@@ -50,7 +56,7 @@ function Read-PlacementDocument {
     $header = [regex]::Match(
         $lines[0],
         '^LOSTARK_MAP_PLACEMENTS\s+2\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
-    if (-not $header.Success -or $header.Groups['area'].Value -ne $AreaId) {
+    if (-not $header.Success -or $header.Groups['area'].Value -cne $AreaId) {
         throw "Placement header does not match area '$AreaId': $Path"
     }
     $rows = @($lines | Select-Object -Skip 1)
@@ -83,7 +89,8 @@ function Parse-PlacementRow {
 			[Globalization.NumberStyles]::Float,
 			[Globalization.CultureInfo]::InvariantCulture,
 			[ref]$value) -or
-			[double]::IsNaN($value) -or [double]::IsInfinity($value)) {
+			[double]::IsNaN($value) -or [double]::IsInfinity($value) -or
+			[math]::Abs($value) -gt [single]::MaxValue) {
 			throw "Non-finite placement value in $Context"
 		}
 		$value
@@ -113,9 +120,44 @@ function Parse-PlacementRow {
     }
 }
 
+function Read-MapAssetCatalog {
+    param([string]$Path)
+    $lines = @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+    $header = if ($lines.Count -gt 0) {
+        [regex]::Match($lines[0],
+            '^LOSTARK_MAP_ASSET_CATALOG\s+[1-4]\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
+    }
+    if ($null -eq $header -or -not $header.Success -or
+        $header.Groups['area'].Value -cne $AreaId -or
+        [uint32]$header.Groups['count'].Value -ne ($lines.Count - 1) -or
+        $lines.Count -lt 2 -or $lines.Count -gt 513) {
+        throw "Asset catalog header/count is invalid: $Path"
+    }
+    $assetIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $resourcePrefix = [IO.Path]::GetFullPath($runtimeResourceRoot).TrimEnd('\') + '\'
+    foreach ($row in @($lines | Select-Object -Skip 1)) {
+        $match = [regex]::Match($row,
+            '^"(?<id>[A-Za-z0-9_.:-]+)"\s+"(?:[^"\\\r\n]|\\.)+"\s+"(?<model>(?:[^"\\\r\n]|\\.)+)"\s+')
+        if (-not $match.Success) { throw "Invalid asset catalog row: $Path" }
+        # Match std::quoted's escape handling before checking the runtime path.
+        $modelPath = [regex]::Replace($match.Groups['model'].Value, '\\(.)', '$1')
+        if ([IO.Path]::IsPathRooted($modelPath) -or $modelPath.Contains(':') -or
+            '..' -in @($modelPath -split '[\\/]') -or
+            -not [IO.Path]::GetFullPath((Join-Path $runtimeResourceRoot $modelPath)).StartsWith(
+                $resourcePrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Asset model path must stay Resources-relative: $modelPath"
+        }
+        if (-not $assetIds.Add($match.Groups['id'].Value)) {
+            throw "Duplicate asset ID in catalog: $Path"
+        }
+    }
+    return [pscustomobject]@{ Lines = $lines; AssetIds = $assetIds }
+}
+
 function Assert-ImportedLeaf {
 	param([string]$Name, [string]$Extension)
-	if ([IO.Path]::GetFileName($Name) -ne $Name -or
+	if ($Name.Length -gt 260 -or $Name -notmatch '^[A-Za-z0-9_.-]+$' -or
+		[IO.Path]::GetFileName($Name) -ne $Name -or
 		[IO.Path]::GetExtension($Name) -ne $Extension) {
 		throw "Shard path must be a leaf $Extension filename: $Name"
 	}
@@ -1196,17 +1238,19 @@ elseif ([IO.File]::Exists($authoringWaterPath)) {
 function Invoke-FileSetTransaction {
     param([object[]]$Files)
     $transactionId = [Guid]::NewGuid().ToString('N')
-    $stagingRoot = Join-Path $runtimeRoot ".map-publish.staging.$AreaId.$transactionId"
+    $stagingRoot = [IO.Path]::GetFullPath(
+        (Join-Path $runtimeRoot ".map-publish.staging.$AreaId.$transactionId"))
+    if ([IO.Path]::GetDirectoryName($stagingRoot) -ne
+        [IO.Path]::GetFullPath($runtimeRoot).TrimEnd('\')) {
+        throw 'Map publish staging directory escapes the runtime root.'
+    }
     [IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
     $entries = [Collections.Generic.List[object]]::new()
     $committed = $false
     try {
         foreach ($file in $Files) {
             $staged = Join-Path $stagingRoot $file.Name
-            [IO.File]::WriteAllText(
-                $staged,
-                (([string[]]$file.Lines -join "`n") + "`n"),
-                $utf8)
+            [IO.File]::WriteAllBytes($staged, $file.Bytes)
             $entries.Add([ordered]@{
                 Staged = $staged
                 Destination = Join-Path $runtimeRoot $file.Name
@@ -1271,74 +1315,141 @@ function Invoke-FileSetTransaction {
     }
 }
 
+function Add-DeployPublishFiles {
+    param([Collections.Generic.List[object]]$Files)
+    $hasCatalog = [IO.File]::Exists($sourceDeployCatalogPath)
+    $hasPlacements = [IO.File]::Exists($authoringDeployPath)
+    if ($hasCatalog -ne $hasPlacements) {
+        throw "Deploy authoring pair is incomplete for $AreaId"
+    }
+    if ($hasCatalog) {
+        $Files.Add([pscustomobject]@{
+            Name = "$AreaId.deployassets"
+            Lines = [IO.File]::ReadAllLines($sourceDeployCatalogPath, [Text.Encoding]::UTF8)
+        })
+        $Files.Add([pscustomobject]@{
+            Name = "$AreaId.deployplacements"
+            Lines = [IO.File]::ReadAllLines($authoringDeployPath, [Text.Encoding]::UTF8)
+        })
+    }
+}
+
+function Complete-MapPublish {
+    param([object[]]$Files, [string]$CatalogType, [string]$RuntimeEntry,
+        [int]$ShardCount = 0)
+    # Every mode consumes the same normalized bytes. This stage performs no I/O.
+    $expectedFiles = [Collections.Generic.List[object]]::new()
+    $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($file in $Files) {
+        if ($file.Name -notmatch '^[A-Za-z0-9_.-]+$' -or
+            [IO.Path]::GetFileName($file.Name) -ne $file.Name -or
+            -not $names.Add($file.Name)) {
+            throw "Invalid or duplicate map output filename: $($file.Name)"
+        }
+        $expectedFiles.Add([pscustomobject]@{
+            Name = $file.Name
+            Bytes = $utf8.GetBytes((([string[]]$file.Lines -join "`n") + "`n"))
+        })
+    }
+    if ($Mode -eq 'Check') {
+        foreach ($file in $expectedFiles) {
+            $destination = Join-Path $runtimeRoot $file.Name
+            if (-not [IO.File]::Exists($destination)) {
+                throw "Map runtime output is missing: $destination"
+            }
+            $actual = [IO.File]::ReadAllBytes($destination)
+            if ($actual.Length -ne $file.Bytes.Length -or
+                [Convert]::ToBase64String($actual) -cne
+                [Convert]::ToBase64String($file.Bytes)) {
+                throw "Map runtime output differs from authoring: $destination"
+            }
+        }
+    }
+    elseif ($Mode -eq 'Publish') {
+        Invoke-FileSetTransaction $expectedFiles
+    }
+    $result = [ordered]@{
+        AreaId = $AreaId
+        Mode = $Mode
+        CatalogType = $CatalogType
+        PlacementCount = $authoringRows.Count
+        FileCount = $expectedFiles.Count
+        RuntimePath = $RuntimeEntry
+    }
+    if ($ShardCount -gt 0) { $result.ShardCount = $ShardCount }
+    if ($Mode -eq 'Publish') { $result.Sha256 = Get-MapPublishSha256 $RuntimeEntry }
+    [pscustomobject]$result
+}
+
 if (-not [IO.File]::Exists($authoringPath)) {
     throw "Authoring placement is missing: $authoringPath"
 }
 if (-not [IO.Directory]::Exists($importRoot)) {
     throw "Imported map source is missing: $importRoot"
 }
-[IO.Directory]::CreateDirectory($runtimeRoot) | Out-Null
 $authoringRows = @(Read-PlacementDocument $authoringPath)
+$parsedAuthoringRows = [Collections.Generic.List[object]]::new()
+$seenPlacementIds = [Collections.Generic.HashSet[uint64]]::new()
+$seenSourcePlacementIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($row in $authoringRows) {
+    $parsed = Parse-PlacementRow $row $authoringPath
+    if (-not $seenPlacementIds.Add($parsed.PlacementId)) {
+        throw "Duplicate authoring placement ID: $($parsed.PlacementId)"
+    }
+    if (-not $seenSourcePlacementIds.Add($parsed.SourcePlacementId)) {
+        throw "Duplicate authoring source placement ID: $($parsed.SourcePlacementId)"
+    }
+    $parsedAuthoringRows.Add($parsed)
+}
 
 if (-not [IO.File]::Exists($sourceShardSetPath)) {
     if (-not [IO.File]::Exists($sourceCatalogPath)) {
         throw "Imported map catalog is missing: $sourceCatalogPath"
     }
+    $catalog = Read-MapAssetCatalog $sourceCatalogPath
+    foreach ($parsed in $parsedAuthoringRows) {
+        if (-not $catalog.AssetIds.Contains($parsed.AssetId)) {
+            throw "Authoring placement references an asset outside the catalog: $($parsed.AssetId)"
+        }
+    }
     $lines = @("LOSTARK_MAP_PLACEMENTS 2 `"$AreaId`" $($authoringRows.Count)") + $authoringRows
     $files = [Collections.Generic.List[object]]::new()
     $files.Add([pscustomobject]@{
         Name = "$AreaId.mapassets"
-        Lines = [IO.File]::ReadAllLines($sourceCatalogPath, [Text.Encoding]::UTF8)
+        Lines = $catalog.Lines
     })
     $files.Add([pscustomobject]@{
         Name = "$AreaId.mapplacements"
         Lines = $lines
     })
 
-    $hasDeployCatalog = [IO.File]::Exists($sourceDeployCatalogPath)
-    $hasDeployPlacements = [IO.File]::Exists($authoringDeployPath)
-    if ($hasDeployCatalog -ne $hasDeployPlacements) {
-        throw "Deploy authoring pair is incomplete for $AreaId"
-    }
-    if ($hasDeployCatalog) {
-        $files.Add([pscustomobject]@{
-            Name = "$AreaId.deployassets"
-            Lines = [IO.File]::ReadAllLines($sourceDeployCatalogPath, [Text.Encoding]::UTF8)
-        })
-        $files.Add([pscustomobject]@{
-            Name = "$AreaId.deployplacements"
-            Lines = [IO.File]::ReadAllLines($authoringDeployPath, [Text.Encoding]::UTF8)
-        })
-    }
-
+    Add-DeployPublishFiles $files
     Add-MapLightPublishFile $files
     Add-MapEffectPublishFile $files
     Add-MapWaterPublishFile $files
 
-    Invoke-FileSetTransaction $files
-    [pscustomobject]@{
-        AreaId = $AreaId
-        CatalogType = 'single'
-        PlacementCount = $authoringRows.Count
-        RuntimePath = $runtimePath
-        Sha256 = Get-MapPublishSha256 $runtimePath
-    }
+    Complete-MapPublish $files 'single' $runtimePath
     return
 }
 
 $mapSetLines = @([IO.File]::ReadAllLines($sourceShardSetPath, [Text.Encoding]::UTF8))
+if ($mapSetLines.Count -lt 2 -or $mapSetLines.Count -gt 65) {
+    throw "Shard set count is invalid: $sourceShardSetPath"
+}
 $mapSetHeader = [regex]::Match(
     $mapSetLines[0],
     '^LOSTARK_MAP_SHARD_SET\s+1\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
 if (-not $mapSetHeader.Success -or
-    $mapSetHeader.Groups['area'].Value -ne $AreaId -or
+    $mapSetHeader.Groups['area'].Value -cne $AreaId -or
     [uint32]$mapSetHeader.Groups['count'].Value -ne ($mapSetLines.Count - 1)) {
     throw "Shard set header is invalid: $sourceShardSetPath"
 }
 
 $shards = [Collections.Generic.List[object]]::new()
-$assetShards = @{}
+$assetShards = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
 $existingPlacementShard = @{}
+$seenShardIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$seenBaselineSources = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($line in @($mapSetLines | Select-Object -Skip 1)) {
     $match = [regex]::Match(
         $line,
@@ -1346,11 +1457,15 @@ foreach ($line in @($mapSetLines | Select-Object -Skip 1)) {
     if (-not $match.Success) {
         throw "Invalid shard-set row: $line"
     }
+    if (-not $seenShardIds.Add($match.Groups['id'].Value)) {
+        throw "Duplicate shard ID: $($match.Groups['id'].Value)"
+    }
     $shard = [pscustomobject]@{
         Id = $match.Groups['id'].Value
         CatalogName = $match.Groups['catalog'].Value
         PlacementName = $match.Groups['placements'].Value
         AssetCount = [uint32]$match.Groups['assets'].Value
+        PlacementCount = [uint32]$match.Groups['count'].Value
         Rows = [Collections.Generic.List[string]]::new()
         CatalogLines = @()
     }
@@ -1360,42 +1475,40 @@ foreach ($line in @($mapSetLines | Select-Object -Skip 1)) {
         -not [IO.File]::Exists($placementPath)) {
         throw "Shard source is missing: $($shard.Id)"
     }
-    $catalogLines = @([IO.File]::ReadAllLines($catalogPath, [Text.Encoding]::UTF8))
-    $shard.CatalogLines = $catalogLines
-    $assetIds = @($catalogLines | Select-Object -Skip 1 | ForEach-Object {
-        $assetMatch = [regex]::Match($_, '^"(?<id>[A-Za-z0-9_.:-]+)"\s+')
-        if (-not $assetMatch.Success) { throw "Invalid asset catalog row: $catalogPath" }
-        $assetMatch.Groups['id'].Value
-    })
-    if ($assetIds.Count -ne $shard.AssetCount) {
+    $catalog = Read-MapAssetCatalog $catalogPath
+    $shard.CatalogLines = $catalog.Lines
+    if ($catalog.AssetIds.Count -ne $shard.AssetCount) {
         throw "Shard asset count mismatch: $($shard.Id)"
     }
-    foreach ($assetId in $assetIds) {
+    foreach ($assetId in $catalog.AssetIds) {
         if (-not $assetShards.ContainsKey($assetId)) {
             $assetShards[$assetId] = [Collections.Generic.List[string]]::new()
         }
         $assetShards[$assetId].Add($shard.Id)
     }
-    foreach ($existingRow in @(Read-PlacementDocument $placementPath)) {
+    $baselineRows = @(Read-PlacementDocument $placementPath)
+    if ($baselineRows.Count -ne $shard.PlacementCount) {
+        throw "Shard placement count mismatch: $($shard.Id)"
+    }
+    foreach ($existingRow in $baselineRows) {
         $parsed = Parse-PlacementRow $existingRow $placementPath
         if ($existingPlacementShard.ContainsKey($parsed.PlacementId)) {
             throw "Duplicate placement ID across current shards: $($parsed.PlacementId)"
+        }
+        if (-not $seenBaselineSources.Add($parsed.SourcePlacementId)) {
+            throw "Duplicate source placement ID across current shards: $($parsed.SourcePlacementId)"
+        }
+        if (-not $catalog.AssetIds.Contains($parsed.AssetId)) {
+            throw "Baseline placement references an asset outside its shard: $($parsed.AssetId)"
         }
         $existingPlacementShard[$parsed.PlacementId] = $shard.Id
     }
     $shards.Add($shard)
 }
 
-$shardsById = @{}
+$shardsById = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
 foreach ($shard in $shards) { $shardsById[$shard.Id] = $shard }
-$seenPlacementIds = [Collections.Generic.HashSet[uint64]]::new()
-$seenSourcePlacementIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-foreach ($row in $authoringRows) {
-    $parsed = Parse-PlacementRow $row $authoringPath
-	if (-not $seenPlacementIds.Add($parsed.PlacementId) -or
-		-not $seenSourcePlacementIds.Add($parsed.SourcePlacementId)) {
-		throw "Duplicate authoring placement ID: $($parsed.PlacementId)"
-    }
+foreach ($parsed in $parsedAuthoringRows) {
     if (-not $assetShards.ContainsKey($parsed.AssetId)) {
         throw "Authoring placement references an asset outside the shard set: $($parsed.AssetId)"
     }
@@ -1434,16 +1547,8 @@ $files.Add([pscustomobject]@{
     Name = "$AreaId.mapset"
     Lines = $newMapSetLines
 })
+Add-DeployPublishFiles $files
 Add-MapLightPublishFile $files
 Add-MapEffectPublishFile $files
 Add-MapWaterPublishFile $files
-Invoke-FileSetTransaction $files
-
-[pscustomobject]@{
-    AreaId = $AreaId
-    CatalogType = 'shard-set'
-    PlacementCount = $authoringRows.Count
-    ShardCount = $shards.Count
-    RuntimePath = $shardSetPath
-    Sha256 = Get-MapPublishSha256 $shardSetPath
-}
+Complete-MapPublish $files 'shard-set' $shardSetPath $shards.Count

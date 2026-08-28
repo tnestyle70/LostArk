@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import re
 import sys
 import tempfile
 import unittest
@@ -22,6 +23,17 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def reviewed_closure_counts(root: Path) -> tuple[int, int]:
+    manifest = promotion._read_json(root / promotion.MANIFEST_REL)
+    debug_document = promotion._read_json(root / promotion.DEBUG_REL)
+    chains_by_id = {row["chainId"]: row for row in debug_document["chains"]}
+    promotions = manifest["patterns"]
+    promoted_chains = [
+        chains_by_id[row["sourceChainId"]] for row in promotions
+    ]
+    return promotion._reviewed_closure_counts(promotions, promoted_chains)
+
+
 class ValtanAnimationChainPromotionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -29,25 +41,70 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
 
     def test_reviewed_chain_closure_and_stable_ids(self) -> None:
         gameplay, presentation, receipt = promotion.build_candidates(self.root)
-        self.assertEqual(30, len(gameplay["patterns"]))
-        self.assertEqual(30, len(presentation["patterns"]))
-        self.assertEqual(20, receipt["patternCount"])
-        self.assertEqual(97, receipt["stageCount"])
+        saved_gameplay = promotion._read_json(
+            self.root / promotion.GAMEPLAY_REL
+        )
+        saved_presentation = promotion._read_json(
+            self.root / promotion.PRESENTATION_REL
+        )
+
+        def stable_pattern_ids(document: dict) -> list[str]:
+            pattern_ids = [row["patternId"] for row in document["patterns"]]
+            self.assertTrue(pattern_ids)
+            self.assertEqual(len(pattern_ids), len(set(pattern_ids)))
+            self.assertTrue(
+                all(
+                    isinstance(pattern_id, str)
+                    and re.fullmatch(r"VALTAN_[A-Z0-9_]+", pattern_id)
+                    is not None
+                    for pattern_id in pattern_ids
+                )
+            )
+            return pattern_ids
+
+        gameplay_ids = stable_pattern_ids(gameplay)
+        presentation_ids = stable_pattern_ids(presentation)
+        saved_gameplay_ids = stable_pattern_ids(saved_gameplay)
+        saved_presentation_ids = stable_pattern_ids(saved_presentation)
+        self.assertEqual(gameplay_ids, presentation_ids)
+        self.assertEqual(set(gameplay_ids), set(saved_gameplay_ids))
         self.assertEqual(
-            97,
+            set(presentation_ids), set(saved_presentation_ids)
+        )
+        expected_pattern_count, expected_stage_count = reviewed_closure_counts(
+            self.root
+        )
+        self.assertEqual(expected_pattern_count, receipt["patternCount"])
+        self.assertEqual(expected_stage_count, receipt["stageCount"])
+        self.assertEqual(
+            expected_stage_count,
             sum(len(pattern["occurrences"]) for pattern in receipt["patterns"]),
         )
-        first = receipt["patterns"][0]
-        self.assertEqual("VALTAN_SIX_PIZZA_106", first["patternId"])
-        self.assertEqual("STEP_01", first["occurrences"][0]["targetStageId"])
+        six_pizza = next(
+            row for row in receipt["patterns"]
+            if row["patternId"] == "VALTAN_SIX_PIZZA_106"
+        )
+        self.assertEqual("STEP_01", six_pizza["occurrences"][0]["targetStageId"])
         self.assertEqual(
             "valtan.sequence.center-six-pizza-charge.step-01.clip-01",
-            first["occurrences"][0]["targetClipOccurrenceId"],
+            six_pizza["occurrences"][0]["targetClipOccurrenceId"],
+        )
+        patterns_by_id = {
+            row["patternId"]: row for row in receipt["patterns"]
+        }
+        ghost_wrappers = [
+            patterns_by_id["VALTAN_GHOST_RESPAWN_AUDITION"],
+            patterns_by_id["VALTAN_GHOST_DEATH_AUDITION"],
+        ]
+        self.assertEqual(
+            ["VALTAN_GHOST_RESPAWN_AUDITION", "VALTAN_GHOST_DEATH_AUDITION"],
+            [row["patternId"] for row in ghost_wrappers],
         )
         self.assertEqual(
-            "VALTAN_STRUGGLING",
-            receipt["patterns"][-1]["patternId"],
+            ["mesh_respawn_1", "mesh_dead_1"],
+            [row["occurrences"][0]["resolvedClip"] for row in ghost_wrappers],
         )
+        self.assertTrue(all(row["stageCount"] == 1 for row in ghost_wrappers))
 
     def test_production_closure_counts_follow_reviewed_manifest_and_debug(self) -> None:
         promotions = [{"sourceChainId": "phase-three-a"}, {"sourceChainId": "phase-three-b"}]
@@ -185,6 +242,30 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
             expected_events,
             [stage["events"] for stage in pattern(authored_gameplay)["stages"]],
         )
+
+    def test_promotion_and_reauthoring_preserve_saved_flow_reference(self) -> None:
+        saved_gameplay = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
+        expected_reference = copy.deepcopy(
+            saved_gameplay["decisionModel"]["scriptedSequence"]
+        )
+        self.assertEqual(
+            {"sequenceId", "mode", "flowId"}, set(expected_reference)
+        )
+        promoted_gameplay, promoted_presentation, _receipt = promotion.build_candidates(self.root)
+        self.assertEqual(
+            expected_reference,
+            promoted_gameplay["decisionModel"]["scriptedSequence"],
+        )
+        for author in (
+            phase_two.author_existing_patterns,
+            phase_two.author_terrain_pairs,
+        ):
+            with self.subTest(author=author.__name__):
+                author(promoted_gameplay, promoted_presentation)
+                self.assertEqual(
+                    expected_reference,
+                    promoted_gameplay["decisionModel"]["scriptedSequence"],
+                )
 
     def test_reviewed_clip_aliases_cover_promoted_and_retired_intake(self) -> None:
         _gameplay, _presentation, receipt = promotion.build_candidates(self.root)
@@ -371,10 +452,12 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         self.assertEqual(phase_two.pattern(saved_g, "VALTAN_TRASH"), trash)
         self.assertEqual(phase_two.pattern(saved_p, "VALTAN_TRASH"), trash_p)
         self.assertEqual(14, len(trash["stages"]))
-        counter = phase_two.stage(trash, "CATCH_COUNTER")
+        counter = phase_two.stage(trash, "STEP_07")
+        captured_hold = phase_two.stage(trash, "CATCH_COUNTER")
         pre_impact = phase_two.stage(trash, "CATCH_PRE_IMPACT")
-        self.assertEqual(200, counter["durationMs"])
-        self.assertEqual(1500, counter["durationMs"] + pre_impact["durationMs"])
+        self.assertEqual(1000, counter["durationMs"])
+        self.assertEqual(200, captured_hold["durationMs"])
+        self.assertEqual(1500, captured_hold["durationMs"] + pre_impact["durationMs"])
         self.assertEqual({
             "ALL_PLAYERS_GRABBED": phase_two.stage(trash, "EXECUTE_TAIL")["actionId"],
             "TIMEOUT": phase_two.stage(trash, "CATCH_SLAM")["actionId"],
@@ -393,7 +476,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         presentation = promotion._read_json(self.root / promotion.PRESENTATION_REL)
         trash = phase_two.pattern(gameplay, "VALTAN_TRASH")
         trash_p = phase_two.pattern(presentation, "VALTAN_TRASH")
-        counter = phase_two.stage(trash, "CATCH_COUNTER")
+        counter = phase_two.stage(trash, "STEP_07")
         counter["counterProxy"]["radiusM"] = 1.75
         counter_p = phase_two.stage(trash_p, "CATCH_COUNTER")
         cue = copy.deepcopy(phase_two.stage(trash_p, "STEP_01")["effectCues"][0])
@@ -430,7 +513,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
             ("gameplay", lambda row: phase_two.stage(row, "CATCH_COUNTER").update(durationMs=201), "branch duration drift"),
             ("gameplay", lambda row: phase_two.stage(row, "CATCH_PRE_IMPACT").update(durationMs=1299), "branch duration drift"),
             ("gameplay", lambda row: phase_two.stage(row, "EXECUTE_TAIL").update(durationMs=1499), "branch duration drift"),
-            ("gameplay", lambda row: phase_two.stage(row, "CATCH_COUNTER").pop("counterProxy"), "counter proxy is missing"),
+            ("gameplay", lambda row: phase_two.stage(row, "STEP_07").pop("counterProxy"), "counter proxy is missing"),
             ("presentation", lambda row: phase_two.stage(row, "CATCH_SLAM")["animation"]["occurrences"][0].update(sourceStartMs=1400), "branch source slice drift"),
             ("presentation", lambda row: phase_two.stage(row, "GROGGY")["animation"]["occurrences"].pop(), "branch source slice drift"),
             ("gameplay", lambda row: phase_two.stage(row, "CATCH_SLAM").update(defaultNextActionId="valtan.fixture.missing"), "default edge leaves its pattern"),
@@ -448,7 +531,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         cases = (
             lambda row: phase_two.stage(row, "CATCH_SLAM")["events"][0].update(trigger="EXIT"),
             lambda row: phase_two.stage(row, "GROGGY")["events"][0].update(releaseMode="UNKNOWN"),
-            lambda row: phase_two.stage(row, "CATCH_COUNTER")["counterProxy"].update(radiusM=0.0),
+            lambda row: phase_two.stage(row, "STEP_07")["counterProxy"].update(radiusM=0.0),
         )
         for index, mutate in enumerate(cases):
             with self.subTest(case=index):
@@ -485,8 +568,11 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         )
         before = {relative: sha256(self.root / relative) for relative in tracked}
         result = promotion.run(self.root, "Validate")
-        self.assertEqual(20, result["patternCount"])
-        self.assertEqual(97, result["stageCount"])
+        expected_pattern_count, expected_stage_count = reviewed_closure_counts(
+            self.root
+        )
+        self.assertEqual(expected_pattern_count, result["patternCount"])
+        self.assertEqual(expected_stage_count, result["stageCount"])
         self.assertEqual(before, {relative: sha256(self.root / relative) for relative in tracked})
 
 

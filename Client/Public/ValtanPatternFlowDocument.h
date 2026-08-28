@@ -1,8 +1,5 @@
 #pragma once
 
-#include "Client_Defines.h"
-#include "Engine_Defines.h"
-
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -38,12 +35,14 @@ namespace Client
 			const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT&) const = default;
 	};
 
-	/* Debug authoring transaction only. Product automatic order and Server
-	gameplay definitions remain outside this document. */
+	/* Saved order shared by Debug playback and Product sequence projection.
+	   This document owns durable authoring only; publication and Server
+	   revision admission are separate typed commands. */
 	class CValtanPatternFlowDocument final
 	{
 	public:
-		static constexpr std::size_t MAX_SLOTS = 32u;
+		// Must match the one-byte shared Pattern Flow wire count.
+		static constexpr std::size_t MAX_SLOTS = 255u;
 		static constexpr std::uint32_t MIN_INTER_STEP_PURSUIT_MS = 100u;
 		static constexpr std::uint32_t MAX_INTER_STEP_PURSUIT_MS = 10000u;
 		static constexpr std::string_view DEFAULT_FLOW_ID =
@@ -51,11 +50,14 @@ namespace Client
 
 	public:
 		static std::filesystem::path Resolve_Path();
-		static bool_t Parse_Text(
+		static bool Parse_Text(
 			std::string_view text,
 			VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& outDocument,
 			std::string& outStatus);
-		static bool_t Validate(
+		static bool Compute_SourceRevision(
+			std::string_view text,
+			std::string& outRevision);
+		static bool Validate(
 			const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& document,
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);
@@ -64,38 +66,39 @@ namespace Client
 
 		/* Load/Reload and Save commit baseline + draft only after every disk,
 		parse, inventory join, revision, and replacement check succeeds. */
-		bool_t Load(
+		bool Load(
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);
-		bool_t Reload(
+		bool Reload(
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);
-		bool_t Save(
+		bool Save(
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);
 		/* Read-only CAS preflight used immediately before playback.  It never
 		   replaces the admitted draft or baseline. */
-		bool_t Verify_SourceRevision(std::string& outStatus);
+		bool Verify_SourceRevision(std::string& outStatus);
 
-		bool_t Add_Slot(
+		bool Add_Slot(
 			std::string_view patternId,
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outSlotId,
 			std::string& outStatus);
-		bool_t Move_Slot(
+		bool Move_Slot(
 			std::string_view slotId,
 			std::int32_t delta,
+			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);
-		bool_t Remove_Slot(
+		bool Remove_Slot(
 			std::string_view slotId,
 			std::string& outStatus);
-		bool_t Set_InterStepPursuitMs(
+		bool Set_InterStepPursuitMs(
 			std::uint32_t milliseconds,
 			std::string& outStatus);
 
-		bool_t Is_Ready() const noexcept { return m_bReady; }
-		bool_t Is_Dirty() const noexcept;
-		bool_t Has_ExternalConflict() const noexcept
+		bool Is_Ready() const noexcept { return m_bReady; }
+		bool Is_Dirty() const noexcept;
+		bool Has_ExternalConflict() const noexcept
 		{
 			return m_bExternalConflict;
 		}
@@ -118,7 +121,7 @@ namespace Client
 		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT m_Baseline;
 		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT m_Draft;
 		std::string m_strSourceRevision;
-		bool_t m_bReady = false;
-		bool_t m_bExternalConflict = false;
+		bool m_bReady = false;
+		bool m_bExternalConflict = false;
 	};
 }

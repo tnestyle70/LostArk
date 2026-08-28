@@ -127,6 +127,25 @@ namespace Client
 	{
 		bool isValid = false;
 		float fTitleX = 0.f, fTitleY = 0.f, fTitleWidth = 0.f, fTitleHeight = 0.f;
+		/* RaidClear_ReturnButton's own rect + the "돌아가기" label drawn over it.
+		Deliberately its OWN validity flag, not shared with isValid above: the
+		button only appears AFTER the celebration overlay's reveal/hold timeline
+		finishes and every fading slot has already hidden itself -- the two
+		states are mutually exclusive in time, never both true at once. */
+		bool isButtonValid = false;
+		float fButtonX = 0.f, fButtonY = 0.f, fButtonWidth = 0.f, fButtonHeight = 0.f;
+	};
+
+	/* Reference-resolution rect + already-localized "OO을(를) 획득하였습니다" text
+	CMainApp::RenderItemAnnounceText() draws after EndFrame(). The text itself (not just a rect,
+	unlike RaidClear's static headline) is built once per shown item by
+	CLevel_ValtanArena::Update_ItemAnnounce() from the real inventory diff and item catalog, so
+	this ViewModel stays a plain read-only mirror -- it never picks an item or a particle itself. */
+	struct HUD_ITEMANNOUNCE_TEXT_RECTS
+	{
+		bool isValid = false;
+		float fTextX = 0.f, fTextY = 0.f, fTextWidth = 0.f, fTextHeight = 0.f;
+		std::wstring strText;
 	};
 
 	class CCombatHUDViewModel final
@@ -189,6 +208,15 @@ namespace Client
 		const HUD_RAIDCLEAR_TEXT_RECTS& Get_RaidClearTextRects() const
 		{
 			return m_RaidClearTextRects;
+		}
+
+		void Set_ItemAnnounceTextRects(const HUD_ITEMANNOUNCE_TEXT_RECTS& rects)
+		{
+			m_ItemAnnounceTextRects = rects;
+		}
+		const HUD_ITEMANNOUNCE_TEXT_RECTS& Get_ItemAnnounceTextRects() const
+		{
+			return m_ItemAnnounceTextRects;
 		}
 
 		/* Debug-only inventory slice. CClientReplication pushes its
@@ -271,6 +299,7 @@ namespace Client
 		HUD_ESTHER_CUTIN_REQUEST m_EstherCutinRequest;
 		HUD_DEADSCENE_TEXT_RECTS m_DeadSceneTextRects;
 		HUD_RAIDCLEAR_TEXT_RECTS m_RaidClearTextRects;
+		HUD_ITEMANNOUNCE_TEXT_RECTS m_ItemAnnounceTextRects;
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
 		std::string m_strStatus;
 	};

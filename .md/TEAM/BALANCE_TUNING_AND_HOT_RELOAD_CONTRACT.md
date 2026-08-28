@@ -21,12 +21,13 @@ Valtan 전용 candidate transaction에 포함되지 않는 Player/skill/item/wor
 
 ## 2. Valtan 저작 정본
 
-발탄은 다음 두 물리 정본을 하나의 joined revision으로 다룬다.
+발탄은 다음 물리 정본을 하나의 joined revision으로 다룬다.
 
 | 정본 | 소유 의미 |
 |---|---|
 | `Data/Valtan/Valtan.gameplay.json` | Server pattern graph, selection, eligibility, stage, hit, motion, event, branch |
 | `Data/Valtan/Valtan.presentation.json` | animation occurrence, managed Effect invocation, camera invocation |
+| `Data/Encounters/Valtan/ValtanBossAuditionFlows.json` | gameplay의 `scriptedSequence.flowId`가 참조하는 기본 순서와 inter-step pursuit |
 
 `Valtan.combatobjects.json`, `Valtan.worldeventsets.json`은 각 stable gameplay definition을 소유한다.
 `Valtan.pattern.json`은 migration/legacy compatibility fixture일 뿐 새 UI 값이나 draft baseline이 아니다.
@@ -43,7 +44,8 @@ formatVersion 21이 후보 ordinal 그대로 소비한다. post-109 legacy rotat
 
 ## 3. 현재 활성화한 Hot Reload 범위
 
-Debug F1 Balance Tool의 Valtan candidate에는 Server-authoritative Hot Reload가 연결되어 있다. 허용 범위는
+Debug F1 Balance Tool의 Valtan candidate와 Boss Tool의 Save/Apply Saved Flow는 같은
+`CValtanTuningCommandService`와 Server-authoritative Hot Reload 경로를 사용한다. 허용 범위는
 **모든 required Client presentation artifact가 해당 Client가 world entry 때 고정한 immutable presentation
 baseline과 byte-identical인 gameplay-only diff**다. PREPARE 중 repository disk를 다시 읽어 이미 로드된
 presentation 세대인 것처럼 승인하지 않는다.
@@ -61,6 +63,8 @@ Validate Draft
 - Publish가 계산한 candidate 전체의 가장 강한 `applyClass`가 `HOT_RELOAD`일 때만 Tool이 PREPARE를 보낸다.
   `ENCOUNTER_RESET`과 `SERVER_RESTART`는 immutable candidate로 남지만 현재 Apply는 요청 경계와 UI에서 모두 거부한다.
 - active pattern, pending health-bar mechanic, combat object와 audition은 시작 revision을 끝까지 pin한다.
+  Product ordered sequence는 inter-step 및 마지막 idle까지 순서 전체의 revision을 유지한다.
+  저장 Flow 적용 후 새 encounter/reset은 새 순서를 사용한다. 중간 cursor에 새 배열을 끼워 넣지 않는다.
 - snapshot/world entry는 active와 required pinned revision set을 함께 전달한다.
 - Client는 revision identity와 world-entry baseline의 required lane bytes를 검증한 뒤에만 READY한다.
 - NACK, timeout, disconnect, stale base, hash/domain mismatch는 모든 room에서 old revision을 유지한다.
@@ -90,7 +94,8 @@ multi-room controlled encounter reset과 실제 non-byte-identical presentation 
 4. commit cohort에는 shared room과 session별 private room을 모두 포함한다.
 5. room 등록과 Client join/disconnect는 같은 transaction admission gate를 지난다.
 6. commit은 allocation/I/O가 끝난 뒤 global room tick boundary에서만 수행한다.
-7. 진행 중 occurrence는 old generation, 다음 occurrence는 new generation을 사용한다.
+7. 일반 진행 중 occurrence는 old generation, 다음 선택은 new generation을 사용한다. Product ordered sequence는
+   실행 전체를 pin하며 다음 encounter/reset부터 새 generation을 사용한다.
 8. 실패는 staged generation/presentation만 버리고 old Server/Client state를 보존한다.
 9. Release Client는 현재 Debug Valtan presentation alias transaction을 READY하지 않는다.
 10. 화면에서 보이는 revision과 Server snapshot revision이 다르면 성공으로 표시하지 않는다.
@@ -130,3 +135,8 @@ v21 Server의 live admission 대상이 아니다.
 `Validate Draft -> Save Authoring -> Publish Candidate` 뒤 `Apply class: HOT_RELOAD`를 확인하고
 `Apply Hot Reload -> Play Server Pattern` 순서다. reset/restart class는 Apply 성공으로 기록하지 않는다.
 자동 검증과 animation/Effect의 사용자 육안 판정은 RESULT에서 분리한다.
+
+순서 편집은 `F1 -> Boss Tool -> Pattern Flow -> Save Flow`를 사용한다. 파일의 SAVED와 Server의
+COMMITTED/ALREADY ACTIVE를 구분한다. 실패 이유와 저장본은 유지되며 `Apply Saved Flow`로 재시도한다.
+immutable authoring/candidate는 같은 snapshot 안의 Flow 파일과 raw-byte revision을 보존한다.
+Flow 파일이 없거나 flow/slot/pattern ID가 잘못됐을 때 현재 workspace 또는 이전 배열로 대체하지 않는다.

@@ -207,7 +207,44 @@ void Client::CInventoryView::Render_CategoryTabs()
 void Client::CInventoryView::Render_Items(
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
 {
-	Sync_DisplayOrder(items.size());
+	/* "" (both tabs just deselected) and Inventory_Category_All show everything. Every other
+	tab keeps only items whose catalog category maps to it; a tab with no matching items yet
+	(Cloth/Gem/Card/Etc) simply renders an empty grid rather than falling back to unfiltered. */
+	const bool_t bShowAll = m_strSelectedCategoryId.empty() ||
+		m_strSelectedCategoryId == "Inventory_Category_All";
+	string strCategoryFilter;
+	if (!bShowAll)
+	{
+		static const std::pair<const char*, const char*> CATEGORY_BY_SLOT[] = {
+			{ "Inventory_Category_Combat", "combat" }, { "Inventory_Category_Cloth", "cloth" },
+			{ "Inventory_Category_Use", "use" }, { "Inventory_Category_Gem", "gem" },
+			{ "Inventory_Category_Card", "card" }, { "Inventory_Category_Etc", "etc" },
+		};
+		for (const auto& [pSlotId, pCategory] : CATEGORY_BY_SLOT)
+		{
+			if (m_strSelectedCategoryId == pSlotId)
+			{
+				strCategoryFilter = pCategory;
+				break;
+			}
+		}
+	}
+
+	vector<size_t> filteredIndices;
+	filteredIndices.reserve(items.size());
+	for (size_t i = 0; i < items.size(); ++i)
+	{
+		if (bShowAll)
+		{
+			filteredIndices.push_back(i);
+			continue;
+		}
+		const ITEM_DEFINITION* pFilterDefinition = CItemCatalog::Find_ById(items[i].strItemId);
+		if (nullptr != pFilterDefinition && pFilterDefinition->strCategory == strCategoryFilter)
+			filteredIndices.push_back(i);
+	}
+
+	Sync_DisplayOrder(filteredIndices.size());
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	const float scaleX = pViewport->WorkSize.x / 1280.f;
@@ -237,7 +274,10 @@ void Client::CInventoryView::Render_Items(
 
 		if (static_cast<size_t>(iSlotIndex) >= m_DisplayOrder.size())
 			continue;
-		const size_t iItemIndex = m_DisplayOrder[iSlotIndex];
+		const size_t iFilteredIndex = m_DisplayOrder[iSlotIndex];
+		if (iFilteredIndex >= filteredIndices.size())
+			continue;
+		const size_t iItemIndex = filteredIndices[iFilteredIndex];
 		if (iItemIndex >= items.size())
 			continue;
 		const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item = items[iItemIndex];
@@ -252,12 +292,17 @@ void Client::CInventoryView::Render_Items(
 			}
 		}
 
-		const string strQuantity = std::to_string(Item.iQuantity);
-		const ImVec2 vTextSize = ImGui::CalcTextSize(strQuantity.c_str());
-		const ImVec2 vTextPos(
-			vMax.x - vTextSize.x - 2.f, vMax.y - vTextSize.y - 2.f);
-		pDrawList->AddText(ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f), IM_COL32(0, 0, 0, 220), strQuantity.c_str());
-		pDrawList->AddText(vTextPos, IM_COL32(255, 255, 255, 255), strQuantity.c_str());
+		/* Equipment ("combat") never stacks past 1 -- showing a quantity number on it just reads
+		as clutter, not information, so only non-equipment (stackable) items draw one. */
+		if (nullptr == pDefinition || "combat" != pDefinition->strCategory)
+		{
+			const string strQuantity = std::to_string(Item.iQuantity);
+			const ImVec2 vTextSize = ImGui::CalcTextSize(strQuantity.c_str());
+			const ImVec2 vTextPos(
+				vMax.x - vTextSize.x - 2.f, vMax.y - vTextSize.y - 2.f);
+			pDrawList->AddText(ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f), IM_COL32(0, 0, 0, 220), strQuantity.c_str());
+			pDrawList->AddText(vTextPos, IM_COL32(255, 255, 255, 255), strQuantity.c_str());
+		}
 
 		if (nullptr != pDefinition && bHovered)
 			ImGui::SetTooltip("%s x%u", pDefinition->strDisplayName.c_str(), Item.iQuantity);
@@ -269,7 +314,7 @@ void Client::CInventoryView::Render_Items(
 	report -- the caller decides whether that landed on a Combat HUD quick slot. */
 	if (bMouseDown && -1 == m_iDragFromSlot && iHoveredSlot >= 0 &&
 		static_cast<size_t>(iHoveredSlot) < m_DisplayOrder.size() &&
-		m_DisplayOrder[iHoveredSlot] < items.size())
+		m_DisplayOrder[iHoveredSlot] < filteredIndices.size())
 	{
 		m_iDragFromSlot = iHoveredSlot;
 	}
@@ -283,10 +328,12 @@ void Client::CInventoryView::Render_Items(
 		}
 		else if (-1 == iHoveredSlot &&
 			static_cast<size_t>(m_iDragFromSlot) < m_DisplayOrder.size() &&
-			m_DisplayOrder[m_iDragFromSlot] < items.size())
+			m_DisplayOrder[m_iDragFromSlot] < filteredIndices.size() &&
+			filteredIndices[m_DisplayOrder[m_iDragFromSlot]] < items.size())
 		{
 			m_bHasPendingItemDrop = true;
-			m_strPendingDropItemId = items[m_DisplayOrder[m_iDragFromSlot]].strItemId;
+			m_strPendingDropItemId =
+				items[filteredIndices[m_DisplayOrder[m_iDragFromSlot]]].strItemId;
 			m_fPendingDropMouseX = vMouse.x;
 			m_fPendingDropMouseY = vMouse.y;
 		}

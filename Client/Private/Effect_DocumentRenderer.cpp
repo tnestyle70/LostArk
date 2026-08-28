@@ -2983,6 +2983,7 @@ namespace
 				!Same_TypedDynamicParameterResourceSignature(
 					A.SourceRecipe, B.SourceRecipe) ||
 				A.Material.strTemplateId != B.Material.strTemplateId ||
+				A.Material.bColorTexturesSRGB != B.Material.bColorTexturesSRGB ||
 				A.Material.strSourceMaterialPath !=
 					B.Material.strSourceMaterialPath ||
 				A.Material.eRenderProfile != B.Material.eRenderProfile ||
@@ -5447,8 +5448,24 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 			return E_FAIL;
 		}
 		ComPtr<ID3D11ShaderResourceView> Texture;
-		if (FAILED(Load_Texture(
-			Binding.strAssetId, Texture, pSharedAssets)))
+		HRESULT TextureResult;
+		if (Element.Material.bColorTexturesSRGB)
+		{
+			EFFECT_NAMED_TEXTURE_DESC TextureDesc;
+			TextureDesc.strName = Binding.strSlotId;
+			TextureDesc.strAssetId = Binding.strAssetId;
+			TextureDesc.eColorSpace =
+				pInput->eSemantic == EFFECT_MATERIAL_INPUT_SEMANTIC::BASE ||
+				pInput->eSemantic == EFFECT_MATERIAL_INPUT_SEMANTIC::BASE2 ||
+				pInput->eSemantic == EFFECT_MATERIAL_INPUT_SEMANTIC::EMISSIVE ?
+					EFFECT_TEXTURE_COLOR_SPACE::SRGB : EFFECT_TEXTURE_COLOR_SPACE::LINEAR;
+			TextureResult = Load_SourceTexture(TextureDesc, Texture, pSharedAssets);
+		}
+		else
+		{
+			TextureResult = Load_Texture(Binding.strAssetId, Texture, pSharedAssets);
+		}
+		if (FAILED(TextureResult))
 		{
 			strOutError = "DDS load failed: " + Binding.strAssetId;
 			return E_FAIL;
@@ -15606,6 +15623,31 @@ Client::CEffectDocumentRenderer::Get_PrewarmProbe()
 }
 
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+bool_t Client::CEffectDocumentRenderer::Read_AuthoredTextureFormatsForTests(
+	const std::string_view strElementId,
+	std::array<DXGI_FORMAT, 8u>& OutFormats,
+	std::string& strOutError) const
+{
+	const ELEMENT_RESOURCE* pResource = Find_Resource(std::string(strElementId));
+	if (nullptr == pResource)
+	{
+		strOutError = "Authored color-space fixture has no prepared Element.";
+		return false;
+	}
+	std::array<DXGI_FORMAT, 8u> Formats{};
+	for (size_t i = 0u; i < Formats.size(); ++i)
+	{
+		if (nullptr == pResource->Textures[i])
+			continue;
+		D3D11_SHADER_RESOURCE_VIEW_DESC Desc{};
+		pResource->Textures[i]->GetDesc(&Desc);
+		Formats[i] = Desc.Format;
+	}
+	OutFormats = Formats;
+	strOutError.clear();
+	return true;
+}
+
 bool_t Client::CEffectDocumentRenderer::
 	Prepare_UnboundMaterialProgramDocumentForTests(
 		ComPtr<ID3D11Device> pDevice,
@@ -17455,6 +17497,9 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		iSourceSubUVFrameCount > 1u && iSourceSubUVFrameCount <= UINT32_MAX &&
 		!strSourceSubUVMode.empty() && strSourceSubUVMode != "none" &&
 		strSourceSubUVMode != "psuvim_none";
+	const bool_t bParticleLifeSubUV = pShader == m_pParticleShader &&
+		!Element.SourceRecipe.bEnabled && Element.Detail.Particle.bSubUVOverLife;
+	const bool_t bParticleOwnsAtlas = bSourceSubUV || bParticleLifeSubUV;
 
 	float2_t UVOffset(
 		Element.Detail.UV.vStart.x + Element.Detail.UV.vSpeed.x * fLocalTimeSeconds,
@@ -17467,7 +17512,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		UVOffset.y += Element.Detail.UV.vWaveAmplitude.y * Wave;
 	}
 	int32_t iTileIndex = Element.Detail.UV.iTileIndex;
-	if (!bSourceSubUV && Element.Detail.UV.bSequence)
+	if (!bParticleOwnsAtlas && Element.Detail.UV.bSequence)
 	{
 		const int32_t iTileCount = Element.Detail.UV.iTileColumns *
 			Element.Detail.UV.iTileRows;
@@ -17478,10 +17523,10 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			((iFrame % iTileCount) + iTileCount) % iTileCount :
 			std::clamp(iFrame, 0, iTileCount - 1);
 	}
-	const float2_t UVScale = bSourceSubUV ? float2_t(1.f, 1.f) : float2_t(
+	const float2_t UVScale = bParticleOwnsAtlas ? float2_t(1.f, 1.f) : float2_t(
 		1.f / Element.Detail.UV.iTileColumns,
 		1.f / Element.Detail.UV.iTileRows);
-	if (!bSourceSubUV)
+	if (!bParticleOwnsAtlas)
 	{
 		UVOffset.x += static_cast<f32_t>(
 			iTileIndex % Element.Detail.UV.iTileColumns) * UVScale.x;

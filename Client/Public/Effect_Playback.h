@@ -314,6 +314,14 @@ public:
 	static f32_t Calculate_ElementEndSeconds(
 		const EFFECT_ELEMENT_DESC& Element,
 		bool_t bSourceVisualElementActive);
+	/* owner_yaw keeps the animated bone position but replaces its imported
+	   basis/scale with the actual gameplay owner's unit orientation.  This
+	   shared, mutation-free calculation is used by product, Tool, and harness. */
+	static bool_t Build_OwnerYawBoneAnchorWorld(
+		const float4x4_t& RawBone,
+		const float4x4_t& PresentationRoot,
+		const float4x4_t& OwnerWorld,
+		float4x4_t& OutWorld);
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);

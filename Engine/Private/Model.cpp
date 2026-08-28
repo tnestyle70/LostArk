@@ -70,6 +70,7 @@ CModel::CModel(const CModel& Prototype)
     , m_iNumMaterials { Prototype.m_iNumMaterials }
     , m_Materials { Prototype.m_Materials }
    // , m_Bones { Prototype.m_Bones }
+    , m_BoneRestLocalTransforms { Prototype.m_BoneRestLocalTransforms }
     , m_iSkeletonHash { Prototype.m_iSkeletonHash }
     , m_iCurrentAnimIndex { Prototype.m_iCurrentAnimIndex }
     , m_iNumAnimations { Prototype.m_iNumAnimations}
@@ -232,6 +233,32 @@ bool_t CModel::Get_BoneCombinedMatrix(
     return true;
 }
 
+bool_t CModel::Sample_AnimationBoneCombinedMatrices(
+	const char_t* pAnimationName,
+	const f32_t fTrackPositionTicks,
+	const std::span<const uint32_t> BoneIndices,
+	const std::span<float4x4_t> OutCombinedMatrices) const
+{
+	if (nullptr == pAnimationName || '\0' == pAnimationName[0])
+		return false;
+	uint32_t iAnimationIndex = UINT32_MAX;
+	for (size_t i = 0u; i < m_Animations.size(); ++i)
+	{
+		if (nullptr == m_Animations[i] ||
+			!m_Animations[i]->Compare_Name(pAnimationName))
+		{
+			continue;
+		}
+		if (iAnimationIndex != UINT32_MAX)
+			return false;
+		iAnimationIndex = static_cast<uint32_t>(i);
+	}
+	return iAnimationIndex != UINT32_MAX &&
+		Sample_BoneCombinedMatricesForAnimation(
+			iAnimationIndex, fTrackPositionTicks, false, 0.f,
+			BoneIndices, OutCombinedMatrices);
+}
+
 bool_t CModel::Sample_CurrentAnimationBoneCombinedMatrices(
 	const uint32_t iExpectedAnimationIndex,
 	const f32_t fTrackPositionTicks,
@@ -250,7 +277,20 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 	const std::span<const uint32_t> BoneIndices,
 	const std::span<float4x4_t> OutCombinedMatrices) const
 {
-	if (iExpectedAnimationIndex != m_iCurrentAnimIndex ||
+	return Sample_BoneCombinedMatricesForAnimation(
+		iExpectedAnimationIndex, fTrackPositionTicks, true, fBlendElapsedSeconds,
+		BoneIndices, OutCombinedMatrices);
+}
+
+bool_t CModel::Sample_BoneCombinedMatricesForAnimation(
+	const uint32_t iExpectedAnimationIndex,
+	const f32_t fTrackPositionTicks,
+	const bool_t bUseCurrentPoseAndBlend,
+	const f32_t fBlendElapsedSeconds,
+	const std::span<const uint32_t> BoneIndices,
+	const std::span<float4x4_t> OutCombinedMatrices) const
+{
+	if ((bUseCurrentPoseAndBlend && iExpectedAnimationIndex != m_iCurrentAnimIndex) ||
 		iExpectedAnimationIndex >= m_Animations.size() ||
 		nullptr == m_Animations[iExpectedAnimationIndex] ||
 		!std::isfinite(fTrackPositionTicks) ||
@@ -263,7 +303,8 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 			m_Animations[iExpectedAnimationIndex]->Get_Duration()) ||
 		BoneIndices.empty() ||
 		BoneIndices.size() != OutCombinedMatrices.size() ||
-		m_Bones.empty())
+		m_Bones.empty() ||
+		(!bUseCurrentPoseAndBlend && m_BoneRestLocalTransforms.size() != m_Bones.size()))
 	{
 		return false;
 	}
@@ -273,7 +314,7 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 			return false;
 	}
 
-	const auto BuildCombined = [this, iExpectedAnimationIndex,
+	const auto BuildCombined = [this, iExpectedAnimationIndex, bUseCurrentPoseAndBlend,
 		fTrackPositionTicks, fBlendElapsedSeconds](
 			std::vector<float4x4_t>& OutCombined)
 	{
@@ -282,8 +323,15 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 		{
 			if (nullptr == m_Bones[iBone])
 				return false;
-			XMStoreFloat4x4(&LocalTransforms[iBone],
-				m_Bones[iBone]->Get_TransformationMatrix());
+			if (bUseCurrentPoseAndBlend)
+			{
+				XMStoreFloat4x4(&LocalTransforms[iBone],
+					m_Bones[iBone]->Get_TransformationMatrix());
+			}
+			else
+			{
+				LocalTransforms[iBone] = m_BoneRestLocalTransforms[iBone];
+			}
 			if (!Is_FiniteMatrix(LocalTransforms[iBone]))
 				return false;
 		}
@@ -293,16 +341,16 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 			return false;
 		}
 
-		if (!std::isfinite(m_fBlendElapsed) ||
+		if (bUseCurrentPoseAndBlend && (!std::isfinite(m_fBlendElapsed) ||
 			!std::isfinite(m_fBlendDuration) ||
-			m_fBlendElapsed < 0.f || m_fBlendDuration < 0.f)
+			m_fBlendElapsed < 0.f || m_fBlendDuration < 0.f))
 		{
 			return false;
 		}
 		/* Only an active live transition proves that m_BlendFromPose belongs to
 		   this clip edge.  Once the live transition is complete (or when the same
 		   clip is restarted without a new blend), ignore the stale saved pose. */
-		if (m_fBlendElapsed < m_fBlendDuration &&
+		if (bUseCurrentPoseAndBlend && m_fBlendElapsed < m_fBlendDuration &&
 			fBlendElapsedSeconds < m_fBlendDuration)
 		{
 			if (m_fBlendDuration <= 0.f ||
@@ -373,6 +421,11 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 	};
 
 #if defined(_DEBUG)
+	const uint32_t iCurrentAnimationBefore = m_iCurrentAnimIndex;
+	const bool_t bPausedBefore = m_isAnimPaused;
+	const bool_t bLoopBefore = m_isAnimLoop;
+	const f32_t fBlendElapsedBefore = m_fBlendElapsed;
+	const f32_t fBlendDurationBefore = m_fBlendDuration;
 	const f32_t fTrackPositionBefore =
 		m_Animations[iExpectedAnimationIndex]->Get_CurrentTrackPosition();
 	const std::vector<uint32_t> LeftKeyFrameIndicesBefore =
@@ -395,6 +448,9 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 #if defined(_DEBUG)
 	std::vector<float4x4_t> DeterministicCombined;
 	if (!BuildCombined(DeterministicCombined) ||
+		iCurrentAnimationBefore != m_iCurrentAnimIndex ||
+		bPausedBefore != m_isAnimPaused || bLoopBefore != m_isAnimLoop ||
+		fBlendElapsedBefore != m_fBlendElapsed || fBlendDurationBefore != m_fBlendDuration ||
 		DeterministicCombined.size() != StagedCombined.size() ||
 		0 != std::memcmp(DeterministicCombined.data(), StagedCombined.data(),
 			StagedCombined.size() * sizeof(float4x4_t)) ||
@@ -784,7 +840,10 @@ HRESULT CModel::Ready_Bones(const aiNode* pAINode, int32_t iParentBoneIndex)
     if (nullptr == pBone)
         return E_FAIL;
 
+    float4x4_t RestLocal{};
+    XMStoreFloat4x4(&RestLocal, pBone->Get_TransformationMatrix());
     m_Bones.push_back(pBone);
+    m_BoneRestLocalTransforms.push_back(RestLocal);
 
     int32_t     iParentIndex = m_Bones.size() - 1;
 
@@ -984,12 +1043,14 @@ HRESULT CModel::Ready_Materials(const MODEL_ASSET_DATA& asset)
 HRESULT CModel::Ready_Bones(const MODEL_ASSET_DATA& asset)
 {
     m_Bones.reserve(asset.skeleton.bones.size());
+    m_BoneRestLocalTransforms.reserve(asset.skeleton.bones.size());
     for (const MODEL_BONE_DATA& bone : asset.skeleton.bones)
     {
         auto pBone = CBone::Create(bone);
         if (nullptr == pBone)
             return E_FAIL;
         m_Bones.push_back(pBone);
+        m_BoneRestLocalTransforms.push_back(bone.restLocal);
     }
     return S_OK;
 }

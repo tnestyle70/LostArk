@@ -79,11 +79,15 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 			value, "iconPath", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* healPercent = Required(
 			value, "healPercent", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* category = Required(
+			value, "category", DATA_JSON_TYPE::STRING);
 		if (nullptr == id || id->Get_String().empty() ||
 			nullptr == name || name->Get_String().empty() ||
 			nullptr == maxStack || maxStack->Get_Number() < 1.0 ||
 			nullptr == iconPath || nullptr == healPercent ||
-			healPercent->Get_Number() < 0.0 || healPercent->Get_Number() > 100.0)
+			healPercent->Get_Number() < 0.0 || healPercent->Get_Number() > 100.0 ||
+			nullptr == category ||
+			(category->Get_String() != "combat" && category->Get_String() != "use"))
 		{
 			outStatus = "ItemCatalog.json has an invalid item";
 			return false;
@@ -95,6 +99,7 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 		definition.iMaxStack = static_cast<std::uint32_t>(maxStack->Get_Number());
 		definition.strIconPath = iconPath->Get_String();
 		definition.iHealPercent = static_cast<std::uint32_t>(healPercent->Get_Number());
+		definition.strCategory = category->Get_String();
 
 		for (const ITEM_DEFINITION& existing : staged)
 		{

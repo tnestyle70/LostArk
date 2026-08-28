@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files"><UniqueIdentifier>{365015CF-E6CA-4F83-98FB-30C501320782}</UniqueIdentifier><Extensions>cpp;c;cc;cxx</Extensions></Filter>
+    <Filter Include="Scripts"><UniqueIdentifier>{1686B507-7E4E-4F75-A200-CFD9B26DB0E8}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\MapFrustumContractHarness.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\MapAssetRenderUtils.cpp"><Filter>Source Files</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup><None Include="..\Run-MapFrustumContractHarness.ps1"><Filter>Scripts</Filter></None></ItemGroup>
+</Project>

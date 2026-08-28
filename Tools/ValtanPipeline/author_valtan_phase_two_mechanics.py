@@ -198,9 +198,12 @@ def author_existing_patterns(
         dash_presentation_stages[stage_id] for stage_id in dash_stage_order
     ]
 
-    sequence = gameplay["decisionModel"]["scriptedSequence"]["patternIds"]
-    sequence[:] = [row for row in sequence if row != "VALTAN_DASH_CHARGE"]
-    sequence.insert(sequence.index("VALTAN_ARENA_BREAK_109"), "VALTAN_DASH_CHARGE")
+    scripted_sequence = gameplay["decisionModel"]["scriptedSequence"]
+    if "flowId" not in scripted_sequence:
+        # The saved Flow owns Product order; only legacy inline migrations reorder it.
+        sequence = scripted_sequence["patternIds"]
+        sequence[:] = [row for row in sequence if row != "VALTAN_DASH_CHARGE"]
+        sequence.insert(sequence.index("VALTAN_ARENA_BREAK_109"), "VALTAN_DASH_CHARGE")
 
     attack_whirlwind = gameplay_by_id["VALTAN_ATTACK_WHIRLWIND"]
     attack_whirlwind_p = presentation_by_id["VALTAN_ATTACK_WHIRLWIND"]
@@ -472,7 +475,7 @@ def author_existing_patterns(
         "takeoffStartMs": 800,
         "takeoffEndMs": 1100,
         "travelStartMs": 0,
-        "travelEndMs": 700,
+        "travelEndMs": 267,
     }
     pizza_start_p = stage(presentation_by_id["VALTAN_SIX_PIZZA_106"], "STEP_01")
     replace_phase_two_cues(
@@ -545,7 +548,7 @@ def author_existing_patterns(
         pattern_p = presentation_by_id[pattern_id]
         for presentation_stage in pattern_p["stages"]:
             replace_phase_two_cues(presentation_stage, [])
-        first_stage = stage(pattern_p, "STEP_01")
+        first_stage = pattern_p["stages"][0]
         replace_phase_two_cues(
             first_stage,
             [
@@ -560,7 +563,10 @@ def author_existing_patterns(
 
 
 def author_trash_capture_flow(
-    gameplay: dict[str, Any], presentation: dict[str, Any]
+    gameplay: dict[str, Any], presentation: dict[str, Any], *,
+    audition_pattern_ids: tuple[str, ...] = (
+        "VALTAN_TRASH_CATCH_IF", "VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL"
+    ),
 ) -> None:
     """Keep user-authored flow slots intact; only this pattern owns its branches."""
     trash = pattern(gameplay, "VALTAN_TRASH")
@@ -592,6 +598,7 @@ def author_trash_capture_flow(
     base_g[7]["defaultNextActionId"] = actions["RUSH_MISS"]
     base_g[7]["branches"] = [
         {"outcome": "ANY_PLAYER_GRABBED", "nextActionId": actions["CATCH_COUNTER"]},
+        {"outcome": "NAVIGATION_BLOCKED", "nextActionId": actions["RUSH_MISS"]},
         {"outcome": "TIMEOUT", "nextActionId": actions["RUSH_MISS"]},
     ]
 
@@ -612,23 +619,25 @@ def author_trash_capture_flow(
             "branches": branches or [{"outcome": "TIMEOUT", "nextActionId": next_action}],
         }
 
-    counter = gameplay_stage("CATCH_COUNTER", 200, actions["CATCH_PRE_IMPACT"],
-        kind="WINDUP", events=flag("boss.flag.counterable", "counter-window"),
-        branches=[
-            {"outcome": "COUNTER_HIT", "nextActionId": actions["GROGGY"]},
-            {"outcome": "TIMEOUT", "nextActionId": actions["CATCH_PRE_IMPACT"]},
-        ])
-    counter["counterProxy"] = {
+    base_g[6]["events"] += flag("boss.flag.counterable", "counter-window")
+    base_g[6]["branches"] = [
+        {"outcome": "COUNTER_HIT", "nextActionId": actions["GROGGY"]},
+        {"outcome": "TIMEOUT", "nextActionId": rush},
+    ]
+    base_g[6]["counterProxy"] = {
         "space": "BOSS_LOCAL", "forwardOffsetM": 1.0,
-        "rightOffsetM": -1.5, "radiusM": 2.25,
+        "rightOffsetM": 0.0, "radiusM": 2.25,
     }
+    # Keep the stable catch clip slice, but the counter window now belongs to
+    # the rush cast. Capturing a player never re-opens the cast counter.
+    counter = gameplay_stage("CATCH_COUNTER", 200, actions["CATCH_PRE_IMPACT"])
     new_g = [
         counter,
         gameplay_stage("CATCH_PRE_IMPACT", 1300, actions["CATCH_SLAM"], branches=[
             {"outcome": "ALL_PLAYERS_GRABBED", "nextActionId": actions["EXECUTE_TAIL"]},
             {"outcome": "TIMEOUT", "nextActionId": actions["CATCH_SLAM"]},
         ]),
-        gameplay_stage("CATCH_SLAM", 1500, reaim, events=[{
+        gameplay_stage("CATCH_SLAM", 1500, None, events=[{
             "eventId": "event.valtan.trash.captured-slam", "trigger": "ENTER",
             "kind": "DAMAGE_GRABBED_PLAYERS",
             "damageProfileId": "damage.valtan.charge-grab-roar",
@@ -637,7 +646,7 @@ def author_trash_capture_flow(
             "eventId": "event.valtan.trash.execute-grabbed", "trigger": "ENTER",
             "kind": "EXECUTE_GRABBED_PLAYERS",
         }]),
-        gameplay_stage("RUSH_MISS", 1000, reaim, kind="RECOVERY"),
+        gameplay_stage("RUSH_MISS", 1000, None, kind="RECOVERY"),
         gameplay_stage("GROGGY", 4433, None, kind="GROGGY", events=[{
             "eventId": "event.valtan.trash.counter-release", "trigger": "ENTER",
             "kind": "RELEASE_GRABBED_PLAYERS", "releaseMode": "HOLD",
@@ -678,6 +687,53 @@ def author_trash_capture_flow(
         trash_p["presentationSources"].append({
             "sourceActionId": 420631, "sequenceIndex": 1, "role": "REFERENCE",
         })
+
+    # Audition IDs reuse the same finite graph fragments. Stable action/event
+    # identities are namespaced to their owning pattern; no attachment is
+    # transferred across a patternSequence boundary.
+    for pattern_id, stage_ids in (
+        ("VALTAN_TRASH_CATCH_IF", ["STEP_07", "STEP_08"] + [s["stageId"] for s in new_g]),
+        ("VALTAN_TRASH_CATCH_SUCCESS", ["CATCH_COUNTER", "CATCH_PRE_IMPACT", "CATCH_SLAM", "EXECUTE_TAIL"]),
+        ("VALTAN_TRASH_CATCH_FAIL", ["RUSH_MISS"]),
+    ):
+        if pattern_id not in audition_pattern_ids:
+            continue
+        destination = pattern(gameplay, pattern_id)
+        destination_p = pattern(presentation, pattern_id)
+        saved_cues = copy.deepcopy(destination_p["stages"][0]["effectCues"])
+        action_map = {
+            s["actionId"]: f"{destination['actionId']}.{s['stageId'].lower().replace('_', '-')}"
+            for s in trash["stages"] if s["stageId"] in stage_ids
+        }
+        replacements = dict(action_map)
+        replacements["event.valtan.trash."] = f"event.{destination['actionId']}."
+
+        def remap(value: Any) -> Any:
+            if isinstance(value, dict):
+                return {key: remap(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [remap(item) for item in value]
+            if isinstance(value, str):
+                for before, after in replacements.items():
+                    if value == before or value.startswith(before + ".") or before.endswith("."):
+                        value = value.replace(before, after)
+            return value
+
+        destination["stages"] = [remap(copy.deepcopy(stage(trash, key))) for key in stage_ids]
+        destination_p["stages"] = [remap(copy.deepcopy(stage(trash_p, key))) for key in stage_ids]
+        destination["entryActionId"] = destination["stages"][0]["actionId"]
+        destination["targetPolicy"] = "LOCK_RANDOM_ALIVE_ON_START" if pattern_id.endswith("_IF") else "NONE"
+        destination["aimPolicy"] = "LOCK_FACING_ON_START" if pattern_id.endswith("_IF") else "NONE"
+        if pattern_id.endswith("_IF") and 420631 not in destination["sourceActionIds"]:
+            destination["sourceActionIds"].append(420631)
+            destination_p["presentationSources"].append({
+                "sourceActionId": 420631, "sequenceIndex": 1, "role": "REFERENCE",
+            })
+        first_p = destination_p["stages"][0]
+        for saved_cue in saved_cues:
+            if "clipOccurrenceId" in saved_cue:
+                saved_cue["clipOccurrenceId"] = first_p["animation"]["occurrences"][0]["clipOccurrenceId"]
+        first_p["effectCues"] = saved_cues
 
 
 def renamed_occurrence(
@@ -934,25 +990,24 @@ def author_terrain_pairs(
         build_terrain_pair("9_OCLOCK", source_gameplay, source_presentation),
     ]
     authored_ids = {row[0]["patternId"] for row in authored}
-    gameplay["patterns"] = [
-        row for row in gameplay["patterns"] if row["patternId"] not in authored_ids
-    ]
-    presentation["patterns"] = [
-        row
-        for row in presentation["patterns"]
-        if row["patternId"] not in authored_ids
-    ]
     for gameplay_pattern, presentation_pattern in authored:
-        gameplay["patterns"].append(gameplay_pattern)
-        presentation["patterns"].append(presentation_pattern)
+        for document, replacement in ((gameplay, gameplay_pattern), (presentation, presentation_pattern)):
+            matching = next((index for index, row in enumerate(document["patterns"])
+                             if row["patternId"] == replacement["patternId"]), None)
+            if matching is None:
+                document["patterns"].append(replacement)
+            else:
+                document["patterns"][matching] = replacement
 
-    sequence = gameplay["decisionModel"]["scriptedSequence"]["patternIds"]
-    sequence[:] = [row for row in sequence if row not in authored_ids]
-    terrain_index = sequence.index("VALTAN_TERRAIN_DESTRUCTION")
-    sequence[terrain_index:terrain_index] = [
-        "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-        "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-    ]
+    scripted_sequence = gameplay["decisionModel"]["scriptedSequence"]
+    if "flowId" not in scripted_sequence:
+        sequence = scripted_sequence["patternIds"]
+        sequence[:] = [row for row in sequence if row not in authored_ids]
+        terrain_index = sequence.index("VALTAN_TERRAIN_DESTRUCTION")
+        sequence[terrain_index:terrain_index] = [
+            "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+            "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+        ]
     manual_rows = gameplay["decisionModel"]["manualAuditions"]
     manual_rows[:] = [
         row for row in manual_rows if row["patternId"] not in authored_ids
@@ -983,6 +1038,104 @@ def author_terrain_pairs(
     )
 
 
+def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, Any]) -> None:
+    """Author independent hazards and finite boss motion without editing saved Flow slots."""
+    release = stage(pattern(gameplay, "VALTAN_CATCH_BREATH"), "STEP_04")["events"][0]
+    release.update(releaseMode="ARENA_EJECTION", speedMps=24.0, durationMs=500)
+    four = stage(pattern(gameplay, "VALTAN_SEQUENCE_FOUR"), "STEP_01")
+    four["hit"]["shape"] = {"kind": "CROSS", "lengthM": 18.0, "halfWidthM": 2.5}
+
+    warp = pattern(gameplay, "VALTAN_WARP")
+    warp_p = pattern(presentation, "VALTAN_WARP")
+    for leg in range(8):
+        row = stage(warp, f"STEP_{leg + 2:02d}")
+        row["motion"] = {"kind": "PORTAL_TARGET_RUSH"}
+        row["hit"]["schedule"] = {"kind": "EXPLICIT_OFFSETS", "offsetsMs": list(range(0, 900, 50))}
+        for effect_cue in stage(warp_p, row["stageId"])["effectCues"]:
+            effect_cue["followPolicy"] = "follow"
+            effect_cue["localTransform"]["position"] = [0.0, 0.0, 3.0]
+    stage(warp, "STEP_10")["events"] = [{
+        "eventId": "event.valtan.warp.return-center", "trigger": "ENTER",
+        "kind": "RETURN_TO_ARENA_CENTER",
+    }]
+
+    for pattern_id in ("VALTAN_SIX_PIZZA_106", "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+                       "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK"):
+        pattern(gameplay, pattern_id)["serverMotion"]["moveToAnchorBeforeTakeoff"] = True
+        if pattern_id == "VALTAN_SIX_PIZZA_106":
+            pattern(gameplay, pattern_id)["targetPolicy"] = "LOCK_RANDOM_ALIVE_ON_START"
+            pattern(gameplay, pattern_id)["aimPolicy"] = "LOCK_FACING_ON_START"
+        for row in pattern(presentation, pattern_id)["stages"]:
+            for effect_cue in row["effectCues"]:
+                effect_cue["anchorSlotId"] = "arena.center.facing" if pattern_id == "VALTAN_SIX_PIZZA_106" else "arena.center"
+                effect_cue["followPolicy"] = "snapshot"
+
+    donut = stage(pattern(gameplay, "VALTAN_FIST_IN_OUT"), "INNER")
+    donut["durationMs"] = 100
+    donut["hit"] = none_hit()
+    donut["events"] = [{
+        "eventId": "event.valtan.fist-in-out.spawn-donut", "trigger": "ENTER",
+        "kind": "SPAWN_COMBAT_OBJECT",
+        "combatObjectArchetypeId": "combatobject.valtan.fist-in-out.donut", "count": 1,
+    }]
+    stage(pattern(presentation, "VALTAN_FIST_IN_OUT"), "INNER")["effectCues"] = []
+    independent = next(row for row in presentation["independentEffects"]
+                       if row["independentEffectId"] == "valtan.independent-effect.donut-in-out")
+    independent.pop("cueId", None)
+    independent["ownership"] = "SERVER_COMBAT_OBJECT"
+    independent["spawnEventId"] = "event.valtan.fist-in-out.spawn-donut"
+
+    finale_id = "VALTAN_GHOST_FINALE"
+    if not any(row["patternId"] == finale_id for row in gameplay["patterns"]):
+        def remap_finale(value: Any) -> Any:
+            if isinstance(value, dict):
+                return {key: remap_finale(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [remap_finale(item) for item in value]
+            if isinstance(value, str):
+                return value.replace("valtan.sequence.warp", "valtan.sequence.ghost-finale").replace(
+                    "cue.valtan.phase2.warp.", "cue.valtan.finale.warp.").replace(
+                    "event.valtan.phase2.warp.", "event.valtan.finale.warp.").replace(
+                    "event.valtan.warp.", "event.valtan.finale.warp.")
+            return value
+        finale = remap_finale(copy.deepcopy(warp))
+        finale["patternId"] = finale_id
+        finale["displayName"] = "유령 발탄 · 포탈 최종 패턴"
+        finale["finale"] = {
+            "kind": "GHOST_PORTAL_LOOP", "ghostArchetypeId": "BOSS_VALTAN_GHOST",
+            "ghostPatternIds": ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR"],
+            "spawnHalfExtentsM": [10.0, 10.0], "maximumActiveGhosts": 1,
+        }
+        finale_p = remap_finale(copy.deepcopy(warp_p))
+        finale_p["patternId"] = finale_id
+        gameplay["patterns"].append(finale)
+        presentation["patterns"].append(finale_p)
+        gameplay["decisionModel"]["manualAuditions"].append({
+            "patternId": finale_id, "sourceChainId": "derived.warp-ghost-finale", "authoringPhase": 3,
+            "admissionState": "DERIVED_SERVER_PATTERN",
+        })
+
+    # The finale intentionally retains the arena-corner portal choreography.
+    # Patch it on every authoring pass so a pre-existing derived row cannot
+    # inherit the normal WARP target-rush policy from its original clone.
+    finale = pattern(gameplay, finale_id)
+    finale_p = pattern(presentation, finale_id)
+    for leg in range(8):
+        row = stage(finale, f"STEP_{leg + 2:02d}")
+        row["motion"] = {
+            "kind": "PORTAL_CROSS_ARENA",
+            "cornerIndex": leg % 4,
+            "halfExtentsM": [22.0, 22.0],
+        }
+        row["hit"]["schedule"] = {
+            "kind": "EXPLICIT_OFFSETS",
+            "offsetsMs": list(range(0, 900, 50)),
+        }
+        for effect_cue in stage(finale_p, row["stageId"])["effectCues"]:
+            effect_cue["followPolicy"] = "snapshot"
+            effect_cue["localTransform"]["position"] = [0.0, 0.0, 0.0]
+
+
 def build(pattern_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     gameplay = promotion._read_json(GAMEPLAY)
     presentation = promotion._read_json(PRESENTATION)
@@ -1000,6 +1153,7 @@ def build(pattern_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]
         promotion._preserve_manual_presentation_enrichment(
             authored, saved_patterns.get(authored["patternId"])
         )
+    author_runtime_completion(gameplay, presentation)
     return gameplay, presentation
 
 

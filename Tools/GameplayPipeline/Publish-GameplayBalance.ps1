@@ -29,6 +29,7 @@ if (-not $hasExplicitOverlay -and -not $SkipValtanSplitProjection) {
     }
 }
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
+$maximumValtanPatternFlowSlots = 255
 
 function Read-JsonDocument([string]$RelativePath) {
     $path = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePath))
@@ -55,6 +56,59 @@ function Assert-ExactProperties([object]$Value, [string[]]$Expected, [string]$Co
 
 function Assert-StableId([string]$Value, [string]$Context) {
     if ($Value -notmatch $stableIdPattern) { throw "$Context is not a stable ID: '$Value'" }
+}
+
+function Assert-FinitePatternGraph([object]$Pattern) {
+    # Product stages fall through in order only when no TIMEOUT branch exists.
+    # Check every node, including tails not taken in a particular audition.
+    $incoming = [Collections.Generic.Dictionary[string,int]]::new([StringComparer]::Ordinal)
+    $successors = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    $stages = @($Pattern.stages)
+    foreach ($stage in $stages) {
+        $action = [string]$stage.actionId
+        if ([string]::IsNullOrWhiteSpace($action) -or $incoming.ContainsKey($action)) {
+            throw "Finite pattern has an invalid or duplicate stage: $($Pattern.patternId)"
+        }
+        $incoming.Add($action, 0)
+        $successors.Add($action, [Collections.Generic.List[string]]::new())
+    }
+    for ($index = 0; $index -lt $stages.Count; $index++) {
+        $stage = $stages[$index]
+        $targets = $successors[[string]$stage.actionId]
+        $hasTimeout = $false
+        foreach ($branch in @($stage.branches)) {
+            if ($null -eq $branch) { continue }
+            if ([string]$branch.outcome -ceq 'TIMEOUT') { $hasTimeout = $true }
+            if ($null -ne $branch.nextActionId) {
+                $targets.Add([string]$branch.nextActionId)
+            }
+        }
+        if (-not $hasTimeout -and $index + 1 -lt $stages.Count) {
+            $targets.Add([string]$stages[$index + 1].actionId)
+        }
+        foreach ($target in $targets) {
+            if (-not $incoming.ContainsKey($target)) {
+                throw "Finite pattern has a dangling action: $($Pattern.patternId) -> $target"
+            }
+            $incoming[$target]++
+        }
+    }
+    $ready = [Collections.Generic.Queue[string]]::new()
+    foreach ($action in $incoming.Keys) {
+        if ($incoming[$action] -eq 0) { $ready.Enqueue($action) }
+    }
+    $visited = 0
+    while ($ready.Count -gt 0) {
+        $action = $ready.Dequeue()
+        $visited++
+        foreach ($target in $successors[$action]) {
+            $incoming[$target]--
+            if ($incoming[$target] -eq 0) { $ready.Enqueue($target) }
+        }
+    }
+    if ($visited -ne $stages.Count) {
+        throw "Finite pattern stage graph contains a cycle: $($Pattern.patternId)"
+    }
 }
 
 function Get-Fnv1a32([string]$Text) {
@@ -1150,9 +1204,9 @@ Assert-ExactProperties $bossCatalogDocument @(
 	'schema','formatVersion','bosses') 'boss presentation catalog'
 Assert-JsonString $bossCatalogDocument.schema 'boss presentation catalog schema'
 Assert-JsonInteger $bossCatalogDocument.formatVersion `
-	'boss presentation catalog formatVersion' 4 4
+	'boss presentation catalog formatVersion' 5 5
 if ([string]$bossCatalogDocument.schema -cne 'lostark.boss-catalog' -or
-	[uint32]$bossCatalogDocument.formatVersion -ne 4 -or
+	[uint32]$bossCatalogDocument.formatVersion -ne 5 -or
 	$bossCatalogDocument.bosses -isnot [Array]) {
 	throw 'Boss presentation catalog header is invalid.'
 }
@@ -1161,7 +1215,8 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 		'archetypeId','visualAssetId','presentationScale','bodyModel',
 		'weaponModel','armorModels','armorParts','combatObjectVisuals',
 		'animationSetId','serverProfileId','clientPresentationId',
-		'presentationStatus','presentationClips') 'boss presentation row'
+		'presentationStatus','presentationClips','bodyModelPreScale',
+		'weaponModelPreScale') 'boss presentation row'
 	Assert-JsonString $presentationBoss.archetypeId `
 		'boss presentation archetypeId'
 	Assert-StableId $presentationBoss.archetypeId `
@@ -1171,6 +1226,12 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 	$presentationScale = [double]$presentationBoss.presentationScale
 	if ($presentationScale -le 0.0 -or $presentationScale -gt 100.0) {
 		throw "Boss presentation scale is out of range: $($presentationBoss.archetypeId)"
+	}
+	foreach ($field in @('bodyModelPreScale','weaponModelPreScale')) {
+		Assert-JsonNumber $presentationBoss.$field "boss presentation $field"
+		if ([double]$presentationBoss.$field -le 0.0 -or [double]$presentationBoss.$field -gt 100.0) {
+			throw "Boss model admission scale is out of range: $field"
+		}
 	}
 	Assert-ExactProperties $presentationBoss.presentationClips @(
 		'idle','chase','patternWindup','patternActive','patternRecovery','dead') `
@@ -1182,7 +1243,7 @@ if ($bossCatalogOwners.Count -ne 1 -or
 	$bossCatalogOwners[0].armorParts -isnot [Array] -or
 	@($bossCatalogOwners[0].armorParts).Count -ne @($bossPartDocument.parts).Count -or
 	$bossCatalogOwners[0].combatObjectVisuals -isnot [Array] -or
-	@($bossCatalogOwners[0].combatObjectVisuals).Count -ne 2) {
+	@($bossCatalogOwners[0].combatObjectVisuals).Count -lt 1) {
 	throw 'Valtan boss part presentation owner or count does not match gameplay.'
 }
 $presentationPartById = @{}
@@ -1215,9 +1276,20 @@ foreach ($part in @($bossPartDocument.parts)) {
 }
 $combatObjectVisualByArchetypeId = @{}
 foreach ($visual in @($bossCatalogOwners[0].combatObjectVisuals)) {
-	Assert-ExactProperties $visual @(
-		'combatObjectArchetypeId','clientVisualId','effectAssetId') `
-		'boss combat object visual'
+	$visualProperties = @('combatObjectArchetypeId','clientVisualId','effectAssetId')
+	if ($null -ne $visual.PSObject.Properties['worldScale']) {
+		$visualProperties += 'worldScale'
+		if ($visual.worldScale -isnot [Array] -or @($visual.worldScale).Count -ne 3) {
+			throw 'Boss combat object worldScale must contain three numbers.'
+		}
+		foreach ($component in @($visual.worldScale)) {
+			Assert-JsonNumber $component 'boss combat object worldScale'
+			if ([double]$component -le 0.0 -or [double]$component -gt 100.0) {
+				throw 'Boss combat object worldScale is out of range.'
+			}
+		}
+	}
+	Assert-ExactProperties $visual $visualProperties 'boss combat object visual'
 	foreach ($field in @(
 		'combatObjectArchetypeId','clientVisualId','effectAssetId')) {
 		Assert-JsonString $visual.$field "boss combat object visual $field"
@@ -1247,8 +1319,9 @@ if ([string]$combatObjectDocument.schema -cne `
 	'lostark.valtan-combat-objects' -or
 	[uint32]$combatObjectDocument.formatVersion -ne 1 -or
 	$combatObjectDocument.objects -isnot [Array] -or
-	@($combatObjectDocument.objects).Count -ne 2) {
-	throw 'Valtan combat object header or first-slice object count is invalid.'
+	@($combatObjectDocument.objects).Count -lt 1 -or @($combatObjectDocument.objects).Count -gt 64 -or
+	@($combatObjectDocument.objects).Count -ne $combatObjectVisualByArchetypeId.Count) {
+	throw 'Valtan combat object header or visual ownership count is invalid.'
 }
 
 $encounterDocument = Read-JsonDocument 'Data/Encounters/Valtan/ValtanEncounter.json'
@@ -1330,6 +1403,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		'stages')
 	$hasServerMotion = $null -ne $pattern.PSObject.Properties['serverMotion']
 	if ($hasServerMotion) { $patternProperties += 'serverMotion' }
+	$hasFinale = $null -ne $pattern.PSObject.Properties['finale']
+	if ($hasFinale) { $patternProperties += 'finale' }
 	Assert-ExactProperties $pattern $patternProperties 'encounter pattern'
 	foreach ($field in @(
 		'patternId','displayName','actionId','selectionMode','category',
@@ -1498,14 +1573,73 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		[uint32]$primarySourceTiming.RangeUnits,
 		[uint32]$primarySourceTiming.ApproachUnits,
 		[uint32]$primarySourceTiming.TurnDegrees) -join "`t"))
+	if ($hasFinale) {
+		$finale = $pattern.finale
+		Assert-ExactProperties $finale @('kind','ghostArchetypeId','ghostPatternIds',
+			'spawnHalfExtentsM','maximumActiveGhosts') 'pattern finale'
+		Assert-JsonString $finale.kind 'pattern finale kind'
+		Assert-StableId $finale.ghostArchetypeId 'pattern finale ghost archetype'
+		Assert-JsonInteger $finale.maximumActiveGhosts 'pattern finale maximumActiveGhosts' 1 1
+		if ([string]$finale.kind -cne 'GHOST_PORTAL_LOOP' -or
+			[string]$finale.ghostArchetypeId -cne 'BOSS_VALTAN_GHOST' -or
+			-not $bossIds.Contains([string]$finale.ghostArchetypeId) -or
+			$finale.spawnHalfExtentsM -isnot [Array] -or @($finale.spawnHalfExtentsM).Count -ne 2 -or
+			$finale.ghostPatternIds -isnot [Array] -or @($finale.ghostPatternIds).Count -ne 3) {
+			throw "Invalid ghost finale: $($pattern.patternId)"
+		}
+		$requiredGhostPatterns = @('VALTAN_WHIRLWIND', 'VALTAN_FOUR_SLASH', 'VALTAN_SEQUENCE_FOUR')
+		if ([bool]$pattern.invulnerableWhileRunning -or
+			(@($finale.ghostPatternIds) -join '|') -cne ($requiredGhostPatterns -join '|')) {
+			throw "Ghost finale must remain damageable and use its three ordered attacks: $($pattern.patternId)"
+		}
+		Assert-FinitePatternGraph $pattern
+		foreach ($extent in @($finale.spawnHalfExtentsM)) {
+			Assert-JsonNumber $extent 'pattern finale spawn extent'
+			if ([double]$extent -lt 1.0 -or [double]$extent -gt 100.0) {
+				throw "Ghost finale extent is out of range: $($pattern.patternId)"
+			}
+		}
+		$ghostPatternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+		foreach ($ghostPatternId in @($finale.ghostPatternIds)) {
+			Assert-StableId $ghostPatternId 'ghost attack patternId'
+			$ghostPattern = @($encounterDocument.patterns | Where-Object { $_.patternId -ceq $ghostPatternId })
+			if (-not $ghostPatternIds.Add([string]$ghostPatternId) -or $ghostPattern.Count -ne 1 -or
+				[string]$ghostPatternId -ceq [string]$pattern.patternId -or
+				$null -ne $ghostPattern[0].PSObject.Properties['finale']) {
+				throw "Ghost finale attack is missing, duplicate or recursive: $ghostPatternId"
+			}
+			Assert-FinitePatternGraph $ghostPattern[0]
+		}
+		$patternRows.Add((@('PATTERNFINALE', $encounterDocument.encounterId, $pattern.patternId,
+			$finale.kind, $finale.ghostArchetypeId,
+			(Format-InvariantFloat $finale.spawnHalfExtentsM[0] 'ghost half X'),
+			(Format-InvariantFloat $finale.spawnHalfExtentsM[1] 'ghost half Z'),
+			[uint32]$finale.maximumActiveGhosts) + @($finale.ghostPatternIds) -join "`t"))
+	}
+	if ([string]$pattern.patternId -cin @('VALTAN_TRASH', 'VALTAN_TRASH_CATCH_IF',
+		'VALTAN_TRASH_CATCH_SUCCESS', 'VALTAN_TRASH_CATCH_FAIL')) {
+		Assert-FinitePatternGraph $pattern
+	}
 	if ($hasServerMotion) {
 		# One compiled anchor is the single source for the Server leap landing,
 		# the camera lookAt and the radial wall launch directions, so none of the
 		# three can drift into its own copy of the coordinate.
 		$motion = $pattern.serverMotion
-		Assert-ExactProperties $motion @(
+		$motionProperties = @(
 			'kind','anchorId','landingPosition','apexHeight','travelStageId',
-			'takeoffStartMs','takeoffEndMs','travelStartMs','travelEndMs') "pattern $($pattern.patternId) serverMotion"
+			'takeoffStartMs','takeoffEndMs','travelStartMs','travelEndMs')
+		$moveToAnchorBeforeTakeoff = $false
+		if ($null -ne $motion.PSObject.Properties['moveToAnchorBeforeTakeoff']) {
+			$motionProperties += 'moveToAnchorBeforeTakeoff'
+			if ($motion.moveToAnchorBeforeTakeoff -isnot [bool]) {
+				throw 'serverMotion moveToAnchorBeforeTakeoff must be a JSON boolean.'
+			}
+			$moveToAnchorBeforeTakeoff = [bool]$motion.moveToAnchorBeforeTakeoff
+			if ($moveToAnchorBeforeTakeoff -and [double]$motion.takeoffStartMs -le 0) {
+				throw 'Center approach requires a positive anticipation window.'
+			}
+		}
+		Assert-ExactProperties $motion $motionProperties "pattern $($pattern.patternId) serverMotion"
 		Assert-JsonString $motion.kind "pattern $($pattern.patternId) serverMotion kind"
 		Assert-StableId $motion.anchorId "pattern $($pattern.patternId) serverMotion anchorId"
 		Assert-JsonString $motion.travelStageId "pattern $($pattern.patternId) serverMotion travelStageId"
@@ -1579,7 +1713,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			(Format-InvariantFloat $motion.apexHeight 'serverMotion apexHeight'),
 			[uint32]$travelStageIndex,
 			[uint32]$motion.takeoffStartMs, [uint32]$motion.takeoffEndMs,
-			[uint32]$motion.travelStartMs, [uint32]$motion.travelEndMs) -join "`t"))
+			[uint32]$motion.travelStartMs, [uint32]$motion.travelEndMs,
+			$(if ($moveToAnchorBeforeTakeoff) { 1 } else { 0 })) -join "`t"))
 	}
 	if ($aimPolicy -eq 'FACE_MOTION_ANCHOR' -and -not $hasServerMotion) {
 		throw "FACE_MOTION_ANCHOR requires serverMotion: $($pattern.patternId)"
@@ -1807,6 +1942,28 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 
 		$stageMotionKind = 'NONE'
 		if ($hasStageMotion) {
+			$stageMotionKind = [string]$stage.motion.kind
+			if ($stageMotionKind -ceq 'PORTAL_CROSS_ARENA') {
+				Assert-ExactProperties $stage.motion @('kind','cornerIndex','halfExtentsM') 'portal stage motion'
+				Assert-JsonInteger $stage.motion.cornerIndex 'portal corner index' 0 3
+				if ($stage.motion.halfExtentsM -isnot [Array] -or @($stage.motion.halfExtentsM).Count -ne 2) {
+					throw 'Portal halfExtentsM requires X/Z.'
+				}
+				foreach ($extent in @($stage.motion.halfExtentsM)) {
+					Assert-JsonNumber $extent 'portal extent'
+					if ([double]$extent -lt 1.0 -or [double]$extent -gt 100.0) { throw 'Portal extent is out of range.' }
+				}
+				$patternRows.Add((@('PATTERNSTAGEMOTION', $encounterDocument.encounterId,
+					$pattern.patternId, $stage.actionId, $stageMotionKind, [uint32]$stage.motion.cornerIndex,
+					(Format-InvariantFloat $stage.motion.halfExtentsM[0] 'portal half X'),
+					(Format-InvariantFloat $stage.motion.halfExtentsM[1] 'portal half Z')) -join "`t"))
+			}
+			elseif ($stageMotionKind -ceq 'PORTAL_TARGET_RUSH') {
+				Assert-ExactProperties $stage.motion @('kind') 'portal target-rush stage motion'
+				$patternRows.Add((@('PATTERNSTAGEMOTION', $encounterDocument.encounterId,
+					$pattern.patternId, $stage.actionId, $stageMotionKind) -join "`t"))
+			}
+			else {
 			Assert-ExactProperties $stage.motion @(
 				'kind','distance') 'encounter pattern stage motion'
 			Assert-JsonString $stage.motion.kind `
@@ -1824,6 +1981,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				$pattern.patternId, $stage.actionId, $stageMotionKind,
 				(Format-InvariantFloat $stage.motion.distance `
 					"pattern $($pattern.patternId) stage motion distance")) -join "`t"))
+			}
 		}
 
 		$hasCounterableEnter = $false
@@ -1937,7 +2095,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 							[string]$stage.actionId -ceq `
 								'valtan.attack.high-jump.airborne' -and
 							$actionIndex -eq 0 -and
-							[uint32]$stage.durationMs -eq 4000 -and
+							[uint32]$stage.durationMs -ge 4000 -and
 							$spawnCount -eq 3 -and
 							$spawnIntervalMs -eq 1333 -and
 							$arenaRandomCount -eq 4 -and
@@ -2030,13 +2188,17 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 							$actionTargetId -ceq 'boss.target.pattern' -and
 							$actionValue -eq 1
 					}
+					'RETURN_TO_ARENA_CENTER' {
+						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
+							$actionTargetId -ceq 'boss.arena.center' -and $actionValue -eq 1
+					}
 					'RELEASE_GRABBED_PLAYERS' {
 						$validTypedAction =
 							$actionTargetId -ceq 'boss.attachment.left-hand' -and
 							(($actionReleaseMode -ceq 'HOLD' -and
 							  $actionReleaseSpeedMps -eq 0.0 -and
 							  $actionDurationMs -eq 0) -or
-							 ($actionReleaseMode -ceq 'OPPOSITE_KNOCKBACK' -and
+							 ($actionReleaseMode -cin @('OPPOSITE_KNOCKBACK','ARENA_EJECTION') -and
 							  $actionReleaseSpeedMps -gt 0.0 -and
 							  $actionReleaseSpeedMps -le 50.0 -and
 							  $actionDurationMs -gt 0))
@@ -2056,6 +2218,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				if ($actionKind -cne 'SPAWN_COMBAT_OBJECT' -and
 					$actionKind -cne 'SET_GAMEPLAY_PHASE' -and
 					$actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
+					$actionKind -cne 'RETURN_TO_ARENA_CENTER' -and
 					$actionKind -cne 'RELEASE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'DAMAGE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'EXECUTE_GRABBED_PLAYERS') {
@@ -2087,6 +2250,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						$actionIndex -eq 0
 				}
 				elseif ($actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
+					$actionKind -cne 'RETURN_TO_ARENA_CENTER' -and
 					$actionKind -cne 'RELEASE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'DAMAGE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'EXECUTE_GRABBED_PLAYERS') {
@@ -2153,7 +2317,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				if ($outcome -notin @(
 					'TIMEOUT','COUNTER_HIT','STAGGER_BROKEN','WALL_CONTACT',
 					'PART_DESTROYED','PROP_DESTROYED','SUMMON_DEAD',
-					'ALL_PLAYERS_GRABBED','ANY_PLAYER_GRABBED') -or
+					'ALL_PLAYERS_GRABBED','ANY_PLAYER_GRABBED','NAVIGATION_BLOCKED') -or
 					-not $branchOutcomes.Add($outcome)) {
 					throw "Pattern stage branch outcome is unknown or duplicated: $($pattern.patternId) stage $stageIndex"
 				}
@@ -2246,6 +2410,43 @@ if ($valtanHighJumpTypedVolleyCount -ne 1 -or
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
 
+$warpPatterns = @($encounterDocument.patterns | Where-Object {
+	[string]$_.patternId -ceq 'VALTAN_WARP'
+})
+if ($warpPatterns.Count -eq 1) {
+	for ($leg = 0; $leg -lt 8; ++$leg) {
+		$stageId = 'STEP_{0:D2}' -f ($leg + 2)
+		$stage = @($warpPatterns[0].stages | Where-Object {
+			[string]$_.stageId -ceq $stageId
+		})
+		if ($stage.Count -ne 1 -or
+			[string]$stage[0].motion.kind -cne 'PORTAL_TARGET_RUSH') {
+			throw "VALTAN_WARP requires target-rush motion: $stageId"
+		}
+	}
+}
+
+$ghostFinalePatterns = @($encounterDocument.patterns | Where-Object {
+	[string]$_.patternId -ceq 'VALTAN_GHOST_FINALE'
+})
+if ($ghostFinalePatterns.Count -eq 1) {
+	for ($leg = 0; $leg -lt 8; ++$leg) {
+		$stageId = 'STEP_{0:D2}' -f ($leg + 2)
+		$stage = @($ghostFinalePatterns[0].stages | Where-Object {
+			[string]$_.stageId -ceq $stageId
+		})
+		$motion = if ($stage.Count -eq 1) { $stage[0].motion } else { $null }
+		if ($null -eq $motion -or
+			[string]$motion.kind -cne 'PORTAL_CROSS_ARENA' -or
+			[uint32]$motion.cornerIndex -ne [uint32]($leg % 4) -or
+			@($motion.halfExtentsM).Count -ne 2 -or
+			[double]$motion.halfExtentsM[0] -ne 22.0 -or
+			[double]$motion.halfExtentsM[1] -ne 22.0) {
+			throw "VALTAN_GHOST_FINALE requires corner portal motion: $stageId"
+		}
+	}
+}
+
 # The combat-runtime branch owns these reactive/mechanic transitions.  A merge
 # once retained the stage/clip rows but silently dropped every non-combat-object
 # action and branch, which still passed the generic optional-field validator.
@@ -2277,7 +2478,7 @@ foreach ($pattern in $liveEncounterPatterns) {
 }
 if ($liveEncounterPatterns.Count -ne 34 -or
 	$authoredStageCount -ne 132 -or
-	$authoredStageActionCount -ne 25 -or
+	$authoredStageActionCount -ne 26 -or
 	$authoredStageBranchCount -ne 24 -or
 	$authoredStageMotionCount -ne 2) {
 	throw ('Valtan reactive stage topology count drifted: ' +
@@ -2287,6 +2488,7 @@ if ($liveEncounterPatterns.Count -ne 34 -or
 }
 
 $requiredReactiveRows = @(
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_FIST_IN_OUT`tvaltan.attack.fist-in-out.inner`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.fist-in-out.donut`t1`t0",
 	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t0`t1790",
 	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t1`t2560",
 	"PATTERNSTAGEHITOFFSET`tENCOUNTER_VALTAN`tVALTAN_FOUR_SLASH`tvaltan.attack.triple-slash.active`t2`t3330",
@@ -2340,7 +2542,7 @@ $requiredReactiveRows = @(
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tCOUNTER_HIT`tvaltan.mechanic.center-grab-counter-64.recovery",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tTIMEOUT`tvaltan.mechanic.center-grab-counter-64.failed-charge",
 	"PATTERNSTAGEPARTDAMAGE`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`tDESTROY_FIRST_ELIGIBLE",
-	"PATTERNSTAGECOUNTERPROXY`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.catch-counter`t1`t-1.5`t2.25",
+	"PATTERNSTAGECOUNTERPROXY`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.step-07`t1`t0`t2.25",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.catch-slam`t0`tENTER`tDAMAGE_GRABBED_PLAYERS`tdamage.valtan.charge-grab-roar`t0`t0",
 	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.execute-tail`t0`tENTER`tEXECUTE_GRABBED_PLAYERS`tboss.attachment.left-hand`t0`t0",
 	"PATTERNSTAGEMOTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tFORWARD`t20"
@@ -2437,7 +2639,7 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 			$directionPolicy -ceq 'NONE' -and
 			$offsetForwardM -eq 0.0 -and $offsetRightM -eq 0.0 -and
 			$speedMps -eq 0.0 -and $maximumDistanceM -eq 0.0
-		if ($originPolicy -ceq 'LOCKED_TARGET_PER_ALIVE_PLAYER') {
+		if ($originPolicy -cin @('LOCKED_TARGET_PER_ALIVE_PLAYER','BOSS_POSITION')) {
 			# The volley deals one area per living player, so it never reads the
 			# boss's single pattern target and imposes no target policy on it.
 			$validMotion = $stationary
@@ -3151,11 +3353,9 @@ Assert-JsonInteger $scriptedSequence.interStepPursuitMs `
 if ([string]$scriptedSequence.mode -cne 'ORDERED_ONCE_THEN_IDLE' -or
 	$scriptedSequence.patternIds -isnot [Array] -or
 	@($scriptedSequence.patternIds).Count -eq 0 -or
-	@($scriptedSequence.patternIds).Count -gt 32) {
+	@($scriptedSequence.patternIds).Count -gt $maximumValtanPatternFlowSlots) {
 	throw 'Valtan scripted pattern sequence contract is invalid.'
 }
-$scriptedPatternIds =
-	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $scriptedStepIndex = 0
 foreach ($scriptedPatternIdValue in @($scriptedSequence.patternIds)) {
 	Assert-JsonString $scriptedPatternIdValue 'Valtan scripted patternId'
@@ -3165,7 +3365,8 @@ foreach ($scriptedPatternIdValue in @($scriptedSequence.patternIds)) {
 		[string]$_.patternId -ceq $scriptedPatternId
 	})
 	if ($scriptedOwners.Count -ne 1 -or
-		-not $scriptedPatternIds.Add($scriptedPatternId)) {
+		($scriptedPatternId -ceq 'VALTAN_ENTRANCE_CINEMATIC' -and
+		 $scriptedStepIndex -ne 0)) {
 		throw "Valtan scripted sequence step is invalid: $scriptedPatternId"
 	}
 	$patternRows.Add((@(
@@ -4091,7 +4292,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 25 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 26 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

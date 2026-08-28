@@ -54,12 +54,16 @@ if ($items.Count -eq 0 -or $items.Count -gt 4096) {
 $itemIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $itemRows = [Collections.Generic.List[string]]::new()
 foreach ($item in $items) {
-    Assert-ExactProperties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent') 'item'
+    Assert-ExactProperties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent', 'category') 'item'
     Assert-JsonString $item.itemId 'item itemId'
     Assert-JsonString $item.displayName 'item displayName'
     Assert-JsonInteger $item.maxStack 'item maxStack' 1 ([uint32]::MaxValue)
     Assert-JsonString $item.iconPath 'item iconPath'
     Assert-JsonInteger $item.healPercent 'item healPercent' 0 100
+    Assert-JsonString $item.category 'item category'
+    if ($item.category -ne 'combat' -and $item.category -ne 'use') {
+        throw "item category must be 'combat' or 'use': $($item.itemId)"
+    }
     if ($item.itemId -notmatch $stableIdPattern) {
         throw "item itemId is not a stable ID: '$($item.itemId)'"
     }

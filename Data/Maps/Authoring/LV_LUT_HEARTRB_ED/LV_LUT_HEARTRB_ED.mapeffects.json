@@ -15,9 +15,9 @@
       ],
       "visibleStates": ["INTACT"],
       "materialIndex": 1,
-      "emissiveIntensity": 1.5,
-      "emissiveColor": [0.12, 1.0, 0.56, 1.0],
-      "maskPower": 1.0
+      "emissiveIntensity": 0,
+      "emissiveColor": [0.119999997, 1, 0.560000002, 1],
+      "maskPower": 1
     }
   ]
 }

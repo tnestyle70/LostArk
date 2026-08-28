@@ -1,5 +1,6 @@
 param(
-    [string]$RepositoryRoot = ''
+    [string]$RepositoryRoot = '',
+    [switch]$AllowLocalResources
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,7 +12,11 @@ else {
 }
 
 $validator = Join-Path $PSScriptRoot 'validate_effect_sources.py'
-& python $validator --repository-root $RepositoryRoot
+$validatorArguments = @($validator, '--repository-root', $RepositoryRoot)
+if ($AllowLocalResources) {
+    $validatorArguments += '--allow-local-resources'
+}
+& python @validatorArguments
 if ($LASTEXITCODE -ne 0) {
     throw "Effect source validation failed with exit code $LASTEXITCODE"
 }

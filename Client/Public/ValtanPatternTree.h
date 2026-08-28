@@ -105,6 +105,8 @@ struct VALTAN_STAGE_MOTION_VIEW final
 {
 	std::string strKind;
 	f32_t fDistance = 0.f;
+	uint32_t iCornerIndex = 0u;
+	std::array<f32_t, 2u> HalfExtentsM{};
 };
 
 struct VALTAN_STAGE_ACTION_VIEW final
@@ -236,6 +238,18 @@ struct VALTAN_PATTERN_SERVER_MOTION_VIEW final
 	uint32_t iTakeoffEndMs = 0u;
 	uint32_t iTravelStartMs = 0u;
 	uint32_t iTravelEndMs = 0u;
+	bool_t bMoveToAnchorBeforeTakeoff = false;
+};
+
+/* Read-only gameplay parity for the independent ghost/portal lifecycle. */
+struct VALTAN_PATTERN_FINALE_VIEW final
+{
+	std::string strKind;
+	std::string strGhostArchetypeId;
+	std::array<std::string, 3u> GhostPatternIds{};
+	std::array<f32_t, 2u> SpawnHalfExtentsM{};
+	uint32_t iMaximumActiveGhosts = 0u;
+	bool operator==(const VALTAN_PATTERN_FINALE_VIEW&) const = default;
 };
 
 struct VALTAN_PRESENTATION_SOURCE_VIEW final
@@ -381,6 +395,7 @@ struct VALTAN_PATTERN_VIEW final
 	f32_t fMinimumRange = 0.f;
 	f32_t fMaximumRange = 0.f;
 	std::optional<VALTAN_PATTERN_SERVER_MOTION_VIEW> ServerMotion;
+	std::optional<VALTAN_PATTERN_FINALE_VIEW> Finale;
 	uint32_t iSourceSequenceIndex = 0u;
 	std::vector<VALTAN_PRESENTATION_SOURCE_VIEW> PresentationSources;
 	/* Master-only presentation and reaction contracts stay typed in the
@@ -473,6 +488,9 @@ struct VALTAN_PHASE_VIEW final
 
 struct VALTAN_PATTERN_TREE_VIEW final
 {
+	/* Raw SHA-256 of the exact saved Flow bytes consumed while resolving the
+	   scripted sequence. Boss Tool uses it for one staged graph/Flow commit. */
+	std::string strSavedFlowSourceRevision;
 	std::vector<VALTAN_PATTERN_VIEW> Gimmicks;
 	std::vector<VALTAN_PATTERN_VIEW> Rotation;
 	std::vector<VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;
@@ -501,24 +519,25 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	size_t Get_CombatObjectEffectCount() const;
 };
 
-/* The intentionally small authoring/audition surface shared by All Effects
-   and Boss Tool. The full graph remains available for live diagnostics, but
-   only these exact Product patterns may appear in either replay selector. */
+/* Every strictly joined split-owned pattern is playable by the shared Tools.
+   These vectors group the same admitted identities for display; their sizes
+   are observations, not admission limits. Legacy-only Product rows stay out. */
 struct VALTAN_TOOL_AUDITION_INVENTORY final
 {
-	static constexpr size_t CORE_PATTERN_COUNT = 8u;
-	static constexpr size_t ANIMATOR_PATTERN_COUNT = 20u;
-	static constexpr size_t TOTAL_PATTERN_COUNT =
-		CORE_PATTERN_COUNT + ANIMATOR_PATTERN_COUNT;
-
 	std::vector<std::string> CorePatternIds;
 	std::vector<std::string> AnimatorPatternIds;
+	std::vector<std::string> DerivedPatternIds;
 
+	size_t Get_PatternCount() const
+	{
+		return CorePatternIds.size() + AnimatorPatternIds.size() +
+			DerivedPatternIds.size();
+	}
 	bool_t Contains(const std::string& strPatternId) const;
 };
 
-/* Read-only strict join of the physical Valtan gameplay/presentation
-   authoring sources with their generated Encounter, animation binding and
+/* Read-only strict join of the physical Valtan gameplay/presentation and
+   saved Flow source with their generated Encounter, animation binding and
    Effect cue Products. The Tools render the result; nothing here writes. */
 class CValtanPatternTree final
 {
@@ -535,14 +554,14 @@ public:
 		VALTAN_PATTERN_TREE_VIEW& OutView,
 		std::string& strOutStatus,
 		VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy);
-	/* Builds the exact All Effects/Boss Tool selector contract: eight named core
-	   Server patterns followed by the nineteen authored manual auditions. */
-	static bool_t Build_ToolAuditionInventory(
+	/* One admission contract for Boss Tool, All Effects, saved Flow and Next.
+	   Validates split-owned identity/stages and both sides of manual metadata;
+	   failure preserves the previously admitted inventory. */
+	static bool_t Build_PlayablePatternInventory(
 		const VALTAN_PATTERN_TREE_VIEW& View,
 		VALTAN_TOOL_AUDITION_INVENTORY& OutInventory,
 		std::string& strOutError);
-	/* Independent from the saved Flow/All Effects selector inventory.
-	   Includes every strictly joined split-owned Product pattern. */
+	/* The same admitted set, ordered by authored source index and stable ID. */
 	static bool_t Build_NextPatternInventory(
 		const VALTAN_PATTERN_TREE_VIEW& View,
 		std::vector<std::string>& OutPatternIds,

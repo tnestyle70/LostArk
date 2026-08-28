@@ -1,6 +1,12 @@
-# Valtan 파괴 벽·돌진·Next·Trash 정본 반영 결과
+# Valtan 저장 Flow·실시간 Next·재생 시간 반영 결과
 
 작성일: 2026-08-28.
+
+현재 요청의 구현·검증은 **G08~G11**에 기록한다. G00~G07은 PR #253까지의 이전 작업
+이력이며, 당시의 isolated 전용 Next, 문서만 저장하는 Flow, protocol 42 설명은 현재 계약이 아니다.
+현재 작업 브랜치는 `codex/valtan-flow-reload-next-fix`, 시작 HEAD는 main과 같았던
+`38cc82c85c3e78b900cde1ab27c92523d34b947b`이다. 작업 중 추가된 main PR #255는
+`1a9bce42ac00f75b2e1b6fa24ed0de1071d4c050`까지 동기화했다. 전체 빌드의 최종 상태는 G10을 따른다.
 
 ## G00. 현재 적용 위치와 검증 상태
 
@@ -335,3 +341,262 @@ UI PR의 RaidClear 이미지 370개와 사운드 1개는 Git에 들어 있지 �
 - `desktop-postmerge-effect-native.result.json`: 최신 fixture Debug 빌드와 D/R native 실행.
 - `desktop-postmerge-latest-save-focused.result.json`: 후속 9시 저장값 검사와 전후 hash.
 - `desktop-raid-clear-resource-presence.json`: UI 미전달 resource 목록.
+
+## G08. 저장 Flow와 실제 Product 발탄 연결
+
+기존 Boss Tool은 `ValtanBossAuditionFlows.json`을 저장했지만 Product 재생 순서는 별도
+`Valtan.gameplay.json`의 inline `scriptedSequence.patternIds`에서 읽었다. 따라서 Tool에서
+수정한 순서를 저장해도 실제 발탄의 다음 실행에는 기존 순서가 남았다. Next도 isolated audition의
+epoch가 있어야만 열려 Product 발탄이나 Ordered Flow를 보는 상태에서는 선택할 수 없었다.
+
+현재 Product의 `scriptedSequence`는 `flow.valtan.boss-tool.default`를 참조한다. 고정 위치의
+저장 Flow를 publisher와 Client Pattern Tree가 같은 규칙으로 검증·해석하며, 생성된 Product
+순서는 저장 배열과 일치한다. stable slot ID가 희소하거나 같은 pattern ID가 두 번 나와도 순서를
+바꾸거나 중복을 제거하지 않는다. 현재 22슬롯과 `nextSlotOrdinal=31`은 편집하지 않았다.
+main의 CROSS 추가도 보존해 현재 split 30 / 공용 Tool 28 / Product 54 정의다. CROSS를 사용자
+저장 Flow에 자동 삽입하지 않았고, 기존 inventory 소비자와 검사의 기대값만 현재 main에 맞췄다.
+
+저장 파일의 SHA256은
+`3a0e831a8454ef09ae05c1023b251d607cce60d0702e3cb732fb7e9b952b79d5`이다.
+기본 Flow의 raw revision을 source manifest와 immutable authoring snapshot에 포함한다.
+candidate는 자기 snapshot의 Flow만 읽으며 현재 workspace 파일로 조용히 대체하지 않는다.
+잘못된 version, 중복 slot, 없는 pattern/flow, 빈 기본 Flow, 누락 파일은 기존 상태를 보존하고 거부한다.
+구형 immutable inline sequence 입력은 계속 읽을 수 있지만 inline과 flow reference 혼합은 거부한다.
+
+`Save Flow`는 파일 저장 후 공용 `CValtanTuningCommandService`를 통해 기존 PublishV2와
+Server 2PC에 연결된다. Balance Tool의 Apply도 같은 서비스와 요청 sequence를 사용한다.
+파일의 `SAVED`와 Server의 `COMMITTED`/`ALREADY_ACTIVE`를 구분하고, publish 또는 apply 실패 시
+저장 파일과 이전 runtime을 유지한다. `Apply Saved Flow`로 저장된 revision을 다시 적용할 수 있다.
+도구 창을 닫아도 MainApp이 요청 진행·실패를 소비한다. 120초 지연은 미확정 경고로 표시하며,
+내부 Product publisher도 강제 종료하지 않아 durable commit/rollback을 끝내게 한다.
+
+실행 중 Product sequence는 패턴 사이의 대기와 마지막 idle까지 같은 catalog revision을 유지한다.
+새 encounter 또는 명시적 reset부터 최신 저장 순서를 소비한다. 실행 도중 다음 slot만 다른 revision의
+정의로 바꾸지 않는다. `VALTAN_WHIRLWIND`와 `VALTAN_SEQUENCE_WHIRLWIND`는 서로 다른
+정의로 유지했으며, 취소된 Ordered Slots의 현재/다음 표시 행은 추가하지 않았다.
+
+## G09. Next·Reload와 요청한 두 시간 조정
+
+Shared protocol은 `NETWORK_PROTOCOL_VERSION`의 현재 값이다. Product, 본인 소유 Flow, idle에서 관찰한 실제 boss occurrence를
+`QUEUE_NEXT_LIVE_PATTERN_ID`로 예약할 수 있다. 기존 isolated Next의 epoch/token 검증은 유지한다.
+다른 소유자, stale occurrence, 잘못된 ID는 거부하고 정확한 재전송만 멱등 처리한다.
+현재 패턴의 마지막 hit/world commit과 COMPLETED 뒤 다음 fixed tick에 예약 패턴을 시작한다.
+Next는 HP·위치·파괴 상태를 reset하거나 플레이어를 자동 부활시키지 않는다.
+Flow 도중 Next는 현재 패턴만 유지하고 남은 재생 순서를 예약 패턴으로 교체하며, 저장 파일은 변경하지 않는다.
+
+`Reload Flow`는 저장 파일을 다시 검증한 뒤 **화면의 첫 배열 원소 01**을 선택해 재생한다.
+문자열 `slot.000001`이 존재한다고 가정하지 않는다. 본인 실행을 교체할 때에도 전체 preflight가
+성공하기 전에 기존 실행을 지우지 않는다. Client는 제출 대기와 Server가 승인한 snapshot을 분리하고
+거절·송신 실패·지연 응답 시 기존 실행 identity를 보존한다. 완료 hold를 reset한 경우에도 정확한
+ABORTED lifecycle을 보내 Reload 이후 오래된 Next epoch가 남지 않도록 했다.
+
+| 요청 | 실제 변경 | 유지한 값 |
+|---|---|---|
+| 중앙 이동 후 6방향 피자 첫 착지 | `VALTAN_SIX_PIZZA_106.serverMotion.travelEndMs` 700 → 267 | 상승 800~1100ms, 높이 10, STEP_03 1200ms, 이후 점프와 animation clip/rate |
+| 점프 후 플레이어 추적 도끼 중간 대기 +2.5초 | `VALTAN_HIGH_JUMP/AIRBORNE.durationMs` 4000 → 6500 | wave 0/1333/2666ms, 각 도끼의 1200ms 단일 hit, TAKEOFF/LAND 이동 창 |
+
+도끼 중간 표현은 기존 `LOOP_TO_STAGE_END`이므로 presentation에 임의의 빈 clip을 추가하지 않고
+실제 Server 단계 시간을 조정했다. 기존 publisher가 owner 단계에서 파생하는 target-axe `lifeMs`도
+4000 → 6500이 된다. 추가 wave·추가 hit는 만들지 않는다. 구형 4000ms immutable candidate를
+거부하지 않도록 admission의 최소 4000ms 제약은 유지한다.
+
+저작 정본 수정 뒤 publisher로 `ValtanEncounter.json`, `ValtanPatternRotations.json`,
+`ValtanCombatObjects.json`을 갱신했다. 생성 bootstrap을 직접 수정하지 않았다.
+공유 regeneration helper도 같은 수치를 사용하도록 수정했다. 사용자 Effect 3문서와 맵 emissive,
+맵 runtime 산출물의 별도 미커밋 변경은 이 기능의 편집·커밋 범위에서 제외한다.
+
+## G10. 현재 자동 검증 증거
+
+| 검사 | 현재 관찰 결과 |
+|---|---|
+| main 동기화 전 focused Python 7개 모듈 | 210 tests, 실패 0, 기존 skip 7, 335.256초 |
+| main 동기화 후 focused Python 6개 모듈 | 151 tests, 실패 0, 기존 skip 7, 5.049초. MasterV2 59개는 정본 자동화에서 별도 실행 |
+| main 동기화 후 MasterV2 | 59 tests, 실패 0, 300.162초. 실제 publisher 호출의 timeout 강제 종료 방지 검사 포함 |
+| 실제 Client 명령 서비스 Debug harness | Next 22 + Flow 10 + 저장 적용 13, 총 45개 통과 |
+| NetworkProtocolHarness Debug | 현재 `NETWORK_PROTOCOL_VERSION` 포함 failures 0 |
+| 최신 Server Debug 계약 실행 | source/main 통합 및 fixture 수정 후 실제 `Server.exe --contract-test` exit 0, failures 0 |
+| 정본 Debug 빌드 | Engine/Shared/Server/Client 및 모든 native harness 컴파일·링크 통과 |
+| 정본 Debug 전체 회귀 | main의 신규 Effect 7파일 등록 수정 뒤 `-SkipBuild` 전체 재실행 exit 0. protocol, 서비스 45건, Server, 4인/Character Select 격리, animation, Effect, PointLight 하네스까지 완료 |
+| 정본 Release 전체 build/regression | 초기 include 순서/산출물 점유 문제 해결 뒤 현재 Desktop 소스로 최종 재실행 중. 완료 전 전체 PASS로 기록하지 않음 |
+| main 통합 후 Product ValidateV2와 Server pre-build publish | sourceManifest `fda56c3235e494732994d30b4b4e4442dc48cbcbdbce65d826c483dc46dee4df`, 54 patterns / 235 stages, 검증·publish 통과 |
+| 실제 PublishSavedFlow | candidate `1ad74e01050a662b9b28d07f3a96d4f0e44941b0f6941b51f176bca9711feb78`, HOT_RELOAD, split join 검증 통과, activeRuntimeChanged=false |
+| Effect 프로젝트 등록 | 정본 생성기로 main의 V2 JSON 7개 None 항목만 추가. files 2405 / filters 219, Check 통과 |
+| UI/시각 확인 및 실제 사용자 Server 2PC | 사용자가 직접 실행·판정해야 하며 에이전트 PASS 아님 |
+
+첫 Server 실행의 실패는 단계를 늘리기 전의 고정 `lifeMs=4000` 기대값, direct Brain fixture의
+누락 catalog generation 두 건, 완료 hold reset으로 추가된 ABORTED lifecycle 기대값 한 건이었다.
+production의 실패 검사를 완화하지 않고 실제 새 계약의 identity와 시간을 검사하도록 fixture를 고쳤다.
+수정 후 Server 전체 계약을 failures 0으로 재검증했다. 이후 Debug 정본 회귀는 신규 Effect 파일의
+project/filter 등록 누락을 검출했다. 기존 C++ 등록과 filter GUID/순서를 유지하면서 누락된
+`boss.valtan.hand_1`~`hand_6` 및 `BOSS_VALTAN.effectv2bindings.json`만 정본 생성기로 등록했다.
+이는 사용자 authored Effect 내용을 변경하지 않는다.
+
+수정 뒤 정본 Debug 회귀는 `Regression completed: Debug`와 실제 process exit 0을 확인했다.
+이 실행의 MasterV2 59개는 323.157초, 실패 0이며 나머지 Python 검사와 native/네트워크
+하네스도 모두 완료했다. Release 검증은 별도 폴더의 다른 작업과 출력물을 공유하지 않는다.
+또한 공식 스크립트 소스를 바꾸지 않고 PowerShell 기본 인자로 테스트 전용 `HarnessPort=18787`을
+전달해 콘솔 네트워크 하네스의 포트 충돌을 피한다. 제품 LAN endpoint는 변경하지 않는다.
+
+최신 candidate의 immutable `Authoring/Valtan.gameplay.json`에서 AIRBORNE 6500ms와 첫 착지 267ms를
+읽고, snapshot-local Flow의 raw bytes 및 22개 Product 순서가 현재 저장본과 같음을 확인했다.
+WHIRLWIND 두 occurrence도 보존한다. `Intermediate/ValtanTuningRuntime`은 없으며 사용자 Server의
+실제 2PC를 임의 실행하거나 활성 runtime pointer를 바꾸지 않았다.
+
+로그는 `Intermediate/ValtanFlowReloadNextFix/` 아래에 있다.
+
+- `focused-python-final.log`: 210개 focused 테스트.
+- `focused-python-post-main.log`: main 통합 후 151개 focused 테스트.
+- `debug-build-regression.log`: 첫 정본 Debug 빌드, 구형 Server fixture 4건 실패.
+- `debug-build-regression-final.log`: main 통합 후 전체 Debug 빌드와 Python 회귀 통과, Effect 등록 누락 검출.
+- `debug-regression-complete.log`: Effect 등록 수정 후 정본 Debug 전체 회귀 exit 0.
+- `post-main-publish.log`: 두 작업의 split/Product 결합이 이미 일치해 changed=0인 PublishV2 결과.
+- `server-debug-contract-first.log`: fixture 수정 전 실제 Server 계약 결과.
+- `server-debug-contract-final.log`: main 통합과 fixture 수정 뒤 Server failures 0.
+- `saved-flow-candidate-final.log`, `saved-flow-candidate-final-inspection.json`: 실제 후보 생성과 저장 순서·시간의 snapshot 검증.
+- `release-build-regression.log`, `release-build-regression-2.log`, `release-build-regression-3.log`: 최초 실패 기록.
+- `release-build-regression-final.log`, `release-build-regression-final.result.json`: 현재 Desktop 소스의 최종 Release 실행 로그와 종료 관찰 결과.
+
+## G11. 사용자 실행 경계와 남은 확인
+
+main 동기화 전에 소유 변경 60개만 safety stash
+`bcbf6aba274e4fcee9c2dc3adf19f2ae74dffe81`로 보존했다. protected 8파일은 stash에 넣지 않았고
+동기화·복원 전후 raw SHA256이 같다. 충돌은 provenance receipt 1파일뿐이었다. main의 pattern
+count 54와 이 작업의 AIRBORNE/object life 6500을 의미 단위로 합쳐, main 대비 숫자 4줄만 바뀐다.
+stash는 삭제하지 않았고 현재 index에는 미검증 변경을 올려 두지 않았다.
+
+이 PC의 LAN 설정은 `server-host`이며, endpoint는 `192.168.0.20:7777`이다.
+에이전트는 Client/UI를 실행·조작하거나 화면을 캡처하지 않았다. 콘솔 계약 하네스만 실행했다.
+사용자는 빌드 완료 뒤 `Framework.sln`의 **Server + Client** profile을 `Ctrl+F5`로 시작한다.
+Client 작업 디렉터리는 `Client/Default`다.
+
+1. Lobby → Valtan → F1 → Boss Tool → Pattern Flow에서 순서를 저장한다.
+2. 파일 `SAVED`뿐 아니라 runtime `COMMITTED` 또는 `ALREADY_ACTIVE`를 확인한다.
+3. `Reload Flow`가 화면 01에서 시작하는지 확인하고, 재진입/다음 실행의 실제 발탄 순서를 확인한다.
+4. 실제 Product/Flow 도중 Next Pattern을 예약해 현재 패턴 완료 뒤 reset 없이 연결되는지 확인한다.
+5. 추적 도끼 중간 대기 6.5초와 피자 첫 착지의 체감 속도는 사용자가 최종 판정한다.
+
+현재 자동 검증과 Git 반영을 마무리하기 전이므로 이 절은 main 병합 완료나 사용자 visual PASS를 의미하지 않는다.
+
+## G15. 고정 개수 제거와 공용 패턴 목록 최종 결과
+
+### 구현 결과
+
+Boss Tool이 받아야 하는 패턴 수를 29개나 다른 특정 숫자로 제한하던 계약을 제거했다. 현재 선택 목록의
+정본은 `Data/Valtan/Valtan.gameplay.json.patterns`와 같은 stable `patternId`의 presentation을 strict join한
+결과다. `CValtanPatternTree::Build_PlayablePatternInventory`가 이 결과를 한 번 만들고 Boss Verification의
+`Play Selected`, `Repeat`, Pattern Flow의 추가 목록, `Next Pattern...`, Effect Tool의 Valtan `All Effects`가
+같은 membership을 사용한다. Core/Animator/Derived의 개수는 화면 표시와 분류 결과일 뿐 admission 조건이 아니다.
+
+Python Product/Flow resolver도 고정 Core ID 배열과 20/26/28/29/31개 equality를 사용하지 않는다. gameplay와
+presentation에 같은 stable ID가 있고 저작 소유자가 유효하면 현재 개수와 무관하게 포함한다. promotion
+`patterns`가 0개인 유효한 manual lineage도 허용하고 derived 목록은 특정 ID 집합이나 개수로 비교하지 않는다.
+한 Flow의 용량은 문서·publisher·Product·Client packet·Server catalog가 공유하는 1~255슬롯 U8 계약이며
+256슬롯은 transactionally 거부한다. 이 값은 전체 등록 패턴 수 제한으로 사용하지 않는다.
+frozen v1 identity와 sealed source-occurrence 33/32/1 수치는 migration 증거만
+검사하며 live 목록의 상한으로 해석하지 않는다.
+
+고정 개수 제거 뒤 다른 작업의 패턴 확장까지 합쳐 현재 ValidateV2는 `managedPatterns=33`을 읽었다. 31개에서
+33개로 늘어난 데이터에 추가 count patch나 C++ allowlist 변경 없이 Client Debug/Release 빌드, 공용 inventory
+native 검사와 Product Validate가 통과했다. 이는 이후 패턴 확장도 같은 stable-ID 계약으로 합류할 수 있다는
+실제 현재 데이터 증거다.
+
+### 저장 Flow, Reload와 Next의 최종 의미
+
+저장 기본 순서의 정본은 `Data/Encounters/Valtan/ValtanBossAuditionFlows.json`의
+`flow.valtan.boss-tool.default`다. `Save Flow`는 배열 순서, 반복 pattern occurrence, sparse slot ID와
+inter-step pursuit를 그대로 저장한 뒤 기존 Product publisher와 Server revision apply 경로를 사용한다.
+적용된 기본 순서는 다음 encounter 또는 명시적 reset부터 Boss Verification이 관찰하는 실제 발탄에 사용된다.
+진행 중 sequence는 시작 때 pin한 이전 revision을 끝까지 유지한다.
+
+`Reload Flow`는 저장 문서를 다시 검증하고 slot ID 숫자를 정렬하지 않은 채 JSON 배열의 첫 원소, 즉 화면 01부터
+FLOW_START를 제출한다. `Next Pattern...`은 현재 Product/Flow/isolated pattern 또는 idle 다음에 한 패턴만 예약한다.
+현재 occurrence가 완료된 다음 fixed tick에 reset 없이 실행하며 남은 Flow는 교체하지만 저장 배열은 수정하지 않는다.
+
+현재 저장본은 26슬롯, `nextSlotOrdinal=38`, 첫 패턴 `VALTAN_WHIRLWIND`, 마지막 패턴
+`VALTAN_GHOST_FINALE`이며 SHA256은
+`0c6d6da3a16eebe2985806ac737fe498cca388a4e84ddff419e1b6d500768fcd`다. 이번 작업은 이 순서와 사용자의
+Effect/맵 저장값을 자동 보충, 재정렬 또는 되돌리지 않았다.
+
+### 최종 2중 감사에서 닫은 실패 경로
+
+| 감사 항목 | 최종 처리 |
+|---|---|
+| entry-only cinematic을 제외한 native expected count | 별도 합산을 없애고 공용 playable inventory의 실제 크기를 사용한다. |
+| Python의 live gameplay 31개 고정 검사 | gameplay/presentation stable-ID 집합의 non-empty, unique, exact equality 검사로 교체했다. |
+| graph reload가 열린 Flow 검증 전에 새 graph를 commit | staged graph로 inventory를 만든 뒤 현재 Flow를 먼저 검증하고, 성공했을 때만 graph/inventory를 함께 commit한다. 실패 시 이전 목록과 Flow를 유지한다. |
+| entry cinematic을 첫 슬롯 밖으로 이동 가능 | slot 이동을 복사본에서 수행하고 전체 Flow 검증 뒤 commit한다. 실패하면 기존 draft가 그대로다. |
+| manual promotion 0개 거부 | `patterns`는 배열이어야 한다는 형식만 선행 검사하고, 빈 집합을 포함한 실제 manual/promotion exact lineage가 최종 admission을 결정한다. |
+| 저장 Flow와 무관한 과거/IDLE tuning snapshot으로 Start 가능 | 현재 저장 revision, terminal apply 결과, candidate revision, 현재 connection/world generation과 live Server active revision이 모두 정확히 일치할 때만 Start First/Here와 Reload 재시작을 허용한다. cached 표시값만 신뢰하지 않아 `Update()` 전 revision drift도 즉시 fail-close한다. |
+| 디스크의 빈 Flow가 Reload에서 기존 유효 문서를 교체 | persisted document 검증에서 0슬롯을 거부한다. Load/Reload는 staged 검증 전에 baseline/draft/revision을 쓰지 않으며 native 하네스가 실패 뒤 기존 dirty draft와 source revision 보존을 확인한다. 편집 중 마지막 slot 제거 후 다시 추가하는 임시 draft는 유지된다. |
+| manual/derived 패턴 목록을 Python 상수로 고정 | Animation Tool과 Pattern Tree 테스트의 전체 ID/name allowlist를 제거하고 decision lineage, promotion manifest, debug source chain, gameplay/presentation stable-ID join을 동적으로 검증한다. 빈 manual promotion도 허용하며 derived는 특정 전체 목록/개수를 요구하지 않는다. |
+
+entry cinematic은 사용할 경우 배열 첫 슬롯에 정확히 한 번만 둘 수 있지만 생략해도 자동 삽입하지 않는다.
+일반 패턴의 반복 occurrence는 허용한다. graph, Flow 또는 publisher 검증 실패는 기존 유효 graph, 저장 문서와
+실행 revision을 보존한다.
+
+### 발탄 패턴 완성 작업의 확장 규칙
+
+1. 새 패턴은 gameplay와 presentation에 같은 stable `patternId`를 등록한다.
+2. 자동 선택/기믹 소유자 또는 `manualAuditions`의 `MANUAL_SERVER_AUDITION`/
+   `DERIVED_SERVER_PATTERN`으로 실행 소유권을 정확히 하나 선언한다.
+3. 기존 clip 조합도 독립 패턴이면 새 pattern/action/stage/occurrence ID를 사용한다. 단순 재생 순서 조합은
+   Pattern Flow slot으로 표현한다.
+4. 새 Server 행동 종류가 없다면 목록 개수, C++ allowlist, schema `maxItems`를 고치지 않는다. 새 행동 종류가
+   필요할 때만 typed Server 실행 계약과 해당 harness를 함께 확장한다.
+5. Boss Tool에서 Ordered Slots를 조절하고 `Save Flow` 뒤 `COMMITTED` 또는 `ALREADY ACTIVE`를 확인한다.
+   다음 실행/reset은 저장 순서를 사용하며 `Reload Flow`는 배열 01부터, `Next Pattern...`은 저장 비변경 one-shot으로 동작한다.
+6. 패턴 전체 수에는 별도 고정 상한을 두지 않는다. 한 Flow는 1~255슬롯을 허용하며 256슬롯은
+   저장·Product 투영·Client 전송·Server catalog에서 기존 유효 상태를 보존한 채 거부한다.
+
+### 최종 검증
+
+| 검사 | 결과 |
+|---|---|
+| 최종 공용 inventory/Flow/Next/Effect Python 회귀 | 현재 26-slot 저장본 기준 156 tests PASS, 기존 skip 7 |
+| Python compile 및 관련 JSON parse | PASS, 4개 스크립트 compile / 4개 JSON parse |
+| EffectRenderContractHarness Debug/Release focused 빌드 | 컴파일·링크 성공, errors 0 |
+| native `--validate-valtan-pattern-inventory` Debug/Release | `validated=true` |
+| ValtanPatternAuditionServiceHarness Debug/Release | audition 23/23, Flow 12/12, tuning command 13/13 PASS. 255 허용/256 무전송 원상 보존 포함 |
+| NetworkProtocolHarness Debug/Release | failures 0. 33/255 roundtrip, wire `0xff`, 256 writer 거부, 64 KiB frame budget 검사 포함 |
+| Project-ValtanPatternMaster ValidateV2 | PASS, managed 33 / legacy 26 / projected artifacts 9 |
+| Gameplay balance Validate | PASS, boss patterns 57 / stages 255 / Valtan audition rows 52 |
+| Client Release 전체 빌드 | 최신 `BossTool`/Flow/Tree 포함 컴파일·링크·배포 성공, errors 0 |
+| Server Release 전체 빌드 | 최신 catalog 및 255/256 계약 테스트 포함 컴파일·링크 성공, errors 0 |
+| 변경 범위 `git diff --check` | PASS |
+| MasterV2 | 72개 중 71개 정상 완료. PTY 출력이 오류 문구 중간을 줄바꿈해 문자열 비교 1개만 실패했으며 같은 test를 non-PTY로 즉시 재실행해 PASS |
+| source occurrence 동적 coverage focused | 3 PASS, `jsonschema` 미설치 1 SKIP |
+| 최신 Server Debug/Release contract | 새 255-step load와 256-step atomic reject는 두 구성 모두 PASS. 전체 suite는 `Finish the lethal floor wipe...` 시나리오 1건이 두 구성에서 동일하게 실패하여 전체 PASS로 기록하지 않음 |
+
+전체 source-occurrence suite는 현재 별도 FIST reviewed selection이 제거된 product clip occurrence
+`valtan.attack.fist-in-out.windup.clip.01`을 참조해 setUp에서 중단된다. 동적 stable-ID coverage focused 검사는
+통과했으며 이 외부 selection drift를 이번 Flow 작업에서 수정하지 않았다. 전체 Effect harness의 일반 모드는
+보호 중인 `effect.valtan.sequence.charge.effect.json`의 빈 override 때문에 별도 차단되지만, 이번 변경을 직접
+검사하는 focused native 모드는 Debug/Release 모두 통과했다.
+
+에이전트는 Client/UI를 실행하거나 시각 결과를 PASS로 판정하지 않았다. 공유 dirty worktree의 다른 작업은
+stage, commit, reset하지 않았으며 이 결과는 현재 소스와 자동 검증 상태를 기록한다.
+
+최종 감사 로그는 `Intermediate/ValtanFlowReloadNextFix/`의
+`inventory-effect-harness-debug-final-build.log`, `inventory-effect-harness-debug-final-run.log`,
+`inventory-effect-harness-release-final-retry-build.log`, `inventory-effect-harness-release-final-run.log`,
+`inventory-audition-flow-harness-release-final-build.log`, `inventory-audition-flow-harness-release-final-run.log`,
+`inventory-project-validate-v2-final-audit.log`, `inventory-gameplay-balance-validate-final-audit.log`에 남겼다.
+최종 현재 저장본 Python 156개 결과는 `slot-expansion-focused-python-current-flow-final.log`에 있다.
+
+## G16. 255-slot Debug 반영 재확인
+
+사용자가 처음 확인했을 때 실행 중이던 Debug Client는 출력 파일을 점유하고 있어 최신 링크 결과로
+교체되지 않은 상태였다. 이후 사용자가 다시 시작한 현재 `Client/Bin/Debug/Client.exe`의 파일 시각은
+2026-08-28 13:30:01이고 process 시작은 13:30:02다. 현재 실행 바이너리에서
+`Valtan Boss Flow cannot add this pattern or has reached 255 slots.` 문자열도 직접 확인했다.
+따라서 **현재 실행 중인 Debug Client에는 255-slot 확장이 반영되어 있다.** Ordered Slots는 빈 행 255개를
+미리 표시하지 않고 `Add from All Effects...`로 추가할 때마다 늘어나며, 255개에서만 추가를 거부한다.
+
+현재 Debug Server도 최신 source 이후 생성된 13:23:02 바이너리를 13:30:02에 시작했다. Product sequence,
+publisher, packet, Client document/service와 Server catalog는 모두 1~255를 공유하며 256 입력은 기존 문서,
+pending command와 active catalog를 바꾸지 않고 거부한다. 전체 등록 패턴 수에는 별도 29개 상한이 없다.
+
+13:21에 다른 발탄 패턴 작업이 저장 Flow를 26슬롯으로 확장한 사실을 마지막 검증에서 다시 관찰했다.
+이 세션은 그 파일을 되돌리지 않았고 26개 exact 순서로 focused Python 156개, ValidateV2, Gameplay Balance
+Validate와 Debug/Release inventory native를 다시 통과시켰다. Client/UI 화면의 실제 조작감과 순서 재생은
+사용자가 직접 판정하며 이 문서는 visual PASS를 대신하지 않는다.
