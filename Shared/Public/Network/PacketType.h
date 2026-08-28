@@ -5,11 +5,13 @@
 
 namespace LostArk::Shared
 {
-	/* 41 combines same-room party invite/accept and roster sync with the
+	/* 42 adds the Raid Clear screen's "돌아가기" button (C2S_RETURN_TO_BERN),
+	the reverse of C2S_CONFIRM_NPC_ENTRY's Bern-to-Valtan transfer.
+	41 combines same-room party invite/accept and roster sync with the
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 41;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 42;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -152,6 +154,14 @@ namespace LostArk::Shared
 		// automatic changeLevel triggerBox used -- no separate result message.
 		C2S_CONFIRM_NPC_ENTRY,
 
+		// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only --
+		// the reverse trip of C2S_CONFIRM_NPC_ENTRY. No target NPC to re-validate
+		// (the button has no proximity requirement), so this carries no payload
+		// beyond the request sequence. Answered by the same
+		// S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED world-transfer flow, landing the
+		// player back near Bern's own Valtan-entry guide NPC.
+		C2S_RETURN_TO_BERN,
+
 		// Append-only room-owned combat-object lifecycle.
 		S2C_COMBAT_OBJECT_SPAWNED,
 		S2C_COMBAT_OBJECT_DESPAWNED,
@@ -253,6 +263,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_USE_ITEM:
 		case PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES:
 		case PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY:
+		case PACKET_TYPE::C2S_RETURN_TO_BERN:
 		case PACKET_TYPE::C2S_PARTY_INVITE:
 		case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
 		case PACKET_TYPE::C2S_PARTY_INVITE_RESPOND:

@@ -916,6 +916,11 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_ItemCatalog.Get_Status();
 		return;
 	}
+	if (!m_ValtanClearRewards.Load())
+	{
+		m_strStatus = m_ValtanClearRewards.Get_Status();
+		return;
+	}
 	if (!m_SpawnGroupBootstrap.Load(worldId))
 	{
 		m_strStatus = m_SpawnGroupBootstrap.Get_Status();
@@ -1498,7 +1503,8 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_Register(command.pSession);
 			break;
 		case ROOM_COMMAND_TYPE::ENTER_WORLD:
-			Join(command.iSessionId, command.EnterWorld);
+			Join(command.iSessionId, command.EnterWorld,
+				command.strSpawnPlacementOverrideId, command.CarriedInventory);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -1557,6 +1563,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY:
 			Handle_ConfirmNpcEntry(
 				command.iSessionId, command.ConfirmNpcEntry);
+			break;
+		case ROOM_COMMAND_TYPE::RETURN_TO_BERN:
+			Handle_ReturnToBern(
+				command.iSessionId, command.ReturnToBern);
 			break;
 		case ROOM_COMMAND_TYPE::PARTY_INVITE:
 			Handle_PartyInvite(command.iSessionId, command.PartyInvite);
@@ -1855,7 +1865,9 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
 	const std::span<const STAGED_PLAYER_ENTRY> precedingEntries,
 	STAGED_PLAYER_ENTRY& staged,
-	LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status)
+	LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status,
+	const std::string& spawnPlacementOverrideId,
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory)
 {
 	using namespace LostArk::Shared;
 	outReason = SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED;
@@ -1882,21 +1894,35 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			"player entry room/session/identity validation failed");
 	}
 	const WORLD_BOOTSTRAP_PLACEMENT* spawn = nullptr;
-	for (const auto& candidate : m_WorldBootstrap.Get_Placements())
+	if (!spawnPlacementOverrideId.empty())
 	{
-		if (!candidate.isEnabled || WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != candidate.eKind)
-			continue;
-		const bool occupied = std::any_of(m_Players.begin(), m_Players.end(),
-			[&candidate](const auto& value)
-			{ return value.second.strSpawnPlacementId == candidate.strPlacementId; });
-		const bool reserved = std::any_of(precedingEntries.begin(), precedingEntries.end(),
-			[&candidate](const auto& value)
-			{ return value.Player.strSpawnPlacementId == candidate.strPlacementId; });
-		if (!occupied && !reserved) { spawn = &candidate; break; }
+		/* Not restricted to PLAYER_SPAWN kind or exclusivity -- an override names
+		one specific placement (e.g. a guide NPC) directly, and several returning
+		players landing at the same NPC concurrently is fine (unlike normal
+		PLAYER_SPAWN slots, which are one-player-at-a-time). */
+		spawn = Find_Placement(spawnPlacementOverrideId);
+		if (nullptr == spawn)
+			return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+				"spawn placement override id does not exist in this world's bootstrap");
 	}
-	if (nullptr == spawn)
-		return reject(SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL,
-			"target room has fewer free player spawns than the transfer batch");
+	else
+	{
+		for (const auto& candidate : m_WorldBootstrap.Get_Placements())
+		{
+			if (!candidate.isEnabled || WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != candidate.eKind)
+				continue;
+			const bool occupied = std::any_of(m_Players.begin(), m_Players.end(),
+				[&candidate](const auto& value)
+				{ return value.second.strSpawnPlacementId == candidate.strPlacementId; });
+			const bool reserved = std::any_of(precedingEntries.begin(), precedingEntries.end(),
+				[&candidate](const auto& value)
+				{ return value.Player.strSpawnPlacementId == candidate.strPlacementId; });
+			if (!occupied && !reserved) { spawn = &candidate; break; }
+		}
+		if (nullptr == spawn)
+			return reject(SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL,
+				"target room has fewer free player spawns than the transfer batch");
+	}
 	STAGED_PLAYER_ENTRY candidate{};
 	candidate.pSession = session;
 	SERVER_PLAYER& player = candidate.Player;
@@ -1930,14 +1956,24 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 		player.fPositionY = projected.y;
 		player.fPositionZ = projected.z;
 	}
-	for (const char* potionId : { "POTION_HP_SMALL", "POTION_HP_MEDIUM", "POTION_HP_LARGE" })
+	if (!carriedInventory.empty())
 	{
-		const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(potionId);
-		if (nullptr == definition) continue;
-		INVENTORY_ITEM_SNAPSHOT item{};
-		item.strItemId = potionId;
-		item.iQuantity = (std::min)(500u, definition->iMaxStack);
-		player.Inventory.push_back(std::move(item));
+		// A world transfer carrying the departing player's own live inventory
+		// (e.g. Handle_ReturnToBern) replaces the default fresh-entry grant
+		// entirely -- Valtan clear rewards must survive the trip back to Bern.
+		player.Inventory = carriedInventory;
+	}
+	else
+	{
+		for (const char* potionId : { "POTION_HP_SMALL", "POTION_HP_MEDIUM", "POTION_HP_LARGE" })
+		{
+			const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(potionId);
+			if (nullptr == definition) continue;
+			INVENTORY_ITEM_SNAPSHOT item{};
+			item.strItemId = potionId;
+			item.iQuantity = (std::min)(500u, definition->iMaxStack);
+			player.Inventory.push_back(std::move(item));
+		}
 	}
 	staged = std::move(candidate);
 	return true;
@@ -2062,7 +2098,9 @@ void LostArk::Server::CGameRoom::Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& e
 
 bool LostArk::Server::CGameRoom::Join(
 	const SESSION_ID sessionId,
-	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld)
+	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
+	const std::string& spawnPlacementOverrideId,
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory)
 {
 	using namespace LostArk::Shared;
 
@@ -2178,7 +2216,8 @@ bool LostArk::Server::CGameRoom::Join(
 	STAGED_PLAYER_ENTRY entry{};
 	SESSION_DIAGNOSTIC_REASON reason{};
 	std::string status;
-	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status))
+	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status,
+			spawnPlacementOverrideId, carriedInventory))
 	{
 		session->Request_Close(reason, WSAEINVAL, status);
 		return false;
@@ -3037,6 +3076,47 @@ void LostArk::Server::CGameRoom::Handle_ChangeCharacterClass(
 	}
 }
 
+bool LostArk::Server::CGameRoom::Grant_Item(
+	SERVER_PLAYER& player,
+	const std::string& itemId,
+	const std::uint32_t quantity)
+{
+	using namespace LostArk::Shared;
+	const SERVER_ITEM_DEFINITION* itemDefinition =
+		m_ItemCatalog.Find_Item(itemId);
+	// An unknown item ID is rejected rather than silently dropped or
+	// substituted; the inventory is only ever a replace-in-full send, so a
+	// no-op reply carries no result to give a caller.
+	if (nullptr == itemDefinition)
+		return false;
+
+	const auto existing = std::find_if(
+		player.Inventory.begin(), player.Inventory.end(),
+		[&itemId](const INVENTORY_ITEM_SNAPSHOT& item)
+		{
+			return item.strItemId == itemId;
+		});
+	if (existing == player.Inventory.end())
+	{
+		if (player.Inventory.size() >= MAX_INVENTORY_ITEMS)
+			return false;
+		INVENTORY_ITEM_SNAPSHOT item{};
+		item.strItemId = itemId;
+		item.iQuantity = (std::min)(quantity, itemDefinition->iMaxStack);
+		player.Inventory.push_back(std::move(item));
+	}
+	else
+	{
+		const std::uint64_t stacked =
+			static_cast<std::uint64_t>(existing->iQuantity) +
+			static_cast<std::uint64_t>(quantity);
+		existing->iQuantity = static_cast<std::uint32_t>(
+			(std::min)(stacked, static_cast<std::uint64_t>(
+				itemDefinition->iMaxStack)));
+	}
+	return true;
+}
+
 void LostArk::Server::CGameRoom::Handle_DebugGiveItem(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_DEBUG_GIVE_ITEM& request)
@@ -3051,38 +3131,8 @@ void LostArk::Server::CGameRoom::Handle_DebugGiveItem(
 		return;
 
 	SERVER_PLAYER& player = playerIter->second;
-	const SERVER_ITEM_DEFINITION* itemDefinition =
-		m_ItemCatalog.Find_Item(request.strItemId);
-	// An unknown item ID is rejected rather than silently dropped or
-	// substituted; the inventory is only ever a replace-in-full send, so a
-	// no-op reply carries no result to give a caller.
-	if (nullptr == itemDefinition)
+	if (!Grant_Item(player, request.strItemId, request.iQuantity))
 		return;
-
-	const auto existing = std::find_if(
-		player.Inventory.begin(), player.Inventory.end(),
-		[&request](const INVENTORY_ITEM_SNAPSHOT& item)
-		{
-			return item.strItemId == request.strItemId;
-		});
-	if (existing == player.Inventory.end())
-	{
-		INVENTORY_ITEM_SNAPSHOT item{};
-		item.strItemId = request.strItemId;
-		item.iQuantity = (std::min)(request.iQuantity, itemDefinition->iMaxStack);
-		if (player.Inventory.size() >= MAX_INVENTORY_ITEMS)
-			return;
-		player.Inventory.push_back(std::move(item));
-	}
-	else
-	{
-		const std::uint64_t stacked =
-			static_cast<std::uint64_t>(existing->iQuantity) +
-			static_cast<std::uint64_t>(request.iQuantity);
-		existing->iQuantity = static_cast<std::uint32_t>(
-			(std::min)(stacked, static_cast<std::uint64_t>(
-				itemDefinition->iMaxStack)));
-	}
 
 	if (!Send_InventorySnapshot(
 		session, request.iRequestSequence, player.Inventory))
@@ -3312,6 +3362,58 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 		if (batchMemberIds.size() > 1u)
 			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
 	}
+	m_PendingWorldTransfers.push_back(std::move(transfer));
+}
+
+void LostArk::Server::CGameRoom::Handle_ReturnToBern(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_RETURN_TO_BERN& request)
+{
+	using namespace LostArk::Shared;
+	// Same guide NPC placement Handle_ConfirmNpcEntry's own
+	// VALTAN_ENTRY_GUIDE_NPCS[0] leads out from -- either would do (both lead to
+	// the same target), this just needs to be a real BERN placement id.
+	constexpr const char* BERN_RETURN_PLACEMENT_ID = "npc.bern.beda.guide";
+
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId)
+		return;
+
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+	const SERVER_PLAYER& player = playerIter->second;
+	if (INVALID_SESSION_ID == player.iSessionId ||
+		CHARACTER_CLASS_ID::END == player.eCharacterClass ||
+		player.strNickName.empty())
+	{
+		return;
+	}
+
+	// Solo only -- unlike Handle_ConfirmNpcEntry, returning is never batched
+	// across a party. Each player presses their own button independently.
+	const bool isAlreadyStaged = std::any_of(
+		m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+		[sessionId](const SERVER_WORLD_TRANSFER_REQUEST& pending)
+		{
+			return pending.iSessionId == sessionId;
+		});
+	if (isAlreadyStaged)
+		return;
+
+	SERVER_WORLD_TRANSFER_REQUEST transfer{};
+	transfer.iSessionId = player.iSessionId;
+	transfer.eTargetWorldId = WORLD_ID::BERN;
+	transfer.eCharacterClass = player.eCharacterClass;
+	transfer.strNickName = player.strNickName;
+	transfer.iPartyRequestSequence = request.iRequestSequence;
+	transfer.strSpawnPlacementOverrideId = BERN_RETURN_PLACEMENT_ID;
+	// Carries Valtan clear rewards (and anything else still held) across the
+	// trip -- without this, Stage_PlayerEntry's default fresh-entry grant would
+	// silently reset the player back to just 3 starting potions.
+	transfer.CarriedInventory = player.Inventory;
 	m_PendingWorldTransfers.push_back(std::move(transfer));
 }
 
@@ -10767,6 +10869,36 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				entity.fPositionX,
 				entity.fPositionY + entity.fCollisionRadius,
 				entity.fPositionZ);
+		}
+	}
+
+	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		// Valtan (BOSS) never despawns on DEAD like a MONSTER does, so this
+		// latch is the only thing stopping every later tick from re-granting
+		// the same clear rewards to the room.
+		if (WORLD_BOOTSTRAP_KIND::BOSS != entity.eKind ||
+			SERVER_ENTITY_ACTION::DEAD != entity.eAction ||
+			entity.bLootGranted)
+		{
+			continue;
+		}
+		entity.bLootGranted = true;
+		for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
+		{
+			const auto playerIter = m_Players.find(playerId);
+			if (playerIter == m_Players.end())
+				continue;
+			for (const std::string& itemId : m_ValtanClearRewards.Get_ItemIds())
+				(void)Grant_Item(playerIter->second, itemId, 1u);
+			const std::shared_ptr<CClientSession> session =
+				Find_Session(sessionId);
+			if (nullptr != session &&
+				!Send_InventorySnapshot(
+					session, 0u, playerIter->second.Inventory))
+			{
+				session->Request_Close();
+			}
 		}
 	}
 

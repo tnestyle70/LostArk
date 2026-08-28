@@ -115,6 +115,12 @@ bool Client::CNetworkPlayerCommandSink::Request_ConfirmNpcEntry(
 		clientSequence, npcPlacementId);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_ReturnToBern(
+	const std::uint32_t clientSequence)
+{
+	return CNetworkManager::Get().Send_ReturnToBern(clientSequence);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_PartyInvite(
 	const std::uint32_t clientSequence,
 	const LostArk::Shared::NET_ENTITY_ID targetNetEntityId)

@@ -58,6 +58,8 @@ public:
 	bool Request_ConfirmNpcEntry(
 		std::uint32_t clientSequence,
 		const std::string& npcPlacementId) override;
+	bool Request_ReturnToBern(
+		std::uint32_t clientSequence) override;
 	bool Request_PartyInvite(
 		std::uint32_t clientSequence,
 		LostArk::Shared::NET_ENTITY_ID targetNetEntityId) override;

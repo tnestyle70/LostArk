@@ -4057,6 +4057,30 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
+	const C2S_RETURN_TO_BERN& message)
+{
+	if (0u == message.iRequestSequence)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_RETURN_TO_BERN& message)
+{
+	C2S_RETURN_TO_BERN decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence)
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
 	const C2S_PARTY_INVITE& message)
 {
 	if (0u == message.iRequestSequence ||

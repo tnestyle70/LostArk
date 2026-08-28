@@ -261,6 +261,10 @@ namespace LostArk::Server
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
 		std::uint32_t iDeadDespawnMs = 0;
+		/* Latches once this BOSS entity's Valtan clear rewards have been granted
+		to the room's players, so a boss that stays DEAD without despawning (see
+		Valtan) is never re-looted on a later tick. */
+		bool bLootGranted = false;
 		/* Multiplier on the authored push range of each player hit, from the
 		monster profile; 0 never moves. */
 		float fHitKnockbackScale = 0.f;

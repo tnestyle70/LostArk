@@ -1576,6 +1576,9 @@
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\Esther\EstherUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>

@@ -50,6 +50,7 @@
 	<ClInclude Include="..\Public\WorldDestructionBootstrap.h" />
 	<ClInclude Include="..\Public\WorldDestructionBootstrapContractTests.h" />
 	<ClInclude Include="..\Public\ItemCatalog.h" />
+	<ClInclude Include="..\Public\ValtanClearRewards.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientSession.cpp" />
@@ -80,6 +81,7 @@
 	<ClCompile Include="..\Private\WorldDestructionBootstrap.cpp" />
 	<ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp" />
 	<ClCompile Include="..\Private\ItemCatalog.cpp" />
+	<ClCompile Include="..\Private\ValtanClearRewards.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Default\Shared.vcxproj">
@@ -226,6 +228,7 @@
 	<Target Name="PublishGameplayRuntime" BeforeTargets="ClCompile">
 		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\GameplayPipeline\Publish-GameplayBalance.ps1&quot; -Mode Publish" />
 		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\GameplayPipeline\Publish-ItemCatalog.ps1&quot; -Mode Publish" />
+		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\ValtanPipeline\Publish-ValtanClearRewards.ps1&quot; -Mode Publish" />
 		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\NavigationPipeline\Publish-ServerNavigation.ps1&quot; -Mode Publish" />
 	</Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

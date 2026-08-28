@@ -507,6 +507,7 @@
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />
+    <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json" />
     <None Include="..\..\Data\UI\SkillWindow\LanceMaster.skillroster.json" />
     <None Include="..\..\Data\UI\SkillWindow\SkillWindow_Layout.json" />
     <None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json" />

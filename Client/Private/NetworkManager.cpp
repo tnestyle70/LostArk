@@ -1384,6 +1384,25 @@ bool CNetworkManager::Send_ConfirmNpcEntry(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_ReturnToBern(const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RETURN_TO_BERN message{};
+	message.iRequestSequence = requestSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RETURN_TO_BERN,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_PartyInvite(
 	const std::uint32_t requestSequence,
 	const LostArk::Shared::NET_ENTITY_ID targetNetEntityId)

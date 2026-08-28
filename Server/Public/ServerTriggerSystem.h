@@ -25,6 +25,19 @@ namespace LostArk::Server
 		   room thread stages all target admissions before any source departure. */
 		std::vector<SESSION_ID> PartyBatchSessionIds;
 		std::uint32_t iPartyRequestSequence = 0u;
+		/* Empty picks the target world's usual free PLAYER_SPAWN placement
+		(Stage_PlayerEntry's default). Non-empty names ANY placement id in the
+		target world's own bootstrap (of any kind, not just PLAYER_SPAWN) whose
+		position/yaw is used directly instead -- e.g. Valtan's own "돌아가기"
+		return trip lands the player next to Bern's Valtan-entry guide NPC
+		rather than a generic spawn point. */
+		std::string strSpawnPlacementOverrideId;
+		/* Empty means "grant the default fresh-entry loadout" (Stage_PlayerEntry's
+		3 starting potions), same as any other world entry. Non-empty replaces
+		that grant with these exact items -- Handle_ReturnToBern populates this
+		from the departing player's live Valtan inventory so clear rewards
+		survive the "돌아가기" trip back to Bern instead of being silently reset. */
+		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
 	};
 
 	class CServerTriggerSystem final
