@@ -1935,10 +1935,28 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.eCharacterClass = enterWorld.eCharacterClass;
 	player.strNickName = enterWorld.strNickName;
 	player.strSpawnPlacementId = spawn->strPlacementId;
-	player.fPositionX = spawn->fPositionX;
 	player.fPositionY = spawn->fPositionY;
-	player.fPositionZ = spawn->fPositionZ;
-	player.fYawDegrees = spawn->fYawDegrees;
+	if (!spawnPlacementOverrideId.empty())
+	{
+		/* An override names an NPC's own placement, not an authored player-standing
+		spot -- its exact point is often flush against a wall or counter (the NPC's
+		back), so landing there directly can navigation-project to the wrong side
+		of that geometry. Stand where a player who walked up to talk to it would:
+		NPC_APPROACH_OFFSET_M out along its own forward direction, facing back
+		toward it (matches this codebase's yaw convention, forward = (sin, cos),
+		e.g. MonsterBrain.cpp's own movement step). */
+		constexpr float NPC_APPROACH_OFFSET_M = 2.5f;
+		const float yawRadians = spawn->fYawDegrees * DEGREES_TO_RADIANS;
+		player.fPositionX = spawn->fPositionX + std::sin(yawRadians) * NPC_APPROACH_OFFSET_M;
+		player.fPositionZ = spawn->fPositionZ + std::cos(yawRadians) * NPC_APPROACH_OFFSET_M;
+		player.fYawDegrees = std::fmod(spawn->fYawDegrees + 180.f, 360.f);
+	}
+	else
+	{
+		player.fPositionX = spawn->fPositionX;
+		player.fPositionZ = spawn->fPositionZ;
+		player.fYawDegrees = spawn->fYawDegrees;
+	}
 	const PLAYER_RUNTIME_PROFILE* profile = m_GameplayCatalog.Find_Player(player.eCharacterClass);
 	if (nullptr == profile)
 		return reject(SESSION_DIAGNOSTIC_REASON::SERVER_PROFILE_MISSING,
@@ -2659,43 +2677,37 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		m_GameplayCatalog.Find_Player(player.eCharacterClass);
 	if (nullptr == profile)
 		return;
-	/* A fall kills the player over a hole. Reviving in place would drop them
-	again on the next tick, so a revive whose current cell is no longer walkable
-	steps out to the nearest ground of the same deck that is still standing.
-	The arena progression triggers are room-wide triggerOnce, so returning the
-	body to the entry spawn would strand it outside a fight it can never
-	re-enter, and a plain XZ projection would drop it onto a lower deck. The
-	entry spawn stays as the last resort for a body with no reachable ground on
-	its own deck. Every other death still revives exactly where it happened. */
-	if (m_ServerNavigation.Is_Loaded() &&
-		!m_ServerNavigation.Is_PointWalkableExact(
-			player.fPositionX, player.fPositionZ))
+	/* Always revives at the arena's own authored center (the Valtan boss's own
+	placement, "boss.valtan.center") instead of wherever the player died --
+	a fixed, known-safe spot regardless of how the death happened (fall,
+	pattern hit, etc.), rather than reviving in place and only recovering when
+	that exact spot turned out unwalkable. isEnabled/eKind aren't checked here
+	(unlike a player's own strSpawnPlacementId lookup) since this is one
+	specific, verified placement id, not caller-influenced data. */
+	constexpr const char* VALTAN_ARENA_CENTER_PLACEMENT_ID = "boss.valtan.center";
+	const WORLD_BOOTSTRAP_PLACEMENT* arenaCenter =
+		Find_Placement(VALTAN_ARENA_CENTER_PLACEMENT_ID);
+	if (nullptr == arenaCenter)
+		return;
+	if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
-		if (m_ServerNavigation.Project_PointOnSameLevel(
-			player.fPositionX, player.fPositionZ, projected))
+		if (!m_ServerNavigation.Project_Point(
+			arenaCenter->fPositionX, arenaCenter->fPositionZ, projected))
 		{
-			player.fPositionX = projected.x;
-			player.fPositionY = projected.y;
-			player.fPositionZ = projected.z;
+			return;
 		}
-		else
-		{
-			const WORLD_BOOTSTRAP_PLACEMENT* spawn =
-				Find_Placement(player.strSpawnPlacementId);
-			if (nullptr == spawn || !spawn->isEnabled ||
-				WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != spawn->eKind ||
-				!m_ServerNavigation.Project_Point(
-					spawn->fPositionX, spawn->fPositionZ, projected))
-			{
-				return;
-			}
-			player.fPositionX = projected.x;
-			player.fPositionY = projected.y;
-			player.fPositionZ = projected.z;
-			player.fYawDegrees = spawn->fYawDegrees;
-		}
+		player.fPositionX = projected.x;
+		player.fPositionY = projected.y;
+		player.fPositionZ = projected.z;
 	}
+	else
+	{
+		player.fPositionX = arenaCenter->fPositionX;
+		player.fPositionY = arenaCenter->fPositionY;
+		player.fPositionZ = arenaCenter->fPositionZ;
+	}
+	player.fYawDegrees = arenaCenter->fYawDegrees;
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;

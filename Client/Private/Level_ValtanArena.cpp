@@ -577,9 +577,15 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	frame's replicated player list, so Collect_PlayerViews moves here
 	instead of Render(). */
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	/* worldInteractionAllowed=false: the right-click-a-player invite context menu
+	is Bern-only by design (party formation happens before a Valtan entry, not
+	mid-fight) -- right-click-moving past a teammate during combat kept opening
+	it by accident. This only disables that trigger; an already-pending incoming
+	invite (Try_Consume_PartyInviteReceived, inside Update() itself) is unrelated
+	and still shown regardless. */
 	if (m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
-		cameraAcceptsGameplay))
+		false))
 	{
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
@@ -2895,10 +2901,14 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	if (nullptr == m_pRaidClearView)
 		return;
 
-	using LostArk::Shared::WORLD_ENTITY_ACTION;
-	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	const bool_t isBossDead = boss.isValid &&
-		WORLD_ENTITY_ACTION::DEAD == boss.eAction;
+	/* Reads the raw, un-gated death flag (CCombatHUDViewModel::Get_BossDeadRaw())
+	instead of Get_Boss().eAction -- the latter only updates when Apply_Boss's own
+	BossCombat-revision-gated validation succeeds, which can reject every
+	post-death snapshot forever if the Server's BossCombat sub-state doesn't bump
+	iStateRevision on the kill tick (see Set_BossDeadRaw's own comment). Item
+	Announce never had this problem because it reads the inventory snapshot
+	directly, with no equivalent gate -- this makes RaidClear just as robust. */
+	const bool_t isBossDead = CCombatHUDViewModel::Get().Get_BossDeadRaw();
 
 	/* Edge-trigger only -- no "boss alive again -> hide" branch, so
 	Update_DebugRaidClearKey()'s forced trigger below (with no real dead boss behind it) is
@@ -3161,11 +3171,14 @@ void CLevel_ValtanArena::Update_ItemAnnounce(f32_t fTimeDelta)
 			ConvertUtf8ToWide(pDefinition->strDisplayName, strItemName))
 		{
 			// "을 획득하였습니다" / "를 획득하였습니다" -- particle chosen by the item name's
-			// last syllable's final consonant (Has_HangulFinalConsonant above).
-			const wstring strParticlePhrase = Has_HangulFinalConsonant(strItemName.back()) ?
+			// last syllable's final consonant (Has_HangulFinalConsonant above). Kept
+			// separate from the name (not concatenated into one string) so
+			// RenderItemAnnounceText can draw the name in its own grade color and
+			// this suffix in plain white.
+			textRects.strSuffix = Has_HangulFinalConsonant(strItemName.back()) ?
 				L"\xC744 \xD68D\xB4DD\xD558\xC600\xC2B5\xB2C8\xB2E4" :  // "을 획득하였습니다"
 				L"\xB97C \xD68D\xB4DD\xD558\xC600\xC2B5\xB2C8\xB2E4";  // "를 획득하였습니다"
-			textRects.strText = strItemName + strParticlePhrase;
+			textRects.strItemName = std::move(strItemName);
 		}
 	}
 	CCombatHUDViewModel::Get().Set_ItemAnnounceTextRects(textRects);

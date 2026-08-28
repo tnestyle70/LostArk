@@ -3210,7 +3210,7 @@ void CMainApp::RenderItemAnnounceText()
 
 	const HUD_ITEMANNOUNCE_TEXT_RECTS& rects =
 		CCombatHUDViewModel::Get().Get_ItemAnnounceTextRects();
-	if (!rects.isValid || rects.strText.empty())
+	if (!rects.isValid || rects.strItemName.empty())
 		return;
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -3218,14 +3218,30 @@ void CMainApp::RenderItemAnnounceText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
+	// Scale is fit against the combined string's own measured extent, same as
+	// before the name/suffix split, so this doesn't change size/wrapping behavior.
+	const wstring strCombined = rects.strItemName + rects.strSuffix;
 	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), rects.strText.c_str());
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strCombined.c_str());
 	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (rects.fTextHeight * 0.7f / vMeasured.y) : 1.f;
 	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (rects.fTextWidth * 0.95f / vMeasured.x) : 1.f;
-	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), rects.strText.c_str(),
-		float2_t(rects.fTextX * textScaleX, (rects.fTextY + rects.fTextHeight * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.f, 0.5f), fScale * textUiScale);
+	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth) * 0.8f * textUiScale;
+
+	const float2_t vNameMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), rects.strItemName.c_str());
+	const f32_t fCenterY = (rects.fTextY + rects.fTextHeight * 0.5f) * textScaleY;
+	const f32_t fNameX = rects.fTextX * textScaleX;
+	// Item grade gold/orange -- same #FF9100-ish tone RenderItemUpgradeLevelText
+	// already uses for an equipment item's own name label.
+	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), rects.strItemName.c_str(),
+		float2_t(fNameX, fCenterY), vGoldOrange, 0.f, float2_t(0.f, 0.5f), fScale);
+	if (!rects.strSuffix.empty())
+	{
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), rects.strSuffix.c_str(),
+			float2_t(fNameX + vNameMeasured.x * fScale, fCenterY),
+			Colors::White, 0.f, float2_t(0.f, 0.5f), fScale);
+	}
 }
 
 void CMainApp::RenderChargeGauge()
