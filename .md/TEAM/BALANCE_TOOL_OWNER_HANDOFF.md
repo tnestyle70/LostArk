@@ -121,7 +121,7 @@ damage 정답을 Client notify에서 만들지 않는다.
 - `World / Legacy`: `Valtan.worldeventsets.json` membership과 `Valtan.legacy-compatibility.json` closure는
   read-only다. generated Product를 편집 대상으로 열지 않는다.
 
-`Resolved Scale` lane도 read-only다. boss row에는 `BossCatalog.json`의 `presentationScale: 10.0`을, cue row에는
+`Resolved Scale` lane도 read-only다. boss row에는 `BossCatalog.json`의 `presentationScale: 1.0`을, cue row에는
 presentation source의 `scalePolicy`와 resolved scale을 표시한다. `OWNER_RELATIVE`는 actor scale을 상속하고,
 `GAMEPLAY_FOOTPRINT`와 `ARENA_ABSOLUTE`는 actor scale을 제거한 뒤 authored `worldScale`을 사용한다. Balance Tool이
 이 lane에서 `BossCatalog.json`, `Valtan.presentation.json`, `Data/Effects/Authored`를 저장하거나 Effect element를

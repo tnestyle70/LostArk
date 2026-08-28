@@ -5,7 +5,7 @@
     {
       "archetypeId": "BOSS_VALTAN",
       "visualAssetId": "VALTAN_MN_RPBF_01",
-      "presentationScale": 10.0,
+      "presentationScale": 1.0,
       "bodyModel": "Character/Valtan/MN_RPBF_01.wmodel",
       "weaponModel": "Character/Valtan/ValtanWeapon.wmodel",
       "armorModels": [

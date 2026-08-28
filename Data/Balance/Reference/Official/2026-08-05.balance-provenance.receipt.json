@@ -191,19 +191,15 @@
       "targetDocument": "Data/Balance/BossProfiles.json",
       "targetId": "boss:BOSS_VALTAN",
       "targetField": "maximumHp",
-      "basis": "OFFICIAL_SCALED",
+      "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_NpcBalance.db",
-        "databaseSha256": "2599af945245dd9f47d1f0e17bcd0a30bbf5872893a00882e8dce25ba844c4db",
-        "table": "NpcBalance",
-        "primaryKey": 480007,
-        "secondaryKey": 0,
-        "column": "Hp_Count"
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 160,
-      "transform": "Hp_Count * projectHpPerBar[375]",
-      "resultValue": 60000
+      "sourceValue": 600000,
+      "transform": "Balance Tool authored override",
+      "resultValue": 600000,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/BossProfiles.json",

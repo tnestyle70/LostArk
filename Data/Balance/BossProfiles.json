@@ -6,7 +6,7 @@
       "archetypeId": "BOSS_VALTAN",
       "encounterId": "ENCOUNTER_VALTAN",
       "displayName": "발탄",
-      "maximumHp": 60000,
+      "maximumHp": 600000,
       "maximumHealthBars": 160,
       "attackPower": 100,
       "collisionRadius": 1.4,
