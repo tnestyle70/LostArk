@@ -465,10 +465,10 @@ namespace
 				ReadText(authored / "Valtan.patternsoundcues.json"), encounter, animation, document, status);
 		if (!Require(loaded, status.c_str()))
 			return false;
-		if (!Require(511u == document.Cues.size() &&
-			status.find("0 explicitly suppressed-animation") != std::string::npos &&
+		if (!Require(497u == document.Cues.size() &&
+			status.find("14 explicitly suppressed-animation") != std::string::npos &&
 			status.find("0 not-yet-implemented-pattern") != std::string::npos,
-			"real 511-row sound document did not admit every cue with zero NONE/unimplemented rows"))
+			"real 511-row sound document did not admit 497 active cues and isolate 14 explicit NONE rows"))
 			return false;
 		const auto committed = document;
 		const auto& valid = committed.Cues.front();
