@@ -22,6 +22,10 @@ namespace
 	bool_t g_HasCameraMatrices = false;
 	float4x4_t g_LastView = {};
 	float4x4_t g_LastProjection = {};
+	Client::MAP_CAMERA_CULL_SNAPSHOT g_LastCameraSnapshot{};
+	uint64_t g_ValidatedPlaneRevision = {};
+	bool_t g_HasValidatedPlanes = false;
+	float4_t g_ValidatedPlanes[6]{};
 
 	bool_t IsFiniteMatrix(const float4x4_t& matrix)
 	{
@@ -34,61 +38,77 @@ namespace
 		return true;
 	}
 
-	/* Frustum planes are taken from the view-projection matrix instead of from
-	   unprojected corner points. A plane built through a far corner ends with
-	   d = -dot(normal, corner) evaluated at the far distance, and with Bern's
-	   max(2000, span * 8) far plane that subtraction cancels away tens of world
-	   units in float32. Measured against exact planes at far 18837 the old
-	   left plane sat 63.5 units inside the real one, which rejected a quarter
-	   of the geometry the camera was looking straight at. The clip-space
-	   half-spaces below never form that difference, so the error stays at
-	   0.0003 units. Plane order stays right, left, top, bottom, far, near
-	   because the decision and the diagnostics index it. */
-	bool_t MakePlanes(fmatrix_t viewProjection, float4_t* planes)
+	bool_t ReportCullFailure(std::string* reason, const char* message)
 	{
-		float4x4_t matrix{};
-		XMStoreFloat4x4(&matrix, viewProjection);
-		if (!IsFiniteMatrix(matrix))
-			return false;
+		if (nullptr != reason)
+			*reason = message;
+		return false;
+	}
 
-		/* Row-vector convention: clip = world * viewProjection, so a clip
-		   component is the dot product with the matching matrix column. */
-		const float4_t columnX{ matrix._11, matrix._21, matrix._31, matrix._41 };
-		const float4_t columnY{ matrix._12, matrix._22, matrix._32, matrix._42 };
-		const float4_t columnZ{ matrix._13, matrix._23, matrix._33, matrix._43 };
-		const float4_t columnW{ matrix._14, matrix._24, matrix._34, matrix._44 };
-
-		const auto combine = [](const float4_t& left, const float4_t& right,
-			const f32_t scale) -> float4_t
+	bool_t IsInvertibleMatrix(const float4x4_t& matrix)
+	{
+		double values[4][4]{};
+		const f32_t* source = &matrix._11;
+		for (uint32_t row = 0; row < 4u; ++row)
+			for (uint32_t column = 0; column < 4u; ++column)
+				values[row][column] = source[row * 4u + column];
+		for (uint32_t column = 0; column < 4u; ++column)
 		{
-			return float4_t(
-				left.x + right.x * scale,
-				left.y + right.y * scale,
-				left.z + right.z * scale,
-				left.w + right.w * scale);
-		};
-
-		/* Inside a half-space is w + x >= 0 for left, w - x >= 0 for right and
-		   so on, with z >= 0 for near. */
-		const float4_t inward[6] = {
-			combine(columnW, columnX, -1.f),
-			combine(columnW, columnX, 1.f),
-			combine(columnW, columnY, -1.f),
-			combine(columnW, columnY, 1.f),
-			combine(columnW, columnZ, -1.f),
-			columnZ,
-		};
-
-		for (uint32_t index = 0; index < 6u; ++index)
-		{
-			/* The decision reads a positive distance as outside, so store the
-			   outward form and normalise it into world units. */
-			const vector_t plane = XMVectorNegate(XMLoadFloat4(&inward[index]));
-			const f32_t length = XMVectorGetX(XMVector3Length(plane));
-			if (!std::isfinite(length) || length <= 0.000001f)
+			uint32_t pivot = column;
+			for (uint32_t row = column + 1u; row < 4u; ++row)
+				if (std::abs(values[row][column]) > std::abs(values[pivot][column]))
+					pivot = row;
+			if (!std::isfinite(values[pivot][column]) || 0.0 == values[pivot][column])
 				return false;
-			XMStoreFloat4(&planes[index], XMVectorScale(plane, 1.f / length));
+			for (uint32_t entry = column; entry < 4u; ++entry)
+				std::swap(values[column][entry], values[pivot][entry]);
+			for (uint32_t row = column + 1u; row < 4u; ++row)
+			{
+				const double factor = values[row][column] / values[column][column];
+				for (uint32_t entry = column + 1u; entry < 4u; ++entry)
+					values[row][entry] -= factor * values[column][entry];
+			}
 		}
+		return true;
+	}
+
+	void CacheValidatedPlanes(
+		const Client::MAP_CAMERA_CULL_SNAPSHOT& snapshot)
+	{
+		g_ValidatedPlaneRevision = snapshot.revision;
+		std::memcpy(g_ValidatedPlanes, snapshot.worldPlanes,
+			sizeof(g_ValidatedPlanes));
+		g_HasValidatedPlanes = true;
+	}
+
+	bool_t ValidateNormalizedPlanes(
+		const Client::MAP_CAMERA_CULL_SNAPSHOT& snapshot,
+		std::string* reason)
+	{
+		if (g_HasValidatedPlanes &&
+			g_ValidatedPlaneRevision == snapshot.revision &&
+			0 == std::memcmp(g_ValidatedPlanes, snapshot.worldPlanes,
+				sizeof(g_ValidatedPlanes)))
+		{
+			return true;
+		}
+
+		for (const float4_t& plane : snapshot.worldPlanes)
+		{
+			const double normSquared =
+				static_cast<double>(plane.x) * plane.x +
+				static_cast<double>(plane.y) * plane.y +
+				static_cast<double>(plane.z) * plane.z;
+			if (!std::isfinite(plane.w) || !std::isfinite(normSquared) ||
+				std::abs(normSquared - 1.0) >
+					8.0 * std::numeric_limits<f32_t>::epsilon())
+			{
+				return ReportCullFailure(reason,
+					"invalid normalized frustum plane");
+			}
+		}
+
+		CacheValidatedPlanes(snapshot);
 		return true;
 	}
 
@@ -137,12 +157,6 @@ namespace
 			g_DiagnosticStream << decision.planeDistances[index];
 		}
 		g_DiagnosticStream << ']';
-
-		/* The plane distances alone cannot answer the only question that
-		   matters: was the dropped placement actually on screen? Project the
-		   bound centre with the same snapshot the decision used, and record the
-		   clip-space depth plus the screen-space radius the sphere would have
-		   spanned, so an on-screen drop is identifiable by asset. */
 		const matrix_t viewProjection =
 			XMLoadFloat4x4(&snapshot.view) *
 			XMLoadFloat4x4(&snapshot.projection);
@@ -154,12 +168,10 @@ namespace
 			const f32_t ndcX = XMVectorGetX(clip) / clipW;
 			const f32_t ndcY = XMVectorGetY(clip) / clipW;
 			const f32_t ndcZ = XMVectorGetZ(clip) / clipW;
-			const f32_t projectionScaleX = snapshot.projection._11;
-			const f32_t projectionScaleY = snapshot.projection._22;
-			const f32_t ndcRadiusX = std::abs(clipW) > 0.000001f ?
-				decision.baseRadius * projectionScaleX / std::abs(clipW) : 0.f;
-			const f32_t ndcRadiusY = std::abs(clipW) > 0.000001f ?
-				decision.baseRadius * projectionScaleY / std::abs(clipW) : 0.f;
+			const f32_t ndcRadiusX = decision.baseRadius *
+				snapshot.projection._11 / std::abs(clipW);
+			const f32_t ndcRadiusY = decision.baseRadius *
+				snapshot.projection._22 / std::abs(clipW);
 			const bool_t onScreen = clipW > 0.f &&
 				std::abs(ndcX) <= 1.f + ndcRadiusX &&
 				std::abs(ndcY) <= 1.f + ndcRadiusY &&
@@ -180,43 +192,115 @@ namespace
 	}
 }
 
-bool_t CMapAssetRenderUtils::Capture_CameraCullSnapshot(
-	MAP_CAMERA_CULL_SNAPSHOT& outSnapshot)
+bool_t CMapAssetRenderUtils::Build_CameraCullSnapshot(
+	const float4x4_t& view,
+	const float4x4_t& projection,
+	const uint64_t revision,
+	MAP_CAMERA_CULL_SNAPSHOT& outSnapshot,
+	std::string* outFailureReason)
 {
-	const float4x4_t* view =
-		CGameInstance::Get().Get_Transform(D3DTS::VIEW);
-	const float4x4_t* projection =
-		CGameInstance::Get().Get_Transform(D3DTS::PROJ);
-	if (nullptr == view || nullptr == projection ||
-		!IsFiniteMatrix(*view) || !IsFiniteMatrix(*projection))
+	if (nullptr != outFailureReason)
+		outFailureReason->clear();
+	if (0u == revision)
+		return ReportCullFailure(outFailureReason, "zero camera revision");
+	if (!IsFiniteMatrix(view) || !IsFiniteMatrix(projection))
+		return ReportCullFailure(outFailureReason, "non-finite camera matrix");
+	if (!IsInvertibleMatrix(view) || !IsInvertibleMatrix(projection))
+		return ReportCullFailure(outFailureReason, "singular camera matrix");
+
+	// Extract the shader's clip half-spaces directly. A far corner plus two
+	// nearby near corners loses their small edge in a float cross product.
+	double clip[4][4]{};
+	const f32_t* viewValues = &view._11;
+	const f32_t* projectionValues = &projection._11;
+	for (uint32_t row = 0; row < 4u; ++row)
+	{
+		for (uint32_t column = 0; column < 4u; ++column)
+		{
+			for (uint32_t inner = 0; inner < 4u; ++inner)
+			{
+				clip[row][column] +=
+					static_cast<double>(viewValues[row * 4u + inner]) *
+					projectionValues[inner * 4u + column];
+			}
+		}
+	}
+
+	MAP_CAMERA_CULL_SNAPSHOT candidate{};
+	candidate.revision = revision;
+	candidate.view = view;
+	candidate.projection = projection;
+	for (uint32_t planeIndex = 0; planeIndex < 6u; ++planeIndex)
+	{
+		double plane[4]{};
+		for (uint32_t row = 0; row < 4u; ++row)
+		{
+			// Outward normals: right, left, top, bottom, far, near.
+			switch (planeIndex)
+			{
+			case 0u: plane[row] = clip[row][0] - clip[row][3]; break;
+			case 1u: plane[row] = -clip[row][0] - clip[row][3]; break;
+			case 2u: plane[row] = clip[row][1] - clip[row][3]; break;
+			case 3u: plane[row] = -clip[row][1] - clip[row][3]; break;
+			case 4u: plane[row] = clip[row][2] - clip[row][3]; break;
+			case 5u: plane[row] = -clip[row][2]; break;
+			}
+		}
+		const double length = std::hypot(std::hypot(plane[0], plane[1]), plane[2]);
+		if (!std::isfinite(length) || 0.0 == length)
+			return ReportCullFailure(outFailureReason, "degenerate clip plane");
+		f32_t* stored = &candidate.worldPlanes[planeIndex].x;
+		for (uint32_t component = 0; component < 4u; ++component)
+		{
+			const double normalized = plane[component] / length;
+			if (!std::isfinite(normalized) ||
+				std::abs(normalized) > (std::numeric_limits<f32_t>::max)())
+			{
+				return ReportCullFailure(outFailureReason, "non-finite normalized clip plane");
+			}
+			stored[component] = static_cast<f32_t>(normalized);
+		}
+	}
+	CacheValidatedPlanes(candidate);
+	outSnapshot = candidate;
+	return true;
+}
+
+bool_t CMapAssetRenderUtils::Capture_CameraCullSnapshot(
+	MAP_CAMERA_CULL_SNAPSHOT& outSnapshot,
+	std::string* outFailureReason)
+{
+	if (nullptr != outFailureReason)
+		outFailureReason->clear();
+	const float4x4_t* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+	const float4x4_t* projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+	if (nullptr == view || nullptr == projection)
+		return ReportCullFailure(outFailureReason, "camera matrix unavailable");
+
+	const float4x4_t stagedView = *view;
+	const float4x4_t stagedProjection = *projection;
+	if (g_HasCameraMatrices &&
+		0 == std::memcmp(&g_LastView, &stagedView, sizeof(float4x4_t)) &&
+		0 == std::memcmp(&g_LastProjection, &stagedProjection, sizeof(float4x4_t)))
+	{
+		outSnapshot = g_LastCameraSnapshot;
+		return true;
+	}
+	const uint64_t nextRevision =
+		(std::numeric_limits<uint64_t>::max)() == g_CameraMatrixRevision ?
+		1u : g_CameraMatrixRevision + 1u;
+	MAP_CAMERA_CULL_SNAPSHOT candidate{};
+	if (!Build_CameraCullSnapshot(stagedView, stagedProjection, nextRevision,
+		candidate, outFailureReason))
 	{
 		return false;
 	}
-
-	if (!g_HasCameraMatrices ||
-		0 != std::memcmp(&g_LastView, view, sizeof(float4x4_t)) ||
-		0 != std::memcmp(&g_LastProjection, projection, sizeof(float4x4_t)))
-	{
-		g_CameraMatrixRevision =
-			(std::numeric_limits<uint64_t>::max)() == g_CameraMatrixRevision ?
-			1u : g_CameraMatrixRevision + 1u;
-		g_LastView = *view;
-		g_LastProjection = *projection;
-		g_HasCameraMatrices = true;
-	}
-
-	outSnapshot = {};
-	outSnapshot.revision = g_CameraMatrixRevision;
-	outSnapshot.view = *view;
-	outSnapshot.projection = *projection;
-
-	if (!MakePlanes(
-		XMLoadFloat4x4(&outSnapshot.view) *
-		XMLoadFloat4x4(&outSnapshot.projection),
-		outSnapshot.worldPlanes))
-	{
-		return false;
-	}
+	g_LastView = candidate.view;
+	g_LastProjection = candidate.projection;
+	g_CameraMatrixRevision = candidate.revision;
+	g_LastCameraSnapshot = candidate;
+	g_HasCameraMatrices = true;
+	outSnapshot = candidate;
 	return true;
 }
 
@@ -226,9 +310,9 @@ HRESULT CMapAssetRenderUtils::Bind_CameraCullSnapshot(
 {
 	if (nullptr == shader || 0u == snapshot.revision)
 		return E_INVALIDARG;
-	return FAILED(shader->Bind_Matrix("g_ViewMatrix", &snapshot.view)) ||
-		FAILED(shader->Bind_Matrix("g_ProjMatrix", &snapshot.projection)) ?
-		E_FAIL : S_OK;
+	const HRESULT viewResult = shader->Bind_Matrix("g_ViewMatrix", &snapshot.view);
+	return FAILED(viewResult) ? viewResult :
+		shader->Bind_Matrix("g_ProjMatrix", &snapshot.projection);
 }
 
 bool_t CMapAssetRenderUtils::Evaluate_FrustumVisibility(
@@ -240,64 +324,101 @@ bool_t CMapAssetRenderUtils::Evaluate_FrustumVisibility(
 	const float3_t& worldCenter,
 	const f32_t worldRadius,
 	MAP_FRUSTUM_RUNTIME_STATE& state,
-	MAP_FRUSTUM_CULL_DECISION& outDecision)
+	MAP_FRUSTUM_CULL_DECISION& outDecision,
+	std::string* outFailureReason)
 {
-	outDecision = {};
-	outDecision.baseRadius = worldRadius;
+	if (nullptr != outFailureReason)
+		outFailureReason->clear();
 	if (0u == snapshot.revision || !std::isfinite(worldCenter.x) ||
 		!std::isfinite(worldCenter.y) || !std::isfinite(worldCenter.z) ||
 		!std::isfinite(worldRadius) || worldRadius <= 0.f)
 	{
-		return false;
+		return ReportCullFailure(outFailureReason, "invalid camera revision or world sphere");
 	}
+	const f32_t policyValues[] = { policy.baseMargin,
+		policy.largeObjectRadiusThreshold, policy.largeObjectAbsoluteMargin,
+		policy.largeObjectRelativeMargin };
+	for (const f32_t value : policyValues)
+	{
+		if (!std::isfinite(value) || value < 0.f)
+			return ReportCullFailure(outFailureReason, "invalid frustum margin policy");
+	}
+	if (!ValidateNormalizedPlanes(snapshot, outFailureReason))
+		return false;
 
-	outDecision.largeGeometry = "landscape" == assetGroupId ||
+	MAP_FRUSTUM_CULL_DECISION candidate{};
+	candidate.baseRadius = worldRadius;
+	candidate.largeGeometry = "landscape" == assetGroupId ||
 		(policy.largeObjectRadiusThreshold > 0.f &&
 		 worldRadius >= policy.largeObjectRadiusThreshold);
-	f32_t margin = std::isfinite(policy.baseMargin) ?
-		(std::max)(policy.baseMargin, 0.f) : 0.f;
-	if (outDecision.largeGeometry)
+	double margin = policy.baseMargin;
+	if (candidate.largeGeometry)
 	{
-		const f32_t absoluteMargin =
-			std::isfinite(policy.largeObjectAbsoluteMargin) ?
-			(std::max)(policy.largeObjectAbsoluteMargin, 0.f) : 0.f;
-		const f32_t relativeMargin =
-			std::isfinite(policy.largeObjectRelativeMargin) ?
-			worldRadius * (std::max)(policy.largeObjectRelativeMargin, 0.f) : 0.f;
-		margin = (std::max)({ margin, absoluteMargin, relativeMargin });
+		margin = (std::max)({ margin,
+			static_cast<double>(policy.largeObjectAbsoluteMargin),
+			static_cast<double>(worldRadius) * policy.largeObjectRelativeMargin });
 	}
-	outDecision.margin = margin;
-	outDecision.effectiveRadius = worldRadius + margin;
-	outDecision.wouldBeVisible = true;
+	const double effectiveRadius = static_cast<double>(worldRadius) + margin;
+	if (!std::isfinite(effectiveRadius) ||
+		effectiveRadius > (std::numeric_limits<f32_t>::max)())
+	{
+		return ReportCullFailure(outFailureReason, "effective sphere radius overflow");
+	}
+	candidate.margin = static_cast<f32_t>(margin);
+	candidate.effectiveRadius = static_cast<f32_t>(effectiveRadius);
+	double largestSeparation = 0.0;
 	const vector_t center = XMLoadFloat3(&worldCenter);
 	for (uint32_t index = 0; index < 6u; ++index)
 	{
-		const f32_t distance = XMVectorGetX(XMPlaneDotCoord(
-			XMLoadFloat4(&snapshot.worldPlanes[index]), center));
-		if (!std::isfinite(distance))
-			return false;
-		outDecision.planeDistances[index] = distance;
-		if (distance >= outDecision.effectiveRadius)
-			outDecision.wouldBeVisible = false;
+		const float4_t& plane = snapshot.worldPlanes[index];
+		const double x = static_cast<double>(plane.x) * worldCenter.x;
+		const double y = static_cast<double>(plane.y) * worldCenter.y;
+		const double z = static_cast<double>(plane.z) * worldCenter.z;
+		const f32_t planeDistance = XMVectorGetX(XMPlaneDotCoord(
+			XMLoadFloat4(&plane), center));
+		const double distance = planeDistance;
+		const double magnitude = std::abs(x) + std::abs(y) + std::abs(z) +
+			std::abs(static_cast<double>(plane.w)) + effectiveRadius;
+		const double tolerance = 8.0 * std::numeric_limits<f32_t>::epsilon() *
+			(std::max)(1.0, magnitude);
+		if (!std::isfinite(distance) ||
+			std::abs(distance) > (std::numeric_limits<f32_t>::max)())
+		{
+			return ReportCullFailure(outFailureReason, "frustum distance overflow");
+		}
+		candidate.planeDistances[index] = static_cast<f32_t>(distance);
+		candidate.planeTolerances[index] = static_cast<f32_t>(tolerance);
+		const double separation = distance - effectiveRadius - tolerance;
+		if (separation > 0.0)
+		{
+			candidate.wouldBeVisible = false;
+			if (separation > largestSeparation)
+			{
+				largestSeparation = separation;
+				candidate.rejectingPlane = static_cast<int32_t>(index);
+			}
+		}
 	}
 
+	MAP_FRUSTUM_RUNTIME_STATE nextState = state;
+	nextState.initialized = true;
+	nextState.lastFrustumVisible = candidate.wouldBeVisible;
+	if (candidate.wouldBeVisible)
+		nextState.rejectGraceFrames = policy.rejectHysteresisFrames;
+	candidate.shouldRender = policy.bypass || candidate.wouldBeVisible;
+	if (!candidate.shouldRender && nextState.rejectGraceFrames > 0u)
+	{
+		candidate.shouldRender = true;
+		--nextState.rejectGraceFrames;
+	}
 	if (state.initialized && state.lastFrustumVisible &&
-		!outDecision.wouldBeVisible && policy.diagnostics)
+		!candidate.wouldBeVisible && policy.diagnostics)
 	{
 		RecordRejectedTransition(snapshot, assetId, assetGroupId,
-			placementId, worldCenter, outDecision, policy.bypass);
+			placementId, worldCenter, candidate, policy.bypass);
 	}
-	state.initialized = true;
-	state.lastFrustumVisible = outDecision.wouldBeVisible;
-	if (outDecision.wouldBeVisible)
-		state.rejectGraceFrames = policy.rejectHysteresisFrames;
-
-	outDecision.shouldRender = policy.bypass || outDecision.wouldBeVisible;
-	if (!outDecision.shouldRender && state.rejectGraceFrames > 0u)
-	{
-		outDecision.shouldRender = true;
-		--state.rejectGraceFrames;
-	}
+	state = nextState;
+	outDecision = candidate;
 	return true;
 }
 

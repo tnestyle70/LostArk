@@ -1159,7 +1159,10 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             | EXPECTED_UNCHANGED_SEQUENCE_IDS
         )
         self.assertEqual(20, len(manual_rows))
-        self.assertEqual([], derived_rows)
+        self.assertEqual(
+            ["VALTAN_ENTRANCE_CINEMATIC"],
+            [row["patternId"] for row in derived_rows],
+        )
         self.assertTrue(
             {
                 "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",

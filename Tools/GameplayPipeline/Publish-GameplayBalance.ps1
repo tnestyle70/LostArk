@@ -2276,7 +2276,7 @@ foreach ($pattern in $liveEncounterPatterns) {
 	}
 }
 if ($liveEncounterPatterns.Count -ne 34 -or
-	$authoredStageCount -ne 132 -or
+	$authoredStageCount -ne 130 -or
 	$authoredStageActionCount -ne 25 -or
 	$authoredStageBranchCount -ne 24 -or
 	$authoredStageMotionCount -ne 2) {

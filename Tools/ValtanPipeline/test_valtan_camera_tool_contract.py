@@ -20,7 +20,6 @@ camera_document = read("Client/Private/ValtanCinematicCameraDocument.cpp")
 camera_controller = read("Client/Private/ValtanCinematicCameraController.cpp")
 camera_controller_header = read("Client/Public/ValtanCinematicCameraController.h")
 valtan_level = read("Client/Private/Level_ValtanArena.cpp")
-valtan_runtime = read("Client/Private/Valtan.cpp")
 main_app = read("Client/Private/MainApp.cpp")
 boss_tool = read("Client/Private/BossTool.cpp")
 camera_runtime = read("Engine/Private/Camera.cpp")
@@ -76,6 +75,43 @@ for required in (
     "MAX_LOOK_AT_DUMMY_RADIUS",
     "Dummy Radius was rejected because it is not finite.",
     "std::isfinite(m_fLookAtDummyRadius)",
+    "Camera Cut List",
+    "New Cut From Current Camera",
+    "Delete Selected Cut",
+    "Release Camera / Keep Time",
+    "Build_CutRanges",
+    "HARD_CUT_BOUNDARY_MS",
+    "MAX_CAMERA_KEYFRAME_COUNT",
+    "cue.Keyframes.size() - removedCount < 2u",
+    "sceneId == reservedSceneId",
+    "Hard cut boundary (%u ms). Select a later scene to edit movement speed.",
+    "Camera Position List / Saved Scenes",
+    "New Cue ID (blank = automatic)",
+    "New Cue From Current Camera",
+    "Delete Selected Cue",
+    "No unused pattern stage",
+    "Create_CueFromCurrentCamera",
+    "Delete_SelectedCue",
+    "Ensure_NewCueBinding",
+    "Is_CueBindingUsed",
+    "Make_UniqueCueId",
+    "camera.cue.auto.",
+    "At least one ordinary camera cue must remain.",
+    "Release Camera / Keep Time, position the free camera, then create the cue.",
+    "Easy Camera Path Capture",
+    "Point Interval (ms)",
+    "Capture First Point / Start New Path",
+    "Capture Next Point",
+    "Play Captured Path",
+    "Each capture advances time automatically.",
+    "First capture replaces this cue's current scene list.",
+    "Capture_EasyPathPoint",
+    "Play_EasyCapturedPath",
+    "Reset_EasyPathCapture",
+    "VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM",
+    "Capture at least two different points before Play Captured Path.",
+    "Next point rejected: the 64-scene limit was reached.",
+    "the path would exceed this cue's bound stage duration.",
 ):
     require(required in camera_tool, f"Camera Tool contract missing: {required}")
 
@@ -98,6 +134,18 @@ for required in (
     "CAMERA_TOOL_ACTOR_PREVIEW_CONTEXT",
     "Publish_ActorPreviewContext",
     "Clear_ActorPreviewContext",
+    "Render_CutEditor",
+    "Insert_CapturedCut",
+    "Delete_SelectedCut",
+    "Create_CueFromCurrentCamera",
+    "Delete_SelectedCue",
+    "Render_EasyPathCapture",
+    "Capture_EasyPathPoint",
+    "Play_EasyCapturedPath",
+    "Reset_EasyPathCapture",
+    "m_iEasyPointIntervalMs",
+    "m_iEasyCapturedPointCount",
+    "m_bEasyPathRecording",
 ):
     require(required in camera_header + camera_tool,
             f"typed Camera Tool actor-preview seam missing: {required}")
@@ -252,6 +300,33 @@ require(set(data) == {
 require(isinstance(data["deathCue"], dict) and data["deathCue"],
         "existing death cue must be preserved")
 
+death_cue = data["deathCue"]
+death_keyframes = death_cue.get("keyframes", [])
+death_keyframe_times = [row.get("timeMs") for row in death_keyframes]
+require(
+    death_cue.get("cueId") == "camera.valtan.clear.wide" and
+    death_cue.get("durationMs") == 13967 and
+    death_cue.get("interpolation") == "LINEAR" and
+    death_cue.get("easing") == "LINEAR" and
+    death_keyframe_times == [
+        0, 1200, 2400, 3266, 3267, 4700, 6100,
+        7266, 7267, 8800, 10300, 11800, 13967,
+    ],
+    "Valtan clear camera no longer matches the authored 13.967s cut sequence",
+)
+for before_index, after_index in ((3, 4), (7, 8)):
+    before_eye = death_keyframes[before_index]["eye"]
+    after_eye = death_keyframes[after_index]["eye"]
+    cut_distance_squared = sum(
+        (after_eye[axis] - before_eye[axis]) ** 2 for axis in range(3)
+    )
+    require(
+        death_keyframes[after_index]["timeMs"] -
+        death_keyframes[before_index]["timeMs"] == 1 and
+        cut_distance_squared > 100.0,
+        "Valtan clear camera hard-cut boundary was smoothed or collapsed",
+    )
+
 all_cues = list(data["cues"]) + [data["deathCue"]]
 scene_ids = []
 for cue in all_cues:
@@ -269,6 +344,7 @@ cues = {row["cueId"]: row for row in data["cues"]}
 entrance_establish = cues.get("camera.valtan.entrance.establish")
 entrance_reveal = cues.get("camera.valtan.entrance.arena-reveal")
 entrance_handoff = cues.get("camera.valtan.entrance.hero-handoff")
+entrance_idle_orbit = cues.get("camera.valtan.entrance-idle.orbit")
 require(
     entrance_establish is not None and
     entrance_establish.get("patternId") == "VALTAN_ENTRANCE_CINEMATIC" and
@@ -300,6 +376,31 @@ require(
     entrance_handoff.get("easing") == "LINEAR",
     "Valtan entrance hero handoff camera tuple/timing is invalid",
 )
+require(
+    entrance_idle_orbit is not None and
+    entrance_idle_orbit.get("patternId") ==
+    "VALTAN_ENTRANCE_CINEMATIC_IDLE" and
+    entrance_idle_orbit.get("stageId") == "HOLD" and
+    entrance_idle_orbit.get("trackingMode") == "BOSS_FACING" and
+    entrance_idle_orbit.get("durationMs") == 12000 and
+    entrance_idle_orbit.get("transitionInMs") == 300 and
+    entrance_idle_orbit.get("transitionOutMs") == 500 and
+    entrance_idle_orbit.get("interpolation") == "CATMULL_ROM" and
+    entrance_idle_orbit.get("easing") == "LINEAR" and
+    [row["timeMs"] for row in entrance_idle_orbit["keyframes"]] ==
+    [0, 1500, 3000, 4500, 6000, 7500, 9000, 10500, 12000],
+    "second Valtan entrance Idle/orbit camera is not the exact 9-waypoint cue",
+)
+idle_orbit_center_x = entrance_idle_orbit["trackingOrigin"][0]
+idle_orbit_center_z = entrance_idle_orbit["trackingOrigin"][2]
+require(
+    all(
+        (row["eye"][0] - idle_orbit_center_x) ** 2 +
+        (row["eye"][2] - idle_orbit_center_z) ** 2 <= 12.0 ** 2
+        for row in entrance_idle_orbit["keyframes"]
+    ),
+    "second Valtan entrance camera leaves the arena-safe 12 m orbit",
+)
 wide_reveal = cues["camera.valtan.arena-break-109.wide-reveal"]
 require(wide_reveal.get("trackingMode") == "BOSS_FACING" and
         wide_reveal.get("transitionInMs") == 250,
@@ -309,18 +410,21 @@ require(recovery.get("trackingMode") == "PLAYER_BOSS_FRAME" and
         recovery.get("transitionInMs") == 400 and
         recovery.get("transitionOutMs") == 400,
         "109 recovery is not a bounded player/boss-frame transition")
-require(not any(
-    row.get("patternId") == "VALTAN_SIX_PIZZA_106" or
-    row["cueId"].startswith("camera.valtan.six-pizza-106.")
-    for row in all_cues
-), "six-pizza must not own a cinematic camera cue")
+pizza = cues.get("camera.valtan.six-pizza-106.landing")
+require(pizza is not None and pizza.get("patternId") == "VALTAN_SIX_PIZZA_106" and
+        pizza.get("stageId") == "STEP_03" and
+        pizza.get("trackingMode") == "PLAYER_BOSS_FRAME" and
+        pizza.get("durationMs") == 1200 and
+        "transitionInMs" not in pizza and
+        "transitionOutMs" not in pizza,
+        "six-pizza STEP_03 landing camera cue tuple/frame is invalid")
 
 presentation = json.loads(read("Data/Valtan/Valtan.presentation.json"))
 gameplay = json.loads(read("Data/Valtan/Valtan.gameplay.json"))
 require(
     gameplay["decisionModel"]["scriptedSequence"]["patternIds"][0] ==
-    "VALTAN_ENTRANCE_CINEMATIC",
-    "Valtan entrance cinematic is not the first Server-authored pattern",
+    "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+    "Valtan idle-orbit entrance cinematic is not the first Server-authored pattern",
 )
 entrance_gameplay = next(
     row for row in gameplay["patterns"]
@@ -356,71 +460,36 @@ require(
     entrance_gameplay["stages"][-1]["durationMs"],
     "Valtan entrance camera invocation and final handoff wall do not close exactly",
 )
-
-raid_bgm_begin = valtan_runtime.index("void CValtan::Update_RaidBgm")
-raid_bgm_end = valtan_runtime.index(
-    "bool_t CValtan::Apply_NetworkState", raid_bgm_begin
+idle_entrance_gameplay = next(
+    row for row in gameplay["patterns"]
+    if row["patternId"] == "VALTAN_ENTRANCE_CINEMATIC_IDLE"
 )
-raid_bgm_body = valtan_runtime[raid_bgm_begin:raid_bgm_end]
-require(
-    'constexpr const char_t* VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID' in
-    valtan_runtime and
-    '"VALTAN_ENTRANCE_CINEMATIC";' in valtan_runtime and
-    'constexpr const char_t* VALTAN_ENTRANCE_PATTERN_ID' in valtan_runtime and
-    '"VALTAN_ENTRANCE_WHIRLWIND";' in valtan_runtime,
-    "Valtan BGM must distinguish the camera-only entrance from the whirlwind entrance",
+idle_entrance_presentation = next(
+    row for row in presentation["patterns"]
+    if row["patternId"] == "VALTAN_ENTRANCE_CINEMATIC_IDLE"
 )
-
-cinematic_check = "if (isCinematicEntrancePattern)"
-entrance_check = "if (isEntrancePattern)"
-late_join_check = "if (RAID_BGM_STATE::NONE == m_eRaidBgmState"
+idle_hold = idle_entrance_presentation["stages"][0]
 require(
-    cinematic_check in raid_bgm_body and
-    entrance_check in raid_bgm_body and
-    late_join_check in raid_bgm_body,
-    "Valtan BGM must retain cinematic, entrance, and late-join branches",
-)
-
-cinematic_begin = raid_bgm_body.index(cinematic_check)
-entrance_begin = raid_bgm_body.index(entrance_check, cinematic_begin)
-late_join_begin = raid_bgm_body.index(late_join_check, entrance_begin)
-require(
-    cinematic_begin < entrance_begin < late_join_begin,
-    "The camera-only entrance must return before whirlwind and late-join handling",
-)
-
-cinematic_branch = raid_bgm_body[cinematic_begin:entrance_begin]
-require(
-    "return;" in cinematic_branch and
-    "Transition_RaidBgm" not in cinematic_branch and
-    "m_hasObservedEntrancePattern" not in cinematic_branch,
-    "VALTAN_ENTRANCE_CINEMATIC must preserve Level-owned M04 without entrance state",
-)
-
-entrance_branch = raid_bgm_body[entrance_begin:late_join_begin]
-require(
-    "m_hasObservedEntrancePattern = true;" in entrance_branch and
-    "Transition_RaidBgm(RAID_BGM_STATE::M05_INTRO);" in entrance_branch and
-    "return;" in entrance_branch,
-    "Only VALTAN_ENTRANCE_WHIRLWIND may mark the entrance and start M05",
-)
-
-post_late_join_check = "if (RAID_BGM_STATE::M05_INTRO == m_eRaidBgmState"
-post_late_join_begin = raid_bgm_body.index(post_late_join_check, late_join_begin)
-late_join_branch = raid_bgm_body[late_join_begin:post_late_join_begin]
-require(
-    "WORLD_ENTITY_ACTION::IDLE != action" in late_join_branch and
-    "m_hasObservedEntrancePattern = false;" in late_join_branch and
-    "Transition_RaidBgm(RAID_BGM_STATE::M06_PHASE_ONE);" in late_join_branch,
-    "A non-idle first normal snapshot must keep late-join semantics and enter M06",
-)
-
-post_entrance_branch = raid_bgm_body[post_late_join_begin:]
-require(
-    "m_hasObservedEntrancePattern" in post_entrance_branch and
-    "Transition_RaidBgm(RAID_BGM_STATE::M06_PHASE_ONE);" in
-    post_entrance_branch,
-    "The first normal snapshot after M05 must advance the sequence to M06",
+    idle_entrance_gameplay["compatibilitySelectionWeight"] == 1 and
+    idle_entrance_gameplay["invulnerableWhileRunning"] is True and
+    idle_entrance_gameplay["stages"][0]["durationMs"] == 12500 and
+    idle_entrance_gameplay["stages"][0]["hit"]["shape"]["kind"] == "NONE" and
+    all(
+        row["patternId"] != "VALTAN_ENTRANCE_CINEMATIC_IDLE"
+        for row in gameplay["decisionModel"]["manualAuditions"]
+    ) and
+    any(
+        row["patternId"] == "VALTAN_ENTRANCE_CINEMATIC" and
+        row["admissionState"] == "DERIVED_SERVER_PATTERN"
+        for row in gameplay["decisionModel"]["manualAuditions"]
+    ) and
+    idle_hold["animation"]["occurrences"][0]["clip"] ==
+    "mesh_idle_battle_1" and
+    idle_hold["animation"]["occurrences"][0]["repeatUntilStageEnd"] is True and
+    idle_hold["cameraInvocations"][0]["cameraCueId"] ==
+    "camera.valtan.entrance-idle.orbit" and
+    idle_hold["cameraInvocations"][0]["durationMs"] == 12000,
+    "second Valtan entrance is not the automatic Idle/Hold camera pattern",
 )
 six_pizza = next(row for row in presentation["patterns"]
                  if row["patternId"] == "VALTAN_SIX_PIZZA_106")
@@ -429,9 +498,14 @@ landing = next(row for row in six_pizza["stages"]
 require(landing["actionId"] ==
         "valtan.sequence.center-six-pizza-charge.step-03",
         "six-pizza landing action tuple drifted")
-require(all(stage["cameraInvocations"] == []
-            for stage in six_pizza["stages"]),
-        "every six-pizza stage must have no camera invocation")
+require(landing["cameraInvocations"] == [{
+    "cameraInvocationId": "camera.valtan.six-pizza-106.landing.invocation",
+    "cameraCueId": "camera.valtan.six-pizza-106.landing",
+    "trigger": "ENTER",
+    "startOffsetMs": 0,
+    "durationPolicy": "EXPLICIT",
+    "durationMs": 1200,
+}], "six-pizza landing presentation invocation is not exact")
 
 overlay = json.loads(read(
     "Tools/LevelPlacementExtractor/heartrb_valtan_core_overlay.json"))

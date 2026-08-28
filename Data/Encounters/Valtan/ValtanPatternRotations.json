@@ -154,7 +154,7 @@
     "mode": "ORDERED_ONCE_THEN_IDLE",
     "interStepPursuitMs": 1000,
     "patternIds": [
-      "VALTAN_ENTRANCE_CINEMATIC",
+      "VALTAN_ENTRANCE_CINEMATIC_IDLE",
       "VALTAN_WHIRLWIND",
       "VALTAN_FOUR_SLASH",
       "VALTAN_FIST_IN_OUT",

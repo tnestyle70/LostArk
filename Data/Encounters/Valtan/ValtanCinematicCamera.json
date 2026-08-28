@@ -585,13 +585,96 @@
                                            "fovYDegrees":  42
                                        }
                                    ]
+                 },
+                 {
+                     "cueId":  "camera.valtan.entrance-idle.orbit",
+                     "patternId":  "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+                     "stageId":  "HOLD",
+                     "trackingMode":  "BOSS_FACING",
+                     "trackingOrigin":  [
+                                             156.03,
+                                             22.99751,
+                                             -122.06
+                                         ],
+                     "durationMs":  12000,
+                     "transitionInMs":  300,
+                     "transitionOutMs":  500,
+                     "interpolation":  "CATMULL_ROM",
+                     "easing":  "LINEAR",
+                     "shakeAmplitude":  0,
+                     "shakeDurationMs":  0,
+                     "keyframes":  [
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.01",
+                                           "timeMs":  0,
+                                           "eye":  [ 148.03, 29.0, -115.06 ],
+                                           "lookAt":  [ 156.03, 26.2, -122.06 ],
+                                           "fovYDegrees":  58
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.02",
+                                           "timeMs":  1500,
+                                           "eye":  [ 153.03, 28.5, -112.06 ],
+                                           "lookAt":  [ 156.03, 26.2, -122.06 ],
+                                           "fovYDegrees":  56
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.03",
+                                           "timeMs":  3000,
+                                           "eye":  [ 160.03, 28.0, -113.06 ],
+                                           "lookAt":  [ 156.03, 26.2, -122.06 ],
+                                           "fovYDegrees":  54
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.04",
+                                           "timeMs":  4500,
+                                           "eye":  [ 165.03, 28.0, -118.06 ],
+                                           "lookAt":  [ 156.03, 26.2, -122.06 ],
+                                           "fovYDegrees":  52
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.05",
+                                           "timeMs":  6000,
+                                           "eye":  [ 166.03, 27.5, -125.06 ],
+                                           "lookAt":  [ 156.03, 26.2, -122.06 ],
+                                           "fovYDegrees":  50
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.06",
+                                           "timeMs":  7500,
+                                           "eye":  [ 161.03, 27.5, -131.06 ],
+                                           "lookAt":  [ 156.03, 26.2, -122.06 ],
+                                           "fovYDegrees":  48
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.07",
+                                           "timeMs":  9000,
+                                           "eye":  [ 153.03, 27.5, -132.06 ],
+                                           "lookAt":  [ 156.03, 26.1, -122.06 ],
+                                           "fovYDegrees":  46
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.08",
+                                           "timeMs":  10500,
+                                           "eye":  [ 147.03, 27.0, -126.06 ],
+                                           "lookAt":  [ 156.03, 26.1, -122.06 ],
+                                           "fovYDegrees":  43
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.entrance-idle.orbit.scene.09",
+                                           "timeMs":  12000,
+                                           "eye":  [ 150.03, 26.5, -119.06 ],
+                                           "lookAt":  [ 156.03, 26.0, -122.06 ],
+                                           "fovYDegrees":  40
+                                       }
+                                   ]
                  }
              ],
     "deathCue":  {
                      "cueId":  "camera.valtan.clear.wide",
-                     "durationMs":  2090,
+                     "durationMs":  13967,
                      "interpolation":  "LINEAR",
-                     "easing":  "SMOOTHSTEP",
+                     "easing":  "LINEAR",
                      "shakeAmplitude":  0,
                      "shakeDurationMs":  0,
                      "keyframes":  [
@@ -599,43 +682,193 @@
                                            "sceneId":  "camera.valtan.clear.wide.scene.01",
                                            "timeMs":  0,
                                            "eye":  [
-                                                       134.03,
-                                                       29.5,
-                                                       -102.06
+                                                       148.03,
+                                                       26.4,
+                                                       -112.56
                                                    ],
                                            "lookAt":  [
                                                           156.03,
-                                                          24,
+                                                          27.2,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  38
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.02",
+                                           "timeMs":  1200,
+                                           "eye":  [
+                                                       149.03,
+                                                       26.1,
+                                                       -112.36
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          27,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  40
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.03",
+                                           "timeMs":  2400,
+                                           "eye":  [
+                                                       150.03,
+                                                       25.9,
+                                                       -112.26
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          26.8,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  42
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.04",
+                                           "timeMs":  3266,
+                                           "eye":  [
+                                                       151.03,
+                                                       25.7,
+                                                       -112.16
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          26.6,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  44
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.05",
+                                           "timeMs":  3267,
+                                           "eye":  [
+                                                       156.03,
+                                                       48,
+                                                       -88.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          23.8,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  64
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.06",
+                                           "timeMs":  4700,
+                                           "eye":  [
+                                                       154.53,
+                                                       46.5,
+                                                       -90.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          23.8,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  62
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.07",
+                                           "timeMs":  6100,
+                                           "eye":  [
+                                                       153.03,
+                                                       44.5,
+                                                       -92.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          23.7,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  59
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.08",
+                                           "timeMs":  7266,
+                                           "eye":  [
+                                                       151.53,
+                                                       42.5,
+                                                       -94.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          23.6,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  56
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.09",
+                                           "timeMs":  7267,
+                                           "eye":  [
+                                                       143.03,
+                                                       28.5,
+                                                       -105.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          25.8,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  47
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.10",
+                                           "timeMs":  8800,
+                                           "eye":  [
+                                                       141.53,
+                                                       29,
+                                                       -106.56
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          25.2,
+                                                          -122.06
+                                                      ],
+                                           "fovYDegrees":  49
+                                       },
+                                       {
+                                           "sceneId":  "camera.valtan.clear.wide.scene.11",
+                                           "timeMs":  10300,
+                                           "eye":  [
+                                                       140.03,
+                                                       29.6,
+                                                       -108.06
+                                                   ],
+                                           "lookAt":  [
+                                                          156.03,
+                                                          24.5,
                                                           -122.06
                                                       ],
                                            "fovYDegrees":  52
                                        },
                                        {
-                                           "sceneId":  "camera.valtan.clear.wide.scene.02",
-                                           "timeMs":  1090,
+                                           "sceneId":  "camera.valtan.clear.wide.scene.12",
+                                           "timeMs":  11800,
                                            "eye":  [
-                                                       142.03,
-                                                       34,
-                                                       -107.06
+                                                       138.53,
+                                                       30.2,
+                                                       -109.56
                                                    ],
                                            "lookAt":  [
                                                           156.03,
-                                                          24,
+                                                          23.8,
                                                           -122.06
                                                       ],
                                            "fovYDegrees":  55
                                        },
                                        {
-                                           "sceneId":  "camera.valtan.clear.wide.scene.03",
-                                           "timeMs":  2090,
+                                           "sceneId":  "camera.valtan.clear.wide.scene.13",
+                                           "timeMs":  13967,
                                            "eye":  [
-                                                       156.03,
-                                                       53,
-                                                       -96.06
+                                                       137.03,
+                                                       31,
+                                                       -111.06
                                                    ],
                                            "lookAt":  [
                                                           156.03,
-                                                          22.99751,
+                                                          23.4,
                                                           -122.06
                                                       ],
                                            "fovYDegrees":  58

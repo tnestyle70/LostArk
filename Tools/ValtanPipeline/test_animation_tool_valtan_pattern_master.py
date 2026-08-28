@@ -115,6 +115,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
         manual_ids = [
             row["patternId"]
             for row in self.gameplay["decisionModel"]["manualAuditions"]
+            if row["admissionState"] == "MANUAL_SERVER_AUDITION"
         ]
         expected_manifest_ids = (
             set(EXPECTED_PROMOTED_KOREAN_NAMES)

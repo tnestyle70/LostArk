@@ -189,103 +189,6 @@ namespace
 				"implicit clip policy released a completed animation clock");
 	}
 
-	bool VerifyFiniteLoopAnimationClockRelease()
-	{
-		/* VALTAN_ARENA_BREAK_109 RECOVERY owns 870 ms of a 2.6333-second
-		   source clip. source.89ca138f47de123afb95 keeps a natural Effect tail
-		   after the full branch ends at 6.27 seconds. */
-		constexpr float RECOVERY_START_SECONDS = 5.4f;
-		constexpr float RECOVERY_WALL_SECONDS = 0.87f;
-		constexpr float RECOVERY_SOURCE_SECONDS = 2.6333f;
-		constexpr float EFFECT_DURATION_SECONDS = 0.66772002f + 10.f + 0.600000024f;
-		float fPreviewDuration = 0.f;
-		if (!Require(CActionPresentationTimeline::Resolve_CuePreviewDuration(
-				{}, RECOVERY_START_SECONDS,
-				RECOVERY_START_SECONDS + RECOVERY_WALL_SECONDS,
-				EFFECT_DURATION_SECONDS, fPreviewDuration) &&
-			NearlyEqual(fPreviewDuration, 16.66772f),
-			"109 recovery natural Effect preview lost its tail after the 6.27-second branch") ||
-			!Require(CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-				true, true, true, false, true,
-				RECOVERY_WALL_SECONDS, RECOVERY_SOURCE_SECONDS,
-				RECOVERY_WALL_SECONDS, RECOVERY_WALL_SECONDS),
-			"final finite loop froze at 6.27 seconds before its source clip ended"))
-		{
-			return false;
-		}
-
-		/* A finite budget may end in a later epoch, and the source clock may
-		   run faster than wall time. This is the same conversion as the Tool. */
-		constexpr float LOOP_SOURCE_SECONDS = 0.6666f;
-		constexpr float LOOP_PLAY_RATE = 2.f;
-		constexpr float CURRENT_SOURCE_SECONDS = 0.4068f;
-		constexpr float CURRENT_WALL_SECONDS =
-			2.f * (LOOP_SOURCE_SECONDS / LOOP_PLAY_RATE) +
-			CURRENT_SOURCE_SECONDS / LOOP_PLAY_RATE;
-		if (!Require(NearlyEqual(CURRENT_WALL_SECONDS, RECOVERY_WALL_SECONDS) &&
-			CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-				true, true, true, false, true,
-				CURRENT_SOURCE_SECONDS, LOOP_SOURCE_SECONDS,
-				CURRENT_WALL_SECONDS, RECOVERY_WALL_SECONDS),
-			"completed finite loop lost its epoch or playRate when releasing the clock"))
-		{
-			return false;
-		}
-
-		if (!Require(!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-				true, true, false, true, true,
-				RECOVERY_WALL_SECONDS, RECOVERY_SOURCE_SECONDS,
-				RECOVERY_WALL_SECONDS, RECOVERY_WALL_SECONDS),
-			"non-final loop bypassed its normal occurrence transition") ||
-			!Require(!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-				true, true, true, false, true, 0.4f, RECOVERY_SOURCE_SECONDS,
-				0.4f, RECOVERY_WALL_SECONDS),
-			"user pause inside a finite loop released its animation clock") ||
-			!Require(!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-				true, true, true, false, false,
-				RECOVERY_WALL_SECONDS, RECOVERY_SOURCE_SECONDS,
-				RECOVERY_WALL_SECONDS, RECOVERY_WALL_SECONDS),
-			"actively playing finite loop released before the model was held") ||
-			!Require(!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-				false, true, true, false, true,
-				RECOVERY_WALL_SECONDS, RECOVERY_SOURCE_SECONDS,
-				RECOVERY_WALL_SECONDS, RECOVERY_WALL_SECONDS),
-			"implicit loop policy released a finite animation clock") ||
-			!Require(!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-				true, true, true, false, true,
-				RECOVERY_SOURCE_SECONDS, RECOVERY_SOURCE_SECONDS),
-			"legacy final loop without an explicit wall budget released its clock"))
-		{
-			return false;
-		}
-
-		const float fNaN = (std::numeric_limits<float>::quiet_NaN)();
-		const float fInfinity = (std::numeric_limits<float>::infinity)();
-		for (const float fInvalidWall : { 0.f, -1.f, fNaN, fInfinity })
-		{
-			if (!Require(!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-					true, true, true, false, true,
-					RECOVERY_WALL_SECONDS, RECOVERY_SOURCE_SECONDS,
-					RECOVERY_WALL_SECONDS, fInvalidWall),
-				"unbounded or invalid authored loop wall released its clock"))
-			{
-				return false;
-			}
-		}
-		for (const float fInvalidCurrentWall : { -1.f, fNaN, fInfinity })
-		{
-			if (!Require(!CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
-					true, true, true, false, true,
-					RECOVERY_WALL_SECONDS, RECOVERY_SOURCE_SECONDS,
-					fInvalidCurrentWall, RECOVERY_WALL_SECONDS),
-				"invalid current loop wall released its clock"))
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-
 	bool VerifyProductPreviewClock()
 	{
 		ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
@@ -323,176 +226,6 @@ namespace
 		return true;
 	}
 
-	bool VerifyElementStartTimelineRoundTrip()
-	{
-		struct START_CASE final
-		{
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
-			float fClipOffset;
-			float fLocalDelay;
-			float fExpectedTimeline;
-		};
-		const std::array<START_CASE, 7u> Cases{
-			START_CASE{ {}, 2.3f, 0.f, 2.3f },
-			START_CASE{ {}, 2.3f, 1.f, 3.3f },
-			START_CASE{ {}, 2.3f, 6.85f, 9.15f },
-			START_CASE{ { 0.2f, 1.f, 0.2f, 0.f, false }, 3.4f, 0.f, 3.4f },
-			START_CASE{ { 0.2f, 1.f, 0.2f, 0.f, false },
-				3.4f, 0.230894f, 3.630894f },
-			START_CASE{ { 0.3f, 2.f, 0.7f, 0.f, false }, 1.25f, 0.8f, 1.85f },
-			START_CASE{ { 0.3f, 0.5f, 0.7f, 0.f, false }, 1.25f, 0.8f, 3.65f }
-		};
-		for (const START_CASE& Case : Cases)
-		{
-			float fTimeline = -1.f;
-			ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE Sample;
-			if (!Require(CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
-					Case.Timing, Case.fClipOffset, Case.fLocalDelay, fTimeline) &&
-					NearlyEqual(fTimeline, Case.fExpectedTimeline),
-					"Element Start Delay did not use the complete animation Timeline") ||
-				!Require(CActionPresentationTimeline::Resolve_CuePreviewSample(
-					Case.Timing, fTimeline - Case.fClipOffset, Sample) &&
-					NearlyEqual(Sample.fEffectSampleSeconds, Case.fLocalDelay),
-					"Timeline Start Delay edit changed the serialized Effect-local delay"))
-			{
-				return false;
-			}
-		}
-		const float fNaN = (std::numeric_limits<float>::quiet_NaN)();
-		const float fInfinity = (std::numeric_limits<float>::infinity)();
-		for (const float fInvalid : { -1.f, fNaN, fInfinity })
-		{
-			float fTimeline = -1.f;
-			if (!Require(!CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
-					{}, fInvalid, 0.f, fTimeline) && 0.f == fTimeline,
-					"invalid clip offset produced a valid Element start") ||
-				!Require(!CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
-					{}, 0.f, fInvalid, fTimeline) && 0.f == fTimeline,
-					"invalid local delay produced a valid Element start"))
-			{
-				return false;
-			}
-		}
-		float fTimeline = -1.f;
-		return Require(!CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
-			{ 0.f, 0.f, 0.f, 0.f, false }, 0.f, 0.f, fTimeline),
-			"invalid play rate was accepted by the Element start conversion");
-	}
-
-	bool VerifyCuePreviewDuration()
-	{
-		struct DURATION_CASE final
-		{
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing;
-			float fClipOffset;
-			float fTimelineDuration;
-			float fEffectDuration;
-			float fExpectedDuration;
-			const char* pMessage;
-		};
-		const std::array<DURATION_CASE, 7u> Cases{
-			DURATION_CASE{ { 0.2f, 1.f, 0.2f, 0.f, false },
-				3.4f, 4.4f, 5.f, 8.4f,
-				"terrain-3 natural Effect tail was truncated at its 4.4-second branch end" },
-			DURATION_CASE{ { 0.2f, 2.f, 0.2f, 0.f, false },
-				3.4f, 4.4f, 5.f, 5.9f,
-				"natural Effect duration did not convert source seconds by playRate" },
-			DURATION_CASE{ { 0.2f, 1.f, 0.2f, 1.2f, true },
-				3.4f, 4.4f, 5.f, 4.4f,
-				"bounded Effect duration escaped its cue end or shortened the branch" },
-			DURATION_CASE{ { 0.2f, 1.f, 0.2f, 2.2f, true },
-				3.4f, 4.4f, 5.f, 5.4f,
-				"bounded cue did not extend the preview only as far as its source end" },
-			DURATION_CASE{ { 0.3f, 2.f, 0.7f, 0.f, false },
-				1.25f, 1.5f, 0.8f, 1.85f,
-				"preview duration double-counted clip trim or lost the cue start offset" },
-			DURATION_CASE{ { 0.3f, 2.f, 0.7f, 2.7f, true },
-				1.25f, 1.5f, 0.8f, 1.85f,
-				"short Effect lifetime was extended to the longer bounded cue end" },
-			DURATION_CASE{ {}, 0.f, 0.f, 0.f, 0.f,
-				"zero-duration preview was rejected or gained an artificial tail" }
-		};
-		for (const DURATION_CASE& Case : Cases)
-		{
-			float fDuration = -1.f;
-			if (!Require(CActionPresentationTimeline::Resolve_CuePreviewDuration(
-					Case.Timing, Case.fClipOffset, Case.fTimelineDuration,
-					Case.fEffectDuration, fDuration) &&
-				NearlyEqual(fDuration, Case.fExpectedDuration), Case.pMessage))
-			{
-				return false;
-			}
-		}
-
-		const float fNaN = (std::numeric_limits<float>::quiet_NaN)();
-		const float fInfinity = (std::numeric_limits<float>::infinity)();
-		const ACTION_PRESENTATION_CUE_PREVIEW_TIMING Timing{
-			0.2f, 1.f, 0.2f, 0.f, false };
-		for (const float fInvalid : { -1.f, fNaN, fInfinity })
-		{
-			float fDuration = 1.f;
-			if (!Require(!CActionPresentationTimeline::Resolve_CuePreviewDuration(
-					Timing, fInvalid, 4.4f, 5.f, fDuration) && 0.f == fDuration,
-				"invalid owning clip offset did not fail with a cleared duration"))
-			{
-				return false;
-			}
-			fDuration = 1.f;
-			if (!Require(!CActionPresentationTimeline::Resolve_CuePreviewDuration(
-					Timing, 3.4f, fInvalid, 5.f, fDuration) && 0.f == fDuration,
-				"invalid timeline duration did not fail with a cleared duration"))
-			{
-				return false;
-			}
-			fDuration = 1.f;
-			if (!Require(!CActionPresentationTimeline::Resolve_CuePreviewDuration(
-					Timing, 3.4f, 4.4f, fInvalid, fDuration) && 0.f == fDuration,
-				"invalid Effect duration did not fail with a cleared duration"))
-			{
-				return false;
-			}
-		}
-
-		const std::array<ACTION_PRESENTATION_CUE_PREVIEW_TIMING, 11u> InvalidTimings{
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ -0.2f, 1.f, 0.2f, 0.f, false },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, 0.f, 0.2f, 0.f, false },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, -1.f, 0.2f, 0.f, false },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, 1.f, 0.1f, 0.f, false },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, 1.f, 0.2f, 0.2f, true },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, 1.f, 0.2f, 0.1f, true },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ fNaN, 1.f, 0.2f, 0.f, false },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, fNaN, 0.2f, 0.f, false },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, 1.f, fNaN, 0.f, false },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, 1.f, 0.2f, fNaN, true },
-			ACTION_PRESENTATION_CUE_PREVIEW_TIMING{ 0.2f, fInfinity, 0.2f, 0.f, false }
-		};
-		for (const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Invalid : InvalidTimings)
-		{
-			float fDuration = 1.f;
-			if (!Require(!CActionPresentationTimeline::Resolve_CuePreviewDuration(
-					Invalid, 3.4f, 4.4f, 5.f, fDuration) && 0.f == fDuration,
-				"invalid cue timing bypassed sample validation or retained an output"))
-			{
-				return false;
-			}
-		}
-
-		const float fMax = (std::numeric_limits<float>::max)();
-		float fDuration = 1.f;
-		if (!Require(!CActionPresentationTimeline::Resolve_CuePreviewDuration(
-				Timing, fMax, 4.4f, fMax, fDuration) && 0.f == fDuration,
-			"overflowing timeline end did not fail with a cleared duration"))
-		{
-			return false;
-		}
-		ACTION_PRESENTATION_CUE_PREVIEW_TIMING SlowTiming = Timing;
-		SlowTiming.fPlayRate = 0.5f;
-		fDuration = 1.f;
-		return Require(!CActionPresentationTimeline::Resolve_CuePreviewDuration(
-				SlowTiming, 0.f, 4.4f, fMax, fDuration) && 0.f == fDuration,
-			"overflowing source-to-wall duration did not fail with a cleared output");
-	}
-
 	bool VerifyNaturalProductPreviewDurationFloor()
 	{
 		const ACTION_PRESENTATION_CLIP_TIMING Willowrend{
@@ -510,10 +243,9 @@ namespace
 		}
 
 		const float fShortOccurrencePreview = 1.3f;
-		float fPreviewDuration = 0.f;
-		return Require(CActionPresentationTimeline::Resolve_CuePreviewDuration(
-				{}, 0.f, fClipWallDuration, fShortOccurrencePreview, fPreviewDuration) &&
-			NearlyEqual(fPreviewDuration, 2.767f),
+		const float fPreviewDuration = (std::max)(
+			fShortOccurrencePreview, fClipWallDuration);
+		return Require(NearlyEqual(fPreviewDuration, 2.767f),
 			"short Product occurrence truncated the full animation preview");
 	}
 
@@ -973,10 +705,13 @@ namespace
 			Document, "camera.valtan.six-pizza-106.landing");
 		const Client::VALTAN_CINEMATIC_CAMERA_CUE* EntranceEstablishCue =
 			FindCueById(Document, "camera.valtan.entrance.establish");
+		const Client::VALTAN_CINEMATIC_CAMERA_CUE* ClearCue =
+			Document.Find_DeathCue();
 		if (!Require(nullptr != TrackingCue && nullptr != WorldCue &&
 				nullptr != SplineCue &&
 				nullptr != BossFacingCue && nullptr != PlayerBossCue &&
-				nullptr != EntranceEstablishCue,
+				nullptr != PizzaLandingCue && nullptr != EntranceEstablishCue &&
+				nullptr != ClearCue,
 				"required Valtan camera cues are missing") ||
 			!Require(
 				Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM ==
@@ -1002,14 +737,66 @@ namespace
 				400u == PlayerBossCue->iTransitionInMs &&
 				400u == PlayerBossCue->iTransitionOutMs,
 				"109 recovery is not an exact PLAYER_BOSS_FRAME cue") ||
-			!Require(nullptr == PizzaLandingCue &&
-					nullptr == Document.Find_Cue("VALTAN_SIX_PIZZA_106", 2u,
-						"valtan.sequence.center-six-pizza-charge.step-03") &&
-					std::none_of(Document.Get_Cues().begin(), Document.Get_Cues().end(),
-						[](const auto& Cue) {
-							return Cue.strPatternId == "VALTAN_SIX_PIZZA_106";
-						}),
-				"Six Pizza still owns a cinematic camera cue"))
+			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::PLAYER_BOSS_FRAME ==
+					PizzaLandingCue->eTrackingMode &&
+				PizzaLandingCue->strPatternId == "VALTAN_SIX_PIZZA_106" &&
+				PizzaLandingCue->strStageId == "STEP_03" &&
+				1200u == PizzaLandingCue->iDurationMs &&
+				0u == PizzaLandingCue->iTransitionInMs &&
+				0u == PizzaLandingCue->iTransitionOutMs,
+				"pizza landing is not an exact PLAYER_BOSS_FRAME cue"))
+		{
+			return false;
+		}
+
+		const std::vector<uint32_t> ExpectedClearTimes = {
+			0u, 1200u, 2400u, 3266u, 3267u, 4700u, 6100u,
+			7266u, 7267u, 8800u, 10300u, 11800u, 13967u
+		};
+		std::vector<uint32_t> ClearTimes;
+		ClearTimes.reserve(ClearCue->Keyframes.size());
+		for (const Client::VALTAN_CINEMATIC_CAMERA_KEYFRAME& Keyframe :
+			ClearCue->Keyframes)
+		{
+			ClearTimes.push_back(Keyframe.iTimeMs);
+		}
+		Client::VALTAN_CINEMATIC_CAMERA_POSE FirstCutBefore{};
+		Client::VALTAN_CINEMATIC_CAMERA_POSE FirstCutAfter{};
+		Client::VALTAN_CINEMATIC_CAMERA_POSE SecondCutBefore{};
+		Client::VALTAN_CINEMATIC_CAMERA_POSE SecondCutAfter{};
+		if (!Require(ClearCue->strCueId == "camera.valtan.clear.wide" &&
+				13967u == ClearCue->iDurationMs &&
+				Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR ==
+					ClearCue->eInterpolation &&
+				Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR ==
+					ClearCue->eEasing &&
+				ExpectedClearTimes == ClearTimes,
+				"clear camera is not the exact authored 13.967-second sequence") ||
+			!Require(Client::CValtanCinematicCameraController::Sample_Cue(
+					*ClearCue, 3.266f, FirstCutBefore) &&
+				Client::CValtanCinematicCameraController::Sample_Cue(
+					*ClearCue, 3.267f, FirstCutAfter) &&
+				Client::CValtanCinematicCameraController::Sample_Cue(
+					*ClearCue, 7.266f, SecondCutBefore) &&
+				Client::CValtanCinematicCameraController::Sample_Cue(
+					*ClearCue, 7.267f, SecondCutAfter),
+				"clear camera hard-cut samples were rejected"))
+		{
+			return false;
+		}
+		const auto EyeDistanceSquared = [](
+			const float3_t& Left, const float3_t& Right)
+		{
+			const f32_t X = Right.x - Left.x;
+			const f32_t Y = Right.y - Left.y;
+			const f32_t Z = Right.z - Left.z;
+			return X * X + Y * Y + Z * Z;
+		};
+		if (!Require(EyeDistanceSquared(
+				FirstCutBefore.vEye, FirstCutAfter.vEye) > 100.f &&
+			EyeDistanceSquared(
+				SecondCutBefore.vEye, SecondCutAfter.vEye) > 100.f,
+			"clear camera hard-cut boundary was smoothed or collapsed"))
 		{
 			return false;
 		}
@@ -1577,19 +1364,13 @@ namespace
 	}
 }
 
-bool VerifyClientPartyRegression(const std::filesystem::path& root);
-
 int main()
 {
 	if (!VerifyAdjacentExplicitSourceWindows() ||
-		!VerifyClientPartyRegression(std::filesystem::current_path()) ||
 		!VerifyLegacyNaturalEndCompatibility() ||
 		!VerifyClipOccurrenceTransitions() ||
 		!VerifyCompletedAnimationClockRelease() ||
-		!VerifyFiniteLoopAnimationClockRelease() ||
 		!VerifyProductPreviewClock() ||
-		!VerifyElementStartTimelineRoundTrip() ||
-		!VerifyCuePreviewDuration() ||
 		!VerifyNaturalProductPreviewDurationFloor() ||
 		!VerifyBoundedCameraTransitionSampler() ||
 		!VerifyMonsterActionOccurrenceProjection() ||

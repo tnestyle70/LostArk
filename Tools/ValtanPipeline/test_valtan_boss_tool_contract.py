@@ -291,9 +291,9 @@ class ValtanBossToolContractTests(unittest.TestCase):
             for row in self.gameplay["decisionModel"]["manualAuditions"]
         ]
         visible_ids = EXPECTED_CORE_PATTERN_IDS + manual_ids
-        self.assertEqual(20, len(manual_ids))
-        self.assertEqual(28, len(visible_ids))
-        self.assertEqual(28, len(set(visible_ids)))
+        self.assertEqual(21, len(manual_ids))
+        self.assertEqual(29, len(visible_ids))
+        self.assertEqual(29, len(set(visible_ids)))
         for excluded in (
             "VALTAN_SWING",
             "VALTAN_FIST_IN_OUT",
