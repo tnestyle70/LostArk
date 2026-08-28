@@ -1,4 +1,5 @@
 #include "ActionPresentationTimeline.h"
+#include "CameraShakeService.h"
 #include "EncounterPatternReference.h"
 #include "MonsterPresentationContract.h"
 #include "ValtanCinematicCameraController.h"
@@ -39,6 +40,128 @@ namespace
 		std::cerr << "ActionPresentationTimelineHarness: "
 			<< pMessage << '\n';
 		return false;
+	}
+
+	bool VerifyCameraShakeSpec()
+	{
+		using Client::CAMERA_SHAKE_SAMPLE;
+		using Client::CAMERA_SHAKE_SPEC;
+		using Client::CCameraShakeService;
+
+		CAMERA_SHAKE_SPEC Spec;
+		std::string Status;
+		if (!Require(CCameraShakeService::Parse_PayloadSpec(
+				"dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=8,70;fov=-20,1",
+				Spec, Status),
+			"authored SHAKE payload did not parse") ||
+			!Require(NearlyEqual(Spec.fDurationSeconds, 0.5f) &&
+				NearlyEqual(Spec.fBlendInSeconds, 0.f) &&
+				NearlyEqual(Spec.fBlendOutSeconds, 0.2f) &&
+				NearlyEqual(Spec.Forward.fAmplitude, 5.f) &&
+				NearlyEqual(Spec.Forward.fFrequency, 60.f) &&
+				NearlyEqual(Spec.Up.fAmplitude, 8.f) &&
+				NearlyEqual(Spec.Up.fFrequency, 70.f) &&
+				NearlyEqual(Spec.Fov.fAmplitude, -20.f) &&
+				NearlyEqual(Spec.Fov.fFrequency, 1.f),
+			"SHAKE payload fields changed"))
+		{
+			return false;
+		}
+
+		const CAMERA_SHAKE_SPEC Untouched = Spec;
+		const char* const InvalidPayloads[] = {
+			"",
+			"dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=8,70",
+			"dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=8,70;fov=-20,1;fov=0,0",
+			"dur=0;in=0;out=0.2;x=5,60;y=5,60;z=8,70;fov=-20,1",
+			"dur=0.5;in=0;out=0.2;x=5;y=5,60;z=8,70;fov=-20,1",
+			"dur=0.5;in=0;out=0.2;x=5,-60;y=5,60;z=8,70;fov=-20,1",
+			"dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=8,70;fov=-20,1;rot=1,1",
+			"dur=abc;in=0;out=0.2;x=5,60;y=5,60;z=8,70;fov=-20,1",
+		};
+		for (const char* pPayload : InvalidPayloads)
+		{
+			CAMERA_SHAKE_SPEC Parsed = Untouched;
+			if (!Require(!CCameraShakeService::Parse_PayloadSpec(
+					pPayload, Parsed, Status),
+				"invalid SHAKE payload was accepted") ||
+				!Require(NearlyEqual(Parsed.fDurationSeconds,
+					Untouched.fDurationSeconds) &&
+					NearlyEqual(Parsed.Fov.fAmplitude,
+						Untouched.Fov.fAmplitude),
+				"failed SHAKE parse modified the output spec"))
+			{
+				return false;
+			}
+		}
+
+		CAMERA_SHAKE_SAMPLE Sample;
+		const float fQuarterForward = 3.14159265f / (2.f * 60.f);
+		if (!Require(CCameraShakeService::Evaluate(Spec, 0.f, Sample) &&
+				NearlyEqual(Sample.fForward, 0.f) &&
+				NearlyEqual(Sample.fFovDeltaDegrees, 0.f),
+			"shake at t=0 is not at zero phase") ||
+			!Require(CCameraShakeService::Evaluate(
+				Spec, fQuarterForward, Sample) &&
+				std::fabs(Sample.fForward - 5.f) < 0.001f &&
+				std::fabs(Sample.fRight - 5.f) < 0.001f,
+			"forward/right quarter-period amplitude changed") ||
+			!Require(CCameraShakeService::Evaluate(Spec, 0.4f, Sample) &&
+				std::fabs(Sample.fForward -
+					5.f * std::sin(60.f * 0.4f) * 0.5f) < 0.001f &&
+				std::fabs(Sample.fFovDeltaDegrees -
+					-20.f * std::sin(0.4f) * 0.5f) < 0.001f,
+			"blend-out envelope at half fade changed") ||
+			!Require(!CCameraShakeService::Evaluate(Spec, 0.5f, Sample) &&
+				NearlyEqual(Sample.fForward, 0.f),
+			"expired shake still produced an offset") ||
+			!Require(!CCameraShakeService::Evaluate(Spec, -0.1f, Sample),
+			"negative elapsed time was evaluated"))
+		{
+			return false;
+		}
+
+		CAMERA_SHAKE_SPEC Overlapping;
+		if (!Require(CCameraShakeService::Parse_PayloadSpec(
+				"dur=0.3;in=0.3;out=0.3;x=0,0;y=0,0;z=0,0;fov=10,0.5",
+				Overlapping, Status),
+			"overlapping blend payload did not parse") ||
+			!Require(CCameraShakeService::Evaluate(
+				Overlapping, 0.15f, Sample) &&
+				std::fabs(Sample.fFovDeltaDegrees -
+					10.f * std::sin(0.5f * 0.15f) * 0.5f * 0.5f) < 0.001f,
+			"in+out>dur envelope product changed"))
+		{
+			return false;
+		}
+
+		CCameraShakeService::Clear();
+		CAMERA_SHAKE_SAMPLE Summed;
+		if (!Require(!CCameraShakeService::Sample(0.016f, Summed),
+			"empty shake service reported activity"))
+		{
+			return false;
+		}
+		CCameraShakeService::Trigger(Spec, 0.f);
+		CCameraShakeService::Trigger(Spec, fQuarterForward);
+		CCameraShakeService::Trigger(Spec, 0.5f);
+		if (!Require(CCameraShakeService::Sample(0.f, Summed) &&
+				std::fabs(Summed.fForward - 5.f) < 0.001f,
+			"two active shakes did not sum (and the expired one was queued)") ||
+			!Require(!CCameraShakeService::Sample(0.5f, Summed) &&
+				NearlyEqual(Summed.fForward, 0.f),
+			"advancing past the duration did not retire every shake"))
+		{
+			return false;
+		}
+		CCameraShakeService::Trigger(Spec, 0.f);
+		CCameraShakeService::Clear();
+		if (!Require(!CCameraShakeService::Sample(0.f, Summed),
+			"Clear left an active shake"))
+		{
+			return false;
+		}
+		return true;
 	}
 
 	bool VerifyAdjacentExplicitSourceWindows()
@@ -1582,6 +1705,7 @@ bool VerifyClientPartyRegression(const std::filesystem::path& root);
 int main()
 {
 	if (!VerifyAdjacentExplicitSourceWindows() ||
+		!VerifyCameraShakeSpec() ||
 		!VerifyClientPartyRegression(std::filesystem::current_path()) ||
 		!VerifyLegacyNaturalEndCompatibility() ||
 		!VerifyClipOccurrenceTransitions() ||

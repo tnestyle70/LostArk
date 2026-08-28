@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
 	<ClInclude Include="..\Public\ActionPresentationTimeline.h" />
+	<ClInclude Include="..\Public\CameraShakeService.h" />
 	<ClInclude Include="..\Public\ValtanCinematicCameraController.h" />
 	<ClInclude Include="..\Public\ValtanCinematicCameraDocument.h" />
 	<ClInclude Include="..\Public\WorldDestructionProjectionDocument.h" />
@@ -34,6 +35,7 @@
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternAuthoringEffectDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
+    <ClInclude Include="..\Public\ValtanPatternShakeCueDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
@@ -187,6 +189,7 @@
   </ItemGroup>
   <ItemGroup>
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
+	<ClCompile Include="..\Private\CameraShakeService.cpp" />
 	<ClCompile Include="..\Private\ValtanCinematicCameraController.cpp" />
 	<ClCompile Include="..\Private\ValtanCinematicCameraDocument.cpp" />
 	<ClCompile Include="..\Private\WorldDestructionProjectionDocument.cpp" />
@@ -201,6 +204,7 @@
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternAuthoringEffectDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
+    <ClCompile Include="..\Private\ValtanPatternShakeCueDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />

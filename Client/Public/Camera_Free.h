@@ -68,6 +68,8 @@ private:
 	void Update_Shortcuts();
 	void Update_FollowCamera(f32_t fTimeDelta);
 	void Update_FreeCamera(f32_t fTimeDelta);
+	void Remove_AppliedCameraShake();
+	void Apply_CameraShake(f32_t fTimeDelta);
 
 private:
 	f32_t				m_fMouseSensor = 0.1f;
@@ -82,6 +84,8 @@ private:
 	float3_t			m_vCurrentLookAt = {};
 	f32_t				m_fFollowResponse = 18.f;
 	bool_t				m_allowCapturedKeyboardInput = false;
+	float3_t			m_vAppliedShakeOffset = {};
+	f32_t				m_fBaseFovy = 60.f;
 
 public:
 	static unique_ptr<CCamera_Free> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
