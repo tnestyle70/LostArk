@@ -222,6 +222,9 @@
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ValtanPatternShakeCueDocument.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\BalanceTool.cpp">
       <Filter>03. Tools\03. UI</Filter>
     </ClCompile>
@@ -254,6 +257,9 @@
     </ClCompile>
     <ClCompile Include="..\private\Camera_Free.cpp">
       <Filter>02.GameObjects\06. Camera\Free</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CameraShakeService.cpp">
+      <Filter>02.GameObjects\06. Camera</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\MapTool.cpp">
       <Filter>03. Tools\00. Map</Filter>
@@ -670,6 +676,9 @@
     <ClInclude Include="..\public\Camera_Free.h">
       <Filter>02.GameObjects\06. Camera\Free</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\CameraShakeService.h">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\MapTool.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
@@ -794,6 +803,9 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ValtanPatternShakeCueDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BalanceTool.h">

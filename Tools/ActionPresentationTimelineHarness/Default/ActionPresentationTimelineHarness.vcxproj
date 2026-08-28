@@ -91,6 +91,7 @@
     <ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternSoundCueDocument.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternShakeCueDocument.cpp" />
     <ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp">
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -108,6 +109,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp">
       <Link>Client\ActionPresentationTimeline.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\CameraShakeService.cpp">
+      <Link>Client\CameraShakeService.cpp</Link>
     </ClCompile>
     <ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
       <Link>Client\DataJson.cpp</Link>

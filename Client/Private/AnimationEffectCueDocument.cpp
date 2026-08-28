@@ -774,6 +774,45 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
             Staged.Sounds.push_back(std::move(Sound));
             continue;
         }
+        if ("SHAKE" == Tokens[1])
+        {
+            /* Presentation only, same leniency as SOUND for clips outside this
+            model and for legacy rows without a spec. A present spec must parse:
+            it is extractor output, so corruption fails the document like HIT. */
+            if (!Is_AvailableClip(Tokens[0]))
+                continue;
+            bool ShakeFieldsValid = false;
+            const auto ShakeFields = Make_Fields(Tokens, 2u, ShakeFieldsValid);
+            if (!ShakeFieldsValid)
+            {
+                strOutStatus = "Animation SHAKE row has an invalid or duplicate field.";
+                return false;
+            }
+            const auto PayloadField = ShakeFields.find("payload");
+            if (ShakeFields.end() == PayloadField ||
+                PayloadField->second.empty())
+            {
+                continue;
+            }
+            ANIMATION_CAMERA_SHAKE_CUE Shake;
+            Shake.strClipName = Tokens[0];
+            const auto StartField = ShakeFields.find("startms");
+            if (ShakeFields.end() == StartField ||
+                !Parse_UInt(StartField->second, Shake.iStartMs))
+            {
+                strOutStatus = "Animation SHAKE row has an invalid startms.";
+                return false;
+            }
+            std::string SpecStatus;
+            if (!CCameraShakeService::Parse_PayloadSpec(
+                PayloadField->second, Shake.Spec, SpecStatus))
+            {
+                strOutStatus = "Animation SHAKE payload is invalid: " + SpecStatus;
+                return false;
+            }
+            Staged.Shakes.push_back(std::move(Shake));
+            continue;
+        }
         if ("EFFECT" != Tokens[1])
             continue;
         bool FieldsValid = false;
