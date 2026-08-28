@@ -4,6 +4,7 @@
 #include "EffectV2_Document.h"
 #include "EffectV2_Object.h"
 #include "Engine_Defines.h"
+#include "ValtanPatternTree.h"
 
 #include <array>
 #include <cstdint>
@@ -21,6 +22,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CNpc;
+class CValtan;
 
 class CEffect_Tool_V2 final
 {
@@ -85,6 +87,17 @@ private:
 		END
 	};
 
+	/* One Server stage laid on the tool's pattern timeline. iStartMs is the
+	   stage start on that timeline; bindings store the stage-local offset. */
+	struct VALTAN_TIMELINE_STAGE final
+	{
+		std::string strActionId;
+		std::string strStageId;
+		std::string strStageKind;
+		uint32_t iStartMs = 0u;
+		uint32_t iDurationMs = 0u;
+	};
+
 public:
 	CEffect_Tool_V2(
 		ComPtr<ID3D11Device> pDevice,
@@ -129,6 +142,23 @@ private:
 
 	void Render_AttachWindow();
 	bool_t Spawn_Target(const std::string& strArchetypeId);
+	bool_t Spawn_NpcTarget(const std::string& strArchetypeId, const float3_t& vPosition);
+	bool_t Spawn_ValtanTarget(const float3_t& vPosition);
+	bool_t Resolve_TargetView(EFFECT_V2_TARGET_VIEW& OutView) const;
+	void Play_TargetClip(const char_t* pClipName, bool_t bLoop);
+	void Render_ValtanPatternSection();
+	bool_t Ensure_ValtanTree();
+	bool_t Build_ValtanTimeline(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		VALTAN_PATTERN_PREVIEW_PATH ePath);
+	bool_t Try_ResolveValtanTimelineStage(
+		uint32_t iTimelineMs,
+		size_t& iOutStage,
+		uint32_t& iOutStageOffsetMs) const;
+	bool_t Apply_ValtanTimeline(f32_t fSeconds, bool_t bForceEdge);
+	void Update_ValtanTimeline(f32_t fTimeDelta);
+	void Stop_ValtanTimeline();
+	bool_t Try_LocateValtanStage(const std::string& strActionId, uint32_t iOffsetMs);
 	void Despawn_Target();
 	void Move_Target(const float3_t& vPosition, f32_t fYawDegrees);
 	void Update_Attach(f32_t fTimeDelta);
@@ -186,9 +216,9 @@ private:
 	std::string m_strDocumentStatus;
 
 	bool_t m_bAttachWindowOpen = false;
-	std::weak_ptr<CNpc> m_pTarget;
+	EFFECT_V2_TARGET m_Target;
 	std::string m_strTargetArchetypeId;
-	int32_t m_iTargetArchetypeSelection = -1;
+	std::string m_strSelectedArchetypeId;
 	float3_t m_vTargetPosition = { 0.f, 0.f, 0.f };
 	f32_t m_fTargetYawDegrees = 0.f;
 	std::vector<std::string> m_TargetBoneNames;
@@ -201,6 +231,21 @@ private:
 	int32_t m_iSpawnFrame = 0;
 	std::vector<EFFECT_BINDING> m_Bindings;
 	std::string m_strAttachStatus;
+
+	VALTAN_PATTERN_TREE_VIEW m_ValtanTree;
+	bool_t m_bValtanTreeLoaded = false;
+	std::string m_strValtanTreeStatus;
+	std::vector<const VALTAN_PATTERN_VIEW*> m_ValtanPatterns;
+	int32_t m_iValtanPatternSelection = -1;
+	VALTAN_PATTERN_PREVIEW_PATH m_eValtanPath = VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
+	std::vector<VALTAN_TIMELINE_STAGE> m_ValtanTimeline;
+	uint32_t m_iValtanTimelineDurationMs = 0u;
+	bool_t m_bValtanTimelineActive = false;
+	bool_t m_bValtanTimelinePaused = false;
+	bool_t m_bValtanTimelineLoop = true;
+	f32_t m_fValtanTimelineSeconds = 0.f;
+	size_t m_iValtanTimelineStage = static_cast<size_t>(-1);
+	int32_t m_iValtanSpawnTimelineMs = 0;
 
 	bool_t m_bTestOrbit = false;
 	float3_t m_vTestOrbitCenter = { 0.f, 0.f, 0.f };

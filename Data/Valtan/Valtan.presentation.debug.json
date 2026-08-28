@@ -988,6 +988,26 @@
       }
     },
     {
+      "chainId": "cross",
+      "targetPatternId": "",
+      "targetStageId": "",
+      "animation": {
+        "endPolicy": "NATIVE_CLIP_LENGTHS",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.debug.cross.clip.01",
+            "clip": "mesh_att_battle_2_01",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 0,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      }
+    },
+    {
       "chainId": "warp-jump-four-hand-twohand-roar-roar-dead",
       "targetPatternId": "",
       "targetStageId": "",

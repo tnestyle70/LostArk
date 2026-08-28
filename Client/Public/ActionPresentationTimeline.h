@@ -85,11 +85,29 @@ public:
 		const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
 		float fTimelineWallSeconds,
 		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE& OutSample);
+	/* Convert an Effect-local delay to the complete authoring timeline. The
+	   inverse uses Resolve_CuePreviewSample after subtracting the clip offset;
+	   native emitter delay remains a separate source-owned value. */
+	static bool Resolve_CuePreviewTimelineTime(
+		const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
+		float fOwningClipTimelineOffsetSeconds,
+		float fEffectSampleSeconds,
+		float& fOutTimelineSeconds);
+	/* Keep the full owning timeline and any natural Effect tail. A bounded
+	   cue clips its Effect contribution before extending that timeline. */
+	static bool Resolve_CuePreviewDuration(
+		const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
+		float fOwningClipTimelineOffsetSeconds,
+		float fTimelineDurationSeconds,
+		float fEffectDurationSeconds,
+		float& fOutTimelineDurationSeconds);
 	/* Once an explicit non-loop clip reaches its held end pose, the animation
 	   clock can no longer advance.  A final clip releases the natural Effect
 	   tail; a non-final clip releases only when its authored wall interval is
 	   longer than the playable source window, so the wall clock can finish the
-	   hold and select the next occurrence without changing the held pose. */
+	   hold and select the next occurrence without changing the held pose.
+	   A final loop releases only after its explicit finite wall budget ends;
+	   zero authored wall keeps legacy and unbounded loops under animation time. */
 	static bool Should_ReleaseCompletedAnimationClock(
 		bool bHasExplicitLoopPolicy,
 		bool bLoop,
@@ -97,7 +115,9 @@ public:
 		bool bAuthoredEndPoseHold,
 		bool bAnimationPaused,
 		float fCurrentSourceSeconds,
-		float fSourceDurationSeconds);
+		float fSourceDurationSeconds,
+		float fCurrentClipWallSeconds = 0.f,
+		float fAuthoredClipWallDurationSeconds = 0.f);
 	static bool Try_ResolveActionAgeSeconds(
 		uint32_t iServerTick,
 		uint32_t iActionStartTick,

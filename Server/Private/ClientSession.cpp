@@ -1,6 +1,7 @@
 #include "ClientSession.h"
 
 #include <Windows.h>
+#include <WS2tcpip.h>
 
 #include <algorithm>
 #include <array>
@@ -19,6 +20,130 @@ namespace
 			std::chrono::duration_cast<std::chrono::microseconds>(
 				duration).count());
 	}
+
+	std::uint64_t Current_UnixMilliseconds()
+	{
+		return static_cast<std::uint64_t>(
+			std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::system_clock::now().time_since_epoch()).count());
+	}
+}
+
+struct LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::LOCKED_QUEUE
+{
+	std::shared_ptr<CClientSession> pSession;
+	std::unique_lock<std::mutex> DiagnosticLock;
+	std::unique_lock<std::mutex> Lock;
+	std::deque<OUTBOUND_FRAME> Frames;
+	std::size_t iQueuedBytes = 0u;
+	std::size_t iAddedFrameCount = 0u;
+};
+
+LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::RELIABLE_BATCH_TRANSACTION() = default;
+LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::~RELIABLE_BATCH_TRANSACTION() = default;
+
+bool LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::Prepare(
+	const std::vector<CLIENT_SESSION_RELIABLE_BATCH>& batches,
+	std::string& status)
+{
+	using namespace LostArk::Shared;
+	m_Queues.clear();
+	status.clear();
+	const auto reject = [this, &status](const char* reason)
+	{
+		status = reason;
+		m_Queues.clear();
+		return false;
+	};
+	if (batches.empty())
+		return reject("reliable admission batch is empty");
+	std::vector<const CLIENT_SESSION_RELIABLE_BATCH*> ordered;
+	ordered.reserve(batches.size());
+	for (const auto& batch : batches)
+	{
+		if (nullptr == batch.pSession ||
+			INVALID_SESSION_ID == batch.pSession->Get_SessionId() ||
+			batch.Frames.empty())
+		{
+			return reject("reliable admission batch has invalid session/frames");
+		}
+		ordered.push_back(&batch);
+	}
+	std::sort(ordered.begin(), ordered.end(), [](const auto* left, const auto* right)
+	{
+		return left->pSession->Get_SessionId() < right->pSession->Get_SessionId();
+	});
+	for (std::size_t index = 0; index < ordered.size(); ++index)
+	{
+		const auto& batch = *ordered[index];
+		if (0u != index && ordered[index - 1u]->pSession->Get_SessionId() ==
+			batch.pSession->Get_SessionId())
+		{
+			return reject("reliable admission batch contains a duplicate session");
+		}
+		auto staged = std::make_unique<LOCKED_QUEUE>();
+		staged->pSession = batch.pSession;
+		// Match Record_TerminalDiagnostic's lock order. A disconnect either
+		// wins before admission (reject) or starts after the whole commit.
+		staged->DiagnosticLock = std::unique_lock{ batch.pSession->m_DiagnosticMutex };
+		staged->Lock = std::unique_lock{ batch.pSession->m_OutboundMutex };
+		CClientSession& session = *batch.pSession;
+		if (!session.m_isSendRunning.load() || session.m_closeAfterOutboundFlush.load() ||
+			SESSION_DIAGNOSTIC_REASON::NONE != session.m_CloseDiagnostic.eReason)
+			return reject("reliable admission participant is terminal");
+		if (batch.Frames.size() > MAX_OUTBOUND_FRAME_COUNT -
+			(std::min)(session.m_OutboundFrames.size(), MAX_OUTBOUND_FRAME_COUNT))
+		{
+			return reject("reliable admission frame capacity is exhausted");
+		}
+		staged->Frames = session.m_OutboundFrames;
+		staged->iQueuedBytes = session.m_iQueuedOutboundBytes;
+		for (const PACKET_FRAME& frame : batch.Frames)
+		{
+			std::vector<std::uint8_t> bytes;
+			if (PACKET_TYPE::S2C_WORLD_SNAPSHOT == frame.ePacketType ||
+				!Build_Packet_Frame(frame.ePacketType, frame.Payload, bytes))
+			{
+				return reject("reliable admission frame failed encoding");
+			}
+			if (bytes.size() > MAX_OUTBOUND_BYTE_COUNT -
+				(std::min)(staged->iQueuedBytes, MAX_OUTBOUND_BYTE_COUNT))
+			{
+				return reject("reliable admission byte capacity is exhausted");
+			}
+			staged->iQueuedBytes += bytes.size();
+			staged->Frames.push_back({ frame.ePacketType, std::move(bytes) });
+		}
+		staged->iAddedFrameCount = batch.Frames.size();
+		m_Queues.push_back(std::move(staged));
+	}
+	return true;
+}
+
+void LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::Commit() noexcept
+{
+	for (const auto& staged : m_Queues)
+	{
+		CClientSession& session = *staged->pSession;
+		session.m_OutboundFrames.swap(staged->Frames);
+		session.m_iQueuedOutboundBytes = staged->iQueuedBytes;
+		auto& metrics = session.m_OutboundMetrics;
+		metrics.iReliableEnqueuedFrameCount += staged->iAddedFrameCount;
+		metrics.iCurrentQueuedFrameCount = session.m_OutboundFrames.size();
+		metrics.iCurrentQueuedByteCount = session.m_iQueuedOutboundBytes;
+		metrics.iQueuedFrameHighWatermark = (std::max)(
+			metrics.iQueuedFrameHighWatermark, metrics.iCurrentQueuedFrameCount);
+		metrics.iQueuedByteHighWatermark = (std::max)(
+			metrics.iQueuedByteHighWatermark, metrics.iCurrentQueuedByteCount);
+	}
+	for (const auto& staged : m_Queues)
+	{
+		staged->Lock.unlock();
+		staged->DiagnosticLock.unlock();
+	}
+	for (const auto& staged : m_Queues)
+		staged->pSession->m_OutboundCondition.notify_one();
+	m_Queues.clear();
 }
 
 LostArk::Server::CClientSession::CClientSession(
@@ -27,6 +152,7 @@ LostArk::Server::CClientSession::CClientSession(
 	FRAME_HANDLER onFrame,
 	CLOSED_HANDLER onClosed)
 	: m_iSessionId{ sessionId }
+	, m_PeerEndpoint{ Resolve_PeerEndpoint(clientSocket) }
 	, m_hClientSocket{ clientSocket }
 	, m_OnFrame{ std::move(onFrame) }
 	, m_OnClosed{ std::move(onClosed) }
@@ -43,8 +169,15 @@ bool LostArk::Server::CClientSession::Start()
 	if (!Is_Open() ||
 		m_iSessionId == INVALID_SESSION_ID ||
 		m_ReceiveThread.joinable() ||
-		m_SendThread.joinable() ||
-		!Configure_SendTimeout())
+		m_SendThread.joinable())
+	{
+		Record_TerminalDiagnostic(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_START_FAILED,
+			0,
+			"invalid session start state");
+		return false;
+	}
+	if (!Configure_SendTimeout())
 	{
 		return false;
 	}
@@ -73,6 +206,10 @@ bool LostArk::Server::CClientSession::Start()
 	}
 	catch (...)
 	{
+		Request_Close(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_START_FAILED,
+			0,
+			"session worker creation failed");
 		Stop();
 		return false;
 	}
@@ -80,8 +217,12 @@ bool LostArk::Server::CClientSession::Start()
 	return true;
 }
 
-void LostArk::Server::CClientSession::Request_Close()
+void LostArk::Server::CClientSession::Request_Close(
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const int nativeErrorCode,
+	const std::string_view context)
 {
+	Record_TerminalDiagnostic(reason, nativeErrorCode, context);
 	m_isReceiveRunning.store(false);
 	m_isSendRunning.store(false);
 	{
@@ -98,11 +239,15 @@ void LostArk::Server::CClientSession::Request_Close()
 		::shutdown(clientSocket, SD_BOTH);
 }
 
-void LostArk::Server::CClientSession::Request_Close_After_Flush()
+void LostArk::Server::CClientSession::Request_Close_After_Flush(
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const int nativeErrorCode,
+	const std::string_view context)
 {
+	Record_TerminalDiagnostic(reason, nativeErrorCode, context);
 	if (!m_isSendRunning.load())
 	{
-		Request_Close();
+		Request_Close(reason, nativeErrorCode, context);
 		return;
 	}
 
@@ -115,7 +260,7 @@ void LostArk::Server::CClientSession::Request_Close_After_Flush()
 	{
 		// A hard close can overtake the first running-state check.  In that
 		// case neither worker still owns the graceful notification handoff.
-		Request_Close();
+		Request_Close(reason, nativeErrorCode, context);
 		Notify_Closed();
 		return;
 	}
@@ -146,6 +291,10 @@ void LostArk::Server::CClientSession::Stop()
 		if (!senderExited)
 		{
 			m_iLastErrorCode.store(WSAETIMEDOUT);
+			Record_TerminalDiagnostic(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT,
+				WSAETIMEDOUT,
+				"sender worker join timed out");
 			(void)::CancelSynchronousIo(
 				reinterpret_cast<HANDLE>(m_SendThread.native_handle()));
 		}
@@ -171,7 +320,10 @@ bool LostArk::Server::CClientSession::Send_Frame(
 		packetType, std::move(frameBytes));
 	if (OUTBOUND_ENQUEUE_RESULT::RELIABLE_OVERFLOW == result)
 	{
-		Request_Close();
+		Request_Close(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_RELIABLE_OUTBOUND_OVERFLOW,
+			WSAENOBUFS,
+			"reliable outbound queue capacity exceeded");
 		return false;
 	}
 	return OUTBOUND_ENQUEUE_RESULT::CLOSED != result;
@@ -200,6 +352,13 @@ bool LostArk::Server::CClientSession::Is_Open() const
 	return INVALID_SOCKET != m_hClientSocket.load();
 }
 
+bool LostArk::Server::CClientSession::Is_Closing() const
+{
+	std::scoped_lock lock{ m_DiagnosticMutex };
+	return LostArk::Shared::SESSION_DIAGNOSTIC_REASON::NONE !=
+		m_CloseDiagnostic.eReason;
+}
+
 int LostArk::Server::CClientSession::Get_LastErrorCode() const
 {
 	return m_iLastErrorCode.load();
@@ -210,6 +369,25 @@ LostArk::Server::CClientSession::Get_OutboundMetrics() const
 {
 	std::scoped_lock lock{ m_OutboundMutex };
 	return m_OutboundMetrics;
+}
+
+const LostArk::Server::CLIENT_SESSION_PEER_ENDPOINT&
+LostArk::Server::CClientSession::Get_PeerEndpoint() const noexcept
+{
+	return m_PeerEndpoint;
+}
+
+LostArk::Server::CLIENT_SESSION_CLOSE_DIAGNOSTIC
+LostArk::Server::CClientSession::Get_CloseDiagnostic() const
+{
+	std::scoped_lock lock{ m_DiagnosticMutex };
+	return m_CloseDiagnostic;
+}
+
+std::uint64_t
+LostArk::Server::CClientSession::Get_LastInboundUnixMilliseconds() const noexcept
+{
+	return m_iLastInboundUnixMilliseconds.load();
 }
 
 void LostArk::Server::CClientSession::Receive_Loop()
@@ -408,7 +586,12 @@ bool LostArk::Server::CClientSession::Configure_SendTimeout()
 		reinterpret_cast<const char*>(&timeoutMilliseconds),
 		static_cast<int>(sizeof(timeoutMilliseconds))))
 	{
-		m_iLastErrorCode.store(::WSAGetLastError());
+		const int errorCode = ::WSAGetLastError();
+		m_iLastErrorCode.store(errorCode);
+		Record_TerminalDiagnostic(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_START_FAILED,
+			errorCode,
+			"failed to configure bounded send timeout");
 		return false;
 	}
 	return true;
@@ -434,11 +617,18 @@ bool LostArk::Server::CClientSession::Receive_Frame(
 			m_StreamParser.Try_Pop(frame);
 
 		if (PACKET_PARSE_RESULT::FRAME_READY == parseResult)
+		{
+			Record_InboundPacket(frame.ePacketType);
 			return true;
+		}
 
 		if (PACKET_PARSE_RESULT::INVALID_FRAME == parseResult)
 		{
 			m_iLastErrorCode.store(WSAEPROTONOSUPPORT);
+			Record_TerminalDiagnostic(
+				SESSION_DIAGNOSTIC_REASON::SERVER_INVALID_FRAME,
+				WSAEPROTONOSUPPORT,
+				"packet header or frame contract invalid");
 			return false;
 		}
 
@@ -455,14 +645,26 @@ bool LostArk::Server::CClientSession::Receive_Frame(
 			0);
 
 		if (0 == receivedByteCount)
+		{
+			Record_TerminalDiagnostic(
+				SESSION_DIAGNOSTIC_REASON::SERVER_PEER_CLOSED,
+				0,
+				"peer completed orderly TCP shutdown");
 			return false;
+		}
 
 		if (SOCKET_ERROR == receivedByteCount)
 		{
 			const int errorCode = ::WSAGetLastError();
 
 			if (m_isReceiveRunning.load())
+			{
 				m_iLastErrorCode.store(errorCode);
+				Record_TerminalDiagnostic(
+					SESSION_DIAGNOSTIC_REASON::SERVER_RECEIVE_ERROR,
+					errorCode,
+					"recv failed while session was active");
+			}
 
 			return false;
 		}
@@ -476,6 +678,10 @@ bool LostArk::Server::CClientSession::Receive_Frame(
 		if (!m_StreamParser.Append(receivedBytes))
 		{
 			m_iLastErrorCode.store(WSAEMSGSIZE);
+			Record_TerminalDiagnostic(
+				SESSION_DIAGNOSTIC_REASON::SERVER_PARSER_OVERFLOW,
+				WSAEMSGSIZE,
+				"packet stream parser buffer capacity exceeded");
 			return false;
 		}
 	}
@@ -506,14 +712,29 @@ bool LostArk::Server::CClientSession::Send_All(
 		if (SOCKET_ERROR == result)
 		{
 			if (m_isSendRunning.load())
-				m_iLastErrorCode.store(::WSAGetLastError());
+			{
+				const int errorCode = ::WSAGetLastError();
+				m_iLastErrorCode.store(errorCode);
+				Record_TerminalDiagnostic(
+					LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT,
+					errorCode,
+					errorCode == WSAETIMEDOUT ?
+						"send timed out while peer was not draining" :
+						"send failed while session was active");
+			}
 			return false;
 		}
 
 		if (0 == result)
 		{
 			if (m_isSendRunning.load())
+			{
 				m_iLastErrorCode.store(WSAECONNRESET);
+				Record_TerminalDiagnostic(
+					LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT,
+					WSAECONNRESET,
+					"send returned zero bytes");
+			}
 			return false;
 		}
 
@@ -521,6 +742,85 @@ bool LostArk::Server::CClientSession::Send_All(
 	}
 
 	return true;
+}
+
+void LostArk::Server::CClientSession::Record_InboundPacket(
+	const LostArk::Shared::PACKET_TYPE packetType) noexcept
+{
+	m_eLastInboundPacket.store(packetType);
+	m_iLastInboundUnixMilliseconds.store(Current_UnixMilliseconds());
+}
+
+void LostArk::Server::CClientSession::Record_TerminalDiagnostic(
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const int nativeErrorCode,
+	const std::string_view context)
+{
+	using LostArk::Shared::SESSION_DIAGNOSTIC_REASON;
+	if (SESSION_DIAGNOSTIC_REASON::NONE == reason)
+		return;
+
+	std::scoped_lock lock{ m_DiagnosticMutex };
+	if (SESSION_DIAGNOSTIC_REASON::NONE != m_CloseDiagnostic.eReason)
+		return;
+	m_CloseDiagnostic.eReason = reason;
+	m_CloseDiagnostic.eLastInboundPacket = m_eLastInboundPacket.load();
+	m_CloseDiagnostic.iNativeErrorCode = nativeErrorCode;
+	m_CloseDiagnostic.iOccurredUnixMilliseconds = Current_UnixMilliseconds();
+	m_CloseDiagnostic.iLastInboundUnixMilliseconds =
+		m_iLastInboundUnixMilliseconds.load();
+	{
+		std::scoped_lock outboundLock{ m_OutboundMutex };
+		m_CloseDiagnostic.iQueuedFrameCountAtClose =
+			m_OutboundFrames.size();
+		m_CloseDiagnostic.iQueuedByteCountAtClose =
+			m_iQueuedOutboundBytes;
+	}
+	m_CloseDiagnostic.strContext.assign(context.begin(), context.end());
+}
+
+LostArk::Server::CLIENT_SESSION_PEER_ENDPOINT
+LostArk::Server::CClientSession::Resolve_PeerEndpoint(
+	const SOCKET clientSocket) noexcept
+{
+	CLIENT_SESSION_PEER_ENDPOINT endpoint{};
+	if (INVALID_SOCKET == clientSocket)
+		return endpoint;
+
+	sockaddr_storage peer{};
+	int peerLength = static_cast<int>(sizeof(peer));
+	if (SOCKET_ERROR == ::getpeername(
+		clientSocket,
+		reinterpret_cast<sockaddr*>(&peer),
+		&peerLength))
+	{
+		return endpoint;
+	}
+
+	std::array<char, INET6_ADDRSTRLEN> address{};
+	if (AF_INET == peer.ss_family)
+	{
+		const auto* ipv4 = reinterpret_cast<const sockaddr_in*>(&peer);
+		if (nullptr != ::InetNtopA(
+			AF_INET, const_cast<IN_ADDR*>(&ipv4->sin_addr),
+			address.data(), static_cast<DWORD>(address.size())))
+		{
+			endpoint.strAddress = address.data();
+		}
+		endpoint.iPort = ::ntohs(ipv4->sin_port);
+	}
+	else if (AF_INET6 == peer.ss_family)
+	{
+		const auto* ipv6 = reinterpret_cast<const sockaddr_in6*>(&peer);
+		if (nullptr != ::InetNtopA(
+			AF_INET6, const_cast<IN6_ADDR*>(&ipv6->sin6_addr),
+			address.data(), static_cast<DWORD>(address.size())))
+		{
+			endpoint.strAddress = address.data();
+		}
+		endpoint.iPort = ::ntohs(ipv6->sin6_port);
+	}
+	return endpoint;
 }
 
 void LostArk::Server::CClientSession::Notify_Closed()

@@ -5,6 +5,7 @@
 #include "Level.h"
 #include "LobbyCommandService.h"
 #include "MapPlacementRuntime.h"
+#include "Network/SessionDiagnostic.h"
 #include "Network/PacketType.h"
 #include "PlayerController.h"
 
@@ -66,7 +67,13 @@ private:
 	bool_t Is_ClassPresentationPreparationPending() const;
 	void Reset_ClassPresentationPreparation();
 	bool_t Synchronize_LocalCharacter();
-	void Fail_ServerArena(const string& reason);
+	void Fail_ServerArena(
+		const string& reason,
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON diagnosticReason);
+	void Leave_ServerArena();
+	void Return_ServerArenaToLobby(
+		const string& reason,
+		const char_t* pTransitionSource);
 	void Update_Connecting();
 	void Update_ServerArena();
 	bool_t Commit_ServerArena();

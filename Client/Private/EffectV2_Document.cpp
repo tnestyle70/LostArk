@@ -621,19 +621,25 @@ bool_t Client::CEffectV2Document::Parse_Bindings(
 		EFFECT_V2_BINDING Binding;
 		const DATA_JSON_VALUE* pEffect = Row.Find("effectId");
 		const DATA_JSON_VALUE* pClip = Row.Find("clip");
+		const DATA_JSON_VALUE* pStage = Row.Find("stage");
 		const DATA_JSON_VALUE* pStart = Row.Find("startMs");
 		const DATA_JSON_VALUE* pBone = Row.Find("bone");
+		const bool_t bHasClip = nullptr != pClip && pClip->Is_String() && !pClip->Get_String().empty();
+		const bool_t bHasStage = nullptr != pStage && pStage->Is_String() && !pStage->Get_String().empty();
 		if (nullptr == pEffect || !pEffect->Is_String() || !Is_ValidEffectId(pEffect->Get_String()) ||
-			nullptr == pClip || !pClip->Is_String() || pClip->Get_String().empty() ||
+			bHasClip == bHasStage ||
 			nullptr == pStart || !pStart->Is_Number() || pStart->Get_Number() < 0.0 ||
 			pStart->Get_Number() > 600000.0 ||
 			nullptr == pBone || !pBone->Is_String())
 		{
-			strOutError = "bindings[] requires effectId, clip, startMs (0-600000), bone.";
+			strOutError = "bindings[] requires effectId, exactly one of clip/stage, startMs (0-600000), bone.";
 			return false;
 		}
 		Binding.strEffectId = pEffect->Get_String();
-		Binding.strClip = pClip->Get_String();
+		if (bHasClip)
+			Binding.strClip = pClip->Get_String();
+		else
+			Binding.strStage = pStage->Get_String();
 		Binding.iStartMs = static_cast<uint32_t>(pStart->Get_Number());
 		Binding.strBone = pBone->Get_String();
 		int32_t iRotation = static_cast<int32_t>(Binding.eRotation);
@@ -645,9 +651,11 @@ bool_t Client::CEffectV2Document::Parse_Bindings(
 		Binding.eRotation = static_cast<CEffectV2Object::PIVOT_ROTATION>(iRotation);
 		for (const EFFECT_V2_BINDING& Existing : Staged)
 		{
-			if (Existing.strEffectId == Binding.strEffectId && Existing.strClip == Binding.strClip)
+			if (Existing.strEffectId == Binding.strEffectId &&
+				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage)
 			{
-				strOutError = "duplicate binding: " + Binding.strEffectId + " / " + Binding.strClip;
+				strOutError = "duplicate binding: " + Binding.strEffectId + " / " +
+					(Binding.strStage.empty() ? Binding.strClip : Binding.strStage);
 				return false;
 			}
 		}
@@ -814,7 +822,9 @@ std::string Client::CEffectV2Document::Serialize_Bindings(
 	{
 		const EFFECT_V2_BINDING& Binding = Bindings[iIndex];
 		Text += "    { \"effectId\": " + Json_String(Binding.strEffectId) +
-			", \"clip\": " + Json_String(Binding.strClip) +
+			(Binding.strStage.empty() ?
+				", \"clip\": " + Json_String(Binding.strClip) :
+				", \"stage\": " + Json_String(Binding.strStage)) +
 			", \"startMs\": " + std::to_string(Binding.iStartMs) +
 			", \"bone\": " + Json_String(Binding.strBone) +
 			", \"followBone\": " + Json_Bool(Binding.bFollowBone) +

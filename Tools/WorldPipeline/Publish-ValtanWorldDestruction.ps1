@@ -19,6 +19,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+. (Join-Path $PSScriptRoot 'ValtanWallNavigation.ps1')
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
 $revisionPattern = '^[0-9a-f]{64}$'
 $placementIdPattern = '^[1-9][0-9]{0,19}$'
@@ -162,7 +163,10 @@ function Read-NavigationBlockerCatalog {
         }
     }
     if ($cursor -ne $lines.Count) { throw 'Navigation blocker document has trailing rows.' }
-    return [pscustomobject]@{ Regions=$regions }
+    return [pscustomobject]@{
+        Regions=$regions; Width=[uint32]$header[3]; Height=[uint32]$header[4]
+        CellSize=[double]$header[5]; OriginX=[double]$header[6]; OriginZ=[double]$header[7]
+    }
 }
 
 # A floor collapse region may only paint cells that the baked navgrid already
@@ -632,11 +636,12 @@ function Compile-ValtanWorldDestruction {
 				if ([string]$stage.counterProxy.space -cne 'BOSS_LOCAL') {
 					throw "Encounter counterProxy space is invalid: $($pattern.patternId)/$($stage.stageId)"
 				}
-				Assert-JsonNumber $stage.counterProxy.forwardOffsetM `
+				# Numeric validators return their input; keep compiler output to one artifact set.
+				$null = Assert-JsonNumber $stage.counterProxy.forwardOffsetM `
 					"$($pattern.patternId) counterProxy forwardOffsetM" -20.0 20.0
-				Assert-JsonNumber $stage.counterProxy.rightOffsetM `
+				$null = Assert-JsonNumber $stage.counterProxy.rightOffsetM `
 					"$($pattern.patternId) counterProxy rightOffsetM" -20.0 20.0
-				Assert-JsonNumber $stage.counterProxy.radiusM `
+				$null = Assert-JsonNumber $stage.counterProxy.radiusM `
 					"$($pattern.patternId) counterProxy radiusM" 0.0 20.0 `
 					-MinimumExclusive
 			}
@@ -682,6 +687,15 @@ function Compile-ValtanWorldDestruction {
         }
         $collisionById[[string]$placement.placementId] = $placement
     }
+    $wallNavigationGrid = Read-ValtanWallNavigationGrid (Resolve-RepoPath $BaseNavGridPath)
+    if ($NavigationBlockers.Width -ne $wallNavigationGrid.Width -or
+        $NavigationBlockers.Height -ne $wallNavigationGrid.Height -or
+        $NavigationBlockers.CellSize -ne $wallNavigationGrid.CellSize -or
+        $NavigationBlockers.OriginX -ne $wallNavigationGrid.OriginX -or
+        $NavigationBlockers.OriginZ -ne $wallNavigationGrid.OriginZ) {
+        throw 'Destruction navigation blockers do not match the published base grid.'
+    }
+    $wallNavigationCellsByGroup = @{}
 
     $groupById = @{}
     $groupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -907,7 +921,19 @@ function Compile-ValtanWorldDestruction {
             }
         }
         $sourceCollisionIds = @($sourceCollisionIdsByGroup[[string]$group.groupId])
-        if ($sourceCollisionIds.Count -eq 1) {
+        if ($isEntranceGroup) {
+            # Entrance receivers are siblings of the source leaf. Own their
+            # exact group prefix so the final mutation clears both together.
+            $collisionStateId = "collision.valtan.wallgroup.$groupKey"
+            $ownedCollisionIds = @($sourceCollisionIds) + @($collisionStateId + '.receiver')
+            $matchedCollisionIds = @($collisionById.Keys | Where-Object {
+                ([string]$_).StartsWith($collisionStateId + '.', [StringComparison]::Ordinal)
+            })
+            if ($matchedCollisionIds.Count -ne $ownedCollisionIds.Count -or
+                @($matchedCollisionIds | Where-Object { $_ -cnotin $ownedCollisionIds }).Count -ne 0) {
+                throw "Entrance collision prefix does not own exactly its source and receiver: $($group.groupId)"
+            }
+        } elseif ($sourceCollisionIds.Count -eq 1) {
             # Exact leaf ownership also reaches its `.receiver` child when the
             # wall commits, so the receiver cannot remain after the mesh goes.
             $collisionStateId = [string]$sourceCollisionIds[0]
@@ -955,6 +981,13 @@ function Compile-ValtanWorldDestruction {
             -not [string]::IsNullOrEmpty([string]$binding.receiverCollisionId)) {
             throw "Stage destruction binding has unexpected impact state: $($binding.bindingId)"
         }
+        if (-not $isFloorGroup -and
+            -not [string]::IsNullOrEmpty([string]$binding.receiverCollisionId) -and
+            [string]$binding.receiverCollisionId -cne $collisionStateId -and
+            -not ([string]$binding.receiverCollisionId).StartsWith(
+                $collisionStateId + '.', [StringComparison]::Ordinal)) {
+            throw "Destruction mutation does not own its collision receiver: $($binding.bindingId)"
+        }
         # A wall standing on authored floor owns a blocker region whatever
         # trigger breaks it, so pathfinding and collision agree while it is
         # intact. A wall with a cliff behind it authors none, because removing
@@ -979,6 +1012,27 @@ function Compile-ValtanWorldDestruction {
                 throw "Destruction navigation polarity is invalid: $navRegionId"
             }
             $navigationStateId = [string]$navRegion.ConditionId
+        }
+        if (-not $isFloorGroup -and
+            -not $wallNavigationCellsByGroup.ContainsKey([string]$group.groupId)) {
+            $expectedCells = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($sourceCollisionId in $sourceCollisionIds) {
+                $sourceCells = Get-ValtanWallNavigationCellKeys `
+                    $collisionById[[string]$sourceCollisionId] $wallNavigationGrid
+                $expectedCells.UnionWith($sourceCells)
+            }
+            $actualCells = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            if ($navRegionIds.Count -eq 1) {
+                foreach ($key in $NavigationBlockers.Regions[[string]$navRegionIds[0]].CellKeys) {
+                    if (-not $actualCells.Add([string]$key)) {
+                        throw "Wall navigation repeats one cell: $($group.groupId) / $key"
+                    }
+                }
+            }
+            if (-not $expectedCells.SetEquals($actualCells)) {
+                throw "Wall navigation does not exactly cover its own collision footprint: $($group.groupId). Run Split-ValtanIndependentWallGroups.ps1 -Mode RebuildNavigation."
+            }
+            $wallNavigationCellsByGroup[[string]$group.groupId] = $expectedCells
         }
         if (-not $hasExpectedSchedule -or [int]$binding.offsetMs -ne 0) {
             throw "Enabled binding is outside the admitted Valtan destruction schedule: $($binding.bindingId)"
@@ -1669,7 +1723,89 @@ function Invoke-ContractTests {
     $source = Read-JsonDocument $WorldEventsPath
     $encounter = Read-JsonDocument $EncounterPath
     $simulation = Read-JsonDocument $SimulationPath
-    $canonical = Compile-ValtanWorldDestruction $source $encounter $simulation
+    $compilerResults = @(Compile-ValtanWorldDestruction $source $encounter $simulation)
+    if ($compilerResults.Count -ne 1) {
+        throw "World destruction compiler must return one artifact set, got $($compilerResults.Count)."
+    }
+    $canonical = $compilerResults[0]
+    $gameplay = Read-JsonDocument $GameplayWorldPath
+    $wallMutationOwners = @($canonical.ServerLines | Where-Object {
+        $_.StartsWith("M`t", [StringComparison]::Ordinal)
+    } | ForEach-Object {
+        $columns = $_.Split("`t")
+        if ($columns[5] -cne '-') { $columns[5] }
+    })
+    foreach ($box in @($gameplay.placements | Where-Object {
+        $_.kind -ceq 'collisionBox' -and $_.enabled -and
+        ([string]$_.placementId).StartsWith('collision.valtan.wallgroup.', [StringComparison]::Ordinal)
+    })) {
+        $boxId = [string]$box.placementId
+        $owners = @($wallMutationOwners | Where-Object {
+            $boxId -ceq [string]$_ -or $boxId.StartsWith([string]$_ + '.', [StringComparison]::Ordinal)
+        })
+        if ($owners.Count -ne 1) {
+            throw "Every wall source and receiver must be cleared by exactly one final mutation: $boxId"
+        }
+    }
+    $foreignEntranceChild = Copy-JsonObject $gameplay
+    $foreignBox = Copy-JsonObject ($gameplay.placements | Where-Object {
+        $_.placementId -ceq 'collision.valtan.wallgroup.frontwallA.receiver'
+    } | Select-Object -First 1)
+    $foreignBox.placementId = 'collision.valtan.wallgroup.frontwallA.foreign'
+    $foreignEntranceChild.placements = @($foreignEntranceChild.placements) + @($foreignBox)
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $source $encounter $simulation $foreignEntranceChild
+    } 'entrance prefix capturing an unrelated collision'
+
+    $wrongWallCells = Read-NavigationBlockerCatalog $NavigationBlockersPath
+    $wrongRegion = $wrongWallCells.Regions['navregion.valtan.wall159.15221142224278623810']
+    $wrongRegion.CellKeys[0] = '342,70'
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $source $encounter $simulation $gameplay $wrongWallCells
+    } 'old nearest-cell fallback several metres away from its wall'
+    $missingWallNavigation = Copy-JsonObject $source
+    ($missingWallNavigation.groups | Where-Object {
+        $_.groupId -ceq 'destroyable.group.valtan.wall.15675921917269125843'
+    }).navigationRegionIds = @()
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $missingWallNavigation $encounter $simulation
+    } 'wall standing on walkable cells without its own blocker region'
+    $wrongWallGrid = Read-NavigationBlockerCatalog $NavigationBlockersPath
+    $wrongWallGrid.OriginX += 0.5
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $source $encounter $simulation $gameplay $wrongWallGrid
+    } 'wall blocker grid with a shifted origin'
+
+    # This real outer wall sits above another deck. XZ overlap alone used to
+    # assign 29 cells to it, blocking the lower floor before its destruction.
+    $deckGrid = Read-ValtanWallNavigationGrid (Resolve-RepoPath $BaseNavGridPath)
+    $upperWall = @($gameplay.placements | Where-Object {
+        $_.placementId -ceq 'collision.valtan.wallgroup.sector03.1090000000000012'
+    })
+    if ($upperWall.Count -ne 1 -or
+        (Get-ValtanWallNavigationCellKeys $upperWall[0] $deckGrid).Count -ne 0) {
+        throw 'An upper-deck wall must not own lower-deck navigation cells.'
+    }
+    $heightBlindGrid = $deckGrid.PSObject.Copy()
+    $heightBlindGrid.BodyMinimumY = -100.0
+    $heightBlindGrid.BodyMaximumY = 100.0
+    $xzCells = Get-ValtanWallNavigationCellKeys $upperWall[0] $heightBlindGrid
+    if ($xzCells.Count -eq 0) { throw 'The deck-height regression must exercise real XZ overlap.' }
+    $probeCell = @($xzCells | Sort-Object)[0].Split(',')
+    $probeIndex = [int]$probeCell[1] * $deckGrid.Width + [int]$probeCell[0]
+    $heightOffset = 20 + $deckGrid.Width * $deckGrid.Height + $probeIndex * 4
+    $lowerWall = Copy-JsonObject $upperWall[0]
+    $lowerWall.position[1] = [BitConverter]::ToSingle($deckGrid.Bytes, $heightOffset) +
+        [double]$lowerWall.halfExtents[1]
+    if ((Get-ValtanWallNavigationCellKeys $lowerWall $deckGrid).Count -eq 0) {
+        throw 'A wall lowered onto the same deck must block its intersecting cells.'
+    }
+    $invalidHeightGrid = Read-ValtanWallNavigationGrid (Resolve-RepoPath $BaseNavGridPath)
+    [Array]::Copy([BitConverter]::GetBytes([single]::NaN), 0,
+        $invalidHeightGrid.Bytes, $heightOffset, 4)
+    Assert-Throws {
+        Get-ValtanWallNavigationCellKeys $lowerWall $invalidHeightGrid
+    } 'wall navigation with a non-finite ground height'
     $expectedFragmentActorCount =
         $expectedOuterEmitterCount * $expectedFragmentsPerEmitter
     # Every source wall is an independent group. The sixty-nine ordinary walls

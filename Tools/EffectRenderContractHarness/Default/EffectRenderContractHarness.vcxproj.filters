@@ -16,6 +16,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\EffectRenderContractHarness.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp"><Filter>Production Sources</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternTree.cpp"><Filter>Production Sources</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp"><Filter>Production Sources</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp"><Filter>Production Sources</Filter></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\EncounterPatternReference.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\DataJson.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\DeferredMaterialRenderUtils.cpp"><Filter>Production Sources</Filter></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Artist31470ShaderRegistry.cpp"><Filter>Production Sources</Filter></ClCompile>
@@ -41,5 +46,6 @@
   </ItemGroup>
 	<ItemGroup>
 		<None Include="..\Run-EffectRenderContractHarness.ps1"><Filter>Scripts</Filter></None>
+		<None Include="..\Test-EffectRenderResourceRoot.ps1"><Filter>Scripts</Filter></None>
 	</ItemGroup>
 </Project>

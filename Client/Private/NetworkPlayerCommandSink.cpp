@@ -114,3 +114,26 @@ bool Client::CNetworkPlayerCommandSink::Request_ConfirmNpcEntry(
 	return CNetworkManager::Get().Send_ConfirmNpcEntry(
 		clientSequence, npcPlacementId);
 }
+
+bool Client::CNetworkPlayerCommandSink::Request_PartyInvite(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::NET_ENTITY_ID targetNetEntityId)
+{
+	return CNetworkManager::Get().Send_PartyInvite(
+		clientSequence, targetNetEntityId);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_PartyInviteRespond(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::NET_ENTITY_ID fromNetEntityId,
+	const bool accepted)
+{
+	return CNetworkManager::Get().Send_PartyInviteRespond(
+		clientSequence, fromNetEntityId, accepted);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_SendChat(
+	const std::string& text)
+{
+	return CNetworkManager::Get().Send_Chat(text);
+}

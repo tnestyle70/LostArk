@@ -38,6 +38,7 @@ namespace
 		std::string strHost = "127.0.0.1";
 		std::uint16_t iPort = 7777u;
 		std::uint32_t iTimeoutMilliseconds = 4000u;
+		std::uint32_t iBernPartySize = 0u;
 		bool isG02IdentityFast = false;
 	};
 
@@ -67,6 +68,7 @@ namespace
 		bool hasPort = false;
 		bool hasTimeout = false;
 		bool hasG02IdentityFast = false;
+		bool hasBernPartySize = false;
 		for (int index = 1; index < argumentCount; ++index)
 		{
 			const std::string_view argument(arguments[index]);
@@ -110,10 +112,29 @@ namespace
 				hasG02IdentityFast = true;
 				continue;
 			}
+			if ("--bern-party-size" == argument && !hasBernPartySize &&
+				index + 1 < argumentCount)
+			{
+				std::uint32_t partySize = 0u;
+				if (!Parse_Unsigned(arguments[++index], partySize) ||
+					(partySize != 2u && partySize != 4u))
+				{
+					error = "--bern-party-size must be 2 or 4";
+					return false;
+				}
+				options.iBernPartySize = partySize;
+				hasBernPartySize = true;
+				continue;
+			}
 
 			error = "Usage: CharacterSelectIsolationHarness [--host IPv4] "
 				"[--port 1..65535] [--timeout-ms 1000..4000] "
-				"[--g02-identity-fast]";
+				"[--g02-identity-fast | --bern-party-size 2|4]";
+			return false;
+		}
+		if (hasG02IdentityFast && hasBernPartySize)
+		{
+			error = "--g02-identity-fast and --bern-party-size cannot be combined";
 			return false;
 		}
 
@@ -266,6 +287,55 @@ namespace
 			request.strNpcPlacementId = std::string(npcPlacementId);
 			return Send_Message(
 				PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY, request, error);
+		}
+
+		bool Send_PartyInvite(
+			const std::uint32_t requestSequence,
+			const NET_ENTITY_ID targetEntityId,
+			std::string& error)
+		{
+			C2S_PARTY_INVITE request{};
+			request.iRequestSequence = requestSequence;
+			request.iTargetNetEntityId = targetEntityId;
+			return Send_Message(PACKET_TYPE::C2S_PARTY_INVITE, request, error);
+		}
+
+		bool Accept_PartyInvite(
+			const NET_ENTITY_ID inviterEntityId,
+			std::string& error)
+		{
+			C2S_PARTY_INVITE_RESPOND response{};
+			response.iRequestSequence = 1u;
+			response.iFromNetEntityId = inviterEntityId;
+			response.bAccepted = true;
+			return Send_Message(PACKET_TYPE::C2S_PARTY_INVITE_RESPOND, response, error);
+		}
+
+		[[nodiscard]] bool Has_PartyInviteFrom(const NET_ENTITY_ID entityId) const
+		{
+			return entityId == m_iPendingPartyInviter;
+		}
+
+		[[nodiscard]] bool Has_PartyTransferFailure() const
+		{
+			return m_hasPartyTransferFailure;
+		}
+
+		[[nodiscard]] bool Has_ExactPartyRoster(
+			const std::vector<NET_ENTITY_ID>& expected) const
+		{
+			if (m_PartyRoster.Members.size() != expected.size())
+				return false;
+			for (std::size_t index = 0u; index < expected.size(); ++index)
+			{
+				if (m_PartyRoster.Members[index].iNetEntityId != expected[index] ||
+					!Has_ExactSpawnNickname(expected[index],
+						m_PartyRoster.Members[index].strNickname))
+				{
+					return false;
+				}
+			}
+			return true;
 		}
 
 		bool Poll(std::string& error)
@@ -545,6 +615,9 @@ namespace
 				m_ObservedSpawnedWorldEntityIds.clear();
 				m_WorldEntityIdByPlacement.clear();
 				m_OutgoingDamageTargetIds.clear();
+				m_PartyRoster.Members.clear();
+				m_iPendingPartyInviter = INVALID_NET_ENTITY_ID;
+				m_hasPartyTransferFailure = false;
 				m_iLastServerTick = 0;
 				m_hasWorldSnapshot = false;
 				m_hasEnterAccepted = true;
@@ -647,6 +720,39 @@ namespace
 				m_hasWorldSnapshot = true;
 				return true;
 			}
+			if (PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED == frame.ePacketType)
+			{
+				S2C_PARTY_INVITE_RECEIVED invite{};
+				if (!Read_Message(reader, invite) || 0u != reader.Get_RemainingSize())
+				{
+					error = m_strLabel + ": invalid party invite";
+					return false;
+				}
+				m_iPendingPartyInviter = invite.iFromNetEntityId;
+				return true;
+			}
+			if (PACKET_TYPE::S2C_PARTY_ROSTER == frame.ePacketType)
+			{
+				S2C_PARTY_ROSTER roster{};
+				if (!Read_Message(reader, roster) || 0u != reader.Get_RemainingSize())
+				{
+					error = m_strLabel + ": invalid party roster";
+					return false;
+				}
+				m_PartyRoster = std::move(roster);
+				return true;
+			}
+			if (PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT == frame.ePacketType)
+			{
+				S2C_PARTY_TRANSFER_RESULT result{};
+				if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+				{
+					error = m_strLabel + ": invalid party transfer result";
+					return false;
+				}
+				m_hasPartyTransferFailure = true;
+				return true;
+			}
 
 			// Despawn, boss and class-change packets are legal but do not carry an
 			// isolation assertion for this harness.
@@ -670,6 +776,9 @@ namespace
 		WORLD_ID m_eExpectedWorld = WORLD_ID::END;
 		CPacketStreamParser m_StreamParser;
 		S2C_ENTER_ACCEPTED m_EnterAccepted{};
+		S2C_PARTY_ROSTER m_PartyRoster{};
+		NET_ENTITY_ID m_iPendingPartyInviter = INVALID_NET_ENTITY_ID;
+		bool m_hasPartyTransferFailure = false;
 		std::set<NET_ENTITY_ID> m_LatestPlayerEntityIds;
 		std::set<NET_ENTITY_ID> m_LatestWorldEntityIds;
 		std::map<NET_ENTITY_ID, std::pair<float, float>>
@@ -1220,7 +1329,11 @@ namespace
 		const std::uint32_t beforeCommandTick = client->Get_ServerTick();
 		const float beforeCommandX = client->Get_OwnPositionX();
 		const float beforeCommandZ = client->Get_OwnPositionZ();
-		if (!client->Send_Move(2u, 20.f, -30.f, error))
+		/* The current Valtan spawn is on the boss deck. The old (20, -30)
+		approach waypoint is disconnected from that deck, so Find_Path correctly
+		rejects it. Probe a one-metre move on the admitted deck instead. */
+		if (!client->Send_Move(
+				2u, beforeCommandX + 1.f, beforeCommandZ, error))
 			return false;
 		if (!Pump_Until(clients, timeout,
 			[&](std::string& probeError)
@@ -1234,6 +1347,12 @@ namespace
 					client->Get_OwnPositionX() - beforeCommandX;
 				const float deltaZ =
 					client->Get_OwnPositionZ() - beforeCommandZ;
+				probeError = "before=(" + std::to_string(beforeCommandX) +
+					"," + std::to_string(beforeCommandZ) + "), current=(" +
+					std::to_string(client->Get_OwnPositionX()) + "," +
+					std::to_string(client->Get_OwnPositionZ()) + "), tick=" +
+					std::to_string(client->Get_ServerTick()) + ", initialTick=" +
+					std::to_string(beforeCommandTick);
 				return client->Get_ServerTick() > beforeCommandTick + 10u &&
 					deltaX * deltaX + deltaZ * deltaZ > 0.01f &&
 					client->Has_OwnOnlyPlayerSnapshot() ?
@@ -1249,10 +1368,177 @@ namespace
 		client->Close();
 		return true;
 	}
+
+	bool Run_BernPartyTransferProof(
+		const HARNESS_OPTIONS& options,
+		const std::size_t memberCount,
+		std::string& error)
+	{
+		const auto timeout =
+			std::chrono::milliseconds(options.iTimeoutMilliseconds);
+		const auto transitionTimeout = timeout * 5;
+		const std::array classes{
+			CHARACTER_CLASS_ID::LANCE_MASTER, CHARACTER_CLASS_ID::GUNSLINGER,
+			CHARACTER_CLASS_ID::ARTIST, CHARACTER_CLASS_ID::WARLORD };
+		if (memberCount < 2u || memberCount > classes.size())
+			return false;
+		std::vector<std::unique_ptr<CTestClient>> ownedClients;
+		std::vector<CTestClient*> clients;
+		for (std::size_t index = 0u; index < memberCount; ++index)
+		{
+			auto client = Connect_Client(options,
+				"Party-" + std::to_string(memberCount) + "-" + std::to_string(index),
+				WORLD_ID::BERN, classes[index], error);
+			if (nullptr == client)
+				return false;
+			clients.push_back(client.get());
+			ownedClients.push_back(std::move(client));
+		}
+		if (!Pump_Until(clients, timeout,
+			[&](std::string& probeError)
+			{
+				std::set<NET_ENTITY_ID> expected;
+				for (const CTestClient* client : clients)
+				{
+					if (client->Is_Rejected())
+					{
+						probeError = "party member Bern admission rejected";
+						return PROBE_RESULT::FAIL;
+					}
+					if (!client->Is_Accepted())
+						return PROBE_RESULT::WAIT;
+					expected.insert(client->Get_NetEntityId());
+				}
+				return expected.size() == memberCount &&
+					std::all_of(clients.begin(), clients.end(),
+						[&](const CTestClient* client)
+						{ return client->Has_ExactPlayerSnapshot(expected); }) ?
+					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "party Bern admission", error))
+		{
+			return false;
+		}
+
+		CTestClient* leader = clients.front();
+		std::vector<NET_ENTITY_ID> roster{ leader->Get_NetEntityId() };
+		for (std::size_t index = 1u; index < memberCount; ++index)
+		{
+			if (!leader->Send_PartyInvite(static_cast<std::uint32_t>(index),
+					clients[index]->Get_NetEntityId(), error) ||
+				!Pump_Until(clients, timeout,
+					[&](std::string&)
+					{
+						return clients[index]->Has_PartyInviteFrom(leader->Get_NetEntityId()) ?
+							PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+					}, "party invite delivery", error) ||
+				!clients[index]->Accept_PartyInvite(leader->Get_NetEntityId(), error))
+			{
+				return false;
+			}
+			roster.push_back(clients[index]->Get_NetEntityId());
+			if (!Pump_Until(clients, timeout,
+				[&](std::string&)
+				{
+					for (std::size_t member = 0u; member <= index; ++member)
+					{
+						if (!clients[member]->Has_ExactPartyRoster(roster))
+							return PROBE_RESULT::WAIT;
+					}
+					return PROBE_RESULT::PASS;
+				}, "party roster after accept", error))
+			{
+				return false;
+			}
+		}
+		constexpr std::string_view GUIDE = "npc.bern.beda.guide";
+		float guideX = 0.f;
+		float guideZ = 0.f;
+		if (!leader->Get_WorldEntityPositionByPlacement(GUIDE, guideX, guideZ) ||
+			!leader->Send_Move(1u, guideX, guideZ, error))
+		{
+			error = "party leader could not resolve/approach Bern guide: " + error;
+			return false;
+		}
+		if (!Pump_Until(clients, transitionTimeout,
+			[&](std::string&)
+			{
+				const float dx = leader->Get_OwnPositionX() - guideX;
+				const float dz = leader->Get_OwnPositionZ() - guideZ;
+				return dx * dx + dz * dz <= 8.41f ?
+					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "party leader guide approach", error) ||
+			!leader->Send_ConfirmNpcEntry(1u, GUIDE, error))
+		{
+			return false;
+		}
+		if (!Pump_Until(clients, transitionTimeout,
+			[&](std::string& probeError)
+			{
+				std::vector<NET_ENTITY_ID> targetRoster;
+				for (const CTestClient* client : clients)
+				{
+					if (client->Is_Rejected() || client->Has_PartyTransferFailure())
+					{
+						probeError = "party transfer rejected with available target capacity";
+						return PROBE_RESULT::FAIL;
+					}
+					if (client->Get_AcceptanceCount() != 2u ||
+						client->Get_CurrentWorld() != WORLD_ID::VALTAN_ARENA)
+					{
+						return PROBE_RESULT::WAIT;
+					}
+					targetRoster.push_back(client->Get_NetEntityId());
+				}
+				const std::set<NET_ENTITY_ID> expected(targetRoster.begin(), targetRoster.end());
+				return expected.size() == memberCount &&
+					std::all_of(clients.begin(), clients.end(),
+						[&](const CTestClient* client)
+						{
+							return client->Has_ExactPlayerSnapshot(expected) &&
+								client->Has_ExactPartyRoster(targetRoster);
+						}) ? PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "party Valtan roster and leader preservation", error))
+		{
+			return false;
+		}
+
+		std::vector<std::pair<float, float>> beforePositions;
+		for (CTestClient* client : clients)
+		{
+			beforePositions.emplace_back(client->Get_OwnPositionX(), client->Get_OwnPositionZ());
+			if (!client->Send_Move(2u, client->Get_OwnPositionX() + 1.f,
+					client->Get_OwnPositionZ(), error))
+			{
+				return false;
+			}
+		}
+		if (!Pump_Until(clients, timeout,
+			[&](std::string& probeError)
+			{
+				for (std::size_t index = 0u; index < clients.size(); ++index)
+				{
+					const float dx = clients[index]->Get_OwnPositionX() - beforePositions[index].first;
+					const float dz = clients[index]->Get_OwnPositionZ() - beforePositions[index].second;
+					if (dx * dx + dz * dz <= 0.01f)
+					{
+						probeError = "party member " + std::to_string(index) + " has not moved";
+						return PROBE_RESULT::WAIT;
+					}
+				}
+				return PROBE_RESULT::PASS;
+			}, "post-transfer party gameplay commands", error))
+		{
+			return false;
+		}
+		std::cout << "[PASS] " << memberCount << "-member Bern party retained exact "
+			"roster/leader and live commands after Valtan transfer\n";
+		return true;
+	}
 }
 
 int main(const int argumentCount, char** arguments)
 {
+	std::cout.setf(std::ios_base::unitbuf);
 	HARNESS_OPTIONS options{};
 	std::string error;
 	if (!Parse_Options(argumentCount, arguments, options, error))
@@ -1268,10 +1554,12 @@ int main(const int argumentCount, char** arguments)
 		return 1;
 	}
 
-	if (!Run_CharacterSelectIsolation(options, error) ||
-		!Run_BernSharedProof(options, error) ||
-		(!options.isG02IdentityFast &&
-			!Run_BernToValtanTransferProof(options, error)))
+	const bool passed = options.iBernPartySize != 0u ?
+		Run_BernPartyTransferProof(options, options.iBernPartySize, error) :
+		(Run_CharacterSelectIsolation(options, error) &&
+			Run_BernSharedProof(options, error) &&
+			(options.isG02IdentityFast || Run_BernToValtanTransferProof(options, error)));
+	if (!passed)
 	{
 		std::cerr << "[FAILURE] " << error << '\n';
 		return 1;

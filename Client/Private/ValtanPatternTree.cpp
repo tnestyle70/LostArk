@@ -9,10 +9,13 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <initializer_list>
 #include <limits>
+#include <locale>
 #include <map>
 #include <set>
+#include <sstream>
 #include <string_view>
 
 namespace
@@ -430,6 +433,16 @@ namespace
 			Action.strTrigger = pTrigger->Get_String();
 			Action.strKind = pKind->Get_String();
 			Action.strTargetId = pTarget->Get_String();
+			if ("DAMAGE_GRABBED_PLAYERS" == Action.strKind ||
+				"EXECUTE_GRABBED_PLAYERS" == Action.strKind)
+			{
+				const bool_t bTargetValid = "DAMAGE_GRABBED_PLAYERS" == Action.strKind ?
+					(Is_StableToken(Action.strTargetId) && Action.strTargetId.starts_with("damage.")) :
+					"boss.attachment.left-hand" == Action.strTargetId;
+				if ("ENTER" != Action.strTrigger || !bTargetValid ||
+					0.f != Action.fValue || 0u != Action.iDurationMs)
+					return false;
+			}
 			Out.push_back(std::move(Action));
 		}
 		return true;
@@ -1916,6 +1929,7 @@ namespace
 
 	bool_t Parse_MasterDocument(
 		const DATA_JSON_VALUE& Root,
+		const std::string& strScriptedEntryOnlyPatternId,
 		MASTER_DOCUMENT& Out,
 		std::string& strOutError)
 	{
@@ -2060,10 +2074,20 @@ namespace
 		const std::set<std::string, std::less<>> WeightedPatternIds(
 			Out.NormalSelection.PatternIds.begin(),
 			Out.NormalSelection.PatternIds.end());
+		/* An entry-only first scripted step retains NORMAL Product metadata,
+		   but the split decision model does not put it in the weighted pool. */
+		if (!strScriptedEntryOnlyPatternId.empty() &&
+			(0u == ManagedNormalPatternIds.erase(strScriptedEntryOnlyPatternId) ||
+			 WeightedPatternIds.contains(strScriptedEntryOnlyPatternId)))
+		{
+			strOutError =
+				"master scripted entry-only gate must be an unweighted NORMAL pattern";
+			return false;
+		}
 		if (WeightedPatternIds != ManagedNormalPatternIds)
 		{
 			strOutError =
-				"master normalSelection is not the exact managed normal pattern set";
+				"master normalSelection is not a subset of the managed normal pattern set";
 			return false;
 		}
 		for (const Client::VALTAN_COUNTER_REACTION_LAYER_VIEW& Layer :
@@ -3490,6 +3514,25 @@ namespace
 				DATA_JSON_VALUE::String("boss.target.pattern"));
 			Action.emplace("value", DATA_JSON_VALUE::Number(1));
 		}
+		else if ("DAMAGE_GRABBED_PLAYERS" == strKind ||
+			"EXECUTE_GRABBED_PLAYERS" == strKind)
+		{
+			const bool_t bDamage = "DAMAGE_GRABBED_PLAYERS" == strKind;
+			const std::string strDamageProfileId = Read_String(Event, "damageProfileId");
+			const bool_t bPropertiesValid = bDamage ?
+				Has_ExactProperties(Event, { "eventId", "trigger", "kind", "damageProfileId" }) :
+				Has_ExactProperties(Event, { "eventId", "trigger", "kind" });
+			if (!bPropertiesValid || "ENTER" != strTrigger ||
+				(bDamage && (!Is_StableToken(strDamageProfileId) ||
+					!strDamageProfileId.starts_with("damage."))))
+			{
+				strOutError = "split gameplay grabbed-player terminal event is invalid";
+				return false;
+			}
+			Action.emplace("targetId", DATA_JSON_VALUE::String(
+				bDamage ? strDamageProfileId : "boss.attachment.left-hand"));
+			Action.emplace("value", DATA_JSON_VALUE::Number(0));
+		}
 		else if ("RELEASE_GRABBED_PLAYERS" == strKind)
 		{
 			const std::string strReleaseMode = Read_String(Event, "releaseMode");
@@ -3806,6 +3849,7 @@ namespace
 		std::set<std::string, std::less<>> EventIds;
 		std::set<std::string, std::less<>> CameraInvocationIds;
 		DATA_JSON_VALUE::ARRAY LegacyPatterns;
+		std::string strScriptedEntryOnlyPatternId;
 		for (size_t iPattern = 0u;
 			iPattern < pGameplayPatterns->Get_Array().size(); ++iPattern)
 		{
@@ -4265,16 +4309,24 @@ namespace
 			const uint32_t iOwnerCount =
 				(bMechanic ? 1u : 0u) + (bCandidate ? 1u : 0u) +
 				(bManual ? 1u : 0u);
-			if (1u != iOwnerCount ||
+			/* The publisher permits only the first ordered step to be owned
+			   solely by scriptedSequence, never an arbitrary unowned row. */
+			const bool_t bScriptedEntryOnly = 0u == iOwnerCount &&
+				!ScriptedSequence.PatternIds.empty() &&
+				ScriptedSequence.PatternIds.front() == strPatternId;
+			if ((1u != iOwnerCount && !bScriptedEntryOnly) ||
 				!Is_NonNegativeInteger(pCompatibilityWeight) ||
 				((bMechanic || bManual) &&
 				 0.0 != pCompatibilityWeight->Get_Number()) ||
-				(bCandidate && 0.0 == pCompatibilityWeight->Get_Number()))
+				((bCandidate || bScriptedEntryOnly) &&
+				 0.0 == pCompatibilityWeight->Get_Number()))
 			{
-				strOutError = "split gameplay pattern does not have exactly one decision owner: " +
+				strOutError = "split gameplay pattern requires exactly one decision owner or the first scripted entry-only gate: " +
 					strPatternId;
 				return false;
 			}
+			if (bScriptedEntryOnly)
+				strScriptedEntryOnlyPatternId = strPatternId;
 			DATA_JSON_VALUE::OBJECT LegacyPattern;
 			LegacyPattern.emplace("patternId", DATA_JSON_VALUE::String(strPatternId));
 			for (const std::string& Field :
@@ -4434,7 +4486,8 @@ namespace
 		LegacyRoot.emplace("patterns",
 			DATA_JSON_VALUE::Array(std::move(LegacyPatterns)));
 		if (!Parse_MasterDocument(
-				DATA_JSON_VALUE::Object(std::move(LegacyRoot)), Out, strOutError))
+				DATA_JSON_VALUE::Object(std::move(LegacyRoot)),
+				strScriptedEntryOnlyPatternId, Out, strOutError))
 		{
 			return false;
 		}
@@ -4662,6 +4715,8 @@ namespace
 			pPattern->WorldEventTriggerRefs =
 				MasterPattern.WorldEventTriggerRefs;
 			pPattern->bAuthoringMasterManaged = true;
+			pPattern->strEntryActionId = MasterPattern.Stages.empty() ?
+				std::string{} : MasterPattern.Stages.front().strActionId;
 			pPattern->bManualServerAudition =
 				MasterPattern.bManualServerAudition;
 			pPattern->strSourceAnimationChainId =
@@ -5538,6 +5593,127 @@ bool_t Client::CValtanPatternTree::Build_ToolAuditionInventory(
 	OutInventory = std::move(Staged);
 	strOutError.clear();
 	return true;
+}
+
+bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
+	const VALTAN_PATTERN_TREE_VIEW& View,
+	std::vector<std::string>& OutPatternIds,
+	std::string& strOutError)
+{
+	std::vector<const VALTAN_PATTERN_VIEW*> StagedPatterns;
+	std::map<std::string, size_t, std::less<>> IdentityCounts;
+	for (const auto* pPatterns : { &View.Gimmicks, &View.Rotation })
+		for (const VALTAN_PATTERN_VIEW& Pattern : *pPatterns)
+			++IdentityCounts[Pattern.strPatternId];
+	for (const auto* pPatterns : { &View.Gimmicks, &View.Rotation })
+	{
+		for (const VALTAN_PATTERN_VIEW& Pattern : *pPatterns)
+		{
+			if (!Pattern.bAuthoringMasterManaged)
+				continue;
+			if (!Is_StableToken(Pattern.strPatternId) ||
+				1u != IdentityCounts.at(Pattern.strPatternId) ||
+				Find_Pattern(View, Pattern.strPatternId) != &Pattern ||
+				Pattern.Stages.empty() || !Is_StableToken(Pattern.strEntryActionId) ||
+				Pattern.strEntryActionId != Pattern.Stages.front().strActionId)
+			{
+				strOutError = "Next Pattern split-owned identity or entry stage is invalid: " + Pattern.strPatternId;
+				return false;
+			}
+			std::set<std::string, std::less<>> StageIds;
+			std::set<std::string, std::less<>> ActionIds;
+			for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+			{
+				if (!Is_StableToken(Stage.strStageId) || !Is_StableToken(Stage.strActionId) ||
+					!StageIds.insert(Stage.strStageId).second ||
+					!ActionIds.insert(Stage.strActionId).second)
+				{
+					strOutError = "Next Pattern stage identity is invalid or duplicated: " + Pattern.strPatternId;
+					return false;
+				}
+			}
+			StagedPatterns.push_back(&Pattern);
+		}
+	}
+	if (StagedPatterns.empty())
+	{
+		strOutError = "Next Pattern requires at least one strictly joined split-owned Product pattern.";
+		return false;
+	}
+	std::sort(StagedPatterns.begin(), StagedPatterns.end(),
+		[](const VALTAN_PATTERN_VIEW* Left, const VALTAN_PATTERN_VIEW* Right)
+		{
+			return Left->iSourceSequenceIndex != Right->iSourceSequenceIndex ?
+				Left->iSourceSequenceIndex < Right->iSourceSequenceIndex :
+				Left->strPatternId < Right->strPatternId;
+		});
+	std::vector<std::string> StagedIds;
+	StagedIds.reserve(StagedPatterns.size());
+	for (const VALTAN_PATTERN_VIEW* pPattern : StagedPatterns)
+		StagedIds.push_back(pPattern->strPatternId);
+	OutPatternIds = std::move(StagedIds);
+	strOutError.clear();
+	return true;
+}
+
+std::string Client::CValtanPatternTree::Build_PatternIdentitySummary(
+	const VALTAN_PATTERN_VIEW& Pattern)
+{
+	std::ostringstream Summary;
+	Summary.imbue(std::locale::classic());
+	Summary << std::fixed << std::setprecision(3)
+		<< "Pattern ID: " << Pattern.strPatternId << "\nAuthoring: ";
+	if (Pattern.bManualServerAudition)
+		Summary << "Phase " << Pattern.iAuthoringPhase << " manual audition";
+	else if (VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS.end() != std::find(
+		VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS.begin(),
+		VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS.end(), Pattern.strPatternId))
+		Summary << "Core server";
+	else
+		Summary << "outside shared audition inventory";
+	Summary << " | Runtime eligibility: phase " << Pattern.iMinimumPhase;
+	if (Pattern.iMinimumPhase != Pattern.iMaximumPhase)
+		Summary << '-' << Pattern.iMaximumPhase;
+	Summary << "\nClips (authored order):";
+	if (Pattern.Stages.empty())
+		Summary << " none";
+	for (size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
+	{
+		const VALTAN_STAGE_VIEW& Stage = Pattern.Stages[iStage];
+		Summary << '\n' << iStage + 1u << ". " << Stage.strStageId
+			<< " [wall " << Stage.iDurationMs / 1000.0 << "s";
+		if (Stage.iAuthoringRepeatCount > 1u)
+			Summary << "; repeats " << Stage.iAuthoringRepeatCount;
+		Summary << ']';
+		if (Stage.bSuppressAnimation)
+		{
+			Summary << ": animation suppressed";
+			continue;
+		}
+		if (Stage.ClipOccurrences.empty())
+		{
+			Summary << ": no authored clip occurrence";
+			continue;
+		}
+		for (const VALTAN_CLIP_OCCURRENCE_VIEW& Clip : Stage.ClipOccurrences)
+		{
+			Summary << "\n  " << Clip.strClipName
+				<< " [source start " << Clip.iSourceStartMs / 1000.0 << "s; ";
+			if (0u != Clip.iPlayMs)
+				Summary << "source duration " << Clip.iPlayMs / 1000.0 << 's';
+			else
+				Summary << "natural end";
+			Summary << "; rate " << Clip.fPlayRate << "x; wall ";
+			if (0u != Clip.iAuthoringWallMs)
+				Summary << Clip.iAuthoringWallMs / 1000.0 << 's';
+			else
+				Summary << "unresolved";
+			if (Clip.bLoop)
+				Summary << "; loop";
+			Summary << ']';
+		}
+	}
+	return Summary.str();
 }
 
 std::string Client::CValtanPatternTree::Build_StageEffectAssetId(

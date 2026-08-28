@@ -1,6 +1,7 @@
 #include "Network/PacketFrame.h"
 #include "Network/PacketMessages.h"
 #include "Network/PacketReader.h"
+#include "Network/SessionDiagnostic.h"
 #include "Network/PacketStreamParser.h"
 #include "Network/PacketWriter.h"
 
@@ -313,6 +314,52 @@ namespace
 		result.fImpactDirectionY = 0.f;
 		result.fImpactDirectionZ = 0.8f;
 		result.iRandomSeed = 12345u;
+		return result;
+	}
+
+	std::string Make_MaximumStableNetworkId(
+		const char fill,
+		const std::uint32_t ordinal)
+	{
+		std::string result(MAX_STABLE_NETWORK_ID_BYTES, fill);
+		result[result.size() - 3u] = static_cast<char>(
+			'0' + ordinal / 100u % 10u);
+		result[result.size() - 2u] = static_cast<char>(
+			'0' + ordinal / 10u % 10u);
+		result[result.size() - 1u] = static_cast<char>(
+			'0' + ordinal % 10u);
+		return result;
+	}
+
+	S2C_WORLD_DESTRUCTION_DELTA Make_MaximumSizedDestructionDelta(
+		const std::size_t stateCount,
+		const std::size_t eventCount)
+	{
+		S2C_WORLD_DESTRUCTION_DELTA result{};
+		result.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
+		result.iServerTick = 1u;
+		result.iEncounterEpoch = 1u;
+		result.ChangedStates.reserve(stateCount);
+		for (std::size_t index = 0u; index < stateCount; ++index)
+		{
+			WORLD_DESTRUCTION_STATE_WIRE state{};
+			state.strGroupId = Make_MaximumStableNetworkId(
+				'g', static_cast<std::uint32_t>(index));
+			state.eState = WORLD_DESTRUCTION_RUNTIME_STATE::DESPAWNED;
+			state.iStateVersion = static_cast<std::uint32_t>(index) + 1u;
+			state.iStateStartTick = static_cast<std::uint32_t>(index) + 1u;
+			result.ChangedStates.push_back(std::move(state));
+		}
+		result.LiveEvents.reserve(eventCount);
+		for (std::size_t index = 0u; index < eventCount; ++index)
+		{
+			WORLD_DESTRUCTION_EVENT_WIRE event = Make_DestructionEvent(index + 1u);
+			event.strGroupId = Make_MaximumStableNetworkId('e', 0u);
+			event.strMutationId = Make_MaximumStableNetworkId('m', 0u);
+			event.strBindingId = Make_MaximumStableNetworkId('b', 0u);
+			result.LiveEvents.push_back(std::move(event));
+		}
+		result.Diagnostics.iLastEventSequence = eventCount;
 		return result;
 	}
 
@@ -1873,6 +1920,200 @@ namespace
 			"Reject Truncated Revive Without Mutation");
 	}
 
+	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
+	{
+		{
+			testRunner.Require(42u == NETWORK_PROTOCOL_VERSION,
+				"Party, Expanded Destruction And Next Pattern Use Protocol 42");
+			C2S_ENTER_WORLD oldPeer{};
+			oldPeer.iProtocolVersion = 40u;
+			oldPeer.eWorldId = WORLD_ID::BERN;
+			oldPeer.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			oldPeer.strNickName = "OldPeer";
+			CPacketWriter oldWriter;
+			testRunner.Require(!Write_Message(oldWriter, oldPeer),
+				"Reject Both Independently Shipped Protocol 40 Peers");
+			S2C_PARTY_TRANSFER_RESULT failure{};
+			failure.iRequestSequence = 12u;
+			failure.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+			failure.eResult = PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL;
+			CPacketWriter writer;
+			const bool encoded = Write_Message(writer, failure);
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_PARTY_TRANSFER_RESULT decoded{};
+			testRunner.Require(encoded && Read_Message(reader, decoded) &&
+				12u == decoded.iRequestSequence &&
+				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL == decoded.eResult &&
+				0u == reader.Get_RemainingSize(), "Party Transfer Failure Round Trip");
+			for (std::size_t size = 0; size < writer.Get_Buffer().size(); ++size)
+			{
+				CPacketReader truncated{ std::span<const std::uint8_t>{ writer.Get_Buffer().data(), size } };
+				S2C_PARTY_TRANSFER_RESULT unchanged = failure;
+				testRunner.Require(!Read_Message(truncated, unchanged) &&
+					unchanged.iRequestSequence == failure.iRequestSequence &&
+					unchanged.eResult == failure.eResult,
+					"Reject Truncated Party Failure Without Mutation");
+			}
+			CPacketWriter unknown;
+			unknown.Write_U32(12u);
+			unknown.Write_U16(static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA));
+			unknown.Write_U8(255u);
+			CPacketReader unknownReader{ unknown.Get_Buffer() };
+			testRunner.Require(!Read_Message(unknownReader, decoded),
+				"Reject Unknown Party Transfer Failure Result");
+		}
+		{
+			C2S_PARTY_INVITE source{};
+			source.iRequestSequence = 7u;
+			source.iTargetNetEntityId = 42u;
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Party Invite");
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_PARTY_INVITE decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.iRequestSequence == source.iRequestSequence &&
+				decoded.iTargetNetEntityId == source.iTargetNetEntityId &&
+				0u == reader.Get_RemainingSize(),
+				"Party Invite Round Trip");
+
+			C2S_PARTY_INVITE invalid{};
+			CPacketWriter invalidWriter;
+			testRunner.Require(!Write_Message(invalidWriter, invalid),
+				"Reject Zero Party Invite Sequence/Target");
+		}
+		{
+			S2C_PARTY_INVITE_RECEIVED source{};
+			source.iFromNetEntityId = 11u;
+			source.strFromNickname = "Inviter";
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Party Invite Received");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_PARTY_INVITE_RECEIVED decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.iFromNetEntityId == source.iFromNetEntityId &&
+				decoded.strFromNickname == source.strFromNickname &&
+				0u == reader.Get_RemainingSize(),
+				"Party Invite Received Round Trip");
+
+			S2C_PARTY_INVITE_RECEIVED invalid{};
+			invalid.iFromNetEntityId = 11u;
+			invalid.strFromNickname = "";
+			CPacketWriter invalidWriter;
+			testRunner.Require(!Write_Message(invalidWriter, invalid),
+				"Reject Empty Party Invite Nickname");
+		}
+		{
+			C2S_PARTY_INVITE_RESPOND accept{};
+			accept.iRequestSequence = 9u;
+			accept.iFromNetEntityId = 11u;
+			accept.bAccepted = true;
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, accept), "Writer Party Invite Respond");
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_PARTY_INVITE_RESPOND decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.iRequestSequence == accept.iRequestSequence &&
+				decoded.iFromNetEntityId == accept.iFromNetEntityId &&
+				true == decoded.bAccepted &&
+				0u == reader.Get_RemainingSize(),
+				"Party Invite Respond Round Trip");
+		}
+		{
+			S2C_PARTY_ROSTER source{};
+			source.Members.push_back(PARTY_ROSTER_MEMBER{
+				42u, "Leader", CHARACTER_CLASS_ID::LANCE_MASTER });
+			source.Members.push_back(PARTY_ROSTER_MEMBER{
+				11u, "Member", CHARACTER_CLASS_ID::ARTIST });
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Party Roster");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_PARTY_ROSTER decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				2u == decoded.Members.size() &&
+				decoded.Members[0].iNetEntityId == 42u &&
+				decoded.Members[0].strNickname == "Leader" &&
+				decoded.Members[0].eCharacterClass ==
+					CHARACTER_CLASS_ID::LANCE_MASTER &&
+				decoded.Members[1].iNetEntityId == 11u &&
+				0u == reader.Get_RemainingSize(),
+				"Party Roster Round Trip");
+
+			S2C_PARTY_ROSTER tooMany{};
+			for (std::size_t i = 0; i < MAX_PARTY_MEMBERS + 1u; ++i)
+			{
+				tooMany.Members.push_back(PARTY_ROSTER_MEMBER{
+					static_cast<NET_ENTITY_ID>(i + 1u), "N",
+					CHARACTER_CLASS_ID::ARTIST });
+			}
+			CPacketWriter tooManyWriter;
+			testRunner.Require(!Write_Message(tooManyWriter, tooMany),
+				"Reject Oversized Party Roster");
+		}
+	}
+
+	void Test_ChatProtocol(TEST_RUNNER& testRunner)
+	{
+		{
+			C2S_CHAT source{};
+			source.strText = "hello room";
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Chat Send");
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_CHAT decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.strText == source.strText &&
+				0u == reader.Get_RemainingSize(),
+				"Chat Send Round Trip");
+
+			C2S_CHAT empty{};
+			CPacketWriter emptyWriter;
+			testRunner.Require(!Write_Message(emptyWriter, empty),
+				"Reject Empty Chat Send");
+
+			C2S_CHAT tooLong{};
+			tooLong.strText = std::string(MAX_CHAT_TEXT_BYTES + 1u, 'a');
+			CPacketWriter tooLongWriter;
+			testRunner.Require(!Write_Message(tooLongWriter, tooLong),
+				"Reject Oversized Chat Send");
+		}
+		{
+			S2C_CHAT source{};
+			source.iFromNetEntityId = 42u;
+			source.strFromNickname = "Speaker";
+			source.strText = "hello room";
+			CPacketWriter writer;
+			testRunner.Require(
+				Write_Message(writer, source), "Writer Chat Received");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_CHAT decoded{};
+			testRunner.Require(
+				Read_Message(reader, decoded) &&
+				decoded.iFromNetEntityId == source.iFromNetEntityId &&
+				decoded.strFromNickname == source.strFromNickname &&
+				decoded.strText == source.strText &&
+				0u == reader.Get_RemainingSize(),
+				"Chat Received Round Trip");
+
+			S2C_CHAT invalid{};
+			invalid.iFromNetEntityId = 42u;
+			invalid.strFromNickname = "Speaker";
+			invalid.strText = "";
+			CPacketWriter invalidWriter;
+			testRunner.Require(!Write_Message(invalidWriter, invalid),
+				"Reject Empty Chat Received Text");
+		}
+	}
+
 	void Test_CharacterClassChangeRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_CHANGE_CHARACTER_CLASS request{};
@@ -2902,6 +3143,64 @@ namespace
 		}
 
 		{
+			constexpr std::size_t MAXIMUM_DELTA_PAYLOAD_BYTES = 65258u;
+			constexpr std::size_t MAXIMUM_DELTA_FRAME_BYTES = 65264u;
+			const S2C_WORLD_DESTRUCTION_DELTA maximumDelta =
+				Make_MaximumSizedDestructionDelta(
+					MAX_WORLD_DESTRUCTION_CHANGED_STATES,
+					MAX_WORLD_DESTRUCTION_EVENTS);
+			CPacketWriter maximumWriter;
+			std::vector<std::uint8_t> maximumFrame;
+			const bool wroteMaximum = Write_Message(maximumWriter, maximumDelta);
+			const bool framedMaximum = wroteMaximum && Build_Packet_Frame(
+				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA,
+				maximumWriter.Get_Buffer(), maximumFrame);
+			CPacketReader maximumReader{ maximumWriter.Get_Buffer() };
+			S2C_WORLD_DESTRUCTION_DELTA decodedMaximum{};
+			const bool readMaximum = wroteMaximum &&
+				Read_Message(maximumReader, decodedMaximum) &&
+				0u == maximumReader.Get_RemainingSize() &&
+				MAX_WORLD_DESTRUCTION_CHANGED_STATES ==
+					decodedMaximum.ChangedStates.size() &&
+				MAX_WORLD_DESTRUCTION_EVENTS ==
+					decodedMaximum.LiveEvents.size();
+			testRunner.Require(
+				framedMaximum && readMaximum &&
+				MAXIMUM_DELTA_PAYLOAD_BYTES ==
+					maximumWriter.Get_Buffer().size() &&
+				MAXIMUM_DELTA_FRAME_BYTES == maximumFrame.size() &&
+				maximumFrame.size() <= MAX_PACKET_BYTES,
+				"Frame 128 Maximum Destruction States And 106 Maximum Events");
+
+			constexpr std::size_t COLLAPSE_PAYLOAD_BYTES = 56847u;
+			constexpr std::size_t COLLAPSE_FRAME_BYTES = 56853u;
+			const S2C_WORLD_DESTRUCTION_DELTA collapseDelta =
+				Make_MaximumSizedDestructionDelta(97u, 97u);
+			CPacketWriter collapseWriter;
+			std::vector<std::uint8_t> collapseFrame;
+			const bool wroteCollapse = Write_Message(
+				collapseWriter, collapseDelta);
+			const bool framedCollapse = wroteCollapse && Build_Packet_Frame(
+				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA,
+				collapseWriter.Get_Buffer(), collapseFrame);
+			testRunner.Require(
+				framedCollapse &&
+				COLLAPSE_PAYLOAD_BYTES == collapseWriter.Get_Buffer().size() &&
+				COLLAPSE_FRAME_BYTES == collapseFrame.size() &&
+				collapseFrame.size() <= MAX_PACKET_BYTES,
+				"Frame Maximum-Length 97-State 97-Event Collapse Delta");
+
+			const S2C_WORLD_DESTRUCTION_DELTA overflowDelta =
+				Make_MaximumSizedDestructionDelta(
+					MAX_WORLD_DESTRUCTION_CHANGED_STATES,
+					MAX_WORLD_DESTRUCTION_EVENTS + 1u);
+			CPacketWriter overflowWriter;
+			testRunner.Require(
+				!Write_Message(overflowWriter, overflowDelta),
+				"Reject Canonical 107-Event Destruction Delta");
+		}
+
+		{
 			std::vector<std::uint8_t> malformed = validDeltaPayload;
 			malformed.pop_back();
 			CPacketReader reader{ malformed };
@@ -2912,7 +3211,8 @@ namespace
 				"Reject Truncated Destruction Delta Atomically");
 
 			malformed = validDeltaPayload;
-			malformed[76] = 65u;
+			malformed[76] = static_cast<std::uint8_t>(
+				MAX_WORLD_DESTRUCTION_EVENTS + 1u);
 			malformed[77] = 0u;
 			CPacketReader countReader{ malformed };
 			testRunner.Require(!Read_Message(countReader, unchanged),
@@ -3604,6 +3904,209 @@ namespace
 		}
 	}
 
+	void Test_ValtanNextPatternProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_VALTAN_AUDITION_REQUEST play{};
+		play.iRequestSequence = 0x12345678u;
+		play.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+		play.strBossPlacementId = "b";
+		play.strPatternId = "P";
+		const std::vector<std::uint8_t> playGolden{
+			0x78u, 0x56u, 0x34u, 0x12u, 11u, 0u, 0u, 0u, 0u,
+			1u, 0u, 'b', 1u, 0u, 'P' };
+		CPacketWriter playWriter;
+		testRunner.Require(Write_Message(playWriter, play) &&
+			playGolden == playWriter.Get_Buffer(),
+			"Next Extension Preserves PLAY_PATTERN_ID Golden Bytes");
+		S2C_VALTAN_AUDITION_RESULT playResult{};
+		playResult.iRequestSequence = play.iRequestSequence;
+		playResult.eOperation = play.eOperation;
+		playResult.strBossPlacementId = play.strBossPlacementId;
+		playResult.strPatternId = play.strPatternId;
+		playResult.eResult = VALTAN_AUDITION_RESULT::QUEUED;
+		playResult.iCurrentHealthBar = 160u;
+		const std::vector<std::uint8_t> playResultGolden{
+			0x78u, 0x56u, 0x34u, 0x12u, 11u, 0u, 0u, 0u, 0u,
+			1u, 160u, 0u, 0u, 0u, 1u, 0u, 'b', 1u, 0u, 'P' };
+		CPacketWriter playResultWriter;
+		testRunner.Require(Write_Message(playResultWriter, playResult) &&
+			playResultGolden == playResultWriter.Get_Buffer(),
+			"Next Extension Preserves PLAY_PATTERN_ID Result Golden Bytes");
+
+		for (const auto operation : { VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID,
+			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID })
+		{
+			C2S_VALTAN_AUDITION_REQUEST request = play;
+			request.eOperation = operation;
+			request.strBossPlacementId = "boss.valtan.center";
+			request.strPatternId = "VALTAN_FIST_IN_OUT";
+			request.iPredecessorRoomAuditionEpoch = 7u;
+			request.iPredecessorPatternSequence = 19u;
+			request.iExpectedNextRequestSequence = 73u;
+			CPacketWriter writer;
+			const bool wrote = Write_Message(writer, request);
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_VALTAN_AUDITION_REQUEST decoded{};
+			CPacketWriter roundTrip;
+			testRunner.Require(wrote && Read_Message(reader, decoded) &&
+				0u == reader.Get_RemainingSize() && Write_Message(roundTrip, decoded) &&
+				roundTrip.Get_Buffer() == writer.Get_Buffer(),
+				"Next Queue/Clear Round Trip Full Predecessor And CAS Identity");
+
+			bool rejectedEveryTruncation = true;
+			for (std::size_t length = 0u; length < writer.Get_Buffer().size(); ++length)
+			{
+				CPacketReader truncated{ std::span<const std::uint8_t>(
+					writer.Get_Buffer().data(), length) };
+				C2S_VALTAN_AUDITION_REQUEST unchanged = request;
+				unchanged.iRequestSequence = 91u;
+				CPacketWriter before;
+				CPacketWriter after;
+				(void)Write_Message(before, unchanged);
+				rejectedEveryTruncation = !Read_Message(truncated, unchanged) &&
+					Write_Message(after, unchanged) && before.Get_Buffer() == after.Get_Buffer() &&
+					rejectedEveryTruncation;
+			}
+			testRunner.Require(rejectedEveryTruncation,
+				"Reject Every Truncated Next String/Token Without Mutating Destination");
+
+			S2C_VALTAN_AUDITION_RESULT result = playResult;
+			result.eOperation = operation;
+			result.strBossPlacementId = request.strBossPlacementId;
+			result.strPatternId = request.strPatternId;
+			result.iPredecessorRoomAuditionEpoch = request.iPredecessorRoomAuditionEpoch;
+			result.iPredecessorPatternSequence = request.iPredecessorPatternSequence;
+			result.iExpectedNextRequestSequence = request.iExpectedNextRequestSequence;
+			result.eResult = VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == operation ?
+				VALTAN_AUDITION_RESULT::QUEUED : VALTAN_AUDITION_RESULT::CLEARED;
+			CPacketWriter resultWriter;
+			const bool wroteResult = Write_Message(resultWriter, result);
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_VALTAN_AUDITION_RESULT decodedResult{};
+			CPacketWriter resultRoundTrip;
+			testRunner.Require(wroteResult && Read_Message(resultReader, decodedResult) &&
+				0u == resultReader.Get_RemainingSize() &&
+				Write_Message(resultRoundTrip, decodedResult) &&
+				resultWriter.Get_Buffer() == resultRoundTrip.Get_Buffer(),
+				"Next Verdict Echoes The Full Command Tuple");
+			bool resultRollback = true;
+			for (std::size_t length = 0u; length < resultWriter.Get_Buffer().size(); ++length)
+			{
+				CPacketReader truncated{ std::span<const std::uint8_t>(
+					resultWriter.Get_Buffer().data(), length) };
+				S2C_VALTAN_AUDITION_RESULT unchanged = result;
+				unchanged.iRequestSequence = 94u;
+				CPacketWriter before;
+				CPacketWriter after;
+				(void)Write_Message(before, unchanged);
+				resultRollback = !Read_Message(truncated, unchanged) &&
+					Write_Message(after, unchanged) && before.Get_Buffer() == after.Get_Buffer() &&
+					resultRollback;
+			}
+			testRunner.Require(resultRollback, "Next Result Truncation Preserves Destination");
+			for (const auto invalidResult : { VALTAN_AUDITION_RESULT::ARMED,
+				VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED,
+				VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR,
+				VALTAN_AUDITION_RESULT::REJECTED_NOT_ARMED,
+				VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED,
+				VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == operation ?
+					VALTAN_AUDITION_RESULT::CLEARED : VALTAN_AUDITION_RESULT::QUEUED,
+				VALTAN_AUDITION_RESULT::END })
+			{
+				result.eResult = invalidResult;
+				CPacketWriter invalidWriter;
+				auto bytes = resultWriter.Get_Buffer();
+				bytes[9] = static_cast<std::uint8_t>(invalidResult);
+				CPacketReader invalidReader{ bytes };
+				S2C_VALTAN_AUDITION_RESULT unchanged = decodedResult;
+				testRunner.Require(!Write_Message(invalidWriter, result) &&
+					!Read_Message(invalidReader, unchanged) &&
+					unchanged.eResult == decodedResult.eResult,
+					"Reject Unknown Or Operation-Mismatched Next Verdict");
+			}
+			std::vector<C2S_VALTAN_AUDITION_REQUEST> malformed;
+			auto invalid = request;
+			invalid.iPredecessorRoomAuditionEpoch = 0u;
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.iPredecessorPatternSequence = 0u;
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.strBossPlacementId = "../boss";
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.strPatternId.clear();
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.strPatternId.assign(MAX_STABLE_NETWORK_ID_BYTES + 1u, 'P');
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.iTargetHealthBar = 1u;
+			malformed.push_back(invalid);
+			invalid = request;
+			invalid.eOperation = VALTAN_AUDITION_OPERATION::END;
+			malformed.push_back(invalid);
+			if (VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == operation)
+			{
+				invalid = request;
+				invalid.iExpectedNextRequestSequence = 0u;
+				malformed.push_back(invalid);
+			}
+			bool rejectedMalformed = true;
+			for (const auto& value : malformed)
+			{
+				CPacketWriter invalidWriter;
+				rejectedMalformed = !Write_Message(invalidWriter, value) &&
+					invalidWriter.Get_Buffer().empty() && rejectedMalformed;
+			}
+			testRunner.Require(rejectedMalformed,
+				"Reject Next Zero Tokens, Invalid IDs, Hidden Bars And Unknown Operation");
+		}
+		for (const auto operation : { VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID,
+			VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE })
+		{
+			for (std::size_t field = 0u; field < 3u; ++field)
+			{
+				auto hidden = play;
+				hidden.eOperation = operation;
+				if (VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE == operation)
+				{
+					hidden.strBossPlacementId.clear();
+					hidden.strPatternId.clear();
+				}
+				hidden.iPredecessorRoomAuditionEpoch = 0u == field ? 1u : 0u;
+				hidden.iPredecessorPatternSequence = 1u == field ? 1u : 0u;
+				hidden.iExpectedNextRequestSequence = 2u == field ? 1u : 0u;
+				CPacketWriter writer;
+				testRunner.Require(!Write_Message(writer, hidden),
+					"Reject Hidden Next Identity On Older Audition Operations");
+			}
+		}
+		for (const auto state : { VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED,
+			VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER })
+		{
+			S2C_VALTAN_AUDITION_LIFECYCLE lifecycle{};
+			lifecycle.iRequestSequence = 72u;
+			lifecycle.iRoomAuditionEpoch = 5u;
+			lifecycle.iPatternSequence = 21u;
+			lifecycle.strPatternId = "VALTAN_FIST_IN_OUT";
+			lifecycle.eState = state;
+			lifecycle.PinnedDefinitionRevision = Make_GameplayDataRevision(81u);
+			CPacketWriter writer;
+			const bool wrote = Write_Message(writer, lifecycle);
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_VALTAN_AUDITION_LIFECYCLE decoded{};
+			testRunner.Require(wrote && Read_Message(reader, decoded) &&
+				decoded.eState == state && 21u == decoded.iPatternSequence &&
+				decoded.PinnedDefinitionRevision == lifecycle.PinnedDefinitionRevision,
+				"Next Reserved/Waiting Lifecycle Keeps Its Expected Occurrence Identity");
+			lifecycle.iPatternSequence = 0u;
+			CPacketWriter invalid;
+			testRunner.Require(!Write_Message(invalid, lifecycle),
+				"Reject Next Lifecycle Without Expected Pattern Sequence");
+		}
+	}
+
 	void Test_WorldEntitySpawnCommandRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_SPAWN_WORLD_ENTITY request{};
@@ -3779,11 +4282,123 @@ namespace
 			"Reject Oversize Required Pinned Revision List");
 	}
 
+	void Test_SessionDiagnosticReasonContract(TEST_RUNNER& testRunner)
+	{
+		struct EXPECTED_REASON
+		{
+			SESSION_DIAGNOSTIC_REASON eReason;
+			const char* pszName;
+		};
+
+		constexpr std::array<EXPECTED_REASON, 46u> expectedReasons{
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED, "CLIENT_CONNECT_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_ENTER_SEND_FAILED, "CLIENT_ENTER_SEND_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_APPROVAL_TIMEOUT, "CLIENT_APPROVAL_TIMEOUT" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECTION_LOST, "CLIENT_CONNECTION_LOST" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_PEER_CLOSED, "CLIENT_PEER_CLOSED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_RECEIVE_ERROR, "CLIENT_RECEIVE_ERROR" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_SEND_ERROR, "CLIENT_SEND_ERROR" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_PARSER_OVERFLOW, "CLIENT_PARSER_OVERFLOW" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_FRAME, "CLIENT_INVALID_FRAME" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_RAW_QUEUE_OVERFLOW, "CLIENT_RAW_QUEUE_OVERFLOW" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW, "CLIENT_EVENT_QUEUE_OVERFLOW" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED, "CLIENT_MESSAGE_DECODE_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_ENTRY_PRESENTATION_BASELINE_FAILED, "CLIENT_ENTRY_PRESENTATION_BASELINE_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_ENTRY_PRESENTATION_REVISION_FAILED, "CLIENT_ENTRY_PRESENTATION_REVISION_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE, "CLIENT_INVALID_SERVER_RESPONSE" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_EXPECTED_ROOM_FULL, "CLIENT_EXPECTED_ROOM_FULL" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_REPLICATION_FAILED, "CLIENT_REPLICATION_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_LOAD_FAILED, "CLIENT_LOAD_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_LOADING_START_FAILED, "CLIENT_LOADING_START_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_PROFILE_MISSING, "CLIENT_ACTIVATION_PROFILE_MISSING" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_LEVEL_CREATE_FAILED, "CLIENT_ACTIVATION_LEVEL_CREATE_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_PROFILE_FAILED, "CLIENT_ACTIVATION_PROFILE_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_CHANGE_LEVEL_FAILED, "CLIENT_ACTIVATION_CHANGE_LEVEL_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED, "CLIENT_IDENTITY_COMMIT_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::CLIENT_WORLD_TRANSFER_FAILED, "CLIENT_WORLD_TRANSFER_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_PEER_CLOSED, "SERVER_PEER_CLOSED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_RECEIVE_ERROR, "SERVER_RECEIVE_ERROR" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_INVALID_FRAME, "SERVER_INVALID_FRAME" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_PARSER_OVERFLOW, "SERVER_PARSER_OVERFLOW" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT, "SERVER_SEND_ERROR_OR_TIMEOUT" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_RELIABLE_OUTBOUND_OVERFLOW, "SERVER_RELIABLE_OUTBOUND_OVERFLOW" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_MESSAGE_DECODE_FAILED, "SERVER_CLIENT_MESSAGE_DECODE_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_UNKNOWN_PACKET, "SERVER_UNKNOWN_PACKET" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_START_FAILED, "SERVER_SESSION_START_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED, "SERVER_SESSION_BIND_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW, "SERVER_ROOM_INGRESS_OVERFLOW" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_COMMAND_VALIDATION_FAILED, "SERVER_CLIENT_COMMAND_VALIDATION_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED, "SERVER_JOIN_VALIDATION_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_SPAWN_EXHAUSTED, "SERVER_SPAWN_EXHAUSTED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_PROFILE_MISSING, "SERVER_PROFILE_MISSING" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_NAVIGATION_FAILED, "SERVER_NAVIGATION_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED, "SERVER_JOIN_PREFLIGHT_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_INITIAL_SYNC_ENQUEUE_FAILED, "SERVER_INITIAL_SYNC_ENQUEUE_FAILED" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL, "SERVER_EXPECTED_ROOM_FULL" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_APPLICATION_CLOSE, "SERVER_APPLICATION_CLOSE" },
+			EXPECTED_REASON{ SESSION_DIAGNOSTIC_REASON::SERVER_SHUTDOWN, "SERVER_SHUTDOWN" }
+		};
+
+		static_assert(
+			expectedReasons.size() ==
+			static_cast<std::size_t>(SESSION_DIAGNOSTIC_REASON::END) - 1u,
+			"Update the stable diagnostic reason table when appending a reason.");
+
+		bool allReasonsAreKnown = true;
+		bool allValuesAreContiguous = true;
+		bool allNamesAreExact = true;
+		bool allNamesAreUnique = true;
+		for (std::size_t index = 0u; index < expectedReasons.size(); ++index)
+		{
+			const EXPECTED_REASON& expected = expectedReasons[index];
+			allReasonsAreKnown = allReasonsAreKnown &&
+				Is_Known_SessionDiagnosticReason(expected.eReason);
+			allValuesAreContiguous = allValuesAreContiguous &&
+				static_cast<std::size_t>(expected.eReason) == index + 1u;
+			allNamesAreExact = allNamesAreExact &&
+				To_SessionDiagnosticReasonName(expected.eReason) == expected.pszName &&
+				To_SessionDiagnosticReasonName(expected.eReason) !=
+					"UNKNOWN_SESSION_DIAGNOSTIC_REASON";
+
+			for (std::size_t other = 0u; other < index; ++other)
+			{
+				allNamesAreUnique = allNamesAreUnique &&
+					To_SessionDiagnosticReasonName(expected.eReason) !=
+					To_SessionDiagnosticReasonName(expectedReasons[other].eReason);
+			}
+		}
+
+		testRunner.Require(
+			42u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 42");
+		testRunner.Require(
+			allReasonsAreKnown && allValuesAreContiguous,
+			"Every Session Diagnostic Reason Is Known And Append Only");
+		testRunner.Require(
+			allNamesAreExact,
+			"Every Session Diagnostic Reason Has Stable Exact Name");
+		testRunner.Require(
+			allNamesAreUnique,
+			"Session Diagnostic Reason Names Are Unique");
+		testRunner.Require(
+			!Is_Known_SessionDiagnosticReason(SESSION_DIAGNOSTIC_REASON::NONE) &&
+			To_SessionDiagnosticReasonName(SESSION_DIAGNOSTIC_REASON::NONE) == "NONE" &&
+			!Is_Known_SessionDiagnosticReason(SESSION_DIAGNOSTIC_REASON::END) &&
+			To_SessionDiagnosticReasonName(SESSION_DIAGNOSTIC_REASON::END) ==
+				"UNKNOWN_SESSION_DIAGNOSTIC_REASON" &&
+			!Is_Known_SessionDiagnosticReason(
+				static_cast<SESSION_DIAGNOSTIC_REASON>(0xffffu)) &&
+			To_SessionDiagnosticReasonName(
+				static_cast<SESSION_DIAGNOSTIC_REASON>(0xffffu)) ==
+				"UNKNOWN_SESSION_DIAGNOSTIC_REASON",
+			"Reject None End And Invalid Session Diagnostic Reasons");
+	}
+
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			39u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Pattern Flow Contract Uses Protocol 39");
+			42u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Pattern Flow And Next Contract Use Protocol 42");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -4608,11 +5223,15 @@ int main()
 	Test_WorldDestructionProtocol(testRunner);
 	Test_EncounterPropSyncProtocol(testRunner);
 	Test_ValtanAuditionProtocol(testRunner);
+	Test_ValtanNextPatternProtocol(testRunner);
+	Test_SessionDiagnosticReasonContract(testRunner);
 	Test_GameplayDataRevisionContract(testRunner);
 	Test_DataRevisionHotReloadProtocol(testRunner);
 	Test_ValtanAuditionLifecycleProtocol(testRunner);
 	Test_ValtanPatternFlowProtocol(testRunner);
 	Test_ValtanDecisionTraceProtocol(testRunner);
+	Test_PartyInviteProtocol(testRunner);
+	Test_ChatProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);
 

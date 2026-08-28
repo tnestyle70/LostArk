@@ -26,10 +26,28 @@ $mapObject = Read-RequiredFile 'Client\Private\MapAssetObject.cpp'
 $mapBatch = Read-RequiredFile 'Client\Private\MapStaticBatchObject.cpp'
 $model = Read-RequiredFile 'Engine\Private\Model.cpp'
 
-Require-Text $registry 'MakeBernMapScope[\s\S]*frustumCulling\.bypass\s*=\s*false' `
+$bernScopeMatch = [regex]::Match(
+    $registry,
+    'MAP_LOAD_SCOPE\s+MakeBernMapScope\(\)\s*\{(?<body>[\s\S]*?)return\s+scope\s*;\s*\}')
+if (-not $bernScopeMatch.Success) {
+    throw 'Could not isolate MakeBernMapScope for exact policy validation.'
+}
+$bernScope = $bernScopeMatch.Groups['body'].Value
+
+Require-Text $bernScope 'frustumCulling\.bypass\s*=\s*false\s*;' `
     'Bern product frustum culling is not enabled.'
-Require-Text $registry 'frustumCulling\.diagnostics\s*=\s*false' `
+Require-Text $bernScope 'frustumCulling\.diagnostics\s*=\s*false\s*;' `
     'Bern product diagnostics are still enabled.'
+Require-Text $bernScope 'frustumCulling\.baseMargin\s*=\s*0\.25f\s*;' `
+    'Bern must keep the validated 0.25 base margin.'
+Require-Text $bernScope 'frustumCulling\.largeObjectRadiusThreshold\s*=\s*4\.f\s*;' `
+    'Bern must keep the validated 4.0 large-object threshold.'
+Require-Text $bernScope 'frustumCulling\.largeObjectAbsoluteMargin\s*=\s*2\.f\s*;' `
+    'Bern must keep the validated 2.0 absolute large-object margin.'
+Require-Text $bernScope 'frustumCulling\.largeObjectRelativeMargin\s*=\s*0\.12f\s*;' `
+    'Bern must keep the validated 0.12 relative large-object margin.'
+Require-Text $bernScope 'frustumCulling\.rejectHysteresisFrames\s*=\s*3u\s*;' `
+    'Bern must keep the validated three-frame reject grace.'
 Require-Text $mapUtils 'planeDistances\[index\]' `
     'Six-plane diagnostic distances are not recorded.'
 Require-Text $mapUtils 'placementId=' `

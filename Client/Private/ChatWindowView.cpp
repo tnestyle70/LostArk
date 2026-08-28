@@ -4,6 +4,7 @@
 
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
+#include "PlayerCommandSink.h"
 #include "RuntimeAssetRoot.h"
 #include "UITextureCache.h"
 
@@ -60,7 +61,8 @@ void Client::CChatWindowView::Close_Input()
 	m_InputBuffer[0] = '\0';
 }
 
-void Client::CChatWindowView::Render()
+void Client::CChatWindowView::Render(
+	const std::shared_ptr<IPlayerCommandSink>& pCommandSink)
 {
 	/* The whole window (log + input bar) disappears once nothing has kept it alive for
 	HIDE_AFTER -- a submitted message, opening the input, or (below) having it actively
@@ -274,10 +276,13 @@ void Client::CChatWindowView::Render()
 					L"Sound/UI/System/sys_chat_text_enter1__926892930.wav");
 				CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 
-				/* Local echo only -- Shared's C2S_CHAT/S2C_CHAT packet types are declared but
-				have no Server relay behind them yet, so this does not leave the process.
-				Keeps the input open and refocused so a chat session can send several lines
-				without re-pressing Enter to reopen each time. */
+				if (nullptr != pCommandSink)
+					pCommandSink->Request_SendChat(strLine);
+
+				/* Local echo happens regardless of send success -- this is your own
+				scrollback, not the head bubble (that reads the Server's broadcast back,
+				same as everyone else's). Keeps the input open and refocused so a chat
+				session can send several lines without re-pressing Enter each time. */
 				const time_t rawTime = time(nullptr);
 				tm localTime{};
 				localtime_s(&localTime, &rawTime);

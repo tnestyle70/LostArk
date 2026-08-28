@@ -4,6 +4,7 @@
 #include "Model.h"
 #include "Npc.h"
 #include "RuntimeAssetRoot.h"
+#include "Valtan.h"
 #include "Shader.h"
 #include "VIBuffer_Rect.h"
 
@@ -541,41 +542,100 @@ f32_t Client::CEffectV2Object::Dissolve_Amount() const
 	return Saturate((fRatio - fStart) / (1.f - fStart));
 }
 
+Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_Npc(
+	const std::shared_ptr<CNpc>& pNpc)
+{
+	EFFECT_V2_TARGET Target;
+	if (nullptr == pNpc)
+		return Target;
+	Target.eKind = EFFECT_V2_TARGET_KIND::NPC;
+	Target.pOwner = pNpc;
+	Target.pKey = pNpc.get();
+	return Target;
+}
+
+Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_Valtan(
+	const std::shared_ptr<CValtan>& pValtan)
+{
+	EFFECT_V2_TARGET Target;
+	if (nullptr == pValtan)
+		return Target;
+	Target.eKind = EFFECT_V2_TARGET_KIND::VALTAN;
+	Target.pOwner = pValtan;
+	Target.pKey = pValtan.get();
+	return Target;
+}
+
 void Client::CEffectV2Object::Set_FollowTarget(
-	const std::weak_ptr<CNpc>& pTarget,
+	const EFFECT_V2_TARGET& Target,
 	std::string strBone,
 	const PIVOT_ROTATION eRotation)
 {
-	m_pFollowTarget = pTarget;
+	m_FollowTarget = Target;
 	m_strFollowBone = std::move(strBone);
 	m_eFollowRotation = eRotation;
-	m_bFollowTarget = !m_pFollowTarget.expired();
+	m_bFollowTarget = m_FollowTarget.Is_Valid();
 }
 
 void Client::CEffectV2Object::Clear_FollowTarget()
 {
 	m_bFollowTarget = false;
-	m_pFollowTarget.reset();
+	m_FollowTarget.Reset();
 	m_strFollowBone.clear();
 }
 
+bool_t Client::CEffectV2Object::Resolve_TargetView(
+	const EFFECT_V2_TARGET& Target,
+	EFFECT_V2_TARGET_VIEW& OutView)
+{
+	const std::shared_ptr<CGameObject> pOwner = Target.pOwner.lock();
+	if (nullptr == pOwner)
+		return false;
+	switch (Target.eKind)
+	{
+	case EFFECT_V2_TARGET_KIND::NPC:
+	{
+		const std::shared_ptr<CNpc> pNpc = std::static_pointer_cast<CNpc>(pOwner);
+		if (nullptr == pNpc->Get_Model() || nullptr == pNpc->Get_Transform())
+			return false;
+		OutView.pModel = pNpc->Get_Model();
+		OutView.BoneRoot = *pNpc->Get_Transform()->Get_WorldMatrixPtr();
+		OutView.YawBasis = OutView.BoneRoot;
+		return true;
+	}
+	case EFFECT_V2_TARGET_KIND::VALTAN:
+	{
+		const std::shared_ptr<CValtan> pValtan = std::static_pointer_cast<CValtan>(pOwner);
+		if (nullptr == pValtan->Get_BodyModel() || nullptr == pValtan->Get_Transform() ||
+			!pValtan->Try_Get_PresentationRootMatrix(&OutView.BoneRoot))
+		{
+			return false;
+		}
+		OutView.pModel = pValtan->Get_BodyModel();
+		OutView.YawBasis = *pValtan->Get_Transform()->Get_WorldMatrixPtr();
+		return true;
+	}
+	default:
+		return false;
+	}
+}
+
 bool_t Client::CEffectV2Object::Resolve_TargetPivot(
-	const CNpc& Npc,
+	const EFFECT_V2_TARGET_VIEW& View,
 	const std::string& strBone,
 	const PIVOT_ROTATION eRotation,
 	float4x4_t& OutPivot)
 {
-	const shared_ptr<Engine::CModel> pModel = Npc.Get_Model();
-	const shared_ptr<Engine::CTransform> pTransform = Npc.Get_Transform();
-	if (nullptr == pModel || nullptr == pTransform)
+	if (nullptr == View.pModel)
 		return false;
-	const matrix_t TargetWorld = XMLoadFloat4x4(pTransform->Get_WorldMatrixPtr());
-	matrix_t Pivot = TargetWorld;
+	const matrix_t BoneRoot = XMLoadFloat4x4(&View.BoneRoot);
+	const matrix_t TargetWorld = XMLoadFloat4x4(&View.YawBasis);
+	matrix_t Pivot = BoneRoot;
 	if (!strBone.empty())
 	{
-		if (!pModel->Has_Bone(strBone.c_str()))
+		if (!View.pModel->Has_Bone(strBone.c_str()))
 			return false;
-		Pivot = pModel->Get_BoneMatrix(strBone.c_str()) * TargetWorld;
+		Pivot = View.pModel->Get_BoneMatrix(strBone.c_str()) * BoneRoot;
 	}
 	const vector_t Translation = XMVectorSetW(Pivot.r[3], 1.f);
 	if (PIVOT_ROTATION::BONE == eRotation)
@@ -614,9 +674,9 @@ void Client::CEffectV2Object::Update(const f32_t fTimeDelta)
 {
 	if (m_bFollowTarget)
 	{
-		const std::shared_ptr<CNpc> pTarget = m_pFollowTarget.lock();
-		if (nullptr == pTarget ||
-			!Resolve_TargetPivot(*pTarget, m_strFollowBone, m_eFollowRotation, m_PivotWorld))
+		EFFECT_V2_TARGET_VIEW View;
+		if (!Resolve_TargetView(m_FollowTarget, View) ||
+			!Resolve_TargetPivot(View, m_strFollowBone, m_eFollowRotation, m_PivotWorld))
 		{
 			m_bFinished = true;
 		}

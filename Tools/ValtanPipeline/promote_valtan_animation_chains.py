@@ -356,6 +356,63 @@ def _manual_presentation_pattern(
     }
 
 
+def _expand_trash_capture_promotion(
+    generated_gameplay: dict[str, Any],
+    generated_presentation: dict[str, Any],
+    existing_gameplay: dict[str, Any] | None,
+    existing_presentation: dict[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Join the reviewed eight-clip intake to the authored capture graph.
+
+    The six outcome stages belong to the phase-two author, not the animation
+    intake. Reuse that author before the ordinary enrichment identity checks;
+    do not accept arbitrary extra stages or quietly repair their fixed clocks.
+    """
+    # The author imports this module's readers, so defer the reverse dependency.
+    from author_valtan_phase_two_mechanics import author_trash_capture_flow
+
+    intake_ids = [f"STEP_{index:02d}" for index in range(1, 9)]
+    for generated in (generated_gameplay, generated_presentation):
+        if generated.get("patternId") != "VALTAN_TRASH" or [
+            row.get("stageId") for row in generated.get("stages", [])
+        ] != intake_ids:
+            raise PromotionError("Trash capture promotion requires the reviewed eight-stage intake")
+    if (existing_gameplay is None) != (existing_presentation is None):
+        raise PromotionError("Trash capture promotion requires paired split source rows")
+
+    # Keep the receipt's sourceActionIds/occurrences limited to the intake.
+    gameplay = copy.deepcopy(generated_gameplay)
+    presentation = copy.deepcopy(generated_presentation)
+    author_trash_capture_flow({"patterns": [gameplay]}, {"patterns": [presentation]})
+    expected_ids = [row["stageId"] for row in gameplay["stages"]]
+    for domain, generated, existing in (
+        ("gameplay", gameplay, existing_gameplay),
+        ("presentation", presentation, existing_presentation),
+    ):
+        if existing is None:
+            continue
+        rows = existing.get("stages")
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows) or [
+            row.get("stageId") for row in rows
+        ] != expected_ids:
+            raise PromotionError(f"Trash capture {domain} stage closure/order drift")
+        for expected, current in zip(generated["stages"], rows):
+            stage_id = expected["stageId"]
+            if current.get("actionId") != expected["actionId"]:
+                raise PromotionError(f"Trash capture {domain} action identity drift: {stage_id}")
+            if stage_id in intake_ids:
+                continue
+            if domain == "gameplay":
+                duration = _integer(current.get("durationMs"), f"Trash/{stage_id}.durationMs", 1)
+                if duration != expected["durationMs"]:
+                    raise PromotionError(f"Trash capture branch duration drift: {stage_id}")
+                if "counterProxy" in expected and "counterProxy" not in current:
+                    raise PromotionError(f"Trash capture counter proxy is missing: {stage_id}")
+            elif current.get("animation") != expected["animation"]:
+                raise PromotionError(f"Trash capture branch source slice drift: {stage_id}")
+    return gameplay, presentation
+
+
 def _preserve_manual_gameplay_enrichment(
     generated: dict[str, Any], existing: dict[str, Any] | None
 ) -> dict[str, Any]:
@@ -408,6 +465,7 @@ def _preserve_manual_gameplay_enrichment(
             "motion",
             "events",
             "branches",
+            "counterProxy",
         ):
             if field in existing_stage:
                 generated_stage[field] = copy.deepcopy(existing_stage[field])
@@ -564,19 +622,29 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
     ]
     if len(chain_ids) != len(chains) or len(chain_ids) != len(set(chain_ids)):
         raise PromotionError("debug chain IDs are missing or duplicated")
-    declared_chain_ids = [row["sourceChainId"] for row in promotions] + intake_chain_ids
-    if declared_chain_ids != chain_ids:
+    promoted_chain_ids = [row["sourceChainId"] for row in promotions]
+    declared_chain_ids = promoted_chain_ids + intake_chain_ids
+    if (
+        set(declared_chain_ids) != set(chain_ids)
+        or promoted_chain_ids != [value for value in chain_ids if value in promotion_ids]
+        or intake_chain_ids != [value for value in chain_ids if value in intake_chain_ids]
+    ):
         raise PromotionError(
             "promotion plus intake-only manifest order/closure must exactly match debug chains"
         )
-    promoted_chains = chains[: len(promotions)]
+    # Retiring a promoted pattern must not reorder the user's animation intake.
+    # Each admission partition keeps its original relative order instead.
+    chains_by_id = {chain["chainId"]: chain for chain in chains}
+    promoted_chains = [chains_by_id[value] for value in promoted_chain_ids]
 
     curves = _load_root_curves(repo_root, model_path)
     clip_skills = _load_clip_skills(repo_root / ANIM_NOTIFY_REL)
 
     intake_occurrence_ids: set[str] = set()
-    for declaration, chain in zip(intake_only, chains[len(promotions) :]):
+    used_aliases: set[str] = set()
+    for declaration in intake_only:
         chain_id = declaration["sourceChainId"]
+        chain = chains_by_id[chain_id]
         _exact(
             chain,
             ("chainId", "targetPatternId", "targetStageId", "animation"),
@@ -627,6 +695,8 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
                 source["clip"], f"intake-only chain {chain_id} source clip"
             )
             resolved_clip = aliases.get(source_clip, source_clip)
+            if resolved_clip != source_clip:
+                used_aliases.add(source_clip)
             curve = curves.get(resolved_clip)
             if curve is None:
                 raise PromotionError(
@@ -653,6 +723,11 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
 
     gameplay = _read_json(repo_root / GAMEPLAY_REL)
     presentation = _read_json(repo_root / PRESENTATION_REL)
+    retired_collisions = pattern_ids & set(gameplay.get("retiredPatternIds", []))
+    if retired_collisions:
+        raise PromotionError(
+            f"retired patterns cannot be promoted: {sorted(retired_collisions)}"
+        )
 
     current_gameplay_ids = {row.get("patternId") for row in gameplay.get("patterns", [])}
     current_presentation_ids = {
@@ -701,7 +776,6 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
     seen_source_occurrences: set[str] = set()
     seen_target_actions: set[str] = set()
     seen_target_occurrences: set[str] = set()
-    used_aliases: set[str] = set()
     for promotion, chain in zip(promotions, promoted_chains):
         chain_id = promotion["sourceChainId"]
         _exact(
@@ -862,6 +936,13 @@ def build_candidates(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], d
         presentation_pattern = _manual_presentation_pattern(
             promotion, source_action_ids, stages
         )
+        if promotion["patternId"] == "VALTAN_TRASH":
+            gameplay_pattern, presentation_pattern = _expand_trash_capture_promotion(
+                gameplay_pattern,
+                presentation_pattern,
+                existing_gameplay_by_id.get(promotion["patternId"]),
+                existing_presentation_by_id.get(promotion["patternId"]),
+            )
         gameplay_pattern = _preserve_manual_gameplay_enrichment(
             gameplay_pattern,
             existing_gameplay_by_id.get(promotion["patternId"]),

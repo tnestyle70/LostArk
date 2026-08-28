@@ -1757,8 +1757,8 @@
       "category": "NORMAL",
       "minimumPhase": 1,
       "maximumPhase": 3,
-      "targetPolicy": "NEAREST_EACH_TICK",
-      "aimPolicy": "TRACK_TARGET_EACH_TICK",
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "점프찍기 후 휠윈드",
       "actionId": "valtan.sequence.attack-whirlwind",
       "sourceActionIds": [
@@ -1864,7 +1864,16 @@
           "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,
-          "downMs": 0
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "RETARGET_RANDOM_ALIVE",
+              "targetId": "boss.target.pattern",
+              "value": 1,
+              "durationMs": 0
+            }
+          ]
         }
       ]
     },
@@ -1966,7 +1975,7 @@
       "maximumPhase": 3,
       "targetPolicy": "NEAREST_EACH_TICK",
       "aimPolicy": "TRACK_TARGET_EACH_TICK",
-      "displayName": "2페이즈 4연속 공격",
+      "displayName": "2페이즈 4방향 공격",
       "actionId": "valtan.sequence.four",
       "sourceActionIds": [
         420609
@@ -2659,78 +2668,6 @@
       ]
     },
     {
-      "patternId": "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
-      "category": "NORMAL",
-      "minimumPhase": 1,
-      "maximumPhase": 3,
-      "targetPolicy": "NEAREST_EACH_TICK",
-      "aimPolicy": "TRACK_TARGET_EACH_TICK",
-      "displayName": "2페이즈 전방-후방-전방 연속 공격",
-      "actionId": "valtan.sequence.front-back-front",
-      "sourceActionIds": [
-        420624,
-        420661
-      ],
-      "selectionMode": "AUDITION_ONLY",
-      "minimumHealthBar": 0,
-      "maximumHealthBar": 0,
-      "triggerHealthBar": 0,
-      "triggerOrder": 0,
-      "armorRequirement": "ANY",
-      "phaseRequirement": "ANY",
-      "invulnerableWhileRunning": false,
-      "selectionWeight": 0,
-      "maximumConsecutiveUses": 0,
-      "minimumRange": 0.0,
-      "maximumRange": 1.0,
-      "stages": [
-        {
-          "stageId": "STEP_01",
-          "actionId": "valtan.sequence.front-back-front.step-01",
-          "stageKind": "ACTIVE",
-          "durationMs": 2700,
-          "hitShape": "CROSS",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 9.0,
-          "hitHalfWidth": 2.0,
-          "hitCount": 2,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "hitOffsetsMs": [
-            900,
-            2000
-          ],
-          "serverDamageProfileId": "damage.valtan.triple-attack",
-          "pushRangeM": 2.0,
-          "pushMs": 150,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STEP_02",
-          "actionId": "valtan.sequence.front-back-front.step-02",
-          "stageKind": "ACTIVE",
-          "durationMs": 2067,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        }
-      ]
-    },
-    {
       "patternId": "VALTAN_WARP",
       "category": "NORMAL",
       "minimumPhase": 1,
@@ -3222,7 +3159,8 @@
         420612,
         420629,
         420623,
-        420613
+        420613,
+        420631
       ],
       "selectionMode": "AUDITION_ONLY",
       "minimumHealthBar": 0,
@@ -3355,6 +3293,96 @@
           "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STEP_07",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-07",
+          "stageKind": "WINDUP",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "RETARGET_RANDOM_ALIVE",
+              "targetId": "boss.target.pattern",
+              "value": 1,
+              "durationMs": 0
+            }
+          ]
+        },
+        {
+          "stageId": "STEP_08",
+          "actionId": "valtan.sequence.center-trash-rush-if.step-08",
+          "stageKind": "ACTIVE",
+          "durationMs": 667,
+          "hitShape": "BOX",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 6.0,
+          "hitHalfWidth": 2.5,
+          "hitCount": 7,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "hitOffsetsMs": [
+            0,
+            100,
+            200,
+            300,
+            400,
+            500,
+            600
+          ],
+          "serverDamageProfileId": "damage.valtan.portal-rush",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "playerResponse": "CAPTURE",
+          "attachmentSlot": "BOSS_LEFT_HAND",
+          "branches": [
+            {
+              "outcome": "ANY_PLAYER_GRABBED",
+              "nextActionId": "valtan.sequence.center-trash-rush-if.catch-counter"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": "valtan.sequence.center-trash-rush-if.rush-miss"
+            }
+          ]
+        },
+        {
+          "stageId": "CATCH_COUNTER",
+          "actionId": "valtan.sequence.center-trash-rush-if.catch-counter",
+          "stageKind": "WINDUP",
+          "durationMs": 200,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
           "downMs": 0,
           "actions": [
             {
@@ -3375,11 +3403,11 @@
           "branches": [
             {
               "outcome": "COUNTER_HIT",
-              "nextActionId": "valtan.sequence.center-trash-rush-if.step-07"
+              "nextActionId": "valtan.sequence.center-trash-rush-if.groggy"
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": "valtan.sequence.center-trash-rush-if.step-08"
+              "nextActionId": "valtan.sequence.center-trash-rush-if.catch-pre-impact"
             }
           ],
           "counterProxy": {
@@ -3390,10 +3418,136 @@
           }
         },
         {
-          "stageId": "STEP_07",
-          "actionId": "valtan.sequence.center-trash-rush-if.step-07",
-          "stageKind": "GROGGY",
+          "stageId": "CATCH_PRE_IMPACT",
+          "actionId": "valtan.sequence.center-trash-rush-if.catch-pre-impact",
+          "stageKind": "ACTIVE",
+          "durationMs": 1300,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "branches": [
+            {
+              "outcome": "ALL_PLAYERS_GRABBED",
+              "nextActionId": "valtan.sequence.center-trash-rush-if.execute-tail"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": "valtan.sequence.center-trash-rush-if.catch-slam"
+            }
+          ]
+        },
+        {
+          "stageId": "CATCH_SLAM",
+          "actionId": "valtan.sequence.center-trash-rush-if.catch-slam",
+          "stageKind": "ACTIVE",
+          "durationMs": 1500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "DAMAGE_GRABBED_PLAYERS",
+              "targetId": "damage.valtan.charge-grab-roar",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
+          "branches": [
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": "valtan.sequence.center-trash-rush-if.step-07"
+            }
+          ]
+        },
+        {
+          "stageId": "EXECUTE_TAIL",
+          "actionId": "valtan.sequence.center-trash-rush-if.execute-tail",
+          "stageKind": "RECOVERY",
+          "durationMs": 1500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "EXECUTE_GRABBED_PLAYERS",
+              "targetId": "boss.attachment.left-hand",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
+          "branches": [
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
+            }
+          ]
+        },
+        {
+          "stageId": "RUSH_MISS",
+          "actionId": "valtan.sequence.center-trash-rush-if.rush-miss",
+          "stageKind": "RECOVERY",
           "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "branches": [
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": "valtan.sequence.center-trash-rush-if.step-07"
+            }
+          ]
+        },
+        {
+          "stageId": "GROGGY",
+          "actionId": "valtan.sequence.center-trash-rush-if.groggy",
+          "stageKind": "GROGGY",
+          "durationMs": 4433,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -3436,52 +3590,6 @@
             {
               "outcome": "TIMEOUT",
               "nextActionId": null
-            }
-          ]
-        },
-        {
-          "stageId": "STEP_08",
-          "actionId": "valtan.sequence.center-trash-rush-if.step-08",
-          "stageKind": "ACTIVE",
-          "durationMs": 667,
-          "hitShape": "BOX",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 6.0,
-          "hitHalfWidth": 2.5,
-          "hitCount": 7,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "hitOffsetsMs": [
-            0,
-            100,
-            200,
-            300,
-            400,
-            500,
-            600
-          ],
-          "serverDamageProfileId": "damage.valtan.portal-rush",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0,
-          "playerResponse": "CAPTURE",
-          "attachmentSlot": "BOSS_LEFT_HAND",
-          "actions": [
-            {
-              "trigger": "ENTER",
-              "kind": "RETARGET_RANDOM_ALIVE",
-              "targetId": "boss.target.pattern",
-              "value": 1,
-              "durationMs": 0
-            }
-          ],
-          "branches": [
-            {
-              "outcome": "TIMEOUT",
-              "nextActionId": "valtan.sequence.center-trash-rush-if.step-06"
             }
           ]
         }
@@ -4634,6 +4742,53 @@
           "actionId": "valtan.cinematic.entrance.hero-handoff",
           "stageKind": "RECOVERY",
           "durationMs": 5467,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_CROSS",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "십자 돌 공격",
+      "actionId": "valtan.sequence.cross",
+      "sourceActionIds": [
+        420602
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.cross.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,

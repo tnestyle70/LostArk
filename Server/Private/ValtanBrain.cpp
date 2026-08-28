@@ -503,7 +503,7 @@ namespace
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns)
 	{
 		using namespace LostArk::Shared;
-		if (boss.strPatternId.empty() ||
+		if (players.empty() || boss.strPatternId.empty() ||
 			SERVER_ENTITY_ACTION::IDLE == boss.eAction ||
 			SERVER_ENTITY_ACTION::CHASE == boss.eAction)
 		{
@@ -513,17 +513,14 @@ namespace
 			FindPattern(patterns, boss.strPatternId);
 		if (nullptr == pattern || !PatternOwnsGrabLifecycle(*pattern))
 			return false;
-		return players.end() != std::find_if(
-			players.begin(), players.end(),
-			[ownerEntityId = boss.iNetEntityId](const auto& entry)
-			{
-				const SERVER_PLAYER& player = entry.second;
-				return 0u != player.iCurrentHp &&
-					PLAYER_ACTION_STATE::GRABBED == player.eAction &&
-					player.iAttachmentOwnerNetEntityId == ownerEntityId &&
-					PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ==
-						player.eAttachmentSlot;
-			});
+		if (boss.iGrabExecutionCommittedPatternSequence == boss.iPatternSequence &&
+			0u != boss.iPatternSequence &&
+			boss.iGrabExecutionCommittedStageIndex == boss.iPatternStageIndex)
+		{
+			return true;
+		}
+		return 0u != CValtanBrain::Classify_GrabbedPlayers(
+			boss, players).iGrabbedCount;
 	}
 
 	const BOSS_PATTERN_STAGE_DEFINITION* FindStageByActionId(
@@ -1522,6 +1519,9 @@ namespace
 		boss.bAutomaticPatternSequencePausedForRevive = false;
 		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		boss.PinnedDefinitionRevision = definitionRevision;
+		boss.PatternTerminalReceipt = {};
+		boss.iGrabExecutionCommittedPatternSequence = 0u;
+		boss.iGrabExecutionCommittedStageIndex = 0u;
 		boss.strPatternId = pattern.strPatternId;
 		boss.bPatternInvulnerable = pattern.bInvulnerableWhileRunning;
 		boss.fPatternMinimumRange = pattern.fMinimumRange;
@@ -1640,10 +1640,19 @@ namespace
 	void FinishPattern(
 		SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t serverTick,
-		const bool completed = true,
+		const bool completed = false,
 		const SERVER_BOSS_MECHANIC_FAILURE failure =
 			SERVER_BOSS_MECHANIC_FAILURE::NONE)
 	{
+		if (!boss.strPatternId.empty())
+		{
+			boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
+			boss.PatternTerminalReceipt.eResult = completed ?
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED :
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::ABORTED;
+		}
+		boss.iGrabExecutionCommittedPatternSequence = 0u;
+		boss.iGrabExecutionCommittedStageIndex = 0u;
 		boss.bAutomaticPatternSequencePausedForRevive = false;
 		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		if (completed)
@@ -1727,7 +1736,7 @@ namespace
 	{
 		if (branch.strNextActionId.empty())
 		{
-			FinishPattern(boss, serverTick);
+			FinishPattern(boss, serverTick, true);
 			return true;
 		}
 		std::uint32_t nextStageIndex = 0u;
@@ -1757,6 +1766,8 @@ namespace
 		for (const BOSS_PATTERN_STAGE_BRANCH& branch : stage.Branches)
 		{
 			if (BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT == branch.eOutcome ||
+				BOSS_PATTERN_STAGE_OUTCOME::ANY_PLAYER_GRABBED == branch.eOutcome ||
+				BOSS_PATTERN_STAGE_OUTCOME::ALL_PLAYERS_GRABBED == branch.eOutcome ||
 				!CBossCombatRuntime::Consume_PatternOutcome(
 					boss, stage.strActionId, branch.eOutcome))
 			{
@@ -1779,8 +1790,23 @@ namespace
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
 		const BOSS_PATTERN_STAGE_DEFINITION& stage,
+		const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 		const std::uint32_t serverTick)
 	{
+		/* Capture requests from earlier ticks have committed before this deadline.
+		A late capture may never skip the authored rush or pre-impact duration. */
+		const SERVER_BOSS_GRAB_ROSTER roster =
+			CValtanBrain::Classify_GrabbedPlayers(boss, players);
+		for (const BOSS_PATTERN_STAGE_BRANCH& candidate : stage.Branches)
+		{
+			const bool all = BOSS_PATTERN_STAGE_OUTCOME::ALL_PLAYERS_GRABBED ==
+				candidate.eOutcome && SERVER_BOSS_GRAB_CLASSIFICATION::ALL ==
+				roster.eClassification;
+			const bool any = BOSS_PATTERN_STAGE_OUTCOME::ANY_PLAYER_GRABBED ==
+				candidate.eOutcome && 0u != roster.iGrabbedCount;
+			if (all || any)
+				return ApplyStageBranch(boss, pattern, candidate, serverTick);
+		}
 		const auto branch = std::find_if(
 			stage.Branches.begin(), stage.Branches.end(),
 			[](const BOSS_PATTERN_STAGE_BRANCH& candidate)
@@ -1985,6 +2011,51 @@ namespace
 	}
 }
 
+LostArk::Server::SERVER_BOSS_GRAB_ROSTER
+LostArk::Server::CValtanBrain::Classify_GrabbedPlayers(
+	const SERVER_WORLD_ENTITY& boss,
+	const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
+{
+	using namespace LostArk::Shared;
+	SERVER_BOSS_GRAB_ROSTER result{};
+	for (const auto& [playerId, player] : players)
+	{
+		(void)playerId;
+		const bool alive = 0u != player.iCurrentHp &&
+			PLAYER_ACTION_STATE::DEAD != player.eAction &&
+			PLAYER_ACTION_STATE::FALLING != player.eAction;
+		const bool hasAttachment = PLAYER_ACTION_STATE::GRABBED == player.eAction ||
+			INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId ||
+			PLAYER_ATTACHMENT_SLOT::NONE != player.eAttachmentSlot ||
+			0u != player.iAttachmentPatternSequence;
+		const bool owned = alive && PLAYER_ACTION_STATE::GRABBED == player.eAction &&
+			INVALID_NET_ENTITY_ID != boss.iNetEntityId &&
+			player.iAttachmentOwnerNetEntityId == boss.iNetEntityId &&
+			PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND == player.eAttachmentSlot &&
+			0u != boss.iPatternSequence &&
+			player.iAttachmentPatternSequence == boss.iPatternSequence &&
+			INVALID_NET_ENTITY_ID != player.iNetEntityId && player.iPlayerId == playerId &&
+			std::isfinite(player.fAttachmentLocalOffsetX) &&
+			std::isfinite(player.fAttachmentLocalOffsetY) &&
+			std::isfinite(player.fAttachmentLocalOffsetZ) &&
+			std::isfinite(player.fAttachmentYawOffsetDegrees);
+		result.bHasInvalidAttachment = result.bHasInvalidAttachment ||
+			(hasAttachment && !owned);
+		if (alive)
+			++result.iAliveCount;
+		if (owned)
+			++result.iGrabbedCount;
+	}
+	if (0u != result.iGrabbedCount)
+	{
+		result.eClassification = !result.bHasInvalidAttachment &&
+			result.iAliveCount == result.iGrabbedCount ?
+			SERVER_BOSS_GRAB_CLASSIFICATION::ALL :
+			SERVER_BOSS_GRAB_CLASSIFICATION::PARTIAL;
+	}
+	return result;
+}
+
 std::uint32_t LostArk::Server::CValtanBrain::Calculate_HealthBar(
 	const SERVER_WORLD_ENTITY& boss)
 {
@@ -2038,6 +2109,14 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	if (0u == boss.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss.eAction)
 	{
+		if (!boss.strPatternId.empty())
+		{
+			boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
+			boss.PatternTerminalReceipt.eResult =
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::ABORTED;
+		}
+		boss.iGrabExecutionCommittedPatternSequence = 0u;
+		boss.iGrabExecutionCommittedStageIndex = 0u;
 		FailMechanic(
 			boss, boss.strPatternId,
 			SERVER_BOSS_MECHANIC_FAILURE::BOSS_DIED, serverTick);
@@ -2417,7 +2496,7 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	}
 	if (ApplyTimeoutBranch(
-		boss, *currentPattern, currentStage, serverTick))
+		boss, *currentPattern, currentStage, players, serverTick))
 	{
 		return;
 	}
@@ -2426,7 +2505,7 @@ void LostArk::Server::CValtanBrain::Update(
 		NextClockStageIndex(*currentPattern, boss.iPatternStageIndex);
 	if (nextStageIndex >= currentPattern->Stages.size())
 	{
-		FinishPattern(boss, serverTick);
+		FinishPattern(boss, serverTick, true);
 		return;
 	}
 	EnterPatternStage(
@@ -2473,7 +2552,7 @@ void LostArk::Server::CValtanBrain::Fail_ActiveMechanic(
 	const SERVER_BOSS_MECHANIC_FAILURE failure,
 	const std::uint32_t serverTick)
 {
-	FailMechanic(boss, boss.strPatternId, failure, serverTick);
+	Fail_Mechanic(boss, boss.strPatternId, failure, serverTick);
 }
 
 void LostArk::Server::CValtanBrain::Fail_Mechanic(
@@ -2482,6 +2561,12 @@ void LostArk::Server::CValtanBrain::Fail_Mechanic(
 	const SERVER_BOSS_MECHANIC_FAILURE failure,
 	const std::uint32_t serverTick)
 {
+	if (!patternId.empty() && patternId == boss.strPatternId)
+	{
+		boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
+		boss.PatternTerminalReceipt.eResult =
+			SERVER_BOSS_PATTERN_TERMINAL_RESULT::ABORTED;
+	}
 	FailMechanic(boss, patternId, failure, serverTick);
 }
 

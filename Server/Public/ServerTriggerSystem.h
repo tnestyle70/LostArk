@@ -21,6 +21,10 @@ namespace LostArk::Server
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::string strNickName;
+		/* One immutable leader-first batch, not independent transfers. The
+		   room thread stages all target admissions before any source departure. */
+		std::vector<SESSION_ID> PartyBatchSessionIds;
+		std::uint32_t iPartyRequestSequence = 0u;
 	};
 
 	class CServerTriggerSystem final

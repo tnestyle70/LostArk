@@ -50,3 +50,14 @@
 ## 수동 검증 경계
 
 에이전트는 Client를 실행하거나 화면을 대신 판정하지 않는다. 우회 상태에서 깜빡임이 사라졌다는 사용자 판정은 기록했다. 이제 정상 컬링을 다시 켠 빌드에서 같은 재현 위치에 플레이어를 멈추고 F6 자유 카메라만 움직였을 때 깜빡임이 재발하지 않는지 사용자가 확인해야 한다.
+
+## 2026-08-28 PR 병합 전 교정
+
+PR #247의 최신 `main` 합성 병합 트리에서 Bern 전용 안정화 값이 모두 0으로 바뀐 것을
+회귀로 확인했다. 우회 실행으로 false rejection을 확인한 위 증거와 맞지 않으므로 제품값을
+`baseMargin=0.25`, `largeObjectRadiusThreshold=4`,
+`largeObjectAbsoluteMargin=2`, `largeObjectRelativeMargin=0.12`,
+`rejectHysteresisFrames=3`으로 복원했다. 정적 계약도 필드 존재만 보던 방식에서
+`MakeBernMapScope`의 이 다섯 수치를 정확히 검사하도록 강화했다.
+
+자동 계약은 다시 통과했지만 정상 컬링 상태의 최종 화면 판정은 여전히 사용자 확인 항목이다.

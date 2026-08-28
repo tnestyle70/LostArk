@@ -8,7 +8,9 @@
 #include "MapPlacementRuntime.h"
 #include "MapEffectPresentationRuntime.h"
 #include "MapLightPresentationRuntime.h"
+#include "PartyInteractionView.h"
 #include "PlayerController.h"
+#include "WorldPlayerChatBubbleView.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "WorldDestructionDebrisPresentationDocument.h"
@@ -44,6 +46,24 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
+	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
+	/* CGameInstance::Draw_Text submits immediately (SpriteBatch) but the invite
+	   popup's art composites later inside CImGuiLayer::EndFrame() -- see
+	   CPartyInteractionView::Render_InvitePopupText's own comment. */
+	void Render_PartyInviteText() { m_PartyInteraction.Render_InvitePopupText(); }
+	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
+	{
+		return m_Replication.Get_PartyRoster();
+	}
+	const CReplicatedPlayerHealth& Get_PlayerHealth() const
+	{
+		return m_Replication.Get_PlayerHealth();
+	}
+	const shared_ptr<IPlayerCommandSink>& Get_PlayerCommandSink() const
+	{
+		return m_pPlayerCommandSink;
+	}
+
 private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	bool_t Ready_CinematicCamera();
@@ -69,10 +89,24 @@ private:
 	VALTAN_ARENA and is free/no-cooldown by design). */
 	void Update_DeadScene();
 	void Render_DeadScene();
+	/* Valtan clear celebration overlay: real EFUI_EPICGATECOMMONCLEAR trace (BgFlash/Emblem
+	art + "던전 클리어" headline). Edge-triggers off CCombatHUDViewModel's already-replicated
+	boss eAction (no new Shared/Server contract -- Server never auto-despawns a dead BOSS-kind
+	entity, so eAction==DEAD stays observable for as long as this Level's session lasts), then
+	runs a fixed real-derived reveal/hold timeline (EpicGateCommonClearFrame's own
+	startFrame=90/holdFrame=296 at the source's 40fps) instead of looping forever. */
+	void Update_RaidClear(f32_t fTimeDelta);
+	void Render_RaidClear();
+	/* Starts the overlay's reveal/hold timeline from 0 and fires its one-shot sound cue. Shared by
+	Update_RaidClear's real edge-trigger and Update_DebugRaidClearKey's forced trigger so both
+	paths play the same cue instead of the debug key silently skipping it. */
+	void Trigger_RaidClear();
 #ifdef _DEBUG
-	// O key: instantly kill the local player (Handle_DebugKillSelf), to test
-	// the death screen without waiting to die for real.
-	void Update_DebugKillSelfKey();
+	// O key: instantly show the Raid Clear overlay (Update_RaidClear), to test it
+	// without waiting to kill Valtan for real. Used to instantly kill the local
+	// player to test the death screen; that overlay is done now, so the key was
+	// repurposed instead of adding a second debug key.
+	void Update_DebugRaidClearKey();
 	enum class REFERENCE_CAMERA_VIEW : uint8_t
 	{
 		NONE,
@@ -179,11 +213,18 @@ private:
 	CWorldPlayerNameplateView m_PlayerNameplateView;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
+	CPartyInteractionView m_PartyInteraction;
+	CWorldPlayerChatBubbleView m_ChatBubbleView;
 	CPlayerController m_PlayerController;
 	unique_ptr<CHUDRuntimeView> m_pDeadSceneView;
+	unique_ptr<CHUDRuntimeView> m_pRaidClearView;
+	/* Edge-detect for the boss's replicated eAction (see Update_RaidClear) and the elapsed time
+	since that edge -- negative means the overlay is not currently showing. */
+	bool_t m_bRaidClearWasBossDead = false;
+	f32_t m_fRaidClearElapsedSeconds = -1.f;
 #ifdef _DEBUG
-	// O key: instantly kill the local player, to test the death screen without waiting to die.
-	bool_t m_bDebugKillSelfKeyDown = false;
+	// O key: instantly show the Raid Clear overlay, to test it without waiting to kill Valtan.
+	bool_t m_bDebugRaidClearKeyDown = false;
 	weak_ptr<CTransform> m_pReferenceCameraRestoreTarget;
 	bool_t m_bReferenceCameraRestoreFollowRequested = false;
 	bool_t m_bReferenceCameraApplied = false;
@@ -207,6 +248,8 @@ private:
 	bool_t m_bEnvironmentTimelineWaiting = false;
 	bool_t m_bEnvironmentTimelinePatternStarted = false;
 #endif
+
+	static CLevel_ValtanArena* s_pActiveInstance;
 
 public:
 	static unique_ptr<CLevel_ValtanArena> Create(

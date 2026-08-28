@@ -9,7 +9,9 @@
 #include "MonsterPresentationContract.h"
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldDestructionProjectionRuntime.h"
+#include "ReplicatedPlayerHealth.h"
 
+#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -305,6 +307,28 @@ namespace Client
 		{
 			return m_InventoryState;
 		}
+		/* One-shot: true exactly once, the frame a party invite arrives (or a
+		   newer one silently replaced an unconsumed older one -- see
+		   Apply_PartyInviteReceived). */
+		bool Try_Consume_PartyInviteReceived(
+			LostArk::Shared::S2C_PARTY_INVITE_RECEIVED& outInvite);
+		/* Replace-in-full, same shape as Get_EncounterPropState/
+		   Get_InventoryState. Empty Members means "not in a party". */
+		const LostArk::Shared::S2C_PARTY_ROSTER&
+		Get_PartyRoster() const
+		{
+			return m_PartyRoster;
+		}
+		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
+		bool Try_Consume_PartyTransferResult(
+			LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult);
+		/* Head-bubble text for whoever last chatted, while their line is still
+		   within CHAT_BUBBLE_DURATION of arriving -- false (text left
+		   untouched) once it has aged out, so the renderer only ever draws a
+		   bubble that is still "live". */
+		bool Try_Get_ActiveChatBubble(
+			LostArk::Shared::NET_ENTITY_ID netEntityId,
+			std::string& outText) const;
 
 	private:
 		bool Create_Character(
@@ -338,6 +362,12 @@ namespace Client
 			const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC& sync);
 		bool Apply_InventorySnapshot(
 			const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& snapshot);
+		void Apply_PartyInviteReceived(
+			const LostArk::Shared::S2C_PARTY_INVITE_RECEIVED& received);
+		void Apply_PartyRoster(
+			const LostArk::Shared::S2C_PARTY_ROSTER& roster);
+		void Apply_ChatReceived(
+			const LostArk::Shared::S2C_CHAT& received);
 		enum class CHARACTER_REPLACE_RESULT
 		{
 			REPLACED,
@@ -433,6 +463,21 @@ namespace Client
 			m_WorldDestructionDiagnostics{};
 		LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC m_EncounterPropState{};
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_InventoryState{};
+		bool m_hasPendingPartyInvite = false;
+		LostArk::Shared::S2C_PARTY_INVITE_RECEIVED m_PendingPartyInvite{};
+		LostArk::Shared::S2C_PARTY_ROSTER m_PartyRoster{};
+		CReplicatedPlayerHealth m_PlayerHealth;
+		bool m_hasPendingPartyTransferResult = false;
+		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT m_PendingPartyTransferResult{};
+
+		struct CHAT_BUBBLE_ENTRY
+		{
+			std::string strText;
+			std::chrono::steady_clock::time_point ExpireAt;
+		};
+		static constexpr std::chrono::seconds CHAT_BUBBLE_DURATION{ 5 };
+		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, CHAT_BUBBLE_ENTRY>
+			m_ChatBubblesByNetEntityId;
 #ifdef _DEBUG
 		bool_t m_isCombatColliderDebugVisible = false;
 		bool_t m_isSkillHitAreaDebugVisible = true;

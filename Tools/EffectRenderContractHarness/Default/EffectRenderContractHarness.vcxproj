@@ -93,6 +93,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\EffectRenderContractHarness.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp"><Link>Client\ActionPresentationTimeline.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternTree.cpp"><Link>Client\ValtanPatternTree.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp"><Link>Client\ValtanPatternEffectCueDocument.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp"><Link>Client\AnimationSkillBindingDocument.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\EncounterPatternReference.cpp"><Link>Client\EncounterPatternReference.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\DataJson.cpp"><Link>Client\DataJson.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\DeferredMaterialRenderUtils.cpp"><Link>Client\DeferredMaterialRenderUtils.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_Artist31470ShaderRegistry.cpp"><Link>Client\Effect_Artist31470ShaderRegistry.cpp</Link></ClCompile>
@@ -131,6 +136,7 @@
   </ItemGroup>
 	<ItemGroup>
 		<None Include="..\Run-EffectRenderContractHarness.ps1" />
+		<None Include="..\Test-EffectRenderResourceRoot.ps1" />
 	</ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <PropertyGroup>

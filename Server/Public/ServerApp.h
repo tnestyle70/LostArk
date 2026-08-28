@@ -10,6 +10,7 @@
 #include "WinSockContext.h"
 //PACKET_FRAME header
 #include "Network/PacketFrame.h"
+#include "Network/SessionDiagnostic.h"
 
 //서버 실행 상태와 다음 sessionid
 #include <atomic>
@@ -95,7 +96,12 @@ namespace LostArk::Server
 		//session receive thread가 연결 종료를 발견했을 때 호출한다.
 		void On_SessionClosed(SESSION_ID sessionId);
 		//Session map에서 대상을 찾고, request_close만 호출
-		void Request_SessionClose(SESSION_ID sessionId);
+		void Request_SessionClose(
+			SESSION_ID sessionId,
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason =
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_APPLICATION_CLOSE,
+			int nativeErrorCode = 0,
+			std::string_view context = {});
 		//종료 callback이 남긴 sessionid를 안전하게 정리
 		void Reap_ClosedSessions();
 
@@ -113,10 +119,14 @@ namespace LostArk::Server
 			LostArk::Shared::WORLD_ID worldId);
 		std::shared_ptr<CGameRoom> Find_SharedSimulation(
 			LostArk::Shared::WORLD_ID worldId);
-		bool Bind_SessionSimulation(
+		bool Bind_AndEnqueueEntry(
 			SESSION_ID sessionId,
 			LostArk::Shared::WORLD_ID worldId,
-			const std::shared_ptr<CGameRoom>& simulation);
+			const std::shared_ptr<CGameRoom>& simulation,
+			LostArk::Shared::C2S_ENTER_WORLD enterWorld,
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outFailureReason,
+			int& outNativeErrorCode,
+			std::string& outFailureContext);
 		bool Enqueue_AssignedCommand(
 			SESSION_ID sessionId,
 			ROOM_COMMAND command);
@@ -146,6 +156,9 @@ namespace LostArk::Server
 			const BOSS_RUNTIME_PROFILE* activeProfile,
 			const BOSS_RUNTIME_PROFILE* candidateProfile,
 			std::string& status);
+		static bool Validate_ServerSessionDiagnosticJson(
+			std::string_view json,
+			std::string& status);
 		static bool Persist_RuntimeGameplayActivation(
 			const std::filesystem::path& runtimeRoot,
 			std::uint32_t transactionSequence,
@@ -170,6 +183,12 @@ namespace LostArk::Server
 			const RUNTIME_ACTIVE_GAMEPLAY_GENERATION& packaged,
 			std::string& status);
 		static bool Acquire_RuntimeGameplayProcessMutex(
+			void*& handle,
+			std::string& status);
+		// Production keeps its fixed global name; the friend contract owns an
+		// isolated name while exercising this same Win32 ownership path.
+		static bool Acquire_NamedRuntimeGameplayProcessMutex(
+			const wchar_t* name,
 			void*& handle,
 			std::string& status);
 		static void Release_RuntimeGameplayProcessMutex(void*& handle) noexcept;
@@ -199,12 +218,21 @@ namespace LostArk::Server
 		void Retire_QuiescentCharacterSelectArenas();
 		void Handle_WorldTransfers(
 			const std::shared_ptr<CGameRoom>& sourceSimulation);
+		struct SESSION_WORLD_TRANSFER_FAILURE final
+		{
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON eReason =
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED;
+			int iNativeErrorCode = 0;
+			std::string strContext;
+			bool bRollbackCleanupRequired = false;
+			bool bRollbackCleanupEnqueued = false;
+			LostArk::Shared::PARTY_TRANSFER_RESULT ePartyResult =
+				LostArk::Shared::PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE;
+		};
 		bool Transfer_SessionWorld(
 			const std::shared_ptr<CGameRoom>& sourceSimulation,
-			const SERVER_WORLD_TRANSFER_REQUEST& transfer);
-		void Unbind_SessionSimulation(
-			SESSION_ID sessionId,
-			const std::shared_ptr<CGameRoom>& expectedSimulation);
+			const SERVER_WORLD_TRANSFER_REQUEST& transfer,
+			SESSION_WORLD_TRANSFER_FAILURE& outFailure);
 		//서버 전체 종료 순서 한 곳으로 모아서 정리
 		void Shutdown();
 
@@ -321,6 +349,7 @@ namespace LostArk::Server
 		//종료 대기 Queue
 		std::mutex m_ClosedSessionMutex;
 		std::deque<SESSION_ID> m_ClosedSessionIds;
+		std::mutex m_SessionDiagnosticLogMutex;
 		/* Receive callbacks publish only bounded immutable control events. The
 		   room thread drains them without this mutex held, then takes sessions
 		   before touching any room, preserving sessions -> room lock order. */

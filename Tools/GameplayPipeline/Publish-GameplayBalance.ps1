@@ -1282,6 +1282,23 @@ if ($encounterBoss.Count -ne 1) {
 	throw 'Valtan encounter does not match exactly one boss profile.'
 }
 $maximumHealthBars = [uint32]$encounterBoss[0].maximumHealthBars
+$managedGameplay = Read-JsonDocument 'Data/Valtan/Valtan.gameplay.json'
+Assert-JsonInteger $managedGameplay.formatVersion 'Valtan split gameplay formatVersion' 1 1
+if ($managedGameplay.schema -cne 'lostark.valtan-gameplay-authoring' -or
+	$managedGameplay.bossArchetypeId -cne $encounterDocument.bossArchetypeId -or
+	$managedGameplay.encounterId -cne $encounterDocument.encounterId -or
+	$managedGameplay.patterns -isnot [Array] -or @($managedGameplay.patterns).Count -eq 0) {
+	throw 'Valtan split gameplay managed inventory is invalid.'
+}
+$managedPatternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($managedPattern in $managedGameplay.patterns) {
+	Assert-StableId $managedPattern.patternId 'managed gameplay patternId'
+	if (-not $managedPatternIds.Add([string]$managedPattern.patternId) -or
+		@($encounterDocument.patterns | Where-Object {
+			[string]$_.patternId -ceq [string]$managedPattern.patternId }).Count -ne 1) {
+		throw 'Valtan split gameplay managed pattern is duplicated or missing from Product.'
+	}
+}
 $patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $actionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $healthBarTriggerKeys =
@@ -1463,6 +1480,10 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		(Format-InvariantFloat $pattern.maximumRange "pattern maximumRange"),
 		@($pattern.stages).Count, $armorRequirement,
 		$phaseRequirement, $invulnerable) -join "`t"))
+	if ($managedPatternIds.Contains([string]$pattern.patternId)) {
+		$patternRows.Add((@('PATTERNAUTHORINGMANAGED',
+			$encounterDocument.encounterId, $pattern.patternId) -join "`t"))
+	}
 	$patternRows.Add((@(
 		'PATTERNPOLICY', $encounterDocument.encounterId, $pattern.patternId,
 		$category, [uint32]$pattern.minimumPhase, [uint32]$pattern.maximumPhase,
@@ -2020,11 +2041,24 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 							  $actionReleaseSpeedMps -le 50.0 -and
 							  $actionDurationMs -gt 0))
 					}
+					'DAMAGE_GRABBED_PLAYERS' {
+						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
+							$actionValue -eq 0 -and $damageIds.Contains($actionTargetId) -and
+							@($stage.actions).Count -eq 1 -and $shape -ceq 'NONE'
+					}
+					'EXECUTE_GRABBED_PLAYERS' {
+						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
+							$actionValue -eq 0 -and
+							$actionTargetId -ceq 'boss.attachment.left-hand' -and
+							@($stage.actions).Count -eq 1 -and $shape -ceq 'NONE'
+					}
 				}
 				if ($actionKind -cne 'SPAWN_COMBAT_OBJECT' -and
 					$actionKind -cne 'SET_GAMEPLAY_PHASE' -and
 					$actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
-					$actionKind -cne 'RELEASE_GRABBED_PLAYERS') {
+					$actionKind -cne 'RELEASE_GRABBED_PLAYERS' -and
+					$actionKind -cne 'DAMAGE_GRABBED_PLAYERS' -and
+					$actionKind -cne 'EXECUTE_GRABBED_PLAYERS') {
 					$validTypedAction = $validTypedAction -and
 						(($actionTrigger -ceq 'ENTER' -and $actionValue -gt 0) -or
 						 ($actionTrigger -ceq 'EXIT' -and $actionValue -eq 0))
@@ -2053,7 +2087,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						$actionIndex -eq 0
 				}
 				elseif ($actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
-					$actionKind -cne 'RELEASE_GRABBED_PLAYERS') {
+					$actionKind -cne 'RELEASE_GRABBED_PLAYERS' -and
+					$actionKind -cne 'DAMAGE_GRABBED_PLAYERS' -and
+					$actionKind -cne 'EXECUTE_GRABBED_PLAYERS') {
 					$stateKey = "$actionKind/$actionTargetId"
 					if ($actionTrigger -ceq 'ENTER') {
 						if (-not $activeStageActionKeys.Add($stateKey)) {
@@ -2117,7 +2153,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				if ($outcome -notin @(
 					'TIMEOUT','COUNTER_HIT','STAGGER_BROKEN','WALL_CONTACT',
 					'PART_DESTROYED','PROP_DESTROYED','SUMMON_DEAD',
-					'ALL_PLAYERS_GRABBED') -or
+					'ALL_PLAYERS_GRABBED','ANY_PLAYER_GRABBED') -or
 					-not $branchOutcomes.Add($outcome)) {
 					throw "Pattern stage branch outcome is unknown or duplicated: $($pattern.patternId) stage $stageIndex"
 				}
@@ -2304,7 +2340,9 @@ $requiredReactiveRows = @(
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tCOUNTER_HIT`tvaltan.mechanic.center-grab-counter-64.recovery",
 	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tTIMEOUT`tvaltan.mechanic.center-grab-counter-64.failed-charge",
 	"PATTERNSTAGEPARTDAMAGE`tENCOUNTER_VALTAN`tVALTAN_DASH_CHARGE`tvaltan.attack.dash-charge.groggy`tDESTROY_FIRST_ELIGIBLE",
-	"PATTERNSTAGECOUNTERPROXY`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.step-06`t1`t-1.5`t2.25",
+	"PATTERNSTAGECOUNTERPROXY`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.catch-counter`t1`t-1.5`t2.25",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.catch-slam`t0`tENTER`tDAMAGE_GRABBED_PLAYERS`tdamage.valtan.charge-grab-roar`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRASH`tvaltan.sequence.center-trash-rush-if.execute-tail`t0`tENTER`tEXECUTE_GRABBED_PLAYERS`tboss.attachment.left-hand`t0`t0",
 	"PATTERNSTAGEMOTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tFORWARD`t20"
 )
 $missingReactiveRows = @($requiredReactiveRows | Where-Object {
@@ -4053,7 +4091,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 24 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 25 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

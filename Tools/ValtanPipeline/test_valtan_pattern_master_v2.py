@@ -43,7 +43,6 @@ EXPECTED_SCRIPTED_SEQUENCE = {
         "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
         "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
         "VALTAN_TERRAIN_DESTRUCTION",
-        "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
         "VALTAN_WARP",
         "VALTAN_SEQUENCE_TWOHAND",
         "VALTAN_SEQUENCE_WHIRLWIND",
@@ -322,6 +321,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(2, migrated["formatVersion"])
         self.assertEqual(7, len(migrated["patterns"]))
         self.assertIsNone(migrated["decisionModel"]["scriptedSequence"])
+        unlinked_cue = "cue.valtan.carrier-v1.attack.four-slash.recovery.clip-01"
+        for document in (migrated, self.docs[pipeline.PRESENTATION_AUTHORING_REL]):
+            self.assertNotIn(
+                unlinked_cue,
+                {
+                    cue["cueId"]
+                    for pattern in document["patterns"]
+                    for stage in pattern["stages"]
+                    for cue in stage["effectCues"]
+                },
+                "V1 migration must not restore an intentionally unlinked Product cue",
+            )
         self.assertEqual(before, pipeline.sha256_file(source_path))
         phase_events = [
             (pattern["patternId"], stage["stageId"], event)
@@ -946,7 +957,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             row["worldEventSetId"]: row for row in companion["sets"]
         }
         self.assertEqual(set(pipeline.WORLD_SET_OWNERS), set(event_sets))
-        self.assertEqual(30, len(event_sets[pipeline.WORLD_SET_ID]["members"]))
+        self.assertEqual(97, len(event_sets[pipeline.WORLD_SET_ID]["members"]))
+        groups = {
+            group["groupId"]: group
+            for group in self.docs[pipeline.WORLD_PRODUCT_REL]["groups"]
+        }
+        placement_ids = [
+            placement_id
+            for member in event_sets[pipeline.WORLD_SET_ID]["members"]
+            for placement_id in groups[member["groupId"]]["memberPlacementIds"]
+        ]
+        self.assertEqual(135, len(placement_ids))
+        self.assertEqual(135, len(set(placement_ids)))
         self.assertEqual(
             3,
             len(
@@ -993,10 +1015,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             member["bindingId"]
             for member in event_sets[pipeline.WORLD_SET_ID]["members"]
         }
-        self.assertEqual(30, len(managed_ids))
+        self.assertEqual(97, len(managed_ids))
         source_other = [row for row in source["bindings"] if row["bindingId"] not in managed_ids]
         projected_other = [row for row in projected["bindings"] if row["bindingId"] not in managed_ids]
-        self.assertEqual(194, len(source_other))
+        self.assertEqual(127, len(source_other))
         self.assertEqual(source_other, projected_other)
         self.assertEqual(source["groups"], projected["groups"])
         self.assertEqual(source["mutations"], projected["mutations"])
@@ -1034,6 +1056,55 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ["LEGACY", "LEGACY", "MANAGED", "LEGACY", "MANAGED"],
             [ref["ownership"] for ref in mixed["patternRefs"]],
         )
+
+    def test_legacy_effect_cue_validation_uses_stable_binding_identity(self) -> None:
+        drifted_docs = copy.deepcopy(self.docs)
+        sealed_cue = next(
+            cue
+            for entry in drifted_docs[pipeline.LEGACY_REL]["patternEntries"]
+            for cue in entry["effectCues"]
+        )
+        sealed_binding_id = sealed_cue["runtimeCue"]["bindingId"]
+        cue_rows = drifted_docs[pipeline.CUES_REL]["cues"]
+        sealed_ordinal = next(
+            ordinal
+            for ordinal, cue in enumerate(cue_rows)
+            if cue["bindingId"] == sealed_binding_id
+        )
+        managed_pattern_ids = {
+            pattern["patternId"]
+            for pattern in pipeline.join_v2_authoring(
+                self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+                self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )["patterns"]
+        }
+        managed_ordinal = next(
+            ordinal
+            for ordinal, cue in enumerate(cue_rows[:sealed_ordinal])
+            if cue["patternId"] in managed_pattern_ids
+        )
+        del cue_rows[managed_ordinal]
+        pipeline.validate_legacy_products(
+            drifted_docs[pipeline.LEGACY_REL],
+            drifted_docs,
+            managed_pattern_ids,
+        )
+
+        sealed_row = next(
+            cue for cue in cue_rows if cue["bindingId"] == sealed_binding_id
+        )
+        sealed_row["effectAssetId"] += ".drift"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "sealed legacy effect cue drift.*" + sealed_binding_id,
+        ):
+            pipeline.validate_legacy_products(
+                drifted_docs[pipeline.LEGACY_REL],
+                drifted_docs,
+                managed_pattern_ids,
+            )
 
     def test_strict_negative_fixtures(self) -> None:
         world_sets = copy.deepcopy(self.docs[pipeline.WORLD_SET_REL])
@@ -1196,6 +1267,63 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         ):
             pipeline.validate_gameplay_authoring(missing_window)
 
+    def test_trash_capture_deadlines_and_atomic_impacts_project_losslessly(self) -> None:
+        master = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        trash = next(row for row in master["patterns"] if row["patternId"] == "VALTAN_TRASH")
+        stages = {row["stageId"]: row for row in trash["stages"]}
+        self.assertNotIn("counterProxy", stages["STEP_06"])
+        self.assertEqual([], stages["STEP_06"]["events"])
+        self.assertEqual(stages["STEP_07"]["actionId"], stages["STEP_06"]["defaultNextActionId"])
+        self.assertEqual(["ANY_PLAYER_GRABBED", "TIMEOUT"],
+                         [row["outcome"] for row in stages["STEP_08"]["branches"]])
+        self.assertLess(max(stages["STEP_08"]["hit"]["schedule"]["offsetsMs"]),
+                        stages["STEP_08"]["durationMs"])
+        for stage_id, source_start, duration in (
+            ("CATCH_COUNTER", 0, 200), ("CATCH_PRE_IMPACT", 200, 1300),
+            ("CATCH_SLAM", 1500, 1500), ("EXECUTE_TAIL", 1500, 1500),
+        ):
+            with self.subTest(stage=stage_id):
+                row = stages[stage_id]
+                occurrence = row["animation"]["occurrences"][0]
+                self.assertEqual(duration, row["durationMs"])
+                self.assertEqual(("mesh_att_battle_13_05-1", source_start, duration),
+                    (occurrence["clip"], occurrence["sourceStartMs"], occurrence["playMs"]))
+        self.assertEqual(["ALL_PLAYERS_GRABBED", "TIMEOUT"],
+                         [row["outcome"] for row in stages["CATCH_PRE_IMPACT"]["branches"]])
+        self.assertEqual("DAMAGE_GRABBED_PLAYERS", stages["CATCH_SLAM"]["events"][0]["kind"])
+        self.assertEqual("EXECUTE_GRABBED_PLAYERS", stages["EXECUTE_TAIL"]["events"][0]["kind"])
+        self.assertIsNone(stages["EXECUTE_TAIL"]["defaultNextActionId"])
+        self.assertEqual(4433, sum(row["playMs"] for row in stages["GROGGY"]["animation"]["occurrences"]))
+        self.assertIn(420631, trash["sourceActionIds"])
+
+        _, _, outputs = pipeline.build_repository_product_projection(self.root)
+        product = next(row for row in json.loads(outputs[pipeline.ENCOUNTER_REL])["patterns"]
+                       if row["patternId"] == "VALTAN_TRASH")
+        projected = {row["stageId"]: row for row in product["stages"]}
+        for stage_id, kind, target in (
+            ("CATCH_SLAM", "DAMAGE_GRABBED_PLAYERS", "damage.valtan.charge-grab-roar"),
+            ("EXECUTE_TAIL", "EXECUTE_GRABBED_PLAYERS", "boss.attachment.left-hand"),
+        ):
+            self.assertEqual([{"trigger": "ENTER", "kind": kind, "targetId": target,
+                               "value": 0, "durationMs": 0}], projected[stage_id]["actions"])
+        for mutate in ("exit", "extra", "mixed", "bad_profile"):
+            invalid = copy.deepcopy(master)
+            bad = next(row for row in invalid["patterns"] if row["patternId"] == "VALTAN_TRASH")
+            bad_stage = next(row for row in bad["stages"] if row["stageId"] == "CATCH_SLAM")
+            if mutate == "exit": bad_stage["events"][0]["trigger"] = "EXIT"
+            if mutate == "extra": bad_stage["events"][0]["value"] = 100
+            if mutate == "mixed": bad_stage["events"].append(copy.deepcopy(stages["STEP_07"]["events"][0]))
+            if mutate == "bad_profile": bad_stage["events"][0]["damageProfileId"] = "boss.invalid"
+            with self.subTest(mutation=mutate), self.assertRaises(pipeline.PipelineError):
+                pipeline.validate_v2_master(invalid,
+                    pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
+                    self.docs[pipeline.COMBAT_AUTHORING_REL])
+
     def test_grab_hit_and_release_actions_project_losslessly(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
 
@@ -1212,8 +1340,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             )
 
         trash = pattern("VALTAN_TRASH")
-        trash_counter = stage(trash, "STEP_06")
-        trash_release = stage(trash, "STEP_07")
+        trash_counter = stage(trash, "CATCH_COUNTER")
+        trash_release = stage(trash, "GROGGY")
         trash_rush = stage(trash, "STEP_08")
         catch = pattern("VALTAN_CATCH_BREATH")
         catch_grab = stage(catch, "STEP_02")
@@ -1298,7 +1426,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         )
         self.assertEqual(
             trash_counter["counterProxy"],
-            projected_trash["STEP_06"]["counterProxy"],
+            projected_trash["CATCH_COUNTER"]["counterProxy"],
         )
         self.assertIn(
             {
@@ -1309,7 +1437,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "speedMps": 0.0,
                 "durationMs": 0,
             },
-            projected_trash["STEP_07"]["actions"],
+            projected_trash["GROGGY"]["actions"],
         )
         self.assertEqual(
             ("CAPTURE", "BOSS_LEFT_HAND"),
@@ -1479,15 +1607,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in pattern["stages"]
             for cue in stage["effectCues"]
         ]
+        managed_cues_by_id = {cue["cueId"]: cue for cue in managed_cues}
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES), len(managed_cues)
+            len(managed_cues), len(managed_cues_by_id)
+        )
+        self.assertTrue(
+            set(managed_cues_by_id).issubset(pipeline.MANAGED_CUE_SCALE_POLICIES)
         )
         self.assertEqual(
-            dict(pipeline.EXPECTED_MANAGED_SCALE_POLICY_COUNTS),
+            dict(
+                Counter(
+                    pipeline.MANAGED_CUE_SCALE_POLICIES[cue_id]
+                    for cue_id in managed_cues_by_id
+                )
+            ),
             dict(Counter(cue["scalePolicy"]["kind"] for cue in managed_cues)),
         )
         self.assertEqual(
-            pipeline.MANAGED_CUE_SCALE_POLICIES,
+            {
+                cue_id: pipeline.MANAGED_CUE_SCALE_POLICIES[cue_id]
+                for cue_id in managed_cues_by_id
+            },
             {cue["cueId"]: cue["scalePolicy"]["kind"] for cue in managed_cues},
         )
         for cue in managed_cues:
@@ -1507,12 +1647,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 projected_by_id[cue["cueId"]]["scalePolicy"],
             )
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES) + 2,
+            len(managed_cues) + 2,
             sum(1 for cue in projected["cues"] if "scalePolicy" in cue),
             "managed cues plus the two sealed Entrance Whirlwind cues",
         )
         self.assertEqual(
-            len(pipeline.MANAGED_CUE_SCALE_POLICIES),
+            len(managed_cues),
             sum(
                 len(stage["effectCues"])
                 for pattern in joined["patterns"]
@@ -1799,7 +1939,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
         invalid_proxy = copy.deepcopy(gameplay)
         stage(
-            invalid_proxy, "VALTAN_TRASH", "STEP_06"
+            invalid_proxy, "VALTAN_TRASH", "CATCH_COUNTER"
         )["counterProxy"]["space"] = "WORLD"
         with self.assertRaisesRegex(
             pipeline.PipelineError, "counterProxy space is unsupported"
@@ -1807,7 +1947,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             pipeline.validate_gameplay_authoring(invalid_proxy)
 
         unowned_proxy = copy.deepcopy(gameplay)
-        trash_counter = stage(unowned_proxy, "VALTAN_TRASH", "STEP_06")
+        trash_counter = stage(unowned_proxy, "VALTAN_TRASH", "CATCH_COUNTER")
         trash_counter["branches"] = [
             branch for branch in trash_counter["branches"]
             if branch["outcome"] != "COUNTER_HIT"
@@ -2165,7 +2305,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for row in staged["decisionModel"]["manualAuditions"]
             if row["authoringPhase"] == 2
         ]
-        self.assertEqual(19, len(phase_two_ids))
+        self.assertEqual(18, len(phase_two_ids))
         self.assertEqual(
             [
                 "VALTAN_ENTRANCE_CINEMATIC",
@@ -2255,6 +2395,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.assertTrue(bootstrap_lines[0].startswith(
                 f"LOSTARK_GAMEPLAY_BOOTSTRAP\t{pipeline.GAMEPLAY_BOOTSTRAP_VERSION}\t"
             ))
+            managed_rows = [
+                line for line in bootstrap_lines
+                if line.startswith("PATTERNAUTHORINGMANAGED\t")
+            ]
+            self.assertEqual(
+                {
+                    f"PATTERNAUTHORINGMANAGED\tENCOUNTER_VALTAN\t{pattern['patternId']}"
+                    for pattern in self.docs[pipeline.GAMEPLAY_AUTHORING_REL]["patterns"]
+                },
+                set(managed_rows),
+            )
+            self.assertEqual(len(managed_rows), len(set(managed_rows)))
             self.assertIn(
                 "PATTERNROTATIONCANDIDATE\tENCOUNTER_VALTAN\t"
                 "rotation.valtan.160.130\t1\tVALTAN_DASH_CHARGE\t31\t0",
@@ -2629,7 +2781,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for row in joined["decisionModel"]["manualAuditions"]
             if row["admissionState"] == pipeline.MANUAL_SERVER_AUDITION
         ]
-        self.assertEqual(["respawn", "dead"], intake_chain_ids)
+        self.assertEqual(["front-back-front", "respawn", "dead"], intake_chain_ids)
         self.assertTrue(set(intake_chain_ids).isdisjoint(manual_chain_ids))
 
         wrong_clip = copy.deepcopy(self.debug_presentation)
@@ -2759,6 +2911,63 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             projected_docs,
             managed_pattern_ids,
         )
+
+    def test_explicit_retirement_removes_cues_without_shifting_legacy_bindings(self) -> None:
+        staged = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        retired_id = "VALTAN_THREE"
+        retired = next(row for row in staged["patterns"] if row["patternId"] == retired_id)
+        action_ids = {stage["actionId"] for stage in retired["stages"]}
+        cue_ids = {cue["cueId"] for stage in retired["stages"] for cue in stage["effectCues"]}
+        self.assertTrue(cue_ids)
+        staged["retiredPatternIds"].append(retired_id)
+        staged["patterns"].remove(retired)
+        staged["decisionModel"]["manualAuditions"] = [
+            row for row in staged["decisionModel"]["manualAuditions"] if row["patternId"] != retired_id
+        ]
+        staged["decisionModel"]["scriptedSequence"]["patternIds"].remove(retired_id)
+
+        first = pipeline.project_v2_products(self.root, self.docs, staged)
+        encounter = json.loads(first[pipeline.ENCOUNTER_REL])
+        remaining = {row["patternId"] for row in encounter["patterns"]}
+        self.assertNotIn(retired_id, remaining)
+        self.assertTrue({"VALTAN_FRONT_BACK_FRONT", "VALTAN_GHOST_TRANSITION_15"}.issubset(remaining))
+        cues = json.loads(first[pipeline.CUES_REL])["cues"]
+        self.assertTrue(cue_ids.isdisjoint(row["bindingId"] for row in cues))
+        bindings = json.loads(first[pipeline.BINDINGS_REL])["bindings"]
+        before = self.docs[pipeline.BINDINGS_REL]["bindings"]
+        self.assertEqual(len(before), len(bindings))
+        for old, new in zip(before, bindings):
+            expected = (
+                {"actionId": old["actionId"], "playbackMode": "NONE", "clips": []}
+                if old["actionId"] in action_ids else old
+            )
+            self.assertEqual(expected, new)
+
+        # A second projection reads the already-retired Product state. It must
+        # neither recreate its cues nor turn the ordinal tombstones back on.
+        projected_docs = copy.deepcopy(self.docs)
+        with tempfile.TemporaryDirectory(prefix="valtan-retirement.") as temporary:
+            root = Path(temporary)
+            for relative, text in first.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(text.encode("utf-8"))
+                projected_docs[relative] = json.loads(text)
+            self.assertEqual(first, pipeline.project_v2_products(root, projected_docs, staged))
+
+        for retired_rows in ([*staged["retiredPatternIds"], retired_id], ["VALTAN_WHIRLWIND"], "not-an-array"):
+            invalid = copy.deepcopy(staged)
+            invalid["retiredPatternIds"] = retired_rows
+            with self.subTest(retired_rows=retired_rows):
+                with self.assertRaisesRegex(pipeline.PipelineError, "retiredPatternIds"):
+                    pipeline.validate_v2_master(
+                        invalid, self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL]
+                    )
 
     def test_removed_manual_audition_fails_closed_before_stale_product_projection(self) -> None:
         staged = pipeline.join_v2_authoring(

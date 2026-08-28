@@ -488,6 +488,8 @@ namespace
 			output = BOSS_PATTERN_STAGE_OUTCOME::SUMMON_DEAD;
 		else if ("ALL_PLAYERS_GRABBED" == value)
 			output = BOSS_PATTERN_STAGE_OUTCOME::ALL_PLAYERS_GRABBED;
+		else if ("ANY_PLAYER_GRABBED" == value)
+			output = BOSS_PATTERN_STAGE_OUTCOME::ANY_PLAYER_GRABBED;
 		else
 			return false;
 		return true;
@@ -526,6 +528,10 @@ namespace
 			output = BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE;
 		else if ("RELEASE_GRABBED_PLAYERS" == value)
 			output = BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS;
+		else if ("DAMAGE_GRABBED_PLAYERS" == value)
+			output = BOSS_PATTERN_STAGE_ACTION_KIND::DAMAGE_GRABBED_PLAYERS;
+		else if ("EXECUTE_GRABBED_PLAYERS" == value)
+			output = BOSS_PATTERN_STAGE_ACTION_KIND::EXECUTE_GRABBED_PLAYERS;
 		else
 			return false;
 		return true;
@@ -581,6 +587,15 @@ namespace
 			return BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
 				"boss.target.pattern" == targetId && 1u == value;
 		}
+		if (BOSS_PATTERN_STAGE_ACTION_KIND::DAMAGE_GRABBED_PLAYERS == kind ||
+			BOSS_PATTERN_STAGE_ACTION_KIND::EXECUTE_GRABBED_PLAYERS == kind)
+		{
+			return BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
+				0u == value &&
+				(BOSS_PATTERN_STAGE_ACTION_KIND::EXECUTE_GRABBED_PLAYERS == kind ?
+					"boss.attachment.left-hand" == targetId :
+					0u == targetId.find("damage."));
+		}
 		const bool isSet = BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger;
 		if ((isSet && 0u == value) || (!isSet && 0u != value))
 			return false;
@@ -604,6 +619,8 @@ namespace
 			return false;
 		case BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE:
 		case BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS:
+		case BOSS_PATTERN_STAGE_ACTION_KIND::DAMAGE_GRABBED_PLAYERS:
+		case BOSS_PATTERN_STAGE_ACTION_KIND::EXECUTE_GRABBED_PLAYERS:
 			return false;
 		}
 		return false;
@@ -621,7 +638,11 @@ namespace
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
 				RETARGET_RANDOM_ALIVE != kind &&
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
-				RELEASE_GRABBED_PLAYERS != kind;
+				RELEASE_GRABBED_PLAYERS != kind &&
+			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
+				DAMAGE_GRABBED_PLAYERS != kind &&
+			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
+				EXECUTE_GRABBED_PLAYERS != kind;
 	}
 
 	bool ParseBossPhasePolicyKind(
@@ -1919,6 +1940,30 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			patterns.push_back(std::move(pattern));
+		}
+		else if (!fields.empty() && "PATTERNAUTHORINGMANAGED" == fields[0])
+		{
+			if (3u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]))
+			{
+				m_strStatus = "Boss managed pattern row is invalid";
+				return false;
+			}
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == owners)
+			{
+				m_strStatus = "Boss managed pattern encounter is missing";
+				return false;
+			}
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (owners->second.end() == owner || owner->bAuthoringMasterManaged)
+			{
+				m_strStatus = "Boss managed pattern is missing or duplicated";
+				return false;
+			}
+			owner->bAuthoringMasterManaged = true;
 		}
 		else if (!fields.empty() && "PATTERNPOLICY" == fields[0])
 		{
@@ -3743,6 +3788,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							return false;
 						}
 						continue;
+					}
+					if (BOSS_PATTERN_STAGE_ACTION_KIND::DAMAGE_GRABBED_PLAYERS ==
+						action.eKind && 0u == Find_DamageRatePercent(action.strTargetId))
+					{
+						m_strStatus = "Boss grabbed-player damage profile is missing";
+						return false;
+					}
+					if ((BOSS_PATTERN_STAGE_ACTION_KIND::DAMAGE_GRABBED_PLAYERS == action.eKind ||
+						BOSS_PATTERN_STAGE_ACTION_KIND::EXECUTE_GRABBED_PLAYERS == action.eKind) &&
+						(stage.Actions.size() != 1u || stage.eHitShape != BOSS_PATTERN_HIT_SHAPE::NONE))
+					{
+						m_strStatus = "Boss grabbed-player impact must own its stage transaction";
+						return false;
 					}
 					if (!IsStatefulBossPatternStageAction(action.eKind))
 						continue;

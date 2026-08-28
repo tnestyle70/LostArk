@@ -35,19 +35,23 @@ Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Character Select, Training, Valtan entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `10.207.18.151:7777`이다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `10.207.18.151:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.20:7777`이다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.20:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 ### 1.1 서로 다른 장소에서 Server와 Client 연결
+
+빠른 endpoint 교체와 실제 4인 LAN, loopback 격리 테스트의 실행 체크리스트는
+[네트워크연결가이드.md](네트워크연결가이드.md)를 따른다.
 
 Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디에 있는지 먼저 구분한다.
 
 | 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
 |---|---|---|
-| 현재 팀 LAN 공유 Server | `0.0.0.0` | `10.207.18.151` |
+| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.0.20` |
 | 같은 PC 격리 harness | 명시적 `127.0.0.1` | 명시적 `127.0.0.1` |
-| 서로 다른 장소/네트워크 | `0.0.0.0` | Server PC의 VPN IPv4(권장) 또는 TCP 7777이 포트포워딩된 공인 endpoint |
+| 서로 다른 장소/VPN | `0.0.0.0` | Server PC가 실제 소유한 VPN IPv4와 별도 source CIDR 방화벽 규칙 |
+| 일반 NAT 공인 IPv4 | 현 단일 endpoint sync 미지원 | advertised endpoint와 Server owner address 분리 구현을 먼저 추가 |
 
-`192.168.x.x`, `10.x.x.x`, `172.16.x.x`~`172.31.x.x`는 사설 주소다. 서로 다른 장소의 Client는 Server PC의 Wi-Fi 사설 주소로 직접 접속할 수 없다. 팀 테스트는 두 PC를 같은 사설망처럼 연결하는 VPN 주소를 우선 사용한다. 공인 인터넷에 직접 노출해야 한다면 Server PC로 TCP `7777`을 포트포워딩하고 Windows Firewall의 인바운드 범위를 승인된 원격 주소로 제한한다.
+`192.168.x.x`, `10.x.x.x`, `172.16.x.x`~`172.31.x.x`는 사설 주소다. 서로 다른 장소의 Client는 Server PC의 Wi-Fi 사설 주소로 직접 접속할 수 없다. 팀 테스트는 Server PC가 실제 소유한 VPN IPv4를 우선 사용하되, sync가 생성하는 `RemoteAddress LocalSubnet` 규칙을 `Any`로 넓히지 않고 승인된 VPN source CIDR을 별도 규칙으로 허용한다. 일반 NAT의 공인 IPv4는 공유기가 소유하므로 현재 `Sync-TeamLanEndpoint.ps1`의 Server 소유권 검사를 통과할 수 없다. 공인 노출은 공인 advertised endpoint와 Server owner address를 분리하는 구현, TCP `7777` 포트포워딩과 승인된 exact remote IPv4/CIDR 방화벽 계약을 별도 작업으로 먼저 추가한다.
 
 Server PC의 Git 제외 로컬 파일 `Server/Default/Server.vcxproj.user`에는 다음처럼 모든 현재 어댑터를 수신하도록 지정한다. DHCP로 Wi-Fi 주소가 바뀌어도 존재하지 않는 옛 주소에 bind하지 않으므로 `WSAEADDRNOTAVAIL (10049)`를 피할 수 있다.
 
@@ -71,14 +75,14 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 팀 계약을 갈라놓지 않는다.
 
 ```xml
-<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.151</LocalDebuggerEnvironment>
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.20</LocalDebuggerEnvironment>
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `10.207.18.151`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.0.20`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 `origin/main` commit과 생성 데이터를 맞춘다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v40 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v42 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. v41 이하 빌드는 v42와 호환되지 않는다.
 
 ```powershell
 git switch main
@@ -91,21 +95,58 @@ git rev-parse HEAD
 
 두 PC의 `git rev-parse HEAD`가 같아야 한다. `Client/Bin/Resources`의 `Fonts, Character, Deploy, Effect, Map, UI` 여섯 물리 폴더도 팀장이 전달한 같은 runtime 입력이어야 하며, Git에 없는 UI/Character/Map 리소스는 별도 전달을 먼저 완료한다. Debug configuration으로 공유할 때는 두 PC 모두 Debug 정본 빌드를 실행하고, Server를 중지한 상태에서 Server PC가 `Server/Bin/Debug/Server.exe --reset-valtan-runtime-to-packaged`를 한 번 통과시킨다. cross-PC Debug Hot Reload candidate 공유는 지원하지 않는다.
 
-동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `10.207.18.151`로 맞춘다.
+동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.0.20`으로 맞춘다.
 
 Server가 `Listening on 0.0.0.0:7777`을 출력한 뒤 다른 PC에서 아래 probe가 성공해야 한다. Windows 네트워크가 `공용`이어도 repository sync가 검증하는 firewall rule은 `Profile Any`, `RemoteAddress LocalSubnet`이므로 직접 IPv4 접속에는 문제가 없다.
 
 ```powershell
-Test-NetConnection 10.207.18.151 -Port 7777
+Test-NetConnection 192.168.0.20 -Port 7777
 ```
 
 `TcpTestSucceeded: False`면 Server listener, endpoint 어댑터, TCP 7777 firewall, 공유기의 AP/client isolation 순서로 본다. `True`인데 Lobby에서 거부되거나 끊기면 서로 다른 commit/binary/protocol/gameplay bootstrap을 먼저 확인한다. 승인 뒤 `Stage loading failed`로 Lobby에 남으면 네트워크가 아니라 Client runtime Resources 또는 Loader 문제다. Bern과 Valtan은 player spawn이 네 개라 Server PC의 Client도 입장하면 다른 PC 세 대까지 같은 room에 들어갈 수 있다. Character Select는 session-private이므로 여러 PC가 같은 Server를 써도 서로 보이지 않으며, 동시 플레이 확인은 Bern 또는 Valtan에서 한다.
 
+#### Lobby fallback 진단과 4인 대조
+
+Lobby로 복귀하면 `Last Lobby recovery diagnostic`에서 최초 reason과 source/detail, remote/local endpoint,
+protocol, world/player/entity, packet/WSA/HRESULT, terminal UTC, 마지막 Server tick, raw/event queue
+current/high와 capture 경로를 확인한다. 운영 실패를 runtime assertion으로 process 종료하지 않으며,
+reason schema와 실패 재현은 NetworkProtocolHarness와 Server contract test가 assertion으로 고정한다.
+
+Client capture는 실행 파일 옆 `Diagnostics/client-session-<pid>.jsonl`, Server capture는 실행 파일 옆
+`Diagnostics/server-session-<pid>.jsonl`이다. 기본 Debug 실행이면 각각
+`Client/Bin/Debug/Diagnostics`, `Server/Bin/Debug/Diagnostics` 아래에 생긴다. gameplay payload와 nickname은
+기록하지 않는다. Client의 `localEndpoint`는 실제 IP와 ephemeral port이고 direct LAN에서는 Server line의
+`peerAddress:peerPort`와 정확히 일치한다. 이미 끊어진 TCP는 Server-only 원인을 Lobby로
+되돌려 보낼 수 없으므로 이 endpoint와 terminal UTC, player/entity를 함께 대조한다.
+
+`ROOM_FULL`이면 Server line의 context에서 `candidateSessionId`,
+`registeredSessionsIncludingCandidate`, `activeRoster`를 본다. registered 수에는 거부된 candidate도
+포함된다. active roster의 네 `peer`를 네 Client Lobby의 local endpoint와 대조해 실제 사용자에게 없는
+endpoint가 있을 때만 stale/ghost 후보로 판정한다. `lastInboundAgeMs`는 heartbeat가 없는 계약에서 건강한
+idle Client도 커질 수 있으므로 단독 ghost 증거가 아니다. 네 endpoint가 모두 실제 접속자와 일치하면
+Server-host Client를 포함한 실제 fifth entry인지 확인한다.
+
+- `CLIENT_LOAD_*`, `CLIENT_ACTIVATION_*`, presentation/revision reason은 평균 Wi-Fi 속도가 아니라 해당
+  Client의 Data/Resources/Loader/Level 적용 경로를 먼저 조사한다.
+- `SERVER_SEND_ERROR_OR_TIMEOUT`과 큰 outbound high-watermark는 평균 RTT가 아니라 해당 Client가 socket을
+  drain하지 못한 blocked-send 증거다.
+- `SERVER_ROOM_INGRESS_OVERFLOW` 또는 reliable overflow는 Server queue pressure다.
+- `CLIENT_EXPECTED_ROOM_FULL`은 정상 capacity rejection이며 active roster 대조 전에는 ghost로 단정하지 않는다.
+
 현재 Server PC 주소가 실제 어댑터에 있는지는 다음 명령으로 확인한다.
 
 ```powershell
+$connectedInterfaceIndexes = @(
+    Get-NetIPInterface -AddressFamily IPv4 |
+        Where-Object { $_.ConnectionState -eq 'Connected' } |
+        ForEach-Object { $_.InterfaceIndex }
+)
 Get-NetIPAddress -AddressFamily IPv4 |
-    Where-Object { $_.AddressState -eq 'Preferred' -and $_.IPAddress -notlike '127.*' } |
+    Where-Object {
+        $_.AddressState -eq 'Preferred' -and
+        $connectedInterfaceIndexes -contains $_.InterfaceIndex -and
+        $_.IPAddress -notlike '127.*'
+    } |
     Select-Object InterfaceAlias, IPAddress
 ```
 
@@ -115,14 +156,37 @@ Get-NetIPAddress -AddressFamily IPv4 |
 세션은 `-AllowExpired`로 계속 쓰지 않고 새 endpoint 또는 loopback 복귀 계약을 먼저 정한다.
 
 ```powershell
-# Server PC
+# Server PC의 로컬 bind-only smoke. 500ms 후 종료되므로 remote probe용이 아니다.
 Server\Bin\Debug\Server.exe --bind-address 0.0.0.0 --smoke-timeout-ms 500
+```
 
-# Client PC: VPN/LAN endpoint가 실제로 열렸는지 확인
-Test-NetConnection 10.207.18.151 -Port 7777
+실제 cross-PC probe 전에는 Server PC에서 `--smoke-timeout-ms` 없이 `Server + Client`
+profile을 정상 시작해 listener를 계속 유지한다. 그다음 Client PC에서 확인한다.
+
+```powershell
+Test-NetConnection 192.168.0.20 -Port 7777
 ```
 
 `Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
+
+### 1.2 같은 방 파티와 Bern → Valtan 이동
+
+Bern/Valtan에서 다른 플레이어를 우클릭해 초대하고 상대가 수락하면 최대 4인의
+Server-owned 파티가 된다. `IPlayerCommandSink`가 typed invite/respond를 제출하고
+`S2C_PARTY_ROSTER`의 배열 첫 member가 leader다. nickname은 표시용이며 초대·roster는
+현재 방의 NetEntityId로 식별한다. 옛 초대 응답은 교체된 새 초대를 소비하지 않는다.
+
+Bern의 발탄 안내 NPC entry는 leader만 전체 파티를 요청할 수 있다. Server는 모든
+member의 source session/binding, 목적지 자리·profile·navigation 및 초기 reliable
+송신 준비를 검증한 뒤 한 batch로 이동한다. 이 준비 중 실패하면 기존 파티와 위치·HP를
+유지하고 `S2C_PARTY_TRANSFER_RESULT`로 이유를 알린다. 실패를 Lobby admission 거절로
+처리하지 않는다. 성공은 기존 `S2C_ENTER_ACCEPTED`만 사용하며 새 방의 NetEntityId로
+roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종료는 일반 disconnect
+정리 경로를 따른다. 전역 영구 Party ID나 재접속 복구 계약은 아니다.
+
+파티 HP는 같은 world snapshot에서 NetEntityId로 연결한 값만 표시한다. 아직 HP를
+받지 못했으면 이름은 유지하되 체력을 100%로 꾸미지 않는다. 파티/NPC 메뉴에서 소비한
+마우스 버튼은 물리적으로 놓을 때까지 이동·공격 입력으로 다시 해석하지 않는다.
 
 ## 2. 팀원이 먼저 읽을 파일
 
@@ -272,6 +336,17 @@ commit한다. 성공 뒤 다음 cue spawn은 새 document를, 이미 재생 중�
 사용한다. 중간 실패는 저장 파일을 compare-and-swap으로 이전 bytes로 복원하고 기존 prepared target을 유지한다.
 다음 Client 실행도 같은 source 문서를 읽으므로 별도 publish나 재시작 적용 절차가 없다. 전체 source 검증은
 `Tools/EffectPipeline/Validate-EffectSources.ps1`로 수행한다.
+
+Valtan 연결 Effect의 편집 진입은 `F1 → Boss Tool → Boss Verification → Pattern →
+Stage → Edit Linked Effect`다. `patternId/stageId/cueOccurrenceId/effectAssetId`의
+exact tuple을 현재 Product tree와 다시 대조해 문서를 연다. clip-bound cue는 기존
+전체 Pattern timeline의 t=0 pause로, `STAGE_CLOCK`은 static Valtan target으로 연결한다.
+자동 Play나 Server 명령은 보내지 않는다. 사용자는 Model View Timeline의 `Play` 또는
+`Restart + Play`로 재생한다. 미저장 문서는 기존 Save/Discard/Cancel을 거치며 unlink
+진행 중에는 이 deep-link도 잠긴다. 연결은 `Valtan.presentation.json`, Effect 내용은
+해당 `Authored/*.effect.json`이 각각 소유한다. unlink는 cue 연결만 지우며 사용자 Effect
+파일과 catalog를 자동 삭제하지 않는다.
+
 V1 Product source가 실제 참조하는 DDS/WModel dependency closure는 같은 Resources-relative 경로로 Git/LFS에
 선별 추적한다. 팀원은 pull 뒤 `git lfs pull`을 수행하며, 전체 Resources pack과 미참조 파일은 포함하지 않는다.
 Valtan actor Product가 직접 참조하는 body, Parts1/Parts2, AnimSet과 weapon 다섯 WModel, 그리고 그 material
@@ -449,13 +524,20 @@ ID로 strict join해 `ValtanEncounter.json`, rotations, combat objects, world ev
 bootstrap을 생성한다. 이 generated Product는 read-only이고 Server와 Arena가 split source를 두 번째 런타임으로
 직접 읽지 않는다.
 
-`Data/Actors/BossCatalog.json` format v4의 Valtan `presentationScale: 0.75`는 replicated Arena와 Character/Boss
-Preview가 함께 소비하는 Client actor scale이다. `BossProfiles.json`의 Server collision radius와 hit geometry는
-바꾸지 않는다. managed Effect cue 15개는 `OWNER_RELATIVE` 4개, `GAMEPLAY_FOOTPRINT` 9개,
-`ARENA_ABSOLUTE` 2개로 분류한다. owner-relative만 actor scale을 상속하고, 나머지 두 policy는 owner scale을 제거한
+`Data/Actors/BossCatalog.json` format v4의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
+Preview가 함께 소비하는 Client actor scale이다. `BossProfiles.json`의 Server body radius는 현재 모델의
+몸통·다리 실측에 맞춘 `1.4m`이며 Client Debug collider는 같은 replicated radius를 표시한다. actor scale을
+body radius에 다시 곱하지 않는다. 공격 hit geometry와 장판 크기는 별도 저작 값이다.
+Effect cue의 scale policy는 `OWNER_RELATIVE`, `GAMEPLAY_FOOTPRINT`,
+`ARENA_ABSOLUTE`로 구분한다. owner-relative만 actor scale을 상속하고, 나머지 두 policy는 owner scale을 제거한
 뒤 authored `worldScale`을 사용한다. 이 정책은 호출 transform 계약이며 `Data/Effects/Authored`의 element geometry를
-고치거나 sky-axe에 `0.75`를 강제하지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이
+고치거나 sky-axe에 actor scale을 강제하지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이
 아니다. 세부 필드와 publish 절차는 `발탄인수인계서.md`를 따른다.
+
+Boss Tool의 Next는 isolated audition에 붙는 Server 권위 예약 한 칸이다. 현재 패턴의 최종 world/prop/hit
+commit 뒤 다음 fixed tick에서 시작하며 맵·플레이어·HP·cooldown을 reset하지 않는다. saved Ordered Flow와
+별개이고 공용 `CValtanPatternAuditionService`만 command/result/lifecycle을 소비한다. 예약·전멸 대기·취소와
+Trash 포획 분기의 상세 계약은 `발탄인수인계서.md`의 10.4, 11.9를 따른다.
 
 Effect 시각 기준의 global bloom scatter 정본은 `Data/Rendering/Authored/RenderingProfiles.json`의 exact
 `bloomScatter: 1.0`이다. Rendering publisher는 float32 경계 검증 뒤 같은 값을 runtime JSON에 투영하며 Editor

@@ -20,6 +20,8 @@
 #include "EstherSkillSystem.h"
 #include "WorldDestructionBootstrap.h"
 #include "WorldDestructionRuntime.h"
+#include "Network/PacketFrame.h"
+#include "Network/SessionDiagnostic.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -27,8 +29,12 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace LostArk::Server
@@ -117,12 +123,18 @@ namespace LostArk::Server
 		std::size_t iIngressHighWatermark = 0;
 		std::size_t iLastDrainedCommandCount = 0;
 		std::size_t iLastRemainingCommandCount = 0;
+		std::size_t iLastCleanupIngressDepth = 0;
+		std::size_t iCleanupIngressHighWatermark = 0;
+		std::size_t iLastDrainedCleanupCommandCount = 0;
+		std::size_t iLastRemainingCleanupCommandCount = 0;
 		std::uint64_t iDrainLimitedTickCount = 0;
 		std::uint64_t iCoalescedMoveCommandCount = 0;
 		std::uint64_t iCoalescedAimCommandCount = 0;
 		std::uint64_t iDroppedBestEffortCommandCount = 0;
 		std::uint64_t iRejectedReliableCommandCount = 0;
 		std::uint64_t iRejectedCleanupCommandCount = 0;
+		std::uint64_t iDeduplicatedCleanupCommandCount = 0;
+		std::uint64_t iCancelledCommandCountByCleanup = 0;
 		std::uint64_t iSnapshotEncodeCount = 0;
 		std::uint64_t iSnapshotEncodeFailureCount = 0;
 		std::uint64_t iLastSnapshotEncodeMicroseconds = 0;
@@ -194,15 +206,41 @@ namespace LostArk::Server
 		// Room thread only. Removes the source player before the target room can
 		// process its queued ENTER_WORLD and bind the same session again.
 		[[nodiscard]] bool Commit_WorldTransferDeparture(SESSION_ID sessionId);
+		// Room-thread only, while ServerApp holds its session-binding mutex.
+		bool Transfer_PartyTo(CGameRoom& target,
+			const std::vector<SESSION_ID>& leaderFirstSessionIds,
+			LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status);
+		void Notify_PartyTransferFailure(SESSION_ID sessionId,
+			std::uint32_t requestSequence, LostArk::Shared::WORLD_ID targetWorldId,
+			LostArk::Shared::PARTY_TRANSFER_RESULT result);
 
 	private:
+		struct STAGED_PLAYER_ENTRY final
+		{
+			std::shared_ptr<CClientSession> pSession;
+			SERVER_PLAYER Player;
+			std::vector<LostArk::Shared::PACKET_FRAME> Frames;
+		};
+		bool Stage_PlayerEntry(const std::shared_ptr<CClientSession>& session,
+			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
+			std::span<const STAGED_PLAYER_ENTRY> precedingEntries,
+			STAGED_PLAYER_ENTRY& staged,
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status);
+		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
+			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
+		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
+		void Flush_PartyTransferResults();
 		void Handle_Register(const std::shared_ptr<CClientSession>& session);
 		bool Join(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld);
 		void Leave(
 			SESSION_ID sessionId,
-			LostArk::Shared::PLAYER_DESPAWN_REASON reason);
+			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
+		void Close_SessionForBindingFailure(
+			SESSION_ID sessionId,
+			std::string_view packetName,
+			std::string_view validation);
 		void Handle_Move(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_MOVE& move);
@@ -306,7 +344,8 @@ namespace LostArk::Server
 		{
 			INACTIVE,
 			PENDING,
-			ACTIVE
+			ACTIVE,
+			COMPLETED_HOLD
 		};
 
 		struct VALTAN_PATTERN_ID_AUDITION_STATE final
@@ -322,9 +361,56 @@ namespace LostArk::Server
 			std::string strBossPlacementId;
 			std::string strPatternId;
 			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+			bool bResetlessContinuation = false;
+			bool bReportedWaitingForPlayer = false;
 		};
 
+		struct VALTAN_NEXT_PATTERN_RESERVATION final
+		{
+			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iRequestSequence = 0u;
+			std::uint32_t iRoomAuditionEpoch = 0u;
+			std::uint32_t iPredecessorPatternSequence = 0u;
+			std::uint32_t iExpectedPatternSequence = 0u;
+			std::string strBossPlacementId;
+			std::string strPatternId;
+			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+			bool bReportedWaitingForPlayer = false;
+		};
+
+		struct VALTAN_NEXT_PATTERN_COMMAND_RECEIPT final
+		{
+			LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request;
+			LostArk::Shared::VALTAN_AUDITION_RESULT Result =
+				LostArk::Shared::VALTAN_AUDITION_RESULT::REJECTED_STALE_REQUEST;
+			std::uint32_t iCurrentHealthBar = 0u;
+		};
+
+		[[nodiscard]] bool Is_ValtanPatternIdAuditionRunning() const noexcept;
+		LostArk::Shared::VALTAN_AUDITION_RESULT Evaluate_ValtanNextPatternControl(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
+			std::uint32_t& outCurrentHealthBar);
+		void Cancel_ValtanNextPatternReservation(std::string reason);
+		void Cancel_ValtanPatternIdAudition(std::string reason);
+		void Try_PromoteValtanNextPattern(SERVER_WORLD_ENTITY& boss);
+		bool Prepare_ValtanPatternIdAuditionBeforeBrain(SERVER_WORLD_ENTITY& boss);
 		bool Refresh_ValtanPatternIdAuditionState();
+		void Queue_ValtanAuditionLifecycle(
+			SESSION_ID ownerSessionId,
+			std::uint32_t requestSequence,
+			std::uint32_t roomEpoch,
+			std::uint32_t patternSequence,
+			const std::string& patternId,
+			const LostArk::Shared::GameplayDataRevision& pinnedRevision,
+			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
+			std::string reason = {});
+		void Queue_ValtanNextPatternLifecycle(
+			const VALTAN_NEXT_PATTERN_RESERVATION& reservation,
+			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
+			std::string reason = {});
 		void Queue_ValtanPatternIdAuditionLifecycle(
 			LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
 			std::string reason = {});
@@ -504,6 +590,28 @@ namespace LostArk::Server
 		void Handle_ConfirmNpcEntry(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
+		/* Same-room-only: request.iTargetNetEntityId must resolve to a real
+		   player currently in this room's m_PlayerIdByEntityId. There is no
+		   cross-room player identity yet (nickname is display text only, see
+		   CLAUDE.md), so an invite naming a player in a different room or a
+		   stale/unknown NetEntityId is rejected, not queued. */
+		void Handle_PartyInvite(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_PARTY_INVITE& request);
+		void Handle_PartyInviteRespond(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_PARTY_INVITE_RESPOND& request);
+		void Broadcast_PartyRoster(std::uint32_t partyId);
+		/* Leave() calls this so a disconnecting player does not linger as a
+		   ghost roster entry for whoever they partied with. */
+		void Remove_FromParty(LostArk::Shared::PLAYER_ID playerId);
+		/* Same room-scoped broadcast Broadcast_PartyRoster already uses --
+		   every current session in this room receives the relayed line,
+		   including the sender (its own head bubble is driven off the same
+		   S2C_CHAT the rest of the room gets, not a second local-only path). */
+		void Handle_Chat(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_CHAT& request);
 
 		bool Send_Accepted(
 			const std::shared_ptr<CClientSession>& session,
@@ -639,6 +747,13 @@ namespace LostArk::Server
 		/* Runs only after every stage-action preflight transaction commits. These
 		actions own player/target state and therefore cannot be staged inside the
 		boss-combat or combat-object value transactions above. */
+		bool Prepare_GrabbedPlayerImpact(
+			const SERVER_WORLD_ENTITY& boss,
+			const CGameplayCatalog& catalog,
+			const BOSS_PATTERN_STAGE_ACTION& action,
+			std::uint32_t serverTick,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& stagedPlayers,
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& stagedDamageEvents);
 		bool Commit_BossPatternPlayerStageActions(
 			SERVER_WORLD_ENTITY& boss,
 			const CGameplayCatalog& catalog,
@@ -785,15 +900,17 @@ namespace LostArk::Server
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
 	private:
-		static constexpr std::size_t MAX_INBOUND_COMMAND_COUNT = 1024u;
-		// Best-effort traffic leaves room for gameplay/control commands. The
-		// final 64 slots stay available to LEAVE and failed-entry rollback.
+		// Best-effort traffic leaves room for gameplay/control commands. LEAVE
+		// never shares this bounded queue: disconnect cleanup has its own
+		// session-deduplicated priority queue below.
 		static constexpr std::size_t MAX_BEST_EFFORT_COMMAND_COUNT = 768u;
 		static constexpr std::size_t MAX_RELIABLE_COMMAND_COUNT = 960u;
 		static constexpr std::size_t MAX_COMMANDS_DRAINED_PER_TICK = 256u;
 
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
+		std::deque<ROOM_COMMAND> m_CleanupCommands;
+		std::unordered_set<SESSION_ID> m_QueuedCleanupSessionIds;
 		SERVER_ROOM_PERFORMANCE_METRICS m_PerformanceMetrics;
 		SERVER_ROOM_PERFORMANCE_METRICS m_LastRoomPerfLogSample;
 		std::uint64_t m_iLastRoomPerfSnapshotDroppedCount = 0;
@@ -819,6 +936,32 @@ namespace LostArk::Server
 			m_PlayerIdBySessionId;
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::PLAYER_ID>
 			m_PlayerIdByEntityId;
+
+		/* Same-room party state -- PLAYER_ID is room-local (freshly allocated
+		   per room on Join), so this map does not by itself survive a member
+		   moving to a different room. 0 means "no party" -- never a real party
+		   ID. Invite/accept/join only; leave/kick/leader promotion is a
+		   separate follow-up.
+		   A party-leader-triggered group Valtan entry (Handle_ConfirmNpcEntry
+		   -> Transfer_PartyTo) is the one case
+		   that does survive a room change: every member transfers together in
+		   one batch and gets re-grouped into a fresh room-local party in the
+		   target room, so the party itself is never actually split across two
+		   rooms at once. There is still no general cross-room party identity
+		   (e.g. inviting or chatting with someone in a different room). */
+		std::uint32_t m_iNextPartyId = 1u;
+		std::unordered_map<LostArk::Shared::PLAYER_ID, std::uint32_t>
+			m_PartyIdByPlayerId;
+		std::unordered_map<std::uint32_t, std::vector<LostArk::Shared::PLAYER_ID>>
+			m_PartyMembersByPartyId;
+		// One pending invite per target at a time; a new invite silently
+		// replaces whatever that target's last unanswered invite was.
+		std::unordered_map<LostArk::Shared::PLAYER_ID, LostArk::Shared::PLAYER_ID>
+			m_PendingPartyInviteByTargetPlayerId;
+		// At most one latest failure per present player. A full reliable queue
+		// delays the notice instead of disconnecting a rejected source party.
+		std::unordered_map<SESSION_ID, LostArk::Shared::S2C_PARTY_TRANSFER_RESULT>
+			m_PendingPartyTransferResults;
 
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;
@@ -903,6 +1046,9 @@ namespace LostArk::Server
 		std::vector<TARGETED_VALTAN_PATTERN_FLOW_LIFECYCLE>
 			m_PendingValtanPatternFlowLifecycle;
 		VALTAN_PATTERN_ID_AUDITION_STATE m_ValtanPatternIdAudition;
+		std::optional<VALTAN_NEXT_PATTERN_RESERVATION> m_ValtanNextPattern;
+		std::unordered_map<SESSION_ID, VALTAN_NEXT_PATTERN_COMMAND_RECEIPT>
+			m_ValtanNextPatternReceiptBySessionId;
 		VALTAN_PATTERN_FLOW_AUDITION_STATE m_ValtanPatternFlowAudition;
 		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
 		VALTAN_FIGHT_PAGE_START_STATE m_ValtanFightPageStart;

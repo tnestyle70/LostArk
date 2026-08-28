@@ -20,6 +20,7 @@
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
 #include "Level_Loading.h"
+#include "Level_ValtanArena.h"
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
 #include "PartyWindowView.h"
@@ -413,7 +414,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			{
 				// Closing mid-wait must not leave the looping wait sound behind with no
 				// screen visible to end it.
-				CGameInstance::Get().Stop_Music();
+				CGameInstance::Get().Stop_LoopingSound();
 			}
 		}
 		m_bPDown = pDown;
@@ -497,6 +498,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CGameInstance::Get().SetMouseButtonBlocked(
 		DIM::LB,
 		worldLeftMouseConsumed);
+	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, false);
 
 	CNetworkManager::Get().Update();
 #ifdef _DEBUG
@@ -541,6 +543,19 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				nullptr != m_pCameraTool)
 			{
 				(void)m_pCameraTool->Open_Cue(cameraRequest);
+			}
+		}
+		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
+		if (m_pBossTool->Consume_EffectToolOpenRequest(effectRequest))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
+				nullptr != m_pEffectTool)
+			{
+				const bool_t bOpened =
+					m_pEffectTool->Open_ValtanProductEffect(effectRequest);
+				m_strToolStatus = bOpened ?
+					"Opened the exact Valtan Product Effect in Effect Tool." :
+					"Effect Tool opened, but the exact Product occurrence needs attention.";
 			}
 		}
 	}
@@ -621,18 +636,41 @@ HRESULT CMainApp::Render()
 		if (nullptr != m_pChatWindowView)
 		{
 			/* Only in actual in-game play (Bern/Valtan), not Character Select -- more levels join
-			this list as real in-game stages are added. */
+			this list as real in-game stages are added. Real send needs the active level's own
+			command sink, same reasoning as the party roster fetch just below. */
 			const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
-			if (ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
-				m_pChatWindowView->Render();
+			if (ETOUI(LEVEL::BERN) == chatLevel)
+			{
+				CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+				m_pChatWindowView->Render(
+					nullptr != pBern ? pBern->Get_PlayerCommandSink() : nullptr);
+			}
+			else if (ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
+			{
+				CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active();
+				m_pChatWindowView->Render(
+					nullptr != pValtanArena ?
+						pValtanArena->Get_PlayerCommandSink() : nullptr);
+			}
 		}
 		if (nullptr != m_pPartyWindowView)
 		{
-			/* Same level set as the chat window. UI-only placeholder roster for now (no party
-			Shared protocol to gate on actual invite-accepted state yet). */
+			/* Same level set as the chat window. Each level owns its own CClientReplication
+			(and therefore its own Server-synced roster), so the active level is asked for its
+			current roster the same way Render_ValtanEntryModalText() reaches CLevel_Bern below. */
 			const uint32_t partyLevel = CGameInstance::Get().Get_CurrentLevelID();
-			if (ETOUI(LEVEL::BERN) == partyLevel || ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
+			if (ETOUI(LEVEL::BERN) == partyLevel)
 			{
+				if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+					m_pPartyWindowView->Sync_From_Roster(
+						pBern->Get_PartyRoster(), pBern->Get_PlayerHealth());
+				m_pPartyWindowView->Render();
+			}
+			else if (ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
+			{
+				if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+					m_pPartyWindowView->Sync_From_Roster(
+						pValtanArena->Get_PartyRoster(), pValtanArena->Get_PlayerHealth());
 				m_pPartyWindowView->Render();
 			}
 		}
@@ -701,6 +739,7 @@ HRESULT CMainApp::Render()
 	RenderBossHealthBarText();
 	RenderChargeGaugeText();
 	RenderDeadSceneText();
+	RenderRaidClearText();
 	RenderDamageNumbers();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
@@ -722,7 +761,15 @@ HRESULT CMainApp::Render()
 	if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+		{
 			pBern->Render_ValtanEntryModalText();
+			pBern->Render_PartyInviteText();
+		}
+	}
+	else if (ETOUI(LEVEL::VALTAN_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
+	{
+		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+			pValtanArena->Render_PartyInviteText();
 	}
 
 	return CGameInstance::Get().Render_End();
@@ -1750,13 +1797,10 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", true);
 	m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ResultWaitEmblem");
 
-	/* CSound_Manager has exactly one loop-capable channel (Play_Music/Stop_Music) --
-	Play_Sound is fire-and-forget one-shot only. Reused here for the "화면을 클릭하여
-	결과 즉시 확인" wait loop since there is no separate SFX-loop primitive; this stops
-	whatever BGM was already playing for as long as the wait screen is up. */
+	/* UI owns this loop independently; level/encounter BGM keeps playing. */
 	const filesystem::path waitSoundPath = CRuntimeAssetRoot::Resolve(
 		L"Sound/UI/Enhancement/sys_enhance_3_waiting1__95424590.wav");
-	CGameInstance::Get().Play_Music(waitSoundPath.wstring(), 1.f);
+	CGameInstance::Get().Play_LoopingSound(waitSoundPath.wstring(), 1.f);
 }
 
 void CMainApp::Update_ItemUpgradeResultWaitClick()
@@ -1791,7 +1835,7 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 	else
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_FailEffect");
 
-	CGameInstance::Get().Stop_Music();
+	CGameInstance::Get().Stop_LoopingSound();
 	// Equally-weighted variants (the same real success/fail vox recorded several times),
 	// same pattern CSoundCueCatalog already documents for Character/Valtan cues.
 	static std::mt19937 s_itemUpgradeResultSoundRng{ std::random_device{}() };
@@ -3030,6 +3074,34 @@ void CMainApp::RenderDeadSceneText()
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fMessageScale * textUiScale);
 }
 
+void CMainApp::RenderRaidClearText()
+{
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+
+	const HUD_RAIDCLEAR_TEXT_RECTS& rects = CCombatHUDViewModel::Get().Get_RaidClearTextRects();
+	if (!rects.isValid)
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	/* Real loc key traced from epicgatecommonclear.gfx's clearTF field (fontClass=$YoonGasiIIM,
+	white, initialText="[$]commander.dungeon_clear") -- this project has no loc-key table, so the
+	real Korean string it resolves to in the reference screenshot is used directly. */
+	const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어
+	const float2_t vTitleMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
+	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
+		(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
+		float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
+			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
+}
+
 void CMainApp::RenderChargeGauge()
 {
 	if (nullptr == m_pHUDRuntimeView)
@@ -3920,6 +3992,7 @@ HRESULT CMainApp::Start_Level(
 	leaving Character Select with the preview open (e.g. entering Valtan) left its text drawing
 	over the Loading screen and the destination level too. Any real level transition ends it. */
 	m_bItemUpgradePreviewVisible = false;
+	CGameInstance::Get().Stop_LoopingSound();
 
 	const CLIENT_LEVEL_DESCRIPTOR* pTarget =
 		CLevelRegistry::Find(eTargetLevel);
@@ -3928,6 +4001,12 @@ HRESULT CMainApp::Start_Level(
 		!m_RenderingProfiles.Has_Profile(
 			CRenderingProfileService::LOADING_PROFILE_ID))
 	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_PROFILE_MISSING,
+			"main-app.start-level-profile",
+			"Target or Loading rendering profile is not registered.",
+			E_INVALIDARG);
 		return E_INVALIDARG;
 	}
 
@@ -3938,7 +4017,15 @@ HRESULT CMainApp::Start_Level(
 			eTargetLevel,
 			lobbyCommandToken);
 	if (nullptr == loading)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_LOADING_START_FAILED,
+			"main-app.loading-level-create",
+			"CLevel_Loading::Create returned null.",
+			E_FAIL);
 		return E_FAIL;
+	}
 
 	const string previousProfileId =
 		m_RenderingProfiles.Get_ActiveProfileId();
@@ -3946,6 +4033,12 @@ HRESULT CMainApp::Start_Level(
 	if (!m_RenderingProfiles.Activate_Profile(
 		CRenderingProfileService::LOADING_PROFILE_ID, status))
 	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_PROFILE_FAILED,
+			"main-app.loading-profile-activation",
+			status,
+			E_FAIL);
 		return E_FAIL;
 	}
 	const HRESULT hChange = CGameInstance::Get().Change_Level(
@@ -3953,6 +4046,12 @@ HRESULT CMainApp::Start_Level(
 		move(loading));
 	if (FAILED(hChange))
 	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_LOADING_START_FAILED,
+			"main-app.loading-change-level",
+			"Change_Level(LOADING) failed.",
+			hChange);
 		if (!previousProfileId.empty())
 		{
 			string rollbackStatus;
@@ -3991,7 +4090,16 @@ void CMainApp::Apply_LevelRequest()
 					request.iLobbyCommandToken,
 					"target level loading could not start");
 			}
-			CLevelTransitionService::Report_LoadFailure(result);
+			CLevelTransitionService::Report_Recovery(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_LOADING_START_FAILED,
+				"main-app.start-level-request",
+				request.strSource,
+				result);
+			// Admission already consumed a Server room slot. Reclaim it here so
+			// the next Lobby click starts a fresh diagnostic generation instead
+			// of reusing a bound session whose loading transition failed.
+			CNetworkManager::Get().Close_ServerConnection();
 		}
 		else
 		{
@@ -4015,6 +4123,7 @@ void CMainApp::Apply_LevelRequest()
 			request.eTargetLevel,
 			m_pDevice,
 			m_pContext) : nullptr;
+	const bool_t levelCreated = nullptr != nextLevel;
 	if (hasTargetProfile && nullptr == nextLevel)
 	{
 		OutputDebugStringA(
@@ -4053,7 +4162,12 @@ void CMainApp::Apply_LevelRequest()
 			OutputDebugStringA(
 				"[MainApp] Bern identity commit invariant failed.\n");
 			CNetworkManager::Get().Close_ServerConnection();
-			CLevelTransitionService::Report_LoadFailure(E_FAIL);
+			CLevelTransitionService::Report_Recovery(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_IDENTITY_COMMIT_FAILED,
+				"main-app.identity-commit",
+				"Bern pending identity commit invariant failed.",
+				E_FAIL);
 			if (!CLevelTransitionService::Request_Load(
 				LEVEL::LOBBY,
 				"main-app.identity-commit-failure"))
@@ -4085,8 +4199,43 @@ void CMainApp::Apply_LevelRequest()
 			"target level activation failed");
 	}
 	CGameInstance::Get().Clear_Resources(ETOUI(request.eTargetLevel));
+	if (!hasTargetProfile)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_PROFILE_MISSING,
+			"main-app.target-profile-missing",
+			request.strSource,
+			E_FAIL);
+	}
+	else if (!levelCreated)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_LEVEL_CREATE_FAILED,
+			"main-app.target-level-create",
+			request.strSource,
+			E_FAIL);
+	}
+	else if (!profileActivated)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_PROFILE_FAILED,
+			"main-app.target-profile-activation",
+			profileStatus,
+			E_FAIL);
+	}
+	else
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_CHANGE_LEVEL_FAILED,
+			"main-app.target-change-level",
+			request.strSource,
+			E_FAIL);
+	}
 	CNetworkManager::Get().Close_ServerConnection();
-	CLevelTransitionService::Report_LoadFailure(E_FAIL);
 	if (!CLevelTransitionService::Request_Load(
 		LEVEL::LOBBY,
 		"main-app.activation-failure"))
@@ -4876,6 +5025,7 @@ void CMainApp::Free()
 	   post-join cache release below. */
 	CEffectPresentationService::Clear_All();
 	CNetworkManager::Get().Shutdown();
+	CGameInstance::Get().Stop_LoopingSound();
 	CGameInstance::Get().SetInputBlocked(false, false);
 
 #ifdef _DEBUG

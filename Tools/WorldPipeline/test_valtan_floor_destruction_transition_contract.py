@@ -143,8 +143,8 @@ class ValtanFloorDestructionTransitionContractTests(unittest.TestCase):
         ]["patternIds"]
         product_sequence = self.rotations["scriptedSequence"]["patternIds"]
         self.assertEqual(source_sequence, product_sequence)
-        self.assertEqual(len(source_sequence), 28)
-        self.assertEqual(source_sequence[14:16], list(pattern_ids))
+        self.assertEqual(len(source_sequence), 29)
+        self.assertEqual(source_sequence[15:17], list(pattern_ids))
 
         gameplay_by_id = {
             row["patternId"]: row for row in self.gameplay_authoring["patterns"]

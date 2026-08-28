@@ -403,6 +403,25 @@ namespace
 				return false;
 			}
 
+			if (kind == "DAMAGE_GRABBED_PLAYERS" ||
+				kind == "EXECUTE_GRABBED_PLAYERS")
+			{
+				const bool_t validTarget = kind == "EXECUTE_GRABBED_PLAYERS" ?
+					targetId == "boss.attachment.left-hand" :
+					0u == targetId.find("damage.");
+				const DATA_JSON_VALUE* hitShape = stage.Find("hitShape");
+				if (trigger != "ENTER" || 0u != value || !validTarget ||
+					actions->Get_Array().size() != 1u || nullptr == hitShape ||
+					!hitShape->Is_String() || hitShape->Get_String() != "NONE")
+				{
+					return false;
+				}
+				/* These Server-owned impacts are instantaneous, not paired
+				   ENTER/EXIT state. Damage-profile membership stays with the
+				   publisher and Server catalog, as for ordinary stage damage. */
+				continue;
+			}
+
 			bool_t validKind = false;
 			if (kind == "SET_BOSS_FLAG")
 			{
@@ -463,7 +482,8 @@ namespace
 		return outcome == "TIMEOUT" || outcome == "COUNTER_HIT" ||
 			outcome == "STAGGER_BROKEN" || outcome == "WALL_CONTACT" ||
 			outcome == "PART_DESTROYED" || outcome == "PROP_DESTROYED" ||
-			outcome == "SUMMON_DEAD" || outcome == "ALL_PLAYERS_GRABBED";
+			outcome == "SUMMON_DEAD" || outcome == "ALL_PLAYERS_GRABBED" ||
+			outcome == "ANY_PLAYER_GRABBED";
 	}
 
 	bool_t Validate_StageBranches(

@@ -1,4872 +1,1477 @@
 {
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
-  "resolution": {
-    "width": 1280,
-    "height": 720
-  },
-  "classes": [
-    "Default"
-  ],
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
   "slots": [
     {
       "id": "Inventory_PanelBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 754.366272,
-        "y": 54.7017021,
-        "width": 397,
-        "height": 407
-      },
+      "rect": { "x": 754.366272, "y": 54.7017021, "width": 397, "height": 407 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_panel_bg_main.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_panel_bg_main.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Title",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 754,
-        "y": 20,
-        "width": 397,
-        "height": 37
-      },
+      "rect": { "x": 754, "y": 20, "width": 397, "height": 37 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Title.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Title.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Button1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 759.105225,
-        "y": 423.697754,
-        "width": 66,
-        "height": 34
-      },
+      "rect": { "x": 759.105225, "y": 423.697754, "width": 66, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Button1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Button1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_CraftingButton",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 827.75,
-        "y": 423.697754,
-        "width": 65,
-        "height": 34
-      },
+      "rect": { "x": 827.75, "y": 423.697754, "width": 65, "height": 34 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Crafting Button.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Crafting Button.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_GemButton",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 896.394775,
-        "y": 422.789764,
-        "width": 66,
-        "height": 35
-      },
+      "rect": { "x": 896.394775, "y": 422.789764, "width": 66, "height": 35 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Gem Button.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Gem Button.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Category_All",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 955.8517,
-        "y": 61.1749268,
-        "width": 24,
-        "height": 21
-      },
+      "rect": { "x": 955.851685, "y": 61.1749268, "width": 24, "height": 21 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Category All.png",
-          "hoverPath": "UI/Inventory/Category all_hover.png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Category All.png", "hoverPath": "UI/Inventory/Category all_hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Category_Cloth",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1012.8517,
-        "y": 61.1749268,
-        "width": 25,
-        "height": 21
-      },
+      "rect": { "x": 1012.85168, "y": 61.1749268, "width": 25, "height": 21 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Category Cloth.png",
-          "hoverPath": "UI/Inventory/Category Cloth_hover .png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Category Cloth.png", "hoverPath": "UI/Inventory/Category Cloth_hover .png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Category_Gem",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1066.8517,
-        "y": 61.1749268,
-        "width": 21,
-        "height": 26
-      },
+      "rect": { "x": 1066.85168, "y": 61.1749268, "width": 21, "height": 26 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Category Gem.png",
-          "hoverPath": "UI/Inventory/Category Gem_hover.png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Category Gem.png", "hoverPath": "UI/Inventory/Category Gem_hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Category_Combat",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 982.8517,
-        "y": 61.1749268,
-        "width": 27,
-        "height": 25
-      },
+      "rect": { "x": 982.851685, "y": 61.1749268, "width": 27, "height": 25 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Category combat.png",
-          "hoverPath": "UI/Inventory/Category combat_hover.png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Category combat.png", "hoverPath": "UI/Inventory/Category combat_hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Category_Etc",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1125.8517,
-        "y": 61.1749268,
-        "width": 25,
-        "height": 26
-      },
+      "rect": { "x": 1125.85168, "y": 61.1749268, "width": 25, "height": 26 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Category etc.png",
-          "hoverPath": "UI/Inventory/Category etc_hover.png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Category etc.png", "hoverPath": "UI/Inventory/Category etc_hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Category_Card",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1090.8517,
-        "y": 61.1749268,
-        "width": 32,
-        "height": 28
-      },
+      "rect": { "x": 1090.85168, "y": 61.1749268, "width": 32, "height": 28 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Category Card.png",
-          "hoverPath": "UI/Inventory/Category card_hover.png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Category Card.png", "hoverPath": "UI/Inventory/Category card_hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Category_Use",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1040.8517,
-        "y": 61.1749268,
-        "width": 23,
-        "height": 23
-      },
+      "rect": { "x": 1040.85168, "y": 61.1749268, "width": 23, "height": 23 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/Category use.png",
-          "hoverPath": "UI/Inventory/Category use_hover.png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/Category use.png", "hoverPath": "UI/Inventory/Category use_hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_BottomBars",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 440,
-        "y": 550,
-        "width": 347,
-        "height": 171
-      },
+      "rect": { "x": 440, "y": 550, "width": 347, "height": 171 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_bottom_bars.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_bottom_bars.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_6",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_7",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_8",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_9",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 88.9,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_10",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_11",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_12",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_13",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_14",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_15",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_16",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_17",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_18",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_19",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 121.8798,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_20",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_21",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_22",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_23",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_24",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_25",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_26",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_27",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_28",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_29",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 154.8596,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_30",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_31",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_32",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_33",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_34",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_35",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_36",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_37",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_38",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_39",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 187.8393,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_40",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_41",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_42",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_43",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_44",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_45",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_46",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_47",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_48",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_49",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 220.8191,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_50",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_51",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_52",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_53",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_54",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_55",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_56",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_57",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_58",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_59",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 253.7989,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_60",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_61",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_62",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_63",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_64",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_65",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_66",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_67",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_68",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_69",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 286.7787,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_70",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_71",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_72",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_73",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_74",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_75",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_76",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_77",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_78",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_79",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 319.7584,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_80",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_81",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_82",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_83",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_84",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_85",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_86",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_87",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_88",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_89",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 352.7382,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_90",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 788.7174,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 788.717407, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_91",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 821.6972,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 821.697205, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_92",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 854.677,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 854.677002, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_93",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 887.6567,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 887.656677, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_94",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 920.6365,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 920.636475, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_95",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 953.6163,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 953.616272, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_96",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 986.5961,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 986.59613, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_97",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1019.5758,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1019.57581, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_98",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1052.5556,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1052.55554, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Inventory_Slot_99",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1085.5354,
-        "y": 385.718,
-        "width": 31.4798,
-        "height": 31.4798
-      },
+      "rect": { "x": 1085.5354, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Inventory/inv_slot_bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Inventory/inv_slot_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": []
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

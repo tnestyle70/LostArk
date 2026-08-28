@@ -310,6 +310,10 @@ public:
 		std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
 		std::string& strOutError,
 		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument = nullptr);
+	/* Validated Element timing shared by playback staging and authoring UI. */
+	static f32_t Calculate_ElementEndSeconds(
+		const EFFECT_ELEMENT_DESC& Element,
+		bool_t bSourceVisualElementActive);
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);

@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Network/PacketMessages.h"
 
 #include <string>
 #include <vector>
@@ -9,13 +10,15 @@
 NS_BEGIN(Client)
 
 class CUITextureCache;
+class CReplicatedPlayerHealth;
 
 /* Release-safe party roster overlay matching the in-game reference: a title bar, then one row
 per member (class symbol, HP bar with the join-order number and nickname drawn on top, and a
-crown mark on whoever is currently leader). UI-only for now -- there is no party Shared
-protocol yet (no C2S/S2C party messages, no Server roster), so Render() draws whatever
-SEED_MEMBERS below is populated with instead of a real roster. Swapping that for live data is
-a separate follow-up once the team has a party system to read from. */
+crown mark on whoever is currently leader). Sync_From_Roster() feeds it the real Server roster
+(CClientReplication::Get_PartyRoster(), populated by S2C_PARTY_ROSTER) each frame -- an empty
+roster (no party yet) draws nothing. HP joins the accepted world snapshot by NetEntityId;
+before that snapshot or outside the replicated world the HP fill stays hidden. Server roster
+order puts the leader first and is preserved for both the crown and member numbers. */
 class CPartyWindowView final
 {
 public:
@@ -25,7 +28,8 @@ public:
 		/* Resources-relative path to that member's class symbol (ClassSelect's own
 		IdentitySymbol.png per class), or empty for a class with no symbol art. */
 		string strClassSymbolPath;
-		f32_t fHpRatio = 1.f;
+		f32_t fHpRatio = 0.f;
+		bool_t hasHealthSnapshot = false;
 		bool_t isLeader = false;
 	};
 
@@ -34,6 +38,8 @@ public:
 	~CPartyWindowView();
 
 public:
+	void Sync_From_Roster(const LostArk::Shared::S2C_PARTY_ROSTER& Roster,
+		const CReplicatedPlayerHealth& Health);
 	void Render();
 
 private:

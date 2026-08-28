@@ -114,20 +114,42 @@ namespace
 	{
 		const std::string detail = std::string(pStage) + " " + status;
 		OutputDebugStringA((detail + "\n").c_str());
-		Client::CLevelTransitionService::Report_LoadFailure(E_FAIL, detail);
+		Client::CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_ACTIVATION_LEVEL_CREATE_FAILED,
+			"level-valtan.initialize",
+			detail,
+			E_FAIL);
 		return E_FAIL;
 	}
+
+	/* Every slot m_pRaidClearView owns while showing (RaidClear_TitleTextBox is a separate,
+	always-Set_SlotVisible(false) marker -- see Update_RaidClear). Shared by Initialize() (hides
+	them before this Level's very first Render(), which the engine's activation-frame ordering can
+	call before this Level's own first Update() -- otherwise every one of these full-opacity
+	default-visible slots, BgFlash included, flashes across the whole screen for that frame) and
+	Update_RaidClear's own real per-frame visibility/alpha drive. */
+	constexpr const char* const RAIDCLEAR_FADING_SLOTS[] = {
+		"RaidClear_BgFlash", "RaidClear_avtive02", "RaidClear_CoreShine",
+		"RaidClear_particleLooping", "RaidClear_particleLighting",
+		"RaidClear_lineLeft", "RaidClear_lineRight", "RaidClear_Emblem",
+	};
 }
+
+CLevel_ValtanArena* CLevel_ValtanArena::s_pActiveInstance = nullptr;
 
 CLevel_ValtanArena::CLevel_ValtanArena(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CLevel { pDevice, pContext }
 {
+	s_pActiveInstance = this;
 }
 
 CLevel_ValtanArena::~CLevel_ValtanArena()
 {
+	if (this == s_pActiveInstance)
+		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
 	CCameraTool::Clear_ActorPreviewContext(
 		ETOUI(LEVEL::VALTAN_ARENA));
@@ -147,6 +169,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 {
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
+
+	m_PartyInteraction.Initialize(m_pDevice, m_pContext);
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
@@ -322,8 +346,31 @@ HRESULT CLevel_ValtanArena::Initialize()
 			"Click-move effect object could not be initialized");
 	}
 
+	/* A slot's authored default (no Set_SlotVisible call yet) is visible -- so on this Level's
+	activation frame, if the engine's own Update-then-Render ordering ends up calling this Level's
+	Render() before its first Update() (the transition-frame case that actually happens: the
+	previous Level's Update() already ran this frame when Change_Level swaps the active Level, so
+	the newly-activated one's Render() runs with zero Update() calls behind it yet), every one of
+	these slots -- DeadScene's panel/effect/buttons, RaidClear's screen-covering BgFlash included
+	-- would flash at full opacity for that frame before Update_DeadScene/Update_RaidClear ever
+	gets to hide them for real. Explicitly hiding them the instant each view loads closes that gap
+	regardless of which order those two calls happen to land in on any given frame. */
 	m_pDeadSceneView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/DeadScene/DeadSceneUI.json");
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveButton", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateButton", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateBorder", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_TitleTextMarker", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveMessageMarker", false);
+
+	m_pRaidClearView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext, L"UI/RaidClear/RaidClear_Layout.json");
+	for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
+		m_pRaidClearView->Set_SlotVisible(szSlotId, false);
+	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
 
 	Transition_RaidPreludeBgm(RAID_PRELUDE_BGM_STATE::M01_PROGRESS);
 	return S_OK;
@@ -425,10 +472,13 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 				presentationStatus =
 					"World destruction projection rejected the Server sync.";
 			}
-			CLevelTransitionService::Report_LoadFailure(
-				E_FAIL,
+			CLevelTransitionService::Report_Recovery(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_REPLICATION_FAILED,
+				"level-valtan.world-destruction-sync",
 				"[Level_ValtanArena][WorldDestructionSync] " +
-					presentationStatus);
+					presentationStatus,
+				E_FAIL);
 #ifdef _DEBUG
 			End_ReferenceCamera(false);
 #endif
@@ -450,6 +500,10 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		End_ReferenceCamera(false);
 #endif
 		End_CinematicCamera();
+		CLevelTransitionService::Report_NetworkRecovery(
+			"level-valtan.network-connection-lost",
+			"Valtan replication observed a disconnected Server session.");
+		CNetworkManager::Get().Close_ServerConnection();
 		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
 			"network.connection-lost"))
@@ -463,10 +517,13 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	}
 	if (!Apply_EncounterPropPresentation())
 	{
-		CLevelTransitionService::Report_LoadFailure(
-			E_FAIL,
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED,
+			"level-valtan.encounter-prop-sync",
 			"[Level_ValtanArena][EncounterPropSync] " +
-				m_DeployRuntime.Get_Status());
+				m_DeployRuntime.Get_Status(),
+			E_FAIL);
 #ifdef _DEBUG
 		End_ReferenceCamera(false);
 #endif
@@ -508,10 +565,24 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	cameraAcceptsGameplay = cameraAcceptsGameplay &&
 		!m_bReferenceCameraApplied;
 #endif
+	/* Has to run before m_PlayerController.Update() so a right-click that
+	hits another player is not also spent as that frame's move command --
+	same reasoning as Level_Bern's own Valtan-entry NPC click. Needs this
+	frame's replicated player list, so Collect_PlayerViews moves here
+	instead of Render(). */
+	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	if (m_PartyInteraction.Update(
+		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
+		cameraAcceptsGameplay))
+	{
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	}
 	m_PlayerController.Update(cameraAcceptsGameplay);
 	Update_DeadScene();
+	Update_RaidClear(fTimeDelta);
 #ifdef _DEBUG
-	Update_DebugKillSelfKey();
+	Update_DebugRaidClearKey();
 #endif
 }
 
@@ -2636,9 +2707,11 @@ HRESULT CLevel_ValtanArena::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
+	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+	m_PartyInteraction.Render(m_pPlayerCommandSink);
 	Render_DeadScene();
+	Render_RaidClear();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
@@ -2724,7 +2797,7 @@ void CLevel_ValtanArena::Update_DeadScene()
 }
 
 #ifdef _DEBUG
-void CLevel_ValtanArena::Update_DebugKillSelfKey()
+void CLevel_ValtanArena::Update_DebugRaidClearKey()
 {
 	if (ImGui::GetIO().WantTextInput)
 		return;
@@ -2735,9 +2808,11 @@ void CLevel_ValtanArena::Update_DebugKillSelfKey()
 		GetCurrentProcessId() == foregroundProcessId;
 	const bool_t oDown = windowFocused &&
 		0 != (GetAsyncKeyState(0x4F /* VK_O */) & 0x8000);
-	if (oDown && !m_bDebugKillSelfKeyDown)
-		m_PlayerController.Request_DebugKillSelf();
-	m_bDebugKillSelfKeyDown = oDown;
+	/* Forces the overlay's own timeline (Update_RaidClear) to start from 0 without a real dead
+	Valtan behind it -- pure Client-local test convenience, no Server command involved. */
+	if (oDown && !m_bDebugRaidClearKeyDown)
+		Trigger_RaidClear();
+	m_bDebugRaidClearKeyDown = oDown;
 }
 #endif
 
@@ -2779,6 +2854,114 @@ void CLevel_ValtanArena::Render_DeadScene()
 	call's own panel/button images only composite later, inside EndFrame(),
 	and would otherwise bury text submitted here. */
 	m_pDeadSceneView->Render("Default", 0);
+}
+
+/* Real EpicGateCommonClearFrame timeline: TweenMax.delayedCall(startFrame/40, ...) holds on a
+blank frame before resultMc.gotoAndPlay(startFrame) actually starts the reveal, then
+onUpdateFrameCheck() hides it the instant currentFrame reaches totalFrames -- an abrupt cut, not
+a fade-out. startFrame=90/holdFrame=296 (result_101's own defaults) at the source's 40fps gives
+the two real durations below; this runtime doesn't replay the source's 309-frame shape timeline
+frame-for-frame, only its outer show/hold/hide shape. */
+namespace
+{
+	constexpr f32_t RAIDCLEAR_REVEAL_SECONDS = 90.f / 40.f;
+	constexpr f32_t RAIDCLEAR_HOLD_SECONDS = 296.f / 40.f;
+	constexpr f32_t RAIDCLEAR_TOTAL_SECONDS =
+		RAIDCLEAR_REVEAL_SECONDS + RAIDCLEAR_HOLD_SECONDS;
+}
+
+void CLevel_ValtanArena::Trigger_RaidClear()
+{
+	m_fRaidClearElapsedSeconds = 0.f;
+	/* Real cue name confirmed in the extracted sound resource pool
+	(D:\...\Sound\UI\System\sys_raid_success1__457395004.wav) -- epicgatecommonclear.gfx itself
+	carries no embedded sound (Scaleform UI movies play native-triggered cues, not baked audio),
+	so this is played from here rather than anywhere inside m_pRaidClearView. */
+	const std::filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/UI/System/sys_raid_success1__457395004.wav");
+	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+}
+
+void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
+{
+	if (nullptr == m_pRaidClearView)
+		return;
+
+	using LostArk::Shared::WORLD_ENTITY_ACTION;
+	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	const bool_t isBossDead = boss.isValid &&
+		WORLD_ENTITY_ACTION::DEAD == boss.eAction;
+
+	/* Edge-trigger only -- no "boss alive again -> hide" branch, so
+	Update_DebugRaidClearKey()'s forced trigger below (with no real dead boss behind it) is
+	free to run its own timeline out instead of being wiped the very next frame. */
+	if (isBossDead && !m_bRaidClearWasBossDead)
+		Trigger_RaidClear();
+	m_bRaidClearWasBossDead = isBossDead;
+
+	if (m_fRaidClearElapsedSeconds >= 0.f)
+		m_fRaidClearElapsedSeconds += fTimeDelta;
+
+	const bool_t isShowing = m_fRaidClearElapsedSeconds >= 0.f &&
+		m_fRaidClearElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS;
+
+	/* Every real layer traced out of result_101's own 309-frame timeline (see the RESULT doc) --
+	the flat background flash, the five className-referenced EFUI_Effect glow/particle flipbooks
+	that sit behind/around the crest, and the crest art itself. All fade in/out together on this
+	simplified timeline instead of each other's real per-frame stagger. RAIDCLEAR_FADING_SLOTS
+	itself lives in the file-scope anonymous namespace near Initialize() (also hides these up
+	front, before this Level's first Render()). */
+	for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
+		m_pRaidClearView->Set_SlotVisible(szSlotId, isShowing);
+	/* Authoring-only placeholder, same split as DeadScene_TitleTextMarker --
+	RenderRaidClearText() (CMainApp, after EndFrame()) draws the real text. */
+	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
+	if (isShowing)
+	{
+		const f32_t fRevealAlpha = (m_fRaidClearElapsedSeconds < RAIDCLEAR_REVEAL_SECONDS) ?
+			(m_fRaidClearElapsedSeconds / RAIDCLEAR_REVEAL_SECONDS) : 1.f;
+		for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
+			m_pRaidClearView->Set_SlotAlpha(szSlotId, fRevealAlpha);
+	}
+
+	HUD_RAIDCLEAR_TEXT_RECTS textRects;
+	textRects.isValid = isShowing &&
+		m_pRaidClearView->Get_SlotRect("RaidClear_TitleTextBox",
+			textRects.fTitleX, textRects.fTitleY,
+			textRects.fTitleWidth, textRects.fTitleHeight);
+	CCombatHUDViewModel::Get().Set_RaidClearTextRects(textRects);
+}
+
+void CLevel_ValtanArena::Render_RaidClear()
+{
+	if (nullptr == m_pRaidClearView)
+		return;
+
+	/* The real EpicGateCommonClearFrame (ARKFrame::setModalState) draws its own modal rect at
+	MODAL_TRANSPARENT_DUNGEON = 0 alpha -- i.e. the source truly does not dim behind this specific
+	popup, unlike Dead Scene's own modal (MODAL_TRANSPARENT = 0.65 there). Dimming anyway: the
+	source's own zero-alpha modal only exists to eat clicks during a still-interactive dungeon
+	screen, not for legibility, and this overlay covers the whole screen with bright additive
+	glow/flash art with nothing else asking for click-through here -- a dim reads better against
+	gameplay still visible behind it, same reasoning as Dead Scene's real dim. */
+	const bool_t isShowing = m_fRaidClearElapsedSeconds >= 0.f &&
+		m_fRaidClearElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS;
+	if (isShowing)
+	{
+		ImGuiViewport* pViewport = ImGui::GetMainViewport();
+		if (nullptr != pViewport)
+		{
+			ImGui::GetForegroundDrawList(pViewport)->AddRectFilled(
+				pViewport->WorkPos,
+				ImVec2(pViewport->WorkPos.x + pViewport->WorkSize.x,
+					pViewport->WorkPos.y + pViewport->WorkSize.y),
+				IM_COL32(0, 0, 0, 160));
+		}
+	}
+
+	/* Headline text is drawn by CMainApp::RenderRaidClearText(), called after
+	CImGuiLayer::EndFrame() -- same reason as Render_DeadScene() above. */
+	m_pRaidClearView->Render("Default", 0);
 }
 
 HRESULT CLevel_ValtanArena::Ready_Layer_Camera(

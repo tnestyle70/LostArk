@@ -8,7 +8,9 @@ param(
     [int]$ServerStartupTimeoutMilliseconds = 10000,
     [ValidateRange(1, 65535)]
     [int]$HarnessPort = 17777,
-    [switch]$G02IdentityFast
+    [switch]$G02IdentityFast,
+    [ValidateSet('All', 'Core', 'Party2', 'Party4')]
+    [string]$Scenario = 'All'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +32,26 @@ if (-not (Test-Path -LiteralPath $serverExe -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $harnessExe -PathType Leaf)) {
     throw "Character Select isolation harness executable is missing: $harnessExe"
+}
+
+if ($G02IdentityFast -and $Scenario -notin @('All', 'Core')) {
+    throw 'G02IdentityFast cannot be combined with a party-transfer scenario.'
+}
+if ($Scenario -eq 'All' -and -not $G02IdentityFast) {
+    # Each guide approach takes real server travel time. Keep every case in
+    # its own bounded process instead of extending the server's 60s limit.
+    foreach ($caseName in @('Core', 'Party2', 'Party4')) {
+        $caseArguments = @{
+            Configuration = $Configuration
+            HarnessTimeoutMilliseconds = $HarnessTimeoutMilliseconds
+            ServerStartupTimeoutMilliseconds = $ServerStartupTimeoutMilliseconds
+            HarnessPort = $HarnessPort
+            Scenario = $caseName
+        }
+        & $PSCommandPath @caseArguments
+    }
+    Write-Host "Character Select isolation and 2/4-party live harnesses passed: $Configuration"
+    return
 }
 
 function Get-HarnessPortListeners {
@@ -63,7 +85,7 @@ if ($preexisting.Count -ne 0) {
 }
 
 New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
-$runToken = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfff')
+$runToken = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfff') + '.' + $Scenario
 $serverStdout = Join-Path $logRoot "$runToken.server.stdout.log"
 $serverStderr = Join-Path $logRoot "$runToken.server.stderr.log"
 $harnessStdout = Join-Path $logRoot "$runToken.harness.stdout.log"
@@ -136,6 +158,12 @@ try {
     if ($G02IdentityFast) {
         $harnessArguments += ' --g02-identity-fast'
     }
+    elseif ($Scenario -eq 'Party2') {
+        $harnessArguments += ' --bern-party-size 2'
+    }
+    elseif ($Scenario -eq 'Party4') {
+        $harnessArguments += ' --bern-party-size 4'
+    }
     $harnessStartInfo.Arguments = $harnessArguments
     $harnessProcess = [Diagnostics.Process]::new()
     $harnessProcess.StartInfo = $harnessStartInfo
@@ -144,10 +172,15 @@ try {
     }
     $harnessStdoutTask = $harnessProcess.StandardOutput.ReadToEndAsync()
     $harnessStderrTask = $harnessProcess.StandardError.ReadToEndAsync()
-    if (-not $harnessProcess.WaitForExit(
-            $harnessExternalTimeoutMilliseconds)) {
-        $harnessProcess.Kill($true)
-        throw 'Character Select isolation harness exceeded its external timeout.'
+    $harnessTimedOut = -not $harnessProcess.WaitForExit(
+        $harnessExternalTimeoutMilliseconds)
+    if ($harnessTimedOut) {
+        # This owned console harness creates no child processes. The no-arg
+        # overload also works in Windows PowerShell's .NET Framework runtime.
+        $harnessProcess.Kill()
+        if (-not $harnessProcess.WaitForExit(5000)) {
+            throw 'Character Select isolation harness did not stop after its timeout.'
+        }
     }
     $harnessProcess.WaitForExit()
     $harnessExitCode = $harnessProcess.ExitCode
@@ -159,11 +192,14 @@ try {
         -Encoding UTF8
     Write-CapturedLog -Path $harnessStdout
     Write-CapturedLog -Path $harnessStderr -AsError
+    if ($harnessTimedOut) {
+        throw "Character Select isolation harness exceeded its external timeout: $Scenario"
+    }
     if (0 -ne $harnessExitCode) {
         throw "Character Select isolation harness failed with code $harnessExitCode."
     }
 
-    Write-Host "Character Select isolation live harness passed: $Configuration"
+    Write-Host "Character Select isolation live harness passed: $Configuration / $Scenario"
 }
 catch {
     Write-CapturedLog -Path $harnessStdout
@@ -176,7 +212,7 @@ finally {
     if ($null -ne $harnessProcess) {
         $harnessProcess.Refresh()
         if (-not $harnessProcess.HasExited) {
-            $harnessProcess.Kill($true)
+            $harnessProcess.Kill()
             $null = $harnessProcess.WaitForExit(5000)
         }
         $harnessProcess.Dispose()

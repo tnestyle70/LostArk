@@ -264,6 +264,84 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         self.assertEqual(socket.parent_index, 41)
         self.assertEqual(socket.name_hash, 0x51BF337724F3B4CA)
 
+    def test_body_radius_fits_product_locomotion_geometry(self) -> None:
+        geometry = load_module(
+            "valtan_body_radius_geometry",
+            REPOSITORY_ROOT
+            / "Tools/ModelAssetConverter/verify_dimensionmaster_summon_bind_pose.py",
+        )
+        body = geometry.read_wmodel(self.body_path)
+        animset = geometry.read_wmodel(self.animset_path)
+        catalog = json.loads(
+            (REPOSITORY_ROOT / "Data/Actors/BossCatalog.json")
+            .read_text(encoding="utf-8-sig")
+        )
+        profiles = json.loads(
+            (REPOSITORY_ROOT / "Data/Balance/BossProfiles.json")
+            .read_text(encoding="utf-8-sig")
+        )
+        actor = next(row for row in catalog["bosses"]
+                     if row["archetypeId"] == "BOSS_VALTAN")
+        profile = next(row for row in profiles["bosses"]
+                       if row["archetypeId"] == actor["archetypeId"])
+        # CValtanPresentationAssetService's WModel pretransform, followed by
+        # the catalog visual scale. Body yaw preserves this XZ radius.
+        world_scale = 0.0001 * actor["presentationScale"]
+        bone_indices = {bone.name: index
+                        for index, bone in enumerate(body.skeleton_bones)}
+        root_index = bone_indices["b_root"]
+        locomotion = {"mesh_idle_battle_1", "mesh_run_battle_1"}
+        clips = [clip for clip in animset.animations if clip.name in locomotion]
+        self.assertEqual({clip.name for clip in clips}, locomotion)
+        support_vertices = []
+        for vertex in body.vertices:
+            dominant = max(range(4), key=lambda index: vertex.weights[index])
+            bone_name = body.mesh_bones[vertex.indices[dominant]].name
+            # Arms, weapon and horns belong to authored attack shapes, not
+            # the body movement cylinder. Keep the torso and every leg/foot.
+            if any(part in bone_name for part in
+                   ("pelvis", "spine", "thigh", "calf", "foot", "toe")):
+                support_vertices.append(vertex)
+        self.assertTrue(support_vertices)
+        maximum_radius = 0.0
+        for clip in clips:
+            times = sorted({float(tick)
+                            for tick in range(math.floor(clip.duration_ticks) + 1)}
+                           | {clip.duration_ticks})
+            for time in times:
+                local = [list(bone.transform) for bone in body.skeleton_bones]
+                for channel in clip.channels:
+                    index = bone_indices[
+                        animset.skeleton_bones[channel.bone_index].name]
+                    local[index] = geometry.affine_matrix(
+                        geometry.sample_vector(channel.scale_keys, time, (1, 1, 1)),
+                        geometry.sample_quaternion(channel.rotation_keys, time),
+                        geometry.sample_vector(channel.position_keys, time, (0, 0, 0)),
+                    )
+                # Product CValtan suppresses all three b_root translations;
+                # server motion must not be counted as a larger body radius.
+                local[root_index][12:15] = (
+                    body.skeleton_bones[root_index].transform[12:15])
+                combined = geometry.combined_transforms(body.skeleton_bones, local)
+                skin = [geometry.matrix_multiply(bone.transform, combined[index])
+                        for index, bone in enumerate(body.mesh_bones)]
+                for vertex in support_vertices:
+                    weight_sum = sum(vertex.weights)
+                    self.assertGreater(weight_sum, 0.0)
+                    point = [0.0, 0.0, 0.0]
+                    for index, weight in zip(vertex.indices, vertex.weights):
+                        if weight <= 0.0:
+                            continue
+                        posed = geometry.transform_point(vertex.position, skin[index])
+                        for axis in range(3):
+                            point[axis] += posed[axis] * weight / weight_sum * world_scale
+                    maximum_radius = max(maximum_radius, math.hypot(point[0], point[2]))
+        radius = profile["collisionRadius"]
+        self.assertGreaterEqual(radius, maximum_radius,
+                                "body collision must cover the locomotion footprint")
+        self.assertLessEqual(radius, maximum_radius + 0.1 * actor["presentationScale"],
+                             "body collision must not retain the old oversized radius")
+
     def test_static_weapon_has_no_skeleton_contract(self) -> None:
         with self.assertRaisesRegex(
             builder.ContractError,
@@ -522,7 +600,10 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         helper_scope = service[helper_start:helper_end]
 
         self.assertNotIn("CUE_OWNER_UNIFORM_SCALE_TOLERANCE", service)
-        self.assertIn("CUE_OWNER_MAXIMUM_SCALE_DRIFT_RATIO", helper_scope)
+        drift_start = service.index("constexpr bool_t Is_CueOwnerScaleDriftWithinLimit(")
+        drift_end = service.index("static_assert(", drift_start)
+        self.assertIn("CUE_OWNER_MAXIMUM_SCALE_DRIFT_RATIO",
+                      service[drift_start:drift_end])
         self.assertIn("Is_CueOwnerScaleDriftWithinLimit(", service)
         self.assertIn("static_assert(Is_CueOwnerScaleDriftWithinLimit(", service)
         self.assertIn("static_assert(!Is_CueOwnerScaleDriftWithinLimit(", service)

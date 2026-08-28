@@ -64,16 +64,18 @@ boss arena activateEncounter trigger
 - Debug/Release Server: `Load the exact invulnerable 19.867-second Valtan entrance camera gate` PASS
 - Debug/Release Server: 첫 scripted sequence가 entrance gate인 계약 PASS
 
-### 저장소 기존 실패로 분리
+### 병합 전 회귀 교정과 남은 경계
 
-전체 회귀는 이번 변경과 무관한 현재 dirty worktree의 기존 기대값 불일치 때문에 녹색이 아니다.
+V2 migration의 30→97 member 기대값, Bern NPC fixture와 protocol 39 assertion은
+PR 변경에 따라 함께 수정해야 하는 회귀였으며 병합 전 교정했다. V2 pattern master
+50개, Debug/Release NetworkProtocolHarness, entrance gate와 Bern 관련 Server 계약은
+재실행해 통과했다. 이를 저장소 기존 실패로 분류하지 않는다.
 
-- Valtan V2 migration test: migration fixture는 world member 30개를 기대하지만 현재 제품은 97개다. focused live-data validation은 PASS다.
-- Release Server contract의 기존 실패 2개: 광범위 Valtan topology count/deep condition, Bern NPC crowd/patrol fixture.
-- Debug/Release NetworkProtocolHarness의 기존 실패 1개: `Valtan Pattern Flow Contract Uses Protocol 39` 기대값 불일치. 이번 기능은 Shared/protocol을 변경하지 않는다.
-- Artist 31470 oracle: 이 PC에 `Windows Kits/10.0.22621.0/x64/d3dcompiler_47.dll`이 없어 실패한다.
-
-이 기존 실패를 컷신 데이터에 맞추기 위해 우회하거나 관련 없는 팀 데이터를 되돌리지는 않았다.
+전체 자동화가 모두 녹색이라는 뜻은 아니다. 합성 병합 트리의 Server 계약에는
+`VALTAN_PARRY / NORMAL_SLASH`의 명시적 TIMEOUT branch를 기대하는 기존 topology
+검사 1건이 남았다. 해당 source와 predicate는 최신 `main`에도 동일하다.
+Artist 31470 oracle은 이 PC에 `Windows Kits/10.0.22621.0/x64/d3dcompiler_47.dll`이
+없어 별도 환경 제약으로 남았다. 추가 통합 검증의 결과는 통합 RESULT에서 관리한다.
 
 ## 6. 사용자 화면 확인
 
@@ -88,3 +90,17 @@ boss arena activateEncounter trigger
 7. 카메라가 자연스럽게 follow view로 돌아오고 기존 발탄 첫 패턴으로 이어지는지 확인한다.
 
 카메라의 위치나 속도 미세 조정은 이 수직 슬라이스의 수동 visual fidelity 확인 뒤 Camera Tool keyframe만 수정하면 된다.
+
+## 7. 2026-08-28 PR 병합 전 감사
+
+최신 `main` 합성 병합 트리에서 source, product, runtime과 Tool 저장 경로를 다시 대조했다.
+formatVersion 6 문서의 cue/stage/action join, 전역 scene ID 유일성,
+`8600 / 5800 / (4467 + transitionOut 1000)` 시간 폐쇄, 실제 Valtan model의
+`mesh_att_battle_20_02 / 20_03 / 20_04` clip, Camera Tool의 strict draft/CAS/atomic
+replace, 제품 runtime의 Server snapshot tuple 소비가 모두 연결되어 있다. 따라서 현재
+카메라 데이터는 Camera Tool에서 열어 keyframe·LookAt·FOV·보간을 수정하고 같은 제품
+runtime에서 소비할 수 있는 상태이며 별도 데이터 재저작은 필요하지 않다.
+
+감사에서 함께 발견한 V2 97-wall migration, protocol assertion, Bern culling과 BGM
+상태기 회귀는 병합 전 교정했다. 이 자동 정합성 판정은 실제 225도 boss
+yaw 구도, 벽 관통, 이동 속도와 follow 복귀의 사용자 visual PASS를 대신하지 않는다.

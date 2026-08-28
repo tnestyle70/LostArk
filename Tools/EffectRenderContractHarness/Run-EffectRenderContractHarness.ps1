@@ -1,6 +1,7 @@
 param(
     [ValidateSet('Debug', 'Release')]
-    [string]$Configuration = 'Debug'
+    [string]$Configuration = 'Debug',
+    [switch]$ValidateResourceRootOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,14 +25,25 @@ foreach ($directory in $runtimeDirectories) {
 }
 
 $previousPath = $env:PATH
+$previousNativeErrorAction = $ErrorActionPreference
+$nativeExitCode = -1
 try {
     $env:PATH = ($runtimeDirectories -join ';') + ';' + $previousPath
-
-    & $executable $repoRoot
-    if ($LASTEXITCODE -ne 0) {
-        throw "EffectRenderContractHarness failed with exit code $LASTEXITCODE"
+    $nativeArguments = @($repoRoot)
+    if ($ValidateResourceRootOnly) {
+        $nativeArguments += '--validate-resource-root'
     }
+    # Native stderr includes progress as well as rejection diagnostics. Under
+    # Windows PowerShell, Stop would abort before the real exit code is read.
+    $ErrorActionPreference = 'Continue'
+    $global:LASTEXITCODE = -1
+    & $executable @nativeArguments
+    $nativeExitCode = $global:LASTEXITCODE
 }
 finally {
+    $ErrorActionPreference = $previousNativeErrorAction
     $env:PATH = $previousPath
+}
+if ($nativeExitCode -ne 0) {
+    throw "EffectRenderContractHarness failed with exit code $nativeExitCode"
 }

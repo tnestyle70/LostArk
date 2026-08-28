@@ -5,8 +5,8 @@
 발탄 2페이즈 진입 컷신 `VALTAN_ARENA_BREAK_109 / IMPACT`가 외곽 링 30개만 무너뜨리던 것을,
 아레나 위에 남아 있는 내부 벽 67개까지 같은 tick에 함께 무너뜨리도록 연결했다.
 
-데이터·툴·publisher 단계의 자동 검증은 통과했다. C++ 빌드가 필요한 하네스와 실제 화면
-판정은 사용자 몫으로 남아 있다. 아래 `남은 검증`을 따른다.
+데이터·툴·publisher와 Debug/Release 핵심 C++ 빌드를 검증했다. 실제 화면과 동시 잔해
+성능 판정은 사용자 몫으로 남아 있다. 아래 `남은 검증`을 따른다.
 
 ## 실제 구현
 
@@ -41,10 +41,12 @@
 
 97개를 한 tick에 처리하려다 실제 fail-close 지점 두 곳을 만났다.
 
-- `MAX_WORLD_DESTRUCTION_EVENTS`를 64에서 128로 올렸다. `GameRoom.cpp:8536`이
+- `MAX_WORLD_DESTRUCTION_EVENTS`를 64에서 106으로 올렸다. `GameRoom.cpp:8536`이
   `eventCount > MAX_WORLD_DESTRUCTION_EVENTS`에서 false를 반환해 97개 batch는
-  `Apply_WorldDestructionStageEntry` 자체가 실패했다. 형제 상수 두 개가 이미 128이라
-  같은 값으로 맞췄고, 전체 group이 105개이므로 이 상한이 다시 걸리는 일은 없다.
+  `Apply_WorldDestructionStageEntry` 자체가 실패했다. 처음 적용한 128은 최대 길이 ID를
+  가진 state/event를 함께 보낼 때 64 KiB packet frame을 넘을 수 있어 안전하지 않았다.
+  128 states와 함께 보낼 수 있는 최대 event 수 106으로 제한했으며 현재 97+97 붕괴
+  delta는 이 경계 안에 들어온다.
 - 이 변경으로 예전 Client가 97개짜리 delta를 거부하므로 `NETWORK_PROTOCOL_VERSION`을
   39에서 40으로 올렸다. `CLAUDE.md`와 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 v39 표기도
   함께 고쳤다.
@@ -132,32 +134,43 @@ JSON parse          ValtanWorldEvents / Valtan.worldeventsets /
                     worlddestruction.json / worlddestructionpresentation.json 모두 OK
 ```
 
-`test_valtan_balance_tool_contract`에 실패 1건이 있으나 이번 변경과 무관한 기존 실패다.
-`stageKind -cne 'GROGGY'` 문자열이 `Publish-GameplayBalance.ps1`에 있어야 한다는 검사인데,
-그 문자열은 HEAD 버전과 작업 트리 양쪽 모두에 없다. 해당 파일은 다른 담당자의 미커밋
-변경이며 이번 작업에서 건드리지 않았다.
+### 2026-08-28 PR 병합 전 재검증 교정
+
+- live 109 set의 migration 계약을 97 members / 135 unique placements로 갱신했다.
+  `224 - 97 = 127`은 관리 대상 밖의 pass-through binding 수이며 placement 수가 아니다.
+- scripted sequence 앞에 entrance cinematic이 추가된 현재 source/product 길이는 29이고,
+  3시/9시 파괴 pattern은 index 15/16이다.
+- Network protocol harness는 최대 길이 기준 128 states + 106 events가 65,264-byte
+  frame으로 성공하고 107 events는 writer에서 거부되는 경계를 검사한다. 실제 97+97
+  붕괴 frame도 별도 고정했다.
+- protocol 40을 직접 요구하는 NetworkProtocolHarness와 Boss Tool pattern-flow 계약을
+  같은 변경에서 동기화했다.
+- contact와 stage precondition이 같은 group을 포함할 때 동일 transition/application을
+  한 쌍만 유지하도록 GameRoom batch를 교정했다. 다른 payload의 중복은 commit 전에
+  거부한다. 모든 벽 audition 99개와 마지막 floor까지의 105개 group 계약을 재실행했다.
+- Debug/Release Engine → UpdateLib → Shared → Network/ActionPresentation harness →
+  Server → Client build/link를 통과했다. NetworkProtocolHarness는 두 구성 모두
+  failures 0이며, 위 destruction 관련 Server 계약도 두 구성에서 통과했다.
+
+`test_valtan_balance_tool_contract`의 현재 실패 1건은 이번 변경과 무관한 기존 기준선
+불일치다. publisher의 GROGGY 검사는 통과하며, 남은 실패는
+`Fail_Protocol(WSAEINVAL);` 문자열을 요구하는 world-entry alias 정적 검사다.
+동일 테스트와 대상 파일이 `origin/main`에서도 같은 상태이므로 이 PR의 회귀로 처리하지
+않았다.
 
 ## 남은 검증 (사용자)
 
-Shared/Client/Server C++이 바뀌었으므로 빌드가 필요하다. 저장소 규칙대로 Engine →
-UpdateLib → Shared/harness → Server → Client 순서를 지킨다.
+핵심 빌드와 destruction 자동 계약은 위와 같이 실행했다. 전체 Server suite에는
+기존 parry branch topology 기대값 1건이 남아 있으므로 전체 PASS로 기록하지 않는다.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug
-```
-
-빌드 뒤 확인할 것.
-
-1. `NetworkProtocolHarness` 실행 — protocol 40과 새 event 상한에서 failures 0
-2. `Server.exe --contract-test` — 위에서 고친 destruction 계약 포함 failures 0
-3. Visual Studio에서 Client 실행 후 `Lobby -> Valtan` 진입
-4. 109 컷신에서 확인할 것
+1. Visual Studio에서 Client 실행 후 `Lobby -> Valtan` 진입
+2. 109 컷신에서 확인할 것
    - 외곽 링과 함께 아레나 위에 남아 있던 벽들이 같이 날아가는지
    - 잔해 없이 그냥 사라지는 벽이 없는지
    - 바닥(84/30 지형 붕괴 담당)이 이 시점에는 그대로 남아 있는지
    - 1,164개 잔해가 동시에 뜨는 순간의 프레임 저하가 받아들일 만한지
 
-4번의 마지막 항목은 이번 변경에서 가장 판단이 필요한 부분이다. 잔해 예산은 "모든 벽이
+2번의 마지막 항목은 이번 변경에서 가장 판단이 필요한 부분이다. 잔해 예산은 "모든 벽이
 온전한 12조각 recipe를 갖는다"는 기존 불변식을 유지한 결과이며, 성능이 문제가 되면
 `ACTORS_PER_EMITTER`를 줄이거나 벽 계열별로 예산을 나누는 별도 결정이 필요하다. 그 판단은
 실제 화면을 본 뒤에 한다.

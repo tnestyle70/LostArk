@@ -1,0 +1,99 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
+  "slots": [
+    {
+      "id": "PartyInvite_Panel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 440.15, "y": 278.95, "width": 399.7, "height": 135.1 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CreateCharacterModalPanel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "PartyInvite_ConfirmButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 543.104580, "y": 363.916388, "width": 70, "height": 23.8 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/NormalButton.png", "hoverPath": "UI/ClassSelect/Common/NormalButtonHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "PartyInvite_CancelButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 649.213989, "y": 363.916324, "width": 70, "height": 23.8 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/NormalButton.png", "hoverPath": "UI/ClassSelect/Common/NormalButtonHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "PartyInvite_TitleTextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 465.054837, "y": 290.997657, "width": 343, "height": 22.4 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CreateCharacterModalTextBox.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "PartyInvite_DescTextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 518.598471, "y": 337.354199, "width": 238, "height": 16.8 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CreateCharacterModalTextBox.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "PartyInvite_AcceptIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 545.135132, "y": 366.991257, "width": 16.8, "height": 16.8 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/Accept.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "PartyInvite_DeclineIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 651.691162, "y": 366.275193, "width": 16.8, "height": 16.8 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/Decline.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    }
+  ]
+}

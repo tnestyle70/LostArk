@@ -232,6 +232,7 @@ EXPECTED_SCRIPTED_SEQUENCE = {
     "mode": "ORDERED_ONCE_THEN_IDLE",
     "interStepPursuitMs": 1000,
     "patternIds": [
+        "VALTAN_ENTRANCE_CINEMATIC",
         "VALTAN_WHIRLWIND",
         "VALTAN_FOUR_SLASH",
         "VALTAN_FIST_IN_OUT",
@@ -249,7 +250,6 @@ EXPECTED_SCRIPTED_SEQUENCE = {
         "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
         "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
         "VALTAN_TERRAIN_DESTRUCTION",
-        "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
         "VALTAN_WARP",
         "VALTAN_SEQUENCE_TWOHAND",
         "VALTAN_SEQUENCE_WHIRLWIND",
@@ -279,12 +279,12 @@ EXPECTED_PROMOTED_KOREAN_NAMES = {
     "VALTAN_COUNTER": "카운터 쳐야 하는 내려치기",
     "VALTAN_CHARGE_2": "모아치기 2",
     "VALTAN_STRUGGLING": "3페이즈 전 발악패턴",
+    "VALTAN_CROSS": "십자 돌 공격",
 }
 
 EXPECTED_UNCHANGED_SEQUENCE_IDS = {
     "VALTAN_SEQUENCE_FOUR",
     "VALTAN_SEQUENCE_RUSH",
-    "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
     "VALTAN_SEQUENCE_TWOHAND",
     "VALTAN_SEQUENCE_WHIRLWIND",
 }
@@ -504,6 +504,153 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertIn("Parse_SplitMasterDocument", self.cpp)
         self.assertNotIn('L"Valtan.pattern.json"', self.cpp)
 
+    def test_next_inventory_follows_all_split_owned_product_identities(self) -> None:
+        gameplay_ids = {row["patternId"] for row in self.gameplay["patterns"]}
+        presentation_ids = {row["patternId"] for row in self.presentation["patterns"]}
+        product_by_id = {row["patternId"]: row for row in self.encounter["patterns"]}
+        self.assertEqual(gameplay_ids, presentation_ids)
+        self.assertLessEqual(gameplay_ids, product_by_id.keys())
+        self.assertIn("VALTAN_FIST_IN_OUT", gameplay_ids)
+        for pattern in self.gameplay["patterns"]:
+            with self.subTest(pattern=pattern["patternId"]):
+                self.assertTrue(pattern["stages"])
+                self.assertEqual(pattern["entryActionId"], pattern["stages"][0]["actionId"])
+                product = product_by_id[pattern["patternId"]]
+                self.assertEqual(
+                    [(row["stageId"], row["actionId"]) for row in pattern["stages"]],
+                    [(row["stageId"], row["actionId"]) for row in product["stages"]],
+                )
+        begin = self.cpp.index("CValtanPatternTree::Build_NextPatternInventory(")
+        end = self.cpp.index("CValtanPatternTree::Build_PatternIdentitySummary(", begin)
+        builder = self.cpp[begin:end]
+        for marker in (
+            "&View.Gimmicks, &View.Rotation", "bAuthoringMasterManaged",
+            "IdentityCounts", "strEntryActionId", "StageIds", "ActionIds",
+            "iSourceSequenceIndex", "std::sort", "OutPatternIds = std::move(StagedIds)",
+        ):
+            self.assertIn(marker, builder)
+        self.assertNotIn("TOTAL_PATTERN_COUNT", builder)
+        self.assertNotIn("ANIMATOR_PATTERN_COUNT", builder)
+        self.assertNotIn("VALTAN_FIST_IN_OUT", builder)
+        self.assertLess(builder.index("StagedPatterns.empty()"), builder.index("OutPatternIds ="))
+
+    def test_trash_terminal_actions_keep_typed_source_product_join(self) -> None:
+        source = next(row for row in self.gameplay["patterns"] if row["patternId"] == "VALTAN_TRASH")
+        product = next(row for row in self.encounter["patterns"] if row["patternId"] == "VALTAN_TRASH")
+        stages = {row["stageId"]: row for row in product["stages"]}
+        seen = set()
+        for stage in source["stages"]:
+            for event in stage["events"]:
+                if event["kind"] not in {"DAMAGE_GRABBED_PLAYERS", "EXECUTE_GRABBED_PLAYERS"}:
+                    continue
+                seen.add(event["kind"])
+                expected = {
+                    "trigger": "ENTER", "kind": event["kind"], "value": 0, "durationMs": 0,
+                    "targetId": event.get("damageProfileId", "boss.attachment.left-hand"),
+                }
+                self.assertIn(expected, stages[stage["stageId"]]["actions"])
+        self.assertEqual({"DAMAGE_GRABBED_PLAYERS", "EXECUTE_GRABBED_PLAYERS"}, seen)
+        for kind in seen:
+            self.assertGreaterEqual(self.cpp.count('"' + kind + '"'), 2)
+
+    def test_first_scripted_entry_owner_matches_publisher_without_weighted_admission(self) -> None:
+        joined = tuning_pipeline.join_v2_authoring(
+            self.gameplay, self.presentation, self.world_sets,
+            self.combat_authoring,
+        )
+        decision = joined["decisionModel"]
+        entry_id = decision["scriptedSequence"]["patternIds"][0]
+        owned_ids = {
+            row["patternId"]
+            for selection_set in decision["selectionSets"]
+            for row in selection_set["candidates"]
+        } | {
+            row["patternId"] for row in decision["mechanics"]
+        } | {
+            row["patternId"] for row in decision["manualAuditions"]
+        }
+        self.assertNotIn(entry_id, owned_ids)
+        entry = next(row for row in joined["patterns"] if row["patternId"] == entry_id)
+        product = next(row for row in self.encounter["patterns"] if row["patternId"] == entry_id)
+        self.assertEqual("NORMAL", product["selectionMode"])
+        self.assertEqual(tuning_pipeline.compile_pattern_product(joined, entry), product)
+
+        split = self.cpp[
+            self.cpp.index("bool_t Parse_SplitMasterDocument("):
+            self.cpp.index("bool_t Apply_MasterDocument(")
+        ]
+        owner = split[
+            split.index("const uint32_t iOwnerCount ="):
+            split.index("DATA_JSON_VALUE::OBJECT LegacyPattern;")
+        ]
+        for token in (
+            "bScriptedEntryOnly = 0u == iOwnerCount",
+            "!ScriptedSequence.PatternIds.empty()",
+            "ScriptedSequence.PatternIds.front() == strPatternId",
+            "(1u != iOwnerCount && !bScriptedEntryOnly)",
+            "(bCandidate || bScriptedEntryOnly)",
+            "strScriptedEntryOnlyPatternId = strPatternId",
+        ):
+            self.assertIn(token, owner)
+        self.assertNotIn(entry_id, owner)
+        self.assertIn("strScriptedEntryOnlyPatternId, Out, strOutError", split)
+        compatibility = self.cpp[
+            self.cpp.index("bool_t Parse_MasterDocument("):
+            self.cpp.index("bool_t Read_OptionalOrderedHitOffsets(")
+        ]
+        self.assertIn(
+            "ManagedNormalPatternIds.erase(strScriptedEntryOnlyPatternId)",
+            compatibility,
+        )
+        self.assertIn("WeightedPatternIds.contains(strScriptedEntryOnlyPatternId)", compatibility)
+        self.assertIn("WeightedPatternIds != ManagedNormalPatternIds", compatibility)
+
+    def test_scripted_entry_owner_failures_keep_the_staged_load_boundary(self) -> None:
+        entry_id = self.gameplay["decisionModel"]["scriptedSequence"]["patternIds"][0]
+        invalid_sources: list[tuple[str, dict, str]] = []
+        later_entry = copy.deepcopy(self.gameplay)
+        sequence = later_entry["decisionModel"]["scriptedSequence"]["patternIds"]
+        sequence[0], sequence[1] = sequence[1], sequence[0]
+        invalid_sources.append((
+            "entry is no longer first", later_entry,
+            "first scripted sequence pattern may be an entry-only gate",
+        ))
+        zero_weight = copy.deepcopy(self.gameplay)
+        next(row for row in zero_weight["patterns"] if row["patternId"] == entry_id)[
+            "compatibilitySelectionWeight"
+        ] = 0
+        invalid_sources.append((
+            "entry has zero compatibility weight", zero_weight,
+            "compatibilitySelectionWeight must be positive",
+        ))
+        overlap = copy.deepcopy(self.gameplay)
+        candidate_id = overlap["decisionModel"]["selectionSets"][0]["candidates"][0]["patternId"]
+        manual = copy.deepcopy(overlap["decisionModel"]["manualAuditions"][0])
+        manual["patternId"] = candidate_id
+        manual["sourceChainId"] = "fixture.owner-overlap"
+        overlap["decisionModel"]["manualAuditions"].append(manual)
+        next(row for row in overlap["patterns"] if row["patternId"] == candidate_id)[
+            "compatibilitySelectionWeight"
+        ] = 0
+        invalid_sources.append(("decision owners overlap", overlap, "ownership overlaps"))
+        for label, gameplay, error in invalid_sources:
+            with self.subTest(label=label), self.assertRaisesRegex(
+                tuning_pipeline.PipelineError, error,
+            ):
+                tuning_pipeline.join_v2_authoring(
+                    gameplay, self.presentation, self.world_sets,
+                    self.combat_authoring,
+                )
+
+        load_body = self.cpp[self.cpp.index(
+            "bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths("
+        ):]
+        commit = "OutView = std::move(Staged);"
+        self.assertEqual(1, load_body.count("OutView ="))
+        self.assertIn(commit, load_body)
+        self.assertLess(load_body.index("Parse_SplitMasterDocument("), load_body.index(commit))
+        self.assertLess(load_body.index("Apply_MasterDocument("), load_body.index(commit))
+
     def test_tree_keeps_none_animation_and_stage_clock_cue_independent(self) -> None:
         fist = next(
             row for row in self.presentation["patterns"]
@@ -608,8 +755,8 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             dash["partDamagePolicy"], dash_product["partDamagePolicy"]
         )
 
-        trash = stage(self.gameplay, "VALTAN_TRASH", "STEP_06")
-        trash_product = stage(self.encounter, "VALTAN_TRASH", "STEP_06")
+        trash = stage(self.gameplay, "VALTAN_TRASH", "CATCH_COUNTER")
+        trash_product = stage(self.encounter, "VALTAN_TRASH", "CATCH_COUNTER")
         expected_proxy = {
             "space": "BOSS_LOCAL",
             "forwardOffsetM": 1.0,
@@ -660,18 +807,18 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         invalid_extensions.append(("unclosed groggy flag", missing_groggy_close))
 
         invalid_proxy = copy.deepcopy(self.gameplay)
-        stage(invalid_proxy, "VALTAN_TRASH", "STEP_06")["counterProxy"][
+        stage(invalid_proxy, "VALTAN_TRASH", "CATCH_COUNTER")["counterProxy"][
             "radiusM"
         ] = 0.0
         invalid_extensions.append(("invalid proxy radius", invalid_proxy))
 
         missing_counter_branch = copy.deepcopy(self.gameplay)
         stage(
-            missing_counter_branch, "VALTAN_TRASH", "STEP_06"
+            missing_counter_branch, "VALTAN_TRASH", "CATCH_COUNTER"
         )["branches"] = [
             branch
             for branch in stage(
-                missing_counter_branch, "VALTAN_TRASH", "STEP_06"
+                missing_counter_branch, "VALTAN_TRASH", "CATCH_COUNTER"
             )["branches"]
             if branch["outcome"] != "COUNTER_HIT"
         ]
@@ -681,11 +828,11 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
 
         missing_counter_close = copy.deepcopy(self.gameplay)
         stage(
-            missing_counter_close, "VALTAN_TRASH", "STEP_06"
+            missing_counter_close, "VALTAN_TRASH", "CATCH_COUNTER"
         )["events"] = [
             event
             for event in stage(
-                missing_counter_close, "VALTAN_TRASH", "STEP_06"
+                missing_counter_close, "VALTAN_TRASH", "CATCH_COUNTER"
             )["events"]
             if event["trigger"] != "EXIT"
         ]
@@ -1023,8 +1170,8 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             manifest_ids,
             [row["patternId"] for row in manual_rows],
         )
-        self.assertEqual(15, len(EXPECTED_PROMOTED_KOREAN_NAMES))
-        self.assertEqual(5, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
+        self.assertEqual(16, len(EXPECTED_PROMOTED_KOREAN_NAMES))
+        self.assertEqual(4, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
         self.assertEqual(expected_manifest_ids, set(manifest_ids))
         self.assertEqual(
             EXPECTED_UNCHANGED_SEQUENCE_IDS,
@@ -1043,11 +1190,18 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             },
         )
         self.assertEqual(20, self.promotion_receipt["patternCount"])
-        self.assertEqual(99, self.promotion_receipt["stageCount"])
+        self.assertEqual(97, self.promotion_receipt["stageCount"])
 
         products = {
             row["patternId"]: row for row in self.encounter["patterns"]
         }
+        retired_id = "VALTAN_SEQUENCE_FRONT_BACK_FRONT"
+        self.assertIn(retired_id, self.gameplay["retiredPatternIds"])
+        self.assertNotIn(retired_id, products)
+        self.assertTrue({"VALTAN_FRONT_BACK_FRONT", "VALTAN_GHOST_TRANSITION_15"}.issubset(products))
+        for rows in (self.gameplay["patterns"], manifest_rows, self.encounter["patterns"]):
+            four = next(row for row in rows if row["patternId"] == "VALTAN_SEQUENCE_FOUR")
+            self.assertEqual("2페이즈 4방향 공격", four["displayName"])
         joined = tuning_pipeline.join_v2_authoring(
             self.gameplay, self.presentation,
             self.world_sets, self.combat_authoring,

@@ -14,6 +14,13 @@ namespace
 {
 	using namespace LostArk::Server;
 	using LostArk::Shared::WORLD_ID;
+	constexpr float MAX_ABSOLUTE_ANCHOR_COMPONENT = 100000.f;
+
+	bool IsValidAnchorComponent(const float value)
+	{
+		return std::isfinite(value) &&
+			std::fabs(value) <= MAX_ABSOLUTE_ANCHOR_COMPONENT;
+	}
 
 	std::string_view World_ToString(const WORLD_ID worldId)
 	{
@@ -197,7 +204,11 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 			if (6u != fields.size() || !ParseNumber(fields[2], anchor.fPositionX) ||
 				!ParseNumber(fields[3], anchor.fPositionY) ||
 				!ParseNumber(fields[4], anchor.fPositionZ) ||
-				!ParseNumber(fields[5], anchor.fYawDegrees))
+				!ParseNumber(fields[5], anchor.fYawDegrees) ||
+				!IsValidAnchorComponent(anchor.fPositionX) ||
+				!IsValidAnchorComponent(anchor.fPositionY) ||
+				!IsValidAnchorComponent(anchor.fPositionZ) ||
+				!IsValidAnchorComponent(anchor.fYawDegrees))
 			{
 				m_strStatus = "Spawn group anchor row is invalid";
 				return false;

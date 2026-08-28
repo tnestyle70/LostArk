@@ -120,6 +120,7 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_BasicAttackPressEdgeGate.Reset();
 	m_BasicAttackResendGate.Reset();
+	m_CaptureInputGate.Reset();
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
 	m_LastSkillAimSentAt = {};
@@ -140,6 +141,7 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 	m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_BasicAttackPressEdgeGate.Reset();
 	m_BasicAttackResendGate.Reset();
+	m_CaptureInputGate.Reset();
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
 	m_LastSkillAimSentAt = {};
@@ -148,8 +150,45 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 
 void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 {
+	/* One-shot, consumed here regardless of which branch below actually
+	runs this frame -- see Suppress_MoveClickThisFrame's own comment. */
+	const bool_t isMoveClickSuppressed = m_isMoveClickSuppressed;
+	m_isMoveClickSuppressed = false;
+	const bool_t isGrabbed = LostArk::Shared::PLAYER_ACTION_STATE::GRABBED ==
+		CCombatHUDViewModel::Get().Get_Player().eAction;
+	const bool_t isLeftMousePhysicallyDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+	const bool_t isRightMousePhysicallyDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
+	for (std::size_t key = 0u; key < m_wasKeyDown.size(); ++key)
+	{
+		const bool_t down = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(
+			static_cast<uint8_t>(key)) & 0x80);
+		m_CaptureInputGate.Observe(key, down, isGrabbed);
+		if (isGrabbed)
+			m_wasKeyDown[key] = down;
+	}
+	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE,
+		isLeftMousePhysicallyDown, isGrabbed);
+	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE,
+		isRightMousePhysicallyDown, isGrabbed);
+	if (isGrabbed)
+	{
+		Cancel_GroundTargeting();
+		m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
+		m_byHeldKeyCode = 0u;
+		m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
+		(void)m_BasicAttackPressEdgeGate.Should_Submit(
+			isLeftMousePhysicallyDown, false, std::chrono::steady_clock::now());
+		m_wasRightMouseDown = isRightMousePhysicallyDown;
+		/* No command sink is called, including ReleaseSkill for a hold which
+		was interrupted by the authoritative capture. */
+		return;
+	}
+
 	//imgui로 mouse block된 상태가 아니고, Right Button
 	const bool_t isRightMouseDown =
+		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE) &&
 		!CGameInstance::Get().IsMouseInputBlocked() &&
 		0 != (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80);
 	const bool_t isKeyboardBlocked =
@@ -164,10 +203,6 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 		m_pLocalCharacter.lock();
 	const shared_ptr<IPlayerCommandSink> commandSink =
 		m_pCommandSink;
-	const bool_t isLeftMousePhysicallyDown =
-		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
-	const bool_t isRightMousePhysicallyDown =
-		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
 
 	if (m_GroundTargeting.Is_Active())
 	{
@@ -214,7 +249,8 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 					caster, m_GroundTargeting.Get_TargetPosition(),
 					m_GroundTargeting.Can_Confirm());
 
-				const bool_t cancelEdge = isRightMousePhysicallyDown &&
+				const bool_t cancelEdge = isRightMouseDown &&
+					isRightMousePhysicallyDown &&
 					!m_wasTargetingRightMouseDown;
 				const bool_t confirmEdge =
 					!CGameInstance::Get().IsMouseInputBlocked() &&
@@ -262,6 +298,7 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 	}
 
 	if (gameplayCommandsEnabled && isRightMouseDown &&
+		!isMoveClickSuppressed &&
 		nullptr != character &&
 		nullptr != commandSink)
 	{
@@ -281,22 +318,9 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 					m_wasRightMouseDown,
 					XMVectorGetX(position),
 					XMVectorGetZ(position),
-					goal) &&
-				commandSink->Request_MoveGoal(
-					m_iNextMoveSequence,
-					goal.x,
-					goal.z))
+					goal))
 			{
-				m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
-				m_LastSentMoveGoal = goal;
-				if (nullptr != m_pClickMoveEffect)
-					m_pClickMoveEffect->Play(goal);
-				/* Poll_BasicAttack runs later this frame.  Its current physical
-				state either keeps this suppression (held) or clears it (up). */
-				m_BasicAttackResendGate.Suppress_UntilRelease();
-				++m_iNextMoveSequence;
-				if (0 == m_iNextMoveSequence)
-					m_iNextMoveSequence = 1;
+				Request_MoveToPoint(goal);
 			}
 		}
 	}
@@ -470,8 +494,12 @@ void Client::CPlayerController::Poll_SkillSlots(
 	LostArk::Shared::SKILL_ID& outSkillId,
 	LostArk::Shared::SKILL_ID& outReleaseSkillId)
 {
-	const auto readKeyState = [useRawKeyboard](const uint8_t keyCode)
+	const auto readKeyState = [this, useRawKeyboard](const uint8_t keyCode)
 	{
+		if (m_CaptureInputGate.Is_Blocked(keyCode) &&
+			keyCode != DIK_LMENU && keyCode != DIK_RMENU &&
+			keyCode != DIK_LCONTROL && keyCode != DIK_RCONTROL)
+			return static_cast<int8_t>(0);
 		return useRawKeyboard ?
 			CGameInstance::Get().Get_DIKeyStateRaw(keyCode) :
 			CGameInstance::Get().Get_DIKeyState(keyCode);
@@ -584,6 +612,7 @@ void Client::CPlayerController::Poll_BasicAttack(
 			pSpec->eCharacterClass, "LMB", stance);
 	}
 	const bool_t commandEligible =
+		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE) &&
 		isGameplayDown && !commandSuppressed && !resendSuppressed && nullptr != pSkill &&
 		LostArk::Shared::INVALID_SKILL_ID == outSkillId;
 	if (!m_BasicAttackPressEdgeGate.Should_Submit(
@@ -600,8 +629,12 @@ std::uint8_t Client::CPlayerController::Poll_EstherSlot(
 	const bool_t isKeyboardBlocked,
 	const bool_t useRawKeyboard)
 {
-	const auto readKeyState = [useRawKeyboard](const uint8_t keyCode)
+	const auto readKeyState = [this, useRawKeyboard](const uint8_t keyCode)
 	{
+		if (m_CaptureInputGate.Is_Blocked(keyCode) &&
+			keyCode != DIK_LMENU && keyCode != DIK_RMENU &&
+			keyCode != DIK_LCONTROL && keyCode != DIK_RCONTROL)
+			return static_cast<int8_t>(0);
 		return useRawKeyboard ?
 			CGameInstance::Get().Get_DIKeyStateRaw(keyCode) :
 			CGameInstance::Get().Get_DIKeyState(keyCode);
@@ -638,7 +671,10 @@ bool_t Client::CPlayerController::Request_Revive()
 {
 	if (nullptr == m_pCommandSink)
 		return false;
-	if (!m_pCommandSink->Request_RevivePlayer(m_iNextActionSequence))
+	const bool_t grabbed = LostArk::Shared::PLAYER_ACTION_STATE::GRABBED ==
+		CCombatHUDViewModel::Get().Get_Player().eAction;
+	if (!Try_SubmitUncapturedPlayerCommand(grabbed, [this]()
+		{ return m_pCommandSink->Request_RevivePlayer(m_iNextActionSequence); }))
 		return false;
 	++m_iNextActionSequence;
 	if (0u == m_iNextActionSequence)
@@ -651,7 +687,10 @@ bool_t Client::CPlayerController::Request_DebugKillSelf()
 {
 	if (nullptr == m_pCommandSink)
 		return false;
-	if (!m_pCommandSink->Request_DebugKillSelf(m_iNextActionSequence))
+	const bool_t grabbed = LostArk::Shared::PLAYER_ACTION_STATE::GRABBED ==
+		CCombatHUDViewModel::Get().Get_Player().eAction;
+	if (!Try_SubmitUncapturedPlayerCommand(grabbed, [this]()
+		{ return m_pCommandSink->Request_DebugKillSelf(m_iNextActionSequence); }))
 		return false;
 	++m_iNextActionSequence;
 	if (0u == m_iNextActionSequence)
@@ -760,11 +799,10 @@ bool_t Client::CPlayerController::Should_SendMoveGoal(
 		MOVE_GOAL_RESEND_EPSILON * MOVE_GOAL_RESEND_EPSILON;
 }
 
-bool_t Client::CPlayerController::Try_PickGroundPlane(
-	f32_t groundY, float3_t & outPosition)
+bool_t Client::CPlayerController::Try_PickWorldRay(
+	vector_t& outOrigin, vector_t& outDirection)
 {
-	//현재 마우스 위치에서 world ray를 만들고, 지정된 Y 평면과 교차시킨다
-	//추후 navigation 사용해서 피킹과 스킬 사용에 따른 collider와도 연동을 시킨다.
+	//현재 마우스 위치에서 world ray를 만든다 (near/far 언프로젝트).
 	::POINT cursor{};
 
 	if (!GetCursorPos(&cursor) ||
@@ -821,7 +859,19 @@ bool_t Client::CPlayerController::Try_PickGroundPlane(
 		view,
 		XMMatrixIdentity());
 
-	const vector_t direction = farPoint - nearPoint;
+	outOrigin = nearPoint;
+	outDirection = farPoint - nearPoint;
+	return true;
+}
+
+bool_t Client::CPlayerController::Try_PickGroundPlane(
+	f32_t groundY, float3_t & outPosition)
+{
+	//추후 navigation 사용해서 피킹과 스킬 사용에 따른 collider와도 연동을 시킨다.
+	vector_t nearPoint{}, direction{};
+	if (!Try_PickWorldRay(nearPoint, direction))
+		return false;
+
 	const f32_t directionY = XMVectorGetY(direction);
 
 	if (std::abs(directionY) < 0.00001f)
@@ -844,4 +894,28 @@ bool_t Client::CPlayerController::Try_PickGroundPlane(
 		std::isfinite(outPosition.x) &&
 		std::isfinite(outPosition.y) &&
 		std::isfinite(outPosition.z);
+}
+
+bool_t Client::CPlayerController::Request_MoveToPoint(const float3_t& goal)
+{
+	if (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED ==
+		CCombatHUDViewModel::Get().Get_Player().eAction)
+	{
+		return false;
+	}
+	const shared_ptr<IPlayerCommandSink> commandSink = m_pCommandSink;
+	if (nullptr == commandSink)
+		return false;
+	if (!commandSink->Request_MoveGoal(m_iNextMoveSequence, goal.x, goal.z))
+		return false;
+
+	m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
+	m_LastSentMoveGoal = goal;
+	if (nullptr != m_pClickMoveEffect)
+		m_pClickMoveEffect->Play(goal);
+	m_BasicAttackResendGate.Suppress_UntilRelease();
+	++m_iNextMoveSequence;
+	if (0 == m_iNextMoveSequence)
+		m_iNextMoveSequence = 1;
+	return true;
 }

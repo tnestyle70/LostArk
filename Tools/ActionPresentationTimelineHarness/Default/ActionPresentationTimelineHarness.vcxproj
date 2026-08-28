@@ -52,6 +52,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
@@ -61,6 +62,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -85,6 +87,25 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ActionPresentationTimelineHarness.cpp" />
+    <ClCompile Include="..\Private\ClientPartyRegression.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternSoundCueDocument.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_Artist31470ShaderRegistry.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\RuntimeAssetRoot.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp">
       <Link>Client\ActionPresentationTimeline.cpp</Link>
     </ClCompile>

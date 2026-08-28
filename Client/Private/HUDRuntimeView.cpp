@@ -490,10 +490,15 @@ bool_t Client::CHUDRuntimeView::Set_SlotAlpha(const string& strSlotId, f32_t fAl
 {
 	for (HUD_SLOT& Slot : m_Slots)
 	{
-		if (Slot.strId != strSlotId || Slot.Layers.empty())
+		if (Slot.strId != strSlotId)
 			continue;
 
-		Slot.Layers[0].vTint[3] = std::clamp(fAlpha, 0.f, 1.f);
+		const f32_t fClamped = std::clamp(fAlpha, 0.f, 1.f);
+		if (!Slot.Layers.empty())
+			Slot.Layers[0].vTint[3] = fClamped;
+		/* Slots authored as a flipbook (AnimationFrames) instead of Layers have nothing above to
+		set -- fAnimationAlpha is what Render()'s AnimationFrames draw call actually reads. */
+		Slot.fAnimationAlpha = fClamped;
 		return true;
 	}
 
@@ -650,8 +655,13 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 			ID3D11ShaderResourceView* pSRV =
 				Get_Or_Load_Texture(Slot.AnimationFrames[iFrameIndex]);
 			if (nullptr != pSRV)
-				Draw_Image_Quad(pDrawList, pSRV, Corners, IM_COL32(255, 255, 255, 255),
+			{
+				const uint8_t iAnimationAlpha = static_cast<uint8_t>(
+					std::clamp(Slot.fAnimationAlpha, 0.f, 1.f) * 255.f);
+				Draw_Image_Quad(pDrawList, pSRV, Corners,
+					IM_COL32(255, 255, 255, iAnimationAlpha),
 					Slot.bAnimationAdditive, false);
+			}
 			continue;
 		}
 

@@ -98,7 +98,11 @@
     <ClInclude Include="..\Public\SkillWindowView.h" />
     <ClInclude Include="..\Public\ChatWindowView.h" />
     <ClInclude Include="..\Public\PartyWindowView.h" />
+    <ClInclude Include="..\Public\ReplicatedPlayerHealth.h" />
+    <ClInclude Include="..\Public\PartyTransferNotice.h" />
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h" />
+    <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h" />
+    <ClInclude Include="..\Public\PartyInteractionView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
@@ -121,6 +125,7 @@
     <ClInclude Include="..\Public\NetObjectRegistry.h" />
     <ClInclude Include="..\Public\Npc.h" />
     <ClInclude Include="..\Public\NetworkManager.h" />
+    <ClInclude Include="..\Public\ClientSessionDiagnostic.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
     <ClInclude Include="..\Public\Part_Equipment.h" />
 	<ClInclude Include="..\Public\DeferredMaterialRenderUtils.h" />
@@ -136,6 +141,7 @@
     <ClInclude Include="..\Public\EffectV2_Object.h" />
     <ClInclude Include="..\Public\EffectV2_Document.h" />
     <ClInclude Include="..\Public\EffectV2_Runtime.h" />
+    <ClInclude Include="..\Public\EffectV2_Target.h" />
     <ClInclude Include="..\Public\HUDLayoutTool.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
     <ClInclude Include="..\public\Loader.h" />
@@ -245,6 +251,8 @@
     <ClCompile Include="..\Private\ChatWindowView.cpp" />
     <ClCompile Include="..\Private\PartyWindowView.cpp" />
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp" />
+    <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp" />
+    <ClCompile Include="..\Private\PartyInteractionView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
@@ -267,6 +275,7 @@
     <ClCompile Include="..\Private\NetObjectRegistry.cpp" />
     <ClCompile Include="..\Private\Npc.cpp" />
     <ClCompile Include="..\Private\NetworkManager.cpp" />
+    <ClCompile Include="..\Private\ClientSessionDiagnostic.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
 	<ClCompile Include="..\Private\DeferredMaterialRenderUtils.cpp" />
@@ -492,10 +501,13 @@
     <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json" />
+    <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json" />
+    <None Include="..\..\Data\UI\Party\PartyContextMenu_Layout.json" />
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
+    <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />
     <None Include="..\..\Data\UI\SkillWindow\LanceMaster.skillroster.json" />
     <None Include="..\..\Data\UI\SkillWindow\SkillWindow_Layout.json" />
     <None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json" />
@@ -600,11 +612,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.151</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.20</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\Bin\Release\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.151</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.20</LocalDebuggerEnvironment>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -1164,6 +1176,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.charge.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.charge2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.counter.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.four.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.front-back-front.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.roar-charge.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.project-tuned.sequence.six-pizza-106.effect.json" />
@@ -1183,7 +1196,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.front-back-front.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.roar-charge.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.rush.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.twohand.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.whirlwind.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sky-axe.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.recovery.effect.json" />

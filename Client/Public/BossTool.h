@@ -18,6 +18,7 @@
 NS_BEGIN(Client)
 
 class IPlayerCommandSink;
+struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
 
 /* A thin observer/controller over the existing Valtan product path.
    It never samples clips, spawns Effects, or mutates gameplay locally. */
@@ -57,6 +58,8 @@ public:
 	void Render();
 	bool_t Consume_CameraToolOpenRequest(
 		CAMERA_TOOL_OPEN_REQUEST& outRequest);
+	bool_t Consume_EffectToolOpenRequest(
+		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& outRequest);
 
 private:
 	bool_t Reload_Graph();
@@ -73,6 +76,8 @@ private:
 	void Render_FlowSlotList();
 	void Render_FlowSelectedSlot();
 	void Render_AddPatternPopup();
+	void Render_NextPatternCard();
+	void Render_NextPatternPicker();
 	void Render_LiveSummary();
 	void Render_ActionBar();
 	void Render_PatternList();
@@ -113,6 +118,7 @@ private:
 private:
 	VALTAN_PATTERN_TREE_VIEW m_Graph;
 	VALTAN_TOOL_AUDITION_INVENTORY m_AuditionInventory;
+	std::vector<std::string> m_NextPatternIds;
 	CEncounterPatternReference m_EncounterReference;
 	CValtanCinematicCameraDocument m_CameraDocument;
 	CValtanPatternFlowDocument m_FlowDocument;
@@ -125,6 +131,7 @@ private:
 
 	std::array<char_t, 128u> m_PatternSearch{};
 	std::array<char_t, 128u> m_FlowPatternSearch{};
+	std::array<char_t, 128u> m_NextPatternSearch{};
 	std::array<char_t, 256u> m_ResourceSearch{};
 	std::string m_strSelectedPatternId;
 	std::string m_strSelectedStageId;
@@ -134,6 +141,8 @@ private:
 		"Select a pattern, then play it through the Server.";
 	std::string m_strFlowStatus =
 		"Load a saved Flow, then start it through the Server.";
+	std::string m_strNextPatternStatus =
+		"Choose a Next Pattern during an isolated audition or its completed hold.";
 	std::string m_strCameraStatus;
 	std::string m_strDiagnosticStatus;
 	std::string m_strActionFeedback;
@@ -147,6 +156,7 @@ private:
 	bool_t m_bFocusPending = false;
 	bool_t m_bGraphLoadAttempted = false;
 	bool_t m_bGraphReady = false;
+	bool_t m_bNextPatternInventoryReady = false;
 	bool_t m_bFollowLive = true;
 	bool_t m_bRepeat = false;
 	bool_t m_bReviveFeedbackPending = false;
@@ -155,6 +165,11 @@ private:
 	bool_t m_bConfirmDiscardDirtyFlow = false;
 	bool_t m_hasCameraToolOpenRequest = false;
 	CAMERA_TOOL_OPEN_REQUEST m_CameraToolOpenRequest;
+	bool_t m_hasEffectToolOpenRequest = false;
+	std::string m_strEffectToolOpenPatternId;
+	std::string m_strEffectToolOpenStageId;
+	std::string m_strEffectToolOpenCueOccurrenceId;
+	std::string m_strEffectToolOpenEffectAssetId;
 };
 
 NS_END

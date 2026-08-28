@@ -5,6 +5,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "Body_Valtan.h"
 #include "Collider.h"
+#include "EffectV2_Runtime.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "Model.h"
@@ -45,6 +46,8 @@ namespace
 	constexpr int32_t ROOT_MOTION_LOCK_ALL_AXES = -1;
 	constexpr const char_t* VALTAN_ENTRANCE_PATTERN_ID =
 		"VALTAN_ENTRANCE_WHIRLWIND";
+	constexpr const char_t* VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC";
 	constexpr const char_t* VALTAN_GHOST_TRANSITION_PATTERN_ID =
 		"VALTAN_GHOST_TRANSITION_15";
 	constexpr const char_t* VALTAN_GHOST_PHASE_ACTION_ID =
@@ -588,6 +591,10 @@ bool_t CValtan::Apply_PatternPresentationSample(
 		{
 			return false;
 		}
+		Client::CEffectV2Runtime::Notify_Clip(
+			Client::EFFECT_V2_TARGET::From_Valtan(
+				static_pointer_cast<CValtan>(shared_from_this())),
+			TargetClip.strClipName.c_str());
 	}
 	else
 	{
@@ -640,6 +647,11 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 	}
 	m_iPatternPresentationClipOccurrenceIndex =
 		iAcceptedClipOccurrenceIndex;
+	Client::CEffectV2Runtime::Sync_Stage(
+		Client::EFFECT_V2_TARGET::From_Valtan(
+			static_pointer_cast<CValtan>(shared_from_this())),
+		std::string(actionId).c_str(), fActionAgeSeconds,
+		m_pDevice, m_pContext);
 	return true;
 }
 
@@ -647,6 +659,10 @@ void CValtan::Reset_LocalPatternPresentationSample()
 {
 	if (m_isServerAuthoritative || nullptr == m_pBodyModelCom)
 		return;
+	Client::CEffectV2Runtime::Sync_Stage(
+		Client::EFFECT_V2_TARGET::From_Valtan(
+			static_pointer_cast<CValtan>(shared_from_this())),
+		"", 0.f, m_pDevice, m_pContext);
 	m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
 	m_pBodyModelCom->Set_AnimationSpeed(1.f);
@@ -1340,6 +1356,10 @@ void CValtan::Update(f32_t fTimeDelta)
 void CValtan::Late_Update(f32_t fTimeDelta)
 {
 	__super::Late_Update(fTimeDelta);
+	Client::CEffectV2Runtime::Tick(
+		Client::EFFECT_V2_TARGET::From_Valtan(
+			static_pointer_cast<CValtan>(shared_from_this())),
+		m_pDevice, m_pContext);
 #ifdef _DEBUG
 	if (m_isNavigationDebugVisible && nullptr != m_pNavigationCom)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
@@ -1551,6 +1571,10 @@ void CValtan::Set_ChaseState(bool_t isChasing)
 		m_pBodyModelCom->Set_Animation(
 			isChasing ? "mesh_run_battle_1" : "mesh_idle_battle_1",
 			true);
+		Client::CEffectV2Runtime::Notify_Clip(
+			Client::EFFECT_V2_TARGET::From_Valtan(
+				static_pointer_cast<CValtan>(shared_from_this())),
+			isChasing ? "mesh_run_battle_1" : "mesh_idle_battle_1");
 	}
 }
 
@@ -1850,6 +1874,8 @@ void CValtan::Update_RaidBgm(
 
 	const bool_t isEntrancePattern =
 		VALTAN_ENTRANCE_PATTERN_ID == patternId;
+	const bool_t isCinematicEntrancePattern =
+		VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID == patternId;
 	const bool_t isGhostTransition =
 		VALTAN_GHOST_TRANSITION_PATTERN_ID == patternId;
 	const bool_t isGhostPhaseEdge = isGhostTransition &&
@@ -1878,6 +1904,11 @@ void CValtan::Update_RaidBgm(
 		Transition_RaidBgm(RAID_BGM_STATE::M08_GHOST_PHASE);
 		return;
 	}
+	/* This camera-only entrance gate deliberately adds no BGM edge. Keep
+	   the Level-owned M04 track until VALTAN_ENTRANCE_WHIRLWIND starts M05,
+	   and do not classify its non-idle snapshots as a late join. */
+	if (isCinematicEntrancePattern)
+		return;
 	if (isEntrancePattern)
 	{
 		m_hasObservedEntrancePattern = true;
@@ -2036,6 +2067,13 @@ bool_t CValtan::Apply_NetworkState(
 			{
 				return false;
 			}
+			if (bAnimationEdgeChanged)
+			{
+				Client::CEffectV2Runtime::Notify_Clip(
+					Client::EFFECT_V2_TARGET::From_Valtan(
+						static_pointer_cast<CValtan>(shared_from_this())),
+					pClip->c_str());
+			}
 			m_pBodyModelCom->Set_AnimationSpeed(1.f);
 		}
 		else
@@ -2107,8 +2145,20 @@ bool_t CValtan::Apply_NetworkState(
 		}
 		Spawn_DuePatternEffectCues(fActionAgeSeconds);
 		Spawn_DuePatternSoundCues(fActionAgeSeconds);
+		Client::CEffectV2Runtime::Sync_Stage(
+			Client::EFFECT_V2_TARGET::From_Valtan(
+				static_pointer_cast<CValtan>(shared_from_this())),
+			m_strServerActionId.c_str(), fActionAgeSeconds,
+			m_pDevice, m_pContext);
 	}
-	else if (bEnteredDead)
+	else
+	{
+		Client::CEffectV2Runtime::Sync_Stage(
+			Client::EFFECT_V2_TARGET::From_Valtan(
+				static_pointer_cast<CValtan>(shared_from_this())),
+			"", 0.f, m_pDevice, m_pContext);
+	}
+	if (!isPatternState && bEnteredDead)
 	{
 		CEffectPresentationService::Stop_BossOwner(
 			std::static_pointer_cast<CValtan>(shared_from_this()));

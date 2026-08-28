@@ -726,9 +726,10 @@ namespace LostArk::Shared
 	inline constexpr std::size_t MAX_COMBAT_RUNTIME_REVISION_BYTES = 64;
 	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_GROUPS = 128;
 	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_CHANGED_STATES = 128;
-	// The 109 collapse breaks the outer ring and every interior wall on one
-	// edge, so this has to reach the whole graph the way its two siblings do.
-	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_EVENTS = 128;
+	// A maximum-length delta must still fit one 64 KiB frame when all 128
+	// changed-state slots are populated. 106 is the exact remaining budget;
+	// the current 109 collapse emits 97 changed states and 97 live events.
+	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_EVENTS = 106;
 
 	enum class WORLD_DESTRUCTION_RUNTIME_STATE : std::uint8_t
 	{
@@ -910,6 +911,8 @@ namespace LostArk::Shared
 		// page boundary. iTargetHealthBar carries that boundary timeline row's
 		// stable command ID; only the four product page rows are admitted.
 		START_FIGHT_PAGE,
+		QUEUE_NEXT_PATTERN_ID,
+		CLEAR_NEXT_PATTERN_ID,
 		END
 	};
 
@@ -934,6 +937,11 @@ namespace LostArk::Shared
 		// CValtanBrain drops its target when nobody is combat-ready inside the
 		// engage distance, so a pattern queued now would never start.
 		REJECTED_PLAYER_NOT_ENGAGED,
+		CLEARED,
+		REJECTED_STALE_REQUEST,
+		REJECTED_STALE_AUDITION,
+		REJECTED_NOT_OWNER,
+		REJECTED_NEXT_CHANGED,
 		END
 	};
 
@@ -947,10 +955,15 @@ namespace LostArk::Shared
 		// reuse it as a timeline row's stable command ID. STOP_TIMELINE_ROW
 		// carries 0.
 		std::uint32_t iTargetHealthBar = 0;
-		// Present only on the PLAY_PATTERN_ID wire shape. Every older operation
-		// requires both fields to stay empty and therefore keeps its byte layout.
+		// Stable-ID operations encode these strings. Older operations keep their
+		// original wire shape and require hidden identity fields to stay empty.
 		std::string strBossPlacementId;
 		std::string strPatternId;
+		// Next controls compare the exact current occurrence and one-slot token.
+		// These fields are encoded only by QUEUE/CLEAR_NEXT_PATTERN_ID.
+		std::uint32_t iPredecessorRoomAuditionEpoch = 0u;
+		std::uint32_t iPredecessorPatternSequence = 0u;
+		std::uint32_t iExpectedNextRequestSequence = 0u;
 	};
 
 	bool Write_Message(
@@ -972,9 +985,12 @@ namespace LostArk::Shared
 		// request, so a rejected audition still reports the live state.
 		std::uint32_t iCurrentHealthBar = 0;
 		// Exact request echo for the stable-ID result consumer. These strings are
-		// encoded only for PLAY_PATTERN_ID; legacy result frames are unchanged.
+		// encoded only for stable-ID operations; legacy frames are unchanged.
 		std::string strBossPlacementId;
 		std::string strPatternId;
+		std::uint32_t iPredecessorRoomAuditionEpoch = 0u;
+		std::uint32_t iPredecessorPatternSequence = 0u;
+		std::uint32_t iExpectedNextRequestSequence = 0u;
 	};
 
 	bool Write_Message(
@@ -993,6 +1009,8 @@ namespace LostArk::Shared
 		ACTIVE,
 		COMPLETED,
 		ABORTED,
+		NEXT_RESERVED,
+		WAITING_FOR_PLAYER,
 		END
 	};
 
@@ -1504,4 +1522,122 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		C2S_CONFIRM_NPC_ENTRY& message);
+
+	// Same-room-only party invite: iTargetNetEntityId names another player
+	// currently replicated in this same CGameRoom (right-clicked locally).
+	// There is no cross-room player identity yet, so the Server rejects a
+	// target it cannot find in its own m_Players by NetEntityId.
+	struct C2S_PARTY_INVITE
+	{
+		std::uint32_t iRequestSequence = 0;
+		NET_ENTITY_ID iTargetNetEntityId = INVALID_NET_ENTITY_ID;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_PARTY_INVITE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_PARTY_INVITE& message);
+
+	// Sent only to the invited player. strFromNickname is display text only
+	// (matches every other nameplate-facing nickname use), never an identity
+	// lookup key -- the Respond message below answers by NetEntityId.
+	struct S2C_PARTY_INVITE_RECEIVED
+	{
+		NET_ENTITY_ID iFromNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strFromNickname;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_PARTY_INVITE_RECEIVED& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_PARTY_INVITE_RECEIVED& message);
+
+	struct C2S_PARTY_INVITE_RESPOND
+	{
+		std::uint32_t iRequestSequence = 0;
+		NET_ENTITY_ID iFromNetEntityId = INVALID_NET_ENTITY_ID;
+		bool bAccepted = false;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_PARTY_INVITE_RESPOND& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_PARTY_INVITE_RESPOND& message);
+
+	struct PARTY_ROSTER_MEMBER
+	{
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strNickname;
+		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
+	};
+
+	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC/
+	// S2C_INVENTORY_SNAPSHOT use: broadcast to every current member whenever
+	// membership changes, so a late reader never needs to replay past joins.
+	struct S2C_PARTY_ROSTER
+	{
+		std::vector<PARTY_ROSTER_MEMBER> Members;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_PARTY_ROSTER& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_PARTY_ROSTER& message);
+
+	// Same-room chat: the sender's own client already appends its typed line
+	// to its local scrollback immediately (no round trip needed for that), so
+	// this only exists to (a) let the Server relay it to everyone else in the
+	// room and (b) drive the sender's own head bubble from the same broadcast
+	// every other player's bubble uses, rather than a second local-only path.
+	struct C2S_CHAT
+	{
+		std::string strText;
+	};
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_CHAT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_CHAT& message);
+
+	struct S2C_CHAT
+	{
+		NET_ENTITY_ID iFromNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strFromNickname;
+		std::string strText;
+	};
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_CHAT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_CHAT& message);
+
+	enum class PARTY_TRANSFER_RESULT : std::uint8_t
+	{
+		REJECTED_NOT_LEADER = 1,
+		REJECTED_ROOM_FULL,
+		REJECTED_MEMBER_UNAVAILABLE,
+		REJECTED_ADMISSION_FAILED,
+		REJECTED_OUTBOUND_BUSY
+	};
+
+	// Failure only: every member remains in the source world. Successful
+	// admission uses S2C_ENTER_ACCEPTED, never a second success authority.
+	struct S2C_PARTY_TRANSFER_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eTargetWorldId = WORLD_ID::END;
+		PARTY_TRANSFER_RESULT eResult = PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_PARTY_TRANSFER_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_PARTY_TRANSFER_RESULT& message);
 }

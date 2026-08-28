@@ -200,6 +200,7 @@
     <ClInclude Include="..\Public\Graphic_Device.h" />
     <ClInclude Include="..\Public\ImGuiLayer.h" />
     <ClInclude Include="..\Public\Input_Device.h" />
+    <ClInclude Include="..\Public\MouseButtonReleaseGate.h" />
     <ClInclude Include="..\public\Layer.h" />
     <ClInclude Include="..\public\Level.h" />
     <ClInclude Include="..\public\Level_Manager.h" />
@@ -238,6 +239,7 @@
     <ClInclude Include="..\Public\VIBuffer_ParticleRect.h" />
     <ClInclude Include="..\Public\VIBuffer_DynamicTrail.h" />
     <ClInclude Include="..\Public\Sound\Sound_Manager.h" />
+    <ClInclude Include="..\Public\Sound\TrackedSoundChannel.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\External\imgui\backends\imgui_impl_dx11.cpp" />

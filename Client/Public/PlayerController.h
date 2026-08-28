@@ -41,6 +41,41 @@ namespace Client
 		bool_t m_suppressUntilRelease = false;
 	};
 
+	/* A Server grab consumes every held physical press. A different released
+	key can be used immediately after detach, but the captured press cannot turn
+	into an automatic move, skill release, Esther or basic-attack resend. */
+	class CPLAYER_CAPTURE_INPUT_GATE final
+	{
+	public:
+		constexpr void Reset() { m_blocked.fill(false); }
+		constexpr void Observe(const std::size_t input, const bool_t physicallyDown,
+			const bool_t grabbed)
+		{
+			if (!physicallyDown)
+				m_blocked[input] = false;
+			else if (grabbed)
+				m_blocked[input] = true;
+		}
+		constexpr bool_t Is_Blocked(const std::size_t input) const
+		{
+			return m_blocked[input];
+		}
+		static constexpr std::size_t LEFT_MOUSE = 256u;
+		static constexpr std::size_t RIGHT_MOUSE = 257u;
+
+	private:
+		std::array<bool_t, 258> m_blocked{};
+	};
+
+	/* Public player commands can be called outside Update, so they share the
+	grab admission gate with a counted fake-sink contract below. */
+	template <typename TRequest>
+	constexpr bool_t Try_SubmitUncapturedPlayerCommand(
+		const bool_t grabbed, const TRequest& request)
+	{
+		return !grabbed && request();
+	}
+
 	/* A tap submits only its first command. A physical hold waits long enough for
 	a normal click to finish before the first automatic continuation, then repeats
 	faster than every authored combo window, so holding LMB chains the combo
@@ -139,6 +174,37 @@ namespace Client
 
 	namespace PlayerInputGateContract
 	{
+		constexpr bool_t Validate_CapturePhysicalReleaseRearm()
+		{
+			CPLAYER_CAPTURE_INPUT_GATE gate;
+			for (std::size_t input : { std::size_t{ 16u },
+				CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE,
+				CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE })
+			{
+				gate.Observe(input, true, true);
+				gate.Observe(input, true, false);
+				if (!gate.Is_Blocked(input)) return false;
+				gate.Observe(input, false, false);
+				gate.Observe(input, true, false);
+				if (gate.Is_Blocked(input)) return false;
+			}
+			return !gate.Is_Blocked(17u);
+		}
+		static_assert(Validate_CapturePhysicalReleaseRearm(),
+			"captured input must remain blocked until physical release");
+		constexpr bool_t Validate_GrabbedPublicCommandSuppression()
+		{
+			std::uint32_t submitted = 0u;
+			const auto request = [&submitted]() { ++submitted; return true; };
+			if (Try_SubmitUncapturedPlayerCommand(true, request) ||
+				Try_SubmitUncapturedPlayerCommand(true, request) || submitted != 0u)
+				return false;
+			if (!Try_SubmitUncapturedPlayerCommand(false, request) || submitted != 1u)
+				return false;
+			return !Try_SubmitUncapturedPlayerCommand(false, []() { return false; });
+		}
+		static_assert(Validate_GrabbedPublicCommandSuppression(),
+			"grabbed public player commands must not call the command sink");
 		struct CONFIRM_REQUEST_STUB final
 		{
 			bool_t accepted = false;
@@ -392,6 +458,15 @@ namespace Client
 
 		void Update(bool_t gameplayCommandsEnabled);
 
+		/* One-shot: consumed (cleared) by the next Update() regardless of
+		whether it actually had a move click to suppress that frame. Caller
+		(CPartyInteractionView's right-click-a-player hit) calls this before
+		Update() runs so the same physical click that opened the party
+		context menu is not also spent as a move command -- unlike the
+		Valtan-entry NPC click, which is close-range by design and lets both
+		fire since the resulting move is imperceptible. */
+		void Suppress_MoveClickThisFrame() { m_isMoveClickSuppressed = true; }
+
 		/* Cursor -> world ray unprojected against the groundY plane. Public+static
 		because it touches no member state (screen cursor, viewport and view/proj
 		come straight from CGameInstance) -- Level_Bern reuses this same math to
@@ -400,6 +475,21 @@ namespace Client
 		static bool_t Try_PickGroundPlane(
 			f32_t groundY,
 			float3_t& outPosition);
+
+		/* The raw cursor -> world ray Try_PickGroundPlane intersects against a
+		ground plane -- exposed separately for callers that need to test the
+		ray against something other than a horizontal plane (a character or
+		NPC's actual position, e.g. CPartyInteractionView's right-click pick,
+		instead of wherever the ray happens to cross their feet's Y level). */
+		static bool_t Try_PickWorldRay(
+			vector_t& outOrigin,
+			vector_t& outDirection);
+
+		/* Same send-path a normal click-to-move uses (sequence, resend-gate,
+		click effect) but for a caller-computed goal instead of the cursor's
+		own ground-plane pick -- e.g. walking the local character up to an
+		NPC that was right-clicked from outside interaction range. */
+		bool_t Request_MoveToPoint(const float3_t& goal);
 
 	private:
 		//실질적인 navigation picking을 통한 이동으로 교체
@@ -442,6 +532,7 @@ namespace Client
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;
+		bool_t m_isMoveClickSuppressed = false;
 		std::chrono::steady_clock::time_point m_LastMoveGoalSentAt{};
 		float3_t m_LastSentMoveGoal{};
 		/* Edge state indexed by DirectInput key code, not by binding position: a
@@ -460,6 +551,7 @@ namespace Client
 			LostArk::Shared::INVALID_SKILL_ID;
 		CBASIC_ATTACK_PRESS_EDGE_GATE m_BasicAttackPressEdgeGate;
 		CBASIC_ATTACK_RESEND_GATE m_BasicAttackResendGate;
+		CPLAYER_CAPTURE_INPUT_GATE m_CaptureInputGate;
 		bool_t m_allowCapturedKeyboardInput = false;
 		/* Esther edges are tracked apart from m_wasKeyDown: the quick-slot
 		table commits Z and X every frame, and a Ctrl press must not read as
