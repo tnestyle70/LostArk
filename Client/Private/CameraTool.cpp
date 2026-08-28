@@ -15,7 +15,6 @@
 #include <fstream>
 #include <limits>
 #include <sstream>
-#include <string_view>
 
 namespace
 {
@@ -25,69 +24,6 @@ namespace
 	constexpr uint32_t DEFAULT_CAMERA_SHAKE_DURATION_MS = 250u;
 	constexpr f32_t MIN_LOOK_AT_DUMMY_RADIUS = 0.05f;
 	constexpr f32_t MAX_LOOK_AT_DUMMY_RADIUS = 5.f;
-	constexpr uint32_t HARD_CUT_BOUNDARY_MS = 1u;
-	constexpr size_t MAX_CAMERA_CUE_COUNT = 32u;
-	constexpr size_t MAX_CAMERA_KEYFRAME_COUNT = 64u;
-	constexpr uint32_t DEFAULT_NEW_CUE_DURATION_MS = 3000u;
-
-	bool_t Is_StableCameraAuthoringId(const std::string_view value)
-	{
-		return !value.empty() && value.size() <= 128u &&
-			std::all_of(value.begin(), value.end(), [](const char_t character)
-			{
-				return (character >= 'a' && character <= 'z') ||
-					(character >= 'A' && character <= 'Z') ||
-					(character >= '0' && character <= '9') ||
-					'_' == character || '-' == character || '.' == character;
-			});
-	}
-
-	struct CAMERA_TOOL_CUT_RANGE final
-	{
-		size_t iFirstKeyframe = 0u;
-		size_t iLastKeyframe = 0u;
-	};
-
-	std::vector<CAMERA_TOOL_CUT_RANGE> Build_CutRanges(
-		const VALTAN_CINEMATIC_CAMERA_CUE& cue)
-	{
-		std::vector<CAMERA_TOOL_CUT_RANGE> ranges;
-		if (cue.Keyframes.empty())
-			return ranges;
-
-		size_t first = 0u;
-		for (size_t index = 1u; index < cue.Keyframes.size(); ++index)
-		{
-			const uint32_t previousTime = cue.Keyframes[index - 1u].iTimeMs;
-			const uint32_t currentTime = cue.Keyframes[index].iTimeMs;
-			if (currentTime > previousTime &&
-				currentTime - previousTime <= HARD_CUT_BOUNDARY_MS)
-			{
-				ranges.push_back({ first, index - 1u });
-				first = index;
-			}
-		}
-		ranges.push_back({ first, cue.Keyframes.size() - 1u });
-		return ranges;
-	}
-
-	int32_t Find_SelectedCut(
-		const std::vector<CAMERA_TOOL_CUT_RANGE>& ranges,
-		const int32_t selectedKeyframe)
-	{
-		if (selectedKeyframe < 0)
-			return -1;
-		const size_t selected = static_cast<size_t>(selectedKeyframe);
-		for (size_t index = 0u; index < ranges.size(); ++index)
-		{
-			if (selected >= ranges[index].iFirstKeyframe &&
-				selected <= ranges[index].iLastKeyframe)
-			{
-				return static_cast<int32_t>(index);
-			}
-		}
-		return -1;
-	}
 
 	class SCOPED_WIN32_HANDLE final
 	{
@@ -466,7 +402,6 @@ void Client::CCameraTool::Deactivate()
 	if (m_bPreviewOwned)
 		Stop_Preview(false);
 	m_bPlaying = false;
-	Reset_EasyPathCapture();
 	Reset_LookAtDummy();
 }
 
@@ -703,7 +638,6 @@ bool_t Client::CCameraTool::Save()
 	m_hasDraftDeathCue = m_LoadedDocument.Has_DeathCue();
 	m_DraftDeathCue = m_hasDraftDeathCue ?
 		*m_LoadedDocument.Find_DeathCue() : VALTAN_CINEMATIC_CAMERA_CUE{};
-	Ensure_NewCueBinding();
 	m_bDirty = false;
 	m_bPreviewDraftStale = true;
 	m_strStatus =
@@ -740,7 +674,6 @@ void Client::CCameraTool::Commit_LoadedDocument(
 		m_strSelectedCueId.clear();
 	if (const VALTAN_CINEMATIC_CAMERA_CUE* cue = Get_SelectedCue())
 		m_iSelectedKeyframe = cue->Keyframes.empty() ? -1 : 0;
-	Ensure_NewCueBinding();
 	if (m_bLookAtDummyEnabled &&
 		(nullptr == Get_SelectedCue() ||
 			!Sync_DummyFromSelectedScene(*Get_SelectedCue())))
@@ -798,7 +731,6 @@ void Client::CCameraTool::Select_Cue(const std::string& cueId)
 	if (m_strSelectedCueId == cueId || nullptr == Find_DraftCue(cueId))
 		return;
 	Stop_Preview(true);
-	Reset_EasyPathCapture();
 	m_strSelectedCueId = cueId;
 	m_iSelectedKeyframe = Get_SelectedCue()->Keyframes.empty() ? -1 : 0;
 	if (m_bLookAtDummyEnabled &&
@@ -1179,54 +1111,6 @@ void Client::CCameraTool::Handle_PreviewPreemption()
 void Client::CCameraTool::Render_CueList()
 {
 	ImGui::SeparatorText("Cue List");
-	Ensure_NewCueBinding();
-	ImGui::SetNextItemWidth(-1.f);
-	ImGui::InputTextWithHint(
-		"##newCameraCueId", "New Cue ID (blank = automatic)",
-		m_NewCueIdBuffer.data(), m_NewCueIdBuffer.size());
-
-	const bool_t hasAvailableBinding =
-		!m_strNewCuePatternId.empty() && !m_strNewCueStageId.empty();
-	const std::string selectedBindingLabel = hasAvailableBinding ?
-		m_strNewCuePatternId + " / " + m_strNewCueStageId :
-		"No unused pattern stage";
-	ImGui::SetNextItemWidth(-1.f);
-	if (ImGui::BeginCombo("##newCameraCueBinding", selectedBindingLabel.c_str()))
-	{
-		for (const ENCOUNTER_PATTERN_REFERENCE& pattern : m_Encounter.Get_Patterns())
-		{
-			for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
-			{
-				if (Is_CueBindingUsed(pattern.patternId, stage.stageId))
-					continue;
-				const bool_t selected =
-					pattern.patternId == m_strNewCuePatternId &&
-					stage.stageId == m_strNewCueStageId;
-				const std::string label = pattern.patternId + " / " +
-					stage.stageId + " | " +
-					std::to_string(stage.iDurationMs) + " ms";
-				if (ImGui::Selectable(label.c_str(), selected))
-				{
-					m_strNewCuePatternId = pattern.patternId;
-					m_strNewCueStageId = stage.stageId;
-				}
-			}
-		}
-		ImGui::EndCombo();
-	}
-	ImGui::TextDisabled("Choose when this cue runs, then capture the free camera.");
-	ImGui::BeginDisabled(!hasAvailableBinding ||
-		m_DraftCues.size() >= MAX_CAMERA_CUE_COUNT);
-	if (ImGui::Button("New Cue From Current Camera", ImVec2(-1.f, 0.f)))
-		(void)Create_CueFromCurrentCamera();
-	ImGui::EndDisabled();
-	const bool_t selectedNormalCue =
-		nullptr != Get_SelectedCue() && !Is_DeathCueSelected();
-	ImGui::BeginDisabled(!selectedNormalCue || m_DraftCues.size() <= 1u);
-	if (ImGui::Button("Delete Selected Cue", ImVec2(-1.f, 0.f)))
-		(void)Delete_SelectedCue();
-	ImGui::EndDisabled();
-	ImGui::Separator();
 	for (const VALTAN_CINEMATIC_CAMERA_CUE& cue : m_DraftCues)
 	{
 		if (ImGui::Selectable(
@@ -1368,124 +1252,13 @@ void Client::CCameraTool::Render_CueEditor()
 		Interpolation_Label(cue->eInterpolation), Easing_Label(cue->eEasing));
 
 	Render_PreviewControls(*cue);
-	Render_EasyPathCapture(*cue);
-	Render_CutEditor(*cue);
 	Render_KeyframeEditor(*cue);
-}
-
-void Client::CCameraTool::Render_EasyPathCapture(
-	VALTAN_CINEMATIC_CAMERA_CUE& cue)
-{
-	ImGui::SeparatorText("Easy Camera Path Capture");
-	uint32_t intervalMs = m_iEasyPointIntervalMs;
-	if (ImGui::InputScalar(
-		"Point Interval (ms)", ImGuiDataType_U32, &intervalMs))
-	{
-		m_iEasyPointIntervalMs = (std::clamp)(intervalMs, 100u, 10000u);
-	}
-
-	const bool_t recordingThisCue = m_bEasyPathRecording &&
-		m_strEasyPathCueId == cue.strCueId;
-	const char_t* captureLabel = recordingThisCue ?
-		"Capture Next Point" : "Capture First Point / Start New Path";
-	if (ImGui::Button(captureLabel))
-	{
-		if (!recordingThisCue)
-		{
-			Reset_EasyPathCapture();
-			m_bEasyPathRecording = true;
-			m_strEasyPathCueId = cue.strCueId;
-		}
-		(void)Capture_EasyPathPoint(cue);
-	}
-	ImGui::SameLine();
-	ImGui::BeginDisabled(cue.Keyframes.size() < 2u);
-	if (ImGui::Button("Play Captured Path"))
-		(void)Play_EasyCapturedPath(cue);
-	ImGui::EndDisabled();
-	if (recordingThisCue)
-	{
-		ImGui::SameLine();
-		if (ImGui::Button("End Capture Session"))
-		{
-			Reset_EasyPathCapture();
-			m_strStatus =
-				"Ended easy capture. The captured points remain in the cue draft.";
-		}
-	}
-
-	ImGui::TextDisabled(
-		"Move free camera -> Capture First -> move -> Capture Next -> Play. "
-		"Each capture advances time automatically.");
-	if (recordingThisCue)
-	{
-		ImGui::TextDisabled(
-			"Captured points: %u | First capture replaces this cue's current scene list.",
-			m_iEasyCapturedPointCount);
-	}
-}
-
-void Client::CCameraTool::Render_CutEditor(
-	VALTAN_CINEMATIC_CAMERA_CUE& cue)
-{
-	ImGui::SeparatorText("Camera Cut List");
-	std::vector<CAMERA_TOOL_CUT_RANGE> cuts = Build_CutRanges(cue);
-	int32_t selectedCut = Find_SelectedCut(cuts, m_iSelectedKeyframe);
-
-	if (ImGui::Button("New Cut From Current Camera"))
-	{
-		(void)Insert_CapturedCut(cue);
-		cuts = Build_CutRanges(cue);
-		selectedCut = Find_SelectedCut(cuts, m_iSelectedKeyframe);
-	}
-	ImGui::SameLine();
-	ImGui::BeginDisabled(cuts.size() <= 1u || selectedCut < 0);
-	if (ImGui::Button("Delete Selected Cut"))
-	{
-		(void)Delete_SelectedCut(cue);
-		cuts = Build_CutRanges(cue);
-		selectedCut = Find_SelectedCut(cuts, m_iSelectedKeyframe);
-	}
-	ImGui::EndDisabled();
-
-	if (ImGui::BeginListBox("##cameraCuts", ImVec2(420.f, 110.f)))
-	{
-		for (size_t index = 0u; index < cuts.size(); ++index)
-		{
-			const CAMERA_TOOL_CUT_RANGE& cut = cuts[index];
-			const uint32_t startMs =
-				cue.Keyframes[cut.iFirstKeyframe].iTimeMs;
-			const uint32_t endMs =
-				cue.Keyframes[cut.iLastKeyframe].iTimeMs;
-			const std::string label = "Cut " + std::to_string(index + 1u) +
-				" | " + std::to_string(startMs) + " - " +
-				std::to_string(endMs) + " ms";
-			if (ImGui::Selectable(
-				label.c_str(), static_cast<int32_t>(index) == selectedCut))
-			{
-				m_iSelectedKeyframe =
-					static_cast<int32_t>(cut.iFirstKeyframe);
-				m_fPreviewSeconds = static_cast<f32_t>(startMs) * 0.001f;
-				m_bPlaying = false;
-				(void)Apply_PreviewPose();
-				if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
-				{
-					Disable_LookAtDummy(
-						"LookAt Dummy was disabled because the selected cut has no valid world pose.");
-				}
-			}
-		}
-		ImGui::EndListBox();
-	}
-	ImGui::TextDisabled(
-		"Set Time, Release Camera / Keep Time, position the free camera, then create a cut. "
-		"Cuts use a 1 ms boundary and save into this cue's normal scene list.");
 }
 
 void Client::CCameraTool::Render_KeyframeEditor(
 	VALTAN_CINEMATIC_CAMERA_CUE& cue)
 {
-	ImGui::SeparatorText("Camera Position List / Saved Scenes");
+	ImGui::SeparatorText("Saved Scenes");
 	if (ImGui::Button("Insert Sampled Scene"))
 		(void)Insert_Keyframe(cue);
 	ImGui::SameLine();
@@ -1578,23 +1351,14 @@ void Client::CCameraTool::Render_KeyframeEditor(
 		const f32_t currentSpeed = 0u == deltaMs ? 0.f :
 			arcLength / (static_cast<f32_t>(deltaMs) * 0.001f);
 		ImGui::SeparatorText("Incoming Segment Speed");
-		if (deltaMs <= HARD_CUT_BOUNDARY_MS)
-		{
-			ImGui::TextDisabled(
-				"Hard cut boundary (%u ms). Select a later scene to edit movement speed.",
-				deltaMs);
-		}
-		else
-		{
-			ImGui::TextDisabled("Arc %.3f units | Current average %.3f units/s",
-				arcLength, currentSpeed);
-			ImGui::InputFloat(
-				"Target Speed (units/s)", &m_fTargetSegmentSpeed,
-				0.25f, 1.f, "%.3f");
-			ImGui::SameLine();
-			if (ImGui::Button("Apply Segment Speed"))
-				(void)Apply_SelectedSegmentSpeed(cue, m_fTargetSegmentSpeed);
-		}
+		ImGui::TextDisabled("Arc %.3f units | Current average %.3f units/s",
+			arcLength, currentSpeed);
+		ImGui::InputFloat(
+			"Target Speed (units/s)", &m_fTargetSegmentSpeed,
+			0.25f, 1.f, "%.3f");
+		ImGui::SameLine();
+		if (ImGui::Button("Apply Segment Speed"))
+			(void)Apply_SelectedSegmentSpeed(cue, m_fTargetSegmentSpeed);
 	}
 
 	Render_LookAtDummyEditor(cue);
@@ -1614,9 +1378,6 @@ void Client::CCameraTool::Render_PreviewControls(
 		else if (Apply_PreviewPose())
 			m_bPlaying = true;
 	}
-	ImGui::SameLine();
-	if (ImGui::Button("Release Camera / Keep Time"))
-		Stop_Preview(false);
 	ImGui::SameLine();
 	if (ImGui::Button("Stop / Restore"))
 		Stop_Preview(true);
@@ -1735,378 +1496,10 @@ void Client::CCameraTool::Mark_Dirty(const char_t* status)
 	m_strStatus = status;
 }
 
-void Client::CCameraTool::Reset_EasyPathCapture()
-{
-	m_bEasyPathRecording = false;
-	m_iEasyCapturedPointCount = 0u;
-	m_strEasyPathCueId.clear();
-}
-
-bool_t Client::CCameraTool::Capture_EasyPathPoint(
-	VALTAN_CINEMATIC_CAMERA_CUE& cue)
-{
-	const bool_t recordingThisCue = m_bEasyPathRecording &&
-		m_strEasyPathCueId == cue.strCueId;
-	if (!recordingThisCue)
-	{
-		m_strStatus =
-			"Easy capture session is not active for the selected cue.";
-		return false;
-	}
-	if (m_bPreviewOwned)
-	{
-		m_strStatus =
-			"Release Camera / Keep Time, move the free camera, then capture the point.";
-		return false;
-	}
-
-	const uint32_t intervalMs = (std::clamp)(
-		m_iEasyPointIntervalMs, 100u, 10000u);
-	m_iEasyPointIntervalMs = intervalMs;
-
-	if (0u == m_iEasyCapturedPointCount)
-	{
-		const uint32_t minimumDuration = (std::max)(
-			1u, (std::max)(cue.iTransitionInMs, cue.iShakeDurationMs));
-		const uint32_t newDuration = (std::max)(intervalMs, minimumDuration);
-		if (newDuration > Get_MaximumCueDuration(cue))
-		{
-			Reset_EasyPathCapture();
-			m_strStatus =
-				"First point rejected: Point Interval exceeds this cue's bound stage duration.";
-			return false;
-		}
-
-		VALTAN_CINEMATIC_CAMERA_KEYFRAME first{};
-		first.strSceneId = Make_UniqueSceneId(cue);
-		if (first.strSceneId.empty() || !Capture_CurrentPose(cue, first))
-		{
-			Reset_EasyPathCapture();
-			m_strStatus =
-				"First point capture failed: position a valid free camera or provide the required tracking frame.";
-			return false;
-		}
-
-		VALTAN_CINEMATIC_CAMERA_KEYFRAME provisionalEnd = first;
-		provisionalEnd.strSceneId = Make_UniqueSceneId(cue, first.strSceneId);
-		provisionalEnd.iTimeMs = newDuration;
-		if (provisionalEnd.strSceneId.empty())
-		{
-			Reset_EasyPathCapture();
-			m_strStatus =
-				"First point capture failed: two unique scene IDs could not be reserved.";
-			return false;
-		}
-
-		cue.Keyframes = { first, provisionalEnd };
-		cue.iDurationMs = newDuration;
-		cue.eInterpolation =
-			VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
-		cue.eEasing = VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
-		m_iSelectedKeyframe = 0;
-		m_fPreviewSeconds = 0.f;
-		m_iEasyCapturedPointCount = 1u;
-		Mark_Dirty(
-			"Captured point 1. Move the free camera and press Capture Next Point.");
-		return true;
-	}
-
-	const size_t expectedSceneCount = (std::max)(
-		size_t{ 2u }, static_cast<size_t>(m_iEasyCapturedPointCount));
-	if (cue.Keyframes.size() != expectedSceneCount)
-	{
-		Reset_EasyPathCapture();
-		m_strStatus =
-			"Easy capture ended because the scene list was edited. Start a new path to continue.";
-		return false;
-	}
-
-	if (1u == m_iEasyCapturedPointCount)
-	{
-		VALTAN_CINEMATIC_CAMERA_KEYFRAME capturedEnd = cue.Keyframes.back();
-		if (!Capture_CurrentPose(cue, capturedEnd))
-		{
-			m_strStatus =
-				"Next point capture failed: position a valid free camera or provide the required tracking frame.";
-			return false;
-		}
-		cue.Keyframes.back() = capturedEnd;
-		m_iSelectedKeyframe = static_cast<int32_t>(cue.Keyframes.size() - 1u);
-		m_fPreviewSeconds = static_cast<f32_t>(cue.iDurationMs) * 0.001f;
-		m_iEasyCapturedPointCount = 2u;
-		Mark_Dirty(
-			"Captured point 2. Add more points or press Play Captured Path.");
-		return true;
-	}
-
-	if (cue.Keyframes.size() >= MAX_CAMERA_KEYFRAME_COUNT)
-	{
-		m_strStatus =
-			"Next point rejected: the 64-scene limit was reached.";
-		return false;
-	}
-	const uint64_t newDuration64 = static_cast<uint64_t>(cue.iDurationMs) +
-		static_cast<uint64_t>(intervalMs);
-	if (newDuration64 > static_cast<uint64_t>(
-		Get_MaximumCueDuration(cue)) ||
-		newDuration64 > static_cast<uint64_t>(
-			(std::numeric_limits<uint32_t>::max)()))
-	{
-		m_strStatus =
-			"Next point rejected: the path would exceed this cue's bound stage duration.";
-		return false;
-	}
-
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME scene = cue.Keyframes.back();
-	scene.strSceneId = Make_UniqueSceneId(cue);
-	scene.iTimeMs = static_cast<uint32_t>(newDuration64);
-	if (scene.strSceneId.empty() || !Capture_CurrentPose(cue, scene))
-	{
-		m_strStatus =
-			"Next point capture failed: position a valid free camera or provide the required tracking frame.";
-		return false;
-	}
-
-	cue.Keyframes.push_back(scene);
-	cue.iDurationMs = scene.iTimeMs;
-	m_iSelectedKeyframe = static_cast<int32_t>(cue.Keyframes.size() - 1u);
-	m_fPreviewSeconds = static_cast<f32_t>(scene.iTimeMs) * 0.001f;
-	++m_iEasyCapturedPointCount;
-	Mark_Dirty(
-		"Captured another camera point. Add more points or press Play Captured Path.");
-	return true;
-}
-
-bool_t Client::CCameraTool::Play_EasyCapturedPath(
-	VALTAN_CINEMATIC_CAMERA_CUE& cue)
-{
-	const bool_t recordingThisCue = m_bEasyPathRecording &&
-		m_strEasyPathCueId == cue.strCueId;
-	if (cue.Keyframes.size() < 2u || 0u == cue.iDurationMs ||
-		(recordingThisCue && m_iEasyCapturedPointCount < 2u))
-	{
-		m_strStatus =
-			"Capture at least two different points before Play Captured Path.";
-		return false;
-	}
-
-	m_bPlaying = false;
-	m_fPreviewSeconds = 0.f;
-	if (!Apply_PreviewPose())
-	{
-		m_strStatus =
-			"Captured path preview failed. Validate the cue and required tracking frame.";
-		return false;
-	}
-
-	m_bPlaying = true;
-	Reset_EasyPathCapture();
-	m_strStatus =
-		"Playing every captured point in order with the product camera sampler.";
-	return true;
-}
-
-void Client::CCameraTool::Ensure_NewCueBinding()
-{
-	const auto isAvailable = [this](
-		const std::string& patternId,
-		const std::string& stageId)
-	{
-		const ENCOUNTER_PATTERN_REFERENCE* pattern =
-			m_Encounter.Find_Pattern(patternId);
-		if (nullptr == pattern || Is_CueBindingUsed(patternId, stageId))
-			return false;
-		return std::any_of(
-			pattern->stages.begin(), pattern->stages.end(),
-			[&stageId](const ENCOUNTER_STAGE_REFERENCE& stage)
-			{ return stage.stageId == stageId; });
-	};
-	if (isAvailable(m_strNewCuePatternId, m_strNewCueStageId))
-		return;
-
-	m_strNewCuePatternId.clear();
-	m_strNewCueStageId.clear();
-	for (const ENCOUNTER_PATTERN_REFERENCE& pattern : m_Encounter.Get_Patterns())
-	{
-		const auto stage = std::find_if(
-			pattern.stages.begin(), pattern.stages.end(),
-			[this, &pattern](const ENCOUNTER_STAGE_REFERENCE& candidate)
-			{
-				return !Is_CueBindingUsed(pattern.patternId, candidate.stageId);
-			});
-		if (pattern.stages.end() == stage)
-			continue;
-		m_strNewCuePatternId = pattern.patternId;
-		m_strNewCueStageId = stage->stageId;
-		return;
-	}
-}
-
-bool_t Client::CCameraTool::Create_CueFromCurrentCamera()
-{
-	Ensure_NewCueBinding();
-	if (m_DraftCues.size() >= MAX_CAMERA_CUE_COUNT)
-	{
-		m_strStatus = "New Cue rejected: the 32-cue document limit was reached.";
-		return false;
-	}
-	if (m_strNewCuePatternId.empty() || m_strNewCueStageId.empty())
-	{
-		m_strStatus = "New Cue rejected: every encounter stage already has a cue.";
-		return false;
-	}
-	if (m_bPreviewOwned)
-	{
-		m_strStatus =
-			"Release Camera / Keep Time, position the free camera, then create the cue.";
-		return false;
-	}
-
-	const ENCOUNTER_PATTERN_REFERENCE* pattern =
-		m_Encounter.Find_Pattern(m_strNewCuePatternId);
-	if (nullptr == pattern)
-	{
-		m_strStatus = "New Cue rejected: the selected pattern no longer exists.";
-		Ensure_NewCueBinding();
-		return false;
-	}
-	const auto stage = std::find_if(
-		pattern->stages.begin(), pattern->stages.end(),
-		[this](const ENCOUNTER_STAGE_REFERENCE& candidate)
-		{ return candidate.stageId == m_strNewCueStageId; });
-	if (pattern->stages.end() == stage || 0u == stage->iDurationMs ||
-		Is_CueBindingUsed(pattern->patternId, stage->stageId))
-	{
-		m_strStatus =
-			"New Cue rejected: the selected stage is unavailable or already bound.";
-		Ensure_NewCueBinding();
-		return false;
-	}
-
-	std::string cueId = m_NewCueIdBuffer.data();
-	if (cueId.empty())
-		cueId = Make_UniqueCueId();
-	if (!Is_StableCameraAuthoringId(cueId) || nullptr != Find_DraftCue(cueId))
-	{
-		m_strStatus =
-			"New Cue ID must be unique and contain only letters, numbers, '.', '_' or '-'.";
-		return false;
-	}
-
-	VALTAN_CINEMATIC_CAMERA_CUE cue{};
-	cue.strCueId = cueId;
-	cue.strPatternId = pattern->patternId;
-	cue.strStageId = stage->stageId;
-	cue.strStageActionId = stage->actionId;
-	cue.iStageIndex = static_cast<uint32_t>(
-		std::distance(pattern->stages.begin(), stage));
-	cue.iDurationMs = (std::min)(
-		DEFAULT_NEW_CUE_DURATION_MS, stage->iDurationMs);
-	cue.eInterpolation = VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR;
-	cue.eEasing = VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
-	cue.eTrackingMode = VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
-
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME first{};
-	first.strSceneId = Make_UniqueSceneId(cue);
-	if (first.strSceneId.empty() || !Capture_CurrentPose(cue, first))
-	{
-		m_strStatus =
-			"New Cue capture failed: release preview and position a valid free camera.";
-		return false;
-	}
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME last = first;
-	last.strSceneId = Make_UniqueSceneId(cue, first.strSceneId);
-	last.iTimeMs = cue.iDurationMs;
-	if (last.strSceneId.empty())
-	{
-		m_strStatus = "New Cue could not reserve two unique scene IDs.";
-		return false;
-	}
-	cue.Keyframes = { first, last };
-
-	m_DraftCues.push_back(std::move(cue));
-	m_NewCueIdBuffer.fill('\0');
-	Select_Cue(cueId);
-	m_fPreviewSeconds = 0.f;
-	Ensure_NewCueBinding();
-	Mark_Dirty(
-		"Created a new cue from the current camera. Add scenes or cuts, then Save.");
-	return true;
-}
-
-bool_t Client::CCameraTool::Delete_SelectedCue()
-{
-	if (Is_DeathCueSelected())
-	{
-		m_strStatus =
-			"Death cue is a dedicated encounter slot and cannot be deleted here.";
-		return false;
-	}
-	if (m_DraftCues.size() <= 1u)
-	{
-		m_strStatus = "At least one ordinary camera cue must remain.";
-		return false;
-	}
-	const auto selected = std::find_if(
-		m_DraftCues.begin(), m_DraftCues.end(),
-		[this](const VALTAN_CINEMATIC_CAMERA_CUE& cue)
-		{ return cue.strCueId == m_strSelectedCueId; });
-	if (m_DraftCues.end() == selected)
-	{
-		m_strStatus = "Select an ordinary cue to delete.";
-		return false;
-	}
-
-	const size_t selectedIndex = static_cast<size_t>(
-		std::distance(m_DraftCues.begin(), selected));
-	m_strNewCuePatternId = selected->strPatternId;
-	m_strNewCueStageId = selected->strStageId;
-	Stop_Preview(true);
-	m_DraftCues.erase(selected);
-	const size_t nextIndex = (std::min)(selectedIndex, m_DraftCues.size() - 1u);
-	m_strSelectedCueId = m_DraftCues[nextIndex].strCueId;
-	m_iSelectedKeyframe = m_DraftCues[nextIndex].Keyframes.empty() ? -1 : 0;
-	if (m_bLookAtDummyEnabled &&
-		!Sync_DummyFromSelectedScene(m_DraftCues[nextIndex]))
-	{
-		Disable_LookAtDummy(
-			"LookAt Dummy was disabled because the selected cue has no valid scene.");
-	}
-	Ensure_NewCueBinding();
-	Mark_Dirty("Deleted the selected cue. Reload before Save to undo this draft change.");
-	return true;
-}
-
-bool_t Client::CCameraTool::Is_CueBindingUsed(
-	const std::string& patternId,
-	const std::string& stageId) const
-{
-	return std::any_of(
-		m_DraftCues.begin(), m_DraftCues.end(),
-		[&patternId, &stageId](const VALTAN_CINEMATIC_CAMERA_CUE& cue)
-		{
-			return cue.strPatternId == patternId && cue.strStageId == stageId;
-		});
-}
-
-std::string Client::CCameraTool::Make_UniqueCueId() const
-{
-	for (uint32_t candidate = 1u; candidate <= 999999u; ++candidate)
-	{
-		const std::string cueId = "camera.cue.auto." +
-			std::to_string(candidate);
-		if (nullptr == Find_DraftCue(cueId))
-			return cueId;
-	}
-	return {};
-}
-
 std::string Client::CCameraTool::Make_UniqueSceneId(
-	const VALTAN_CINEMATIC_CAMERA_CUE& cue,
-	const std::string& reservedSceneId) const
+	const VALTAN_CINEMATIC_CAMERA_CUE&) const
 {
-	const auto exists = [this, &cue, &reservedSceneId](
-		const std::string& sceneId)
+	const auto exists = [this](const std::string& sceneId)
 	{
 		const auto cueContains = [&sceneId](
 			const VALTAN_CINEMATIC_CAMERA_CUE& candidate)
@@ -2116,8 +1509,7 @@ std::string Client::CCameraTool::Make_UniqueSceneId(
 				[&sceneId](const VALTAN_CINEMATIC_CAMERA_KEYFRAME& scene)
 				{ return scene.strSceneId == sceneId; });
 		};
-		return sceneId == reservedSceneId || cueContains(cue) ||
-			std::any_of(m_DraftCues.begin(), m_DraftCues.end(), cueContains) ||
+		return std::any_of(m_DraftCues.begin(), m_DraftCues.end(), cueContains) ||
 			(m_hasDraftDeathCue && cueContains(m_DraftDeathCue));
 	};
 	for (uint32_t candidate = 1u; candidate <= 999999u; ++candidate)
@@ -2356,162 +1748,6 @@ bool_t Client::CCameraTool::Insert_CapturedScene(
 	m_iSelectedKeyframe = static_cast<int32_t>(right);
 	m_fPreviewSeconds = static_cast<f32_t>(scene.iTimeMs) * 0.001f;
 	Mark_Dirty("Captured and inserted a new camera scene.");
-	return true;
-}
-
-bool_t Client::CCameraTool::Insert_CapturedCut(
-	VALTAN_CINEMATIC_CAMERA_CUE& cue)
-{
-	if (cue.Keyframes.size() < 2u ||
-		cue.Keyframes.size() + 2u > MAX_CAMERA_KEYFRAME_COUNT)
-	{
-		m_strStatus =
-			"New Cut requires two endpoint scenes and room below the 64-scene limit.";
-		return false;
-	}
-
-	const uint32_t cutTimeMs = static_cast<uint32_t>((std::clamp)(
-		std::llround(static_cast<double>(m_fPreviewSeconds) * 1000.0),
-		0ll, static_cast<long long>(cue.iDurationMs)));
-	if (cutTimeMs < 2u || cutTimeMs >= cue.iDurationMs)
-	{
-		m_strStatus =
-			"Move the Time cursor inside the cue with at least 2 ms before it.";
-		return false;
-	}
-
-	const uint32_t outgoingTimeMs = cutTimeMs - HARD_CUT_BOUNDARY_MS;
-	const auto conflicts = [outgoingTimeMs, cutTimeMs](
-		const VALTAN_CINEMATIC_CAMERA_KEYFRAME& keyframe)
-	{
-		return keyframe.iTimeMs == outgoingTimeMs ||
-			keyframe.iTimeMs == cutTimeMs;
-	};
-	if (std::any_of(cue.Keyframes.begin(), cue.Keyframes.end(), conflicts))
-	{
-		m_strStatus =
-			"New Cut needs free T-1 ms and T slots. Move the Time cursor.";
-		return false;
-	}
-	if (m_bPreviewOwned)
-	{
-		m_strStatus =
-			"Release Camera / Keep Time, position the free camera, then create the cut.";
-		return false;
-	}
-
-	VALTAN_CINEMATIC_CAMERA_POSE outgoingPose{};
-	if (!CValtanCinematicCameraController::Sample_Cue(
-		cue, static_cast<f32_t>(outgoingTimeMs) * 0.001f, outgoingPose))
-	{
-		m_strStatus = "New Cut could not sample the outgoing camera pose.";
-		return false;
-	}
-
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME outgoingScene{};
-	outgoingScene.strSceneId = Make_UniqueSceneId(cue);
-	outgoingScene.iTimeMs = outgoingTimeMs;
-	outgoingScene.vEye = outgoingPose.vEye;
-	outgoingScene.vLookAt = outgoingPose.vLookAt;
-	outgoingScene.fFovYDegrees = outgoingPose.fFovYDegrees;
-	if (outgoingScene.strSceneId.empty())
-	{
-		m_strStatus = "No stable scene ID is available for the cut boundary.";
-		return false;
-	}
-
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME incomingScene = outgoingScene;
-	incomingScene.strSceneId = Make_UniqueSceneId(
-		cue, outgoingScene.strSceneId);
-	incomingScene.iTimeMs = cutTimeMs;
-	if (incomingScene.strSceneId.empty())
-	{
-		m_strStatus = "No stable scene ID is available for the new cut.";
-		return false;
-	}
-
-	if (!Capture_CurrentPose(cue, incomingScene))
-	{
-		m_strStatus =
-			"New Cut capture failed: position the free camera or provide the required tracking frame.";
-		return false;
-	}
-
-	const auto insertion = std::lower_bound(
-		cue.Keyframes.begin(), cue.Keyframes.end(), outgoingTimeMs,
-		[](const VALTAN_CINEMATIC_CAMERA_KEYFRAME& keyframe,
-			const uint32_t timeMs)
-		{
-			return keyframe.iTimeMs < timeMs;
-		});
-	const size_t insertionIndex = static_cast<size_t>(
-		std::distance(cue.Keyframes.begin(), insertion));
-	cue.Keyframes.insert(insertion, outgoingScene);
-	cue.Keyframes.insert(
-		cue.Keyframes.begin() + insertionIndex + 1u, incomingScene);
-	m_iSelectedKeyframe = static_cast<int32_t>(insertionIndex + 1u);
-	m_fPreviewSeconds = static_cast<f32_t>(cutTimeMs) * 0.001f;
-	if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
-	{
-		Disable_LookAtDummy(
-			"LookAt Dummy was disabled because the captured cut has no valid world pose.");
-	}
-	Mark_Dirty("Captured a new hard camera cut at the Time cursor.");
-	return true;
-}
-
-bool_t Client::CCameraTool::Delete_SelectedCut(
-	VALTAN_CINEMATIC_CAMERA_CUE& cue)
-{
-	const std::vector<CAMERA_TOOL_CUT_RANGE> cuts = Build_CutRanges(cue);
-	const int32_t selectedCut = Find_SelectedCut(cuts, m_iSelectedKeyframe);
-	if (cuts.size() <= 1u || selectedCut < 0)
-	{
-		m_strStatus = "At least one camera cut must remain.";
-		return false;
-	}
-
-	const size_t cutIndex = static_cast<size_t>(selectedCut);
-	const CAMERA_TOOL_CUT_RANGE selected = cuts[cutIndex];
-	const size_t removedCount =
-		selected.iLastKeyframe - selected.iFirstKeyframe + 1u;
-	if (cue.Keyframes.size() - removedCount < 2u)
-	{
-		m_strStatus = "Cut deletion would leave an invalid camera path.";
-		return false;
-	}
-	if (0u == cutIndex)
-	{
-		cue.Keyframes.erase(
-			cue.Keyframes.begin() + selected.iFirstKeyframe,
-			cue.Keyframes.begin() + selected.iLastKeyframe + 1u);
-		cue.Keyframes.front().iTimeMs = 0u;
-		m_iSelectedKeyframe = 0;
-	}
-	else
-	{
-		const size_t previousIndex = selected.iFirstKeyframe - 1u;
-		const bool_t hasNextCut = cutIndex + 1u < cuts.size();
-		const uint32_t nextStartMs = hasNextCut ?
-			cue.Keyframes[cuts[cutIndex + 1u].iFirstKeyframe].iTimeMs :
-			cue.iDurationMs + HARD_CUT_BOUNDARY_MS;
-		cue.Keyframes.erase(
-			cue.Keyframes.begin() + selected.iFirstKeyframe,
-			cue.Keyframes.begin() + selected.iLastKeyframe + 1u);
-		cue.Keyframes[previousIndex].iTimeMs = hasNextCut ?
-			nextStartMs - HARD_CUT_BOUNDARY_MS : cue.iDurationMs;
-		m_iSelectedKeyframe = static_cast<int32_t>(previousIndex);
-	}
-
-	m_fPreviewSeconds = static_cast<f32_t>(
-		cue.Keyframes[static_cast<size_t>(m_iSelectedKeyframe)].iTimeMs) * 0.001f;
-	m_bPlaying = false;
-	if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
-	{
-		Disable_LookAtDummy(
-			"LookAt Dummy was disabled because the selected cut was deleted.");
-	}
-	Mark_Dirty("Deleted the selected camera cut and reconnected its neighbors.");
 	return true;
 }
 

@@ -4,7 +4,6 @@
 #include "EncounterPatternReference.h"
 #include "ValtanCinematicCameraDocument.h"
 
-#include <array>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -98,30 +97,15 @@ private:
 
 	void Render_CueList();
 	void Render_CueEditor();
-	void Render_EasyPathCapture(VALTAN_CINEMATIC_CAMERA_CUE& cue);
-	void Render_CutEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	void Render_KeyframeEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	void Render_LookAtDummyEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	void Render_PreviewControls(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	void Mark_Dirty(const char_t* status);
-	void Ensure_NewCueBinding();
-	bool_t Create_CueFromCurrentCamera();
-	bool_t Delete_SelectedCue();
-	bool_t Capture_EasyPathPoint(VALTAN_CINEMATIC_CAMERA_CUE& cue);
-	bool_t Play_EasyCapturedPath(VALTAN_CINEMATIC_CAMERA_CUE& cue);
-	void Reset_EasyPathCapture();
-	bool_t Is_CueBindingUsed(
-		const std::string& patternId,
-		const std::string& stageId) const;
-	std::string Make_UniqueCueId() const;
 	bool_t Insert_Keyframe(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	bool_t Insert_CapturedScene(VALTAN_CINEMATIC_CAMERA_CUE& cue);
-	bool_t Insert_CapturedCut(VALTAN_CINEMATIC_CAMERA_CUE& cue);
-	bool_t Delete_SelectedCut(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	bool_t Delete_SelectedKeyframe(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	std::string Make_UniqueSceneId(
-		const VALTAN_CINEMATIC_CAMERA_CUE& cue,
-		const std::string& reservedSceneId = {}) const;
+		const VALTAN_CINEMATIC_CAMERA_CUE& cue) const;
 	f32_t Calculate_SegmentArcLength(
 		const VALTAN_CINEMATIC_CAMERA_CUE& cue,
 		size_t rightSceneIndex) const;
@@ -153,17 +137,11 @@ private:
 	std::string m_strBaselineText;
 	std::string m_strSelectedCueId;
 	std::string m_strPendingOpenCueId;
-	std::string m_strNewCuePatternId;
-	std::string m_strNewCueStageId;
-	std::array<char_t, 129u> m_NewCueIdBuffer = {};
 	std::string m_strStatus = "Reload the Valtan cinematic camera document.";
 	int32_t m_iSelectedKeyframe = -1;
 	f32_t m_fPreviewSeconds = 0.f;
 	f32_t m_fPreviewRate = 1.f;
 	f32_t m_fTargetSegmentSpeed = 5.f;
-	uint32_t m_iEasyPointIntervalMs = 1500u;
-	uint32_t m_iEasyCapturedPointCount = 0u;
-	std::string m_strEasyPathCueId;
 	float3_t m_vLookAtDummyWorld = {};
 	f32_t m_fLookAtDummyRadius = 0.35f;
 	std::shared_ptr<Engine::CCollider> m_pLookAtDummyCollider;
@@ -176,7 +154,6 @@ private:
 	bool_t m_bPreviewOwned = false;
 	bool_t m_bPreviewDraftStale = true;
 	bool_t m_bPlaying = false;
-	bool_t m_bEasyPathRecording = false;
 	bool_t m_bLookAtDummyEnabled = false;
 };
 
