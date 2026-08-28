@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PLAYER_PROFILES = ROOT / "Data/Balance/PlayerProfiles.json"
 PLAYER_SKILLS = ROOT / "Data/Balance/PlayerSkills.json"
 DAMAGE_PROFILES = ROOT / "Data/Balance/DamageProfiles.json"
+BOSS_PROFILES = ROOT / "Data/Balance/BossProfiles.json"
 
 EXPECTED_CLASSES = {
     "LANCE_MASTER",
@@ -33,6 +34,15 @@ class ValtanFastCombatTuningContractTests(unittest.TestCase):
             row["damageProfileId"]: row["damageRatePercent"]
             for row in load(DAMAGE_PROFILES)["profiles"]
         }
+        cls.bosses = {
+            row["archetypeId"]: row
+            for row in load(BOSS_PROFILES)["bosses"]
+        }
+
+    def test_primary_valtan_hp_is_tenfold_without_scaling_the_ghost(self) -> None:
+        self.assertEqual(600000, self.bosses["BOSS_VALTAN"]["maximumHp"])
+        self.assertEqual(160, self.bosses["BOSS_VALTAN"]["maximumHealthBars"])
+        self.assertEqual(60000, self.bosses["BOSS_VALTAN_GHOST"]["maximumHp"])
 
     def test_every_non_basic_attack_has_a_three_second_cooldown(self) -> None:
         non_basic_attacks = [

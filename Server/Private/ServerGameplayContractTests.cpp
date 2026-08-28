@@ -16186,15 +16186,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			auditionBoss->bIntroPatternConsumed = true;
 		tests.Require(
 			activated && nullptr != auditionBoss &&
-			60000u == (nullptr == auditionBoss ? 0u : auditionBoss->iMaximumHp) &&
+			600000u == (nullptr == auditionBoss ? 0u : auditionBoss->iMaximumHp) &&
 			160u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iMaximumHealthBars),
 			"Activate the audition Valtan with its authored health bar scale");
 
 		tests.Require(
 			nullptr != auditionBoss &&
-			30375u == CValtanBrain::Resolve_HealthBarHp(*auditionBoss, 81u) &&
-			30000u == CValtanBrain::Resolve_HealthBarHp(*auditionBoss, 80u) &&
+			303750u == CValtanBrain::Resolve_HealthBarHp(*auditionBoss, 81u) &&
+			300000u == CValtanBrain::Resolve_HealthBarHp(*auditionBoss, 80u) &&
 			0u == CValtanBrain::Resolve_HealthBarHp(*auditionBoss, 161u),
 			"Resolve authored health bar boundaries and reject bars off the scale");
 

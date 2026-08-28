@@ -91,7 +91,7 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         valtan = next(row for row in catalog["bosses"]
                       if row["archetypeId"] == "BOSS_VALTAN")
         self.assertEqual(valtan["archetypeId"], "BOSS_VALTAN")
-        self.assertEqual(valtan["presentationScale"], 10.0)
+        self.assertEqual(valtan["presentationScale"], 1.0)
         self.assertEqual(valtan["bodyModelPreScale"], 0.0001)
         self.assertEqual(valtan["weaponModelPreScale"], 100.0)
         self.assertEqual(
@@ -462,7 +462,7 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         self.assertEqual(socket.parent_index, 41)
         self.assertEqual(socket.name_hash, 0x51BF337724F3B4CA)
 
-    def test_server_body_radius_fits_scale_one_locomotion_geometry(self) -> None:
+    def test_body_radius_fits_product_locomotion_geometry(self) -> None:
         geometry = load_module(
             "valtan_body_radius_geometry",
             REPOSITORY_ROOT
@@ -482,11 +482,9 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                      if row["archetypeId"] == "BOSS_VALTAN")
         profile = next(row for row in profiles["bosses"]
                        if row["archetypeId"] == actor["archetypeId"])
-        # Server collision stays in gameplay metres against the measured
-        # scale-one body. presentationScale is an intentional Client-only
-        # visual multiplier and must not be published into this radius.
-        self.assertEqual(actor["presentationScale"], 10.0)
-        world_scale = actor["bodyModelPreScale"]
+        # CValtanPresentationAssetService's WModel pretransform, followed by
+        # the catalog visual scale. Body yaw preserves this XZ radius.
+        world_scale = actor["bodyModelPreScale"] * actor["presentationScale"]
         bone_indices = {bone.name: index
                         for index, bone in enumerate(body.skeleton_bones)}
         root_index = bone_indices["b_root"]
@@ -539,9 +537,9 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         radius = profile["collisionRadius"]
         self.assertEqual(radius, 1.4)
         self.assertGreaterEqual(radius, maximum_radius,
-                                "server body collision must cover the scale-one locomotion footprint")
-        self.assertLessEqual(radius, maximum_radius + 0.1,
-                             "server body collision must remain fitted independently of Client visual scale")
+                                "body collision must cover the locomotion footprint")
+        self.assertLessEqual(radius, maximum_radius + 0.1 * actor["presentationScale"],
+                             "body collision must not retain the old oversized radius")
 
     def test_static_weapon_has_no_skeleton_contract(self) -> None:
         with self.assertRaisesRegex(

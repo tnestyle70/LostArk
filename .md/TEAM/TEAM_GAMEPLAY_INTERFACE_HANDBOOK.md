@@ -542,8 +542,9 @@ ID로 strict join해 `ValtanEncounter.json`, rotations, combat objects, world ev
 bootstrap을 생성한다. 이 generated Product는 read-only이고 Server와 Arena가 split source를 두 번째 런타임으로
 직접 읽지 않는다.
 
-`Data/Actors/BossCatalog.json` format v5의 현재 Valtan `presentationScale: 10.0`은 replicated Arena와 Character/Boss
-Preview가 함께 소비하는 Client actor scale이다. `BossProfiles.json`의 Server body radius는 scale-one 모델의
+`Data/Actors/BossCatalog.json` format v5의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
+Preview가 함께 소비하는 Client actor scale이다. 일반 `BOSS_VALTAN.maximumHp`는 `600000`, 종속
+`BOSS_VALTAN_GHOST.maximumHp`는 `60000`이며 health bar 수는 `160`을 유지한다. `BossProfiles.json`의 Server body radius는 scale-one 모델의
 몸통·다리 실측에 맞춘 `1.4m`를 유지하며 Client Debug collider는 같은 replicated radius를 표시한다. 이 의도적인
 시각 배율을 body radius에 다시 곱하지 않는다. 공격 hit geometry와 장판 크기는 별도 저작 값이다.
 Effect cue의 scale policy는 `OWNER_RELATIVE`, `GAMEPLAY_FOOTPRINT`,
